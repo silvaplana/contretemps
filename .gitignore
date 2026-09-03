@@ -1,0 +1,28 @@
+# Environnements virtuels
+venv/
+.venv/
+env/
+
+# Secrets locaux
+.env
+
+# Bytecode / cache Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Node / frontend
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# Packaging
+build/
+
+# Éditeurs / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store

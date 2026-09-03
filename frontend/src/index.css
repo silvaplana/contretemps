@@ -1,0 +1,73 @@
+/* Mobile-first : app pensee pour un ecran de smartphone (voir README),
+   pas de layout "desktop" a elargir/retrecir. */
+:root {
+  --text: #6b6375;
+  --text-h: #08060d;
+  --bg: #fff;
+  --border: #e5e4e7;
+  --surface: #f4f3ec;
+  --accent: #aa3bff;
+  --accent-bg: rgba(170, 59, 255, 0.1);
+
+  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  font: 16px/145% var(--sans);
+  color-scheme: light dark;
+  color: var(--text);
+  background: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #9ca3af;
+    --text-h: #f3f4f6;
+    --bg: #16171d;
+    --border: #2e303a;
+    --surface: #1f2028;
+    --accent: #c084fc;
+    --accent-bg: rgba(192, 132, 252, 0.15);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+#root {
+  /* 100dvh (dynamic viewport height) plutot que 100vh : suit la barre
+     d'adresse qui se retracte/deploie dans les navigateurs mobiles,
+     evite un contenu coupe ou un espace vide en bas. */
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  /* Zones encochees (iPhone notch/home indicator, Android gesture bar). */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+    env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+h1,
+h2,
+h3 {
+  font-weight: 600;
+  color: var(--text-h);
+  margin: 0 0 8px;
+}
+
+p {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  /* Cible tactile confortable (44px recommande par Apple/Material). */
+  min-height: 44px;
+  min-width: 44px;
+}
