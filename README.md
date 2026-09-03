@@ -28,6 +28,6 @@ Voir [frontend/README.md](frontend/README.md).
 
 ## Déploiement
 
-Pas encore mis en place. Suivra le pattern de
-[test-python](../test-python) (backend + frontend/Caddy dockerisés,
-docker-compose, VPS) une fois qu'il y aura quelque chose à déployer.
+Le projet est "dockerisé" (backend + frontend/nginx) et rejoint le
+gateway partagé du VPS `silvaplana.cloud` (même serveur que
+`test-python` et `fight-rank`). Voir [DEPLOY.md](DEPLOY.md).
