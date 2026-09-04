@@ -6,15 +6,15 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
 // Écran 2/2 de la Messagerie : le fil d'UNE conversation, plein écran, avec
 // une flèche de retour vers ConversationListScreen (voir MessagerieScreen.jsx)
-// — comme l'écran de discussion de WhatsApp. Coches de statut façon WhatsApp
-// et bouton "envoyer par mail" par message (voir spec/SPEC.md 5.5).
+// — comme l'écran de discussion de WhatsApp. Coches de statut façon WhatsApp ;
+// le choix messagerie/mail se fait à l'envoi (voir send ci-dessous), et
+// l'icône mail dans la bulle n'est qu'un indicatif de ce choix a posteriori
+// (voir spec/SPEC.md 5.5).
 export default function ConversationThreadScreen({ conversation, onBack, setConversations }) {
   const [draft, setDraft] = useState('')
 
   // Choix à l'envoi : par la messagerie (par défaut) ou par mail — l'envoi
-  // par mail demande confirmation car il sort de l'appli (voir spec/SPEC.md
-  // 5.5). Le bouton "enveloppe" sur chaque message déjà envoyé (toggleMail
-  // ci-dessous) reste un réglage a posteriori, distinct de ce choix initial.
+  // par mail demande confirmation car il sort de l'appli.
   function send(parMail) {
     if (!draft.trim()) return
     if (parMail && !window.confirm('Envoyer aussi ce message par mail ?')) return
@@ -31,21 +31,6 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
       list.map((c) => (c.id === conversation.id ? { ...c, messages: [...c.messages, message] } : c)),
     )
     setDraft('')
-  }
-
-  function toggleMail(messageId) {
-    setConversations((list) =>
-      list.map((c) =>
-        c.id !== conversation.id
-          ? c
-          : {
-              ...c,
-              messages: c.messages.map((m) =>
-                m.id === messageId ? { ...m, envoyeParMail: !m.envoyeParMail } : m,
-              ),
-            },
-      ),
-    )
   }
 
   return (
@@ -81,14 +66,6 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
                 {m.envoyeParMail && <Icon name="mail" size={14} />}
               </span>
             </div>
-            <button
-              type="button"
-              className={`message-mail-btn ${m.envoyeParMail ? 'is-on' : ''}`}
-              onClick={() => toggleMail(m.id)}
-              aria-label="Envoyer par mail"
-            >
-              <Icon name="mail" size={14} />
-            </button>
           </div>
         ))}
       </div>

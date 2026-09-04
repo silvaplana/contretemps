@@ -1128,22 +1128,6 @@
   margin-top: 4px;
 }
 
-.message-mail-btn {
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  min-height: 32px;
-  min-width: 32px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.message-mail-btn.is-on {
-  color: var(--accent);
-}
-
 .conversation-thread__input {
   display: flex;
   align-items: center;
