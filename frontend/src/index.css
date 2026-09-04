@@ -1,36 +1,38 @@
 /* Mobile-first : app pensee pour un ecran de smartphone (voir README),
-   pas de layout "desktop" a elargir/retrecir. */
+   pas de layout "desktop" a elargir/retrecir.
+   Charte visuelle fixe (voir spec/SPEC.md section 7) : pas de mode sombre
+   pour l'instant, la marque Contretemps est pensee en orange clair. */
 :root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --surface: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
+  --bg: #fdecd8;
+  --surface: #f8dcb4;
+  --surface-2: #f3d19c;
+  --card-bg: #fffaf1;
+  --border: #e8c08c;
+  --text: #3a2410;
+  --text-h: #000;
+  --text-muted: #8a6a4a;
+
+  --accent: #d8722a;
+  --accent-bg: rgba(216, 114, 42, 0.14);
+  --accent-contrast: #fffaf1;
+
+  --success-bg: #d7ecd7;
+  --success-text: #2f6b2f;
+  --warning-bg: #f3e2ab;
+  --warning-text: #8a6a1f;
+  --danger-bg: #f6d4d4;
+  --danger-text: #8f2f2f;
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 
   font: 16px/145% var(--sans);
-  color-scheme: light dark;
+  color-scheme: light;
   color: var(--text);
   background: var(--bg);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --surface: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-  }
 }
 
 * {
@@ -56,7 +58,7 @@ body {
 h1,
 h2,
 h3 {
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-h);
   margin: 0 0 8px;
 }
@@ -65,9 +67,25 @@ p {
   margin: 0;
 }
 
+a {
+  color: var(--accent);
+}
+
 button {
   font: inherit;
   /* Cible tactile confortable (44px recommande par Apple/Material). */
   min-height: 44px;
   min-width: 44px;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--text-h);
+}
+
+.muted {
+  color: var(--text-muted);
 }
