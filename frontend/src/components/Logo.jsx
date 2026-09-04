@@ -1,23 +1,24 @@
 // Monogramme "Ct" (voir spec/SPEC.md 5.1 et images/login.png) : un grand
-// arc (le "C") entoure un cercle plein orange contenant un "t" italique.
+// anneau en "C" (ouvert en bas à droite) dans lequel vient s'emboîter un
+// cercle plein contenant un "t" italique.
 export default function Logo({ size = 40 }) {
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
       <path
-        d="M78 22a34 34 0 1 0 8 21"
+        d="M44 75.9A34 34 0 1 1 75.9 40"
         fill="none"
-        stroke="var(--bg)"
-        strokeWidth="6"
+        stroke="var(--accent)"
+        strokeWidth="9"
         strokeLinecap="round"
       />
-      <circle cx="58" cy="55" r="30" fill="var(--accent)" />
+      <circle cx="67" cy="65" r="27" fill="var(--accent)" />
       <text
-        x="58"
-        y="68"
+        x="67"
+        y="76"
         textAnchor="middle"
         fontStyle="italic"
         fontFamily="Georgia, 'Times New Roman', serif"
-        fontSize="34"
+        fontSize="30"
         fill="var(--bg)"
       >
         t

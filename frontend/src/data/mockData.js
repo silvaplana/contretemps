@@ -1,4 +1,8 @@
 // Données d'exemple (en dur) pour la maquette front-end du rôle Admin.
+// `BASE_URL` = le "base" de vite.config.js ('/contretemps/' en prod, '/' en
+// dev) : nécessaire pour que les vidéos statiques (public/videos/) se
+// trouvent aussi une fois déployées sous silvaplana.cloud/contretemps/.
+const BASE_URL = import.meta.env.BASE_URL
 // Pas d'appel réseau ici : tout vient de ce fichier, en attendant le backend
 // (voir spec/SPEC.md section 6 pour le schéma de base visé).
 
@@ -304,6 +308,7 @@ export const videosParCours = {
       datePublication: '05/08',
       duree: '01:20',
       description: '',
+      url: `${BASE_URL}videos/comme-un-garcon-detail-debut.mp4`,
       choregraphieId: 'ch1',
     },
     {
@@ -320,6 +325,7 @@ export const videosParCours = {
       datePublication: '08/08',
       duree: '04:10',
       description: 'Passage à retravailler : le déplacement diagonal.',
+      url: `${BASE_URL}videos/bang-bang-lent.mp4`,
       choregraphieId: 'ch2',
     },
   ],

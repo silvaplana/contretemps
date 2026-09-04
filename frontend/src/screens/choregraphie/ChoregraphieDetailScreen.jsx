@@ -30,6 +30,7 @@ export default function ChoregraphieDetailScreen({
   const [showAddVideo, setShowAddVideo] = useState(false)
   const [editingVideo, setEditingVideo] = useState(null)
   const [showChooseEleves, setShowChooseEleves] = useState(false)
+  const [videoOuverteId, setVideoOuverteId] = useState(null)
 
   const videos = videosDuCours.filter((v) => v.choregraphieId === choregraphie.id)
 
@@ -144,29 +145,42 @@ export default function ChoregraphieDetailScreen({
           {videos.length > 0 ? (
             <ul className="link-list">
               {videos.map((v) => (
-                <li key={v.id}>
-                  <Icon name="play" size={14} />
-                  <span>{v.titre}</span>
-                  <span className="muted">{v.duree}</span>
-                  {editing && (
-                    <>
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn--sm"
-                        onClick={() => setEditingVideo(v)}
-                        aria-label={`Modifier ${v.titre}`}
-                      >
-                        <Icon name="edit" size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn--sm icon-btn--danger"
-                        onClick={() => onRemoveVideo(v.id)}
-                        aria-label={`Supprimer ${v.titre}`}
-                      >
-                        <Icon name="trash" size={14} />
-                      </button>
-                    </>
+                <li key={v.id} className="link-list__item">
+                  <div className="link-list__row">
+                    <button
+                      type="button"
+                      className="link-list__play-btn"
+                      disabled={!v.url}
+                      onClick={() => setVideoOuverteId((id) => (id === v.id ? null : v.id))}
+                      aria-label={v.url ? `Lire ${v.titre}` : v.titre}
+                    >
+                      <Icon name="play" size={14} />
+                    </button>
+                    <span>{v.titre}</span>
+                    <span className="muted">{v.duree}</span>
+                    {editing && (
+                      <>
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--sm"
+                          onClick={() => setEditingVideo(v)}
+                          aria-label={`Modifier ${v.titre}`}
+                        >
+                          <Icon name="edit" size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--sm icon-btn--danger"
+                          onClick={() => onRemoveVideo(v.id)}
+                          aria-label={`Supprimer ${v.titre}`}
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                  {videoOuverteId === v.id && v.url && (
+                    <video className="link-list__player" src={v.url} controls autoPlay preload="metadata" />
                   )}
                 </li>
               ))}

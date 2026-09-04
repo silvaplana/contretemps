@@ -17,12 +17,13 @@ export default function VideoScreen({ cours, list, setList, choregraphies }) {
     }
   }
 
-  function add({ titre, description, duree, choregraphieId }) {
+  function add({ titre, description, duree, url, choregraphieId }) {
     const nouvelle = {
       id: crypto.randomUUID(),
       titre,
       description,
       duree: duree || '00:00',
+      url: url || null,
       choregraphieId: choregraphieId || null,
       datePublication: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
     }
@@ -39,10 +40,16 @@ export default function VideoScreen({ cours, list, setList, choregraphies }) {
           return (
             <div key={v.id} className="video-card">
               <div className="video-card__thumb">
-                <button type="button" className="video-card__play" aria-label={`Lire ${v.titre}`}>
-                  <Icon name="play" size={22} />
-                </button>
-                <span className="video-card__duree">{v.duree}</span>
+                {v.url ? (
+                  <video className="video-card__player" src={v.url} controls preload="metadata" />
+                ) : (
+                  <>
+                    <button type="button" className="video-card__play" aria-label={`Lire ${v.titre}`} disabled>
+                      <Icon name="play" size={22} />
+                    </button>
+                    <span className="video-card__duree">{v.duree}</span>
+                  </>
+                )}
               </div>
               <div className="video-card__body">
                 <div>

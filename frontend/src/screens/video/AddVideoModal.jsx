@@ -17,6 +17,10 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
 
   function handleFichier(file) {
     if (!file) return
+    // L'URL n'est PAS révoquée : elle devient la source de lecture de la
+    // vidéo (voir video-card__thumb dans VideoScreen.jsx et le lecteur dans
+    // ChoregraphieDetailScreen.jsx). Elle ne survit qu'à cette page/session —
+    // sans backend, rien de plus durable n'est possible ici.
     const url = URL.createObjectURL(file)
     const probe = document.createElement('video')
     probe.preload = 'metadata'
@@ -25,8 +29,7 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
       const total = Math.round(probe.duration || 0)
       const mm = String(Math.floor(total / 60)).padStart(2, '0')
       const ss = String(total % 60).padStart(2, '0')
-      setFichier({ nom: file.name, duree: `${mm}:${ss}` })
-      URL.revokeObjectURL(url)
+      setFichier({ nom: file.name, duree: `${mm}:${ss}`, url })
     }
     if (!titre) setTitre(file.name.replace(/\.[^/.]+$/, ''))
   }
@@ -45,6 +48,7 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
               titre,
               description,
               duree: fichier?.duree,
+              url: fichier?.url,
               choregraphieId: lockedChoregraphieId ?? (choregraphieId || null),
             })
           }

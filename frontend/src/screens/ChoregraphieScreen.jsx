@@ -36,6 +36,7 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves, video
       titre: donnees.titre,
       description: donnees.description,
       duree: donnees.duree || '00:00',
+      url: donnees.url || null,
       choregraphieId: donnees.choregraphieId ?? null,
       datePublication: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
     }

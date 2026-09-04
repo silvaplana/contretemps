@@ -930,6 +930,51 @@
   flex: 1;
 }
 
+/* Variante avec lecteur repliable (voir ChoregraphieDetailScreen.jsx) :
+   la ligne cliquable, puis la vidéo en dessous si elle est ouverte. */
+.link-list__item {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 0;
+  gap: 8px;
+}
+
+.link-list__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.link-list__row > span:first-of-type {
+  flex: 1;
+}
+
+.link-list__play-btn {
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  min-width: 28px;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.link-list__play-btn:disabled {
+  background: var(--surface-2);
+  color: var(--text-muted);
+}
+
+.link-list__player {
+  width: 100%;
+  border-radius: 10px;
+  background: #000;
+}
+
 .choregraphie-detail__video-hint {
   font-size: 13px;
   margin-top: 6px;
@@ -973,6 +1018,20 @@
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.video-card__play:disabled {
+  color: var(--text-muted);
+}
+
+/* Vidéo réellement jouable (voir video.url, AddVideoModal.jsx) : remplace
+   la vignette statique + bouton play factice. */
+.video-card__player {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: #000;
 }
 
 .video-card__duree {
