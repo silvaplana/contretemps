@@ -603,6 +603,13 @@
   min-width: 140px;
 }
 
+/* Icônes stylo + poubelle groupées dans la dernière colonne d'un tableau
+   Admin (voir AdminCours.jsx). */
+.row-actions {
+  display: flex;
+  gap: 2px;
+}
+
 .editable-text {
   width: 100%;
   min-width: 90px;

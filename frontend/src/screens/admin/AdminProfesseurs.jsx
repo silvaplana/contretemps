@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
-import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 
@@ -9,6 +8,7 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours })
   const [search, setSearch] = useState('')
   const [coursEditId, setCoursEditId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
 
   const filtered = professeurs.filter((p) =>
     `${p.prenom} ${p.nom}`.toLowerCase().includes(search.toLowerCase()),
@@ -38,6 +38,7 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours })
   }
 
   const coursEnEdition = professeurs.find((p) => p.id === coursEditId)
+  const enEdition = professeurs.find((p) => p.id === editId)
 
   return (
     <div className="admin-panel">
@@ -57,18 +58,14 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours })
               <th>Nom</th>
               <th>Prénom</th>
               <th>Cours enseignés</th>
-              <th aria-label="Supprimer" />
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
             {filtered.map((p) => (
               <tr key={p.id}>
-                <td className="data-table__name">
-                  <EditableText value={p.nom} onChange={(v) => update(p.id, { nom: v })} />
-                </td>
-                <td>
-                  <EditableText value={p.prenom} onChange={(v) => update(p.id, { prenom: v })} />
-                </td>
+                <td className="data-table__name">{p.nom}</td>
+                <td>{p.prenom}</td>
                 <td>
                   <button
                     type="button"
@@ -82,14 +79,24 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours })
                   </button>
                 </td>
                 <td>
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn--danger"
-                    onClick={() => remove(p.id)}
-                    aria-label={`Supprimer ${p.prenom}`}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => setEditId(p.id)}
+                      aria-label={`Modifier ${p.prenom}`}
+                    >
+                      <Icon name="edit" size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger"
+                      onClick={() => remove(p.id)}
+                      aria-label={`Supprimer ${p.prenom}`}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -119,27 +126,38 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours })
       )}
 
       {showAdd && (
-        <AddProfModal
+        <ProfModal
+          title="Ajouter un professeur"
+          submitLabel="Ajouter"
           onClose={() => setShowAdd(false)}
-          onAdd={(nom, prenom) =>
-            setProfesseurs((list) => [
-              ...list,
-              { id: crypto.randomUUID(), nom, prenom, email: '', coursIds: [] },
-            ])
+          onSubmit={(donnees) =>
+            setProfesseurs((list) => [...list, { id: crypto.randomUUID(), coursIds: [], ...donnees }])
           }
+        />
+      )}
+
+      {enEdition && (
+        <ProfModal
+          title={`Modifier — ${enEdition.prenom} ${enEdition.nom}`}
+          submitLabel="Enregistrer"
+          initial={enEdition}
+          onClose={() => setEditId(null)}
+          onSubmit={(donnees) => update(enEdition.id, donnees)}
         />
       )}
     </div>
   )
 }
 
-function AddProfModal({ onClose, onAdd }) {
-  const [nom, setNom] = useState('')
-  const [prenom, setPrenom] = useState('')
+// Formulaire (Prénom, Nom, Email) réutilisé pour l'ajout et la modification.
+function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
+  const [nom, setNom] = useState(initial?.nom ?? '')
+  const [prenom, setPrenom] = useState(initial?.prenom ?? '')
+  const [email, setEmail] = useState(initial?.email ?? '')
 
   return (
     <Modal
-      title="Ajouter un professeur"
+      title={title}
       onClose={onClose}
       footer={
         <button
@@ -147,18 +165,20 @@ function AddProfModal({ onClose, onAdd }) {
           className="btn btn--primary btn--block"
           disabled={!nom || !prenom}
           onClick={() => {
-            onAdd(nom, prenom)
+            onSubmit({ nom, prenom, email })
             onClose()
           }}
         >
-          Ajouter
+          {submitLabel}
         </button>
       }
     >
-      <label htmlFor="add-prof-prenom">Prénom</label>
-      <input id="add-prof-prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
-      <label htmlFor="add-prof-nom">Nom</label>
-      <input id="add-prof-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+      <label htmlFor="prof-prenom">Prénom</label>
+      <input id="prof-prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
+      <label htmlFor="prof-nom">Nom</label>
+      <input id="prof-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+      <label htmlFor="prof-email">Email</label>
+      <input id="prof-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
     </Modal>
   )
 }

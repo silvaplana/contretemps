@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
-import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 
@@ -9,25 +8,18 @@ const MAX_BADGES = 2
 // Onglet Admin > Cours (voir spec/SPEC.md 5.1.3 et images/admin-cours.png).
 // "Élèves inscrits" est dérivé de eleves[].coursIds (relation portée côté
 // élève, voir schéma section 6) : lecture seule ici, ça se modifie depuis
-// l'onglet Élèves.
+// l'onglet Élèves. Les autres champs se modifient via la modale (icône
+// stylo) plutôt qu'en ligne : ça couvre aussi la Salle, absente du tableau.
 export default function AdminCours({ cours, setCours, professeurs, eleves }) {
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
+  const [editId, setEditId] = useState(null)
 
   const filtered = cours.filter((c) => c.nom.toLowerCase().includes(search.toLowerCase()))
+  const enEdition = cours.find((c) => c.id === editId)
 
   function update(id, patch) {
     setCours((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)))
-  }
-
-  function updateHoraire(id, value) {
-    const [jour, plage = ''] = value.split(' ')
-    const [heureDebut, heureFin] = plage.split('-')
-    update(id, {
-      jour: jour || '',
-      heureDebut: heureDebut || '',
-      heureFin: heureFin || '',
-    })
   }
 
   function remove(id) {
@@ -59,36 +51,20 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
               <th>Horaire</th>
               <th>Prof</th>
               <th>Élèves</th>
-              <th aria-label="Supprimer" />
+              <th aria-label="Actions" />
             </tr>
           </thead>
           <tbody>
             {filtered.map((c) => {
               const inscrits = elevesDuCours(c.id)
+              const prof = professeurs.find((p) => p.id === c.professeurId)
               return (
                 <tr key={c.id}>
-                  <td className="data-table__name">
-                    <EditableText value={c.nom} onChange={(v) => update(c.id, { nom: v })} />
-                  </td>
+                  <td className="data-table__name">{c.nom}</td>
                   <td>
-                    <EditableText
-                      value={`${c.jour} ${c.heureDebut}-${c.heureFin}`}
-                      onChange={(v) => updateHoraire(c.id, v)}
-                    />
+                    {c.jour} {c.heureDebut}-{c.heureFin}
                   </td>
-                  <td>
-                    <select
-                      className="select-plain"
-                      value={c.professeurId}
-                      onChange={(e) => update(c.id, { professeurId: e.target.value })}
-                    >
-                      {professeurs.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.prenom} {p.nom.charAt(0)}.
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+                  <td>{prof ? `${prof.prenom} ${prof.nom.charAt(0)}.` : <span className="muted">—</span>}</td>
                   <td>
                     <div className="badge-list">
                       {inscrits.slice(0, MAX_BADGES).map((el) => (
@@ -101,14 +77,24 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
                     </div>
                   </td>
                   <td>
-                    <button
-                      type="button"
-                      className="icon-btn icon-btn--danger"
-                      onClick={() => remove(c.id)}
-                      aria-label={`Supprimer ${c.nom}`}
-                    >
-                      <Icon name="trash" size={18} />
-                    </button>
+                    <div className="row-actions">
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => setEditId(c.id)}
+                        aria-label={`Modifier ${c.nom}`}
+                      >
+                        <Icon name="edit" size={18} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--danger"
+                        onClick={() => remove(c.id)}
+                        aria-label={`Supprimer ${c.nom}`}
+                      >
+                        <Icon name="trash" size={18} />
+                      </button>
+                    </div>
                   </td>
                 </tr>
               )
@@ -122,27 +108,42 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
       </button>
 
       {showAdd && (
-        <AddCoursModal
+        <CoursModal
+          title="Ajouter un cours"
+          submitLabel="Ajouter"
           professeurs={professeurs}
           onClose={() => setShowAdd(false)}
-          onAdd={(cours_) => setCours((list) => [...list, cours_])}
+          onSubmit={(donnees) => setCours((list) => [...list, { id: crypto.randomUUID(), ...donnees }])}
+        />
+      )}
+
+      {enEdition && (
+        <CoursModal
+          title={`Modifier — ${enEdition.nom}`}
+          submitLabel="Enregistrer"
+          initial={enEdition}
+          professeurs={professeurs}
+          onClose={() => setEditId(null)}
+          onSubmit={(donnees) => update(enEdition.id, donnees)}
         />
       )}
     </div>
   )
 }
 
-function AddCoursModal({ professeurs, onClose, onAdd }) {
-  const [nom, setNom] = useState('')
-  const [jour, setJour] = useState('Mercredi')
-  const [heureDebut, setHeureDebut] = useState('')
-  const [heureFin, setHeureFin] = useState('')
-  const [salle, setSalle] = useState('')
-  const [professeurId, setProfesseurId] = useState(professeurs[0]?.id ?? '')
+// Formulaire complet (Nom, Jour, Horaire, Salle, Professeur) réutilisé pour
+// l'ajout et la modification — `initial` pré-remplit les champs en édition.
+function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmit }) {
+  const [nom, setNom] = useState(initial?.nom ?? '')
+  const [jour, setJour] = useState(initial?.jour ?? 'Mercredi')
+  const [heureDebut, setHeureDebut] = useState(initial?.heureDebut ?? '')
+  const [heureFin, setHeureFin] = useState(initial?.heureFin ?? '')
+  const [salle, setSalle] = useState(initial?.salle ?? '')
+  const [professeurId, setProfesseurId] = useState(initial?.professeurId ?? professeurs[0]?.id ?? '')
 
   return (
     <Modal
-      title="Ajouter un cours"
+      title={title}
       onClose={onClose}
       footer={
         <button
@@ -150,48 +151,36 @@ function AddCoursModal({ professeurs, onClose, onAdd }) {
           className="btn btn--primary btn--block"
           disabled={!nom}
           onClick={() => {
-            onAdd({
-              id: crypto.randomUUID(),
-              nom,
-              jour,
-              heureDebut,
-              heureFin,
-              salle,
-              professeurId,
-            })
+            onSubmit({ nom, jour, heureDebut, heureFin, salle, professeurId })
             onClose()
           }}
         >
-          Ajouter
+          {submitLabel}
         </button>
       }
     >
-      <label htmlFor="add-cours-nom">Nom du cours</label>
-      <input id="add-cours-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
-      <label htmlFor="add-cours-jour">Jour</label>
-      <input id="add-cours-jour" value={jour} onChange={(e) => setJour(e.target.value)} />
-      <label htmlFor="add-cours-debut">Heure de début</label>
+      <label htmlFor="cours-nom">Nom du cours</label>
+      <input id="cours-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+      <label htmlFor="cours-jour">Jour</label>
+      <input id="cours-jour" value={jour} onChange={(e) => setJour(e.target.value)} />
+      <label htmlFor="cours-debut">Heure de début</label>
       <input
-        id="add-cours-debut"
+        id="cours-debut"
         value={heureDebut}
         placeholder="17h00"
         onChange={(e) => setHeureDebut(e.target.value)}
       />
-      <label htmlFor="add-cours-fin">Heure de fin</label>
+      <label htmlFor="cours-fin">Heure de fin</label>
       <input
-        id="add-cours-fin"
+        id="cours-fin"
         value={heureFin}
         placeholder="18h30"
         onChange={(e) => setHeureFin(e.target.value)}
       />
-      <label htmlFor="add-cours-salle">Salle</label>
-      <input id="add-cours-salle" value={salle} onChange={(e) => setSalle(e.target.value)} />
-      <label htmlFor="add-cours-prof">Professeur</label>
-      <select
-        id="add-cours-prof"
-        value={professeurId}
-        onChange={(e) => setProfesseurId(e.target.value)}
-      >
+      <label htmlFor="cours-salle">Salle</label>
+      <input id="cours-salle" value={salle} onChange={(e) => setSalle(e.target.value)} />
+      <label htmlFor="cours-prof">Professeur</label>
+      <select id="cours-prof" value={professeurId} onChange={(e) => setProfesseurId(e.target.value)}>
         {professeurs.map((p) => (
           <option key={p.id} value={p.id}>
             {p.prenom} {p.nom}

@@ -79,19 +79,19 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
         />
         <button
           type="button"
-          className="icon-btn icon-btn--mail"
-          onClick={() => send(true)}
-          aria-label="Envoyer par mail"
-        >
-          <Icon name="mail" size={18} />
-        </button>
-        <button
-          type="button"
           className="icon-btn icon-btn--accent"
           onClick={() => send(false)}
           aria-label="Envoyer par la messagerie"
         >
           <Icon name="send" size={18} />
+        </button>
+        <button
+          type="button"
+          className="icon-btn icon-btn--mail"
+          onClick={() => send(true)}
+          aria-label="Envoyer par mail"
+        >
+          <Icon name="mail" size={18} />
         </button>
       </div>
     </div>
