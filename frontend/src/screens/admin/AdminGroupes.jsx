@@ -58,7 +58,7 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, cours }
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un groupe"
+          placeholder="Rechercher une conversation"
         />
       </div>
 

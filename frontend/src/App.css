@@ -252,8 +252,8 @@
   display: flex;
   background: var(--surface);
   border-radius: 999px;
-  padding: 4px;
-  gap: 2px;
+  padding: 3px;
+  gap: 1px;
 }
 
 .segmented--sm {
@@ -261,11 +261,18 @@
 }
 
 .segmented__option {
-  flex: 1;
+  /* auto (pas 0%) : chaque onglet part de sa largeur de contenu, puis
+     l'espace restant/manquant est distribué - un onglet court ("Cours")
+     ne se retrouve pas aussi large qu'un long ("Conversations"). */
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   background: none;
   border: none;
   border-radius: 999px;
-  padding: 8px 10px;
+  padding: 8px 6px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text);
   min-height: 38px;
@@ -909,72 +916,6 @@
   margin-bottom: 8px;
 }
 
-.link-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.link-list li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 0;
-}
-
-.link-list a,
-.link-list li > span:first-of-type {
-  flex: 1;
-}
-
-/* Variante avec lecteur repliable (voir ChoregraphieDetailScreen.jsx) :
-   la ligne cliquable, puis la vidéo en dessous si elle est ouverte. */
-.link-list__item {
-  display: flex;
-  flex-direction: column;
-  padding: 6px 0;
-  gap: 8px;
-}
-
-.link-list__row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.link-list__row > span:first-of-type {
-  flex: 1;
-}
-
-.link-list__play-btn {
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
-  min-width: 28px;
-  border-radius: 50%;
-  border: none;
-  background: var(--accent-bg);
-  color: var(--accent);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.link-list__play-btn:disabled {
-  background: var(--surface-2);
-  color: var(--text-muted);
-}
-
-.link-list__player {
-  width: 100%;
-  border-radius: 10px;
-  background: #000;
-}
-
 .choregraphie-detail__video-hint {
   font-size: 13px;
   margin-top: 6px;
@@ -990,6 +931,13 @@
   gap: 16px;
   overflow-y: auto;
   padding-bottom: 72px;
+}
+
+/* Utilisée dans le détail d'une chorégraphie (ChoregraphieDetailScreen.jsx) :
+   pas de FAB à dégager en dessous, contrairement à l'onglet Vidéo. */
+.video-list--nested {
+  padding-bottom: 0;
+  gap: 12px;
 }
 
 .video-card {

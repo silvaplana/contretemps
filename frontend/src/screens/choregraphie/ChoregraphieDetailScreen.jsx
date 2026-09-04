@@ -3,6 +3,7 @@ import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import VideoThumb from '../../components/VideoThumb.jsx'
 import AddVideoModal from '../video/AddVideoModal.jsx'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
@@ -30,7 +31,6 @@ export default function ChoregraphieDetailScreen({
   const [showAddVideo, setShowAddVideo] = useState(false)
   const [editingVideo, setEditingVideo] = useState(null)
   const [showChooseEleves, setShowChooseEleves] = useState(false)
-  const [videoOuverteId, setVideoOuverteId] = useState(null)
 
   const videos = videosDuCours.filter((v) => v.choregraphieId === choregraphie.id)
 
@@ -143,23 +143,14 @@ export default function ChoregraphieDetailScreen({
             <Icon name="video" size={16} /> Vidéos
           </h3>
           {videos.length > 0 ? (
-            <ul className="link-list">
+            <div className="video-list video-list--nested">
               {videos.map((v) => (
-                <li key={v.id} className="link-list__item">
-                  <div className="link-list__row">
-                    <button
-                      type="button"
-                      className="link-list__play-btn"
-                      disabled={!v.url}
-                      onClick={() => setVideoOuverteId((id) => (id === v.id ? null : v.id))}
-                      aria-label={v.url ? `Lire ${v.titre}` : v.titre}
-                    >
-                      <Icon name="play" size={14} />
-                    </button>
-                    <span>{v.titre}</span>
-                    <span className="muted">{v.duree}</span>
+                <div key={v.id} className="video-card">
+                  <VideoThumb url={v.url} titre={v.titre} duree={v.duree} />
+                  <div className="video-card__body">
+                    <strong>{v.titre}</strong>
                     {editing && (
-                      <>
+                      <div className="row-actions">
                         <button
                           type="button"
                           className="icon-btn icon-btn--sm"
@@ -176,15 +167,12 @@ export default function ChoregraphieDetailScreen({
                         >
                           <Icon name="trash" size={14} />
                         </button>
-                      </>
+                      </div>
                     )}
                   </div>
-                  {videoOuverteId === v.id && v.url && (
-                    <video className="link-list__player" src={v.url} controls autoPlay preload="metadata" />
-                  )}
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           ) : (
             <p className="muted">Aucune vidéo taguée pour cette chorégraphie.</p>
           )}

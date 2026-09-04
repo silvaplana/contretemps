@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Badge from '../components/Badge.jsx'
 import Icon from '../components/Icon.jsx'
+import VideoThumb from '../components/VideoThumb.jsx'
 import AddVideoModal from './video/AddVideoModal.jsx'
 
 // Écran Vidéo (Admin, Professeur, Parent — voir spec/SPEC.md 5.4 et
@@ -39,22 +40,10 @@ export default function VideoScreen({ cours, list, setList, choregraphies }) {
           const choregraphie = choregraphies.find((ch) => ch.id === v.choregraphieId)
           return (
             <div key={v.id} className="video-card">
-              <div className="video-card__thumb">
-                {v.url ? (
-                  <video className="video-card__player" src={v.url} controls preload="metadata" />
-                ) : (
-                  <>
-                    <button type="button" className="video-card__play" aria-label={`Lire ${v.titre}`} disabled>
-                      <Icon name="play" size={22} />
-                    </button>
-                    <span className="video-card__duree">{v.duree}</span>
-                  </>
-                )}
-              </div>
+              <VideoThumb url={v.url} titre={v.titre} duree={v.duree} />
               <div className="video-card__body">
                 <div>
                   <strong>{v.titre}</strong>
-                  <p className="muted">Publié le {v.datePublication}</p>
                   {choregraphie && (
                     <Badge className="video-card__tag">
                       <Icon name="music" size={12} /> {choregraphie.nom}
