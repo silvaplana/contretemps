@@ -13,6 +13,7 @@ const paths = {
   trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6',
   chevronDown: 'M6 9l6 6 6-6',
   chevronRight: 'M9 6l6 6-6 6',
+  chevronLeft: 'M15 6l-6 6 6 6',
   menu: 'M4 6h16 M4 12h16 M4 18h16',
   mail: 'M4 6h16v12H4z M4 7l8 6 8-6',
   check: 'M5 12l4 4 10-10',

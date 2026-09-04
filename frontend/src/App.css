@@ -796,6 +796,14 @@
   overflow-y: auto;
 }
 
+/* Écran 1/2 (ChoregraphieListScreen.jsx) : la liste occupe tout l'écran,
+   pas juste un encart de 220px au-dessus du détail. */
+.choregraphie-list--full {
+  max-height: none;
+  flex: 1;
+  min-height: 0;
+}
+
 .choregraphie-list__item {
   display: flex;
   align-items: center;
@@ -808,8 +816,9 @@
   border-bottom: 1px solid var(--border);
 }
 
-.choregraphie-list__item.is-active {
-  background: var(--accent-bg);
+.choregraphie-list__item > span:nth-child(2) {
+  flex: 1;
+  min-width: 0;
 }
 
 .choregraphie-list__icon {
@@ -836,6 +845,21 @@
   font-weight: 600;
 }
 
+/* Écran 2/2 (ChoregraphieDetailScreen.jsx) : réutilise .thread-screen__header
+   (flèche de retour) de la Messagerie, même principe de navigation. */
+.choregraphie-detail-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.choregraphie-detail-screen .thread-screen__header .editable-text {
+  flex: 1;
+  font-size: 18px;
+  font-weight: 700;
+}
+
 .choregraphie-detail {
   display: flex;
   flex-direction: column;
@@ -843,17 +867,7 @@
   overflow-y: auto;
   flex: 1;
   min-height: 0;
-}
-
-.choregraphie-detail__header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.choregraphie-detail__header .editable-text {
-  font-size: 22px;
-  font-weight: 700;
+  padding: 16px;
 }
 
 .choregraphie-detail h3 {
@@ -950,23 +964,16 @@
    Messagerie (MessagerieScreen.jsx)
    ========================================================================== */
 
-.messagerie-screen {
-  padding: 0;
-  gap: 0;
-}
-
-.conversation-list {
-  max-height: 34dvh;
+/* Écran 1/2 : liste des conversations (ConversationListScreen.jsx), plein
+   écran — voir MessagerieScreen.jsx pour la navigation vers l'écran 2/2. */
+.conversation-list-screen {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  border-bottom: 1px solid var(--border);
   padding: 12px 16px;
-}
-
-.conversation-list__title {
-  color: var(--text-muted);
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
 .conversation-list__item {
@@ -979,11 +986,6 @@
   border: none;
   background: none;
   border-radius: 12px;
-}
-
-.conversation-list__item.is-active {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
 }
 
 .conversation-list__text {
@@ -1003,18 +1005,27 @@
   white-space: nowrap;
 }
 
-.conversation-thread {
+/* Écran 2/2 : le fil d'une conversation (ConversationThreadScreen.jsx),
+   plein écran, avec sa propre flèche de retour — comme WhatsApp. */
+.thread-screen {
   flex: 1;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
 
-.conversation-thread__header {
+.thread-screen__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.thread-screen__header-text {
   display: flex;
   flex-direction: column;
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+  min-width: 0;
 }
 
 .conversation-thread__messages {
