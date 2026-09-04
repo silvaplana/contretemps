@@ -1,13 +1,34 @@
+import { useState } from 'react'
 import Icon from '../components/Icon.jsx'
+import Modal from '../components/Modal.jsx'
 
 const CYCLE = ['present', 'absent', 'retard']
 const ICONS = { present: 'check', absent: 'x', retard: 'clock' }
 const LABELS = { present: 'Présent', absent: 'Absent', retard: 'Retard' }
 
+// Date locale du jour au format 'YYYY-MM-DD'. Volontairement pas
+// `new Date().toISOString()` : ça convertit en UTC et peut donner la date
+// d'hier ou de demain selon l'heure et le fuseau (ex. la nuit en France,
+// UTC+1/+2 en avance sur UTC).
+function isoAujourdhui() {
+  const d = new Date()
+  const deuxChiffres = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${deuxChiffres(d.getMonth() + 1)}-${deuxChiffres(d.getDate())}`
+}
+
+// 'YYYY-MM-DD' (valeur native d'un <input type="date">) -> 'JJ/MM', le
+// format déjà utilisé pour les colonnes existantes (voir data/mockData.js).
+function versLabelAffiche(dateIso) {
+  const [, mois, jour] = dateIso.split('-')
+  return `${jour}/${mois}`
+}
+
 // Écran Présence (Admin, Professeur — voir spec/SPEC.md 5.2 et images/presence.png).
 // Élèves en lignes, dates en colonnes (défilement horizontal). Cliquer une
 // case fait tourner le statut (droit d'édition réservé à Admin/Professeur).
-export default function PresenceScreen({ cours, eleves, data, onCycle }) {
+export default function PresenceScreen({ cours, eleves, data, onCycle, onAddDate }) {
+  const [showAdd, setShowAdd] = useState(false)
+
   if (!cours) return null
 
   const roster = eleves.filter((el) => el.coursIds.includes(cours.id))
@@ -67,6 +88,54 @@ export default function PresenceScreen({ cours, eleves, data, onCycle }) {
           </span>
         ))}
       </div>
+
+      <button type="button" className="fab" onClick={() => setShowAdd(true)} aria-label="Ajouter une date">
+        <Icon name="plus" size={24} />
+      </button>
+
+      {showAdd && (
+        <AddDateModal
+          datesExistantes={dates}
+          onClose={() => setShowAdd(false)}
+          onAdd={(dateIso) => {
+            onAddDate(cours.id, versLabelAffiche(dateIso))
+            setShowAdd(false)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function AddDateModal({ datesExistantes, onClose, onAdd }) {
+  const [dateIso, setDateIso] = useState(isoAujourdhui())
+  const dejaPresente = datesExistantes.includes(versLabelAffiche(dateIso))
+
+  return (
+    <Modal
+      title="Ajouter une date de présence"
+      onClose={onClose}
+      footer={
+        <button
+          type="button"
+          className="btn btn--primary btn--block"
+          disabled={!dateIso || dejaPresente}
+          onClick={() => onAdd(dateIso)}
+        >
+          Ajouter
+        </button>
+      }
+    >
+      <label htmlFor="add-date-presence">Date</label>
+      {/* input[type=date] : par défaut la date du jour, modifiable via le
+          calendrier natif du navigateur/téléphone. */}
+      <input
+        id="add-date-presence"
+        type="date"
+        value={dateIso}
+        onChange={(e) => setDateIso(e.target.value)}
+      />
+      {dejaPresente && <p className="muted">Cette date est déjà dans la table.</p>}
+    </Modal>
   )
 }

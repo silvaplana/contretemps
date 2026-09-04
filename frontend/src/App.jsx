@@ -56,6 +56,16 @@ function App() {
     })
   }
 
+  // Ajoute une colonne de date à la table de présence d'un cours (voir
+  // PresenceScreen.jsx). Pas de doublon : une date déjà présente est ignorée.
+  function addDatePresence(coursId, dateLabel) {
+    setPresences((byC) => {
+      const courant = byC[coursId] ?? { dates: [], parEleve: {} }
+      if (courant.dates.includes(dateLabel)) return byC
+      return { ...byC, [coursId]: { ...courant, dates: [...courant.dates, dateLabel] } }
+    })
+  }
+
   if (!loggedIn) {
     return <LoginScreen onLogin={() => setLoggedIn(true)} />
   }
@@ -101,6 +111,7 @@ function App() {
             eleves={eleves}
             data={presences[selectedCoursId]}
             onCycle={cycleStatut}
+            onAddDate={addDatePresence}
           />
         )}
 

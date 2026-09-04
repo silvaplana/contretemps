@@ -318,6 +318,25 @@
   min-height: auto;
 }
 
+/* Badge + petite croix de retrait, en édition (voir eleveIds dans
+   ChoregraphieDetailScreen.jsx). */
+.removable-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.removable-badge .icon-btn {
+  min-height: 24px;
+  min-width: 24px;
+  padding: 2px;
+  color: var(--text-muted);
+}
+
+.choregraphie-detail__eleves-btn {
+  margin-top: 10px;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -763,7 +782,9 @@
   display: flex;
   flex-wrap: wrap;
   gap: 18px;
-  padding: 0 4px;
+  /* Marge à droite pour que le dernier item ne soit pas caché sous le FAB
+     "Ajouter une date" (voir PresenceScreen.jsx). */
+  padding: 0 4px 56px;
 }
 
 .legend__item {

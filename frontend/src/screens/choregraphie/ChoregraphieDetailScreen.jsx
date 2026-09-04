@@ -15,6 +15,7 @@ import AddVideoModal from '../video/AddVideoModal.jsx'
 export default function ChoregraphieDetailScreen({
   choregraphie,
   eleves,
+  roster,
   videosDuCours,
   onBack,
   onUpdate,
@@ -28,8 +29,18 @@ export default function ChoregraphieDetailScreen({
   const [showChoose, setShowChoose] = useState(false)
   const [showAddVideo, setShowAddVideo] = useState(false)
   const [editingVideo, setEditingVideo] = useState(null)
+  const [showChooseEleves, setShowChooseEleves] = useState(false)
 
   const videos = videosDuCours.filter((v) => v.choregraphieId === choregraphie.id)
+
+  function toggleEleve(id) {
+    const dansLaListe = choregraphie.eleveIds.includes(id)
+    onUpdate({
+      eleveIds: dansLaListe
+        ? choregraphie.eleveIds.filter((x) => x !== id)
+        : [...choregraphie.eleveIds, id],
+    })
+  }
 
   return (
     <div className="screen choregraphie-detail-screen">
@@ -70,9 +81,33 @@ export default function ChoregraphieDetailScreen({
           <div className="badge-list">
             {choregraphie.eleveIds.map((id) => {
               const el = eleves.find((e) => e.id === id)
-              return el ? <Badge key={id}>{el.prenom}</Badge> : null
+              if (!el) return null
+              return editing ? (
+                <span key={id} className="removable-badge">
+                  <Badge>{el.prenom}</Badge>
+                  <button
+                    type="button"
+                    className="icon-btn"
+                    onClick={() => toggleEleve(id)}
+                    aria-label={`Retirer ${el.prenom}`}
+                  >
+                    <Icon name="x" size={12} />
+                  </button>
+                </span>
+              ) : (
+                <Badge key={id}>{el.prenom}</Badge>
+              )
             })}
           </div>
+          {editing && (
+            <button
+              type="button"
+              className="btn btn--secondary choregraphie-detail__eleves-btn"
+              onClick={() => setShowChooseEleves(true)}
+            >
+              <Icon name="folder" size={16} /> Élèves
+            </button>
+          )}
         </section>
 
         <section>
@@ -156,6 +191,24 @@ export default function ChoregraphieDetailScreen({
           )}
         </section>
       </div>
+
+      {showChooseEleves && (
+        <Modal title="Choisir des élèves" onClose={() => setShowChooseEleves(false)}>
+          <div className="checkbox-list">
+            {roster.map((el) => (
+              <label key={el.id} className="checkbox-list__item">
+                <input
+                  type="checkbox"
+                  checked={choregraphie.eleveIds.includes(el.id)}
+                  onChange={() => toggleEleve(el.id)}
+                />
+                {el.prenom} {el.nom}
+              </label>
+            ))}
+            {roster.length === 0 && <p className="muted">Aucun élève inscrit à ce cours.</p>}
+          </div>
+        </Modal>
+      )}
 
       {showChoose && (
         <Modal title="Choisir des vidéos" onClose={() => setShowChoose(false)}>

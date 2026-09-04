@@ -70,6 +70,9 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves, video
       <ChoregraphieDetailScreen
         choregraphie={selected}
         eleves={eleves}
+        // Élèves proposés pour la choré : ceux inscrits à ce cours (voir
+        // eleves[].coursIds), pas toute la base élèves de l'école.
+        roster={eleves.filter((el) => el.coursIds.includes(cours.id))}
         // Toutes les vidéos du cours : le détail filtre lui-même celles
         // taguées à cette chorégraphie, et permet d'en (dé)taguer d'autres.
         videosDuCours={videos}
