@@ -7,7 +7,7 @@ import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 // images/choregraphie.png). Deux écrans distincts, comme la Messagerie : la
 // liste des chorégraphies du cours, puis (au clic) le détail en plein écran
 // avec une flèche de retour — jamais les deux affichés en même temps.
-export default function ChoregraphieScreen({ cours, list, setList, eleves }) {
+export default function ChoregraphieScreen({ cours, list, setList, eleves, videos }) {
   const [selectedId, setSelectedId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
 
@@ -22,14 +22,6 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves }) {
     }))
   }
 
-  function removeVideo(id, index) {
-    update(id, { videos: selected.videos.filter((_, i) => i !== index) })
-  }
-
-  function addVideo(id, titre) {
-    update(id, { videos: [...selected.videos, { titre, url: '#' }] })
-  }
-
   function removeChoregraphie(id) {
     if (!window.confirm('Supprimer cette chorégraphie ?')) return
     setList((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((ch) => ch.id !== id) }))
@@ -41,10 +33,12 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves }) {
       <ChoregraphieDetailScreen
         choregraphie={selected}
         eleves={eleves}
+        // Les vidéos d'une chorégraphie sont celles taguées avec son id
+        // depuis l'onglet Vidéo (voir data/mockData.js) — pas une liste
+        // séparée à gérer ici.
+        videos={videos.filter((v) => v.choregraphieId === selected.id)}
         onBack={() => setSelectedId(null)}
         onUpdate={(patch) => update(selected.id, patch)}
-        onRemoveVideo={(index) => removeVideo(selected.id, index)}
-        onAddVideo={(titre) => addVideo(selected.id, titre)}
         onRemove={() => removeChoregraphie(selected.id)}
       />
     )
@@ -64,7 +58,6 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves }) {
                 eleveIds: [],
                 costume: '',
                 horaireRepetition: '',
-                videos: [],
               }
               setList((byC) => ({ ...byC, [cours.id]: [...(byC[cours.id] ?? []), nouvelle] }))
               setSelectedId(nouvelle.id)

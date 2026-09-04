@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -7,15 +6,7 @@ import Icon from '../../components/Icon.jsx'
 // avec une flèche de retour vers ChoregraphieListScreen — même principe que
 // la Messagerie. Admin et Professeur peuvent modifier/supprimer (voir droits,
 // spec/SPEC.md section 3).
-export default function ChoregraphieDetailScreen({
-  choregraphie,
-  eleves,
-  onBack,
-  onUpdate,
-  onRemoveVideo,
-  onAddVideo,
-  onRemove,
-}) {
+export default function ChoregraphieDetailScreen({ choregraphie, eleves, videos, onBack, onUpdate, onRemove }) {
   return (
     <div className="screen choregraphie-detail-screen">
       <div className="thread-screen__header">
@@ -68,52 +59,27 @@ export default function ChoregraphieDetailScreen({
         </section>
 
         <section>
-          <h3>Liens vidéos</h3>
-          <ul className="link-list">
-            {choregraphie.videos.map((v, i) => (
-              <li key={i}>
-                <Icon name="play" size={14} />
-                <a href={v.url} onClick={(e) => e.preventDefault()}>
-                  {v.titre}
-                </a>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn--sm"
-                  onClick={() => onRemoveVideo(i)}
-                  aria-label="Retirer ce lien"
-                >
-                  <Icon name="x" size={14} />
-                </button>
-              </li>
-            ))}
-          </ul>
-          <AddLienForm onAdd={onAddVideo} />
+          <h3>
+            <Icon name="video" size={16} /> Vidéos
+          </h3>
+          {videos.length > 0 ? (
+            <ul className="link-list">
+              {videos.map((v) => (
+                <li key={v.id}>
+                  <Icon name="play" size={14} />
+                  <span>{v.titre}</span>
+                  <span className="muted">{v.duree}</span>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">Aucune vidéo taguée pour cette chorégraphie.</p>
+          )}
+          <p className="muted choregraphie-detail__video-hint">
+            Les vidéos se filment et se taguent depuis l'onglet Vidéo.
+          </p>
         </section>
       </div>
-    </div>
-  )
-}
-
-function AddLienForm({ onAdd }) {
-  const [titre, setTitre] = useState('')
-  return (
-    <div className="add-membre-form__row">
-      <input
-        value={titre}
-        placeholder="Titre du lien vidéo"
-        onChange={(e) => setTitre(e.target.value)}
-      />
-      <button
-        type="button"
-        className="btn btn--secondary"
-        disabled={!titre}
-        onClick={() => {
-          onAdd(titre)
-          setTitre('')
-        }}
-      >
-        Ajouter
-      </button>
     </div>
   )
 }

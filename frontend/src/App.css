@@ -887,8 +887,14 @@
   padding: 6px 0;
 }
 
-.link-list a {
+.link-list a,
+.link-list li > span:first-of-type {
   flex: 1;
+}
+
+.choregraphie-detail__video-hint {
+  font-size: 13px;
+  margin-top: 6px;
 }
 
 /* ==========================================================================

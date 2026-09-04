@@ -252,6 +252,9 @@ export const presencesParCours = {
   },
 }
 
+// Pas de champ "videos" ici : les vidéos d'une chorégraphie sont celles
+// taguées avec son id dans videosParCours (voir plus bas) — gérées depuis
+// l'onglet Vidéo, pas dupliquées ici.
 export const choregraphiesParCours = {
   c1: [
     {
@@ -260,10 +263,6 @@ export const choregraphiesParCours = {
       eleveIds: ['e1', 'e2', 'e4'],
       costume: 'Justaucorps noir, legging pailleté argent',
       horaireRepetition: 'Mercredi 17h00 - 18h30, salle 2',
-      videos: [
-        { titre: 'Version complète', url: '#' },
-        { titre: 'Ralenti 16 premiers temps', url: '#' },
-      ],
     },
     {
       id: 'ch2',
@@ -271,7 +270,6 @@ export const choregraphiesParCours = {
       eleveIds: ['e1', 'e2'],
       costume: 'Combinaison rouge',
       horaireRepetition: 'Vendredi 18h00 - 19h00, salle 1',
-      videos: [{ titre: 'Version complète', url: '#' }],
     },
   ],
   c2: [
@@ -281,7 +279,6 @@ export const choregraphiesParCours = {
       eleveIds: ['e4', 'e5'],
       costume: 'Robe bleu nuit',
       horaireRepetition: 'Mercredi 20h00 - 20h30, salle 2',
-      videos: [{ titre: 'Version complète', url: '#' }],
     },
   ],
   c3: [],
@@ -292,7 +289,6 @@ export const choregraphiesParCours = {
       eleveIds: ['e7', 'e8'],
       costume: 'Body noir uni',
       horaireRepetition: 'Jeudi 20h30 - 21h00, salle 1',
-      videos: [],
     },
   ],
 }
