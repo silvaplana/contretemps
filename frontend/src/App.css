@@ -168,6 +168,15 @@
   border-radius: 50%;
 }
 
+/* Bouton secondaire "envoyer par mail" dans la barre de saisie (voir
+   ConversationThreadScreen.jsx) — discret face au bouton d'envoi principal. */
+.icon-btn--mail {
+  background: var(--card-bg);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  border-radius: 50%;
+}
+
 .avatar {
   display: inline-flex;
   align-items: center;

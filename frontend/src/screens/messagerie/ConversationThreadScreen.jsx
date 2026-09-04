@@ -11,8 +11,13 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 export default function ConversationThreadScreen({ conversation, onBack, setConversations }) {
   const [draft, setDraft] = useState('')
 
-  function sendMessage() {
+  // Choix à l'envoi : par la messagerie (par défaut) ou par mail — l'envoi
+  // par mail demande confirmation car il sort de l'appli (voir spec/SPEC.md
+  // 5.5). Le bouton "enveloppe" sur chaque message déjà envoyé (toggleMail
+  // ci-dessous) reste un réglage a posteriori, distinct de ce choix initial.
+  function send(parMail) {
     if (!draft.trim()) return
+    if (parMail && !window.confirm('Envoyer aussi ce message par mail ?')) return
     const message = {
       id: crypto.randomUUID(),
       auteur: `${currentUser.prenom} ${currentUser.nom}`,
@@ -20,7 +25,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
       contenu: draft.trim(),
       heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       statut: 'envoye',
-      envoyeParMail: false,
+      envoyeParMail: parMail,
     }
     setConversations((list) =>
       list.map((c) => (c.id === conversation.id ? { ...c, messages: [...c.messages, message] } : c)),
@@ -93,9 +98,22 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
           value={draft}
           placeholder="Écrire un message..."
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
+          onKeyDown={(e) => e.key === 'Enter' && send(false)}
         />
-        <button type="button" className="icon-btn icon-btn--accent" onClick={sendMessage} aria-label="Envoyer">
+        <button
+          type="button"
+          className="icon-btn icon-btn--mail"
+          onClick={() => send(true)}
+          aria-label="Envoyer par mail"
+        >
+          <Icon name="mail" size={18} />
+        </button>
+        <button
+          type="button"
+          className="icon-btn icon-btn--accent"
+          onClick={() => send(false)}
+          aria-label="Envoyer par la messagerie"
+        >
           <Icon name="send" size={18} />
         </button>
       </div>
