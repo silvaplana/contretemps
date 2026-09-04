@@ -300,15 +300,23 @@ export const videosParCours = {
   c1: [
     {
       id: 'v1',
-      titre: 'Comme un garçon',
+      titre: 'Comme un garçon : détail début',
       datePublication: '05/08',
-      duree: '03:42',
+      duree: '01:20',
+      description: '',
+      choregraphieId: 'ch1',
+    },
+    {
+      id: 'v1b',
+      titre: 'Comme un garçon : final',
+      datePublication: '05/08',
+      duree: '01:05',
       description: '',
       choregraphieId: 'ch1',
     },
     {
       id: 'v2',
-      titre: 'Bang bang',
+      titre: 'Bang bang (lent)',
       datePublication: '08/08',
       duree: '04:10',
       description: 'Passage à retravailler : le déplacement diagonal.',
