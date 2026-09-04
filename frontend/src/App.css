@@ -426,12 +426,16 @@
   background: var(--card-bg);
 }
 
-.modal-textarea {
+.modal-textarea,
+.field-input {
   width: 100%;
   padding: 10px 12px;
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--card-bg);
+}
+
+.modal-textarea {
   resize: vertical;
 }
 

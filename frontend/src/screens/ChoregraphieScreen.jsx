@@ -51,14 +51,11 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves, video
       {showAdd && (
         <Modal title="Nouvelle chorégraphie" onClose={() => setShowAdd(false)}>
           <NewChoregraphieForm
-            onCreate={(nom) => {
-              const nouvelle = {
-                id: crypto.randomUUID(),
-                nom,
-                eleveIds: [],
-                costume: '',
-                horaireRepetition: '',
-              }
+            // Les élèves proposés sont ceux inscrits à ce cours (voir
+            // eleves[].coursIds) — pas toute la base élèves de l'école.
+            roster={eleves.filter((el) => el.coursIds.includes(cours.id))}
+            onCreate={(donnees) => {
+              const nouvelle = { id: crypto.randomUUID(), ...donnees }
               setList((byC) => ({ ...byC, [cours.id]: [...(byC[cours.id] ?? []), nouvelle] }))
               setSelectedId(nouvelle.id)
               setShowAdd(false)
@@ -70,17 +67,57 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves, video
   )
 }
 
-function NewChoregraphieForm({ onCreate }) {
+function NewChoregraphieForm({ roster, onCreate }) {
   const [nom, setNom] = useState('')
+  const [eleveIds, setEleveIds] = useState([])
+  const [costume, setCostume] = useState('')
+  const [horaireRepetition, setHoraireRepetition] = useState('')
+
+  function toggleEleve(id) {
+    setEleveIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]))
+  }
+
   return (
     <>
       <label htmlFor="new-choregraphie-nom">Nom</label>
       <input id="new-choregraphie-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+
+      <label>Élèves du cours</label>
+      <div className="checkbox-list">
+        {roster.map((el) => (
+          <label key={el.id} className="checkbox-list__item">
+            <input
+              type="checkbox"
+              checked={eleveIds.includes(el.id)}
+              onChange={() => toggleEleve(el.id)}
+            />
+            {el.prenom} {el.nom}
+          </label>
+        ))}
+        {roster.length === 0 && <p className="muted">Aucun élève inscrit à ce cours.</p>}
+      </div>
+
+      <label htmlFor="new-choregraphie-costume">Costume (optionnel)</label>
+      <textarea
+        id="new-choregraphie-costume"
+        className="modal-textarea"
+        rows={2}
+        value={costume}
+        onChange={(e) => setCostume(e.target.value)}
+      />
+
+      <label htmlFor="new-choregraphie-horaire">Horaire de répétition (optionnel)</label>
+      <input
+        id="new-choregraphie-horaire"
+        value={horaireRepetition}
+        onChange={(e) => setHoraireRepetition(e.target.value)}
+      />
+
       <button
         type="button"
         className="btn btn--primary btn--block"
         disabled={!nom}
-        onClick={() => onCreate(nom)}
+        onClick={() => onCreate({ nom, eleveIds, costume, horaireRepetition })}
       >
         Créer
       </button>

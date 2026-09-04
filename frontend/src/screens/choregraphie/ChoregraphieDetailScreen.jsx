@@ -72,9 +72,10 @@ export default function ChoregraphieDetailScreen({ choregraphie, eleves, videos,
         <section>
           <h3>Horaire de répétition</h3>
           {editing ? (
-            <EditableText
+            <input
+              className="field-input"
               value={choregraphie.horaireRepetition}
-              onChange={(v) => onUpdate({ horaireRepetition: v })}
+              onChange={(e) => onUpdate({ horaireRepetition: e.target.value })}
             />
           ) : (
             <p>{choregraphie.horaireRepetition || <span className="muted">—</span>}</p>
