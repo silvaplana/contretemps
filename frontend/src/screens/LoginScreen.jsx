@@ -24,10 +24,10 @@ export default function LoginScreen({ onLogin }) {
           onLogin()
         }}
       >
-        <label htmlFor="login-email">Email</label>
+        <label htmlFor="login-email">Email ou Prénom Nom</label>
         <input
           id="login-email"
-          type="email"
+          type="text"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           placeholder="s.dubois@mail.com"
@@ -40,9 +40,6 @@ export default function LoginScreen({ onLogin }) {
           value={code}
           onChange={(e) => setCode(e.target.value)}
         />
-        <p className="login-screen__hint">
-          Ce code détermine votre rôle (parent, professeur, admin)
-        </p>
 
         <button type="submit" className="btn btn--primary btn--block">
           Se connecter

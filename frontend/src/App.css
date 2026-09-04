@@ -500,12 +500,6 @@
   background: var(--card-bg);
 }
 
-.login-screen__hint {
-  color: var(--text-muted);
-  font-size: 13px;
-  margin-bottom: 12px;
-}
-
 .login-screen__form .btn--primary {
   margin-top: 16px;
   padding: 16px;
@@ -792,18 +786,13 @@
    Chorégraphie (ChoregraphieScreen.jsx)
    ========================================================================== */
 
+/* Pas d'encadré autour de la liste : même principe que .conversation-list-screen
+   (Messagerie) — une liste "nue" sur le fond de l'écran, pas une carte. */
 .choregraphie-list {
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card-bg);
-  max-height: 220px;
   overflow-y: auto;
 }
 
-/* Écran 1/2 (ChoregraphieListScreen.jsx) : la liste occupe tout l'écran,
-   pas juste un encart de 220px au-dessus du détail. */
 .choregraphie-list--full {
-  max-height: none;
   flex: 1;
   min-height: 0;
   /* Marge pour que le dernier élément ne soit pas caché sous le FAB. */
@@ -816,10 +805,10 @@
   gap: 12px;
   width: 100%;
   text-align: left;
-  padding: 12px 14px;
+  padding: 10px 8px;
   border: none;
   background: none;
-  border-bottom: 1px solid var(--border);
+  border-radius: 12px;
 }
 
 .choregraphie-list__item > span:nth-child(2) {

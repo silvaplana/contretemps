@@ -7,7 +7,7 @@ import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 // images/choregraphie.png). Deux écrans distincts, comme la Messagerie : la
 // liste des chorégraphies du cours, puis (au clic) le détail en plein écran
 // avec une flèche de retour — jamais les deux affichés en même temps.
-export default function ChoregraphieScreen({ cours, list, setList, eleves, videos }) {
+export default function ChoregraphieScreen({ cours, list, setList, eleves, videos, setVideos }) {
   const [selectedId, setSelectedId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
 
@@ -28,18 +28,58 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves, video
     setSelectedId(null)
   }
 
+  // Gestion des vidéos depuis le détail d'une chorégraphie : mêmes données
+  // que l'onglet Vidéo (videosParCours), juste manipulées depuis cet écran.
+  function addVideo(donnees) {
+    const nouvelle = {
+      id: crypto.randomUUID(),
+      titre: donnees.titre,
+      description: donnees.description,
+      duree: donnees.duree || '00:00',
+      choregraphieId: donnees.choregraphieId ?? null,
+      datePublication: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
+    }
+    setVideos((byC) => ({ ...byC, [cours.id]: [...(byC[cours.id] ?? []), nouvelle] }))
+  }
+
+  function updateVideo(id, patch) {
+    setVideos((byC) => ({
+      ...byC,
+      [cours.id]: byC[cours.id].map((v) => (v.id === id ? { ...v, ...patch } : v)),
+    }))
+  }
+
+  function removeVideo(id) {
+    if (!window.confirm('Supprimer cette vidéo ?')) return
+    setVideos((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((v) => v.id !== id) }))
+  }
+
+  function toggleVideoTag(id, choregraphieId) {
+    setVideos((byC) => ({
+      ...byC,
+      [cours.id]: byC[cours.id].map((v) =>
+        v.id === id
+          ? { ...v, choregraphieId: v.choregraphieId === choregraphieId ? null : choregraphieId }
+          : v,
+      ),
+    }))
+  }
+
   if (selected) {
     return (
       <ChoregraphieDetailScreen
         choregraphie={selected}
         eleves={eleves}
-        // Les vidéos d'une chorégraphie sont celles taguées avec son id
-        // depuis l'onglet Vidéo (voir data/mockData.js) — pas une liste
-        // séparée à gérer ici.
-        videos={videos.filter((v) => v.choregraphieId === selected.id)}
+        // Toutes les vidéos du cours : le détail filtre lui-même celles
+        // taguées à cette chorégraphie, et permet d'en (dé)taguer d'autres.
+        videosDuCours={videos}
         onBack={() => setSelectedId(null)}
         onUpdate={(patch) => update(selected.id, patch)}
         onRemove={() => removeChoregraphie(selected.id)}
+        onAddVideo={(donnees) => addVideo({ ...donnees, choregraphieId: selected.id })}
+        onUpdateVideo={updateVideo}
+        onRemoveVideo={removeVideo}
+        onToggleVideoTag={(id) => toggleVideoTag(id, selected.id)}
       />
     )
   }

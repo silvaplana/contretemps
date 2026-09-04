@@ -2,14 +2,34 @@ import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
+import Modal from '../../components/Modal.jsx'
+import AddVideoModal from '../video/AddVideoModal.jsx'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
 // avec une flèche de retour vers ChoregraphieListScreen — même principe que
 // la Messagerie. Consultation par défaut ; le bouton stylo (à côté de la
 // poubelle) bascule en mode édition pour Admin/Professeur (voir droits,
-// spec/SPEC.md section 3).
-export default function ChoregraphieDetailScreen({ choregraphie, eleves, videos, onBack, onUpdate, onRemove }) {
+// spec/SPEC.md section 3). En édition, les vidéos de la chorégraphie
+// peuvent aussi être choisies parmi celles du cours, ajoutées, éditées ou
+// supprimées — pas seulement consultées.
+export default function ChoregraphieDetailScreen({
+  choregraphie,
+  eleves,
+  videosDuCours,
+  onBack,
+  onUpdate,
+  onRemove,
+  onAddVideo,
+  onUpdateVideo,
+  onRemoveVideo,
+  onToggleVideoTag,
+}) {
   const [editing, setEditing] = useState(false)
+  const [showChoose, setShowChoose] = useState(false)
+  const [showAddVideo, setShowAddVideo] = useState(false)
+  const [editingVideo, setEditingVideo] = useState(null)
+
+  const videos = videosDuCours.filter((v) => v.choregraphieId === choregraphie.id)
 
   return (
     <div className="screen choregraphie-detail-screen">
@@ -93,17 +113,124 @@ export default function ChoregraphieDetailScreen({ choregraphie, eleves, videos,
                   <Icon name="play" size={14} />
                   <span>{v.titre}</span>
                   <span className="muted">{v.duree}</span>
+                  {editing && (
+                    <>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--sm"
+                        onClick={() => setEditingVideo(v)}
+                        aria-label={`Modifier ${v.titre}`}
+                      >
+                        <Icon name="edit" size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--sm icon-btn--danger"
+                        onClick={() => onRemoveVideo(v.id)}
+                        aria-label={`Supprimer ${v.titre}`}
+                      >
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </>
+                  )}
                 </li>
               ))}
             </ul>
           ) : (
             <p className="muted">Aucune vidéo taguée pour cette chorégraphie.</p>
           )}
-          <p className="muted choregraphie-detail__video-hint">
-            Les vidéos se filment et se taguent depuis l'onglet Vidéo.
-          </p>
+
+          {editing ? (
+            <div className="video-source-buttons">
+              <button type="button" className="btn btn--secondary" onClick={() => setShowChoose(true)}>
+                <Icon name="folder" size={16} /> Choisir
+              </button>
+              <button type="button" className="btn btn--secondary" onClick={() => setShowAddVideo(true)}>
+                <Icon name="plus" size={16} /> Vidéo
+              </button>
+            </div>
+          ) : (
+            <p className="muted choregraphie-detail__video-hint">
+              Passez en édition pour choisir, ajouter, modifier ou supprimer des vidéos.
+            </p>
+          )}
         </section>
       </div>
+
+      {showChoose && (
+        <Modal title="Choisir des vidéos" onClose={() => setShowChoose(false)}>
+          <div className="checkbox-list">
+            {videosDuCours.map((v) => (
+              <label key={v.id} className="checkbox-list__item">
+                <input
+                  type="checkbox"
+                  checked={v.choregraphieId === choregraphie.id}
+                  onChange={() => onToggleVideoTag(v.id)}
+                />
+                {v.titre}
+              </label>
+            ))}
+            {videosDuCours.length === 0 && (
+              <p className="muted">Aucune vidéo pour ce cours — ajoutez-en une.</p>
+            )}
+          </div>
+        </Modal>
+      )}
+
+      {showAddVideo && (
+        <AddVideoModal
+          lockedChoregraphieId={choregraphie.id}
+          onClose={() => setShowAddVideo(false)}
+          onAdd={(donnees) => {
+            onAddVideo(donnees)
+            setShowAddVideo(false)
+          }}
+        />
+      )}
+
+      {editingVideo && (
+        <EditVideoModal
+          video={editingVideo}
+          onClose={() => setEditingVideo(null)}
+          onSave={(patch) => {
+            onUpdateVideo(editingVideo.id, patch)
+            setEditingVideo(null)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+function EditVideoModal({ video, onClose, onSave }) {
+  const [titre, setTitre] = useState(video.titre)
+  const [description, setDescription] = useState(video.description)
+
+  return (
+    <Modal
+      title="Modifier la vidéo"
+      onClose={onClose}
+      footer={
+        <button
+          type="button"
+          className="btn btn--primary btn--block"
+          disabled={!titre}
+          onClick={() => onSave({ titre, description })}
+        >
+          Enregistrer
+        </button>
+      }
+    >
+      <label htmlFor="edit-video-titre">Titre</label>
+      <input id="edit-video-titre" value={titre} onChange={(e) => setTitre(e.target.value)} />
+      <label htmlFor="edit-video-desc">Description (optionnelle)</label>
+      <textarea
+        id="edit-video-desc"
+        className="modal-textarea"
+        rows={3}
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
+    </Modal>
   )
 }

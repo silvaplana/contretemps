@@ -111,6 +111,7 @@ function App() {
             setList={setChoregraphies}
             eleves={eleves}
             videos={videos[selectedCoursId] ?? []}
+            setVideos={setVideos}
           />
         )}
 
