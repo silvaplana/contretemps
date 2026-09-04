@@ -114,7 +114,12 @@ function App() {
         )}
 
         {activeTab === 'video' && (
-          <VideoScreen cours={selectedCours} list={videos} setList={setVideos} />
+          <VideoScreen
+            cours={selectedCours}
+            list={videos}
+            setList={setVideos}
+            choregraphies={choregraphies[selectedCoursId] ?? []}
+          />
         )}
 
         {activeTab === 'messagerie' && (

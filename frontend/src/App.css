@@ -950,6 +950,27 @@
   padding: 12px 14px;
 }
 
+.video-card__tag {
+  margin-top: 6px;
+}
+
+/* Boutons "Choisir un fichier" / "Filmer" dans la modale d'ajout. */
+.video-source-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.video-source-buttons__btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 44px;
+  cursor: pointer;
+  text-align: center;
+}
+
 /* ==========================================================================
    Messagerie (MessagerieScreen.jsx)
    ========================================================================== */

@@ -297,6 +297,9 @@ export const choregraphiesParCours = {
   ],
 }
 
+// `choregraphieId` (nullable) tague la vidéo pour une chorégraphie du même
+// cours (voir choregraphiesParCours ci-dessus) — utile pour retrouver toutes
+// les vidéos d'une chorégraphie donnée.
 export const videosParCours = {
   c1: [
     {
@@ -305,6 +308,7 @@ export const videosParCours = {
       datePublication: '05/08',
       duree: '03:42',
       description: '',
+      choregraphieId: 'ch1',
     },
     {
       id: 'v2',
@@ -312,6 +316,7 @@ export const videosParCours = {
       datePublication: '08/08',
       duree: '04:10',
       description: 'Passage à retravailler : le déplacement diagonal.',
+      choregraphieId: 'ch2',
     },
   ],
   c2: [
@@ -321,6 +326,7 @@ export const videosParCours = {
       datePublication: '11/08',
       duree: '02:58',
       description: '',
+      choregraphieId: 'ch3',
     },
   ],
   c3: [],
@@ -331,6 +337,7 @@ export const videosParCours = {
       datePublication: '14/08',
       duree: '05:20',
       description: '',
+      choregraphieId: 'ch4',
     },
   ],
 }
