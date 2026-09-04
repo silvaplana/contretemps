@@ -1,22 +1,37 @@
+import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
 // avec une flèche de retour vers ChoregraphieListScreen — même principe que
-// la Messagerie. Admin et Professeur peuvent modifier/supprimer (voir droits,
+// la Messagerie. Consultation par défaut ; le bouton stylo (à côté de la
+// poubelle) bascule en mode édition pour Admin/Professeur (voir droits,
 // spec/SPEC.md section 3).
 export default function ChoregraphieDetailScreen({ choregraphie, eleves, videos, onBack, onUpdate, onRemove }) {
+  const [editing, setEditing] = useState(false)
+
   return (
     <div className="screen choregraphie-detail-screen">
       <div className="thread-screen__header">
         <button type="button" className="icon-btn" onClick={onBack} aria-label="Retour aux chorégraphies">
           <Icon name="chevronLeft" size={22} />
         </button>
-        <EditableText
-          value={choregraphie.nom}
-          onChange={(v) => onUpdate({ nom: v })}
-        />
+
+        {editing ? (
+          <EditableText value={choregraphie.nom} onChange={(v) => onUpdate({ nom: v })} />
+        ) : (
+          <strong className="choregraphie-detail-screen__title">{choregraphie.nom}</strong>
+        )}
+
+        <button
+          type="button"
+          className={`icon-btn ${editing ? 'icon-btn--accent' : ''}`}
+          onClick={() => setEditing((e) => !e)}
+          aria-label={editing ? 'Terminer la modification' : 'Modifier la chorégraphie'}
+        >
+          <Icon name={editing ? 'check' : 'edit'} size={18} />
+        </button>
         <button
           type="button"
           className="icon-btn icon-btn--danger"
@@ -42,20 +57,28 @@ export default function ChoregraphieDetailScreen({ choregraphie, eleves, videos,
 
         <section>
           <h3>Costume</h3>
-          <textarea
-            className="modal-textarea"
-            rows={2}
-            value={choregraphie.costume}
-            onChange={(e) => onUpdate({ costume: e.target.value })}
-          />
+          {editing ? (
+            <textarea
+              className="modal-textarea"
+              rows={2}
+              value={choregraphie.costume}
+              onChange={(e) => onUpdate({ costume: e.target.value })}
+            />
+          ) : (
+            <p>{choregraphie.costume || <span className="muted">—</span>}</p>
+          )}
         </section>
 
         <section>
           <h3>Horaire de répétition</h3>
-          <EditableText
-            value={choregraphie.horaireRepetition}
-            onChange={(v) => onUpdate({ horaireRepetition: v })}
-          />
+          {editing ? (
+            <EditableText
+              value={choregraphie.horaireRepetition}
+              onChange={(v) => onUpdate({ horaireRepetition: v })}
+            />
+          ) : (
+            <p>{choregraphie.horaireRepetition || <span className="muted">—</span>}</p>
+          )}
         </section>
 
         <section>

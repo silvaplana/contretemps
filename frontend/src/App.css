@@ -844,10 +844,18 @@
   flex-direction: column;
 }
 
-.choregraphie-detail-screen .thread-screen__header .editable-text {
+.choregraphie-detail-screen .thread-screen__header .editable-text,
+.choregraphie-detail-screen__title {
   flex: 1;
   font-size: 18px;
   font-weight: 700;
+}
+
+.choregraphie-detail-screen__title {
+  color: var(--text-h);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .choregraphie-detail {
