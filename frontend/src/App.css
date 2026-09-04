@@ -802,6 +802,8 @@
   max-height: none;
   flex: 1;
   min-height: 0;
+  /* Marge pour que le dernier élément ne soit pas caché sous le FAB. */
+  padding-bottom: 72px;
 }
 
 .choregraphie-list__item {
@@ -831,18 +833,6 @@
   background: var(--surface-2);
   color: var(--accent);
   flex-shrink: 0;
-}
-
-.choregraphie-list__add {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 12px 14px;
-  border: none;
-  background: none;
-  color: var(--accent);
-  font-weight: 600;
 }
 
 /* Écran 2/2 (ChoregraphieDetailScreen.jsx) : réutilise .thread-screen__header

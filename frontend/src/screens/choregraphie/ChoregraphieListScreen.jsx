@@ -29,10 +29,11 @@ export default function ChoregraphieListScreen({ list, onSelect, onAddNew }) {
             Aucune chorégraphie pour ce cours.
           </p>
         )}
-        <button type="button" className="choregraphie-list__add" onClick={onAddNew}>
-          <Icon name="plus" size={18} /> Nouvelle chorégraphie
-        </button>
       </div>
+
+      <button type="button" className="fab" onClick={onAddNew} aria-label="Nouvelle chorégraphie">
+        <Icon name="plus" size={24} />
+      </button>
     </div>
   )
 }
