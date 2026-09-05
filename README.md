@@ -3,11 +3,12 @@
 Application (smartphone uniquement pour l'instant) de gestion d'école de
 danse et de ses activités.
 
-Le passage en appli native iOS/Android est prévu plus tard, via
-[Capacitor](https://capacitorjs.com/) qui emballe le build React existant
-sans le réécrire — d'ici là, le frontend reste une app web mobile-first
-classique (pas de PWA, pas de dépendance à des API navigateur qui
-casseraient dans une WebView).
+Le frontend reste une app web mobile-first classique (pas de PWA, pas de
+dépendance à des API navigateur qui casseraient dans une WebView). Le
+passage en appli native se fait via [Capacitor](https://capacitorjs.com/),
+qui emballe le build React existant sans le réécrire — voir
+[ANDROID.md](ANDROID.md) pour le projet Android (déjà généré dans
+`frontend/android/`) ; iOS suivra le même principe plus tard.
 
 ## Structure
 

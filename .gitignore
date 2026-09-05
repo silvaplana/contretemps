@@ -15,6 +15,7 @@ __pycache__/
 # Node / frontend
 node_modules/
 dist/
+dist-android/
 dist-ssr/
 *.local
 

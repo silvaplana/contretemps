@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Contretemps</string>
+    <string name="title_activity_main">Contretemps</string>
+    <string name="package_name">com.contretemps.app</string>
+    <string name="custom_url_scheme">com.contretemps.app</string>
+</resources>
