@@ -30,9 +30,11 @@ pour l'appli Android (elle ne trouverait pas ses fichiers).
 - Node.js (déjà nécessaire pour le frontend, voir frontend/README.md).
 
 Cet environnement de développement (celui de Claude Code) n'a pas
-Android Studio ni le SDK Android installés : le dossier `android/` a été
-généré ici, mais il faut l'ouvrir sur une machine avec Android Studio pour
-le compiler et le lancer sur un téléphone ou un émulateur.
+Android Studio installé, mais un premier `.apk` de debug y a quand même
+été construit en ligne de commande (SDK + JDK installés manuellement pour
+l'occasion, voir "Build en ligne de commande" ci-dessous) — pratique pour
+un premier test rapide sur téléphone, sans remplacer un vrai poste avec
+Android Studio pour la suite du développement (émulateur, debug, etc.).
 
 ## Premier lancement
 
@@ -47,14 +49,33 @@ Puis ouvrir le dossier `frontend/android/` dans Android Studio (File >
 Open), laisser Gradle synchroniser, et lancer sur un émulateur ou un
 téléphone branché (bouton ▶ "Run").
 
-Alternative en ligne de commande (nécessite le SDK Android installé et
-`ANDROID_HOME` configuré) :
+## Build en ligne de commande (sans Android Studio)
+
+Possible avec juste le SDK Android (cmdline-tools) et un **JDK 17 ou 21**
+— ⚠️ pas un JDK plus récent (25 par ex.) : Gradle (8.14.3 ici, embarqué via
+le wrapper `gradlew`) ne sait pas encore lire les class files des JDK
+au-delà de la version qu'il supporte, et échoue avec
+`Unsupported class file major version 69` sur un JDK 25.
 
 ```bash
-cd frontend/android
-./gradlew assembleDebug   # génère un .apk de debug, non signé
-# APK généré dans android/app/build/outputs/apk/debug/
+export ANDROID_HOME=~/android-sdk       # SDK installé via `sdkmanager`
+export JAVA_HOME=~/jdk21                # JDK 17 ou 21, pas plus récent
+cd frontend
+npm run build:android && npx cap sync android
+cd android
+echo "sdk.dir=$ANDROID_HOME" > local.properties
+./gradlew assembleDebug --no-daemon
+# APK généré dans android/app/build/outputs/apk/debug/app-debug.apk
 ```
+
+Packages SDK minimum (`sdkmanager "platform-tools" "platforms;android-36"
+"build-tools;36.0.0"`, licences acceptées via `sdkmanager --licenses`) —
+les numéros de version viennent de `frontend/android/variables.gradle`
+(`compileSdkVersion`/`targetSdkVersion`) : à ajuster si ce fichier change.
+
+C'est un `.apk` de **debug**, non signé pour le Play Store : suffisant
+pour l'installer directement sur un téléphone Android (autoriser les
+"sources inconnues") ou dans un émulateur, pas pour une publication.
 
 ## Après chaque modification du frontend
 
