@@ -73,7 +73,7 @@ export default function Header({
               onClick={() => setMenuOpen((o) => !o)}
               aria-label="Menu"
             >
-              <Icon name="menu" />
+              <Icon name="moreVertical" />
             </button>
             {menuOpen && (
               <div className="header-menu__panel">

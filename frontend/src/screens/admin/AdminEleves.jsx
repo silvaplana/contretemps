@@ -14,6 +14,7 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
   const [coursEditId, setCoursEditId] = useState(null)
   const [commentEditId, setCommentEditId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [showImport, setShowImport] = useState(false)
 
   const filtered = eleves.filter((el) =>
     `${el.prenom} ${el.nom}`.toLowerCase().includes(search.toLowerCase()),
@@ -192,6 +193,14 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
         </table>
       </div>
 
+      <button
+        type="button"
+        className="fab--secondary"
+        onClick={() => setShowImport(true)}
+        aria-label="Importer des élèves"
+      >
+        <Icon name="folder" size={20} />
+      </button>
       <button type="button" className="fab" onClick={() => setShowAdd(true)} aria-label="Ajouter un élève">
         <Icon name="plus" size={24} />
       </button>
@@ -228,6 +237,8 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
       {showAdd && (
         <AddEleveModal onClose={() => setShowAdd(false)} onAdd={addEleve} />
       )}
+
+      {showImport && <ImportElevesModal onClose={() => setShowImport(false)} />}
     </div>
   )
 }
@@ -258,6 +269,43 @@ function AddEleveModal({ onClose, onAdd }) {
       <input id="add-prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
       <label htmlFor="add-nom">Nom</label>
       <input id="add-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+    </Modal>
+  )
+}
+
+// Emplacement d'un futur import en masse — pas encore branché (ni lecture
+// de fichier Excel/CSV, ni connexion Google Drive), juste l'endroit dans
+// l'IHM où ça viendra.
+function ImportElevesModal({ onClose }) {
+  const [source, setSource] = useState(null)
+
+  return (
+    <Modal title="Importer des élèves" onClose={onClose}>
+      <p className="muted">Importer plusieurs élèves d'un coup depuis un fichier ou Google Drive.</p>
+      <div className="video-source-buttons">
+        <button
+          type="button"
+          className="btn btn--secondary video-source-buttons__btn"
+          onClick={() => setSource('fichier')}
+        >
+          <Icon name="folder" size={18} />
+          Fichier Excel / CSV
+        </button>
+        <button
+          type="button"
+          className="btn btn--secondary video-source-buttons__btn"
+          onClick={() => setSource('drive')}
+        >
+          <Icon name="folder" size={18} />
+          Google Drive
+        </button>
+      </div>
+      {source && (
+        <p className="muted">
+          <Icon name="check" size={14} />{' '}
+          {source === 'fichier' ? 'Import de fichier' : 'Connexion à Google Drive'} — bientôt disponible.
+        </p>
+      )}
     </Modal>
   )
 }

@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
-import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 
@@ -74,32 +73,37 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, cours }
           <tbody>
             {filtered.map((g) => (
               <tr key={g.id}>
-                <td className="data-table__name">
-                  <EditableText value={g.nom} onChange={(v) => renameGroupe(g.id, v)} />
-                </td>
+                <td className="data-table__name">{g.nom}</td>
                 <td>
-                  <button
-                    type="button"
-                    className="badge-list badge-list--button"
-                    onClick={() => setEditId(g.id)}
-                  >
+                  <div className="badge-list">
                     {g.membres.map((m, i) => (
                       <Badge key={i} tone={TONE_PAR_TYPE[m.type]}>
                         {m.type === 'cours' && <Icon name="users" size={12} />}
                         {libelleMembre(m, { professeurs, cours })}
                       </Badge>
                     ))}
-                  </button>
+                    {g.membres.length === 0 && <span className="muted">—</span>}
+                  </div>
                 </td>
                 <td>
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn--danger"
-                    onClick={() => removeGroupe(g.id)}
-                    aria-label={`Supprimer ${g.nom}`}
-                  >
-                    <Icon name="trash" size={18} />
-                  </button>
+                  <div className="row-actions">
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => setEditId(g.id)}
+                      aria-label={`Modifier ${g.nom}`}
+                    >
+                      <Icon name="edit" size={18} />
+                    </button>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--danger"
+                      onClick={() => removeGroupe(g.id)}
+                      aria-label={`Supprimer ${g.nom}`}
+                    >
+                      <Icon name="trash" size={18} />
+                    </button>
+                  </div>
                 </td>
               </tr>
             ))}
@@ -112,7 +116,15 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, cours }
       </button>
 
       {enEdition && (
-        <Modal title={`Membres — ${enEdition.nom}`} onClose={() => setEditId(null)}>
+        <Modal title={`Modifier — ${enEdition.nom}`} onClose={() => setEditId(null)}>
+          <label htmlFor="edit-groupe-nom">Nom du groupe</label>
+          <input
+            id="edit-groupe-nom"
+            value={enEdition.nom}
+            onChange={(e) => renameGroupe(enEdition.id, e.target.value)}
+          />
+
+          <label>Personnes</label>
           <div className="member-list">
             {enEdition.membres.map((m, i) => (
               <div key={i} className="member-list__row">
@@ -127,6 +139,7 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, cours }
                 </button>
               </div>
             ))}
+            {enEdition.membres.length === 0 && <p className="muted">Aucun membre pour l'instant.</p>}
           </div>
           <AddMembreForm
             professeurs={professeurs}

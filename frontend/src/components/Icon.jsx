@@ -14,7 +14,6 @@ const paths = {
   chevronDown: 'M6 9l6 6 6-6',
   chevronRight: 'M9 6l6 6-6 6',
   chevronLeft: 'M15 6l-6 6 6 6',
-  menu: 'M4 6h16 M4 12h16 M4 18h16',
   mail: 'M4 6h16v12H4z M4 7l8 6 8-6',
   check: 'M5 12l4 4 10-10',
   checkCheck: 'M2 12l4 4 8-8 M8 16l1 1 10-10',
@@ -31,7 +30,30 @@ const paths = {
   folder: 'M4 6h6l2 2h8v11H4z',
 }
 
+// Icônes faites de points pleins plutôt que d'un tracé (menu "3 points").
+const dotIcons = {
+  moreVertical: [12, 5, 12, 12, 12, 19],
+}
+
 export default function Icon({ name, size = 20, className = '' }) {
+  const dots = dotIcons[name]
+  if (dots) {
+    return (
+      <svg
+        viewBox="0 0 24 24"
+        width={size}
+        height={size}
+        fill="currentColor"
+        className={`icon ${className}`}
+        aria-hidden="true"
+      >
+        {[0, 2, 4].map((i) => (
+          <circle key={i} cx={dots[i]} cy={dots[i + 1]} r="1.8" />
+        ))}
+      </svg>
+    )
+  }
+
   const d = paths[name]
   if (!d) return null
   return (

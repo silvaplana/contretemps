@@ -26,7 +26,7 @@ import VideoScreen from './screens/VideoScreen.jsx'
 // côté backend, c'est l'objet de cette étape.
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
-  const [activeTab, setActiveTab] = useState('admin')
+  const [activeTab, setActiveTab] = useState('messagerie')
 
   // Données "métier", possédées ici et redescendues aux écrans.
   const [eleves, setEleves] = useState(initialEleves)

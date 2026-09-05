@@ -403,6 +403,25 @@
   z-index: 10;
 }
 
+/* Bouton flottant secondaire, empilé au-dessus du FAB principal (voir
+   AdminEleves.jsx — importer des élèves). */
+.fab--secondary {
+  position: absolute;
+  right: 16px;
+  bottom: 80px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  color: var(--accent);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(58, 36, 16, 0.15);
+  z-index: 10;
+}
+
 /* ==========================================================================
    Modale (Modal.jsx)
    ========================================================================== */
