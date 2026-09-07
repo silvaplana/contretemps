@@ -1,7 +1,8 @@
 # Spécification — Application Contretemps
 
-Application de gestion pour l'école de danse **Contretemps** (Le Beausset, France).
-Web + mobile Android (et iOS si possible), destinée aux admins, professeurs et parents d'élèves.
+Application de gestion pour écoles de danse, multi-écoles dès la conception, avec
+**EcoleTest** et **Contretemps** (Le Beausset, France) comme premières écoles gérées.
+Web + mobile Android (et iOS si possible), destinée aux admins, professeurs et élèves/familles.
 
 ---
 
@@ -11,59 +12,98 @@ Web + mobile Android (et iOS si possible), destinée aux admins, professeurs et 
 - **Backend** : Python avec **FastAPI**
 - **Base de données** : PostgreSQL
 - **Envoi d'emails** : depuis l'adresse `dansecontretemps@gmail.com` (SMTP Gmail avec mot de passe d'application, ou service tiers si le volume augmente)
-- **Paiements / inscriptions** : envisagé via **HelloAsso** (gratuit pour les associations) plutôt que Stripe — la base élèves serait synchronisée via l'API HelloAsso plutôt que saisie manuellement: pour l'instant on ne fait rien
+- **Paiements / inscriptions** : envisagé via **HelloAsso** (gratuit pour les associations) plutôt que Stripe — pour l'instant on ne fait rien de ce côté
 - Pas de Mac disponible → build iOS prévu via un service cloud (ex. Codemagic) le cas échéant
 
 ---
 
-## 2. Rôles et authentification
+## 2. Rôles, comptes, écoles et authentification
 
-Trois rôles : **Admin**, **Professeur**, **Parent**. Pas de rôle "élève" séparé — un élève majeur se connecte comme un parent (de lui-même). Les élèves mineurs n'ont pas de compte ; ils sont des fiches gérées par leur parent.
+### 2.1 Philosophie multi-écoles
 
-### Connexion
+L'application gère plusieurs écoles, dont les données sont **totalement indépendantes et
+étanches** les unes des autres. Dans un premier temps, deux écoles : **EcoleTest** et
+**Contretemps**.
 
-- Champ **Email** : identifie précisément la personne connectée (recherché dans les tables `parents`, `professeurs`, ou `admins`)
-- Champ **Code** : code d'accès partagé par rôle (ex. `ADMIN2026`, `PROF2026`, `PARENT2026`), sert uniquement à vérifier que la personne connaît le code de son rôle — ce n'est pas un identifiant individuel
-- Le code doit correspondre au rôle réellement associé à l'email (cohérence vérifiée côté serveur)
-- Session persistante (web et mobile) sans reconnexion systématique — token stocké en local (localStorage/cookie sécurisé côté web, stockage sécurisé natif côté mobile)
-- Plusieurs appareils peuvent être connectés simultanément avec le même email/code (ex. un parent et ses deux filles majeures, chacun sur son téléphone)
+Trois rôles au sein d'une école : **Admin**, **Professeur**, **Élève**. Il n'y a pas de rôle
+"Parent" séparé — un élève est lui-même un compte, avec ses propres champs (voir §6), qu'il
+soit mineur ou majeur.
+
+**Profils familiaux façon Netflix** : au sein d'une même école, les comptes (admin, professeur,
+élève) qui partagent le même email sont automatiquement regroupés en une même **famille**.
+Toute personne connectée peut, via un menu déroulant, **basculer sans reconnexion** vers un
+autre profil de la même famille — ex. un parent-admin qui bascule vers le profil de son fils
+élève, ou entre deux enfants d'une même fratrie. Une famille peut mélanger les rôles (ex. un
+parent Admin + ses deux enfants Élèves).
+
+### 2.2 Connexion
+
+- **Admin / Professeur** : connexion par **nom + prénom OU email** + code d'accès partagé par
+  rôle et par école (ex. `ADMIN2026`)
+- **Élève** : connexion par **nom + prénom OU email** + code d'accès (`ELEVE2026`) — l'email
+  n'est pas requis pour se connecter, mais s'il est renseigné, il sert au regroupement familial
+  et aux notifications
+- Le code doit correspondre au rôle réellement associé au compte, **dans l'école concernée**
+  (cohérence vérifiée côté serveur)
+- Session persistante (web et mobile) sans reconnexion systématique — token stocké en local
+- Plusieurs appareils peuvent être connectés simultanément avec le même compte
 - Déconnexion disponible depuis l'onglet **Profil**
 
+**✅ Tranché — règle de sécurité du switch de profil famille** : le code d'accès du rôle
+cible est redemandé uniquement en cas de **montée en privilège**, selon la hiérarchie
+Élève < Professeur < Admin :
+- Élève → Professeur ou Admin : code redemandé
+- Professeur → Admin : code redemandé
+- Tous les autres cas (vers un rôle égal ou inférieur, ex. Admin → Élève, Professeur → Élève) : switch libre, sans redemander de code
+
 ![Écran de connexion](images/login.png)
+*(capture à reprendre par Claude Code une fois l'écran adapté à la nouvelle logique)*
+
+### 2.3 Création d'une nouvelle école
+
+Sur la page de connexion, un bouton **"Nouvelle école ?"** ouvre un formulaire de création :
+
+- Nom de l'école
+- Code d'accès Admin, Professeur, Élève — **libres**, proposés par défaut sous la forme
+  `ADMIN_ECOLE_ANNEE` / `PROF_ECOLE_ANNEE` / `ELEVE_ECOLE_ANNEE` (ÉCOLE = nom de l'école en
+  majuscules, ANNÉE = année en cours), éditables avant validation
+- Nom, prénom et email du premier administrateur
+
+La validation du formulaire crée l'école **et** le compte du premier administrateur en une
+seule opération. Cet administrateur pourra ensuite modifier les 3 codes d'accès de l'école
+depuis les paramètres (tout admin peut les modifier par la suite, pas seulement le créateur).
 
 ---
 
 ## 3. Droits par rôle
 
+| Fonctionnalité                                    | Admin | Professeur | Élève                              |
+| ------------------------------------------------- | ----- | ---------- | ----------------------------------- |
+| Onglet Admin (gestion élèves/profs/cours/conversations) | ✅ | ❌      | ❌                                   |
+| Onglet Présence                                   | ✅     | ✅          | ❌                                   |
+| Onglet Chorégraphie (consultation)                | ✅     | ✅          | ✅                                   |
+| Ajout/suppression/modification Chorégraphie       | ✅     | ✅          | ❌                                   |
+| Onglet Vidéo (consultation)                       | ✅     | ✅          | ✅                                   |
+| Ajout/suppression une vidéo                       | ✅     | ✅          | ✅ (pour le cours où il est inscrit) |
+| Messagerie (conversations, envoi mail)            | ✅     | ✅          | ✅                                   |
+| Onglet Profil                                     | ✅     | ✅          | ✅                                   |
 
-
-| Fonctionnalité                                    | Admin | Professeur | Parent                          |
-| ------------------------------------------------- | ----- | ---------- | ------------------------------- |
-| Onglet Admin (gestion élèves/profs/cours/groupes) | ✅     | ❌          | ❌                               |
-| Onglet Présence                                   | ✅     | ✅          | ❌                               |
-| Onglet Chorégraphie(consultation)                 | ✅     | ✅          | ✅                               |
-| Ajout/suppression/modification Chorégraphie       | ✅     | ✅          | ❌                               |
-| Onglet Vidéo (consultation)                       | ✅     | ✅          | ✅                               |
-| Ajout/suppression une vidéo                       | ✅     | ✅          | ✅ (pour le cours de son enfant) |
-| Messagerie (chat, envoi mail)                     | ✅     | ✅          | ✅                               |
-| Onglet Profil                                     | ✅     | ✅          | ✅                               |
-
-*Le détail fin des droits (ex. un prof peut-il modifier la présence d'un cours qui n'est pas le sien : non, car il n'aura accès qu'a ses cours) reste à préciser lors du développement.*
+*Le détail fin des droits (ex. un prof peut-il agir sur un cours qui n'est pas le sien) reste
+à préciser lors du développement.*
 
 ---
 
 ## 4. Navigation par rôle
 
-- **Admin** : Admin · Présence · Chorégraphie · Vidéo · Messagerie · Profil .  Presence, Chorégraphie · Vidéo · accesible pour tous les cours. Messagerie: toutes les conversations
-- **Professeur** : Présence · Chorégraphie · Vidéo · Messagerie · Profil.  Presence, Chorégraphie · Vidéo · accesibles du cours selectionné dans le selecteur de cours. Messagerie: toutes les conversation dans lequel le prof est enregistré
-- **Parent** : Chorégraphie · Vidéo · Messagerie · Profil.   Chorégraphie · Vidéo · accesible du cours selectionné. Messagerie: toutes les conversation dans lequel le prof est enregistré
+- **Admin** : Admin · Présence · Chorégraphie · Vidéo · Messagerie · Profil. Accès à tous les cours de son école. Messagerie : toutes les conversations.
+- **Professeur** : Présence · Chorégraphie · Vidéo · Messagerie · Profil. Accès aux cours où il est inscrit (sélecteur de cours). Messagerie : toutes les conversations où il est membre.
+- **Élève** : Chorégraphie · Vidéo · Messagerie · Profil. Accès aux cours où il est inscrit. Messagerie : toutes les conversations où il est membre.
 
 L'en-tête de chaque écran (hors Admin) affiche :
 
-- Logo Contretemps (à gauche)
-- **Sélecteur de cours** : bouton avec le nom du cours actif + chevron, ouvre un menu déroulant listant tous les cours du prof/parent.      L'admin a accés a tous les cours.  Le prof et le parent a ceux ou ils sont inscrits
-- **Sélecteur d'élève** (pour les parents ayant plusieurs enfants) : avatar avec initiales + petit badge chevron, ouvre la liste des enfants du foyer
-- Menu hamburger (à droite)
+- **Zone gauche** : logo de l'école, et généralement le **sélecteur de cours** (cours actif + chevron, menu déroulant listant les cours accessibles)
+- **Zone droite** : **sélecteur de profil famille**, affiché **uniquement si le compte connecté appartient à une famille de plus d'1 membre** (avatar + chevron, menu déroulant permanent listant les profils du foyer) — invisible/absent pour un compte seul dans sa famille
+- **Menu 3 points verticaux** : propose l'accès au **Profil** et la **Déconnexion**
 
 ---
 
@@ -71,147 +111,310 @@ L'en-tête de chaque écran (hors Admin) affiche :
 
 *Ordre suivant la navigation du rôle Admin (le plus complet) : Admin · Présence · Chorégraphie · Vidéo · Messagerie · Profil.*
 
+**⚠️ Toutes les captures d'écran ci-dessous datent de l'ancienne logique de rôles
+(Admin/Professeur/Parent, mono-école) et sont à reprendre par Claude Code une fois l'IHM
+adaptée.**
+
 ### 5.1 Admin *(Admin uniquement)*
 
-Onglet le plus à gauche de la barre, réservé exclusivement au rôle Admin. Contient 4 sous-onglets (sélecteur segmenté en haut de l'écran) : Élèves, Professeurs, Cours, Groupes.
+Sous-onglets (sélecteur segmenté) : Élèves, Professeurs, Cours, Conversations, Paramètres école.
 
 #### 5.1.1 Élèves
 
-Barre de recherche par nom, tableau avec 10 colonnes : Élève, Cours suivis (plusieurs cours possibles par élève, badges), Statut paiement, Commentaire libre, Date de naissance, Parent/contact, Téléphone, Email, Adresse, Certificat médical.
-
-Chaque cellule est éditable au clic (input inline pour texte court, sélecteur de date natif, fenêtre à cases à cocher pour les cours, menu déroulant pour le paiement, modale plein écran pour le commentaire). Bouton **+** flottant pour ajouter un élève, icône poubelle par ligne pour supprimer.
+Tableau éditable — voir la liste complète des champs en §6.4. Bouton **+** flottant pour
+ajouter, icône poubelle par ligne pour supprimer.
 
 ![Admin — gestion des élèves](images/admin-eleves.png)
 
 #### 5.1.2 Professeurs
 
-Même principe : Nom, Prénom, Cours enseignés (un prof peut enseigner plusieurs cours). Ajout/suppression identiques.
+Nom, Prénom, Email, Téléphone, cours enseignés (badges, plusieurs cours possibles).
 
 ![Admin — gestion des professeurs](images/admin-profs.png)
 
 #### 5.1.3 Cours
 
-Colonnes : Nom du cours, Horaire, Professeur (un seul par cours), Élèves inscrits (badges, "+X" si liste longue). Ajout/suppression identiques.
+Nom, horaire, salle, descriptif, professeur(s) (badges, plusieurs profs possibles par cours),
+élèves inscrits (badges, "+X" si liste longue).
 
 ![Admin — gestion des cours](images/admin-cours.png)
 
-#### 5.1.4 Groupes de conversation
+#### 5.1.4 Conversations *(gestion admin des conversations de groupe)*
 
-Gestion des groupes de conversation de la messagerie. Colonnes : Nom du groupe, Personnes. Pas de filtres sous la recherche.
+Colonnes : Nom, Membres. Contient à la fois les conversations automatiques (une par cours,
+créées dès la création du cours) et celles créées manuellement par l'admin. Les deux sont
+éditables ici : composition modifiable à partir de deux types de blocs :
 
-La composition d'un groupe se fait à partir de trois types de blocs (pas d'ajout d'élève individuel) :
+- **Compte individuel** (admin, professeur, ou élève) — sert notamment à ajouter des
+  "membres spéciaux" à la conversation automatique d'un cours, en plus de sa composition de base
+- **Cours** (résout automatiquement en tous les élèves inscrits **et** le(s) professeur(s) du cours)
 
-- **Admin** (ex. "Direction")
-- **Professeur** (individuel)
-- **Cours** (représente automatiquement tous les élèves inscrits à ce cours)
+![Admin — gestion des conversations](images/admin-groupes.png)
 
-Exemples : "Jazz niveau moyen" = la prof + tous les élèves du cours ; "Spectacle fin d'année" = direction + élèves de plusieurs cours différents.
+#### 5.1.5 Paramètres école *(nouveau)*
 
-![Admin — gestion des groupes de messagerie](images/admin-groupes.png)
+Nom de l'école, et les 3 codes d'accès (Admin/Professeur/Élève), modifiables par tout admin.
 
 ### 5.2 Présence *(Admin, Professeur)*
 
-Tableau avec les élèves en lignes et les dates de cours en colonnes (défilement horizontal, colonne "Élève" fixe à gauche). Statuts par case : présent (vert), absent (rouge), retard (orange), avec légende sous le tableau.
+Une **séance de présence** par cours et par date. Tableau avec les personnes (élèves **et**
+professeurs du cours) en lignes, dates en colonnes (défilement horizontal, colonne fixe à
+gauche). Statuts par case : présent (vert), absent (rouge), retard (orange).
 
 ![Écran de présence](images/presence.png)
 
-### 5.3 Chorégraphie *(Admin, Professeur, Parent)*
+### 5.3 Chorégraphie *(Admin, Professeur, Élève)*
 
-- Zone haute fixe et défilante : liste des chorégraphies du cours sélectionné (icône musique, nombre d'élèves)
-- Zone basse : détail de la chorégraphie sélectionnée, organisé en sections — **Élèves** (liste), **Costume** (texte libre), **Horaire de répétition**, **Liens vidéos**
+- Zone haute : liste des chorégraphies du cours sélectionné
+- Zone basse : détail — **Élèves participants** (sélection spécifique parmi les élèves du cours, pas automatiquement tous), **Costume** (un seul texte pour toute la chorégraphie), **Horaire de répétition**, **Vidéos liées** (calculé, voir §6.7)
 
 ![Écran chorégraphie](images/choregraphie.png)
 
-### 
+### 5.4 Vidéo *(Admin, Professeur, Élève)*
 
-
-
-### 5.4 Vidéo *(Admin, Professeur, Parent)*
-
-Liste défilante de vidéos (une chorégraphie filmée par entrée) : vignette avec bouton play et durée, titre, date de publication, description optionnelle. Bouton **+** flottant en bas à droite pour ajouter une vidéo (accessible aux 3 rôles).
+Liste défilante de vidéos : vignette, titre, date, description optionnelle, chorégraphie liée
+(optionnelle). Bouton **+** flottant pour ajouter (accessible aux 3 rôles).
 
 ![Écran vidéo](images/video.png)
 
-### 5.5 Messagerie *(Admin, Professeur, Parent)*
+### 5.5 Messagerie *(Admin, Professeur, Élève)*
 
-- Zone haute fixe et défilante : liste des conversations (groupes ou individuelles), avec icône groupe/avatar individuel, aperçu du dernier message, indicateur mail (si le dernier message a été relayé par email)
-- Zone basse : fil de la conversation sélectionnée — bulles de message, coches de statut (envoyé / reçu / vu, façon WhatsApp), bouton "Envoyer par mail" par message (révélé au survol/appui long)
-- Envoi de nouveaux messages via un champ de saisie en bas
+Un seul concept : **conversations** (individuelles ou de groupe), pas de distinction de
+vocabulaire entre l'admin et l'utilisateur (voir §6.8).
+
+- Liste des conversations, aperçu du dernier message, indicateur mail
+- Fil de la conversation : bulles de message, coches de statut **envoyé / reçu / vu** (façon WhatsApp), bouton "Envoyer par mail" par message
+- **Dans une conversation à plusieurs membres**, le canal (app/email) et le statut de lecture sont **par destinataire**, pas par message global — icône agrégée sur le message (ex. "✉️ 2"), détail par personne accessible au tap (façon accusés de lecture WhatsApp en groupe)
+- **Relance automatique par email** : message non lu après un délai (proposition : 15 min) → email automatique, couvre le cas d'un compte qui n'a jamais ouvert l'app
+- **Envoi volontaire par email** : case à cocher pour un envoi immédiat — **réservé aux rôles Admin et Professeur** (un élève ne peut pas déclencher d'envoi email volontaire, seulement la relance automatique standard).
 
 ![Écran de messagerie](images/messagerie.png)
+![Écran de messagerie — détail coches/mail](images/messagerie2.png)
 
-Ce n'est pas present sur l'image, mais il faudrait pour les message les coches d'etat.   Et aussi pouvoir egalement envoyer un message par mail. Et savoir si un message est envoyé par mail (icone mail)   : ceci montre un peut ce que la messagerie doit faire
-![Écran de messagerie](images/messagerie2.png)
+### 5.6 Profil *(tous les rôles)*
 
-
-
-
-### 5.6 ### Profil *(tous les rôles)*
-
-⚠️ **Écran non maquetté en détail durant la conversation** — proposition à valider, pas une spécification validée comme le reste du document.
-
-Contient a minima : identité de la personne connectée, liste des enfants rattachés (pour un parent), paramètres (notifications, changement de code), et le bouton **Se déconnecter**.
+⚠️ **Proposition non validée.** Identité de la personne connectée, autres profils de la
+famille, paramètres (notifications, changement de code), bouton **Se déconnecter**.
 
 ![Écran profil (proposition)](images/profil.png)
 
 ---
 
-## 6. Schéma de base de données (proposition)
+## 6. Base de données
 
-### Personnes
+Convention utilisée pour chaque table : **Obl.** = obligatoire, **Opt.** = optionnel,
+**Éditable** = saisi/modifié par un utilisateur, **Calculé** = jamais stocké, dérivé d'une
+requête sur une autre table (relation inverse) — précisé pour répondre à la question sur les
+champs techniques.
+
+### 6.1 Écoles
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| nom | texte | Obl. |
+| code_acces_admin | texte | Obl. |
+| code_acces_prof | texte | Obl. |
+| code_acces_eleve | texte | Obl. |
+| created_at | datetime | Obl. (auto) |
+
+Modifiable par tout admin de l'école après création. Les 3 codes d'accès sont **libres** (texte
+éditable sans contrainte de format imposée) — à la création de l'école, une valeur par défaut
+est proposée pour chacun (`ADMIN_ECOLE_ANNEE`, `PROF_ECOLE_ANNEE`, `ELEVE_ECOLE_ANNEE`, où
+ÉCOLE = nom de l'école en majuscules et ANNÉE = année en cours), éditable avant validation.
+
+### 6.2 Familles
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| ecole_id | FK → écoles | Obl. |
+
+Calculée automatiquement : à la création d'un compte, si l'email saisi existe déjà pour un
+autre compte de la même école, le nouveau compte rejoint la même famille ; sinon une nouvelle
+famille est créée. Un compte sans email reste seul dans sa propre famille.
+
+### 6.3 Comptes (partie commune Admin/Professeur/Élève)
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| ecole_id | FK → écoles | Obl. |
+| famille_id | FK → familles | Obl. (calculé) |
+| role | enum (admin/professeur/eleve) | Obl. |
+| nom | texte | Obl. |
+| prenom | texte | Obl. |
+| email | texte | Opt. |
+| telephone | texte | Opt. |
+| hashed_password_ou_code | texte | technique |
+| created_at | datetime | Obl. (auto) |
+
+*Admin* : aucun champ supplémentaire pour l'instant — pas besoin de table séparée.
+*Professeur* : aucun champ supplémentaire propre pour l'instant (ses cours sont une relation, voir §6.5 — pas un champ stocké ici).
+
+### 6.4 Profil Élève (champs spécifiques)
+
+| Champ | Type | Obl./Opt. | Éditable/Calculé |
+|---|---|---|---|
+| compte_id | PK, FK → comptes | — | — |
+| date_naissance | date | Obl. | Éditable |
+| adresse | texte | Opt. | Éditable |
+| urgence_nom | texte | Opt. | Éditable |
+| urgence_prenom | texte | Opt. | Éditable |
+| urgence_lien | texte (ex. "Mère") | Opt. | Éditable |
+| allergies | texte | Opt. | Éditable |
+| traitement_medical | texte | Opt. | Éditable |
+| informations_importantes | texte | Opt. | Éditable |
+| statut_paiement | enum (en_cours/paye) | Obl. | Éditable |
+| montant_total_annee | décimal | Opt. | Éditable |
+| montant_paye | décimal | Opt. (défaut 0) | Éditable |
+| commentaire_admin | texte | Opt. | Éditable |
+
+Cours suivis : relation, voir §6.5 (pas un champ stocké ici).
+
+### 6.5 Cours
+
+| Champ | Type | Obl./Opt. | Éditable/Calculé |
+|---|---|---|---|
+| id | PK | — | — |
+| ecole_id | FK → écoles | Obl. | — |
+| nom | texte libre | Obl. | Éditable |
+| jour | texte/enum | Obl. | Éditable |
+| heure_debut / heure_fin | heure | Obl. | Éditable |
+| salle | texte | Opt. | Éditable |
+| descriptif | texte | Opt. | Éditable |
+
+**Relations (tables de jointure, pas de listes stockées sur `cours`)** :
+```
+cours_professeurs : cours_id (FK), professeur_id (FK -> comptes)   -- plusieurs profs possibles
+eleves_cours      : eleve_id (FK -> comptes), cours_id (FK)
+```
+Séances de présence et vidéos : reliées par leur propre `cours_id`, jamais listées sur `cours`
+(champs **calculés**, obtenus par requête — voir réponse à ta question sur les champs
+techniques).
+
+**Liste de cours à créer par défaut pour Contretemps** (donnée d'amorçage, pas une contrainte
+technique — `nom` reste un texte libre modifiable, pas un enum fermé, pour permettre d'ajouter
+un nouveau type de cours plus tard sans migration) :
+Éveil, Classique initiation, Classique intermédiaire, Classique avancé, Jazz initiation,
+Jazz junior, Jazz intermédiaire, Jazz avancé, Contemporain junior, Contemporain intermédiaire,
+Contemporain avancé, Street moyen, Street junior, Street intermédiaire.
+
+### 6.6 Présence
+
+Modélisée en deux tables plutôt qu'en "listes de couples", pour rester interrogeable
+facilement (ex. statistiques, alerte sur les absences répétées) :
 
 ```
-parents        : id, nom, prenom, email (unique), telephone, adresse
-professeurs    : id, nom, prenom, email (unique)
-admins         : id, nom, prenom, email (unique)
-eleves         : id, nom, prenom, date_naissance, parent_id (FK), date_inscription,
-                 statut_paiement (enum), certificat_medical, taille_costume, commentaire (text)
+seances_presence   : id (PK), cours_id (FK), date (Obl.)
+                      -- création MANUELLE par le prof/admin (bouton "+ nouvelle séance"),
+                      -- pas de séance créée automatiquement à l'ouverture de l'onglet
+
+presence_registres : id (PK), seance_id (FK -> seances_presence), compte_id (FK -> comptes),
+                      statut (enum: present/absent/retard, Obl.)
+                      -- une ligne par personne (élève OU professeur) présente à la séance
 ```
 
-*Un `parent_id` unique par élève permet nativement "plusieurs enfants, un seul parent".*
+### 6.7 Chorégraphies
 
-### Cours
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| cours_id | FK → cours | Obl. |
+| nom | texte | Obl. |
+| horaire_repetition | texte/datetime | Opt. |
+| costume | texte (un seul, pour toute la chorégraphie) | Opt. |
 
-```
-cours          : id, nom, jour, heure_debut, heure_fin, salle, professeur_id (FK)
-eleves_cours   : eleve_id (FK), cours_id (FK)   -- liaison many-to-many
-```
-
-### Présence
-
-```
-presences      : id, eleve_id (FK), cours_id (FK), date, statut (enum: present/absent/retard)
-```
-
-### Chorégraphies
+**Sélection des élèves participants** : une chorégraphie ne rassemble pas forcément *tous* les
+élèves du cours lié — l'admin/prof choisit une sélection spécifique parmi eux, via une table
+de jointure dédiée (et non le lien `eleves_cours` du cours, qui reste plus large) :
 
 ```
-choregraphies          : id, cours_id (FK), nom, costume, horaire_repetition, salle_repetition
-choregraphies_eleves    : choregraphie_id (FK), eleve_id (FK)
-videos_choregraphie      : id, choregraphie_id (FK), url, titre, description (nullable)
+choregraphies_eleves : choregraphie_id (FK), eleve_id (FK -> comptes)
+                        -- sous-ensemble des élèves du cours lié à la chorégraphie ;
+                        -- seuls les élèves déjà inscrits au cours peuvent y être ajoutés
 ```
 
-### Vidéos de cours
+Vidéos liées : champ **calculé**, obtenu via `videos.choregraphie_id`, pas stocké ici.
+
+### 6.8 Vidéos
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| cours_id | FK → cours | Obl. |
+| choregraphie_id | FK → chorégraphies | Opt. |
+| nom | texte | Obl. |
+| description | texte | Opt. |
+| lien_fichier | texte (chemin/URL) | Obl. |
+| date_publication | datetime | Obl. (auto) |
+| uploaded_by | FK → comptes | Obl. |
+| ordre | entier | Opt. |
+
+**Tri différent selon l'écran** :
+- **Écran Vidéo** (liste générale) : tri par `date_publication`, les plus récentes en premier — `ordre` est ignoré
+- **Dans une chorégraphie** : le prof/admin qui édite la chorégraphie choisit l'ordre des vidéos manuellement (champ `ordre`, réordonnable dans l'IHM, ex. glisser-déposer)
+
+### 6.9 Conversations (messagerie WhatsApp-like)
+
+Chaque message peut être envoyé **par messagerie interne (in-app, façon WhatsApp)** ou
+**par mail** — les deux canaux sont possibles, au choix (relance automatique après délai, ou
+envoi volontaire immédiat, voir §5.5). **Quand un message a été envoyé par mail à un
+destinataire, un petit icône mail s'affiche à côté**, pour distinguer visuellement ce mode
+d'envoi du message in-app classique (détail exact du placement de l'icône à définir en IHM).
+
+Un seul concept "conversation" pour l'admin comme pour l'utilisateur (le mot "canal"/"groupe"
+a été abandonné au profit de "conversation" partout, individuelle ou à plusieurs membres) :
 
 ```
-videos         : id, cours_id (FK), titre, url, description (nullable), date_publication, uploaded_by
+conversations         : id (PK), ecole_id (FK), nom (Opt., pour les conversations à
+                         plusieurs membres), type (enum: individuelle/groupe)
+                         -- une conversation individuelle est unique par paire de comptes
+                         -- (compte_a, compte_b), peu importe d'où elle a été initiée —
+                         -- un seul DM par paire de personnes dans toute l'école
+
+conversation_membres  : id (PK), conversation_id (FK), membre_type (enum: compte/cours),
+                         membre_id
+                         -- "compte" = un admin, un professeur, OU UN ÉLÈVE individuel
+                         -- "cours" se résout dynamiquement en tous ses élèves ET son/ses
+                         -- professeur(s) — pas de liste figée à maintenir : si un élève
+                         -- rejoint/quitte le cours, il apparaît/disparaît automatiquement
+                         -- de la conversation (composition simple, sans historique de
+                         -- participation pour l'instant — tout le monde voit tout
+                         -- l'historique de la conversation)
 ```
 
-### Messagerie
+**Usage** : depuis l'écran d'une conversation de groupe, taper sur un membre de la liste des
+participants ouvre (ou crée s'il n'existe pas encore) **le** DM avec cette personne — le même
+DM que n'importe où ailleurs dans l'app, jamais un DM distinct selon le contexte d'où on l'a
+ouvert.
+
+**✅ Confirmé — chaque cours a sa propre conversation de groupe automatique**, composée de
+tous ses élèves et professeur(s) (`membre_type = cours` pointant sur lui-même) à sa création.
+Elle reste éditable ensuite depuis l'onglet Admin → Conversations : possibilité d'y ajouter ou
+retirer des **membres spéciaux** (comptes individuels en plus du cours), en plus de sa
+composition automatique de base. Elle n'est donc pas figée : elle démarre avec la composition
+du cours, mais peut être enrichie manuellement — c'est la même conversation qui accueille
+d'éventuels membres externes, pas une conversation "personnalisée" distincte créée en parallèle.
 
 ```
-groupes         : id, nom
-groupe_membres  : id, groupe_id (FK), membre_type (enum: admin/professeur/cours), membre_id
-                  -- champ polymorphe : membre_id pointe vers admins, professeurs, ou cours
-                  -- selon membre_type. Un "cours" se résout dynamiquement en tous ses élèves.
-conversations   : id, type (enum: groupe/individuelle), groupe_id (FK, nullable),
-                  participant_a_type, participant_a_id,
-                  participant_b_type, participant_b_id (nullable si groupe)
-messages        : id, conversation_id (FK), expediteur_type, expediteur_id, contenu,
-                  envoye_par_mail (bool), statut (enum: envoye/recu/vu), created_at
+messages             : id (PK), conversation_id (FK), expediteur_id (FK -> comptes),
+                        contenu (texte), created_at
+
+message_deliveries   : id (PK), message_id (FK), destinataire_id (FK -> comptes),
+                        canal (enum: app/email — quel mode d'envoi pour CE destinataire),
+                        statut (enum: envoye/recu/lu),
+                        envoi_volontaire (bool), horodatages associés
+                        -- UNE LIGNE PAR (message, destinataire) : reproduit la logique
+                        -- WhatsApp (coches envoyé/reçu/vu) *par personne*, essentiel dans
+                        -- une conversation à plusieurs membres où chacun peut être à un
+                        -- statut différent (ex. Julie a lu dans l'app, Marc a reçu par mail)
+                        -- canal = 'email' → afficher l'icône mail à côté du message
 ```
 
-**⚠️ Point d'attention** : le champ polymorphe (`membre_type` + `membre_id`) n'est pas une vraie clé étrangère SQL classique — l'intégrité référentielle doit être vérifiée côté application (backend), pas garantie nativement par la base de données.
+**⚠️ Point d'attention conservé** : le champ polymorphe (`membre_type` + `membre_id`) n'est
+pas une vraie clé étrangère SQL classique — l'intégrité référentielle doit être vérifiée côté
+application (backend).
 
 ---
 
@@ -220,7 +423,7 @@ messages        : id, conversation_id (FK), expediteur_type, expediteur_id, cont
 - **Fond** : orange clair (`#FDECD8`)
 - **Texte principal** : noir / brun foncé (`#000`, `#3A2410`)
 - **Accent** : orange soutenu (`#D8722A`)
-- **Logo** : monogramme "Ct" — un grand C en arc entourant un "t" italique, sur fond circulaire orange
+- **Logo** : monogramme "Ct" (pour Contretemps) — un grand C en arc entourant un "t" italique, sur fond circulaire orange. *À généraliser/paramétrer par école pour le multi-écoles.*
 - Icônes : style Tabler Icons (traits fins, cohérents)
 - Barre de navigation basse fixe, en fond orange clair légèrement plus soutenu que le fond général
 
@@ -228,8 +431,11 @@ messages        : id, conversation_id (FK), expediteur_type, expediteur_id, cont
 
 ## 8. Points restant à trancher
 
+- **Création d'une séance de présence** : confirmé — manuelle, via un bouton "+ nouvelle séance" (pas de création automatique à l'ouverture de l'onglet). (voir §6.6)
 - Détail fin des droits par rôle (ex. un prof peut-il agir sur un cours qui n'est pas le sien ?)
-- Upload vidéo direct (stockage) vs lien externe (YouTube/Vimeo privé) — impacte fortement coût et complexité
-- Notifications : push en plus du mail, ou mail uniquement ?
+- Upload vidéo : *décision prise — stockage direct sur le VPS (nginx), compression à l'upload, ~800 vidéos/an estimées*
+- Notifications : push (Capacitor + Firebase) en plus du mail, ou mail uniquement pour commencer ?
 - Intégration HelloAsso : synchronisation ponctuelle ou temps réel via webhook ?
-- Politique de confidentialité (obligatoire, données concernant des mineurs)
+- Politique de confidentialité (obligatoire, données concernant des mineurs, notamment les champs santé/urgence en §6.4)
+- Captures d'écran de la section 5 à reprendre entièrement une fois l'IHM adaptée (Claude Code, qui a accès à l'app réelle)
+- Logo/charte : comment se décline-t-il pour une école autre que Contretemps ?

@@ -3,6 +3,7 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
 import AdminGroupes from './AdminGroupes.jsx'
+import AdminParametres from './AdminParametres.jsx'
 import AdminProfesseurs from './AdminProfesseurs.jsx'
 
 const SUB_TABS = [
@@ -10,9 +11,10 @@ const SUB_TABS = [
   { value: 'professeurs', label: 'Profs' },
   { value: 'cours', label: 'Cours' },
   { value: 'groupes', label: 'Conversations' },
+  { value: 'parametres', label: 'Paramètres' },
 ]
 
-// Onglet Admin (voir spec/SPEC.md 5.1) : réservé au rôle Admin, 4 sous-onglets.
+// Onglet Admin (voir spec/SPEC.md 5.1) : réservé au rôle Admin, 5 sous-onglets.
 // L'état de toutes les données de gestion est possédé ici et redescendu aux
 // autres écrans (Présence, Chorégraphie, Vidéo...) via App.jsx.
 export default function AdminScreen({
@@ -24,6 +26,8 @@ export default function AdminScreen({
   setCours,
   groupes,
   setGroupes,
+  ecole,
+  setEcole,
 }) {
   const [subTab, setSubTab] = useState('eleves')
 
@@ -49,9 +53,11 @@ export default function AdminScreen({
           groupes={groupes}
           setGroupes={setGroupes}
           professeurs={professeurs}
+          eleves={eleves}
           cours={cours}
         />
       )}
+      {subTab === 'parametres' && <AdminParametres ecole={ecole} setEcole={setEcole} />}
     </div>
   )
 }

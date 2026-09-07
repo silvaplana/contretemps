@@ -1,20 +1,14 @@
+import { TABS } from '../data/nav.js'
 import Icon from './Icon.jsx'
 
-// Barre de navigation basse fixe (voir spec/SPEC.md 4). Rôle Admin : les 6
-// onglets sont visibles (Admin est réservé à ce rôle, voir 5.1).
-const TABS = [
-  { key: 'admin', label: 'Admin', icon: 'admin' },
-  { key: 'presence', label: 'Présence', icon: 'presence' },
-  { key: 'choregraphie', label: 'Chorégraphie', icon: 'choregraphie' },
-  { key: 'video', label: 'Vidéo', icon: 'video' },
-  { key: 'messagerie', label: 'Messagerie', icon: 'messagerie' },
-  { key: 'profil', label: 'Profil', icon: 'profil' },
-]
-
-export default function BottomNav({ active, onChange }) {
+// Barre de navigation basse fixe (voir spec/SPEC.md §3 et §4) : les onglets
+// visibles dépendent du rôle du profil actif (Admin est réservé à l'Admin,
+// Présence à l'Admin/Professeur — voir data/nav.js).
+export default function BottomNav({ active, onChange, role }) {
+  const visibles = TABS.filter((tab) => tab.roles.includes(role))
   return (
     <nav className="bottom-nav">
-      {TABS.map((tab) => (
+      {visibles.map((tab) => (
         <button
           key={tab.key}
           type="button"

@@ -5,14 +5,18 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/mockData.js'
 
-const PAIEMENT_TONE = { a_jour: 'success', en_attente: 'warning', retard: 'danger' }
+const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 
-// Onglet Admin > Élèves (voir spec/SPEC.md 5.1.1 et images/admin-eleves.png).
-// Tableau à 10 colonnes, chaque cellule éditable au clic.
+// Onglet Admin > Élèves (voir spec/SPEC.md §5.1.1 et §6.4). Les champs les
+// moins consultés au quotidien (urgence, santé) sont regroupés dans une
+// modale par ligne plutôt qu'en colonnes, pour garder le tableau lisible.
 export default function AdminEleves({ eleves, setEleves, cours }) {
   const [search, setSearch] = useState('')
   const [coursEditId, setCoursEditId] = useState(null)
   const [commentEditId, setCommentEditId] = useState(null)
+  const [paiementEditId, setPaiementEditId] = useState(null)
+  const [urgenceEditId, setUrgenceEditId] = useState(null)
+  const [santeEditId, setSanteEditId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [showImport, setShowImport] = useState(false)
 
@@ -51,13 +55,20 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
         nom,
         prenom,
         coursIds: [],
-        statutPaiement: 'en_attente',
-        commentaire: '',
+        statutPaiement: 'en_cours',
+        montantTotalAnnee: 0,
+        montantPaye: 0,
+        commentaireAdmin: '',
         dateNaissance: '',
-        parent: '',
+        urgenceNom: '',
+        urgencePrenom: '',
+        urgenceLien: '',
         telephone: '',
         email: '',
         adresse: '',
+        allergies: '',
+        traitementMedical: '',
+        informationsImportantes: '',
         certificatMedical: false,
       },
     ])
@@ -65,6 +76,9 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
 
   const coursEnEdition = eleves.find((el) => el.id === coursEditId)
   const commentEnEdition = eleves.find((el) => el.id === commentEditId)
+  const paiementEnEdition = eleves.find((el) => el.id === paiementEditId)
+  const urgenceEnEdition = eleves.find((el) => el.id === urgenceEditId)
+  const santeEnEdition = eleves.find((el) => el.id === santeEditId)
 
   return (
     <div className="admin-panel">
@@ -83,13 +97,14 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
             <tr>
               <th>Élève</th>
               <th>Cours suivis</th>
-              <th>Statut paiement</th>
+              <th>Paiement</th>
               <th>Commentaire</th>
               <th>Date de naissance</th>
-              <th>Parent / contact</th>
+              <th>Urgence</th>
               <th>Téléphone</th>
               <th>Email</th>
               <th>Adresse</th>
+              <th>Santé</th>
               <th>Certificat médical</th>
               <th aria-label="Supprimer" />
             </tr>
@@ -119,17 +134,13 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
                   </button>
                 </td>
                 <td>
-                  <select
+                  <button
+                    type="button"
                     className={`select-pill select-pill--${PAIEMENT_TONE[el.statutPaiement]}`}
-                    value={el.statutPaiement}
-                    onChange={(e) => update(el.id, { statutPaiement: e.target.value })}
+                    onClick={() => setPaiementEditId(el.id)}
                   >
-                    {Object.entries(paiementLabels).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
+                    {paiementLabels[el.statutPaiement]} — {el.montantPaye}€/{el.montantTotalAnnee}€
+                  </button>
                 </td>
                 <td>
                   <button
@@ -137,7 +148,7 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
                     className="cell-comment"
                     onClick={() => setCommentEditId(el.id)}
                   >
-                    {el.commentaire || <span className="muted">—</span>}
+                    {el.commentaireAdmin || <span className="muted">—</span>}
                   </button>
                 </td>
                 <td>
@@ -148,10 +159,17 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
                   />
                 </td>
                 <td>
-                  <EditableText
-                    value={el.parent}
-                    onChange={(v) => update(el.id, { parent: v })}
-                  />
+                  <button
+                    type="button"
+                    className="cell-comment"
+                    onClick={() => setUrgenceEditId(el.id)}
+                  >
+                    {el.urgenceNom ? (
+                      `${el.urgencePrenom} ${el.urgenceNom} (${el.urgenceLien})`
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </button>
                 </td>
                 <td>
                   <EditableText
@@ -167,6 +185,19 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
                     value={el.adresse}
                     onChange={(v) => update(el.id, { adresse: v })}
                   />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="cell-comment"
+                    onClick={() => setSanteEditId(el.id)}
+                  >
+                    {el.allergies || el.traitementMedical || el.informationsImportantes ? (
+                      'Voir'
+                    ) : (
+                      <span className="muted">—</span>
+                    )}
+                  </button>
                 </td>
                 <td>
                   <button
@@ -227,16 +258,116 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
           <textarea
             className="modal-textarea"
             rows={6}
-            value={commentEnEdition.commentaire}
-            onChange={(e) => update(commentEnEdition.id, { commentaire: e.target.value })}
-            placeholder="Allergie, information médicale, remarque..."
+            value={commentEnEdition.commentaireAdmin}
+            onChange={(e) => update(commentEnEdition.id, { commentaireAdmin: e.target.value })}
+            placeholder="Remarque interne, réservée à l'admin."
           />
         </Modal>
       )}
 
-      {showAdd && (
-        <AddEleveModal onClose={() => setShowAdd(false)} onAdd={addEleve} />
+      {paiementEnEdition && (
+        <Modal title={`Paiement — ${paiementEnEdition.prenom}`} onClose={() => setPaiementEditId(null)}>
+          <div className="form-fields">
+            <label htmlFor="paiement-statut">Statut</label>
+            <select
+              id="paiement-statut"
+              className="field-input"
+              value={paiementEnEdition.statutPaiement}
+              onChange={(e) => update(paiementEnEdition.id, { statutPaiement: e.target.value })}
+            >
+              {Object.entries(paiementLabels).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="paiement-total">Montant total de l’année (€)</label>
+            <input
+              id="paiement-total"
+              type="number"
+              className="field-input"
+              value={paiementEnEdition.montantTotalAnnee}
+              onChange={(e) =>
+                update(paiementEnEdition.id, { montantTotalAnnee: Number(e.target.value) })
+              }
+            />
+            <label htmlFor="paiement-paye">Montant payé (€)</label>
+            <input
+              id="paiement-paye"
+              type="number"
+              className="field-input"
+              value={paiementEnEdition.montantPaye}
+              onChange={(e) => update(paiementEnEdition.id, { montantPaye: Number(e.target.value) })}
+            />
+          </div>
+        </Modal>
       )}
+
+      {urgenceEnEdition && (
+        <Modal
+          title={`Contact d’urgence — ${urgenceEnEdition.prenom}`}
+          onClose={() => setUrgenceEditId(null)}
+        >
+          <div className="form-fields">
+            <label htmlFor="urgence-prenom">Prénom</label>
+            <input
+              id="urgence-prenom"
+              className="field-input"
+              value={urgenceEnEdition.urgencePrenom}
+              onChange={(e) => update(urgenceEnEdition.id, { urgencePrenom: e.target.value })}
+            />
+            <label htmlFor="urgence-nom">Nom</label>
+            <input
+              id="urgence-nom"
+              className="field-input"
+              value={urgenceEnEdition.urgenceNom}
+              onChange={(e) => update(urgenceEnEdition.id, { urgenceNom: e.target.value })}
+            />
+            <label htmlFor="urgence-lien">Lien (ex. Mère, Père...)</label>
+            <input
+              id="urgence-lien"
+              className="field-input"
+              value={urgenceEnEdition.urgenceLien}
+              onChange={(e) => update(urgenceEnEdition.id, { urgenceLien: e.target.value })}
+            />
+          </div>
+        </Modal>
+      )}
+
+      {santeEnEdition && (
+        <Modal title={`Santé — ${santeEnEdition.prenom}`} onClose={() => setSanteEditId(null)}>
+          <div className="form-fields">
+            <label htmlFor="sante-allergies">Allergies</label>
+            <textarea
+              id="sante-allergies"
+              className="modal-textarea"
+              rows={2}
+              value={santeEnEdition.allergies}
+              onChange={(e) => update(santeEnEdition.id, { allergies: e.target.value })}
+            />
+            <label htmlFor="sante-traitement">Traitement médical</label>
+            <textarea
+              id="sante-traitement"
+              className="modal-textarea"
+              rows={2}
+              value={santeEnEdition.traitementMedical}
+              onChange={(e) => update(santeEnEdition.id, { traitementMedical: e.target.value })}
+            />
+            <label htmlFor="sante-infos">Informations importantes</label>
+            <textarea
+              id="sante-infos"
+              className="modal-textarea"
+              rows={2}
+              value={santeEnEdition.informationsImportantes}
+              onChange={(e) =>
+                update(santeEnEdition.id, { informationsImportantes: e.target.value })
+              }
+            />
+          </div>
+        </Modal>
+      )}
+
+      {showAdd && <AddEleveModal onClose={() => setShowAdd(false)} onAdd={addEleve} />}
 
       {showImport && <ImportElevesModal onClose={() => setShowImport(false)} />}
     </div>

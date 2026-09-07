@@ -23,15 +23,22 @@ function versLabelAffiche(dateIso) {
   return `${jour}/${mois}`
 }
 
-// Écran Présence (Admin, Professeur — voir spec/SPEC.md 5.2 et images/presence.png).
-// Élèves en lignes, dates en colonnes (défilement horizontal). Cliquer une
-// case fait tourner le statut (droit d'édition réservé à Admin/Professeur).
-export default function PresenceScreen({ cours, eleves, data, onCycle, onAddDate }) {
+// Écran Présence (Admin, Professeur — voir spec/SPEC.md §5.2 et §6.6).
+// Élèves ET professeur(s) du cours en lignes, dates en colonnes (défilement
+// horizontal). Cliquer une case fait tourner le statut (droit d'édition
+// réservé à Admin/Professeur).
+export default function PresenceScreen({ cours, eleves, professeurs, data, onCycle, onAddDate }) {
   const [showAdd, setShowAdd] = useState(false)
 
   if (!cours) return null
 
-  const roster = eleves.filter((el) => el.coursIds.includes(cours.id))
+  const rosterEleves = eleves
+    .filter((el) => el.coursIds.includes(cours.id))
+    .map((el) => ({ ...el, role: 'eleve' }))
+  const rosterProfs = professeurs
+    .filter((p) => p.id === cours.professeurId)
+    .map((p) => ({ ...p, role: 'professeur' }))
+  const roster = [...rosterProfs, ...rosterEleves]
   const dates = data?.dates ?? []
 
   function statusFor(eleveId, index) {
@@ -44,7 +51,7 @@ export default function PresenceScreen({ cours, eleves, data, onCycle, onAddDate
         <table className="presence-table">
           <thead>
             <tr>
-              <th className="presence-table__sticky">Élève</th>
+              <th className="presence-table__sticky">Nom</th>
               {dates.map((d) => (
                 <th key={d}>{d}</th>
               ))}
@@ -53,7 +60,10 @@ export default function PresenceScreen({ cours, eleves, data, onCycle, onAddDate
           <tbody>
             {roster.map((el) => (
               <tr key={el.id}>
-                <td className="presence-table__sticky">{el.prenom}</td>
+                <td className="presence-table__sticky">
+                  {el.prenom}
+                  {el.role === 'professeur' && <span className="muted"> (prof)</span>}
+                </td>
                 {dates.map((d, i) => {
                   const status = statusFor(el.id, i)
                   return (
@@ -73,7 +83,7 @@ export default function PresenceScreen({ cours, eleves, data, onCycle, onAddDate
             ))}
             {roster.length === 0 && (
               <tr>
-                <td className="presence-table__sticky muted">Aucun élève inscrit</td>
+                <td className="presence-table__sticky muted">Personne inscrite à ce cours</td>
               </tr>
             )}
           </tbody>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import ConversationListScreen from './messagerie/ConversationListScreen.jsx'
 import ConversationThreadScreen from './messagerie/ConversationThreadScreen.jsx'
 
-// Écran Messagerie (Admin, Professeur, Parent — voir spec/SPEC.md 5.5).
+// Écran Messagerie (Admin, Professeur, Élève — voir spec/SPEC.md 5.5).
 // Deux écrans distincts, comme WhatsApp : la liste des conversations, puis
 // (au clic) le fil d'une conversation en plein écran avec une flèche de
 // retour — jamais les deux affichés en même temps.

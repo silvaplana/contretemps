@@ -15,6 +15,33 @@ export const currentUser = {
   initiales: 'VP',
 }
 
+// Rang de rôle, du plus faible au plus fort (voir spec §2.2 "règle de
+// sécurité du switch de profil famille") : sert à savoir si passer d'un
+// profil à l'autre est une montée en privilège (code redemandé) ou non.
+export const ROLE_RANK = { eleve: 0, professeur: 1, admin: 2 }
+
+// Profils de la même famille que currentUser, façon Netflix (spec §2.1) :
+// comptes de la même école partageant le même email, avec bascule sans
+// reconnexion (juste le code redemandé en cas de montée en privilège).
+// En dur pour la maquette — le vrai calcul par email est pour le backend
+// (voir §6.2). Jojo et Noa Petit sont les élèves e3 et e6 ci-dessous.
+export const familleActuelle = [
+  { ...currentUser },
+  { id: 'e3', type: 'eleve', nom: 'Petit', prenom: 'Jojo', initiales: 'JP' },
+  { id: 'e6', type: 'eleve', nom: 'Fabre', prenom: 'Noa', initiales: 'NF' },
+]
+
+// École actuelle (voir spec §5.1.5 et §6.1) : nom + 3 codes d'accès,
+// modifiables par tout admin depuis Admin > Paramètres école. Une seule
+// école en dur pour la maquette — le multi-écoles réel est pour le backend.
+export const ecoleActuelle = {
+  id: 'ecole1',
+  nom: 'Contretemps',
+  codeAccesAdmin: 'ADMIN2026',
+  codeAccesProf: 'PROF2026',
+  codeAccesEleve: 'ELEVE2026',
+}
+
 export const professeurs = [
   {
     id: 'p1',
@@ -78,19 +105,30 @@ export const cours = [
   },
 ]
 
+// Champs élève (voir spec/SPEC.md §6.4) : plus de champ "parent" libre —
+// remplacé par un contact d'urgence structuré (urgenceNom/Prenom/Lien) et
+// des champs santé, alignés sur ce qu'un compte Élève porte lui-même
+// (mineur ou majeur, il n'y a plus de compte "Parent" séparé, voir §2.1).
 export const eleves = [
   {
     id: 'e1',
     nom: 'Dubois',
     prenom: 'Marianne',
     coursIds: ['c1'],
-    statutPaiement: 'a_jour',
-    commentaire: 'Allergie fruits à coque.',
+    statutPaiement: 'paye',
+    montantTotalAnnee: 320,
+    montantPaye: 320,
+    commentaireAdmin: '',
     dateNaissance: '2014-03-12',
-    parent: 'Sophie Dubois',
+    urgenceNom: 'Dubois',
+    urgencePrenom: 'Sophie',
+    urgenceLien: 'Mère',
     telephone: '06 12 34 56 78',
     email: 's.dubois@mail.com',
     adresse: '4 rue des Lilas, Le Beausset',
+    allergies: 'Fruits à coque.',
+    traitementMedical: '',
+    informationsImportantes: '',
     certificatMedical: true,
   },
   {
@@ -98,13 +136,20 @@ export const eleves = [
     nom: 'Martin',
     prenom: 'Coco',
     coursIds: ['c1'],
-    statutPaiement: 'en_attente',
-    commentaire: 'Relancer paiement.',
+    statutPaiement: 'en_cours',
+    montantTotalAnnee: 320,
+    montantPaye: 100,
+    commentaireAdmin: 'Relancer paiement.',
     dateNaissance: '2013-11-02',
-    parent: 'Nadia Martin',
+    urgenceNom: 'Martin',
+    urgencePrenom: 'Nadia',
+    urgenceLien: 'Mère',
     telephone: '06 22 11 09 87',
     email: 'n.martin@mail.com',
     adresse: '12 avenue du Château, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
     certificatMedical: true,
   },
   {
@@ -112,13 +157,20 @@ export const eleves = [
     nom: 'Petit',
     prenom: 'Jojo',
     coursIds: ['c3'],
-    statutPaiement: 'a_jour',
-    commentaire: '',
+    statutPaiement: 'paye',
+    montantTotalAnnee: 280,
+    montantPaye: 280,
+    commentaireAdmin: '',
     dateNaissance: '2018-06-20',
-    parent: 'Karim Petit',
+    urgenceNom: 'Petit',
+    urgencePrenom: 'Karim',
+    urgenceLien: 'Père',
     telephone: '06 45 67 89 10',
     email: 'k.petit@mail.com',
     adresse: '3 chemin des Vignes, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
     certificatMedical: false,
   },
   {
@@ -126,13 +178,20 @@ export const eleves = [
     nom: 'Roux',
     prenom: 'Thomas',
     coursIds: ['c1', 'c2'],
-    statutPaiement: 'a_jour',
-    commentaire: '',
+    statutPaiement: 'paye',
+    montantTotalAnnee: 480,
+    montantPaye: 480,
+    commentaireAdmin: '',
     dateNaissance: '2011-01-30',
-    parent: 'Alice Roux',
+    urgenceNom: 'Roux',
+    urgencePrenom: 'Alice',
+    urgenceLien: 'Mère',
     telephone: '06 33 44 55 66',
     email: 'a.roux@mail.com',
     adresse: '8 rue de la Gare, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
     certificatMedical: true,
   },
   {
@@ -140,13 +199,20 @@ export const eleves = [
     nom: 'Blanc',
     prenom: 'Léa',
     coursIds: ['c2'],
-    statutPaiement: 'retard',
-    commentaire: 'Rappel envoyé le 02/08.',
+    statutPaiement: 'en_cours',
+    montantTotalAnnee: 320,
+    montantPaye: 0,
+    commentaireAdmin: 'Rappel envoyé le 02/08.',
     dateNaissance: '2010-09-14',
-    parent: 'Julie Blanc',
+    urgenceNom: 'Blanc',
+    urgencePrenom: 'Julie',
+    urgenceLien: 'Mère',
     telephone: '06 55 44 33 22',
     email: 'j.blanc@mail.com',
     adresse: '21 impasse des Oliviers, Le Beausset',
+    allergies: '',
+    traitementMedical: 'Asthme (Ventoline dans le sac).',
+    informationsImportantes: '',
     certificatMedical: true,
   },
   {
@@ -154,13 +220,20 @@ export const eleves = [
     nom: 'Fabre',
     prenom: 'Noa',
     coursIds: ['c3'],
-    statutPaiement: 'a_jour',
-    commentaire: '',
+    statutPaiement: 'paye',
+    montantTotalAnnee: 280,
+    montantPaye: 280,
+    commentaireAdmin: '',
     dateNaissance: '2017-12-05',
-    parent: 'Karim Petit',
+    urgenceNom: 'Petit',
+    urgencePrenom: 'Karim',
+    urgenceLien: 'Père',
     telephone: '06 45 67 89 10',
     email: 'k.petit@mail.com',
     adresse: '3 chemin des Vignes, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
     certificatMedical: true,
   },
   {
@@ -168,13 +241,20 @@ export const eleves = [
     nom: 'Simon',
     prenom: 'Inès',
     coursIds: ['c4'],
-    statutPaiement: 'a_jour',
-    commentaire: '',
+    statutPaiement: 'paye',
+    montantTotalAnnee: 300,
+    montantPaye: 300,
+    commentaireAdmin: '',
     dateNaissance: '2009-04-18',
-    parent: 'Marc Simon',
+    urgenceNom: 'Simon',
+    urgencePrenom: 'Marc',
+    urgenceLien: 'Père',
     telephone: '06 66 77 88 99',
     email: 'm.simon@mail.com',
     adresse: '15 rue Jean Jaurès, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
     certificatMedical: true,
   },
   {
@@ -182,13 +262,20 @@ export const eleves = [
     nom: 'Girard',
     prenom: 'Maël',
     coursIds: ['c4'],
-    statutPaiement: 'en_attente',
-    commentaire: '',
+    statutPaiement: 'en_cours',
+    montantTotalAnnee: 300,
+    montantPaye: 150,
+    commentaireAdmin: '',
     dateNaissance: '2008-07-22',
-    parent: 'Elodie Girard',
+    urgenceNom: 'Girard',
+    urgencePrenom: 'Elodie',
+    urgenceLien: 'Mère',
     telephone: '06 77 88 99 00',
     email: 'e.girard@mail.com',
     adresse: '6 place du Marché, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
     certificatMedical: false,
   },
 ]
@@ -421,8 +508,9 @@ export const conversations = [
   },
 ]
 
+// Voir spec/SPEC.md §6.4 : 2 valeurs seulement (le détail des montants est
+// dans montantTotalAnnee / montantPaye, pas dans le statut lui-même).
 export const paiementLabels = {
-  a_jour: 'À jour',
-  en_attente: 'En attente',
-  retard: 'Retard',
+  en_cours: 'En cours',
+  paye: 'Payé',
 }

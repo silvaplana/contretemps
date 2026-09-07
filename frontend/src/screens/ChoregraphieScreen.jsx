@@ -3,7 +3,7 @@ import Modal from '../components/Modal.jsx'
 import ChoregraphieDetailScreen from './choregraphie/ChoregraphieDetailScreen.jsx'
 import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 
-// Écran Chorégraphie (Admin, Professeur, Parent — voir spec/SPEC.md 5.3 et
+// Écran Chorégraphie (Admin, Professeur, Élève — voir spec/SPEC.md 5.3 et
 // images/choregraphie.png). Deux écrans distincts, comme la Messagerie : la
 // liste des chorégraphies du cours, puis (au clic) le détail en plein écran
 // avec une flèche de retour — jamais les deux affichés en même temps.

@@ -94,6 +94,31 @@
   white-space: nowrap;
 }
 
+.famille-selector {
+  position: relative;
+}
+
+.famille-selector__button {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-h);
+}
+
+.famille-selector__menu {
+  right: 0;
+  left: auto;
+  min-width: 220px;
+}
+
+.famille-selector__role {
+  margin-left: auto;
+  font-size: 12px;
+}
+
 .cours-selector__menu,
 .header-menu__panel {
   position: absolute;
@@ -478,6 +503,21 @@
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--card-bg);
+}
+
+/* Champs de formulaire hors modale (ex. AdminParametres.jsx) — même look que
+   .modal-body, réutilisable dans un écran classique. */
+.form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.form-fields label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
 }
 
 .modal-textarea,
@@ -1208,6 +1248,31 @@
   letter-spacing: 0.04em;
   color: var(--text-muted);
   margin-bottom: 8px;
+}
+
+/* Liste des autres profils de la famille, dans l'écran Profil (§5.6). */
+.profil-famille-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.profil-famille-list__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text-h);
+  text-align: left;
+}
+
+.profil-famille-list__nom {
+  font-weight: 600;
+  flex: 1;
 }
 
 .settings-row {

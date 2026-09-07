@@ -4,7 +4,7 @@ import Icon from '../components/Icon.jsx'
 import VideoThumb from '../components/VideoThumb.jsx'
 import AddVideoModal from './video/AddVideoModal.jsx'
 
-// Écran Vidéo (Admin, Professeur, Parent — voir spec/SPEC.md 5.4 et
+// Écran Vidéo (Admin, Professeur, Élève — voir spec/SPEC.md 5.4 et
 // images/video.png). Une chorégraphie filmée par entrée, liée au cours
 // sélectionné dans l'en-tête. Le "+" est accessible aux 3 rôles.
 export default function VideoScreen({ cours, list, setList, choregraphies }) {
