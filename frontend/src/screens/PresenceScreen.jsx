@@ -39,9 +39,12 @@ export default function PresenceScreen({
   onCycle,
   onAddDate,
   onSetHeureProf,
+  // Contrôlé depuis App.jsx : le menu 3 points de l'en-tête propose aussi
+  // "Ajouter une nouvelle date" (même action que le "+"), donc cet état ne
+  // peut plus être purement interne à cet écran.
+  showAdd,
+  setShowAdd,
 }) {
-  const [showAdd, setShowAdd] = useState(false)
-
   if (!cours) return null
 
   const rosterEleves = eleves.filter((el) => el.coursIds.includes(cours.id))

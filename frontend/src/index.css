@@ -30,6 +30,12 @@
 
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 
+  /* Hauteur réelle de .bottom-nav (padding 8px*2 + item min-height 44px +
+     bordure 1px = 61px, +marge) — utilisée pour que les FAB (.fab,
+     .fab--secondary, en position fixed) restent juste au-dessus, jamais
+     dessous ni à cheval (voir App.css). */
+  --bottom-nav-height: 64px;
+
   font: 16px/145% var(--sans);
   color-scheme: light;
   color: var(--text);

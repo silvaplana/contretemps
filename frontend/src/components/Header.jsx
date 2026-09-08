@@ -20,6 +20,10 @@ export default function Header({
   onSwitchProfil,
   onNavigate,
   onLogout,
+  // Action supplémentaire propre à l'écran affiché (ex. "Ajouter une
+  // date" sur Présence — fait la même chose que le "+", juste accessible
+  // aussi depuis ce menu) : { label, icon, onClick }, optionnel.
+  menuExtra,
 }) {
   const [coursOpen, setCoursOpen] = useState(false)
   const [familleOpen, setFamilleOpen] = useState(false)
@@ -140,6 +144,17 @@ export default function Header({
             </button>
             {menuOpen && (
               <div className="dropdown-menu header-menu__panel">
+                {menuExtra && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      menuExtra.onClick()
+                      setMenuOpen(false)
+                    }}
+                  >
+                    <Icon name={menuExtra.icon} size={18} /> {menuExtra.label}
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => {

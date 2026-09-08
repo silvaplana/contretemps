@@ -59,6 +59,11 @@ function App() {
   const [selectedCoursId, setSelectedCoursId] = useState(cours[0]?.id ?? null)
   const selectedCours = cours.find((c) => c.id === selectedCoursId) ?? null
 
+  // "Ajouter une date" (Présence) : contrôlé ici, pas en état interne à
+  // PresenceScreen, pour que le menu 3 points de l'en-tête (voir Header)
+  // puisse aussi déclencher la modale — même action que le "+".
+  const [presenceShowAdd, setPresenceShowAdd] = useState(false)
+
   // Cours accessibles à un profil donné (voir spec §4) : tous pour l'Admin,
   // ceux où il est inscrit pour un Élève, ceux qu'il enseigne pour un Prof.
   function coursDuProfil(profil) {
@@ -177,6 +182,15 @@ function App() {
         onSwitchProfil={switchProfil}
         onNavigate={setActiveTab}
         onLogout={() => setLoggedIn(false)}
+        menuExtra={
+          activeTab === 'presence'
+            ? {
+                label: 'Ajouter une nouvelle date',
+                icon: 'plus',
+                onClick: () => setPresenceShowAdd(true),
+              }
+            : undefined
+        }
       />
 
       <main className="app__content">
@@ -217,6 +231,8 @@ function App() {
               onCycle={cycleStatut}
               onAddDate={addDatePresence}
               onSetHeureProf={setHeureProf}
+              showAdd={presenceShowAdd}
+              setShowAdd={setPresenceShowAdd}
             />
           )}
 

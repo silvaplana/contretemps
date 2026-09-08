@@ -429,9 +429,14 @@
 }
 
 .fab {
-  position: absolute;
+  /* fixed (pas absolute) : sur un écran dont le contenu défile (ex.
+     Présence avec beaucoup d'élèves), "absolute" ancre le bouton au bas de
+     TOUT le contenu de .screen — donc en bas du scroll, pas en bas de
+     l'écran visible (vécu : le "+" scrollait avec le tableau au lieu de
+     rester fixe). "fixed" l'ancre au viewport, au-dessus de la nav du bas. */
+  position: fixed;
   right: 16px;
-  bottom: 16px;
+  bottom: calc(var(--bottom-nav-height) + 16px);
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -448,9 +453,9 @@
 /* Bouton flottant secondaire, empilé au-dessus du FAB principal (voir
    AdminEleves.jsx — importer des élèves). */
 .fab--secondary {
-  position: absolute;
+  position: fixed;
   right: 16px;
-  bottom: 80px;
+  bottom: calc(var(--bottom-nav-height) + 16px + 64px);
   width: 48px;
   height: 48px;
   border-radius: 50%;
