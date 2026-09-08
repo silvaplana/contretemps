@@ -229,11 +229,6 @@ export default function HeuresScreen({ professeur, cours, presences, estAdmin, o
             </table>
           </div>
         )}
-
-        <p className="muted heures-screen__disclaimer">
-          ⚠️ Ce n’est pas une fiche de salaire légale — c’est un relevé d’heures/justificatif,
-          à traiter par un logiciel de paie ou un comptable pour produire le vrai bulletin.
-        </p>
       </div>
     </div>
   )
