@@ -21,7 +21,8 @@ backend/
 │   ├── ecoles/             # Admin > École
 │   ├── comptes/            # Profil (+ table Compte/Famille, socle réutilisé par eleves/profs/auth)
 │   ├── auth/               # Login, bascule de profil famille
-│   └── cours/              # Admin > Cours (+ planning hebdomadaire)
+│   ├── cours/              # Admin > Cours (+ planning hebdomadaire)
+│   └── eleves/             # Admin > Élèves
 └── tests/
 ```
 
@@ -37,9 +38,11 @@ Chaque module `<nom>/` :
 - `schemas.py` — formes Pydantic des requêtes/réponses HTTP (pas les
   tables) quand une route a besoin de valider un corps de requête.
 
-Modules prévus mais pas encore codés (voir spec/SPEC.md) : `eleves`,
-`profs`, `messagerie` (conversations.py + messages.py), `presence`,
-`choregraphies`, `videos`.
+Modules prévus mais pas encore codés (voir spec/SPEC.md) : `profs`,
+`messagerie` (conversations.py + messages.py), `presence`,
+`choregraphies`, `videos`. L'import Excel réel (§6.4bis) est différé —
+`eleves.py` expose déjà les primitives CRUD qu'un futur `import_excel.py`
+pourra réutiliser.
 
 ## Installation (venv + pip)
 

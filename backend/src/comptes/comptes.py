@@ -80,6 +80,20 @@ class Comptes:
         db.refresh(compte)
         return compte
 
+    def update(self, db: Session, compte_id: int, **champs) -> Compte | None:
+        """Champs communs (nom/prénom/email/téléphone) — utilisé par
+        eleves/profs pour éditer leur part de `Compte` (les champs
+        spécifiques au rôle sont gérés dans leur propre module)."""
+        compte = self.get(db, compte_id)
+        if compte is None:
+            return None
+        for cle, valeur in champs.items():
+            if valeur is not None:
+                setattr(compte, cle, valeur)
+        db.commit()
+        db.refresh(compte)
+        return compte
+
     def membres_de_la_famille(self, db: Session, compte_id: int) -> list[Compte]:
         """Pour l'écran Profil et le sélecteur de profil famille (§2.1,
         §4) : les autres comptes de la même famille, lui compris."""
