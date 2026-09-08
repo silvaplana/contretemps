@@ -3,7 +3,27 @@
 // contient un "t" italique. L'arc doit être d'une couleur DISTINCTE du fond
 // de page (--bg) pour rester visible dessus — c'est --card-bg (un ivoire
 // légèrement plus clair) qui joue ce rôle, pas --bg lui-même.
+
+// ⚠️ Essai en cours (voir data/logo contretemps.jpg, fourni par
+// l'utilisateur) : bascule vers un vrai logo photo à la place du "Ct" —
+// grand sur Login, petit dans les en-têtes. Passer à `false` pour revenir
+// au "Ct" ci-dessous, gardé intact exprès (rien n'est décidé encore).
+const AFFICHER_LOGO_PHOTO = true
+const BASE_URL = import.meta.env.BASE_URL
+
 export default function Logo({ size = 40 }) {
+  if (AFFICHER_LOGO_PHOTO) {
+    return (
+      <img
+        src={`${BASE_URL}images/logo-contretemps.jpg`}
+        width={size}
+        height={size}
+        alt="Logo Contretemps"
+        style={{ borderRadius: 8, objectFit: 'cover' }}
+      />
+    )
+  }
+
   return (
     <svg viewBox="0 0 100 100" width={size} height={size} aria-hidden="true">
       <path
