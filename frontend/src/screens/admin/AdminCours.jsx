@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 import PlanningHebdoView from './PlanningHebdoView.jsx'
 
 const MAX_BADGES = 2
@@ -18,6 +19,8 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
   const [editId, setEditId] = useState(null)
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [vue, setVue] = useState('liste')
+  const menuRef = useRef(null)
+  useFermerAuClicExterieur(menuRef, menuOuvert, () => setMenuOuvert(false))
 
   const filtered = cours.filter((c) => c.nom.toLowerCase().includes(search.toLowerCase()))
   const enEdition = cours.find((c) => c.id === editId)
@@ -57,7 +60,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
             placeholder="Rechercher un cours"
           />
         </div>
-        <div className="header-menu">
+        <div className="header-menu" ref={menuRef}>
           <button
             type="button"
             className="icon-btn"

@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Icon from '../components/Icon.jsx'
+import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 
 const MOIS_NOMS = [
   '',
@@ -94,6 +95,8 @@ export default function HeuresScreen({ professeur, cours, presences, estAdmin, o
   const [periode, setPeriode] = useState('all')
   const [exportOuvert, setExportOuvert] = useState(false)
   const [exportChoisi, setExportChoisi] = useState(null)
+  const menuRef = useRef(null)
+  useFermerAuClicExterieur(menuRef, exportOuvert, () => setExportOuvert(false))
 
   if (!professeur) return null
 
@@ -117,7 +120,7 @@ export default function HeuresScreen({ professeur, cours, presences, estAdmin, o
           <span className="muted">Relevé d’heures</span>
         </span>
         {estAdmin && (
-          <div className="header-menu">
+          <div className="header-menu" ref={menuRef}>
             <button
               type="button"
               className="icon-btn"

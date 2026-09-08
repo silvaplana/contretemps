@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
+import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 
 const JOURS_ORDRE = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 const MINUTES_PAR_LIGNE = 5
@@ -24,6 +25,8 @@ export default function PlanningHebdoView({ cours, professeurs, onBack }) {
   const [afficherProf, setAfficherProf] = useState(true)
   const [exportOuvert, setExportOuvert] = useState(false)
   const [exportChoisi, setExportChoisi] = useState(null)
+  const menuRef = useRef(null)
+  useFermerAuClicExterieur(menuRef, exportOuvert, () => setExportOuvert(false))
 
   const joursUtilises = JOURS_ORDRE.filter((j) => cours.some((c) => c.jour === j))
   const jours = joursUtilises.length > 0 ? joursUtilises : ['Mercredi']
@@ -53,7 +56,7 @@ export default function PlanningHebdoView({ cours, professeurs, onBack }) {
         <span className="thread-screen__header-text">
           <strong>Planning hebdomadaire</strong>
         </span>
-        <div className="header-menu">
+        <div className="header-menu" ref={menuRef}>
           <button
             type="button"
             className="icon-btn"

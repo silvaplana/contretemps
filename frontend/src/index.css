@@ -51,8 +51,15 @@ body {
 #root {
   /* 100dvh (dynamic viewport height) plutot que 100vh : suit la barre
      d'adresse qui se retracte/deploie dans les navigateurs mobiles,
-     evite un contenu coupe ou un espace vide en bas. */
-  min-height: 100dvh;
+     evite un contenu coupe ou un espace vide en bas.
+     height (pas min-height) : borne exactement au viewport, sinon la page
+     entiere grandit avec le contenu (un long tableau, par ex.) et
+     .app__content (overflow-y:auto, voir App.css) ne scrolle jamais
+     vraiment tout seul -- c'est alors le body qui defile, et la barre de
+     nav du bas (position:sticky) se retrouve a recouvrir le contenu
+     defile au lieu de rester fixe en dessous (vecu : lignes de tableau
+     cachees derriere la nav). */
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   /* Zones encochees (iPhone notch/home indicator, Android gesture bar). */

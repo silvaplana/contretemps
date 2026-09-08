@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { ROLE_LABEL, estMonteeEnPrivilege } from '../data/roles.js'
+import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
 import Logo from './Logo.jsx'
@@ -27,6 +28,15 @@ export default function Header({
   const [profilVise, setProfilVise] = useState(null)
   const activeCours = cours.find((c) => c.id === selectedCoursId)
   const familleBoutonRef = useRef(null)
+  const coursSelectorRef = useRef(null)
+  const familleSelectorRef = useRef(null)
+  const headerMenuRef = useRef(null)
+
+  // Referme le menu ouvert dès qu'on touche ailleurs sur l'écran — sinon
+  // il restait ouvert indéfiniment (vécu sur Présence et Messagerie).
+  useFermerAuClicExterieur(coursSelectorRef, coursOpen, () => setCoursOpen(false))
+  useFermerAuClicExterieur(familleSelectorRef, familleOpen, () => setFamilleOpen(false))
+  useFermerAuClicExterieur(headerMenuRef, menuOpen, () => setMenuOpen(false))
 
   // Position fixe (viewport), calée sur le bord droit de l'écran, plutôt
   // qu'absolue sur le petit bouton avatar (qui est près du bord mais pas
@@ -54,7 +64,7 @@ export default function Header({
         <Logo size={36} />
         {mode === 'simple' && <h1 className="app-header__title">{title}</h1>}
         {mode === 'course' && (
-          <div className="cours-selector">
+          <div className="cours-selector" ref={coursSelectorRef}>
             <button
               type="button"
               className="cours-selector__button"
@@ -87,7 +97,7 @@ export default function Header({
       {mode === 'course' && (
         <div className="app-header__right">
           {famille.length > 1 && (
-            <div className="famille-selector">
+            <div className="famille-selector" ref={familleSelectorRef}>
               <button
                 ref={familleBoutonRef}
                 type="button"
@@ -119,7 +129,7 @@ export default function Header({
               )}
             </div>
           )}
-          <div className="header-menu">
+          <div className="header-menu" ref={headerMenuRef}>
             <button
               type="button"
               className="icon-btn"

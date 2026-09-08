@@ -670,6 +670,16 @@
   overflow-x: auto;
   border-radius: 12px;
   border: 1px solid var(--border);
+  /* Dans un parent flex-column (.screen), sans ça ce conteneur pouvait se
+     faire réduire par le calcul de flex-shrink en dessous de la hauteur
+     réelle du tableau — et comme "overflow-x: auto" force aussi
+     "overflow-y" à valoir "auto" (règle CSS : un axe "visible" devient
+     "auto" si l'autre ne l'est pas), le tableau se retrouvait coincé dans
+     son propre mini-scroll vertical interne au lieu de faire défiler la
+     page normalement (vécu : lignes cachées, semblant "déborder" sous la
+     barre de navigation du bas). flex-shrink: 0 garde sa hauteur réelle,
+     c'est .screen/.app__content qui défilent, pas cette boîte. */
+  flex-shrink: 0;
 }
 
 .data-table {
@@ -948,9 +958,6 @@
   z-index: 1;
 }
 
-.presence-table thead .presence-table__sticky {
-  background: var(--surface-2);
-}
 
 /* Colonne de gauche bornée en largeur : sans ça, un libellé comme
    "Dépassement (min)" force toute la colonne à s'élargir et ne laisse
