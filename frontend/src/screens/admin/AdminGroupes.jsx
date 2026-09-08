@@ -199,7 +199,7 @@ function AddMembreForm({ professeurs, eleves, cours, onAdd }) {
 
   return (
     <div className="add-membre-form">
-      <p className="add-membre-form__title">Ajouter un bloc</p>
+      <p className="add-membre-form__title">Ajouter un membre</p>
       <div className="segmented segmented--sm">
         {['admin', 'professeur', 'eleve', 'cours'].map((t) => (
           <button
