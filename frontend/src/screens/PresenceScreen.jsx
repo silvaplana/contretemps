@@ -135,6 +135,7 @@ export default function PresenceScreen({
                           <input
                             type="number"
                             className="presence-heure-input presence-heure-input--nombre"
+                            placeholder="–"
                             value={heuresProf(p.id, i).depassementMinutes}
                             onChange={(e) =>
                               onSetHeureProf(cours.id, p.id, i, 'depassementMinutes', e.target.value)
