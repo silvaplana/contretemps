@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from auth import Auth, AuthReceiver
 from comptes import Comptes, ComptesReceiver
+from cours import CoursReceiver, CoursService
 from db import Base, engine
 from ecoles import Ecoles, EcolesReceiver
 
@@ -51,6 +52,10 @@ comptes_receiver = ComptesReceiver(client=comptes_client, app=app)
 # Monte les routes de connexion (/auth/...) - depend de ecoles et comptes.
 auth_client = Auth(ecoles=ecoles_client, comptes=comptes_client)
 auth_receiver = AuthReceiver(client=auth_client, app=app)
+
+# Monte les routes des cours (/cours) - depend de comptes (professeurs/eleves).
+cours_client = CoursService()
+cours_receiver = CoursReceiver(client=cours_client, app=app)
 
 
 def main() -> None:

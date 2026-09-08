@@ -20,7 +20,8 @@ backend/
 │   ├── db/                # engine/session/Base partagés — n'appartient à aucun module métier
 │   ├── ecoles/             # Admin > École
 │   ├── comptes/            # Profil (+ table Compte/Famille, socle réutilisé par eleves/profs/auth)
-│   └── auth/               # Login, bascule de profil famille
+│   ├── auth/               # Login, bascule de profil famille
+│   └── cours/              # Admin > Cours (+ planning hebdomadaire)
 └── tests/
 ```
 
@@ -37,8 +38,8 @@ Chaque module `<nom>/` :
   tables) quand une route a besoin de valider un corps de requête.
 
 Modules prévus mais pas encore codés (voir spec/SPEC.md) : `eleves`,
-`profs`, `cours` (+ planning hebdo), `messagerie` (conversations.py +
-messages.py), `presence`, `choregraphies`, `videos`.
+`profs`, `messagerie` (conversations.py + messages.py), `presence`,
+`choregraphies`, `videos`.
 
 ## Installation (venv + pip)
 

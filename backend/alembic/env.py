@@ -10,6 +10,7 @@ from alembic import context
 # pour qu'`alembic revision --autogenerate` les voie). Un nouveau module
 # avec ses propres tables s'ajoute simplement ici.
 from comptes.models import Compte, Famille  # noqa: F401
+from cours.models import Cours, cours_professeurs, eleves_cours  # noqa: F401
 from db import Base
 from ecoles.models import Ecole  # noqa: F401
 
