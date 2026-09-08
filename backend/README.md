@@ -23,7 +23,8 @@ backend/
 │   ├── auth/               # Login, bascule de profil famille
 │   ├── cours/              # Admin > Cours (+ planning hebdomadaire)
 │   ├── eleves/             # Admin > Élèves
-│   └── profs/              # Admin > Professeurs (pas de models.py : aucun champ propre, voir §6.3)
+│   ├── profs/              # Admin > Professeurs (pas de models.py : aucun champ propre, voir §6.3)
+│   └── presence/           # Présence (+ comptage d'heures : Admin > Professeurs / Profil > "Mes heures")
 └── tests/
 ```
 
@@ -40,10 +41,9 @@ Chaque module `<nom>/` :
   tables) quand une route a besoin de valider un corps de requête.
 
 Modules prévus mais pas encore codés (voir spec/SPEC.md) :
-`messagerie` (conversations.py + messages.py), `presence`,
-`choregraphies`, `videos`. L'import Excel réel (§6.4bis) est différé —
-`eleves.py` expose déjà les primitives CRUD qu'un futur `import_excel.py`
-pourra réutiliser.
+`messagerie` (conversations.py + messages.py), `choregraphies`, `videos`.
+L'import Excel réel (§6.4bis) est différé — `eleves.py` expose déjà les
+primitives CRUD qu'un futur `import_excel.py` pourra réutiliser.
 
 ## Installation (venv + pip)
 

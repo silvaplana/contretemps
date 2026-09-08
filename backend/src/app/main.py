@@ -16,6 +16,7 @@ from cours import CoursReceiver, CoursService
 from db import Base, engine
 from ecoles import Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver
+from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
 
 load_dotenv()  # charge backend/.env si present
@@ -66,6 +67,10 @@ eleves_receiver = ElevesReceiver(client=eleves_client, comptes=comptes_client, a
 # Monte les routes des profs (/profs) - depend de comptes et cours.
 profs_client = Profs(comptes=comptes_client, cours=cours_client)
 profs_receiver = ProfsReceiver(client=profs_client, app=app)
+
+# Monte les routes de presence (/seances, /cours/{id}/seances, /profs/{id}/heures) - depend de cours.
+presence_client = Presence(cours=cours_client)
+presence_receiver = PresenceReceiver(client=presence_client, app=app)
 
 
 def main() -> None:
