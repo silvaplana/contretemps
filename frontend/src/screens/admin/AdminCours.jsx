@@ -5,7 +5,7 @@ import Modal from '../../components/Modal.jsx'
 
 const MAX_BADGES = 2
 
-// Onglet Admin > Cours (voir spec/SPEC.md 5.1.3 et images/admin-cours.png).
+// Onglet Admin > Cours (voir spec/SPEC.md §5.1.4 et images/admin-cours.png).
 // "Élèves inscrits" est dérivé de eleves[].coursIds (relation portée côté
 // élève, voir schéma section 6) : lecture seule ici, ça se modifie depuis
 // l'onglet Élèves. Les autres champs se modifient via la modale (icône

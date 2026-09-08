@@ -275,10 +275,14 @@
 
 .segmented {
   display: flex;
+  /* Retour à la ligne plutôt que défilement horizontal si tous les
+     sous-onglets ne tiennent pas sur une ligne (voir spec §5.1) : chacun
+     reste lisible en entier, pas tronqué ni caché derrière un scroll. */
+  flex-wrap: wrap;
   background: var(--surface);
-  border-radius: 999px;
-  padding: 3px;
-  gap: 1px;
+  border-radius: 16px;
+  padding: 4px;
+  gap: 4px;
 }
 
 .segmented--sm {
@@ -287,12 +291,10 @@
 
 .segmented__option {
   /* auto (pas 0%) : chaque onglet part de sa largeur de contenu, puis
-     l'espace restant/manquant est distribué - un onglet court ("Cours")
-     ne se retrouve pas aussi large qu'un long ("Conversations"). */
+     l'espace restant/manquant est distribué sur sa ligne — un onglet court
+     ("Cours") ne se retrouve pas aussi large qu'un long ("Conversations"). */
   flex: 1 1 auto;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
   background: none;
   border: none;
   border-radius: 999px;
@@ -851,6 +853,31 @@
   color: var(--warning-text);
 }
 
+/* Ligne de séparation visuelle avant les 3 lignes d'heures d'un professeur
+   (voir PresenceScreen.jsx) — juste pour repérer où commence un bloc prof. */
+.presence-table__prof-row td {
+  border-top: 2px solid var(--border);
+}
+
+.presence-heure-input {
+  width: 84px;
+  padding: 6px 4px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  text-align: center;
+  font-size: 13px;
+}
+
+.presence-heure-input--nombre {
+  width: 56px;
+}
+
+.presence-screen__note {
+  padding: 8px 4px 0;
+  font-size: 13px;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;
@@ -1319,4 +1346,46 @@
 
 .switch.is-on .switch__knob {
   transform: translateX(20px);
+}
+
+/* ==========================================================================
+   Comptage d'heures (HeuresScreen.jsx)
+   ========================================================================== */
+
+.heures-screen__body {
+  gap: 12px;
+}
+
+.heures-screen__periode {
+  max-width: 220px;
+}
+
+.heures-cards {
+  display: flex;
+  gap: 10px;
+}
+
+.heures-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+
+.heures-card strong {
+  font-size: 22px;
+}
+
+.heures-table tfoot td {
+  border-top: 2px solid var(--border);
+  padding-top: 10px;
+}
+
+.heures-screen__disclaimer {
+  font-size: 13px;
+  padding-top: 4px;
 }

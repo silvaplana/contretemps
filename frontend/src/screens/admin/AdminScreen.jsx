@@ -7,14 +7,16 @@ import AdminParametres from './AdminParametres.jsx'
 import AdminProfesseurs from './AdminProfesseurs.jsx'
 
 const SUB_TABS = [
+  { value: 'ecole', label: 'École' },
   { value: 'eleves', label: 'Elèves' },
   { value: 'professeurs', label: 'Profs' },
   { value: 'cours', label: 'Cours' },
   { value: 'groupes', label: 'Conversations' },
-  { value: 'parametres', label: 'Paramètres' },
 ]
 
-// Onglet Admin (voir spec/SPEC.md 5.1) : réservé au rôle Admin, 5 sous-onglets.
+// Onglet Admin (voir spec/SPEC.md §5.1) : réservé au rôle Admin, 5 sous-onglets
+// — "École" en premier (le plus à gauche). Si les 5 ne tiennent pas sur une
+// ligne, SegmentedTabs passe à la ligne plutôt que de défiler (voir App.css).
 // L'état de toutes les données de gestion est possédé ici et redescendu aux
 // autres écrans (Présence, Chorégraphie, Vidéo...) via App.jsx.
 export default function AdminScreen({
@@ -28,6 +30,7 @@ export default function AdminScreen({
   setGroupes,
   ecole,
   setEcole,
+  onOpenHeures,
 }) {
   const [subTab, setSubTab] = useState('eleves')
 
@@ -35,6 +38,7 @@ export default function AdminScreen({
     <div className="screen">
       <SegmentedTabs options={SUB_TABS} value={subTab} onChange={setSubTab} />
 
+      {subTab === 'ecole' && <AdminParametres ecole={ecole} setEcole={setEcole} />}
       {subTab === 'eleves' && (
         <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} />
       )}
@@ -43,6 +47,7 @@ export default function AdminScreen({
           professeurs={professeurs}
           setProfesseurs={setProfesseurs}
           cours={cours}
+          onOpenHeures={onOpenHeures}
         />
       )}
       {subTab === 'cours' && (
@@ -57,7 +62,6 @@ export default function AdminScreen({
           cours={cours}
         />
       )}
-      {subTab === 'parametres' && <AdminParametres ecole={ecole} setEcole={setEcole} />}
     </div>
   )
 }

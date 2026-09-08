@@ -7,7 +7,7 @@ import { paiementLabels } from '../../data/mockData.js'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 
-// Onglet Admin > Élèves (voir spec/SPEC.md §5.1.1 et §6.4). Les champs les
+// Onglet Admin > Élèves (voir spec/SPEC.md §5.1.2 et §6.4). Les champs les
 // moins consultés au quotidien (urgence, santé) sont regroupés dans une
 // modale par ligne plutôt qu'en colonnes, pour garder le tableau lisible.
 export default function AdminEleves({ eleves, setEleves, cours }) {

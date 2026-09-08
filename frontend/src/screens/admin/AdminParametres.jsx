@@ -1,6 +1,6 @@
-// Onglet Admin > Paramètres école (voir spec/SPEC.md §5.1.5 et §6.1) : nom
-// de l'école et ses 3 codes d'accès, modifiables par tout admin (pas
-// seulement le créateur de l'école).
+// Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école
+// et ses 3 codes d'accès, modifiables par tout admin (pas seulement le
+// créateur de l'école). Premier sous-onglet, le plus à gauche.
 export default function AdminParametres({ ecole, setEcole }) {
   function update(patch) {
     setEcole((e) => ({ ...e, ...patch }))

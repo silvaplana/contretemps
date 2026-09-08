@@ -87,6 +87,8 @@ depuis les paramètres (tout admin peut les modifier par la suite, pas seulement
 | Ajout/suppression une vidéo                       | ✅     | ✅          | ✅ (pour le cours où il est inscrit) |
 | Messagerie (conversations, envoi mail)            | ✅     | ✅          | ✅                                   |
 | Onglet Profil                                     | ✅     | ✅          | ✅                                   |
+| Comptage d'heures (voir §5.7)                     | ✅ (tous les profs) | ✅ (soi-même uniquement) | ❌                       |
+| Export du relevé d'heures (PDF/Excel/Drive)       | ✅     | ❌          | ❌                                   |
 
 *Le détail fin des droits (ex. un prof peut-il agir sur un cours qui n'est pas le sien) reste
 à préciser lors du développement.*
@@ -117,29 +119,37 @@ adaptée.**
 
 ### 5.1 Admin *(Admin uniquement)*
 
-Sous-onglets (sélecteur segmenté) : Élèves, Professeurs, Cours, Conversations, Paramètres école.
+Sous-onglets (sélecteur segmenté) : École, Élèves, Professeurs, Cours, Conversations. Si les
+sous-onglets ne tiennent pas sur une seule ligne (écran étroit), **retour à la ligne
+automatique** plutôt que défilement horizontal — tous les onglets restent visibles sans
+interaction supplémentaire.
 
-#### 5.1.1 Élèves
+#### 5.1.1 École
+
+Nom de l'école, et les 3 codes d'accès (Admin/Professeur/Élève), modifiables par tout admin.
+Onglet le plus à gauche du sélecteur segmenté.
+
+#### 5.1.2 Élèves
 
 Tableau éditable — voir la liste complète des champs en §6.4. Bouton **+** flottant pour
 ajouter, icône poubelle par ligne pour supprimer.
 
 ![Admin — gestion des élèves](images/admin-eleves.png)
 
-#### 5.1.2 Professeurs
+#### 5.1.3 Professeurs
 
 Nom, Prénom, Email, Téléphone, cours enseignés (badges, plusieurs cours possibles).
 
 ![Admin — gestion des professeurs](images/admin-profs.png)
 
-#### 5.1.3 Cours
+#### 5.1.4 Cours
 
 Nom, horaire, salle, descriptif, professeur(s) (badges, plusieurs profs possibles par cours),
 élèves inscrits (badges, "+X" si liste longue).
 
 ![Admin — gestion des cours](images/admin-cours.png)
 
-#### 5.1.4 Conversations *(gestion admin des conversations de groupe)*
+#### 5.1.5 Conversations *(gestion admin des conversations de groupe)*
 
 Colonnes : Nom, Membres. Contient à la fois les conversations automatiques (une par cours,
 créées dès la création du cours) et celles créées manuellement par l'admin. Les deux sont
@@ -151,15 +161,17 @@ créées dès la création du cours) et celles créées manuellement par l'admin
 
 ![Admin — gestion des conversations](images/admin-groupes.png)
 
-#### 5.1.5 Paramètres école *(nouveau)*
-
-Nom de l'école, et les 3 codes d'accès (Admin/Professeur/Élève), modifiables par tout admin.
 
 ### 5.2 Présence *(Admin, Professeur)*
 
-Une **séance de présence** par cours et par date. Tableau avec les personnes (élèves **et**
-professeurs du cours) en lignes, dates en colonnes (défilement horizontal, colonne fixe à
-gauche). Statuts par case : présent (vert), absent (rouge), retard (orange).
+Une **séance de présence** par cours et par date. Tableau avec les dates en colonnes
+(défilement horizontal, colonne fixe à gauche), et en lignes :
+
+- **Chaque élève du cours** : statut par case, présent (vert) / absent (rouge) / retard (orange)
+- **Pour chaque professeur du cours** : 3 lignes — "Heure début cours", "Heure fin cours"
+  (saisie d'heure, pas de statut à cocher ; la présence du prof est déduite automatiquement
+  de ces heures, voir §6.6) et **"Dépassement (min)"** (déclaration libre d'un dépassement
+  d'horaire en minutes pour cette séance)
 
 ![Écran de présence](images/presence.png)
 
@@ -194,9 +206,49 @@ vocabulaire entre l'admin et l'utilisateur (voir §6.8).
 ### 5.6 Profil *(tous les rôles)*
 
 ⚠️ **Proposition non validée.** Identité de la personne connectée, autres profils de la
-famille, paramètres (notifications, changement de code), bouton **Se déconnecter**.
+famille, paramètres (notifications, changement de code), bouton **Se déconnecter**. Pour un
+compte Professeur, lien **"Mes heures"** vers l'écran Comptage d'heures (§5.7).
 
 ![Écran profil (proposition)](images/profil.png)
+
+### 5.7 Comptage d'heures — relevé d'heures *(nouveau — Admin et Professeur)*
+
+Pas un onglet de navigation principal — accessible depuis deux points d'entrée qui mènent au
+**même écran** :
+- **Admin** : depuis Admin → Professeurs, clic sur un professeur → bouton/onglet "Heures"
+  (l'admin peut consulter les heures de n'importe quel prof)
+- **Professeur** : depuis Profil → lien "Mes heures" (uniquement ses propres heures)
+
+**En-tête** : nom du professeur, **sélecteur de période** (liste des mois disponibles +
+option **"Toute la période"** pour un cumul sans limite de temps), **sélecteur d'export**
+(PDF / Excel / Google Drive — voir note technique ci-dessous).
+
+**Tableau chronologique** : une ligne par séance passée du professeur, **tous cours
+confondus** (colonne "Cours" pour les distinguer) — Date, Cours, Heure début, Heure fin,
+Heures sup, Heures normales (calculée). Ligne de total en pied de tableau : total Heures
+normales et total Heures sup pour la période sélectionnée.
+
+**Formule** (corrigée) : `heures normales = (heure_fin_reelle - heure_debut_reelle) -
+depassement_minutes` — le dépassement est **inclus** dans l'intervalle début/fin, pas ajouté
+en plus.
+
+**Exports** *(réservé à l'Admin — un professeur consulte ses heures mais ne peut pas exporter)* :
+- **PDF** et **Excel** : génération du tableau de la période affichée (mois sélectionné, ou
+  cumul complet si "Toute la période")
+- **Google Drive** : dépôt direct du fichier généré (PDF ou Excel) dans le Drive de
+  l'utilisateur — réutilise l'intégration OAuth2 Google déjà envisagée (scope d'écriture
+  `drive.file`)
+
+**⚠️ Ce n'est pas une fiche de salaire.** Ce tableau est un **relevé d'heures** (justificatif
+d'heures travaillées), pas un bulletin de paie légal — un vrai bulletin de paie nécessite des
+mentions obligatoires (SIRET, convention collective, cotisations sociales détaillées, cumuls
+annuels) qui relèvent d'un logiciel de paie dédié ou d'un comptable. Ce relevé sert d'**entrée**
+à ce calcul, pas de substitut.
+
+Toutes les heures affichées sont **calculées à la volée**, jamais stockées — dérivées de
+`presence_profs` (§6.6).
+
+![Écran comptage d'heures (proposition)](images/heures.png)
 
 ---
 
@@ -302,18 +354,47 @@ Contemporain avancé, Street moyen, Street junior, Street intermédiaire.
 
 ### 6.6 Présence
 
-Modélisée en deux tables plutôt qu'en "listes de couples", pour rester interrogeable
-facilement (ex. statistiques, alerte sur les absences répétées) :
+Modélisée en tables séparées plutôt qu'en "listes de couples", pour rester interrogeable
+facilement (ex. statistiques, alerte sur les absences répétées) — **et séparées entre élèves
+et professeurs**, car leurs données de présence sont de nature différente (statut vs. heures
+réelles) :
 
 ```
 seances_presence   : id (PK), cours_id (FK), date (Obl.)
                       -- création MANUELLE par le prof/admin (bouton "+ nouvelle séance"),
                       -- pas de séance créée automatiquement à l'ouverture de l'onglet
 
-presence_registres : id (PK), seance_id (FK -> seances_presence), compte_id (FK -> comptes),
+presence_eleves    : id (PK), seance_id (FK -> seances_presence), eleve_id (FK -> comptes),
                       statut (enum: present/absent/retard, Obl.)
-                      -- une ligne par personne (élève OU professeur) présente à la séance
+                      -- une ligne par élève présent à la séance, statut saisi manuellement
+
+presence_profs     : id (PK), seance_id (FK -> seances_presence), professeur_id (FK -> comptes),
+                      heure_debut_reelle (heure, Opt.), heure_fin_reelle (heure, Opt.),
+                      depassement_minutes (entier, Opt., défaut 0)
+                      -- une ligne PAR PROFESSEUR (utile si plusieurs profs co-enseignent le
+                      -- cours, chacun peut avoir ses propres horaires réels)
+                      -- PAS de statut stocké séparément : la présence du prof se DÉDUIT des
+                      -- heures — heures renseignées = présent, heures vides = absent, et
+                      -- "retard" se calcule en comparant heure_debut_reelle à l'heure de
+                      -- début théorique du cours (cours.heure_debut)
+                      -- depassement_minutes : déclaré librement par le prof pour cette
+                      -- séance (ex. rangement, débordement non capturé par heure_fin_reelle),
+                      -- INCLUS dans l'intervalle heure_debut_reelle/heure_fin_reelle (pas
+                      -- ajouté en plus) : heures normales = (fin - début) - depassement_minutes
 ```
+
+**Droit d'édition** : un professeur ne peut modifier **que sa propre ligne** d'heures
+(`professeur_id = son compte`), même si plusieurs profs partagent le même cours et voient
+tous la feuille de présence — il voit les heures des autres profs mais ne peut pas les
+éditer. L'admin, lui, peut modifier les heures de n'importe quel professeur.
+
+**Affichage par défaut** : tant qu'aucune heure n'a été saisie (`heure_debut_reelle`/
+`heure_fin_reelle` vides), afficher **"–"** dans la case plutôt qu'un champ vide ou 0:00 —
+signale clairement "pas encore renseigné" sans ambiguïté avec une heure réelle.
+
+Dans l'IHM du tableau de présence, la ligne "présence" d'un professeur (auparavant un simple
+statut à cocher comme pour un élève) est donc remplacée par **3 lignes** : "Heure début cours",
+"Heure fin cours" et "Dépassement (min)", saisies par professeur.
 
 ### 6.7 Chorégraphies
 

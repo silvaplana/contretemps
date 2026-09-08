@@ -6,7 +6,7 @@ import { ROLE_LABEL, estMonteeEnPrivilege } from '../data/roles.js'
 // Écran Profil (tous les rôles — voir spec/SPEC.md §5.6 et images/profil.png).
 // ⚠️ Proposition non validée dans la spec. Affiche les autres profils de la
 // famille (§2.1) quand il y en a plus d'un, avec bascule sans reconnexion.
-export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLogout }) {
+export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLogout, onOpenMesHeures }) {
   const [notifications, setNotifications] = useState(true)
   const [profilVise, setProfilVise] = useState(null)
   const autresProfils = famille.filter((p) => p.id !== user.id)
@@ -50,6 +50,16 @@ export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLog
               </button>
             ))}
           </div>
+        </section>
+      )}
+
+      {user.type === 'professeur' && (
+        <section>
+          <h3 className="section-label">Travail</h3>
+          <button type="button" className="settings-row settings-row--button" onClick={onOpenMesHeures}>
+            <span>Mes heures</span>
+            <Icon name="chevronRight" size={18} />
+          </button>
         </section>
       )}
 

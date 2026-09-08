@@ -25,10 +25,15 @@ export const ROLE_RANK = { eleve: 0, professeur: 1, admin: 2 }
 // reconnexion (juste le code redemandé en cas de montée en privilège).
 // En dur pour la maquette — le vrai calcul par email est pour le backend
 // (voir §6.2). Jojo et Noa Petit sont les élèves e3 et e6 ci-dessous.
+// Isabelle Chevalier (p1) n'a bien sûr aucun lien de famille réel avec
+// Valérie/Jojo/Noa — ajoutée ici uniquement pour pouvoir tester à la souris
+// un profil Professeur (ex. Profil > "Mes heures", §5.7) sans vrai système
+// de connexion par rôle pour l'instant.
 export const familleActuelle = [
   { ...currentUser },
   { id: 'e3', type: 'eleve', nom: 'Petit', prenom: 'Jojo', initiales: 'JP' },
   { id: 'e6', type: 'eleve', nom: 'Fabre', prenom: 'Noa', initiales: 'NF' },
+  { id: 'p1', type: 'professeur', nom: 'Chevalier', prenom: 'Isabelle', initiales: 'IC' },
 ]
 
 // École actuelle (voir spec §5.1.5 et §6.1) : nom + 3 codes d'accès,
@@ -311,6 +316,10 @@ export const groupes = [
 
 // Présences : par cours, une liste de dates et le statut de chaque élève à
 // chaque date ('present' | 'absent' | 'retard').
+// Case "heures" d'un professeur non encore renseignée (voir spec §6.6) :
+// heure_debut_reelle/heure_fin_reelle vides -> affichage "–", pas 0:00.
+const HEURES_VIDES = { heureDebutReelle: '', heureFinReelle: '', depassementMinutes: '' }
+
 export const presencesParCours = {
   c1: {
     dates: ['03/08', '05/08', '07/08', '10/08', '12/08'],
@@ -319,12 +328,32 @@ export const presencesParCours = {
       e2: ['present', 'present', 'present', 'present', 'present'],
       e4: ['absent', 'present', 'present', 'absent', 'present'],
     },
+    // Heures réelles par professeur (voir spec §5.2/§6.6) : plus un statut,
+    // 3 champs saisis par le prof lui-même pour chaque séance passée.
+    parProf: {
+      p1: [
+        { heureDebutReelle: '17:02', heureFinReelle: '18:30', depassementMinutes: 0 },
+        { heureDebutReelle: '17:00', heureFinReelle: '18:35', depassementMinutes: 5 },
+        { heureDebutReelle: '17:00', heureFinReelle: '18:30', depassementMinutes: 0 },
+        HEURES_VIDES,
+        HEURES_VIDES,
+      ],
+    },
   },
   c2: {
     dates: ['03/08', '05/08', '07/08', '10/08', '12/08'],
     parEleve: {
       e4: ['present', 'present', 'present', 'retard', 'present'],
       e5: ['present', 'absent', 'present', 'present', 'present'],
+    },
+    parProf: {
+      p1: [
+        { heureDebutReelle: '18:30', heureFinReelle: '20:00', depassementMinutes: 0 },
+        { heureDebutReelle: '18:30', heureFinReelle: '20:15', depassementMinutes: 15 },
+        HEURES_VIDES,
+        HEURES_VIDES,
+        HEURES_VIDES,
+      ],
     },
   },
   c3: {
@@ -333,12 +362,26 @@ export const presencesParCours = {
       e3: ['present', 'absent', 'present'],
       e6: ['present', 'present', 'retard'],
     },
+    parProf: {
+      p2: [
+        { heureDebutReelle: '10:05', heureFinReelle: '11:00', depassementMinutes: 0 },
+        { heureDebutReelle: '10:00', heureFinReelle: '11:00', depassementMinutes: 0 },
+        HEURES_VIDES,
+      ],
+    },
   },
   c4: {
     dates: ['06/08', '13/08', '20/08'],
     parEleve: {
       e7: ['present', 'present', 'present'],
       e8: ['retard', 'present', 'absent'],
+    },
+    parProf: {
+      p3: [
+        { heureDebutReelle: '19:00', heureFinReelle: '20:30', depassementMinutes: 0 },
+        { heureDebutReelle: '19:00', heureFinReelle: '20:45', depassementMinutes: 10 },
+        HEURES_VIDES,
+      ],
     },
   },
 }

@@ -19,7 +19,7 @@ function libelleMembre(membre, { professeurs, eleves, cours }) {
   return c ? c.nom : '?'
 }
 
-// Onglet Admin > Conversations (voir spec/SPEC.md §5.1.4 et §6.9). Une
+// Onglet Admin > Conversations (voir spec/SPEC.md §5.1.5 et §6.9). Une
 // conversation se compose de blocs "Compte" (admin/professeur/élève
 // individuel) et "Cours" (résout automatiquement tous ses élèves inscrits
 // et son/ses professeur(s)).

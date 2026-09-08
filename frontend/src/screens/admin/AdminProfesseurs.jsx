@@ -3,8 +3,10 @@ import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 
-// Onglet Admin > Professeurs (voir spec/SPEC.md 5.1.2 et images/admin-profs.png).
-export default function AdminProfesseurs({ professeurs, setProfesseurs, cours }) {
+// Onglet Admin > Professeurs (voir spec/SPEC.md §5.1.3 et §5.7). Le bouton
+// "Heures" par ligne ouvre le relevé d'heures du professeur (n'importe
+// lequel, l'admin peut tous les consulter).
+export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, onOpenHeures }) {
   const [search, setSearch] = useState('')
   const [coursEditId, setCoursEditId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -80,6 +82,14 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours })
                 </td>
                 <td>
                   <div className="row-actions">
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      onClick={() => onOpenHeures(p.id)}
+                      aria-label={`Heures de ${p.prenom}`}
+                    >
+                      <Icon name="clock" size={18} />
+                    </button>
                     <button
                       type="button"
                       className="icon-btn"
