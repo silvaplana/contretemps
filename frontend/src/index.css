@@ -23,6 +23,11 @@
   --danger-bg: #f6d4d4;
   --danger-text: #8f2f2f;
 
+  /* Rouge vif dédié au surlignage manuel (appui long, Admin > Élèves) —
+     volontairement distinct de --danger-text (brun sanguin, réservé aux
+     erreurs/suppression) : ici on veut un rouge franc et gai, pas alarmant. */
+  --rouge-surlignage: #ff3b30;
+
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 
   font: 16px/145% var(--sans);

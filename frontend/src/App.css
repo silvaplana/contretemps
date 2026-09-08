@@ -699,14 +699,14 @@
 .is-ligne-rouge td input,
 .is-ligne-rouge td button,
 .is-ligne-rouge td .badge {
-  color: var(--danger-text) !important;
+  color: var(--rouge-surlignage) !important;
 }
 
 .is-cellule-rouge,
 .is-cellule-rouge input,
 .is-cellule-rouge button,
 .is-cellule-rouge .badge {
-  color: var(--danger-text) !important;
+  color: var(--rouge-surlignage) !important;
   font-weight: 700;
 }
 
