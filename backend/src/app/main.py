@@ -1,16 +1,19 @@
 """Point d'entree unique du backend Contretemps.
 
-Pour l'instant, une seule app FastAPI vide (juste /health). Au fur et a
-mesure des fonctionnalites (eleves, cours, inscriptions, planning, ...),
-suivre le decoupage en modules de test-python (backend/src/<module>/) :
-chaque module expose une classe "receiver" qui monte ses routes sur cette
-meme app, montee ici dans main.py.
+Assemble les differents modules metiers (voir backend/README.md et le
+decoupage de test-python) sur une seule app FastAPI / un seul service HTTP.
+N'appartient a aucun des modules qu'il monte.
 """
 
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from auth import Auth, AuthReceiver
+from comptes import Comptes, ComptesReceiver
+from db import Base, engine
+from ecoles import Ecoles, EcolesReceiver
 
 load_dotenv()  # charge backend/.env si present
 
@@ -24,10 +27,30 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Cree les tables si elles n'existent pas encore (pratique en dev/SQLite ;
+# en prod, voir plutot Alembic - backend/alembic/ - pour les migrations
+# reelles). Chaque module importe pour son cote (ci-dessous) enregistre ses
+# tables sur Base.metadata au moment de l'import.
+Base.metadata.create_all(bind=engine)
+
 
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+# Monte les routes des ecoles (/ecoles) sur la meme app.
+ecoles_client = Ecoles()
+ecoles_receiver = EcolesReceiver(client=ecoles_client, app=app)
+
+# Monte les routes des comptes (/comptes) - socle reutilise par auth
+# ci-dessous, et plus tard par eleves/profs.
+comptes_client = Comptes()
+comptes_receiver = ComptesReceiver(client=comptes_client, app=app)
+
+# Monte les routes de connexion (/auth/...) - depend de ecoles et comptes.
+auth_client = Auth(ecoles=ecoles_client, comptes=comptes_client)
+auth_receiver = AuthReceiver(client=auth_client, app=app)
 
 
 def main() -> None:

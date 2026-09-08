@@ -1,0 +1,78 @@
+"""Connexion et bascule de profil famille (voir spec/SPEC.md §2.2).
+
+Dépend de ecoles (pour les 3 codes d'accès) et comptes (pour trouver le
+compte visé) — auth ne possède aucune table à lui, juste de la logique.
+"""
+
+from __future__ import annotations
+
+from comptes import Compte, Comptes
+from ecoles import Ecoles
+from sqlalchemy.orm import Session
+
+# Rang de rôle, du plus faible au plus fort (voir §2.2) : sert à savoir si
+# passer d'un profil à l'autre est une montée en privilège (code
+# redemandé) ou non. Même règle que le frontend (data/roles.js).
+RANG_ROLE = {"eleve": 0, "professeur": 1, "admin": 2}
+
+
+def montee_en_privilege(depuis_role: str, vers_role: str) -> bool:
+    return RANG_ROLE[vers_role] > RANG_ROLE[depuis_role]
+
+
+class Auth:
+    def __init__(self, ecoles: Ecoles, comptes: Comptes) -> None:
+        self.ecoles = ecoles
+        self.comptes = comptes
+
+    def connecter(self, db: Session, ecole_id: int, identifiant: str, code: str) -> Compte | None:
+        """identifiant = 'Prénom Nom' OU email (voir §2.2). Le code doit
+        correspondre au rôle réellement associé au compte trouvé, dans
+        cette école — pas juste être un des 3 codes valides de l'école.
+        """
+        ecole = self.ecoles.get(db, ecole_id)
+        if ecole is None:
+            return None
+
+        candidats: list[Compte] = []
+        if "@" in identifiant:
+            trouve = self.comptes.trouver_par_email(db, ecole_id, identifiant)
+            if trouve is not None:
+                candidats = [trouve]
+        elif " " in identifiant:
+            # rpartition (pas split) : un prénom composé ("Marie-Laure")
+            # n'a pas d'espace, seul le dernier mot est le nom de famille.
+            prenom, _, nom = identifiant.rpartition(" ")
+            candidats = self.comptes.trouver_par_nom_prenom(db, ecole_id, nom, prenom)
+
+        codes_par_role = {
+            "admin": ecole.code_acces_admin,
+            "professeur": ecole.code_acces_prof,
+            "eleve": ecole.code_acces_eleve,
+        }
+        for compte in candidats:
+            if code == codes_par_role.get(compte.role):
+                return compte
+        return None
+
+    def demander_code_pour_bascule(self, db: Session, depuis_compte_id: int, vers_compte_id: int) -> bool:
+        """True si le code du rôle visé doit être redemandé (voir §2.2)."""
+        depuis = self.comptes.get(db, depuis_compte_id)
+        vers = self.comptes.get(db, vers_compte_id)
+        if depuis is None or vers is None:
+            return True
+        return montee_en_privilege(depuis.role, vers.role)
+
+    def verifier_code_bascule(self, db: Session, vers_compte_id: int, code: str) -> bool:
+        vers = self.comptes.get(db, vers_compte_id)
+        if vers is None:
+            return False
+        ecole = self.ecoles.get(db, vers.ecole_id)
+        if ecole is None:
+            return False
+        codes_par_role = {
+            "admin": ecole.code_acces_admin,
+            "professeur": ecole.code_acces_prof,
+            "eleve": ecole.code_acces_eleve,
+        }
+        return code == codes_par_role.get(vers.role)

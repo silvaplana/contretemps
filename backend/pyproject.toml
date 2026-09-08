@@ -12,6 +12,12 @@ dependencies = [
     "uvicorn[standard]",
     "python-dotenv",
     "python-multipart",
+    "sqlalchemy>=2.0",
+    "alembic",
+    # Pilote PostgreSQL (prod, voir spec/SPEC.md section 1) — le code SQLAlchemy
+    # reste portable, le dev local peut tourner sur SQLite (DATABASE_URL, voir
+    # .env.example) sans ce pilote.
+    "psycopg2-binary",
 ]
 
 [project.optional-dependencies]
