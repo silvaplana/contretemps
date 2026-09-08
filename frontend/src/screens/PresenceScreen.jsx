@@ -97,10 +97,16 @@ export default function PresenceScreen({
               const editable = peutEditerProf(p.id)
               return (
                 <Fragment key={p.id}>
-                  <tr className="presence-table__prof-row">
-                    <td className="presence-table__sticky">
-                      {p.prenom} <span className="muted">— Début</span>
+                  {/* Nom du prof affiché une fois, sur toute la largeur —
+                      sinon répété devant "Début"/"Fin"/"Dépassement", ça
+                      forçait la colonne de gauche à s'élargir (vécu). */}
+                  <tr className="presence-table__group-header">
+                    <td colSpan={dates.length + 1}>
+                      {p.prenom} {p.nom}
                     </td>
+                  </tr>
+                  <tr>
+                    <td className="presence-table__sticky">Début</td>
                     {dates.map((d, i) => (
                       <td key={d}>
                         {editable ? (
@@ -119,9 +125,7 @@ export default function PresenceScreen({
                     ))}
                   </tr>
                   <tr>
-                    <td className="presence-table__sticky">
-                      {p.prenom} <span className="muted">— Fin</span>
-                    </td>
+                    <td className="presence-table__sticky">Fin</td>
                     {dates.map((d, i) => (
                       <td key={d}>
                         {editable ? (
@@ -140,9 +144,7 @@ export default function PresenceScreen({
                     ))}
                   </tr>
                   <tr>
-                    <td className="presence-table__sticky">
-                      {p.prenom} <span className="muted">— Dépassement (min)</span>
-                    </td>
+                    <td className="presence-table__sticky">Dépassement (min)</td>
                     {dates.map((d, i) => (
                       <td key={d}>
                         {editable ? (

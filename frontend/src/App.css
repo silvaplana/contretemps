@@ -835,6 +835,26 @@
   background: var(--surface-2);
 }
 
+/* Colonne de gauche bornée en largeur : sans ça, un libellé comme
+   "Dépassement (min)" force toute la colonne à s'élargir et ne laisse
+   presque plus de place aux colonnes de dates sur un écran de téléphone
+   (vécu). Passe à la ligne plutôt que de pousser la largeur. */
+.presence-table td.presence-table__sticky,
+.presence-table th.presence-table__sticky {
+  max-width: 96px;
+  white-space: normal;
+}
+
+/* Nom du professeur affiché une fois, sur toute la largeur, plutôt que
+   répété devant chacune de ses 3 lignes (Début/Fin/Dépassement) — garde
+   la colonne de gauche courte (voir PresenceScreen.jsx). */
+.presence-table__group-header td {
+  background: var(--surface-2);
+  font-weight: 700;
+  text-align: left;
+  white-space: nowrap;
+}
+
 .presence-cell {
   width: 34px;
   height: 34px;
@@ -860,12 +880,6 @@
 .presence-cell--retard {
   background: var(--warning-bg);
   color: var(--warning-text);
-}
-
-/* Ligne de séparation visuelle avant les 3 lignes d'heures d'un professeur
-   (voir PresenceScreen.jsx) — juste pour repérer où commence un bloc prof. */
-.presence-table__prof-row td {
-  border-top: 2px solid var(--border);
 }
 
 .presence-heure-input {
