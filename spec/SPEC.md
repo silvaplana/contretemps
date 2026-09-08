@@ -64,6 +64,8 @@ cible est redemandé uniquement en cas de **montée en privilège**, selon la hi
 Sur la page de connexion, un bouton **"Nouvelle école ?"** ouvre un formulaire de création :
 
 - Nom de l'école
+- Code postal — **obligatoire** : sert à distinguer deux écoles portant le même nom (ex. deux
+  "Contretemps" dans des villes différentes), voir §6.1
 - Code d'accès Admin, Professeur, Élève — **libres**, proposés par défaut sous la forme
   `ADMIN_ECOLE_ANNEE` / `PROF_ECOLE_ANNEE` / `ELEVE_ECOLE_ANNEE` (ÉCOLE = nom de l'école en
   majuscules, ANNÉE = année en cours), éditables avant validation
@@ -126,8 +128,8 @@ interaction supplémentaire.
 
 #### 5.1.1 École
 
-Nom de l'école, et les 3 codes d'accès (Admin/Professeur/Élève), modifiables par tout admin.
-Onglet le plus à gauche du sélecteur segmenté.
+Nom de l'école, code postal, et les 3 codes d'accès (Admin/Professeur/Élève), modifiables par
+tout admin. Onglet le plus à gauche du sélecteur segmenté.
 
 #### 5.1.2 Élèves
 
@@ -265,10 +267,15 @@ champs techniques.
 |---|---|---|
 | id | PK | — |
 | nom | texte | Obl. |
+| code_postal | texte | Obl. |
 | code_acces_admin | texte | Obl. |
 | code_acces_prof | texte | Obl. |
 | code_acces_eleve | texte | Obl. |
 | created_at | datetime | Obl. (auto) |
+
+**Le nom seul n'est pas unique** : deux écoles différentes peuvent porter le même nom (ex. deux
+associations "Contretemps" dans des villes différentes) — c'est le couple **(nom, code_postal)**
+qui doit être unique, pas le nom seul. D'où le code postal obligatoire dès la création.
 
 Modifiable par tout admin de l'école après création. Les 3 codes d'accès sont **libres** (texte
 éditable sans contrainte de format imposée) — à la création de l'école, une valeur par défaut

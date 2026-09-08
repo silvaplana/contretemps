@@ -86,6 +86,7 @@ function codeParDefaut(prefixe, nomEcole) {
 // puis on repropose la connexion avec l'identité du premier admin saisi.
 function NouvelleEcoleModal({ onClose, onCreated }) {
   const [nomEcole, setNomEcole] = useState('')
+  const [codePostal, setCodePostal] = useState('')
   const [codeAdmin, setCodeAdmin] = useState(codeParDefaut('ADMIN', ''))
   const [codeProf, setCodeProf] = useState(codeParDefaut('PROF', ''))
   const [codeEleve, setCodeEleve] = useState(codeParDefaut('ELEVE', ''))
@@ -104,14 +105,16 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nomEcole])
 
-  const valide = nomEcole && adminNom && adminPrenom && adminEmail
+  const valide = nomEcole && codePostal && adminNom && adminPrenom && adminEmail
 
   if (creee) {
     return (
       <Modal title="École créée" onClose={onClose}>
         <p>
-          <strong>{nomEcole}</strong> est prête, avec {adminPrenom} {adminNom} comme premier
-          administrateur.
+          <strong>
+            {nomEcole} ({codePostal})
+          </strong>{' '}
+          est prête, avec {adminPrenom} {adminNom} comme premier administrateur.
         </p>
         <div className="checkbox-list">
           <div className="checkbox-list__item">Code Admin : {codeAdmin}</div>
@@ -153,6 +156,17 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
         value={nomEcole}
         onChange={(e) => setNomEcole(e.target.value)}
         placeholder="Ex. EcoleTest"
+      />
+
+      <label htmlFor="ecole-cp">Code postal</label>
+      {/* Sert à distinguer 2 écoles qui porteraient le même nom (voir spec
+          §6.1) : le couple nom + code postal doit être unique, pas le nom
+          seul — donc obligatoire dès la création. */}
+      <input
+        id="ecole-cp"
+        value={codePostal}
+        onChange={(e) => setCodePostal(e.target.value)}
+        placeholder="Ex. 83330"
       />
 
       <label htmlFor="ecole-code-admin">Code d’accès Admin</label>

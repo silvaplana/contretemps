@@ -1,6 +1,8 @@
-// Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école
-// et ses 3 codes d'accès, modifiables par tout admin (pas seulement le
-// créateur de l'école). Premier sous-onglet, le plus à gauche.
+// Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école,
+// code postal et ses 3 codes d'accès, modifiables par tout admin (pas
+// seulement le créateur de l'école). Premier sous-onglet, le plus à gauche.
+// Le code postal distingue deux écoles qui porteraient le même nom (le
+// couple nom + code postal doit être unique, pas le nom seul).
 export default function AdminParametres({ ecole, setEcole }) {
   function update(patch) {
     setEcole((e) => ({ ...e, ...patch }))
@@ -15,6 +17,14 @@ export default function AdminParametres({ ecole, setEcole }) {
           className="field-input"
           value={ecole.nom}
           onChange={(e) => update({ nom: e.target.value })}
+        />
+
+        <label htmlFor="ecole-param-cp">Code postal</label>
+        <input
+          id="ecole-param-cp"
+          className="field-input"
+          value={ecole.codePostal}
+          onChange={(e) => update({ codePostal: e.target.value })}
         />
 
         <label htmlFor="ecole-param-admin">Code d’accès Admin</label>

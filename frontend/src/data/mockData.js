@@ -42,6 +42,9 @@ export const familleActuelle = [
 export const ecoleActuelle = {
   id: 'ecole1',
   nom: 'Contretemps',
+  // Le nom seul n'est pas unique (deux écoles peuvent partager le même
+  // nom) : c'est le couple (nom, codePostal) qui l'est — voir spec §6.1.
+  codePostal: '83330',
   codeAccesAdmin: 'ADMIN2026',
   codeAccesProf: 'PROF2026',
   codeAccesEleve: 'ELEVE2026',
