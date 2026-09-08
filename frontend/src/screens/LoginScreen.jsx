@@ -18,7 +18,7 @@ export default function LoginScreen({ onLogin }) {
       <div className="login-screen__brand">
         <Logo size={110} />
         <h1>Contretemps</h1>
-        <p>École de danse au Beausset</p>
+        <p>Gestion d'école de danse</p>
       </div>
 
       <form
