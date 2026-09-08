@@ -70,7 +70,7 @@ export default function PresenceScreen({
         <table className="presence-table">
           <thead>
             <tr>
-              <th className="presence-table__sticky">Nom</th>
+              <th className="presence-table__sticky" aria-label="Nom" />
               {ordreAffichage.map((i) => (
                 <th key={dates[i]}>{dates[i]}</th>
               ))}
@@ -86,7 +86,7 @@ export default function PresenceScreen({
                       forçait la colonne de gauche à s'élargir (vécu). */}
                   <tr className="presence-table__group-header">
                     <td colSpan={dates.length + 1}>
-                      {p.prenom} {p.nom}
+                      {p.prenom} {p.nom} :
                     </td>
                   </tr>
                   <tr>
@@ -149,6 +149,12 @@ export default function PresenceScreen({
                 </Fragment>
               )
             })}
+
+            {rosterEleves.length > 0 && (
+              <tr className="presence-table__group-header">
+                <td colSpan={dates.length + 1}>Élèves :</td>
+              </tr>
+            )}
 
             {rosterEleves.map((el) => (
               <tr key={el.id}>
