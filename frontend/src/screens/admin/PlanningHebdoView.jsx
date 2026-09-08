@@ -108,8 +108,12 @@ export default function PlanningHebdoView({ cours, professeurs, onBack }) {
           <div
             className="planning-hebdo__grid"
             style={{
-              gridTemplateColumns: `56px repeat(${jours.length}, 1fr)`,
-              gridTemplateRows: `32px repeat(${nbLignes}, ${MINUTES_PAR_LIGNE * 1.6}px)`,
+              // minmax(120px, 1fr) plutôt que 1fr seul : des cases assez
+              // larges pour que l'horaire ("17h00–17h45") tienne sur une
+              // seule ligne, au prix d'un défilement horizontal si besoin
+              // (voir .planning-hebdo__scroll) plutôt que de rétrécir le texte.
+              gridTemplateColumns: `56px repeat(${jours.length}, minmax(120px, 1fr))`,
+              gridTemplateRows: `32px repeat(${nbLignes}, ${MINUTES_PAR_LIGNE * 2.4}px)`,
             }}
           >
             {/* Coin vide + en-têtes de jour */}
@@ -142,9 +146,9 @@ export default function PlanningHebdoView({ cours, professeurs, onBack }) {
                 const debut = versMinutes(c.heureDebut)
                 const fin = versMinutes(c.heureFin)
                 const duree = fin - debut
-                // Sur un créneau court, on masque d'abord la salle, puis le
-                // prénom du prof — jamais le nom du cours ni l'horaire.
-                const montrerSalle = duree >= 45
+                // La salle ne s'affiche plus jamais (demandé) — sur un
+                // créneau court, on masque seulement le prénom du prof,
+                // jamais le nom du cours ni l'horaire.
                 const montrerProf = afficherProf && duree >= 30
                 const prof = professeurs.find((p) => p.id === c.professeurId)
                 const colonne = jours.indexOf(c.jour) + 2
@@ -158,10 +162,9 @@ export default function PlanningHebdoView({ cours, professeurs, onBack }) {
                     }}
                   >
                     <strong>{c.nom}</strong>
-                    <span>
+                    <span className="planning-hebdo__cours-block__horaire">
                       {c.heureDebut}–{c.heureFin}
                     </span>
-                    {montrerSalle && c.salle && <span className="muted">{c.salle}</span>}
                     {montrerProf && prof && <span className="muted">{prof.prenom}</span>}
                   </div>
                 )

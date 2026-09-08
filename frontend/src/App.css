@@ -1577,21 +1577,28 @@
 
 .planning-hebdo__cours-block {
   margin: 1px 3px;
-  padding: 4px 6px;
+  padding: 6px 8px;
   border-radius: 8px;
   background: var(--accent);
   color: var(--accent-contrast);
   display: flex;
   flex-direction: column;
-  gap: 1px;
-  font-size: 12px;
+  gap: 2px;
+  font-size: 13px;
   overflow: hidden;
   min-height: 0;
 }
 
 .planning-hebdo__cours-block strong {
-  font-size: 12px;
-  line-height: 1.15;
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+/* Ne passe jamais à la ligne — la case est volontairement assez large
+   (voir gridTemplateColumns dans PlanningHebdoView.jsx) pour que l'horaire
+   tienne toujours en entier sur une seule ligne. */
+.planning-hebdo__cours-block__horaire {
+  white-space: nowrap;
 }
 
 .planning-hebdo__cours-block .muted {
