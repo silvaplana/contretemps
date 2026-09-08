@@ -692,17 +692,50 @@
   min-width: 140px;
 }
 
-/* Surbrillance rouge par appui long (voir AdminEleves.jsx) — la ligne
-   colore tout, une cellule individuellement marquée prend le dessus
-   visuellement (fond un peu plus soutenu) pour rester repérable même sur
-   une ligne déjà rouge. */
-.is-ligne-rouge td {
-  background: var(--danger-bg);
+/* Surbrillance rouge par appui long (voir AdminEleves.jsx) — le TEXTE
+   passe en rouge (pas un fond), y compris dans les éléments qui ont leur
+   propre couleur (badges, pilules de paiement, champs éditables...). */
+.is-ligne-rouge td,
+.is-ligne-rouge td input,
+.is-ligne-rouge td button,
+.is-ligne-rouge td .badge {
+  color: var(--danger-text) !important;
 }
 
-.is-cellule-rouge {
-  background: var(--danger-bg) !important;
-  outline: 1px solid var(--danger-text);
+.is-cellule-rouge,
+.is-cellule-rouge input,
+.is-cellule-rouge button,
+.is-cellule-rouge .badge {
+  color: var(--danger-text) !important;
+  font-weight: 700;
+}
+
+/* Popover "voir en entier / marquer / copier" (appui long) : overlay dédié
+   ancré en haut de l'écran plutôt que le bottom-sheet des autres modales —
+   sur mobile le clavier (s'il s'ouvre) mange le bas de l'écran, une
+   popover en bas serait cachée derrière. */
+.cellule-popover-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(58, 36, 16, 0.4);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 56px 16px 16px;
+  z-index: 55;
+}
+
+.cellule-popover-panel {
+  width: 100%;
+  max-width: 420px;
+  max-height: 80dvh;
+  overflow-y: auto;
+  background: var(--bg);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .cellule-popover__valeur {
@@ -711,7 +744,7 @@
   padding: 10px 12px;
   border-radius: 10px;
   background: var(--surface);
-  margin: 8px 0 14px;
+  margin: 0;
 }
 
 .cellule-popover__actions {

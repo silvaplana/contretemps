@@ -99,13 +99,30 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
   // parfois) : ouvre une popover avec la valeur complète + la possibilité
   // de marquer cette cellule, ou toute la ligne, en rouge.
   const [pressed, setPressed] = useState(null) // { eleveId, champ }
+  const [copieOk, setCopieOk] = useState(false)
   const minuteurRef = useRef(null)
   const ignorerProchainClicRef = useRef(false)
+
+  async function copierValeur(valeur) {
+    try {
+      await navigator.clipboard.writeText(valeur)
+      setCopieOk(true)
+      setTimeout(() => setCopieOk(false), 1500)
+    } catch {
+      // Presse-papier indisponible (contexte non sécurisé, permission
+      // refusée...) — la valeur reste affichée dans la popover pour la
+      // recopier à la main, ce n'est pas bloquant.
+    }
+  }
 
   function demarrerAppuiLong(eleveId, champ) {
     clearTimeout(minuteurRef.current)
     minuteurRef.current = setTimeout(() => {
       ignorerProchainClicRef.current = true
+      // La cellule peut contenir un champ texte (EditableText) : sur mobile,
+      // l'appui a déjà pu lui donner le focus et ouvrir le clavier avant que
+      // ce timer se déclenche — on le referme, sinon il cache la popover.
+      document.activeElement?.blur?.()
       setPressed({ eleveId, champ })
     }, DUREE_APPUI_LONG)
   }
@@ -593,36 +610,58 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
       )}
 
       {eleveAppuye && (
-        <Modal title={CHAMP_LABEL[pressed.champ]} onClose={() => setPressed(null)}>
-          <p className="muted">{eleveAppuye.prenom} {eleveAppuye.nom}</p>
-          <p className="cellule-popover__valeur">
-            {valeurCellule(eleveAppuye, pressed.champ, cours) || <span className="muted">(vide)</span>}
-          </p>
-          <div className="cellule-popover__actions">
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => {
-                toggleCelluleRouge(eleveAppuye.id, pressed.champ)
-                setPressed(null)
-              }}
-            >
-              {(eleveAppuye.cellulesRouges ?? []).includes(pressed.champ)
-                ? 'Retirer le rouge de cette cellule'
-                : 'Marquer cette cellule en rouge'}
-            </button>
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => {
-                toggleLigneRouge(eleveAppuye.id)
-                setPressed(null)
-              }}
-            >
-              {eleveAppuye.ligneRouge ? 'Retirer le rouge de la ligne' : 'Marquer toute la ligne en rouge'}
-            </button>
+        <div className="cellule-popover-overlay" onClick={() => setPressed(null)}>
+          <div className="cellule-popover-panel" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>{CHAMP_LABEL[pressed.champ]}</h2>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setPressed(null)}
+                aria-label="Fermer"
+              >
+                <Icon name="x" />
+              </button>
+            </div>
+            <p className="muted">
+              {eleveAppuye.prenom} {eleveAppuye.nom}
+            </p>
+            <p className="cellule-popover__valeur">
+              {valeurCellule(eleveAppuye, pressed.champ, cours) || <span className="muted">(vide)</span>}
+            </p>
+            <div className="cellule-popover__actions">
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => copierValeur(valeurCellule(eleveAppuye, pressed.champ, cours))}
+              >
+                <Icon name="fileCheck" size={16} /> {copieOk ? 'Copié !' : 'Copier dans le presse-papier'}
+              </button>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  toggleCelluleRouge(eleveAppuye.id, pressed.champ)
+                  setPressed(null)
+                }}
+              >
+                {(eleveAppuye.cellulesRouges ?? []).includes(pressed.champ)
+                  ? 'Retirer le rouge de cette cellule'
+                  : 'Marquer cette cellule en rouge'}
+              </button>
+              <button
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  toggleLigneRouge(eleveAppuye.id)
+                  setPressed(null)
+                }}
+              >
+                {eleveAppuye.ligneRouge ? 'Retirer le rouge de la ligne' : 'Marquer toute la ligne en rouge'}
+              </button>
+            </div>
           </div>
-        </Modal>
+        </div>
       )}
 
       {showAdd && <AddEleveModal onClose={() => setShowAdd(false)} onAdd={addEleve} />}
