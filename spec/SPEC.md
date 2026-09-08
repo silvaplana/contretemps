@@ -133,8 +133,11 @@ tout admin. Onglet le plus à gauche du sélecteur segmenté.
 
 #### 5.1.2 Élèves
 
-Tableau éditable — voir la liste complète des champs en §6.4. Bouton **+** flottant pour
-ajouter, icône poubelle par ligne pour supprimer.
+Tableau éditable — voir la liste complète des champs en §6.4, plus une colonne **Âge** juste
+après **Date de naissance** (calculée à la volée, non éditable directement). Bouton **+**
+flottant pour ajouter, icône poubelle par ligne pour supprimer. Bouton **"Importer depuis
+Excel"** — mécanisme détaillé en §6.4bis (mapping des colonnes de cours, alerte sur colonne
+inconnue).
 
 ![Admin — gestion des élèves](images/admin-eleves.png)
 
@@ -149,7 +152,18 @@ Nom, Prénom, Email, Téléphone, cours enseignés (badges, plusieurs cours poss
 Nom, horaire, salle, descriptif, professeur(s) (badges, plusieurs profs possibles par cours),
 élèves inscrits (badges, "+X" si liste longue).
 
+**Menu 3 points** (en-tête de l'écran, discret, même langage que les autres menus 3 points de
+l'app) : propose **"Planning hebdomadaire"**, qui ouvre une vue dédiée — grille des jours de
+la semaine (colonnes) et créneaux horaires (lignes), avec chaque cours positionné selon son
+horaire. Case à cocher "Afficher le nom du prof" (prénom uniquement). Sur les créneaux courts,
+les informations les moins prioritaires (salle, puis prénom du prof) se masquent
+automatiquement si la place manque, plutôt que d'être coupées à moitié.
+
+Dans le même menu 3 points de cette vue planning : **"Exporter en PDF"** et **"Exporter en PDF
+sans professeur"**.
+
 ![Admin — gestion des cours](images/admin-cours.png)
+![Admin — planning hebdomadaire (proposition)](images/planning-hebdo.png)
 
 #### 5.1.5 Conversations *(gestion admin des conversations de groupe)*
 
@@ -317,10 +331,8 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 |---|---|---|---|
 | compte_id | PK, FK → comptes | — | — |
 | date_naissance | date | Obl. | Éditable |
+| *(Âge)* | — | — | **Calculé**, affiché juste après la date de naissance |
 | adresse | texte | Opt. | Éditable |
-| urgence_nom | texte | Opt. | Éditable |
-| urgence_prenom | texte | Opt. | Éditable |
-| urgence_lien | texte (ex. "Mère") | Opt. | Éditable |
 | allergies | texte | Opt. | Éditable |
 | traitement_medical | texte | Opt. | Éditable |
 | informations_importantes | texte | Opt. | Éditable |
@@ -330,6 +342,78 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | commentaire_admin | texte | Opt. | Éditable |
 
 Cours suivis : relation, voir §6.5 (pas un champ stocké ici).
+
+**✅ Changé — contacts multiples par élève** (remplace les anciens champs uniques
+`urgence_nom`/`urgence_prenom`/`urgence_lien`). Le fichier réel d'adhérents de Contretemps
+montre régulièrement **2 parents séparés** avec chacun leur propre téléphone/email — un champ
+de contact unique ne peut pas représenter ça :
+
+```
+contacts_eleve : id (PK), eleve_id (FK -> comptes), nom (Opt.), prenom (Opt.),
+                  lien (texte, ex. "Mère"/"Père"/"Grand-mère", Opt.),
+                  telephone (texte libre, Opt.), email (Opt.)
+                  -- PLUSIEURS lignes possibles par élève (0, 1, 2 ou plus)
+                  -- telephone reste un texte libre SANS validation de format ni
+                  -- contrainte de contenu — peut contenir plusieurs numéros, des
+                  -- annotations ("06 XX XX XX XX mère"), etc. Le fichier réel
+                  -- contient ce genre de cas ; pas de parsing strict à ce stade
+```
+
+### 6.4bis Import Excel des élèves *(nouveau)*
+
+Accessible depuis Admin → Élèves (bouton "Importer depuis Excel"). Le fichier réel utilisé par
+Contretemps a cette structure : Nom, Prénom, Nom-Prénom parent (souvent vide si l'élève est
+majeur), Email, Adresse, Téléphone, une colonne combinant date de naissance et âge calculé
+(l'école calcule actuellement cet âge à la main ; à l'import, **extraire uniquement la date de
+naissance** — la partie avant le " = " — dans `date_naissance`, et ignorer l'âge écrit dans le
+fichier), puis **une colonne par cours** (format "large", "X" si l'élève y est inscrit).
+
+**Mapping des colonnes de cours** : le code compare chaque en-tête de colonne à une **table de
+correspondance** (mapping) entre le libellé du fichier Excel et le `cours` correspondant en
+base (ex. `"Class Ini"` → *Classique initiation*). Une correspondance en base de données
+Python simple suffit ici — **pas besoin d'appel IA** : l'ensemble des cours est fini et connu
+à l'avance, une IA introduirait un risque de correspondance approximative silencieuse sur une
+donnée sensible (élève associé au mauvais cours), alors qu'une table déterministe est
+prévisible et sans ambiguïté.
+- **Colonne reconnue** → import direct des élèves marqués "X" vers ce cours
+- **Colonne non reconnue** → alerte affichée à l'admin : *"Colonne 'XYZ' non reconnue —
+  associer à un cours existant, ou créer un nouveau cours ?"*, décision humaine une seule
+  fois, mémorisée pour les imports suivants du même fichier
+
+**Gestion des élèves déjà existants (réimport)** : avant d'importer, chaque ligne du fichier
+est comparée aux élèves déjà en base **par correspondance (nom, prénom, date de naissance)**
+— une correspondance sur ces 3 champs indique le même élève. **L'email n'est volontairement
+pas utilisé pour cette détection** : plusieurs élèves d'une même famille (frères et sœurs)
+partagent souvent le même email (voir §6.2) — matcher là-dessus ferait passer un deuxième
+enfant du fichier pour le même élève que son frère/sa sœur déjà importé(e), ce qui serait faux.
+
+Le **regroupement en famille reste inchangé pendant l'import** : chaque élève (nouveau ou mis
+à jour) crée/conserve son propre compte, et le mécanisme automatique de regroupement par email
+(§6.2) s'applique normalement — deux frères/sœurs du fichier avec le même email rejoignent
+naturellement la même famille, sans logique spéciale à ajouter pour l'import.
+
+Pour les lignes correspondant à un élève existant, l'écran de relecture pré-import propose :
+- Un **choix global par défaut** en haut de l'écran, ex. *"Pour tous les élèves déjà
+  existants : ○ Mettre à jour la fiche ○ Ignorer (garder tel quel) ○ Créer un doublon quand
+  même"*
+- **Modifiable ligne par ligne** : chaque élève détecté comme doublon reste ajustable
+  individuellement avant validation finale, pour les cas particuliers (ex. mettre à jour la
+  plupart, mais ignorer une ligne où le fichier semble avoir une erreur de saisie)
+
+Rien n'est écrit en base tant que l'admin n'a pas validé l'écran de relecture dans son
+ensemble.
+
+**Notes libres dans le fichier source** (ex. texte collé au nom comme "Arrêt en janvier",
+"Pointes") : à reporter manuellement dans `commentaire_admin` lors de la relecture de
+l'import, pas de détection automatique prévue pour l'instant.
+
+**⚠️ Point de vigilance repéré dans le fichier réel** : au moins un numéro de téléphone y
+apparaît en notation scientifique (ex. `7.86135821E8`) — Excel a interprété le numéro comme un
+nombre plutôt qu'un texte, ce qui fait perdre le zéro initial et peut faire perdre en précision
+au-delà d'un certain nombre de chiffres. À l'import, **importer les téléphones comme texte
+brut** (pas de conversion numérique), et **signaler à l'admin** toute valeur qui ressemble à de
+la notation scientifique (contient "E+" ou "E") pour vérification/correction manuelle — le
+numéro d'origine n'est pas garanti récupérable automatiquement depuis cette forme.
 
 ### 6.5 Cours
 
@@ -352,12 +436,12 @@ Séances de présence et vidéos : reliées par leur propre `cours_id`, jamais l
 (champs **calculés**, obtenus par requête — voir réponse à ta question sur les champs
 techniques).
 
-**Liste de cours à créer par défaut pour Contretemps** (donnée d'amorçage, pas une contrainte
-technique — `nom` reste un texte libre modifiable, pas un enum fermé, pour permettre d'ajouter
-un nouveau type de cours plus tard sans migration) :
-Éveil, Classique initiation, Classique intermédiaire, Classique avancé, Jazz initiation,
-Jazz junior, Jazz intermédiaire, Jazz avancé, Contemporain junior, Contemporain intermédiaire,
-Contemporain avancé, Street moyen, Street junior, Street intermédiaire.
+**✅ Liste de cours corrigée d'après le vrai fichier d'adhérents de Contretemps** (remplace la
+liste précédente, qui incluait des cours "Street" et un détail par niveau du Contemporain
+inexistants en réalité). `nom` reste un texte libre modifiable, pas un enum fermé, pour
+permettre d'ajouter un nouveau cours plus tard sans migration :
+Éveil, Classique initiation, Jazz initiation, Classique moyen, Jazz moyen, Jazz junior,
+Classique intermédiaire, Jazz intermédiaire, Classique avancé, Jazz avancé, Contemporain.
 
 ### 6.6 Présence
 

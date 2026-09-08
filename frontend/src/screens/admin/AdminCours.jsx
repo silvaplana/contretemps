@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import PlanningHebdoView from './PlanningHebdoView.jsx'
 
 const MAX_BADGES = 2
 
@@ -10,13 +11,26 @@ const MAX_BADGES = 2
 // élève, voir schéma section 6) : lecture seule ici, ça se modifie depuis
 // l'onglet Élèves. Les autres champs se modifient via la modale (icône
 // stylo) plutôt qu'en ligne : ça couvre aussi la Salle, absente du tableau.
+// Le menu 3 points (en-tête) ouvre le planning hebdomadaire (§5.1.4).
 export default function AdminCours({ cours, setCours, professeurs, eleves }) {
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
+  const [menuOuvert, setMenuOuvert] = useState(false)
+  const [vue, setVue] = useState('liste')
 
   const filtered = cours.filter((c) => c.nom.toLowerCase().includes(search.toLowerCase()))
   const enEdition = cours.find((c) => c.id === editId)
+
+  if (vue === 'planning') {
+    return (
+      <PlanningHebdoView
+        cours={cours}
+        professeurs={professeurs}
+        onBack={() => setVue('liste')}
+      />
+    )
+  }
 
   function update(id, patch) {
     setCours((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)))
@@ -34,13 +48,38 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
 
   return (
     <div className="admin-panel">
-      <div className="search-bar">
-        <Icon name="search" size={18} />
-        <input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un cours"
-        />
+      <div className="admin-panel__toolbar">
+        <div className="search-bar">
+          <Icon name="search" size={18} />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher un cours"
+          />
+        </div>
+        <div className="header-menu">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setMenuOuvert((o) => !o)}
+            aria-label="Menu"
+          >
+            <Icon name="moreVertical" />
+          </button>
+          {menuOuvert && (
+            <div className="header-menu__panel">
+              <button
+                type="button"
+                onClick={() => {
+                  setVue('planning')
+                  setMenuOuvert(false)
+                }}
+              >
+                <Icon name="presence" size={18} /> Planning hebdomadaire
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="table-scroll">

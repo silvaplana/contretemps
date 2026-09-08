@@ -6,6 +6,11 @@ env/
 # Secrets locaux
 .env
 
+# Données réelles d'élèves (PII, jamais dans un repo public/déployé) et
+# scripts de référence backend fournis hors-code — voir data/ et scripts/
+data/
+scripts/
+
 # Bytecode / cache Python
 __pycache__/
 *.py[cod]

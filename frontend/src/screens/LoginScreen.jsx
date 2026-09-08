@@ -10,7 +10,7 @@ import { currentUser } from '../data/mockData.js'
 // backend, voir §2.1).
 export default function LoginScreen({ onLogin }) {
   const [identifiant, setIdentifiant] = useState(`${currentUser.prenom} ${currentUser.nom}`)
-  const [code, setCode] = useState('ADMIN2026')
+  const [code, setCode] = useState('ADMIN')
   const [showNouvelleEcole, setShowNouvelleEcole] = useState(false)
 
   return (
@@ -34,7 +34,7 @@ export default function LoginScreen({ onLogin }) {
           type="text"
           value={identifiant}
           onChange={(e) => setIdentifiant(e.target.value)}
-          placeholder="Valérie Petit ou v.petit@contretemps.fr"
+          placeholder="Julia Dho ou j.dho@contretemps.fr"
         />
 
         <label htmlFor="login-code">Code d’accès</label>

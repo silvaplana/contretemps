@@ -619,6 +619,18 @@
   padding-bottom: 72px;
 }
 
+/* Barre de recherche + menu 3 points optionnel côte à côte (voir
+   AdminCours.jsx pour le planning hebdomadaire). */
+.admin-panel__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-panel__toolbar .search-bar {
+  flex: 1;
+}
+
 .search-bar {
   display: flex;
   align-items: center;
@@ -678,6 +690,34 @@
 .data-table__name {
   font-weight: 700;
   min-width: 140px;
+}
+
+/* Surbrillance rouge par appui long (voir AdminEleves.jsx) — la ligne
+   colore tout, une cellule individuellement marquée prend le dessus
+   visuellement (fond un peu plus soutenu) pour rester repérable même sur
+   une ligne déjà rouge. */
+.is-ligne-rouge td {
+  background: var(--danger-bg);
+}
+
+.is-cellule-rouge {
+  background: var(--danger-bg) !important;
+  outline: 1px solid var(--danger-text);
+}
+
+.cellule-popover__valeur {
+  white-space: pre-wrap;
+  word-break: break-word;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--surface);
+  margin: 8px 0 14px;
+}
+
+.cellule-popover__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 /* Icônes stylo + poubelle groupées dans la dernière colonne d'un tableau
@@ -777,6 +817,35 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+/* Liste des contacts d'un élève, dans Admin > Élèves (voir spec §6.4) —
+   plusieurs contacts possibles (mère/père séparés, chacun avec son propre
+   téléphone/email). */
+.contacts-eleve-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 10px 0;
+}
+
+.contacts-eleve-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.contacts-eleve-list__row {
+  display: flex;
+  gap: 6px;
+}
+
+.contacts-eleve-list__row .field-input {
+  flex: 1;
 }
 
 .add-membre-form {
@@ -1401,4 +1470,84 @@
 .heures-table tfoot td {
   border-top: 2px solid var(--border);
   padding-top: 10px;
+}
+
+/* ==========================================================================
+   Planning hebdomadaire (PlanningHebdoView.jsx)
+   ========================================================================== */
+
+.planning-hebdo__body {
+  gap: 12px;
+}
+
+.planning-hebdo__toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.planning-hebdo__scroll {
+  overflow-x: auto;
+  overflow-y: auto;
+  max-height: 70vh;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.planning-hebdo__grid {
+  display: grid;
+  min-width: 480px;
+  position: relative;
+}
+
+.planning-hebdo__corner {
+  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: var(--surface-2);
+}
+
+.planning-hebdo__day-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
+}
+
+.planning-hebdo__time-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+  padding-right: 6px;
+  border-right: 1px solid var(--border);
+  transform: translateY(-7px);
+}
+
+.planning-hebdo__cours-block {
+  margin: 1px 3px;
+  padding: 4px 6px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.planning-hebdo__cours-block strong {
+  font-size: 12px;
+  line-height: 1.15;
+}
+
+.planning-hebdo__cours-block .muted {
+  color: var(--accent-contrast);
+  opacity: 0.8;
+  font-size: 11px;
 }
