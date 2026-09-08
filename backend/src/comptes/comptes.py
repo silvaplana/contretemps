@@ -94,6 +94,17 @@ class Comptes:
         db.refresh(compte)
         return compte
 
+    def delete(self, db: Session, compte_id: int) -> bool:
+        """Suppression du socle commun — les modules eleves/profs
+        suppriment d'abord leurs propres tables (ProfilEleve, contacts...)
+        avant d'appeler ceci (voir eleves.py)."""
+        compte = self.get(db, compte_id)
+        if compte is None:
+            return False
+        db.delete(compte)
+        db.commit()
+        return True
+
     def membres_de_la_famille(self, db: Session, compte_id: int) -> list[Compte]:
         """Pour l'écran Profil et le sélecteur de profil famille (§2.1,
         §4) : les autres comptes de la même famille, lui compris."""

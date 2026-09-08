@@ -58,6 +58,7 @@ class ElevesReceiver:
         self.app.get("/eleves/{eleve_id}", response_model=EleveSortie)(self.obtenir)
         self.app.post("/eleves", response_model=EleveSortie, status_code=201)(self.creer)
         self.app.put("/eleves/{eleve_id}", response_model=EleveSortie)(self.modifier)
+        self.app.delete("/eleves/{eleve_id}", status_code=204)(self.supprimer)
 
         self.app.get("/eleves/{eleve_id}/contacts", response_model=list[ContactSortie])(
             self.lister_contacts
@@ -113,6 +114,10 @@ class ElevesReceiver:
         corps = _fusionner(compte, profil)
         corps["contacts"] = self.client.contacts_de_leleve(db, eleve_id)
         return corps
+
+    def supprimer(self, eleve_id: int, db: Session = Depends(get_db)):
+        if not self.client.delete(db, eleve_id):
+            raise HTTPException(status_code=404, detail="Élève introuvable")
 
     def lister_contacts(self, eleve_id: int, db: Session = Depends(get_db)):
         return self.client.contacts_de_leleve(db, eleve_id)

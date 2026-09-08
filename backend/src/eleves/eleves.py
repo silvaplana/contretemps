@@ -67,6 +67,20 @@ class Eleves:
         db.refresh(profil)
         return compte, profil
 
+    def delete(self, db: Session, eleve_id: int) -> bool:
+        """Supprime le profil + les contacts avant le compte lui-même
+        (voir comptes.py : le socle commun ne connaît pas ProfilEleve)."""
+        compte = self.get_compte(db, eleve_id)
+        if compte is None:
+            return False
+        for contact in self.contacts_de_leleve(db, eleve_id):
+            db.delete(contact)
+        profil = self.get_profil(db, eleve_id)
+        if profil is not None:
+            db.delete(profil)
+        db.commit()
+        return self.comptes.delete(db, eleve_id)
+
     def update_profil(self, db: Session, eleve_id: int, **champs) -> ProfilEleve | None:
         profil = self.get_profil(db, eleve_id)
         if profil is None:

@@ -44,6 +44,21 @@ def test_obtenir_eleve_introuvable(client):
     assert client.get("/eleves/999").status_code == 404
 
 
+def test_supprimer_eleve(client, db_session):
+    ecole = _creer_ecole(db_session)
+    creee = client.post(
+        "/eleves", params={"ecole_id": ecole.id}, json={"nom": "Perrin", "prenom": "Léon"}
+    ).json()
+    client.post(f"/eleves/{creee['id']}/contacts", json={"nom": "Perrin", "prenom": "Alice"})
+
+    assert client.delete(f"/eleves/{creee['id']}").status_code == 204
+    assert client.get(f"/eleves/{creee['id']}").status_code == 404
+
+
+def test_supprimer_eleve_introuvable(client):
+    assert client.delete("/eleves/999").status_code == 404
+
+
 def test_modifier_eleve_champs_compte_et_profil(client, db_session):
     ecole = _creer_ecole(db_session)
     creee = client.post(
