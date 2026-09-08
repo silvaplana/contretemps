@@ -24,11 +24,12 @@ function versLabelAffiche(dateIso) {
 }
 
 // Écran Présence (Admin, Professeur — voir spec/SPEC.md §5.2 et §6.6).
-// Élèves : un statut par case (présent/absent/retard), cliquable.
-// Professeur(s) du cours : 3 lignes par prof (heure début, heure fin,
-// dépassement) — plus de statut stocké, la présence se déduit des heures.
-// Un professeur ne peut modifier que sa propre ligne ; l'admin, n'importe
-// laquelle (voir peutEditerProf).
+// Professeur(s) du cours en premier (3 lignes chacun : heure début, heure
+// fin, dépassement — plus de statut stocké, la présence se déduit des
+// heures), puis les élèves (un statut par case, cliquable). Dates les plus
+// récentes à gauche (visibles sans défiler), les plus anciennes à droite —
+// `data.dates` reste stocké du plus ancien au plus récent (l'ajout d'une
+// date l'ajoute à la fin), seul l'AFFICHAGE des colonnes est inversé.
 export default function PresenceScreen({
   cours,
   eleves,
@@ -46,6 +47,10 @@ export default function PresenceScreen({
   const rosterEleves = eleves.filter((el) => el.coursIds.includes(cours.id))
   const rosterProfs = professeurs.filter((p) => p.id === cours.professeurId)
   const dates = data?.dates ?? []
+  // Indices dans l'ordre d'affichage (le plus récent, donc le dernier de
+  // `dates`, en premier) — les données elles-mêmes (parEleve/parProf, des
+  // tableaux parallèles à `dates`) restent indexées normalement.
+  const ordreAffichage = dates.map((_, i) => i).reverse()
 
   function statusFor(eleveId, index) {
     return data?.parEleve?.[eleveId]?.[index] ?? 'present'
@@ -66,33 +71,12 @@ export default function PresenceScreen({
           <thead>
             <tr>
               <th className="presence-table__sticky">Nom</th>
-              {dates.map((d) => (
-                <th key={d}>{d}</th>
+              {ordreAffichage.map((i) => (
+                <th key={dates[i]}>{dates[i]}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rosterEleves.map((el) => (
-              <tr key={el.id}>
-                <td className="presence-table__sticky">{el.prenom}</td>
-                {dates.map((d, i) => {
-                  const status = statusFor(el.id, i)
-                  return (
-                    <td key={d}>
-                      <button
-                        type="button"
-                        className={`presence-cell presence-cell--${status}`}
-                        onClick={() => onCycle(cours.id, el.id, i, CYCLE)}
-                        aria-label={`${el.prenom} — ${d} — ${LABELS[status]}`}
-                      >
-                        <Icon name={ICONS[status]} size={16} />
-                      </button>
-                    </td>
-                  )
-                })}
-              </tr>
-            ))}
-
             {rosterProfs.map((p) => {
               const editable = peutEditerProf(p.id)
               return (
@@ -107,8 +91,8 @@ export default function PresenceScreen({
                   </tr>
                   <tr>
                     <td className="presence-table__sticky">Début</td>
-                    {dates.map((d, i) => (
-                      <td key={d}>
+                    {ordreAffichage.map((i) => (
+                      <td key={dates[i]}>
                         {editable ? (
                           <input
                             type="time"
@@ -126,8 +110,8 @@ export default function PresenceScreen({
                   </tr>
                   <tr>
                     <td className="presence-table__sticky">Fin</td>
-                    {dates.map((d, i) => (
-                      <td key={d}>
+                    {ordreAffichage.map((i) => (
+                      <td key={dates[i]}>
                         {editable ? (
                           <input
                             type="time"
@@ -145,8 +129,8 @@ export default function PresenceScreen({
                   </tr>
                   <tr>
                     <td className="presence-table__sticky">Dépassement (min)</td>
-                    {dates.map((d, i) => (
-                      <td key={d}>
+                    {ordreAffichage.map((i) => (
+                      <td key={dates[i]}>
                         {editable ? (
                           <input
                             type="number"
@@ -165,6 +149,27 @@ export default function PresenceScreen({
                 </Fragment>
               )
             })}
+
+            {rosterEleves.map((el) => (
+              <tr key={el.id}>
+                <td className="presence-table__sticky">{el.prenom}</td>
+                {ordreAffichage.map((i) => {
+                  const status = statusFor(el.id, i)
+                  return (
+                    <td key={dates[i]}>
+                      <button
+                        type="button"
+                        className={`presence-cell presence-cell--${status}`}
+                        onClick={() => onCycle(cours.id, el.id, i, CYCLE)}
+                        aria-label={`${el.prenom} — ${dates[i]} — ${LABELS[status]}`}
+                      >
+                        <Icon name={ICONS[status]} size={16} />
+                      </button>
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
 
             {rosterEleves.length === 0 && rosterProfs.length === 0 && (
               <tr>

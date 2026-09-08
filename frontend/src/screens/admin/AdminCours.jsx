@@ -67,7 +67,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
             <Icon name="moreVertical" />
           </button>
           {menuOuvert && (
-            <div className="header-menu__panel">
+            <div className="dropdown-menu header-menu__panel">
               <button
                 type="button"
                 onClick={() => {

@@ -63,7 +63,7 @@ export default function PlanningHebdoView({ cours, professeurs, onBack }) {
             <Icon name="moreVertical" />
           </button>
           {exportOuvert && (
-            <div className="header-menu__panel">
+            <div className="dropdown-menu header-menu__panel">
               <button
                 type="button"
                 onClick={() => {

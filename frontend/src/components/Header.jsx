@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { ROLE_LABEL, estMonteeEnPrivilege } from '../data/roles.js'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
@@ -22,9 +22,22 @@ export default function Header({
 }) {
   const [coursOpen, setCoursOpen] = useState(false)
   const [familleOpen, setFamilleOpen] = useState(false)
+  const [familleMenuTop, setFamilleMenuTop] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [profilVise, setProfilVise] = useState(null)
   const activeCours = cours.find((c) => c.id === selectedCoursId)
+  const familleBoutonRef = useRef(null)
+
+  // Position fixe (viewport), calée sur le bord droit de l'écran, plutôt
+  // qu'absolue sur le petit bouton avatar (qui est près du bord mais pas
+  // dessus — l'ancien calcul CSS coupait les noms les plus longs hors
+  // écran, voir App.css). `top` calculé au clic pour suivre le bouton quel
+  // que soit l'écran (mode simple vs course).
+  function ouvrirFamilleMenu() {
+    const rect = familleBoutonRef.current?.getBoundingClientRect()
+    if (rect) setFamilleMenuTop(rect.bottom + 6)
+    setFamilleOpen((o) => !o)
+  }
 
   function demanderProfil(profil) {
     setFamilleOpen(false)
@@ -51,7 +64,7 @@ export default function Header({
               <Icon name="chevronDown" size={16} />
             </button>
             {coursOpen && (
-              <div className="cours-selector__menu">
+              <div className="dropdown-menu cours-selector__menu">
                 {cours.map((c) => (
                   <button
                     key={c.id}
@@ -76,16 +89,20 @@ export default function Header({
           {famille.length > 1 && (
             <div className="famille-selector">
               <button
+                ref={familleBoutonRef}
                 type="button"
                 className="famille-selector__button"
-                onClick={() => setFamilleOpen((o) => !o)}
+                onClick={ouvrirFamilleMenu}
                 aria-label="Changer de profil"
               >
                 <span className="avatar avatar--sm">{user.initiales}</span>
                 <Icon name="chevronDown" size={14} />
               </button>
               {familleOpen && (
-                <div className="cours-selector__menu famille-selector__menu">
+                <div
+                  className="dropdown-menu famille-selector__menu"
+                  style={{ top: familleMenuTop }}
+                >
                   {famille.map((p) => (
                     <button
                       key={p.id}
@@ -112,7 +129,7 @@ export default function Header({
               <Icon name="moreVertical" />
             </button>
             {menuOpen && (
-              <div className="header-menu__panel">
+              <div className="dropdown-menu header-menu__panel">
                 <button
                   type="button"
                   onClick={() => {

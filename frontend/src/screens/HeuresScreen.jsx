@@ -127,7 +127,7 @@ export default function HeuresScreen({ professeur, cours, presences, estAdmin, o
               <Icon name="moreVertical" />
             </button>
             {exportOuvert && (
-              <div className="header-menu__panel">
+              <div className="dropdown-menu header-menu__panel">
                 {[
                   ['pdf', 'Exporter en PDF'],
                   ['excel', 'Exporter en Excel'],

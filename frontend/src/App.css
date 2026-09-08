@@ -108,22 +108,18 @@
   color: var(--text-h);
 }
 
-.famille-selector__menu {
-  right: 0;
-  left: auto;
-  min-width: 220px;
-}
-
 .famille-selector__role {
   margin-left: auto;
   font-size: 12px;
 }
 
-.cours-selector__menu,
-.header-menu__panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+/* Chrome visuel commun aux menus déroulants de l'en-tête (sélecteur de
+   cours, menu 3 points, sélecteur de profil famille) — le POSITIONNEMENT
+   (absolu vs fixe, quel bord) est décidé séparément par chacun ci-dessous,
+   pour éviter qu'une règle générique en "left: 0" gagne la cascade sur un
+   menu qui doit rester ancré à droite (vécu avec le sélecteur famille,
+   dont les noms les plus longs se retrouvaient hors écran). */
+.dropdown-menu {
   background: var(--card-bg);
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -133,17 +129,7 @@
   z-index: 40;
 }
 
-.header-menu {
-  position: relative;
-}
-
-.header-menu__panel {
-  left: auto;
-  right: 0;
-}
-
-.cours-selector__menu button,
-.header-menu__panel button {
+.dropdown-menu button {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -156,14 +142,43 @@
   color: var(--text-h);
 }
 
-.cours-selector__menu button:last-child,
-.header-menu__panel button:last-child {
+.dropdown-menu button:last-child {
   border-bottom: none;
 }
 
-.cours-selector__menu button.is-active {
+.dropdown-menu button.is-active {
   color: var(--accent);
   font-weight: 700;
+}
+
+.cours-selector__menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+}
+
+.header-menu {
+  position: relative;
+}
+
+.header-menu__panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: auto;
+  right: 0;
+}
+
+/* Sélecteur de profil famille : position FIXE (viewport), pas absolue sur
+   le petit bouton avatar — celui-ci est proche du bord droit mais pas
+   dessus (le menu 3 points est encore après lui), donc une position
+   absolue ancrée sur lui ne calait pas les noms sur le vrai bord de
+   l'écran. `top` calculé en JS au clic (voir Header.jsx), `right` fixe. */
+.famille-selector__menu {
+  position: fixed;
+  right: 16px;
+  left: auto;
+  min-width: 220px;
+  max-width: calc(100vw - 32px);
 }
 
 .icon-btn {
