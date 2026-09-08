@@ -92,7 +92,7 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
       </div>
 
       <div className="table-scroll">
-        <table className="data-table">
+        <table className="data-table data-table--eleves">
           <thead>
             <tr>
               <th>Élève</th>

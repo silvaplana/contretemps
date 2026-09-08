@@ -648,8 +648,17 @@
 .data-table {
   border-collapse: collapse;
   width: 100%;
-  min-width: 720px;
   background: var(--card-bg);
+}
+
+/* Seul le tableau Élèves a vraiment besoin d'une largeur minimale forcée
+   (12 colonnes) : les autres tableaux Admin (Profs, Cours, Conversations)
+   doivent pouvoir tenir sur un écran de téléphone sans défilement, sinon
+   leur colonne Actions se retrouve invisible hors-écran (vécu : le bouton
+   "Heures" d'un prof n'était atteignable qu'en scrollant à l'horizontale,
+   sans indice visuel évident). */
+.data-table--eleves {
+  min-width: 720px;
 }
 
 .data-table th {

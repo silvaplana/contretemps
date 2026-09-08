@@ -17,6 +17,26 @@ const MOIS_NOMS = [
   'Décembre',
 ]
 
+// Les dates de présence sont stockées en 'JJ/MM', sans année (voir
+// data/mockData.js) : pas encore de vraie année tant que ce n'est pas du
+// backend. En attendant, on affiche l'année en cours pour que "Août" se
+// lise "Août 2026" — à corriger le jour où les dates portent une année.
+const ANNEE_AFFICHAGE = new Date().getFullYear()
+
+function libelleMois(mois) {
+  return `${MOIS_NOMS[Number(mois)]} ${ANNEE_AFFICHAGE}`
+}
+
+// Label de l'option "toute la période" : le mois de début et de fin
+// (ex. "Août 2026" s'il n'y en a qu'un, "Août 2026 - Décembre 2026" sinon)
+// plutôt que le générique "Toute la période".
+function libellePeriodeTotale(moisDisponibles) {
+  if (moisDisponibles.length === 0) return 'Aucune séance'
+  const premier = moisDisponibles[0]
+  const dernier = moisDisponibles[moisDisponibles.length - 1]
+  return premier === dernier ? libelleMois(premier) : `${libelleMois(premier)} - ${libelleMois(dernier)}`
+}
+
 // 'HH:MM' -> minutes depuis minuit, ou null si vide/invalide.
 function versMinutes(hhmm) {
   if (!hhmm) return null
@@ -147,10 +167,10 @@ export default function HeuresScreen({ professeur, cours, presences, estAdmin, o
           value={periode}
           onChange={(e) => setPeriode(e.target.value)}
         >
-          <option value="all">Toute la période</option>
+          <option value="all">{libellePeriodeTotale(moisDisponibles)}</option>
           {moisDisponibles.map((m) => (
             <option key={m} value={m}>
-              {MOIS_NOMS[Number(m)]}
+              {libelleMois(m)}
             </option>
           ))}
         </select>

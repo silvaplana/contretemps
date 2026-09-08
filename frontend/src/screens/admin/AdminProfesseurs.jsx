@@ -3,8 +3,10 @@ import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 
+const MAX_BADGES = 2
+
 // Onglet Admin > Professeurs (voir spec/SPEC.md §5.1.3 et §5.7). Le bouton
-// "Heures" par ligne ouvre le relevé d'heures du professeur (n'importe
+// calculatrice par ligne ouvre le relevé d'heures du professeur (n'importe
 // lequel, l'admin peut tous les consulter).
 export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, onOpenHeures }) {
   const [search, setSearch] = useState('')
@@ -75,9 +77,12 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, o
                     onClick={() => setCoursEditId(p.id)}
                   >
                     {p.coursIds.length === 0 && <span className="muted">—</span>}
-                    {p.coursIds.map((cid) => (
+                    {p.coursIds.slice(0, MAX_BADGES).map((cid) => (
                       <Badge key={cid}>{cours.find((c) => c.id === cid)?.nom}</Badge>
                     ))}
+                    {p.coursIds.length > MAX_BADGES && (
+                      <Badge tone="neutral">+{p.coursIds.length - MAX_BADGES}</Badge>
+                    )}
                   </button>
                 </td>
                 <td>
@@ -88,7 +93,7 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, o
                       onClick={() => onOpenHeures(p.id)}
                       aria-label={`Heures de ${p.prenom}`}
                     >
-                      <Icon name="clock" size={18} />
+                      <Icon name="calculator" size={18} />
                     </button>
                     <button
                       type="button"
