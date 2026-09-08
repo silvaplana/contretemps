@@ -1376,14 +1376,28 @@
   gap: 8px;
   padding: 10px 16px;
   border-top: 1px solid var(--border);
+  /* Empêche le débordement sur petit écran (vécu : le 2e bouton d'envoi,
+     mail, sortait de l'écran) : sans max-width, la barre pouvait dépasser
+     la largeur réelle du viewport sur certains navigateurs mobiles. */
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .conversation-thread__input input {
   flex: 1;
+  /* min-width: 0 (pas le défaut du navigateur, ~170px pour un <input>) :
+     sinon un input dans une ligne flex refuse de se rétrécir en dessous de
+     cette taille, et pousse les boutons d'envoi hors de l'écran sur un
+     téléphone étroit. */
+  min-width: 0;
   padding: 12px 16px;
   border-radius: 999px;
   border: 1px solid var(--border);
   background: var(--card-bg);
+}
+
+.conversation-thread__input .icon-btn {
+  flex-shrink: 0;
 }
 
 /* ==========================================================================
