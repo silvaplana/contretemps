@@ -175,10 +175,6 @@ export default function PresenceScreen({
         </table>
       </div>
 
-      <p className="muted presence-screen__note">
-        Heures des professeurs : chacun ne peut saisir que sa propre ligne, l’admin peut
-        modifier celles de tous.
-      </p>
       <div className="legend">
         {CYCLE.map((status) => (
           <span key={status} className="legend__item">

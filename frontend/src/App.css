@@ -896,11 +896,6 @@
   width: 56px;
 }
 
-.presence-screen__note {
-  padding: 8px 4px 0;
-  font-size: 13px;
-}
-
 .legend {
   display: flex;
   flex-wrap: wrap;
