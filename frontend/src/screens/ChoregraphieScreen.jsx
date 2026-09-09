@@ -7,7 +7,15 @@ import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 // images/choregraphie.png). Deux écrans distincts, comme la Messagerie : la
 // liste des chorégraphies du cours, puis (au clic) le détail en plein écran
 // avec une flèche de retour — jamais les deux affichés en même temps.
-export default function ChoregraphieScreen({ cours, list, setList, eleves, videos, setVideos }) {
+export default function ChoregraphieScreen({
+  cours,
+  list,
+  setList,
+  eleves,
+  videos,
+  setVideos,
+  peutModifier,
+}) {
   const [selectedId, setSelectedId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
 
@@ -71,6 +79,7 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves, video
       <ChoregraphieDetailScreen
         choregraphie={selected}
         eleves={eleves}
+        peutModifier={peutModifier}
         // Élèves proposés pour la choré : ceux inscrits à ce cours (voir
         // eleves[].coursIds), pas toute la base élèves de l'école.
         roster={eleves.filter((el) => el.coursIds.includes(cours.id))}
@@ -90,9 +99,14 @@ export default function ChoregraphieScreen({ cours, list, setList, eleves, video
 
   return (
     <>
-      <ChoregraphieListScreen list={list} onSelect={setSelectedId} onAddNew={() => setShowAdd(true)} />
+      <ChoregraphieListScreen
+        list={list}
+        onSelect={setSelectedId}
+        onAddNew={() => setShowAdd(true)}
+        peutModifier={peutModifier}
+      />
 
-      {showAdd && (
+      {showAdd && peutModifier && (
         <Modal title="Nouvelle chorégraphie" onClose={() => setShowAdd(false)}>
           <NewChoregraphieForm
             // Les élèves proposés sont ceux inscrits à ce cours (voir

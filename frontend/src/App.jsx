@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import * as elevesApi from './api/eleves.js'
+import * as profsApi from './api/profs.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import ZoneMigration from './components/ZoneMigration.jsx'
@@ -13,7 +14,6 @@ import {
   familleActuelle,
   groupes as initialGroupes,
   presencesParCours as initialPresences,
-  professeurs as initialProfesseurs,
   videosParCours as initialVideos,
 } from './data/mockData.js'
 import { TABS } from './data/nav.js'
@@ -47,12 +47,12 @@ function App() {
   }
 
   // Données "métier", possédées ici et redescendues aux écrans.
-  // `eleves` seul passe par api/eleves.js (voir api/README.md) — chargé de
-  // façon async, les autres restent en dur pour l'instant (pas encore
-  // migrés). Recharge à chaque connexion (donc aussi après "Voir une
-  // maquette"), pas seulement au montage.
+  // `eleves`/`professeurs` passent par api/<domaine>.js (voir
+  // api/README.md) — chargés de façon async, les autres restent en dur
+  // pour l'instant (pas encore migrés). Rechargé à chaque connexion (donc
+  // aussi après "Voir une maquette"), pas seulement au montage.
   const [eleves, setEleves] = useState([])
-  const [professeurs, setProfesseurs] = useState(initialProfesseurs)
+  const [professeurs, setProfesseurs] = useState([])
   const [cours, setCours] = useState(initialCours)
   const [groupes, setGroupes] = useState(initialGroupes)
   const [presences, setPresences] = useState(initialPresences)
@@ -62,7 +62,9 @@ function App() {
   const [ecole, setEcole] = useState(ecoleActuelle)
 
   useEffect(() => {
-    if (loggedIn) elevesApi.lister(ecole.id).then(setEleves)
+    if (!loggedIn) return
+    elevesApi.lister(ecole.id).then(setEleves)
+    profsApi.lister(ecole.id).then(setProfesseurs)
   }, [loggedIn, ecole.id])
 
   const [selectedCoursId, setSelectedCoursId] = useState(cours[0]?.id ?? null)
@@ -262,6 +264,9 @@ function App() {
               eleves={eleves}
               videos={videos[selectedCoursId] ?? []}
               setVideos={setVideos}
+              // Consultation seule pour un élève (voir spec §2.1 sur les
+              // droits par rôle) — Admin/Professeur peuvent créer/éditer.
+              peutModifier={activeUser.type !== 'eleve'}
             />
           </ZoneMigration>
         )}

@@ -44,14 +44,13 @@ export default function AdminScreen({
         <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} ecoleId={ecole.id} />
       )}
       {subTab === 'professeurs' && (
-        <ZoneMigration domaine="profs">
-          <AdminProfesseurs
-            professeurs={professeurs}
-            setProfesseurs={setProfesseurs}
-            cours={cours}
-            onOpenHeures={onOpenHeures}
-          />
-        </ZoneMigration>
+        <AdminProfesseurs
+          professeurs={professeurs}
+          setProfesseurs={setProfesseurs}
+          cours={cours}
+          ecoleId={ecole.id}
+          onOpenHeures={onOpenHeures}
+        />
       )}
       {subTab === 'cours' && (
         <ZoneMigration domaine="cours">

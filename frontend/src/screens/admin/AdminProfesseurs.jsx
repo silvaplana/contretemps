@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as profsApi from '../../api/profs.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -8,7 +9,11 @@ const MAX_BADGES = 2
 // Onglet Admin > Professeurs (voir spec/SPEC.md §5.1.3 et §5.7). Le bouton
 // calculatrice par ligne ouvre le relevé d'heures du professeur (n'importe
 // lequel, l'admin peut tous les consulter).
-export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, onOpenHeures }) {
+//
+// Données métier via api/profs.js (voir api/README.md) — `professeurs`/
+// `setProfesseurs` viennent de App.jsx, mis à jour ici après chaque appel
+// réussi (même principe que AdminEleves.jsx).
+export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, ecoleId, onOpenHeures }) {
   const [search, setSearch] = useState('')
   const [coursEditId, setCoursEditId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
@@ -18,27 +23,29 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, o
     `${p.prenom} ${p.nom}`.toLowerCase().includes(search.toLowerCase()),
   )
 
-  function update(id, patch) {
-    setProfesseurs((list) => list.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+  function remplacer(profMisAJour) {
+    setProfesseurs((list) => list.map((p) => (p.id === profMisAJour.id ? profMisAJour : p)))
   }
 
-  function toggleCours(profId, coursId) {
-    setProfesseurs((list) =>
-      list.map((p) => {
-        if (p.id !== profId) return p
-        const has = p.coursIds.includes(coursId)
-        return {
-          ...p,
-          coursIds: has ? p.coursIds.filter((id) => id !== coursId) : [...p.coursIds, coursId],
-        }
-      }),
-    )
+  async function update(id, patch) {
+    remplacer(await profsApi.modifier(id, patch))
   }
 
-  function remove(id) {
-    if (window.confirm('Supprimer ce professeur ?')) {
-      setProfesseurs((list) => list.filter((p) => p.id !== id))
-    }
+  async function toggleCours(profId, coursId) {
+    remplacer(await profsApi.basculerCours(profId, coursId))
+  }
+
+  async function remove(id) {
+    if (!window.confirm('Supprimer ce professeur ?')) return
+    await profsApi.supprimer(id)
+    setProfesseurs((list) => list.filter((p) => p.id !== id))
+  }
+
+  async function addProf(donnees) {
+    const nouveau = await profsApi.creer(ecoleId, donnees)
+    // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
+    // l'appliquer 2 fois de suite sur son propre résultat.
+    setProfesseurs((list) => (list.some((p) => p.id === nouveau.id) ? list : [...list, nouveau]))
   }
 
   const coursEnEdition = professeurs.find((p) => p.id === coursEditId)
@@ -145,9 +152,7 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, o
           title="Ajouter un professeur"
           submitLabel="Ajouter"
           onClose={() => setShowAdd(false)}
-          onSubmit={(donnees) =>
-            setProfesseurs((list) => [...list, { id: crypto.randomUUID(), coursIds: [], ...donnees }])
-          }
+          onSubmit={addProf}
         />
       )}
 
@@ -169,6 +174,16 @@ function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
   const [nom, setNom] = useState(initial?.nom ?? '')
   const [prenom, setPrenom] = useState(initial?.prenom ?? '')
   const [email, setEmail] = useState(initial?.email ?? '')
+  // Garde-fou contre un double-appel (voir AdminEleves.jsx) : l'appel est
+  // async désormais.
+  const [enCours, setEnCours] = useState(false)
+
+  async function valider() {
+    if (enCours) return
+    setEnCours(true)
+    await onSubmit({ nom, prenom, email })
+    onClose()
+  }
 
   return (
     <Modal
@@ -178,11 +193,8 @@ function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
         <button
           type="button"
           className="btn btn--primary btn--block"
-          disabled={!nom || !prenom}
-          onClick={() => {
-            onSubmit({ nom, prenom, email })
-            onClose()
-          }}
+          disabled={!nom || !prenom || enCours}
+          onClick={valider}
         >
           {submitLabel}
         </button>

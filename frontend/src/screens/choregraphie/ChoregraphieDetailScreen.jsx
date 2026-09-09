@@ -18,6 +18,7 @@ export default function ChoregraphieDetailScreen({
   eleves,
   roster,
   videosDuCours,
+  peutModifier,
   onBack,
   onUpdate,
   onRemove,
@@ -26,7 +27,10 @@ export default function ChoregraphieDetailScreen({
   onRemoveVideo,
   onToggleVideoTag,
 }) {
-  const [editing, setEditing] = useState(false)
+  // Toujours en lecture pour un élève, même si `editing` restait vrai en
+  // mémoire d'une bascule de profil famille précédente (voir spec §2.1).
+  const [editingVoulu, setEditing] = useState(false)
+  const editing = editingVoulu && peutModifier
   const [showChoose, setShowChoose] = useState(false)
   const [showAddVideo, setShowAddVideo] = useState(false)
   const [editingVideo, setEditingVideo] = useState(null)
@@ -56,22 +60,26 @@ export default function ChoregraphieDetailScreen({
           <strong className="choregraphie-detail-screen__title">{choregraphie.nom}</strong>
         )}
 
-        <button
-          type="button"
-          className={`icon-btn ${editing ? 'icon-btn--accent' : ''}`}
-          onClick={() => setEditing((e) => !e)}
-          aria-label={editing ? 'Terminer la modification' : 'Modifier la chorégraphie'}
-        >
-          <Icon name={editing ? 'check' : 'edit'} size={18} />
-        </button>
-        <button
-          type="button"
-          className="icon-btn icon-btn--danger"
-          onClick={onRemove}
-          aria-label="Supprimer la chorégraphie"
-        >
-          <Icon name="trash" size={18} />
-        </button>
+        {peutModifier && (
+          <>
+            <button
+              type="button"
+              className={`icon-btn ${editing ? 'icon-btn--accent' : ''}`}
+              onClick={() => setEditing((e) => !e)}
+              aria-label={editing ? 'Terminer la modification' : 'Modifier la chorégraphie'}
+            >
+              <Icon name={editing ? 'check' : 'edit'} size={18} />
+            </button>
+            <button
+              type="button"
+              className="icon-btn icon-btn--danger"
+              onClick={onRemove}
+              aria-label="Supprimer la chorégraphie"
+            >
+              <Icon name="trash" size={18} />
+            </button>
+          </>
+        )}
       </div>
 
       <div className="choregraphie-detail">

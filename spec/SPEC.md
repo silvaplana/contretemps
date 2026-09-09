@@ -195,6 +195,7 @@ Une **séance de présence** par cours et par date. Tableau avec les dates en co
 
 - Zone haute : liste des chorégraphies du cours sélectionné
 - Zone basse : détail — **Élèves participants** (sélection spécifique parmi les élèves du cours, pas automatiquement tous), **Costume** (un seul texte pour toute la chorégraphie), **Horaire de répétition**, **Vidéos liées** (calculé, voir §6.7)
+- **Créer/modifier/supprimer une chorégraphie réservé à Admin et Professeur** — un élève consulte seulement (pas de bouton **+**, pas de bouton d'édition/suppression). Différent de l'écran Vidéo (§5.4), où le **+** est ouvert aux 3 rôles.
 
 ![Écran chorégraphie](images/choregraphie.png)
 

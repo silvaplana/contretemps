@@ -3,7 +3,7 @@ import Icon from '../../components/Icon.jsx'
 // Écran 1/2 de Chorégraphie (voir spec/SPEC.md 5.3) : liste des
 // chorégraphies du cours sélectionné. Cliquer en ouvre une en plein écran
 // (voir ChoregraphieDetailScreen.jsx) — même principe que la Messagerie.
-export default function ChoregraphieListScreen({ list, onSelect, onAddNew }) {
+export default function ChoregraphieListScreen({ list, onSelect, onAddNew, peutModifier }) {
   return (
     <div className="screen">
       <div className="choregraphie-list choregraphie-list--full">
@@ -31,9 +31,11 @@ export default function ChoregraphieListScreen({ list, onSelect, onAddNew }) {
         )}
       </div>
 
-      <button type="button" className="fab" onClick={onAddNew} aria-label="Nouvelle chorégraphie">
-        <Icon name="plus" size={24} />
-      </button>
+      {peutModifier && (
+        <button type="button" className="fab" onClick={onAddNew} aria-label="Nouvelle chorégraphie">
+          <Icon name="plus" size={24} />
+        </button>
+      )}
     </div>
   )
 }
