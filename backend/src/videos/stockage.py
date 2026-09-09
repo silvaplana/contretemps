@@ -3,10 +3,14 @@
 deux écoles différentes — cohérent avec `ecole_id` déjà présent sur
 (quasiment) toutes les tables du projet.
 
-Les fichiers ne sont JAMAIS commités dans git (voir .gitignore) — seul
-`videos.lien_fichier` (le chemin RELATIF, ex. "3/repetition.mp4") est en
-base ; ce module calcule où ce chemin pointe réellement sur le disque,
-et sert de repère unique pour ce calcul (pas dupliqué ailleurs).
+Les fichiers du dossier "live" ne sont JAMAIS commités dans git (voir
+.gitignore) — seul `videos.lien_fichier` (le chemin RELATIF, ex.
+"3/repetition.mp4") est en base ; ce module calcule où ce chemin pointe
+réellement sur le disque, et sert de repère unique pour ce calcul (pas
+dupliqué ailleurs). Le dossier "référence" (voir DOSSIER_VIDEOS_REFERENCE
+ci-dessous), lui, EST commité (backend/videos_reference/) : un petit jeu
+de démo curaté, figé dans l'image Docker (voir Dockerfile), pas des
+uploads arbitraires.
 """
 
 import os
