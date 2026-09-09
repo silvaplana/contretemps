@@ -83,3 +83,75 @@ class EleveSortie(BaseModel):
     montant_paye: float
     commentaire_admin: str | None = None
     contacts: list[ContactSortie] = []
+
+
+# --- Import Excel (voir §6.4bis et import_excel.py) ---
+
+
+class LigneApercuSortie(BaseModel):
+    numero_ligne: int
+    nom: str
+    prenom: str
+    email: str | None = None
+    telephone: str | None = None
+    telephone_suspect: bool
+    adresse: str | None = None
+    date_naissance: dt.date | None = None
+    contact_parent_brut: str | None = None
+    cours_ids: list[int] = []
+    colonnes_non_reconnues: list[str] = []
+    eleve_existant_id: int | None = None
+    action: str
+
+    # Lu depuis les dataclasses `LigneApercu`/`ApercuImport` de
+    # import_excel.py, pas des objets Pydantic/SQLAlchemy.
+    model_config = {"from_attributes": True}
+
+
+class ApercuImportSortie(BaseModel):
+    lignes: list[LigneApercuSortie]
+    colonnes_non_reconnues_globales: list[str]
+
+    model_config = {"from_attributes": True}
+
+
+class LigneValidationEntree(BaseModel):
+    """Reprend les champs de `LigneApercuSortie` — l'admin peut avoir
+    corrigé `action` (et n'importe quel autre champ) à la relecture avant
+    de poster ceci (voir §6.4bis)."""
+
+    numero_ligne: int
+    nom: str
+    prenom: str
+    email: str | None = None
+    telephone: str | None = None
+    adresse: str | None = None
+    date_naissance: dt.date | None = None
+    contact_parent_brut: str | None = None
+    cours_ids: list[int] = []
+    eleve_existant_id: int | None = None
+    action: str
+
+
+class ValidationImportEntree(BaseModel):
+    lignes: list[LigneValidationEntree]
+
+
+class ResultatImportSortie(BaseModel):
+    crees: int
+    mis_a_jour: int
+    ignores: int
+
+
+class MappingColonneEntree(BaseModel):
+    en_tete_excel: str
+    cours_id: int
+
+
+class MappingColonneSortie(BaseModel):
+    id: int
+    ecole_id: int
+    en_tete_excel: str
+    cours_id: int
+
+    model_config = {"from_attributes": True}

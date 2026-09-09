@@ -16,7 +16,7 @@ from comptes import Comptes, ComptesReceiver
 from cours import CoursReceiver, CoursService
 from db import Base, engine
 from ecoles import Ecoles, EcolesReceiver
-from eleves import Eleves, ElevesReceiver
+from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
 from messagerie import Conversations, MessagerieReceiver, Messages
 from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
@@ -66,6 +66,11 @@ cours_receiver = CoursReceiver(client=cours_client, app=app)
 # Monte les routes des eleves (/eleves, /contacts) - depend de comptes.
 eleves_client = Eleves(comptes=comptes_client)
 eleves_receiver = ElevesReceiver(client=eleves_client, comptes=comptes_client, app=app)
+
+# Monte les routes de l'import Excel des eleves (/eleves/import/...) -
+# depend de eleves (reutilise ses primitives CRUD) et cours.
+import_excel_client = ImportExcel(eleves=eleves_client, cours=cours_client)
+import_excel_receiver = ImportExcelReceiver(client=import_excel_client, app=app)
 
 # Monte les routes des profs (/profs) - depend de comptes et cours.
 profs_client = Profs(comptes=comptes_client, cours=cours_client)

@@ -378,7 +378,18 @@ prévisible et sans ambiguïté.
 - **Colonne reconnue** → import direct des élèves marqués "X" vers ce cours
 - **Colonne non reconnue** → alerte affichée à l'admin : *"Colonne 'XYZ' non reconnue —
   associer à un cours existant, ou créer un nouveau cours ?"*, décision humaine une seule
-  fois, mémorisée pour les imports suivants du même fichier
+  fois, **mémorisée en base pour les imports suivants** :
+
+```
+mappings_colonnes_import : id (PK), ecole_id (FK), en_tete_excel (texte),
+                            cours_id (FK -> cours)
+                            -- une ligne par en-tête de colonne déjà résolue par l'admin,
+                            -- par école (le même en-tête peut désigner un cours différent
+                            -- d'une école à l'autre) ; UNIQUE(ecole_id, en_tete_excel)
+                            -- consultée avant d'afficher l'alerte "colonne non reconnue" :
+                            -- si l'en-tête a déjà été résolu une fois, plus besoin de
+                            -- redemander à l'admin lors des imports suivants
+```
 
 **Gestion des élèves déjà existants (réimport)** : avant d'importer, chaque ligne du fichier
 est comparée aux élèves déjà en base **par correspondance (nom, prénom, date de naissance)**

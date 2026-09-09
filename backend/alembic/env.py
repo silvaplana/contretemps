@@ -14,7 +14,7 @@ from comptes.models import Compte, Famille  # noqa: F401
 from cours.models import Cours, cours_professeurs, eleves_cours  # noqa: F401
 from db import Base
 from ecoles.models import Ecole  # noqa: F401
-from eleves.models import ContactEleve, ProfilEleve  # noqa: F401
+from eleves.models import ContactEleve, MappingColonneImport, ProfilEleve  # noqa: F401
 from messagerie.models import (  # noqa: F401
     Conversation,
     ConversationMembre,

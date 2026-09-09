@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -38,7 +38,13 @@ class Compte(Base):
 
     __tablename__ = "comptes"
     __table_args__ = (
-        UniqueConstraint("ecole_id", "email", name="uq_compte_ecole_email"),
+        # PAS unique : plusieurs comptes (frères/sœurs, voir §6.2) peuvent
+        # légitimement partager le même email dans une même école — c'est
+        # justement ce que `get_or_create_famille` détecte pour les
+        # regrouper. Un bug antérieur avait une UniqueConstraint ici, qui
+        # empêchait cet usage prévu par la spec (trouvé en import Excel :
+        # 80 élèves fictifs avec des emails partagés entre frères/sœurs).
+        Index("ix_compte_ecole_email", "ecole_id", "email"),
         Index("ix_compte_ecole_role", "ecole_id", "role"),
         Index("ix_compte_dedup", "ecole_id", "nom", "prenom"),
     )

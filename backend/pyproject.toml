@@ -18,6 +18,8 @@ dependencies = [
     # reste portable, le dev local peut tourner sur SQLite (DATABASE_URL, voir
     # .env.example) sans ce pilote.
     "psycopg2-binary",
+    # Lecture des fichiers .xlsx pour l'import Excel des élèves (§6.4bis).
+    "openpyxl",
 ]
 
 [project.optional-dependencies]

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -48,3 +48,20 @@ class ContactEleve(Base):
     # plusieurs numéros, des annotations...).
     telephone: Mapped[str | None] = mapped_column(String(200), nullable=True)
     email: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class MappingColonneImport(Base):
+    """Mémorisation, PAR ÉCOLE, de la correspondance entre un en-tête de
+    colonne du fichier Excel et un cours en base (voir §6.4bis) — une fois
+    qu'un admin a résolu manuellement une colonne non reconnue, elle est
+    reconnue automatiquement aux imports suivants du même fichier."""
+
+    __tablename__ = "mappings_colonnes_import"
+    __table_args__ = (
+        UniqueConstraint("ecole_id", "en_tete_excel", name="uq_mapping_colonne_ecole_entete"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    en_tete_excel: Mapped[str] = mapped_column(String(150), nullable=False)
+    cours_id: Mapped[int] = mapped_column(ForeignKey("cours.id"), nullable=False)

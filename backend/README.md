@@ -43,10 +43,10 @@ Chaque module `<nom>/` :
 - `schemas.py` — formes Pydantic des requêtes/réponses HTTP (pas les
   tables) quand une route a besoin de valider un corps de requête.
 
-Tous les modules métier prévus sont codés. Reste seulement (voir
-spec/SPEC.md) : l'import Excel réel (§6.4bis), différé — `eleves.py`
-expose déjà les primitives CRUD qu'un futur `import_excel.py` pourra
-réutiliser — puis brancher le frontend sur cette API.
+Tous les modules métier prévus sont codés, y compris l'import Excel
+(`eleves/import_excel.py` + `import_excel_receiver.py`, voir
+spec/SPEC.md §6.4bis). Reste seulement : brancher le frontend sur cette
+API.
 
 ## Installation (venv + pip)
 
