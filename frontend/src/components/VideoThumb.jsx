@@ -31,6 +31,13 @@ export default function VideoThumb({ url, poster, titre, duree }) {
           autoPlay
           preload="metadata"
           playsInline
+          // Bloque l'entrée standard "Picture-in-Picture" de Chromium —
+          // sur Samsung Internet (basé sur Chromium), une bulle flottante
+          // "vidéo pop-up" apparaît par-dessus le lecteur sans qu'on
+          // l'ait demandé ; à essayer, mais c'est une fonctionnalité du
+          // navigateur (Smart pop-up view), pas garanti désactivable
+          // depuis une page web — sinon, réglage côté Samsung Internet.
+          disablePictureInPicture
         />
       </div>
     )
