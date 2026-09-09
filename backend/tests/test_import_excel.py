@@ -7,7 +7,9 @@ from cours import CoursService
 from ecoles import Ecoles
 from openpyxl import Workbook
 
-FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "eleves_import_demo.xlsx")
+FIXTURE = os.path.join(
+    os.path.dirname(__file__), "..", "seed_data", "eleves_demo.xlsx"
+)
 
 NOMS_COURS_REELS = [
     "Eveil",

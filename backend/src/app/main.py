@@ -9,6 +9,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from auth import Auth, AuthReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
@@ -20,7 +21,7 @@ from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
 from messagerie import Conversations, MessagerieReceiver, Messages
 from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
-from videos import Videos, VideosReceiver
+from videos import DOSSIER_VIDEOS_LIVE, Videos, VideosReceiver
 
 load_dotenv()  # charge backend/.env si present
 
@@ -87,6 +88,12 @@ choregraphies_receiver = ChoregraphiesReceiver(client=choregraphies_client, app=
 # Monte les routes des videos (/cours/{id}/videos, /choregraphies/{id}/videos, /videos/...).
 videos_client = Videos()
 videos_receiver = VideosReceiver(client=videos_client, app=app)
+
+# Sert les fichiers video eux-memes en statique (un dossier par ecole,
+# voir videos/stockage.py) - videos.lien_fichier stocke le chemin relatif
+# a DOSSIER_VIDEOS_LIVE, servi ici sous /media/videos/<ce chemin>.
+DOSSIER_VIDEOS_LIVE.mkdir(parents=True, exist_ok=True)
+app.mount("/media/videos", StaticFiles(directory=str(DOSSIER_VIDEOS_LIVE)), name="videos")
 
 # Monte les routes de messagerie (/conversations, /dm, /messages...) - depend
 # de comptes et cours (resolution des membres "cours").

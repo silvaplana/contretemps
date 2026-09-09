@@ -16,7 +16,9 @@ backend/
 ├── src/
 │   ├── app/
 │   │   ├── main.py       # assemble tous les modules sur UNE app FastAPI
-│   │   └── seed.py       # recrée les données de démo (voir mockData.js)
+│   │   ├── seed.py       # (re)crée les données de démo : école/comptes/cours en dur, élèves via import Excel
+│   │   └── reset_demo.py # vide BDD + vidéos "live", rejoue seed.py — repartir d'un état propre après des tests
+│   ├── seed_data/          # eleves_demo.xlsx (fictif, committé) — lu par seed.py/reset_demo.py
 │   ├── db/                # engine/session/Base partagés — n'appartient à aucun module métier
 │   ├── ecoles/             # Admin > École
 │   ├── comptes/            # Profil (+ table Compte/Famille, socle réutilisé par eleves/profs/auth)
@@ -64,7 +66,8 @@ au lancement) — zéro install. PostgreSQL en prod via `DATABASE_URL` (voir
 
 ```bash
 alembic upgrade head      # applique les migrations (crée les tables)
-python -m app.seed        # recrée les données de démo (école, admin, profs)
+python -m app.seed        # (re)crée les données de démo (école, admin, profs, cours, 80 élèves)
+python -m app.reset_demo --yes   # ⚠️ vide BDD + dossier vidéos "live", puis rejoue seed.py
 ```
 
 Après avoir modifié un `models.py` :
@@ -73,6 +76,20 @@ Après avoir modifié un `models.py` :
 alembic revision --autogenerate -m "description du changement"
 alembic upgrade head
 ```
+
+## Fichiers vidéo
+
+Les fichiers eux-mêmes (pas leur métadonnée, en base) vivent sur disque,
+**un dossier par école** (voir `videos/stockage.py`) — jamais dans git :
+
+- `backend/uploads/videos/<ecole_id>/...` — dossier "live", servi en
+  statique sous `/media/videos/...` (voir `app/main.py`). Modifiable en
+  cours de test (upload, suppression manuelle...).
+- `backend/videos_reference/` — jeu de vidéos de démo stable, recopié
+  par-dessus le dossier "live" par `reset_demo.py`.
+
+Les deux sont gitignorés. `VIDEOS_DIR`/`VIDEOS_REFERENCE_DIR` (env)
+permettent de changer l'emplacement.
 
 ## Utilisation
 

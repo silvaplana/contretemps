@@ -27,6 +27,7 @@ dev = ["pytest", "httpx"]
 
 [project.scripts]
 app = "app.main:main"
+reset-demo = "app.reset_demo:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

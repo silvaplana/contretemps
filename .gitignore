@@ -22,6 +22,12 @@ __pycache__/
 *.db
 *.db-journal
 
+# Fichiers vidéo (voir backend/src/videos/stockage.py) — jamais dans git
+# (binaires, potentiellement volumineux) : "live" = uploads en cours,
+# "reference" = jeu de démo utilisé par `python -m app.reset_demo`.
+backend/uploads/
+backend/videos_reference/
+
 # Node / frontend
 node_modules/
 dist/
