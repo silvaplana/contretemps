@@ -166,6 +166,21 @@ function App() {
     const historique = courant.parEleve[eleveId] ?? courant.dates.map(() => 'present')
     const actuel = historique[index] ?? 'present'
     const suivant = cycle[(cycle.indexOf(actuel) + 1) % cycle.length]
+
+    // MAJ optimiste : l'icône change au clic, sans attendre le réseau (bug
+    // signalé — "l'icône met du temps à changer"). En mode réel,
+    // definirStatutEleve fait plusieurs aller-retours (liste des séances,
+    // PUT, puis reconstruction complète du cours, voir api/presence.js),
+    // un délai très perceptible sur un vrai réseau pour une simple case
+    // qu'on clique. La réponse du serveur écrase quand même le résultat
+    // ensuite, donc pas de désync durable si jamais elle diffère.
+    const nouvelHistorique = [...historique]
+    nouvelHistorique[index] = suivant
+    setPresences((byC) => ({
+      ...byC,
+      [coursId]: { ...courant, parEleve: { ...courant.parEleve, [eleveId]: nouvelHistorique } },
+    }))
+
     const donnees = await presenceApi.definirStatutEleve(coursId, eleveId, index, suivant)
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
