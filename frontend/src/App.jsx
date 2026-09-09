@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
+import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
@@ -13,7 +14,6 @@ import {
   ecoleActuelle,
   familleActuelle,
   groupes as initialGroupes,
-  presencesParCours as initialPresences,
   videosParCours as initialVideos,
 } from './data/mockData.js'
 import { TABS } from './data/nav.js'
@@ -55,7 +55,7 @@ function App() {
   const [professeurs, setProfesseurs] = useState([])
   const [cours, setCours] = useState([])
   const [groupes, setGroupes] = useState(initialGroupes)
-  const [presences, setPresences] = useState(initialPresences)
+  const [presences, setPresences] = useState({})
   const [choregraphies, setChoregraphies] = useState(initialChoregraphies)
   const [videos, setVideos] = useState(initialVideos)
   const [conversations, setConversations] = useState(initialConversations)
@@ -80,6 +80,15 @@ function App() {
       setSelectedCoursId(cours[0].id)
     }
   }, [cours, selectedCoursId])
+
+  // Présence : dépend de la liste des cours (voir api/presence.js, mode
+  // réel — a besoin de savoir quels cours interroger). Attend que `cours`
+  // soit chargé plutôt que de partir avec une liste vide.
+  useEffect(() => {
+    if (loggedIn && cours.length > 0) {
+      presenceApi.listerTout(cours.map((c) => c.id)).then(setPresences)
+    }
+  }, [loggedIn, cours])
 
   // "Ajouter une date" (Présence) : contrôlé ici, pas en état interne à
   // PresenceScreen, pour que le menu 3 points de l'en-tête (voir Header)
@@ -125,47 +134,33 @@ function App() {
     }
   }
 
-  function cycleStatut(coursId, eleveId, index, cycle) {
-    setPresences((byC) => {
-      const courant = byC[coursId] ?? { dates: [], parEleve: {} }
-      const historique = courant.parEleve[eleveId] ?? courant.dates.map(() => 'present')
-      const actuel = historique[index] ?? 'present'
-      const suivant = cycle[(cycle.indexOf(actuel) + 1) % cycle.length]
-      const miseAJour = [...historique]
-      miseAJour[index] = suivant
-      return {
-        ...byC,
-        [coursId]: { ...courant, parEleve: { ...courant.parEleve, [eleveId]: miseAJour } },
-      }
-    })
+  // Données via api/presence.js (voir api/README.md) — `presences` reste
+  // un seul objet {[coursId]: {dates, parEleve, parProf}} comme avant,
+  // juste rempli/modifié via la couche api désormais.
+  async function cycleStatut(coursId, eleveId, index, cycle) {
+    const courant = presences[coursId] ?? { dates: [], parEleve: {}, parProf: {} }
+    const historique = courant.parEleve[eleveId] ?? courant.dates.map(() => 'present')
+    const actuel = historique[index] ?? 'present'
+    const suivant = cycle[(cycle.indexOf(actuel) + 1) % cycle.length]
+    const donnees = await presenceApi.definirStatutEleve(coursId, eleveId, index, suivant)
+    setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
   // Ajoute une colonne de date à la table de présence d'un cours (voir
-  // PresenceScreen.jsx). Pas de doublon : une date déjà présente est ignorée.
-  function addDatePresence(coursId, dateLabel) {
-    setPresences((byC) => {
-      const courant = byC[coursId] ?? { dates: [], parEleve: {} }
-      if (courant.dates.includes(dateLabel)) return byC
-      return { ...byC, [coursId]: { ...courant, dates: [...courant.dates, dateLabel] } }
-    })
+  // PresenceScreen.jsx) — `dateIso` complet ('YYYY-MM-DD'), pas juste le
+  // libellé affiché, pour que le mode réel puisse créer une vraie séance
+  // datée (voir api/presence.js).
+  async function addDatePresence(coursId, dateIso) {
+    const donnees = await presenceApi.ajouterDate(coursId, dateIso)
+    setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
   // Heures réelles d'un professeur pour une séance (voir spec §5.2/§6.6) :
   // heureDebutReelle / heureFinReelle / depassementMinutes, un des 3 champs
   // à la fois (édition case par case).
-  function setHeureProf(coursId, profId, index, champ, valeur) {
-    setPresences((byC) => {
-      const courant = byC[coursId] ?? { dates: [], parEleve: {}, parProf: {} }
-      const historique =
-        courant.parProf?.[profId] ??
-        courant.dates.map(() => ({ heureDebutReelle: '', heureFinReelle: '', depassementMinutes: '' }))
-      const miseAJour = [...historique]
-      miseAJour[index] = { ...miseAJour[index], [champ]: valeur }
-      return {
-        ...byC,
-        [coursId]: { ...courant, parProf: { ...courant.parProf, [profId]: miseAJour } },
-      }
-    })
+  async function setHeureProf(coursId, profId, index, champ, valeur) {
+    const donnees = await presenceApi.definirHeureProf(coursId, profId, index, champ, valeur)
+    setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
   if (!loggedIn) {
@@ -237,33 +232,29 @@ function App() {
         )}
 
         {activeTab === 'heures' && (
-          <ZoneMigration domaine="presence">
-            <HeuresScreen
-              professeur={professeurs.find((p) => p.id === heuresProfId)}
-              cours={cours}
-              presences={presences}
-              estAdmin={activeUser.type === 'admin'}
-              onBack={() => setActiveTab(heuresRetour)}
-            />
-          </ZoneMigration>
+          <HeuresScreen
+            professeur={professeurs.find((p) => p.id === heuresProfId)}
+            cours={cours}
+            presences={presences}
+            estAdmin={activeUser.type === 'admin'}
+            onBack={() => setActiveTab(heuresRetour)}
+          />
         )}
 
         {activeTab === 'presence' &&
           (activeUser.type === 'admin' || activeUser.type === 'professeur') && (
-            <ZoneMigration domaine="presence">
-              <PresenceScreen
-                cours={selectedCours}
-                eleves={eleves}
-                professeurs={professeurs}
-                data={presences[selectedCoursId]}
-                activeUser={activeUser}
-                onCycle={cycleStatut}
-                onAddDate={addDatePresence}
-                onSetHeureProf={setHeureProf}
-                showAdd={presenceShowAdd}
-                setShowAdd={setPresenceShowAdd}
-              />
-            </ZoneMigration>
+            <PresenceScreen
+              cours={selectedCours}
+              eleves={eleves}
+              professeurs={professeurs}
+              data={presences[selectedCoursId]}
+              activeUser={activeUser}
+              onCycle={cycleStatut}
+              onAddDate={addDatePresence}
+              onSetHeureProf={setHeureProf}
+              showAdd={presenceShowAdd}
+              setShowAdd={setPresenceShowAdd}
+            />
           )}
 
         {activeTab === 'choregraphie' && (

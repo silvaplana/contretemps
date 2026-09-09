@@ -137,9 +137,16 @@ export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLog
       {showEtatModules && (
         <Modal title="État des modules" onClose={() => setShowEtatModules(false)}>
           <p className="muted">
-            Le backend expose déjà tous ces modules (testés côté serveur) — "Branché" veut dire
-            que l'écran correspondant les utilise vraiment ; "En dur" veut dire qu'il affiche
-            encore les données fictives du frontend, pas encore le vrai backend.
+            Le backend expose déjà tous ces modules (testés côté serveur). "Branché" veut dire
+            que l'écran est prêt à leur parler pour de vrai ; "En dur" veut dire qu'il n'utilise
+            même pas encore ce code, juste les données fictives du frontend.
+          </p>
+          <p className="muted">
+            ⚠️ Tant que le mode reste "démo" (le cas partout aujourd'hui — voir "Se connecter"/
+            "Voir une maquette" au login), même un module "Branché" tourne sur une copie en
+            mémoire des données fictives, pas sur la vraie base : tes modifications ne
+            survivent pas à un rechargement de la page. La vraie base ne sera utilisée qu'une
+            fois le mode basculé sur "réel".
           </p>
           <div className="checkbox-list">
             {Object.entries(INFOS_DOMAINES).map(([cle, { label, ecran }]) => (

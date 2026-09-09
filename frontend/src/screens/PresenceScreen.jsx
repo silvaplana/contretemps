@@ -208,7 +208,10 @@ export default function PresenceScreen({
           datesExistantes={dates}
           onClose={() => setShowAdd(false)}
           onAdd={(dateIso) => {
-            onAddDate(cours.id, versLabelAffiche(dateIso))
+            // `dateIso` complet ('YYYY-MM-DD'), pas juste "JJ/MM" — voir
+            // api/presence.js, qui a besoin de l'année pour créer une
+            // vraie séance datée en mode réel.
+            onAddDate(cours.id, dateIso)
             setShowAdd(false)
           }}
         />
