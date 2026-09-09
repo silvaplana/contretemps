@@ -1,17 +1,38 @@
 import { useEffect, useState } from 'react'
 import Logo from '../components/Logo.jsx'
 import Modal from '../components/Modal.jsx'
+import * as auth from '../api/auth.js'
 import { currentUser } from '../data/mockData.js'
 
 // Écran de connexion (voir spec/SPEC.md §2.2 et §2.3).
-// Maquette : identifiant = nom+prénom OU email, code d'accès par rôle et par
-// école. Pas de vraie vérification ici, "Se connecter" mène toujours à la
-// même maquette (mono-école pour l'instant, le multi-écoles est pour le
-// backend, voir §2.1).
+// "Se connecter" passe par api/auth.js (mono-école pour l'instant côté
+// maquette, le multi-écoles est pour le backend, voir §2.1) ; "Voir une
+// maquette" est un raccourci séparé qui ignore le mode courant et entre
+// TOUJOURS dans la maquette en dur (voir api/mode.js et api/README.md).
 export default function LoginScreen({ onLogin }) {
   const [identifiant, setIdentifiant] = useState(`${currentUser.prenom} ${currentUser.nom}`)
   const [code, setCode] = useState('ADMIN')
   const [showNouvelleEcole, setShowNouvelleEcole] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const [enCours, setEnCours] = useState(false)
+
+  async function seConnecter(e) {
+    e.preventDefault()
+    setErreur('')
+    setEnCours(true)
+    try {
+      const resultat = await auth.login({ identifiant, code })
+      onLogin(resultat)
+    } catch (err) {
+      setErreur(err.message || 'Connexion impossible')
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  async function voirMaquette() {
+    onLogin(await auth.voirMaquette())
+  }
 
   return (
     <div className="login-screen">
@@ -21,13 +42,7 @@ export default function LoginScreen({ onLogin }) {
         <p>Gestion d'école de danse</p>
       </div>
 
-      <form
-        className="login-screen__form"
-        onSubmit={(e) => {
-          e.preventDefault()
-          onLogin()
-        }}
-      >
+      <form className="login-screen__form" onSubmit={seConnecter}>
         <label htmlFor="login-identifiant">Nom Prénom ou Email</label>
         <input
           id="login-identifiant"
@@ -45,8 +60,13 @@ export default function LoginScreen({ onLogin }) {
           onChange={(e) => setCode(e.target.value)}
         />
 
-        <button type="submit" className="btn btn--primary btn--block">
+        {erreur && <p className="login-screen__erreur">{erreur}</p>}
+
+        <button type="submit" className="btn btn--primary btn--block" disabled={enCours}>
           Se connecter
+        </button>
+        <button type="button" className="btn btn--link" onClick={voirMaquette}>
+          Voir une maquette
         </button>
         <button type="button" className="btn btn--link">
           Code oublié ?

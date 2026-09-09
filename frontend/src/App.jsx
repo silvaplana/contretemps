@@ -149,6 +149,10 @@ function App() {
   if (!loggedIn) {
     return (
       <LoginScreen
+        // `resultat` ({ compte, modeDemo }) vient de api/auth.js — pas encore
+        // exploité pour sourcer les données de l'app (eleves/cours/... restent
+        // depuis mockData.js quel que soit le mode, voir api/README.md) : ça
+        // viendra quand chaque domaine aura sa propre couche api/<domaine>.js.
         onLogin={() => {
           setActiveProfilId(currentUser.id)
           setActiveTab('messagerie')
