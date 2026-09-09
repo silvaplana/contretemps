@@ -149,6 +149,21 @@ FICHIER_ELEVES_DEMO = (
 )
 
 
+def _copier_fichier_demo(ecole_id: int, nom_fichier: str) -> str:
+    """Copie depuis la référence figée dans l'image (voir
+    videos/stockage.py) vers le dossier "live" — sinon la ligne DB
+    pointerait sur un fichier absent tant qu'un reset_demo (qui recopie
+    tout) n'est pas lancé. Renvoie le chemin relatif à stocker en base
+    (voir videos.chemin_relatif) que le fichier existe ou non côté
+    référence (comportement identique pour lien_fichier/poster)."""
+    cible = dossier_ecole(ecole_id) / nom_fichier
+    if not cible.exists():
+        source = DOSSIER_VIDEOS_REFERENCE / str(ecole_id) / nom_fichier
+        if source.exists():
+            shutil.copy(source, cible)
+    return chemin_relatif(ecole_id, nom_fichier)
+
+
 def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, profs_par_nom_prenom, admin) -> None:
     """Voir PRESENCES_DEMO/CHOREGRAPHIES_DEMO ci-dessus. Inscrit aussi les
     élèves concernés au cours si besoin (l'import Excel n'inscrit que les
@@ -205,22 +220,24 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
                 choregraphies_service.ajouter_eleve(db, choregraphie.id, eleve.id)
             for v in ch_donnees["videos"]:
                 lien_fichier = ""
+                poster = None
                 if v["fichier"]:
-                    # Copie depuis la référence figée dans l'image (voir
-                    # videos/stockage.py) vers le dossier "live" — sinon
-                    # la ligne DB pointerait sur un fichier absent tant
-                    # qu'un reset_demo (qui recopie tout) n'est pas lancé.
-                    cible = dossier_ecole(ecole.id) / v["fichier"]
-                    if not cible.exists():
-                        source = DOSSIER_VIDEOS_REFERENCE / str(ecole.id) / v["fichier"]
-                        if source.exists():
-                            shutil.copy(source, cible)
-                    lien_fichier = chemin_relatif(ecole.id, v["fichier"])
+                    lien_fichier = _copier_fichier_demo(ecole.id, v["fichier"])
+                    # Vignette dérivée du même nom (voir génération des
+                    # .jpg — même base, extension différente) : "voir un
+                    # rapidement la photo de la vidéo" sans lancer le
+                    # lecteur, et surtout affiche QUELQUE CHOSE sur mobile
+                    # (Chrome/Brave/Samsung Internet Android n'affichent
+                    # pas la 1re image automatiquement, contrairement à
+                    # Chrome desktop — sans poster, écran Vidéo "cassé").
+                    nom_poster = Path(v["fichier"]).with_suffix(".jpg").name
+                    poster = _copier_fichier_demo(ecole.id, nom_poster)
                 videos_service.create(
                     db,
                     cours_id=cours.id,
                     nom=v["nom"],
                     lien_fichier=lien_fichier,
+                    poster=poster,
                     description=v.get("description", ""),
                     choregraphie_id=choregraphie.id,
                     uploaded_by=admin.id,

@@ -14,6 +14,7 @@ class VideoCreation(BaseModel):
     choregraphie_id: int | None = None
     description: str | None = None
     ordre: int | None = None
+    poster: str | None = None
 
 
 class VideoModification(BaseModel):
@@ -22,6 +23,7 @@ class VideoModification(BaseModel):
     choregraphie_id: int | None = None
     description: str | None = None
     ordre: int | None = None
+    poster: str | None = None
 
 
 class VideoSortie(BaseModel):
@@ -31,6 +33,7 @@ class VideoSortie(BaseModel):
     nom: str
     description: str | None = None
     lien_fichier: str
+    poster: str | None = None
     date_publication: datetime
     uploaded_by: int
     ordre: int | None = None

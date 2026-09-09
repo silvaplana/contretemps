@@ -26,6 +26,14 @@ class Video(Base):
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Chemin/URL, pas le fichier lui-même (voir §6.8).
     lien_fichier: Mapped[str] = mapped_column(String(500), nullable=False)
+    # Vignette (chemin relatif, même convention que lien_fichier, voir
+    # videos/stockage.py) — absente de la spec §6.8 d'origine : ajoutée
+    # parce que les navigateurs mobiles (Chrome/Brave/Samsung Internet
+    # Android testés) n'affichent PAS la 1re image d'une vidéo tant
+    # qu'elle n'est pas jouée (juste une case noire + icône "média"),
+    # contrairement à Chrome desktop — sans vignette, l'écran Vidéo
+    # paraît cassé sur mobile alors que la lecture elle-même fonctionne.
+    poster: Mapped[str | None] = mapped_column(String(500), nullable=True)
     date_publication: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     uploaded_by: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False)
     # Ordre manuel, utilisé uniquement dans le contexte d'une chorégraphie

@@ -58,6 +58,7 @@ async function creerMaquette(coursId, donnees) {
     description: donnees.description ?? '',
     duree: donnees.duree || '00:00',
     url: donnees.url || null,
+    poster: donnees.poster || null,
     choregraphieId: donnees.choregraphieId ?? null,
     datePublication: dateAffichee(),
   }
@@ -90,13 +91,24 @@ async function requete(chemin, options) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
+// `lien_fichier`/`poster` en base sont des chemins RELATIFS (voir
+// backend/src/videos/stockage.py, ex. "1/xxx.mp4") — pas des URL. Le
+// backend les sert sous /media/videos/<ce chemin> (voir app/main.py) :
+// sans ce préfixe, le <video>/poster pointerait sur une URL relative à
+// la PAGE (jamais valide) plutôt qu'à l'API. Bug réel trouvé en testant
+// sur un vrai téléphone (rien ne se chargeait, aucune erreur visible).
+function urlMedia(cheminRelatif) {
+  return cheminRelatif ? `${BASE_URL}/media/videos/${cheminRelatif}` : null
+}
+
 function versEcran(v) {
   return {
     id: v.id,
     titre: v.nom,
     description: v.description ?? '',
     duree: '', // voir note en tête de fichier : pas de champ backend
-    url: v.lien_fichier,
+    url: urlMedia(v.lien_fichier),
+    poster: urlMedia(v.poster),
     choregraphieId: v.choregraphie_id,
     datePublication: v.date_publication.slice(8, 10) + '/' + v.date_publication.slice(5, 7),
   }
@@ -107,13 +119,14 @@ async function listerReel(coursId) {
   return liste.map(versEcran)
 }
 
-async function creerReel(coursId, { titre, description, url, choregraphieId }, uploaderId) {
+async function creerReel(coursId, { titre, description, url, poster, choregraphieId }, uploaderId) {
   const v = await requete(`/cours/${coursId}/videos`, {
     method: 'POST',
     body: JSON.stringify({
       nom: titre,
       description: description ?? '',
       lien_fichier: url ?? '',
+      poster: poster ?? null,
       choregraphie_id: choregraphieId ?? null,
       uploaded_by: uploaderId,
     }),

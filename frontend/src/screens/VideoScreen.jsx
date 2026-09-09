@@ -42,7 +42,7 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
           const choregraphie = choregraphies.find((ch) => ch.id === v.choregraphieId)
           return (
             <div key={v.id} className="video-card">
-              <VideoThumb url={v.url} titre={v.titre} duree={v.duree} />
+              <VideoThumb url={v.url} poster={v.poster} titre={v.titre} duree={v.duree} />
               <div className="video-card__body">
                 <div>
                   <strong>{v.titre}</strong>

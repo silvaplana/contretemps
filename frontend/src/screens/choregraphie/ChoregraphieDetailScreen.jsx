@@ -154,7 +154,7 @@ export default function ChoregraphieDetailScreen({
             <div className="video-list video-list--nested">
               {videos.map((v) => (
                 <div key={v.id} className="video-card">
-                  <VideoThumb url={v.url} titre={v.titre} duree={v.duree} />
+                  <VideoThumb url={v.url} poster={v.poster} titre={v.titre} duree={v.duree} />
                   <div className="video-card__body">
                     <strong>{v.titre}</strong>
                     {editing && (

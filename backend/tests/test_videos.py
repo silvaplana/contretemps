@@ -86,3 +86,28 @@ def test_modifier_et_supprimer_video(client, db_session):
 
     assert client.delete(f"/videos/{video['id']}").status_code == 204
     assert client.get(f"/videos/{video['id']}").status_code == 404
+
+
+def test_poster_optionnel(client, db_session):
+    """Voir §6.8 : vignette ajoutée pour l'affichage mobile (Chrome/Brave/
+    Samsung Internet Android n'affichent pas la 1re image sans elle)."""
+    _, cours, _, admin = _setup(db_session)
+    sans_poster = client.post(
+        f"/cours/{cours.id}/videos",
+        json={"nom": "Prise 1", "lien_fichier": "/videos/1.mp4", "uploaded_by": admin.id},
+    ).json()
+    assert sans_poster["poster"] is None
+
+    avec_poster = client.post(
+        f"/cours/{cours.id}/videos",
+        json={
+            "nom": "Prise 2",
+            "lien_fichier": "/videos/2.mp4",
+            "poster": "/videos/2.jpg",
+            "uploaded_by": admin.id,
+        },
+    ).json()
+    assert avec_poster["poster"] == "/videos/2.jpg"
+
+    reponse = client.put(f"/videos/{sans_poster['id']}", json={"poster": "/videos/1.jpg"})
+    assert reponse.json()["poster"] == "/videos/1.jpg"

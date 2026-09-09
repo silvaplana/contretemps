@@ -1909,6 +1909,10 @@ export const videosParCours = {
       duree: '01:20',
       description: '',
       url: `${BASE_URL}videos/comme-un-garcon-detail-debut.mp4`,
+      // Vignette (voir VideoThumb.jsx) : sans elle, les navigateurs
+      // mobiles (Chrome/Brave/Samsung Internet Android testés)
+      // n'affichent PAS la 1re image, juste une case noire.
+      poster: `${BASE_URL}videos/comme-un-garcon-detail-debut.jpg`,
       choregraphieId: 'ch1',
     },
     {
@@ -1926,6 +1930,7 @@ export const videosParCours = {
       duree: '04:10',
       description: 'Passage à retravailler : le déplacement diagonal.',
       url: `${BASE_URL}videos/bang-bang-lent.mp4`,
+      poster: `${BASE_URL}videos/bang-bang-lent.jpg`,
       choregraphieId: 'ch2',
     },
   ],
