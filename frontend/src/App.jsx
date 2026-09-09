@@ -198,6 +198,34 @@ function App() {
   // heureDebutReelle / heureFinReelle / depassementMinutes, un des 3 champs
   // à la fois (édition case par case).
   async function setHeureProf(coursId, profId, index, champ, valeur) {
+    // MAJ optimiste : même cause/même correctif que cycleStatut ci-dessus
+    // (bug signalé — "l'affichage est lent, même problème que pour les
+    // présences élèves"). L'utilisateur tape dans le champ, l'affichage
+    // ne doit pas attendre le réseau (plusieurs aller-retours en mode
+    // réel, voir api/presence.js).
+    const courant = presences[coursId] ?? { dates: [], parEleve: {}, parProf: {} }
+    const historique =
+      courant.parProf[profId] ??
+      courant.dates.map(() => ({ heureDebutReelle: '', heureFinReelle: '', depassementMinutes: '' }))
+    const nouvelHistorique = [...historique]
+    // Défauts explicites avant le spread de l'existant : `historique[index]`
+    // peut être absent (ex. juste après l'ajout d'une date, voir
+    // ajouterDateMaquette/Reel qui n'étend pas parProf) — sans ça,
+    // `{...undefined, [champ]: valeur}` ne garderait QUE ce champ, les
+    // deux autres deviendraient `undefined` (warning React "value ne
+    // doit pas être undefined" sur les inputs contrôlés voisins).
+    nouvelHistorique[index] = {
+      heureDebutReelle: '',
+      heureFinReelle: '',
+      depassementMinutes: '',
+      ...nouvelHistorique[index],
+      [champ]: valeur,
+    }
+    setPresences((byC) => ({
+      ...byC,
+      [coursId]: { ...courant, parProf: { ...courant.parProf, [profId]: nouvelHistorique } },
+    }))
+
     const donnees = await presenceApi.definirHeureProf(coursId, profId, index, champ, valeur)
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
