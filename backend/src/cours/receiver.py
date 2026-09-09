@@ -47,6 +47,13 @@ class CoursReceiver:
             self.desinscrire_eleve
         )
 
+        # Sens inverse de /cours/{id}/eleves — utile à Admin > Élèves (une
+        # ligne par élève, colonne "cours suivis"), pas seulement à
+        # Admin > Cours (voir CoursService.cours_de_leleve).
+        self.app.get("/eleves/{eleve_id}/cours", response_model=list[CoursSortie])(
+            self.cours_de_leleve
+        )
+
     def lister(self, ecole_id: int, db: Session = Depends(get_db)):
         return self.client.list(db, ecole_id)
 
@@ -86,3 +93,6 @@ class CoursReceiver:
 
     def desinscrire_eleve(self, cours_id: int, compte_id: int, db: Session = Depends(get_db)):
         self.client.desinscrire_eleve(db, cours_id, compte_id)
+
+    def cours_de_leleve(self, eleve_id: int, db: Session = Depends(get_db)):
+        return self.client.cours_de_leleve(db, eleve_id)

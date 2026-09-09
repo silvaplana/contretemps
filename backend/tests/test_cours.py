@@ -87,3 +87,17 @@ def test_inscrire_eleve_deux_fois_ne_duplique_pas(client, db_session):
     client.post(f"/cours/{creee['id']}/eleves/{eleve.id}")
     client.post(f"/cours/{creee['id']}/eleves/{eleve.id}")
     assert len(client.get(f"/cours/{creee['id']}/eleves").json()) == 1
+
+
+def test_cours_de_leleve(client, db_session):
+    """Sens inverse de /cours/{id}/eleves — voir Admin > Élèves (colonne
+    "cours suivis")."""
+    ecole, _, eleve = _creer_ecole_et_comptes(db_session)
+    c1 = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Eveil"}).json()
+    c2 = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Jazz"}).json()
+    client.post(f"/cours/{c1['id']}/eleves/{eleve.id}")
+
+    reponse = client.get(f"/eleves/{eleve.id}/cours")
+    assert reponse.status_code == 200
+    assert [c["id"] for c in reponse.json()] == [c1["id"]]
+    assert c2["id"] not in [c["id"] for c in reponse.json()]
