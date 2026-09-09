@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from auth import Auth, AuthReceiver
+from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver
 from cours import CoursReceiver, CoursService
 from db import Base, engine
@@ -18,6 +19,7 @@ from ecoles import Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver
 from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
+from videos import Videos, VideosReceiver
 
 load_dotenv()  # charge backend/.env si present
 
@@ -71,6 +73,14 @@ profs_receiver = ProfsReceiver(client=profs_client, app=app)
 # Monte les routes de presence (/seances, /cours/{id}/seances, /profs/{id}/heures) - depend de cours.
 presence_client = Presence(cours=cours_client)
 presence_receiver = PresenceReceiver(client=presence_client, app=app)
+
+# Monte les routes des choregraphies (/cours/{id}/choregraphies, /choregraphies/...) - depend de cours.
+choregraphies_client = Choregraphies(cours=cours_client)
+choregraphies_receiver = ChoregraphiesReceiver(client=choregraphies_client, app=app)
+
+# Monte les routes des videos (/cours/{id}/videos, /choregraphies/{id}/videos, /videos/...).
+videos_client = Videos()
+videos_receiver = VideosReceiver(client=videos_client, app=app)
 
 
 def main() -> None:

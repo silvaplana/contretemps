@@ -24,7 +24,9 @@ backend/
 │   ├── cours/              # Admin > Cours (+ planning hebdomadaire)
 │   ├── eleves/             # Admin > Élèves
 │   ├── profs/              # Admin > Professeurs (pas de models.py : aucun champ propre, voir §6.3)
-│   └── presence/           # Présence (+ comptage d'heures : Admin > Professeurs / Profil > "Mes heures")
+│   ├── presence/           # Présence (+ comptage d'heures : Admin > Professeurs / Profil > "Mes heures")
+│   ├── choregraphies/      # Chorégraphie
+│   └── videos/             # Vidéo
 └── tests/
 ```
 
@@ -40,10 +42,10 @@ Chaque module `<nom>/` :
 - `schemas.py` — formes Pydantic des requêtes/réponses HTTP (pas les
   tables) quand une route a besoin de valider un corps de requête.
 
-Modules prévus mais pas encore codés (voir spec/SPEC.md) :
-`messagerie` (conversations.py + messages.py), `choregraphies`, `videos`.
-L'import Excel réel (§6.4bis) est différé — `eleves.py` expose déjà les
-primitives CRUD qu'un futur `import_excel.py` pourra réutiliser.
+Module prévu mais pas encore codé (voir spec/SPEC.md) : `messagerie`
+(conversations.py + messages.py). L'import Excel réel (§6.4bis) est
+différé — `eleves.py` expose déjà les primitives CRUD qu'un futur
+`import_excel.py` pourra réutiliser.
 
 ## Installation (venv + pip)
 
