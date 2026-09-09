@@ -17,6 +17,7 @@ from cours import CoursReceiver, CoursService
 from db import Base, engine
 from ecoles import Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver
+from messagerie import Conversations, MessagerieReceiver, Messages
 from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
 from videos import Videos, VideosReceiver
@@ -81,6 +82,14 @@ choregraphies_receiver = ChoregraphiesReceiver(client=choregraphies_client, app=
 # Monte les routes des videos (/cours/{id}/videos, /choregraphies/{id}/videos, /videos/...).
 videos_client = Videos()
 videos_receiver = VideosReceiver(client=videos_client, app=app)
+
+# Monte les routes de messagerie (/conversations, /dm, /messages...) - depend
+# de comptes et cours (resolution des membres "cours").
+conversations_client = Conversations(comptes=comptes_client, cours=cours_client)
+messages_client = Messages(conversations=conversations_client)
+messagerie_receiver = MessagerieReceiver(
+    conversations=conversations_client, messages=messages_client, app=app
+)
 
 
 def main() -> None:

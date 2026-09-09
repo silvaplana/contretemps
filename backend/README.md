@@ -26,7 +26,8 @@ backend/
 │   ├── profs/              # Admin > Professeurs (pas de models.py : aucun champ propre, voir §6.3)
 │   ├── presence/           # Présence (+ comptage d'heures : Admin > Professeurs / Profil > "Mes heures")
 │   ├── choregraphies/      # Chorégraphie
-│   └── videos/             # Vidéo
+│   ├── videos/             # Vidéo
+│   └── messagerie/         # Admin > Conversations ET Messagerie (conversations.py + messages.py)
 └── tests/
 ```
 
@@ -42,10 +43,10 @@ Chaque module `<nom>/` :
 - `schemas.py` — formes Pydantic des requêtes/réponses HTTP (pas les
   tables) quand une route a besoin de valider un corps de requête.
 
-Module prévu mais pas encore codé (voir spec/SPEC.md) : `messagerie`
-(conversations.py + messages.py). L'import Excel réel (§6.4bis) est
-différé — `eleves.py` expose déjà les primitives CRUD qu'un futur
-`import_excel.py` pourra réutiliser.
+Tous les modules métier prévus sont codés. Reste seulement (voir
+spec/SPEC.md) : l'import Excel réel (§6.4bis), différé — `eleves.py`
+expose déjà les primitives CRUD qu'un futur `import_excel.py` pourra
+réutiliser — puis brancher le frontend sur cette API.
 
 ## Installation (venv + pip)
 

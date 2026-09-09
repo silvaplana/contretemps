@@ -15,6 +15,12 @@ from cours.models import Cours, cours_professeurs, eleves_cours  # noqa: F401
 from db import Base
 from ecoles.models import Ecole  # noqa: F401
 from eleves.models import ContactEleve, ProfilEleve  # noqa: F401
+from messagerie.models import (  # noqa: F401
+    Conversation,
+    ConversationMembre,
+    Message,
+    MessageDelivery,
+)
 from presence.models import PresenceEleve, PresenceProf, SeancePresence  # noqa: F401
 from videos.models import Video  # noqa: F401
 
