@@ -125,6 +125,13 @@ async function avecCoursIds(eleve) {
   const cours = await requete(`/eleves/${eleve.id}/cours`)
   return {
     ...eleve,
+    // Champs texte optionnels côté backend (nullable) : `??  ''` partout,
+    // sinon un champ contrôlé (EditableText, voir AdminEleves.jsx) reçoit
+    // `null` et React se plaint ("value prop should not be null").
+    email: eleve.email ?? '',
+    telephone: eleve.telephone ?? '',
+    adresse: eleve.adresse ?? '',
+    allergies: eleve.allergies ?? '',
     dateNaissance: eleve.date_naissance ?? '',
     montantTotalAnnee: eleve.montant_total_annee ?? 0,
     montantPaye: eleve.montant_paye ?? 0,

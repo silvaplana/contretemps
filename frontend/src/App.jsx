@@ -190,12 +190,17 @@ function App() {
   if (!loggedIn) {
     return (
       <LoginScreen
-        // `resultat` ({ compte, modeDemo }) vient de api/auth.js — pas encore
-        // exploité pour sourcer les données de l'app (eleves/cours/... restent
-        // depuis mockData.js quel que soit le mode, voir api/README.md) : ça
-        // viendra quand chaque domaine aura sa propre couche api/<domaine>.js.
-        onLogin={() => {
+        // `resultat` ({ compte, ecole, modeDemo }) vient de api/auth.js.
+        // En mode réel, `ecole` est la vraie école résolue côté backend
+        // (voir auth.js : resoudreEcoleReelle) — eleves/profs/cours/...
+        // en dépendent tous (voir les useEffect ci-dessus, ecole.id).
+        // ⚠️ `activeProfilId`/`activeUser` restent basés sur la famille en
+        // dur (familleActuelle, voir mockData.js) même en mode réel : le
+        // compte réellement connecté (resultat.compte) n'est pas encore
+        // affiché tel quel — limite connue, pas encore résolue.
+        onLogin={(resultat) => {
           setActiveProfilId(currentUser.id)
+          setEcole(resultat?.modeDemo === false && resultat.ecole ? resultat.ecole : ecoleActuelle)
           setActiveTab('messagerie')
           setLoggedIn(true)
         }}

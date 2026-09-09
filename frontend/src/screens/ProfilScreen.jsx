@@ -5,6 +5,7 @@ import {
   estAffichageMigrationActif,
   INFOS_DOMAINES,
 } from '../api/etatMigration.js'
+import { estModeDemo } from '../api/mode.js'
 import Badge from '../components/Badge.jsx'
 import CodeConfirmModal from '../components/CodeConfirmModal.jsx'
 import Icon from '../components/Icon.jsx'
@@ -24,6 +25,11 @@ export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLog
   // domaines branchés.
   const [afficherMigration, setAfficherMigration] = useState(estAffichageMigrationActif())
   const [showEtatModules, setShowEtatModules] = useState(false)
+  // Le mode (voir api/mode.js) n'est plus un interrupteur ici : c'est le
+  // bouton cliqué au login qui décide pour toute la session ("Se
+  // connecter" = réel, "Voir une maquette" = démo, voir api/auth.js) —
+  // ceci n'est qu'un rappel en lecture seule de celui actuellement actif.
+  const modeReel = !estModeDemo()
   function toggleAffichageMigration(actif) {
     setAfficherMigration(actif)
     definirAffichageMigration(actif)
@@ -107,6 +113,14 @@ export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLog
       {user.type === 'admin' && (
         <section>
           <h3 className="section-label">Développement</h3>
+          {/* Le seul endroit de toute l'appli qui dit dans quel mode on
+              est — "pas bleu" (voir ZoneMigration.jsx) veut juste dire
+              que l'écran EST PRÊT à parler au vrai backend, pas qu'il le
+              fait vraiment : ça dépend du bouton cliqué au login
+              ("Se connecter" = réel, "Voir une maquette" = démo). */}
+          <p className={modeReel ? 'profil-mode-actuel profil-mode-actuel--reel' : 'profil-mode-actuel'}>
+            Mode actuel : <strong>{modeReel ? 'Réel (vraie base de données)' : 'Démo (données fictives, remises à zéro à chaque rechargement)'}</strong>
+          </p>
           <div className="settings-row">
             <span>Repérer en bleu les écrans pas encore branchés au vrai backend</span>
             <button
@@ -142,11 +156,11 @@ export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLog
             même pas encore ce code, juste les données fictives du frontend.
           </p>
           <p className="muted">
-            ⚠️ Tant que le mode reste "démo" (le cas partout aujourd'hui — voir "Se connecter"/
-            "Voir une maquette" au login), même un module "Branché" tourne sur une copie en
-            mémoire des données fictives, pas sur la vraie base : tes modifications ne
-            survivent pas à un rechargement de la page. La vraie base ne sera utilisée qu'une
-            fois le mode basculé sur "réel".
+            ⚠️ En mode "démo" ("Voir une maquette" au login), même un module "Branché" tourne
+            sur une copie en mémoire des données fictives, pas sur la vraie base : les
+            modifications ne survivent pas à un rechargement de la page. Se connecter pour de
+            vrai ("Se connecter", avec un identifiant/code réels) utilise la vraie base — voir
+            "Mode actuel" ci-dessus.
           </p>
           <div className="checkbox-list">
             {Object.entries(INFOS_DOMAINES).map(([cle, { label, ecran }]) => (
