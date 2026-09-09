@@ -6,6 +6,7 @@
 // consultée par le reste de l'appli.
 export const DOMAINES_MIGRES = {
   auth: true,
+  ecoles: true,
   eleves: true,
   profs: true,
   cours: true,
@@ -19,6 +20,7 @@ export const DOMAINES_MIGRES = {
 // École) — voir AdminParametres.jsx.
 export const INFOS_DOMAINES = {
   auth: { label: 'Connexion', ecran: 'Login' },
+  ecoles: { label: 'École', ecran: 'Admin > École' },
   eleves: { label: 'Élèves', ecran: 'Admin > Élèves' },
   profs: { label: 'Professeurs', ecran: 'Admin > Professeurs' },
   cours: { label: 'Cours', ecran: 'Admin > Cours' },
