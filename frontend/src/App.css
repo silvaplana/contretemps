@@ -674,7 +674,9 @@
   flex: 1;
   min-height: 0;
   position: relative;
-  padding-bottom: 72px;
+  /* Dégagement du FAB (voir --fab-clearance dans index.css) — même bug
+     que .video-list : 72px ne dégageait le FAB qu'à moitié. */
+  padding-bottom: var(--fab-clearance);
 }
 
 /* Barre de recherche + menu 3 points optionnel côte à côte (voir
@@ -1110,8 +1112,9 @@
 .choregraphie-list--full {
   flex: 1;
   min-height: 0;
-  /* Marge pour que le dernier élément ne soit pas caché sous le FAB. */
-  padding-bottom: 72px;
+  /* Dégagement du FAB (voir --fab-clearance dans index.css) — même bug
+     que .video-list : 72px ne dégageait le FAB qu'à moitié. */
+  padding-bottom: var(--fab-clearance);
 }
 
 .choregraphie-list__item {
@@ -1201,7 +1204,13 @@
   flex-direction: column;
   gap: 16px;
   overflow-y: auto;
-  padding-bottom: 72px;
+  /* Dégagement du FAB (voir --fab-clearance dans index.css) — 72px ne le
+     dégageait qu'à moitié : une fois la liste défilée jusqu'en bas, le
+     coin bas-droit (titre, tag chorégraphie, ET le bouton plein écran
+     des contrôles natifs de la dernière vidéo) pouvait se retrouver
+     sous le "+". Trouvé en comparant avec Chorégraphie (pas de FAB dans
+     cet écran, jamais ce problème là). */
+  padding-bottom: var(--fab-clearance);
 }
 
 /* Utilisée dans le détail d'une chorégraphie (ChoregraphieDetailScreen.jsx) :
@@ -1212,6 +1221,18 @@
 }
 
 .video-card {
+  /* flex-shrink:0 est le vrai correctif du bug signalé ("le bas de la
+     vidéo est caché, ainsi que le titre et la chorégraphie") : .video-card
+     est un enfant flex de .video-list (flex-direction:column), et
+     comme .video-card a overflow:hidden, la taille minimale automatique
+     d'un enfant flex tombe à 0 (voir spec CSS flexbox) — flexbox le
+     compressait alors pour tenir dans l'espace dispo au lieu de laisser
+     .video-list défiler (overflow-y:auto), tronquant le bas de la
+     vignette 16/9 ET tout .video-card__body (titre, tag, corbeille).
+     Reproduit uniquement dans l'onglet Vidéo (liste haute, espace
+     contraint) — jamais dans Chorégraphie (.video-list--nested), où le
+     conteneur n'est pas à hauteur contrainte de la même façon. */
+  flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 16px;
   overflow: hidden;

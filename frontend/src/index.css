@@ -48,6 +48,13 @@
      dessous ni à cheval (voir App.css). */
   --bottom-nav-height: 64px;
 
+  /* Dégagement à réserver (padding-bottom) sur une liste qui défile sous
+     un FAB (.fab, position fixed) pour que son dernier élément ne se
+     retrouve jamais caché dessous une fois le scroll allé au bout.
+     Le FAB occupe bottom:calc(64px+16px)=80px + height:56px = 136px de
+     hauteur totale au-dessus du bas du viewport ; 152px = 136 + marge. */
+  --fab-clearance: 152px;
+
   font: 16px/145% var(--sans);
   color-scheme: light;
   color: var(--text);
