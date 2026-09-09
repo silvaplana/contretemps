@@ -161,26 +161,30 @@ export default function ChoregraphieDetailScreen({
                       <strong>{v.titre}</strong>
                       {v.description && <p>{v.description}</p>}
                     </div>
-                    {editing && (
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn--sm"
-                          onClick={() => setEditingVideo(v)}
-                          aria-label={`Modifier ${v.titre}`}
-                        >
-                          <Icon name="edit" size={14} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn--sm icon-btn--danger"
-                          onClick={() => onRemoveVideo(v.id)}
-                          aria-label={`Supprimer ${v.titre}`}
-                        >
-                          <Icon name="trash" size={14} />
-                        </button>
-                      </div>
-                    )}
+                    {/* Édition/suppression d'une vidéo : même comportement que
+                        l'onglet Vidéo (VideoScreen.jsx) — toujours visible,
+                        indépendant du mode édition de la chorégraphie
+                        elle-même (nom/costume/horaire, réservé à
+                        Admin/Professeur, voir §5.3). Une vidéo appartient au
+                        cours, pas à la chorégraphie. */}
+                    <div className="row-actions">
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--sm"
+                        onClick={() => setEditingVideo(v)}
+                        aria-label={`Modifier ${v.titre}`}
+                      >
+                        <Icon name="edit" size={14} />
+                      </button>
+                      <button
+                        type="button"
+                        className="icon-btn icon-btn--sm icon-btn--danger"
+                        onClick={() => onRemoveVideo(v.id)}
+                        aria-label={`Supprimer ${v.titre}`}
+                      >
+                        <Icon name="trash" size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -199,9 +203,15 @@ export default function ChoregraphieDetailScreen({
               </button>
             </div>
           ) : (
-            <p className="muted choregraphie-detail__video-hint">
-              Passez en édition pour choisir, ajouter, modifier ou supprimer des vidéos.
-            </p>
+            // Modifier/supprimer une vidéo ne dépend plus du mode édition
+            // (voir plus haut) — seuls choisir/ajouter en dépendent encore,
+            // et seulement pour Admin/Professeur (§5.3) : rien à afficher
+            // à un élève, qui n'a accès à aucune des deux.
+            peutModifier && (
+              <p className="muted choregraphie-detail__video-hint">
+                Passez en édition pour choisir ou ajouter des vidéos.
+              </p>
+            )
           )}
         </section>
       </div>
