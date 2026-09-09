@@ -27,11 +27,12 @@ services:
     env_file:
       - path: ./backend/.env
         required: false
-    # Fichier SQLite (voir backend/Dockerfile : DATABASE_URL pointe ici,
-    # dans un dossier appartenant à appuser) — volume nommé pour que la
-    # base survive à un `docker compose up -d --build` (sinon perdue à
-    # chaque redéploiement, le système de fichiers du conteneur n'étant
-    # pas persistant par défaut).
+    # Fichier SQLite + fichiers vidéo (voir backend/Dockerfile :
+    # DATABASE_URL/VIDEOS_DIR/VIDEOS_REFERENCE_DIR pointent tous dans ce
+    # dossier, qui appartient à appuser) — volume nommé pour que tout ça
+    # survive à un `docker compose up -d --build` (sinon perdu à chaque
+    # redéploiement, le système de fichiers du conteneur n'étant pas
+    # persistant par défaut).
     volumes:
       - backend_data:/app/data
     # "expose" (contrairement à "ports") ne rend PAS le port accessible

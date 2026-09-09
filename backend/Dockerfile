@@ -16,14 +16,19 @@ RUN pip install --no-cache-dir .
 # a l'interieur du conteneur.
 #
 # /app (WORKDIR) appartient a root (copie ci-dessus) -> appuser ne peut
-# pas y ecrire, donc pas y creer le fichier SQLite par defaut
-# (sqlite:///./contretemps.db, chemin relatif au CWD, voir db/database.py).
-# /app/data est cree expres, avec les bons droits, et monte en volume
-# (voir docker-compose.yml) pour que la base survive aux redeploiements.
+# pas y ecrire, donc pas y creer le fichier SQLite ni les dossiers vidéo
+# par defaut (chemins relatifs au CWD, voir db/database.py et
+# videos/stockage.py). /app/data est cree expres, avec les bons droits,
+# et monte en volume (voir docker-compose.yml) pour que tout ca survive
+# aux redeploiements. Les sous-dossiers (uploads/, videos_reference/)
+# sont crees par l'appli elle-meme au demarrage, appuser peut y ecrire
+# puisqu'il possede /app/data.
 RUN useradd --create-home appuser \
     && mkdir -p /app/data \
     && chown -R appuser:appuser /app/data
 ENV DATABASE_URL=sqlite:////app/data/contretemps.db
+ENV VIDEOS_DIR=/app/data/uploads/videos
+ENV VIDEOS_REFERENCE_DIR=/app/data/videos_reference
 USER appuser
 
 # Documente le port utilise par l'API (n'ouvre rien a lui seul,
