@@ -106,6 +106,7 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
       {editingVideo && (
         <EditVideoModal
           video={editingVideo}
+          choregraphies={choregraphies}
           onClose={() => setEditingVideo(null)}
           onSave={(patch) => {
             update(editingVideo.id, patch)

@@ -268,6 +268,7 @@ export default function ChoregraphieDetailScreen({
       {editingVideo && (
         <EditVideoModal
           video={editingVideo}
+          lockedChoregraphieId={choregraphie.id}
           onClose={() => setEditingVideo(null)}
           onSave={(patch) => {
             onUpdateVideo(editingVideo.id, patch)
