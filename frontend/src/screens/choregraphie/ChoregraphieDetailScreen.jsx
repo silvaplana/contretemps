@@ -156,7 +156,10 @@ export default function ChoregraphieDetailScreen({
                 <div key={v.id} className="video-card">
                   <VideoThumb url={v.url} poster={v.poster} titre={v.titre} duree={v.duree} />
                   <div className="video-card__body">
-                    <strong>{v.titre}</strong>
+                    <div>
+                      <strong>{v.titre}</strong>
+                      {v.description && <p>{v.description}</p>}
+                    </div>
                     {editing && (
                       <div className="row-actions">
                         <button
