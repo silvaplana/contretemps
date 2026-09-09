@@ -9,6 +9,9 @@ WORKDIR /app
 # pyproject.toml a change.
 COPY pyproject.toml ./
 COPY src ./src
+# Fixture de démo (voir app/seed.py) — aucune vraie donnée, committable
+# (voir backend/README.md).
+COPY seed_data ./seed_data
 
 RUN pip install --no-cache-dir .
 
@@ -29,6 +32,10 @@ RUN useradd --create-home appuser \
 ENV DATABASE_URL=sqlite:////app/data/contretemps.db
 ENV VIDEOS_DIR=/app/data/uploads/videos
 ENV VIDEOS_REFERENCE_DIR=/app/data/videos_reference
+# Voir app/seed.py : une fois pip install-é, __file__ pointe vers
+# site-packages, pas vers l'arborescence source — indique où seed.py
+# trouve vraiment seed_data/ dans CETTE image.
+ENV SEED_DATA_DIR=/app/seed_data
 USER appuser
 
 # Documente le port utilise par l'API (n'ouvre rien a lui seul,

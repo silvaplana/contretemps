@@ -14,6 +14,7 @@ Usage :
     python -m app.seed
 """
 
+import os
 from pathlib import Path
 
 from comptes import Comptes
@@ -48,7 +49,18 @@ COURS_CONTRETEMPS = [
     {"nom": "Contemporain", "jour": "Vendredi", "heure_debut": "20:00", "heure_fin": "21:30", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
 ]
 
-FICHIER_ELEVES_DEMO = Path(__file__).resolve().parents[2] / "seed_data" / "eleves_demo.xlsx"
+# SEED_DATA_DIR (voir Dockerfile, même pattern que DATABASE_URL/VIDEOS_DIR) :
+# une fois `pip install .`, ce fichier tourne depuis site-packages, pas
+# depuis l'arborescence source — `parents[2]` (qui marche en dev, lancé
+# depuis backend/src/app/seed.py) ne pointe plus vers backend/seed_data/
+# dans ce cas. Le fallback reste utile pour `python -m app.seed` en dev,
+# sans venv installé en mode editable.
+_SEED_DATA_DIR = os.environ.get("SEED_DATA_DIR")
+FICHIER_ELEVES_DEMO = (
+    Path(_SEED_DATA_DIR) / "eleves_demo.xlsx"
+    if _SEED_DATA_DIR
+    else Path(__file__).resolve().parents[2] / "seed_data" / "eleves_demo.xlsx"
+)
 
 
 def run() -> None:
