@@ -54,6 +54,12 @@ export default function PresenceScreen({
   // `dates`, en premier) — les données elles-mêmes (parEleve/parProf, des
   // tableaux parallèles à `dates`) restent indexées normalement.
   const ordreAffichage = dates.map((_, i) => i).reverse()
+  // Sans aucune date, le tableau perdait toute colonne à droite de la
+  // colonne des noms — juste une liste centrée, illisible (bug signalé).
+  // Une colonne "Aucune date" (grisée) garde une vraie grille, avec un
+  // repère explicite plutôt qu'un vide silencieux.
+  const colonnesVides = dates.length === 0
+  const nbColonnesDate = colonnesVides ? 1 : dates.length
 
   function statusFor(eleveId, index) {
     return data?.parEleve?.[eleveId]?.[index] ?? 'present'
@@ -74,9 +80,11 @@ export default function PresenceScreen({
           <thead>
             <tr>
               <th className="presence-table__sticky" aria-label="Nom" />
-              {ordreAffichage.map((i) => (
-                <th key={dates[i]}>{dates[i]}</th>
-              ))}
+              {colonnesVides ? (
+                <th className="muted">Aucune date</th>
+              ) : (
+                ordreAffichage.map((i) => <th key={dates[i]}>{dates[i]}</th>)
+              )}
             </tr>
           </thead>
           <tbody>
@@ -88,67 +96,79 @@ export default function PresenceScreen({
                       sinon répété devant "Début"/"Fin"/"Dépassement", ça
                       forçait la colonne de gauche à s'élargir (vécu). */}
                   <tr className="presence-table__group-header">
-                    <td colSpan={dates.length + 1}>
+                    <td colSpan={nbColonnesDate + 1}>
                       {p.prenom} {p.nom} :
                     </td>
                   </tr>
                   <tr>
                     <td className="presence-table__sticky">Début</td>
-                    {ordreAffichage.map((i) => (
-                      <td key={dates[i]}>
-                        {editable ? (
-                          <input
-                            type="time"
-                            className="presence-heure-input"
-                            value={heuresProf(p.id, i).heureDebutReelle}
-                            onChange={(e) =>
-                              onSetHeureProf(cours.id, p.id, i, 'heureDebutReelle', e.target.value)
-                            }
-                          />
-                        ) : (
-                          <span className="muted">{heuresProf(p.id, i).heureDebutReelle || '–'}</span>
-                        )}
-                      </td>
-                    ))}
+                    {colonnesVides ? (
+                      <td className="muted">–</td>
+                    ) : (
+                      ordreAffichage.map((i) => (
+                        <td key={dates[i]}>
+                          {editable ? (
+                            <input
+                              type="time"
+                              className="presence-heure-input"
+                              value={heuresProf(p.id, i).heureDebutReelle}
+                              onChange={(e) =>
+                                onSetHeureProf(cours.id, p.id, i, 'heureDebutReelle', e.target.value)
+                              }
+                            />
+                          ) : (
+                            <span className="muted">{heuresProf(p.id, i).heureDebutReelle || '–'}</span>
+                          )}
+                        </td>
+                      ))
+                    )}
                   </tr>
                   <tr>
                     <td className="presence-table__sticky">Fin</td>
-                    {ordreAffichage.map((i) => (
-                      <td key={dates[i]}>
-                        {editable ? (
-                          <input
-                            type="time"
-                            className="presence-heure-input"
-                            value={heuresProf(p.id, i).heureFinReelle}
-                            onChange={(e) =>
-                              onSetHeureProf(cours.id, p.id, i, 'heureFinReelle', e.target.value)
-                            }
-                          />
-                        ) : (
-                          <span className="muted">{heuresProf(p.id, i).heureFinReelle || '–'}</span>
-                        )}
-                      </td>
-                    ))}
+                    {colonnesVides ? (
+                      <td className="muted">–</td>
+                    ) : (
+                      ordreAffichage.map((i) => (
+                        <td key={dates[i]}>
+                          {editable ? (
+                            <input
+                              type="time"
+                              className="presence-heure-input"
+                              value={heuresProf(p.id, i).heureFinReelle}
+                              onChange={(e) =>
+                                onSetHeureProf(cours.id, p.id, i, 'heureFinReelle', e.target.value)
+                              }
+                            />
+                          ) : (
+                            <span className="muted">{heuresProf(p.id, i).heureFinReelle || '–'}</span>
+                          )}
+                        </td>
+                      ))
+                    )}
                   </tr>
                   <tr>
                     <td className="presence-table__sticky">Dépassement (min)</td>
-                    {ordreAffichage.map((i) => (
-                      <td key={dates[i]}>
-                        {editable ? (
-                          <input
-                            type="number"
-                            className="presence-heure-input presence-heure-input--nombre"
-                            placeholder="–"
-                            value={heuresProf(p.id, i).depassementMinutes}
-                            onChange={(e) =>
-                              onSetHeureProf(cours.id, p.id, i, 'depassementMinutes', e.target.value)
-                            }
-                          />
-                        ) : (
-                          <span className="muted">{heuresProf(p.id, i).depassementMinutes || '–'}</span>
-                        )}
-                      </td>
-                    ))}
+                    {colonnesVides ? (
+                      <td className="muted">–</td>
+                    ) : (
+                      ordreAffichage.map((i) => (
+                        <td key={dates[i]}>
+                          {editable ? (
+                            <input
+                              type="number"
+                              className="presence-heure-input presence-heure-input--nombre"
+                              placeholder="–"
+                              value={heuresProf(p.id, i).depassementMinutes}
+                              onChange={(e) =>
+                                onSetHeureProf(cours.id, p.id, i, 'depassementMinutes', e.target.value)
+                              }
+                            />
+                          ) : (
+                            <span className="muted">{heuresProf(p.id, i).depassementMinutes || '–'}</span>
+                          )}
+                        </td>
+                      ))
+                    )}
                   </tr>
                 </Fragment>
               )
@@ -156,28 +176,32 @@ export default function PresenceScreen({
 
             {rosterEleves.length > 0 && (
               <tr className="presence-table__group-header">
-                <td colSpan={dates.length + 1}>Élèves :</td>
+                <td colSpan={nbColonnesDate + 1}>Élèves :</td>
               </tr>
             )}
 
             {rosterEleves.map((el) => (
               <tr key={el.id}>
                 <td className="presence-table__sticky">{el.prenom}</td>
-                {ordreAffichage.map((i) => {
-                  const status = statusFor(el.id, i)
-                  return (
-                    <td key={dates[i]}>
-                      <button
-                        type="button"
-                        className={`presence-cell presence-cell--${status}`}
-                        onClick={() => onCycle(cours.id, el.id, i, CYCLE)}
-                        aria-label={`${el.prenom} — ${dates[i]} — ${LABELS[status]}`}
-                      >
-                        <Icon name={ICONS[status]} size={16} />
-                      </button>
-                    </td>
-                  )
-                })}
+                {colonnesVides ? (
+                  <td className="muted">–</td>
+                ) : (
+                  ordreAffichage.map((i) => {
+                    const status = statusFor(el.id, i)
+                    return (
+                      <td key={dates[i]}>
+                        <button
+                          type="button"
+                          className={`presence-cell presence-cell--${status}`}
+                          onClick={() => onCycle(cours.id, el.id, i, CYCLE)}
+                          aria-label={`${el.prenom} — ${dates[i]} — ${LABELS[status]}`}
+                        >
+                          <Icon name={ICONS[status]} size={16} />
+                        </button>
+                      </td>
+                    )
+                  })
+                )}
               </tr>
             ))}
 
@@ -189,6 +213,10 @@ export default function PresenceScreen({
           </tbody>
         </table>
       </div>
+
+      {colonnesVides && (
+        <p className="muted">Aucune date enregistrée pour l’instant — appuyez sur « + » pour en ajouter une.</p>
+      )}
 
       <div className="legend">
         {CYCLE.map((status) => (

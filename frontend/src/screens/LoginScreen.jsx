@@ -41,7 +41,7 @@ export default function LoginScreen({ onLogin }) {
       <div className="login-screen__brand">
         <Logo size={110} />
         <h1>Contretemps</h1>
-        <p>Gestion d'école de danse</p>
+        <p>Gestion d'école de danse du cours au gala</p>
       </div>
 
       <form className="login-screen__form" onSubmit={seConnecter}>

@@ -992,6 +992,11 @@
   padding: 10px 14px;
   text-align: center;
   white-space: nowrap;
+  /* Sépare visuellement les lignes même sans aucune colonne de date —
+     sinon, un cours sans date encore ajoutée n'affiche qu'une liste de
+     noms sans aucun repère de grille (bug signalé, "il faut mettre le
+     tableau, même vide"). */
+  border-bottom: 1px solid var(--border);
 }
 
 .presence-table__sticky {
@@ -1007,11 +1012,19 @@
 /* Colonne de gauche bornée en largeur : sans ça, un libellé comme
    "Dépassement (min)" force toute la colonne à s'élargir et ne laisse
    presque plus de place aux colonnes de dates sur un écran de téléphone
-   (vécu). Passe à la ligne plutôt que de pousser la largeur. */
+   (vécu). Passe à la ligne plutôt que de pousser la largeur.
+   text-align:left répété ici (déjà posé juste au-dessus) : sur un vrai
+   <th>/<td>, la règle ".presence-table th, td { text-align:center }"
+   est plus spécifique que ".presence-table__sticky" seule (deux classes
+   qualifiées contre une) et gagnait — la colonne des noms/"Début"/"Fin"
+   se retrouvait centrée au lieu d'alignée à gauche (bug signalé,
+   surtout visible quand il n'y a aucune date : plus rien à droite pour
+   distraire l'œil du centrage). */
 .presence-table td.presence-table__sticky,
 .presence-table th.presence-table__sticky {
   max-width: 96px;
   white-space: normal;
+  text-align: left;
 }
 
 /* Nom du professeur affiché une fois, sur toute la largeur, plutôt que
