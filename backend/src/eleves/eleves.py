@@ -85,9 +85,12 @@ class Eleves:
         profil = self.get_profil(db, eleve_id)
         if profil is None:
             return None
+        # `champs` ne contient déjà que les champs explicitement fournis
+        # (exclude_unset=True côté receiver) — un `if valeur is not None`
+        # ici empêchait à tort de vider un champ nullable (ex. effacer une
+        # allergie une fois résolue).
         for cle, valeur in champs.items():
-            if valeur is not None:
-                setattr(profil, cle, valeur)
+            setattr(profil, cle, valeur)
         db.commit()
         db.refresh(profil)
         return profil
@@ -110,9 +113,11 @@ class Eleves:
         contact = db.get(ContactEleve, contact_id)
         if contact is None:
             return None
+        # `champs` ne contient déjà que les champs explicitement fournis
+        # (exclude_unset=True côté receiver) — un `if valeur is not None`
+        # ici empêchait à tort de vider un champ nullable.
         for cle, valeur in champs.items():
-            if valeur is not None:
-                setattr(contact, cle, valeur)
+            setattr(contact, cle, valeur)
         db.commit()
         db.refresh(contact)
         return contact

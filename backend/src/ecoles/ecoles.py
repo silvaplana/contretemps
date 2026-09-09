@@ -62,9 +62,11 @@ class Ecoles:
         ecole = self.get(db, ecole_id)
         if ecole is None:
             return None
+        # `champs` ne contient déjà que les champs explicitement fournis
+        # (exclude_unset=True côté receiver) — un `if valeur is not None`
+        # ici empêchait à tort de vider un champ nullable.
         for cle, valeur in champs.items():
-            if valeur is not None:
-                setattr(ecole, cle, valeur)
+            setattr(ecole, cle, valeur)
         db.commit()
         db.refresh(ecole)
         return ecole

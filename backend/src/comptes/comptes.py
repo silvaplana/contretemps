@@ -87,9 +87,12 @@ class Comptes:
         compte = self.get(db, compte_id)
         if compte is None:
             return None
+        # `champs` ne contient déjà que les champs explicitement fournis
+        # (exclude_unset=True côté receiver) — un `if valeur is not None`
+        # ici empêchait à tort de vider un champ nullable (ex. effacer
+        # l'email/téléphone d'un compte).
         for cle, valeur in champs.items():
-            if valeur is not None:
-                setattr(compte, cle, valeur)
+            setattr(compte, cle, valeur)
         db.commit()
         db.refresh(compte)
         return compte

@@ -36,9 +36,11 @@ class Choregraphies:
         choregraphie = self.get(db, choregraphie_id)
         if choregraphie is None:
             return None
+        # `champs` ne contient déjà que les champs explicitement fournis
+        # (exclude_unset=True côté receiver) — un `if valeur is not None`
+        # ici empêchait à tort de vider un champ nullable.
         for cle, valeur in champs.items():
-            if valeur is not None:
-                setattr(choregraphie, cle, valeur)
+            setattr(choregraphie, cle, valeur)
         db.commit()
         db.refresh(choregraphie)
         return choregraphie

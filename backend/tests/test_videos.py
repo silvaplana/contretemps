@@ -88,6 +88,30 @@ def test_modifier_et_supprimer_video(client, db_session):
     assert client.get(f"/videos/{video['id']}").status_code == 404
 
 
+def test_detacher_une_video_dune_choregraphie(client, db_session):
+    """Régression : Videos.update() ignorait toute valeur None (le
+    receiver filtre déjà via exclude_unset=True, donc None ici veut dire
+    "remettre à vide", pas "non fourni") — détaguer une vidéo en envoyant
+    choregraphie_id=null ne faisait rien. Bug signalé : dans Chorégraphie,
+    "on ne peut prendre que les vidéos qui sont taguées pour cette
+    chorégraphie" (le detacher pour la retaguer ailleurs ne marchait pas)."""
+    _, cours, choregraphie, admin = _setup(db_session)
+    video = client.post(
+        f"/cours/{cours.id}/videos",
+        json={
+            "nom": "Prise 1",
+            "lien_fichier": "/videos/1.mp4",
+            "uploaded_by": admin.id,
+            "choregraphie_id": choregraphie.id,
+        },
+    ).json()
+    assert video["choregraphie_id"] == choregraphie.id
+
+    reponse = client.put(f"/videos/{video['id']}", json={"choregraphie_id": None})
+    assert reponse.status_code == 200
+    assert reponse.json()["choregraphie_id"] is None
+
+
 def test_poster_optionnel(client, db_session):
     """Voir §6.8 : vignette ajoutée pour l'affichage mobile (Chrome/Brave/
     Samsung Internet Android n'affichent pas la 1re image sans elle)."""

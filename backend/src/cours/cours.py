@@ -27,9 +27,11 @@ class CoursService:
         cours = self.get(db, cours_id)
         if cours is None:
             return None
+        # `champs` ne contient déjà que les champs explicitement fournis
+        # (exclude_unset=True côté receiver) — un `if valeur is not None`
+        # ici empêchait à tort de vider un champ nullable.
         for cle, valeur in champs.items():
-            if valeur is not None:
-                setattr(cours, cle, valeur)
+            setattr(cours, cle, valeur)
         db.commit()
         db.refresh(cours)
         return cours

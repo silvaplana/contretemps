@@ -53,9 +53,14 @@ class Videos:
         video = self.get(db, video_id)
         if video is None:
             return None
+        # `champs` ne contient déjà que les champs explicitement fournis
+        # (le receiver appelle model_dump(exclude_unset=True)) — un
+        # `if valeur is not None` ici empêchait à tort de vider un champ
+        # nullable (ex. détacher une vidéo d'une chorégraphie en envoyant
+        # choregraphie_id=null, bug signalé : "on ne peut prendre que les
+        # vidéos qui sont taguées pour cette chorégraphie").
         for cle, valeur in champs.items():
-            if valeur is not None:
-                setattr(video, cle, valeur)
+            setattr(video, cle, valeur)
         db.commit()
         db.refresh(video)
         return video
