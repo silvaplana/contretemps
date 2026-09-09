@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import * as elevesApi from '../../api/eleves.js'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -86,7 +87,13 @@ function calculerAge(dateNaissance) {
 // Onglet Admin > Élèves (voir spec/SPEC.md §5.1.2 et §6.4). Les champs les
 // moins consultés au quotidien (contacts, santé) sont regroupés dans une
 // modale par ligne plutôt qu'en colonnes, pour garder le tableau lisible.
-export default function AdminEleves({ eleves, setEleves, cours }) {
+//
+// Données métier (nom, contacts, cours suivis...) via api/eleves.js (voir
+// api/README.md) — `eleves`/`setEleves` viennent de App.jsx, mis à jour ici
+// après chaque appel réussi. Le surlignage rouge (appui long) N'EST PAS une
+// donnée métier (le backend n'en a aucune notion) : gardé en état purement
+// local à cet écran, séparé de `eleves`.
+export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const [search, setSearch] = useState('')
   const [coursEditId, setCoursEditId] = useState(null)
   const [commentEditId, setCommentEditId] = useState(null)
@@ -102,6 +109,13 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
   const [copieOk, setCopieOk] = useState(false)
   const minuteurRef = useRef(null)
   const ignorerProchainClicRef = useRef(false)
+
+  // Surlignage rouge — voir note en tête de fichier : { [eleveId]: {
+  // cellulesRouges: string[], ligneRouge: bool } }, jamais envoyé à l'API.
+  const [surlignage, setSurlignage] = useState({})
+  function surlignageDe(eleveId) {
+    return surlignage[eleveId] ?? { cellulesRouges: [], ligneRouge: false }
+  }
 
   async function copierValeur(valeur) {
     try {
@@ -152,117 +166,87 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
   }
 
   function toggleCelluleRouge(eleveId, champ) {
-    setEleves((list) =>
-      list.map((el) => {
-        if (el.id !== eleveId) return el
-        const actuelles = el.cellulesRouges ?? []
-        const deja = actuelles.includes(champ)
-        return {
-          ...el,
-          cellulesRouges: deja ? actuelles.filter((c) => c !== champ) : [...actuelles, champ],
-        }
-      }),
-    )
+    setSurlignage((s) => {
+      const actuel = s[eleveId] ?? { cellulesRouges: [], ligneRouge: false }
+      const deja = actuel.cellulesRouges.includes(champ)
+      return {
+        ...s,
+        [eleveId]: {
+          ...actuel,
+          cellulesRouges: deja
+            ? actuel.cellulesRouges.filter((c) => c !== champ)
+            : [...actuel.cellulesRouges, champ],
+        },
+      }
+    })
   }
 
   function toggleLigneRouge(eleveId) {
-    setEleves((list) =>
-      list.map((el) => (el.id === eleveId ? { ...el, ligneRouge: !el.ligneRouge } : el)),
-    )
+    setSurlignage((s) => {
+      const actuel = s[eleveId] ?? { cellulesRouges: [], ligneRouge: false }
+      return { ...s, [eleveId]: { ...actuel, ligneRouge: !actuel.ligneRouge } }
+    })
   }
 
   const filtered = eleves.filter((el) =>
     `${el.prenom} ${el.nom}`.toLowerCase().includes(search.toLowerCase()),
   )
 
-  function update(id, patch) {
-    setEleves((list) => list.map((el) => (el.id === id ? { ...el, ...patch } : el)))
+  // Remplace l'élève mis à jour (renvoyé par l'API) dans la liste locale.
+  function remplacer(eleveMisAJour) {
+    setEleves((list) => list.map((el) => (el.id === eleveMisAJour.id ? eleveMisAJour : el)))
   }
 
-  function toggleCours(eleveId, coursId) {
-    setEleves((list) =>
-      list.map((el) => {
-        if (el.id !== eleveId) return el
-        const has = el.coursIds.includes(coursId)
-        return {
-          ...el,
-          coursIds: has ? el.coursIds.filter((id) => id !== coursId) : [...el.coursIds, coursId],
-        }
-      }),
-    )
+  async function update(id, patch) {
+    remplacer(await elevesApi.modifier(id, patch))
   }
 
-  function remove(id) {
-    if (window.confirm('Supprimer cet élève ?')) {
-      setEleves((list) => list.filter((el) => el.id !== id))
-    }
+  async function toggleCours(eleveId, coursId) {
+    remplacer(await elevesApi.basculerCours(eleveId, coursId))
   }
 
-  function addEleve(nom, prenom) {
-    setEleves((list) => [
-      ...list,
-      {
-        id: crypto.randomUUID(),
-        nom,
-        prenom,
-        coursIds: [],
-        statutPaiement: 'en_cours',
-        montantTotalAnnee: 0,
-        montantPaye: 0,
-        commentaireAdmin: '',
-        dateNaissance: '',
-        contactsEleve: [],
-        telephone: '',
-        email: '',
-        adresse: '',
-        allergies: '',
-        traitementMedical: '',
-        informationsImportantes: '',
-        certificatMedical: false,
-      },
-    ])
+  async function remove(id) {
+    if (!window.confirm('Supprimer cet élève ?')) return
+    await elevesApi.supprimer(id)
+    setEleves((list) => list.filter((el) => el.id !== id))
+    setSurlignage((s) => {
+      const { [id]: _retire, ...reste } = s
+      return reste
+    })
+  }
+
+  async function addEleve(nom, prenom) {
+    const nouveau = await elevesApi.creer(ecoleId, { nom, prenom })
+    // En dev, StrictMode appelle cet updater deux fois DE SUITE (la 2e
+    // fois avec le résultat de la 1re en entrée, pas la liste d'avant) —
+    // pour détecter justement ce genre de bug. `[...list, nouveau]` sans
+    // garde ajouterait `nouveau` deux fois. Le test d'existence rend
+    // l'updater idempotent, sûr à ré-appliquer sur son propre résultat.
+    setEleves((list) => (list.some((el) => el.id === nouveau.id) ? list : [...list, nouveau]))
   }
 
   // Plusieurs contacts possibles par élève (voir spec §6.4) — remplace
   // l'ancien champ "urgence" unique, insuffisant dès que les 2 parents ont
   // des coordonnées séparées.
-  function addContact(eleveId) {
-    setEleves((list) =>
-      list.map((el) =>
-        el.id === eleveId
-          ? {
-              ...el,
-              contactsEleve: [
-                ...el.contactsEleve,
-                { nom: el.nom, prenom: '', lien: '', telephone: '', email: '' },
-              ],
-            }
-          : el,
-      ),
+  async function addContact(eleveId) {
+    const eleve = eleves.find((el) => el.id === eleveId)
+    remplacer(
+      await elevesApi.ajouterContact(eleveId, {
+        nom: eleve?.nom ?? '',
+        prenom: '',
+        lien: '',
+        telephone: '',
+        email: '',
+      }),
     )
   }
 
-  function updateContact(eleveId, index, patch) {
-    setEleves((list) =>
-      list.map((el) =>
-        el.id === eleveId
-          ? {
-              ...el,
-              contactsEleve: el.contactsEleve.map((c, i) => (i === index ? { ...c, ...patch } : c)),
-            }
-          : el,
-      ),
-    )
+  async function updateContact(eleveId, contactId, patch) {
+    remplacer(await elevesApi.modifierContact(eleveId, contactId, patch))
   }
 
-  function removeContact(eleveId, index) {
-    setEleves((list) =>
-      list.map((el) =>
-        el.id === eleveId
-          ? { ...el, contactsEleve: el.contactsEleve.filter((_, i) => i !== index) }
-          : el,
-      ),
-    )
+  async function removeContact(eleveId, contactId) {
+    remplacer(await elevesApi.supprimerContact(eleveId, contactId))
   }
 
   const coursEnEdition = eleves.find((el) => el.id === coursEditId)
@@ -304,12 +288,12 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
           </thead>
           <tbody>
             {filtered.map((el) => {
-              const cellulesRouges = el.cellulesRouges ?? []
+              const { cellulesRouges, ligneRouge } = surlignageDe(el.id)
               function classeCellule(champ) {
                 return cellulesRouges.includes(champ) ? 'is-cellule-rouge' : ''
               }
               return (
-                <tr key={el.id} className={el.ligneRouge ? 'is-ligne-rouge' : ''}>
+                <tr key={el.id} className={ligneRouge ? 'is-ligne-rouge' : ''}>
                   <td className={`data-table__name ${classeCellule('nom')}`} {...celluleProps(el.id, 'nom')}>
                     <EditableText
                       value={`${el.prenom} ${el.nom}`}
@@ -517,25 +501,25 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
             téléphone/email).
           </p>
           <div className="contacts-eleve-list">
-            {contactsEnEdition.contactsEleve.map((c, i) => (
-              <div key={i} className="contacts-eleve-list__item">
+            {contactsEnEdition.contactsEleve.map((c) => (
+              <div key={c.id} className="contacts-eleve-list__item">
                 <div className="contacts-eleve-list__row">
                   <input
                     className="field-input"
                     placeholder="Prénom"
                     value={c.prenom}
-                    onChange={(e) => updateContact(contactsEnEdition.id, i, { prenom: e.target.value })}
+                    onChange={(e) => updateContact(contactsEnEdition.id, c.id, { prenom: e.target.value })}
                   />
                   <input
                     className="field-input"
                     placeholder="Nom"
                     value={c.nom}
-                    onChange={(e) => updateContact(contactsEnEdition.id, i, { nom: e.target.value })}
+                    onChange={(e) => updateContact(contactsEnEdition.id, c.id, { nom: e.target.value })}
                   />
                   <button
                     type="button"
                     className="icon-btn icon-btn--danger"
-                    onClick={() => removeContact(contactsEnEdition.id, i)}
+                    onClick={() => removeContact(contactsEnEdition.id, c.id)}
                     aria-label="Retirer ce contact"
                   >
                     <Icon name="x" size={16} />
@@ -545,20 +529,20 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
                   className="field-input"
                   placeholder="Lien (ex. Mère, Père...)"
                   value={c.lien}
-                  onChange={(e) => updateContact(contactsEnEdition.id, i, { lien: e.target.value })}
+                  onChange={(e) => updateContact(contactsEnEdition.id, c.id, { lien: e.target.value })}
                 />
                 <input
                   className="field-input"
                   placeholder="Téléphone"
                   value={c.telephone}
-                  onChange={(e) => updateContact(contactsEnEdition.id, i, { telephone: e.target.value })}
+                  onChange={(e) => updateContact(contactsEnEdition.id, c.id, { telephone: e.target.value })}
                 />
                 <input
                   className="field-input"
                   type="email"
                   placeholder="Email"
                   value={c.email}
-                  onChange={(e) => updateContact(contactsEnEdition.id, i, { email: e.target.value })}
+                  onChange={(e) => updateContact(contactsEnEdition.id, c.id, { email: e.target.value })}
                 />
               </div>
             ))}
@@ -645,7 +629,7 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
                   setPressed(null)
                 }}
               >
-                {(eleveAppuye.cellulesRouges ?? []).includes(pressed.champ)
+                {surlignageDe(eleveAppuye.id).cellulesRouges.includes(pressed.champ)
                   ? 'Retirer le rouge de cette cellule'
                   : 'Marquer cette cellule en rouge'}
               </button>
@@ -657,7 +641,9 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
                   setPressed(null)
                 }}
               >
-                {eleveAppuye.ligneRouge ? 'Retirer le rouge de la ligne' : 'Marquer toute la ligne en rouge'}
+                {surlignageDe(eleveAppuye.id).ligneRouge
+                  ? 'Retirer le rouge de la ligne'
+                  : 'Marquer toute la ligne en rouge'}
               </button>
             </div>
           </div>
@@ -674,6 +660,17 @@ export default function AdminEleves({ eleves, setEleves, cours }) {
 function AddEleveModal({ onClose, onAdd }) {
   const [nom, setNom] = useState('')
   const [prenom, setPrenom] = useState('')
+  // Garde-fou contre un double-clic/double-appel (l'appel est async
+  // désormais, voir addEleve dans AdminEleves) : sans ça, un deuxième clic
+  // pendant que le premier est encore en vol créerait 2 élèves.
+  const [enCours, setEnCours] = useState(false)
+
+  async function valider() {
+    if (enCours) return
+    setEnCours(true)
+    await onAdd(nom, prenom)
+    onClose()
+  }
 
   return (
     <Modal
@@ -683,11 +680,8 @@ function AddEleveModal({ onClose, onAdd }) {
         <button
           type="button"
           className="btn btn--primary btn--block"
-          disabled={!nom || !prenom}
-          onClick={() => {
-            onAdd(nom, prenom)
-            onClose()
-          }}
+          disabled={!nom || !prenom || enCours}
+          onClick={valider}
         >
           Ajouter
         </button>

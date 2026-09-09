@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import './App.css'
+import * as elevesApi from './api/eleves.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import {
@@ -8,7 +9,6 @@ import {
   cours as initialCours,
   currentUser,
   ecoleActuelle,
-  eleves as initialEleves,
   familleActuelle,
   groupes as initialGroupes,
   presencesParCours as initialPresences,
@@ -46,7 +46,11 @@ function App() {
   }
 
   // Données "métier", possédées ici et redescendues aux écrans.
-  const [eleves, setEleves] = useState(initialEleves)
+  // `eleves` seul passe par api/eleves.js (voir api/README.md) — chargé de
+  // façon async, les autres restent en dur pour l'instant (pas encore
+  // migrés). Recharge à chaque connexion (donc aussi après "Voir une
+  // maquette"), pas seulement au montage.
+  const [eleves, setEleves] = useState([])
   const [professeurs, setProfesseurs] = useState(initialProfesseurs)
   const [cours, setCours] = useState(initialCours)
   const [groupes, setGroupes] = useState(initialGroupes)
@@ -55,6 +59,10 @@ function App() {
   const [videos, setVideos] = useState(initialVideos)
   const [conversations, setConversations] = useState(initialConversations)
   const [ecole, setEcole] = useState(ecoleActuelle)
+
+  useEffect(() => {
+    if (loggedIn) elevesApi.lister(ecole.id).then(setEleves)
+  }, [loggedIn, ecole.id])
 
   const [selectedCoursId, setSelectedCoursId] = useState(cours[0]?.id ?? null)
   const selectedCours = cours.find((c) => c.id === selectedCoursId) ?? null
