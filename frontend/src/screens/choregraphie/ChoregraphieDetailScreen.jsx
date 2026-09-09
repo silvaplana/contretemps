@@ -5,6 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
 import AddVideoModal from '../video/AddVideoModal.jsx'
+import EditVideoModal from '../video/EditVideoModal.jsx'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
 // avec une flèche de retour vers ChoregraphieListScreen — même principe que
@@ -265,38 +266,5 @@ export default function ChoregraphieDetailScreen({
         />
       )}
     </div>
-  )
-}
-
-function EditVideoModal({ video, onClose, onSave }) {
-  const [titre, setTitre] = useState(video.titre)
-  const [description, setDescription] = useState(video.description)
-
-  return (
-    <Modal
-      title="Modifier la vidéo"
-      onClose={onClose}
-      footer={
-        <button
-          type="button"
-          className="btn btn--primary btn--block"
-          disabled={!titre}
-          onClick={() => onSave({ titre, description })}
-        >
-          Enregistrer
-        </button>
-      }
-    >
-      <label htmlFor="edit-video-titre">Titre</label>
-      <input id="edit-video-titre" value={titre} onChange={(e) => setTitre(e.target.value)} />
-      <label htmlFor="edit-video-desc">Description (optionnelle)</label>
-      <textarea
-        id="edit-video-desc"
-        className="modal-textarea"
-        rows={3}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-    </Modal>
   )
 }

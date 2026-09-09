@@ -4,6 +4,7 @@ import Badge from '../components/Badge.jsx'
 import Icon from '../components/Icon.jsx'
 import VideoThumb from '../components/VideoThumb.jsx'
 import AddVideoModal from './video/AddVideoModal.jsx'
+import EditVideoModal from './video/EditVideoModal.jsx'
 
 // Écran Vidéo (Admin, Professeur, Élève — voir spec/SPEC.md 5.4 et
 // images/video.png). Une chorégraphie filmée par entrée, liée au cours
@@ -14,6 +15,7 @@ import AddVideoModal from './video/AddVideoModal.jsx'
 // backend).
 export default function VideoScreen({ cours, list, setList, choregraphies, uploaderId }) {
   const [showAdd, setShowAdd] = useState(false)
+  const [editingVideo, setEditingVideo] = useState(null)
 
   if (!cours) return null
 
@@ -21,6 +23,14 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
     if (!window.confirm('Supprimer cette vidéo ?')) return
     await videosApi.supprimer(cours.id, id)
     setList((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((v) => v.id !== id) }))
+  }
+
+  async function update(id, patch) {
+    const miseAJour = await videosApi.modifier(id, patch)
+    setList((byC) => ({
+      ...byC,
+      [cours.id]: byC[cours.id].map((v) => (v.id === id ? miseAJour : v)),
+    }))
   }
 
   async function add(donnees) {
@@ -53,14 +63,24 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
                   )}
                   {v.description && <p>{v.description}</p>}
                 </div>
-                <button
-                  type="button"
-                  className="icon-btn icon-btn--sm"
-                  onClick={() => remove(v.id)}
-                  aria-label="Supprimer la vidéo"
-                >
-                  <Icon name="trash" size={16} />
-                </button>
+                <div className="row-actions">
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn--sm"
+                    onClick={() => setEditingVideo(v)}
+                    aria-label={`Modifier ${v.titre}`}
+                  >
+                    <Icon name="edit" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn--sm"
+                    onClick={() => remove(v.id)}
+                    aria-label="Supprimer la vidéo"
+                  >
+                    <Icon name="trash" size={16} />
+                  </button>
+                </div>
               </div>
             </div>
           )
@@ -79,6 +99,17 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
           onAdd={(donnees) => {
             add(donnees)
             setShowAdd(false)
+          }}
+        />
+      )}
+
+      {editingVideo && (
+        <EditVideoModal
+          video={editingVideo}
+          onClose={() => setEditingVideo(null)}
+          onSave={(patch) => {
+            update(editingVideo.id, patch)
+            setEditingVideo(null)
           }}
         />
       )}
