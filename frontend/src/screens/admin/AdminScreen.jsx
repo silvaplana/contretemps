@@ -53,9 +53,13 @@ export default function AdminScreen({
         />
       )}
       {subTab === 'cours' && (
-        <ZoneMigration domaine="cours">
-          <AdminCours cours={cours} setCours={setCours} professeurs={professeurs} eleves={eleves} />
-        </ZoneMigration>
+        <AdminCours
+          cours={cours}
+          setCours={setCours}
+          professeurs={professeurs}
+          eleves={eleves}
+          ecoleId={ecole.id}
+        />
       )}
       {subTab === 'groupes' && (
         <ZoneMigration domaine="messagerie">

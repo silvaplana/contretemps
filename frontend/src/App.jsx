@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
 import * as profsApi from './api/profs.js'
 import BottomNav from './components/BottomNav.jsx'
@@ -8,7 +9,6 @@ import ZoneMigration from './components/ZoneMigration.jsx'
 import {
   choregraphiesParCours as initialChoregraphies,
   conversations as initialConversations,
-  cours as initialCours,
   currentUser,
   ecoleActuelle,
   familleActuelle,
@@ -53,7 +53,7 @@ function App() {
   // aussi après "Voir une maquette"), pas seulement au montage.
   const [eleves, setEleves] = useState([])
   const [professeurs, setProfesseurs] = useState([])
-  const [cours, setCours] = useState(initialCours)
+  const [cours, setCours] = useState([])
   const [groupes, setGroupes] = useState(initialGroupes)
   const [presences, setPresences] = useState(initialPresences)
   const [choregraphies, setChoregraphies] = useState(initialChoregraphies)
@@ -65,10 +65,21 @@ function App() {
     if (!loggedIn) return
     elevesApi.lister(ecole.id).then(setEleves)
     profsApi.lister(ecole.id).then(setProfesseurs)
+    coursApi.lister(ecole.id).then(setCours)
   }, [loggedIn, ecole.id])
 
-  const [selectedCoursId, setSelectedCoursId] = useState(cours[0]?.id ?? null)
+  const [selectedCoursId, setSelectedCoursId] = useState(null)
   const selectedCours = cours.find((c) => c.id === selectedCoursId) ?? null
+
+  // `cours` charge de façon async désormais (voir ci-dessus) : plus rien
+  // pour sélectionner un premier cours par défaut au montage — on le fait
+  // ici, dès que la liste arrive (et seulement si la sélection actuelle
+  // n'existe plus/pas encore dans cette liste).
+  useEffect(() => {
+    if (cours.length > 0 && !cours.find((c) => c.id === selectedCoursId)) {
+      setSelectedCoursId(cours[0].id)
+    }
+  }, [cours, selectedCoursId])
 
   // "Ajouter une date" (Présence) : contrôlé ici, pas en état interne à
   // PresenceScreen, pour que le menu 3 points de l'en-tête (voir Header)

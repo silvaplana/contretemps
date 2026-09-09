@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import * as coursApi from '../../api/cours.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -13,7 +14,10 @@ const MAX_BADGES = 2
 // l'onglet Élèves. Les autres champs se modifient via la modale (icône
 // stylo) plutôt qu'en ligne : ça couvre aussi la Salle, absente du tableau.
 // Le menu 3 points (en-tête) ouvre le planning hebdomadaire (§5.1.4).
-export default function AdminCours({ cours, setCours, professeurs, eleves }) {
+//
+// Données métier via api/cours.js (voir api/README.md, et sa note sur la
+// simplification "un seul professeur par cours" côté maquette/écrans).
+export default function AdminCours({ cours, setCours, professeurs, eleves, ecoleId }) {
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
@@ -35,14 +39,25 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
     )
   }
 
-  function update(id, patch) {
-    setCours((list) => list.map((c) => (c.id === id ? { ...c, ...patch } : c)))
+  function remplacer(coursMisAJour) {
+    setCours((list) => list.map((c) => (c.id === coursMisAJour.id ? coursMisAJour : c)))
   }
 
-  function remove(id) {
-    if (window.confirm('Supprimer ce cours ?')) {
-      setCours((list) => list.filter((c) => c.id !== id))
-    }
+  async function update(id, patch) {
+    remplacer(await coursApi.modifier(id, patch))
+  }
+
+  async function remove(id) {
+    if (!window.confirm('Supprimer ce cours ?')) return
+    await coursApi.supprimer(id)
+    setCours((list) => list.filter((c) => c.id !== id))
+  }
+
+  async function addCours(donnees) {
+    const nouveau = await coursApi.creer(ecoleId, donnees)
+    // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
+    // l'appliquer 2 fois de suite sur son propre résultat.
+    setCours((list) => (list.some((c) => c.id === nouveau.id) ? list : [...list, nouveau]))
   }
 
   function elevesDuCours(coursId) {
@@ -155,7 +170,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves }) {
           submitLabel="Ajouter"
           professeurs={professeurs}
           onClose={() => setShowAdd(false)}
-          onSubmit={(donnees) => setCours((list) => [...list, { id: crypto.randomUUID(), ...donnees }])}
+          onSubmit={addCours}
         />
       )}
 
@@ -181,7 +196,20 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
   const [heureDebut, setHeureDebut] = useState(initial?.heureDebut ?? '')
   const [heureFin, setHeureFin] = useState(initial?.heureFin ?? '')
   const [salle, setSalle] = useState(initial?.salle ?? '')
-  const [professeurId, setProfesseurId] = useState(initial?.professeurId ?? professeurs[0]?.id ?? '')
+  // Pas de professeur choisi par défaut pour un nouveau cours (voir
+  // §6.5 : "0 prof" est un cas normal, pas une erreur à combler) — un
+  // cours en édition garde le sien.
+  const [professeurId, setProfesseurId] = useState(initial?.professeurId ?? '')
+  // Garde-fou contre un double-appel (voir AdminEleves.jsx) : l'appel est
+  // async désormais.
+  const [enCours, setEnCours] = useState(false)
+
+  async function valider() {
+    if (enCours) return
+    setEnCours(true)
+    await onSubmit({ nom, jour, heureDebut, heureFin, salle, professeurId })
+    onClose()
+  }
 
   return (
     <Modal
@@ -191,11 +219,8 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
         <button
           type="button"
           className="btn btn--primary btn--block"
-          disabled={!nom}
-          onClick={() => {
-            onSubmit({ nom, jour, heureDebut, heureFin, salle, professeurId })
-            onClose()
-          }}
+          disabled={!nom || enCours}
+          onClick={valider}
         >
           {submitLabel}
         </button>
@@ -222,7 +247,10 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
       <label htmlFor="cours-salle">Salle</label>
       <input id="cours-salle" value={salle} onChange={(e) => setSalle(e.target.value)} />
       <label htmlFor="cours-prof">Professeur</label>
+      {/* Un cours peut ne pas encore avoir de professeur déclaré (voir
+          §6.5) — d'où cette option vide, pas de sélection forcée. */}
       <select id="cours-prof" value={professeurId} onChange={(e) => setProfesseurId(e.target.value)}>
+        <option value="">— Aucun —</option>
         {professeurs.map((p) => (
           <option key={p.id} value={p.id}>
             {p.prenom} {p.nom}
