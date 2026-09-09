@@ -27,6 +27,13 @@ services:
     env_file:
       - path: ./backend/.env
         required: false
+    # Fichier SQLite (voir backend/Dockerfile : DATABASE_URL pointe ici,
+    # dans un dossier appartenant à appuser) — volume nommé pour que la
+    # base survive à un `docker compose up -d --build` (sinon perdue à
+    # chaque redéploiement, le système de fichiers du conteneur n'étant
+    # pas persistant par défaut).
+    volumes:
+      - backend_data:/app/data
     # "expose" (contrairement à "ports") ne rend PAS le port accessible
     # depuis l'extérieur de la machine : seul le conteneur "frontend"
     # peut y accéder, via le réseau interne que docker-compose crée
@@ -58,3 +65,6 @@ networks:
   default:
   web:
     external: true
+
+volumes:
+  backend_data:
