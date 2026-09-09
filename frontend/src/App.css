@@ -1078,6 +1078,30 @@
   width: 56px;
 }
 
+/* Superpose un "–" par-dessus un <input type="time"> vide (voir
+   PresenceScreen.jsx : HeureInput) — masqué dès le focus pour ne jamais
+   gêner la saisie/le sélecteur natif. */
+.presence-heure-input-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.presence-heure-input-wrap__dash {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: var(--card-bg);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.presence-heure-input-wrap:focus-within .presence-heure-input-wrap__dash {
+  display: none;
+}
+
 .legend {
   display: flex;
   flex-wrap: wrap;

@@ -23,6 +23,26 @@ function versLabelAffiche(dateIso) {
   return `${jour}/${mois}`
 }
 
+// Champ "Début"/"Fin" d'une nouvelle date (voir la ligne "Dépassement",
+// juste en dessous, qui affiche "–" par défaut via l'attribut
+// `placeholder` — limite HTML : un <input type="time"> IGNORE
+// `placeholder`, un champ vide affiche donc le "--:--" natif du
+// navigateur au lieu du même "–" (bug signalé). Un "–" est superposé par
+// dessus tant que le champ est vide, masqué dès le focus (:focus-within)
+// pour ne jamais gêner la saisie/le sélecteur natif.
+function HeureInput({ value, onChange }) {
+  return (
+    <div className="presence-heure-input-wrap">
+      <input type="time" className="presence-heure-input" value={value} onChange={onChange} />
+      {!value && (
+        <span className="presence-heure-input-wrap__dash" aria-hidden="true">
+          –
+        </span>
+      )}
+    </div>
+  )
+}
+
 // Écran Présence (Admin, Professeur — voir spec/SPEC.md §5.2 et §6.6).
 // Professeur(s) du cours en premier (3 lignes chacun : heure début, heure
 // fin, dépassement — plus de statut stocké, la présence se déduit des
@@ -108,9 +128,7 @@ export default function PresenceScreen({
                       ordreAffichage.map((i) => (
                         <td key={dates[i]}>
                           {editable ? (
-                            <input
-                              type="time"
-                              className="presence-heure-input"
+                            <HeureInput
                               value={heuresProf(p.id, i).heureDebutReelle}
                               onChange={(e) =>
                                 onSetHeureProf(cours.id, p.id, i, 'heureDebutReelle', e.target.value)
@@ -131,9 +149,7 @@ export default function PresenceScreen({
                       ordreAffichage.map((i) => (
                         <td key={dates[i]}>
                           {editable ? (
-                            <input
-                              type="time"
-                              className="presence-heure-input"
+                            <HeureInput
                               value={heuresProf(p.id, i).heureFinReelle}
                               onChange={(e) =>
                                 onSetHeureProf(cours.id, p.id, i, 'heureFinReelle', e.target.value)
