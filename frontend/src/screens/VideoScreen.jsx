@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as videosApi from '../api/videos.js'
 import Badge from '../components/Badge.jsx'
 import Icon from '../components/Icon.jsx'
 import VideoThumb from '../components/VideoThumb.jsx'
@@ -7,28 +8,29 @@ import AddVideoModal from './video/AddVideoModal.jsx'
 // Écran Vidéo (Admin, Professeur, Élève — voir spec/SPEC.md 5.4 et
 // images/video.png). Une chorégraphie filmée par entrée, liée au cours
 // sélectionné dans l'en-tête. Le "+" est accessible aux 3 rôles.
-export default function VideoScreen({ cours, list, setList, choregraphies }) {
+//
+// Données via api/videos.js (voir api/README.md, et sa note sur la
+// limite de l'upload réel de fichier — pas encore construite côté
+// backend).
+export default function VideoScreen({ cours, list, setList, choregraphies, uploaderId }) {
   const [showAdd, setShowAdd] = useState(false)
 
   if (!cours) return null
 
-  function remove(id) {
-    if (window.confirm('Supprimer cette vidéo ?')) {
-      setList((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((v) => v.id !== id) }))
-    }
+  async function remove(id) {
+    if (!window.confirm('Supprimer cette vidéo ?')) return
+    await videosApi.supprimer(cours.id, id)
+    setList((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((v) => v.id !== id) }))
   }
 
-  function add({ titre, description, duree, url, choregraphieId }) {
-    const nouvelle = {
-      id: crypto.randomUUID(),
-      titre,
-      description,
-      duree: duree || '00:00',
-      url: url || null,
-      choregraphieId: choregraphieId || null,
-      datePublication: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-    }
-    setList((byC) => ({ ...byC, [cours.id]: [...(byC[cours.id] ?? []), nouvelle] }))
+  async function add(donnees) {
+    const nouvelle = await videosApi.creer(cours.id, donnees, uploaderId)
+    // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
+    // l'appliquer 2 fois de suite sur son propre résultat.
+    setList((byC) => {
+      const liste = byC[cours.id] ?? []
+      return liste.some((v) => v.id === nouvelle.id) ? byC : { ...byC, [cours.id]: [...liste, nouvelle] }
+    })
   }
 
   const videos = list[cours.id] ?? []

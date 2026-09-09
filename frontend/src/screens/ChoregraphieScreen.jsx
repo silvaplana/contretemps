@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import * as choregraphiesApi from '../api/choregraphies.js'
+import * as videosApi from '../api/videos.js'
 import Modal from '../components/Modal.jsx'
 import ChoregraphieDetailScreen from './choregraphie/ChoregraphieDetailScreen.jsx'
 import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
@@ -10,8 +11,8 @@ import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 // avec une flèche de retour — jamais les deux affichés en même temps.
 //
 // Chorégraphies (nom/costume/horaire/élèves participants) via
-// api/choregraphies.js (voir api/README.md) — `list`/`setList` viennent
-// de App.jsx. Vidéos pas encore migrées (domaine séparé, à venir).
+// api/choregraphies.js, vidéos via api/videos.js (voir api/README.md) —
+// `list`/`setList`/`videos`/`setVideos` viennent de App.jsx.
 export default function ChoregraphieScreen({
   cours,
   list,
@@ -19,6 +20,7 @@ export default function ChoregraphieScreen({
   eleves,
   videos,
   setVideos,
+  uploaderId,
   peutModifier,
 }) {
   const [selectedId, setSelectedId] = useState(null)
@@ -49,40 +51,38 @@ export default function ChoregraphieScreen({
   }
 
   // Gestion des vidéos depuis le détail d'une chorégraphie : mêmes données
-  // que l'onglet Vidéo (videosParCours), juste manipulées depuis cet écran.
-  function addVideo(donnees) {
-    const nouvelle = {
-      id: crypto.randomUUID(),
-      titre: donnees.titre,
-      description: donnees.description,
-      duree: donnees.duree || '00:00',
-      url: donnees.url || null,
-      choregraphieId: donnees.choregraphieId ?? null,
-      datePublication: new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }),
-    }
-    setVideos((byC) => ({ ...byC, [cours.id]: [...(byC[cours.id] ?? []), nouvelle] }))
+  // que l'onglet Vidéo (api/videos.js), juste manipulées depuis cet écran.
+  async function addVideo(donnees) {
+    const nouvelle = await videosApi.creer(cours.id, donnees, uploaderId)
+    // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
+    // l'appliquer 2 fois de suite sur son propre résultat.
+    setVideos((byC) => {
+      const liste = byC[cours.id] ?? []
+      return liste.some((v) => v.id === nouvelle.id) ? byC : { ...byC, [cours.id]: [...liste, nouvelle] }
+    })
   }
 
-  function updateVideo(id, patch) {
+  async function updateVideo(id, patch) {
+    const miseAJour = await videosApi.modifier(id, patch)
     setVideos((byC) => ({
       ...byC,
-      [cours.id]: byC[cours.id].map((v) => (v.id === id ? { ...v, ...patch } : v)),
+      [cours.id]: byC[cours.id].map((v) => (v.id === id ? miseAJour : v)),
     }))
   }
 
-  function removeVideo(id) {
+  async function removeVideo(id) {
     if (!window.confirm('Supprimer cette vidéo ?')) return
+    await videosApi.supprimer(cours.id, id)
     setVideos((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((v) => v.id !== id) }))
   }
 
-  function toggleVideoTag(id, choregraphieId) {
+  async function toggleVideoTag(id, choregraphieId) {
+    const video = videos.find((v) => v.id === id)
+    const nouvelleValeur = video?.choregraphieId === choregraphieId ? null : choregraphieId
+    const miseAJour = await videosApi.modifier(id, { choregraphieId: nouvelleValeur })
     setVideos((byC) => ({
       ...byC,
-      [cours.id]: byC[cours.id].map((v) =>
-        v.id === id
-          ? { ...v, choregraphieId: v.choregraphieId === choregraphieId ? null : choregraphieId }
-          : v,
-      ),
+      [cours.id]: byC[cours.id].map((v) => (v.id === id ? miseAJour : v)),
     }))
   }
 

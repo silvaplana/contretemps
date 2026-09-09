@@ -5,6 +5,7 @@ import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
 import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
+import * as videosApi from './api/videos.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import ZoneMigration from './components/ZoneMigration.jsx'
@@ -14,7 +15,6 @@ import {
   ecoleActuelle,
   familleActuelle,
   groupes as initialGroupes,
-  videosParCours as initialVideos,
 } from './data/mockData.js'
 import { TABS } from './data/nav.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
@@ -57,7 +57,7 @@ function App() {
   const [groupes, setGroupes] = useState(initialGroupes)
   const [presences, setPresences] = useState({})
   const [choregraphies, setChoregraphies] = useState({})
-  const [videos, setVideos] = useState(initialVideos)
+  const [videos, setVideos] = useState({})
   const [conversations, setConversations] = useState(initialConversations)
   const [ecole, setEcole] = useState(ecoleActuelle)
 
@@ -98,6 +98,18 @@ function App() {
     if (loggedIn && selectedCoursId) {
       choregraphiesApi.lister(selectedCoursId).then((liste) =>
         setChoregraphies((byC) => ({ ...byC, [selectedCoursId]: liste })),
+      )
+    }
+  }, [loggedIn, selectedCoursId])
+
+  // Vidéos : même principe que les chorégraphies ci-dessus — seulement
+  // le cours actuellement sélectionné (voir VideoScreen.jsx/
+  // ChoregraphieScreen.jsx : jamais utilisées pour un autre cours en
+  // même temps).
+  useEffect(() => {
+    if (loggedIn && selectedCoursId) {
+      videosApi.lister(selectedCoursId).then((liste) =>
+        setVideos((byC) => ({ ...byC, [selectedCoursId]: liste })),
       )
     }
   }, [loggedIn, selectedCoursId])
@@ -280,18 +292,18 @@ function App() {
             // Consultation seule pour un élève (voir spec §2.1 sur les
             // droits par rôle) — Admin/Professeur peuvent créer/éditer.
             peutModifier={activeUser.type !== 'eleve'}
+            uploaderId={activeUser.id}
           />
         )}
 
         {activeTab === 'video' && (
-          <ZoneMigration domaine="videos">
-            <VideoScreen
-              cours={selectedCours}
-              list={videos}
-              setList={setVideos}
-              choregraphies={choregraphies[selectedCoursId] ?? []}
-            />
-          </ZoneMigration>
+          <VideoScreen
+            cours={selectedCours}
+            list={videos}
+            setList={setVideos}
+            choregraphies={choregraphies[selectedCoursId] ?? []}
+            uploaderId={activeUser.id}
+          />
         )}
 
         {activeTab === 'messagerie' && (
