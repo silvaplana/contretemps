@@ -141,7 +141,6 @@ CHOREGRAPHIES_DEMO = {
             "horaire_repetition": "Mercredi 17h00 - 17h45, salle 1",
             "videos": [
                 {"nom": "Comme un garçon : détail début", "fichier": "comme-un-garcon-detail-debut.mp4"},
-                {"nom": "Comme un garçon : final", "fichier": None},
             ],
         },
         {
