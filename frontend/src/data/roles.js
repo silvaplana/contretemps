@@ -10,3 +10,10 @@ export const ROLE_LABEL = { admin: 'Admin', professeur: 'Professeur', eleve: 'É
 export function estMonteeEnPrivilege(depuisType, versType) {
   return ROLE_RANK[versType] > ROLE_RANK[depuisType]
 }
+
+// Ordre d'affichage du sélecteur de profil famille (Header) et de "Ma
+// famille" (ProfilScreen) : Admin, puis Professeur, puis Élève — pas
+// l'ordre arbitraire du tableau en mémoire.
+export function trierParRole(profils) {
+  return [...profils].sort((a, b) => ROLE_RANK[b.type] - ROLE_RANK[a.type])
+}

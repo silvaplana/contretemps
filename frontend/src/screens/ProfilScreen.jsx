@@ -9,7 +9,7 @@ import Badge from '../components/Badge.jsx'
 import CodeConfirmModal from '../components/CodeConfirmModal.jsx'
 import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
-import { ROLE_LABEL, estMonteeEnPrivilege } from '../data/roles.js'
+import { ROLE_LABEL, estMonteeEnPrivilege, trierParRole } from '../data/roles.js'
 
 // Écran Profil (tous les rôles — voir spec/SPEC.md §5.6 et images/profil.png).
 // ⚠️ Proposition non validée dans la spec. Affiche les autres profils de la
@@ -17,7 +17,7 @@ import { ROLE_LABEL, estMonteeEnPrivilege } from '../data/roles.js'
 export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLogout, onOpenMesHeures }) {
   const [notifications, setNotifications] = useState(true)
   const [profilVise, setProfilVise] = useState(null)
-  const autresProfils = famille.filter((p) => p.id !== user.id)
+  const autresProfils = trierParRole(famille.filter((p) => p.id !== user.id))
 
   // Suivi de la migration vers le vrai backend (voir api/etatMigration.js)
   // — outil de dev, réservé à l'admin, à retirer une fois tous les

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { ROLE_LABEL, estMonteeEnPrivilege } from '../data/roles.js'
+import { ROLE_LABEL, estMonteeEnPrivilege, trierParRole } from '../data/roles.js'
 import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
@@ -117,7 +117,7 @@ export default function Header({
                   className="dropdown-menu famille-selector__menu"
                   style={{ top: familleMenuTop }}
                 >
-                  {famille.map((p) => (
+                  {trierParRole(famille).map((p) => (
                     <button
                       key={p.id}
                       type="button"
