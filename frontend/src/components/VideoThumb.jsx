@@ -1,41 +1,54 @@
+import { useState } from 'react'
 import Icon from './Icon.jsx'
 
 // Vignette vidéo réutilisée par l'onglet Vidéo (VideoScreen.jsx) et le
-// détail d'une chorégraphie (ChoregraphieDetailScreen.jsx) : joue vraiment
-// le fichier si `url` existe (voir AddVideoModal.jsx), sinon affiche un
-// espace réservé statique avec un bouton play désactivé.
+// détail d'une chorégraphie (ChoregraphieDetailScreen.jsx).
 //
-// `poster` (image statique) affichée immédiatement, sans attendre le
-// moindre octet de vidéo — indispensable sur mobile : contrairement à
-// Chrome desktop, Chrome/Brave/Samsung Internet sur Android n'affichent
-// PAS la 1re image d'une vidéo tant qu'elle n'a pas été jouée (juste une
-// case noire + icône "média"), ce qui donnait l'impression que "les
-// vidéos ne marchent pas" (repéré sur un vrai téléphone). `preload="none"`
-// (au lieu de "metadata") : dans une LISTE de plusieurs vidéos, ne
-// télécharge aucun octet de la vidéo tant qu'on n'a pas tapé play — le
-// poster suffit à afficher un aperçu, comme YouTube (voir aussi le
-// "faststart" déjà présent dans les fichiers, pour un démarrage rapide
-// une fois la lecture lancée).
+// Tant que la lecture n'a pas été demandée, AUCUN <video> n'est monté —
+// juste une simple <img> (le `poster`) : s'affiche instantanément, comme
+// une vignette YouTube. Monter directement un <video poster preload>
+// (essayé d'abord) laissait apparaître, sur mobile (Chrome/Brave/Samsung
+// Internet Android testés), une brève animation de chargement autour du
+// bouton play avant que le poster ne s'affiche — et, tant que la vidéo
+// n'était pas assez initialisée, les contrôles natifs n'incluaient pas
+// le bouton plein écran (présent une fois la lecture réellement
+// commencée, comme dans Chorégraphie où l'utilisateur avait déjà tapé
+// play). Ne créer le <video> qu'au clic règle les deux à la fois : la
+// vignette est immédiate, et une fois monté avec `autoPlay`, le
+// navigateur a tout de suite les infos nécessaires pour afficher les
+// contrôles complets, plein écran inclus.
 export default function VideoThumb({ url, poster, titre, duree }) {
-  return (
-    <div className="video-card__thumb">
-      {url ? (
+  const [lecture, setLecture] = useState(false)
+
+  if (url && lecture) {
+    return (
+      <div className="video-card__thumb">
         <video
           className="video-card__player"
           src={url}
           poster={poster || undefined}
           controls
-          preload="none"
+          autoPlay
+          preload="metadata"
           playsInline
         />
-      ) : (
-        <>
-          <button type="button" className="video-card__play" aria-label={`Lire ${titre}`} disabled>
-            <Icon name="play" size={22} />
-          </button>
-          <span className="video-card__duree">{duree}</span>
-        </>
-      )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="video-card__thumb">
+      {poster && <img className="video-card__poster" src={poster} alt={titre} />}
+      <button
+        type="button"
+        className="video-card__play"
+        aria-label={`Lire ${titre}`}
+        onClick={() => url && setLecture(true)}
+        disabled={!url}
+      >
+        <Icon name="play" size={22} />
+      </button>
+      {!url && <span className="video-card__duree">{duree}</span>}
     </div>
   )
 }
