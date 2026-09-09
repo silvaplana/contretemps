@@ -120,7 +120,7 @@ def test_valider_cree_les_eleves_et_les_inscrit_aux_cours(client, db_session):
 
     reponse = client.get("/eleves", params={"ecole_id": ecole.id})
     assert len(reponse.json()) == 80
-    premier = next(e for e in reponse.json() if e["nom"] == "Jean" and e["prenom"] == "Stéphane")
+    premier = next(e for e in reponse.json() if e["nom"] == "Jean" and e["prenom"] == "Camille")
     assert premier["telephone"] == "661602371"
     # Contact parent : élève majeur dans la fixture -> pas de contact.
     assert premier["contacts"] == []

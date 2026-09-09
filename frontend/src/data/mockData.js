@@ -24,16 +24,18 @@ export const ROLE_RANK = { eleve: 0, professeur: 1, admin: 2 }
 // comptes de la même école partageant le même email, avec bascule sans
 // reconnexion (juste le code redemandé en cas de montée en privilège).
 // En dur pour la maquette — le vrai calcul par email est pour le backend
-// (voir §6.2). Léon et Simon (e8/e16, tous deux au cours Eveil) et
-// Marie-Laure Pesenti (p1) n'ont bien sûr aucun lien de famille réel avec
-// Julia Dho — choisis arbitrairement ici pour pouvoir tester à la
-// souris chaque rôle (Élève/Professeur) via le sélecteur de profil, sans
-// vrai système de connexion par rôle pour l'instant.
+// (voir §6.2). Julia Dho (admin) est aussi la mère d'Alix et Zélie (e81/
+// e82, élèves), toutes deux inscrites au cours Eveil — même nom, prénoms
+// différents, mais surtout même email que Julia (voir eleves : c'est
+// l'email qui fait famille, pas le nom, spec §6.2). Bug corrigé : ici,
+// Marie-Laure Pesenti/Léon/Simon étaient regroupés sans aucun lien réel
+// (email différent) — juste choisis arbitrairement pour tester les
+// rôles à la souris. Ce raccourci n'existe plus : chaque rôle reste
+// testable en se connectant directement avec son propre code d'accès.
 export const familleActuelle = [
   { ...currentUser },
-  { id: 'e8', type: 'eleve', nom: 'Perrin', prenom: 'Léon', initiales: 'LP' },
-  { id: 'e16', type: 'eleve', nom: 'Thomas', prenom: 'Simon', initiales: 'ST' },
-  { id: 'p1', type: 'professeur', nom: 'Pesenti', prenom: 'Marie-Laure', initiales: 'MP' },
+  { id: 'e81', type: 'eleve', nom: 'Dho', prenom: 'Alix', initiales: 'AD' },
+  { id: 'e82', type: 'eleve', nom: 'Dho', prenom: 'Zélie', initiales: 'ZD' },
 ]
 
 // École actuelle (voir spec §5.1.1 et §6.1) : nom + code postal + 3 codes
@@ -53,12 +55,17 @@ export const ecoleActuelle = {
 // Les 4 vraies professeures de Contretemps (source : page publique
 // dansecontretemps.fr/professeurs-danse-beausset — aucun email public,
 // laissé vide, à compléter par l'admin). coursIds réparti par spécialité.
+//
+// Exception : Marie-Laure Pesenti a un email fictif (ci-dessous) pour
+// pouvoir démontrer le sélecteur de profil famille avec un deuxième
+// exemple que celui de Julia Dho (voir familleActuelle) — sa fille
+// élève (e83) partage ce même email.
 export const professeurs = [
   {
     id: 'p1',
     nom: 'Pesenti',
     prenom: 'Marie-Laure',
-    email: '',
+    email: 'marie-laure.pesenti@contretemps.fr',
     coursIds: ['c1', 'c2', 'c4'],
   },
   {
@@ -112,7 +119,7 @@ export const eleves = [
   {
     id: 'e1',
     nom: 'Jean',
-    prenom: 'Stéphane',
+    prenom: 'Camille',
     coursIds: ['c11', 'c10'],
     statutPaiement: 'paye',
     montantTotalAnnee: 360,
@@ -155,7 +162,7 @@ export const eleves = [
   {
     id: 'e3',
     nom: 'Legrand',
-    prenom: 'Milo',
+    prenom: 'Emma',
     coursIds: ['c11'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -219,7 +226,7 @@ export const eleves = [
   {
     id: 'e6',
     nom: 'Petit',
-    prenom: 'Enzo',
+    prenom: 'Lucie',
     coursIds: ['c11', 'c10'],
     statutPaiement: 'en_cours',
     montantTotalAnnee: 360,
@@ -241,7 +248,7 @@ export const eleves = [
   {
     id: 'e7',
     nom: 'Francois',
-    prenom: 'Sacha',
+    prenom: 'Margaux',
     coursIds: ['c11'],
     statutPaiement: 'en_cours',
     montantTotalAnnee: 270,
@@ -262,7 +269,7 @@ export const eleves = [
   {
     id: 'e8',
     nom: 'Perrin',
-    prenom: 'Léon',
+    prenom: 'Charlotte',
     coursIds: ['c1'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -302,7 +309,7 @@ export const eleves = [
   {
     id: 'e10',
     nom: 'Legrand',
-    prenom: 'Nicolas',
+    prenom: 'Juliette',
     coursIds: ['c10', 'c11'],
     statutPaiement: 'paye',
     montantTotalAnnee: 360,
@@ -364,7 +371,7 @@ export const eleves = [
   {
     id: 'e13',
     nom: 'Bertrand',
-    prenom: 'Eliott',
+    prenom: 'Amandine',
     coursIds: ['c1'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -429,7 +436,7 @@ export const eleves = [
   {
     id: 'e16',
     nom: 'Thomas',
-    prenom: 'Simon',
+    prenom: 'Coline',
     coursIds: ['c1'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -494,7 +501,7 @@ export const eleves = [
   {
     id: 'e19',
     nom: 'Lemoine',
-    prenom: 'Nathan',
+    prenom: 'Lola',
     coursIds: ['c11'],
     statutPaiement: 'en_cours',
     montantTotalAnnee: 270,
@@ -662,7 +669,7 @@ export const eleves = [
   {
     id: 'e27',
     nom: 'Richard',
-    prenom: 'Antoine',
+    prenom: 'Rose',
     coursIds: ['c10'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -726,7 +733,7 @@ export const eleves = [
   {
     id: 'e30',
     nom: 'Nicolas',
-    prenom: 'Arthur',
+    prenom: 'Apolline',
     coursIds: ['c6'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -747,7 +754,7 @@ export const eleves = [
   {
     id: 'e31',
     nom: 'Bonnet',
-    prenom: 'Léon',
+    prenom: 'Eva',
     coursIds: ['c11', 'c9'],
     statutPaiement: 'paye',
     montantTotalAnnee: 360,
@@ -769,7 +776,7 @@ export const eleves = [
   {
     id: 'e32',
     nom: 'Perrot',
-    prenom: 'Baptiste',
+    prenom: 'Lisa',
     coursIds: ['c4'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -791,7 +798,7 @@ export const eleves = [
   {
     id: 'e33',
     nom: 'Muller',
-    prenom: 'Malo',
+    prenom: 'Margot',
     coursIds: ['c10', 'c11', 'c9'],
     statutPaiement: 'paye',
     montantTotalAnnee: 450,
@@ -834,7 +841,7 @@ export const eleves = [
   {
     id: 'e35',
     nom: 'Andre',
-    prenom: 'Stéphane',
+    prenom: 'Clara',
     coursIds: ['c10', 'c11', 'c9'],
     statutPaiement: 'paye',
     montantTotalAnnee: 450,
@@ -876,7 +883,7 @@ export const eleves = [
   {
     id: 'e37',
     nom: 'Blanc',
-    prenom: 'Eliott',
+    prenom: 'Justine',
     coursIds: ['c7', 'c8', 'c5', 'c4'],
     statutPaiement: 'paye',
     montantTotalAnnee: 540,
@@ -897,7 +904,7 @@ export const eleves = [
   {
     id: 'e38',
     nom: 'Roussel',
-    prenom: 'Aaron',
+    prenom: 'Pauline',
     coursIds: ['c11', 'c9', 'c10'],
     statutPaiement: 'en_cours',
     montantTotalAnnee: 540,
@@ -918,7 +925,7 @@ export const eleves = [
   {
     id: 'e39',
     nom: 'Petit',
-    prenom: 'Stéphane',
+    prenom: 'Romane',
     coursIds: ['c11', 'c9'],
     statutPaiement: 'paye',
     montantTotalAnnee: 360,
@@ -958,7 +965,7 @@ export const eleves = [
   {
     id: 'e41',
     nom: 'Vincent',
-    prenom: 'Robin',
+    prenom: 'Lena',
     coursIds: ['c5', 'c2', 'c3'],
     statutPaiement: 'paye',
     montantTotalAnnee: 450,
@@ -1000,7 +1007,7 @@ export const eleves = [
   {
     id: 'e43',
     nom: 'Michel',
-    prenom: 'David',
+    prenom: 'Mélanie',
     coursIds: ['c11'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -1009,7 +1016,7 @@ export const eleves = [
     dateNaissance: '1986-09-03',
     contactsEleve: [],
     telephone: '06 36 73 35 49',
-    email: 'david.michel@exemple.fr',
+    email: 'melanie.michel@exemple.fr',
     adresse: '50 rue de la Gare, La Cadière-d\'Azur',
     allergies: '',
     traitementMedical: '',
@@ -1062,7 +1069,7 @@ export const eleves = [
   {
     id: 'e46',
     nom: 'Martinez',
-    prenom: 'Nolan',
+    prenom: 'Faustine',
     coursIds: [],
     statutPaiement: 'en_cours',
     montantTotalAnnee: 270,
@@ -1106,7 +1113,7 @@ export const eleves = [
   {
     id: 'e48',
     nom: 'Perrin',
-    prenom: 'Marc',
+    prenom: 'Adèle',
     coursIds: ['c10', 'c11'],
     statutPaiement: 'en_cours',
     montantTotalAnnee: 360,
@@ -1167,7 +1174,7 @@ export const eleves = [
   {
     id: 'e51',
     nom: 'Durand',
-    prenom: 'Fabien',
+    prenom: 'Gabrielle',
     coursIds: ['c10', 'c11'],
     statutPaiement: 'paye',
     montantTotalAnnee: 360,
@@ -1210,7 +1217,7 @@ export const eleves = [
   {
     id: 'e53',
     nom: 'Roux',
-    prenom: 'Marceau',
+    prenom: 'Valentine',
     coursIds: ['c1'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -1295,7 +1302,7 @@ export const eleves = [
   {
     id: 'e57',
     nom: 'Clement',
-    prenom: 'Victor',
+    prenom: 'Constance',
     coursIds: ['c1', 'c3', 'c2'],
     statutPaiement: 'paye',
     montantTotalAnnee: 450,
@@ -1522,7 +1529,7 @@ export const eleves = [
   {
     id: 'e68',
     nom: 'Dumont',
-    prenom: 'Kylian',
+    prenom: 'Noémie',
     coursIds: ['c6'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -1543,7 +1550,7 @@ export const eleves = [
   {
     id: 'e69',
     nom: 'David',
-    prenom: 'Axel',
+    prenom: 'Léonie',
     coursIds: ['c1'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -1565,7 +1572,7 @@ export const eleves = [
   {
     id: 'e70',
     nom: 'Faure',
-    prenom: 'Arthur',
+    prenom: 'Céline',
     coursIds: ['c1'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -1670,7 +1677,7 @@ export const eleves = [
   {
     id: 'e75',
     nom: 'Morin',
-    prenom: 'Simon',
+    prenom: 'Estelle',
     coursIds: ['c2', 'c3'],
     statutPaiement: 'paye',
     montantTotalAnnee: 450,
@@ -1774,7 +1781,7 @@ export const eleves = [
   {
     id: 'e80',
     nom: 'Garnier',
-    prenom: 'Karim',
+    prenom: 'Ambre',
     coursIds: ['c9'],
     statutPaiement: 'paye',
     montantTotalAnnee: 270,
@@ -1783,8 +1790,76 @@ export const eleves = [
     dateNaissance: '1991-11-07',
     contactsEleve: [],
     telephone: '06 47 50 53 64',
-    email: 'karim.garnier@exemple.fr',
+    email: 'ambre.garnier@exemple.fr',
     adresse: '17 rue des Lilas, Le Castellet',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
+    certificatMedical: true,
+  },
+  // e81/e82 : les 2 filles de Julia Dho (admin) — même nom, prénoms
+  // différents, email de leur mère (voir familleActuelle, §6.2 : c'est
+  // l'email partagé qui fait famille, pas le nom). e83 : la fille de
+  // Marie-Laure Pesenti (professeure), même principe — démontre le
+  // sélecteur de profil famille avec un compte autre que l'admin.
+  {
+    id: 'e81',
+    nom: 'Dho',
+    prenom: 'Alix',
+    coursIds: ['c1'],
+    statutPaiement: 'paye',
+    montantTotalAnnee: 270,
+    montantPaye: 270,
+    commentaireAdmin: '',
+    dateNaissance: '2018-04-11',
+    contactsEleve: [
+      { nom: 'Dho', prenom: 'Julia', lien: 'Mère', telephone: '06 12 34 56 78', email: 'j.dho@contretemps.fr' },
+    ],
+    telephone: '06 12 34 56 78',
+    email: 'j.dho@contretemps.fr',
+    adresse: '2 rue des Micocouliers, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
+    certificatMedical: true,
+  },
+  {
+    id: 'e82',
+    nom: 'Dho',
+    prenom: 'Zélie',
+    coursIds: ['c1'],
+    statutPaiement: 'paye',
+    montantTotalAnnee: 270,
+    montantPaye: 270,
+    commentaireAdmin: '',
+    dateNaissance: '2020-08-23',
+    contactsEleve: [
+      { nom: 'Dho', prenom: 'Julia', lien: 'Mère', telephone: '06 12 34 56 78', email: 'j.dho@contretemps.fr' },
+    ],
+    telephone: '06 12 34 56 78',
+    email: 'j.dho@contretemps.fr',
+    adresse: '2 rue des Micocouliers, Le Beausset',
+    allergies: '',
+    traitementMedical: '',
+    informationsImportantes: '',
+    certificatMedical: true,
+  },
+  {
+    id: 'e83',
+    nom: 'Pesenti',
+    prenom: 'Nora',
+    coursIds: ['c1'],
+    statutPaiement: 'paye',
+    montantTotalAnnee: 270,
+    montantPaye: 270,
+    commentaireAdmin: '',
+    dateNaissance: '2019-02-14',
+    contactsEleve: [
+      { nom: 'Pesenti', prenom: 'Marie-Laure', lien: 'Mère', telephone: '06 98 76 54 32', email: 'marie-laure.pesenti@contretemps.fr' },
+    ],
+    telephone: '06 98 76 54 32',
+    email: 'marie-laure.pesenti@contretemps.fr',
+    adresse: '14 chemin des Oliviers, Le Beausset',
     allergies: '',
     traitementMedical: '',
     informationsImportantes: '',
@@ -1963,7 +2038,7 @@ export const conversations = [
       },
       {
         id: 'm2',
-        auteur: 'Léon',
+        auteur: 'Charlotte',
         estMoi: false,
         contenu: 'Confirmez par mail ?',
         heure: '09:05',
@@ -1975,11 +2050,11 @@ export const conversations = [
   {
     id: 'conv2',
     type: 'individuelle',
-    nom: 'Léon (élève)',
+    nom: 'Charlotte (élève)',
     messages: [
       {
         id: 'm3',
-        auteur: 'Léon',
+        auteur: 'Charlotte',
         estMoi: false,
         contenu: 'A quelle heure le cours de mercredi ?',
         heure: '09:02',

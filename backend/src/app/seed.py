@@ -34,11 +34,45 @@ from videos import DOSSIER_VIDEOS_REFERENCE, Videos, chemin_relatif, dossier_eco
 
 # Source profs/cours : page publique dansecontretemps.fr/professeurs-danse-beausset
 # (pas d'email public pour les profs -> laissé vide, à compléter par l'admin).
+#
+# Exception : Marie-Laure Pesenti a un email fictif (voir FAMILLES_DEMO
+# ci-dessous) pour démontrer le sélecteur de profil famille avec un
+# compte non-admin — même principe que mockData.js (professeurs, p1).
 PROFS_CONTRETEMPS = [
-    {"nom": "Pesenti", "prenom": "Marie-Laure"},
+    {"nom": "Pesenti", "prenom": "Marie-Laure", "email": "marie-laure.pesenti@contretemps.fr"},
     {"nom": "Jullien", "prenom": "Pascale"},
     {"nom": "Thomas", "prenom": "Marysa"},
     {"nom": "Revelles", "prenom": "Stellina"},
+]
+
+# Démontre le sélecteur de profil famille (§2.1/§6.2 : regroupement par
+# email partagé) avec de vraies données backend — même principe que
+# mockData.js (familleActuelle). Julia Dho (admin) et Marie-Laure
+# Pesenti (professeure) sont chacune "mère" d'élèves inscrites au cours
+# Eveil : même nom, prénoms différents, email de la mère (voir
+# _creer_familles_demo).
+FAMILLES_DEMO = [
+    {
+        "nom": "Dho",
+        "parent_prenom": "Julia",
+        "parent_email": "j.dho@contretemps.fr",
+        "parent_telephone": "06 12 34 56 78",
+        "adresse": "2 rue des Micocouliers, Le Beausset",
+        "enfants": [
+            {"prenom": "Alix", "date_naissance": dt.date(2018, 4, 11)},
+            {"prenom": "Zélie", "date_naissance": dt.date(2020, 8, 23)},
+        ],
+    },
+    {
+        "nom": "Pesenti",
+        "parent_prenom": "Marie-Laure",
+        "parent_email": "marie-laure.pesenti@contretemps.fr",
+        "parent_telephone": "06 98 76 54 32",
+        "adresse": "14 chemin des Oliviers, Le Beausset",
+        "enfants": [
+            {"prenom": "Nora", "date_naissance": dt.date(2019, 2, 14)},
+        ],
+    },
 ]
 
 # heure_debut/heure_fin au format "HH:MM" (zéro-paddé, comparé
@@ -65,8 +99,8 @@ PRESENCES_DEMO = {
     "Eveil": {
         "dates": [dt.date(2026, 9, 1), dt.date(2026, 9, 3), dt.date(2026, 9, 8)],
         "eleves": {
-            ("Perrin", "Léon"): ["present", "present", "retard"],
-            ("Thomas", "Simon"): ["present", "absent", "present"],
+            ("Perrin", "Charlotte"): ["present", "present", "retard"],
+            ("Thomas", "Coline"): ["present", "absent", "present"],
             ("Legrand", "Chloé"): ["present", "present", "present"],
         },
         "profs": {
@@ -80,8 +114,8 @@ PRESENCES_DEMO = {
     "Contemporain": {
         "dates": [dt.date(2026, 9, 4), dt.date(2026, 9, 6)],
         "eleves": {
-            ("Jean", "Stéphane"): ["present", "present"],
-            ("Legrand", "Milo"): ["present", "retard"],
+            ("Jean", "Camille"): ["present", "present"],
+            ("Legrand", "Emma"): ["present", "retard"],
             ("Mercier", "Garance"): ["absent", "present"],
             ("Michel", "Nina"): ["present", "present"],
         },
@@ -102,7 +136,7 @@ CHOREGRAPHIES_DEMO = {
     "Eveil": [
         {
             "nom": "Comme un garçon",
-            "eleves": [("Perrin", "Léon"), ("Thomas", "Simon"), ("Legrand", "Chloé")],
+            "eleves": [("Perrin", "Charlotte"), ("Thomas", "Coline"), ("Legrand", "Chloé")],
             "costume": "Justaucorps noir, legging pailleté argent",
             "horaire_repetition": "Mercredi 17h00 - 17h45, salle 1",
             "videos": [
@@ -112,7 +146,7 @@ CHOREGRAPHIES_DEMO = {
         },
         {
             "nom": "Bang bang",
-            "eleves": [("Perrin", "Léon"), ("Thomas", "Simon")],
+            "eleves": [("Perrin", "Charlotte"), ("Thomas", "Coline")],
             "costume": "Combinaison rouge",
             "horaire_repetition": "Vendredi 18h00 - 19h00, salle 1",
             "videos": [
@@ -127,7 +161,7 @@ CHOREGRAPHIES_DEMO = {
     "Contemporain": [
         {
             "nom": "Silhouettes",
-            "eleves": [("Jean", "Stéphane"), ("Legrand", "Milo"), ("Mercier", "Garance")],
+            "eleves": [("Jean", "Camille"), ("Legrand", "Emma"), ("Mercier", "Garance")],
             "costume": "Body noir uni",
             "horaire_repetition": "Vendredi 20h00 - 21h30, salle 2",
             "videos": [{"nom": "Silhouettes — filage", "fichier": None}],
@@ -162,6 +196,48 @@ def _copier_fichier_demo(ecole_id: int, nom_fichier: str) -> str:
         if source.exists():
             shutil.copy(source, cible)
     return chemin_relatif(ecole_id, nom_fichier)
+
+
+def _creer_familles_demo(db, ecole, comptes, eleves_service, cours_service) -> None:
+    """Voir FAMILLES_DEMO ci-dessus. Idempotent (vérifie par nom+prénom
+    avant de créer, comme le reste de ce fichier)."""
+    cours_eveil = next((c for c in cours_service.list(db, ecole.id) if c.nom == "Eveil"), None)
+    if cours_eveil is None:
+        return
+    for famille in FAMILLES_DEMO:
+        for enfant in famille["enfants"]:
+            if comptes.trouver_par_nom_prenom(
+                db, ecole.id, famille["nom"], enfant["prenom"], role="eleve"
+            ):
+                print(f"Élève '{enfant['prenom']} {famille['nom']}' déjà présente, ignorée.")
+                continue
+            compte, _ = eleves_service.create(
+                db,
+                ecole_id=ecole.id,
+                nom=famille["nom"],
+                prenom=enfant["prenom"],
+                email=famille["parent_email"],
+                telephone=famille["parent_telephone"],
+                date_naissance=enfant["date_naissance"],
+                adresse=famille["adresse"],
+                statut_paiement="paye",
+                montant_total_annee=270,
+                montant_paye=270,
+            )
+            eleves_service.ajouter_contact(
+                db,
+                eleve_id=compte.id,
+                nom=famille["nom"],
+                prenom=famille["parent_prenom"],
+                lien="Mère",
+                telephone=famille["parent_telephone"],
+                email=famille["parent_email"],
+            )
+            cours_service.inscrire_eleve(db, cours_eveil.id, compte.id)
+            print(
+                f"Élève '{enfant['prenom']} {famille['nom']}' créée "
+                f"(famille de {famille['parent_prenom']} {famille['nom']})."
+            )
 
 
 def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, profs_par_nom_prenom, admin) -> None:
@@ -326,6 +402,8 @@ def run() -> None:
                 apercu = import_excel.previsualiser(db, ecole.id, f)
             resultat = import_excel.valider(db, ecole.id, apercu.lignes)
             print(f"Élèves importés depuis eleves_demo.xlsx : {resultat}")
+
+        _creer_familles_demo(db, ecole, comptes, eleves_service, cours_service)
 
         # `admin` n'existe que dans la branche "nouvellement créé"
         # ci-dessus — le récupérer dans tous les cas (uploaded_by des
