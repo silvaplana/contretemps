@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
+import ZoneMigration from '../../components/ZoneMigration.jsx'
 import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
 import AdminGroupes from './AdminGroupes.jsx'
@@ -43,24 +44,30 @@ export default function AdminScreen({
         <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} ecoleId={ecole.id} />
       )}
       {subTab === 'professeurs' && (
-        <AdminProfesseurs
-          professeurs={professeurs}
-          setProfesseurs={setProfesseurs}
-          cours={cours}
-          onOpenHeures={onOpenHeures}
-        />
+        <ZoneMigration domaine="profs">
+          <AdminProfesseurs
+            professeurs={professeurs}
+            setProfesseurs={setProfesseurs}
+            cours={cours}
+            onOpenHeures={onOpenHeures}
+          />
+        </ZoneMigration>
       )}
       {subTab === 'cours' && (
-        <AdminCours cours={cours} setCours={setCours} professeurs={professeurs} eleves={eleves} />
+        <ZoneMigration domaine="cours">
+          <AdminCours cours={cours} setCours={setCours} professeurs={professeurs} eleves={eleves} />
+        </ZoneMigration>
       )}
       {subTab === 'groupes' && (
-        <AdminGroupes
-          groupes={groupes}
-          setGroupes={setGroupes}
-          professeurs={professeurs}
-          eleves={eleves}
-          cours={cours}
-        />
+        <ZoneMigration domaine="messagerie">
+          <AdminGroupes
+            groupes={groupes}
+            setGroupes={setGroupes}
+            professeurs={professeurs}
+            eleves={eleves}
+            cours={cours}
+          />
+        </ZoneMigration>
       )}
     </div>
   )

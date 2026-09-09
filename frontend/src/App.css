@@ -353,6 +353,13 @@
   color: var(--danger-text);
 }
 
+/* Voir ZoneMigration.jsx / --migration-indicateur : même bleu, pour
+   l'écran "État des modules" (Admin > École). */
+.badge--info {
+  background: var(--migration-indicateur-bg);
+  color: var(--migration-indicateur);
+}
+
 .badge-list {
   display: flex;
   flex-wrap: wrap;
@@ -566,6 +573,13 @@
 .checkbox-list__item input {
   width: 20px;
   height: 20px;
+}
+
+/* Ligne "libellé — écran" + badge de statut (voir "État des modules",
+   AdminParametres.jsx) — pousse le badge à droite, pas de case à cocher
+   ici contrairement à l'usage habituel de .checkbox-list__item. */
+.checkbox-list__item--etat {
+  justify-content: space-between;
 }
 
 /* ==========================================================================
@@ -1583,6 +1597,17 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
+}
+
+/* ==========================================================================
+   Indicateur dev "zone pas encore branchée" (ZoneMigration.jsx)
+   ========================================================================== */
+
+.zone-non-branchee {
+  outline: 2px dashed var(--migration-indicateur);
+  outline-offset: -2px;
+  background: var(--migration-indicateur-wash);
+  border-radius: 12px;
 }
 
 .planning-hebdo__scroll {

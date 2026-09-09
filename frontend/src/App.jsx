@@ -3,6 +3,7 @@ import './App.css'
 import * as elevesApi from './api/eleves.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
+import ZoneMigration from './components/ZoneMigration.jsx'
 import {
   choregraphiesParCours as initialChoregraphies,
   conversations as initialConversations,
@@ -223,53 +224,63 @@ function App() {
         )}
 
         {activeTab === 'heures' && (
-          <HeuresScreen
-            professeur={professeurs.find((p) => p.id === heuresProfId)}
-            cours={cours}
-            presences={presences}
-            estAdmin={activeUser.type === 'admin'}
-            onBack={() => setActiveTab(heuresRetour)}
-          />
+          <ZoneMigration domaine="presence">
+            <HeuresScreen
+              professeur={professeurs.find((p) => p.id === heuresProfId)}
+              cours={cours}
+              presences={presences}
+              estAdmin={activeUser.type === 'admin'}
+              onBack={() => setActiveTab(heuresRetour)}
+            />
+          </ZoneMigration>
         )}
 
         {activeTab === 'presence' &&
           (activeUser.type === 'admin' || activeUser.type === 'professeur') && (
-            <PresenceScreen
-              cours={selectedCours}
-              eleves={eleves}
-              professeurs={professeurs}
-              data={presences[selectedCoursId]}
-              activeUser={activeUser}
-              onCycle={cycleStatut}
-              onAddDate={addDatePresence}
-              onSetHeureProf={setHeureProf}
-              showAdd={presenceShowAdd}
-              setShowAdd={setPresenceShowAdd}
-            />
+            <ZoneMigration domaine="presence">
+              <PresenceScreen
+                cours={selectedCours}
+                eleves={eleves}
+                professeurs={professeurs}
+                data={presences[selectedCoursId]}
+                activeUser={activeUser}
+                onCycle={cycleStatut}
+                onAddDate={addDatePresence}
+                onSetHeureProf={setHeureProf}
+                showAdd={presenceShowAdd}
+                setShowAdd={setPresenceShowAdd}
+              />
+            </ZoneMigration>
           )}
 
         {activeTab === 'choregraphie' && (
-          <ChoregraphieScreen
-            cours={selectedCours}
-            list={choregraphies[selectedCoursId] ?? []}
-            setList={setChoregraphies}
-            eleves={eleves}
-            videos={videos[selectedCoursId] ?? []}
-            setVideos={setVideos}
-          />
+          <ZoneMigration domaine="choregraphies">
+            <ChoregraphieScreen
+              cours={selectedCours}
+              list={choregraphies[selectedCoursId] ?? []}
+              setList={setChoregraphies}
+              eleves={eleves}
+              videos={videos[selectedCoursId] ?? []}
+              setVideos={setVideos}
+            />
+          </ZoneMigration>
         )}
 
         {activeTab === 'video' && (
-          <VideoScreen
-            cours={selectedCours}
-            list={videos}
-            setList={setVideos}
-            choregraphies={choregraphies[selectedCoursId] ?? []}
-          />
+          <ZoneMigration domaine="videos">
+            <VideoScreen
+              cours={selectedCours}
+              list={videos}
+              setList={setVideos}
+              choregraphies={choregraphies[selectedCoursId] ?? []}
+            />
+          </ZoneMigration>
         )}
 
         {activeTab === 'messagerie' && (
-          <MessagerieScreen conversations={conversations} setConversations={setConversations} />
+          <ZoneMigration domaine="messagerie">
+            <MessagerieScreen conversations={conversations} setConversations={setConversations} />
+          </ZoneMigration>
         )}
 
         {activeTab === 'profil' && (

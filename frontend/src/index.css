@@ -28,6 +28,18 @@
      erreurs/suppression) : ici on veut un rouge franc et gai, pas alarmant. */
   --rouge-surlignage: #ff3b30;
 
+  /* Indicateur dev "zone pas encore branchée au vrai backend" (voir
+     ZoneMigration.jsx) — bleu volontairement, seule couleur froide de
+     toute la charte (orange partout ailleurs) : impossible à confondre
+     avec une vraie couleur de statut métier (succès/attention/erreur).
+     Deux fonds : un pastel opaque pour le badge (même convention que
+     --success-bg etc.), un lavis très léger pour le fond de zone entière
+     (ZoneMigration peut couvrir tout un écran, un pastel plein serait
+     trop présent sur une grande surface). */
+  --migration-indicateur: #2f6fed;
+  --migration-indicateur-bg: #dde8fc;
+  --migration-indicateur-wash: rgba(47, 111, 237, 0.08);
+
   --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
 
   /* Hauteur réelle de .bottom-nav (padding 8px*2 + item min-height 44px +
