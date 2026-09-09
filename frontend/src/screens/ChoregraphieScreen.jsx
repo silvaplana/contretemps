@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as choregraphiesApi from '../api/choregraphies.js'
 import Modal from '../components/Modal.jsx'
 import ChoregraphieDetailScreen from './choregraphie/ChoregraphieDetailScreen.jsx'
 import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
@@ -7,6 +8,10 @@ import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 // images/choregraphie.png). Deux écrans distincts, comme la Messagerie : la
 // liste des chorégraphies du cours, puis (au clic) le détail en plein écran
 // avec une flèche de retour — jamais les deux affichés en même temps.
+//
+// Chorégraphies (nom/costume/horaire/élèves participants) via
+// api/choregraphies.js (voir api/README.md) — `list`/`setList` viennent
+// de App.jsx. Vidéos pas encore migrées (domaine séparé, à venir).
 export default function ChoregraphieScreen({
   cours,
   list,
@@ -23,15 +28,22 @@ export default function ChoregraphieScreen({
 
   const selected = list.find((ch) => ch.id === selectedId) ?? null
 
-  function update(id, patch) {
+  function remplacer(choregraphieMiseAJour) {
     setList((byC) => ({
       ...byC,
-      [cours.id]: byC[cours.id].map((ch) => (ch.id === id ? { ...ch, ...patch } : ch)),
+      [cours.id]: byC[cours.id].map((ch) =>
+        ch.id === choregraphieMiseAJour.id ? choregraphieMiseAJour : ch,
+      ),
     }))
   }
 
-  function removeChoregraphie(id) {
+  async function update(id, patch) {
+    remplacer(await choregraphiesApi.modifier(id, patch))
+  }
+
+  async function removeChoregraphie(id) {
     if (!window.confirm('Supprimer cette chorégraphie ?')) return
+    await choregraphiesApi.supprimer(cours.id, id)
     setList((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((ch) => ch.id !== id) }))
     setSelectedId(null)
   }
@@ -112,9 +124,16 @@ export default function ChoregraphieScreen({
             // Les élèves proposés sont ceux inscrits à ce cours (voir
             // eleves[].coursIds) — pas toute la base élèves de l'école.
             roster={eleves.filter((el) => el.coursIds.includes(cours.id))}
-            onCreate={(donnees) => {
-              const nouvelle = { id: crypto.randomUUID(), ...donnees }
-              setList((byC) => ({ ...byC, [cours.id]: [...(byC[cours.id] ?? []), nouvelle] }))
+            onCreate={async (donnees) => {
+              const nouvelle = await choregraphiesApi.creer(cours.id, donnees)
+              // Voir AdminEleves.jsx : updater idempotent, StrictMode
+              // (dev) peut l'appliquer 2 fois de suite sur son résultat.
+              setList((byC) => {
+                const liste = byC[cours.id] ?? []
+                return liste.some((ch) => ch.id === nouvelle.id)
+                  ? byC
+                  : { ...byC, [cours.id]: [...liste, nouvelle] }
+              })
               setSelectedId(nouvelle.id)
               setShowAdd(false)
             }}
@@ -130,9 +149,18 @@ function NewChoregraphieForm({ roster, onCreate }) {
   const [eleveIds, setEleveIds] = useState([])
   const [costume, setCostume] = useState('')
   const [horaireRepetition, setHoraireRepetition] = useState('')
+  // Garde-fou contre un double-appel (voir AdminEleves.jsx) : l'appel est
+  // async désormais.
+  const [enCours, setEnCours] = useState(false)
 
   function toggleEleve(id) {
     setEleveIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]))
+  }
+
+  async function valider() {
+    if (enCours) return
+    setEnCours(true)
+    await onCreate({ nom, eleveIds, costume, horaireRepetition })
   }
 
   return (
@@ -171,12 +199,7 @@ function NewChoregraphieForm({ roster, onCreate }) {
         onChange={(e) => setHoraireRepetition(e.target.value)}
       />
 
-      <button
-        type="button"
-        className="btn btn--primary btn--block"
-        disabled={!nom}
-        onClick={() => onCreate({ nom, eleveIds, costume, horaireRepetition })}
-      >
+      <button type="button" className="btn btn--primary btn--block" disabled={!nom || enCours} onClick={valider}>
         Créer
       </button>
     </>

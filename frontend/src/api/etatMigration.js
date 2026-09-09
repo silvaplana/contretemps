@@ -10,7 +10,7 @@ export const DOMAINES_MIGRES = {
   profs: true,
   cours: true,
   presence: true,
-  choregraphies: false,
+  choregraphies: true,
   videos: false,
   messagerie: false,
 }

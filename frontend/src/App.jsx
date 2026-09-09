@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import * as choregraphiesApi from './api/choregraphies.js'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
 import * as presenceApi from './api/presence.js'
@@ -8,7 +9,6 @@ import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import ZoneMigration from './components/ZoneMigration.jsx'
 import {
-  choregraphiesParCours as initialChoregraphies,
   conversations as initialConversations,
   currentUser,
   ecoleActuelle,
@@ -56,7 +56,7 @@ function App() {
   const [cours, setCours] = useState([])
   const [groupes, setGroupes] = useState(initialGroupes)
   const [presences, setPresences] = useState({})
-  const [choregraphies, setChoregraphies] = useState(initialChoregraphies)
+  const [choregraphies, setChoregraphies] = useState({})
   const [videos, setVideos] = useState(initialVideos)
   const [conversations, setConversations] = useState(initialConversations)
   const [ecole, setEcole] = useState(ecoleActuelle)
@@ -89,6 +89,18 @@ function App() {
       presenceApi.listerTout(cours.map((c) => c.id)).then(setPresences)
     }
   }, [loggedIn, cours])
+
+  // Chorégraphies : contrairement à eleves/profs/cours/presence, chargées
+  // seulement pour le cours actuellement sélectionné (voir
+  // ChoregraphieScreen.jsx/VideoScreen.jsx : jamais utilisées pour un
+  // autre cours en même temps) — pas besoin de tout charger d'un coup.
+  useEffect(() => {
+    if (loggedIn && selectedCoursId) {
+      choregraphiesApi.lister(selectedCoursId).then((liste) =>
+        setChoregraphies((byC) => ({ ...byC, [selectedCoursId]: liste })),
+      )
+    }
+  }, [loggedIn, selectedCoursId])
 
   // "Ajouter une date" (Présence) : contrôlé ici, pas en état interne à
   // PresenceScreen, pour que le menu 3 points de l'en-tête (voir Header)
@@ -258,19 +270,17 @@ function App() {
           )}
 
         {activeTab === 'choregraphie' && (
-          <ZoneMigration domaine="choregraphies">
-            <ChoregraphieScreen
-              cours={selectedCours}
-              list={choregraphies[selectedCoursId] ?? []}
-              setList={setChoregraphies}
-              eleves={eleves}
-              videos={videos[selectedCoursId] ?? []}
-              setVideos={setVideos}
-              // Consultation seule pour un élève (voir spec §2.1 sur les
-              // droits par rôle) — Admin/Professeur peuvent créer/éditer.
-              peutModifier={activeUser.type !== 'eleve'}
-            />
-          </ZoneMigration>
+          <ChoregraphieScreen
+            cours={selectedCours}
+            list={choregraphies[selectedCoursId] ?? []}
+            setList={setChoregraphies}
+            eleves={eleves}
+            videos={videos[selectedCoursId] ?? []}
+            setVideos={setVideos}
+            // Consultation seule pour un élève (voir spec §2.1 sur les
+            // droits par rôle) — Admin/Professeur peuvent créer/éditer.
+            peutModifier={activeUser.type !== 'eleve'}
+          />
         )}
 
         {activeTab === 'video' && (
