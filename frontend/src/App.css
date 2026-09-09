@@ -616,6 +616,24 @@
   background: var(--card-bg);
 }
 
+/* Bouton "œil" pour voir le code d'accès en clair. */
+.login-screen__champ-code {
+  position: relative;
+}
+
+.login-screen__champ-code input {
+  width: 100%;
+  padding-right: 48px;
+}
+
+.login-screen__toggle-code {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+}
+
 .login-screen__form .btn--primary {
   margin-top: 16px;
   padding: 16px;

@@ -33,6 +33,11 @@ const paths = {
   // le bout de trait rond fait le reste).
   calculator:
     'M6 3h12v18H6z M9 7h6 M9 12h.01 M12 12h.01 M15 12h.01 M9 16h.01 M12 16h.01 M15 16h.01',
+  // Voir un mot de passe/code en clair (LoginScreen) : œil, et œil barré
+  // pour l'état "affiché" (même œil + une diagonale).
+  eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
+  eyeOff:
+    'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M4 4l16 16',
 }
 
 // Icônes faites de points pleins plutôt que d'un tracé (menu "3 points").

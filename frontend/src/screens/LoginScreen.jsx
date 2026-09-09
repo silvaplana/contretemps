@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import Icon from '../components/Icon.jsx'
 import Logo from '../components/Logo.jsx'
 import Modal from '../components/Modal.jsx'
 import * as auth from '../api/auth.js'
@@ -15,6 +16,7 @@ export default function LoginScreen({ onLogin }) {
   const [showNouvelleEcole, setShowNouvelleEcole] = useState(false)
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
+  const [codeVisible, setCodeVisible] = useState(false)
 
   async function seConnecter(e) {
     e.preventDefault()
@@ -53,12 +55,22 @@ export default function LoginScreen({ onLogin }) {
         />
 
         <label htmlFor="login-code">Code d’accès</label>
-        <input
-          id="login-code"
-          type="password"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-        />
+        <div className="login-screen__champ-code">
+          <input
+            id="login-code"
+            type={codeVisible ? 'text' : 'password'}
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
+          <button
+            type="button"
+            className="icon-btn login-screen__toggle-code"
+            onClick={() => setCodeVisible((v) => !v)}
+            aria-label={codeVisible ? 'Masquer le code' : 'Afficher le code'}
+          >
+            <Icon name={codeVisible ? 'eyeOff' : 'eye'} size={20} />
+          </button>
+        </div>
 
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
 
