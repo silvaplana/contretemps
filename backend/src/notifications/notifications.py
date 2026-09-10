@@ -29,6 +29,16 @@ from .models import PushSubscription
 
 logger = logging.getLogger(__name__)
 
+# Durée (secondes) pendant laquelle le SERVEUR DE PUSH (FCM/Mozilla/...,
+# pas nous) garde le message en attente si l'appareil n'est pas joignable
+# tout de suite (éteint, hors réseau...) — `ttl=0`, le défaut de
+# pywebpush, dirait au contraire "ne le garde pas, tant pis" : un message
+# envoyé pendant que le destinataire est hors ligne serait perdu pour de
+# bon (signalé). 24h : cohérent avec le délai de relance par mail
+# (§5.5, voir messagerie/messages.py: relancer_messages_non_lus) — passé
+# ce délai, le message part par mail de toute façon.
+TTL_SECONDES = 24 * 60 * 60
+
 
 class Notifications:
     def __init__(self) -> None:
@@ -99,6 +109,7 @@ class Notifications:
                     data=json.dumps({"title": titre, "body": corps}),
                     vapid_private_key=self.cle_privee,
                     vapid_claims={"sub": self.sujet},
+                    ttl=TTL_SECONDES,
                 )
             except WebPushException as err:
                 statut = getattr(err.response, "status_code", None)

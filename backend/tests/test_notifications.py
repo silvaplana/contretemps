@@ -95,6 +95,11 @@ def test_envoyer_a_compte_appelle_webpush_par_abonnement(db_session, monkeypatch
     endpoints_appeles = {a["subscription_info"]["endpoint"] for a in appels}
     assert endpoints_appeles == {"https://push.exemple/1", "https://push.exemple/2"}
     assert '"title": "Julia Dho"' in appels[0]["data"]
+    # Le serveur de push doit garder le message en attente si l'appareil
+    # n'est pas joignable tout de suite (éteint, hors réseau) — pas le
+    # laisser tomber (voir TTL_SECONDES, ttl=0 serait le défaut de
+    # pywebpush : signalé comme un vrai trou).
+    assert appels[0]["ttl"] > 0
     assert '"body": "Bonjour !"' in appels[0]["data"]
 
 
