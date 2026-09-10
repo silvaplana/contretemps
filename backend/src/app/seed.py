@@ -63,7 +63,7 @@ FAMILLES_DEMO = [
     {
         "nom": "Dho",
         "parent_prenom": "Julia",
-        "parent_email": "j.dho@contretemps.fr",
+        "parent_email": "jd@contretemps.fr",
         "parent_telephone": "06 12 34 56 78",
         "adresse": "2 rue des Micocouliers, Le Beausset",
         "enfants": [
@@ -415,7 +415,7 @@ def run() -> None:
                 role="admin",
                 nom="Dho",
                 prenom="Julia",
-                email="j.dho@contretemps.fr",
+                email="jd@contretemps.fr",
                 # "Nom de votre 1er animal de compagnie" (voir "Code
                 # oublié ?" à l'écran de connexion, et NouvelleEcoleModal).
                 code_recuperation="coocky",

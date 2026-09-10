@@ -49,7 +49,7 @@ export default function LoginScreen({ onLogin }) {
           type="text"
           value={identifiant}
           onChange={(e) => setIdentifiant(e.target.value)}
-          placeholder="Julia Dho ou j.dho@contretemps.fr"
+          placeholder="Julia Dho ou jd@contretemps.fr"
         />
 
         <label htmlFor="login-code">Code d’accès</label>
@@ -197,7 +197,7 @@ function CodeOublieModal({ identifiantInitial, onClose, onLogin }) {
           id="recup-identifiant"
           value={identifiant}
           onChange={(e) => setIdentifiant(e.target.value)}
-          placeholder="Julia Dho ou j.dho@contretemps.fr"
+          placeholder="Julia Dho ou jd@contretemps.fr"
           autoFocus
         />
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
