@@ -2,8 +2,21 @@ import { useEffect, useRef, useState } from 'react'
 import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
+import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
+
+// Sélection volontairement courte plutôt qu'un clavier emoji complet
+// (pas de dépendance externe à charger pour ça) — quelques essentiels
+// façon WhatsApp, plus une poignée liée à la danse (🩰💃🕺), cohérente
+// avec le thème de l'appli.
+const EMOJIS = [
+  '😀', '😂', '🥰', '😍', '😉', '😎', '🙂', '😢',
+  '😭', '😡', '😱', '🤔', '👍', '👎', '👏', '🙏',
+  '💪', '🙌', '🤝', '👋', '❤️', '💔', '🎉', '✨',
+  '🔥', '💯', '💃', '🕺', '🎶', '🎵', '🩰', '☀️',
+  '🌙', '⭐', '🎂', '🎈',
+]
 
 // Écran 2/2 de la Messagerie : le fil d'UNE conversation, plein écran, avec
 // une flèche de retour vers ConversationListScreen (voir MessagerieScreen.jsx)
@@ -19,6 +32,41 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 export default function ConversationThreadScreen({ conversation, onBack, setConversations, compteId }) {
   const [draft, setDraft] = useState('')
   const messagesRef = useRef(null)
+  const textareaRef = useRef(null)
+  const [emojiOpen, setEmojiOpen] = useState(false)
+  const emojiSelectorRef = useRef(null)
+  useFermerAuClicExterieur(emojiSelectorRef, emojiOpen, () => setEmojiOpen(false))
+
+  // Hauteur qui suit le contenu, façon WhatsApp (une ligne par défaut,
+  // grandit jusqu'à un plafond CSS, voir .conversation-thread__input
+  // textarea : au-delà, ça défile plutôt que de continuer à grandir).
+  function ajusterHauteur(el) {
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }
+
+  // Insère au niveau du curseur (pas juste à la fin) — sinon cliquer un
+  // emoji après avoir replacé le curseur au milieu du texte l'enverrait
+  // toujours à la fin, contre-intuitif.
+  function insererEmoji(emoji) {
+    const el = textareaRef.current
+    const debut = el?.selectionStart ?? draft.length
+    const fin = el?.selectionEnd ?? draft.length
+    const nouveauDraft = draft.slice(0, debut) + emoji + draft.slice(fin)
+    setDraft(nouveauDraft)
+    setEmojiOpen(false)
+    // Après le prochain rendu (la textarea doit d'abord recevoir la
+    // nouvelle valeur) : redonne le focus et replace le curseur juste
+    // après l'emoji, plutôt que de le laisser sauter à la fin.
+    requestAnimationFrame(() => {
+      if (!el) return
+      el.focus()
+      const position = debut + emoji.length
+      el.setSelectionRange(position, position)
+      ajusterHauteur(el)
+    })
+  }
 
   // Redescend en bas de la liste — à l'ouverture du fil (sinon on
   // atterrit en haut, sur les plus vieux messages) ET à chaque nouveau
@@ -82,6 +130,10 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
     }
     const contenu = draft.trim()
     setDraft('')
+    // Revient à 1 ligne après l'envoi — sinon la textarea, agrandie
+    // manuellement (voir ajusterHauteur), garde sa hauteur même une fois
+    // vide.
+    if (textareaRef.current) textareaRef.current.style.height = 'auto'
     // 'mail' (nom local du bouton) -> 'email' (nom du canal côté backend).
     const canalBackend = canal === 'mail' ? 'email' : canal
     const message = await messagesApi.envoyer(conversation.id, compteId, conversation.membres, contenu, canalBackend)
@@ -124,7 +176,11 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
               {!m.estMoi && conversation.type === 'groupe' && (
                 <span className="message-bubble__auteur">{m.auteur}</span>
               )}
-              <p>{m.contenu}</p>
+              {/* white-space: pre-wrap (voir App.css) : un message écrit
+                  sur plusieurs lignes (voir la textarea ci-dessous) doit
+                  aussi s'afficher sur plusieurs lignes, pas être aplati
+                  en un seul paragraphe comme le ferait un <p> normal. */}
+              <p className="message-bubble__contenu">{m.contenu}</p>
               <span className="message-bubble__meta">
                 {m.heure}
                 {m.estMoi && <Icon name={STATUT_ICON[m.statut]} size={14} />}
@@ -137,11 +193,42 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
       </div>
 
       <div className="conversation-thread__input">
-        <input
+        {emojiOpen && (
+          <div className="emoji-picker" ref={emojiSelectorRef}>
+            {EMOJIS.map((emoji) => (
+              <button type="button" key={emoji} onClick={() => insererEmoji(emoji)}>
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setEmojiOpen((o) => !o)}
+          aria-label="Insérer un emoji"
+        >
+          🙂
+        </button>
+        <textarea
+          ref={textareaRef}
           value={draft}
           placeholder="Écrire un message..."
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send('app')}
+          rows={1}
+          onChange={(e) => {
+            setDraft(e.target.value)
+            ajusterHauteur(e.target)
+          }}
+          // Entrée seule -> envoie (comme avant) ; Maj+Entrée -> retour à
+          // la ligne, façon WhatsApp — `isComposing` : une touche Entrée
+          // qui valide une saisie assistée (japonais/chinois...) ne doit
+          // pas envoyer le message par accident.
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              send('app')
+            }
+          }}
         />
         <button
           type="button"

@@ -1577,9 +1577,22 @@
   margin-top: 4px;
 }
 
+/* Un message écrit sur plusieurs lignes (voir la textarea ci-dessous)
+   doit s'afficher sur plusieurs lignes — un <p> normal aplatirait les
+   retours à la ligne en un seul paragraphe. word-break : un mot très
+   long sans espace (URL...) ne doit pas faire déborder la bulle. */
+.message-bubble__contenu {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .conversation-thread__input {
+  position: relative;
   display: flex;
-  align-items: center;
+  /* flex-end (pas center) : les boutons restent calés en bas quand la
+     textarea grandit sur plusieurs lignes, comme WhatsApp — les centrer
+     les ferait flotter au milieu d'un pavé de texte haut. */
+  align-items: flex-end;
   gap: 8px;
   padding: 10px 16px;
   border-top: 1px solid var(--border);
@@ -1590,21 +1603,67 @@
   box-sizing: border-box;
 }
 
-.conversation-thread__input input {
+.conversation-thread__input textarea {
   flex: 1;
   /* min-width: 0 (pas le défaut du navigateur, ~170px pour un <input>) :
-     sinon un input dans une ligne flex refuse de se rétrécir en dessous de
-     cette taille, et pousse les boutons d'envoi hors de l'écran sur un
-     téléphone étroit. */
+     sinon un champ dans une ligne flex refuse de se rétrécir en dessous
+     de cette taille, et pousse les boutons d'envoi hors de l'écran sur
+     un téléphone étroit. */
   min-width: 0;
-  padding: 12px 16px;
-  border-radius: 999px;
+  padding: 10px 16px;
+  border-radius: 20px;
   border: 1px solid var(--border);
   background: var(--card-bg);
+  /* Grandit avec le contenu (voir ajusterHauteur dans
+     ConversationThreadScreen.jsx) jusqu'à ce plafond, puis défile —
+     sinon un message de 30 lignes repousserait la liste des messages
+     hors de l'écran. */
+  max-height: 120px;
+  overflow-y: auto;
+  resize: none;
+  font: inherit;
+  line-height: 1.4;
 }
 
 .conversation-thread__input .icon-btn {
   flex-shrink: 0;
+}
+
+/* Sélecteur d'emoji (voir ConversationThreadScreen.jsx) : posé juste
+   au-dessus de la barre de saisie (position: relative sur le parent),
+   pas un <select> ni une bibliothèque externe — juste une grille de
+   boutons, chacun un caractère emoji (aucune image à charger). */
+.emoji-picker {
+  position: absolute;
+  bottom: 100%;
+  left: 16px;
+  right: 16px;
+  margin-bottom: 8px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(58, 36, 16, 0.18);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 40;
+}
+
+.emoji-picker button {
+  border: none;
+  background: none;
+  font-size: 22px;
+  line-height: 1.6;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.emoji-picker button:hover {
+  background: var(--surface-2);
 }
 
 /* ==========================================================================
