@@ -1,9 +1,8 @@
 // Domaine "conversations" (Admin > Conversations, voir spec/SPEC.md §5.1.5
 // et §6.9) — voir README.md pour le principe général. Ne couvre ici que
 // l'écran Admin (composition des conversations : nom, membres, groupe
-// WhatsApp miroir) ; l'écran Messagerie (fil de messages) reste sur les
-// données maquette pour l'instant (voir api/README.md, messagerie pas
-// encore entièrement migrée — DOMAINES_MIGRES.messagerie).
+// WhatsApp miroir) ; l'écran Messagerie (fil de messages) est couvert par
+// api/messages.js.
 //
 // Groupe WhatsApp miroir (§6.9) : le "tuyau" pour un futur envoi réel
 // (Baileys, plus tard) — pas encore branché, voir backend/src/messagerie/
@@ -11,69 +10,7 @@
 // vaut 'aucun' ou 'cree' ; `creerGroupeWhatsapp` déclenche la création
 // (toujours avec confirmation utilisateur côté écran, voir AdminGroupes.jsx).
 
-import { groupes as groupesInitiaux } from '../data/mockData.js'
-import { estModeDemo } from './mode.js'
-
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-
-// --- Maquette : copie mutable en mémoire, jamais le tableau original de
-// mockData.js (même logique que eleves.js). ---
-let magasin = null
-function lireMagasin() {
-  if (magasin === null) {
-    magasin = groupesInitiaux.map((g) => ({
-      ...g,
-      membres: g.membres.map((m) => ({ ...m })),
-      whatsappStatut: 'aucun',
-      whatsappGroupeId: null,
-    }))
-  }
-  return magasin
-}
-function trouverOuLever(id) {
-  const g = lireMagasin().find((x) => x.id === id)
-  if (!g) throw new Error('Conversation introuvable')
-  return g
-}
-
-async function listerMaquette() {
-  return lireMagasin()
-}
-
-async function creerMaquette(nom) {
-  const nouvelle = { id: crypto.randomUUID(), nom, membres: [], whatsappStatut: 'aucun', whatsappGroupeId: null }
-  lireMagasin().push(nouvelle)
-  return nouvelle
-}
-
-async function renommerMaquette(id, nom) {
-  const g = trouverOuLever(id)
-  g.nom = nom
-  return g
-}
-
-async function supprimerMaquette(id) {
-  const liste = lireMagasin()
-  const index = liste.findIndex((x) => x.id === id)
-  if (index !== -1) liste.splice(index, 1)
-}
-
-async function ajouterMembreMaquette(id, membre) {
-  trouverOuLever(id).membres.push(membre)
-}
-
-async function retirerMembreMaquette(id, index) {
-  trouverOuLever(id).membres.splice(index, 1)
-}
-
-async function creerGroupeWhatsappMaquette(id) {
-  const g = trouverOuLever(id)
-  g.whatsappStatut = 'cree'
-  g.whatsappGroupeId = `demo-${id}`
-  return g
-}
-
-// --- Réel : voir backend/src/messagerie/receiver.py. ---
 
 async function requete(chemin, options) {
   const reponse = await fetch(`${BASE_URL}${chemin}`, {
@@ -112,12 +49,12 @@ function versBlocBackend({ type, id }) {
   return { membre_type: type === 'cours' ? 'cours' : 'compte', membre_id: id }
 }
 
-async function listerReel(ecoleId) {
+export async function listerEcole(ecoleId) {
   const liste = await requete(`/conversations?ecole_id=${ecoleId}`)
   return liste.filter((c) => c.type === 'groupe').map(versEcranAdmin)
 }
 
-async function creerReel(ecoleId, nom) {
+export async function creerGroupe(ecoleId, nom) {
   const conv = await requete(`/conversations?ecole_id=${ecoleId}`, {
     method: 'POST',
     body: JSON.stringify({ nom, membres: [] }),
@@ -125,59 +62,27 @@ async function creerReel(ecoleId, nom) {
   return versEcranAdmin(conv)
 }
 
-async function renommerReel(id, nom) {
+export async function renommer(id, nom) {
   const conv = await requete(`/conversations/${id}`, { method: 'PUT', body: JSON.stringify({ nom }) })
   return versEcranAdmin(conv)
 }
 
-async function supprimerReel(id) {
+export async function supprimer(id) {
   await requete(`/conversations/${id}`, { method: 'DELETE' })
 }
 
-async function ajouterMembreReel(id, membre) {
+export async function ajouterMembre(id, membre) {
   await requete(`/conversations/${id}/membres`, {
     method: 'POST',
     body: JSON.stringify(versBlocBackend(membre)),
   })
 }
 
-async function retirerMembreReel(id, membre) {
+export async function retirerMembre(id, membre) {
   const { membre_type, membre_id } = versBlocBackend(membre)
   await requete(`/conversations/${id}/membres/${membre_type}/${membre_id}`, { method: 'DELETE' })
 }
 
-async function creerGroupeWhatsappReel(id) {
-  return versEcranAdmin(await requete(`/conversations/${id}/whatsapp`, { method: 'POST' }))
-}
-
-// --- Point d'entrée unique, appelé par AdminGroupes.jsx ---
-
-export async function listerEcole(ecoleId) {
-  return estModeDemo() ? listerMaquette() : listerReel(ecoleId)
-}
-
-export async function creerGroupe(ecoleId, nom) {
-  return estModeDemo() ? creerMaquette(nom) : creerReel(ecoleId, nom)
-}
-
-export async function renommer(id, nom) {
-  return estModeDemo() ? renommerMaquette(id, nom) : renommerReel(id, nom)
-}
-
-export async function supprimer(id) {
-  return estModeDemo() ? supprimerMaquette(id) : supprimerReel(id)
-}
-
-// `index` uniquement utile en maquette (retrait positionnel, voir
-// AdminGroupes.jsx) — le mode réel retire par (membre_type, membre_id).
-export async function ajouterMembre(id, membre) {
-  return estModeDemo() ? ajouterMembreMaquette(id, membre) : ajouterMembreReel(id, membre)
-}
-
-export async function retirerMembre(id, membre, index) {
-  return estModeDemo() ? retirerMembreMaquette(id, index) : retirerMembreReel(id, membre)
-}
-
 export async function creerGroupeWhatsapp(id) {
-  return estModeDemo() ? creerGroupeWhatsappMaquette(id) : creerGroupeWhatsappReel(id)
+  return versEcranAdmin(await requete(`/conversations/${id}/whatsapp`, { method: 'POST' }))
 }

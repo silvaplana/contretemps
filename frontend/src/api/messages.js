@@ -93,9 +93,8 @@ export async function marquerLus(messages, compteId) {
 }
 
 // Liste des conversations du compte + leurs messages, dans la forme
-// attendue par MessagerieScreen.jsx (même forme que l'ancienne maquette,
-// voir data/mockData.js : conversations, gardée pour ne pas devoir
-// réécrire ConversationListScreen.jsx/ConversationThreadScreen.jsx). Un
+// attendue par MessagerieScreen.jsx/ConversationListScreen.jsx/
+// ConversationThreadScreen.jsx (id/type/nom/membres/messages). Un
 // aperçu du dernier message dans la liste (§5.5) suppose d'avoir déjà les
 // messages, d'où l'aller chercher ici plutôt qu'à l'ouverture de chaque
 // conversation — peu de conversations par compte en pratique, pas un

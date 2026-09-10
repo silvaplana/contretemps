@@ -9,9 +9,10 @@ import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 const TONE_PAR_TYPE = { admin: 'danger', professeur: 'success', eleve: 'neutral', cours: 'neutral' }
 
 function libelleMembre(membre, { admins = [], professeurs, eleves, cours }) {
-  // `label` vient du backend réel (nom/prénom déjà résolus, voir
-  // api/conversations.js: versEcranAdmin) — sinon (maquette), on retombe
-  // sur les listes déjà chargées par ailleurs.
+  // `label` vient du backend pour un membre "compte" (nom/prénom déjà
+  // résolus, voir api/conversations.js: versEcranAdmin) — absent pour un
+  // membre "cours" (juste un id), d'où le repli ci-dessous sur les listes
+  // déjà chargées par ailleurs.
   if (membre.label) return membre.label
   if (membre.type === 'admin') {
     const a = admins.find((x) => x.id === membre.id)

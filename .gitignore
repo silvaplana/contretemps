@@ -7,9 +7,13 @@ env/
 .env
 
 # Données réelles d'élèves (PII, jamais dans un repo public/déployé) et
-# scripts de référence backend fournis hors-code — voir data/ et scripts/
-data/
-scripts/
+# scripts de référence backend fournis hors-code — voir /data/ et /scripts/
+# à la racine. Ancré (chemins préfixés par "/") : sans ça, ce motif
+# ignorait aussi frontend/src/data/ (constantes légitimes du frontend,
+# ex. roles.js) — un nouveau fichier y était alors silencieusement jamais
+# suivi par git (piège trouvé en ajoutant data/paiement.js).
+/data/
+/scripts/
 
 # Bytecode / cache Python
 __pycache__/

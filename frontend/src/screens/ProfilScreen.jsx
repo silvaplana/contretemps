@@ -1,14 +1,5 @@
 import { useState } from 'react'
-import {
-  definirAffichageMigration,
-  DOMAINES_MIGRES,
-  estAffichageMigrationActif,
-  INFOS_DOMAINES,
-} from '../api/etatMigration.js'
-import { estModeDemo } from '../api/mode.js'
-import Badge from '../components/Badge.jsx'
 import Icon from '../components/Icon.jsx'
-import Modal from '../components/Modal.jsx'
 import { ROLE_LABEL, trierParRole } from '../data/roles.js'
 
 // Champ "toujours affiché, éditable via un crayon" (Profil admin
@@ -93,24 +84,6 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
 export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHeures, onUpdateUser }) {
   const [notifications, setNotifications] = useState(true)
   const autresProfils = trierParRole(famille.filter((p) => p.id !== user.id))
-
-  // Suivi de la migration vers le vrai backend (voir api/etatMigration.js)
-  // — outil de dev, réservé à l'admin, à retirer une fois tous les
-  // domaines branchés.
-  const [afficherMigration, setAfficherMigration] = useState(estAffichageMigrationActif())
-  const [showEtatModules, setShowEtatModules] = useState(false)
-  // Le mode (voir api/mode.js) n'est plus un interrupteur ici : c'est le
-  // bouton cliqué au login qui décide pour toute la session ("Se
-  // connecter" = réel, "Voir une maquette" = démo, voir api/auth.js) —
-  // ceci n'est qu'un rappel en lecture seule de celui actuellement actif.
-  const modeReel = !estModeDemo()
-  function toggleAffichageMigration(actif) {
-    setAfficherMigration(actif)
-    definirAffichageMigration(actif)
-    // Simplification volontaire : voir ZoneMigration.jsx, lu au rendu de
-    // chaque écran — un rechargement garantit que tout le reflète.
-    window.location.reload()
-  }
 
   return (
     <div className="screen profil-screen">
@@ -202,74 +175,9 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         </button>
       </section>
 
-      {user.type === 'admin' && (
-        <section>
-          <h3 className="section-label">Développement</h3>
-          {/* Le seul endroit de toute l'appli qui dit dans quel mode on
-              est — "pas bleu" (voir ZoneMigration.jsx) veut juste dire
-              que l'écran EST PRÊT à parler au vrai backend, pas qu'il le
-              fait vraiment : ça dépend du bouton cliqué au login
-              ("Se connecter" = réel, "Voir une maquette" = démo). */}
-          <p className={modeReel ? 'profil-mode-actuel profil-mode-actuel--reel' : 'profil-mode-actuel'}>
-            Mode actuel : <strong>{modeReel ? 'Réel (vraie base de données)' : 'Démo (données fictives, remises à zéro à chaque rechargement)'}</strong>
-          </p>
-          <div className="settings-row">
-            <span>Repérer en bleu les écrans pas encore branchés au vrai backend</span>
-            <button
-              type="button"
-              className={`switch ${afficherMigration ? 'is-on' : ''}`}
-              onClick={() => toggleAffichageMigration(!afficherMigration)}
-              aria-pressed={afficherMigration}
-              aria-label="Repérer en bleu les écrans pas encore branchés"
-            >
-              <span className="switch__knob" />
-            </button>
-          </div>
-          <button
-            type="button"
-            className="settings-row settings-row--button"
-            onClick={() => setShowEtatModules(true)}
-          >
-            <span>État des modules</span>
-            <Icon name="chevronRight" size={18} />
-          </button>
-        </section>
-      )}
-
       <button type="button" className="btn btn--danger btn--block" onClick={onLogout}>
         Se déconnecter
       </button>
-
-      {showEtatModules && (
-        <Modal title="État des modules" onClose={() => setShowEtatModules(false)}>
-          <p className="muted">
-            Le backend expose déjà tous ces modules (testés côté serveur). "Branché" veut dire
-            que l'écran est prêt à leur parler pour de vrai ; "En dur" veut dire qu'il n'utilise
-            même pas encore ce code, juste les données fictives du frontend.
-          </p>
-          <p className="muted">
-            ⚠️ En mode "démo" ("Voir une maquette" au login), même un module "Branché" tourne
-            sur une copie en mémoire des données fictives, pas sur la vraie base : les
-            modifications ne survivent pas à un rechargement de la page. Se connecter pour de
-            vrai ("Se connecter", avec un identifiant/code réels) utilise la vraie base — voir
-            "Mode actuel" ci-dessus.
-          </p>
-          <div className="checkbox-list">
-            {Object.entries(INFOS_DOMAINES).map(([cle, { label, ecran }]) => (
-              <div key={cle} className="checkbox-list__item checkbox-list__item--etat">
-                <span>
-                  <strong>{label}</strong> — {ecran}
-                </span>
-                {DOMAINES_MIGRES[cle] ? (
-                  <Badge tone="success">Branché</Badge>
-                ) : (
-                  <Badge tone="info">En dur</Badge>
-                )}
-              </div>
-            ))}
-          </div>
-        </Modal>
-      )}
     </div>
   )
 }

@@ -684,9 +684,15 @@ encore branché).
 - Messagerie : le "tuyau" du groupe WhatsApp miroir est en place (statut stocké, écran Admin
   > Conversations, voir §6.9) mais **pas le vrai envoi** — reste à faire : intégrer Baileys
   (ou équivalent), créer réellement le groupe (numéros de téléphone des membres), envoyer les
-  messages, gérer la synchronisation retour. Écran Messagerie (fil de conversation, voir
-  §5.5) : pas encore migré sur le vrai backend, contrairement à Admin > Conversations —
-  prochaine étape logique une fois le canal WhatsApp stabilisé.
+  messages, gérer la synchronisation retour. *Tentative en cours* : un microservice Node.js
+  (Baileys) a été développé (`whatsapp-service/`, non commité) mais la liaison par QR code n'a
+  pas pu être testée (pas de téléphone dédié disponible) — repris plus tard. Écran Messagerie
+  (fil de conversation, §5.5) : **fait** — migré sur le vrai backend (conversations/messages
+  filtrés par appartenance réelle, statuts reçu/lu, relance mail automatique après délai, voir
+  `app/relance_worker.py`). *Reste ouvert* : réception en temps réel côté destinataire — pour
+  l'instant, un message n'apparaît chez B qu'au prochain chargement de l'écran (pas de
+  polling/WebSocket/SSE, voir discussion à trancher : polling simple recommandé pour ce
+  projet).
 - **Écart connu spec/implémentation** : "chaque cours a sa propre conversation de groupe
   automatique à sa création" (§6.9, ✅ confirmé) n'est pour l'instant câblé que dans le seed de
   démo (`app/seed.py`), pas dans `CoursService.create()` lui-même — une école réelle qui crée

@@ -1,51 +1,16 @@
 // Domaine "cours" (Admin > Cours, voir spec/SPEC.md §6.5) — voir
 // api/README.md pour le principe général.
 //
-// ⚠️ Simplification volontaire : la maquette (et tous les écrans actuels
-// — AdminCours, Présence, PlanningHebdoView, HeuresScreen) suppose UN
-// SEUL `professeurId` par cours. Le backend modélise en réalité
-// plusieurs profs par cours (table de jointure cours_professeurs, voir
-// backend/src/cours/models.py) — la couche réelle ci-dessous s'adapte
-// (ne prend que le premier professeur assigné) plutôt que de forcer une
+// ⚠️ Simplification volontaire : les écrans actuels (AdminCours,
+// Présence, PlanningHebdoView, HeuresScreen) supposent UN SEUL
+// `professeurId` par cours. Le backend modélise en réalité plusieurs
+// profs par cours (table de jointure cours_professeurs, voir
+// backend/src/cours/models.py) — la couche ci-dessous s'adapte (ne
+// prend que le premier professeur assigné) plutôt que de forcer une
 // refonte des écrans aujourd'hui. À revoir si un jour l'IHM a besoin de
 // plusieurs profs par cours.
 
-import { cours as coursInitiaux } from '../data/mockData.js'
-import { estModeDemo } from './mode.js'
-
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-
-// --- Maquette : copie mutable en mémoire (voir eleves.js/profs.js). ---
-let magasin = null
-function lireMagasin() {
-  if (magasin === null) magasin = coursInitiaux.map((c) => ({ ...c }))
-  return magasin
-}
-
-async function listerMaquette() {
-  return lireMagasin()
-}
-
-async function creerMaquette(donnees) {
-  const nouveau = { id: crypto.randomUUID(), ...donnees }
-  lireMagasin().push(nouveau)
-  return nouveau
-}
-
-async function modifierMaquette(coursId, patch) {
-  const liste = lireMagasin()
-  const index = liste.findIndex((c) => c.id === coursId)
-  if (index === -1) throw new Error('Cours introuvable')
-  liste[index] = { ...liste[index], ...patch }
-  return liste[index]
-}
-
-async function supprimerMaquette(coursId) {
-  magasin = lireMagasin().filter((c) => c.id !== coursId)
-}
-
-// --- Réel : voir backend/src/cours/receiver.py. Pas encore exercé (mode
-// démo par défaut, voir mode.js) mais tenu à jour avec les vraies routes.
 
 async function requete(chemin, options) {
   const reponse = await fetch(`${BASE_URL}${chemin}`, {
@@ -69,7 +34,7 @@ async function avecProfesseurId(cours) {
   }
 }
 
-async function listerReel(ecoleId) {
+export async function lister(ecoleId) {
   const liste = await requete(`/cours?ecole_id=${ecoleId}`)
   return Promise.all(liste.map(avecProfesseurId))
 }
@@ -82,7 +47,7 @@ function versChampsBackend({ heureDebut, heureFin, ...reste }) {
   }
 }
 
-async function creerReel(ecoleId, { professeurId, ...donnees }) {
+export async function creer(ecoleId, { professeurId, ...donnees }) {
   const cours = await requete(`/cours?ecole_id=${ecoleId}`, {
     method: 'POST',
     body: JSON.stringify(versChampsBackend(donnees)),
@@ -93,7 +58,7 @@ async function creerReel(ecoleId, { professeurId, ...donnees }) {
   return avecProfesseurId(cours)
 }
 
-async function modifierReel(coursId, { professeurId, ...patch }) {
+export async function modifier(coursId, { professeurId, ...patch }) {
   if (Object.keys(patch).length > 0) {
     await requete(`/cours/${coursId}`, { method: 'PUT', body: JSON.stringify(versChampsBackend(patch)) })
   }
@@ -107,24 +72,6 @@ async function modifierReel(coursId, { professeurId, ...patch }) {
   return avecProfesseurId(await requete(`/cours/${coursId}`))
 }
 
-async function supprimerReel(coursId) {
-  await requete(`/cours/${coursId}`, { method: 'DELETE' })
-}
-
-// --- Point d'entrée unique, appelé par les écrans (voir AdminCours.jsx) ---
-
-export async function lister(ecoleId) {
-  return estModeDemo() ? listerMaquette() : listerReel(ecoleId)
-}
-
-export async function creer(ecoleId, donnees) {
-  return estModeDemo() ? creerMaquette(donnees) : creerReel(ecoleId, donnees)
-}
-
-export async function modifier(coursId, patch) {
-  return estModeDemo() ? modifierMaquette(coursId, patch) : modifierReel(coursId, patch)
-}
-
 export async function supprimer(coursId) {
-  return estModeDemo() ? supprimerMaquette(coursId) : supprimerReel(coursId)
+  await requete(`/cours/${coursId}`, { method: 'DELETE' })
 }

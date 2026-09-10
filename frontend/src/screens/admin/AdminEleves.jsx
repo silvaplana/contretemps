@@ -4,7 +4,7 @@ import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
-import { paiementLabels } from '../../data/mockData.js'
+import { paiementLabels } from '../../data/paiement.js'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 

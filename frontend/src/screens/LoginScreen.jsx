@@ -3,16 +3,11 @@ import Icon from '../components/Icon.jsx'
 import Logo from '../components/Logo.jsx'
 import Modal from '../components/Modal.jsx'
 import * as auth from '../api/auth.js'
-import { currentUser } from '../data/mockData.js'
 
-// Écran de connexion (voir spec/SPEC.md §2.2 et §2.3).
-// "Se connecter" passe par api/auth.js. Le bouton "Voir une maquette" (qui
-// entrait TOUJOURS dans la maquette en dur, voir api/mode.js) a été
-// retiré — devenu inutile maintenant que le mode réel fonctionne (demande) ;
-// api/auth.js:voirMaquette() et le reste de l'infra maquette/réel existent
-// toujours (retrait progressif prévu, voir spec/SPEC.md §8).
+// Écran de connexion (voir spec/SPEC.md §2.2 et §2.3) — toujours réel,
+// via api/auth.js (le mode maquette a été retiré, voir spec/SPEC.md §8).
 export default function LoginScreen({ onLogin }) {
-  const [identifiant, setIdentifiant] = useState(`${currentUser.prenom} ${currentUser.nom}`)
+  const [identifiant, setIdentifiant] = useState('')
   const [code, setCode] = useState('ADMIN')
   const [showNouvelleEcole, setShowNouvelleEcole] = useState(false)
   const [showCodeOublie, setShowCodeOublie] = useState(false)
@@ -207,9 +202,10 @@ function codeParDefaut(prefixe, nomEcole) {
 // suit toujours la vraie date, jamais "2026" en dur.
 const ANNEE_EXEMPLE = new Date().getFullYear()
 
-// Formulaire "Nouvelle école ?" (voir spec §2.3). Maquette : la création
-// n'est pas persistée (pas de backend), on affiche juste le récapitulatif
-// puis on repropose la connexion avec l'identité du premier admin saisi.
+// Formulaire "Nouvelle école ?" (voir spec §2.3). ⚠️ Pas encore branché
+// au backend (pas de POST /ecoles ici) : affiche juste le récapitulatif
+// puis repropose la connexion avec l'identité du premier admin saisi —
+// à corriger avant une vraie mise en prod multi-écoles (voir spec §8).
 function NouvelleEcoleModal({ onClose, onCreated }) {
   const [nomEcole, setNomEcole] = useState('')
   const [codePostal, setCodePostal] = useState('')

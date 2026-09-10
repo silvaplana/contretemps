@@ -353,13 +353,6 @@
   color: var(--danger-text);
 }
 
-/* Voir ZoneMigration.jsx / --migration-indicateur : même bleu, pour
-   l'écran "État des modules" (Admin > École). */
-.badge--info {
-  background: var(--migration-indicateur-bg);
-  color: var(--migration-indicateur);
-}
-
 .badge-list {
   display: flex;
   flex-wrap: wrap;
@@ -1632,21 +1625,6 @@
   margin-bottom: 8px;
 }
 
-/* Indicateur du mode démo/réel courant (voir ProfilScreen.jsx, section
-   "Développement") — bleu vif en mode réel, pour qu'il soit impossible
-   de le confondre avec un simple texte informatif. */
-.profil-mode-actuel {
-  padding: 10px 12px;
-  border-radius: 10px;
-  background: var(--surface-2);
-  margin: 0 0 10px;
-}
-
-.profil-mode-actuel--reel {
-  background: var(--migration-indicateur-bg);
-  color: var(--migration-indicateur);
-}
-
 /* Liste des autres profils de la famille, dans l'écran Profil (§5.6). */
 .profil-famille-list {
   display: flex;
@@ -1823,17 +1801,6 @@
   align-items: center;
   gap: 8px;
   font-size: 14px;
-}
-
-/* ==========================================================================
-   Indicateur dev "zone pas encore branchée" (ZoneMigration.jsx)
-   ========================================================================== */
-
-.zone-non-branchee {
-  outline: 2px dashed var(--migration-indicateur);
-  outline-offset: -2px;
-  background: var(--migration-indicateur-wash);
-  border-radius: 12px;
 }
 
 .planning-hebdo__scroll {

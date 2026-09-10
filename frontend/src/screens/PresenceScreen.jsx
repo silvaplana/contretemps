@@ -17,7 +17,7 @@ function isoAujourdhui() {
 }
 
 // 'YYYY-MM-DD' (valeur native d'un <input type="date">) -> 'JJ/MM', le
-// format déjà utilisé pour les colonnes existantes (voir data/mockData.js).
+// format déjà utilisé pour les colonnes existantes (voir api/presence.js).
 function versLabelAffiche(dateIso) {
   const [, mois, jour] = dateIso.split('-')
   return `${jour}/${mois}`

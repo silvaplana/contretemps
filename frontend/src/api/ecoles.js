@@ -5,25 +5,7 @@
 // donc pas de lister()/creer() ici — juste modifier(), le seul besoin de
 // AdminParametres.jsx.
 
-import { ecoleActuelle } from '../data/mockData.js'
-import { estModeDemo } from './mode.js'
-
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
-
-// --- Maquette : copie mutable en mémoire, jamais l'objet original de
-// mockData.js (voir eleves.js pour la même logique, plus détaillée). ---
-let magasin = null
-function lireMagasin() {
-  if (magasin === null) magasin = { ...ecoleActuelle }
-  return magasin
-}
-
-async function modifierMaquette(patch) {
-  Object.assign(lireMagasin(), patch)
-  return { ...magasin }
-}
-
-// --- Réel : voir backend/src/ecoles/receiver.py. ---
 
 function versEcran(e) {
   return {
@@ -36,7 +18,7 @@ function versEcran(e) {
   }
 }
 
-async function modifierReel(ecoleId, patch) {
+export async function modifier(ecoleId, patch) {
   const corps = {
     ...(patch.nom !== undefined && { nom: patch.nom }),
     ...(patch.codePostal !== undefined && { code_postal: patch.codePostal }),
@@ -51,10 +33,4 @@ async function modifierReel(ecoleId, patch) {
   })
   if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
   return versEcran(await reponse.json())
-}
-
-// --- Point d'entrée unique, appelé par AdminParametres.jsx. ---
-
-export async function modifier(ecoleId, patch) {
-  return estModeDemo() ? modifierMaquette(patch) : modifierReel(ecoleId, patch)
 }

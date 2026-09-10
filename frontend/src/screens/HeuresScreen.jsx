@@ -19,9 +19,10 @@ const MOIS_NOMS = [
 ]
 
 // Les dates de présence sont stockées en 'JJ/MM', sans année (voir
-// data/mockData.js) : pas encore de vraie année tant que ce n'est pas du
-// backend. En attendant, on affiche l'année en cours pour que "Août" se
-// lise "Août 2026" — à corriger le jour où les dates portent une année.
+// api/presence.js — le modèle backend a une vraie date par séance, mais
+// ce pont plus simple perd l'année). En attendant, on affiche l'année en
+// cours pour que "Août" se lise "Août 2026" — à corriger le jour où les
+// dates portent une année.
 const ANNEE_AFFICHAGE = new Date().getFullYear()
 
 function libelleMois(mois) {

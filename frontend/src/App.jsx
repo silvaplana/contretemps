@@ -11,12 +11,6 @@ import * as profsApi from './api/profs.js'
 import * as videosApi from './api/videos.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
-import {
-  conversations as initialConversations,
-  currentUser,
-  ecoleActuelle,
-  familleActuelle,
-} from './data/mockData.js'
 import { TABS } from './data/nav.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
@@ -27,35 +21,25 @@ import PresenceScreen from './screens/PresenceScreen.jsx'
 import ProfilScreen from './screens/ProfilScreen.jsx'
 import VideoScreen from './screens/VideoScreen.jsx'
 
-// Maquette front-end du rôle Admin (voir spec/SPEC.md). Toutes les données
-// sont en mémoire (voir src/data/mockData.js) : rien n'est encore persisté
-// côté backend, c'est l'objet de cette étape.
+// Rôle Admin, Professeur ou Élève selon le compte connecté (voir
+// spec/SPEC.md). Toutes les données viennent du vrai backend via
+// api/<domaine>.js (voir api/README.md) — plus de mode maquette.
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [activeTab, setActiveTab] = useState('messagerie')
-  const [activeProfilId, setActiveProfilId] = useState(currentUser.id)
-  // Compte réellement connecté (voir api/auth.js : `resultat.compte`),
-  // renseigné seulement en mode réel. Sans ça, `activeUser` valait
-  // TOUJOURS le mock `currentUser` en mode réel (le `.find` sur
-  // `familleActuelle` ne matchait jamais un id réel, base de données) —
-  // `uploaderId`/`peutModifier` etc. envoyaient donc un id fictif
-  // ("admin1") au backend, jamais un vrai id de compte (404/422 selon
-  // l'endpoint). Bug trouvé en testant le premier vrai upload vidéo.
-  // L'AFFICHAGE de "Ma famille"/"Changer de profil" est branché sur la
-  // vraie famille en mode réel (voir familleAffichee ci-dessous) ; y
-  // basculer VRAIMENT ne l'est pas encore (limite connue restante).
+  // Compte réellement connecté (voir api/auth.js : `resultat.compte`) —
+  // toujours renseigné une fois `loggedIn` vrai (voir onLogin ci-dessous).
+  // Le repli `activeUser` ci-dessous (objet vide) ne sert qu'à ce que le
+  // rendu qui précède l'écran de connexion (coursDuProfil, etc., voir plus
+  // bas) ne plante pas AVANT ce premier login.
   const [compteReel, setCompteReel] = useState(null)
-  const activeUser = compteReel ?? (familleActuelle.find((p) => p.id === activeProfilId) ?? currentUser)
+  const activeUser = compteReel ?? { id: null, type: null, nom: '', prenom: '', initiales: '' }
 
   // "Ma famille" (Profil) et "Changer de profil" (Header) : la vraie
-  // famille du compte réel connecté, pas familleActuelle (mock, la
-  // famille de Julia Dho) — sans ça, N'IMPORTE QUEL compte réel voyait
-  // toujours cette même famille factice (signalé : Marie-Laure Pesenti,
-  // professeure, voyait Julia/Alix/Zélie Dho). ⚠️ Limite connue restante
-  // (hors scope ici) : cliquer un membre de cette liste pour VRAIMENT
-  // basculer de profil ne fonctionne pas encore en mode réel — seul
-  // l'affichage est corrigé (voir switchProfil/activeUser, qui ne
-  // savent basculer qu'entre les profils de familleActuelle).
+  // famille du compte réel connecté (voir api/comptes.js : listerFamille).
+  // ⚠️ Limite connue restante (hors scope ici) : cliquer un membre de
+  // cette liste pour VRAIMENT basculer de profil ne fonctionne pas encore
+  // (voir switchProfil plus bas) — seul l'affichage de la liste est réel.
   const [familleReelle, setFamilleReelle] = useState([])
   useEffect(() => {
     if (compteReel) comptesApi.listerFamille(compteReel.id).then(setFamilleReelle)
@@ -65,7 +49,6 @@ function App() {
     // change l'identité de l'objet `compteReel` sans changer de compte.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
-  const familleAffichee = compteReel ? familleReelle : familleActuelle
 
   // Profil > crayon email/code de récupération (admin, voir
   // ProfilScreen.jsx) — persiste côté backend puis met à jour l'affichage
@@ -91,11 +74,9 @@ function App() {
     setActiveTab('heures')
   }
 
-  // Données "métier", possédées ici et redescendues aux écrans.
-  // `eleves`/`professeurs` passent par api/<domaine>.js (voir
-  // api/README.md) — chargés de façon async, les autres restent en dur
-  // pour l'instant (pas encore migrés). Rechargé à chaque connexion (donc
-  // aussi après "Voir une maquette"), pas seulement au montage.
+  // Données "métier", possédées ici et redescendues aux écrans, toutes
+  // chargées de façon async via api/<domaine>.js (voir api/README.md) —
+  // rechargées à chaque connexion, pas seulement au montage.
   const [eleves, setEleves] = useState([])
   const [professeurs, setProfesseurs] = useState([])
   const [cours, setCours] = useState([])
@@ -103,8 +84,15 @@ function App() {
   const [presences, setPresences] = useState({})
   const [choregraphies, setChoregraphies] = useState({})
   const [videos, setVideos] = useState({})
-  const [conversations, setConversations] = useState(initialConversations)
-  const [ecole, setEcole] = useState(ecoleActuelle)
+  const [conversations, setConversations] = useState([])
+  const [ecole, setEcole] = useState({
+    id: null,
+    nom: '',
+    codePostal: '',
+    codeAccesAdmin: '',
+    codeAccesProf: '',
+    codeAccesEleve: '',
+  })
 
   useEffect(() => {
     if (!loggedIn) return
@@ -115,17 +103,15 @@ function App() {
   }, [loggedIn, ecole.id])
 
   // Messagerie (voir spec/SPEC.md §5.5/§6.9) : liste réelle, filtrée par
-  // appartenance (backend: lister_du_compte) — corrige le bug signalé
-  // (Nora Pesenti, élève, voyait "Equipe pédagogique" alors qu'elle n'en
-  // est pas membre : c'était encore la maquette statique, jamais filtrée
-  // par qui que ce soit). Redéclenché quand `cours` arrive (pas encore
-  // prêt au tout premier rendu post-connexion) pour que le nom des
-  // conversations automatiques de cours soit correct dès que possible
-  // (voir api/messages.js : nomAffiche). Portée volontairement réduite
-  // (demande) : pas encore le routage/la réception, voir api/messages.js.
+  // appartenance (backend: lister_du_compte). Redéclenché quand `cours`
+  // arrive (pas encore prêt au tout premier rendu post-connexion) pour
+  // que le nom des conversations automatiques de cours soit correct dès
+  // que possible (voir api/messages.js : nomAffiche). Portée
+  // volontairement réduite (demande) : pas encore le routage/la
+  // réception en temps réel, voir api/messages.js.
   useEffect(() => {
     if (compteReel) messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then(setConversations)
-    else setConversations(initialConversations)
+    else setConversations([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id, ecole.id, cours])
 
@@ -199,8 +185,7 @@ function App() {
   // inaccessible. Le cours sélectionné est aussi ajusté s'il n'est plus
   // visible pour ce profil (ex. Élève inscrit à un seul cours).
   function switchProfil(id) {
-    setActiveProfilId(id)
-    const profil = familleActuelle.find((p) => p.id === id)
+    const profil = familleReelle.find((p) => p.id === id)
     if (!profil) return
     const tab = TABS.find((t) => t.key === activeTab)
     if (tab && !tab.roles.includes(profil.type)) {
@@ -294,17 +279,14 @@ function App() {
   if (!loggedIn) {
     return (
       <LoginScreen
-        // `resultat` ({ compte, ecole, modeDemo }) vient de api/auth.js —
-        // `compte` déjà à la forme `activeUser` (voir auth.js :
-        // versActiveUserEcran). En mode réel, `ecole` est la vraie école
-        // résolue côté backend (voir auth.js : resoudreEcoleReelle) —
-        // eleves/profs/cours/... en dépendent tous (voir les useEffect
-        // ci-dessus, ecole.id).
+        // `resultat` ({ compte, ecole }) vient de api/auth.js — `compte`
+        // déjà à la forme `activeUser` (voir auth.js : versActiveUserEcran).
+        // `ecole` est la vraie école résolue côté backend (voir auth.js :
+        // resoudreEcoleReelle) — eleves/profs/cours/... en dépendent tous
+        // (voir les useEffect ci-dessus, ecole.id).
         onLogin={(resultat) => {
-          const reel = resultat?.modeDemo === false
-          setCompteReel(reel ? resultat.compte : null)
-          setActiveProfilId(currentUser.id)
-          setEcole(reel && resultat.ecole ? resultat.ecole : ecoleActuelle)
+          setCompteReel(resultat.compte)
+          setEcole(resultat.ecole)
           setActiveTab('messagerie')
           setLoggedIn(true)
         }}
@@ -332,7 +314,7 @@ function App() {
         selectedCoursId={selectedCoursId}
         onSelectCours={setSelectedCoursId}
         user={activeUser}
-        famille={familleAffichee}
+        famille={familleReelle}
         onSwitchProfil={switchProfil}
         onNavigate={setActiveTab}
         onLogout={logout}
@@ -427,7 +409,7 @@ function App() {
         {activeTab === 'profil' && (
           <ProfilScreen
             user={activeUser}
-            famille={familleAffichee}
+            famille={familleReelle}
             onLogout={logout}
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
             onUpdateUser={mettreAJourActiveUser}
