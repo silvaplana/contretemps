@@ -12,10 +12,10 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 // et l'icône dans la bulle n'est qu'un indicatif de ce choix a posteriori
 // (voir spec/SPEC.md 5.5).
 //
-// WhatsApp : juste l'écran pour l'instant (voir spec/SPEC.md §6.9 et §8) —
-// aucun vrai envoi (le backend n'a pas de canal 'whatsapp', seulement
-// 'app'/'email'), seulement la confirmation avant d'envoyer normalement,
-// comme "prévoir le tuyau" avant de brancher Baileys plus tard.
+// WhatsApp : le canal 'whatsapp' (voir backend/src/messagerie/messages.py)
+// n'est qu'un MARQUEUR d'intention — la case cochée reste visible après
+// coup (badge sur la bulle), mais aucun message ne part réellement sur
+// WhatsApp pour l'instant (Baileys pas branché, voir spec/SPEC.md §6.9/§8).
 export default function ConversationThreadScreen({ conversation, onBack, setConversations, compteId }) {
   const [draft, setDraft] = useState('')
 
@@ -36,13 +36,9 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
     }
     const contenu = draft.trim()
     setDraft('')
-    const message = await messagesApi.envoyer(
-      conversation.id,
-      compteId,
-      conversation.membres,
-      contenu,
-      canal === 'mail',
-    )
+    // 'mail' (nom local du bouton) -> 'email' (nom du canal côté backend).
+    const canalBackend = canal === 'mail' ? 'email' : canal
+    const message = await messagesApi.envoyer(conversation.id, compteId, conversation.membres, contenu, canalBackend)
     setConversations((list) =>
       list.map((c) => (c.id === conversation.id ? { ...c, messages: [...c.messages, message] } : c)),
     )

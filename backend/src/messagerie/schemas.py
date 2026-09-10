@@ -52,7 +52,9 @@ class ConversationSortie(BaseModel):
 class MessageCreation(BaseModel):
     expediteur_id: int
     contenu: str
-    envoi_volontaire_email: bool = False
+    # 'app' (défaut) | 'email' | 'whatsapp' — voir messages.py: envoyer()
+    # pour la nuance sur 'whatsapp' (intention seulement, pas un vrai envoi).
+    canal: str = "app"
 
 
 class DeliverySortie(BaseModel):

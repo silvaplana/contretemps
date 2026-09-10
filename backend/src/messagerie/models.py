@@ -76,7 +76,10 @@ class MessageDelivery(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     message_id: Mapped[int] = mapped_column(ForeignKey("messages.id"), nullable=False, index=True)
     destinataire_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False, index=True)
-    # 'app' | 'email' — canal = 'email' -> icône mail à côté du message.
+    # 'app' | 'email' | 'whatsapp' — canal = 'email' -> icône mail à côté
+    # du message. 'whatsapp' est un marqueur d'INTENTION seulement, pas un
+    # vrai envoi (voir messages.py: envoyer et spec/SPEC.md §6.9/§8) —
+    # aucun message ne part réellement sur WhatsApp pour l'instant.
     canal: Mapped[str] = mapped_column(String(10), nullable=False, default="app")
     # 'envoye' | 'recu' | 'lu'
     statut: Mapped[str] = mapped_column(String(10), nullable=False, default="envoye")

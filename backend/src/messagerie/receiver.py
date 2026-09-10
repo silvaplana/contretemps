@@ -163,7 +163,7 @@ class MessagerieReceiver:
             conversation_id,
             donnees.expediteur_id,
             donnees.contenu,
-            donnees.envoi_volontaire_email,
+            donnees.canal,
         )
         return self._sortie_message(db, message)
 

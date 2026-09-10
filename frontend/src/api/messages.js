@@ -58,6 +58,9 @@ function versMessageEcran(message, compteId, membres) {
     heure: new Date(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     statut: statutAgrege(message.deliveries),
     envoyeParMail: message.deliveries.some((d) => d.canal === 'email'),
+    // Marqueur d'INTENTION seulement (voir backend/src/messagerie/
+    // messages.py: envoyer) — aucun vrai envoi WhatsApp pour l'instant.
+    envoyeParWhatsapp: message.deliveries.some((d) => d.canal === 'whatsapp'),
   }
 }
 
@@ -85,14 +88,13 @@ export async function listerAvecMessages(ecoleId, compteId, cours) {
   )
 }
 
-export async function envoyer(conversationId, compteId, membres, contenu, envoiVolontaireEmail = false) {
+// canal : 'app' (défaut) | 'email' | 'whatsapp' — voir backend/src/
+// messagerie/messages.py: envoyer() pour la nuance sur 'whatsapp'
+// (marqueur d'intention, pas un vrai envoi pour l'instant).
+export async function envoyer(conversationId, compteId, membres, contenu, canal = 'app') {
   const cree = await requete(`/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({
-      expediteur_id: compteId,
-      contenu,
-      envoi_volontaire_email: envoiVolontaireEmail,
-    }),
+    body: JSON.stringify({ expediteur_id: compteId, contenu, canal }),
   })
   return versMessageEcran(cree, compteId, membres)
 }

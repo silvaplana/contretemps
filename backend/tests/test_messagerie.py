@@ -150,11 +150,34 @@ def test_envoi_volontaire_email_immediat(client, db_session):
 
     reponse = client.post(
         f"/conversations/{conversation['id']}/messages",
-        json={"expediteur_id": prof.id, "contenu": "Merci de confirmer", "envoi_volontaire_email": True},
+        json={"expediteur_id": prof.id, "contenu": "Merci de confirmer", "canal": "email"},
     )
     delivery = reponse.json()["deliveries"][0]
     assert delivery["canal"] == "email"
     assert delivery["envoi_volontaire"] is True
+
+
+def test_marqueur_whatsapp_pas_un_vrai_envoi(client, db_session):
+    """Voir spec/SPEC.md §6.9/§8 : canal='whatsapp' n'est qu'un marqueur
+    d'intention (case cochée), aucun vrai envoi WhatsApp — juste pour ne
+    pas perdre cette intention une fois le message enregistré (signalé :
+    rien ne le distinguait avant)."""
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+
+    reponse = client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"expediteur_id": prof.id, "contenu": "Rappel réunion", "canal": "whatsapp"},
+    )
+    deliveries = reponse.json()["deliveries"]
+    assert deliveries  # au moins l'élève du cours
+    for delivery in deliveries:
+        assert delivery["canal"] == "whatsapp"
+        assert delivery["envoi_volontaire"] is True
 
 
 def test_marquer_lu_et_envoyer_par_mail(client, db_session):

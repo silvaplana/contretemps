@@ -28,13 +28,19 @@ class Messages:
         conversation_id: int,
         expediteur_id: int,
         contenu: str,
-        envoi_volontaire_email: bool = False,
+        canal: str = "app",
     ) -> Message:
         """Crée le message + une `MessageDelivery` par destinataire résolu
         (tous les membres de la conversation, sauf l'expéditeur). Voir
-        §6.9 : canal par défaut 'app', ou 'email' immédiatement si envoi
-        volontaire (§5.5 : réservé Admin/Professeur — pas encore vérifié
-        côté serveur, voir presence.py pour la même limitation)."""
+        §6.9 : canal par défaut 'app', ou 'email'/'whatsapp' immédiatement
+        si envoi volontaire (§5.5 : réservé Admin/Professeur — pas encore
+        vérifié côté serveur, voir presence.py pour la même limitation).
+
+        ⚠️ 'whatsapp' est un marqueur d'INTENTION, pas un vrai envoi (voir
+        spec/SPEC.md §6.9/§8) : aucun message ne part réellement sur
+        WhatsApp pour l'instant (Baileys pas branché) — seule la case est
+        cochée, pour ne pas perdre cette intention une fois le message
+        enregistré (signalé : rien ne le distinguait avant)."""
         message = Message(conversation_id=conversation_id, expediteur_id=expediteur_id, contenu=contenu)
         db.add(message)
         db.flush()
@@ -49,8 +55,8 @@ class Messages:
                 MessageDelivery(
                     message_id=message.id,
                     destinataire_id=destinataire.id,
-                    canal="email" if envoi_volontaire_email else "app",
-                    envoi_volontaire=envoi_volontaire_email,
+                    canal=canal,
+                    envoi_volontaire=canal != "app",
                 )
             )
         db.commit()
