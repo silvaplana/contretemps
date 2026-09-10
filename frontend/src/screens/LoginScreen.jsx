@@ -113,15 +113,20 @@ function codeParDefaut(prefixe, nomEcole) {
   return `${prefixe}_${slug || 'ECOLE'}_${annee}`
 }
 
+// Utilisée uniquement pour l'exemple en placeholder des 3 champs de code
+// (tant que "Nom de l'école" est vide, voir NouvelleEcoleModal) — l'année
+// suit toujours la vraie date, jamais "2026" en dur.
+const ANNEE_EXEMPLE = new Date().getFullYear()
+
 // Formulaire "Nouvelle école ?" (voir spec §2.3). Maquette : la création
 // n'est pas persistée (pas de backend), on affiche juste le récapitulatif
 // puis on repropose la connexion avec l'identité du premier admin saisi.
 function NouvelleEcoleModal({ onClose, onCreated }) {
   const [nomEcole, setNomEcole] = useState('')
   const [codePostal, setCodePostal] = useState('')
-  const [codeAdmin, setCodeAdmin] = useState(codeParDefaut('ADMIN', ''))
-  const [codeProf, setCodeProf] = useState(codeParDefaut('PROF', ''))
-  const [codeEleve, setCodeEleve] = useState(codeParDefaut('ELEVE', ''))
+  const [codeAdmin, setCodeAdmin] = useState('')
+  const [codeProf, setCodeProf] = useState('')
+  const [codeEleve, setCodeEleve] = useState('')
   const [touched, setTouched] = useState({ admin: false, prof: false, eleve: false })
   const [adminNom, setAdminNom] = useState('')
   const [adminPrenom, setAdminPrenom] = useState('')
@@ -130,10 +135,13 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
 
   // Les 3 codes suivent le nom de l'école tant que l'utilisateur ne les a
   // pas modifiés à la main (ils restent "éditables avant validation").
+  // Tant que le nom de l'école n'est pas encore saisi, les champs restent
+  // vides (avec un exemple en placeholder, voir plus bas) plutôt que de
+  // proposer un "ADMIN_ECOLE_2026" générique qui ne correspond à rien.
   useEffect(() => {
-    if (!touched.admin) setCodeAdmin(codeParDefaut('ADMIN', nomEcole))
-    if (!touched.prof) setCodeProf(codeParDefaut('PROF', nomEcole))
-    if (!touched.eleve) setCodeEleve(codeParDefaut('ELEVE', nomEcole))
+    if (!touched.admin) setCodeAdmin(nomEcole ? codeParDefaut('ADMIN', nomEcole) : '')
+    if (!touched.prof) setCodeProf(nomEcole ? codeParDefaut('PROF', nomEcole) : '')
+    if (!touched.eleve) setCodeEleve(nomEcole ? codeParDefaut('ELEVE', nomEcole) : '')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nomEcole])
 
@@ -209,6 +217,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
           setCodeAdmin(e.target.value)
           setTouched((t) => ({ ...t, admin: true }))
         }}
+        placeholder={`Ex. ADMIN_ECOLE_TEST_${ANNEE_EXEMPLE}`}
       />
 
       <label htmlFor="ecole-code-prof">Code d’accès Professeur</label>
@@ -219,6 +228,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
           setCodeProf(e.target.value)
           setTouched((t) => ({ ...t, prof: true }))
         }}
+        placeholder={`Ex. PROF_ECOLE_TEST_${ANNEE_EXEMPLE}`}
       />
 
       <label htmlFor="ecole-code-eleve">Code d’accès Élève</label>
@@ -229,6 +239,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
           setCodeEleve(e.target.value)
           setTouched((t) => ({ ...t, eleve: true }))
         }}
+        placeholder={`Ex. ELEVE_ECOLE_TEST_${ANNEE_EXEMPLE}`}
       />
 
       <p className="section-label">Premier administrateur</p>
