@@ -211,61 +211,69 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
             ))}
           </div>
         )}
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setEmojiOpen((o) => !o)}
-          aria-label="Insérer un emoji"
-        >
-          🙂
-        </button>
-        <textarea
-          ref={textareaRef}
-          value={draft}
-          placeholder="Message"
-          rows={1}
-          onChange={(e) => {
-            setDraft(e.target.value)
-            ajusterHauteur(e.target)
-          }}
-          // Entrée seule -> envoie ; Maj+Entrée -> retour à la ligne —
-          // mais SEULEMENT sur un appareil à pointeur fin (voir
-          // ENTREE_ENVOIE) : sur écran tactile, Entrée reste toujours un
-          // retour à la ligne (comportement natif), l'envoi se fait par
-          // le bouton. `isComposing` : une touche Entrée qui valide une
-          // saisie assistée (japonais/chinois...) ne doit pas envoyer le
-          // message par accident.
-          onKeyDown={(e) => {
-            if (ENTREE_ENVOIE && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-              e.preventDefault()
-              send('app')
-            }
-          }}
-        />
-        <button
-          type="button"
-          className="icon-btn icon-btn--accent"
-          onClick={() => send('app')}
-          aria-label="Envoyer par la messagerie"
-        >
-          <Icon name="send" size={18} />
-        </button>
-        <button
-          type="button"
-          className="icon-btn icon-btn--mail"
-          onClick={() => send('mail')}
-          aria-label="Envoyer par mail"
-        >
-          <Icon name="mail" size={18} />
-        </button>
-        <button
-          type="button"
-          className="icon-btn icon-btn--mail"
-          onClick={() => send('whatsapp')}
-          aria-label="Envoyer par WhatsApp"
-        >
-          <WhatsappBadge size={18} />
-        </button>
+        {/* Un seul bandeau (bordure/fond/arrondi posés ici, plus sur la
+            textarea, voir App.css) qui prend TOUTE la largeur — l'emoji
+            à gauche et les 3 boutons d'envoi à droite sont dedans, pas
+            des colonnes à côté qui grignotaient sa largeur (demande). */}
+        <div className="conversation-thread__pill">
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setEmojiOpen((o) => !o)}
+            aria-label="Insérer un emoji"
+          >
+            🙂
+          </button>
+          <textarea
+            ref={textareaRef}
+            value={draft}
+            placeholder="Message"
+            rows={1}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              ajusterHauteur(e.target)
+            }}
+            // Entrée seule -> envoie ; Maj+Entrée -> retour à la ligne —
+            // mais SEULEMENT sur un appareil à pointeur fin (voir
+            // ENTREE_ENVOIE) : sur écran tactile, Entrée reste toujours un
+            // retour à la ligne (comportement natif), l'envoi se fait par
+            // le bouton. `isComposing` : une touche Entrée qui valide une
+            // saisie assistée (japonais/chinois...) ne doit pas envoyer le
+            // message par accident.
+            onKeyDown={(e) => {
+              if (ENTREE_ENVOIE && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+                e.preventDefault()
+                send('app')
+              }
+            }}
+          />
+          <div className="conversation-thread__pill-envoi">
+            <button
+              type="button"
+              className="icon-btn icon-btn--accent"
+              onClick={() => send('app')}
+              aria-label="Envoyer par la messagerie"
+            >
+              <Icon name="send" size={18} />
+            </button>
+            <button
+              type="button"
+              className="icon-btn icon-btn--mail"
+              onClick={() => send('mail')}
+              aria-label="Envoyer par mail"
+            >
+              <Icon name="mail" size={18} />
+            </button>
+            <button
+              type="button"
+              className="icon-btn icon-btn--mail"
+              onClick={() => send('whatsapp')}
+              aria-label="Envoyer par WhatsApp"
+            >
+              <WhatsappBadge size={18} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )
