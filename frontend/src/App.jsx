@@ -5,12 +5,12 @@ import * as comptesApi from './api/comptes.js'
 import * as conversationsApi from './api/conversations.js'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
+import * as messagesApi from './api/messages.js'
 import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import * as videosApi from './api/videos.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
-import ZoneMigration from './components/ZoneMigration.jsx'
 import {
   conversations as initialConversations,
   currentUser,
@@ -113,6 +113,21 @@ function App() {
     coursApi.lister(ecole.id).then(setCours)
     conversationsApi.listerEcole(ecole.id).then(setGroupes)
   }, [loggedIn, ecole.id])
+
+  // Messagerie (voir spec/SPEC.md §5.5/§6.9) : liste réelle, filtrée par
+  // appartenance (backend: lister_du_compte) — corrige le bug signalé
+  // (Nora Pesenti, élève, voyait "Equipe pédagogique" alors qu'elle n'en
+  // est pas membre : c'était encore la maquette statique, jamais filtrée
+  // par qui que ce soit). Redéclenché quand `cours` arrive (pas encore
+  // prêt au tout premier rendu post-connexion) pour que le nom des
+  // conversations automatiques de cours soit correct dès que possible
+  // (voir api/messages.js : nomAffiche). Portée volontairement réduite
+  // (demande) : pas encore le routage/la réception, voir api/messages.js.
+  useEffect(() => {
+    if (compteReel) messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then(setConversations)
+    else setConversations(initialConversations)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id, ecole.id, cours])
 
   const [selectedCoursId, setSelectedCoursId] = useState(null)
   const selectedCours = cours.find((c) => c.id === selectedCoursId) ?? null
@@ -402,9 +417,11 @@ function App() {
         )}
 
         {activeTab === 'messagerie' && (
-          <ZoneMigration domaine="messagerie">
-            <MessagerieScreen conversations={conversations} setConversations={setConversations} />
-          </ZoneMigration>
+          <MessagerieScreen
+            conversations={conversations}
+            setConversations={setConversations}
+            compteId={activeUser.id}
+          />
         )}
 
         {activeTab === 'profil' && (

@@ -13,7 +13,10 @@ export const DOMAINES_MIGRES = {
   presence: true,
   choregraphies: true,
   videos: true,
-  messagerie: false,
+  // Liste + fil + envoi réels (filtrés par appartenance) — pas encore le
+  // routage/la réception (marquer reçu/lu, relance mail auto), voir
+  // api/messages.js.
+  messagerie: true,
 }
 
 // Libellé + écran principal, pour l'écran "État des modules" (Admin >

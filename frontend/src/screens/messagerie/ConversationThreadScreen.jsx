@@ -1,7 +1,7 @@
 import { useState } from 'react'
+import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
-import { currentUser } from '../../data/mockData.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
@@ -13,9 +13,10 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 // (voir spec/SPEC.md 5.5).
 //
 // WhatsApp : juste l'écran pour l'instant (voir spec/SPEC.md §6.9 et §8) —
-// aucun vrai envoi, seulement la confirmation + l'indicatif sur la bulle,
+// aucun vrai envoi (le backend n'a pas de canal 'whatsapp', seulement
+// 'app'/'email'), seulement la confirmation avant d'envoyer normalement,
 // comme "prévoir le tuyau" avant de brancher Baileys plus tard.
-export default function ConversationThreadScreen({ conversation, onBack, setConversations }) {
+export default function ConversationThreadScreen({ conversation, onBack, setConversations, compteId }) {
   const [draft, setDraft] = useState('')
 
   // Choix à l'envoi : par la messagerie (par défaut), par mail, ou par
@@ -23,7 +24,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
   // confirmation. En groupe, WhatsApp n'a pas de vrai fil unique côté
   // WhatsApp (pas de groupe WhatsApp = plusieurs messages 1-à-1) : la
   // confirmation le dit explicitement.
-  function send(canal) {
+  async function send(canal) {
     if (!draft.trim()) return
     if (canal === 'mail' && !window.confirm('Envoyer aussi ce message par mail ?')) return
     if (canal === 'whatsapp') {
@@ -33,20 +34,18 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
           : 'Envoyer ce message par WhatsApp ?'
       if (!window.confirm(question)) return
     }
-    const message = {
-      id: crypto.randomUUID(),
-      auteur: `${currentUser.prenom} ${currentUser.nom}`,
-      estMoi: true,
-      contenu: draft.trim(),
-      heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      statut: 'envoye',
-      envoyeParMail: canal === 'mail',
-      envoyeParWhatsapp: canal === 'whatsapp',
-    }
+    const contenu = draft.trim()
+    setDraft('')
+    const message = await messagesApi.envoyer(
+      conversation.id,
+      compteId,
+      conversation.membres,
+      contenu,
+      canal === 'mail',
+    )
     setConversations((list) =>
       list.map((c) => (c.id === conversation.id ? { ...c, messages: [...c.messages, message] } : c)),
     )
-    setDraft('')
   }
 
   return (

@@ -6,7 +6,7 @@ import ConversationThreadScreen from './messagerie/ConversationThreadScreen.jsx'
 // Deux écrans distincts, comme WhatsApp : la liste des conversations, puis
 // (au clic) le fil d'une conversation en plein écran avec une flèche de
 // retour — jamais les deux affichés en même temps.
-export default function MessagerieScreen({ conversations, setConversations }) {
+export default function MessagerieScreen({ conversations, setConversations, compteId }) {
   const [selectedId, setSelectedId] = useState(null)
 
   const selected = conversations.find((c) => c.id === selectedId)
@@ -17,6 +17,7 @@ export default function MessagerieScreen({ conversations, setConversations }) {
         conversation={selected}
         onBack={() => setSelectedId(null)}
         setConversations={setConversations}
+        compteId={compteId}
       />
     )
   }
