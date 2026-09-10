@@ -1679,8 +1679,21 @@
 }
 
 .conversation-thread__pill-envoi {
+  position: relative;
   display: flex;
   flex-shrink: 0;
+}
+
+/* Liste "mail / WhatsApp" ouverte au clic sur l'icône unique "autres
+   moyens d'envoi" (voir ConversationThreadScreen.jsx) — réutilise le
+   style de .dropdown-menu (Header.jsx), juste positionnée au-dessus du
+   bandeau (bottom: 100%) plutôt qu'en-dessous d'un bouton d'en-tête. */
+.canal-picker {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  min-width: 170px;
 }
 
 .conversation-thread__pill .icon-btn {

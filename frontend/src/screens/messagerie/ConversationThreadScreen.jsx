@@ -46,6 +46,14 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
   const emojiSelectorRef = useRef(null)
   useFermerAuClicExterieur(emojiSelectorRef, emojiOpen, () => setEmojiOpen(false))
 
+  // "Autres moyens d'envoi" (mail/WhatsApp) : une seule icône dans le
+  // bandeau (demandé — les 2 icônes séparées ne pouvaient pas être
+  // resserrées davantage, voir commits précédents), qui ouvre une petite
+  // liste au clic plutôt que de les afficher en permanence.
+  const [canalOpen, setCanalOpen] = useState(false)
+  const canalSelectorRef = useRef(null)
+  useFermerAuClicExterieur(canalSelectorRef, canalOpen, () => setCanalOpen(false))
+
   // Hauteur qui suit le contenu, façon WhatsApp (une ligne par défaut,
   // grandit jusqu'à un plafond CSS, voir .conversation-thread__input
   // textarea : au-delà, ça défile plutôt que de continuer à grandir).
@@ -247,23 +255,37 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
               }
             }}
           />
-          <div className="conversation-thread__pill-envoi">
+          <div className="conversation-thread__pill-envoi" ref={canalSelectorRef}>
             <button
               type="button"
               className="icon-btn icon-btn--mail"
-              onClick={() => send('mail')}
-              aria-label="Envoyer par mail"
+              onClick={() => setCanalOpen((o) => !o)}
+              aria-label="Autres moyens d'envoi (mail, WhatsApp)"
             >
-              <Icon name="mail" size={18} />
+              <Icon name="moreHorizontal" size={18} />
             </button>
-            <button
-              type="button"
-              className="icon-btn icon-btn--mail"
-              onClick={() => send('whatsapp')}
-              aria-label="Envoyer par WhatsApp"
-            >
-              <WhatsappBadge size={18} />
-            </button>
+            {canalOpen && (
+              <div className="dropdown-menu canal-picker">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCanalOpen(false)
+                    send('mail')
+                  }}
+                >
+                  <Icon name="mail" size={16} /> Par mail
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCanalOpen(false)
+                    send('whatsapp')
+                  }}
+                >
+                  <WhatsappBadge size={16} /> Par WhatsApp
+                </button>
+              </div>
+            )}
           </div>
         </div>
         <button

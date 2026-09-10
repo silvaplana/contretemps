@@ -43,6 +43,9 @@ const paths = {
 // Icônes faites de points pleins plutôt que d'un tracé (menu "3 points").
 const dotIcons = {
   moreVertical: [12, 5, 12, 12, 12, 19],
+  // "Autres moyens d'envoi" (mail/WhatsApp, voir ConversationThreadScreen.jsx)
+  // — même idée que moreVertical, juste à l'horizontale.
+  moreHorizontal: [5, 12, 12, 12, 19, 12],
 }
 
 export default function Icon({ name, size = 20, className = '' }) {
