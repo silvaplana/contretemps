@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import * as notificationsApi from '../api/notifications.js'
 import Icon from '../components/Icon.jsx'
 import { ROLE_LABEL, trierParRole } from '../data/roles.js'
 
@@ -82,8 +83,40 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
 // cliquables (demande) : la bascule de profil se fait depuis le menu
 // "Changer de profil" du Header (voir Header.jsx), pas doublée ici.
 export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHeures, onUpdateUser }) {
-  const [notifications, setNotifications] = useState(true)
   const autresProfils = trierParRole(famille.filter((p) => p.id !== user.id))
+
+  // Notifications push (voir api/notifications.js) : reflète l'état RÉEL
+  // de CET appareil (un abonnement navigateur existant), pas une simple
+  // préférence locale — sans backend/service worker qui marche, le
+  // bouton ne doit jamais prétendre être activé.
+  const [notifications, setNotifications] = useState(false)
+  const [notifEnCours, setNotifEnCours] = useState(false)
+  const [notifErreur, setNotifErreur] = useState('')
+  const notifSupportees = notificationsApi.pushSupporte()
+
+  useEffect(() => {
+    if (!notifSupportees) return
+    notificationsApi.estAbonneSurCetAppareil().then(setNotifications)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  async function toggleNotifications() {
+    setNotifErreur('')
+    setNotifEnCours(true)
+    try {
+      if (notifications) {
+        await notificationsApi.desabonner()
+        setNotifications(false)
+      } else {
+        await notificationsApi.abonner(user.id)
+        setNotifications(true)
+      }
+    } catch (err) {
+      setNotifErreur(err.message || 'Impossible de changer ce réglage')
+    } finally {
+      setNotifEnCours(false)
+    }
+  }
 
   return (
     <div className="screen profil-screen">
@@ -158,17 +191,22 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
       <section>
         <h3 className="section-label">Paramètres</h3>
         <div className="settings-row">
-          <span>Notifications</span>
+          <span>
+            Notifications
+            {!notifSupportees && <span className="muted"> (non supporté par ce navigateur)</span>}
+          </span>
           <button
             type="button"
             className={`switch ${notifications ? 'is-on' : ''}`}
-            onClick={() => setNotifications((n) => !n)}
+            onClick={toggleNotifications}
+            disabled={!notifSupportees || notifEnCours}
             aria-pressed={notifications}
             aria-label="Activer les notifications"
           >
             <span className="switch__knob" />
           </button>
         </div>
+        {notifErreur && <p className="login-screen__erreur">{notifErreur}</p>}
         <button type="button" className="settings-row settings-row--button">
           <span>Changer le code d’accès</span>
           <Icon name="chevronRight" size={18} />

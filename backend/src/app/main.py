@@ -22,6 +22,7 @@ from db import Base, engine
 from ecoles import Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
 from messagerie import Conversations, Evenements, MessagerieReceiver, Messages
+from notifications import Notifications, NotificationsReceiver
 from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
 from videos import DOSSIER_VIDEOS_LIVE, Videos, VideosReceiver
@@ -111,6 +112,12 @@ videos_receiver = VideosReceiver(client=videos_client, app=app)
 DOSSIER_VIDEOS_LIVE.mkdir(parents=True, exist_ok=True)
 app.mount("/media/videos", StaticFiles(directory=str(DOSSIER_VIDEOS_LIVE)), name="videos")
 
+# Monte les routes des notifications push (/push/..., voir
+# notifications/) - independant des autres modules, mais utilise par
+# messagerie ci-dessous pour notifier un nouveau message.
+notifications_client = Notifications()
+notifications_receiver = NotificationsReceiver(client=notifications_client, app=app)
+
 # Monte les routes de messagerie (/conversations, /dm, /messages...) - depend
 # de comptes et cours (resolution des membres "cours"). evenements_client
 # (flux SSE) instancie plus haut, voir le "lifespan" au-dessus.
@@ -120,6 +127,7 @@ messagerie_receiver = MessagerieReceiver(
     conversations=conversations_client,
     messages=messages_client,
     evenements=evenements_client,
+    notifications=notifications_client,
     app=app,
 )
 

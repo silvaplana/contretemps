@@ -676,7 +676,16 @@ encore branché).
 - **Création d'une séance de présence** : confirmé — manuelle, via un bouton "+ nouvelle séance" (pas de création automatique à l'ouverture de l'onglet). (voir §6.6)
 - Détail fin des droits par rôle (ex. un prof peut-il agir sur un cours qui n'est pas le sien ?)
 - Upload vidéo : **fait** — stockage direct sur le VPS (un dossier par école, voir §6.8), durée et vignette mesurées/générées côté serveur à la réception (ffmpeg). *Reste ouvert : compression à l'upload, pas encore faite (fichier stocké tel quel).*
-- Notifications : push (Capacitor + Firebase) en plus du mail, ou mail uniquement pour commencer ?
+- Notifications push : **fait** (côté PWA web) — Web Push (norme W3C, pas Capacitor/Firebase :
+  pas encore d'appli Android native, voir §1) via `backend/src/notifications/` (clés VAPID,
+  voir .env.example ; `pywebpush` pour chiffrer/signer chaque envoi) et `public/sw.js`
+  (`push`/`notificationclick`). Déclenché par un nouveau message (messagerie/receiver.py :
+  `_publier_message`) à chaque membre SAUF l'expéditeur — but explicite : joindre un appareil
+  dont l'appli/l'onglet est fermé, ce qu'aucun mécanisme précédent (SSE compris, voir §5.5) ne
+  permettait. Bouton "Notifications" (Profil > Paramètres) : reflète l'abonnement RÉEL de cet
+  appareil (pas juste une préférence locale), demande la permission navigateur sur un vrai clic
+  (jamais au chargement de la page). *Reste ouvert* : appli Android native (Capacitor + Firebase
+  Cloud Messaging), si un jour elle existe — Web Push ne couvre que les navigateurs/PWA.
 - Intégration HelloAsso : synchronisation ponctuelle ou temps réel via webhook ?
 - Politique de confidentialité (obligatoire, données concernant des mineurs, notamment les champs santé/urgence en §6.4)
 - Captures d'écran de la section 5 à reprendre entièrement une fois l'IHM adaptée (Claude Code, qui a accès à l'app réelle)

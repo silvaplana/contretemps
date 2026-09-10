@@ -11,6 +11,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from db import get_db
+from notifications import Notifications
 
 from .conversations import Conversations
 from .evenements import Evenements
@@ -40,11 +41,13 @@ class MessagerieReceiver:
         conversations: Conversations,
         messages: Messages,
         evenements: Evenements,
+        notifications: Notifications,
         app: FastAPI,
     ) -> None:
         self.conversations = conversations
         self.messages = messages
         self.evenements = evenements
+        self.notifications = notifications
         self.app = app
         self._register_routes()
 
@@ -194,18 +197,26 @@ class MessagerieReceiver:
         return sortie
 
     def _publier_message(self, db: Session, conversation_id: int, sortie: dict) -> None:
-        """Pousse le nouveau message sur le flux SSE de chaque membre de
+        """Pousse le nouveau message sur le flux SSE de CHAQUE membre de
         la conversation (voir evenements.py) — y compris l'expéditeur
         (pour qu'un autre onglet/appareil du même compte se resynchronise
-        aussi), pas seulement les autres destinataires."""
+        aussi) — ET une vraie notification push (voir notifications.py) à
+        chaque AUTRE membre (jamais à l'expéditeur : il sait déjà qu'il
+        vient d'envoyer ce message), qui elle atteint même un appareil
+        dont l'appli/l'onglet est fermé (ce que le SSE ne peut pas faire)."""
+        membres = self.conversations.membres_resolus(db, conversation_id)
         # `mode="json"` : sérialise created_at (datetime) en texte —
         # sinon json.dumps plus bas plante (TypeError: not serializable).
         evenement_message = MessageSortie.model_validate(sortie).model_dump(mode="json")
-        for membre in self.conversations.membres_resolus(db, conversation_id):
+        expediteur = next((m for m in membres if m.id == sortie["expediteur_id"]), None)
+        titre = f"{expediteur.prenom} {expediteur.nom}" if expediteur else "Nouveau message"
+        for membre in membres:
             self.evenements.publier(
                 membre.id,
                 {"type": "message", "conversation_id": conversation_id, "message": evenement_message},
             )
+            if membre.id != sortie["expediteur_id"]:
+                self.notifications.envoyer_a_compte(db, membre.id, titre, sortie["contenu"])
 
     def modifier_statut(
         self,

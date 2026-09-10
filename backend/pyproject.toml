@@ -24,6 +24,10 @@ dependencies = [
     # durée d'un fichier vidéo (voir videos/duree.py, utilisé par le seed
     # de démo et par le panneau "Usage vidéo", Admin > École).
     "imageio-ffmpeg",
+    # Notifications push (Web Push, voir notifications/) — chiffrement +
+    # signature VAPID des messages envoyés aux serveurs de push
+    # (FCM/Mozilla/...), voir .env.example.
+    "pywebpush",
 ]
 
 [project.optional-dependencies]

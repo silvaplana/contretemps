@@ -29,7 +29,8 @@ backend/
 │   ├── presence/           # Présence (+ comptage d'heures : Admin > Professeurs / Profil > "Mes heures")
 │   ├── choregraphies/      # Chorégraphie
 │   ├── videos/             # Vidéo
-│   └── messagerie/         # Admin > Conversations ET Messagerie (conversations.py + messages.py)
+│   ├── messagerie/         # Admin > Conversations ET Messagerie (conversations.py + messages.py + SSE : evenements.py)
+│   └── notifications/      # Notifications push (Web Push/VAPID) — voir .env.example
 └── tests/
 ```
 
