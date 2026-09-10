@@ -213,7 +213,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
         <textarea
           ref={textareaRef}
           value={draft}
-          placeholder="Écrire un message..."
+          placeholder="Message"
           rows={1}
           onChange={(e) => {
             setDraft(e.target.value)
