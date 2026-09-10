@@ -18,6 +18,36 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
   const [description, setDescription] = useState('')
   const [choregraphieId, setChoregraphieId] = useState('')
   const [fichier, setFichier] = useState(null)
+  // Un vrai upload prend plusieurs secondes (réseau + traitement serveur,
+  // voir videos/duree.py et poster.py) — sans ça, la modale se fermait
+  // AVANT la fin de l'envoi, sans aucun signe que quelque chose se
+  // passait : "je fais ajouter, l'affichage ne se met pas à jour, faut-
+  // il rafraîchir ?" (l'ajout avait pourtant bien réussi, juste après
+  // la fermeture de l'écran). `onAdd` (async, voir VideoScreen.jsx/
+  // ChoregraphieDetailScreen.jsx) n'est donc plus lancé puis oublié : on
+  // attend sa fin ici avant de fermer, en affichant "Envoi..." pendant
+  // ce temps.
+  const [envoi, setEnvoi] = useState(false)
+
+  async function ajouter() {
+    setEnvoi(true)
+    try {
+      await onAdd({
+        titre,
+        description,
+        choregraphieId: lockedChoregraphieId ?? (choregraphieId || null),
+        fichier: fichier?.file ?? null,
+      })
+      // Succès : le parent ferme la modale (voir onAdd dans
+      // VideoScreen.jsx/ChoregraphieDetailScreen.jsx, qui attend cette
+      // promesse avant de fermer) — elle va être démontée, pas la peine
+      // de remettre `envoi` à false ici (état sur un composant déjà
+      // parti).
+    } catch (err) {
+      console.error(err)
+      setEnvoi(false)
+    }
+  }
 
   function handleFichier(file) {
     if (!file) return
@@ -47,17 +77,10 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
         <button
           type="button"
           className="btn btn--primary btn--block"
-          disabled={!titre}
-          onClick={() =>
-            onAdd({
-              titre,
-              description,
-              choregraphieId: lockedChoregraphieId ?? (choregraphieId || null),
-              fichier: fichier?.file ?? null,
-            })
-          }
+          disabled={!titre || envoi}
+          onClick={ajouter}
         >
-          Ajouter
+          {envoi ? 'Envoi…' : 'Ajouter'}
         </button>
       }
     >

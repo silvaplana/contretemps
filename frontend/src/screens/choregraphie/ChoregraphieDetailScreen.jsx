@@ -258,8 +258,8 @@ export default function ChoregraphieDetailScreen({
         <AddVideoModal
           lockedChoregraphieId={choregraphie.id}
           onClose={() => setShowAddVideo(false)}
-          onAdd={(donnees) => {
-            onAddVideo(donnees)
+          onAdd={async (donnees) => {
+            await onAddVideo(donnees)
             setShowAddVideo(false)
           }}
         />

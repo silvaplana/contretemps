@@ -96,8 +96,8 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
         <AddVideoModal
           choregraphies={choregraphies}
           onClose={() => setShowAdd(false)}
-          onAdd={(donnees) => {
-            add(donnees)
+          onAdd={async (donnees) => {
+            await add(donnees)
             setShowAdd(false)
           }}
         />
