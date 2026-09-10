@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
@@ -18,6 +18,16 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 // WhatsApp pour l'instant (Baileys pas branché, voir spec/SPEC.md §6.9/§8).
 export default function ConversationThreadScreen({ conversation, onBack, setConversations, compteId }) {
   const [draft, setDraft] = useState('')
+
+  // Ouvrir ce fil = les avoir vus pour de vrai (façon WhatsApp, voir
+  // api/messages.js: marquerLus) — distinct de "reçu" (marqué dès la
+  // liste, voir api/messages.js: listerAvecMessages). Ne met pas à jour
+  // l'affichage local des coches immédiatement (pas grave : ce sont MES
+  // messages à moi qui les afficheraient, pas les siens/leurs).
+  useEffect(() => {
+    messagesApi.marquerLus(conversation.messages, compteId)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [conversation.id])
 
   // Choix à l'envoi : par la messagerie (par défaut), par mail, ou par
   // WhatsApp — mail et WhatsApp sortent de l'appli, donc demandent

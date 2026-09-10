@@ -42,6 +42,22 @@ services:
     expose:
       - "8000"
 
+  # Relance automatique des messages non lus (voir spec/SPEC.md §5.5 et
+  # backend/src/app/relance_worker.py) — même image que "backend", même
+  # volume (pour lire/écrire la même base SQLite), juste une commande
+  # différente. Processus à part plutôt qu'une tâche de fond dans
+  # "backend" : ne se mélange jamais avec le cycle de vie de l'app FastAPI
+  # (tests compris — voir le commentaire en tête de relance_worker.py).
+  messagerie-relance:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+    volumes:
+      - backend_data:/app/data
+    command: ["python", "-m", "app.relance_worker"]
+
   frontend:
     build:
       context: ./frontend

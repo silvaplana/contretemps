@@ -2,16 +2,17 @@
 // spec/SPEC.md §5.5/§6.9). Réel uniquement (comme api/comptes.js) : "Voir
 // une maquette" est retiré, plus de session démo à couvrir ici.
 //
-// Portée volontairement réduite (demande) : la liste des conversations et
-// leurs messages sont bien réels (en base, filtrés par appartenance —
-// c'était le bug signalé : Nora Pesenti voyait "Equipe pédagogique") et
-// l'envoi persiste vraiment le message — mais PAS le routage/la
-// réception : pas de marquage reçu/lu, pas de relance mail automatique,
-// pas de vrai envoi WhatsApp. `statut` reste 'envoye' pour mes propres
-// messages tant que rien ne les fait avancer côté serveur (à faire plus
-// tard, voir backend/src/messagerie/messages.py: marquer_recu/marquer_lu/
-// relancer_messages_non_lus, déjà prêts côté backend mais jamais appelés
-// depuis cet écran).
+// Portée : liste des conversations et leurs messages réels (en base,
+// filtrés par appartenance — c'était le bug signalé : Nora Pesenti voyait
+// "Equipe pédagogique"), envoi persisté, ET désormais le marquage
+// reçu/lu (voir marquerRecu/marquerLu ci-dessous, et ConversationThreadScreen.jsx).
+// La relance automatique par mail après délai tourne côté backend (voir
+// app/relance_worker.py, processus séparé) — pas appelée depuis ici.
+//
+// Toujours pas fait : le vrai envoi WhatsApp (canal='whatsapp' reste un
+// marqueur d'intention, voir backend/src/messagerie/messages.py) — et,
+// comme lui, la relance mail ne fait QUE changer le canal en base, aucune
+// vraie infrastructure d'envoi de mail n'existe dans ce projet.
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -64,6 +65,33 @@ function versMessageEcran(message, compteId, membres) {
   }
 }
 
+async function modifierStatutDelivery(messageId, destinataireId, statut) {
+  await requete(`/messages/${messageId}/deliveries/${destinataireId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ statut }),
+  })
+}
+
+// "Reçu" = mon client a récupéré le message (voir listerAvecMessages,
+// appelé dès l'ouverture de l'onglet Messagerie) ; "lu" = j'ai ouvert
+// CETTE conversation pour de vrai (voir ConversationThreadScreen.jsx) —
+// même distinction que WhatsApp (reçu sur l'appareil vs vu à l'écran).
+export async function marquerRecu(messageId, compteId) {
+  return modifierStatutDelivery(messageId, compteId, 'recu')
+}
+
+export async function marquerLu(messageId, compteId) {
+  return modifierStatutDelivery(messageId, compteId, 'lu')
+}
+
+// Marque "lu" tous les messages d'un fil qui ne sont pas de moi — appelé
+// à l'ouverture du fil (voir ConversationThreadScreen.jsx). Prend les
+// messages déjà adaptés (voir versMessageEcran : `estMoi`), pas les
+// bruts du backend.
+export async function marquerLus(messages, compteId) {
+  await Promise.all(messages.filter((m) => !m.estMoi).map((m) => marquerLu(m.id, compteId)))
+}
+
 // Liste des conversations du compte + leurs messages, dans la forme
 // attendue par MessagerieScreen.jsx (même forme que l'ancienne maquette,
 // voir data/mockData.js : conversations, gardée pour ne pas devoir
@@ -72,11 +100,24 @@ function versMessageEcran(message, compteId, membres) {
 // messages, d'où l'aller chercher ici plutôt qu'à l'ouverture de chaque
 // conversation — peu de conversations par compte en pratique, pas un
 // souci de perf.
+//
+// Marque aussi "reçu" chaque message qui n'est pas de moi et encore
+// 'envoye' pour MA livraison — mon client vient bien de le récupérer, en
+// le listant ici (voir marquerRecu ci-dessus). Fait avant l'adaptation
+// (versMessageEcran) : le statut affiché tout de suite reste celui d'AVANT
+// ce marquage (il ne se mettra à jour qu'au prochain chargement) — pas un
+// souci, juste pas de faux sentiment de "déjà lu" instantané.
 export async function listerAvecMessages(ecoleId, compteId, cours) {
   const conversations = await requete(`/conversations?ecole_id=${ecoleId}&compte_id=${compteId}`)
   return Promise.all(
     conversations.map(async (conv) => {
       const messages = await requete(`/conversations/${conv.id}/messages`)
+      await Promise.all(
+        messages
+          .filter((m) => m.expediteur_id !== compteId)
+          .filter((m) => m.deliveries.some((d) => d.destinataire_id === compteId && d.statut === 'envoye'))
+          .map((m) => marquerRecu(m.id, compteId)),
+      )
       return {
         id: conv.id,
         type: conv.type,
