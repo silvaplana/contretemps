@@ -20,6 +20,10 @@ dependencies = [
     "psycopg2-binary",
     # Lecture des fichiers .xlsx pour l'import Excel des élèves (§6.4bis).
     "openpyxl",
+    # Binaire ffmpeg embarqué (pas de dépendance système) — sert à lire la
+    # durée d'un fichier vidéo (voir videos/duree.py, utilisé par le seed
+    # de démo et par le panneau "Usage vidéo", Admin > École).
+    "imageio-ffmpeg",
 ]
 
 [project.optional-dependencies]

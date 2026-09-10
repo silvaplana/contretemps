@@ -7,7 +7,13 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
-from .schemas import ReordonnerVideos, VideoCreation, VideoModification, VideoSortie
+from .schemas import (
+    ReordonnerVideos,
+    UsageVideosEcole,
+    VideoCreation,
+    VideoModification,
+    VideoSortie,
+)
 from .videos import Videos
 
 
@@ -34,6 +40,11 @@ class VideosReceiver:
         self.app.get("/videos/{video_id}", response_model=VideoSortie)(self.obtenir)
         self.app.put("/videos/{video_id}", response_model=VideoSortie)(self.modifier)
         self.app.delete("/videos/{video_id}", status_code=204)(self.supprimer)
+
+        # Panneau "Usage vidéo", Admin > École (voir §5.1.1).
+        self.app.get("/ecoles/{ecole_id}/videos/usage", response_model=UsageVideosEcole)(
+            self.usage
+        )
 
     def lister_par_cours(self, cours_id: int, db: Session = Depends(get_db)):
         return self.client.list_par_cours(db, cours_id)
@@ -64,3 +75,6 @@ class VideosReceiver:
         self, choregraphie_id: int, donnees: ReordonnerVideos, db: Session = Depends(get_db)
     ):
         self.client.reordonner(db, choregraphie_id, donnees.ordre_video_ids)
+
+    def usage(self, ecole_id: int, db: Session = Depends(get_db)):
+        return self.client.usage_ecole(db, ecole_id)

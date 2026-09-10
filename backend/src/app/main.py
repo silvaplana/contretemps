@@ -86,7 +86,7 @@ choregraphies_client = Choregraphies(cours=cours_client)
 choregraphies_receiver = ChoregraphiesReceiver(client=choregraphies_client, app=app)
 
 # Monte les routes des videos (/cours/{id}/videos, /choregraphies/{id}/videos, /videos/...).
-videos_client = Videos()
+videos_client = Videos(cours=cours_client)
 videos_receiver = VideosReceiver(client=videos_client, app=app)
 
 # Sert les fichiers video eux-memes en statique (un dossier par ecole,

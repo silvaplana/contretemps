@@ -36,6 +36,12 @@ class Video(Base):
     poster: Mapped[str | None] = mapped_column(String(500), nullable=True)
     date_publication: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     uploaded_by: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False)
+    # Durée réelle du fichier (secondes), lue une fois via ffmpeg (voir
+    # videos/duree.py) — nullable : absente pour une vidéo sans fichier
+    # (lien_fichier vide) ou pas encore mesurée. Sert au panneau "Usage
+    # vidéo" (Admin > École) — la taille, elle, se lit directement sur le
+    # disque à la demande (voir videos.py : usage_ecole), pas stockée.
+    duree_secondes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Ordre manuel, utilisé uniquement dans le contexte d'une chorégraphie
     # (voir §6.8 : ignoré sur l'écran Vidéo, trié par date_publication là-bas).
     ordre: Mapped[int | None] = mapped_column(Integer, nullable=True)

@@ -131,6 +131,13 @@ interaction supplémentaire.
 Nom de l'école, code postal, et les 3 codes d'accès (Admin/Professeur/Élève), modifiables par
 tout admin. Onglet le plus à gauche du sélecteur segmenté.
 
+**Bouton "Usage vidéo"** : ouvre un panneau d'information sur les vidéos de l'école (tous cours
+confondus) — espace utilisé (Mo tant que ça reste sous 1 Go, Go au-delà) et durée totale
+(secondes tant que ça reste sous la minute, minutes au-delà), puis les 10 vidéos les plus
+lourdes par taille décroissante (titre, cours, chorégraphie liée si elle existe, taille, durée).
+Icône poubelle par ligne pour supprimer une vidéo directement depuis ce panneau (confirmation
+demandée) — supprime aussi le fichier et sa vignette, pas seulement l'entrée.
+
 #### 5.1.2 Élèves
 
 Tableau éditable — voir la liste complète des champs en §6.4, plus une colonne **Âge** juste
@@ -531,9 +538,11 @@ Vidéos liées : champ **calculé**, obtenu via `videos.choregraphie_id`, pas st
 | nom | texte | Obl. |
 | description | texte | Opt. |
 | lien_fichier | texte (chemin/URL) | Obl. |
+| poster | texte (chemin/URL) | Opt. |
 | date_publication | datetime | Obl. (auto) |
 | uploaded_by | FK → comptes | Obl. |
 | ordre | entier | Opt. |
+| duree_secondes | entier | Opt. |
 
 **Tri différent selon l'écran** :
 - **Écran Vidéo** (liste générale) : tri par `date_publication`, les plus récentes en premier — `ordre` est ignoré

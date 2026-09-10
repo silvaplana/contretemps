@@ -14,7 +14,7 @@
 // `duree` (affichée seulement si `url` est vide, voir VideoThumb.jsx)
 // n'existe pas côté backend — jamais envoyée/lue en mode réel.
 
-import { videosParCours } from '../data/mockData.js'
+import { choregraphiesParCours, cours as coursListe, videosParCours } from '../data/mockData.js'
 import { estModeDemo } from './mode.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -76,6 +76,83 @@ async function supprimerMaquette(coursId, videoId) {
   const liste = listeMaquette(coursId)
   const index = liste.findIndex((v) => v.id === videoId)
   if (index !== -1) liste.splice(index, 1)
+}
+
+// Utilisée par le panneau "Usage vidéo" (toute l'école, pas un cours en
+// particulier) : cherche/retire dans TOUTES les listes, comme
+// trouverOuLever ci-dessus, plutôt que d'exiger le coursId de l'appelant.
+async function supprimerParIdMaquette(videoId) {
+  for (const liste of Object.values(lireMagasin())) {
+    const index = liste.findIndex((v) => v.id === videoId)
+    if (index !== -1) {
+      liste.splice(index, 1)
+      return
+    }
+  }
+}
+
+// Taille réelle d'un fichier statique (voir public/videos/) via une requête
+// HEAD (juste les en-têtes, pas le corps) — pas stockée en dur dans
+// mockData.js, contrairement au backend qui, lui, lit le fichier sur disque
+// à la demande (voir videos.py : usage_ecole). Mode maquette uniquement.
+async function tailleFichierMaquette(url) {
+  try {
+    const reponse = await fetch(url, { method: 'HEAD' })
+    const longueur = reponse.headers.get('content-length')
+    return longueur ? Number(longueur) : 0
+  } catch {
+    return 0
+  }
+}
+
+// Durée réelle d'un fichier statique, lue via un <video> hors-page (pas de
+// champ "durée" en dur pour les vraies vidéos, voir note en tête de
+// fichier). Mode maquette uniquement — le backend, lui, la mesure une
+// seule fois via ffmpeg (voir videos/duree.py) et la stocke.
+function dureeFichierMaquette(url) {
+  return new Promise((resolve) => {
+    const el = document.createElement('video')
+    el.preload = 'metadata'
+    el.onloadedmetadata = () => resolve(Math.round(el.duration) || 0)
+    el.onerror = () => resolve(0)
+    el.src = url
+  })
+}
+
+async function usageMaquette() {
+  const coursParId = Object.fromEntries(coursListe.map((c) => [c.id, c.nom]))
+  // Toutes les chorégraphies de tous les cours, indexées par id (voir
+  // choregraphiesParCours : même principe indexé par coursId que
+  // videosParCours, aplati une fois ici plutôt qu'à chaque vidéo).
+  const choregraphieParId = Object.fromEntries(
+    Object.values(choregraphiesParCours)
+      .flat()
+      .map((ch) => [ch.id, ch.nom]),
+  )
+  const magasin = lireMagasin()
+  const avecFichier = Object.entries(magasin).flatMap(([coursId, liste]) =>
+    liste.filter((v) => v.url).map((v) => ({ ...v, coursNom: coursParId[coursId] ?? '?' })),
+  )
+  const mesures = await Promise.all(
+    avecFichier.map(async (v) => {
+      const [tailleOctets, dureeSecondes] = await Promise.all([
+        tailleFichierMaquette(v.url),
+        dureeFichierMaquette(v.url),
+      ])
+      return {
+        id: v.id,
+        titre: v.titre,
+        cours: v.coursNom,
+        choregraphie: choregraphieParId[v.choregraphieId] ?? null,
+        tailleOctets,
+        dureeSecondes,
+      }
+    }),
+  )
+  const totalOctets = mesures.reduce((s, m) => s + m.tailleOctets, 0)
+  const totalSecondes = mesures.reduce((s, m) => s + m.dureeSecondes, 0)
+  const topVideos = [...mesures].sort((a, b) => b.tailleOctets - a.tailleOctets).slice(0, 10)
+  return { totalOctets, totalSecondes, topVideos }
 }
 
 // --- Réel : voir backend/src/videos/receiver.py. Pas encore exercé
@@ -148,6 +225,29 @@ async function supprimerReel(_coursId, videoId) {
   await requete(`/videos/${videoId}`, { method: 'DELETE' })
 }
 
+async function supprimerParIdReel(videoId) {
+  await requete(`/videos/${videoId}`, { method: 'DELETE' })
+}
+
+function versEcranUsage(u) {
+  return {
+    totalOctets: u.total_octets,
+    totalSecondes: u.total_secondes,
+    topVideos: u.top_videos.map((v) => ({
+      id: v.id,
+      titre: v.titre,
+      cours: v.cours,
+      choregraphie: v.choregraphie,
+      tailleOctets: v.taille_octets,
+      dureeSecondes: v.duree_secondes,
+    })),
+  }
+}
+
+async function usageReel(ecoleId) {
+  return versEcranUsage(await requete(`/ecoles/${ecoleId}/videos/usage`))
+}
+
 // --- Point d'entrée unique, appelé par les écrans (voir VideoScreen.jsx
 // et ChoregraphieScreen.jsx). `uploaderId` = compte connecté (voir
 // activeUser dans App.jsx) — requis par le backend, ignoré en maquette.
@@ -166,4 +266,16 @@ export async function modifier(videoId, patch) {
 
 export async function supprimer(coursId, videoId) {
   return estModeDemo() ? supprimerMaquette(coursId, videoId) : supprimerReel(coursId, videoId)
+}
+
+// Utilisée par le panneau "Usage vidéo" (Admin > École), qui ne connaît
+// que l'id de la vidéo, pas son cours — voir supprimerParIdMaquette.
+export async function supprimerParId(videoId) {
+  return estModeDemo() ? supprimerParIdMaquette(videoId) : supprimerParIdReel(videoId)
+}
+
+// Panneau "Usage vidéo" (Admin > École) : Go utilisés, minutes de vidéo,
+// top 10 par taille décroissante — voir AdminParametres.jsx.
+export async function usage(ecoleId) {
+  return estModeDemo() ? usageMaquette() : usageReel(ecoleId)
 }

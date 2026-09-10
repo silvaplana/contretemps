@@ -30,7 +30,14 @@ from db import Base, SessionLocal, engine
 from ecoles import Ecoles
 from eleves import Eleves, ImportExcel
 from presence import Presence
-from videos import DOSSIER_VIDEOS_REFERENCE, Videos, chemin_relatif, dossier_ecole
+from videos import (
+    DOSSIER_VIDEOS_LIVE,
+    DOSSIER_VIDEOS_REFERENCE,
+    Videos,
+    chemin_relatif,
+    dossier_ecole,
+    duree_secondes,
+)
 
 # Source profs/cours : page publique dansecontretemps.fr/professeurs-danse-beausset
 # (pas d'email public pour les profs -> laissé vide, à compléter par l'admin).
@@ -251,7 +258,7 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
 
     presence = Presence(cours=cours_service)
     choregraphies_service = Choregraphies(cours=cours_service)
-    videos_service = Videos()
+    videos_service = Videos(cours=cours_service)
     cours_par_nom = {c.nom: c for c in cours_service.list(db, ecole.id)}
 
     for nom_cours, donnees in PRESENCES_DEMO.items():
@@ -296,6 +303,7 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
             for v in ch_donnees["videos"]:
                 lien_fichier = ""
                 poster = None
+                duree = None
                 if v["fichier"]:
                     lien_fichier = _copier_fichier_demo(ecole.id, v["fichier"])
                     # Vignette dérivée du même nom (voir génération des
@@ -307,12 +315,16 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
                     # Chrome desktop — sans poster, écran Vidéo "cassé").
                     nom_poster = Path(v["fichier"]).with_suffix(".jpg").name
                     poster = _copier_fichier_demo(ecole.id, nom_poster)
+                    # Mesurée une fois ici (voir videos/duree.py) — le vrai
+                    # upload (chantier suivant) fera pareil à la volée.
+                    duree = duree_secondes(DOSSIER_VIDEOS_LIVE / lien_fichier)
                 videos_service.create(
                     db,
                     cours_id=cours.id,
                     nom=v["nom"],
                     lien_fichier=lien_fichier,
                     poster=poster,
+                    duree_secondes=duree,
                     description=v.get("description", ""),
                     choregraphie_id=choregraphie.id,
                     uploaded_by=admin.id,

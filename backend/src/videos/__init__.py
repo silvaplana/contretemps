@@ -1,3 +1,4 @@
+from .duree import duree_secondes
 from .models import Video
 from .receiver import VideosReceiver
 from .stockage import DOSSIER_VIDEOS_LIVE, DOSSIER_VIDEOS_REFERENCE, chemin_relatif, dossier_ecole
@@ -11,4 +12,5 @@ __all__ = [
     "DOSSIER_VIDEOS_REFERENCE",
     "dossier_ecole",
     "chemin_relatif",
+    "duree_secondes",
 ]

@@ -1,4 +1,6 @@
+import { useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
+import UsageVideoModal from './UsageVideoModal.jsx'
 
 // Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école,
 // code postal et ses 3 codes d'accès, modifiables par tout admin (pas
@@ -20,6 +22,8 @@ import * as ecolesApi from '../../api/ecoles.js'
 // requête envoie la valeur complète du champ à cet instant, la dernière
 // envoyée finit par gagner côté serveur.
 export default function AdminParametres({ ecole, setEcole }) {
+  const [showUsageVideo, setShowUsageVideo] = useState(false)
+
   function update(patch) {
     setEcole((e) => ({ ...e, ...patch }))
     ecolesApi.modifier(ecole.id, patch).catch((err) => console.error(err))
@@ -68,6 +72,14 @@ export default function AdminParametres({ ecole, setEcole }) {
           onChange={(e) => update({ codeAccesEleve: e.target.value })}
         />
       </div>
+
+      <button type="button" className="btn btn--secondary" onClick={() => setShowUsageVideo(true)}>
+        Usage vidéo
+      </button>
+
+      {showUsageVideo && (
+        <UsageVideoModal ecoleId={ecole.id} onClose={() => setShowUsageVideo(false)} />
+      )}
     </div>
   )
 }
