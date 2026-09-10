@@ -212,14 +212,20 @@
    saisie (voir ConversationThreadScreen.jsx) — juste teintés, sans
    fond/bordure propres (signalé : une "couronne orange" en trop autour
    de chaque icône, superflue maintenant qu'ils sont DANS le bandeau,
-   déjà bordé lui-même — voir .conversation-thread__pill). Padding
-   HORIZONTAL très resserré (signalé, encore trop d'espace entre les
-   deux) — la seule chose qui les espaçait, .icon-btn n'a pas de marge
-   propre ; le vertical reste un peu plus large pour garder une cible
-   tactile correcte en hauteur. */
+   déjà bordé lui-même — voir .conversation-thread__pill).
+   ⚠️ Le vrai obstacle au resserrement (signalé : le padding seul ne
+   changeait RIEN à l'affichage) : `button { min-width: 44px }` en règle
+   globale (voir index.css, cible tactile Apple/Material) — les 2
+   boutons restaient bloqués à 44px de large chacun quoi qu'on fasse sur
+   le padding. Dérogation explicite ici, min-width/height réduits (28px,
+   sous le minimum recommandé, mais demandé explicitement pour serrer ces
+   2 icônes précises) : padding + cette dérogation sont TOUS LES DEUX
+   nécessaires. */
 .icon-btn--mail {
   color: var(--accent);
   padding: 4px 1px;
+  min-width: 28px;
+  min-height: 28px;
 }
 
 .avatar {
