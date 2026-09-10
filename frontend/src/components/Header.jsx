@@ -177,8 +177,11 @@ export default function Header({
         <CodeConfirmModal
           profil={profilVise}
           onClose={() => setProfilVise(null)}
-          onConfirm={() => {
-            onSwitchProfil(profilVise.id)
+          onConfirm={async (code) => {
+            // Pas de try/catch ici : une erreur (code incorrect) doit
+            // remonter jusqu'à CodeConfirmModal, qui l'affiche et reste
+            // ouverte — surtout ne pas fermer/basculer sur un échec.
+            await onSwitchProfil(profilVise.id, code)
             setProfilVise(null)
           }}
         />

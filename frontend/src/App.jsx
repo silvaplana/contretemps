@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import * as authApi from './api/auth.js'
 import * as choregraphiesApi from './api/choregraphies.js'
 import * as comptesApi from './api/comptes.js'
 import * as conversationsApi from './api/conversations.js'
@@ -37,9 +38,6 @@ function App() {
 
   // "Ma famille" (Profil) et "Changer de profil" (Header) : la vraie
   // famille du compte réel connecté (voir api/comptes.js : listerFamille).
-  // ⚠️ Limite connue restante (hors scope ici) : cliquer un membre de
-  // cette liste pour VRAIMENT basculer de profil ne fonctionne pas encore
-  // (voir switchProfil plus bas) — seul l'affichage de la liste est réel.
   const [familleReelle, setFamilleReelle] = useState([])
   useEffect(() => {
     if (compteReel) comptesApi.listerFamille(compteReel.id).then(setFamilleReelle)
@@ -208,14 +206,23 @@ function App() {
   }
   const coursVisibles = coursDuProfil(activeUser)
 
-  // Bascule de profil famille (voir spec §2.1) : si l'onglet en cours n'est
-  // pas accessible au rôle du nouveau profil (ex. Admin → Élève, sur
-  // l'onglet Admin), on retombe sur Messagerie plutôt que sur un écran
-  // inaccessible. Le cours sélectionné est aussi ajusté s'il n'est plus
-  // visible pour ce profil (ex. Élève inscrit à un seul cours).
-  function switchProfil(id) {
+  // Bascule de profil famille (voir spec §2.1/§2.2) : `code` absent -> pas
+  // de montée en privilège, on relit juste le compte visé (voir
+  // api/auth.js: basculerLibre) ; `code` fourni -> vérifié pour de vrai
+  // côté serveur (basculerAvecCode/confirmerBascule) — voir Header.jsx :
+  // CodeConfirmModal, qui affiche une erreur et NE bascule PAS si le code
+  // est faux (une erreur ici remonte donc jusque là, volontairement pas de
+  // try/catch). Si l'onglet en cours n'est pas accessible au rôle du
+  // nouveau profil (ex. Admin → Élève, sur l'onglet Admin), on retombe sur
+  // Messagerie plutôt que sur un écran inaccessible. Le cours sélectionné
+  // est aussi ajusté s'il n'est plus visible pour ce profil (ex. Élève
+  // inscrit à un seul cours).
+  async function switchProfil(id, code) {
     const profil = familleReelle.find((p) => p.id === id)
     if (!profil) return
+    const nouveauCompte = code ? await authApi.confirmerBascule(id, code) : await authApi.basculerLibre(id)
+    setCompteReel(nouveauCompte)
+
     const tab = TABS.find((t) => t.key === activeTab)
     if (tab && !tab.roles.includes(profil.type)) {
       setActiveTab('messagerie')

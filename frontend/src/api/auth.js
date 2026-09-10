@@ -96,3 +96,31 @@ export async function repondreRecuperation(identifiant, reponseTexte) {
   const compte = await reponse.json()
   return { compte: versActiveUserEcran(compte), ecole: versEcoleEcran(ecole) }
 }
+
+// --- Bascule de profil famille (voir spec §2.2, Header.jsx : sélecteur
+// famille) — le backend (auth.py) sait déjà tout faire, restait juste à
+// l'appeler depuis l'écran (avant ça, cliquer un profil de la famille ne
+// faisait littéralement rien en mode réel, signalé).
+
+// Vers un rôle égal ou inférieur (voir data/roles.js : estMonteeEnPrivilege,
+// même règle qu'ici côté backend) : pas de code à redemander, juste
+// relire le compte visé — voir backend/src/comptes/receiver.py: obtenir.
+export async function basculerLibre(versCompteId) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${versCompteId}`)
+  if (!reponse.ok) throw new Error('Compte introuvable')
+  return versActiveUserEcran(await reponse.json())
+}
+
+// Vers un rôle supérieur : le vrai code d'accès de CE rôle est redemandé
+// et vérifié côté serveur (voir Header.jsx : CodeConfirmModal) — jamais
+// un code fictif toujours accepté comme avant (maquette).
+export async function confirmerBascule(versCompteId, code) {
+  const reponse = await fetch(`${BASE_URL}/auth/bascule/confirmer`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ vers_compte_id: versCompteId, code }),
+  })
+  if (reponse.status === 401) throw new Error('Code incorrect')
+  if (!reponse.ok) throw new Error('Impossible de basculer')
+  return versActiveUserEcran(await reponse.json())
+}
