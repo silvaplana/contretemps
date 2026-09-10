@@ -20,11 +20,11 @@ self.addEventListener('fetch', (event) => {
 // App.jsx) — pas la peine d'AUSSI afficher une notification système.
 self.addEventListener('push', (event) => {
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       const dejaVisible = clients.some((c) => c.visibilityState === 'visible' && c.focused)
       if (dejaVisible) return
       const { title, body } = event.data.json()
-      return self.registration.showNotification(title, {
+      await self.registration.showNotification(title, {
         body,
         // Chemins RELATIFS (pas de "/" au début) : résolus par rapport à
         // l'URL de ce script lui-même (BASE_URL + "sw.js", voir main.jsx),
@@ -36,6 +36,23 @@ self.addEventListener('push', (event) => {
         icon: 'icons/icon-192.png',
         badge: 'icons/icon-192.png',
       })
+      // Badge NUMÉROTÉ sur l'icône de l'appli (voir api/notifications.js :
+      // definirBadge, même API) — indispensable ICI aussi : cette portion
+      // de code tourne alors que l'appli est fermée (dejaVisible === false
+      // ci-dessus), donc App.jsx (qui pilote ce même badge appli ouverte)
+      // ne tourne pas du tout. Pas de vrai total de non-lus disponible
+      // dans ce contexte (le push ne porte que title/body, voir
+      // notifications.py : envoyer_a_compte) — on approxime avec le
+      // nombre de notifications encore affichées dans le tiroir, la
+      // seule info fiable qu'on ait ici (et déjà ce que l'OS utilise pour
+      // son propre indicateur par défaut).
+      // `navigator.setAppBadge` (pas `self.registration.setAppBadge` —
+      // n'existe pas : la Badging API étend Navigator/WorkerNavigator,
+      // pas ServiceWorkerRegistration, voir la spec WICG "Badging API").
+      if ('setAppBadge' in navigator) {
+        const notifications = await self.registration.getNotifications()
+        await navigator.setAppBadge(notifications.length)
+      }
     }),
   )
 })

@@ -162,6 +162,27 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
 
+  // Total des messages non lus, toutes conversations confondues — même
+  // donnée que le badge par conversation (voir api/messages.js :
+  // compterNonLus), utilisée à la fois pour le badge de BottomNav.jsx
+  // (dans l'appli) et pour le badge de l'ICÔNE DE L'APPLI elle-même
+  // (écran d'accueil, voir juste ci-dessous) : un point rouge fixe ne
+  // suffisait pas (demande) — sans appel explicite à setAppBadge, l'OS ne
+  // sait afficher au mieux qu'un simple indicateur "il y a une notif",
+  // jamais le vrai nombre.
+  const totalNonLus = conversations.reduce((total, c) => total + messagesApi.compterNonLus(c), 0)
+
+  // Redéclenché à chaque fois que ce total change (nouveau message via
+  // SSE, ou fil ouvert qui repasse des messages à "lu") — tient à jour le
+  // badge de l'icône même appli ouverte, pas seulement à la (ré)ouverture
+  // (voir l'effet juste au-dessus, qui LUI ne s'occupe que des
+  // notifications système, pas de ce badge).
+  useEffect(() => {
+    if (!compteReel) return
+    notificationsApi.definirBadge(totalNonLus)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id, totalNonLus])
+
   const [selectedCoursId, setSelectedCoursId] = useState(null)
   const selectedCours = cours.find((c) => c.id === selectedCoursId) ?? null
 
@@ -477,9 +498,7 @@ function App() {
         active={activeTab}
         onChange={setActiveTab}
         role={activeUser.type}
-        alertes={{
-          messagerie: conversations.reduce((total, c) => total + messagesApi.compterNonLus(c), 0),
-        }}
+        alertes={{ messagerie: totalNonLus }}
       />
     </div>
   )

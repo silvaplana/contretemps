@@ -94,11 +94,36 @@ export async function abonner(compteId) {
 // ne porte pas de conversation_id, pas de quoi cibler plus finement, et
 // rouvrir l'appli les rend de toute façon redondantes (déjà visibles
 // dans l'écran Messagerie).
+// ⚠️ Ne touche PAS au badge de l'icône (voir definirBadge ci-dessous) :
+// rouvrir l'appli ne veut pas dire "tout est lu" (ex. on rouvre sur un
+// autre onglet que Messagerie) — seul le VRAI total de non-lus doit
+// piloter ce badge, recalculé à chaque changement (voir App.jsx).
 export async function viderNotifications() {
   if (!pushSupporte()) return
   const registration = await navigator.serviceWorker.ready
   const notifications = await registration.getNotifications()
   notifications.forEach((n) => n.close())
+}
+
+// Badging API (voir MDN : Navigator.setAppBadge/clearAppBadge) — LE vrai
+// moyen d'afficher un NOMBRE sur l'icône de l'appli (écran d'accueil),
+// pas juste le point générique que certains lanceurs affichent par
+// défaut quand il y a des notifications actives (demande : "un chiffre,
+// pas un point"). Pas supporté partout (Firefox, Safari — voir
+// caniuse.com "badging-api") : `'setAppBadge' in navigator` avant tout
+// appel, sinon `TypeError`. Appelé à chaque fois que le total de
+// non-lus change (voir App.jsx), même appli ouverte au premier plan —
+// contrairement à viderNotifications ci-dessus, qui ne s'occupe que des
+// notifications système, pas de ce badge-là.
+export async function definirBadge(nombre) {
+  if (!('setAppBadge' in navigator)) return
+  try {
+    if (nombre > 0) await navigator.setAppBadge(nombre)
+    else await navigator.clearAppBadge()
+  } catch {
+    // Refusé par le navigateur (contexte non sécurisé, etc.) — pas
+    // grave, l'icône garde alors son comportement par défaut.
+  }
 }
 
 // Se désabonne : côté navigateur ET côté backend (sans le 2e, l'endpoint
