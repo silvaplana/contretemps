@@ -15,6 +15,9 @@ class CompteConnecte(BaseModel):
     nom: str
     prenom: str
     email: str | None
+    # Affiché dans Profil pour un admin (voir spec/SPEC.md §6.3 et §5.6) —
+    # None pour les autres rôles, qui n'en ont pas.
+    code_recuperation: str | None = None
 
     model_config = {"from_attributes": True}
 

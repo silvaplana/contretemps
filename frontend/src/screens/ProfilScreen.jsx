@@ -54,6 +54,11 @@ export default function ProfilScreen({ user, famille = [], onSwitchProfil, onLog
           {user.prenom} {user.nom}
         </h2>
         {user.email && <p className="muted">{user.email}</p>}
+        {/* Admin uniquement (voir §6.3) — "Code oublié ?" à l'écran de
+            connexion, voir LoginScreen.jsx: CodeOublieModal. */}
+        {user.type === 'admin' && user.codeRecuperation && (
+          <p className="muted">Code de récupération : {user.codeRecuperation}</p>
+        )}
         <span className="badge">{ROLE_LABEL[user.type]}</span>
       </div>
 
