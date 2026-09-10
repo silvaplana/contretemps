@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
@@ -18,6 +18,19 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 // WhatsApp pour l'instant (Baileys pas branché, voir spec/SPEC.md §6.9/§8).
 export default function ConversationThreadScreen({ conversation, onBack, setConversations, compteId }) {
   const [draft, setDraft] = useState('')
+  const messagesRef = useRef(null)
+
+  // Redescend en bas de la liste — à l'ouverture du fil (sinon on
+  // atterrit en haut, sur les plus vieux messages) ET à chaque nouveau
+  // message (envoyé par moi OU reçu en direct via SSE, voir App.jsx) —
+  // sans ça, un message qui arrive pendant que le fil est déjà ouvert
+  // peut s'afficher hors de l'écran, plus bas que ce qu'on voit
+  // (signalé). Toujours instantané (pas de défilement animé) : sur un
+  // gros fil, un scroll animé depuis le haut serait lent et brouillon.
+  useEffect(() => {
+    const el = messagesRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [conversation.id, conversation.messages.length])
 
   // Ouvrir ce fil = les avoir vus pour de vrai (façon WhatsApp, voir
   // api/messages.js: marquerLus) — distinct de "reçu" (marqué dès la
@@ -88,7 +101,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
         </span>
       </div>
 
-      <div className="conversation-thread__messages">
+      <div className="conversation-thread__messages" ref={messagesRef}>
         {conversation.messages.map((m) => (
           <div key={m.id} className={`message-row ${m.estMoi ? 'message-row--moi' : ''}`}>
             <div className="message-bubble">
