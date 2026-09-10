@@ -56,7 +56,10 @@ services:
         required: false
     volumes:
       - backend_data:/app/data
-    command: ["python", "-m", "app.relance_worker"]
+    # "-u" (non bufferisé) : sinon les print() de relance_worker.py
+    # n'apparaissent jamais dans `docker compose logs` (stdout mis en
+    # tampon par défaut dès qu'il n'est pas un vrai terminal, comme ici).
+    command: ["python", "-u", "-m", "app.relance_worker"]
 
   frontend:
     build:
