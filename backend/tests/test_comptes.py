@@ -28,3 +28,23 @@ def test_code_recuperation_admin(client, db_session):
     )
     reponse = client.get(f"/comptes/{admin.id}")
     assert reponse.json()["code_recuperation"] == "coocky"
+
+
+def test_modifier_email_et_code_recuperation(client, db_session):
+    """Profil admin (crayon, voir ProfilScreen.jsx)."""
+    ecole = Ecoles().create(db_session, nom="Contretemps", code_postal="83330")
+    admin = Comptes().create(
+        db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia",
+        email="jd@contretemps.fr", code_recuperation="coocky",
+    )
+
+    reponse = client.put(f"/comptes/{admin.id}", json={"code_recuperation": "Rex"})
+    assert reponse.status_code == 200
+    assert reponse.json()["code_recuperation"] == "Rex"
+    assert reponse.json()["email"] == "jd@contretemps.fr"  # pas fourni -> inchangé
+
+    reponse = client.put(f"/comptes/{admin.id}", json={"email": "julia@contretemps.fr"})
+    assert reponse.json()["email"] == "julia@contretemps.fr"
+    assert reponse.json()["code_recuperation"] == "Rex"  # pas fourni -> inchangé
+
+    assert client.put("/comptes/999", json={"email": "x@x.fr"}).status_code == 404

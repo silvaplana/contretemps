@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .comptes import Comptes
-from .schemas import CompteSortie
+from .schemas import CompteModification, CompteSortie
 
 
 class ComptesReceiver:
@@ -21,6 +21,7 @@ class ComptesReceiver:
     def _register_routes(self) -> None:
         self.app.get("/comptes", response_model=list[CompteSortie])(self.lister)
         self.app.get("/comptes/{compte_id}", response_model=CompteSortie)(self.obtenir)
+        self.app.put("/comptes/{compte_id}", response_model=CompteSortie)(self.modifier)
         self.app.get("/comptes/{compte_id}/famille", response_model=list[CompteSortie])(
             self.famille
         )
@@ -34,6 +35,14 @@ class ComptesReceiver:
 
     def obtenir(self, compte_id: int, db: Session = Depends(get_db)):
         compte = self.client.get(db, compte_id)
+        if compte is None:
+            raise HTTPException(status_code=404, detail="Compte introuvable")
+        return compte
+
+    def modifier(self, compte_id: int, donnees: CompteModification, db: Session = Depends(get_db)):
+        """Profil admin (voir ProfilScreen.jsx) : crayon à côté de
+        l'email/du code de récupération."""
+        compte = self.client.update(db, compte_id, **donnees.model_dump(exclude_unset=True))
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
         return compte

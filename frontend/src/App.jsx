@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import * as choregraphiesApi from './api/choregraphies.js'
+import * as comptesApi from './api/comptes.js'
 import * as conversationsApi from './api/conversations.js'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
@@ -44,6 +45,14 @@ function App() {
   // l'endpoint). Bug trouvé en testant le premier vrai upload vidéo.
   const [compteReel, setCompteReel] = useState(null)
   const activeUser = compteReel ?? (familleActuelle.find((p) => p.id === activeProfilId) ?? currentUser)
+
+  // Profil > crayon email/code de récupération (admin, voir
+  // ProfilScreen.jsx) — persiste côté backend puis met à jour l'affichage
+  // sans attendre une reconnexion.
+  async function mettreAJourActiveUser(patch) {
+    await comptesApi.modifier(activeUser.id, patch)
+    setCompteReel((u) => ({ ...u, ...patch }))
+  }
 
   function logout() {
     setCompteReel(null)
@@ -381,9 +390,9 @@ function App() {
           <ProfilScreen
             user={activeUser}
             famille={familleActuelle}
-            onSwitchProfil={switchProfil}
             onLogout={logout}
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
+            onUpdateUser={mettreAJourActiveUser}
           />
         )}
       </main>

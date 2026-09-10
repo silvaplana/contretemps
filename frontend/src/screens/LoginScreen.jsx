@@ -338,14 +338,14 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
         id="ecole-admin-prenom"
         value={adminPrenom}
         onChange={(e) => setAdminPrenom(e.target.value)}
-        placeholder="Ex. Julia"
+        placeholder="Ex. Claire"
       />
       <label htmlFor="ecole-admin-nom">Nom</label>
       <input
         id="ecole-admin-nom"
         value={adminNom}
         onChange={(e) => setAdminNom(e.target.value)}
-        placeholder="Ex. Dho"
+        placeholder="Ex. Martin"
       />
       <label htmlFor="ecole-admin-email">Email</label>
       <input
@@ -353,7 +353,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
         type="email"
         value={adminEmail}
         onChange={(e) => setAdminEmail(e.target.value)}
-        placeholder="Ex. julia.dho@ecole-test.fr"
+        placeholder="Ex. claire.martin@ecole-test.fr"
       />
 
       {/* Voir "Code oublié ?" à l'écran de connexion : demandé à la

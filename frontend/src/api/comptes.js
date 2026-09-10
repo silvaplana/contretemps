@@ -1,8 +1,9 @@
-// Domaine "comptes" (voir spec/SPEC.md §6.2/§6.3) — pour l'instant, ne
-// couvre que ce dont Admin > Conversations a besoin : la vraie liste des
-// comptes admin de l'école (voir AdminGroupes.jsx, "Ajouter un membre" >
-// Admin), à la place du "Direction" fictif d'avant. Pas encore de module
-// complet (pas d'écran de gestion multi-admin, voir spec §8).
+// Domaine "comptes" (voir spec/SPEC.md §6.2/§6.3) — pour l'instant, couvre
+// la vraie liste des comptes admin de l'école (Admin > Conversations,
+// "Ajouter un membre" > Admin, à la place du "Direction" fictif d'avant)
+// et la modification email/code_recuperation depuis Profil (crayon, voir
+// ProfilScreen.jsx). Pas encore de module complet (pas d'écran de gestion
+// multi-admin, voir spec §8).
 
 import { currentUser } from '../data/mockData.js'
 import { estModeDemo } from './mode.js'
@@ -23,4 +24,21 @@ async function listerAdminsReel(ecoleId) {
 
 export async function listerAdmins(ecoleId) {
   return estModeDemo() ? listerAdminsMaquette() : listerAdminsReel(ecoleId)
+}
+
+function versChampsBackend({ codeRecuperation, ...reste }) {
+  return { ...reste, ...(codeRecuperation !== undefined && { code_recuperation: codeRecuperation }) }
+}
+
+// Réel uniquement (comme auth.js: verifierRecuperation/repondreRecuperation)
+// — "Voir une maquette" est retiré du login, la maquette n'a plus de
+// vraie session admin à modifier.
+export async function modifier(compteId, patch) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${compteId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(versChampsBackend(patch)),
+  })
+  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  return reponse.json()
 }

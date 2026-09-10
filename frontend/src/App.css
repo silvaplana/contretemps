@@ -1592,6 +1592,23 @@
   margin-top: 8px;
 }
 
+/* Champ email/code de récupération éditable (Profil admin, voir
+   ProfilScreen.jsx: ChampAdminEditable) — crayon aligné à droite du
+   texte, même principe qu'un .settings-row mais sur une seule ligne de
+   texte plutôt qu'une carte. */
+.profil-champ {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.profil-champ--edition input {
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
 .section-label {
   font-size: 13px;
   text-transform: uppercase;
