@@ -7,6 +7,7 @@ import * as conversationsApi from './api/conversations.js'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
 import * as messagesApi from './api/messages.js'
+import * as notificationsApi from './api/notifications.js'
 import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import * as videosApi from './api/videos.js'
@@ -139,6 +140,25 @@ function App() {
         if (message.expediteur_id !== compteReel.id) messagesApi.marquerRecu(message.id, compteReel.id)
       },
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id])
+
+  // Ferme les notifications système déjà affichées (voir api/notifications.js :
+  // viderNotifications) dès qu'on (r)ouvre l'appli — signalé : sur Android,
+  // le badge sur l'icône (nombre de notifs PAS ENCORE balayées dans le
+  // tiroir) restait bloqué au dernier chiffre après avoir lu les messages
+  // DANS l'appli, puisque ça ne fermait jamais, en soi, ces notifs déjà
+  // affichées. Une fois au montage/login (`compteReel` posé) ET à chaque
+  // retour au premier plan (onglet remis au premier plan, ou PWA relancée
+  // depuis l'icône).
+  useEffect(() => {
+    if (!compteReel) return
+    notificationsApi.viderNotifications()
+    function surVisibilite() {
+      if (document.visibilityState === 'visible') notificationsApi.viderNotifications()
+    }
+    document.addEventListener('visibilitychange', surVisibilite)
+    return () => document.removeEventListener('visibilitychange', surVisibilite)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
 
@@ -457,7 +477,9 @@ function App() {
         active={activeTab}
         onChange={setActiveTab}
         role={activeUser.type}
-        alertes={{ messagerie: conversations.some((c) => messagesApi.compterNonLus(c) > 0) }}
+        alertes={{
+          messagerie: conversations.reduce((total, c) => total + messagesApi.compterNonLus(c), 0),
+        }}
       />
     </div>
   )

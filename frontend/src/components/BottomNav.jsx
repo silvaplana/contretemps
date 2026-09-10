@@ -5,10 +5,11 @@ import Icon from './Icon.jsx'
 // visibles dépendent du rôle du profil actif (Admin est réservé à l'Admin,
 // Présence à l'Admin/Professeur — voir data/nav.js).
 //
-// `alertes` : { [tabKey]: true } — un point rouge sur l'icône de cet
-// onglet (pour l'instant, seule la messagerie l'utilise : au moins un
-// message non lu, voir App.jsx). Objet plutôt qu'un simple booléen
-// "messagerie" pour rester générique si un jour un autre onglet en a besoin.
+// `alertes` : { [tabKey]: nombre } — badge numéroté sur l'icône de cet
+// onglet (pour l'instant, seule la messagerie l'utilise : total des
+// messages non lus toutes conversations confondues, voir App.jsx :
+// compterNonLus). Objet plutôt qu'un simple nombre "messagerie" pour
+// rester générique si un jour un autre onglet en a besoin.
 export default function BottomNav({ active, onChange, role, alertes = {} }) {
   const visibles = TABS.filter((tab) => tab.roles.includes(role))
   return (
@@ -22,7 +23,7 @@ export default function BottomNav({ active, onChange, role, alertes = {} }) {
         >
           <span className="bottom-nav__icon">
             <Icon name={tab.icon} size={20} />
-            {alertes[tab.key] && <span className="bottom-nav__point" aria-hidden="true" />}
+            {alertes[tab.key] > 0 && <span className="bottom-nav__badge">{alertes[tab.key]}</span>}
           </span>
           <span>{tab.label}</span>
         </button>

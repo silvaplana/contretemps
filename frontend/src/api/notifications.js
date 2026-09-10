@@ -83,6 +83,24 @@ export async function abonner(compteId) {
   })
 }
 
+// Ferme toutes les notifications système encore affichées pour cette
+// origine (voir public/sw.js : showNotification) — appelé dès qu'on
+// rouvre l'appli (voir App.jsx). Sans ça, le badge numéroté sur l'icône
+// Android (qui compte les notifs PAS ENCORE balayées dans le tiroir, pas
+// un vrai total géré par nous) reste bloqué au dernier chiffre : lire un
+// message DANS l'appli ne ferme jamais, en soi, la notification système
+// déjà affichée (signalé). On ferme tout plutôt qu'au cas par cas — le
+// contenu du push (title/body, voir notifications.py: envoyer_a_compte)
+// ne porte pas de conversation_id, pas de quoi cibler plus finement, et
+// rouvrir l'appli les rend de toute façon redondantes (déjà visibles
+// dans l'écran Messagerie).
+export async function viderNotifications() {
+  if (!pushSupporte()) return
+  const registration = await navigator.serviceWorker.ready
+  const notifications = await registration.getNotifications()
+  notifications.forEach((n) => n.close())
+}
+
 // Se désabonne : côté navigateur ET côté backend (sans le 2e, l'endpoint
 // resterait en base et le backend continuerait à essayer de lui envoyer
 // des notifications — échec silencieux, voir notifications.py, mais

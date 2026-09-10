@@ -284,9 +284,9 @@
   font-weight: 700;
 }
 
-/* Point rouge "il y a quelque chose à voir" (voir BottomNav.jsx : props
+/* Badge numéroté "il y a X choses à voir" (voir BottomNav.jsx : props
    `alertes` — pour l'instant, messages non lus). `position: relative` sur
-   le conteneur de l'icône, pas sur .bottom-nav__item entier : le point
+   le conteneur de l'icône, pas sur .bottom-nav__item entier : le badge
    doit rester collé à l'icône, pas glisser vers le coin du bouton entier
    (plus large, surtout une fois actif avec son fond coloré). */
 .bottom-nav__icon {
@@ -294,15 +294,23 @@
   display: inline-flex;
 }
 
-.bottom-nav__point {
+.bottom-nav__badge {
   position: absolute;
-  top: -2px;
-  right: -2px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  top: -6px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
   background: var(--rouge-surlignage);
+  color: #fff;
   border: 1.5px solid var(--surface);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ==========================================================================
