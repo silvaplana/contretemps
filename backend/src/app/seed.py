@@ -416,6 +416,9 @@ def run() -> None:
                 nom="Dho",
                 prenom="Julia",
                 email="j.dho@contretemps.fr",
+                # "Nom de votre 1er animal de compagnie" (voir "Code
+                # oublié ?" à l'écran de connexion, et NouvelleEcoleModal).
+                code_recuperation="coocky",
             )
             print(f"Admin 'Julia Dho' créée (id={admin.id}).")
 

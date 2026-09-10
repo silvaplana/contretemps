@@ -6,14 +6,16 @@ import * as auth from '../api/auth.js'
 import { currentUser } from '../data/mockData.js'
 
 // Écran de connexion (voir spec/SPEC.md §2.2 et §2.3).
-// "Se connecter" passe par api/auth.js (mono-école pour l'instant côté
-// maquette, le multi-écoles est pour le backend, voir §2.1) ; "Voir une
-// maquette" est un raccourci séparé qui ignore le mode courant et entre
-// TOUJOURS dans la maquette en dur (voir api/mode.js et api/README.md).
+// "Se connecter" passe par api/auth.js. Le bouton "Voir une maquette" (qui
+// entrait TOUJOURS dans la maquette en dur, voir api/mode.js) a été
+// retiré — devenu inutile maintenant que le mode réel fonctionne (demande) ;
+// api/auth.js:voirMaquette() et le reste de l'infra maquette/réel existent
+// toujours (retrait progressif prévu, voir spec/SPEC.md §8).
 export default function LoginScreen({ onLogin }) {
   const [identifiant, setIdentifiant] = useState(`${currentUser.prenom} ${currentUser.nom}`)
   const [code, setCode] = useState('ADMIN')
   const [showNouvelleEcole, setShowNouvelleEcole] = useState(false)
+  const [showCodeOublie, setShowCodeOublie] = useState(false)
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
   const [codeVisible, setCodeVisible] = useState(false)
@@ -30,10 +32,6 @@ export default function LoginScreen({ onLogin }) {
     } finally {
       setEnCours(false)
     }
-  }
-
-  async function voirMaquette() {
-    onLogin(await auth.voirMaquette())
   }
 
   return (
@@ -77,10 +75,7 @@ export default function LoginScreen({ onLogin }) {
         <button type="submit" className="btn btn--primary btn--block" disabled={enCours}>
           Se connecter
         </button>
-        <button type="button" className="btn btn--link" onClick={voirMaquette}>
-          Voir une maquette
-        </button>
-        <button type="button" className="btn btn--link">
+        <button type="button" className="btn btn--link" onClick={() => setShowCodeOublie(true)}>
           Code oublié ?
         </button>
         <button
@@ -101,7 +96,116 @@ export default function LoginScreen({ onLogin }) {
           }}
         />
       )}
+
+      {showCodeOublie && (
+        <CodeOublieModal
+          identifiantInitial={identifiant}
+          onClose={() => setShowCodeOublie(false)}
+          onLogin={(resultat) => {
+            setShowCodeOublie(false)
+            onLogin(resultat)
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+// Modale "Code oublié ?" (voir spec §2.2/§2.3) : 2 étapes.
+// 1) identifiant -> le backend dit qui c'est (voir auth.js:
+//    verifierRecuperation) : admin -> la question suit ; prof/élève ->
+//    juste le contact de l'admin à qui demander directement, rien de
+//    plus (pas de libre-service pour ces 2 rôles).
+// 2) admin seulement : bonne réponse -> connecté direct (comme "Se
+//    connecter"), mauvaise réponse -> message d'erreur.
+function CodeOublieModal({ identifiantInitial, onClose, onLogin }) {
+  const [identifiant, setIdentifiant] = useState(identifiantInitial)
+  const [resultat, setResultat] = useState(null) // réponse de verifierRecuperation
+  const [reponseQuestion, setReponseQuestion] = useState('')
+  const [erreur, setErreur] = useState('')
+  const [enCours, setEnCours] = useState(false)
+
+  async function verifier(e) {
+    e.preventDefault()
+    setErreur('')
+    setEnCours(true)
+    try {
+      setResultat(await auth.verifierRecuperation(identifiant))
+    } catch (err) {
+      setErreur(err.message || 'Identifiant introuvable')
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  async function repondre(e) {
+    e.preventDefault()
+    setErreur('')
+    setEnCours(true)
+    try {
+      onLogin(await auth.repondreRecuperation(identifiant, reponseQuestion))
+    } catch (err) {
+      setErreur(err.message || 'Réponse incorrecte')
+      setEnCours(false)
+    }
+  }
+
+  // Étape 2a : admin -> la question de récupération.
+  if (resultat?.role === 'admin') {
+    return (
+      <Modal title="Code oublié" onClose={onClose}>
+        <form onSubmit={repondre}>
+          <label htmlFor="recup-reponse">Indiquez le nom de votre 1er animal de compagnie</label>
+          <input
+            id="recup-reponse"
+            value={reponseQuestion}
+            onChange={(e) => setReponseQuestion(e.target.value)}
+            autoFocus
+          />
+          {erreur && <p className="login-screen__erreur">{erreur}</p>}
+          <button type="submit" className="btn btn--primary btn--block" disabled={enCours || !reponseQuestion}>
+            Valider
+          </button>
+        </form>
+      </Modal>
+    )
+  }
+
+  // Étape 2b : prof/élève -> pas de libre-service, juste le contact.
+  if (resultat) {
+    return (
+      <Modal title="Code oublié" onClose={onClose}>
+        <p>
+          Contactez l’administrateur <strong>{resultat.admin_prenom} {resultat.admin_nom}</strong> de
+          l’école <strong>{resultat.ecole_nom}</strong>
+          {resultat.admin_email ? <> par mail (<strong>{resultat.admin_email}</strong>)</> : null} pour
+          qu’il vous indique votre code.
+        </p>
+        <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
+          Fermer
+        </button>
+      </Modal>
+    )
+  }
+
+  // Étape 1 : identifiant.
+  return (
+    <Modal title="Code oublié" onClose={onClose}>
+      <form onSubmit={verifier}>
+        <label htmlFor="recup-identifiant">Nom Prénom ou Email</label>
+        <input
+          id="recup-identifiant"
+          value={identifiant}
+          onChange={(e) => setIdentifiant(e.target.value)}
+          placeholder="Julia Dho ou j.dho@contretemps.fr"
+          autoFocus
+        />
+        {erreur && <p className="login-screen__erreur">{erreur}</p>}
+        <button type="submit" className="btn btn--primary btn--block" disabled={enCours || !identifiant}>
+          Continuer
+        </button>
+      </form>
+    </Modal>
   )
 }
 
@@ -131,6 +235,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
   const [adminNom, setAdminNom] = useState('')
   const [adminPrenom, setAdminPrenom] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
+  const [adminCodeRecuperation, setAdminCodeRecuperation] = useState('')
   const [creee, setCreee] = useState(false)
 
   // Les 3 codes suivent le nom de l'école tant que l'utilisateur ne les a
@@ -145,7 +250,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nomEcole])
 
-  const valide = nomEcole && codePostal && adminNom && adminPrenom && adminEmail
+  const valide = nomEcole && codePostal && adminNom && adminPrenom && adminEmail && adminCodeRecuperation
 
   if (creee) {
     return (
@@ -257,6 +362,18 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
         type="email"
         value={adminEmail}
         onChange={(e) => setAdminEmail(e.target.value)}
+      />
+
+      {/* Voir "Code oublié ?" à l'écran de connexion (pas encore branché,
+          juste le champ pour l'instant) : demandé à la création d'un
+          admin, comme une question de sécurité classique. */}
+      <label htmlFor="ecole-admin-code-recuperation">
+        Code de récupération : nom de votre 1er animal de compagnie
+      </label>
+      <input
+        id="ecole-admin-code-recuperation"
+        value={adminCodeRecuperation}
+        onChange={(e) => setAdminCodeRecuperation(e.target.value)}
       />
     </Modal>
   )

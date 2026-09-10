@@ -88,3 +88,41 @@ export async function voirMaquette() {
   activerModeDemo()
   return loginMaquette()
 }
+
+// --- "Code oublié ?" (voir spec §2.2/§2.3 et LoginScreen.jsx :
+// CodeOublieModal) — réel uniquement : "Se connecter" et "Code oublié ?"
+// parlent tous les deux toujours au vrai backend, il n'y a plus de bouton
+// "Voir une maquette" pour entrer dans la maquette depuis cet écran.
+
+// 1ère étape : identifie le rôle du compte visé (voir
+// backend/src/auth/receiver.py: verifier_recuperation) — admin -> la
+// question de récupération suit (voir repondreRecuperation) ; prof/élève
+// -> juste le contact de l'admin à qui demander directement.
+export async function verifierRecuperation(identifiant) {
+  const ecole = await resoudreEcoleReelle()
+  const reponse = await fetch(`${BASE_URL}/auth/recuperation/verifier`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ecole_id: ecole.id, identifiant }),
+  })
+  if (reponse.status === 404) throw new Error('Identifiant introuvable')
+  if (!reponse.ok) throw new Error('Impossible de vérifier cet identifiant')
+  return reponse.json()
+}
+
+// 2e étape, admin seulement : bonne réponse -> connecté direct, même
+// forme que login().
+export async function repondreRecuperation(identifiant, reponseTexte) {
+  const ecole = await resoudreEcoleReelle()
+  const reponse = await fetch(`${BASE_URL}/auth/recuperation/repondre`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ecole_id: ecole.id, identifiant, reponse: reponseTexte }),
+  })
+  if (reponse.status === 401) throw new Error('Réponse incorrecte')
+  if (reponse.status === 404) throw new Error('Identifiant introuvable')
+  if (!reponse.ok) throw new Error('Impossible de vérifier la réponse')
+  const compte = await reponse.json()
+  activerModeReel()
+  return { compte: versActiveUserEcran(compte), ecole: versEcoleEcran(ecole), modeDemo: false }
+}

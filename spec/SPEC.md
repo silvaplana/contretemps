@@ -48,6 +48,12 @@ parent Admin + ses deux enfants Élèves).
 - Session persistante (web et mobile) sans reconnexion systématique — token stocké en local
 - Plusieurs appareils peuvent être connectés simultanément avec le même compte
 - Déconnexion disponible depuis l'onglet **Profil**
+- **"Code oublié ?"** : identifiant (nom+prénom ou email) saisi → si c'est un **admin**,
+  question de récupération "Indiquez le nom de votre 1er animal de compagnie"
+  (`code_recuperation`, voir §6.3) — bonne réponse = connecté directement, sans redemander le
+  code d'accès ; si c'est un **professeur/élève**, pas de libre-service : affiche le contact
+  (nom, prénom, email) du premier administrateur de l'école, à qui demander son code
+  directement.
 
 **✅ Tranché — règle de sécurité du switch de profil famille** : le code d'accès du rôle
 cible est redemandé uniquement en cas de **montée en privilège**, selon la hiérarchie
@@ -70,6 +76,8 @@ Sur la page de connexion, un bouton **"Nouvelle école ?"** ouvre un formulaire 
   `ADMIN_ECOLE_ANNEE` / `PROF_ECOLE_ANNEE` / `ELEVE_ECOLE_ANNEE` (ÉCOLE = nom de l'école en
   majuscules, ANNÉE = année en cours), éditables avant validation
 - Nom, prénom et email du premier administrateur
+- Code de récupération de cet administrateur — "nom de votre 1er animal de compagnie" (voir
+  §2.2 : "Code oublié ?")
 
 La validation du formulaire crée l'école **et** le compte du premier administrateur en une
 seule opération. Cet administrateur pourra ensuite modifier les 3 codes d'accès de l'école
@@ -329,9 +337,16 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | email | texte | Opt. |
 | telephone | texte | Opt. |
 | hashed_password_ou_code | texte | technique |
+| code_recuperation | texte | Opt. (voir *Admin* ci-dessous) |
 | created_at | datetime | Obl. (auto) |
 
-*Admin* : aucun champ supplémentaire pour l'instant — pas besoin de table séparée.
+*Admin* : un seul champ supplémentaire — `code_recuperation`, réponse à "nom
+de votre 1er animal de compagnie", demandée à la création d'un admin (voir
+NouvelleEcoleModal, écran de connexion §2.2/§2.3) pour le bouton "Code
+oublié ?" (pas encore branché — le champ existe, le flux de récupération
+lui-même reste à faire). Champ commun avec Professeur/Élève (comme le
+reste de cette table) même s'il n'a de sens que pour un admin — pas de
+table séparée pour un unique champ.
 *Professeur* : aucun champ supplémentaire propre pour l'instant (ses cours sont une relation, voir §6.5 — pas un champ stocké ici).
 
 ### 6.4 Profil Élève (champs spécifiques)
@@ -676,3 +691,14 @@ encore branché).
   automatique à sa création" (§6.9, ✅ confirmé) n'est pour l'instant câblé que dans le seed de
   démo (`app/seed.py`), pas dans `CoursService.create()` lui-même — une école réelle qui crée
   un cours n'obtient pas encore sa conversation automatiquement.
+- **"Code oublié ?"** (écran de connexion) : **fait**. Identifiant → si admin, question de
+  récupération (`code_recuperation`, §6.3) et connexion directe si la réponse est bonne ; si
+  professeur/élève, pas de libre-service — juste le contact du (premier) admin de l'école à
+  qui demander directement. *Reste ouvert* : pas d'écran pour qu'un admin change son
+  `code_recuperation` après coup (seulement fixé à la création, voir NouvelleEcoleModal) — même
+  limitation que l'absence de gestion multi-admin (§6.3).
+- **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
+  retiré de l'écran de connexion (devenu inutile maintenant que le mode réel fonctionne) — mais
+  `api/mode.js` et les branches maquette de chaque `api/<domaine>.js` existent toujours.
+  Objectif à terme : les supprimer entièrement une fois tous les domaines validés en réel
+  (il ne reste que l'écran Messagerie, voir plus haut).

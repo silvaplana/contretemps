@@ -64,6 +64,7 @@ class Comptes:
         prenom: str,
         email: str | None = None,
         telephone: str | None = None,
+        code_recuperation: str | None = None,
     ) -> Compte:
         famille = self.get_or_create_famille(db, ecole_id, email)
         compte = Compte(
@@ -74,6 +75,7 @@ class Comptes:
             prenom=prenom,
             email=email,
             telephone=telephone,
+            code_recuperation=code_recuperation,
         )
         db.add(compte)
         db.commit()

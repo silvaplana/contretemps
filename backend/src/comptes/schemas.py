@@ -10,5 +10,6 @@ class CompteSortie(BaseModel):
     prenom: str
     email: str | None
     telephone: str | None
+    code_recuperation: str | None = None
 
     model_config = {"from_attributes": True}

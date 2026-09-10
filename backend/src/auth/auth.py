@@ -55,6 +55,44 @@ class Auth:
                 return compte
         return None
 
+    def resoudre_identifiant(self, db: Session, ecole_id: int, identifiant: str) -> Compte | None:
+        """Même résolution nom+prénom/email que `connecter`, mais sans
+        code à vérifier — utilisé par "Code oublié ?" (écran de
+        connexion). None si rien trouvé, ou si ambigu (plusieurs comptes
+        partagent exactement le même nom+prénom, voir §6.2 : cas très
+        rare, pas de moyen de désambiguïser sans code)."""
+        ecole = self.ecoles.get(db, ecole_id)
+        if ecole is None:
+            return None
+        if "@" in identifiant:
+            return self.comptes.trouver_par_email(db, ecole_id, identifiant)
+        if " " in identifiant:
+            prenom, _, nom = identifiant.rpartition(" ")
+            candidats = self.comptes.trouver_par_nom_prenom(db, ecole_id, nom, prenom)
+            return candidats[0] if len(candidats) == 1 else None
+        return None
+
+    def premier_admin(self, db: Session, ecole_id: int) -> Compte | None:
+        """Pas de gestion multi-admin pour l'instant (voir spec/SPEC.md
+        §8) : LE contact affiché aux profs/élèves qui n'ont pas de
+        récupération en libre-service (voir "Code oublié ?")."""
+        admins = self.comptes.list_par_role(db, ecole_id, "admin")
+        return admins[0] if admins else None
+
+    def verifier_reponse_recuperation(self, db: Session, compte_id: int, reponse: str) -> Compte | None:
+        """"Code oublié ?" — réservé aux admins (voir §6.3 :
+        `code_recuperation`, demandé à la création). Comparaison
+        insensible à la casse/aux espaces, comme un identifiant plutôt
+        qu'un mot de passe strict — cohérent avec le reste de l'appli
+        (codes d'accès non plus sensibles à la casse dans les faits)."""
+        compte = self.comptes.get(db, compte_id)
+        if compte is None or compte.role != "admin":
+            return None
+        attendu = (compte.code_recuperation or "").strip().lower()
+        if not attendu or reponse.strip().lower() != attendu:
+            return None
+        return compte
+
     def demander_code_pour_bascule(self, db: Session, depuis_compte_id: int, vers_compte_id: int) -> bool:
         """True si le code du rôle visé doit être redemandé (voir §2.2)."""
         depuis = self.comptes.get(db, depuis_compte_id)
