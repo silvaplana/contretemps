@@ -1614,6 +1614,15 @@
   padding: 4px 4px 4px 8px;
 }
 
+/* Remplace le contour de focus par défaut du navigateur sur la textarea
+   (voir juste ci-dessous, outline: none) : sans bordure propre, ce
+   contour flottait tout seul, dessinant un encadré noir disgracieux
+   (signalé) — la mise en valeur au focus se fait sur le bandeau ENTIER
+   à la place, plus cohérent visuellement. */
+.conversation-thread__pill:focus-within {
+  border-color: var(--accent);
+}
+
 .conversation-thread__pill textarea {
   flex: 1;
   /* min-width: 0 (pas le défaut du navigateur, ~170px pour un <input>) :
@@ -1623,6 +1632,7 @@
   min-width: 0;
   padding: 8px 4px;
   border: none;
+  outline: none;
   background: none;
   /* Grandit avec le contenu (voir ajusterHauteur dans
      ConversationThreadScreen.jsx) jusqu'à ce plafond, puis défile —
