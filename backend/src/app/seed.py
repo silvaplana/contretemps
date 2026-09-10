@@ -41,16 +41,21 @@ from videos import (
 )
 
 # Source profs/cours : page publique dansecontretemps.fr/professeurs-danse-beausset
-# (pas d'email public pour les profs -> laissé vide, à compléter par l'admin).
-#
-# Exception : Marie-Laure Pesenti a un email fictif (voir FAMILLES_DEMO
-# ci-dessous) pour démontrer le sélecteur de profil famille avec un
-# compte non-admin — même principe que mockData.js (professeurs, p1).
+# (pas d'email public -> convention interne, demande) : <1re lettre du
+# prénom><1re lettre du nom>@contretemps.fr, en minuscules — même
+# principe que jd@contretemps.fr pour l'admin (voir plus bas).
+def _email_prof(prenom: str, nom: str) -> str:
+    return f"{prenom[0]}{nom[0]}@contretemps.fr".lower()
+
+
+# Marie-Laure Pesenti est "mère" d'une élève inscrite au cours Eveil (voir
+# FAMILLES_DEMO ci-dessous, et _creer_familles_demo) : son email doit
+# rester identique aux 2 endroits pour le regroupement familial (§6.2).
 PROFS_CONTRETEMPS = [
-    {"nom": "Pesenti", "prenom": "Marie-Laure", "email": "marie-laure.pesenti@contretemps.fr"},
-    {"nom": "Jullien", "prenom": "Pascale"},
-    {"nom": "Thomas", "prenom": "Marysa"},
-    {"nom": "Revelles", "prenom": "Stellina"},
+    {"nom": "Pesenti", "prenom": "Marie-Laure", "email": _email_prof("Marie-Laure", "Pesenti")},
+    {"nom": "Jullien", "prenom": "Pascale", "email": _email_prof("Pascale", "Jullien")},
+    {"nom": "Thomas", "prenom": "Marysa", "email": _email_prof("Marysa", "Thomas")},
+    {"nom": "Revelles", "prenom": "Stellina", "email": _email_prof("Stellina", "Revelles")},
 ]
 
 # Démontre le sélecteur de profil famille (§2.1/§6.2 : regroupement par
@@ -74,7 +79,7 @@ FAMILLES_DEMO = [
     {
         "nom": "Pesenti",
         "parent_prenom": "Marie-Laure",
-        "parent_email": "marie-laure.pesenti@contretemps.fr",
+        "parent_email": _email_prof("Marie-Laure", "Pesenti"),
         "parent_telephone": "06 98 76 54 32",
         "adresse": "14 chemin des Oliviers, Le Beausset",
         "enfants": [
