@@ -5,6 +5,9 @@ decoupage de test-python) sur une seule app FastAPI / un seul service HTTP.
 N'appartient a aucun des modules qu'il monte.
 """
 
+import asyncio
+from contextlib import asynccontextmanager
+
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI
@@ -18,14 +21,27 @@ from cours import CoursReceiver, CoursService
 from db import Base, engine
 from ecoles import Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
-from messagerie import Conversations, MessagerieReceiver, Messages
+from messagerie import Conversations, Evenements, MessagerieReceiver, Messages
 from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
 from videos import DOSSIER_VIDEOS_LIVE, Videos, VideosReceiver
 
 load_dotenv()  # charge backend/.env si present
 
-app = FastAPI(title="Contretemps API")
+# Flux SSE de la messagerie (voir messagerie/evenements.py) - instancie
+# ici, avant l'app, pour que le "lifespan" ci-dessous puisse le capturer
+# a son demarrage (il a besoin de la VRAIE boucle asyncio qui sert les
+# requetes, connue seulement une fois uvicorn effectivement lance).
+evenements_client = Evenements()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    evenements_client.demarrer(asyncio.get_running_loop())
+    yield
+
+
+app = FastAPI(title="Contretemps API", lifespan=lifespan)
 app.add_middleware(
     # Autorise le frontend React (Vite, servi sur un autre port en dev) a
     # appeler l'API. A restreindre a une origine precise avant mise en prod.
@@ -96,11 +112,15 @@ DOSSIER_VIDEOS_LIVE.mkdir(parents=True, exist_ok=True)
 app.mount("/media/videos", StaticFiles(directory=str(DOSSIER_VIDEOS_LIVE)), name="videos")
 
 # Monte les routes de messagerie (/conversations, /dm, /messages...) - depend
-# de comptes et cours (resolution des membres "cours").
+# de comptes et cours (resolution des membres "cours"). evenements_client
+# (flux SSE) instancie plus haut, voir le "lifespan" au-dessus.
 conversations_client = Conversations(comptes=comptes_client, cours=cours_client)
 messages_client = Messages(conversations=conversations_client)
 messagerie_receiver = MessagerieReceiver(
-    conversations=conversations_client, messages=messages_client, app=app
+    conversations=conversations_client,
+    messages=messages_client,
+    evenements=evenements_client,
+    app=app,
 )
 
 

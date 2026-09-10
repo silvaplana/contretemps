@@ -21,13 +21,20 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
 
   // Ouvrir ce fil = les avoir vus pour de vrai (façon WhatsApp, voir
   // api/messages.js: marquerLus) — distinct de "reçu" (marqué dès la
-  // liste, voir api/messages.js: listerAvecMessages). Ne met pas à jour
-  // l'affichage local des coches immédiatement (pas grave : ce sont MES
-  // messages à moi qui les afficheraient, pas les siens/leurs).
+  // liste, voir api/messages.js: listerAvecMessages). Redéclenché aussi
+  // quand `messages.length` grandit (pas seulement à l'ouverture du
+  // fil) : un message qui arrive EN DIRECT (SSE, voir App.jsx) pendant
+  // que ce fil est déjà affiché doit lui aussi passer "lu" tout de suite
+  // — sans ça, il resterait affiché "reçu" jusqu'à la prochaine ouverture
+  // du fil. marquerLus est idempotent (ré-appeler sur un message déjà
+  // "lu" ne fait rien de mal), donc pas de souci à le refaire à chaque fois.
+  // Ne met pas à jour l'affichage local des coches immédiatement (pas
+  // grave : ce sont MES messages à moi qui les afficheraient, pas les
+  // siens/leurs).
   useEffect(() => {
     messagesApi.marquerLus(conversation.messages, compteId)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [conversation.id])
+  }, [conversation.id, conversation.messages.length])
 
   // Choix à l'envoi : par la messagerie (par défaut), par mail, ou par
   // WhatsApp — mail et WhatsApp sortent de l'appli, donc demandent
@@ -49,8 +56,16 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
     // 'mail' (nom local du bouton) -> 'email' (nom du canal côté backend).
     const canalBackend = canal === 'mail' ? 'email' : canal
     const message = await messagesApi.envoyer(conversation.id, compteId, conversation.membres, contenu, canalBackend)
+    // Déjà là (le flux SSE de App.jsx a pu livrer ce même message avant
+    // même que cette réponse de POST ne revienne — l'événement est
+    // publié côté backend avant que la réponse HTTP ne soit renvoyée,
+    // voir messagerie/receiver.py: envoyer_message) : pas de doublon.
     setConversations((list) =>
-      list.map((c) => (c.id === conversation.id ? { ...c, messages: [...c.messages, message] } : c)),
+      list.map((c) => {
+        if (c.id !== conversation.id) return c
+        if (c.messages.some((m) => m.id === message.id)) return c
+        return { ...c, messages: [...c.messages, message] }
+      }),
     )
   }
 

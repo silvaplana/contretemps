@@ -106,14 +106,43 @@ function App() {
   // appartenance (backend: lister_du_compte). Redéclenché quand `cours`
   // arrive (pas encore prêt au tout premier rendu post-connexion) pour
   // que le nom des conversations automatiques de cours soit correct dès
-  // que possible (voir api/messages.js : nomAffiche). Portée
-  // volontairement réduite (demande) : pas encore le routage/la
-  // réception en temps réel, voir api/messages.js.
+  // que possible (voir api/messages.js : nomAffiche).
   useEffect(() => {
     if (compteReel) messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then(setConversations)
     else setConversations([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id, ecole.id, cours])
+
+  // Réception en direct (voir api/messages.js : ouvrirFluxEvenements) :
+  // UN SEUL flux SSE ouvert dès la connexion, fermé à la déconnexion —
+  // pas un flux par conversation ouverte (voir le commentaire de
+  // ouvrirFluxEvenements). Un message qui arrive pour une conversation
+  // pas encore connue localement (ex. tout juste ajoutée à un groupe) est
+  // ignoré ici : elle apparaîtra au prochain rechargement complet (rare).
+  useEffect(() => {
+    if (!compteReel) return
+    return messagesApi.ouvrirFluxEvenements(compteReel.id, {
+      onMessage: ({ conversation_id, message }) => {
+        setConversations((liste) => {
+          const conv = liste.find((c) => c.id === conversation_id)
+          if (!conv) return liste
+          // Déjà présent (mon propre envoi, déjà ajouté localement par
+          // ConversationThreadScreen.jsx avant même que ce flux ne le
+          // confirme) : rien à faire, pas de doublon.
+          if (conv.messages.some((m) => m.id === message.id)) return liste
+          const nouveauMessage = messagesApi.versMessageEcran(message, compteReel.id, conv.membres)
+          return liste.map((c) =>
+            c.id === conversation_id ? { ...c, messages: [...c.messages, nouveauMessage] } : c,
+          )
+        })
+        // "Reçu" dès que mon client l'a effectivement reçu (même
+        // convention que listerAvecMessages) — jamais pour mon propre
+        // message (pas de delivery à moi-même, voir messages.py: envoyer).
+        if (message.expediteur_id !== compteReel.id) messagesApi.marquerRecu(message.id, compteReel.id)
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id])
 
   const [selectedCoursId, setSelectedCoursId] = useState(null)
   const selectedCours = cours.find((c) => c.id === selectedCoursId) ?? null

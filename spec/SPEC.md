@@ -689,10 +689,14 @@ encore branché).
   pas pu être testée (pas de téléphone dédié disponible) — repris plus tard. Écran Messagerie
   (fil de conversation, §5.5) : **fait** — migré sur le vrai backend (conversations/messages
   filtrés par appartenance réelle, statuts reçu/lu, relance mail automatique après délai, voir
-  `app/relance_worker.py`). *Reste ouvert* : réception en temps réel côté destinataire — pour
-  l'instant, un message n'apparaît chez B qu'au prochain chargement de l'écran (pas de
-  polling/WebSocket/SSE, voir discussion à trancher : polling simple recommandé pour ce
-  projet).
+  `app/relance_worker.py`) ET réception en temps réel via SSE (Server-Sent Events) : **fait** —
+  un seul flux par compte connecté (`GET /comptes/{id}/messagerie/evenements`, voir
+  `messagerie/evenements.py`), ouvert dès le login (voir App.jsx), pas un flux par conversation
+  ouverte (sinon la LISTE des conversations elle-même ne se mettrait à jour que pour le fil
+  actuellement affiché). Pub/sub en mémoire (pas de Redis, un seul worker uvicorn) — à revoir
+  si jamais plusieurs process backend tournent un jour. *Reste ouvert* : rien ne prévient un
+  appareil dont l'appli/l'onglet est fermé (aucun mécanisme, SSE compris, n'y survit) — ça
+  demanderait de vraies notifications push (Web Push + service worker), hors scope ici.
 - **Écart connu spec/implémentation** : "chaque cours a sa propre conversation de groupe
   automatique à sa création" (§6.9, ✅ confirmé) n'est pour l'instant câblé que dans le seed de
   démo (`app/seed.py`), pas dans `CoursService.create()` lui-même — une école réelle qui crée

@@ -3,12 +3,17 @@
 aucun calcul métier ici à part fusionner les sorties JSON.
 """
 
+import asyncio
+import json
+
 from fastapi import Depends, FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from db import get_db
 
 from .conversations import Conversations
+from .evenements import Evenements
 from .messages import Messages
 from .schemas import (
     ConversationCreation,
@@ -21,11 +26,25 @@ from .schemas import (
     StatutModification,
 )
 
+# Entre deux vrais événements, un commentaire SSE (ligne commençant par
+# ":", ignorée par EventSource côté navigateur) toutes les 20s — sans ça,
+# une connexion "silencieuse" trop longtemps peut être coupée par un
+# proxy intermédiaire (Caddy, voir frontend/Caddyfile) qui la croit mort,
+# et le navigateur ne détecterait la coupure qu'au prochain vrai essai.
+DELAI_PING_SECONDES = 20
+
 
 class MessagerieReceiver:
-    def __init__(self, conversations: Conversations, messages: Messages, app: FastAPI) -> None:
+    def __init__(
+        self,
+        conversations: Conversations,
+        messages: Messages,
+        evenements: Evenements,
+        app: FastAPI,
+    ) -> None:
         self.conversations = conversations
         self.messages = messages
+        self.evenements = evenements
         self.app = app
         self._register_routes()
 
@@ -73,6 +92,11 @@ class MessagerieReceiver:
         self.app.post(
             "/conversations/{conversation_id}/whatsapp", response_model=ConversationSortie
         )(self.creer_groupe_whatsapp)
+
+        # SSE (§5.5) : un flux par compte connecté, ouvert dès le login
+        # (voir App.jsx) — pas de response_model (StreamingResponse, pas
+        # du JSON classique).
+        self.app.get("/comptes/{compte_id}/messagerie/evenements")(self.flux_evenements)
 
     def _sortie_conversation(self, db: Session, conversation) -> dict:
         return {
@@ -165,7 +189,23 @@ class MessagerieReceiver:
             donnees.contenu,
             donnees.canal,
         )
-        return self._sortie_message(db, message)
+        sortie = self._sortie_message(db, message)
+        self._publier_message(db, conversation_id, sortie)
+        return sortie
+
+    def _publier_message(self, db: Session, conversation_id: int, sortie: dict) -> None:
+        """Pousse le nouveau message sur le flux SSE de chaque membre de
+        la conversation (voir evenements.py) — y compris l'expéditeur
+        (pour qu'un autre onglet/appareil du même compte se resynchronise
+        aussi), pas seulement les autres destinataires."""
+        # `mode="json"` : sérialise created_at (datetime) en texte —
+        # sinon json.dumps plus bas plante (TypeError: not serializable).
+        evenement_message = MessageSortie.model_validate(sortie).model_dump(mode="json")
+        for membre in self.conversations.membres_resolus(db, conversation_id):
+            self.evenements.publier(
+                membre.id,
+                {"type": "message", "conversation_id": conversation_id, "message": evenement_message},
+            )
 
     def modifier_statut(
         self,
@@ -195,3 +235,29 @@ class MessagerieReceiver:
         if conversation is None:
             raise HTTPException(status_code=404, detail="Conversation introuvable")
         return self._sortie_conversation(db, conversation)
+
+    def flux_evenements(self, compte_id: int) -> StreamingResponse:
+        return StreamingResponse(
+            self._generateur_evenements(compte_id), media_type="text/event-stream"
+        )
+
+    async def _generateur_evenements(self, compte_id: int):
+        queue = self.evenements.abonner(compte_id)
+        try:
+            # Un premier commentaire tout de suite : certains proxies/
+            # navigateurs attendent le premier octet avant de considérer
+            # la connexion "ouverte" (voir EventSource : onopen).
+            yield ": connecte\n\n"
+            while True:
+                try:
+                    evenement = await asyncio.wait_for(queue.get(), timeout=DELAI_PING_SECONDES)
+                except asyncio.TimeoutError:
+                    yield ": ping\n\n"
+                    continue
+                yield f"data: {json.dumps(evenement)}\n\n"
+        finally:
+            # Atteint quand le client ferme la connexion (l'ASGI annule
+            # ce générateur, voir Starlette : StreamingResponse) — sans
+            # ce désabonnement, `Evenements` garderait une queue morte
+            # pour toujours (fuite mémoire lente à chaque reconnexion).
+            self.evenements.desabonner(compte_id, queue)

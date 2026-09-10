@@ -4,8 +4,11 @@
 //
 // Portée : liste des conversations et leurs messages réels (en base,
 // filtrés par appartenance — c'était le bug signalé : Nora Pesenti voyait
-// "Equipe pédagogique"), envoi persisté, ET désormais le marquage
-// reçu/lu (voir marquerRecu/marquerLu ci-dessous, et ConversationThreadScreen.jsx).
+// "Equipe pédagogique"), envoi persisté, le marquage reçu/lu (voir
+// marquerRecu/marquerLu ci-dessous, et ConversationThreadScreen.jsx) ET
+// désormais la réception EN DIRECT via SSE (voir ouvrirFluxEvenements,
+// appelé depuis App.jsx) — un nouveau message apparaît sans recharger
+// l'écran.
 // La relance automatique par mail après délai tourne côté backend (voir
 // app/relance_worker.py, processus séparé) — pas appelée depuis ici.
 //
@@ -49,7 +52,10 @@ function statutAgrege(deliveries) {
   return 'envoye'
 }
 
-function versMessageEcran(message, compteId, membres) {
+// Exportée : réutilisée par ouvrirFluxEvenements ci-dessous pour adapter
+// un message reçu en direct par SSE, exactement comme un message chargé
+// via listerAvecMessages/envoyer.
+export function versMessageEcran(message, compteId, membres) {
   const auteur = membres.find((m) => m.id === message.expediteur_id)
   return {
     id: message.id,
@@ -137,4 +143,20 @@ export async function envoyer(conversationId, compteId, membres, contenu, canal 
     body: JSON.stringify({ expediteur_id: compteId, contenu, canal }),
   })
   return versMessageEcran(cree, compteId, membres)
+}
+
+// Réception en direct (§5.5) : UN SEUL flux par compte connecté (voir
+// backend/src/messagerie/evenements.py pour le choix "par compte" plutôt
+// que "par conversation ouverte" — sans ça, la LISTE des conversations
+// elle-même ne se mettrait à jour que pour le fil actuellement ouvert).
+// `EventSource` gère lui-même la reconnexion automatique en cas de coupure
+// réseau — rien à faire ici pour ça. Retourne une fonction de fermeture, à
+// appeler à la déconnexion (voir App.jsx).
+export function ouvrirFluxEvenements(compteId, { onMessage }) {
+  const source = new EventSource(`${BASE_URL}/comptes/${compteId}/messagerie/evenements`)
+  source.onmessage = (e) => {
+    const evenement = JSON.parse(e.data)
+    if (evenement.type === 'message') onMessage(evenement)
+  }
+  return () => source.close()
 }

@@ -268,3 +268,44 @@ def test_relance_automatique_apres_delai(client, db_session):
     )
     assert len(relancees) == 1
     assert relancees[0].canal == "email"
+
+
+def test_envoyer_message_publie_un_evenement_sse_a_chaque_membre(client, db_session):
+    """Voir spec/SPEC.md §5.5 et messagerie/evenements.py : un seul flux
+    par compte (pas par conversation), qui reçoit tout nouveau message
+    le concernant — vérifié ici directement sur le pub/sub (pas la vraie
+    connexion HTTP streaming, hors de portée d'un test synchrone)."""
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+
+    queue_eleve = evenements_client.abonner(eleve.id)
+    queue_prof = evenements_client.abonner(prof.id)
+    queue_admin_non_membre = evenements_client.abonner(admin.id)
+    try:
+        client.post(
+            f"/conversations/{conversation['id']}/messages",
+            json={"expediteur_id": prof.id, "contenu": "Bonjour à tous !"},
+        )
+
+        evenement = queue_eleve.get_nowait()
+        assert evenement["type"] == "message"
+        assert evenement["conversation_id"] == conversation["id"]
+        assert evenement["message"]["contenu"] == "Bonjour à tous !"
+
+        # L'expéditeur reçoit aussi l'événement (autre onglet/appareil du
+        # même compte à resynchroniser).
+        assert queue_prof.get_nowait()["message"]["contenu"] == "Bonjour à tous !"
+
+        # L'admin n'est membre d'aucune des deux conversations : rien
+        # sur son flux.
+        assert queue_admin_non_membre.empty()
+    finally:
+        evenements_client.desabonner(eleve.id, queue_eleve)
+        evenements_client.desabonner(prof.id, queue_prof)
+        evenements_client.desabonner(admin.id, queue_admin_non_membre)
