@@ -299,6 +299,7 @@ function App() {
             setGroupes={setGroupes}
             ecole={ecole}
             setEcole={setEcole}
+            setVideos={setVideos}
             onOpenHeures={(profId) => openHeures(profId, 'admin')}
           />
         )}

@@ -31,15 +31,23 @@ export default function AdminScreen({
   setGroupes,
   ecole,
   setEcole,
+  setVideos,
   onOpenHeures,
 }) {
   const [subTab, setSubTab] = useState('eleves')
 
   return (
-    <div className="screen">
-      <SegmentedTabs options={SUB_TABS} value={subTab} onChange={setSubTab} />
+    <div className="screen screen--admin">
+      <SegmentedTabs
+        options={SUB_TABS}
+        value={subTab}
+        onChange={setSubTab}
+        className="admin-screen__tabs"
+      />
 
-      {subTab === 'ecole' && <AdminParametres ecole={ecole} setEcole={setEcole} />}
+      {subTab === 'ecole' && (
+        <AdminParametres ecole={ecole} setEcole={setEcole} setVideos={setVideos} />
+      )}
       {subTab === 'eleves' && (
         <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} ecoleId={ecole.id} />
       )}

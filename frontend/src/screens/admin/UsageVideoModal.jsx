@@ -34,7 +34,7 @@ function formatDuree(secondes) {
 // puis les 10 plus grosses vidéos. Chargé à l'ouverture (pas de cache —
 // en mode réel, la taille est lue sur le disque à la demande côté
 // backend, voir videos.py : usage_ecole).
-export default function UsageVideoModal({ ecoleId, onClose }) {
+export default function UsageVideoModal({ ecoleId, setVideos, onClose }) {
   const [usage, setUsage] = useState(null)
 
   useEffect(() => {
@@ -59,6 +59,22 @@ export default function UsageVideoModal({ ecoleId, onClose }) {
       totalSecondes: u.totalSecondes - (video.dureeSecondes || 0),
       topVideos: u.topVideos.filter((v) => v.id !== video.id),
     }))
+    // Bug signalé : sans ça, l'écran Vidéo (et Chorégraphie) gardait la
+    // vidéo supprimée en mémoire (App.jsx : `videos`, chargé une fois
+    // par cours, pas revalidé à chaque changement d'onglet) — on y
+    // revoyait la ligne avec une image/vidéo cassée (fichier réellement
+    // effacé du disque côté serveur, voir videos.py : delete). Ce
+    // panneau ne connaît pas le coursId de chaque vidéo (seulement son
+    // nom), donc on retire l'id de TOUTES les listes plutôt que de
+    // cibler la bonne.
+    setVideos?.((byC) =>
+      Object.fromEntries(
+        Object.entries(byC).map(([coursId, liste]) => [
+          coursId,
+          liste.filter((v) => v.id !== video.id),
+        ]),
+      ),
+    )
   }
 
   return (

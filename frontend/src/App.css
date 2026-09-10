@@ -667,6 +667,35 @@
    Admin (screens/admin/*)
    ========================================================================== */
 
+/* Reste affiché en haut au défilement (demande : "je préfère qu'elle soit
+   toujours affichée en haut et fixe") — même technique que .app-header
+   (position sticky dans le conteneur qui défile, voir .app__content) ;
+   `background` nécessaire pour que le contenu qui défile dessous ne se
+   voie pas par transparence.
+   Pour que le "sticky" reste collé sur TOUTE la hauteur réelle du
+   contenu (pas juste jusqu'à la hauteur de la fenêtre), .screen ne doit
+   pas être limité à flex:1/min-height:0 ici (ce que fait la classe
+   générique .screen pour les autres écrans, où c'est justement le
+   contenu qui défile en interne façon FAB — voir .video-list) : sans
+   ça, .screen restait aussi haut que la fenêtre, son contenu débordant
+   juste visuellement (overflow visible) — la vraie zone de défilement
+   (.app__content) allait donc bien plus bas que la boîte de .screen
+   elle-même, hors de laquelle le sticky ne peut pas suivre (limité à
+   son bloc englobant). .screen--admin annule ce clamp : sa hauteur
+   suit son contenu, .app__content défile donc sur toute cette hauteur,
+   et le sticky peut y rester collé du début à la fin. */
+.screen--admin {
+  flex: none;
+  min-height: auto;
+}
+
+.admin-screen__tabs {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg);
+}
+
 .admin-panel {
   display: flex;
   flex-direction: column;
@@ -1700,6 +1729,7 @@
 
 .usage-video__titre {
   min-width: 0;
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1715,11 +1745,13 @@
   align-self: flex-start;
 }
 
+/* Taille et durée côte à côte (pas empilées) — avec le bouton poubelle
+   (frère suivant dans .usage-video__ligne), ça garde les 3 alignés sur
+   une même ligne horizontale, tout à droite (demande). */
 .usage-video__meta {
   display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
   font-size: 13px;
 }

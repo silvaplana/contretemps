@@ -21,7 +21,7 @@ import UsageVideoModal from './UsageVideoModal.jsx'
 // arrière au milieu de la frappe. La persistance reste garantie : chaque
 // requête envoie la valeur complète du champ à cet instant, la dernière
 // envoyée finit par gagner côté serveur.
-export default function AdminParametres({ ecole, setEcole }) {
+export default function AdminParametres({ ecole, setEcole, setVideos }) {
   const [showUsageVideo, setShowUsageVideo] = useState(false)
 
   function update(patch) {
@@ -78,7 +78,11 @@ export default function AdminParametres({ ecole, setEcole }) {
       </button>
 
       {showUsageVideo && (
-        <UsageVideoModal ecoleId={ecole.id} onClose={() => setShowUsageVideo(false)} />
+        <UsageVideoModal
+          ecoleId={ecole.id}
+          setVideos={setVideos}
+          onClose={() => setShowUsageVideo(false)}
+        />
       )}
     </div>
   )

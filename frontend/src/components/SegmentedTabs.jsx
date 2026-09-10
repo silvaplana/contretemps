@@ -1,7 +1,10 @@
 // Sélecteur segmenté horizontal (sous-onglets Admin, statuts...).
-export default function SegmentedTabs({ options, value, onChange }) {
+// `className` optionnel : voir AdminScreen.jsx, qui l'utilise pour rester
+// fixe en haut au défilement (sans affecter l'autre usage de ".segmented",
+// un filtre dans AdminGroupes.jsx, pas concerné).
+export default function SegmentedTabs({ options, value, onChange, className = '' }) {
   return (
-    <div className="segmented" role="tablist">
+    <div className={`segmented ${className}`} role="tablist">
       {options.map((opt) => (
         <button
           key={opt.value}
