@@ -19,10 +19,18 @@ class ComptesReceiver:
         self._register_routes()
 
     def _register_routes(self) -> None:
+        self.app.get("/comptes", response_model=list[CompteSortie])(self.lister)
         self.app.get("/comptes/{compte_id}", response_model=CompteSortie)(self.obtenir)
         self.app.get("/comptes/{compte_id}/famille", response_model=list[CompteSortie])(
             self.famille
         )
+
+    def lister(self, ecole_id: int, role: str, db: Session = Depends(get_db)):
+        """Utilisé par Admin > Conversations pour proposer les vrais
+        comptes admin de l'école (voir AdminGroupes.jsx) — pas encore
+        d'écran de gestion multi-admin dédié (spec/SPEC.md §8), donc pas
+        de route plus générale pour l'instant."""
+        return self.client.list_par_role(db, ecole_id, role)
 
     def obtenir(self, compte_id: int, db: Session = Depends(get_db)):
         compte = self.client.get(db, compte_id)

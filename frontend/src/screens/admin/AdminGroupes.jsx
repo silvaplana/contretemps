@@ -1,17 +1,22 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import * as comptesApi from '../../api/comptes.js'
 import * as conversationsApi from '../../api/conversations.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 
 const TONE_PAR_TYPE = { admin: 'danger', professeur: 'success', eleve: 'neutral', cours: 'neutral' }
 
-function libelleMembre(membre, { professeurs, eleves, cours }) {
+function libelleMembre(membre, { admins = [], professeurs, eleves, cours }) {
   // `label` vient du backend réel (nom/prénom déjà résolus, voir
   // api/conversations.js: versEcranAdmin) — sinon (maquette), on retombe
   // sur les listes déjà chargées par ailleurs.
   if (membre.label) return membre.label
-  if (membre.type === 'admin') return 'Direction'
+  if (membre.type === 'admin') {
+    const a = admins.find((x) => x.id === membre.id)
+    return a ? `${a.prenom} ${a.nom}` : '?'
+  }
   if (membre.type === 'professeur') {
     const p = professeurs.find((x) => x.id === membre.id)
     return p ? `${p.prenom} ${p.nom}` : '?'
@@ -24,22 +29,56 @@ function libelleMembre(membre, { professeurs, eleves, cours }) {
   return c ? c.nom : '?'
 }
 
+// Une conversation automatique de cours (voir spec/SPEC.md §6.9 : "chaque
+// cours a sa propre conversation de groupe automatique") n'a PAS de `nom`
+// propre en base — c'est le cours qui la nomme implicitement. Sans ce
+// repli, la colonne "Nom" reste vide (déjà vu : confondu avec une
+// conversation "mal construite", alors que ses membres s'affichent bien).
+function nomAffiche(g, { cours }) {
+  if (g.nom) return g.nom
+  const blocCours = g.membres.length === 1 ? g.membres.find((m) => m.type === 'cours') : null
+  return blocCours ? libelleMembre(blocCours, { cours }) : '(Sans nom)'
+}
+
+// Une conversation "vide" (ni nom, ni membre, ni groupe WhatsApp) — le cas
+// juste après avoir cliqué "+" (voir creerConversation) et rien touché
+// encore : jamais montrée dans la liste comme une vraie conversation, et
+// nettoyée automatiquement si on ressort de sa modale sans rien y avoir mis
+// (voir fermerEdition), pour ne pas laisser de conversations fantômes.
+function estVide(g) {
+  return !g.nom && g.membres.length === 0 && g.whatsappStatut !== 'cree'
+}
+
 // Onglet Admin > Conversations (voir spec/SPEC.md §5.1.5 et §6.9). Une
 // conversation se compose de blocs "Compte" (admin/professeur/élève
 // individuel) et "Cours" (résout automatiquement tous ses élèves inscrits
 // et son/ses professeur(s)).
 //
-// Groupe WhatsApp miroir (§6.9) : icône dans la liste + case à cocher à la
-// création et à l'édition — toujours avec confirmation avant le vrai appel,
-// puisque la création n'est pas réversible depuis cet écran (pas de "退
-// détacher" pour l'instant, voir conversationsApi.creerGroupeWhatsapp —
-// stub côté backend, pas encore branché sur un vrai client WhatsApp).
+// Création ET édition partagent la même modale (demande) : "+" crée tout
+// de suite une conversation vide côté backend puis ouvre sa modale
+// d'édition — pas de formulaire de création séparé, pour ne jamais avoir à
+// maintenir deux fois la même logique nom/membres/WhatsApp.
+//
+// Groupe WhatsApp miroir (§6.9) : icône dans la liste + case à cocher —
+// toujours avec confirmation avant le vrai appel, puisque la création
+// n'est pas réversible depuis cet écran (pas de "détacher" pour
+// l'instant), voir conversationsApi.creerGroupeWhatsapp — stub côté
+// backend, pas encore branché sur un vrai client WhatsApp.
 export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves, cours, ecoleId }) {
   const [search, setSearch] = useState('')
   const [editId, setEditId] = useState(null)
-  const [showAdd, setShowAdd] = useState(false)
+  const [admins, setAdmins] = useState([])
 
-  const filtered = groupes.filter((g) => g.nom.toLowerCase().includes(search.toLowerCase()))
+  // Uniquement utile ici (voir AddMembreForm : "Ajouter un membre" >
+  // Admin) — pas besoin de faire remonter ça jusqu'à App.jsx comme
+  // eleves/professeurs/cours, qui servent à plusieurs écrans.
+  useEffect(() => {
+    comptesApi.listerAdmins(ecoleId).then(setAdmins)
+  }, [ecoleId])
+
+  const filtered = groupes.filter(
+    (g) => !estVide(g) && nomAffiche(g, { cours }).toLowerCase().includes(search.toLowerCase()),
+  )
   const enEdition = groupes.find((g) => g.id === editId)
 
   function remplacer(id, patch) {
@@ -81,6 +120,23 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
     remplacer(id, { whatsappStatut: miroir.whatsappStatut, whatsappGroupeId: miroir.whatsappGroupeId })
   }
 
+  async function creerConversation() {
+    const nouvelle = await conversationsApi.creerGroupe(ecoleId, '')
+    setGroupes((list) => [...list, nouvelle])
+    setEditId(nouvelle.id)
+  }
+
+  // Referme la modale — supprime la conversation si elle est ressortie
+  // vide (voir estVide), pour ne jamais laisser une conversation fantôme
+  // créée par erreur (clic sur "+" puis "Fermer" sans rien remplir).
+  async function fermerEdition() {
+    if (enEdition && estVide(enEdition)) {
+      await conversationsApi.supprimer(enEdition.id)
+      setGroupes((list) => list.filter((g) => g.id !== enEdition.id))
+    }
+    setEditId(null)
+  }
+
   return (
     <div className="admin-panel">
       <div className="search-bar">
@@ -105,13 +161,13 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
           <tbody>
             {filtered.map((g) => (
               <tr key={g.id}>
-                <td className="data-table__name">{g.nom}</td>
+                <td className="data-table__name">{nomAffiche(g, { cours })}</td>
                 <td>
                   <div className="badge-list">
                     {g.membres.map((m, i) => (
                       <Badge key={i} tone={TONE_PAR_TYPE[m.type]}>
                         {m.type === 'cours' && <Icon name="users" size={12} />}
-                        {libelleMembre(m, { professeurs, eleves, cours })}
+                        {libelleMembre(m, { admins, professeurs, eleves, cours })}
                       </Badge>
                     ))}
                     {g.membres.length === 0 && <span className="muted">—</span>}
@@ -119,8 +175,8 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
                 </td>
                 <td>
                   {g.whatsappStatut === 'cree' && (
-                    <span className="whatsapp-statut" title="Groupe WhatsApp lié">
-                      <Icon name="whatsapp" size={18} />
+                    <span title="Groupe WhatsApp lié">
+                      <WhatsappBadge size={20} />
                     </span>
                   )}
                 </td>
@@ -130,7 +186,7 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
                       type="button"
                       className="icon-btn"
                       onClick={() => setEditId(g.id)}
-                      aria-label={`Modifier ${g.nom}`}
+                      aria-label={`Modifier ${nomAffiche(g, { cours })}`}
                     >
                       <Icon name="edit" size={18} />
                     </button>
@@ -138,7 +194,7 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
                       type="button"
                       className="icon-btn icon-btn--danger"
                       onClick={() => removeGroupe(g.id)}
-                      aria-label={`Supprimer ${g.nom}`}
+                      aria-label={`Supprimer ${nomAffiche(g, { cours })}`}
                     >
                       <Icon name="trash" size={18} />
                     </button>
@@ -150,16 +206,24 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
         </table>
       </div>
 
-      <button type="button" className="fab" onClick={() => setShowAdd(true)} aria-label="Créer une conversation">
+      <button type="button" className="fab" onClick={creerConversation} aria-label="Créer une conversation">
         <Icon name="plus" size={24} />
       </button>
 
       {enEdition && (
-        <Modal title={`Modifier — ${enEdition.nom}`} onClose={() => setEditId(null)}>
+        <Modal
+          title={estVide(enEdition) ? 'Nouvelle conversation' : `Modifier — ${nomAffiche(enEdition, { cours })}`}
+          onClose={fermerEdition}
+        >
           <label htmlFor="edit-groupe-nom">Nom</label>
           <input
             id="edit-groupe-nom"
-            value={enEdition.nom}
+            value={enEdition.nom ?? ''}
+            // Placeholder plutôt que value quand `nom` est vide (conversation
+            // automatique de cours, voir nomAffiche ci-dessus) : le champ a
+            // l'air vide (c'est le cas en base), mais indique quel nom
+            // s'affiche par défaut dans la liste — pas de perte d'info.
+            placeholder={enEdition.nom ? undefined : nomAffiche(enEdition, { cours })}
             onChange={(e) => renameGroupe(enEdition.id, e.target.value)}
           />
 
@@ -167,7 +231,7 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
           <div className="member-list">
             {enEdition.membres.map((m, i) => (
               <div key={i} className="member-list__row">
-                <Badge tone={TONE_PAR_TYPE[m.type]}>{libelleMembre(m, { professeurs, eleves, cours })}</Badge>
+                <Badge tone={TONE_PAR_TYPE[m.type]}>{libelleMembre(m, { admins, professeurs, eleves, cours })}</Badge>
                 <button
                   type="button"
                   className="icon-btn"
@@ -181,6 +245,7 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
             {enEdition.membres.length === 0 && <p className="muted">Aucun membre pour l'instant.</p>}
           </div>
           <AddMembreForm
+            admins={admins}
             professeurs={professeurs}
             eleves={eleves}
             cours={cours}
@@ -194,69 +259,21 @@ export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves,
               disabled={enEdition.whatsappStatut === 'cree'}
               onChange={() => creerGroupeWhatsapp(enEdition.id)}
             />
-            <Icon name="whatsapp" size={16} />
+            <WhatsappBadge size={16} />
             {enEdition.whatsappStatut === 'cree' ? 'Groupe WhatsApp lié' : 'Créer un groupe WhatsApp lié'}
           </label>
-        </Modal>
-      )}
-
-      {showAdd && (
-        <Modal title="Créer une conversation" onClose={() => setShowAdd(false)}>
-          <NewGroupeForm
-            onCreate={async (nom, avecWhatsapp) => {
-              const nouvelle = await conversationsApi.creerGroupe(ecoleId, nom)
-              let miroir = nouvelle
-              if (avecWhatsapp) {
-                miroir = await conversationsApi.creerGroupeWhatsapp(nouvelle.id)
-              }
-              setGroupes((list) => [...list, { ...nouvelle, ...miroir }])
-              setShowAdd(false)
-            }}
-          />
         </Modal>
       )}
     </div>
   )
 }
 
-function NewGroupeForm({ onCreate }) {
-  const [nom, setNom] = useState('')
-  const [avecWhatsapp, setAvecWhatsapp] = useState(false)
-
-  function creer() {
-    if (
-      avecWhatsapp &&
-      !window.confirm('Créer aussi un groupe WhatsApp lié à cette nouvelle conversation ?')
-    ) {
-      return
-    }
-    onCreate(nom, avecWhatsapp)
-  }
-
-  return (
-    <>
-      <label htmlFor="new-groupe-nom">Nom</label>
-      <input id="new-groupe-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
-
-      <label className="checkbox-inline">
-        <input type="checkbox" checked={avecWhatsapp} onChange={(e) => setAvecWhatsapp(e.target.checked)} />
-        <Icon name="whatsapp" size={16} />
-        Créer aussi un groupe WhatsApp lié
-      </label>
-
-      <button type="button" className="btn btn--primary btn--block" disabled={!nom} onClick={creer}>
-        Créer
-      </button>
-    </>
-  )
-}
-
-function AddMembreForm({ professeurs, eleves, cours, onAdd }) {
+function AddMembreForm({ admins, professeurs, eleves, cours, onAdd }) {
   const [type, setType] = useState('cours')
   const [id, setId] = useState(cours[0]?.id ?? '')
 
-  const options =
-    type === 'professeur' ? professeurs : type === 'eleve' ? eleves : type === 'cours' ? cours : null
+  const OPTIONS_PAR_TYPE = { admin: admins, professeur: professeurs, eleve: eleves, cours }
+  const options = OPTIONS_PAR_TYPE[type]
 
   return (
     <div className="add-membre-form">
@@ -269,9 +286,7 @@ function AddMembreForm({ professeurs, eleves, cours, onAdd }) {
             className={`segmented__option ${type === t ? 'is-active' : ''}`}
             onClick={() => {
               setType(t)
-              if (t === 'professeur') setId(professeurs[0]?.id ?? '')
-              if (t === 'eleve') setId(eleves[0]?.id ?? '')
-              if (t === 'cours') setId(cours[0]?.id ?? '')
+              setId(OPTIONS_PAR_TYPE[t][0]?.id ?? '')
             }}
           >
             {t === 'admin' ? 'Admin' : t === 'professeur' ? 'Prof' : t === 'eleve' ? 'Élève' : 'Cours'}
@@ -279,34 +294,19 @@ function AddMembreForm({ professeurs, eleves, cours, onAdd }) {
         ))}
       </div>
 
-      {type === 'admin' ? (
-        // ⚠️ Limitation connue (pré-existante) : id "admin1" en dur — il
-        // n'existe pas encore d'écran pour choisir parmi plusieurs comptes
-        // admin réels de l'école (une seule direction gérée pour l'instant,
-        // voir spec/SPEC.md §8). À corriger le jour où le multi-admin est
-        // géré côté backend/IHM — même limitation que le sélecteur de
-        // profil famille en mode réel (voir App.jsx: activeUser).
-        <button
-          type="button"
-          className="btn btn--secondary"
-          onClick={() => onAdd({ type: 'admin', id: 'admin1', label: 'Direction' })}
-        >
-          Ajouter "Direction"
+      <div className="add-membre-form__row">
+        <select value={id} onChange={(e) => setId(e.target.value)}>
+          {options.map((o) => (
+            <option key={o.id} value={o.id}>
+              {type === 'cours' ? o.nom : `${o.prenom} ${o.nom}`}
+            </option>
+          ))}
+          {options.length === 0 && <option value="">Aucun</option>}
+        </select>
+        <button type="button" className="btn btn--secondary" disabled={!id} onClick={() => onAdd({ type, id })}>
+          Ajouter
         </button>
-      ) : (
-        <div className="add-membre-form__row">
-          <select value={id} onChange={(e) => setId(e.target.value)}>
-            {options.map((o) => (
-              <option key={o.id} value={o.id}>
-                {type === 'professeur' || type === 'eleve' ? `${o.prenom} ${o.nom}` : o.nom}
-              </option>
-            ))}
-          </select>
-          <button type="button" className="btn btn--secondary" onClick={() => onAdd({ type, id })}>
-            Ajouter
-          </button>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
