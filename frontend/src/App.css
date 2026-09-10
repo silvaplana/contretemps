@@ -284,6 +284,27 @@
   font-weight: 700;
 }
 
+/* Point rouge "il y a quelque chose à voir" (voir BottomNav.jsx : props
+   `alertes` — pour l'instant, messages non lus). `position: relative` sur
+   le conteneur de l'icône, pas sur .bottom-nav__item entier : le point
+   doit rester collé à l'icône, pas glisser vers le coin du bouton entier
+   (plus large, surtout une fois actif avec son fond coloré). */
+.bottom-nav__icon {
+  position: relative;
+  display: inline-flex;
+}
+
+.bottom-nav__point {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rouge-surlignage);
+  border: 1.5px solid var(--surface);
+}
+
 /* ==========================================================================
    Composants génériques
    ========================================================================== */
@@ -1453,6 +1474,24 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* Nombre de messages non lus (voir ConversationListScreen.jsx :
+   compterNonLus) — même rouge que le point de BottomNav.jsx, cohérent
+   entre les deux niveaux (liste des conversations / icône Messagerie). */
+.conversation-list__badge {
+  flex-shrink: 0;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--rouge-surlignage);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Écran 2/2 : le fil d'une conversation (ConversationThreadScreen.jsx),

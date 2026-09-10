@@ -39,13 +39,29 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
   // fil) : un message qui arrive EN DIRECT (SSE, voir App.jsx) pendant
   // que ce fil est déjà affiché doit lui aussi passer "lu" tout de suite
   // — sans ça, il resterait affiché "reçu" jusqu'à la prochaine ouverture
-  // du fil. marquerLus est idempotent (ré-appeler sur un message déjà
-  // "lu" ne fait rien de mal), donc pas de souci à le refaire à chaque fois.
-  // Ne met pas à jour l'affichage local des coches immédiatement (pas
-  // grave : ce sont MES messages à moi qui les afficheraient, pas les
-  // siens/leurs).
+  // du fil.
+  //
+  // Contrairement à avant : met AUSSI à jour `luParMoi` en local, tout de
+  // suite (pas seulement côté serveur) — sert au badge de non-lus (voir
+  // ConversationListScreen.jsx/BottomNav.jsx) : sans ça, le badge ne
+  // retomberait à zéro qu'au prochain rechargement complet, pas à
+  // l'ouverture du fil (signalé). Se limite aux messages VRAIMENT non lus
+  // (`nonLus`) : évite de re-PUT en boucle des messages déjà "lu" à
+  // chaque fois que ce fil se réaffiche (ex. un nouveau message dans une
+  // AUTRE conversation ne fait pas grandir `messages.length` ici, mais un
+  // nouveau rendu de ce composant sans changement de dépendance ne
+  // redéclenche pas l'effet non plus — la garde reste utile si jamais).
   useEffect(() => {
-    messagesApi.marquerLus(conversation.messages, compteId)
+    const nonLus = conversation.messages.filter((m) => !m.estMoi && !m.luParMoi)
+    if (nonLus.length === 0) return
+    messagesApi.marquerLus(nonLus, compteId)
+    setConversations((liste) =>
+      liste.map((c) =>
+        c.id !== conversation.id
+          ? c
+          : { ...c, messages: c.messages.map((m) => (nonLus.includes(m) ? { ...m, luParMoi: true } : m)) },
+      ),
+    )
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.id, conversation.messages.length])
 

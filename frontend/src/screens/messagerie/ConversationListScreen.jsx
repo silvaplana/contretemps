@@ -1,3 +1,4 @@
+import { compterNonLus } from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 
 // Écran 1/2 de la Messagerie (voir spec/SPEC.md 5.5) : liste des
@@ -8,6 +9,7 @@ export default function ConversationListScreen({ conversations, onSelect }) {
     <div className="conversation-list-screen">
       {conversations.map((c) => {
         const last = c.messages[c.messages.length - 1]
+        const nonLus = compterNonLus(c)
         return (
           <button
             key={c.id}
@@ -23,6 +25,7 @@ export default function ConversationListScreen({ conversations, onSelect }) {
               <span className="muted">{last?.contenu}</span>
             </span>
             {last?.envoyeParMail && <Icon name="mail" size={16} className="muted" />}
+            {nonLus > 0 && <span className="conversation-list__badge">{nonLus}</span>}
           </button>
         )
       })}

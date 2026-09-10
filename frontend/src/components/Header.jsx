@@ -98,8 +98,15 @@ export default function Header({
         )}
       </div>
 
-      {mode === 'course' && (
+      {(famille.length > 1 || mode === 'course') && (
         <div className="app-header__right">
+          {/* Sélecteur familial : toujours visible dès qu'il y a plus d'1
+              profil (voir spec §4), pas seulement en mode "course" — sans
+              ça, impossible de changer de profil depuis Admin/Profil/Heures
+              (signalé : absent de Profil). Le menu "..." ci-dessous, lui,
+              reste réservé au mode "course" : "Profil"/"Se déconnecter" y
+              feraient doublon sur l'écran Profil, qui a déjà son propre
+              bouton de déconnexion. */}
           {famille.length > 1 && (
             <div className="famille-selector" ref={familleSelectorRef}>
               <button
@@ -133,43 +140,45 @@ export default function Header({
               )}
             </div>
           )}
-          <div className="header-menu" ref={headerMenuRef}>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => setMenuOpen((o) => !o)}
-              aria-label="Menu"
-            >
-              <Icon name="moreVertical" />
-            </button>
-            {menuOpen && (
-              <div className="dropdown-menu header-menu__panel">
-                {menuExtra && (
+          {mode === 'course' && (
+            <div className="header-menu" ref={headerMenuRef}>
+              <button
+                type="button"
+                className="icon-btn"
+                onClick={() => setMenuOpen((o) => !o)}
+                aria-label="Menu"
+              >
+                <Icon name="moreVertical" />
+              </button>
+              {menuOpen && (
+                <div className="dropdown-menu header-menu__panel">
+                  {menuExtra && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        menuExtra.onClick()
+                        setMenuOpen(false)
+                      }}
+                    >
+                      <Icon name={menuExtra.icon} size={18} /> {menuExtra.label}
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => {
-                      menuExtra.onClick()
+                      onNavigate('profil')
                       setMenuOpen(false)
                     }}
                   >
-                    <Icon name={menuExtra.icon} size={18} /> {menuExtra.label}
+                    <Icon name="profil" size={18} /> Profil
                   </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    onNavigate('profil')
-                    setMenuOpen(false)
-                  }}
-                >
-                  <Icon name="profil" size={18} /> Profil
-                </button>
-                <button type="button" onClick={onLogout}>
-                  <Icon name="logout" size={18} /> Se déconnecter
-                </button>
-              </div>
-            )}
-          </div>
+                  <button type="button" onClick={onLogout}>
+                    <Icon name="logout" size={18} /> Se déconnecter
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

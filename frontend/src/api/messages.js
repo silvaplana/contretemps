@@ -57,6 +57,7 @@ function statutAgrege(deliveries) {
 // via listerAvecMessages/envoyer.
 export function versMessageEcran(message, compteId, membres) {
   const auteur = membres.find((m) => m.id === message.expediteur_id)
+  const maDelivery = message.deliveries.find((d) => d.destinataire_id === compteId)
   return {
     id: message.id,
     auteur: auteur ? `${auteur.prenom} ${auteur.nom}` : '?',
@@ -68,7 +69,23 @@ export function versMessageEcran(message, compteId, membres) {
     // Marqueur d'INTENTION seulement (voir backend/src/messagerie/
     // messages.py: envoyer) — aucun vrai envoi WhatsApp pour l'instant.
     envoyeParWhatsapp: message.deliveries.some((d) => d.canal === 'whatsapp'),
+    // Sens inverse de `statut` ci-dessus : celui-là agrège le statut de
+    // TOUS les destinataires pour MES messages (coches) ; celui-ci ne
+    // regarde QUE ma propre delivery, pour un message qui n'est PAS de
+    // moi — sert à compter les non-lus (voir ConversationListScreen.jsx,
+    // BottomNav.jsx). Toujours `true` pour un message de moi (aucune
+    // delivery à moi-même, voir messages.py: envoyer) : jamais compté
+    // comme non lu de toute façon (filtré par `!estMoi` côté appelant).
+    luParMoi: maDelivery ? maDelivery.statut === 'lu' : true,
   }
+}
+
+// Nombre de messages pas de moi et pas encore "lu" dans cette conversation
+// (voir `luParMoi` ci-dessus) — utilisé pour le badge par conversation
+// (ConversationListScreen.jsx) et, agrégé sur toutes les conversations,
+// pour le point rouge global (App.jsx -> BottomNav.jsx).
+export function compterNonLus(conversation) {
+  return conversation.messages.filter((m) => !m.estMoi && !m.luParMoi).length
 }
 
 async function modifierStatutDelivery(messageId, destinataireId, statut) {

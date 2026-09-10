@@ -453,7 +453,12 @@ function App() {
         )}
       </main>
 
-      <BottomNav active={activeTab} onChange={setActiveTab} role={activeUser.type} />
+      <BottomNav
+        active={activeTab}
+        onChange={setActiveTab}
+        role={activeUser.type}
+        alertes={{ messagerie: conversations.some((c) => messagesApi.compterNonLus(c) > 0) }}
+      />
     </div>
   )
 }
