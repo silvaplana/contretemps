@@ -208,13 +208,13 @@
   border-radius: 50%;
 }
 
-/* Bouton secondaire "envoyer par mail" dans la barre de saisie (voir
-   ConversationThreadScreen.jsx) — discret face au bouton d'envoi principal. */
+/* Boutons secondaires "envoyer par mail/WhatsApp" dans le bandeau de
+   saisie (voir ConversationThreadScreen.jsx) — juste teintés, sans
+   fond/bordure propres (signalé : une "couronne orange" en trop autour
+   de chaque icône, superflue maintenant qu'ils sont DANS le bandeau,
+   déjà bordé lui-même — voir .conversation-thread__pill). */
 .icon-btn--mail {
-  background: var(--card-bg);
   color: var(--accent);
-  border: 1px solid var(--border);
-  border-radius: 50%;
 }
 
 .avatar {
@@ -1643,6 +1643,15 @@
   resize: none;
   font: inherit;
   line-height: 1.4;
+  /* Cache la barre de défilement (Android Chrome l'affiche en permanence,
+     même sur une seule ligne — signalé, une barre verticale grise à la
+     fin du texte) : le défilement reste possible (au doigt/à la molette)
+     une fois le plafond ci-dessus dépassé, juste sans piste visible. */
+  scrollbar-width: none;
+}
+
+.conversation-thread__pill textarea::-webkit-scrollbar {
+  display: none;
 }
 
 .conversation-thread__pill-envoi {
