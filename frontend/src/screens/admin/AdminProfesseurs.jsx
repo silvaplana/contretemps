@@ -169,11 +169,13 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, e
   )
 }
 
-// Formulaire (Prénom, Nom, Email) réutilisé pour l'ajout et la modification.
+// Formulaire (Prénom, Nom, Email, Téléphone) réutilisé pour l'ajout et la
+// modification — Téléphone obligatoire (demande), contrairement à Email.
 function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
   const [nom, setNom] = useState(initial?.nom ?? '')
   const [prenom, setPrenom] = useState(initial?.prenom ?? '')
   const [email, setEmail] = useState(initial?.email ?? '')
+  const [telephone, setTelephone] = useState(initial?.telephone ?? '')
   // Garde-fou contre un double-appel (voir AdminEleves.jsx) : l'appel est
   // async désormais.
   const [enCours, setEnCours] = useState(false)
@@ -181,7 +183,7 @@ function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
   async function valider() {
     if (enCours) return
     setEnCours(true)
-    await onSubmit({ nom, prenom, email })
+    await onSubmit({ nom, prenom, email, telephone })
     onClose()
   }
 
@@ -193,7 +195,7 @@ function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
         <button
           type="button"
           className="btn btn--primary btn--block"
-          disabled={!nom || !prenom || enCours}
+          disabled={!nom || !prenom || !telephone || enCours}
           onClick={valider}
         >
           {submitLabel}
@@ -204,6 +206,14 @@ function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
       <input id="prof-prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
       <label htmlFor="prof-nom">Nom</label>
       <input id="prof-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
+      <label htmlFor="prof-telephone">Téléphone</label>
+      <input
+        id="prof-telephone"
+        type="tel"
+        value={telephone}
+        onChange={(e) => setTelephone(e.target.value)}
+        placeholder="Ex. 06 12 34 56 78"
+      />
       <label htmlFor="prof-email">Email</label>
       <input id="prof-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
     </Modal>

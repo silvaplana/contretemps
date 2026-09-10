@@ -51,11 +51,27 @@ def _email_prof(prenom: str, nom: str) -> str:
 # Marie-Laure Pesenti est "mère" d'une élève inscrite au cours Eveil (voir
 # FAMILLES_DEMO ci-dessous, et _creer_familles_demo) : son email doit
 # rester identique aux 2 endroits pour le regroupement familial (§6.2).
+#
+# Téléphone : désormais obligatoire à la création/modification d'un prof
+# (voir AdminProfesseurs.jsx) — numéros ouvertement faux ici (demande),
+# jamais de vrai numéro dans le seed de démo.
 PROFS_CONTRETEMPS = [
-    {"nom": "Pesenti", "prenom": "Marie-Laure", "email": _email_prof("Marie-Laure", "Pesenti")},
-    {"nom": "Jullien", "prenom": "Pascale", "email": _email_prof("Pascale", "Jullien")},
-    {"nom": "Thomas", "prenom": "Marysa", "email": _email_prof("Marysa", "Thomas")},
-    {"nom": "Revelles", "prenom": "Stellina", "email": _email_prof("Stellina", "Revelles")},
+    {
+        "nom": "Pesenti", "prenom": "Marie-Laure",
+        "email": _email_prof("Marie-Laure", "Pesenti"), "telephone": "06 00 00 00 01",
+    },
+    {
+        "nom": "Jullien", "prenom": "Pascale",
+        "email": _email_prof("Pascale", "Jullien"), "telephone": "06 00 00 00 02",
+    },
+    {
+        "nom": "Thomas", "prenom": "Marysa",
+        "email": _email_prof("Marysa", "Thomas"), "telephone": "06 00 00 00 03",
+    },
+    {
+        "nom": "Revelles", "prenom": "Stellina",
+        "email": _email_prof("Stellina", "Revelles"), "telephone": "06 00 00 00 04",
+    },
 ]
 
 # Démontre le sélecteur de profil famille (§2.1/§6.2 : regroupement par
@@ -421,6 +437,9 @@ def run() -> None:
                 nom="Dho",
                 prenom="Julia",
                 email="jd@contretemps.fr",
+                # Ouvertement faux (demande) — jamais de vrai numéro dans
+                # le seed de démo.
+                telephone="06 00 00 00 00",
                 # "Nom de votre 1er animal de compagnie" (voir "Code
                 # oublié ?" à l'écran de connexion, et NouvelleEcoleModal).
                 code_recuperation="coocky",

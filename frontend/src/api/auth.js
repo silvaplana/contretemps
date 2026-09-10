@@ -46,6 +46,7 @@ function versActiveUserEcran(compte) {
     prenom: compte.prenom,
     initiales: `${(compte.prenom[0] ?? '').toUpperCase()}${(compte.nom[0] ?? '').toUpperCase()}`,
     email: compte.email,
+    telephone: compte.telephone,
     // Affiché dans Profil, admin uniquement (voir ProfilScreen.jsx) —
     // undefined pour les autres rôles, qui n'en ont pas.
     codeRecuperation: compte.code_recuperation,

@@ -119,9 +119,9 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         <h2>
           {user.prenom} {user.nom}
         </h2>
-        {/* Admin : email et code de récupération éditables (crayon,
-            demande) — les autres rôles restent en lecture seule, ces
-            champs se gèrent depuis Admin > Élèves/Profs. */}
+        {/* Admin : email/téléphone/code de récupération éditables
+            (crayon, demande) — les autres rôles restent en lecture
+            seule, ces champs se gèrent depuis Admin > Élèves/Profs. */}
         {user.type === 'admin' ? (
           <>
             <ChampAdminEditable
@@ -129,6 +129,12 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
               placeholderVide="Ajouter un email"
               type="email"
               onSave={(v) => onUpdateUser({ email: v })}
+            />
+            <ChampAdminEditable
+              valeur={user.telephone}
+              placeholderVide="Ajouter un téléphone"
+              type="tel"
+              onSave={(v) => onUpdateUser({ telephone: v })}
             />
             <ChampAdminEditable
               prefixe="Code de récupération : "

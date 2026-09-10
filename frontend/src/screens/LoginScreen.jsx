@@ -220,6 +220,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
   const [adminNom, setAdminNom] = useState('')
   const [adminPrenom, setAdminPrenom] = useState('')
   const [adminEmail, setAdminEmail] = useState('')
+  const [adminTelephone, setAdminTelephone] = useState('')
   const [adminCodeRecuperation, setAdminCodeRecuperation] = useState('')
   const [creee, setCreee] = useState(false)
 
@@ -235,7 +236,8 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nomEcole])
 
-  const valide = nomEcole && codePostal && adminNom && adminPrenom && adminEmail && adminCodeRecuperation
+  const valide =
+    nomEcole && codePostal && adminNom && adminPrenom && adminEmail && adminTelephone && adminCodeRecuperation
 
   if (creee) {
     return (
@@ -354,6 +356,14 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
         value={adminEmail}
         onChange={(e) => setAdminEmail(e.target.value)}
         placeholder="Ex. claire.martin@ecole-test.fr"
+      />
+      <label htmlFor="ecole-admin-telephone">Téléphone</label>
+      <input
+        id="ecole-admin-telephone"
+        type="tel"
+        value={adminTelephone}
+        onChange={(e) => setAdminTelephone(e.target.value)}
+        placeholder="Ex. 06 00 00 00 00"
       />
 
       {/* Voir "Code oublié ?" à l'écran de connexion : demandé à la

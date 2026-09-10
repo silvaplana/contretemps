@@ -22,8 +22,15 @@ async function listerMaquette() {
   return lireMagasin()
 }
 
-async function creerMaquette({ nom, prenom, email }) {
-  const nouveau = { id: crypto.randomUUID(), nom, prenom, email: email ?? '', coursIds: [] }
+async function creerMaquette({ nom, prenom, email, telephone }) {
+  const nouveau = {
+    id: crypto.randomUUID(),
+    nom,
+    prenom,
+    email: email ?? '',
+    telephone: telephone ?? '',
+    coursIds: [],
+  }
   lireMagasin().push(nouveau)
   return nouveau
 }
@@ -63,7 +70,14 @@ async function requete(chemin, options) {
 // ProfSortie du backend renvoie déjà cours_ids (pas besoin d'une 2e
 // requête comme pour les élèves) — juste traduire vers camelCase.
 function versEcran(prof) {
-  return { id: prof.id, nom: prof.nom, prenom: prof.prenom, email: prof.email ?? '', coursIds: prof.cours_ids }
+  return {
+    id: prof.id,
+    nom: prof.nom,
+    prenom: prof.prenom,
+    email: prof.email ?? '',
+    telephone: prof.telephone ?? '',
+    coursIds: prof.cours_ids,
+  }
 }
 
 async function listerReel(ecoleId) {

@@ -47,4 +47,7 @@ def test_modifier_email_et_code_recuperation(client, db_session):
     assert reponse.json()["email"] == "julia@contretemps.fr"
     assert reponse.json()["code_recuperation"] == "Rex"  # pas fourni -> inchangé
 
+    reponse = client.put(f"/comptes/{admin.id}", json={"telephone": "06 00 00 00 00"})
+    assert reponse.json()["telephone"] == "06 00 00 00 00"
+
     assert client.put("/comptes/999", json={"email": "x@x.fr"}).status_code == 404
