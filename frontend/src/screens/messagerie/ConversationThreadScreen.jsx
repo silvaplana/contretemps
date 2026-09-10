@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Icon from '../../components/Icon.jsx'
+import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 import { currentUser } from '../../data/mockData.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
@@ -7,17 +8,31 @@ const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 // Écran 2/2 de la Messagerie : le fil d'UNE conversation, plein écran, avec
 // une flèche de retour vers ConversationListScreen (voir MessagerieScreen.jsx)
 // — comme l'écran de discussion de WhatsApp. Coches de statut façon WhatsApp ;
-// le choix messagerie/mail se fait à l'envoi (voir send ci-dessous), et
-// l'icône mail dans la bulle n'est qu'un indicatif de ce choix a posteriori
+// le choix messagerie/mail/whatsapp se fait à l'envoi (voir send ci-dessous),
+// et l'icône dans la bulle n'est qu'un indicatif de ce choix a posteriori
 // (voir spec/SPEC.md 5.5).
+//
+// WhatsApp : juste l'écran pour l'instant (voir spec/SPEC.md §6.9 et §8) —
+// aucun vrai envoi, seulement la confirmation + l'indicatif sur la bulle,
+// comme "prévoir le tuyau" avant de brancher Baileys plus tard.
 export default function ConversationThreadScreen({ conversation, onBack, setConversations }) {
   const [draft, setDraft] = useState('')
 
-  // Choix à l'envoi : par la messagerie (par défaut) ou par mail — l'envoi
-  // par mail demande confirmation car il sort de l'appli.
-  function send(parMail) {
+  // Choix à l'envoi : par la messagerie (par défaut), par mail, ou par
+  // WhatsApp — mail et WhatsApp sortent de l'appli, donc demandent
+  // confirmation. En groupe, WhatsApp n'a pas de vrai fil unique côté
+  // WhatsApp (pas de groupe WhatsApp = plusieurs messages 1-à-1) : la
+  // confirmation le dit explicitement.
+  function send(canal) {
     if (!draft.trim()) return
-    if (parMail && !window.confirm('Envoyer aussi ce message par mail ?')) return
+    if (canal === 'mail' && !window.confirm('Envoyer aussi ce message par mail ?')) return
+    if (canal === 'whatsapp') {
+      const question =
+        conversation.type === 'groupe'
+          ? 'Ce message sera envoyé par WhatsApp séparément à chaque membre de la conversation. Confirmer ?'
+          : 'Envoyer ce message par WhatsApp ?'
+      if (!window.confirm(question)) return
+    }
     const message = {
       id: crypto.randomUUID(),
       auteur: `${currentUser.prenom} ${currentUser.nom}`,
@@ -25,7 +40,8 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
       contenu: draft.trim(),
       heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
       statut: 'envoye',
-      envoyeParMail: parMail,
+      envoyeParMail: canal === 'mail',
+      envoyeParWhatsapp: canal === 'whatsapp',
     }
     setConversations((list) =>
       list.map((c) => (c.id === conversation.id ? { ...c, messages: [...c.messages, message] } : c)),
@@ -64,6 +80,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
                 {m.heure}
                 {m.estMoi && <Icon name={STATUT_ICON[m.statut]} size={14} />}
                 {m.envoyeParMail && <Icon name="mail" size={14} />}
+                {m.envoyeParWhatsapp && <WhatsappBadge size={14} />}
               </span>
             </div>
           </div>
@@ -75,12 +92,12 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
           value={draft}
           placeholder="Écrire un message..."
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send(false)}
+          onKeyDown={(e) => e.key === 'Enter' && send('app')}
         />
         <button
           type="button"
           className="icon-btn icon-btn--accent"
-          onClick={() => send(false)}
+          onClick={() => send('app')}
           aria-label="Envoyer par la messagerie"
         >
           <Icon name="send" size={18} />
@@ -88,10 +105,18 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
         <button
           type="button"
           className="icon-btn icon-btn--mail"
-          onClick={() => send(true)}
+          onClick={() => send('mail')}
           aria-label="Envoyer par mail"
         >
           <Icon name="mail" size={18} />
+        </button>
+        <button
+          type="button"
+          className="icon-btn icon-btn--mail"
+          onClick={() => send('whatsapp')}
+          aria-label="Envoyer par WhatsApp"
+        >
+          <WhatsappBadge size={18} />
         </button>
       </div>
     </div>
