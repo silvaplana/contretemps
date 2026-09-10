@@ -35,16 +35,37 @@ function App() {
   const [activeTab, setActiveTab] = useState('messagerie')
   const [activeProfilId, setActiveProfilId] = useState(currentUser.id)
   // Compte réellement connecté (voir api/auth.js : `resultat.compte`),
-  // renseigné seulement en mode réel — le sélecteur de profil famille
-  // (familleActuelle) reste 100% en dur (mock), pas encore branché sur
-  // la vraie famille du compte réel (limite connue). Sans ça, `activeUser`
-  // valait TOUJOURS le mock `currentUser` en mode réel (le `.find` sur
+  // renseigné seulement en mode réel. Sans ça, `activeUser` valait
+  // TOUJOURS le mock `currentUser` en mode réel (le `.find` sur
   // `familleActuelle` ne matchait jamais un id réel, base de données) —
   // `uploaderId`/`peutModifier` etc. envoyaient donc un id fictif
   // ("admin1") au backend, jamais un vrai id de compte (404/422 selon
   // l'endpoint). Bug trouvé en testant le premier vrai upload vidéo.
+  // L'AFFICHAGE de "Ma famille"/"Changer de profil" est branché sur la
+  // vraie famille en mode réel (voir familleAffichee ci-dessous) ; y
+  // basculer VRAIMENT ne l'est pas encore (limite connue restante).
   const [compteReel, setCompteReel] = useState(null)
   const activeUser = compteReel ?? (familleActuelle.find((p) => p.id === activeProfilId) ?? currentUser)
+
+  // "Ma famille" (Profil) et "Changer de profil" (Header) : la vraie
+  // famille du compte réel connecté, pas familleActuelle (mock, la
+  // famille de Julia Dho) — sans ça, N'IMPORTE QUEL compte réel voyait
+  // toujours cette même famille factice (signalé : Marie-Laure Pesenti,
+  // professeure, voyait Julia/Alix/Zélie Dho). ⚠️ Limite connue restante
+  // (hors scope ici) : cliquer un membre de cette liste pour VRAIMENT
+  // basculer de profil ne fonctionne pas encore en mode réel — seul
+  // l'affichage est corrigé (voir switchProfil/activeUser, qui ne
+  // savent basculer qu'entre les profils de familleActuelle).
+  const [familleReelle, setFamilleReelle] = useState([])
+  useEffect(() => {
+    if (compteReel) comptesApi.listerFamille(compteReel.id).then(setFamilleReelle)
+    else setFamilleReelle([])
+    // Volontaire : seul l'id doit déclencher un refetch, pas chaque patch
+    // de mettreAJourActiveUser (email/téléphone/code de récupération) qui
+    // change l'identité de l'objet `compteReel` sans changer de compte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id])
+  const familleAffichee = compteReel ? familleReelle : familleActuelle
 
   // Profil > crayon email/code de récupération (admin, voir
   // ProfilScreen.jsx) — persiste côté backend puis met à jour l'affichage
@@ -296,7 +317,7 @@ function App() {
         selectedCoursId={selectedCoursId}
         onSelectCours={setSelectedCoursId}
         user={activeUser}
-        famille={familleActuelle}
+        famille={familleAffichee}
         onSwitchProfil={switchProfil}
         onNavigate={setActiveTab}
         onLogout={logout}
@@ -389,7 +410,7 @@ function App() {
         {activeTab === 'profil' && (
           <ProfilScreen
             user={activeUser}
-            famille={familleActuelle}
+            famille={familleAffichee}
             onLogout={logout}
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
             onUpdateUser={mettreAJourActiveUser}

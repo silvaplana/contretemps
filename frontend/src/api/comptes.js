@@ -26,6 +26,28 @@ export async function listerAdmins(ecoleId) {
   return estModeDemo() ? listerAdminsMaquette() : listerAdminsReel(ecoleId)
 }
 
+function versFamilleEcran(c) {
+  return {
+    id: c.id,
+    type: c.role,
+    nom: c.nom,
+    prenom: c.prenom,
+    initiales: `${(c.prenom[0] ?? '').toUpperCase()}${(c.nom[0] ?? '').toUpperCase()}`,
+  }
+}
+
+// "Ma famille" (Profil) et "Changer de profil" (Header) — réel uniquement
+// (même principe que modifier() ci-dessous). Sans ça, ces 2 écrans
+// retombaient TOUJOURS sur familleActuelle (mock, la famille de Julia
+// Dho) quel que soit le compte réel connecté (signalé : Marie-Laure
+// Pesenti — professeure — voyait la famille de Julia).
+export async function listerFamille(compteId) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${compteId}/famille`)
+  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  const comptes = await reponse.json()
+  return comptes.map(versFamilleEcran)
+}
+
 function versChampsBackend({ codeRecuperation, ...reste }) {
   return { ...reste, ...(codeRecuperation !== undefined && { code_recuperation: codeRecuperation }) }
 }
