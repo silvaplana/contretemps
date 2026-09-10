@@ -338,20 +338,26 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
         id="ecole-admin-prenom"
         value={adminPrenom}
         onChange={(e) => setAdminPrenom(e.target.value)}
+        placeholder="Ex. Julia"
       />
       <label htmlFor="ecole-admin-nom">Nom</label>
-      <input id="ecole-admin-nom" value={adminNom} onChange={(e) => setAdminNom(e.target.value)} />
+      <input
+        id="ecole-admin-nom"
+        value={adminNom}
+        onChange={(e) => setAdminNom(e.target.value)}
+        placeholder="Ex. Dho"
+      />
       <label htmlFor="ecole-admin-email">Email</label>
       <input
         id="ecole-admin-email"
         type="email"
         value={adminEmail}
         onChange={(e) => setAdminEmail(e.target.value)}
+        placeholder="Ex. julia.dho@ecole-test.fr"
       />
 
-      {/* Voir "Code oublié ?" à l'écran de connexion (pas encore branché,
-          juste le champ pour l'instant) : demandé à la création d'un
-          admin, comme une question de sécurité classique. */}
+      {/* Voir "Code oublié ?" à l'écran de connexion : demandé à la
+          création d'un admin, comme une question de sécurité classique. */}
       <label htmlFor="ecole-admin-code-recuperation">
         Code de récupération : nom de votre 1er animal de compagnie
       </label>
@@ -359,6 +365,7 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
         id="ecole-admin-code-recuperation"
         value={adminCodeRecuperation}
         onChange={(e) => setAdminCodeRecuperation(e.target.value)}
+        placeholder="Ex. Rex"
       />
     </Modal>
   )
