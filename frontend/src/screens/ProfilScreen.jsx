@@ -21,10 +21,36 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
   const [edition, setEdition] = useState(false)
   const [brouillon, setBrouillon] = useState(valeur ?? '')
   const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState('')
+
+  async function enregistrer() {
+    setErreur('')
+    setEnCours(true)
+    try {
+      await onSave(brouillon)
+      setEdition(false)
+    } catch (err) {
+      // Sans ça, un échec (réseau coupé, etc.) ne laissait rien voir : on
+      // dirait juste que "valider" ne fait rien (signalé).
+      setErreur(err.message || 'Enregistrement impossible')
+    } finally {
+      setEnCours(false)
+    }
+  }
 
   if (edition) {
     return (
-      <p className="profil-champ profil-champ--edition">
+      // <form> plutôt qu'un <input> + bouton isolés : sur mobile, valider
+      // en tapant "OK"/"Terminé" sur le clavier virtuel doit fonctionner
+      // comme un tap sur la coche — sans ça, seule la coche (petite, et
+      // parfois masquée par le clavier virtuel) permet de valider (signalé).
+      <form
+        className="profil-champ profil-champ--edition"
+        onSubmit={(e) => {
+          e.preventDefault()
+          enregistrer()
+        }}
+      >
         {prefixe}
         <input
           type={type}
@@ -32,24 +58,11 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
           onChange={(e) => setBrouillon(e.target.value)}
           autoFocus
         />
-        <button
-          type="button"
-          className="icon-btn icon-btn--sm"
-          disabled={enCours}
-          aria-label="Valider"
-          onClick={async () => {
-            setEnCours(true)
-            try {
-              await onSave(brouillon)
-              setEdition(false)
-            } finally {
-              setEnCours(false)
-            }
-          }}
-        >
+        <button type="submit" className="icon-btn icon-btn--sm" disabled={enCours} aria-label="Valider">
           <Icon name="check" size={16} />
         </button>
-      </p>
+        {erreur && <span className="login-screen__erreur">{erreur}</span>}
+      </form>
     )
   }
 

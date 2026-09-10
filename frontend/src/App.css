@@ -1600,13 +1600,28 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* Occupe toute la largeur dispo (le parent, .profil-screen__identity, est
+   en colonne + align-items:center — sans ça, ce <form> ne prendrait que
+   la largeur de son contenu, l'input hériterait quand même de sa largeur
+   par défaut du navigateur et pourrait dépasser sur un petit écran). */
+.profil-champ--edition {
+  width: 100%;
 }
 
 .profil-champ--edition input {
+  flex: 1;
+  min-width: 60px;
   padding: 4px 8px;
   border-radius: 8px;
   border: 1px solid var(--border);
   background: var(--card-bg);
+}
+
+.profil-champ--edition .login-screen__erreur {
+  flex-basis: 100%;
 }
 
 .section-label {
