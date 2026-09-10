@@ -213,11 +213,13 @@
    fond/bordure propres (signalé : une "couronne orange" en trop autour
    de chaque icône, superflue maintenant qu'ils sont DANS le bandeau,
    déjà bordé lui-même — voir .conversation-thread__pill). Padding
-   resserré (signalé, trop d'espace entre les deux) : la seule chose qui
-   les espaçait, .icon-btn n'a pas de marge propre. */
+   HORIZONTAL très resserré (signalé, encore trop d'espace entre les
+   deux) — la seule chose qui les espaçait, .icon-btn n'a pas de marge
+   propre ; le vertical reste un peu plus large pour garder une cible
+   tactile correcte en hauteur. */
 .icon-btn--mail {
   color: var(--accent);
-  padding: 4px;
+  padding: 4px 1px;
 }
 
 .avatar {
