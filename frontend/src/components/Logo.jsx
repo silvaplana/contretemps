@@ -1,7 +1,12 @@
 // Logo Contretemps : image fournie par l'utilisateur (public/images/
-// logo-contretemps.jpg — même image que le favicon/l'icône Android, voir
+// logo-contretemps.png — même image que le favicon/l'icône Android, voir
 // index.html et android/app/src/main/res/mipmap-*). Affichée grande sur
 // Login, petite dans les en-têtes.
+//
+// PNG (pas jpg) : le fichier source est détouré, fond transparent autour du
+// cadran — un jpg aurait forcé un fond opaque et perdu ce détourage. Pas de
+// borderRadius/objectFit ici pour la même raison : il n'y a pas de coins
+// carrés à arrondir, le détourage s'en occupe déjà.
 //
 // L'ancien monogramme "Ct" (arc clair + cercle orange + "t" italique) reste
 // en dessous, gardé intact, au cas où on voudrait un jour s'en ressortir
@@ -14,11 +19,10 @@ export default function Logo({ size = 40 }) {
   if (AFFICHER_LOGO_PHOTO) {
     return (
       <img
-        src={`${BASE_URL}images/logo-contretemps.jpg`}
+        src={`${BASE_URL}images/logo-contretemps.png`}
         width={size}
         height={size}
         alt="Logo Contretemps"
-        style={{ borderRadius: 8, objectFit: 'cover' }}
       />
     )
   }
