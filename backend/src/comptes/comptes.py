@@ -7,7 +7,7 @@ l'autre, c'est le socle sur lequel ils s'appuient.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .models import Compte, Famille
@@ -25,17 +25,25 @@ class Comptes:
         )
 
     def trouver_par_email(self, db: Session, ecole_id: int, email: str) -> Compte | None:
+        # Insensible à la casse (voir connecter, §2.2 : le champ "Nom
+        # Prénom ou Email" du login doit l'être) — func.lower() plutôt que
+        # collation SQLite, portable si un jour on passe à Postgres.
         return db.scalar(
-            select(Compte).where(Compte.ecole_id == ecole_id, Compte.email == email)
+            select(Compte).where(
+                Compte.ecole_id == ecole_id, func.lower(Compte.email) == email.lower()
+            )
         )
 
     def trouver_par_nom_prenom(
         self, db: Session, ecole_id: int, nom: str, prenom: str, role: str | None = None
     ) -> list[Compte]:
-        """Utilisé par auth (connexion par nom+prénom, voir §2.2) et par
-        l'import Excel (détection de doublon, voir §6.4bis)."""
+        """Utilisé par auth (connexion par nom+prénom, voir §2.2 —
+        insensible à la casse) et par l'import Excel (détection de
+        doublon, voir §6.4bis)."""
         requete = select(Compte).where(
-            Compte.ecole_id == ecole_id, Compte.nom == nom, Compte.prenom == prenom
+            Compte.ecole_id == ecole_id,
+            func.lower(Compte.nom) == nom.lower(),
+            func.lower(Compte.prenom) == prenom.lower(),
         )
         if role is not None:
             requete = requete.where(Compte.role == role)

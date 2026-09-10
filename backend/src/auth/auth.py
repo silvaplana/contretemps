@@ -20,6 +20,14 @@ def montee_en_privilege(depuis_role: str, vers_role: str) -> bool:
     return RANG_ROLE[vers_role] > RANG_ROLE[depuis_role]
 
 
+def _memes_codes(saisi: str, attendu: str | None) -> bool:
+    """Comparaison des codes d'accès insensible à la casse/aux espaces
+    superflus (voir connecter/verifier_code_bascule, §2.2) — les codes
+    sont de simples mots (ADMIN/PROF/ELEVE...), une différence de casse
+    ne doit pas bloquer la connexion."""
+    return attendu is not None and saisi.strip().lower() == attendu.strip().lower()
+
+
 class Auth:
     def __init__(self, ecoles: Ecoles, comptes: Comptes) -> None:
         self.ecoles = ecoles
@@ -51,7 +59,7 @@ class Auth:
             "eleve": ecole.code_acces_eleve,
         }
         for compte in candidats:
-            if code == codes_par_role.get(compte.role):
+            if _memes_codes(code, codes_par_role.get(compte.role)):
                 return compte
         return None
 
@@ -113,4 +121,4 @@ class Auth:
             "professeur": ecole.code_acces_prof,
             "eleve": ecole.code_acces_eleve,
         }
-        return code == codes_par_role.get(vers.role)
+        return _memes_codes(code, codes_par_role.get(vers.role))

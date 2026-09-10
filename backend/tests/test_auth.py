@@ -43,6 +43,41 @@ def test_login_par_email(client, db_session):
     assert reponse.json()["id"] == admin.id
 
 
+def test_login_insensible_a_la_casse(client, db_session):
+    """Signalé : connexion en Nora Pesenti (élève) qui ne marchait pas —
+    piste "problème de casse" confirmée (nom/prénom/email ET le code
+    d'accès étaient comparés sensibles à la casse)."""
+    ecole, admin, eleve = _creer_ecole_et_comptes(db_session)
+
+    # Nom+prénom en casse différente.
+    reponse = client.post(
+        "/auth/login",
+        json={"ecole_id": ecole.id, "identifiant": "julia dho", "code": ecole.code_acces_admin},
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["id"] == admin.id
+
+    # Email en casse différente.
+    reponse = client.post(
+        "/auth/login",
+        json={"ecole_id": ecole.id, "identifiant": "J.DHO@X.FR", "code": ecole.code_acces_admin},
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["id"] == admin.id
+
+    # Code d'accès en casse différente (+ espaces superflus).
+    reponse = client.post(
+        "/auth/login",
+        json={
+            "ecole_id": ecole.id,
+            "identifiant": "Léon Perrin",
+            "code": f" {ecole.code_acces_eleve.lower()} ",
+        },
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["id"] == eleve.id
+
+
 def test_login_mauvais_code_refuse(client, db_session):
     ecole, _, _ = _creer_ecole_et_comptes(db_session)
     reponse = client.post(
