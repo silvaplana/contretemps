@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import './App.css'
 import * as choregraphiesApi from './api/choregraphies.js'
+import * as conversationsApi from './api/conversations.js'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
 import * as presenceApi from './api/presence.js'
@@ -14,7 +15,6 @@ import {
   currentUser,
   ecoleActuelle,
   familleActuelle,
-  groupes as initialGroupes,
 } from './data/mockData.js'
 import { TABS } from './data/nav.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
@@ -69,7 +69,7 @@ function App() {
   const [eleves, setEleves] = useState([])
   const [professeurs, setProfesseurs] = useState([])
   const [cours, setCours] = useState([])
-  const [groupes, setGroupes] = useState(initialGroupes)
+  const [groupes, setGroupes] = useState([])
   const [presences, setPresences] = useState({})
   const [choregraphies, setChoregraphies] = useState({})
   const [videos, setVideos] = useState({})
@@ -81,6 +81,7 @@ function App() {
     elevesApi.lister(ecole.id).then(setEleves)
     profsApi.lister(ecole.id).then(setProfesseurs)
     coursApi.lister(ecole.id).then(setCours)
+    conversationsApi.listerEcole(ecole.id).then(setGroupes)
   }, [loggedIn, ecole.id])
 
   const [selectedCoursId, setSelectedCoursId] = useState(null)

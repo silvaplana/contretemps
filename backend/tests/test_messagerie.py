@@ -195,6 +195,32 @@ def test_marquer_lu_et_envoyer_par_mail(client, db_session):
     assert delivery["envoi_volontaire"] is True
 
 
+def test_groupe_whatsapp_miroir(client, db_session):
+    """Voir §6.9 : le "tuyau" WhatsApp — pas de vrai envoi encore (Baileys,
+    plus tard), juste le statut stocké sur la conversation."""
+    ecole, admin, _, _, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+    assert conversation["whatsapp_statut"] == "aucun"
+    assert conversation["whatsapp_groupe_id"] is None
+    assert conversation["blocs"] == [{"membre_type": "cours", "membre_id": cours.id}]
+
+    reponse = client.post(f"/conversations/{conversation['id']}/whatsapp")
+    assert reponse.status_code == 200
+    miroir = reponse.json()
+    assert miroir["whatsapp_statut"] == "cree"
+    assert miroir["whatsapp_groupe_id"]
+
+    # Persisté : une relecture le confirme.
+    relu = client.get(f"/conversations/{conversation['id']}").json()
+    assert relu["whatsapp_statut"] == "cree"
+
+    assert client.post("/conversations/999/whatsapp").status_code == 404
+
+
 def test_relance_automatique_apres_delai(client, db_session):
     """Voir §5.5 : message non lu après un délai -> email automatique."""
     ecole, admin, prof, eleve, cours = _setup(db_session)

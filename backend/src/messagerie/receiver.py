@@ -70,6 +70,10 @@ class MessagerieReceiver:
         )(self.envoyer_par_mail)
         self.app.post("/messagerie/relancer", status_code=200)(self.relancer)
 
+        self.app.post(
+            "/conversations/{conversation_id}/whatsapp", response_model=ConversationSortie
+        )(self.creer_groupe_whatsapp)
+
     def _sortie_conversation(self, db: Session, conversation) -> dict:
         return {
             "id": conversation.id,
@@ -77,6 +81,9 @@ class MessagerieReceiver:
             "nom": conversation.nom,
             "type": conversation.type,
             "membres": self.conversations.membres_resolus(db, conversation.id),
+            "blocs": self.conversations.blocs(db, conversation.id),
+            "whatsapp_statut": conversation.whatsapp_statut,
+            "whatsapp_groupe_id": conversation.whatsapp_groupe_id,
         }
 
     def lister(self, ecole_id: int, compte_id: int | None = None, db: Session = Depends(get_db)):
@@ -182,3 +189,9 @@ class MessagerieReceiver:
     def relancer(self, donnees: RelanceDemande, db: Session = Depends(get_db)):
         relancees = self.messages.relancer_messages_non_lus(db, donnees.delai_minutes)
         return {"relancees": len(relancees)}
+
+    def creer_groupe_whatsapp(self, conversation_id: int, db: Session = Depends(get_db)):
+        conversation = self.conversations.creer_groupe_whatsapp(db, conversation_id)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation introuvable")
+        return self._sortie_conversation(db, conversation)

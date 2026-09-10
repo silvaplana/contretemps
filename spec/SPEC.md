@@ -223,6 +223,7 @@ vocabulaire entre l'admin et l'utilisateur (voir §6.8).
 - **Dans une conversation à plusieurs membres**, le canal (app/email) et le statut de lecture sont **par destinataire**, pas par message global — icône agrégée sur le message (ex. "✉️ 2"), détail par personne accessible au tap (façon accusés de lecture WhatsApp en groupe)
 - **Relance automatique par email** : message non lu après un délai (proposition : 15 min) → email automatique, couvre le cas d'un compte qui n'a jamais ouvert l'app
 - **Envoi volontaire par email** : case à cocher pour un envoi immédiat — **réservé aux rôles Admin et Professeur** (un élève ne peut pas déclencher d'envoi email volontaire, seulement la relance automatique standard).
+- **Troisième canal, WhatsApp — pas encore un vrai envoi, voir §6.9** : chaque conversation peut être **liée à un groupe WhatsApp miroir**, créé (avec confirmation) depuis Admin > Conversations, à la création d'une conversation ou depuis sa modale d'édition. Une icône WhatsApp s'affiche dans la liste Admin > Conversations quand un groupe est lié (rien sinon). L'envoi réel des messages vers ce groupe (Baileys, plus tard) n'est pas encore câblé — seul le "tuyau" (statut stocké, id du groupe) existe pour l'instant.
 
 ![Écran de messagerie](images/messagerie.png)
 ![Écran de messagerie — détail coches/mail](images/messagerie2.png)
@@ -609,6 +610,39 @@ message_deliveries   : id (PK), message_id (FK), destinataire_id (FK -> comptes)
 pas une vraie clé étrangère SQL classique — l'intégrité référentielle doit être vérifiée côté
 application (backend).
 
+**Troisième canal — groupe WhatsApp miroir (le "tuyau", envoi réel pas encore fait)** :
+
+```
+conversations (suite) : whatsapp_statut (enum: aucun/cree, défaut 'aucun'),
+                         whatsapp_groupe_id (texte, Opt.)
+                         -- id du groupe WhatsApp une fois créé (ex.
+                         -- "1234567890-1234567890@g.us") — NULL tant que
+                         -- whatsapp_statut = 'aucun'
+```
+
+Chaque conversation (individuelle ou groupe) peut être liée à un groupe WhatsApp miroir —
+préparé maintenant car un vrai envoi WhatsApp est prévu **en plus** de la messagerie interne
+et du mail (voir §5.5), sachant que **tout n'est pas possible côté WhatsApp, surtout pour une
+conversation à plusieurs membres** (créer un vrai groupe WhatsApp demande un client WhatsApp
+authentifié — [Baileys](https://github.com/WhiskeySockets/Baileys) envisagé — qui n'est pas
+encore branché).
+
+- **Admin > Conversations** : une icône WhatsApp s'affiche sur la ligne d'une conversation
+  **uniquement si un groupe est déjà lié** (rien sinon, pas d'icône "grisée"). Une case à
+  cocher "Créer un groupe WhatsApp lié" est proposée à la fois **à la création** d'une
+  conversation et **dans sa modale d'édition** — dans les deux cas, une confirmation
+  utilisateur est demandée avant la création réelle (pas d'annulation possible depuis cet
+  écran une fois fait).
+- **Stub côté backend** (`Conversations.creer_groupe_whatsapp`, voir
+  `messagerie/conversations.py`) : marque `whatsapp_statut = 'cree'` avec un id fictif — ne
+  crée **aucun vrai groupe WhatsApp** pour l'instant. À remplacer par le vrai appel Baileys
+  (créer un groupe avec les numéros de téléphone des membres résolus de la conversation) sans
+  changer la forme des données ni l'écran Admin.
+- **Pas encore fait** : l'envoi réel d'un message vers WhatsApp (canal `whatsapp` sur
+  `message_deliveries`, à ajouter le jour où Baileys est branché — pour l'instant seuls
+  `app`/`email` existent), et la synchronisation retour (messages envoyés *depuis* WhatsApp
+  vers la conversation).
+
 ---
 
 ## 7. Charte visuelle
@@ -632,3 +666,13 @@ application (backend).
 - Politique de confidentialité (obligatoire, données concernant des mineurs, notamment les champs santé/urgence en §6.4)
 - Captures d'écran de la section 5 à reprendre entièrement une fois l'IHM adaptée (Claude Code, qui a accès à l'app réelle)
 - Logo/charte : comment se décline-t-il pour une école autre que Contretemps ?
+- Messagerie : le "tuyau" du groupe WhatsApp miroir est en place (statut stocké, écran Admin
+  > Conversations, voir §6.9) mais **pas le vrai envoi** — reste à faire : intégrer Baileys
+  (ou équivalent), créer réellement le groupe (numéros de téléphone des membres), envoyer les
+  messages, gérer la synchronisation retour. Écran Messagerie (fil de conversation, voir
+  §5.5) : pas encore migré sur le vrai backend, contrairement à Admin > Conversations —
+  prochaine étape logique une fois le canal WhatsApp stabilisé.
+- **Écart connu spec/implémentation** : "chaque cours a sa propre conversation de groupe
+  automatique à sa création" (§6.9, ✅ confirmé) n'est pour l'instant câblé que dans le seed de
+  démo (`app/seed.py`), pas dans `CoursService.create()` lui-même — une école réelle qui crée
+  un cours n'obtient pas encore sa conversation automatiquement.

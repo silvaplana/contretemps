@@ -28,6 +28,14 @@ class Conversation(Base):
     # comptes.role, voir backend/README.md).
     type: Mapped[str] = mapped_column(String(20), nullable=False)
 
+    # Groupe WhatsApp miroir (voir spec/SPEC.md §6.9 et conversations.py :
+    # creer_groupe_whatsapp) — le "tuyau" pour un futur envoi réel via
+    # Baileys, pas encore branché : 'aucun' (par défaut) | 'cree'. L'id du
+    # groupe WhatsApp (ex. "1234567890-1234567890@g.us") reste NULL tant
+    # qu'aucune vraie création n'a eu lieu.
+    whatsapp_statut: Mapped[str] = mapped_column(String(20), nullable=False, default="aucun")
+    whatsapp_groupe_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+
 
 class ConversationMembre(Base):
     """Champ polymorphe (membre_type + membre_id) — PAS une vraie FK SQL

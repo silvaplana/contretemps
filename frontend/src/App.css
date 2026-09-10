@@ -1007,6 +1007,32 @@
   background: var(--card-bg);
 }
 
+/* Groupe WhatsApp miroir (Admin > Conversations, voir spec/SPEC.md §6.9) :
+   icône affichée UNIQUEMENT quand un groupe est lié (voir AdminGroupes.jsx)
+   — rien à afficher sinon, plutôt qu'une icône grisée + infobulle "aucun
+   groupe" (demande). Même couleur que .badge--success. */
+.whatsapp-statut {
+  display: inline-flex;
+  color: var(--success-text);
+}
+
+/* Case à cocher + icône + libellé sur une ligne (voir modales de
+   AdminGroupes.jsx) — contrairement à .checkbox-list__item, pas de
+   séparateur ni de fond de liste, juste une ligne isolée sous un
+   formulaire. */
+.checkbox-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+.checkbox-inline input {
+  width: 18px;
+  height: 18px;
+}
+
 /* ==========================================================================
    Présence (PresenceScreen.jsx)
    ========================================================================== */

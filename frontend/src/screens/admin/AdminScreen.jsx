@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
-import ZoneMigration from '../../components/ZoneMigration.jsx'
 import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
 import AdminGroupes from './AdminGroupes.jsx'
@@ -70,15 +69,14 @@ export default function AdminScreen({
         />
       )}
       {subTab === 'groupes' && (
-        <ZoneMigration domaine="messagerie">
-          <AdminGroupes
-            groupes={groupes}
-            setGroupes={setGroupes}
-            professeurs={professeurs}
-            eleves={eleves}
-            cours={cours}
-          />
-        </ZoneMigration>
+        <AdminGroupes
+          groupes={groupes}
+          setGroupes={setGroupes}
+          professeurs={professeurs}
+          eleves={eleves}
+          cours={cours}
+          ecoleId={ecole.id}
+        />
       )}
     </div>
   )

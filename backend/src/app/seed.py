@@ -29,6 +29,7 @@ from cours import CoursService
 from db import Base, SessionLocal, engine
 from ecoles import Ecoles
 from eleves import Eleves, ImportExcel
+from messagerie import Conversations, Messages
 from presence import Presence
 from videos import (
     DOSSIER_VIDEOS_LIVE,
@@ -332,6 +333,51 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
             print(f"Chorégraphie '{ch_donnees['nom']}' créée pour '{nom_cours}'.")
 
 
+def _creer_conversations_demo(db, ecole, comptes, cours_service, profs_par_nom_prenom, admin) -> None:
+    """Conversations de démo (voir spec/SPEC.md §6.9, et l'ancien
+    frontend/src/data/mockData.js: groupes/conversations, pas encore
+    supprimé — voir api/conversations.js) : un groupe automatique de
+    cours (Eveil), l'équipe pédagogique, et un DM avec une élève — pour
+    ne pas atterrir sur un écran Messagerie/Admin > Conversations vide
+    après un reset_demo."""
+    conversations = Conversations(comptes=comptes, cours=cours_service)
+    messages = Messages(conversations=conversations)
+
+    if conversations.lister_ecole(db, ecole.id):
+        print("Conversations de démo déjà présentes, ignorées.")
+        return
+
+    cours_eveil = next((c for c in cours_service.list(db, ecole.id) if c.nom == "Eveil"), None)
+    charlotte_resultats = comptes.trouver_par_nom_prenom(db, ecole.id, "Perrin", "Charlotte", role="eleve")
+    charlotte = charlotte_resultats[0] if charlotte_resultats else None
+
+    if cours_eveil:
+        groupe_eveil = conversations.creer_conversation_cours(db, ecole.id, cours_eveil.id)
+        prof_eveil = profs_par_nom_prenom.get(("Pesenti", "Marie-Laure"))
+        if prof_eveil:
+            messages.envoyer(
+                db, groupe_eveil.id, prof_eveil.id,
+                "Petit filage supplémentaire mercredi prochain, 17h15.",
+            )
+        if charlotte:
+            messages.envoyer(db, groupe_eveil.id, charlotte.id, "Confirmez par mail ?")
+
+    membres_equipe = [("compte", p.id) for p in profs_par_nom_prenom.values()] + [("compte", admin.id)]
+    equipe = conversations.create_groupe(db, ecole.id, "Equipe pédagogique", membres_equipe)
+    prof_jullien = profs_par_nom_prenom.get(("Jullien", "Pascale"))
+    if prof_jullien:
+        messages.envoyer(db, equipe.id, prof_jullien.id, "Réunion planning la semaine prochaine ?")
+
+    if charlotte:
+        dm = conversations.create_ou_obtenir_dm(db, ecole.id, admin.id, charlotte.id)
+        messages.envoyer(db, dm.id, charlotte.id, "A quelle heure le cours de mercredi ?")
+        messages.envoyer(
+            db, dm.id, admin.id, "17h00 - 17h45, salle 1", envoi_volontaire_email=True
+        )
+
+    print("Conversations de démo créées (Eveil, Equipe pédagogique, DM avec Charlotte).")
+
+
 def run() -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -423,6 +469,7 @@ def run() -> None:
         _peupler_presence_choregraphies_videos(
             db, ecole, comptes, cours_service, profs_par_nom_prenom, admin
         )
+        _creer_conversations_demo(db, ecole, comptes, cours_service, profs_par_nom_prenom, admin)
 
         print("Seed terminé.")
     finally:

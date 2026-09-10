@@ -97,6 +97,28 @@ class Conversations:
         db.refresh(conversation)
         return conversation
 
+    def creer_groupe_whatsapp(self, db: Session, conversation_id: int) -> Conversation | None:
+        """Crée le groupe WhatsApp miroir de cette conversation (icône/
+        bouton Admin > Conversations, voir spec/SPEC.md §6.9).
+
+        ⚠️ Stub : pas encore branché sur un vrai client WhatsApp (Baileys,
+        prévu plus tard) — se contente de marquer la conversation comme
+        "cree" avec un id fictif, pour que l'IHM et le reste du pipeline
+        (statut affiché, envoi futur des messages) puissent déjà exister.
+        Remplacer le corps de cette méthode par le vrai appel Baileys
+        (créer un groupe avec les numéros de téléphone des membres résolus,
+        voir membres_resolus) sans changer sa signature ni son usage côté
+        receiver.py/frontend.
+        """
+        conversation = self.get(db, conversation_id)
+        if conversation is None:
+            return None
+        conversation.whatsapp_statut = "cree"
+        conversation.whatsapp_groupe_id = f"stub-{conversation.id}"
+        db.commit()
+        db.refresh(conversation)
+        return conversation
+
     def renommer(self, db: Session, conversation_id: int, nom: str) -> Conversation | None:
         conversation = self.get(db, conversation_id)
         if conversation is None:
@@ -117,6 +139,13 @@ class Conversations:
         return True
 
     # --- Membres ---
+
+    def blocs(self, db: Session, conversation_id: int) -> list[ConversationMembre]:
+        """Composition BRUTE (membre_type + membre_id, pas résolue) — pour
+        l'écran Admin > Conversations, qui édite ces blocs (un "cours"
+        entier, ou un compte précis), contrairement à `membres_resolus`
+        (personnes une par une, pour l'écran Messagerie)."""
+        return self._membres_bruts(db, conversation_id)
 
     def _membres_bruts(self, db: Session, conversation_id: int) -> list[ConversationMembre]:
         return list(
