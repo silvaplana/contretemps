@@ -1599,6 +1599,12 @@
 
 .conversation-thread__input {
   position: relative;
+  display: flex;
+  /* flex-end : le bouton d'envoi (hors bandeau, voir
+     ConversationThreadScreen.jsx) reste calé en bas quand le bandeau
+     grandit sur plusieurs lignes, pas centré au milieu. */
+  align-items: flex-end;
+  gap: 8px;
   padding: 10px 16px;
   border-top: 1px solid var(--border);
   /* Empêche le débordement sur petit écran (vécu : le 2e bouton d'envoi,
@@ -1608,11 +1614,14 @@
   box-sizing: border-box;
 }
 
-/* LE bandeau (un seul, prend toute la largeur, demande) : bordure/fond/
-   arrondi posés ICI plutôt que sur la textarea — l'emoji (gauche) et les
-   3 boutons d'envoi (droite) sont DEDANS, pas des colonnes à côté qui
-   grignotaient sa largeur (voir ConversationThreadScreen.jsx). */
+/* Le bandeau (emoji + texte + mail/WhatsApp) prend tout l'espace
+   restant — le bouton d'envoi principal, lui, est HORS du bandeau,
+   à l'extrême droite (voir ConversationThreadScreen.jsx : nouvelle
+   approche, demandé). Bordure/fond/arrondi posés ICI plutôt que sur la
+   textarea. */
 .conversation-thread__pill {
+  flex: 1;
+  min-width: 0;
   display: flex;
   /* flex-end (pas center) : les boutons restent calés en bas quand la
      textarea grandit sur plusieurs lignes, comme WhatsApp — les centrer
@@ -1623,6 +1632,10 @@
   border: 1px solid var(--border);
   background: var(--card-bg);
   padding: 4px 4px 4px 8px;
+}
+
+.conversation-thread__input > .icon-btn--accent {
+  flex-shrink: 0;
 }
 
 /* Remplace le contour de focus par défaut du navigateur sur la textarea

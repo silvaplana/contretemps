@@ -211,10 +211,10 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
             ))}
           </div>
         )}
-        {/* Un seul bandeau (bordure/fond/arrondi posés ici, plus sur la
-            textarea, voir App.css) qui prend TOUTE la largeur — l'emoji
-            à gauche et les 3 boutons d'envoi à droite sont dedans, pas
-            des colonnes à côté qui grignotaient sa largeur (demande). */}
+        {/* Bandeau (bordure/fond/arrondi posés ici, plus sur la textarea,
+            voir App.css) — l'emoji à gauche et mail/WhatsApp à droite
+            sont dedans ; le bouton d'envoi principal, lui, est HORS du
+            bandeau, à l'extrême droite (demande — nouvelle approche). */}
         <div className="conversation-thread__pill">
           <button
             type="button"
@@ -250,14 +250,6 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
           <div className="conversation-thread__pill-envoi">
             <button
               type="button"
-              className="icon-btn icon-btn--accent"
-              onClick={() => send('app')}
-              aria-label="Envoyer par la messagerie"
-            >
-              <Icon name="send" size={18} />
-            </button>
-            <button
-              type="button"
               className="icon-btn icon-btn--mail"
               onClick={() => send('mail')}
               aria-label="Envoyer par mail"
@@ -274,6 +266,14 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
             </button>
           </div>
         </div>
+        <button
+          type="button"
+          className="icon-btn icon-btn--accent"
+          onClick={() => send('app')}
+          aria-label="Envoyer par la messagerie"
+        >
+          <Icon name="send" size={18} />
+        </button>
       </div>
     </div>
   )
