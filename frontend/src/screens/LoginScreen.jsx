@@ -111,51 +111,48 @@ export default function LoginScreen({ onLogin }) {
   )
 }
 
-// Modale "Code oublié ?" (voir spec §2.2/§2.3) : 2 étapes.
-// 1) identifiant -> le backend dit qui c'est (voir auth.js:
-//    verifierRecuperation) : admin -> la question suit ; prof/élève ->
-//    juste le contact de l'admin à qui demander directement, rien de
-//    plus (pas de libre-service pour ces 2 rôles).
-// 2) admin seulement : bonne réponse -> connecté direct (comme "Se
-//    connecter"), mauvaise réponse -> message d'erreur.
+// Modale "Code oublié ?" (voir spec §2.2/§2.3) — l'identifiant n'est PAS
+// redemandé : celui déjà tapé dans le champ "Nom Prénom ou Email" du
+// formulaire de connexion (identifiantInitial) sert directement à
+// résoudre le compte (voir auth.js: verifierRecuperation), dès
+// l'ouverture de la modale (demande) :
+// - admin -> directement la question de récupération ("Code de
+//   récupération : nom de votre 1er animal de compagnie") ; bonne
+//   réponse -> connecté direct (comme "Se connecter").
+// - professeur/élève -> juste le contact de l'admin à qui demander
+//   directement, pas de libre-service pour ces 2 rôles.
 function CodeOublieModal({ identifiantInitial, onClose, onLogin }) {
-  const [identifiant, setIdentifiant] = useState(identifiantInitial)
   const [resultat, setResultat] = useState(null) // réponse de verifierRecuperation
   const [reponseQuestion, setReponseQuestion] = useState('')
   const [erreur, setErreur] = useState('')
-  const [enCours, setEnCours] = useState(false)
+  const [enCours, setEnCours] = useState(true)
 
-  async function verifier(e) {
-    e.preventDefault()
-    setErreur('')
-    setEnCours(true)
-    try {
-      setResultat(await auth.verifierRecuperation(identifiant))
-    } catch (err) {
-      setErreur(err.message || 'Identifiant introuvable')
-    } finally {
-      setEnCours(false)
-    }
-  }
+  useEffect(() => {
+    auth
+      .verifierRecuperation(identifiantInitial)
+      .then(setResultat)
+      .catch((err) => setErreur(err.message || 'Identifiant introuvable'))
+      .finally(() => setEnCours(false))
+  }, [identifiantInitial])
 
   async function repondre(e) {
     e.preventDefault()
     setErreur('')
     setEnCours(true)
     try {
-      onLogin(await auth.repondreRecuperation(identifiant, reponseQuestion))
+      onLogin(await auth.repondreRecuperation(identifiantInitial, reponseQuestion))
     } catch (err) {
       setErreur(err.message || 'Réponse incorrecte')
       setEnCours(false)
     }
   }
 
-  // Étape 2a : admin -> la question de récupération.
+  // admin -> la question de récupération, directement.
   if (resultat?.role === 'admin') {
     return (
       <Modal title="Code oublié" onClose={onClose}>
         <form onSubmit={repondre}>
-          <label htmlFor="recup-reponse">Indiquez le nom de votre 1er animal de compagnie</label>
+          <label htmlFor="recup-reponse">Code de récupération : nom de votre 1er animal de compagnie</label>
           <input
             id="recup-reponse"
             value={reponseQuestion}
@@ -171,7 +168,7 @@ function CodeOublieModal({ identifiantInitial, onClose, onLogin }) {
     )
   }
 
-  // Étape 2b : prof/élève -> pas de libre-service, juste le contact.
+  // professeur/élève -> pas de libre-service, juste le contact.
   if (resultat) {
     return (
       <Modal title="Code oublié" onClose={onClose}>
@@ -188,23 +185,11 @@ function CodeOublieModal({ identifiantInitial, onClose, onLogin }) {
     )
   }
 
-  // Étape 1 : identifiant.
+  // Identifiant introuvable (ou vérification encore en cours).
   return (
     <Modal title="Code oublié" onClose={onClose}>
-      <form onSubmit={verifier}>
-        <label htmlFor="recup-identifiant">Nom Prénom ou Email</label>
-        <input
-          id="recup-identifiant"
-          value={identifiant}
-          onChange={(e) => setIdentifiant(e.target.value)}
-          placeholder="Julia Dho ou jd@contretemps.fr"
-          autoFocus
-        />
-        {erreur && <p className="login-screen__erreur">{erreur}</p>}
-        <button type="submit" className="btn btn--primary btn--block" disabled={enCours || !identifiant}>
-          Continuer
-        </button>
-      </form>
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      {enCours && !erreur && <p className="muted">Vérification…</p>}
     </Modal>
   )
 }
