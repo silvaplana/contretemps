@@ -33,7 +33,22 @@ function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [activeTab, setActiveTab] = useState('messagerie')
   const [activeProfilId, setActiveProfilId] = useState(currentUser.id)
-  const activeUser = familleActuelle.find((p) => p.id === activeProfilId) ?? currentUser
+  // Compte réellement connecté (voir api/auth.js : `resultat.compte`),
+  // renseigné seulement en mode réel — le sélecteur de profil famille
+  // (familleActuelle) reste 100% en dur (mock), pas encore branché sur
+  // la vraie famille du compte réel (limite connue). Sans ça, `activeUser`
+  // valait TOUJOURS le mock `currentUser` en mode réel (le `.find` sur
+  // `familleActuelle` ne matchait jamais un id réel, base de données) —
+  // `uploaderId`/`peutModifier` etc. envoyaient donc un id fictif
+  // ("admin1") au backend, jamais un vrai id de compte (404/422 selon
+  // l'endpoint). Bug trouvé en testant le premier vrai upload vidéo.
+  const [compteReel, setCompteReel] = useState(null)
+  const activeUser = compteReel ?? (familleActuelle.find((p) => p.id === activeProfilId) ?? currentUser)
+
+  function logout() {
+    setCompteReel(null)
+    setLoggedIn(false)
+  }
 
   // Écran "Comptage d'heures" (voir spec §5.7) : pas un onglet de nav
   // principal, ouvert depuis Admin > Professeurs ou Profil > "Mes heures" —
@@ -233,17 +248,17 @@ function App() {
   if (!loggedIn) {
     return (
       <LoginScreen
-        // `resultat` ({ compte, ecole, modeDemo }) vient de api/auth.js.
-        // En mode réel, `ecole` est la vraie école résolue côté backend
-        // (voir auth.js : resoudreEcoleReelle) — eleves/profs/cours/...
-        // en dépendent tous (voir les useEffect ci-dessus, ecole.id).
-        // ⚠️ `activeProfilId`/`activeUser` restent basés sur la famille en
-        // dur (familleActuelle, voir mockData.js) même en mode réel : le
-        // compte réellement connecté (resultat.compte) n'est pas encore
-        // affiché tel quel — limite connue, pas encore résolue.
+        // `resultat` ({ compte, ecole, modeDemo }) vient de api/auth.js —
+        // `compte` déjà à la forme `activeUser` (voir auth.js :
+        // versActiveUserEcran). En mode réel, `ecole` est la vraie école
+        // résolue côté backend (voir auth.js : resoudreEcoleReelle) —
+        // eleves/profs/cours/... en dépendent tous (voir les useEffect
+        // ci-dessus, ecole.id).
         onLogin={(resultat) => {
+          const reel = resultat?.modeDemo === false
+          setCompteReel(reel ? resultat.compte : null)
           setActiveProfilId(currentUser.id)
-          setEcole(resultat?.modeDemo === false && resultat.ecole ? resultat.ecole : ecoleActuelle)
+          setEcole(reel && resultat.ecole ? resultat.ecole : ecoleActuelle)
           setActiveTab('messagerie')
           setLoggedIn(true)
         }}
@@ -274,7 +289,7 @@ function App() {
         famille={familleActuelle}
         onSwitchProfil={switchProfil}
         onNavigate={setActiveTab}
-        onLogout={() => setLoggedIn(false)}
+        onLogout={logout}
         menuExtra={
           activeTab === 'presence'
             ? {
@@ -366,7 +381,7 @@ function App() {
             user={activeUser}
             famille={familleActuelle}
             onSwitchProfil={switchProfil}
-            onLogout={() => setLoggedIn(false)}
+            onLogout={logout}
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
           />
         )}

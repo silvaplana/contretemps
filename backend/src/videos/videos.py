@@ -2,15 +2,21 @@
 
 from __future__ import annotations
 
+import shutil
+from pathlib import Path
+from uuid import uuid4
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from choregraphies import Choregraphie
 from cours import CoursService
 
+from .duree import duree_secondes
 from .models import Video
+from .poster import generer_poster
 from .schemas import UsageVideosEcole, VideoUsage
-from .stockage import DOSSIER_VIDEOS_LIVE
+from .stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
 
 class Videos:
@@ -56,6 +62,54 @@ class Videos:
         db.commit()
         db.refresh(video)
         return video
+
+    def creer_avec_upload(
+        self,
+        db: Session,
+        cours_id: int,
+        fichier,
+        nom_fichier_original: str,
+        nom: str,
+        uploaded_by: int,
+        description: str = "",
+        choregraphie_id: int | None = None,
+    ) -> Video | None:
+        """Vrai upload (voir receiver.py : uploader) — `fichier` : objet
+        fichier ouvert en lecture binaire (UploadFile.file côté FastAPI,
+        n'importe quel objet avec .read() suffit, pas besoin d'importer
+        FastAPI ici). Écrit sur disque, mesure la durée et génère une
+        vignette (voir duree.py/poster.py, même principe que pour les
+        vidéos de démo), puis crée la ligne — même chemin que create()
+        ci-dessus une fois le fichier en place. Mutualisé entre l'écran
+        Vidéo et le détail d'une chorégraphie (même AddVideoModal.jsx,
+        même appel api/videos.js côté frontend)."""
+        cours = self.cours.get(db, cours_id)
+        if cours is None:
+            return None
+
+        dossier = dossier_ecole(cours.ecole_id)
+        extension = Path(nom_fichier_original).suffix or ".mp4"
+        nom_disque = f"{uuid4().hex}{extension}"
+        chemin_disque = dossier / nom_disque
+        with open(chemin_disque, "wb") as sortie:
+            shutil.copyfileobj(fichier, sortie)
+
+        poster = None
+        chemin_poster_disque = dossier / f"{Path(nom_disque).stem}.jpg"
+        if generer_poster(chemin_disque, chemin_poster_disque):
+            poster = chemin_relatif(cours.ecole_id, chemin_poster_disque.name)
+
+        return self.create(
+            db,
+            cours_id=cours_id,
+            nom=nom,
+            lien_fichier=chemin_relatif(cours.ecole_id, nom_disque),
+            uploaded_by=uploaded_by,
+            description=description,
+            choregraphie_id=choregraphie_id,
+            poster=poster,
+            duree_secondes=duree_secondes(chemin_disque),
+        )
 
     def update(self, db: Session, video_id: int, **champs) -> Video | None:
         video = self.get(db, video_id)

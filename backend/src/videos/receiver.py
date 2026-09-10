@@ -2,7 +2,7 @@
 Videos (voir videos.py), ne fait aucun calcul métier ici.
 """
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -30,6 +30,12 @@ class VideosReceiver:
         self.app.post(
             "/cours/{cours_id}/videos", response_model=VideoSortie, status_code=201
         )(self.creer)
+        # Vrai upload de fichier (voir videos.py : creer_avec_upload) —
+        # mutualisé entre l'écran Vidéo et le détail d'une chorégraphie
+        # (même AddVideoModal.jsx côté frontend).
+        self.app.post(
+            "/cours/{cours_id}/videos/upload", response_model=VideoSortie, status_code=201
+        )(self.uploader)
         self.app.get(
             "/choregraphies/{choregraphie_id}/videos", response_model=list[VideoSortie]
         )(self.lister_par_choregraphie)
@@ -54,6 +60,30 @@ class VideosReceiver:
 
     def creer(self, cours_id: int, donnees: VideoCreation, db: Session = Depends(get_db)):
         return self.client.create(db, cours_id, **donnees.model_dump())
+
+    def uploader(
+        self,
+        cours_id: int,
+        fichier: UploadFile = File(...),
+        nom: str = Form(...),
+        uploaded_by: int = Form(...),
+        description: str = Form(""),
+        choregraphie_id: int | None = Form(None),
+        db: Session = Depends(get_db),
+    ):
+        video = self.client.creer_avec_upload(
+            db,
+            cours_id,
+            fichier.file,
+            fichier.filename or "video.mp4",
+            nom=nom,
+            uploaded_by=uploaded_by,
+            description=description,
+            choregraphie_id=choregraphie_id,
+        )
+        if video is None:
+            raise HTTPException(status_code=404, detail="Cours introuvable")
+        return video
 
     def obtenir(self, video_id: int, db: Session = Depends(get_db)):
         video = self.client.get(db, video_id)

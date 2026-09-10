@@ -3,10 +3,14 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 
 // Modale "Ajouter une vidéo", réutilisée par l'onglet Vidéo (VideoScreen.jsx)
-// et par le détail d'une chorégraphie (ChoregraphieDetailScreen.jsx).
+// et par le détail d'une chorégraphie (ChoregraphieDetailScreen.jsx) — même
+// composant, donc même upload pour les deux, mutualisé une seule fois côté
+// api/videos.js (voir sa note en tête de fichier).
 // - Source : fichier existant ou caméra (input file, avec/sans "capture").
-// - Durée lue depuis les métadonnées du fichier choisi (côté client, rien
-//   n'est envoyé nulle part).
+// - Durée affichée ("fichier choisi") lue en local (metadata du fichier),
+//   juste pour le retour visuel immédiat — la VRAIE durée envoyée au
+//   serveur est mesurée à nouveau côté backend une fois le fichier reçu
+//   (voir videos/duree.py), pas celle-ci.
 // - Chorégraphie : select libre, sauf si `lockedChoregraphieId` est fourni
 //   (on est déjà dans le détail d'une chorégraphie, pas besoin de choisir).
 export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId, onClose, onAdd }) {
@@ -17,10 +21,10 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
 
   function handleFichier(file) {
     if (!file) return
-    // L'URL n'est PAS révoquée : elle devient la source de lecture de la
-    // vidéo (voir video-card__thumb dans VideoScreen.jsx et le lecteur dans
-    // ChoregraphieDetailScreen.jsx). Elle ne survit qu'à cette page/session —
-    // sans backend, rien de plus durable n'est possible ici.
+    // URL locale et temporaire, juste pour lire la durée (retour visuel
+    // "fichier choisi (mm:ss)") — révoquée juste après, jamais envoyée
+    // nulle part (voir api/videos.js : le File brut, `fichier.file`,
+    // est ce qui est réellement transmis à l'upload).
     const url = URL.createObjectURL(file)
     const probe = document.createElement('video')
     probe.preload = 'metadata'
@@ -29,7 +33,8 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
       const total = Math.round(probe.duration || 0)
       const mm = String(Math.floor(total / 60)).padStart(2, '0')
       const ss = String(total % 60).padStart(2, '0')
-      setFichier({ nom: file.name, duree: `${mm}:${ss}`, url })
+      setFichier({ nom: file.name, duree: `${mm}:${ss}`, file })
+      URL.revokeObjectURL(url)
     }
     if (!titre) setTitre(file.name.replace(/\.[^/.]+$/, ''))
   }
@@ -47,9 +52,8 @@ export default function AddVideoModal({ choregraphies = [], lockedChoregraphieId
             onAdd({
               titre,
               description,
-              duree: fichier?.duree,
-              url: fichier?.url,
               choregraphieId: lockedChoregraphieId ?? (choregraphieId || null),
+              fichier: fichier?.file ?? null,
             })
           }
         >

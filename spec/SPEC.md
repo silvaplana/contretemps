@@ -626,7 +626,7 @@ application (backend).
 
 - **Création d'une séance de présence** : confirmé — manuelle, via un bouton "+ nouvelle séance" (pas de création automatique à l'ouverture de l'onglet). (voir §6.6)
 - Détail fin des droits par rôle (ex. un prof peut-il agir sur un cours qui n'est pas le sien ?)
-- Upload vidéo : *décision prise — stockage direct sur le VPS (nginx), compression à l'upload, ~800 vidéos/an estimées*
+- Upload vidéo : **fait** — stockage direct sur le VPS (un dossier par école, voir §6.8), durée et vignette mesurées/générées côté serveur à la réception (ffmpeg). *Reste ouvert : compression à l'upload, pas encore faite (fichier stocké tel quel).*
 - Notifications : push (Capacitor + Firebase) en plus du mail, ou mail uniquement pour commencer ?
 - Intégration HelloAsso : synchronisation ponctuelle ou temps réel via webhook ?
 - Politique de confidentialité (obligatoire, données concernant des mineurs, notamment les champs santé/urgence en §6.4)

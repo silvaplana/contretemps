@@ -1,15 +1,18 @@
 // Domaine "vidéos" (écran Vidéo + onglet vidéos d'une chorégraphie, voir
 // spec/SPEC.md §6.8) — voir api/README.md pour le principe général.
 //
-// ⚠️ Limite connue, pas résolue ici : "ajouter une vidéo" ne fait
-// aujourd'hui QUE choisir un fichier local (URL.createObjectURL, voir
-// AddVideoModal.jsx — valable seulement dans cette session de
-// navigateur). Le vrai upload de fichier n'existe pas encore côté
-// backend (chantier à part, différé). En mode réel, ce fichier envoie
-// donc la forme REST correcte (POST/PUT/DELETE avec les bons champs),
-// mais une URL locale choisie par l'utilisateur resterait inutilisable
-// ailleurs qu'ici — décision explicite (voir l'utilisateur), à corriger
-// seulement quand le vrai upload existera.
+// Vrai upload de fichier (voir AddVideoModal.jsx : `fichier`, un objet
+// File brut, plus juste une URL locale) — mutualisé entre l'écran Vidéo
+// et le détail d'une chorégraphie via ce même `creer()`, qui bascule
+// vers `creerAvecFichierReel`/`creerAvecFichierMaquette` dès que
+// `donnees.fichier` est fourni. Côté réel : POST multipart vers
+// /cours/{id}/videos/upload (voir backend/src/videos/receiver.py), qui
+// écrit le fichier, mesure sa durée et génère sa vignette côté serveur
+// (voir videos/duree.py et poster.py) — rien à faire ici. Côté maquette
+// (pas de vrai backend pour stocker un fichier) : toujours
+// URL.createObjectURL, valable seulement pour cette session navigateur ;
+// pas de vignette générée (capture <canvas> possible mais pas la
+// priorité, le mock est voué à disparaître, voir messagerie).
 //
 // `duree` (affichée seulement si `url` est vide, voir VideoThumb.jsx)
 // n'existe pas côté backend — jamais envoyée/lue en mode réel.
@@ -51,15 +54,34 @@ async function listerMaquette(coursId) {
   return listeMaquette(coursId)
 }
 
-async function creerMaquette(coursId, donnees) {
+async function creerMaquette(coursId, { titre, description, choregraphieId }) {
   const nouvelle = {
     id: crypto.randomUUID(),
-    titre: donnees.titre,
-    description: donnees.description ?? '',
-    duree: donnees.duree || '00:00',
-    url: donnees.url || null,
-    poster: donnees.poster || null,
-    choregraphieId: donnees.choregraphieId ?? null,
+    titre,
+    description: description ?? '',
+    duree: '00:00',
+    url: null,
+    poster: null,
+    choregraphieId: choregraphieId ?? null,
+    datePublication: dateAffichee(),
+  }
+  listeMaquette(coursId).push(nouvelle)
+  return nouvelle
+}
+
+async function creerAvecFichierMaquette(coursId, { titre, description, choregraphieId, fichier }) {
+  const url = URL.createObjectURL(fichier)
+  const dureeSecondes = await dureeFichierMaquette(url)
+  const mm = String(Math.floor(dureeSecondes / 60)).padStart(2, '0')
+  const ss = String(dureeSecondes % 60).padStart(2, '0')
+  const nouvelle = {
+    id: crypto.randomUUID(),
+    titre,
+    description: description ?? '',
+    duree: `${mm}:${ss}`, // pas affichée tant que `url` est là, voir VideoThumb.jsx — gardée par cohérence avec le reste du magasin
+    url,
+    poster: null,
+    choregraphieId: choregraphieId ?? null,
     datePublication: dateAffichee(),
   }
   listeMaquette(coursId).push(nouvelle)
@@ -155,9 +177,7 @@ async function usageMaquette() {
   return { totalOctets, totalSecondes, topVideos }
 }
 
-// --- Réel : voir backend/src/videos/receiver.py. Pas encore exercé
-// (mode démo par défaut, voir mode.js) mais tenu à jour avec les vraies
-// routes.
+// --- Réel : voir backend/src/videos/receiver.py.
 
 async function requete(chemin, options) {
   const reponse = await fetch(`${BASE_URL}${chemin}`, {
@@ -196,19 +216,38 @@ async function listerReel(coursId) {
   return liste.map(versEcran)
 }
 
-async function creerReel(coursId, { titre, description, url, poster, choregraphieId }, uploaderId) {
+async function creerReel(coursId, { titre, description, choregraphieId }, uploaderId) {
   const v = await requete(`/cours/${coursId}/videos`, {
     method: 'POST',
     body: JSON.stringify({
       nom: titre,
       description: description ?? '',
-      lien_fichier: url ?? '',
-      poster: poster ?? null,
+      lien_fichier: '',
       choregraphie_id: choregraphieId ?? null,
       uploaded_by: uploaderId,
     }),
   })
   return versEcran(v)
+}
+
+// Vrai upload multipart (voir backend/src/videos/receiver.py : uploader)
+// — FormData, jamais de Content-Type manuel (le navigateur pose lui-même
+// la bonne frontière multipart, voir requete() plus haut qui force du
+// JSON et ne convient donc pas ici).
+async function creerAvecFichierReel(coursId, { titre, description, choregraphieId, fichier }, uploaderId) {
+  const corps = new FormData()
+  corps.append('fichier', fichier, fichier.name)
+  corps.append('nom', titre)
+  corps.append('uploaded_by', uploaderId)
+  if (description) corps.append('description', description)
+  if (choregraphieId) corps.append('choregraphie_id', choregraphieId)
+
+  const reponse = await fetch(`${BASE_URL}/cours/${coursId}/videos/upload`, {
+    method: 'POST',
+    body: corps,
+  })
+  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  return versEcran(await reponse.json())
 }
 
 async function modifierReel(videoId, { titre, choregraphieId, ...reste }) {
@@ -257,6 +296,11 @@ export async function lister(coursId) {
 }
 
 export async function creer(coursId, donnees, uploaderId) {
+  if (donnees.fichier) {
+    return estModeDemo()
+      ? creerAvecFichierMaquette(coursId, donnees)
+      : creerAvecFichierReel(coursId, donnees, uploaderId)
+  }
   return estModeDemo() ? creerMaquette(coursId, donnees) : creerReel(coursId, donnees, uploaderId)
 }
 

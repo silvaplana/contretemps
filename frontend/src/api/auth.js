@@ -31,6 +31,24 @@ function versEcoleEcran(e) {
   }
 }
 
+// Traduit un CompteSortie (backend, voir POST /auth/login) vers la forme
+// attendue par App.jsx pour `activeUser` (voir data/mockData.js :
+// familleActuelle/currentUser — même forme : id/type/nom/prenom/
+// initiales). Sans ça, `activeUser` restait TOUJOURS le mock en mode
+// réel (le compte réel n'avait jamais cette forme) — `uploaderId` et
+// consorts envoyaient un id fictif au backend (bug trouvé en testant le
+// premier vrai upload vidéo).
+function versActiveUserEcran(compte) {
+  return {
+    id: compte.id,
+    type: compte.role,
+    nom: compte.nom,
+    prenom: compte.prenom,
+    initiales: `${(compte.prenom[0] ?? '').toUpperCase()}${(compte.nom[0] ?? '').toUpperCase()}`,
+    email: compte.email,
+  }
+}
+
 // L'appli reste mono-école côté écran (voir spec §2.1, multi-écoles
 // prévu mais pas encore dans l'IHM) : en mode réel, on prend la
 // première école du backend plutôt que de demander à l'utilisateur de
@@ -57,7 +75,7 @@ async function loginReel({ identifiant, code }) {
     throw new Error("Identifiant ou code d'accès incorrect")
   }
   const compte = await reponse.json()
-  return { compte, ecole: versEcoleEcran(ecole), modeDemo: false }
+  return { compte: versActiveUserEcran(compte), ecole: versEcoleEcran(ecole), modeDemo: false }
 }
 
 export async function login(identifiants) {

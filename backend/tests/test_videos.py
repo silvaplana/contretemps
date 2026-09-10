@@ -1,10 +1,19 @@
 """Tests du module videos (voir spec/SPEC.md §6.8)."""
 
+from pathlib import Path
+
 from choregraphies import Choregraphies
 from comptes import Comptes
 from cours import CoursService
 from ecoles import Ecoles
-from videos import chemin_relatif, dossier_ecole
+from videos import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
+
+# Réutilise un vrai fichier de démo (déjà committé, voir
+# backend/videos_reference/) comme fixture d'upload — pas besoin d'un
+# fichier vidéo dédié aux tests.
+_FICHIER_DEMO = (
+    Path(__file__).resolve().parents[1] / "videos_reference" / "1" / "bang-bang-lent.mp4"
+)
 
 
 def _setup(db_session):
@@ -255,3 +264,50 @@ def test_usage_ecole_sans_cours(client, db_session):
     reponse = client.get(f"/ecoles/{ecole.id}/videos/usage")
     assert reponse.status_code == 200
     assert reponse.json() == {"total_octets": 0, "total_secondes": 0, "top_videos": []}
+
+
+def test_upload_reel(client, db_session):
+    """Vrai upload (voir videos.py : creer_avec_upload) — mutualisé
+    entre l'écran Vidéo et le détail d'une chorégraphie."""
+    ecole, cours, choregraphie, admin = _setup(db_session)
+
+    with open(_FICHIER_DEMO, "rb") as f:
+        reponse = client.post(
+            f"/cours/{cours.id}/videos/upload",
+            data={
+                "nom": "Upload test",
+                "uploaded_by": str(admin.id),
+                "description": "Une description",
+                "choregraphie_id": str(choregraphie.id),
+            },
+            files={"fichier": ("bang-bang-lent.mp4", f, "video/mp4")},
+        )
+    assert reponse.status_code == 201
+    video = reponse.json()
+    try:
+        assert video["nom"] == "Upload test"
+        assert video["description"] == "Une description"
+        assert video["choregraphie_id"] == choregraphie.id
+        # Vraie durée mesurée (voir duree.py) — même fichier que
+        # test_usage_ecole_indique_la_choregraphie_liee (22s).
+        assert video["duree_secondes"] == 22
+        assert video["poster"] is not None
+
+        chemin_disque = DOSSIER_VIDEOS_LIVE / video["lien_fichier"]
+        chemin_poster_disque = DOSSIER_VIDEOS_LIVE / video["poster"]
+        assert chemin_disque.exists()
+        assert chemin_poster_disque.exists()
+    finally:
+        (DOSSIER_VIDEOS_LIVE / video["lien_fichier"]).unlink(missing_ok=True)
+        if video["poster"]:
+            (DOSSIER_VIDEOS_LIVE / video["poster"]).unlink(missing_ok=True)
+
+
+def test_upload_cours_introuvable(client, db_session):
+    with open(_FICHIER_DEMO, "rb") as f:
+        reponse = client.post(
+            "/cours/999/videos/upload",
+            data={"nom": "X", "uploaded_by": "1"},
+            files={"fichier": ("bang-bang-lent.mp4", f, "video/mp4")},
+        )
+    assert reponse.status_code == 404
