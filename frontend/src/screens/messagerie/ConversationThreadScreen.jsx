@@ -18,6 +18,15 @@ const EMOJIS = [
   '🌙', '⭐', '🎂', '🎈',
 ]
 
+// Entrée envoie SEULEMENT sur un appareil à pointeur "fin" (souris/pavé
+// tactile, typiquement un ordinateur) — sur un écran tactile (Android,
+// iOS...), le clavier virtuel n'a pas de vraie touche Maj à combiner
+// avec Entrée pour un retour à la ligne : `shiftKey` y reste toujours
+// faux, donc Entrée y envoyait le message à chaque fois (signalé). Sur
+// ces appareils, Entrée insère juste une ligne (comportement natif de la
+// textarea, rien à faire) — l'envoi se fait via le bouton.
+const ENTREE_ENVOIE = window.matchMedia('(pointer: fine)').matches
+
 // Écran 2/2 de la Messagerie : le fil d'UNE conversation, plein écran, avec
 // une flèche de retour vers ConversationListScreen (voir MessagerieScreen.jsx)
 // — comme l'écran de discussion de WhatsApp. Coches de statut façon WhatsApp ;
@@ -219,12 +228,15 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
             setDraft(e.target.value)
             ajusterHauteur(e.target)
           }}
-          // Entrée seule -> envoie (comme avant) ; Maj+Entrée -> retour à
-          // la ligne, façon WhatsApp — `isComposing` : une touche Entrée
-          // qui valide une saisie assistée (japonais/chinois...) ne doit
-          // pas envoyer le message par accident.
+          // Entrée seule -> envoie ; Maj+Entrée -> retour à la ligne —
+          // mais SEULEMENT sur un appareil à pointeur fin (voir
+          // ENTREE_ENVOIE) : sur écran tactile, Entrée reste toujours un
+          // retour à la ligne (comportement natif), l'envoi se fait par
+          // le bouton. `isComposing` : une touche Entrée qui valide une
+          // saisie assistée (japonais/chinois...) ne doit pas envoyer le
+          // message par accident.
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+            if (ENTREE_ENVOIE && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault()
               send('app')
             }
