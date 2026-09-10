@@ -295,7 +295,19 @@ function AddMembreForm({ admins, professeurs, eleves, cours, onAdd }) {
       </div>
 
       <div className="add-membre-form__row">
-        <select value={id} onChange={(e) => setId(e.target.value)}>
+        <select
+          value={id}
+          onChange={(e) => {
+            // <select> ne renvoie que des chaînes (e.target.value), même
+            // pour un id numérique (réel) — sans ce repli, comparer cet id
+            // à option.id avec `===` échoue toujours (voir libelleMembre),
+            // d'où le "?" affiché après avoir vraiment changé la sélection
+            // (pas remarqué avant : le 1er item reste un vrai number tant
+            // qu'on n'a pas touché le <select>, voir useState ci-dessus).
+            const choisi = options.find((o) => String(o.id) === e.target.value)
+            setId(choisi ? choisi.id : e.target.value)
+          }}
+        >
           {options.map((o) => (
             <option key={o.id} value={o.id}>
               {type === 'cours' ? o.nom : `${o.prenom} ${o.nom}`}
