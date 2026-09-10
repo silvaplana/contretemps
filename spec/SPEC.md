@@ -45,7 +45,10 @@ parent Admin + ses deux enfants Élèves).
   et aux notifications
 - Le code doit correspondre au rôle réellement associé au compte, **dans l'école concernée**
   (cohérence vérifiée côté serveur)
-- Session persistante (web et mobile) sans reconnexion systématique — token stocké en local
+- **✅ Fait — Session persistante** (web, PWA, Android, iOS) sans reconnexion systématique :
+  l'id du profil ACTIF (pas un vrai token — ce backend n'a aucune notion de session, voir §8)
+  est gardé en local (voir frontend/src/api/session.js), propre à chaque appareil, mis à jour
+  à chaque bascule de profil famille et effacé à la déconnexion volontaire
 - Plusieurs appareils peuvent être connectés simultanément avec le même compte
 - Déconnexion disponible depuis l'onglet **Profil**
 - **"Code oublié ?"** : identifiant (nom+prénom ou email) saisi → si c'est un **admin**,

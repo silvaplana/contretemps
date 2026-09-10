@@ -10,9 +10,11 @@ import * as messagesApi from './api/messages.js'
 import * as notificationsApi from './api/notifications.js'
 import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
+import * as sessionApi from './api/session.js'
 import * as videosApi from './api/videos.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
+import Logo from './components/Logo.jsx'
 import { TABS } from './data/nav.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
@@ -37,6 +39,32 @@ function App() {
   const [compteReel, setCompteReel] = useState(null)
   const activeUser = compteReel ?? { id: null, type: null, nom: '', prenom: '', initiales: '' }
 
+  // Session persistante (voir spec §2.2, api/session.js) : au tout
+  // premier rendu, on ne sait pas encore s'il y a un profil à restaurer
+  // (localStorage, vérifié via le backend — voir authApi.restaurerSession)
+  // — `restaurationEnCours` évite d'afficher un flash de l'écran de
+  // connexion pendant cette (courte) vérification. Un compte introuvable
+  // (supprimé depuis, etc.) efface l'entrée sauvegardée et retombe
+  // normalement sur l'écran de connexion.
+  const [restaurationEnCours, setRestaurationEnCours] = useState(true)
+  useEffect(() => {
+    const compteId = sessionApi.lireCompteSauvegarde()
+    if (!compteId) {
+      setRestaurationEnCours(false)
+      return
+    }
+    authApi
+      .restaurerSession(compteId)
+      .then(({ compte, ecole: ecoleRestauree }) => {
+        setCompteReel(compte)
+        setEcole(ecoleRestauree)
+        setLoggedIn(true)
+      })
+      .catch(() => sessionApi.effacerCompteSauvegarde())
+      .finally(() => setRestaurationEnCours(false))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   // "Ma famille" (Profil) et "Changer de profil" (Header) : la vraie
   // famille du compte réel connecté (voir api/comptes.js : listerFamille).
   const [familleReelle, setFamilleReelle] = useState([])
@@ -60,6 +88,10 @@ function App() {
   function logout() {
     setCompteReel(null)
     setLoggedIn(false)
+    // Déconnexion volontaire : n'importe qui rouvrant l'appli sur cet
+    // appareil doit retomber sur l'écran de connexion, pas être
+    // reconnecté tout seul (voir api/session.js).
+    sessionApi.effacerCompteSauvegarde()
   }
 
   // Écran "Comptage d'heures" (voir spec §5.7) : pas un onglet de nav
@@ -263,6 +295,11 @@ function App() {
     if (!profil) return
     const nouveauCompte = code ? await authApi.confirmerBascule(id, code) : await authApi.basculerLibre(id)
     setCompteReel(nouveauCompte)
+    // Le profil ACTIF est celui qui doit être restauré à la prochaine
+    // ouverture (voir api/session.js) — pas figé sur l'identité du login
+    // initial : si on bascule vers un enfant puis ferme l'appli, elle
+    // doit rouvrir sur ce même enfant.
+    sessionApi.sauvegarderCompte(nouveauCompte.id)
 
     const tab = TABS.find((t) => t.key === activeTab)
     if (tab && !tab.roles.includes(profil.type)) {
@@ -353,6 +390,21 @@ function App() {
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
+  // Écran vide (juste la marque) pendant la vérification d'une session
+  // sauvegardée (voir l'effet en tête de fonction) — évite un flash de
+  // l'écran de connexion à chaque ouverture d'appli quand une session
+  // est bien restaurée.
+  if (restaurationEnCours) {
+    return (
+      <div className="login-screen">
+        <div className="login-screen__brand">
+          <Logo size={110} />
+          <h1>Contretemps</h1>
+        </div>
+      </div>
+    )
+  }
+
   if (!loggedIn) {
     return (
       <LoginScreen
@@ -366,6 +418,11 @@ function App() {
           setEcole(resultat.ecole)
           setActiveTab('messagerie')
           setLoggedIn(true)
+          // Se rappeler de ce profil pour la prochaine ouverture de
+          // l'appli (voir api/session.js et l'effet de restauration
+          // en tête de fonction) — web, PWA, Android, iOS : même appli
+          // web, même mécanisme partout.
+          sessionApi.sauvegarderCompte(resultat.compte.id)
         }}
       />
     )

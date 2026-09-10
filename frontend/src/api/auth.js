@@ -102,13 +102,29 @@ export async function repondreRecuperation(identifiant, reponseTexte) {
 // l'appeler depuis l'écran (avant ça, cliquer un profil de la famille ne
 // faisait littéralement rien en mode réel, signalé).
 
+async function recupererCompteActiveUser(compteId) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${compteId}`)
+  if (!reponse.ok) throw new Error('Compte introuvable')
+  return versActiveUserEcran(await reponse.json())
+}
+
 // Vers un rôle égal ou inférieur (voir data/roles.js : estMonteeEnPrivilege,
 // même règle qu'ici côté backend) : pas de code à redemander, juste
 // relire le compte visé — voir backend/src/comptes/receiver.py: obtenir.
 export async function basculerLibre(versCompteId) {
-  const reponse = await fetch(`${BASE_URL}/comptes/${versCompteId}`)
-  if (!reponse.ok) throw new Error('Compte introuvable')
-  return versActiveUserEcran(await reponse.json())
+  return recupererCompteActiveUser(versCompteId)
+}
+
+// --- Session persistante (voir spec §2.2 : "sans reconnexion
+// systématique") — App.jsx enregistre l'id du profil actif à chaque
+// connexion/bascule (voir api/session.js) et le relit ici au prochain
+// démarrage de l'appli, pour resauter l'écran de connexion. Même forme
+// de retour que login() ({compte, ecole}) : App.jsx traite les deux cas
+// de façon identique.
+export async function restaurerSession(compteId) {
+  const ecole = await resoudreEcoleReelle()
+  const compte = await recupererCompteActiveUser(compteId)
+  return { compte, ecole: versEcoleEcran(ecole) }
 }
 
 // Vers un rôle supérieur : le vrai code d'accès de CE rôle est redemandé
