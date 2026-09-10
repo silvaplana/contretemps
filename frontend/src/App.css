@@ -212,9 +212,12 @@
    saisie (voir ConversationThreadScreen.jsx) — juste teintés, sans
    fond/bordure propres (signalé : une "couronne orange" en trop autour
    de chaque icône, superflue maintenant qu'ils sont DANS le bandeau,
-   déjà bordé lui-même — voir .conversation-thread__pill). */
+   déjà bordé lui-même — voir .conversation-thread__pill). Padding
+   resserré (signalé, trop d'espace entre les deux) : la seule chose qui
+   les espaçait, .icon-btn n'a pas de marge propre. */
 .icon-btn--mail {
   color: var(--accent);
+  padding: 4px;
 }
 
 .avatar {
