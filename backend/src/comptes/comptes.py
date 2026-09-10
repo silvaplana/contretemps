@@ -85,10 +85,21 @@ class Comptes:
     def update(self, db: Session, compte_id: int, **champs) -> Compte | None:
         """Champs communs (nom/prénom/email/téléphone) — utilisé par
         eleves/profs pour éditer leur part de `Compte` (les champs
-        spécifiques au rôle sont gérés dans leur propre module)."""
+        spécifiques au rôle sont gérés dans leur propre module), et par
+        Profil admin (crayon email/téléphone/code_recuperation)."""
         compte = self.get(db, compte_id)
         if compte is None:
             return None
+        # Le regroupement familial (§6.2) se fait par email partagé, PAS
+        # figé à la création (get_or_create_famille) — sans ça, changer
+        # l'email d'un compte laissait `famille_id` périmé : plus
+        # regroupé avec la bonne famille (ou toujours avec l'ancienne).
+        # Calculé AVANT le setattr ci-dessous : la recherche d'un compte
+        # existant avec ce nouvel email doit se faire sur l'email ACTUEL
+        # (pas encore changé) de `compte`, sinon il se retrouverait à se
+        # matcher lui-même.
+        if "email" in champs and champs["email"] != compte.email:
+            compte.famille_id = self.get_or_create_famille(db, compte.ecole_id, champs["email"]).id
         # `champs` ne contient déjà que les champs explicitement fournis
         # (exclude_unset=True côté receiver) — un `if valeur is not None`
         # ici empêchait à tort de vider un champ nullable (ex. effacer

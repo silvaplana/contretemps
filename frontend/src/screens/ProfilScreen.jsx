@@ -144,7 +144,13 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
             />
           </>
         ) : (
-          user.email && <p className="muted">{user.email}</p>
+          // Professeur/Élève : téléphone affiché sous l'email (demande),
+          // mais en lecture seule — ça se modifie depuis Admin >
+          // Élèves/Profs, pas ici (pas de crayon hors admin).
+          <>
+            {user.email && <p className="muted">{user.email}</p>}
+            {user.telephone && <p className="muted">{user.telephone}</p>}
+          </>
         )}
         <span className="badge">{ROLE_LABEL[user.type]}</span>
       </div>
