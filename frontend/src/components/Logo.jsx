@@ -1,13 +1,12 @@
-// Monogramme "Ct" (voir spec/SPEC.md 5.1 et images/login.png) : un fin arc
-// clair dépasse derrière le cercle plein orange, en haut à gauche, qui
-// contient un "t" italique. L'arc doit être d'une couleur DISTINCTE du fond
-// de page (--bg) pour rester visible dessus — c'est --card-bg (un ivoire
-// légèrement plus clair) qui joue ce rôle, pas --bg lui-même.
-
-// ⚠️ Essai en cours (voir data/logo contretemps.jpg, fourni par
-// l'utilisateur) : bascule vers un vrai logo photo à la place du "Ct" —
-// grand sur Login, petit dans les en-têtes. Passer à `false` pour revenir
-// au "Ct" ci-dessous, gardé intact exprès (rien n'est décidé encore).
+// Logo Contretemps : image fournie par l'utilisateur (public/images/
+// logo-contretemps.jpg — même image que le favicon/l'icône Android, voir
+// index.html et android/app/src/main/res/mipmap-*). Affichée grande sur
+// Login, petite dans les en-têtes.
+//
+// L'ancien monogramme "Ct" (arc clair + cercle orange + "t" italique) reste
+// en dessous, gardé intact, au cas où on voudrait un jour s'en ressortir
+// sans avoir à le réécrire — passer AFFICHER_LOGO_PHOTO à `false` pour y
+// revenir.
 const AFFICHER_LOGO_PHOTO = true
 const BASE_URL = import.meta.env.BASE_URL
 
