@@ -77,23 +77,36 @@ class InscriptionsReceiver:
         inscription = self.client.get_par_token(db, token)
         if inscription is None or not inscription.pdf_dossier_chemin:
             raise HTTPException(status_code=404, detail="Dossier introuvable")
+        from .pdf import nom_fichier_dossier
         from .stockage import DOSSIER_INSCRIPTIONS
 
         chemin = DOSSIER_INSCRIPTIONS / inscription.pdf_dossier_chemin
         if not chemin.exists():
             raise HTTPException(status_code=404, detail="Dossier introuvable")
-        return Response(content=chemin.read_bytes(), media_type="application/pdf")
+        # "inline" (pas "attachment") : garde l'ouverture dans un nouvel
+        # onglet (voir Confirmation.jsx, <a target="_blank">) — seul le
+        # nom proposé si la famille clique ensuite "Enregistrer" change.
+        return Response(
+            content=chemin.read_bytes(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{nom_fichier_dossier(inscription)}"'},
+        )
 
     def facture_pdf(self, token: str, db: Session = Depends(get_db)):
         inscription = self.client.get_par_token(db, token)
         if inscription is None or not inscription.pdf_facture_chemin:
             raise HTTPException(status_code=404, detail="Facture introuvable")
+        from .pdf import nom_fichier_facture
         from .stockage import DOSSIER_INSCRIPTIONS
 
         chemin = DOSSIER_INSCRIPTIONS / inscription.pdf_facture_chemin
         if not chemin.exists():
             raise HTTPException(status_code=404, detail="Facture introuvable")
-        return Response(content=chemin.read_bytes(), media_type="application/pdf")
+        return Response(
+            content=chemin.read_bytes(),
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'inline; filename="{nom_fichier_facture(inscription)}"'},
+        )
 
     def export(self, ecole_id: int, db: Session = Depends(get_db)):
         contenu = self.client.exporter_nouvelles_inscriptions(db, ecole_id)

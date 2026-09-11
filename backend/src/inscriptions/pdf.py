@@ -12,6 +12,8 @@ from __future__ import annotations
 
 import io
 import logging
+import re
+import unicodedata
 from pathlib import Path
 
 from reportlab.lib import colors
@@ -22,6 +24,31 @@ from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Tabl
 
 _STYLES = getSampleStyleSheet()
 logger = logging.getLogger(__name__)
+
+
+def _translitere(texte: str) -> str:
+    """"Julie" / "Dupont-Martin" -> "julie" / "dupont_martin" — accents
+    retirés et caractères non alphanumériques réduits à "_", pour un nom
+    de fichier sûr partout (disque, en-tête HTTP Content-Disposition,
+    pièce jointe email)."""
+    sans_accents = unicodedata.normalize("NFKD", texte).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^A-Za-z0-9]+", "_", sans_accents).strip("_").lower()
+
+
+def nom_fichier_dossier(inscription) -> str:
+    """Nom de fichier proposé au téléchargement/à la pièce jointe email —
+    voir receiver.py et inscriptions.py:_envoyer_email."""
+    return (
+        f"dossier_{_translitere(inscription.eleve_prenom)}_"
+        f"{_translitere(inscription.eleve_nom)}_{inscription.saison.replace('-', '')}.pdf"
+    )
+
+
+def nom_fichier_facture(inscription) -> str:
+    return (
+        f"facture_{_translitere(inscription.eleve_prenom)}_"
+        f"{_translitere(inscription.eleve_nom)}_{inscription.saison.replace('-', '')}.pdf"
+    )
 
 
 def _photo_flowable(chemin_photo: Path, max_largeur: float, max_hauteur: float) -> Image | None:

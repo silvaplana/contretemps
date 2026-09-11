@@ -10,7 +10,12 @@ import pytest
 from inscriptions import excel_export
 from inscriptions.email_envoi import EmailEnvoi
 from inscriptions.models import Inscription
-from inscriptions.pdf import generer_dossier_pdf, generer_facture_pdf
+from inscriptions.pdf import (
+    generer_dossier_pdf,
+    generer_facture_pdf,
+    nom_fichier_dossier,
+    nom_fichier_facture,
+)
 from openpyxl import load_workbook
 
 
@@ -58,6 +63,21 @@ def test_generer_dossier_pdf_produit_un_vrai_pdf():
     contenu = generer_dossier_pdf(_inscription(), ["Class Ini"])
     assert contenu.startswith(b"%PDF")
     assert len(contenu) > 500
+
+
+def test_nom_fichier_dossier_et_facture():
+    inscription = _inscription()
+    assert nom_fichier_dossier(inscription) == "dossier_marie_dupont_20262027.pdf"
+    assert nom_fichier_facture(inscription) == "facture_marie_dupont_20262027.pdf"
+
+
+def test_nom_fichier_translitere_accents_et_espaces():
+    """Nom/prénom avec accents, espaces ou tiret -> nom de fichier sûr
+    (voir pdf.py:_translitere) — nécessaire pour l'en-tête HTTP
+    Content-Disposition et les pièces jointes email, qui n'acceptent pas
+    n'importe quel caractère."""
+    inscription = _inscription(eleve_prenom="Zoé-Anaïs", eleve_nom="Le Gall Dupré")
+    assert nom_fichier_dossier(inscription) == "dossier_zoe_anais_le_gall_dupre_20262027.pdf"
 
 
 def test_generer_dossier_pdf_avec_photo(tmp_path):

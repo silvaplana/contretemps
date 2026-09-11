@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from . import excel_export
 from .email_envoi import EmailEnvoi
 from .models import Inscription, inscriptions_cours
-from .pdf import generer_dossier_pdf, generer_facture_pdf
+from .pdf import generer_dossier_pdf, generer_facture_pdf, nom_fichier_dossier, nom_fichier_facture
 from .saison import saison_actuelle
 from .schemas import InscriptionCreation
 from .stockage import chemin_relatif, dossier_ecole
@@ -186,13 +186,13 @@ class Inscriptions:
                 dossier = dossier_ecole(inscription.ecole_id)
                 pieces_jointes.append(
                     (
-                        "dossier-inscription.pdf",
+                        nom_fichier_dossier(inscription),
                         (dossier / f"{inscription.token_public}-dossier.pdf").read_bytes(),
                     )
                 )
                 pieces_jointes.append(
                     (
-                        "facture.pdf",
+                        nom_fichier_facture(inscription),
                         (dossier / f"{inscription.token_public}-facture.pdf").read_bytes(),
                     )
                 )
