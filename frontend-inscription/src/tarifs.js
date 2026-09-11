@@ -73,6 +73,11 @@ export function calculerTarifIndicatif(nomsCours, reductionFamille = false) {
     (a, b) => ORDRE_PALIERS.indexOf(b) - ORDRE_PALIERS.indexOf(a)
   )[0]
   const { trimestriel } = tarifPourPalier(palierRetenu, nomsCours.length)
+  // `montantTrimestrielBrut` : prix du palier tel quel (barème), affiché
+  // dans le libellé — la réduction n'y est jamais mêlée, elle reste une
+  // mention à part (voir FormulaireInscription.jsx/Confirmation.jsx).
+  // `montantTroisTrimestres`/`totalAnnee`, eux, restent calculés avec la
+  // réduction déduite : c'est le montant réellement dû.
   const montantTrimestriel = reductionFamille
     ? Math.max(0, trimestriel - REDUCTION_FAMILLE)
     : trimestriel
@@ -80,6 +85,7 @@ export function calculerTarifIndicatif(nomsCours, reductionFamille = false) {
   return {
     palier: palierRetenu,
     montantAdhesion: ADHESION,
+    montantTrimestrielBrut: trimestriel,
     montantTrimestriel,
     montantTroisTrimestres,
     totalAnnee: ADHESION + montantTroisTrimestres,

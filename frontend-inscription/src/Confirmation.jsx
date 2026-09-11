@@ -4,6 +4,13 @@ import { LIBELLE_PALIER } from './tarifs.js'
 export default function Confirmation({ resultat, onNouvelleInscription }) {
   const montantTroisTrimestres = resultat.montant_trimestriel * 3
   const totalAnnee = resultat.montant_adhesion + montantTroisTrimestres
+  // Le serveur ne renvoie que le montant DÉJÀ réduit (montant_trimestriel,
+  // voir inscriptions.py) — reconstruit le prix brut du palier pour
+  // l'affichage (voir tarifs.js:montantTrimestrielBrut, même logique
+  // côté formulaire), sans jamais changer le montant réellement dû
+  // ci-dessus.
+  const montantTrimestrielBrut =
+    resultat.montant_trimestriel + (resultat.reduction_famille_appliquee ? 5 : 0)
 
   return (
     <div className="section">
@@ -37,7 +44,7 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
           <span>
             3 trimestres à {resultat.nb_cours_semaine} cours/semaine (palier «{' '}
             {LIBELLE_PALIER[resultat.palier_tarifaire] ?? resultat.palier_tarifaire} »{' '}
-            {resultat.montant_trimestriel} €
+            {montantTrimestrielBrut} €
             {resultat.reduction_famille_appliquee && ' — famille : -5 €'})
           </span>
           <span>{montantTroisTrimestres} €</span>

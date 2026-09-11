@@ -294,7 +294,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             <div className="tarif-apercu__ligne">
               <span>
                 3 trimestres à {valeurs.coursIds.length} cours/semaine (palier «{' '}
-                {LIBELLE_PALIER[tarif.palier]} » {tarif.montantTrimestriel} €
+                {LIBELLE_PALIER[tarif.palier]} » {tarif.montantTrimestrielBrut} €
                 {tarif.reductionFamilleAppliquee && ' — famille : -5 €'})
               </span>
               <span>{tarif.montantTroisTrimestres} €</span>
