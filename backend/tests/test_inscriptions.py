@@ -97,6 +97,17 @@ def test_creer_une_inscription(client, db_session, _nettoyage_dossier):
     assert facture_pdf.content.startswith(b"%PDF")
 
 
+def test_creer_une_inscription_sans_email_refusee(client, db_session):
+    """Voir schemas.py:InscriptionCreation.eleve_email — obligatoire
+    (sert à la confirmation ET, si HelloAsso choisi, à payer)."""
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    donnees = _donnees_formulaire([cours["Éveil"].id])
+    del donnees["eleve_email"]
+
+    reponse = client.post("/inscriptions", params={"ecole_id": ecole.id}, json=donnees)
+    assert reponse.status_code == 422
+
+
 def test_doublon_detecte_sur_meme_nom_prenom_meme_saison(client, db_session, _nettoyage_dossier):
     ecole, cours = _creer_ecole_avec_cours(db_session)
     _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))

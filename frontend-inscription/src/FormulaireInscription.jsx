@@ -80,6 +80,9 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
     if (!valeurs.eleveDateNaissance) {
       return 'La date de naissance est obligatoire.'
     }
+    if (!valeurs.eleveEmail.trim()) {
+      return "L'email est obligatoire (il sert à recevoir la confirmation et, si choisi, à payer avec HelloAsso)."
+    }
     if (valeurs.coursIds.length === 0) {
       return 'Choisissez au moins un cours.'
     }
@@ -189,10 +192,11 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             />
           </div>
           <div className="champ">
-            <label htmlFor="eleve-email">Email (pour recevoir la confirmation)</label>
+            <label htmlFor="eleve-email">Email *</label>
             <input
               id="eleve-email"
               type="email"
+              required
               placeholder="julie.dupont@email.fr"
               {...champ('eleveEmail')}
             />

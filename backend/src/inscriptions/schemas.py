@@ -18,7 +18,10 @@ class InscriptionCreation(BaseModel):
     eleve_date_naissance: dt.date
     eleve_adresse: str | None = None
     eleve_telephone: str | None = None
-    eleve_email: str | None = None
+    # Obligatoire (voir FormulaireInscription.jsx) : sert à recevoir la
+    # confirmation ET, si HelloAsso est choisi, à payer (voir
+    # inscriptions.py:initier_paiement_helloasso — payer.email).
+    eleve_email: str
 
     cours_ids: list[int]
 
