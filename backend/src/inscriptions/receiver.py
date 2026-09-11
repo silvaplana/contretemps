@@ -121,6 +121,14 @@ class InscriptionsReceiver:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         except HelloAssoError as erreur:
             logger.exception("Initiation paiement HelloAsso échouée pour %s", token)
+            if erreur.status_code == 400 and erreur.messages_api:
+                # Donnée rejetée par HelloAsso (ex. nom/prénom du payeur
+                # invalide) — pas une panne : message clair plutôt que
+                # le 503 générique, voir helloasso.py:HelloAssoError.
+                raise HTTPException(
+                    status_code=400,
+                    detail="HelloAsso a refusé ces informations : " + " ; ".join(erreur.messages_api),
+                ) from erreur
             raise HTTPException(
                 status_code=503, detail="Paiement HelloAsso indisponible pour le moment"
             ) from erreur

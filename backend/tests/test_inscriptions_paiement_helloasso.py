@@ -103,6 +103,37 @@ def test_paiement_helloasso_refuse_si_moyen_paiement_different(
     assert reponse.status_code == 400
 
 
+def test_paiement_helloasso_donnee_rejetee_renvoie_400_avec_message(
+    client, db_session, _nettoyage_dossier, _helloasso_actif, monkeypatch
+):
+    """Voir helloasso.py:HelloAssoError — un 400 avec de vrais messages
+    HelloAsso (ex. nom du payeur invalide, constaté en sandbox) doit
+    remonter en 400 avec ce message, pas en 503 générique (réservé à une
+    vraie panne)."""
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id]),
+    ).json()
+
+    monkeypatch.setattr(
+        helloasso_module.requests,
+        "request",
+        lambda *a, **k: _FausseReponse(
+            {"errors": [{"code": "ArgumentInvalid", "message": "Votre nom doit comporter au moins une voyelle"}]},
+            status_code=400,
+        ),
+    )
+    reponse = client.post(
+        f"/inscriptions/{corps['token_public']}/paiement/helloasso",
+        json={"retour_url": "https://exemple.fr/retour"},
+    )
+    assert reponse.status_code == 400
+    assert "voyelle" in reponse.json()["detail"]
+
+
 def test_paiement_helloasso_indisponible_si_non_configure(
     client, db_session, _nettoyage_dossier, monkeypatch
 ):

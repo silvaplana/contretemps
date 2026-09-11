@@ -46,7 +46,18 @@ class HelloAssoError(Exception):
     jamais avalée silencieusement ici : contrairement à l'email/Excel,
     l'appelant (inscriptions.py) doit savoir que le paiement n'a pas pu
     être initié pour prévenir la famille, pas juste continuer comme si
-    de rien n'était."""
+    de rien n'était.
+
+    `status_code`/`messages_api` : voir receiver.py — un 400 avec de
+    vrais messages (ex. "Votre nom doit comporter au moins une voyelle",
+    constaté en sandbox) est une DONNÉE rejetée, pas une panne : mérite
+    un message clair à la famille, pas le 503 générique réservé à une
+    vraie indisponibilité (réseau, authentification, 5xx)."""
+
+    def __init__(self, message: str, status_code: int | None = None, messages_api: list[str] | None = None) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+        self.messages_api = messages_api or []
 
 
 class HelloAsso:
@@ -96,9 +107,16 @@ class HelloAsso:
             **kwargs,
         )
         if not reponse.ok:
+            messages_api = []
+            try:
+                messages_api = [e.get("message", "") for e in reponse.json().get("errors", [])]
+            except Exception:
+                pass
             raise HelloAssoError(
                 f"Appel HelloAsso {methode} {chemin} échoué ({reponse.status_code}) : "
-                f"{reponse.text[:300]}"
+                f"{reponse.text[:300]}",
+                status_code=reponse.status_code,
+                messages_api=messages_api,
             )
         return reponse.json()
 
