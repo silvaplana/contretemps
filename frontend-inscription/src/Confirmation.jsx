@@ -58,9 +58,6 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
             Cours choisis touchant plusieurs paliers tarifaires — palier le plus élevé retenu.
           </div>
         )}
-        <div className="alerte" style={{ color: '#666' }}>
-          Adhésion payée à part, par chèque.
-        </div>
       </div>
 
       <p>

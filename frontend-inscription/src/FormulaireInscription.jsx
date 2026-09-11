@@ -310,10 +310,6 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
                 retenu.
               </div>
             )}
-            <div className="alerte" style={{ color: '#666' }}>
-              Adhésion payée à part, par chèque. Ce tarif est indicatif : le montant définitif est
-              confirmé après soumission.
-            </div>
           </div>
         </section>
       )}
