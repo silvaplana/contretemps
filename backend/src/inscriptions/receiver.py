@@ -6,7 +6,7 @@ inscriptions.py), ne fait aucun calcul métier ici.
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -25,6 +25,7 @@ class InscriptionsReceiver:
         self.app.post("/inscriptions", response_model=InscriptionSortie, status_code=201)(
             self.creer
         )
+        self.app.post("/inscriptions/{token}/photo", status_code=204)(self.photo)
         self.app.get("/inscriptions/{token}/dossier.pdf")(self.dossier_pdf)
         self.app.get("/inscriptions/{token}/facture.pdf")(self.facture_pdf)
         self.app.get("/inscriptions/export")(self.export)
@@ -58,6 +59,18 @@ class InscriptionsReceiver:
         ip = request.client.host if request.client else None
         inscription = self.client.creer(db, ecole_id, donnees, ip)
         return self._vers_sortie(db, inscription)
+
+    def photo(self, token: str, fichier: UploadFile = File(...), db: Session = Depends(get_db)):
+        """Upload de la photo de l'élève, appelé juste après la création
+        (voir FormulaireInscription.jsx) — jamais bloquant pour
+        l'inscription : un 404 ici (token inconnu) est la seule erreur
+        renvoyée, tout le reste (photo illisible...) est absorbé côté
+        service (voir inscriptions.py:enregistrer_photo)."""
+        inscription = self.client.enregistrer_photo(
+            db, token, fichier.file, fichier.filename or "photo.jpg"
+        )
+        if inscription is None:
+            raise HTTPException(status_code=404, detail="Inscription introuvable")
 
     def dossier_pdf(self, token: str, db: Session = Depends(get_db)):
         inscription = self.client.get_par_token(db, token)

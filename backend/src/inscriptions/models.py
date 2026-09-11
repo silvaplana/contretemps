@@ -57,6 +57,12 @@ class Inscription(Base):
     eleve_adresse: Mapped[str | None] = mapped_column(Text, nullable=True)
     eleve_telephone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     eleve_email: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    # Chemin relatif (voir stockage.py:chemin_relatif) — comme
+    # pdf_dossier_chemin/pdf_facture_chemin ci-dessous, jamais le fichier
+    # lui-même en base. Optionnelle : uploadée séparément après la
+    # création (voir receiver.py : POST /inscriptions/{token}/photo),
+    # jamais bloquante si absente ou en échec (voir inscriptions.py).
+    eleve_photo_chemin: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # --- Infos médicales (même nommage que profils_eleves, voir eleves/models.py) ---
     allergies: Mapped[str | None] = mapped_column(Text, nullable=True)

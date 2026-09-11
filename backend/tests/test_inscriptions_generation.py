@@ -60,6 +60,26 @@ def test_generer_dossier_pdf_produit_un_vrai_pdf():
     assert len(contenu) > 500
 
 
+def test_generer_dossier_pdf_avec_photo(tmp_path):
+    from PIL import Image
+
+    chemin_photo = tmp_path / "photo.jpg"
+    Image.new("RGB", (120, 160), color=(200, 120, 60)).save(chemin_photo)
+
+    sans_photo = generer_dossier_pdf(_inscription(), ["Class Ini"])
+    avec_photo = generer_dossier_pdf(_inscription(), ["Class Ini"], chemin_photo)
+    assert avec_photo.startswith(b"%PDF")
+    assert len(avec_photo) > len(sans_photo)
+
+
+def test_generer_dossier_pdf_photo_illisible_ignoree_sans_planter(tmp_path):
+    chemin_photo = tmp_path / "pas-une-image.jpg"
+    chemin_photo.write_text("ceci n'est pas une image")
+
+    contenu = generer_dossier_pdf(_inscription(), ["Class Ini"], chemin_photo)
+    assert contenu.startswith(b"%PDF")
+
+
 def test_generer_facture_pdf_produit_un_vrai_pdf():
     contenu = generer_facture_pdf(_inscription())
     assert contenu.startswith(b"%PDF")

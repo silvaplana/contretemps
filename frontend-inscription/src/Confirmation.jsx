@@ -10,6 +10,13 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
       </p>
       <p>Cours choisis : {resultat.cours_choisis.join(', ')}</p>
 
+      {resultat.photoChoisie && !resultat.photoEnvoyee && (
+        <p className="erreur-globale">
+          La photo n'a pas pu être envoyée — l'inscription est bien enregistrée sans elle, vous
+          pourrez la donner à l'école autrement.
+        </p>
+      )}
+
       {resultat.doublon_possible && (
         <p className="erreur-globale">
           Une inscription très similaire existe déjà pour cette saison — l'école vérifiera avec

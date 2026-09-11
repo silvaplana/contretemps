@@ -42,6 +42,23 @@ export async function creerInscription(ecoleId, donnees) {
   })
 }
 
+// Upload multipart, séparé de creerInscription (appelé juste après, une
+// fois le token connu) — ne passe PAS par `requete` : il ne faut jamais
+// fixer soi-même le Content-Type d'un FormData, le navigateur doit
+// poser la frontière multipart lui-même. Jamais bloquant pour
+// l'inscription si ça échoue (voir FormulaireInscription.jsx).
+export async function uploaderPhotoEleve(token, fichier) {
+  const corps = new FormData()
+  corps.append('fichier', fichier)
+  const reponse = await fetch(`${BASE_URL}/inscriptions/${token}/photo`, {
+    method: 'POST',
+    body: corps,
+  })
+  if (!reponse.ok) {
+    throw new Error(`Envoi de la photo échoué (${reponse.status})`)
+  }
+}
+
 export function urlDossierPdf(token) {
   return `${BASE_URL}/inscriptions/${token}/dossier.pdf`
 }

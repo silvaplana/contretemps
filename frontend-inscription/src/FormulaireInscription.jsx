@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { creerInscription } from './api/backend.js'
+import { creerInscription, uploaderPhotoEleve } from './api/backend.js'
 import { calculerTarifIndicatif } from './tarifs.js'
 
 const VIDE = {
@@ -28,8 +28,19 @@ const VIDE = {
 
 export default function FormulaireInscription({ ecole, cours, onSoumis }) {
   const [valeurs, setValeurs] = useState(VIDE)
+  const [elevePhoto, setElevePhoto] = useState(null)
+  const [apercuPhoto, setApercuPhoto] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   const [erreur, setErreur] = useState(null)
+
+  function choisirPhoto(e) {
+    const fichier = e.target.files?.[0] ?? null
+    setElevePhoto(fichier)
+    setApercuPhoto((ancien) => {
+      if (ancien) URL.revokeObjectURL(ancien)
+      return fichier ? URL.createObjectURL(fichier) : null
+    })
+  }
 
   const nomsCoursChoisis = useMemo(
     () => cours.filter((c) => valeurs.coursIds.includes(c.id)).map((c) => c.nom),
@@ -109,7 +120,18 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         signataire_nom: valeurs.signataireNom.trim(),
         moyen_paiement: valeurs.moyenPaiement,
       })
-      onSoumis(resultat)
+
+      let photoEnvoyee = false
+      if (elevePhoto) {
+        try {
+          await uploaderPhotoEleve(resultat.token_public, elevePhoto)
+          photoEnvoyee = true
+        } catch {
+          // Jamais bloquant : l'inscription est déjà enregistrée (voir
+          // api/backend.js) — juste signalé sur l'écran de confirmation.
+        }
+      }
+      onSoumis({ ...resultat, photoEnvoyee, photoChoisie: Boolean(elevePhoto) })
     } catch (err) {
       setErreur(err.message || "L'inscription n'a pas pu être envoyée. Réessayez.")
     } finally {
@@ -126,11 +148,11 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         <div className="grille-2">
           <div className="champ">
             <label htmlFor="eleve-nom">Nom *</label>
-            <input id="eleve-nom" required {...champ('eleveNom')} />
+            <input id="eleve-nom" required placeholder="Dupont" {...champ('eleveNom')} />
           </div>
           <div className="champ">
             <label htmlFor="eleve-prenom">Prénom *</label>
-            <input id="eleve-prenom" required {...champ('elevePrenom')} />
+            <input id="eleve-prenom" required placeholder="Julie" {...champ('elevePrenom')} />
           </div>
         </div>
         <div className="champ">
@@ -139,17 +161,38 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         </div>
         <div className="champ">
           <label htmlFor="eleve-adresse">Adresse</label>
-          <input id="eleve-adresse" {...champ('eleveAdresse')} />
+          <input
+            id="eleve-adresse"
+            placeholder="12 rue des Oliviers, 83330 Le Beausset"
+            {...champ('eleveAdresse')}
+          />
         </div>
         <div className="grille-2">
           <div className="champ">
             <label htmlFor="eleve-telephone">Téléphone</label>
-            <input id="eleve-telephone" type="tel" {...champ('eleveTelephone')} />
+            <input
+              id="eleve-telephone"
+              type="tel"
+              placeholder="06 12 34 56 78"
+              {...champ('eleveTelephone')}
+            />
           </div>
           <div className="champ">
             <label htmlFor="eleve-email">Email (pour recevoir la confirmation)</label>
-            <input id="eleve-email" type="email" {...champ('eleveEmail')} />
+            <input
+              id="eleve-email"
+              type="email"
+              placeholder="julie.dupont@email.fr"
+              {...champ('eleveEmail')}
+            />
           </div>
+        </div>
+        <div className="champ">
+          <label htmlFor="eleve-photo">Photo de l'élève</label>
+          <input id="eleve-photo" type="file" accept="image/*" onChange={choisirPhoto} />
+          {apercuPhoto && (
+            <img src={apercuPhoto} alt="Aperçu de la photo de l'élève" className="photo-apercu" />
+          )}
         </div>
       </section>
 
@@ -158,11 +201,11 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         <div className="grille-2">
           <div className="champ">
             <label htmlFor="contact-nom">Nom</label>
-            <input id="contact-nom" {...champ('contactNom')} />
+            <input id="contact-nom" placeholder="Dupont" {...champ('contactNom')} />
           </div>
           <div className="champ">
             <label htmlFor="contact-prenom">Prénom</label>
-            <input id="contact-prenom" {...champ('contactPrenom')} />
+            <input id="contact-prenom" placeholder="Marie" {...champ('contactPrenom')} />
           </div>
         </div>
         <div className="grille-2">
@@ -172,7 +215,12 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
           </div>
           <div className="champ">
             <label htmlFor="contact-telephone">Téléphone</label>
-            <input id="contact-telephone" type="tel" {...champ('contactTelephone')} />
+            <input
+              id="contact-telephone"
+              type="tel"
+              placeholder="06 98 76 54 32"
+              {...champ('contactTelephone')}
+            />
           </div>
         </div>
       </section>
@@ -235,15 +283,20 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         <h2>Informations médicales</h2>
         <div className="champ">
           <label htmlFor="allergies">Allergies</label>
-          <textarea id="allergies" rows={2} {...champ('allergies')} />
+          <textarea id="allergies" rows={2} placeholder="Aucune" {...champ('allergies')} />
         </div>
         <div className="champ">
           <label htmlFor="traitement">Traitement médical</label>
-          <textarea id="traitement" rows={2} {...champ('traitementMedical')} />
+          <textarea id="traitement" rows={2} placeholder="Aucun" {...champ('traitementMedical')} />
         </div>
         <div className="champ">
           <label htmlFor="infos-importantes">Autres informations importantes</label>
-          <textarea id="infos-importantes" rows={2} {...champ('informationsImportantes')} />
+          <textarea
+            id="infos-importantes"
+            rows={2}
+            placeholder="Ex. porte des lunettes"
+            {...champ('informationsImportantes')}
+          />
         </div>
       </section>
 
@@ -300,7 +353,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         </label>
         <div className="champ" style={{ marginTop: 10 }}>
           <label htmlFor="signataire">Nom du signataire (responsable légal, ou l'élève si majeur) *</label>
-          <input id="signataire" required {...champ('signataireNom')} />
+          <input id="signataire" required placeholder="Marie Dupont" {...champ('signataireNom')} />
         </div>
       </section>
 

@@ -5,12 +5,14 @@ de stockage par défaut puis nettoie (même patron que
 test_videos.py:test_upload_reel — pas de monkeypatch d'env, les chemins
 sont résolus au niveau module)."""
 
+import io
 import shutil
 
 import pytest
 from cours import CoursService
 from ecoles import Ecoles
 from inscriptions.stockage import DOSSIER_INSCRIPTIONS
+from PIL import Image
 
 NOMS_COURS_REELS = [
     "Éveil", "Class Ini", "Jazz Ini", "Class Moy", "Jazz Moy", "Street Moyen",
@@ -169,4 +171,45 @@ def test_export_contient_les_inscriptions(client, db_session, _nettoyage_dossier
 
 def test_dossier_pdf_token_inconnu_404(client, db_session):
     reponse = client.get("/inscriptions/token-inexistant/dossier.pdf")
+    assert reponse.status_code == 404
+
+
+def _image_test() -> io.BytesIO:
+    tampon = io.BytesIO()
+    Image.new("RGB", (120, 160), color=(200, 120, 60)).save(tampon, format="JPEG")
+    tampon.seek(0)
+    return tampon
+
+
+def test_upload_photo_puis_regeneration_du_dossier_pdf(client, db_session, _nettoyage_dossier):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id]),
+    ).json()
+    token = corps["token_public"]
+    dossier_avant = client.get(f"/inscriptions/{token}/dossier.pdf").content
+
+    reponse = client.post(
+        f"/inscriptions/{token}/photo",
+        files={"fichier": ("photo.jpg", _image_test(), "image/jpeg")},
+    )
+    assert reponse.status_code == 204
+
+    dossier_apres = client.get(f"/inscriptions/{token}/dossier.pdf")
+    assert dossier_apres.status_code == 200
+    assert dossier_apres.content.startswith(b"%PDF")
+    # Le dossier a bien changé (photo incluse) — comparaison grossière,
+    # la taille du fichier suffit à vérifier qu'autre chose a été inséré.
+    assert dossier_apres.content != dossier_avant
+
+
+def test_upload_photo_token_inconnu_404(client, db_session):
+    reponse = client.post(
+        "/inscriptions/token-inexistant/photo",
+        files={"fichier": ("photo.jpg", _image_test(), "image/jpeg")},
+    )
     assert reponse.status_code == 404

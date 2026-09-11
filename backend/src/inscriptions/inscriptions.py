@@ -11,7 +11,9 @@ vient de s'inscrire."""
 from __future__ import annotations
 
 import logging
+import shutil
 import uuid
+from pathlib import Path
 
 from cours import CoursService
 from sqlalchemy import select
@@ -137,7 +139,14 @@ class Inscriptions:
             dossier = dossier_ecole(inscription.ecole_id)
             nom_dossier = f"{inscription.token_public}-dossier.pdf"
             nom_facture = f"{inscription.token_public}-facture.pdf"
-            (dossier / nom_dossier).write_bytes(generer_dossier_pdf(inscription, noms_cours))
+            chemin_photo = (
+                dossier_ecole(inscription.ecole_id) / Path(inscription.eleve_photo_chemin).name
+                if inscription.eleve_photo_chemin
+                else None
+            )
+            (dossier / nom_dossier).write_bytes(
+                generer_dossier_pdf(inscription, noms_cours, chemin_photo)
+            )
             (dossier / nom_facture).write_bytes(generer_facture_pdf(inscription))
             inscription.pdf_dossier_chemin = chemin_relatif(inscription.ecole_id, nom_dossier)
             inscription.pdf_facture_chemin = chemin_relatif(inscription.ecole_id, nom_facture)
@@ -205,6 +214,36 @@ class Inscriptions:
 
     def get_par_token(self, db: Session, token: str) -> Inscription | None:
         return db.scalar(select(Inscription).where(Inscription.token_public == token))
+
+    def enregistrer_photo(
+        self, db: Session, token: str, fichier, nom_fichier_original: str
+    ) -> Inscription | None:
+        """Upload de la photo de l'élève, séparé de `creer()` (voir
+        FormulaireInscription.jsx : envoyée juste après la création,
+        une fois le token connu) — jamais bloquant pour l'inscription
+        elle-même si ça échoue (voir receiver.py, même philosophie que
+        PDF/Excel/email). `fichier` : objet fichier ouvert en lecture
+        binaire (UploadFile.file côté FastAPI), même convention que
+        videos.py:creer_avec_upload."""
+        inscription = self.get_par_token(db, token)
+        if inscription is None:
+            return None
+
+        dossier = dossier_ecole(inscription.ecole_id)
+        extension = Path(nom_fichier_original).suffix or ".jpg"
+        nom_disque = f"{inscription.token_public}-photo{extension}"
+        with open(dossier / nom_disque, "wb") as sortie:
+            shutil.copyfileobj(fichier, sortie)
+
+        inscription.eleve_photo_chemin = chemin_relatif(inscription.ecole_id, nom_disque)
+        db.commit()
+        db.refresh(inscription)
+
+        # Régénère le dossier PDF pour y inclure la photo (voir pdf.py) —
+        # généré une 1re fois sans elle dans creer(), avant que la photo
+        # (uploadée séparément) ne soit connue.
+        self._generer_pdf(db, inscription, self.cours_choisis(db, inscription.id))
+        return inscription
 
     def cours_choisis(self, db: Session, inscription_id: int) -> list[str]:
         lignes = db.execute(

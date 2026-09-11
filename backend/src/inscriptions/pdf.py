@@ -11,14 +11,35 @@ spec/SPEC-inscription.md).
 from __future__ import annotations
 
 import io
+import logging
+from pathlib import Path
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.lib.units import cm
-from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Image, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 _STYLES = getSampleStyleSheet()
+logger = logging.getLogger(__name__)
+
+
+def _photo_flowable(chemin_photo: Path, max_largeur: float, max_hauteur: float) -> Image | None:
+    """Image proportionnée (jamais déformée), bornée par une boîte
+    max_largeur x max_hauteur — voir generer_dossier_pdf. `None` si le
+    fichier est illisible/corrompu : la photo ne doit jamais faire
+    échouer la génération du reste du dossier (même philosophie que
+    inscriptions.py : PDF/Excel/email jamais bloquants)."""
+    try:
+        from PIL import Image as PILImage
+
+        with PILImage.open(chemin_photo) as image:
+            largeur_px, hauteur_px = image.size
+        echelle = min(max_largeur / largeur_px, max_hauteur / hauteur_px)
+        return Image(str(chemin_photo), width=largeur_px * echelle, height=hauteur_px * echelle)
+    except Exception:
+        logger.warning("Photo illisible, ignorée dans le PDF : %s", chemin_photo)
+        return None
 
 
 def _titre(texte: str) -> Paragraph:
@@ -37,10 +58,12 @@ def _oui_non(valeur: bool) -> str:
     return "Oui" if valeur else "Non"
 
 
-def generer_dossier_pdf(inscription, noms_cours: list[str]) -> bytes:
+def generer_dossier_pdf(inscription, noms_cours: list[str], chemin_photo: Path | None = None) -> bytes:
     """Reprend les sections du vrai dossier papier : fiche d'inscription
     (élève + contact urgence + cours + infos médicales), autorisations
-    (droit à l'image, règlement intérieur signé)."""
+    (droit à l'image, règlement intérieur signé). `chemin_photo` :
+    optionnelle (voir inscriptions.py:enregistrer_photo — uploadée après
+    la création, régénère ce PDF une fois reçue)."""
     style_tableau = TableStyle(
         [
             ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
@@ -49,6 +72,13 @@ def generer_dossier_pdf(inscription, noms_cours: list[str]) -> bytes:
         ]
     )
 
+    # Largeur réduite si une photo l'accompagne (voir bloc_eleve
+    # ci-dessous) : une table imbriquée dans reportlab garde SES colWidths
+    # propres, sans jamais se réduire à la largeur de sa cellule parente —
+    # il faut donc lui donner d'emblée la bonne largeur totale (11cm,
+    # comme la 1ère colonne de bloc_eleve), pas 16cm, sous peine de
+    # chevaucher la colonne photo.
+    colonnes_eleve = [4 * cm, 7 * cm] if chemin_photo else [5 * cm, 11 * cm]
     tableau_eleve = Table(
         [
             ["Nom", inscription.eleve_nom],
@@ -58,7 +88,7 @@ def generer_dossier_pdf(inscription, noms_cours: list[str]) -> bytes:
             ["Téléphone", inscription.eleve_telephone or "—"],
             ["Email", inscription.eleve_email or "—"],
         ],
-        colWidths=[5 * cm, 11 * cm],
+        colWidths=colonnes_eleve,
     )
     tableau_contact = Table(
         [
@@ -80,6 +110,18 @@ def generer_dossier_pdf(inscription, noms_cours: list[str]) -> bytes:
     for tableau in (tableau_eleve, tableau_contact, tableau_medical):
         tableau.setStyle(style_tableau)
 
+    # Photo à côté du tableau élève (voir "documents à apporter" du vrai
+    # dossier papier — 2 photos d'identité) — absente : juste le tableau
+    # seul, pas de case vide disgracieuse.
+    bloc_eleve = tableau_eleve
+    photo = _photo_flowable(chemin_photo, 3.5 * cm, 4.5 * cm) if chemin_photo else None
+    if photo is not None:
+        bloc_eleve = Table(
+            [[tableau_eleve, photo]],
+            colWidths=[11 * cm, 5 * cm],
+        )
+        bloc_eleve.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP")]))
+
     tampon = io.BytesIO()
     doc = SimpleDocTemplate(tampon, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
     elements = [
@@ -87,7 +129,7 @@ def generer_dossier_pdf(inscription, noms_cours: list[str]) -> bytes:
         _texte(f"Saison {inscription.saison}"),
         Spacer(1, 0.5 * cm),
         _sous_titre("Élève"),
-        tableau_eleve,
+        bloc_eleve,
         Spacer(1, 0.5 * cm),
         _sous_titre("Contact d'urgence"),
         tableau_contact,
