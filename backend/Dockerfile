@@ -34,6 +34,10 @@ RUN useradd --create-home appuser \
     && chown -R appuser:appuser /app/data
 ENV DATABASE_URL=sqlite:////app/data/contretemps.db
 ENV VIDEOS_DIR=/app/data/uploads/videos
+# PDF/Excel générés par une inscription (voir inscriptions/stockage.py) —
+# même volume /app/data que VIDEOS_DIR ci-dessus, pour survivre aux
+# redéploiements.
+ENV INSCRIPTIONS_DIR=/app/data/inscriptions
 # Contrairement à VIDEOS_DIR ci-dessus (mutable, dans le volume), la
 # référence pointe vers le dossier figé dans l'image (voir COPY plus
 # haut) — jamais modifiée à l'exécution, seulement lue par

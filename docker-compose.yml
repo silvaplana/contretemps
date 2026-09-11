@@ -81,6 +81,24 @@ services:
     depends_on:
       - backend
 
+  # Page publique d'inscription (voir spec/SPEC-inscription.md et
+  # frontend-inscription/) — appli sœur séparée, même patron que
+  # "frontend" ci-dessus, mais sert /contretemps-inscription/* et parle
+  # au MÊME backend (voir frontend-inscription/Caddyfile : proxy /api/*
+  # vers "backend", réseau "default" partagé).
+  frontend-inscription:
+    build:
+      context: ./frontend-inscription
+      args:
+        VITE_API_URL: /contretemps-inscription/api
+    restart: unless-stopped
+    container_name: contretemps-inscription-frontend
+    networks:
+      - default
+      - web
+    depends_on:
+      - backend
+
 networks:
   default:
   web:

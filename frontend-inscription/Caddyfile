@@ -1,0 +1,30 @@
+# Configuration Caddy INTERNE (pas de TLS, pas de domaine ici) — même
+# principe que frontend/Caddyfile : ce conteneur n'est jamais exposé
+# directement à Internet. C'est le Caddy "gateway" partagé (voir
+# ~/gateway sur le VPS, hors de ce repo) qui route
+# /contretemps-inscription/* vers ce conteneur en retirant le préfixe.
+:80 {
+	root * /srv
+	encode gzip zstd
+
+	# Requêtes /api/... -> conteneur "backend" (le MÊME backend que
+	# l'appli principale, voir docker-compose.yml : même réseau Docker).
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy backend:8000
+	}
+
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# SPA : toute route inconnue retombe sur index.html, jamais mis en
+	# cache (sinon un navigateur peut continuer à servir un ancien
+	# index.html référençant d'anciens noms de fichiers assets).
+	handle {
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
