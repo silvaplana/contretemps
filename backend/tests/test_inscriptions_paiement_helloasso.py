@@ -1,0 +1,255 @@
+"""Tests bout-en-bout du paiement HelloAsso (voir
+spec/SPEC-inscription.md et inscriptions/helloasso.py) — `requests` est
+systématiquement remplacé par un faux, comme dans
+test_inscriptions_helloasso.py : aucun compte sandbox réel n'est
+configuré en test, un vrai appel échouerait de toute façon.
+
+Le client HelloAsso appelé ici est le VRAI singleton de l'app (voir
+app.main:inscriptions_client.helloasso, même patron que
+test_notifications.py pour le singleton Notifications) — ses attributs
+sont modifiés via monkeypatch pour le rendre "actif" le temps du test,
+jamais un nouveau `Inscriptions(...)` construit à part."""
+
+import shutil
+
+import pytest
+from app.main import inscriptions_client
+from cours import CoursService
+from ecoles import Ecoles
+from inscriptions import helloasso as helloasso_module
+from inscriptions.stockage import DOSSIER_INSCRIPTIONS
+
+NOMS_COURS_REELS = ["Éveil", "Class Inter"]
+
+
+def _creer_ecole_avec_cours(db_session):
+    ecole = Ecoles().create(db_session, nom="Contretemps", code_postal="83330")
+    cours_service = CoursService()
+    cours = {}
+    for nom in NOMS_COURS_REELS:
+        cours[nom] = cours_service.create(db_session, ecole_id=ecole.id, nom=nom)
+    return ecole, cours
+
+
+@pytest.fixture()
+def _nettoyage_dossier():
+    dossiers = []
+    yield dossiers
+    for dossier in dossiers:
+        shutil.rmtree(dossier, ignore_errors=True)
+
+
+def _donnees_formulaire(cours_ids, **overrides):
+    donnees = {
+        "eleve_nom": "Dupont",
+        "eleve_prenom": "Marie",
+        "eleve_date_naissance": "2018-11-17",
+        "eleve_email": "marie@example.com",
+        "cours_ids": cours_ids,
+        "reglement_lu_approuve": True,
+        "signataire_nom": "Jean Dupont",
+        "moyen_paiement": "helloasso",
+        "paiement_nb_echeances": 1,
+    }
+    donnees.update(overrides)
+    return donnees
+
+
+class _FausseReponse:
+    def __init__(self, json_data, status_code=200):
+        self._json = json_data
+        self.status_code = status_code
+        self.ok = 200 <= status_code < 300
+        self.text = str(json_data)
+
+    def json(self):
+        return self._json
+
+
+@pytest.fixture()
+def _helloasso_actif(monkeypatch):
+    """Rend le singleton HelloAsso "actif" et lui fait toujours renvoyer
+    un faux token — voir docstring du module."""
+    ha = inscriptions_client.helloasso
+    monkeypatch.setattr(ha, "client_id", "id-test")
+    monkeypatch.setattr(ha, "client_secret", "secret-test")
+    monkeypatch.setattr(ha, "organization_slug", "asso-test")
+    monkeypatch.setattr(ha, "actif", True)
+    monkeypatch.setattr(ha, "_access_token", None)
+    monkeypatch.setattr(ha, "_expire_a", 0.0)
+    monkeypatch.setattr(
+        helloasso_module.requests,
+        "post",
+        lambda *a, **k: _FausseReponse({"access_token": "tok", "expires_in": 1799}),
+    )
+    return ha
+
+
+def test_paiement_helloasso_refuse_si_moyen_paiement_different(
+    client, db_session, _nettoyage_dossier, _helloasso_actif
+):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id], moyen_paiement="cheque"),
+    ).json()
+
+    reponse = client.post(
+        f"/inscriptions/{corps['token_public']}/paiement/helloasso",
+        json={"retour_url": "https://exemple.fr/retour"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_paiement_helloasso_indisponible_si_non_configure(
+    client, db_session, _nettoyage_dossier, monkeypatch
+):
+    # Pas de fixture _helloasso_actif ici -> le singleton reste
+    # "inactif" (aucun HELLOASSO_* dans l'environnement de test).
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id]),
+    ).json()
+
+    reponse = client.post(
+        f"/inscriptions/{corps['token_public']}/paiement/helloasso",
+        json={"retour_url": "https://exemple.fr/retour"},
+    )
+    assert reponse.status_code == 503
+
+
+def test_paiement_helloasso_initie_1x(
+    client, db_session, _nettoyage_dossier, _helloasso_actif, monkeypatch
+):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id], paiement_nb_echeances=1),
+    ).json()
+
+    appels = {}
+
+    def _fake_request(methode, url, headers=None, timeout=None, **kwargs):
+        appels["json"] = kwargs.get("json")
+        return _FausseReponse({"id": 777, "redirectUrl": "https://helloasso-sandbox.com/pay/777"})
+
+    monkeypatch.setattr(helloasso_module.requests, "request", _fake_request)
+
+    reponse = client.post(
+        f"/inscriptions/{corps['token_public']}/paiement/helloasso",
+        json={"retour_url": "https://exemple.fr/retour"},
+    )
+    assert reponse.status_code == 200
+    assert reponse.json() == {"redirect_url": "https://helloasso-sandbox.com/pay/777"}
+    assert "terms" not in appels["json"]
+    # Adhésion + 3 trimestres d'Éveil (110€/trim) en 1 seule échéance.
+    assert appels["json"]["totalAmount"] == round((40.0 + 110.0 * 3) * 100)
+
+
+def test_paiement_helloasso_initie_3x_avec_terms(
+    client, db_session, _nettoyage_dossier, _helloasso_actif, monkeypatch
+):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id], paiement_nb_echeances=3),
+    ).json()
+
+    appels = {}
+
+    def _fake_request(methode, url, headers=None, timeout=None, **kwargs):
+        appels["json"] = kwargs.get("json")
+        return _FausseReponse({"id": 778, "redirectUrl": "https://helloasso-sandbox.com/pay/778"})
+
+    monkeypatch.setattr(helloasso_module.requests, "request", _fake_request)
+
+    reponse = client.post(
+        f"/inscriptions/{corps['token_public']}/paiement/helloasso",
+        json={"retour_url": "https://exemple.fr/retour"},
+    )
+    assert reponse.status_code == 200
+    assert len(appels["json"]["terms"]) == 2
+    assert appels["json"]["initialAmount"] == round((40.0 + 110.0) * 100)
+
+
+def test_verifier_paiement_helloasso_marque_paye(
+    client, db_session, _nettoyage_dossier, _helloasso_actif, monkeypatch
+):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id]),
+    ).json()
+    token = corps["token_public"]
+
+    monkeypatch.setattr(
+        helloasso_module.requests,
+        "request",
+        lambda *a, **k: _FausseReponse({"id": 999, "redirectUrl": "https://x/pay"}),
+    )
+    client.post(
+        f"/inscriptions/{token}/paiement/helloasso", json={"retour_url": "https://exemple.fr"}
+    )
+
+    monkeypatch.setattr(
+        helloasso_module.requests,
+        "request",
+        lambda *a, **k: _FausseReponse(
+            {"order": {"payments": [{"state": "Authorized"}]}}
+        ),
+    )
+    reponse = client.post(f"/inscriptions/{token}/paiement/helloasso/verifier")
+    assert reponse.status_code == 200
+    assert reponse.json()["statut_paiement"] == "paye"
+
+
+def test_webhook_helloasso_declenche_la_verification(
+    client, db_session, _nettoyage_dossier, _helloasso_actif, monkeypatch
+):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Éveil"].id]),
+    ).json()
+    token = corps["token_public"]
+
+    monkeypatch.setattr(
+        helloasso_module.requests,
+        "request",
+        lambda *a, **k: _FausseReponse({"id": 555, "redirectUrl": "https://x/pay"}),
+    )
+    client.post(
+        f"/inscriptions/{token}/paiement/helloasso", json={"retour_url": "https://exemple.fr"}
+    )
+
+    monkeypatch.setattr(
+        helloasso_module.requests,
+        "request",
+        lambda *a, **k: _FausseReponse({"order": {"payments": [{"state": "Authorized"}]}}),
+    )
+    reponse = client.post(
+        "/inscriptions/paiement/helloasso/notification",
+        json={"eventType": "Payment", "data": {"order": {"checkoutIntentId": 555}}},
+    )
+    assert reponse.status_code == 204
+
+    verification = client.get(f"/inscriptions/{token}")
+    assert verification.json()["statut_paiement"] == "paye"
+
+
+def test_webhook_helloasso_corps_inconnu_ne_plante_pas(client, db_session):
+    reponse = client.post("/inscriptions/paiement/helloasso/notification", json={"foo": "bar"})
+    assert reponse.status_code == 204

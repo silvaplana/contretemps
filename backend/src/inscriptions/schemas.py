@@ -40,6 +40,10 @@ class InscriptionCreation(BaseModel):
     signataire_nom: str
 
     moyen_paiement: str = "cheque"
+    # 1 (comptant) ou 3 (une échéance par trimestre) — voir
+    # tarifs.py:calculer_echeances_helloasso. Sans effet si
+    # moyen_paiement != "helloasso".
+    paiement_nb_echeances: int = 1
 
     # Auto-déclarée par la famille (case à cocher, voir
     # FormulaireInscription.jsx) — un frère/sœur déjà inscrit cette
@@ -73,4 +77,22 @@ class InscriptionSortie(BaseModel):
 
     doublon_possible: bool
     moyen_paiement: str
+    paiement_nb_echeances: int
+    statut_paiement: str
     email_envoye: bool
+
+
+class PaiementHelloAssoSortie(BaseModel):
+    """Réponse de l'initiation du paiement HelloAsso (voir
+    receiver.py:initier_paiement_helloasso) — rediriger le navigateur
+    vers `redirect_url` pour que la famille paie."""
+
+    redirect_url: str
+
+
+class PaiementHelloAssoEntree(BaseModel):
+    """URL de la page à laquelle revenir après le paiement (voir
+    FormulaireInscription.jsx — dépend de l'origine appelante, jamais
+    codée en dur côté serveur)."""
+
+    retour_url: str

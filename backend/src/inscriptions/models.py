@@ -90,7 +90,19 @@ class Inscription(Base):
 
     # --- Paiement ---
     moyen_paiement: Mapped[str] = mapped_column(String(20), nullable=False, default="cheque")
+    # "en_attente" (par défaut, chèque ou HelloAsso pas encore payé) /
+    # "paye" (HelloAsso confirmé, voir helloasso.py) / "echec".
     statut_paiement: Mapped[str] = mapped_column(String(20), nullable=False, default="en_attente")
+    # 1 (comptant) ou 3 (une échéance par trimestre) — choisi par la
+    # famille, uniquement significatif si moyen_paiement == "helloasso"
+    # (voir spec/SPEC-inscription.md, décision : 1x ou 3x au choix).
+    paiement_nb_echeances: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    # Id du Checkout Intent HelloAsso (voir helloasso.py) — sert à
+    # ré-interroger l'état du paiement (GET .../checkout-intents/{id}),
+    # jamais fait confiance à un simple retour navigateur ou webhook non
+    # signé (la vérification de signature webhook est réservée aux
+    # comptes "partenaire" HelloAsso, pas notre cas).
+    helloasso_checkout_intent_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     # --- Tarif, FIGÉ à la soumission (jamais recalculé si le barème
     # change plus tard, voir tarifs.py) ---

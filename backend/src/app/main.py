@@ -21,7 +21,7 @@ from cours import CoursReceiver, CoursService
 from db import Base, engine
 from ecoles import Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
-from inscriptions import Inscriptions, InscriptionsReceiver
+from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
 from messagerie import Conversations, Evenements, MessagerieReceiver, Messages
 from notifications import Notifications, NotificationsReceiver
 from presence import Presence, PresenceReceiver
@@ -135,7 +135,8 @@ messagerie_receiver = MessagerieReceiver(
 # Monte les routes des inscriptions (/inscriptions/..., voir
 # spec/SPEC-inscription.md) - PUBLIQUES (page contretemps-inscription,
 # atteignable sans compte), depend de cours (resolution des cours choisis).
-inscriptions_client = Inscriptions(cours=cours_client)
+helloasso_client = HelloAsso()
+inscriptions_client = Inscriptions(cours=cours_client, helloasso=helloasso_client)
 inscriptions_receiver = InscriptionsReceiver(client=inscriptions_client, app=app)
 
 

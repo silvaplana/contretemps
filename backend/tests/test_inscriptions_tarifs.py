@@ -3,8 +3,9 @@ spec/SPEC-inscription.md)."""
 
 import datetime as dt
 
+import pytest
 from inscriptions.saison import saison_actuelle
-from inscriptions.tarifs import calculer_tarif, palier_par_defaut
+from inscriptions.tarifs import calculer_echeances_helloasso, calculer_tarif, palier_par_defaut
 
 
 def test_palier_par_defaut_connait_les_17_cours():
@@ -78,3 +79,45 @@ def test_saison_actuelle_bascule_en_aout():
     assert saison_actuelle(dt.date(2026, 8, 1)) == "2026-2027"
     assert saison_actuelle(dt.date(2026, 7, 31)) == "2025-2026"
     assert saison_actuelle(dt.date(2027, 1, 15)) == "2026-2027"
+
+
+def test_calculer_echeances_1x_paiement_unique():
+    echeances = calculer_echeances_helloasso(40.0, 110.0, 1)
+    assert len(echeances) == 1
+    assert echeances[0].montant == 40.0 + 110.0 * 3
+    assert echeances[0].date_prelevement is None
+
+
+def test_calculer_echeances_3x_une_par_trimestre():
+    echeances = calculer_echeances_helloasso(40.0, 110.0, 3, aujourdhui=dt.date(2026, 9, 11))
+    assert len(echeances) == 3
+    # 1re échéance : adhésion + 1er trimestre, payée immédiatement.
+    assert echeances[0].montant == 40.0 + 110.0
+    assert echeances[0].date_prelevement is None
+    # Puis un trimestre par mois suivant.
+    assert echeances[1].montant == 110.0
+    assert echeances[1].date_prelevement == dt.date(2026, 10, 11)
+    assert echeances[2].montant == 110.0
+    assert echeances[2].date_prelevement == dt.date(2026, 11, 11)
+    # Total identique au paiement en 1 fois.
+    assert sum(e.montant for e in echeances) == 40.0 + 110.0 * 3
+
+
+def test_calculer_echeances_plafonne_le_jour_a_27():
+    """Voir _ajouter_mois : l'API HelloAsso refuse toute échéance après
+    le 27 du mois — une inscription faite un 29, 30 ou 31 ne doit jamais
+    produire une date invalide."""
+    echeances = calculer_echeances_helloasso(40.0, 110.0, 3, aujourdhui=dt.date(2026, 1, 31))
+    assert echeances[1].date_prelevement == dt.date(2026, 2, 27)
+    assert echeances[2].date_prelevement == dt.date(2026, 3, 27)
+
+
+def test_calculer_echeances_change_d_annee():
+    echeances = calculer_echeances_helloasso(40.0, 110.0, 3, aujourdhui=dt.date(2026, 12, 5))
+    assert echeances[1].date_prelevement == dt.date(2027, 1, 5)
+    assert echeances[2].date_prelevement == dt.date(2027, 2, 5)
+
+
+def test_calculer_echeances_nb_invalide():
+    with pytest.raises(ValueError):
+        calculer_echeances_helloasso(40.0, 110.0, 2)

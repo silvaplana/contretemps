@@ -32,6 +32,10 @@ dependencies = [
     # inscriptions/pdf.py) — wheel 100% Python, aucune lib système requise
     # (contrairement à WeasyPrint qui a besoin de Cairo/Pango).
     "reportlab",
+    # Appels à l'API HelloAsso (paiement en ligne, voir
+    # inscriptions/helloasso.py) — déjà installé transitivement (via
+    # pywebpush), déclaré explicitement puisqu'on l'utilise directement.
+    "requests",
 ]
 
 [project.optional-dependencies]

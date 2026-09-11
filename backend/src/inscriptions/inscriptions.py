@@ -22,20 +22,22 @@ from sqlalchemy.orm import Session
 
 from . import excel_export
 from .email_envoi import EmailEnvoi
+from .helloasso import HelloAsso, HelloAssoError
 from .models import Inscription, inscriptions_cours
 from .pdf import generer_dossier_pdf, generer_facture_pdf, nom_fichier_dossier, nom_fichier_facture
 from .saison import saison_actuelle
 from .schemas import InscriptionCreation
 from .stockage import chemin_relatif, dossier_ecole
-from .tarifs import calculer_tarif
+from .tarifs import calculer_echeances_helloasso, calculer_tarif
 
 logger = logging.getLogger(__name__)
 
 
 class Inscriptions:
-    def __init__(self, cours: CoursService) -> None:
+    def __init__(self, cours: CoursService, helloasso: HelloAsso | None = None) -> None:
         self.cours = cours
         self.email = EmailEnvoi()
+        self.helloasso = helloasso or HelloAsso()
 
     def _resoudre_noms_cours(self, db: Session, ecole_id: int, cours_ids: list[int]) -> list[str]:
         cours_ecole = {c.id: c.nom for c in self.cours.list(db, ecole_id)}
@@ -113,6 +115,7 @@ class Inscriptions:
             reglement_lu_approuve=donnees.reglement_lu_approuve,
             signataire_nom=donnees.signataire_nom,
             moyen_paiement=donnees.moyen_paiement,
+            paiement_nb_echeances=donnees.paiement_nb_echeances if donnees.moyen_paiement == "helloasso" else 1,
             palier_tarifaire=tarif.palier,
             nb_cours_semaine=tarif.nb_cours_semaine,
             montant_adhesion=tarif.montant_adhesion,
@@ -253,6 +256,93 @@ class Inscriptions:
         # (uploadée séparément) ne soit connue.
         self._generer_pdf(db, inscription, self.cours_choisis(db, inscription.id))
         return inscription
+
+    def initier_paiement_helloasso(self, db: Session, token: str, retour_url: str) -> dict:
+        """Crée le Checkout Intent HelloAsso — contrairement à
+        PDF/Excel/email, un échec ici DOIT être signalé à la famille
+        (voir receiver.py, HelloAssoError propagée en erreur HTTP) : pas
+        de paiement possible sans ça. `retour_url` : back/error/return
+        URL, la MÊME pour les 3 (voir spec/SPEC-inscription.md — la page
+        d'inscription détecte le retour via son token en query string,
+        peu importe le cas)."""
+        inscription = self.get_par_token(db, token)
+        if inscription is None:
+            raise ValueError("Inscription introuvable")
+        if inscription.moyen_paiement != "helloasso":
+            raise ValueError("Cette inscription n'utilise pas HelloAsso comme moyen de paiement")
+
+        echeances = calculer_echeances_helloasso(
+            inscription.montant_adhesion,
+            inscription.montant_trimestriel,
+            inscription.paiement_nb_echeances,
+        )
+        resultat = self.helloasso.creer_checkout_intent(
+            echeances,
+            nom_item=(
+                f"Inscription {inscription.eleve_prenom} {inscription.eleve_nom} — "
+                f"saison {inscription.saison}"
+            ),
+            back_url=retour_url,
+            error_url=retour_url,
+            return_url=retour_url,
+            payer={
+                "firstName": inscription.eleve_prenom,
+                "lastName": inscription.eleve_nom,
+                "email": inscription.eleve_email or "",
+            },
+            metadata={"inscription_token": inscription.token_public},
+        )
+        inscription.helloasso_checkout_intent_id = resultat["id"]
+        db.commit()
+        return resultat
+
+    def verifier_paiement_helloasso(self, db: Session, token: str) -> Inscription | None:
+        """Ré-interroge HelloAsso (source de vérité, voir helloasso.py —
+        jamais confiance à un simple retour navigateur ni à une
+        notification webhook non signée) et met à jour statut_paiement.
+        Appelé au retour de paiement (returnUrl) ET par le webhook (voir
+        receiver.py) — jamais l'un sans l'autre à terme, mais chacun
+        suffit seul si l'autre échoue (redondance volontaire)."""
+        inscription = self.get_par_token(db, token)
+        if inscription is None or inscription.helloasso_checkout_intent_id is None:
+            return inscription
+        try:
+            resultat = self.helloasso.recuperer_checkout_intent(
+                inscription.helloasso_checkout_intent_id
+            )
+            paiements = resultat.get("order", {}).get("payments", [])
+            # "Authorized" = payé (carte, immédiat). SEPA/échéances
+            # différées restent "Pending"/"Registered" un temps — voir
+            # helloasso.py:recuperer_checkout_intent. Un seul paiement
+            # autorisé suffit à considérer l'inscription "payée" : le
+            # solde (échéances suivantes) est prélevé automatiquement
+            # par HelloAsso plus tard, sans action de notre part.
+            if any(p.get("state") == "Authorized" for p in paiements):
+                inscription.statut_paiement = "paye"
+            elif paiements and all(
+                p.get("state") in ("Refused", "Error") for p in paiements
+            ):
+                inscription.statut_paiement = "echec"
+            db.commit()
+        except HelloAssoError:
+            logger.exception(
+                "Vérification paiement HelloAsso échouée pour l'inscription %s", token
+            )
+        return inscription
+
+    def traiter_notification_helloasso(self, db: Session, checkout_intent_id: int) -> None:
+        """Webhook (voir receiver.py) — retrouve l'inscription par son
+        Checkout Intent puis délègue à verifier_paiement_helloasso, qui
+        ré-interroge HelloAsso plutôt que de faire confiance au corps de
+        la notification (non signée pour un compte non-partenaire, voir
+        helloasso.py)."""
+        inscription = db.scalar(
+            select(Inscription).where(
+                Inscription.helloasso_checkout_intent_id == checkout_intent_id
+            )
+        )
+        if inscription is not None:
+            self.verifier_paiement_helloasso(db, inscription.token_public)
 
     def cours_choisis(self, db: Session, inscription_id: int) -> list[str]:
         lignes = db.execute(

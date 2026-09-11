@@ -58,3 +58,34 @@ Points techniques
 
 Ensuite coder le paiement hello asso. D'abord dans la sand box hello asso , puis dans un vrai hello asso si c'est possible (peut on le créer?)
 Ensuite coder le paiement stripe
+
+## 4. Paiement HelloAsso — décisions et fonctionnement (voir inscriptions/helloasso.py)
+
+**Sandbox d'abord** : l'association Contretemps n'a pas encore de compte HelloAsso réel. On code
+et teste entièrement contre un compte de test créé sur
+https://auth.helloasso-sandbox.com/inscription (association fictive, indépendante de la vraie
+identité de l'école — n'importe quel compte sandbox convient pour tester). Un vrai compte
+HelloAsso sera créé plus tard pour Contretemps ; basculer en prod ne demandera de changer que 4
+variables d'environnement (`HELLOASSO_API_BASE`, `HELLOASSO_CLIENT_ID`, `HELLOASSO_CLIENT_SECRET`,
+`HELLOASSO_ORGANIZATION_SLUG`), aucune ligne de code.
+
+**API utilisée** : Checkout Intent API (dev.helloasso.com) — on crée une "intention de paiement"
+côté serveur (montant, infos payeur), HelloAsso renvoie une `redirectUrl` vers laquelle le
+navigateur est redirigé ; la famille paie sur la page HelloAsso, puis revient sur notre
+`returnUrl`.
+
+**1 fois ou 3 fois** (décision utilisateur) : la famille choisit. En 3 fois, la 1ʳᵉ échéance
+regroupe adhésion + 1er trimestre (payée immédiatement), puis une échéance par trimestre suivant
+espacée d'1 mois (voir `tarifs.py:calculer_echeances_helloasso` — respecte les contraintes de
+l'API : max 1 échéance/mois, jamais après le 27 du mois, jamais dans le mois de l'échéance
+initiale, toujours dans les 12 mois).
+
+**Vérification du paiement** : la signature webhook HMAC (`x-ha-signature`) est réservée aux
+comptes HelloAsso "partenaire" — pas notre cas pour une association normale. On ne fait donc
+JAMAIS confiance au simple retour navigateur ni au corps d'une notification webhook : on
+ré-interroge systématiquement l'API (`GET .../checkout-intents/{id}`, source de vérité) avant de
+marquer une inscription "payée" — au retour de paiement (`returnUrl`) ET si un webhook est
+configuré plus tard (redondant par construction, l'un fonctionne même si l'autre est absent).
+
+**Hors scope de cette 1ère passe** : le paiement Stripe (viendra après, une fois HelloAsso validé
+en sandbox puis en prod — voir §3 ci-dessus).

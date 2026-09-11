@@ -1,9 +1,10 @@
 from .excel_export import ajouter_ligne, nom_fichier
+from .helloasso import HelloAsso, HelloAssoError
 from .inscriptions import Inscriptions
 from .models import Inscription, inscriptions_cours
 from .receiver import InscriptionsReceiver
 from .saison import saison_actuelle
-from .tarifs import PALIER_PAR_COURS, TarifResultat, calculer_tarif
+from .tarifs import PALIER_PAR_COURS, Echeance, TarifResultat, calculer_echeances_helloasso, calculer_tarif
 
 __all__ = [
     "Inscription",
@@ -12,8 +13,12 @@ __all__ = [
     "InscriptionsReceiver",
     "saison_actuelle",
     "calculer_tarif",
+    "calculer_echeances_helloasso",
+    "Echeance",
     "PALIER_PAR_COURS",
     "TarifResultat",
     "ajouter_ligne",
     "nom_fichier",
+    "HelloAsso",
+    "HelloAssoError",
 ]

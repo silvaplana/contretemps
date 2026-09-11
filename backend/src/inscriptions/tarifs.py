@@ -16,6 +16,7 @@ Liste des 17 cours et paliers, voir spec/SPEC.md §6.5 :
 
 from __future__ import annotations
 
+import datetime as dt
 from dataclasses import dataclass
 
 PALIER_PAR_COURS: dict[str, str] = {
@@ -134,3 +135,51 @@ def calculer_tarif(
         reduction_famille_appliquee=reduction_famille,
         alerte_palier_mixte=alerte_palier_mixte,
     )
+
+
+@dataclass
+class Echeance:
+    montant: float
+    # None = payée immédiatement (à la création du Checkout Intent) ;
+    # sinon date de prélèvement (voir helloasso.py:creer_checkout_intent,
+    # champ `terms`).
+    date_prelevement: dt.date | None
+
+
+def _ajouter_mois(base: dt.date, mois: int) -> dt.date:
+    """Ajoute `mois` mois à `base`, jour plafonné à 27 — voir
+    calculer_echeances_helloasso : l'API HelloAsso refuse toute échéance
+    après le 27 du mois."""
+    mois_total = base.month - 1 + mois
+    annee = base.year + mois_total // 12
+    mois_resultat = mois_total % 12 + 1
+    jour = min(base.day, 27)
+    return dt.date(annee, mois_resultat, jour)
+
+
+def calculer_echeances_helloasso(
+    montant_adhesion: float,
+    montant_trimestriel: float,
+    nb_echeances: int,
+    aujourdhui: dt.date | None = None,
+) -> list[Echeance]:
+    """1 échéance (tout maintenant) ou 3 (une par trimestre, voir
+    spec/SPEC-inscription.md — décision : 1x ou 3x au choix de la
+    famille). Pour 3x : la 1ʳᵉ échéance regroupe adhésion + 1er
+    trimestre (payée immédiatement), puis une échéance par trimestre
+    suivant, espacée d'1 mois (respecte les contraintes HelloAsso : max
+    1/mois, jamais dans le mois de l'échéance initiale, jamais après le
+    27, toujours dans les 12 mois — voir helloasso.py)."""
+    if nb_echeances not in (1, 3):
+        raise ValueError("nb_echeances doit être 1 ou 3")
+
+    if nb_echeances == 1:
+        total = montant_adhesion + montant_trimestriel * NB_TRIMESTRES
+        return [Echeance(montant=total, date_prelevement=None)]
+
+    aujourdhui = aujourdhui or dt.date.today()
+    return [
+        Echeance(montant=montant_adhesion + montant_trimestriel, date_prelevement=None),
+        Echeance(montant=montant_trimestriel, date_prelevement=_ajouter_mois(aujourdhui, 1)),
+        Echeance(montant=montant_trimestriel, date_prelevement=_ajouter_mois(aujourdhui, 2)),
+    ]
