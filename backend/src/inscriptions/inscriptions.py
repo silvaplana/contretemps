@@ -16,6 +16,7 @@ import uuid
 from pathlib import Path
 
 from cours import CoursService
+from ecoles.models import Ecole
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -178,6 +179,8 @@ class Inscriptions:
         if not inscription.eleve_email:
             return
         try:
+            ecole = db.get(Ecole, inscription.ecole_id)
+            nom_ecole = ecole.nom if ecole is not None else "Contretemps"
             pieces_jointes = []
             if inscription.pdf_dossier_chemin:
                 dossier = dossier_ecole(inscription.ecole_id)
@@ -195,12 +198,13 @@ class Inscriptions:
                 )
             self.email.envoyer_confirmation(
                 inscription.eleve_email,
-                f"Confirmation de votre inscription — saison {inscription.saison}",
+                f"Inscription validée à l'école de danse {nom_ecole} pour la saison "
+                f"{inscription.saison}",
                 (
                     f"Bonjour,\n\nNous confirmons la bonne réception de l'inscription de "
                     f"{inscription.eleve_prenom} {inscription.eleve_nom} pour la saison "
                     f"{inscription.saison}. Vous trouverez ci-joint le dossier rempli et la "
-                    f"facture correspondante.\n\nÀ bientôt,\nL'équipe Contretemps"
+                    f"facture correspondante.\n\nÀ bientôt,\nL'équipe {nom_ecole}"
                 ),
                 pieces_jointes,
             )
