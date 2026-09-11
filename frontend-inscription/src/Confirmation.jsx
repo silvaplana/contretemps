@@ -1,6 +1,10 @@
 import { urlDossierPdf, urlFacturePdf } from './api/backend.js'
+import { LIBELLE_PALIER } from './tarifs.js'
 
 export default function Confirmation({ resultat, onNouvelleInscription }) {
+  const montantTroisTrimestres = resultat.montant_trimestriel * 3
+  const totalAnnee = resultat.montant_adhesion + montantTroisTrimestres
+
   return (
     <div className="section">
       <h2>Inscription enregistrée ✅</h2>
@@ -25,23 +29,32 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
       )}
 
       <div className="tarif-apercu" style={{ marginBottom: 16 }}>
-        <div>
-          Adhésion (payée à part, par chèque) : <strong>{resultat.montant_adhesion} €</strong>
+        <div className="tarif-apercu__ligne">
+          <span>Adhésion</span>
+          <span>{resultat.montant_adhesion} €</span>
         </div>
-        <div>Pour {resultat.nb_cours_semaine} cours par semaine :</div>
-        <div className="montant">
-          {resultat.montant_mensuel_septembre} € / mois (sept. à juin) — ou{' '}
-          {resultat.montant_trimestriel} € / trimestre
+        <div className="tarif-apercu__ligne">
+          <span>
+            3 trimestres à {resultat.nb_cours_semaine} cours/semaine (palier «{' '}
+            {LIBELLE_PALIER[resultat.palier_tarifaire] ?? resultat.palier_tarifaire} »{' '}
+            {resultat.montant_trimestriel} €
+            {resultat.reduction_famille_appliquee && ' — famille : -5 €'})
+          </span>
+          <span>{montantTroisTrimestres} €</span>
         </div>
-        {resultat.reduction_famille_appliquee && (
-          <div>Réduction famille déjà appliquée sur ce montant.</div>
-        )}
+        <div className="tarif-apercu__ligne tarif-apercu__ligne--total">
+          <span>Total année</span>
+          <span className="montant">{totalAnnee} €</span>
+        </div>
         {resultat.alerte_palier_mixte && (
           <div className="alerte">
             Cours choisis touchant plusieurs paliers tarifaires — l'école vous confirmera le
             montant exact.
           </div>
         )}
+        <div className="alerte" style={{ color: '#666' }}>
+          Adhésion payée à part, par chèque.
+        </div>
       </div>
 
       <p>

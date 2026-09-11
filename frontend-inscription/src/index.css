@@ -242,6 +242,25 @@ h3 {
   margin-top: 6px;
 }
 
+.tarif-apercu__ligne {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 0;
+  border-top: 1px solid var(--bordure);
+  font-size: 0.92rem;
+}
+
+.tarif-apercu__ligne span:first-child {
+  flex: 1;
+}
+
+.tarif-apercu__ligne--total {
+  border-top: 2px solid var(--accent);
+  font-weight: 600;
+}
+
 .erreur-globale {
   background: #fdecea;
   border: 1px solid var(--erreur);

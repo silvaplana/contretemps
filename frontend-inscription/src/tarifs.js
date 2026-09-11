@@ -38,11 +38,14 @@ const BAREME_JUNIOR_ET_PLUS = {
 
 export const ADHESION = 40
 
-// Libellé lisible d'un palier — voir bilan de prix (FormulaireInscription.jsx).
+// Libellé lisible d'un palier — voir Tarif indicatif (FormulaireInscription.jsx)
+// et Confirmation.jsx. Le palier retenu est celui du cours le plus "âgé"
+// (le plus avancé) parmi les cours choisis (voir calculerTarifIndicatif
+// ci-dessous et ORDRE_PALIERS).
 export const LIBELLE_PALIER = {
   eveil: 'Éveil',
-  initiation_moyen: 'Initiation / Moyen',
-  junior_et_plus: 'À partir du niveau Junior',
+  initiation_moyen: 'Initiation ou Moyen',
+  junior_et_plus: 'À partir de Junior',
 }
 
 function tarifPourPalier(palier, nbCours) {
@@ -53,29 +56,34 @@ function tarifPourPalier(palier, nbCours) {
 }
 
 const REDUCTION_FAMILLE = 5
+const NB_TRIMESTRES = 3 // toujours 3 échéances par an, jamais l'été.
 
 // `nomsCours` : noms de cours choisis (voir PALIER_PAR_COURS).
 // `reductionFamille` : case "Réduction famille" cochée (voir
-// FormulaireInscription.jsx) — même montant (-5€) que
+// FormulaireInscription.jsx) — même montant (-5€/trimestre) que
 // backend/src/inscriptions/tarifs.py:REDUCTION_FAMILLE. Renvoie null si
 // aucun cours choisi (rien à afficher encore).
 export function calculerTarifIndicatif(nomsCours, reductionFamille = false) {
   if (nomsCours.length === 0) return null
   const paliers = new Set(nomsCours.map((nom) => PALIER_PAR_COURS[nom]).filter(Boolean))
   if (paliers.size === 0) paliers.add('initiation_moyen')
+  // Palier retenu = celui du cours le plus avancé parmi les cours
+  // choisis (voir ORDRE_PALIERS) — pas le moins cher.
   const palierRetenu = [...paliers].sort(
     (a, b) => ORDRE_PALIERS.indexOf(b) - ORDRE_PALIERS.indexOf(a)
   )[0]
-  let { mensuel, trimestriel } = tarifPourPalier(palierRetenu, nomsCours.length)
-  if (reductionFamille) {
-    mensuel = Math.max(0, mensuel - REDUCTION_FAMILLE)
-    trimestriel = Math.max(0, trimestriel - REDUCTION_FAMILLE)
-  }
+  const { trimestriel } = tarifPourPalier(palierRetenu, nomsCours.length)
+  const montantTrimestriel = reductionFamille
+    ? Math.max(0, trimestriel - REDUCTION_FAMILLE)
+    : trimestriel
+  const montantTroisTrimestres = montantTrimestriel * NB_TRIMESTRES
   return {
     palier: palierRetenu,
     montantAdhesion: ADHESION,
-    montantMensuel: mensuel,
-    montantTrimestriel: trimestriel,
+    montantTrimestriel,
+    montantTroisTrimestres,
+    totalAnnee: ADHESION + montantTroisTrimestres,
+    reductionFamilleAppliquee: reductionFamille,
     alertePalierMixte: paliers.size > 1,
   }
 }

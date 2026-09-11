@@ -39,8 +39,23 @@ PALIER_PAR_COURS: dict[str, str] = {
 }
 
 # Ordre de "gravité" d'un palier vers un autre — sert au cas mixte
-# (cours choisis touchant plusieurs paliers) : on retient le plus cher.
+# (cours choisis touchant plusieurs paliers) : on retient le plus cher
+# (celui du cours le plus avancé parmi les cours choisis, pas le moins
+# cher).
 _ORDRE_PALIERS = ["eveil", "initiation_moyen", "junior_et_plus"]
+
+# Libellé lisible d'un palier — voir pdf.py (facture) et
+# frontend-inscription/src/tarifs.js:LIBELLE_PALIER (même wording,
+# gardé synchronisé à la main).
+LIBELLE_PALIER: dict[str, str] = {
+    "eveil": "Éveil",
+    "initiation_moyen": "Initiation ou Moyen",
+    "junior_et_plus": "À partir de Junior",
+}
+
+# Toujours 3 échéances par an, jamais de trimestre facturé l'été (voir
+# spec/SPEC-inscription.md).
+NB_TRIMESTRES = 3
 
 ADHESION = 40.0
 REDUCTION_FAMILLE = 5.0

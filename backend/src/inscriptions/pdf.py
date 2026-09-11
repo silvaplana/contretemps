@@ -163,20 +163,28 @@ def generer_dossier_pdf(inscription, noms_cours: list[str], chemin_photo: Path |
 def generer_facture_pdf(inscription) -> bytes:
     """Facture correspondant au tarif figé à la soumission (voir
     tarifs.py) — ne recalcule jamais rien, lit uniquement les montants
-    déjà enregistrés sur l'inscription."""
+    déjà enregistrés sur l'inscription. Toujours 3 trimestres par an
+    (voir tarifs.py:NB_TRIMESTRES), jamais de mensualité affichée ici."""
+    from .tarifs import LIBELLE_PALIER, NB_TRIMESTRES
+
     tampon = io.BytesIO()
     doc = SimpleDocTemplate(tampon, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
+
+    montant_trois_trimestres = inscription.montant_trimestriel * NB_TRIMESTRES
+    total_annee = inscription.montant_adhesion + montant_trois_trimestres
+    libelle_palier = LIBELLE_PALIER.get(inscription.palier_tarifaire, inscription.palier_tarifaire)
+    reduction = " — famille : -5 €" if inscription.reduction_famille_appliquee else ""
+
     lignes = [
         ["Désignation", "Montant"],
         ["Adhésion (payée à part, par chèque)", f"{inscription.montant_adhesion:.2f} €"],
         [
-            f"Mensualité (septembre à juin, {inscription.nb_cours_semaine} cours/semaine)",
-            f"{inscription.montant_mensuel_septembre:.2f} €",
+            f"3 trimestres à {inscription.nb_cours_semaine} cours/semaine "
+            f"(palier « {libelle_palier} » {inscription.montant_trimestriel:.2f} €{reduction})",
+            f"{montant_trois_trimestres:.2f} €",
         ],
-        ["Ou trimestriel (3 échéances)", f"{inscription.montant_trimestriel:.2f} €"],
+        ["Total année", f"{total_annee:.2f} €"],
     ]
-    if inscription.reduction_famille_appliquee:
-        lignes.append(["Réduction famille appliquée", "-5,00 € / élève"])
     tableau = Table(lignes, colWidths=[11 * cm, 5 * cm])
     tableau.setStyle(
         TableStyle(

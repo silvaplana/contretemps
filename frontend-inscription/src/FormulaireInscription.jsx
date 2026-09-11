@@ -274,36 +274,45 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
           <h2>Tarif indicatif</h2>
           <div className="tarif-apercu">
             <div>Cours choisis ({nomsCoursChoisis.length}) : {nomsCoursChoisis.join(', ')}</div>
-            <div>Palier tarifaire : {LIBELLE_PALIER[tarif.palier]}</div>
-            <div>
-              Adhésion (payée à part, par chèque) : <strong>{tarif.montantAdhesion} €</strong>
-            </div>
-            <div>
-              Pour {valeurs.coursIds.length} cours par semaine :
-            </div>
-            <div className="montant">
-              {tarif.montantMensuel} € / mois (sept. à juin) — ou {tarif.montantTrimestriel} € /
-              trimestre (3 échéances, jamais l'été)
-            </div>
-            {tarif.alertePalierMixte && (
-              <div className="alerte">
-                Les cours choisis touchent plusieurs paliers tarifaires — palier le plus élevé
-                retenu, le tarif définitif sera confirmé par l'école.
-              </div>
-            )}
-            <label className="checkbox-ligne" style={{ marginTop: 10 }}>
+
+            <label className="checkbox-ligne" style={{ margin: '8px 0' }}>
               <input
                 type="checkbox"
                 checked={valeurs.reductionFamilleDemandee}
                 onChange={() => basculerCoche('reductionFamilleDemandee')}
               />
               <span>
-                Réduction famille (-5 €/mois et /trimestre) : un frère ou une sœur est déjà
-                inscrit à l'école cette saison.
+                Réduction famille (-5 €/trimestre) : un frère ou une sœur est déjà inscrit à
+                l'école cette saison.
               </span>
             </label>
+
+            <div className="tarif-apercu__ligne">
+              <span>Adhésion</span>
+              <span>{tarif.montantAdhesion} €</span>
+            </div>
+            <div className="tarif-apercu__ligne">
+              <span>
+                3 trimestres à {valeurs.coursIds.length} cours/semaine (palier «{' '}
+                {LIBELLE_PALIER[tarif.palier]} » {tarif.montantTrimestriel} €
+                {tarif.reductionFamilleAppliquee && ' — famille : -5 €'})
+              </span>
+              <span>{tarif.montantTroisTrimestres} €</span>
+            </div>
+            <div className="tarif-apercu__ligne tarif-apercu__ligne--total">
+              <span>Total année</span>
+              <span className="montant">{tarif.totalAnnee} €</span>
+            </div>
+
+            {tarif.alertePalierMixte && (
+              <div className="alerte">
+                Les cours choisis touchent plusieurs paliers tarifaires — palier le plus élevé
+                retenu, le tarif définitif sera confirmé par l'école.
+              </div>
+            )}
             <div className="alerte" style={{ color: '#666' }}>
-              Ce tarif est indicatif : le montant définitif est confirmé après soumission.
+              Adhésion payée à part, par chèque. Ce tarif est indicatif : le montant définitif est
+              confirmé après soumission.
             </div>
           </div>
         </section>
