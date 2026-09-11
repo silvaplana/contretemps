@@ -28,6 +28,10 @@ dependencies = [
     # signature VAPID des messages envoyés aux serveurs de push
     # (FCM/Mozilla/...), voir .env.example.
     "pywebpush",
+    # Génération des PDF d'inscription (dossier + facture, voir
+    # inscriptions/pdf.py) — wheel 100% Python, aucune lib système requise
+    # (contrairement à WeasyPrint qui a besoin de Cairo/Pango).
+    "reportlab",
 ]
 
 [project.optional-dependencies]

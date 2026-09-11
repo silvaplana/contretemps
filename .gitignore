@@ -33,6 +33,13 @@ __pycache__/
 # seed_data/), pas des uploads arbitraires.
 backend/uploads/
 
+# PDF/Excel générés par une vraie inscription (voir
+# backend/src/inscriptions/stockage.py, INSCRIPTIONS_DIR par défaut) —
+# même raison que backend/uploads/ ci-dessus : `/data/` (racine) ne
+# couvre PAS backend/data/, piège identique à celui déjà documenté plus
+# haut pour /data/ vs frontend/src/data/.
+backend/data/
+
 # Node / frontend
 node_modules/
 dist/
