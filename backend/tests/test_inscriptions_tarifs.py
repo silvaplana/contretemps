@@ -5,7 +5,13 @@ import datetime as dt
 
 import pytest
 from inscriptions.saison import saison_actuelle
-from inscriptions.tarifs import calculer_echeances_helloasso, calculer_tarif, palier_par_defaut
+from inscriptions.tarifs import (
+    Echeance,
+    calculer_echeances_helloasso,
+    calculer_tarif,
+    dates_trimestres,
+    palier_par_defaut,
+)
 
 
 def test_palier_par_defaut_connait_les_17_cours():
@@ -81,43 +87,63 @@ def test_saison_actuelle_bascule_en_aout():
     assert saison_actuelle(dt.date(2027, 1, 15)) == "2026-2027"
 
 
+def test_dates_trimestres_saison():
+    assert dates_trimestres("2026-2027") == [
+        dt.date(2026, 10, 1),
+        dt.date(2027, 1, 1),
+        dt.date(2027, 4, 1),
+    ]
+
+
 def test_calculer_echeances_1x_paiement_unique():
-    echeances = calculer_echeances_helloasso(40.0, 110.0, 1)
+    echeances = calculer_echeances_helloasso(40.0, 110.0, 1, "2026-2027")
     assert len(echeances) == 1
     assert echeances[0].montant == 40.0 + 110.0 * 3
     assert echeances[0].date_prelevement is None
 
 
-def test_calculer_echeances_3x_une_par_trimestre():
-    echeances = calculer_echeances_helloasso(40.0, 110.0, 3, aujourdhui=dt.date(2026, 9, 11))
-    assert len(echeances) == 3
-    # 1re échéance : adhésion + 1er trimestre, payée immédiatement.
-    assert echeances[0].montant == 40.0 + 110.0
+def test_calculer_echeances_3x_inscription_avant_le_premier_trimestre():
+    """Inscription en septembre, avant le début du 1er trimestre (voir
+    dates_trimestres) : les 3 trimestres sont dans le futur, seule
+    l'adhésion est payée immédiatement."""
+    echeances = calculer_echeances_helloasso(
+        40.0, 110.0, 3, "2026-2027", aujourdhui=dt.date(2026, 9, 11)
+    )
+    assert len(echeances) == 4
+    assert echeances[0].montant == 40.0
     assert echeances[0].date_prelevement is None
-    # Puis un trimestre par mois suivant.
-    assert echeances[1].montant == 110.0
-    assert echeances[1].date_prelevement == dt.date(2026, 10, 11)
-    assert echeances[2].montant == 110.0
-    assert echeances[2].date_prelevement == dt.date(2026, 11, 11)
-    # Total identique au paiement en 1 fois.
+    assert echeances[1] == Echeance(montant=110.0, date_prelevement=dt.date(2026, 10, 1))
+    assert echeances[2] == Echeance(montant=110.0, date_prelevement=dt.date(2027, 1, 1))
+    assert echeances[3] == Echeance(montant=110.0, date_prelevement=dt.date(2027, 4, 1))
     assert sum(e.montant for e in echeances) == 40.0 + 110.0 * 3
 
 
-def test_calculer_echeances_plafonne_le_jour_a_27():
-    """Voir _ajouter_mois : l'API HelloAsso refuse toute échéance après
-    le 27 du mois — une inscription faite un 29, 30 ou 31 ne doit jamais
-    produire une date invalide."""
-    echeances = calculer_echeances_helloasso(40.0, 110.0, 3, aujourdhui=dt.date(2026, 1, 31))
-    assert echeances[1].date_prelevement == dt.date(2026, 2, 27)
-    assert echeances[2].date_prelevement == dt.date(2026, 3, 27)
+def test_calculer_echeances_3x_inscription_apres_le_debut_du_1er_trimestre():
+    """Inscription en octobre (1er trimestre déjà entamé) : l'API
+    HelloAsso refuserait une échéance dans le mois de l'échéance
+    initiale — ce trimestre est donc payé immédiatement avec l'adhésion,
+    seuls janvier et avril restent de vraies échéances futures."""
+    echeances = calculer_echeances_helloasso(
+        40.0, 110.0, 3, "2026-2027", aujourdhui=dt.date(2026, 10, 15)
+    )
+    assert len(echeances) == 3
+    assert echeances[0].montant == 40.0 + 110.0
+    assert echeances[0].date_prelevement is None
+    assert echeances[1] == Echeance(montant=110.0, date_prelevement=dt.date(2027, 1, 1))
+    assert echeances[2] == Echeance(montant=110.0, date_prelevement=dt.date(2027, 4, 1))
 
 
-def test_calculer_echeances_change_d_annee():
-    echeances = calculer_echeances_helloasso(40.0, 110.0, 3, aujourdhui=dt.date(2026, 12, 5))
-    assert echeances[1].date_prelevement == dt.date(2027, 1, 5)
-    assert echeances[2].date_prelevement == dt.date(2027, 2, 5)
+def test_calculer_echeances_3x_inscription_tardive_apres_avril():
+    """Inscription en mai (les 3 trimestres sont déjà passés) : tout est
+    payé immédiatement, aucune échéance future."""
+    echeances = calculer_echeances_helloasso(
+        40.0, 110.0, 3, "2026-2027", aujourdhui=dt.date(2027, 5, 2)
+    )
+    assert len(echeances) == 1
+    assert echeances[0].montant == 40.0 + 110.0 * 3
+    assert echeances[0].date_prelevement is None
 
 
 def test_calculer_echeances_nb_invalide():
     with pytest.raises(ValueError):
-        calculer_echeances_helloasso(40.0, 110.0, 2)
+        calculer_echeances_helloasso(40.0, 110.0, 2, "2026-2027")

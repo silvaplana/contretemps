@@ -4,7 +4,14 @@ from .inscriptions import Inscriptions
 from .models import Inscription, inscriptions_cours
 from .receiver import InscriptionsReceiver
 from .saison import saison_actuelle
-from .tarifs import PALIER_PAR_COURS, Echeance, TarifResultat, calculer_echeances_helloasso, calculer_tarif
+from .tarifs import (
+    PALIER_PAR_COURS,
+    Echeance,
+    TarifResultat,
+    calculer_echeances_helloasso,
+    calculer_tarif,
+    dates_trimestres,
+)
 
 __all__ = [
     "Inscription",
@@ -14,6 +21,7 @@ __all__ = [
     "saison_actuelle",
     "calculer_tarif",
     "calculer_echeances_helloasso",
+    "dates_trimestres",
     "Echeance",
     "PALIER_PAR_COURS",
     "TarifResultat",

@@ -211,8 +211,11 @@ def test_paiement_helloasso_initie_3x_avec_terms(
         json={"retour_url": "https://exemple.fr/retour"},
     )
     assert reponse.status_code == 200
-    assert len(appels["json"]["terms"]) == 2
-    assert appels["json"]["initialAmount"] == round((40.0 + 110.0) * 100)
+    # Inscription en septembre : les 3 trimestres (oct/jan/avril) sont
+    # encore dans le futur -> seule l'adhésion est payée immédiatement,
+    # les 3 trimestres deviennent des `terms` (voir tarifs.py:dates_trimestres).
+    assert len(appels["json"]["terms"]) == 3
+    assert appels["json"]["initialAmount"] == round(40.0 * 100)
 
 
 def test_verifier_paiement_helloasso_marque_paye(

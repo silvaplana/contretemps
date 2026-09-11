@@ -115,7 +115,10 @@ class Inscriptions:
             reglement_lu_approuve=donnees.reglement_lu_approuve,
             signataire_nom=donnees.signataire_nom,
             moyen_paiement=donnees.moyen_paiement,
-            paiement_nb_echeances=donnees.paiement_nb_echeances if donnees.moyen_paiement == "helloasso" else 1,
+            # 1 (comptant) ou 3 (une échéance par trimestre) — voir
+            # spec/SPEC-inscription.md : le choix existe pour le chèque
+            # ET pour HelloAsso, pas réservé à ce dernier.
+            paiement_nb_echeances=donnees.paiement_nb_echeances,
             palier_tarifaire=tarif.palier,
             nb_cours_semaine=tarif.nb_cours_semaine,
             montant_adhesion=tarif.montant_adhesion,
@@ -275,6 +278,7 @@ class Inscriptions:
             inscription.montant_adhesion,
             inscription.montant_trimestriel,
             inscription.paiement_nb_echeances,
+            inscription.saison,
         )
         resultat = self.helloasso.creer_checkout_intent(
             echeances,

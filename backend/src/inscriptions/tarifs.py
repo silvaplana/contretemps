@@ -146,30 +146,40 @@ class Echeance:
     date_prelevement: dt.date | None
 
 
-def _ajouter_mois(base: dt.date, mois: int) -> dt.date:
-    """Ajoute `mois` mois à `base`, jour plafonné à 27 — voir
-    calculer_echeances_helloasso : l'API HelloAsso refuse toute échéance
-    après le 27 du mois."""
-    mois_total = base.month - 1 + mois
-    annee = base.year + mois_total // 12
-    mois_resultat = mois_total % 12 + 1
-    jour = min(base.day, 27)
-    return dt.date(annee, mois_resultat, jour)
+def dates_trimestres(saison: str) -> list[dt.date]:
+    """Vraies dates d'encaissement des 3 trimestres d'une saison (ex.
+    "2026-2027") : 1er octobre, 1er janvier, 1er avril — mêmes dates que
+    celles annoncées à la famille pour le chèque (voir
+    Confirmation.jsx/FormulaireInscription.jsx, texte "encaissés en
+    octobre/janvier/avril"), pour que chèque et HelloAsso restent
+    cohérents entre eux."""
+    annee_debut, annee_fin = (int(x) for x in saison.split("-"))
+    return [
+        dt.date(annee_debut, 10, 1),
+        dt.date(annee_fin, 1, 1),
+        dt.date(annee_fin, 4, 1),
+    ]
 
 
 def calculer_echeances_helloasso(
     montant_adhesion: float,
     montant_trimestriel: float,
     nb_echeances: int,
+    saison: str,
     aujourdhui: dt.date | None = None,
 ) -> list[Echeance]:
-    """1 échéance (tout maintenant) ou 3 (une par trimestre, voir
-    spec/SPEC-inscription.md — décision : 1x ou 3x au choix de la
-    famille). Pour 3x : la 1ʳᵉ échéance regroupe adhésion + 1er
-    trimestre (payée immédiatement), puis une échéance par trimestre
-    suivant, espacée d'1 mois (respecte les contraintes HelloAsso : max
-    1/mois, jamais dans le mois de l'échéance initiale, jamais après le
-    27, toujours dans les 12 mois — voir helloasso.py)."""
+    """1 échéance (tout maintenant) ou 3 (une par trimestre, aux vraies
+    dates — voir dates_trimestres, décision utilisateur : cohérent avec
+    le chèque plutôt que des dates relatives à la date d'inscription).
+
+    L'adhésion est TOUJOURS payée immédiatement (elle ne peut jamais être
+    différée à une date future chez HelloAsso, voir `initialAmount` de
+    l'API). Un trimestre dont la vraie date est déjà passée ou tombe le
+    même mois que l'inscription (l'API HelloAsso refuse toute échéance
+    dans le mois de l'échéance initiale) est payé immédiatement lui
+    aussi — seuls les trimestres réellement à venir deviennent des
+    `terms` HelloAsso, plafonnés au jour 1 du mois (jamais après le 27,
+    contrainte de l'API)."""
     if nb_echeances not in (1, 3):
         raise ValueError("nb_echeances doit être 1 ou 3")
 
@@ -178,8 +188,13 @@ def calculer_echeances_helloasso(
         return [Echeance(montant=total, date_prelevement=None)]
 
     aujourdhui = aujourdhui or dt.date.today()
-    return [
-        Echeance(montant=montant_adhesion + montant_trimestriel, date_prelevement=None),
-        Echeance(montant=montant_trimestriel, date_prelevement=_ajouter_mois(aujourdhui, 1)),
-        Echeance(montant=montant_trimestriel, date_prelevement=_ajouter_mois(aujourdhui, 2)),
-    ]
+    montant_immediat = montant_adhesion
+    echeances_futures: list[Echeance] = []
+    for date_echeance in dates_trimestres(saison):
+        deja_du = (date_echeance.year, date_echeance.month) <= (aujourdhui.year, aujourdhui.month)
+        if deja_du:
+            montant_immediat += montant_trimestriel
+        else:
+            echeances_futures.append(Echeance(montant=montant_trimestriel, date_prelevement=date_echeance))
+
+    return [Echeance(montant=montant_immediat, date_prelevement=None), *echeances_futures]
