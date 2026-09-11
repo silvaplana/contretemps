@@ -419,8 +419,15 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
       </section>
 
       <button className="bouton" type="submit" disabled={envoiEnCours}>
+        {envoiEnCours && <span className="spinner" aria-hidden="true" />}
         {envoiEnCours ? 'Envoi en cours…' : "Valider l'inscription"}
       </button>
+      {envoiEnCours && (
+        <p className="envoi-note">
+          Enregistrement, génération des PDF et envoi de l'email de confirmation — ça peut prendre
+          quelques secondes.
+        </p>
+      )}
     </form>
   )
 }

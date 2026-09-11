@@ -198,12 +198,12 @@ class Inscriptions:
                 )
             self.email.envoyer_confirmation(
                 inscription.eleve_email,
-                f"Inscription validée à l'école de danse {nom_ecole} pour la saison "
-                f"{inscription.saison}",
+                f"Inscription validée de {inscription.eleve_nom} {inscription.eleve_prenom} "
+                f"à l'école de danse {nom_ecole} pour la saison {inscription.saison}",
                 (
                     f"Bonjour,\n\nNous confirmons la bonne réception de l'inscription de "
                     f"{inscription.eleve_prenom} {inscription.eleve_nom} pour la saison "
-                    f"{inscription.saison}. Vous trouverez ci-joint le dossier rempli et la "
+                    f"{inscription.saison}.\n\nVous trouverez ci-joint le dossier rempli et la "
                     f"facture correspondante.\n\nÀ bientôt,\nL'équipe {nom_ecole}"
                 ),
                 pieces_jointes,
