@@ -282,8 +282,8 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
                 onChange={() => basculerCoche('reductionFamilleDemandee')}
               />
               <span>
-                Réduction famille (-5 €/trimestre) : un frère ou une sœur est déjà inscrit à
-                l'école cette saison.
+                Réduction famille (-5 €/trimestre) : adhésion dégressive dès deux membres d'une
+                même famille.
               </span>
             </label>
 
