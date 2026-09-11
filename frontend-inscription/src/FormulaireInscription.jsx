@@ -32,7 +32,6 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
   const [apercuPhoto, setApercuPhoto] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   const [erreur, setErreur] = useState(null)
-  const [bilanAffiche, setBilanAffiche] = useState(false)
 
   function choisirPhoto(e) {
     const fichier = e.target.files?.[0] ?? null
@@ -245,7 +244,17 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
                 checked={valeurs.coursIds.includes(c.id)}
                 onChange={() => basculerCours(c.id)}
               />
-              <span>{c.nom}</span>
+              <span>
+                {c.nom}
+                {c.jour && (
+                  <>
+                    <br />
+                    <small>
+                      {c.jour} {c.heure_debut}-{c.heure_fin}
+                    </small>
+                  </>
+                )}
+              </span>
             </label>
           ))}
         </div>
@@ -255,6 +264,8 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         <section className="section">
           <h2>Tarif indicatif</h2>
           <div className="tarif-apercu">
+            <div>Cours choisis ({nomsCoursChoisis.length}) : {nomsCoursChoisis.join(', ')}</div>
+            <div>Palier tarifaire : {LIBELLE_PALIER[tarif.palier]}</div>
             <div>
               Adhésion (payée à part, par chèque) : <strong>{tarif.montantAdhesion} €</strong>
             </div>
@@ -263,12 +274,12 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             </div>
             <div className="montant">
               {tarif.montantMensuel} € / mois (sept. à juin) — ou {tarif.montantTrimestriel} € /
-              trimestre
+              trimestre (3 échéances, jamais l'été)
             </div>
             {tarif.alertePalierMixte && (
               <div className="alerte">
-                Les cours choisis touchent plusieurs paliers tarifaires — le tarif définitif sera
-                confirmé par l'école.
+                Les cours choisis touchent plusieurs paliers tarifaires — palier le plus élevé
+                retenu, le tarif définitif sera confirmé par l'école.
               </div>
             )}
             <div className="alerte" style={{ color: '#666' }}>
@@ -381,58 +392,6 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             <span className="badge-bientot">Bientôt disponible</span>
           </label>
         </div>
-
-        <button
-          type="button"
-          className="bouton bouton--secondaire"
-          style={{ marginTop: 16 }}
-          onClick={() => setBilanAffiche(true)}
-        >
-          Calculer le prix
-        </button>
-
-        {bilanAffiche && (
-          <div className="bilan-prix">
-            {tarif ? (
-              <>
-                <h3>Bilan</h3>
-                <div className="bilan-prix__ligne">
-                  <span>Cours choisis</span>
-                  <span>{nomsCoursChoisis.length} — {nomsCoursChoisis.join(', ')}</span>
-                </div>
-                <div className="bilan-prix__ligne">
-                  <span>Palier tarifaire</span>
-                  <span>{LIBELLE_PALIER[tarif.palier]}</span>
-                </div>
-                <div className="bilan-prix__ligne">
-                  <span>Adhésion (à part, par chèque)</span>
-                  <span>{tarif.montantAdhesion} €</span>
-                </div>
-                <div className="bilan-prix__ligne">
-                  <span>Mensualité (sept. à juin)</span>
-                  <span>{tarif.montantMensuel} €</span>
-                </div>
-                <div className="bilan-prix__ligne">
-                  <span>Ou trimestriel (3 échéances)</span>
-                  <span>{tarif.montantTrimestriel} €</span>
-                </div>
-                {tarif.alertePalierMixte && (
-                  <p className="alerte">
-                    Cours choisis touchant plusieurs paliers tarifaires — le montant retenu ici
-                    est le plus élevé, l'école confirmera le tarif exact.
-                  </p>
-                )}
-                <p className="bilan-prix__note">
-                  -5 €/mois par élève supplémentaire de la même famille inscrit cette saison
-                  (appliqué automatiquement, pas dans ce calcul indicatif). Le montant définitif
-                  est celui confirmé après soumission du formulaire.
-                </p>
-              </>
-            ) : (
-              <p>Choisissez au moins un cours pour calculer le prix.</p>
-            )}
-          </div>
-        )}
       </section>
 
       <button className="bouton" type="submit" disabled={envoiEnCours}>
