@@ -12,17 +12,23 @@ FIXTURE = os.path.join(
 )
 
 NOMS_COURS_REELS = [
-    "Eveil",
-    "Classique initiation",
-    "Jazz initiation",
-    "Classique moyen",
-    "Jazz moyen",
-    "Jazz junior",
-    "Classique intermédiaire",
-    "Jazz intermédiaire",
-    "Classique avancé",
-    "Jazz avancé",
-    "Contemporain",
+    "Éveil",
+    "Class Ini",
+    "Jazz Ini",
+    "Class Moy",
+    "Jazz Moy",
+    "Street Moyen",
+    "Jazz Junior",
+    "Street Junior Inter",
+    "Class Inter",
+    "Jazz Inter",
+    "Pointes inter",
+    "Pointes AV",
+    "Class AV",
+    "Jazz AV",
+    "Contempo Junior",
+    "Contempo Inter avance",
+    "Contempo Adulte",
 ]
 
 
@@ -36,8 +42,8 @@ def _creer_ecole_avec_cours(db_session):
 
 def test_previsualiser_le_fichier_demo(client, db_session):
     """80 élèves fictifs, colonnes de cours abrégées (voir §6.4bis :
-    "Class Ini" -> Classique initiation), une colonne volontairement
-    absente du mapping statique ("Contempo" -> Contemporain)."""
+    "Class Av" -> Class AV), une colonne volontairement absente du
+    mapping statique ("Contempo" -> un des 3 cours Contempo)."""
     ecole = _creer_ecole_avec_cours(db_session)
 
     with open(FIXTURE, "rb") as f:
@@ -70,7 +76,7 @@ def test_colonne_non_reconnue_puis_memorisee(client, db_session):
     reconnue automatiquement aux imports suivants."""
     ecole = _creer_ecole_avec_cours(db_session)
     cours_contemporain = next(
-        c for c in CoursService().list(db_session, ecole.id) if c.nom == "Contemporain"
+        c for c in CoursService().list(db_session, ecole.id) if c.nom == "Contempo Junior"
     )
 
     with open(FIXTURE, "rb") as f:

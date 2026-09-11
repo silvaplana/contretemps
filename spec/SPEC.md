@@ -397,7 +397,7 @@ fichier), puis **une colonne par cours** (format "large", "X" si l'élève y est
 
 **Mapping des colonnes de cours** : le code compare chaque en-tête de colonne à une **table de
 correspondance** (mapping) entre le libellé du fichier Excel et le `cours` correspondant en
-base (ex. `"Class Ini"` → *Classique initiation*). Une correspondance en base de données
+base (ex. `"Eveil"` → *Éveil*, l'en-tête Excel réel n'ayant pas l'accent). Une correspondance en base de données
 Python simple suffit ici — **pas besoin d'appel IA** : l'ensemble des cours est fini et connu
 à l'avance, une IA introduirait un risque de correspondance approximative silencieuse sur une
 donnée sensible (élève associé au mauvais cours), alors qu'une table déterministe est
@@ -474,12 +474,19 @@ Séances de présence et vidéos : reliées par leur propre `cours_id`, jamais l
 (champs **calculés**, obtenus par requête — voir réponse à ta question sur les champs
 techniques).
 
-**✅ Liste de cours corrigée d'après le vrai fichier d'adhérents de Contretemps** (remplace la
-liste précédente, qui incluait des cours "Street" et un détail par niveau du Contemporain
-inexistants en réalité). `nom` reste un texte libre modifiable, pas un enum fermé, pour
-permettre d'ajouter un nouveau cours plus tard sans migration :
-Éveil, Classique initiation, Jazz initiation, Classique moyen, Jazz moyen, Jazz junior,
-Classique intermédiaire, Jazz intermédiaire, Classique avancé, Jazz avancé, Contemporain.
+**✅ Liste de cours (saison 2026-2027, validée par l'école — remplace une liste précédente qui
+avait retiré "Street" par erreur : ces cours existent bien réellement)**. `nom` reste un texte
+libre modifiable, pas un enum fermé, pour permettre d'ajouter un nouveau cours plus tard sans
+migration — 17 cours, dans cet ordre :
+Éveil, Class Ini, Jazz Ini, Class Moy, Jazz Moy, Street Moyen, Jazz Junior, Street Junior Inter,
+Class Inter, Jazz Inter, Pointes inter, Pointes AV, Class AV, Jazz AV, Contempo Junior, Contempo
+Inter avance, Contempo Adulte.
+
+**Palier tarifaire par cours** (voir `spec/SPEC-inscription.md` — sert au calcul du tarif
+d'inscription) : Éveil a son propre tarif fixe ; Class/Jazz/Street "Ini"/"Moy" → palier
+"Initiation/Moyen" ; tous les autres (Junior/Inter/AV/Adulte/Pointes) → palier "à partir du
+niveau Junior" (le plus élevé — "Contempo Adulte" n'a pas de palier propre, faute de tarif
+adulte distinct pour l'instant, donc rattaché à celui-ci par défaut).
 
 ### 6.6 Présence
 

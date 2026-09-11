@@ -25,16 +25,16 @@ from .models import MappingColonneImport
 # `mappings_colonnes_import` (mémorisation par école), puis en dernier
 # recours par l'alerte à l'admin.
 MAPPING_COLONNES_COURS_PAR_DEFAUT: dict[str, str] = {
-    "Eveil": "Eveil",
-    "Class Ini": "Classique initiation",
-    "Jazz Ini": "Jazz initiation",
-    "Class Moy": "Classique moyen",
-    "Jazz Moy": "Jazz moyen",
-    "Jazz Jr": "Jazz junior",
-    "Class Inter": "Classique intermédiaire",
-    "Jazz Inter": "Jazz intermédiaire",
-    "Class Av": "Classique avancé",
-    "Jazz Av": "Jazz avancé",
+    "Eveil": "Éveil",
+    "Class Ini": "Class Ini",
+    "Jazz Ini": "Jazz Ini",
+    "Class Moy": "Class Moy",
+    "Jazz Moy": "Jazz Moy",
+    "Jazz Jr": "Jazz Junior",
+    "Class Inter": "Class Inter",
+    "Jazz Inter": "Jazz Inter",
+    "Class Av": "Class AV",
+    "Jazz Av": "Jazz AV",
 }
 
 COLONNES_FIXES = {

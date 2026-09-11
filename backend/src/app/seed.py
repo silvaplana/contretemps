@@ -12,7 +12,7 @@ via `eleves.import_excel`, ce qui a l'avantage de tester ce module à
 chaque seed. Présence/chorégraphies/vidéos : traduites ici depuis
 PRESENCES_DEMO/CHOREGRAPHIES_DEMO, mêmes valeurs que mockData.js
 (presencesParCours/choregraphiesParCours/videosParCours) — remplies
-seulement pour "Eveil" et "Contemporain", comme côté frontend.
+seulement pour "Éveil" et "Contempo Junior", comme côté frontend.
 
 Usage :
     python -m app.seed
@@ -108,24 +108,30 @@ FAMILLES_DEMO = [
 # lexicalement ailleurs — voir presence.statut_prof) : convention de
 # STOCKAGE, différente de l'affichage "17h00" du frontend.
 COURS_CONTRETEMPS = [
-    {"nom": "Eveil", "jour": "Mercredi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
-    {"nom": "Classique initiation", "jour": "Mercredi", "heure_debut": "17:45", "heure_fin": "18:30", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
-    {"nom": "Jazz initiation", "jour": "Lundi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
-    {"nom": "Classique moyen", "jour": "Mercredi", "heure_debut": "18:30", "heure_fin": "19:30", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
-    {"nom": "Jazz moyen", "jour": "Lundi", "heure_debut": "17:45", "heure_fin": "18:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
-    {"nom": "Jazz junior", "jour": "Lundi", "heure_debut": "18:45", "heure_fin": "19:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
-    {"nom": "Classique intermédiaire", "jour": "Jeudi", "heure_debut": "18:00", "heure_fin": "19:00", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
-    {"nom": "Jazz intermédiaire", "jour": "Mardi", "heure_debut": "18:00", "heure_fin": "19:15", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
-    {"nom": "Classique avancé", "jour": "Jeudi", "heure_debut": "19:00", "heure_fin": "20:30", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
-    {"nom": "Jazz avancé", "jour": "Vendredi", "heure_debut": "18:30", "heure_fin": "20:00", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
-    {"nom": "Contemporain", "jour": "Vendredi", "heure_debut": "20:00", "heure_fin": "21:30", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
+    {"nom": "Éveil", "jour": "Mercredi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
+    {"nom": "Class Ini", "jour": "Mercredi", "heure_debut": "17:45", "heure_fin": "18:30", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
+    {"nom": "Jazz Ini", "jour": "Lundi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Class Moy", "jour": "Mercredi", "heure_debut": "18:30", "heure_fin": "19:30", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
+    {"nom": "Jazz Moy", "jour": "Lundi", "heure_debut": "17:45", "heure_fin": "18:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Street Moyen", "jour": "Mardi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 1", "prof": ("Thomas", "Marysa")},
+    {"nom": "Jazz Junior", "jour": "Lundi", "heure_debut": "18:45", "heure_fin": "19:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Street Junior Inter", "jour": "Jeudi", "heure_debut": "18:00", "heure_fin": "19:00", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Class Inter", "jour": "Jeudi", "heure_debut": "18:00", "heure_fin": "19:00", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
+    {"nom": "Jazz Inter", "jour": "Mardi", "heure_debut": "18:00", "heure_fin": "19:15", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Pointes inter", "jour": "Mercredi", "heure_debut": "19:30", "heure_fin": "20:15", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
+    {"nom": "Pointes AV", "jour": "Jeudi", "heure_debut": "20:30", "heure_fin": "21:15", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
+    {"nom": "Class AV", "jour": "Jeudi", "heure_debut": "19:00", "heure_fin": "20:30", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
+    {"nom": "Jazz AV", "jour": "Vendredi", "heure_debut": "18:30", "heure_fin": "20:00", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
+    {"nom": "Contempo Junior", "jour": "Mercredi", "heure_debut": "20:00", "heure_fin": "20:45", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
+    {"nom": "Contempo Inter avance", "jour": "Jeudi", "heure_debut": "20:00", "heure_fin": "21:15", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
+    {"nom": "Contempo Adulte", "jour": "Vendredi", "heure_debut": "20:00", "heure_fin": "21:30", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
 ]
 
-# Voir mockData.js : presencesParCours ne remplit que "Eveil" (c1) et
-# "Contemporain" (c11), à titre de démo — même chose ici. `None` dans
+# Voir mockData.js : presencesParCours ne remplit que "Éveil" (c1) et
+# "Contempo Junior" (c11), à titre de démo — même chose ici. `None` dans
 # "profs" = case vide (voir HEURES_VIDES côté frontend, "–" affiché).
 PRESENCES_DEMO = {
-    "Eveil": {
+    "Éveil": {
         "dates": [dt.date(2026, 9, 1), dt.date(2026, 9, 3), dt.date(2026, 9, 8)],
         "eleves": {
             ("Perrin", "Charlotte"): ["present", "present", "retard"],
@@ -140,7 +146,7 @@ PRESENCES_DEMO = {
             ],
         },
     },
-    "Contemporain": {
+    "Contempo Junior": {
         "dates": [dt.date(2026, 9, 4), dt.date(2026, 9, 6)],
         "eleves": {
             ("Jean", "Camille"): ["present", "present"],
@@ -158,11 +164,11 @@ PRESENCES_DEMO = {
 }
 
 # Voir mockData.js : choregraphiesParCours/videosParCours, même limite
-# (seulement "Eveil"/"Contemporain"). "fichier" fait référence à un mp4
+# (seulement "Éveil"/"Contempo Junior"). "fichier" fait référence à un mp4
 # dans backend/videos_reference/<ecole_id>/ (voir videos/stockage.py) —
 # `None` = vidéo sans fichier réel (juste une entrée, comme côté mock).
 CHOREGRAPHIES_DEMO = {
-    "Eveil": [
+    "Éveil": [
         {
             "nom": "Comme un garçon",
             "eleves": [("Perrin", "Charlotte"), ("Thomas", "Coline"), ("Legrand", "Chloé")],
@@ -186,7 +192,7 @@ CHOREGRAPHIES_DEMO = {
             ],
         },
     ],
-    "Contemporain": [
+    "Contempo Junior": [
         {
             "nom": "Silhouettes",
             "eleves": [("Jean", "Camille"), ("Legrand", "Emma"), ("Mercier", "Garance")],
@@ -229,7 +235,7 @@ def _copier_fichier_demo(ecole_id: int, nom_fichier: str) -> str:
 def _creer_familles_demo(db, ecole, comptes, eleves_service, cours_service) -> None:
     """Voir FAMILLES_DEMO ci-dessus. Idempotent (vérifie par nom+prénom
     avant de créer, comme le reste de ce fichier)."""
-    cours_eveil = next((c for c in cours_service.list(db, ecole.id) if c.nom == "Eveil"), None)
+    cours_eveil = next((c for c in cours_service.list(db, ecole.id) if c.nom == "Éveil"), None)
     if cours_eveil is None:
         return
     for famille in FAMILLES_DEMO:
@@ -358,7 +364,7 @@ def _creer_conversations_demo(db, ecole, comptes, cours_service, profs_par_nom_p
     """Conversations de démo (voir spec/SPEC.md §6.9, et l'ancien
     frontend/src/data/mockData.js: groupes/conversations, pas encore
     supprimé — voir api/conversations.js) : un groupe automatique de
-    cours (Eveil), l'équipe pédagogique, et un DM avec une élève — pour
+    cours (Éveil), l'équipe pédagogique, et un DM avec une élève — pour
     ne pas atterrir sur un écran Messagerie/Admin > Conversations vide
     après un reset_demo."""
     conversations = Conversations(comptes=comptes, cours=cours_service)
@@ -368,7 +374,7 @@ def _creer_conversations_demo(db, ecole, comptes, cours_service, profs_par_nom_p
         print("Conversations de démo déjà présentes, ignorées.")
         return
 
-    cours_eveil = next((c for c in cours_service.list(db, ecole.id) if c.nom == "Eveil"), None)
+    cours_eveil = next((c for c in cours_service.list(db, ecole.id) if c.nom == "Éveil"), None)
     charlotte_resultats = comptes.trouver_par_nom_prenom(db, ecole.id, "Perrin", "Charlotte", role="eleve")
     charlotte = charlotte_resultats[0] if charlotte_resultats else None
 
