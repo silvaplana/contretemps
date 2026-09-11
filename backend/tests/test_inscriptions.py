@@ -135,6 +135,42 @@ def test_reduction_famille_appliquee_au_2e_enfant_meme_email(
     assert corps["montant_mensuel_septembre"] == 42.0 - 5.0
 
 
+def test_reduction_famille_auto_declaree_sans_detection_automatique(
+    client, db_session, _nettoyage_dossier
+):
+    """Voir schemas.py:reduction_famille_demandee — un frère/sœur déjà
+    inscrit MAIS PAS via ce formulaire (donc invisible à la détection
+    automatique par email) : la famille peut cocher la case elle-même."""
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+
+    reponse = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire(
+            [cours["Class Ini"].id], eleve_email="famille-unique@example.com",
+            reduction_famille_demandee=True,
+        ),
+    )
+    corps = reponse.json()
+    assert corps["reduction_famille_appliquee"] is True
+    assert corps["montant_mensuel_septembre"] == 42.0 - 5.0
+
+
+def test_reduction_famille_non_demandee_non_appliquee(client, db_session, _nettoyage_dossier):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+
+    reponse = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Class Ini"].id]),
+    )
+    corps = reponse.json()
+    assert corps["reduction_famille_appliquee"] is False
+    assert corps["montant_mensuel_septembre"] == 42.0
+
+
 def test_palier_mixte_detecte_et_alerte(client, db_session, _nettoyage_dossier):
     ecole, cours = _creer_ecole_avec_cours(db_session)
     _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))

@@ -24,6 +24,7 @@ const VIDE = {
   reglementLuApprouve: false,
   signataireNom: '',
   moyenPaiement: 'cheque',
+  reductionFamilleDemandee: false,
 }
 
 export default function FormulaireInscription({ ecole, cours, onSoumis }) {
@@ -46,7 +47,10 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
     () => cours.filter((c) => valeurs.coursIds.includes(c.id)).map((c) => c.nom),
     [cours, valeurs.coursIds]
   )
-  const tarif = useMemo(() => calculerTarifIndicatif(nomsCoursChoisis), [nomsCoursChoisis])
+  const tarif = useMemo(
+    () => calculerTarifIndicatif(nomsCoursChoisis, valeurs.reductionFamilleDemandee),
+    [nomsCoursChoisis, valeurs.reductionFamilleDemandee]
+  )
 
   function champ(nom) {
     return {
@@ -119,6 +123,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         reglement_lu_approuve: valeurs.reglementLuApprouve,
         signataire_nom: valeurs.signataireNom.trim(),
         moyen_paiement: valeurs.moyenPaiement,
+        reduction_famille_demandee: valeurs.reductionFamilleDemandee,
       })
 
       let photoEnvoyee = false
@@ -282,8 +287,18 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
                 retenu, le tarif définitif sera confirmé par l'école.
               </div>
             )}
+            <label className="checkbox-ligne" style={{ marginTop: 10 }}>
+              <input
+                type="checkbox"
+                checked={valeurs.reductionFamilleDemandee}
+                onChange={() => basculerCoche('reductionFamilleDemandee')}
+              />
+              <span>
+                Réduction famille (-5 €/mois et /trimestre) : un frère ou une sœur est déjà
+                inscrit à l'école cette saison.
+              </span>
+            </label>
             <div className="alerte" style={{ color: '#666' }}>
-              -5 €/mois pour chaque élève supplémentaire de la même famille inscrit cette saison.
               Ce tarif est indicatif : le montant définitif est confirmé après soumission.
             </div>
           </div>

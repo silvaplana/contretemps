@@ -41,6 +41,16 @@ class InscriptionCreation(BaseModel):
 
     moyen_paiement: str = "cheque"
 
+    # Auto-déclarée par la famille (case à cocher, voir
+    # FormulaireInscription.jsx) — un frère/sœur déjà inscrit cette
+    # saison, éventuellement PAS via ce formulaire en ligne (donc
+    # invisible à la détection automatique, voir
+    # inscriptions.py:_detecter_doublon_et_famille, qui ne connaît que
+    # les inscriptions déjà passées par ici). Combinée en "OU" avec la
+    # détection automatique — jamais bloquante, l'admin vérifie à la
+    # fusion Excel comme pour doublon_possible.
+    reduction_famille_demandee: bool = False
+
 
 class InscriptionSortie(BaseModel):
     token_public: str

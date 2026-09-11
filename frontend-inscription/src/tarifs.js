@@ -52,16 +52,25 @@ function tarifPourPalier(palier, nbCours) {
   return { mensuel: bareme.mensuel[index], trimestriel: bareme.trimestriel[index] }
 }
 
-// `nomsCours` : noms de cours choisis (voir PALIER_PAR_COURS). Renvoie
-// null si aucun cours choisi (rien à afficher encore).
-export function calculerTarifIndicatif(nomsCours) {
+const REDUCTION_FAMILLE = 5
+
+// `nomsCours` : noms de cours choisis (voir PALIER_PAR_COURS).
+// `reductionFamille` : case "Réduction famille" cochée (voir
+// FormulaireInscription.jsx) — même montant (-5€) que
+// backend/src/inscriptions/tarifs.py:REDUCTION_FAMILLE. Renvoie null si
+// aucun cours choisi (rien à afficher encore).
+export function calculerTarifIndicatif(nomsCours, reductionFamille = false) {
   if (nomsCours.length === 0) return null
   const paliers = new Set(nomsCours.map((nom) => PALIER_PAR_COURS[nom]).filter(Boolean))
   if (paliers.size === 0) paliers.add('initiation_moyen')
   const palierRetenu = [...paliers].sort(
     (a, b) => ORDRE_PALIERS.indexOf(b) - ORDRE_PALIERS.indexOf(a)
   )[0]
-  const { mensuel, trimestriel } = tarifPourPalier(palierRetenu, nomsCours.length)
+  let { mensuel, trimestriel } = tarifPourPalier(palierRetenu, nomsCours.length)
+  if (reductionFamille) {
+    mensuel = Math.max(0, mensuel - REDUCTION_FAMILLE)
+    trimestriel = Math.max(0, trimestriel - REDUCTION_FAMILLE)
+  }
   return {
     palier: palierRetenu,
     montantAdhesion: ADHESION,

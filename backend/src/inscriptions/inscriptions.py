@@ -77,9 +77,14 @@ class Inscriptions:
     ) -> Inscription:
         noms_cours = self._resoudre_noms_cours(db, ecole_id, donnees.cours_ids)
         saison = saison_actuelle()
-        doublon, famille = self._detecter_doublon_et_famille(
+        doublon, famille_detectee = self._detecter_doublon_et_famille(
             db, ecole_id, saison, donnees.eleve_nom, donnees.eleve_prenom, donnees.eleve_email
         )
+        # Détection automatique OU auto-déclaration de la famille (voir
+        # schemas.py:reduction_famille_demandee — un frère/sœur déjà
+        # inscrit mais pas via ce formulaire en ligne échappe à la
+        # détection automatique).
+        famille = famille_detectee or donnees.reduction_famille_demandee
         tarif = calculer_tarif(noms_cours, reduction_famille=famille)
 
         inscription = Inscription(
