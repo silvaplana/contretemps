@@ -36,6 +36,12 @@ Question: faut il faire la verification apres chaque champ, ou une fois l'inscri
 
 
 
+## Remarque — 3 trimestres par an, jamais en été
+
+Le montant "trimestriel" (voir `montant_trimestriel`, barème page tarifs du dossier papier)
+correspond à 3 échéances par an — il n'y a jamais de trimestre facturé pendant l'été (juillet/
+août, l'école étant fermée). Toujours afficher "3 échéances"/"3 trimestres", jamais 4.
+
 ## Remarque — mois de septembre hors scope
 
 Le parcours d'inscription décrit ici ne traite PAS la spécificité du mois de septembre (le vrai

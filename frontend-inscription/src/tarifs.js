@@ -38,6 +38,13 @@ const BAREME_JUNIOR_ET_PLUS = {
 
 export const ADHESION = 40
 
+// Libellé lisible d'un palier — voir bilan de prix (FormulaireInscription.jsx).
+export const LIBELLE_PALIER = {
+  eveil: 'Éveil',
+  initiation_moyen: 'Initiation / Moyen',
+  junior_et_plus: 'À partir du niveau Junior',
+}
+
 function tarifPourPalier(palier, nbCours) {
   if (palier === 'eveil') return TARIF_EVEIL
   const bareme = palier === 'initiation_moyen' ? BAREME_INITIATION_MOYEN : BAREME_JUNIOR_ET_PLUS
