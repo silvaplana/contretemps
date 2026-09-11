@@ -55,8 +55,7 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         </div>
         {resultat.alerte_palier_mixte && (
           <div className="alerte">
-            Cours choisis touchant plusieurs paliers tarifaires — l'école vous confirmera le
-            montant exact.
+            Cours choisis touchant plusieurs paliers tarifaires — palier le plus élevé retenu.
           </div>
         )}
         <div className="alerte" style={{ color: '#666' }}>

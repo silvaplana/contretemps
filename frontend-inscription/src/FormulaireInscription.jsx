@@ -307,7 +307,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             {tarif.alertePalierMixte && (
               <div className="alerte">
                 Les cours choisis touchent plusieurs paliers tarifaires — palier le plus élevé
-                retenu, le tarif définitif sera confirmé par l'école.
+                retenu.
               </div>
             )}
             <div className="alerte" style={{ color: '#666' }}>
