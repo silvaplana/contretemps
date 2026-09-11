@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 
 import requests
@@ -29,6 +30,15 @@ logger = logging.getLogger(__name__)
 # https://api.helloasso.com en production une fois un vrai compte
 # HelloAsso créé pour l'école (voir spec/SPEC-inscription.md §3).
 BASE_URL_DEFAUT = "https://api.helloasso-sandbox.com"
+
+
+def nettoyer_nom_payeur(texte: str) -> str:
+    """HelloAsso refuse tout chiffre dans firstName/lastName (constaté en
+    sandbox : "Votre nom ne doit pas contenir de chiffres") — retire les
+    chiffres, garde le reste tel quel (accents/espaces/tirets acceptés).
+    Un vrai nom de famille n'en contient jamais, mais une faute de frappe
+    ou un pseudo ne doit jamais faire échouer tout le paiement."""
+    return re.sub(r"\d+", "", texte).strip() or "-"
 
 
 class HelloAssoError(Exception):

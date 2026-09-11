@@ -6,7 +6,7 @@ import datetime as dt
 
 import pytest
 from inscriptions import helloasso as helloasso_module
-from inscriptions.helloasso import HelloAsso, HelloAssoError
+from inscriptions.helloasso import HelloAsso, HelloAssoError, nettoyer_nom_payeur
 from inscriptions.tarifs import Echeance
 
 
@@ -28,9 +28,15 @@ def _client_configure(monkeypatch) -> HelloAsso:
     return HelloAsso()
 
 
-def test_non_configure_actif_false():
+def test_non_configure_actif_false(monkeypatch):
+    # `delenv` explicite (pas juste "absent par défaut") : un .env local
+    # de dev peut légitimement contenir de vraies clés sandbox (voir
+    # spec/SPEC-inscription.md §4) — piège trouvé en configurant les
+    # miennes en local, ce test devenait "actif" sans le vouloir.
+    monkeypatch.delenv("HELLOASSO_CLIENT_ID", raising=False)
+    monkeypatch.delenv("HELLOASSO_CLIENT_SECRET", raising=False)
+    monkeypatch.delenv("HELLOASSO_ORGANIZATION_SLUG", raising=False)
     client = HelloAsso()
-    # Pas de HELLOASSO_* dans l'environnement de test par défaut.
     assert client.actif is False
     with pytest.raises(HelloAssoError):
         client._obtenir_token()
@@ -194,3 +200,12 @@ def test_appel_echec_leve_helloassoerror(monkeypatch):
     )
     with pytest.raises(HelloAssoError):
         client.recuperer_checkout_intent(999)
+
+
+def test_nettoyer_nom_payeur_retire_les_chiffres():
+    """Voir spec/SPEC-inscription.md §4 : HelloAsso refuse tout chiffre
+    dans firstName/lastName ("Votre nom ne doit pas contenir de
+    chiffres", constaté en sandbox)."""
+    assert nettoyer_nom_payeur("TestHA2") == "TestHA"
+    assert nettoyer_nom_payeur("Marie-Zoé") == "Marie-Zoé"
+    assert nettoyer_nom_payeur("  42  ") == "-"

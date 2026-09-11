@@ -24,6 +24,7 @@ const VIDE = {
   reglementLuApprouve: false,
   signataireNom: '',
   moyenPaiement: 'cheque',
+  paiementNbEcheances: 1,
   reductionFamilleDemandee: false,
 }
 
@@ -123,6 +124,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         reglement_lu_approuve: valeurs.reglementLuApprouve,
         signataire_nom: valeurs.signataireNom.trim(),
         moyen_paiement: valeurs.moyenPaiement,
+        paiement_nb_echeances: valeurs.moyenPaiement === 'helloasso' ? valeurs.paiementNbEcheances : 1,
         reduction_famille_demandee: valeurs.reductionFamilleDemandee,
       })
 
@@ -405,17 +407,45 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             />
             Chèque
           </label>
+          <label className="paiement-option">
+            <input
+              type="radio"
+              name="paiement"
+              value="helloasso"
+              checked={valeurs.moyenPaiement === 'helloasso'}
+              onChange={() => setValeurs((v) => ({ ...v, moyenPaiement: 'helloasso' }))}
+            />
+            HelloAsso (carte bancaire)
+          </label>
           <label className="paiement-option paiement-option--desactive">
             <input type="radio" name="paiement" disabled />
             Carte bancaire (Stripe)
             <span className="badge-bientot">Bientôt disponible</span>
           </label>
-          <label className="paiement-option paiement-option--desactive">
-            <input type="radio" name="paiement" disabled />
-            HelloAsso
-            <span className="badge-bientot">Bientôt disponible</span>
-          </label>
         </div>
+
+        {valeurs.moyenPaiement === 'helloasso' && (
+          <div className="sous-cases" style={{ marginTop: 10 }}>
+            <label>
+              <input
+                type="radio"
+                name="nb-echeances"
+                checked={valeurs.paiementNbEcheances === 1}
+                onChange={() => setValeurs((v) => ({ ...v, paiementNbEcheances: 1 }))}
+              />
+              En 1 fois
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="nb-echeances"
+                checked={valeurs.paiementNbEcheances === 3}
+                onChange={() => setValeurs((v) => ({ ...v, paiementNbEcheances: 3 }))}
+              />
+              En 3 fois (1 fois par trimestre)
+            </label>
+          </div>
+        )}
       </section>
 
       <button className="bouton" type="submit" disabled={envoiEnCours}>

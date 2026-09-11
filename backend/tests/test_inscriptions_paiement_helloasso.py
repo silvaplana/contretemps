@@ -106,8 +106,11 @@ def test_paiement_helloasso_refuse_si_moyen_paiement_different(
 def test_paiement_helloasso_indisponible_si_non_configure(
     client, db_session, _nettoyage_dossier, monkeypatch
 ):
-    # Pas de fixture _helloasso_actif ici -> le singleton reste
-    # "inactif" (aucun HELLOASSO_* dans l'environnement de test).
+    # Pas de fixture _helloasso_actif ici -> force le singleton
+    # "inactif" explicitement : un .env local de dev peut légitimement
+    # avoir de vraies clés sandbox configurées (voir
+    # spec/SPEC-inscription.md §4), ce test doit rester vrai peu importe.
+    monkeypatch.setattr(inscriptions_client.helloasso, "actif", False)
     ecole, cours = _creer_ecole_avec_cours(db_session)
     _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
     corps = client.post(

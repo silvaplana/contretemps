@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 
 from . import excel_export
 from .email_envoi import EmailEnvoi
-from .helloasso import HelloAsso, HelloAssoError
+from .helloasso import HelloAsso, HelloAssoError, nettoyer_nom_payeur
 from .models import Inscription, inscriptions_cours
 from .pdf import generer_dossier_pdf, generer_facture_pdf, nom_fichier_dossier, nom_fichier_facture
 from .saison import saison_actuelle
@@ -286,8 +286,8 @@ class Inscriptions:
             error_url=retour_url,
             return_url=retour_url,
             payer={
-                "firstName": inscription.eleve_prenom,
-                "lastName": inscription.eleve_nom,
+                "firstName": nettoyer_nom_payeur(inscription.eleve_prenom),
+                "lastName": nettoyer_nom_payeur(inscription.eleve_nom),
                 "email": inscription.eleve_email or "",
             },
             metadata={"inscription_token": inscription.token_public},

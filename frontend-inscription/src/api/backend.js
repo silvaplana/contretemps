@@ -66,3 +66,28 @@ export function urlDossierPdf(token) {
 export function urlFacturePdf(token) {
   return `${BASE_URL}/inscriptions/${token}/facture.pdf`
 }
+
+// Recharge une inscription par son token — utilisé au retour de
+// paiement HelloAsso (voir App.jsx) : la redirection HelloAsso recharge
+// entièrement la page, l'état React de la soumission initiale est perdu.
+export async function obtenirInscription(token) {
+  return requete(`/inscriptions/${token}`)
+}
+
+// Crée le Checkout Intent HelloAsso et renvoie l'URL de paiement — voir
+// Confirmation.jsx : redirige ensuite `window.location` vers cette URL
+// (departure complète du SPA, pas un fetch en arrière-plan).
+export async function initierPaiementHelloAsso(token, retourUrl) {
+  return requete(`/inscriptions/${token}/paiement/helloasso`, {
+    method: 'POST',
+    body: JSON.stringify({ retour_url: retourUrl }),
+  })
+}
+
+// Ré-interroge HelloAsso (jamais confiance au simple retour navigateur,
+// voir spec/SPEC-inscription.md §4) et renvoie l'inscription à jour
+// (statut_paiement inclus) — LE check qui fait foi, toujours appelé au
+// retour de paiement (voir App.jsx).
+export async function verifierPaiementHelloAsso(token) {
+  return requete(`/inscriptions/${token}/paiement/helloasso/verifier`, { method: 'POST' })
+}

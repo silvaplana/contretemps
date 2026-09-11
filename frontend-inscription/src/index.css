@@ -214,6 +214,15 @@ h3 {
   opacity: 0.55;
 }
 
+.paiement-helloasso {
+  margin-bottom: 16px;
+}
+
+.paiement-helloasso__ok {
+  color: #2e7d32;
+  font-weight: 600;
+}
+
 .badge-bientot {
   margin-left: auto;
   font-size: 0.75rem;
