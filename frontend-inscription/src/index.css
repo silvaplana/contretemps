@@ -1,10 +1,19 @@
+/* Polices et fond repris du vrai site de l'école (dansecontretemps.fr,
+   Wix) — pour une expérience unifiée entre les deux, puisque cette page
+   sera lancée depuis là-bas (voir index.html pour le chargement des
+   polices). "Poppins" pour les titres, "Prompt" pour le texte courant,
+   "Great Vibes" (cursive) réservé au mot "Contretemps" — même
+   traitement que leur logo. */
 :root {
-  --accent: #f46e19;
+  --font-titre: 'Poppins', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-corps: 'Prompt', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-logo: 'Great Vibes', cursive;
+  --accent: #fb9d3a;
   --texte: #2b2b2b;
-  --fond: #faf7f4;
+  --fond: #f4f2ec;
   --bordure: #e3d9d0;
   --erreur: #c0392b;
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-corps);
 }
 
 * {
@@ -13,8 +22,26 @@
 
 body {
   margin: 0;
-  background: var(--fond);
+  /* Douce reprise du dégradé pêche/crème de la page d'accueil du vrai
+     site (leur section "Bienvenue"), en plus discret pour ne pas nuire
+     à la lisibilité d'un long formulaire. */
+  background: linear-gradient(160deg, #fdf3e6 0%, #f4f2ec 45%, #f6e4c9 100%);
   color: var(--texte);
+  font-family: var(--font-corps);
+}
+
+input,
+textarea,
+button,
+select {
+  font-family: inherit;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-titre);
+  font-weight: 600;
 }
 
 .page {
@@ -29,9 +56,17 @@ body {
 }
 
 .entete h1 {
-  color: var(--accent);
+  color: var(--texte);
   margin: 0 0 4px;
-  font-size: 1.5rem;
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+.entete__logo {
+  font-family: var(--font-logo);
+  color: var(--accent);
+  font-size: 1.5em;
+  font-weight: 400;
 }
 
 .entete p {

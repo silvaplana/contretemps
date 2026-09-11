@@ -48,7 +48,9 @@ export default function App() {
   return (
     <div className="page">
       <header className="entete">
-        <h1>Inscription — École de danse Contretemps</h1>
+        <h1>
+          Inscription — École de danse <span className="entete__logo">Contretemps</span>
+        </h1>
         <p>
           Saison {saisonActuelle()} — remplissez ce formulaire pour inscrire votre élève.
         </p>
