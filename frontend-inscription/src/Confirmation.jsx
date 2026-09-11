@@ -28,6 +28,7 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         <div>
           Adhésion (payée à part, par chèque) : <strong>{resultat.montant_adhesion} €</strong>
         </div>
+        <div>Pour {resultat.nb_cours_semaine} cours par semaine :</div>
         <div className="montant">
           {resultat.montant_mensuel_septembre} € / mois (sept. à juin) — ou{' '}
           {resultat.montant_trimestriel} € / trimestre

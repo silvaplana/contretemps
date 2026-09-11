@@ -227,6 +227,12 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
 
       <section className="section">
         <h2>Cours souhaités *</h2>
+        <p className="compteur-cours">
+          {valeurs.coursIds.length === 0
+            ? 'Aucun cours sélectionné'
+            : `${valeurs.coursIds.length} cours par semaine sélectionné${valeurs.coursIds.length > 1 ? 's' : ''}`}
+          {' '}— le tarif dépend de ce nombre (voir ci-dessous).
+        </p>
         <div className="cours-grille">
           {cours.map((c) => (
             <label
@@ -238,17 +244,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
                 checked={valeurs.coursIds.includes(c.id)}
                 onChange={() => basculerCours(c.id)}
               />
-              <span>
-                {c.nom}
-                {c.jour && (
-                  <>
-                    <br />
-                    <small>
-                      {c.jour} {c.heure_debut}-{c.heure_fin}
-                    </small>
-                  </>
-                )}
-              </span>
+              <span>{c.nom}</span>
             </label>
           ))}
         </div>
@@ -260,6 +256,9 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
           <div className="tarif-apercu">
             <div>
               Adhésion (payée à part, par chèque) : <strong>{tarif.montantAdhesion} €</strong>
+            </div>
+            <div>
+              Pour {valeurs.coursIds.length} cours par semaine :
             </div>
             <div className="montant">
               {tarif.montantMensuel} € / mois (sept. à juin) — ou {tarif.montantTrimestriel} € /

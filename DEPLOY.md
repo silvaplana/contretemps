@@ -76,6 +76,16 @@ git pull
 docker compose up -d --build
 ```
 
+`Base.metadata.create_all` (voir `app/main.py`) crée automatiquement les tables MANQUANTES au
+démarrage — pratique, mais ça ne fait JAMAIS rien pour une colonne ajoutée à une table déjà
+existante. Si le changement déployé ajoute une migration Alembic (nouveau fichier dans
+`backend/alembic/versions/`), il faut l'appliquer explicitement après le `docker compose up -d
+--build` ci-dessus :
+
+```bash
+docker compose exec backend alembic upgrade head
+```
+
 ## 4. Secrets (si besoin plus tard)
 
 `docker-compose.yml` charge `backend/.env` s'il existe (`env_file`,

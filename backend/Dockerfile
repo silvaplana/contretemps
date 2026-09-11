@@ -15,6 +15,17 @@ COPY src ./src
 # /app/data, voir plus bas).
 COPY seed_data ./seed_data
 COPY videos_reference ./videos_reference
+# Sans ça, `alembic upgrade head` est INUTILISABLE en conteneur (pas de
+# script_location) — jusqu'ici jamais remarqué parce que
+# Base.metadata.create_all (voir app/main.py) crée les tables MANQUANTES
+# au démarrage, ce qui masque le problème pour une table neuve, mais pas
+# pour une colonne ajoutée à une table déjà existante en prod (piège
+# trouvé en ajoutant inscriptions.eleve_photo_chemin : la colonne
+# n'apparaissait pas tant que la migration n'était pas appliquée à la
+# main). Voir DEPLOY.md pour la commande à lancer après un déploiement
+# qui ajoute une migration.
+COPY alembic.ini ./
+COPY alembic ./alembic
 
 RUN pip install --no-cache-dir .
 
