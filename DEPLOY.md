@@ -12,10 +12,18 @@ Internet ──443/HTTPS──▶ gateway (Caddy, ~/gateway sur le VPS, hors rep
                            │
                            ├── /sambo-admin/* → test-python
                            ├── /fight-rank/*  → fight-rank
-                           └── /contretemps/* → réseau "web" → contretemps-frontend:80 (Caddy interne)
-                                                                    │
-                                                                    └── /api/* → backend:8000 (FastAPI)
+                           ├── /contretemps/* → réseau "web" → contretemps-frontend:80 (Caddy interne)
+                           │                                        │
+                           │                                        └── /api/* → backend:8000 (FastAPI)
+                           └── /contretemps-inscription/* → réseau "web" → contretemps-inscription-frontend:80
+                                                                                 │
+                                                                                 └── /api/* → backend:8000 (MÊME backend)
 ```
+
+`contretemps-inscription-frontend` (voir `frontend-inscription/`, spec/SPEC-inscription.md) est
+une appli sœur séparée — page publique d'inscription, destinée à être liée en priorité depuis le
+site externe de l'école (`dansecontretemps.fr`) plutôt que depuis l'appli principale — mais elle
+parle au **même** backend Contretemps (même réseau Docker, aucune base de données séparée).
 
 ## 1. Premier déploiement sur le VPS
 
@@ -42,6 +50,11 @@ redir /contretemps /contretemps/ 308
 handle_path /contretemps/* {
 	reverse_proxy contretemps-frontend:80
 }
+
+redir /contretemps-inscription /contretemps-inscription/ 308
+handle_path /contretemps-inscription/* {
+	reverse_proxy contretemps-inscription-frontend:80
+}
 ```
 
 Puis recharger le gateway :
@@ -51,7 +64,8 @@ cd ~/gateway
 docker compose up -d
 ```
 
-Le site est alors accessible sur `https://silvaplana.cloud/contretemps/`.
+Le site est alors accessible sur `https://silvaplana.cloud/contretemps/` et
+`https://silvaplana.cloud/contretemps-inscription/`.
 
 ## 3. Mettre à jour après un nouveau push GitHub
 
