@@ -398,9 +398,7 @@ def _creer_conversations_demo(db, ecole, comptes, cours_service, profs_par_nom_p
     if charlotte:
         dm = conversations.create_ou_obtenir_dm(db, ecole.id, admin.id, charlotte.id)
         messages.envoyer(db, dm.id, charlotte.id, "A quelle heure le cours de mercredi ?")
-        messages.envoyer(
-            db, dm.id, admin.id, "17h00 - 17h45, salle 1", envoi_volontaire_email=True
-        )
+        messages.envoyer(db, dm.id, admin.id, "17h00 - 17h45, salle 1", canal="email")
 
     print("Conversations de démo créées (Eveil, Equipe pédagogique, DM avec Charlotte).")
 
