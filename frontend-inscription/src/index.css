@@ -100,6 +100,11 @@ h3 {
   color: #555;
 }
 
+.champ__aide {
+  font-size: 0.78rem;
+  color: #888;
+}
+
 .champ input,
 .champ textarea {
   padding: 10px 12px;

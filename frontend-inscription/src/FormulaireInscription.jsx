@@ -163,6 +163,10 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         <div className="champ">
           <label htmlFor="eleve-naissance">Date de naissance *</label>
           <input id="eleve-naissance" type="date" required {...champ('eleveDateNaissance')} />
+          {/* Un input date n'affiche jamais son "placeholder" (ignoré par
+              tous les navigateurs) — texte d'aide séparé, jamais une
+              vraie valeur, donc aucun risque de fausse date oubliée. */}
+          <small className="champ__aide">Exemple : 10/05/2015</small>
         </div>
         <div className="champ">
           <label htmlFor="eleve-adresse">Adresse</label>
