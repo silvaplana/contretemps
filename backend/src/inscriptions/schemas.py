@@ -57,6 +57,10 @@ class InscriptionSortie(BaseModel):
     saison: str
     eleve_nom: str
     eleve_prenom: str
+    # Renvoyé pour que l'écran de confirmation puisse afficher à quelle
+    # adresse la confirmation a (ou n'a pas pu) été envoyée (voir
+    # Confirmation.jsx) — jamais utilisé pour autre chose côté client.
+    eleve_email: str | None
     cours_choisis: list[str]
 
     palier_tarifaire: str

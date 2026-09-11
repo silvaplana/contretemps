@@ -36,6 +36,7 @@ class InscriptionsReceiver:
             saison=inscription.saison,
             eleve_nom=inscription.eleve_nom,
             eleve_prenom=inscription.eleve_prenom,
+            eleve_email=inscription.eleve_email,
             cours_choisis=self.client.cours_choisis(db, inscription.id),
             palier_tarifaire=inscription.palier_tarifaire,
             nb_cours_semaine=inscription.nb_cours_semaine,

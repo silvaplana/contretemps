@@ -74,9 +74,22 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
       </a>
 
       <p>
-        {resultat.email_envoye
-          ? 'Un email récapitulatif (avec ces 2 PDF en pièces jointes) vous a été envoyé.'
-          : "Conservez cette page ou téléchargez les PDF ci-dessus : l'email de confirmation n'a pas pu être envoyé."}
+        {!resultat.eleve_email ? (
+          <>
+            Vous n'avez pas indiqué d'email : aucune confirmation n'a été envoyée. Conservez cette
+            page ou téléchargez les PDF ci-dessus.
+          </>
+        ) : resultat.email_envoye ? (
+          <>
+            Un email récapitulatif (avec ces 2 PDF en pièces jointes) a été envoyé à{' '}
+            <strong>{resultat.eleve_email}</strong>.
+          </>
+        ) : (
+          <>
+            L'email de confirmation n'a pas pu être envoyé à <strong>{resultat.eleve_email}</strong>.
+            Conservez cette page ou téléchargez les PDF ci-dessus.
+          </>
+        )}
       </p>
 
       <button className="bouton bouton--secondaire" type="button" onClick={onNouvelleInscription}>
