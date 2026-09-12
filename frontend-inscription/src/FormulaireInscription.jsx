@@ -79,7 +79,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
       return 'La date de naissance est obligatoire.'
     }
     if (!valeurs.eleveEmail.trim()) {
-      return "L'email est obligatoire (il sert à recevoir la confirmation et, si choisi, à payer avec HelloAsso)."
+      return "L'email est obligatoire (il sert à recevoir la confirmation et, si choisi, à payer par carte bancaire)."
     }
     if (valeurs.coursIds.length === 0) {
       return 'Choisissez au moins un cours.'

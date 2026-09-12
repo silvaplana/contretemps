@@ -98,12 +98,7 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
             checked={moyen === 'helloasso'}
             onChange={() => setMoyen('helloasso')}
           />
-          HelloAsso (carte bancaire)
-        </label>
-        <label className="paiement-option paiement-option--desactive">
-          <input type="radio" name="paiement" disabled />
-          Carte bancaire (Stripe)
-          <span className="badge-bientot">Bientôt disponible</span>
+          Carte bancaire
         </label>
       </div>
 
@@ -148,7 +143,7 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
           ? 'Un instant…'
           : moyen === 'cheque'
             ? 'Confirmer le paiement par chèque'
-            : `Payer avec HelloAsso en ${nbEcheances === 3 ? '3 fois' : '1 fois'}`}
+            : `Payer par carte bancaire en ${nbEcheances === 3 ? '3 fois' : '1 fois'}`}
       </button>
     </div>
   )

@@ -142,12 +142,15 @@ class InscriptionsReceiver:
                 # Donnée rejetée par HelloAsso (ex. nom/prénom du payeur
                 # invalide) — pas une panne : message clair plutôt que
                 # le 503 générique, voir helloasso.py:HelloAssoError.
+                # "HelloAsso" n'apparaît jamais côté famille (prestataire
+                # invisible pour elle, voir FormulaireInscription.jsx —
+                # juste "Carte bancaire").
                 raise HTTPException(
                     status_code=400,
-                    detail="HelloAsso a refusé ces informations : " + " ; ".join(erreur.messages_api),
+                    detail="Le paiement a été refusé : " + " ; ".join(erreur.messages_api),
                 ) from erreur
             raise HTTPException(
-                status_code=503, detail="Paiement HelloAsso indisponible pour le moment"
+                status_code=503, detail="Paiement par carte bancaire indisponible pour le moment"
             ) from erreur
         return PaiementHelloAssoSortie(redirect_url=resultat["redirect_url"])
 

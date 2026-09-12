@@ -1,7 +1,7 @@
 import { urlDossierPdf, urlFacturePdf } from './api/backend.js'
 import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
-const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', helloasso: 'HelloAsso (carte bancaire)' }
+const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', helloasso: 'Carte bancaire' }
 
 // Écran final (étape 3, voir spec/SPEC-inscription.md) : affiché
 // uniquement une fois le paiement réellement acquis — chèque confirmé
