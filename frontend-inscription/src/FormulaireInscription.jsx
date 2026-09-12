@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { creerInscription, uploaderPhotoEleve } from './api/backend.js'
-import { calculerTarifIndicatif, LIBELLE_PALIER } from './tarifs.js'
+import { saisonActuelle } from './saison.js'
+import { calculerTarifIndicatif, LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
 const VIDE = {
   eleveNom: '',
@@ -127,7 +128,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         reglement_lu_approuve: valeurs.reglementLuApprouve,
         signataire_nom: valeurs.signataireNom.trim(),
         moyen_paiement: valeurs.moyenPaiement,
-        paiement_nb_echeances: valeurs.moyenPaiement === 'helloasso' ? valeurs.paiementNbEcheances : 1,
+        paiement_nb_echeances: valeurs.paiementNbEcheances,
         reduction_famille_demandee: valeurs.reductionFamilleDemandee,
       })
 
@@ -427,6 +428,40 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             <span className="badge-bientot">Bientôt disponible</span>
           </label>
         </div>
+
+        {valeurs.moyenPaiement === 'cheque' && (
+          <div className="sous-cases" style={{ marginTop: 10 }}>
+            <label>
+              <input
+                type="radio"
+                name="nb-echeances"
+                checked={valeurs.paiementNbEcheances === 1}
+                onChange={() => setValeurs((v) => ({ ...v, paiementNbEcheances: 1 }))}
+              />
+              En 1 fois
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="nb-echeances"
+                checked={valeurs.paiementNbEcheances === 3}
+                onChange={() => setValeurs((v) => ({ ...v, paiementNbEcheances: 3 }))}
+              />
+              En 3 fois (1 chèque par trimestre)
+            </label>
+            <p className="champ__aide">
+              Un chèque de 40 € à l'ordre de Contretemps à l'inscription, puis le solde{' '}
+              {valeurs.paiementNbEcheances === 3 ? (
+                <>
+                  en 3 chèques, encaissés en{' '}
+                  {moisEncaissementsAVenir(saisonActuelle()).join(', ') || 'ce mois-ci'}.
+                </>
+              ) : (
+                "en 1 chèque, remis avec celui de l'adhésion."
+              )}
+            </p>
+          </div>
+        )}
 
         {valeurs.moyenPaiement === 'helloasso' && (
           <div className="sous-cases" style={{ marginTop: 10 }}>

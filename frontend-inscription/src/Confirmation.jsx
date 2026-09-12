@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { initierPaiementHelloAsso, urlDossierPdf, urlFacturePdf } from './api/backend.js'
-import { LIBELLE_PALIER } from './tarifs.js'
+import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
 const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', helloasso: 'HelloAsso (carte bancaire)' }
 
@@ -88,9 +88,21 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
 
       <p>
         Moyen de paiement choisi :{' '}
-        <strong>{LIBELLE_MOYEN_PAIEMENT[resultat.moyen_paiement] ?? resultat.moyen_paiement}</strong>.
-        {resultat.moyen_paiement === 'cheque' &&
-          " Les chèques (adhésion, septembre, et échéances suivantes) sont à remettre à l'école."}
+        <strong>{LIBELLE_MOYEN_PAIEMENT[resultat.moyen_paiement] ?? resultat.moyen_paiement}</strong>
+        {resultat.moyen_paiement === 'cheque' && (
+          <>
+            {' '}: un chèque de 40 € à l'ordre de Contretemps à remettre à l'école, puis le solde{' '}
+            {resultat.paiement_nb_echeances === 3 ? (
+              <>
+                en 3 chèques, encaissés en{' '}
+                {moisEncaissementsAVenir(resultat.saison).join(', ') || 'ce mois-ci'}
+              </>
+            ) : (
+              "en 1 chèque, remis avec celui de l'adhésion"
+            )}
+          </>
+        )}
+        .
       </p>
 
       {resultat.moyen_paiement === 'helloasso' && (

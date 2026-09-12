@@ -93,3 +93,38 @@ export function calculerTarifIndicatif(nomsCours, reductionFamille = false) {
     alertePalierMixte: paliers.size > 1,
   }
 }
+
+// Vraies dates d'encaissement des 3 trimestres d'une saison (ex.
+// "2026-2027") : 1er octobre, 1er janvier, 1er avril — recopie de
+// backend/src/inscriptions/tarifs.py:dates_trimestres (même saison,
+// mêmes dates), pour que le texte d'information chèque et l'aperçu
+// HelloAsso 3x restent cohérents avec ce que le serveur calcule
+// réellement.
+export function datesTrimestres(saison) {
+  const [anneeDebut, anneeFin] = saison.split('-').map(Number)
+  return [new Date(anneeDebut, 9, 1), new Date(anneeFin, 0, 1), new Date(anneeFin, 3, 1)]
+}
+
+const MOIS = [
+  'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
+  'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
+]
+
+export function libelleMoisAnnee(date) {
+  return `${MOIS[date.getMonth()]} ${date.getFullYear()}`
+}
+
+// Mois d'encaissement encore à venir, pour le texte d'info chèque en 3
+// fois — même règle de repli que
+// backend/src/inscriptions/tarifs.py:calculer_echeances_helloasso : un
+// trimestre déjà entamé ou passé est encaissé tout de suite (avec
+// l'adhésion), pas à une date qui serait déjà dépassée.
+export function moisEncaissementsAVenir(saison, aujourdhui = new Date()) {
+  return datesTrimestres(saison)
+    .filter(
+      (date) =>
+        date.getFullYear() > aujourdhui.getFullYear() ||
+        (date.getFullYear() === aujourdhui.getFullYear() && date.getMonth() > aujourdhui.getMonth())
+    )
+    .map(libelleMoisAnnee)
+}
