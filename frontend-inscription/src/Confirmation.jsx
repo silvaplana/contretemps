@@ -69,7 +69,11 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
 
       <p>
         Moyen de paiement choisi :{' '}
-        <strong>{LIBELLE_MOYEN_PAIEMENT[resultat.moyen_paiement] ?? resultat.moyen_paiement}</strong>
+        <strong>
+          {LIBELLE_MOYEN_PAIEMENT[resultat.moyen_paiement] ?? resultat.moyen_paiement}
+          {resultat.moyen_paiement === 'helloasso' &&
+            ` en ${resultat.paiement_nb_echeances === 3 ? '3' : '1'} fois`}
+        </strong>
         {resultat.moyen_paiement === 'cheque' && (
           <>
             {' '}: un chèque de {resultat.montant_adhesion} € à l'ordre de Contretemps à remettre à
@@ -86,7 +90,11 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         )}
         {resultat.moyen_paiement === 'helloasso' && (
           <>
-            {' '}: paiement confirmé, merci !{' '}
+            {resultat.paiement_nb_echeances === 3 ? (
+              ' : paiement confirmé, merci !'
+            ) : (
+              ` : paiement confirmé de ${totalAnnee} €, merci !`
+            )}{' '}
             {resultat.paiement_nb_echeances === 3 &&
               (() => {
                 // Même règle que PaiementEtape.jsx : un trimestre déjà
