@@ -71,13 +71,12 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         Moyen de paiement choisi :{' '}
         <strong>
           {LIBELLE_MOYEN_PAIEMENT[resultat.moyen_paiement] ?? resultat.moyen_paiement}
-          {resultat.moyen_paiement === 'helloasso' &&
-            ` en ${resultat.paiement_nb_echeances === 3 ? '3' : '1'} fois`}
+          {' '}en {resultat.paiement_nb_echeances === 3 ? '3' : '1'} fois
         </strong>
         {resultat.moyen_paiement === 'cheque' && (
           <>
-            {' '}: un chèque de {resultat.montant_adhesion} € à l'ordre de Contretemps à remettre à
-            l'école, puis le solde de {montantTroisTrimestres} €{' '}
+            {' '}: un chèque de {resultat.montant_adhesion} €, puis le solde de{' '}
+            {montantTroisTrimestres} €{' '}
             {resultat.paiement_nb_echeances === 3 ? (
               <>
                 en 3 chèques de {resultat.montant_trimestriel} € chacun, encaissés en{' '}
@@ -85,7 +84,8 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
               </>
             ) : (
               "en 1 chèque, remis avec celui de l'adhésion."
-            )}
+            )}{' '}
+            Les chèques sont à mettre à l'ordre de Contretemps et à remettre à l'école.
           </>
         )}
         {resultat.moyen_paiement === 'helloasso' && (
