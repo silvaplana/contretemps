@@ -397,10 +397,17 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         </div>
       </section>
 
-      <button className="bouton" type="submit" disabled={envoiEnCours}>
+      <button
+        className="bouton"
+        type="submit"
+        disabled={envoiEnCours || valeurs.coursIds.length === 0}
+      >
         {envoiEnCours && <span className="spinner" aria-hidden="true" />}
         {envoiEnCours ? 'Validation en cours…' : 'Valider et continuer vers le paiement'}
       </button>
+      {!envoiEnCours && valeurs.coursIds.length === 0 && (
+        <p className="envoi-note">Choisissez au moins un cours pour continuer.</p>
+      )}
       {envoiEnCours && (
         <p className="envoi-note">
           Enregistrement des informations — l'étape suivante propose le choix du paiement.
