@@ -154,6 +154,36 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
             )}
           </p>
         )}
+        {moyen === 'helloasso' && nbEcheances === 3 && (
+          <p className="champ__aide">
+            {(() => {
+              // Un trimestre déjà entamé au moment de l'inscription est
+              // prélevé tout de suite avec l'adhésion (impossible de
+              // programmer un prélèvement à une date déjà passée) — voir
+              // backend/src/inscriptions/tarifs.py:calculer_echeances_helloasso,
+              // même règle ici pour rester exact.
+              const moisAVenir = moisEncaissementsAVenir(inscription.saison)
+              const nbDejaDus = 3 - moisAVenir.length
+              const montantImmediat =
+                inscription.montant_adhesion + nbDejaDus * inscription.montant_trimestriel
+              return (
+                <>
+                  {montantImmediat} € prélevés tout de suite (adhésion
+                  {nbDejaDus > 0 ? ' + trimestre déjà entamé' : ''}), puis{' '}
+                  {moisAVenir.length > 0 ? (
+                    <>
+                      le solde en {moisAVenir.length} prélèvement{moisAVenir.length > 1 ? 's' : ''} de{' '}
+                      {inscription.montant_trimestriel} € chacun, au début de chaque trimestre :{' '}
+                      {moisAVenir.join(', ')}.
+                    </>
+                  ) : (
+                    'aucun autre prélèvement (les 3 trimestres sont déjà entamés).'
+                  )}
+                </>
+              )
+            })()}
+          </p>
+        )}
       </div>
 
       <button className="bouton" type="button" onClick={valider} disabled={enCours}>
