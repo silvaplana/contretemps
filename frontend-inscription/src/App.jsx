@@ -121,6 +121,7 @@ export default function App() {
             setInscription((precedente) => ({ ...precedente, ...resultat }))
             setEtape('confirmation')
           }}
+          onRetourFormulaire={recommencer}
         />
       ) : (
         <FormulaireInscription

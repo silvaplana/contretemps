@@ -9,7 +9,7 @@ import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 // à l'écran de confirmation. HelloAsso : redirige vers HelloAsso ; en
 // cas d'échec au retour, App.jsx réaffiche CET écran (retour à l'étape
 // 2), jamais l'écran de confirmation.
-export default function PaiementEtape({ inscription, messageEchec, onPaiementParCheque }) {
+export default function PaiementEtape({ inscription, messageEchec, onPaiementParCheque, onRetourFormulaire }) {
   const [moyen, setMoyen] = useState(inscription.moyen_paiement === 'helloasso' ? 'helloasso' : 'cheque')
   const [nbEcheances, setNbEcheances] = useState(inscription.paiement_nb_echeances === 3 ? 3 : 1)
   const [enCours, setEnCours] = useState(false)
@@ -51,13 +51,20 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
   return (
     <div className="section">
       <h2>Paiement</h2>
-      <p>
-        Les informations de <strong>{inscription.eleve_prenom} {inscription.eleve_nom}</strong> pour
-        la saison <strong>{inscription.saison}</strong> sont enregistrées. Choisissez le paiement pour
-        finaliser l'inscription.
-      </p>
 
-      {messageEchec && <p className="erreur-globale">{messageEchec}</p>}
+      {messageEchec && (
+        <>
+          <p className="erreur-globale">{messageEchec}</p>
+          <button
+            className="bouton bouton--secondaire"
+            type="button"
+            onClick={onRetourFormulaire}
+            style={{ marginBottom: 16 }}
+          >
+            ◀ Revenir en arrière et modifier mes informations
+          </button>
+        </>
+      )}
 
       <div className="tarif-apercu" style={{ marginBottom: 16 }}>
         <div className="tarif-apercu__ligne">
@@ -79,7 +86,19 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
         </div>
       </div>
 
-      {erreur && <p className="erreur-globale">{erreur}</p>}
+      {erreur && (
+        <>
+          <p className="erreur-globale">{erreur}</p>
+          <button
+            className="bouton bouton--secondaire"
+            type="button"
+            onClick={onRetourFormulaire}
+            style={{ marginBottom: 16 }}
+          >
+            ◀ Revenir en arrière et modifier mes informations
+          </button>
+        </>
+      )}
 
       <div className="paiement-options">
         <label className="paiement-option">
