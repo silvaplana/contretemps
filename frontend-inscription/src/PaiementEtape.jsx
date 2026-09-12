@@ -10,7 +10,12 @@ import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 // cas d'échec au retour, App.jsx réaffiche CET écran (retour à l'étape
 // 2), jamais l'écran de confirmation.
 export default function PaiementEtape({ inscription, messageEchec, onPaiementParCheque, onRetourFormulaire }) {
-  const [moyen, setMoyen] = useState(inscription.moyen_paiement === 'helloasso' ? 'helloasso' : 'cheque')
+  // "helloasso" (carte bancaire) par défaut — inscription.moyen_paiement
+  // vaut toujours "cheque" à ce stade pour une inscription fraîche (voir
+  // schemas.py:InscriptionCreation, simple valeur de départ tant que le
+  // paiement n'est pas choisi), ce n'est donc pas un signal utilisable
+  // ici.
+  const [moyen, setMoyen] = useState('helloasso')
   const [nbEcheances, setNbEcheances] = useState(inscription.paiement_nb_echeances === 3 ? 3 : 1)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState(null)
@@ -105,19 +110,19 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
           <input
             type="radio"
             name="paiement"
-            checked={moyen === 'cheque'}
-            onChange={() => setMoyen('cheque')}
+            checked={moyen === 'helloasso'}
+            onChange={() => setMoyen('helloasso')}
           />
-          Chèque
+          Carte bancaire
         </label>
         <label className="paiement-option">
           <input
             type="radio"
             name="paiement"
-            checked={moyen === 'helloasso'}
-            onChange={() => setMoyen('helloasso')}
+            checked={moyen === 'cheque'}
+            onChange={() => setMoyen('cheque')}
           />
-          Carte bancaire
+          Chèque
         </label>
       </div>
 

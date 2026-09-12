@@ -77,15 +77,44 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
             {resultat.paiement_nb_echeances === 3 ? (
               <>
                 en 3 chèques de {resultat.montant_trimestriel} € chacun, encaissés en{' '}
-                {moisEncaissementsAVenir(resultat.saison).join(', ') || 'ce mois-ci'}
+                {moisEncaissementsAVenir(resultat.saison).join(', ') || 'ce mois-ci'}.
               </>
             ) : (
-              "en 1 chèque, remis avec celui de l'adhésion"
+              "en 1 chèque, remis avec celui de l'adhésion."
             )}
           </>
         )}
-        {resultat.moyen_paiement === 'helloasso' && ' : paiement confirmé, merci !'}
-        .
+        {resultat.moyen_paiement === 'helloasso' && (
+          <>
+            {' '}: paiement confirmé, merci !{' '}
+            {resultat.paiement_nb_echeances === 3 &&
+              (() => {
+                // Même règle que PaiementEtape.jsx : un trimestre déjà
+                // entamé à l'inscription a été prélevé tout de suite
+                // avec l'adhésion (voir
+                // backend/src/inscriptions/tarifs.py:calculer_echeances_helloasso).
+                const moisAVenir = moisEncaissementsAVenir(resultat.saison)
+                const nbDejaDus = 3 - moisAVenir.length
+                const montantImmediat =
+                  resultat.montant_adhesion + nbDejaDus * resultat.montant_trimestriel
+                return (
+                  <>
+                    {montantImmediat} € ont été prélevés à l'instant (adhésion
+                    {nbDejaDus > 0 ? ' + trimestre déjà entamé' : ''})
+                    {moisAVenir.length > 0 ? (
+                      <>
+                        , le solde sera prélevé automatiquement en {moisAVenir.length} fois de{' '}
+                        {resultat.montant_trimestriel} € chacune, au début de chaque trimestre :{' '}
+                        {moisAVenir.join(', ')}.
+                      </>
+                    ) : (
+                      ', aucun autre prélèvement à venir (les 3 trimestres étaient déjà entamés).'
+                    )}
+                  </>
+                )
+              })()}
+          </>
+        )}
       </p>
 
       <a className="lien-pdf" href={urlDossierPdf(resultat.token_public)} target="_blank" rel="noreferrer">
