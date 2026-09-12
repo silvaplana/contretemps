@@ -79,8 +79,8 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
             {montantTroisTrimestres} €{' '}
             {resultat.paiement_nb_echeances === 3 ? (
               <>
-                en 3 chèques de {resultat.montant_trimestriel} € chacun, encaissés en{' '}
-                {moisEncaissementsAVenir(resultat.saison).join(', ') || 'ce mois-ci'}.
+                en 3 chèques de {resultat.montant_trimestriel} € chacun, encaissés en début de
+                trimestre en {moisEncaissementsAVenir(resultat.saison).join(', ') || 'ce mois-ci'}.
               </>
             ) : (
               "en 1 chèque, remis avec celui de l'adhésion."

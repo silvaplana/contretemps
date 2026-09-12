@@ -151,8 +151,8 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
             puis le solde de {montantTroisTrimestres} €{' '}
             {nbEcheances === 3 ? (
               <>
-                en 3 chèques de {inscription.montant_trimestriel} € chacun, encaissés en{' '}
-                {moisEncaissementsAVenir(inscription.saison).join(', ') || 'ce mois-ci'}.
+                en 3 chèques de {inscription.montant_trimestriel} € chacun, encaissés en début de
+                trimestre en {moisEncaissementsAVenir(inscription.saison).join(', ') || 'ce mois-ci'}.
               </>
             ) : (
               "en 1 chèque, remis avec celui de l'adhésion."
