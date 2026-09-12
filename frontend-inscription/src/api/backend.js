@@ -74,6 +74,21 @@ export async function obtenirInscription(token) {
   return requete(`/inscriptions/${token}`)
 }
 
+// Étape 2 du flux (voir spec/SPEC-inscription.md) : fixe le moyen de
+// paiement d'une inscription déjà créée (étape 1, sans moyen de paiement
+// connu). Chèque : finalise tout de suite côté serveur (PDF/email).
+// HelloAsso : enregistre juste le choix, la finalisation attend la
+// confirmation du paiement (voir initierPaiementHelloAsso ensuite).
+export async function choisirPaiement(token, moyenPaiement, paiementNbEcheances) {
+  return requete(`/inscriptions/${token}/paiement/choix`, {
+    method: 'POST',
+    body: JSON.stringify({
+      moyen_paiement: moyenPaiement,
+      paiement_nb_echeances: paiementNbEcheances,
+    }),
+  })
+}
+
 // Crée le Checkout Intent HelloAsso et renvoie l'URL de paiement — voir
 // Confirmation.jsx : redirige ensuite `window.location` vers cette URL
 // (departure complète du SPA, pas un fetch en arrière-plan).

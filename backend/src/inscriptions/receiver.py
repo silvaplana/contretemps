@@ -18,6 +18,7 @@ from .inscriptions import Inscriptions
 from .schemas import (
     InscriptionCreation,
     InscriptionSortie,
+    PaiementChoixEntree,
     PaiementHelloAssoEntree,
     PaiementHelloAssoSortie,
 )
@@ -42,6 +43,9 @@ class InscriptionsReceiver:
         self.app.get("/inscriptions/export")(self.export)
         self.app.post("/inscriptions/{token}/photo", status_code=204)(self.photo)
         self.app.get("/inscriptions/{token}", response_model=InscriptionSortie)(self.obtenir)
+        self.app.post(
+            "/inscriptions/{token}/paiement/choix", response_model=InscriptionSortie
+        )(self.choisir_paiement)
         self.app.get("/inscriptions/{token}/dossier.pdf")(self.dossier_pdf)
         self.app.get("/inscriptions/{token}/facture.pdf")(self.facture_pdf)
         self.app.post(
@@ -105,6 +109,19 @@ class InscriptionsReceiver:
         entièrement par la redirection HelloAsso, l'état React de la
         soumission initiale est perdu)."""
         inscription = self.client.get_par_token(db, token)
+        if inscription is None:
+            raise HTTPException(status_code=404, detail="Inscription introuvable")
+        return self._vers_sortie(db, inscription)
+
+    def choisir_paiement(
+        self, token: str, donnees: PaiementChoixEntree, db: Session = Depends(get_db)
+    ):
+        try:
+            inscription = self.client.choisir_paiement(
+                db, token, donnees.moyen_paiement, donnees.paiement_nb_echeances
+            )
+        except ValueError as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         if inscription is None:
             raise HTTPException(status_code=404, detail="Inscription introuvable")
         return self._vers_sortie(db, inscription)

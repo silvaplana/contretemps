@@ -85,6 +85,17 @@ class InscriptionSortie(BaseModel):
     email_envoye: bool
 
 
+class PaiementChoixEntree(BaseModel):
+    """Étape 2 du flux (voir spec/SPEC-inscription.md) : choix du moyen
+    de paiement, envoyé séparément de InscriptionCreation (l'étape 1 ne
+    le connaît pas encore)."""
+
+    moyen_paiement: str
+    # 1 (comptant) ou 3 (une échéance par trimestre) — chèque ET
+    # HelloAsso (voir tarifs.py:calculer_echeances_helloasso).
+    paiement_nb_echeances: int = 1
+
+
 class PaiementHelloAssoSortie(BaseModel):
     """Réponse de l'initiation du paiement HelloAsso (voir
     receiver.py:initier_paiement_helloasso) — rediriger le navigateur

@@ -230,6 +230,10 @@ def test_verifier_paiement_helloasso_marque_paye(
     ).json()
     token = corps["token_public"]
 
+    # Pas encore payé -> pas encore finalisé (voir
+    # inscriptions.py:_finaliser, déclenché seulement à la confirmation).
+    assert client.get(f"/inscriptions/{token}/dossier.pdf").status_code == 404
+
     monkeypatch.setattr(
         helloasso_module.requests,
         "request",
@@ -239,6 +243,10 @@ def test_verifier_paiement_helloasso_marque_paye(
         f"/inscriptions/{token}/paiement/helloasso", json={"retour_url": "https://exemple.fr"}
     )
 
+    appels_email = []
+    monkeypatch.setattr(
+        inscriptions_client.email, "envoyer_confirmation", lambda *a, **k: appels_email.append(1)
+    )
     monkeypatch.setattr(
         helloasso_module.requests,
         "request",
@@ -249,6 +257,78 @@ def test_verifier_paiement_helloasso_marque_paye(
     reponse = client.post(f"/inscriptions/{token}/paiement/helloasso/verifier")
     assert reponse.status_code == 200
     assert reponse.json()["statut_paiement"] == "paye"
+    # Payé -> finalisé (PDF généré, email tenté).
+    assert client.get(f"/inscriptions/{token}/dossier.pdf").status_code == 200
+    assert len(appels_email) == 1
+
+    # Une 2e vérification (ex. webhook après le retour navigateur, voir
+    # spec/SPEC-inscription.md) ne doit PAS finaliser une 2e fois.
+    reponse2 = client.post(f"/inscriptions/{token}/paiement/helloasso/verifier")
+    assert reponse2.status_code == 200
+    assert len(appels_email) == 1
+
+
+def test_choisir_paiement_cheque_finalise_immediatement(
+    client, db_session, _nettoyage_dossier
+):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json={
+            "eleve_nom": "Dupont",
+            "eleve_prenom": "Marie",
+            "eleve_date_naissance": "2018-11-17",
+            "eleve_email": "marie@example.com",
+            "cours_ids": [cours["Éveil"].id],
+            "reglement_lu_approuve": True,
+            "signataire_nom": "Jean Dupont",
+        },
+    ).json()
+    token = corps["token_public"]
+    assert client.get(f"/inscriptions/{token}/dossier.pdf").status_code == 404
+
+    reponse = client.post(
+        f"/inscriptions/{token}/paiement/choix",
+        json={"moyen_paiement": "cheque", "paiement_nb_echeances": 3},
+    )
+    assert reponse.status_code == 200
+    corps_choix = reponse.json()
+    assert corps_choix["moyen_paiement"] == "cheque"
+    assert corps_choix["paiement_nb_echeances"] == 3
+    assert client.get(f"/inscriptions/{token}/dossier.pdf").status_code == 200
+
+
+def test_choisir_paiement_moyen_invalide_400(client, db_session, _nettoyage_dossier):
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+    corps = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json={
+            "eleve_nom": "Dupont",
+            "eleve_prenom": "Marie",
+            "eleve_date_naissance": "2018-11-17",
+            "eleve_email": "marie@example.com",
+            "cours_ids": [cours["Éveil"].id],
+            "reglement_lu_approuve": True,
+            "signataire_nom": "Jean Dupont",
+        },
+    ).json()
+    reponse = client.post(
+        f"/inscriptions/{corps['token_public']}/paiement/choix",
+        json={"moyen_paiement": "virement", "paiement_nb_echeances": 1},
+    )
+    assert reponse.status_code == 400
+
+
+def test_choisir_paiement_token_inconnu_404(client, db_session):
+    reponse = client.post(
+        "/inscriptions/token-inexistant/paiement/choix",
+        json={"moyen_paiement": "cheque", "paiement_nb_echeances": 1},
+    )
+    assert reponse.status_code == 404
 
 
 def test_webhook_helloasso_declenche_la_verification(

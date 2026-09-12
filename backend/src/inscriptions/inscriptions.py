@@ -140,11 +140,55 @@ class Inscriptions:
             )
         db.commit()
 
+        # PDF/Excel/email PAS générés ici : le moyen de paiement n'est pas
+        # encore connu à ce stade (voir spec/SPEC-inscription.md — flux en
+        # 2 étapes, choix du paiement APRÈS validation des informations).
+        # La facture affiche "Moyen de paiement : ..." — la générer avant
+        # de le connaître donnerait un document faux. Voir
+        # choisir_paiement/_finaliser, qui s'en chargent une fois le
+        # moyen de paiement fixé (chèque : tout de suite ; HelloAsso :
+        # seulement une fois le paiement confirmé, voir
+        # verifier_paiement_helloasso).
+
+        return inscription
+
+    def choisir_paiement(
+        self, db: Session, token: str, moyen_paiement: str, paiement_nb_echeances: int
+    ) -> Inscription | None:
+        """Étape 2 du flux (voir spec/SPEC-inscription.md) : la famille a
+        déjà validé ses informations (creer(), étape 1) sans indiquer de
+        moyen de paiement. Chèque : rien à payer en ligne, la
+        finalisation (PDF/Excel/email) a lieu tout de suite. HelloAsso :
+        seul le choix est enregistré ici, la finalisation attend la
+        confirmation réelle du paiement (voir verifier_paiement_helloasso)."""
+        if moyen_paiement not in ("cheque", "helloasso"):
+            raise ValueError("Moyen de paiement inconnu")
+        if paiement_nb_echeances not in (1, 3):
+            raise ValueError("paiement_nb_echeances doit être 1 ou 3")
+
+        inscription = self.get_par_token(db, token)
+        if inscription is None:
+            return None
+
+        inscription.moyen_paiement = moyen_paiement
+        inscription.paiement_nb_echeances = paiement_nb_echeances
+        db.commit()
+        db.refresh(inscription)
+
+        if moyen_paiement == "cheque":
+            self._finaliser(db, inscription)
+        return inscription
+
+    def _finaliser(self, db: Session, inscription: Inscription) -> None:
+        """Génère le dossier/la facture PDF, ajoute la ligne Excel et
+        envoie l'email de confirmation — une fois, une fois le moyen de
+        paiement connu ET (pour HelloAsso) le paiement confirmé (voir
+        choisir_paiement/verifier_paiement_helloasso, qui appellent
+        cette méthode)."""
+        noms_cours = self.cours_choisis(db, inscription.id)
         self._generer_pdf(db, inscription, noms_cours)
         self._exporter_excel(db, inscription, noms_cours)
         self._envoyer_email(db, inscription, noms_cours)
-
-        return inscription
 
     def _generer_pdf(self, db: Session, inscription: Inscription, noms_cours: list[str]) -> None:
         try:
@@ -254,10 +298,14 @@ class Inscriptions:
         db.commit()
         db.refresh(inscription)
 
-        # Régénère le dossier PDF pour y inclure la photo (voir pdf.py) —
-        # généré une 1re fois sans elle dans creer(), avant que la photo
-        # (uploadée séparément) ne soit connue.
-        self._generer_pdf(db, inscription, self.cours_choisis(db, inscription.id))
+        # Ne régénère le dossier PDF (pour y inclure la photo, voir
+        # pdf.py) que s'il existe déjà (moyen de paiement déjà choisi,
+        # voir choisir_paiement/_finaliser) — sinon la 1re génération, à
+        # la finalisation, l'inclura d'emblée (le champ est déjà en base
+        # ci-dessus). Évite de créer un PDF (téléchargeable) avant que le
+        # moyen de paiement ne soit connu.
+        if inscription.pdf_dossier_chemin is not None:
+            self._generer_pdf(db, inscription, self.cours_choisis(db, inscription.id))
         return inscription
 
     def initier_paiement_helloasso(self, db: Session, token: str, retour_url: str) -> dict:
@@ -322,12 +370,20 @@ class Inscriptions:
             # solde (échéances suivantes) est prélevé automatiquement
             # par HelloAsso plus tard, sans action de notre part.
             if any(p.get("state") == "Authorized" for p in paiements):
+                # `pdf_dossier_chemin` sert de garde d'idempotence : cette
+                # méthode est appelée à la fois par le retour navigateur
+                # ET par le webhook (voir receiver.py) — la finalisation
+                # (email notamment) ne doit avoir lieu qu'une seule fois.
+                deja_finalisee = inscription.pdf_dossier_chemin is not None
                 inscription.statut_paiement = "paye"
+                db.commit()
+                if not deja_finalisee:
+                    self._finaliser(db, inscription)
             elif paiements and all(
                 p.get("state") in ("Refused", "Error") for p in paiements
             ):
                 inscription.statut_paiement = "echec"
-            db.commit()
+                db.commit()
         except HelloAssoError:
             logger.exception(
                 "Vérification paiement HelloAsso échouée pour l'inscription %s", token
