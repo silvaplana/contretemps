@@ -129,10 +129,10 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
         {moyen === 'cheque' && (
           <p className="champ__aide">
             Un chèque de {inscription.montant_adhesion} € à l'ordre de Contretemps à l'inscription,
-            puis le solde{' '}
+            puis le solde de {montantTroisTrimestres} €{' '}
             {nbEcheances === 3 ? (
               <>
-                en 3 chèques, encaissés en{' '}
+                en 3 chèques de {inscription.montant_trimestriel} € chacun, encaissés en{' '}
                 {moisEncaissementsAVenir(inscription.saison).join(', ') || 'ce mois-ci'}.
               </>
             ) : (

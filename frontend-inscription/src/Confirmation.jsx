@@ -73,10 +73,10 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         {resultat.moyen_paiement === 'cheque' && (
           <>
             {' '}: un chèque de {resultat.montant_adhesion} € à l'ordre de Contretemps à remettre à
-            l'école, puis le solde{' '}
+            l'école, puis le solde de {montantTroisTrimestres} €{' '}
             {resultat.paiement_nb_echeances === 3 ? (
               <>
-                en 3 chèques, encaissés en{' '}
+                en 3 chèques de {resultat.montant_trimestriel} € chacun, encaissés en{' '}
                 {moisEncaissementsAVenir(resultat.saison).join(', ') || 'ce mois-ci'}
               </>
             ) : (
