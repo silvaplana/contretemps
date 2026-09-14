@@ -105,6 +105,33 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
         </>
       )}
 
+      <p className="champ__aide" style={{ fontWeight: 600, color: 'inherit', marginBottom: 6 }}>
+        Combien de fois ?
+      </p>
+      <div className="paiement-options">
+        <label className="paiement-option">
+          <input
+            type="radio"
+            name="nb-echeances"
+            checked={nbEcheances === 1}
+            onChange={() => setNbEcheances(1)}
+          />
+          En 1 fois
+        </label>
+        <label className="paiement-option">
+          <input
+            type="radio"
+            name="nb-echeances"
+            checked={nbEcheances === 3}
+            onChange={() => setNbEcheances(3)}
+          />
+          En 3 fois (1 {moyen === 'cheque' ? 'chèque' : 'fois'} par trimestre)
+        </label>
+      </div>
+
+      <p className="champ__aide" style={{ fontWeight: 600, color: 'inherit', marginTop: 16, marginBottom: 6 }}>
+        Moyen de paiement
+      </p>
       <div className="paiement-options">
         <label className="paiement-option">
           <input
@@ -127,24 +154,6 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
       </div>
 
       <div className="sous-cases" style={{ marginTop: 10 }}>
-        <label>
-          <input
-            type="radio"
-            name="nb-echeances"
-            checked={nbEcheances === 1}
-            onChange={() => setNbEcheances(1)}
-          />
-          En 1 fois
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="nb-echeances"
-            checked={nbEcheances === 3}
-            onChange={() => setNbEcheances(3)}
-          />
-          En 3 fois (1 {moyen === 'cheque' ? 'chèque' : 'fois'} par trimestre)
-        </label>
         {moyen === 'cheque' && (
           <p className="champ__aide">
             Un chèque de {inscription.montant_adhesion} € à l'ordre de Contretemps à l'inscription,
