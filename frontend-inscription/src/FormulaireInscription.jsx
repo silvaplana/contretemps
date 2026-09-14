@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { creerInscription, uploaderPhotoEleve } from './api/backend.js'
+import { COURS_PUBLICS } from './coursPublics.js'
 import { calculerTarifIndicatif, LIBELLE_PALIER } from './tarifs.js'
 
 const VIDE = {
@@ -46,6 +47,21 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
     () => cours.filter((c) => valeurs.coursIds.includes(c.id)).map((c) => c.nom),
     [cours, valeurs.coursIds]
   )
+  // Résout chaque entrée de COURS_PUBLICS (libellé "grand public") vers
+  // le vrai cours (et son horaire réel, voir cours.js) — une entrée dont
+  // le nom ne correspond à aucun cours réel (renommé/supprimé côté
+  // Admin) est silencieusement ignorée, jamais une case cassée. Plusieurs
+  // entrées peuvent pointer vers le même cours réel (ex. "Éveil +
+  // Classique Initiation" et "Classique Initiation", voir
+  // coursPublics.js) — cocher l'une coche alors aussi l'autre, c'est
+  // voulu (même cours réel, juste 2 façons de le retrouver).
+  const coursAffiches = useMemo(() => {
+    const parNom = new Map(cours.map((c) => [c.nom, c]))
+    return COURS_PUBLICS.map((cp) => {
+      const reel = parNom.get(cp.coursNom)
+      return reel ? { libelle: cp.libelle, id: reel.id, jour: reel.jour, heureDebut: reel.heure_debut, heureFin: reel.heure_fin } : null
+    }).filter(Boolean)
+  }, [cours])
   const tarif = useMemo(
     () => calculerTarifIndicatif(nomsCoursChoisis, valeurs.reductionFamilleDemandee),
     [nomsCoursChoisis, valeurs.reductionFamilleDemandee]
@@ -241,16 +257,10 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
 
       <section className="section">
         <h2>Cours souhaités *</h2>
-        <p className="compteur-cours">
-          {valeurs.coursIds.length === 0
-            ? 'Aucun cours sélectionné'
-            : `${valeurs.coursIds.length} cours par semaine sélectionné${valeurs.coursIds.length > 1 ? 's' : ''}`}
-          {' '}— le tarif dépend de ce nombre (voir ci-dessous).
-        </p>
         <div className="cours-grille">
-          {cours.map((c) => (
+          {coursAffiches.map((c) => (
             <label
-              key={c.id}
+              key={c.libelle}
               className={`case ${valeurs.coursIds.includes(c.id) ? 'case--coche' : ''}`}
             >
               <input
@@ -259,12 +269,12 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
                 onChange={() => basculerCours(c.id)}
               />
               <span>
-                {c.nom}
+                {c.libelle}
                 {c.jour && (
                   <>
                     <br />
                     <small>
-                      {c.jour} {c.heure_debut}-{c.heure_fin}
+                      {c.jour} {c.heureDebut}-{c.heureFin}
                     </small>
                   </>
                 )}
@@ -272,6 +282,11 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
             </label>
           ))}
         </div>
+        <p className="compteur-cours">
+          Nombre de cours/semaine :{' '}
+          <strong>{valeurs.coursIds.length}</strong>
+          {' '}— le tarif dépend de ce nombre (voir ci-dessous).
+        </p>
       </section>
 
       {tarif && (
