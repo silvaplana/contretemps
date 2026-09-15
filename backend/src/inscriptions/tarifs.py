@@ -161,6 +161,24 @@ def dates_trimestres(saison: str) -> list[dt.date]:
     ]
 
 
+def mois_encaissements_a_venir(saison: str, aujourdhui: dt.date | None = None) -> list[dt.date]:
+    """Dates de trimestre encore à venir (voir dates_trimestres) — même
+    règle de repli que calculer_echeances_helloasso ci-dessous (un
+    trimestre déjà entamé n'est pas "à venir"), équivalent Python de
+    frontend-inscription/src/tarifs.js:moisEncaissementsAVenir. Sert au
+    texte d'information chèque (voir inscriptions/facture_html.py), qui
+    affiche l'adhésion + un chèque séparé par trimestre à venir —
+    distinct de calculer_echeances_helloasso, qui fusionne l'adhésion
+    avec les trimestres déjà entamés en UN SEUL montant (pertinent
+    seulement pour un prélèvement carte réel, jamais pour un chèque)."""
+    aujourdhui = aujourdhui or dt.date.today()
+    return [
+        date_echeance
+        for date_echeance in dates_trimestres(saison)
+        if (date_echeance.year, date_echeance.month) > (aujourdhui.year, aujourdhui.month)
+    ]
+
+
 def calculer_echeances_helloasso(
     montant_adhesion: float,
     montant_trimestriel: float,

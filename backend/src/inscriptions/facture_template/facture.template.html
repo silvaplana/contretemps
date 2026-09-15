@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Facture {{NUM_FACTURE}} — Contretemps</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Carlito", "Calibri", "DejaVu Sans", sans-serif;
+    font-size: 10pt;
+    color: #2E2A28;
+    background: #fff;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm; height: 296mm; overflow: hidden;
+    padding: 13mm 15mm 0 15mm;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+
+  /* ---------- filet décoratif haut ---------- */
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 5mm;
+    background: linear-gradient(90deg, #E8A87C 0%, #EE9578 35%, #D9694F 70%, #C9543F 100%);
+  }
+
+  /* ---------- en-tête ---------- */
+  header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10mm; }
+  .brand { display: flex; gap: 5mm; align-items: center; }
+  .brand img { width: 30mm; height: 30mm; object-fit: contain; }
+  .brand .id { font-size: 8.6pt; line-height: 1.55; color: #5F544E; }
+  .brand .id .nom {
+    font-family: "Caladea", "Cambria", "DejaVu Serif", serif;
+    font-size: 14pt; color: #C9543F; letter-spacing: .3px;
+    margin-bottom: 1mm; font-weight: 700;
+  }
+  .brand .id .sub {
+    text-transform: uppercase; letter-spacing: 1.6px; font-size: 7pt;
+    color: #B08A77; margin-bottom: 2.5mm;
+  }
+
+  .facture-box { text-align: right; min-width: 66mm; }
+  .facture-box h1 {
+    font-family: "Caladea", "Cambria", "DejaVu Serif", serif;
+    font-size: 26pt; font-weight: 700; color: #D9694F;
+    letter-spacing: 3px; line-height: 1; margin-bottom: 3mm;
+  }
+  table.meta { width: 100%; border-collapse: collapse; font-size: 8.8pt; }
+  table.meta td { padding: 1.1mm 0; }
+  table.meta td.k { text-align: left; color: #857A74; }
+  table.meta td.v { text-align: right; font-weight: 700; color: #2E2A28; }
+  table.meta tr.hl td { border-top: 1px solid #EEDFD6; padding-top: 1.8mm; }
+
+  /* ---------- parties ---------- */
+  .parties { display: flex; gap: 6mm; margin-top: 6mm; }
+  .party { flex: 1; border: 1px solid #F0DDD2; border-radius: 2mm; padding: 4mm 5mm; }
+  .party.dest { background: #FDF6F1; border-color: #F3D9C9; }
+  .party .lbl {
+    text-transform: uppercase; letter-spacing: 1.3px; font-size: 6.8pt;
+    color: #C08B72; font-weight: 700; margin-bottom: 2mm;
+  }
+  .party .nom { font-size: 10.5pt; font-weight: 700; margin-bottom: 1mm; }
+  .party p { font-size: 8.8pt; line-height: 1.5; color: #5F544E; }
+
+  /* ---------- objet ---------- */
+  .objet {
+    margin-top: 5mm; font-size: 9.2pt; color: #5F544E;
+    border-left: 3px solid #EE9578; padding-left: 3.5mm;
+  }
+  .objet b { color: #2E2A28; }
+
+  /* ---------- lignes ---------- */
+  table.lignes { width: 100%; border-collapse: collapse; margin-top: 5mm; }
+  table.lignes thead th {
+    background: #D9694F; color: #fff; font-size: 7.6pt; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .9px;
+    padding: 2.6mm 3mm; text-align: left;
+  }
+  table.lignes thead th.num { text-align: right; }
+  table.lignes tbody td {
+    padding: 2.6mm 3mm; font-size: 9.2pt; vertical-align: top;
+    border-bottom: 1px solid #F2E6DE;
+  }
+  table.lignes tbody tr:nth-child(even) td { background: #FDF8F5; }
+  table.lignes td.num { text-align: right; white-space: nowrap; }
+  table.lignes .des { font-weight: 700; }
+  table.lignes .det { font-size: 8pt; color: #857A74; margin-top: .8mm; line-height: 1.45; }
+  table.lignes .remise td { color: #B0553F; }
+
+  /* ---------- totaux ---------- */
+  .bas { display: flex; gap: 6mm; margin-top: 5mm; align-items: flex-start; }
+  .bas .gauche { flex: 1; }
+  .totaux { width: 78mm; }
+  table.tot { width: 100%; border-collapse: collapse; font-size: 9.2pt; }
+  table.tot td { padding: 2mm 3mm; }
+  table.tot td.k { color: #5F544E; }
+  table.tot td.v { text-align: right; font-weight: 700; white-space: nowrap; }
+  table.tot tr.sep td { border-top: 1px solid #F0DDD2; }
+  table.tot tr.net td {
+    background: #D9694F; color: #fff; font-size: 11.5pt; padding: 3.2mm 3mm;
+  }
+  table.tot tr.net td.k { color: #fff; font-weight: 700; letter-spacing: .5px; }
+  .tva { font-size: 7.8pt; color: #857A74; text-align: right; margin-top: 1.6mm; }
+
+  /* ---------- encadré règlement ---------- */
+  .reglement {
+    border: 1px solid #F0DDD2; border-radius: 2mm; padding: 4mm 5mm;
+    background: #FDF8F5; font-size: 8.6pt; line-height: 1.55; color: #5F544E;
+  }
+  .reglement .lbl {
+    text-transform: uppercase; letter-spacing: 1.3px; font-size: 6.8pt;
+    color: #C08B72; font-weight: 700; margin-bottom: 2mm;
+  }
+  .reglement b { color: #2E2A28; }
+
+  .note {
+    margin-top: 4mm; font-size: 7.8pt; color: #8A7168; line-height: 1.5;
+    background: #FDF4EF; border-radius: 1.5mm; padding: 2.5mm 3.5mm;
+  }
+
+  /* ---------- acquit / signature ---------- */
+  .acquit {
+    margin-top: 4mm; display: flex; justify-content: flex-end;
+  }
+  .acquit .cartouche {
+    width: 78mm; border: 1px solid #F0DDD2; border-radius: 2mm;
+    padding: 3.5mm 5mm 3mm; text-align: center;
+  }
+  .acquit .titre {
+    font-family: "Caladea", "Cambria", "DejaVu Serif", serif;
+    font-size: 9.5pt; font-weight: 700; color: #C9543F; margin-bottom: .5mm;
+  }
+  .acquit .lieu { font-size: 8pt; color: #857A74; margin-bottom: 1mm; }
+  .acquit img { height: 13mm; margin: 0 auto; display: block; }
+  .acquit .role {
+    font-size: 8pt; color: #5F544E; border-top: 1px solid #F0DDD2;
+    padding-top: 1.5mm; margin-top: 1mm;
+  }
+  .acquit .role b { color: #2E2A28; }
+
+  /* ---------- pied ---------- */
+  footer {
+    margin-top: auto; padding: 3mm 0 3mm; border-top: 2px solid #EE9578;
+    font-size: 7.2pt; color: #8A7168; line-height: 1.6; text-align: center;
+  }
+  footer .l1 { color: #5F544E; }
+  footer b { color: #2E2A28; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar"></div>
+
+  <header>
+    <div class="brand">
+      <img src="{{LOGO}}" alt="Contretemps">
+      <div class="id">
+        <div class="nom">Contretemps</div>
+        <div class="sub">École de Danse</div>
+        {{ADRESSE_L1}}<br>
+        {{ADRESSE_L2}}<br>
+        {{TEL}} · {{EMAIL}}<br>
+        {{SITE}}
+      </div>
+    </div>
+
+    <div class="facture-box">
+      <h1>FACTURE</h1>
+      <table class="meta">
+        <tr><td class="k">N° de facture</td><td class="v">{{NUM_FACTURE}}</td></tr>
+        <tr><td class="k">Date d'émission</td><td class="v">{{DATE_EMISSION}}</td></tr>
+        <tr class="hl"><td class="k">Saison</td><td class="v">{{SAISON}}</td></tr>
+        <tr><td class="k">N° adhérent</td><td class="v">{{NUM_ADHERENT}}</td></tr>
+      </table>
+    </div>
+  </header>
+
+  <div class="parties">
+    <div class="party">
+      <div class="lbl">Émetteur</div>
+      <div class="nom">Association Contretemps — École de Danse</div>
+      <p>
+        Association loi 1901<br>
+        {{ADRESSE_L1}} — {{ADRESSE_L2}}<br>
+        SIRET {{SIRET}} · APE {{APE}}<br>
+        RNA {{RNA}}
+      </p>
+    </div>
+    <div class="party dest">
+      <div class="lbl">Facturé à</div>
+      <div class="nom">{{CLIENT_NOM}}</div>
+      <p>
+        {{CLIENT_ADRESSE}}
+        Élève : <b>{{ELEVE}}</b>
+      </p>
+    </div>
+  </div>
+
+  <div class="objet">
+    <b>Objet :</b> Adhésion et cours de danse — saison {{SAISON}}
+  </div>
+
+  <table class="lignes">
+    <thead>
+      <tr>
+        <th style="width:50%">Désignation</th>
+        <th style="width:18%">Période</th>
+        <th class="num" style="width:8%">Qté</th>
+        <th class="num" style="width:12%">P.U.</th>
+        <th class="num" style="width:12%">Montant</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{LIGNES}}
+    </tbody>
+  </table>
+
+  <div class="bas">
+    <div class="gauche">
+      <div class="reglement">
+        <div class="lbl">Règlement</div>
+        {{REGLEMENT}}
+      </div>
+      {{NOTE_PALIER_MIXTE}}
+    </div>
+
+    <div class="totaux">
+      <table class="tot">
+        {{TOTAUX}}
+      </table>
+      <div class="tva">TVA non applicable — article 293 B du CGI</div>
+    </div>
+  </div>
+
+  {{ACQUIT}}
+
+  <footer>
+    <div class="l1">
+      <b>Association Contretemps — École de Danse</b> · Association loi 1901 · {{ADRESSE_L1}}, {{ADRESSE_L2}}
+    </div>
+    SIRET {{SIRET}} · APE {{APE}} · RNA {{RNA}} · {{EMAIL}} · {{TEL}}<br>
+    TVA non applicable, article 293 B du CGI. En cas de retard de paiement, application de pénalités au taux
+    d'intérêt légal en vigueur, sans qu'un rappel soit nécessaire. Facture payable à réception, sauf échéancier convenu.
+  </footer>
+</div>
+</body>
+</html>

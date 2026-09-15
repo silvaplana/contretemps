@@ -24,7 +24,8 @@ from . import excel_export
 from .email_envoi import EmailEnvoi
 from .helloasso import HelloAsso, HelloAssoError, nettoyer_nom_payeur
 from .models import Inscription, inscriptions_cours
-from .pdf import generer_dossier_pdf, generer_facture_pdf, nom_fichier_dossier, nom_fichier_facture
+from .facture_html import generer_facture_pdf
+from .pdf import generer_dossier_pdf, nom_fichier_dossier, nom_fichier_facture
 from .saison import saison_actuelle
 from .schemas import InscriptionCreation
 from .stockage import chemin_relatif, dossier_ecole
@@ -203,7 +204,7 @@ class Inscriptions:
             (dossier / nom_dossier).write_bytes(
                 generer_dossier_pdf(inscription, noms_cours, chemin_photo)
             )
-            (dossier / nom_facture).write_bytes(generer_facture_pdf(inscription))
+            (dossier / nom_facture).write_bytes(generer_facture_pdf(inscription, noms_cours))
             inscription.pdf_dossier_chemin = chemin_relatif(inscription.ecole_id, nom_dossier)
             inscription.pdf_facture_chemin = chemin_relatif(inscription.ecole_id, nom_facture)
             db.commit()

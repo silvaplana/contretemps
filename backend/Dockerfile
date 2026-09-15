@@ -3,6 +3,18 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
+# Chromium headless : sert UNIQUEMENT à generer la facture (voir
+# inscriptions/facture_html.py, "imprimer en PDF" un gabarit HTML/CSS) —
+# le dossier d'inscription (pdf.py) reste 100% reportlab, sans ca. Fait
+# tot dans le Dockerfile (avant COPY du code source) : cette couche ne
+# change jamais, Docker la garde en cache meme quand le code change.
+# --no-install-recommends : evite d'embarquer des paquets inutiles
+# (imprimantes, etc.) qui gonfleraient l'image pour rien.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    chromium \
+    fonts-liberation \
+    && rm -rf /var/lib/apt/lists/*
+
 # On copie d'abord uniquement ce qui decrit les dependances puis le code
 # source. Docker met en cache chaque etape : si tu ne changes que le
 # code, la reinstallation des dependances n'est rejouee que si

@@ -28,9 +28,12 @@ dependencies = [
     # signature VAPID des messages envoyés aux serveurs de push
     # (FCM/Mozilla/...), voir .env.example.
     "pywebpush",
-    # Génération des PDF d'inscription (dossier + facture, voir
-    # inscriptions/pdf.py) — wheel 100% Python, aucune lib système requise
-    # (contrairement à WeasyPrint qui a besoin de Cairo/Pango).
+    # Génération du dossier PDF d'inscription (voir inscriptions/pdf.py)
+    # — wheel 100% Python, aucune lib système requise. La facture, elle,
+    # est générée en HTML/CSS + Chromium headless (voir
+    # inscriptions/facture_html.py, gabarit fourni par l'utilisateur,
+    # bien plus proche d'une vraie facture) — Chromium installé via apt
+    # dans le Dockerfile, pas une dépendance Python.
     "reportlab",
     # Appels à l'API HelloAsso (paiement en ligne, voir
     # inscriptions/helloasso.py) — déjà installé transitivement (via
@@ -47,3 +50,13 @@ reset-demo = "app.reset_demo:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+# Gabarit HTML + images (logo/signature) de la facture (voir
+# inscriptions/facture_html.py) — pas du code Python, setuptools ne les
+# embarque pas par défaut dans le paquet installé (contrairement au
+# dossier source, où ils sont juste là). Sans cette ligne, `pip install .`
+# (voir Dockerfile) produirait une image où la génération de facture
+# échoue (fichier introuvable), jamais en dev local (qui tourne depuis
+# les sources, pas depuis le paquet installé).
+[tool.setuptools.package-data]
+inscriptions = ["facture_template/*"]

@@ -187,63 +187,8 @@ def generer_dossier_pdf(inscription, noms_cours: list[str], chemin_photo: Path |
     return tampon.getvalue()
 
 
-def generer_facture_pdf(inscription) -> bytes:
-    """Facture correspondant au tarif figé à la soumission (voir
-    tarifs.py) — ne recalcule jamais rien, lit uniquement les montants
-    déjà enregistrés sur l'inscription. Toujours 3 trimestres par an
-    (voir tarifs.py:NB_TRIMESTRES), jamais de mensualité affichée ici."""
-    from .tarifs import LIBELLE_PALIER, NB_TRIMESTRES, REDUCTION_FAMILLE
-
-    tampon = io.BytesIO()
-    doc = SimpleDocTemplate(tampon, pagesize=A4, topMargin=2 * cm, bottomMargin=2 * cm)
-
-    montant_trois_trimestres = inscription.montant_trimestriel * NB_TRIMESTRES
-    total_annee = inscription.montant_adhesion + montant_trois_trimestres
-    libelle_palier = LIBELLE_PALIER.get(inscription.palier_tarifaire, inscription.palier_tarifaire)
-    reduction = " — famille : -5 €" if inscription.reduction_famille_appliquee else ""
-    # `inscription.montant_trimestriel` est DÉJÀ réduit (voir
-    # inscriptions.py) — reconstruit le prix brut du palier pour
-    # l'affichage (voir tarifs.js:montantTrimestrielBrut côté frontend,
-    # même logique), sans changer le montant réellement dû ci-dessus.
-    montant_trimestriel_brut = inscription.montant_trimestriel + (
-        REDUCTION_FAMILLE if inscription.reduction_famille_appliquee else 0.0
-    )
-
-    lignes = [
-        ["Désignation", "Montant"],
-        ["Adhésion (payée à part, par chèque)", f"{inscription.montant_adhesion:.2f} €"],
-        [
-            f"3 trimestres à {inscription.nb_cours_semaine} cours/semaine "
-            f"(palier « {libelle_palier} » {montant_trimestriel_brut:.2f} €{reduction})",
-            f"{montant_trois_trimestres:.2f} €",
-        ],
-        ["Total année", f"{total_annee:.2f} €"],
-    ]
-    tableau = Table(lignes, colWidths=[11 * cm, 5 * cm])
-    tableau.setStyle(
-        TableStyle(
-            [
-                ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                ("BACKGROUND", (0, 0), (-1, 0), colors.whitesmoke),
-                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-            ]
-        )
-    )
-    elements = [
-        _titre("Facture"),
-        _texte(f"Saison {inscription.saison}"),
-        _texte(f"Élève : {inscription.eleve_prenom} {inscription.eleve_nom}"),
-        _texte(f"Moyen de paiement : {inscription.moyen_paiement}"),
-        Spacer(1, 0.5 * cm),
-        tableau,
-    ]
-    if inscription.alerte_palier_mixte:
-        elements.append(Spacer(1, 0.3 * cm))
-        elements.append(
-            _texte(
-                "⚠ Cours choisis touchant plusieurs paliers tarifaires — montant le plus "
-                "élevé retenu, à vérifier par l'école."
-            )
-        )
-    doc.build(elements)
-    return tampon.getvalue()
+# generer_facture_pdf (facture) a déménagé dans facture_html.py — rendu
+# HTML/CSS + headless Chromium (gabarit fourni par l'utilisateur),
+# beaucoup plus proche d'une vraie facture que reportlab. Cette version
+# reportlab est restée assez longtemps pour être remplacée proprement,
+# voir git log si besoin de la retrouver.

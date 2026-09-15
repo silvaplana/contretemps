@@ -10,12 +10,7 @@ import pytest
 from inscriptions import excel_export
 from inscriptions.email_envoi import EmailEnvoi
 from inscriptions.models import Inscription
-from inscriptions.pdf import (
-    generer_dossier_pdf,
-    generer_facture_pdf,
-    nom_fichier_dossier,
-    nom_fichier_facture,
-)
+from inscriptions.pdf import generer_dossier_pdf, nom_fichier_dossier, nom_fichier_facture
 from openpyxl import load_workbook
 
 
@@ -97,16 +92,6 @@ def test_generer_dossier_pdf_photo_illisible_ignoree_sans_planter(tmp_path):
     chemin_photo.write_text("ceci n'est pas une image")
 
     contenu = generer_dossier_pdf(_inscription(), ["Class Ini"], chemin_photo)
-    assert contenu.startswith(b"%PDF")
-
-
-def test_generer_facture_pdf_produit_un_vrai_pdf():
-    contenu = generer_facture_pdf(_inscription())
-    assert contenu.startswith(b"%PDF")
-
-
-def test_generer_facture_pdf_avec_alerte_palier_mixte():
-    contenu = generer_facture_pdf(_inscription(alerte_palier_mixte=True))
     assert contenu.startswith(b"%PDF")
 
 
