@@ -8,16 +8,18 @@ import Icon from '../../components/Icon.jsx'
 // (voir MessagerieScreen.jsx) — comme la liste de discussions de WhatsApp.
 //
 // Mode recherche façon WhatsApp (dès qu'on tape quelque chose dans la
-// barre du haut) : 3 catégories, dans cet ordre — 1) discussions
-// individuelles existantes dont l'autre personne correspond,
-// 2) discussions de groupe existantes dont le nom correspond,
-// 3) "Nouvelle discussion" — n'importe quel autre compte de l'école
-// (admin/prof/élève, décision utilisateur : recherche globale pour tout
-// le monde, pas seulement l'Admin) qui correspond et avec qui on n'a PAS
-// déjà une conversation individuelle (sinon il apparaîtrait 2 fois : une
-// fois en 1, une fois en 3). Cliquer un résultat de la catégorie 3 crée
-// (ou récupère, si elle existe déjà malgré tout) le DM via l'API avant de
-// l'ouvrir (voir messagesApi.creerOuObtenirDm).
+// barre du haut) : 2 sections avec en-tête ("Discussions" puis
+// "Contacts", même vocabulaire que la capture WhatsApp fournie par
+// l'utilisateur), 3 catégories au total — 1) discussions individuelles
+// existantes dont l'autre personne correspond, 2) discussions de groupe
+// existantes dont le nom correspond (1 et 2 sous "Discussions"),
+// 3) "Nouvelle discussion" sous "Contacts" — n'importe quel autre compte
+// de l'école (admin/prof/élève, décision utilisateur : recherche globale
+// pour tout le monde, pas seulement l'Admin) qui correspond et avec qui
+// on n'a PAS déjà une conversation individuelle (sinon il apparaîtrait
+// 2 fois : une fois en 1, une fois en 3). Cliquer un résultat de la
+// catégorie 3 crée (ou récupère, si elle existe déjà malgré tout) le DM
+// via l'API avant de l'ouvrir (voir messagesApi.creerOuObtenirDm).
 export default function ConversationListScreen({
   conversations,
   setConversations,
@@ -86,20 +88,36 @@ export default function ConversationListScreen({
     discussionsGroupes.length === 0 &&
     nouveauxContacts.length === 0
 
+  const discussions = [...discussionsIndividuelles, ...discussionsGroupes]
+
   return (
     <div className="conversation-list-screen">
       <BarreRecherche valeur={recherche} onChange={setRecherche} />
-      {[...discussionsIndividuelles, ...discussionsGroupes].map((c) => (
-        <LigneConversation key={c.id} conversation={c} onClick={() => onSelect(c.id)} />
-      ))}
-      {nouveauxContacts.map((compte) => (
-        <LigneNouveauContact
-          key={compte.id}
-          compte={compte}
-          disabled={creationEnCours}
-          onClick={() => ouvrirNouvelleDiscussion(compte)}
-        />
-      ))}
+      {/* En-têtes "Discussions"/"Contacts" façon WhatsApp — précisent si
+          le résultat est une conversation déjà existante ou une personne
+          pas encore contactée (voir LigneNouveauContact : cliquer en crée
+          une). Un en-tête seulement si sa catégorie a des résultats. */}
+      {discussions.length > 0 && (
+        <>
+          <p className="conversation-list__section">Discussions</p>
+          {discussions.map((c) => (
+            <LigneConversation key={c.id} conversation={c} onClick={() => onSelect(c.id)} />
+          ))}
+        </>
+      )}
+      {nouveauxContacts.length > 0 && (
+        <>
+          <p className="conversation-list__section">Contacts</p>
+          {nouveauxContacts.map((compte) => (
+            <LigneNouveauContact
+              key={compte.id}
+              compte={compte}
+              disabled={creationEnCours}
+              onClick={() => ouvrirNouvelleDiscussion(compte)}
+            />
+          ))}
+        </>
+      )}
       {aucunResultat && <p className="muted">Aucun résultat.</p>}
     </div>
   )

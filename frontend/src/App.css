@@ -1544,6 +1544,16 @@
   opacity: 0.6;
 }
 
+/* En-têtes de section "Discussions"/"Contacts" en mode recherche (même
+   vocabulaire que WhatsApp) — juste un repère visuel discret, pas un
+   élément interactif. */
+.conversation-list__section {
+  margin: 10px 8px 2px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
 /* Écran 2/2 : le fil d'une conversation (ConversationThreadScreen.jsx),
    plein écran, avec sa propre flèche de retour — comme WhatsApp. */
 .thread-screen {
