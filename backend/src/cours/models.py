@@ -5,7 +5,7 @@ sont des tables de jointure, pas des listes stockées sur `cours`.
 from __future__ import annotations
 
 from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
 
@@ -40,3 +40,25 @@ class Cours(Base):
     heure_fin: Mapped[str | None] = mapped_column(String(10), nullable=True)
     salle: Mapped[str | None] = mapped_column(String(50), nullable=True)
     descriptif: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Créneaux EN PLUS du créneau principal ci-dessus (jour/heure_debut/
+    # heure_fin) — rare (voir spec/SPEC.md §6.5), ex. "Éveil" proposé le
+    # lundi ET le mercredi. Le créneau principal reste inchangé partout
+    # ailleurs dans l'appli (planning, présences...) ; ceci ne s'ajoute
+    # qu'à l'affichage (voir Admin > Cours et le formulaire public
+    # d'inscription).
+    horaires_supplementaires: Mapped[list["CoursHoraireSupplementaire"]] = relationship(
+        "CoursHoraireSupplementaire",
+        cascade="all, delete-orphan",
+        order_by="CoursHoraireSupplementaire.id",
+    )
+
+
+class CoursHoraireSupplementaire(Base):
+    __tablename__ = "cours_horaires_supplementaires"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    cours_id: Mapped[int] = mapped_column(ForeignKey("cours.id"), nullable=False, index=True)
+    jour: Mapped[str] = mapped_column(String(20), nullable=False)
+    heure_debut: Mapped[str] = mapped_column(String(10), nullable=False)
+    heure_fin: Mapped[str] = mapped_column(String(10), nullable=False)

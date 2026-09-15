@@ -6,7 +6,7 @@ from comptes import Compte
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Cours, cours_professeurs, eleves_cours
+from .models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 
 
 class CoursService:
@@ -16,14 +16,31 @@ class CoursService:
     def get(self, db: Session, cours_id: int) -> Cours | None:
         return db.get(Cours, cours_id)
 
-    def create(self, db: Session, ecole_id: int, nom: str, **champs) -> Cours:
+    def create(
+        self,
+        db: Session,
+        ecole_id: int,
+        nom: str,
+        horaires_supplementaires: list[dict] | None = None,
+        **champs,
+    ) -> Cours:
         cours = Cours(ecole_id=ecole_id, nom=nom, **champs)
+        if horaires_supplementaires:
+            cours.horaires_supplementaires = [
+                CoursHoraireSupplementaire(**h) for h in horaires_supplementaires
+            ]
         db.add(cours)
         db.commit()
         db.refresh(cours)
         return cours
 
-    def update(self, db: Session, cours_id: int, **champs) -> Cours | None:
+    def update(
+        self,
+        db: Session,
+        cours_id: int,
+        horaires_supplementaires: list[dict] | None = None,
+        **champs,
+    ) -> Cours | None:
         cours = self.get(db, cours_id)
         if cours is None:
             return None
@@ -32,6 +49,14 @@ class CoursService:
         # ici empêchait à tort de vider un champ nullable.
         for cle, valeur in champs.items():
             setattr(cours, cle, valeur)
+        # None = pas touché (voir receiver.py) ; une liste (même vide)
+        # remplace entièrement les créneaux en plus — SQLAlchemy
+        # supprime les anciens (cascade="all, delete-orphan", voir
+        # models.py) et insère les nouveaux.
+        if horaires_supplementaires is not None:
+            cours.horaires_supplementaires = [
+                CoursHoraireSupplementaire(**h) for h in horaires_supplementaires
+            ]
         db.commit()
         db.refresh(cours)
         return cours

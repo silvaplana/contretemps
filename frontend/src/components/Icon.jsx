@@ -10,6 +10,7 @@ const paths = {
   profil: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M4 20c0-4 3.5-6 8-6s8 2 8 6',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z M16 16l5 5',
   plus: 'M12 5v14 M5 12h14',
+  minus: 'M5 12h14',
   trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6',
   chevronDown: 'M6 9l6 6 6-6',
   chevronRight: 'M9 6l6 6-6 6',

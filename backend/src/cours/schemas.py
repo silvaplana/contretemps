@@ -5,6 +5,22 @@ models.py).
 from pydantic import BaseModel
 
 
+class HoraireSupplementaire(BaseModel):
+    """Créneau EN PLUS du créneau principal d'un cours (voir
+    models.py:Cours.horaires_supplementaires) — rare, ex. "Éveil"
+    proposé aussi un autre jour."""
+
+    jour: str
+    heure_debut: str
+    heure_fin: str
+
+
+class HoraireSupplementaireSortie(HoraireSupplementaire):
+    id: int
+
+    model_config = {"from_attributes": True}
+
+
 class CoursCreation(BaseModel):
     nom: str
     jour: str | None = None
@@ -12,6 +28,7 @@ class CoursCreation(BaseModel):
     heure_fin: str | None = None
     salle: str | None = None
     descriptif: str | None = None
+    horaires_supplementaires: list[HoraireSupplementaire] = []
 
 
 class CoursModification(BaseModel):
@@ -21,6 +38,9 @@ class CoursModification(BaseModel):
     heure_fin: str | None = None
     salle: str | None = None
     descriptif: str | None = None
+    # None = pas touché (voir receiver.py:modifier, exclude_unset=True) ;
+    # une liste (même vide) remplace entièrement les créneaux en plus.
+    horaires_supplementaires: list[HoraireSupplementaire] | None = None
 
 
 class CoursSortie(BaseModel):
@@ -32,6 +52,7 @@ class CoursSortie(BaseModel):
     heure_fin: str | None = None
     salle: str | None = None
     descriptif: str | None = None
+    horaires_supplementaires: list[HoraireSupplementaireSortie] = []
 
     model_config = {"from_attributes": True}
 

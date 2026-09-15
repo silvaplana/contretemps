@@ -31,6 +31,14 @@ async function avecProfesseurId(cours) {
     heureFin: cours.heure_fin ?? '',
     salle: cours.salle ?? '',
     professeurId: professeurs[0]?.id ?? '',
+    // Créneaux EN PLUS du créneau principal ci-dessus — rare (voir
+    // backend/src/cours/models.py:Cours.horaires_supplementaires), ex.
+    // "Éveil" proposé aussi un autre jour.
+    horairesSupplementaires: (cours.horaires_supplementaires ?? []).map((h) => ({
+      jour: h.jour,
+      heureDebut: h.heure_debut,
+      heureFin: h.heure_fin,
+    })),
   }
 }
 
@@ -39,11 +47,18 @@ export async function lister(ecoleId) {
   return Promise.all(liste.map(avecProfesseurId))
 }
 
-function versChampsBackend({ heureDebut, heureFin, ...reste }) {
+function versChampsBackend({ heureDebut, heureFin, horairesSupplementaires, ...reste }) {
   return {
     ...reste,
     ...(heureDebut !== undefined && { heure_debut: heureDebut }),
     ...(heureFin !== undefined && { heure_fin: heureFin }),
+    ...(horairesSupplementaires !== undefined && {
+      horaires_supplementaires: horairesSupplementaires.map((h) => ({
+        jour: h.jour,
+        heure_debut: h.heureDebut,
+        heure_fin: h.heureFin,
+      })),
+    }),
   }
 }
 

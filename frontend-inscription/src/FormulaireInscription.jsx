@@ -59,7 +59,17 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
     const parNom = new Map(cours.map((c) => [c.nom, c]))
     return COURS_PUBLICS.map((cp) => {
       const reel = parNom.get(cp.coursNom)
-      return reel ? { libelle: cp.libelle, id: reel.id, jour: reel.jour, heureDebut: reel.heure_debut, heureFin: reel.heure_fin } : null
+      if (!reel) return null
+      // Créneaux en plus, rares (voir cours/models.py:Cours.horaires_
+      // supplementaires — ex. "Éveil" proposé aussi un autre jour) :
+      // affichés à la suite, séparés par "ou".
+      const horaires = [
+        reel.jour && `${reel.jour} ${reel.heure_debut}-${reel.heure_fin}`,
+        ...(reel.horaires_supplementaires ?? []).map(
+          (h) => `${h.jour} ${h.heure_debut}-${h.heure_fin}`
+        ),
+      ].filter(Boolean)
+      return { libelle: cp.libelle, id: reel.id, horaire: horaires.join(' ou ') }
     }).filter(Boolean)
   }, [cours])
   const tarif = useMemo(
@@ -270,12 +280,10 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
               />
               <span>
                 {c.libelle}
-                {c.jour && (
+                {c.horaire && (
                   <>
                     <br />
-                    <small>
-                      {c.jour} {c.heureDebut}-{c.heureFin}
-                    </small>
+                    <small>{c.horaire}</small>
                   </>
                 )}
               </span>

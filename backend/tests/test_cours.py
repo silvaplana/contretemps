@@ -89,6 +89,93 @@ def test_inscrire_eleve_deux_fois_ne_duplique_pas(client, db_session):
     assert len(client.get(f"/cours/{creee['id']}/eleves").json()) == 1
 
 
+def test_creer_avec_horaires_supplementaires(client, db_session):
+    """Rare (voir models.py:Cours.horaires_supplementaires) : un cours
+    proposé plusieurs jours, ex. "Éveil" le lundi ET le mercredi."""
+    ecole, _, _ = _creer_ecole_et_comptes(db_session)
+    reponse = client.post(
+        "/cours",
+        params={"ecole_id": ecole.id},
+        json={
+            "nom": "Éveil",
+            "jour": "Mercredi",
+            "heure_debut": "17:00",
+            "heure_fin": "17:45",
+            "horaires_supplementaires": [
+                {"jour": "Lundi", "heure_debut": "17:15", "heure_fin": "18:00"}
+            ],
+        },
+    )
+    assert reponse.status_code == 201
+    corps = reponse.json()
+    assert len(corps["horaires_supplementaires"]) == 1
+    assert corps["horaires_supplementaires"][0]["jour"] == "Lundi"
+
+    relu = client.get(f"/cours/{corps['id']}").json()
+    assert relu["horaires_supplementaires"][0]["heure_debut"] == "17:15"
+
+
+def test_cours_sans_horaires_supplementaires_liste_vide(client, db_session):
+    ecole, _, _ = _creer_ecole_et_comptes(db_session)
+    creee = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Eveil"}).json()
+    assert creee["horaires_supplementaires"] == []
+
+
+def test_modifier_horaires_supplementaires_remplace_la_liste(client, db_session):
+    ecole, _, _ = _creer_ecole_et_comptes(db_session)
+    creee = client.post(
+        "/cours",
+        params={"ecole_id": ecole.id},
+        json={
+            "nom": "Éveil",
+            "horaires_supplementaires": [
+                {"jour": "Lundi", "heure_debut": "17:15", "heure_fin": "18:00"}
+            ],
+        },
+    ).json()
+
+    # Remplace par un autre créneau.
+    reponse = client.put(
+        f"/cours/{creee['id']}",
+        json={
+            "horaires_supplementaires": [
+                {"jour": "Samedi", "heure_debut": "10:00", "heure_fin": "10:45"}
+            ]
+        },
+    )
+    assert reponse.status_code == 200
+    horaires = reponse.json()["horaires_supplementaires"]
+    assert len(horaires) == 1
+    assert horaires[0]["jour"] == "Samedi"
+
+    # Ne pas fournir le champ ne touche pas aux créneaux existants.
+    reponse2 = client.put(f"/cours/{creee['id']}", json={"salle": "Salle 2"})
+    assert len(reponse2.json()["horaires_supplementaires"]) == 1
+
+    # Une liste vide les supprime tous.
+    reponse3 = client.put(f"/cours/{creee['id']}", json={"horaires_supplementaires": []})
+    assert reponse3.json()["horaires_supplementaires"] == []
+
+
+def test_supprimer_cours_supprime_ses_horaires_supplementaires(client, db_session):
+    ecole, _, _ = _creer_ecole_et_comptes(db_session)
+    creee = client.post(
+        "/cours",
+        params={"ecole_id": ecole.id},
+        json={
+            "nom": "Éveil",
+            "horaires_supplementaires": [
+                {"jour": "Lundi", "heure_debut": "17:15", "heure_fin": "18:00"}
+            ],
+        },
+    ).json()
+    assert client.delete(f"/cours/{creee['id']}").status_code == 204
+    # Pas d'erreur d'intégrité (cascade, voir models.py) — vérifié
+    # indirectement : recréer un cours du même nom fonctionne toujours.
+    reponse = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"})
+    assert reponse.status_code == 201
+
+
 def test_cours_de_leleve(client, db_session):
     """Sens inverse de /cours/{id}/eleves — voir Admin > Élèves (colonne
     "cours suivis")."""

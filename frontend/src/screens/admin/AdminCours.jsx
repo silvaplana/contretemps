@@ -120,6 +120,11 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
                   <td className="data-table__name">{c.nom}</td>
                   <td>
                     {c.jour} {c.heureDebut}-{c.heureFin}
+                    {c.horairesSupplementaires?.map((h, i) => (
+                      <div key={i} className="muted">
+                        {h.jour} {h.heureDebut}-{h.heureFin}
+                      </div>
+                    ))}
                   </td>
                   <td>{prof ? `${prof.prenom} ${prof.nom.charAt(0)}.` : <span className="muted">—</span>}</td>
                   <td>
@@ -195,6 +200,12 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
   const [jour, setJour] = useState(initial?.jour ?? 'Mercredi')
   const [heureDebut, setHeureDebut] = useState(initial?.heureDebut ?? '')
   const [heureFin, setHeureFin] = useState(initial?.heureFin ?? '')
+  // Créneaux EN PLUS du créneau ci-dessus — rare (voir api/cours.js et
+  // backend/src/cours/models.py:Cours.horaires_supplementaires), ex. un
+  // cours d'Éveil proposé aussi un autre jour.
+  const [horairesSupplementaires, setHorairesSupplementaires] = useState(
+    initial?.horairesSupplementaires ?? []
+  )
   const [salle, setSalle] = useState(initial?.salle ?? '')
   // Pas de professeur choisi par défaut pour un nouveau cours (voir
   // §6.5 : "0 prof" est un cas normal, pas une erreur à combler) — un
@@ -204,10 +215,22 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
   // async désormais.
   const [enCours, setEnCours] = useState(false)
 
+  function ajouterHoraire() {
+    setHorairesSupplementaires((h) => [...h, { jour: 'Mercredi', heureDebut: '', heureFin: '' }])
+  }
+
+  function retirerHoraire(index) {
+    setHorairesSupplementaires((h) => h.filter((_, i) => i !== index))
+  }
+
+  function modifierHoraire(index, champ, valeur) {
+    setHorairesSupplementaires((h) => h.map((horaire, i) => (i === index ? { ...horaire, [champ]: valeur } : horaire)))
+  }
+
   async function valider() {
     if (enCours) return
     setEnCours(true)
-    await onSubmit({ nom, jour, heureDebut, heureFin, salle, professeurId })
+    await onSubmit({ nom, jour, heureDebut, heureFin, salle, professeurId, horairesSupplementaires })
     onClose()
   }
 
@@ -228,7 +251,18 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
     >
       <label htmlFor="cours-nom">Nom du cours</label>
       <input id="cours-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
-      <label htmlFor="cours-jour">Jour</label>
+      <label htmlFor="cours-jour">
+        Jour{' '}
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={ajouterHoraire}
+          aria-label="Ajouter un autre jour pour ce cours"
+          title="Ajouter un autre jour pour ce cours"
+        >
+          <Icon name="plus" size={14} />
+        </button>
+      </label>
       <input id="cours-jour" value={jour} onChange={(e) => setJour(e.target.value)} />
       <label htmlFor="cours-debut">Heure de début</label>
       <input
@@ -244,6 +278,51 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
         placeholder="18h30"
         onChange={(e) => setHeureFin(e.target.value)}
       />
+
+      {/* Créneaux en plus — rare (voir §6.5), ex. un cours proposé
+          aussi un autre jour. */}
+      {horairesSupplementaires.map((horaire, index) => (
+        <div key={index} className="grille-2" style={{ alignItems: 'end', marginBottom: 8 }}>
+          <div>
+            <label htmlFor={`cours-jour-sup-${index}`}>Autre jour</label>
+            <input
+              id={`cours-jour-sup-${index}`}
+              value={horaire.jour}
+              onChange={(e) => modifierHoraire(index, 'jour', e.target.value)}
+            />
+          </div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
+            <div>
+              <label htmlFor={`cours-debut-sup-${index}`}>Début</label>
+              <input
+                id={`cours-debut-sup-${index}`}
+                value={horaire.heureDebut}
+                placeholder="17h00"
+                onChange={(e) => modifierHoraire(index, 'heureDebut', e.target.value)}
+              />
+            </div>
+            <div>
+              <label htmlFor={`cours-fin-sup-${index}`}>Fin</label>
+              <input
+                id={`cours-fin-sup-${index}`}
+                value={horaire.heureFin}
+                placeholder="18h30"
+                onChange={(e) => modifierHoraire(index, 'heureFin', e.target.value)}
+              />
+            </div>
+            <button
+              type="button"
+              className="icon-btn icon-btn--danger"
+              onClick={() => retirerHoraire(index)}
+              aria-label="Retirer ce créneau"
+              title="Retirer ce créneau"
+            >
+              <Icon name="minus" size={14} />
+            </button>
+          </div>
+        </div>
+      ))}
+
       <label htmlFor="cours-salle">Salle</label>
       <input id="cours-salle" value={salle} onChange={(e) => setSalle(e.target.value)} />
       <label htmlFor="cours-prof">Professeur</label>
