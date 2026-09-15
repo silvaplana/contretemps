@@ -875,7 +875,19 @@
 
 .data-table__name {
   font-weight: 700;
-  min-width: 140px;
+}
+
+/* La colonne "Élève" doit suivre la longueur du nom affiché plutôt que
+   d'être fixée à une largeur uniforme — .editable-text ci-dessous est en
+   `width: 100%` par défaut (voulu pour les autres colonnes, ex. adresse),
+   ce qui forçait ici une largeur de colonne arbitraire, identique pour un
+   nom court ou long. `field-sizing: content` (non supporté partout, sans
+   régression si ignoré : l'input garde alors sa largeur par défaut) fait
+   correspondre la largeur de l'input à sa valeur. */
+.data-table__name .editable-text {
+  width: auto;
+  min-width: 60px;
+  field-sizing: content;
 }
 
 /* Poignée de réordonnancement (Admin > Cours, voir AdminCours.jsx) — le
