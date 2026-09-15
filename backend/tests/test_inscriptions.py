@@ -121,6 +121,24 @@ def test_creer_une_inscription_sans_email_refusee(client, db_session):
     assert reponse.status_code == 422
 
 
+def test_creer_avec_cours_ids_en_double_ne_plante_pas(client, db_session, _nettoyage_dossier):
+    """Un doublon dans cours_ids (double clic, requête rejouée...) ne
+    doit jamais faire échouer l'inscription avec une IntegrityError sur
+    la contrainte UNIQUE (inscription_id, cours_id) — constaté en prod."""
+    ecole, cours = _creer_ecole_avec_cours(db_session)
+    _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
+
+    reponse = client.post(
+        "/inscriptions",
+        params={"ecole_id": ecole.id},
+        json=_donnees_formulaire([cours["Class Ini"].id, cours["Class Ini"].id]),
+    )
+    assert reponse.status_code == 201
+    corps = reponse.json()
+    assert corps["cours_choisis"] == ["Class Ini"]
+    assert corps["nb_cours_semaine"] == 1
+
+
 def test_doublon_detecte_sur_meme_nom_prenom_meme_saison(client, db_session, _nettoyage_dossier):
     ecole, cours = _creer_ecole_avec_cours(db_session)
     _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))

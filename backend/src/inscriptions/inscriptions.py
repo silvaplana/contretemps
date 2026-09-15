@@ -80,7 +80,13 @@ class Inscriptions:
     def creer(
         self, db: Session, ecole_id: int, donnees: InscriptionCreation, ip: str | None
     ) -> Inscription:
-        noms_cours = self._resoudre_noms_cours(db, ecole_id, donnees.cours_ids)
+        # dict.fromkeys(...) plutôt que set(...) : déduplique tout en
+        # gardant l'ordre — un doublon dans cours_ids (double clic,
+        # requête rejouée...) ne doit fausser ni le tarif (compté par
+        # nombre de cours distincts) ni faire échouer l'association des
+        # cours plus bas (contrainte UNIQUE, constaté en prod).
+        cours_ids = list(dict.fromkeys(donnees.cours_ids))
+        noms_cours = self._resoudre_noms_cours(db, ecole_id, cours_ids)
         saison = saison_actuelle()
         doublon, famille_detectee = self._detecter_doublon_et_famille(
             db, ecole_id, saison, donnees.eleve_nom, donnees.eleve_prenom, donnees.eleve_email
@@ -134,7 +140,7 @@ class Inscriptions:
         db.commit()
         db.refresh(inscription)
 
-        for cours_id in donnees.cours_ids:
+        for cours_id in cours_ids:
             db.execute(
                 inscriptions_cours.insert().values(
                     inscription_id=inscription.id, cours_id=cours_id
