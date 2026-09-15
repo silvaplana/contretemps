@@ -787,6 +787,26 @@
   color: var(--danger-text);
 }
 
+/* Choix de destination "Cet appareil"/"Google Drive" en tête du menu
+   sauvegarde (voir SauvegardeEcoleMenu.jsx) — pas un bouton d'action,
+   juste un réglage, d'où la mise en page différente des autres entrées. */
+.header-menu__destination {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.header-menu__destination label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: var(--text-h);
+}
+
 .search-bar {
   display: flex;
   align-items: center;

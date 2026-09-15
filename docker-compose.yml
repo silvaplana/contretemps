@@ -84,6 +84,12 @@ services:
         # frontend/Caddyfile) transmet à "backend". Voir aussi le "base" dans
         # vite.config.js, qui doit rester cohérent avec ce chemin.
         VITE_API_URL: /contretemps/api
+        # "Sauvegarder École" -> Google Drive (voir frontend/.env.example
+        # et Dockerfile) — PAS secret, mais spécifique au déploiement :
+        # vient d'un .env À LA RACINE du repo (gitignoré, voir .gitignore),
+        # jamais committé. Vide tant qu'il n'existe pas -> Drive simplement
+        # désactivé côté frontend, sans erreur.
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     container_name: contretemps-frontend
     # Réseau par défaut du projet (communication avec "backend") + réseau

@@ -38,6 +38,12 @@ dependencies = [
     # inscriptions/helloasso.py) — déjà installé transitivement (via
     # pywebpush), déclaré explicitement puisqu'on l'utilise directement.
     "requests",
+    # Sauvegarde programmée -> Google Drive (compte de service, voir
+    # ecoles/google_drive.py) — juste pour échanger la clé du compte de
+    # service contre un jeton d'accès ; les appels Drive eux-mêmes
+    # passent par `requests` ci-dessus (pas le SDK
+    # google-api-python-client, plus lourd, pas nécessaire ici).
+    "google-auth",
 ]
 
 [project.optional-dependencies]

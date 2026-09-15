@@ -3,15 +3,22 @@
 pour le pourquoi : jamais importé par app.main, pour ne jamais démarrer
 une boucle infinie au simple import de l'app — ex. pytest via TestClient).
 
-Filet de sécurité UNIQUEMENT (voir ecoles/stockage.py et la conversation
+Filet de sécurité (voir ecoles/stockage.py et la conversation
 utilisateur) : génère les 2 fichiers (export humain + sauvegarde
 technique) et les garde CÔTÉ SERVEUR, dans le dossier de l'école — jamais
 perdu même si personne n'a l'appli ouverte au moment programmé. L'écriture
-directe sur le disque LOCAL de l'admin (ce que l'utilisateur veut
-vraiment) se fait à part, côté navigateur, quand l'appli est ouverte (voir
-frontend/src/api/sauvegarde.js) — ce worker ne peut techniquement pas y
-accéder (voir la conversation : un serveur ne peut jamais écrire sur le
+directe sur le disque LOCAL de l'admin se fait à part, côté navigateur,
+quand l'appli est ouverte (voir frontend/src/api/ecoles.js) — ce worker ne
+peut techniquement pas y accéder (un serveur ne peut jamais écrire sur le
 disque d'un poste client).
+
+EN PLUS (décision utilisateur explicite) : si Google Drive est configuré
+(voir ecoles/google_drive.py, GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE/
+GOOGLE_DRIVE_DOSSIER_ID dans .env.example), les 2 fichiers y sont AUSSI
+envoyés — indépendamment de la sauvegarde serveur ci-dessus (son propre
+try/except, voir plus bas) : contrairement à l'écriture locale, Drive est
+toujours joignable depuis le serveur, que quelqu'un ait l'appli ouverte
+ou non — la vraie solution "fiable à 100%" pour la sauvegarde programmée.
 
 Usage :
     python -m app.sauvegarde_worker
@@ -25,7 +32,7 @@ import time
 from comptes import Comptes
 from cours import CoursService
 from db import SessionLocal
-from ecoles import Ecoles, backup_technique
+from ecoles import Ecoles, GoogleDrive, backup_technique
 from ecoles.excel_export import EcoleExport
 from ecoles.models import Ecole
 from ecoles.stockage import dossier_ecole
@@ -72,8 +79,12 @@ def run() -> None:
     export_client = EcoleExport(
         comptes=comptes_client, eleves=eleves_client, cours=cours_client, presence=presence_client
     )
+    drive_client = GoogleDrive()
 
-    print(f"Sauvegarde programmée démarrée (vérifie toutes les {INTERVALLE_SECONDES}s).")
+    print(
+        f"Sauvegarde programmée démarrée (vérifie toutes les {INTERVALLE_SECONDES}s, "
+        f"Google Drive {'activé' if drive_client.est_configure() else 'non configuré'})."
+    )
     while True:
         time.sleep(INTERVALLE_SECONDES)
         maintenant = dt.datetime.now()
@@ -83,20 +94,37 @@ def run() -> None:
                 if not _est_due(ecole, maintenant):
                     continue
                 try:
-                    dossier = dossier_ecole(ecole.id)
+                    contenu_humain = export_client.generer(db, ecole)
+                    contenu_technique = backup_technique.generer(db, ecole)
                     horodatage = maintenant.strftime("%Y%m%d_%H%M%S")
-                    (dossier / f"{horodatage}_humain.xlsx").write_bytes(
-                        export_client.generer(db, ecole)
-                    )
-                    (dossier / f"{horodatage}_techBackup.xlsx").write_bytes(
-                        backup_technique.generer(db, ecole)
-                    )
+                    nom_humain = f"{horodatage}_humain.xlsx"
+                    nom_technique = f"{horodatage}_techBackup.xlsx"
+
+                    dossier = dossier_ecole(ecole.id)
+                    (dossier / nom_humain).write_bytes(contenu_humain)
+                    (dossier / nom_technique).write_bytes(contenu_technique)
                     ecole.sauvegarde_derniere_execution = maintenant
                     db.commit()
-                    print(f"Sauvegarde programmée : école {ecole.id} ({ecole.nom}) OK.")
+                    print(f"Sauvegarde programmée : école {ecole.id} ({ecole.nom}) OK (serveur).")
                 except Exception:
                     db.rollback()
                     print(f"Sauvegarde programmée ÉCHOUÉE pour l'école {ecole.id} ({ecole.nom}).")
+                    continue
+
+                # Google Drive : domaine d'échec INDÉPENDANT (voir docstring
+                # de tête) — jamais annulé/refait si la sauvegarde serveur
+                # ci-dessus a déjà réussi, jamais bloquant non plus si Drive
+                # échoue (déjà en sécurité côté serveur de toute façon).
+                if drive_client.est_configure():
+                    try:
+                        drive_client.televerser(nom_humain, contenu_humain)
+                        drive_client.televerser(nom_technique, contenu_technique)
+                        print(f"Sauvegarde programmée : école {ecole.id} ({ecole.nom}) OK (Drive).")
+                    except Exception:
+                        print(
+                            f"Sauvegarde programmée : envoi Drive ÉCHOUÉ pour l'école "
+                            f"{ecole.id} ({ecole.nom}) (sauvegarde serveur déjà en sécurité)."
+                        )
         finally:
             db.close()
 

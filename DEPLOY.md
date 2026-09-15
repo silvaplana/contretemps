@@ -96,3 +96,18 @@ docker compose exec backend alembic upgrade head
 cp backend/.env.example backend/.env
 nano backend/.env
 ```
+
+Le frontend, lui, a une variable qui doit être connue AU BUILD (pas au
+lancement du conteneur, voir frontend/Dockerfile) : `GOOGLE_CLIENT_ID`
+("Sauvegarder École" -> Google Drive, voir frontend/.env.example). Créer
+un `.env` **à la racine du repo** (gitignoré, lu automatiquement par
+`docker compose` pour les substitutions `${...}` de `docker-compose.yml`) :
+
+```bash
+echo "GOOGLE_CLIENT_ID=votre-client-id.apps.googleusercontent.com" > .env
+docker compose up -d --build frontend
+```
+
+Sans ce fichier, `GOOGLE_CLIENT_ID` reste vide et le frontend se construit
+quand même — seule la destination "Cet appareil" est proposée dans le
+menu sauvegarde, sans erreur.

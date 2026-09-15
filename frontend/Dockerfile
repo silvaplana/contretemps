@@ -17,7 +17,11 @@ COPY . .
 # docker-compose.yml pour la valeur réelle : l'app est servie sous un
 # sous-chemin du domaine partagé, pas à sa racine).
 ARG VITE_API_URL=/api
-RUN echo "VITE_API_URL=${VITE_API_URL}" > .env.production
+# "Sauvegarder École" -> Google Drive (voir .env.example) — PAS secret
+# (voir sa docstring), vide par défaut : sans lui, seule la destination
+# "Cet appareil" est proposée, sans erreur (voir utils/googleDrive.js).
+ARG VITE_GOOGLE_CLIENT_ID=
+RUN printf 'VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=%s\n' "${VITE_API_URL}" "${VITE_GOOGLE_CLIENT_ID}" > .env.production
 
 RUN npm run build
 

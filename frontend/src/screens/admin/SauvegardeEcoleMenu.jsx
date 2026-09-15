@@ -4,6 +4,7 @@ import * as inscriptionsApi from '../../api/inscriptions.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
+import { estConfigureDrive } from '../../utils/googleDrive.js'
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 const PERIODICITES = [
@@ -11,6 +12,23 @@ const PERIODICITES = [
   { valeur: 'semaine', label: 'Chaque semaine' },
   { valeur: 'mois', label: 'Chaque mois (le 1er)' },
 ]
+
+// Destination du "Sauvegarder École" manuel (voir api/ecoles.js) —
+// mémorisée PAR NAVIGATEUR (localStorage), pas en base : c'est un
+// confort d'usage propre à cet appareil, pas une donnée d'école (voir
+// "Programmer sauvegarde École", elle, bien en base — demande utilisateur
+// explicite, partagée entre admins). "Google Drive" n'est proposé que si
+// VITE_GOOGLE_CLIENT_ID est configuré (voir googleDrive.js).
+const CLE_DESTINATION = 'contretemps-sauvegarde-destination'
+
+function destinationMemorisee() {
+  try {
+    const valeur = localStorage.getItem(CLE_DESTINATION)
+    return valeur === 'drive' && estConfigureDrive() ? 'drive' : 'local'
+  } catch {
+    return 'local'
+  }
+}
 
 // Menu ⋮ "Sauvegarde" d'Admin > École (5 entrées, voir spec — demande
 // utilisateur explicite) :
@@ -32,17 +50,31 @@ export default function SauvegardeEcoleMenu({ ecole }) {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [vue, setVue] = useState(null) // null | 'programmer' | 'supprimer' | 'importer'
   const [erreur, setErreur] = useState(null)
+  const [destination, setDestination] = useState(destinationMemorisee)
   const menuRef = useRef(null)
   useFermerAuClicExterieur(menuRef, menuOuvert, () => setMenuOuvert(false))
+
+  function changerDestination(valeur) {
+    setDestination(valeur)
+    try {
+      localStorage.setItem(CLE_DESTINATION, valeur)
+    } catch {
+      // Stockage indisponible (navigation privée...) : le choix ne
+      // survivra pas à la fermeture de l'onglet, tant pis — pas bloquant
+      // pour la fonctionnalité elle-même (voir artifact-capabilities :
+      // toujours prévoir un lecture/écriture qui peut échouer).
+    }
+  }
 
   async function sauvegarder() {
     setMenuOuvert(false)
     setErreur(null)
     try {
-      // Séquentiel, pas Promise.all : 2 boîtes "Enregistrer sous" ouvertes
-      // en même temps prêteraient à confusion (laquelle est laquelle ?).
-      await ecolesApi.telechargerExportHumain(ecole.id)
-      await ecolesApi.telechargerExportTechnique(ecole.id)
+      // Séquentiel, pas Promise.all : 2 boîtes "Enregistrer sous" (ou 2
+      // consentements Drive) ouvertes en même temps prêteraient à
+      // confusion (laquelle est laquelle ?).
+      await ecolesApi.telechargerExportHumain(ecole.id, destination)
+      await ecolesApi.telechargerExportTechnique(ecole.id, destination)
     } catch (err) {
       setErreur(err.message)
     }
@@ -72,6 +104,29 @@ export default function SauvegardeEcoleMenu({ ecole }) {
         </button>
         {menuOuvert && (
           <div className="dropdown-menu header-menu__panel">
+            {estConfigureDrive() && (
+              <div className="header-menu__destination" onClick={(e) => e.stopPropagation()}>
+                <span className="muted">Destination de "Sauvegarder École"</span>
+                <label>
+                  <input
+                    type="radio"
+                    name="sauvegarde-destination"
+                    checked={destination === 'local'}
+                    onChange={() => changerDestination('local')}
+                  />
+                  Cet appareil
+                </label>
+                <label>
+                  <input
+                    type="radio"
+                    name="sauvegarde-destination"
+                    checked={destination === 'drive'}
+                    onChange={() => changerDestination('drive')}
+                  />
+                  Google Drive
+                </label>
+              </div>
+            )}
             <button type="button" onClick={sauvegarder}>
               <Icon name="folder" size={18} /> Sauvegarder École
             </button>

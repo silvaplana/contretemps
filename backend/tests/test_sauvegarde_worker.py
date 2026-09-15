@@ -56,3 +56,32 @@ def test_mensuelle_seulement_le_1er():
 def test_sans_heure_configuree_jamais_due():
     ecole = _ecole(sauvegarde_heure=None)
     assert _est_due(ecole, dt.datetime(2026, 9, 16, 3, 0)) is False
+
+
+def test_google_drive_non_configure_par_defaut(monkeypatch):
+    """Sans les 2 variables d'env (voir .env.example), Drive reste
+    désactivé — aucune erreur, juste le filet de sécurité serveur (voir
+    sauvegarde_worker.py : `if drive_client.est_configure()`)."""
+    monkeypatch.delenv("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", raising=False)
+    monkeypatch.delenv("GOOGLE_DRIVE_DOSSIER_ID", raising=False)
+    from ecoles import GoogleDrive
+
+    assert GoogleDrive().est_configure() is False
+
+
+def test_google_drive_configure_si_fichier_de_cle_existe(tmp_path, monkeypatch):
+    cle = tmp_path / "cle.json"
+    cle.write_text("{}")
+    monkeypatch.setenv("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", str(cle))
+    monkeypatch.setenv("GOOGLE_DRIVE_DOSSIER_ID", "un-id-de-dossier")
+    from ecoles import GoogleDrive
+
+    assert GoogleDrive().est_configure() is True
+
+
+def test_google_drive_pas_configure_si_fichier_de_cle_introuvable(tmp_path, monkeypatch):
+    monkeypatch.setenv("GOOGLE_DRIVE_SERVICE_ACCOUNT_FILE", str(tmp_path / "absent.json"))
+    monkeypatch.setenv("GOOGLE_DRIVE_DOSSIER_ID", "un-id-de-dossier")
+    from ecoles import GoogleDrive
+
+    assert GoogleDrive().est_configure() is False
