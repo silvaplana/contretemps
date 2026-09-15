@@ -1532,6 +1532,18 @@
   justify-content: center;
 }
 
+/* Barre de recherche façon WhatsApp (voir ConversationListScreen.jsx) —
+   `gap: 2px` du conteneur suffit entre 2 lignes de conversation, mais pas
+   assez pour la détacher visuellement de la barre de recherche
+   au-dessus. */
+.conversation-list__search {
+  margin-bottom: 6px;
+}
+
+.conversation-list__item:disabled {
+  opacity: 0.6;
+}
+
 /* Écran 2/2 : le fil d'une conversation (ConversationThreadScreen.jsx),
    plein écran, avec sa propre flèche de retour — comme WhatsApp. */
 .thread-screen {

@@ -162,6 +162,30 @@ export async function envoyer(conversationId, compteId, membres, contenu, canal 
   return versMessageEcran(cree, compteId, membres)
 }
 
+// "Nouvelle discussion" depuis la recherche (voir ConversationListScreen.jsx,
+// mode recherche façon WhatsApp) — récupère-ou-crée l'unique conversation
+// individuelle entre les 2 comptes (voir backend/src/messagerie/
+// conversations.py: create_ou_obtenir_dm, POST /dm) : jamais 2 fois la
+// même paire, peu importe qui a initié le contact. Toujours sans message
+// pour l'instant si elle vient d'être créée à l'instant (`lister_messages`
+// renvoie alors une liste vide).
+export async function creerOuObtenirDm(ecoleId, compteId, autreCompteId) {
+  const conv = await requete(
+    `/dm?ecole_id=${ecoleId}&compte_a_id=${compteId}&compte_b_id=${autreCompteId}`,
+    { method: 'POST' },
+  )
+  const messages = await requete(`/conversations/${conv.id}/messages`)
+  return {
+    id: conv.id,
+    type: conv.type,
+    // `cours` inutile ici : nomAffiche ne le regarde que pour une
+    // conversation de groupe, jamais pour une individuelle (voir plus haut).
+    nom: nomAffiche(conv, compteId, []),
+    membres: conv.membres,
+    messages: messages.map((m) => versMessageEcran(m, compteId, conv.membres)),
+  }
+}
+
 // Réception en direct (§5.5) : UN SEUL flux par compte connecté (voir
 // backend/src/messagerie/evenements.py pour le choix "par compte" plutôt
 // que "par conversation ouverte" — sans ça, la LISTE des conversations

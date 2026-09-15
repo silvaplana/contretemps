@@ -112,6 +112,12 @@ function App() {
   const [professeurs, setProfesseurs] = useState([])
   const [cours, setCours] = useState([])
   const [groupes, setGroupes] = useState([])
+  // Comptes admin de l'école — jusqu'ici chargés seulement dans
+  // AdminGroupes (Admin > Conversations). Repris ici aussi pour la
+  // recherche "Nouvelle discussion" de Messagerie (voir
+  // ConversationListScreen.jsx), qui doit pouvoir proposer n'importe quel
+  // compte de l'école (admin compris), pas seulement élèves/profs.
+  const [admins, setAdmins] = useState([])
   const [presences, setPresences] = useState({})
   const [choregraphies, setChoregraphies] = useState({})
   const [videos, setVideos] = useState({})
@@ -137,6 +143,7 @@ function App() {
     profsApi.lister(ecole.id).then(setProfesseurs)
     coursApi.lister(ecole.id).then(setCours)
     conversationsApi.listerEcole(ecole.id).then(setGroupes)
+    comptesApi.listerAdmins(ecole.id).then(setAdmins)
   }, [loggedIn, ecole.id])
 
   // Messagerie (voir spec/SPEC.md §5.5/§6.9) : liste réelle, filtrée par
@@ -565,6 +572,10 @@ function App() {
             conversations={conversations}
             setConversations={setConversations}
             compteId={activeUser.id}
+            ecoleId={ecole.id}
+            admins={admins}
+            professeurs={professeurs}
+            eleves={eleves}
           />
         )}
 
