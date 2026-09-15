@@ -362,16 +362,32 @@ class ImportExcel:
                 index_deja = index_existants.get(eleve_existant_id)
                 if index_deja is not None:
                     # Même élève déjà rencontré plus haut dans ce fichier —
-                    # fusionne les cours au lieu de le lister 2 fois.
+                    # jamais listé 2 fois, mais SIGNALÉ (demande
+                    # utilisateur explicite) plutôt que fusionné en
+                    # silence ; recalcule la différence "cours" (sinon
+                    # elle reste bloquée sur les seuls cours de la 1re
+                    # ligne rencontrée).
                     deja = lignes[index_deja]
-                    deja.cours_ids = sorted(set(deja.cours_ids) | set(cours_ids_fichier))
+                    deja.doublon_fichier = True
+                    cours_fusionnes = sorted(set(deja.cours_ids) | set(cours_ids_fichier))
+                    deja.differences = [d for d in deja.differences if d.champ != "cours"]
+                    cours_actuels_ids = {c.id for c in self.cours.cours_de_leleve(db, eleve_existant_id)}
+                    cours_a_ajouter = [cid for cid in cours_fusionnes if cid not in cours_actuels_ids]
+                    deja.cours_ids = cours_a_ajouter
+                    if cours_a_ajouter:
+                        deja.differences.append(
+                            DifferenceChamp(
+                                champ="cours",
+                                valeur_actuelle=sorted(cours_actuels_ids),
+                                valeur_fichier=sorted(cours_actuels_ids | set(cours_a_ajouter)),
+                            )
+                        )
                     continue
                 differences = self._differences(
                     db, eleve_existant_id, email, telephone, adresse, date_naissance, cours_ids_fichier
                 )
-                cours_a_ajouter = next(
-                    (d.valeur_fichier for d in differences if d.champ == "cours"), []
-                )
+                cours_actuels_id_existant = {c.id for c in self.cours.cours_de_leleve(db, eleve_existant_id)}
+                cours_a_ajouter = [cid for cid in cours_ids_fichier if cid not in cours_actuels_id_existant]
                 lignes.append(
                     LigneApercu(
                         numero_ligne=numero, nom=nom, prenom=prenom, email=email,
@@ -473,8 +489,19 @@ class ImportExcel:
         cours_actuels_ids = {c.id for c in self.cours.cours_de_leleve(db, eleve_id)}
         cours_a_ajouter = [cid for cid in cours_ids_fichier if cid not in cours_actuels_ids]
         if cours_a_ajouter:
+            # valeur_actuelle : la fiche AVANT toute modif (jamais None,
+            # même si `cours_actuels_ids` est vide — l'admin doit voir
+            # "Éveil" s'il a déjà Éveil, pas "vide" ; bug signalé : "il dit
+            # que l'existant est vide ... mais il a Éveil"). valeur_fichier
+            # : l'état RÉSULTANT si appliqué (cours actuels + ajouts,
+            # jamais de retrait) plutôt que les seuls ajouts — sinon "Éveil"
+            # semble disparaître en choisissant "Utiliser le fichier".
             differences.append(
-                DifferenceChamp(champ="cours", valeur_actuelle=None, valeur_fichier=cours_a_ajouter)
+                DifferenceChamp(
+                    champ="cours",
+                    valeur_actuelle=sorted(cours_actuels_ids),
+                    valeur_fichier=sorted(cours_actuels_ids | set(cours_a_ajouter)),
+                )
             )
 
         return differences

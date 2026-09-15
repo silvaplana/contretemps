@@ -232,6 +232,11 @@ export default function IntegrerFichierElevesModal({ ecoleId, cours, setEleves, 
                 <strong>
                   {l.prenom} {l.nom}
                 </strong>
+                {l.doublon_fichier && (
+                  <span className="import-eleves__avertissement">
+                    ⚠ ce nom apparaît plusieurs fois dans le fichier — différences fusionnées ci-dessous
+                  </span>
+                )}
                 {l.differences.map((d) => {
                   const applique = l.champs_a_appliquer.includes(d.champ)
                   const nomGroupe = `diff-${l.numero_ligne}-${d.champ}`

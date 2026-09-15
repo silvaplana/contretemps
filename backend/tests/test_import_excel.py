@@ -240,7 +240,12 @@ def test_difference_cours_najoute_que_les_cours_manquants(client, db_session):
     ligne = apercu["lignes"][0]
     diff_cours = next(d for d in ligne["differences"] if d["champ"] == "cours")
     cours_class_ini = next(c for c in cours_service.list(db_session, ecole.id) if c.nom == "Class Ini")
-    assert diff_cours["valeur_fichier"] == [cours_class_ini.id]  # "Éveil" déjà suivi, exclu
+    # valeur_actuelle : jamais vide si l'élève a déjà des cours (bug
+    # signalé : "il dit que l'existant est vide ... mais il a Éveil").
+    assert diff_cours["valeur_actuelle"] == [cours_eveil.id]
+    # valeur_fichier : l'état RÉSULTANT (actuels + ajouts), jamais un
+    # retrait — "Éveil" doit rester visible, pas disparaître.
+    assert diff_cours["valeur_fichier"] == sorted([cours_eveil.id, cours_class_ini.id])
 
     ligne["champs_a_appliquer"] = ["cours"]
     client.post("/eleves/import/valider", params={"ecole_id": ecole.id}, json={"lignes": [ligne]})
@@ -351,6 +356,44 @@ def test_homonyme_ambigu_deja_en_base_nest_pas_recree(client, db_session):
     ).json()
     assert resultat == {"crees": 0, "mis_a_jour": 0, "inchanges": 0}
     assert len(client.get("/eleves", params={"ecole_id": ecole.id}).json()) == 2
+
+
+def test_deux_lignes_du_fichier_pour_le_meme_eleve_existant_sont_signalees(client, db_session):
+    """2 lignes du fichier visant le MÊME élève déjà en base (bug signalé :
+    "il doit aussi signaler les doublons dans le fichier") — jamais
+    listé 2 fois, mais signalé (`doublon_fichier`), et la différence
+    "cours" doit refléter l'union des 2 lignes, pas juste la 1re
+    rencontrée."""
+    ecole = _creer_ecole_avec_cours(db_session)
+    cours_service = CoursService()
+    from comptes import Comptes
+    from eleves import Eleves
+
+    eleves_service = Eleves(comptes=Comptes())
+    compte, _profil = eleves_service.create(db_session, ecole_id=ecole.id, nom="Petit", prenom="Zoe")
+    cours_eveil = next(c for c in cours_service.list(db_session, ecole.id) if c.nom == "Éveil")
+    cours_service.inscrire_eleve(db_session, cours_eveil.id, compte.id)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Nom", "Prénom", "Class Ini", "Jazz Ini"])
+    ws.append(["Petit", "Zoe", "X", ""])
+    ws.append(["Petit", "Zoe", "", "X"])
+    tampon = io.BytesIO()
+    wb.save(tampon)
+    tampon.seek(0)
+
+    apercu = _previsualiser(client, ecole.id, "doublon_existant.xlsx", tampon).json()
+    assert len(apercu["lignes"]) == 1  # jamais listé 2 fois
+    ligne = apercu["lignes"][0]
+    assert ligne["doublon_fichier"] is True
+    diff_cours = next(d for d in ligne["differences"] if d["champ"] == "cours")
+    cours_class_ini = next(c for c in cours_service.list(db_session, ecole.id) if c.nom == "Class Ini")
+    cours_jazz_ini = next(c for c in cours_service.list(db_session, ecole.id) if c.nom == "Jazz Ini")
+    # Union des 2 lignes (Class Ini de la 1re + Jazz Ini de la 2e), pas
+    # seulement la 1re ligne rencontrée.
+    assert diff_cours["valeur_actuelle"] == [cours_eveil.id]
+    assert diff_cours["valeur_fichier"] == sorted([cours_eveil.id, cours_class_ini.id, cours_jazz_ini.id])
 
 
 def test_premiere_colonne_doit_ressembler_a_nom(client, db_session):
