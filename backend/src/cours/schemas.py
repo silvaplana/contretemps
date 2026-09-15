@@ -41,6 +41,10 @@ class CoursModification(BaseModel):
     # None = pas touché (voir receiver.py:modifier, exclude_unset=True) ;
     # une liste (même vide) remplace entièrement les créneaux en plus.
     horaires_supplementaires: list[HoraireSupplementaire] | None = None
+    # Pas dans CoursCreation (toujours auto-calculé à la création, voir
+    # cours.py) — seulement modifiable a posteriori si besoin de
+    # réordonner un cours existant.
+    ordre: int | None = None
 
 
 class CoursSortie(BaseModel):
@@ -52,6 +56,7 @@ class CoursSortie(BaseModel):
     heure_fin: str | None = None
     salle: str | None = None
     descriptif: str | None = None
+    ordre: int
     horaires_supplementaires: list[HoraireSupplementaireSortie] = []
 
     model_config = {"from_attributes": True}

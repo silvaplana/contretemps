@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from comptes import Compte
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
@@ -11,7 +11,16 @@ from .models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves
 
 class CoursService:
     def list(self, db: Session, ecole_id: int) -> list[Cours]:
-        return list(db.scalars(select(Cours).where(Cours.ecole_id == ecole_id)))
+        # Jamais alphabétique (voir models.py:Cours.ordre) — `Cours.id`
+        # en 2e critère juste pour un ordre stable entre 2 cours de même
+        # `ordre` (ex. anciennes données, avant l'introduction du champ).
+        return list(
+            db.scalars(
+                select(Cours)
+                .where(Cours.ecole_id == ecole_id)
+                .order_by(Cours.ordre, Cours.id)
+            )
+        )
 
     def get(self, db: Session, cours_id: int) -> Cours | None:
         return db.get(Cours, cours_id)
@@ -24,6 +33,12 @@ class CoursService:
         horaires_supplementaires: list[dict] | None = None,
         **champs,
     ) -> Cours:
+        # Toujours auto-calculé (jamais fourni par CoursCreation, voir
+        # schemas.py) : un nouveau cours va à la fin de la liste, pas
+        # avant tous les autres.
+        if champs.get("ordre") is None:
+            max_ordre = db.scalar(select(func.max(Cours.ordre)).where(Cours.ecole_id == ecole_id))
+            champs["ordre"] = (max_ordre or 0) + 1
         cours = Cours(ecole_id=ecole_id, nom=nom, **champs)
         if horaires_supplementaires:
             cours.horaires_supplementaires = [

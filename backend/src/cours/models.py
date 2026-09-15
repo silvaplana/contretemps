@@ -40,6 +40,14 @@ class Cours(Base):
     heure_fin: Mapped[str | None] = mapped_column(String(10), nullable=True)
     salle: Mapped[str | None] = mapped_column(String(50), nullable=True)
     descriptif: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Ordre d'affichage (Admin > Cours, formulaire public) — jamais
+    # alphabétique (ex. "Éveil" doit rester avant "Class Ini" malgré le
+    # tri des lettres) : regroupé par famille (Éveil, puis tous les
+    # Classique/Pointes, puis tous les Jazz, puis tous les Street, puis
+    # tous les Contempo). Auto-calculé à la création (voir cours.py :
+    # max existant + 1, un nouveau cours va à la fin) — jamais fourni
+    # par le formulaire de création, seulement modifiable a posteriori.
+    ordre: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Créneaux EN PLUS du créneau principal ci-dessus (jour/heure_debut/
     # heure_fin) — rare (voir spec/SPEC.md §6.5), ex. "Éveil" proposé le

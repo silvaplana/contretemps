@@ -32,6 +32,29 @@ def test_creer_puis_lister(client, db_session):
     assert len(reponse.json()) == 1
 
 
+def test_lister_respecte_l_ordre_pas_l_alphabetique(client, db_session):
+    """Voir models.py:Cours.ordre — un nouveau cours va à la fin (jamais
+    trié alphabétiquement, "Éveil" doit rester avant "Class Ini")."""
+    ecole, _, _ = _creer_ecole_et_comptes(db_session)
+    client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"})
+    client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Class Ini"})
+    client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Ateliers"})
+
+    noms = [c["nom"] for c in client.get("/cours", params={"ecole_id": ecole.id}).json()]
+    assert noms == ["Éveil", "Class Ini", "Ateliers"]
+
+
+def test_modifier_ordre(client, db_session):
+    ecole, _, _ = _creer_ecole_et_comptes(db_session)
+    c1 = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "A"}).json()
+    c2 = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "B"}).json()
+    assert c1["ordre"] < c2["ordre"]
+
+    client.put(f"/cours/{c1['id']}", json={"ordre": c2["ordre"] + 1})
+    noms = [c["nom"] for c in client.get("/cours", params={"ecole_id": ecole.id}).json()]
+    assert noms == ["B", "A"]
+
+
 def test_modifier_cours(client, db_session):
     ecole, _, _ = _creer_ecole_et_comptes(db_session)
     creee = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Eveil"}).json()

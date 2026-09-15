@@ -107,21 +107,25 @@ FAMILLES_DEMO = [
 # heure_debut/heure_fin au format "HH:MM" (zéro-paddé, comparé
 # lexicalement ailleurs — voir presence.statut_prof) : convention de
 # STOCKAGE, différente de l'affichage "17h00" du frontend.
+# Ordre = celui voulu à l'affichage (voir cours/models.py:Cours.ordre,
+# auto-calculé par ordre de création) : Éveil, puis tout le
+# Classique/Pointes, puis tout le Jazz, puis tout le Street, puis tout
+# le Contempo — jamais alphabétique.
 COURS_CONTRETEMPS = [
     {"nom": "Éveil", "jour": "Mercredi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
     {"nom": "Class Ini", "jour": "Mercredi", "heure_debut": "17:45", "heure_fin": "18:30", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
-    {"nom": "Jazz Ini", "jour": "Lundi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
     {"nom": "Class Moy", "jour": "Mercredi", "heure_debut": "18:30", "heure_fin": "19:30", "salle": "Salle 1", "prof": ("Pesenti", "Marie-Laure")},
-    {"nom": "Jazz Moy", "jour": "Lundi", "heure_debut": "17:45", "heure_fin": "18:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
-    {"nom": "Street Moyen", "jour": "Mardi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 1", "prof": ("Thomas", "Marysa")},
-    {"nom": "Jazz Junior", "jour": "Lundi", "heure_debut": "18:45", "heure_fin": "19:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
-    {"nom": "Street Junior Inter", "jour": "Jeudi", "heure_debut": "18:00", "heure_fin": "19:00", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
     {"nom": "Class Inter", "jour": "Jeudi", "heure_debut": "18:00", "heure_fin": "19:00", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
-    {"nom": "Jazz Inter", "jour": "Mardi", "heure_debut": "18:00", "heure_fin": "19:15", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Class AV", "jour": "Jeudi", "heure_debut": "19:00", "heure_fin": "20:30", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
     {"nom": "Pointes inter", "jour": "Mercredi", "heure_debut": "19:30", "heure_fin": "20:15", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
     {"nom": "Pointes AV", "jour": "Jeudi", "heure_debut": "20:30", "heure_fin": "21:15", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
-    {"nom": "Class AV", "jour": "Jeudi", "heure_debut": "19:00", "heure_fin": "20:30", "salle": "Salle 1", "prof": ("Jullien", "Pascale")},
+    {"nom": "Jazz Ini", "jour": "Lundi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Jazz Moy", "jour": "Lundi", "heure_debut": "17:45", "heure_fin": "18:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Jazz Junior", "jour": "Lundi", "heure_debut": "18:45", "heure_fin": "19:45", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
+    {"nom": "Jazz Inter", "jour": "Mardi", "heure_debut": "18:00", "heure_fin": "19:15", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
     {"nom": "Jazz AV", "jour": "Vendredi", "heure_debut": "18:30", "heure_fin": "20:00", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
+    {"nom": "Street Moyen", "jour": "Mardi", "heure_debut": "17:00", "heure_fin": "17:45", "salle": "Salle 1", "prof": ("Thomas", "Marysa")},
+    {"nom": "Street Junior Inter", "jour": "Jeudi", "heure_debut": "18:00", "heure_fin": "19:00", "salle": "Salle 2", "prof": ("Thomas", "Marysa")},
     {"nom": "Contempo Junior", "jour": "Mercredi", "heure_debut": "20:00", "heure_fin": "20:45", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
     {"nom": "Contempo Inter avance", "jour": "Jeudi", "heure_debut": "20:00", "heure_fin": "21:15", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
     {"nom": "Contempo Adulte", "jour": "Vendredi", "heure_debut": "20:00", "heure_fin": "21:30", "salle": "Salle 2", "prof": ("Revelles", "Stellina")},
