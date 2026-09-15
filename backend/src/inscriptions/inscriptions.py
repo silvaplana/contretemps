@@ -183,14 +183,15 @@ class Inscriptions:
 
     def _finaliser(self, db: Session, inscription: Inscription) -> None:
         """Génère le dossier/la facture PDF, ajoute la ligne Excel et
-        envoie l'email de confirmation — une fois, une fois le moyen de
-        paiement connu ET (pour HelloAsso) le paiement confirmé (voir
-        choisir_paiement/verifier_paiement_helloasso, qui appellent
-        cette méthode)."""
+        envoie les 2 emails (famille + admin) — une fois, une fois le
+        moyen de paiement connu ET (pour HelloAsso) le paiement confirmé
+        (voir choisir_paiement/verifier_paiement_helloasso, qui
+        appellent cette méthode)."""
         noms_cours = self.cours_choisis(db, inscription.id)
         self._generer_pdf(db, inscription, noms_cours)
         self._exporter_excel(db, inscription, noms_cours)
         self._envoyer_email(db, inscription, noms_cours)
+        self._notifier_admin(db, inscription)
 
     def _generer_pdf(self, db: Session, inscription: Inscription, noms_cours: list[str]) -> None:
         try:
@@ -272,6 +273,40 @@ class Inscriptions:
             inscription.email_erreur = str(erreur)
         finally:
             db.commit()
+
+    def _notifier_admin(self, db: Session, inscription: Inscription) -> None:
+        """2e email, à l'administrateur cette fois (voir
+        spec/SPEC-inscription.md) — délibérément indépendant de
+        _envoyer_email (sa propre inscription DB, son propre
+        try/except) : un échec de l'un ne doit jamais empêcher l'autre,
+        ni l'inverse. Contient le fichier Excel "nouvelles inscriptions"
+        (même fichier que GET /inscriptions/export, voir
+        excel_export.py) à jour de la ligne qui vient d'être ajoutée par
+        _exporter_excel — l'admin n'a pas besoin de se reconnecter à
+        l'appli pour le récupérer."""
+        try:
+            chemin_excel = dossier_ecole(inscription.ecole_id) / excel_export.nom_fichier(
+                inscription.ecole_id, inscription.saison
+            )
+            pieces_jointes = (
+                [(chemin_excel.name, chemin_excel.read_bytes())] if chemin_excel.exists() else []
+            )
+            nom_complet = f"{inscription.eleve_prenom} {inscription.eleve_nom}"
+            self.email.envoyer_confirmation(
+                self.email.adresse_admin,
+                f"Inscription de {nom_complet} en base des inscrits",
+                (
+                    f"{nom_complet} a été ajouté(e) aux nouveaux inscrits. Vous pouvez copier sa "
+                    "ligne du fichier Excel en pièce jointe dans votre Excel officiel.\n\n"
+                    "Vous pourrez ensuite réintégrer votre Excel officiel dans l'application "
+                    "Contretemps."
+                ),
+                pieces_jointes,
+            )
+        except Exception:
+            logger.exception(
+                "Notification admin échouée pour l'inscription %s", inscription.token_public
+            )
 
     def get_par_token(self, db: Session, token: str) -> Inscription | None:
         return db.scalar(select(Inscription).where(Inscription.token_public == token))

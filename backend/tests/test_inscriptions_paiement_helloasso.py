@@ -257,15 +257,16 @@ def test_verifier_paiement_helloasso_marque_paye(
     reponse = client.post(f"/inscriptions/{token}/paiement/helloasso/verifier")
     assert reponse.status_code == 200
     assert reponse.json()["statut_paiement"] == "paye"
-    # Payé -> finalisé (PDF généré, email tenté).
+    # Payé -> finalisé (PDF généré, 2 emails tentés : famille + admin,
+    # voir inscriptions.py:_finaliser).
     assert client.get(f"/inscriptions/{token}/dossier.pdf").status_code == 200
-    assert len(appels_email) == 1
+    assert len(appels_email) == 2
 
     # Une 2e vérification (ex. webhook après le retour navigateur, voir
     # spec/SPEC-inscription.md) ne doit PAS finaliser une 2e fois.
     reponse2 = client.post(f"/inscriptions/{token}/paiement/helloasso/verifier")
     assert reponse2.status_code == 200
-    assert len(appels_email) == 1
+    assert len(appels_email) == 2
 
 
 def test_choisir_paiement_cheque_finalise_immediatement(

@@ -28,6 +28,8 @@ Question: faut il faire la verification apres chaque champ, ou une fois l'inscri
 
 * Envoi d'un mail par l'adresse mail sebastien.richard54@gmail.com (sera plus tard remplacé par un mail d'un administrateur contretemps) à l'utilisateur, contenant en pièce jointe son dossier d'inscription rempli, et une facture de ce qu'il a payé
 
+* Envoi d'un 2e mail, séparé, à l'administrateur cette fois (voir Remarque ci-dessous) : "Inscription de <Prénom Nom> en base des inscrits", avec le fichier Excel "nouvelles inscriptions" en pièce jointe.
+
 
 * inscription de l'utilisateur dans la feuille excel '//wsl.localhost/Ubuntu-26.04/home/srichard/DEV/contretemps/data/Adhérents 2025 2026 MAJ 20 mars Test.xlsx'
 
@@ -50,6 +52,27 @@ classique — voir la colonne `montant_mensuel_septembre` côté backend). Le mo
 affiché ici est celui du barème tel quel, sans logique métier supplémentaire propre à septembre
 (proratisation, échéance différente, etc.) : si un jour l'école a besoin d'un traitement
 spécifique pour septembre, ce sera une évolution séparée, pas couverte par cette spec.
+
+## Remarque — deux emails distincts après chaque inscription
+
+Une inscription finalisée (voir `inscriptions.py:_finaliser`, déclenché après choix du chèque, ou
+paiement carte confirmé) envoie 2 emails **séparés**, chacun dans son propre `try`/`except` :
+un échec de l'un ne doit jamais empêcher l'autre, ni l'inverse.
+
+1. **À la famille** (voir `_envoyer_email`) : confirmation, dossier + facture en pièces jointes —
+   décrit ci-dessus.
+2. **À l'administrateur** (voir `_notifier_admin`), décision utilisateur explicite :
+   - Objet : `Inscription de <Prénom Nom> en base des inscrits`.
+   - Corps : `<Prénom Nom> a été ajouté(e) aux nouveaux inscrits. Vous pouvez copier sa ligne du
+     fichier Excel en pièce jointe dans votre Excel officiel. Vous pourrez ensuite réintégrer
+     votre Excel officiel dans l'application Contretemps.`
+   - Pièce jointe : le même fichier Excel "nouvelles inscriptions" que
+     `GET /inscriptions/export` (Admin > École > "Télécharger les nouvelles inscriptions"),
+     à jour de la ligne qui vient d'être ajoutée — l'admin n'a pas besoin de se reconnecter à
+     l'appli pour le récupérer.
+   - Destinataire : variable d'env `ADMIN_EMAIL` — si absente, part vers `SMTP_USER` (l'expéditeur)
+     par défaut, pour fonctionner sans configuration supplémentaire tant que l'admin et
+     l'expéditeur sont la même personne (voir `.env.example`).
 
 ## 3. Ordre des développements:
 
