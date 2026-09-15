@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import * as messagesApi from '../../api/messages.js'
 import { compterNonLus } from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 
 // Écran 1/2 de la Messagerie (voir spec/SPEC.md 5.5) : liste des
-// conversations. Cliquer une conversation ouvre ConversationThreadScreen
+// conversations. Cliquer le TEXTE d'une ligne ouvre ConversationThreadScreen
 // (voir MessagerieScreen.jsx) — comme la liste de discussions de WhatsApp.
+// Cliquer l'AVATAR ouvre plutôt la "carte" du profil (voir
+// ProfilContactScreen.jsx, `onAvatarClick`) — 2 zones de clic distinctes
+// sur la même ligne, décision utilisateur explicite.
 //
 // Mode recherche façon WhatsApp (dès qu'on tape quelque chose dans la
 // barre du haut) : 2 sections avec en-tête ("Discussions" puis
@@ -17,46 +19,39 @@ import Icon from '../../components/Icon.jsx'
 // de l'école (admin/prof/élève, décision utilisateur : recherche globale
 // pour tout le monde, pas seulement l'Admin) qui correspond et avec qui
 // on n'a PAS déjà une conversation individuelle (sinon il apparaîtrait
-// 2 fois : une fois en 1, une fois en 3). Cliquer un résultat de la
-// catégorie 3 crée (ou récupère, si elle existe déjà malgré tout) le DM
-// via l'API avant de l'ouvrir (voir messagesApi.creerOuObtenirDm).
+// 2 fois : une fois en 1, une fois en 3). Cliquer le texte d'un résultat
+// de la catégorie 3 crée (ou récupère, si elle existe déjà malgré tout)
+// le DM (voir MessagerieScreen.jsx : onOpenContact) ; cliquer son avatar
+// ouvre sa carte de profil comme pour les autres, SANS créer le DM tout
+// de suite (voir ProfilContactScreen.jsx : le bouton "Message" s'en
+// charge, seulement si on le demande vraiment).
 export default function ConversationListScreen({
   conversations,
-  setConversations,
-  onSelect,
+  onOpenConversation,
+  onOpenContact,
+  onAvatarClick,
   compteId,
-  ecoleId,
   admins,
   professeurs,
   eleves,
+  contactActionEnCours,
 }) {
   const [recherche, setRecherche] = useState('')
-  // Garde-fou contre un double-clic sur "Nouvelle discussion" pendant que
-  // l'appel réseau est en cours (même principe qu'ailleurs dans l'appli,
-  // voir AdminCours.jsx/AdminEleves.jsx).
-  const [creationEnCours, setCreationEnCours] = useState(false)
 
   const requete = recherche.trim().toLowerCase()
   const enModeRecherche = requete !== ''
-
-  async function ouvrirNouvelleDiscussion(compte) {
-    if (creationEnCours) return
-    setCreationEnCours(true)
-    try {
-      const conv = await messagesApi.creerOuObtenirDm(ecoleId, compteId, compte.id)
-      setConversations((liste) => (liste.some((c) => c.id === conv.id) ? liste : [...liste, conv]))
-      onSelect(conv.id)
-    } finally {
-      setCreationEnCours(false)
-    }
-  }
 
   if (!enModeRecherche) {
     return (
       <div className="conversation-list-screen">
         <BarreRecherche valeur={recherche} onChange={setRecherche} />
         {conversations.map((c) => (
-          <LigneConversation key={c.id} conversation={c} onClick={() => onSelect(c.id)} />
+          <LigneConversation
+            key={c.id}
+            conversation={c}
+            onOpen={() => onOpenConversation(c.id)}
+            onAvatarClick={() => onAvatarClick({ type: 'conversation', conversation: c })}
+          />
         ))}
         {conversations.length === 0 && <p className="muted">Aucune conversation.</p>}
       </div>
@@ -77,7 +72,16 @@ export default function ConversationListScreen({
       .filter((c) => c.type === 'individuelle')
       .flatMap((c) => c.membres.map((m) => m.id)),
   )
-  const nouveauxContacts = [...admins, ...professeurs, ...eleves].filter(
+  // `role` forcé explicitement : contrairement aux admins (déjà porté par
+  // le backend, voir comptesApi.listerAdmins), ni professeurs.js ni
+  // eleves.js n'exposent ce champ (pas besoin jusqu'ici) — la carte de
+  // profil (voir ProfilContactScreen.jsx) en a besoin pour son sous-titre.
+  const tousLesComptes = [
+    ...admins.map((c) => ({ ...c, role: c.role ?? 'admin' })),
+    ...professeurs.map((c) => ({ ...c, role: 'professeur' })),
+    ...eleves.map((c) => ({ ...c, role: 'eleve' })),
+  ]
+  const nouveauxContacts = tousLesComptes.filter(
     (c) =>
       c.id !== compteId &&
       !idsDejaEnDm.has(c.id) &&
@@ -95,13 +99,19 @@ export default function ConversationListScreen({
       <BarreRecherche valeur={recherche} onChange={setRecherche} />
       {/* En-têtes "Discussions"/"Contacts" façon WhatsApp — précisent si
           le résultat est une conversation déjà existante ou une personne
-          pas encore contactée (voir LigneNouveauContact : cliquer en crée
-          une). Un en-tête seulement si sa catégorie a des résultats. */}
+          pas encore contactée (voir LigneNouveauContact : cliquer son
+          texte en crée une). Un en-tête seulement si sa catégorie a des
+          résultats. */}
       {discussions.length > 0 && (
         <>
           <p className="conversation-list__section">Discussions</p>
           {discussions.map((c) => (
-            <LigneConversation key={c.id} conversation={c} onClick={() => onSelect(c.id)} />
+            <LigneConversation
+              key={c.id}
+              conversation={c}
+              onOpen={() => onOpenConversation(c.id)}
+              onAvatarClick={() => onAvatarClick({ type: 'conversation', conversation: c })}
+            />
           ))}
         </>
       )}
@@ -112,8 +122,9 @@ export default function ConversationListScreen({
             <LigneNouveauContact
               key={compte.id}
               compte={compte}
-              disabled={creationEnCours}
-              onClick={() => ouvrirNouvelleDiscussion(compte)}
+              disabled={contactActionEnCours}
+              onOpen={() => onOpenContact(compte)}
+              onAvatarClick={() => onAvatarClick({ type: 'contact', compte })}
             />
           ))}
         </>
@@ -151,39 +162,57 @@ function BarreRecherche({ valeur, onChange }) {
   )
 }
 
-function LigneConversation({ conversation: c, onClick }) {
+// Avatar et "reste de la ligne" sont 2 boutons indépendants côte à côte
+// (pas un seul gros bouton comme avant) : l'avatar ouvre la carte de
+// profil, le reste ouvre/crée la discussion — voir le commentaire en tête
+// de fichier.
+function LigneConversation({ conversation: c, onOpen, onAvatarClick }) {
   const last = c.messages[c.messages.length - 1]
   const nonLus = compterNonLus(c)
   return (
-    <button type="button" className="conversation-list__item" onClick={onClick}>
-      <span className={`avatar avatar--sm ${c.type === 'groupe' ? 'avatar--groupe' : ''}`}>
+    <div className="conversation-list__item">
+      <button
+        type="button"
+        className={`avatar avatar--sm conversation-list__avatar-btn ${c.type === 'groupe' ? 'avatar--groupe' : ''}`}
+        onClick={onAvatarClick}
+        aria-label={`Profil de ${c.nom}`}
+      >
         {c.type === 'groupe' ? <Icon name="users" size={16} /> : c.nom.slice(0, 2).toUpperCase()}
-      </span>
-      <span className="conversation-list__text">
-        <strong>{c.nom}</strong>
-        <span className="muted">{last?.contenu}</span>
-      </span>
-      {last?.envoyeParMail && <Icon name="mail" size={16} className="muted" />}
-      {nonLus > 0 && <span className="conversation-list__badge">{nonLus}</span>}
-    </button>
+      </button>
+      <button type="button" className="conversation-list__content" onClick={onOpen}>
+        <span className="conversation-list__text">
+          <strong>{c.nom}</strong>
+          <span className="muted">{last?.contenu}</span>
+        </span>
+        {last?.envoyeParMail && <Icon name="mail" size={16} className="muted" />}
+        {nonLus > 0 && <span className="conversation-list__badge">{nonLus}</span>}
+      </button>
+    </div>
   )
 }
 
 // Résultat "Nouvelle discussion" (catégorie 3, voir plus haut) : pas
 // encore de dernier message à montrer (la conversation n'existe peut-être
 // même pas encore côté backend) — ce sous-titre fixe en tient lieu.
-function LigneNouveauContact({ compte, onClick, disabled }) {
+function LigneNouveauContact({ compte, onOpen, onAvatarClick, disabled }) {
   return (
-    <button type="button" className="conversation-list__item" onClick={onClick} disabled={disabled}>
-      <span className="avatar avatar--sm">
+    <div className="conversation-list__item">
+      <button
+        type="button"
+        className="avatar avatar--sm conversation-list__avatar-btn"
+        onClick={onAvatarClick}
+        aria-label={`Profil de ${compte.prenom} ${compte.nom}`}
+      >
         {`${compte.prenom[0] ?? ''}${compte.nom[0] ?? ''}`.toUpperCase()}
-      </span>
-      <span className="conversation-list__text">
-        <strong>
-          {compte.prenom} {compte.nom}
-        </strong>
-        <span className="muted">Nouvelle discussion</span>
-      </span>
-    </button>
+      </button>
+      <button type="button" className="conversation-list__content" onClick={onOpen} disabled={disabled}>
+        <span className="conversation-list__text">
+          <strong>
+            {compte.prenom} {compte.nom}
+          </strong>
+          <span className="muted">Nouvelle discussion</span>
+        </span>
+      </button>
+    </div>
   )
 }

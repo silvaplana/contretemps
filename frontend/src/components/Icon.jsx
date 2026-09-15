@@ -39,6 +39,11 @@ const paths = {
   eye: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z',
   eyeOff:
     'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Z M4 4l16 16',
+  // "i" d'information dans un cercle (voir ProfilContactScreen.jsx) — le
+  // point du "i" est un trait de longueur nulle (même trick que le
+  // point-virgule des touches de "calculator" ci-dessus) : le bout de
+  // trait rond en fait un point plein malgré `fill="none"`.
+  info: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 11v5 M12 7.5h.01',
 }
 
 // Icônes faites de points pleins plutôt que d'un tracé (menu "3 points").

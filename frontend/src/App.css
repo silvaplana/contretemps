@@ -1485,13 +1485,30 @@
   gap: 2px;
 }
 
+/* Simple conteneur maintenant (pas un bouton) : il porte 2 boutons
+   indépendants côte à côte — l'avatar (ouvre la carte de profil) et le
+   reste de la ligne (ouvre/crée la discussion), voir
+   ConversationListScreen.jsx. */
 .conversation-list__item {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   width: 100%;
+}
+
+.conversation-list__avatar-btn {
+  padding: 0;
+  cursor: pointer;
+}
+
+.conversation-list__content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
   text-align: left;
-  padding: 10px 8px;
+  padding: 10px 8px 10px 0;
   border: none;
   background: none;
   border-radius: 12px;
@@ -1540,7 +1557,7 @@
   margin-bottom: 6px;
 }
 
-.conversation-list__item:disabled {
+.conversation-list__content:disabled {
   opacity: 0.6;
 }
 
@@ -1552,6 +1569,69 @@
   font-size: 13px;
   font-weight: 700;
   color: var(--text-muted);
+}
+
+/* Carte de profil (ProfilContactScreen.jsx, voir ConversationListScreen.jsx :
+   clic sur un avatar) — réutilise .thread-screen/.thread-screen__header
+   pour l'ossature (même flèche de retour que le fil de conversation), ce
+   qui suit est spécifique à son contenu centré + les 2 actions rondes
+   façon WhatsApp (capture fournie par l'utilisateur). */
+.profil-contact-screen__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 32px 16px;
+}
+
+.profil-contact-screen__body h2 {
+  margin: 14px 0 2px;
+}
+
+.profil-contact-screen__actions {
+  display: flex;
+  gap: 40px;
+  margin-top: 28px;
+}
+
+.profil-contact-screen__action {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.profil-contact-screen__action:disabled {
+  opacity: 0.6;
+}
+
+/* Liste des membres (groupe uniquement, voir resoudreAffichage) — même
+   largeur max que le reste de la fiche, mais alignée à gauche (une liste
+   centrée serait illisible). */
+.profil-contact-screen__membres {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.profil-contact-screen__membre {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 4px;
+}
+
+.profil-contact-screen__membre-nom {
+  flex: 1;
+  min-width: 0;
 }
 
 /* Écran 2/2 : le fil d'une conversation (ConversationThreadScreen.jsx),
