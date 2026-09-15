@@ -830,6 +830,19 @@
   min-width: 140px;
 }
 
+/* Poignée de réordonnancement (Admin > Cours, voir AdminCours.jsx) — le
+   curseur "grab" suffit comme indice, pas de bouton ni de bordure pour
+   rester discret dans une colonne étroite. */
+.drag-handle {
+  display: inline-flex;
+  color: var(--text-muted);
+  cursor: grab;
+}
+
+.data-table__row--dragged {
+  opacity: 0.4;
+}
+
 /* Surbrillance rouge par appui long (voir AdminEleves.jsx) — le TEXTE
    passe en rouge (pas un fond), y compris dans les éléments qui ont leur
    propre couleur (badges, pilules de paiement, champs éditables...). */

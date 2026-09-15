@@ -30,6 +30,7 @@ async function avecProfesseurId(cours) {
     heureDebut: cours.heure_debut ?? '',
     heureFin: cours.heure_fin ?? '',
     salle: cours.salle ?? '',
+    ordre: cours.ordre,
     professeurId: professeurs[0]?.id ?? '',
     // Créneaux EN PLUS du créneau principal ci-dessus — rare (voir
     // backend/src/cours/models.py:Cours.horaires_supplementaires), ex.

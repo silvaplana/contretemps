@@ -42,11 +42,16 @@ const paths = {
 }
 
 // Icônes faites de points pleins plutôt que d'un tracé (menu "3 points").
+// Chaque icône est une liste de coordonnées x,y (une paire par point) — pas
+// forcément 3 points, voir "grip" ci-dessous (6 points, 2 colonnes).
 const dotIcons = {
   moreVertical: [12, 5, 12, 12, 12, 19],
   // "Autres moyens d'envoi" (mail/WhatsApp, voir ConversationThreadScreen.jsx)
   // — même idée que moreVertical, juste à l'horizontale.
   moreHorizontal: [5, 12, 12, 12, 19, 12],
+  // Poignée de glisser-déposer (réordonner une liste, voir AdminCours.jsx)
+  // — 2 colonnes de 3 points, le classique "⠿".
+  grip: [9, 6, 9, 12, 9, 18, 15, 6, 15, 12, 15, 18],
 }
 
 export default function Icon({ name, size = 20, className = '' }) {
@@ -61,9 +66,11 @@ export default function Icon({ name, size = 20, className = '' }) {
         className={`icon ${className}`}
         aria-hidden="true"
       >
-        {[0, 2, 4].map((i) => (
-          <circle key={i} cx={dots[i]} cy={dots[i + 1]} r="1.8" />
-        ))}
+        {dots
+          .filter((_, i) => i % 2 === 0)
+          .map((cx, i) => (
+            <circle key={i} cx={cx} cy={dots[i * 2 + 1]} r="1.8" />
+          ))}
       </svg>
     )
   }

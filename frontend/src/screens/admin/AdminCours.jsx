@@ -8,6 +8,11 @@ import PlanningHebdoView from './PlanningHebdoView.jsx'
 
 const MAX_BADGES = 2
 
+// Choix fermé plutôt qu'un texte libre : évite les variantes ("mer.",
+// "Mercredi ", fautes de frappe...) qui compliqueraient un jour un
+// regroupement/tri par jour.
+const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
+
 // Onglet Admin > Cours (voir spec/SPEC.md §5.1.4 et images/admin-cours.png).
 // "Élèves inscrits" est dérivé de eleves[].coursIds (relation portée côté
 // élève, voir schéma section 6) : lecture seule ici, ça se modifie depuis
@@ -23,6 +28,9 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
   const [editId, setEditId] = useState(null)
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [vue, setVue] = useState('liste')
+  // Id du cours en cours de glisser-déposer (réordonnancement, voir
+  // onDrop) — null hors glissement.
+  const [dragId, setDragId] = useState(null)
   const menuRef = useRef(null)
   useFermerAuClicExterieur(menuRef, menuOuvert, () => setMenuOuvert(false))
 
@@ -62,6 +70,37 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
 
   function elevesDuCours(coursId) {
     return eleves.filter((el) => el.coursIds.includes(coursId))
+  }
+
+  // Réordonnancement par glisser-déposer (poignée dans la 1re colonne) —
+  // désactivé pendant une recherche (voir `search`) : l'ordre visible
+  // serait celui du sous-ensemble filtré, pas l'ordre réel complet.
+  function onDropCours(cibleId) {
+    if (dragId == null || dragId === cibleId) {
+      setDragId(null)
+      return
+    }
+    const from = cours.findIndex((c) => c.id === dragId)
+    const to = cours.findIndex((c) => c.id === cibleId)
+    setDragId(null)
+    if (from === -1 || to === -1) return
+    const reordonne = [...cours]
+    const [deplace] = reordonne.splice(from, 1)
+    reordonne.splice(to, 0, deplace)
+    // Ancien `ordre` par id, pour ne persister que les cours dont la
+    // position a réellement changé (pas tous à chaque glissement).
+    const anciensOrdres = new Map(cours.map((c) => [c.id, c.ordre]))
+    const avecNouvelOrdre = reordonne.map((c, i) => ({ ...c, ordre: i }))
+    setCours(avecNouvelOrdre)
+    avecNouvelOrdre
+      .filter((c) => anciensOrdres.get(c.id) !== c.ordre)
+      .forEach((c) => {
+        coursApi.modifier(c.id, { ordre: c.ordre }).catch(() => {
+          // Échec silencieux : au pire l'ordre visible et l'ordre en base
+          // divergent jusqu'au prochain rechargement, pas bloquant pour
+          // une simple réorganisation d'affichage.
+        })
+      })
   }
 
   return (
@@ -104,6 +143,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
         <table className="data-table">
           <thead>
             <tr>
+              <th aria-label="Réordonner" />
               <th>Cours</th>
               <th>Horaire</th>
               <th>Prof</th>
@@ -116,7 +156,22 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
               const inscrits = elevesDuCours(c.id)
               const prof = professeurs.find((p) => p.id === c.professeurId)
               return (
-                <tr key={c.id}>
+                <tr
+                  key={c.id}
+                  draggable={!search}
+                  onDragStart={() => setDragId(c.id)}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={() => onDropCours(c.id)}
+                  onDragEnd={() => setDragId(null)}
+                  className={dragId === c.id ? 'data-table__row--dragged' : undefined}
+                >
+                  <td>
+                    {!search && (
+                      <span className="drag-handle" title={`Glisser pour réordonner ${c.nom}`}>
+                        <Icon name="grip" size={16} />
+                      </span>
+                    )}
+                  </td>
                   <td className="data-table__name">{c.nom}</td>
                   <td>
                     {c.jour} {c.heureDebut}-{c.heureFin}
@@ -263,7 +318,13 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
           <Icon name="plus" size={14} />
         </button>
       </label>
-      <input id="cours-jour" value={jour} onChange={(e) => setJour(e.target.value)} />
+      <select id="cours-jour" value={jour} onChange={(e) => setJour(e.target.value)}>
+        {JOURS.map((j) => (
+          <option key={j} value={j}>
+            {j}
+          </option>
+        ))}
+      </select>
       <label htmlFor="cours-debut">Heure de début</label>
       <input
         id="cours-debut"
@@ -285,11 +346,17 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
         <div key={index} className="grille-2" style={{ alignItems: 'end', marginBottom: 8 }}>
           <div>
             <label htmlFor={`cours-jour-sup-${index}`}>Autre jour</label>
-            <input
+            <select
               id={`cours-jour-sup-${index}`}
               value={horaire.jour}
               onChange={(e) => modifierHoraire(index, 'jour', e.target.value)}
-            />
+            >
+              {JOURS.map((j) => (
+                <option key={j} value={j}>
+                  {j}
+                </option>
+              ))}
+            </select>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'end' }}>
             <div>
