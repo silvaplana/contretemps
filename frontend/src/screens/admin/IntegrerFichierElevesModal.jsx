@@ -130,7 +130,12 @@ export default function IntegrerFichierElevesModal({ ecoleId, cours, setEleves, 
   }
 
   const nouveaux = lignes.filter((l) => l.eleve_existant_id == null)
-  const existantsAvecDiff = lignes.filter((l) => l.eleve_existant_id != null && l.differences.length > 0)
+  // doublon_fichier : signalé même sans différence de champ (ex. la fiche
+  // est déjà à jour) — sinon la 2e ligne dupliquée du fichier disparaît
+  // silencieusement dans les "déjà à jour", sans aucun avertissement.
+  const existantsAvecDiff = lignes.filter(
+    (l) => l.eleve_existant_id != null && (l.differences.length > 0 || l.doublon_fichier),
+  )
   const inchangesCount = lignes.length - nouveaux.length - existantsAvecDiff.length
 
   return (

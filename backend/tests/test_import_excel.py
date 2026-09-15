@@ -316,7 +316,13 @@ def test_reimport_apres_resolution_dun_doublon_ne_recree_rien(client, db_session
     assert len(client.get("/eleves", params={"ecole_id": ecole.id}).json()) == 1
 
     second = _previsualiser(client, ecole.id, "doublon.xlsx", fichier()).json()
-    assert all(l["eleve_existant_id"] is not None for l in second["lignes"])  # plus "nouveau"
+    assert len(second["lignes"]) == 1  # les 2 lignes visent le même élève, jamais listées 2 fois
+    assert second["lignes"][0]["eleve_existant_id"] is not None  # plus "nouveau"
+    # Bug signalé : même sans AUCUNE différence de champ à ce point (rien
+    # à corriger, fiche déjà à jour), le doublon doit rester signalé —
+    # sinon il redevient invisible ("il n'indique toujours pas qu'il y a
+    # 2 Richarde").
+    assert second["lignes"][0]["doublon_fichier"] is True
     resultat = client.post(
         "/eleves/import/valider", params={"ecole_id": ecole.id}, json={"lignes": second["lignes"]}
     ).json()
