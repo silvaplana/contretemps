@@ -772,6 +772,21 @@
   flex: 1;
 }
 
+/* Variante sans barre de recherche (voir AdminParametres.jsx) : juste le
+   menu ⋮, poussé à droite plutôt qu'aligné à gauche par défaut. */
+.admin-panel__toolbar--fin {
+  justify-content: flex-end;
+}
+
+/* Entrée destructive d'un menu ⋮ (voir SauvegardeEcoleMenu.jsx :
+   "Supprimer Données École") — même rouge que .btn--danger, pour la
+   distinguer visuellement des autres entrées avant même de cliquer.
+   Sélecteur plus spécifique que ".dropdown-menu button" (qui fixe déjà
+   une couleur) plutôt qu'un !important. */
+.dropdown-menu button.header-menu__danger {
+  color: var(--danger-text);
+}
+
 .search-bar {
   display: flex;
   align-items: center;

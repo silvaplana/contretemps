@@ -4,7 +4,7 @@ la logique (création avec ses codes par défaut, etc.) vit dans ecoles.py.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -32,3 +32,22 @@ class Ecole(Base):
     code_acces_prof: Mapped[str] = mapped_column(String(50), nullable=False)
     code_acces_eleve: Mapped[str] = mapped_column(String(50), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    # Sauvegarde programmée (Admin > École > menu > "Programmer sauvegarde
+    # École") — EN BASE, pas en localStorage : décision utilisateur
+    # explicite, tous les admins sur tous les appareils doivent voir/
+    # modifier le même réglage unique (voir sauvegarde_worker.py, qui lit
+    # ces colonnes pour savoir quand déclencher une sauvegarde côté
+    # serveur).
+    sauvegarde_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # 'jour' | 'semaine' | 'mois'.
+    sauvegarde_periodicite: Mapped[str] = mapped_column(String(20), nullable=False, default="semaine")
+    # 0=lundi .. 6=dimanche — utilisé seulement si periodicite='semaine'
+    # (voir sauvegarde_worker.py : ignoré sinon, 'mois' se cale sur le 1er
+    # du mois par simplicité, voir sa docstring).
+    sauvegarde_jour_semaine: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    sauvegarde_heure: Mapped[str | None] = mapped_column(String(5), nullable=True)  # "HH:MM"
+    # Dernière exécution RÉUSSIE (voir sauvegarde_worker.py) — évite de
+    # se redéclencher plusieurs fois dans le même créneau si le worker
+    # est relancé (redéploiement...).
+    sauvegarde_derniere_execution: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

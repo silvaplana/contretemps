@@ -19,7 +19,7 @@ from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver
 from cours import CoursReceiver, CoursService
 from db import Base, engine
-from ecoles import Ecoles, EcolesReceiver
+from ecoles import EcoleExport, Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
 from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
 from messagerie import Conversations, Evenements, MessagerieReceiver, Messages
@@ -65,9 +65,11 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-# Monte les routes des ecoles (/ecoles) sur la meme app.
+# Service ecoles (pas encore ses routes, voir plus bas) - instancie tot
+# car auth_client en a besoin juste apres. EcolesReceiver, lui, attend
+# d'avoir comptes/eleves/cours/presence pour la route d'export (voir
+# ecoles/excel_export.py) - construit plus bas, une fois ces 4 pretes.
 ecoles_client = Ecoles()
-ecoles_receiver = EcolesReceiver(client=ecoles_client, app=app)
 
 # Monte les routes des comptes (/comptes) - socle reutilise par auth
 # ci-dessous, et plus tard par eleves/profs.
@@ -98,6 +100,17 @@ profs_receiver = ProfsReceiver(client=profs_client, app=app)
 # Monte les routes de presence (/seances, /cours/{id}/seances, /profs/{id}/heures) - depend de cours.
 presence_client = Presence(cours=cours_client)
 presence_receiver = PresenceReceiver(client=presence_client, app=app)
+
+# Monte les routes des ecoles (/ecoles, /ecoles/{id}/export) - "export"
+# (Admin > Ecole, "Telecharger donnees Ecole") depend de comptes/eleves/
+# cours/presence, d'ou la construction ici plutot qu'avec ecoles_client
+# plus haut (voir son commentaire).
+ecole_export_client = EcoleExport(
+    comptes=comptes_client, eleves=eleves_client, cours=cours_client, presence=presence_client
+)
+ecoles_receiver = EcolesReceiver(
+    client=ecoles_client, export=ecole_export_client, comptes=comptes_client, app=app
+)
 
 # Monte les routes des choregraphies (/cours/{id}/choregraphies, /choregraphies/...) - depend de cours.
 choregraphies_client = Choregraphies(cours=cours_client)

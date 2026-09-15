@@ -61,6 +61,20 @@ services:
     # tampon par défaut dès qu'il n'est pas un vrai terminal, comme ici).
     command: ["python", "-u", "-m", "app.relance_worker"]
 
+  # Sauvegarde programmée d'une école (voir "Programmer sauvegarde École",
+  # Admin > École, et backend/src/app/sauvegarde_worker.py) — même patron
+  # que "messagerie-relance" ci-dessus (processus à part, même image/
+  # volume, juste une commande différente).
+  ecole-sauvegarde:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+    volumes:
+      - backend_data:/app/data
+    command: ["python", "-u", "-m", "app.sauvegarde_worker"]
+
   frontend:
     build:
       context: ./frontend

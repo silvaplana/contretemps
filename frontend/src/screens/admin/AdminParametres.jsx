@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
-import * as inscriptionsApi from '../../api/inscriptions.js'
+import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import UsageVideoModal from './UsageVideoModal.jsx'
 
 // Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école,
@@ -22,24 +22,25 @@ import UsageVideoModal from './UsageVideoModal.jsx'
 // arrière au milieu de la frappe. La persistance reste garantie : chaque
 // requête envoie la valeur complète du champ à cet instant, la dernière
 // envoyée finit par gagner côté serveur.
+//
+// Menu ⋮ en haut à droite (voir SauvegardeEcoleMenu.jsx) : sauvegarder/
+// programmer/importer/supprimer les données de l'école, et le
+// téléchargement des nouvelles inscriptions (déplacé ici, y vivait avant
+// comme simple bouton).
 export default function AdminParametres({ ecole, setEcole, setVideos }) {
   const [showUsageVideo, setShowUsageVideo] = useState(false)
-  const [erreurInscriptions, setErreurInscriptions] = useState(null)
 
   function update(patch) {
     setEcole((e) => ({ ...e, ...patch }))
     ecolesApi.modifier(ecole.id, patch).catch((err) => console.error(err))
   }
 
-  function telechargerInscriptions() {
-    setErreurInscriptions(null)
-    inscriptionsApi
-      .telechargerNouvellesInscriptions(ecole.id)
-      .catch((err) => setErreurInscriptions(err.message))
-  }
-
   return (
     <div className="admin-panel">
+      <div className="admin-panel__toolbar admin-panel__toolbar--fin">
+        <SauvegardeEcoleMenu ecole={ecole} />
+      </div>
+
       <div className="form-fields">
         <label htmlFor="ecole-param-nom">Nom de l’école</label>
         <input
@@ -85,17 +86,6 @@ export default function AdminParametres({ ecole, setEcole, setVideos }) {
       <button type="button" className="btn btn--secondary" onClick={() => setShowUsageVideo(true)}>
         Usage vidéo
       </button>
-
-      {/* Fichier Excel "nouvelles inscriptions" (voir
-          spec/SPEC-inscription.md) — les soumissions du formulaire public
-          contretemps-inscription s'accumulent dans un fichier SÉPARÉ du
-          fichier maître réel des adhérents ; l'admin fusionne lui-même à
-          la main quand il veut, jamais d'écriture automatique dans le
-          fichier maître. */}
-      <button type="button" className="btn btn--secondary" onClick={telechargerInscriptions}>
-        Télécharger les nouvelles inscriptions
-      </button>
-      {erreurInscriptions && <p className="admin-panel__erreur">{erreurInscriptions}</p>}
 
       {showUsageVideo && (
         <UsageVideoModal

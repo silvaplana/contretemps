@@ -2,8 +2,12 @@
 // api/README.md pour le principe général.
 //
 // L'appli reste mono-école côté écran (voir auth.js : resoudreEcoleReelle),
-// donc pas de lister()/creer() ici — juste modifier(), le seul besoin de
-// AdminParametres.jsx.
+// donc pas de lister()/creer() ici — juste modifier() et tout ce qui
+// touche à "Sauvegarder École" (voir SauvegardeEcoleMenu.jsx) : les 2
+// exports (humain + technique), la sauvegarde programmée, son historique
+// serveur, la suppression et la restauration des données.
+
+import { telechargerFichier } from '../utils/telechargement.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -15,7 +19,21 @@ function versEcran(e) {
     codeAccesAdmin: e.code_acces_admin,
     codeAccesProf: e.code_acces_prof,
     codeAccesEleve: e.code_acces_eleve,
+    sauvegardeActive: e.sauvegarde_active,
+    sauvegardePeriodicite: e.sauvegarde_periodicite,
+    sauvegardeJourSemaine: e.sauvegarde_jour_semaine,
+    sauvegardeHeure: e.sauvegarde_heure,
+    sauvegardeDerniereExecution: e.sauvegarde_derniere_execution,
   }
+}
+
+async function requete(chemin, options) {
+  const reponse = await fetch(`${BASE_URL}${chemin}`, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  })
+  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  return reponse.status === 204 ? null : reponse.json()
 }
 
 export async function modifier(ecoleId, patch) {
@@ -26,11 +44,66 @@ export async function modifier(ecoleId, patch) {
     ...(patch.codeAccesProf !== undefined && { code_acces_prof: patch.codeAccesProf }),
     ...(patch.codeAccesEleve !== undefined && { code_acces_eleve: patch.codeAccesEleve }),
   }
-  const reponse = await fetch(`${BASE_URL}/ecoles/${ecoleId}`, {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(corps),
-  })
+  return versEcran(await requete(`/ecoles/${ecoleId}`, { method: 'PUT', body: JSON.stringify(corps) }))
+}
+
+// --- "Sauvegarder École" (menu ⋮, voir SauvegardeEcoleMenu.jsx) ---
+
+// Les 2 fichiers (voir ecoles/excel_export.py — humain — et
+// ecoles/backup_technique.py — technique) — chacun choisit son propre
+// emplacement (voir utils/telechargement.js), l'utilisateur peut annuler
+// l'un sans annuler l'autre.
+export async function telechargerExportHumain(ecoleId) {
+  await telechargerFichier(`${BASE_URL}/ecoles/${ecoleId}/export`, 'export.xlsx')
+}
+
+export async function telechargerExportTechnique(ecoleId) {
+  await telechargerFichier(`${BASE_URL}/ecoles/${ecoleId}/export-technique`, 'sauvegarde_technique.xlsx')
+}
+
+// --- "Programmer sauvegarde École" ---
+
+export async function programmerSauvegarde(ecoleId, { active, periodicite, jourSemaine, heure }) {
+  return versEcran(
+    await requete(`/ecoles/${ecoleId}/sauvegarde-programmee`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        active,
+        periodicite,
+        jour_semaine: jourSemaine ?? null,
+        heure: heure ?? null,
+      }),
+    }),
+  )
+}
+
+// Historique des sauvegardes générées par le worker programmé (filet de
+// sécurité serveur, voir backend/src/app/sauvegarde_worker.py) —
+// téléchargeables à la demande, même mécanisme de choix d'emplacement.
+export async function listerSauvegardesServeur(ecoleId) {
+  const liste = await requete(`/ecoles/${ecoleId}/sauvegardes`)
+  return liste.map((s) => ({ nom: s.nom, date: s.date, tailleOctets: s.taille_octets }))
+}
+
+export async function telechargerSauvegardeServeur(ecoleId, nomFichier) {
+  await telechargerFichier(`${BASE_URL}/ecoles/${ecoleId}/sauvegardes/${nomFichier}`, nomFichier)
+}
+
+// --- "Supprimer Données École" ---
+
+export async function supprimerDonnees(ecoleId) {
+  const reponse = await fetch(`${BASE_URL}/ecoles/${ecoleId}/donnees`, { method: 'DELETE' })
   if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
-  return versEcran(await reponse.json())
+}
+
+// --- "Importer sauvegarde" ---
+
+export async function restaurer(ecoleId, fichier) {
+  const donnees = new FormData()
+  donnees.append('fichier', fichier)
+  const reponse = await fetch(`${BASE_URL}/ecoles/${ecoleId}/restaurer`, { method: 'POST', body: donnees })
+  if (!reponse.ok) {
+    const detail = await reponse.json().catch(() => null)
+    throw new Error(detail?.detail ?? `Requête échouée (${reponse.status})`)
+  }
 }
