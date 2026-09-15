@@ -202,6 +202,18 @@ export default function IntegrerFichierElevesModal({ ecoleId, cours, setEleves, 
                   {l.telephone_suspect && (
                     <span className="import-eleves__avertissement"> ⚠ téléphone à vérifier</span>
                   )}
+                  {l.ambigu && (
+                    <span className="import-eleves__avertissement">
+                      {' '}
+                      ⚠ plusieurs élèves portent déjà ce nom — vérifiez avant de créer un doublon
+                    </span>
+                  )}
+                  {l.doublon_fichier && (
+                    <span className="import-eleves__avertissement">
+                      {' '}
+                      ⚠ ce nom apparaît plusieurs fois dans le fichier — choisissez laquelle garder
+                    </span>
+                  )}
                 </span>
               </label>
             ))}

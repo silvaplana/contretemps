@@ -101,9 +101,19 @@ class LigneApercu:
     eleve_existant_id: int | None = None
     # Vide pour un nouvel élève, ou pour un élève existant déjà à jour.
     differences: list[DifferenceChamp] = field(default_factory=list)
+    # Plusieurs élèves existants portent déjà ce nom/prénom, sans date de
+    # naissance pour départager (voir _trouver_eleve_existant) — jamais
+    # créé automatiquement (risque de doublon), `creer` à False par
+    # défaut : l'admin doit consciemment cocher pour forcer la création.
+    ambigu: bool = False
     # Nouvel élève seulement : décochable par l'admin avant validation
     # (ex. ligne parasite du fichier) — sans objet si eleve_existant_id.
     creer: bool = True
+    # Plusieurs lignes du FICHIER partagent ce nom/prénom (voir
+    # previsualiser) — jamais fusionnées ni choisies automatiquement
+    # (demande utilisateur explicite), juste signalées et décochées par
+    # défaut : à l'admin de cocher celle(s) à garder.
+    doublon_fichier: bool = False
     # Élève existant seulement : quels `differences[].champ` l'admin a
     # choisi d'appliquer ("utiliser le fichier") — les autres restent
     # inchangés (choix par défaut sûr : ne jamais écraser sans decision
@@ -309,6 +319,21 @@ class ImportExcel:
             return ligne[index] if index is not None and index < len(ligne) else None
 
         lignes: list[LigneApercu] = []
+        # Détecte les lignes en double DANS LE MÊME FICHIER (vécu : un
+        # fichier réel avec 2 lignes identiques pour la même personne) —
+        # sans ça, chaque ligne est comparée uniquement à l'état de la
+        # base AVANT cet import, donc les 2 lignes se voient chacune comme
+        # "nouvel élève" et sont toutes les 2 créées (bug signalé). Jamais
+        # fusionnées automatiquement (demande utilisateur explicite : "il
+        # faut le signaler ... et permettre à l'utilisateur de choisir
+        # entre les 2") — juste signalées, décochées par défaut, à l'admin
+        # de choisir laquelle garder (voir `doublon_fichier`).
+        index_nouveaux: dict[tuple[str, str], list[int]] = {}  # (nom, prénom normalisés) -> index dans `lignes`
+        # Idem pour 2 lignes du fichier visant le MÊME élève déjà en base
+        # (même bug, variante moins grave : le doublon s'affiche 2 fois à
+        # la relecture au lieu d'être créé 2 fois).
+        index_existants: dict[int, int] = {}
+
         for numero, ligne in enumerate(lignes_brutes[1:], start=2):
             nom = str(valeur(ligne, 0) or "").strip()
             prenom = str(valeur(ligne, 1) or "").strip()
@@ -331,18 +356,16 @@ class ImportExcel:
                 c for i, c in colonnes_cours if c in non_reconnues and valeur(ligne, i)
             ]
 
-            eleve_existant_id = self._trouver_eleve_existant(db, ecole_id, nom, prenom, date_naissance)
+            eleve_existant_id, ambigu = self._trouver_eleve_existant(db, ecole_id, nom, prenom, date_naissance)
 
-            if eleve_existant_id is None:
-                lignes.append(
-                    LigneApercu(
-                        numero_ligne=numero, nom=nom, prenom=prenom, email=email,
-                        telephone=telephone, telephone_suspect=telephone_suspect, adresse=adresse,
-                        date_naissance=date_naissance, contact_parent_brut=contact_parent_brut,
-                        cours_ids=cours_ids_fichier, colonnes_non_reconnues=colonnes_non_reconnues_ligne,
-                    )
-                )
-            else:
+            if eleve_existant_id is not None:
+                index_deja = index_existants.get(eleve_existant_id)
+                if index_deja is not None:
+                    # Même élève déjà rencontré plus haut dans ce fichier —
+                    # fusionne les cours au lieu de le lister 2 fois.
+                    deja = lignes[index_deja]
+                    deja.cours_ids = sorted(set(deja.cours_ids) | set(cours_ids_fichier))
+                    continue
                 differences = self._differences(
                     db, eleve_existant_id, email, telephone, adresse, date_naissance, cours_ids_fichier
                 )
@@ -358,6 +381,40 @@ class ImportExcel:
                         eleve_existant_id=eleve_existant_id, differences=differences,
                     )
                 )
+                index_existants[eleve_existant_id] = len(lignes) - 1
+                continue
+
+            nouvelle = LigneApercu(
+                numero_ligne=numero, nom=nom, prenom=prenom, email=email,
+                telephone=telephone, telephone_suspect=telephone_suspect, adresse=adresse,
+                date_naissance=date_naissance, contact_parent_brut=contact_parent_brut,
+                cours_ids=cours_ids_fichier, colonnes_non_reconnues=colonnes_non_reconnues_ligne,
+                # Ambigu (plusieurs homonymes déjà en base, indépartageables)
+                # : jamais créé sans décision explicite de l'admin — sinon
+                # cette ligne redevient "nouvelle" à CHAQUE réimport, tant
+                # qu'elle reste indépartageable, et en recrée une copie à
+                # chaque fois (bug signalé : "les rajoute à chaque fois").
+                ambigu=ambigu, creer=not ambigu,
+            )
+            cle = (_normaliser(nom), _normaliser(prenom))
+            groupe = index_nouveaux.setdefault(cle, [])
+            # Homonyme DANS LE FICHIER : signalé seulement si la date de
+            # naissance ne les distingue pas déjà clairement (sinon ce
+            # sont 2 personnes différentes qui partagent juste un nom,
+            # ex. jumeaux — chacune créée normalement, sans avertissement).
+            doublon = any(
+                lignes[i].date_naissance is None or date_naissance is None
+                or lignes[i].date_naissance == date_naissance
+                for i in groupe
+            )
+            if doublon:
+                for i in groupe:
+                    lignes[i].doublon_fichier = True
+                    lignes[i].creer = False
+                nouvelle.doublon_fichier = True
+                nouvelle.creer = False
+            groupe.append(len(lignes))
+            lignes.append(nouvelle)
 
         return ApercuImport(
             lignes=lignes, colonnes_non_reconnues_globales=sorted(set(non_reconnues))
@@ -365,25 +422,28 @@ class ImportExcel:
 
     def _trouver_eleve_existant(
         self, db: Session, ecole_id: int, nom: str, prenom: str, date_naissance: dt.date | None
-    ) -> int | None:
+    ) -> tuple[int | None, bool]:
         """Correspondance par (nom, prénom) — voir §6.4bis : l'email est
         volontairement exclu (frères/sœurs qui le partagent). La date de
         naissance n'est PLUS une condition stricte (elle peut elle-même
         être une différence à corriger, voir _differences) — elle ne sert
         qu'à départager s'il existe plusieurs homonymes exacts (rare,
-        ex. 2 élèves same nom+prénom) : dans ce cas précis seulement, sans
-        elle on ne devine pas (traité comme nouvel élève plutôt que
-        risquer d'écraser la mauvaise fiche)."""
+        ex. 2 élèves same nom+prénom). Renvoie (id trouvé ou None, ambigu :
+        plusieurs homonymes indépartageables — voir appelant, jamais créé
+        automatiquement dans ce cas, contrairement à "aucun homonyme" qui,
+        lui, veut clairement dire nouvel élève)."""
         candidats = self.eleves.comptes.trouver_par_nom_prenom(db, ecole_id, nom, prenom, role="eleve")
         if not candidats:
-            return None
+            return None, False
         if len(candidats) == 1:
-            return candidats[0].id
+            return candidats[0].id, False
         correspondance_date = [
             c for c in candidats
             if (profil := self.eleves.get_profil(db, c.id)) and profil.date_naissance == date_naissance
         ]
-        return correspondance_date[0].id if len(correspondance_date) == 1 else None
+        if len(correspondance_date) == 1:
+            return correspondance_date[0].id, False
+        return None, True
 
     def _differences(
         self, db: Session, eleve_id: int, email, telephone, adresse, date_naissance, cours_ids_fichier

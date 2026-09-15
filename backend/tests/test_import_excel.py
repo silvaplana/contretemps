@@ -248,6 +248,111 @@ def test_difference_cours_najoute_que_les_cours_manquants(client, db_session):
     assert cours_de_zoe == {cours_eveil.id, cours_class_ini.id}  # ajouté, "Éveil" toujours là
 
 
+def test_deux_lignes_identiques_du_fichier_sont_signalees_et_decochees(client, db_session):
+    """Bug signalé : un fichier réel avec 2 lignes identiques pour la même
+    personne créait 2 fiches, ET en recréait 2 de plus à chaque réimport
+    (voir test suivant). Demande utilisateur explicite : jamais fusionné
+    automatiquement, juste signalé — à l'admin de choisir laquelle garder
+    (voir import_excel.py:previsualiser, `doublon_fichier`)."""
+    ecole = _creer_ecole_avec_cours(db_session)
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Nom adhérent", "Prénom adhérent", "Email", "Éveil"])
+    ws.append(["Richard", "Sébastien", "sebastien@test.fr", "X"])
+    ws.append(["Richard", "Sébastien", "sebastien@test.fr", "X"])
+    tampon = io.BytesIO()
+    wb.save(tampon)
+    tampon.seek(0)
+
+    apercu = _previsualiser(client, ecole.id, "doublon.xlsx", tampon).json()
+    assert len(apercu["lignes"]) == 2  # jamais fusionnées, chacune reste visible
+    assert all(l["doublon_fichier"] is True and l["creer"] is False for l in apercu["lignes"])
+
+    # Non validé tel quel (rien coché) : aucune création.
+    resultat = client.post(
+        "/eleves/import/valider", params={"ecole_id": ecole.id}, json={"lignes": apercu["lignes"]}
+    ).json()
+    assert resultat == {"crees": 0, "mis_a_jour": 0, "inchanges": 0}
+
+    # L'admin choisit explicitement laquelle garder (1re seulement).
+    lignes = apercu["lignes"]
+    lignes[0]["creer"] = True
+    resultat = client.post(
+        "/eleves/import/valider", params={"ecole_id": ecole.id}, json={"lignes": lignes}
+    ).json()
+    assert resultat == {"crees": 1, "mis_a_jour": 0, "inchanges": 0}
+    assert len(client.get("/eleves", params={"ecole_id": ecole.id}).json()) == 1
+
+
+def test_reimport_apres_resolution_dun_doublon_ne_recree_rien(client, db_session):
+    """Suite du test précédent : une fois le doublon résolu par l'admin (un
+    seul élève créé), réimporter le MÊME fichier (toujours 2 lignes
+    identiques) ne doit PAS recréer de doublon — avant le correctif,
+    l'élève créé se retrouvait "indépartageable" par nom+prénom entre les
+    2 lignes du fichier et chaque ligne repartait de zéro comme "nouvel
+    élève" à chaque réimport (voir `ambigu`)."""
+    ecole = _creer_ecole_avec_cours(db_session)
+
+    def fichier():
+        wb = Workbook()
+        ws = wb.active
+        ws.append(["Nom adhérent", "Prénom adhérent"])
+        ws.append(["Richard", "Sébastien"])
+        ws.append(["Richard", "Sébastien"])
+        tampon = io.BytesIO()
+        wb.save(tampon)
+        tampon.seek(0)
+        return tampon
+
+    premier = _previsualiser(client, ecole.id, "doublon.xlsx", fichier()).json()
+    lignes = premier["lignes"]
+    lignes[0]["creer"] = True  # l'admin résout le doublon signalé
+    client.post("/eleves/import/valider", params={"ecole_id": ecole.id}, json={"lignes": lignes})
+    assert len(client.get("/eleves", params={"ecole_id": ecole.id}).json()) == 1
+
+    second = _previsualiser(client, ecole.id, "doublon.xlsx", fichier()).json()
+    assert all(l["eleve_existant_id"] is not None for l in second["lignes"])  # plus "nouveau"
+    resultat = client.post(
+        "/eleves/import/valider", params={"ecole_id": ecole.id}, json={"lignes": second["lignes"]}
+    ).json()
+    assert resultat["crees"] == 0
+    assert len(client.get("/eleves", params={"ecole_id": ecole.id}).json()) == 1
+
+
+def test_homonyme_ambigu_deja_en_base_nest_pas_recree(client, db_session):
+    """2 élèves distincts portant déjà le même nom+prénom (sans date de
+    naissance pour départager) : une ligne du fichier qui les vise ne doit
+    jamais être créée automatiquement (voir `ambigu`), sinon elle
+    grossirait le doublon à chaque réimport."""
+    ecole = _creer_ecole_avec_cours(db_session)
+    from comptes import Comptes
+    from eleves import Eleves
+
+    eleves_service = Eleves(comptes=Comptes())
+    eleves_service.create(db_session, ecole_id=ecole.id, nom="Martin", prenom="Alix")
+    eleves_service.create(db_session, ecole_id=ecole.id, nom="Martin", prenom="Alix")
+
+    wb = Workbook()
+    ws = wb.active
+    ws.append(["Nom", "Prénom"])
+    ws.append(["Martin", "Alix"])
+    tampon = io.BytesIO()
+    wb.save(tampon)
+    tampon.seek(0)
+
+    apercu = _previsualiser(client, ecole.id, "ambigu.xlsx", tampon).json()
+    ligne = apercu["lignes"][0]
+    assert ligne["ambigu"] is True
+    assert ligne["creer"] is False
+    assert ligne["eleve_existant_id"] is None
+
+    resultat = client.post(
+        "/eleves/import/valider", params={"ecole_id": ecole.id}, json={"lignes": apercu["lignes"]}
+    ).json()
+    assert resultat == {"crees": 0, "mis_a_jour": 0, "inchanges": 0}
+    assert len(client.get("/eleves", params={"ecole_id": ecole.id}).json()) == 2
+
+
 def test_premiere_colonne_doit_ressembler_a_nom(client, db_session):
     """Contrainte de format annoncée à l'utilisateur (voir menu "Intégrer
     fichier élèves officiel")."""

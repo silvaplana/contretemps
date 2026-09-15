@@ -116,8 +116,15 @@ class LigneApercuSortie(BaseModel):
     eleve_existant_id: int | None = None
     # Vide = nouvel élève, ou élève existant déjà à jour.
     differences: list[DifferenceChampSortie] = []
+    # Plusieurs élèves portent déjà ce nom/prénom, indépartageables (voir
+    # import_excel.py:_trouver_eleve_existant) — `creer` vaut False par
+    # défaut dans ce cas, l'admin doit cocher consciemment.
+    ambigu: bool = False
     # Nouvel élève seulement (voir import_excel.py:LigneApercu).
     creer: bool = True
+    # Plusieurs lignes du fichier partagent ce nom/prénom — signalé,
+    # jamais fusionné/choisi automatiquement (voir LigneApercu).
+    doublon_fichier: bool = False
     # Élève existant seulement : quels `differences[].champ` appliquer.
     champs_a_appliquer: list[str] = []
 
