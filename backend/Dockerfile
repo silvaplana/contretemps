@@ -10,9 +10,14 @@ WORKDIR /app
 # change jamais, Docker la garde en cache meme quand le code change.
 # --no-install-recommends : evite d'embarquer des paquets inutiles
 # (imprimantes, etc.) qui gonfleraient l'image pour rien.
+# fonts-dejavu-core : Chromium seul ne rend pas certains caractères
+# (ex. "✓", la coche du règlement intérieur, voir dossier_html.py) sans
+# une police les couvrant — bug constaté en prod, invisible en dev local
+# (dont les polices système couvrent déjà ces caractères).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     fonts-liberation \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # On copie d'abord uniquement ce qui decrit les dependances puis le code
