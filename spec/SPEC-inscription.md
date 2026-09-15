@@ -65,7 +65,7 @@ un échec de l'un ne doit jamais empêcher l'autre, ni l'inverse.
    - Objet : `Inscription de <Prénom Nom> en base des inscrits`.
    - Corps : `<Prénom Nom> a été ajouté(e) aux nouveaux inscrits. Vous pouvez copier sa ligne du
      fichier Excel en pièce jointe dans votre Excel officiel. Vous pourrez ensuite réintégrer
-     votre Excel officiel dans l'application Contretemps.`
+     votre Excel officiel dans l'application Contretemps. Votre excel officiel fait foi.`
    - Pièce jointe : le même fichier Excel "nouvelles inscriptions" que
      `GET /inscriptions/export` (Admin > École > "Télécharger les nouvelles inscriptions"),
      à jour de la ligne qui vient d'être ajoutée — l'admin n'a pas besoin de se reconnecter à

@@ -305,7 +305,7 @@ class Inscriptions:
                     f"{nom_complet} a été ajouté(e) aux nouveaux inscrits. Vous pouvez copier sa "
                     "ligne du fichier Excel en pièce jointe dans votre Excel officiel.\n\n"
                     "Vous pourrez ensuite réintégrer votre Excel officiel dans l'application "
-                    "Contretemps."
+                    "Contretemps. Votre excel officiel fait foi."
                 ),
                 pieces_jointes,
             )
