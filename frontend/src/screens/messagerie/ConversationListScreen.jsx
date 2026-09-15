@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { compterNonLus } from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 
+// Avatar Admin/Professeur dans une couleur distincte de celui d'un élève
+// (décision utilisateur explicite, voir .avatar--staff dans App.css) —
+// repris aussi par ProfilContactScreen.jsx.
+function estStaff(role) {
+  return role === 'admin' || role === 'professeur'
+}
+
 // Écran 1/2 de la Messagerie (voir spec/SPEC.md 5.5) : liste des
 // conversations. Cliquer le TEXTE d'une ligne ouvre ConversationThreadScreen
 // (voir MessagerieScreen.jsx) — comme la liste de discussions de WhatsApp.
@@ -49,6 +56,7 @@ export default function ConversationListScreen({
           <LigneConversation
             key={c.id}
             conversation={c}
+            compteId={compteId}
             onOpen={() => onOpenConversation(c.id)}
             onAvatarClick={() => onAvatarClick({ type: 'conversation', conversation: c })}
           />
@@ -109,6 +117,7 @@ export default function ConversationListScreen({
             <LigneConversation
               key={c.id}
               conversation={c}
+              compteId={compteId}
               onOpen={() => onOpenConversation(c.id)}
               onAvatarClick={() => onAvatarClick({ type: 'conversation', conversation: c })}
             />
@@ -166,14 +175,19 @@ function BarreRecherche({ valeur, onChange }) {
 // (pas un seul gros bouton comme avant) : l'avatar ouvre la carte de
 // profil, le reste ouvre/crée la discussion — voir le commentaire en tête
 // de fichier.
-function LigneConversation({ conversation: c, onOpen, onAvatarClick }) {
+function LigneConversation({ conversation: c, compteId, onOpen, onAvatarClick }) {
   const last = c.messages[c.messages.length - 1]
   const nonLus = compterNonLus(c)
+  // Rôle de l'AUTRE personne, pour la couleur d'avatar (voir estStaff) —
+  // sans objet pour un groupe (.avatar--groupe prime de toute façon).
+  const autre = c.type === 'individuelle' ? c.membres.find((m) => m.id !== compteId) : null
+  const classeAvatar =
+    c.type === 'groupe' ? 'avatar--groupe' : estStaff(autre?.role) ? 'avatar--staff' : ''
   return (
     <div className="conversation-list__item">
       <button
         type="button"
-        className={`avatar avatar--sm conversation-list__avatar-btn ${c.type === 'groupe' ? 'avatar--groupe' : ''}`}
+        className={`avatar avatar--sm conversation-list__avatar-btn ${classeAvatar}`}
         onClick={onAvatarClick}
         aria-label={`Profil de ${c.nom}`}
       >
@@ -199,7 +213,7 @@ function LigneNouveauContact({ compte, onOpen, onAvatarClick, disabled }) {
     <div className="conversation-list__item">
       <button
         type="button"
-        className="avatar avatar--sm conversation-list__avatar-btn"
+        className={`avatar avatar--sm conversation-list__avatar-btn ${estStaff(compte.role) ? 'avatar--staff' : ''}`}
         onClick={onAvatarClick}
         aria-label={`Profil de ${compte.prenom} ${compte.nom}`}
       >

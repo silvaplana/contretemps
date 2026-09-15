@@ -259,6 +259,19 @@
   color: var(--text);
 }
 
+/* Avatar Admin/Professeur (Messagerie, voir ConversationListScreen.jsx/
+   ProfilContactScreen.jsx) — décision utilisateur explicite : couleur
+   distincte de celle d'un élève (.avatar par défaut, orange), pour
+   repérer l'équipe pédagogique en un coup d'œil dans les listes. Reprend
+   --success-text (déjà "professeur" pour les badges, voir Badge.jsx/
+   AdminGroupes.jsx TONE_PAR_TYPE) plutôt qu'une nouvelle couleur — étendu
+   ici à l'Admin aussi, contrairement aux badges qui les distinguent
+   encore entre eux (rouge/vert). */
+.avatar--staff {
+  background: var(--success-text);
+  color: var(--accent-contrast);
+}
+
 /* ==========================================================================
    Barre de navigation basse (BottomNav.jsx)
    ========================================================================== */
@@ -1632,6 +1645,32 @@
 .profil-contact-screen__membre-nom {
   flex: 1;
   min-width: 0;
+}
+
+/* Fiche complète élève (voir ProfilContactScreen.jsx : DetailsEleve),
+   réservée à Admin/Professeur — même largeur/alignement que la liste des
+   membres ci-dessus, pour rester cohérent visuellement sur la même fiche
+   Infos (un groupe peut en théorie avoir les deux : ses membres, ET la
+   fiche élève si c'est un élève qu'on regarde — en pratique jamais les
+   deux en même temps, resoudreAffichage ne renvoie `membres` que pour un
+   groupe et `role` que pour un individu). */
+.profil-contact-screen__details {
+  width: 100%;
+  max-width: 420px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.profil-contact-screen__detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profil-contact-screen__detail .muted {
+  font-size: 12px;
 }
 
 /* Écran 2/2 : le fil d'une conversation (ConversationThreadScreen.jsx),

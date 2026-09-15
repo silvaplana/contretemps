@@ -572,10 +572,12 @@ function App() {
             conversations={conversations}
             setConversations={setConversations}
             compteId={activeUser.id}
+            viewerRole={activeUser.type}
             ecoleId={ecole.id}
             admins={admins}
             professeurs={professeurs}
             eleves={eleves}
+            cours={cours}
           />
         )}
 

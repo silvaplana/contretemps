@@ -5,6 +5,7 @@ import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/paiement.js'
+import { calculerAge } from '../../utils/age.js'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 
@@ -68,20 +69,6 @@ function valeurCellule(el, champ, cours) {
     default:
       return ''
   }
-}
-
-// Âge calculé à la volée depuis la date de naissance (voir spec §6.4) —
-// jamais stocké, recalculé à chaque affichage.
-function calculerAge(dateNaissance) {
-  if (!dateNaissance) return null
-  const naissance = new Date(dateNaissance)
-  const aujourdhui = new Date()
-  let age = aujourdhui.getFullYear() - naissance.getFullYear()
-  const pasEncoreAnniversaire =
-    aujourdhui.getMonth() < naissance.getMonth() ||
-    (aujourdhui.getMonth() === naissance.getMonth() && aujourdhui.getDate() < naissance.getDate())
-  if (pasEncoreAnniversaire) age -= 1
-  return age
 }
 
 // Onglet Admin > Élèves (voir spec/SPEC.md §5.1.2 et §6.4). Les champs les
