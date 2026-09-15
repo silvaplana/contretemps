@@ -116,6 +116,12 @@ function App() {
   const [choregraphies, setChoregraphies] = useState({})
   const [videos, setVideos] = useState({})
   const [conversations, setConversations] = useState([])
+  // Id de la conversation tout juste créée depuis Messagerie ("Nouveau
+  // groupe", voir menuExtra ci-dessous) qu'AdminScreen doit ouvrir en
+  // édition dès qu'il s'affiche — remis à null une fois consommé (voir
+  // AdminScreen/AdminGroupes). Un id, pas un booléen : sert aussi de
+  // "quelle conversation ouvrir", pas juste "il faut en ouvrir une".
+  const [groupeAOuvrir, setGroupeAOuvrir] = useState(null)
   const [ecole, setEcole] = useState({
     id: null,
     nom: '',
@@ -390,6 +396,20 @@ function App() {
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
+  // "Nouveau groupe" depuis le menu 3 points de Messagerie (voir Header,
+  // menuExtra ci-dessous) — MÊME effet que le "+" d'Admin > Conversations
+  // (voir AdminGroupes.jsx : creerConversation), pas une réimplémentation à
+  // côté : on crée la conversation vide par le même appel API, puis on
+  // bascule sur cet écran et on lui fait ouvrir sa modale d'édition (voir
+  // AdminScreen/AdminGroupes : groupeAOuvrir → editIdInitial). Réservé à
+  // l'Admin (AdminScreen n'existe que pour ce rôle, voir plus bas).
+  async function creerGroupeDepuisMessagerie() {
+    const nouvelle = await conversationsApi.creerGroupe(ecole.id, '')
+    setGroupes((list) => [...list, nouvelle])
+    setGroupeAOuvrir(nouvelle.id)
+    setActiveTab('admin')
+  }
+
   // Écran vide (juste la marque) pendant la vérification d'une session
   // sauvegardée (voir l'effet en tête de fonction) — évite un flash de
   // l'écran de connexion à chaque ouverture d'appli quand une session
@@ -459,7 +479,13 @@ function App() {
                 icon: 'plus',
                 onClick: () => setPresenceShowAdd(true),
               }
-            : undefined
+            : activeTab === 'messagerie' && activeUser.type === 'admin'
+              ? {
+                  label: 'Nouveau groupe',
+                  icon: 'plus',
+                  onClick: creerGroupeDepuisMessagerie,
+                }
+              : undefined
         }
       />
 
@@ -478,6 +504,8 @@ function App() {
             setEcole={setEcole}
             setVideos={setVideos}
             onOpenHeures={(profId) => openHeures(profId, 'admin')}
+            groupeAOuvrir={groupeAOuvrir}
+            onGroupeAOuvrirConsomme={() => setGroupeAOuvrir(null)}
           />
         )}
 

@@ -65,9 +65,25 @@ function estVide(g) {
 // n'est pas réversible depuis cet écran (pas de "détacher" pour
 // l'instant), voir conversationsApi.creerGroupeWhatsapp — stub côté
 // backend, pas encore branché sur un vrai client WhatsApp.
-export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves, cours, ecoleId }) {
+export default function AdminGroupes({
+  groupes,
+  setGroupes,
+  professeurs,
+  eleves,
+  cours,
+  ecoleId,
+  // Id d'une conversation à ouvrir dès le montage (voir AdminScreen.jsx :
+  // "Nouveau groupe" depuis Messagerie) — déjà créée côté backend par
+  // App.jsx, avec le même appel API que creerConversation ci-dessous ; il
+  // ne reste plus qu'à ouvrir sa modale d'édition. Repris seulement comme
+  // état INITIAL (pas via un effet) : ce composant est démonté/remonté à
+  // chaque fois qu'on revient sur l'onglet Conversations (voir
+  // AdminScreen), donc un changement ultérieur de cette prop ne doit
+  // jamais rouvrir la modale une 2e fois.
+  editIdInitial,
+}) {
   const [search, setSearch] = useState('')
-  const [editId, setEditId] = useState(null)
+  const [editId, setEditId] = useState(editIdInitial ?? null)
   const [admins, setAdmins] = useState([])
 
   // Uniquement utile ici (voir AddMembreForm : "Ajouter un membre" >
