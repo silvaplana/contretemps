@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Dossier d'inscription {{SAISON}} — Contretemps</title>
+<style>
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Carlito", "Calibri", "DejaVu Sans", sans-serif;
+    font-size: 10pt; color: #2E2A28; background: #fff;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  .page {
+    width: 210mm; min-height: 296mm;
+    padding: 13mm 15mm 0 15mm;
+    position: relative; display: flex; flex-direction: column;
+  }
+  .topbar {
+    position: absolute; top: 0; left: 0; right: 0; height: 5mm;
+    background: linear-gradient(90deg, #E8A87C 0%, #EE9578 35%, #D9694F 70%, #C9543F 100%);
+  }
+
+  /* ---------- en-tête ---------- */
+  header { display: flex; justify-content: space-between; align-items: center; gap: 8mm; }
+  .brand { display: flex; gap: 5mm; align-items: center; }
+  .brand img { width: 23mm; height: 23mm; object-fit: contain; }
+  .brand .id { font-size: 8.4pt; line-height: 1.5; color: #5F544E; }
+  .brand .id .nom {
+    font-family: "Caladea", "Cambria", "DejaVu Serif", serif;
+    font-size: 13pt; color: #C9543F; font-weight: 700; margin-bottom: .6mm;
+  }
+  .brand .id .sub {
+    text-transform: uppercase; letter-spacing: 1.6px; font-size: 6.6pt;
+    color: #B08A77; margin-bottom: 2mm;
+  }
+  .titre-doc { text-align: right; }
+  .titre-doc h1 {
+    font-family: "Caladea", "Cambria", "DejaVu Serif", serif;
+    font-size: 19pt; font-weight: 700; color: #D9694F;
+    letter-spacing: 1px; line-height: 1.1;
+  }
+  .titre-doc .saison {
+    display: inline-block; margin-top: 2mm; padding: 1.2mm 4mm;
+    background: #D9694F; color: #fff; border-radius: 6mm;
+    font-size: 8.6pt; font-weight: 700; letter-spacing: .6px;
+  }
+  .titre-doc .ref { margin-top: 2mm; font-size: 8pt; color: #857A74; }
+  .titre-doc .ref b { color: #2E2A28; }
+
+  /* ---------- sections ---------- */
+  section { margin-top: 2.6mm; }
+  .sec-head { display: flex; align-items: center; gap: 3mm; margin-bottom: 2mm; }
+  .sec-head .n {
+    width: 5.5mm; height: 5.5mm; border-radius: 50%; background: #D9694F; color: #fff;
+    font-size: 7.6pt; font-weight: 700; display: flex; align-items: center;
+    justify-content: center; flex: 0 0 auto;
+  }
+  .sec-head h2 {
+    font-size: 8.6pt; font-weight: 700; text-transform: uppercase;
+    letter-spacing: 1.4px; color: #C9543F;
+  }
+  .sec-head .rule { flex: 1; height: 1px; background: #F0DDD2; }
+
+  .card { border: 1px solid #F0DDD2; border-radius: 2mm; padding: 2.2mm 4.5mm; }
+  .card.soft { background: #FDF8F5; }
+
+  /* ---------- champs ---------- */
+  .eleve-bloc { display: flex; gap: 4mm; }
+  .eleve-bloc .grid { flex: 1; }
+  .eleve-bloc .photo {
+    flex: 0 0 auto; width: 22mm; height: 28mm; border: 1px solid #F0DDD2;
+    border-radius: 1.5mm; object-fit: cover;
+  }
+  .grid { display: flex; flex-wrap: wrap; gap: 2.4mm 5mm; }
+  .f { flex: 1 1 calc(33.333% - 3.4mm); min-width: 40mm; }
+  .f.w50 { flex: 1 1 calc(50% - 2.5mm); }
+  .f.w100 { flex: 1 1 100%; }
+  .f .lbl {
+    font-size: 6.6pt; text-transform: uppercase; letter-spacing: 1.1px;
+    color: #B08A77; font-weight: 700; margin-bottom: .6mm;
+  }
+  .f .val {
+    font-size: 9.4pt; color: #2E2A28; border-bottom: 1px dotted #E0CBBD;
+    padding-bottom: 1mm; min-height: 4.2mm;
+  }
+  .f .val .vide { color: #BFB2AA; font-style: italic; }
+
+  /* ---------- cours ---------- */
+  .cours { display: flex; flex-wrap: wrap; gap: 2mm; }
+  .cours span {
+    background: #FBE7DE; color: #A8412D; border: 1px solid #F3CDBB;
+    border-radius: 5mm; padding: 1.2mm 3.5mm; font-size: 8.6pt; font-weight: 700;
+  }
+  .cours-meta { margin-top: 2.5mm; font-size: 7.8pt; color: #857A74; }
+
+  /* ---------- médical ---------- */
+  .med { display: flex; gap: 4mm; }
+  .med .f { flex: 1; }
+  .med .val { min-height: 6mm; }
+
+  /* ---------- oui / non ---------- */
+  .pill {
+    display: inline-block; border-radius: 4mm; padding: .8mm 3.2mm;
+    font-size: 7.8pt; font-weight: 700; letter-spacing: .4px;
+  }
+  .pill.oui { background: #D9694F; color: #fff; }
+  .pill.non { background: #F3EDE9; color: #9A8A82; border: 1px solid #E5D7CE; }
+  .droits { display: flex; flex-wrap: wrap; gap: 2mm 6mm; margin-top: 2.5mm; }
+  .droits .d { font-size: 8.6pt; color: #5F544E; }
+  .droits .d b { color: #2E2A28; }
+
+  /* ---------- règlement + signature ---------- */
+  .regl { display: flex; gap: 5mm; align-items: stretch; }
+  .regl .txt { flex: 1; font-size: 8.4pt; line-height: 1.55; color: #5F544E; }
+  .regl .txt .coche {
+    display: flex; gap: 2.5mm; align-items: flex-start; margin-top: 2.5mm;
+    font-size: 8.8pt; color: #2E2A28;
+  }
+  .regl .txt .coche .box {
+    width: 4mm; height: 4mm; border: 1.4px solid #D9694F; border-radius: .8mm;
+    background: #D9694F; color: #fff; font-size: 7.6pt; line-height: 3.6mm;
+    text-align: center; flex: 0 0 auto; font-weight: 700;
+  }
+  .sig-box {
+    width: 62mm; border: 1px solid #F0DDD2; border-radius: 2mm;
+    padding: 2.5mm 4mm 2mm; text-align: center; background: #fff;
+    display: flex; flex-direction: column; justify-content: center;
+  }
+  .sig-box .t { font-size: 7pt; text-transform: uppercase; letter-spacing: 1.1px; color: #B08A77; font-weight: 700; }
+  .sig-box .nom { font-size: 9.5pt; border-top: 1px solid #F0DDD2; margin-top: 3mm; padding-top: 2.5mm; }
+  .sig-box .nom b { color: #2E2A28; }
+  .sig-box .date { font-size: 7.6pt; color: #857A74; margin-top: 1mm; }
+
+  /* ---------- cadre école ---------- */
+  .ecole { border: 1px dashed #D9B9A6; border-radius: 2mm; padding: 2.6mm 4.5mm; background: #FDF4EF; }
+  .ecole .t {
+    font-size: 7pt; text-transform: uppercase; letter-spacing: 1.2px;
+    color: #B0553F; font-weight: 700; margin-bottom: 2.5mm;
+  }
+  .pieces { display: flex; flex-wrap: wrap; gap: 1.8mm 6mm; }
+  .pieces .p { font-size: 8.4pt; color: #5F544E; display: flex; gap: 2mm; align-items: center; }
+  .pieces .p .b {
+    width: 3.6mm; height: 3.6mm; border: 1.2px solid #C9A28C;
+    border-radius: .8mm; background: #fff; flex: 0 0 auto;
+  }
+
+  /* ---------- pied ---------- */
+  footer {
+    margin-top: auto; padding: 2.8mm 0 3mm; border-top: 2px solid #EE9578;
+    font-size: 7pt; color: #8A7168; line-height: 1.55; text-align: center;
+  }
+  footer b { color: #2E2A28; }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="topbar"></div>
+
+  <header>
+    <div class="brand">
+      <img src="{{LOGO}}" alt="Contretemps">
+      <div class="id">
+        <div class="nom">Contretemps</div>
+        <div class="sub">École de Danse</div>
+        {{ADRESSE_L1}} — {{ADRESSE_L2}}<br>
+        {{TEL}} · {{EMAIL}}
+      </div>
+    </div>
+    <div class="titre-doc">
+      <h1>Dossier d'inscription</h1>
+      <div class="saison">Saison {{SAISON}}</div>
+      <div class="ref">Dossier n° <b>{{NUM_DOSSIER}}</b> · déposé le <b>{{DATE_DEPOT}}</b></div>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head"><div class="n">1</div><h2>Élève</h2><div class="rule"></div></div>
+    <div class="card">
+      <div class="eleve-bloc">
+        <div class="grid">
+          <div class="f"><div class="lbl">Nom</div><div class="val">{{ELEVE_NOM}}</div></div>
+          <div class="f"><div class="lbl">Prénom</div><div class="val">{{ELEVE_PRENOM}}</div></div>
+          <div class="f"><div class="lbl">Date de naissance</div><div class="val">{{ELEVE_NAISSANCE}}</div></div>
+          <div class="f w100"><div class="lbl">Adresse</div><div class="val">{{ELEVE_ADRESSE}}</div></div>
+          <div class="f w50"><div class="lbl">Téléphone</div><div class="val">{{ELEVE_TEL}}</div></div>
+          <div class="f w50"><div class="lbl">Email</div><div class="val">{{ELEVE_EMAIL}}</div></div>
+        </div>
+        {{PHOTO}}
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="n">2</div><h2>Contact d'urgence</h2><div class="rule"></div></div>
+    <div class="card soft">
+      <div class="grid">
+        <div class="f"><div class="lbl">Nom</div><div class="val">{{URG_NOM}}</div></div>
+        <div class="f"><div class="lbl">Prénom</div><div class="val">{{URG_PRENOM}}</div></div>
+        <div class="f"><div class="lbl">Lien avec l'élève</div><div class="val">{{URG_LIEN}}</div></div>
+        <div class="f w100"><div class="lbl">Téléphone à joindre en priorité</div><div class="val">{{URG_TEL}}</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="n">3</div><h2>Cours choisis</h2><div class="rule"></div></div>
+    <div class="card">
+      <div class="cours">{{COURS}}</div>
+      <div class="cours-meta">{{COURS_META}}</div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="n">4</div><h2>Informations médicales</h2><div class="rule"></div></div>
+    <div class="card soft">
+      <div class="med">
+        <div class="f"><div class="lbl">Allergies</div><div class="val">{{MED_ALLERGIES}}</div></div>
+        <div class="f"><div class="lbl">Traitement médical</div><div class="val">{{MED_TRAITEMENT}}</div></div>
+        <div class="f"><div class="lbl">Informations importantes</div><div class="val">{{MED_AUTRES}}</div></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="n">5</div><h2>Droit à l'image</h2><div class="rule"></div></div>
+    <div class="card">
+      <div style="font-size:8.6pt;color:#5F544E">
+        Autorisation générale de captation et de diffusion de l'image de l'élève dans le cadre des
+        activités de l'école : <span class="pill {{AUTOR_CLS}}">{{AUTOR}}</span>
+      </div>
+      <div class="droits">
+        <div class="d">Site internet <span class="pill {{IMG_SITE_CLS}}">{{IMG_SITE}}</span></div>
+        <div class="d">Réseaux sociaux <span class="pill {{IMG_RS_CLS}}">{{IMG_RS}}</span></div>
+        <div class="d">Affiches et supports imprimés <span class="pill {{IMG_AFF_CLS}}">{{IMG_AFF}}</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><div class="n">6</div><h2>Règlement intérieur</h2><div class="rule"></div></div>
+    <div class="regl">
+      <div class="txt">
+        Le signataire déclare avoir pris connaissance du règlement intérieur de l'école
+        Contretemps et en accepter l'ensemble des dispositions, notamment celles relatives
+        aux horaires, aux absences, à la tenue et aux conditions de règlement.
+        {{REGLEMENT_COCHE}}
+      </div>
+      <div class="sig-box">
+        <div class="t">Signataire</div>
+        <div class="nom"><b>{{SIGNATAIRE}}</b></div>
+        <div class="date">Signé électroniquement le {{DATE_SOUMISSION}}</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="ecole">
+      <div class="t">Cadre réservé à l'école — pièces à fournir</div>
+      <div class="pieces">
+        <div class="p"><div class="b"></div>Certificat médical de non contre-indication</div>
+        <div class="p"><div class="b"></div>Photo d'identité</div>
+        <div class="p"><div class="b"></div>Attestation d'assurance responsabilité civile</div>
+        <div class="p"><div class="b"></div>Adhésion réglée</div>
+        <div class="p"><div class="b"></div>Règlement de la cotisation</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <b>Association Contretemps — École de Danse</b> · Association loi 1901 · {{ADRESSE_L1}}, {{ADRESSE_L2}} ·
+    SIRET {{SIRET}} · RNA {{RNA}}<br>
+    Dossier déposé en ligne le {{DATE_SOUMISSION}}{{IP_SUFFIXE}} · réf. {{NUM_DOSSIER}}<br>
+    Les données recueillies sont utilisées pour la gestion des inscriptions et conservées le temps de l'adhésion.
+    Droit d'accès, de rectification et de suppression auprès de {{EMAIL}}.
+  </footer>
+</div>
+</body>
+</html>

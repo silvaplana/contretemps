@@ -24,6 +24,17 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+from .coordonnees_association import (
+    ADRESSE_L1,
+    ADRESSE_L2,
+    APE,
+    EMAIL,
+    NOM_TRESORIER,
+    RNA,
+    SIRET,
+    SITE,
+    TELEPHONE,
+)
 from .tarifs import (
     LIBELLE_PALIER,
     NB_TRIMESTRES,
@@ -44,21 +55,6 @@ def _b64(nom_fichier: str) -> str:
 
 _LOGO_B64 = _b64("logo.jpg")
 _SIGNATURE_B64 = _b64("signature.jpg")
-
-# --- Coordonnées de l'association — VALEURS PROVISOIRES tant que
-# l'association n'a pas ses vrais SIRET/RNA/téléphone (décision
-# explicite de l'utilisateur : mieux vaut un numéro au bon format qu'un
-# évident "000 000 000 00000", en attendant les vraies valeurs — À
-# CORRIGER dès qu'elles sont connues, voir spec/SPEC-inscription.md). ---
-SIRET = "123 456 789 00012"
-APE = "8552Z"
-RNA = "W000000000"
-TELEPHONE = "04 94 12 34 56"
-EMAIL = "contact@dansecontretemps.fr"
-SITE = "www.dansecontretemps.fr"
-ADRESSE_L1 = "8 impasse des Pivoines"
-ADRESSE_L2 = "83330 Le Beausset"
-NOM_TRESORIER = "Le Trésorier"
 
 # Chromium (ou équivalent) requis pour le rendu "imprimer en PDF" — pas
 # de dépendance Python dédiée (voir Dockerfile : `chromium` installé via

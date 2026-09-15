@@ -21,11 +21,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import excel_export
+from .dossier_html import generer_dossier_pdf
 from .email_envoi import EmailEnvoi
+from .facture_html import generer_facture_pdf
 from .helloasso import HelloAsso, HelloAssoError, nettoyer_nom_payeur
 from .models import Inscription, inscriptions_cours
-from .facture_html import generer_facture_pdf
-from .pdf import generer_dossier_pdf, nom_fichier_dossier, nom_fichier_facture
+from .pdf import nom_fichier_dossier, nom_fichier_facture
 from .saison import saison_actuelle
 from .schemas import InscriptionCreation
 from .stockage import chemin_relatif, dossier_ecole

@@ -1,7 +1,9 @@
-"""Tests de pdf.py/excel_export.py/email_envoi.py (voir
-spec/SPEC-inscription.md) — écrit dans le vrai dossier de stockage par
-défaut puis nettoie (même patron que test_videos.py:test_upload_reel),
-pas de monkeypatch d'env (les chemins sont résolus au niveau module)."""
+"""Tests de pdf.py (noms de fichiers)/excel_export.py/email_envoi.py
+(voir spec/SPEC-inscription.md) — voir test_dossier_html.py/
+test_facture_html.py pour la génération des PDF eux-mêmes. Écrit dans
+le vrai dossier de stockage par défaut puis nettoie (même patron que
+test_videos.py:test_upload_reel), pas de monkeypatch d'env (les
+chemins sont résolus au niveau module)."""
 
 import datetime as dt
 import smtplib
@@ -10,7 +12,7 @@ import pytest
 from inscriptions import excel_export
 from inscriptions.email_envoi import EmailEnvoi
 from inscriptions.models import Inscription
-from inscriptions.pdf import generer_dossier_pdf, nom_fichier_dossier, nom_fichier_facture
+from inscriptions.pdf import nom_fichier_dossier, nom_fichier_facture
 from openpyxl import load_workbook
 
 
@@ -54,12 +56,6 @@ def _inscription(**overrides) -> Inscription:
     return Inscription(**defaults)
 
 
-def test_generer_dossier_pdf_produit_un_vrai_pdf():
-    contenu = generer_dossier_pdf(_inscription(), ["Class Ini"])
-    assert contenu.startswith(b"%PDF")
-    assert len(contenu) > 500
-
-
 def test_nom_fichier_dossier_et_facture():
     inscription = _inscription()
     assert nom_fichier_dossier(inscription) == "dossier_marie_dupont_20262027.pdf"
@@ -73,26 +69,6 @@ def test_nom_fichier_translitere_accents_et_espaces():
     n'importe quel caractère."""
     inscription = _inscription(eleve_prenom="Zoé-Anaïs", eleve_nom="Le Gall Dupré")
     assert nom_fichier_dossier(inscription) == "dossier_zoe_anais_le_gall_dupre_20262027.pdf"
-
-
-def test_generer_dossier_pdf_avec_photo(tmp_path):
-    from PIL import Image
-
-    chemin_photo = tmp_path / "photo.jpg"
-    Image.new("RGB", (120, 160), color=(200, 120, 60)).save(chemin_photo)
-
-    sans_photo = generer_dossier_pdf(_inscription(), ["Class Ini"])
-    avec_photo = generer_dossier_pdf(_inscription(), ["Class Ini"], chemin_photo)
-    assert avec_photo.startswith(b"%PDF")
-    assert len(avec_photo) > len(sans_photo)
-
-
-def test_generer_dossier_pdf_photo_illisible_ignoree_sans_planter(tmp_path):
-    chemin_photo = tmp_path / "pas-une-image.jpg"
-    chemin_photo.write_text("ceci n'est pas une image")
-
-    contenu = generer_dossier_pdf(_inscription(), ["Class Ini"], chemin_photo)
-    assert contenu.startswith(b"%PDF")
 
 
 def test_excel_cree_le_fichier_avec_les_bons_en_tetes_et_ajoute_des_lignes(tmp_path):
