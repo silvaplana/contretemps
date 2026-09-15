@@ -27,7 +27,7 @@ import UsageVideoModal from './UsageVideoModal.jsx'
 // programmer/importer/supprimer les données de l'école, et le
 // téléchargement des nouvelles inscriptions (déplacé ici, y vivait avant
 // comme simple bouton).
-export default function AdminParametres({ ecole, setEcole, setVideos }) {
+export default function AdminParametres({ ecole, setEcole, setVideos, cours, setEleves }) {
   const [showUsageVideo, setShowUsageVideo] = useState(false)
 
   function update(patch) {
@@ -38,7 +38,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos }) {
   return (
     <div className="admin-panel">
       <div className="admin-panel__toolbar admin-panel__toolbar--fin">
-        <SauvegardeEcoleMenu ecole={ecole} />
+        <SauvegardeEcoleMenu ecole={ecole} cours={cours} setEleves={setEleves} />
       </div>
 
       <div className="form-fields">

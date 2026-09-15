@@ -5,6 +5,7 @@ seul objet, même si stocké dans 2 tables (voir eleves.py/receiver.py).
 """
 
 import datetime as dt
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -88,6 +89,18 @@ class EleveSortie(BaseModel):
 # --- Import Excel (voir §6.4bis et import_excel.py) ---
 
 
+class DifferenceChampSortie(BaseModel):
+    """Une différence entre la fiche actuelle d'un élève et le fichier
+    importé — voir import_excel.py:DifferenceChamp. `champ` : 'email' |
+    'telephone' | 'adresse' | 'date_naissance' | 'cours'."""
+
+    champ: str
+    valeur_actuelle: Any = None
+    valeur_fichier: Any = None
+
+    model_config = {"from_attributes": True}
+
+
 class LigneApercuSortie(BaseModel):
     numero_ligne: int
     nom: str
@@ -101,7 +114,12 @@ class LigneApercuSortie(BaseModel):
     cours_ids: list[int] = []
     colonnes_non_reconnues: list[str] = []
     eleve_existant_id: int | None = None
-    action: str
+    # Vide = nouvel élève, ou élève existant déjà à jour.
+    differences: list[DifferenceChampSortie] = []
+    # Nouvel élève seulement (voir import_excel.py:LigneApercu).
+    creer: bool = True
+    # Élève existant seulement : quels `differences[].champ` appliquer.
+    champs_a_appliquer: list[str] = []
 
     # Lu depuis les dataclasses `LigneApercu`/`ApercuImport` de
     # import_excel.py, pas des objets Pydantic/SQLAlchemy.
@@ -117,8 +135,8 @@ class ApercuImportSortie(BaseModel):
 
 class LigneValidationEntree(BaseModel):
     """Reprend les champs de `LigneApercuSortie` — l'admin peut avoir
-    corrigé `action` (et n'importe quel autre champ) à la relecture avant
-    de poster ceci (voir §6.4bis)."""
+    coché/décoché `creer` (nouvel élève) ou modifié `champs_a_appliquer`
+    (élève existant) à la relecture avant de poster ceci (voir §6.4bis)."""
 
     numero_ligne: int
     nom: str
@@ -130,7 +148,8 @@ class LigneValidationEntree(BaseModel):
     contact_parent_brut: str | None = None
     cours_ids: list[int] = []
     eleve_existant_id: int | None = None
-    action: str
+    creer: bool = True
+    champs_a_appliquer: list[str] = []
 
 
 class ValidationImportEntree(BaseModel):
@@ -140,7 +159,7 @@ class ValidationImportEntree(BaseModel):
 class ResultatImportSortie(BaseModel):
     crees: int
     mis_a_jour: int
-    ignores: int
+    inchanges: int
 
 
 class MappingColonneEntree(BaseModel):

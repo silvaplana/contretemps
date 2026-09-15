@@ -111,3 +111,40 @@ export async function supprimerContact(eleveId, contactId) {
   await requete(`/contacts/${contactId}`, { method: 'DELETE' })
   return avecCoursIds(await requete(`/eleves/${eleveId}`))
 }
+
+// --- Import du fichier élèves officiel (voir spec/SPEC.md §6.4bis) ---
+// MÊME code appelé depuis 2 écrans (Admin > École > "Intégrer fichier
+// élèves officiel" ET Admin > Élèves > "Importer", voir
+// IntegrerFichierElevesModal.jsx) : une seule implémentation, jamais 2.
+
+// Multipart : pas de Content-Type manuel (voir ecolesApi.restaurer, même
+// convention — laisser le navigateur poser la frontière lui-même).
+export async function previsualiserImport(ecoleId, fichier) {
+  const donnees = new FormData()
+  donnees.append('fichier', fichier)
+  const reponse = await fetch(`${BASE_URL}/eleves/import/previsualiser?ecole_id=${ecoleId}`, {
+    method: 'POST',
+    body: donnees,
+  })
+  if (!reponse.ok) {
+    const detail = await reponse.json().catch(() => null)
+    throw new Error(detail?.detail ?? `Requête échouée (${reponse.status})`)
+  }
+  return reponse.json()
+}
+
+// `lignes` : celles renvoyées par previsualiserImport, avec `creer`/
+// `champs_a_appliquer` éventuellement ajustés par l'admin à la relecture.
+export async function validerImport(ecoleId, lignes) {
+  return requete(`/eleves/import/valider?ecole_id=${ecoleId}`, {
+    method: 'POST',
+    body: JSON.stringify({ lignes }),
+  })
+}
+
+export async function memoriserMappingColonne(ecoleId, enTeteExcel, coursId) {
+  return requete(`/eleves/import/mapping-colonne?ecole_id=${ecoleId}`, {
+    method: 'POST',
+    body: JSON.stringify({ en_tete_excel: enTeteExcel, cours_id: coursId }),
+  })
+}

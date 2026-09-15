@@ -6,6 +6,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
+import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 
@@ -639,7 +640,14 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
 
       {showAdd && <AddEleveModal onClose={() => setShowAdd(false)} onAdd={addEleve} />}
 
-      {showImport && <ImportElevesModal onClose={() => setShowImport(false)} />}
+      {showImport && (
+        <IntegrerFichierElevesModal
+          ecoleId={ecoleId}
+          cours={cours}
+          setEleves={setEleves}
+          onClose={() => setShowImport(false)}
+        />
+      )}
     </div>
   )
 }
@@ -678,43 +686,6 @@ function AddEleveModal({ onClose, onAdd }) {
       <input id="add-prenom" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
       <label htmlFor="add-nom">Nom</label>
       <input id="add-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
-    </Modal>
-  )
-}
-
-// Emplacement d'un futur import en masse — pas encore branché (ni lecture
-// de fichier Excel/CSV, ni connexion Google Drive), juste l'endroit dans
-// l'IHM où ça viendra.
-function ImportElevesModal({ onClose }) {
-  const [source, setSource] = useState(null)
-
-  return (
-    <Modal title="Importer des élèves" onClose={onClose}>
-      <p className="muted">Importer plusieurs élèves d'un coup depuis un fichier ou Google Drive.</p>
-      <div className="video-source-buttons">
-        <button
-          type="button"
-          className="btn btn--secondary video-source-buttons__btn"
-          onClick={() => setSource('fichier')}
-        >
-          <Icon name="folder" size={18} />
-          Fichier Excel / CSV
-        </button>
-        <button
-          type="button"
-          className="btn btn--secondary video-source-buttons__btn"
-          onClick={() => setSource('drive')}
-        >
-          <Icon name="folder" size={18} />
-          Google Drive
-        </button>
-      </div>
-      {source && (
-        <p className="muted">
-          <Icon name="check" size={14} />{' '}
-          {source === 'fichier' ? 'Import de fichier' : 'Connexion à Google Drive'} — bientôt disponible.
-        </p>
-      )}
     </Modal>
   )
 }

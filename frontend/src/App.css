@@ -1518,6 +1518,91 @@
 }
 
 /* ==========================================================================
+   Import du fichier élèves officiel (IntegrerFichierElevesModal.jsx, voir
+   spec/SPEC.md §6.4bis) — même modale ouverte depuis Admin > École et
+   Admin > Élèves.
+   ========================================================================== */
+
+.import-eleves__resume {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.import-eleves__mapping {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  margin-bottom: 14px;
+}
+
+.import-eleves__mapping-ligne {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.import-eleves__mapping-ligne span {
+  flex: 1;
+  font-size: 13px;
+}
+
+.import-eleves__mapping-ligne select {
+  flex: 1;
+}
+
+.import-eleves__section-titre {
+  font-size: 14px;
+  font-weight: 700;
+  margin: 16px 0 6px;
+}
+
+.import-eleves__avertissement {
+  color: var(--danger-text);
+  font-size: 12px;
+}
+
+/* Une différence de champ pour un élève déjà existant — 2 choix radio
+   ("garder l'actuel" / "utiliser le fichier"), jamais de valeur appliquée
+   par défaut (demande utilisateur explicite : rien n'est écrasé sans
+   décision admin, contrairement à l'ancien comportement). */
+.import-eleves__difference {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.import-eleves__difference-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.import-eleves__difference label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+/* Plus spécifique que .modal-body input (width:100%, voir plus haut) —
+   sinon le rond du radio s'étire sur toute la largeur de la modale. */
+.import-eleves__difference label input {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+/* ==========================================================================
    Messagerie (MessagerieScreen.jsx)
    ========================================================================== */
 

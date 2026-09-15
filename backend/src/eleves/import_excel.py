@@ -1,15 +1,20 @@
-"""Import Excel réel des élèves (voir spec/SPEC.md §6.4bis). Fichier
-SÉPARÉ de eleves.py qui réutilise ses primitives CRUD au lieu de les
-dupliquer — ne fait QUE lire le classeur, résoudre les colonnes de cours
-et orchestrer les décisions d'import (rien écrit en base avant
-validation explicite de l'admin, voir `valider`).
+"""Import du fichier élèves OFFICIEL (Excel ou CSV, voir spec/SPEC.md
+§6.4bis) — Admin > École ("Intégrer fichier élèves officiel") ET Admin >
+Élèves (bouton "Importer"), les deux mènent ici (demande utilisateur
+explicite). Fichier SÉPARÉ de eleves.py qui réutilise ses primitives CRUD
+au lieu de les dupliquer — ne fait QUE lire le fichier, résoudre les
+colonnes de cours et calculer les différences avec les élèves déjà en
+base (rien écrit avant validation explicite de l'admin, voir `valider`).
 """
 
 from __future__ import annotations
 
+import csv
 import datetime as dt
 import re
+import unicodedata
 from dataclasses import dataclass, field
+from typing import Any
 
 from cours import CoursService
 from openpyxl import load_workbook
@@ -37,17 +42,43 @@ MAPPING_COLONNES_COURS_PAR_DEFAUT: dict[str, str] = {
     "Jazz Av": "Jazz AV",
 }
 
-COLONNES_FIXES = {
-    "Nom",
-    "Prénom",
-    "Nom-Prénom parent",
-    "Email",
-    "Adresse",
-    "Téléphone",
-    "Date de naissance",
-}
-
 _RE_NOTATION_SCIENTIFIQUE = re.compile(r"e[+-]?\d", re.IGNORECASE)
+
+
+def _normaliser(texte: str) -> str:
+    """minuscules, sans accents, lettres/chiffres seulement — pour
+    comparer un en-tête de colonne malgré des variantes de libellé ("Nom
+    adhérent" vs "Nom", "E-Mail" vs "Email", "Nom - Prénom parent" vs
+    "Nom-Prénom parent"...). Volontairement simple/déterministe (voir
+    §6.4bis : "pas besoin d'appel IA" — même raisonnement ici)."""
+    sans_accents = unicodedata.normalize("NFKD", texte).encode("ascii", "ignore").decode("ascii")
+    return re.sub(r"[^a-z0-9]", "", sans_accents.lower())
+
+
+def _ressemble(en_tete: str, *motifs: str) -> bool:
+    normalise = _normaliser(en_tete)
+    return any(motif in normalise for motif in motifs)
+
+
+def _trouver_colonne(entetes: list[str], deja_pris: set[int], *motifs: str) -> int | None:
+    for i, e in enumerate(entetes):
+        if i in deja_pris or not e:
+            continue
+        if _ressemble(e, *motifs):
+            return i
+    return None
+
+
+@dataclass
+class DifferenceChamp:
+    """Une différence entre la fiche actuelle et le fichier, pour un
+    élève déjà existant — présentée à l'admin qui choisit, champ par
+    champ (demande utilisateur explicite), plutôt que l'ancien
+    comportement qui écrasait tout silencieusement."""
+
+    champ: str  # 'email' | 'telephone' | 'adresse' | 'date_naissance' | 'cours'
+    valeur_actuelle: Any
+    valeur_fichier: Any
 
 
 @dataclass
@@ -61,10 +92,23 @@ class LigneApercu:
     adresse: str | None
     date_naissance: dt.date | None
     contact_parent_brut: str | None
+    # Nouvel élève : tous les cours marqués dans le fichier. Élève
+    # existant : uniquement les cours marqués qu'il n'a PAS déjà (jamais
+    # de désinscription automatique, voir _differences) — non vide
+    # seulement s'il y a une différence "cours" à proposer.
     cours_ids: list[int] = field(default_factory=list)
     colonnes_non_reconnues: list[str] = field(default_factory=list)
     eleve_existant_id: int | None = None
-    action: str = "creer"  # 'creer' | 'mettre_a_jour'
+    # Vide pour un nouvel élève, ou pour un élève existant déjà à jour.
+    differences: list[DifferenceChamp] = field(default_factory=list)
+    # Nouvel élève seulement : décochable par l'admin avant validation
+    # (ex. ligne parasite du fichier) — sans objet si eleve_existant_id.
+    creer: bool = True
+    # Élève existant seulement : quels `differences[].champ` l'admin a
+    # choisi d'appliquer ("utiliser le fichier") — les autres restent
+    # inchangés (choix par défaut sûr : ne jamais écraser sans decision
+    # explicite, contrairement à l'ancien comportement).
+    champs_a_appliquer: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -117,12 +161,36 @@ def _decouper_nom_prenom_contact(chaine: str) -> tuple[str | None, str | None]:
     return morceaux[0], morceaux[1]
 
 
+def _lire_lignes_brutes(nom_fichier: str, fichier) -> list[list]:
+    """CSV ou Excel (1er onglet SEULEMENT — contrainte annoncée à
+    l'utilisateur, voir receiver.py) -> lignes brutes uniformes, en-têtes
+    compris en 1re ligne."""
+    nom_lower = (nom_fichier or "").lower()
+    if nom_lower.endswith(".csv"):
+        contenu = fichier.read()
+        if isinstance(contenu, bytes):
+            contenu = contenu.decode("utf-8-sig")  # -sig : tolère un BOM (Excel Windows)
+        try:
+            dialecte = csv.Sniffer().sniff(contenu[:2048], delimiters=",;")
+        except csv.Error:
+            dialecte = csv.excel  # repli : virgule (voir csv.excel)
+        return [
+            [cellule if cellule != "" else None for cellule in ligne]
+            for ligne in csv.reader(contenu.splitlines(), dialecte)
+        ]
+    if nom_lower.endswith(".xlsx"):
+        classeur = load_workbook(fichier, data_only=True)
+        feuille = classeur.active  # "1er onglet" — la contrainte annoncée
+        return [list(ligne) for ligne in feuille.iter_rows(values_only=True)]
+    raise ValueError("Le fichier doit être un .csv, ou un .xlsx (Excel, 1er onglet).")
+
+
 class ImportExcel:
     def __init__(self, eleves: Eleves, cours: CoursService) -> None:
         self.eleves = eleves
         self.cours = cours
 
-    # --- Mémorisation du mapping de colonnes (voir §6.4bis) ---
+    # --- Mémorisation du mapping de colonnes de cours (voir §6.4bis) ---
 
     def _mapping_memorise(self, db: Session, ecole_id: int) -> dict[str, int]:
         lignes = db.scalars(
@@ -177,136 +245,235 @@ class ImportExcel:
             non_reconnues.append(en_tete)
         return resolues, non_reconnues
 
-    # --- Lecture du classeur (phase 1 : rien n'est écrit en base) ---
+    # --- Lecture du fichier (phase 1 : rien n'est écrit en base) ---
 
-    def previsualiser(self, db: Session, ecole_id: int, fichier) -> ApercuImport:
-        """`fichier` : chemin ou objet fichier-binaire (voir openpyxl).
-        Voir §6.4bis : "rien n'est écrit en base tant que l'admin n'a pas
-        validé l'écran de relecture dans son ensemble"."""
-        classeur = load_workbook(fichier, data_only=True)
-        feuille = classeur.active
-        lignes_brutes = list(feuille.iter_rows(values_only=True))
+    def previsualiser(self, db: Session, ecole_id: int, fichier, nom_fichier: str) -> ApercuImport:
+        """`fichier` : objet fichier-binaire. `nom_fichier` : nom
+        d'origine (voir _lire_lignes_brutes, décide csv/xlsx par
+        extension). Voir §6.4bis : "rien n'est écrit en base tant que
+        l'admin n'a pas validé l'écran de relecture dans son ensemble"."""
+        lignes_brutes = _lire_lignes_brutes(nom_fichier, fichier)
+        if not lignes_brutes:
+            raise ValueError("Fichier vide.")
         entetes = [str(c).strip() if c is not None else "" for c in lignes_brutes[0]]
-        index = {nom: i for i, nom in enumerate(entetes)}
+        if len(entetes) < 2:
+            raise ValueError(
+                'Le fichier doit avoir au moins 2 colonnes : "Nom adhérent" et "Prénom '
+                'adhérent" (ou équivalent), dans cet ordre.'
+            )
 
-        colonnes_cours = [e for e in entetes if e and e not in COLONNES_FIXES]
-        resolues, non_reconnues = self.resoudre_colonnes_cours(db, ecole_id, colonnes_cours)
+        # Contrainte annoncée à l'utilisateur : les 2 PREMIÈRES colonnes
+        # doivent ressembler à Nom/Prénom (voir _ressemble ci-dessus) —
+        # jamais de recherche ailleurs dans le fichier pour ces 2-là,
+        # contrairement aux autres champs fixes plus bas (l'ordre des 2
+        # premières colonnes, lui, est une vraie contrainte du format).
+        if not _ressemble(entetes[0], "nom") or _ressemble(entetes[0], "prenom"):
+            raise ValueError(
+                f'La 1re colonne ("{entetes[0]}") doit ressembler à "Nom" '
+                '(ex. "Nom adhérent").'
+            )
+        if not _ressemble(entetes[1], "prenom"):
+            raise ValueError(
+                f'La 2e colonne ("{entetes[1]}") doit ressembler à "Prénom" '
+                '(ex. "Prénom adhérent").'
+            )
 
-        def valeur(ligne, nom_colonne):
-            i = index.get(nom_colonne)
-            return ligne[i] if i is not None and i < len(ligne) else None
+        deja_pris = {0, 1}
+        idx_email = _trouver_colonne(entetes, deja_pris, "email", "mail")
+        if idx_email is not None:
+            deja_pris.add(idx_email)
+        idx_telephone = _trouver_colonne(entetes, deja_pris, "telephone", "tel")
+        if idx_telephone is not None:
+            deja_pris.add(idx_telephone)
+        idx_adresse = _trouver_colonne(entetes, deja_pris, "adresse")
+        if idx_adresse is not None:
+            deja_pris.add(idx_adresse)
+        idx_naissance = _trouver_colonne(entetes, deja_pris, "naissance", "age", "date")
+        if idx_naissance is not None:
+            deja_pris.add(idx_naissance)
+        idx_contact = _trouver_colonne(entetes, deja_pris, "parent")
+        if idx_contact is not None:
+            deja_pris.add(idx_contact)
+
+        # (index, en_tete) plutôt que juste l'en_tete : évite une relecture
+        # fragile par `.index()` plus bas (2 colonnes pourraient, en
+        # théorie, partager le même libellé).
+        colonnes_cours = [
+            (i, e) for i, e in enumerate(entetes) if e and i not in deja_pris
+        ]
+        resolues, non_reconnues = self.resoudre_colonnes_cours(
+            db, ecole_id, [e for _, e in colonnes_cours]
+        )
+
+        def valeur(ligne, index):
+            return ligne[index] if index is not None and index < len(ligne) else None
 
         lignes: list[LigneApercu] = []
         for numero, ligne in enumerate(lignes_brutes[1:], start=2):
-            nom = str(valeur(ligne, "Nom") or "").strip()
-            prenom = str(valeur(ligne, "Prénom") or "").strip()
+            nom = str(valeur(ligne, 0) or "").strip()
+            prenom = str(valeur(ligne, 1) or "").strip()
             if not nom and not prenom:
                 continue  # ligne vide (ex. fin de fichier)
 
-            brut_email = valeur(ligne, "Email")
+            brut_email = valeur(ligne, idx_email)
             email = str(brut_email).strip() or None if brut_email else None
-            telephone, telephone_suspect = _telephone_texte(valeur(ligne, "Téléphone"))
-            brut_adresse = valeur(ligne, "Adresse")
+            telephone, telephone_suspect = _telephone_texte(valeur(ligne, idx_telephone))
+            brut_adresse = valeur(ligne, idx_adresse)
             adresse = str(brut_adresse).strip() or None if brut_adresse else None
-            date_naissance = _extraire_date_naissance(valeur(ligne, "Date de naissance"))
-            brut_contact = valeur(ligne, "Nom-Prénom parent")
+            date_naissance = _extraire_date_naissance(valeur(ligne, idx_naissance))
+            brut_contact = valeur(ligne, idx_contact)
             contact_parent_brut = str(brut_contact).strip() if brut_contact else None
 
-            cours_ids = [
-                resolues[c] for c in colonnes_cours if c in resolues and valeur(ligne, c)
+            cours_ids_fichier = [
+                resolues[c] for i, c in colonnes_cours if c in resolues and valeur(ligne, i)
             ]
             colonnes_non_reconnues_ligne = [
-                c for c in colonnes_cours if c in non_reconnues and valeur(ligne, c)
+                c for i, c in colonnes_cours if c in non_reconnues and valeur(ligne, i)
             ]
 
-            eleve_existant_id = self._trouver_doublon(db, ecole_id, nom, prenom, date_naissance)
+            eleve_existant_id = self._trouver_eleve_existant(db, ecole_id, nom, prenom, date_naissance)
 
-            lignes.append(
-                LigneApercu(
-                    numero_ligne=numero,
-                    nom=nom,
-                    prenom=prenom,
-                    email=email,
-                    telephone=telephone,
-                    telephone_suspect=telephone_suspect,
-                    adresse=adresse,
-                    date_naissance=date_naissance,
-                    contact_parent_brut=contact_parent_brut,
-                    cours_ids=cours_ids,
-                    colonnes_non_reconnues=colonnes_non_reconnues_ligne,
-                    eleve_existant_id=eleve_existant_id,
-                    action="mettre_a_jour" if eleve_existant_id else "creer",
+            if eleve_existant_id is None:
+                lignes.append(
+                    LigneApercu(
+                        numero_ligne=numero, nom=nom, prenom=prenom, email=email,
+                        telephone=telephone, telephone_suspect=telephone_suspect, adresse=adresse,
+                        date_naissance=date_naissance, contact_parent_brut=contact_parent_brut,
+                        cours_ids=cours_ids_fichier, colonnes_non_reconnues=colonnes_non_reconnues_ligne,
+                    )
                 )
-            )
+            else:
+                differences = self._differences(
+                    db, eleve_existant_id, email, telephone, adresse, date_naissance, cours_ids_fichier
+                )
+                cours_a_ajouter = next(
+                    (d.valeur_fichier for d in differences if d.champ == "cours"), []
+                )
+                lignes.append(
+                    LigneApercu(
+                        numero_ligne=numero, nom=nom, prenom=prenom, email=email,
+                        telephone=telephone, telephone_suspect=telephone_suspect, adresse=adresse,
+                        date_naissance=date_naissance, contact_parent_brut=contact_parent_brut,
+                        cours_ids=cours_a_ajouter, colonnes_non_reconnues=colonnes_non_reconnues_ligne,
+                        eleve_existant_id=eleve_existant_id, differences=differences,
+                    )
+                )
 
         return ApercuImport(
             lignes=lignes, colonnes_non_reconnues_globales=sorted(set(non_reconnues))
         )
 
-    def _trouver_doublon(
+    def _trouver_eleve_existant(
         self, db: Session, ecole_id: int, nom: str, prenom: str, date_naissance: dt.date | None
     ) -> int | None:
-        """Correspondance (nom, prénom, date_naissance) — voir §6.4bis :
-        l'email est volontairement exclu (frères/sœurs qui le partagent)."""
-        for existant in self.eleves.comptes.trouver_par_nom_prenom(
-            db, ecole_id, nom, prenom, role="eleve"
-        ):
-            profil = self.eleves.get_profil(db, existant.id)
-            if profil is not None and profil.date_naissance == date_naissance:
-                return existant.id
-        return None
+        """Correspondance par (nom, prénom) — voir §6.4bis : l'email est
+        volontairement exclu (frères/sœurs qui le partagent). La date de
+        naissance n'est PLUS une condition stricte (elle peut elle-même
+        être une différence à corriger, voir _differences) — elle ne sert
+        qu'à départager s'il existe plusieurs homonymes exacts (rare,
+        ex. 2 élèves same nom+prénom) : dans ce cas précis seulement, sans
+        elle on ne devine pas (traité comme nouvel élève plutôt que
+        risquer d'écraser la mauvaise fiche)."""
+        candidats = self.eleves.comptes.trouver_par_nom_prenom(db, ecole_id, nom, prenom, role="eleve")
+        if not candidats:
+            return None
+        if len(candidats) == 1:
+            return candidats[0].id
+        correspondance_date = [
+            c for c in candidats
+            if (profil := self.eleves.get_profil(db, c.id)) and profil.date_naissance == date_naissance
+        ]
+        return correspondance_date[0].id if len(correspondance_date) == 1 else None
+
+    def _differences(
+        self, db: Session, eleve_id: int, email, telephone, adresse, date_naissance, cours_ids_fichier
+    ) -> list[DifferenceChamp]:
+        """Une entrée par champ où le fichier apporte une valeur NON VIDE
+        différente de la fiche actuelle — jamais l'inverse (une case vide
+        dans le fichier n'efface jamais une donnée existante, voir
+        `_ajouter` ci-dessous). "cours" : seulement les cours du fichier
+        que l'élève n'a PAS déjà (jamais de désinscription automatique —
+        un fichier "officiel" peut légitimement ne pas lister tous les
+        cours suivis)."""
+        compte = self.eleves.get_compte(db, eleve_id)
+        profil = self.eleves.get_profil(db, eleve_id)
+        differences: list[DifferenceChamp] = []
+
+        def _ajouter(champ: str, actuelle, fichier):
+            if fichier is None or fichier == "":
+                return
+            if fichier != actuelle:
+                differences.append(DifferenceChamp(champ=champ, valeur_actuelle=actuelle, valeur_fichier=fichier))
+
+        _ajouter("email", compte.email if compte else None, email)
+        _ajouter("telephone", compte.telephone if compte else None, telephone)
+        _ajouter("adresse", profil.adresse if profil else None, adresse)
+        _ajouter("date_naissance", profil.date_naissance if profil else None, date_naissance)
+
+        cours_actuels_ids = {c.id for c in self.cours.cours_de_leleve(db, eleve_id)}
+        cours_a_ajouter = [cid for cid in cours_ids_fichier if cid not in cours_actuels_ids]
+        if cours_a_ajouter:
+            differences.append(
+                DifferenceChamp(champ="cours", valeur_actuelle=None, valeur_fichier=cours_a_ajouter)
+            )
+
+        return differences
 
     # --- Écriture en base (phase 2 : après validation admin) ---
 
     def valider(self, db: Session, ecole_id: int, lignes: list[LigneApercu]) -> dict:
-        """`lignes` : celles renvoyées par `previsualiser`, avec `action`
-        éventuellement corrigé par l'admin à la relecture (voir §6.4bis :
-        choix global par défaut + ajustable ligne par ligne — cet
-        ajustement est fait par l'appelant/le futur frontend avant
-        d'appeler `valider`, pas ici)."""
-        crees = mis_a_jour = ignores = 0
+        """`lignes` : celles renvoyées par `previsualiser`, avec `creer`
+        (nouvel élève) ou `champs_a_appliquer` (élève existant, voir
+        LigneApercu) éventuellement corrigés par l'admin à la relecture —
+        cet ajustement est fait par l'appelant/le frontend avant d'appeler
+        `valider`, pas ici."""
+        crees = mis_a_jour = inchanges = 0
         for ligne in lignes:
-            if ligne.action == "ignorer":
-                ignores += 1
-                continue
-
-            if ligne.action == "mettre_a_jour" and ligne.eleve_existant_id:
-                eleve_id = ligne.eleve_existant_id
-                self.eleves.comptes.update(db, eleve_id, email=ligne.email, telephone=ligne.telephone)
-                self.eleves.update_profil(
-                    db, eleve_id, adresse=ligne.adresse, date_naissance=ligne.date_naissance
-                )
-                mis_a_jour += 1
-            else:  # 'creer', ou 'dupliquer' malgré un doublon détecté
+            if ligne.eleve_existant_id is None:
+                if not ligne.creer:
+                    continue
                 compte, _profil = self.eleves.create(
-                    db,
-                    ecole_id,
-                    nom=ligne.nom,
-                    prenom=ligne.prenom,
-                    email=ligne.email,
-                    telephone=ligne.telephone,
-                    date_naissance=ligne.date_naissance,
-                    adresse=ligne.adresse,
+                    db, ecole_id, nom=ligne.nom, prenom=ligne.prenom, email=ligne.email,
+                    telephone=ligne.telephone, date_naissance=ligne.date_naissance, adresse=ligne.adresse,
                 )
                 eleve_id = compte.id
                 crees += 1
+                if ligne.contact_parent_brut:
+                    # "Nom-Prénom parent" (voir §6.4bis) — pas de lien
+                    # (père/mère) dans le fichier, laissé vide.
+                    contact_nom, contact_prenom = _decouper_nom_prenom_contact(ligne.contact_parent_brut)
+                    self.eleves.ajouter_contact(
+                        db, eleve_id, nom=contact_nom, prenom=contact_prenom,
+                        telephone=ligne.telephone, email=ligne.email,
+                    )
+                for cours_id in ligne.cours_ids:
+                    self.cours.inscrire_eleve(db, cours_id, eleve_id)
+                continue
 
-            if ligne.contact_parent_brut:
-                # "Nom-Prénom parent" (voir §6.4bis) — pas de lien
-                # (père/mère) dans le fichier, laissé vide.
-                contact_nom, contact_prenom = _decouper_nom_prenom_contact(
-                    ligne.contact_parent_brut
-                )
-                self.eleves.ajouter_contact(
-                    db,
-                    eleve_id,
-                    nom=contact_nom,
-                    prenom=contact_prenom,
-                    telephone=ligne.telephone,
-                    email=ligne.email,
-                )
+            eleve_id = ligne.eleve_existant_id
+            champs_compte: dict = {}
+            champs_profil: dict = {}
+            if "email" in ligne.champs_a_appliquer:
+                champs_compte["email"] = ligne.email
+            if "telephone" in ligne.champs_a_appliquer:
+                champs_compte["telephone"] = ligne.telephone
+            if "adresse" in ligne.champs_a_appliquer:
+                champs_profil["adresse"] = ligne.adresse
+            if "date_naissance" in ligne.champs_a_appliquer:
+                champs_profil["date_naissance"] = ligne.date_naissance
+            if champs_compte:
+                self.eleves.comptes.update(db, eleve_id, **champs_compte)
+            if champs_profil:
+                self.eleves.update_profil(db, eleve_id, **champs_profil)
+            cours_applique = "cours" in ligne.champs_a_appliquer
+            if cours_applique:
+                cours_actuels = {c.id for c in self.cours.cours_de_leleve(db, eleve_id)}
+                for cours_id in ligne.cours_ids:
+                    if cours_id not in cours_actuels:
+                        self.cours.inscrire_eleve(db, cours_id, eleve_id)
+            if champs_compte or champs_profil or cours_applique:
+                mis_a_jour += 1
+            else:
+                inchanges += 1
 
-            for cours_id in ligne.cours_ids:
-                self.cours.inscrire_eleve(db, cours_id, eleve_id)
-
-        return {"crees": crees, "mis_a_jour": mis_a_jour, "ignores": ignores}
+        return {"crees": crees, "mis_a_jour": mis_a_jour, "inchanges": inchanges}

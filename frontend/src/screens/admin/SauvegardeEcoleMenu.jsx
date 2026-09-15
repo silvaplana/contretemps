@@ -5,6 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 import { estConfigureDrive } from '../../utils/googleDrive.js'
+import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 const PERIODICITES = [
@@ -46,9 +47,12 @@ function destinationMemorisee() {
 // 5. "Importer sauvegarde" — ÉCRASE tout depuis un fichier technique,
 //    même confirmation, puis recharge la page (demande utilisateur
 //    explicite : "Puis la recharge") pour repartir d'un état propre.
-export default function SauvegardeEcoleMenu({ ecole }) {
+// 6. "Intégrer fichier élèves officiel" — MÊME modale que le bouton
+//    "Importer" d'Admin > Élèves (voir IntegrerFichierElevesModal.jsx,
+//    demande utilisateur explicite : une seule implémentation).
+export default function SauvegardeEcoleMenu({ ecole, cours, setEleves }) {
   const [menuOuvert, setMenuOuvert] = useState(false)
-  const [vue, setVue] = useState(null) // null | 'programmer' | 'supprimer' | 'importer'
+  const [vue, setVue] = useState(null) // null | 'programmer' | 'supprimer' | 'importer' | 'integrerFichier'
   const [erreur, setErreur] = useState(null)
   const [destination, setDestination] = useState(destinationMemorisee)
   const menuRef = useRef(null)
@@ -139,6 +143,9 @@ export default function SauvegardeEcoleMenu({ ecole }) {
             <button type="button" onClick={() => ouvrir('importer')}>
               <Icon name="folder" size={18} /> Importer sauvegarde
             </button>
+            <button type="button" onClick={() => ouvrir('integrerFichier')}>
+              <Icon name="fileCheck" size={18} /> Intégrer fichier élèves officiel
+            </button>
             <button type="button" className="header-menu__danger" onClick={() => ouvrir('supprimer')}>
               <Icon name="trash" size={18} /> Supprimer Données École
             </button>
@@ -151,6 +158,14 @@ export default function SauvegardeEcoleMenu({ ecole }) {
       {vue === 'programmer' && <ProgrammerSauvegardeModal ecole={ecole} onClose={() => setVue(null)} />}
       {vue === 'supprimer' && <SupprimerDonneesModal ecole={ecole} onClose={() => setVue(null)} />}
       {vue === 'importer' && <ImporterSauvegardeModal ecole={ecole} onClose={() => setVue(null)} />}
+      {vue === 'integrerFichier' && (
+        <IntegrerFichierElevesModal
+          ecoleId={ecole.id}
+          cours={cours}
+          setEleves={setEleves}
+          onClose={() => setVue(null)}
+        />
+      )}
     </>
   )
 }

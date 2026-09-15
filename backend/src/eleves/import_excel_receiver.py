@@ -1,8 +1,9 @@
-"""Routes REST de l'import Excel des élèves (voir spec/SPEC.md §6.4bis).
-Fichier séparé de receiver.py (comme import_excel.py l'est de eleves.py)
-— même écran (Admin > Élèves, bouton "Importer depuis Excel"), mais un
-sous-ensemble de routes assez spécifique pour être isolé.
-"""
+"""Routes REST de l'import du fichier élèves officiel (voir
+spec/SPEC.md §6.4bis). Fichier séparé de receiver.py (comme
+import_excel.py l'est de eleves.py) — MÊME code appelé depuis 2 écrans
+(Admin > École > menu "Intégrer fichier élèves officiel" ET Admin >
+Élèves > "Importer", décision utilisateur explicite : une seule fonction,
+jamais 2 implémentations)."""
 
 from __future__ import annotations
 
@@ -48,9 +49,11 @@ class ImportExcelReceiver:
     ):
         contenu = await fichier.read()
         try:
-            apercu = self.client.previsualiser(db, ecole_id, io.BytesIO(contenu))
-        except Exception as exc:  # fichier illisible/mal formé
-            raise HTTPException(status_code=400, detail=f"Fichier illisible : {exc}") from exc
+            apercu = self.client.previsualiser(
+                db, ecole_id, io.BytesIO(contenu), fichier.filename or ""
+            )
+        except Exception as exc:  # fichier illisible/mal formé/contrainte de format non respectée
+            raise HTTPException(status_code=400, detail=f"Fichier invalide : {exc}") from exc
         return apercu
 
     def valider(
@@ -69,7 +72,8 @@ class ImportExcelReceiver:
                 contact_parent_brut=ligne.contact_parent_brut,
                 cours_ids=ligne.cours_ids,
                 eleve_existant_id=ligne.eleve_existant_id,
-                action=ligne.action,
+                creer=ligne.creer,
+                champs_a_appliquer=ligne.champs_a_appliquer,
             )
             for ligne in donnees.lignes
         ]

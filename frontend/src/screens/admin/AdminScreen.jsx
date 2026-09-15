@@ -66,7 +66,13 @@ export default function AdminScreen({
       />
 
       {subTab === 'ecole' && (
-        <AdminParametres ecole={ecole} setEcole={setEcole} setVideos={setVideos} />
+        <AdminParametres
+          ecole={ecole}
+          setEcole={setEcole}
+          setVideos={setVideos}
+          cours={cours}
+          setEleves={setEleves}
+        />
       )}
       {subTab === 'eleves' && (
         <AdminEleves eleves={eleves} setEleves={setEleves} cours={cours} ecoleId={ecole.id} />
