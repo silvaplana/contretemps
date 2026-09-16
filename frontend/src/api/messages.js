@@ -19,13 +19,31 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// Délai avant abandon (voir utils/messageOutbox.js) — sans ça, sur un
+// réseau mobile qui "pend" au lieu de couper franchement, une requête
+// peut rester en attente indéfiniment et une bulle d'envoi restait
+// bloquée "en cours" pour toujours (bug signalé : "des fois les messages
+// n'arrivaient pas").
+const DELAI_TIMEOUT_MS = 20000
+
 async function requete(chemin, options) {
-  const reponse = await fetch(`${BASE_URL}${chemin}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
-  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
-  return reponse.status === 204 ? null : reponse.json()
+  const controleur = new AbortController()
+  const minuteur = setTimeout(() => controleur.abort(), DELAI_TIMEOUT_MS)
+  try {
+    const reponse = await fetch(`${BASE_URL}${chemin}`, {
+      headers: { 'Content-Type': 'application/json' },
+      signal: controleur.signal,
+      ...options,
+    })
+    if (!reponse.ok) {
+      const erreur = new Error(`Requête échouée (${reponse.status})`)
+      erreur.status = reponse.status
+      throw erreur
+    }
+    return reponse.status === 204 ? null : reponse.json()
+  } finally {
+    clearTimeout(minuteur)
+  }
 }
 
 // Le nom affiché : pour un DM, pas de `nom` propre côté backend (voir
@@ -60,6 +78,11 @@ export function versMessageEcran(message, compteId, membres) {
   const maDelivery = message.deliveries.find((d) => d.destinataire_id === compteId)
   return {
     id: message.id,
+    // Présent seulement pour un message envoyé via envoyerBrut (voir
+    // utils/messageOutbox.js) — sert à ne jamais afficher 2 fois le même
+    // message si la bulle d'attente locale et l'arrivée SSE se
+    // chevauchent (voir ConversationThreadScreen.jsx).
+    clientId: message.client_id ?? null,
     auteur: auteur ? `${auteur.prenom} ${auteur.nom}` : '?',
     estMoi: message.expediteur_id === compteId,
     contenu: message.contenu,
@@ -154,12 +177,19 @@ export async function listerAvecMessages(ecoleId, compteId, cours) {
 // canal : 'app' (défaut) | 'email' | 'whatsapp' — voir backend/src/
 // messagerie/messages.py: envoyer() pour la nuance sur 'whatsapp'
 // (marqueur d'intention, pas un vrai envoi pour l'instant).
-export async function envoyer(conversationId, compteId, membres, contenu, canal = 'app') {
-  const cree = await requete(`/conversations/${conversationId}/messages`, {
+//
+// "Brut" : renvoie la forme backend telle quelle (pas adaptée via
+// versMessageEcran) — utilisée par utils/messageOutbox.js, qui n'a pas
+// toujours les `membres` sous la main (ex. reprise après rechargement de
+// page) ; l'adaptation se fait dans App.jsx au moment d'insérer le
+// résultat dans la conversation concernée. `client_id` : voir
+// messageOutbox.js, permet un renvoi sûr sans jamais créer de doublon
+// (voir backend/src/messagerie/messages.py: envoyer).
+export async function envoyerBrut(conversationId, compteId, contenu, canal, clientId) {
+  return requete(`/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ expediteur_id: compteId, contenu, canal }),
+    body: JSON.stringify({ expediteur_id: compteId, contenu, canal, client_id: clientId }),
   })
-  return versMessageEcran(cree, compteId, membres)
 }
 
 // "Nouvelle discussion" depuis la recherche (voir ConversationListScreen.jsx,

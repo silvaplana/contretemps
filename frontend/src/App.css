@@ -1977,6 +1977,33 @@
   word-break: break-word;
 }
 
+/* Bulle "en cours d'envoi"/"échec" (voir ConversationThreadScreen.jsx,
+   utils/messageOutbox.js) — un <button> (pas un <div>, pour le tap
+   "réessayer" en échec), donc on lui redonne l'apparence d'une bulle
+   normale par-dessus les styles par défaut du navigateur. Grisée tant
+   que l'envoi n'a pas encore réussi (jamais la couleur d'accent pleine
+   d'un message confirmé) — pour qu'on distingue au premier coup d'œil
+   "envoyé" de "en cours/pas encore parti". */
+.message-bubble--attente {
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  opacity: 0.75;
+}
+
+.message-bubble--echec {
+  opacity: 1;
+  border-color: var(--danger-text);
+  cursor: pointer;
+}
+
+.message-bubble--echec .message-bubble__meta {
+  color: var(--danger-text);
+  opacity: 1;
+}
+
 .conversation-thread__input {
   position: relative;
   display: flex;

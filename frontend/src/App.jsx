@@ -12,6 +12,7 @@ import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import * as sessionApi from './api/session.js'
 import * as videosApi from './api/videos.js'
+import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
@@ -202,6 +203,25 @@ function App() {
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
+
+  // Un message envoyé via la file d'attente (voir utils/messageOutbox.js
+  // et ConversationThreadScreen.jsx) vient de réussir — au tout premier
+  // essai, ou après un ou plusieurs renvois automatiques. Câblé ici
+  // (pas dans ConversationThreadScreen.jsx) pour que ça marche même si
+  // l'utilisateur a changé d'écran/de conversation pendant que le renvoi
+  // était en cours (même principe que useTeleversementsTermines).
+  useMessagesEnvoyes((messageBrut) => {
+    if (!compteReel) return
+    setConversations((liste) => {
+      const conv = liste.find((c) => c.id === messageBrut.conversation_id)
+      if (!conv) return liste
+      if (conv.messages.some((m) => m.id === messageBrut.id)) return liste
+      const nouveauMessage = messagesApi.versMessageEcran(messageBrut, compteReel.id, conv.membres)
+      return liste.map((c) =>
+        c.id === messageBrut.conversation_id ? { ...c, messages: [...c.messages, nouveauMessage] } : c,
+      )
+    })
+  })
 
   // Ferme les notifications système déjà affichées (voir api/notifications.js :
   // viderNotifications) dès qu'on (r)ouvre l'appli — signalé : sur Android,

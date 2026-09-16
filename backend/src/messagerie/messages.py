@@ -8,6 +8,7 @@ from __future__ import annotations
 import datetime as dt
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from .conversations import Conversations
@@ -29,7 +30,8 @@ class Messages:
         expediteur_id: int,
         contenu: str,
         canal: str = "app",
-    ) -> Message:
+        client_id: str | None = None,
+    ) -> tuple[Message, bool]:
         """Crée le message + une `MessageDelivery` par destinataire résolu
         (tous les membres de la conversation, sauf l'expéditeur). Voir
         §6.9 : canal par défaut 'app', ou 'email'/'whatsapp' immédiatement
@@ -40,10 +42,42 @@ class Messages:
         spec/SPEC.md §6.9/§8) : aucun message ne part réellement sur
         WhatsApp pour l'instant (Baileys pas branché) — seule la case est
         cochée, pour ne pas perdre cette intention une fois le message
-        enregistré (signalé : rien ne le distinguait avant)."""
-        message = Message(conversation_id=conversation_id, expediteur_id=expediteur_id, contenu=contenu)
+        enregistré (signalé : rien ne le distinguait avant).
+
+        Renvoie `(message, nouveau)` — `nouveau=False` si `client_id`
+        correspond à un envoi déjà traité : le client a retenté après
+        avoir perdu la réponse HTTP d'un envoi qui, côté serveur, avait
+        pourtant déjà réussi (bug signalé : "des fois les messages
+        n'arrivaient pas" — un renvoi sans idempotence créait alors soit
+        un doublon, soit, si le client renonçait à retenter par peur du
+        doublon, perdait le message pour de bon). Le message existant est
+        renvoyé tel quel, RIEN n'est recréé ni republié (voir receiver.py
+        : la publication SSE/notification ne doit se faire qu'une fois)."""
+        if client_id is not None:
+            existant = db.scalar(select(Message).where(Message.client_id == client_id))
+            if existant is not None:
+                return existant, False
+
+        message = Message(
+            conversation_id=conversation_id,
+            expediteur_id=expediteur_id,
+            contenu=contenu,
+            client_id=client_id,
+        )
         db.add(message)
-        db.flush()
+        try:
+            db.flush()
+        except IntegrityError:
+            # Course entre 2 tentatives quasi simultanées avec le même
+            # client_id (2 requêtes réseau qui se chevauchent, voir
+            # frontend/src/utils/messageOutbox.js) — l'autre a gagné,
+            # relit son résultat plutôt que de planter.
+            db.rollback()
+            if client_id is not None:
+                existant = db.scalar(select(Message).where(Message.client_id == client_id))
+                if existant is not None:
+                    return existant, False
+            raise
 
         destinataires = [
             c
@@ -61,7 +95,7 @@ class Messages:
             )
         db.commit()
         db.refresh(message)
-        return message
+        return message, True
 
     def messages_de_la_conversation(self, db: Session, conversation_id: int) -> list[Message]:
         return list(

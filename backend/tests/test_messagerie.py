@@ -142,6 +142,97 @@ def test_envoyer_message_cree_une_delivery_par_destinataire(client, db_session):
     assert message["deliveries"][0]["statut"] == "envoye"
 
 
+def test_renvoi_avec_meme_client_id_ne_cree_pas_de_doublon(client, db_session):
+    """Bug signalé : "des fois les messages n'arrivaient pas" — un cas
+    réel est la réponse HTTP perdue après que le serveur ait DÉJÀ
+    enregistré le message (coupure réseau juste après le commit). Sans
+    idempotence, un renvoi crée un doublon ; avec `client_id` (voir
+    frontend/src/utils/messageOutbox.js), le 2e envoi renvoie exactement
+    le même message, rien n'est recréé."""
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+
+    corps = {"expediteur_id": prof.id, "contenu": "Bonjour !", "client_id": "abc-123"}
+    r1 = client.post(f"/conversations/{conversation['id']}/messages", json=corps)
+    r2 = client.post(f"/conversations/{conversation['id']}/messages", json=corps)
+    assert r1.status_code == 201
+    assert r2.status_code == 201
+    assert r1.json()["id"] == r2.json()["id"]
+
+    messages = client.get(f"/conversations/{conversation['id']}/messages").json()
+    assert len(messages) == 1
+    assert len(messages[0]["deliveries"]) == 1  # une seule delivery, pas 2
+
+
+def test_renvoi_avec_meme_client_id_ne_republie_pas_sur_sse(client, db_session):
+    """Suite du test précédent : le 2e envoi (idempotent) ne doit RIEN
+    republier — sinon un simple retry réseau déclencherait une 2e
+    notification pour un message déjà livré la 1re fois."""
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+
+    queue_eleve = evenements_client.abonner(eleve.id)
+    try:
+        corps = {"expediteur_id": prof.id, "contenu": "Bonjour !", "client_id": "xyz-789"}
+        client.post(f"/conversations/{conversation['id']}/messages", json=corps)
+        client.post(f"/conversations/{conversation['id']}/messages", json=corps)
+
+        assert queue_eleve.get_nowait()["message"]["contenu"] == "Bonjour !"
+        assert queue_eleve.empty()  # rien de plus, le 2e envoi n'a rien republié
+    finally:
+        evenements_client.desabonner(eleve.id, queue_eleve)
+
+
+def test_client_id_different_cree_bien_2_messages(client, db_session):
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+
+    r1 = client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"expediteur_id": prof.id, "contenu": "Un", "client_id": "id-1"},
+    )
+    r2 = client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"expediteur_id": prof.id, "contenu": "Deux", "client_id": "id-2"},
+    )
+    assert r1.json()["id"] != r2.json()["id"]
+    assert len(client.get(f"/conversations/{conversation['id']}/messages").json()) == 2
+
+
+def test_client_id_absent_fonctionne_comme_avant(client, db_session):
+    """Rétrocompatibilité : un envoi sans client_id (ancien comportement,
+    ou tout appel qui n'en fournit pas) continue de fonctionner
+    normalement, sans idempotence — voir models.py: Message.client_id,
+    nullable."""
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+
+    reponse = client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"expediteur_id": prof.id, "contenu": "Bonjour !"},
+    )
+    assert reponse.status_code == 201
+    assert reponse.json()["client_id"] is None
+
+
 def test_envoi_volontaire_email_immediat(client, db_session):
     ecole, admin, prof, eleve, cours = _setup(db_session)
     conversation = client.post(

@@ -3,6 +3,7 @@ import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
+import { envoyerAvecReprise, reessayer, useMessagesEnAttente } from '../../utils/messageOutbox.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
@@ -41,6 +42,14 @@ const ENTREE_ENVOIE = window.matchMedia('(pointer: fine)').matches
 export default function ConversationThreadScreen({ conversation, onBack, setConversations, compteId }) {
   const [draft, setDraft] = useState('')
   const messagesRef = useRef(null)
+  // Bulles "en cours"/"échec" (voir utils/messageOutbox.js) — filtrées
+  // des messages dont le `client_id` est déjà arrivé côté serveur (SSE
+  // ou réponse directe), pour ne jamais l'afficher 2 fois pendant la
+  // toute petite fenêtre où les deux peuvent se chevaucher.
+  const enAttenteBrut = useMessagesEnAttente(conversation.id)
+  const enAttente = enAttenteBrut.filter(
+    (m) => !conversation.messages.some((cm) => cm.clientId === m.clientId),
+  )
   const textareaRef = useRef(null)
   const [emojiOpen, setEmojiOpen] = useState(false)
   const emojiSelectorRef = useRef(null)
@@ -95,7 +104,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
   useEffect(() => {
     const el = messagesRef.current
     if (el) el.scrollTop = el.scrollHeight
-  }, [conversation.id, conversation.messages.length])
+  }, [conversation.id, conversation.messages.length, enAttente.length])
 
   // Ouvrir ce fil = les avoir vus pour de vrai (façon WhatsApp, voir
   // api/messages.js: marquerLus) — distinct de "reçu" (marqué dès la
@@ -135,7 +144,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
   // confirmation. En groupe, WhatsApp n'a pas de vrai fil unique côté
   // WhatsApp (pas de groupe WhatsApp = plusieurs messages 1-à-1) : la
   // confirmation le dit explicitement.
-  async function send(canal) {
+  function send(canal) {
     if (!draft.trim()) return
     if (canal === 'mail' && !window.confirm('Envoyer aussi ce message par mail ?')) return
     if (canal === 'whatsapp') {
@@ -153,18 +162,12 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
     // 'mail' (nom local du bouton) -> 'email' (nom du canal côté backend).
     const canalBackend = canal === 'mail' ? 'email' : canal
-    const message = await messagesApi.envoyer(conversation.id, compteId, conversation.membres, contenu, canalBackend)
-    // Déjà là (le flux SSE de App.jsx a pu livrer ce même message avant
-    // même que cette réponse de POST ne revienne — l'événement est
-    // publié côté backend avant que la réponse HTTP ne soit renvoyée,
-    // voir messagerie/receiver.py: envoyer_message) : pas de doublon.
-    setConversations((list) =>
-      list.map((c) => {
-        if (c.id !== conversation.id) return c
-        if (c.messages.some((m) => m.id === message.id)) return c
-        return { ...c, messages: [...c.messages, message] }
-      }),
-    )
+    // Bulle "en cours" affichée tout de suite (voir useMessagesEnAttente
+    // plus haut) — le texte ne disparaît plus jamais de l'écran, même si
+    // l'envoi échoue (bug signalé). L'insertion du message CONFIRMÉ dans
+    // la conversation se fait ailleurs (voir App.jsx: useMessagesEnvoyes),
+    // pas ici — ça marche pareil qu'on reste sur cet écran ou pas.
+    envoyerAvecReprise(conversation.id, compteId, contenu, canalBackend)
   }
 
   return (
@@ -205,6 +208,33 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
                 {m.envoyeParWhatsapp && <WhatsappBadge size={14} />}
               </span>
             </div>
+          </div>
+        ))}
+        {/* Bulles "en cours d'envoi"/"échec" (voir utils/messageOutbox.js)
+            — un message tapé reste toujours visible à l'écran, jamais
+            perdu en silence (bug signalé). Tap sur une bulle en échec :
+            réessaie. */}
+        {enAttente.map((m) => (
+          <div key={m.clientId} className="message-row message-row--moi">
+            <button
+              type="button"
+              className={`message-bubble message-bubble--attente ${
+                m.etat === 'echec' ? 'message-bubble--echec' : ''
+              }`}
+              disabled={m.etat !== 'echec'}
+              onClick={() => reessayer(m.clientId)}
+            >
+              <p className="message-bubble__contenu">{m.contenu}</p>
+              <span className="message-bubble__meta">
+                {m.etat === 'echec' ? (
+                  <>
+                    <Icon name="x" size={14} /> Échec — toucher pour réessayer
+                  </>
+                ) : (
+                  <Icon name="clock" size={14} />
+                )}
+              </span>
+            </button>
           </div>
         ))}
       </div>

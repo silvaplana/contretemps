@@ -179,21 +179,28 @@ class MessagerieReceiver:
             "expediteur_id": message.expediteur_id,
             "contenu": message.contenu,
             "created_at": message.created_at,
+            "client_id": message.client_id,
             "deliveries": self.messages.deliveries_du_message(db, message.id),
         }
 
     def envoyer_message(
         self, conversation_id: int, donnees: MessageCreation, db: Session = Depends(get_db)
     ):
-        message = self.messages.envoyer(
+        message, nouveau = self.messages.envoyer(
             db,
             conversation_id,
             donnees.expediteur_id,
             donnees.contenu,
             donnees.canal,
+            donnees.client_id,
         )
         sortie = self._sortie_message(db, message)
-        self._publier_message(db, conversation_id, sortie)
+        # Un renvoi idempotent (`nouveau=False`, voir messages.py: envoyer)
+        # ne republie RIEN — sinon un simple retry réseau côté client
+        # déclencherait une 2e notification push/SSE pour un message déjà
+        # livré la 1re fois.
+        if nouveau:
+            self._publier_message(db, conversation_id, sortie)
         return sortie
 
     def _publier_message(self, db: Session, conversation_id: int, sortie: dict) -> None:

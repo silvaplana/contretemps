@@ -64,6 +64,14 @@ class Message(Base):
     expediteur_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False)
     contenu: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    # Généré côté navigateur AVANT le premier essai d'envoi (UUID) — sert
+    # à retenter un envoi en toute sécurité sans jamais créer de doublon
+    # (voir messages.py: envoyer, bug signalé : un message pouvait
+    # disparaître silencieusement si la réponse HTTP se perdait après que
+    # le serveur l'ait déjà enregistré). Nullable : absent pour tout
+    # message créé autrement (démo, ancien code) — l'idempotence ne joue
+    # alors simplement pas, comme avant.
+    client_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
 
 
 class MessageDelivery(Base):

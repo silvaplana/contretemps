@@ -55,6 +55,9 @@ class MessageCreation(BaseModel):
     # 'app' (défaut) | 'email' | 'whatsapp' — voir messages.py: envoyer()
     # pour la nuance sur 'whatsapp' (intention seulement, pas un vrai envoi).
     canal: str = "app"
+    # Généré côté navigateur avant l'envoi — voir messages.py: envoyer()
+    # et frontend/src/utils/messageOutbox.js (idempotence des renvois).
+    client_id: str | None = None
 
 
 class DeliverySortie(BaseModel):
@@ -74,6 +77,7 @@ class MessageSortie(BaseModel):
     expediteur_id: int
     contenu: str
     created_at: dt.datetime
+    client_id: str | None = None
     deliveries: list[DeliverySortie] = []
 
 
