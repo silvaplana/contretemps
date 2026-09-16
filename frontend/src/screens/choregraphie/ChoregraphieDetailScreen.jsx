@@ -4,7 +4,7 @@ import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
-import AddVideoModal from '../video/AddVideoModal.jsx'
+import AjouterVideo from '../video/AjouterVideo.jsx'
 import EditVideoModal from '../video/EditVideoModal.jsx'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
@@ -19,6 +19,8 @@ export default function ChoregraphieDetailScreen({
   eleves,
   roster,
   videosDuCours,
+  coursId,
+  uploaderId,
   peutModifier,
   onBack,
   onUpdate,
@@ -33,7 +35,6 @@ export default function ChoregraphieDetailScreen({
   const [editingVoulu, setEditing] = useState(false)
   const editing = editingVoulu && peutModifier
   const [showChoose, setShowChoose] = useState(false)
-  const [showAddVideo, setShowAddVideo] = useState(false)
   const [editingVideo, setEditingVideo] = useState(null)
   const [showChooseEleves, setShowChooseEleves] = useState(false)
 
@@ -155,7 +156,7 @@ export default function ChoregraphieDetailScreen({
             <div className="video-list video-list--nested">
               {videos.map((v) => (
                 <div key={v.id} className="video-card">
-                  <VideoThumb url={v.url} poster={v.poster} titre={v.titre} duree={v.duree} />
+                  <VideoThumb video={v} />
                   <div className="video-card__body">
                     <div>
                       <strong>{v.titre}</strong>
@@ -194,14 +195,17 @@ export default function ChoregraphieDetailScreen({
           )}
 
           {editing ? (
-            <div className="video-source-buttons">
+            <>
               <button type="button" className="btn btn--secondary" onClick={() => setShowChoose(true)}>
-                <Icon name="folder" size={16} /> Choisir
+                <Icon name="folder" size={16} /> Choisir parmi les vidéos du cours
               </button>
-              <button type="button" className="btn btn--secondary" onClick={() => setShowAddVideo(true)}>
-                <Icon name="plus" size={16} /> Vidéo
-              </button>
-            </div>
+              <AjouterVideo
+                coursId={coursId}
+                lockedChoregraphieId={choregraphie.id}
+                uploaderId={uploaderId}
+                onAdded={onAddVideo}
+              />
+            </>
           ) : (
             // Modifier/supprimer une vidéo ne dépend plus du mode édition
             // (voir plus haut) — seuls choisir/ajouter en dépendent encore,
@@ -252,17 +256,6 @@ export default function ChoregraphieDetailScreen({
             )}
           </div>
         </Modal>
-      )}
-
-      {showAddVideo && (
-        <AddVideoModal
-          lockedChoregraphieId={choregraphie.id}
-          onClose={() => setShowAddVideo(false)}
-          onAdd={async (donnees) => {
-            await onAddVideo(donnees)
-            setShowAddVideo(false)
-          }}
-        />
       )}
 
       {editingVideo && (

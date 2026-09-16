@@ -52,13 +52,15 @@ export default function ChoregraphieScreen({
 
   // Gestion des vidéos depuis le détail d'une chorégraphie : mêmes données
   // que l'onglet Vidéo (api/videos.js), juste manipulées depuis cet écran.
-  async function addVideo(donnees) {
-    const nouvelle = await videosApi.creer(cours.id, donnees, uploaderId)
+  // AjouterVideo (voir video/AjouterVideo.jsx) a déjà créé la ligne côté
+  // serveur (upload par blocs) avant d'appeler ceci — rien à envoyer ici,
+  // juste refléter le résultat dans la liste locale.
+  function addVideo(video) {
     // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
     // l'appliquer 2 fois de suite sur son propre résultat.
     setVideos((byC) => {
       const liste = byC[cours.id] ?? []
-      return liste.some((v) => v.id === nouvelle.id) ? byC : { ...byC, [cours.id]: [...liste, nouvelle] }
+      return liste.some((v) => v.id === video.id) ? byC : { ...byC, [cours.id]: [...liste, video] }
     })
   }
 
@@ -98,10 +100,12 @@ export default function ChoregraphieScreen({
         // Toutes les vidéos du cours : le détail filtre lui-même celles
         // taguées à cette chorégraphie, et permet d'en (dé)taguer d'autres.
         videosDuCours={videos}
+        coursId={cours.id}
+        uploaderId={uploaderId}
         onBack={() => setSelectedId(null)}
         onUpdate={(patch) => update(selected.id, patch)}
         onRemove={() => removeChoregraphie(selected.id)}
-        onAddVideo={(donnees) => addVideo({ ...donnees, choregraphieId: selected.id })}
+        onAddVideo={addVideo}
         onUpdateVideo={updateVideo}
         onRemoveVideo={removeVideo}
         onToggleVideoTag={(id) => toggleVideoTag(id, selected.id)}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import shutil
+import datetime as dt
 from pathlib import Path
 from uuid import uuid4
 
@@ -12,11 +12,32 @@ from sqlalchemy.orm import Session
 from choregraphies import Choregraphie
 from cours import CoursService
 
+from .compression import compresser as compresser_fichier
 from .duree import duree_secondes
-from .models import Video
+from .models import Televersement, Video
 from .poster import generer_poster
 from .schemas import UsageVideosEcole, VideoUsage
-from .stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
+from .stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, chemin_televersement, dossier_ecole
+
+# Une session abandonnée (fichier choisi puis onglet fermé sans "Ajouter"
+# ni "Annuler" — voir spec/discussion : "si on ferme l'app, on annule
+# tout") ne doit pas laisser un fichier partiel indéfiniment sur le
+# disque. Nettoyée paresseusement à chaque nouvelle session créée (voir
+# _nettoyer_abandonnes) plutôt que via un worker dédié — pas besoin de
+# plus pour un cas aussi rare.
+DELAI_ABANDON = dt.timedelta(hours=6)
+
+
+class DecalageInvalide(Exception):
+    """Le bloc envoyé ne commence pas là où le serveur l'attend (voir
+    Videos.ecrire_bloc) — le navigateur a pu perdre le fil après une
+    coupure réseau. `octets_recus` : le VRAI décalage actuel côté
+    serveur, pour que le client resynchronise son envoi dessus plutôt que
+    de deviner."""
+
+    def __init__(self, octets_recus: int) -> None:
+        self.octets_recus = octets_recus
+        super().__init__(f"Décalage invalide, reprendre à {octets_recus}")
 
 
 class Videos:
@@ -63,53 +84,170 @@ class Videos:
         db.refresh(video)
         return video
 
-    def creer_avec_upload(
+    # --- Upload par blocs (voir Televersement dans models.py) ---
+    #
+    # 3 temps, mutualisés entre l'écran Vidéo et le détail d'une
+    # chorégraphie (même composant frontend, même api/videos.js) :
+    #  1. creer_televersement : dès le fichier choisi/filmé, AVANT toute
+    #     métadonnée — juste une session, pas encore de ligne `Video`.
+    #  2. ecrire_bloc : appelé en boucle pendant que l'admin remplit le
+    #     formulaire (titre/chorégraphie/description) en parallèle.
+    #  3. finaliser : au clic "Ajouter" — crée la ligne tout de suite,
+    #     même si l'envoi n'est pas fini (statut 'en_cours'), voir
+    #     _finaliser_fichier pour la suite une fois le fichier complet.
+
+    def creer_televersement(
+        self, db: Session, cours_id: int, extension: str, octets_total: int
+    ) -> Televersement | None:
+        cours = self.cours.get(db, cours_id)
+        if cours is None:
+            return None
+        self._nettoyer_abandonnes(db)
+        televersement = Televersement(
+            id=uuid4().hex,
+            ecole_id=cours.ecole_id,
+            cours_id=cours_id,
+            extension=extension or ".mp4",
+            octets_total=octets_total,
+        )
+        db.add(televersement)
+        db.commit()
+        db.refresh(televersement)
+        return televersement
+
+    def ecrire_bloc(
+        self, db: Session, upload_id: str, decalage: int, donnees: bytes
+    ) -> Televersement | None:
+        """`decalage` : position déclarée par le client pour ce bloc — DOIT
+        correspondre à `octets_recus` (voir DecalageInvalide) : détecte un
+        bloc rejoué/manquant après une coupure réseau plutôt que d'écrire
+        au mauvais endroit et corrompre le fichier."""
+        televersement = self.obtenir_televersement(db, upload_id)
+        if televersement is None:
+            return None
+        if decalage != televersement.octets_recus:
+            raise DecalageInvalide(televersement.octets_recus)
+
+        chemin = chemin_televersement(televersement.ecole_id, upload_id)
+        with open(chemin, "ab") as sortie:
+            sortie.write(donnees)
+        televersement.octets_recus += len(donnees)
+        if televersement.octets_recus >= televersement.octets_total:
+            televersement.complet = True
+        db.commit()
+        db.refresh(televersement)
+
+        # "Ajouter" a déjà été cliqué (voir finaliser) : ce dernier bloc
+        # termine le travail tout de suite, sans attendre un appel
+        # supplémentaire du frontend.
+        if televersement.complet and televersement.video_id is not None:
+            video = self.get(db, televersement.video_id)
+            if video is not None:
+                self._finaliser_fichier(db, video, televersement)
+        return televersement
+
+    def obtenir_televersement(self, db: Session, upload_id: str) -> Televersement | None:
+        return db.get(Televersement, upload_id)
+
+    def annuler_televersement(self, db: Session, upload_id: str) -> bool:
+        televersement = self.obtenir_televersement(db, upload_id)
+        if televersement is None:
+            return False
+        # Même si "Ajouter" a déjà été cliqué (video_id renseigné), voir
+        # spec : "l'appui sur annuler arrête tout" — supprime aussi la
+        # ligne Video créée entre-temps, pas seulement la session.
+        if televersement.video_id is not None:
+            self.delete(db, televersement.video_id)
+        chemin_televersement(televersement.ecole_id, upload_id).unlink(missing_ok=True)
+        db.delete(televersement)
+        db.commit()
+        return True
+
+    def finaliser(
         self,
         db: Session,
         cours_id: int,
-        fichier,
-        nom_fichier_original: str,
+        upload_id: str,
         nom: str,
         uploaded_by: int,
         description: str = "",
         choregraphie_id: int | None = None,
     ) -> Video | None:
-        """Vrai upload (voir receiver.py : uploader) — `fichier` : objet
-        fichier ouvert en lecture binaire (UploadFile.file côté FastAPI,
-        n'importe quel objet avec .read() suffit, pas besoin d'importer
-        FastAPI ici). Écrit sur disque, mesure la durée et génère une
-        vignette (voir duree.py/poster.py, même principe que pour les
-        vidéos de démo), puis crée la ligne — même chemin que create()
-        ci-dessus une fois le fichier en place. Mutualisé entre l'écran
-        Vidéo et le détail d'une chorégraphie (même AddVideoModal.jsx,
-        même appel api/videos.js côté frontend)."""
-        cours = self.cours.get(db, cours_id)
-        if cours is None:
+        """Clic "Ajouter" — crée la ligne tout de suite (voir Video.statut :
+        'en_cours' si le fichier n'est pas encore complet à cet instant,
+        auquel cas ecrire_bloc terminera le travail au dernier bloc)."""
+        televersement = self.obtenir_televersement(db, upload_id)
+        if televersement is None or televersement.cours_id != cours_id:
             return None
+        if televersement.video_id is not None:
+            # Double clic/double appel (voir AdminEleves.jsx pour un motif
+            # similaire) : déjà finalisé, renvoie la ligne existante plutôt
+            # que d'en créer une 2e.
+            return self.get(db, televersement.video_id)
 
-        dossier = dossier_ecole(cours.ecole_id)
-        extension = Path(nom_fichier_original).suffix or ".mp4"
-        nom_disque = f"{uuid4().hex}{extension}"
+        video = self.create(
+            db,
+            cours_id=cours_id,
+            nom=nom,
+            lien_fichier="",
+            uploaded_by=uploaded_by,
+            description=description,
+            choregraphie_id=choregraphie_id,
+            statut="complete" if televersement.complet else "en_cours",
+        )
+        televersement.video_id = video.id
+        db.commit()
+
+        if televersement.complet:
+            self._finaliser_fichier(db, video, televersement)
+            db.refresh(video)
+        return video
+
+    def _finaliser_fichier(self, db: Session, video: Video, televersement: Televersement) -> None:
+        """Fichier complet (voir ecrire_bloc/finaliser, les 2 points
+        d'entrée possibles selon l'ordre d'arrivée entre le dernier bloc et
+        le clic "Ajouter") — déplace le fichier partiel vers son
+        emplacement définitif, mesure durée + vignette (même ffmpeg que
+        l'ancien upload direct), passe la vidéo en 'complete'. La
+        compression, elle, est une tâche de fond séparée (voir
+        app/video_compression_worker.py), jamais ici (ne doit pas retarder
+        la disponibilité de la vidéo).
+
+        La ligne `televersement` N'EST PAS supprimée ici (contrairement à
+        annuler_televersement) : `finaliser` s'en sert pour rester
+        idempotent sur un double appel (voir son docstring) — reste
+        simplement une petite ligne inerte, jamais reprise par
+        _nettoyer_abandonnes puisque `video_id` est renseigné."""
+        dossier = dossier_ecole(televersement.ecole_id)
+        nom_disque = f"{uuid4().hex}{televersement.extension}"
         chemin_disque = dossier / nom_disque
-        with open(chemin_disque, "wb") as sortie:
-            shutil.copyfileobj(fichier, sortie)
+        chemin_televersement(televersement.ecole_id, televersement.id).rename(chemin_disque)
 
         poster = None
         chemin_poster_disque = dossier / f"{Path(nom_disque).stem}.jpg"
         if generer_poster(chemin_disque, chemin_poster_disque):
-            poster = chemin_relatif(cours.ecole_id, chemin_poster_disque.name)
+            poster = chemin_relatif(televersement.ecole_id, chemin_poster_disque.name)
 
-        return self.create(
-            db,
-            cours_id=cours_id,
-            nom=nom,
-            lien_fichier=chemin_relatif(cours.ecole_id, nom_disque),
-            uploaded_by=uploaded_by,
-            description=description,
-            choregraphie_id=choregraphie_id,
-            poster=poster,
-            duree_secondes=duree_secondes(chemin_disque),
+        video.lien_fichier = chemin_relatif(televersement.ecole_id, nom_disque)
+        video.poster = poster
+        video.duree_secondes = duree_secondes(chemin_disque)
+        video.statut = "complete"
+        db.commit()
+
+    def _nettoyer_abandonnes(self, db: Session) -> None:
+        """Fichier choisi puis onglet fermé sans "Ajouter" ni "Annuler" —
+        voir DELAI_ABANDON. Appelé à chaque nouvelle session plutôt que par
+        un worker dédié : ce cas doit rester rare, pas besoin de plus."""
+        limite = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - DELAI_ABANDON
+        abandonnes = db.scalars(
+            select(Televersement).where(
+                Televersement.video_id.is_(None), Televersement.cree_le < limite
+            )
         )
+        for televersement in abandonnes:
+            chemin_televersement(televersement.ecole_id, televersement.id).unlink(missing_ok=True)
+            db.delete(televersement)
+        db.commit()
 
     def update(self, db: Session, video_id: int, **champs) -> Video | None:
         video = self.get(db, video_id)
@@ -152,6 +290,40 @@ class Videos:
             if cible.is_relative_to(DOSSIER_VIDEOS_LIVE.resolve()):
                 cible.unlink(missing_ok=True)
         db.delete(video)
+        db.commit()
+        return True
+
+    # --- Compression a posteriori (voir app/video_compression_worker.py) ---
+
+    def videos_a_compresser(self, db: Session) -> list[Video]:
+        return list(
+            db.scalars(
+                select(Video).where(
+                    Video.statut == "complete",
+                    Video.compresse.is_(False),
+                    Video.lien_fichier != "",
+                )
+            )
+        )
+
+    def compresser(self, db: Session, video: Video) -> bool:
+        """`False` si la compression échoue (voir compression.py) —
+        `video.compresse` reste False, retenté au prochain passage du
+        worker. En cas de succès, remplace le fichier d'origine (jamais
+        gardé en plus, voir décision utilisateur : économiser l'espace
+        disque) — toujours sous extension .mp4 (H.264/AAC, voir
+        compression.py), même si le fichier d'origine était dans un autre
+        conteneur (ex. .mov)."""
+        chemin_source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
+        chemin_dest = chemin_source.with_name(f"{chemin_source.stem}-c.mp4")
+        if not compresser_fichier(chemin_source, chemin_dest):
+            chemin_dest.unlink(missing_ok=True)
+            return False
+        chemin_final = chemin_source.with_suffix(".mp4")
+        chemin_source.unlink(missing_ok=True)
+        chemin_dest.rename(chemin_final)
+        video.lien_fichier = str(Path(video.lien_fichier).with_suffix(".mp4"))
+        video.compresse = True
         db.commit()
         return True
 

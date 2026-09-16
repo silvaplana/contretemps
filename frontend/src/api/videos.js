@@ -1,14 +1,15 @@
 // Domaine "vidéos" (écran Vidéo + onglet vidéos d'une chorégraphie, voir
 // spec/SPEC.md §6.8) — voir api/README.md pour le principe général.
 //
-// Vrai upload de fichier (voir AddVideoModal.jsx : `fichier`, un objet
-// File brut) — mutualisé entre l'écran Vidéo et le détail d'une
-// chorégraphie via ce même `creer()`, qui bascule vers
-// `creerAvecFichierReel` dès que `donnees.fichier` est fourni : POST
-// multipart vers /cours/{id}/videos/upload (voir
-// backend/src/videos/receiver.py), qui écrit le fichier, mesure sa durée
-// et génère sa vignette côté serveur (voir videos/duree.py et
-// poster.py) — rien à faire ici.
+// Upload par blocs, façon WhatsApp (demande utilisateur explicite) — voir
+// utils/videoUploads.js pour l'orchestration (progression, reprise sur
+// coupure réseau, annulation) : ce fichier n'expose que les appels réseau
+// bruts, dans l'ordre d'utilisation :
+//   1. ouvrirTeleversement — dès le fichier choisi/filmé, avant toute
+//      métadonnée (voir backend/src/videos/receiver.py).
+//   2. ecrireBloc — répété pendant l'envoi.
+//   3. finaliserVideo — au clic "Ajouter", même si l'envoi continue.
+// annulerTeleversement à tout moment (bouton "Annuler").
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -34,6 +35,7 @@ function urlMedia(cheminRelatif) {
 function versEcran(v) {
   return {
     id: v.id,
+    coursId: v.cours_id,
     titre: v.nom,
     description: v.description ?? '',
     duree: '', // pas de champ backend pour la durée d'une vidéo réelle
@@ -41,6 +43,12 @@ function versEcran(v) {
     poster: urlMedia(v.poster),
     choregraphieId: v.choregraphie_id,
     datePublication: v.date_publication.slice(8, 10) + '/' + v.date_publication.slice(5, 7),
+    // 'en_cours' : fichier pas encore complet (voir statut plus haut,
+    // Televersement côté backend) — url/poster valent alors null, une
+    // vraie lecture locale (aperçu direct du fichier choisi, sans
+    // dépendre du serveur) prend le relais côté IHM, voir VideoThumb.jsx
+    // et utils/videoUploads.js.
+    statut: v.statut,
   }
 }
 
@@ -49,45 +57,8 @@ export async function lister(coursId) {
   return liste.map(versEcran)
 }
 
-async function creerSansFichier(coursId, { titre, description, choregraphieId }, uploaderId) {
-  const v = await requete(`/cours/${coursId}/videos`, {
-    method: 'POST',
-    body: JSON.stringify({
-      nom: titre,
-      description: description ?? '',
-      lien_fichier: '',
-      choregraphie_id: choregraphieId ?? null,
-      uploaded_by: uploaderId,
-    }),
-  })
-  return versEcran(v)
-}
-
-// Vrai upload multipart (voir backend/src/videos/receiver.py : uploader)
-// — FormData, jamais de Content-Type manuel (le navigateur pose lui-même
-// la bonne frontière multipart, voir requete() plus haut qui force du
-// JSON et ne convient donc pas ici).
-async function creerAvecFichier(coursId, { titre, description, choregraphieId, fichier }, uploaderId) {
-  const corps = new FormData()
-  corps.append('fichier', fichier, fichier.name)
-  corps.append('nom', titre)
-  corps.append('uploaded_by', uploaderId)
-  if (description) corps.append('description', description)
-  if (choregraphieId) corps.append('choregraphie_id', choregraphieId)
-
-  const reponse = await fetch(`${BASE_URL}/cours/${coursId}/videos/upload`, {
-    method: 'POST',
-    body: corps,
-  })
-  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
-  return versEcran(await reponse.json())
-}
-
-// `uploaderId` = compte connecté (voir activeUser dans App.jsx) — requis
-// par le backend.
-export async function creer(coursId, donnees, uploaderId) {
-  if (donnees.fichier) return creerAvecFichier(coursId, donnees, uploaderId)
-  return creerSansFichier(coursId, donnees, uploaderId)
+export async function obtenir(videoId) {
+  return versEcran(await requete(`/videos/${videoId}`))
 }
 
 export async function modifier(videoId, { titre, choregraphieId, ...reste }) {
@@ -108,6 +79,56 @@ export async function supprimer(_coursId, videoId) {
 // que l'id de la vidéo, pas son cours.
 export async function supprimerParId(videoId) {
   await requete(`/videos/${videoId}`, { method: 'DELETE' })
+}
+
+// --- Upload par blocs (voir utils/videoUploads.js pour l'orchestration) ---
+
+export async function ouvrirTeleversement(coursId, extension, octetsTotal) {
+  return requete(`/cours/${coursId}/videos/televersements`, {
+    method: 'POST',
+    body: JSON.stringify({ extension, octets_total: octetsTotal }),
+  })
+}
+
+// Corps BRUT (octet-stream), pas de FormData/JSON : `bloc` est un Blob
+// (File.slice()), directement le contenu binaire de ce morceau. Le
+// décalage voyage en en-tête (X-Decalage), pas dans l'URL, pour rester
+// cohérent avec un simple PUT idempotent sur la ressource "session".
+export async function ecrireBloc(uploadId, decalage, bloc) {
+  const reponse = await fetch(`${BASE_URL}/videos/televersements/${uploadId}`, {
+    method: 'PUT',
+    headers: { 'X-Decalage': String(decalage), 'Content-Type': 'application/octet-stream' },
+    body: bloc,
+  })
+  if (reponse.status === 409) {
+    // Décalage désynchronisé (voir backend/src/videos/videos.py :
+    // DecalageInvalide) — le corps donne le VRAI décalage à reprendre.
+    const detail = await reponse.json().catch(() => null)
+    const erreur = new Error('Décalage désynchronisé')
+    erreur.decalageActuel = detail?.detail?.octets_recus
+    throw erreur
+  }
+  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  const donnees = await reponse.json()
+  return { octetsRecus: donnees.octets_recus, complet: donnees.complet }
+}
+
+export async function annulerTeleversement(uploadId) {
+  await fetch(`${BASE_URL}/videos/televersements/${uploadId}`, { method: 'DELETE' })
+}
+
+export async function finaliserVideo(coursId, uploadId, { nom, description, choregraphieId, uploaderId }) {
+  const v = await requete(`/cours/${coursId}/videos/depuis-televersement`, {
+    method: 'POST',
+    body: JSON.stringify({
+      upload_id: uploadId,
+      nom,
+      description: description || '',
+      choregraphie_id: choregraphieId ?? null,
+      uploaded_by: uploaderId,
+    }),
+  })
+  return versEcran(v)
 }
 
 function versEcranUsage(u) {

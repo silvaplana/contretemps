@@ -75,6 +75,19 @@ services:
       - backend_data:/app/data
     command: ["python", "-u", "-m", "app.sauvegarde_worker"]
 
+  # Compression vidéo a posteriori (voir "Ajouter une vidéo" et
+  # backend/src/app/video_compression_worker.py) — même patron que
+  # "messagerie-relance"/"ecole-sauvegarde" ci-dessus.
+  video-compression:
+    build: ./backend
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+    volumes:
+      - backend_data:/app/data
+    command: ["python", "-u", "-m", "app.video_compression_worker"]
+
   frontend:
     build:
       context: ./frontend

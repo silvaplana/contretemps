@@ -35,6 +35,16 @@ def dossier_ecole(ecole_id: int) -> Path:
     return dossier
 
 
+def chemin_televersement(ecole_id: int, upload_id: str) -> Path:
+    """Fichier partiel d'un envoi par blocs en cours (voir videos.py) —
+    sous-dossier "_uploads" pour ne jamais se mélanger aux vidéos finies
+    (usage_ecole ne doit compter que des fichiers complets), déplacé/
+    renommé vers son emplacement définitif une fois l'envoi terminé."""
+    dossier = dossier_ecole(ecole_id) / "_uploads"
+    dossier.mkdir(parents=True, exist_ok=True)
+    return dossier / f"{upload_id}.part"
+
+
 def chemin_relatif(ecole_id: int, nom_fichier: str) -> str:
     """Valeur à stocker dans `videos.lien_fichier` — voir dossier_ecole."""
     return f"{ecole_id}/{nom_fichier}"

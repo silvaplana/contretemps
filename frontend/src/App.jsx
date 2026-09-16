@@ -12,6 +12,7 @@ import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import * as sessionApi from './api/session.js'
 import * as videosApi from './api/videos.js'
+import { useTeleversementsTermines } from './utils/videoUploads.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import Logo from './components/Logo.jsx'
@@ -121,6 +122,20 @@ function App() {
   const [presences, setPresences] = useState({})
   const [choregraphies, setChoregraphies] = useState({})
   const [videos, setVideos] = useState({})
+  // Upload vidéo par blocs (voir screens/video/AjouterVideo.jsx et
+  // utils/videoUploads.js) : une vidéo ajoutée "en_cours" continue son
+  // envoi en tâche de fond, indépendamment de l'écran affiché — ce hook
+  // la rafraîchit ici, au niveau où `videos`/`setVideos` vivent, pour que
+  // ça marche même si l'utilisateur a quitté l'écran Vidéo/Chorégraphie
+  // entre-temps.
+  useTeleversementsTermines((videoFraiche) => {
+    setVideos((byC) => ({
+      ...byC,
+      [videoFraiche.coursId]: (byC[videoFraiche.coursId] ?? []).map((v) =>
+        v.id === videoFraiche.id ? videoFraiche : v,
+      ),
+    }))
+  })
   const [conversations, setConversations] = useState([])
   // Id de la conversation tout juste créée depuis Messagerie ("Nouveau
   // groupe", voir menuExtra ci-dessous) qu'AdminScreen doit ouvrir en

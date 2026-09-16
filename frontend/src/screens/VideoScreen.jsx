@@ -3,18 +3,16 @@ import * as videosApi from '../api/videos.js'
 import Badge from '../components/Badge.jsx'
 import Icon from '../components/Icon.jsx'
 import VideoThumb from '../components/VideoThumb.jsx'
-import AddVideoModal from './video/AddVideoModal.jsx'
+import AjouterVideo from './video/AjouterVideo.jsx'
 import EditVideoModal from './video/EditVideoModal.jsx'
 
 // Écran Vidéo (Admin, Professeur, Élève — voir spec/SPEC.md 5.4 et
 // images/video.png). Une chorégraphie filmée par entrée, liée au cours
-// sélectionné dans l'en-tête. Le "+" est accessible aux 3 rôles.
+// sélectionné dans l'en-tête. Les boutons "Filmer"/"Choisir une vidéo"
+// (voir AjouterVideo.jsx) sont accessibles aux 3 rôles.
 //
-// Données via api/videos.js (voir api/README.md, et sa note sur la
-// limite de l'upload réel de fichier — pas encore construite côté
-// backend).
+// Données via api/videos.js (voir api/README.md).
 export default function VideoScreen({ cours, list, setList, choregraphies, uploaderId }) {
-  const [showAdd, setShowAdd] = useState(false)
   const [editingVideo, setEditingVideo] = useState(null)
 
   if (!cours) return null
@@ -33,13 +31,12 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
     }))
   }
 
-  async function add(donnees) {
-    const nouvelle = await videosApi.creer(cours.id, donnees, uploaderId)
+  function ajouter(video) {
     // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
     // l'appliquer 2 fois de suite sur son propre résultat.
     setList((byC) => {
       const liste = byC[cours.id] ?? []
-      return liste.some((v) => v.id === nouvelle.id) ? byC : { ...byC, [cours.id]: [...liste, nouvelle] }
+      return liste.some((v) => v.id === video.id) ? byC : { ...byC, [cours.id]: [...liste, video] }
     })
   }
 
@@ -52,7 +49,7 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
           const choregraphie = choregraphies.find((ch) => ch.id === v.choregraphieId)
           return (
             <div key={v.id} className="video-card">
-              <VideoThumb url={v.url} poster={v.poster} titre={v.titre} duree={v.duree} />
+              <VideoThumb video={v} />
               <div className="video-card__body">
                 <div>
                   <strong>{v.titre}</strong>
@@ -88,20 +85,12 @@ export default function VideoScreen({ cours, list, setList, choregraphies, uploa
         {videos.length === 0 && <p className="muted" style={{ padding: '0 16px' }}>Aucune vidéo pour ce cours.</p>}
       </div>
 
-      <button type="button" className="fab" onClick={() => setShowAdd(true)} aria-label="Ajouter une vidéo">
-        <Icon name="plus" size={24} />
-      </button>
-
-      {showAdd && (
-        <AddVideoModal
-          choregraphies={choregraphies}
-          onClose={() => setShowAdd(false)}
-          onAdd={async (donnees) => {
-            await add(donnees)
-            setShowAdd(false)
-          }}
-        />
-      )}
+      <AjouterVideo
+        coursId={cours.id}
+        choregraphies={choregraphies}
+        uploaderId={uploaderId}
+        onAdded={ajouter}
+      />
 
       {editingVideo && (
         <EditVideoModal

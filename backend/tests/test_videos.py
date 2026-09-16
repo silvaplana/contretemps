@@ -266,48 +266,180 @@ def test_usage_ecole_sans_cours(client, db_session):
     assert reponse.json() == {"total_octets": 0, "total_secondes": 0, "top_videos": []}
 
 
-def test_upload_reel(client, db_session):
-    """Vrai upload (voir videos.py : creer_avec_upload) — mutualisé
-    entre l'écran Vidéo et le détail d'une chorégraphie."""
-    ecole, cours, choregraphie, admin = _setup(db_session)
+def _ecrire_bloc(client, upload_id, decalage, donnees):
+    return client.put(
+        f"/videos/televersements/{upload_id}",
+        content=donnees,
+        headers={"X-Decalage": str(decalage), "Content-Type": "application/octet-stream"},
+    )
 
-    with open(_FICHIER_DEMO, "rb") as f:
-        reponse = client.post(
-            f"/cours/{cours.id}/videos/upload",
-            data={
-                "nom": "Upload test",
-                "uploaded_by": str(admin.id),
-                "description": "Une description",
-                "choregraphie_id": str(choregraphie.id),
-            },
-            files={"fichier": ("bang-bang-lent.mp4", f, "video/mp4")},
-        )
+
+def test_upload_par_blocs_puis_ajouter_apres_la_fin_de_lenvoi(client, db_session):
+    """Cas simple : tous les blocs arrivent avant le clic "Ajouter" (voir
+    videos.py : Televersement, finaliser)."""
+    ecole, cours, choregraphie, admin = _setup(db_session)
+    contenu = _FICHIER_DEMO.read_bytes()
+
+    ouverture = client.post(
+        f"/cours/{cours.id}/videos/televersements",
+        json={"extension": ".mp4", "octets_total": len(contenu)},
+    )
+    assert ouverture.status_code == 201
+    upload_id = ouverture.json()["id"]
+
+    moitie = len(contenu) // 2
+    r1 = _ecrire_bloc(client, upload_id, 0, contenu[:moitie])
+    assert r1.status_code == 200
+    assert r1.json() == {
+        "id": upload_id, "octets_recus": moitie, "octets_total": len(contenu), "complet": False
+    }
+    r2 = _ecrire_bloc(client, upload_id, moitie, contenu[moitie:])
+    assert r2.status_code == 200
+    assert r2.json()["complet"] is True
+
+    reponse = client.post(
+        f"/cours/{cours.id}/videos/depuis-televersement",
+        json={
+            "upload_id": upload_id,
+            "nom": "Upload test",
+            "uploaded_by": admin.id,
+            "description": "Une description",
+            "choregraphie_id": choregraphie.id,
+        },
+    )
     assert reponse.status_code == 201
     video = reponse.json()
     try:
         assert video["nom"] == "Upload test"
-        assert video["description"] == "Une description"
         assert video["choregraphie_id"] == choregraphie.id
+        assert video["statut"] == "complete"
         # Vraie durée mesurée (voir duree.py) — même fichier que
         # test_usage_ecole_indique_la_choregraphie_liee (22s).
         assert video["duree_secondes"] == 22
         assert video["poster"] is not None
-
-        chemin_disque = DOSSIER_VIDEOS_LIVE / video["lien_fichier"]
-        chemin_poster_disque = DOSSIER_VIDEOS_LIVE / video["poster"]
-        assert chemin_disque.exists()
-        assert chemin_poster_disque.exists()
+        assert (DOSSIER_VIDEOS_LIVE / video["lien_fichier"]).exists()
+        assert (DOSSIER_VIDEOS_LIVE / video["poster"]).exists()
+        # La session reste (jamais supprimée par _finaliser_fichier, voir
+        # son docstring) — juste inerte, sert à l'idempotence de finaliser.
+        assert client.get(f"/videos/televersements/{upload_id}").json()["complet"] is True
     finally:
         (DOSSIER_VIDEOS_LIVE / video["lien_fichier"]).unlink(missing_ok=True)
         if video["poster"]:
             (DOSSIER_VIDEOS_LIVE / video["poster"]).unlink(missing_ok=True)
 
 
-def test_upload_cours_introuvable(client, db_session):
-    with open(_FICHIER_DEMO, "rb") as f:
-        reponse = client.post(
-            "/cours/999/videos/upload",
-            data={"nom": "X", "uploaded_by": "1"},
-            files={"fichier": ("bang-bang-lent.mp4", f, "video/mp4")},
-        )
+def test_ajouter_avant_la_fin_de_lenvoi_puis_le_dernier_bloc_finalise(client, db_session):
+    """Cas WhatsApp : l'admin clique "Ajouter" (voir spec) pendant que
+    l'envoi continue en tâche de fond — la ligne existe tout de suite en
+    'en_cours', le DERNIER bloc la fait passer à 'complete' sans appel
+    supplémentaire."""
+    ecole, cours, _, admin = _setup(db_session)
+    contenu = _FICHIER_DEMO.read_bytes()
+
+    upload_id = client.post(
+        f"/cours/{cours.id}/videos/televersements",
+        json={"extension": ".mp4", "octets_total": len(contenu)},
+    ).json()["id"]
+    moitie = len(contenu) // 2
+    _ecrire_bloc(client, upload_id, 0, contenu[:moitie])
+
+    reponse = client.post(
+        f"/cours/{cours.id}/videos/depuis-televersement",
+        json={"upload_id": upload_id, "nom": "En cours", "uploaded_by": admin.id},
+    )
+    assert reponse.status_code == 201
+    video = reponse.json()
+    assert video["statut"] == "en_cours"
+    assert video["lien_fichier"] == ""
+    assert video["poster"] is None
+
+    r2 = _ecrire_bloc(client, upload_id, moitie, contenu[moitie:])
+    assert r2.status_code == 200
+    assert r2.json()["complet"] is True
+
+    try:
+        fini = client.get(f"/videos/{video['id']}").json()
+        assert fini["statut"] == "complete"
+        assert fini["lien_fichier"] != ""
+        assert fini["duree_secondes"] == 22
+        assert (DOSSIER_VIDEOS_LIVE / fini["lien_fichier"]).exists()
+    finally:
+        fini = client.get(f"/videos/{video['id']}").json()
+        (DOSSIER_VIDEOS_LIVE / fini["lien_fichier"]).unlink(missing_ok=True)
+        if fini["poster"]:
+            (DOSSIER_VIDEOS_LIVE / fini["poster"]).unlink(missing_ok=True)
+
+
+def test_decalage_invalide_renvoie_le_bon_decalage(client, db_session):
+    """Coupure réseau en plein envoi (voir spec : "gestion des
+    interruptions") : le client retente un bloc au mauvais endroit — 409
+    avec le VRAI décalage, pour qu'il resynchronise plutôt que de deviner."""
+    _, cours, _, _ = _setup(db_session)
+    upload_id = client.post(
+        f"/cours/{cours.id}/videos/televersements",
+        json={"extension": ".mp4", "octets_total": 100},
+    ).json()["id"]
+    _ecrire_bloc(client, upload_id, 0, b"x" * 50)
+
+    reponse = _ecrire_bloc(client, upload_id, 30, b"y" * 20)  # décalage faux (devrait être 50)
+    assert reponse.status_code == 409
+    assert reponse.json()["detail"]["octets_recus"] == 50
+
+
+def test_annuler_televersement_nettoie_le_fichier_partiel(client, db_session):
+    """Spec : "l'appui sur annuler arrête tout, il faudra nettoyer
+    l'upload" — y compris si "Ajouter" avait déjà été cliqué (voir
+    Videos.annuler_televersement)."""
+    _, cours, _, admin = _setup(db_session)
+    ecole = Ecoles().create(db_session, nom="Autre", code_postal="11111")
+    upload_id = client.post(
+        f"/cours/{cours.id}/videos/televersements",
+        json={"extension": ".mp4", "octets_total": 100},
+    ).json()["id"]
+    _ecrire_bloc(client, upload_id, 0, b"x" * 50)
+
+    video_id = client.post(
+        f"/cours/{cours.id}/videos/depuis-televersement",
+        json={"upload_id": upload_id, "nom": "Annulée", "uploaded_by": admin.id},
+    ).json()["id"]
+
+    assert client.delete(f"/videos/televersements/{upload_id}").status_code == 204
+    # La ligne Video (créée en 'en_cours') est aussi supprimée.
+    assert client.get(f"/videos/{video_id}").status_code == 404
+    assert client.get(f"/videos/televersements/{upload_id}").status_code == 404
+    _ = ecole  # juste pour vérifier qu'aucune fuite entre écoles n'affecte ce test
+
+
+def test_finaliser_deux_fois_de_suite_ne_cree_pas_2_videos(client, db_session):
+    """Double clic/double appel (voir AdminEleves.jsx pour un motif
+    similaire) : renvoie la même ligne plutôt que d'en créer une 2e."""
+    _, cours, _, admin = _setup(db_session)
+    upload_id = client.post(
+        f"/cours/{cours.id}/videos/televersements",
+        json={"extension": ".mp4", "octets_total": 10},
+    ).json()["id"]
+    _ecrire_bloc(client, upload_id, 0, b"x" * 10)
+
+    donnees = {"upload_id": upload_id, "nom": "Double", "uploaded_by": admin.id}
+    v1 = client.post(f"/cours/{cours.id}/videos/depuis-televersement", json=donnees).json()
+    v2 = client.post(f"/cours/{cours.id}/videos/depuis-televersement", json=donnees).json()
+    assert v1["id"] == v2["id"]
+
+
+def test_televersement_introuvable(client, db_session):
+    _, cours, _, _ = _setup(db_session)
+    assert _ecrire_bloc(client, "inconnu", 0, b"x").status_code == 404
+    assert client.get("/videos/televersements/inconnu").status_code == 404
+    assert client.delete("/videos/televersements/inconnu").status_code == 404
+    reponse = client.post(
+        f"/cours/{cours.id}/videos/depuis-televersement",
+        json={"upload_id": "inconnu", "nom": "X", "uploaded_by": 1},
+    )
+    assert reponse.status_code == 404
+
+
+def test_ouvrir_televersement_cours_introuvable(client, db_session):
+    reponse = client.post(
+        "/cours/999/videos/televersements", json={"extension": ".mp4", "octets_total": 10}
+    )
     assert reponse.status_code == 404

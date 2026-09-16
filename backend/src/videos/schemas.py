@@ -40,8 +40,39 @@ class VideoSortie(BaseModel):
     uploaded_by: int
     ordre: int | None = None
     duree_secondes: int | None = None
+    # 'en_cours' : le fichier n'est pas encore complet (voir
+    # videos.py:Televersement) — lien_fichier/poster/duree_secondes pas
+    # encore connus. 'complete' sinon (valeur par défaut, y compris pour
+    # les vidéos créées sans upload par blocs, ex. démo/import).
+    statut: str = "complete"
 
     model_config = {"from_attributes": True}
+
+
+# --- Upload par blocs (voir videos.py : Televersement, creer_televersement/
+# ecrire_bloc/finaliser) ---
+
+
+class TeleversementCreation(BaseModel):
+    extension: str
+    octets_total: int
+
+
+class TeleversementSortie(BaseModel):
+    id: str
+    octets_recus: int
+    octets_total: int
+    complet: bool
+
+    model_config = {"from_attributes": True}
+
+
+class FinaliserVideoEntree(BaseModel):
+    upload_id: str
+    nom: str
+    uploaded_by: int
+    description: str | None = None
+    choregraphie_id: int | None = None
 
 
 class ReordonnerVideos(BaseModel):

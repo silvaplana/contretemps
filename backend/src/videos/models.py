@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -45,3 +45,42 @@ class Video(Base):
     # Ordre manuel, utilisé uniquement dans le contexte d'une chorégraphie
     # (voir §6.8 : ignoré sur l'écran Vidéo, trié par date_publication là-bas).
     ordre: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Upload par blocs (voir Televersement ci-dessous et videos.py) : la
+    # ligne peut exister en base AVANT que le fichier soit entièrement
+    # reçu (demande utilisateur explicite : "Ajouter" enregistre tout de
+    # suite, l'envoi continue en tâche de fond) — 'en_cours' tant que le
+    # fichier n'est pas complet (poster/duree_secondes pas encore connus),
+    # 'complete' une fois le fichier reçu en entier. 'complete' par défaut
+    # pour les vidéos créées sans upload (démo, import) — jamais "en cours".
+    statut: Mapped[str] = mapped_column(String(20), nullable=False, default="complete")
+    # Compression a posteriori (voir app/video_compression_worker.py) :
+    # tâche de fond séparée, jamais avant l'envoi (voir §8 spec — la
+    # compression AVANT envoi ralentirait l'upload lui-même côté web, pas
+    # d'encodeur matériel disponible dans un navigateur).
+    compresse: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class Televersement(Base):
+    """Session d'upload par blocs (voir videos.py) — existe SEULEMENT
+    pendant l'envoi, avant que l'admin ait cliqué "Ajouter" (pas encore de
+    ligne `Video` à ce moment-là) et jusqu'à ce que le fichier soit reçu en
+    entier. `video_id` se remplit au clic "Ajouter" (voir Videos.finaliser)
+    même si l'envoi n'est pas terminé — le dernier bloc reçu déclenche
+    alors la finalisation (poster/durée/statut) sans attendre un nouvel
+    appel. Nettoyée : à la fin normale (fusionnée dans le fichier final,
+    voir Videos._finaliser_fichier), sur "Annuler" (voir Videos.annuler),
+    ou automatiquement si abandonnée (voir Videos._nettoyer_abandonnes)."""
+
+    __tablename__ = "televersements_video"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True)
+    ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False)
+    cours_id: Mapped[int] = mapped_column(ForeignKey("cours.id"), nullable=False)
+    extension: Mapped[str] = mapped_column(String(20), nullable=False)
+    octets_total: Mapped[int] = mapped_column(Integer, nullable=False)
+    octets_recus: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    complet: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Rempli au clic "Ajouter" (voir Videos.finaliser) — tant qu'il est
+    # vide, aucune ligne Video n'existe encore pour cet envoi.
+    video_id: Mapped[int | None] = mapped_column(ForeignKey("videos.id"), nullable=True)
+    cree_le: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

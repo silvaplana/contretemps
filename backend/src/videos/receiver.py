@@ -2,19 +2,22 @@
 Videos (voir videos.py), ne fait aucun calcul métier ici.
 """
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
 
 from .schemas import (
+    FinaliserVideoEntree,
     ReordonnerVideos,
+    TeleversementCreation,
+    TeleversementSortie,
     UsageVideosEcole,
     VideoCreation,
     VideoModification,
     VideoSortie,
 )
-from .videos import Videos
+from .videos import DecalageInvalide, Videos
 
 
 class VideosReceiver:
@@ -30,12 +33,30 @@ class VideosReceiver:
         self.app.post(
             "/cours/{cours_id}/videos", response_model=VideoSortie, status_code=201
         )(self.creer)
-        # Vrai upload de fichier (voir videos.py : creer_avec_upload) —
-        # mutualisé entre l'écran Vidéo et le détail d'une chorégraphie
-        # (même AddVideoModal.jsx côté frontend).
+        # Upload par blocs (voir videos.py : Televersement) — mutualisé
+        # entre l'écran Vidéo et le détail d'une chorégraphie (même
+        # AddVideoModal.jsx côté frontend). 3 routes séparées, dans
+        # l'ordre d'utilisation : ouvrir la session, y écrire des blocs,
+        # créer la ligne Video (au clic "Ajouter", même si pas fini).
         self.app.post(
-            "/cours/{cours_id}/videos/upload", response_model=VideoSortie, status_code=201
-        )(self.uploader)
+            "/cours/{cours_id}/videos/televersements",
+            response_model=TeleversementSortie,
+            status_code=201,
+        )(self.ouvrir_televersement)
+        self.app.put(
+            "/videos/televersements/{upload_id}", response_model=TeleversementSortie
+        )(self.ecrire_bloc)
+        self.app.get(
+            "/videos/televersements/{upload_id}", response_model=TeleversementSortie
+        )(self.obtenir_televersement)
+        self.app.delete("/videos/televersements/{upload_id}", status_code=204)(
+            self.annuler_televersement
+        )
+        self.app.post(
+            "/cours/{cours_id}/videos/depuis-televersement",
+            response_model=VideoSortie,
+            status_code=201,
+        )(self.finaliser)
         self.app.get(
             "/choregraphies/{choregraphie_id}/videos", response_model=list[VideoSortie]
         )(self.lister_par_choregraphie)
@@ -61,28 +82,56 @@ class VideosReceiver:
     def creer(self, cours_id: int, donnees: VideoCreation, db: Session = Depends(get_db)):
         return self.client.create(db, cours_id, **donnees.model_dump())
 
-    def uploader(
-        self,
-        cours_id: int,
-        fichier: UploadFile = File(...),
-        nom: str = Form(...),
-        uploaded_by: int = Form(...),
-        description: str = Form(""),
-        choregraphie_id: int | None = Form(None),
-        db: Session = Depends(get_db),
+    def ouvrir_televersement(
+        self, cours_id: int, donnees: TeleversementCreation, db: Session = Depends(get_db)
     ):
-        video = self.client.creer_avec_upload(
+        televersement = self.client.creer_televersement(
+            db, cours_id, donnees.extension, donnees.octets_total
+        )
+        if televersement is None:
+            raise HTTPException(status_code=404, detail="Cours introuvable")
+        return televersement
+
+    async def ecrire_bloc(self, upload_id: str, request: Request, db: Session = Depends(get_db)):
+        donnees = await request.body()
+        decalage = int(request.headers.get("X-Decalage", "-1"))
+        try:
+            televersement = self.client.ecrire_bloc(db, upload_id, decalage, donnees)
+        except DecalageInvalide as exc:
+            # 409 Conflict : le corps renvoie le VRAI décalage (voir
+            # DecalageInvalide) pour que le client resynchronise son envoi
+            # dessus, plutôt qu'une simple erreur sans info exploitable.
+            raise HTTPException(
+                status_code=409, detail={"octets_recus": exc.octets_recus}
+            ) from exc
+        if televersement is None:
+            raise HTTPException(status_code=404, detail="Envoi introuvable")
+        return televersement
+
+    def obtenir_televersement(self, upload_id: str, db: Session = Depends(get_db)):
+        televersement = self.client.obtenir_televersement(db, upload_id)
+        if televersement is None:
+            raise HTTPException(status_code=404, detail="Envoi introuvable")
+        return televersement
+
+    def annuler_televersement(self, upload_id: str, db: Session = Depends(get_db)):
+        if not self.client.annuler_televersement(db, upload_id):
+            raise HTTPException(status_code=404, detail="Envoi introuvable")
+
+    def finaliser(
+        self, cours_id: int, donnees: FinaliserVideoEntree, db: Session = Depends(get_db)
+    ):
+        video = self.client.finaliser(
             db,
             cours_id,
-            fichier.file,
-            fichier.filename or "video.mp4",
-            nom=nom,
-            uploaded_by=uploaded_by,
-            description=description,
-            choregraphie_id=choregraphie_id,
+            donnees.upload_id,
+            nom=donnees.nom,
+            uploaded_by=donnees.uploaded_by,
+            description=donnees.description or "",
+            choregraphie_id=donnees.choregraphie_id,
         )
         if video is None:
-            raise HTTPException(status_code=404, detail="Cours introuvable")
+            raise HTTPException(status_code=404, detail="Envoi introuvable")
         return video
 
     def obtenir(self, video_id: int, db: Session = Depends(get_db)):

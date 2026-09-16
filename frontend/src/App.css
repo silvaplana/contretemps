@@ -1518,6 +1518,85 @@
   gap: 8px;
 }
 
+/* Barre de progression DISCRÈTE pendant l'envoi (voir VideoThumb.jsx,
+   demande utilisateur explicite : "comme sur whatsapp") — une simple
+   ligne fine en bas de la vignette, jamais un gros bandeau qui
+   couvrirait l'aperçu local de la vidéo. */
+.video-card__upload-progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.video-card__upload-progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+/* Les 2 boutons "Filmer" / "Choisir une vidéo" (voir AjouterVideo.jsx,
+   demande utilisateur explicite : même bouton dans l'onglet Vidéo et
+   dans Chorégraphie) — même principe que .fab/.fab--secondary, mais à
+   GAUCHE plutôt qu'à droite (jamais les deux tas de boutons superposés :
+   Vidéo n'a pas d'autre FAB à droite). */
+.video-fab-group {
+  position: fixed;
+  left: 16px;
+  bottom: calc(var(--bottom-nav-height) + 16px);
+  display: flex;
+  gap: 12px;
+  z-index: 10;
+}
+
+.video-fab-group .fab {
+  position: static;
+}
+
+/* Vignette d'aperçu LOCAL pendant l'envoi (voir VideoThumb.jsx) — le
+   fichier choisi est déjà dans le navigateur, jouable sans dépendre du
+   serveur ("tu peux voir la vidéo pendant l'upload", demande utilisateur
+   explicite — même effet que sur WhatsApp). */
+.video-upload-preview {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000;
+}
+
+.video-upload-preview__video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-upload-preview__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.video-upload-preview__progress-bar {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.2s ease;
+}
+
+.video-upload-form__actions {
+  display: flex;
+  gap: 8px;
+}
+
+.video-upload-form__actions .btn {
+  flex: 1;
+}
+
 .video-source-buttons__btn {
   flex: 1;
   display: flex;
