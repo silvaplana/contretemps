@@ -867,6 +867,33 @@
   white-space: nowrap;
 }
 
+/* En-tête de colonnes qui reste visible au défilement (demande : "que la
+   1re ligne indiquant les colonnes reste") — SCOPÉ au tableau Élèves
+   seulement (voir .table-scroll--eleves juste en dessous), pas à
+   .data-table en général (Profs/Cours/Conversations restent page-
+   scrollés tels quels, jamais essayé/nécessaire pour eux). */
+.data-table--eleves th {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+
+/* Défilement interne PROPRE à ce tableau (pas la page entière) : seul
+   moyen fiable d'avoir un en-tête sticky ET un défilement horizontal
+   contenu (voir .table-scroll ci-dessus, .data-table--eleves qui a
+   besoin de sa largeur minimale forcée) — un ancêtre avec `overflow-x:
+   auto` DEVIENT le conteneur de référence de tout `position: sticky` à
+   l'intérieur, quelle que soit la valeur donnée à `overflow-y` (testé :
+   "clip"/"hidden" cassent le collage tout autant que "auto", seul
+   "visible" l'évite — mais "visible" empêcherait alors le défilement
+   horizontal). Hauteur approximative (en-tête app + onglets Admin +
+   barre de recherche + nav du bas, mesurés) plutôt qu'un calcul exact :
+   une légère marge en trop ne pose pas de problème visuel. */
+.table-scroll--eleves {
+  max-height: calc(100dvh - 250px);
+  overflow-y: auto;
+}
+
 .data-table td {
   padding: 8px 12px;
   border-top: 1px solid var(--border);
@@ -1535,24 +1562,6 @@
   height: 100%;
   background: var(--accent);
   transition: width 0.2s ease;
-}
-
-/* Les 2 boutons "Filmer" / "Choisir une vidéo" (voir AjouterVideo.jsx,
-   demande utilisateur explicite : même bouton dans l'onglet Vidéo et
-   dans Chorégraphie) — même principe que .fab/.fab--secondary, mais à
-   GAUCHE plutôt qu'à droite (jamais les deux tas de boutons superposés :
-   Vidéo n'a pas d'autre FAB à droite). */
-.video-fab-group {
-  position: fixed;
-  left: 16px;
-  bottom: calc(var(--bottom-nav-height) + 16px);
-  display: flex;
-  gap: 12px;
-  z-index: 10;
-}
-
-.video-fab-group .fab {
-  position: static;
 }
 
 /* Vignette d'aperçu LOCAL pendant l'envoi (voir VideoThumb.jsx) — le

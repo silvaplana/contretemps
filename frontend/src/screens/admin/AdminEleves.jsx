@@ -255,7 +255,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         />
       </div>
 
-      <div className="table-scroll">
+      <div className="table-scroll table-scroll--eleves">
         <table className="data-table data-table--eleves">
           <thead>
             <tr>
