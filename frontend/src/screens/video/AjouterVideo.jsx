@@ -91,22 +91,22 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
 
   return (
     <>
-      <div className="video-fab-group">
-        <label className="fab" aria-label="Filmer une vidéo">
-          <Icon name="camera" size={24} />
-          <input
-            type="file"
-            accept="video/*"
-            capture="environment"
-            hidden
-            onChange={(e) => choisir(e.target.files[0])}
-          />
-        </label>
-        <label className="fab" aria-label="Choisir une vidéo">
-          <Icon name="folder" size={24} />
-          <input type="file" accept="video/*" hidden onChange={(e) => choisir(e.target.files[0])} />
-        </label>
-      </div>
+      {/* Empilés en bas à droite, caméra au-dessus (voir .fab/.fab--secondary,
+          même principe que "Importer des élèves" dans AdminEleves.jsx). */}
+      <label className="fab--secondary" aria-label="Filmer une vidéo">
+        <Icon name="camera" size={20} />
+        <input
+          type="file"
+          accept="video/*"
+          capture="environment"
+          hidden
+          onChange={(e) => choisir(e.target.files[0])}
+        />
+      </label>
+      <label className="fab" aria-label="Choisir une vidéo">
+        <Icon name="folder" size={24} />
+        <input type="file" accept="video/*" hidden onChange={(e) => choisir(e.target.files[0])} />
+      </label>
 
       {session && (
         <Modal
