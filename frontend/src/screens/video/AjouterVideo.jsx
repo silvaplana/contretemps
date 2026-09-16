@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import { compresserOuOriginal } from '../../utils/videoCompression.js'
 import {
   annulerTeleversement,
   demarrerTeleversement,
@@ -30,6 +31,12 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
   // Garde-fou contre un double-clic (voir AdminEleves.jsx pour le même
   // motif) : "Ajouter" appelle finaliserTeleversement, async.
   const [enCours, setEnCours] = useState(false)
+  // Compression AVANT l'envoi (voir utils/videoCompression.js) : lancée
+  // dès le fichier choisi, PENDANT que l'admin remplit le formulaire —
+  // souvent terminée avant qu'il valide (conseil reçu, confirmé par
+  // l'utilisateur). `null` : pas en cours (soit pas encore commencée,
+  // soit déjà finie et l'envoi par blocs a pris le relais).
+  const [compressionPourcentage, setCompressionPourcentage] = useState(null)
   const progression = useProgressionTeleversement(session?.uploadId)
 
   async function choisir(fichier) {
@@ -37,7 +44,12 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
     const previewUrl = URL.createObjectURL(fichier)
     setSession({ uploadId: null, previewUrl })
     setTitre(fichier.name.replace(/\.[^/.]+$/, ''))
-    const uploadId = await demarrerTeleversement(coursId, fichier)
+    setCompressionPourcentage(0)
+    const fichierAEnvoyer = await compresserOuOriginal(fichier, {
+      onProgress: setCompressionPourcentage,
+    })
+    setCompressionPourcentage(null)
+    const uploadId = await demarrerTeleversement(coursId, fichierAEnvoyer)
     setSession({ uploadId, previewUrl })
   }
 
@@ -48,6 +60,7 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
     setDescription('')
     setChoregraphieId('')
     setEnCours(false)
+    setCompressionPourcentage(null)
   }
 
   function annuler() {
@@ -117,15 +130,22 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
         >
           <div className="video-upload-preview">
             <video className="video-upload-preview__video" src={session.previewUrl} controls playsInline />
-            {!progression?.complet && (
+            {(compressionPourcentage !== null || !progression?.complet) && (
               <div className="video-upload-preview__progress">
-                <div className="video-upload-preview__progress-bar" style={{ width: `${pourcentage}%` }} />
+                <div
+                  className="video-upload-preview__progress-bar"
+                  style={{ width: `${compressionPourcentage ?? pourcentage}%` }}
+                />
               </div>
             )}
           </div>
           <p className="muted">
             <Icon name={progression?.complet ? 'check' : 'clock'} size={14} />{' '}
-            {progression?.complet ? 'Envoi terminé' : `Envoi en cours… ${pourcentage}%`}
+            {compressionPourcentage !== null
+              ? `Compression… ${compressionPourcentage}%`
+              : progression?.complet
+                ? 'Envoi terminé'
+                : `Envoi en cours… ${pourcentage}%`}
           </p>
 
           <label htmlFor="add-video-titre">Titre</label>
