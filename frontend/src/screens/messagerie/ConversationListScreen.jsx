@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { compterNonLus } from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
+import { normaliserRecherche } from '../../utils/recherche.js'
 
 // Avatar Admin/Professeur dans une couleur distincte de celui d'un élève
 // (décision utilisateur explicite, voir .avatar--staff dans App.css) —
@@ -45,7 +46,7 @@ export default function ConversationListScreen({
 }) {
   const [recherche, setRecherche] = useState('')
 
-  const requete = recherche.trim().toLowerCase()
+  const requete = normaliserRecherche(recherche.trim())
   const enModeRecherche = requete !== ''
 
   if (!enModeRecherche) {
@@ -67,10 +68,10 @@ export default function ConversationListScreen({
   }
 
   const discussionsIndividuelles = conversations.filter(
-    (c) => c.type === 'individuelle' && c.nom.toLowerCase().includes(requete),
+    (c) => c.type === 'individuelle' && normaliserRecherche(c.nom).includes(requete),
   )
   const discussionsGroupes = conversations.filter(
-    (c) => c.type !== 'individuelle' && c.nom.toLowerCase().includes(requete),
+    (c) => c.type !== 'individuelle' && normaliserRecherche(c.nom).includes(requete),
   )
   // Déjà en DM avec moi (voir discussionsIndividuelles ci-dessus) — à
   // exclure des résultats "Nouvelle discussion", sinon la même personne
@@ -93,7 +94,7 @@ export default function ConversationListScreen({
     (c) =>
       c.id !== compteId &&
       !idsDejaEnDm.has(c.id) &&
-      `${c.prenom} ${c.nom}`.toLowerCase().includes(requete),
+      normaliserRecherche(`${c.prenom} ${c.nom}`).includes(requete),
   )
   const aucunResultat =
     discussionsIndividuelles.length === 0 &&

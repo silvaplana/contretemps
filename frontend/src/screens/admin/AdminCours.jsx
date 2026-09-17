@@ -4,6 +4,7 @@ import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
+import { correspond } from '../../utils/recherche.js'
 import PlanningHebdoView from './PlanningHebdoView.jsx'
 
 const MAX_BADGES = 2
@@ -34,7 +35,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
   const menuRef = useRef(null)
   useFermerAuClicExterieur(menuRef, menuOuvert, () => setMenuOuvert(false))
 
-  const filtered = cours.filter((c) => c.nom.toLowerCase().includes(search.toLowerCase()))
+  const filtered = cours.filter((c) => correspond(c.nom, search))
   const enEdition = cours.find((c) => c.id === editId)
 
   if (vue === 'planning') {

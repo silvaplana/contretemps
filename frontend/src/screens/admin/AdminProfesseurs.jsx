@@ -3,6 +3,7 @@ import * as profsApi from '../../api/profs.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import { correspond } from '../../utils/recherche.js'
 
 const MAX_BADGES = 2
 
@@ -19,9 +20,7 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, e
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
 
-  const filtered = professeurs.filter((p) =>
-    `${p.prenom} ${p.nom}`.toLowerCase().includes(search.toLowerCase()),
-  )
+  const filtered = professeurs.filter((p) => correspond(`${p.prenom} ${p.nom}`, search))
 
   function remplacer(profMisAJour) {
     setProfesseurs((list) => list.map((p) => (p.id === profMisAJour.id ? profMisAJour : p)))

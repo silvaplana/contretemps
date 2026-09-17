@@ -7,10 +7,22 @@ l'autre, c'est le socle sur lequel ils s'appuient.
 
 from __future__ import annotations
 
-from sqlalchemy import func, select
+import unicodedata
+
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Compte, Famille
+
+
+def _normaliser(texte: str) -> str:
+    """Insensible à la casse ET aux accents (demande utilisateur du
+    2026-09-18 : le champ "Nom Prénom ou Email" du login doit accepter
+    "Melanie"/"melanie" pour "Mélanie"). Même technique que eleves/
+    import_excel.py: _normaliser (NFKD + encodage ascii), mais SANS
+    retirer la ponctuation : un email a besoin de garder son "@"/".",
+    "Marie-Laure" son trait d'union."""
+    return unicodedata.normalize("NFKD", texte).encode("ascii", "ignore").decode("ascii").lower()
 
 
 class Comptes:
@@ -25,29 +37,36 @@ class Comptes:
         )
 
     def trouver_par_email(self, db: Session, ecole_id: int, email: str) -> Compte | None:
-        # Insensible à la casse (voir connecter, §2.2 : le champ "Nom
-        # Prénom ou Email" du login doit l'être) — func.lower() plutôt que
-        # collation SQLite, portable si un jour on passe à Postgres.
-        return db.scalar(
-            select(Compte).where(
-                Compte.ecole_id == ecole_id, func.lower(Compte.email) == email.lower()
-            )
-        )
+        # Insensible à la casse ET aux accents (voir connecter, §2.2 : le
+        # champ "Nom Prénom ou Email" du login doit l'être) — comparaison
+        # faite en Python (voir _normaliser) plutôt qu'en SQL : ni SQLite
+        # ni Postgres n'ont un équivalent portable d'unaccent() en natif.
+        # Le filtre ecole_id (indexé) garde ça peu coûteux même sans
+        # égalité SQL directe sur `email`.
+        cible = _normaliser(email)
+        for compte in db.scalars(
+            select(Compte).where(Compte.ecole_id == ecole_id, Compte.email.isnot(None))
+        ):
+            if _normaliser(compte.email) == cible:
+                return compte
+        return None
 
     def trouver_par_nom_prenom(
         self, db: Session, ecole_id: int, nom: str, prenom: str, role: str | None = None
     ) -> list[Compte]:
         """Utilisé par auth (connexion par nom+prénom, voir §2.2 —
-        insensible à la casse) et par l'import Excel (détection de
-        doublon, voir §6.4bis)."""
-        requete = select(Compte).where(
-            Compte.ecole_id == ecole_id,
-            func.lower(Compte.nom) == nom.lower(),
-            func.lower(Compte.prenom) == prenom.lower(),
-        )
+        insensible à la casse ET aux accents) et par l'import Excel
+        (détection de doublon, voir §6.4bis). Voir trouver_par_email
+        ci-dessus pour pourquoi la comparaison se fait en Python."""
+        nom_cible, prenom_cible = _normaliser(nom), _normaliser(prenom)
+        requete = select(Compte).where(Compte.ecole_id == ecole_id)
         if role is not None:
             requete = requete.where(Compte.role == role)
-        return list(db.scalars(requete))
+        return [
+            compte
+            for compte in db.scalars(requete)
+            if _normaliser(compte.nom) == nom_cible and _normaliser(compte.prenom) == prenom_cible
+        ]
 
     def get_or_create_famille(self, db: Session, ecole_id: int, email: str | None) -> Famille:
         """Regroupement automatique par email, DANS une même école (voir

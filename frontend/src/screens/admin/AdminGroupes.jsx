@@ -5,6 +5,7 @@ import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
+import { correspond } from '../../utils/recherche.js'
 
 const TONE_PAR_TYPE = { admin: 'danger', professeur: 'success', eleve: 'neutral', cours: 'neutral' }
 
@@ -93,9 +94,7 @@ export default function AdminGroupes({
     comptesApi.listerAdmins(ecoleId).then(setAdmins)
   }, [ecoleId])
 
-  const filtered = groupes.filter(
-    (g) => !estVide(g) && nomAffiche(g, { cours }).toLowerCase().includes(search.toLowerCase()),
-  )
+  const filtered = groupes.filter((g) => !estVide(g) && correspond(nomAffiche(g, { cours }), search))
   const enEdition = groupes.find((g) => g.id === editId)
 
   function remplacer(id, patch) {

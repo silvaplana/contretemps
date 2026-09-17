@@ -78,6 +78,29 @@ def test_login_insensible_a_la_casse(client, db_session):
     assert reponse.json()["id"] == eleve.id
 
 
+def test_login_insensible_aux_accents(client, db_session):
+    """Demande utilisateur du 2026-09-18 : le champ "Nom Prénom ou Email"
+    doit être insensible aux accents (PAS le code d'accès, resté tel
+    quel)."""
+    ecole, _, eleve = _creer_ecole_et_comptes(db_session)  # eleve = "Léon Perrin"
+
+    # Nom+prénom saisi sans accent.
+    reponse = client.post(
+        "/auth/login",
+        json={"ecole_id": ecole.id, "identifiant": "Leon Perrin", "code": ecole.code_acces_eleve},
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["id"] == eleve.id
+
+    # Casse ET accent différents en même temps.
+    reponse = client.post(
+        "/auth/login",
+        json={"ecole_id": ecole.id, "identifiant": "LEON perrin", "code": ecole.code_acces_eleve},
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["id"] == eleve.id
+
+
 def test_login_mauvais_code_refuse(client, db_session):
     ecole, _, _ = _creer_ecole_et_comptes(db_session)
     reponse = client.post(

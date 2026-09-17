@@ -6,6 +6,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
+import { correspond } from '../../utils/recherche.js'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
@@ -176,9 +177,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     })
   }
 
-  const filtered = eleves.filter((el) =>
-    `${el.prenom} ${el.nom}`.toLowerCase().includes(search.toLowerCase()),
-  )
+  const filtered = eleves.filter((el) => correspond(`${el.prenom} ${el.nom}`, search))
 
   // Remplace l'élève mis à jour (renvoyé par l'API) dans la liste locale.
   function remplacer(eleveMisAJour) {
