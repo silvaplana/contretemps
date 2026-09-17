@@ -185,16 +185,26 @@ function App() {
   // Réception en direct (voir api/messages.js : ouvrirFluxEvenements) :
   // UN SEUL flux SSE ouvert dès la connexion, fermé à la déconnexion —
   // pas un flux par conversation ouverte (voir le commentaire de
-  // ouvrirFluxEvenements). Un message qui arrive pour une conversation
-  // pas encore connue localement (ex. tout juste ajoutée à un groupe) est
-  // ignoré ici : elle apparaîtra au prochain rechargement complet (rare).
+  // ouvrirFluxEvenements). Un message qui arrive pour une conversation PAS
+  // ENCORE connue localement (typiquement un DM tout juste créé par
+  // l'AUTRE partie — bug signalé : "je crée une conversation, j'envoie un
+  // message, elle ne se crée pas chez l'autre") va la chercher plutôt que
+  // de l'ignorer.
   useEffect(() => {
     if (!compteReel) return
     return messagesApi.ouvrirFluxEvenements(compteReel.id, {
       onMessage: ({ conversation_id, message }) => {
         setConversations((liste) => {
           const conv = liste.find((c) => c.id === conversation_id)
-          if (!conv) return liste
+          if (!conv) {
+            messagesApi.obtenirConversation(conversation_id, compteReel.id, cours).then((nouvelleConv) => {
+              setConversations((liste2) =>
+                liste2.some((c) => c.id === nouvelleConv.id) ? liste2 : [...liste2, nouvelleConv],
+              )
+              initialiserPresence(nouvelleConv.membres)
+            })
+            return liste
+          }
           // Déjà présent (mon propre envoi, déjà ajouté localement par
           // ConversationThreadScreen.jsx avant même que ce flux ne le
           // confirme) : rien à faire, pas de doublon.

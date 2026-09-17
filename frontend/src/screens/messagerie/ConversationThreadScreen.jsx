@@ -5,7 +5,7 @@ import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 import { useFrappeEnCours, useSignalerFrappe } from '../../utils/frappeIndicateur.js'
 import { envoyerAvecReprise, reessayer, useMessagesEnAttente } from '../../utils/messageOutbox.js'
-import { libellePresence, usePresence } from '../../utils/presenceEnLigne.js'
+import { libellePresence, usePresence, usePresenceListe } from '../../utils/presenceEnLigne.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
@@ -52,11 +52,16 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
   const enAttente = enAttenteBrut.filter(
     (m) => !conversation.messages.some((cm) => cm.clientId === m.clientId),
   )
-  // Présence (voir utils/presenceEnLigne.js) — n'a de sens que pour une
-  // conversation individuelle (pas d'unique "l'autre" dans un groupe).
+  // Présence (voir utils/presenceEnLigne.js) — un seul "l'autre" en DM,
+  // potentiellement plusieurs en groupe (voir usePresenceListe et
+  // sousTitre plus bas).
   const autreMembre =
     conversation.type === 'individuelle' ? conversation.membres.find((m) => m.id !== compteId) : null
   const presence = usePresence(autreMembre?.id ?? null)
+  const autresMembresGroupe =
+    conversation.type === 'groupe' ? conversation.membres.filter((m) => m.id !== compteId) : []
+  const presencesGroupe = usePresenceListe(autresMembresGroupe.map((m) => m.id))
+  const membresEnLigne = autresMembresGroupe.filter((_, i) => presencesGroupe[i]?.enLigne)
   // "En train d'écrire" (voir utils/frappeIndicateur.js) — reçu (l'autre
   // écrit) et signalé (moi j'écris) sont 2 choses distinctes.
   const frappeEnCours = useFrappeEnCours(conversation.id)
@@ -193,7 +198,11 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
       ? `${frappeur.prenom} écrit...`
       : 'écrit...'
     : conversation.type === 'groupe'
-      ? 'Groupe'
+      ? (membresEnLigne.length === 0
+          ? 'Groupe'
+          : membresEnLigne.length === 1
+            ? `${membresEnLigne[0].prenom} en ligne`
+            : `${membresEnLigne.length} en ligne`)
       : (libellePresence(presence) ?? 'Conversation')
 
   return (

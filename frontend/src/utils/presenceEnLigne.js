@@ -19,8 +19,14 @@ import { useSyncExternalStore } from 'react'
 
 const etats = new Map() // compteId -> { enLigne: bool, derniereActiviteLe: string|null }
 const abonnes = new Set()
+// Incrémenté à chaque mutation de `etats` — sert de "snapshot" pour
+// useSyncExternalStore dans usePresenceListe ci-dessous : `etats` lui-même
+// (une Map mutée en place) garde TOUJOURS la même référence, donc la
+// comparer directement ne détecterait jamais un changement.
+let version = 0
 
 function notifier() {
+  version += 1
   for (const f of abonnes) f()
 }
 
@@ -46,6 +52,19 @@ export function appliquerEtatConnexion({ compte_id, en_ligne, derniere_activite_
 
 export function usePresence(compteId) {
   return useSyncExternalStore(sabonner, () => (compteId != null ? (etats.get(compteId) ?? null) : null))
+}
+
+// Pour un GROUPE (voir ConversationThreadScreen.jsx) — pas de "l'autre"
+// unique, potentiellement plusieurs membres à suivre à la fois. Un hook
+// par compte (comme usePresence ci-dessus) est impossible ici (nombre de
+// membres variable, violerait les règles des Hooks) : on se réabonne
+// juste aux changements de présence en général (`version`), et on relit
+// la Map à chaque rendu — chaque tableau retourné est neuf à chaque appel,
+// mais ce n'est PAS le "snapshot" comparé par React ici (seul `version`
+// l'est), donc aucun risque de boucle infinie.
+export function usePresenceListe(compteIds) {
+  useSyncExternalStore(sabonner, () => version)
+  return compteIds.map((id) => etats.get(id) ?? null)
 }
 
 // Texte affiché sous le nom, façon WhatsApp (voir

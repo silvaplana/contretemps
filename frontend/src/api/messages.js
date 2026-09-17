@@ -138,13 +138,8 @@ export async function marquerLus(messages, compteId) {
   await Promise.all(messages.filter((m) => !m.estMoi).map((m) => marquerLu(m.id, compteId)))
 }
 
-// Liste des conversations du compte + leurs messages, dans la forme
-// attendue par MessagerieScreen.jsx/ConversationListScreen.jsx/
-// ConversationThreadScreen.jsx (id/type/nom/membres/messages). Un
-// aperçu du dernier message dans la liste (§5.5) suppose d'avoir déjà les
-// messages, d'où l'aller chercher ici plutôt qu'à l'ouverture de chaque
-// conversation — peu de conversations par compte en pratique, pas un
-// souci de perf.
+// Partagé par listerAvecMessages et obtenirConversation ci-dessous — voir
+// leurs commentaires respectifs pour le contexte de chacun.
 //
 // Marque aussi "reçu" chaque message qui n'est pas de moi et encore
 // 'envoye' pour MA livraison — mon client vient bien de le récupérer, en
@@ -152,26 +147,44 @@ export async function marquerLus(messages, compteId) {
 // (versMessageEcran) : le statut affiché tout de suite reste celui d'AVANT
 // ce marquage (il ne se mettra à jour qu'au prochain chargement) — pas un
 // souci, juste pas de faux sentiment de "déjà lu" instantané.
+async function construireConversation(conv, compteId, cours) {
+  const messages = await requete(`/conversations/${conv.id}/messages`)
+  await Promise.all(
+    messages
+      .filter((m) => m.expediteur_id !== compteId)
+      .filter((m) => m.deliveries.some((d) => d.destinataire_id === compteId && d.statut === 'envoye'))
+      .map((m) => marquerRecu(m.id, compteId)),
+  )
+  return {
+    id: conv.id,
+    type: conv.type,
+    nom: nomAffiche(conv, compteId, cours),
+    membres: conv.membres,
+    messages: messages.map((m) => versMessageEcran(m, compteId, conv.membres)),
+  }
+}
+
+// Liste des conversations du compte + leurs messages, dans la forme
+// attendue par MessagerieScreen.jsx/ConversationListScreen.jsx/
+// ConversationThreadScreen.jsx (id/type/nom/membres/messages). Un
+// aperçu du dernier message dans la liste (§5.5) suppose d'avoir déjà les
+// messages, d'où l'aller chercher ici plutôt qu'à l'ouverture de chaque
+// conversation — peu de conversations par compte en pratique, pas un
+// souci de perf.
 export async function listerAvecMessages(ecoleId, compteId, cours) {
   const conversations = await requete(`/conversations?ecole_id=${ecoleId}&compte_id=${compteId}`)
-  return Promise.all(
-    conversations.map(async (conv) => {
-      const messages = await requete(`/conversations/${conv.id}/messages`)
-      await Promise.all(
-        messages
-          .filter((m) => m.expediteur_id !== compteId)
-          .filter((m) => m.deliveries.some((d) => d.destinataire_id === compteId && d.statut === 'envoye'))
-          .map((m) => marquerRecu(m.id, compteId)),
-      )
-      return {
-        id: conv.id,
-        type: conv.type,
-        nom: nomAffiche(conv, compteId, cours),
-        membres: conv.membres,
-        messages: messages.map((m) => versMessageEcran(m, compteId, conv.membres)),
-      }
-    }),
-  )
+  return Promise.all(conversations.map((conv) => construireConversation(conv, compteId, cours)))
+}
+
+// Une conversation dont on connaît déjà l'id mais pas encore le contenu
+// (voir App.jsx : arrivée d'un événement SSE `message` pour une
+// conversation absente de l'état local — typiquement un DM tout juste
+// créé par l'AUTRE partie, jamais vu par listerAvecMessages ci-dessus).
+// Bug signalé : sans ça, ce premier message (et la conversation avec)
+// n'apparaissait jamais tant que l'appli n'était pas rechargée en entier.
+export async function obtenirConversation(conversationId, compteId, cours) {
+  const conv = await requete(`/conversations/${conversationId}`)
+  return construireConversation(conv, compteId, cours)
 }
 
 // canal : 'app' (défaut) | 'email' | 'whatsapp' — voir backend/src/
