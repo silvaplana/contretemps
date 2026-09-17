@@ -233,23 +233,67 @@ export async function creerOuObtenirDm(ecoleId, compteId, autreCompteId) {
 // backend/src/messagerie/evenements.py pour le choix "par compte" plutôt
 // que "par conversation ouverte" — sans ça, la LISTE des conversations
 // elle-même ne se mettrait à jour que pour le fil actuellement ouvert).
-// `EventSource` gère lui-même la reconnexion automatique en cas de coupure
-// réseau — rien à faire ici pour ça. Retourne une fonction de fermeture, à
-// appeler à la déconnexion (voir App.jsx).
+// Retourne une fonction de fermeture, à appeler à la déconnexion (voir
+// App.jsx).
 //
 // `onEtatConnexion`/`onEcrit` : présence "en ligne"/"dernière connexion"
 // et indicateur "en train d'écrire" (voir backend/src/messagerie/
 // connexions.py et frappe.py) — mêmes flux SSE que les messages, pas de
 // connexion séparée à ouvrir.
-export function ouvrirFluxEvenements(compteId, { onMessage, onEtatConnexion, onEcrit }) {
-  const source = new EventSource(`${BASE_URL}/comptes/${compteId}/messagerie/evenements`)
-  source.onmessage = (e) => {
-    const evenement = JSON.parse(e.data)
-    if (evenement.type === 'message') onMessage(evenement)
-    else if (evenement.type === 'etat_connexion') onEtatConnexion?.(evenement)
-    else if (evenement.type === 'ecrit') onEcrit?.(evenement)
+//
+// `onReconnect` : bug signalé ("des fois les messages n'arrivent pas",
+// surtout sur téléphone) — `Evenements.publier` (backend) ne fait rien
+// si ce compte n'a AUCUN flux ouvert au moment où le message part (voir
+// evenements.py) : un message envoyé PENDANT que le flux d'un téléphone
+// est coupé (mise en arrière-plan, écran verrouillé, coupure réseau...)
+// est donc perdu pour de bon côté push temps réel, pas juste retardé.
+// `EventSource` reconnecte bien tout seul, mais seulement pour les
+// événements FUTURS — d'où ce callback, appelé à CHAQUE reconnexion
+// (automatique du navigateur, ou forcée ci-dessous), pour resynchroniser
+// tout depuis le serveur et rattraper ce qui a pu être manqué entre
+// temps (voir App.jsx : refait le même chargement qu'au login).
+export function ouvrirFluxEvenements(compteId, { onMessage, onEtatConnexion, onEcrit, onReconnect }) {
+  let dejaOuvertUneFois = false
+  let source
+
+  function creer() {
+    const s = new EventSource(`${BASE_URL}/comptes/${compteId}/messagerie/evenements`)
+    s.onopen = () => {
+      if (dejaOuvertUneFois) onReconnect?.()
+      dejaOuvertUneFois = true
+    }
+    s.onmessage = (e) => {
+      const evenement = JSON.parse(e.data)
+      if (evenement.type === 'message') onMessage(evenement)
+      else if (evenement.type === 'etat_connexion') onEtatConnexion?.(evenement)
+      else if (evenement.type === 'ecrit') onEcrit?.(evenement)
+    }
+    return s
   }
-  return () => source.close()
+
+  source = creer()
+
+  // Certains navigateurs mobiles (iOS Safari en tête) tardent à relancer
+  // la reconnexion EventSource après une longue mise en arrière-plan —
+  // on la force explicitement dans les 2 moments où une coupure a le
+  // plus de chances de s'être produite, plutôt que de compter uniquement
+  // sur le comportement natif (qui, lui, reste basé sur un simple délai
+  // fixe, pas sur ces événements).
+  function forcerReconnexion() {
+    source.close()
+    source = creer()
+  }
+  function surVisibilite() {
+    if (document.visibilityState === 'visible') forcerReconnexion()
+  }
+  window.addEventListener('online', forcerReconnexion)
+  document.addEventListener('visibilitychange', surVisibilite)
+
+  return () => {
+    source.close()
+    window.removeEventListener('online', forcerReconnexion)
+    document.removeEventListener('visibilitychange', surVisibilite)
+  }
 }
 
 // "En train d'écrire" (voir utils/frappeIndicateur.js) — appelé au plus

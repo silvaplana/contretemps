@@ -164,21 +164,28 @@ function App() {
     comptesApi.listerAdmins(ecole.id).then(setAdmins)
   }, [loggedIn, ecole.id])
 
+  // Recharge tout depuis le serveur (liste + messages + présence, voir
+  // utils/presenceEnLigne.js) — au premier chargement ET à chaque
+  // reconnexion du flux SSE (voir l'effet juste en dessous : onReconnect)
+  // pour rattraper ce qui a pu être manqué pendant une coupure (bug
+  // signalé : "des fois les messages n'arrivent pas", surtout sur
+  // téléphone — voir ouvrirFluxEvenements pour le pourquoi).
+  function resynchroniserConversations() {
+    if (!compteReel) return
+    messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then((liste) => {
+      setConversations(liste)
+      initialiserPresence(liste.flatMap((c) => c.membres))
+    })
+  }
+
   // Messagerie (voir spec/SPEC.md §5.5/§6.9) : liste réelle, filtrée par
   // appartenance (backend: lister_du_compte). Redéclenché quand `cours`
   // arrive (pas encore prêt au tout premier rendu post-connexion) pour
   // que le nom des conversations automatiques de cours soit correct dès
   // que possible (voir api/messages.js : nomAffiche).
   useEffect(() => {
-    if (compteReel) {
-      messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then((liste) => {
-        setConversations(liste)
-        // Présence (voir utils/presenceEnLigne.js) : sème l'état connu de
-        // chaque correspondant depuis ce chargement — seul le flux SSE
-        // (onEtatConnexion ci-dessous) le mettra à jour ensuite.
-        initialiserPresence(liste.flatMap((c) => c.membres))
-      })
-    } else setConversations([])
+    if (compteReel) resynchroniserConversations()
+    else setConversations([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id, ecole.id, cours])
 
@@ -221,6 +228,7 @@ function App() {
       },
       onEtatConnexion: appliquerEtatConnexion,
       onEcrit: ({ conversation_id, compte_id }) => signalerFrappeRecue(conversation_id, compte_id),
+      onReconnect: resynchroniserConversations,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
