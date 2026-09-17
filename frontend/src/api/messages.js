@@ -223,11 +223,30 @@ export async function creerOuObtenirDm(ecoleId, compteId, autreCompteId) {
 // `EventSource` gère lui-même la reconnexion automatique en cas de coupure
 // réseau — rien à faire ici pour ça. Retourne une fonction de fermeture, à
 // appeler à la déconnexion (voir App.jsx).
-export function ouvrirFluxEvenements(compteId, { onMessage }) {
+//
+// `onEtatConnexion`/`onEcrit` : présence "en ligne"/"dernière connexion"
+// et indicateur "en train d'écrire" (voir backend/src/messagerie/
+// connexions.py et frappe.py) — mêmes flux SSE que les messages, pas de
+// connexion séparée à ouvrir.
+export function ouvrirFluxEvenements(compteId, { onMessage, onEtatConnexion, onEcrit }) {
   const source = new EventSource(`${BASE_URL}/comptes/${compteId}/messagerie/evenements`)
   source.onmessage = (e) => {
     const evenement = JSON.parse(e.data)
     if (evenement.type === 'message') onMessage(evenement)
+    else if (evenement.type === 'etat_connexion') onEtatConnexion?.(evenement)
+    else if (evenement.type === 'ecrit') onEcrit?.(evenement)
   }
   return () => source.close()
+}
+
+// "En train d'écrire" (voir utils/frappeIndicateur.js) — appelé au plus
+// 1 fois toutes les ~3s pendant la frappe (throttle client), le backend
+// throttle aussi de son côté (voir messagerie/frappe.py). Erreur ignorée
+// par l'appelant (voir frappeIndicateur.js) : un ping raté n'a aucune
+// conséquence grave, pas la peine de le faire échouer bruyamment.
+export async function signalerFrappe(conversationId, compteId) {
+  return requete(`/conversations/${conversationId}/ecrit`, {
+    method: 'POST',
+    body: JSON.stringify({ compte_id: compteId }),
+  })
 }

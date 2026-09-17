@@ -10,16 +10,19 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from db import get_db
+from db import SessionLocal, get_db
 from notifications import Notifications
 
+from .connexions import Connexions
 from .conversations import Conversations
 from .evenements import Evenements
+from .frappe import Frappe
 from .messages import Messages
 from .schemas import (
     ConversationCreation,
     ConversationModification,
     ConversationSortie,
+    FrappeEntree,
     MembreEntree,
     MessageCreation,
     MessageSortie,
@@ -41,12 +44,16 @@ class MessagerieReceiver:
         conversations: Conversations,
         messages: Messages,
         evenements: Evenements,
+        connexions: Connexions,
+        frappe: Frappe,
         notifications: Notifications,
         app: FastAPI,
     ) -> None:
         self.conversations = conversations
         self.messages = messages
         self.evenements = evenements
+        self.connexions = connexions
+        self.frappe = frappe
         self.notifications = notifications
         self.app = app
         self._register_routes()
@@ -92,6 +99,13 @@ class MessagerieReceiver:
         )(self.envoyer_par_mail)
         self.app.post("/messagerie/relancer", status_code=200)(self.relancer)
 
+        # "En train d'écrire" (§5.5) : signalé par le client toutes les
+        # ~3s pendant la frappe (voir ConversationThreadScreen.jsx), pas
+        # de réponse à attendre.
+        self.app.post("/conversations/{conversation_id}/ecrit", status_code=204)(
+            self.signaler_frappe
+        )
+
         self.app.post(
             "/conversations/{conversation_id}/whatsapp", response_model=ConversationSortie
         )(self.creer_groupe_whatsapp)
@@ -102,16 +116,38 @@ class MessagerieReceiver:
         self.app.get("/comptes/{compte_id}/messagerie/evenements")(self.flux_evenements)
 
     def _sortie_conversation(self, db: Session, conversation) -> dict:
+        membres = self.conversations.membres_resolus(db, conversation.id)
+        # `en_ligne` n'est pas une colonne (voir schemas.py: CompteResume)
+        # — posé à la volée sur chaque objet ORM, lu par la sérialisation
+        # Pydantic (from_attributes) juste après.
+        for membre in membres:
+            membre.en_ligne = self.evenements.est_en_ligne(membre.id)
         return {
             "id": conversation.id,
             "ecole_id": conversation.ecole_id,
             "nom": conversation.nom,
             "type": conversation.type,
-            "membres": self.conversations.membres_resolus(db, conversation.id),
+            "membres": membres,
             "blocs": self.conversations.blocs(db, conversation.id),
             "whatsapp_statut": conversation.whatsapp_statut,
             "whatsapp_groupe_id": conversation.whatsapp_groupe_id,
         }
+
+    def signaler_frappe(
+        self, conversation_id: int, donnees: FrappeEntree, db: Session = Depends(get_db)
+    ):
+        if not self.frappe.doit_publier(conversation_id, donnees.compte_id):
+            return
+        for membre in self.conversations.membres_resolus(db, conversation_id):
+            if membre.id != donnees.compte_id:
+                self.evenements.publier(
+                    membre.id,
+                    {
+                        "type": "ecrit",
+                        "conversation_id": conversation_id,
+                        "compte_id": donnees.compte_id,
+                    },
+                )
 
     def lister(self, ecole_id: int, compte_id: int | None = None, db: Session = Depends(get_db)):
         if compte_id is not None:
@@ -260,7 +296,14 @@ class MessagerieReceiver:
         )
 
     async def _generateur_evenements(self, compte_id: int):
+        # "1re connexion" = ce compte n'avait encore AUCUN flux ouvert —
+        # sert à ne prévenir ses correspondants qu'une fois, pas à chaque
+        # onglet/appareil supplémentaire connecté en même temps (voir
+        # connexions.py).
+        premiere_connexion = not self.evenements.est_en_ligne(compte_id)
         queue = self.evenements.abonner(compte_id)
+        if premiere_connexion:
+            self._avec_session(self.connexions.entree, compte_id)
         try:
             # Un premier commentaire tout de suite : certains proxies/
             # navigateurs attendent le premier octet avant de considérer
@@ -279,3 +322,19 @@ class MessagerieReceiver:
             # ce désabonnement, `Evenements` garderait une queue morte
             # pour toujours (fuite mémoire lente à chaque reconnexion).
             self.evenements.desabonner(compte_id, queue)
+            if not self.evenements.est_en_ligne(compte_id):
+                self._avec_session(self.connexions.sortie, compte_id)
+
+    def _avec_session(self, methode, compte_id: int) -> None:
+        """`entree`/`sortie` ci-dessus ont besoin d'une session DB, mais
+        ce générateur (async, tourne DIRECTEMENT sur la boucle asyncio —
+        pas dans un threadpool comme les routes sync du reste de ce
+        fichier, voir evenements.py) n'en reçoit pas via Depends(get_db) :
+        en tenir une ouverte pour toute la durée d'un flux SSE qui peut
+        vivre des heures serait pire (connexion SQLite bloquée). Une
+        session courte, ouverte puis refermée juste pour cet appel."""
+        db = SessionLocal()
+        try:
+            methode(db, compte_id)
+        finally:
+            db.close()

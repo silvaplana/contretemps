@@ -73,5 +73,10 @@ class Compte(Base):
     # école, voir ecoles.py) — à revoir si un vrai usage sensible apparaît.
     code_recuperation: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    # "Dernière connexion" (voir messagerie/connexions.py) — mis à jour
+    # seulement à la FERMETURE du dernier flux SSE ouvert de ce compte,
+    # jamais pendant qu'il est en ligne (l'état "en ligne maintenant",
+    # lui, n'est jamais persisté ici : voir connexions.py pour pourquoi).
+    derniere_activite_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     famille: Mapped[Famille] = relationship("Famille", back_populates="comptes")

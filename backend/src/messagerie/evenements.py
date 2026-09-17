@@ -50,6 +50,14 @@ class Evenements:
         if not abonnes:
             self._abonnes.pop(compte_id, None)
 
+    def est_en_ligne(self, compte_id: int) -> bool:
+        """Voir connexions.py : "en ligne maintenant" se lit ICI, jamais
+        depuis un booléen persisté en base — un flux SSE ouvert est
+        toujours un fait vrai à l'instant où on le regarde, contrairement
+        à un flag qu'un crash serveur ou un onglet fermé brutalement
+        pourrait laisser à `True` pour toujours."""
+        return bool(self._abonnes.get(compte_id))
+
     def publier(self, compte_id: int, evenement: dict) -> None:
         """Pousse `evenement` sur tous les flux ouverts de ce compte (0,
         1 ou plusieurs — plusieurs onglets/appareils connectés en même

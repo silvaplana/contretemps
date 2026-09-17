@@ -238,6 +238,21 @@
   font-weight: 700;
   border: none;
   flex-shrink: 0;
+  position: relative;
+}
+
+/* Présence "en ligne" (voir utils/presenceEnLigne.js) — pastille posée
+   sur l'avatar, bordée de la couleur de fond pour se détacher quel que
+   soit le fond de l'avatar (couleur élève/groupe/staff, voir plus bas). */
+.avatar__dot-en-ligne {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--success-text);
+  border: 2px solid var(--surface);
 }
 
 .avatar--sm {
@@ -1914,6 +1929,14 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+}
+
+/* "En train d'écrire" (voir utils/frappeIndicateur.js) — remplace
+   temporairement le sous-titre habituel (présence/"Groupe"), en italique
+   pour rester visuellement distinct d'une info stable. */
+.thread-screen__frappe {
+  color: var(--accent);
+  font-style: italic;
 }
 
 .conversation-thread__messages {

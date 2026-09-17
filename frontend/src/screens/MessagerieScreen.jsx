@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import * as messagesApi from '../api/messages.js'
+import { initialiserPresence } from '../utils/presenceEnLigne.js'
 import ConversationListScreen from './messagerie/ConversationListScreen.jsx'
 import ConversationThreadScreen from './messagerie/ConversationThreadScreen.jsx'
 import ProfilContactScreen from './messagerie/ProfilContactScreen.jsx'
@@ -72,6 +73,10 @@ export default function MessagerieScreen({
     setCreationEnCours(true)
     try {
       const conv = await messagesApi.creerOuObtenirDm(ecoleId, compteId, compte.id)
+      // Présence (voir utils/presenceEnLigne.js) : cette conversation n'a
+      // pas forcément déjà été vue par listerAvecMessages (voir App.jsx)
+      // — ex. tout premier DM avec ce contact.
+      initialiserPresence(conv.membres)
       setConversations((liste) => (liste.some((c) => c.id === conv.id) ? liste : [...liste, conv]))
       setProfilStack([])
       setSelectedId(conv.id)

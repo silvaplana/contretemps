@@ -31,6 +31,13 @@ class CompteResume(BaseModel):
     nom: str
     prenom: str
     role: str
+    # Présence (voir connexions.py) — `en_ligne` n'est PAS une colonne de
+    # Compte (dérivé du flux SSE réellement ouvert) : receiver.py pose
+    # cet attribut à la volée sur l'objet ORM avant sérialisation, voir
+    # _sortie_conversation. `derniere_activite_le`, lui, EST une vraie
+    # colonne, peuplée normalement par `from_attributes`.
+    en_ligne: bool = False
+    derniere_activite_le: dt.datetime | None = None
 
     model_config = {"from_attributes": True}
 
@@ -58,6 +65,10 @@ class MessageCreation(BaseModel):
     # Généré côté navigateur avant l'envoi — voir messages.py: envoyer()
     # et frontend/src/utils/messageOutbox.js (idempotence des renvois).
     client_id: str | None = None
+
+
+class FrappeEntree(BaseModel):
+    compte_id: int
 
 
 class DeliverySortie(BaseModel):

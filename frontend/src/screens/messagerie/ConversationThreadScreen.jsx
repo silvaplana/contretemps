@@ -3,7 +3,9 @@ import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
+import { useFrappeEnCours, useSignalerFrappe } from '../../utils/frappeIndicateur.js'
 import { envoyerAvecReprise, reessayer, useMessagesEnAttente } from '../../utils/messageOutbox.js'
+import { libellePresence, usePresence } from '../../utils/presenceEnLigne.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
@@ -50,6 +52,18 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
   const enAttente = enAttenteBrut.filter(
     (m) => !conversation.messages.some((cm) => cm.clientId === m.clientId),
   )
+  // Présence (voir utils/presenceEnLigne.js) — n'a de sens que pour une
+  // conversation individuelle (pas d'unique "l'autre" dans un groupe).
+  const autreMembre =
+    conversation.type === 'individuelle' ? conversation.membres.find((m) => m.id !== compteId) : null
+  const presence = usePresence(autreMembre?.id ?? null)
+  // "En train d'écrire" (voir utils/frappeIndicateur.js) — reçu (l'autre
+  // écrit) et signalé (moi j'écris) sont 2 choses distinctes.
+  const frappeEnCours = useFrappeEnCours(conversation.id)
+  const frappeur = frappeEnCours
+    ? conversation.membres.find((m) => m.id === frappeEnCours.compteId)
+    : null
+  const signalerFrappe = useSignalerFrappe(conversation.id, compteId)
   const textareaRef = useRef(null)
   const [emojiOpen, setEmojiOpen] = useState(false)
   const emojiSelectorRef = useRef(null)
@@ -170,6 +184,18 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
     envoyerAvecReprise(conversation.id, compteId, contenu, canalBackend)
   }
 
+  // "X écrit..." (DM : un seul autre membre possible, pas la peine de le
+  // nommer) / "X écrit..." (groupe : plusieurs personnes possibles, voir
+  // messagerie/frappe.py — un seul frappeur affiché à la fois, le plus
+  // récent, ça reste très rare d'en avoir 2 en même temps dans ce contexte).
+  const sousTitre = frappeur
+    ? conversation.type === 'groupe'
+      ? `${frappeur.prenom} écrit...`
+      : 'écrit...'
+    : conversation.type === 'groupe'
+      ? 'Groupe'
+      : (libellePresence(presence) ?? 'Conversation')
+
   return (
     <div className="thread-screen">
       <div className="thread-screen__header">
@@ -182,10 +208,11 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
           ) : (
             conversation.nom.slice(0, 2).toUpperCase()
           )}
+          {presence?.enLigne && <span className="avatar__dot-en-ligne" />}
         </span>
         <span className="thread-screen__header-text">
           <strong>{conversation.nom}</strong>
-          <span className="muted">{conversation.type === 'groupe' ? 'Groupe' : 'Conversation'}</span>
+          <span className={frappeur ? 'thread-screen__frappe' : 'muted'}>{sousTitre}</span>
         </span>
       </div>
 
@@ -270,6 +297,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
             onChange={(e) => {
               setDraft(e.target.value)
               ajusterHauteur(e.target)
+              if (e.target.value.trim()) signalerFrappe()
             }}
             // Entrée seule -> envoie ; Maj+Entrée -> retour à la ligne —
             // mais SEULEMENT sur un appareil à pointeur fin (voir

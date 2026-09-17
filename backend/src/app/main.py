@@ -22,7 +22,7 @@ from db import Base, engine
 from ecoles import EcoleExport, Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
 from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
-from messagerie import Conversations, Evenements, MessagerieReceiver, Messages
+from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
 from notifications import Notifications, NotificationsReceiver
 from presence import Presence, PresenceReceiver
 from profs import Profs, ProfsReceiver
@@ -137,10 +137,16 @@ notifications_receiver = NotificationsReceiver(client=notifications_client, app=
 # (flux SSE) instancie plus haut, voir le "lifespan" au-dessus.
 conversations_client = Conversations(comptes=comptes_client, cours=cours_client)
 messages_client = Messages(conversations=conversations_client)
+connexions_client = Connexions(
+    comptes=comptes_client, conversations=conversations_client, evenements=evenements_client
+)
+frappe_client = Frappe()
 messagerie_receiver = MessagerieReceiver(
     conversations=conversations_client,
     messages=messages_client,
     evenements=evenements_client,
+    connexions=connexions_client,
+    frappe=frappe_client,
     notifications=notifications_client,
     app=app,
 )

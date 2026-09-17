@@ -12,7 +12,9 @@ import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import * as sessionApi from './api/session.js'
 import * as videosApi from './api/videos.js'
+import { signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
+import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
@@ -168,8 +170,15 @@ function App() {
   // que le nom des conversations automatiques de cours soit correct dès
   // que possible (voir api/messages.js : nomAffiche).
   useEffect(() => {
-    if (compteReel) messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then(setConversations)
-    else setConversations([])
+    if (compteReel) {
+      messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then((liste) => {
+        setConversations(liste)
+        // Présence (voir utils/presenceEnLigne.js) : sème l'état connu de
+        // chaque correspondant depuis ce chargement — seul le flux SSE
+        // (onEtatConnexion ci-dessous) le mettra à jour ensuite.
+        initialiserPresence(liste.flatMap((c) => c.membres))
+      })
+    } else setConversations([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id, ecole.id, cours])
 
@@ -200,6 +209,8 @@ function App() {
         // message (pas de delivery à moi-même, voir messages.py: envoyer).
         if (message.expediteur_id !== compteReel.id) messagesApi.marquerRecu(message.id, compteReel.id)
       },
+      onEtatConnexion: appliquerEtatConnexion,
+      onEcrit: ({ conversation_id, compte_id }) => signalerFrappeRecue(conversation_id, compte_id),
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])

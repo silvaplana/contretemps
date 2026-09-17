@@ -400,3 +400,136 @@ def test_envoyer_message_publie_un_evenement_sse_a_chaque_membre(client, db_sess
         evenements_client.desabonner(eleve.id, queue_eleve)
         evenements_client.desabonner(prof.id, queue_prof)
         evenements_client.desabonner(admin.id, queue_admin_non_membre)
+
+
+def test_conversation_expose_en_ligne_des_membres(client, db_session):
+    """Voir messagerie/connexions.py : `en_ligne` reflète le flux SSE
+    réellement ouvert au moment de la requête, jamais un flag persisté."""
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+    membre_eleve = next(m for m in conversation["membres"] if m["id"] == eleve.id)
+    assert membre_eleve["en_ligne"] is False
+
+    queue_eleve = evenements_client.abonner(eleve.id)
+    try:
+        conversation = client.get(f"/conversations/{conversation['id']}").json()
+        membre_eleve = next(m for m in conversation["membres"] if m["id"] == eleve.id)
+        assert membre_eleve["en_ligne"] is True
+    finally:
+        evenements_client.desabonner(eleve.id, queue_eleve)
+
+
+def test_connexions_entree_notifie_les_correspondants(db_session):
+    """Voir connexions.py : entrer en ligne prévient tout compte qui
+    partage déjà une conversation avec soi (décision utilisateur du
+    2026-09-17 : pas restreint à l'équipe pédagogique pour l'instant)."""
+    from comptes import Comptes
+    from cours import CoursService
+    from messagerie import Connexions, Conversations, Evenements
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversations = Conversations(comptes=Comptes(), cours=CoursService())
+    conversations.creer_conversation_cours(db_session, ecole.id, cours.id)
+    evenements = Evenements()
+    connexions = Connexions(comptes=Comptes(), conversations=conversations, evenements=evenements)
+
+    queue_prof = evenements.abonner(prof.id)
+    try:
+        connexions.entree(db_session, eleve.id)
+        assert queue_prof.get_nowait() == {
+            "type": "etat_connexion",
+            "compte_id": eleve.id,
+            "en_ligne": True,
+            "derniere_activite_le": None,
+        }
+    finally:
+        evenements.desabonner(prof.id, queue_prof)
+
+
+def test_connexions_sortie_enregistre_la_derniere_activite_et_notifie(db_session):
+    from comptes import Comptes
+    from cours import CoursService
+    from messagerie import Connexions, Conversations, Evenements
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversations = Conversations(comptes=Comptes(), cours=CoursService())
+    conversations.creer_conversation_cours(db_session, ecole.id, cours.id)
+    evenements = Evenements()
+    connexions = Connexions(comptes=Comptes(), conversations=conversations, evenements=evenements)
+
+    assert eleve.derniere_activite_le is None
+
+    queue_prof = evenements.abonner(prof.id)
+    try:
+        connexions.sortie(db_session, eleve.id)
+        evenement = queue_prof.get_nowait()
+        assert evenement["type"] == "etat_connexion"
+        assert evenement["en_ligne"] is False
+        assert evenement["derniere_activite_le"] is not None
+    finally:
+        evenements.desabonner(prof.id, queue_prof)
+
+    assert eleve.derniere_activite_le is not None
+
+
+def test_connexions_ne_notifie_pas_un_compte_sans_conversation_commune(db_session):
+    from comptes import Comptes
+    from cours import CoursService
+    from messagerie import Connexions, Conversations, Evenements
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversations = Conversations(comptes=Comptes(), cours=CoursService())
+    conversations.creer_conversation_cours(db_session, ecole.id, cours.id)
+    evenements = Evenements()
+    connexions = Connexions(comptes=Comptes(), conversations=conversations, evenements=evenements)
+
+    # admin n'est membre d'aucune conversation avec eleve (voir _setup).
+    queue_admin = evenements.abonner(admin.id)
+    try:
+        connexions.entree(db_session, eleve.id)
+        assert queue_admin.empty()
+    finally:
+        evenements.desabonner(admin.id, queue_admin)
+
+
+def test_frappe_publie_a_tous_les_membres_sauf_lauteur(client, db_session):
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "cours", "membre_id": cours.id}]},
+    ).json()
+
+    queue_prof = evenements_client.abonner(prof.id)
+    queue_eleve = evenements_client.abonner(eleve.id)
+    try:
+        reponse = client.post(
+            f"/conversations/{conversation['id']}/ecrit", json={"compte_id": eleve.id}
+        )
+        assert reponse.status_code == 204
+        assert queue_prof.get_nowait() == {
+            "type": "ecrit",
+            "conversation_id": conversation["id"],
+            "compte_id": eleve.id,
+        }
+        assert queue_eleve.empty()  # jamais republié à soi-même
+    finally:
+        evenements_client.desabonner(prof.id, queue_prof)
+        evenements_client.desabonner(eleve.id, queue_eleve)
+
+
+def test_frappe_throttle_les_envois_rapproches():
+    from messagerie import Frappe
+
+    frappe = Frappe()
+    assert frappe.doit_publier(1, 2) is True
+    assert frappe.doit_publier(1, 2) is False  # trop tôt après le précédent
+    assert frappe.doit_publier(1, 3) is True  # compte différent : pas throttlé
