@@ -46,6 +46,15 @@ export default function AdminScreen({
   // au moment du montage.
   const [subTab, setSubTab] = useState(() => (groupeAOuvrir != null ? 'groupes' : 'eleves'))
 
+  // "Créer aussi la conversation ?" à la création d'un cours (voir
+  // AdminCours.jsx: addCours, demande utilisateur du 2026-09-18) — même
+  // mécanique que `groupeAOuvrir` ci-dessus (état à consommer UNE fois,
+  // voir onEditIdInitialConsomme plus bas), mais purement LOCAL à cet
+  // écran (contrairement à `groupeAOuvrir`, qui vient de Messagerie via
+  // App.jsx) : la création du cours ET l'ouverture de sa conversation se
+  // passent toutes les deux dans Admin, pas besoin de remonter jusque-là.
+  const [conversationAOuvrirDepuisCours, setConversationAOuvrirDepuisCours] = useState(null)
+
   // Prévient App.jsx que `groupeAOuvrir` est consommé (repris ci-dessus ET
   // par AdminGroupes ci-dessous) — sans ça, revenir plus tard sur cet
   // écran rouvrirait la même conversation en boucle.
@@ -93,6 +102,11 @@ export default function AdminScreen({
           professeurs={professeurs}
           eleves={eleves}
           ecoleId={ecole.id}
+          onConversationCreee={(conversation) => {
+            setGroupes((list) => [...list, conversation])
+            setConversationAOuvrirDepuisCours(conversation.id)
+            setSubTab('groupes')
+          }}
         />
       )}
       {subTab === 'groupes' && (
@@ -103,7 +117,11 @@ export default function AdminScreen({
           eleves={eleves}
           cours={cours}
           ecoleId={ecole.id}
-          editIdInitial={groupeAOuvrir}
+          editIdInitial={conversationAOuvrirDepuisCours ?? groupeAOuvrir}
+          onEditIdInitialConsomme={() => {
+            setConversationAOuvrirDepuisCours(null)
+            onGroupeAOuvrirConsomme?.()
+          }}
         />
       )}
     </div>

@@ -82,10 +82,21 @@ export default function AdminGroupes({
   // AdminScreen), donc un changement ultérieur de cette prop ne doit
   // jamais rouvrir la modale une 2e fois.
   editIdInitial,
+  // Prévient AdminScreen que `editIdInitial` est consommé (même principe
+  // que `groupeAOuvrir`/`onGroupeAOuvrirConsomme`, voir App.jsx) : sans
+  // ça, quitter puis revenir sur cet onglet (toujours dans la même
+  // visite d'Admin, donc SANS remonter AdminScreen) rouvrirait la même
+  // modale en boucle.
+  onEditIdInitialConsomme,
 }) {
   const [search, setSearch] = useState('')
   const [editId, setEditId] = useState(editIdInitial ?? null)
   const [admins, setAdmins] = useState([])
+
+  useEffect(() => {
+    if (editIdInitial != null) onEditIdInitialConsomme?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Uniquement utile ici (voir AddMembreForm : "Ajouter un membre" >
   // Admin) — pas besoin de faire remonter ça jusqu'à App.jsx comme

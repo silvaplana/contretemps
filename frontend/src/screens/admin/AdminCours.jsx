@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import * as conversationsApi from '../../api/conversations.js'
 import * as coursApi from '../../api/cours.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
@@ -23,7 +24,20 @@ const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dim
 //
 // Données métier via api/cours.js (voir api/README.md, et sa note sur la
 // simplification "un seul professeur par cours" côté maquette/écrans).
-export default function AdminCours({ cours, setCours, professeurs, eleves, ecoleId }) {
+export default function AdminCours({
+  cours,
+  setCours,
+  professeurs,
+  eleves,
+  ecoleId,
+  // Demande utilisateur du 2026-09-18 : à la création d'un cours (ce
+  // "+" précisément — pas l'import Excel, qui ne passe pas par
+  // addCours), proposer de créer sa conversation de groupe tout de
+  // suite. `onConversationCreee` fait le lien avec AdminScreen.jsx, seul
+  // à posséder `groupes`/`setGroupes` — voir son commentaire pour la
+  // suite (bascule vers l'onglet Conversations, modale ouverte dessus).
+  onConversationCreee,
+}) {
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
@@ -67,6 +81,20 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
     // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
     // l'appliquer 2 fois de suite sur son propre résultat.
     setCours((list) => (list.some((c) => c.id === nouveau.id) ? list : [...list, nouveau]))
+
+    // Contrairement à la conversation AUTOMATIQUE créée par le seed de
+    // démo (voir backend/src/messagerie/conversations.py:
+    // creer_conversation_cours, jamais appelée depuis ce flux réel) —
+    // ici, explicitement proposée, jamais silencieuse.
+    if (!window.confirm(`Créer aussi la conversation de groupe du cours "${nouveau.nom}" ?`)) return
+    // Même recette que le "+" d'Admin > Conversations (voir
+    // AdminGroupes.jsx: creerConversation) : conversation vide, membre
+    // "cours" ajouté juste après. `ajouterMembre` (voir api/
+    // conversations.js) ne renvoie rien (204) — le membre est reconstruit
+    // ici côté client, comme le fait déjà AdminGroupes.jsx: addMembre.
+    const conversation = await conversationsApi.creerGroupe(ecoleId, '')
+    await conversationsApi.ajouterMembre(conversation.id, { type: 'cours', id: nouveau.id })
+    onConversationCreee?.({ ...conversation, membres: [{ type: 'cours', id: nouveau.id }] })
   }
 
   function elevesDuCours(coursId) {
