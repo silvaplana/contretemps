@@ -272,6 +272,11 @@ export async function creerOuObtenirDm(ecoleId, compteId, autreCompteId) {
 // _publier_statut_message). Bug signalé : sans ça, la coche ne passait
 // au bleu ("lu") que si je fermais et rouvrais le fil — jamais en direct
 // pendant que l'autre lisait le message.
+// `onCoursMaj` : un cours a été créé/modifié/supprimé, ou ses élèves/
+// professeurs ont changé (voir backend/src/cours/receiver.py :
+// _publier_cours_maj) — demande utilisateur du 2026-09-19 : le
+// sélecteur de cours (voir Header.jsx) doit se tenir à jour en direct,
+// comme les conversations.
 export function ouvrirFluxEvenements(
   compteId,
   {
@@ -282,6 +287,7 @@ export function ouvrirFluxEvenements(
     onConversationMaj,
     onConversationSupprimee,
     onMessageStatut,
+    onCoursMaj,
   },
 ) {
   let dejaOuvertUneFois = false
@@ -301,6 +307,7 @@ export function ouvrirFluxEvenements(
       else if (evenement.type === 'conversation_maj') onConversationMaj?.(evenement)
       else if (evenement.type === 'conversation_supprimee') onConversationSupprimee?.(evenement)
       else if (evenement.type === 'message_statut') onMessageStatut?.(evenement)
+      else if (evenement.type === 'cours_maj') onCoursMaj?.(evenement)
     }
     return s
   }

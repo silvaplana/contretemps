@@ -154,13 +154,25 @@ function App() {
     codeAccesEleve: '',
   })
 
-  useEffect(() => {
-    if (!loggedIn) return
+  // Recharge élèves/profs/cours — au premier chargement ET à chaque
+  // `cours_maj` reçu par SSE (voir plus bas), pour tenir le sélecteur de
+  // cours à jour en direct (demande utilisateur du 2026-09-19) : création/
+  // modification/suppression d'un cours, ou changement d'inscription
+  // élève/professeur, chez N'IMPORTE QUEL compte de l'école (voir
+  // backend/src/cours/receiver.py: _publier_cours_maj — diffusé à tout le
+  // monde, filtré ici par rôle comme d'habitude, voir coursDuProfil).
+  function resynchroniserCours() {
     elevesApi.lister(ecole.id).then(setEleves)
     profsApi.lister(ecole.id).then(setProfesseurs)
     coursApi.lister(ecole.id).then(setCours)
+  }
+
+  useEffect(() => {
+    if (!loggedIn) return
+    resynchroniserCours()
     conversationsApi.listerEcole(ecole.id).then(setGroupes)
     comptesApi.listerAdmins(ecole.id).then(setAdmins)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loggedIn, ecole.id])
 
   // Recharge tout depuis le serveur (liste + messages + présence, voir
@@ -266,6 +278,7 @@ function App() {
           )
         })
       },
+      onCoursMaj: resynchroniserCours,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
@@ -336,11 +349,21 @@ function App() {
   // pour sélectionner un premier cours par défaut au montage — on le fait
   // ici, dès que la liste arrive (et seulement si la sélection actuelle
   // n'existe plus/pas encore dans cette liste).
+  //
+  // Filtré par `coursDuProfil` (déclarée plus bas, mais une function
+  // declaration est "hoisted" — appelable ici sans souci), PAS la liste
+  // brute `cours` : bug signalé (demande utilisateur du 2026-09-19), si
+  // le cours affiché disparaît (supprimé, ou moi retiré de ses
+  // élèves/professeurs — voir onCoursMaj plus haut) ou n'est simplement
+  // plus visible pour ce rôle, il faut basculer sur un cours dont
+  // l'utilisateur fait encore partie, pas n'importe lequel de l'école.
   useEffect(() => {
-    if (cours.length > 0 && !cours.find((c) => c.id === selectedCoursId)) {
-      setSelectedCoursId(cours[0].id)
+    const visibles = coursDuProfil(activeUser)
+    if (visibles.length > 0 && !visibles.find((c) => c.id === selectedCoursId)) {
+      setSelectedCoursId(visibles[0].id)
     }
-  }, [cours, selectedCoursId])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cours, eleves, activeUser, selectedCoursId])
 
   // Présence : dépend de la liste des cours (voir api/presence.js, mode
   // réel — a besoin de savoir quels cours interroger). Attend que `cours`

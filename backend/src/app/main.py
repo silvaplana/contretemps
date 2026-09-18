@@ -80,9 +80,14 @@ comptes_receiver = ComptesReceiver(client=comptes_client, app=app)
 auth_client = Auth(ecoles=ecoles_client, comptes=comptes_client)
 auth_receiver = AuthReceiver(client=auth_client, app=app)
 
-# Monte les routes des cours (/cours) - depend de comptes (professeurs/eleves).
+# Monte les routes des cours (/cours) - depend de comptes (professeurs/eleves)
+# et evenements_client (SSE : sélecteur de cours tenu à jour en direct,
+# voir cours/receiver.py: _publier_cours_maj — demande utilisateur du
+# 2026-09-19).
 cours_client = CoursService()
-cours_receiver = CoursReceiver(client=cours_client, app=app)
+cours_receiver = CoursReceiver(
+    client=cours_client, app=app, evenements=evenements_client, comptes=comptes_client
+)
 
 # Monte les routes des eleves (/eleves, /contacts) - depend de comptes.
 eleves_client = Eleves(comptes=comptes_client)

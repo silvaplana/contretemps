@@ -199,6 +199,60 @@ def test_supprimer_cours_supprime_ses_horaires_supplementaires(client, db_sessio
     assert reponse.status_code == 201
 
 
+def test_creer_modifier_supprimer_publient_cours_maj_a_toute_lecole(client, db_session):
+    """Demande utilisateur du 2026-09-19 : le sélecteur de cours (voir
+    frontend/src/components/Header.jsx) doit se tenir à jour en direct —
+    création, modification ET suppression préviennent TOUS les comptes
+    de l'école (admin/profs/élèves n'ont pas les mêmes cours visibles,
+    voir App.jsx: coursDuProfil — filtré côté client, pas ici)."""
+    from app.main import evenements_client
+
+    ecole, prof, eleve = _creer_ecole_et_comptes(db_session)
+    queue_prof = evenements_client.abonner(prof.id)
+    queue_eleve = evenements_client.abonner(eleve.id)
+    try:
+        cours = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Eveil"}).json()
+        assert queue_prof.get_nowait() == {"type": "cours_maj"}
+        assert queue_eleve.get_nowait() == {"type": "cours_maj"}
+
+        client.put(f"/cours/{cours['id']}", json={"nom": "Eveil bis"})
+        assert queue_prof.get_nowait() == {"type": "cours_maj"}
+        assert queue_eleve.get_nowait() == {"type": "cours_maj"}
+
+        client.delete(f"/cours/{cours['id']}")
+        assert queue_prof.get_nowait() == {"type": "cours_maj"}
+        assert queue_eleve.get_nowait() == {"type": "cours_maj"}
+    finally:
+        evenements_client.desabonner(prof.id, queue_prof)
+        evenements_client.desabonner(eleve.id, queue_eleve)
+
+
+def test_inscription_et_professeur_publient_cours_maj(client, db_session):
+    """Un changement d'inscription (élève ajouté/retiré) ou de
+    professeur affecte qui voit ce cours (voir App.jsx: coursDuProfil) —
+    doit prévenir en direct comme une modification du cours lui-même."""
+    from app.main import evenements_client
+
+    ecole, prof, eleve = _creer_ecole_et_comptes(db_session)
+    cours = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Eveil"}).json()
+
+    queue_eleve = evenements_client.abonner(eleve.id)
+    try:
+        client.post(f"/cours/{cours['id']}/eleves/{eleve.id}")
+        assert queue_eleve.get_nowait() == {"type": "cours_maj"}
+
+        client.delete(f"/cours/{cours['id']}/eleves/{eleve.id}")
+        assert queue_eleve.get_nowait() == {"type": "cours_maj"}
+
+        client.post(f"/cours/{cours['id']}/professeurs/{prof.id}")
+        assert queue_eleve.get_nowait() == {"type": "cours_maj"}
+
+        client.delete(f"/cours/{cours['id']}/professeurs/{prof.id}")
+        assert queue_eleve.get_nowait() == {"type": "cours_maj"}
+    finally:
+        evenements_client.desabonner(eleve.id, queue_eleve)
+
+
 def test_cours_de_leleve(client, db_session):
     """Sens inverse de /cours/{id}/eleves — voir Admin > Élèves (colonne
     "cours suivis")."""

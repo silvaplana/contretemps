@@ -29,6 +29,16 @@ class Comptes:
     def get(self, db: Session, compte_id: int) -> Compte | None:
         return db.get(Compte, compte_id)
 
+    def list_ecole(self, db: Session, ecole_id: int) -> list[Compte]:
+        """Tous les comptes de l'école, tous rôles confondus — utilisé
+        pour diffuser un événement temps réel à tout le monde (voir
+        cours/receiver.py : un changement de cours n'a pas un ensemble de
+        destinataires simple à calculer côté serveur — admin/profs/élèves
+        n'en voient pas les mêmes — plus simple et plus sûr de prévenir
+        tout le monde et de laisser le filtrage par rôle, déjà en place
+        côté client, faire son travail habituel)."""
+        return list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id)))
+
     def list_par_role(self, db: Session, ecole_id: int, role: str) -> list[Compte]:
         return list(
             db.scalars(
