@@ -59,7 +59,7 @@ const dotIcons = {
   grip: [9, 6, 9, 12, 9, 18, 15, 6, 15, 12, 15, 18],
 }
 
-export default function Icon({ name, size = 20, className = '' }) {
+export default function Icon({ name, size = 20, className = '', strokeWidth = 1.8 }) {
   const dots = dotIcons[name]
   if (dots) {
     return (
@@ -89,7 +89,7 @@ export default function Icon({ name, size = 20, className = '' }) {
       height={size}
       fill="none"
       stroke="currentColor"
-      strokeWidth="1.8"
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       className={`icon ${className}`}

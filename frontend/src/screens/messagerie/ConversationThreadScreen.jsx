@@ -248,7 +248,11 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
                 {m.estMoi && (
                   <Icon
                     name={STATUT_ICON[m.statut]}
-                    size={14}
+                    size={16}
+                    // Trait plus épais que les autres icônes de l'appli
+                    // (voir Icon.jsx : 1.8 par défaut) — signalé trop
+                    // fines/peu visibles comparées à WhatsApp.
+                    strokeWidth={2.5}
                     className={m.statut === 'vu' ? 'message-bubble__coche--lu' : ''}
                   />
                 )}
