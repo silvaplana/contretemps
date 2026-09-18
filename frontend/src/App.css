@@ -151,10 +151,30 @@
   font-weight: 700;
 }
 
-.cours-selector__menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
+/* Liste de cours dans la modale "Sélectionner un cours" (voir
+   Header.jsx) — même langage visuel que .dropdown-menu button (lignes
+   pleine largeur, séparées, actif en accent), mais SANS le
+   positionnement en menu déroulant : ici elle vit dans .modal-body, déjà
+   bornée en hauteur ET défilante (voir .modal-panel) — c'est justement
+   ce qui manquait à l'ancien menu déroulant quand il y avait trop de
+   cours (bug signalé : les derniers restaient inatteignables). */
+.cours-picker-list__item {
+  width: 100%;
+  text-align: left;
+  padding: 12px 4px;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-h);
+}
+
+.cours-picker-list__item:last-child {
+  border-bottom: none;
+}
+
+.cours-picker-list__item.is-active {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 .header-menu {

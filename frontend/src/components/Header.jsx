@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import { ROLE_LABEL, estMonteeEnPrivilege, trierParRole } from '../data/roles.js'
 import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
+import { correspond } from '../utils/recherche.js'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
 import Logo from './Logo.jsx'
+import Modal from './Modal.jsx'
 
 // En-tête d'écran (voir spec/SPEC.md section 4).
 // - mode="simple" : logo + titre (écrans Admin et Profil, non "scopés cours").
@@ -25,22 +27,33 @@ export default function Header({
   // aussi depuis ce menu) : { label, icon, onClick }, optionnel.
   menuExtra,
 }) {
+  // Modale plein écran (voir plus bas) plutôt qu'un menu déroulant
+  // classique — bug signalé : avec beaucoup de cours, le menu débordait
+  // de l'écran et les derniers cours restaient inatteignables (rien pour
+  // le faire défiler, contrairement à .modal-panel qui est bornée en
+  // hauteur ET défile, voir App.css).
   const [coursOpen, setCoursOpen] = useState(false)
+  const [coursSearch, setCoursSearch] = useState('')
   const [familleOpen, setFamilleOpen] = useState(false)
   const [familleMenuTop, setFamilleMenuTop] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const [profilVise, setProfilVise] = useState(null)
   const activeCours = cours.find((c) => c.id === selectedCoursId)
   const familleBoutonRef = useRef(null)
-  const coursSelectorRef = useRef(null)
   const familleSelectorRef = useRef(null)
   const headerMenuRef = useRef(null)
 
   // Referme le menu ouvert dès qu'on touche ailleurs sur l'écran — sinon
   // il restait ouvert indéfiniment (vécu sur Présence et Messagerie).
-  useFermerAuClicExterieur(coursSelectorRef, coursOpen, () => setCoursOpen(false))
   useFermerAuClicExterieur(familleSelectorRef, familleOpen, () => setFamilleOpen(false))
   useFermerAuClicExterieur(headerMenuRef, menuOpen, () => setMenuOpen(false))
+
+  function fermerCoursModal() {
+    setCoursOpen(false)
+    setCoursSearch('')
+  }
+
+  const coursFiltres = cours.filter((c) => correspond(c.nom, coursSearch))
 
   // Position fixe (viewport), calée sur le bord droit de l'écran, plutôt
   // qu'absolue sur le petit bouton avatar (qui est près du bord mais pas
@@ -68,32 +81,15 @@ export default function Header({
         <Logo size={36} />
         {mode === 'simple' && <h1 className="app-header__title">{title}</h1>}
         {mode === 'course' && (
-          <div className="cours-selector" ref={coursSelectorRef}>
+          <div className="cours-selector">
             <button
               type="button"
               className="cours-selector__button"
-              onClick={() => setCoursOpen((o) => !o)}
+              onClick={() => setCoursOpen(true)}
             >
               <span>{activeCours ? activeCours.nom : title}</span>
               <Icon name="chevronDown" size={16} />
             </button>
-            {coursOpen && (
-              <div className="dropdown-menu cours-selector__menu">
-                {cours.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    className={c.id === selectedCoursId ? 'is-active' : ''}
-                    onClick={() => {
-                      onSelectCours(c.id)
-                      setCoursOpen(false)
-                    }}
-                  >
-                    {c.nom}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -194,6 +190,36 @@ export default function Header({
             setProfilVise(null)
           }}
         />
+      )}
+
+      {coursOpen && (
+        <Modal title="Sélectionner un cours" onClose={fermerCoursModal}>
+          <div className="search-bar">
+            <Icon name="search" size={18} />
+            <input
+              autoFocus
+              value={coursSearch}
+              onChange={(e) => setCoursSearch(e.target.value)}
+              placeholder="Rechercher un cours"
+            />
+          </div>
+          <div className="cours-picker-list">
+            {coursFiltres.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className={`cours-picker-list__item ${c.id === selectedCoursId ? 'is-active' : ''}`}
+                onClick={() => {
+                  onSelectCours(c.id)
+                  fermerCoursModal()
+                }}
+              >
+                {c.nom}
+              </button>
+            ))}
+            {coursFiltres.length === 0 && <p className="muted">Aucun cours ne correspond.</p>}
+          </div>
+        </Modal>
       )}
     </header>
   )
