@@ -260,9 +260,22 @@ export async function creerOuObtenirDm(ecoleId, compteId, autreCompteId) {
 // 2026-09-18 : un groupe tout juste créé depuis Messagerie doit
 // apparaître EN DIRECT chez les autres membres, pas seulement chez son
 // créateur.
+// `onMessageStatut` : une livraison de MON message a changé (reçu/lu par
+// le destinataire — voir backend/src/messagerie/receiver.py :
+// _publier_statut_message). Bug signalé : sans ça, la coche ne passait
+// au bleu ("lu") que si je fermais et rouvrais le fil — jamais en direct
+// pendant que l'autre lisait le message.
 export function ouvrirFluxEvenements(
   compteId,
-  { onMessage, onEtatConnexion, onEcrit, onReconnect, onConversationMaj, onConversationSupprimee },
+  {
+    onMessage,
+    onEtatConnexion,
+    onEcrit,
+    onReconnect,
+    onConversationMaj,
+    onConversationSupprimee,
+    onMessageStatut,
+  },
 ) {
   let dejaOuvertUneFois = false
   let source
@@ -280,6 +293,7 @@ export function ouvrirFluxEvenements(
       else if (evenement.type === 'ecrit') onEcrit?.(evenement)
       else if (evenement.type === 'conversation_maj') onConversationMaj?.(evenement)
       else if (evenement.type === 'conversation_supprimee') onConversationSupprimee?.(evenement)
+      else if (evenement.type === 'message_statut') onMessageStatut?.(evenement)
     }
     return s
   }

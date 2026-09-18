@@ -309,6 +309,37 @@ def test_marquer_lu_et_envoyer_par_mail(client, db_session):
     assert delivery["envoi_volontaire"] is True
 
 
+def test_marquer_lu_publie_message_statut_a_lexpediteur(client, db_session):
+    """Bug signalé (demande utilisateur du 2026-09-19) : la coche ne
+    passait au bleu chez l'expéditeur qu'en fermant/rouvrant le fil,
+    jamais en direct pendant que le destinataire lisait le message."""
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/dm", params={"ecole_id": ecole.id, "compte_a_id": prof.id, "compte_b_id": eleve.id}
+    ).json()
+    message = client.post(
+        f"/conversations/{conversation['id']}/messages",
+        json={"expediteur_id": prof.id, "contenu": "Salut"},
+    ).json()
+
+    queue_prof = evenements_client.abonner(prof.id)
+    try:
+        client.put(f"/messages/{message['id']}/deliveries/{eleve.id}", json={"statut": "recu"})
+        evenement = queue_prof.get_nowait()
+        assert evenement["type"] == "message_statut"
+        assert evenement["conversation_id"] == conversation["id"]
+        assert evenement["message"]["id"] == message["id"]
+        assert evenement["message"]["deliveries"][0]["statut"] == "recu"
+
+        client.put(f"/messages/{message['id']}/deliveries/{eleve.id}", json={"statut": "lu"})
+        evenement = queue_prof.get_nowait()
+        assert evenement["message"]["deliveries"][0]["statut"] == "lu"
+    finally:
+        evenements_client.desabonner(prof.id, queue_prof)
+
+
 def test_groupe_whatsapp_miroir(client, db_session):
     """Voir §6.9 : le "tuyau" WhatsApp — pas de vrai envoi encore (Baileys,
     plus tard), juste le statut stocké sur la conversation."""

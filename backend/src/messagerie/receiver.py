@@ -319,6 +319,27 @@ class MessagerieReceiver:
             delivery = self.messages.marquer_recu(db, message_id, destinataire_id)
         if delivery is None:
             raise HTTPException(status_code=404, detail="Livraison introuvable")
+        self._publier_statut_message(db, message_id)
+
+    def _publier_statut_message(self, db: Session, message_id: int) -> None:
+        """Prévient l'EXPÉDITEUR (SSE) qu'une livraison de ce message a
+        changé (reçu/lu) — bug signalé : sans ça, la coche ne passait au
+        bleu ("lu") que si l'expéditeur fermait et rouvrait le fil (le
+        seul moment où listerAvecMessages le refetch vraiment), jamais en
+        direct pendant que le destinataire lisait le message."""
+        message = self.messages.get(db, message_id)
+        if message is None:
+            return
+        sortie = self._sortie_message(db, message)
+        evenement_message = MessageSortie.model_validate(sortie).model_dump(mode="json")
+        self.evenements.publier(
+            message.expediteur_id,
+            {
+                "type": "message_statut",
+                "conversation_id": message.conversation_id,
+                "message": evenement_message,
+            },
+        )
 
     def envoyer_par_mail(self, message_id: int, destinataire_id: int, db: Session = Depends(get_db)):
         delivery = self.messages.envoyer_par_mail(db, message_id, destinataire_id)

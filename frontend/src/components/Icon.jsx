@@ -17,7 +17,12 @@ const paths = {
   chevronLeft: 'M15 6l-6 6 6 6',
   mail: 'M4 6h16v12H4z M4 7l8 6 8-6',
   check: 'M5 12l4 4 10-10',
-  checkCheck: 'M2 12l4 4 8-8 M8 16l1 1 10-10',
+  // Signalé : les 2 coches se chevauchaient trop, ressemblaient à une
+  // seule coche épaisse plutôt qu'à 2 distinctes façon WhatsApp. La coche
+  // de devant (complète) est bien séparée de celle de derrière (juste sa
+  // pointe visible, décalée à gauche) — même tracé que l'icône "checks"
+  // de Tabler Icons.
+  checkCheck: 'M7 12l5 5l10 -10 M2 12l5 5m5 -5l5 -5',
   clock: 'M12 12V7 M12 12l4 2 M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z',
   x: 'M6 6l12 12 M18 6L6 18',
   play: 'M8 5l11 7-11 7V5Z',

@@ -250,6 +250,22 @@ function App() {
       onConversationSupprimee: ({ conversation_id }) => {
         setConversations((liste) => liste.filter((c) => c.id !== conversation_id))
       },
+      // Une livraison de MON message a changé (reçu/lu — voir backend :
+      // _publier_statut_message). Bug signalé : la coche ne passait au
+      // bleu qu'en fermant/rouvrant le fil, jamais en direct pendant que
+      // l'autre lisait le message.
+      onMessageStatut: ({ conversation_id, message }) => {
+        setConversations((liste) => {
+          const conv = liste.find((c) => c.id === conversation_id)
+          if (!conv) return liste
+          const messageMaj = messagesApi.versMessageEcran(message, compteReel.id, conv.membres)
+          return liste.map((c) =>
+            c.id === conversation_id
+              ? { ...c, messages: c.messages.map((m) => (m.id === messageMaj.id ? messageMaj : m)) }
+              : c,
+          )
+        })
+      },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])

@@ -97,6 +97,9 @@ class Messages:
         db.refresh(message)
         return message, True
 
+    def get(self, db: Session, message_id: int) -> Message | None:
+        return db.get(Message, message_id)
+
     def messages_de_la_conversation(self, db: Session, conversation_id: int) -> list[Message]:
         return list(
             db.scalars(
