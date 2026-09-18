@@ -19,9 +19,9 @@ async function requete(chemin, options) {
 
 // Fusionne l'élève (GET /eleves renvoie déjà nom/prenom/contacts...) avec
 // ses cours (route séparée, voir GET /eleves/{id}/cours) en un seul objet
-// avec coursIds.
-async function avecCoursIds(eleve) {
-  const cours = await requete(`/eleves/${eleve.id}/cours`)
+// avec coursIds. `coursIds` est passé d'avance par `lister` (voir plus
+// bas), sinon `avecCoursIds` va le chercher lui-même.
+function construireEleve(eleve, coursIds) {
   return {
     ...eleve,
     // Champs texte optionnels côté backend (nullable) : `?? ''` partout,
@@ -39,13 +39,31 @@ async function avecCoursIds(eleve) {
     informationsImportantes: eleve.informations_importantes ?? '',
     statutPaiement: eleve.statut_paiement,
     contactsEleve: eleve.contacts,
-    coursIds: cours.map((c) => c.id),
+    coursIds,
   }
 }
 
+async function avecCoursIds(eleve) {
+  const cours = await requete(`/eleves/${eleve.id}/cours`)
+  return construireEleve(eleve, cours.map((c) => c.id))
+}
+
+// ⚠️ Deux requêtes, PAS une par élève : la version d'avant faisait un
+// `avecCoursIds` par ligne, soit ~180 appels HTTP à l'ouverture d'Admin >
+// Élèves. Chaque appel répondait en 2 ms, mais les allers-retours cumulés
+// se voyaient franchement (~1,3 s en filaire, bien plus en 4G). La route
+// groupée renvoie tout le mapping élève→cours d'un coup (voir
+// backend/src/cours/cours.py:cours_par_eleve). `avecCoursIds` reste
+// utilisé tel quel par les opérations sur UN élève (créer, modifier...),
+// où un appel de plus ne coûte rien.
 export async function lister(ecoleId) {
-  const eleves = await requete(`/eleves?ecole_id=${ecoleId}`)
-  return Promise.all(eleves.map(avecCoursIds))
+  const [eleves, coursParEleve] = await Promise.all([
+    requete(`/eleves?ecole_id=${ecoleId}`),
+    requete(`/cours-par-eleve?ecole_id=${ecoleId}`),
+  ])
+  // Clés JSON = chaînes, `eleve.id` = nombre : l'accès par propriété fait
+  // la conversion tout seul. Un élève sans cours est absent du mapping.
+  return eleves.map((eleve) => construireEleve(eleve, coursParEleve[eleve.id] ?? []))
 }
 
 export async function creer(ecoleId, { nom, prenom }) {

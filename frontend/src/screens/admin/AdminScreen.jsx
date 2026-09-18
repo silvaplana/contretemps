@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
@@ -8,7 +8,7 @@ import AdminProfesseurs from './AdminProfesseurs.jsx'
 
 const SUB_TABS = [
   { value: 'ecole', label: 'École' },
-  { value: 'eleves', label: 'Elèves' },
+  { value: 'eleves', label: 'Élèves' },
   { value: 'professeurs', label: 'Profs' },
   { value: 'cours', label: 'Cours' },
   { value: 'groupes', label: 'Conversations' },
@@ -42,10 +42,22 @@ export default function AdminScreen({
   // modale en boucle.
   const [conversationAOuvrirDepuisCours, setConversationAOuvrirDepuisCours] = useState(null)
 
+  // Effectif affiché directement dans l'onglet, "Élèves (179)" (demande
+  // utilisateur). Compté sur `eleves`, la liste réellement chargée : le
+  // nombre se remet donc à jour tout seul après un ajout, une
+  // suppression ou un import, sans appel supplémentaire au serveur.
+  const sousOnglets = useMemo(
+    () =>
+      SUB_TABS.map((onglet) =>
+        onglet.value === 'eleves' ? { ...onglet, label: `${onglet.label} (${eleves.length})` } : onglet,
+      ),
+    [eleves.length],
+  )
+
   return (
     <div className="screen screen--admin">
       <SegmentedTabs
-        options={SUB_TABS}
+        options={sousOnglets}
         value={subTab}
         onChange={setSubTab}
         className="admin-screen__tabs"

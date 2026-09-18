@@ -53,6 +53,14 @@ dev = ["pytest", "httpx"]
 app = "app.main:main"
 reset-demo = "app.reset_demo:main"
 
+# Les tests importent `src/` du dossier courant, PAS le paquet installé
+# dans le venv. Sans cette ligne, `pytest` depuis un clone/worktree autre
+# que celui sur lequel `pip install -e .` a été lancé teste sans le dire
+# le code de l'AUTRE dossier : les tests d'une route toute neuve passent
+# au vert ailleurs et tombent en 404 ici.
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

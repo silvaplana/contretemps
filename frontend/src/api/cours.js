@@ -21,8 +21,9 @@ async function requete(chemin, options) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
-async function avecProfesseurId(cours) {
-  const professeurs = await requete(`/cours/${cours.id}/professeurs`)
+// `professeurId` est passé d'avance par `lister` (voir plus bas), sinon
+// `avecProfesseurId` va le chercher lui-même.
+function construireCours(cours, professeurId) {
   return {
     id: cours.id,
     nom: cours.nom,
@@ -31,7 +32,7 @@ async function avecProfesseurId(cours) {
     heureFin: cours.heure_fin ?? '',
     salle: cours.salle ?? '',
     ordre: cours.ordre,
-    professeurId: professeurs[0]?.id ?? '',
+    professeurId,
     // Créneaux EN PLUS du créneau principal ci-dessus — rare (voir
     // backend/src/cours/models.py:Cours.horaires_supplementaires), ex.
     // "Éveil" proposé aussi un autre jour.
@@ -43,9 +44,22 @@ async function avecProfesseurId(cours) {
   }
 }
 
+async function avecProfesseurId(cours) {
+  const professeurs = await requete(`/cours/${cours.id}/professeurs`)
+  return construireCours(cours, professeurs[0]?.id ?? '')
+}
+
+// Deux requêtes, PAS une par cours — même correctif que dans eleves.js
+// (voir le commentaire détaillé là-bas et
+// backend/src/cours/cours.py:professeurs_par_cours).
 export async function lister(ecoleId) {
-  const liste = await requete(`/cours?ecole_id=${ecoleId}`)
-  return Promise.all(liste.map(avecProfesseurId))
+  const [liste, professeursParCours] = await Promise.all([
+    requete(`/cours?ecole_id=${ecoleId}`),
+    requete(`/professeurs-par-cours?ecole_id=${ecoleId}`),
+  ])
+  // `[0]` : un seul prof retenu par cours, voir l'avertissement en tête
+  // de fichier.
+  return liste.map((cours) => construireCours(cours, professeursParCours[cours.id]?.[0] ?? ''))
 }
 
 function versChampsBackend({ heureDebut, heureFin, horairesSupplementaires, ...reste }) {

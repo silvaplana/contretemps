@@ -153,6 +153,40 @@ class CoursService:
             )
         )
 
+    def cours_par_eleve(self, db: Session, ecole_id: int) -> dict[int, list[int]]:
+        """Toutes les inscriptions élève→cours d'une école, en UNE requête.
+
+        Pendant groupé de `cours_de_leleve` : Admin > Élèves affiche une
+        colonne "cours suivis" par ligne, soit un appel par élève (~180
+        requêtes HTTP à l'ouverture de l'écran, voir receiver.py). Ici
+        c'est un seul aller-retour, même ordre de cours (`Cours.ordre`,
+        voir `list`) pour que l'affichage soit identique.
+        """
+        lignes = db.execute(
+            select(eleves_cours.c.eleve_id, eleves_cours.c.cours_id)
+            .join(Cours, Cours.id == eleves_cours.c.cours_id)
+            .where(Cours.ecole_id == ecole_id)
+            .order_by(Cours.ordre, Cours.id)
+        )
+        resultat: dict[int, list[int]] = {}
+        for eleve_id, cours_id in lignes:
+            resultat.setdefault(eleve_id, []).append(cours_id)
+        return resultat
+
+    def professeurs_par_cours(self, db: Session, ecole_id: int) -> dict[int, list[int]]:
+        """Pendant groupé de `professeurs_du_cours`, même motivation que
+        `cours_par_eleve` : Admin > Cours en faisait un appel par cours."""
+        lignes = db.execute(
+            select(cours_professeurs.c.cours_id, cours_professeurs.c.professeur_id)
+            .join(Cours, Cours.id == cours_professeurs.c.cours_id)
+            .where(Cours.ecole_id == ecole_id)
+            .order_by(Cours.ordre, Cours.id)
+        )
+        resultat: dict[int, list[int]] = {}
+        for cours_id, professeur_id in lignes:
+            resultat.setdefault(cours_id, []).append(professeur_id)
+        return resultat
+
     def cours_de_leleve(self, db: Session, eleve_id: int) -> list[Cours]:
         return list(
             db.scalars(

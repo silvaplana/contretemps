@@ -72,6 +72,20 @@ class CoursReceiver:
             self.cours_de_leleve
         )
 
+        # Versions groupées des deux routes ci-dessus, une par écran qui
+        # affiche une LISTE : sans elles, Admin > Élèves et Admin > Cours
+        # émettent un appel HTTP par ligne (~180 pour 179 élèves), ce qui
+        # se voyait comme de la latence à l'ouverture de l'écran alors que
+        # chaque appel pris isolément répond en 2 ms. Chemins sans
+        # paramètre de chemin pour ne pas entrer en conflit avec
+        # /cours/{cours_id} ni /eleves/{eleve_id}.
+        self.app.get("/cours-par-eleve", response_model=dict[int, list[int]])(
+            self.cours_par_eleve
+        )
+        self.app.get("/professeurs-par-cours", response_model=dict[int, list[int]])(
+            self.professeurs_par_cours
+        )
+
     def lister(self, ecole_id: int, db: Session = Depends(get_db)):
         return self.client.list(db, ecole_id)
 
@@ -103,6 +117,12 @@ class CoursReceiver:
 
     def professeurs(self, cours_id: int, db: Session = Depends(get_db)):
         return self.client.professeurs_du_cours(db, cours_id)
+
+    def cours_par_eleve(self, ecole_id: int, db: Session = Depends(get_db)):
+        return self.client.cours_par_eleve(db, ecole_id)
+
+    def professeurs_par_cours(self, ecole_id: int, db: Session = Depends(get_db)):
+        return self.client.professeurs_par_cours(db, ecole_id)
 
     def ajouter_professeur(self, cours_id: int, compte_id: int, db: Session = Depends(get_db)):
         self.client.ajouter_professeur(db, cours_id, compte_id)

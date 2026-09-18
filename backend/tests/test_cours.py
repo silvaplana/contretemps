@@ -265,3 +265,77 @@ def test_cours_de_leleve(client, db_session):
     assert reponse.status_code == 200
     assert [c["id"] for c in reponse.json()] == [c1["id"]]
     assert c2["id"] not in [c["id"] for c in reponse.json()]
+
+
+def test_cours_par_eleve_renvoie_tout_le_mapping_en_un_appel(client, db_session):
+    """Version groupée de /eleves/{id}/cours : Admin > Élèves en faisait
+    un appel HTTP par ligne, d'où la latence à l'ouverture de l'écran."""
+    ecole, _, eleve = _creer_ecole_et_comptes(db_session)
+    autre = Comptes().create(db_session, ecole_id=ecole.id, role="eleve", nom="Roux", prenom="Ana")
+    c1 = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"}).json()
+    c2 = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Jazz Ini"}).json()
+    client.post(f"/cours/{c1['id']}/eleves/{eleve.id}")
+    client.post(f"/cours/{c2['id']}/eleves/{eleve.id}")
+
+    reponse = client.get("/cours-par-eleve", params={"ecole_id": ecole.id})
+    assert reponse.status_code == 200
+    mapping = reponse.json()
+    # Clés JSON = chaînes, même pour des identifiants numériques.
+    assert mapping[str(eleve.id)] == [c1["id"], c2["id"]]
+    # Un élève sans aucun cours est simplement absent du mapping (le
+    # frontend retombe sur [], voir frontend/src/api/eleves.js:lister).
+    assert str(autre.id) not in mapping
+
+
+def test_cours_par_eleve_respecte_l_ordre_des_cours(client, db_session):
+    """Même ordre que GET /cours (Cours.ordre) : l'affichage doit rester
+    identique à celui de l'ancien appel par élève."""
+    ecole, _, eleve = _creer_ecole_et_comptes(db_session)
+    premier = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"}).json()
+    second = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Jazz"}).json()
+    # Inscrit dans l'ordre inverse : c'est bien `ordre` qui doit trancher.
+    client.post(f"/cours/{second['id']}/eleves/{eleve.id}")
+    client.post(f"/cours/{premier['id']}/eleves/{eleve.id}")
+
+    mapping = client.get("/cours-par-eleve", params={"ecole_id": ecole.id}).json()
+    assert mapping[str(eleve.id)] == [premier["id"], second["id"]]
+
+
+def test_cours_par_eleve_ne_deborde_pas_sur_une_autre_ecole(client, db_session):
+    ecole, _, eleve = _creer_ecole_et_comptes(db_session)
+    cours = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"}).json()
+    client.post(f"/cours/{cours['id']}/eleves/{eleve.id}")
+
+    voisine = Ecoles().create(db_session, nom="Voisine", code_postal="83000")
+    eleve_voisin = Comptes().create(
+        db_session, ecole_id=voisine.id, role="eleve", nom="Blanc", prenom="Ima"
+    )
+    cours_voisin = client.post(
+        "/cours", params={"ecole_id": voisine.id}, json={"nom": "Éveil"}
+    ).json()
+    client.post(f"/cours/{cours_voisin['id']}/eleves/{eleve_voisin.id}")
+
+    mapping = client.get("/cours-par-eleve", params={"ecole_id": ecole.id}).json()
+    assert list(mapping) == [str(eleve.id)]
+
+
+def test_professeurs_par_cours_renvoie_tout_le_mapping_en_un_appel(client, db_session):
+    ecole, prof, _ = _creer_ecole_et_comptes(db_session)
+    avec = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"}).json()
+    sans = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Jazz Ini"}).json()
+    client.post(f"/cours/{avec['id']}/professeurs/{prof.id}")
+
+    reponse = client.get("/professeurs-par-cours", params={"ecole_id": ecole.id})
+    assert reponse.status_code == 200
+    mapping = reponse.json()
+    assert mapping[str(avec["id"])] == [prof.id]
+    assert str(sans["id"]) not in mapping
+
+
+def test_routes_groupees_ne_masquent_pas_cours_par_id(client, db_session):
+    """/cours-par-eleve et /cours/{cours_id} cohabitent : le chemin sans
+    paramètre a été choisi exprès pour éviter ce conflit de routage."""
+    ecole, _, _ = _creer_ecole_et_comptes(db_session)
+    cours = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"}).json()
+    assert client.get(f"/cours/{cours['id']}").json()["nom"] == "Éveil"
+    assert client.get("/cours-par-eleve", params={"ecole_id": ecole.id}).status_code == 200
