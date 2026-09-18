@@ -3,6 +3,7 @@ import * as messagesApi from '../api/messages.js'
 import { initialiserPresence } from '../utils/presenceEnLigne.js'
 import ConversationListScreen from './messagerie/ConversationListScreen.jsx'
 import ConversationThreadScreen from './messagerie/ConversationThreadScreen.jsx'
+import NouveauGroupeModal from './messagerie/NouveauGroupeModal.jsx'
 import ProfilContactScreen from './messagerie/ProfilContactScreen.jsx'
 
 // Écran Messagerie (Admin, Professeur, Élève — voir spec/SPEC.md 5.5).
@@ -30,6 +31,13 @@ export default function MessagerieScreen({
   professeurs,
   eleves,
   cours,
+  // "Nouveau groupe" (menu 3 points, Admin seulement — voir App.jsx) :
+  // contrôlé depuis App.jsx (seul ancêtre commun avec Header, qui porte
+  // le déclencheur), mais la modale elle-même vit ICI — demande
+  // utilisateur du 2026-09-18 : rester dans Messagerie, jamais basculer
+  // vers Admin > Conversations comme avant.
+  nouveauGroupeOuvert,
+  onFermerNouveauGroupe,
 }) {
   const [selectedId, setSelectedId] = useState(null)
   const [profilStack, setProfilStack] = useState([]) // [{ cible, vueInfos, directInfo }]
@@ -85,8 +93,13 @@ export default function MessagerieScreen({
     }
   }
 
+  // Un seul `return` (au lieu des 3 précédents) : la modale "Nouveau
+  // groupe" ci-dessous doit pouvoir s'afficher PAR-DESSUS n'importe
+  // laquelle de ces 3 vues (elle s'ouvre depuis le menu de l'en-tête,
+  // accessible peu importe l'écran Messagerie affiché à ce moment-là).
+  let corps
   if (selected) {
-    return (
+    corps = (
       <ConversationThreadScreen
         conversation={selected}
         onBack={() => setSelectedId(null)}
@@ -94,10 +107,8 @@ export default function MessagerieScreen({
         compteId={compteId}
       />
     )
-  }
-
-  if (frame) {
-    return (
+  } else if (frame) {
+    corps = (
       <ProfilContactScreen
         cible={frame.cible}
         vueInfos={frame.vueInfos}
@@ -126,19 +137,47 @@ export default function MessagerieScreen({
         }}
       />
     )
+  } else {
+    corps = (
+      <ConversationListScreen
+        conversations={conversations}
+        onOpenConversation={setSelectedId}
+        onOpenContact={ouvrirAvecContact}
+        onAvatarClick={(cible) => empilerProfil(cible)}
+        compteId={compteId}
+        admins={admins}
+        professeurs={professeurs}
+        eleves={eleves}
+        contactActionEnCours={creationEnCours}
+      />
+    )
   }
 
   return (
-    <ConversationListScreen
-      conversations={conversations}
-      onOpenConversation={setSelectedId}
-      onOpenContact={ouvrirAvecContact}
-      onAvatarClick={(cible) => empilerProfil(cible)}
-      compteId={compteId}
-      admins={admins}
-      professeurs={professeurs}
-      eleves={eleves}
-      contactActionEnCours={creationEnCours}
-    />
+    <>
+      {corps}
+      {nouveauGroupeOuvert && (
+        <NouveauGroupeModal
+          ecoleId={ecoleId}
+          compteId={compteId}
+          admins={admins}
+          professeurs={professeurs}
+          eleves={eleves}
+          cours={cours}
+          onClose={onFermerNouveauGroupe}
+          onCree={(conversation) => {
+            setConversations((liste) =>
+              liste.some((c) => c.id === conversation.id) ? liste : [...liste, conversation],
+            )
+            onFermerNouveauGroupe()
+            // Ouvre directement son fil — confirmation visuelle immédiate
+            // que le groupe existe bien (voir demande utilisateur :
+            // "doit s'afficher chez moi le créateur").
+            setProfilStack([])
+            setSelectedId(conversation.id)
+          }}
+        />
+      )}
+    </>
   )
 }

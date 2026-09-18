@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as comptesApi from '../../api/comptes.js'
 import * as conversationsApi from '../../api/conversations.js'
+import AddMembreForm from '../../components/AddMembreForm.jsx'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -74,19 +75,18 @@ export default function AdminGroupes({
   cours,
   ecoleId,
   // Id d'une conversation à ouvrir dès le montage (voir AdminScreen.jsx :
-  // "Nouveau groupe" depuis Messagerie) — déjà créée côté backend par
-  // App.jsx, avec le même appel API que creerConversation ci-dessous ; il
-  // ne reste plus qu'à ouvrir sa modale d'édition. Repris seulement comme
-  // état INITIAL (pas via un effet) : ce composant est démonté/remonté à
-  // chaque fois qu'on revient sur l'onglet Conversations (voir
-  // AdminScreen), donc un changement ultérieur de cette prop ne doit
-  // jamais rouvrir la modale une 2e fois.
+  // "Créer aussi la conversation ?" à la création d'un cours, dans
+  // AdminCours.jsx) — déjà créée côté backend, avec le même appel API que
+  // creerConversation ci-dessous ; il ne reste plus qu'à ouvrir sa modale
+  // d'édition. Repris seulement comme état INITIAL (pas via un effet) :
+  // ce composant est démonté/remonté à chaque fois qu'on revient sur
+  // l'onglet Conversations (voir AdminScreen), donc un changement
+  // ultérieur de cette prop ne doit jamais rouvrir la modale une 2e fois.
   editIdInitial,
-  // Prévient AdminScreen que `editIdInitial` est consommé (même principe
-  // que `groupeAOuvrir`/`onGroupeAOuvrirConsomme`, voir App.jsx) : sans
-  // ça, quitter puis revenir sur cet onglet (toujours dans la même
-  // visite d'Admin, donc SANS remonter AdminScreen) rouvrirait la même
-  // modale en boucle.
+  // Prévient AdminScreen que `editIdInitial` est consommé : sans ça,
+  // quitter puis revenir sur cet onglet (toujours dans la même visite
+  // d'Admin, donc SANS remonter AdminScreen) rouvrirait la même modale
+  // en boucle.
   onEditIdInitialConsomme,
 }) {
   const [search, setSearch] = useState('')
@@ -295,57 +295,3 @@ export default function AdminGroupes({
   )
 }
 
-function AddMembreForm({ admins, professeurs, eleves, cours, onAdd }) {
-  const [type, setType] = useState('cours')
-  const [id, setId] = useState(cours[0]?.id ?? '')
-
-  const OPTIONS_PAR_TYPE = { admin: admins, professeur: professeurs, eleve: eleves, cours }
-  const options = OPTIONS_PAR_TYPE[type]
-
-  return (
-    <div className="add-membre-form">
-      <p className="add-membre-form__title">Ajouter un membre</p>
-      <div className="segmented segmented--sm">
-        {['admin', 'professeur', 'eleve', 'cours'].map((t) => (
-          <button
-            key={t}
-            type="button"
-            className={`segmented__option ${type === t ? 'is-active' : ''}`}
-            onClick={() => {
-              setType(t)
-              setId(OPTIONS_PAR_TYPE[t][0]?.id ?? '')
-            }}
-          >
-            {t === 'admin' ? 'Admin' : t === 'professeur' ? 'Prof' : t === 'eleve' ? 'Élève' : 'Cours'}
-          </button>
-        ))}
-      </div>
-
-      <div className="add-membre-form__row">
-        <select
-          value={id}
-          onChange={(e) => {
-            // <select> ne renvoie que des chaînes (e.target.value), même
-            // pour un id numérique (réel) — sans ce repli, comparer cet id
-            // à option.id avec `===` échoue toujours (voir libelleMembre),
-            // d'où le "?" affiché après avoir vraiment changé la sélection
-            // (pas remarqué avant : le 1er item reste un vrai number tant
-            // qu'on n'a pas touché le <select>, voir useState ci-dessus).
-            const choisi = options.find((o) => String(o.id) === e.target.value)
-            setId(choisi ? choisi.id : e.target.value)
-          }}
-        >
-          {options.map((o) => (
-            <option key={o.id} value={o.id}>
-              {type === 'cours' ? o.nom : `${o.prenom} ${o.nom}`}
-            </option>
-          ))}
-          {options.length === 0 && <option value="">Aucun</option>}
-        </select>
-        <button type="button" className="btn btn--secondary" disabled={!id} onClick={() => onAdd({ type, id })}>
-          Ajouter
-        </button>
-      </div>
-    </div>
-  )
-}

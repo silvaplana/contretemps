@@ -140,12 +140,11 @@ function App() {
     }))
   })
   const [conversations, setConversations] = useState([])
-  // Id de la conversation tout juste créée depuis Messagerie ("Nouveau
-  // groupe", voir menuExtra ci-dessous) qu'AdminScreen doit ouvrir en
-  // édition dès qu'il s'affiche — remis à null une fois consommé (voir
-  // AdminScreen/AdminGroupes). Un id, pas un booléen : sert aussi de
-  // "quelle conversation ouvrir", pas juste "il faut en ouvrir une".
-  const [groupeAOuvrir, setGroupeAOuvrir] = useState(null)
+  // "Nouveau groupe" (menu 3 points de Messagerie, voir menuExtra
+  // ci-dessous) — la modale elle-même vit dans MessagerieScreen.jsx (pas
+  // ici) : ce booléen ne fait que la déclencher, App.jsx étant le seul
+  // ancêtre commun avec Header (qui porte le bouton).
+  const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false)
   const [ecole, setEcole] = useState({
     id: null,
     nom: '',
@@ -229,6 +228,28 @@ function App() {
       onEtatConnexion: appliquerEtatConnexion,
       onEcrit: ({ conversation_id, compte_id }) => signalerFrappeRecue(conversation_id, compte_id),
       onReconnect: resynchroniserConversations,
+      // Composition/nom changé (création de groupe, renommage,
+      // ajout/retrait de membre — voir backend/src/messagerie/
+      // receiver.py: _publier_conversation_maj). Demande utilisateur du
+      // 2026-09-18 : "Nouveau groupe" doit apparaître EN DIRECT chez les
+      // autres membres, pas seulement chez son créateur. Même mécanique
+      // que pour un DM tout juste créé ci-dessus (onMessage) : on va
+      // chercher la conversation à jour plutôt que d'essayer de deviner
+      // ce qui a changé.
+      onConversationMaj: ({ conversation_id }) => {
+        messagesApi.obtenirConversation(conversation_id, compteReel.id, cours).then((conv) => {
+          setConversations((liste) =>
+            liste.some((c) => c.id === conv.id) ? liste.map((c) => (c.id === conv.id ? conv : c)) : [...liste, conv],
+          )
+          initialiserPresence(conv.membres)
+        })
+      },
+      // Conversation disparue DE CHEZ MOI (supprimée, ou moi retiré de
+      // ses membres) — voir _publier_conversation_supprimee : rien à
+      // re-télécharger, juste la retirer localement.
+      onConversationSupprimee: ({ conversation_id }) => {
+        setConversations((liste) => liste.filter((c) => c.id !== conversation_id))
+      },
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
@@ -467,20 +488,6 @@ function App() {
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
-  // "Nouveau groupe" depuis le menu 3 points de Messagerie (voir Header,
-  // menuExtra ci-dessous) — MÊME effet que le "+" d'Admin > Conversations
-  // (voir AdminGroupes.jsx : creerConversation), pas une réimplémentation à
-  // côté : on crée la conversation vide par le même appel API, puis on
-  // bascule sur cet écran et on lui fait ouvrir sa modale d'édition (voir
-  // AdminScreen/AdminGroupes : groupeAOuvrir → editIdInitial). Réservé à
-  // l'Admin (AdminScreen n'existe que pour ce rôle, voir plus bas).
-  async function creerGroupeDepuisMessagerie() {
-    const nouvelle = await conversationsApi.creerGroupe(ecole.id, '')
-    setGroupes((list) => [...list, nouvelle])
-    setGroupeAOuvrir(nouvelle.id)
-    setActiveTab('admin')
-  }
-
   // Écran vide (juste la marque) pendant la vérification d'une session
   // sauvegardée (voir l'effet en tête de fonction) — évite un flash de
   // l'écran de connexion à chaque ouverture d'appli quand une session
@@ -554,7 +561,7 @@ function App() {
               ? {
                   label: 'Nouveau groupe',
                   icon: 'plus',
-                  onClick: creerGroupeDepuisMessagerie,
+                  onClick: () => setNouveauGroupeOuvert(true),
                 }
               : undefined
         }
@@ -575,8 +582,6 @@ function App() {
             setEcole={setEcole}
             setVideos={setVideos}
             onOpenHeures={(profId) => openHeures(profId, 'admin')}
-            groupeAOuvrir={groupeAOuvrir}
-            onGroupeAOuvrirConsomme={() => setGroupeAOuvrir(null)}
           />
         )}
 
@@ -642,6 +647,8 @@ function App() {
             professeurs={professeurs}
             eleves={eleves}
             cours={cours}
+            nouveauGroupeOuvert={nouveauGroupeOuvert}
+            onFermerNouveauGroupe={() => setNouveauGroupeOuvert(false)}
           />
         )}
 

@@ -159,6 +159,8 @@ class MessagerieReceiver:
     def creer(self, ecole_id: int, donnees: ConversationCreation, db: Session = Depends(get_db)):
         membres = [(m.membre_type, m.membre_id) for m in donnees.membres]
         conversation = self.conversations.create_groupe(db, ecole_id, donnees.nom, membres)
+        if membres:
+            self._publier_conversation_maj(db, conversation.id)
         return self._sortie_conversation(db, conversation)
 
     def creer_ou_obtenir_dm(
@@ -184,11 +186,16 @@ class MessagerieReceiver:
         conversation = self.conversations.renommer(db, conversation_id, donnees.nom)
         if conversation is None:
             raise HTTPException(status_code=404, detail="Conversation introuvable")
+        self._publier_conversation_maj(db, conversation_id)
         return self._sortie_conversation(db, conversation)
 
     def supprimer(self, conversation_id: int, db: Session = Depends(get_db)):
+        # Capturé AVANT suppression : après coup, plus moyen de savoir qui
+        # prévenir (voir _publier_conversation_supprimee ci-dessous).
+        membres = self.conversations.membres_resolus(db, conversation_id)
         if not self.conversations.delete(db, conversation_id):
             raise HTTPException(status_code=404, detail="Conversation introuvable")
+        self._publier_conversation_supprimee([m.id for m in membres], conversation_id)
 
     def ajouter_membre(
         self, conversation_id: int, donnees: MembreEntree, db: Session = Depends(get_db)
@@ -196,11 +203,49 @@ class MessagerieReceiver:
         self.conversations.ajouter_membre(
             db, conversation_id, donnees.membre_type, donnees.membre_id
         )
+        self._publier_conversation_maj(db, conversation_id)
 
     def retirer_membre(
         self, conversation_id: int, membre_type: str, membre_id: int, db: Session = Depends(get_db)
     ):
+        # Capturé AVANT retrait : un membre retiré (directement, ou via
+        # un bloc "cours" qui le couvrait) n'apparaît plus dans
+        # membres_resolus APRÈS — plus moyen de le retrouver pour le
+        # prévenir que CETTE conversation a disparu de chez lui (voir
+        # _publier_conversation_supprimee), distinct des membres qui
+        # restent (eux reçoivent _publier_conversation_maj, leur liste de
+        # personnes a juste changé).
+        avant = {m.id for m in self.conversations.membres_resolus(db, conversation_id)}
         self.conversations.retirer_membre(db, conversation_id, membre_type, membre_id)
+        apres = {m.id for m in self.conversations.membres_resolus(db, conversation_id)}
+        self._publier_conversation_supprimee(list(avant - apres), conversation_id)
+        self._publier_conversation_maj(db, conversation_id)
+
+    def _publier_conversation_maj(self, db: Session, conversation_id: int) -> None:
+        """Prévient CHAQUE membre ACTUEL de la conversation (SSE) que sa
+        composition/son nom a changé — surtout utile pour celui/ceux qui
+        vien(nen)t d'être ajouté(s) : sans ça, un groupe tout juste créé
+        (voir Messagerie : "Nouveau groupe") n'apparaissait chez eux
+        qu'au prochain rechargement complet — même bug de fond que pour
+        un DM tout juste créé (voir frontend/src/App.jsx : onMessage,
+        obtenirConversation). Le client re-télécharge la conversation en
+        entier (voir obtenirConversation) au lieu d'essayer de
+        reconstruire la différence lui-même à partir de cet événement."""
+        for membre in self.conversations.membres_resolus(db, conversation_id):
+            self.evenements.publier(
+                membre.id, {"type": "conversation_maj", "conversation_id": conversation_id}
+            )
+
+    def _publier_conversation_supprimee(self, compte_ids: list[int], conversation_id: int) -> None:
+        """Distinct de _publier_conversation_maj ci-dessus : ici, le
+        compte visé n'est PLUS membre (conversation supprimée pour de
+        bon, ou lui spécifiquement retiré) — le client doit la retirer
+        de sa liste locale, pas essayer de la re-télécharger (il n'y a
+        plus accès, voir api/messages.js: obtenirConversation → 404)."""
+        for compte_id in compte_ids:
+            self.evenements.publier(
+                compte_id, {"type": "conversation_supprimee", "conversation_id": conversation_id}
+            )
 
     def lister_messages(self, conversation_id: int, db: Session = Depends(get_db)):
         return [

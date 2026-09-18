@@ -402,6 +402,156 @@ def test_envoyer_message_publie_un_evenement_sse_a_chaque_membre(client, db_sess
         evenements_client.desabonner(admin.id, queue_admin_non_membre)
 
 
+def test_ajouter_membre_publie_conversation_maj_aux_membres_actuels(client, db_session):
+    """Voir messagerie/receiver.py: _publier_conversation_maj — bug
+    signalé (demande utilisateur du 2026-09-18) : un groupe tout juste
+    créé depuis Messagerie n'apparaissait pas chez ses membres tant
+    qu'ils n'avaient pas rechargé l'appli."""
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations", params={"ecole_id": ecole.id}, json={"membres": []}
+    ).json()
+
+    queue_admin = evenements_client.abonner(admin.id)
+    queue_prof = evenements_client.abonner(prof.id)
+    try:
+        client.post(
+            f"/conversations/{conversation['id']}/membres",
+            json={"membre_type": "compte", "membre_id": admin.id},
+        )
+        # Seul membre actuel à ce stade : admin.
+        assert queue_admin.get_nowait() == {
+            "type": "conversation_maj",
+            "conversation_id": conversation["id"],
+        }
+        assert queue_prof.empty()
+
+        client.post(
+            f"/conversations/{conversation['id']}/membres",
+            json={"membre_type": "compte", "membre_id": prof.id},
+        )
+        # 2 membres désormais : les DEUX sont prévenus (admin aussi, pour
+        # resynchroniser sa propre liste de membres si besoin).
+        assert queue_admin.get_nowait() == {
+            "type": "conversation_maj",
+            "conversation_id": conversation["id"],
+        }
+        assert queue_prof.get_nowait() == {
+            "type": "conversation_maj",
+            "conversation_id": conversation["id"],
+        }
+    finally:
+        evenements_client.desabonner(admin.id, queue_admin)
+        evenements_client.desabonner(prof.id, queue_prof)
+
+
+def test_creer_avec_membres_publie_conversation_maj(client, db_session):
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    queue_prof = evenements_client.abonner(prof.id)
+    try:
+        conversation = client.post(
+            "/conversations",
+            params={"ecole_id": ecole.id},
+            json={"membres": [{"membre_type": "compte", "membre_id": prof.id}]},
+        ).json()
+        assert queue_prof.get_nowait() == {
+            "type": "conversation_maj",
+            "conversation_id": conversation["id"],
+        }
+    finally:
+        evenements_client.desabonner(prof.id, queue_prof)
+
+
+def test_renommer_publie_conversation_maj_aux_membres(client, db_session):
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={"membres": [{"membre_type": "compte", "membre_id": prof.id}]},
+    ).json()
+
+    queue_prof = evenements_client.abonner(prof.id)
+    try:
+        client.put(f"/conversations/{conversation['id']}", json={"nom": "Nouveau nom"})
+        assert queue_prof.get_nowait() == {
+            "type": "conversation_maj",
+            "conversation_id": conversation["id"],
+        }
+    finally:
+        evenements_client.desabonner(prof.id, queue_prof)
+
+
+def test_retirer_membre_publie_conversation_supprimee_au_retire_et_maj_aux_autres(client, db_session):
+    """Le membre RETIRÉ doit voir la conversation disparaître de chez lui
+    (voir _publier_conversation_supprimee) — les membres restants, eux,
+    reçoivent juste conversation_maj (leur liste de personnes a changé,
+    la conversation existe toujours chez eux)."""
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={
+            "membres": [
+                {"membre_type": "compte", "membre_id": admin.id},
+                {"membre_type": "compte", "membre_id": prof.id},
+            ]
+        },
+    ).json()
+
+    queue_admin = evenements_client.abonner(admin.id)
+    queue_prof = evenements_client.abonner(prof.id)
+    try:
+        client.delete(f"/conversations/{conversation['id']}/membres/compte/{prof.id}")
+        assert queue_prof.get_nowait() == {
+            "type": "conversation_supprimee",
+            "conversation_id": conversation["id"],
+        }
+        assert queue_prof.empty()  # pas de conversation_maj en plus pour lui
+        assert queue_admin.get_nowait() == {
+            "type": "conversation_maj",
+            "conversation_id": conversation["id"],
+        }
+    finally:
+        evenements_client.desabonner(admin.id, queue_admin)
+        evenements_client.desabonner(prof.id, queue_prof)
+
+
+def test_supprimer_conversation_publie_conversation_supprimee_a_tous_les_membres(client, db_session):
+    from app.main import evenements_client
+
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations",
+        params={"ecole_id": ecole.id},
+        json={
+            "membres": [
+                {"membre_type": "compte", "membre_id": admin.id},
+                {"membre_type": "compte", "membre_id": prof.id},
+            ]
+        },
+    ).json()
+
+    queue_admin = evenements_client.abonner(admin.id)
+    queue_prof = evenements_client.abonner(prof.id)
+    try:
+        reponse = client.delete(f"/conversations/{conversation['id']}")
+        assert reponse.status_code == 204
+        evenement_attendu = {"type": "conversation_supprimee", "conversation_id": conversation["id"]}
+        assert queue_admin.get_nowait() == evenement_attendu
+        assert queue_prof.get_nowait() == evenement_attendu
+    finally:
+        evenements_client.desabonner(admin.id, queue_admin)
+        evenements_client.desabonner(prof.id, queue_prof)
+
+
 def test_conversation_expose_en_ligne_des_membres(client, db_session):
     """Voir messagerie/connexions.py : `en_ligne` reflète le flux SSE
     réellement ouvert au moment de la requête, jamais un flag persisté."""

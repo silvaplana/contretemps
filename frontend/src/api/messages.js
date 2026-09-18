@@ -252,7 +252,18 @@ export async function creerOuObtenirDm(ecoleId, compteId, autreCompteId) {
 // (automatique du navigateur, ou forcée ci-dessous), pour resynchroniser
 // tout depuis le serveur et rattraper ce qui a pu être manqué entre
 // temps (voir App.jsx : refait le même chargement qu'au login).
-export function ouvrirFluxEvenements(compteId, { onMessage, onEtatConnexion, onEcrit, onReconnect }) {
+// `onConversationMaj`/`onConversationSupprimee` : composition/nom d'une
+// conversation changé, ou disparue de chez ce compte (voir backend/src/
+// messagerie/receiver.py : _publier_conversation_maj/
+// _publier_conversation_supprimee) — création d'un groupe, renommage,
+// ajout/retrait de membre, suppression. Demande utilisateur du
+// 2026-09-18 : un groupe tout juste créé depuis Messagerie doit
+// apparaître EN DIRECT chez les autres membres, pas seulement chez son
+// créateur.
+export function ouvrirFluxEvenements(
+  compteId,
+  { onMessage, onEtatConnexion, onEcrit, onReconnect, onConversationMaj, onConversationSupprimee },
+) {
   let dejaOuvertUneFois = false
   let source
 
@@ -267,6 +278,8 @@ export function ouvrirFluxEvenements(compteId, { onMessage, onEtatConnexion, onE
       if (evenement.type === 'message') onMessage(evenement)
       else if (evenement.type === 'etat_connexion') onEtatConnexion?.(evenement)
       else if (evenement.type === 'ecrit') onEcrit?.(evenement)
+      else if (evenement.type === 'conversation_maj') onConversationMaj?.(evenement)
+      else if (evenement.type === 'conversation_supprimee') onConversationSupprimee?.(evenement)
     }
     return s
   }
