@@ -1991,6 +1991,14 @@
   margin-top: 4px;
 }
 
+/* Coche "lu" en bleu façon WhatsApp (voir ConversationThreadScreen.jsx :
+   STATUT_ICON) — couleur de marque fixe (comme WhatsappBadge.jsx),
+   volontairement pas un token du thème : sa signification ("lu") doit
+   rester reconnaissable pareil en clair et en sombre. */
+.message-bubble__coche--lu {
+  color: #53bdeb;
+}
+
 /* Un message écrit sur plusieurs lignes (voir la textarea ci-dessous)
    doit s'afficher sur plusieurs lignes — un <p> normal aplatirait les
    retours à la ligne en un seul paragraphe. word-break : un mot très

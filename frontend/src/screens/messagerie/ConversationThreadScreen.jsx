@@ -9,6 +9,12 @@ import { libellePresence, usePresence, usePresenceListe } from '../../utils/pres
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
+// Coche(s) grises par défaut (voir Icon.jsx : stroke="currentColor",
+// hérite donc du texte ambiant) ; "vu" (lu par le destinataire) reçoit
+// EN PLUS cette classe pour passer en bleu façon WhatsApp — demande
+// utilisateur du 2026-09-18, jusque-là "reçu" et "lu" avaient la même
+// couleur, impossible à distinguer d'un coup d'œil (voir App.css).
+
 // Sélection volontairement courte plutôt qu'un clavier emoji complet
 // (pas de dépendance externe à charger pour ça) — quelques essentiels
 // façon WhatsApp, plus une poignée liée à la danse (🩰💃🕺), cohérente
@@ -239,7 +245,13 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
               <p className="message-bubble__contenu">{m.contenu}</p>
               <span className="message-bubble__meta">
                 {m.heure}
-                {m.estMoi && <Icon name={STATUT_ICON[m.statut]} size={14} />}
+                {m.estMoi && (
+                  <Icon
+                    name={STATUT_ICON[m.statut]}
+                    size={14}
+                    className={m.statut === 'vu' ? 'message-bubble__coche--lu' : ''}
+                  />
+                )}
                 {m.envoyeParMail && <Icon name="mail" size={14} />}
                 {m.envoyeParWhatsapp && <WhatsappBadge size={14} />}
               </span>
