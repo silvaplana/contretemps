@@ -74,11 +74,11 @@ class CoursReceiver:
 
         # Versions groupées des deux routes ci-dessus, une par écran qui
         # affiche une LISTE : sans elles, Admin > Élèves et Admin > Cours
-        # émettent un appel HTTP par ligne (~180 pour 179 élèves), ce qui
-        # se voyait comme de la latence à l'ouverture de l'écran alors que
-        # chaque appel pris isolément répond en 2 ms. Chemins sans
-        # paramètre de chemin pour ne pas entrer en conflit avec
-        # /cours/{cours_id} ni /eleves/{eleve_id}.
+        # émettent un appel HTTP par ligne (plus de cent pour les élèves
+        # de la vraie école), ce qui se voyait comme de la latence à
+        # l'ouverture de l'écran alors que chaque appel pris isolément
+        # répond en 2 ms. Chemins sans paramètre de chemin pour ne pas
+        # entrer en conflit avec /cours/{cours_id} ni /eleves/{eleve_id}.
         self.app.get("/cours-par-eleve", response_model=dict[int, list[int]])(
             self.cours_par_eleve
         )

@@ -332,6 +332,27 @@ def test_professeurs_par_cours_renvoie_tout_le_mapping_en_un_appel(client, db_se
     assert str(sans["id"]) not in mapping
 
 
+def test_cours_par_eleve_expose_les_inscriptions_sans_profil_eleve(client, db_session):
+    """Cas vu en production : 2 comptes inscrits à des cours mais sans
+    profil d'élève, donc absents de GET /eleves (qui les saute, voir
+    eleves/receiver.py:lister). Le mapping les expose — sans conséquence,
+    les écrans itèrent sur la liste d'élèves et ignorent ces clés. Test
+    de constat : si ce comportement change un jour, c'est délibéré."""
+    ecole, prof, _ = _creer_ecole_et_comptes(db_session)
+    cours = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"}).json()
+    # Un prof n'a pas de profil d'élève : il tient le rôle du compte
+    # orphelin, sans avoir à fabriquer une base incohérente à la main.
+    client.post(f"/cours/{cours['id']}/eleves/{prof.id}")
+
+    assert client.get(f"/eleves/{prof.id}").status_code == 404
+    mapping = client.get("/cours-par-eleve", params={"ecole_id": ecole.id}).json()
+    assert mapping[str(prof.id)] == [cours["id"]]
+
+    # Ce que voit vraiment l'écran : rien, puisqu'il boucle sur /eleves.
+    ids_affiches = [e["id"] for e in client.get("/eleves", params={"ecole_id": ecole.id}).json()]
+    assert prof.id not in ids_affiches
+
+
 def test_routes_groupees_ne_masquent_pas_cours_par_id(client, db_session):
     """/cours-par-eleve et /cours/{cours_id} cohabitent : le chemin sans
     paramètre a été choisi exprès pour éviter ce conflit de routage."""

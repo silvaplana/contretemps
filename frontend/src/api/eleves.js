@@ -49,13 +49,15 @@ async function avecCoursIds(eleve) {
 }
 
 // ⚠️ Deux requêtes, PAS une par élève : la version d'avant faisait un
-// `avecCoursIds` par ligne, soit ~180 appels HTTP à l'ouverture d'Admin >
-// Élèves. Chaque appel répondait en 2 ms, mais les allers-retours cumulés
-// se voyaient franchement (~1,3 s en filaire, bien plus en 4G). La route
-// groupée renvoie tout le mapping élève→cours d'un coup (voir
-// backend/src/cours/cours.py:cours_par_eleve). `avecCoursIds` reste
-// utilisé tel quel par les opérations sur UN élève (créer, modifier...),
-// où un appel de plus ne coûte rien.
+// `avecCoursIds` par ligne, soit un appel HTTP par élève — plus de cent à
+// l'ouverture d'Admin > Élèves sur la vraie école. Chaque appel répondait
+// en 2 ms, mais les allers-retours cumulés se voyaient franchement
+// (0,7 s mesuré en filaire avec HTTP/2 et 30 requêtes en parallèle, donc
+// le meilleur cas ; bien pire en 4G, où la concurrence est plus basse et
+// le RTT plus élevé). La route groupée renvoie tout le mapping
+// élève→cours d'un coup (voir backend/src/cours/cours.py:cours_par_eleve).
+// `avecCoursIds` reste utilisé tel quel par les opérations sur UN élève
+// (créer, modifier...), où un appel de plus ne coûte rien.
 export async function lister(ecoleId) {
   const [eleves, coursParEleve] = await Promise.all([
     requete(`/eleves?ecole_id=${ecoleId}`),

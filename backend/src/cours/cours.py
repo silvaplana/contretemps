@@ -157,10 +157,17 @@ class CoursService:
         """Toutes les inscriptions élève→cours d'une école, en UNE requête.
 
         Pendant groupé de `cours_de_leleve` : Admin > Élèves affiche une
-        colonne "cours suivis" par ligne, soit un appel par élève (~180
-        requêtes HTTP à l'ouverture de l'écran, voir receiver.py). Ici
-        c'est un seul aller-retour, même ordre de cours (`Cours.ordre`,
-        voir `list`) pour que l'affichage soit identique.
+        colonne "cours suivis" par ligne, soit un appel par élève — plus
+        de cent requêtes HTTP à l'ouverture de l'écran sur la vraie école
+        (voir receiver.py). Ici c'est un seul aller-retour, même ordre de
+        cours (`Cours.ordre`, voir `list`) pour que l'affichage soit
+        identique.
+
+        Renvoie les inscriptions telles qu'elles sont en base : un compte
+        inscrit à un cours mais sans profil d'élève (donc absent de
+        GET /eleves) apparaît quand même ici. Les appelants itèrent sur
+        la liste d'élèves, pas sur ce mapping, et ignorent donc ces
+        entrées — même comportement qu'avec l'appel par élève.
         """
         lignes = db.execute(
             select(eleves_cours.c.eleve_id, eleves_cours.c.cours_id)
