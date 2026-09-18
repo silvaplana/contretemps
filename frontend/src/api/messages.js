@@ -47,14 +47,21 @@ async function requete(chemin, options) {
 }
 
 // Le nom affiché : pour un DM, pas de `nom` propre côté backend (voir
-// §6.9) — c'est l'autre personne. Pour un groupe, son nom, ou celui du
-// cours s'il n'en a pas (conversation automatique de cours — même repli
-// que AdminGroupes.jsx : nomAffiche).
+// §6.9) — c'est l'autre personne, ça dépend du viewer, résolu ici.
+// Pour un groupe, `nom_affiche` (voir backend/src/messagerie/
+// conversations.py: nom_groupe_affiche) est déjà le bon nom à afficher,
+// résolu côté SERVEUR — PAS en cherchant le cours dans la liste locale
+// (bug signalé, demande utilisateur du 2026-09-19 : un cours tout juste
+// créé par un autre compte n'était pas encore dans MA liste de cours,
+// donc introuvable, d'où "Conversation" affiché à la place de son vrai
+// nom). Le repli local ci-dessous ne reste que pour une éventuelle
+// réponse plus ancienne sans ce champ (défensif, ne devrait plus arriver).
 function nomAffiche(conv, compteId, cours) {
   if (conv.type === 'individuelle') {
     const autre = conv.membres.find((m) => m.id !== compteId)
     return autre ? `${autre.prenom} ${autre.nom}` : 'Conversation'
   }
+  if (conv.nom_affiche) return conv.nom_affiche
   if (conv.nom) return conv.nom
   const blocCours = conv.blocs.length === 1 ? conv.blocs.find((b) => b.membre_type === 'cours') : null
   const coursTrouve = blocCours && cours.find((c) => c.id === blocCours.membre_id)

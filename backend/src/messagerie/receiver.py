@@ -126,6 +126,11 @@ class MessagerieReceiver:
             "id": conversation.id,
             "ecole_id": conversation.ecole_id,
             "nom": conversation.nom,
+            "nom_affiche": (
+                self.conversations.nom_groupe_affiche(db, conversation)
+                if conversation.type == "groupe"
+                else None
+            ),
             "type": conversation.type,
             "membres": membres,
             "blocs": self.conversations.blocs(db, conversation.id),

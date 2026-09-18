@@ -46,6 +46,14 @@ class ConversationSortie(BaseModel):
     id: int
     ecole_id: int
     nom: str | None = None
+    # Nom RÉSOLU d'un groupe (voir conversations.py: nom_groupe_affiche) —
+    # `nom` peut être vide en base pour une conversation automatique de
+    # cours ; celui-ci, lui, est toujours le nom à afficher, calculé côté
+    # serveur (jamais côté client, qui peut avoir une liste de cours pas
+    # encore à jour — bug signalé, demande utilisateur du 2026-09-19).
+    # None pour une conversation individuelle : son nom dépend du viewer,
+    # résolu côté client (voir frontend/src/api/messages.js: nomAffiche).
+    nom_affiche: str | None = None
     type: str
     membres: list[CompteResume] = []
     # Composition brute (pas résolue) — pour l'édition côté Admin >

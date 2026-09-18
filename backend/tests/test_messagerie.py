@@ -45,6 +45,45 @@ def test_conversation_de_cours_resout_dynamiquement_ses_membres(client, db_sessi
     assert nouvel_eleve.id in membre_ids
 
 
+def test_nom_affiche_resout_le_cours_meme_sans_nom_en_base(client, db_session):
+    """Bug signalé (demande utilisateur du 2026-09-19) : une conversation
+    créée vide puis avec un seul bloc "cours" ajouté ensuite (voir
+    AdminCours.jsx: addCours, "Créer aussi la conversation ?") doit
+    afficher le nom du cours pour TOUT LE MONDE, pas seulement pour qui a
+    déjà ce cours dans sa propre liste locale — résolu ici côté serveur,
+    jamais côté client."""
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations", params={"ecole_id": ecole.id}, json={"membres": []}
+    ).json()
+    assert conversation["nom"] is None
+    assert conversation["nom_affiche"] is None  # pas encore de bloc "cours"
+
+    client.post(
+        f"/conversations/{conversation['id']}/membres",
+        json={"membre_type": "cours", "membre_id": cours.id},
+    )
+    reponse = client.get(f"/conversations/{conversation['id']}").json()
+    assert reponse["nom"] is None  # toujours vide en base
+    assert reponse["nom_affiche"] == cours.nom  # mais résolu à l'affichage
+
+
+def test_nom_affiche_prefere_le_nom_explicite(client, db_session):
+    ecole, admin, prof, eleve, cours = _setup(db_session)
+    conversation = client.post(
+        "/conversations", params={"ecole_id": ecole.id}, json={"nom": "Mon groupe", "membres": []}
+    ).json()
+    assert conversation["nom_affiche"] == "Mon groupe"
+
+
+def test_nom_affiche_absent_pour_une_conversation_individuelle(client, db_session):
+    ecole, admin, _, eleve, _ = _setup(db_session)
+    conversation = client.post(
+        "/dm", params={"ecole_id": ecole.id, "compte_a_id": admin.id, "compte_b_id": eleve.id}
+    ).json()
+    assert conversation["nom_affiche"] is None
+
+
 def test_conversation_introuvable(client):
     assert client.get("/conversations/999").status_code == 404
     assert client.put("/conversations/999", json={"nom": "X"}).status_code == 404

@@ -181,6 +181,34 @@ class Conversations:
                 db.delete(membre)
         db.commit()
 
+    def nom_groupe_affiche(self, db: Session, conversation: Conversation) -> str | None:
+        """Nom RÉSOLU d'une conversation de GROUPE pour l'affichage —
+        distinct de `conversation.nom` (peut être vide/None en base, voir
+        create_groupe : une conversation automatique de cours n'a
+        volontairement pas de nom propre, c'est le cours qui la nomme
+        implicitement — ainsi, renommer le cours renomme aussi la
+        conversation sans rien dupliquer).
+
+        Résolu ICI (backend), PAS côté client (bug signalé, demande
+        utilisateur du 2026-09-19) : un compte qui vient de recevoir
+        cette conversation par SSE (voir receiver.py:
+        _publier_conversation_maj) mais n'a pas encore ce cours dans SA
+        propre liste locale affichait "Conversation" au lieu du vrai nom
+        — le serveur, lui, connaît toujours le cours à jour, aucun
+        décalage possible.
+
+        Pas pour une conversation INDIVIDUELLE (DM) : son nom dépend de
+        qui regarde (l'autre personne), ça reste résolu côté client (voir
+        frontend/src/api/messages.js: nomAffiche)."""
+        if conversation.nom:
+            return conversation.nom
+        blocs = self._membres_bruts(db, conversation.id)
+        if len(blocs) == 1 and blocs[0].membre_type == "cours":
+            cours = self.cours.get(db, blocs[0].membre_id)
+            if cours is not None:
+                return cours.nom
+        return None
+
     def membres_resolus(self, db: Session, conversation_id: int) -> list[Compte]:
         """'cours' se résout dynamiquement en tous ses élèves ET son/ses
         professeur(s) — pas de liste figée à maintenir (voir §6.9)."""
