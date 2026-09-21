@@ -198,7 +198,9 @@ export default function PresenceScreen({
 
             {rosterEleves.map((el) => (
               <tr key={el.id}>
-                <td className="presence-table__sticky">{el.prenom}</td>
+                <td className="presence-table__sticky">
+                  {el.prenom} {el.nom}
+                </td>
                 {colonnesVides ? (
                   <td className="muted">–</td>
                 ) : (
@@ -210,7 +212,7 @@ export default function PresenceScreen({
                           type="button"
                           className={`presence-cell presence-cell--${status}`}
                           onClick={() => onCycle(cours.id, el.id, i, CYCLE)}
-                          aria-label={`${el.prenom} — ${dates[i]} — ${LABELS[status]}`}
+                          aria-label={`${el.prenom} ${el.nom} — ${dates[i]} — ${LABELS[status]}`}
                         >
                           <Icon name={ICONS[status]} size={16} />
                         </button>
