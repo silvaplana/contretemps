@@ -87,7 +87,14 @@ function App() {
   // sans attendre une reconnexion.
   async function mettreAJourActiveUser(patch) {
     await comptesApi.modifier(activeUser.id, patch)
-    setCompteReel((u) => ({ ...u, ...patch }))
+    // Le code de récupération n'est jamais gardé en clair à l'écran, comme
+    // côté serveur : seulement s'il est défini (voir api/auth.js).
+    const { codeRecuperation, ...reste } = patch
+    setCompteReel((u) => ({
+      ...u,
+      ...reste,
+      ...(codeRecuperation !== undefined && { codeRecuperationDefini: Boolean(codeRecuperation.trim()) }),
+    }))
   }
 
   function logout() {

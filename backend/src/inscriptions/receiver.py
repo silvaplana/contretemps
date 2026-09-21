@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 
+from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
 from sqlalchemy.orm import Session
 
@@ -40,7 +41,9 @@ class InscriptionsReceiver:
         # FastAPI (routes évaluées dans l'ordre d'enregistrement) fait
         # matcher "export" comme si c'était un token (piège trouvé par
         # un test qui échouait en 404 sur /inscriptions/export).
-        self.app.get("/inscriptions/export")(self.export)
+        self.app.get("/inscriptions/export", dependencies=[Depends(self._admin_ecole)])(
+            self.export
+        )
         self.app.post("/inscriptions/{token}/photo", status_code=204)(self.photo)
         self.app.get("/inscriptions/{token}", response_model=InscriptionSortie)(self.obtenir)
         self.app.post(
@@ -217,6 +220,9 @@ class InscriptionsReceiver:
             media_type="application/pdf",
             headers={"Content-Disposition": f'inline; filename="{nom_fichier_facture(inscription)}"'},
         )
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
 
     def export(self, ecole_id: int, db: Session = Depends(get_db)):
         contenu = self.client.exporter_nouvelles_inscriptions(db, ecole_id)

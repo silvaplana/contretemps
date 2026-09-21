@@ -2,15 +2,14 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-// Traduit une EcoleSortie (backend) vers la forme attendue par App.jsx.
+// Traduit une EcolePublique (backend, GET /ecoles) vers la forme attendue
+// par App.jsx. Pas de codes d'accès : la liste publique ne les donne plus
+// (ils ne sont chargés que par Admin > École, voir api/ecoles.js : obtenir).
 function versEcoleEcran(e) {
   return {
     id: e.id,
     nom: e.nom,
     codePostal: e.code_postal,
-    codeAccesAdmin: e.code_acces_admin,
-    codeAccesProf: e.code_acces_prof,
-    codeAccesEleve: e.code_acces_eleve,
   }
 }
 
@@ -31,9 +30,10 @@ function versActiveUserEcran(compte) {
     initiales: `${(compte.prenom[0] ?? '').toUpperCase()}${(compte.nom[0] ?? '').toUpperCase()}`,
     email: compte.email,
     telephone: compte.telephone,
-    // Affiché dans Profil, admin uniquement (voir ProfilScreen.jsx) —
-    // undefined pour les autres rôles, qui n'en ont pas.
-    codeRecuperation: compte.code_recuperation,
+    // Profil admin (voir ProfilScreen.jsx) : le serveur ne renvoie JAMAIS
+    // la valeur du code de récupération (elle suffit à se connecter en
+    // admin via "Code oublié ?"), seulement s'il est défini.
+    codeRecuperationDefini: compte.code_recuperation_defini,
   }
 }
 

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import io
 
+from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -32,17 +33,23 @@ class ImportExcelReceiver:
         self._register_routes()
 
     def _register_routes(self) -> None:
+        # Les 3 routes sont réservées aux admins de l'école (RBAC, §2.4).
+        admin = [Depends(self._admin_ecole)]
         self.app.post(
-            "/eleves/import/previsualiser", response_model=ApercuImportSortie
+            "/eleves/import/previsualiser", response_model=ApercuImportSortie, dependencies=admin
         )(self.previsualiser)
         self.app.post(
-            "/eleves/import/valider", response_model=ResultatImportSortie
+            "/eleves/import/valider", response_model=ResultatImportSortie, dependencies=admin
         )(self.valider)
         self.app.post(
             "/eleves/import/mapping-colonne",
             response_model=MappingColonneSortie,
             status_code=201,
+            dependencies=admin,
         )(self.memoriser_mapping_colonne)
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
 
     async def previsualiser(
         self, ecole_id: int, fichier: UploadFile, db: Session = Depends(get_db)

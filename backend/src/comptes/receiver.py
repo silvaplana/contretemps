@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
+from . import rbac
 from .comptes import Comptes
+from .models import Compte
 from .schemas import CompteModification, CompteSortie
 
 
@@ -21,7 +23,13 @@ class ComptesReceiver:
     def _register_routes(self) -> None:
         self.app.get("/comptes", response_model=list[CompteSortie])(self.lister)
         self.app.get("/comptes/{compte_id}", response_model=CompteSortie)(self.obtenir)
-        self.app.put("/comptes/{compte_id}", response_model=CompteSortie)(self.modifier)
+        # Profil admin (email/téléphone/code de récupération) : réservé aux
+        # admins de l'école du compte modifié (RBAC, §2.4).
+        self.app.put(
+            "/comptes/{compte_id}",
+            response_model=CompteSortie,
+            dependencies=[Depends(self._admin_du_compte)],
+        )(self.modifier)
         self.app.get("/comptes/{compte_id}/famille", response_model=list[CompteSortie])(
             self.famille
         )
@@ -32,6 +40,15 @@ class ComptesReceiver:
         d'écran de gestion multi-admin dédié (spec/SPEC.md §8), donc pas
         de route plus générale pour l'instant."""
         return self.client.list_par_role(db, ecole_id, role)
+
+    def _admin_du_compte(
+        self,
+        compte_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ) -> None:
+        compte = self.client.get(db, compte_id)
+        rbac.require_admin(appelant, compte.ecole_id if compte else None)
 
     def obtenir(self, compte_id: int, db: Session = Depends(get_db)):
         compte = self.client.get(db, compte_id)

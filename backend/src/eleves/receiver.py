@@ -3,14 +3,14 @@ Eleves (voir eleves.py) + Comptes (champs communs), ne fait aucun calcul
 métier ici à part fusionner Compte+ProfilEleve pour la sortie JSON.
 """
 
-from comptes import Comptes, Compte
+from comptes import Compte, Comptes, rbac
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from db import get_db
 
 from .eleves import Eleves, calculer_age
-from .models import ProfilEleve
+from .models import ContactEleve, ProfilEleve
 from .schemas import (
     ContactCreation,
     ContactModification,
@@ -56,20 +56,51 @@ class ElevesReceiver:
     def _register_routes(self) -> None:
         self.app.get("/eleves", response_model=list[EleveSortie])(self.lister)
         self.app.get("/eleves/{eleve_id}", response_model=EleveSortie)(self.obtenir)
-        self.app.post("/eleves", response_model=EleveSortie, status_code=201)(self.creer)
-        self.app.put("/eleves/{eleve_id}", response_model=EleveSortie)(self.modifier)
-        self.app.delete("/eleves/{eleve_id}", status_code=204)(self.supprimer)
+        self.app.post("/eleves", response_model=EleveSortie, status_code=201, dependencies=[Depends(self._admin_ecole)])(
+            self.creer
+        )
+        self.app.put("/eleves/{eleve_id}", response_model=EleveSortie, dependencies=[Depends(self._admin_de_l_eleve)])(
+            self.modifier
+        )
+        self.app.delete("/eleves/{eleve_id}", status_code=204, dependencies=[Depends(self._admin_de_l_eleve)])(self.supprimer)
 
         self.app.get("/eleves/{eleve_id}/contacts", response_model=list[ContactSortie])(
             self.lister_contacts
         )
         self.app.post(
-            "/eleves/{eleve_id}/contacts", response_model=ContactSortie, status_code=201
+            "/eleves/{eleve_id}/contacts", response_model=ContactSortie, status_code=201, dependencies=[Depends(self._admin_de_l_eleve)]
         )(self.ajouter_contact)
-        self.app.put("/contacts/{contact_id}", response_model=ContactSortie)(
+        self.app.put("/contacts/{contact_id}", response_model=ContactSortie, dependencies=[Depends(self._admin_du_contact)])(
             self.modifier_contact
         )
-        self.app.delete("/contacts/{contact_id}", status_code=204)(self.supprimer_contact)
+        self.app.delete("/contacts/{contact_id}", status_code=204, dependencies=[Depends(self._admin_du_contact)])(
+            self.supprimer_contact
+        )
+
+    # --- RBAC (spec §2.4) : l'école que touche chaque route protégée, la
+    # règle elle-même étant dans comptes/rbac.py. ---
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
+
+    def _admin_de_l_eleve(
+        self,
+        eleve_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ) -> None:
+        eleve = self.comptes.get(db, eleve_id)
+        rbac.require_admin(appelant, eleve.ecole_id if eleve else None)
+
+    def _admin_du_contact(
+        self,
+        contact_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ) -> None:
+        contact = db.get(ContactEleve, contact_id)
+        eleve = self.comptes.get(db, contact.eleve_id) if contact else None
+        rbac.require_admin(appelant, eleve.ecole_id if eleve else None)
 
     def _obtenir_ou_404(self, db: Session, eleve_id: int) -> tuple[Compte, ProfilEleve]:
         compte = self.client.get_compte(db, eleve_id)

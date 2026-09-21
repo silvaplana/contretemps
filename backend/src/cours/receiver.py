@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from comptes import Comptes
+from comptes import Compte, Comptes, rbac
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
@@ -41,27 +41,39 @@ class CoursReceiver:
     def _register_routes(self) -> None:
         self.app.get("/cours", response_model=list[CoursSortie])(self.lister)
         self.app.get("/cours/{cours_id}", response_model=CoursSortie)(self.obtenir)
-        self.app.post("/cours", response_model=CoursSortie, status_code=201)(self.creer)
-        self.app.put("/cours/{cours_id}", response_model=CoursSortie)(self.modifier)
-        self.app.delete("/cours/{cours_id}", status_code=204)(self.supprimer)
+        self.app.post("/cours", response_model=CoursSortie, status_code=201, dependencies=[Depends(self._admin_ecole)])(
+            self.creer
+        )
+        self.app.put("/cours/{cours_id}", response_model=CoursSortie, dependencies=[Depends(self._admin_du_cours)])(
+            self.modifier
+        )
+        self.app.delete("/cours/{cours_id}", status_code=204, dependencies=[Depends(self._admin_du_cours)])(self.supprimer)
 
         self.app.get(
             "/cours/{cours_id}/professeurs", response_model=list[CompteResume]
         )(self.professeurs)
-        self.app.post("/cours/{cours_id}/professeurs/{compte_id}", status_code=204)(
+        self.app.post(
+            "/cours/{cours_id}/professeurs/{compte_id}", status_code=204, dependencies=[Depends(self._admin_du_cours)]
+        )(
             self.ajouter_professeur
         )
-        self.app.delete("/cours/{cours_id}/professeurs/{compte_id}", status_code=204)(
+        self.app.delete(
+            "/cours/{cours_id}/professeurs/{compte_id}", status_code=204, dependencies=[Depends(self._admin_du_cours)]
+        )(
             self.retirer_professeur
         )
 
         self.app.get("/cours/{cours_id}/eleves", response_model=list[CompteResume])(
             self.eleves
         )
-        self.app.post("/cours/{cours_id}/eleves/{compte_id}", status_code=204)(
+        self.app.post(
+            "/cours/{cours_id}/eleves/{compte_id}", status_code=204, dependencies=[Depends(self._admin_du_cours)]
+        )(
             self.inscrire_eleve
         )
-        self.app.delete("/cours/{cours_id}/eleves/{compte_id}", status_code=204)(
+        self.app.delete(
+            "/cours/{cours_id}/eleves/{compte_id}", status_code=204, dependencies=[Depends(self._admin_du_cours)]
+        )(
             self.desinscrire_eleve
         )
 
@@ -85,6 +97,21 @@ class CoursReceiver:
         self.app.get("/professeurs-par-cours", response_model=dict[int, list[int]])(
             self.professeurs_par_cours
         )
+
+    # --- RBAC (spec §2.4) : l'école que touche chaque route protégée, la
+    # règle elle-même étant dans comptes/rbac.py. ---
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
+
+    def _admin_du_cours(
+        self,
+        cours_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ) -> None:
+        cours = self.client.get(db, cours_id)
+        rbac.require_admin(appelant, cours.ecole_id if cours else None)
 
     def lister(self, ecole_id: int, db: Session = Depends(get_db)):
         return self.client.list(db, ecole_id)

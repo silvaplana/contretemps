@@ -9,9 +9,12 @@ import { ROLE_LABEL, isAdmin, isProf, trierParRole } from '../data/roles.js'
 // (renommer une conversation) mais avec un état d'édition explicite
 // plutôt que "toujours éditable", puisqu'ici ce n'est pas un tableau de
 // gestion mais une fiche personnelle (consultation par défaut).
-function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'text', onSave }) {
+// `secret` : la valeur réelle n'est jamais connue de l'écran (code de
+// récupération) — `valeur` n'est qu'un libellé ("défini"), et la saisie
+// repart toujours de vide.
+function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'text', secret = false, onSave }) {
   const [edition, setEdition] = useState(false)
-  const [brouillon, setBrouillon] = useState(valeur ?? '')
+  const [brouillon, setBrouillon] = useState(secret ? '' : (valeur ?? ''))
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState('')
 
@@ -67,7 +70,7 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
         className="icon-btn icon-btn--sm"
         aria-label={`Modifier — ${prefixe || placeholderVide}`}
         onClick={() => {
-          setBrouillon(valeur ?? '')
+          setBrouillon(secret ? '' : (valeur ?? ''))
           setEdition(true)
         }}
       >
@@ -144,8 +147,9 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
             />
             <ChampAdminEditable
               prefixe="Code de récupération : "
-              valeur={user.codeRecuperation}
+              valeur={user.codeRecuperationDefini ? 'défini' : ''}
               placeholderVide="non défini"
+              secret
               onSave={(v) => onUpdateUser({ codeRecuperation: v })}
             />
           </>

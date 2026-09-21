@@ -60,6 +60,9 @@ reset-demo = "app.reset_demo:main"
 # au vert ailleurs et tombent en 404 ici.
 [tool.pytest.ini_options]
 pythonpath = ["src"]
+markers = [
+    "rbac_reel: garde les vraies vérifications de droits (voir tests/conftest.py)",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -36,6 +36,14 @@ async function requete(chemin, options) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
+// École COMPLÈTE (codes d'accès, réglages de sauvegarde) — réservée aux
+// admins de l'école côté serveur. La liste publique utilisée à la
+// connexion (voir api/auth.js) ne les donne plus : elle les exposait à
+// n'importe qui jusqu'au 2026-09-21.
+export async function obtenir(ecoleId) {
+  return versEcran(await requete(`/ecoles/${ecoleId}`))
+}
+
 export async function modifier(ecoleId, patch) {
   const corps = {
     ...(patch.nom !== undefined && { nom: patch.nom }),

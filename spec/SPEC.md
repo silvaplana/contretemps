@@ -962,13 +962,27 @@ encore branché).
   `code_recuperation` après coup en libre-service (en revanche, un Owner peut désormais le
   modifier POUR un autre admin, voir §2.4 — gestion multi-admin, spécifiée mais pas encore
   implémentée).
-- **Gestion multi-admin / Owner (§2.4)** : spécifiée le 2026-09-21, **pas encore implémentée** —
-  migration vers les rôles cumulables (§6.3bis) : création de `roles_compte`, une ligne par
-  compte recopiée depuis l'ancien champ `role`, rôle `owner` ajouté au plus ancien admin de
-  chaque école, puis suppression du champ `role` ; fonctions centrales `isEleve`/`isProf`/
-  `isAdmin`/`isOwner`,
-  RBAC serveur (`requireAdmin`/`requireOwner`), tableau des administrateurs et ses modales
-  (création/modification/suppression) restent à coder.
+- **Gestion multi-admin / Owner (§2.4)** : spécifiée le 2026-09-21, livrée en 4 étapes.
+  - **Étape 1, faite** : rôles cumulables (§6.3bis) — table `roles_compte`, migration des
+    comptes existants (Owner = plus ancien admin de chaque école), fonctions centrales
+    `isEleve`/`isProf`/`isAdmin`/`isOwner` côté serveur et côté écran.
+  - **Étape 2, faite** : RBAC serveur (`backend/src/comptes/rbac.py`). `require_admin` sur
+    toutes les routes de l'onglet Admin (élèves, contacts, import, profs, cours, école,
+    exports, sauvegardes, usage vidéo, export des inscriptions, groupes de messagerie,
+    modification d'un compte), `require_owner` prêt pour l'étape 3. L'appelant est
+    identifié par l'en-tête `X-Compte-Id`, ajouté à chaque requête vers l'API par
+    `frontend/src/api/identite.js`. **Deux fuites corrigées au passage** : la liste
+    publique des écoles (`GET /ecoles`, lue avant la connexion) renvoyait les 3 codes
+    d'accès, code admin compris ; les routes de comptes renvoyaient le code de récupération
+    des admins (qui suffit à se connecter en admin via "Code oublié ?"). Désormais : nom et
+    code postal seulement pour la liste publique, codes réservés aux admins
+    (`GET /ecoles/{id}`), code de récupération jamais renvoyé (seulement s'il est défini).
+    **Hors périmètre de l'étape 2** (routes partagées avec les profs/élèves, inchangées) :
+    Présence, chorégraphies, vidéos, messages, lectures de listes. `POST /ecoles` (création
+    d'école) et `POST /messagerie/relancer` (toutes écoles) restent ouvertes : elles
+    relèvent du Superuser (étape 4).
+  - **Étape 3, à coder** : tableau des administrateurs et ses modales
+    (création/modification/suppression, statut Owner).
 - **Superuser (§2.5)** : spécifié le 2026-09-21, **pas encore implémenté**, à livrer avec la
   gestion multi-admin — rôle `superuser` et fonction `isSuperuser`, commande serveur de
   création, mot de passe haché, jeton signé de 12 h vérifié à chaque requête, connexion par le

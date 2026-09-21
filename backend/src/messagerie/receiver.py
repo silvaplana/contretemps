@@ -6,6 +6,7 @@ aucun calcul métier ici à part fusionner les sorties JSON.
 import asyncio
 import json
 
+from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
@@ -61,7 +62,10 @@ class MessagerieReceiver:
     def _register_routes(self) -> None:
         self.app.get("/conversations", response_model=list[ConversationSortie])(self.lister)
         self.app.post(
-            "/conversations", response_model=ConversationSortie, status_code=201
+            "/conversations",
+            response_model=ConversationSortie,
+            status_code=201,
+            dependencies=[Depends(self._admin_ecole)],
         )(self.creer)
         self.app.post("/dm", response_model=ConversationSortie, status_code=201)(
             self.creer_ou_obtenir_dm
@@ -70,16 +74,19 @@ class MessagerieReceiver:
             self.obtenir
         )
         self.app.put(
-            "/conversations/{conversation_id}", response_model=ConversationSortie
+            "/conversations/{conversation_id}", response_model=ConversationSortie, dependencies=[Depends(self._admin_de_la_conversation)]
         )(self.renommer)
-        self.app.delete("/conversations/{conversation_id}", status_code=204)(self.supprimer)
+        self.app.delete("/conversations/{conversation_id}", status_code=204, dependencies=[Depends(self._admin_de_la_conversation)])(
+            self.supprimer
+        )
 
-        self.app.post("/conversations/{conversation_id}/membres", status_code=204)(
+        self.app.post("/conversations/{conversation_id}/membres", status_code=204, dependencies=[Depends(self._admin_de_la_conversation)])(
             self.ajouter_membre
         )
         self.app.delete(
             "/conversations/{conversation_id}/membres/{membre_type}/{membre_id}",
             status_code=204,
+            dependencies=[Depends(self._admin_de_la_conversation)],
         )(self.retirer_membre)
 
         self.app.get(
@@ -107,7 +114,7 @@ class MessagerieReceiver:
         )
 
         self.app.post(
-            "/conversations/{conversation_id}/whatsapp", response_model=ConversationSortie
+            "/conversations/{conversation_id}/whatsapp", response_model=ConversationSortie, dependencies=[Depends(self._admin_de_la_conversation)]
         )(self.creer_groupe_whatsapp)
 
         # SSE (§5.5) : un flux par compte connecté, ouvert dès le login
@@ -160,6 +167,22 @@ class MessagerieReceiver:
         else:
             convs = self.conversations.lister_ecole(db, ecole_id)
         return [self._sortie_conversation(db, c) for c in convs]
+
+
+    # --- RBAC (spec §2.4) : l'école que touche chaque route protégée, la
+    # règle elle-même étant dans comptes/rbac.py. ---
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
+
+    def _admin_de_la_conversation(
+        self,
+        conversation_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ) -> None:
+        conversation = self.conversations.get(db, conversation_id)
+        rbac.require_admin(appelant, conversation.ecole_id if conversation else None)
 
     def creer(self, ecole_id: int, donnees: ConversationCreation, db: Session = Depends(get_db)):
         membres = [(m.membre_type, m.membre_id) for m in donnees.membres]

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from comptes import Comptes
+from comptes import Compte, Comptes, rbac
 from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile
 from sqlalchemy.orm import Session
 
@@ -19,6 +19,7 @@ from .excel_export import EcoleExport
 from .schemas import (
     EcoleCreation,
     EcoleModification,
+    EcolePublique,
     EcoleSortie,
     SauvegardeFichier,
     SauvegardeProgrammeeModification,
@@ -46,27 +47,51 @@ class EcolesReceiver:
         self._register_routes()
 
     def _register_routes(self) -> None:
-        self.app.get("/ecoles", response_model=list[EcoleSortie])(self.lister)
-        self.app.get("/ecoles/{ecole_id}", response_model=EcoleSortie)(self.obtenir)
+        # PUBLIQUE (appelée avant la connexion, pour savoir dans quelle école
+        # se connecter) : jamais les codes d'accès — jusqu'au 2026-09-21
+        # elle les renvoyait tous, code admin compris, à n'importe qui.
+        self.app.get("/ecoles", response_model=list[EcolePublique])(self.lister)
+        # Tout le reste est réservé aux admins de l'école (RBAC, §2.4).
+        admin = [Depends(self._admin_ecole)]
+        self.app.get("/ecoles/{ecole_id}", response_model=EcoleSortie, dependencies=admin)(
+            self.obtenir
+        )
         self.app.post("/ecoles", response_model=EcoleSortie, status_code=201)(self.creer)
-        self.app.put("/ecoles/{ecole_id}", response_model=EcoleSortie)(self.modifier)
+        self.app.put("/ecoles/{ecole_id}", response_model=EcoleSortie, dependencies=admin)(
+            self.modifier
+        )
         # "Sauvegarder École" (Admin > École, menu) — les 2 fichiers.
-        self.app.get("/ecoles/{ecole_id}/export")(self.exporter)
-        self.app.get("/ecoles/{ecole_id}/export-technique")(self.exporter_technique)
+        self.app.get("/ecoles/{ecole_id}/export", dependencies=admin)(self.exporter)
+        self.app.get("/ecoles/{ecole_id}/export-technique", dependencies=admin)(
+            self.exporter_technique
+        )
         # "Programmer sauvegarde École".
         self.app.put(
-            "/ecoles/{ecole_id}/sauvegarde-programmee", response_model=EcoleSortie
+            "/ecoles/{ecole_id}/sauvegarde-programmee",
+            response_model=EcoleSortie,
+            dependencies=admin,
         )(self.programmer_sauvegarde)
         # Historique des sauvegardes générées par le worker programmé
         # (voir app/sauvegarde_worker.py et ecoles/stockage.py) — filet de
         # sécurité serveur, téléchargeable à la demande.
         self.app.get(
-            "/ecoles/{ecole_id}/sauvegardes", response_model=list[SauvegardeFichier]
+            "/ecoles/{ecole_id}/sauvegardes",
+            response_model=list[SauvegardeFichier],
+            dependencies=admin,
         )(self.lister_sauvegardes)
-        self.app.get("/ecoles/{ecole_id}/sauvegardes/{nom_fichier}")(self.telecharger_sauvegarde)
+        self.app.get("/ecoles/{ecole_id}/sauvegardes/{nom_fichier}", dependencies=admin)(
+            self.telecharger_sauvegarde
+        )
         # "Supprimer Données École" / "Importer sauvegarde".
-        self.app.delete("/ecoles/{ecole_id}/donnees", status_code=204)(self.supprimer_donnees)
-        self.app.post("/ecoles/{ecole_id}/restaurer", status_code=204)(self.restaurer)
+        self.app.delete("/ecoles/{ecole_id}/donnees", status_code=204, dependencies=admin)(
+            self.supprimer_donnees
+        )
+        self.app.post("/ecoles/{ecole_id}/restaurer", status_code=204, dependencies=admin)(
+            self.restaurer
+        )
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
 
     def lister(self, db: Session = Depends(get_db)):
         return self.client.list(db)

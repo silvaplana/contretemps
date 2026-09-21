@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import UsageVideoModal from './UsageVideoModal.jsx'
@@ -29,6 +29,22 @@ import UsageVideoModal from './UsageVideoModal.jsx'
 // comme simple bouton).
 export default function AdminParametres({ ecole, setEcole, setVideos, cours, setEleves }) {
   const [showUsageVideo, setShowUsageVideo] = useState(false)
+
+  // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
+  // réservée aux admins (voir api/ecoles.js : obtenir). L'école reçue à la
+  // connexion n'a que son nom et son code postal.
+  useEffect(() => {
+    let annule = false
+    ecolesApi
+      .obtenir(ecole.id)
+      .then((complete) => {
+        if (!annule) setEcole((e) => ({ ...e, ...complete }))
+      })
+      .catch((err) => console.error(err))
+    return () => {
+      annule = true
+    }
+  }, [ecole.id, setEcole])
 
   function update(patch) {
     setEcole((e) => ({ ...e, ...patch }))
@@ -62,7 +78,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
         <input
           id="ecole-param-admin"
           className="field-input"
-          value={ecole.codeAccesAdmin}
+          value={ecole.codeAccesAdmin ?? ''}
           onChange={(e) => update({ codeAccesAdmin: e.target.value })}
         />
 
@@ -70,7 +86,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
         <input
           id="ecole-param-prof"
           className="field-input"
-          value={ecole.codeAccesProf}
+          value={ecole.codeAccesProf ?? ''}
           onChange={(e) => update({ codeAccesProf: e.target.value })}
         />
 
@@ -78,7 +94,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
         <input
           id="ecole-param-eleve"
           className="field-input"
-          value={ecole.codeAccesEleve}
+          value={ecole.codeAccesEleve ?? ''}
           onChange={(e) => update({ codeAccesEleve: e.target.value })}
         />
       </div>

@@ -27,7 +27,10 @@ def test_code_recuperation_admin(client, db_session):
         code_recuperation="coocky",
     )
     reponse = client.get(f"/comptes/{admin.id}")
-    assert reponse.json()["code_recuperation"] == "coocky"
+    # Jamais la valeur (elle suffit à se connecter en admin via "Code
+    # oublié ?") : juste le fait qu'il soit défini.
+    assert "code_recuperation" not in reponse.json()
+    assert reponse.json()["code_recuperation_defini"] is True
 
 
 def test_modifier_email_et_code_recuperation(client, db_session):
@@ -40,12 +43,15 @@ def test_modifier_email_et_code_recuperation(client, db_session):
 
     reponse = client.put(f"/comptes/{admin.id}", json={"code_recuperation": "Rex"})
     assert reponse.status_code == 200
-    assert reponse.json()["code_recuperation"] == "Rex"
+    assert "code_recuperation" not in reponse.json()  # modifiable, jamais relu
+    db_session.refresh(admin)
+    assert admin.code_recuperation == "Rex"
     assert reponse.json()["email"] == "jd@contretemps.fr"  # pas fourni -> inchangé
 
     reponse = client.put(f"/comptes/{admin.id}", json={"email": "julia@contretemps.fr"})
     assert reponse.json()["email"] == "julia@contretemps.fr"
-    assert reponse.json()["code_recuperation"] == "Rex"  # pas fourni -> inchangé
+    db_session.refresh(admin)
+    assert admin.code_recuperation == "Rex"  # pas fourni -> inchangé
 
     reponse = client.put(f"/comptes/{admin.id}", json={"telephone": "06 00 00 00 00"})
     assert reponse.json()["telephone"] == "06 00 00 00 00"

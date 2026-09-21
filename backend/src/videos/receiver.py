@@ -2,6 +2,7 @@
 Videos (voir videos.py), ne fait aucun calcul métier ici.
 """
 
+from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
 
@@ -69,9 +70,11 @@ class VideosReceiver:
         self.app.delete("/videos/{video_id}", status_code=204)(self.supprimer)
 
         # Panneau "Usage vidéo", Admin > École (voir §5.1.1).
-        self.app.get("/ecoles/{ecole_id}/videos/usage", response_model=UsageVideosEcole)(
-            self.usage
-        )
+        self.app.get(
+            "/ecoles/{ecole_id}/videos/usage",
+            response_model=UsageVideosEcole,
+            dependencies=[Depends(self._admin_ecole)],
+        )(self.usage)
 
     def lister_par_cours(self, cours_id: int, db: Session = Depends(get_db)):
         return self.client.list_par_cours(db, cours_id)
@@ -154,6 +157,13 @@ class VideosReceiver:
         self, choregraphie_id: int, donnees: ReordonnerVideos, db: Session = Depends(get_db)
     ):
         self.client.reordonner(db, choregraphie_id, donnees.ordre_video_ids)
+
+
+    # --- RBAC (spec §2.4) : l'école que touche chaque route protégée, la
+    # règle elle-même étant dans comptes/rbac.py. ---
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
 
     def usage(self, ecole_id: int, db: Session = Depends(get_db)):
         return self.client.usage_ecole(db, ecole_id)

@@ -20,9 +20,12 @@ class CompteConnecte(BaseModel):
     prenom: str
     email: str | None
     telephone: str | None = None
-    # Affiché dans Profil pour un admin (voir spec/SPEC.md §6.3 et §5.6) —
-    # None pour les autres rôles, qui n'en ont pas.
-    code_recuperation: str | None = None
+    # Jamais la VALEUR du code de récupération : il suffit, via "Code
+    # oublié ?", à se connecter en admin (§2.2). Jusqu'au 2026-09-21 il
+    # était renvoyé ici, y compris par des routes lues par tout le monde
+    # (GET /comptes?role=admin, messagerie). Juste s'il est défini ; on le
+    # MODIFIE toujours via CompteModification.
+    code_recuperation_defini: bool = False
 
     model_config = {"from_attributes": True}
 

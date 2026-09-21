@@ -97,6 +97,10 @@ class Compte(Base):
         return noms_roles(self)
 
     @property
+    def code_recuperation_defini(self) -> bool:
+        return bool((self.code_recuperation or "").strip())
+
+    @property
     def role_principal(self) -> str:
         from .roles import role_principal
 

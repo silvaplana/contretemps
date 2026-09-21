@@ -25,7 +25,21 @@ class EcoleModification(BaseModel):
     code_acces_eleve: str | None = None
 
 
+class EcolePublique(BaseModel):
+    """Ce que tout le monde peut voir d'une école, sans être connecté
+    (GET /ecoles, avant la connexion) : JAMAIS les codes d'accès."""
+
+    id: int
+    nom: str
+    code_postal: str
+
+    model_config = {"from_attributes": True}
+
+
 class EcoleSortie(BaseModel):
+    """Vue complète, codes d'accès compris : réservée aux admins de
+    l'école (voir receiver.py, RBAC §2.4)."""
+
     id: int
     nom: str
     code_postal: str

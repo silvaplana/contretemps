@@ -4,6 +4,7 @@ existantes du module cours (/cours/{id}/professeurs/{compte_id}), pas
 dupliquées ici.
 """
 
+from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
@@ -22,9 +23,33 @@ class ProfsReceiver:
     def _register_routes(self) -> None:
         self.app.get("/profs", response_model=list[ProfSortie])(self.lister)
         self.app.get("/profs/{prof_id}", response_model=ProfSortie)(self.obtenir)
-        self.app.post("/profs", response_model=ProfSortie, status_code=201)(self.creer)
-        self.app.put("/profs/{prof_id}", response_model=ProfSortie)(self.modifier)
-        self.app.delete("/profs/{prof_id}", status_code=204)(self.supprimer)
+        self.app.post(
+            "/profs",
+            response_model=ProfSortie,
+            status_code=201,
+            dependencies=[Depends(self._admin_ecole)],
+        )(self.creer)
+        self.app.put(
+            "/profs/{prof_id}", response_model=ProfSortie, dependencies=[Depends(self._admin_du_prof)]
+        )(self.modifier)
+        self.app.delete(
+            "/profs/{prof_id}", status_code=204, dependencies=[Depends(self._admin_du_prof)]
+        )(self.supprimer)
+
+    # --- RBAC (spec §2.4) : l'école que touche chaque route protégée, la
+    # règle elle-même étant dans comptes/rbac.py. ---
+
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
+
+    def _admin_du_prof(
+        self,
+        prof_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ) -> None:
+        prof = self.client.comptes.get(db, prof_id)
+        rbac.require_admin(appelant, prof.ecole_id if prof else None)
 
     def _avec_cours_ids(self, db: Session, compte) -> dict:
         return {
