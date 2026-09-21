@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime as dt
 
 from choregraphies.models import choregraphies_eleves
-from comptes import Compte, Comptes, roles
+from comptes import Compte, Comptes, RegleRoles, roles
 from cours.models import eleves_cours
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -75,6 +75,10 @@ class Eleves:
         compte = self.get_compte(db, eleve_id)
         if compte is None:
             return False
+        # Un élève peut être administrateur principal (§2.4) : le supprimer
+        # ne doit jamais laisser l'école sans administrateur principal.
+        if roles.is_owner(compte) and self.comptes.est_seul_owner(db, compte):
+            raise RegleRoles("C'est le dernier administrateur principal de l'école : nommez-en d'abord un autre")
         for contact in self.contacts_de_leleve(db, eleve_id):
             db.delete(contact)
         # Même ménage que CoursService.delete : `eleves_cours` et

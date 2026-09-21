@@ -28,7 +28,7 @@ import UsageVideoSection from './UsageVideoSection.jsx'
 // programmer/importer/supprimer les données de l'école, et le
 // téléchargement des nouvelles inscriptions (déplacé ici, y vivait avant
 // comme simple bouton).
-export default function AdminParametres({ ecole, setEcole, setVideos, cours, setEleves, activeUser, professeurs }) {
+export default function AdminParametres({ ecole, setEcole, setVideos, cours, eleves, setEleves, activeUser, professeurs }) {
 
   // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
   // réservée aux admins (voir api/ecoles.js : obtenir). L'école reçue à la
@@ -101,7 +101,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
 
       {/* Deux sections au même niveau, même format de titre (demande du
           2026-09-21) : Administrateurs (spec §2.4), puis Usage vidéo. */}
-      <AdministrateursTableau ecoleId={ecole.id} activeUser={activeUser} professeurs={professeurs} />
+      <AdministrateursTableau ecoleId={ecole.id} activeUser={activeUser} professeurs={professeurs} eleves={eleves} />
 
       <UsageVideoSection ecoleId={ecole.id} setVideos={setVideos} />
     </div>

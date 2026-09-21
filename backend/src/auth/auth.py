@@ -69,6 +69,12 @@ class Auth:
                 return compte
         return None
 
+    def code_admin_valide(self, db: Session, compte: Compte, code: str) -> bool:
+        """`code` est-il le code d'accès ADMIN de l'école du compte ? Sert à
+        activer les droits d'un élève promu admin (§2.4)."""
+        ecole = self.ecoles.get(db, compte.ecole_id) if compte.ecole_id else None
+        return ecole is not None and _memes_codes(code, ecole.code_acces_admin)
+
     def connecter_superuser(self, db: Session, identifiant: str, code: str) -> Compte | None:
         """Connexion du Superuser (§2.5), tentée AVANT celle des écoles :
         même formulaire, son mot de passe personnel dans le champ "Code".

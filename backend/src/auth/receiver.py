@@ -4,7 +4,7 @@ trouvé (limite assumée, voir spec §8). Seul le Superuser reçoit un jeton
 signé (§2.5, voir securite/jetons.py).
 """
 
-from comptes import roles
+from comptes import Compte, roles
 from fastapi import Depends, FastAPI, HTTPException
 from securite import jetons
 from sqlalchemy.orm import Session
@@ -22,6 +22,17 @@ from .schemas import (
     ReponseBascule,
     ReponseRecuperationSortie,
 )
+
+
+def _sortie(compte: Compte, *, admin_actif: bool, jeton: str | None = None) -> CompteConnecte:
+    """Réponse de connexion avec les rôles EFFECTIFS de cette connexion : un
+    élève promu admin n'a ses rôles admin/owner que s'ils sont actifs
+    (§2.4), et alors avec le jeton "admin" qui les active côté serveur."""
+    sortie = CompteConnecte.model_validate(compte)
+    sortie.roles = roles.roles_effectifs(compte, admin_actif)
+    sortie.role = roles.role_principal(sortie.roles)
+    sortie.jeton = jeton
+    return sortie
 
 
 class AuthReceiver:
@@ -45,6 +56,16 @@ class AuthReceiver:
             self.repondre_recuperation
         )
 
+    def _connexion(self, db: Session, compte: Compte, code: str):
+        """Élève promu admin : droits d'admin actifs seulement avec le code
+        ADMIN de l'école (jeton "admin") — avec le code élève, il n'est
+        qu'un élève (décision utilisateur du 2026-09-21)."""
+        if not roles.admin_sous_condition(compte):
+            return compte
+        if self.client.code_admin_valide(db, compte, code):
+            return _sortie(compte, admin_actif=True, jeton=jetons.emettre(compte.id, portee=jetons.ADMIN))
+        return _sortie(compte, admin_actif=False)
+
     def login(self, donnees: Connexion, db: Session = Depends(get_db)):
         superuser = self.client.connecter_superuser(db, donnees.identifiant, donnees.code)
         if superuser is not None:
@@ -57,7 +78,7 @@ class AuthReceiver:
             # Même message dans tous les cas (y compris Superuser bloqué) :
             # ne rien révéler de l'existence d'un compte.
             raise HTTPException(status_code=401, detail="Identifiant ou code incorrect")
-        return compte
+        return self._connexion(db, compte, donnees.code)
 
     def verifier_bascule(self, donnees: DemandeBascule, db: Session = Depends(get_db)):
         """Le frontend appelle ça avant de basculer : si code_requis est
@@ -74,7 +95,7 @@ class AuthReceiver:
         compte = self.client.comptes.get(db, donnees.vers_compte_id)
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
-        return compte
+        return self._connexion(db, compte, donnees.code)
 
     def verifier_recuperation(self, donnees: DemandeRecuperation, db: Session = Depends(get_db)):
         """1ère étape de "Code oublié ?" (§2.2/§2.3) : identifie le rôle du
@@ -106,4 +127,8 @@ class AuthReceiver:
         valide = self.client.verifier_reponse_recuperation(db, compte.id, donnees.reponse)
         if valide is None:
             raise HTTPException(status_code=401, detail="Réponse incorrecte")
+        # La question de récupération est celle des ADMINS : un élève promu
+        # admin qui y répond entre avec ses droits d'admin actifs.
+        if roles.admin_sous_condition(valide):
+            return _sortie(valide, admin_actif=True, jeton=jetons.emettre(valide.id, portee=jetons.ADMIN))
         return valide

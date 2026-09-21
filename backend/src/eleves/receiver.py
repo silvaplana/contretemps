@@ -3,7 +3,7 @@ Eleves (voir eleves.py) + Comptes (champs communs), ne fait aucun calcul
 métier ici à part fusionner Compte+ProfilEleve pour la sortie JSON.
 """
 
-from comptes import Compte, Comptes, rbac
+from comptes import Compte, Comptes, RegleRoles, rbac
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
@@ -147,7 +147,11 @@ class ElevesReceiver:
         return corps
 
     def supprimer(self, eleve_id: int, db: Session = Depends(get_db)):
-        if not self.client.delete(db, eleve_id):
+        try:
+            supprime = self.client.delete(db, eleve_id)
+        except RegleRoles as erreur:
+            raise HTTPException(status_code=409, detail=str(erreur)) from erreur
+        if not supprime:
             raise HTTPException(status_code=404, detail="Élève introuvable")
 
     def lister_contacts(self, eleve_id: int, db: Session = Depends(get_db)):

@@ -10,18 +10,20 @@ class AdministrateurSortie(BaseModel):
     prenom: str
     email: str | None
     est_owner: bool
-    # Professeur-admin : son nom/prénom/email se modifient depuis Admin >
-    # Profs, pas depuis ce tableau (voir administrateurs.py).
+    # Professeur-admin ou élève-admin : son nom/prénom/email se modifient
+    # depuis Admin > Profs ou Admin > Élèves, pas depuis ce tableau (voir
+    # administrateurs.py).
     est_prof: bool
+    est_eleve: bool
     code_recuperation_defini: bool
 
 
 class AdministrateurCreation(BaseModel):
     """Deux façons de créer un admin (§2.4) : un nouveau compte (nom,
-    prénom, email) OU un professeur existant (`professeur_id`). Le code de
-    récupération est demandé dans les deux cas."""
+    prénom, email) OU un professeur ou élève existant (`compte_id`). Le code
+    de récupération est demandé dans les deux cas."""
 
-    professeur_id: int | None = None
+    compte_id: int | None = None
     nom: str | None = None
     prenom: str | None = None
     email: str | None = None
@@ -30,12 +32,12 @@ class AdministrateurCreation(BaseModel):
 
     @model_validator(mode="after")
     def _une_seule_facon(self):
-        if self.professeur_id is None:
+        if self.compte_id is None:
             if not (self.nom or "").strip() or not (self.prenom or "").strip():
                 raise ValueError("Nom et prénom obligatoires pour un nouvel administrateur")
         elif self.nom or self.prenom or self.email:
             raise ValueError(
-                "Un professeur promu admin garde son nom, son prénom et son email : ne pas les fournir"
+                "Un compte promu admin garde son nom, son prénom et son email : ne pas les fournir"
             )
         return self
 

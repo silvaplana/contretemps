@@ -1,4 +1,11 @@
-"""Jetons signés du Superuser (voir spec/SPEC.md §2.5).
+"""Jetons signés (voir spec/SPEC.md §2.5 et §2.4).
+
+Deux PORTÉES :
+- "superuser" : le Superuser, au-dessus des écoles (§2.5) ;
+- "admin" : un élève promu administrateur qui s'est connecté avec le code
+  ADMIN de l'école (§2.4). Sans ce jeton, ses droits d'admin restent
+  inactifs : le code élève, connu de toutes les familles, ne doit jamais
+  les ouvrir (décision utilisateur du 2026-09-21).
 
 À la connexion, le serveur remet un jeton valable 12 heures ; le navigateur
 le renvoie à chaque requête (en-tête `Authorization: Bearer ...`). Le
@@ -6,8 +13,9 @@ serveur recalcule la signature : un jeton modifié ou fabriqué à la main est
 refusé, un jeton expiré aussi. Les droits de Superuser ne sont JAMAIS
 accordés sans jeton valide (voir comptes/rbac.py).
 
-Format : base64url(JSON {"sub": id, "exp": horodatage}) + "." +
-base64url(HMAC-SHA256). Même principe qu'un JWT, sans dépendance.
+Format : base64url(JSON {"sub": id, "exp": horodatage, "portee": ...}) +
+"." + base64url(HMAC-SHA256). Même principe qu'un JWT, sans dépendance. Un
+jeton sans "portee" (émis avant son ajout) vaut "superuser".
 
 Le secret de signature : variable d'environnement SECRET_JETONS si elle
 existe, sinon un fichier généré au premier usage (voir `_secret`) dans le
@@ -24,10 +32,20 @@ import json
 import os
 import secrets
 import time
+from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 DUREE_SECONDES = 12 * 3600  # décision utilisateur du 2026-09-21
+
+SUPERUSER = "superuser"
+ADMIN = "admin"
+
+
+@dataclass(frozen=True)
+class Jeton:
+    compte_id: int
+    portee: str
 
 
 def _b64(octets: bytes) -> str:
@@ -67,14 +85,19 @@ def _signer(charge: str) -> str:
     return _b64(hmac.new(_secret(), charge.encode("ascii"), hashlib.sha256).digest())
 
 
-def emettre(compte_id: int, maintenant: float | None = None) -> str:
+def emettre(compte_id: int, maintenant: float | None = None, portee: str = SUPERUSER) -> str:
     maintenant = time.time() if maintenant is None else maintenant
-    charge = _b64(json.dumps({"sub": compte_id, "exp": int(maintenant + DUREE_SECONDES)}).encode())
+    charge = _b64(
+        json.dumps(
+            {"sub": compte_id, "exp": int(maintenant + DUREE_SECONDES), "portee": portee}
+        ).encode()
+    )
     return f"{charge}.{_signer(charge)}"
 
 
-def verifier(jeton: str, maintenant: float | None = None) -> int | None:
-    """L'id du compte si le jeton est intact et pas expiré, sinon None."""
+def lire(jeton: str, maintenant: float | None = None) -> Jeton | None:
+    """Le compte et la portée si le jeton est intact et pas expiré, sinon
+    None."""
     try:
         charge, signature = jeton.split(".")
         if not hmac.compare_digest(signature, _signer(charge)):
@@ -85,4 +108,21 @@ def verifier(jeton: str, maintenant: float | None = None) -> int | None:
     maintenant = time.time() if maintenant is None else maintenant
     if not isinstance(contenu.get("sub"), int) or contenu.get("exp", 0) <= maintenant:
         return None
-    return contenu["sub"]
+    portee = contenu.get("portee", SUPERUSER)
+    if portee not in (SUPERUSER, ADMIN):
+        return None
+    return Jeton(compte_id=contenu["sub"], portee=portee)
+
+
+def verifier(jeton: str, maintenant: float | None = None) -> int | None:
+    """L'id du compte si le jeton est intact et pas expiré (toute portée),
+    sinon None."""
+    lu = lire(jeton, maintenant)
+    return lu.compte_id if lu else None
+
+
+def depuis_entete(authorization: str | None) -> Jeton | None:
+    """Le jeton d'un en-tête `Authorization: Bearer ...`, s'il est valide."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        return None
+    return lire(authorization[len("bearer "):].strip())

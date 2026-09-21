@@ -69,5 +69,22 @@ def role_principal(noms: Iterable[str]) -> str:
     return max(noms, key=lambda nom: RANG[nom])
 
 
+def admin_sous_condition(compte: Compte) -> bool:
+    """Élève promu administrateur (§2.4) : ses droits d'admin ne sont ACTIFS
+    que s'il s'est connecté avec le code ADMIN de l'école (jeton "admin",
+    voir securite/jetons.py). Avec le code élève, connu de toutes les
+    familles, il n'est qu'un élève (décision utilisateur du 2026-09-21)."""
+    return is_eleve(compte) and is_admin(compte)
+
+
+def roles_effectifs(compte: Compte, admin_actif: bool) -> list[str]:
+    """Les rôles à présenter à l'écran pour CETTE connexion : ceux d'un
+    élève-admin sans ses rôles admin/owner quand ils ne sont pas actifs."""
+    noms = noms_roles(compte)
+    if admin_sous_condition(compte) and not admin_actif:
+        return [nom for nom in noms if nom not in (ADMIN, OWNER)]
+    return noms
+
+
 def rang(compte: Compte) -> int:
     return RANG[role_principal(r.role for r in compte.roles)]

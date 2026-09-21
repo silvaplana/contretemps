@@ -29,6 +29,7 @@ function versEcran(a) {
     // Professeur-admin : nom/prénom/email se modifient dans Admin > Profs,
     // et le "supprimer" lui retire seulement les droits d'admin.
     estProf: a.est_prof,
+    estEleve: a.est_eleve,
     codeRecuperationDefini: a.code_recuperation_defini,
   }
 }
@@ -37,12 +38,12 @@ export async function lister(ecoleId) {
   return (await requete(`/ecoles/${ecoleId}/administrateurs`)).map(versEcran)
 }
 
-// Deux façons (§2.4) : `professeurId` (promouvoir un professeur) OU
+// Deux façons (§2.4) : `compteId` (promouvoir un professeur ou un élève) OU
 // nom/prénom/email (nouveau compte). Code de récupération dans les deux cas.
-export async function creer(ecoleId, { professeurId, nom, prenom, email, codeRecuperation, owner }) {
+export async function creer(ecoleId, { compteId, nom, prenom, email, codeRecuperation, owner }) {
   const corps =
-    professeurId != null
-      ? { professeur_id: professeurId, code_recuperation: codeRecuperation, owner }
+    compteId != null
+      ? { compte_id: compteId, code_recuperation: codeRecuperation, owner }
       : { nom, prenom, email: email || null, code_recuperation: codeRecuperation, owner }
   return versEcran(await requete(`/ecoles/${ecoleId}/administrateurs`, { method: 'POST', body: JSON.stringify(corps) }))
 }

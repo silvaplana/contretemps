@@ -16,7 +16,7 @@ import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.j
 // Les droits sont de toute façon vérifiés par le serveur (voir
 // backend/src/administrateurs/receiver.py) : masquer les boutons ici n'est
 // qu'un confort, pas la protection.
-export default function AdministrateursTableau({ ecoleId, activeUser, professeurs }) {
+export default function AdministrateursTableau({ ecoleId, activeUser, professeurs, eleves = [] }) {
   const [administrateurs, setAdministrateurs] = useState([])
   const [creationOuverte, setCreationOuverte] = useState(false)
   const [menuOuvert, setMenuOuvert] = useState(false)
@@ -40,8 +40,8 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
   }, [ecoleId])
 
   async function supprimer(admin) {
-    const message = admin.estProf
-      ? `Retirer les droits d’administrateur de ${admin.prenom} ${admin.nom} ? Son compte de professeur est conservé.`
+    const message = admin.estProf || admin.estEleve
+      ? `Retirer les droits d’administrateur de ${admin.prenom} ${admin.nom} ? Son compte de ${admin.estProf ? 'professeur' : 'élève'} est conservé.`
       : `Supprimer définitivement l’administrateur ${admin.prenom} ${admin.nom} ? Ses messages restent visibles dans les conversations.`
     if (!window.confirm(message)) return
     setErreur(null)
@@ -61,8 +61,10 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
     )
   }
 
-  // Un professeur déjà administrateur ne se promeut pas une 2e fois.
-  const promouvables = professeurs.filter((p) => !administrateurs.some((a) => a.id === p.id))
+  // Un professeur ou un élève déjà administrateur ne se promeut pas une 2e fois.
+  const pasEncoreAdmin = (c) => !administrateurs.some((a) => a.id === c.id)
+  const profsPromouvables = professeurs.filter(pasEncoreAdmin)
+  const elevesPromouvables = eleves.filter(pasEncoreAdmin)
 
   return (
     <section className="admin-administrateurs">
@@ -111,6 +113,7 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
               <tr key={a.id}>
                 <td className="data-table__name">
                   {a.nom} {a.estProf && <Badge tone="neutral">Prof</Badge>}
+                  {a.estEleve && <Badge tone="neutral">Élève</Badge>}
                 </td>
                 <td>{a.prenom}</td>
                 <td>{a.email || <span className="muted">—</span>}</td>
@@ -147,7 +150,8 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
 
       {peutGerer && creationOuverte && (
         <AdministrateurModal
-          professeurs={promouvables}
+          professeurs={profsPromouvables}
+          eleves={elevesPromouvables}
           onValider={(donnees) => administrateursApi.creer(ecoleId, donnees)}
           onEnregistre={enregistree}
           onClose={() => setCreationOuverte(false)}
@@ -166,16 +170,17 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
 }
 
 // Création (sans `admin`) ou modification (avec `admin`) — voir §2.4 :
-// - création : nouveau compte (nom, prénom, email) OU professeur existant ;
+// - création : nouveau compte (nom, prénom, email) OU professeur ou élève
+//   existant (un élève-admin n'a ses droits qu'avec le code Admin, §2.4) ;
 //   code de récupération obligatoire dans les deux cas ;
 // - modification : pour un professeur-admin, seulement le code de
 //   récupération et le statut Owner (le reste vient d'Admin > Profs).
 // Le code de récupération n'est jamais relu (le serveur ne le renvoie
 // pas) : en modification, champ vide = inchangé.
-function AdministrateurModal({ admin, professeurs = [], onValider, onEnregistre, onClose }) {
+function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, onEnregistre, onClose }) {
   const enCreation = !admin
   const [facon, setFacon] = useState('nouveau')
-  const [professeurId, setProfesseurId] = useState('')
+  const [compteId, setCompteId] = useState('')
   const [nom, setNom] = useState(admin?.nom ?? '')
   const [prenom, setPrenom] = useState(admin?.prenom ?? '')
   const [email, setEmail] = useState(admin?.email ?? '')
@@ -184,11 +189,12 @@ function AdministrateurModal({ admin, professeurs = [], onValider, onEnregistre,
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState(null)
 
-  const promotion = enCreation && facon === 'professeur'
-  const identiteModifiable = enCreation ? !promotion : !admin.estProf
+  const promotion = enCreation && facon !== 'nouveau'
+  const candidats = facon === 'eleve' ? eleves : professeurs
+  const identiteModifiable = enCreation ? !promotion : !admin.estProf && !admin.estEleve
 
   const valide = enCreation
-    ? codeRecuperation.trim() && (promotion ? professeurId : nom.trim() && prenom.trim())
+    ? codeRecuperation.trim() && (promotion ? compteId : nom.trim() && prenom.trim())
     : !identiteModifiable || (nom.trim() && prenom.trim())
 
   async function valider() {
@@ -198,7 +204,7 @@ function AdministrateurModal({ admin, professeurs = [], onValider, onEnregistre,
     let donnees
     if (enCreation) {
       donnees = promotion
-        ? { professeurId: Number(professeurId), codeRecuperation: codeRecuperation.trim(), owner }
+        ? { compteId: Number(compteId), codeRecuperation: codeRecuperation.trim(), owner }
         : { nom: nom.trim(), prenom: prenom.trim(), email: email.trim(), codeRecuperation: codeRecuperation.trim(), owner }
     } else {
       donnees = {
@@ -234,36 +240,52 @@ function AdministrateurModal({ admin, professeurs = [], onValider, onEnregistre,
               <input type="radio" name="admin-facon" checked={facon === 'nouveau'} onChange={() => setFacon('nouveau')} />
               Nouveau compte
             </label>
-            <label className="checkbox-inline">
-              <input
-                type="radio"
-                name="admin-facon"
-                checked={facon === 'professeur'}
-                onChange={() => setFacon('professeur')}
-                disabled={professeurs.length === 0}
-              />
-              Un professeur de l’école
-              {professeurs.length === 0 && <span className="muted"> (aucun disponible)</span>}
-            </label>
+            {[
+              ['professeur', 'Un professeur de l’école', professeurs],
+              ['eleve', 'Un élève de l’école', eleves],
+            ].map(([valeur, libelle, liste]) => (
+              <label key={valeur} className="checkbox-inline">
+                <input
+                  type="radio"
+                  name="admin-facon"
+                  checked={facon === valeur}
+                  onChange={() => {
+                    setFacon(valeur)
+                    setCompteId('')
+                  }}
+                  disabled={liste.length === 0}
+                />
+                {libelle}
+                {liste.length === 0 && <span className="muted"> (aucun disponible)</span>}
+              </label>
+            ))}
           </>
         )}
 
         {promotion && (
           <>
-            <label htmlFor="admin-professeur">Professeur</label>
+            <label htmlFor="admin-compte">{facon === 'eleve' ? 'Élève' : 'Professeur'}</label>
             <select
-              id="admin-professeur"
+              id="admin-compte"
               className="field-input"
-              value={professeurId}
-              onChange={(e) => setProfesseurId(e.target.value)}
+              value={compteId}
+              onChange={(e) => setCompteId(e.target.value)}
             >
               <option value="">Choisir…</option>
-              {professeurs.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.prenom} {p.nom}
-                </option>
-              ))}
+              {[...candidats]
+                .sort((a, b) => `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`, 'fr'))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.prenom} {c.nom}
+                  </option>
+                ))}
             </select>
+            {facon === 'eleve' && (
+              <p className="muted">
+                Il n’aura ses droits d’administrateur qu’en se connectant avec le code d’accès Admin de l’école :
+                avec le code Élève, il reste un simple élève.
+              </p>
+            )}
           </>
         )}
 
@@ -283,8 +305,10 @@ function AdministrateurModal({ admin, professeurs = [], onValider, onEnregistre,
             />
           </>
         )}
-        {!enCreation && admin.estProf && (
-          <p className="muted">Son nom, son prénom et son email se modifient depuis Admin &gt; Profs.</p>
+        {!enCreation && (admin.estProf || admin.estEleve) && (
+          <p className="muted">
+            Son nom, son prénom et son email se modifient depuis Admin &gt; {admin.estProf ? 'Profs' : 'Élèves'}.
+          </p>
         )}
 
         <label htmlFor="admin-code">Code de récupération</label>

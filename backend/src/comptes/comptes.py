@@ -187,8 +187,13 @@ class Comptes:
             return
         if role == r.OWNER and not r.is_admin(compte):
             raise RegleRoles("Seul un administrateur peut être administrateur principal")
-        if r.is_eleve(compte) or (role == r.ELEVE and compte.roles):
-            raise RegleRoles("Le rôle élève ne se cumule avec aucun autre rôle")
+        # Un élève peut être administrateur (et administrateur principal),
+        # mais jamais professeur ; et le rôle élève ne s'ajoute pas après
+        # coup à un compte existant (il vient avec sa fiche élève).
+        if role == r.ELEVE and compte.roles:
+            raise RegleRoles("Le rôle élève ne s'ajoute pas à un compte existant")
+        if role == r.PROFESSEUR and r.is_eleve(compte):
+            raise RegleRoles("Un élève ne peut pas être aussi professeur")
         compte.roles.append(RoleCompte(role=role))
         db.commit()
         db.refresh(compte)

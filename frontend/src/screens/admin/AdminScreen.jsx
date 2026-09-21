@@ -63,6 +63,7 @@ export default function AdminScreen({
           setEcole={setEcole}
           setVideos={setVideos}
           cours={cours}
+          eleves={eleves}
           setEleves={setEleves}
           activeUser={activeUser}
           professeurs={professeurs}

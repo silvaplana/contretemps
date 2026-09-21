@@ -32,8 +32,10 @@ plusieurs rôles** (décision du 2026-09-21), par exemple Professeur ET Admin. L
 stockés dans une table de liaison compte ↔ rôle (§6.3bis), et le code ne les lit qu'à travers
 des fonctions centrales (`isAdmin`, `isProf`..., voir §6.3bis). Deux règles de cumul :
 - **Owner implique Admin** : un Owner a toujours aussi le rôle Admin ;
-- **Élève ne se cumule avec aucun autre rôle** : un adulte à la fois élève et professeur a
-  deux comptes, regroupés dans la même famille (voir ci-dessous).
+- **Élève ne se cumule jamais avec Professeur** : un adulte à la fois élève et professeur a
+  deux comptes, regroupés dans la même famille (voir ci-dessous). Un élève peut en revanche
+  être promu Admin, voire Owner, mais ses droits d'admin ne sont actifs qu'avec le code
+  d'accès Admin de l'école (§2.4, « Élève-admin »).
 
 Il n'y a pas de rôle "Parent" séparé — un élève est lui-même un compte, avec ses propres
 champs (voir §6), qu'il soit mineur ou majeur.
@@ -56,7 +58,9 @@ parent Admin + ses deux enfants Élèves).
   (cohérence vérifiée côté serveur). Un compte qui cumule plusieurs rôles peut se connecter
   avec le code de n'importe lequel d'entre eux, et obtient dans tous les cas **tous** ses rôles.
   Exemple : un professeur-admin connecté avec le code professeur voit l'onglet Admin (§2.4).
-  Le rôle Owner n'a pas de code propre : un Owner est aussi Admin.
+  Le rôle Owner n'a pas de code propre : un Owner est aussi Admin. **Exception : l'élève-admin**
+  (§2.4) n'obtient ses rôles Admin/Owner qu'avec le code Admin ; avec le code Élève, il n'est
+  qu'un élève.
 - **✅ Fait — Session persistante** (web, PWA, Android, iOS) sans reconnexion systématique :
   l'id du profil ACTIF (pas un vrai token — ce backend n'a aucune notion de session, voir §8)
   est gardé en local (voir frontend/src/api/session.js), propre à chaque appareil, mis à jour
@@ -136,8 +140,8 @@ compte séparé, un Owner accorde les droits admin à un compte Professeur exist
 reste un professeur partout ailleurs (assignable à un cours, visible dans Admin > Profs,
 comptage d'heures §5.7...) ; il gagne en plus l'accès à l'onglet Admin et les droits qui vont
 avec. Techniquement, son compte a **deux rôles** : `professeur` et `admin` (§6.3bis). Le
-promouvoir ajoute le rôle `admin`, sans toucher au rôle `professeur`. Un élève ne peut pas
-devenir admin (le rôle Élève ne se cumule avec aucun autre, §2.1).
+promouvoir ajoute le rôle `admin`, sans toucher au rôle `professeur`. Un élève peut aussi
+être promu, avec une règle de connexion plus stricte (voir « Élève-admin » ci-dessous).
 
 **Connexion d'un professeur-admin** (décision utilisateur du 2026-09-21) : il se connecte
 comme n'importe quel professeur, avec son nom et le code d'accès professeur, et voit directement
@@ -150,6 +154,26 @@ limite, déjà existante, pour les admins "purs" avec le code admin partagé.
 l'a promu. Il bénéficie donc de la même question de récupération que les admins "purs". Pour
 les comptes sans droits admin, le contact affiché devient celui d'un Owner de l'école (plutôt
 que "le premier administrateur").
+
+#### Élève-admin
+
+**Un Owner peut aussi promouvoir un élève** administrateur, Owner compris (décision utilisateur
+du 2026-09-21). Comme pour un professeur, son compte garde le rôle `eleve` et gagne `admin`
+(et `owner` s'il est principal) ; son nom, son prénom et son email restent gérés depuis
+Admin > Élèves.
+
+**Ses droits d'admin ne sont actifs qu'avec le code d'accès Admin de l'école** : le code Élève
+est connu de toutes les familles, il ne doit pas suffire à ouvrir l'onglet Admin.
+- connecté avec le **code Élève** : il n'est qu'un élève (pas d'onglet Admin, le serveur lui
+  refuse les routes Admin) ;
+- connecté avec le **code Admin**, ou par **"Code oublié ?"** (question de récupération des
+  admins), ou par une bascule de profil confirmée avec le code Admin : le serveur lui remet un
+  **jeton signé de portée "admin"** (12 h, même mécanisme que le Superuser, §2.5) qui active ses
+  droits d'admin. Sans ce jeton, `require_admin` le refuse. La reprise de session présente ses
+  rôles Admin/Owner seulement si ce jeton accompagne la requête.
+- une bascule libre (sans code) vers un autre profil efface le jeton.
+- le retirer des administrateurs lui laisse son compte d'élève ; le supprimer depuis Admin >
+  Élèves est refusé s'il est le dernier Owner de l'école.
 
 #### Tableau des administrateurs
 
@@ -600,7 +624,8 @@ L'école se déduit du compte (`Comptes.ecole_id`).
 **Règles garanties par le serveur** (jamais seulement masquées dans l'IHM) :
 - tout compte a **au moins un rôle** ;
 - **`owner` implique `admin`** : retirer `admin` retire aussi `owner` ;
-- **`eleve` ne se cumule avec aucun autre rôle** ;
+- **`eleve` ne se cumule jamais avec `professeur`** ; il peut recevoir `admin`/`owner`
+  (élève-admin, §2.4 : droits actifs seulement avec le code Admin) ;
 - chaque école a toujours **au moins un compte `owner`** (seul le Superuser peut passer outre,
   pour dépanner une école, §2.5) ;
 - **`superuser` ne se cumule avec aucun autre rôle**, et seul un compte sans école peut
@@ -1017,8 +1042,11 @@ encore branché).
   - **Étape 3, faite** : tableau des administrateurs et ses modales (module
     `backend/src/administrateurs/`, `frontend/src/screens/admin/AdministrateursTableau.jsx`).
     Règles des rôles appliquées par le serveur (`Comptes.ajouter_role`/`retirer_role`) :
-    owner ⇒ admin, élève non cumulable, au moins un Owner par école — y compris quand un
+    owner ⇒ admin, élève jamais professeur, au moins un Owner par école — y compris quand un
     professeur-admin Owner est supprimé depuis Admin > Profs (refusé s'il est le dernier).
+  - **Élève-admin (§2.4), fait** : promotion d'un élève depuis le tableau des
+    administrateurs ; droits d'admin actifs seulement avec le code Admin (jeton signé de
+    portée "admin", `securite/jetons.py`, vérifié par `comptes/rbac.py`).
 - **Superuser (§2.5)** : **fait** (étape 4 de la gestion multi-admin) — rôle `superuser`,
   `isSuperuser`, `require_superuser` (création d'école, relance des messages de toutes les
   écoles), commande serveur de création, mot de passe haché, jeton signé de 12 h vérifié à

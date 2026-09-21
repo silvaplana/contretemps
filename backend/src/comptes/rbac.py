@@ -16,6 +16,11 @@ l'interface ; elles n'arrêtent pas quelqu'un qui forge l'en-tête.
 qui désigne le Superuser sans jeton valide est refusé : impossible de
 prendre ses droits en connaissant juste son numéro de compte.
 
+**Élève promu administrateur (§2.4)** : ses droits d'admin ne sont actifs
+qu'avec un jeton de portée "admin", remis quand il se connecte avec le code
+ADMIN de l'école. Avec son seul `X-Compte-Id` (connexion par le code
+élève), `require_admin` le refuse comme n'importe quel élève.
+
 Chaque route protégée sait QUELLE école elle touche (via ses paramètres :
 `ecole_id`, ou l'école d'un élève, d'un cours...) et la passe ici : un
 admin d'une école n'a aucun droit sur une autre (§2.1, écoles étanches).
@@ -43,10 +48,19 @@ def compte_appelant(
     """Le compte qui fait la requête. Jeton Superuser (`Authorization`) s'il
     y en a un, sinon l'en-tête `X-Compte-Id`. 401 si rien de valable."""
     if authorization and authorization.lower().startswith("bearer "):
-        compte_id = jetons.verifier(authorization[len("bearer "):].strip())
-        compte = db.get(Compte, compte_id) if compte_id is not None else None
-        if compte is None or not roles.is_superuser(compte):
+        jeton = jetons.depuis_entete(authorization)
+        compte = db.get(Compte, jeton.compte_id) if jeton is not None else None
+        valide = compte is not None and (
+            roles.is_superuser(compte)
+            if jeton.portee == jetons.SUPERUSER
+            else roles.admin_sous_condition(compte)
+        )
+        if not valide:
             raise HTTPException(status_code=401, detail="Session expirée : reconnectez-vous")
+        # Attribut posé pour la durée de CETTE requête seulement (l'objet
+        # vient de la session de base de la requête) : voir
+        # droits_admin_actifs.
+        compte._admin_par_jeton = jeton.portee == jetons.ADMIN
         return compte
     if x_compte_id is None:
         raise HTTPException(status_code=401, detail="Identité de l'appelant manquante")
@@ -58,6 +72,12 @@ def compte_appelant(
     return compte
 
 
+def droits_admin_actifs(appelant: Compte) -> bool:
+    """Un admin ordinaire (ou professeur-admin) les a toujours ; un élève
+    promu admin seulement avec son jeton "admin" (voir compte_appelant)."""
+    return not roles.admin_sous_condition(appelant) or getattr(appelant, "_admin_par_jeton", False)
+
+
 def require_admin(appelant: Compte, ecole_id: int | None) -> None:
     """L'appelant doit être admin de `ecole_id` (admin "pur" ou
     professeur-admin). `ecole_id=None` : la ressource visée n'existe pas —
@@ -67,7 +87,7 @@ def require_admin(appelant: Compte, ecole_id: int | None) -> None:
     Le Superuser passe toujours, dans n'importe quelle école (§2.5)."""
     if roles.is_superuser(appelant):
         return
-    if not roles.is_admin(appelant):
+    if not roles.is_admin(appelant) or not droits_admin_actifs(appelant):
         raise HTTPException(status_code=403, detail="Réservé aux administrateurs")
     if ecole_id is not None and appelant.ecole_id != ecole_id:
         raise HTTPException(status_code=403, detail="Réservé aux administrateurs de cette école")

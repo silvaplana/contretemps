@@ -58,15 +58,24 @@ class ComptesReceiver:
         authorization: str | None = Header(default=None),
     ):
         compte = self.client.get(db, compte_id)
+        jeton = jetons.depuis_entete(authorization)
+        a_son_jeton = jeton is not None and compte is not None and jeton.compte_id == compte.id
         # Le Superuser est invisible (§2.5) : son compte n'est lisible que
         # par lui-même, avec son jeton (reprise de session). Pour tout autre
         # appelant, il n'existe pas.
-        if compte is not None and roles.is_superuser(compte):
-            jeton = (authorization or "").removeprefix("Bearer ").strip()
-            if jetons.verifier(jeton) != compte.id:
-                compte = None
+        if compte is not None and roles.is_superuser(compte) and not a_son_jeton:
+            compte = None
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
+        # Élève promu admin (§2.4) : rôles admin/owner présentés seulement
+        # si SON jeton "admin" accompagne la requête (reprise de session
+        # après une connexion par le code admin) — sinon, un élève.
+        if roles.admin_sous_condition(compte):
+            sortie = CompteSortie.model_validate(compte)
+            admin_actif = a_son_jeton and jeton.portee == jetons.ADMIN
+            sortie.roles = roles.roles_effectifs(compte, admin_actif)
+            sortie.role = roles.role_principal(sortie.roles)
+            return sortie
         return compte
 
     def modifier(self, compte_id: int, donnees: CompteModification, db: Session = Depends(get_db)):

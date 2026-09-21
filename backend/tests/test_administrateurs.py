@@ -90,7 +90,7 @@ def test_owner_cree_directement_un_owner(client, ecole):
 def test_owner_promeut_un_professeur_qui_reste_professeur(client, db_session, ecole):
     reponse = client.post(
         f"/ecoles/{ecole['ecole'].id}/administrateurs",
-        json={"professeur_id": ecole["prof"].id, "code_recuperation": "chat"},
+        json={"compte_id": ecole["prof"].id, "code_recuperation": "chat"},
         headers=_en_tant_que(ecole["owner"]),
     )
     assert reponse.status_code == 201
@@ -98,18 +98,18 @@ def test_owner_promeut_un_professeur_qui_reste_professeur(client, db_session, ec
     assert _roles(db_session, ecole["prof"]) == ["admin", "professeur"]
 
 
-def test_promouvoir_refuse_un_non_professeur_ou_un_professeur_d_une_autre_ecole(client, ecole):
-    for cible in ["eleve", "prof_voisin"]:
+def test_promouvoir_refuse_un_compte_d_une_autre_ecole(client, ecole):
+    for cible in ["prof_voisin", "owner_voisin"]:
         reponse = client.post(
             f"/ecoles/{ecole['ecole'].id}/administrateurs",
-            json={"professeur_id": ecole[cible].id, "code_recuperation": "chat"},
+            json={"compte_id": ecole[cible].id, "code_recuperation": "chat"},
             headers=_en_tant_que(ecole["owner"]),
         )
         assert reponse.status_code == 404, cible
 
 
 def test_promouvoir_deux_fois_refuse(client, ecole):
-    corps = {"professeur_id": ecole["prof"].id, "code_recuperation": "chat"}
+    corps = {"compte_id": ecole["prof"].id, "code_recuperation": "chat"}
     url = f"/ecoles/{ecole['ecole'].id}/administrateurs"
     client.post(url, json=corps, headers=_en_tant_que(ecole["owner"]))
     assert client.post(url, json=corps, headers=_en_tant_que(ecole["owner"])).status_code == 409
@@ -120,7 +120,7 @@ def test_promouvoir_deux_fois_refuse(client, ecole):
     [
         {"nom": "Sans", "code_recuperation": "chat"},  # prénom manquant
         {"nom": "X", "prenom": "Y", "code_recuperation": ""},  # code vide
-        {"professeur_id": 1, "nom": "X", "code_recuperation": "chat"},  # mélange des 2 façons
+        {"compte_id": 1, "nom": "X", "code_recuperation": "chat"},  # mélange des 2 façons
     ],
 )
 def test_creation_invalide_422(client, ecole, corps):
@@ -248,11 +248,14 @@ def test_retirer_le_dernier_owner_refuse(db_session, ecole):
         Comptes().retirer_role(db_session, ecole["owner"], roles.ADMIN)
 
 
-def test_owner_exige_admin_et_eleve_non_cumulable(db_session, ecole):
+def test_owner_exige_admin_et_eleve_jamais_professeur(db_session, ecole):
     with pytest.raises(RegleRoles):
         Comptes().ajouter_role(db_session, ecole["prof"], roles.OWNER)
     with pytest.raises(RegleRoles):
-        Comptes().ajouter_role(db_session, ecole["eleve"], roles.ADMIN)
+        Comptes().ajouter_role(db_session, ecole["eleve"], roles.PROFESSEUR)
+    # Un élève peut, en revanche, être administrateur (§2.4).
+    Comptes().ajouter_role(db_session, ecole["eleve"], roles.ADMIN)
+    assert roles.noms_roles(ecole["eleve"]) == ["admin", "eleve"]
 
 
 def test_supprimer_depuis_admin_profs_le_dernier_owner_refuse(client, db_session):

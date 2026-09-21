@@ -161,7 +161,11 @@ async function recupererCompteActiveUser(compteId) {
 // même règle qu'ici côté backend) : pas de code à redemander, juste
 // relire le compte visé — voir backend/src/comptes/receiver.py: obtenir.
 export async function basculerLibre(versCompteId) {
-  return recupererCompteActiveUser(versCompteId)
+  const compte = await recupererCompteActiveUser(versCompteId)
+  // Le jeton éventuel du profil PRÉCÉDENT (ex. élève-admin connecté avec le
+  // code Admin) ne doit jamais servir au suivant.
+  sauvegarderJeton(null)
+  return compte
 }
 
 // --- Session persistante (voir spec §2.2 : "sans reconnexion
@@ -194,5 +198,9 @@ export async function confirmerBascule(versCompteId, code) {
   })
   if (reponse.status === 401) throw new Error('Code incorrect')
   if (!reponse.ok) throw new Error('Impossible de basculer')
-  return versActiveUserEcran(await reponse.json())
+  const compte = await reponse.json()
+  // Jeton "admin" d'un élève-admin atteint avec le code Admin (§2.4), sinon
+  // aucun : celui du profil précédent est effacé.
+  sauvegarderJeton(compte.jeton ?? null)
+  return versActiveUserEcran(compte)
 }

@@ -26,6 +26,7 @@ def _sortie(compte: Compte) -> dict:
         "email": compte.email,
         "est_owner": roles.is_owner(compte),
         "est_prof": roles.is_prof(compte),
+        "est_eleve": roles.is_eleve(compte),
         "code_recuperation_defini": compte.code_recuperation_defini,
     }
 
@@ -87,11 +88,11 @@ class AdministrateursReceiver:
 
     def creer(self, ecole_id: int, donnees: AdministrateurCreation, db: Session = Depends(get_db)):
         try:
-            if donnees.professeur_id is not None:
+            if donnees.compte_id is not None:
                 compte = self.client.promouvoir(
                     db,
                     ecole_id,
-                    donnees.professeur_id,
+                    donnees.compte_id,
                     code_recuperation=donnees.code_recuperation,
                     owner=donnees.owner,
                 )
