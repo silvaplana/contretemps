@@ -46,6 +46,51 @@ function versUint8Array(base64Url) {
   return Uint8Array.from(brut, (c) => c.charCodeAt(0))
 }
 
+// --- Notifications activées par défaut (demande du 2026-09-21) ---
+//
+// Aucun navigateur ne laisse un site activer les notifications tout seul :
+// il faut l'accord de l'utilisateur, demandé PENDANT un geste de sa part.
+// On profite donc du tout premier clic "Se connecter" sur cet appareil
+// (voir LoginScreen.jsx) : la demande part pendant le clic, et si elle est
+// acceptée, l'appareil est abonné dès que la connexion a réussi.
+// Retenu sur l'appareil : jamais redemandé ensuite — et si l'utilisateur
+// coupe les notifications dans Profil, on ne les réactive pas derrière
+// son dos.
+const CLE_PROPOSEES = 'contretemps:notificationsProposees'
+
+function dejaProposees() {
+  try {
+    return localStorage.getItem(CLE_PROPOSEES) !== null
+  } catch {
+    return true // stockage indisponible : ne pas redemander à chaque fois
+  }
+}
+
+// À appeler DANS le gestionnaire du clic (avant tout `await`) : renvoie une
+// promesse de la permission, ou null s'il n'y a rien à faire (déjà
+// proposé sur cet appareil, ou notifications non supportées).
+export function proposerAuPremierLancement() {
+  if (!pushSupporte() || dejaProposees()) return null
+  try {
+    localStorage.setItem(CLE_PROPOSEES, '1')
+  } catch {
+    // Tant pis : au pire, on reproposera une fois.
+  }
+  return permissionActuelle() === 'default' ? Notification.requestPermission() : Promise.resolve(permissionActuelle())
+}
+
+// Suite de proposerAuPremierLancement, une fois connecté : abonne cet
+// appareil si la permission a été accordée. Jamais bloquant ni bruyant —
+// la connexion a déjà réussi, un échec ici ne doit rien casser.
+export async function abonnerSiAccepte(permissionPromise, compteId) {
+  if (!permissionPromise) return
+  try {
+    if ((await permissionPromise) === 'granted') await abonner(compteId)
+  } catch (err) {
+    console.warn('Notifications non activées :', err.message)
+  }
+}
+
 // Abonnement DÉJÀ actif sur CET appareil/navigateur (indépendant de
 // `permissionActuelle` : la permission peut être "granted" sans qu'un
 // abonnement existe, ex. jamais cliqué sur le bouton, ou révoqué côté

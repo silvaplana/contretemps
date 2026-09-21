@@ -3,6 +3,7 @@ import Icon from '../components/Icon.jsx'
 import Logo from '../components/Logo.jsx'
 import Modal from '../components/Modal.jsx'
 import * as auth from '../api/auth.js'
+import * as notificationsApi from '../api/notifications.js'
 
 // Écran de connexion (voir spec/SPEC.md §2.2 et §2.3) — toujours réel,
 // via api/auth.js (le mode maquette a été retiré, voir spec/SPEC.md §8).
@@ -17,11 +18,16 @@ export default function LoginScreen({ onLogin }) {
 
   async function seConnecter(e) {
     e.preventDefault()
+    // Premier lancement sur cet appareil : notifications proposées pendant
+    // CE clic (le navigateur l'exige), avant tout `await` — voir
+    // api/notifications.js : proposerAuPremierLancement.
+    const permissionNotifications = notificationsApi.proposerAuPremierLancement()
     setErreur('')
     setEnCours(true)
     try {
       const resultat = await auth.login({ identifiant, code })
       onLogin(resultat)
+      notificationsApi.abonnerSiAccepte(permissionNotifications, resultat.compte.id)
     } catch (err) {
       setErreur(err.message || 'Connexion impossible')
     } finally {
