@@ -770,6 +770,21 @@
   background: var(--bg);
 }
 
+/* 5 sous-onglets (École/Élèves (XXX)/Profs/Cours/Messagerie, voir
+   AdminScreen.jsx) — plus serré que le `.segmented` générique pour tenir
+   sur une seule ligne même avec un effectif à 3 chiffres dans "Élèves
+   (XXX)" (demande utilisateur du 2026-09-21 : passait sur 2 lignes). */
+.admin-screen__tabs.segmented {
+  gap: 2px;
+  padding: 3px;
+}
+
+.admin-screen__tabs .segmented__option {
+  padding: 6px 4px;
+  font-size: 12.5px;
+  min-height: 32px;
+}
+
 .admin-panel {
   display: flex;
   flex-direction: column;
