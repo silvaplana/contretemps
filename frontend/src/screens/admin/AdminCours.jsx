@@ -89,8 +89,29 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
 
   async function remove(id) {
     if (!window.confirm('Supprimer ce cours ?')) return
+    // Capturé AVANT suppression : le nom du cours ne sera plus dans
+    // `cours` juste après (voir setCours ci-dessous).
+    const coursSupprime = cours.find((c) => c.id === id)
     await coursApi.supprimer(id)
     setCours((list) => list.filter((c) => c.id !== id))
+
+    // Demande utilisateur du 2026-09-21 : une conversation du même nom
+    // (typiquement celle créée conjointement, voir addCours) devient
+    // orpheline une fois le cours supprimé — proposer de la supprimer
+    // aussi plutôt que la laisser traîner. Comparaison sur le nom
+    // EXACT du cours, pas sur son bloc "cours" (voir
+    // ConversationEditModal.jsx: nomAffiche) : une conversation qui n'a
+    // jamais été renommée manuellement ne matche pas ici non plus, ce
+    // qui est correct — elle serait de toute façon vidée de son membre
+    // "cours" invalide sans qu'on ait besoin de la supprimer.
+    const conversationMemeNom = groupes.find((g) => g.nom === coursSupprime?.nom)
+    if (
+      conversationMemeNom &&
+      window.confirm(`Supprimer aussi la conversation "${conversationMemeNom.nom}" ?`)
+    ) {
+      await conversationsApi.supprimer(conversationMemeNom.id)
+      setGroupes((list) => list.filter((g) => g.id !== conversationMemeNom.id))
+    }
   }
 
   async function addCours({ avecConversation, ...donnees }) {
