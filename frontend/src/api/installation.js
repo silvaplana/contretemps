@@ -5,7 +5,8 @@
 // - Android (Chrome, Samsung Internet), Chrome et Edge sur PC/Mac : le
 //   navigateur prévient quand l'appli est installable (événement
 //   `beforeinstallprompt`) ; on garde cet événement et NOTRE bouton ouvre la
-//   vraie fenêtre d'installation du système en un appui.
+//   vraie fenêtre d'installation du système en un appui — en plus de la
+//   proposition du navigateur lui-même, laissée intacte.
 // - Safari sur Mac (macOS Sonoma et suivants) : pas d'API non plus, mais
 //   menu Fichier > "Ajouter au Dock" — on l'explique.
 // - Firefox (PC/Mac) : ne sait pas installer une appli web — on conseille
@@ -29,7 +30,10 @@ function prevenir() {
 // arriver avant même que React ait affiché quoi que ce soit.
 export function ecouterInstallation() {
   window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault() // pas la mini-barre du navigateur : notre invitation à la place
+    // Surtout PAS de e.preventDefault() : il supprimait la proposition
+    // native de Chrome ("Installer l'application", qui installe une vraie
+    // appli Android) — régression signalée le 2026-09-21. On garde juste
+    // l'événement pour que notre bouton ouvre la même fenêtre.
     invitationDifferee = e
     prevenir()
   })
