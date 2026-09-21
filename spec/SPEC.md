@@ -488,6 +488,16 @@ s'il y figure** : c'est la seule source de vérité, utilisée par `requireAdmin
 - **Professeur-admin** : un compte `role="professeur"` ET sa ligne ici. Le retirer des
   administrateurs supprime seulement la ligne ; le compte et le professeur restent.
 - Un compte `role="eleve"` n'y figure jamais.
+- **Rôle et liste des administrateurs ne disent pas la même chose** (décision du 2026-09-21) :
+  `role` dit ce qu'est la personne dans l'école (élève, professeur, ou admin sans cours à
+  donner) ; la table dit **qui a les droits d'admin**. Le seul recouvrement, `role="admin"`,
+  est couvert par l'invariant ci-dessus. `role` continue de choisir le code d'accès demandé à la
+  connexion (§2.2) et le rang utilisé pour la bascule de profil familial.
+- **Toute vérification de droits d'admin passe par cette table, jamais par `role`.** Sinon un
+  professeur-admin serait oublié. Concerne `requireAdmin`/`requireOwner`, et aussi le code
+  existant qui teste aujourd'hui `role == "admin"` pour des droits : "Code oublié ?"
+  (`backend/src/auth/auth.py`, `auth/receiver.py`), le contact affiché aux non-admins
+  (`auth.py:premier_admin`, `ecoles/receiver.py`).
 - **`est_owner`** identifie un Owner. Comme il est porté par la ligne d'administrateur, un
   compte retiré des administrateurs perd forcément aussi la qualité d'Owner. Plusieurs lignes
   d'une même école peuvent l'avoir, et **au moins une l'a toujours** (invariant garanti par le
