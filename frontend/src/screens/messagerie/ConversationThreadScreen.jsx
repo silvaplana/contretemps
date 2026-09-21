@@ -164,35 +164,23 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversation.id, conversation.messages.length])
 
-  // Choix à l'envoi : par la messagerie (par défaut), par mail, ou par
-  // WhatsApp — mail et WhatsApp sortent de l'appli, donc demandent
-  // confirmation. En groupe, WhatsApp n'a pas de vrai fil unique côté
-  // WhatsApp (pas de groupe WhatsApp = plusieurs messages 1-à-1) : la
-  // confirmation le dit explicitement.
-  function send(canal) {
+  // Envoi par la messagerie de l'appli — mail et WhatsApp ne sont pas de
+  // vrais canaux d'envoi pour l'instant (voir le menu "Autres moyens
+  // d'envoi" plus bas, qui n'appelle plus cette fonction du tout).
+  function send() {
     if (!draft.trim()) return
-    if (canal === 'mail' && !window.confirm('Envoyer aussi ce message par mail ?')) return
-    if (canal === 'whatsapp') {
-      const question =
-        conversation.type === 'groupe'
-          ? 'Ce message sera envoyé par WhatsApp séparément à chaque membre de la conversation. Confirmer ?'
-          : 'Envoyer ce message par WhatsApp ?'
-      if (!window.confirm(question)) return
-    }
     const contenu = draft.trim()
     setDraft('')
     // Revient à 1 ligne après l'envoi — sinon la textarea, agrandie
     // manuellement (voir ajusterHauteur), garde sa hauteur même une fois
     // vide.
     if (textareaRef.current) textareaRef.current.style.height = 'auto'
-    // 'mail' (nom local du bouton) -> 'email' (nom du canal côté backend).
-    const canalBackend = canal === 'mail' ? 'email' : canal
     // Bulle "en cours" affichée tout de suite (voir useMessagesEnAttente
     // plus haut) — le texte ne disparaît plus jamais de l'écran, même si
     // l'envoi échoue (bug signalé). L'insertion du message CONFIRMÉ dans
     // la conversation se fait ailleurs (voir App.jsx: useMessagesEnvoyes),
     // pas ici — ça marche pareil qu'on reste sur cet écran ou pas.
-    envoyerAvecReprise(conversation.id, compteId, contenu, canalBackend)
+    envoyerAvecReprise(conversation.id, compteId, contenu, 'app')
   }
 
   // "X écrit..." (DM : un seul autre membre possible, pas la peine de le
@@ -334,7 +322,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
             onKeyDown={(e) => {
               if (ENTREE_ENVOIE && e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
-                send('app')
+                send()
               }
             }}
           />
@@ -349,11 +337,17 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
             </button>
             {canalOpen && (
               <div className="dropdown-menu canal-picker">
+                {/* Ni mail ni WhatsApp ne sont de vrais canaux d'envoi
+                    pour l'instant (voir messages.py: Messages.envoyer —
+                    juste un marqueur d'intention, aucune vraie
+                    infrastructure d'envoi) — demande utilisateur du
+                    2026-09-21 : le dire clairement plutôt que de laisser
+                    croire à un envoi réel. */}
                 <button
                   type="button"
                   onClick={() => {
                     setCanalOpen(false)
-                    send('mail')
+                    window.alert('Fonctionnalité en cours de développement')
                   }}
                 >
                   <Icon name="mail" size={16} /> Par mail
@@ -362,7 +356,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
                   type="button"
                   onClick={() => {
                     setCanalOpen(false)
-                    send('whatsapp')
+                    window.alert('Fonctionnalité en cours de développement')
                   }}
                 >
                   <WhatsappBadge size={16} /> Par WhatsApp
@@ -374,7 +368,7 @@ export default function ConversationThreadScreen({ conversation, onBack, setConv
         <button
           type="button"
           className="icon-btn icon-btn--accent"
-          onClick={() => send('app')}
+          onClick={() => send()}
           aria-label="Envoyer par la messagerie"
         >
           <Icon name="send" size={18} />
