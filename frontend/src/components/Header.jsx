@@ -101,31 +101,27 @@ export default function Header({
 
       {user?.id != null && (
         <div className="app-header__right">
-          {/* Sélecteur familial : toujours visible dès qu'il y a plus d'1
-              profil (voir spec §4), pas seulement en mode "course" — sans
-              ça, impossible de changer de profil depuis Admin/Profil/Heures
-              (signalé : absent de Profil). Le menu "..." ci-dessous, lui,
-              reste réservé au mode "course" : "Profil"/"Se déconnecter" y
-              feraient doublon sur l'écran Profil, qui a déjà son propre
-              bouton de déconnexion. */}
-          {famille.length > 1 && (
-            <div className="famille-selector" ref={familleSelectorRef}>
-              <button
-                ref={familleBoutonRef}
-                type="button"
-                className="famille-selector__button"
-                onClick={ouvrirFamilleMenu}
-                aria-label="Changer de profil"
-              >
-                <span className="avatar avatar--sm">{user.initiales}</span>
-                <Icon name="chevronDown" size={14} />
-              </button>
-              {familleOpen && (
-                <div
-                  className="dropdown-menu famille-selector__menu"
-                  style={{ top: familleMenuTop }}
-                >
-                  {trierParRole(famille).map((p) => (
+          {/* Badge de l'utilisateur connecté, toujours visible (demande du
+              2026-09-21 : savoir qui est connecté). Son menu liste les
+              autres profils de la famille s'il y en a (voir spec §4) et, tout
+              en bas, "Se déconnecter" (demande du 2026-09-21). Le menu "..."
+              plus bas, lui, reste réservé au mode "course". */}
+          <div className="famille-selector" ref={familleSelectorRef}>
+            <button
+              ref={familleBoutonRef}
+              type="button"
+              className="famille-selector__button"
+              onClick={ouvrirFamilleMenu}
+              title={`${user.prenom} ${user.nom}`}
+              aria-label={famille.length > 1 ? 'Changer de profil' : `Connecté : ${user.prenom} ${user.nom}`}
+            >
+              <span className="avatar avatar--sm">{user.initiales}</span>
+              <Icon name="chevronDown" size={14} />
+            </button>
+            {familleOpen && (
+              <div className="dropdown-menu famille-selector__menu" style={{ top: familleMenuTop }}>
+                {famille.length > 1 ? (
+                  trierParRole(famille).map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -136,23 +132,25 @@ export default function Header({
                       {p.prenom} {p.nom}
                       <span className="muted famille-selector__role">{ROLE_LABEL[p.type]}</span>
                     </button>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-          {/* Seul dans sa famille : même badge, pour toujours savoir qui est
-              connecté (demande du 2026-09-21), mais sans menu puisqu'il n'y
-              a pas d'autre profil vers lequel basculer. */}
-          {famille.length <= 1 && (
-            <span
-              className="avatar avatar--sm"
-              title={`${user.prenom} ${user.nom}`}
-              aria-label={`Connecté : ${user.prenom} ${user.nom}`}
-            >
-              {user.initiales}
-            </span>
-          )}
+                  ))
+                ) : (
+                  <button type="button" className="is-active" disabled>
+                    <span className="avatar avatar--sm">{user.initiales}</span>
+                    {user.prenom} {user.nom}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFamilleOpen(false)
+                    onLogout()
+                  }}
+                >
+                  <Icon name="logout" size={18} /> Se déconnecter
+                </button>
+              </div>
+            )}
+          </div>
           {/* Action propre à l'écran affiché, à droite du badge (ex. menu ⋮
               d'Admin > École) : voir ActionsEntete.jsx. */}
           <div id={ID_ACTIONS_ENTETE} className="app-header__actions" />

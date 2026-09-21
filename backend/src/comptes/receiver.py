@@ -87,4 +87,14 @@ class ComptesReceiver:
         return compte
 
     def famille(self, compte_id: int, db: Session = Depends(get_db)):
-        return self.client.membres_de_la_famille(db, compte_id)
+        # Un élève promu admin figure en élève dans le sélecteur familial :
+        # basculer vers lui sans code n'active pas ses droits (§2.4).
+        membres = []
+        for membre in self.client.membres_de_la_famille(db, compte_id):
+            if roles.admin_sous_condition(membre):
+                sortie = CompteSortie.model_validate(membre)
+                sortie.roles = roles.roles_effectifs(membre, admin_actif=False)
+                sortie.role = roles.role_principal(sortie.roles)
+                membre = sortie
+            membres.append(membre)
+        return membres

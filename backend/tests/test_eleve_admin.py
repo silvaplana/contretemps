@@ -139,3 +139,12 @@ def test_supprimer_depuis_admin_eleves_le_dernier_principal_refuse(client, db_se
         f"/eleves/{ecole['eleve'].id}", headers={"Authorization": f"Bearer {jeton}"}
     )
     assert reponse.status_code == 409
+
+
+def test_dans_la_famille_il_figure_en_eleve(client, db_session, ecole):
+    _promouvoir(client, ecole)
+    ecole["eleve"].famille_id = ecole["owner"].famille_id
+    db_session.commit()
+    membres = client.get(f"/comptes/{ecole['owner'].id}/famille").json()
+    leon = next(m for m in membres if m["id"] == ecole["eleve"].id)
+    assert leon["roles"] == ["eleve"] and leon["role"] == "eleve"
