@@ -55,6 +55,37 @@ def test_supprimer_eleve(client, db_session):
     assert client.get(f"/eleves/{creee['id']}").status_code == 404
 
 
+def test_supprimer_eleve_retire_ses_inscriptions(client, db_session):
+    """Cas vu en production : les inscriptions aux cours survivaient à la
+    suppression de l'élève (4 lignes orphelines pour 2 comptes). Pire, un
+    nouvel élève qui récupère le même id (SQLite réutilise le plus grand
+    id supprimé) en héritait."""
+    ecole = _creer_ecole(db_session)
+    cours = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Éveil"}).json()
+    choregraphie = client.post(
+        f"/cours/{cours['id']}/choregraphies", json={"nom": "Spectacle"}
+    ).json()
+    parti = client.post(
+        "/eleves", params={"ecole_id": ecole.id}, json={"nom": "Perrin", "prenom": "Léon"}
+    ).json()
+    client.post(f"/cours/{cours['id']}/eleves/{parti['id']}")
+    client.post(f"/choregraphies/{choregraphie['id']}/eleves/{parti['id']}")
+
+    assert client.delete(f"/eleves/{parti['id']}").status_code == 204
+
+    assert client.get(f"/cours/{cours['id']}/eleves").json() == []
+    assert client.get(f"/choregraphies/{choregraphie['id']}/eleves").json() == []
+    assert client.get("/cours-par-eleve", params={"ecole_id": ecole.id}).json() == {}
+
+    nouveau = client.post(
+        "/eleves", params={"ecole_id": ecole.id}, json={"nom": "Roux", "prenom": "Ana"}
+    ).json()
+    # Le scénario dangereux suppose que l'id soit bien réutilisé : on le
+    # vérifie, sinon le test passerait sans rien prouver.
+    assert nouveau["id"] == parti["id"]
+    assert client.get(f"/eleves/{nouveau['id']}/cours").json() == []
+
+
 def test_supprimer_eleve_introuvable(client):
     assert client.delete("/eleves/999").status_code == 404
 

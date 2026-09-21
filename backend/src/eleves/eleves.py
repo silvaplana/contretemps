@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import datetime as dt
 
+from choregraphies.models import choregraphies_eleves
 from comptes import Compte, Comptes
+from cours.models import eleves_cours
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -75,6 +77,18 @@ class Eleves:
             return False
         for contact in self.contacts_de_leleve(db, eleve_id):
             db.delete(contact)
+        # Même ménage que CoursService.delete : `eleves_cours` et
+        # `choregraphies_eleves` sont de simples tables de jointure, que
+        # rien ne nettoie tout seul (SQLite tourne sans clés étrangères
+        # actives). Sans ça, les inscriptions survivent à l'élève — vu en
+        # production : 4 lignes pour 2 comptes supprimés — et un futur
+        # élève en hériterait en silence si SQLite réutilise son id (pas
+        # de mot-clé AUTOINCREMENT). Présences et messages, eux, sont
+        # volontairement conservés : c'est de l'historique.
+        db.execute(eleves_cours.delete().where(eleves_cours.c.eleve_id == eleve_id))
+        db.execute(
+            choregraphies_eleves.delete().where(choregraphies_eleves.c.eleve_id == eleve_id)
+        )
         profil = self.get_profil(db, eleve_id)
         if profil is not None:
             db.delete(profil)
