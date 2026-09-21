@@ -7,6 +7,11 @@
 //   `beforeinstallprompt`) ; on garde cet événement et NOTRE bouton ouvre la
 //   vraie fenêtre d'installation du système en un appui — en plus de la
 //   proposition du navigateur lui-même, laissée intacte.
+// - Samsung Internet (Android) : sait installer, mais seulement dans
+//   l'"écran Applis", en appli web rattachée au navigateur — pas d'icône sur
+//   l'écran d'accueil. Chrome, lui, fait une vraie appli Android (écran Applis
+//   + écran d'accueil) : on propose d'ouvrir la page dans Chrome (demande du
+//   2026-09-21), l'installation Samsung restant possible en second choix.
 // - Safari sur Mac (macOS Sonoma et suivants) : pas d'API non plus, mais
 //   menu Fichier > "Ajouter au Dock" — on l'explique.
 // - Firefox (PC/Mac) : ne sait pas installer une appli web — on conseille
@@ -59,6 +64,10 @@ function estNavigateurIntegre() {
   return /FBAN|FBAV|Instagram|Line\/|GSA\//i.test(navigator.userAgent)
 }
 
+function estSamsungInternet() {
+  return /SamsungBrowser/i.test(navigator.userAgent) && /android/i.test(navigator.userAgent)
+}
+
 function estSafariMac() {
   const ua = navigator.userAgent
   return /macintosh/i.test(ua) && /safari/i.test(ua) && !/chrome|chromium|crios|edg|firefox|fxios/i.test(ua)
@@ -68,6 +77,8 @@ function estFirefoxOrdinateur() {
   return /firefox/i.test(navigator.userAgent) && !/android|mobile/i.test(navigator.userAgent)
 }
 
+// 'ouvrir-chrome' : Samsung Internet, ouvrir la page dans Chrome pour
+//   installer une vraie appli (voir ouvrirDansChrome) ;
 // 'bouton' : installation en un appui (Android/Chrome) ;
 // 'ios' : instructions Partager -> Sur l'écran d'accueil ;
 // 'ios-ouvrir-safari' : il faut d'abord ouvrir la page dans Safari ;
@@ -77,11 +88,25 @@ function estFirefoxOrdinateur() {
 // qui n'a pas — ou pas encore — annoncé l'appli installable).
 export function modeInstallation() {
   if (estInstallee()) return null
+  if (estSamsungInternet()) return 'ouvrir-chrome'
   if (invitationDifferee) return 'bouton'
   if (estIOS()) return estNavigateurIntegre() ? 'ios-ouvrir-safari' : 'ios'
   if (estSafariMac()) return 'mac-safari'
   if (estFirefoxOrdinateur()) return 'firefox'
   return null
+}
+
+// Installation "à la Samsung" encore possible (second choix, pour qui n'a
+// pas Chrome) : le navigateur a annoncé l'appli installable.
+export function installationDirectePossible() {
+  return invitationDifferee !== null
+}
+
+// Rouvre la page d'accueil de l'appli dans Chrome (lien "intent" d'Android ;
+// si Chrome manque, Android propose de l'installer depuis le Play Store).
+export function ouvrirDansChrome() {
+  const page = `${location.host}${import.meta.env.BASE_URL}`
+  location.href = `intent://${page}#Intent;scheme=https;package=com.android.chrome;end`
 }
 
 export async function installer() {
@@ -117,10 +142,16 @@ export function reporter() {
 
 // Mode courant, tenu à jour quand le navigateur annonce l'installabilité
 // (souvent après le premier affichage) ou que l'installation se termine.
+// Re-rendu même si le mode ne change pas : installationDirectePossible()
+// peut, elle, avoir changé (Samsung Internet).
 export function useModeInstallation() {
   const [mode, setMode] = useState(modeInstallation)
+  const [, setVersion] = useState(0)
   useEffect(() => {
-    const f = () => setMode(modeInstallation())
+    const f = () => {
+      setMode(modeInstallation())
+      setVersion((v) => v + 1)
+    }
     abonnes.add(f)
     return () => abonnes.delete(f)
   }, [])

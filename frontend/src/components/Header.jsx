@@ -182,15 +182,19 @@ export default function Header({
                       <Icon name={menuExtra.icon} size={18} /> {menuExtra.label}
                     </button>
                   )}
-                  {modeInstallation === 'bouton' && (
+                  {(modeInstallation === 'bouton' || modeInstallation === 'ouvrir-chrome') && (
                     <button
                       type="button"
                       onClick={() => {
                         setMenuOpen(false)
-                        installation.installer()
+                        // Samsung Internet : vraie appli seulement via Chrome
+                        // (voir api/installation.js).
+                        if (modeInstallation === 'ouvrir-chrome') installation.ouvrirDansChrome()
+                        else installation.installer()
                       }}
                     >
-                      <Icon name="download" size={18} /> Installer l’application
+                      <Icon name="download" size={18} />{' '}
+                      {modeInstallation === 'ouvrir-chrome' ? 'Ouvrir dans Chrome pour installer' : 'Installer l’application'}
                     </button>
                   )}
                   <button

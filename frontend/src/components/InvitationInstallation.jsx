@@ -15,7 +15,22 @@ export default function InvitationInstallation({ variante = 'encart' }) {
   if (!mode || masquee) return null
 
   const instructions =
-    mode === 'ios-ouvrir-safari' ? (
+    mode === 'ouvrir-chrome' ? (
+      <>
+        <p className="invitation-installation__texte">
+          Pour une vraie application, avec son icône sur l’écran d’accueil, ouvrez cette page dans{' '}
+          <strong>Chrome</strong> et installez-la depuis Chrome (vous devrez vous y reconnecter).
+        </p>
+        <button type="button" className="btn btn--primary btn--block" onClick={installation.ouvrirDansChrome}>
+          Ouvrir dans Chrome
+        </button>
+        {installation.installationDirectePossible() && (
+          <button type="button" className="btn btn--link" onClick={() => installation.installer()}>
+            Installer quand même avec ce navigateur
+          </button>
+        )}
+      </>
+    ) : mode === 'ios-ouvrir-safari' ? (
       <p className="invitation-installation__texte">
         Pour installer l’application, ouvrez d’abord cette page dans <strong>Safari</strong> (menu ⋯ ou
         « Ouvrir dans le navigateur »).
