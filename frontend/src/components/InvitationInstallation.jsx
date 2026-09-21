@@ -78,29 +78,28 @@ export function InstructionsInstallation({ mode }) {
         </button>
       )}
     </>
-  ) : mode === 'ios-ouvrir-safari' ? (
-    <p className="invitation-installation__texte">
-      Pour installer l’application, ouvrez d’abord cette page dans <strong>Safari</strong> (menu ⋯ ou
-      « Ouvrir dans le navigateur »).
-    </p>
-  ) : mode === 'ios' ? (
-    <p className="invitation-installation__texte">
-      Touchez <Icon name="partager" size={16} /> <strong>Partager</strong> dans Safari — en bas de l’écran, ou
-      dans le menu <strong>⋯</strong> sur les iPhone récents, en haut à droite sur iPad —, puis{' '}
-      <strong>« Sur l’écran d’accueil »</strong> (faites défiler la liste si besoin).
-    </p>
-  ) : mode === 'ios-chrome' ? (
-    <p className="invitation-installation__texte">
-      Touchez <Icon name="partager" size={16} /> <strong>Partager</strong>, en haut à droite dans la barre
-      d’adresse de Chrome, puis <strong>« Sur l’écran d’accueil »</strong>. Si l’option n’apparaît pas,
-      ouvrez cette page dans <strong>Safari</strong>.
-    </p>
-  ) : mode === 'ios-autre' ? (
-    <p className="invitation-installation__texte">
-      Touchez <Icon name="partager" size={16} /> <strong>Partager</strong> dans le menu du navigateur, puis{' '}
-      <strong>« Sur l’écran d’accueil »</strong>. Si l’option n’apparaît pas, ouvrez cette page dans{' '}
-      <strong>Safari</strong>.
-    </p>
+  ) : mode?.startsWith('ios') ? (
+    // Étapes fournies par l'utilisateur, testées sur iPhone (2026-09-21) —
+    // les mêmes quel que soit le navigateur : la 1re ramène dans Safari.
+    <ol className="invitation-installation__texte invitation-installation__etapes">
+      <li>
+        Ouvrez ce site dans <strong>Safari</strong>
+        {mode === 'ios-ouvrir-safari' && ' (menu ⋯ ou « Ouvrir dans le navigateur »)'}.
+      </li>
+      <li>
+        Appuyez sur le bouton <strong>Partager</strong> <Icon name="partager" size={16} /> — le carré avec une
+        flèche vers le haut.
+      </li>
+      <li>
+        Faites défiler et choisissez <strong>« Sur l’écran d’accueil »</strong>.
+      </li>
+      <li>
+        Activez <strong>« Ouvrir comme app web »</strong> si l’option apparaît.
+      </li>
+      <li>
+        Appuyez sur <strong>Ajouter</strong>.
+      </li>
+    </ol>
   ) : mode === 'mac-safari' ? (
     <p className="invitation-installation__texte">
       Dans Safari, menu <strong>Fichier</strong> puis <strong>« Ajouter au Dock »</strong> (macOS Sonoma ou

@@ -90,9 +90,9 @@ function estFirefoxOrdinateur() {
 // 'ouvrir-chrome' : Samsung Internet, ouvrir la page dans Chrome pour
 //   installer une vraie appli (voir ouvrirDansChrome) ;
 // 'bouton' : installation en un appui (Android/Chrome) ;
-// 'ios' : Safari, instructions Partager -> Sur l'écran d'accueil ;
-// 'ios-chrome' : Chrome sur iPhone, Partager est dans la barre d'adresse ;
-// 'ios-autre' : autre navigateur de l'iPhone (Firefox, Edge...) ;
+// 'ios' / 'ios-chrome' / 'ios-autre' : iPhone/iPad (Safari, Chrome, autre) —
+//   mêmes étapes Partager -> Sur l'écran d'accueil, la 1re ramenant dans
+//   Safari (voir InstructionsInstallation) ;
 // 'ios-ouvrir-safari' : il faut d'abord ouvrir la page dans Safari ;
 // 'mac-safari' : menu Fichier > Ajouter au Dock ;
 // 'firefox' : ouvrir la page dans Chrome ou Edge ;

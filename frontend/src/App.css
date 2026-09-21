@@ -2569,3 +2569,12 @@
 .invitation-installation__texte svg {
   vertical-align: -3px;
 }
+
+/* Étapes numérotées (iPhone, voir InstructionsInstallation). */
+.invitation-installation__etapes {
+  margin: 0;
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
