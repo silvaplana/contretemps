@@ -79,6 +79,62 @@ export function proposerAuPremierLancement() {
   return permissionActuelle() === 'default' ? Notification.requestPermission() : Promise.resolve(permissionActuelle())
 }
 
+// --- Rattrapage : appli installée, réinstallée, déjà connectée ---
+//
+// La proposition ci-dessus n'a lieu qu'au premier "Se connecter" : une
+// appli installée où l'on reste connecté ne la voit jamais, et après une
+// réinstallation Android l'abonnement peut avoir disparu (signalé le
+// 2026-09-21 : plus de notifications, donc plus de badge sur l'icône).
+// Deux rattrapages, jamais contre un choix explicite de l'utilisateur :
+// - permission déjà accordée mais aucun abonnement sur cet appareil :
+//   réabonnement silencieux (aucune demande n'est affichée) ;
+// - permission jamais demandée : bandeau "Activer" (components/
+//   BandeauNotifications.jsx), le geste qu'exige le navigateur.
+// "Coupées volontairement" = bouton Notifications éteint dans Profil
+// (voir desabonner) : plus aucun rattrapage tant qu'il ne le rallume pas.
+const CLE_COUPEES = 'contretemps:notificationsCoupees'
+const CLE_BANDEAU_REPORTE = 'contretemps:notificationsBandeauReporte'
+const SEPT_JOURS = 7 * 24 * 3600 * 1000
+
+function lireLocal(cle) {
+  try {
+    return localStorage.getItem(cle)
+  } catch {
+    return null
+  }
+}
+
+function ecrireLocal(cle, valeur) {
+  try {
+    if (valeur === null) localStorage.removeItem(cle)
+    else localStorage.setItem(cle, valeur)
+  } catch {
+    // Stockage indisponible : le choix ne sera pas retenu, pas bloquant.
+  }
+}
+
+function coupeesVolontairement() {
+  return lireLocal(CLE_COUPEES) !== null
+}
+
+export async function reabonnerSiAutorise(compteId) {
+  if (!pushSupporte() || coupeesVolontairement() || permissionActuelle() !== 'granted') return
+  try {
+    if (!(await estAbonneSurCetAppareil())) await abonner(compteId)
+  } catch (err) {
+    console.warn('Réabonnement aux notifications impossible :', err.message)
+  }
+}
+
+export function bandeauAProposer() {
+  if (!pushSupporte() || coupeesVolontairement() || permissionActuelle() !== 'default') return false
+  return Date.now() - Number(lireLocal(CLE_BANDEAU_REPORTE) || 0) >= SEPT_JOURS
+}
+
+export function reporterBandeau() {
+  ecrireLocal(CLE_BANDEAU_REPORTE, String(Date.now()))
+}
+
 // Suite de proposerAuPremierLancement, une fois connecté : abonne cet
 // appareil si la permission a été accordée. Jamais bloquant ni bruyant —
 // la connexion a déjà réussi, un échec ici ne doit rien casser.
@@ -126,6 +182,7 @@ export async function abonner(compteId) {
     method: 'POST',
     body: JSON.stringify({ endpoint, keys }),
   })
+  ecrireLocal(CLE_COUPEES, null)
 }
 
 // Ferme toutes les notifications système encore affichées pour cette
@@ -177,6 +234,9 @@ export async function definirBadge(nombre) {
 // autant nettoyer proprement).
 export async function desabonner() {
   if (!pushSupporte()) return
+  // Seul appelant : le bouton de Profil — choix explicite, à respecter
+  // (voir reabonnerSiAutorise / bandeauAProposer).
+  ecrireLocal(CLE_COUPEES, '1')
   const registration = await navigator.serviceWorker.ready
   const subscription = await registration.pushManager.getSubscription()
   if (!subscription) return

@@ -16,6 +16,7 @@ import { signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
+import BandeauNotifications from './components/BandeauNotifications.jsx'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import Logo from './components/Logo.jsx'
@@ -348,6 +349,14 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
 
+  // Notifications autorisées sur le téléphone mais plus d'abonnement sur
+  // cet appareil (ex. appli réinstallée) : réabonnement silencieux, sans
+  // rien demander (voir api/notifications.js : reabonnerSiAutorise).
+  useEffect(() => {
+    if (compteReel) notificationsApi.reabonnerSiAutorise(compteReel.id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id])
+
   // Total des messages non lus, toutes conversations confondues — même
   // donnée que le badge par conversation (voir api/messages.js :
   // compterNonLus), utilisée à la fois pour le badge de BottomNav.jsx
@@ -647,6 +656,10 @@ function App() {
               : undefined
         }
       />
+
+      {/* Notifications jamais encore acceptées ni refusées sur cet appareil :
+          bandeau "Activer" (voir BandeauNotifications.jsx). */}
+      <BandeauNotifications key={activeUser.id} compteId={activeUser.id} />
 
       <main className="app__content">
         {activeTab === 'admin' && isAdmin(activeUser) && (
