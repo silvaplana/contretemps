@@ -80,6 +80,15 @@ class CoursService:
         cours = self.get(db, cours_id)
         if cours is None:
             return False
+        # `cours_professeurs`/`eleves_cours` sont de simples tables de
+        # jointure (voir models.py), sans `relationship()` ORM dessus :
+        # `db.delete(cours)` seul ne les nettoie pas. Sans ce ménage, un
+        # futur cours peut hériter en silence du prof et des élèves d'un
+        # cours pourtant supprimé, dès que SQLite réutilise son id (pas
+        # de mot-clé AUTOINCREMENT) — repéré lors de tests manuels par
+        # id réutilisé après suppression.
+        db.execute(cours_professeurs.delete().where(cours_professeurs.c.cours_id == cours_id))
+        db.execute(eleves_cours.delete().where(eleves_cours.c.cours_id == cours_id))
         db.delete(cours)
         db.commit()
         return True

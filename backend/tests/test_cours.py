@@ -71,6 +71,26 @@ def test_supprimer_cours(client, db_session):
     assert client.get(f"/cours/{creee['id']}").status_code == 404
 
 
+def test_supprimer_cours_nettoie_ses_professeurs_et_eleves(client, db_session):
+    """`cours_professeurs`/`eleves_cours` sont de simples tables de
+    jointure (voir models.py), sans `relationship()` ORM dessus :
+    supprimer un cours sans les nettoyer laisse des lignes orphelines qui
+    ressurgissent en silence sur un futur cours réutilisant le même id
+    (comportement par défaut de SQLite sans mot-clé AUTOINCREMENT) — bug
+    repéré lors de tests manuels sur la vraie base de l'école."""
+    ecole, prof, eleve = _creer_ecole_et_comptes(db_session)
+    creee = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Eveil"}).json()
+    client.post(f"/cours/{creee['id']}/professeurs/{prof.id}")
+    client.post(f"/cours/{creee['id']}/eleves/{eleve.id}")
+
+    assert client.delete(f"/cours/{creee['id']}").status_code == 204
+
+    nouveau = client.post("/cours", params={"ecole_id": ecole.id}, json={"nom": "Class Ini"}).json()
+    assert nouveau["id"] == creee["id"]  # même id réutilisé, comme en pratique avec SQLite
+    assert client.get(f"/cours/{nouveau['id']}/professeurs").json() == []
+    assert client.get(f"/cours/{nouveau['id']}/eleves").json() == []
+
+
 def test_cours_introuvable(client):
     assert client.get("/cours/999").status_code == 404
     assert client.put("/cours/999", json={"nom": "X"}).status_code == 404

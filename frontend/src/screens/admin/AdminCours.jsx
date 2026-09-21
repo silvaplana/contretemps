@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import * as comptesApi from '../../api/comptes.js'
 import * as conversationsApi from '../../api/conversations.js'
 import * as coursApi from '../../api/cours.js'
 import Badge from '../../components/Badge.jsx'
@@ -6,7 +7,9 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 import { correspond } from '../../utils/recherche.js'
+import ConversationEditModal from './ConversationEditModal.jsx'
 import PlanningHebdoView from './PlanningHebdoView.jsx'
+import { useConversationEditor } from './useConversationEditor.js'
 
 const MAX_BADGES = 2
 
@@ -24,20 +27,7 @@ const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dim
 //
 // Données métier via api/cours.js (voir api/README.md, et sa note sur la
 // simplification "un seul professeur par cours" côté maquette/écrans).
-export default function AdminCours({
-  cours,
-  setCours,
-  professeurs,
-  eleves,
-  ecoleId,
-  // Demande utilisateur du 2026-09-18 : à la création d'un cours (ce
-  // "+" précisément — pas l'import Excel, qui ne passe pas par
-  // addCours), proposer de créer sa conversation de groupe tout de
-  // suite. `onConversationCreee` fait le lien avec AdminScreen.jsx, seul
-  // à posséder `groupes`/`setGroupes` — voir son commentaire pour la
-  // suite (bascule vers l'onglet Messagerie, modale ouverte dessus).
-  onConversationCreee,
-}) {
+export default function AdminCours({ cours, setCours, professeurs, eleves, ecoleId, groupes, setGroupes }) {
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
@@ -46,8 +36,35 @@ export default function AdminCours({
   // Id du cours en cours de glisser-déposer (réordonnancement, voir
   // onDrop) — null hors glissement.
   const [dragId, setDragId] = useState(null)
+  const [admins, setAdmins] = useState([])
   const menuRef = useRef(null)
   useFermerAuClicExterieur(menuRef, menuOuvert, () => setMenuOuvert(false))
+
+  // Demande utilisateur du 2026-09-18 (précisée le 2026-09-21 : case à
+  // cocher plutôt qu'une confirmation, et surtout rester sur cet onglet
+  // plutôt que de basculer sur Admin > Messagerie) : à la création d'un
+  // cours, proposer de créer sa conversation de groupe tout de suite.
+  // Même logique de modale que "+" dans AdminGroupes.jsx, partagée via
+  // ConversationEditModal.jsx / useConversationEditor.js — préfixé
+  // `conversation` pour ne pas entrer en collision avec `editId`/
+  // `enEdition` ci-dessus, qui concernent l'édition d'un COURS.
+  const {
+    setEditId: setConversationEditId,
+    enEdition: conversationEnEdition,
+    nouvelle: conversationNouvelle,
+    renameGroupe,
+    addMembre,
+    removeMembre,
+    creerGroupeWhatsapp,
+    fermerEdition: fermerEditionConversation,
+  } = useConversationEditor(groupes, setGroupes)
+
+  // Uniquement utile pour la modale de conversation ci-dessus (voir
+  // AddMembreForm : "Ajouter un membre" > Admin), comme dans
+  // AdminGroupes.jsx.
+  useEffect(() => {
+    comptesApi.listerAdmins(ecoleId).then(setAdmins)
+  }, [ecoleId])
 
   const filtered = cours.filter((c) => correspond(c.nom, search))
   const enEdition = cours.find((c) => c.id === editId)
@@ -76,25 +93,31 @@ export default function AdminCours({
     setCours((list) => list.filter((c) => c.id !== id))
   }
 
-  async function addCours(donnees) {
+  async function addCours({ avecConversation, ...donnees }) {
     const nouveau = await coursApi.creer(ecoleId, donnees)
     // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
     // l'appliquer 2 fois de suite sur son propre résultat.
     setCours((list) => (list.some((c) => c.id === nouveau.id) ? list : [...list, nouveau]))
 
-    // Contrairement à la conversation AUTOMATIQUE créée par le seed de
-    // démo (voir backend/src/messagerie/conversations.py:
-    // creer_conversation_cours, jamais appelée depuis ce flux réel) —
-    // ici, explicitement proposée, jamais silencieuse.
-    if (!window.confirm(`Créer aussi la conversation de groupe du cours "${nouveau.nom}" ?`)) return
+    if (!avecConversation) return
     // Même recette que le "+" d'Admin > Messagerie (voir
-    // AdminGroupes.jsx: creerConversation) : conversation vide, membre
-    // "cours" ajouté juste après. `ajouterMembre` (voir api/
-    // conversations.js) ne renvoie rien (204) — le membre est reconstruit
-    // ici côté client, comme le fait déjà AdminGroupes.jsx: addMembre.
+    // AdminGroupes.jsx: creerConversation) : conversation vide, sa modale
+    // d'édition s'ouvre juste après — SANS bloc "cours" cette fois (voir
+    // demande du 2026-09-21), pour que son titre reste "Nouvelle
+    // conversation" (voir ConversationEditModal.jsx: estVide) plutôt que
+    // de se nommer tout de suite d'après le cours. Le professeur du cours
+    // (s'il y en a un — voir §6.5, "0 prof" est un cas normal), lui, est
+    // pré-ajouté comme membre : `nouveau.professeurId` (renvoyé par
+    // l'API, donc bien typé) plutôt que le `professeurId` du formulaire
+    // (une chaîne, valeur brute d'un <select>).
     const conversation = await conversationsApi.creerGroupe(ecoleId, '')
-    await conversationsApi.ajouterMembre(conversation.id, { type: 'cours', id: nouveau.id })
-    onConversationCreee?.({ ...conversation, membres: [{ type: 'cours', id: nouveau.id }] })
+    let membres = []
+    if (nouveau.professeurId) {
+      await conversationsApi.ajouterMembre(conversation.id, { type: 'professeur', id: nouveau.professeurId })
+      membres = [{ type: 'professeur', id: nouveau.professeurId }]
+    }
+    setGroupes((list) => [...list, { ...conversation, membres }])
+    setConversationEditId(conversation.id, { nouvelle: true })
   }
 
   function elevesDuCours(coursId) {
@@ -273,6 +296,22 @@ export default function AdminCours({
           onSubmit={(donnees) => update(enEdition.id, donnees)}
         />
       )}
+
+      {conversationEnEdition && (
+        <ConversationEditModal
+          conversation={conversationEnEdition}
+          nouvelle={conversationNouvelle}
+          admins={admins}
+          professeurs={professeurs}
+          eleves={eleves}
+          cours={cours}
+          onClose={fermerEditionConversation}
+          onRename={(nom) => renameGroupe(conversationEnEdition.id, nom)}
+          onAddMembre={(membre) => addMembre(conversationEnEdition.id, membre)}
+          onRemoveMembre={(membre, index) => removeMembre(conversationEnEdition.id, membre, index)}
+          onCreerGroupeWhatsapp={() => creerGroupeWhatsapp(conversationEnEdition.id)}
+        />
+      )}
     </div>
   )
 }
@@ -281,6 +320,11 @@ export default function AdminCours({
 // l'ajout et la modification — `initial` pré-remplit les champs en édition.
 function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmit }) {
   const [nom, setNom] = useState(initial?.nom ?? '')
+  // Case à cocher, uniquement à la CRÉATION (voir `!initial` ci-dessous) —
+  // demande utilisateur du 2026-09-21 : cochée par défaut, à la place de
+  // l'ancien `window.confirm` après coup (voir addCours dans
+  // AdminCours.jsx).
+  const [avecConversation, setAvecConversation] = useState(true)
   const [jour, setJour] = useState(initial?.jour ?? 'Mercredi')
   const [heureDebut, setHeureDebut] = useState(initial?.heureDebut ?? '')
   const [heureFin, setHeureFin] = useState(initial?.heureFin ?? '')
@@ -314,7 +358,16 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
   async function valider() {
     if (enCours) return
     setEnCours(true)
-    await onSubmit({ nom, jour, heureDebut, heureFin, salle, professeurId, horairesSupplementaires })
+    await onSubmit({
+      nom,
+      jour,
+      heureDebut,
+      heureFin,
+      salle,
+      professeurId,
+      horairesSupplementaires,
+      avecConversation: initial ? undefined : avecConversation,
+    })
     onClose()
   }
 
@@ -432,6 +485,19 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
           </option>
         ))}
       </select>
+
+      {/* Uniquement à la création (voir avecConversation ci-dessus) —
+          modifier un cours existant ne touche pas à sa conversation. */}
+      {!initial && (
+        <label className="checkbox-inline">
+          <input
+            type="checkbox"
+            checked={avecConversation}
+            onChange={(e) => setAvecConversation(e.target.checked)}
+          />
+          Créer aussi la conversation de groupe de ce cours
+        </label>
+      )}
     </Modal>
   )
 }

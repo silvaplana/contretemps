@@ -1,56 +1,12 @@
 import { useEffect, useState } from 'react'
 import * as comptesApi from '../../api/comptes.js'
 import * as conversationsApi from '../../api/conversations.js'
-import AddMembreForm from '../../components/AddMembreForm.jsx'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
-import Modal from '../../components/Modal.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 import { correspond } from '../../utils/recherche.js'
-
-const TONE_PAR_TYPE = { admin: 'danger', professeur: 'success', eleve: 'neutral', cours: 'neutral' }
-
-function libelleMembre(membre, { admins = [], professeurs, eleves, cours }) {
-  // `label` vient du backend pour un membre "compte" (nom/prénom déjà
-  // résolus, voir api/conversations.js: versEcranAdmin) — absent pour un
-  // membre "cours" (juste un id), d'où le repli ci-dessous sur les listes
-  // déjà chargées par ailleurs.
-  if (membre.label) return membre.label
-  if (membre.type === 'admin') {
-    const a = admins.find((x) => x.id === membre.id)
-    return a ? `${a.prenom} ${a.nom}` : '?'
-  }
-  if (membre.type === 'professeur') {
-    const p = professeurs.find((x) => x.id === membre.id)
-    return p ? `${p.prenom} ${p.nom}` : '?'
-  }
-  if (membre.type === 'eleve') {
-    const el = eleves.find((x) => x.id === membre.id)
-    return el ? `${el.prenom} ${el.nom}` : '?'
-  }
-  const c = cours.find((x) => x.id === membre.id)
-  return c ? c.nom : '?'
-}
-
-// Une conversation automatique de cours (voir spec/SPEC.md §6.9 : "chaque
-// cours a sa propre conversation de groupe automatique") n'a PAS de `nom`
-// propre en base — c'est le cours qui la nomme implicitement. Sans ce
-// repli, la colonne "Nom" reste vide (déjà vu : confondu avec une
-// conversation "mal construite", alors que ses membres s'affichent bien).
-function nomAffiche(g, { cours }) {
-  if (g.nom) return g.nom
-  const blocCours = g.membres.length === 1 ? g.membres.find((m) => m.type === 'cours') : null
-  return blocCours ? libelleMembre(blocCours, { cours }) : '(Sans nom)'
-}
-
-// Une conversation "vide" (ni nom, ni membre, ni groupe WhatsApp) — le cas
-// juste après avoir cliqué "+" (voir creerConversation) et rien touché
-// encore : jamais montrée dans la liste comme une vraie conversation, et
-// nettoyée automatiquement si on ressort de sa modale sans rien y avoir mis
-// (voir fermerEdition), pour ne pas laisser de conversations fantômes.
-function estVide(g) {
-  return !g.nom && g.membres.length === 0 && g.whatsappStatut !== 'cree'
-}
+import ConversationEditModal, { TONE_PAR_TYPE, estVide, libelleMembre, nomAffiche } from './ConversationEditModal.jsx'
+import { useConversationEditor } from './useConversationEditor.js'
 
 // Onglet Admin > Messagerie (voir spec/SPEC.md §5.1.5 et §6.9). Une
 // conversation se compose de blocs "Compte" (admin/professeur/élève
@@ -60,43 +16,21 @@ function estVide(g) {
 // Création ET édition partagent la même modale (demande) : "+" crée tout
 // de suite une conversation vide côté backend puis ouvre sa modale
 // d'édition — pas de formulaire de création séparé, pour ne jamais avoir à
-// maintenir deux fois la même logique nom/membres/WhatsApp.
+// maintenir deux fois la même logique nom/membres/WhatsApp. Cette modale
+// est aussi ouverte depuis Admin > Cours (voir AdminCours.jsx) sans
+// quitter cet onglet-ci — voir ConversationEditModal.jsx et
+// useConversationEditor.js, partagés entre les deux écrans.
 //
 // Groupe WhatsApp miroir (§6.9) : icône dans la liste + case à cocher —
 // toujours avec confirmation avant le vrai appel, puisque la création
 // n'est pas réversible depuis cet écran (pas de "détacher" pour
 // l'instant), voir conversationsApi.creerGroupeWhatsapp — stub côté
 // backend, pas encore branché sur un vrai client WhatsApp.
-export default function AdminGroupes({
-  groupes,
-  setGroupes,
-  professeurs,
-  eleves,
-  cours,
-  ecoleId,
-  // Id d'une conversation à ouvrir dès le montage (voir AdminScreen.jsx :
-  // "Créer aussi la conversation ?" à la création d'un cours, dans
-  // AdminCours.jsx) — déjà créée côté backend, avec le même appel API que
-  // creerConversation ci-dessous ; il ne reste plus qu'à ouvrir sa modale
-  // d'édition. Repris seulement comme état INITIAL (pas via un effet) :
-  // ce composant est démonté/remonté à chaque fois qu'on revient sur
-  // l'onglet Messagerie (voir AdminScreen), donc un changement
-  // ultérieur de cette prop ne doit jamais rouvrir la modale une 2e fois.
-  editIdInitial,
-  // Prévient AdminScreen que `editIdInitial` est consommé : sans ça,
-  // quitter puis revenir sur cet onglet (toujours dans la même visite
-  // d'Admin, donc SANS remonter AdminScreen) rouvrirait la même modale
-  // en boucle.
-  onEditIdInitialConsomme,
-}) {
+export default function AdminGroupes({ groupes, setGroupes, professeurs, eleves, cours, ecoleId }) {
   const [search, setSearch] = useState('')
-  const [editId, setEditId] = useState(editIdInitial ?? null)
   const [admins, setAdmins] = useState([])
-
-  useEffect(() => {
-    if (editIdInitial != null) onEditIdInitialConsomme?.()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  const { setEditId, enEdition, nouvelle, renameGroupe, addMembre, removeMembre, creerGroupeWhatsapp, fermerEdition } =
+    useConversationEditor(groupes, setGroupes)
 
   // Uniquement utile ici (voir AddMembreForm : "Ajouter un membre" >
   // Admin) — pas besoin de faire remonter ça jusqu'à App.jsx comme
@@ -106,28 +40,6 @@ export default function AdminGroupes({
   }, [ecoleId])
 
   const filtered = groupes.filter((g) => !estVide(g) && correspond(nomAffiche(g, { cours }), search))
-  const enEdition = groupes.find((g) => g.id === editId)
-
-  function remplacer(id, patch) {
-    setGroupes((list) => list.map((g) => (g.id === id ? { ...g, ...patch } : g)))
-  }
-
-  async function renameGroupe(id, nom) {
-    remplacer(id, { nom }) // optimiste : l'input ne doit pas attendre le réseau
-    await conversationsApi.renommer(id, nom)
-  }
-
-  async function removeMembre(groupeId, membre, index) {
-    remplacer(groupeId, {
-      membres: groupes.find((g) => g.id === groupeId).membres.filter((_, i) => i !== index),
-    })
-    await conversationsApi.retirerMembre(groupeId, membre, index)
-  }
-
-  async function addMembre(groupeId, membre) {
-    const nouvelle = await conversationsApi.ajouterMembre(groupeId, membre)
-    remplacer(groupeId, { membres: [...groupes.find((g) => g.id === groupeId).membres, nouvelle ?? membre] })
-  }
 
   async function removeGroupe(id) {
     if (!window.confirm('Supprimer cette conversation ?')) return
@@ -135,33 +47,10 @@ export default function AdminGroupes({
     setGroupes((list) => list.filter((g) => g.id !== id))
   }
 
-  async function creerGroupeWhatsapp(id) {
-    if (
-      !window.confirm(
-        'Créer un groupe WhatsApp lié à cette conversation ? Cette action ne peut pas être annulée depuis cet écran.',
-      )
-    ) {
-      return
-    }
-    const miroir = await conversationsApi.creerGroupeWhatsapp(id)
-    remplacer(id, { whatsappStatut: miroir.whatsappStatut, whatsappGroupeId: miroir.whatsappGroupeId })
-  }
-
   async function creerConversation() {
-    const nouvelle = await conversationsApi.creerGroupe(ecoleId, '')
-    setGroupes((list) => [...list, nouvelle])
-    setEditId(nouvelle.id)
-  }
-
-  // Referme la modale — supprime la conversation si elle est ressortie
-  // vide (voir estVide), pour ne jamais laisser une conversation fantôme
-  // créée par erreur (clic sur "+" puis "Fermer" sans rien remplir).
-  async function fermerEdition() {
-    if (enEdition && estVide(enEdition)) {
-      await conversationsApi.supprimer(enEdition.id)
-      setGroupes((list) => list.filter((g) => g.id !== enEdition.id))
-    }
-    setEditId(null)
+    const conversation = await conversationsApi.creerGroupe(ecoleId, '')
+    setGroupes((list) => [...list, conversation])
+    setEditId(conversation.id, { nouvelle: true })
   }
 
   return (
@@ -246,60 +135,20 @@ export default function AdminGroupes({
       </button>
 
       {enEdition && (
-        <Modal
-          title={estVide(enEdition) ? 'Nouvelle conversation' : `Modifier — ${nomAffiche(enEdition, { cours })}`}
+        <ConversationEditModal
+          conversation={enEdition}
+          nouvelle={nouvelle}
+          admins={admins}
+          professeurs={professeurs}
+          eleves={eleves}
+          cours={cours}
           onClose={fermerEdition}
-        >
-          <label htmlFor="edit-groupe-nom">Nom</label>
-          <input
-            id="edit-groupe-nom"
-            value={enEdition.nom ?? ''}
-            // Placeholder plutôt que value quand `nom` est vide (conversation
-            // automatique de cours, voir nomAffiche ci-dessus) : le champ a
-            // l'air vide (c'est le cas en base), mais indique quel nom
-            // s'affiche par défaut dans la liste — pas de perte d'info.
-            placeholder={enEdition.nom ? undefined : nomAffiche(enEdition, { cours })}
-            onChange={(e) => renameGroupe(enEdition.id, e.target.value)}
-          />
-
-          <label>Personnes</label>
-          <div className="member-list">
-            {enEdition.membres.map((m, i) => (
-              <div key={i} className="member-list__row">
-                <Badge tone={TONE_PAR_TYPE[m.type]}>{libelleMembre(m, { admins, professeurs, eleves, cours })}</Badge>
-                <button
-                  type="button"
-                  className="icon-btn"
-                  onClick={() => removeMembre(enEdition.id, m, i)}
-                  aria-label="Retirer"
-                >
-                  <Icon name="x" size={16} />
-                </button>
-              </div>
-            ))}
-            {enEdition.membres.length === 0 && <p className="muted">Aucun membre pour l'instant.</p>}
-          </div>
-          <AddMembreForm
-            admins={admins}
-            professeurs={professeurs}
-            eleves={eleves}
-            cours={cours}
-            onAdd={(membre) => addMembre(enEdition.id, membre)}
-          />
-
-          <label className="checkbox-inline">
-            <input
-              type="checkbox"
-              checked={enEdition.whatsappStatut === 'cree'}
-              disabled={enEdition.whatsappStatut === 'cree'}
-              onChange={() => creerGroupeWhatsapp(enEdition.id)}
-            />
-            <WhatsappBadge size={16} />
-            {enEdition.whatsappStatut === 'cree' ? 'Groupe WhatsApp lié' : 'Créer un groupe WhatsApp lié'}
-          </label>
-        </Modal>
+          onRename={(nom) => renameGroupe(enEdition.id, nom)}
+          onAddMembre={(membre) => addMembre(enEdition.id, membre)}
+          onRemoveMembre={(membre, index) => removeMembre(enEdition.id, membre, index)}
+          onCreerGroupeWhatsapp={() => creerGroupeWhatsapp(enEdition.id)}
+        />
       )}
     </div>
   )
 }
-

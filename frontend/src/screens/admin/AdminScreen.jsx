@@ -35,13 +35,6 @@ export default function AdminScreen({
 }) {
   const [subTab, setSubTab] = useState('eleves')
 
-  // "Créer aussi la conversation ?" à la création d'un cours (voir
-  // AdminCours.jsx: addCours, demande utilisateur du 2026-09-18) — état à
-  // consommer UNE fois (voir onEditIdInitialConsomme plus bas) : sans ça,
-  // quitter puis revenir sur l'onglet Messagerie rouvrirait la même
-  // modale en boucle.
-  const [conversationAOuvrirDepuisCours, setConversationAOuvrirDepuisCours] = useState(null)
-
   // Effectif affiché directement dans l'onglet, "Élèves (179)" (demande
   // utilisateur). Compté sur `eleves`, la liste réellement chargée : le
   // nombre se remet donc à jour tout seul après un ajout, une
@@ -91,11 +84,8 @@ export default function AdminScreen({
           professeurs={professeurs}
           eleves={eleves}
           ecoleId={ecole.id}
-          onConversationCreee={(conversation) => {
-            setGroupes((list) => [...list, conversation])
-            setConversationAOuvrirDepuisCours(conversation.id)
-            setSubTab('groupes')
-          }}
+          groupes={groupes}
+          setGroupes={setGroupes}
         />
       )}
       {subTab === 'groupes' && (
@@ -106,8 +96,6 @@ export default function AdminScreen({
           eleves={eleves}
           cours={cours}
           ecoleId={ecole.id}
-          editIdInitial={conversationAOuvrirDepuisCours}
-          onEditIdInitialConsomme={() => setConversationAOuvrirDepuisCours(null)}
         />
       )}
     </div>
