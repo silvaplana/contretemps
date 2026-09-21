@@ -8,13 +8,23 @@ import { isOwner } from '../../data/roles.js'
 // Tableau des administrateurs (Admin > École, au-dessus de "Usage vidéo" —
 // voir spec/SPEC.md §2.4). Visible par TOUS les admins de l'école ; seuls
 // les Owners ont le crayon et la poubelle, et jamais sur leur propre ligne.
-// "Créer nouvel administrateur" est dans le menu ⋮ d'Admin > École (voir
-// SauvegardeEcoleMenu.jsx) : `creationOuverte` vient de là.
+// Créer un administrateur : bouton "Ajouter un administrateur" sous le
+// tableau (demande du 2026-09-21 : l'entrée du menu ⋮ seule, en haut de
+// l'onglet, passait inaperçue) ET menu ⋮ d'Admin > École (voir
+// SauvegardeEcoleMenu.jsx). Les deux ouvrent la même modale, via
+// `creationOuverte` / `onOuvrirCreation` tenus par AdminParametres.
 //
 // Les droits sont de toute façon vérifiés par le serveur (voir
 // backend/src/administrateurs/receiver.py) : masquer les boutons ici n'est
 // qu'un confort, pas la protection.
-export default function AdministrateursTableau({ ecoleId, activeUser, professeurs, creationOuverte, onFermerCreation }) {
+export default function AdministrateursTableau({
+  ecoleId,
+  activeUser,
+  professeurs,
+  creationOuverte,
+  onOuvrirCreation,
+  onFermerCreation,
+}) {
   const [administrateurs, setAdministrateurs] = useState([])
   const [enEdition, setEnEdition] = useState(null)
   const [erreur, setErreur] = useState(null)
@@ -111,6 +121,15 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
           </tbody>
         </table>
       </div>
+      {peutGerer && (
+        <button
+          type="button"
+          className="btn btn--secondary admin-administrateurs__ajouter"
+          onClick={onOuvrirCreation}
+        >
+          <Icon name="plus" size={16} /> Ajouter un administrateur
+        </button>
+      )}
 
       {peutGerer && creationOuverte && (
         <AdministrateurModal

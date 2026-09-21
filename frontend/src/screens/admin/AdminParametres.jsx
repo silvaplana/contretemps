@@ -113,6 +113,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
         activeUser={activeUser}
         professeurs={professeurs}
         creationOuverte={creationAdminOuverte}
+        onOuvrirCreation={() => setCreationAdminOuverte(true)}
         onFermerCreation={() => setCreationAdminOuverte(false)}
       />
 

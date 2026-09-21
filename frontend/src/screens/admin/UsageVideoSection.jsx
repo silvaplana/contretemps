@@ -33,12 +33,16 @@ function formatDuree(secondes) {
 // puis les 10 plus grosses vidéos. Affichée directement, au même niveau et
 // sous le même format de titre que la section "Administrateurs" (demande
 // du 2026-09-21 — c'était avant une fenêtre ouverte par un bouton).
-// Chargée à l'affichage de l'onglet (pas de cache : la taille est lue sur
-// le disque à la demande côté backend, voir videos.py : usage_ecole).
+// Dépliable, FERMÉE par défaut (demande du 2026-09-21) : un clic sur le
+// titre l'ouvre. Chargée seulement à la première ouverture — la taille est
+// lue sur le disque à la demande côté backend (voir videos.py :
+// usage_ecole), inutile de la calculer si personne ne regarde.
 export default function UsageVideoSection({ ecoleId, setVideos }) {
+  const [ouvert, setOuvert] = useState(false)
   const [usage, setUsage] = useState(null)
 
   useEffect(() => {
+    if (!ouvert || usage !== null) return
     let annule = false
     videosApi.usage(ecoleId).then((u) => {
       if (!annule) setUsage(u)
@@ -46,7 +50,7 @@ export default function UsageVideoSection({ ecoleId, setVideos }) {
     return () => {
       annule = true
     }
-  }, [ecoleId])
+  }, [ecoleId, ouvert, usage])
 
   async function supprimer(video) {
     if (!window.confirm(`Supprimer « ${video.titre} » ? Le fichier sera aussi effacé.`)) return
@@ -80,8 +84,18 @@ export default function UsageVideoSection({ ecoleId, setVideos }) {
 
   return (
     <section className="admin-usage-video">
-      <h3 className="section-label">Usage vidéo</h3>
-      {usage === null ? (
+      <h3 className="section-label">
+        <button
+          type="button"
+          className="section-label__depliant"
+          aria-expanded={ouvert}
+          onClick={() => setOuvert((o) => !o)}
+        >
+          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
+          Usage vidéo
+        </button>
+      </h3>
+      {!ouvert ? null : usage === null ? (
         <p className="muted">Calcul en cours…</p>
       ) : (
         <>

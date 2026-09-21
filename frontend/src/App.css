@@ -2262,6 +2262,28 @@
   margin-bottom: 8px;
 }
 
+/* Titre de section cliquable pour la déplier (ex. "Usage vidéo", Admin >
+   École) : garde exactement l'apparence du titre, avec une flèche. */
+.section-label__depliant {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  min-height: auto;
+}
+
+/* "Ajouter un administrateur", sous le tableau des administrateurs. */
+.admin-administrateurs__ajouter {
+  margin-top: 10px;
+}
+
 /* Liste des autres profils de la famille, dans l'écran Profil (§5.6). */
 .profil-famille-list {
   display: flex;
