@@ -119,8 +119,9 @@ le **professeur-admin**, un professeur qui a aussi les droits admin.
 - **Un Owner n'agit jamais sur sa propre ligne** : il ne peut ni se retirer le statut d'Owner,
   ni se retirer les droits admin, ni se supprimer. Un autre Owner peut le faire. Ça évite qu'un
   Owner se verrouille dehors par accident.
-- L'Owner n'est pas un 4ᵉ rôle : c'est une qualité en plus du statut d'administrateur. Pour
-  tout le reste de l'appli (§3), un Owner est un admin ordinaire.
+- Owner est un rôle qui s'ajoute toujours au rôle Admin (§2.1, §6.3bis). Il ne donne que la
+  gestion des administrateurs : pour tout le reste de l'appli (§3), un Owner est un admin
+  ordinaire.
 
 #### Professeur-admin
 
