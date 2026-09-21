@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as notificationsApi from '../api/notifications.js'
 import Icon from '../components/Icon.jsx'
-import { ROLE_LABEL, trierParRole } from '../data/roles.js'
+import { ROLE_LABEL, isAdmin, isProf, trierParRole } from '../data/roles.js'
 
 // Champ "toujours affiché, éditable via un crayon" (Profil admin
 // uniquement, voir ProfilScreen.jsx : email et code de récupération) —
@@ -128,7 +128,7 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         {/* Admin : email/téléphone/code de récupération éditables
             (crayon, demande) — les autres rôles restent en lecture
             seule, ces champs se gèrent depuis Admin > Élèves/Profs. */}
-        {user.type === 'admin' ? (
+        {isAdmin(user) ? (
           <>
             <ChampAdminEditable
               valeur={user.email}
@@ -178,7 +178,7 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         </section>
       )}
 
-      {user.type === 'professeur' && (
+      {isProf(user) && (
         <section>
           <h3 className="section-label">Travail</h3>
           <button type="button" className="settings-row settings-row--button" onClick={onOpenMesHeures}>

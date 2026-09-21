@@ -36,7 +36,7 @@ class PresenceEleve(Base):
     )
     eleve_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False, index=True)
     # 'present' | 'absent' | 'retard' — texte, pas Enum (même choix que
-    # comptes.role, voir backend/README.md).
+    # roles_compte.role, voir backend/README.md).
     statut: Mapped[str] = mapped_column(String(20), nullable=False, default="present")
 
 

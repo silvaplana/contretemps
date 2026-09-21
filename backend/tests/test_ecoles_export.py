@@ -282,3 +282,70 @@ def test_lister_sauvegardes_vide_par_defaut(client, scenario, _nettoyage_dossier
     reponse = client.get(f"/ecoles/{ecole_id}/sauvegardes")
     assert reponse.status_code == 200
     assert reponse.json() == []
+
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _roles_par_compte(db_session, ecole_id):
+    from comptes import roles
+    from comptes.models import Compte
+
+    db_session.expire_all()
+    return {
+        c.id: roles.noms_roles(c)
+        for c in db_session.query(Compte).filter(Compte.ecole_id == ecole_id).all()
+    }
+
+
+def test_supprimer_donnees_garde_les_roles_de_l_admin_conserve(client, scenario, db_session):
+    """Les rôles vivent dans leur propre table (§6.3bis) : l'admin conservé
+    doit garder les siens, sinon il perdrait ses droits sur l'école."""
+    ecole_id = scenario["ecole"].id
+    client.delete(f"/ecoles/{ecole_id}/donnees")
+    assert _roles_par_compte(db_session, ecole_id) == {scenario["admin1"].id: ["admin", "owner"]}
+
+
+def test_restaurer_retrouve_les_roles(client, scenario, db_session):
+    ecole_id = scenario["ecole"].id
+    avant = _roles_par_compte(db_session, ecole_id)
+    sauvegarde = client.get(f"/ecoles/{ecole_id}/export-technique").content
+    client.delete(f"/ecoles/{ecole_id}/donnees")
+    client.post(f"/ecoles/{ecole_id}/restaurer", files={"fichier": ("b.xlsx", sauvegarde, XLSX)})
+    assert _roles_par_compte(db_session, ecole_id) == avant
+
+
+def test_restaurer_une_sauvegarde_d_avant_les_roles_cumulables(client, scenario, db_session):
+    """Un fichier sauvegardé avant le 2026-09-21 a une colonne "role" dans
+    l'onglet Comptes et pas d'onglet RolesComptes : il doit toujours se
+    restaurer, avec la même conversion que la migration (Owner = le plus
+    ancien admin)."""
+    ecole_id = scenario["ecole"].id
+    classeur = openpyxl.load_workbook(
+        io.BytesIO(client.get(f"/ecoles/{ecole_id}/export-technique").content)
+    )
+    ancien_role = {
+        scenario["admin1"].id: "admin", scenario["admin2"].id: "admin",
+        scenario["prof"].id: "professeur", scenario["eleve"].id: "eleve",
+    }
+    feuille = classeur["Comptes"]
+    colonne_role = feuille.max_column + 1
+    feuille.cell(row=1, column=colonne_role, value="role")
+    for ligne in range(2, feuille.max_row + 1):
+        compte_id = feuille.cell(row=ligne, column=1).value
+        feuille.cell(row=ligne, column=colonne_role, value=ancien_role[compte_id])
+    del classeur["RolesComptes"]
+    fichier = io.BytesIO()
+    classeur.save(fichier)
+
+    client.delete(f"/ecoles/{ecole_id}/donnees")
+    reponse = client.post(
+        f"/ecoles/{ecole_id}/restaurer", files={"fichier": ("ancien.xlsx", fichier.getvalue(), XLSX)}
+    )
+    assert reponse.status_code == 204
+    assert _roles_par_compte(db_session, ecole_id) == {
+        scenario["admin1"].id: ["admin", "owner"],
+        scenario["admin2"].id: ["admin"],
+        scenario["prof"].id: ["professeur"],
+        scenario["eleve"].id: ["eleve"],
+    }

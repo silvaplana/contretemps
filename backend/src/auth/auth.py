@@ -7,17 +7,27 @@ compte visé) — auth ne possède aucune table à lui, juste de la logique.
 from __future__ import annotations
 
 from comptes import Compte, Comptes
-from ecoles import Ecoles
+from comptes import roles as r
+from ecoles import Ecole, Ecoles
 from sqlalchemy.orm import Session
 
-# Rang de rôle, du plus faible au plus fort (voir §2.2) : sert à savoir si
-# passer d'un profil à l'autre est une montée en privilège (code
-# redemandé) ou non. Même règle que le frontend (data/roles.js).
-RANG_ROLE = {"eleve": 0, "professeur": 1, "admin": 2}
+
+def montee_en_privilege(depuis: Compte, vers: Compte) -> bool:
+    """Passer de `depuis` à `vers` monte-t-il en privilège (§2.2) ? Un
+    compte à plusieurs rôles compte pour son rôle le plus élevé."""
+    return r.rang(vers) > r.rang(depuis)
 
 
-def montee_en_privilege(depuis_role: str, vers_role: str) -> bool:
-    return RANG_ROLE[vers_role] > RANG_ROLE[depuis_role]
+def _codes_du_compte(ecole: Ecole, compte: Compte) -> list[str | None]:
+    """Codes d'accès acceptés pour ce compte : celui de CHACUN de ses rôles
+    (§2.2 — un professeur-admin entre avec le code prof comme avec le code
+    admin). Owner n'a pas de code propre : il est toujours aussi Admin."""
+    codes_par_role = {
+        r.ADMIN: ecole.code_acces_admin,
+        r.PROFESSEUR: ecole.code_acces_prof,
+        r.ELEVE: ecole.code_acces_eleve,
+    }
+    return [codes_par_role[nom] for nom in r.noms_roles(compte) if nom in codes_par_role]
 
 
 def _memes_codes(saisi: str, attendu: str | None) -> bool:
@@ -35,8 +45,8 @@ class Auth:
 
     def connecter(self, db: Session, ecole_id: int, identifiant: str, code: str) -> Compte | None:
         """identifiant = 'Prénom Nom' OU email (voir §2.2). Le code doit
-        correspondre au rôle réellement associé au compte trouvé, dans
-        cette école — pas juste être un des 3 codes valides de l'école.
+        correspondre à l'UN des rôles du compte trouvé, dans cette école —
+        pas juste être un des 3 codes valides de l'école.
         """
         ecole = self.ecoles.get(db, ecole_id)
         if ecole is None:
@@ -53,13 +63,8 @@ class Auth:
             prenom, _, nom = identifiant.rpartition(" ")
             candidats = self.comptes.trouver_par_nom_prenom(db, ecole_id, nom, prenom)
 
-        codes_par_role = {
-            "admin": ecole.code_acces_admin,
-            "professeur": ecole.code_acces_prof,
-            "eleve": ecole.code_acces_eleve,
-        }
         for compte in candidats:
-            if _memes_codes(code, codes_par_role.get(compte.role)):
+            if any(_memes_codes(code, attendu) for attendu in _codes_du_compte(ecole, compte)):
                 return compte
         return None
 
@@ -81,11 +86,14 @@ class Auth:
         return None
 
     def premier_admin(self, db: Session, ecole_id: int) -> Compte | None:
-        """Pas de gestion multi-admin pour l'instant (voir spec/SPEC.md
-        §8) : LE contact affiché aux profs/élèves qui n'ont pas de
-        récupération en libre-service (voir "Code oublié ?")."""
-        admins = self.comptes.list_par_role(db, ecole_id, "admin")
-        return admins[0] if admins else None
+        """LE contact affiché aux comptes sans récupération en libre-service
+        (voir "Code oublié ?") : le plus ancien Owner de l'école (§2.2,
+        §2.4), à défaut le plus ancien admin."""
+        for role in (r.OWNER, r.ADMIN):
+            comptes = self.comptes.list_par_role(db, ecole_id, role)
+            if comptes:
+                return comptes[0]
+        return None
 
     def verifier_reponse_recuperation(self, db: Session, compte_id: int, reponse: str) -> Compte | None:
         """"Code oublié ?" — réservé aux admins (voir §6.3 :
@@ -94,7 +102,8 @@ class Auth:
         qu'un mot de passe strict — cohérent avec le reste de l'appli
         (codes d'accès non plus sensibles à la casse dans les faits)."""
         compte = self.comptes.get(db, compte_id)
-        if compte is None or compte.role != "admin":
+        # Tout admin, professeur-admin compris (§2.2, §2.4).
+        if compte is None or not r.is_admin(compte):
             return None
         attendu = (compte.code_recuperation or "").strip().lower()
         if not attendu or reponse.strip().lower() != attendu:
@@ -107,7 +116,7 @@ class Auth:
         vers = self.comptes.get(db, vers_compte_id)
         if depuis is None or vers is None:
             return True
-        return montee_en_privilege(depuis.role, vers.role)
+        return montee_en_privilege(depuis, vers)
 
     def verifier_code_bascule(self, db: Session, vers_compte_id: int, code: str) -> bool:
         vers = self.comptes.get(db, vers_compte_id)
@@ -116,9 +125,4 @@ class Auth:
         ecole = self.ecoles.get(db, vers.ecole_id)
         if ecole is None:
             return False
-        codes_par_role = {
-            "admin": ecole.code_acces_admin,
-            "professeur": ecole.code_acces_prof,
-            "eleve": ecole.code_acces_eleve,
-        }
-        return _memes_codes(code, codes_par_role.get(vers.role))
+        return any(_memes_codes(code, attendu) for attendu in _codes_du_compte(ecole, vers))

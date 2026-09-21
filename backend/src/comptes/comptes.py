@@ -12,7 +12,8 @@ import unicodedata
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import Compte, Famille
+from . import roles as r
+from .models import Compte, Famille, RoleCompte
 
 
 def _normaliser(texte: str) -> str:
@@ -40,9 +41,15 @@ class Comptes:
         return list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id)))
 
     def list_par_role(self, db: Session, ecole_id: int, role: str) -> list[Compte]:
+        """Comptes de l'école qui ONT ce rôle, parmi d'autres éventuellement
+        (§6.3bis) : un professeur-admin sort à la fois pour "professeur" et
+        pour "admin". Triés par id, donc par ancienneté."""
         return list(
             db.scalars(
-                select(Compte).where(Compte.ecole_id == ecole_id, Compte.role == role)
+                select(Compte)
+                .join(RoleCompte, RoleCompte.compte_id == Compte.id)
+                .where(Compte.ecole_id == ecole_id, RoleCompte.role == role)
+                .order_by(Compte.id)
             )
         )
 
@@ -71,7 +78,9 @@ class Comptes:
         nom_cible, prenom_cible = _normaliser(nom), _normaliser(prenom)
         requete = select(Compte).where(Compte.ecole_id == ecole_id)
         if role is not None:
-            requete = requete.where(Compte.role == role)
+            requete = requete.join(RoleCompte, RoleCompte.compte_id == Compte.id).where(
+                RoleCompte.role == role
+            )
         return [
             compte
             for compte in db.scalars(requete)
@@ -103,17 +112,26 @@ class Comptes:
         telephone: str | None = None,
         code_recuperation: str | None = None,
     ) -> Compte:
+        if role not in r.ROLES or role == r.OWNER:
+            # Owner ne se donne pas à la création : il s'ajoute à un admin
+            # (voir ci-dessous et §2.4), jamais seul (owner ⇒ admin).
+            raise ValueError(f"Rôle inconnu ou non attribuable à la création : {role}")
         famille = self.get_or_create_famille(db, ecole_id, email)
+        # Le premier admin d'une école en devient Owner (§2.4) — décidé
+        # AVANT d'ajouter ce compte, sinon il se compterait lui-même.
+        devient_owner = role == r.ADMIN and not self.list_par_role(db, ecole_id, r.OWNER)
         compte = Compte(
             ecole_id=ecole_id,
             famille_id=famille.id,
-            role=role,
             nom=nom,
             prenom=prenom,
             email=email,
             telephone=telephone,
             code_recuperation=code_recuperation,
         )
+        compte.roles.append(RoleCompte(role=role))
+        if devient_owner:
+            compte.roles.append(RoleCompte(role=r.OWNER))
         db.add(compte)
         db.commit()
         db.refresh(compte)

@@ -25,7 +25,7 @@ class Conversation(Base):
     ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
     nom: Mapped[str | None] = mapped_column(String(150), nullable=True)
     # 'individuelle' | 'groupe' — texte, pas Enum (même choix que
-    # comptes.role, voir backend/README.md).
+    # roles_compte.role, voir backend/README.md).
     type: Mapped[str] = mapped_column(String(20), nullable=False)
 
     # Groupe WhatsApp miroir (voir spec/SPEC.md §6.9 et conversations.py :

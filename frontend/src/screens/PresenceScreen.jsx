@@ -1,6 +1,7 @@
 import { Fragment, useState } from 'react'
 import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
+import { isAdmin } from '../data/roles.js'
 
 const CYCLE = ['present', 'absent', 'retard']
 const ICONS = { present: 'check', absent: 'x', retard: 'clock' }
@@ -90,7 +91,7 @@ export default function PresenceScreen({
   }
 
   function peutEditerProf(profId) {
-    return activeUser.type === 'admin' || activeUser.id === profId
+    return isAdmin(activeUser) || activeUser.id === profId
   }
 
   return (

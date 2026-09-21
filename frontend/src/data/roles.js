@@ -20,3 +20,26 @@ export function estMonteeEnPrivilege(depuisType, versType) {
 export function trierParRole(profils) {
   return [...profils].sort((a, b) => ROLE_RANK[b.type] - ROLE_RANK[a.type])
 }
+
+// Rôles cumulables (voir spec/SPEC.md §2.1 et §6.3bis) : un profil peut en
+// avoir plusieurs (ex. professeur ET admin), dans `profil.roles`.
+// ⚠️ Pour savoir ce qu'un profil a le DROIT de faire, toujours passer par
+// ces fonctions, jamais par `profil.type` : `type` n'est que le rôle
+// principal (le plus élevé), bon pour un libellé ou un rang, mais un
+// professeur-admin (type 'admin') y perdrait tout ce qui est propre aux
+// profs (ex. "Mes heures" dans Profil). Même règle côté serveur
+// (backend/src/comptes/roles.py).
+function rolesDe(profil) {
+  // Repli sur `type` pour un objet qui ne porte pas encore la liste (ex.
+  // un membre de conversation) : il n'a alors qu'un seul rôle.
+  return profil?.roles ?? (profil?.type ? [profil.type] : [])
+}
+
+export function aUnDesRoles(profil, roles) {
+  return roles.some((role) => rolesDe(profil).includes(role))
+}
+
+export const isEleve = (profil) => aUnDesRoles(profil, ['eleve'])
+export const isProf = (profil) => aUnDesRoles(profil, ['professeur'])
+export const isAdmin = (profil) => aUnDesRoles(profil, ['admin'])
+export const isOwner = (profil) => aUnDesRoles(profil, ['owner'])

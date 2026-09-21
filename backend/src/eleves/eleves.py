@@ -8,7 +8,7 @@ from __future__ import annotations
 import datetime as dt
 
 from choregraphies.models import choregraphies_eleves
-from comptes import Compte, Comptes
+from comptes import Compte, Comptes, roles
 from cours.models import eleves_cours
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -36,7 +36,7 @@ class Eleves:
 
     def get_compte(self, db: Session, eleve_id: int) -> Compte | None:
         compte = self.comptes.get(db, eleve_id)
-        if compte is None or compte.role != "eleve":
+        if compte is None or not roles.is_eleve(compte):
             return None
         return compte
 

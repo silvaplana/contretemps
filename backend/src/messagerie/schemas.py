@@ -4,7 +4,7 @@ models.py).
 
 import datetime as dt
 
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class MembreEntree(BaseModel):
@@ -30,7 +30,11 @@ class CompteResume(BaseModel):
     id: int
     nom: str
     prenom: str
-    role: str
+    # Rôles cumulables (§6.3bis) : `role` est le rôle PRINCIPAL (le plus
+    # élevé, pour l'affichage et le rang), `roles` la liste complète.
+    # Lus sur le Compte via ses propriétés role_principal/noms_roles.
+    role: str = Field(validation_alias=AliasChoices("role_principal", "role"))
+    roles: list[str] = Field(default_factory=list, validation_alias=AliasChoices("noms_roles", "roles"))
     # Présence (voir connexions.py) — `en_ligne` n'est PAS une colonne de
     # Compte (dérivé du flux SSE réellement ouvert) : receiver.py pose
     # cet attribut à la volée sur l'objet ORM avant sérialisation, voir

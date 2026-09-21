@@ -20,6 +20,7 @@ import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import Logo from './components/Logo.jsx'
 import { TABS } from './data/nav.js'
+import { aUnDesRoles, isAdmin, isEleve, isProf } from './data/roles.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
 import HeuresScreen from './screens/HeuresScreen.jsx'
@@ -405,12 +406,17 @@ function App() {
 
   // Cours accessibles à un profil donné (voir spec §4) : tous pour l'Admin,
   // ceux où il est inscrit pour un Élève, ceux qu'il enseigne pour un Prof.
+  // Admin testé en PREMIER : un professeur-admin a l'union des droits
+  // (spec §3), donc tous les cours, pas seulement ceux qu'il enseigne.
   function coursDuProfil(profil) {
-    if (profil.type === 'eleve') {
-      return cours.filter((c) => eleves.find((e) => e.id === profil.id)?.coursIds.includes(c.id))
+    if (isAdmin(profil)) {
+      return cours
     }
-    if (profil.type === 'professeur') {
+    if (isProf(profil)) {
       return cours.filter((c) => c.professeurId === profil.id)
+    }
+    if (isEleve(profil)) {
+      return cours.filter((c) => eleves.find((e) => e.id === profil.id)?.coursIds.includes(c.id))
     }
     return cours
   }
@@ -439,14 +445,14 @@ function App() {
     sessionApi.sauvegarderCompte(nouveauCompte.id)
 
     const tab = TABS.find((t) => t.key === activeTab)
-    if (tab && !tab.roles.includes(profil.type)) {
+    if (tab && !aUnDesRoles(profil, tab.roles)) {
       setActiveTab('messagerie')
     }
     // 'heures' n'est pas dans TABS (pas un onglet principal) : le cas ci-
     // dessus ne le couvre pas — on quitte aussi l'écran Heures si le nouveau
     // profil n'a pas le droit de voir celles consultées (pas admin, et pas
     // le prof concerné lui-même).
-    if (activeTab === 'heures' && profil.type !== 'admin' && profil.id !== heuresProfId) {
+    if (activeTab === 'heures' && !isAdmin(profil) && profil.id !== heuresProfId) {
       setActiveTab('profil')
     }
     const coursDuNouveauProfil = coursDuProfil(profil)
@@ -596,7 +602,7 @@ function App() {
                 icon: 'plus',
                 onClick: () => setPresenceShowAdd(true),
               }
-            : activeTab === 'messagerie' && activeUser.type === 'admin'
+            : activeTab === 'messagerie' && isAdmin(activeUser)
               ? {
                   label: 'Nouveau groupe',
                   icon: 'plus',
@@ -607,7 +613,7 @@ function App() {
       />
 
       <main className="app__content">
-        {activeTab === 'admin' && activeUser.type === 'admin' && (
+        {activeTab === 'admin' && isAdmin(activeUser) && (
           <AdminScreen
             eleves={eleves}
             setEleves={setEleves}
@@ -629,13 +635,13 @@ function App() {
             professeur={professeurs.find((p) => p.id === heuresProfId)}
             cours={cours}
             presences={presences}
-            estAdmin={activeUser.type === 'admin'}
+            estAdmin={isAdmin(activeUser)}
             onBack={() => setActiveTab(heuresRetour)}
           />
         )}
 
         {activeTab === 'presence' &&
-          (activeUser.type === 'admin' || activeUser.type === 'professeur') && (
+          aUnDesRoles(activeUser, ['admin', 'professeur']) && (
             <PresenceScreen
               cours={selectedCours}
               eleves={eleves}
@@ -660,7 +666,7 @@ function App() {
             setVideos={setVideos}
             // Consultation seule pour un élève (voir spec §2.1 sur les
             // droits par rôle) — Admin/Professeur peuvent créer/éditer.
-            peutModifier={activeUser.type !== 'eleve'}
+            peutModifier={aUnDesRoles(activeUser, ['admin', 'professeur'])}
             uploaderId={activeUser.id}
           />
         )}
@@ -705,7 +711,7 @@ function App() {
       <BottomNav
         active={activeTab}
         onChange={setActiveTab}
-        role={activeUser.type}
+        profil={activeUser}
         alertes={{ messagerie: totalNonLus }}
       />
     </div>

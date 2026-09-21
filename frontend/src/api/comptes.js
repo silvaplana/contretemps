@@ -17,6 +17,7 @@ function versFamilleEcran(c) {
   return {
     id: c.id,
     type: c.role,
+    roles: c.roles,
     nom: c.nom,
     prenom: c.prenom,
     initiales: `${(c.prenom[0] ?? '').toUpperCase()}${(c.nom[0] ?? '').toUpperCase()}`,

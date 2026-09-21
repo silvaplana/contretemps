@@ -22,7 +22,10 @@ function versEcoleEcran(e) {
 function versActiveUserEcran(compte) {
   return {
     id: compte.id,
+    // `type` = rôle principal (libellé, rang) ; `roles` = tous ses rôles,
+    // à tester via data/roles.js (isAdmin, isProf...) pour les droits.
     type: compte.role,
+    roles: compte.roles,
     nom: compte.nom,
     prenom: compte.prenom,
     initiales: `${(compte.prenom[0] ?? '').toUpperCase()}${(compte.nom[0] ?? '').toUpperCase()}`,

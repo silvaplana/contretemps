@@ -24,7 +24,7 @@ class ProfilEleve(Base):
     allergies: Mapped[str | None] = mapped_column(Text, nullable=True)
     traitement_medical: Mapped[str | None] = mapped_column(Text, nullable=True)
     informations_importantes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    # Texte, pas Enum (même choix que `comptes.role`, voir backend/README.md) :
+    # Texte, pas Enum (même choix que `roles_compte.role`, voir backend/README.md) :
     # seulement 2 valeurs prévues ("en_cours"/"paye") mais évite une migration
     # si un 3e statut apparaît.
     statut_paiement: Mapped[str] = mapped_column(String(20), nullable=False, default="en_cours")

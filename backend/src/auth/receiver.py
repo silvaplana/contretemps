@@ -4,6 +4,7 @@ compte trouvé, la vraie gestion de session est un point ouvert (voir
 spec/SPEC.md section 8).
 """
 
+from comptes import roles
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
@@ -75,12 +76,12 @@ class AuthReceiver:
         compte = self.client.resoudre_identifiant(db, donnees.ecole_id, donnees.identifiant)
         if compte is None:
             raise HTTPException(status_code=404, detail="Identifiant introuvable")
-        if compte.role == "admin":
-            return {"role": "admin"}
+        if roles.is_admin(compte):
+            return {"role": roles.ADMIN}
         admin = self.client.premier_admin(db, donnees.ecole_id)
         ecole = self.client.ecoles.get(db, donnees.ecole_id)
         return {
-            "role": compte.role,
+            "role": compte.role_principal,
             "admin_nom": admin.nom if admin else None,
             "admin_prenom": admin.prenom if admin else None,
             "admin_email": admin.email if admin else None,

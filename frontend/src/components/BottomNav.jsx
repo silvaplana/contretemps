@@ -1,4 +1,5 @@
 import { TABS } from '../data/nav.js'
+import { aUnDesRoles } from '../data/roles.js'
 import Icon from './Icon.jsx'
 
 // Barre de navigation basse fixe (voir spec/SPEC.md §3 et §4) : les onglets
@@ -10,8 +11,9 @@ import Icon from './Icon.jsx'
 // messages non lus toutes conversations confondues, voir App.jsx :
 // compterNonLus). Objet plutôt qu'un simple nombre "messagerie" pour
 // rester générique si un jour un autre onglet en a besoin.
-export default function BottomNav({ active, onChange, role, alertes = {} }) {
-  const visibles = TABS.filter((tab) => tab.roles.includes(role))
+export default function BottomNav({ active, onChange, profil, alertes = {} }) {
+  // Un profil à plusieurs rôles voit l'union de leurs onglets (spec §3).
+  const visibles = TABS.filter((tab) => aUnDesRoles(profil, tab.roles))
   return (
     <nav className="bottom-nav">
       {visibles.map((tab) => (

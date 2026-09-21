@@ -29,7 +29,8 @@ from dataclasses import dataclass
 from typing import Any, Callable
 
 from choregraphies.models import Choregraphie, choregraphies_eleves
-from comptes.models import Compte, Famille
+from comptes import roles
+from comptes.models import Compte, Famille, RoleCompte
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
@@ -117,11 +118,22 @@ def _construire_tables() -> list[_Table]:
             "Comptes",
             Compte,
             [
-                "id", "ecole_id", "famille_id", "role", "nom", "prenom", "email", "telephone",
+                "id", "ecole_id", "famille_id", "nom", "prenom", "email", "telephone",
                 "hashed_password_ou_code", "code_recuperation", "created_at",
             ],
             lambda db, eid: list(db.scalars(select(Compte).where(Compte.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
+        ),
+        # Rôles cumulables (§6.3bis), depuis le 2026-09-21. Une sauvegarde
+        # plus ancienne n'a pas cet onglet mais une colonne "role" dans
+        # "Comptes" : voir `restaurer()`, qui sait relire les deux formats.
+        _Table(
+            "RolesComptes",
+            RoleCompte,
+            ["compte_id", "role", "created_at"],
+            lambda db, eid: list(
+                db.scalars(select(RoleCompte).where(RoleCompte.compte_id.in_(_sous_requete_comptes_ecole(eid))))
+            ),
         ),
         _Table(
             "ProfilsEleves",
@@ -336,6 +348,12 @@ def vider(db: Session, ecole_id: int, garder_compte_id: int | None = None, commi
         # `_construire_tables()` uniquement pour figurer dans l'export.
         if table.objet is Famille:
             continue
+        # Rôles : supprimés en cascade avec leur compte (voir
+        # comptes/models.py, delete-orphan) — donc PAS ceux du compte
+        # conservé, qui garde ses droits. Les supprimer aussi ici les
+        # supprimerait deux fois.
+        if table.objet is RoleCompte:
+            continue
         lignes = table.lignes_ecole(db, ecole_id)
         if not lignes:
             continue
@@ -383,6 +401,10 @@ def restaurer(db: Session, ecole: Ecole, contenu: bytes) -> None:
     réinstallation complète)."""
     classeur = load_workbook(io.BytesIO(contenu), read_only=True, data_only=True)
     vider(db, ecole.id, garder_compte_id=None, commit=False)
+    # Sauvegarde d'avant les rôles cumulables (§6.3bis) : un rôle unique
+    # dans une colonne "role" de l'onglet Comptes, pas d'onglet
+    # RolesComptes. Relu ici puis converti en fin de restauration.
+    ancien_role_par_compte: dict[int, str] = {}
 
     for table in _construire_tables():
         if table.feuille not in classeur.sheetnames:
@@ -396,6 +418,8 @@ def restaurer(db: Session, ecole: Ecole, contenu: bytes) -> None:
             champs = dict(zip(en_tetes, valeurs))
             if table.colonne_ecole_id:
                 champs[table.colonne_ecole_id] = ecole.id
+            if table.objet is Compte and "role" in champs:
+                ancien_role_par_compte[champs["id"]] = champs.pop("role")
             champs = {nom: _valeur_restauree(table.objet, nom, valeur) for nom, valeur in champs.items()}
             if isinstance(table.objet, Table):
                 db.execute(table.objet.insert().values(**champs))
@@ -403,8 +427,22 @@ def restaurer(db: Session, ecole: Ecole, contenu: bytes) -> None:
                 db.add(table.objet(**champs))
         db.flush()
 
+    if ancien_role_par_compte and "RolesComptes" not in classeur.sheetnames:
+        _convertir_anciens_roles(db, ancien_role_par_compte)
+
     db.commit()
     _reajuster_sequences_postgres(db)
+
+
+def _convertir_anciens_roles(db: Session, ancien_role_par_compte: dict[int, str]) -> None:
+    """Même conversion que la migration Alembic des rôles cumulables : un
+    rôle par compte, et Owner pour le plus ancien admin (§2.4)."""
+    for compte_id, role in ancien_role_par_compte.items():
+        db.add(RoleCompte(compte_id=compte_id, role=role))
+    admins = sorted(cid for cid, role in ancien_role_par_compte.items() if role == roles.ADMIN)
+    if admins:
+        db.add(RoleCompte(compte_id=admins[0], role=roles.OWNER))
+    db.flush()
 
 
 def _valeur_restauree(objet: type | Table, nom: str, valeur: Any) -> Any:

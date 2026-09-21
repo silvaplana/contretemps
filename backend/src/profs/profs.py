@@ -6,7 +6,7 @@ relation, voir §6.5) réutilisés tels quels.
 
 from __future__ import annotations
 
-from comptes import Compte, Comptes
+from comptes import Compte, Comptes, roles
 from cours import CoursService
 from sqlalchemy.orm import Session
 
@@ -21,7 +21,7 @@ class Profs:
 
     def get(self, db: Session, prof_id: int) -> Compte | None:
         compte = self.comptes.get(db, prof_id)
-        if compte is None or compte.role != "professeur":
+        if compte is None or not roles.is_prof(compte):
             return None
         return compte
 

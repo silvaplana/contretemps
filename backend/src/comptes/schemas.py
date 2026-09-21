@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, Field
 
 
 class CompteModification(BaseModel):
@@ -16,7 +16,11 @@ class CompteSortie(BaseModel):
     id: int
     ecole_id: int
     famille_id: int
-    role: str
+    # Rôles cumulables (§6.3bis) : `role` est le rôle PRINCIPAL (le plus
+    # élevé, pour l'affichage et le rang), `roles` la liste complète.
+    # Lus sur le Compte via ses propriétés role_principal/noms_roles.
+    role: str = Field(validation_alias=AliasChoices("role_principal", "role"))
+    roles: list[str] = Field(default_factory=list, validation_alias=AliasChoices("noms_roles", "roles"))
     nom: str
     prenom: str
     email: str | None

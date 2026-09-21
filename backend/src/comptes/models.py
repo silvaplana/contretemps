@@ -1,6 +1,7 @@
-"""Tables des comptes (voir spec/SPEC.md §6.2 et §6.3) : `Famille` (profils
-familiaux façon Netflix, §2.1) et `Compte` (champs communs Admin/Prof/Élève
-— les champs spécifiques à un rôle vivent dans les modules eleves/profs).
+"""Tables des comptes (voir spec/SPEC.md §6.2, §6.3 et §6.3bis) : `Famille`
+(profils familiaux façon Netflix, §2.1), `Compte` (champs communs
+Admin/Prof/Élève — les champs spécifiques à un rôle vivent dans les modules
+eleves/profs) et `RoleCompte` (rôles cumulables d'un compte).
 """
 
 from __future__ import annotations
@@ -45,7 +46,6 @@ class Compte(Base):
         # empêchait cet usage prévu par la spec (trouvé en import Excel :
         # 80 élèves fictifs avec des emails partagés entre frères/sœurs).
         Index("ix_compte_ecole_email", "ecole_id", "email"),
-        Index("ix_compte_ecole_role", "ecole_id", "role"),
         Index("ix_compte_dedup", "ecole_id", "nom", "prenom"),
     )
 
@@ -53,10 +53,6 @@ class Compte(Base):
     ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
     famille_id: Mapped[int] = mapped_column(ForeignKey("familles.id"), nullable=False, index=True)
 
-    # 'admin' | 'professeur' | 'eleve' (voir §2.1) — texte simple plutôt
-    # qu'un Enum SQLAlchemy : évite une migration de type de colonne si un
-    # jour la spec ajoute un rôle, la validation se fait côté application.
-    role: Mapped[str] = mapped_column(String(20), nullable=False)
     nom: Mapped[str] = mapped_column(String(100), nullable=False)
     prenom: Mapped[str] = mapped_column(String(100), nullable=False)
     email: Mapped[str | None] = mapped_column(String(255), nullable=True)
@@ -80,3 +76,45 @@ class Compte(Base):
     derniere_activite_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     famille: Mapped[Famille] = relationship("Famille", back_populates="comptes")
+    # Rôles cumulables (§6.3bis) — ne JAMAIS les lire directement, passer
+    # par comptes/roles.py (is_admin, is_prof...). `selectin` : chargés en
+    # UNE requête pour toute une liste de comptes, pas une par compte (voir
+    # le N+1 corrigé le 2026-09-19 sur Admin > Élèves). Supprimer un
+    # compte supprime ses rôles (delete-orphan).
+    roles: Mapped[list["RoleCompte"]] = relationship(
+        "RoleCompte",
+        back_populates="compte",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+    )
+
+    # Lus par les schémas d'API (CompteSortie...), qui exposent à la fois
+    # la liste `roles` et un `role` principal pour l'affichage.
+    @property
+    def noms_roles(self) -> list[str]:
+        from .roles import noms_roles
+
+        return noms_roles(self)
+
+    @property
+    def role_principal(self) -> str:
+        from .roles import role_principal
+
+        return role_principal(r.role for r in self.roles)
+
+
+class RoleCompte(Base):
+    """Un rôle détenu par un compte (voir §6.3bis) : une ligne par rôle,
+    clé primaire (compte, rôle) donc jamais deux fois le même. Texte
+    simple plutôt qu'un Enum SQLAlchemy, comme l'ancien `comptes.role` :
+    la liste des rôles valides vit dans roles.py, pas dans le schéma."""
+
+    __tablename__ = "roles_compte"
+
+    compte_id: Mapped[int] = mapped_column(
+        ForeignKey("comptes.id"), primary_key=True, index=True
+    )
+    role: Mapped[str] = mapped_column(String(20), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    compte: Mapped[Compte] = relationship("Compte", back_populates="roles")
