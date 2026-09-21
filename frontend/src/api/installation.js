@@ -64,6 +64,16 @@ function estNavigateurIntegre() {
   return /FBAN|FBAV|Instagram|Line\/|GSA\//i.test(navigator.userAgent)
 }
 
+// Navigateur de l'iPhone/iPad : Safari, Chrome (CriOS) ou un autre
+// (Firefox, Edge, Opera...). Tous passent par "Partager", mais pas au même
+// endroit.
+function navigateurIOS() {
+  const ua = navigator.userAgent
+  if (/CriOS/i.test(ua)) return 'chrome'
+  if (/FxiOS|EdgiOS|OPiOS/i.test(ua)) return 'autre'
+  return 'safari'
+}
+
 function estSamsungInternet() {
   return /SamsungBrowser/i.test(navigator.userAgent) && /android/i.test(navigator.userAgent)
 }
@@ -80,7 +90,9 @@ function estFirefoxOrdinateur() {
 // 'ouvrir-chrome' : Samsung Internet, ouvrir la page dans Chrome pour
 //   installer une vraie appli (voir ouvrirDansChrome) ;
 // 'bouton' : installation en un appui (Android/Chrome) ;
-// 'ios' : instructions Partager -> Sur l'écran d'accueil ;
+// 'ios' : Safari, instructions Partager -> Sur l'écran d'accueil ;
+// 'ios-chrome' : Chrome sur iPhone, Partager est dans la barre d'adresse ;
+// 'ios-autre' : autre navigateur de l'iPhone (Firefox, Edge...) ;
 // 'ios-ouvrir-safari' : il faut d'abord ouvrir la page dans Safari ;
 // 'mac-safari' : menu Fichier > Ajouter au Dock ;
 // 'firefox' : ouvrir la page dans Chrome ou Edge ;
@@ -90,7 +102,11 @@ export function modeInstallation() {
   if (estInstallee()) return null
   if (estSamsungInternet()) return 'ouvrir-chrome'
   if (invitationDifferee) return 'bouton'
-  if (estIOS()) return estNavigateurIntegre() ? 'ios-ouvrir-safari' : 'ios'
+  if (estIOS()) {
+    if (estNavigateurIntegre()) return 'ios-ouvrir-safari'
+    const navigateur = navigateurIOS()
+    return navigateur === 'safari' ? 'ios' : `ios-${navigateur}`
+  }
   if (estSafariMac()) return 'mac-safari'
   if (estFirefoxOrdinateur()) return 'firefox'
   return null

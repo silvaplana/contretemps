@@ -14,43 +14,7 @@ export default function InvitationInstallation({ variante = 'encart' }) {
 
   if (!mode || masquee) return null
 
-  const instructions =
-    mode === 'ouvrir-chrome' ? (
-      <>
-        <p className="invitation-installation__texte">
-          Pour une vraie application, avec son icône sur l’écran d’accueil, ouvrez cette page dans{' '}
-          <strong>Chrome</strong> et installez-la depuis Chrome (vous devrez vous y reconnecter).
-        </p>
-        <button type="button" className="btn btn--primary btn--block" onClick={installation.ouvrirDansChrome}>
-          Ouvrir dans Chrome
-        </button>
-        {installation.installationDirectePossible() && (
-          <button type="button" className="btn btn--link" onClick={() => installation.installer()}>
-            Installer quand même avec ce navigateur
-          </button>
-        )}
-      </>
-    ) : mode === 'ios-ouvrir-safari' ? (
-      <p className="invitation-installation__texte">
-        Pour installer l’application, ouvrez d’abord cette page dans <strong>Safari</strong> (menu ⋯ ou
-        « Ouvrir dans le navigateur »).
-      </p>
-    ) : mode === 'ios' ? (
-      <p className="invitation-installation__texte">
-        Touchez <Icon name="partager" size={16} /> <strong>Partager</strong> en bas de Safari, puis{' '}
-        <strong>« Sur l’écran d’accueil »</strong>.
-      </p>
-    ) : mode === 'mac-safari' ? (
-      <p className="invitation-installation__texte">
-        Dans Safari, menu <strong>Fichier</strong> puis <strong>« Ajouter au Dock »</strong> (macOS Sonoma ou
-        plus récent).
-      </p>
-    ) : mode === 'firefox' ? (
-      <p className="invitation-installation__texte">
-        Firefox ne sait pas installer d’application web : ouvrez cette page dans <strong>Chrome</strong> ou{' '}
-        <strong>Edge</strong>, qui vous proposeront de l’installer.
-      </p>
-    ) : null
+  const instructions = <InstructionsInstallation mode={mode} />
 
   if (variante === 'ligne') {
     return (
@@ -93,4 +57,59 @@ export default function InvitationInstallation({ variante = 'encart' }) {
       </button>
     </div>
   )
+}
+
+// Explication du geste d'installation, selon le navigateur (tout sauf
+// l'installation en un appui, mode 'bouton'). Aussi utilisée par le menu ⋮
+// de l'en-tête (voir Header.jsx).
+export function InstructionsInstallation({ mode }) {
+  return mode === 'ouvrir-chrome' ? (
+    <>
+      <p className="invitation-installation__texte">
+        Pour une vraie application, avec son icône sur l’écran d’accueil, ouvrez cette page dans{' '}
+        <strong>Chrome</strong> et installez-la depuis Chrome (vous devrez vous y reconnecter).
+      </p>
+      <button type="button" className="btn btn--primary btn--block" onClick={installation.ouvrirDansChrome}>
+        Ouvrir dans Chrome
+      </button>
+      {installation.installationDirectePossible() && (
+        <button type="button" className="btn btn--link" onClick={() => installation.installer()}>
+          Installer quand même avec ce navigateur
+        </button>
+      )}
+    </>
+  ) : mode === 'ios-ouvrir-safari' ? (
+    <p className="invitation-installation__texte">
+      Pour installer l’application, ouvrez d’abord cette page dans <strong>Safari</strong> (menu ⋯ ou
+      « Ouvrir dans le navigateur »).
+    </p>
+  ) : mode === 'ios' ? (
+    <p className="invitation-installation__texte">
+      Touchez <Icon name="partager" size={16} /> <strong>Partager</strong> dans Safari — en bas de l’écran, ou
+      dans le menu <strong>⋯</strong> sur les iPhone récents, en haut à droite sur iPad —, puis{' '}
+      <strong>« Sur l’écran d’accueil »</strong> (faites défiler la liste si besoin).
+    </p>
+  ) : mode === 'ios-chrome' ? (
+    <p className="invitation-installation__texte">
+      Touchez <Icon name="partager" size={16} /> <strong>Partager</strong>, en haut à droite dans la barre
+      d’adresse de Chrome, puis <strong>« Sur l’écran d’accueil »</strong>. Si l’option n’apparaît pas,
+      ouvrez cette page dans <strong>Safari</strong>.
+    </p>
+  ) : mode === 'ios-autre' ? (
+    <p className="invitation-installation__texte">
+      Touchez <Icon name="partager" size={16} /> <strong>Partager</strong> dans le menu du navigateur, puis{' '}
+      <strong>« Sur l’écran d’accueil »</strong>. Si l’option n’apparaît pas, ouvrez cette page dans{' '}
+      <strong>Safari</strong>.
+    </p>
+  ) : mode === 'mac-safari' ? (
+    <p className="invitation-installation__texte">
+      Dans Safari, menu <strong>Fichier</strong> puis <strong>« Ajouter au Dock »</strong> (macOS Sonoma ou
+      plus récent).
+    </p>
+  ) : mode === 'firefox' ? (
+    <p className="invitation-installation__texte">
+      Firefox ne sait pas installer d’application web : ouvrez cette page dans <strong>Chrome</strong> ou{' '}
+      <strong>Edge</strong>, qui vous proposeront de l’installer.
+    </p>
+  ) : null
 }

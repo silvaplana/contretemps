@@ -5,7 +5,9 @@ import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 import { ID_ACTIONS_ENTETE } from './ActionsEntete.jsx'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
+import { InstructionsInstallation } from './InvitationInstallation.jsx'
 import Logo from './Logo.jsx'
+import Modal from './Modal.jsx'
 
 // En-tête d'écran (voir spec/SPEC.md section 4).
 // - mode="simple" : logo + titre (écrans Admin et Profil, non "scopés cours").
@@ -41,6 +43,9 @@ export default function Header({
   // (Chrome, Samsung Internet...), dès qu'il permet l'installation en un
   // appui (demande du 2026-09-21, voir api/installation.js).
   const modeInstallation = installation.useModeInstallation()
+  // iPhone, Safari Mac, Firefox... : pas d'installation en un appui, la
+  // ligne du menu ouvre l'explication du geste.
+  const [instructionsInstallation, setInstructionsInstallation] = useState(false)
 
   // Referme le menu ouvert dès qu'on touche ailleurs sur l'écran — sinon
   // il restait ouvert indéfiniment (vécu sur Présence et Messagerie).
@@ -182,7 +187,7 @@ export default function Header({
                       <Icon name={menuExtra.icon} size={18} /> {menuExtra.label}
                     </button>
                   )}
-                  {(modeInstallation === 'bouton' || modeInstallation === 'ouvrir-chrome') && (
+                  {modeInstallation && (
                     <button
                       type="button"
                       onClick={() => {
@@ -190,7 +195,8 @@ export default function Header({
                         // Samsung Internet : vraie appli seulement via Chrome
                         // (voir api/installation.js).
                         if (modeInstallation === 'ouvrir-chrome') installation.ouvrirDansChrome()
-                        else installation.installer()
+                        else if (modeInstallation === 'bouton') installation.installer()
+                        else setInstructionsInstallation(true)
                       }}
                     >
                       <Icon name="download" size={18} />{' '}
@@ -214,6 +220,12 @@ export default function Header({
             </div>
           )}
         </div>
+      )}
+
+      {instructionsInstallation && (
+        <Modal title="Installer l’application" onClose={() => setInstructionsInstallation(false)}>
+          <InstructionsInstallation mode={modeInstallation} />
+        </Modal>
       )}
 
       {profilVise && (
