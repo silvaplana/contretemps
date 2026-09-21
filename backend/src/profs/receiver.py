@@ -4,7 +4,7 @@ existantes du module cours (/cours/{id}/professeurs/{compte_id}), pas
 dupliquées ici.
 """
 
-from comptes import Compte, rbac
+from comptes import Compte, RegleRoles, rbac
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
@@ -82,5 +82,9 @@ class ProfsReceiver:
         return self._avec_cours_ids(db, prof)
 
     def supprimer(self, prof_id: int, db: Session = Depends(get_db)):
-        if not self.client.delete(db, prof_id):
+        try:
+            supprime = self.client.delete(db, prof_id)
+        except RegleRoles as erreur:
+            raise HTTPException(status_code=409, detail=str(erreur)) from erreur
+        if not supprime:
             raise HTTPException(status_code=404, detail="Professeur introuvable")

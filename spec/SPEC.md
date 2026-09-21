@@ -178,8 +178,10 @@ modification.
     supprime le compte, ses rôles et tout ce qui n'a de sens que pour lui (accès,
     appartenance aux conversations, abonnements aux notifications). **L'historique est
     conservé** (décision utilisateur du 2026-09-21, même règle que pour les élèves) : ses
-    messages restent dans les conversations, affichés comme venant d'un "Ancien
-    administrateur", et les vidéos qu'il a mises en ligne restent disponibles ;
+    messages restent dans les conversations, affichés comme venant d'un "Compte supprimé"
+    (et non "Ancien administrateur" : une fois le compte supprimé, plus rien ne dit que
+    c'était un admin, et un élève supprimé laisse lui aussi ses messages), et les vidéos
+    qu'il a mises en ligne restent disponibles ;
   - **professeur-admin** : ne supprime **ni le compte ni le professeur**. Retire seulement ses
     rôles `admin` et `owner` : le compte ne garde que le rôle `professeur` et redevient un
     professeur ordinaire, toujours assigné à ses cours ;
@@ -981,8 +983,11 @@ encore branché).
     Présence, chorégraphies, vidéos, messages, lectures de listes. `POST /ecoles` (création
     d'école) et `POST /messagerie/relancer` (toutes écoles) restent ouvertes : elles
     relèvent du Superuser (étape 4).
-  - **Étape 3, à coder** : tableau des administrateurs et ses modales
-    (création/modification/suppression, statut Owner).
+  - **Étape 3, faite** : tableau des administrateurs et ses modales (module
+    `backend/src/administrateurs/`, `frontend/src/screens/admin/AdministrateursTableau.jsx`).
+    Règles des rôles appliquées par le serveur (`Comptes.ajouter_role`/`retirer_role`) :
+    owner ⇒ admin, élève non cumulable, au moins un Owner par école — y compris quand un
+    professeur-admin Owner est supprimé depuis Admin > Profs (refusé s'il est le dernier).
 - **Superuser (§2.5)** : spécifié le 2026-09-21, **pas encore implémenté**, à livrer avec la
   gestion multi-admin — rôle `superuser` et fonction `isSuperuser`, commande serveur de
   création, mot de passe haché, jeton signé de 12 h vérifié à chaque requête, connexion par le

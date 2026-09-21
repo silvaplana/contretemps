@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
+import { isOwner } from '../../data/roles.js'
+import AdministrateursTableau from './AdministrateursTableau.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import UsageVideoModal from './UsageVideoModal.jsx'
 
@@ -27,8 +29,9 @@ import UsageVideoModal from './UsageVideoModal.jsx'
 // programmer/importer/supprimer les données de l'école, et le
 // téléchargement des nouvelles inscriptions (déplacé ici, y vivait avant
 // comme simple bouton).
-export default function AdminParametres({ ecole, setEcole, setVideos, cours, setEleves }) {
+export default function AdminParametres({ ecole, setEcole, setVideos, cours, setEleves, activeUser, professeurs }) {
   const [showUsageVideo, setShowUsageVideo] = useState(false)
+  const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
 
   // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
   // réservée aux admins (voir api/ecoles.js : obtenir). L'école reçue à la
@@ -54,7 +57,12 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
   return (
     <div className="admin-panel">
       <div className="admin-panel__toolbar admin-panel__toolbar--fin">
-        <SauvegardeEcoleMenu ecole={ecole} cours={cours} setEleves={setEleves} />
+        <SauvegardeEcoleMenu
+          ecole={ecole}
+          cours={cours}
+          setEleves={setEleves}
+          onCreerAdministrateur={isOwner(activeUser) ? () => setCreationAdminOuverte(true) : undefined}
+        />
       </div>
 
       <div className="form-fields">
@@ -98,6 +106,15 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
           onChange={(e) => update({ codeAccesEleve: e.target.value })}
         />
       </div>
+
+      {/* Au-dessus de "Usage vidéo" (spec §2.4). */}
+      <AdministrateursTableau
+        ecoleId={ecole.id}
+        activeUser={activeUser}
+        professeurs={professeurs}
+        creationOuverte={creationAdminOuverte}
+        onFermerCreation={() => setCreationAdminOuverte(false)}
+      />
 
       <button type="button" className="btn btn--secondary" onClick={() => setShowUsageVideo(true)}>
         Usage vidéo

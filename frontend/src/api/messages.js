@@ -56,10 +56,16 @@ async function requete(chemin, options) {
 // donc introuvable, d'où "Conversation" affiché à la place de son vrai
 // nom). Le repli local ci-dessous ne reste que pour une éventuelle
 // réponse plus ancienne sans ce champ (défensif, ne devrait plus arriver).
+// Libellé d'un compte qui n'existe plus (voir nomAffiche et versMessage) :
+// on ne sait plus, après coup, si c'était un admin, un prof ou un élève.
+const COMPTE_SUPPRIME = 'Compte supprimé'
+
 function nomAffiche(conv, compteId, cours) {
   if (conv.type === 'individuelle') {
     const autre = conv.membres.find((m) => m.id !== compteId)
-    return autre ? `${autre.prenom} ${autre.nom}` : 'Conversation'
+    // L'autre personne a été supprimée (ex. un admin retiré, §2.4) : la
+    // conversation et son historique restent, elle n'a juste plus de nom.
+    return autre ? `${autre.prenom} ${autre.nom}` : COMPTE_SUPPRIME
   }
   if (conv.nom_affiche) return conv.nom_affiche
   if (conv.nom) return conv.nom
@@ -90,7 +96,9 @@ export function versMessageEcran(message, compteId, membres) {
     // message si la bulle d'attente locale et l'arrivée SSE se
     // chevauchent (voir ConversationThreadScreen.jsx).
     clientId: message.client_id ?? null,
-    auteur: auteur ? `${auteur.prenom} ${auteur.nom}` : '?',
+    // Expéditeur supprimé depuis : ses messages restent (historique
+    // conservé, décision du 2026-09-21), affichés sous ce libellé.
+    auteur: auteur ? `${auteur.prenom} ${auteur.nom}` : COMPTE_SUPPRIME,
     estMoi: message.expediteur_id === compteId,
     contenu: message.contenu,
     heure: new Date(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),

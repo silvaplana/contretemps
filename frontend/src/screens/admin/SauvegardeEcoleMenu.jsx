@@ -50,7 +50,9 @@ function destinationMemorisee() {
 // 6. "Intégrer fichier élèves officiel" — MÊME modale que le bouton
 //    "Importer" d'Admin > Élèves (voir IntegrerFichierElevesModal.jsx,
 //    demande utilisateur explicite : une seule implémentation).
-export default function SauvegardeEcoleMenu({ ecole, cours, setEleves }) {
+// `onCreerAdministrateur` : fourni seulement pour un Owner (voir
+// AdminParametres.jsx) — sinon l'entrée n'apparaît pas dans le menu (§2.4).
+export default function SauvegardeEcoleMenu({ ecole, cours, setEleves, onCreerAdministrateur }) {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [vue, setVue] = useState(null) // null | 'programmer' | 'supprimer' | 'importer' | 'integrerFichier'
   const [erreur, setErreur] = useState(null)
@@ -146,6 +148,17 @@ export default function SauvegardeEcoleMenu({ ecole, cours, setEleves }) {
             <button type="button" onClick={() => ouvrir('integrerFichier')}>
               <Icon name="fileCheck" size={18} /> Intégrer fichier élèves officiel
             </button>
+            {onCreerAdministrateur && (
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOuvert(false)
+                  onCreerAdministrateur()
+                }}
+              >
+                <Icon name="users" size={18} /> Créer nouvel administrateur
+              </button>
+            )}
             <button type="button" className="header-menu__danger" onClick={() => ouvrir('supprimer')}>
               <Icon name="trash" size={18} /> Supprimer Données École
             </button>

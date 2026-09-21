@@ -16,6 +16,11 @@ from . import roles as r
 from .models import Compte, Famille, RoleCompte
 
 
+class RegleRoles(ValueError):
+    """Une règle des rôles cumulables (§6.3bis) serait violée : message
+    lisible, renvoyé tel quel à l'écran par les routes (409)."""
+
+
 def _normaliser(texte: str) -> str:
     """Insensible à la casse ET aux accents (demande utilisateur du
     2026-09-18 : le champ "Nom Prénom ou Email" du login doit accepter
@@ -164,6 +169,43 @@ class Comptes:
         db.commit()
         db.refresh(compte)
         return compte
+
+    # --- Rôles cumulables (§6.3bis) : SEULS points d'écriture des rôles
+    # après la création, pour que les règles ci-dessous soient toujours
+    # appliquées par le serveur, jamais seulement masquées dans l'IHM. ---
+
+    def ajouter_role(self, db: Session, compte: Compte, role: str) -> None:
+        """Règles : `owner` exige `admin` ; `eleve` ne se cumule avec aucun
+        autre rôle. Sans effet si le compte a déjà ce rôle."""
+        if role not in r.ROLES:
+            raise RegleRoles(f"Rôle inconnu : {role}")
+        if r.a_le_role(compte, role):
+            return
+        if role == r.OWNER and not r.is_admin(compte):
+            raise RegleRoles("Seul un administrateur peut être Owner")
+        if r.is_eleve(compte) or (role == r.ELEVE and compte.roles):
+            raise RegleRoles("Le rôle élève ne se cumule avec aucun autre rôle")
+        compte.roles.append(RoleCompte(role=role))
+        db.commit()
+        db.refresh(compte)
+
+    def retirer_role(self, db: Session, compte: Compte, role: str) -> None:
+        """Retirer `admin` retire aussi `owner` (owner ⇒ admin). Refusé si
+        l'école se retrouverait sans aucun Owner, ou le compte sans rôle."""
+        a_retirer = {role, r.OWNER} if role == r.ADMIN else {role}
+        restants = [ligne for ligne in compte.roles if ligne.role not in a_retirer]
+        if not restants:
+            raise RegleRoles("Un compte doit garder au moins un rôle")
+        if r.OWNER in a_retirer and r.is_owner(compte) and self.est_seul_owner(db, compte):
+            raise RegleRoles("L'école doit garder au moins un Owner")
+        compte.roles = restants
+        db.commit()
+        db.refresh(compte)
+
+    def est_seul_owner(self, db: Session, compte: Compte) -> bool:
+        """Ce compte est-il le DERNIER Owner de son école ?"""
+        owners = self.list_par_role(db, compte.ecole_id, r.OWNER)
+        return [c.id for c in owners] == [compte.id]
 
     def delete(self, db: Session, compte_id: int) -> bool:
         """Suppression du socle commun — les modules eleves/profs

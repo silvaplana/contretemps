@@ -634,6 +634,7 @@ function App() {
             setEcole={setEcole}
             setVideos={setVideos}
             onOpenHeures={(profId) => openHeures(profId, 'admin')}
+            activeUser={activeUser}
           />
         )}
 

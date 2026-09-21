@@ -32,6 +32,7 @@ export default function AdminScreen({
   setEcole,
   setVideos,
   onOpenHeures,
+  activeUser,
 }) {
   const [subTab, setSubTab] = useState('eleves')
 
@@ -63,6 +64,8 @@ export default function AdminScreen({
           setVideos={setVideos}
           cours={cours}
           setEleves={setEleves}
+          activeUser={activeUser}
+          professeurs={professeurs}
         />
       )}
       {subTab === 'eleves' && (

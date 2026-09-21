@@ -6,7 +6,7 @@ relation, voir §6.5) réutilisés tels quels.
 
 from __future__ import annotations
 
-from comptes import Compte, Comptes, roles
+from comptes import Compte, Comptes, RegleRoles, roles
 from cours import CoursService
 from sqlalchemy.orm import Session
 
@@ -45,8 +45,13 @@ class Profs:
         return self.comptes.update(db, prof_id, **champs)
 
     def delete(self, db: Session, prof_id: int) -> bool:
-        if self.get(db, prof_id) is None:
+        prof = self.get(db, prof_id)
+        if prof is None:
             return False
+        # Un professeur-admin peut être Owner (§2.4) : le supprimer ne doit
+        # jamais laisser l'école sans Owner.
+        if roles.is_owner(prof) and self.comptes.est_seul_owner(db, prof):
+            raise RegleRoles("C'est le dernier Owner de l'école : nommez d'abord un autre Owner")
         # Retire le prof de tous ses cours avant de supprimer le compte
         # (voir cours.py : table de jointure cours_professeurs).
         for c in self.cours.cours_du_professeur(db, prof_id):

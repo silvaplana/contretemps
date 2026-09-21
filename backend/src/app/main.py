@@ -14,6 +14,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from administrateurs import Administrateurs, AdministrateursReceiver
 from auth import Auth, AuthReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver
@@ -75,6 +76,11 @@ ecoles_client = Ecoles()
 # ci-dessous, et plus tard par eleves/profs.
 comptes_client = Comptes()
 comptes_receiver = ComptesReceiver(client=comptes_client, app=app)
+
+# Tableau des administrateurs (Admin > École, spec §2.4) : lister, créer,
+# modifier, supprimer un admin — réservé aux Owners pour l'écriture.
+administrateurs_client = Administrateurs(comptes=comptes_client)
+administrateurs_receiver = AdministrateursReceiver(client=administrateurs_client, app=app)
 
 # Monte les routes de connexion (/auth/...) - depend de ecoles et comptes.
 auth_client = Auth(ecoles=ecoles_client, comptes=comptes_client)
