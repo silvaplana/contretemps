@@ -67,13 +67,11 @@ parent Admin + ses deux enfants Élèves).
   à chaque bascule de profil famille et effacé à la déconnexion volontaire
 - Plusieurs appareils peuvent être connectés simultanément avec le même compte
 - Déconnexion disponible depuis l'onglet **Profil**
-- **"Code oublié ?"** : identifiant (nom+prénom ou email) saisi → si c'est un **admin** (admin "pur" ou
-  professeur-admin, §2.4),
-  question de récupération "Indiquez le nom de votre 1er animal de compagnie"
-  (`code_recuperation`, voir §6.3) — bonne réponse = connecté directement, sans redemander le
-  code d'accès ; si c'est un **professeur/élève sans droits admin**, pas de libre-service : affiche le contact
-  (nom, prénom, email) d'un Owner de l'école (§2.4), à qui demander son code
-  directement.
+- **"Code oublié ?"** (décision utilisateur du 2026-09-21) : un simple message, pour tous :
+  « Contactez un administrateur de l'école ou <email du propriétaire de l'appli> ». Plus de
+  question de récupération ni de contact d'admin affiché à l'écran. Les routes
+  `/auth/recuperation/*` et le `code_recuperation` existent encore côté serveur mais ne sont
+  plus utilisés par l'écran de connexion.
 
 **✅ Tranché — règle de sécurité du switch de profil famille** : le code d'accès du rôle
 cible est redemandé uniquement en cas de **montée en privilège**, selon la hiérarchie
@@ -1013,7 +1011,8 @@ encore branché).
   automatique à sa création" (§6.9, ✅ confirmé) n'est pour l'instant câblé que dans le seed de
   démo (`app/seed.py`), pas dans `CoursService.create()` lui-même — une école réelle qui crée
   un cours n'obtient pas encore sa conversation automatiquement.
-- **"Code oublié ?"** (écran de connexion) : **fait**. Identifiant → si admin, question de
+- **"Code oublié ?"** (écran de connexion) : **remplacé le 2026-09-21 par un simple message**
+  (voir §2.2). Historique : identifiant → si admin, question de
   récupération (`code_recuperation`, §6.3) et connexion directe si la réponse est bonne ; si
   professeur/élève, pas de libre-service — juste le contact du (premier) admin de l'école à
   qui demander directement. *Reste ouvert* : pas d'écran pour qu'un admin change son propre

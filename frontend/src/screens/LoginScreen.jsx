@@ -102,98 +102,25 @@ export default function LoginScreen({ onLogin }) {
       )}
 
       {showCodeOublie && (
-        <CodeOublieModal
-          identifiantInitial={identifiant}
-          onClose={() => setShowCodeOublie(false)}
-          onLogin={(resultat) => {
-            setShowCodeOublie(false)
-            onLogin(resultat)
-          }}
-        />
+<CodeOublieModal onClose={() => setShowCodeOublie(false)} />
       )}
     </div>
   )
 }
 
-// Modale "Code oublié ?" (voir spec §2.2/§2.3) — l'identifiant n'est PAS
-// redemandé : celui déjà tapé dans le champ "Nom Prénom ou Email" du
-// formulaire de connexion (identifiantInitial) sert directement à
-// résoudre le compte (voir auth.js: verifierRecuperation), dès
-// l'ouverture de la modale (demande) :
-// - admin -> directement la question de récupération ("Code de
-//   récupération : nom de votre 1er animal de compagnie") ; bonne
-//   réponse -> connecté direct (comme "Se connecter").
-// - professeur/élève -> juste le contact de l'admin à qui demander
-//   directement, pas de libre-service pour ces 2 rôles.
-function CodeOublieModal({ identifiantInitial, onClose, onLogin }) {
-  const [resultat, setResultat] = useState(null) // réponse de verifierRecuperation
-  const [reponseQuestion, setReponseQuestion] = useState('')
-  const [erreur, setErreur] = useState('')
-  const [enCours, setEnCours] = useState(true)
-
-  useEffect(() => {
-    auth
-      .verifierRecuperation(identifiantInitial)
-      .then(setResultat)
-      .catch((err) => setErreur(err.message || 'Identifiant introuvable'))
-      .finally(() => setEnCours(false))
-  }, [identifiantInitial])
-
-  async function repondre(e) {
-    e.preventDefault()
-    setErreur('')
-    setEnCours(true)
-    try {
-      onLogin(await auth.repondreRecuperation(identifiantInitial, reponseQuestion))
-    } catch (err) {
-      setErreur(err.message || 'Réponse incorrecte')
-      setEnCours(false)
-    }
-  }
-
-  // admin -> la question de récupération, directement.
-  if (resultat?.role === 'admin') {
-    return (
-      <Modal title="Code oublié" onClose={onClose}>
-        <form onSubmit={repondre}>
-          <label htmlFor="recup-reponse">Code de récupération : nom de votre 1er animal de compagnie</label>
-          <input
-            id="recup-reponse"
-            value={reponseQuestion}
-            onChange={(e) => setReponseQuestion(e.target.value)}
-            autoFocus
-          />
-          {erreur && <p className="login-screen__erreur">{erreur}</p>}
-          <button type="submit" className="btn btn--primary btn--block" disabled={enCours || !reponseQuestion}>
-            Valider
-          </button>
-        </form>
-      </Modal>
-    )
-  }
-
-  // professeur/élève -> pas de libre-service, juste le contact.
-  if (resultat) {
-    return (
-      <Modal title="Code oublié" onClose={onClose}>
-        <p>
-          Contactez l’administrateur <strong>{resultat.admin_prenom} {resultat.admin_nom}</strong> de
-          l’école <strong>{resultat.ecole_nom}</strong>
-          {resultat.admin_email ? <> par mail (<strong>{resultat.admin_email}</strong>)</> : null} pour
-          qu’il vous indique votre code.
-        </p>
-        <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
-          Fermer
-        </button>
-      </Modal>
-    )
-  }
-
-  // Identifiant introuvable (ou vérification encore en cours).
+// Modale "Code oublié ?" : un simple message, pour tous (décision du
+// 2026-09-21, remplace la question de récupération des admins et le
+// contact de l'admin affiché aux profs/élèves).
+function CodeOublieModal({ onClose }) {
   return (
     <Modal title="Code oublié" onClose={onClose}>
-      {erreur && <p className="login-screen__erreur">{erreur}</p>}
-      {enCours && !erreur && <p className="muted">Vérification…</p>}
+      <p>
+        Contactez un administrateur de l’école ou{' '}
+        <a href="mailto:sebastien.richard54@gmail.com">sebastien.richard54@gmail.com</a>.
+      </p>
+      <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
+        Fermer
+      </button>
     </Modal>
   )
 }
