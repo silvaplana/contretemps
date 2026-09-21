@@ -101,16 +101,17 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
 
     if (!avecConversation) return
     // Même recette que le "+" d'Admin > Messagerie (voir
-    // AdminGroupes.jsx: creerConversation) : conversation vide, sa modale
-    // d'édition s'ouvre juste après — SANS bloc "cours" cette fois (voir
-    // demande du 2026-09-21), pour que son titre reste "Nouvelle
-    // conversation" (voir ConversationEditModal.jsx: estVide) plutôt que
-    // de se nommer tout de suite d'après le cours. Le professeur du cours
-    // (s'il y en a un — voir §6.5, "0 prof" est un cas normal), lui, est
-    // pré-ajouté comme membre : `nouveau.professeurId` (renvoyé par
-    // l'API, donc bien typé) plutôt que le `professeurId` du formulaire
-    // (une chaîne, valeur brute d'un <select>).
-    const conversation = await conversationsApi.creerGroupe(ecoleId, '')
+    // AdminGroupes.jsx: creerConversation), sa modale d'édition s'ouvre
+    // juste après — SANS bloc "cours" (voir demande du 2026-09-21), le
+    // nom du cours est repris tel quel comme nom de la conversation
+    // (demande du 2026-09-21 : proposé, pas juste dérivé à l'affichage
+    // via nomAffiche/estVide comme le ferait un bloc "cours" — modifiable
+    // ensuite dans la modale avant de cliquer "Valider"). Le professeur
+    // du cours (s'il y en a un — voir §6.5, "0 prof" est un cas normal),
+    // lui, est pré-ajouté comme membre : `nouveau.professeurId` (renvoyé
+    // par l'API, donc bien typé) plutôt que le `professeurId` du
+    // formulaire (une chaîne, valeur brute d'un <select>).
+    const conversation = await conversationsApi.creerGroupe(ecoleId, nouveau.nom)
     let membres = []
     if (nouveau.professeurId) {
       await conversationsApi.ajouterMembre(conversation.id, { type: 'professeur', id: nouveau.professeurId })

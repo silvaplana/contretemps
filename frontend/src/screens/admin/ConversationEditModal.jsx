@@ -80,6 +80,18 @@ export default function ConversationEditModal({
     <Modal
       title={nouvelle ? 'Nouvelle conversation' : `Modifier — ${nomAffiche(conversation, { cours })}`}
       onClose={onClose}
+      footer={
+        // Nom/membres/WhatsApp sont déjà enregistrés au fil de l'eau
+        // (voir onRename/onAddMembre/onRemoveMembre/onCreerGroupeWhatsapp
+        // ci-dessous) — ce bouton ne fait qu'acter la fin de l'édition et
+        // fermer la modale, comme le ferait la croix ou un clic à
+        // l'extérieur, mais avec une action explicite (demande du
+        // 2026-09-21 : il manquait un "Valider" en bas, comme dans la
+        // modale d'ajout de cours).
+        <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
+          Valider
+        </button>
+      }
     >
       <label htmlFor="edit-groupe-nom">Nom</label>
       <input
