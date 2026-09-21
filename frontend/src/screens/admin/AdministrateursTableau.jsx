@@ -1,27 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as administrateursApi from '../../api/administrateurs.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { isOwner } from '../../data/roles.js'
-import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 
 // Tableau des administrateurs (Admin > École, au-dessus de "Usage vidéo" —
 // voir spec/SPEC.md §2.4). Visible par TOUS les admins de l'école ; seuls
 // les Owners ont le crayon et la poubelle, et jamais sur leur propre ligne.
-// Créer un administrateur : menu ⋮ en haut à droite de CETTE section,
-// sur la ligne du titre (demande du 2026-09-21 — ni un bouton sous le
-// tableau, ni le menu ⋮ général de l'onglet, réservé aux sauvegardes).
+// Créer un administrateur : entrée "Ajouter un administrateur" du menu ⋮
+// de l'en-tête, à droite du badge (demande du 2026-09-21, voir
+// AdminParametres.jsx) — ce tableau n'en porte que la modale.
 //
 // Les droits sont de toute façon vérifiés par le serveur (voir
 // backend/src/administrateurs/receiver.py) : masquer les boutons ici n'est
 // qu'un confort, pas la protection.
-export default function AdministrateursTableau({ ecoleId, activeUser, professeurs, eleves = [] }) {
+export default function AdministrateursTableau({
+  ecoleId,
+  activeUser,
+  professeurs,
+  eleves = [],
+  creationOuverte,
+  onFermerCreation,
+}) {
   const [administrateurs, setAdministrateurs] = useState([])
-  const [creationOuverte, setCreationOuverte] = useState(false)
-  const [menuOuvert, setMenuOuvert] = useState(false)
-  const menuRef = useRef(null)
-  useFermerAuClicExterieur(menuRef, menuOuvert, () => setMenuOuvert(false))
   const [enEdition, setEnEdition] = useState(null)
   const [erreur, setErreur] = useState(null)
   const peutGerer = isOwner(activeUser)
@@ -68,34 +70,7 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
 
   return (
     <section className="admin-administrateurs">
-      <div className="admin-section__entete">
-        <h3 className="section-label">Administrateurs</h3>
-        {peutGerer && (
-          <div className="header-menu" ref={menuRef}>
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={() => setMenuOuvert((o) => !o)}
-              aria-label="Menu administrateurs"
-            >
-              <Icon name="moreVertical" />
-            </button>
-            {menuOuvert && (
-              <div className="dropdown-menu header-menu__panel">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOuvert(false)
-                    setCreationOuverte(true)
-                  }}
-                >
-                  <Icon name="users" size={18} /> Ajouter un administrateur
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
+      <h3 className="section-label">Administrateurs</h3>
       {erreur && <p className="admin-panel__erreur">{erreur}</p>}
       <div className="table-scroll">
         <table className="data-table">
@@ -154,7 +129,7 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
           eleves={elevesPromouvables}
           onValider={(donnees) => administrateursApi.creer(ecoleId, donnees)}
           onEnregistre={enregistree}
-          onClose={() => setCreationOuverte(false)}
+          onClose={onFermerCreation}
         />
       )}
       {peutGerer && enEdition && (

@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { ROLE_LABEL, estMonteeEnPrivilege, trierParRole } from '../data/roles.js'
 import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
+import { ID_ACTIONS_ENTETE } from './ActionsEntete.jsx'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
 import Logo from './Logo.jsx'
@@ -152,6 +153,9 @@ export default function Header({
               {user.initiales}
             </span>
           )}
+          {/* Action propre à l'écran affiché, à droite du badge (ex. menu ⋮
+              d'Admin > École) : voir ActionsEntete.jsx. */}
+          <div id={ID_ACTIONS_ENTETE} className="app-header__actions" />
           {mode === 'course' && (
             <div className="header-menu" ref={headerMenuRef}>
               <button

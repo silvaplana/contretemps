@@ -1,6 +1,7 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
 import AdministrateursTableau from './AdministrateursTableau.jsx'
+import { isOwner } from '../../data/roles.js'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
 
@@ -24,11 +25,13 @@ import UsageVideoSection from './UsageVideoSection.jsx'
 // requête envoie la valeur complète du champ à cet instant, la dernière
 // envoyée finit par gagner côté serveur.
 //
-// Menu ⋮ en haut à droite (voir SauvegardeEcoleMenu.jsx) : sauvegarder/
-// programmer/importer/supprimer les données de l'école, et le
-// téléchargement des nouvelles inscriptions (déplacé ici, y vivait avant
-// comme simple bouton).
+// Menu ⋮ dans l'en-tête, à droite du badge de l'utilisateur (demande du
+// 2026-09-21, voir SauvegardeEcoleMenu.jsx) : sauvegarder/programmer/
+// importer/supprimer les données de l'école, le téléchargement des
+// nouvelles inscriptions et, pour un administrateur principal, "Ajouter un
+// administrateur" (un seul ⋮ pour tout l'écran).
 export default function AdminParametres({ ecole, setEcole, setVideos, cours, eleves, setEleves, activeUser, professeurs }) {
+  const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
 
   // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
   // réservée aux admins (voir api/ecoles.js : obtenir). L'école reçue à la
@@ -53,9 +56,12 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, ele
 
   return (
     <div className="admin-panel">
-      <div className="admin-panel__toolbar admin-panel__toolbar--fin">
-        <SauvegardeEcoleMenu ecole={ecole} cours={cours} setEleves={setEleves} />
-      </div>
+      <SauvegardeEcoleMenu
+        ecole={ecole}
+        cours={cours}
+        setEleves={setEleves}
+        onAjouterAdministrateur={isOwner(activeUser) ? () => setCreationAdminOuverte(true) : null}
+      />
 
       <div className="form-fields">
         <label htmlFor="ecole-param-nom">Nom de l’école</label>
@@ -101,7 +107,14 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, ele
 
       {/* Deux sections au même niveau, même format de titre (demande du
           2026-09-21) : Administrateurs (spec §2.4), puis Usage vidéo. */}
-      <AdministrateursTableau ecoleId={ecole.id} activeUser={activeUser} professeurs={professeurs} eleves={eleves} />
+      <AdministrateursTableau
+        ecoleId={ecole.id}
+        activeUser={activeUser}
+        professeurs={professeurs}
+        eleves={eleves}
+        creationOuverte={creationAdminOuverte}
+        onFermerCreation={() => setCreationAdminOuverte(false)}
+      />
 
       <UsageVideoSection ecoleId={ecole.id} setVideos={setVideos} />
     </div>

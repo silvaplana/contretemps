@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
 import * as inscriptionsApi from '../../api/inscriptions.js'
+import ActionsEntete from '../../components/ActionsEntete.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
@@ -50,7 +51,10 @@ function destinationMemorisee() {
 // 6. "Intégrer fichier élèves officiel" — MÊME modale que le bouton
 //    "Importer" d'Admin > Élèves (voir IntegrerFichierElevesModal.jsx,
 //    demande utilisateur explicite : une seule implémentation).
-export default function SauvegardeEcoleMenu({ ecole, cours, setEleves }) {
+// + "Ajouter un administrateur" si `onAjouterAdministrateur` est fourni
+//   (administrateur principal seulement, voir AdministrateursTableau.jsx).
+// Le bouton ⋮ est placé dans l'en-tête, à droite du badge (ActionsEntete).
+export default function SauvegardeEcoleMenu({ ecole, cours, setEleves, onAjouterAdministrateur }) {
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [vue, setVue] = useState(null) // null | 'programmer' | 'supprimer' | 'importer' | 'integrerFichier'
   const [erreur, setErreur] = useState(null)
@@ -97,61 +101,76 @@ export default function SauvegardeEcoleMenu({ ecole, cours, setEleves }) {
 
   return (
     <>
-      <div className="header-menu" ref={menuRef}>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setMenuOuvert((o) => !o)}
-          aria-label="Menu sauvegarde"
-        >
-          <Icon name="moreVertical" />
-        </button>
-        {menuOuvert && (
-          <div className="dropdown-menu header-menu__panel">
-            {estConfigureDrive() && (
-              <div className="header-menu__destination" onClick={(e) => e.stopPropagation()}>
-                <span className="muted">Destination de "Sauvegarder École"</span>
-                <label>
-                  <input
-                    type="radio"
-                    name="sauvegarde-destination"
-                    checked={destination === 'local'}
-                    onChange={() => changerDestination('local')}
-                  />
-                  Cet appareil
-                </label>
-                <label>
-                  <input
-                    type="radio"
-                    name="sauvegarde-destination"
-                    checked={destination === 'drive'}
-                    onChange={() => changerDestination('drive')}
-                  />
-                  Google Drive
-                </label>
-              </div>
-            )}
-            <button type="button" onClick={sauvegarder}>
-              <Icon name="folder" size={18} /> Sauvegarder École
-            </button>
-            <button type="button" onClick={() => ouvrir('programmer')}>
-              <Icon name="clock" size={18} /> Programmer sauvegarde École
-            </button>
-            <button type="button" onClick={telechargerInscriptions}>
-              <Icon name="fileCheck" size={18} /> Télécharger les nouveaux inscrits
-            </button>
-            <button type="button" onClick={() => ouvrir('importer')}>
-              <Icon name="folder" size={18} /> Importer sauvegarde
-            </button>
-            <button type="button" onClick={() => ouvrir('integrerFichier')}>
-              <Icon name="fileCheck" size={18} /> Intégrer fichier élèves officiel
-            </button>
-            <button type="button" className="header-menu__danger" onClick={() => ouvrir('supprimer')}>
-              <Icon name="trash" size={18} /> Supprimer Données École
-            </button>
-          </div>
-        )}
-      </div>
+      {/* Le bouton ⋮ et sa liste vont dans l'en-tête, à droite du badge
+          (demande du 2026-09-21) ; l'erreur et les modales restent ici. */}
+      <ActionsEntete>
+        <div className="header-menu" ref={menuRef}>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => setMenuOuvert((o) => !o)}
+            aria-label="Menu École"
+          >
+            <Icon name="moreVertical" />
+          </button>
+          {menuOuvert && (
+            <div className="dropdown-menu header-menu__panel">
+              {estConfigureDrive() && (
+                <div className="header-menu__destination" onClick={(e) => e.stopPropagation()}>
+                  <span className="muted">Destination de "Sauvegarder École"</span>
+                  <label>
+                    <input
+                      type="radio"
+                      name="sauvegarde-destination"
+                      checked={destination === 'local'}
+                      onChange={() => changerDestination('local')}
+                    />
+                    Cet appareil
+                  </label>
+                  <label>
+                    <input
+                      type="radio"
+                      name="sauvegarde-destination"
+                      checked={destination === 'drive'}
+                      onChange={() => changerDestination('drive')}
+                    />
+                    Google Drive
+                  </label>
+                </div>
+              )}
+              <button type="button" onClick={sauvegarder}>
+                <Icon name="folder" size={18} /> Sauvegarder École
+              </button>
+              <button type="button" onClick={() => ouvrir('programmer')}>
+                <Icon name="clock" size={18} /> Programmer sauvegarde École
+              </button>
+              <button type="button" onClick={telechargerInscriptions}>
+                <Icon name="fileCheck" size={18} /> Télécharger les nouveaux inscrits
+              </button>
+              <button type="button" onClick={() => ouvrir('importer')}>
+                <Icon name="folder" size={18} /> Importer sauvegarde
+              </button>
+              <button type="button" onClick={() => ouvrir('integrerFichier')}>
+                <Icon name="fileCheck" size={18} /> Intégrer fichier élèves officiel
+              </button>
+              {onAjouterAdministrateur && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOuvert(false)
+                    onAjouterAdministrateur()
+                  }}
+                >
+                  <Icon name="users" size={18} /> Ajouter un administrateur
+                </button>
+              )}
+              <button type="button" className="header-menu__danger" onClick={() => ouvrir('supprimer')}>
+                <Icon name="trash" size={18} /> Supprimer Données École
+              </button>
+            </div>
+          )}
+        </div>
+      </ActionsEntete>
 
       {erreur && <p className="admin-panel__erreur">{erreur}</p>}
 

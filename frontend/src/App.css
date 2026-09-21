@@ -823,12 +823,6 @@
   flex: 1;
 }
 
-/* Variante sans barre de recherche (voir AdminParametres.jsx) : juste le
-   menu ⋮, poussé à droite plutôt qu'aligné à gauche par défaut. */
-.admin-panel__toolbar--fin {
-  justify-content: flex-end;
-}
-
 /* Entrée destructive d'un menu ⋮ (voir SauvegardeEcoleMenu.jsx :
    "Supprimer Données École") — même rouge que .btn--danger, pour la
    distinguer visuellement des autres entrées avant même de cliquer.
@@ -2291,19 +2285,6 @@
   text-transform: inherit;
   cursor: pointer;
   min-height: auto;
-}
-
-/* Ligne de titre d'une section avec son menu ⋮ à droite (ex.
-   "Administrateurs", Admin > École). */
-.admin-section__entete {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-}
-
-.admin-section__entete .dropdown-menu button {
-  white-space: nowrap;
 }
 
 /* Liste des autres profils de la famille, dans l'écran Profil (§5.6). */
