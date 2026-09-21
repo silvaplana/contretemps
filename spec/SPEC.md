@@ -26,7 +26,8 @@ L'application gère plusieurs écoles, dont les données sont **totalement indé
 **Contretemps**.
 
 Quatre rôles au sein d'une école : **Élève**, **Professeur**, **Admin**, et **Owner** (un
-admin qui administre en plus la liste des admins, voir §2.4). **Un compte peut cumuler
+admin qui administre en plus la liste des admins, voir §2.4). Au-dessus des écoles, un
+cinquième rôle, **Superuser**, réservé au propriétaire de l'application (§2.5). **Un compte peut cumuler
 plusieurs rôles** (décision du 2026-09-21), par exemple Professeur ET Admin. Les rôles sont
 stockés dans une table de liaison compte ↔ rôle (§6.3bis), et le code ne les lit qu'à travers
 des fonctions centrales (`isAdmin`, `isProf`..., voir §6.3bis). Deux règles de cumul :
@@ -209,6 +210,64 @@ erreurs et les contournements de l'IHM, par exemple un profil non-admin qui appe
 directement une route Admin. Elles n'empêchent pas une attaque délibérée avec un accès direct à
 l'API. C'est cohérent avec le modèle de confiance actuel de l'appli, pas un renforcement de
 sécurité au sens strict.
+
+
+### 2.5 Superuser — propriétaire de l'application *(spécifié le 2026-09-21, pas encore implémenté)*
+
+Le **Superuser** est le propriétaire de l'application. Contrairement aux quatre autres rôles, qui
+valent à l'intérieur d'une école, il est **au-dessus des écoles** et peut intervenir dans
+toutes.
+
+**Nature du compte**
+- Un compte **sans école** (`ecole_id` vide, pas de famille) avec le seul rôle `superuser`
+  (§6.3bis). Ce rôle ne se cumule avec aucun autre.
+- **Création uniquement par une commande lancée sur le serveur**, jamais depuis l'appli :
+  personne ne peut s'attribuer ce rôle par l'interface, pas même un Owner. Même chose pour le
+  modifier (mot de passe) ou le supprimer.
+- **Invisible pour les écoles** : absent du tableau des administrateurs (§2.4), des listes
+  d'élèves et de professeurs, de la messagerie (il n'y écrit pas, n'y apparaît pas comme
+  membre) et du contact affiché par "Code oublié ?". Il n'est jamais compté comme "le dernier
+  Owner" d'une école.
+
+**Droits**
+- **Tous les droits, dans toutes les écoles** : `requireAdmin` et `requireOwner` (§2.4) le
+  laissent toujours passer, quelle que soit l'école concernée.
+- **Seul à pouvoir créer ou supprimer une école** depuis cet accès, et à pouvoir **dépanner une
+  école** : nommer un Owner, en retirer un, y compris le dernier (il reste alors lui-même la
+  seule personne capable d'en renommer un).
+- Après connexion, un **sélecteur d'école** lui permet de choisir l'école où il intervient ;
+  il y voit l'appli comme un Owner de cette école.
+- **Pas de journal** de ses actions pour l'instant (décision utilisateur du 2026-09-21) : il
+  est seul à avoir ce rôle. À ajouter si d'autres personnes l'obtiennent un jour.
+
+**Connexion : une vraie authentification, pour lui seul** (décision utilisateur du 2026-09-21)
+
+Avec le modèle de confiance actuel (§2.4, §8), c'est le navigateur qui annonce au serveur "je
+suis le compte n° X", et le serveur le croit. Acceptable pour un admin d'école, **pas pour un
+compte qui a tous les droits sur toutes les écoles** : n'importe qui pourrait envoyer le
+numéro de ce compte à l'API. Le Superuser a donc sa propre connexion, sécurisée :
+- **même écran et mêmes champs que tout le monde** (décision utilisateur du 2026-09-21) : son
+  identifiant dans "Nom Prénom ou Email", et son **mot de passe personnel** (jamais un code
+  partagé) dans le champ "Code". Aucun lien ni mention ne signale qu'un accès propriétaire
+  existe ;
+- le serveur vérifie **d'abord** si l'identifiant est celui du Superuser ET si le "code" saisi
+  correspond à son mot de passe. Si oui : connexion Superuser, puis sélecteur d'école. Sinon :
+  connexion d'école normale (§2.2). Conséquence voulue : si l'email du Superuser sert aussi à
+  un compte d'école, les deux cohabitent — avec le code de l'école on entre dans ce compte,
+  avec le mot de passe personnel on entre en Superuser ;
+- mot de passe **stocké haché** (champ `hashed_password_ou_code`, §6.3), jamais en clair ;
+- **essais limités** : après 5 mots de passe faux, les tentatives de connexion Superuser sont
+  bloquées 15 minutes. Ce mot de passe est la seule barrière devant tous les droits, il ne doit
+  pas pouvoir être deviné en boucle ;
+- à la connexion, le serveur délivre un **jeton signé valable 12 heures** (décision
+  utilisateur du 2026-09-21), que le navigateur renvoie à chaque requête. Passé ce délai, le
+  mot de passe est redemandé ;
+- **les droits de Superuser ne sont accordés que sur présentation d'un jeton valide**, vérifié
+  par le serveur à chaque requête. Un `compte_id` de Superuser envoyé par le navigateur sans
+  jeton valide ne donne **aucun** droit.
+
+Les écoles gardent leur connexion actuelle. Le même mécanisme de jeton pourra être étendu à
+tous les comptes plus tard (chantier "vraie authentification", §8).
 
 ---
 
@@ -460,8 +519,8 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | Champ | Type | Obl./Opt. |
 |---|---|---|
 | id | PK | — |
-| ecole_id | FK → écoles | Obl. |
-| famille_id | FK → familles | Obl. (calculé) |
+| ecole_id | FK → écoles | Obl. (vide uniquement pour le Superuser, §2.5) |
+| famille_id | FK → familles | Obl. (calculé ; vide uniquement pour le Superuser) |
 | nom | texte | Obl. |
 | prenom | texte | Obl. |
 | email | texte | Opt. |
@@ -491,7 +550,7 @@ par rôle détenu (modèle RBAC classique).
 | Champ | Type | Obl./Opt. |
 | --- | --- | --- |
 | compte_id | FK → Comptes | Obl. |
-| role | enum (eleve / professeur / admin / owner) | Obl. |
+| role | enum (eleve / professeur / admin / owner / superuser) | Obl. |
 | created_at | datetime | Obl. (auto) |
 
 Clé primaire : (`compte_id`, `role`), donc un même rôle n'est jamais en double sur un compte.
@@ -509,10 +568,14 @@ L'école se déduit du compte (`Comptes.ecole_id`).
 - tout compte a **au moins un rôle** ;
 - **`owner` implique `admin`** : retirer `admin` retire aussi `owner` ;
 - **`eleve` ne se cumule avec aucun autre rôle** ;
-- chaque école a toujours **au moins un compte `owner`**.
+- chaque école a toujours **au moins un compte `owner`** (seul le Superuser peut passer outre,
+  pour dépanner une école, §2.5) ;
+- **`superuser` ne se cumule avec aucun autre rôle**, et seul un compte sans école peut
+  l'avoir. Ce rôle n'est jamais attribué ni retiré depuis l'appli (§2.5).
 
 **Fonctions centrales, seul accès aux rôles.** Le code ne lit jamais `roles_compte`
-directement : il passe par `isEleve`, `isProf`, `isAdmin`, `isOwner` (pour savoir) et par
+directement : il passe par `isEleve`, `isProf`, `isAdmin`, `isOwner`, `isSuperuser` (pour
+savoir) et par
 `requireAdmin`, `requireOwner` (pour bloquer une route, voir §2.4). Si un jour la façon de
 stocker les rôles change, seules ces fonctions changent.
 
@@ -906,6 +969,10 @@ encore branché).
   `isAdmin`/`isOwner`,
   RBAC serveur (`requireAdmin`/`requireOwner`), tableau des administrateurs et ses modales
   (création/modification/suppression) restent à coder.
+- **Superuser (§2.5)** : spécifié le 2026-09-21, **pas encore implémenté**, à livrer avec la
+  gestion multi-admin — rôle `superuser` et fonction `isSuperuser`, commande serveur de
+  création, mot de passe haché, jeton signé de 12 h vérifié à chaque requête, connexion par le
+  formulaire habituel, sélecteur d'école.
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
   retiré de l'écran de connexion (devenu inutile maintenant que le mode réel fonctionne) — mais
   `api/mode.js` et les branches maquette de chaque `api/<domaine>.js` existent toujours.
