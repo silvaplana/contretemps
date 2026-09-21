@@ -51,11 +51,12 @@ parent Admin + ses deux enfants Élèves).
   à chaque bascule de profil famille et effacé à la déconnexion volontaire
 - Plusieurs appareils peuvent être connectés simultanément avec le même compte
 - Déconnexion disponible depuis l'onglet **Profil**
-- **"Code oublié ?"** : identifiant (nom+prénom ou email) saisi → si c'est un **admin**,
+- **"Code oublié ?"** : identifiant (nom+prénom ou email) saisi → si c'est un **admin** (admin "pur" ou
+  professeur-admin, §2.4),
   question de récupération "Indiquez le nom de votre 1er animal de compagnie"
   (`code_recuperation`, voir §6.3) — bonne réponse = connecté directement, sans redemander le
-  code d'accès ; si c'est un **professeur/élève**, pas de libre-service : affiche le contact
-  (nom, prénom, email) du premier administrateur de l'école, à qui demander son code
+  code d'accès ; si c'est un **professeur/élève sans droits admin**, pas de libre-service : affiche le contact
+  (nom, prénom, email) d'un Owner de l'école (§2.4), à qui demander son code
   directement.
 
 **✅ Tranché — règle de sécurité du switch de profil famille** : le code d'accès du rôle
@@ -85,6 +86,113 @@ Sur la page de connexion, un bouton **"Nouvelle école ?"** ouvre un formulaire 
 La validation du formulaire crée l'école **et** le compte du premier administrateur en une
 seule opération. Cet administrateur pourra ensuite modifier les 3 codes d'accès de l'école
 depuis les paramètres (tout admin peut les modifier par la suite, pas seulement le créateur).
+**Ce premier administrateur est aussi l'Owner de l'école** (voir §2.4).
+
+### 2.4 Gestion multi-admin — Owners et professeurs-admins *(spécifié le 2026-09-21, pas encore implémenté)*
+
+Jusqu'ici, tous les admins d'une école étaient égaux en droits (§2.3 : "tout admin peut
+modifier [les codes d'accès] par la suite, pas seulement le créateur") et rien ne permettait
+de gérer la LISTE des administrateurs depuis l'appli (§8 : "absence de gestion multi-admin").
+Cette section introduit deux notions : l'**Owner**, seul habilité à administrer cette liste, et
+le **professeur-admin**, un professeur qui a aussi les droits admin.
+
+#### Owner
+
+- **Le premier administrateur créé pour une école en devient automatiquement Owner.** Pour
+  les écoles qui existent déjà, la migration désigne Owner le plus ancien admin de chaque école.
+- **Plusieurs Owners par école sont possibles.** Un Owner peut donner ou retirer la qualité
+  d'Owner à n'importe quel autre administrateur de l'école, admin "pur" comme professeur-admin.
+- **Il reste toujours au moins un Owner par école** : le serveur refuse toute opération qui
+  laisserait l'école sans Owner (retrait du statut, suppression, retrait des droits admin).
+- **Un Owner n'agit jamais sur sa propre ligne** : il ne peut ni se retirer le statut d'Owner,
+  ni se retirer les droits admin, ni se supprimer. Un autre Owner peut le faire. Ça évite qu'un
+  Owner se verrouille dehors par accident.
+- L'Owner n'est pas un 4ᵉ rôle : c'est une qualité en plus du statut d'administrateur. Pour
+  tout le reste de l'appli (§3), un Owner est un admin ordinaire.
+
+#### Professeur-admin
+
+**Un professeur peut être admin sans perdre son rôle de professeur.** Plutôt que de créer un
+compte séparé, un Owner accorde les droits admin à un compte Professeur existant. Ce compte
+reste un professeur partout ailleurs (assignable à un cours, visible dans Admin > Profs,
+comptage d'heures §5.7...) ; il gagne en plus l'accès à l'onglet Admin et les droits qui vont
+avec. Techniquement c'est un booléen indépendant du champ `role` (§6.3 : `role` reste
+"professeur"), pas un changement de rôle. Un élève ne peut pas devenir admin de cette façon.
+
+**Connexion d'un professeur-admin** (décision utilisateur du 2026-09-21) : il se connecte
+comme n'importe quel professeur, avec son nom et le code d'accès professeur, et voit directement
+l'onglet Admin. Aucun code supplémentaire n'est demandé. **Limite connue et acceptée** : le code
+professeur étant partagé entre tous les professeurs, quiconque le connaît peut se connecter sous
+le nom d'un professeur-admin et obtenir ses droits admin, Owner compris s'il l'est. Même
+limite, déjà existante, pour les admins "purs" avec le code admin partagé.
+
+**"Code oublié ?"** (§2.2) : un professeur-admin a un `code_recuperation`, fixé par l'Owner qui
+l'a promu. Il bénéficie donc de la même question de récupération que les admins "purs". Pour
+les comptes sans droits admin, le contact affiché devient celui d'un Owner de l'école (plutôt
+que "le premier administrateur").
+
+#### Tableau des administrateurs
+
+Dans Admin > École, **au-dessus** du bouton "Usage vidéo". Visible par **tous les admins** de
+l'école, Owners ou non, professeurs-admins compris. Une ligne par administrateur, admins "purs"
+et professeurs-admins confondus. Colonnes : **Nom, Prénom, Email, Owner** (oui/non). Le
+`code_recuperation` n'y figure jamais, même pour un Owner : il n'apparaît que dans la modale de
+modification.
+
+#### Droits réservés aux Owners
+
+- **"Créer nouvel administrateur"** dans le menu ⋮ d'Admin > École (même menu que "Programmer
+  sauvegarde École", voir `frontend/src/screens/admin/SauvegardeEcoleMenu.jsx`). La modale
+  propose deux façons de créer un admin :
+  1. **Nouveau compte admin** : nom, prénom, email, code de récupération. Crée un compte
+     `role="admin"` classique (§6.3), comme le tout premier admin de l'école (§2.3).
+  2. **Professeur existant promu admin** : choix d'un professeur de l'école dans une liste, plus
+     un code de récupération. Nom, prénom et email sont déjà ceux du professeur, rien à
+     ressaisir.
+
+  Dans les deux cas, une case "Owner" permet de créer directement un Owner.
+- **Crayon (modifier)** sur chaque ligne sauf la sienne :
+  - admin "pur" : nom, prénom, email et code de récupération modifiables ;
+  - professeur-admin : seul le code de récupération est modifiable ici. Nom, prénom et email se
+    modifient depuis Admin > Profs (même compte, pas de duplication) ;
+  - dans les deux cas : case "Owner" pour donner ou retirer ce statut (refusé si c'est le
+    dernier Owner de l'école).
+- **Poubelle (supprimer)** sur chaque ligne sauf la sienne, **avec confirmation** :
+  - **admin "pur"** : supprime le compte et tout ce qui n'a de sens que pour lui (accès,
+    appartenance aux conversations, abonnements aux notifications). **L'historique est
+    conservé** (décision utilisateur du 2026-09-21, même règle que pour les élèves) : ses
+    messages restent dans les conversations, affichés comme venant d'un "Ancien
+    administrateur", et les vidéos qu'il a mises en ligne restent disponibles ;
+  - **professeur-admin** : ne supprime **ni le compte ni le professeur**. Retire seulement les
+    droits admin (et la qualité d'Owner) : le compte redevient un professeur ordinaire,
+    toujours assigné à ses cours ;
+  - refusé dans les deux cas s'il s'agit du dernier Owner de l'école.
+- Un admin non-Owner ne voit pas "Créer nouvel administrateur" dans le menu ⋮. Sur le tableau,
+  il voit les mêmes lignes, sans crayon ni poubelle.
+
+#### RBAC centralisé : `requireAdmin` / `requireOwner`
+
+Les droits sont vérifiés **côté serveur**, par deux méthodes centralisées. Il n'y a qu'une
+seule implémentation de "qui a le droit de faire quoi", pas un `if role ==` recopié dans
+chaque route :
+
+- **`requireAdmin`** : l'appelant est administrateur de l'école concernée, c'est-à-dire
+  `role == "admin"` OU professeur-admin. Appliqué à **toutes les routes de l'onglet Admin**
+  (décision utilisateur du 2026-09-21), existantes comprises : élèves, professeurs, cours,
+  conversations, paramètres de l'école, import Excel, sauvegarde, usage vidéo.
+- **`requireOwner`** : l'appelant est administrateur ET Owner de l'école concernée. Appliqué à
+  la gestion des administrateurs : créer, modifier (dont le statut d'Owner), supprimer.
+- La **lecture** du tableau des administrateurs relève de `requireAdmin`.
+- Les règles "au moins un Owner" et "jamais sur sa propre ligne" sont appliquées par le
+  serveur, pas seulement masquées dans l'IHM.
+
+Chaque appel concerné transmet l'identifiant du compte appelant (le profil actif, voir
+`frontend/src/api/session.js`), que ces méthodes vérifient. **Limite assumée** : ce backend n'a
+toujours aucune notion de session ni de token (§2.2, §8). Ces vérifications empêchent les
+erreurs et les contournements de l'IHM, par exemple un profil non-admin qui appellerait
+directement une route Admin. Elles n'empêchent pas une attaque délibérée avec un accès direct à
+l'API. C'est cohérent avec le modèle de confiance actuel de l'appli, pas un renforcement de
+sécurité au sens strict.
 
 ---
 
@@ -92,7 +200,8 @@ depuis les paramètres (tout admin peut les modifier par la suite, pas seulement
 
 | Fonctionnalité                                    | Admin | Professeur | Élève                              |
 | ------------------------------------------------- | ----- | ---------- | ----------------------------------- |
-| Onglet Admin (gestion élèves/profs/cours/conversations) | ✅ | ❌      | ❌                                   |
+| Onglet Admin (gestion élèves/profs/cours/conversations) | ✅ | ❌ (✅ si promu admin, voir §2.4) | ❌ |
+| Gérer la liste des administrateurs (créer/modifier/supprimer un admin) | ✅ si Owner uniquement (§2.4) | ❌ (✅ si professeur-admin ET Owner, voir §2.4) | ❌ |
 | Onglet Présence                                   | ✅     | ✅          | ❌                                   |
 | Onglet Chorégraphie (consultation)                | ✅     | ✅          | ✅                                   |
 | Ajout/suppression/modification Chorégraphie       | ✅     | ✅          | ❌                                   |
@@ -341,16 +450,28 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | telephone | texte | Opt. |
 | hashed_password_ou_code | texte | technique |
 | code_recuperation | texte | Opt. (voir *Admin* ci-dessous) |
+| est_owner | booléen | Obl. (défaut faux — voir §2.4) |
+| admin_supplementaire | booléen | Obl. (défaut faux — voir §2.4) |
 | created_at | datetime | Obl. (auto) |
 
 *Admin* : un seul champ supplémentaire — `code_recuperation`, réponse à "nom
 de votre 1er animal de compagnie", demandée à la création d'un admin (voir
 NouvelleEcoleModal, écran de connexion §2.2/§2.3) pour le bouton "Code
-oublié ?" (pas encore branché — le champ existe, le flux de récupération
-lui-même reste à faire). Champ commun avec Professeur/Élève (comme le
+oublié ?". Champ commun avec Professeur/Élève (comme le
 reste de cette table) même s'il n'a de sens que pour un admin — pas de
 table séparée pour un unique champ.
 *Professeur* : aucun champ supplémentaire propre pour l'instant (ses cours sont une relation, voir §6.5 — pas un champ stocké ici).
+
+*`est_owner`* et *`admin_supplementaire`* (voir §2.4, gestion multi-admin) : deux booléens
+indépendants du champ `role`, affichés seulement dans le tableau des administrateurs.
+- **`admin_supplementaire`** n'a de sens que sur un compte `role="professeur"` : il le rend
+  professeur-admin. "Est administrateur" se calcule donc comme `role == "admin" OU
+  admin_supplementaire`, jamais en modifiant `role`. C'est ce calcul qu'utilise `requireAdmin`.
+- **`est_owner`** identifie un Owner. Il n'a de sens que sur un compte administrateur (admin
+  "pur" ou professeur-admin) ; retirer les droits admin à un professeur remet aussi son
+  `est_owner` à faux. Plusieurs comptes d'une même école peuvent l'avoir, et **au moins un
+  administrateur de chaque école l'a toujours** (invariant garanti par le serveur).
+  `requireOwner` vérifie "est administrateur ET `est_owner`".
 
 ### 6.4 Profil Élève (champs spécifiques)
 
@@ -723,9 +844,15 @@ encore branché).
 - **"Code oublié ?"** (écran de connexion) : **fait**. Identifiant → si admin, question de
   récupération (`code_recuperation`, §6.3) et connexion directe si la réponse est bonne ; si
   professeur/élève, pas de libre-service — juste le contact du (premier) admin de l'école à
-  qui demander directement. *Reste ouvert* : pas d'écran pour qu'un admin change son
-  `code_recuperation` après coup (seulement fixé à la création, voir NouvelleEcoleModal) — même
-  limitation que l'absence de gestion multi-admin (§6.3).
+  qui demander directement. *Reste ouvert* : pas d'écran pour qu'un admin change son propre
+  `code_recuperation` après coup en libre-service (en revanche, un Owner peut désormais le
+  modifier POUR un autre admin, voir §2.4 — gestion multi-admin, spécifiée mais pas encore
+  implémentée).
+- **Gestion multi-admin / Owner (§2.4)** : spécifiée le 2026-09-21, **pas encore implémentée** —
+  migration des 2 nouveaux champs (`est_owner`, `admin_supplementaire`, voir §6.3) avec
+  attribution rétroactive de `est_owner` au plus ancien admin de chaque école déjà existante,
+  RBAC serveur (`requireAdmin`/`requireOwner`), tableau des administrateurs et ses modales
+  (création/modification/suppression) restent à coder.
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
   retiré de l'écran de connexion (devenu inutile maintenant que le mode réel fonctionne) — mais
   `api/mode.js` et les branches maquette de chaque `api/<domaine>.js` existent toujours.
