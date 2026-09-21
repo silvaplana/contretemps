@@ -2279,9 +2279,17 @@
   min-height: auto;
 }
 
-/* "Ajouter un administrateur", sous le tableau des administrateurs. */
-.admin-administrateurs__ajouter {
-  margin-top: 10px;
+/* Ligne de titre d'une section avec son menu ⋮ à droite (ex.
+   "Administrateurs", Admin > École). */
+.admin-section__entete {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.admin-section__entete .dropdown-menu button {
+  white-space: nowrap;
 }
 
 /* Liste des autres profils de la famille, dans l'écran Profil (§5.6). */

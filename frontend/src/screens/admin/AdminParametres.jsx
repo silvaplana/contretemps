@@ -1,6 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
-import { isOwner } from '../../data/roles.js'
 import AdministrateursTableau from './AdministrateursTableau.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
@@ -30,7 +29,6 @@ import UsageVideoSection from './UsageVideoSection.jsx'
 // téléchargement des nouvelles inscriptions (déplacé ici, y vivait avant
 // comme simple bouton).
 export default function AdminParametres({ ecole, setEcole, setVideos, cours, setEleves, activeUser, professeurs }) {
-  const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
 
   // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
   // réservée aux admins (voir api/ecoles.js : obtenir). L'école reçue à la
@@ -56,12 +54,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
   return (
     <div className="admin-panel">
       <div className="admin-panel__toolbar admin-panel__toolbar--fin">
-        <SauvegardeEcoleMenu
-          ecole={ecole}
-          cours={cours}
-          setEleves={setEleves}
-          onCreerAdministrateur={isOwner(activeUser) ? () => setCreationAdminOuverte(true) : undefined}
-        />
+        <SauvegardeEcoleMenu ecole={ecole} cours={cours} setEleves={setEleves} />
       </div>
 
       <div className="form-fields">
@@ -108,14 +101,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
 
       {/* Deux sections au même niveau, même format de titre (demande du
           2026-09-21) : Administrateurs (spec §2.4), puis Usage vidéo. */}
-      <AdministrateursTableau
-        ecoleId={ecole.id}
-        activeUser={activeUser}
-        professeurs={professeurs}
-        creationOuverte={creationAdminOuverte}
-        onOuvrirCreation={() => setCreationAdminOuverte(true)}
-        onFermerCreation={() => setCreationAdminOuverte(false)}
-      />
+      <AdministrateursTableau ecoleId={ecole.id} activeUser={activeUser} professeurs={professeurs} />
 
       <UsageVideoSection ecoleId={ecole.id} setVideos={setVideos} />
     </div>
