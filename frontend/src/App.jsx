@@ -29,6 +29,7 @@ import LoginScreen from './screens/LoginScreen.jsx'
 import MessagerieScreen from './screens/MessagerieScreen.jsx'
 import PresenceScreen from './screens/PresenceScreen.jsx'
 import ProfilScreen from './screens/ProfilScreen.jsx'
+import SupervisionScreen from './screens/SupervisionScreen.jsx'
 import VideoScreen from './screens/VideoScreen.jsx'
 
 // Rôle Admin, Professeur ou Élève selon le compte connecté (voir
@@ -603,7 +604,9 @@ function App() {
   }
 
   const headerMode =
-    activeTab === 'admin' || activeTab === 'profil' || activeTab === 'heures' ? 'simple' : 'course'
+    activeTab === 'admin' || activeTab === 'profil' || activeTab === 'heures' || activeTab === 'supervision'
+      ? 'simple'
+      : 'course'
   const headerTitle =
     activeTab === 'admin'
       ? 'Administration'
@@ -611,7 +614,9 @@ function App() {
         ? 'Profil'
         : activeTab === 'heures'
           ? 'Heures'
-          : 'Sélectionner un cours'
+          : activeTab === 'supervision'
+            ? 'Supervision'
+            : 'Sélectionner un cours'
 
   return (
     <div className="app">
@@ -728,6 +733,8 @@ function App() {
             onFermerNouveauGroupe={() => setNouveauGroupeOuvert(false)}
           />
         )}
+
+        {activeTab === 'supervision' && isSuperuser(activeUser) && <SupervisionScreen />}
 
         {activeTab === 'profil' && (
           <ProfilScreen

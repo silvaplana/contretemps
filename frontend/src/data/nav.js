@@ -18,4 +18,8 @@ export const TABS = [
     roles: ['admin', 'professeur', 'eleve'],
   },
   { key: 'profil', label: 'Profil', icon: 'profil', roles: ['admin', 'professeur', 'eleve'] },
+  // Super User seulement (§2.5) : `superuser` n'est jamais ajouté aux autres
+  // comptes, contrairement à admin/owner qu'IL reçoit en plus (voir
+  // data/roles.js : rolesDe) — les autres ne voient donc jamais cet onglet.
+  { key: 'supervision', label: 'Supervision', icon: 'supervision', roles: ['superuser'] },
 ]
