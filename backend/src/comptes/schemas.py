@@ -14,8 +14,9 @@ class CompteModification(BaseModel):
 
 class CompteSortie(BaseModel):
     id: int
-    ecole_id: int
-    famille_id: int
+    # Vides pour le Superuser seulement (compte hors école, §2.5).
+    ecole_id: int | None
+    famille_id: int | None
     # Rôles cumulables (§6.3bis) : `role` est le rôle PRINCIPAL (le plus
     # élevé, pour l'affichage et le rang), `roles` la liste complète.
     # Lus sur le Compte via ses propriétés role_principal/noms_roles.

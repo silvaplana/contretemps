@@ -1,11 +1,11 @@
 // Libellé affichable d'un rôle (voir spec/SPEC.md §2, §4) — partagé entre
 // Header (sélecteur famille) et ProfilScreen (liste des profils du foyer).
-export const ROLE_LABEL = { admin: 'Admin', professeur: 'Professeur', eleve: 'Élève' }
+export const ROLE_LABEL = { admin: 'Admin', professeur: 'Professeur', eleve: 'Élève', superuser: 'Propriétaire' }
 
 // Rang de rôle, du plus faible au plus fort (voir spec §2.2 "règle de
 // sécurité du switch de profil famille") : sert à savoir si passer d'un
 // profil à l'autre est une montée en privilège (code redemandé) ou non.
-export const ROLE_RANK = { eleve: 0, professeur: 1, admin: 2 }
+export const ROLE_RANK = { eleve: 0, professeur: 1, admin: 2, superuser: 3 }
 
 // Passer de `depuisType` à `versType` est une montée en privilège (voir
 // §2.2, règle Élève < Professeur < Admin) : le code d'accès du rôle visé
@@ -32,7 +32,11 @@ export function trierParRole(profils) {
 function rolesDe(profil) {
   // Repli sur `type` pour un objet qui ne porte pas encore la liste (ex.
   // un membre de conversation) : il n'a alors qu'un seul rôle.
-  return profil?.roles ?? (profil?.type ? [profil.type] : [])
+  const roles = profil?.roles ?? (profil?.type ? [profil.type] : [])
+  // Le Superuser (§2.5) voit et fait tout ce que fait un Owner, dans
+  // l'école qu'il a choisie : mêmes onglets, mêmes boutons. Le serveur
+  // l'autorise de son côté (voir comptes/rbac.py).
+  return roles.includes('superuser') ? [...roles, 'admin', 'owner'] : roles
 }
 
 export function aUnDesRoles(profil, roles) {
@@ -43,3 +47,4 @@ export const isEleve = (profil) => aUnDesRoles(profil, ['eleve'])
 export const isProf = (profil) => aUnDesRoles(profil, ['professeur'])
 export const isAdmin = (profil) => aUnDesRoles(profil, ['admin'])
 export const isOwner = (profil) => aUnDesRoles(profil, ['owner'])
+export const isSuperuser = (profil) => aUnDesRoles(profil, ['superuser'])

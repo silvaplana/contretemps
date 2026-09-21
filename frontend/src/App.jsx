@@ -20,8 +20,9 @@ import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import Logo from './components/Logo.jsx'
 import { TABS } from './data/nav.js'
-import { aUnDesRoles, isAdmin, isEleve, isProf } from './data/roles.js'
+import { aUnDesRoles, isAdmin, isEleve, isProf, isSuperuser } from './data/roles.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
+import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
 import HeuresScreen from './screens/HeuresScreen.jsx'
 import LoginScreen from './screens/LoginScreen.jsx'
@@ -33,6 +34,17 @@ import VideoScreen from './screens/VideoScreen.jsx'
 // Rôle Admin, Professeur ou Élève selon le compte connecté (voir
 // spec/SPEC.md). Toutes les données viennent du vrai backend via
 // api/<domaine>.js (voir api/README.md) — plus de mode maquette.
+// Aucune école choisie : avant la connexion, et pour le Superuser (§2.5)
+// tant qu'il n'a pas choisi dans quelle école intervenir.
+const ECOLE_VIDE = {
+  id: null,
+  nom: '',
+  codePostal: '',
+  codeAccesAdmin: '',
+  codeAccesProf: '',
+  codeAccesEleve: '',
+}
+
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   const [activeTab, setActiveTab] = useState('messagerie')
@@ -62,7 +74,7 @@ function App() {
       .restaurerSession(compteId)
       .then(({ compte, ecole: ecoleRestauree }) => {
         setCompteReel(compte)
-        setEcole(ecoleRestauree)
+        setEcole(ecoleRestauree ?? ECOLE_VIDE)
         setLoggedIn(true)
       })
       .catch(() => sessionApi.effacerCompteSauvegarde())
@@ -153,14 +165,19 @@ function App() {
   // ici) : ce booléen ne fait que la déclencher, App.jsx étant le seul
   // ancêtre commun avec Header (qui porte le bouton).
   const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false)
-  const [ecole, setEcole] = useState({
-    id: null,
-    nom: '',
-    codePostal: '',
-    codeAccesAdmin: '',
-    codeAccesProf: '',
-    codeAccesEleve: '',
-  })
+  const [ecole, setEcole] = useState(ECOLE_VIDE)
+
+  // Superuser (§2.5) : l'école choisie est retenue sur l'appareil (voir
+  // api/session.js), et on peut en changer depuis Profil.
+  function choisirEcole(e) {
+    setEcole({ ...ECOLE_VIDE, ...e })
+    sessionApi.sauvegarderEcoleChoisie(e.id)
+    setActiveTab('admin')
+  }
+  function changerEcole() {
+    setEcole(ECOLE_VIDE)
+    sessionApi.sauvegarderEcoleChoisie(null)
+  }
 
   // Recharge élèves/profs/cours — au premier chargement ET à chaque
   // `cours_maj` reçu par SSE (voir plus bas), pour tenir le sélecteur de
@@ -176,7 +193,8 @@ function App() {
   }
 
   useEffect(() => {
-    if (!loggedIn) return
+    // Pas d'école choisie (Superuser, §2.5) : rien à charger encore.
+    if (!loggedIn || !ecole.id) return
     resynchroniserCours()
     conversationsApi.listerEcole(ecole.id).then(setGroupes)
     comptesApi.listerAdmins(ecole.id).then(setAdmins)
@@ -203,7 +221,7 @@ function App() {
   // que le nom des conversations automatiques de cours soit correct dès
   // que possible (voir api/messages.js : nomAffiche).
   useEffect(() => {
-    if (compteReel) resynchroniserConversations()
+    if (compteReel && ecole.id) resynchroniserConversations()
     else setConversations([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id, ecole.id, cours])
@@ -565,7 +583,7 @@ function App() {
         // (voir les useEffect ci-dessus, ecole.id).
         onLogin={(resultat) => {
           setCompteReel(resultat.compte)
-          setEcole(resultat.ecole)
+          setEcole(resultat.ecole ?? ECOLE_VIDE)
           setActiveTab('messagerie')
           setLoggedIn(true)
           // Se rappeler de ce profil pour la prochaine ouverture de
@@ -576,6 +594,12 @@ function App() {
         }}
       />
     )
+  }
+
+  // Superuser sans école choisie (juste connecté, ou "Changer d'école") :
+  // il choisit d'abord où intervenir (§2.5).
+  if (isSuperuser(activeUser) && !ecole.id) {
+    return <ChoixEcoleScreen onChoisir={choisirEcole} onLogout={logout} />
   }
 
   const headerMode =
@@ -712,6 +736,7 @@ function App() {
             onLogout={logout}
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
             onUpdateUser={mettreAJourActiveUser}
+            onChangerEcole={isSuperuser(activeUser) ? changerEcole : undefined}
           />
         )}
       </main>

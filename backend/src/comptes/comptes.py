@@ -117,7 +117,7 @@ class Comptes:
         telephone: str | None = None,
         code_recuperation: str | None = None,
     ) -> Compte:
-        if role not in r.ROLES or role == r.OWNER:
+        if role not in r.ROLES or role in (r.OWNER, r.SUPERUSER):
             # Owner ne se donne pas à la création : il s'ajoute à un admin
             # (voir ci-dessous et §2.4), jamais seul (owner ⇒ admin).
             raise ValueError(f"Rôle inconnu ou non attribuable à la création : {role}")
@@ -179,6 +179,10 @@ class Comptes:
         autre rôle. Sans effet si le compte a déjà ce rôle."""
         if role not in r.ROLES:
             raise RegleRoles(f"Rôle inconnu : {role}")
+        if role == r.SUPERUSER or r.is_superuser(compte):
+            # Jamais depuis l'appli : seulement par la commande serveur
+            # (voir app/creer_superuser.py et §2.5).
+            raise RegleRoles("Le rôle Superuser ne s'attribue pas depuis l'application")
         if r.a_le_role(compte, role):
             return
         if role == r.OWNER and not r.is_admin(compte):
@@ -189,14 +193,23 @@ class Comptes:
         db.commit()
         db.refresh(compte)
 
-    def retirer_role(self, db: Session, compte: Compte, role: str) -> None:
+    def retirer_role(
+        self, db: Session, compte: Compte, role: str, *, autoriser_sans_owner: bool = False
+    ) -> None:
         """Retirer `admin` retire aussi `owner` (owner ⇒ admin). Refusé si
-        l'école se retrouverait sans aucun Owner, ou le compte sans rôle."""
+        l'école se retrouverait sans aucun Owner, ou le compte sans rôle.
+        `autoriser_sans_owner` : réservé au Superuser, qui peut dépanner une
+        école en retirant même son dernier Owner (§2.5)."""
         a_retirer = {role, r.OWNER} if role == r.ADMIN else {role}
         restants = [ligne for ligne in compte.roles if ligne.role not in a_retirer]
         if not restants:
             raise RegleRoles("Un compte doit garder au moins un rôle")
-        if r.OWNER in a_retirer and r.is_owner(compte) and self.est_seul_owner(db, compte):
+        if (
+            not autoriser_sans_owner
+            and r.OWNER in a_retirer
+            and r.is_owner(compte)
+            and self.est_seul_owner(db, compte)
+        ):
             raise RegleRoles("L'école doit garder au moins un Owner")
         compte.roles = restants
         db.commit()
@@ -206,6 +219,42 @@ class Comptes:
         """Ce compte est-il le DERNIER Owner de son école ?"""
         owners = self.list_par_role(db, compte.ecole_id, r.OWNER)
         return [c.id for c in owners] == [compte.id]
+
+    # --- Superuser (§2.5) : hors de toute école ---
+
+    def trouver_superuser(self, db: Session, identifiant: str) -> Compte | None:
+        """Le Superuser désigné par `identifiant` (email, ou "Prénom Nom"),
+        mêmes règles de saisie qu'à la connexion d'école (casse et accents
+        ignorés)."""
+        cible = _normaliser(identifiant.strip())
+        superusers = db.scalars(
+            select(Compte)
+            .join(RoleCompte, RoleCompte.compte_id == Compte.id)
+            .where(Compte.ecole_id.is_(None), RoleCompte.role == r.SUPERUSER)
+        )
+        for compte in superusers:
+            noms = {_normaliser(f"{compte.prenom} {compte.nom}")}
+            if compte.email:
+                noms.add(_normaliser(compte.email))
+            if cible in noms:
+                return compte
+        return None
+
+    def enregistrer_superuser(
+        self, db: Session, *, nom: str, prenom: str, email: str, mot_de_passe_hache: str
+    ) -> Compte:
+        """Crée le Superuser, ou met à jour celui qui a cet email (nouveau
+        mot de passe). Appelé UNIQUEMENT par la commande serveur."""
+        compte = self.trouver_superuser(db, email)
+        if compte is None:
+            compte = Compte(ecole_id=None, famille_id=None, nom=nom, prenom=prenom, email=email)
+            compte.roles.append(RoleCompte(role=r.SUPERUSER))
+            db.add(compte)
+        compte.nom, compte.prenom = nom, prenom
+        compte.hashed_password_ou_code = mot_de_passe_hache
+        db.commit()
+        db.refresh(compte)
+        return compte
 
     def delete(self, db: Session, compte_id: int) -> bool:
         """Suppression du socle commun — les modules eleves/profs

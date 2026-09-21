@@ -104,7 +104,9 @@ class MessagerieReceiver:
         self.app.post(
             "/messages/{message_id}/deliveries/{destinataire_id}/mail", status_code=204
         )(self.envoyer_par_mail)
-        self.app.post("/messagerie/relancer", status_code=200)(self.relancer)
+        self.app.post(
+            "/messagerie/relancer", status_code=200, dependencies=[Depends(self._superuser)]
+        )(self.relancer)
 
         # "En train d'écrire" (§5.5) : signalé par le client toutes les
         # ~3s pendant la frappe (voir ConversationThreadScreen.jsx), pas
@@ -174,6 +176,11 @@ class MessagerieReceiver:
 
     def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_admin(appelant, ecole_id)
+
+    def _superuser(self, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        # Relance les messages de TOUTES les écoles : propriétaire seulement
+        # (§2.5). Le worker de relance, lui, appelle le service directement.
+        rbac.require_superuser(appelant)
 
     def _admin_de_la_conversation(
         self,

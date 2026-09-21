@@ -8,6 +8,10 @@
 // même mécanisme partout, c'est la même appli web dans les 4 cas), mais
 // reste propre à CET appareil/navigateur, jamais partagé.
 const CLE = 'contretemps:compteId'
+// Superuser seulement (voir spec §2.5) : son jeton signé (12 h), et l'école
+// qu'il a choisie (il n'appartient à aucune). Effacés avec le reste.
+const CLE_JETON = 'contretemps:jeton'
+const CLE_ECOLE_CHOISIE = 'contretemps:ecoleChoisie'
 
 // Toujours défensif (try/catch) : localStorage peut lever (navigation
 // privée sur certains navigateurs, stockage désactivé...) — jamais une
@@ -34,7 +38,38 @@ export function sauvegarderCompte(compteId) {
 export function effacerCompteSauvegarde() {
   try {
     localStorage.removeItem(CLE)
+    localStorage.removeItem(CLE_JETON)
+    localStorage.removeItem(CLE_ECOLE_CHOISIE)
   } catch {
     // Idem.
   }
 }
+
+function lire(cle) {
+  try {
+    return localStorage.getItem(cle)
+  } catch {
+    return null
+  }
+}
+
+// `valeur` null = effacer (ex. connexion d'un compte d'école après une
+// session Superuser sur le même appareil : l'ancien jeton ne doit pas
+// rester envoyé).
+function ecrire(cle, valeur) {
+  try {
+    if (valeur == null) localStorage.removeItem(cle)
+    else localStorage.setItem(cle, String(valeur))
+  } catch {
+    // Pas grave : il faudra juste se reconnecter.
+  }
+}
+
+export const lireJeton = () => lire(CLE_JETON)
+export const sauvegarderJeton = (jeton) => ecrire(CLE_JETON, jeton)
+
+export function lireEcoleChoisie() {
+  const valeur = lire(CLE_ECOLE_CHOISIE)
+  return valeur ? Number(valeur) : null
+}
+export const sauvegarderEcoleChoisie = (ecoleId) => ecrire(CLE_ECOLE_CHOISIE, ecoleId)

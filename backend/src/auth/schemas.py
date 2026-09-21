@@ -9,8 +9,9 @@ class Connexion(BaseModel):
 
 class CompteConnecte(BaseModel):
     id: int
-    ecole_id: int
-    famille_id: int
+    # Vides pour le Superuser seulement (compte hors école, §2.5).
+    ecole_id: int | None
+    famille_id: int | None
     # Rôles cumulables (§6.3bis) : `role` est le rôle PRINCIPAL (le plus
     # élevé, pour l'affichage et le rang), `roles` la liste complète.
     # Lus sur le Compte via ses propriétés role_principal/noms_roles.
@@ -26,6 +27,10 @@ class CompteConnecte(BaseModel):
     # (GET /comptes?role=admin, messagerie). Juste s'il est défini ; on le
     # MODIFIE toujours via CompteModification.
     code_recuperation_defini: bool = False
+    # Jeton signé de 12 h, remis UNIQUEMENT à la connexion du Superuser
+    # (§2.5) : le navigateur le renvoie à chaque requête. Absent pour
+    # les comptes d'école.
+    jeton: str | None = None
 
     model_config = {"from_attributes": True}
 

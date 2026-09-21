@@ -50,8 +50,10 @@ class Compte(Base):
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
-    famille_id: Mapped[int] = mapped_column(ForeignKey("familles.id"), nullable=False, index=True)
+    # Vides UNIQUEMENT pour le Superuser (§2.5), qui n'appartient à aucune
+    # école ni famille. Tout autre compte a toujours les deux.
+    ecole_id: Mapped[int | None] = mapped_column(ForeignKey("ecoles.id"), nullable=True, index=True)
+    famille_id: Mapped[int | None] = mapped_column(ForeignKey("familles.id"), nullable=True, index=True)
 
     nom: Mapped[str] = mapped_column(String(100), nullable=False)
     prenom: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -75,7 +77,7 @@ class Compte(Base):
     # lui, n'est jamais persisté ici : voir connexions.py pour pourquoi).
     derniere_activite_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    famille: Mapped[Famille] = relationship("Famille", back_populates="comptes")
+    famille: Mapped[Famille | None] = relationship("Famille", back_populates="comptes")
     # Rôles cumulables (§6.3bis) — ne JAMAIS les lire directement, passer
     # par comptes/roles.py (is_admin, is_prof...). `selectin` : chargés en
     # UNE requête pour toute une liste de comptes, pas une par compte (voir

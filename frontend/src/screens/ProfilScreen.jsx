@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as notificationsApi from '../api/notifications.js'
 import Icon from '../components/Icon.jsx'
-import { ROLE_LABEL, isAdmin, isProf, trierParRole } from '../data/roles.js'
+import { ROLE_LABEL, isAdmin, isProf, isSuperuser, trierParRole } from '../data/roles.js'
 
 // Champ "toujours affiché, éditable via un crayon" (Profil admin
 // uniquement, voir ProfilScreen.jsx : email et code de récupération) —
@@ -85,7 +85,8 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
 // famille (§2.1) quand il y en a plus d'un, en lecture seule — pas
 // cliquables (demande) : la bascule de profil se fait depuis le menu
 // "Changer de profil" du Header (voir Header.jsx), pas doublée ici.
-export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHeures, onUpdateUser }) {
+// `onChangerEcole` : Superuser seulement (§2.5), revenir au choix d'école.
+export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHeures, onUpdateUser, onChangerEcole }) {
   const autresProfils = trierParRole(famille.filter((p) => p.id !== user.id))
 
   // Notifications push (voir api/notifications.js) : reflète l'état RÉEL
@@ -131,7 +132,10 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         {/* Admin : email/téléphone/code de récupération éditables
             (crayon, demande) — les autres rôles restent en lecture
             seule, ces champs se gèrent depuis Admin > Élèves/Profs. */}
-        {isAdmin(user) ? (
+        {/* Pas pour le Superuser (§2.5) : ses identifiants et son mot de
+            passe se gèrent par la commande serveur, et il n'a pas de code de
+            récupération. */}
+        {isAdmin(user) && !isSuperuser(user) ? (
           <>
             <ChampAdminEditable
               valeur={user.email}
@@ -217,6 +221,11 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         </button>
       </section>
 
+      {onChangerEcole && (
+        <button type="button" className="btn btn--secondary btn--block" onClick={onChangerEcole}>
+          Changer d’école
+        </button>
+      )}
       <button type="button" className="btn btn--danger btn--block" onClick={onLogout}>
         Se déconnecter
       </button>

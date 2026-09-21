@@ -11,9 +11,11 @@
 // connaître cet id.
 //
 // ⚠️ Ce n'est PAS une authentification : le serveur croit cet en-tête sur
-// parole (limite assumée, voir rbac.py).
+// parole (limite assumée, voir rbac.py). SAUF pour le Superuser (§2.5) :
+// son jeton signé part en plus dans `Authorization`, et c'est lui seul que
+// le serveur croit pour ce compte.
 
-import { lireCompteSauvegarde } from './session.js'
+import { lireCompteSauvegarde, lireJeton } from './session.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 export const ENTETE_COMPTE = 'X-Compte-Id'
@@ -31,11 +33,13 @@ export function installerIdentiteAppelant() {
   window.fetch = (entree, options = {}) => {
     const url = entree instanceof Request ? entree.url : String(entree)
     const compteId = lireCompteSauvegarde()
-    if (compteId === null || !versNotreApi(url)) {
+    const jeton = lireJeton()
+    if ((compteId === null && !jeton) || !versNotreApi(url)) {
       return fetchNatif(entree, options)
     }
     const entetes = new Headers(options.headers ?? (entree instanceof Request ? entree.headers : undefined))
-    entetes.set(ENTETE_COMPTE, String(compteId))
+    if (compteId !== null) entetes.set(ENTETE_COMPTE, String(compteId))
+    if (jeton) entetes.set('Authorization', `Bearer ${jeton}`)
     return fetchNatif(entree, { ...options, headers: entetes })
   }
 }

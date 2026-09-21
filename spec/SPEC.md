@@ -214,7 +214,7 @@ l'API. C'est cohérent avec le modèle de confiance actuel de l'appli, pas un re
 sécurité au sens strict.
 
 
-### 2.5 Superuser — propriétaire de l'application *(spécifié le 2026-09-21, pas encore implémenté)*
+### 2.5 Superuser — propriétaire de l'application *(spécifié et implémenté le 2026-09-21)*
 
 Le **Superuser** est le propriétaire de l'application. Contrairement aux quatre autres rôles, qui
 valent à l'intérieur d'une école, il est **au-dessus des écoles** et peut intervenir dans
@@ -270,6 +270,32 @@ numéro de ce compte à l'API. Le Superuser a donc sa propre connexion, sécuris
 
 Les écoles gardent leur connexion actuelle. Le même mécanisme de jeton pourra être étendu à
 tous les comptes plus tard (chantier "vraie authentification", §8).
+
+**Mise en œuvre**
+- Création du compte, sur le serveur uniquement :
+  `docker compose exec backend python -m app.creer_superuser`. Prénom, nom et email sont
+  demandés ; le mot de passe est saisi au clavier, sans écho, deux fois (au moins 10
+  caractères), jamais en paramètre de commande. Relancer la commande avec le même email change
+  le mot de passe.
+- Mot de passe haché avec scrypt (`backend/src/securite/mots_de_passe.py`), jeton signé
+  HMAC-SHA256 (`securite/jetons.py`), essais limités en mémoire du processus
+  (`securite/limiteur.py` : un redémarrage du backend remet les compteurs à zéro).
+- Secret de signature des jetons : variable d'environnement `SECRET_JETONS` si elle existe,
+  sinon un fichier `secret_jetons` généré au premier usage à côté de la base (en production :
+  `/app/data`, volume persistant). Jamais dans le dépôt. Le changer déconnecte le Superuser.
+- Un échec n'est compté contre le Superuser que si la connexion d'école avec le même
+  identifiant échoue AUSSI : sinon, chaque connexion d'école avec son email compterait comme
+  un mot de passe faux. Pendant un blocage, la connexion d'école reste possible ; le message
+  d'erreur est le même dans tous les cas (rien ne révèle l'existence du compte).
+- Après connexion : écran "Choisir une école" (avec "Créer une école"), puis l'appli comme un
+  Owner de l'école choisie. L'école est retenue sur l'appareil ; "Changer d'école" dans
+  Profil. Dans une école toute neuve, le premier administrateur créé en devient l'Owner.
+- Le Superuser peut retirer le dernier Owner d'une école (dépannage), interdit à tous les
+  autres. `GET /comptes/{id}` ne renvoie son compte qu'à lui-même, avec son jeton.
+
+**Pas encore fait** : supprimer une école (aucune route, action destructrice à spécifier
+avant) ; déconnexion automatique pendant l'utilisation quand le jeton expire (aujourd'hui,
+les actions échouent jusqu'au prochain rechargement, qui ramène à l'écran de connexion).
 
 ---
 
@@ -988,10 +1014,11 @@ encore branché).
     Règles des rôles appliquées par le serveur (`Comptes.ajouter_role`/`retirer_role`) :
     owner ⇒ admin, élève non cumulable, au moins un Owner par école — y compris quand un
     professeur-admin Owner est supprimé depuis Admin > Profs (refusé s'il est le dernier).
-- **Superuser (§2.5)** : spécifié le 2026-09-21, **pas encore implémenté**, à livrer avec la
-  gestion multi-admin — rôle `superuser` et fonction `isSuperuser`, commande serveur de
-  création, mot de passe haché, jeton signé de 12 h vérifié à chaque requête, connexion par le
-  formulaire habituel, sélecteur d'école.
+- **Superuser (§2.5)** : **fait** (étape 4 de la gestion multi-admin) — rôle `superuser`,
+  `isSuperuser`, `require_superuser` (création d'école, relance des messages de toutes les
+  écoles), commande serveur de création, mot de passe haché, jeton signé de 12 h vérifié à
+  chaque requête, connexion par le formulaire habituel, sélecteur d'école. Migration
+  `b787f0a65803` : `comptes.ecole_id` et `famille_id` optionnels (Superuser sans école).
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
   retiré de l'écran de connexion (devenu inutile maintenant que le mode réel fonctionne) — mais
   `api/mode.js` et les branches maquette de chaque `api/<domaine>.js` existent toujours.

@@ -30,6 +30,11 @@ def _sortie(compte: Compte) -> dict:
     }
 
 
+def _est_superuser(appelant: Compte | None) -> bool:
+    # `appelant` peut être None quand les tests neutralisent le RBAC.
+    return appelant is not None and roles.is_superuser(appelant)
+
+
 class AdministrateursReceiver:
     def __init__(self, client: Administrateurs, app: FastAPI) -> None:
         self.client = client
@@ -117,7 +122,9 @@ class AdministrateursReceiver:
         champs = donnees.model_dump(exclude_unset=True)
         owner = champs.pop("owner", None)
         try:
-            cible = self.client.modifier(db, cible, champs=champs, owner=owner)
+            cible = self.client.modifier(
+                db, cible, champs=champs, owner=owner, par_superuser=_est_superuser(appelant)
+            )
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
         return _sortie(cible)
@@ -130,6 +137,6 @@ class AdministrateursReceiver:
     ):
         cible = self._cible_pour_owner(db, compte_id, appelant)
         try:
-            self.client.supprimer(db, cible)
+            self.client.supprimer(db, cible, par_superuser=_est_superuser(appelant))
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur

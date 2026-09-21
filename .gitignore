@@ -56,3 +56,6 @@ build/
 .idea/
 .DS_Store
 *:Zone.Identifier
+
+# Secret de signature des jetons Superuser (voir backend/src/securite/jetons.py)
+secret_jetons

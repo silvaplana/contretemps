@@ -1,5 +1,8 @@
 // Connexion — un seul point d'entrée (`login`) appelé par LoginScreen.
 
+import { isSuperuser } from '../data/roles.js'
+import { lireEcoleChoisie, sauvegarderJeton } from './session.js'
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 // Traduit une EcolePublique (backend, GET /ecoles) vers la forme attendue
@@ -63,7 +66,48 @@ export async function login({ identifiant, code }) {
     throw new Error("Identifiant ou code d'accès incorrect")
   }
   const compte = await reponse.json()
-  return { compte: versActiveUserEcran(compte), ecole: versEcoleEcran(ecole) }
+  // Jeton signé du Superuser (§2.5) — enregistré AVANT toute autre
+  // requête, pour que la suivante l'emporte déjà (voir api/identite.js).
+  // Effacé pour un compte d'école : pas de vieux jeton qui traîne.
+  sauvegarderJeton(compte.jeton ?? null)
+  const activeUser = versActiveUserEcran(compte)
+  // Le Superuser n'appartient à aucune école : il en choisira une (voir
+  // ChoixEcoleScreen.jsx), `ecole: null` en attendant.
+  if (isSuperuser(activeUser)) return { compte: activeUser, ecole: null }
+  return { compte: activeUser, ecole: versEcoleEcran(ecole) }
+}
+
+// --- Superuser (§2.5) : choix et création d'une école ---
+
+export async function listerEcoles() {
+  const reponse = await fetch(`${BASE_URL}/ecoles`)
+  if (!reponse.ok) throw new Error('Impossible de charger les écoles')
+  return (await reponse.json()).map(versEcoleEcran)
+}
+
+async function chargerEcole(ecoleId) {
+  const reponse = await fetch(`${BASE_URL}/ecoles/${ecoleId}`)
+  if (!reponse.ok) throw new Error('École introuvable')
+  return versEcoleEcran(await reponse.json())
+}
+
+// Réservé au Superuser côté serveur. Les codes d'accès sont libres, comme à
+// la création d'une école depuis l'écran de connexion (§2.3).
+export async function creerEcole({ nom, codePostal, codeAccesAdmin, codeAccesProf, codeAccesEleve }) {
+  const reponse = await fetch(`${BASE_URL}/ecoles`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      nom,
+      code_postal: codePostal,
+      code_acces_admin: codeAccesAdmin,
+      code_acces_prof: codeAccesProf,
+      code_acces_eleve: codeAccesEleve,
+    }),
+  })
+  if (reponse.status === 409) throw new Error('Une école avec ce nom et ce code postal existe déjà')
+  if (!reponse.ok) throw new Error('Impossible de créer l’école')
+  return versEcoleEcran(await reponse.json())
 }
 
 // --- "Code oublié ?" (voir spec §2.2/§2.3 et LoginScreen.jsx : CodeOublieModal).
@@ -97,6 +141,8 @@ export async function repondreRecuperation(identifiant, reponseTexte) {
   if (reponse.status === 404) throw new Error('Identifiant introuvable')
   if (!reponse.ok) throw new Error('Impossible de vérifier la réponse')
   const compte = await reponse.json()
+  // Toujours un compte d'école ici : aucun jeton Superuser ne doit rester.
+  sauvegarderJeton(null)
   return { compte: versActiveUserEcran(compte), ecole: versEcoleEcran(ecole) }
 }
 
@@ -125,8 +171,15 @@ export async function basculerLibre(versCompteId) {
 // de retour que login() ({compte, ecole}) : App.jsx traite les deux cas
 // de façon identique.
 export async function restaurerSession(compteId) {
-  const ecole = await resoudreEcoleReelle()
+  // Superuser : son compte n'est lisible qu'avec un jeton valide (voir
+  // backend comptes/receiver.py) — jeton expiré (12 h) = retour à l'écran
+  // de connexion, comme voulu. Son école est celle qu'il avait choisie.
   const compte = await recupererCompteActiveUser(compteId)
+  if (isSuperuser(compte)) {
+    const ecoleId = lireEcoleChoisie()
+    return { compte, ecole: ecoleId ? await chargerEcole(ecoleId).catch(() => null) : null }
+  }
+  const ecole = await resoudreEcoleReelle()
   return { compte, ecole: versEcoleEcran(ecole) }
 }
 

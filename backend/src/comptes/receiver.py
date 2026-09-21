@@ -3,12 +3,13 @@ un compte et lister les profils de sa famille. Les écrans Élèves/Profs ont
 leurs propres routes dans leurs modules respectifs, pas ici.
 """
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from db import get_db
+from securite import jetons
 
-from . import rbac
+from . import rbac, roles
 from .comptes import Comptes
 from .models import Compte
 from .schemas import CompteModification, CompteSortie
@@ -50,8 +51,20 @@ class ComptesReceiver:
         compte = self.client.get(db, compte_id)
         rbac.require_admin(appelant, compte.ecole_id if compte else None)
 
-    def obtenir(self, compte_id: int, db: Session = Depends(get_db)):
+    def obtenir(
+        self,
+        compte_id: int,
+        db: Session = Depends(get_db),
+        authorization: str | None = Header(default=None),
+    ):
         compte = self.client.get(db, compte_id)
+        # Le Superuser est invisible (§2.5) : son compte n'est lisible que
+        # par lui-même, avec son jeton (reprise de session). Pour tout autre
+        # appelant, il n'existe pas.
+        if compte is not None and roles.is_superuser(compte):
+            jeton = (authorization or "").removeprefix("Bearer ").strip()
+            if jetons.verifier(jeton) != compte.id:
+                compte = None
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
         return compte

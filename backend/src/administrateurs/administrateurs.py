@@ -79,7 +79,9 @@ class Administrateurs:
             self.comptes.ajouter_role(db, prof, roles.OWNER)
         return prof
 
-    def modifier(self, db: Session, admin: Compte, *, champs: dict, owner: bool | None) -> Compte:
+    def modifier(
+        self, db: Session, admin: Compte, *, champs: dict, owner: bool | None, par_superuser: bool = False
+    ) -> Compte:
         """`champs` : nom, prénom, email, code de récupération (seulement
         ceux fournis). `owner` : True/False pour donner/retirer ce statut,
         None pour ne pas y toucher."""
@@ -92,21 +94,22 @@ class Administrateurs:
         if owner is True:
             self.comptes.ajouter_role(db, admin, roles.OWNER)
         elif owner is False:
-            self.comptes.retirer_role(db, admin, roles.OWNER)
+            self.comptes.retirer_role(db, admin, roles.OWNER, autoriser_sans_owner=par_superuser)
         db.refresh(admin)
         return admin
 
-    def supprimer(self, db: Session, admin: Compte) -> None:
+    def supprimer(self, db: Session, admin: Compte, *, par_superuser: bool = False) -> None:
         """Professeur-admin : retire seulement les rôles admin et owner, le
         compte et le professeur restent. Admin "pur" : supprime le compte et
         ce qui n'a de sens que pour lui ; son HISTORIQUE est conservé (ses
         messages restent dans les conversations, ses vidéos aussi —
         décision utilisateur du 2026-09-21, même règle que pour un élève)."""
         if roles.is_prof(admin):
-            self.comptes.retirer_role(db, admin, roles.ADMIN)
+            self.comptes.retirer_role(db, admin, roles.ADMIN, autoriser_sans_owner=par_superuser)
             return
-        # Même règle que retirer_role : jamais une école sans Owner.
-        if roles.is_owner(admin) and self.comptes.est_seul_owner(db, admin):
+        # Même règle que retirer_role : jamais une école sans Owner (sauf
+        # dépannage par le Superuser, §2.5).
+        if not par_superuser and roles.is_owner(admin) and self.comptes.est_seul_owner(db, admin):
             raise RegleRoles("L'école doit garder au moins un Owner")
         # Appartenance directe aux conversations (les membres "cours" se
         # résolvent dynamiquement, rien à nettoyer) ; ses abonnements aux

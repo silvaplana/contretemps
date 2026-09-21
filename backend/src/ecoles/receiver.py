@@ -56,7 +56,13 @@ class EcolesReceiver:
         self.app.get("/ecoles/{ecole_id}", response_model=EcoleSortie, dependencies=admin)(
             self.obtenir
         )
-        self.app.post("/ecoles", response_model=EcoleSortie, status_code=201)(self.creer)
+        # Créer une école : réservé au propriétaire de l'application (§2.5).
+        self.app.post(
+            "/ecoles",
+            response_model=EcoleSortie,
+            status_code=201,
+            dependencies=[Depends(self._superuser)],
+        )(self.creer)
         self.app.put("/ecoles/{ecole_id}", response_model=EcoleSortie, dependencies=admin)(
             self.modifier
         )
@@ -92,6 +98,9 @@ class EcolesReceiver:
 
     def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_admin(appelant, ecole_id)
+
+    def _superuser(self, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_superuser(appelant)
 
     def lister(self, db: Session = Depends(get_db)):
         return self.client.list(db)

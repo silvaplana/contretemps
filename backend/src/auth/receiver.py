@@ -1,11 +1,12 @@
 """Routes REST de connexion et de bascule de profil famille (voir spec
-§2.2). Aucune notion de session/token pour l'instant — juste l'identité du
-compte trouvé, la vraie gestion de session est un point ouvert (voir
-spec/SPEC.md section 8).
+§2.2). Pas de session pour les comptes d'école — juste l'identité du compte
+trouvé (limite assumée, voir spec §8). Seul le Superuser reçoit un jeton
+signé (§2.5, voir securite/jetons.py).
 """
 
 from comptes import roles
 from fastapi import Depends, FastAPI, HTTPException
+from securite import jetons
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -45,8 +46,16 @@ class AuthReceiver:
         )
 
     def login(self, donnees: Connexion, db: Session = Depends(get_db)):
+        superuser = self.client.connecter_superuser(db, donnees.identifiant, donnees.code)
+        if superuser is not None:
+            sortie = CompteConnecte.model_validate(superuser)
+            sortie.jeton = jetons.emettre(superuser.id)
+            return sortie
         compte = self.client.connecter(db, donnees.ecole_id, donnees.identifiant, donnees.code)
         if compte is None:
+            self.client.noter_echec_superuser(db, donnees.identifiant)
+            # Même message dans tous les cas (y compris Superuser bloqué) :
+            # ne rien révéler de l'existence d'un compte.
             raise HTTPException(status_code=401, detail="Identifiant ou code incorrect")
         return compte
 

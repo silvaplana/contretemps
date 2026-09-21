@@ -9,6 +9,7 @@ from __future__ import annotations
 from comptes import Compte, Comptes
 from comptes import roles as r
 from ecoles import Ecole, Ecoles
+from securite import limiteur, mots_de_passe
 from sqlalchemy.orm import Session
 
 
@@ -67,6 +68,28 @@ class Auth:
             if any(_memes_codes(code, attendu) for attendu in _codes_du_compte(ecole, compte)):
                 return compte
         return None
+
+    def connecter_superuser(self, db: Session, identifiant: str, code: str) -> Compte | None:
+        """Connexion du Superuser (§2.5), tentée AVANT celle des écoles :
+        même formulaire, son mot de passe personnel dans le champ "Code".
+        None si l'identifiant n'est pas le sien, si le mot de passe est
+        faux, ou s'il est bloqué (trop d'essais) — dans tous ces cas, la
+        connexion d'école normale est tentée ensuite."""
+        superuser = self.comptes.trouver_superuser(db, identifiant)
+        if superuser is None or limiteur.est_bloque(superuser.id):
+            return None
+        if not mots_de_passe.verifier(code, superuser.hashed_password_ou_code):
+            return None
+        limiteur.noter_succes(superuser.id)
+        return superuser
+
+    def noter_echec_superuser(self, db: Session, identifiant: str) -> None:
+        """Appelé seulement quand la connexion d'école a AUSSI échoué : si
+        l'email du Superuser sert aussi à un compte d'école, une connexion
+        d'école réussie ne doit pas compter comme un mot de passe faux."""
+        superuser = self.comptes.trouver_superuser(db, identifiant)
+        if superuser is not None:
+            limiteur.noter_echec(superuser.id)
 
     def resoudre_identifiant(self, db: Session, ecole_id: int, identifiant: str) -> Compte | None:
         """Même résolution nom+prénom/email que `connecter`, mais sans
