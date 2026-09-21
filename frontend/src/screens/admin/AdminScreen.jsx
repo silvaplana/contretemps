@@ -11,7 +11,7 @@ const SUB_TABS = [
   { value: 'eleves', label: 'Élèves' },
   { value: 'professeurs', label: 'Profs' },
   { value: 'cours', label: 'Cours' },
-  { value: 'groupes', label: 'Conversations' },
+  { value: 'groupes', label: 'Messagerie' },
 ]
 
 // Onglet Admin (voir spec/SPEC.md §5.1) : réservé au rôle Admin, 5 sous-onglets
@@ -38,7 +38,7 @@ export default function AdminScreen({
   // "Créer aussi la conversation ?" à la création d'un cours (voir
   // AdminCours.jsx: addCours, demande utilisateur du 2026-09-18) — état à
   // consommer UNE fois (voir onEditIdInitialConsomme plus bas) : sans ça,
-  // quitter puis revenir sur l'onglet Conversations rouvrirait la même
+  // quitter puis revenir sur l'onglet Messagerie rouvrirait la même
   // modale en boucle.
   const [conversationAOuvrirDepuisCours, setConversationAOuvrirDepuisCours] = useState(null)
 

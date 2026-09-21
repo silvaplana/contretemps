@@ -28,7 +28,7 @@ function libelleMembre(membre, { admins, professeurs, eleves, cours }) {
 
 // "Nouveau groupe" depuis Messagerie (menu 3 points, Admin seulement —
 // voir App.jsx) — demande utilisateur du 2026-09-18. Contrairement à
-// Admin > Conversations (AdminGroupes.jsx : "+" crée tout de suite une
+// Admin > Messagerie (AdminGroupes.jsx : "+" crée tout de suite une
 // conversation vide côté backend puis ouvre sa modale d'édition, chaque
 // ajout de membre y persiste immédiatement, pas de bouton de validation),
 // ici les membres restent EN LOCAL (staging) tant qu'on n'a pas cliqué

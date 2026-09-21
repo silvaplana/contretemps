@@ -52,7 +52,7 @@ function estVide(g) {
   return !g.nom && g.membres.length === 0 && g.whatsappStatut !== 'cree'
 }
 
-// Onglet Admin > Conversations (voir spec/SPEC.md §5.1.5 et §6.9). Une
+// Onglet Admin > Messagerie (voir spec/SPEC.md §5.1.5 et §6.9). Une
 // conversation se compose de blocs "Compte" (admin/professeur/élève
 // individuel) et "Cours" (résout automatiquement tous ses élèves inscrits
 // et son/ses professeur(s)).
@@ -80,7 +80,7 @@ export default function AdminGroupes({
   // creerConversation ci-dessous ; il ne reste plus qu'à ouvrir sa modale
   // d'édition. Repris seulement comme état INITIAL (pas via un effet) :
   // ce composant est démonté/remonté à chaque fois qu'on revient sur
-  // l'onglet Conversations (voir AdminScreen), donc un changement
+  // l'onglet Messagerie (voir AdminScreen), donc un changement
   // ultérieur de cette prop ne doit jamais rouvrir la modale une 2e fois.
   editIdInitial,
   // Prévient AdminScreen que `editIdInitial` est consommé : sans ça,
@@ -174,6 +174,14 @@ export default function AdminGroupes({
           placeholder="Rechercher une conversation"
         />
       </div>
+
+      {/* Précise ce que contient cet onglet (renommé "Messagerie", voir
+          AdminScreen.jsx) — même vocabulaire/classe que l'en-tête
+          "Discussions" du mode recherche de Messagerie, voir
+          ConversationListScreen.jsx : uniquement les discussions de
+          GROUPE, pas les DM (individuelles), qui ne passent jamais par
+          cet écran. */}
+      <p className="conversation-list__section">Discussions de groupe</p>
 
       <div className="table-scroll">
         <table className="data-table">

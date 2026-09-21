@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 // Formulaire "Ajouter un membre" (type admin/professeur/élève/cours +
-// sélection) — partagé par Admin > Conversations (AdminGroupes.jsx, ajout
+// sélection) — partagé par Admin > Messagerie (AdminGroupes.jsx, ajout
 // immédiat) et "Nouveau groupe" depuis Messagerie (NouveauGroupeModal.jsx,
 // ajout en local le temps de la modale) : même UI, seul ce que fait
 // `onAdd` diffère entre les deux appelants.

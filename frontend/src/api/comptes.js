@@ -1,5 +1,5 @@
 // Domaine "comptes" (voir spec/SPEC.md §6.2/§6.3) — pour l'instant, couvre
-// la vraie liste des comptes admin de l'école (Admin > Conversations,
+// la vraie liste des comptes admin de l'école (Admin > Messagerie,
 // "Ajouter un membre" > Admin, à la place du "Direction" fictif d'avant)
 // et la modification email/code_recuperation depuis Profil (crayon, voir
 // ProfilScreen.jsx). Pas encore de module complet (pas d'écran de gestion

@@ -1,4 +1,4 @@
-// Domaine "conversations" (Admin > Conversations, voir spec/SPEC.md §5.1.5
+// Domaine "conversations" (Admin > Messagerie, voir spec/SPEC.md §5.1.5
 // et §6.9) — voir README.md pour le principe général. Ne couvre ici que
 // l'écran Admin (composition des conversations : nom, membres, groupe
 // WhatsApp miroir) ; l'écran Messagerie (fil de messages) est couvert par

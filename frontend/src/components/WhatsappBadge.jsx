@@ -1,4 +1,4 @@
-// Badge "groupe WhatsApp lié" (Admin > Conversations, voir spec/SPEC.md
+// Badge "groupe WhatsApp lié" (Admin > Messagerie, voir spec/SPEC.md
 // §6.9) — contrairement aux icônes de Icon.jsx (traits fins, monochromes),
 // celui-ci reprend les couleurs de la vraie appli WhatsApp (rond vert,
 // bulle blanche) pour rester immédiatement reconnaissable au milieu

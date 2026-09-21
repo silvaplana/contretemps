@@ -117,7 +117,7 @@ function App() {
   const [cours, setCours] = useState([])
   const [groupes, setGroupes] = useState([])
   // Comptes admin de l'école — jusqu'ici chargés seulement dans
-  // AdminGroupes (Admin > Conversations). Repris ici aussi pour la
+  // AdminGroupes (Admin > Messagerie). Repris ici aussi pour la
   // recherche "Nouvelle discussion" de Messagerie (voir
   // ConversationListScreen.jsx), qui doit pouvoir proposer n'importe quel
   // compte de l'école (admin compris), pas seulement élèves/profs.

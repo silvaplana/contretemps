@@ -35,7 +35,7 @@ export default function MessagerieScreen({
   // contrôlé depuis App.jsx (seul ancêtre commun avec Header, qui porte
   // le déclencheur), mais la modale elle-même vit ICI — demande
   // utilisateur du 2026-09-18 : rester dans Messagerie, jamais basculer
-  // vers Admin > Conversations comme avant.
+  // vers Admin > Messagerie comme avant.
   nouveauGroupeOuvert,
   onFermerNouveauGroupe,
 }) {

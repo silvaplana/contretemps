@@ -35,7 +35,7 @@ export default function AdminCours({
   // addCours), proposer de créer sa conversation de groupe tout de
   // suite. `onConversationCreee` fait le lien avec AdminScreen.jsx, seul
   // à posséder `groupes`/`setGroupes` — voir son commentaire pour la
-  // suite (bascule vers l'onglet Conversations, modale ouverte dessus).
+  // suite (bascule vers l'onglet Messagerie, modale ouverte dessus).
   onConversationCreee,
 }) {
   const [search, setSearch] = useState('')
@@ -87,7 +87,7 @@ export default function AdminCours({
     // creer_conversation_cours, jamais appelée depuis ce flux réel) —
     // ici, explicitement proposée, jamais silencieuse.
     if (!window.confirm(`Créer aussi la conversation de groupe du cours "${nouveau.nom}" ?`)) return
-    // Même recette que le "+" d'Admin > Conversations (voir
+    // Même recette que le "+" d'Admin > Messagerie (voir
     // AdminGroupes.jsx: creerConversation) : conversation vide, membre
     // "cours" ajouté juste après. `ajouterMembre` (voir api/
     // conversations.js) ne renvoie rien (204) — le membre est reconstruit
