@@ -3,7 +3,7 @@ import * as ecolesApi from '../../api/ecoles.js'
 import { isOwner } from '../../data/roles.js'
 import AdministrateursTableau from './AdministrateursTableau.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
-import UsageVideoModal from './UsageVideoModal.jsx'
+import UsageVideoSection from './UsageVideoSection.jsx'
 
 // Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école,
 // code postal et ses 3 codes d'accès, modifiables par tout admin (pas
@@ -30,7 +30,6 @@ import UsageVideoModal from './UsageVideoModal.jsx'
 // téléchargement des nouvelles inscriptions (déplacé ici, y vivait avant
 // comme simple bouton).
 export default function AdminParametres({ ecole, setEcole, setVideos, cours, setEleves, activeUser, professeurs }) {
-  const [showUsageVideo, setShowUsageVideo] = useState(false)
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
 
   // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
@@ -107,7 +106,8 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
         />
       </div>
 
-      {/* Au-dessus de "Usage vidéo" (spec §2.4). */}
+      {/* Deux sections au même niveau, même format de titre (demande du
+          2026-09-21) : Administrateurs (spec §2.4), puis Usage vidéo. */}
       <AdministrateursTableau
         ecoleId={ecole.id}
         activeUser={activeUser}
@@ -116,17 +116,7 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, set
         onFermerCreation={() => setCreationAdminOuverte(false)}
       />
 
-      <button type="button" className="btn btn--secondary" onClick={() => setShowUsageVideo(true)}>
-        Usage vidéo
-      </button>
-
-      {showUsageVideo && (
-        <UsageVideoModal
-          ecoleId={ecole.id}
-          setVideos={setVideos}
-          onClose={() => setShowUsageVideo(false)}
-        />
-      )}
+      <UsageVideoSection ecoleId={ecole.id} setVideos={setVideos} />
     </div>
   )
 }

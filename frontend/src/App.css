@@ -2369,8 +2369,14 @@
    Usage vidéo (Admin > École, screens/admin/UsageVideoModal.jsx)
    ========================================================================== */
 
+/* Sous-titre DANS la section "Usage vidéo" (Admin > École) : plus discret
+   que le titre de section (.section-label), pas l'inverse — c'était un
+   titre de fenêtre avant que le panneau devienne une section. */
 .usage-video__titre-liste {
   margin-top: 18px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 600;
 }
 
 .usage-video__liste {

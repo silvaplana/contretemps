@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import * as videosApi from '../../api/videos.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
-import Modal from '../../components/Modal.jsx'
 
 // Mo tant que ça reste sous 1 Go (demande : une vidéo ou même le total
 // dépasse rarement 1 Go en démo, "0.01 Go" ne distinguait pas deux
@@ -29,12 +28,14 @@ function formatDuree(secondes) {
   return `${mm}:${ss}`
 }
 
-// Panneau "Usage vidéo" (Admin > École, voir spec/SPEC.md §5.1.1) : Go
+// Section "Usage vidéo" (Admin > École, voir spec/SPEC.md §5.1.1) : Go
 // utilisés et minutes de vidéo pour toute l'école, tous cours confondus,
-// puis les 10 plus grosses vidéos. Chargé à l'ouverture (pas de cache —
-// en mode réel, la taille est lue sur le disque à la demande côté
-// backend, voir videos.py : usage_ecole).
-export default function UsageVideoModal({ ecoleId, setVideos, onClose }) {
+// puis les 10 plus grosses vidéos. Affichée directement, au même niveau et
+// sous le même format de titre que la section "Administrateurs" (demande
+// du 2026-09-21 — c'était avant une fenêtre ouverte par un bouton).
+// Chargée à l'affichage de l'onglet (pas de cache : la taille est lue sur
+// le disque à la demande côté backend, voir videos.py : usage_ecole).
+export default function UsageVideoSection({ ecoleId, setVideos }) {
   const [usage, setUsage] = useState(null)
 
   useEffect(() => {
@@ -78,7 +79,8 @@ export default function UsageVideoModal({ ecoleId, setVideos, onClose }) {
   }
 
   return (
-    <Modal title="Usage vidéo" onClose={onClose}>
+    <section className="admin-usage-video">
+      <h3 className="section-label">Usage vidéo</h3>
       {usage === null ? (
         <p className="muted">Calcul en cours…</p>
       ) : (
@@ -130,6 +132,6 @@ export default function UsageVideoModal({ ecoleId, setVideos, onClose }) {
           )}
         </>
       )}
-    </Modal>
+    </section>
   )
 }
