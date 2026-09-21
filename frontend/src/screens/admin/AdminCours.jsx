@@ -178,6 +178,18 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
           </button>
           {menuOuvert && (
             <div className="dropdown-menu header-menu__panel">
+              {/* Même action que le "+" (voir le bouton flottant plus
+                  bas) — demande utilisateur du 2026-09-21 : un accès
+                  supplémentaire depuis ce menu, pas un 2e formulaire. */}
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAdd(true)
+                  setMenuOuvert(false)
+                }}
+              >
+                <Icon name="plus" size={18} /> Ajouter un nouveau cours
+              </button>
               <button
                 type="button"
                 onClick={() => {
