@@ -104,19 +104,37 @@ export function installationDirectePossible() {
 
 // Rouvre la page d'accueil de l'appli dans Chrome (lien "intent" d'Android ;
 // si Chrome manque, Android propose de l'installer depuis le Play Store).
+// `?installer=1` : Chrome affiche alors la "Dernière étape" (voir
+// components/DerniereEtapeInstallation.jsx).
+const PARAM_INSTALLER = 'installer'
+
 export function ouvrirDansChrome() {
-  const page = `${location.host}${import.meta.env.BASE_URL}`
+  const page = `${location.host}${import.meta.env.BASE_URL}?${PARAM_INSTALLER}=1`
   location.href = `intent://${page}#Intent;scheme=https;package=com.android.chrome;end`
 }
 
+export function arriveePourInstaller() {
+  return new URLSearchParams(location.search).get(PARAM_INSTALLER) === '1'
+}
+
+// Retire le marqueur de l'adresse : ni un rechargement ni un favori ne
+// rouvrent la "Dernière étape".
+export function oublierArriveePourInstaller() {
+  const url = new URL(location.href)
+  url.searchParams.delete(PARAM_INSTALLER)
+  history.replaceState(history.state, '', url)
+}
+
+// Renvoie la réponse de l'utilisateur ('accepted' ou 'dismissed').
 export async function installer() {
-  if (!invitationDifferee) return
+  if (!invitationDifferee) return null
   const invitation = invitationDifferee
   invitation.prompt()
-  await invitation.userChoice
+  const { outcome } = await invitation.userChoice
   // Utilisable une seule fois, quelle que soit la réponse.
   invitationDifferee = null
   prevenir()
+  return outcome
 }
 
 // --- "Plus tard" : encart masqué 7 jours sur cet appareil ---
