@@ -25,9 +25,17 @@ L'application gère plusieurs écoles, dont les données sont **totalement indé
 étanches** les unes des autres. Dans un premier temps, deux écoles : **EcoleTest** et
 **Contretemps**.
 
-Trois rôles au sein d'une école : **Admin**, **Professeur**, **Élève**. Il n'y a pas de rôle
-"Parent" séparé — un élève est lui-même un compte, avec ses propres champs (voir §6), qu'il
-soit mineur ou majeur.
+Quatre rôles au sein d'une école : **Élève**, **Professeur**, **Admin**, et **Owner** (un
+admin qui administre en plus la liste des admins, voir §2.4). **Un compte peut cumuler
+plusieurs rôles** (décision du 2026-09-21), par exemple Professeur ET Admin. Les rôles sont
+stockés dans une table de liaison compte ↔ rôle (§6.3bis), et le code ne les lit qu'à travers
+des fonctions centrales (`isAdmin`, `isProf`..., voir §6.3bis). Deux règles de cumul :
+- **Owner implique Admin** : un Owner a toujours aussi le rôle Admin ;
+- **Élève ne se cumule avec aucun autre rôle** : un adulte à la fois élève et professeur a
+  deux comptes, regroupés dans la même famille (voir ci-dessous).
+
+Il n'y a pas de rôle "Parent" séparé — un élève est lui-même un compte, avec ses propres
+champs (voir §6), qu'il soit mineur ou majeur.
 
 **Profils familiaux façon Netflix** : au sein d'une même école, les comptes (admin, professeur,
 élève) qui partagent le même email sont automatiquement regroupés en une même **famille**.
@@ -43,8 +51,11 @@ parent Admin + ses deux enfants Élèves).
 - **Élève** : connexion par **nom + prénom OU email** + code d'accès (`ELEVE2026`) — l'email
   n'est pas requis pour se connecter, mais s'il est renseigné, il sert au regroupement familial
   et aux notifications
-- Le code doit correspondre au rôle réellement associé au compte, **dans l'école concernée**
-  (cohérence vérifiée côté serveur)
+- Le code doit correspondre à **l'un des rôles** du compte, **dans l'école concernée**
+  (cohérence vérifiée côté serveur). Un compte qui cumule plusieurs rôles peut se connecter
+  avec le code de n'importe lequel d'entre eux, et obtient dans tous les cas **tous** ses rôles.
+  Exemple : un professeur-admin connecté avec le code professeur voit l'onglet Admin (§2.4).
+  Le rôle Owner n'a pas de code propre : un Owner est aussi Admin.
 - **✅ Fait — Session persistante** (web, PWA, Android, iOS) sans reconnexion systématique :
   l'id du profil ACTIF (pas un vrai token — ce backend n'a aucune notion de session, voir §8)
   est gardé en local (voir frontend/src/api/session.js), propre à chaque appareil, mis à jour
@@ -61,7 +72,8 @@ parent Admin + ses deux enfants Élèves).
 
 **✅ Tranché — règle de sécurité du switch de profil famille** : le code d'accès du rôle
 cible est redemandé uniquement en cas de **montée en privilège**, selon la hiérarchie
-Élève < Professeur < Admin :
+Élève < Professeur < Admin. Pour un compte qui cumule plusieurs rôles, c'est son rôle **le
+plus élevé** qui compte (un Owner compte comme Admin) :
 - Élève → Professeur ou Admin : code redemandé
 - Professeur → Admin : code redemandé
 - Tous les autres cas (vers un rôle égal ou inférieur, ex. Admin → Élève, Professeur → Élève) : switch libre, sans redemander de code
@@ -116,10 +128,9 @@ le **professeur-admin**, un professeur qui a aussi les droits admin.
 compte séparé, un Owner accorde les droits admin à un compte Professeur existant. Ce compte
 reste un professeur partout ailleurs (assignable à un cours, visible dans Admin > Profs,
 comptage d'heures §5.7...) ; il gagne en plus l'accès à l'onglet Admin et les droits qui vont
-avec. Techniquement, il est à la fois dans la liste des professeurs (`role` reste
-"professeur", §6.3) et dans la **liste des administrateurs** (table `administrateurs`, §6.3bis) :
-pas de changement de rôle, pas de champ en plus sur le compte. Un élève ne peut pas devenir
-admin de cette façon.
+avec. Techniquement, son compte a **deux rôles** : `professeur` et `admin` (§6.3bis). Le
+promouvoir ajoute le rôle `admin`, sans toucher au rôle `professeur`. Un élève ne peut pas
+devenir admin (le rôle Élève ne se cumule avec aucun autre, §2.1).
 
 **Connexion d'un professeur-admin** (décision utilisateur du 2026-09-21) : il se connecte
 comme n'importe quel professeur, avec son nom et le code d'accès professeur, et voit directement
@@ -146,30 +157,30 @@ modification.
 - **"Créer nouvel administrateur"** dans le menu ⋮ d'Admin > École (même menu que "Programmer
   sauvegarde École", voir `frontend/src/screens/admin/SauvegardeEcoleMenu.jsx`). La modale
   propose deux façons de créer un admin :
-  1. **Nouveau compte admin** : nom, prénom, email, code de récupération. Crée un compte
-     `role="admin"` classique (§6.3), comme le tout premier admin de l'école (§2.3), et sa
-     ligne dans la liste des administrateurs.
+  1. **Nouveau compte admin** : nom, prénom, email, code de récupération. Crée un compte avec
+     le seul rôle `admin`, comme le tout premier admin de l'école (§2.3).
   2. **Professeur existant promu admin** : choix d'un professeur de l'école dans une liste, plus
      un code de récupération. Nom, prénom et email sont déjà ceux du professeur, rien à
-     ressaisir. Ajoute seulement le professeur à la liste des administrateurs.
+     ressaisir. Ajoute seulement le rôle `admin` à son compte.
 
-  Dans les deux cas, une case "Owner" permet de créer directement un Owner.
+  Dans les deux cas, une case "Owner" permet de créer directement un Owner (ajoute aussi le
+  rôle `owner`).
 - **Crayon (modifier)** sur chaque ligne sauf la sienne :
   - admin "pur" : nom, prénom, email et code de récupération modifiables ;
   - professeur-admin : seul le code de récupération est modifiable ici. Nom, prénom et email se
     modifient depuis Admin > Profs (même compte, pas de duplication) ;
-  - dans les deux cas : case "Owner" pour donner ou retirer ce statut (refusé si c'est le
-    dernier Owner de l'école).
+  - dans les deux cas : case "Owner" pour ajouter ou retirer le rôle `owner` (retrait refusé
+    si c'est le dernier Owner de l'école).
 - **Poubelle (supprimer)** sur chaque ligne sauf la sienne, **avec confirmation** :
-  - **admin "pur"** : supprime le compte, sa ligne dans la liste des administrateurs et tout
-    ce qui n'a de sens que pour lui (accès,
+  - **admin "pur"** (compte dont le seul rôle est `admin`, plus éventuellement `owner`) :
+    supprime le compte, ses rôles et tout ce qui n'a de sens que pour lui (accès,
     appartenance aux conversations, abonnements aux notifications). **L'historique est
     conservé** (décision utilisateur du 2026-09-21, même règle que pour les élèves) : ses
     messages restent dans les conversations, affichés comme venant d'un "Ancien
     administrateur", et les vidéos qu'il a mises en ligne restent disponibles ;
-  - **professeur-admin** : ne supprime **ni le compte ni le professeur**. Le retire seulement
-    de la liste des administrateurs, ce qui lui retire aussi la qualité d'Owner : le compte
-    redevient un professeur ordinaire, toujours assigné à ses cours ;
+  - **professeur-admin** : ne supprime **ni le compte ni le professeur**. Retire seulement ses
+    rôles `admin` et `owner` : le compte ne garde que le rôle `professeur` et redevient un
+    professeur ordinaire, toujours assigné à ses cours ;
   - refusé dans les deux cas s'il s'agit du dernier Owner de l'école.
 - Un admin non-Owner ne voit pas "Créer nouvel administrateur" dans le menu ⋮. Sur le tableau,
   il voit les mêmes lignes, sans crayon ni poubelle.
@@ -177,16 +188,14 @@ modification.
 #### RBAC centralisé : `requireAdmin` / `requireOwner`
 
 Les droits sont vérifiés **côté serveur**, par deux méthodes centralisées. Il n'y a qu'une
-seule implémentation de "qui a le droit de faire quoi", pas un `if role ==` recopié dans
-chaque route :
+seule implémentation de "qui a le droit de faire quoi", pas une lecture des rôles recopiée
+dans chaque route. Elles s'appuient sur les fonctions `isAdmin` / `isOwner` (§6.3bis) :
 
-- **`requireAdmin`** : l'appelant est administrateur de l'école concernée, c'est-à-dire
-  présent dans la liste des administrateurs de cette école (§6.3bis), qu'il soit admin "pur"
-  ou professeur-admin. Appliqué à **toutes les routes de l'onglet Admin**
+- **`requireAdmin`** : l'appelant a le rôle `admin` dans l'école concernée (`isAdmin`), qu'il
+  soit admin "pur" ou professeur-admin. Appliqué à **toutes les routes de l'onglet Admin**
   (décision utilisateur du 2026-09-21), existantes comprises : élèves, professeurs, cours,
   conversations, paramètres de l'école, import Excel, sauvegarde, usage vidéo.
-- **`requireOwner`** : l'appelant est dans la liste des administrateurs de l'école concernée
-  avec `est_owner` vrai. Appliqué à
+- **`requireOwner`** : l'appelant a le rôle `owner` dans l'école concernée (`isOwner`). Appliqué à
   la gestion des administrateurs : créer, modifier (dont le statut d'Owner), supprimer.
 - La **lecture** du tableau des administrateurs relève de `requireAdmin`.
 - Les règles "au moins un Owner" et "jamais sur sa propre ligne" sont appliquées par le
@@ -203,6 +212,9 @@ sécurité au sens strict.
 ---
 
 ## 3. Droits par rôle
+
+Un compte qui cumule plusieurs rôles (§2.1) a **l'union de leurs droits** : un
+professeur-admin a tout ce qu'a un professeur ET tout ce qu'a un admin.
 
 | Fonctionnalité                                    | Admin | Professeur | Élève                              |
 | ------------------------------------------------- | ----- | ---------- | ----------------------------------- |
@@ -449,7 +461,6 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | id | PK | — |
 | ecole_id | FK → écoles | Obl. |
 | famille_id | FK → familles | Obl. (calculé) |
-| role | enum (admin/professeur/eleve) | Obl. |
 | nom | texte | Obl. |
 | prenom | texte | Obl. |
 | email | texte | Opt. |
@@ -466,42 +477,51 @@ reste de cette table) même s'il n'a de sens que pour un admin — pas de
 table séparée pour un unique champ.
 *Professeur* : aucun champ supplémentaire propre pour l'instant (ses cours sont une relation, voir §6.5 — pas un champ stocké ici).
 
-Être administrateur (et Owner) ne se lit **pas** sur cette table mais dans la liste des
-administrateurs (§6.3bis). Seul `role` reste utile côté admin : il décide quel code d'accès
-un compte utilise pour se connecter (§2.2).
+Les rôles ne sont **pas** un champ de cette table : un compte peut en avoir plusieurs, ils
+sont dans `roles_compte` (§6.3bis).
 
-### 6.3bis Administrateurs *(nouveau, voir §2.4)*
+### 6.3bis Rôles d'un compte *(nouveau, voir §2.1 et §2.4)*
 
-La **liste des administrateurs** d'une école. Un compte est administrateur **si et seulement
-s'il y figure** : c'est la seule source de vérité, utilisée par `requireAdmin` et
-`requireOwner` (§2.4).
+Un compte peut cumuler plusieurs rôles. Ils sont stockés dans une table de liaison, une ligne
+par rôle détenu (modèle RBAC classique).
+
+**Table `roles_compte`**
 
 | Champ | Type | Obl./Opt. |
 | --- | --- | --- |
-| compte_id | FK → Comptes, clé primaire | Obl. |
-| est_owner | booléen | Obl. (défaut faux) |
+| compte_id | FK → Comptes | Obl. |
+| role | enum (eleve / professeur / admin / owner) | Obl. |
 | created_at | datetime | Obl. (auto) |
 
-- L'école se déduit du compte (`Comptes.ecole_id`) : pas de colonne `ecole_id` en double.
-- **Admin "pur"** : un compte `role="admin"` ET sa ligne ici. Les deux vont toujours
-  ensemble : le serveur les crée et les supprime ensemble.
-- **Professeur-admin** : un compte `role="professeur"` ET sa ligne ici. Le retirer des
-  administrateurs supprime seulement la ligne ; le compte et le professeur restent.
-- Un compte `role="eleve"` n'y figure jamais.
-- **Rôle et liste des administrateurs ne disent pas la même chose** (décision du 2026-09-21) :
-  `role` dit ce qu'est la personne dans l'école (élève, professeur, ou admin sans cours à
-  donner) ; la table dit **qui a les droits d'admin**. Le seul recouvrement, `role="admin"`,
-  est couvert par l'invariant ci-dessus. `role` continue de choisir le code d'accès demandé à la
-  connexion (§2.2) et le rang utilisé pour la bascule de profil familial.
-- **Toute vérification de droits d'admin passe par cette table, jamais par `role`.** Sinon un
-  professeur-admin serait oublié. Concerne `requireAdmin`/`requireOwner`, et aussi le code
-  existant qui teste aujourd'hui `role == "admin"` pour des droits : "Code oublié ?"
-  (`backend/src/auth/auth.py`, `auth/receiver.py`), le contact affiché aux non-admins
-  (`auth.py:premier_admin`, `ecoles/receiver.py`).
-- **`est_owner`** identifie un Owner. Comme il est porté par la ligne d'administrateur, un
-  compte retiré des administrateurs perd forcément aussi la qualité d'Owner. Plusieurs lignes
-  d'une même école peuvent l'avoir, et **au moins une l'a toujours** (invariant garanti par le
-  serveur).
+Clé primaire : (`compte_id`, `role`), donc un même rôle n'est jamais en double sur un compte.
+L'école se déduit du compte (`Comptes.ecole_id`).
+
+| Personne | Ses rôles |
+| --- | --- |
+| Élève | `eleve` |
+| Professeur | `professeur` |
+| Professeur qui est aussi admin | `professeur` + `admin` |
+| Admin qui ne donne pas de cours | `admin` |
+| Owner (qu'il soit prof ou non) | ses rôles + `admin` + `owner` |
+
+**Règles garanties par le serveur** (jamais seulement masquées dans l'IHM) :
+- tout compte a **au moins un rôle** ;
+- **`owner` implique `admin`** : retirer `admin` retire aussi `owner` ;
+- **`eleve` ne se cumule avec aucun autre rôle** ;
+- chaque école a toujours **au moins un compte `owner`**.
+
+**Fonctions centrales, seul accès aux rôles.** Le code ne lit jamais `roles_compte`
+directement : il passe par `isEleve`, `isProf`, `isAdmin`, `isOwner` (pour savoir) et par
+`requireAdmin`, `requireOwner` (pour bloquer une route, voir §2.4). Si un jour la façon de
+stocker les rôles change, seules ces fonctions changent.
+
+**Code existant à migrer** : le champ `role` est lu directement une trentaine de fois
+(backend + frontend, 14 fichiers), notamment pour la connexion et le choix du code d'accès
+(`backend/src/auth/auth.py`), "Code oublié ?" qui ne reconnaît aujourd'hui que
+`role == "admin"` (`auth.py`, `auth/receiver.py`), le contact affiché aux non-admins
+(`auth.py:premier_admin`, `ecoles/receiver.py`), le rang pour la bascule de profil
+(`auth.py:RANG_ROLE`, `frontend/src/data/roles.js`) et l'affichage des onglets côté frontend.
+Chacune de ces lectures passe par les fonctions ci-dessus.
 
 ### 6.4 Profil Élève (champs spécifiques)
 
@@ -879,8 +899,10 @@ encore branché).
   modifier POUR un autre admin, voir §2.4 — gestion multi-admin, spécifiée mais pas encore
   implémentée).
 - **Gestion multi-admin / Owner (§2.4)** : spécifiée le 2026-09-21, **pas encore implémentée** —
-  migration créant la table `administrateurs` (§6.3bis) : une ligne pour chaque compte
-  `role="admin"` existant, avec `est_owner` pour le plus ancien admin de chaque école,
+  migration vers les rôles cumulables (§6.3bis) : création de `roles_compte`, une ligne par
+  compte recopiée depuis l'ancien champ `role`, rôle `owner` ajouté au plus ancien admin de
+  chaque école, puis suppression du champ `role` ; fonctions centrales `isEleve`/`isProf`/
+  `isAdmin`/`isOwner`,
   RBAC serveur (`requireAdmin`/`requireOwner`), tableau des administrateurs et ses modales
   (création/modification/suppression) restent à coder.
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
