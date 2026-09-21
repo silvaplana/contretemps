@@ -102,21 +102,28 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
     if (!avecConversation) return
     // Même recette que le "+" d'Admin > Messagerie (voir
     // AdminGroupes.jsx: creerConversation), sa modale d'édition s'ouvre
-    // juste après — SANS bloc "cours" (voir demande du 2026-09-21), le
-    // nom du cours est repris tel quel comme nom de la conversation
-    // (demande du 2026-09-21 : proposé, pas juste dérivé à l'affichage
-    // via nomAffiche/estVide comme le ferait un bloc "cours" — modifiable
-    // ensuite dans la modale avant de cliquer "Valider"). Le professeur
-    // du cours (s'il y en a un — voir §6.5, "0 prof" est un cas normal),
-    // lui, est pré-ajouté comme membre : `nouveau.professeurId` (renvoyé
-    // par l'API, donc bien typé) plutôt que le `professeurId` du
-    // formulaire (une chaîne, valeur brute d'un <select>).
+    // juste après. Le nom du cours est repris tel quel comme nom de la
+    // conversation (modifiable ensuite dans la modale avant de cliquer
+    // "Valider"). Deux membres pré-ajoutés (demande du 2026-09-21) :
+    // - le professeur du cours, s'il y en a un (voir §6.5, "0 prof" est
+    //   un cas normal) — `nouveau.professeurId` (renvoyé par l'API, donc
+    //   bien typé) plutôt que le `professeurId` du formulaire (une
+    //   chaîne, valeur brute d'un <select>) ;
+    // - le cours lui-même (bloc "cours", voir Conversations.
+    //   membres_resolus côté backend) — se résout dynamiquement en tous
+    //   ses élèves ET son/ses professeur(s), donc suit les inscriptions
+    //   futures sans rien à refaire ici ; redondant avec le professeur
+    //   ci-dessus tant qu'aucun élève n'est encore inscrit (juste créé),
+    //   mais `membres_resolus` dédoublonne par id, aucun risque de doublon
+    //   à l'affichage des messages.
     const conversation = await conversationsApi.creerGroupe(ecoleId, nouveau.nom)
-    let membres = []
+    const membres = []
     if (nouveau.professeurId) {
       await conversationsApi.ajouterMembre(conversation.id, { type: 'professeur', id: nouveau.professeurId })
-      membres = [{ type: 'professeur', id: nouveau.professeurId }]
+      membres.push({ type: 'professeur', id: nouveau.professeurId })
     }
+    await conversationsApi.ajouterMembre(conversation.id, { type: 'cours', id: nouveau.id })
+    membres.push({ type: 'cours', id: nouveau.id })
     setGroupes((list) => [...list, { ...conversation, membres }])
     setConversationEditId(conversation.id, { nouvelle: true })
   }
