@@ -2,7 +2,9 @@
 // Header (sélecteur famille) et ProfilScreen (liste des profils du foyer).
 export const ROLE_LABEL = {
   admin: 'Admin',
-  owner: 'Owner',
+  // Libellé affiché du rôle `owner` (décision utilisateur du 2026-09-21) :
+  // le nom interne reste `owner` dans le code et la base.
+  owner: 'Administrateur principal',
   professeur: 'Professeur',
   eleve: 'Élève',
   superuser: 'Super User',
@@ -12,13 +14,18 @@ export const ROLE_LABEL = {
 const ORDRE_AFFICHAGE = ['superuser', 'admin', 'owner', 'professeur', 'eleve']
 
 // Libellés de tous les rôles d'un profil, pas seulement le principal (Profil,
-// demande du 2026-09-21) : un professeur-admin Owner affiche "Admin",
-// "Owner" et "Professeur". Rôles RÉELS (profil.roles), sans l'extension
+// demande du 2026-09-21) : un professeur-admin Owner affiche
+// "Administrateur principal" et "Professeur". Rôles RÉELS (profil.roles), sans l'extension
 // Superuser -> admin/owner de rolesDe() plus bas : lui n'affiche que
 // "Super User".
 export function libellesRoles(profil) {
   const roles = profil?.roles ?? (profil?.type ? [profil.type] : [])
-  return ORDRE_AFFICHAGE.filter((role) => roles.includes(role)).map((role) => ROLE_LABEL[role])
+  return (
+    ORDRE_AFFICHAGE.filter((role) => roles.includes(role))
+      // "Administrateur principal" dit déjà "admin" : pas les deux côte à côte.
+      .filter((role) => !(role === 'admin' && roles.includes('owner')))
+      .map((role) => ROLE_LABEL[role])
+  )
 }
 
 // Rang de rôle, du plus faible au plus fort (voir spec §2.2 "règle de

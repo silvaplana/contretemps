@@ -186,7 +186,7 @@ class Comptes:
         if r.a_le_role(compte, role):
             return
         if role == r.OWNER and not r.is_admin(compte):
-            raise RegleRoles("Seul un administrateur peut être Owner")
+            raise RegleRoles("Seul un administrateur peut être administrateur principal")
         if r.is_eleve(compte) or (role == r.ELEVE and compte.roles):
             raise RegleRoles("Le rôle élève ne se cumule avec aucun autre rôle")
         compte.roles.append(RoleCompte(role=role))
@@ -210,7 +210,7 @@ class Comptes:
             and r.is_owner(compte)
             and self.est_seul_owner(db, compte)
         ):
-            raise RegleRoles("L'école doit garder au moins un Owner")
+            raise RegleRoles("L'école doit garder au moins un administrateur principal")
         compte.roles = restants
         db.commit()
         db.refresh(compte)

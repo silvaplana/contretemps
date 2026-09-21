@@ -111,6 +111,11 @@ le **professeur-admin**, un professeur qui a aussi les droits admin.
 
 #### Owner
 
+**À l'écran, un Owner s'appelle « Administrateur principal »** (décision utilisateur du
+2026-09-21) : Profil, tableau des administrateurs, modale, messages d'erreur. « Owner » reste
+le nom technique (rôle `owner` dans le code et la base) utilisé dans cette spec. Le Super User
+(§2.5), lui, est au-dessus de toutes les écoles.
+
 - **Le premier administrateur créé pour une école en devient automatiquement Owner.** Pour
   les écoles qui existent déjà, la migration désigne Owner le plus ancien admin de chaque école.
 - **Plusieurs Owners par école sont possibles.** Un Owner peut donner ou retirer la qualité

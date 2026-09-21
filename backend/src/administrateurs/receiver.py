@@ -76,7 +76,7 @@ class AdministrateursReceiver:
         # `appelant` peut être None quand les tests neutralisent le RBAC.
         if appelant is not None and appelant.id == cible.id:
             raise HTTPException(
-                status_code=403, detail="Un Owner ne peut pas modifier ou supprimer sa propre ligne"
+                status_code=403, detail="Un administrateur principal ne peut pas modifier ou supprimer sa propre ligne"
             )
         return cible
 

@@ -51,7 +51,7 @@ class Profs:
         # Un professeur-admin peut être Owner (§2.4) : le supprimer ne doit
         # jamais laisser l'école sans Owner.
         if roles.is_owner(prof) and self.comptes.est_seul_owner(db, prof):
-            raise RegleRoles("C'est le dernier Owner de l'école : nommez d'abord un autre Owner")
+            raise RegleRoles("C'est le dernier administrateur principal de l'école : nommez-en d'abord un autre")
         # Retire le prof de tous ses cours avant de supprimer le compte
         # (voir cours.py : table de jointure cours_professeurs).
         for c in self.cours.cours_du_professeur(db, prof_id):

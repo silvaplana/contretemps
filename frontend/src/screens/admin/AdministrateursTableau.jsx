@@ -69,7 +69,7 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
               <th>Nom</th>
               <th>Prénom</th>
               <th>Email</th>
-              <th>Owner</th>
+              <th>Administrateur principal</th>
               {peutGerer && <th aria-label="Actions" />}
             </tr>
           </thead>
@@ -81,7 +81,7 @@ export default function AdministrateursTableau({ ecoleId, activeUser, professeur
                 </td>
                 <td>{a.prenom}</td>
                 <td>{a.email || <span className="muted">—</span>}</td>
-                <td>{a.estOwner ? <Badge>Owner</Badge> : <span className="muted">—</span>}</td>
+                <td>{a.estOwner ? <Badge>Oui</Badge> : <span className="muted">—</span>}</td>
                 {peutGerer && (
                   <td>
                     {a.id !== activeUser.id && (
@@ -271,7 +271,7 @@ function AdministrateurModal({ admin, professeurs = [], onValider, onEnregistre,
 
         <label className="checkbox-inline">
           <input type="checkbox" checked={owner} onChange={(e) => setOwner(e.target.checked)} />
-          Owner (peut gérer les administrateurs)
+          Administrateur principal (peut gérer les administrateurs)
         </label>
 
         {erreur && <p className="admin-panel__erreur">{erreur}</p>}

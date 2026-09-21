@@ -110,7 +110,7 @@ class Administrateurs:
         # Même règle que retirer_role : jamais une école sans Owner (sauf
         # dépannage par le Superuser, §2.5).
         if not par_superuser and roles.is_owner(admin) and self.comptes.est_seul_owner(db, admin):
-            raise RegleRoles("L'école doit garder au moins un Owner")
+            raise RegleRoles("L'école doit garder au moins un administrateur principal")
         # Appartenance directe aux conversations (les membres "cours" se
         # résolvent dynamiquement, rien à nettoyer) ; ses abonnements aux
         # notifications ; les statuts de lecture des messages qu'il a

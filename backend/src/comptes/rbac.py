@@ -79,7 +79,7 @@ def require_owner(appelant: Compte, ecole_id: int | None) -> None:
     Superuser passe toujours (§2.5)."""
     require_admin(appelant, ecole_id)
     if not roles.is_superuser(appelant) and not roles.is_owner(appelant):
-        raise HTTPException(status_code=403, detail="Réservé aux Owners de l'école")
+        raise HTTPException(status_code=403, detail="Réservé aux administrateurs principaux de l'école")
 
 
 def require_superuser(appelant: Compte) -> None:
