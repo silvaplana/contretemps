@@ -116,8 +116,10 @@ le **professeur-admin**, un professeur qui a aussi les droits admin.
 compte séparé, un Owner accorde les droits admin à un compte Professeur existant. Ce compte
 reste un professeur partout ailleurs (assignable à un cours, visible dans Admin > Profs,
 comptage d'heures §5.7...) ; il gagne en plus l'accès à l'onglet Admin et les droits qui vont
-avec. Techniquement c'est un booléen indépendant du champ `role` (§6.3 : `role` reste
-"professeur"), pas un changement de rôle. Un élève ne peut pas devenir admin de cette façon.
+avec. Techniquement, il est à la fois dans la liste des professeurs (`role` reste
+"professeur", §6.3) et dans la **liste des administrateurs** (table `administrateurs`, §6.3bis) :
+pas de changement de rôle, pas de champ en plus sur le compte. Un élève ne peut pas devenir
+admin de cette façon.
 
 **Connexion d'un professeur-admin** (décision utilisateur du 2026-09-21) : il se connecte
 comme n'importe quel professeur, avec son nom et le code d'accès professeur, et voit directement
@@ -145,10 +147,11 @@ modification.
   sauvegarde École", voir `frontend/src/screens/admin/SauvegardeEcoleMenu.jsx`). La modale
   propose deux façons de créer un admin :
   1. **Nouveau compte admin** : nom, prénom, email, code de récupération. Crée un compte
-     `role="admin"` classique (§6.3), comme le tout premier admin de l'école (§2.3).
+     `role="admin"` classique (§6.3), comme le tout premier admin de l'école (§2.3), et sa
+     ligne dans la liste des administrateurs.
   2. **Professeur existant promu admin** : choix d'un professeur de l'école dans une liste, plus
      un code de récupération. Nom, prénom et email sont déjà ceux du professeur, rien à
-     ressaisir.
+     ressaisir. Ajoute seulement le professeur à la liste des administrateurs.
 
   Dans les deux cas, une case "Owner" permet de créer directement un Owner.
 - **Crayon (modifier)** sur chaque ligne sauf la sienne :
@@ -158,14 +161,15 @@ modification.
   - dans les deux cas : case "Owner" pour donner ou retirer ce statut (refusé si c'est le
     dernier Owner de l'école).
 - **Poubelle (supprimer)** sur chaque ligne sauf la sienne, **avec confirmation** :
-  - **admin "pur"** : supprime le compte et tout ce qui n'a de sens que pour lui (accès,
+  - **admin "pur"** : supprime le compte, sa ligne dans la liste des administrateurs et tout
+    ce qui n'a de sens que pour lui (accès,
     appartenance aux conversations, abonnements aux notifications). **L'historique est
     conservé** (décision utilisateur du 2026-09-21, même règle que pour les élèves) : ses
     messages restent dans les conversations, affichés comme venant d'un "Ancien
     administrateur", et les vidéos qu'il a mises en ligne restent disponibles ;
-  - **professeur-admin** : ne supprime **ni le compte ni le professeur**. Retire seulement les
-    droits admin (et la qualité d'Owner) : le compte redevient un professeur ordinaire,
-    toujours assigné à ses cours ;
+  - **professeur-admin** : ne supprime **ni le compte ni le professeur**. Le retire seulement
+    de la liste des administrateurs, ce qui lui retire aussi la qualité d'Owner : le compte
+    redevient un professeur ordinaire, toujours assigné à ses cours ;
   - refusé dans les deux cas s'il s'agit du dernier Owner de l'école.
 - Un admin non-Owner ne voit pas "Créer nouvel administrateur" dans le menu ⋮. Sur le tableau,
   il voit les mêmes lignes, sans crayon ni poubelle.
@@ -177,10 +181,12 @@ seule implémentation de "qui a le droit de faire quoi", pas un `if role ==` rec
 chaque route :
 
 - **`requireAdmin`** : l'appelant est administrateur de l'école concernée, c'est-à-dire
-  `role == "admin"` OU professeur-admin. Appliqué à **toutes les routes de l'onglet Admin**
+  présent dans la liste des administrateurs de cette école (§6.3bis), qu'il soit admin "pur"
+  ou professeur-admin. Appliqué à **toutes les routes de l'onglet Admin**
   (décision utilisateur du 2026-09-21), existantes comprises : élèves, professeurs, cours,
   conversations, paramètres de l'école, import Excel, sauvegarde, usage vidéo.
-- **`requireOwner`** : l'appelant est administrateur ET Owner de l'école concernée. Appliqué à
+- **`requireOwner`** : l'appelant est dans la liste des administrateurs de l'école concernée
+  avec `est_owner` vrai. Appliqué à
   la gestion des administrateurs : créer, modifier (dont le statut d'Owner), supprimer.
 - La **lecture** du tableau des administrateurs relève de `requireAdmin`.
 - Les règles "au moins un Owner" et "jamais sur sa propre ligne" sont appliquées par le
@@ -450,8 +456,6 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | telephone | texte | Opt. |
 | hashed_password_ou_code | texte | technique |
 | code_recuperation | texte | Opt. (voir *Admin* ci-dessous) |
-| est_owner | booléen | Obl. (défaut faux — voir §2.4) |
-| admin_supplementaire | booléen | Obl. (défaut faux — voir §2.4) |
 | created_at | datetime | Obl. (auto) |
 
 *Admin* : un seul champ supplémentaire — `code_recuperation`, réponse à "nom
@@ -462,16 +466,32 @@ reste de cette table) même s'il n'a de sens que pour un admin — pas de
 table séparée pour un unique champ.
 *Professeur* : aucun champ supplémentaire propre pour l'instant (ses cours sont une relation, voir §6.5 — pas un champ stocké ici).
 
-*`est_owner`* et *`admin_supplementaire`* (voir §2.4, gestion multi-admin) : deux booléens
-indépendants du champ `role`, affichés seulement dans le tableau des administrateurs.
-- **`admin_supplementaire`** n'a de sens que sur un compte `role="professeur"` : il le rend
-  professeur-admin. "Est administrateur" se calcule donc comme `role == "admin" OU
-  admin_supplementaire`, jamais en modifiant `role`. C'est ce calcul qu'utilise `requireAdmin`.
-- **`est_owner`** identifie un Owner. Il n'a de sens que sur un compte administrateur (admin
-  "pur" ou professeur-admin) ; retirer les droits admin à un professeur remet aussi son
-  `est_owner` à faux. Plusieurs comptes d'une même école peuvent l'avoir, et **au moins un
-  administrateur de chaque école l'a toujours** (invariant garanti par le serveur).
-  `requireOwner` vérifie "est administrateur ET `est_owner`".
+Être administrateur (et Owner) ne se lit **pas** sur cette table mais dans la liste des
+administrateurs (§6.3bis). Seul `role` reste utile côté admin : il décide quel code d'accès
+un compte utilise pour se connecter (§2.2).
+
+### 6.3bis Administrateurs *(nouveau, voir §2.4)*
+
+La **liste des administrateurs** d'une école. Un compte est administrateur **si et seulement
+s'il y figure** : c'est la seule source de vérité, utilisée par `requireAdmin` et
+`requireOwner` (§2.4).
+
+| Champ | Type | Obl./Opt. |
+| --- | --- | --- |
+| compte_id | FK → Comptes, clé primaire | Obl. |
+| est_owner | booléen | Obl. (défaut faux) |
+| created_at | datetime | Obl. (auto) |
+
+- L'école se déduit du compte (`Comptes.ecole_id`) : pas de colonne `ecole_id` en double.
+- **Admin "pur"** : un compte `role="admin"` ET sa ligne ici. Les deux vont toujours
+  ensemble : le serveur les crée et les supprime ensemble.
+- **Professeur-admin** : un compte `role="professeur"` ET sa ligne ici. Le retirer des
+  administrateurs supprime seulement la ligne ; le compte et le professeur restent.
+- Un compte `role="eleve"` n'y figure jamais.
+- **`est_owner`** identifie un Owner. Comme il est porté par la ligne d'administrateur, un
+  compte retiré des administrateurs perd forcément aussi la qualité d'Owner. Plusieurs lignes
+  d'une même école peuvent l'avoir, et **au moins une l'a toujours** (invariant garanti par le
+  serveur).
 
 ### 6.4 Profil Élève (champs spécifiques)
 
@@ -849,8 +869,8 @@ encore branché).
   modifier POUR un autre admin, voir §2.4 — gestion multi-admin, spécifiée mais pas encore
   implémentée).
 - **Gestion multi-admin / Owner (§2.4)** : spécifiée le 2026-09-21, **pas encore implémentée** —
-  migration des 2 nouveaux champs (`est_owner`, `admin_supplementaire`, voir §6.3) avec
-  attribution rétroactive de `est_owner` au plus ancien admin de chaque école déjà existante,
+  migration créant la table `administrateurs` (§6.3bis) : une ligne pour chaque compte
+  `role="admin"` existant, avec `est_owner` pour le plus ancien admin de chaque école,
   RBAC serveur (`requireAdmin`/`requireOwner`), tableau des administrateurs et ses modales
   (création/modification/suppression) restent à coder.
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
