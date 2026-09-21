@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react'
+import * as installation from '../api/installation.js'
 import { ROLE_LABEL, estMonteeEnPrivilege, trierParRole } from '../data/roles.js'
 import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 import { ID_ACTIONS_ENTETE } from './ActionsEntete.jsx'
@@ -36,6 +37,10 @@ export default function Header({
   const coursSelectorRef = useRef(null)
   const familleSelectorRef = useRef(null)
   const headerMenuRef = useRef(null)
+  // "Installer l'application" dans le menu ⋮, quel que soit le navigateur
+  // (Chrome, Samsung Internet...), dès qu'il permet l'installation en un
+  // appui (demande du 2026-09-21, voir api/installation.js).
+  const modeInstallation = installation.useModeInstallation()
 
   // Referme le menu ouvert dès qu'on touche ailleurs sur l'écran — sinon
   // il restait ouvert indéfiniment (vécu sur Présence et Messagerie).
@@ -175,6 +180,17 @@ export default function Header({
                       }}
                     >
                       <Icon name={menuExtra.icon} size={18} /> {menuExtra.label}
+                    </button>
+                  )}
+                  {modeInstallation === 'bouton' && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        installation.installer()
+                      }}
+                    >
+                      <Icon name="download" size={18} /> Installer l’application
                     </button>
                   )}
                   <button
