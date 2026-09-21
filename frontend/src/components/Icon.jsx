@@ -8,6 +8,9 @@ const paths = {
   video: 'M4 6h11v12H4z M15 10l5-3v10l-5-3',
   messagerie: 'M4 5h16v11H8l-4 4V5Z',
   profil: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z M4 20c0-4 3.5-6 8-6s8 2 8 6',
+  // Bouton "Partager" de Safari (carré, flèche vers le haut) — pour
+  // expliquer l'installation sur iPhone (voir InvitationInstallation.jsx).
+  partager: 'M12 3v12 M8 7l4-4 4 4 M6 11H5v9h14v-9h-1',
   // Écran de contrôle (onglet Supervision, Super User seulement).
   supervision: 'M3 5h18v11H3z M8 20h8 M12 16v4 M7 12l3-3 3 2 4-4',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14Z M16 16l5 5',

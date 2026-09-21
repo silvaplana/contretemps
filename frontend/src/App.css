@@ -2561,3 +2561,30 @@
   opacity: 0.8;
   font-size: 11px;
 }
+
+/* Invitation à installer l'appli (écran de connexion, Profil — voir
+   components/InvitationInstallation.jsx). */
+.invitation-installation {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.invitation-installation__titre {
+  font-weight: 700;
+}
+
+.invitation-installation__texte {
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.invitation-installation__texte svg {
+  vertical-align: -3px;
+}

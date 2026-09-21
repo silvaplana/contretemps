@@ -3,10 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { installerIdentiteAppelant } from './api/identite.js'
+import { ecouterInstallation } from './api/installation.js'
 
 // Avant tout rendu : chaque appel à notre API porte l'id du profil actif
 // (RBAC du serveur, voir api/identite.js).
 installerIdentiteAppelant()
+// Tout de suite : l'annonce "installable" du navigateur peut arriver avant
+// le premier affichage (voir api/installation.js).
+ecouterInstallation()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
