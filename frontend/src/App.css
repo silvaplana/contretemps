@@ -330,6 +330,20 @@
   font-weight: 700;
 }
 
+/* Petit téléphone : jusqu'à 7 onglets (Super User, avec Supervision) — sans
+   ça, "Présence" et "Chorégraphie" se touchaient à 375 px de large. */
+@media (max-width: 420px) {
+  .bottom-nav {
+    padding: 8px 2px;
+    gap: 0;
+  }
+
+  .bottom-nav__item {
+    padding: 6px 3px;
+    font-size: 10px;
+  }
+}
+
 /* Badge numéroté "il y a X choses à voir" (voir BottomNav.jsx : props
    `alertes` — pour l'instant, messages non lus). `position: relative` sur
    le conteneur de l'icône, pas sur .bottom-nav__item entier : le badge

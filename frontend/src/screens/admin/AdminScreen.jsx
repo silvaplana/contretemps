@@ -11,7 +11,7 @@ const SUB_TABS = [
   { value: 'eleves', label: 'Élèves' },
   { value: 'professeurs', label: 'Profs' },
   { value: 'cours', label: 'Cours' },
-  { value: 'groupes', label: 'Messagerie' },
+  { value: 'groupes', label: 'Messages' },
 ]
 
 // Onglet Admin (voir spec/SPEC.md §5.1) : réservé au rôle Admin, 5 sous-onglets

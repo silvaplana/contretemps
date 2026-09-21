@@ -98,7 +98,7 @@ export default function Header({
         )}
       </div>
 
-      {(famille.length > 1 || mode === 'course') && (
+      {user?.id != null && (
         <div className="app-header__right">
           {/* Sélecteur familial : toujours visible dès qu'il y a plus d'1
               profil (voir spec §4), pas seulement en mode "course" — sans
@@ -139,6 +139,18 @@ export default function Header({
                 </div>
               )}
             </div>
+          )}
+          {/* Seul dans sa famille : même badge, pour toujours savoir qui est
+              connecté (demande du 2026-09-21), mais sans menu puisqu'il n'y
+              a pas d'autre profil vers lequel basculer. */}
+          {famille.length <= 1 && (
+            <span
+              className="avatar avatar--sm"
+              title={`${user.prenom} ${user.nom}`}
+              aria-label={`Connecté : ${user.prenom} ${user.nom}`}
+            >
+              {user.initiales}
+            </span>
           )}
           {mode === 'course' && (
             <div className="header-menu" ref={headerMenuRef}>

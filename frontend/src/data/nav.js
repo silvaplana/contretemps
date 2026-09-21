@@ -13,7 +13,7 @@ export const TABS = [
   { key: 'video', label: 'Vidéo', icon: 'video', roles: ['admin', 'professeur', 'eleve'] },
   {
     key: 'messagerie',
-    label: 'Messagerie',
+    label: 'Messages',
     icon: 'messagerie',
     roles: ['admin', 'professeur', 'eleve'],
   },
