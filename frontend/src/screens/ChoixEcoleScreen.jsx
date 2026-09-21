@@ -23,7 +23,7 @@ export default function ChoixEcoleScreen({ onChoisir, onLogout }) {
       <div className="login-screen__brand">
         <Logo size={80} />
         <h1>Choisir une école</h1>
-        <p>Accès propriétaire de l’application</p>
+        <p>Accès Super User</p>
       </div>
 
       <div className="login-screen__form">

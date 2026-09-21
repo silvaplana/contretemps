@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as notificationsApi from '../api/notifications.js'
 import Icon from '../components/Icon.jsx'
-import { ROLE_LABEL, isAdmin, isProf, isSuperuser, trierParRole } from '../data/roles.js'
+import { isAdmin, isProf, isSuperuser, libellesRoles, trierParRole } from '../data/roles.js'
 
 // Champ "toujours affiché, éditable via un crayon" (Profil admin
 // uniquement, voir ProfilScreen.jsx : email et code de récupération) —
@@ -166,7 +166,13 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
             {user.telephone && <p className="muted">{user.telephone}</p>}
           </>
         )}
-        <span className="badge">{ROLE_LABEL[user.type]}</span>
+        <div className="badge-list">
+          {libellesRoles(user).map((libelle) => (
+            <span key={libelle} className="badge">
+              {libelle}
+            </span>
+          ))}
+        </div>
       </div>
 
       {autresProfils.length > 0 && (
@@ -179,7 +185,7 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
                 <span className="profil-famille-list__nom">
                   {p.prenom} {p.nom}
                 </span>
-                <span className="muted">{ROLE_LABEL[p.type]}</span>
+                <span className="muted">{libellesRoles(p).join(' · ')}</span>
               </div>
             ))}
           </div>
