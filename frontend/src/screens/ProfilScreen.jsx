@@ -223,10 +223,6 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         </div>
         {notifErreur && <p className="login-screen__erreur">{notifErreur}</p>}
         <InvitationInstallation variante="ligne" />
-        <button type="button" className="settings-row settings-row--button">
-          <span>Changer le code d’accès</span>
-          <Icon name="chevronRight" size={18} />
-        </button>
       </section>
 
       {onChangerEcole && (
