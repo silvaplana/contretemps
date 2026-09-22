@@ -27,7 +27,6 @@ export default function BandeauInstallation({ visible, onTermine }) {
 
   return (
     <div className="bandeau-notifications" role="status">
-      <p>Installez l’application d’un geste : une icône sur l’écran d’accueil.</p>
       <div className="bandeau-notifications__actions">
         <button
           type="button"
@@ -40,7 +39,7 @@ export default function BandeauInstallation({ visible, onTermine }) {
           Plus tard
         </button>
         <button type="button" className="btn btn--primary" disabled={enCours} onClick={installer}>
-          Installer
+          Cliquer pour terminer l’installation
         </button>
       </div>
     </div>
