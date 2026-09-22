@@ -187,20 +187,25 @@ export default function Header({
                       <Icon name={menuExtra.icon} size={18} /> {menuExtra.label}
                     </button>
                   )}
+                  {/* Jamais affiché si déjà installée (modeInstallation
+                      alors null, voir api/installation.js). Libellé
+                      toujours identique (demande utilisateur du
+                      2026-09-23) : le geste concret diffère selon le
+                      navigateur, mais "Installer l'application" reste
+                      vrai dans tous les cas — 'ouvrir-chrome' (Android
+                      hors Chrome) passe désormais par le même panneau
+                      d'instructions que les autres navigateurs, plutôt
+                      que de rediriger tout de suite. */}
                   {modeInstallation && (
                     <button
                       type="button"
                       onClick={() => {
                         setMenuOpen(false)
-                        // Samsung Internet : vraie appli seulement via Chrome
-                        // (voir api/installation.js).
-                        if (modeInstallation === 'ouvrir-chrome') installation.ouvrirDansChrome(user.id)
-                        else if (modeInstallation === 'bouton') installation.installer()
+                        if (modeInstallation === 'bouton') installation.installer()
                         else setInstructionsInstallation(true)
                       }}
                     >
-                      <Icon name="download" size={18} />{' '}
-                      {modeInstallation === 'ouvrir-chrome' ? 'Ouvrir dans Chrome pour installer' : 'Installer l’application'}
+                      <Icon name="download" size={18} /> Installer l’application
                     </button>
                   )}
                   <button
