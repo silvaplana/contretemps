@@ -191,6 +191,18 @@ export function definirNeJamaisDemander() {
   }
 }
 
+// Une désinstallation (voir plus bas) remet aussi ce choix à zéro —
+// demande utilisateur du 2026-09-23 : cette case n'a de sens que par
+// rapport à l'installation en cours ; si l'appli est désinstallée, la
+// question redevient légitime, même si elle avait déjà été cochée avant.
+export function oublierNeJamaisDemander() {
+  try {
+    localStorage.removeItem(CLE_NE_PLUS_DEMANDER)
+  } catch {
+    // Tant pis.
+  }
+}
+
 // --- Désinstallation détectée -> effacer la session (demande du 2026-09-22)
 //
 // Aucune API web ne prévient QUAND une PWA est désinstallée (pas

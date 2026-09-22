@@ -98,6 +98,11 @@ function App() {
         if (toujoursInstallee !== true) {
           sessionApi.effacerCompteSauvegarde()
           installationApi.oublierLienInstallation()
+          // "Ne plus me demander" n'a de sens que par rapport à
+          // l'installation en cours (demande utilisateur du 2026-09-23) :
+          // une désinstallation remet la question à zéro, même si elle
+          // avait déjà été cochée avant.
+          installationApi.oublierNeJamaisDemander()
           setRestaurationEnCours(false)
           return
         }
