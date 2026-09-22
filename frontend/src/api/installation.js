@@ -27,6 +27,7 @@
 //   la page dans Safari.
 
 import { useEffect, useState } from 'react'
+import * as sessionApi from './session.js'
 
 let invitationDifferee = null
 const abonnes = new Set()
@@ -138,6 +139,14 @@ export function installationDirectePossible() {
 const PARAM_INSTALLER = 'installer'
 
 export function ouvrirDansChrome() {
+  // Efface la session de CE navigateur-ci (Samsung Internet, Firefox...)
+  // avant de partir vers Chrome — demande utilisateur du 2026-09-23 :
+  // sans ça, elle reste orpheline indéfiniment ici (Chrome et ce
+  // navigateur ont chacun leur propre stockage, totalement étanche —
+  // aucun moyen de la faire disparaître depuis Chrome après coup). La
+  // vraie session repart de zéro dans Chrome ("vous devrez vous y
+  // reconnecter", voir InstructionsInstallation).
+  sessionApi.effacerCompteSauvegarde()
   const page = `${location.host}${import.meta.env.BASE_URL}?${PARAM_INSTALLER}=1`
   location.href = `intent://${page}#Intent;scheme=https;package=com.android.chrome;end`
 }
