@@ -84,22 +84,41 @@ function App() {
       setRestaurationEnCours(false)
       return
     }
-    authApi
-      .restaurerSession(compteId)
-      .then(({ compte, ecole: ecoleRestauree }) => {
-        setCompteReel(compte)
-        setEcole(ecoleRestauree ?? ECOLE_VIDE)
-        setLoggedIn(true)
-        // Même logique que la connexion explicite (voir onLogin plus bas) :
-        // désinstaller l'appli n'efface PAS la session mémorisée (deux
-        // mécanismes indépendants, voir api/session.js) — sans ce
-        // déclenchement ici aussi, un utilisateur qui désinstalle puis
-        // rouvre l'appli ne reverrait plus jamais l'invitation (bug
-        // signalé le 2026-09-22).
-        setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
-      })
-      .catch(() => sessionApi.effacerCompteSauvegarde())
-      .finally(() => setRestaurationEnCours(false))
+    async function verifierPuisRestaurer() {
+      // Désinstallation probable (demande utilisateur du 2026-09-22) :
+      // cette session a déjà tourné en standalone (voir
+      // marquerSessionLieeInstallation ci-dessous) mais ne l'est plus
+      // maintenant — sauf si le navigateur confirme que l'appli est
+      // encore installée ailleurs (voir api/installation.js). Une
+      // session qui n'a JAMAIS tourné en standalone (utilisée seulement
+      // au navigateur) n'est jamais concernée : elle reste mémorisée
+      // comme avant.
+      if (installationApi.sessionEtaitLieeInstallation() && !installationApi.estInstallee()) {
+        const toujoursInstallee = await installationApi.estToujoursInstalleeSelonNavigateur()
+        if (toujoursInstallee !== true) {
+          sessionApi.effacerCompteSauvegarde()
+          installationApi.oublierLienInstallation()
+          setRestaurationEnCours(false)
+          return
+        }
+      }
+      if (installationApi.estInstallee()) installationApi.marquerSessionLieeInstallation()
+
+      authApi
+        .restaurerSession(compteId)
+        .then(({ compte, ecole: ecoleRestauree }) => {
+          setCompteReel(compte)
+          setEcole(ecoleRestauree ?? ECOLE_VIDE)
+          setLoggedIn(true)
+          // Même logique que la connexion explicite (voir onLogin plus
+          // bas) : une session restaurée compte aussi comme "connexion"
+          // pour cette invitation (bug signalé le 2026-09-22).
+          setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
+        })
+        .catch(() => sessionApi.effacerCompteSauvegarde())
+        .finally(() => setRestaurationEnCours(false))
+    }
+    verifierPuisRestaurer()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -620,8 +639,12 @@ function App() {
           // en tête de fonction) — web, PWA, Android, iOS : même appli
           // web, même mécanisme partout.
           sessionApi.sauvegarderCompte(resultat.compte.id)
-          // Connexion EXPLICITE (voir installationAMontrer ci-dessus) —
-          // seul déclencheur de l'écran plein écran d'installation.
+          // Si l'appli tourne déjà en standalone à cet instant (rare pour
+          // une connexion EXPLICITE, mais possible après une déconnexion
+          // manuelle depuis l'appli installée) : lie cette session à
+          // l'installation (voir api/installation.js et l'effet de
+          // restauration ci-dessus, qui détecte la désinstallation).
+          if (installationApi.estInstallee()) installationApi.marquerSessionLieeInstallation()
           setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
         }}
       />

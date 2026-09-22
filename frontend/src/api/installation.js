@@ -191,6 +191,63 @@ export function definirNeJamaisDemander() {
   }
 }
 
+// --- Désinstallation détectée -> effacer la session (demande du 2026-09-22)
+//
+// Aucune API web ne prévient QUAND une PWA est désinstallée (pas
+// d'événement symétrique à `appinstalled`). On le déduit par recoupement,
+// au chargement suivant : si CETTE session a un jour tourné en standalone
+// (voir marquerSessionLieeInstallation, posé uniquement en observant
+// estInstallee() directement — jamais depuis un onglet normal) et que ce
+// n'est plus le cas maintenant, l'appli a très probablement été
+// désinstallée -> App.jsx efface alors la session au lieu de la
+// restaurer. Sans lien avec une install jamais observée (session
+// uniquement utilisée au navigateur) : jamais effacée, elle reste
+// mémorisée comme avant (demande explicite : "si on n'installe jamais
+// l'appli, il faut quand même mémoriser la connexion").
+
+const CLE_SESSION_LIEE_INSTALL = 'contretemps:sessionLieeInstallation'
+
+export function marquerSessionLieeInstallation() {
+  try {
+    localStorage.setItem(CLE_SESSION_LIEE_INSTALL, '1')
+  } catch {
+    // Tant pis : au pire, une désinstallation future ne sera pas détectée.
+  }
+}
+
+export function sessionEtaitLieeInstallation() {
+  try {
+    return localStorage.getItem(CLE_SESSION_LIEE_INSTALL) === '1'
+  } catch {
+    return false
+  }
+}
+
+export function oublierLienInstallation() {
+  try {
+    localStorage.removeItem(CLE_SESSION_LIEE_INSTALL)
+  } catch {
+    // Tant pis.
+  }
+}
+
+// Confirmation, quand le navigateur le permet (Chrome/Edge — voir
+// site.webmanifest: related_applications), que l'appli est TOUJOURS
+// installée même si CET onglet-ci ne tourne pas en standalone (ex. un
+// lien ouvert dans un onglet normal alors que l'appli reste installée à
+// côté) — évite de considérer ce cas comme une désinstallation. Renvoie
+// `null` si le navigateur ne sait pas répondre (Safari/iOS, Firefox) :
+// App.jsx applique alors la règle simple ci-dessus sans ce filet.
+export async function estToujoursInstalleeSelonNavigateur() {
+  if (!navigator.getInstalledRelatedApps) return null
+  try {
+    const apps = await navigator.getInstalledRelatedApps()
+    return apps.length > 0
+  } catch {
+    return null
+  }
+}
+
 // Mode courant, tenu à jour quand le navigateur annonce l'installabilité
 // (souvent après le premier affichage) ou que l'installation se termine.
 // Re-rendu même si le mode ne change pas : installationDirectePossible()
