@@ -28,16 +28,6 @@ export default function BandeauInstallation({ visible, onTermine }) {
   return (
     <div className="bandeau-notifications" role="status">
       <div className="bandeau-notifications__actions">
-        <button
-          type="button"
-          className="btn btn--link"
-          onClick={() => {
-            setMasque(true)
-            onTermine?.()
-          }}
-        >
-          Plus tard
-        </button>
         <button type="button" className="btn btn--primary" disabled={enCours} onClick={installer}>
           Cliquer pour terminer l’installation
         </button>
