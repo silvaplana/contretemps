@@ -639,25 +639,42 @@ function App() {
           setEcole(resultat.ecole ?? ECOLE_VIDE)
           setActiveTab('messagerie')
           setLoggedIn(true)
-          // Se rappeler de ce profil pour la prochaine ouverture de
-          // l'appli (voir api/session.js et l'effet de restauration
-          // en tête de fonction) — web, PWA, Android, iOS : même appli
-          // web, même mécanisme partout.
-          sessionApi.sauvegarderCompte(resultat.compte.id)
           // Si l'appli tourne déjà en standalone à cet instant (rare pour
           // une connexion EXPLICITE, mais possible après une déconnexion
           // manuelle depuis l'appli installée) : lie cette session à
           // l'installation (voir api/installation.js et l'effet de
           // restauration ci-dessus, qui détecte la désinstallation).
           if (installationApi.estInstallee()) installationApi.marquerSessionLieeInstallation()
-          setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
+          const montrerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
+          setInstallationAMontrer(montrerInstallation)
+          // Se rappeler de ce profil pour la prochaine ouverture de
+          // l'appli (voir api/session.js et l'effet de restauration en
+          // tête de fonction). Si l'écran d'installation va s'afficher,
+          // on attend la réponse (voir onContinuer plus bas) avant
+          // d'écrire quoi que ce soit ici — demande utilisateur du
+          // 2026-09-23 : répondre "Oui" peut rediriger vers un AUTRE
+          // navigateur (Chrome) pour une vraie installation, auquel cas
+          // CE navigateur-ci (ex. Samsung Internet) n'a jamais besoin de
+          // mémoriser cette session pour de bon.
+          if (!montrerInstallation) sessionApi.sauvegarderCompte(resultat.compte.id)
         }}
       />
     )
   }
 
   if (installationAMontrer) {
-    return <InstallationScreen onContinuer={() => setInstallationAMontrer(false)} />
+    return (
+      <InstallationScreen
+        onContinuer={() => {
+          // Mémorisée seulement maintenant (voir onLogin ci-dessus) —
+          // jamais si "Oui" a mené vers Chrome entre-temps (ouvrirDansChrome
+          // navigue hors de cette page : ce code ne s'exécute alors jamais
+          // dans CE navigateur-ci).
+          sessionApi.sauvegarderCompte(activeUser.id)
+          setInstallationAMontrer(false)
+        }}
+      />
+    )
   }
 
   // Superuser sans école choisie (juste connecté, ou "Changer d'école") :

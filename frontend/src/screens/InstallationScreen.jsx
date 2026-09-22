@@ -12,12 +12,14 @@ import * as installation from '../api/installation.js'
 export default function InstallationScreen({ onContinuer }) {
   const mode = installation.useModeInstallation()
   const [neJamaisDemander, setNeJamaisDemander] = useState(false)
-  // Devient vrai après un clic sur "Oui, installer" pour les navigateurs
-  // sans action directe possible (iOS, Safari Mac, Firefox...) : affiche
-  // alors les instructions pas-à-pas, avec un "Continuer" pour sortir de cet
-  // écran une fois le geste fait (ou pas). Pour 'bouton'/'ouvrir-chrome',
-  // l'action déclenche directement l'installation/la redirection — ce
-  // sous-écran n'est jamais affiché.
+  // Devient vrai après un clic sur "Oui, installer" pour tout ce qui n'est
+  // pas une installation en un appui (iOS, Safari Mac, Firefox, Android
+  // hors Chrome...) : affiche alors les instructions pas-à-pas — pour
+  // 'ouvrir-chrome' en particulier (Android), le message qui invite à
+  // choisir Chrome (demande utilisateur du 2026-09-23) — avec un
+  // "Continuer" pour sortir de cet écran une fois le geste fait (ou pas).
+  // Seul 'bouton' (Chrome/Chromium, installation en un appui) déclenche
+  // directement l'action sans passer par cet état.
   const [instructionsAffichees, setInstructionsAffichees] = useState(false)
 
   function continuer() {
@@ -26,12 +28,6 @@ export default function InstallationScreen({ onContinuer }) {
   }
 
   async function installerMaintenant() {
-    if (mode === 'ouvrir-chrome') {
-      // Quitte cette page (réouverture dans Chrome, voir
-      // api/installation.js: ouvrirDansChrome) — rien à continuer ici.
-      installation.ouvrirDansChrome()
-      return
-    }
     if (mode === 'bouton') {
       // Quelle que soit la réponse au vrai dialogue du navigateur, on
       // continue ensuite dans l'appli (demande explicite) — le badge
@@ -48,16 +44,6 @@ export default function InstallationScreen({ onContinuer }) {
       <div className="login-screen__brand">
         <Logo size={90} />
         <h1>Installez l’application</h1>
-        <p>
-          Une icône sur l’écran d’accueil, dans sa propre fenêtre, et les notifications des nouveaux
-          messages — même appli fermée.
-        </p>
-        {mode === 'ouvrir-chrome' && (
-          <p className="invitation-installation__texte">
-            Sur Android, seul <strong>Chrome</strong> sait créer une vraie icône sur l’écran d’accueil —
-            en cliquant sur « Oui, installer », on vous proposera d’ouvrir cette page dans Chrome.
-          </p>
-        )}
       </div>
 
       {instructionsAffichees ? (
@@ -70,7 +56,7 @@ export default function InstallationScreen({ onContinuer }) {
             Oui, installer
           </button>
           <button type="button" className="btn btn--secondary btn--block" onClick={continuer}>
-            Non merci
+            Non merci, continuer dans le navigateur web
           </button>
           <label className="checkbox-inline">
             <input
