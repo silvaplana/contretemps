@@ -17,6 +17,7 @@ import { signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
+import BandeauInstallation from './components/BandeauInstallation.jsx'
 import BandeauNotifications from './components/BandeauNotifications.jsx'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
@@ -61,6 +62,13 @@ function App() {
   // connexion. Ne s'affiche que si l'appli n'est pas déjà installée et que
   // "Ne plus me demander" n'a jamais été coché sur cet appareil.
   const [installationAMontrer, setInstallationAMontrer] = useState(false)
+  // Arrivée dans Chrome par transfert direct (voir l'effet de restauration
+  // ci-dessous et api/installation.js : compteDepuisHandoff) — demande
+  // utilisateur du 2026-09-23 : pas un 2e écran plein écran bloquant juste
+  // après avoir déjà dû choisir Chrome, direct dans l'appli fonctionnelle
+  // avec juste un bandeau non bloquant (voir BandeauInstallation.jsx) pour
+  // le clic que Chrome exige quand même pour le vrai geste d'installation.
+  const [bandeauInstallationAMontrer, setBandeauInstallationAMontrer] = useState(false)
   const [activeTab, setActiveTab] = useState('messagerie')
   // Compte réellement connecté (voir api/auth.js : `resultat.compte`) —
   // toujours renseigné une fois `loggedIn` vrai (voir onLogin ci-dessous).
@@ -127,13 +135,27 @@ function App() {
           setCompteReel(compte)
           setEcole(ecoleRestauree ?? ECOLE_VIDE)
           setLoggedIn(true)
-          // Même logique que la connexion explicite (voir onLogin plus
-          // bas) : une session restaurée (ou reçue par transfert) compte
-          // aussi comme "connexion" pour cette invitation (bug signalé le
-          // 2026-09-22) — la session n'est cela dit mémorisée pour de bon
-          // qu'une fois cette invitation traitée (voir onContinuer plus
-          // bas), jamais ici.
-          setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
+          const proposerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
+          if (compteIdHandoff != null) {
+            // Arrivée par transfert (voir plus haut) : direct dans l'appli
+            // fonctionnelle (demande du 2026-09-23 : "pas dans l'écran
+            // d'installation, dans l'appli"), le bandeau non bloquant
+            // (BandeauInstallation.jsx) propose l'installation par-dessus
+            // plutôt qu'un 2e écran plein écran juste après avoir déjà dû
+            // choisir Chrome. Mémorisée tout de suite (pas d'écran
+            // Oui/Non à traiter sur ce chemin, voir onContinuer plus bas
+            // pour l'autre cas).
+            sessionApi.sauvegarderCompte(compte.id)
+            setBandeauInstallationAMontrer(proposerInstallation)
+          } else {
+            // Même logique que la connexion explicite (voir onLogin plus
+            // bas) : une session restaurée compte aussi comme "connexion"
+            // pour cette invitation (bug signalé le 2026-09-22) — la
+            // session n'est cela dit mémorisée pour de bon qu'une fois
+            // cette invitation traitée (voir onContinuer plus bas), jamais
+            // ici.
+            setInstallationAMontrer(proposerInstallation)
+          }
         })
         .catch(() => sessionApi.effacerCompteSauvegarde())
         .finally(() => {
@@ -745,6 +767,14 @@ function App() {
                 }
               : undefined
         }
+      />
+
+      {/* Arrivée par transfert depuis "Lancer l'installation" (voir plus
+          haut, BandeauInstallation.jsx) : propose l'installation en un clic
+          sans bloquer l'accès à l'appli. */}
+      <BandeauInstallation
+        visible={bandeauInstallationAMontrer}
+        onTermine={() => setBandeauInstallationAMontrer(false)}
       />
 
       {/* Notifications jamais encore acceptées ni refusées sur cet appareil :
