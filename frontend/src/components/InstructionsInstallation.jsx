@@ -9,11 +9,11 @@ export function InstructionsInstallation({ mode }) {
   return mode === 'ouvrir-chrome' ? (
     <>
       <p className="invitation-installation__texte">
-        Pour une vraie application, avec son icône sur l’écran d’accueil, ouvrez cette page dans{' '}
-        <strong>Chrome</strong> et installez-la depuis Chrome (vous devrez vous y reconnecter).
+        Choisissez le navigateur <strong>Chrome</strong> à l’étape suivante pour une installation
+        réussie.
       </p>
       <button type="button" className="btn btn--primary btn--block" onClick={installation.ouvrirDansChrome}>
-        Ouvrir dans Chrome
+        Lancer l’installation
       </button>
       {installation.installationDirectePossible() && (
         <button type="button" className="btn btn--link" onClick={() => installation.installer()}>
