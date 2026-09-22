@@ -2,7 +2,6 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
-import DerniereEtapeInstallation from './components/DerniereEtapeInstallation.jsx'
 import { installerIdentiteAppelant } from './api/identite.js'
 import { ecouterInstallation } from './api/installation.js'
 
@@ -16,9 +15,6 @@ ecouterInstallation()
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <App />
-    {/* Arrivée dans Chrome par "Ouvrir dans Chrome" (Samsung Internet) :
-        installation en un appui, par-dessus n'importe quel écran. */}
-    <DerniereEtapeInstallation />
   </StrictMode>,
 )
 

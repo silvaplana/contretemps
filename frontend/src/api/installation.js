@@ -128,10 +128,13 @@ export function modeInstallation() {
 
 // Rouvre la page d'accueil de l'appli dans Chrome (lien "intent" d'Android ;
 // si Chrome manque, Android propose de l'installer depuis le Play Store).
-// `?installer=1` : Chrome affiche alors la "Dernière étape" (voir
-// components/DerniereEtapeInstallation.jsx).
-const PARAM_INSTALLER = 'installer'
-
+// Arrivée dans Chrome : simple page d'accueil, comme n'importe quel premier
+// lancement — connexion (LoginScreen) puis, si "Oui" à l'invitation plein
+// écran (voir screens/InstallationScreen.jsx), installation en un appui
+// (mode 'bouton', Chrome annonce toujours l'appli installable). Plus de
+// panneau "Dernière étape" séparé (demande utilisateur du 2026-09-23) :
+// redondant avec ce même écran, désormais capable de la même installation
+// en un appui.
 export function ouvrirDansChrome() {
   // Efface la session de CE navigateur-ci (Samsung Internet, Firefox...)
   // avant de partir vers Chrome — demande utilisateur du 2026-09-23 :
@@ -141,20 +144,8 @@ export function ouvrirDansChrome() {
   // vraie session repart de zéro dans Chrome ("vous devrez vous y
   // reconnecter", voir InstructionsInstallation).
   sessionApi.effacerCompteSauvegarde()
-  const page = `${location.host}${import.meta.env.BASE_URL}?${PARAM_INSTALLER}=1`
+  const page = `${location.host}${import.meta.env.BASE_URL}`
   location.href = `intent://${page}#Intent;scheme=https;package=com.android.chrome;end`
-}
-
-export function arriveePourInstaller() {
-  return new URLSearchParams(location.search).get(PARAM_INSTALLER) === '1'
-}
-
-// Retire le marqueur de l'adresse : ni un rechargement ni un favori ne
-// rouvrent la "Dernière étape".
-export function oublierArriveePourInstaller() {
-  const url = new URL(location.href)
-  url.searchParams.delete(PARAM_INSTALLER)
-  history.replaceState(history.state, '', url)
 }
 
 // Renvoie la réponse de l'utilisateur ('accepted' ou 'dismissed').
