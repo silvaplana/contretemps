@@ -126,12 +126,6 @@ export function modeInstallation() {
   return null
 }
 
-// Installation "à la Samsung" encore possible (second choix, pour qui n'a
-// pas Chrome) : le navigateur a annoncé l'appli installable.
-export function installationDirectePossible() {
-  return invitationDifferee !== null
-}
-
 // Rouvre la page d'accueil de l'appli dans Chrome (lien "intent" d'Android ;
 // si Chrome manque, Android propose de l'installer depuis le Play Store).
 // `?installer=1` : Chrome affiche alors la "Dernière étape" (voir
@@ -271,8 +265,8 @@ export async function estToujoursInstalleeSelonNavigateur() {
 
 // Mode courant, tenu à jour quand le navigateur annonce l'installabilité
 // (souvent après le premier affichage) ou que l'installation se termine.
-// Re-rendu même si le mode ne change pas : installationDirectePossible()
-// peut, elle, avoir changé (Samsung Internet).
+// Re-rendu à chaque notification (voir `prevenir`), même si le mode
+// obtenu est textuellement identique au précédent.
 export function useModeInstallation() {
   const [mode, setMode] = useState(modeInstallation)
   const [, setVersion] = useState(0)

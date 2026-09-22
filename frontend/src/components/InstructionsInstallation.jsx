@@ -15,11 +15,6 @@ export function InstructionsInstallation({ mode }) {
       <button type="button" className="btn btn--primary btn--block" onClick={installation.ouvrirDansChrome}>
         Lancer l’installation
       </button>
-      {installation.installationDirectePossible() && (
-        <button type="button" className="btn btn--link" onClick={() => installation.installer()}>
-          Installer quand même avec ce navigateur
-        </button>
-      )}
     </>
   ) : mode?.startsWith('ios') ? (
     // Étapes fournies par l'utilisateur, testées sur iPhone (2026-09-21) —
