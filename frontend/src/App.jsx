@@ -6,6 +6,7 @@ import * as comptesApi from './api/comptes.js'
 import * as conversationsApi from './api/conversations.js'
 import * as coursApi from './api/cours.js'
 import * as elevesApi from './api/eleves.js'
+import * as installationApi from './api/installation.js'
 import * as messagesApi from './api/messages.js'
 import * as notificationsApi from './api/notifications.js'
 import * as presenceApi from './api/presence.js'
@@ -26,6 +27,7 @@ import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
 import HeuresScreen from './screens/HeuresScreen.jsx'
+import InstallationScreen from './screens/InstallationScreen.jsx'
 import LoginScreen from './screens/LoginScreen.jsx'
 import MessagerieScreen from './screens/MessagerieScreen.jsx'
 import PresenceScreen from './screens/PresenceScreen.jsx'
@@ -49,6 +51,14 @@ const ECOLE_VIDE = {
 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
+  // Écran plein écran d'installation (voir screens/InstallationScreen.jsx) —
+  // affiché une fois par connexion tant que l'appli n'est pas installée et
+  // que "Ne plus me demander" n'a jamais été coché (demande du 2026-09-22).
+  // `true` dès le départ si l'un ou l'autre est déjà vrai, pour ne jamais
+  // l'afficher inutilement à l'ouverture.
+  const [installationEcranTraite, setInstallationEcranTraite] = useState(
+    () => installationApi.estInstallee() || installationApi.neJamaisDemander(),
+  )
   const [activeTab, setActiveTab] = useState('messagerie')
   // Compte réellement connecté (voir api/auth.js : `resultat.compte`) —
   // toujours renseigné une fois `loggedIn` vrai (voir onLogin ci-dessous).
@@ -604,6 +614,10 @@ function App() {
         }}
       />
     )
+  }
+
+  if (!installationEcranTraite) {
+    return <InstallationScreen onContinuer={() => setInstallationEcranTraite(true)} />
   }
 
   // Superuser sans école choisie (juste connecté, ou "Changer d'école") :

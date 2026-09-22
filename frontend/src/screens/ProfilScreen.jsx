@@ -222,7 +222,7 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
           </button>
         </div>
         {notifErreur && <p className="login-screen__erreur">{notifErreur}</p>}
-        <InvitationInstallation variante="ligne" />
+        <InvitationInstallation />
       </section>
 
       {onChangerEcole && (

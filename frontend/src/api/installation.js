@@ -12,6 +12,10 @@
 //   l'écran d'accueil. Chrome, lui, fait une vraie appli Android (écran Applis
 //   + écran d'accueil) : on propose d'ouvrir la page dans Chrome (demande du
 //   2026-09-21), l'installation Samsung restant possible en second choix.
+// - Tout autre navigateur Android (Firefox, Opera...) qui n'annonce pas
+//   l'appli installable : même trajet qu'avec Samsung Internet ci-dessus,
+//   ouvrir la page dans Chrome (demande du 2026-09-22) — sur Android, seul
+//   Chrome sait créer une vraie icône sur l'écran d'accueil.
 // - Safari sur Mac (macOS Sonoma et suivants) : pas d'API non plus, mais
 //   menu Fichier > "Ajouter au Dock" — on l'explique.
 // - Firefox (PC/Mac) : ne sait pas installer une appli web — on conseille
@@ -78,6 +82,10 @@ function estSamsungInternet() {
   return /SamsungBrowser/i.test(navigator.userAgent) && /android/i.test(navigator.userAgent)
 }
 
+function estAndroid() {
+  return /android/i.test(navigator.userAgent)
+}
+
 function estSafariMac() {
   const ua = navigator.userAgent
   return /macintosh/i.test(ua) && /safari/i.test(ua) && !/chrome|chromium|crios|edg|firefox|fxios/i.test(ua)
@@ -102,6 +110,11 @@ export function modeInstallation() {
   if (estInstallee()) return null
   if (estSamsungInternet()) return 'ouvrir-chrome'
   if (invitationDifferee) return 'bouton'
+  // Tout autre navigateur Android (Firefox, Opera, DuckDuckGo...) qui n'a
+  // pas annoncé l'appli installable : seul Chrome sait le faire (demande
+  // utilisateur du 2026-09-22) — mêmes instructions génériques que pour
+  // Samsung Internet ci-dessus.
+  if (estAndroid()) return 'ouvrir-chrome'
   if (estIOS()) {
     if (estNavigateurIntegre()) return 'ios-ouvrir-safari'
     const navigateur = navigateurIOS()
@@ -153,24 +166,28 @@ export async function installer() {
   return outcome
 }
 
-// --- "Plus tard" : encart masqué 7 jours sur cet appareil ---
+// --- "Ne plus me demander" : sur cet appareil, pour de bon ---
+//
+// Remplace un ancien mécanisme "Plus tard" qui ne masquait que 7 jours
+// (demande utilisateur du 2026-09-22 : l'écran plein écran après connexion,
+// voir screens/InstallationScreen.jsx, redemande à CHAQUE connexion tant
+// que cette case n'a jamais été cochée).
 
-const CLE_PLUS_TARD = 'contretemps:installationPlusTard'
-const SEPT_JOURS = 7 * 24 * 3600 * 1000
+const CLE_NE_PLUS_DEMANDER = 'contretemps:installationNePlusDemander'
 
-export function reporteRecemment() {
+export function neJamaisDemander() {
   try {
-    return Date.now() - Number(localStorage.getItem(CLE_PLUS_TARD) || 0) < SEPT_JOURS
+    return localStorage.getItem(CLE_NE_PLUS_DEMANDER) === '1'
   } catch {
     return false
   }
 }
 
-export function reporter() {
+export function definirNeJamaisDemander() {
   try {
-    localStorage.setItem(CLE_PLUS_TARD, String(Date.now()))
+    localStorage.setItem(CLE_NE_PLUS_DEMANDER, '1')
   } catch {
-    // Tant pis : l'encart reviendra au prochain lancement.
+    // Tant pis : l'écran reviendra à la prochaine connexion.
   }
 }
 

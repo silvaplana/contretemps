@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import Icon from '../components/Icon.jsx'
-import InvitationInstallation from '../components/InvitationInstallation.jsx'
 import Logo from '../components/Logo.jsx'
 import Modal from '../components/Modal.jsx'
 import * as auth from '../api/auth.js'
@@ -88,8 +87,6 @@ export default function LoginScreen({ onLogin }) {
           Nouvelle école ?
         </button>
       </form>
-
-      <InvitationInstallation />
 
       {showNouvelleEcole && (
         <NouvelleEcoleModal

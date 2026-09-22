@@ -2543,6 +2543,20 @@
   font-size: 11px;
 }
 
+/* Écran plein écran d'installation, après connexion (voir
+   screens/InstallationScreen.jsx) — réutilise .login-screen/__brand pour la
+   même mise en page centrée que l'écran de connexion. */
+.installation-screen__choix {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.installation-screen__choix .checkbox-inline {
+  justify-content: center;
+  margin-top: 4px;
+}
+
 /* Invitation à installer l'appli (écran de connexion, Profil — voir
    components/InvitationInstallation.jsx). */
 .invitation-installation {
