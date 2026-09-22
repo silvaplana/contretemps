@@ -128,24 +128,43 @@ export function modeInstallation() {
 
 // Rouvre la page d'accueil de l'appli dans Chrome (lien "intent" d'Android ;
 // si Chrome manque, Android propose de l'installer depuis le Play Store).
-// Arrivée dans Chrome : simple page d'accueil, comme n'importe quel premier
-// lancement — connexion (LoginScreen) puis, si "Oui" à l'invitation plein
-// écran (voir screens/InstallationScreen.jsx), installation en un appui
-// (mode 'bouton', Chrome annonce toujours l'appli installable). Plus de
-// panneau "Dernière étape" séparé (demande utilisateur du 2026-09-23) :
-// redondant avec ce même écran, désormais capable de la même installation
-// en un appui.
-export function ouvrirDansChrome() {
+// On est déjà connecté à cet instant précis (Samsung Internet...) : plutôt
+// que de forcer une reconnexion dans Chrome, on transmet l'identité du
+// compte dans l'URL elle-même (demande utilisateur du 2026-09-23 : "on sait
+// que le login est réussi") — Chrome ne partageant aucun stockage avec ce
+// navigateur-ci (voir plus bas), c'est le seul moyen de faire passer
+// l'information. App.jsx la récupère au chargement (voir compteDepuisHandoff)
+// pour restaurer la session directement, sans repasser par LoginScreen —
+// puis, comme toute connexion, l'invitation plein écran habituelle
+// (screens/InstallationScreen.jsx) s'affiche, avec l'installation en un
+// appui (mode 'bouton', Chrome l'annonce toujours).
+const PARAM_COMPTE = 'compte'
+
+export function ouvrirDansChrome(compteId) {
   // Efface la session de CE navigateur-ci (Samsung Internet, Firefox...)
   // avant de partir vers Chrome — demande utilisateur du 2026-09-23 :
   // sans ça, elle reste orpheline indéfiniment ici (Chrome et ce
   // navigateur ont chacun leur propre stockage, totalement étanche —
-  // aucun moyen de la faire disparaître depuis Chrome après coup). La
-  // vraie session repart de zéro dans Chrome ("vous devrez vous y
-  // reconnecter", voir InstructionsInstallation).
+  // aucun moyen de la faire disparaître depuis Chrome après coup).
   sessionApi.effacerCompteSauvegarde()
-  const page = `${location.host}${import.meta.env.BASE_URL}`
+  const page = `${location.host}${import.meta.env.BASE_URL}?${PARAM_COMPTE}=${compteId}`
   location.href = `intent://${page}#Intent;scheme=https;package=com.android.chrome;end`
+}
+
+// Compte à restaurer transmis par ouvrirDansChrome ci-dessus (arrivée dans
+// Chrome) — `null` en temps normal (visite directe, sans passer par ce
+// transfert).
+export function compteDepuisHandoff() {
+  const valeur = new URLSearchParams(location.search).get(PARAM_COMPTE)
+  return valeur ? Number(valeur) : null
+}
+
+// Retire le marqueur de l'adresse une fois consommé : ni un rechargement
+// ni un favori ne doivent le réutiliser.
+export function oublierHandoff() {
+  const url = new URL(location.href)
+  url.searchParams.delete(PARAM_COMPTE)
+  history.replaceState(history.state, '', url)
 }
 
 // Renvoie la réponse de l'utilisateur ('accepted' ou 'dismissed').

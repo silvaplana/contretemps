@@ -194,7 +194,7 @@ export default function Header({
                         setMenuOpen(false)
                         // Samsung Internet : vraie appli seulement via Chrome
                         // (voir api/installation.js).
-                        if (modeInstallation === 'ouvrir-chrome') installation.ouvrirDansChrome()
+                        if (modeInstallation === 'ouvrir-chrome') installation.ouvrirDansChrome(user.id)
                         else if (modeInstallation === 'bouton') installation.installer()
                         else setInstructionsInstallation(true)
                       }}
@@ -224,7 +224,7 @@ export default function Header({
 
       {instructionsInstallation && (
         <Modal title="Installer l’application" onClose={() => setInstructionsInstallation(false)}>
-          <InstructionsInstallation mode={modeInstallation} />
+          <InstructionsInstallation mode={modeInstallation} compteId={user.id} />
         </Modal>
       )}
 

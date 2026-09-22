@@ -79,7 +79,14 @@ function App() {
   // normalement sur l'écran de connexion.
   const [restaurationEnCours, setRestaurationEnCours] = useState(true)
   useEffect(() => {
-    const compteId = sessionApi.lireCompteSauvegarde()
+    // Arrivée depuis un AUTRE navigateur via "Lancer l'installation" (voir
+    // api/installation.js: ouvrirDansChrome/compteDepuisHandoff, demande
+    // utilisateur du 2026-09-23 : "on sait que le login est réussi", pas la
+    // peine de repasser par LoginScreen) — prioritaire sur la session
+    // mémorisée localement, qui ne peut de toute façon pas exister sur un
+    // navigateur fraîchement arrivé ici pour la première fois.
+    const compteIdHandoff = installationApi.compteDepuisHandoff()
+    const compteId = compteIdHandoff ?? sessionApi.lireCompteSauvegarde()
     if (!compteId) {
       setRestaurationEnCours(false)
       return
@@ -91,9 +98,14 @@ function App() {
       // maintenant — sauf si le navigateur confirme que l'appli est
       // encore installée ailleurs (voir api/installation.js). Une
       // session qui n'a JAMAIS tourné en standalone (utilisée seulement
-      // au navigateur) n'est jamais concernée : elle reste mémorisée
-      // comme avant.
-      if (installationApi.sessionEtaitLieeInstallation() && !installationApi.estInstallee()) {
+      // au navigateur), OU qui vient d'un transfert tout juste reçu (voir
+      // compteIdHandoff, sans historique local par définition), n'est
+      // jamais concernée.
+      if (
+        compteIdHandoff == null &&
+        installationApi.sessionEtaitLieeInstallation() &&
+        !installationApi.estInstallee()
+      ) {
         const toujoursInstallee = await installationApi.estToujoursInstalleeSelonNavigateur()
         if (toujoursInstallee !== true) {
           sessionApi.effacerCompteSauvegarde()
@@ -116,12 +128,18 @@ function App() {
           setEcole(ecoleRestauree ?? ECOLE_VIDE)
           setLoggedIn(true)
           // Même logique que la connexion explicite (voir onLogin plus
-          // bas) : une session restaurée compte aussi comme "connexion"
-          // pour cette invitation (bug signalé le 2026-09-22).
+          // bas) : une session restaurée (ou reçue par transfert) compte
+          // aussi comme "connexion" pour cette invitation (bug signalé le
+          // 2026-09-22) — la session n'est cela dit mémorisée pour de bon
+          // qu'une fois cette invitation traitée (voir onContinuer plus
+          // bas), jamais ici.
           setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
         })
         .catch(() => sessionApi.effacerCompteSauvegarde())
-        .finally(() => setRestaurationEnCours(false))
+        .finally(() => {
+          if (compteIdHandoff != null) installationApi.oublierHandoff()
+          setRestaurationEnCours(false)
+        })
     }
     verifierPuisRestaurer()
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -665,6 +683,7 @@ function App() {
   if (installationAMontrer) {
     return (
       <InstallationScreen
+        compteId={activeUser.id}
         onContinuer={() => {
           // Mémorisée seulement maintenant (voir onLogin ci-dessus) —
           // jamais si "Oui" a mené vers Chrome entre-temps (ouvrirDansChrome

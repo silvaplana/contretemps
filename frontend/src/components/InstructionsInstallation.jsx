@@ -4,15 +4,21 @@ import Icon from './Icon.jsx'
 // Explication du geste d'installation, selon le navigateur (tout sauf
 // l'installation en un appui, mode 'bouton') — utilisée par le menu ⋮ de
 // l'en-tête (Header.jsx) et par l'invitation plein écran après connexion
-// (screens/InstallationScreen.jsx).
-export function InstructionsInstallation({ mode }) {
+// (screens/InstallationScreen.jsx). `compteId` : uniquement nécessaire pour
+// le mode 'ouvrir-chrome', transmis à ouvrirDansChrome (voir
+// api/installation.js) pour reconnecter automatiquement dans Chrome.
+export function InstructionsInstallation({ mode, compteId }) {
   return mode === 'ouvrir-chrome' ? (
     <>
       <p className="invitation-installation__texte">
         Choisissez le navigateur <strong>Chrome</strong> à l’étape suivante pour une installation
         réussie.
       </p>
-      <button type="button" className="btn btn--primary btn--block" onClick={installation.ouvrirDansChrome}>
+      <button
+        type="button"
+        className="btn btn--primary btn--block"
+        onClick={() => installation.ouvrirDansChrome(compteId)}
+      >
         Lancer l’installation
       </button>
     </>

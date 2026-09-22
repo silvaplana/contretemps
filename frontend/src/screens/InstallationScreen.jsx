@@ -9,7 +9,7 @@ import * as installation from '../api/installation.js'
 // l'appli n'est pas déjà installée et si "Ne plus me demander" n'a jamais
 // été coché sur cet appareil (voir App.jsx et api/installation.js :
 // neJamaisDemander) — sinon, redemande à CHAQUE connexion.
-export default function InstallationScreen({ onContinuer }) {
+export default function InstallationScreen({ onContinuer, compteId }) {
   const mode = installation.useModeInstallation()
   const [neJamaisDemander, setNeJamaisDemander] = useState(false)
   // Devient vrai après un clic sur "Oui, installer" pour tout ce qui n'est
@@ -48,7 +48,7 @@ export default function InstallationScreen({ onContinuer }) {
 
       {instructionsAffichees ? (
         <div className="invitation-installation">
-          <InstructionsInstallation mode={mode} />
+          <InstructionsInstallation mode={mode} compteId={compteId} />
         </div>
       ) : (
         <div className="installation-screen__choix">
