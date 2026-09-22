@@ -52,14 +52,14 @@ const ECOLE_VIDE = {
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   // Écran plein écran d'installation (voir screens/InstallationScreen.jsx) —
-  // affiché juste après une connexion EXPLICITE (formulaire de connexion
-  // rempli, voir onLogin plus bas), jamais après une reconnexion SILENCIEUSE
-  // via la session mémorisée (voir l'effet de restauration ci-dessous et
-  // api/session.js). Bug signalé le 2026-09-22 : une session déjà mémorisée
-  // (ex. après avoir désinstallé puis réouvert l'appli — désinstaller ne
-  // l'efface pas, ce sont deux mécanismes indépendants, voir plus bas)
-  // faisait apparaître cet écran instantanément, à la place même de la
-  // page de connexion, sans qu'aucune connexion consciente n'ait eu lieu.
+  // recalculé (voir onLogin plus bas ET l'effet de restauration ci-dessous)
+  // à chaque arrivée dans l'appli, connexion explicite OU reconnexion
+  // silencieuse via la session mémorisée (voir api/session.js) — les deux
+  // comptent : désinstaller l'appli n'efface PAS cette session (mécanismes
+  // indépendants, bug signalé le 2026-09-22), donc rouvrir après
+  // désinstallation redonne une session restaurée, pas un vrai écran de
+  // connexion. Ne s'affiche que si l'appli n'est pas déjà installée et que
+  // "Ne plus me demander" n'a jamais été coché sur cet appareil.
   const [installationAMontrer, setInstallationAMontrer] = useState(false)
   const [activeTab, setActiveTab] = useState('messagerie')
   // Compte réellement connecté (voir api/auth.js : `resultat.compte`) —
@@ -90,6 +90,13 @@ function App() {
         setCompteReel(compte)
         setEcole(ecoleRestauree ?? ECOLE_VIDE)
         setLoggedIn(true)
+        // Même logique que la connexion explicite (voir onLogin plus bas) :
+        // désinstaller l'appli n'efface PAS la session mémorisée (deux
+        // mécanismes indépendants, voir api/session.js) — sans ce
+        // déclenchement ici aussi, un utilisateur qui désinstalle puis
+        // rouvre l'appli ne reverrait plus jamais l'invitation (bug
+        // signalé le 2026-09-22).
+        setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
       })
       .catch(() => sessionApi.effacerCompteSauvegarde())
       .finally(() => setRestaurationEnCours(false))
