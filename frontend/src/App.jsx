@@ -52,13 +52,15 @@ const ECOLE_VIDE = {
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   // Écran plein écran d'installation (voir screens/InstallationScreen.jsx) —
-  // affiché une fois par connexion tant que l'appli n'est pas installée et
-  // que "Ne plus me demander" n'a jamais été coché (demande du 2026-09-22).
-  // `true` dès le départ si l'un ou l'autre est déjà vrai, pour ne jamais
-  // l'afficher inutilement à l'ouverture.
-  const [installationEcranTraite, setInstallationEcranTraite] = useState(
-    () => installationApi.estInstallee() || installationApi.neJamaisDemander(),
-  )
+  // affiché juste après une connexion EXPLICITE (formulaire de connexion
+  // rempli, voir onLogin plus bas), jamais après une reconnexion SILENCIEUSE
+  // via la session mémorisée (voir l'effet de restauration ci-dessous et
+  // api/session.js). Bug signalé le 2026-09-22 : une session déjà mémorisée
+  // (ex. après avoir désinstallé puis réouvert l'appli — désinstaller ne
+  // l'efface pas, ce sont deux mécanismes indépendants, voir plus bas)
+  // faisait apparaître cet écran instantanément, à la place même de la
+  // page de connexion, sans qu'aucune connexion consciente n'ait eu lieu.
+  const [installationAMontrer, setInstallationAMontrer] = useState(false)
   const [activeTab, setActiveTab] = useState('messagerie')
   // Compte réellement connecté (voir api/auth.js : `resultat.compte`) —
   // toujours renseigné une fois `loggedIn` vrai (voir onLogin ci-dessous).
@@ -611,13 +613,16 @@ function App() {
           // en tête de fonction) — web, PWA, Android, iOS : même appli
           // web, même mécanisme partout.
           sessionApi.sauvegarderCompte(resultat.compte.id)
+          // Connexion EXPLICITE (voir installationAMontrer ci-dessus) —
+          // seul déclencheur de l'écran plein écran d'installation.
+          setInstallationAMontrer(!installationApi.estInstallee() && !installationApi.neJamaisDemander())
         }}
       />
     )
   }
 
-  if (!installationEcranTraite) {
-    return <InstallationScreen onContinuer={() => setInstallationEcranTraite(true)} />
+  if (installationAMontrer) {
+    return <InstallationScreen onContinuer={() => setInstallationAMontrer(false)} />
   }
 
   // Superuser sans école choisie (juste connecté, ou "Changer d'école") :
