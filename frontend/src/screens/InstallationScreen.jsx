@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { InstructionsInstallation } from '../components/InvitationInstallation.jsx'
+import { InstructionsInstallation } from '../components/InstructionsInstallation.jsx'
 import Logo from '../components/Logo.jsx'
 import * as installation from '../api/installation.js'
 

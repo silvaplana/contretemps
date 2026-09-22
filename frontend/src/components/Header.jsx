@@ -5,7 +5,7 @@ import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
 import { ID_ACTIONS_ENTETE } from './ActionsEntete.jsx'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
-import { InstructionsInstallation } from './InvitationInstallation.jsx'
+import { InstructionsInstallation } from './InstructionsInstallation.jsx'
 import Logo from './Logo.jsx'
 import Modal from './Modal.jsx'
 

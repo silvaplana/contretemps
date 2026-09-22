@@ -1,39 +1,10 @@
-import { useState } from 'react'
 import * as installation from '../api/installation.js'
 import Icon from './Icon.jsx'
 
-// Ligne "Installer l'application" (Profil > Paramètres) : toujours là tant
-// que ce n'est pas fait. L'invitation automatique après connexion vit dans
-// screens/InstallationScreen.jsx (voir aussi le menu ⋮ de Header.jsx, qui
-// réutilise directement InstructionsInstallation ci-dessous).
-export default function InvitationInstallation() {
-  const mode = installation.useModeInstallation()
-  const [instructionsOuvertes, setInstructionsOuvertes] = useState(false)
-
-  if (!mode) return null
-
-  return (
-    <>
-      <button
-        type="button"
-        className="settings-row settings-row--button"
-        onClick={() => (mode === 'bouton' ? installation.installer() : setInstructionsOuvertes((o) => !o))}
-      >
-        <span>Installer l’application</span>
-        <Icon name={mode === 'bouton' ? 'chevronRight' : instructionsOuvertes ? 'chevronDown' : 'chevronRight'} size={18} />
-      </button>
-      {mode !== 'bouton' && instructionsOuvertes && (
-        <div className="invitation-installation">
-          <InstructionsInstallation mode={mode} />
-        </div>
-      )}
-    </>
-  )
-}
-
 // Explication du geste d'installation, selon le navigateur (tout sauf
-// l'installation en un appui, mode 'bouton'). Aussi utilisée par le menu ⋮
-// de l'en-tête (voir Header.jsx).
+// l'installation en un appui, mode 'bouton') — utilisée par le menu ⋮ de
+// l'en-tête (Header.jsx) et par l'invitation plein écran après connexion
+// (screens/InstallationScreen.jsx).
 export function InstructionsInstallation({ mode }) {
   return mode === 'ouvrir-chrome' ? (
     <>

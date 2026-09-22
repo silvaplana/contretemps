@@ -2557,8 +2557,8 @@
   margin-top: 4px;
 }
 
-/* Invitation à installer l'appli (écran de connexion, Profil — voir
-   components/InvitationInstallation.jsx). */
+/* Invitation à installer l'appli — voir
+   components/InstructionsInstallation.jsx et screens/InstallationScreen.jsx. */
 .invitation-installation {
   margin-top: 16px;
   padding: 14px 16px;

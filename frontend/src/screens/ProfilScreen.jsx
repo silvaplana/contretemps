@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as notificationsApi from '../api/notifications.js'
 import Icon from '../components/Icon.jsx'
-import InvitationInstallation from '../components/InvitationInstallation.jsx'
 import { isAdmin, isProf, isSuperuser, libellesRoles, trierParRole } from '../data/roles.js'
 
 // Champ "toujours affiché, éditable via un crayon" (Profil admin
@@ -222,7 +221,6 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
           </button>
         </div>
         {notifErreur && <p className="login-screen__erreur">{notifErreur}</p>}
-        <InvitationInstallation />
       </section>
 
       {onChangerEcole && (
