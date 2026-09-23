@@ -383,6 +383,13 @@ des cases à cocher pour **dupliquer** des données de la saison courante vers l
 **Éditer la saison courante** : **nom et dates seulement** (pas de duplication). Les
 anciennes saisons ne sont pas modifiables.
 
+**Supprimer une saison** (demande utilisateur du 2026-09-24) : **n'importe laquelle**, tant
+qu'il en reste au moins une. Tout ce qui lui appartient disparaît, fichiers vidéo compris.
+Supprimer la saison courante refait de la précédente la saison courante, de nouveau
+modifiable, et seules ses fiches peuvent alors se connecter. La suppression n'est possible
+qu'**après confirmation** : on choisit la saison, on lit ce qui sera supprimé, puis on retape
+son nom. Une sauvegarde technique complète de l'école est écrite sur le serveur juste avant.
+
 **Notifications** : aucun traitement particulier. La permission de notifier est un choix du
 navigateur, indépendant des saisons, et l'appli réabonne déjà l'appareil en silence à chaque
 connexion (`reabonnerSiAutorise`) : après la première connexion à la nouvelle saison, les
@@ -476,7 +483,10 @@ titre rappelle le nom de la saison courante. Elle contient :
   seulement si la précédente est cochée). Un rappel indique que les admins sont toujours
   recopiés, et que la saison actuelle passera en lecture seule. Bouton **"Valider"** en bas ;
 - un bouton **"Éditer saison courante"** : même panneau, avec seulement nom et dates, et
-  **"Valider"**.
+  **"Valider"** ;
+- un bouton **"Supprimer une saison"** (seulement s'il y en a au moins deux) : panneau avec
+  la saison à supprimer, ce qui sera supprimé, puis le nom de la saison à retaper avant que
+  **"Supprimer définitivement"** ne soit utilisable.
 
 #### 5.1.2 Élèves
 
@@ -1215,6 +1225,10 @@ encore branché).
       409 du serveur, à la reprise de session et au retour dans l'appli. Les
       notifications de l'appareil suivent. Une personne non reprise est déconnectée ;
     - usage vidéo : saison affichée + toutes saisons.
+    - suppression d'une saison (`DELETE /ecoles/{id}/saisons/{saison_id}`, admins) :
+      sauvegarde technique préalable, fiches de la saison suivante reliées à la saison
+      d'avant (`compte_precedent_id`), l'admin qui supprime la courante bascule sur sa fiche
+      de la saison précédente.
     *Reste* : en consultation, une conversation privée d'une ancienne saison s'affiche
     sous le nom d'un seul de ses deux membres (l'admin n'en fait pas partie).
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été

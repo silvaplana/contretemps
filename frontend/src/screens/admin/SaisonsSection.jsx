@@ -129,14 +129,109 @@ function PanneauSaison({ mode, courante, onValider, onClose }) {
   )
 }
 
+// Panneau "Supprimer une saison" : n'importe laquelle, sauf s'il n'en reste
+// qu'une. Irréversible (hors sauvegarde) : il faut choisir la saison, lire
+// ce qui disparaît, puis retaper son nom pour pouvoir confirmer (demande
+// utilisateur du 2026-09-24 : confirmation avant de pouvoir le faire).
+function PanneauSuppression({ saisons, onSupprimer, onClose }) {
+  const [saisonId, setSaisonId] = useState('')
+  const [confirmation, setConfirmation] = useState('')
+  const [erreur, setErreur] = useState(null)
+  const [enCours, setEnCours] = useState(false)
+  const saison = saisons.find((s) => s.id === Number(saisonId)) ?? null
+  const precedente = saison?.courante ? saisons.find((s) => !s.courante) : null
+
+  async function supprimer() {
+    setErreur(null)
+    setEnCours(true)
+    try {
+      await onSupprimer(saison)
+    } catch (err) {
+      setErreur(err.message)
+      setEnCours(false)
+    }
+  }
+
+  return (
+    <Modal
+      title="Supprimer une saison"
+      onClose={onClose}
+      footer={
+        <button
+          type="button"
+          className="btn btn--danger btn--block"
+          disabled={enCours || !saison || confirmation.trim() !== saison.nom}
+          onClick={supprimer}
+        >
+          Supprimer définitivement
+        </button>
+      }
+    >
+      <div className="form-fields">
+        <label htmlFor="saison-a-supprimer">Saison à supprimer</label>
+        <select
+          id="saison-a-supprimer"
+          className="field-input"
+          value={saisonId}
+          onChange={(e) => {
+            setSaisonId(e.target.value)
+            setConfirmation('')
+          }}
+        >
+          <option value="">Choisir une saison…</option>
+          {saisons.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.courante ? `${s.nom} (courante)` : s.nom}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {saison && (
+        <div className="saison-panneau__suppression">
+          <p>
+            Tout ce qui appartient à la saison <strong>{saison.nom}</strong> sera supprimé définitivement :
+            élèves, professeurs et administrateurs de cette saison, cours, présences, chorégraphies, vidéos
+            (fichiers compris), conversations et messages, inscriptions.
+          </p>
+          {precedente && (
+            <p>
+              C’est la saison courante : la saison <strong>{precedente.nom}</strong> redeviendra la saison
+              courante, de nouveau modifiable, et seules ses fiches pourront se connecter.
+            </p>
+          )}
+          <p className="muted">
+            Une sauvegarde complète de l’école est enregistrée sur le serveur juste avant (menu ⋮ d’Admin &gt;
+            École).
+          </p>
+          <div className="form-fields">
+            <label htmlFor="saison-confirmation">
+              Pour confirmer, tapez le nom de la saison : <strong>{saison.nom}</strong>
+            </label>
+            <input
+              id="saison-confirmation"
+              className="field-input"
+              value={confirmation}
+              autoComplete="off"
+              onChange={(e) => setConfirmation(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+    </Modal>
+  )
+}
+
 // Section "Saisons (saison courante)" d'Admin > École (spec §5.1.1),
 // repliable comme "Usage vidéo", entre les codes d'accès et les
 // administrateurs. Chargée dès l'affichage : son titre donne le nom de la
 // saison courante.
-export default function SaisonsSection({ ecoleId, onSaisonCreee }) {
+export default function SaisonsSection({ ecoleId, onSaisonCreee, onSaisonSupprimee }) {
   const [ouvert, setOuvert] = useState(false)
   const [saisons, setSaisons] = useState([])
-  const [panneau, setPanneau] = useState(null) // 'creation' | 'edition' | null
+  const [panneau, setPanneau] = useState(null) // 'creation' | 'edition' | 'suppression' | null
   const consultee = useSaisonConsultee()
   const courante = saisons.find((s) => s.courante) ?? null
 
@@ -165,6 +260,16 @@ export default function SaisonsSection({ ecoleId, onSaisonCreee }) {
     const resultat = await saisonsApi.creer(ecoleId, donnees)
     setPanneau(null)
     onSaisonCreee?.(resultat)
+  }
+
+  // Rechargement ici seulement si l'admin garde sa fiche (ancienne saison
+  // supprimée) ; sinon l'appli bascule sur une autre fiche, ce qui recrée
+  // cette section (même principe que `creer`).
+  async function supprimer(saison) {
+    const resultat = await saisonsApi.supprimer(ecoleId, saison.id)
+    setPanneau(null)
+    const garde = onSaisonSupprimee?.({ ...resultat, saisonId: saison.id })
+    if (garde) await recharger()
   }
 
   async function editer(donnees) {
@@ -210,10 +315,18 @@ export default function SaisonsSection({ ecoleId, onSaisonCreee }) {
             <button type="button" className="btn btn--secondary" onClick={() => setPanneau('edition')}>
               Éditer saison courante
             </button>
+            {saisons.length > 1 && (
+              <button type="button" className="btn btn--secondary" onClick={() => setPanneau('suppression')}>
+                Supprimer une saison
+              </button>
+            )}
           </div>
         </div>
       )}
-      {panneau && courante && (
+      {panneau === 'suppression' && (
+        <PanneauSuppression saisons={saisons} onSupprimer={supprimer} onClose={() => setPanneau(null)} />
+      )}
+      {(panneau === 'creation' || panneau === 'edition') && courante && (
         <PanneauSaison
           mode={panneau}
           courante={courante}

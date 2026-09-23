@@ -34,6 +34,7 @@ export default function AdminScreen({
   onOpenHeures,
   activeUser,
   onSaisonCreee,
+  onSaisonSupprimee,
 }) {
   const [subTab, setSubTab] = useState('eleves')
 
@@ -69,6 +70,7 @@ export default function AdminScreen({
           activeUser={activeUser}
           professeurs={professeurs}
           onSaisonCreee={onSaisonCreee}
+          onSaisonSupprimee={onSaisonSupprimee}
         />
       )}
       {subTab === 'eleves' && (

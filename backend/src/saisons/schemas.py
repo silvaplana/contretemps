@@ -34,3 +34,10 @@ class SaisonCreee(BaseModel):
     # Nouvelle fiche de l'admin qui a créé la saison : l'appli bascule
     # dessus aussitôt (sa fiche actuelle vient de passer en lecture seule).
     compte_id: int | None = None
+
+
+class SaisonSupprimee(BaseModel):
+    # Fiche à utiliser désormais par l'admin qui a supprimé la saison :
+    # sa fiche de la saison précédente s'il vient de supprimer la courante
+    # (donc la sienne), None s'il n'en a pas.
+    compte_id: int | None = None

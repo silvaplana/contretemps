@@ -1,5 +1,5 @@
-"""Créer une saison (avec duplication) et éditer la saison courante (voir
-spec/SPEC.md §2.6 et §5.1.1).
+"""Créer une saison (avec duplication), éditer la saison courante, supprimer
+une saison (voir spec/SPEC.md §2.6 et §5.1.1).
 
 Séparé de saisons.py : ce module s'appuie sur les comptes, cours et élèves,
 qui dépendent eux-mêmes de saisons.py (import circulaire sinon). Il n'est
@@ -15,7 +15,7 @@ from comptes import roles as r
 from comptes.models import Compte, Famille, RoleCompte
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
-from sqlalchemy import select
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
 from .models import Saison
@@ -84,6 +84,51 @@ class GestionSaisons:
             db.commit()
         db.refresh(saison)
         return saison, fiches
+
+    def supprimer(self, db: Session, ecole, saison_id: int, appelant_id: int | None) -> int | None:
+        """Supprime une saison et TOUT ce qui lui appartient (fiches, cours,
+        présences, chorégraphies, vidéos et leurs fichiers, conversations,
+        messages, inscriptions). N'importe laquelle, sauf la dernière qui
+        reste : supprimer la courante refait de la précédente la saison
+        courante, de nouveau modifiable (la courante est toujours la
+        dernière créée, spec §2.6).
+
+        Une sauvegarde technique complète de l'école est d'abord écrite sur
+        le serveur (historique des sauvegardes, Admin > École) : seul moyen
+        de revenir en arrière.
+
+        Renvoie la fiche à utiliser désormais par l'admin qui supprime :
+        inchangée, ou, s'il supprime la saison courante (donc sa propre
+        fiche), sa fiche de la saison précédente — None s'il n'en a pas."""
+        saison = db.get(Saison, saison_id)
+        if saison is None or saison.ecole_id != ecole.id:
+            raise ErreurSaison("Saison inconnue")
+        nb = db.scalar(select(func.count()).select_from(Saison).where(Saison.ecole_id == ecole.id))
+        if nb <= 1:
+            raise ErreurSaison("L'école doit garder au moins une saison")
+
+        _sauvegarder_avant_suppression(db, ecole)
+
+        with toutes_saisons(db):
+            appelant = db.get(Compte, appelant_id) if appelant_id is not None else None
+            fiche = appelant_id
+            if appelant is not None and appelant.saison_id == saison_id:
+                fiche = appelant.compte_precedent_id
+            fichiers = [
+                chemin
+                for lien, poster in db.execute(
+                    text(f"SELECT lien_fichier, poster FROM videos WHERE cours_id IN ({_COURS}) OR uploaded_by IN ({_COMPTES})"),
+                    {"s": saison_id},
+                )
+                for chemin in (lien, poster)
+                if chemin
+            ]
+            for requete in _SUPPRESSIONS:
+                db.execute(text(requete), {"s": saison_id})
+            db.commit()
+        db.expire_all()
+        _effacer_fichiers_videos(fichiers)
+        return fiche
 
     # --- Détails ---
 
@@ -217,3 +262,66 @@ class GestionSaisons:
                 personne = fiches.get(getattr(ligne, colonne))
                 if personne is not None:
                     db.execute(table.insert().values(cours_id=nouveaux[ligne.cours_id], **{colonne: personne}))
+
+
+# --- Suppression d'une saison (voir GestionSaisons.supprimer) ---
+
+_COURS = "SELECT id FROM cours WHERE saison_id = :s"
+_COMPTES = "SELECT id FROM comptes WHERE saison_id = :s"
+_CONVERSATIONS = "SELECT id FROM conversations WHERE saison_id = :s"
+
+# Enfants d'abord : aucune clé étrangère ne doit pointer dans le vide.
+# Les tables sans `saison_id` sont retrouvées par leur cours, leur fiche ou
+# leur conversation (même découpage que saisons/portee.py : PARENTS).
+_SUPPRESSIONS = [
+    f"DELETE FROM message_deliveries WHERE message_id IN (SELECT id FROM messages WHERE conversation_id IN ({_CONVERSATIONS})) OR destinataire_id IN ({_COMPTES})",
+    f"DELETE FROM messages WHERE conversation_id IN ({_CONVERSATIONS}) OR expediteur_id IN ({_COMPTES})",
+    f"DELETE FROM conversation_membres WHERE conversation_id IN ({_CONVERSATIONS}) OR (membre_type = 'compte' AND membre_id IN ({_COMPTES})) OR (membre_type = 'cours' AND membre_id IN ({_COURS}))",
+    "DELETE FROM conversations WHERE saison_id = :s",
+    f"DELETE FROM presences_eleves WHERE seance_id IN (SELECT id FROM seances_presence WHERE cours_id IN ({_COURS})) OR eleve_id IN ({_COMPTES})",
+    f"DELETE FROM presences_profs WHERE seance_id IN (SELECT id FROM seances_presence WHERE cours_id IN ({_COURS})) OR professeur_id IN ({_COMPTES})",
+    f"DELETE FROM seances_presence WHERE cours_id IN ({_COURS})",
+    f"DELETE FROM choregraphies_eleves WHERE choregraphie_id IN (SELECT id FROM choregraphies WHERE cours_id IN ({_COURS})) OR eleve_id IN ({_COMPTES})",
+    f"DELETE FROM televersements_video WHERE cours_id IN ({_COURS}) OR video_id IN (SELECT id FROM videos WHERE cours_id IN ({_COURS}) OR uploaded_by IN ({_COMPTES}))",
+    f"DELETE FROM videos WHERE cours_id IN ({_COURS}) OR uploaded_by IN ({_COMPTES})",
+    f"DELETE FROM choregraphies WHERE cours_id IN ({_COURS})",
+    f"DELETE FROM cours_professeurs WHERE cours_id IN ({_COURS}) OR professeur_id IN ({_COMPTES})",
+    f"DELETE FROM eleves_cours WHERE cours_id IN ({_COURS}) OR eleve_id IN ({_COMPTES})",
+    f"DELETE FROM cours_horaires_supplementaires WHERE cours_id IN ({_COURS})",
+    f"DELETE FROM mappings_colonnes_import WHERE saison_id = :s OR cours_id IN ({_COURS})",
+    f"DELETE FROM inscriptions_cours WHERE inscription_id IN (SELECT id FROM inscriptions WHERE saison_id = :s) OR cours_id IN ({_COURS})",
+    "DELETE FROM inscriptions WHERE saison_id = :s",
+    "DELETE FROM cours WHERE saison_id = :s",
+    f"DELETE FROM roles_compte WHERE compte_id IN ({_COMPTES})",
+    f"DELETE FROM profils_eleves WHERE compte_id IN ({_COMPTES})",
+    f"DELETE FROM contacts_eleves WHERE eleve_id IN ({_COMPTES})",
+    f"DELETE FROM push_subscriptions WHERE compte_id IN ({_COMPTES})",
+    # Fiches de la saison suivante recopiées depuis celles-ci : reliées à la
+    # saison d'avant, pour garder la chaîne des bascules (spec §2.6).
+    f"UPDATE comptes SET compte_precedent_id = (SELECT p.compte_precedent_id FROM comptes p WHERE p.id = comptes.compte_precedent_id) WHERE compte_precedent_id IN ({_COMPTES})",
+    "DELETE FROM comptes WHERE saison_id = :s",
+    "DELETE FROM familles WHERE saison_id = :s",
+    "DELETE FROM saisons WHERE id = :s",
+]
+
+
+def _sauvegarder_avant_suppression(db: Session, ecole) -> None:
+    """Sauvegarde technique complète, rangée avec les sauvegardes
+    programmées (même nom, donc visible dans leur historique)."""
+    from ecoles import backup_technique
+    from ecoles.stockage import dossier_ecole
+
+    horodatage = dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    (dossier_ecole(ecole.id) / f"{horodatage}_techBackup.xlsx").write_bytes(backup_technique.generer(db, ecole))
+
+
+def _effacer_fichiers_videos(chemins: list[str]) -> None:
+    """Mêmes précautions que videos.py : delete (jamais hors du dossier
+    vidéos, même avec une valeur inattendue en base)."""
+    from videos.stockage import DOSSIER_VIDEOS_LIVE
+
+    racine = DOSSIER_VIDEOS_LIVE.resolve()
+    for chemin in chemins:
+        cible = (DOSSIER_VIDEOS_LIVE / chemin).resolve()
+        if cible.is_relative_to(racine):
+            cible.unlink(missing_ok=True)

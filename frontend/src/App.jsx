@@ -357,6 +357,24 @@ function App() {
     setSelectedCoursId(null)
   }, [saisonConsultee?.id])
 
+  // Saison supprimée (Admin > École) : l'admin garde sa fiche (ancienne
+  // saison supprimée), bascule sur sa fiche de la saison redevenue
+  // courante (il a supprimé la courante), ou est déconnecté s'il n'en a
+  // pas. Renvoie vrai s'il garde sa fiche (voir SaisonsSection.jsx).
+  function surSaisonSupprimee({ compteId, saisonId }) {
+    if (saisonApi.lireSaisonConsultee()?.id === saisonId) saisonApi.consulterSaison(null)
+    if (compteId == null) {
+      logout()
+      return false
+    }
+    if (compteId !== compteReel?.id) {
+      basculerVersFiche(compteId)
+      return false
+    }
+    setVersionDonnees((v) => v + 1)
+    return true
+  }
+
   function surSaisonCreee({ compteId }) {
     saisonApi.consulterSaison(null)
     if (compteId && compteId !== compteReel?.id) basculerVersFiche(compteId)
@@ -943,6 +961,7 @@ function App() {
             onOpenHeures={(profId) => openHeures(profId, 'admin')}
             activeUser={activeUser}
             onSaisonCreee={surSaisonCreee}
+            onSaisonSupprimee={surSaisonSupprimee}
           />
         )}
 

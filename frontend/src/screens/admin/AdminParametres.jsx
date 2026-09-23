@@ -42,6 +42,7 @@ export default function AdminParametres({
   activeUser,
   professeurs,
   onSaisonCreee,
+  onSaisonSupprimee,
 }) {
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
   const saisonConsultee = useSaisonConsultee()
@@ -121,7 +122,12 @@ export default function AdminParametres({
       {/* Sections au même niveau, même format de titre (demande du
           2026-09-21) : Saisons (spec §2.6, entre les codes d'accès et les
           administrateurs), Administrateurs (spec §2.4), puis Usage vidéo. */}
-      <SaisonsSection key={activeUser.id} ecoleId={ecole.id} onSaisonCreee={onSaisonCreee} />
+      <SaisonsSection
+        key={activeUser.id}
+        ecoleId={ecole.id}
+        onSaisonCreee={onSaisonCreee}
+        onSaisonSupprimee={onSaisonSupprimee}
+      />
 
       <AdministrateursTableau
         ecoleId={ecole.id}

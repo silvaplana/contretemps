@@ -2649,6 +2649,19 @@
   font-size: 14px;
 }
 
+.saison-panneau__suppression {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.saison-panneau__suppression p {
+  margin: 0;
+}
+
 .saison-panneau__note {
   margin-top: 6px !important;
   line-height: 1.4;

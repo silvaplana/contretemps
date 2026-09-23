@@ -199,3 +199,95 @@ def test_libelle_des_inscriptions_par_defaut(db_session):
     saison = db_session.get(Saison, saison_courante_id(db_session, ecole.id))
     attendu = f"{saison.date_debut.year}-{saison.date_debut.year + 1}"
     assert saison_des_inscriptions(db_session, ecole.id) == attendu
+
+
+# --- Supprimer une saison ---
+
+
+@pytest.fixture()
+def sauvegardes(tmp_path, monkeypatch):
+    """La sauvegarde écrite avant chaque suppression va dans un dossier de
+    test, pas dans data/ du dépôt."""
+    import ecoles.stockage
+
+    monkeypatch.setattr(ecoles.stockage, "DOSSIER_SAUVEGARDES", tmp_path)
+    return tmp_path
+
+
+def test_on_ne_supprime_pas_la_derniere_saison(client, ecole_en_cours, sauvegardes):
+    e = ecole_en_cours
+    reponse = client.delete(f"/ecoles/{e['ecole'].id}/saisons/{e['ancienne']}")
+    assert reponse.status_code == 409
+    assert "au moins une saison" in reponse.json()["detail"]
+
+
+def test_supprimer_une_ancienne_saison(client, db_session, ecole_en_cours, sauvegardes):
+    from videos import dossier_ecole
+    from videos.models import Video
+
+    e = ecole_en_cours
+    ecole_id = e["ecole"].id
+    fichier = dossier_ecole(ecole_id) / "ancienne.mp4"
+    fichier.write_bytes(b"x")
+    db_session.add(Video(cours_id=e["jazz"].id, nom="Filage", lien_fichier=f"{ecole_id}/ancienne.mp4", uploaded_by=e["owner"].id))
+    db_session.commit()
+    nouvelle_id = _creer(client, ecole_id, dupliquer_profs=True, dupliquer_cours=True, dupliquer_eleves=True).json()["saison"]["id"]
+
+    reponse = client.delete(f"/ecoles/{ecole_id}/saisons/{e['ancienne']}")
+    assert reponse.status_code == 200
+    assert [s["nom"] for s in client.get(f"/ecoles/{ecole_id}/saisons").json()] == ["2027-2028"]
+    with toutes_saisons(db_session):
+        db_session.expire_all()
+        restants = db_session.scalars(sa.select(Compte).where(Compte.ecole_id == ecole_id)).all()
+        assert {c.saison_id for c in restants} == {nouvelle_id}
+        # Plus de saison précédente : plus de fiche précédente.
+        assert all(c.compte_precedent_id is None for c in restants)
+        assert db_session.scalar(sa.select(sa.func.count()).select_from(Cours)) == 1
+        assert db_session.scalar(sa.select(sa.func.count()).select_from(Video)) == 0
+        assert db_session.scalar(sa.select(sa.func.count()).select_from(SeancePresence)) == 0
+    assert not fichier.exists()
+    # Sauvegarde complète écrite juste avant.
+    assert len(list((sauvegardes / str(ecole_id)).glob("*_techBackup.xlsx"))) == 1
+    # La saison courante n'a pas bougé.
+    assert len(client.get("/cours", params={"ecole_id": ecole_id}).json()) == 1
+
+
+@pytest.mark.rbac_reel
+def test_supprimer_la_saison_courante_redonne_la_main_a_la_precedente(client, db_session, ecole_en_cours, sauvegardes):
+    e = ecole_en_cours
+    ecole_id = e["ecole"].id
+    creee = client.post(f"/ecoles/{ecole_id}/saisons", json=NOUVELLE, headers={"X-Compte-Id": str(e["owner"].id)}).json()
+    nouvelle_fiche = creee["compte_id"]
+
+    reponse = client.delete(
+        f"/ecoles/{ecole_id}/saisons/{creee['saison']['id']}", headers={"X-Compte-Id": str(nouvelle_fiche)}
+    )
+    assert reponse.status_code == 200
+    # L'admin retrouve sa fiche de la saison redevenue courante.
+    assert reponse.json()["compte_id"] == e["owner"].id
+    entete = {"X-Compte-Id": str(e["owner"].id)}
+    saisons = client.get(f"/ecoles/{ecole_id}/saisons", headers=entete).json()
+    assert [(s["nom"], s["courante"]) for s in saisons] == [("2026-2027", True)]
+    # De nouveau modifiable.
+    assert client.put(f"/cours/{e['jazz'].id}", json={"nom": "Jazz 2"}, headers=entete).status_code == 200
+
+
+def test_la_chaine_des_fiches_saute_la_saison_supprimee(client, db_session, ecole_en_cours, sauvegardes):
+    e = ecole_en_cours
+    ecole_id = e["ecole"].id
+    milieu = _creer(client, ecole_id).json()["saison"]["id"]
+    client.post(f"/ecoles/{ecole_id}/saisons", json={**NOUVELLE, "nom": "2028-2029"})
+    assert client.delete(f"/ecoles/{ecole_id}/saisons/{milieu}").status_code == 200
+    # L'ancienne fiche de l'owner (2026-2027) mène toujours à sa fiche 2028-2029.
+    fiche = client.get(f"/comptes/{e['owner'].id}/fiche-courante").json()["compte_id"]
+    with toutes_saisons(db_session):
+        assert db_session.get(Compte, fiche).compte_precedent_id == e["owner"].id
+
+
+@pytest.mark.rbac_reel
+def test_un_prof_ne_supprime_pas_de_saison(client, ecole_en_cours, sauvegardes):
+    e = ecole_en_cours
+    reponse = client.delete(
+        f"/ecoles/{e['ecole'].id}/saisons/{e['ancienne']}", headers={"X-Compte-Id": str(e["prof"].id)}
+    )
+    assert reponse.status_code == 403

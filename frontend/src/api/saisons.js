@@ -52,3 +52,13 @@ export async function modifierCourante(ecoleId, { nom, dateDebut, dateFin }) {
   })
   return versEcran(saison)
 }
+
+// Supprime la saison et tout ce qui lui appartient (voir
+// backend/src/saisons/gestion.py : supprimer ; une sauvegarde complète est
+// écrite sur le serveur juste avant). Renvoie la fiche à utiliser désormais
+// par l'admin (`compteId`) : la même, sa fiche de la saison précédente s'il
+// vient de supprimer la courante, ou null.
+export async function supprimer(ecoleId, saisonId) {
+  const resultat = await requete(`/ecoles/${ecoleId}/saisons/${saisonId}`, { method: 'DELETE' })
+  return { compteId: resultat.compte_id }
+}
