@@ -27,6 +27,8 @@ class Famille(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    # Regroupement familial à l'intérieur d'une même saison (§2.6, §6.1bis).
+    saison_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     comptes: Mapped[list["Compte"]] = relationship("Compte", back_populates="famille")
@@ -54,6 +56,10 @@ class Compte(Base):
     # école ni famille. Tout autre compte a toujours les deux.
     ecole_id: Mapped[int | None] = mapped_column(ForeignKey("ecoles.id"), nullable=True, index=True)
     famille_id: Mapped[int | None] = mapped_column(ForeignKey("familles.id"), nullable=True, index=True)
+    # Une fiche par personne ET par saison (§2.6) : seuls les comptes de la
+    # saison courante peuvent se connecter. Vide pour le Superuser (sans
+    # école). Rempli automatiquement, voir saisons/automatique.py.
+    saison_id: Mapped[int | None] = mapped_column(ForeignKey("saisons.id"), nullable=True, index=True)
 
     nom: Mapped[str] = mapped_column(String(100), nullable=False)
     prenom: Mapped[str] = mapped_column(String(100), nullable=False)

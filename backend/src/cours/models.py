@@ -32,6 +32,8 @@ class Cours(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    # Voir spec §2.6 ; rempli automatiquement, voir saisons/automatique.py.
+    saison_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, index=True)
     # texte libre, pas un enum fermé (voir §6.5 : permet d'ajouter un
     # nouveau type de cours plus tard sans migration).
     nom: Mapped[str] = mapped_column(String(150), nullable=False)

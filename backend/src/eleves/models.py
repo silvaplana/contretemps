@@ -58,10 +58,13 @@ class MappingColonneImport(Base):
 
     __tablename__ = "mappings_colonnes_import"
     __table_args__ = (
-        UniqueConstraint("ecole_id", "en_tete_excel", name="uq_mapping_colonne_ecole_entete"),
+        UniqueConstraint("saison_id", "en_tete_excel", name="uq_mapping_colonne_saison_entete"),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    # Pointe vers un cours, donc propre à une saison (§2.6) ; rempli
+    # automatiquement, voir saisons/automatique.py.
+    saison_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, index=True)
     en_tete_excel: Mapped[str] = mapped_column(String(150), nullable=False)
     cours_id: Mapped[int] = mapped_column(ForeignKey("cours.id"), nullable=False)

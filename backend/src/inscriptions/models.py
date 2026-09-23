@@ -47,6 +47,10 @@ class Inscription(Base):
     # exposer l'id séquentiel (voir receiver.py).
     token_public: Mapped[str] = mapped_column(String(36), nullable=False, unique=True, index=True)
     saison: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Voir spec §2.6 ; rempli automatiquement, voir saisons/automatique.py.
+    # Le texte `saison` ci-dessus sera retiré quand les échéances seront
+    # calculées depuis les dates de la saison (§6.1bis).
+    saison_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     ip_soumission: Mapped[str | None] = mapped_column(String(45), nullable=True)
 

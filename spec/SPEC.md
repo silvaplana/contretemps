@@ -65,6 +65,7 @@ parent Admin + ses deux enfants Élèves).
   l'id du profil ACTIF (pas un vrai token — ce backend n'a aucune notion de session, voir §8)
   est gardé en local (voir frontend/src/api/session.js), propre à chaque appareil, mis à jour
   à chaque bascule de profil famille et effacé à la déconnexion volontaire
+- **Saisons (§2.6)** : seuls les comptes de la **saison courante** peuvent se connecter
 - Plusieurs appareils peuvent être connectés simultanément avec le même compte
 - Déconnexion disponible depuis l'onglet **Profil**
 - **"Code oublié ?"** (décision utilisateur du 2026-09-21) : un simple message, pour tous :
@@ -324,6 +325,76 @@ tous les comptes plus tard (chantier "vraie authentification", §8).
 avant) ; déconnexion automatique pendant l'utilisation quand le jeton expire (aujourd'hui,
 les actions échouent jusqu'au prochain rechargement, qui ramène à l'écran de connexion).
 
+### 2.6 Saisons *(spécifié le 2026-09-23, pas encore implémenté)*
+
+Une **saison** est une année d'activité d'une école : un **nom** (ex. `2026-2027`), une **date
+de début** et une **date de fin**. Chaque école a ses propres saisons.
+
+**Tout est par saison, sauf l'école** (décisions utilisateur du 2026-09-23). Seule l'école
+est permanente : nom, code postal, codes d'accès. Tout le reste appartient à une saison :
+- les **comptes** (élèves, professeurs, **admins compris**) : une personne présente sur deux
+  saisons a **une fiche par saison**, avec ses rôles (cumulables, §2.1) propres à chaque
+  saison. Il y a beaucoup de rotation d'une année à l'autre, et une fiche peut changer
+  (adresse, cours, paiement) sans toucher à l'historique ;
+- les **cours**, et tout ce qui en dépend : présences, chorégraphies, vidéos ;
+- la **messagerie** : conversations et messages, **messages privés compris**. Tout repart à
+  zéro à chaque saison ;
+- les **inscriptions** (formulaire d'inscription) et les correspondances de colonnes de
+  l'import Excel (§6.4bis), qui pointent vers des cours.
+
+**Saison courante = la dernière créée.** Elle n'est **pas stockée** en base : c'est toujours
+la plus récente. Conséquences :
+- créer une nouvelle saison la rend **immédiatement courante** et fait passer la précédente
+  en lecture seule. On ne prépare pas une saison à l'avance ;
+- **seule la saison courante est modifiable**. Toutes les autres sont en **lecture seule,
+  partout** (aucun ajout, modification ou suppression, aucun message envoyé). **C'est le
+  serveur qui l'impose** sur chaque écriture, sans faire confiance au navigateur.
+
+**Saison affichée**
+- C'est le **navigateur** qui sait quelle saison il affiche, et l'envoie au serveur avec ses
+  requêtes. Par défaut : la saison courante.
+- **Seuls les admins peuvent consulter une ancienne saison**, en la choisissant dans Admin >
+  École (§5.1.1). Tous les autres voient **toujours la saison courante**, partout.
+- **Une fois la saison affichée choisie, tous les affichages en tiennent compte, partout**
+  (Admin, Présence, Chorégraphie, Vidéo, Messagerie, Profil) : on ne s'intéresse qu'à elle.
+  Seule exception : le total toutes saisons de l'usage vidéo (§5.1.1). Une ancienne saison
+  est en lecture seule, avec un rappel visible de la saison consultée.
+
+**Connexion** : seules les personnes **inscrites dans la saison courante** peuvent se
+connecter (§2.2). La fiche d'une ancienne saison ne permet plus d'entrer dans l'appli. Le
+Superuser (§2.5), sans école, n'est rattaché à aucune saison.
+
+**Créer une nouvelle saison** (Admin > École, §5.1.1) : nom, date de début, date de fin, puis
+des cases à cocher pour **dupliquer** des données de la saison courante vers la nouvelle :
+- **admins et administrateur principal (Owner) : toujours recopiés automatiquement**, sans
+  case à cocher, avec leurs rôles d'admin. Sans eux, plus personne ne pourrait administrer
+  l'école. Un admin qui était aussi professeur ou élève n'est recopié qu'en admin si la case
+  correspondante n'est pas cochée : il devient un admin pur, rien à signaler ;
+- cases, **dans cet ordre** : **Professeurs**, puis **Cours**, puis **Élèves**. Chaque case
+  n'est possible que si la précédente est cochée : on ne recopie pas des cours sans leurs
+  professeurs, ni des élèves sans leurs cours ;
+- les élèves dupliqués **gardent les mêmes cours** (les cours recopiés) ;
+- ce qui est propre à une saison **repart à zéro** : paiement (statut, montants, commentaire),
+  présences, chorégraphies, vidéos, conversations et messages. Recopier les conversations
+  n'est pas prévu ;
+- la saison peut ensuite se remplir comme d'habitude : ajout d'élèves à la main, import
+  Excel, formulaire d'inscription.
+
+**Éditer la saison courante** : **nom et dates seulement** (pas de duplication). Les
+anciennes saisons ne sont pas modifiables.
+
+**Notifications** : aucun traitement particulier. La permission de notifier est un choix du
+navigateur, indépendant des saisons, et l'appli réabonne déjà l'appareil en silence à chaque
+connexion (`reabonnerSiAutorise`) : après la première connexion à la nouvelle saison, les
+notifications arrivent sur la nouvelle fiche.
+
+**Performance** : pas de ralentissement attendu. Les données sont filtrées par saison (champ
+indexé), et les volumes restent petits (une école, quelques centaines de fiches par saison).
+Les vidéos, seules données lourdes, ne sont jamais dupliquées.
+
+**Migration des données existantes** : tout ce qui existe aujourd'hui devient la saison
+**`2026-2027`** (du 2026-09-01 au 2027-08-31), renommable ensuite.
+
 ---
 
 ## 3. Droits par rôle
@@ -390,6 +461,22 @@ confondus) — espace utilisé (Mo tant que ça reste sous 1 Go, Go au-delà) et
 lourdes par taille décroissante (titre, cours, chorégraphie liée si elle existe, taille, durée).
 Icône poubelle par ligne pour supprimer une vidéo directement depuis ce panneau (confirmation
 demandée) — supprime aussi le fichier et sa vignette, pas seulement l'entrée.
+*Avec les saisons (§2.6)* : espace et durée affichés pour la **saison affichée** et pour le
+**total toutes saisons** (seul chiffre qui sort de la saison affichée) ; la liste des 10 plus
+lourdes porte sur la saison affichée.
+
+**Section "Saisons (saison courante)"** *(spécifié le 2026-09-23, voir §2.6)* : repliable
+comme "Usage vidéo", placée **après "Code d'accès Élève" et avant "Administrateurs"**. Le
+titre rappelle le nom de la saison courante. Elle contient :
+- un **menu déroulant "Saison affichée"**, de la plus récente à la plus ancienne, pour
+  consulter une ancienne saison (lecture seule dans toute l'appli, §2.6) ou revenir à la
+  courante ;
+- un bouton **"Créer nouvelle saison"** : ouvre un panneau avec nom, date de début, date de
+  fin, et les cases de duplication **Professeurs → Cours → Élèves** (chacune possible
+  seulement si la précédente est cochée). Un rappel indique que les admins sont toujours
+  recopiés, et que la saison actuelle passera en lecture seule. Bouton **"Valider"** en bas ;
+- un bouton **"Éditer saison courante"** : même panneau, avec seulement nom et dates, et
+  **"Valider"**.
 
 #### 5.1.2 Élèves
 
@@ -557,6 +644,40 @@ Modifiable par tout admin de l'école après création. Les 3 codes d'accès son
 éditable sans contrainte de format imposée) — à la création de l'école, une valeur par défaut
 est proposée pour chacun (`ADMIN_ECOLE_ANNEE`, `PROF_ECOLE_ANNEE`, `ELEVE_ECOLE_ANNEE`, où
 ÉCOLE = nom de l'école en majuscules et ANNÉE = année en cours), éditable avant validation.
+
+### 6.1bis Saisons *(spécifié le 2026-09-23, voir §2.6)*
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| ecole_id | FK → écoles | Obl. |
+| nom | texte (ex. `2026-2027`) | Obl. |
+| date_debut | date | Obl. |
+| date_fin | date | Obl. |
+| created_at | datetime | Obl. (auto) |
+
+Le couple (ecole_id, nom) est unique. **Aucun champ "saison courante"** : c'est la saison la
+plus récemment créée de l'école (plus grand `id`).
+
+**Rattachement à une saison** : un champ `saison_id` (FK → saisons, obligatoire, indexé) est
+ajouté aux tables "racines" qui portaient jusqu'ici `ecole_id` :
+- `familles` et `comptes` (§6.2, §6.3) : une fiche par personne et par saison. Le
+  regroupement familial par email se fait à l'intérieur d'une même saison. Le Superuser
+  reste sans école ni saison ;
+- `cours` (§6.5) ;
+- `conversations` (§6.9) ;
+- `inscriptions` : le texte `saison` actuel est remplacé par `saison_id`. Le calcul des
+  échéances (tarifs, trimestres) utilise les dates de la saison au lieu de découper son nom ;
+- `mappings_colonnes_import` (§6.4bis).
+
+Toutes les autres tables (rôles, profils élèves, contacts, horaires, liens cours-professeurs
+et cours-élèves, présences, chorégraphies, vidéos, membres de conversation, messages,
+abonnements aux notifications) héritent de la saison **à travers** leur compte, leur cours ou
+leur conversation : pas de `saison_id` en double.
+
+**Côté serveur** : chaque requête précise la saison affichée ; une lecture d'une ancienne
+saison n'est permise qu'à un admin ; toute écriture sur une autre saison que la courante est
+refusée. Un compte d'une ancienne saison ne peut pas se connecter (§2.2, §2.6).
 
 ### 6.2 Familles
 
@@ -1051,6 +1172,12 @@ encore branché).
   écoles), commande serveur de création, mot de passe haché, jeton signé de 12 h vérifié à
   chaque requête, connexion par le formulaire habituel, sélecteur d'école. Migration
   `b787f0a65803` : `comptes.ecole_id` et `famille_id` optionnels (Superuser sans école).
+- **Saisons (§2.6, §5.1.1, §6.1bis)** : spécifiées le 2026-09-23, **pas encore
+  implémentées**. Étapes prévues : 1) tables et migration (données actuelles → saison
+  `2026-2027`) ; 2) filtrage par saison côté serveur, lecture seule des anciennes saisons,
+  connexion limitée à la saison courante, tests ; 3) création (avec duplication profs →
+  cours → élèves, admins toujours recopiés) et édition d'une saison ; 4) écran : section
+  Saisons d'Admin > École, panneau, mode lecture seule, usage vidéo (saison affichée + total).
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
   retiré de l'écran de connexion (devenu inutile maintenant que le mode réel fonctionne) — mais
   `api/mode.js` et les branches maquette de chaque `api/<domaine>.js` existent toujours.

@@ -23,6 +23,8 @@ class Conversation(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    # Voir spec §2.6 ; rempli automatiquement, voir saisons/automatique.py.
+    saison_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, index=True)
     nom: Mapped[str | None] = mapped_column(String(150), nullable=True)
     # 'individuelle' | 'groupe' — texte, pas Enum (même choix que
     # roles_compte.role, voir backend/README.md).

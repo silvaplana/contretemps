@@ -24,6 +24,7 @@ from messagerie.models import (  # noqa: F401
     MessageDelivery,
 )
 from presence.models import PresenceEleve, PresenceProf, SeancePresence  # noqa: F401
+from saisons.models import Saison  # noqa: F401
 from videos.models import Video  # noqa: F401
 
 config = context.config
