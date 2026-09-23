@@ -263,7 +263,13 @@ def test_usage_ecole_sans_cours(client, db_session):
     ecole = Ecoles().create(db_session, nom="Vide", code_postal="00000")
     reponse = client.get(f"/ecoles/{ecole.id}/videos/usage")
     assert reponse.status_code == 200
-    assert reponse.json() == {"total_octets": 0, "total_secondes": 0, "top_videos": []}
+    assert reponse.json() == {
+        "total_octets": 0,
+        "total_secondes": 0,
+        "total_toutes_saisons_octets": 0,
+        "total_toutes_saisons_secondes": 0,
+        "top_videos": [],
+    }
 
 
 def _ecrire_bloc(client, upload_id, decalage, donnees):

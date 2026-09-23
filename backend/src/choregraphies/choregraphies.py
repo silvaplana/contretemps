@@ -9,6 +9,7 @@ from comptes import Compte
 from cours import CoursService
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from saisons.portee import verifier_modifiable
 
 from .models import Choregraphie, choregraphies_eleves
 
@@ -65,6 +66,7 @@ class Choregraphies:
         choregraphie = self.get(db, choregraphie_id)
         if choregraphie is None:
             return False
+        verifier_modifiable(db, "choregraphies", choregraphie_id)
         inscrits = {e.id for e in self.cours.eleves_du_cours(db, choregraphie.cours_id)}
         if eleve_id not in inscrits:
             return False
@@ -84,6 +86,7 @@ class Choregraphies:
         return True
 
     def retirer_eleve(self, db: Session, choregraphie_id: int, eleve_id: int) -> None:
+        verifier_modifiable(db, "choregraphies", choregraphie_id)
         db.execute(
             choregraphies_eleves.delete().where(
                 choregraphies_eleves.c.choregraphie_id == choregraphie_id,

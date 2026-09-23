@@ -1172,12 +1172,29 @@ encore branché).
   écoles), commande serveur de création, mot de passe haché, jeton signé de 12 h vérifié à
   chaque requête, connexion par le formulaire habituel, sélecteur d'école. Migration
   `b787f0a65803` : `comptes.ecole_id` et `famille_id` optionnels (Superuser sans école).
-- **Saisons (§2.6, §5.1.1, §6.1bis)** : spécifiées le 2026-09-23, **pas encore
-  implémentées**. Étapes prévues : 1) tables et migration (données actuelles → saison
-  `2026-2027`) ; 2) filtrage par saison côté serveur, lecture seule des anciennes saisons,
-  connexion limitée à la saison courante, tests ; 3) création (avec duplication profs →
-  cours → élèves, admins toujours recopiés) et édition d'une saison ; 4) écran : section
-  Saisons d'Admin > École, panneau, mode lecture seule, usage vidéo (saison affichée + total).
+- **Saisons (§2.6, §5.1.1, §6.1bis)** : spécifiées le 2026-09-23, livrées en 4 étapes.
+  - **Étape 1, faite** : table `saisons`, `saison_id` sur les tables racines, migration
+    (données actuelles → saison `2026-2027`), rattachement automatique des nouvelles lignes
+    (`backend/src/saisons/automatique.py`).
+  - **Étape 2, faite** (serveur seulement, `backend/src/saisons/portee.py`) :
+    - filtre central : toute lecture ne voit que la saison courante de chaque école, ou la
+      saison demandée dans l'en-tête `X-Saison-Id` (réservé aux admins de l'école, contrôlé
+      par `compte_appelant`) ;
+    - verrou central : toute écriture hors de la saison courante est refusée (403 « saison
+      en lecture seule »), y compris sur les tables enfants (présences, vidéos, messages...)
+      et les tables de liaison ;
+    - connexion limitée à la saison courante. Une fiche d'une ancienne saison reçoit un 409
+      `{"code": "nouvelle_saison", "compte_id": ...}` si la personne a été reprise
+      (`comptes.compte_precedent_id`), sinon un 401 `{"code": "hors_saison"}`.
+      `GET /comptes/{id}/fiche-courante` donne la fiche à reprendre ;
+    - sauvegarde et restauration technique de toutes les saisons (onglet « Saisons ») ;
+    - usage vidéo : saison affichée + `total_toutes_saisons_*`.
+  - **Étape 3, à faire** : création (avec duplication profs → cours → élèves, admins
+    toujours recopiés, lien `compte_precedent_id`) et édition d'une saison. Échéances des
+    inscriptions calculées depuis les dates de la saison au lieu de son nom.
+  - **Étape 4, à faire** : écran. Section Saisons d'Admin > École, panneau, en-tête
+    `X-Saison-Id` envoyé par l'appli, mode lecture seule, bascule automatique vers la
+    nouvelle fiche (409), usage vidéo (saison affichée + total).
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
   retiré de l'écran de connexion (devenu inutile maintenant que le mode réel fonctionne) — mais
   `api/mode.js` et les branches maquette de chaque `api/<domaine>.js` existent toujours.

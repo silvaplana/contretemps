@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from choregraphies import Choregraphie
 from cours import CoursService
+from saisons.portee import toutes_saisons
 
 from .compression import compresser as compresser_fichier
 from .duree import duree_secondes
@@ -344,18 +345,28 @@ class Videos:
         confondus. La taille se lit sur le disque à la demande (pas
         stockée, toujours exacte même si un fichier est remplacé à la
         main) ; la durée vient de Video.duree_secondes (mesurée une fois,
-        voir duree.py)."""
+        voir duree.py).
+
+        Saisons (spec §2.6) : tout porte sur la saison affichée, sauf
+        `total_toutes_saisons_*`, cumul de toutes les saisons de l'école."""
+        with toutes_saisons(db):
+            tous_cours = [c.id for c in self.cours.list(db, ecole_id)]
+            toutes = self._videos_avec_fichier(db, tous_cours)
+        mesurees = self._tailles(toutes)
+        total_toutes_octets = sum(taille for _, taille in mesurees)
+        total_toutes_secondes = sum(video.duree_secondes or 0 for video, _ in mesurees)
+
         cours_par_id = {c.id: c for c in self.cours.list(db, ecole_id)}
         if not cours_par_id:
-            return UsageVideosEcole(total_octets=0, total_secondes=0, top_videos=[])
-
-        videos = list(
-            db.scalars(
-                select(Video).where(
-                    Video.cours_id.in_(cours_par_id.keys()), Video.lien_fichier != ""
-                )
+            return UsageVideosEcole(
+                total_octets=0,
+                total_secondes=0,
+                total_toutes_saisons_octets=total_toutes_octets,
+                total_toutes_saisons_secondes=total_toutes_secondes,
+                top_videos=[],
             )
-        )
+
+        videos = self._videos_avec_fichier(db, list(cours_par_id))
 
         choregraphie_ids = {v.choregraphie_id for v in videos if v.choregraphie_id is not None}
         noms_choregraphies = (
@@ -370,12 +381,7 @@ class Videos:
         lignes: list[VideoUsage] = []
         total_octets = 0
         total_secondes = 0
-        for video in videos:
-            chemin = DOSSIER_VIDEOS_LIVE / video.lien_fichier
-            try:
-                taille = chemin.stat().st_size
-            except OSError:
-                continue  # fichier manquant sur le disque — ignoré, pas d'erreur 500
+        for video, taille in self._tailles(videos):
             total_octets += taille
             total_secondes += video.duree_secondes or 0
             lignes.append(
@@ -391,5 +397,27 @@ class Videos:
 
         lignes.sort(key=lambda l: l.taille_octets, reverse=True)
         return UsageVideosEcole(
-            total_octets=total_octets, total_secondes=total_secondes, top_videos=lignes[:10]
+            total_octets=total_octets,
+            total_secondes=total_secondes,
+            total_toutes_saisons_octets=total_toutes_octets,
+            total_toutes_saisons_secondes=total_toutes_secondes,
+            top_videos=lignes[:10],
         )
+
+    def _videos_avec_fichier(self, db: Session, cours_ids: list[int]) -> list[Video]:
+        if not cours_ids:
+            return []
+        return list(
+            db.scalars(select(Video).where(Video.cours_id.in_(cours_ids), Video.lien_fichier != ""))
+        )
+
+    def _tailles(self, videos: list[Video]) -> list[tuple[Video, int]]:
+        """(vidéo, taille sur le disque) ; un fichier manquant est ignoré,
+        pas d'erreur 500."""
+        resultat = []
+        for video in videos:
+            try:
+                resultat.append((video, (DOSSIER_VIDEOS_LIVE / video.lien_fichier).stat().st_size))
+            except OSError:
+                continue
+        return resultat

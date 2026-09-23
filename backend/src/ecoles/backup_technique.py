@@ -36,6 +36,8 @@ from eleves.models import ContactEleve, ProfilEleve
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
+from saisons import Saison, saison_courante_id
+from saisons.portee import toutes_saisons
 from sqlalchemy import Table, delete, select, text
 from sqlalchemy.orm import Session
 from videos.models import Video
@@ -51,6 +53,10 @@ COLONNES_ECOLE = [
     "code_acces_eleve",
     "created_at",
 ]
+
+# Toutes les saisons de l'école (spec §2.6) : une sauvegarde technique couvre
+# l'école entière, anciennes saisons comprises.
+COLONNES_SAISON = ["id", "ecole_id", "nom", "date_debut", "date_fin", "created_at"]
 
 
 @dataclass
@@ -110,7 +116,7 @@ def _construire_tables() -> list[_Table]:
         _Table(
             "Familles",
             Famille,
-            ["id", "ecole_id", "created_at"],
+            ["id", "ecole_id", "saison_id", "created_at"],
             lambda db, eid: list(db.scalars(select(Famille).where(Famille.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
         ),
@@ -118,8 +124,8 @@ def _construire_tables() -> list[_Table]:
             "Comptes",
             Compte,
             [
-                "id", "ecole_id", "famille_id", "nom", "prenom", "email", "telephone",
-                "hashed_password_ou_code", "code_recuperation", "created_at",
+                "id", "ecole_id", "famille_id", "saison_id", "compte_precedent_id", "nom", "prenom",
+                "email", "telephone", "hashed_password_ou_code", "code_recuperation", "created_at",
             ],
             lambda db, eid: list(db.scalars(select(Compte).where(Compte.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
@@ -158,7 +164,7 @@ def _construire_tables() -> list[_Table]:
         _Table(
             "Cours",
             Cours,
-            ["id", "ecole_id", "nom", "jour", "heure_debut", "heure_fin", "salle", "descriptif", "ordre"],
+            ["id", "ecole_id", "saison_id", "nom", "jour", "heure_debut", "heure_fin", "salle", "descriptif", "ordre"],
             lambda db, eid: list(db.scalars(select(Cours).where(Cours.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
         ),
@@ -193,7 +199,7 @@ def _construire_tables() -> list[_Table]:
         _Table(
             "Conversations",
             Conversation,
-            ["id", "ecole_id", "nom", "type", "whatsapp_statut", "whatsapp_groupe_id"],
+            ["id", "ecole_id", "saison_id", "nom", "type", "whatsapp_statut", "whatsapp_groupe_id"],
             lambda db, eid: list(db.scalars(select(Conversation).where(Conversation.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
         ),
@@ -315,11 +321,17 @@ def generer(db: Session, ecole: Ecole) -> bytes:
     feuille_ecole.append(COLONNES_ECOLE)
     feuille_ecole.append(_ligne_excel(ecole, COLONNES_ECOLE))
 
-    for table in _construire_tables():
-        feuille = classeur.create_sheet(table.feuille)
-        feuille.append(table.colonnes)
-        for ligne in table.lignes_ecole(db, ecole.id):
-            feuille.append(_ligne_excel(ligne, table.colonnes))
+    with toutes_saisons(db):
+        feuille_saisons = classeur.create_sheet("Saisons")
+        feuille_saisons.append(COLONNES_SAISON)
+        for saison in db.scalars(select(Saison).where(Saison.ecole_id == ecole.id).order_by(Saison.id)):
+            feuille_saisons.append(_ligne_excel(saison, COLONNES_SAISON))
+
+        for table in _construire_tables():
+            feuille = classeur.create_sheet(table.feuille)
+            feuille.append(table.colonnes)
+            for ligne in table.lignes_ecole(db, ecole.id):
+                feuille.append(_ligne_excel(ligne, table.colonnes))
 
     tampon = io.BytesIO()
     classeur.save(tampon)
@@ -340,7 +352,19 @@ def vider(db: Session, ecole_id: int, garder_compte_id: int | None = None, commi
     être restaurée (perte de données constatée en test réel : la purge
     passait, la réinsertion échouait sur une ligne invalide, et
     `db.rollback()` côté receiver.py ne pouvait plus rien annuler
-    puisque cette purge avait déjà été validée)."""
+    puisque cette purge avait déjà été validée).
+
+    Toutes les saisons sont vidées (spec §2.6), et seule la saison
+    courante est gardée, vide (sauf le compte conservé)."""
+    with toutes_saisons(db):
+        _vider(db, ecole_id, garder_compte_id)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+
+
+def _vider(db: Session, ecole_id: int, garder_compte_id: int | None) -> None:
     tables = _construire_tables()
     for table in reversed(tables):
         # Familles : gérées à part plus bas (celle du compte conservé ne
@@ -377,13 +401,17 @@ def vider(db: Session, ecole_id: int, garder_compte_id: int | None = None, commi
     if garder_compte_id is not None:
         compte_garde = db.get(Compte, garder_compte_id)
         famille_a_garder_id = compte_garde.famille_id if compte_garde else None
+        if compte_garde is not None:
+            # Sa fiche de la saison précédente vient d'être supprimée.
+            compte_garde.compte_precedent_id = None
     for famille in db.scalars(select(Famille).where(Famille.ecole_id == ecole_id)):
         if famille.id != famille_a_garder_id:
             db.delete(famille)
-    if commit:
-        db.commit()
-    else:
-        db.flush()
+    db.flush()
+
+    courante = saison_courante_id(db, ecole_id)
+    db.execute(delete(Saison).where(Saison.ecole_id == ecole_id, Saison.id != courante))
+    db.flush()
 
 
 def restaurer(db: Session, ecole: Ecole, contenu: bytes) -> None:
@@ -400,7 +428,28 @@ def restaurer(db: Session, ecole: Ecole, contenu: bytes) -> None:
     fichier même si l'id de l'école a changé depuis (ex. après une
     réinstallation complète)."""
     classeur = load_workbook(io.BytesIO(contenu), read_only=True, data_only=True)
+    with toutes_saisons(db):
+        _restaurer(db, ecole, classeur)
+    db.commit()
+    _reajuster_sequences_postgres(db)
+
+
+def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
     vider(db, ecole.id, garder_compte_id=None, commit=False)
+    # Saisons (spec §2.6) : celles du fichier remplacent la saison vide
+    # laissée par `vider`. Une sauvegarde d'avant les saisons n'a pas cet
+    # onglet : tout y est alors rangé dans la saison courante (voir
+    # saisons/automatique.py, qui remplit `saison_id`).
+    if "Saisons" in classeur.sheetnames:
+        lignes = list(classeur["Saisons"].iter_rows(values_only=True))
+        if len(lignes) > 1:
+            db.execute(delete(Saison).where(Saison.ecole_id == ecole.id))
+            en_tetes, *donnees = lignes
+            for valeurs in donnees:
+                champs = dict(zip(en_tetes, valeurs))
+                champs["ecole_id"] = ecole.id
+                db.add(Saison(**{nom: _valeur_restauree(Saison, nom, v) for nom, v in champs.items()}))
+            db.flush()
     # Sauvegarde d'avant les rôles cumulables (§6.3bis) : un rôle unique
     # dans une colonne "role" de l'onglet Comptes, pas d'onglet
     # RolesComptes. Relu ici puis converti en fin de restauration.
@@ -429,9 +478,6 @@ def restaurer(db: Session, ecole: Ecole, contenu: bytes) -> None:
 
     if ancien_role_par_compte and "RolesComptes" not in classeur.sheetnames:
         _convertir_anciens_roles(db, ancien_role_par_compte)
-
-    db.commit()
-    _reajuster_sequences_postgres(db)
 
 
 def _convertir_anciens_roles(db: Session, ancien_role_par_compte: dict[int, str]) -> None:
@@ -487,7 +533,7 @@ def _reajuster_sequences_postgres(db: Session) -> None:
     # ProfilEleve exclu : sa clé primaire (compte_id) n'est pas une
     # séquence auto-incrémentée (voir eleves/models.py), rien à réajuster.
     tables_avec_id = [
-        Famille, Compte, ContactEleve, Cours, CoursHoraireSupplementaire,
+        Saison, Famille, Compte, ContactEleve, Cours, CoursHoraireSupplementaire,
         Conversation, ConversationMembre, Message, MessageDelivery, SeancePresence,
         PresenceEleve, PresenceProf, Choregraphie, Video,
     ]

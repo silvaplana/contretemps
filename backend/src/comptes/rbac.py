@@ -32,6 +32,8 @@ from fastapi import Depends, Header, HTTPException
 from sqlalchemy.orm import Session
 
 from db import get_db
+from saisons import Saison, saison_courante_id
+from saisons.portee import TOUTES_SAISONS, saison_demandee
 from securite import jetons
 
 from . import roles
@@ -49,7 +51,11 @@ def compte_appelant(
     y en a un, sinon l'en-tête `X-Compte-Id`. 401 si rien de valable."""
     if authorization and authorization.lower().startswith("bearer "):
         jeton = jetons.depuis_entete(authorization)
-        compte = db.get(Compte, jeton.compte_id) if jeton is not None else None
+        compte = (
+            db.get(Compte, jeton.compte_id, execution_options={TOUTES_SAISONS: True})
+            if jeton is not None
+            else None
+        )
         valide = compte is not None and (
             roles.is_superuser(compte)
             if jeton.portee == jetons.SUPERUSER
@@ -61,15 +67,53 @@ def compte_appelant(
         # vient de la session de base de la requête) : voir
         # droits_admin_actifs.
         compte._admin_par_jeton = jeton.portee == jetons.ADMIN
+        if not roles.is_superuser(compte):
+            _verifier_saison(db, compte)
         return compte
     if x_compte_id is None:
         raise HTTPException(status_code=401, detail="Identité de l'appelant manquante")
-    compte = db.get(Compte, x_compte_id)
+    # Toutes saisons : l'appelant est cherché même s'il n'est pas de la
+    # saison affichée (un admin qui consulte une ancienne saison), ou plus
+    # de la saison courante (voir _verifier_saison).
+    compte = db.get(Compte, x_compte_id, execution_options={TOUTES_SAISONS: True})
     if compte is None:
         raise HTTPException(status_code=401, detail="Compte appelant inconnu")
     if roles.is_superuser(compte):
         raise HTTPException(status_code=401, detail="Jeton requis pour ce compte")
+    _verifier_saison(db, compte)
     return compte
+
+
+def _verifier_saison(db: Session, compte: Compte) -> None:
+    """Saisons (spec §2.6) :
+    - une fiche d'une ancienne saison ne donne plus accès à rien. Si la
+      personne a été reprise dans la saison courante, 409 avec l'id de sa
+      nouvelle fiche, pour que l'appli bascule dessus sans reconnexion ;
+      sinon 401 ;
+    - seule la saison courante se consulte, sauf pour un admin de l'école
+      (en-tête X-Saison-Id, voir saisons/portee.py)."""
+    courante = saison_courante_id(db, compte.ecole_id)
+    if compte.saison_id != courante:
+        from .comptes import Comptes
+
+        nouvelle = Comptes().fiche_courante(db, compte)
+        if nouvelle is not None:
+            raise HTTPException(
+                status_code=409,
+                detail={"code": "nouvelle_saison", "compte_id": nouvelle.id},
+            )
+        raise HTTPException(
+            status_code=401,
+            detail={"code": "hors_saison", "message": "Vous n'êtes pas inscrit(e) pour la saison en cours."},
+        )
+    demandee = saison_demandee()
+    if demandee is None or demandee == courante:
+        return
+    saison = db.get(Saison, demandee)
+    if saison is None or saison.ecole_id != compte.ecole_id:
+        raise HTTPException(status_code=403, detail="Saison inconnue")
+    if not roles.is_admin(compte) or not droits_admin_actifs(compte):
+        raise HTTPException(status_code=403, detail="Seuls les administrateurs consultent les anciennes saisons")
 
 
 def droits_admin_actifs(appelant: Compte) -> bool:

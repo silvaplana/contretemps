@@ -34,6 +34,9 @@ class ComptesReceiver:
         self.app.get("/comptes/{compte_id}/famille", response_model=list[CompteSortie])(
             self.famille
         )
+        # Reprise de session (saisons, §2.6) : la fiche de la même personne
+        # dans la saison courante, pour basculer sans reconnexion.
+        self.app.get("/comptes/{compte_id}/fiche-courante")(self.fiche_courante)
 
     def lister(self, ecole_id: int, role: str, db: Session = Depends(get_db)):
         """Utilisé par Admin > Conversations pour proposer les vrais
@@ -85,6 +88,17 @@ class ComptesReceiver:
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
         return compte
+
+    def fiche_courante(self, compte_id: int, db: Session = Depends(get_db)):
+        """{"compte_id": ...} ; 404 si la personne n'est pas dans la saison
+        courante (fiche d'une ancienne saison non reprise, ou inconnue).
+        Même niveau de confiance que l'en-tête X-Compte-Id (§8) : ne
+        révèle qu'un numéro de fiche."""
+        compte = self.client.get_toutes_saisons(db, compte_id)
+        nouvelle = self.client.fiche_courante(db, compte) if compte is not None else None
+        if nouvelle is None or roles.is_superuser(nouvelle):
+            raise HTTPException(status_code=404, detail="Pas inscrit(e) pour la saison en cours")
+        return {"compte_id": nouvelle.id}
 
     def famille(self, compte_id: int, db: Session = Depends(get_db)):
         # Un élève promu admin figure en élève dans le sélecteur familial :

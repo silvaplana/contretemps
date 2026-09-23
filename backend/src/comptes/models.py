@@ -60,6 +60,13 @@ class Compte(Base):
     # saison courante peuvent se connecter. Vide pour le Superuser (sans
     # école). Rempli automatiquement, voir saisons/automatique.py.
     saison_id: Mapped[int | None] = mapped_column(ForeignKey("saisons.id"), nullable=True, index=True)
+    # Fiche de la même personne dans la saison précédente, quand celle-ci a
+    # été recopiée à la création d'une saison (§2.6). Sert à basculer en
+    # douceur une personne restée connectée sur son ancienne fiche (voir
+    # Comptes.fiche_courante et comptes/rbac.py : compte_appelant).
+    compte_precedent_id: Mapped[int | None] = mapped_column(
+        ForeignKey("comptes.id"), nullable=True, index=True
+    )
 
     nom: Mapped[str] = mapped_column(String(100), nullable=False)
     prenom: Mapped[str] = mapped_column(String(100), nullable=False)

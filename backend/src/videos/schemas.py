@@ -95,6 +95,10 @@ class VideoUsage(BaseModel):
 class UsageVideosEcole(BaseModel):
     """Réponse du panneau "Usage vidéo" (Admin > École)."""
 
+    # Saison affichée (spec §2.6).
     total_octets: int
     total_secondes: int
+    # Toutes les saisons de l'école.
+    total_toutes_saisons_octets: int
+    total_toutes_saisons_secondes: int
     top_videos: list[VideoUsage]

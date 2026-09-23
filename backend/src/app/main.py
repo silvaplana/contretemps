@@ -10,7 +10,8 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -26,6 +27,7 @@ from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
 from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
 from notifications import Notifications, NotificationsReceiver
 from presence import Presence, PresenceReceiver
+from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
 from profs import Profs, ProfsReceiver
 from videos import DOSSIER_VIDEOS_LIVE, Videos, VideosReceiver
 
@@ -45,6 +47,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Contretemps API", lifespan=lifespan)
+# Saison affichée demandée par le navigateur (en-tête X-Saison-Id), voir
+# saisons/portee.py.
+app.add_middleware(MiddlewareSaison)
+
+
+@app.exception_handler(SaisonEnLectureSeule)
+async def _saison_en_lecture_seule(request: Request, erreur: SaisonEnLectureSeule):
+    # Toute écriture dans une ancienne saison (spec §2.6), où qu'elle soit
+    # tentée : refusée par saisons/portee.py, jamais par chaque route.
+    return JSONResponse(status_code=403, content={"detail": erreur.message})
+
+
 app.add_middleware(
     # Autorise le frontend React (Vite, servi sur un autre port en dev) a
     # appeler l'API. A restreindre a une origine precise avant mise en prod.

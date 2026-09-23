@@ -5,6 +5,7 @@ from __future__ import annotations
 from comptes import Compte
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
+from saisons.portee import verifier_modifiable
 
 from .models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 
@@ -96,6 +97,7 @@ class CoursService:
     # --- Relations (voir §6.5 : tables de jointure, rien stocké sur Cours) ---
 
     def ajouter_professeur(self, db: Session, cours_id: int, professeur_id: int) -> None:
+        verifier_modifiable(db, "cours", cours_id)
         exists = db.execute(
             select(cours_professeurs).where(
                 cours_professeurs.c.cours_id == cours_id,
@@ -107,6 +109,7 @@ class CoursService:
             db.commit()
 
     def retirer_professeur(self, db: Session, cours_id: int, professeur_id: int) -> None:
+        verifier_modifiable(db, "cours", cours_id)
         db.execute(
             cours_professeurs.delete().where(
                 cours_professeurs.c.cours_id == cours_id,
@@ -125,6 +128,7 @@ class CoursService:
         )
 
     def inscrire_eleve(self, db: Session, cours_id: int, eleve_id: int) -> None:
+        verifier_modifiable(db, "cours", cours_id)
         exists = db.execute(
             select(eleves_cours).where(
                 eleves_cours.c.cours_id == cours_id, eleves_cours.c.eleve_id == eleve_id
@@ -135,6 +139,7 @@ class CoursService:
             db.commit()
 
     def desinscrire_eleve(self, db: Session, cours_id: int, eleve_id: int) -> None:
+        verifier_modifiable(db, "cours", cours_id)
         db.execute(
             eleves_cours.delete().where(
                 eleves_cours.c.cours_id == cours_id, eleves_cours.c.eleve_id == eleve_id

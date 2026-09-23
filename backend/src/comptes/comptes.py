@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import unicodedata
 
+from saisons import saison_courante_id
+from saisons.portee import TOUTES_SAISONS
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -34,6 +36,32 @@ def _normaliser(texte: str) -> str:
 class Comptes:
     def get(self, db: Session, compte_id: int) -> Compte | None:
         return db.get(Compte, compte_id)
+
+    def get_toutes_saisons(self, db: Session, compte_id: int) -> Compte | None:
+        """Comme `get`, mais trouve aussi une fiche d'une autre saison que
+        celle affichée (voir saisons/portee.py)."""
+        return db.get(Compte, compte_id, execution_options={TOUTES_SAISONS: True})
+
+    def est_de_la_saison_courante(self, db: Session, compte: Compte) -> bool:
+        """Toujours vrai pour le Superuser, qui n'a ni école ni saison."""
+        return compte.ecole_id is None or compte.saison_id == saison_courante_id(db, compte.ecole_id)
+
+    def fiche_courante(self, db: Session, compte: Compte) -> Compte | None:
+        """La fiche de la même personne dans la saison courante (§2.6), en
+        suivant les recopies d'une saison à l'autre ; None si elle n'y a
+        pas été reprise."""
+        vues = set()
+        while not self.est_de_la_saison_courante(db, compte):
+            vues.add(compte.id)
+            suivante = db.scalar(
+                select(Compte)
+                .where(Compte.compte_precedent_id == compte.id)
+                .execution_options(**{TOUTES_SAISONS: True})
+            )
+            if suivante is None or suivante.id in vues:
+                return None
+            compte = suivante
+        return compte
 
     def list_ecole(self, db: Session, ecole_id: int) -> list[Compte]:
         """Tous les comptes de l'école, tous rôles confondus — utilisé
