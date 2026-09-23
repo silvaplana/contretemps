@@ -27,7 +27,9 @@ from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
 from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
 from notifications import Notifications, NotificationsReceiver
 from presence import Presence, PresenceReceiver
+from saisons.gestion import GestionSaisons
 from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
+from saisons.receiver import SaisonsReceiver
 from profs import Profs, ProfsReceiver
 from videos import DOSSIER_VIDEOS_LIVE, Videos, VideosReceiver
 
@@ -95,6 +97,10 @@ comptes_receiver = ComptesReceiver(client=comptes_client, app=app)
 # modifier, supprimer un admin — réservé aux Owners pour l'écriture.
 administrateurs_client = Administrateurs(comptes=comptes_client)
 administrateurs_receiver = AdministrateursReceiver(client=administrateurs_client, app=app)
+
+# Saisons (Admin > École, spec §2.6) : lister, créer avec duplication,
+# éditer la saison courante.
+saisons_receiver = SaisonsReceiver(client=GestionSaisons(), app=app)
 
 # Monte les routes de connexion (/auth/...) - depend de ecoles et comptes.
 auth_client = Auth(ecoles=ecoles_client, comptes=comptes_client)

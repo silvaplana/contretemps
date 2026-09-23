@@ -1189,9 +1189,18 @@ encore branché).
       `GET /comptes/{id}/fiche-courante` donne la fiche à reprendre ;
     - sauvegarde et restauration technique de toutes les saisons (onglet « Saisons ») ;
     - usage vidéo : saison affichée + `total_toutes_saisons_*`.
-  - **Étape 3, à faire** : création (avec duplication profs → cours → élèves, admins
-    toujours recopiés, lien `compte_precedent_id`) et édition d'une saison. Échéances des
-    inscriptions calculées depuis les dates de la saison au lieu de son nom.
+  - **Étape 3, faite** (serveur, `backend/src/saisons/gestion.py` et `receiver.py`) :
+    `GET /ecoles/{id}/saisons` (de la plus récente à la plus ancienne, `courante`),
+    `POST /ecoles/{id}/saisons` (nom, dates, `dupliquer_profs/cours/eleves`, chacune
+    exigeant la précédente ; renvoie la nouvelle fiche de l'admin qui crée) et
+    `PUT /ecoles/{id}/saisons/courante` (nom et dates), réservées aux admins. Recopie :
+    admins toujours (rôles admin/owner seulement si leurs autres cases ne sont pas cochées),
+    familles, fiche élève sans le paiement, contacts, cours avec horaires, profs et élèves.
+    Jamais : présences, chorégraphies, vidéos, conversations, correspondances d'import,
+    inscriptions. Le libellé « AAAA-AAAA » des inscriptions (échéances, PDF, fichier des
+    nouvelles inscriptions) vient des dates de la saison courante, plus de la date du
+    jour. *Reste* : le formulaire public (`frontend-inscription/src/saison.js`) affiche
+    encore un libellé calculé sur la date du jour.
   - **Étape 4, à faire** : écran. Section Saisons d'Admin > École, panneau, en-tête
     `X-Saison-Id` envoyé par l'appli, mode lecture seule, bascule automatique vers la
     nouvelle fiche (409), usage vidéo (saison affichée + total).

@@ -27,7 +27,7 @@ from .facture_html import generer_facture_pdf
 from .helloasso import HelloAsso, HelloAssoError, nettoyer_nom_payeur
 from .models import Inscription, inscriptions_cours
 from .pdf import nom_fichier_dossier, nom_fichier_facture
-from .saison import saison_actuelle
+from .saison import saison_des_inscriptions
 from .schemas import InscriptionCreation
 from .stockage import chemin_relatif, dossier_ecole
 from .tarifs import calculer_echeances_helloasso, calculer_tarif
@@ -87,7 +87,7 @@ class Inscriptions:
         # cours plus bas (contrainte UNIQUE, constaté en prod).
         cours_ids = list(dict.fromkeys(donnees.cours_ids))
         noms_cours = self._resoudre_noms_cours(db, ecole_id, cours_ids)
-        saison = saison_actuelle()
+        saison = saison_des_inscriptions(db, ecole_id)
         doublon, famille_detectee = self._detecter_doublon_et_famille(
             db, ecole_id, saison, donnees.eleve_nom, donnees.eleve_prenom, donnees.eleve_email
         )
@@ -459,7 +459,7 @@ class Inscriptions:
     def exporter_nouvelles_inscriptions(self, db: Session, ecole_id: int) -> bytes | None:
         """Le classeur "nouvelles inscriptions" courant, en entier (bouton
         admin, voir receiver.py)."""
-        saison = saison_actuelle()
+        saison = saison_des_inscriptions(db, ecole_id)
         chemin = dossier_ecole(ecole_id) / excel_export.nom_fichier(ecole_id, saison)
         if not chemin.exists():
             return None
