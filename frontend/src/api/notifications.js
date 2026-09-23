@@ -126,6 +126,20 @@ export async function reabonnerSiAutorise(compteId) {
   }
 }
 
+// Saisons (spec §2.6) : après la bascule sur la nouvelle fiche de la même
+// personne, l'abonnement de CET appareil (déjà actif, donc ignoré par
+// reabonnerSiAutorise) pointe encore sur l'ancienne fiche côté serveur. On
+// le rattache à la nouvelle — sans rien demander : la permission est déjà
+// accordée, et le serveur met à jour l'abonnement existant (même endpoint).
+export async function transfererAbonnement(compteId) {
+  if (!pushSupporte() || coupeesVolontairement() || permissionActuelle() !== 'granted') return
+  try {
+    await abonner(compteId)
+  } catch (err) {
+    console.warn('Transfert des notifications impossible :', err.message)
+  }
+}
+
 export function bandeauAProposer() {
   if (!pushSupporte() || coupeesVolontairement() || permissionActuelle() !== 'default') return false
   return Date.now() - Number(lireLocal(CLE_BANDEAU_REPORTE) || 0) >= SEPT_JOURS

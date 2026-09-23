@@ -135,6 +135,8 @@ function versEcranUsage(u) {
   return {
     totalOctets: u.total_octets,
     totalSecondes: u.total_secondes,
+    totalToutesSaisonsOctets: u.total_toutes_saisons_octets,
+    totalToutesSaisonsSecondes: u.total_toutes_saisons_secondes,
     topVideos: u.top_videos.map((v) => ({
       id: v.id,
       titre: v.titre,

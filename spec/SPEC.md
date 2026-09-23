@@ -1201,9 +1201,22 @@ encore branché).
     nouvelles inscriptions) vient des dates de la saison courante, plus de la date du
     jour. *Reste* : le formulaire public (`frontend-inscription/src/saison.js`) affiche
     encore un libellé calculé sur la date du jour.
-  - **Étape 4, à faire** : écran. Section Saisons d'Admin > École, panneau, en-tête
-    `X-Saison-Id` envoyé par l'appli, mode lecture seule, bascule automatique vers la
-    nouvelle fiche (409), usage vidéo (saison affichée + total).
+  - **Étape 4, faite** (écran) :
+    - section Saisons d'Admin > École (`SaisonsSection.jsx`) et son panneau ;
+    - saison affichée gardée en mémoire par l'appli (`api/saison.js`), donc un
+      rechargement ramène toujours à la saison courante. Elle est envoyée dans l'en-tête
+      `X-Saison-Id` (`api/identite.js`) ;
+    - consultation d'une ancienne saison : bandeau « lecture seule » avec « Revenir à la
+      saison courante ». Toutes les données sont rechargées. Les boutons « + », les
+      poubelles, les crayons et la zone de saisie des messages sont masqués (CSS
+      `.app--lecture-seule`) ; une écriture refusée par le serveur affiche un message et
+      recharge les données ;
+    - bascule automatique vers la nouvelle fiche : à la création de la saison, sur un
+      409 du serveur, à la reprise de session et au retour dans l'appli. Les
+      notifications de l'appareil suivent. Une personne non reprise est déconnectée ;
+    - usage vidéo : saison affichée + toutes saisons.
+    *Reste* : en consultation, une conversation privée d'une ancienne saison s'affiche
+    sous le nom d'un seul de ses deux membres (l'admin n'en fait pas partie).
 - **Retrait progressif du mode maquette (demande)** : le bouton "Voir une maquette" a été
   retiré de l'écran de connexion (devenu inutile maintenant que le mode réel fonctionne) — mais
   `api/mode.js` et les branches maquette de chaque `api/<domaine>.js` existent toujours.

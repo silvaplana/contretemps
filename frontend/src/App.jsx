@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import * as authApi from './api/auth.js'
 import * as choregraphiesApi from './api/choregraphies.js'
@@ -11,6 +11,7 @@ import * as messagesApi from './api/messages.js'
 import * as notificationsApi from './api/notifications.js'
 import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
+import * as saisonApi from './api/saison.js'
 import * as sessionApi from './api/session.js'
 import * as videosApi from './api/videos.js'
 import { signalerFrappeRecue } from './utils/frappeIndicateur.js'
@@ -129,9 +130,20 @@ function App() {
       }
       if (installationApi.estInstallee()) installationApi.marquerSessionLieeInstallation()
 
+      // Saisons (spec §2.6) : la fiche mémorisée peut dater d'une saison
+      // terminée depuis. Si la personne a été recopiée dans la saison
+      // courante, on reprend directement sa nouvelle fiche, sans
+      // reconnexion (décision utilisateur du 2026-09-24) ; sinon la
+      // restauration échoue plus bas et ramène à l'écran de connexion.
+      const idCourant = (await comptesApi.ficheCourante(compteId).catch(() => null)) ?? compteId
+      if (idCourant !== compteId && sessionApi.lireCompteSauvegarde() !== null) {
+        sessionApi.sauvegarderCompte(idCourant)
+      }
+
       authApi
-        .restaurerSession(compteId)
+        .restaurerSession(idCourant)
         .then(({ compte, ecole: ecoleRestauree }) => {
+          if (idCourant !== compteId) notificationsApi.transfererAbonnement(compte.id)
           setCompteReel(compte)
           setEcole(ecoleRestauree ?? ECOLE_VIDE)
           setLoggedIn(true)
@@ -195,6 +207,7 @@ function App() {
   }
 
   function logout() {
+    saisonApi.consulterSaison(null)
     setCompteReel(null)
     setLoggedIn(false)
     // Déconnexion volontaire : n'importe qui rouvrant l'appli sur cet
@@ -252,6 +265,104 @@ function App() {
   const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false)
   const [ecole, setEcole] = useState(ECOLE_VIDE)
 
+  // Saisons (spec §2.6) : saison affichée (voir api/saison.js). `null` = la
+  // courante ; sinon un admin consulte une ancienne saison, en lecture
+  // seule dans toute l'appli (bandeau, actions d'écriture masquées — voir
+  // App.css : .app--lecture-seule —, et refus du serveur en dernier
+  // recours).
+  const saisonConsultee = saisonApi.useSaisonConsultee()
+  const lectureSeule = Boolean(saisonConsultee)
+  // Incrémenté pour tout recharger depuis le serveur (voir les effets de
+  // chargement plus bas) : saison créée, écriture refusée...
+  const [versionDonnees, setVersionDonnees] = useState(0)
+  // Message bref après une écriture refusée dans une ancienne saison.
+  const [avisSaison, setAvisSaison] = useState(null)
+
+  // Bascule vers la fiche de la même personne dans la nouvelle saison
+  // (spec §2.6) — sa fiche actuelle vient de passer en lecture seule
+  // (saison créée par elle-même ou par un autre admin). Sans reconnexion ;
+  // les notifications de cet appareil suivent (voir
+  // api/notifications.js : transfererAbonnement). Plusieurs requêtes
+  // peuvent signaler la même bascule en même temps : une seule est faite.
+  const basculeEnCours = useRef(null)
+  async function basculerVersFiche(nouvelId) {
+    if (!nouvelId || basculeEnCours.current === nouvelId || compteReel?.id === nouvelId) return
+    basculeEnCours.current = nouvelId
+    try {
+      const { compte } = await authApi.restaurerSession(nouvelId)
+      saisonApi.consulterSaison(null)
+      if (sessionApi.lireCompteSauvegarde() !== null) sessionApi.sauvegarderCompte(compte.id)
+      setCompteReel(compte)
+      setVersionDonnees((v) => v + 1)
+      notificationsApi.transfererAbonnement(compte.id)
+    } catch {
+      logout()
+    } finally {
+      basculeEnCours.current = null
+    }
+  }
+
+  // Signaux du serveur liés aux saisons, repérés sur n'importe quelle
+  // requête (voir api/identite.js).
+  useEffect(() => {
+    if (!compteReel) return
+    function surSignal(e) {
+      const { code, compteId } = e.detail
+      if (code === 'nouvelle_saison') basculerVersFiche(compteId)
+      else if (code === 'hors_saison') logout()
+      else if (code === 'lecture_seule') {
+        setAvisSaison('Cette saison est terminée : consultation seulement.')
+        // Défait les modifications déjà affichées (mises à jour optimistes).
+        setVersionDonnees((v) => v + 1)
+      }
+    }
+    window.addEventListener(saisonApi.EVENEMENT_SAISON, surSignal)
+    return () => window.removeEventListener(saisonApi.EVENEMENT_SAISON, surSignal)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id])
+
+  useEffect(() => {
+    if (!avisSaison) return
+    const minuteur = setTimeout(() => setAvisSaison(null), 4000)
+    return () => clearTimeout(minuteur)
+  }, [avisSaison])
+
+  // Retour dans l'appli (téléphone rallumé, onglet remis au premier plan) :
+  // une saison a pu être créée entre-temps. Beaucoup de routes de lecture
+  // n'identifient pas l'appelant, donc ne signaleraient jamais la bascule
+  // d'elles-mêmes. Pas pour le Superuser, qui n'a pas de saison.
+  useEffect(() => {
+    if (!compteReel || isSuperuser(compteReel)) return
+    function verifier() {
+      if (document.visibilityState !== 'visible') return
+      comptesApi
+        .ficheCourante(compteReel.id)
+        .then((id) => {
+          if (id === null) logout()
+          else if (id !== compteReel.id) basculerVersFiche(id)
+        })
+        .catch(() => {})
+    }
+    document.addEventListener('visibilitychange', verifier)
+    return () => document.removeEventListener('visibilitychange', verifier)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id])
+
+  // Autre saison affichée : tout ce qui est par cours repart de zéro (les
+  // cours eux-mêmes changent), rechargé par les effets ci-dessous.
+  useEffect(() => {
+    setPresences({})
+    setChoregraphies({})
+    setVideos({})
+    setSelectedCoursId(null)
+  }, [saisonConsultee?.id])
+
+  function surSaisonCreee({ compteId }) {
+    saisonApi.consulterSaison(null)
+    if (compteId && compteId !== compteReel?.id) basculerVersFiche(compteId)
+    else setVersionDonnees((v) => v + 1)
+  }
+
   // Superuser (§2.5) : l'école choisie est retenue sur l'appareil (voir
   // api/session.js), et on peut en changer depuis Profil.
   function choisirEcole(e) {
@@ -284,7 +395,7 @@ function App() {
     conversationsApi.listerEcole(ecole.id).then(setGroupes)
     comptesApi.listerAdmins(ecole.id).then(setAdmins)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loggedIn, ecole.id])
+  }, [loggedIn, ecole.id, saisonConsultee?.id, versionDonnees])
 
   // Recharge tout depuis le serveur (liste + messages + présence, voir
   // utils/presenceEnLigne.js) — au premier chargement ET à chaque
@@ -294,7 +405,10 @@ function App() {
   // téléphone — voir ouvrirFluxEvenements pour le pourquoi).
   function resynchroniserConversations() {
     if (!compteReel) return
-    messagesApi.listerAvecMessages(ecole.id, compteReel.id, cours).then((liste) => {
+    // Ancienne saison (spec §2.6) : toutes ses conversations, la fiche
+    // courante de l'admin n'y étant membre de rien.
+    const lister = saisonApi.lireSaisonConsultee() ? messagesApi.listerToutesAvecMessages : messagesApi.listerAvecMessages
+    lister(ecole.id, compteReel.id, cours).then((liste) => {
       setConversations(liste)
       initialiserPresence(liste.flatMap((c) => c.membres))
     })
@@ -309,7 +423,7 @@ function App() {
     if (compteReel && ecole.id) resynchroniserConversations()
     else setConversations([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [compteReel?.id, ecole.id, cours])
+  }, [compteReel?.id, ecole.id, cours, saisonConsultee?.id, versionDonnees])
 
   // Réception en direct (voir api/messages.js : ouvrirFluxEvenements) :
   // UN SEUL flux SSE ouvert dès la connexion, fermé à la déconnexion —
@@ -323,6 +437,9 @@ function App() {
     if (!compteReel) return
     return messagesApi.ouvrirFluxEvenements(compteReel.id, {
       onMessage: ({ conversation_id, message }) => {
+        // Consultation d'une ancienne saison : la liste affichée n'est pas
+        // celle de ce message (rechargée au retour à la saison courante).
+        if (saisonApi.lireSaisonConsultee()) return
         setConversations((liste) => {
           const conv = liste.find((c) => c.id === conversation_id)
           if (!conv) {
@@ -360,6 +477,7 @@ function App() {
       // chercher la conversation à jour plutôt que d'essayer de deviner
       // ce qui a changé.
       onConversationMaj: ({ conversation_id }) => {
+        if (saisonApi.lireSaisonConsultee()) return
         messagesApi.obtenirConversation(conversation_id, compteReel.id, cours).then((conv) => {
           setConversations((liste) =>
             liste.some((c) => c.id === conv.id) ? liste.map((c) => (c.id === conv.id ? conv : c)) : [...liste, conv],
@@ -503,7 +621,7 @@ function App() {
         setChoregraphies((byC) => ({ ...byC, [selectedCoursId]: liste })),
       )
     }
-  }, [loggedIn, selectedCoursId])
+  }, [loggedIn, selectedCoursId, versionDonnees])
 
   // Vidéos : même principe que les chorégraphies ci-dessus — seulement
   // le cours actuellement sélectionné (voir VideoScreen.jsx/
@@ -515,7 +633,7 @@ function App() {
         setVideos((byC) => ({ ...byC, [selectedCoursId]: liste })),
       )
     }
-  }, [loggedIn, selectedCoursId])
+  }, [loggedIn, selectedCoursId, versionDonnees])
 
   // "Ajouter une date" (Présence) : contrôlé ici, pas en état interne à
   // PresenceScreen, pour que le menu 3 points de l'en-tête (voir Header)
@@ -554,6 +672,9 @@ function App() {
   async function switchProfil(id, code) {
     const profil = familleReelle.find((p) => p.id === id)
     if (!profil) return
+    // Seul un admin consulte une ancienne saison (spec §2.6) : un autre
+    // profil repart toujours de la saison courante.
+    saisonApi.consulterSaison(null)
     const nouveauCompte = code ? await authApi.confirmerBascule(id, code) : await authApi.basculerLibre(id)
     setCompteReel(nouveauCompte)
     // Le profil ACTIF est celui qui doit être restauré à la prochaine
@@ -583,6 +704,7 @@ function App() {
   // un seul objet {[coursId]: {dates, parEleve, parProf}} comme avant,
   // juste rempli/modifié via la couche api désormais.
   async function cycleStatut(coursId, eleveId, index, cycle) {
+    if (lectureSeule) return
     const courant = presences[coursId] ?? { dates: [], parEleve: {}, parProf: {} }
     const historique = courant.parEleve[eleveId] ?? courant.dates.map(() => 'present')
     const actuel = historique[index] ?? 'present'
@@ -611,6 +733,7 @@ function App() {
   // libellé affiché, pour que le mode réel puisse créer une vraie séance
   // datée (voir api/presence.js).
   async function addDatePresence(coursId, dateIso) {
+    if (lectureSeule) return
     const donnees = await presenceApi.ajouterDate(coursId, dateIso)
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
@@ -619,6 +742,7 @@ function App() {
   // heureDebutReelle / heureFinReelle / depassementMinutes, un des 3 champs
   // à la fois (édition case par case).
   async function setHeureProf(coursId, profId, index, champ, valeur) {
+    if (lectureSeule) return
     // MAJ optimiste : même cause/même correctif que cycleStatut ci-dessus
     // (bug signalé — "l'affichage est lent, même problème que pour les
     // présences élèves"). L'utilisateur tape dans le champ, l'affichage
@@ -675,6 +799,7 @@ function App() {
         // resoudreEcoleReelle) — eleves/profs/cours/... en dépendent tous
         // (voir les useEffect ci-dessus, ecole.id).
         onLogin={(resultat) => {
+          saisonApi.consulterSaison(null)
           setCompteReel(resultat.compte)
           setEcole(resultat.ecole ?? ECOLE_VIDE)
           setActiveTab('messagerie')
@@ -740,7 +865,7 @@ function App() {
             : 'Sélectionner un cours'
 
   return (
-    <div className="app">
+    <div className={lectureSeule ? 'app app--lecture-seule' : 'app'}>
       <Header
         mode={headerMode}
         title={headerTitle}
@@ -753,7 +878,9 @@ function App() {
         onNavigate={setActiveTab}
         onLogout={logout}
         menuExtra={
-          activeTab === 'presence'
+          lectureSeule
+            ? undefined
+            : activeTab === 'presence'
             ? {
                 label: 'Ajouter une nouvelle date',
                 icon: 'plus',
@@ -768,6 +895,24 @@ function App() {
               : undefined
         }
       />
+
+      {/* Consultation d'une ancienne saison (spec §2.6), rappel toujours
+          visible, sur tous les écrans. */}
+      {lectureSeule && (
+        <div className="bandeau-saison" role="status">
+          <span>
+            Saison <strong>{saisonConsultee.nom}</strong> : consultation, lecture seule
+          </span>
+          <button type="button" className="btn btn--secondary" onClick={() => saisonApi.consulterSaison(null)}>
+            Revenir à la saison courante
+          </button>
+        </div>
+      )}
+      {avisSaison && (
+        <div className="bandeau-saison bandeau-saison--avis" role="alert">
+          {avisSaison}
+        </div>
+      )}
 
       {/* Arrivée par transfert depuis "Lancer l'installation" (voir plus
           haut, BandeauInstallation.jsx) : propose l'installation en un clic
@@ -797,6 +942,7 @@ function App() {
             setVideos={setVideos}
             onOpenHeures={(profId) => openHeures(profId, 'admin')}
             activeUser={activeUser}
+            onSaisonCreee={surSaisonCreee}
           />
         )}
 

@@ -62,6 +62,8 @@ export default function UsageVideoSection({ ecoleId, setVideos }) {
     setUsage((u) => ({
       totalOctets: u.totalOctets - video.tailleOctets,
       totalSecondes: u.totalSecondes - (video.dureeSecondes || 0),
+      totalToutesSaisonsOctets: u.totalToutesSaisonsOctets - video.tailleOctets,
+      totalToutesSaisonsSecondes: u.totalToutesSaisonsSecondes - (video.dureeSecondes || 0),
       topVideos: u.topVideos.filter((v) => v.id !== video.id),
     }))
     // Bug signalé : sans ça, l'écran Vidéo (et Chorégraphie) gardait la
@@ -99,14 +101,27 @@ export default function UsageVideoSection({ ecoleId, setVideos }) {
         <p className="muted">Calcul en cours…</p>
       ) : (
         <>
+          {/* Saisons (spec §2.6) : la saison affichée, puis le cumul de
+              toutes les saisons (seul chiffre qui sort de la saison
+              affichée). */}
           <div className="heures-cards">
             <div className="heures-card">
-              <span className="muted">Espace utilisé</span>
+              <span className="muted">Espace utilisé (saison)</span>
               <strong>{formatTaille(usage.totalOctets)}</strong>
             </div>
             <div className="heures-card">
-              <span className="muted">Durée totale</span>
+              <span className="muted">Durée (saison)</span>
               <strong>{formatDureeTotale(usage.totalSecondes)}</strong>
+            </div>
+          </div>
+          <div className="heures-cards">
+            <div className="heures-card">
+              <span className="muted">Espace, toutes saisons</span>
+              <strong>{formatTaille(usage.totalToutesSaisonsOctets)}</strong>
+            </div>
+            <div className="heures-card">
+              <span className="muted">Durée, toutes saisons</span>
+              <strong>{formatDureeTotale(usage.totalToutesSaisonsSecondes)}</strong>
             </div>
           </div>
 

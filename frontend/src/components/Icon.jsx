@@ -79,7 +79,7 @@ export default function Icon({ name, size = 20, className = '', strokeWidth = 1.
         width={size}
         height={size}
         fill="currentColor"
-        className={`icon ${className}`}
+        className={`icon icon--${name} ${className}`}
         aria-hidden="true"
       >
         {dots
@@ -103,7 +103,7 @@ export default function Icon({ name, size = 20, className = '', strokeWidth = 1.
       strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className={`icon ${className}`}
+      className={`icon icon--${name} ${className}`}
       aria-hidden="true"
     >
       <path d={d} />

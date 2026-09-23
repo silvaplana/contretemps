@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
+import { useSaisonConsultee } from '../../api/saison.js'
 import AdministrateursTableau from './AdministrateursTableau.jsx'
 import { isOwner } from '../../data/roles.js'
+import SaisonsSection from './SaisonsSection.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
 
@@ -30,8 +32,19 @@ import UsageVideoSection from './UsageVideoSection.jsx'
 // importer/supprimer les données de l'école, le téléchargement des
 // nouvelles inscriptions et, pour un administrateur principal, "Ajouter un
 // administrateur" (un seul ⋮ pour tout l'écran).
-export default function AdminParametres({ ecole, setEcole, setVideos, cours, eleves, setEleves, activeUser, professeurs }) {
+export default function AdminParametres({
+  ecole,
+  setEcole,
+  setVideos,
+  cours,
+  eleves,
+  setEleves,
+  activeUser,
+  professeurs,
+  onSaisonCreee,
+}) {
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
+  const saisonConsultee = useSaisonConsultee()
 
   // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
   // réservée aux admins (voir api/ecoles.js : obtenir). L'école reçue à la
@@ -105,8 +118,11 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, ele
         />
       </div>
 
-      {/* Deux sections au même niveau, même format de titre (demande du
-          2026-09-21) : Administrateurs (spec §2.4), puis Usage vidéo. */}
+      {/* Sections au même niveau, même format de titre (demande du
+          2026-09-21) : Saisons (spec §2.6, entre les codes d'accès et les
+          administrateurs), Administrateurs (spec §2.4), puis Usage vidéo. */}
+      <SaisonsSection key={activeUser.id} ecoleId={ecole.id} onSaisonCreee={onSaisonCreee} />
+
       <AdministrateursTableau
         ecoleId={ecole.id}
         activeUser={activeUser}
@@ -116,7 +132,8 @@ export default function AdminParametres({ ecole, setEcole, setVideos, cours, ele
         onFermerCreation={() => setCreationAdminOuverte(false)}
       />
 
-      <UsageVideoSection ecoleId={ecole.id} setVideos={setVideos} />
+      {/* `key` : recalculé quand la saison affichée change (spec §2.6). */}
+      <UsageVideoSection key={saisonConsultee?.id ?? 'courante'} ecoleId={ecole.id} setVideos={setVideos} />
     </div>
   )
 }

@@ -191,6 +191,14 @@ export async function listerAvecMessages(ecoleId, compteId, cours) {
   return Promise.all(conversations.map((conv) => construireConversation(conv, compteId, cours)))
 }
 
+// Consultation d'une ancienne saison par un admin (spec §2.6, voir
+// api/saison.js) : toutes les conversations de cette saison, pas
+// seulement celles du compte (sa fiche courante n'y est membre de rien).
+export async function listerToutesAvecMessages(ecoleId, compteId, cours) {
+  const conversations = await requete(`/conversations?ecole_id=${ecoleId}`)
+  return Promise.all(conversations.map((conv) => construireConversation(conv, compteId, cours)))
+}
+
 // Une conversation dont on connaît déjà l'id mais pas encore le contenu
 // (voir App.jsx : arrivée d'un événement SSE `message` pour une
 // conversation absente de l'état local — typiquement un DM tout juste

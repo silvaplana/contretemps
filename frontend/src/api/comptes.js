@@ -45,3 +45,14 @@ export async function modifier(compteId, patch) {
   if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
   return reponse.json()
 }
+
+// Saisons (spec §2.6) : la fiche de la même personne dans la saison
+// courante — la même si elle en fait déjà partie, sa nouvelle fiche si elle
+// a été recopiée dans une saison créée depuis, `null` si elle n'y a pas été
+// reprise (ou compte inconnu). Voir App.jsx : reprise de session.
+export async function ficheCourante(compteId) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${compteId}/fiche-courante`)
+  if (reponse.status === 404) return null
+  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  return (await reponse.json()).compte_id
+}
