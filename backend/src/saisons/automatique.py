@@ -23,14 +23,18 @@ from sqlalchemy.orm import Session
 
 from db.database import Base
 
-from .models import Saison
-from .saisons import saison_courante_id, saison_par_defaut
+# Saison, saison_courante_id, saison_par_defaut : importés dans les
+# fonctions, pas ici — ce module est chargé par db/__init__.py, et
+# saisons/models.py importe lui-même db (import circulaire sinon).
 
 
 @event.listens_for(Base, "after_insert", propagate=True)
 def _premiere_saison_d_une_ecole(mapper, connection, cible) -> None:
     if mapper.local_table.name != "ecoles":
         return
+    from .models import Saison
+    from .saisons import saison_par_defaut
+
     nom, debut, fin = saison_par_defaut()
     connection.execute(
         insert(Saison).values(ecole_id=cible.id, nom=nom, date_debut=debut, date_fin=fin)
@@ -39,6 +43,8 @@ def _premiere_saison_d_une_ecole(mapper, connection, cible) -> None:
 
 @event.listens_for(Session, "before_flush")
 def _rattacher_a_la_saison_courante(session: Session, flush_context, instances) -> None:
+    from .saisons import saison_courante_id
+
     courantes: dict[int, int | None] = {}
     with session.no_autoflush:
         for objet in session.new:

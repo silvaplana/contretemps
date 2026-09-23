@@ -40,23 +40,16 @@ TABLES = [
 
 
 def upgrade() -> None:
-    op.create_table(
-        'saisons',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('ecole_id', sa.Integer(), nullable=False),
-        sa.Column('nom', sa.String(length=50), nullable=False),
-        sa.Column('date_debut', sa.Date(), nullable=False),
-        sa.Column('date_fin', sa.Date(), nullable=False),
-        sa.Column('created_at', sa.DateTime(), nullable=True),
-        sa.ForeignKeyConstraint(['ecole_id'], ['ecoles.id']),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('ecole_id', 'nom', name='uq_saison_ecole_nom'),
-    )
-    op.create_index('ix_saisons_ecole_id', 'saisons', ['ecole_id'])
+    # Le backend crée au démarrage les tables qui manquent (app/main.py :
+    # create_all), et démarre avant qu'on lance la migration : `saisons`
+    # peut donc déjà exister, vide et identique au modèle.
+    if 'saisons' not in sa.inspect(op.get_bind()).get_table_names():
+        _creer_table_saisons()
 
     op.execute(
         "INSERT INTO saisons (ecole_id, nom, date_debut, date_fin, created_at) "
-        "SELECT id, '2026-2027', '2026-09-01', '2027-08-31', CURRENT_TIMESTAMP FROM ecoles"
+        "SELECT id, '2026-2027', '2026-09-01', '2027-08-31', CURRENT_TIMESTAMP FROM ecoles "
+        "WHERE NOT EXISTS (SELECT 1 FROM saisons s WHERE s.ecole_id = ecoles.id)"
     )
 
     for table, obligatoire in TABLES:
@@ -77,6 +70,22 @@ def upgrade() -> None:
                 batch.create_unique_constraint(
                     'uq_mapping_colonne_saison_entete', ['saison_id', 'en_tete_excel']
                 )
+
+
+def _creer_table_saisons() -> None:
+    op.create_table(
+        'saisons',
+        sa.Column('id', sa.Integer(), nullable=False),
+        sa.Column('ecole_id', sa.Integer(), nullable=False),
+        sa.Column('nom', sa.String(length=50), nullable=False),
+        sa.Column('date_debut', sa.Date(), nullable=False),
+        sa.Column('date_fin', sa.Date(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), nullable=True),
+        sa.ForeignKeyConstraint(['ecole_id'], ['ecoles.id']),
+        sa.PrimaryKeyConstraint('id'),
+        sa.UniqueConstraint('ecole_id', 'nom', name='uq_saison_ecole_nom'),
+    )
+    op.create_index('ix_saisons_ecole_id', 'saisons', ['ecole_id'])
 
 
 def downgrade() -> None:
