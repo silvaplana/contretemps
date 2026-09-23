@@ -224,10 +224,10 @@ function PanneauSuppression({ saisons, onSupprimer, onClose }) {
   )
 }
 
-// Section "Saisons (saison courante)" d'Admin > École (spec §5.1.1),
-// repliable comme "Usage vidéo", entre les codes d'accès et les
-// administrateurs. Chargée dès l'affichage : son titre donne le nom de la
-// saison courante.
+// Section "Saison <saison affichée>" d'Admin > École (spec §5.1.1,
+// libellé demandé par l'utilisateur le 2026-09-24), repliable comme
+// "Usage vidéo", entre les codes d'accès et les administrateurs. Chargée
+// dès l'affichage : son titre donne le nom de la saison affichée.
 export default function SaisonsSection({ ecoleId, onSaisonCreee, onSaisonSupprimee }) {
   const [ouvert, setOuvert] = useState(false)
   const [saisons, setSaisons] = useState([])
@@ -288,7 +288,7 @@ export default function SaisonsSection({ ecoleId, onSaisonCreee, onSaisonSupprim
           onClick={() => setOuvert((o) => !o)}
         >
           <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
-          Saisons{courante ? ` (${courante.nom})` : ''}
+          Saison {consultee?.nom ?? courante?.nom ?? ''}
         </button>
       </h3>
       {ouvert && courante && (

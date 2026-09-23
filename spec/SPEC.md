@@ -472,9 +472,10 @@ demandée) — supprime aussi le fichier et sa vignette, pas seulement l'entrée
 **total toutes saisons** (seul chiffre qui sort de la saison affichée) ; la liste des 10 plus
 lourdes porte sur la saison affichée.
 
-**Section "Saisons (saison courante)"** *(spécifié le 2026-09-23, voir §2.6)* : repliable
-comme "Usage vidéo", placée **après "Code d'accès Élève" et avant "Administrateurs"**. Le
-titre rappelle le nom de la saison courante. Elle contient :
+**Section "Saison 2026-2027"** *(spécifié le 2026-09-23, voir §2.6)* : repliable comme
+"Usage vidéo", placée **après "Code d'accès Élève" et avant "Administrateurs"**. Son titre
+est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande utilisateur du
+2026-09-24). Elle contient :
 - un **menu déroulant "Saison affichée"**, de la plus récente à la plus ancienne, pour
   consulter une ancienne saison (lecture seule dans toute l'appli, §2.6) ou revenir à la
   courante ;
@@ -1212,7 +1213,7 @@ encore branché).
     jour. *Reste* : le formulaire public (`frontend-inscription/src/saison.js`) affiche
     encore un libellé calculé sur la date du jour.
   - **Étape 4, faite** (écran) :
-    - section Saisons d'Admin > École (`SaisonsSection.jsx`) et son panneau ;
+    - section Saison d'Admin > École (`SaisonsSection.jsx`) et son panneau ;
     - saison affichée gardée en mémoire par l'appli (`api/saison.js`), donc un
       rechargement ramène toujours à la saison courante. Elle est envoyée dans l'en-tête
       `X-Saison-Id` (`api/identite.js`) ;
