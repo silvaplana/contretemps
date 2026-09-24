@@ -14,7 +14,7 @@ import * as profsApi from './api/profs.js'
 import * as saisonApi from './api/saison.js'
 import * as sessionApi from './api/session.js'
 import * as videosApi from './api/videos.js'
-import { signalerFrappeRecue } from './utils/frappeIndicateur.js'
+import { effacerFrappe, signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
@@ -455,6 +455,7 @@ function App() {
     if (!compteReel) return
     return messagesApi.ouvrirFluxEvenements(compteReel.id, {
       onMessage: ({ conversation_id, message }) => {
+        effacerFrappe(conversation_id, message.expediteur_id)
         // Consultation d'une ancienne saison : la liste affichée n'est pas
         // celle de ce message (rechargée au retour à la saison courante).
         if (saisonApi.lireSaisonConsultee()) return

@@ -12,6 +12,11 @@ const DELAI_EXPIRATION_MS = 6000
 const DELAI_THROTTLE_ENVOI_MS = 3000
 
 const frappeurs = new Map() // conversationId -> { compteId, expireLe }
+// Signal "écrit" parti à la dernière frappe, juste avant l'envoi, mais
+// arrivé APRÈS le message : ne doit pas rallumer l'indicateur (voir
+// effacerFrappe).
+const DELAI_APRES_MESSAGE_MS = 2000
+const derniersMessages = new Map() // `${conversationId}:${compteId}` -> date
 const abonnes = new Set()
 
 function notifier() {
@@ -25,6 +30,7 @@ function sabonner(f) {
 
 // App.jsx : appelé à la réception d'un événement SSE `ecrit`.
 export function signalerFrappeRecue(conversationId, compteId) {
+  if (Date.now() - (derniersMessages.get(`${conversationId}:${compteId}`) ?? 0) < DELAI_APRES_MESSAGE_MS) return
   const expireLe = Date.now() + DELAI_EXPIRATION_MS
   frappeurs.set(conversationId, { compteId, expireLe })
   notifier()
@@ -38,6 +44,18 @@ export function signalerFrappeRecue(conversationId, compteId) {
       notifier()
     }
   }, DELAI_EXPIRATION_MS + 50)
+}
+
+// App.jsx : un message de `compteId` vient d'arriver dans cette
+// conversation — il a fini d'écrire, l'indicateur disparaît tout de suite
+// (bug signalé le 2026-09-24 : "… écrit" restait affiché 1 à 2 s après
+// l'arrivée du message, le temps que le délai d'expiration ci-dessus
+// s'écoule). Sans effet si c'est quelqu'un d'autre qui écrit.
+export function effacerFrappe(conversationId, compteId) {
+  derniersMessages.set(`${conversationId}:${compteId}`, Date.now())
+  if (frappeurs.get(conversationId)?.compteId !== compteId) return
+  frappeurs.delete(conversationId)
+  notifier()
 }
 
 // ConversationThreadScreen.jsx : qui est en train d'écrire dans CETTE
