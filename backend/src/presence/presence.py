@@ -43,6 +43,25 @@ def statut_prof(presence: PresenceProf, heure_debut_theorique: str | None) -> st
     return "present"
 
 
+_JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
+
+
+def _normaliser_jour(jour: str | None) -> str:
+    return (jour or "").strip().lower()
+
+
+def horaire_du_jour(cours, date: dt.date) -> tuple[str | None, str | None]:
+    """Horaire théorique du cours pour cette date : le créneau
+    supplémentaire du même jour de la semaine s'il y en a un (ex. Éveil le
+    lundi ET le mercredi, voir §6.5), sinon le créneau principal."""
+    jour = _JOURS[date.weekday()]
+    if _normaliser_jour(cours.jour) != jour:
+        for h in cours.horaires_supplementaires:
+            if _normaliser_jour(h.jour) == jour:
+                return h.heure_debut, h.heure_fin
+    return cours.heure_debut, cours.heure_fin
+
+
 class Presence:
     def __init__(self, cours: CoursService) -> None:
         self.cours = cours
@@ -50,8 +69,27 @@ class Presence:
     # --- Séances ---
 
     def creer_seance(self, db: Session, cours_id: int, date: dt.date) -> SeancePresence:
+        """Chaque professeur du cours est pré-rempli avec l'horaire du cours
+        et 0 minute de dépassement (demande utilisateur du 2026-09-25) :
+        le cas le plus courant, qu'il n'a plus qu'à corriger si besoin.
+        Enregistré pour de bon (pas un simple affichage), donc compté dans
+        le comptage d'heures (§5.7)."""
         seance = SeancePresence(cours_id=cours_id, date=date)
         db.add(seance)
+        db.flush()
+        cours = self.cours.get(db, cours_id)
+        if cours is not None:
+            debut, fin = horaire_du_jour(cours, date)
+            for prof in self.cours.professeurs_du_cours(db, cours_id):
+                db.add(
+                    PresenceProf(
+                        seance_id=seance.id,
+                        professeur_id=prof.id,
+                        heure_debut_reelle=debut,
+                        heure_fin_reelle=fin,
+                        depassement_minutes=0,
+                    )
+                )
         db.commit()
         db.refresh(seance)
         return seance

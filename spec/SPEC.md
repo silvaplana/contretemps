@@ -942,6 +942,13 @@ presence_profs     : id (PK), seance_id (FK -> seances_presence), professeur_id 
                       -- ajouté en plus) : heures normales = (fin - début) - depassement_minutes
 ```
 
+**Valeurs par défaut à la création d'une date** (demande utilisateur du 2026-09-25) : chaque
+professeur du cours reçoit aussitôt une ligne pré-remplie avec l'horaire du cours (le créneau
+supplémentaire du même jour de la semaine s'il y en a un, sinon le créneau principal) et
+0 minute de dépassement. C'est le cas le plus courant, il n'a plus qu'à corriger si besoin.
+Ces valeurs sont enregistrées, donc comptées dans le comptage d'heures (§5.7) ; un prof absent
+vide ses heures.
+
 **Droit d'édition** : un professeur ne peut modifier **que sa propre ligne** d'heures
 (`professeur_id = son compte`), même si plusieurs profs partagent le même cours et voient
 tous la feuille de présence — il voit les heures des autres profs mais ne peut pas les

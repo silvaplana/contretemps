@@ -106,3 +106,39 @@ def test_supprimer_seance_nettoie_les_presences(client, db_session):
 
     assert client.delete(f"/seances/{seance['id']}").status_code == 204
     assert client.get(f"/seances/{seance['id']}").status_code == 404
+
+
+def test_nouvelle_seance_preremplie_avec_l_horaire_du_cours(client, db_session):
+    """Demande du 2026-09-25 : à la création d'une date, chaque prof du
+    cours a déjà l'horaire du cours et 0 minute de dépassement."""
+    _, prof, _, cours = _setup(db_session)
+    CoursService().ajouter_professeur(db_session, cours.id, prof.id)
+
+    seance = client.post(f"/cours/{cours.id}/seances", json={"date": "2026-09-09"}).json()
+
+    profs = client.get(f"/seances/{seance['id']}/profs").json()
+    assert [(p["professeur_id"], p["heure_debut_reelle"], p["heure_fin_reelle"], p["depassement_minutes"]) for p in profs] == [
+        (prof.id, "17:00", "18:00", 0)
+    ]
+    assert profs[0]["statut"] == "present"
+
+
+def test_prerempli_avec_le_creneau_du_jour(client, db_session):
+    """Cours proposé sur deux jours (§6.5) : le créneau du jour de la date."""
+    ecole, prof, _, _ = _setup(db_session)
+    service = CoursService()
+    eveil = service.create(
+        db_session, ecole_id=ecole.id, nom="Éveil 2", jour="Mercredi", heure_debut="17:00", heure_fin="17:45",
+        horaires_supplementaires=[{"jour": "Lundi", "heure_debut": "16:30", "heure_fin": "17:15"}],
+    )
+    service.ajouter_professeur(db_session, eveil.id, prof.id)
+
+    lundi = client.post(f"/cours/{eveil.id}/seances", json={"date": "2026-09-14"}).json()
+    mercredi = client.post(f"/cours/{eveil.id}/seances", json={"date": "2026-09-16"}).json()
+
+    def horaire(seance):
+        p = client.get(f"/seances/{seance['id']}/profs").json()[0]
+        return p["heure_debut_reelle"], p["heure_fin_reelle"]
+
+    assert horaire(lundi) == ("16:30", "17:15")
+    assert horaire(mercredi) == ("17:00", "17:45")
