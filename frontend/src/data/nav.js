@@ -17,6 +17,9 @@ export const TABS = [
     icon: 'messagerie',
     roles: ['admin', 'professeur', 'eleve'],
   },
+  // Documents (demande du 2026-09-25, prototype) : tout le monde, juste
+  // avant Profil.
+  { key: 'docs', label: 'Docs', icon: 'docs', roles: ['admin', 'professeur', 'eleve'] },
   { key: 'profil', label: 'Profil', icon: 'profil', roles: ['admin', 'professeur', 'eleve'] },
   // Super User seulement (§2.5) : `superuser` n'est jamais ajouté aux autres
   // comptes, contrairement à admin/owner qu'IL reçoit en plus (voir

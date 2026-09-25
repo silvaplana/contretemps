@@ -40,6 +40,8 @@ const paths = {
   fileCheck: 'M6 3h9l3 3v15H6z M9 12l2 2 4-4',
   camera: 'M4 8h2l1.5-2h9L18 8h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',
   folder: 'M4 6h6l2 2h8v11H4z',
+  // Document (onglet Docs) : page au coin plié, avec des lignes de texte.
+  docs: 'M6 3h8l4 4v14H6z M14 3v4h4 M9 12h6 M9 16h6',
   // Calculatrice (comptage d'heures, voir AdminProfesseurs.jsx) : boîtier +
   // écran + 6 touches (touches en "h.01" pour dessiner de simples points,
   // le bout de trait rond fait le reste).

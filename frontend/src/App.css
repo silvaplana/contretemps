@@ -2705,3 +2705,125 @@
 .app--lecture-seule .app__content .editable-text {
   pointer-events: none;
 }
+
+/* ==========================================================================
+   Docs (screens/DocsScreen.jsx) — prototype
+   ========================================================================== */
+
+.docs-prototype {
+  margin: 0;
+  font-size: 13px;
+}
+
+.docs-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.docs-carte {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.docs-carte .icon {
+  flex: none;
+  color: var(--accent);
+}
+
+.docs-carte__texte {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.docs-carte__date {
+  font-size: 12px;
+}
+
+.docs-carte .icon--chevronRight {
+  color: var(--text-muted);
+}
+
+.docs-lecture {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.docs-lecture__barre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.docs-lecture__barre .btn--link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.docs-lecture__document {
+  padding: 20px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  line-height: 1.5;
+  font-size: 15px;
+}
+
+.docs-lecture__document h2 {
+  margin: 0 0 4px;
+}
+
+.docs-lecture__document h3 {
+  margin: 18px 0 6px;
+  font-size: 16px;
+}
+
+.docs-lecture__document p {
+  margin: 0 0 8px;
+}
+
+.docs-lecture__document ul {
+  margin: 0 0 8px;
+  padding-left: 20px;
+}
+
+.docs-lecture__signature {
+  height: 80px;
+  margin-top: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+}
+
+/* "Imprimer" (LectureDocument) : seul le document part à l'impression. */
+@media print {
+  body.impression-doc * {
+    visibility: hidden;
+  }
+  body.impression-doc .docs-lecture__document,
+  body.impression-doc .docs-lecture__document * {
+    visibility: visible;
+  }
+  body.impression-doc .docs-lecture__document {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 100%;
+    border: none;
+    background: #fff;
+    color: #000;
+  }
+}

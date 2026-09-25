@@ -28,6 +28,7 @@ import { aUnDesRoles, isAdmin, isEleve, isProf, isSuperuser } from './data/roles
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
+import DocsScreen from './screens/DocsScreen.jsx'
 import HeuresScreen from './screens/HeuresScreen.jsx'
 import InstallationScreen from './screens/InstallationScreen.jsx'
 import LoginScreen from './screens/LoginScreen.jsx'
@@ -869,7 +870,11 @@ function App() {
   }
 
   const headerMode =
-    activeTab === 'admin' || activeTab === 'profil' || activeTab === 'heures' || activeTab === 'supervision'
+    activeTab === 'admin' ||
+    activeTab === 'profil' ||
+    activeTab === 'heures' ||
+    activeTab === 'supervision' ||
+    activeTab === 'docs'
       ? 'simple'
       : 'course'
   const headerTitle =
@@ -881,7 +886,9 @@ function App() {
           ? 'Heures'
           : activeTab === 'supervision'
             ? 'Supervision'
-            : 'Sélectionner un cours'
+            : activeTab === 'docs'
+              ? 'Docs'
+              : 'Sélectionner un cours'
 
   return (
     <div className={lectureSeule ? 'app app--lecture-seule' : 'app'}>
@@ -1034,6 +1041,8 @@ function App() {
         )}
 
         {activeTab === 'supervision' && isSuperuser(activeUser) && <SupervisionScreen />}
+
+        {activeTab === 'docs' && <DocsScreen user={activeUser} />}
 
         {activeTab === 'profil' && (
           <ProfilScreen
