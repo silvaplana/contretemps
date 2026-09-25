@@ -6,6 +6,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 import { estConfigureDrive } from '../../utils/googleDrive.js'
+import { ouvrirInscriptionEleve } from '../../utils/inscriptionEleve.js'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
@@ -143,6 +144,15 @@ export default function SauvegardeEcoleMenu({ ecole, cours, setEleves, onAjouter
               </button>
               <button type="button" onClick={() => ouvrir('programmer')}>
                 <Icon name="clock" size={18} /> Programmer sauvegarde École
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setMenuOuvert(false)
+                  ouvrirInscriptionEleve()
+                }}
+              >
+                <Icon name="users" size={18} /> Inscription élève
               </button>
               <button type="button" onClick={telechargerInscriptions}>
                 <Icon name="fileCheck" size={18} /> Télécharger les nouveaux inscrits

@@ -3,9 +3,11 @@ import * as elevesApi from '../../api/eleves.js'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
+import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
+import { ouvrirInscriptionEleve } from '../../utils/inscriptionEleve.js'
 import { correspond } from '../../utils/recherche.js'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
@@ -245,6 +247,11 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
 
   return (
     <div className="admin-panel">
+      {/* Menu ⋮ dans l'en-tête (demande du 2026-09-25). */}
+      <MenuEntete
+        label="Menu Élèves"
+        actions={[{ label: 'Inscription élève', icon: 'users', onClick: ouvrirInscriptionEleve }]}
+      />
       <div className="search-bar">
         <Icon name="search" size={18} />
         <input
