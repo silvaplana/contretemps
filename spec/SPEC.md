@@ -178,10 +178,13 @@ ouvert demande une image espion, qui n'est pas fiable : Gmail et Apple Mail char
 images à l'avance (faux « ouvert »), et beaucoup de messageries les bloquent (faux « pas
 ouvert »). Le clic sur le lien est, lui, toujours exact.
 
-Envoi : par le SMTP déjà utilisé pour les inscriptions (`inscriptions/email_envoi.py`), pour
-l'instant depuis sebastien.richard54@gmail.com. **Brevo** est prévu pour le remplacer, avec
-une vraie adresse d'expédition : son relais SMTP se branche en changeant les variables
-d'environnement `SMTP_*`, sans toucher au code.
+Envoi : par le relais SMTP de **Brevo** depuis le 2026-10-02 (`inscriptions/email_envoi.py`,
+variables `SMTP_*`), avec l'adresse d'expédition `contretemps@silvaplana.cloud` (domaine
+authentifié chez Brevo : lignes DKIM et DMARC dans le DNS) et les réponses dirigées vers
+l'adresse de l'administrateur (`SMTP_REPLY_TO`). Avant, les mails partaient d'une adresse Gmail
+personnelle et les invitations arrivaient en spam. Le mail existe en version texte et en version
+mise en forme (bouton), avec un titre neutre (« Votre accès à l'application … ») et
+« Bonjour Prénom Nom, ».
 
 #### Mot de passe oublié
 
