@@ -56,7 +56,11 @@ export default function CreerMotDePasseScreen({ jeton, onConnecte, onAbandon }) 
     <div className="login-screen">
       <div className="login-screen__brand">
         <Logo size={90} />
-        <h1>{lien && !invitation ? 'Nouveau mot de passe' : 'Créer mon mot de passe'}</h1>
+        {/* Titre qui nomme la personne (demande utilisateur du 2026-10-01). */}
+        <h1>
+          {lien?.destinataire ? `${lien.destinataire}, veuillez ` : 'Veuillez '}
+          {lien && !invitation ? 'choisir votre nouveau mot de passe' : 'créer votre mot de passe'}
+        </h1>
         {lien?.ecoleNom && <p>{lien.ecoleNom}</p>}
       </div>
 
@@ -74,12 +78,6 @@ export default function CreerMotDePasseScreen({ jeton, onConnecte, onAbandon }) 
         <p className="muted">Vérification du lien…</p>
       ) : (
         <form className="login-screen__form" onSubmit={valider}>
-          {lien.destinataire && (
-            <p>
-              Bonjour <strong>{lien.destinataire}</strong>,{' '}
-              {invitation ? 'créez votre mot de passe.' : 'choisissez votre nouveau mot de passe.'}
-            </p>
-          )}
           <label htmlFor="activation-email">Email</label>
           <input id="activation-email" type="email" autoComplete="username" value={lien.email} readOnly />
           {lien.prenoms.length > 1 && <p className="muted">Profils : {lien.prenoms.join(', ')}</p>}
