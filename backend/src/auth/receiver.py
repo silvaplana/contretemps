@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 _ECHECS_BREVO = {
     "hard_bounce": "Adresse introuvable : le mail n'a pas pu être remis",
     "invalid_email": "Adresse introuvable : le mail n'a pas pu être remis",
-    "soft_bounce": "Mail non remis pour l'instant (boîte pleine ou indisponible ou adresse inconnue)",
+    "soft_bounce": "Mail non remis pour l'instant (boîte pleine ou indisponible ou adresse non joignable)",
     "blocked": "Mail bloqué : adresse déjà en échec ou désinscrite chez Brevo",
     "error": "Erreur du service d'envoi",
 }
