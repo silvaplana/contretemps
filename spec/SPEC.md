@@ -55,6 +55,10 @@ personne a désormais un **vrai mot de passe**, qu'elle définit elle-même à p
 invitation reçue par email. Pas de double authentification dans Contretemps : elle viendra
 avec AppBase, quand AppBase généralisera Contretemps (option dans Profil).
 
+Choix confirmés par l'utilisateur le 2026-10-01 : mot de passe **par email**, invitation **par
+bouton**, coupure des codes **en une fois**, mot de passe **redemandé** en cas de montée en
+privilège, session de **30 jours** prolongée à chaque usage.
+
 #### Écran de connexion
 
 Même écran qu'avant, une seule page pour **toutes les écoles** :
@@ -99,7 +103,7 @@ Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'
 - l'appli le garde sur l'appareil (`frontend/src/api/session.js`) et l'envoie à chaque requête ;
 - le serveur vérifie à chaque requête le jeton, **et** que le profil actif (`X-Compte-Id`)
   appartient bien à cet email. Un `X-Compte-Id` seul ne donne plus aucun droit ;
-- durée : **90 jours, prolongés à chaque usage**, pour ne pas se reconnecter sans cesse sur
+- durée : **30 jours, prolongés à chaque usage**, pour ne pas se reconnecter sans cesse sur
   mobile. Le Superuser garde ses 12 heures (§2.5) ;
 - changer son mot de passe ou se déconnecter efface le jeton de l'appareil.
 
@@ -368,7 +372,7 @@ numéro de ce compte à l'API. Le Superuser a donc sa propre connexion, sécuris
   jeton valide ne donne **aucun** droit.
 
 Le même mécanisme de jeton est étendu à tous les comptes par le §2.2 (2026-10-01), avec une
-durée de 90 jours au lieu de 12 heures.
+durée de 30 jours au lieu de 12 heures.
 
 **Mise en œuvre**
 - Création du compte, sur le serveur uniquement :
@@ -1245,7 +1249,7 @@ encore branché).
   un cours n'obtient pas encore sa conversation automatiquement.
 - **Vraie authentification (§2.2, §6.3ter)** : **spécifiée le 2026-10-01**, pas encore
   implémentée. Mot de passe par email, invitation, mot de passe oublié par mail, jeton de
-  session de 90 jours, recherche du compte dans toutes les écoles, suppression des codes
+  session de 30 jours, recherche du compte dans toutes les écoles, suppression des codes
   d'accès, lien profond Android. Remplace les deux points ci-dessous (« Code oublié ? » et
   limite du RBAC sans session).
 - **"Code oublié ?"** (écran de connexion) : **remplacé le 2026-09-21 par un simple message**,
