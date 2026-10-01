@@ -31,6 +31,14 @@ class EmailEnvoi:
         self.mot_de_passe = os.environ.get("SMTP_PASSWORD")
         self.nom_expediteur = os.environ.get("SMTP_FROM_NAME", "Contretemps")
         self.actif = bool(self.hote and self.utilisateur and self.mot_de_passe)
+        # Adresse d'expédition. Avec un relais comme Brevo, l'identifiant
+        # de connexion (SMTP_USER) n'est PAS une adresse d'expéditeur : il
+        # faut SMTP_FROM_EMAIL (adresse du domaine authentifié, ex.
+        # contretemps@silvaplana.cloud). Sans elle : SMTP_USER, comme avec
+        # Gmail. SMTP_REPLY_TO : où arrivent les réponses, quand l'adresse
+        # d'expédition n'a pas de boîte de réception.
+        self.expediteur = os.environ.get("SMTP_FROM_EMAIL") or self.utilisateur
+        self.repondre_a = os.environ.get("SMTP_REPLY_TO")
         # Destinataire du 2e email (notification admin, voir
         # inscriptions.py:_notifier_admin) — distinct de l'expéditeur
         # (self.utilisateur) pour rester configurable séparément plus
@@ -38,7 +46,7 @@ class EmailEnvoi:
         # défaut, part vers la même adresse que l'expéditeur (décision
         # utilisateur : ça marche tout de suite sans rien configurer de
         # plus).
-        self.adresse_admin = os.environ.get("ADMIN_EMAIL") or self.utilisateur
+        self.adresse_admin = os.environ.get("ADMIN_EMAIL") or self.repondre_a or self.expediteur
 
     def envoyer_confirmation(
         self,
@@ -56,7 +64,9 @@ class EmailEnvoi:
             return
 
         message = MIMEMultipart()
-        message["From"] = f"{self.nom_expediteur} <{self.utilisateur}>"
+        message["From"] = f"{self.nom_expediteur} <{self.expediteur}>"
+        if self.repondre_a:
+            message["Reply-To"] = self.repondre_a
         message["To"] = destinataire
         message["Subject"] = sujet
         if corps_html is None:
@@ -77,4 +87,4 @@ class EmailEnvoi:
         with smtplib.SMTP(self.hote, self.port) as serveur:
             serveur.starttls()
             serveur.login(self.utilisateur, self.mot_de_passe)
-            serveur.sendmail(self.utilisateur, destinataire, message.as_string())
+            serveur.sendmail(self.expediteur, destinataire, message.as_string())

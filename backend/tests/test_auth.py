@@ -486,7 +486,11 @@ def test_mail_avec_version_texte_et_version_mise_en_forme(monkeypatch):
     from auth.mails import MailsAcces
     from inscriptions.email_envoi import EmailEnvoi
 
-    for cle, valeur in {"SMTP_HOST": "smtp.test", "SMTP_USER": "ecole@test.fr", "SMTP_PASSWORD": "x"}.items():
+    reglages = {
+        "SMTP_HOST": "smtp.test", "SMTP_USER": "identifiant@relais.test", "SMTP_PASSWORD": "x",
+        "SMTP_FROM_EMAIL": "ecole@test.fr", "SMTP_REPLY_TO": "reponses@test.fr",
+    }
+    for cle, valeur in reglages.items():
         monkeypatch.setenv(cle, valeur)
     remis = []
 
@@ -496,12 +500,16 @@ def test_mail_avec_version_texte_et_version_mise_en_forme(monkeypatch):
         def __exit__(self, *a): return False
         def starttls(self): pass
         def login(self, *a): pass
-        def sendmail(self, de, a, texte): remis.append((a, texte))
+        def sendmail(self, de, a, texte): remis.append((a, texte, de))
 
     monkeypatch.setattr(smtplib, "SMTP", FauxSMTP)
     MailsAcces(EmailEnvoi()).invitation("a@x.fr", "École <Été>", "Zoé Müller", ["Zoé"], "JETON")
 
     message = email.message_from_string(remis[0][1])
+    # Relais type Brevo : l'expéditeur est l'adresse du domaine, pas
+    # l'identifiant de connexion ; les réponses vont ailleurs.
+    assert remis[0][2] == "ecole@test.fr" and "ecole@test.fr" in message["From"]
+    assert message["Reply-To"] == "reponses@test.fr"
     parties = {p.get_content_type(): p.get_payload(decode=True).decode("utf-8") for p in message.walk() if not p.is_multipart()}
     assert set(parties) == {"text/plain", "text/html"}
     assert "Bonjour Zoé Müller," in parties["text/plain"] and "/activer?jeton=JETON" in parties["text/plain"]
