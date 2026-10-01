@@ -159,7 +159,8 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
   const coursDontOnVoitLesEleves = cours.find((c) => c.id === elevesVusId) ?? null
   const elevesVus = coursDontOnVoitLesEleves
     ? elevesDuCours(coursDontOnVoitLesEleves.id).sort((a, b) =>
-        `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`, 'fr'),
+        // Par nom de famille, puis par prénom (demande du 2026-10-02).
+        `${a.nom} ${a.prenom}`.localeCompare(`${b.nom} ${b.prenom}`, 'fr'),
       )
     : []
 
@@ -415,7 +416,7 @@ function ElevesDuCoursPopover({ cours, eleves, ancre, onClose }) {
     lignes.push(
       eleves
         .slice(i, i + NOMS_PAR_LIGNE)
-        .map((el) => `${el.prenom} ${el.nom}`)
+        .map((el) => `${el.nom} ${el.prenom}`)
         .join(', ') + (derniere ? '' : ','),
     )
   }
