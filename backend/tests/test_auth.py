@@ -241,8 +241,10 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
     assert invitation.json() == {"emails": 1, "en_cours": False}
     # Un seul mail pour l'adresse, qui nomme les deux profils.
     assert len(mails) == 1 and mails[0][0] == "parent@x.fr"
-    assert mails[0][1] == "Contretemps vous invite à définir ou changer votre mot de passe"
+    assert mails[0][1] == "Votre accès à l'application Contretemps"
     assert mails[0][2].startswith("Bonjour Ana Roux,\n") and "Profils : Ana, Tom." in mails[0][2]
+    # Version mise en forme : même lien, valeurs échappées.
+    assert _jeton_du_mail(mails, "activer") in mails[0][3] and "Bonjour Ana Roux," in mails[0][3]
     statuts = _statuts(client, ecole)
     assert statuts[str(eleve.id)]["statut"] == statuts[str(frere.id)]["statut"] == "invite"
 
@@ -339,7 +341,7 @@ def test_mot_de_passe_oublie(client, db_session, ecole, mails):
     # Une personne jamais invitée reçoit aussi un lien (décision du 2026-10-01).
     assert client.post("/auth/mot-de-passe-oublie", json={"identifiant": "Ana Roux"}).status_code == 204
     assert [m[0] for m in mails] == ["a.roux@x.fr"]
-    assert mails[0][1] == "Contretemps vous invite à définir ou changer votre mot de passe"
+    assert mails[0][1] == "Votre accès à l'application Contretemps"
     assert mails[0][2].startswith("Bonjour Ana Roux,\n")
     jeton = _jeton_du_mail(mails, "reinitialiser")
     lien = db_session.query(LienInvitationReinit).one()
@@ -474,3 +476,34 @@ def test_migration_supprime_les_codes_sans_perdre_de_donnees(tmp_path, monkeypat
     with moteur.connect() as c:
         assert "code_acces_admin" in {col["name"] for col in sa.inspect(c).get_columns("ecoles")}
     moteur.dispose()
+
+
+def test_mail_avec_version_texte_et_version_mise_en_forme(monkeypatch):
+    """Le message réellement remis au SMTP : deux variantes, accents intacts."""
+    import email
+    import smtplib
+
+    from auth.mails import MailsAcces
+    from inscriptions.email_envoi import EmailEnvoi
+
+    for cle, valeur in {"SMTP_HOST": "smtp.test", "SMTP_USER": "ecole@test.fr", "SMTP_PASSWORD": "x"}.items():
+        monkeypatch.setenv(cle, valeur)
+    remis = []
+
+    class FauxSMTP:
+        def __init__(self, *a): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def starttls(self): pass
+        def login(self, *a): pass
+        def sendmail(self, de, a, texte): remis.append((a, texte))
+
+    monkeypatch.setattr(smtplib, "SMTP", FauxSMTP)
+    MailsAcces(EmailEnvoi()).invitation("a@x.fr", "École <Été>", "Zoé Müller", ["Zoé"], "JETON")
+
+    message = email.message_from_string(remis[0][1])
+    parties = {p.get_content_type(): p.get_payload(decode=True).decode("utf-8") for p in message.walk() if not p.is_multipart()}
+    assert set(parties) == {"text/plain", "text/html"}
+    assert "Bonjour Zoé Müller," in parties["text/plain"] and "/activer?jeton=JETON" in parties["text/plain"]
+    assert "École &lt;Été&gt;" in parties["text/html"] and "/activer?jeton=JETON" in parties["text/html"]
+    assert "mot de passe" not in str(email.header.make_header(email.header.decode_header(message["Subject"])))

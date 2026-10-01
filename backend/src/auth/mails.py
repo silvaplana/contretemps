@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import logging
 import os
+from html import escape
 
 from inscriptions.email_envoi import EmailEnvoi
 
@@ -38,38 +39,88 @@ class MailsAcces:
     def lien(self, page: str, jeton: str) -> str:
         return f"{self.url_appli}/{page}?jeton={jeton}"
 
-    # Même titre pour les deux mails, et « Bonjour Prénom Nom, » (demandes
-    # utilisateur du 2026-10-01). `destinataire` : la personne à qui l'on
-    # s'adresse quand l'adresse porte plusieurs profils (voir
-    # auth.py : destinataire).
+    # Mails rédigés pour ne pas finir en spam (constaté le 2026-10-01 avec
+    # Gmail : un titre qui parle de « mot de passe », trois lignes et un lien
+    # nu ressemblent à de l'hameçonnage) : titre neutre, texte qui dit qui
+    # écrit et pourquoi, version mise en forme avec un bouton en plus de la
+    # version texte. « Bonjour Prénom Nom, » : demande utilisateur.
+    # `destinataire` : la personne à qui l'on s'adresse quand l'adresse
+    # porte plusieurs profils (voir auth.py : destinataire).
     def _sujet(self, ecole_nom: str | None) -> str:
-        return f"{ecole_nom or 'Contretemps'} vous invite à définir ou changer votre mot de passe"
+        return f"Votre accès à l'application {ecole_nom or 'Contretemps'}"
 
     def invitation(self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], jeton: str) -> None:
-        profils = f"Profils : {', '.join(prenoms)}.\n\n" if len(prenoms) > 1 else ""
-        self._envoyer(
+        paragraphes = [
+            f"L'école {ecole_nom} utilise une application pour ses élèves, leurs familles et ses "
+            "professeurs : messages de l'école, vidéos et chorégraphies des cours, présences.",
+            "Votre accès est prêt. Pour l'activer, ouvrez le lien ci-dessous et choisissez votre mot de passe. "
+            "Vous pourrez ensuite vous connecter avec cette adresse email.",
+        ]
+        if len(prenoms) > 1:
+            paragraphes.append(f"Profils : {', '.join(prenoms)}.")
+        self._composer(
             email,
-            self._sujet(ecole_nom),
-            f"Bonjour {destinataire},\n\n"
-            f"L'école {ecole_nom} vous invite sur son application.\n\n"
-            f"{profils}"
-            f"Créez votre mot de passe en ouvrant ce lien :\n{self.lien('activer', jeton)}\n\n"
-            f"Ce lien est valable 7 jours et ne peut servir qu'une fois.\n",
+            ecole_nom,
+            destinataire,
+            paragraphes,
+            "Activer mon accès",
+            self.lien("activer", jeton),
+            [
+                "Ce lien est valable 7 jours et ne peut servir qu'une fois.",
+                f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
+                "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
+            ],
         )
 
     def reinitialisation(self, email: str, ecole_nom: str | None, destinataire: str, jeton: str) -> None:
-        self._envoyer(
+        nom = ecole_nom or "Contretemps"
+        self._composer(
             email,
-            self._sujet(ecole_nom),
-            f"Bonjour {destinataire},\n\n"
-            f"Pour choisir un nouveau mot de passe, ouvrez ce lien :\n{self.lien('reinitialiser', jeton)}\n\n"
-            f"Ce lien est valable 1 heure et ne peut servir qu'une fois.\n"
-            f"Si vous n'avez rien demandé, ignorez ce message : votre mot de passe ne change pas.\n",
+            ecole_nom,
+            destinataire,
+            [
+                f"Vous avez demandé à choisir un nouveau mot de passe pour l'application {nom}. "
+                "Ouvrez le lien ci-dessous pour le définir.",
+            ],
+            "Choisir mon mot de passe",
+            self.lien("reinitialiser", jeton),
+            [
+                "Ce lien est valable 1 heure et ne peut servir qu'une fois.",
+                "Si vous n'avez rien demandé, ignorez ce message : votre mot de passe ne change pas.",
+            ],
         )
 
-    def _envoyer(self, destinataire: str, sujet: str, corps: str) -> None:
+    def _composer(
+        self,
+        email: str,
+        ecole_nom: str | None,
+        destinataire: str,
+        paragraphes: list[str],
+        bouton: str,
+        lien: str,
+        fin: list[str],
+    ) -> None:
+        """Les deux versions du même message : texte (lien en clair) et
+        mise en forme (bouton, plus le lien en clair en secours)."""
+        texte = "\n\n".join([f"Bonjour {destinataire},", *paragraphes, f"{bouton} :\n{lien}", *fin]) + "\n"
+        p = '<p style="margin:0 0 16px">{}</p>'
+        html = (
+            '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#3a2410;'
+            'max-width:520px">'
+            + p.format(f"Bonjour {escape(destinataire)},")
+            + "".join(p.format(escape(x)) for x in paragraphes)
+            + f'<p style="margin:24px 0"><a href="{escape(lien)}" style="background:#d8722a;color:#ffffff;'
+            f'text-decoration:none;padding:12px 22px;border-radius:24px;font-weight:bold">{escape(bouton)}</a></p>'
+            + '<p style="margin:0 0 16px;font-size:13px;color:#8a6a4a">Si le bouton ne fonctionne pas, copiez ce '
+            f'lien dans votre navigateur :<br>{escape(lien)}</p>'
+            + "".join('<p style="margin:0 0 8px;font-size:13px;color:#8a6a4a">{}</p>'.format(escape(x)) for x in fin)
+            + "</div>"
+        )
+        self._envoyer(email, self._sujet(ecole_nom), texte, html)
+
+    def _envoyer(self, destinataire: str, sujet: str, corps: str, corps_html: str | None = None) -> None:
         if self.envoi.actif:
-            self.envoi.envoyer_confirmation(destinataire, sujet, corps, [])
+            self.envoi.envoyer_confirmation(destinataire, sujet, corps, [], corps_html)
         elif self.dans_les_journaux:
             logger.warning("Mail non envoyé (pas de SMTP) à %s : %s\n%s", destinataire, sujet, corps)
         else:

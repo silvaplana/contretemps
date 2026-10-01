@@ -135,6 +135,6 @@ def mails(monkeypatch):
     from auth.mails import MailsAcces
 
     envoyes = []
-    monkeypatch.setattr(MailsAcces, "_envoyer", lambda self, d, sujet, corps: envoyes.append((d, sujet, corps)))
+    monkeypatch.setattr(MailsAcces, "_envoyer", lambda self, d, sujet, corps, html=None: envoyes.append((d, sujet, corps, html)))
     monkeypatch.setattr(MailsAcces, "disponible", True)
     return envoyes

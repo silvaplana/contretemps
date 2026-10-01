@@ -46,6 +46,7 @@ class EmailEnvoi:
         sujet: str,
         corps: str,
         pieces_jointes: list[tuple[str, bytes]],
+        corps_html: str | None = None,
     ) -> None:
         """`pieces_jointes` : liste de (nom_fichier, contenu_bytes).
         Lève une exception en cas d'échec (voir inscriptions.py qui
@@ -58,7 +59,15 @@ class EmailEnvoi:
         message["From"] = f"{self.nom_expediteur} <{self.utilisateur}>"
         message["To"] = destinataire
         message["Subject"] = sujet
-        message.attach(MIMEText(corps, "plain"))
+        if corps_html is None:
+            message.attach(MIMEText(corps, "plain"))
+        else:
+            # Version mise en forme + version texte, au choix de la
+            # messagerie (voir auth/mails.py : mails d'accès).
+            variantes = MIMEMultipart("alternative")
+            variantes.attach(MIMEText(corps, "plain", "utf-8"))
+            variantes.attach(MIMEText(corps_html, "html", "utf-8"))
+            message.attach(variantes)
 
         for nom_fichier, contenu in pieces_jointes:
             piece = MIMEApplication(contenu, Name=nom_fichier)
