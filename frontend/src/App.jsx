@@ -95,6 +95,20 @@ function App() {
     // Lien reçu par mail : pas de reprise de session en parallèle (elle
     // pourrait échouer APRÈS la connexion par le lien et l'effacer).
     if (jetonLien) {
+      // Même détection de désinstallation que plus bas (bug signalé le
+      // 2026-10-01 : appli désinstallée, arrivée par un lien reçu par mail,
+      // l'écran d'installation n'était pas proposé — « Ne plus me
+      // demander » datait de l'ancienne installation et n'était remis à
+      // zéro que sur le chemin de la reprise de session). Ici on ne touche
+      // pas à la session : la connexion par le lien la remplace.
+      if (installationApi.sessionEtaitLieeInstallation() && !installationApi.estInstallee()) {
+        installationApi.estToujoursInstalleeSelonNavigateur().then((toujoursInstallee) => {
+          if (toujoursInstallee !== true) {
+            installationApi.oublierLienInstallation()
+            installationApi.oublierNeJamaisDemander()
+          }
+        })
+      }
       setRestaurationEnCours(false)
       return
     }
@@ -814,7 +828,11 @@ function App() {
   // Entrée dans l'appli après une connexion réussie : par l'écran de
   // connexion, ou directement après avoir créé son mot de passe par un
   // lien reçu par mail. `resultat` ({ compte, ecole }) vient de api/auth.js.
-  function entrer(resultat) {
+  // `parLien` : arrivée par un lien reçu par mail. L'installation est alors
+  // toujours proposée si l'appli n'est pas installée, même si « Ne plus me
+  // demander » avait été coché un jour dans ce navigateur (bug signalé le
+  // 2026-10-01 : rien n'était proposé après la création du mot de passe).
+  function entrer(resultat, { parLien = false } = {}) {
     saisonApi.consulterSaison(null)
     setCompteReel(resultat.compte)
     setEcole(resultat.ecole ?? ECOLE_VIDE)
@@ -826,6 +844,7 @@ function App() {
     // l'installation (voir api/installation.js et l'effet de
     // restauration ci-dessus, qui détecte la désinstallation).
     if (installationApi.estInstallee()) installationApi.marquerSessionLieeInstallation()
+    if (parLien) installationApi.oublierNeJamaisDemander()
     const montrerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
     setInstallationAMontrer(montrerInstallation)
     // Se rappeler de ce profil pour la prochaine ouverture de
@@ -868,7 +887,7 @@ function App() {
         onAbandon={quitterLeLien}
         onConnecte={(resultat) => {
           quitterLeLien()
-          if (resultat) entrer(resultat)
+          if (resultat) entrer(resultat, { parLien: true })
         }}
       />
     )
