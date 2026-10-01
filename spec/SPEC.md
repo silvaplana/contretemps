@@ -47,43 +47,131 @@ autre profil de la même famille — ex. un parent-admin qui bascule vers le pro
 élève, ou entre deux enfants d'une même fratrie. Une famille peut mélanger les rôles (ex. un
 parent Admin + ses deux enfants Élèves).
 
-### 2.2 Connexion
+### 2.2 Connexion par mot de passe *(spécifié le 2026-10-01, pas encore implémenté)*
 
-- **Admin / Professeur** : connexion par **nom + prénom OU email** + code d'accès partagé par
-  rôle et par école (ex. `ADMIN2026`)
-- **Élève** : connexion par **nom + prénom OU email** + code d'accès (`ELEVE2026`) — l'email
-  n'est pas requis pour se connecter, mais s'il est renseigné, il sert au regroupement familial
-  et aux notifications
-- Le code doit correspondre à **l'un des rôles** du compte, **dans l'école concernée**
-  (cohérence vérifiée côté serveur). Un compte qui cumule plusieurs rôles peut se connecter
-  avec le code de n'importe lequel d'entre eux, et obtient dans tous les cas **tous** ses rôles.
-  Exemple : un professeur-admin connecté avec le code professeur voit l'onglet Admin (§2.4).
-  Le rôle Owner n'a pas de code propre : un Owner est aussi Admin. **Exception : l'élève-admin**
-  (§2.4) n'obtient ses rôles Admin/Owner qu'avec le code Admin ; avec le code Élève, il n'est
-  qu'un élève.
-- **✅ Fait — Session persistante** (web, PWA, Android, iOS) sans reconnexion systématique :
-  l'id du profil ACTIF (pas un vrai token — ce backend n'a aucune notion de session, voir §8)
-  est gardé en local (voir frontend/src/api/session.js), propre à chaque appareil, mis à jour
-  à chaque bascule de profil famille et effacé à la déconnexion volontaire
-- **Saisons (§2.6)** : seuls les comptes de la **saison courante** peuvent se connecter
-- Plusieurs appareils peuvent être connectés simultanément avec le même compte
-- Déconnexion disponible depuis l'onglet **Profil**
-- **"Code oublié ?"** (décision utilisateur du 2026-09-21) : un simple message, pour tous :
-  « Contactez un administrateur de l'école ou <email du propriétaire de l'appli> ». Plus de
-  question de récupération ni de contact d'admin affiché à l'écran. Les routes
-  `/auth/recuperation/*` et le `code_recuperation` existent encore côté serveur mais ne sont
-  plus utilisés par l'écran de connexion.
+**Décision utilisateur du 2026-10-01** : les codes d'accès partagés par rôle et par école
+(`ADMIN2026`, `ELEVE2026`...) sont **abandonnés**, jugés trop simples par le client. Chaque
+personne a désormais un **vrai mot de passe**, qu'elle définit elle-même à partir d'une
+invitation reçue par email. Pas de double authentification dans Contretemps : elle viendra
+avec AppBase, quand AppBase généralisera Contretemps (option dans Profil).
 
-**✅ Tranché — règle de sécurité du switch de profil famille** : le code d'accès du rôle
-cible est redemandé uniquement en cas de **montée en privilège**, selon la hiérarchie
-Élève < Professeur < Admin. Pour un compte qui cumule plusieurs rôles, c'est son rôle **le
-plus élevé** qui compte (un Owner compte comme Admin) :
-- Élève → Professeur ou Admin : code redemandé
-- Professeur → Admin : code redemandé
-- Tous les autres cas (vers un rôle égal ou inférieur, ex. Admin → Élève, Professeur → Élève) : switch libre, sans redemander de code
+#### Écran de connexion
+
+Même écran qu'avant, une seule page pour **toutes les écoles** :
+- **« Nom Prénom ou Email »** : inchangé ;
+- **« Mot de passe »** (remplace « Code d'accès ») : vide par défaut, œil pour l'afficher ;
+- bouton **Se connecter** ;
+- lien **« Mot de passe oublié ? »** (remplace « Code oublié ? »), voir plus bas ;
+- lien **« Nouvelle école ? »** : conservé (§2.3).
+
+**Recherche dans toutes les écoles** : le nom prénom (ou l'email) saisi est cherché sans tenir
+compte des majuscules ni des accents, **dans toutes les écoles** (et non plus dans la seule
+première école du serveur). Le serveur ne garde que les comptes dont le mot de passe est bon.
+- un seul compte trouvé : connexion directe ;
+- plusieurs écoles possibles (cas rare, ex. la même personne inscrite dans deux écoles) : une
+  petite fenêtre **« Choisissez votre école »** s'ouvre. Elle n'apparaît que dans ce cas.
+
+Les autres règles restent : seuls les comptes de la **saison courante** peuvent se connecter
+(§2.6), plusieurs appareils peuvent être connectés en même temps, déconnexion depuis
+l'onglet **Profil**. Le Superuser utilise le même écran (§2.5).
+
+#### Où vit le mot de passe : un par adresse email
+
+Le mot de passe appartient à une **adresse email** (table `utilisateurs`, §6.3ter), pas à un
+compte :
+- avec une connexion par nom prénom, le serveur trouve le compte, puis son email, puis vérifie
+  le mot de passe de cet email ;
+- les profils d'une même famille (même email, §2.1) partagent donc le même mot de passe ;
+- le mot de passe survit à la recopie des comptes à chaque saison (§2.6), sans rien recopier ;
+- un compte **sans email** ne peut pas se connecter. Pour un enfant, l'email d'un parent suffit
+  (il rejoint alors la famille) ;
+- stocké **haché** (scrypt, `securite/mots_de_passe.py`, comme le Superuser), jamais en clair ;
+  au moins 8 caractères, sans autre règle ;
+- **essais limités** : après 5 mots de passe faux, cet email est bloqué 15 minutes
+  (`securite/limiteur.py`), avec un message qui ne révèle pas si le compte existe.
+
+#### Vraie session : un jeton signé
+
+Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'appli (§2.4,
+§8) : un mot de passe ne protégerait rien. Désormais :
+- à la connexion, le serveur délivre un **jeton signé** (`securite/jetons.py`, portée
+  « utilisateur ») qui désigne l'adresse email connectée ;
+- l'appli le garde sur l'appareil (`frontend/src/api/session.js`) et l'envoie à chaque requête ;
+- le serveur vérifie à chaque requête le jeton, **et** que le profil actif (`X-Compte-Id`)
+  appartient bien à cet email. Un `X-Compte-Id` seul ne donne plus aucun droit ;
+- durée : **90 jours, prolongés à chaque usage**, pour ne pas se reconnecter sans cesse sur
+  mobile. Le Superuser garde ses 12 heures (§2.5) ;
+- changer son mot de passe ou se déconnecter efface le jeton de l'appareil.
+
+#### Invitation
+
+1. **L'école saisit la personne** avec son email (à la main, ou par l'import Excel §6.4bis).
+2. **Un admin l'invite**, par un bouton, jamais automatiquement (pour ne pas envoyer des
+   dizaines de mails par accident pendant un import) :
+   - **« Inviter »** sur une fiche (élève, professeur, administrateur) ;
+   - **« Inviter tous ceux qui n'ont pas encore activé leur accès »** dans Admin > Élèves.
+   Les listes montrent l'état de chacun : *pas d'email*, *invité le…*, *accès activé*.
+3. **Un seul mail par adresse**, même si elle porte plusieurs profils : « L'école Contretemps
+   vous invite sur l'application. Profils : Léa, Tom. [Créer mon mot de passe] ».
+4. **Le lien** : `https://silvaplana.cloud/contretemps/activer?jeton=…`, à usage unique,
+   valable **7 jours**, stocké haché en base (§6.3ter). Un admin peut le renvoyer, ce qui
+   annule le précédent.
+5. **Le clic** ouvre directement l'appli Android si elle est installée (lien profond, voir
+   plus bas). Sinon, la même page s'ouvre dans le navigateur (c'est la même appli web), et
+   propose ensuite d'installer l'appli (écran d'installation existant).
+6. **Écran « Créer mon mot de passe »** : email affiché (non modifiable), prénoms des profils,
+   mot de passe saisi deux fois, œil pour l'afficher.
+7. À la validation, la personne est **connectée directement**, sans retaper son mot de passe,
+   avec la proposition de notifications habituelle.
+
+Envoi : par le SMTP déjà utilisé pour les inscriptions (`inscriptions/email_envoi.py`), pour
+l'instant depuis sebastien.richard54@gmail.com. **Brevo** est prévu pour le remplacer, avec
+une vraie adresse d'expédition : son relais SMTP se branche en changeant les variables
+d'environnement `SMTP_*`, sans toucher au code.
+
+#### Mot de passe oublié
+
+« Mot de passe oublié ? » demande le nom prénom ou l'email, puis affiche toujours le même
+message (« Si ce compte existe, un lien vient d'être envoyé à son adresse ») pour ne pas
+révéler qui est inscrit. Le lien est valable **1 heure**, à usage unique, et mène à l'écran
+« Nouveau mot de passe », identique à « Créer mon mot de passe ». Demandes limitées dans le
+temps, comme les essais de connexion. Un mot de passe peut aussi être changé depuis
+**Profil** (ancien mot de passe redemandé).
+
+Les routes `/auth/recuperation/*`, la question de récupération et le champ
+`code_recuperation` disparaissent.
+
+#### Lien profond Android (Capacitor)
+
+- **App Links en https** (et non un schéma `contretemps://`, que les clients mail ne rendent
+  pas cliquable) : `intent-filter` avec `autoVerify="true"` dans `AndroidManifest.xml` sur
+  `https://silvaplana.cloud/contretemps/activer` et `/reinitialiser` ;
+- fichier `https://silvaplana.cloud/.well-known/assetlinks.json`, servi par Caddy, avec
+  l'empreinte de la clé de signature de l'APK. Il faut donc une **clé de signature stable**
+  (pas la clé de debug). Sans vérification, le lien s'ouvre dans le navigateur, ce qui reste
+  fonctionnel ;
+- plugin `@capacitor/app` et son écouteur `appUrlOpen`, qui ouvre l'écran voulu ;
+- iOS (Universal Links) se fera de la même façon le jour venu.
+
+#### Familles, rôles et bascule de profil
+
+- Une fois connectée, une personne a **tous les rôles** de son compte. Le cas particulier de
+  l'élève-admin (droits d'admin seulement avec le code Admin, §2.4) disparaît.
+- La bascule de profil famille reste sans reconnexion, avec une seule règle : **une montée en
+  privilège redemande le mot de passe**, selon la hiérarchie Élève < Professeur < Admin (un
+  Owner compte comme Admin ; pour un compte à plusieurs rôles, son rôle le plus élevé compte).
+  Exemple : un enfant sur le téléphone d'un parent admin. Limite connue : un membre de la
+  famille qui connaît le mot de passe commun peut basculer. Un admin ou un professeur qui veut
+  s'en protéger utilise son propre email.
+
+#### Transition
+
+Coupure en une fois : au déploiement, un admin clique sur « Inviter tous ceux qui n'ont pas
+encore activé leur accès », et les codes d'accès cessent de fonctionner. Les 3 colonnes
+`code_acces_*` de la table des écoles (§6.1) sont supprimées.
 
 ![Écran de connexion](images/login.png)
-*(capture à reprendre par Claude Code une fois l'écran adapté à la nouvelle logique)*
+*(capture à reprendre par Claude Code une fois l'écran adapté)*
 
 ### 2.3 Création d'une nouvelle école
 
@@ -92,16 +180,12 @@ Sur la page de connexion, un bouton **"Nouvelle école ?"** ouvre un formulaire 
 - Nom de l'école
 - Code postal — **obligatoire** : sert à distinguer deux écoles portant le même nom (ex. deux
   "Contretemps" dans des villes différentes), voir §6.1
-- Code d'accès Admin, Professeur, Élève — **libres**, proposés par défaut sous la forme
-  `ADMIN_ECOLE_ANNEE` / `PROF_ECOLE_ANNEE` / `ELEVE_ECOLE_ANNEE` (ÉCOLE = nom de l'école en
-  majuscules, ANNÉE = année en cours), éditables avant validation
 - Nom, prénom et email du premier administrateur
-- Code de récupération de cet administrateur — "nom de votre 1er animal de compagnie" (voir
-  §2.2 : "Code oublié ?")
 
-La validation du formulaire crée l'école **et** le compte du premier administrateur en une
-seule opération. Cet administrateur pourra ensuite modifier les 3 codes d'accès de l'école
-depuis les paramètres (tout admin peut les modifier par la suite, pas seulement le créateur).
+Plus de codes d'accès ni de code de récupération (décision du 2026-10-01, §2.2). La validation
+du formulaire crée l'école **et** le compte du premier administrateur en une seule opération,
+puis lui envoie une **invitation** par email pour créer son mot de passe (§2.2). *Ce
+formulaire n'est pas encore branché au serveur : à faire avec le chantier mot de passe.*
 **Ce premier administrateur est aussi l'Owner de l'école** (voir §2.4).
 
 ### 2.4 Gestion multi-admin — Owners et professeurs-admins *(spécifié le 2026-09-21, pas encore implémenté)*
@@ -142,17 +226,9 @@ avec. Techniquement, son compte a **deux rôles** : `professeur` et `admin` (§6
 promouvoir ajoute le rôle `admin`, sans toucher au rôle `professeur`. Un élève peut aussi
 être promu, avec une règle de connexion plus stricte (voir « Élève-admin » ci-dessous).
 
-**Connexion d'un professeur-admin** (décision utilisateur du 2026-09-21) : il se connecte
-comme n'importe quel professeur, avec son nom et le code d'accès professeur, et voit directement
-l'onglet Admin. Aucun code supplémentaire n'est demandé. **Limite connue et acceptée** : le code
-professeur étant partagé entre tous les professeurs, quiconque le connaît peut se connecter sous
-le nom d'un professeur-admin et obtenir ses droits admin, Owner compris s'il l'est. Même
-limite, déjà existante, pour les admins "purs" avec le code admin partagé.
-
-**"Code oublié ?"** (§2.2) : un professeur-admin a un `code_recuperation`, fixé par l'Owner qui
-l'a promu. Il bénéficie donc de la même question de récupération que les admins "purs". Pour
-les comptes sans droits admin, le contact affiché devient celui d'un Owner de l'école (plutôt
-que "le premier administrateur").
+**Connexion d'un professeur-admin** (mise à jour du 2026-10-01) : avec son email et son mot
+de passe, comme tout le monde (§2.2). Il voit directement l'onglet Admin. La limite des codes
+partagés (quiconque connaissait le code professeur obtenait ses droits) disparaît avec eux.
 
 #### Élève-admin
 
@@ -161,16 +237,11 @@ du 2026-09-21). Comme pour un professeur, son compte garde le rôle `eleve` et g
 (et `owner` s'il est principal) ; son nom, son prénom et son email restent gérés depuis
 Admin > Élèves.
 
-**Ses droits d'admin ne sont actifs qu'avec le code d'accès Admin de l'école** : le code Élève
-est connu de toutes les familles, il ne doit pas suffire à ouvrir l'onglet Admin.
-- connecté avec le **code Élève** : il n'est qu'un élève (pas d'onglet Admin, le serveur lui
-  refuse les routes Admin) ;
-- connecté avec le **code Admin**, ou par **"Code oublié ?"** (question de récupération des
-  admins), ou par une bascule de profil confirmée avec le code Admin : le serveur lui remet un
-  **jeton signé de portée "admin"** (12 h, même mécanisme que le Superuser, §2.5) qui active ses
-  droits d'admin. Sans ce jeton, `require_admin` le refuse. La reprise de session présente ses
-  rôles Admin/Owner seulement si ce jeton accompagne la requête.
-- une bascule libre (sans code) vers un autre profil efface le jeton.
+**Ses droits d'admin** (mise à jour du 2026-10-01) : avec les codes d'accès, ils n'étaient
+actifs qu'avec le code Admin, car le code Élève était connu de toutes les familles (jeton signé
+de portée "admin"). Avec un mot de passe personnel (§2.2), cette règle disparaît : connecté, il
+a tous ses rôles, comme les autres comptes. Seule la bascule vers son profil depuis un profil
+de rang inférieur redemande le mot de passe (§2.2).
 - le retirer des administrateurs lui laisse son compte d'élève ; le supprimer depuis Admin >
   Élèves est refusé s'il est le dernier Owner de l'école.
 
@@ -178,27 +249,26 @@ est connu de toutes les familles, il ne doit pas suffire à ouvrir l'onglet Admi
 
 Dans Admin > École, **au-dessus** du bouton "Usage vidéo". Visible par **tous les admins** de
 l'école, Owners ou non, professeurs-admins compris. Une ligne par administrateur, admins "purs"
-et professeurs-admins confondus. Colonnes : **Nom, Prénom, Email, Owner** (oui/non). Le
-`code_recuperation` n'y figure jamais, même pour un Owner : il n'apparaît que dans la modale de
-modification.
+et professeurs-admins confondus. Colonnes : **Nom, Prénom, Email, Owner** (oui/non). L'
+état de son accès (*invité le…*, *accès activé*) est affiché, avec le bouton « Inviter » (§2.2).
 
 #### Droits réservés aux Owners
 
 - **"Créer nouvel administrateur"** dans le menu ⋮ d'Admin > École (même menu que "Programmer
   sauvegarde École", voir `frontend/src/screens/admin/SauvegardeEcoleMenu.jsx`). La modale
   propose deux façons de créer un admin :
-  1. **Nouveau compte admin** : nom, prénom, email, code de récupération. Crée un compte avec
-     le seul rôle `admin`, comme le tout premier admin de l'école (§2.3).
-  2. **Professeur existant promu admin** : choix d'un professeur de l'école dans une liste, plus
-     un code de récupération. Nom, prénom et email sont déjà ceux du professeur, rien à
-     ressaisir. Ajoute seulement le rôle `admin` à son compte.
+  1. **Nouveau compte admin** : nom, prénom, email. Crée un compte avec le seul rôle `admin`,
+     comme le tout premier admin de l'école (§2.3), et lui envoie une invitation (§2.2).
+  2. **Professeur existant promu admin** : choix d'un professeur de l'école dans une liste. Nom,
+     prénom et email sont déjà ceux du professeur, rien à ressaisir. Ajoute seulement le rôle
+     `admin` à son compte.
 
   Dans les deux cas, une case "Owner" permet de créer directement un Owner (ajoute aussi le
   rôle `owner`).
 - **Crayon (modifier)** sur chaque ligne sauf la sienne :
-  - admin "pur" : nom, prénom, email et code de récupération modifiables ;
-  - professeur-admin : seul le code de récupération est modifiable ici. Nom, prénom et email se
-    modifient depuis Admin > Profs (même compte, pas de duplication) ;
+  - admin "pur" : nom, prénom et email modifiables ;
+  - professeur-admin : nom, prénom et email se modifient depuis Admin > Profs (même compte, pas
+    de duplication) ;
   - dans les deux cas : case "Owner" pour ajouter ou retirer le rôle `owner` (retrait refusé
     si c'est le dernier Owner de l'école).
 - **Poubelle (supprimer)** sur chaque ligne sauf la sienne, **avec confirmation** :
@@ -235,7 +305,8 @@ dans chaque route. Elles s'appuient sur les fonctions `isAdmin` / `isOwner` (§6
 
 Chaque appel concerné transmet l'identifiant du compte appelant (le profil actif, voir
 `frontend/src/api/session.js`), que ces méthodes vérifient. **Limite assumée** : ce backend n'a
-toujours aucune notion de session ni de token (§2.2, §8). Ces vérifications empêchent les
+toujours aucune notion de session ni de token (§8). *Elle sera levée par le jeton de session
+spécifié au §2.2 (2026-10-01).* Ces vérifications empêchent les
 erreurs et les contournements de l'IHM, par exemple un profil non-admin qui appellerait
 directement une route Admin. Elles n'empêchent pas une attaque délibérée avec un accès direct à
 l'API. C'est cohérent avec le modèle de confiance actuel de l'appli, pas un renforcement de
@@ -256,7 +327,7 @@ toutes.
   modifier (mot de passe) ou le supprimer.
 - **Invisible pour les écoles** : absent du tableau des administrateurs (§2.4), des listes
   d'élèves et de professeurs, de la messagerie (il n'y écrit pas, n'y apparaît pas comme
-  membre) et du contact affiché par "Code oublié ?". Il n'est jamais compté comme "le dernier
+  membre). Il n'est jamais compté comme "le dernier
   Owner" d'une école.
 
 **Droits**
@@ -277,8 +348,8 @@ suis le compte n° X", et le serveur le croit. Acceptable pour un admin d'école
 compte qui a tous les droits sur toutes les écoles** : n'importe qui pourrait envoyer le
 numéro de ce compte à l'API. Le Superuser a donc sa propre connexion, sécurisée :
 - **même écran et mêmes champs que tout le monde** (décision utilisateur du 2026-09-21) : son
-  identifiant dans "Nom Prénom ou Email", et son **mot de passe personnel** (jamais un code
-  partagé) dans le champ "Code". Aucun lien ni mention ne signale qu'un accès propriétaire
+  identifiant dans "Nom Prénom ou Email", et son **mot de passe personnel** dans le champ "Mot
+  de passe" (avec §2.2, tout le monde a désormais un mot de passe personnel). Aucun lien ni mention ne signale qu'un accès propriétaire
   existe ;
 - le serveur vérifie **d'abord** si l'identifiant est celui du Superuser ET si le "code" saisi
   correspond à son mot de passe. Si oui : connexion Superuser, puis sélecteur d'école. Sinon :
@@ -296,8 +367,8 @@ numéro de ce compte à l'API. Le Superuser a donc sa propre connexion, sécuris
   par le serveur à chaque requête. Un `compte_id` de Superuser envoyé par le navigateur sans
   jeton valide ne donne **aucun** droit.
 
-Les écoles gardent leur connexion actuelle. Le même mécanisme de jeton pourra être étendu à
-tous les comptes plus tard (chantier "vraie authentification", §8).
+Le même mécanisme de jeton est étendu à tous les comptes par le §2.2 (2026-10-01), avec une
+durée de 90 jours au lieu de 12 heures.
 
 **Mise en œuvre**
 - Création du compte, sur le serveur uniquement :
@@ -331,7 +402,8 @@ Une **saison** est une année d'activité d'une école : un **nom** (ex. `2026-2
 de début** et une **date de fin**. Chaque école a ses propres saisons.
 
 **Tout est par saison, sauf l'école** (décisions utilisateur du 2026-09-23). Seule l'école
-est permanente : nom, code postal, codes d'accès. Tout le reste appartient à une saison :
+est permanente : nom, code postal (et, hors école, les mots de passe : `utilisateurs`,
+§6.3ter, valables toutes saisons). Tout le reste appartient à une saison :
 - les **comptes** (élèves, professeurs, **admins compris**) : une personne présente sur deux
   saisons a **une fiche par saison**, avec ses rôles (cumulables, §2.1) propres à chaque
   saison. Il y a beaucoup de rotation d'une année à l'autre, et une fiche peut changer
@@ -459,8 +531,8 @@ interaction supplémentaire.
 
 #### 5.1.1 École
 
-Nom de l'école, code postal, et les 3 codes d'accès (Admin/Professeur/Élève), modifiables par
-tout admin. Onglet le plus à gauche du sélecteur segmenté.
+Nom de l'école et code postal, modifiables par tout admin (plus de codes d'accès depuis le
+2026-10-01, §2.2). Onglet le plus à gauche du sélecteur segmenté.
 
 **Bouton "Usage vidéo"** : ouvre un panneau d'information sur les vidéos de l'école (tous cours
 confondus) — espace utilisé (Mo tant que ça reste sous 1 Go, Go au-delà) et durée totale
@@ -473,7 +545,7 @@ demandée) — supprime aussi le fichier et sa vignette, pas seulement l'entrée
 lourdes porte sur la saison affichée.
 
 **Section "Saison 2026-2027"** *(spécifié le 2026-09-23, voir §2.6)* : repliable comme
-"Usage vidéo", placée **après "Code d'accès Élève" et avant "Administrateurs"**. Son titre
+"Usage vidéo", placée **après le code postal et avant "Administrateurs"**. Son titre
 est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande utilisateur du
 2026-09-24). Elle contient :
 - un **menu déroulant "Saison affichée"**, de la plus récente à la plus ancienne, pour
@@ -582,7 +654,7 @@ vocabulaire entre l'admin et l'utilisateur (voir §6.8).
 ### 5.6 Profil *(tous les rôles)*
 
 ⚠️ **Proposition non validée.** Identité de la personne connectée, autres profils de la
-famille, paramètres (notifications, changement de code), bouton **Se déconnecter**. Pour un
+famille, paramètres (notifications, **changer mon mot de passe**, §2.2), bouton **Se déconnecter**. Pour un
 compte Professeur, lien **"Mes heures"** vers l'écran Comptage d'heures (§5.7).
 
 ![Écran profil (proposition)](images/profil.png)
@@ -642,19 +714,14 @@ champs techniques.
 | id | PK | — |
 | nom | texte | Obl. |
 | code_postal | texte | Obl. |
-| code_acces_admin | texte | Obl. |
-| code_acces_prof | texte | Obl. |
-| code_acces_eleve | texte | Obl. |
 | created_at | datetime | Obl. (auto) |
 
 **Le nom seul n'est pas unique** : deux écoles différentes peuvent porter le même nom (ex. deux
 associations "Contretemps" dans des villes différentes) — c'est le couple **(nom, code_postal)**
 qui doit être unique, pas le nom seul. D'où le code postal obligatoire dès la création.
 
-Modifiable par tout admin de l'école après création. Les 3 codes d'accès sont **libres** (texte
-éditable sans contrainte de format imposée) — à la création de l'école, une valeur par défaut
-est proposée pour chacun (`ADMIN_ECOLE_ANNEE`, `PROF_ECOLE_ANNEE`, `ELEVE_ECOLE_ANNEE`, où
-ÉCOLE = nom de l'école en majuscules et ANNÉE = année en cours), éditable avant validation.
+Modifiable par tout admin de l'école après création. Les 3 colonnes `code_acces_admin`,
+`code_acces_prof` et `code_acces_eleve` sont supprimées (décision du 2026-10-01, §2.2).
 
 ### 6.1bis Saisons *(spécifié le 2026-09-23, voir §2.6)*
 
@@ -712,16 +779,11 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | prenom | texte | Obl. |
 | email | texte | Opt. |
 | telephone | texte | Opt. |
-| hashed_password_ou_code | texte | technique |
-| code_recuperation | texte | Opt. (voir *Admin* ci-dessous) |
 | created_at | datetime | Obl. (auto) |
 
-*Admin* : un seul champ supplémentaire — `code_recuperation`, réponse à "nom
-de votre 1er animal de compagnie", demandée à la création d'un admin (voir
-NouvelleEcoleModal, écran de connexion §2.2/§2.3) pour le bouton "Code
-oublié ?". Champ commun avec Professeur/Élève (comme le
-reste de cette table) même s'il n'a de sens que pour un admin — pas de
-table séparée pour un unique champ.
+*Admin* : aucun champ supplémentaire. `code_recuperation` (question de récupération) et
+`hashed_password_ou_code` disparaissent avec le §2.2 (2026-10-01) : le mot de passe vit dans
+`utilisateurs` (§6.3ter), rattaché au compte par son email.
 *Professeur* : aucun champ supplémentaire propre pour l'instant (ses cours sont une relation, voir §6.5 — pas un champ stocké ici).
 
 Les rôles ne sont **pas** un champ de cette table : un compte peut en avoir plusieurs, ils
@@ -755,7 +817,7 @@ L'école se déduit du compte (`Comptes.ecole_id`).
 - tout compte a **au moins un rôle** ;
 - **`owner` implique `admin`** : retirer `admin` retire aussi `owner` ;
 - **`eleve` ne se cumule jamais avec `professeur`** ; il peut recevoir `admin`/`owner`
-  (élève-admin, §2.4 : droits actifs seulement avec le code Admin) ;
+  (élève-admin, §2.4) ;
 - chaque école a toujours **au moins un compte `owner`** (seul le Superuser peut passer outre,
   pour dépanner une école, §2.5) ;
 - **`superuser` ne se cumule avec aucun autre rôle**, et seul un compte sans école peut
@@ -774,6 +836,37 @@ stocker les rôles change, seules ces fonctions changent.
 (`auth.py:premier_admin`, `ecoles/receiver.py`), le rang pour la bascule de profil
 (`auth.py:RANG_ROLE`, `frontend/src/data/roles.js`) et l'affichage des onglets côté frontend.
 Chacune de ces lectures passe par les fonctions ci-dessus.
+
+### 6.3ter Utilisateurs et liens d'accès *(spécifié le 2026-10-01, voir §2.2)*
+
+**`utilisateurs`** : une ligne par adresse email, toutes écoles et saisons confondues.
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| email | texte, unique (minuscules) | Obl. |
+| hashed_password | texte (scrypt) | Opt. (vide tant que l'accès n'est pas activé) |
+| active_le | datetime | Opt. |
+| created_at | datetime | Obl. (auto) |
+
+Les comptes s'y rattachent par leur email (comparé en minuscules). Changer l'email d'un compte
+le rattache à une autre ligne, qu'il faudra inviter. Le Superuser y a aussi sa ligne.
+
+**`liens_acces`** : liens d'invitation et de réinitialisation.
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| utilisateur_id | FK → utilisateurs | Obl. |
+| type | `invitation` ou `reinitialisation` | Obl. |
+| jeton_hache | texte (seul le haché est stocké) | Obl. |
+| expire_le | datetime (7 jours / 1 heure) | Obl. |
+| utilise_le | datetime | Opt. |
+| ecole_id | FK → écoles (école qui invite) | Opt. |
+| created_at | datetime | Obl. (auto) |
+
+Un nouveau lien du même type annule les précédents de cet utilisateur. L'état affiché aux
+admins (*invité le…*, *accès activé*) se lit dans ces deux tables.
 
 ### 6.4 Profil Élève (champs spécifiques)
 
@@ -1150,8 +1243,13 @@ encore branché).
   automatique à sa création" (§6.9, ✅ confirmé) n'est pour l'instant câblé que dans le seed de
   démo (`app/seed.py`), pas dans `CoursService.create()` lui-même — une école réelle qui crée
   un cours n'obtient pas encore sa conversation automatiquement.
-- **"Code oublié ?"** (écran de connexion) : **remplacé le 2026-09-21 par un simple message**
-  (voir §2.2). Historique : identifiant → si admin, question de
+- **Vraie authentification (§2.2, §6.3ter)** : **spécifiée le 2026-10-01**, pas encore
+  implémentée. Mot de passe par email, invitation, mot de passe oublié par mail, jeton de
+  session de 90 jours, recherche du compte dans toutes les écoles, suppression des codes
+  d'accès, lien profond Android. Remplace les deux points ci-dessous (« Code oublié ? » et
+  limite du RBAC sans session).
+- **"Code oublié ?"** (écran de connexion) : **remplacé le 2026-09-21 par un simple message**,
+  puis par « Mot de passe oublié ? » le 2026-10-01 (voir §2.2). Historique : identifiant → si admin, question de
   récupération (`code_recuperation`, §6.3) et connexion directe si la réponse est bonne ; si
   professeur/élève, pas de libre-service — juste le contact du (premier) admin de l'école à
   qui demander directement. *Reste ouvert* : pas d'écran pour qu'un admin change son propre
