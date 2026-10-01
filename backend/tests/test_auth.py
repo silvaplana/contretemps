@@ -556,3 +556,37 @@ def test_un_envoi_qui_echoue_se_lit_dans_le_statut(client, db_session, ecole, mo
     assert reponse.json()["emails"] == 2 and sorted(envoyes) == ["c@x.fr", "j.dho@x.fr"]
     statuts = _statuts(client, ecole)
     assert statuts[str(nouvelle.id)]["statut"] == "invite" and statuts[str(mal_saisie.id)]["statut"] == "echec_envoi"
+
+
+def test_brevo_signale_la_remise_ou_l_echec(client, db_session, ecole, mails, monkeypatch):
+    monkeypatch.setenv("BREVO_WEBHOOK_CLE", "cle-secrete")
+    nouvelle = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="C", prenom="D", email="C@x.fr")
+    client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [nouvelle.id]})
+    statut = lambda: _statuts(client, ecole)[str(nouvelle.id)]  # noqa: E731
+    assert statut()["statut"] == "invite"
+
+    def brevo(evenement, cle="cle-secrete", email="c@x.fr"):
+        return client.post(f"/mails/brevo/{cle}", json={"event": evenement, "email": email, "reason": "x"})
+
+    # Sans la bonne clé, la route n'existe pas.
+    assert brevo("hard_bounce", cle="fausse").status_code == 404
+    assert statut()["statut"] == "invite"
+    assert brevo("request").status_code == 204 and statut()["statut"] == "invite"
+
+    assert brevo("hard_bounce").status_code == 204
+    assert (statut()["statut"], statut()["detail"]) == ("echec_envoi", "Adresse introuvable : le mail n'a pas pu être remis")
+    # Réinvitation puis remise : l'échec disparaît.
+    client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [nouvelle.id]})
+    assert statut()["statut"] == "invite"
+    assert brevo("delivered").status_code == 204 and statut()["statut"] == "remis"
+    # Adresse inconnue de l'appli : ignorée sans erreur.
+    assert brevo("delivered", email="inconnu@x.fr").status_code == 204
+    # Un mail remis à quelqu'un qui n'a pas été invité ne vaut pas invitation.
+    brevo("delivered", email="m.p@x.fr")
+    assert _statuts(client, ecole)[str(ecole["prof"].id)]["statut"] == "finalise"
+
+
+@pytest.mark.rbac_reel
+def test_webhook_brevo_ferme_sans_cle_configuree(client, monkeypatch):
+    monkeypatch.delenv("BREVO_WEBHOOK_CLE", raising=False)
+    assert client.post("/mails/brevo/nimporte", json={"event": "delivered", "email": "a@x.fr"}).status_code == 404

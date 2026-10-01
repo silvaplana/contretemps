@@ -12,6 +12,7 @@ const LIBELLES = {
   pas_email: 'Pas d’email',
   pas_invite: 'Pas invité',
   invite: 'Invité',
+  remis: 'Mail remis',
   consultee: 'Invitation consultée',
   finalise: 'Profil finalisé',
   installee: 'Appli installée',
@@ -68,9 +69,10 @@ export function useAcces(ecoleId) {
       await recharger()
       // Plusieurs adresses : les mails partent en tâche de fond côté
       // serveur, on relit les statuts à intervalles croissants.
-      if (enCours) {
-        minuteursRef.current = [3, 8, 15, 30, 60, 120].map((s) => setTimeout(recharger, s * 1000))
-      }
+      // Une seule adresse : le service d'envoi signale un peu plus tard si
+      // le mail a été remis ou non (statut « Mail remis » / « Échec »).
+      const delais = enCours ? [3, 8, 15, 30, 60, 120] : [5, 12, 30, 60]
+      minuteursRef.current = delais.map((s) => setTimeout(recharger, s * 1000))
     } catch (err) {
       setMessage({ texte: err.message, erreur: true })
       // L'échec est aussi noté dans la colonne Statut.

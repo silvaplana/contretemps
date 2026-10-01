@@ -55,6 +55,8 @@ ROUTES_PUBLIQUES = {
     ("POST", "/auth/mot-de-passe-oublie"),
     ("GET", "/auth/liens/{jeton}"),
     ("POST", "/auth/liens/{jeton}/mot-de-passe"),
+    # Appelée par Brevo (remise des mails) : protégée par une clé dans l'adresse.
+    ("POST", "/mails/brevo/{cle}"),
     ("GET", "/ecoles"),
     ("GET", "/cours"),
     ("GET", "/push/cle-publique"),

@@ -2849,6 +2849,7 @@
   color: var(--text-muted);
 }
 
+.acces-statut--remis,
 .acces-statut--finalise,
 .acces-statut--installee {
   color: var(--success-text);

@@ -26,6 +26,7 @@ CONSULTEE = "consultee"
 FINALISE = "finalise"
 INSTALLEE = "installee"
 ECHEC_ENVOI = "echec_envoi"
+REMIS = "remis"
 
 
 class ErreurAcces(ValueError):
@@ -112,6 +113,12 @@ class Acces:
     def noter_invite(self, db: Session, acces_email: AccesEmail) -> None:
         acces_email.invite_le = maintenant()  # dernière invitation envoyée
         acces_email.echec_envoi_le = acces_email.echec_envoi_raison = None
+        acces_email.mail_remis_le = None  # celui-ci n'est pas encore remis
+        db.commit()
+
+    def noter_mail_remis(self, db: Session, acces_email: AccesEmail) -> None:
+        acces_email.mail_remis_le = maintenant()
+        acces_email.echec_envoi_le = acces_email.echec_envoi_raison = None
         db.commit()
 
     def noter_echec_envoi(self, db: Session, acces_email: AccesEmail, raison: str) -> None:
@@ -143,6 +150,9 @@ class Acces:
             (FINALISE, acces_email.profil_finalise_le, None),
             (ECHEC_ENVOI, acces_email.echec_envoi_le, acces_email.echec_envoi_raison),
             (CONSULTEE, acces_email.invitation_consultee_le, None),
+            # Seulement pour une personne invitée : un autre mail remis
+            # (mot de passe oublié...) ne vaut pas invitation.
+            (REMIS, acces_email.mail_remis_le if acces_email.invite_le else None, None),
             (INVITE, acces_email.invite_le, None),
         ):
             if date is not None:

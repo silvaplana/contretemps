@@ -6,13 +6,15 @@ de passe oublié ? » et les deux routes d'un lien reçu par mail. Toutes les
 autres exigent une session.
 """
 
+import hmac
 import logging
+import os
 import re
 
 from acces import INVITATION, ErreurAcces, AccesEmail
 from comptes import Compte, rbac, roles
 from ecoles.models import Ecole
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
+from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -38,6 +40,17 @@ logger = logging.getLogger(__name__)
 
 # Contrôle de forme seulement (quelque chose@domaine.ext) : évite d'envoyer
 # vers une adresse manifestement mal saisie.
+# Événements Brevo qui veulent dire « ce mail n'est pas arrivé », et ce
+# qu'on en dit à l'admin. Ignorés : "request" (envoyé), "deferred" (Brevo
+# réessaie), "spam", ouvertures et clics.
+_ECHECS_BREVO = {
+    "hard_bounce": "Adresse introuvable : le mail n'a pas pu être remis",
+    "invalid_email": "Adresse introuvable : le mail n'a pas pu être remis",
+    "soft_bounce": "Mail non remis pour l'instant (boîte pleine ou indisponible)",
+    "blocked": "Mail bloqué : adresse déjà en échec ou désinscrite chez Brevo",
+    "error": "Erreur du service d'envoi",
+}
+
 _ADRESSE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s.]+$")
 
 # Même message dans tous les cas (compte inconnu, mot de passe faux, email
@@ -63,6 +76,7 @@ class AuthReceiver:
         )
         self.app.post("/auth/mot-de-passe", response_model=SessionOuverte)(self.changer_mot_de_passe)
         self.app.post("/auth/appli-installee", status_code=204)(self.appli_installee)
+        self.app.post("/mails/brevo/{cle}", status_code=204)(self.evenement_brevo)
         admin = [Depends(self._admin_ecole)]
         self.app.post(
             "/ecoles/{ecole_id}/invitations", response_model=InvitationSortie, dependencies=admin
@@ -196,6 +210,27 @@ class AuthReceiver:
         date, les suivants sont ignorés."""
         _, acces_email = rbac.session_de_la_requete(request, db)
         self.client.acces.noter_appli_installee(db, acces_email)
+
+    # --- Remise des mails, signalée par Brevo (webhook) ---
+
+    def evenement_brevo(self, cle: str, evenement: dict = Body(...), db: Session = Depends(get_db)):
+        """Brevo appelle cette adresse pour chaque mail : remis, ou non remis
+        (adresse introuvable, bloqué...). C'est ce qui fait apparaître dans
+        le Statut un échec connu seulement APRÈS l'envoi (demande
+        utilisateur du 2026-10-02). L'adresse contient une clé secrète
+        (BREVO_WEBHOOK_CLE) : sans elle, la route n'existe pas. Toujours
+        204, même pour une adresse inconnue : rien à apprendre ici."""
+        attendue = os.environ.get("BREVO_WEBHOOK_CLE", "")
+        if not attendue or not hmac.compare_digest(cle.encode(), attendue.encode()):
+            raise HTTPException(status_code=404, detail="Not Found")
+        acces_email = self.client.acces.par_email(db, str(evenement.get("email") or ""))
+        if acces_email is None:
+            return
+        nom = evenement.get("event")
+        if nom == "delivered":
+            self.client.acces.noter_mail_remis(db, acces_email)
+        elif nom in _ECHECS_BREVO:
+            self.client.acces.noter_echec_envoi(db, acces_email, _ECHECS_BREVO[nom])
 
     # --- Invitation par un admin ---
 

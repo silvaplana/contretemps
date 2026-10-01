@@ -45,6 +45,9 @@ class AccesEmail(Base):
     invitation_consultee_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     profil_finalise_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     appli_installee_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Dernier mail remis dans la boîte du destinataire, d'après le service
+    # d'envoi (Brevo, voir auth/receiver.py : evenement_brevo).
+    mail_remis_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Dernier envoi de mail qui a échoué (adresse mal saisie, refus du
     # serveur de mail...), et pourquoi. Effacés au prochain envoi réussi.
     echec_envoi_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
