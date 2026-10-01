@@ -138,12 +138,24 @@ La colonne **Statut** d'Admin > Élèves affiche la dernière étape atteinte, a
 | *Invité le 02/10* | l'admin a cliqué sur « Inviter » et le mail est parti |
 | *Invitation consultée le 03/10* | la personne a **cliqué sur le lien** du mail : la page « Créer mon mot de passe » le signale au serveur à son ouverture |
 | *Profil finalisé le 03/10* | la personne a créé son mot de passe |
-| *Appli installée le 04/10* | première connexion depuis l'appli installée : l'appli Android (Capacitor), ou l'appli web ajoutée à l'écran d'accueil (mode « standalone »). L'appli le signale au serveur à chaque connexion, et seule la première date est gardée |
+| *Appli installée le 04/10* | l'installation passe par le parcours de l'appli elle-même (`frontend/src/api/installation.js`, écran d'installation après connexion), donc la personne est déjà connectée et l'appli prévient le serveur, voir ci-dessous |
 
 Toutes les étapes sont déclarées au serveur par l'appli elle-même : l'admin n'a rien à
 saisir. Le statut appartient à l'**adresse email** (§6.3ter) : tous les profils d'une même
 famille affichent donc le même statut. Le bouton « Inviter » reste disponible à chaque étape
 pour renvoyer un lien (un nouveau lien annule le précédent).
+
+**Comment l'appli sait qu'elle est installée** (le premier signal reçu fixe la date, les
+suivants sont ignorés) :
+- **Android avec Chrome, Chrome et Edge sur ordinateur** : le navigateur déclenche l'événement
+  `appinstalled` à la fin de l'installation, que celle-ci parte de notre bouton
+  (`installer()`, réponse `accepted`) ou du menu du navigateur. `ecouterInstallation()`
+  l'écoute déjà : il suffit d'y ajouter l'envoi au serveur. C'est le cas le plus courant ;
+- **iPhone, Safari sur Mac, Samsung Internet** : aucun événement d'installation n'existe.
+  L'appli le signale à sa **première ouverture depuis l'icône** (`estInstallee()`, mode
+  « standalone »), ce qui arrive juste après l'installation ;
+- **appli Android native (Capacitor)**, si elle est un jour distribuée : signalé à la première
+  ouverture.
 
 **« Consultée » veut dire « lien cliqué », pas « mail ouvert ».** Savoir qu'un mail a été
 ouvert demande une image espion, qui n'est pas fiable : Gmail et Apple Mail chargent les
@@ -881,7 +893,7 @@ Chacune de ces lectures passe par les fonctions ci-dessus.
 | invite_le | datetime | Opt. (dernière invitation envoyée) |
 | invitation_consultee_le | datetime | Opt. (premier clic sur le lien) |
 | profil_finalise_le | datetime | Opt. (mot de passe créé) |
-| appli_installee_le | datetime | Opt. (première connexion depuis l'appli installée) |
+| appli_installee_le | datetime | Opt. (signalée par l'appli, voir §2.2 « Suivi de l'invitation ») |
 | created_at | datetime | Obl. (auto) |
 
 Les comptes s'y rattachent par leur email (comparé en minuscules). Changer l'email d'un compte
