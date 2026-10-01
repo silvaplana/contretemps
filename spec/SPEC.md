@@ -111,10 +111,9 @@ Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'
 
 1. **L'école saisit la personne** avec son email (à la main, ou par l'import Excel §6.4bis).
 2. **Un admin l'invite**, par un bouton, jamais automatiquement (pour ne pas envoyer des
-   dizaines de mails par accident pendant un import) :
-   - **« Inviter »** sur une fiche (élève, professeur, administrateur) ;
-   - **« Inviter tous ceux qui n'ont pas encore activé leur accès »** dans Admin > Élèves.
-   Les listes montrent l'état de chacun : *pas d'email*, *invité le…*, *accès activé*.
+   dizaines de mails par accident pendant un import) : colonne **« Inviter »** dans Admin >
+   Élèves (§5.1.2), à côté d'une colonne **Statut** qui suit chaque étape (voir « Suivi de
+   l'invitation » ci-dessous). Même bouton pour les professeurs et les administrateurs.
 3. **Un seul mail par adresse**, même si elle porte plusieurs profils : « L'école Contretemps
    vous invite sur l'application. Profils : Léa, Tom. [Créer mon mot de passe] ».
 4. **Le lien** : `https://silvaplana.cloud/contretemps/activer?jeton=…`, à usage unique,
@@ -127,6 +126,29 @@ Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'
    mot de passe saisi deux fois, œil pour l'afficher.
 7. À la validation, la personne est **connectée directement**, sans retaper son mot de passe,
    avec la proposition de notifications habituelle.
+
+#### Suivi de l'invitation *(demande utilisateur du 2026-10-01)*
+
+La colonne **Statut** d'Admin > Élèves affiche la dernière étape atteinte, avec sa date :
+
+| Statut | Quand l'appli l'enregistre |
+|---|---|
+| *Pas d'email* | le compte n'a pas d'email : bouton « Inviter » grisé |
+| *Pas invité* | email présent, aucune invitation envoyée |
+| *Invité le 02/10* | l'admin a cliqué sur « Inviter » et le mail est parti |
+| *Invitation consultée le 03/10* | la personne a **cliqué sur le lien** du mail : la page « Créer mon mot de passe » le signale au serveur à son ouverture |
+| *Profil finalisé le 03/10* | la personne a créé son mot de passe |
+| *Appli installée le 04/10* | première connexion depuis l'appli installée : l'appli Android (Capacitor), ou l'appli web ajoutée à l'écran d'accueil (mode « standalone »). L'appli le signale au serveur à chaque connexion, et seule la première date est gardée |
+
+Toutes les étapes sont déclarées au serveur par l'appli elle-même : l'admin n'a rien à
+saisir. Le statut appartient à l'**adresse email** (§6.3ter) : tous les profils d'une même
+famille affichent donc le même statut. Le bouton « Inviter » reste disponible à chaque étape
+pour renvoyer un lien (un nouveau lien annule le précédent).
+
+**« Consultée » veut dire « lien cliqué », pas « mail ouvert ».** Savoir qu'un mail a été
+ouvert demande une image espion, qui n'est pas fiable : Gmail et Apple Mail chargent les
+images à l'avance (faux « ouvert »), et beaucoup de messageries les bloquent (faux « pas
+ouvert »). Le clic sur le lien est, lui, toujours exact.
 
 Envoi : par le SMTP déjà utilisé pour les inscriptions (`inscriptions/email_envoi.py`), pour
 l'instant depuis sebastien.richard54@gmail.com. **Brevo** est prévu pour le remplacer, avec
@@ -170,8 +192,9 @@ Les routes `/auth/recuperation/*`, la question de récupération et le champ
 
 #### Transition
 
-Coupure en une fois : au déploiement, un admin clique sur « Inviter tous ceux qui n'ont pas
-encore activé leur accès », et les codes d'accès cessent de fonctionner. Les 3 colonnes
+Coupure en une fois : au déploiement, un admin invite tout le monde depuis la colonne
+« Inviter » d'Admin > Élèves (un bouton « Inviter tous les non-invités » en tête de colonne
+évite de cliquer ligne par ligne), et les codes d'accès cessent de fonctionner. Les 3 colonnes
 `code_acces_*` de la table des écoles (§6.1) sont supprimées.
 
 ![Écran de connexion](images/login.png)
@@ -254,7 +277,7 @@ de rang inférieur redemande le mot de passe (§2.2).
 Dans Admin > École, **au-dessus** du bouton "Usage vidéo". Visible par **tous les admins** de
 l'école, Owners ou non, professeurs-admins compris. Une ligne par administrateur, admins "purs"
 et professeurs-admins confondus. Colonnes : **Nom, Prénom, Email, Owner** (oui/non). L'
-état de son accès (*invité le…*, *accès activé*) est affiché, avec le bouton « Inviter » (§2.2).
+état de son accès (même statut qu'Admin > Élèves, §2.2) est affiché, avec le bouton « Inviter » (§2.2).
 
 #### Droits réservés aux Owners
 
@@ -573,6 +596,11 @@ flottant pour ajouter, icône poubelle par ligne pour supprimer. Bouton **"Impor
 Excel"** — mécanisme détaillé en §6.4bis (mapping des colonnes de cours, alerte sur colonne
 inconnue).
 
+**Accès à l'appli** *(2026-10-01, §2.2)* : deux colonnes à droite du tableau, **« Inviter »**
+(bouton qui envoie le mail d'invitation) et **Statut** (*Pas d'email*, *Pas invité*, *Invité
+le…*, *Invitation consultée le…*, *Profil finalisé le…*, *Appli installée le…*, voir §2.2
+« Suivi de l'invitation »).
+
 ![Admin — gestion des élèves](images/admin-eleves.png)
 
 #### 5.1.3 Professeurs
@@ -850,7 +878,10 @@ Chacune de ces lectures passe par les fonctions ci-dessus.
 | id | PK | — |
 | email | texte, unique (minuscules) | Obl. |
 | hashed_password | texte (scrypt) | Opt. (vide tant que l'accès n'est pas activé) |
-| active_le | datetime | Opt. |
+| invite_le | datetime | Opt. (dernière invitation envoyée) |
+| invitation_consultee_le | datetime | Opt. (premier clic sur le lien) |
+| profil_finalise_le | datetime | Opt. (mot de passe créé) |
+| appli_installee_le | datetime | Opt. (première connexion depuis l'appli installée) |
 | created_at | datetime | Obl. (auto) |
 
 Les comptes s'y rattachent par leur email (comparé en minuscules). Changer l'email d'un compte
@@ -870,7 +901,7 @@ le rattache à une autre ligne, qu'il faudra inviter. Le Superuser y a aussi sa 
 | created_at | datetime | Obl. (auto) |
 
 Un nouveau lien du même type annule les précédents de cet utilisateur. L'état affiché aux
-admins (*invité le…*, *accès activé*) se lit dans ces deux tables.
+admins (§2.2, « Suivi de l'invitation ») se lit dans `utilisateurs`.
 
 ### 6.4 Profil Élève (champs spécifiques)
 
