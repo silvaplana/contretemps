@@ -13,6 +13,7 @@ from __future__ import annotations
 import logging
 import os
 from html import escape
+from urllib.parse import quote_plus
 
 from inscriptions.email_envoi import EmailEnvoi
 
@@ -91,7 +92,9 @@ class MailsAcces:
             destinataire,
             paragraphes,
             "Ouvrir l'application",
-            f"{self.url_appli}/",
+            # Le nom voyage dans le lien : l'écran de connexion s'ouvre avec
+            # « Nom Prénom ou Email » déjà rempli (demande du 2026-10-02).
+            f"{self.url_appli}/?identifiant={quote_plus(destinataire)}",
             [
                 f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",

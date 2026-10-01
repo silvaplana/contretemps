@@ -15,3 +15,16 @@ export function lienRecu() {
 export function oublierLienRecu() {
   history.replaceState(null, '', import.meta.env.BASE_URL)
 }
+
+// Lien du mail de rappel (personne qui a déjà son mot de passe, voir
+// backend auth/mails.py : rappel) : …/?identifiant=Prénom+Nom. L'écran de
+// connexion s'ouvre avec « Nom Prénom ou Email » déjà rempli. Lu une seule
+// fois, puis retiré de l'adresse.
+export function identifiantPropose() {
+  const url = new URL(location.href)
+  const valeur = url.searchParams.get('identifiant')
+  if (valeur === null) return ''
+  url.searchParams.delete('identifiant')
+  history.replaceState(history.state, '', url)
+  return valeur.trim()
+}

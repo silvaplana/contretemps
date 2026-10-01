@@ -5,13 +5,15 @@ import Modal from '../components/Modal.jsx'
 import * as auth from '../api/auth.js'
 import * as notificationsApi from '../api/notifications.js'
 import { ROLE_LABEL } from '../data/roles.js'
+import { identifiantPropose } from '../utils/lienRecu.js'
 
 // Écran de connexion (voir spec/SPEC.md §2.2) : une seule page pour toutes
 // les écoles. Nom prénom ou email, et le mot de passe personnel (créé à
 // partir d'une invitation reçue par mail). Créer une école est réservé au
 // Super User (décision du 2026-10-01, voir ChoixEcoleScreen.jsx).
 export default function LoginScreen({ onLogin }) {
-  const [identifiant, setIdentifiant] = useState('')
+  // Pré-rempli quand on arrive par le lien d'un mail de rappel.
+  const [identifiant, setIdentifiant] = useState(identifiantPropose)
   const [motDePasse, setMotDePasse] = useState('')
   const [showOubli, setShowOubli] = useState(false)
   // Plusieurs écoles possibles pour cet identifiant et ce mot de passe

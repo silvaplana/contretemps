@@ -613,6 +613,8 @@ def test_reinviter_une_personne_qui_a_deja_son_mot_de_passe(client, db_session, 
     assert destinataire == "m.p@x.fr" and texte.startswith("Bonjour Marie Pesenti,")
     assert "jeton=" not in texte and "jeton=" not in html
     assert "Mot de passe oublié" in texte and "m.p@x.fr" in texte
+    # Le lien ouvre l'écran de connexion avec le nom déjà rempli.
+    assert "/?identifiant=Marie+Pesenti\n" in texte
     assert db_session.query(LienInvitationReinit).count() == 0
     # Son mot de passe n'a pas bougé.
     assert _login(client, "Marie Pesenti").status_code == 200
