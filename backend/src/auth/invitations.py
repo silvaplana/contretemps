@@ -5,7 +5,7 @@ plusieurs profils dans l'école.
 
 from __future__ import annotations
 
-from acces import INVITATION, Acces, Utilisateur, normaliser_email
+from acces import INVITATION, Acces, AccesEmail, normaliser_email
 from comptes import Compte
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -31,10 +31,10 @@ class Invitations:
             select(Compte).where(Compte.ecole_id == ecole.id, Compte.email.isnot(None)).order_by(Compte.id)
         )
         prenoms = [p.prenom for p in profils if normaliser_email(p.email) == email]
-        utilisateur = self.acces.obtenir_ou_creer(db, email)
-        jeton = self.acces.creer_lien(db, utilisateur, INVITATION, ecole.id)
+        acces_email = self.acces.obtenir_ou_creer(db, email)
+        jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
         self.mails.invitation(email, ecole.nom, prenoms, jeton)
-        self.acces.noter_invite(db, utilisateur)
+        self.acces.noter_invite(db, acces_email)
 
     def statuts(self, db: Session, ecole_id: int) -> dict[int, dict]:
         """{compte_id: {"statut", "date"}} pour toutes les fiches de
@@ -42,13 +42,13 @@ class Invitations:
         profils d'une famille affichent le même."""
         fiches = list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id)))
         emails = {normaliser_email(f.email) for f in fiches} - {None}
-        utilisateurs = (
-            {u.email: u for u in db.scalars(select(Utilisateur).where(Utilisateur.email.in_(emails)))}
+        acces_emails = (
+            {u.email: u for u in db.scalars(select(AccesEmail).where(AccesEmail.email.in_(emails)))}
             if emails
             else {}
         )
         resultat = {}
         for fiche in fiches:
-            statut, date = self.acces.statut(fiche.email, utilisateurs.get(normaliser_email(fiche.email)))
+            statut, date = self.acces.statut(fiche.email, acces_emails.get(normaliser_email(fiche.email)))
             resultat[fiche.id] = {"statut": statut, "date": date}
         return resultat

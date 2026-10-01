@@ -13,7 +13,7 @@ from securite import mots_de_passe
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .models import INVITATION, REINITIALISATION, LienAcces, Utilisateur, maintenant
+from .models import INVITATION, REINITIALISATION, LienInvitationReinit, AccesEmail, maintenant
 
 LONGUEUR_MIN = 8  # au moins 8 caractères, sans autre règle (§2.2)
 DUREES = {INVITATION: timedelta(days=7), REINITIALISATION: timedelta(hours=1)}
@@ -43,49 +43,49 @@ def _hacher_jeton(jeton: str) -> str:
 class Acces:
     # --- Utilisateurs (une ligne par email) ---
 
-    def par_email(self, db: Session, email: str | None) -> Utilisateur | None:
+    def par_email(self, db: Session, email: str | None) -> AccesEmail | None:
         email = normaliser_email(email)
         if email is None:
             return None
-        return db.scalar(select(Utilisateur).where(Utilisateur.email == email))
+        return db.scalar(select(AccesEmail).where(AccesEmail.email == email))
 
-    def obtenir_ou_creer(self, db: Session, email: str) -> Utilisateur:
-        utilisateur = self.par_email(db, email)
-        if utilisateur is None:
-            utilisateur = Utilisateur(email=normaliser_email(email))
-            db.add(utilisateur)
+    def obtenir_ou_creer(self, db: Session, email: str) -> AccesEmail:
+        acces_email = self.par_email(db, email)
+        if acces_email is None:
+            acces_email = AccesEmail(email=normaliser_email(email))
+            db.add(acces_email)
             db.flush()
-        return utilisateur
+        return acces_email
 
     # --- Mot de passe ---
 
-    def mot_de_passe_valide(self, utilisateur: Utilisateur | None, mot_de_passe: str) -> bool:
-        return utilisateur is not None and mots_de_passe.verifier(mot_de_passe, utilisateur.hashed_password)
+    def mot_de_passe_valide(self, acces_email: AccesEmail | None, mot_de_passe: str) -> bool:
+        return acces_email is not None and mots_de_passe.verifier(mot_de_passe, acces_email.mot_de_passe_hache)
 
-    def definir_mot_de_passe(self, db: Session, utilisateur: Utilisateur, mot_de_passe: str) -> None:
+    def definir_mot_de_passe(self, db: Session, acces_email: AccesEmail, mot_de_passe: str) -> None:
         if len(mot_de_passe or "") < LONGUEUR_MIN:
             raise ErreurAcces(f"Le mot de passe doit faire au moins {LONGUEUR_MIN} caractères")
-        utilisateur.hashed_password = mots_de_passe.hacher(mot_de_passe)
-        if utilisateur.profil_finalise_le is None:
-            utilisateur.profil_finalise_le = maintenant()
+        acces_email.mot_de_passe_hache = mots_de_passe.hacher(mot_de_passe)
+        if acces_email.profil_finalise_le is None:
+            acces_email.profil_finalise_le = maintenant()
         db.commit()
 
-    def empreinte(self, utilisateur: Utilisateur) -> str:
+    def empreinte(self, acces_email: AccesEmail) -> str:
         """Courte empreinte du mot de passe actuel, portée par les jetons de
         session (securite/jetons.py) : changer de mot de passe la change,
         ce qui déconnecte tous les appareils (décision du 2026-10-01)."""
-        return hashlib.sha256((utilisateur.hashed_password or "").encode("utf-8")).hexdigest()[:16]
+        return hashlib.sha256((acces_email.mot_de_passe_hache or "").encode("utf-8")).hexdigest()[:16]
 
     # --- Liens d'invitation et de réinitialisation ---
 
-    def creer_lien(self, db: Session, utilisateur: Utilisateur, type_: str, ecole_id: int | None = None) -> str:
+    def creer_lien(self, db: Session, acces_email: AccesEmail, type_: str, ecole_id: int | None = None) -> str:
         """Le jeton EN CLAIR, à mettre dans le lien du mail : il n'est
         stocké nulle part. Annule les liens précédents du même type."""
-        db.execute(delete(LienAcces).where(LienAcces.utilisateur_id == utilisateur.id, LienAcces.type == type_))
+        db.execute(delete(LienInvitationReinit).where(LienInvitationReinit.acces_email_id == acces_email.id, LienInvitationReinit.type == type_))
         jeton = secrets.token_urlsafe(32)
         db.add(
-            LienAcces(
-                utilisateur_id=utilisateur.id,
+            LienInvitationReinit(
+                acces_email_id=acces_email.id,
                 type=type_,
                 jeton_hache=_hacher_jeton(jeton),
                 expire_le=maintenant() + DUREES[type_],
@@ -95,45 +95,45 @@ class Acces:
         db.commit()
         return jeton
 
-    def lire_lien(self, db: Session, jeton: str) -> LienAcces | None:
+    def lire_lien(self, db: Session, jeton: str) -> LienInvitationReinit | None:
         """Le lien s'il existe, n'a jamais servi et n'a pas expiré."""
-        lien = db.scalar(select(LienAcces).where(LienAcces.jeton_hache == _hacher_jeton(jeton or "")))
+        lien = db.scalar(select(LienInvitationReinit).where(LienInvitationReinit.jeton_hache == _hacher_jeton(jeton or "")))
         if lien is None or lien.utilise_le is not None or lien.expire_le <= maintenant():
             return None
         return lien
 
-    def consommer_lien(self, db: Session, lien: LienAcces) -> None:
+    def consommer_lien(self, db: Session, lien: LienInvitationReinit) -> None:
         lien.utilise_le = maintenant()
         db.commit()
 
     # --- Suivi de l'invitation (§2.2) : le premier signal fixe la date ---
 
-    def noter_invite(self, db: Session, utilisateur: Utilisateur) -> None:
-        utilisateur.invite_le = maintenant()  # dernière invitation envoyée
+    def noter_invite(self, db: Session, acces_email: AccesEmail) -> None:
+        acces_email.invite_le = maintenant()  # dernière invitation envoyée
         db.commit()
 
-    def noter_consultee(self, db: Session, utilisateur: Utilisateur) -> None:
-        if utilisateur.invitation_consultee_le is None:
-            utilisateur.invitation_consultee_le = maintenant()
+    def noter_consultee(self, db: Session, acces_email: AccesEmail) -> None:
+        if acces_email.invitation_consultee_le is None:
+            acces_email.invitation_consultee_le = maintenant()
             db.commit()
 
-    def noter_appli_installee(self, db: Session, utilisateur: Utilisateur) -> None:
-        if utilisateur.appli_installee_le is None:
-            utilisateur.appli_installee_le = maintenant()
+    def noter_appli_installee(self, db: Session, acces_email: AccesEmail) -> None:
+        if acces_email.appli_installee_le is None:
+            acces_email.appli_installee_le = maintenant()
             db.commit()
 
-    def statut(self, email: str | None, utilisateur: Utilisateur | None) -> tuple[str, datetime | None]:
+    def statut(self, email: str | None, acces_email: AccesEmail | None) -> tuple[str, datetime | None]:
         """Dernière étape atteinte et sa date, pour un compte dont l'email
         est `email` (voir le tableau du §2.2)."""
         if normaliser_email(email) is None:
             return PAS_EMAIL, None
-        if utilisateur is None:
+        if acces_email is None:
             return PAS_INVITE, None
         for code, date in (
-            (INSTALLEE, utilisateur.appli_installee_le),
-            (FINALISE, utilisateur.profil_finalise_le),
-            (CONSULTEE, utilisateur.invitation_consultee_le),
-            (INVITE, utilisateur.invite_le),
+            (INSTALLEE, acces_email.appli_installee_le),
+            (FINALISE, acces_email.profil_finalise_le),
+            (CONSULTEE, acces_email.invitation_consultee_le),
+            (INVITE, acces_email.invite_le),
         ):
             if date is not None:
                 return code, date

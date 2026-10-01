@@ -1,13 +1,13 @@
 """Tables de l'accès par mot de passe (voir spec/SPEC.md §2.2 et §6.3ter).
 
-`Utilisateur` : une ligne par ADRESSE EMAIL, toutes écoles et saisons
+`AccesEmail` : une ligne par ADRESSE EMAIL, toutes écoles et saisons
 confondues — pas une personne. C'est elle qui porte le mot de passe (haché)
 et le suivi de l'invitation ; les fiches (`comptes`) s'y rattachent par leur
 email, comparé en minuscules. Les profils d'une même famille (même email)
 partagent donc un seul mot de passe, qui survit à la recopie des fiches à
 chaque saison.
 
-`LienAcces` : liens d'invitation et de réinitialisation, à usage unique.
+`LienInvitationReinit` : liens d'invitation et de réinitialisation, à usage unique.
 Seule l'empreinte du jeton est stockée : une copie de la base ne permet pas
 d'utiliser un lien.
 """
@@ -31,15 +31,15 @@ def maintenant() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-class Utilisateur(Base):
-    __tablename__ = "utilisateurs"
+class AccesEmail(Base):
+    __tablename__ = "acces_emails"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     # Toujours en minuscules, sans espaces autour (voir acces.py :
     # normaliser_email).
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     # scrypt (securite/mots_de_passe.py) ; vide tant que l'accès n'est pas activé.
-    hashed_password: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    mot_de_passe_hache: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Suivi de l'invitation (§2.2), une date par étape atteinte.
     invite_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     invitation_consultee_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -48,11 +48,11 @@ class Utilisateur(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=maintenant)
 
 
-class LienAcces(Base):
-    __tablename__ = "liens_acces"
+class LienInvitationReinit(Base):
+    __tablename__ = "liens_invitation_reinit"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    utilisateur_id: Mapped[int] = mapped_column(ForeignKey("utilisateurs.id"), nullable=False, index=True)
+    acces_email_id: Mapped[int] = mapped_column(ForeignKey("acces_emails.id"), nullable=False, index=True)
     # INVITATION | REINITIALISATION
     type: Mapped[str] = mapped_column(String(20), nullable=False)
     jeton_hache: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)

@@ -61,8 +61,8 @@ def test_mot_de_passe_jamais_en_clair():
 
 def test_jeton_falsifie_ou_expire_refuse():
     jeton = jetons.emettre(42, maintenant=1_000)
-    assert jetons.lire(jeton, maintenant=1_001).utilisateur_id == 42
-    trente_jours = jetons.DUREES_SECONDES[jetons.UTILISATEUR]
+    assert jetons.lire(jeton, maintenant=1_001).acces_email_id == 42
+    trente_jours = jetons.DUREES_SECONDES[jetons.STANDARD]
     assert jetons.lire(jeton, maintenant=1_000 + trente_jours - 1) is not None
     assert jetons.lire(jeton, maintenant=1_000 + trente_jours) is None
     # Superuser : 12 heures seulement.
@@ -97,7 +97,7 @@ def test_meme_email_qu_un_compte_d_ecole_on_choisit(client, monde):
     }
     en_admin = _login(client, EMAIL, compte_id=monde["admin_a"].id).json()
     assert en_admin["compte"]["roles"] == ["admin", "owner"]
-    assert jetons.lire(en_admin["jeton"]).portee == jetons.UTILISATEUR
+    assert jetons.lire(en_admin["jeton"]).portee == jetons.STANDARD
     en_su = _login(client, EMAIL, compte_id=monde["su"].id).json()
     assert jetons.lire(en_su["jeton"]).portee == jetons.SUPERUSER
 
@@ -143,8 +143,8 @@ def test_une_session_ordinaire_ne_donne_pas_les_droits_superuser(client, db_sess
     entetes = {"Authorization": f"Bearer {en_admin}", rbac.ENTETE_COMPTE: str(monde["su"].id)}
     assert client.get(f"/ecoles/{monde['b'].id}", headers=entetes).status_code == 401
     # Et un jeton fabriqué avec le rang maximum ne suffit pas non plus.
-    utilisateur = Acces().par_email(db_session, EMAIL)
-    force = jetons.emettre(utilisateur.id, rang=99, empreinte=Acces().empreinte(utilisateur))
+    acces_email = Acces().par_email(db_session, EMAIL)
+    force = jetons.emettre(acces_email.id, rang=99, empreinte=Acces().empreinte(acces_email))
     entetes["Authorization"] = f"Bearer {force}"
     assert client.get(f"/ecoles/{monde['b'].id}", headers=entetes).status_code == 401
     # L'admin de l'école B n'a aucun droit dans l'école A.
@@ -212,7 +212,7 @@ def test_enregistrer_superuser_met_a_jour_le_meme_email(db_session, monde):
     )
     assert compte.id == monde["su"].id
     # Le mot de passe vit sur la ligne de son email (§6.3ter).
-    stocke = Acces().par_email(db_session, EMAIL).hashed_password
+    stocke = Acces().par_email(db_session, EMAIL).mot_de_passe_hache
     assert mots_de_passe.verifier("nouveau-mot-de-passe", stocke)
     assert not mots_de_passe.verifier(MOT_DE_PASSE, stocke)
 

@@ -284,15 +284,15 @@ class Comptes:
             compte.roles.append(RoleCompte(role=r.SUPERUSER))
             db.add(compte)
         compte.nom, compte.prenom = nom, prenom
-        # Le mot de passe vit dans `utilisateurs`, sur la ligne de son email
+        # Le mot de passe vit dans `acces_emails`, sur la ligne de son email
         # (§6.3ter), comme pour tout le monde.
         from acces import Acces
         from acces.models import maintenant
 
-        utilisateur = Acces().obtenir_ou_creer(db, email)
-        utilisateur.hashed_password = mot_de_passe_hache
-        if utilisateur.profil_finalise_le is None:
-            utilisateur.profil_finalise_le = maintenant()
+        acces_email = Acces().obtenir_ou_creer(db, email)
+        acces_email.mot_de_passe_hache = mot_de_passe_hache
+        if acces_email.profil_finalise_le is None:
+            acces_email.profil_finalise_le = maintenant()
         db.commit()
         db.refresh(compte)
         return compte

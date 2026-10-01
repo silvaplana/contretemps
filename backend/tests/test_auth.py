@@ -6,7 +6,7 @@ import time
 from datetime import timedelta
 
 import pytest
-from acces import Acces, LienAcces, Utilisateur
+from acces import Acces, LienInvitationReinit, AccesEmail
 from acces.models import maintenant
 from comptes import Comptes, RoleCompte, roles
 from conftest import MOT_DE_PASSE, donner_mot_de_passe, entetes_session
@@ -141,9 +141,9 @@ def test_un_profil_de_rang_superieur_redemande_le_mot_de_passe(client, ecole):
 
 @pytest.mark.rbac_reel
 def test_le_jeton_est_prolonge_a_l_usage(client, db_session, ecole):
-    utilisateur = Acces().par_email(db_session, "m.p@x.fr")
+    acces_email = Acces().par_email(db_session, "m.p@x.fr")
     ancien = jetons.emettre(
-        utilisateur.id, rang=1, empreinte=Acces().empreinte(utilisateur), maintenant=time.time() - 2 * 24 * 3600
+        acces_email.id, rang=1, empreinte=Acces().empreinte(acces_email), maintenant=time.time() - 2 * 24 * 3600
     )
     entetes = {**_bearer(ancien), "X-Compte-Id": str(ecole["prof"].id)}
     reponse = client.get(f"/cours/999999/eleves", headers=entetes)
@@ -153,7 +153,7 @@ def test_le_jeton_est_prolonge_a_l_usage(client, db_session, ecole):
     assert "X-Jeton-Renouvele" not in client.get("/cours/999999/eleves", headers={**entetes, **_bearer(nouveau)}).headers
     # Passé 30 jours sans usage : expiré.
     expire = jetons.emettre(
-        utilisateur.id, rang=1, empreinte=Acces().empreinte(utilisateur), maintenant=time.time() - 31 * 24 * 3600
+        acces_email.id, rang=1, empreinte=Acces().empreinte(acces_email), maintenant=time.time() - 31 * 24 * 3600
     )
     assert client.get("/cours/999999/eleves", headers={**entetes, **_bearer(expire)}).status_code == 401
 
@@ -264,10 +264,10 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
     assert installee.status_code == 204
     assert _statuts(client, ecole)[str(eleve.id)]["statut"] == "installee"
     # Le premier signal fixe la date.
-    premiere = db_session.query(Utilisateur).filter_by(email="parent@x.fr").one().appli_installee_le
+    premiere = db_session.query(AccesEmail).filter_by(email="parent@x.fr").one().appli_installee_le
     client.post("/auth/appli-installee", headers=_bearer(session["jeton"]))
     db_session.expire_all()
-    assert db_session.query(Utilisateur).filter_by(email="parent@x.fr").one().appli_installee_le == premiere
+    assert db_session.query(AccesEmail).filter_by(email="parent@x.fr").one().appli_installee_le == premiere
 
 
 def test_un_nouveau_lien_annule_le_precedent_et_un_lien_expire(client, db_session, ecole, mails):
@@ -279,7 +279,7 @@ def test_un_nouveau_lien_annule_le_precedent_et_un_lien_expire(client, db_sessio
     assert client.get(f"/auth/liens/{premier}").status_code == 404
     assert client.get(f"/auth/liens/{second}").status_code == 200
 
-    lien = db_session.query(LienAcces).one()
+    lien = db_session.query(LienInvitationReinit).one()
     assert timedelta(days=6, hours=23) < lien.expire_le - maintenant() <= timedelta(days=7)
     lien.expire_le = maintenant() - timedelta(minutes=1)
     db_session.commit()
@@ -336,7 +336,7 @@ def test_mot_de_passe_oublie(client, db_session, ecole, mails):
     assert client.post("/auth/mot-de-passe-oublie", json={"identifiant": "Ana Roux"}).status_code == 204
     assert [m[0] for m in mails] == ["a.roux@x.fr"]
     jeton = _jeton_du_mail(mails, "reinitialiser")
-    lien = db_session.query(LienAcces).one()
+    lien = db_session.query(LienInvitationReinit).one()
     assert lien.type == "reinitialisation" and lien.expire_le - maintenant() <= timedelta(hours=1)
     assert client.get(f"/auth/liens/{jeton}").json()["type"] == "reinitialisation"
     # Un lien de réinitialisation ne compte pas comme une invitation consultée.
@@ -418,9 +418,9 @@ def test_migration_deplace_le_mot_de_passe_du_superuser(tmp_path, monkeypatch):
         ))
     command.upgrade(config, "9d2f4b6a8c10")
     with moteur.connect() as c:
-        lignes = c.execute(sa.text("SELECT email, hashed_password FROM utilisateurs")).all()
+        lignes = c.execute(sa.text("SELECT email, mot_de_passe_hache FROM acces_emails")).all()
     assert lignes == [("proprio@exemple.fr", "scrypt$x")]
     command.downgrade(config, "7c3e9a1f2d56")
     with moteur.connect() as c:
-        assert "utilisateurs" not in sa.inspect(c).get_table_names()
+        assert "acces_emails" not in sa.inspect(c).get_table_names()
     moteur.dispose()

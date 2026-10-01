@@ -101,13 +101,13 @@ def entetes_session(compte, mot_de_passe: str = MOT_DE_PASSE) -> dict[str, str]:
         compte.email = f"compte{compte.id}@test.fr"
         db.commit()
     acces = Acces()
-    utilisateur = acces.obtenir_ou_creer(db, compte.email)
-    if utilisateur.hashed_password is None:
+    acces_email = acces.obtenir_ou_creer(db, compte.email)
+    if acces_email.mot_de_passe_hache is None:
         if mot_de_passe == MOT_DE_PASSE:
             _HACHE = _HACHE or mots_de_passe.hacher(MOT_DE_PASSE)
-            utilisateur.hashed_password = _HACHE
+            acces_email.mot_de_passe_hache = _HACHE
         else:
-            utilisateur.hashed_password = mots_de_passe.hacher(mot_de_passe)
+            acces_email.mot_de_passe_hache = mots_de_passe.hacher(mot_de_passe)
     db.commit()
     jeton = Auth(Comptes(), acces).ouvrir_session(db, compte)
     return {"X-Compte-Id": str(compte.id), "Authorization": f"Bearer {jeton}"}
@@ -122,9 +122,9 @@ def donner_mot_de_passe(db, email: str) -> None:
     _HACHE = _HACHE or mots_de_passe.hacher(MOT_DE_PASSE)
     from acces.models import maintenant
 
-    utilisateur = Acces().obtenir_ou_creer(db, email)
-    utilisateur.hashed_password = _HACHE
-    utilisateur.profil_finalise_le = maintenant()
+    acces_email = Acces().obtenir_ou_creer(db, email)
+    acces_email.mot_de_passe_hache = _HACHE
+    acces_email.profil_finalise_le = maintenant()
     db.commit()
 
 

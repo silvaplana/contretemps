@@ -2,7 +2,7 @@
 spec/SPEC.md §2.2).
 
 Le mot de passe appartient à une adresse email (acces/ : table
-`utilisateurs`), pas à une fiche : la connexion trouve des fiches par le
+`acces_emails`), pas à une fiche : la connexion trouve des fiches par le
 nom ou l'email saisi, dans TOUTES les écoles, puis ne garde que celles dont
 l'email a ce mot de passe. `auth` ne possède aucune table.
 """
@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import unicodedata
 
-from acces import REINITIALISATION, Acces, Utilisateur, normaliser_email
+from acces import REINITIALISATION, Acces, AccesEmail, normaliser_email
 from comptes import Compte, Comptes
 from comptes import roles as r
 from securite import jetons, limiteur
@@ -90,19 +90,19 @@ class Auth:
 
     def ouvrir_session(self, db: Session, compte: Compte, rang: int | None = None) -> str:
         """Le jeton de session pour ce profil : portée "superuser" (12 h)
-        pour le Superuser, "utilisateur" (30 jours glissants) sinon."""
-        utilisateur = self.acces.par_email(db, compte.email)
+        pour le Superuser, "standard" (30 jours glissants) sinon."""
+        acces_email = self.acces.par_email(db, compte.email)
         return jetons.emettre(
-            utilisateur.id,
-            portee=jetons.SUPERUSER if r.is_superuser(compte) else jetons.UTILISATEUR,
+            acces_email.id,
+            portee=jetons.SUPERUSER if r.is_superuser(compte) else jetons.STANDARD,
             rang=r.rang(compte) if rang is None else rang,
-            empreinte=self.acces.empreinte(utilisateur),
+            empreinte=self.acces.empreinte(acces_email),
         )
 
-    def profil_de_plus_haut_rang(self, db: Session, utilisateur: Utilisateur, ecole_id: int | None) -> Compte | None:
+    def profil_de_plus_haut_rang(self, db: Session, acces_email: AccesEmail, ecole_id: int | None) -> Compte | None:
         """Après la création du mot de passe par un lien : on entre
         directement, de préférence dans l'école qui a invité."""
-        fiches = self.fiches_designees(db, utilisateur.email)
+        fiches = self.fiches_designees(db, acces_email.email)
         fiches.sort(key=lambda c: (c.ecole_id != ecole_id, -r.rang(c), c.id))
         return fiches[0] if fiches else None
 
@@ -112,7 +112,7 @@ class Auth:
         self,
         db: Session,
         jeton: jetons.Jeton,
-        utilisateur: Utilisateur,
+        acces_email: AccesEmail,
         vers_compte_id: int,
         mot_de_passe: str | None,
     ) -> tuple[Compte, str] | None:
@@ -122,13 +122,13 @@ class Auth:
         vers un enfant puis remonter redemande donc le mot de passe.
         None : profil inconnu, ou mot de passe faux."""
         vers = self.comptes.get(db, vers_compte_id)
-        if vers is None or r.is_superuser(vers) or normaliser_email(vers.email) != utilisateur.email:
+        if vers is None or r.is_superuser(vers) or normaliser_email(vers.email) != acces_email.email:
             return None
         if r.rang(vers) > jeton.rang:
             if not mot_de_passe:
                 raise MotDePasseRequis()
-            cle = _cle_connexion(utilisateur.email)
-            if limiteur.est_bloque(cle) or not self.acces.mot_de_passe_valide(utilisateur, mot_de_passe):
+            cle = _cle_connexion(acces_email.email)
+            if limiteur.est_bloque(cle) or not self.acces.mot_de_passe_valide(acces_email, mot_de_passe):
                 limiteur.noter_echec(cle)
                 return None
             limiteur.noter_succes(cle)
@@ -147,16 +147,16 @@ class Auth:
             if limiteur.est_bloque(cle):
                 continue
             limiteur.noter_echec(cle)
-            utilisateur = self.acces.obtenir_ou_creer(db, email)
-            liens.append((email, self.acces.creer_lien(db, utilisateur, REINITIALISATION)))
+            acces_email = self.acces.obtenir_ou_creer(db, email)
+            liens.append((email, self.acces.creer_lien(db, acces_email, REINITIALISATION)))
         return liens
 
-    def changer_mot_de_passe(self, db: Session, utilisateur: Utilisateur, ancien: str, nouveau: str) -> bool:
+    def changer_mot_de_passe(self, db: Session, acces_email: AccesEmail, ancien: str, nouveau: str) -> bool:
         """Depuis Profil : l'ancien mot de passe est redemandé."""
-        cle = _cle_connexion(utilisateur.email)
-        if limiteur.est_bloque(cle) or not self.acces.mot_de_passe_valide(utilisateur, ancien):
+        cle = _cle_connexion(acces_email.email)
+        if limiteur.est_bloque(cle) or not self.acces.mot_de_passe_valide(acces_email, ancien):
             limiteur.noter_echec(cle)
             return False
         limiteur.noter_succes(cle)
-        self.acces.definir_mot_de_passe(db, utilisateur, nouveau)
+        self.acces.definir_mot_de_passe(db, acces_email, nouveau)
         return True

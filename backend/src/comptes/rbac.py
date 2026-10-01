@@ -4,7 +4,7 @@
 cru sur parole. Chaque requête porte :
 - un **jeton de session signé** (`Authorization: Bearer ...`, voir
   securite/jetons.py), remis à la connexion, qui désigne une adresse email
-  (table `utilisateurs`) ;
+  (table `acces_emails`) ;
 - le **profil actif** dans `X-Compte-Id` (voir frontend/src/api/identite.js).
 
 Le serveur vérifie le jeton, que le mot de passe n'a pas changé depuis, que
@@ -27,7 +27,7 @@ la passe ici : un admin d'une école n'a aucun droit sur une autre (§2.1).
 
 from __future__ import annotations
 
-from acces import Utilisateur, normaliser_email
+from acces import AccesEmail, normaliser_email
 from acces.acces import Acces
 from fastapi import Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
@@ -79,7 +79,7 @@ def _refus_session() -> HTTPException:
     return HTTPException(status_code=401, detail={"code": "session_expiree", "message": _SESSION_EXPIREE})
 
 
-def session_de_la_requete(request: Request, db: Session) -> tuple[jetons.Jeton, Utilisateur]:
+def session_de_la_requete(request: Request, db: Session) -> tuple[jetons.Jeton, AccesEmail]:
     """Le jeton et l'adresse email connectée, ou 401. Le jeton est lu dans
     `Authorization`, ou dans le paramètre `jeton` de l'URL pour le flux
     temps réel (EventSource ne sait pas envoyer d'en-tête)."""
@@ -89,15 +89,15 @@ def session_de_la_requete(request: Request, db: Session) -> tuple[jetons.Jeton, 
     else:
         texte = request.query_params.get("jeton", "")
     jeton = jetons.lire(texte)
-    utilisateur = db.get(Utilisateur, jeton.utilisateur_id) if jeton is not None else None
+    acces_email = db.get(AccesEmail, jeton.acces_email_id) if jeton is not None else None
     # Mot de passe changé depuis l'émission du jeton : session terminée.
-    if utilisateur is None or Acces().empreinte(utilisateur) != jeton.empreinte:
+    if acces_email is None or Acces().empreinte(acces_email) != jeton.empreinte:
         raise _refus_session()
-    return jeton, utilisateur
+    return jeton, acces_email
 
 
 def _identifier(request: Request, response: Response, db: Session) -> Compte:
-    jeton, utilisateur = session_de_la_requete(request, db)
+    jeton, acces_email = session_de_la_requete(request, db)
     compte_id = request.headers.get(ENTETE_COMPTE) or request.query_params.get("compte")
     if compte_id is None or not str(compte_id).isdigit():
         raise HTTPException(status_code=401, detail="Profil actif manquant")
@@ -105,7 +105,7 @@ def _identifier(request: Request, response: Response, db: Session) -> Compte:
     # saison affichée (un admin qui consulte une ancienne saison), ou plus
     # de la saison courante (voir _verifier_saison).
     compte = db.get(Compte, int(compte_id), execution_options={TOUTES_SAISONS: True})
-    if compte is None or normaliser_email(compte.email) != utilisateur.email:
+    if compte is None or normaliser_email(compte.email) != acces_email.email:
         raise HTTPException(status_code=401, detail="Ce profil n'appartient pas à votre compte")
     if roles.is_superuser(compte):
         if jeton.portee != jetons.SUPERUSER:
@@ -119,7 +119,7 @@ def _identifier(request: Request, response: Response, db: Session) -> Compte:
         _verifier_saison(db, compte)
     if jetons.a_renouveler(jeton):
         response.headers[ENTETE_JETON_RENOUVELE] = jetons.emettre(
-            utilisateur.id, portee=jeton.portee, rang=jeton.rang, empreinte=jeton.empreinte
+            acces_email.id, portee=jeton.portee, rang=jeton.rang, empreinte=jeton.empreinte
         )
     return compte
 

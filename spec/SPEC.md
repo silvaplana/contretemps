@@ -84,7 +84,7 @@ l'onglet **Profil**. Le Superuser utilise le même écran (§2.5).
 
 #### Où vit le mot de passe : un par adresse email
 
-Le mot de passe appartient à une **adresse email** (table `utilisateurs`, §6.3ter), pas à un
+Le mot de passe appartient à une **adresse email** (table `acces_emails`, §6.3ter), pas à un
 compte :
 - avec une connexion par nom prénom, le serveur trouve le compte, puis son email, puis vérifie
   le mot de passe de cet email ;
@@ -102,7 +102,7 @@ compte :
 Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'appli (§2.4,
 §8) : un mot de passe ne protégerait rien. Désormais :
 - à la connexion, le serveur délivre un **jeton signé** (`securite/jetons.py`, portée
-  « utilisateur ») qui désigne l'adresse email connectée ;
+  « standard ») qui désigne l'adresse email connectée ;
 - l'appli le garde sur l'appareil (`frontend/src/api/session.js`) et l'envoie à chaque requête ;
 - le serveur vérifie à chaque requête le jeton, **et** que le profil actif (`X-Compte-Id`)
   appartient bien à cet email. Un `X-Compte-Id` seul ne donne plus aucun droit ;
@@ -464,7 +464,7 @@ Une **saison** est une année d'activité d'une école : un **nom** (ex. `2026-2
 de début** et une **date de fin**. Chaque école a ses propres saisons.
 
 **Tout est par saison, sauf l'école** (décisions utilisateur du 2026-09-23). Seule l'école
-est permanente : nom, code postal (et, hors école, les mots de passe : `utilisateurs`,
+est permanente : nom, code postal (et, hors école, les mots de passe : `acces_emails`,
 §6.3ter, valables toutes saisons). Tout le reste appartient à une saison :
 - les **comptes** (élèves, professeurs, **admins compris**) : une personne présente sur deux
   saisons a **une fiche par saison**, avec ses rôles (cumulables, §2.1) propres à chaque
@@ -850,7 +850,7 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 
 *Admin* : aucun champ supplémentaire. `code_recuperation` (question de récupération) et
 `hashed_password_ou_code` disparaissent avec le §2.2 (2026-10-01) : le mot de passe vit dans
-`utilisateurs` (§6.3ter), rattaché au compte par son email.
+`acces_emails` (§6.3ter), rattaché au compte par son email.
 *Professeur* : aucun champ supplémentaire propre pour l'instant (ses cours sont une relation, voir §6.5 — pas un champ stocké ici).
 
 Les rôles ne sont **pas** un champ de cette table : un compte peut en avoir plusieurs, ils
@@ -904,15 +904,20 @@ stocker les rôles change, seules ces fonctions changent.
 (`auth.py:RANG_ROLE`, `frontend/src/data/roles.js`) et l'affichage des onglets côté frontend.
 Chacune de ces lectures passe par les fonctions ci-dessus.
 
-### 6.3ter Utilisateurs et liens d'accès *(spécifié le 2026-10-01, voir §2.2)*
+### 6.3ter Accès par email et liens d'invitation *(spécifié le 2026-10-01, voir §2.2)*
 
-**`utilisateurs`** : une ligne par adresse email, toutes écoles et saisons confondues.
+**`acces_emails`** : une ligne par adresse email, toutes écoles et saisons confondues.
+Ce n'est **pas** la table des personnes : celles-ci sont les fiches de `comptes` (§6.3). Deux
+membres d'une famille qui partagent un email ont deux fiches dans `comptes`, mais une seule
+ligne ici, donc **un seul mot de passe**. La table porte à la fois le mot de passe et le suivi
+de l'accès (invité, lien consulté, mot de passe créé, appli installée), d'où son nom (choisi
+avec l'utilisateur le 2026-10-01, à la place de `utilisateurs`).
 
 | Champ | Type | Obl./Opt. |
 |---|---|---|
 | id | PK | — |
 | email | texte, unique (minuscules) | Obl. |
-| hashed_password | texte (scrypt) | Opt. (vide tant que l'accès n'est pas activé) |
+| mot_de_passe_hache | texte (scrypt) | Opt. (vide tant que l'accès n'est pas activé) |
 | invite_le | datetime | Opt. (dernière invitation envoyée) |
 | invitation_consultee_le | datetime | Opt. (premier clic sur le lien) |
 | profil_finalise_le | datetime | Opt. (mot de passe créé) |
@@ -922,12 +927,12 @@ Chacune de ces lectures passe par les fonctions ci-dessus.
 Les comptes s'y rattachent par leur email (comparé en minuscules). Changer l'email d'un compte
 le rattache à une autre ligne, qu'il faudra inviter. Le Superuser y a aussi sa ligne.
 
-**`liens_acces`** : liens d'invitation et de réinitialisation.
+**`liens_invitation_reinit`** : liens d'invitation et de réinitialisation.
 
 | Champ | Type | Obl./Opt. |
 |---|---|---|
 | id | PK | — |
-| utilisateur_id | FK → utilisateurs | Obl. |
+| acces_email_id | FK → acces_emails | Obl. |
 | type | `invitation` ou `reinitialisation` | Obl. |
 | jeton_hache | texte (seul le haché est stocké) | Obl. |
 | expire_le | datetime (7 jours / 1 heure) | Obl. |
@@ -936,7 +941,7 @@ le rattache à une autre ligne, qu'il faudra inviter. Le Superuser y a aussi sa 
 | created_at | datetime | Obl. (auto) |
 
 Un nouveau lien du même type annule les précédents de cet utilisateur. L'état affiché aux
-admins (§2.2, « Suivi de l'invitation ») se lit dans `utilisateurs`.
+admins (§2.2, « Suivi de l'invitation ») se lit dans `acces_emails`.
 
 ### 6.4 Profil Élève (champs spécifiques)
 

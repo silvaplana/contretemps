@@ -8,7 +8,7 @@ autres exigent une session.
 
 import logging
 
-from acces import INVITATION, ErreurAcces, Utilisateur
+from acces import INVITATION, ErreurAcces, AccesEmail
 from comptes import Compte, rbac, roles
 from ecoles.models import Ecole
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
@@ -98,9 +98,9 @@ class AuthReceiver:
         )
 
     def basculer(self, donnees: Bascule, request: Request, db: Session = Depends(get_db)):
-        jeton, utilisateur = rbac.session_de_la_requete(request, db)
+        jeton, acces_email = rbac.session_de_la_requete(request, db)
         try:
-            resultat = self.client.basculer(db, jeton, utilisateur, donnees.vers_compte_id, donnees.mot_de_passe)
+            resultat = self.client.basculer(db, jeton, acces_email, donnees.vers_compte_id, donnees.mot_de_passe)
         except MotDePasseRequis:
             raise HTTPException(
                 status_code=403,
@@ -117,19 +117,19 @@ class AuthReceiver:
         lien = self.client.acces.lire_lien(db, jeton)
         if lien is None:
             raise HTTPException(status_code=404, detail=_LIEN_INVALIDE)
-        return lien, db.get(Utilisateur, lien.utilisateur_id)
+        return lien, db.get(AccesEmail, lien.acces_email_id)
 
     def lire_lien(self, jeton: str, db: Session = Depends(get_db)):
         """Ouverture de « Créer mon mot de passe » : c'est ce qui fait
         passer l'invitation à « consultée » (lien cliqué, §2.2)."""
-        lien, utilisateur = self._lien_ou_404(db, jeton)
+        lien, acces_email = self._lien_ou_404(db, jeton)
         if lien.type == INVITATION:
-            self.client.acces.noter_consultee(db, utilisateur)
-        fiches = self.client.fiches_designees(db, utilisateur.email)
+            self.client.acces.noter_consultee(db, acces_email)
+        fiches = self.client.fiches_designees(db, acces_email.email)
         ecole = db.get(Ecole, lien.ecole_id) if lien.ecole_id else None
         return LienSortie(
             type=lien.type,
-            email=utilisateur.email,
+            email=acces_email.email,
             prenoms=[f.prenom for f in fiches if lien.ecole_id is None or f.ecole_id == lien.ecole_id],
             ecole_nom=ecole.nom if ecole else None,
         )
@@ -137,13 +137,13 @@ class AuthReceiver:
     def definir_mot_de_passe(self, jeton: str, donnees: NouveauMotDePasse, db: Session = Depends(get_db)):
         """Le lien ne sert qu'une fois ; la personne est ensuite connectée
         directement, sans retaper son mot de passe (§2.2)."""
-        lien, utilisateur = self._lien_ou_404(db, jeton)
+        lien, acces_email = self._lien_ou_404(db, jeton)
         try:
-            self.client.acces.definir_mot_de_passe(db, utilisateur, donnees.mot_de_passe)
+            self.client.acces.definir_mot_de_passe(db, acces_email, donnees.mot_de_passe)
         except ErreurAcces as erreur:
             raise HTTPException(status_code=422, detail=str(erreur)) from erreur
         self.client.acces.consommer_lien(db, lien)
-        compte = self.client.profil_de_plus_haut_rang(db, utilisateur, lien.ecole_id)
+        compte = self.client.profil_de_plus_haut_rang(db, acces_email, lien.ecole_id)
         if compte is None:
             # Mot de passe créé, mais plus aucune fiche à cet email dans la
             # saison courante : rien à ouvrir.
@@ -163,9 +163,9 @@ class AuthReceiver:
     ):
         """Depuis Profil. Tous les jetons déjà remis deviennent invalides
         (autres appareils déconnectés) ; celui-ci reçoit un jeton neuf."""
-        jeton, utilisateur = rbac.session_de_la_requete(request, db)
+        jeton, acces_email = rbac.session_de_la_requete(request, db)
         try:
-            if not self.client.changer_mot_de_passe(db, utilisateur, donnees.ancien, donnees.nouveau):
+            if not self.client.changer_mot_de_passe(db, acces_email, donnees.ancien, donnees.nouveau):
                 raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
         except ErreurAcces as erreur:
             raise HTTPException(status_code=422, detail=str(erreur)) from erreur
@@ -173,18 +173,18 @@ class AuthReceiver:
 
         return SessionOuverte(
             jeton=jetons.emettre(
-                utilisateur.id,
+                acces_email.id,
                 portee=jeton.portee,
                 rang=jeton.rang,
-                empreinte=self.client.acces.empreinte(utilisateur),
+                empreinte=self.client.acces.empreinte(acces_email),
             )
         )
 
     def appli_installee(self, request: Request, db: Session = Depends(get_db)):
         """Signalé par l'appli elle-même (§2.2) : le premier signal fixe la
         date, les suivants sont ignorés."""
-        _, utilisateur = rbac.session_de_la_requete(request, db)
-        self.client.acces.noter_appli_installee(db, utilisateur)
+        _, acces_email = rbac.session_de_la_requete(request, db)
+        self.client.acces.noter_appli_installee(db, acces_email)
 
     # --- Invitation par un admin ---
 

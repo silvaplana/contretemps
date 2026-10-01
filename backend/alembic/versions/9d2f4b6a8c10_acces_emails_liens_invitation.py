@@ -1,8 +1,8 @@
-"""connexion par mot de passe : tables utilisateurs et liens_acces
+"""connexion par mot de passe : tables acces_emails et liens_invitation_reinit
 
-Voir spec/SPEC.md §2.2 et §6.3ter. `utilisateurs` : une ligne par adresse
+Voir spec/SPEC.md §2.2 et §6.3ter. `acces_emails` : une ligne par adresse
 email, qui porte le mot de passe haché et le suivi de l'invitation.
-`liens_acces` : liens d'invitation et de réinitialisation, à usage unique.
+`liens_invitation_reinit` : liens d'invitation et de réinitialisation, à usage unique.
 
 Le mot de passe du Superuser (jusqu'ici dans comptes.hashed_password_ou_code)
 est recopié sur la ligne de son email : il se connecte comme avant. Personne
@@ -33,12 +33,12 @@ def upgrade() -> None:
     # create_all), et peut démarrer avant la migration : elles peuvent déjà
     # exister, vides et identiques au modèle.
     existantes = sa.inspect(op.get_bind()).get_table_names()
-    if 'utilisateurs' not in existantes:
+    if 'acces_emails' not in existantes:
         op.create_table(
-            'utilisateurs',
+            'acces_emails',
             sa.Column('id', sa.Integer(), nullable=False),
             sa.Column('email', sa.String(length=255), nullable=False),
-            sa.Column('hashed_password', sa.String(length=255), nullable=True),
+            sa.Column('mot_de_passe_hache', sa.String(length=255), nullable=True),
             sa.Column('invite_le', sa.DateTime(), nullable=True),
             sa.Column('invitation_consultee_le', sa.DateTime(), nullable=True),
             sa.Column('profil_finalise_le', sa.DateTime(), nullable=True),
@@ -46,12 +46,12 @@ def upgrade() -> None:
             sa.Column('created_at', sa.DateTime(), nullable=True),
             sa.PrimaryKeyConstraint('id'),
         )
-        op.create_index('ix_utilisateurs_email', 'utilisateurs', ['email'], unique=True)
-    if 'liens_acces' not in existantes:
+        op.create_index('ix_acces_emails_email', 'acces_emails', ['email'], unique=True)
+    if 'liens_invitation_reinit' not in existantes:
         op.create_table(
-            'liens_acces',
+            'liens_invitation_reinit',
             sa.Column('id', sa.Integer(), nullable=False),
-            sa.Column('utilisateur_id', sa.Integer(), nullable=False),
+            sa.Column('acces_email_id', sa.Integer(), nullable=False),
             sa.Column('type', sa.String(length=20), nullable=False),
             sa.Column('jeton_hache', sa.String(length=64), nullable=False),
             sa.Column('expire_le', sa.DateTime(), nullable=False),
@@ -59,26 +59,26 @@ def upgrade() -> None:
             sa.Column('ecole_id', sa.Integer(), nullable=True),
             sa.Column('created_at', sa.DateTime(), nullable=True),
             sa.ForeignKeyConstraint(['ecole_id'], ['ecoles.id']),
-            sa.ForeignKeyConstraint(['utilisateur_id'], ['utilisateurs.id']),
+            sa.ForeignKeyConstraint(['acces_email_id'], ['acces_emails.id']),
             sa.PrimaryKeyConstraint('id'),
         )
-        op.create_index('ix_liens_acces_utilisateur_id', 'liens_acces', ['utilisateur_id'])
-        op.create_index('ix_liens_acces_jeton_hache', 'liens_acces', ['jeton_hache'], unique=True)
+        op.create_index('ix_liens_invitation_reinit_acces_email_id', 'liens_invitation_reinit', ['acces_email_id'])
+        op.create_index('ix_liens_invitation_reinit_jeton_hache', 'liens_invitation_reinit', ['jeton_hache'], unique=True)
 
     # Superuser (compte sans école) : son mot de passe suit son email.
     op.execute(
-        "INSERT INTO utilisateurs (email, hashed_password, profil_finalise_le, created_at) "
+        "INSERT INTO acces_emails (email, mot_de_passe_hache, profil_finalise_le, created_at) "
         "SELECT LOWER(TRIM(c.email)), c.hashed_password_ou_code, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP "
         "FROM comptes c "
         "WHERE c.ecole_id IS NULL AND c.email IS NOT NULL AND c.hashed_password_ou_code IS NOT NULL "
-        "AND NOT EXISTS (SELECT 1 FROM utilisateurs u WHERE u.email = LOWER(TRIM(c.email)))"
+        "AND NOT EXISTS (SELECT 1 FROM acces_emails u WHERE u.email = LOWER(TRIM(c.email)))"
     )
 
 
 def downgrade() -> None:
     # Le mot de passe du Superuser est resté dans comptes.hashed_password_ou_code.
-    op.drop_index('ix_liens_acces_jeton_hache', table_name='liens_acces')
-    op.drop_index('ix_liens_acces_utilisateur_id', table_name='liens_acces')
-    op.drop_table('liens_acces')
-    op.drop_index('ix_utilisateurs_email', table_name='utilisateurs')
-    op.drop_table('utilisateurs')
+    op.drop_index('ix_liens_invitation_reinit_jeton_hache', table_name='liens_invitation_reinit')
+    op.drop_index('ix_liens_invitation_reinit_acces_email_id', table_name='liens_invitation_reinit')
+    op.drop_table('liens_invitation_reinit')
+    op.drop_index('ix_acces_emails_email', table_name='acces_emails')
+    op.drop_table('acces_emails')

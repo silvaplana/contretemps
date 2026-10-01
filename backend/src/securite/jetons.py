@@ -2,13 +2,13 @@
 
 À la connexion, le serveur remet un jeton que l'appli renvoie à chaque
 requête (en-tête `Authorization: Bearer ...`). Il désigne une ADRESSE EMAIL
-(table `utilisateurs`, §6.3ter), pas une fiche : le profil actif voyage à
+(table `acces_emails`, §6.3ter), pas une fiche : le profil actif voyage à
 part, dans `X-Compte-Id`, et le serveur vérifie qu'il appartient bien à cet
 email (voir comptes/rbac.py). Le serveur recalcule la signature : un jeton
 modifié ou fabriqué à la main est refusé, un jeton expiré aussi.
 
 Deux PORTÉES :
-- "utilisateur" : tout le monde. 30 jours, prolongés à chaque usage (un
+- "standard" : tout le monde. 30 jours, prolongés à chaque usage (un
   nouveau jeton est remis au fil de l'eau, voir `a_renouveler`) ;
 - "superuser" : le Superuser, au-dessus des écoles (§2.5). 12 heures, jamais
   prolongé. Ses droits ne sont JAMAIS accordés sans ce jeton.
@@ -44,14 +44,14 @@ from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
-UTILISATEUR = "utilisateur"
+STANDARD = "standard"
 SUPERUSER = "superuser"
 
 DUREES_SECONDES = {
-    UTILISATEUR: 30 * 24 * 3600,  # décision utilisateur du 2026-10-01
+    STANDARD: 30 * 24 * 3600,  # décision utilisateur du 2026-10-01
     SUPERUSER: 12 * 3600,  # décision utilisateur du 2026-09-21
 }
-# "Prolongé à chaque usage" : un jeton "utilisateur" plus vieux que ça est
+# "Prolongé à chaque usage" : un jeton "standard" plus vieux que ça est
 # remplacé par un neuf à la requête suivante. Pas à CHAQUE requête : inutile
 # de réécrire le jeton de l'appareil des dizaines de fois par minute.
 AGE_RENOUVELLEMENT_SECONDES = 24 * 3600
@@ -59,7 +59,7 @@ AGE_RENOUVELLEMENT_SECONDES = 24 * 3600
 
 @dataclass(frozen=True)
 class Jeton:
-    utilisateur_id: int
+    acces_email_id: int
     portee: str
     rang: int
     empreinte: str
@@ -104,9 +104,9 @@ def _signer(charge: str) -> str:
 
 
 def emettre(
-    utilisateur_id: int,
+    acces_email_id: int,
     *,
-    portee: str = UTILISATEUR,
+    portee: str = STANDARD,
     rang: int = 0,
     empreinte: str = "",
     maintenant: float | None = None,
@@ -115,7 +115,7 @@ def emettre(
     charge = _b64(
         json.dumps(
             {
-                "sub": utilisateur_id,
+                "sub": acces_email_id,
                 "portee": portee,
                 "rang": rang,
                 "emp": empreinte,
@@ -144,7 +144,7 @@ def lire(jeton: str, maintenant: float | None = None) -> Jeton | None:
     if contenu.get("portee") not in DUREES_SECONDES or not isinstance(contenu.get("emp"), str):
         return None
     return Jeton(
-        utilisateur_id=contenu["sub"],
+        acces_email_id=contenu["sub"],
         portee=contenu["portee"],
         rang=int(contenu.get("rang", 0)),
         empreinte=contenu["emp"],
@@ -154,7 +154,7 @@ def lire(jeton: str, maintenant: float | None = None) -> Jeton | None:
 
 def a_renouveler(jeton: Jeton, maintenant: float | None = None) -> bool:
     maintenant = time.time() if maintenant is None else maintenant
-    return jeton.portee == UTILISATEUR and maintenant - jeton.emis_le > AGE_RENOUVELLEMENT_SECONDES
+    return jeton.portee == STANDARD and maintenant - jeton.emis_le > AGE_RENOUVELLEMENT_SECONDES
 
 
 def depuis_entete(authorization: str | None) -> Jeton | None:
