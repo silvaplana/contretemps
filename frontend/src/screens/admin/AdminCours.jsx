@@ -416,7 +416,7 @@ function ElevesDuCoursPopover({ cours, eleves, ancre, onClose }) {
     lignes.push(
       eleves
         .slice(i, i + NOMS_PAR_LIGNE)
-        .map((el) => `${el.nom} ${el.prenom}`)
+        .map((el) => `${el.prenom} ${el.nom}`)
         .join(', ') + (derniere ? '' : ','),
     )
   }
