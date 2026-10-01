@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
+import * as authApi from '../api/auth.js'
 import * as notificationsApi from '../api/notifications.js'
 import Icon from '../components/Icon.jsx'
+import Modal from '../components/Modal.jsx'
+import { ChampMotDePasse } from './LoginScreen.jsx'
 import { isAdmin, isProf, isSuperuser, libellesRoles, trierParRole } from '../data/roles.js'
 
 // Champ "toujours affiché, éditable via un crayon" (Profil admin
@@ -87,6 +90,7 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
 // "Changer de profil" du Header (voir Header.jsx), pas doublée ici.
 // `onChangerEcole` : Superuser seulement (§2.5), revenir au choix d'école.
 export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHeures, onUpdateUser, onChangerEcole }) {
+  const [changementMotDePasse, setChangementMotDePasse] = useState(false)
   const autresProfils = trierParRole(famille.filter((p) => p.id !== user.id))
 
   // Notifications push (voir api/notifications.js) : reflète l'état RÉEL
@@ -221,7 +225,21 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
           </button>
         </div>
         {notifErreur && <p className="login-screen__erreur">{notifErreur}</p>}
+        {/* Pas pour le Superuser (§2.5) : son mot de passe se change par la
+            commande serveur. */}
+        {!isSuperuser(user) && (
+          <button
+            type="button"
+            className="settings-row settings-row--button"
+            onClick={() => setChangementMotDePasse(true)}
+          >
+            <span>Changer mon mot de passe</span>
+            <Icon name="chevronRight" size={18} />
+          </button>
+        )}
       </section>
+
+      {changementMotDePasse && <ChangerMotDePasseModal onClose={() => setChangementMotDePasse(false)} />}
 
       {onChangerEcole && (
         <button type="button" className="btn btn--secondary btn--block" onClick={onChangerEcole}>
@@ -232,5 +250,96 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         Se déconnecter
       </button>
     </div>
+  )
+}
+
+const LONGUEUR_MIN = 8
+
+// « Changer mon mot de passe » (spec §2.2) : l'ancien est redemandé. Le
+// mot de passe appartient à l'adresse email : il change pour tous les
+// profils de la famille, et les autres appareils sont déconnectés.
+function ChangerMotDePasseModal({ onClose }) {
+  const [ancien, setAncien] = useState('')
+  const [nouveau, setNouveau] = useState('')
+  const [confirmation, setConfirmation] = useState('')
+  const [visible, setVisible] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const [enCours, setEnCours] = useState(false)
+  const [fait, setFait] = useState(false)
+  const different = confirmation !== nouveau
+
+  async function valider() {
+    setErreur('')
+    setEnCours(true)
+    try {
+      await authApi.changerMotDePasse(ancien, nouveau)
+      setFait(true)
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  if (fait) {
+    return (
+      <Modal title="Mot de passe changé" onClose={onClose}>
+        <p>Votre nouveau mot de passe est enregistré. Vos autres appareils devront se reconnecter.</p>
+        <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
+          Fermer
+        </button>
+      </Modal>
+    )
+  }
+
+  return (
+    <Modal
+      title="Changer mon mot de passe"
+      onClose={onClose}
+      footer={
+        <button
+          type="button"
+          className="btn btn--primary btn--block"
+          disabled={enCours || !ancien || nouveau.length < LONGUEUR_MIN || different}
+          onClick={valider}
+        >
+          Valider
+        </button>
+      }
+    >
+      <div className="login-screen__form">
+        <label htmlFor="mdp-ancien">Mot de passe actuel</label>
+        <ChampMotDePasse
+          id="mdp-ancien"
+          autoComplete="current-password"
+          value={ancien}
+          onChange={setAncien}
+          visible={visible}
+          setVisible={setVisible}
+        />
+        <label htmlFor="mdp-nouveau">Nouveau mot de passe (au moins {LONGUEUR_MIN} caractères)</label>
+        <ChampMotDePasse
+          id="mdp-nouveau"
+          autoComplete="new-password"
+          value={nouveau}
+          onChange={setNouveau}
+          visible={visible}
+          setVisible={setVisible}
+        />
+        <label htmlFor="mdp-confirmation">Nouveau mot de passe, à nouveau</label>
+        <ChampMotDePasse
+          id="mdp-confirmation"
+          autoComplete="new-password"
+          value={confirmation}
+          onChange={setConfirmation}
+          visible={visible}
+          setVisible={setVisible}
+        />
+        {confirmation && different && (
+          <p className="login-screen__erreur">Les deux mots de passe ne correspondent pas.</p>
+        )}
+        {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      </div>
+    </Modal>
   )
 }

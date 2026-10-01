@@ -27,6 +27,7 @@
 //   la page dans Safari.
 
 import { useEffect, useState } from 'react'
+import * as authApi from './auth.js'
 import * as sessionApi from './session.js'
 
 let invitationDifferee = null
@@ -50,7 +51,25 @@ export function ecouterInstallation() {
   window.addEventListener('appinstalled', () => {
     invitationDifferee = null
     prevenir()
+    // Android avec Chrome, Chrome et Edge sur ordinateur : le navigateur
+    // prévient à la fin de l'installation (voir signalerInstallation).
+    signalerInstallation()
   })
+}
+
+// Suivi de l'invitation (spec §2.2) : prévient le serveur que l'appli est
+// installée sur cet appareil. Le serveur ne retient que le premier signal ;
+// on n'en envoie qu'un par appareil, une fois connecté.
+const CLE_INSTALLATION_SIGNALEE = 'contretemps:installationSignalee'
+
+export async function signalerInstallation() {
+  try {
+    if (localStorage.getItem(CLE_INSTALLATION_SIGNALEE) === '1' || !sessionApi.jetonEnCours()) return
+    await authApi.signalerAppliInstallee()
+    localStorage.setItem(CLE_INSTALLATION_SIGNALEE, '1')
+  } catch {
+    // Sans importance : réessayé à la prochaine ouverture.
+  }
 }
 
 export function estInstallee() {
@@ -139,6 +158,7 @@ export function modeInstallation() {
 // (screens/InstallationScreen.jsx) s'affiche, avec l'installation en un
 // appui (mode 'bouton', Chrome l'annonce toujours).
 const PARAM_COMPTE = 'compte'
+const PARAM_JETON = 'session'
 
 export function ouvrirDansChrome(compteId) {
   // Efface la session de CE navigateur-ci (Samsung Internet, Firefox...)
@@ -146,8 +166,12 @@ export function ouvrirDansChrome(compteId) {
   // sans ça, elle reste orpheline indéfiniment ici (Chrome et ce
   // navigateur ont chacun leur propre stockage, totalement étanche —
   // aucun moyen de la faire disparaître depuis Chrome après coup).
+  // Le jeton de session part avec (spec §2.2), sinon Chrome arriverait
+  // sans être connecté. Lu AVANT d'effacer la session d'ici.
+  const jeton = sessionApi.jetonEnCours()
   sessionApi.effacerCompteSauvegarde()
-  const page = `${location.host}${import.meta.env.BASE_URL}?${PARAM_COMPTE}=${compteId}`
+  const session = jeton ? `&${PARAM_JETON}=${encodeURIComponent(jeton)}` : ''
+  const page = `${location.host}${import.meta.env.BASE_URL}?${PARAM_COMPTE}=${compteId}${session}`
   location.href = `intent://${page}#Intent;scheme=https;package=com.android.chrome;end`
 }
 
@@ -159,11 +183,16 @@ export function compteDepuisHandoff() {
   return valeur ? Number(valeur) : null
 }
 
+export function jetonDepuisHandoff() {
+  return new URLSearchParams(location.search).get(PARAM_JETON)
+}
+
 // Retire le marqueur de l'adresse une fois consommé : ni un rechargement
 // ni un favori ne doivent le réutiliser.
 export function oublierHandoff() {
   const url = new URL(location.href)
   url.searchParams.delete(PARAM_COMPTE)
+  url.searchParams.delete(PARAM_JETON)
   history.replaceState(history.state, '', url)
 }
 

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as elevesApi from '../../api/eleves.js'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
@@ -9,6 +9,7 @@ import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
 import { ouvrirInscriptionEleve } from '../../utils/inscriptionEleve.js'
 import { correspond } from '../../utils/recherche.js'
+import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
@@ -86,6 +87,15 @@ function valeurCellule(el, champ, cours) {
 // local à cet écran, séparé de `eleves`.
 export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const [search, setSearch] = useState('')
+  // Accès à l'appli (spec §2.2) : colonnes « Inviter » et « Statut ».
+  const acces = useAcces(ecoleId)
+  // Élève ajouté, supprimé, ou email changé : les statuts sont relus (un
+  // email modifié rattache la fiche à une autre adresse, à inviter).
+  const emails = eleves.map((el) => `${el.id}:${el.email ?? ''}`).join('|')
+  useEffect(() => {
+    acces.recharger()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emails])
   const [coursEditId, setCoursEditId] = useState(null)
   const [commentEditId, setCommentEditId] = useState(null)
   const [paiementEditId, setPaiementEditId] = useState(null)
@@ -260,6 +270,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
           placeholder="Rechercher un élève par nom"
         />
       </div>
+      <MessageAcces acces={acces} />
 
       <div className="table-scroll table-scroll--eleves">
         <table className="data-table data-table--eleves">
@@ -277,6 +288,10 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
               <th>Adresse</th>
               <th>Santé</th>
               <th>Certificat médical</th>
+              <th>
+                <InviterTous acces={acces} compteIds={filtered.map((el) => el.id)} />
+              </th>
+              <th>Statut</th>
               <th aria-label="Supprimer" />
             </tr>
           </thead>
@@ -388,6 +403,12 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     >
                       {el.certificatMedical ? 'Reçu' : 'Manquant'}
                     </button>
+                  </td>
+                  <td>
+                    <BoutonInviter acces={acces} compteId={el.id} prenom={el.prenom} />
+                  </td>
+                  <td>
+                    <StatutAcces acces={acces} compteId={el.id} />
                   </td>
                   <td>
                     <button

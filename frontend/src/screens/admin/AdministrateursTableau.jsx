@@ -4,6 +4,7 @@ import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { isOwner } from '../../data/roles.js'
+import { BoutonInviter, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 
 // Tableau des administrateurs (Admin > École, au-dessus de "Usage vidéo" —
 // voir spec/SPEC.md §2.4). Visible par TOUS les admins de l'école ; seuls
@@ -24,6 +25,14 @@ export default function AdministrateursTableau({
   onFermerCreation,
 }) {
   const [administrateurs, setAdministrateurs] = useState([])
+  // Accès à l'appli (spec §2.2) : même bouton « Inviter » et même statut
+  // que dans Admin > Élèves.
+  const acces = useAcces(ecoleId)
+  const emails = administrateurs.map((a) => `${a.id}:${a.email ?? ''}`).join('|')
+  useEffect(() => {
+    acces.recharger()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emails])
   const [enEdition, setEnEdition] = useState(null)
   const [erreur, setErreur] = useState(null)
   const peutGerer = isOwner(activeUser)
@@ -72,6 +81,7 @@ export default function AdministrateursTableau({
     <section className="admin-administrateurs">
       <h3 className="section-label">Administrateurs</h3>
       {erreur && <p className="admin-panel__erreur">{erreur}</p>}
+      <MessageAcces acces={acces} />
       <div className="table-scroll">
         <table className="data-table">
           <thead>
@@ -80,6 +90,8 @@ export default function AdministrateursTableau({
               <th>Prénom</th>
               <th>Email</th>
               <th>Administrateur principal</th>
+              <th>Inviter</th>
+              <th>Statut</th>
               {peutGerer && <th aria-label="Actions" />}
             </tr>
           </thead>
@@ -93,6 +105,12 @@ export default function AdministrateursTableau({
                 <td>{a.prenom}</td>
                 <td>{a.email || <span className="muted">—</span>}</td>
                 <td>{a.estOwner ? <Badge>Oui</Badge> : <span className="muted">—</span>}</td>
+                <td>
+                  <BoutonInviter acces={acces} compteId={a.id} prenom={a.prenom} />
+                </td>
+                <td>
+                  <StatutAcces acces={acces} compteId={a.id} />
+                </td>
                 {peutGerer && (
                   <td>
                     {a.id !== activeUser.id && (

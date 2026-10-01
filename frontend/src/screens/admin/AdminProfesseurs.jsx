@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as profsApi from '../../api/profs.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { correspond } from '../../utils/recherche.js'
+import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 
 const MAX_BADGES = 2
 
@@ -16,6 +17,13 @@ const MAX_BADGES = 2
 // réussi (même principe que AdminEleves.jsx).
 export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, ecoleId, onOpenHeures }) {
   const [search, setSearch] = useState('')
+  // Accès à l'appli (spec §2.2) : colonnes « Inviter » et « Statut ».
+  const acces = useAcces(ecoleId)
+  const emails = professeurs.map((p) => `${p.id}:${p.email ?? ''}`).join('|')
+  useEffect(() => {
+    acces.recharger()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emails])
   const [coursEditId, setCoursEditId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
@@ -60,6 +68,7 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, e
           placeholder="Rechercher un professeur"
         />
       </div>
+      <MessageAcces acces={acces} />
 
       <div className="table-scroll">
         <table className="data-table">
@@ -68,6 +77,10 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, e
               <th>Nom</th>
               <th>Prénom</th>
               <th>Cours enseignés</th>
+              <th>
+                <InviterTous acces={acces} compteIds={filtered.map((p) => p.id)} />
+              </th>
+              <th>Statut</th>
               <th aria-label="Actions" />
             </tr>
           </thead>
@@ -90,6 +103,12 @@ export default function AdminProfesseurs({ professeurs, setProfesseurs, cours, e
                       <Badge tone="neutral">+{p.coursIds.length - MAX_BADGES}</Badge>
                     )}
                   </button>
+                </td>
+                <td>
+                  <BoutonInviter acces={acces} compteId={p.id} prenom={p.prenom} />
+                </td>
+                <td>
+                  <StatutAcces acces={acces} compteId={p.id} />
                 </td>
                 <td>
                   <div className="row-actions">

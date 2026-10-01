@@ -2827,3 +2827,30 @@
     color: #000;
   }
 }
+
+/* ==========================================================================
+   Accès à l'appli (screens/admin/AccesInvitation.jsx) : colonnes
+   « Inviter » et « Statut » des tableaux Admin
+   ========================================================================== */
+
+.acces-inviter {
+  padding: 6px 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.acces-statut {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.acces-statut--pas_email,
+.acces-statut--pas_invite {
+  color: var(--text-muted);
+}
+
+.acces-statut--finalise,
+.acces-statut--installee {
+  color: var(--success-text);
+  font-weight: 600;
+}

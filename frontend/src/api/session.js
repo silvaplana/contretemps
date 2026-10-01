@@ -1,15 +1,21 @@
-// Persistance de "qui est connecté" (voir spec/SPEC.md §2.2 : session
-// persistante web/mobile, sans reconnexion systématique) — juste l'id du
-// PROFIL ACTIF, pas un identifiant/code : ce backend n'a aucune notion de
-// session/token (voir backend/src/auth/receiver.py) — cohérent avec le
-// reste de l'appli, où par exemple GET /comptes/{id} ne vérifie déjà rien
-// (voir api/auth.js : basculerLibre). localStorage : survit à la
-// fermeture de l'onglet/l'appli (web, PWA installée, Android, iOS —
-// même mécanisme partout, c'est la même appli web dans les 4 cas), mais
-// reste propre à CET appareil/navigateur, jamais partagé.
+// Session (voir spec/SPEC.md §2.2) : le PROFIL ACTIF (id de la fiche) et
+// le JETON signé remis par le serveur à la connexion. Les deux partent
+// avec chaque requête (voir api/identite.js) : le serveur vérifie le jeton,
+// et que le profil appartient bien à l'adresse email connectée.
+//
+// Deux niveaux :
+// - EN MÉMOIRE (`ouvrirSession`) : la session en cours dans cet onglet,
+//   dès la connexion ;
+// - MÉMORISÉE dans localStorage (`sauvegarderCompte`) : pour rouvrir
+//   l'appli sans se reconnecter (30 jours, prolongés à chaque usage).
+//   Survit à la fermeture de l'onglet/l'appli (web, PWA installée,
+//   Android, iOS — même mécanisme partout), mais reste propre à CET
+//   appareil/navigateur. Écrite seulement une fois l'écran d'installation
+//   passé (voir App.jsx) : inutile de la laisser dans un navigateur qu'on
+//   quitte aussitôt pour Chrome.
 const CLE = 'contretemps:compteId'
-// Superuser seulement (voir spec §2.5) : son jeton signé (12 h), et l'école
-// qu'il a choisie (il n'appartient à aucune). Effacés avec le reste.
+// Jeton de session, et (Superuser seulement, §2.5) l'école qu'il a choisie
+// (il n'appartient à aucune). Effacés avec le reste.
 const CLE_JETON = 'contretemps:jeton'
 const CLE_ECOLE_CHOISIE = 'contretemps:ecoleChoisie'
 
@@ -26,9 +32,36 @@ export function lireCompteSauvegarde() {
   }
 }
 
+// --- Session en cours (mémoire) ---
+
+let compteActif = null
+let jetonActif = null
+
+export function ouvrirSession(compteId, jeton) {
+  compteActif = compteId
+  if (jeton) jetonActif = jeton
+}
+
+// Ce que chaque requête envoie : la session en cours, sinon celle
+// mémorisée (reprise à l'ouverture de l'appli).
+export const compteEnCours = () => compteActif ?? lireCompteSauvegarde()
+export const jetonEnCours = () => jetonActif ?? lire(CLE_JETON)
+
+// Jeton prolongé par le serveur, ou neuf après une bascule de profil ou un
+// changement de mot de passe : remplace l'ancien, mémorisé compris s'il y
+// a une session mémorisée.
+export function remplacerJeton(jeton) {
+  jetonActif = jeton
+  if (lireCompteSauvegarde() !== null) ecrire(CLE_JETON, jeton)
+}
+
+// --- Session mémorisée (localStorage) ---
+
 export function sauvegarderCompte(compteId) {
+  compteActif = compteId
   try {
     localStorage.setItem(CLE, String(compteId))
+    if (jetonActif) localStorage.setItem(CLE_JETON, jetonActif)
   } catch {
     // Pas grave : la prochaine ouverture retombera juste sur l'écran de
     // connexion, comme avant cette fonctionnalité.
@@ -36,6 +69,8 @@ export function sauvegarderCompte(compteId) {
 }
 
 export function effacerCompteSauvegarde() {
+  compteActif = null
+  jetonActif = null
   try {
     localStorage.removeItem(CLE)
     localStorage.removeItem(CLE_JETON)
@@ -65,8 +100,6 @@ function ecrire(cle, valeur) {
   }
 }
 
-export const lireJeton = () => lire(CLE_JETON)
-export const sauvegarderJeton = (jeton) => ecrire(CLE_JETON, jeton)
 
 export function lireEcoleChoisie() {
   const valeur = lire(CLE_ECOLE_CHOISIE)

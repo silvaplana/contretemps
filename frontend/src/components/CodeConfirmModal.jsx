@@ -2,12 +2,11 @@ import { useState } from 'react'
 import { ROLE_LABEL } from '../data/roles.js'
 import Modal from './Modal.jsx'
 
-// Modale de confirmation par code, affichée quand un profil famille bascule
-// vers un rôle de rang supérieur (voir spec/SPEC.md §2.2). `onConfirm`
-// (async, voir Header.jsx) vérifie le VRAI code d'accès côté backend
-// (auth.js: confirmerBascule) — reste ouverte avec un message d'erreur si
-// le code est faux, plutôt que de fermer en silence (maquette d'avant :
-// n'importe quel code non vide était accepté).
+// Modale de confirmation par mot de passe, affichée quand un profil famille
+// bascule vers un rôle de rang supérieur (voir spec/SPEC.md §2.2 : ex. un
+// enfant sur le téléphone d'un parent admin). `onConfirm` (async, voir
+// Header.jsx) fait vérifier le mot de passe par le serveur (auth.js :
+// basculer) — reste ouverte avec un message d'erreur s'il est faux.
 export default function CodeConfirmModal({ profil, onConfirm, onClose }) {
   const [code, setCode] = useState('')
   const [enCours, setEnCours] = useState(false)
@@ -19,7 +18,7 @@ export default function CodeConfirmModal({ profil, onConfirm, onClose }) {
     try {
       await onConfirm(code)
     } catch (err) {
-      setErreur(err.message || 'Code incorrect')
+      setErreur(err.message || 'Mot de passe incorrect')
     } finally {
       setEnCours(false)
     }
@@ -27,7 +26,7 @@ export default function CodeConfirmModal({ profil, onConfirm, onClose }) {
 
   return (
     <Modal
-      title={`Code ${ROLE_LABEL[profil.type]}`}
+      title="Mot de passe"
       onClose={onClose}
       footer={
         <button
@@ -42,7 +41,7 @@ export default function CodeConfirmModal({ profil, onConfirm, onClose }) {
     >
       <p className="muted">
         Passer à {profil.prenom} {profil.nom} ({ROLE_LABEL[profil.type]}) est une montée en
-        privilège : le code d’accès est redemandé.
+        privilège : votre mot de passe est redemandé.
       </p>
       <input
         type="password"
@@ -50,7 +49,8 @@ export default function CodeConfirmModal({ profil, onConfirm, onClose }) {
         value={code}
         onChange={(e) => setCode(e.target.value)}
         onKeyDown={(e) => e.key === 'Enter' && code && !enCours && confirmer()}
-        placeholder="Code d’accès"
+        autoComplete="current-password"
+        placeholder="Mot de passe"
       />
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>

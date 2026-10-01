@@ -17,6 +17,8 @@
 // comme lui, la relance mail ne fait QUE changer le canal en base, aucune
 // vraie infrastructure d'envoi de mail n'existe dans ce projet.
 
+import { jetonEnCours } from './session.js'
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 // Délai avant abandon (voir utils/messageOutbox.js) — sans ça, sur un
@@ -310,7 +312,11 @@ export function ouvrirFluxEvenements(
   let source
 
   function creer() {
-    const s = new EventSource(`${BASE_URL}/comptes/${compteId}/messagerie/evenements`)
+    // Le jeton de session voyage dans l'adresse : EventSource ne sait pas
+    // envoyer d'en-tête (voir backend comptes/rbac.py). Relu à chaque
+    // (re)création du flux, donc toujours le jeton le plus récent.
+    const session = new URLSearchParams({ jeton: jetonEnCours() ?? '', compte: String(compteId) })
+    const s = new EventSource(`${BASE_URL}/comptes/${compteId}/messagerie/evenements?${session}`)
     s.onopen = () => {
       if (dejaOuvertUneFois) onReconnect?.()
       dejaOuvertUneFois = true

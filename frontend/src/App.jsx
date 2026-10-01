@@ -15,6 +15,7 @@ import * as saisonApi from './api/saison.js'
 import * as sessionApi from './api/session.js'
 import * as videosApi from './api/videos.js'
 import { effacerFrappe, signalerFrappeRecue } from './utils/frappeIndicateur.js'
+import { lienRecu, oublierLienRecu } from './utils/lienRecu.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
@@ -28,6 +29,7 @@ import { aUnDesRoles, isAdmin, isEleve, isProf, isSuperuser } from './data/roles
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
+import CreerMotDePasseScreen from './screens/CreerMotDePasseScreen.jsx'
 import DocsScreen from './screens/DocsScreen.jsx'
 import HeuresScreen from './screens/HeuresScreen.jsx'
 import InstallationScreen from './screens/InstallationScreen.jsx'
@@ -47,9 +49,6 @@ const ECOLE_VIDE = {
   id: null,
   nom: '',
   codePostal: '',
-  codeAccesAdmin: '',
-  codeAccesProf: '',
-  codeAccesEleve: '',
 }
 
 function App() {
@@ -88,7 +87,17 @@ function App() {
   // (supprimé depuis, etc.) efface l'entrée sauvegardée et retombe
   // normalement sur l'écran de connexion.
   const [restaurationEnCours, setRestaurationEnCours] = useState(true)
+  // Lien reçu par mail (invitation ou mot de passe oublié, spec §2.2) :
+  // l'appli s'ouvre sur « Créer mon mot de passe », quelle que soit la
+  // session mémorisée sur cet appareil.
+  const [jetonLien, setJetonLien] = useState(lienRecu)
   useEffect(() => {
+    // Lien reçu par mail : pas de reprise de session en parallèle (elle
+    // pourrait échouer APRÈS la connexion par le lien et l'effacer).
+    if (jetonLien) {
+      setRestaurationEnCours(false)
+      return
+    }
     // Arrivée depuis un AUTRE navigateur via "Lancer l'installation" (voir
     // api/installation.js: ouvrirDansChrome/compteDepuisHandoff, demande
     // utilisateur du 2026-09-23 : "on sait que le login est réussi", pas la
@@ -96,6 +105,9 @@ function App() {
     // mémorisée localement, qui ne peut de toute façon pas exister sur un
     // navigateur fraîchement arrivé ici pour la première fois.
     const compteIdHandoff = installationApi.compteDepuisHandoff()
+    // Le jeton de session voyage avec (spec §2.2) : sans lui, Chrome ne
+    // serait pas connecté.
+    if (compteIdHandoff != null) sessionApi.ouvrirSession(compteIdHandoff, installationApi.jetonDepuisHandoff())
     const compteId = compteIdHandoff ?? sessionApi.lireCompteSauvegarde()
     if (!compteId) {
       setRestaurationEnCours(false)
@@ -310,7 +322,9 @@ function App() {
     function surSignal(e) {
       const { code, compteId } = e.detail
       if (code === 'nouvelle_saison') basculerVersFiche(compteId)
-      else if (code === 'hors_saison') logout()
+      // Jeton expiré (30 jours sans usage) ou mot de passe changé sur un
+      // autre appareil : retour à l'écran de connexion.
+      else if (code === 'hors_saison' || code === 'session_expiree') logout()
       else if (code === 'lecture_seule') {
         setAvisSaison('Cette saison est terminée : consultation seulement.')
         // Défait les modifications déjà affichées (mises à jour optimistes).
@@ -578,6 +592,15 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
 
+  // Suivi de l'invitation (spec §2.2) : « appli installée ». Sur iPhone,
+  // Safari Mac ou Samsung Internet, aucun événement ne signale
+  // l'installation : c'est la première ouverture depuis l'icône qui le
+  // fait (les autres cas sont signalés par api/installation.js).
+  useEffect(() => {
+    if (compteReel && installationApi.estInstallee()) installationApi.signalerInstallation()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id])
+
   // Total des messages non lus, toutes conversations confondues — même
   // donnée que le badge par conversation (voir api/messages.js :
   // compterNonLus), utilisée à la fois pour le badge de BottomNav.jsx
@@ -689,13 +712,13 @@ function App() {
   // Messagerie plutôt que sur un écran inaccessible. Le cours sélectionné
   // est aussi ajusté s'il n'est plus visible pour ce profil (ex. Élève
   // inscrit à un seul cours).
-  async function switchProfil(id, code) {
+  async function switchProfil(id, code = null) {
     const profil = familleReelle.find((p) => p.id === id)
     if (!profil) return
     // Seul un admin consulte une ancienne saison (spec §2.6) : un autre
     // profil repart toujours de la saison courante.
     saisonApi.consulterSaison(null)
-    const nouveauCompte = code ? await authApi.confirmerBascule(id, code) : await authApi.basculerLibre(id)
+    const nouveauCompte = await authApi.basculer(id, code)
     setCompteReel(nouveauCompte)
     // Le profil ACTIF est celui qui doit être restauré à la prochaine
     // ouverture (voir api/session.js) — pas figé sur l'identité du login
@@ -795,6 +818,35 @@ function App() {
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
+  // Entrée dans l'appli après une connexion réussie : par l'écran de
+  // connexion, ou directement après avoir créé son mot de passe par un
+  // lien reçu par mail. `resultat` ({ compte, ecole }) vient de api/auth.js.
+  function entrer(resultat) {
+    saisonApi.consulterSaison(null)
+    setCompteReel(resultat.compte)
+    setEcole(resultat.ecole ?? ECOLE_VIDE)
+    setActiveTab('messagerie')
+    setLoggedIn(true)
+    // Si l'appli tourne déjà en standalone à cet instant (rare pour
+    // une connexion EXPLICITE, mais possible après une déconnexion
+    // manuelle depuis l'appli installée) : lie cette session à
+    // l'installation (voir api/installation.js et l'effet de
+    // restauration ci-dessus, qui détecte la désinstallation).
+    if (installationApi.estInstallee()) installationApi.marquerSessionLieeInstallation()
+    const montrerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
+    setInstallationAMontrer(montrerInstallation)
+    // Se rappeler de ce profil pour la prochaine ouverture de
+    // l'appli (voir api/session.js et l'effet de restauration en
+    // tête de fonction). Si l'écran d'installation va s'afficher,
+    // on attend la réponse (voir onContinuer plus bas) avant
+    // d'écrire quoi que ce soit ici — demande utilisateur du
+    // 2026-09-23 : répondre "Oui" peut rediriger vers un AUTRE
+    // navigateur (Chrome) pour une vraie installation, auquel cas
+    // CE navigateur-ci (ex. Samsung Internet) n'a jamais besoin de
+    // mémoriser cette session pour de bon.
+    if (!montrerInstallation) sessionApi.sauvegarderCompte(resultat.compte.id)
+  }
+
   // Écran vide (juste la marque) pendant la vérification d'une session
   // sauvegardée (voir l'effet en tête de fonction) — évite un flash de
   // l'écran de connexion à chaque ouverture d'appli quand une session
@@ -810,6 +862,25 @@ function App() {
     )
   }
 
+  // Lien reçu par mail : « Créer mon mot de passe » / « Nouveau mot de
+  // passe », puis entrée directe dans l'appli (spec §2.2).
+  if (jetonLien) {
+    function quitterLeLien() {
+      oublierLienRecu()
+      setJetonLien(null)
+    }
+    return (
+      <CreerMotDePasseScreen
+        jeton={jetonLien}
+        onAbandon={quitterLeLien}
+        onConnecte={(resultat) => {
+          quitterLeLien()
+          if (resultat) entrer(resultat)
+        }}
+      />
+    )
+  }
+
   if (!loggedIn) {
     return (
       <LoginScreen
@@ -818,31 +889,7 @@ function App() {
         // `ecole` est la vraie école résolue côté backend (voir auth.js :
         // resoudreEcoleReelle) — eleves/profs/cours/... en dépendent tous
         // (voir les useEffect ci-dessus, ecole.id).
-        onLogin={(resultat) => {
-          saisonApi.consulterSaison(null)
-          setCompteReel(resultat.compte)
-          setEcole(resultat.ecole ?? ECOLE_VIDE)
-          setActiveTab('messagerie')
-          setLoggedIn(true)
-          // Si l'appli tourne déjà en standalone à cet instant (rare pour
-          // une connexion EXPLICITE, mais possible après une déconnexion
-          // manuelle depuis l'appli installée) : lie cette session à
-          // l'installation (voir api/installation.js et l'effet de
-          // restauration ci-dessus, qui détecte la désinstallation).
-          if (installationApi.estInstallee()) installationApi.marquerSessionLieeInstallation()
-          const montrerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
-          setInstallationAMontrer(montrerInstallation)
-          // Se rappeler de ce profil pour la prochaine ouverture de
-          // l'appli (voir api/session.js et l'effet de restauration en
-          // tête de fonction). Si l'écran d'installation va s'afficher,
-          // on attend la réponse (voir onContinuer plus bas) avant
-          // d'écrire quoi que ce soit ici — demande utilisateur du
-          // 2026-09-23 : répondre "Oui" peut rediriger vers un AUTRE
-          // navigateur (Chrome) pour une vraie installation, auquel cas
-          // CE navigateur-ci (ex. Samsung Internet) n'a jamais besoin de
-          // mémoriser cette session pour de bon.
-          if (!montrerInstallation) sessionApi.sauvegarderCompte(resultat.compte.id)
-        }}
+        onLogin={entrer}
       />
     )
   }

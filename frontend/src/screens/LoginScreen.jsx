@@ -1,38 +1,52 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Icon from '../components/Icon.jsx'
 import Logo from '../components/Logo.jsx'
 import Modal from '../components/Modal.jsx'
 import * as auth from '../api/auth.js'
 import * as notificationsApi from '../api/notifications.js'
+import { ROLE_LABEL } from '../data/roles.js'
 
-// Écran de connexion (voir spec/SPEC.md §2.2 et §2.3) — toujours réel,
-// via api/auth.js (le mode maquette a été retiré, voir spec/SPEC.md §8).
+// Écran de connexion (voir spec/SPEC.md §2.2) : une seule page pour toutes
+// les écoles. Nom prénom ou email, et le mot de passe personnel (créé à
+// partir d'une invitation reçue par mail). Créer une école est réservé au
+// Super User (décision du 2026-10-01, voir ChoixEcoleScreen.jsx).
 export default function LoginScreen({ onLogin }) {
   const [identifiant, setIdentifiant] = useState('')
-  const [code, setCode] = useState('ADMIN')
-  const [showNouvelleEcole, setShowNouvelleEcole] = useState(false)
-  const [showCodeOublie, setShowCodeOublie] = useState(false)
+  const [motDePasse, setMotDePasse] = useState('')
+  const [showOubli, setShowOubli] = useState(false)
+  // Plusieurs écoles possibles pour cet identifiant et ce mot de passe
+  // (cas rare) : la liste à proposer.
+  const [choix, setChoix] = useState(null)
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
-  const [codeVisible, setCodeVisible] = useState(false)
+  const [visible, setVisible] = useState(false)
 
-  async function seConnecter(e) {
-    e.preventDefault()
-    // Premier lancement sur cet appareil : notifications proposées pendant
-    // CE clic (le navigateur l'exige), avant tout `await` — voir
-    // api/notifications.js : proposerAuPremierLancement.
-    const permissionNotifications = notificationsApi.proposerAuPremierLancement()
+  async function connecter(compteId = null, permissionNotifications = null) {
     setErreur('')
     setEnCours(true)
     try {
-      const resultat = await auth.login({ identifiant, code })
+      const resultat = await auth.login({ identifiant, motDePasse, compteId })
+      if (resultat.choix) {
+        setChoix(resultat.choix)
+        return
+      }
+      setChoix(null)
       onLogin(resultat)
       notificationsApi.abonnerSiAccepte(permissionNotifications, resultat.compte.id)
     } catch (err) {
+      setChoix(null)
       setErreur(err.message || 'Connexion impossible')
     } finally {
       setEnCours(false)
     }
+  }
+
+  function seConnecter(e) {
+    e.preventDefault()
+    // Premier lancement sur cet appareil : notifications proposées pendant
+    // CE clic (le navigateur l'exige), avant tout `await` — voir
+    // api/notifications.js : proposerAuPremierLancement.
+    connecter(null, notificationsApi.proposerAuPremierLancement())
   }
 
   return (
@@ -48,149 +62,109 @@ export default function LoginScreen({ onLogin }) {
         <input
           id="login-identifiant"
           type="text"
+          autoComplete="username"
           value={identifiant}
           onChange={(e) => setIdentifiant(e.target.value)}
           placeholder="Julia Dho ou jd@contretemps.fr"
         />
 
-        <label htmlFor="login-code">Code d’accès</label>
-        <div className="login-screen__champ-code">
-          <input
-            id="login-code"
-            type={codeVisible ? 'text' : 'password'}
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-          />
-          <button
-            type="button"
-            className="icon-btn login-screen__toggle-code"
-            onClick={() => setCodeVisible((v) => !v)}
-            aria-label={codeVisible ? 'Masquer le code' : 'Afficher le code'}
-          >
-            <Icon name={codeVisible ? 'eyeOff' : 'eye'} size={20} />
-          </button>
-        </div>
+        <label htmlFor="login-mot-de-passe">Mot de passe</label>
+        <ChampMotDePasse
+          id="login-mot-de-passe"
+          autoComplete="current-password"
+          value={motDePasse}
+          onChange={setMotDePasse}
+          visible={visible}
+          setVisible={setVisible}
+        />
 
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
 
         <button type="submit" className="btn btn--primary btn--block" disabled={enCours}>
           Se connecter
         </button>
-        <button type="button" className="btn btn--link" onClick={() => setShowCodeOublie(true)}>
-          Code oublié ?
-        </button>
-        <button
-          type="button"
-          className="btn btn--link"
-          onClick={() => setShowNouvelleEcole(true)}
-        >
-          Nouvelle école ?
+        <button type="button" className="btn btn--link" onClick={() => setShowOubli(true)}>
+          Mot de passe oublié ?
         </button>
       </form>
 
-      {showNouvelleEcole && (
-        <NouvelleEcoleModal
-          onClose={() => setShowNouvelleEcole(false)}
-          onCreated={(prenom, nom) => {
-            setIdentifiant(`${prenom} ${nom}`)
-            setShowNouvelleEcole(false)
-          }}
-        />
-      )}
+      {showOubli && <MotDePasseOublieModal identifiantInitial={identifiant} onClose={() => setShowOubli(false)} />}
 
-      {showCodeOublie && (
-<CodeOublieModal onClose={() => setShowCodeOublie(false)} />
+      {choix && (
+        <Modal title="Choisissez votre école" onClose={() => setChoix(null)}>
+          <div className="checkbox-list">
+            {choix.map((c) => (
+              <button
+                key={c.compteId}
+                type="button"
+                className="btn btn--secondary btn--block"
+                disabled={enCours}
+                onClick={() => connecter(c.compteId)}
+              >
+                {c.ecoleNom ?? 'Toutes les écoles'} ({ROLE_LABEL[c.role] ?? c.role})
+              </button>
+            ))}
+          </div>
+        </Modal>
       )}
     </div>
   )
 }
 
-// Modale "Code oublié ?" : un simple message, pour tous (décision du
-// 2026-09-21, remplace la question de récupération des admins et le
-// contact de l'admin affiché aux profs/élèves).
-function CodeOublieModal({ onClose }) {
+// Champ mot de passe avec l'œil pour l'afficher (voir aussi
+// CreerMotDePasseScreen.jsx et Profil).
+export function ChampMotDePasse({ id, value, onChange, visible, setVisible, autoComplete, placeholder }) {
   return (
-    <Modal title="Code oublié" onClose={onClose}>
-      <p>
-        Contactez un administrateur de l’école ou{' '}
-        <a href="mailto:sebastien.richard54@gmail.com">sebastien.richard54@gmail.com</a>.
-      </p>
-      <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
-        Fermer
+    <div className="login-screen__champ-code">
+      <input
+        id={id}
+        type={visible ? 'text' : 'password'}
+        autoComplete={autoComplete}
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <button
+        type="button"
+        className="icon-btn login-screen__toggle-code"
+        onClick={() => setVisible((v) => !v)}
+        aria-label={visible ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+      >
+        <Icon name={visible ? 'eyeOff' : 'eye'} size={20} />
       </button>
-    </Modal>
+    </div>
   )
 }
 
-// Code par défaut proposé pour un rôle donné (voir spec §2.3 et §6.1) :
-// ADMIN_ECOLE_ANNEE, avec ÉCOLE = nom de l'école en majuscules sans espaces.
-function codeParDefaut(prefixe, nomEcole) {
-  const slug = nomEcole.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '')
-  const annee = new Date().getFullYear()
-  return `${prefixe}_${slug || 'ECOLE'}_${annee}`
-}
+// « Mot de passe oublié ? » (§2.2) : toujours le même message, qu'un compte
+// existe ou non, pour ne pas révéler qui est inscrit.
+function MotDePasseOublieModal({ identifiantInitial, onClose }) {
+  const [identifiant, setIdentifiant] = useState(identifiantInitial)
+  const [envoye, setEnvoye] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const [enCours, setEnCours] = useState(false)
 
-// Utilisée uniquement pour l'exemple en placeholder des 3 champs de code
-// (tant que "Nom de l'école" est vide, voir NouvelleEcoleModal) — l'année
-// suit toujours la vraie date, jamais "2026" en dur.
-const ANNEE_EXEMPLE = new Date().getFullYear()
+  async function demander() {
+    setErreur('')
+    setEnCours(true)
+    try {
+      await auth.motDePasseOublie(identifiant)
+      setEnvoye(true)
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
 
-// Formulaire "Nouvelle école ?" (voir spec §2.3). ⚠️ Pas encore branché
-// au backend (pas de POST /ecoles ici) : affiche juste le récapitulatif
-// puis repropose la connexion avec l'identité du premier admin saisi —
-// à corriger avant une vraie mise en prod multi-écoles (voir spec §8).
-function NouvelleEcoleModal({ onClose, onCreated }) {
-  const [nomEcole, setNomEcole] = useState('')
-  const [codePostal, setCodePostal] = useState('')
-  const [codeAdmin, setCodeAdmin] = useState('')
-  const [codeProf, setCodeProf] = useState('')
-  const [codeEleve, setCodeEleve] = useState('')
-  const [touched, setTouched] = useState({ admin: false, prof: false, eleve: false })
-  const [adminNom, setAdminNom] = useState('')
-  const [adminPrenom, setAdminPrenom] = useState('')
-  const [adminEmail, setAdminEmail] = useState('')
-  const [adminTelephone, setAdminTelephone] = useState('')
-  const [adminCodeRecuperation, setAdminCodeRecuperation] = useState('')
-  const [creee, setCreee] = useState(false)
-
-  // Les 3 codes suivent le nom de l'école tant que l'utilisateur ne les a
-  // pas modifiés à la main (ils restent "éditables avant validation").
-  // Tant que le nom de l'école n'est pas encore saisi, les champs restent
-  // vides (avec un exemple en placeholder, voir plus bas) plutôt que de
-  // proposer un "ADMIN_ECOLE_2026" générique qui ne correspond à rien.
-  useEffect(() => {
-    if (!touched.admin) setCodeAdmin(nomEcole ? codeParDefaut('ADMIN', nomEcole) : '')
-    if (!touched.prof) setCodeProf(nomEcole ? codeParDefaut('PROF', nomEcole) : '')
-    if (!touched.eleve) setCodeEleve(nomEcole ? codeParDefaut('ELEVE', nomEcole) : '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [nomEcole])
-
-  const valide =
-    nomEcole && codePostal && adminNom && adminPrenom && adminEmail && adminTelephone && adminCodeRecuperation
-
-  if (creee) {
+  if (envoye) {
     return (
-      <Modal title="École créée" onClose={onClose}>
+      <Modal title="Mot de passe oublié" onClose={onClose}>
         <p>
-          <strong>
-            {nomEcole} ({codePostal})
-          </strong>{' '}
-          est prête, avec {adminPrenom} {adminNom} comme premier administrateur.
+          Si ce compte existe, un lien vient d’être envoyé à son adresse email. Il est valable 1 heure.
         </p>
-        <div className="checkbox-list">
-          <div className="checkbox-list__item">Code Admin : {codeAdmin}</div>
-          <div className="checkbox-list__item">Code Professeur : {codeProf}</div>
-          <div className="checkbox-list__item">Code Élève : {codeEleve}</div>
-        </div>
-        <p className="muted">
-          Ces codes sont modifiables ensuite par tout admin, depuis Admin → Paramètres école.
-        </p>
-        <button
-          type="button"
-          className="btn btn--primary btn--block"
-          onClick={() => onCreated(adminPrenom, adminNom)}
-        >
-          Se connecter
+        <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
+          Fermer
         </button>
       </Modal>
     )
@@ -198,114 +172,28 @@ function NouvelleEcoleModal({ onClose, onCreated }) {
 
   return (
     <Modal
-      title="Nouvelle école"
+      title="Mot de passe oublié"
       onClose={onClose}
       footer={
         <button
           type="button"
           className="btn btn--primary btn--block"
-          disabled={!valide}
-          onClick={() => setCreee(true)}
+          disabled={enCours || !identifiant.trim()}
+          onClick={demander}
         >
-          Créer l’école
+          Recevoir un lien
         </button>
       }
     >
-      <label htmlFor="ecole-nom">Nom de l’école</label>
+      <label htmlFor="oubli-identifiant">Nom Prénom ou Email</label>
       <input
-        id="ecole-nom"
-        value={nomEcole}
-        onChange={(e) => setNomEcole(e.target.value)}
-        placeholder="Ex. EcoleTest"
+        id="oubli-identifiant"
+        type="text"
+        value={identifiant}
+        onChange={(e) => setIdentifiant(e.target.value)}
+        placeholder="Julia Dho ou jd@contretemps.fr"
       />
-
-      <label htmlFor="ecole-cp">Code postal</label>
-      {/* Sert à distinguer 2 écoles qui porteraient le même nom (voir spec
-          §6.1) : le couple nom + code postal doit être unique, pas le nom
-          seul — donc obligatoire dès la création. */}
-      <input
-        id="ecole-cp"
-        value={codePostal}
-        onChange={(e) => setCodePostal(e.target.value)}
-        placeholder="Ex. 83330"
-      />
-
-      <label htmlFor="ecole-code-admin">Code d’accès Admin</label>
-      <input
-        id="ecole-code-admin"
-        value={codeAdmin}
-        onChange={(e) => {
-          setCodeAdmin(e.target.value)
-          setTouched((t) => ({ ...t, admin: true }))
-        }}
-        placeholder={`Ex. ADMIN_ECOLE_TEST_${ANNEE_EXEMPLE}`}
-      />
-
-      <label htmlFor="ecole-code-prof">Code d’accès Professeur</label>
-      <input
-        id="ecole-code-prof"
-        value={codeProf}
-        onChange={(e) => {
-          setCodeProf(e.target.value)
-          setTouched((t) => ({ ...t, prof: true }))
-        }}
-        placeholder={`Ex. PROF_ECOLE_TEST_${ANNEE_EXEMPLE}`}
-      />
-
-      <label htmlFor="ecole-code-eleve">Code d’accès Élève</label>
-      <input
-        id="ecole-code-eleve"
-        value={codeEleve}
-        onChange={(e) => {
-          setCodeEleve(e.target.value)
-          setTouched((t) => ({ ...t, eleve: true }))
-        }}
-        placeholder={`Ex. ELEVE_ECOLE_TEST_${ANNEE_EXEMPLE}`}
-      />
-
-      <p className="section-label">Premier administrateur</p>
-      <label htmlFor="ecole-admin-prenom">Prénom</label>
-      <input
-        id="ecole-admin-prenom"
-        value={adminPrenom}
-        onChange={(e) => setAdminPrenom(e.target.value)}
-        placeholder="Ex. Claire"
-      />
-      <label htmlFor="ecole-admin-nom">Nom</label>
-      <input
-        id="ecole-admin-nom"
-        value={adminNom}
-        onChange={(e) => setAdminNom(e.target.value)}
-        placeholder="Ex. Martin"
-      />
-      <label htmlFor="ecole-admin-email">Email</label>
-      <input
-        id="ecole-admin-email"
-        type="email"
-        value={adminEmail}
-        onChange={(e) => setAdminEmail(e.target.value)}
-        placeholder="Ex. claire.martin@ecole-test.fr"
-      />
-      <label htmlFor="ecole-admin-telephone">Téléphone</label>
-      <input
-        id="ecole-admin-telephone"
-        type="tel"
-        value={adminTelephone}
-        onChange={(e) => setAdminTelephone(e.target.value)}
-        placeholder="Ex. 06 00 00 00 00"
-      />
-
-      {/* Voir "Code oublié ?" à l'écran de connexion : demandé à la
-          création d'un admin, comme une question de sécurité classique. */}
-      <label htmlFor="ecole-admin-code-recuperation">
-        Code de récupération : nom de votre 1er animal de compagnie
-      </label>
-      <input
-        id="ecole-admin-code-recuperation"
-        value={adminCodeRecuperation}
-        onChange={(e) => setAdminCodeRecuperation(e.target.value)}
-        placeholder="Ex. Rex"
-      />
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
   )
 }
