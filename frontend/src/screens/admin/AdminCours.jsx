@@ -359,13 +359,9 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
           title={`${coursDontOnVoitLesEleves.nom} : ${elevesVus.length} élève${elevesVus.length > 1 ? 's' : ''}`}
           onClose={() => setElevesVusId(null)}
         >
-          <div className="checkbox-list">
-            {elevesVus.map((el) => (
-              <div key={el.id} className="checkbox-list__item">
-                {el.prenom} {el.nom}
-              </div>
-            ))}
-          </div>
+          {/* À la suite, séparés par des virgules : une ligne par élève
+              prenait trop de place (demande du 2026-10-02). */}
+          <p className="cours-eleves-liste">{elevesVus.map((el) => `${el.prenom} ${el.nom}`).join(', ')}</p>
         </Modal>
       )}
 

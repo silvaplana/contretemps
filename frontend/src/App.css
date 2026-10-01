@@ -2899,3 +2899,9 @@
   font-size: 12px;
   white-space: normal;
 }
+
+/* Panneau des élèves d'un cours (AdminCours.jsx). */
+.cours-eleves-liste {
+  margin: 0;
+  line-height: 1.6;
+}
