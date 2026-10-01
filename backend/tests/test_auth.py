@@ -248,7 +248,10 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
 
     jeton = _jeton_du_mail(mails, "activer")
     lien = client.get(f"/auth/liens/{jeton}").json()
-    assert lien == {"type": "invitation", "email": "parent@x.fr", "prenoms": ["Ana", "Tom"], "ecole_nom": "Contretemps"}
+    assert lien == {
+        "type": "invitation", "email": "parent@x.fr", "destinataire": "Ana Roux",
+        "prenoms": ["Ana", "Tom"], "ecole_nom": "Contretemps",
+    }
     assert _statuts(client, ecole)[str(eleve.id)]["statut"] == "consultee"
 
     assert client.post(f"/auth/liens/{jeton}/mot-de-passe", json={"mot_de_passe": "court"}).status_code == 422

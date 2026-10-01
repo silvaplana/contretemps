@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
-from .auth import Auth, MotDePasseRequis
+from .auth import Auth, MotDePasseRequis, destinataire
 from .invitations import Invitations
 from .mails import MailsIndisponibles
 from .schemas import (
@@ -127,10 +127,13 @@ class AuthReceiver:
             self.client.acces.noter_consultee(db, acces_email)
         fiches = self.client.fiches_designees(db, acces_email.email)
         ecole = db.get(Ecole, lien.ecole_id) if lien.ecole_id else None
+        fiches = [f for f in fiches if lien.ecole_id is None or f.ecole_id == lien.ecole_id]
+        a_qui = destinataire(fiches) if fiches else None
         return LienSortie(
             type=lien.type,
             email=acces_email.email,
-            prenoms=[f.prenom for f in fiches if lien.ecole_id is None or f.ecole_id == lien.ecole_id],
+            destinataire=f"{a_qui.prenom} {a_qui.nom}" if a_qui else None,
+            prenoms=[f.prenom for f in fiches],
             ecole_nom=ecole.nom if ecole else None,
         )
 

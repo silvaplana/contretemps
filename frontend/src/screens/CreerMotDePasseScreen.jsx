@@ -74,13 +74,15 @@ export default function CreerMotDePasseScreen({ jeton, onConnecte, onAbandon }) 
         <p className="muted">Vérification du lien…</p>
       ) : (
         <form className="login-screen__form" onSubmit={valider}>
-          <label htmlFor="activation-email">Email</label>
-          <input id="activation-email" type="email" autoComplete="username" value={lien.email} readOnly />
-          {lien.prenoms.length > 0 && (
-            <p className="muted">
-              {lien.prenoms.length > 1 ? 'Profils' : 'Profil'} : {lien.prenoms.join(', ')}
+          {lien.destinataire && (
+            <p>
+              Bonjour <strong>{lien.destinataire}</strong>,{' '}
+              {invitation ? 'créez votre mot de passe.' : 'choisissez votre nouveau mot de passe.'}
             </p>
           )}
+          <label htmlFor="activation-email">Email</label>
+          <input id="activation-email" type="email" autoComplete="username" value={lien.email} readOnly />
+          {lien.prenoms.length > 1 && <p className="muted">Profils : {lien.prenoms.join(', ')}</p>}
 
           <label htmlFor="activation-mdp">Mot de passe (au moins {LONGUEUR_MIN} caractères)</label>
           <ChampMotDePasse

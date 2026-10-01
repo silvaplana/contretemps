@@ -62,6 +62,8 @@ class LienSortie(BaseModel):
 
     type: str  # "invitation" | "reinitialisation"
     email: str
+    # La personne à qui l'on s'adresse (« Prénom Nom »), comme dans le mail.
+    destinataire: str | None
     prenoms: list[str]
     ecole_nom: str | None
 

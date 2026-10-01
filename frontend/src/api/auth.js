@@ -144,7 +144,13 @@ export async function lireLien(jeton) {
   const reponse = await fetch(`${BASE_URL}/auth/liens/${encodeURIComponent(jeton)}`)
   if (!reponse.ok) throw new Error(await messageErreur(reponse, "Ce lien n'est plus valable"))
   const lien = await reponse.json()
-  return { type: lien.type, email: lien.email, prenoms: lien.prenoms, ecoleNom: lien.ecole_nom }
+  return {
+    type: lien.type,
+    email: lien.email,
+    destinataire: lien.destinataire,
+    prenoms: lien.prenoms,
+    ecoleNom: lien.ecole_nom,
+  }
 }
 
 // Crée le mot de passe ; la personne est ensuite connectée directement
