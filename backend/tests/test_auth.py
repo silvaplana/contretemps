@@ -584,6 +584,16 @@ def test_brevo_signale_la_remise_ou_l_echec(client, db_session, ecole, mails, mo
     # Un mail remis à quelqu'un qui n'a pas été invité ne vaut pas invitation.
     brevo("delivered", email="m.p@x.fr")
     assert _statuts(client, ecole)[str(ecole["prof"].id)]["statut"] == "finalise"
+    # Personne qui a déjà son accès, réinvitée : le statut reste « Profil
+    # finalisé », avec le sort du dernier mail en dessous.
+    prof = lambda: _statuts(client, ecole)[str(ecole["prof"].id)]  # noqa: E731
+    assert prof()["detail"] is None
+    client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [ecole["prof"].id]})
+    assert prof()["statut"] == "finalise" and prof()["detail"].endswith(": mail envoyé")
+    brevo("delivered", email="m.p@x.fr")
+    assert prof()["detail"].startswith("Réinvité le ") and prof()["detail"].endswith(": mail remis")
+    brevo("hard_bounce", email="m.p@x.fr")
+    assert prof()["statut"] == "finalise" and "Adresse introuvable" in prof()["detail"]
 
 
 @pytest.mark.rbac_reel

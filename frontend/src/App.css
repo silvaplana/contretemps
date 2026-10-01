@@ -2883,13 +2883,18 @@
   color: var(--danger-text);
 }
 
-.acces-statut--echec_envoi {
+.acces-statut--echec_envoi,
+.acces-statut--echec_envoi .acces-statut__detail {
   color: var(--danger-text);
+}
+
+.acces-statut--echec_envoi {
   font-weight: 600;
 }
 
 .acces-statut__detail {
   display: block;
+  color: var(--text-muted);
   font-weight: 400;
   font-size: 12px;
   white-space: normal;

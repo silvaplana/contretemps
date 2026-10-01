@@ -7,7 +7,8 @@ from __future__ import annotations
 
 import hashlib
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from securite import mots_de_passe
 from sqlalchemy import delete, select
@@ -40,6 +41,11 @@ def normaliser_email(email: str | None) -> str | None:
 
 def _hacher_jeton(jeton: str) -> str:
     return hashlib.sha256(jeton.encode("utf-8")).hexdigest()
+
+
+def _jour(date: datetime) -> str:
+    """« 02/10 », à l'heure de Paris (les dates sont stockées en UTC)."""
+    return date.replace(tzinfo=timezone.utc).astimezone(ZoneInfo("Europe/Paris")).strftime("%d/%m")
 
 
 class Acces:
@@ -156,5 +162,19 @@ class Acces:
             (INVITE, acces_email.invite_le, None),
         ):
             if date is not None:
+                if code in (INSTALLEE, FINALISE):
+                    detail = self._dernier_mail(acces_email, date)
                 return code, date, detail
         return PAS_INVITE, None, None
+
+    def _dernier_mail(self, acces_email: AccesEmail, depuis: datetime) -> str | None:
+        """Personne qui a déjà son accès et qu'on a réinvitée ensuite : le
+        statut principal reste « Profil finalisé », mais on dit ce qu'est
+        devenu ce dernier mail (demande utilisateur du 2026-10-02)."""
+        echec, invite = acces_email.echec_envoi_le, acces_email.invite_le
+        if echec is not None and echec > depuis:
+            return f"Réinvitation du {_jour(echec)} : {acces_email.echec_envoi_raison or 'échec'}"
+        if invite is not None and invite > depuis:
+            suite = "mail remis" if acces_email.mail_remis_le else "mail envoyé"
+            return f"Réinvité le {_jour(invite)} : {suite}"
+        return None
