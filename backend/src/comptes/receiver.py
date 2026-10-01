@@ -3,11 +3,10 @@ un compte et lister les profils de sa famille. Les écrans Élèves/Profs ont
 leurs propres routes dans leurs modules respectifs, pas ici.
 """
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
 
 from db import get_db
-from securite import jetons
 
 from . import rbac, roles
 from .comptes import Comptes
@@ -58,27 +57,16 @@ class ComptesReceiver:
         self,
         compte_id: int,
         db: Session = Depends(get_db),
-        authorization: str | None = Header(default=None),
+        appelant: Compte = Depends(rbac.compte_appelant),
     ):
         compte = self.client.get(db, compte_id)
-        jeton = jetons.depuis_entete(authorization)
-        a_son_jeton = jeton is not None and compte is not None and jeton.compte_id == compte.id
         # Le Superuser est invisible (§2.5) : son compte n'est lisible que
-        # par lui-même, avec son jeton (reprise de session). Pour tout autre
-        # appelant, il n'existe pas.
-        if compte is not None and roles.is_superuser(compte) and not a_son_jeton:
+        # par lui-même (reprise de session). Pour tout autre appelant, il
+        # n'existe pas.
+        if compte is not None and roles.is_superuser(compte) and (appelant is None or appelant.id != compte.id):
             compte = None
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
-        # Élève promu admin (§2.4) : rôles admin/owner présentés seulement
-        # si SON jeton "admin" accompagne la requête (reprise de session
-        # après une connexion par le code admin) — sinon, un élève.
-        if roles.admin_sous_condition(compte):
-            sortie = CompteSortie.model_validate(compte)
-            admin_actif = a_son_jeton and jeton.portee == jetons.ADMIN
-            sortie.roles = roles.roles_effectifs(compte, admin_actif)
-            sortie.role = roles.role_principal(sortie.roles)
-            return sortie
         return compte
 
     def modifier(self, compte_id: int, donnees: CompteModification, db: Session = Depends(get_db)):
@@ -100,15 +88,11 @@ class ComptesReceiver:
             raise HTTPException(status_code=404, detail="Pas inscrit(e) pour la saison en cours")
         return {"compte_id": nouvelle.id}
 
-    def famille(self, compte_id: int, db: Session = Depends(get_db)):
-        # Un élève promu admin figure en élève dans le sélecteur familial :
-        # basculer vers lui sans code n'active pas ses droits (§2.4).
-        membres = []
-        for membre in self.client.membres_de_la_famille(db, compte_id):
-            if roles.admin_sous_condition(membre):
-                sortie = CompteSortie.model_validate(membre)
-                sortie.roles = roles.roles_effectifs(membre, admin_actif=False)
-                sortie.role = roles.role_principal(sortie.roles)
-                membre = sortie
-            membres.append(membre)
-        return membres
+    def famille(
+        self,
+        compte_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        rbac.meme_personne(appelant, compte_id, db)
+        return self.client.membres_de_la_famille(db, compte_id)

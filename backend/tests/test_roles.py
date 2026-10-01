@@ -7,6 +7,7 @@ import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
 from comptes import Comptes, RoleCompte, roles
+from conftest import MOT_DE_PASSE, donner_mot_de_passe
 from ecoles import Ecoles
 
 
@@ -98,65 +99,24 @@ def _ecole_avec_prof_admin(db_session):
     return ecole, _promouvoir_admin(db_session, prof)
 
 
-@pytest.mark.parametrize("code", ["prof", "admin"])
-def test_professeur_admin_se_connecte_avec_le_code_de_l_un_de_ses_roles(client, db_session, code):
+def test_professeur_admin_connecte_a_tous_ses_roles(client, db_session):
+    """Avec son mot de passe (§2.2), il obtient tous ses rôles et voit
+    donc l'onglet Admin."""
     ecole, prof = _ecole_avec_prof_admin(db_session)
-    saisi = ecole.code_acces_prof if code == "prof" else ecole.code_acces_admin
-    reponse = client.post(
-        "/auth/login", json={"ecole_id": ecole.id, "identifiant": "Marie Pesenti", "code": saisi}
-    )
+    prof.email = "marie@x.fr"
+    db_session.commit()
+    donner_mot_de_passe(db_session, "marie@x.fr")
+    reponse = client.post("/auth/login", json={"identifiant": "Marie Pesenti", "mot_de_passe": MOT_DE_PASSE})
     assert reponse.status_code == 200
-    # Dans les deux cas il obtient TOUS ses rôles, pas seulement celui du code.
-    assert reponse.json()["roles"] == ["admin", "professeur"]
+    assert reponse.json()["compte"]["roles"] == ["admin", "professeur"]
 
 
-def test_code_d_un_role_que_le_compte_n_a_pas_refuse(client, db_session):
-    ecole, _ = _ecole_avec_prof_admin(db_session)
-    reponse = client.post(
-        "/auth/login",
-        json={"ecole_id": ecole.id, "identifiant": "Marie Pesenti", "code": ecole.code_acces_eleve},
-    )
-    assert reponse.status_code == 401
-
-
-def test_bascule_vers_un_professeur_admin_est_une_montee_depuis_un_prof(client, db_session):
-    """Rang = rôle le plus élevé (§2.2) : un professeur-admin compte comme
-    admin, donc y basculer depuis un simple prof redemande un code."""
+def test_rang_d_un_professeur_admin_est_celui_d_un_admin(db_session):
+    """Rang = rôle le plus élevé (§2.2) : y basculer depuis un simple prof
+    est une montée en privilège, qui redemande le mot de passe."""
     ecole, prof_admin = _ecole_avec_prof_admin(db_session)
-    simple_prof = Comptes().create(
-        db_session, ecole_id=ecole.id, role="professeur", nom="Blanc", prenom="Ima"
-    )
-    reponse = client.post(
-        "/auth/bascule/verifier",
-        json={"depuis_compte_id": simple_prof.id, "vers_compte_id": prof_admin.id},
-    )
-    assert reponse.json() == {"code_requis": True}
-
-
-def test_code_oublie_ouvert_au_professeur_admin(client, db_session):
-    ecole, prof = _ecole_avec_prof_admin(db_session)
-    etape1 = client.post(
-        "/auth/recuperation/verifier", json={"ecole_id": ecole.id, "identifiant": "Marie Pesenti"}
-    )
-    assert etape1.json()["role"] == "admin"
-    etape2 = client.post(
-        "/auth/recuperation/repondre",
-        json={"ecole_id": ecole.id, "identifiant": "Marie Pesenti", "reponse": "rex"},
-    )
-    assert etape2.status_code == 200
-    assert etape2.json()["id"] == prof.id
-
-
-def test_code_oublie_affiche_le_contact_de_l_owner(client, db_session):
-    ecole = _ecole(db_session)
-    comptes = Comptes()
-    comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia")
-    comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Perrin", prenom="Léon")
-    reponse = client.post(
-        "/auth/recuperation/verifier", json={"ecole_id": ecole.id, "identifiant": "Léon Perrin"}
-    )
-    assert reponse.json()["role"] == "eleve"
-    assert reponse.json()["admin_prenom"] == "Julia"
+    simple_prof = Comptes().create(db_session, ecole_id=ecole.id, role="professeur", nom="Blanc", prenom="Ima")
+    assert roles.rang(prof_admin) > roles.rang(simple_prof)
 
 
 # --- Migration Alembic (données réelles d'avant les rôles cumulables) ---

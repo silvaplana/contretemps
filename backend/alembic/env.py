@@ -23,6 +23,7 @@ from messagerie.models import (  # noqa: F401
     Message,
     MessageDelivery,
 )
+from acces.models import LienAcces, Utilisateur  # noqa: F401
 from presence.models import PresenceEleve, PresenceProf, SeancePresence  # noqa: F401
 from saisons.models import Saison  # noqa: F401
 from videos.models import Video  # noqa: F401

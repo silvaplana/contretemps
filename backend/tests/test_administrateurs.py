@@ -2,6 +2,7 @@
 supprimer — avec les vraies vérifications de droits (`rbac_reel`)."""
 
 import pytest
+from conftest import entetes_session
 from comptes import Comptes, RegleRoles, RoleCompte, rbac, roles
 from ecoles import Ecoles
 from messagerie import Conversations, Messages
@@ -32,7 +33,7 @@ def ecole(db_session):
 
 
 def _en_tant_que(compte):
-    return {rbac.ENTETE_COMPTE: str(compte.id)}
+    return entetes_session(compte)
 
 
 def _roles(db_session, compte):

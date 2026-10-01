@@ -73,5 +73,68 @@ def _droits_neutralises(request, monkeypatch):
     monkeypatch.setattr(rbac, "require_owner", lambda appelant, ecole_id: None)
     monkeypatch.setattr(rbac, "require_superuser", lambda appelant: None)
     app.dependency_overrides[rbac.compte_appelant] = lambda: None
+    app.dependency_overrides[rbac.session_requise] = lambda: None
     yield
     app.dependency_overrides.pop(rbac.compte_appelant, None)
+    app.dependency_overrides.pop(rbac.session_requise, None)
+
+
+# --- Sessions réelles (tests `rbac_reel`, spec §2.2) ---
+
+MOT_DE_PASSE = "motdepasse-de-test"
+_HACHE = None
+
+
+def entetes_session(compte, mot_de_passe: str = MOT_DE_PASSE) -> dict[str, str]:
+    """En-têtes d'une vraie session ouverte sur ce profil : jeton signé +
+    profil actif. Donne au besoin un email à la fiche et un mot de passe à
+    cet email (hachage scrypt calculé une seule fois : il est lent exprès)."""
+    global _HACHE
+    from acces import Acces
+    from auth import Auth
+    from comptes import Comptes
+    from securite import mots_de_passe
+    from sqlalchemy.orm import object_session
+
+    db = object_session(compte)
+    if not compte.email:
+        compte.email = f"compte{compte.id}@test.fr"
+        db.commit()
+    acces = Acces()
+    utilisateur = acces.obtenir_ou_creer(db, compte.email)
+    if utilisateur.hashed_password is None:
+        if mot_de_passe == MOT_DE_PASSE:
+            _HACHE = _HACHE or mots_de_passe.hacher(MOT_DE_PASSE)
+            utilisateur.hashed_password = _HACHE
+        else:
+            utilisateur.hashed_password = mots_de_passe.hacher(mot_de_passe)
+    db.commit()
+    jeton = Auth(Comptes(), acces).ouvrir_session(db, compte)
+    return {"X-Compte-Id": str(compte.id), "Authorization": f"Bearer {jeton}"}
+
+
+def donner_mot_de_passe(db, email: str) -> None:
+    """Donne à cette adresse le mot de passe de test (MOT_DE_PASSE)."""
+    global _HACHE
+    from acces import Acces
+    from securite import mots_de_passe
+
+    _HACHE = _HACHE or mots_de_passe.hacher(MOT_DE_PASSE)
+    from acces.models import maintenant
+
+    utilisateur = Acces().obtenir_ou_creer(db, email)
+    utilisateur.hashed_password = _HACHE
+    utilisateur.profil_finalise_le = maintenant()
+    db.commit()
+
+
+@pytest.fixture()
+def mails(monkeypatch):
+    """Les mails d'accès (invitation, réinitialisation) partent dans cette
+    liste au lieu du SMTP : [(destinataire, sujet, corps)]."""
+    from auth.mails import MailsAcces
+
+    envoyes = []
+    monkeypatch.setattr(MailsAcces, "_envoyer", lambda self, d, sujet, corps: envoyes.append((d, sujet, corps)))
+    monkeypatch.setattr(MailsAcces, "disponible", True)
+    return envoyes

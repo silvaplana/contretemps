@@ -2,6 +2,7 @@
 tout à Notifications (voir notifications.py).
 """
 
+from comptes import Compte, rbac
 from fastapi import Depends, FastAPI
 from sqlalchemy.orm import Session
 
@@ -25,7 +26,14 @@ class NotificationsReceiver:
     def cle_publique(self):
         return {"cle_publique": self.client.cle_publique if self.client.actif else None}
 
-    def abonner(self, compte_id: int, donnees: AbonnementEntree, db: Session = Depends(get_db)):
+    def abonner(
+        self,
+        compte_id: int,
+        donnees: AbonnementEntree,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        rbac.meme_personne(appelant, compte_id, db)
         self.client.abonner(
             db, compte_id, donnees.endpoint, donnees.keys.p256dh, donnees.keys.auth
         )

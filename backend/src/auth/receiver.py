@@ -1,134 +1,234 @@
-"""Routes REST de connexion et de bascule de profil famille (voir spec
-§2.2). Pas de session pour les comptes d'école — juste l'identité du compte
-trouvé (limite assumée, voir spec §8). Seul le Superuser reçoit un jeton
-signé (§2.5, voir securite/jetons.py).
+"""Routes de connexion, de bascule de profil, de liens d'invitation et de
+réinitialisation, et d'invitation par les admins (voir spec §2.2).
+
+Publiques (voir comptes/rbac.py : ROUTES_PUBLIQUES) : la connexion, « Mot
+de passe oublié ? » et les deux routes d'un lien reçu par mail. Toutes les
+autres exigent une session.
 """
 
-from comptes import Compte, roles
-from fastapi import Depends, FastAPI, HTTPException
-from securite import jetons
+import logging
+
+from acces import INVITATION, ErreurAcces, Utilisateur
+from comptes import Compte, rbac, roles
+from ecoles.models import Ecole
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from db import get_db
 
-from .auth import Auth
+from .auth import Auth, MotDePasseRequis
+from .invitations import Invitations
+from .mails import MailsIndisponibles
 from .schemas import (
-    CompteConnecte,
+    Bascule,
+    ChangementMotDePasse,
+    ChoixEcole,
     Connexion,
-    DemandeBascule,
-    ConfirmationBascule,
-    ConfirmationRecuperation,
-    DemandeRecuperation,
-    ReponseBascule,
-    ReponseRecuperationSortie,
+    Invitation,
+    InvitationSortie,
+    LienSortie,
+    MotDePasseOublie,
+    NouveauMotDePasse,
+    SessionOuverte,
+    StatutAcces,
 )
 
+logger = logging.getLogger(__name__)
 
-def _sortie(compte: Compte, *, admin_actif: bool, jeton: str | None = None) -> CompteConnecte:
-    """Réponse de connexion avec les rôles EFFECTIFS de cette connexion : un
-    élève promu admin n'a ses rôles admin/owner que s'ils sont actifs
-    (§2.4), et alors avec le jeton "admin" qui les active côté serveur."""
-    sortie = CompteConnecte.model_validate(compte)
-    sortie.roles = roles.roles_effectifs(compte, admin_actif)
-    sortie.role = roles.role_principal(sortie.roles)
-    sortie.jeton = jeton
-    return sortie
+# Même message dans tous les cas (compte inconnu, mot de passe faux, email
+# bloqué après trop d'essais) : ne rien révéler de l'existence d'un compte.
+_REFUS = "Identifiant ou mot de passe incorrect"
+_LIEN_INVALIDE = "Ce lien n'est plus valable. Demandez-en un nouveau."
 
 
 class AuthReceiver:
-    def __init__(self, client: Auth, app: FastAPI) -> None:
+    def __init__(self, client: Auth, invitations: Invitations, app: FastAPI) -> None:
         self.client = client
+        self.invitations = invitations
         self.app = app
         self._register_routes()
 
     def _register_routes(self) -> None:
-        self.app.post("/auth/login", response_model=CompteConnecte)(self.login)
-        self.app.post("/auth/bascule/verifier", response_model=ReponseBascule)(
-            self.verifier_bascule
+        self.app.post("/auth/login", response_model=SessionOuverte)(self.login)
+        self.app.post("/auth/bascule", response_model=SessionOuverte)(self.basculer)
+        self.app.post("/auth/mot-de-passe-oublie", status_code=204)(self.mot_de_passe_oublie)
+        self.app.get("/auth/liens/{jeton}", response_model=LienSortie)(self.lire_lien)
+        self.app.post("/auth/liens/{jeton}/mot-de-passe", response_model=SessionOuverte)(
+            self.definir_mot_de_passe
         )
-        self.app.post("/auth/bascule/confirmer", response_model=CompteConnecte)(
-            self.confirmer_bascule
-        )
+        self.app.post("/auth/mot-de-passe", response_model=SessionOuverte)(self.changer_mot_de_passe)
+        self.app.post("/auth/appli-installee", status_code=204)(self.appli_installee)
+        admin = [Depends(self._admin_ecole)]
         self.app.post(
-            "/auth/recuperation/verifier", response_model=ReponseRecuperationSortie
-        )(self.verifier_recuperation)
-        self.app.post("/auth/recuperation/repondre", response_model=CompteConnecte)(
-            self.repondre_recuperation
-        )
+            "/ecoles/{ecole_id}/invitations", response_model=InvitationSortie, dependencies=admin
+        )(self.inviter)
+        self.app.get(
+            "/ecoles/{ecole_id}/acces", response_model=dict[int, StatutAcces], dependencies=admin
+        )(self.statuts)
 
-    def _connexion(self, db: Session, compte: Compte, code: str):
-        """Élève promu admin : droits d'admin actifs seulement avec le code
-        ADMIN de l'école (jeton "admin") — avec le code élève, il n'est
-        qu'un élève (décision utilisateur du 2026-09-21)."""
-        if not roles.admin_sous_condition(compte):
-            return compte
-        if self.client.code_admin_valide(db, compte, code):
-            return _sortie(compte, admin_actif=True, jeton=jetons.emettre(compte.id, portee=jetons.ADMIN))
-        return _sortie(compte, admin_actif=False)
+    def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
+
+    def _session(self, db: Session, compte: Compte) -> SessionOuverte:
+        return SessionOuverte(compte=compte, jeton=self.client.ouvrir_session(db, compte))
+
+    # --- Connexion ---
 
     def login(self, donnees: Connexion, db: Session = Depends(get_db)):
-        superuser = self.client.connecter_superuser(db, donnees.identifiant, donnees.code)
-        if superuser is not None:
-            sortie = CompteConnecte.model_validate(superuser)
-            sortie.jeton = jetons.emettre(superuser.id)
-            return sortie
-        compte = self.client.connecter(db, donnees.ecole_id, donnees.identifiant, donnees.code)
-        if compte is None:
-            self.client.noter_echec_superuser(db, donnees.identifiant)
-            # Même message dans tous les cas (y compris Superuser bloqué) :
-            # ne rien révéler de l'existence d'un compte.
-            raise HTTPException(status_code=401, detail="Identifiant ou code incorrect")
-        return self._connexion(db, compte, donnees.code)
-
-    def verifier_bascule(self, donnees: DemandeBascule, db: Session = Depends(get_db)):
-        """Le frontend appelle ça avant de basculer : si code_requis est
-        faux, il bascule tout de suite (voir §2.2, switch libre vers un
-        rôle égal ou inférieur)."""
-        code_requis = self.client.demander_code_pour_bascule(
-            db, donnees.depuis_compte_id, donnees.vers_compte_id
+        profils = self.client.profils_possibles(db, donnees.identifiant, donnees.mot_de_passe)
+        if donnees.compte_id is not None:
+            profils = [p for p in profils if p.id == donnees.compte_id]
+        if not profils:
+            raise HTTPException(status_code=401, detail=_REFUS)
+        if len(profils) == 1:
+            return self._session(db, profils[0])
+        ecoles = {p.ecole_id: db.get(Ecole, p.ecole_id) for p in profils if p.ecole_id is not None}
+        return SessionOuverte(
+            choix=[
+                ChoixEcole(
+                    compte_id=p.id,
+                    ecole_id=p.ecole_id,
+                    ecole_nom=ecoles[p.ecole_id].nom if p.ecole_id is not None else None,
+                    prenom=p.prenom,
+                    nom=p.nom,
+                    role=p.role_principal,
+                )
+                for p in profils
+            ]
         )
-        return {"code_requis": code_requis}
 
-    def confirmer_bascule(self, donnees: ConfirmationBascule, db: Session = Depends(get_db)):
-        if not self.client.verifier_code_bascule(db, donnees.vers_compte_id, donnees.code):
-            raise HTTPException(status_code=401, detail="Code incorrect")
-        compte = self.client.comptes.get(db, donnees.vers_compte_id)
-        if compte is None:
-            raise HTTPException(status_code=404, detail="Compte introuvable")
-        return self._connexion(db, compte, donnees.code)
+    def basculer(self, donnees: Bascule, request: Request, db: Session = Depends(get_db)):
+        jeton, utilisateur = rbac.session_de_la_requete(request, db)
+        try:
+            resultat = self.client.basculer(db, jeton, utilisateur, donnees.vers_compte_id, donnees.mot_de_passe)
+        except MotDePasseRequis:
+            raise HTTPException(
+                status_code=403,
+                detail={"code": "mot_de_passe_requis", "message": "Mot de passe requis pour ce profil"},
+            ) from None
+        if resultat is None:
+            raise HTTPException(status_code=401, detail="Mot de passe incorrect")
+        compte, nouveau_jeton = resultat
+        return SessionOuverte(compte=compte, jeton=nouveau_jeton)
 
-    def verifier_recuperation(self, donnees: DemandeRecuperation, db: Session = Depends(get_db)):
-        """1ère étape de "Code oublié ?" (§2.2/§2.3) : identifie le rôle du
-        compte visé, sans encore révéler ni vérifier quoi que ce soit —
-        admin -> le frontend pose la question de récupération ensuite
-        (voir repondre_recuperation) ; prof/élève -> juste le contact de
-        l'admin à qui demander directement."""
-        compte = self.client.resoudre_identifiant(db, donnees.ecole_id, donnees.identifiant)
-        if compte is None:
-            raise HTTPException(status_code=404, detail="Identifiant introuvable")
-        if roles.is_admin(compte):
-            return {"role": roles.ADMIN}
-        admin = self.client.premier_admin(db, donnees.ecole_id)
-        ecole = self.client.ecoles.get(db, donnees.ecole_id)
-        return {
-            "role": compte.role_principal,
-            "admin_nom": admin.nom if admin else None,
-            "admin_prenom": admin.prenom if admin else None,
-            "admin_email": admin.email if admin else None,
-            "ecole_nom": ecole.nom if ecole else None,
-        }
+    # --- Liens reçus par mail (invitation, réinitialisation) ---
 
-    def repondre_recuperation(self, donnees: ConfirmationRecuperation, db: Session = Depends(get_db)):
-        """2e étape, admin seulement : bonne réponse -> connecté direct
-        (même forme que /auth/login), comme demandé."""
-        compte = self.client.resoudre_identifiant(db, donnees.ecole_id, donnees.identifiant)
+    def _lien_ou_404(self, db: Session, jeton: str):
+        lien = self.client.acces.lire_lien(db, jeton)
+        if lien is None:
+            raise HTTPException(status_code=404, detail=_LIEN_INVALIDE)
+        return lien, db.get(Utilisateur, lien.utilisateur_id)
+
+    def lire_lien(self, jeton: str, db: Session = Depends(get_db)):
+        """Ouverture de « Créer mon mot de passe » : c'est ce qui fait
+        passer l'invitation à « consultée » (lien cliqué, §2.2)."""
+        lien, utilisateur = self._lien_ou_404(db, jeton)
+        if lien.type == INVITATION:
+            self.client.acces.noter_consultee(db, utilisateur)
+        fiches = self.client.fiches_designees(db, utilisateur.email)
+        ecole = db.get(Ecole, lien.ecole_id) if lien.ecole_id else None
+        return LienSortie(
+            type=lien.type,
+            email=utilisateur.email,
+            prenoms=[f.prenom for f in fiches if lien.ecole_id is None or f.ecole_id == lien.ecole_id],
+            ecole_nom=ecole.nom if ecole else None,
+        )
+
+    def definir_mot_de_passe(self, jeton: str, donnees: NouveauMotDePasse, db: Session = Depends(get_db)):
+        """Le lien ne sert qu'une fois ; la personne est ensuite connectée
+        directement, sans retaper son mot de passe (§2.2)."""
+        lien, utilisateur = self._lien_ou_404(db, jeton)
+        try:
+            self.client.acces.definir_mot_de_passe(db, utilisateur, donnees.mot_de_passe)
+        except ErreurAcces as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from erreur
+        self.client.acces.consommer_lien(db, lien)
+        compte = self.client.profil_de_plus_haut_rang(db, utilisateur, lien.ecole_id)
         if compte is None:
-            raise HTTPException(status_code=404, detail="Identifiant introuvable")
-        valide = self.client.verifier_reponse_recuperation(db, compte.id, donnees.reponse)
-        if valide is None:
-            raise HTTPException(status_code=401, detail="Réponse incorrecte")
-        # La question de récupération est celle des ADMINS : un élève promu
-        # admin qui y répond entre avec ses droits d'admin actifs.
-        if roles.admin_sous_condition(valide):
-            return _sortie(valide, admin_actif=True, jeton=jetons.emettre(valide.id, portee=jetons.ADMIN))
-        return valide
+            # Mot de passe créé, mais plus aucune fiche à cet email dans la
+            # saison courante : rien à ouvrir.
+            return SessionOuverte()
+        return self._session(db, compte)
+
+    def mot_de_passe_oublie(self, donnees: MotDePasseOublie, db: Session = Depends(get_db)):
+        """Toujours la même réponse, qu'un compte existe ou non (§2.2)."""
+        for email, jeton in self.client.liens_de_reinitialisation(db, donnees.identifiant):
+            try:
+                self.invitations.mails.reinitialisation(email, jeton)
+            except Exception:  # noqa: BLE001 — ne rien révéler à l'écran
+                logger.exception("Mail de réinitialisation non envoyé")
+
+    def changer_mot_de_passe(
+        self, donnees: ChangementMotDePasse, request: Request, db: Session = Depends(get_db)
+    ):
+        """Depuis Profil. Tous les jetons déjà remis deviennent invalides
+        (autres appareils déconnectés) ; celui-ci reçoit un jeton neuf."""
+        jeton, utilisateur = rbac.session_de_la_requete(request, db)
+        try:
+            if not self.client.changer_mot_de_passe(db, utilisateur, donnees.ancien, donnees.nouveau):
+                raise HTTPException(status_code=401, detail="Mot de passe actuel incorrect")
+        except ErreurAcces as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from erreur
+        from securite import jetons
+
+        return SessionOuverte(
+            jeton=jetons.emettre(
+                utilisateur.id,
+                portee=jeton.portee,
+                rang=jeton.rang,
+                empreinte=self.client.acces.empreinte(utilisateur),
+            )
+        )
+
+    def appli_installee(self, request: Request, db: Session = Depends(get_db)):
+        """Signalé par l'appli elle-même (§2.2) : le premier signal fixe la
+        date, les suivants sont ignorés."""
+        _, utilisateur = rbac.session_de_la_requete(request, db)
+        self.client.acces.noter_appli_installee(db, utilisateur)
+
+    # --- Invitation par un admin ---
+
+    def inviter(
+        self,
+        ecole_id: int,
+        donnees: Invitation,
+        taches: BackgroundTasks,
+        db: Session = Depends(get_db),
+    ):
+        ecole = db.get(Ecole, ecole_id)
+        if ecole is None:
+            raise HTTPException(status_code=404, detail="École introuvable")
+        emails = self.invitations.emails_a_inviter(db, ecole_id, donnees.compte_ids)
+        if not emails:
+            raise HTTPException(status_code=409, detail="Aucune adresse email à inviter")
+        if len(emails) == 1:
+            # Une seule adresse : envoi immédiat, l'admin voit tout de
+            # suite si le mail est parti.
+            try:
+                self.invitations.inviter(db, ecole, emails[0])
+            except MailsIndisponibles as erreur:
+                raise HTTPException(status_code=503, detail=str(erreur)) from erreur
+            except Exception as erreur:  # noqa: BLE001
+                logger.exception("Invitation non envoyée")
+                raise HTTPException(status_code=502, detail="Le mail n'a pas pu être envoyé") from erreur
+            return InvitationSortie(emails=1)
+        if not self.invitations.mails.disponible:
+            raise HTTPException(status_code=503, detail="L'envoi de mails n'est pas configuré sur ce serveur")
+        # « Inviter tous les non-invités » : des dizaines de mails, envoyés
+        # après la réponse. Sa propre session de base : celle de la requête
+        # est déjà refermée à ce moment-là.
+        taches.add_task(self._inviter_en_tache_de_fond, db.get_bind(), ecole_id, emails)
+        return InvitationSortie(emails=len(emails), en_cours=True)
+
+    def _inviter_en_tache_de_fond(self, moteur, ecole_id: int, emails: list[str]) -> None:
+        with Session(moteur) as db:
+            ecole = db.get(Ecole, ecole_id)
+            for email in emails:
+                try:
+                    self.invitations.inviter(db, ecole, email)
+                except Exception:  # noqa: BLE001 — une adresse en échec n'arrête pas les autres
+                    db.rollback()
+                    logger.exception("Invitation non envoyée à une adresse")
+
+    def statuts(self, ecole_id: int, db: Session = Depends(get_db)):
+        return self.invitations.statuts(db, ecole_id)

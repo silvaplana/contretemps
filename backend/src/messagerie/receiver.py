@@ -391,7 +391,16 @@ class MessagerieReceiver:
             raise HTTPException(status_code=404, detail="Conversation introuvable")
         return self._sortie_conversation(db, conversation)
 
-    def flux_evenements(self, compte_id: int) -> StreamingResponse:
+    def flux_evenements(
+        self,
+        compte_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ) -> StreamingResponse:
+        # Flux temps réel d'un profil : seulement pour sa propre session
+        # (jeton dans l'URL, EventSource n'envoyant pas d'en-tête — voir
+        # comptes/rbac.py : session_de_la_requete).
+        rbac.meme_personne(appelant, compte_id, db)
         return StreamingResponse(
             self._generateur_evenements(compte_id), media_type="text/event-stream"
         )

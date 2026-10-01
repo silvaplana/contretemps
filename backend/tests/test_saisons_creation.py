@@ -5,6 +5,7 @@ import datetime as dt
 
 import pytest
 import sqlalchemy as sa
+from conftest import MOT_DE_PASSE, donner_mot_de_passe, entetes_session
 from comptes import Comptes, RoleCompte, roles
 from comptes.models import Compte
 from cours import CoursService
@@ -147,9 +148,11 @@ def test_un_eleve_non_recopie_ne_se_connecte_plus(client, ecole_en_cours):
     e = ecole_en_cours
     ecole = e["ecole"]
     _creer(client, ecole.id, dupliquer_profs=True, dupliquer_cours=True)
-    connexion = {"ecole_id": ecole.id, "identifiant": "Ana Roux", "code": ecole.code_acces_eleve}
+    for email in ("j@x.fr", "r@x.fr"):
+        donner_mot_de_passe(e["owner"]._sa_instance_state.session, email)
+    connexion = {"identifiant": "Ana Roux", "mot_de_passe": MOT_DE_PASSE}
     assert client.post("/auth/login", json=connexion).status_code == 401
-    admin = {"ecole_id": ecole.id, "identifiant": "Julia Dho", "code": ecole.code_acces_admin}
+    admin = {"identifiant": "Julia Dho", "mot_de_passe": MOT_DE_PASSE}
     assert client.post("/auth/login", json=admin).status_code == 200
 
 
@@ -157,13 +160,13 @@ def test_un_eleve_non_recopie_ne_se_connecte_plus(client, ecole_en_cours):
 def test_l_admin_createur_recoit_sa_nouvelle_fiche(client, ecole_en_cours):
     e = ecole_en_cours
     reponse = client.post(
-        f"/ecoles/{e['ecole'].id}/saisons", json=NOUVELLE, headers={"X-Compte-Id": str(e["owner"].id)}
+        f"/ecoles/{e['ecole'].id}/saisons", json=NOUVELLE, headers=entetes_session(e["owner"])
     )
     assert reponse.status_code == 201
     nouvelle_fiche = reponse.json()["compte_id"]
     assert nouvelle_fiche not in (None, e["owner"].id)
     # Son ancienne fiche bascule vers la nouvelle.
-    apres = client.get(f"/ecoles/{e['ecole'].id}/saisons", headers={"X-Compte-Id": str(e["owner"].id)})
+    apres = client.get(f"/ecoles/{e['ecole'].id}/saisons", headers=entetes_session(e["owner"]))
     assert apres.status_code == 409
     assert apres.json()["detail"]["compte_id"] == nouvelle_fiche
 
@@ -171,7 +174,7 @@ def test_l_admin_createur_recoit_sa_nouvelle_fiche(client, ecole_en_cours):
 @pytest.mark.rbac_reel
 def test_un_prof_ne_cree_pas_de_saison(client, ecole_en_cours):
     e = ecole_en_cours
-    reponse = client.post(f"/ecoles/{e['ecole'].id}/saisons", json=NOUVELLE, headers={"X-Compte-Id": str(e["prof"].id)})
+    reponse = client.post(f"/ecoles/{e['ecole'].id}/saisons", json=NOUVELLE, headers=entetes_session(e["prof"]))
     assert reponse.status_code == 403
 
 
@@ -256,16 +259,16 @@ def test_supprimer_une_ancienne_saison(client, db_session, ecole_en_cours, sauve
 def test_supprimer_la_saison_courante_redonne_la_main_a_la_precedente(client, db_session, ecole_en_cours, sauvegardes):
     e = ecole_en_cours
     ecole_id = e["ecole"].id
-    creee = client.post(f"/ecoles/{ecole_id}/saisons", json=NOUVELLE, headers={"X-Compte-Id": str(e["owner"].id)}).json()
+    creee = client.post(f"/ecoles/{ecole_id}/saisons", json=NOUVELLE, headers=entetes_session(e["owner"])).json()
     nouvelle_fiche = creee["compte_id"]
 
     reponse = client.delete(
-        f"/ecoles/{ecole_id}/saisons/{creee['saison']['id']}", headers={"X-Compte-Id": str(nouvelle_fiche)}
+        f"/ecoles/{ecole_id}/saisons/{creee['saison']['id']}", headers={**entetes_session(e["owner"]), "X-Compte-Id": str(nouvelle_fiche)}
     )
     assert reponse.status_code == 200
     # L'admin retrouve sa fiche de la saison redevenue courante.
     assert reponse.json()["compte_id"] == e["owner"].id
-    entete = {"X-Compte-Id": str(e["owner"].id)}
+    entete = entetes_session(e["owner"])
     saisons = client.get(f"/ecoles/{ecole_id}/saisons", headers=entete).json()
     assert [(s["nom"], s["courante"]) for s in saisons] == [("2026-2027", True)]
     # De nouveau modifiable.
@@ -288,6 +291,6 @@ def test_la_chaine_des_fiches_saute_la_saison_supprimee(client, db_session, ecol
 def test_un_prof_ne_supprime_pas_de_saison(client, ecole_en_cours, sauvegardes):
     e = ecole_en_cours
     reponse = client.delete(
-        f"/ecoles/{e['ecole'].id}/saisons/{e['ancienne']}", headers={"X-Compte-Id": str(e["prof"].id)}
+        f"/ecoles/{e['ecole'].id}/saisons/{e['ancienne']}", headers=entetes_session(e["prof"])
     )
     assert reponse.status_code == 403

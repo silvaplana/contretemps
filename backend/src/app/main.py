@@ -10,15 +10,16 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from administrateurs import Administrateurs, AdministrateursReceiver
-from auth import Auth, AuthReceiver
+from acces import Acces
+from auth import Auth, AuthReceiver, Invitations, MailsAcces
 from choregraphies import Choregraphies, ChoregraphiesReceiver
-from comptes import Comptes, ComptesReceiver
+from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
 from db import Base, engine
 from ecoles import EcoleExport, Ecoles, EcolesReceiver
@@ -48,7 +49,11 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Contretemps API", lifespan=lifespan)
+# Session obligatoire sur TOUTES les routes (spec §2.2), sauf la courte
+# liste des routes publiques (voir comptes/rbac.py : ROUTES_PUBLIQUES).
+app = FastAPI(
+    title="Contretemps API", lifespan=lifespan, dependencies=[Depends(rbac.session_requise)]
+)
 # Saison affichée demandée par le navigateur (en-tête X-Saison-Id), voir
 # saisons/portee.py.
 app.add_middleware(MiddlewareSaison)
@@ -68,6 +73,9 @@ app.add_middleware(
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
+    # Jeton de session prolongé (voir comptes/rbac.py), que l'appli doit
+    # pouvoir lire dans la réponse.
+    expose_headers=[rbac.ENTETE_JETON_RENOUVELE],
 )
 
 # Cree les tables si elles n'existent pas encore (pratique en dev/SQLite ;
@@ -103,8 +111,10 @@ administrateurs_receiver = AdministrateursReceiver(client=administrateurs_client
 saisons_receiver = SaisonsReceiver(client=GestionSaisons(), app=app)
 
 # Monte les routes de connexion (/auth/...) - depend de ecoles et comptes.
-auth_client = Auth(ecoles=ecoles_client, comptes=comptes_client)
-auth_receiver = AuthReceiver(client=auth_client, app=app)
+acces_client = Acces()
+auth_client = Auth(comptes=comptes_client, acces=acces_client)
+invitations_client = Invitations(acces=acces_client, mails=MailsAcces())
+auth_receiver = AuthReceiver(client=auth_client, invitations=invitations_client, app=app)
 
 # Monte les routes des cours (/cours) - depend de comptes (professeurs/eleves)
 # et evenements_client (SSE : sélecteur de cours tenu à jour en direct,

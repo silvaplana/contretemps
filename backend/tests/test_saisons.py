@@ -5,6 +5,7 @@ import datetime as dt
 from pathlib import Path
 
 import sqlalchemy as sa
+from conftest import MOT_DE_PASSE, donner_mot_de_passe, entetes_session
 from alembic import command
 from alembic.config import Config
 from comptes import Comptes
@@ -221,16 +222,20 @@ def changement_de_saison(db_session):
 def test_seules_les_fiches_de_la_saison_courante_se_connectent(client, changement_de_saison):
     c = changement_de_saison
     ecole = c["ecole"]
-    admin = client.post("/auth/login", json={"ecole_id": ecole.id, "identifiant": "Julia Dho", "code": ecole.code_acces_admin})
-    assert admin.status_code == 200 and admin.json()["id"] == c["nouvel_admin"].id
-    eleve = client.post("/auth/login", json={"ecole_id": ecole.id, "identifiant": "Ana Roux", "code": ecole.code_acces_eleve})
-    assert eleve.status_code == 401
+    for email in ("j@x.fr", "r@x.fr"):
+        donner_mot_de_passe(c["admin"]._sa_instance_state.session, email)
+
+    def connexion(identifiant, **entetes):
+        return client.post(
+            "/auth/login", json={"identifiant": identifiant, "mot_de_passe": MOT_DE_PASSE}, headers=entetes
+        )
+
+    admin = connexion("Julia Dho")
+    assert admin.status_code == 200 and admin.json()["compte"]["id"] == c["nouvel_admin"].id
+    # Bon mot de passe, mais plus de fiche dans la saison courante.
+    assert connexion("Ana Roux").status_code == 401
     # L'en-tête de saison est ignoré à la connexion.
-    forge = client.post(
-        "/auth/login",
-        json={"ecole_id": ecole.id, "identifiant": "Ana Roux", "code": ecole.code_acces_eleve},
-        headers={"X-Saison-Id": str(c["ancienne"])},
-    )
+    forge = connexion("Ana Roux", **{"X-Saison-Id": str(c["ancienne"])})
     assert forge.status_code == 401
 
 
@@ -245,13 +250,13 @@ def test_fiche_courante(client, changement_de_saison):
 def test_une_ancienne_fiche_bascule_ou_est_refusee(client, changement_de_saison):
     c = changement_de_saison
     route = f"/ecoles/{c['ecole'].id}"
-    bascule = client.get(route, headers={"X-Compte-Id": str(c["admin"].id)})
+    bascule = client.get(route, headers=entetes_session(c["admin"]))
     assert bascule.status_code == 409
     assert bascule.json()["detail"] == {"code": "nouvelle_saison", "compte_id": c["nouvel_admin"].id}
-    refus = client.get(route, headers={"X-Compte-Id": str(c["eleve"].id)})
+    refus = client.get(route, headers=entetes_session(c["eleve"]))
     assert refus.status_code == 401
     assert refus.json()["detail"]["code"] == "hors_saison"
-    assert client.get(route, headers={"X-Compte-Id": str(c["nouvel_admin"].id)}).status_code == 200
+    assert client.get(route, headers=entetes_session(c["nouvel_admin"])).status_code == 200
 
 
 @pytest.mark.rbac_reel
@@ -260,12 +265,12 @@ def test_seul_un_admin_consulte_une_ancienne_saison(client, changement_de_saison
     ancienne = {"X-Saison-Id": str(c["ancienne"])}
     admin = client.get(
         f"/ecoles/{c['ecole'].id}/administrateurs",
-        headers={"X-Compte-Id": str(c["nouvel_admin"].id), **ancienne},
+        headers={**entetes_session(c["nouvel_admin"]), **ancienne},
     )
     assert admin.status_code == 200
     assert [a["id"] for a in admin.json()] == [c["admin"].id]
     prof = client.get(
-        f"/ecoles/{c['ecole'].id}", headers={"X-Compte-Id": str(c["nouveau_prof"].id), **ancienne}
+        f"/ecoles/{c['ecole'].id}", headers={**entetes_session(c["nouveau_prof"]), **ancienne}
     )
     assert prof.status_code == 403
 

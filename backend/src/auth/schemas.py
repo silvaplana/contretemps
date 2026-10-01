@@ -1,10 +1,14 @@
+import datetime as dt
+
 from pydantic import AliasChoices, BaseModel, Field
 
 
 class Connexion(BaseModel):
-    ecole_id: int
     identifiant: str  # "Prénom Nom" ou email (voir spec §2.2)
-    code: str
+    mot_de_passe: str
+    # Renseigné seulement après « Choisissez votre école » (plusieurs
+    # écoles possibles pour cet identifiant et ce mot de passe).
+    compte_id: int | None = None
 
 
 class CompteConnecte(BaseModel):
@@ -21,50 +25,74 @@ class CompteConnecte(BaseModel):
     prenom: str
     email: str | None
     telephone: str | None = None
-    # Jamais la VALEUR du code de récupération : il suffit, via "Code
-    # oublié ?", à se connecter en admin (§2.2). Jusqu'au 2026-09-21 il
-    # était renvoyé ici, y compris par des routes lues par tout le monde
-    # (GET /comptes?role=admin, messagerie). Juste s'il est défini ; on le
-    # MODIFIE toujours via CompteModification.
-    code_recuperation_defini: bool = False
-    # Jeton signé de 12 h, remis UNIQUEMENT à la connexion du Superuser
-    # (§2.5) : le navigateur le renvoie à chaque requête. Absent pour
-    # les comptes d'école.
-    jeton: str | None = None
 
     model_config = {"from_attributes": True}
 
 
-class DemandeBascule(BaseModel):
-    depuis_compte_id: int
+class ChoixEcole(BaseModel):
+    """Une ligne de « Choisissez votre école » (§2.2)."""
+
+    compte_id: int
+    # Vides pour l'accès Superuser (au-dessus des écoles, §2.5).
+    ecole_id: int | None
+    ecole_nom: str | None
+    prenom: str
+    nom: str
+    role: str
+
+
+class SessionOuverte(BaseModel):
+    """Réponse d'une connexion : soit `compte` et son `jeton` de session
+    (à renvoyer dans `Authorization: Bearer ...`), soit `choix` quand
+    plusieurs écoles sont possibles."""
+
+    compte: CompteConnecte | None = None
+    jeton: str | None = None
+    choix: list[ChoixEcole] = []
+
+
+class Bascule(BaseModel):
     vers_compte_id: int
+    # Seulement pour une montée en privilège (§2.2).
+    mot_de_passe: str | None = None
 
 
-class ReponseBascule(BaseModel):
-    code_requis: bool
+class LienSortie(BaseModel):
+    """Ce qu'affiche « Créer mon mot de passe » / « Nouveau mot de passe »."""
+
+    type: str  # "invitation" | "reinitialisation"
+    email: str
+    prenoms: list[str]
+    ecole_nom: str | None
 
 
-class ConfirmationBascule(BaseModel):
-    vers_compte_id: int
-    code: str
+class NouveauMotDePasse(BaseModel):
+    mot_de_passe: str
 
 
-class DemandeRecuperation(BaseModel):
-    ecole_id: int
-    identifiant: str  # "Prénom Nom" ou email (voir spec §2.2)
-
-
-class ReponseRecuperationSortie(BaseModel):
-    role: str  # 'admin' | 'professeur' | 'eleve'
-    # Renseignés seulement si role != 'admin' (voir "Code oublié ?" §2.2/§2.3) :
-    # contact du (premier) admin de l'école, à qui demander son code.
-    admin_nom: str | None = None
-    admin_prenom: str | None = None
-    admin_email: str | None = None
-    ecole_nom: str | None = None
-
-
-class ConfirmationRecuperation(BaseModel):
-    ecole_id: int
+class MotDePasseOublie(BaseModel):
     identifiant: str
-    reponse: str  # réponse à la question de récupération (admin seulement)
+
+
+class ChangementMotDePasse(BaseModel):
+    ancien: str
+    nouveau: str
+
+
+class Invitation(BaseModel):
+    # Fiches à inviter (les fiches sans email sont ignorées ; un seul mail
+    # par adresse).
+    compte_ids: list[int]
+
+
+class InvitationSortie(BaseModel):
+    # Nombre d'adresses invitées. `en_cours` : les mails partent en tâche
+    # de fond (plusieurs adresses), le statut se met à jour au fil de l'eau.
+    emails: int
+    en_cours: bool = False
+
+
+class StatutAcces(BaseModel):
+    # pas_email | pas_invite | invite | consultee | finalise | installee
+    statut: str
+    date: dt.datetime | None

@@ -47,7 +47,7 @@ autre profil de la même famille — ex. un parent-admin qui bascule vers le pro
 élève, ou entre deux enfants d'une même fratrie. Une famille peut mélanger les rôles (ex. un
 parent Admin + ses deux enfants Élèves).
 
-### 2.2 Connexion par mot de passe *(spécifié le 2026-10-01, pas encore implémenté)*
+### 2.2 Connexion par mot de passe *(spécifié le 2026-10-01, serveur implémenté le 2026-10-01)*
 
 **Décision utilisateur du 2026-10-01** : les codes d'accès partagés par rôle et par école
 (`ADMIN2026`, `ELEVE2026`...) sont **abandonnés**, jugés trop simples par le client. Chaque
@@ -73,7 +73,10 @@ compte des majuscules ni des accents, **dans toutes les écoles** (et non plus d
 première école du serveur). Le serveur ne garde que les comptes dont le mot de passe est bon.
 - un seul compte trouvé : connexion directe ;
 - plusieurs écoles possibles (cas rare, ex. la même personne inscrite dans deux écoles) : une
-  petite fenêtre **« Choisissez votre école »** s'ouvre. Elle n'apparaît que dans ce cas.
+  petite fenêtre **« Choisissez votre école »** s'ouvre. Elle n'apparaît que dans ce cas ;
+- plusieurs profils d'une même école à cet email (une famille connectée par son email) :
+  on arrive sur le profil de **plus haut rang**, puis le plus ancien (décision utilisateur du
+  2026-10-01). Par son nom et son prénom, chacun arrive sur sa propre fiche.
 
 Les autres règles restent : seuls les comptes de la **saison courante** peuvent se connecter
 (§2.6), plusieurs appareils peuvent être connectés en même temps, déconnexion depuis
@@ -105,7 +108,20 @@ Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'
   appartient bien à cet email. Un `X-Compte-Id` seul ne donne plus aucun droit ;
 - durée : **30 jours, prolongés à chaque usage**, pour ne pas se reconnecter sans cesse sur
   mobile. Le Superuser garde ses 12 heures (§2.5) ;
-- changer son mot de passe ou se déconnecter efface le jeton de l'appareil.
+- changer son mot de passe ou se déconnecter efface le jeton de l'appareil. **Changer de mot
+  de passe déconnecte aussi tous les autres appareils** (décision utilisateur du 2026-10-01) :
+  le jeton porte une empreinte du mot de passe, qui ne correspond plus ; l'appareil qui fait
+  le changement reçoit un jeton neuf ;
+- le jeton porte le **rang** du profil avec lequel la session a été ouverte : c'est ce qui
+  permet au serveur d'exiger le mot de passe pour une montée en privilège (voir « Familles,
+  rôles et bascule de profil ») ;
+- **toutes les routes exigent une session**, sauf une courte liste publique
+  (`comptes/rbac.py` : `ROUTES_PUBLIQUES`) : connexion, liens reçus par mail, « Mot de passe
+  oublié ? », parcours public d'inscription d'un élève, liste des écoles (nom et code postal)
+  et des cours qu'il utilise. Un test parcourt toutes les routes pour le garantir ;
+- le flux temps réel de la messagerie reçoit le jeton dans son adresse (un `EventSource` ne
+  sait pas envoyer d'en-tête) ; les fichiers vidéo restent lisibles par leur adresse, qui
+  contient un nom impossible à deviner.
 
 #### Invitation
 
@@ -171,7 +187,10 @@ d'environnement `SMTP_*`, sans toucher au code.
 
 « Mot de passe oublié ? » demande le nom prénom ou l'email, puis affiche toujours le même
 message (« Si ce compte existe, un lien vient d'être envoyé à son adresse ») pour ne pas
-révéler qui est inscrit. Le lien est valable **1 heure**, à usage unique, et mène à l'écran
+révéler qui est inscrit. **Toute personne dont l'email figure dans une école reçoit ce lien,
+même si elle n'a jamais été invitée** (décision utilisateur du 2026-10-01) : elle prouve
+qu'elle contrôle l'adresse, comme avec une invitation. C'est aussi ce qui permet aux admins
+de créer leur mot de passe le jour de la coupure. Le lien est valable **1 heure**, à usage unique, et mène à l'écran
 « Nouveau mot de passe », identique à « Créer mon mot de passe ». Demandes limitées dans le
 temps, comme les essais de connexion. Un mot de passe peut aussi être changé depuis
 **Profil** (ancien mot de passe redemandé).
@@ -220,6 +239,10 @@ Sur la page de connexion, un bouton **"Nouvelle école ?"** ouvre un formulaire 
 - Code postal — **obligatoire** : sert à distinguer deux écoles portant le même nom (ex. deux
   "Contretemps" dans des villes différentes), voir §6.1
 - Nom, prénom et email du premier administrateur
+
+**Réservé au Super User** (décision utilisateur du 2026-10-01) : le lien « Nouvelle école ? »
+disparaît de l'écran de connexion public, la création se fait depuis l'écran « Choisir une
+école » du Super User (§2.5), qui saisit le premier administrateur puis l'invite.
 
 Plus de codes d'accès ni de code de récupération (décision du 2026-10-01, §2.2). La validation
 du formulaire crée l'école **et** le compte du premier administrateur en une seule opération,

@@ -190,6 +190,17 @@ def test_paiement_helloasso_initie_1x(
 def test_paiement_helloasso_initie_3x_avec_terms(
     client, db_session, _nettoyage_dossier, _helloasso_actif, monkeypatch
 ):
+    # Date du jour figée en septembre : le test échouait dès le 1er octobre
+    # (le trimestre d'octobre n'était plus "à venir").
+    import datetime
+    import types
+
+    class _Septembre(datetime.date):
+        @classmethod
+        def today(cls):
+            return cls(2026, 9, 15)
+
+    monkeypatch.setattr("inscriptions.tarifs.dt", types.SimpleNamespace(date=_Septembre))
     ecole, cours = _creer_ecole_avec_cours(db_session)
     _nettoyage_dossier.append(DOSSIER_INSCRIPTIONS / str(ecole.id))
     corps = client.post(

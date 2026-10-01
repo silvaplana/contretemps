@@ -3,6 +3,7 @@ backend/src/comptes/rbac.py). Ici les vraies vérifications sont ACTIVES
 (`rbac_reel`, voir conftest.py), contrairement au reste de la suite."""
 
 import pytest
+from conftest import entetes_session
 from comptes import Comptes, RoleCompte, rbac, roles
 from cours import CoursService
 from ecoles import Ecoles
@@ -40,7 +41,7 @@ def ecole_complete(db_session):
 
 
 def _en_tant_que(compte):
-    return {rbac.ENTETE_COMPTE: str(compte.id)}
+    return entetes_session(compte)
 
 
 # Une route protégée par module, de quoi vérifier que chacun est branché.
@@ -100,13 +101,16 @@ def test_ressource_inexistante_404_pas_403(client, ecole_complete):
     assert reponse.status_code == 404
 
 
-def test_les_routes_partagees_restent_ouvertes(client, ecole_complete):
-    """Hors onglet Admin (Présence, Chorégraphie, Vidéo, Messagerie...),
-    rien ne change dans cette étape : pas d'en-tête requis."""
+def test_les_routes_partagees_exigent_une_session_mais_pas_d_etre_admin(client, ecole_complete):
+    """Hors onglet Admin (Présence, Chorégraphie, Vidéo, Messagerie...) :
+    toute personne connectée, mais plus personne d'anonyme (§2.2)."""
     ecole_id = ecole_complete["ecole"].id
+    routes = [f"/eleves?ecole_id={ecole_id}", f"/cours/{ecole_complete['cours'].id}/seances"]
+    for route in routes:
+        assert client.get(route).status_code == 401
+        assert client.get(route, headers=_en_tant_que(ecole_complete["prof"])).status_code == 200
+    # Liste des cours : publique, le formulaire d'inscription en a besoin.
     assert client.get(f"/cours?ecole_id={ecole_id}").status_code == 200
-    assert client.get(f"/eleves?ecole_id={ecole_id}").status_code == 200
-    assert client.get(f"/cours/{ecole_complete['cours'].id}/seances").status_code == 200
 
 
 # --- Fuites corrigées (codes d'accès, code de récupération) ---
@@ -130,12 +134,13 @@ def test_le_code_de_recuperation_n_est_jamais_renvoye(client, db_session, ecole_
     owner.code_recuperation = "rex"
     db_session.commit()
     ecole_id = ecole_complete["ecole"].id
+    entetes = _en_tant_que(ecole_complete["prof"])
     for corps in [
-        client.get(f"/comptes/{owner.id}").json(),
-        *client.get("/comptes", params={"ecole_id": ecole_id, "role": "admin"}).json(),
+        client.get(f"/comptes/{owner.id}", headers=entetes).json(),
+        *client.get("/comptes", params={"ecole_id": ecole_id, "role": "admin"}, headers=entetes).json(),
     ]:
         assert "code_recuperation" not in corps
-    assert client.get(f"/comptes/{owner.id}").json()["code_recuperation_defini"] is True
+    assert client.get(f"/comptes/{owner.id}", headers=entetes).json()["code_recuperation_defini"] is True
 
 
 # --- require_owner (pas encore de route, voir étape 3 §2.4) ---

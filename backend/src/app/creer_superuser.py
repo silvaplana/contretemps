@@ -51,7 +51,7 @@ def main() -> None:
     finally:
         db.close()
     print(f"Superuser enregistré : {compte.prenom} {compte.nom} <{compte.email}> (compte n° {compte.id}).")
-    print("Connexion : même écran que tout le monde, ce mot de passe dans le champ « Code ».")
+    print("Connexion : même écran que tout le monde, avec cet email et ce mot de passe.")
 
 
 if __name__ == "__main__":
