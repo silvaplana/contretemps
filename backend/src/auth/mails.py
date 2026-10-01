@@ -42,8 +42,7 @@ class MailsAcces:
     # Mails rédigés pour ne pas finir en spam (constaté le 2026-10-01 avec
     # Gmail : un titre qui parle de « mot de passe », trois lignes et un lien
     # nu ressemblent à de l'hameçonnage) : titre neutre, texte qui dit qui
-    # écrit et pourquoi, version mise en forme avec un bouton en plus de la
-    # version texte. « Bonjour Prénom Nom, » : demande utilisateur.
+    # écrit et pourquoi, version mise en forme en plus de la version texte. « Bonjour Prénom Nom, » : demande utilisateur.
     # `destinataire` : la personne à qui l'on s'adresse quand l'adresse
     # porte plusieurs profils (voir auth.py : destinataire).
     def _sujet(self, ecole_nom: str | None) -> str:
@@ -100,8 +99,8 @@ class MailsAcces:
         lien: str,
         fin: list[str],
     ) -> None:
-        """Les deux versions du même message : texte (lien en clair) et
-        mise en forme (bouton, plus le lien en clair en secours)."""
+        """Les deux versions du même message, texte et mise en forme, avec le
+        lien écrit en clair dans les deux."""
         texte = "\n\n".join([f"Bonjour {destinataire},", *paragraphes, f"{bouton} :\n{lien}", *fin]) + "\n"
         p = '<p style="margin:0 0 16px">{}</p>'
         html = (
@@ -109,10 +108,12 @@ class MailsAcces:
             'max-width:520px">'
             + p.format(f"Bonjour {escape(destinataire)},")
             + "".join(p.format(escape(x)) for x in paragraphes)
-            + f'<p style="margin:24px 0"><a href="{escape(lien)}" style="background:#d8722a;color:#ffffff;'
-            f'text-decoration:none;padding:12px 22px;border-radius:24px;font-weight:bold">{escape(bouton)}</a></p>'
-            + '<p style="margin:0 0 16px;font-size:13px;color:#8a6a4a">Si le bouton ne fonctionne pas, copiez ce '
-            f'lien dans votre navigateur :<br>{escape(lien)}</p>'
+            # Pas de bouton ni de balise de lien : Brevo réécrit tout lien
+            # cliquable vers son domaine de suivi, sans réglage pour l'éviter
+            # (constaté le 2026-10-02). Une adresse écrite en clair n'est pas
+            # réécrite, et les messageries la rendent cliquable.
+            + f'<p style="margin:24px 0 4px;font-weight:bold">{escape(bouton)} :</p>'
+            + f'<p style="margin:0 0 24px;word-break:break-all">{escape(lien)}</p>'
             + "".join('<p style="margin:0 0 8px;font-size:13px;color:#8a6a4a">{}</p>'.format(escape(x)) for x in fin)
             + "</div>"
         )

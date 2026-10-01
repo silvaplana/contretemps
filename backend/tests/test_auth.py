@@ -514,4 +514,6 @@ def test_mail_avec_version_texte_et_version_mise_en_forme(monkeypatch):
     assert set(parties) == {"text/plain", "text/html"}
     assert "Bonjour Zoé Müller," in parties["text/plain"] and "/activer?jeton=JETON" in parties["text/plain"]
     assert "École &lt;Été&gt;" in parties["text/html"] and "/activer?jeton=JETON" in parties["text/html"]
+    # Aucun lien cliquable dans la version mise en forme : Brevo les réécrirait.
+    assert "<a " not in parties["text/html"] and "href" not in parties["text/html"]
     assert "mot de passe" not in str(email.header.make_header(email.header.decode_header(message["Subject"])))
