@@ -71,6 +71,33 @@ class MailsAcces:
             ],
         )
 
+    def rappel(self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str]) -> None:
+        """Réinvitation d'une personne qui a DÉJÀ créé son mot de passe
+        (demande utilisateur du 2026-10-02) : pas de lien pour en choisir
+        un, juste l'adresse de l'appli et le rappel de « Mot de passe
+        oublié ? »."""
+        paragraphes = [
+            f"L'école {ecole_nom} vous rappelle que votre accès à son application est déjà actif.",
+            f"Pour vous connecter, ouvrez l'application et saisissez votre adresse email ({email}) "
+            "et votre mot de passe.",
+            "Si vous ne vous souvenez plus de votre mot de passe, cliquez sur « Mot de passe oublié ? » "
+            "sur l'écran de connexion : vous recevrez un lien pour en choisir un nouveau.",
+        ]
+        if len(prenoms) > 1:
+            paragraphes.append(f"Profils : {', '.join(prenoms)}.")
+        self._composer(
+            email,
+            ecole_nom,
+            destinataire,
+            paragraphes,
+            "Ouvrir l'application",
+            f"{self.url_appli}/",
+            [
+                f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
+                "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
+            ],
+        )
+
     def reinitialisation(self, email: str, ecole_nom: str | None, destinataire: str, jeton: str) -> None:
         nom = ecole_nom or "Contretemps"
         self._composer(

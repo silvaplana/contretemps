@@ -8,6 +8,7 @@ from __future__ import annotations
 import smtplib
 
 from acces import INVITATION, Acces, AccesEmail, normaliser_email
+from acces.acces import FINALISE, INSTALLEE
 from comptes import Compte
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -48,9 +49,15 @@ class Invitations:
         prenoms = [p.prenom for p in profils]
         a_qui = destinataire(profils)
         acces_email = self.acces.obtenir_ou_creer(db, email)
-        jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
+        nom = f"{a_qui.prenom} {a_qui.nom}"
         try:
-            self.mails.invitation(email, ecole.nom, f"{a_qui.prenom} {a_qui.nom}", prenoms, jeton)
+            if acces_email.mot_de_passe_hache:
+                # Accès déjà créé : un rappel pour se connecter, sans lien
+                # pour choisir un mot de passe.
+                self.mails.rappel(email, ecole.nom, nom, prenoms)
+            else:
+                jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
+                self.mails.invitation(email, ecole.nom, nom, prenoms, jeton)
         except MailsIndisponibles:
             raise  # réglage du serveur, pas un problème de cette adresse
         except Exception as erreur:
@@ -74,8 +81,16 @@ class Invitations:
             if emails
             else {}
         )
+        par_email: dict[str, list[Compte]] = {}
+        for fiche in fiches:
+            if normaliser_email(fiche.email):
+                par_email.setdefault(normaliser_email(fiche.email), []).append(fiche)
         resultat = {}
         for fiche in fiches:
-            statut, date, detail = self.acces.statut(fiche.email, acces_emails.get(normaliser_email(fiche.email)))
-            resultat[fiche.id] = {"statut": statut, "date": date, "detail": detail}
+            email = normaliser_email(fiche.email)
+            statut, date, detail = self.acces.statut(fiche.email, acces_emails.get(email))
+            # « Profil finalisé par <prénom> » : le profil de cette adresse à
+            # qui les mails s'adressent (voir auth.py : destinataire).
+            par = destinataire(par_email[email]).prenom if statut in (FINALISE, INSTALLEE) else None
+            resultat[fiche.id] = {"statut": statut, "date": date, "detail": detail, "par": par}
         return resultat

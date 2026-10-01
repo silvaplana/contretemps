@@ -10,7 +10,7 @@ import * as authApi from '../../api/auth.js'
 
 const LIBELLES = {
   pas_email: 'Pas d’email',
-  pas_invite: 'Pas invité',
+  pas_invite: 'Pas encore invité',
   invite: 'Invité',
   remis: 'Mail remis',
   consultee: 'Invitation consultée',
@@ -92,6 +92,7 @@ export function StatutAcces({ acces, compteId }) {
   return (
     <span className={`acces-statut acces-statut--${etat.statut}`}>
       {LIBELLES[etat.statut] ?? etat.statut}
+      {etat.statut === 'finalise' && etat.par && ` par ${etat.par}`}
       {date && ` le ${date}`}
       {/* Échec d'envoi : la raison, sous le statut. */}
       {etat.detail && <span className="acces-statut__detail">{etat.detail}</span>}

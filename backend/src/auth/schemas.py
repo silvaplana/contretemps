@@ -102,3 +102,5 @@ class StatutAcces(BaseModel):
     statut: str
     date: dt.datetime | None
     detail: str | None = None
+    # Pour « Profil finalisé par <prénom> ».
+    par: str | None = None

@@ -234,7 +234,7 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
     eleve = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="Roux", prenom="Ana", email="Parent@X.fr")
     frere = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="Roux", prenom="Tom", email="parent@x.fr")
     avant = _statuts(client, ecole)
-    assert avant[str(eleve.id)] == {"statut": "pas_invite", "date": None, "detail": None}
+    assert avant[str(eleve.id)] == {"statut": "pas_invite", "date": None, "detail": None, "par": None}
     assert avant[str(ecole["sans_email"].id)]["statut"] == "pas_email"
 
     invitation = client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [eleve.id]})
@@ -261,6 +261,7 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
     # Connectée directement, sans retaper son mot de passe.
     assert session["compte"]["id"] == eleve.id and session["jeton"]
     assert _statuts(client, ecole)[str(frere.id)]["statut"] == "finalise"
+    assert _statuts(client, ecole)[str(frere.id)]["par"] == "Ana"
     assert _login(client, "Tom Roux", "mon-mot-de-passe").status_code == 200
     # Le lien ne sert qu'une fois.
     assert client.get(f"/auth/liens/{jeton}").status_code == 404
@@ -278,9 +279,10 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
 
 def test_un_nouveau_lien_annule_le_precedent_et_un_lien_expire(client, db_session, ecole, mails):
     route = f"/ecoles/{ecole['ecole'].id}/invitations"
-    client.post(route, json={"compte_ids": [ecole["prof"].id]})
+    nouvelle = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="N", prenom="O", email="n@x.fr")
+    client.post(route, json={"compte_ids": [nouvelle.id]})
     premier = _jeton_du_mail(mails, "activer")
-    client.post(route, json={"compte_ids": [ecole["prof"].id]})
+    client.post(route, json={"compte_ids": [nouvelle.id]})
     second = _jeton_du_mail(mails, "activer")
     assert client.get(f"/auth/liens/{premier}").status_code == 404
     assert client.get(f"/auth/liens/{second}").status_code == 200
@@ -600,3 +602,17 @@ def test_brevo_signale_la_remise_ou_l_echec(client, db_session, ecole, mails, mo
 def test_webhook_brevo_ferme_sans_cle_configuree(client, monkeypatch):
     monkeypatch.delenv("BREVO_WEBHOOK_CLE", raising=False)
     assert client.post("/mails/brevo/nimporte", json={"event": "delivered", "email": "a@x.fr"}).status_code == 404
+
+
+def test_reinviter_une_personne_qui_a_deja_son_mot_de_passe(client, db_session, ecole, mails):
+    """Pas de lien pour choisir un mot de passe : un rappel pour se
+    connecter, et « Mot de passe oublié ? » si besoin."""
+    reponse = client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [ecole["prof"].id]})
+    assert reponse.status_code == 200
+    destinataire, _, texte, html = mails[-1]
+    assert destinataire == "m.p@x.fr" and texte.startswith("Bonjour Marie Pesenti,")
+    assert "jeton=" not in texte and "jeton=" not in html
+    assert "Mot de passe oublié" in texte and "m.p@x.fr" in texte
+    assert db_session.query(LienInvitationReinit).count() == 0
+    # Son mot de passe n'a pas bougé.
+    assert _login(client, "Marie Pesenti").status_code == 200
