@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import * as comptesApi from '../../api/comptes.js'
 import * as conversationsApi from '../../api/conversations.js'
 import * as coursApi from '../../api/cours.js'
@@ -33,6 +33,8 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
   const [editId, setEditId] = useState(null)
   // Cours dont on affiche la liste complète des élèves (panneau).
   const [elevesVusId, setElevesVusId] = useState(null)
+  // Où l'on a cliqué (rectangle du bouton) : le panneau s'ouvre là.
+  const [elevesVusAncre, setElevesVusAncre] = useState(null)
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [vue, setVue] = useState('liste')
   // Id du cours en cours de glisser-déposer (réordonnancement, voir
@@ -290,7 +292,10 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
                       type="button"
                       className="badge-list badge-list--button"
                       disabled={inscrits.length === 0}
-                      onClick={() => setElevesVusId(c.id)}
+                      onClick={(e) => {
+                        setElevesVusAncre(e.currentTarget.getBoundingClientRect())
+                        setElevesVusId(c.id)
+                      }}
                       aria-label={`Voir les élèves de ${c.nom}`}
                     >
                       {inscrits.slice(0, MAX_BADGES).map((el) => (
@@ -355,14 +360,12 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
       )}
 
       {coursDontOnVoitLesEleves && (
-        <Modal
-          title={`${coursDontOnVoitLesEleves.nom} : ${elevesVus.length} élève${elevesVus.length > 1 ? 's' : ''}`}
+        <ElevesDuCoursPopover
+          cours={coursDontOnVoitLesEleves}
+          eleves={elevesVus}
+          ancre={elevesVusAncre}
           onClose={() => setElevesVusId(null)}
-        >
-          {/* À la suite, séparés par des virgules : une ligne par élève
-              prenait trop de place (demande du 2026-10-02). */}
-          <p className="cours-eleves-liste">{elevesVus.map((el) => `${el.prenom} ${el.nom}`).join(', ')}</p>
-        </Modal>
+        />
       )}
 
       {conversationEnEdition && (
@@ -380,6 +383,51 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
           onCreerGroupeWhatsapp={() => creerGroupeWhatsapp(conversationEnEdition.id)}
         />
       )}
+    </div>
+  )
+}
+
+// Petit panneau des élèves d'un cours, ouvert à l'endroit du clic (demande
+// du 2026-10-02) : 4 noms par ligne, séparés par des virgules. Se ferme en
+// cliquant ailleurs. Replacé dans l'écran s'il dépasse à droite ou en bas.
+const NOMS_PAR_LIGNE = 4
+
+function ElevesDuCoursPopover({ cours, eleves, ancre, onClose }) {
+  const ref = useRef(null)
+  // D'abord posé au bord gauche et invisible, pour mesurer sa largeur
+  // naturelle (sinon le bord droit de l'écran le comprime), puis placé.
+  const [position, setPosition] = useState({ left: 8, top: ancre.bottom + 6, visibility: 'hidden' })
+  useFermerAuClicExterieur(ref, true, onClose)
+
+  useLayoutEffect(() => {
+    const { width, height } = ref.current.getBoundingClientRect()
+    const marge = 8
+    const left = Math.max(marge, Math.min(ancre.left, window.innerWidth - width - marge))
+    // Pas la place en dessous : au-dessus du bouton.
+    const dessous = ancre.bottom + 6
+    const top = dessous + height > window.innerHeight - marge ? Math.max(marge, ancre.top - height - 6) : dessous
+    setPosition({ left, top })
+  }, [ancre, eleves.length])
+
+  const lignes = []
+  for (let i = 0; i < eleves.length; i += NOMS_PAR_LIGNE) {
+    const derniere = i + NOMS_PAR_LIGNE >= eleves.length
+    lignes.push(
+      eleves
+        .slice(i, i + NOMS_PAR_LIGNE)
+        .map((el) => `${el.prenom} ${el.nom}`)
+        .join(', ') + (derniere ? '' : ','),
+    )
+  }
+
+  return (
+    <div className="cours-eleves-popover" ref={ref} style={position} role="dialog" aria-label={`Élèves de ${cours.nom}`}>
+      <strong>
+        {cours.nom} : {eleves.length} élève{eleves.length > 1 ? 's' : ''}
+      </strong>
+      {lignes.map((ligne, i) => (
+        <div key={i}>{ligne}</div>
+      ))}
     </div>
   )
 }

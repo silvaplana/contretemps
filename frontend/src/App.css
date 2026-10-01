@@ -2900,8 +2900,24 @@
   white-space: normal;
 }
 
-/* Panneau des élèves d'un cours (AdminCours.jsx). */
-.cours-eleves-liste {
-  margin: 0;
+/* Panneau des élèves d'un cours (AdminCours.jsx : ElevesDuCoursPopover),
+   ouvert à l'endroit du clic. */
+.cours-eleves-popover {
+  position: fixed;
+  z-index: 60;
+  max-width: calc(100vw - 16px);
+  max-height: 60vh;
+  overflow: auto;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  box-shadow: 0 6px 20px rgba(58, 36, 16, 0.25);
+  font-size: 14px;
   line-height: 1.6;
+}
+
+.cours-eleves-popover strong {
+  display: block;
+  margin-bottom: 4px;
 }
