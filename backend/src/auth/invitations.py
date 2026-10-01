@@ -10,6 +10,7 @@ from comptes import Compte
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .auth import destinataire
 from .mails import MailsAcces
 
 
@@ -30,10 +31,12 @@ class Invitations:
         profils = db.scalars(
             select(Compte).where(Compte.ecole_id == ecole.id, Compte.email.isnot(None)).order_by(Compte.id)
         )
-        prenoms = [p.prenom for p in profils if normaliser_email(p.email) == email]
+        profils = [p for p in profils if normaliser_email(p.email) == email]
+        prenoms = [p.prenom for p in profils]
+        a_qui = destinataire(profils)
         acces_email = self.acces.obtenir_ou_creer(db, email)
         jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
-        self.mails.invitation(email, ecole.nom, prenoms, jeton)
+        self.mails.invitation(email, ecole.nom, f"{a_qui.prenom} {a_qui.nom}", prenoms, jeton)
         self.acces.noter_invite(db, acces_email)
 
     def statuts(self, db: Session, ecole_id: int) -> dict[int, dict]:

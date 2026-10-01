@@ -152,9 +152,12 @@ class AuthReceiver:
 
     def mot_de_passe_oublie(self, donnees: MotDePasseOublie, db: Session = Depends(get_db)):
         """Toujours la même réponse, qu'un compte existe ou non (§2.2)."""
-        for email, jeton in self.client.liens_de_reinitialisation(db, donnees.identifiant):
+        for fiche, jeton in self.client.liens_de_reinitialisation(db, donnees.identifiant):
+            ecole = db.get(Ecole, fiche.ecole_id) if fiche.ecole_id else None
             try:
-                self.invitations.mails.reinitialisation(email, jeton)
+                self.invitations.mails.reinitialisation(
+                    fiche.email.strip(), ecole.nom if ecole else None, f"{fiche.prenom} {fiche.nom}", jeton
+                )
             except Exception:  # noqa: BLE001 — ne rien révéler à l'écran
                 logger.exception("Mail de réinitialisation non envoyé")
 

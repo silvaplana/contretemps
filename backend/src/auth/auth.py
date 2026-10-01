@@ -34,6 +34,13 @@ def _cle_connexion(email: str) -> str:
     return f"connexion:{email}"
 
 
+def destinataire(fiches: list[Compte]) -> Compte:
+    """La personne à qui s'adresse un mail envoyé à une adresse qui porte
+    plusieurs profils : celui de plus haut rang, puis le plus ancien (même
+    règle que la connexion par email)."""
+    return min(fiches, key=lambda c: (-r.rang(c), c.id))
+
+
 class Auth:
     def __init__(self, comptes: Comptes, acces: Acces) -> None:
         self.comptes = comptes
@@ -136,19 +143,23 @@ class Auth:
 
     # --- Mot de passe oublié ---
 
-    def liens_de_reinitialisation(self, db: Session, identifiant: str) -> list[tuple[str, str]]:
-        """(email, jeton en clair) pour chaque adresse que désigne
+    def liens_de_reinitialisation(self, db: Session, identifiant: str) -> list[tuple[Compte, str]]:
+        """(fiche destinataire, jeton en clair) pour chaque adresse que désigne
         l'identifiant — toute personne dont l'email est dans une école,
         même jamais invitée (décision utilisateur du 2026-10-01). Demandes
         limitées par email, comme les essais de connexion."""
         liens = []
-        for email in {normaliser_email(c.email) for c in self.fiches_designees(db, identifiant)} - {None}:
+        par_email: dict[str, list[Compte]] = {}
+        for fiche in self.fiches_designees(db, identifiant):
+            if normaliser_email(fiche.email):
+                par_email.setdefault(normaliser_email(fiche.email), []).append(fiche)
+        for email, fiches in par_email.items():
             cle = f"oubli:{email}"
             if limiteur.est_bloque(cle):
                 continue
             limiteur.noter_echec(cle)
             acces_email = self.acces.obtenir_ou_creer(db, email)
-            liens.append((email, self.acces.creer_lien(db, acces_email, REINITIALISATION)))
+            liens.append((destinataire(fiches), self.acces.creer_lien(db, acces_email, REINITIALISATION)))
         return liens
 
     def changer_mot_de_passe(self, db: Session, acces_email: AccesEmail, ancien: str, nouveau: str) -> bool:

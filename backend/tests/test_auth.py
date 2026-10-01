@@ -241,7 +241,8 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
     assert invitation.json() == {"emails": 1, "en_cours": False}
     # Un seul mail pour l'adresse, qui nomme les deux profils.
     assert len(mails) == 1 and mails[0][0] == "parent@x.fr"
-    assert "Contretemps" in mails[0][1] and "Profils : Ana, Tom." in mails[0][2]
+    assert mails[0][1] == "Contretemps vous invite à définir ou changer votre mot de passe"
+    assert mails[0][2].startswith("Bonjour Ana Roux,\n") and "Profils : Ana, Tom." in mails[0][2]
     statuts = _statuts(client, ecole)
     assert statuts[str(eleve.id)]["statut"] == statuts[str(frere.id)]["statut"] == "invite"
 
@@ -335,6 +336,8 @@ def test_mot_de_passe_oublie(client, db_session, ecole, mails):
     # Une personne jamais invitée reçoit aussi un lien (décision du 2026-10-01).
     assert client.post("/auth/mot-de-passe-oublie", json={"identifiant": "Ana Roux"}).status_code == 204
     assert [m[0] for m in mails] == ["a.roux@x.fr"]
+    assert mails[0][1] == "Contretemps vous invite à définir ou changer votre mot de passe"
+    assert mails[0][2].startswith("Bonjour Ana Roux,\n")
     jeton = _jeton_du_mail(mails, "reinitialiser")
     lien = db_session.query(LienInvitationReinit).one()
     assert lien.type == "reinitialisation" and lien.expire_le - maintenant() <= timedelta(hours=1)

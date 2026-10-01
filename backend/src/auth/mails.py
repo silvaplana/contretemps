@@ -38,23 +38,30 @@ class MailsAcces:
     def lien(self, page: str, jeton: str) -> str:
         return f"{self.url_appli}/{page}?jeton={jeton}"
 
-    def invitation(self, email: str, ecole_nom: str, prenoms: list[str], jeton: str) -> None:
+    # Même titre pour les deux mails, et « Bonjour Prénom Nom, » (demandes
+    # utilisateur du 2026-10-01). `destinataire` : la personne à qui l'on
+    # s'adresse quand l'adresse porte plusieurs profils (voir
+    # auth.py : destinataire).
+    def _sujet(self, ecole_nom: str | None) -> str:
+        return f"{ecole_nom or 'Contretemps'} vous invite à définir ou changer votre mot de passe"
+
+    def invitation(self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], jeton: str) -> None:
         profils = f"Profils : {', '.join(prenoms)}.\n\n" if len(prenoms) > 1 else ""
         self._envoyer(
             email,
-            f"{ecole_nom} vous invite sur son application",
-            f"Bonjour,\n\n"
+            self._sujet(ecole_nom),
+            f"Bonjour {destinataire},\n\n"
             f"L'école {ecole_nom} vous invite sur son application.\n\n"
             f"{profils}"
             f"Créez votre mot de passe en ouvrant ce lien :\n{self.lien('activer', jeton)}\n\n"
             f"Ce lien est valable 7 jours et ne peut servir qu'une fois.\n",
         )
 
-    def reinitialisation(self, email: str, jeton: str) -> None:
+    def reinitialisation(self, email: str, ecole_nom: str | None, destinataire: str, jeton: str) -> None:
         self._envoyer(
             email,
-            "Votre nouveau mot de passe",
-            f"Bonjour,\n\n"
+            self._sujet(ecole_nom),
+            f"Bonjour {destinataire},\n\n"
             f"Pour choisir un nouveau mot de passe, ouvrez ce lien :\n{self.lien('reinitialiser', jeton)}\n\n"
             f"Ce lien est valable 1 heure et ne peut servir qu'une fois.\n"
             f"Si vous n'avez rien demandé, ignorez ce message : votre mot de passe ne change pas.\n",
