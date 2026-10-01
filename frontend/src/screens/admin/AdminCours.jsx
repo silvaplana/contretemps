@@ -31,6 +31,8 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
   const [search, setSearch] = useState('')
   const [showAdd, setShowAdd] = useState(false)
   const [editId, setEditId] = useState(null)
+  // Cours dont on affiche la liste complète des élèves (panneau).
+  const [elevesVusId, setElevesVusId] = useState(null)
   const [menuOuvert, setMenuOuvert] = useState(false)
   const [vue, setVue] = useState('liste')
   // Id du cours en cours de glisser-déposer (réordonnancement, voir
@@ -152,6 +154,12 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
   function elevesDuCours(coursId) {
     return eleves.filter((el) => el.coursIds.includes(coursId))
   }
+  const coursDontOnVoitLesEleves = cours.find((c) => c.id === elevesVusId) ?? null
+  const elevesVus = coursDontOnVoitLesEleves
+    ? elevesDuCours(coursDontOnVoitLesEleves.id).sort((a, b) =>
+        `${a.prenom} ${a.nom}`.localeCompare(`${b.prenom} ${b.nom}`, 'fr'),
+      )
+    : []
 
   // Réordonnancement par glisser-déposer (poignée dans la 1re colonne) —
   // désactivé pendant une recherche (voir `search`) : l'ordre visible
@@ -276,7 +284,15 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
                   </td>
                   <td>{prof ? `${prof.prenom} ${prof.nom.charAt(0)}.` : <span className="muted">—</span>}</td>
                   <td>
-                    <div className="badge-list">
+                    {/* Un clic ouvre la liste complète des élèves du cours
+                        (demande du 2026-10-02). */}
+                    <button
+                      type="button"
+                      className="badge-list badge-list--button"
+                      disabled={inscrits.length === 0}
+                      onClick={() => setElevesVusId(c.id)}
+                      aria-label={`Voir les élèves de ${c.nom}`}
+                    >
                       {inscrits.slice(0, MAX_BADGES).map((el) => (
                         <Badge key={el.id}>{el.prenom}</Badge>
                       ))}
@@ -284,7 +300,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
                         <Badge tone="neutral">+{inscrits.length - MAX_BADGES}</Badge>
                       )}
                       {inscrits.length === 0 && <span className="muted">—</span>}
-                    </div>
+                    </button>
                   </td>
                   <td>
                     <div className="row-actions">
@@ -336,6 +352,21 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
           onClose={() => setEditId(null)}
           onSubmit={(donnees) => update(enEdition.id, donnees)}
         />
+      )}
+
+      {coursDontOnVoitLesEleves && (
+        <Modal
+          title={`${coursDontOnVoitLesEleves.nom} : ${elevesVus.length} élève${elevesVus.length > 1 ? 's' : ''}`}
+          onClose={() => setElevesVusId(null)}
+        >
+          <div className="checkbox-list">
+            {elevesVus.map((el) => (
+              <div key={el.id} className="checkbox-list__item">
+                {el.prenom} {el.nom}
+              </div>
+            ))}
+          </div>
+        </Modal>
       )}
 
       {conversationEnEdition && (
