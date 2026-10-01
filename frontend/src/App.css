@@ -2854,3 +2854,42 @@
   color: var(--success-text);
   font-weight: 600;
 }
+
+/* Message bref après une invitation (AccesInvitation.jsx : MessageAcces),
+   en bas de l'écran, au-dessus de la barre de navigation. */
+.acces-message {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--bottom-nav-height) + 20px);
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: min(92vw, 520px);
+  padding: 12px 18px;
+  border: 1px solid var(--success-text);
+  border-radius: 14px;
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(58, 36, 16, 0.25);
+  overflow-wrap: anywhere;
+}
+
+.acces-message--erreur {
+  border-color: var(--danger-text);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.acces-statut--echec_envoi {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+
+.acces-statut__detail {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  white-space: normal;
+}

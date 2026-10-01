@@ -197,7 +197,7 @@ export async function inviter(ecoleId, compteIds) {
   const reponse = await poster(`/ecoles/${ecoleId}/invitations`, { compte_ids: compteIds })
   if (!reponse.ok) throw new Error(await messageErreur(reponse, "L'invitation n'a pas pu être envoyée"))
   const resultat = await reponse.json()
-  return { emails: resultat.emails, enCours: resultat.en_cours }
+  return { emails: resultat.emails, enCours: resultat.en_cours, adresses: resultat.adresses ?? [] }
 }
 
 // --- Superuser (§2.5) : création d'une école ---

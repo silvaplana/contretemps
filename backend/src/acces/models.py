@@ -45,6 +45,10 @@ class AccesEmail(Base):
     invitation_consultee_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     profil_finalise_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     appli_installee_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Dernier envoi de mail qui a échoué (adresse mal saisie, refus du
+    # serveur de mail...), et pourquoi. Effacés au prochain envoi réussi.
+    echec_envoi_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    echec_envoi_raison: Mapped[str | None] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=maintenant)
 
 

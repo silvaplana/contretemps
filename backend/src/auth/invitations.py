@@ -5,13 +5,26 @@ plusieurs profils dans l'école.
 
 from __future__ import annotations
 
+import smtplib
+
 from acces import INVITATION, Acces, AccesEmail, normaliser_email
 from comptes import Compte
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .auth import destinataire
-from .mails import MailsAcces
+from .mails import MailsAcces, MailsIndisponibles
+
+
+def raison_echec(erreur: Exception) -> str:
+    """Raison lisible d'un envoi refusé. Seul un refus IMMÉDIAT du serveur
+    de mail est connu ici ; une boîte qui n'existe pas n'est en général
+    signalée que plus tard, par un retour de non-remise."""
+    if isinstance(erreur, smtplib.SMTPRecipientsRefused):
+        return "Adresse refusée par le serveur de mail"
+    if isinstance(erreur, smtplib.SMTPAuthenticationError):
+        return "Envoi refusé : identifiants du serveur de mail incorrects"
+    return "Le mail n'a pas pu être envoyé"
 
 
 class Invitations:
@@ -36,8 +49,19 @@ class Invitations:
         a_qui = destinataire(profils)
         acces_email = self.acces.obtenir_ou_creer(db, email)
         jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
-        self.mails.invitation(email, ecole.nom, f"{a_qui.prenom} {a_qui.nom}", prenoms, jeton)
+        try:
+            self.mails.invitation(email, ecole.nom, f"{a_qui.prenom} {a_qui.nom}", prenoms, jeton)
+        except MailsIndisponibles:
+            raise  # réglage du serveur, pas un problème de cette adresse
+        except Exception as erreur:
+            # L'échec se lit ensuite dans la colonne Statut (demande
+            # utilisateur du 2026-10-02).
+            self.acces.noter_echec_envoi(db, acces_email, raison_echec(erreur))
+            raise
         self.acces.noter_invite(db, acces_email)
+
+    def noter_adresse_invalide(self, db: Session, email: str) -> None:
+        self.acces.noter_echec_envoi(db, self.acces.obtenir_ou_creer(db, email), "Adresse email mal saisie")
 
     def statuts(self, db: Session, ecole_id: int) -> dict[int, dict]:
         """{compte_id: {"statut", "date"}} pour toutes les fiches de
@@ -52,6 +76,6 @@ class Invitations:
         )
         resultat = {}
         for fiche in fiches:
-            statut, date = self.acces.statut(fiche.email, acces_emails.get(normaliser_email(fiche.email)))
-            resultat[fiche.id] = {"statut": statut, "date": date}
+            statut, date, detail = self.acces.statut(fiche.email, acces_emails.get(normaliser_email(fiche.email)))
+            resultat[fiche.id] = {"statut": statut, "date": date, "detail": detail}
         return resultat

@@ -25,6 +25,7 @@ INVITE = "invite"
 CONSULTEE = "consultee"
 FINALISE = "finalise"
 INSTALLEE = "installee"
+ECHEC_ENVOI = "echec_envoi"
 
 
 class ErreurAcces(ValueError):
@@ -110,6 +111,12 @@ class Acces:
 
     def noter_invite(self, db: Session, acces_email: AccesEmail) -> None:
         acces_email.invite_le = maintenant()  # dernière invitation envoyée
+        acces_email.echec_envoi_le = acces_email.echec_envoi_raison = None
+        db.commit()
+
+    def noter_echec_envoi(self, db: Session, acces_email: AccesEmail, raison: str) -> None:
+        acces_email.echec_envoi_le = maintenant()
+        acces_email.echec_envoi_raison = raison[:255]
         db.commit()
 
     def noter_consultee(self, db: Session, acces_email: AccesEmail) -> None:
@@ -122,19 +129,22 @@ class Acces:
             acces_email.appli_installee_le = maintenant()
             db.commit()
 
-    def statut(self, email: str | None, acces_email: AccesEmail | None) -> tuple[str, datetime | None]:
+    def statut(self, email: str | None, acces_email: AccesEmail | None) -> tuple[str, datetime | None, str | None]:
         """Dernière étape atteinte et sa date, pour un compte dont l'email
         est `email` (voir le tableau du §2.2)."""
         if normaliser_email(email) is None:
-            return PAS_EMAIL, None
+            return PAS_EMAIL, None, None
         if acces_email is None:
-            return PAS_INVITE, None
-        for code, date in (
-            (INSTALLEE, acces_email.appli_installee_le),
-            (FINALISE, acces_email.profil_finalise_le),
-            (CONSULTEE, acces_email.invitation_consultee_le),
-            (INVITE, acces_email.invite_le),
+            return PAS_INVITE, None, None
+        # Un échec d'envoi passe devant « invité » et « consultée », mais
+        # pas devant un accès déjà créé (la personne n'a plus besoin du mail).
+        for code, date, detail in (
+            (INSTALLEE, acces_email.appli_installee_le, None),
+            (FINALISE, acces_email.profil_finalise_le, None),
+            (ECHEC_ENVOI, acces_email.echec_envoi_le, acces_email.echec_envoi_raison),
+            (CONSULTEE, acces_email.invitation_consultee_le, None),
+            (INVITE, acces_email.invite_le, None),
         ):
             if date is not None:
-                return code, date
-        return PAS_INVITE, None
+                return code, date, detail
+        return PAS_INVITE, None, None

@@ -7,6 +7,7 @@ autres exigent une session.
 """
 
 import logging
+import re
 
 from acces import INVITATION, ErreurAcces, AccesEmail
 from comptes import Compte, rbac, roles
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .auth import Auth, MotDePasseRequis, destinataire
-from .invitations import Invitations
+from .invitations import Invitations, raison_echec
 from .mails import MailsIndisponibles
 from .schemas import (
     Bascule,
@@ -34,6 +35,10 @@ from .schemas import (
 )
 
 logger = logging.getLogger(__name__)
+
+# Contrôle de forme seulement (quelque chose@domaine.ext) : évite d'envoyer
+# vers une adresse manifestement mal saisie.
+_ADRESSE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s.]+$")
 
 # Même message dans tous les cas (compte inconnu, mot de passe faux, email
 # bloqué après trop d'essais) : ne rien révéler de l'existence d'un compte.
@@ -207,6 +212,13 @@ class AuthReceiver:
         emails = self.invitations.emails_a_inviter(db, ecole_id, donnees.compte_ids)
         if not emails:
             raise HTTPException(status_code=409, detail="Aucune adresse email à inviter")
+        # Adresses mal saisies : notées en échec dans le Statut, jamais envoyées.
+        invalides = [e for e in emails if not _ADRESSE.match(e)]
+        for email in invalides:
+            self.invitations.noter_adresse_invalide(db, email)
+        emails = [e for e in emails if e not in invalides]
+        if not emails:
+            raise HTTPException(status_code=422, detail=f"Adresse email mal saisie : {', '.join(invalides)}")
         if len(emails) == 1:
             # Une seule adresse : envoi immédiat, l'admin voit tout de
             # suite si le mail est parti.
@@ -216,15 +228,15 @@ class AuthReceiver:
                 raise HTTPException(status_code=503, detail=str(erreur)) from erreur
             except Exception as erreur:  # noqa: BLE001
                 logger.exception("Invitation non envoyée")
-                raise HTTPException(status_code=502, detail="Le mail n'a pas pu être envoyé") from erreur
-            return InvitationSortie(emails=1)
+                raise HTTPException(status_code=502, detail=f"{raison_echec(erreur)} : {emails[0]}") from erreur
+            return InvitationSortie(emails=1, adresses=emails)
         if not self.invitations.mails.disponible:
             raise HTTPException(status_code=503, detail="L'envoi de mails n'est pas configuré sur ce serveur")
         # « Inviter tous les non-invités » : des dizaines de mails, envoyés
         # après la réponse. Sa propre session de base : celle de la requête
         # est déjà refermée à ce moment-là.
         taches.add_task(self._inviter_en_tache_de_fond, db.get_bind(), ecole_id, emails)
-        return InvitationSortie(emails=len(emails), en_cours=True)
+        return InvitationSortie(emails=len(emails), en_cours=True, adresses=emails)
 
     def _inviter_en_tache_de_fond(self, moteur, ecole_id: int, emails: list[str]) -> None:
         with Session(moteur) as db:

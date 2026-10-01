@@ -92,9 +92,13 @@ class InvitationSortie(BaseModel):
     # de fond (plusieurs adresses), le statut se met à jour au fil de l'eau.
     emails: int
     en_cours: bool = False
+    # Les adresses concernées, pour le message affiché à l'admin.
+    adresses: list[str] = []
 
 
 class StatutAcces(BaseModel):
-    # pas_email | pas_invite | invite | consultee | finalise | installee
+    # pas_email | pas_invite | invite | consultee | finalise | installee |
+    # echec_envoi (avec `detail` : la raison)
     statut: str
     date: dt.datetime | None
+    detail: str | None = None

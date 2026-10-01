@@ -15,6 +15,7 @@ const LIBELLES = {
   consultee: 'Invitation consultée',
   finalise: 'Profil finalisé',
   installee: 'Appli installée',
+  echec_envoi: 'Échec de l’envoi',
 }
 
 // "02/10". Le serveur donne une date UTC sans fuseau.
@@ -46,15 +47,23 @@ export function useAcces(ecoleId) {
     return () => minuteurs.forEach(clearTimeout)
   }, [recharger])
 
+  // Le message s'efface tout seul : un instant pour une réussite, plus
+  // longtemps pour une erreur (le temps de la lire).
+  useEffect(() => {
+    if (!message) return
+    const minuteur = setTimeout(() => setMessage(null), message.erreur ? 8000 : 4000)
+    return () => clearTimeout(minuteur)
+  }, [message])
+
   async function inviter(compteIds) {
     setMessage(null)
     setEnvoiEnCours(true)
     try {
-      const { emails, enCours } = await authApi.inviter(ecoleId, compteIds)
+      const { emails, enCours, adresses } = await authApi.inviter(ecoleId, compteIds)
       setMessage({
         texte: enCours
-          ? `Envoi de ${emails} invitations en cours : les statuts se mettent à jour au fur et à mesure.`
-          : 'Invitation envoyée.',
+          ? `Envoi de ${emails} mails en cours : les statuts se mettent à jour au fur et à mesure.`
+          : `Mail envoyé à ${adresses[0] ?? 'son adresse'}`,
       })
       await recharger()
       // Plusieurs adresses : les mails partent en tâche de fond côté
@@ -64,12 +73,14 @@ export function useAcces(ecoleId) {
       }
     } catch (err) {
       setMessage({ texte: err.message, erreur: true })
+      // L'échec est aussi noté dans la colonne Statut.
+      recharger()
     } finally {
       setEnvoiEnCours(false)
     }
   }
 
-  return { statuts, inviter, message, envoiEnCours, recharger }
+  return { statuts, inviter, message, fermerMessage: () => setMessage(null), envoiEnCours, recharger }
 }
 
 export function StatutAcces({ acces, compteId }) {
@@ -80,6 +91,8 @@ export function StatutAcces({ acces, compteId }) {
     <span className={`acces-statut acces-statut--${etat.statut}`}>
       {LIBELLES[etat.statut] ?? etat.statut}
       {date && ` le ${date}`}
+      {/* Échec d'envoi : la raison, sous le statut. */}
+      {etat.detail && <span className="acces-statut__detail">{etat.detail}</span>}
     </span>
   )
 }
@@ -124,11 +137,18 @@ export function InviterTous({ acces, compteIds }) {
   )
 }
 
+// Message bref en bas de l'écran (demande utilisateur du 2026-10-02) :
+// « Mail envoyé à … », ou l'erreur. Un appui le ferme.
 export function MessageAcces({ acces }) {
   if (!acces.message) return null
   return (
-    <p className={acces.message.erreur ? 'login-screen__erreur' : 'muted'} role="status">
+    <button
+      type="button"
+      className={`acces-message ${acces.message.erreur ? 'acces-message--erreur' : ''}`}
+      role={acces.message.erreur ? 'alert' : 'status'}
+      onClick={acces.fermerMessage}
+    >
       {acces.message.texte}
-    </p>
+    </button>
   )
 }

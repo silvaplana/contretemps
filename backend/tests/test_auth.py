@@ -234,11 +234,11 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
     eleve = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="Roux", prenom="Ana", email="Parent@X.fr")
     frere = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="Roux", prenom="Tom", email="parent@x.fr")
     avant = _statuts(client, ecole)
-    assert avant[str(eleve.id)] == {"statut": "pas_invite", "date": None}
+    assert avant[str(eleve.id)] == {"statut": "pas_invite", "date": None, "detail": None}
     assert avant[str(ecole["sans_email"].id)]["statut"] == "pas_email"
 
     invitation = client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [eleve.id]})
-    assert invitation.json() == {"emails": 1, "en_cours": False}
+    assert invitation.json() == {"emails": 1, "en_cours": False, "adresses": ["parent@x.fr"]}
     # Un seul mail pour l'adresse, qui nomme les deux profils.
     assert len(mails) == 1 and mails[0][0] == "parent@x.fr"
     assert mails[0][1] == "Votre accès à l'application Contretemps"
@@ -295,7 +295,7 @@ def test_un_nouveau_lien_annule_le_precedent_et_un_lien_expire(client, db_sessio
 def test_inviter_plusieurs_adresses_un_mail_par_adresse(client, ecole, mails):
     tous = [ecole[c].id for c in ("admin", "enfant", "prof", "sans_email")]
     reponse = client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": tous})
-    assert reponse.json() == {"emails": 2, "en_cours": True}
+    assert reponse.json() == {"emails": 2, "en_cours": True, "adresses": ["j.dho@x.fr", "m.p@x.fr"]}
     assert sorted(m[0] for m in mails) == ["j.dho@x.fr", "m.p@x.fr"]
     statuts = _statuts(client, ecole)
     assert statuts[str(ecole["prof"].id)]["statut"] == "finalise"  # avait déjà un mot de passe
@@ -517,3 +517,42 @@ def test_mail_avec_version_texte_et_version_mise_en_forme(monkeypatch):
     # Aucun lien cliquable dans la version mise en forme : Brevo les réécrirait.
     assert "<a " not in parties["text/html"] and "href" not in parties["text/html"]
     assert "mot de passe" not in str(email.header.make_header(email.header.decode_header(message["Subject"])))
+
+
+def test_un_envoi_qui_echoue_se_lit_dans_le_statut(client, db_session, ecole, monkeypatch):
+    import smtplib
+
+    from auth.mails import MailsAcces
+
+    monkeypatch.setattr(MailsAcces, "disponible", True)
+    mal_saisie = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="A", prenom="B", email="pas-une-adresse")
+    nouvelle = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="C", prenom="D", email="c@x.fr")
+    route = f"/ecoles/{ecole['ecole'].id}/invitations"
+
+    # Adresse mal saisie : rien n'est envoyé, l'échec est noté.
+    reponse = client.post(route, json={"compte_ids": [mal_saisie.id]})
+    assert reponse.status_code == 422 and "pas-une-adresse" in reponse.json()["detail"]
+    statut = _statuts(client, ecole)[str(mal_saisie.id)]
+    assert (statut["statut"], statut["detail"]) == ("echec_envoi", "Adresse email mal saisie") and statut["date"]
+
+    # Refus du serveur de mail.
+    def refuse(self, *a, **k):
+        raise smtplib.SMTPRecipientsRefused({"c@x.fr": (550, b"inconnu")})
+
+    monkeypatch.setattr(MailsAcces, "_envoyer", refuse)
+    reponse = client.post(route, json={"compte_ids": [nouvelle.id]})
+    assert reponse.status_code == 502 and "c@x.fr" in reponse.json()["detail"]
+    statut = _statuts(client, ecole)[str(nouvelle.id)]
+    assert (statut["statut"], statut["detail"]) == ("echec_envoi", "Adresse refusée par le serveur de mail")
+    # Une personne qui a déjà son accès n'est pas affichée en échec.
+    client.post(route, json={"compte_ids": [ecole["prof"].id]})
+    assert _statuts(client, ecole)[str(ecole["prof"].id)]["statut"] == "finalise"
+
+    # Envoi groupé : les échecs n'arrêtent pas les autres, et un envoi
+    # réussi ensuite efface l'échec.
+    envoyes = []
+    monkeypatch.setattr(MailsAcces, "_envoyer", lambda self, d, *a, **k: envoyes.append(d))
+    reponse = client.post(route, json={"compte_ids": [mal_saisie.id, nouvelle.id, ecole["admin"].id]})
+    assert reponse.json()["emails"] == 2 and sorted(envoyes) == ["c@x.fr", "j.dho@x.fr"]
+    statuts = _statuts(client, ecole)
+    assert statuts[str(nouvelle.id)]["statut"] == "invite" and statuts[str(mal_saisie.id)]["statut"] == "echec_envoi"
