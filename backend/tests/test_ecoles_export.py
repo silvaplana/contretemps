@@ -42,9 +42,6 @@ def scenario(db_session):
         id=ecole_id,
         nom="Contretemps Test",
         code_postal="83330",
-        code_acces_admin="ADMIN",
-        code_acces_prof="PROF",
-        code_acces_eleve="ELEVE",
     )
     db_session.add(ecole)
     db_session.commit()
@@ -238,7 +235,6 @@ def test_video_sans_fichier_survit_a_une_restauration(client, db_session):
     cours_service = CoursService()
     ecole = Ecole(
         id=2, nom="Sans Fichier", code_postal="83000",
-        code_acces_admin="A", code_acces_prof="P", code_acces_eleve="E",
     )
     db_session.add(ecole)
     db_session.commit()

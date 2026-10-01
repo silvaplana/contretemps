@@ -424,3 +424,47 @@ def test_migration_deplace_le_mot_de_passe_du_superuser(tmp_path, monkeypatch):
     with moteur.connect() as c:
         assert "acces_emails" not in sa.inspect(c).get_table_names()
     moteur.dispose()
+
+
+def test_migration_supprime_les_codes_sans_perdre_de_donnees(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    import sqlalchemy as sa
+    from alembic import command
+    from alembic.config import Config
+
+    backend = Path(__file__).resolve().parents[1]
+    url = f"sqlite:///{tmp_path / 'avant.db'}"
+    monkeypatch.setenv("DATABASE_URL", url)
+    config = Config(str(backend / "alembic.ini"))
+    config.set_main_option("script_location", str(backend / "alembic"))
+    command.upgrade(config, "9d2f4b6a8c10")
+    moteur = sa.create_engine(url)
+    with moteur.begin() as c:
+        c.execute(sa.text(
+            "INSERT INTO ecoles (id, nom, code_postal, code_acces_admin, code_acces_prof, code_acces_eleve,"
+            " sauvegarde_active, sauvegarde_periodicite, created_at)"
+            " VALUES (1, 'E', '83000', 'A', 'P', 'E', 0, 'semaine', CURRENT_TIMESTAMP)"
+        ))
+        c.execute(sa.text("INSERT INTO saisons (id, ecole_id, nom, date_debut, date_fin)"
+                          " VALUES (1, 1, 'S', '2026-09-01', '2027-08-31')"))
+        c.execute(sa.text("INSERT INTO familles (id, ecole_id, saison_id, created_at) VALUES (1, 1, 1, CURRENT_TIMESTAMP)"))
+        c.execute(sa.text(
+            "INSERT INTO comptes (id, ecole_id, famille_id, saison_id, nom, prenom, email, code_recuperation, created_at)"
+            " VALUES (5, 1, 1, 1, 'Dho', 'Julia', 'j@x.fr', 'rex', CURRENT_TIMESTAMP)"
+        ))
+
+    command.upgrade(config, "head")
+    with moteur.connect() as c:
+        colonnes = lambda table: {col["name"] for col in sa.inspect(c).get_columns(table)}  # noqa: E731
+        assert not {"code_acces_admin", "code_acces_prof", "code_acces_eleve"} & colonnes("ecoles")
+        assert not {"code_recuperation", "hashed_password_ou_code"} & colonnes("comptes")
+        assert c.execute(sa.text("SELECT nom, prenom, email, saison_id FROM comptes WHERE id = 5")).one() == (
+            "Dho", "Julia", "j@x.fr", 1,
+        )
+        assert c.execute(sa.text("SELECT nom, code_postal FROM ecoles")).all() == [("E", "83000")]
+
+    command.downgrade(config, "9d2f4b6a8c10")
+    with moteur.connect() as c:
+        assert "code_acces_admin" in {col["name"] for col in sa.inspect(c).get_columns("ecoles")}
+    moteur.dispose()

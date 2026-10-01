@@ -7,9 +7,9 @@ import SaisonsSection from './SaisonsSection.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
 
-// Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école,
-// code postal et ses 3 codes d'accès, modifiables par tout admin (pas
-// seulement le créateur de l'école). Premier sous-onglet, le plus à gauche.
+// Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école
+// et code postal, modifiables par tout admin (plus de codes d'accès depuis
+// le 2026-10-01, §2.2). Premier sous-onglet, le plus à gauche.
 // Le code postal distingue deux écoles qui porteraient le même nom (le
 // couple nom + code postal doit être unique, pas le nom seul).
 //
@@ -47,9 +47,9 @@ export default function AdminParametres({
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
   const saisonConsultee = useSaisonConsultee()
 
-  // Codes d'accès et réglages de sauvegarde : chargés ici, par la route
-  // réservée aux admins (voir api/ecoles.js : obtenir). L'école reçue à la
-  // connexion n'a que son nom et son code postal.
+  // Réglages de sauvegarde : chargés ici, par la route réservée aux
+  // admins (voir api/ecoles.js : obtenir). L'école reçue à la connexion
+  // n'a que son nom et son code postal.
   useEffect(() => {
     let annule = false
     ecolesApi
@@ -92,30 +92,6 @@ export default function AdminParametres({
           className="field-input"
           value={ecole.codePostal}
           onChange={(e) => update({ codePostal: e.target.value })}
-        />
-
-        <label htmlFor="ecole-param-admin">Code d’accès Admin</label>
-        <input
-          id="ecole-param-admin"
-          className="field-input"
-          value={ecole.codeAccesAdmin ?? ''}
-          onChange={(e) => update({ codeAccesAdmin: e.target.value })}
-        />
-
-        <label htmlFor="ecole-param-prof">Code d’accès Professeur</label>
-        <input
-          id="ecole-param-prof"
-          className="field-input"
-          value={ecole.codeAccesProf ?? ''}
-          onChange={(e) => update({ codeAccesProf: e.target.value })}
-        />
-
-        <label htmlFor="ecole-param-eleve">Code d’accès Élève</label>
-        <input
-          id="ecole-param-eleve"
-          className="field-input"
-          value={ecole.codeAccesEleve ?? ''}
-          onChange={(e) => update({ codeAccesEleve: e.target.value })}
         />
       </div>
 

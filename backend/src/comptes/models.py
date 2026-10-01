@@ -74,15 +74,8 @@ class Compte(Base):
     # Texte libre, sans validation de format (voir §6.4bis : le fichier
     # réel contient des cas qu'une validation stricte rejetterait).
     telephone: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    hashed_password_ou_code: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    # Réponse à "nom de votre 1er animal de compagnie" (voir "Code oublié ?"
-    # à l'écran de connexion) — demandée à la création d'un compte Admin
-    # (voir NouvelleEcoleModal). Champ commun (comme le reste de `Compte`)
-    # même s'il n'a de sens que pour un admin aujourd'hui : pas de table
-    # séparée pour un unique champ, contrairement à eleves/profs qui en ont
-    # bien plus. Stocké en clair pour l'instant (comme les codes d'accès
-    # école, voir ecoles.py) — à revoir si un vrai usage sensible apparaît.
-    code_recuperation: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Aucun mot de passe ici : il appartient à l'adresse email (table
+    # acces_emails, spec §2.2 et §6.3ter), retrouvée par `email`.
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     # "Dernière connexion" (voir messagerie/connexions.py) — mis à jour
     # seulement à la FERMETURE du dernier flux SSE ouvert de ce compte,
@@ -110,10 +103,6 @@ class Compte(Base):
         from .roles import noms_roles
 
         return noms_roles(self)
-
-    @property
-    def code_recuperation_defini(self) -> bool:
-        return bool((self.code_recuperation or "").strip())
 
     @property
     def role_principal(self) -> str:

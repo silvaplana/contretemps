@@ -11,7 +11,6 @@ from ecoles.models import Ecole
 def _ecole(**overrides):
     defaut = dict(
         id=1, nom="Test", code_postal="83330",
-        code_acces_admin="A", code_acces_prof="P", code_acces_eleve="E",
         sauvegarde_active=True, sauvegarde_periodicite="jour",
         sauvegarde_jour_semaine=None, sauvegarde_heure="03:00",
         sauvegarde_derniere_execution=None,

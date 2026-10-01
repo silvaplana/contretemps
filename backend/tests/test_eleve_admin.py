@@ -26,7 +26,7 @@ def ecole(db_session):
 def _promouvoir(client, ecole, owner=False):
     reponse = client.post(
         f"/ecoles/{ecole['ecole'].id}/administrateurs",
-        json={"compte_id": ecole["eleve"].id, "code_recuperation": "rex", "owner": owner},
+        json={"compte_id": ecole["eleve"].id, "owner": owner},
         headers=entetes_session(ecole["owner"]),
     )
     assert reponse.status_code == 201, reponse.text

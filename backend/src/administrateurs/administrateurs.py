@@ -52,7 +52,6 @@ class Administrateurs:
         nom: str,
         prenom: str,
         email: str | None,
-        code_recuperation: str,
         owner: bool,
     ) -> Compte:
         """Nouveau compte admin "pur" (§2.4, 1re façon de créer un admin)."""
@@ -63,26 +62,22 @@ class Administrateurs:
             nom=nom,
             prenom=prenom,
             email=email,
-            code_recuperation=code_recuperation,
         )
         if owner:
             self.comptes.ajouter_role(db, compte, roles.OWNER)
         return compte
 
     def promouvoir(
-        self, db: Session, ecole_id: int, compte_id: int, *, code_recuperation: str, owner: bool
+        self, db: Session, ecole_id: int, compte_id: int, *, owner: bool
     ) -> Compte:
         """Professeur OU élève existant promu admin (§2.4, 2e façon) : on
-        AJOUTE le rôle admin, son rôle de professeur ou d'élève reste. Un
-        élève-admin n'a ses droits actifs qu'avec le code ADMIN (voir
-        comptes/rbac.py)."""
+        AJOUTE le rôle admin, son rôle de professeur ou d'élève reste."""
         compte = self.comptes.get(db, compte_id)
         if compte is None or compte.ecole_id != ecole_id or not _promu(compte):
             raise LookupError("Professeur ou élève introuvable dans cette école")
         if roles.is_admin(compte):
             raise RegleRoles("Ce compte est déjà administrateur")
         self.comptes.ajouter_role(db, compte, roles.ADMIN)
-        self.comptes.update(db, compte.id, code_recuperation=code_recuperation)
         if owner:
             self.comptes.ajouter_role(db, compte, roles.OWNER)
         return compte

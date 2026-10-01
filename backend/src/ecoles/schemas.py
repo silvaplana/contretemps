@@ -10,24 +10,16 @@ from pydantic import BaseModel
 class EcoleCreation(BaseModel):
     nom: str
     code_postal: str
-    # Optionnels : si absents, ecoles.py propose les valeurs par défaut
-    # `ADMIN_ECOLE_ANNEE` etc. (voir spec §2.3).
-    code_acces_admin: str | None = None
-    code_acces_prof: str | None = None
-    code_acces_eleve: str | None = None
 
 
 class EcoleModification(BaseModel):
     nom: str | None = None
     code_postal: str | None = None
-    code_acces_admin: str | None = None
-    code_acces_prof: str | None = None
-    code_acces_eleve: str | None = None
 
 
 class EcolePublique(BaseModel):
     """Ce que tout le monde peut voir d'une école, sans être connecté
-    (GET /ecoles, avant la connexion) : JAMAIS les codes d'accès."""
+    (GET /ecoles) : son nom et son code postal."""
 
     id: int
     nom: str
@@ -37,15 +29,12 @@ class EcolePublique(BaseModel):
 
 
 class EcoleSortie(BaseModel):
-    """Vue complète, codes d'accès compris : réservée aux admins de
-    l'école (voir receiver.py, RBAC §2.4)."""
+    """Vue complète (réglages de sauvegarde compris) : réservée aux admins
+    de l'école (voir receiver.py, RBAC §2.4)."""
 
     id: int
     nom: str
     code_postal: str
-    code_acces_admin: str
-    code_acces_prof: str
-    code_acces_eleve: str
     created_at: datetime
     sauvegarde_active: bool
     sauvegarde_periodicite: str

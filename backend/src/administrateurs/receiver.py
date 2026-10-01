@@ -27,7 +27,6 @@ def _sortie(compte: Compte) -> dict:
         "est_owner": roles.is_owner(compte),
         "est_prof": roles.is_prof(compte),
         "est_eleve": roles.is_eleve(compte),
-        "code_recuperation_defini": compte.code_recuperation_defini,
     }
 
 
@@ -93,7 +92,6 @@ class AdministrateursReceiver:
                     db,
                     ecole_id,
                     donnees.compte_id,
-                    code_recuperation=donnees.code_recuperation,
                     owner=donnees.owner,
                 )
             else:
@@ -103,7 +101,6 @@ class AdministrateursReceiver:
                     nom=donnees.nom.strip(),
                     prenom=donnees.prenom.strip(),
                     email=(donnees.email or "").strip() or None,
-                    code_recuperation=donnees.code_recuperation,
                     owner=donnees.owner,
                 )
         except LookupError as erreur:

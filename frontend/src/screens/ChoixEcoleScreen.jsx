@@ -51,16 +51,14 @@ export default function ChoixEcoleScreen({ onChoisir, onLogout }) {
   )
 }
 
-// Nom + code postal (le couple doit être unique, §6.1) + les 3 codes
-// d'accès. Le premier administrateur se crée ensuite depuis Admin > École
-// (menu ⋮ > "Créer nouvel administrateur") : il en deviendra l'Owner.
+// Nom + code postal (le couple doit être unique, §6.1). Le premier
+// administrateur se crée ensuite depuis Admin > École (menu ⋮ > "Ajouter
+// un administrateur") : il en devient l'administrateur principal, et
+// reçoit son accès par le bouton « Inviter » (spec §2.2 et §2.3).
 function NouvelleEcoleForm({ onCreee, onAnnuler }) {
   const [champs, setChamps] = useState({
     nom: '',
     codePostal: '',
-    codeAccesAdmin: '',
-    codeAccesProf: '',
-    codeAccesEleve: '',
   })
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
@@ -90,12 +88,6 @@ function NouvelleEcoleForm({ onCreee, onAnnuler }) {
       <input id="nouvelle-ecole-nom" value={champs.nom} onChange={changer('nom')} />
       <label htmlFor="nouvelle-ecole-cp">Code postal</label>
       <input id="nouvelle-ecole-cp" value={champs.codePostal} onChange={changer('codePostal')} />
-      <label htmlFor="nouvelle-ecole-admin">Code d’accès Admin</label>
-      <input id="nouvelle-ecole-admin" value={champs.codeAccesAdmin} onChange={changer('codeAccesAdmin')} />
-      <label htmlFor="nouvelle-ecole-prof">Code d’accès Professeur</label>
-      <input id="nouvelle-ecole-prof" value={champs.codeAccesProf} onChange={changer('codeAccesProf')} />
-      <label htmlFor="nouvelle-ecole-eleve">Code d’accès Élève</label>
-      <input id="nouvelle-ecole-eleve" value={champs.codeAccesEleve} onChange={changer('codeAccesEleve')} />
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       <button type="submit" className="btn btn--primary btn--block" disabled={!complet || enCours}>
         Créer l’école

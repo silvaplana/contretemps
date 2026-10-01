@@ -164,12 +164,11 @@ export default function AdministrateursTableau({
 
 // Création (sans `admin`) ou modification (avec `admin`) — voir §2.4 :
 // - création : nouveau compte (nom, prénom, email) OU professeur ou élève
-//   existant (un élève-admin n'a ses droits qu'avec le code Admin, §2.4) ;
-//   code de récupération obligatoire dans les deux cas ;
-// - modification : pour un professeur-admin, seulement le code de
-//   récupération et le statut Owner (le reste vient d'Admin > Profs).
-// Le code de récupération n'est jamais relu (le serveur ne le renvoie
-// pas) : en modification, champ vide = inchangé.
+//   existant. Son accès à l'appli se donne ensuite par le bouton
+//   « Inviter » du tableau (spec §2.2) ;
+// - modification : pour un professeur-admin ou un élève-admin, seulement
+//   le statut d'administrateur principal (le reste vient d'Admin > Profs
+//   ou d'Admin > Élèves).
 function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, onEnregistre, onClose }) {
   const enCreation = !admin
   const [facon, setFacon] = useState('nouveau')
@@ -177,7 +176,6 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
   const [nom, setNom] = useState(admin?.nom ?? '')
   const [prenom, setPrenom] = useState(admin?.prenom ?? '')
   const [email, setEmail] = useState(admin?.email ?? '')
-  const [codeRecuperation, setCodeRecuperation] = useState('')
   const [owner, setOwner] = useState(admin?.estOwner ?? false)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState(null)
@@ -187,7 +185,9 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
   const identiteModifiable = enCreation ? !promotion : !admin.estProf && !admin.estEleve
 
   const valide = enCreation
-    ? codeRecuperation.trim() && (promotion ? compteId : nom.trim() && prenom.trim())
+    ? promotion
+      ? compteId
+      : nom.trim() && prenom.trim()
     : !identiteModifiable || (nom.trim() && prenom.trim())
 
   async function valider() {
@@ -197,12 +197,11 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
     let donnees
     if (enCreation) {
       donnees = promotion
-        ? { compteId: Number(compteId), codeRecuperation: codeRecuperation.trim(), owner }
-        : { nom: nom.trim(), prenom: prenom.trim(), email: email.trim(), codeRecuperation: codeRecuperation.trim(), owner }
+        ? { compteId: Number(compteId), owner }
+        : { nom: nom.trim(), prenom: prenom.trim(), email: email.trim(), owner }
     } else {
       donnees = {
         ...(identiteModifiable && { nom: nom.trim(), prenom: prenom.trim(), email: email.trim() }),
-        ...(codeRecuperation.trim() && { codeRecuperation: codeRecuperation.trim() }),
         ...(owner !== admin.estOwner && { owner }),
       }
     }
@@ -273,12 +272,6 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
                   </option>
                 ))}
             </select>
-            {facon === 'eleve' && (
-              <p className="muted">
-                Il n’aura ses droits d’administrateur qu’en se connectant avec le code d’accès Admin de l’école :
-                avec le code Élève, il reste un simple élève.
-              </p>
-            )}
           </>
         )}
 
@@ -303,21 +296,6 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
             Son nom, son prénom et son email se modifient depuis Admin &gt; {admin.estProf ? 'Profs' : 'Élèves'}.
           </p>
         )}
-
-        <label htmlFor="admin-code">Code de récupération</label>
-        <input
-          id="admin-code"
-          className="field-input"
-          value={codeRecuperation}
-          onChange={(e) => setCodeRecuperation(e.target.value)}
-          placeholder={
-            enCreation
-              ? 'Nom de son 1er animal de compagnie'
-              : admin.codeRecuperationDefini
-                ? 'Défini — laisser vide pour ne pas le changer'
-                : 'Non défini'
-          }
-        />
 
         <label className="checkbox-inline">
           <input type="checkbox" checked={owner} onChange={(e) => setOwner(e.target.checked)} />

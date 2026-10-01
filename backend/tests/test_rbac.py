@@ -113,7 +113,7 @@ def test_les_routes_partagees_exigent_une_session_mais_pas_d_etre_admin(client, 
     assert client.get(f"/cours?ecole_id={ecole_id}").status_code == 200
 
 
-# --- Fuites corrigées (codes d'accès, code de récupération) ---
+# --- Rien de secret dans les réponses ---
 
 
 def test_la_liste_publique_des_ecoles_ne_donne_plus_les_codes(client, ecole_complete):
@@ -123,24 +123,19 @@ def test_la_liste_publique_des_ecoles_ne_donne_plus_les_codes(client, ecole_comp
         assert set(ecole) == {"id", "nom", "code_postal"}
 
 
-def test_les_codes_d_acces_restent_lisibles_par_un_admin(client, ecole_complete):
-    ecole_id = ecole_complete["ecole"].id
-    corps = client.get(f"/ecoles/{ecole_id}", headers=_en_tant_que(ecole_complete["admin"])).json()
-    assert corps["code_acces_admin"] == ecole_complete["ecole"].code_acces_admin
-
-
-def test_le_code_de_recuperation_n_est_jamais_renvoye(client, db_session, ecole_complete):
+def test_ni_code_ni_mot_de_passe_dans_les_reponses(client, ecole_complete):
+    """Les codes d'accès et le code de récupération n'existent plus (spec
+    §2.2) ; le mot de passe haché ne sort jamais du serveur."""
     owner = ecole_complete["owner"]
-    owner.code_recuperation = "rex"
-    db_session.commit()
     ecole_id = ecole_complete["ecole"].id
-    entetes = _en_tant_que(ecole_complete["prof"])
+    entetes = _en_tant_que(ecole_complete["admin"])
     for corps in [
+        client.get(f"/ecoles/{ecole_id}", headers=entetes).json(),
         client.get(f"/comptes/{owner.id}", headers=entetes).json(),
         *client.get("/comptes", params={"ecole_id": ecole_id, "role": "admin"}, headers=entetes).json(),
+        *client.get(f"/ecoles/{ecole_id}/administrateurs", headers=entetes).json(),
     ]:
-        assert "code_recuperation" not in corps
-    assert client.get(f"/comptes/{owner.id}", headers=entetes).json()["code_recuperation_defini"] is True
+        assert not [cle for cle in corps if "code_acces" in cle or "code_recuperation" in cle or "password" in cle or "mot_de_passe" in cle]
 
 
 # --- require_owner (pas encore de route, voir étape 3 §2.4) ---

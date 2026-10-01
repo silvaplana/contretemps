@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, model_validator
 
 
 class AdministrateurSortie(BaseModel):
@@ -15,19 +15,17 @@ class AdministrateurSortie(BaseModel):
     # administrateurs.py).
     est_prof: bool
     est_eleve: bool
-    code_recuperation_defini: bool
 
 
 class AdministrateurCreation(BaseModel):
     """Deux façons de créer un admin (§2.4) : un nouveau compte (nom,
-    prénom, email) OU un professeur ou élève existant (`compte_id`). Le code
-    de récupération est demandé dans les deux cas."""
+    prénom, email) OU un professeur ou élève existant (`compte_id`). Il
+    reçoit ensuite son accès par une invitation (spec §2.2)."""
 
     compte_id: int | None = None
     nom: str | None = None
     prenom: str | None = None
     email: str | None = None
-    code_recuperation: str = Field(min_length=1)
     owner: bool = False
 
     @model_validator(mode="after")
@@ -49,5 +47,4 @@ class AdministrateurModification(BaseModel):
     nom: str | None = None
     prenom: str | None = None
     email: str | None = None
-    code_recuperation: str | None = None
     owner: bool | None = None

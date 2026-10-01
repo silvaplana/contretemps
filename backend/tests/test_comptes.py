@@ -17,41 +17,19 @@ def test_lister_par_role(client, db_session):
     assert [c["id"] for c in reponse.json()] == [admin.id]
 
 
-def test_code_recuperation_admin(client, db_session):
-    """Voir "Code oublié ?" à l'écran de connexion, et NouvelleEcoleModal :
-    "nom de votre 1er animal de compagnie", demandé à la création d'un
-    admin."""
-    ecole = Ecoles().create(db_session, nom="Contretemps", code_postal="83330")
-    admin = Comptes().create(
-        db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia",
-        code_recuperation="coocky",
-    )
-    reponse = client.get(f"/comptes/{admin.id}")
-    # Jamais la valeur (elle suffit à se connecter en admin via "Code
-    # oublié ?") : juste le fait qu'il soit défini.
-    assert "code_recuperation" not in reponse.json()
-    assert reponse.json()["code_recuperation_defini"] is True
-
-
-def test_modifier_email_et_code_recuperation(client, db_session):
+def test_modifier_email_et_telephone(client, db_session):
     """Profil admin (crayon, voir ProfilScreen.jsx)."""
     ecole = Ecoles().create(db_session, nom="Contretemps", code_postal="83330")
     admin = Comptes().create(
         db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia",
-        email="jd@contretemps.fr", code_recuperation="coocky",
+        email="jd@contretemps.fr",
     )
 
-    reponse = client.put(f"/comptes/{admin.id}", json={"code_recuperation": "Rex"})
-    assert reponse.status_code == 200
-    assert "code_recuperation" not in reponse.json()  # modifiable, jamais relu
-    db_session.refresh(admin)
-    assert admin.code_recuperation == "Rex"
-    assert reponse.json()["email"] == "jd@contretemps.fr"  # pas fourni -> inchangé
-
     reponse = client.put(f"/comptes/{admin.id}", json={"email": "julia@contretemps.fr"})
+    assert reponse.status_code == 200
     assert reponse.json()["email"] == "julia@contretemps.fr"
-    db_session.refresh(admin)
-    assert admin.code_recuperation == "Rex"  # pas fourni -> inchangé
+    # Ni mot de passe ni code de récupération sur une fiche (spec §2.2).
+    assert not [cle for cle in reponse.json() if "code_recuperation" in cle or "password" in cle or "mot_de_passe" in cle]
 
     reponse = client.put(f"/comptes/{admin.id}", json={"telephone": "06 00 00 00 00"})
     assert reponse.json()["telephone"] == "06 00 00 00 00"

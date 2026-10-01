@@ -421,16 +421,10 @@ def run() -> None:
         if ecole:
             print(f"École 'Contretemps' déjà présente (id={ecole.id}).")
         else:
-            # Codes simplifiés (voir mockData.js : ADMIN/PROF/ELEVE), pas
-            # les valeurs par défaut ADMIN_CONTRETEMPS_2026 générées par
-            # ecoles.create — l'admin peut les changer ensuite (§6.1).
             ecole = ecoles.create(
                 db,
                 nom="Contretemps",
                 code_postal="83330",
-                code_acces_admin="ADMIN",
-                code_acces_prof="PROF",
-                code_acces_eleve="ELEVE",
             )
             print(f"École 'Contretemps' créée (id={ecole.id}).")
 
@@ -448,11 +442,20 @@ def run() -> None:
                 # Ouvertement faux (demande) — jamais de vrai numéro dans
                 # le seed de démo.
                 telephone="06 00 00 00 00",
-                # "Nom de votre 1er animal de compagnie" (voir "Code
-                # oublié ?" à l'écran de connexion, et NouvelleEcoleModal).
-                code_recuperation="coocky",
             )
             print(f"Admin 'Julia Dho' créée (id={admin.id}).")
+            # Connexion par mot de passe (spec §2.2) : en démo, SEED_MOT_DE_PASSE
+            # donne un mot de passe à cette admin. Jamais de mot de passe par
+            # défaut dans le dépôt (il est public) : sans cette variable,
+            # passer par « Mot de passe oublié ? » (MAILS_DANS_LES_JOURNAUX=1
+            # écrit le lien dans les journaux du backend).
+            mot_de_passe = os.environ.get("SEED_MOT_DE_PASSE")
+            if mot_de_passe:
+                from acces import Acces
+
+                acces = Acces()
+                acces.definir_mot_de_passe(db, acces.obtenir_ou_creer(db, admin.email), mot_de_passe)
+                print("Mot de passe de démo défini pour jd@contretemps.fr (SEED_MOT_DE_PASSE).")
 
         profs_par_nom_prenom = {}
         for p in PROFS_CONTRETEMPS:

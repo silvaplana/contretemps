@@ -16,9 +16,6 @@ function versEcran(e) {
     id: e.id,
     nom: e.nom,
     codePostal: e.code_postal,
-    codeAccesAdmin: e.code_acces_admin,
-    codeAccesProf: e.code_acces_prof,
-    codeAccesEleve: e.code_acces_eleve,
     sauvegardeActive: e.sauvegarde_active,
     sauvegardePeriodicite: e.sauvegarde_periodicite,
     sauvegardeJourSemaine: e.sauvegarde_jour_semaine,
@@ -36,10 +33,9 @@ async function requete(chemin, options) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
-// École COMPLÈTE (codes d'accès, réglages de sauvegarde) — réservée aux
-// admins de l'école côté serveur. La liste publique utilisée à la
-// connexion (voir api/auth.js) ne les donne plus : elle les exposait à
-// n'importe qui jusqu'au 2026-09-21.
+// École COMPLÈTE (réglages de sauvegarde compris) — réservée aux admins
+// de l'école côté serveur. La liste publique (voir api/auth.js) ne donne
+// que le nom et le code postal.
 export async function obtenir(ecoleId) {
   return versEcran(await requete(`/ecoles/${ecoleId}`))
 }
@@ -48,9 +44,6 @@ export async function modifier(ecoleId, patch) {
   const corps = {
     ...(patch.nom !== undefined && { nom: patch.nom }),
     ...(patch.codePostal !== undefined && { code_postal: patch.codePostal }),
-    ...(patch.codeAccesAdmin !== undefined && { code_acces_admin: patch.codeAccesAdmin }),
-    ...(patch.codeAccesProf !== undefined && { code_acces_prof: patch.codeAccesProf }),
-    ...(patch.codeAccesEleve !== undefined && { code_acces_eleve: patch.codeAccesEleve }),
   }
   return versEcran(await requete(`/ecoles/${ecoleId}`, { method: 'PUT', body: JSON.stringify(corps) }))
 }

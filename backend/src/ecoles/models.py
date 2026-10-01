@@ -26,11 +26,8 @@ class Ecole(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nom: Mapped[str] = mapped_column(String(150), nullable=False)
     code_postal: Mapped[str] = mapped_column(String(10), nullable=False)
-    # Codes d'accès : texte libre, sans contrainte de format (voir §6.1) —
-    # une valeur par défaut est proposée à la création, éditable ensuite.
-    code_acces_admin: Mapped[str] = mapped_column(String(50), nullable=False)
-    code_acces_prof: Mapped[str] = mapped_column(String(50), nullable=False)
-    code_acces_eleve: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Plus de codes d'accès depuis le 2026-10-01 (spec §2.2) : chacun a son
+    # mot de passe (table acces_emails).
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     # Sauvegarde programmée (Admin > École > menu > "Programmer sauvegarde

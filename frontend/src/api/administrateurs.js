@@ -30,7 +30,6 @@ function versEcran(a) {
     // et le "supprimer" lui retire seulement les droits d'admin.
     estProf: a.est_prof,
     estEleve: a.est_eleve,
-    codeRecuperationDefini: a.code_recuperation_defini,
   }
 }
 
@@ -39,22 +38,20 @@ export async function lister(ecoleId) {
 }
 
 // Deux façons (§2.4) : `compteId` (promouvoir un professeur ou un élève) OU
-// nom/prénom/email (nouveau compte). Code de récupération dans les deux cas.
-export async function creer(ecoleId, { compteId, nom, prenom, email, codeRecuperation, owner }) {
+// nom/prénom/email (nouveau compte). L'accès se donne ensuite par le bouton
+// « Inviter » (spec §2.2).
+export async function creer(ecoleId, { compteId, nom, prenom, email, owner }) {
   const corps =
-    compteId != null
-      ? { compte_id: compteId, code_recuperation: codeRecuperation, owner }
-      : { nom, prenom, email: email || null, code_recuperation: codeRecuperation, owner }
+    compteId != null ? { compte_id: compteId, owner } : { nom, prenom, email: email || null, owner }
   return versEcran(await requete(`/ecoles/${ecoleId}/administrateurs`, { method: 'POST', body: JSON.stringify(corps) }))
 }
 
 // Seuls les champs présents dans `patch` sont envoyés (et modifiés).
-export async function modifier(id, { nom, prenom, email, codeRecuperation, owner }) {
+export async function modifier(id, { nom, prenom, email, owner }) {
   const corps = {
     ...(nom !== undefined && { nom }),
     ...(prenom !== undefined && { prenom }),
     ...(email !== undefined && { email: email || null }),
-    ...(codeRecuperation !== undefined && { code_recuperation: codeRecuperation }),
     ...(owner !== undefined && { owner }),
   }
   return versEcran(await requete(`/administrateurs/${id}`, { method: 'PUT', body: JSON.stringify(corps) }))

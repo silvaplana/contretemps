@@ -133,12 +133,11 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         <h2>
           {user.prenom} {user.nom}
         </h2>
-        {/* Admin : email/téléphone/code de récupération éditables
-            (crayon, demande) — les autres rôles restent en lecture
-            seule, ces champs se gèrent depuis Admin > Élèves/Profs. */}
+        {/* Admin : email/téléphone éditables (crayon, demande) — les
+            autres rôles restent en lecture seule, ces champs se gèrent
+            depuis Admin > Élèves/Profs. */}
         {/* Pas pour le Superuser (§2.5) : ses identifiants et son mot de
-            passe se gèrent par la commande serveur, et il n'a pas de code de
-            récupération. */}
+            passe se gèrent par la commande serveur. */}
         {isAdmin(user) && !isSuperuser(user) ? (
           <>
             <ChampAdminEditable
@@ -152,13 +151,6 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
               placeholderVide="Ajouter un téléphone"
               type="tel"
               onSave={(v) => onUpdateUser({ telephone: v })}
-            />
-            <ChampAdminEditable
-              prefixe="Code de récupération : "
-              valeur={user.codeRecuperationDefini ? 'défini' : ''}
-              placeholderVide="non défini"
-              secret
-              onSave={(v) => onUpdateUser({ codeRecuperation: v })}
             />
           </>
         ) : (

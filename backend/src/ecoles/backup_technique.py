@@ -48,9 +48,6 @@ COLONNES_ECOLE = [
     "id",
     "nom",
     "code_postal",
-    "code_acces_admin",
-    "code_acces_prof",
-    "code_acces_eleve",
     "created_at",
 ]
 
@@ -125,7 +122,7 @@ def _construire_tables() -> list[_Table]:
             Compte,
             [
                 "id", "ecole_id", "famille_id", "saison_id", "compte_precedent_id", "nom", "prenom",
-                "email", "telephone", "hashed_password_ou_code", "code_recuperation", "created_at",
+                "email", "telephone", "created_at",
             ],
             lambda db, eid: list(db.scalars(select(Compte).where(Compte.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
@@ -469,7 +466,14 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
                 champs[table.colonne_ecole_id] = ecole.id
             if table.objet is Compte and "role" in champs:
                 ancien_role_par_compte[champs["id"]] = champs.pop("role")
-            champs = {nom: _valeur_restauree(table.objet, nom, valeur) for nom, valeur in champs.items()}
+            # Colonnes disparues depuis la sauvegarde (ex. code de
+            # récupération, retiré le 2026-10-01) : ignorées.
+            connues = table.objet.c if isinstance(table.objet, Table) else table.objet.__table__.c
+            champs = {
+                nom: _valeur_restauree(table.objet, nom, valeur)
+                for nom, valeur in champs.items()
+                if nom in connues
+            }
             if isinstance(table.objet, Table):
                 db.execute(table.objet.insert().values(**champs))
             else:

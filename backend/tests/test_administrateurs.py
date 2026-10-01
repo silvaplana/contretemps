@@ -20,7 +20,7 @@ def ecole(db_session):
     voisine = Ecoles().create(db_session, nom="Voisine", code_postal="83000")
     owner = comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia")
     admin = comptes.create(
-        db_session, ecole_id=ecole.id, role="admin", nom="Roux", prenom="Ana", code_recuperation="rex"
+        db_session, ecole_id=ecole.id, role="admin", nom="Roux", prenom="Ana"
     )
     prof = comptes.create(db_session, ecole_id=ecole.id, role="professeur", nom="Blanc", prenom="Ima")
     eleve = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Perrin", prenom="Léon")
@@ -54,8 +54,6 @@ def test_tout_admin_voit_la_liste_sans_code_de_recuperation(client, ecole):
         assert set(lignes) == {ecole["owner"].id, ecole["admin"].id}
         assert lignes[ecole["owner"].id]["est_owner"] is True
         assert lignes[ecole["admin"].id]["est_owner"] is False
-        assert lignes[ecole["admin"].id]["code_recuperation_defini"] is True
-        assert all("code_recuperation" not in l for l in lignes.values())
 
 
 @pytest.mark.parametrize("qui", ["prof", "eleve", "owner_voisin"])
@@ -70,7 +68,7 @@ def test_les_non_admins_ne_voient_pas_la_liste(client, ecole, qui):
 def test_owner_cree_un_nouvel_admin(client, db_session, ecole):
     reponse = client.post(
         f"/ecoles/{ecole['ecole'].id}/administrateurs",
-        json={"nom": "Neuf", "prenom": "Admin", "email": "n@x.fr", "code_recuperation": "chat"},
+        json={"nom": "Neuf", "prenom": "Admin", "email": "n@x.fr"},
         headers=_en_tant_que(ecole["owner"]),
     )
     assert reponse.status_code == 201
@@ -82,7 +80,7 @@ def test_owner_cree_un_nouvel_admin(client, db_session, ecole):
 def test_owner_cree_directement_un_owner(client, ecole):
     reponse = client.post(
         f"/ecoles/{ecole['ecole'].id}/administrateurs",
-        json={"nom": "Neuf", "prenom": "Owner", "code_recuperation": "chat", "owner": True},
+        json={"nom": "Neuf", "prenom": "Owner", "owner": True},
         headers=_en_tant_que(ecole["owner"]),
     )
     assert reponse.json()["est_owner"] is True
@@ -91,7 +89,7 @@ def test_owner_cree_directement_un_owner(client, ecole):
 def test_owner_promeut_un_professeur_qui_reste_professeur(client, db_session, ecole):
     reponse = client.post(
         f"/ecoles/{ecole['ecole'].id}/administrateurs",
-        json={"compte_id": ecole["prof"].id, "code_recuperation": "chat"},
+        json={"compte_id": ecole["prof"].id},
         headers=_en_tant_que(ecole["owner"]),
     )
     assert reponse.status_code == 201
@@ -103,14 +101,14 @@ def test_promouvoir_refuse_un_compte_d_une_autre_ecole(client, ecole):
     for cible in ["prof_voisin", "owner_voisin"]:
         reponse = client.post(
             f"/ecoles/{ecole['ecole'].id}/administrateurs",
-            json={"compte_id": ecole[cible].id, "code_recuperation": "chat"},
+            json={"compte_id": ecole[cible].id},
             headers=_en_tant_que(ecole["owner"]),
         )
         assert reponse.status_code == 404, cible
 
 
 def test_promouvoir_deux_fois_refuse(client, ecole):
-    corps = {"compte_id": ecole["prof"].id, "code_recuperation": "chat"}
+    corps = {"compte_id": ecole["prof"].id}
     url = f"/ecoles/{ecole['ecole'].id}/administrateurs"
     client.post(url, json=corps, headers=_en_tant_que(ecole["owner"]))
     assert client.post(url, json=corps, headers=_en_tant_que(ecole["owner"])).status_code == 409
@@ -119,9 +117,8 @@ def test_promouvoir_deux_fois_refuse(client, ecole):
 @pytest.mark.parametrize(
     "corps",
     [
-        {"nom": "Sans", "code_recuperation": "chat"},  # prénom manquant
-        {"nom": "X", "prenom": "Y", "code_recuperation": ""},  # code vide
-        {"compte_id": 1, "nom": "X", "code_recuperation": "chat"},  # mélange des 2 façons
+        {"nom": "Sans"},  # prénom manquant
+        {"compte_id": 1, "nom": "X"},  # mélange des 2 façons
     ],
 )
 def test_creation_invalide_422(client, ecole, corps):
@@ -134,7 +131,7 @@ def test_creation_invalide_422(client, ecole, corps):
 def test_un_admin_non_owner_ne_cree_pas_d_admin(client, ecole):
     reponse = client.post(
         f"/ecoles/{ecole['ecole'].id}/administrateurs",
-        json={"nom": "X", "prenom": "Y", "code_recuperation": "chat"},
+        json={"nom": "X", "prenom": "Y"},
         headers=_en_tant_que(ecole["admin"]),
     )
     assert reponse.status_code == 403
@@ -146,13 +143,13 @@ def test_un_admin_non_owner_ne_cree_pas_d_admin(client, ecole):
 def test_owner_modifie_un_admin_pur(client, db_session, ecole):
     reponse = client.put(
         f"/administrateurs/{ecole['admin'].id}",
-        json={"prenom": "Anna", "code_recuperation": "felix"},
+        json={"prenom": "Anna", "email": "anna@x.fr"},
         headers=_en_tant_que(ecole["owner"]),
     )
     assert reponse.status_code == 200
     assert reponse.json()["prenom"] == "Anna"
     db_session.refresh(ecole["admin"])
-    assert ecole["admin"].code_recuperation == "felix"
+    assert ecole["admin"].email == "anna@x.fr"
 
 
 def test_owner_donne_puis_retire_le_statut_owner(client, db_session, ecole):
@@ -169,8 +166,8 @@ def test_nom_d_un_professeur_admin_se_modifie_ailleurs(client, db_session, ecole
     url = f"/administrateurs/{ecole['prof'].id}"
     entetes = _en_tant_que(ecole["owner"])
     assert client.put(url, json={"nom": "Autre"}, headers=entetes).status_code == 409
-    # Mais son code de récupération, si.
-    assert client.put(url, json={"code_recuperation": "chat"}, headers=entetes).status_code == 200
+    # Mais son statut d'administrateur principal, si.
+    assert client.put(url, json={"owner": True}, headers=entetes).status_code == 200
 
 
 def test_un_owner_ne_touche_pas_a_sa_propre_ligne(client, ecole):

@@ -94,7 +94,6 @@ def _ecole_avec_prof_admin(db_session):
     comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia")
     prof = comptes.create(
         db_session, ecole_id=ecole.id, role="professeur", nom="Pesenti", prenom="Marie",
-        code_recuperation="rex",
     )
     return ecole, _promouvoir_admin(db_session, prof)
 

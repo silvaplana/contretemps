@@ -204,19 +204,12 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
 
-  // Profil > crayon email/code de récupération (admin, voir
-  // ProfilScreen.jsx) — persiste côté backend puis met à jour l'affichage
-  // sans attendre une reconnexion.
+  // Profil > crayon email/téléphone (admin, voir ProfilScreen.jsx) —
+  // persiste côté backend puis met à jour l'affichage sans attendre une
+  // reconnexion.
   async function mettreAJourActiveUser(patch) {
     await comptesApi.modifier(activeUser.id, patch)
-    // Le code de récupération n'est jamais gardé en clair à l'écran, comme
-    // côté serveur : seulement s'il est défini (voir api/auth.js).
-    const { codeRecuperation, ...reste } = patch
-    setCompteReel((u) => ({
-      ...u,
-      ...reste,
-      ...(codeRecuperation !== undefined && { codeRecuperationDefini: Boolean(codeRecuperation.trim()) }),
-    }))
+    setCompteReel((u) => ({ ...u, ...patch }))
   }
 
   function logout() {

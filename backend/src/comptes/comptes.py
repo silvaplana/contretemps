@@ -143,7 +143,6 @@ class Comptes:
         prenom: str,
         email: str | None = None,
         telephone: str | None = None,
-        code_recuperation: str | None = None,
     ) -> Compte:
         if role not in r.ROLES or role in (r.OWNER, r.SUPERUSER):
             # Owner ne se donne pas à la création : il s'ajoute à un admin
@@ -160,7 +159,6 @@ class Comptes:
             prenom=prenom,
             email=email,
             telephone=telephone,
-            code_recuperation=code_recuperation,
         )
         compte.roles.append(RoleCompte(role=role))
         if devient_owner:
@@ -174,7 +172,7 @@ class Comptes:
         """Champs communs (nom/prénom/email/téléphone) — utilisé par
         eleves/profs pour éditer leur part de `Compte` (les champs
         spécifiques au rôle sont gérés dans leur propre module), et par
-        Profil admin (crayon email/téléphone/code_recuperation)."""
+        Profil admin (crayon email/téléphone)."""
         compte = self.get(db, compte_id)
         if compte is None:
             return None

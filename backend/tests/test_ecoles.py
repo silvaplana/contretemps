@@ -7,7 +7,8 @@ def test_creer_puis_lister(client):
     assert reponse.status_code == 201
     corps = reponse.json()
     assert corps["nom"] == "Contretemps"
-    assert corps["code_acces_admin"] == "ADMIN_CONTRETEMPS_2026"
+    # Plus de codes d'accès (spec §2.2, 2026-10-01).
+    assert not [cle for cle in corps if cle.startswith("code_acces")]
 
     reponse = client.get("/ecoles")
     assert reponse.status_code == 200
@@ -32,9 +33,9 @@ def test_creer_doublon_nom_et_code_postal_refuse(client):
 
 def test_modifier_ecole(client):
     creee = client.post("/ecoles", json={"nom": "Contretemps", "code_postal": "83330"}).json()
-    reponse = client.put(f"/ecoles/{creee['id']}", json={"code_acces_admin": "NOUVEAU"})
+    reponse = client.put(f"/ecoles/{creee['id']}", json={"code_postal": "83000"})
     assert reponse.status_code == 200
-    assert reponse.json()["code_acces_admin"] == "NOUVEAU"
+    assert reponse.json()["code_postal"] == "83000"
     # Les autres champs restent inchangés (exclude_unset).
     assert reponse.json()["nom"] == "Contretemps"
 

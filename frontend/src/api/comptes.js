@@ -1,7 +1,7 @@
 // Domaine "comptes" (voir spec/SPEC.md §6.2/§6.3) — pour l'instant, couvre
 // la vraie liste des comptes admin de l'école (Admin > Messagerie,
 // "Ajouter un membre" > Admin, à la place du "Direction" fictif d'avant)
-// et la modification email/code_recuperation depuis Profil (crayon, voir
+// et la modification email/téléphone depuis Profil (crayon, voir
 // ProfilScreen.jsx). Pas encore de module complet (pas d'écran de gestion
 // multi-admin, voir spec §8).
 
@@ -32,15 +32,11 @@ export async function listerFamille(compteId) {
   return comptes.map(versFamilleEcran)
 }
 
-function versChampsBackend({ codeRecuperation, ...reste }) {
-  return { ...reste, ...(codeRecuperation !== undefined && { code_recuperation: codeRecuperation }) }
-}
-
 export async function modifier(compteId, patch) {
   const reponse = await fetch(`${BASE_URL}/comptes/${compteId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(versChampsBackend(patch)),
+    body: JSON.stringify(patch),
   })
   if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
   return reponse.json()

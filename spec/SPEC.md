@@ -413,12 +413,14 @@ numéro de ce compte à l'API. Le Superuser a donc sa propre connexion, sécuris
   identifiant dans "Nom Prénom ou Email", et son **mot de passe personnel** dans le champ "Mot
   de passe" (avec §2.2, tout le monde a désormais un mot de passe personnel). Aucun lien ni mention ne signale qu'un accès propriétaire
   existe ;
-- le serveur vérifie **d'abord** si l'identifiant est celui du Superuser ET si le "code" saisi
-  correspond à son mot de passe. Si oui : connexion Superuser, puis sélecteur d'école. Sinon :
-  connexion d'école normale (§2.2). Conséquence voulue : si l'email du Superuser sert aussi à
-  un compte d'école, les deux cohabitent — avec le code de l'école on entre dans ce compte,
-  avec le mot de passe personnel on entre en Superuser ;
-- mot de passe **stocké haché** (champ `hashed_password_ou_code`, §6.3), jamais en clair ;
+- il se connecte **comme tout le monde** (§2.2) : son identifiant et le mot de passe de son
+  adresse email. S'il est seul à porter ce nom ou cet email, il arrive directement sur le
+  sélecteur d'école. **Si son email sert aussi à un compte d'école**, il n'y a qu'un seul mot
+  de passe pour cet email (mise à jour du 2026-10-01, à la place des deux mots de passe
+  d'avant) : la fenêtre « Choisissez votre école » propose alors l'école **et** l'accès
+  Super User (« Toutes les écoles ») ;
+- mot de passe **stocké haché** dans `acces_emails` (§6.3ter), sur la ligne de son email,
+  jamais en clair ;
 - **essais limités** : après 5 mots de passe faux, les tentatives de connexion Superuser sont
   bloquées 15 minutes. Ce mot de passe est la seule barrière devant tous les droits, il ne doit
   pas pouvoir être deviné en boucle ;

@@ -4,22 +4,10 @@ dépendance FastAPI ici, juste des méthodes appelées par receiver.py.
 
 from __future__ import annotations
 
-import datetime as dt
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import Ecole
-
-
-def code_par_defaut(prefixe: str, nom_ecole: str) -> str:
-    """`ADMIN_ECOLE_ANNEE` : ÉCOLE en majuscules sans espaces/accents
-    basiques, ANNÉE = année en cours (voir spec §2.3) — proposé par
-    défaut, éditable avant validation.
-    """
-    slug = "".join(c for c in nom_ecole.upper() if c.isalnum()) or "ECOLE"
-    annee = dt.date.today().year
-    return f"{prefixe}_{slug}_{annee}"
 
 
 class Ecoles:
@@ -42,17 +30,8 @@ class Ecoles:
         db: Session,
         nom: str,
         code_postal: str,
-        code_acces_admin: str | None = None,
-        code_acces_prof: str | None = None,
-        code_acces_eleve: str | None = None,
     ) -> Ecole:
-        ecole = Ecole(
-            nom=nom,
-            code_postal=code_postal,
-            code_acces_admin=code_acces_admin or code_par_defaut("ADMIN", nom),
-            code_acces_prof=code_acces_prof or code_par_defaut("PROF", nom),
-            code_acces_eleve=code_acces_eleve or code_par_defaut("ELEVE", nom),
-        )
+        ecole = Ecole(nom=nom, code_postal=code_postal)
         db.add(ecole)
         db.commit()
         db.refresh(ecole)

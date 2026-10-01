@@ -185,8 +185,6 @@ class GestionSaisons:
                 prenom=ancien.prenom,
                 email=ancien.email,
                 telephone=ancien.telephone,
-                hashed_password_ou_code=ancien.hashed_password_ou_code,
-                code_recuperation=ancien.code_recuperation,
             )
             nouveau.roles = [RoleCompte(role=role) for role in roles]
             db.add(nouveau)
