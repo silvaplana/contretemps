@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { listerCours, resoudreEcoleReelle, verifierPaiementHelloAsso } from './api/backend.js'
+import {
+  listerCours,
+  obtenirFiche,
+  resoudreEcole,
+  resoudreEcoleReelle,
+  verifierPaiementHelloAsso,
+} from './api/backend.js'
 import Confirmation from './Confirmation.jsx'
 import FormulaireInscription from './FormulaireInscription.jsx'
 import PaiementEtape from './PaiementEtape.jsx'
@@ -56,10 +62,22 @@ export default function App() {
         return
       }
 
+      // Fiche papier lue automatiquement (appli principale : Admin >
+      // Élèves > « Ajouter élève (OCR) ») : le formulaire s'ouvre
+      // pré-rempli, pour un admin qui corrige puis valide.
+      const jetonFiche = params.get('fiche')
       try {
-        const ecole = await resoudreEcoleReelle()
+        let fiche = null
+        if (jetonFiche) {
+          try {
+            fiche = await obtenirFiche(jetonFiche)
+          } catch {
+            throw new Error('Cette fiche est introuvable ou a expiré : relancez la lecture depuis l’appli.')
+          }
+        }
+        const ecole = fiche ? await resoudreEcole(fiche.ecoleId) : await resoudreEcoleReelle()
         const cours = await listerCours(ecole.id)
-        if (!annule) setEtat({ statut: 'pret', ecole, cours })
+        if (!annule) setEtat({ statut: 'pret', ecole, cours, fiche })
       } catch (erreur) {
         if (!annule) setEtat({ statut: 'erreur', message: erreur.message })
       }
@@ -69,6 +87,13 @@ export default function App() {
       annule = true
     }
   }, [])
+
+  // La fiche papier ne sert qu'une fois : validée ou annulée, elle quitte
+  // l'adresse de la page (un rechargement ne doit pas la redemander).
+  function oublierFiche() {
+    window.history.replaceState({}, '', window.location.pathname)
+    setEtat((e) => ({ ...e, fiche: null }))
+  }
 
   function recommencer() {
     setInscription(null)
@@ -83,6 +108,16 @@ export default function App() {
           {etat.statut === 'verification-paiement'
             ? 'Vérification du paiement en cours…'
             : 'Chargement du formulaire…'}
+        </p>
+      </div>
+    )
+  }
+
+  if (etat.statut === 'fiche-annulee') {
+    return (
+      <div className="page">
+        <p className="chargement">
+          Saisie annulée : la fiche et ses photos ont été effacées. Vous pouvez fermer cet onglet.
         </p>
       </div>
     )
@@ -107,7 +142,10 @@ export default function App() {
           Inscription — École de danse <span className="entete__logo">Contretemps</span>
         </h1>
         <p>
-          Saison {saisonActuelle()} — remplissez ce formulaire pour inscrire votre élève.
+          Saison {saisonActuelle()} —{' '}
+          {etat.fiche
+            ? 'fiche papier lue automatiquement : vérifiez, corrigez, puis validez.'
+            : 'remplissez ce formulaire pour inscrire votre élève.'}
         </p>
       </header>
 
@@ -116,6 +154,7 @@ export default function App() {
       ) : etape === 'paiement' && inscription ? (
         <PaiementEtape
           inscription={inscription}
+          parFiche={Boolean(inscription.coutLectureUsd != null)}
           messageEchec={messageEchecPaiement}
           onPaiementParCheque={(resultat) => {
             setInscription((precedente) => ({ ...precedente, ...resultat }))
@@ -127,7 +166,10 @@ export default function App() {
         <FormulaireInscription
           ecole={etat.ecole}
           cours={etat.cours}
+          fiche={etat.fiche}
+          onAnnuler={() => setEtat({ statut: 'fiche-annulee' })}
           onSoumis={(resultat) => {
+            if (etat.fiche) oublierFiche()
             setInscription(resultat)
             setMessageEchecPaiement(null)
             setEtape('paiement')

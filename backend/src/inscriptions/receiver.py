@@ -14,9 +14,13 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
+from .fiches import FicheInvalide, FichesPapier
 from .helloasso import HelloAssoError
 from .inscriptions import Inscriptions
+from .lecture_fiche import LectureIndisponible, Page
 from .schemas import (
+    FicheBrouillonSortie,
+    FicheLueSortie,
     InscriptionCreation,
     InscriptionSortie,
     PaiementChoixEntree,
@@ -28,8 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 class InscriptionsReceiver:
-    def __init__(self, client: Inscriptions, app: FastAPI) -> None:
+    def __init__(self, client: Inscriptions, app: FastAPI, fiches: FichesPapier | None = None) -> None:
         self.client = client
+        self.fiches = fiches or FichesPapier(client.cours)
         self.app = app
         self._register_routes()
 
@@ -44,6 +49,20 @@ class InscriptionsReceiver:
         self.app.get("/inscriptions/export", dependencies=[Depends(self._admin_ecole)])(
             self.export
         )
+        # Fiches papier lues automatiquement (voir fiches.py). La lecture
+        # est réservée aux admins (elle coûte de l'argent) ; le brouillon
+        # se relit ensuite par son jeton, depuis le formulaire en ligne.
+        self.app.post(
+            "/inscriptions/fiches",
+            response_model=FicheLueSortie,
+            status_code=201,
+            dependencies=[Depends(self._admin_ecole)],
+        )(self.lire_fiche)
+        self.app.get("/inscriptions/fiches/{jeton}", response_model=FicheBrouillonSortie)(
+            self.obtenir_fiche
+        )
+        self.app.get("/inscriptions/fiches/{jeton}/pages/{numero}")(self.page_fiche)
+        self.app.delete("/inscriptions/fiches/{jeton}", status_code=204)(self.supprimer_fiche)
         self.app.post("/inscriptions/{token}/photo", status_code=204)(self.photo)
         self.app.get("/inscriptions/{token}", response_model=InscriptionSortie)(self.obtenir)
         self.app.post(
@@ -88,11 +107,68 @@ class InscriptionsReceiver:
         ecole_id: int,
         donnees: InscriptionCreation,
         request: Request,
+        fiche: str | None = None,
         db: Session = Depends(get_db),
     ):
+        """`fiche` : jeton d'une fiche papier lue par un admin (voir
+        fiches.py). Seul cas où l'email peut manquer."""
+        if fiche is not None:
+            brouillon = self.fiches.obtenir(fiche)
+            if brouillon is None or brouillon["ecole_id"] != ecole_id:
+                raise HTTPException(status_code=404, detail="Fiche introuvable ou expirée")
+        elif not donnees.eleve_email:
+            raise HTTPException(status_code=422, detail="L'email est obligatoire")
         ip = request.client.host if request.client else None
         inscription = self.client.creer(db, ecole_id, donnees, ip)
+        if fiche is not None:
+            self.fiches.rattacher(fiche, inscription)
         return self._vers_sortie(db, inscription)
+
+    def lire_fiche(
+        self,
+        ecole_id: int,
+        fichiers: list[UploadFile] = File(...),
+        db: Session = Depends(get_db),
+    ):
+        pages = [Page(f.file.read(), (f.content_type or "").lower()) for f in fichiers]
+        try:
+            brouillon = self.fiches.lire(db, ecole_id, pages)
+        except FicheInvalide as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        except LectureIndisponible as erreur:
+            raise HTTPException(status_code=503, detail=str(erreur)) from erreur
+        return FicheLueSortie(
+            jeton=brouillon["jeton"],
+            nb_pages=len(brouillon["pages"]),
+            nb_champs_douteux=len(brouillon["champs_douteux"]),
+            cout_usd=brouillon["cout_usd"],
+            jetons_entree=brouillon["jetons_entree"],
+            jetons_sortie=brouillon["jetons_sortie"],
+        )
+
+    def obtenir_fiche(self, jeton: str):
+        brouillon = self.fiches.obtenir(jeton)
+        if brouillon is None:
+            raise HTTPException(status_code=404, detail="Fiche introuvable ou expirée")
+        return FicheBrouillonSortie(
+            jeton=brouillon["jeton"],
+            ecole_id=brouillon["ecole_id"],
+            donnees=brouillon["donnees"],
+            champs_douteux=brouillon["champs_douteux"],
+            remarques=brouillon["remarques"],
+            types_pages=[p["type_mime"] for p in brouillon["pages"]],
+            cout_usd=brouillon["cout_usd"],
+        )
+
+    def page_fiche(self, jeton: str, numero: int):
+        page = self.fiches.page(jeton, numero)
+        if page is None:
+            raise HTTPException(status_code=404, detail="Page introuvable")
+        contenu, type_mime = page
+        return Response(content=contenu, media_type=type_mime, headers={"Cache-Control": "no-store"})
+
+    def supprimer_fiche(self, jeton: str):
+        self.fiches.supprimer(jeton)
 
     def photo(self, token: str, fichier: UploadFile = File(...), db: Session = Depends(get_db)):
         """Upload de la photo de l'élève, appelé juste après la création

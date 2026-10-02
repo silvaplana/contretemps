@@ -112,3 +112,16 @@ configuré plus tard (redondant par construction, l'un fonctionne même si l'aut
 
 **Hors scope de cette 1ère passe** : le paiement Stripe (viendra après, une fois HelloAsso validé
 en sandbox puis en prod — voir §3 ci-dessus).
+## 5. Inscription à partir d'une fiche papier (« Ajouter élève (OCR) ») — décisions du 2026-10-02
+
+Pour les familles qui rendent la fiche d'inscription papier, remplie à la main.
+
+- **Entrée** : Admin > Élèves, menu ⋮, « Ajouter élève (OCR) ». Réservé aux admins.
+- **Photos** : la fiche est en recto verso, il faut 2 photos (recto : élève, cours, urgence, santé ; verso : droit à l'image et règlement). Pour chaque face : « Importer fichier » (image ou PDF) ou « Prendre photo ». Le verso est facultatif.
+- **Lecture** : le serveur envoie les photos à l'API Claude (`ANTHROPIC_API_KEY`, voir `inscriptions/lecture_fiche.py`), qui renvoie les champs du formulaire en ligne, la liste des champs dont la lecture est incertaine, et une remarque éventuelle. Les cours sont déduits des disciplines et du niveau cochés, parmi les cours de l'école.
+- **Coût** : affiché dès la fin de la lecture, puis dans le formulaire et sur l'écran de confirmation (en dollars, tel que facturé).
+- **Correction** : le formulaire d'inscription en ligne s'ouvre pré-rempli (`/contretemps-inscription/?fiche=<jeton>`). C'est le MÊME formulaire : aucun écran en double. Les champs incertains sont surlignés jusqu'à ce que l'admin y touche ; les photos de la fiche sont consultables sur la page.
+- **Valider ou annuler** : valider suit le parcours habituel (choix du paiement, chèque proposé par défaut, puis dossier PDF, ligne Excel, mail à la famille et mail à l'admin). Annuler efface le brouillon et ses photos.
+- **Différences avec une inscription en ligne** : l'email n'est pas obligatoire (sans email, pas de mail à la famille) ; la case du règlement est pré-cochée si la fiche est signée ; les photos de la fiche sont conservées avec l'inscription (`<token>-fiche-<n>`).
+- **Brouillon** : gardé 24 heures au plus, dans le dossier privé de l'école, accessible par un jeton tiré au hasard. Pas de table.
+- **Données personnelles** : la fiche (données d'un enfant, dont santé) est envoyée à Anthropic pour lecture. À mentionner dans le règlement ou sur la fiche.

@@ -30,3 +30,29 @@ export async function telechargerNouvellesInscriptions(ecoleId) {
   lien.remove()
   URL.revokeObjectURL(url)
 }
+
+// --- Fiche d'inscription papier lue automatiquement (« Ajouter élève
+// (OCR) », voir backend/src/inscriptions/fiches.py) ---
+
+// Envoie les photos (recto, verso) et renvoie { jeton, coutUsd,
+// nbChampsDouteux } : le jeton ouvre ensuite le formulaire d'inscription
+// pré-rempli (voir utils/inscriptionEleve.js).
+export async function lireFiche(ecoleId, fichiers) {
+  const corps = new FormData()
+  for (const fichier of fichiers) corps.append('fichiers', fichier)
+  const reponse = await fetch(`${BASE_URL}/inscriptions/fiches?ecole_id=${ecoleId}`, {
+    method: 'POST',
+    body: corps,
+  })
+  if (!reponse.ok) {
+    const detail = (await reponse.json().catch(() => null))?.detail
+    throw new Error(typeof detail === 'string' ? detail : "La fiche n'a pas pu être lue.")
+  }
+  const lue = await reponse.json()
+  return { jeton: lue.jeton, coutUsd: lue.cout_usd, nbChampsDouteux: lue.nb_champs_douteux }
+}
+
+// Annulation : le brouillon et ses photos sont effacés du serveur.
+export async function annulerFiche(jeton) {
+  await fetch(`${BASE_URL}/inscriptions/fiches/${jeton}`, { method: 'DELETE' }).catch(() => {})
+}

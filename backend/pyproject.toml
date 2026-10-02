@@ -28,6 +28,9 @@ dependencies = [
     # signature VAPID des messages envoyés aux serveurs de push
     # (FCM/Mozilla/...), voir .env.example.
     "pywebpush",
+    # Lecture des fiches d'inscription papier par Claude (voir
+    # inscriptions/lecture_fiche.py) — clé dans ANTHROPIC_API_KEY.
+    "anthropic>=1.0",
     # Les 2 PDF d'inscription (dossier + facture, voir
     # inscriptions/dossier_html.py et facture_html.py) sont générés en
     # HTML/CSS + Chromium headless (gabarits fournis par l'utilisateur,

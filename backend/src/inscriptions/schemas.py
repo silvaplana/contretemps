@@ -18,10 +18,12 @@ class InscriptionCreation(BaseModel):
     eleve_date_naissance: dt.date
     eleve_adresse: str | None = None
     eleve_telephone: str | None = None
-    # Obligatoire (voir FormulaireInscription.jsx) : sert à recevoir la
-    # confirmation ET, si HelloAsso est choisi, à payer (voir
-    # inscriptions.py:initier_paiement_helloasso — payer.email).
-    eleve_email: str
+    # Obligatoire pour une famille (voir FormulaireInscription.jsx) : sert
+    # à recevoir la confirmation ET, si HelloAsso est choisi, à payer (voir
+    # inscriptions.py:initier_paiement_helloasso — payer.email). Seule
+    # exception, vérifiée dans receiver.py:creer : une fiche papier saisie
+    # par un admin, qui peut ne pas porter d'email.
+    eleve_email: str | None = None
 
     cours_ids: list[int]
 
@@ -110,3 +112,27 @@ class PaiementHelloAssoEntree(BaseModel):
     codée en dur côté serveur)."""
 
     retour_url: str
+
+
+class FicheLueSortie(BaseModel):
+    """Ce que reçoit l'admin après la lecture d'une fiche papier (voir
+    fiches.py) : le jeton du brouillon, et ce que la lecture a coûté."""
+
+    jeton: str
+    nb_pages: int
+    nb_champs_douteux: int
+    cout_usd: float
+    jetons_entree: int
+    jetons_sortie: int
+
+
+class FicheBrouillonSortie(BaseModel):
+    """Le brouillon, tel que le formulaire en ligne le pré-remplit."""
+
+    jeton: str
+    ecole_id: int
+    donnees: dict
+    champs_douteux: list[str]
+    remarques: str | None
+    types_pages: list[str]
+    cout_usd: float

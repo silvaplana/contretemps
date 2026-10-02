@@ -11,3 +11,14 @@ const URL_INSCRIPTION = import.meta.env.VITE_INSCRIPTION_URL ?? '/contretemps-in
 export function ouvrirInscriptionEleve() {
   window.open(URL_INSCRIPTION, '_blank', 'noopener')
 }
+
+// Le même formulaire, pré-rempli par la lecture d'une fiche papier (voir
+// screens/admin/AjoutEleveOcr.jsx).
+export function urlInscriptionDepuisFiche(jeton) {
+  return `${URL_INSCRIPTION}?fiche=${encodeURIComponent(jeton)}`
+}
+
+// Coût d'une lecture, facturé en dollars par Anthropic.
+export function formaterCout(coutUsd) {
+  return `${coutUsd.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} $`
+}

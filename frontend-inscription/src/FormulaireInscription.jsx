@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { creerInscription, uploaderPhotoEleve } from './api/backend.js'
+import { creerInscription, supprimerFiche, uploaderPhotoEleve } from './api/backend.js'
+import { formaterCout } from './cout.js'
 import { COURS_PUBLICS } from './coursPublics.js'
 import { calculerTarifIndicatif, LIBELLE_PALIER } from './tarifs.js'
 
@@ -27,8 +28,54 @@ const VIDE = {
   reductionFamilleDemandee: false,
 }
 
-export default function FormulaireInscription({ ecole, cours, onSoumis }) {
-  const [valeurs, setValeurs] = useState(VIDE)
+// Champ du formulaire -> champ lu sur une fiche papier (voir
+// backend/src/inscriptions/lecture_fiche.py:FicheLue).
+const CHAMP_FICHE = {
+  eleveNom: 'eleve_nom',
+  elevePrenom: 'eleve_prenom',
+  eleveDateNaissance: 'eleve_date_naissance',
+  eleveAdresse: 'eleve_adresse',
+  eleveTelephone: 'eleve_telephone',
+  eleveEmail: 'eleve_email',
+  contactNom: 'contact_urgence_nom',
+  contactPrenom: 'contact_urgence_prenom',
+  contactLien: 'contact_urgence_lien',
+  contactTelephone: 'contact_urgence_telephone',
+  coursIds: 'cours_ids',
+  allergies: 'allergies',
+  traitementMedical: 'traitement_medical',
+  informationsImportantes: 'informations_importantes',
+  droitImageAutorise: 'droit_image_autorise',
+  droitImageSite: 'droit_image_site',
+  droitImageReseaux: 'droit_image_reseaux',
+  droitImageAffiches: 'droit_image_affiches',
+  reglementLuApprouve: 'reglement_signe',
+  signataireNom: 'signataire_nom',
+}
+
+// Valeurs de départ : vides pour une famille, lues sur la fiche papier
+// pour un admin. Un cours lu mais absent du formulaire (voir
+// coursPublics.js) est écarté : il compterait dans le tarif sans pouvoir
+// être décoché.
+function valeursDeDepart(fiche, cours) {
+  if (!fiche) return VIDE
+  const proposes = new Set(COURS_PUBLICS.map((cp) => cp.coursNom))
+  const idsProposes = new Set(cours.filter((c) => proposes.has(c.nom)).map((c) => c.id))
+  const valeurs = { ...VIDE }
+  for (const [nom, champFiche] of Object.entries(CHAMP_FICHE)) {
+    const lu = fiche.donnees[champFiche]
+    if (lu != null) valeurs[nom] = lu
+  }
+  valeurs.coursIds = (fiche.donnees.cours_ids ?? []).filter((id) => idsProposes.has(id))
+  return valeurs
+}
+
+// `fiche` : brouillon d'une fiche papier lue automatiquement (voir
+// App.jsx) — le formulaire est alors rempli par un admin, qui corrige la
+// lecture. Les champs incertains sont signalés jusqu'à ce qu'il y touche.
+export default function FormulaireInscription({ ecole, cours, fiche = null, onAnnuler, onSoumis }) {
+  const [valeurs, setValeurs] = useState(() => valeursDeDepart(fiche, cours))
+  const [douteux, setDouteux] = useState(() => new Set(fiche?.champsDouteux ?? []))
   const [elevePhoto, setElevePhoto] = useState(null)
   const [apercuPhoto, setApercuPhoto] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
@@ -77,18 +124,48 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
     [nomsCoursChoisis, valeurs.reductionFamilleDemandee]
   )
 
+  // Un champ que l'admin a repris n'est plus « à vérifier ».
+  function verifie(nom) {
+    const champFiche = CHAMP_FICHE[nom]
+    setDouteux((d) => {
+      if (!d.has(champFiche)) return d
+      const suivant = new Set(d)
+      suivant.delete(champFiche)
+      return suivant
+    })
+  }
+
+  function aVerifier(...noms) {
+    return noms.some((nom) => douteux.has(CHAMP_FICHE[nom]))
+  }
+
+  function classeChamp(nom) {
+    return aVerifier(nom) ? 'champ champ--douteux' : 'champ'
+  }
+
   function champ(nom) {
     return {
       value: valeurs[nom],
-      onChange: (e) => setValeurs((v) => ({ ...v, [nom]: e.target.value })),
+      onChange: (e) => {
+        verifie(nom)
+        setValeurs((v) => ({ ...v, [nom]: e.target.value }))
+      },
     }
   }
 
   function basculerCoche(nom) {
+    verifie(nom)
     setValeurs((v) => ({ ...v, [nom]: !v[nom] }))
   }
 
+  async function annuler() {
+    setEnvoiEnCours(true)
+    await supprimerFiche(fiche.jeton).catch(() => {})
+    onAnnuler()
+  }
+
   function basculerCours(id) {
+    verifie('coursIds')
     setValeurs((v) => ({
       ...v,
       coursIds: v.coursIds.includes(id)
@@ -104,7 +181,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
     if (!valeurs.eleveDateNaissance) {
       return 'La date de naissance est obligatoire.'
     }
-    if (!valeurs.eleveEmail.trim()) {
+    if (!fiche && !valeurs.eleveEmail.trim()) {
       return "L'email est obligatoire (il sert à recevoir la confirmation et, si choisi, à payer par carte bancaire)."
     }
     if (valeurs.coursIds.length === 0) {
@@ -135,7 +212,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         eleve_date_naissance: valeurs.eleveDateNaissance,
         eleve_adresse: valeurs.eleveAdresse || null,
         eleve_telephone: valeurs.eleveTelephone || null,
-        eleve_email: valeurs.eleveEmail || null,
+        eleve_email: valeurs.eleveEmail.trim() || null,
         cours_ids: valeurs.coursIds,
         allergies: valeurs.allergies || null,
         traitement_medical: valeurs.traitementMedical || null,
@@ -154,7 +231,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         // PaiementEtape.jsx) qui le fixe, une fois les informations
         // validées (voir spec/SPEC-inscription.md).
         reduction_famille_demandee: valeurs.reductionFamilleDemandee,
-      })
+      }, fiche?.jeton)
 
       let photoEnvoyee = false
       if (elevePhoto) {
@@ -166,7 +243,12 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
           // api/backend.js) — juste signalé sur l'écran de confirmation.
         }
       }
-      onSoumis({ ...resultat, photoEnvoyee, photoChoisie: Boolean(elevePhoto) })
+      onSoumis({
+        ...resultat,
+        photoEnvoyee,
+        photoChoisie: Boolean(elevePhoto),
+        coutLectureUsd: fiche?.coutUsd,
+      })
     } catch (err) {
       setErreur(err.message || "L'inscription n'a pas pu être envoyée. Réessayez.")
     } finally {
@@ -178,19 +260,48 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
     <form onSubmit={soumettre}>
       {erreur && <p className="erreur-globale">{erreur}</p>}
 
+      {fiche && (
+        <section className="section fiche-lue">
+          <h2>Fiche papier lue automatiquement</h2>
+          <p>
+            Vérifiez chaque champ en le comparant à la fiche. Les champs{' '}
+            <span className="fiche-lue__marque">surlignés</span> sont ceux dont la lecture est
+            incertaine.
+          </p>
+          {fiche.remarques && <p className="alerte">{fiche.remarques}</p>}
+          <p>
+            Coût de la lecture : <strong>{formaterCout(fiche.coutUsd)}</strong>
+          </p>
+          <details>
+            <summary>Voir la fiche ({fiche.pages.length} page{fiche.pages.length > 1 ? 's' : ''})</summary>
+            <div className="fiche-lue__pages">
+              {fiche.pages.map((page, i) => (
+                <a key={page.url} href={page.url} target="_blank" rel="noopener">
+                  {page.type.startsWith('image/') ? (
+                    <img src={page.url} alt={`Page ${i + 1} de la fiche`} />
+                  ) : (
+                    `Page ${i + 1} (PDF)`
+                  )}
+                </a>
+              ))}
+            </div>
+          </details>
+        </section>
+      )}
+
       <section className="section">
         <h2>Élève</h2>
         <div className="grille-2">
-          <div className="champ">
+          <div className={classeChamp('eleveNom')}>
             <label htmlFor="eleve-nom">Nom *</label>
             <input id="eleve-nom" required placeholder="Dupont" {...champ('eleveNom')} />
           </div>
-          <div className="champ">
+          <div className={classeChamp('elevePrenom')}>
             <label htmlFor="eleve-prenom">Prénom *</label>
             <input id="eleve-prenom" required placeholder="Julie" {...champ('elevePrenom')} />
           </div>
         </div>
-        <div className="champ">
+        <div className={classeChamp('eleveDateNaissance')}>
           <label htmlFor="eleve-naissance">Date de naissance *</label>
           <input id="eleve-naissance" type="date" required {...champ('eleveDateNaissance')} />
           {/* Un input date n'affiche jamais son "placeholder" (ignoré par
@@ -198,7 +309,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
               vraie valeur, donc aucun risque de fausse date oubliée. */}
           <small className="champ__aide">Exemple : 10/05/2015</small>
         </div>
-        <div className="champ">
+        <div className={classeChamp('eleveAdresse')}>
           <label htmlFor="eleve-adresse">Adresse</label>
           <input
             id="eleve-adresse"
@@ -207,7 +318,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
           />
         </div>
         <div className="grille-2">
-          <div className="champ">
+          <div className={classeChamp('eleveTelephone')}>
             <label htmlFor="eleve-telephone">Téléphone</label>
             <input
               id="eleve-telephone"
@@ -216,12 +327,12 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
               {...champ('eleveTelephone')}
             />
           </div>
-          <div className="champ">
-            <label htmlFor="eleve-email">Email *</label>
+          <div className={classeChamp('eleveEmail')}>
+            <label htmlFor="eleve-email">Email{fiche ? '' : ' *'}</label>
             <input
               id="eleve-email"
               type="email"
-              required
+              required={!fiche}
               placeholder="julie.dupont@email.fr"
               {...champ('eleveEmail')}
             />
@@ -239,21 +350,21 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
       <section className="section">
         <h2>Contact d'urgence</h2>
         <div className="grille-2">
-          <div className="champ">
+          <div className={classeChamp('contactNom')}>
             <label htmlFor="contact-nom">Nom</label>
             <input id="contact-nom" placeholder="Dupont" {...champ('contactNom')} />
           </div>
-          <div className="champ">
+          <div className={classeChamp('contactPrenom')}>
             <label htmlFor="contact-prenom">Prénom</label>
             <input id="contact-prenom" placeholder="Marie" {...champ('contactPrenom')} />
           </div>
         </div>
         <div className="grille-2">
-          <div className="champ">
+          <div className={classeChamp('contactLien')}>
             <label htmlFor="contact-lien">Lien avec l'élève</label>
             <input id="contact-lien" placeholder="Père, mère, tuteur…" {...champ('contactLien')} />
           </div>
-          <div className="champ">
+          <div className={classeChamp('contactTelephone')}>
             <label htmlFor="contact-telephone">Téléphone</label>
             <input
               id="contact-telephone"
@@ -266,7 +377,10 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
       </section>
 
       <section className="section">
-        <h2>Cours souhaités *</h2>
+        <h2>
+          Cours souhaités *
+          {aVerifier('coursIds') && <span className="a-verifier">à vérifier</span>}
+        </h2>
         <div className="cours-grille">
           {coursAffiches.map((c) => (
             <label
@@ -344,15 +458,15 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
 
       <section className="section">
         <h2>Informations médicales</h2>
-        <div className="champ">
+        <div className={classeChamp('allergies')}>
           <label htmlFor="allergies">Allergies</label>
           <textarea id="allergies" rows={2} placeholder="Aucune" {...champ('allergies')} />
         </div>
-        <div className="champ">
+        <div className={classeChamp('traitementMedical')}>
           <label htmlFor="traitement">Traitement médical</label>
           <textarea id="traitement" rows={2} placeholder="Aucun" {...champ('traitementMedical')} />
         </div>
-        <div className="champ">
+        <div className={classeChamp('informationsImportantes')}>
           <label htmlFor="infos-importantes">Autres informations importantes</label>
           <textarea
             id="infos-importantes"
@@ -364,7 +478,10 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
       </section>
 
       <section className="section">
-        <h2>Droit à l'image</h2>
+        <h2>
+          Droit à l'image
+          {aVerifier('droitImageAutorise', 'droitImageSite', 'droitImageReseaux', 'droitImageAffiches') && <span className="a-verifier">à vérifier</span>}
+        </h2>
         <label className="checkbox-ligne">
           <input
             type="checkbox"
@@ -404,7 +521,10 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
       </section>
 
       <section className="section">
-        <h2>Règlement intérieur *</h2>
+        <h2>
+          Règlement intérieur *
+          {aVerifier('reglementLuApprouve') && <span className="a-verifier">à vérifier</span>}
+        </h2>
         <label className="checkbox-ligne">
           <input
             type="checkbox"
@@ -414,7 +534,7 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
           />
           <span>J'ai lu et j'approuve le règlement intérieur de l'école.</span>
         </label>
-        <div className="champ" style={{ marginTop: 10 }}>
+        <div className={classeChamp('signataireNom')} style={{ marginTop: 10 }}>
           <label htmlFor="signataire">Nom du signataire (responsable légal, ou l'élève si majeur) *</label>
           <input id="signataire" required placeholder="Marie Dupont" {...champ('signataireNom')} />
         </div>
@@ -428,6 +548,11 @@ export default function FormulaireInscription({ ecole, cours, onSoumis }) {
         {envoiEnCours && <span className="spinner" aria-hidden="true" />}
         {envoiEnCours ? 'Validation en cours…' : 'Valider et continuer vers le paiement'}
       </button>
+      {fiche && (
+        <button className="bouton bouton--secondaire" type="button" disabled={envoiEnCours} onClick={annuler}>
+          Annuler
+        </button>
+      )}
       {!envoiEnCours && valeurs.coursIds.length === 0 && (
         <p className="envoi-note">Choisissez au moins un cours pour continuer.</p>
       )}

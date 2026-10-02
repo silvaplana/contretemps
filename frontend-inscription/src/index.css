@@ -356,3 +356,65 @@ h3 {
   text-align: center;
   padding: 64px 16px;
 }
+
+/* --- Fiche papier lue automatiquement (voir FormulaireInscription.jsx) :
+   bandeau d'explication, et champs dont la lecture est incertaine. --- */
+
+.fiche-lue {
+  border-left: 4px solid var(--accent);
+}
+
+.fiche-lue summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.fiche-lue__pages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.fiche-lue__pages img {
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+}
+
+.fiche-lue__marque,
+.champ--douteux input,
+.champ--douteux textarea {
+  background: #fff3bf;
+}
+
+.fiche-lue__marque {
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.champ--douteux input,
+.champ--douteux textarea {
+  border-color: #e0a800;
+}
+
+.champ--douteux label::after,
+.a-verifier {
+  content: ' — à vérifier';
+  color: #9a6b00;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.a-verifier {
+  margin-left: 8px;
+  padding: 1px 8px;
+  background: #fff3bf;
+  border-radius: 999px;
+}
+
+.bouton + .bouton {
+  margin-top: 10px;
+}

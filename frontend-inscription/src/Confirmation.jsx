@@ -1,4 +1,5 @@
 import { urlDossierPdf, urlFacturePdf } from './api/backend.js'
+import { formaterCout } from './cout.js'
 import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
 const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', helloasso: 'Carte bancaire' }
@@ -27,6 +28,14 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         la saison <strong>{resultat.saison}</strong> a bien été prise en compte.
       </p>
       <p>Cours choisis : {resultat.cours_choisis.join(', ')}</p>
+
+      {resultat.coutLectureUsd != null && (
+        <p>
+          Fiche papier lue automatiquement — coût de la lecture :{' '}
+          <strong>{formaterCout(resultat.coutLectureUsd)}</strong>.
+          {!resultat.eleve_email && ' Aucun email sur la fiche : aucune confirmation envoyée à la famille.'}
+        </p>
+      )}
 
       {resultat.photoChoisie && !resultat.photoEnvoyee && (
         <p className="erreur-globale">

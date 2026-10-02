@@ -9,6 +9,7 @@ import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
 import { ouvrirInscriptionEleve } from '../../utils/inscriptionEleve.js'
 import { correspond } from '../../utils/recherche.js'
+import AjoutEleveOcr from './AjoutEleveOcr.jsx'
 import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
@@ -89,6 +90,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const [search, setSearch] = useState('')
   // Accès à l'appli (spec §2.2) : colonnes « Inviter » et « Statut ».
   const acces = useAcces(ecoleId)
+  const [ocrOuvert, setOcrOuvert] = useState(false)
   // Élève ajouté, supprimé, ou email changé : les statuts sont relus (un
   // email modifié rattache la fiche à une autre adresse, à inviter).
   const emails = eleves.map((el) => `${el.id}:${el.email ?? ''}`).join('|')
@@ -260,8 +262,12 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
       {/* Menu ⋮ dans l'en-tête (demande du 2026-09-25). */}
       <MenuEntete
         label="Menu Élèves"
-        actions={[{ label: 'Inscription élève', icon: 'users', onClick: ouvrirInscriptionEleve }]}
+        actions={[
+          { label: 'Inscription élève', icon: 'users', onClick: ouvrirInscriptionEleve },
+          { label: 'Ajouter élève (OCR)', icon: 'camera', onClick: () => setOcrOuvert(true) },
+        ]}
       />
+      {ocrOuvert && <AjoutEleveOcr ecoleId={ecoleId} onClose={() => setOcrOuvert(false)} />}
       <div className="search-bar">
         <Icon name="search" size={18} />
         <input

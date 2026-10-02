@@ -64,6 +64,12 @@ ROUTES_PUBLIQUES = {
     # la fiche mémorisée date d'une saison terminée (§2.6).
     ("GET", "/comptes/{compte_id}/fiche-courante"),
     ("POST", "/inscriptions"),
+    # Brouillon d'une fiche papier lue par un admin : ouvert par son jeton
+    # (tiré au hasard), depuis le formulaire d'inscription. La LECTURE
+    # d'une fiche (POST /inscriptions/fiches) exige, elle, un admin.
+    ("GET", "/inscriptions/fiches/{jeton}"),
+    ("GET", "/inscriptions/fiches/{jeton}/pages/{numero}"),
+    ("DELETE", "/inscriptions/fiches/{jeton}"),
     ("POST", "/inscriptions/{token}/photo"),
     ("GET", "/inscriptions/{token}"),
     ("POST", "/inscriptions/{token}/paiement/helloasso"),

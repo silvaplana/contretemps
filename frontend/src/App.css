@@ -2921,3 +2921,62 @@
   display: block;
   margin-bottom: 4px;
 }
+
+/* --- Ajouter élève (OCR) : voir screens/admin/AjoutEleveOcr.jsx --- */
+
+.ocr__face {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  margin: 12px 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.ocr__face-titre {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ocr__boutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ocr__boutons .btn {
+  flex: 1 1 140px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.ocr__apercu {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ocr__apercu img {
+  max-width: 120px;
+  max-height: 160px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.ocr__cout {
+  font-weight: 600;
+}
+
+a.btn {
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+.modal-body .btn--block + .btn--block {
+  margin-top: 8px;
+}

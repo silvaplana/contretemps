@@ -31,12 +31,48 @@ export async function resoudreEcoleReelle() {
   return ecoles[0]
 }
 
+// L'école d'une fiche papier (voir obtenirFiche), parmi celles du serveur.
+export async function resoudreEcole(ecoleId) {
+  const ecole = (await requete('/ecoles')).find((e) => e.id === ecoleId)
+  if (!ecole) throw new Error('École introuvable')
+  return ecole
+}
+
+// --- Fiche papier lue automatiquement (appli principale : Admin >
+// Élèves > « Ajouter élève (OCR) », voir backend/src/inscriptions/
+// fiches.py). Le jeton arrive dans l'adresse de la page (?fiche=...). ---
+
+export async function obtenirFiche(jeton) {
+  const f = await requete(`/inscriptions/fiches/${encodeURIComponent(jeton)}`)
+  return {
+    jeton: f.jeton,
+    ecoleId: f.ecole_id,
+    donnees: f.donnees,
+    champsDouteux: f.champs_douteux,
+    remarques: f.remarques,
+    coutUsd: f.cout_usd,
+    pages: f.types_pages.map((type, i) => ({
+      type,
+      url: `${BASE_URL}/inscriptions/fiches/${encodeURIComponent(jeton)}/pages/${i + 1}`,
+    })),
+  }
+}
+
+// Annulation : le brouillon et ses photos sont effacés du serveur.
+export async function supprimerFiche(jeton) {
+  await requete(`/inscriptions/fiches/${encodeURIComponent(jeton)}`, { method: 'DELETE' })
+}
+
 export async function listerCours(ecoleId) {
   return requete(`/cours?ecole_id=${ecoleId}`)
 }
 
-export async function creerInscription(ecoleId, donnees) {
-  return requete(`/inscriptions?ecole_id=${ecoleId}`, {
+// `ficheJeton` : inscription saisie par un admin à partir d'une fiche
+// papier lue automatiquement (voir obtenirFiche) — ses photos sont alors
+// rattachées à l'inscription, et l'email n'est plus obligatoire.
+export async function creerInscription(ecoleId, donnees, ficheJeton = null) {
+  const fiche = ficheJeton ? `&fiche=${encodeURIComponent(ficheJeton)}` : ''
+  return requete(`/inscriptions?ecole_id=${ecoleId}${fiche}`, {
     method: 'POST',
     body: JSON.stringify(donnees),
   })
