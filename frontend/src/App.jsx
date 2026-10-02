@@ -70,7 +70,15 @@ function App() {
   // avec juste un bandeau non bloquant (voir BandeauInstallation.jsx) pour
   // le clic que Chrome exige quand même pour le vrai geste d'installation.
   const [bandeauInstallationAMontrer, setBandeauInstallationAMontrer] = useState(false)
-  const [activeTab, setActiveTab] = useState('messagerie')
+  // Repart du dernier onglet affiché sur cet appareil (voir api/session.js).
+  const [activeTab, setActiveTab] = useState(() => {
+    const dernier = sessionApi.lireEcran('onglet')
+    return TABS.some((t) => t.key === dernier) ? dernier : 'messagerie'
+  })
+  useEffect(() => {
+    // Seuls les onglets de la barre du bas sont retenus (pas l'écran Heures).
+    if (TABS.some((t) => t.key === activeTab)) sessionApi.sauvegarderEcran('onglet', activeTab)
+  }, [activeTab])
   // Compte réellement connecté (voir api/auth.js : `resultat.compte`) —
   // toujours renseigné une fois `loggedIn` vrai (voir onLogin ci-dessous).
   // Le repli `activeUser` ci-dessous (objet vide) ne sert qu'à ce que le
@@ -173,6 +181,12 @@ function App() {
           if (idCourant !== compteId) notificationsApi.transfererAbonnement(compte.id)
           setCompteReel(compte)
           setEcole(ecoleRestauree ?? ECOLE_VIDE)
+          // Onglet retenu mais plus permis à ce profil (rôle retiré...) :
+          // retour aux messages.
+          setActiveTab((onglet) => {
+            const tab = TABS.find((t) => t.key === onglet)
+            return tab && aUnDesRoles(compte, tab.roles) ? onglet : 'messagerie'
+          })
           setLoggedIn(true)
           const proposerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
           if (compteIdHandoff != null) {

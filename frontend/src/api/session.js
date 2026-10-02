@@ -18,6 +18,11 @@ const CLE = 'contretemps:compteId'
 // (il n'appartient à aucune). Effacés avec le reste.
 const CLE_JETON = 'contretemps:jeton'
 const CLE_ECOLE_CHOISIE = 'contretemps:ecoleChoisie'
+// Dernier écran affiché (onglet du bas, sous-onglet d'Admin) : l'appli y
+// revient à la prochaine ouverture (demande utilisateur du 2026-10-02).
+// Rangé à côté du jeton de session, pas dedans : le jeton est signé par le
+// serveur et ne se modifie pas sur l'appareil.
+const PREFIXE_ECRAN = 'contretemps:ecran:'
 
 // Toujours défensif (try/catch) : localStorage peut lever (navigation
 // privée sur certains navigateurs, stockage désactivé...) — jamais une
@@ -75,6 +80,9 @@ export function effacerCompteSauvegarde() {
     localStorage.removeItem(CLE)
     localStorage.removeItem(CLE_JETON)
     localStorage.removeItem(CLE_ECOLE_CHOISIE)
+    for (const cle of Object.keys(localStorage)) {
+      if (cle.startsWith(PREFIXE_ECRAN)) localStorage.removeItem(cle)
+    }
   } catch {
     // Idem.
   }
@@ -106,3 +114,14 @@ export function lireEcoleChoisie() {
   return valeur ? Number(valeur) : null
 }
 export const sauvegarderEcoleChoisie = (ecoleId) => ecrire(CLE_ECOLE_CHOISIE, ecoleId)
+
+// --- Dernier écran affiché ---
+// `nom` : 'onglet' (barre du bas) ou 'admin' (sous-onglet d'Admin).
+
+export function lireEcran(nom) {
+  return lire(PREFIXE_ECRAN + nom)
+}
+
+export function sauvegarderEcran(nom, valeur) {
+  ecrire(PREFIXE_ECRAN + nom, valeur)
+}

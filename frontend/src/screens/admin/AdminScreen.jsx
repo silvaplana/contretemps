@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import * as sessionApi from '../../api/session.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
@@ -36,7 +37,14 @@ export default function AdminScreen({
   onSaisonCreee,
   onSaisonSupprimee,
 }) {
-  const [subTab, setSubTab] = useState('eleves')
+  // Repart du dernier sous-onglet affiché sur cet appareil.
+  const [subTab, setSubTab] = useState(() => {
+    const dernier = sessionApi.lireEcran('admin')
+    return SUB_TABS.some((o) => o.value === dernier) ? dernier : 'eleves'
+  })
+  useEffect(() => {
+    sessionApi.sauvegarderEcran('admin', subTab)
+  }, [subTab])
 
   // Effectif affiché directement dans l'onglet, "Élèves (179)" (demande
   // utilisateur). Compté sur `eleves`, la liste réellement chargée : le

@@ -217,6 +217,7 @@ Les routes `/auth/recuperation/*`, la question de récupération et le champ
 
 - Une fois connectée, une personne a **tous les rôles** de son compte. Le cas particulier de
   l'élève-admin (droits d'admin seulement avec le code Admin, §2.4) disparaît.
+- **Dernier écran retenu** (décision du 2026-10-02) : à la réouverture, l'appli revient sur le dernier onglet du bas affiché, et dans Admin sur le dernier sous-onglet. C'est retenu sur l'appareil, à côté du jeton de session (pas dedans : le jeton est signé par le serveur), et effacé à la déconnexion. Après une nouvelle connexion, l'appli s'ouvre sur les messages.
 - La bascule de profil famille reste sans reconnexion, avec une seule règle : **une montée en
   privilège redemande le mot de passe**, selon la hiérarchie Élève < Professeur < Admin (un
   Owner compte comme Admin ; pour un compte à plusieurs rôles, son rôle le plus élevé compte).
