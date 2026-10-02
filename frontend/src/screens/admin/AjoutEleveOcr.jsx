@@ -195,7 +195,7 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
           disabled={desactive}
           onClick={() => galerieRef.current?.click()}
         >
-          Galerie
+          Photos récentes
         </button>
         <button
           type="button"
@@ -209,7 +209,9 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
       {/* Images ET PDF : sur téléphone, ouvre l'explorateur de fichiers (une
           fiche scannée peut être un PDF ou un JPG rangé dans un dossier). */}
       <input ref={importRef} type="file" accept="image/*,application/pdf" hidden onChange={recu} />
-      {/* Images seules : sur téléphone, ouvre directement la galerie de photos. */}
+      {/* Images seules : sur téléphone, ouvre le sélecteur de photos du
+          système, qui présente les dernières photos prises en premier. Une
+          appli web ne peut pas lire elle-même les photos de l'appareil. */}
       <input ref={galerieRef} type="file" accept="image/*" hidden onChange={recu} />
       {/* `capture` : ouvre directement l'appareil photo sur téléphone. */}
       <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={recu} />
