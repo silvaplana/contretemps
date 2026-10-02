@@ -70,6 +70,10 @@ faux, et le champ est douteux.
 - `reglement_signe` est vrai si l'attestation du règlement intérieur porte une signature \
 ou la mention « Lu et approuvé ». `signataire_nom` est le nom écrit après \
 « Je soussigné(e) ».
+- `famille_membres` : 2 si la fiche porte la mention manuscrite « Famille 2 » ou \
+« Famille 2 membres », 3 pour « Famille 3 » ou « Famille 3 membres » (réduction accordée aux \
+familles qui inscrivent plusieurs membres ; la mention peut être écrite n'importe où sur la \
+fiche). Sans cette mention, 1.
 - `remarques` : une ou deux phrases courtes, en français, pour l'administrateur, seulement \
 s'il y a quelque chose à lui signaler (page manquante, photo illisible, incohérence). \
 Sinon null."""
@@ -99,6 +103,7 @@ class FicheLue(BaseModel):
     droit_image_affiches: bool
     reglement_signe: bool
     signataire_nom: str | None
+    famille_membres: int
     champs_douteux: list[str]
     remarques: str | None
 

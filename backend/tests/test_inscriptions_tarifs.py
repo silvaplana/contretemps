@@ -147,3 +147,20 @@ def test_calculer_echeances_3x_inscription_tardive_apres_avril():
 def test_calculer_echeances_nb_invalide():
     with pytest.raises(ValueError):
         calculer_echeances_helloasso(40.0, 110.0, 2, "2026-2027")
+
+
+def test_reduction_famille_selon_le_nombre_de_membres():
+    """Décision du 2026-10-02 : adhésion à 35 € (2 membres) ou 31,60 €
+    (3 membres) au lieu de 40 €, et 5 € de moins par trimestre."""
+    from inscriptions.tarifs import membres_famille
+
+    seul = calculer_tarif(["Class Ini"])
+    deux = calculer_tarif(["Class Ini"], famille_membres=2)
+    trois = calculer_tarif(["Class Ini"], famille_membres=3)
+    assert (seul.montant_adhesion, deux.montant_adhesion, trois.montant_adhesion) == (40.0, 35.0, 31.6)
+    assert deux.montant_trimestriel == trois.montant_trimestriel == seul.montant_trimestriel - 5
+    assert seul.reduction_famille_appliquee is False and trois.reduction_famille_appliquee is True
+    # L'ancienne case à cocher vaut « 2 membres » ; au-delà de 3, on reste à 3.
+    assert calculer_tarif(["Class Ini"], reduction_famille=True).montant_adhesion == 35.0
+    assert calculer_tarif(["Class Ini"], famille_membres=5).montant_adhesion == 31.6
+    assert [membres_famille(m) for m in (40.0, 35.0, 31.6)] == [1, 2, 3]

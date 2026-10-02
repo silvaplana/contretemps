@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { choisirPaiement, initierPaiementHelloAsso } from './api/backend.js'
-import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
+import { euros, LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
 // Étape 2 du flux (voir spec/SPEC-inscription.md) : les informations de
 // l'élève sont déjà validées et enregistrées (étape 1, voir
@@ -75,20 +75,20 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
       <div className="tarif-apercu" style={{ marginBottom: 16 }}>
         <div className="tarif-apercu__ligne">
           <span>Adhésion</span>
-          <span>{inscription.montant_adhesion} €</span>
+          <span>{euros(inscription.montant_adhesion)}</span>
         </div>
         <div className="tarif-apercu__ligne">
           <span>
             3 trimestres à {inscription.nb_cours_semaine} cours/semaine (palier «{' '}
             {LIBELLE_PALIER[inscription.palier_tarifaire] ?? inscription.palier_tarifaire} »{' '}
             {montantTrimestrielBrut} €
-            {inscription.reduction_famille_appliquee && ' — famille : -5 €'})
+            {inscription.reduction_famille_appliquee && ` — famille ${inscription.famille_membres ?? 2} membres : -5 €`})
           </span>
           <span>{montantTroisTrimestres} €</span>
         </div>
         <div className="tarif-apercu__ligne tarif-apercu__ligne--total">
           <span>Total année</span>
-          <span className="montant">{totalAnnee} €</span>
+          <span className="montant">{euros(totalAnnee)}</span>
         </div>
       </div>
 
@@ -166,7 +166,7 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
       <div className="sous-cases" style={{ marginTop: 10 }}>
         {moyen === 'cheque' && (
           <p className="champ__aide">
-            Un chèque de {inscription.montant_adhesion} € à l'ordre de Contretemps à l'inscription,
+            Un chèque de {euros(inscription.montant_adhesion)} à l'ordre de Contretemps à l'inscription,
             puis le solde de {montantTroisTrimestres} €{' '}
             {nbEcheances === 3 ? (
               <>
@@ -180,7 +180,7 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
         )}
         {moyen === 'especes' && (
           <p className="champ__aide">
-            {inscription.montant_adhesion} € en espèces à l'inscription, puis le solde de{' '}
+            {euros(inscription.montant_adhesion)} en espèces à l'inscription, puis le solde de{' '}
             {montantTroisTrimestres} €{' '}
             {nbEcheances === 3 ? (
               <>
@@ -206,7 +206,7 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
                 inscription.montant_adhesion + nbDejaDus * inscription.montant_trimestriel
               return (
                 <>
-                  {montantImmediat} € prélevés tout de suite (adhésion
+                  {euros(montantImmediat)} prélevés tout de suite (adhésion
                   {nbDejaDus > 0 ? ' + trimestre déjà entamé' : ''}), puis{' '}
                   {moisAVenir.length > 0 ? (
                     <>

@@ -28,7 +28,7 @@ class FausseLecture:
         champs = {nom: None for nom in FicheLue.model_fields}
         champs.update(
             cours_ids=[], champs_douteux=[], droit_image_autorise=False, droit_image_site=False,
-            droit_image_reseaux=False, droit_image_affiches=False, reglement_signe=True,
+            droit_image_reseaux=False, droit_image_affiches=False, reglement_signe=True, famille_membres=1,
         )
         champs.update(self.fiche)
         return ResultatLecture(FicheLue(**champs), "claude-opus-5-5", 3000, 500, cout_usd("claude-opus-5-5", 3000, 500))
@@ -216,4 +216,29 @@ def test_paiement_en_especes_finalise_tout_de_suite(client, ecole_et_cours):
         f"/inscriptions/{token}/paiement/choix", json={"moyen_paiement": "especes", "paiement_nb_echeances": 3}
     )
     assert reponse.status_code == 200 and reponse.json()["moyen_paiement"] == "especes"
+    assert client.get(f"/inscriptions/{token}/facture.pdf").status_code == 200
+
+
+def test_mention_famille_lue_sur_la_fiche(client, db_session, ecole_et_cours, lecture):
+    """« Famille 3 » écrit sur la fiche : proposé dans le formulaire, puis
+    appliqué au montant de l'année et noté dans le commentaire."""
+    ecole, cours = ecole_et_cours
+    lecture.fiche = {"cours_ids": [cours["Class Ini"].id], "famille_membres": 3}
+    jeton = _lire(client, ecole).json()["jeton"]
+    assert client.get(f"/inscriptions/fiches/{jeton}").json()["donnees"]["famille_membres"] == 3
+
+    donnees = _donnees_formulaire([cours["Class Ini"].id], famille_membres=3)
+    eleve_id = client.post(f"/inscriptions/fiches/{jeton}/eleve", json=donnees).json()["eleve_id"]
+    eleve = next(e for e in client.get("/eleves", params={"ecole_id": ecole.id}).json() if e["id"] == eleve_id)
+    assert eleve["montant_total_annee"] == 31.6 + 3 * (125 - 5)
+    assert "Famille 3 membres." in eleve["commentaire_admin"]
+
+
+def test_inscription_en_ligne_famille_3_membres(client, ecole_et_cours):
+    ecole, cours = ecole_et_cours
+    donnees = _donnees_formulaire([cours["Class Ini"].id], famille_membres=3)
+    corps = client.post("/inscriptions", params={"ecole_id": ecole.id}, json=donnees).json()
+    assert (corps["montant_adhesion"], corps["montant_trimestriel"], corps["famille_membres"]) == (31.6, 120.0, 3)
+    token = corps["token_public"]
+    client.post(f"/inscriptions/{token}/paiement/choix", json={"moyen_paiement": "cheque", "paiement_nb_echeances": 1})
     assert client.get(f"/inscriptions/{token}/facture.pdf").status_code == 200

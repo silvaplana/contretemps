@@ -18,6 +18,7 @@ from .fiches import EleveDejaInscrit, FicheInvalide, FichesPapier
 from .helloasso import HelloAssoError
 from .inscriptions import Inscriptions
 from .lecture_fiche import LectureIndisponible, Page
+from .tarifs import membres_famille
 from .schemas import (
     EleveEnregistreSortie,
     FicheBrouillonSortie,
@@ -98,6 +99,7 @@ class InscriptionsReceiver:
             montant_mensuel_septembre=inscription.montant_mensuel_septembre,
             montant_trimestriel=inscription.montant_trimestriel,
             reduction_famille_appliquee=inscription.reduction_famille_appliquee,
+            famille_membres=membres_famille(inscription.montant_adhesion),
             alerte_palier_mixte=inscription.alerte_palier_mixte,
             doublon_possible=inscription.doublon_possible,
             moyen_paiement=inscription.moyen_paiement,

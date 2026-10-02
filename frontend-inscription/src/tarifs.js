@@ -37,6 +37,16 @@ const BAREME_JUNIOR_ET_PLUS = {
 }
 
 export const ADHESION = 40
+// Réduction famille (décision du 2026-10-02, voir backend/src/inscriptions/
+// tarifs.py:ADHESION_PAR_FAMILLE) : selon le nombre de membres de la famille
+// inscrits, l'adhésion baisse et chaque trimestre coûte 5 € de moins.
+export const ADHESION_PAR_FAMILLE = { 1: ADHESION, 2: 35, 3: 31.6 }
+
+// « 40 € », « 31,60 € » : les centimes seulement quand il y en a.
+export function euros(montant) {
+  const arrondi = Math.round(montant * 100) / 100
+  return `${Number.isInteger(arrondi) ? arrondi : arrondi.toFixed(2).replace('.', ',')} €`
+}
 
 // Libellé lisible d'un palier — voir Tarif indicatif (FormulaireInscription.jsx)
 // et Confirmation.jsx. Le palier retenu est celui du cours le plus "âgé"
@@ -63,7 +73,9 @@ const NB_TRIMESTRES = 3 // toujours 3 échéances par an, jamais l'été.
 // FormulaireInscription.jsx) — même montant (-5€/trimestre) que
 // backend/src/inscriptions/tarifs.py:REDUCTION_FAMILLE. Renvoie null si
 // aucun cours choisi (rien à afficher encore).
-export function calculerTarifIndicatif(nomsCours, reductionFamille = false) {
+export function calculerTarifIndicatif(nomsCours, familleMembres = 1) {
+  const reductionFamille = familleMembres >= 2
+  const adhesion = ADHESION_PAR_FAMILLE[familleMembres] ?? ADHESION
   if (nomsCours.length === 0) return null
   const paliers = new Set(nomsCours.map((nom) => PALIER_PAR_COURS[nom]).filter(Boolean))
   if (paliers.size === 0) paliers.add('initiation_moyen')
@@ -84,12 +96,13 @@ export function calculerTarifIndicatif(nomsCours, reductionFamille = false) {
   const montantTroisTrimestres = montantTrimestriel * NB_TRIMESTRES
   return {
     palier: palierRetenu,
-    montantAdhesion: ADHESION,
+    montantAdhesion: adhesion,
     montantTrimestrielBrut: trimestriel,
     montantTrimestriel,
     montantTroisTrimestres,
-    totalAnnee: ADHESION + montantTroisTrimestres,
+    totalAnnee: adhesion + montantTroisTrimestres,
     reductionFamilleAppliquee: reductionFamille,
+    familleMembres,
     alertePalierMixte: paliers.size > 1,
   }
 }

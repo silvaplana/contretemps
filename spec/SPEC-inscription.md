@@ -131,3 +131,17 @@ Pour les familles qui rendent la fiche d'inscription papier, remplie à la main.
 - **Espèces** (2026-10-02) : troisième moyen de paiement du formulaire en ligne, sous « Chèque », avec les mêmes échéances (1 ou 3 fois) ; remis à l'école, l'inscription est finalisée tout de suite comme pour un chèque.
 - **Mail de l'inscription en ligne** (2026-10-02) : titre « Inscription en ligne validée de <prénom> <nom> à l'école <école> pour la saison <saison> », envoyé à l'email de l'élève, avec l'administrateur en copie.
 - **Enchaînement des fiches** (2026-10-02) : le formulaire pré-rempli s'affiche dans l'appli (dans un cadre), pas dans un autre onglet. Après « Enregistrer l'élève », pas d'écran de fin : retour à l'écran de saisie OCR, vide, pour la fiche suivante, avec un message temporaire en bas « <prénom> <nom> a été ajouté(e) aux adhérents <saison> ». La liste d'Admin > Élèves est relue aussitôt.
+
+## 6. Réduction famille — décision du 2026-10-02
+
+Remplace l'ancienne case à cocher « Réduction famille ». Le formulaire propose trois choix :
+
+| Choix | Adhésion annuelle | Trimestre |
+|---|---|---|
+| Aucune | 40 € | plein tarif |
+| Famille 2 membres | 35 € | −5 € |
+| Famille 3 membres | 31,60 € | −5 € |
+
+- Le serveur garde aussi la détection automatique : un autre élève déjà inscrit en ligne avec le même email compte comme un membre de plus (plafonné à 3). Le plus grand des deux nombres (déclaré, détecté) est retenu.
+- Le nombre de membres n'a pas de colonne : il se relit sur le montant de l'adhésion enregistré (`tarifs.py:membres_famille`).
+- **Fiche papier** : la mention manuscrite « Famille 2 », « Famille 2 membres », « Famille 3 » ou « Famille 3 membres » est lue par l'OCR et pré-sélectionne le choix ; elle s'applique au montant de l'année de l'élève et figure dans son commentaire.

@@ -36,10 +36,12 @@ from .coordonnees_association import (
     TELEPHONE,
 )
 from .tarifs import (
+    ADHESION,
     LIBELLE_PALIER,
     NB_TRIMESTRES,
     REDUCTION_FAMILLE,
     calculer_echeances_helloasso,
+    membres_famille,
     mois_encaissements_a_venir,
 )
 
@@ -125,8 +127,8 @@ def _lignes_html(inscription, noms_cours: list[str]) -> str:
         lignes.append(f"""
         <tr class="remise">
           <td>
-            <div class="des">Réduction famille</div>
-            <div class="det">Adhésion dégressive dès deux membres d'une même famille — {_euros(REDUCTION_FAMILLE)} / trimestre</div>
+            <div class="des">Réduction famille — {membres_famille(inscription.montant_adhesion)} membres</div>
+            <div class="det">Adhésion à {_euros(inscription.montant_adhesion)} au lieu de {_euros(ADHESION)}, et {_euros(REDUCTION_FAMILLE)} de moins par trimestre</div>
           </td>
           <td>{NB_TRIMESTRES} trimestres</td>
           <td class="num">{NB_TRIMESTRES}</td>

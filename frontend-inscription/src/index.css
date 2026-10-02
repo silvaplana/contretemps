@@ -431,3 +431,22 @@ h3 {
 .bouton + .bouton {
   margin-top: 10px;
 }
+
+/* Réduction famille : choix du nombre de membres (voir FormulaireInscription.jsx). */
+.famille {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid var(--bordure);
+  border-radius: 8px;
+  background: white;
+}
+
+.famille--douteux {
+  background: #fff3bf;
+  border-color: #e0a800;
+}
+
+.famille__titre {
+  font-weight: 600;
+  margin-bottom: 4px;
+}

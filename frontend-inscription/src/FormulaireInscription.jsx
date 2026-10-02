@@ -6,7 +6,7 @@ import {
   uploaderPhotoEleve,
 } from './api/backend.js'
 import { COURS_PUBLICS } from './coursPublics.js'
-import { calculerTarifIndicatif, LIBELLE_PALIER } from './tarifs.js'
+import { ADHESION, ADHESION_PAR_FAMILLE, calculerTarifIndicatif, euros, LIBELLE_PALIER } from './tarifs.js'
 
 const VIDE = {
   eleveNom: '',
@@ -29,7 +29,7 @@ const VIDE = {
   droitImageAffiches: false,
   reglementLuApprouve: false,
   signataireNom: '',
-  reductionFamilleDemandee: false,
+  familleMembres: 1,
 }
 
 // Champ du formulaire -> champ lu sur une fiche papier (voir
@@ -55,6 +55,7 @@ const CHAMP_FICHE = {
   droitImageAffiches: 'droit_image_affiches',
   reglementLuApprouve: 'reglement_signe',
   signataireNom: 'signataire_nom',
+  familleMembres: 'famille_membres',
 }
 
 // Valeurs de départ : vides pour une famille, lues sur la fiche papier
@@ -133,8 +134,8 @@ export default function FormulaireInscription({
     }).filter(Boolean)
   }, [cours])
   const tarif = useMemo(
-    () => calculerTarifIndicatif(nomsCoursChoisis, valeurs.reductionFamilleDemandee),
-    [nomsCoursChoisis, valeurs.reductionFamilleDemandee]
+    () => calculerTarifIndicatif(nomsCoursChoisis, valeurs.familleMembres),
+    [nomsCoursChoisis, valeurs.familleMembres]
   )
 
   // Un champ que l'admin a repris n'est plus « à vérifier ».
@@ -243,7 +244,7 @@ export default function FormulaireInscription({
         // Pas de moyen_paiement ici : c'est l'étape 2 (voir
         // PaiementEtape.jsx) qui le fixe, une fois les informations
         // validées (voir spec/SPEC-inscription.md).
-        reduction_famille_demandee: valeurs.reductionFamilleDemandee,
+        famille_membres: valeurs.familleMembres,
       }
       // Fiche papier : l'élève entre directement dans la liste officielle
       // de l'école, sans étape de paiement (décision du 2026-10-02).
@@ -430,33 +431,46 @@ export default function FormulaireInscription({
           <div className="tarif-apercu">
             <div>Cours choisis ({nomsCoursChoisis.length}) : {nomsCoursChoisis.join(', ')}</div>
 
-            <label className="checkbox-ligne" style={{ margin: '8px 0' }}>
-              <input
-                type="checkbox"
-                checked={valeurs.reductionFamilleDemandee}
-                onChange={() => basculerCoche('reductionFamilleDemandee')}
-              />
-              <span>
-                Réduction famille (-5 €/trimestre) : adhésion dégressive dès deux membres d'une
-                même famille.
-              </span>
-            </label>
+            <div className={aVerifier('familleMembres') ? 'famille famille--douteux' : 'famille'}>
+              <div className="famille__titre">
+                Réduction famille
+                {aVerifier('familleMembres') && <span className="a-verifier">à vérifier</span>}
+              </div>
+              {[1, 2, 3].map((membres) => (
+                <label key={membres} className="checkbox-ligne">
+                  <input
+                    type="radio"
+                    name="famille-membres"
+                    checked={valeurs.familleMembres === membres}
+                    onChange={() => {
+                      verifie('familleMembres')
+                      setValeurs((v) => ({ ...v, familleMembres: membres }))
+                    }}
+                  />
+                  <span>
+                    {membres === 1
+                      ? 'Aucune'
+                      : `Famille ${membres} membres : adhésion à ${euros(ADHESION_PAR_FAMILLE[membres])} au lieu de ${euros(ADHESION)}, et -5 € par trimestre`}
+                  </span>
+                </label>
+              ))}
+            </div>
 
             <div className="tarif-apercu__ligne">
               <span>Adhésion</span>
-              <span>{tarif.montantAdhesion} €</span>
+              <span>{euros(tarif.montantAdhesion)}</span>
             </div>
             <div className="tarif-apercu__ligne">
               <span>
                 3 trimestres à {valeurs.coursIds.length} cours/semaine (palier «{' '}
                 {LIBELLE_PALIER[tarif.palier]} » {tarif.montantTrimestrielBrut} €
-                {tarif.reductionFamilleAppliquee && ' — famille : -5 €'})
+                {tarif.reductionFamilleAppliquee && ` — famille ${tarif.familleMembres} membres : -5 €`})
               </span>
               <span>{tarif.montantTroisTrimestres} €</span>
             </div>
             <div className="tarif-apercu__ligne tarif-apercu__ligne--total">
               <span>Total année</span>
-              <span className="montant">{tarif.totalAnnee} €</span>
+              <span className="montant">{euros(tarif.totalAnnee)}</span>
             </div>
 
             {tarif.alertePalierMixte && (

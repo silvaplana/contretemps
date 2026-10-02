@@ -1,5 +1,5 @@
 import { urlDossierPdf, urlFacturePdf } from './api/backend.js'
-import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
+import { euros, LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
 const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', especes: 'Espèces', helloasso: 'Carte bancaire' }
 
@@ -45,20 +45,20 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
       <div className="tarif-apercu" style={{ marginBottom: 16 }}>
         <div className="tarif-apercu__ligne">
           <span>Adhésion</span>
-          <span>{resultat.montant_adhesion} €</span>
+          <span>{euros(resultat.montant_adhesion)}</span>
         </div>
         <div className="tarif-apercu__ligne">
           <span>
             3 trimestres à {resultat.nb_cours_semaine} cours/semaine (palier «{' '}
             {LIBELLE_PALIER[resultat.palier_tarifaire] ?? resultat.palier_tarifaire} »{' '}
             {montantTrimestrielBrut} €
-            {resultat.reduction_famille_appliquee && ' — famille : -5 €'})
+            {resultat.reduction_famille_appliquee && ` — famille ${resultat.famille_membres ?? 2} membres : -5 €`})
           </span>
           <span>{montantTroisTrimestres} €</span>
         </div>
         <div className="tarif-apercu__ligne tarif-apercu__ligne--total">
           <span>Total année</span>
-          <span className="montant">{totalAnnee} €</span>
+          <span className="montant">{euros(totalAnnee)}</span>
         </div>
         {resultat.alerte_palier_mixte && (
           <div className="alerte">
@@ -75,7 +75,7 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         </strong>
         {resultat.moyen_paiement === 'cheque' && (
           <>
-            {' '}: un chèque de {resultat.montant_adhesion} €, puis le solde de{' '}
+            {' '}: un chèque de {euros(resultat.montant_adhesion)}, puis le solde de{' '}
             {montantTroisTrimestres} €{' '}
             {resultat.paiement_nb_echeances === 3 ? (
               <>
@@ -90,7 +90,7 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
         )}
         {resultat.moyen_paiement === 'especes' && (
           <>
-            {' '}: {resultat.montant_adhesion} € à l'inscription, puis le solde de{' '}
+            {' '}: {euros(resultat.montant_adhesion)} à l'inscription, puis le solde de{' '}
             {montantTroisTrimestres} €{' '}
             {resultat.paiement_nb_echeances === 3 ? (
               <>
@@ -108,7 +108,7 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
             {resultat.paiement_nb_echeances === 3 ? (
               ' : paiement confirmé, merci !'
             ) : (
-              ` : paiement confirmé de ${totalAnnee} €, merci !`
+              ` : paiement confirmé de ${euros(totalAnnee)}, merci !`
             )}{' '}
             {resultat.paiement_nb_echeances === 3 &&
               (() => {
@@ -122,7 +122,7 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
                   resultat.montant_adhesion + nbDejaDus * resultat.montant_trimestriel
                 return (
                   <>
-                    {montantImmediat} € ont été prélevés à l'instant (adhésion
+                    {euros(montantImmediat)} ont été prélevés à l'instant (adhésion
                     {nbDejaDus > 0 ? ' + trimestre déjà entamé' : ''})
                     {moisAVenir.length > 0 ? (
                       <>

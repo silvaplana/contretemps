@@ -59,6 +59,11 @@ class InscriptionCreation(BaseModel):
     # détection automatique — jamais bloquante, l'admin vérifie à la
     # fusion Excel comme pour doublon_possible.
     reduction_famille_demandee: bool = False
+    # Remplace la case ci-dessus (décision du 2026-10-02) : 1 = pas de
+    # réduction, 2 ou 3 = nombre de membres de la famille inscrits (voir
+    # tarifs.py:ADHESION_PAR_FAMILLE). L'ancienne case reste lue (elle vaut
+    # 2) pour une page pas encore rechargée.
+    famille_membres: int = 1
 
 
 class InscriptionSortie(BaseModel):
@@ -78,6 +83,7 @@ class InscriptionSortie(BaseModel):
     montant_mensuel_septembre: float
     montant_trimestriel: float
     reduction_famille_appliquee: bool
+    famille_membres: int
     alerte_palier_mixte: bool
 
     doublon_possible: bool

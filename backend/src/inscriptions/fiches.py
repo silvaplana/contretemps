@@ -60,7 +60,7 @@ class FicheInvalide(ValueError):
     """Fichiers refusés ; le message est montrable à l'admin."""
 
 
-def _commentaire(donnees: InscriptionCreation) -> str:
+def _commentaire(donnees: InscriptionCreation, famille_membres: int = 1) -> str:
     """Ce que la fiche élève ne sait pas ranger ailleurs : droit à l'image
     et règlement intérieur, dans le commentaire de l'admin."""
     if donnees.droit_image_autorise:
@@ -82,7 +82,8 @@ def _commentaire(donnees: InscriptionCreation) -> str:
         else "Règlement non signé"
     )
     jour = dt.date.today().strftime("%d/%m/%Y")
-    return f"Fiche papier du {jour}. {image}. {reglement}."
+    famille = f" Famille {famille_membres} membres." if famille_membres >= 2 else ""
+    return f"Fiche papier du {jour}. {image}. {reglement}.{famille}"
 
 
 def _jeton_valide(jeton: str) -> bool:
@@ -136,6 +137,9 @@ class FichesPapier:
         cases = ("droit_image_site", "droit_image_reseaux", "droit_image_affiches")
         if any(donnees[case] for case in cases) and "droit_image_autorise" not in douteux:
             donnees["droit_image_autorise"] = True
+        if donnees["famille_membres"] not in (1, 2, 3):
+            donnees["famille_membres"] = 1
+            douteux.add("famille_membres")
         if donnees["eleve_date_naissance"]:
             try:
                 dt.date.fromisoformat(donnees["eleve_date_naissance"])
@@ -226,6 +230,7 @@ class FichesPapier:
         tarif = calculer_tarif(
             [cours_ecole[cid] for cid in cours_ids],
             reduction_famille=donnees.reduction_famille_demandee,
+            famille_membres=donnees.famille_membres,
         )
         compte, _ = self.eleves.create(
             db,
@@ -240,7 +245,7 @@ class FichesPapier:
             traitement_medical=donnees.traitement_medical,
             informations_importantes=donnees.informations_importantes,
             montant_total_annee=tarif.montant_adhesion + tarif.montant_trimestriel * NB_TRIMESTRES,
-            commentaire_admin=_commentaire(donnees),
+            commentaire_admin=_commentaire(donnees, tarif.famille_membres),
         )
         for cours_id in cours_ids:
             self.cours.inscrire_eleve(db, cours_id, compte.id)
@@ -279,7 +284,7 @@ class FichesPapier:
         jamais enregistrée. Jamais bloquant."""
         try:
             fictive = Inscription(
-                **donnees.model_dump(exclude={"cours_ids", "reduction_famille_demandee"}),
+                **donnees.model_dump(exclude={"cours_ids", "reduction_famille_demandee", "famille_membres"}),
                 id=compte.id,
                 saison=saison,
                 created_at=dt.datetime.now(dt.UTC),

@@ -47,8 +47,8 @@ class Inscriptions:
 
     def _detecter_doublon_et_famille(
         self, db: Session, ecole_id: int, saison: str, nom: str, prenom: str, email: str | None
-    ) -> tuple[bool, bool]:
-        """(doublon_possible, reduction_famille) — cherche parmi les
+    ) -> tuple[bool, int]:
+        """(doublon_possible, nombre d'autres membres de la famille) — cherche parmi les
         `Inscription` existantes de la MÊME école + saison uniquement
         (jamais le fichier maître réel, pas nécessaire puisque le tarif
         reste informatif en phase 1). Doublon : même nom+prénom. Famille
@@ -66,16 +66,20 @@ class Inscriptions:
             and i.eleve_prenom.strip().lower() == prenom.strip().lower()
             for i in existantes
         )
-        famille = bool(email) and any(
-            i.eleve_email
+        # Autres élèves déjà inscrits avec le même email : la famille compte
+        # alors au moins un membre de plus (voir tarifs.py).
+        autres = {
+            (i.eleve_nom.strip().lower(), i.eleve_prenom.strip().lower())
+            for i in existantes
+            if email
+            and i.eleve_email
             and i.eleve_email.strip().lower() == email.strip().lower()
             and not (
                 i.eleve_nom.strip().lower() == nom.strip().lower()
                 and i.eleve_prenom.strip().lower() == prenom.strip().lower()
             )
-            for i in existantes
-        )
-        return doublon, famille
+        }
+        return doublon, len(autres)
 
     def creer(
         self, db: Session, ecole_id: int, donnees: InscriptionCreation, ip: str | None
@@ -88,15 +92,18 @@ class Inscriptions:
         cours_ids = list(dict.fromkeys(donnees.cours_ids))
         noms_cours = self._resoudre_noms_cours(db, ecole_id, cours_ids)
         saison = saison_des_inscriptions(db, ecole_id)
-        doublon, famille_detectee = self._detecter_doublon_et_famille(
+        doublon, autres_membres = self._detecter_doublon_et_famille(
             db, ecole_id, saison, donnees.eleve_nom, donnees.eleve_prenom, donnees.eleve_email
         )
         # Détection automatique OU auto-déclaration de la famille (voir
         # schemas.py:reduction_famille_demandee — un frère/sœur déjà
         # inscrit mais pas via ce formulaire en ligne échappe à la
         # détection automatique).
-        famille = famille_detectee or donnees.reduction_famille_demandee
-        tarif = calculer_tarif(noms_cours, reduction_famille=famille)
+        tarif = calculer_tarif(
+            noms_cours,
+            reduction_famille=donnees.reduction_famille_demandee,
+            famille_membres=max(donnees.famille_membres, 1 + autres_membres if autres_membres else 1),
+        )
 
         inscription = Inscription(
             ecole_id=ecole_id,

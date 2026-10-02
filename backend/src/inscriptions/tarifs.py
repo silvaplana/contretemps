@@ -60,6 +60,20 @@ NB_TRIMESTRES = 3
 
 ADHESION = 40.0
 REDUCTION_FAMILLE = 5.0
+# Réduction famille (décision utilisateur du 2026-10-02, remplace l'ancienne
+# case à cocher) : selon le nombre de membres de la famille inscrits,
+# l'adhésion annuelle baisse, et chaque trimestre coûte 5 € de moins.
+ADHESION_PAR_FAMILLE = {1: ADHESION, 2: 35.0, 3: 31.6}
+FAMILLE_MEMBRES_MAX = 3
+
+
+def membres_famille(montant_adhesion: float) -> int:
+    """Nombre de membres de la famille retenu pour une inscription, relu
+    sur l'adhésion facturée (seul endroit où il est enregistré)."""
+    for membres, adhesion in ADHESION_PAR_FAMILLE.items():
+        if abs(adhesion - montant_adhesion) < 0.005:
+            return membres
+    return 1
 
 # Éveil : tarif fixe, indépendant du nombre de cours/semaine (il n'y en a
 # qu'un). Montant mensuel (payé de septembre à juin) et montant
@@ -88,6 +102,7 @@ class TarifResultat:
     montant_trimestriel: float
     reduction_famille_appliquee: bool
     alerte_palier_mixte: bool
+    famille_membres: int = 1
 
 
 def palier_par_defaut(nom_cours: str) -> str | None:
@@ -106,7 +121,7 @@ def _tarif_pour_palier(palier: str, nb_cours: int) -> tuple[float, float]:
 
 
 def calculer_tarif(
-    noms_cours: list[str], reduction_famille: bool = False
+    noms_cours: list[str], reduction_famille: bool = False, famille_membres: int = 1
 ) -> TarifResultat:
     """Calcule le tarif pour les cours choisis. Si les cours touchent
     plusieurs paliers à la fois (cas rare), retient le palier le plus
@@ -122,6 +137,9 @@ def calculer_tarif(
     nb_cours = len(noms_cours)
     montant_mensuel, montant_trimestriel = _tarif_pour_palier(palier_retenu, nb_cours)
 
+    # `reduction_famille` (ancienne case à cocher) vaut « famille 2 membres ».
+    famille_membres = min(max(famille_membres, 2 if reduction_famille else 1), FAMILLE_MEMBRES_MAX)
+    reduction_famille = famille_membres >= 2
     if reduction_famille:
         montant_mensuel = max(0.0, montant_mensuel - REDUCTION_FAMILLE)
         montant_trimestriel = max(0.0, montant_trimestriel - REDUCTION_FAMILLE)
@@ -129,10 +147,11 @@ def calculer_tarif(
     return TarifResultat(
         palier=palier_retenu,
         nb_cours_semaine=nb_cours,
-        montant_adhesion=ADHESION,
+        montant_adhesion=ADHESION_PAR_FAMILLE[famille_membres],
         montant_mensuel_septembre=montant_mensuel,
         montant_trimestriel=montant_trimestriel,
         reduction_famille_appliquee=reduction_famille,
+        famille_membres=famille_membres,
         alerte_palier_mixte=alerte_palier_mixte,
     )
 
