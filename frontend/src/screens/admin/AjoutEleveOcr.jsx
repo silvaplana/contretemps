@@ -177,20 +177,6 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
   return (
     <div className="ocr__face">
       <strong>{face.titre}</strong>
-      {fichier && (
-        <div className="ocr__apercu">
-          {apercu ? <img src={apercu} alt={`${face.titre} de la fiche`} /> : <span>{fichier.name}</span>}
-          <button
-            type="button"
-            className="icon-btn"
-            disabled={desactive}
-            onClick={() => onChoisir(null)}
-            aria-label={`Retirer le ${face.titre.toLowerCase()}`}
-          >
-            <Icon name="x" size={18} />
-          </button>
-        </div>
-      )}
       <div className="ocr__boutons">
         <button
           type="button"
@@ -214,9 +200,24 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
           disabled={desactive}
           onClick={() => photoRef.current?.click()}
         >
-          <Icon name="camera" size={18} /> Prendre photo
+          <Icon name="camera" size={18} /> Photo
         </button>
       </div>
+      {/* L'image choisie, sous les boutons (demande utilisateur du 2026-10-02). */}
+      {fichier && (
+        <div className="ocr__apercu">
+          {apercu ? <img src={apercu} alt={`${face.titre} de la fiche`} /> : <span>{fichier.name}</span>}
+          <button
+            type="button"
+            className="icon-btn"
+            disabled={desactive}
+            onClick={() => onChoisir(null)}
+            aria-label={`Retirer le ${face.titre.toLowerCase()}`}
+          >
+            <Icon name="x" size={18} />
+          </button>
+        </div>
+      )}
       {/* Images ET PDF : sur téléphone, ouvre l'explorateur de fichiers (une
           fiche scannée peut être un PDF ou un JPG rangé dans un dossier). */}
       <input ref={importRef} type="file" accept="image/*,application/pdf" hidden onChange={recu} />
