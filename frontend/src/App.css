@@ -2999,6 +2999,32 @@
   font-weight: 600;
 }
 
+.ocr__barre {
+  display: block;
+  height: 8px;
+  margin-top: 10px;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  overflow: hidden;
+}
+
+.ocr__barre span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: ocr-barre 40s cubic-bezier(0.1, 0.7, 0.3, 1) forwards;
+}
+
+@keyframes ocr-barre {
+  from {
+    width: 0;
+  }
+  to {
+    width: 95%;
+  }
+}
+
 /* Trois points qui s'allument l'un après l'autre pendant la lecture. */
 .ocr__points span {
   animation: ocr-point 1.2s infinite;

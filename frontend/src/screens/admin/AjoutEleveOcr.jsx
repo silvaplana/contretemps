@@ -130,6 +130,12 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
             <span>.</span>
             <span>.</span>
           </span>
+          {/* Barre ESTIMÉE : le service de lecture n'indique pas son
+              avancement. Elle avance vite au début, ralentit, et ne se
+              remplit jamais seule ; la fiche s'affiche dès la réponse. */}
+          <span className="ocr__barre" aria-hidden="true">
+            <span />
+          </span>
         </p>
       )}
       {erreur && (
