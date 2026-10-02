@@ -37,10 +37,13 @@ export async function telechargerNouvellesInscriptions(ecoleId) {
 // Envoie les photos (recto, verso) et renvoie { jeton, coutUsd,
 // nbChampsDouteux } : le jeton ouvre ensuite le formulaire d'inscription
 // pré-rempli (voir utils/inscriptionEleve.js).
-export async function lireFiche(ecoleId, fichiers) {
+// `familleMembres` (2 ou 3) : fiches d'une même famille lues d'un coup, la
+// réduction famille est alors imposée.
+export async function lireFiche(ecoleId, fichiers, familleMembres = null) {
   const corps = new FormData()
   for (const fichier of fichiers) corps.append('fichiers', fichier)
-  const reponse = await fetch(`${BASE_URL}/inscriptions/fiches?ecole_id=${ecoleId}`, {
+  const famille = familleMembres ? `&famille_membres=${familleMembres}` : ''
+  const reponse = await fetch(`${BASE_URL}/inscriptions/fiches?ecole_id=${ecoleId}${famille}`, {
     method: 'POST',
     body: corps,
   })

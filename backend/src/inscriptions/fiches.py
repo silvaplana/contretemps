@@ -107,7 +107,9 @@ class FichesPapier:
         self.lecture = lecture or LectureFiche()
         self.email = EmailEnvoi()
 
-    def lire(self, db: Session, ecole_id: int, pages: list[Page]) -> dict:
+    def lire(
+        self, db: Session, ecole_id: int, pages: list[Page], famille_membres: int | None = None
+    ) -> dict:
         """Fait lire la fiche et enregistre le brouillon. Lève FicheInvalide
         (fichiers refusés) ou LectureIndisponible (voir lecture_fiche.py)."""
         if not pages:
@@ -137,6 +139,11 @@ class FichesPapier:
         cases = ("droit_image_site", "droit_image_reseaux", "droit_image_affiches")
         if any(donnees[case] for case in cases) and "droit_image_autorise" not in douteux:
             donnees["droit_image_autorise"] = True
+        # Fiches d'une même famille lues d'un coup (« Galerie multi-membres ») :
+        # le nombre de membres est connu, quoi que dise la fiche.
+        if famille_membres in (2, 3):
+            donnees["famille_membres"] = famille_membres
+            douteux.discard("famille_membres")
         if donnees["famille_membres"] not in (1, 2, 3):
             donnees["famille_membres"] = 1
             douteux.add("famille_membres")

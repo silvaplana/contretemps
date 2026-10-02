@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as inscriptionsApi from '../../api/inscriptions.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -18,13 +18,24 @@ const FACES = [
 // ici même, dans un cadre. « Enregistrer l'élève » l'ajoute à la liste
 // officielle ; on revient alors à cet écran, vide, pour la fiche suivante,
 // avec un message de confirmation en bas.
+// Plusieurs membres d'une même famille d'un coup (« Galerie multi-membres »,
+// demande utilisateur du 2026-10-02) : 2 ou 3 fiches, donc 4 ou 6 photos.
+const MEMBRES_MAX = 3
+
 export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
   const [fichiers, setFichiers] = useState({ recto: null, verso: null })
-  const [enCours, setEnCours] = useState(false)
+  // Photos de la galerie multi-membres, dans l'ordre : recto puis verso du
+  // premier membre, recto puis verso du deuxième...
+  const [photos, setPhotos] = useState([])
+  const [enCours, setEnCours] = useState(0) // nombre de fiches en cours de lecture
   const [erreur, setErreur] = useState('')
-  const [lue, setLue] = useState(null)
+  // Fiches lues, à vérifier l'une après l'autre : [{ jeton, coutUsd }].
+  const [file, setFile] = useState([])
+  const [total, setTotal] = useState(0)
   const [message, setMessage] = useState('')
   const cadreRef = useRef(null)
+  const multiRef = useRef(null)
+  const lue = file[0] ?? null
 
   // Pas de bouton « Lire la fiche » (demande utilisateur du 2026-10-02) :
   // la lecture part toute seule dès que les deux faces sont là.
@@ -32,23 +43,37 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
     setErreur('')
     const suivants = { ...fichiers, [face]: fichier }
     setFichiers(suivants)
-    if (suivants.recto && suivants.verso) analyser(suivants)
+    if (suivants.recto && suivants.verso) analyser([[suivants.recto, suivants.verso]])
   }
 
-  async function analyser(aLire = fichiers) {
+  // `fiches` : une liste de [recto, verso]. Plusieurs fiches = une famille.
+  async function analyser(fiches) {
     setErreur('')
     setMessage('')
-    setEnCours(true)
-    try {
-      const pages = await Promise.all(
-        FACES.map((f) => aLire[f.cle]).filter(Boolean).map(reduirePhoto)
+    setEnCours(fiches.length)
+    const famille = fiches.length > 1 ? Math.min(fiches.length, MEMBRES_MAX) : null
+    const resultats = await Promise.allSettled(
+      fiches.map(async (pages) =>
+        inscriptionsApi.lireFiche(ecoleId, await Promise.all(pages.map(reduirePhoto)), famille)
       )
-      setLue(await inscriptionsApi.lireFiche(ecoleId, pages))
-    } catch (err) {
-      setErreur(err.message)
-    } finally {
-      setEnCours(false)
+    )
+    const lues = resultats.filter((r) => r.status === 'fulfilled').map((r) => r.value)
+    const echecs = resultats
+      .map((r, i) => (r.status === 'rejected' ? `fiche ${i + 1} : ${r.reason.message}` : null))
+      .filter(Boolean)
+    if (echecs.length > 0) {
+      setErreur(fiches.length > 1 ? `Lecture impossible — ${echecs.join(' ; ')}` : resultats[0].reason.message)
     }
+    if (lues.length > 0) setPhotos([])
+    setTotal(lues.length)
+    setFile(lues)
+    setEnCours(0)
+  }
+
+  // Fiche suivante, ou retour à l'écran de saisie, vide, après la dernière.
+  function suivante() {
+    setFile((f) => f.slice(1))
+    setFichiers({ recto: null, verso: null })
   }
 
   // Le formulaire (dans le cadre) annonce la fin de la saisie.
@@ -57,8 +82,7 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
       if (evenement.source !== cadreRef.current?.contentWindow) return
       const fin = evenement.data
       if (fin?.type !== 'contretemps-fiche') return
-      setLue(null)
-      setFichiers({ recto: null, verso: null })
+      suivante()
       if (fin.issue === 'enregistre') {
         setMessage(
           `${fin.prenom} ${fin.nom} a été ajouté(e) aux adhérents ${fin.saison}` +
@@ -81,25 +105,56 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
   // Croix du cadre : la fiche en cours est abandonnée.
   function abandonner() {
     inscriptionsApi.annulerFiche(lue.jeton)
-    setLue(null)
-    setFichiers({ recto: null, verso: null })
+    suivante()
   }
+
+  function photosChoisies(e) {
+    const choisies = [...(e.target.files ?? [])]
+    e.target.value = ''
+    setErreur('')
+    if (choisies.length > 0) setPhotos(choisies.slice(0, MEMBRES_MAX * 2))
+  }
+
+  // Avance une photo d'un cran : l'ordre rendu par le téléphone n'est pas
+  // toujours celui de la sélection.
+  function avancer(index) {
+    setPhotos((p) => {
+      const suivantes = [...p]
+      ;[suivantes[index - 1], suivantes[index]] = [suivantes[index], suivantes[index - 1]]
+      return suivantes
+    })
+  }
+
+  const nbMembres = photos.length / 2
+  const photosValides = photos.length >= 4 && photos.length % 2 === 0
+
+  const messageBas = message && (
+    <button type="button" className="acces-message ocr__message" role="status" onClick={() => setMessage('')}>
+      {message}
+    </button>
+  )
 
   if (lue) {
     return (
       <div className="ocr__formulaire">
         <div className="ocr__formulaire-entete">
-          <strong>Inscription élève (OCR)</strong>
+          <strong>
+            Inscription élève (OCR)
+            {total > 1 && ` — fiche ${total - file.length + 1} sur ${total}`}
+          </strong>
           <span className="muted">Lecture : {formaterCout(lue.coutUsd)}</span>
           <button type="button" className="icon-btn" onClick={abandonner} aria-label="Annuler cette fiche">
             <Icon name="x" />
           </button>
         </div>
+        {/* `key` : un cadre neuf par fiche. */}
         <iframe
+          key={lue.jeton}
           ref={cadreRef}
           title="Formulaire d'inscription pré-rempli"
           src={urlInscriptionDepuisFiche(lue.jeton)}
         />
+        {messageBas}
       </div>
     )
   }
@@ -117,14 +172,70 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
             key={face.cle}
             face={face}
             fichier={fichiers[face.cle]}
-            desactive={enCours}
+            desactive={enCours > 0}
             onChoisir={(fichier) => choisir(face.cle, fichier)}
           />
         ))}
       </div>
-      {enCours && (
+
+      <div className="ocr__face">
+        <strong>Plusieurs membres d’une famille</strong>
+        <p className="muted">
+          Choisissez toutes les photos d’un coup, <strong>dans l’ordre</strong> : recto puis verso du
+          premier membre, recto puis verso du deuxième… (2 ou 3 membres). La réduction famille est
+          appliquée à chacun.
+        </p>
+        <div className="ocr__boutons">
+          <button
+            type="button"
+            className="btn btn--secondary"
+            disabled={enCours > 0}
+            onClick={() => multiRef.current?.click()}
+          >
+            <Icon name="image" size={18} /> Galerie multi-membres
+          </button>
+        </div>
+        <input ref={multiRef} type="file" accept="image/*" multiple hidden onChange={photosChoisies} />
+        {photos.length > 0 && (
+          <>
+            <div className="ocr__vignettes">
+              {photos.map((photo, index) => (
+                <Vignette
+                  key={`${photo.name}-${photo.lastModified}-${index}`}
+                  photo={photo}
+                  legende={`Membre ${Math.floor(index / 2) + 1} — ${index % 2 === 0 ? 'recto' : 'verso'}`}
+                  numero={index + 1}
+                  desactive={enCours > 0}
+                  onAvancer={index > 0 ? () => avancer(index) : null}
+                  onRetirer={() => setPhotos((p) => p.filter((_, i) => i !== index))}
+                />
+              ))}
+            </div>
+            {!photosValides && (
+              <p className="login-screen__erreur">
+                Il faut 2 photos par membre, pour 2 ou 3 membres : 4 ou 6 photos ({photos.length}{' '}
+                choisie{photos.length > 1 ? 's' : ''}).
+              </p>
+            )}
+            <button
+              type="button"
+              className="btn btn--primary btn--block"
+              disabled={!photosValides || enCours > 0}
+              onClick={() =>
+                analyser(Array.from({ length: nbMembres }, (_, i) => [photos[2 * i], photos[2 * i + 1]]))
+              }
+            >
+              Lire les {photosValides ? nbMembres : ''} fiches
+            </button>
+          </>
+        )}
+      </div>
+
+      {enCours > 0 && (
         <p className="ocr__attente" role="status">
-          Lecture de la fiche en cours, de 10 à 30 secondes
+          {enCours > 1
+            ? `Lecture des ${enCours} fiches en cours, de 10 à 30 secondes`
+            : 'Lecture de la fiche en cours, de 10 à 30 secondes'}
           <span className="ocr__points" aria-hidden="true">
             <span>.</span>
             <span>.</span>
@@ -142,18 +253,55 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
         <>
           <p className="login-screen__erreur">{erreur}</p>
           {fichiers.recto && fichiers.verso && (
-            <button type="button" className="btn btn--secondary btn--block" onClick={() => analyser()}>
+            <button
+              type="button"
+              className="btn btn--secondary btn--block"
+              onClick={() => analyser([[fichiers.recto, fichiers.verso]])}
+            >
               Réessayer
             </button>
           )}
         </>
       )}
-      {message && (
-        <button type="button" className="acces-message ocr__message" role="status" onClick={() => setMessage('')}>
-          {message}
-        </button>
-      )}
+      {messageBas}
     </Modal>
+  )
+}
+
+// Adresse d'aperçu d'une image choisie (null pour un PDF). Créée et libérée
+// dans le même effet : une adresse libérée trop tôt donne une image cassée.
+function useApercu(fichier) {
+  const [apercu, setApercu] = useState(null)
+  useEffect(() => {
+    if (!fichier?.type.startsWith('image/')) return undefined
+    const url = URL.createObjectURL(fichier)
+    setApercu(url)
+    return () => {
+      URL.revokeObjectURL(url)
+      setApercu(null)
+    }
+  }, [fichier])
+  return apercu
+}
+
+function Vignette({ photo, legende, numero, desactive, onAvancer, onRetirer }) {
+  const apercu = useApercu(photo)
+  return (
+    <figure className="ocr__vignette">
+      {apercu ? <img src={apercu} alt={legende} /> : <div className="ocr__vignette-vide" />}
+      <span className="ocr__vignette-numero">{numero}</span>
+      <figcaption>{legende}</figcaption>
+      <div className="ocr__vignette-actions">
+        {onAvancer && (
+          <button type="button" className="icon-btn" disabled={desactive} onClick={onAvancer} aria-label={`Avancer la photo ${numero}`}>
+            <Icon name="chevronLeft" size={18} />
+          </button>
+        )}
+        <button type="button" className="icon-btn" disabled={desactive} onClick={onRetirer} aria-label={`Retirer la photo ${numero}`}>
+          <Icon name="x" size={18} />
+        </button>
+      </div>
+    </figure>
   )
 }
 
@@ -161,11 +309,7 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
   const importRef = useRef(null)
   const photoRef = useRef(null)
   const galerieRef = useRef(null)
-  const apercu = useMemo(
-    () => (fichier?.type.startsWith('image/') ? URL.createObjectURL(fichier) : null),
-    [fichier]
-  )
-  useEffect(() => () => apercu && URL.revokeObjectURL(apercu), [apercu])
+  const apercu = useApercu(fichier)
 
   function recu(e) {
     const choisi = e.target.files?.[0]

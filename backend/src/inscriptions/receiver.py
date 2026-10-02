@@ -125,11 +125,12 @@ class InscriptionsReceiver:
         self,
         ecole_id: int,
         fichiers: list[UploadFile] = File(...),
+        famille_membres: int | None = None,
         db: Session = Depends(get_db),
     ):
         pages = [Page(f.file.read(), (f.content_type or "").lower()) for f in fichiers]
         try:
-            brouillon = self.fiches.lire(db, ecole_id, pages)
+            brouillon = self.fiches.lire(db, ecole_id, pages, famille_membres)
         except FicheInvalide as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         except LectureIndisponible as erreur:

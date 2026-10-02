@@ -242,3 +242,16 @@ def test_inscription_en_ligne_famille_3_membres(client, ecole_et_cours):
     token = corps["token_public"]
     client.post(f"/inscriptions/{token}/paiement/choix", json={"moyen_paiement": "cheque", "paiement_nb_echeances": 1})
     assert client.get(f"/inscriptions/{token}/facture.pdf").status_code == 200
+
+
+def test_famille_imposee_pour_des_fiches_lues_ensemble(client, ecole_et_cours, lecture):
+    """« Galerie multi-membres » : le nombre de membres est celui des fiches
+    choisies, même si la fiche ne porte aucune mention."""
+    ecole, cours = ecole_et_cours
+    lecture.fiche = {"cours_ids": [cours["Éveil"].id], "champs_douteux": ["famille_membres"]}
+    fichiers = [("fichiers", (f"p{n}.jpg", JPEG, "image/jpeg")) for n in range(2)]
+    jeton = client.post(
+        "/inscriptions/fiches", params={"ecole_id": ecole.id, "famille_membres": 2}, files=fichiers
+    ).json()["jeton"]
+    brouillon = client.get(f"/inscriptions/fiches/{jeton}").json()
+    assert brouillon["donnees"]["famille_membres"] == 2 and brouillon["champs_douteux"] == []
