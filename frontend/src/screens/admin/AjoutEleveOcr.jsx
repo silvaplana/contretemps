@@ -187,7 +187,7 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
           disabled={desactive}
           onClick={() => importRef.current?.click()}
         >
-          Importer fichier
+          <Icon name="docs" size={18} /> Importer
         </button>
         <button
           type="button"
@@ -195,7 +195,7 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
           disabled={desactive}
           onClick={() => galerieRef.current?.click()}
         >
-          Galerie
+          <Icon name="camera" size={18} /> Galerie
         </button>
         <button
           type="button"
