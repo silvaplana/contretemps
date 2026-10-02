@@ -7,8 +7,8 @@ import { reduirePhoto } from '../../utils/reduirePhoto.js'
 
 // La fiche papier est en recto verso : une photo par face.
 const FACES = [
-  { cle: 'recto', titre: 'Recto', aide: "Informations de l'élève, cours, urgence, santé" },
-  { cle: 'verso', titre: 'Verso', aide: "Droit à l'image et règlement intérieur" },
+  { cle: 'recto', titre: 'Recto' },
+  { cle: 'verso', titre: 'Verso' },
 ]
 
 // « Inscription élève (OCR) » (Admin > Élèves, menu ⋮ — demande utilisateur
@@ -165,10 +165,7 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
 
   return (
     <div className="ocr__face">
-      <div className="ocr__face-titre">
-        <strong>{face.titre}</strong>
-        <span className="muted">{face.aide}</span>
-      </div>
+      <strong>{face.titre}</strong>
       {fichier && (
         <div className="ocr__apercu">
           {apercu ? <img src={apercu} alt={`${face.titre} de la fiche`} /> : <span>{fichier.name}</span>}
@@ -198,7 +195,7 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
           disabled={desactive}
           onClick={() => galerieRef.current?.click()}
         >
-          Photos récentes
+          Galerie
         </button>
         <button
           type="button"

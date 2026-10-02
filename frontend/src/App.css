@@ -2928,6 +2928,18 @@
   border-bottom: none;
 }
 
+/* L'écran de saisie OCR s'ouvre en haut de l'écran (demande utilisateur
+   du 2026-10-02), pas en bas comme les autres fenêtres. */
+.modal-overlay:has(.ocr__faces) {
+  align-items: flex-start;
+}
+
+.modal-overlay:has(.ocr__faces) .modal-panel {
+  border-radius: 0 0 20px 20px;
+  padding-top: calc(16px + env(safe-area-inset-top));
+  padding-bottom: 16px;
+}
+
 .ocr__faces {
   display: grid;
   grid-template-columns: 1fr 1fr;
