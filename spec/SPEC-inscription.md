@@ -125,3 +125,4 @@ Pour les familles qui rendent la fiche d'inscription papier, remplie à la main.
 - **Différences avec une inscription en ligne** : l'email n'est pas obligatoire (sans email, pas de mail à la famille) ; la case du règlement est pré-cochée si la fiche est signée ; les photos de la fiche sont conservées avec l'inscription (`<token>-fiche-<n>`).
 - **Brouillon** : gardé 24 heures au plus, dans le dossier privé de l'école, accessible par un jeton tiré au hasard. Pas de table.
 - **Données personnelles** : la fiche (données d'un enfant, dont santé) est envoyée à Anthropic pour lecture. À mentionner dans le règlement ou sur la fiche.
+- **Droit à l'image** : une case cochée (site, réseaux, affiches) vaut autorisation, même si la mention « J'autorise / Je n'autorise pas » n'est pas rayée.

@@ -158,3 +158,16 @@ def test_lire_une_fiche_exige_une_session(client, ecole_et_cours, lecture):
     ecole, _ = ecole_et_cours
     assert _lire(client, ecole).status_code == 401
     assert lecture.appels == []
+
+
+def test_une_case_cochee_vaut_autorisation_du_droit_a_l_image(client, ecole_et_cours, lecture):
+    ecole, cours = ecole_et_cours
+    lecture.fiche = {"cours_ids": [cours["Éveil"].id], "droit_image_reseaux": True}
+    donnees = client.get(f"/inscriptions/fiches/{_lire(client, ecole).json()['jeton']}").json()["donnees"]
+    assert donnees["droit_image_autorise"] is True
+
+    # « J'autorise » rayé et cases cochées : contradictoire, laissé à l'admin.
+    lecture.fiche["champs_douteux"] = ["droit_image_autorise"]
+    brouillon = client.get(f"/inscriptions/fiches/{_lire(client, ecole).json()['jeton']}").json()
+    assert brouillon["donnees"]["droit_image_autorise"] is False
+    assert "droit_image_autorise" in brouillon["champs_douteux"]

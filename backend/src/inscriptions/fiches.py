@@ -86,6 +86,11 @@ class FichesPapier:
         donnees["cours_ids"] = [cours_id for cours_id in cours_lus if cours_id in ids_connus]
         if len(donnees["cours_ids"]) != len(cours_lus) or not donnees["cours_ids"]:
             douteux.add("cours_ids")
+        # Une case cochée vaut autorisation (décision utilisateur du
+        # 2026-10-02), quoi qu'ait conclu la lecture de la mention à rayer.
+        cases = ("droit_image_site", "droit_image_reseaux", "droit_image_affiches")
+        if any(donnees[case] for case in cases) and "droit_image_autorise" not in douteux:
+            donnees["droit_image_autorise"] = True
         if donnees["eleve_date_naissance"]:
             try:
                 dt.date.fromisoformat(donnees["eleve_date_naissance"])

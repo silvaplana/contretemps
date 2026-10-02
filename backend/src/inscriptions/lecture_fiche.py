@@ -61,11 +61,12 @@ N'ajoute jamais un cours qui n'est pas dans la liste. Si une combinaison n'exist
 plusieurs niveaux sont cochés, ou si le « nombre de cours / semaine » écrit ne correspond \
 pas au nombre de cours trouvés, ajoute `cours_ids` à `champs_douteux` et explique-le dans \
 `remarques`.
-- Droit à l'image : « J'autorise / Je n'autorise pas », la mention inutile est rayée. \
-`droit_image_autorise` est vrai seulement si « Je n'autorise pas » est rayé, ou si \
-« J'autorise » est clairement entouré ou souligné. Dans le doute, faux, et le champ est \
-douteux. Les trois cases (site internet, réseaux sociaux, affiches) ne comptent que si \
-l'autorisation est donnée.
+- Droit à l'image : trois cases (site internet, réseaux sociaux, affiches). Une case \
+cochée vaut autorisation pour cet usage : dès qu'au moins une case est cochée, \
+`droit_image_autorise` est vrai, même si la mention « J'autorise / Je n'autorise pas » \
+n'est pas rayée. Il est faux si aucune case n'est cochée, ou si « J'autorise » est rayé. \
+Si des cases sont cochées ALORS QUE « J'autorise » est rayé, c'est contradictoire : \
+faux, et le champ est douteux.
 - `reglement_signe` est vrai si l'attestation du règlement intérieur porte une signature \
 ou la mention « Lu et approuvé ». `signataire_nom` est le nom écrit après \
 « Je soussigné(e) ».
