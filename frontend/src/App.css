@@ -2993,6 +2993,35 @@
   border: 1px solid var(--border);
 }
 
+.ocr__attente {
+  font-weight: 600;
+}
+
+/* Trois points qui s'allument l'un après l'autre pendant la lecture. */
+.ocr__points span {
+  animation: ocr-point 1.2s infinite;
+  opacity: 0.15;
+}
+
+.ocr__points span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.ocr__points span:nth-child(3) {
+  animation-delay: 0.4s;
+}
+
+@keyframes ocr-point {
+  0%,
+  60%,
+  100% {
+    opacity: 0.15;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
 .ocr__cout {
   font-weight: 600;
 }

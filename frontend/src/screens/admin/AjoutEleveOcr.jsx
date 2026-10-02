@@ -26,18 +26,22 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
   const [message, setMessage] = useState('')
   const cadreRef = useRef(null)
 
+  // Pas de bouton « Lire la fiche » (demande utilisateur du 2026-10-02) :
+  // la lecture part toute seule dès que les deux faces sont là.
   function choisir(face, fichier) {
     setErreur('')
-    setFichiers((f) => ({ ...f, [face]: fichier }))
+    const suivants = { ...fichiers, [face]: fichier }
+    setFichiers(suivants)
+    if (suivants.recto && suivants.verso) analyser(suivants)
   }
 
-  async function analyser() {
+  async function analyser(aLire = fichiers) {
     setErreur('')
     setMessage('')
     setEnCours(true)
     try {
       const pages = await Promise.all(
-        FACES.map((f) => fichiers[f.cle]).filter(Boolean).map(reduirePhoto)
+        FACES.map((f) => aLire[f.cle]).filter(Boolean).map(reduirePhoto)
       )
       setLue(await inscriptionsApi.lireFiche(ecoleId, pages))
     } catch (err) {
@@ -78,6 +82,7 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
   function abandonner() {
     inscriptionsApi.annulerFiche(lue.jeton)
     setLue(null)
+    setFichiers({ recto: null, verso: null })
   }
 
   if (lue) {
@@ -100,23 +105,10 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
   }
 
   return (
-    <Modal
-      title="Inscription élève (OCR)"
-      onClose={onClose}
-      footer={
-        <button
-          type="button"
-          className="btn btn--primary btn--block"
-          disabled={enCours || !fichiers.recto}
-          onClick={analyser}
-        >
-          {enCours ? 'Lecture en cours…' : 'Lire la fiche'}
-        </button>
-      }
-    >
+    <Modal title="Inscription élève (OCR)" onClose={onClose}>
       <p className="muted">
         La fiche d’inscription est en recto verso : il faut <strong>2 photos</strong>, une par face,
-        bien à plat et nettes.
+        bien à plat et nettes. La lecture démarre dès que les deux sont là.
       </p>
       {/* Recto et verso côte à côte (demande utilisateur du 2026-10-02). */}
       <div className="ocr__faces">
@@ -130,13 +122,26 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
           />
         ))}
       </div>
-      {fichiers.recto && !fichiers.verso && !enCours && (
-        <p className="muted">
-          Sans le verso, le droit à l’image et le règlement intérieur seront à remplir à la main.
+      {enCours && (
+        <p className="ocr__attente" role="status">
+          Lecture de la fiche en cours, de 10 à 30 secondes
+          <span className="ocr__points" aria-hidden="true">
+            <span>.</span>
+            <span>.</span>
+            <span>.</span>
+          </span>
         </p>
       )}
-      {enCours && <p className="muted">La lecture prend de 10 à 30 secondes.</p>}
-      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      {erreur && (
+        <>
+          <p className="login-screen__erreur">{erreur}</p>
+          {fichiers.recto && fichiers.verso && (
+            <button type="button" className="btn btn--secondary btn--block" onClick={() => analyser()}>
+              Réessayer
+            </button>
+          )}
+        </>
+      )}
       {message && (
         <button type="button" className="acces-message ocr__message" role="status" onClick={() => setMessage('')}>
           {message}
