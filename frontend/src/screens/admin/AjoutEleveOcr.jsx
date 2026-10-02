@@ -11,17 +11,20 @@ const FACES = [
   { cle: 'verso', titre: 'Verso', aide: "Droit à l'image et règlement intérieur" },
 ]
 
-// « Ajouter élève (OCR) » (Admin > Élèves, menu ⋮ — demande utilisateur du
-// 2026-10-02) : l'admin photographie ou importe les deux faces d'une fiche
-// d'inscription remplie à la main ; le serveur la fait lire par Claude,
-// puis le formulaire d'inscription en ligne s'ouvre pré-rempli, à corriger
-// et valider. L'inscription suit alors le même chemin qu'une inscription
-// en ligne. Le coût de la lecture est annoncé dès qu'elle est finie.
-export default function AjoutEleveOcr({ ecoleId, onClose }) {
+// « Inscription élève (OCR) » (Admin > Élèves, menu ⋮ — demande utilisateur
+// du 2026-10-02) : l'admin photographie ou importe les deux faces d'une
+// fiche d'inscription remplie à la main ; le serveur la fait lire par
+// Claude, puis le formulaire d'inscription en ligne s'affiche pré-rempli,
+// ici même, dans un cadre. « Enregistrer l'élève » l'ajoute à la liste
+// officielle ; on revient alors à cet écran, vide, pour la fiche suivante,
+// avec un message de confirmation en bas.
+export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
   const [fichiers, setFichiers] = useState({ recto: null, verso: null })
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState('')
   const [lue, setLue] = useState(null)
+  const [message, setMessage] = useState('')
+  const cadreRef = useRef(null)
 
   function choisir(face, fichier) {
     setErreur('')
@@ -30,6 +33,7 @@ export default function AjoutEleveOcr({ ecoleId, onClose }) {
 
   async function analyser() {
     setErreur('')
+    setMessage('')
     setEnCours(true)
     try {
       const pages = await Promise.all(
@@ -43,36 +47,55 @@ export default function AjoutEleveOcr({ ecoleId, onClose }) {
     }
   }
 
-  function annuler() {
-    if (lue) inscriptionsApi.annulerFiche(lue.jeton)
-    onClose()
+  // Le formulaire (dans le cadre) annonce la fin de la saisie.
+  useEffect(() => {
+    function recevoir(evenement) {
+      if (evenement.source !== cadreRef.current?.contentWindow) return
+      const fin = evenement.data
+      if (fin?.type !== 'contretemps-fiche') return
+      setLue(null)
+      setFichiers({ recto: null, verso: null })
+      if (fin.issue === 'enregistre') {
+        setMessage(
+          `${fin.prenom} ${fin.nom} a été ajouté(e) aux adhérents ${fin.saison}` +
+            (fin.mailEnvoye ? '' : ' (le mail n’a pas pu être envoyé)')
+        )
+        onEleveAjoute()
+      }
+    }
+    window.addEventListener('message', recevoir)
+    return () => window.removeEventListener('message', recevoir)
+  }, [onEleveAjoute])
+
+  // Message temporaire.
+  useEffect(() => {
+    if (!message) return undefined
+    const minuteur = setTimeout(() => setMessage(''), 8000)
+    return () => clearTimeout(minuteur)
+  }, [message])
+
+  // Croix du cadre : la fiche en cours est abandonnée.
+  function abandonner() {
+    inscriptionsApi.annulerFiche(lue.jeton)
+    setLue(null)
   }
 
   if (lue) {
     return (
-      <Modal title="Inscription élève (OCR)" onClose={annuler}>
-        <p>
-          <strong>Fiche lue.</strong>{' '}
-          {lue.nbChampsDouteux > 0
-            ? `${lue.nbChampsDouteux} champ${lue.nbChampsDouteux > 1 ? 's' : ''} à vérifier en priorité.`
-            : 'Relisez tout de même chaque champ.'}
-        </p>
-        <p className="ocr__cout">Coût de la lecture : {formaterCout(lue.coutUsd)}</p>
-        {/* Un vrai lien, cliqué par l'admin : une fenêtre ouverte après
-            l'attente de la lecture serait bloquée par le navigateur. */}
-        <a
-          className="btn btn--primary btn--block"
-          href={urlInscriptionDepuisFiche(lue.jeton)}
-          target="_blank"
-          rel="noopener"
-          onClick={onClose}
-        >
-          Ouvrir le formulaire rempli
-        </a>
-        <button type="button" className="btn btn--secondary btn--block" onClick={annuler}>
-          Annuler
-        </button>
-      </Modal>
+      <div className="ocr__formulaire">
+        <div className="ocr__formulaire-entete">
+          <strong>Inscription élève (OCR)</strong>
+          <span className="muted">Lecture : {formaterCout(lue.coutUsd)}</span>
+          <button type="button" className="icon-btn" onClick={abandonner} aria-label="Annuler cette fiche">
+            <Icon name="x" />
+          </button>
+        </div>
+        <iframe
+          ref={cadreRef}
+          title="Formulaire d'inscription pré-rempli"
+          src={urlInscriptionDepuisFiche(lue.jeton)}
+        />
+      </div>
     )
   }
 
@@ -111,6 +134,11 @@ export default function AjoutEleveOcr({ ecoleId, onClose }) {
       )}
       {enCours && <p className="muted">La lecture prend de 10 à 30 secondes.</p>}
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      {message && (
+        <button type="button" className="acces-message ocr__message" role="status" onClick={() => setMessage('')}>
+          {message}
+        </button>
+      )}
     </Modal>
   )
 }

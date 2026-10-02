@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as elevesApi from '../../api/eleves.js'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
@@ -95,6 +95,10 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   // Un élève peut être ajouté depuis un autre onglet (« Inscription élève
   // (OCR) » ouvre le formulaire à part) : la liste est relue dès qu'on
   // revient sur l'appli, sans avoir à la recharger.
+  const relireEleves = useCallback(() => {
+    elevesApi.lister(ecoleId).then(setEleves).catch(() => {})
+  }, [ecoleId, setEleves])
+
   useEffect(() => {
     let dernier = 0
     async function relire() {
@@ -289,7 +293,9 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
           { label: 'Inscription élève (OCR)', icon: 'camera', onClick: () => setOcrOuvert(true) },
         ]}
       />
-      {ocrOuvert && <AjoutEleveOcr ecoleId={ecoleId} onClose={() => setOcrOuvert(false)} />}
+      {ocrOuvert && (
+        <AjoutEleveOcr ecoleId={ecoleId} onEleveAjoute={relireEleves} onClose={() => setOcrOuvert(false)} />
+      )}
       <div className="search-bar">
         <Icon name="search" size={18} />
         <input

@@ -12,6 +12,16 @@ import FormulaireInscription from './FormulaireInscription.jsx'
 import PaiementEtape from './PaiementEtape.jsx'
 import { saisonActuelle } from './saison.js'
 
+// Fiche papier : le formulaire est affiché DANS l'appli principale (voir
+// frontend/src/screens/admin/AjoutEleveOcr.jsx, dans un cadre). Quand la
+// saisie se termine, on le lui dit ; elle ferme le cadre et revient à la
+// saisie d'une nouvelle fiche. Renvoie false si la page est ouverte seule.
+function prevenirAppli(message) {
+  if (window.parent === window) return false
+  window.parent.postMessage({ type: 'contretemps-fiche', ...message }, '*')
+  return true
+}
+
 export default function App() {
   const [etat, setEtat] = useState({ statut: 'chargement' }) // chargement | verification-paiement | pret | erreur
   // Flux en 3 étapes (voir spec/SPEC-inscription.md) : 'formulaire'
@@ -185,10 +195,21 @@ export default function App() {
           ecole={etat.ecole}
           cours={etat.cours}
           fiche={etat.fiche}
-          onAnnuler={() => setEtat({ statut: 'fiche-annulee' })}
+          onAnnuler={() => {
+            if (!prevenirAppli({ issue: 'annule' })) setEtat({ statut: 'fiche-annulee' })
+          }}
           onEleveEnregistre={(eleve) => {
             window.history.replaceState({}, '', window.location.pathname)
-            setEtat({ statut: 'eleve-enregistre', eleve })
+            const dansAppli = prevenirAppli({
+              issue: 'enregistre',
+              prenom: eleve.eleve_prenom,
+              nom: eleve.eleve_nom,
+              saison: eleve.saison,
+              mailEnvoye: eleve.mail_envoye,
+            })
+            // Dans l'appli, c'est elle qui reprend la main (retour à la
+            // saisie d'une nouvelle fiche) : pas d'écran de fin ici.
+            setEtat(dansAppli ? { statut: 'chargement' } : { statut: 'eleve-enregistre', eleve })
           }}
           onSoumis={(resultat) => {
             setInscription(resultat)
