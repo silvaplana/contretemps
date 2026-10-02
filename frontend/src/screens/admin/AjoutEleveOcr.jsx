@@ -146,6 +146,7 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
 function FaceFiche({ face, fichier, desactive, onChoisir }) {
   const importRef = useRef(null)
   const photoRef = useRef(null)
+  const galerieRef = useRef(null)
   const apercu = useMemo(
     () => (fichier?.type.startsWith('image/') ? URL.createObjectURL(fichier) : null),
     [fichier]
@@ -192,12 +193,24 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
           type="button"
           className="btn btn--secondary"
           disabled={desactive}
+          onClick={() => galerieRef.current?.click()}
+        >
+          Galerie
+        </button>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          disabled={desactive}
           onClick={() => photoRef.current?.click()}
         >
           <Icon name="camera" size={18} /> Prendre photo
         </button>
       </div>
+      {/* Images ET PDF : sur téléphone, ouvre l'explorateur de fichiers (une
+          fiche scannée peut être un PDF ou un JPG rangé dans un dossier). */}
       <input ref={importRef} type="file" accept="image/*,application/pdf" hidden onChange={recu} />
+      {/* Images seules : sur téléphone, ouvre directement la galerie de photos. */}
+      <input ref={galerieRef} type="file" accept="image/*" hidden onChange={recu} />
       {/* `capture` : ouvre directement l'appareil photo sur téléphone. */}
       <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={recu} />
     </div>
