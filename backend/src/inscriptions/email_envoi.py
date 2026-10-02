@@ -55,6 +55,7 @@ class EmailEnvoi:
         corps: str,
         pieces_jointes: list[tuple[str, bytes]],
         corps_html: str | None = None,
+        copie: str | None = None,
     ) -> None:
         """`pieces_jointes` : liste de (nom_fichier, contenu_bytes).
         Lève une exception en cas d'échec (voir inscriptions.py qui
@@ -68,6 +69,12 @@ class EmailEnvoi:
         if self.repondre_a:
             message["Reply-To"] = self.repondre_a
         message["To"] = destinataire
+        # `copie` : adresse en copie visible (Cc), ignorée si c'est déjà le
+        # destinataire.
+        destinataires = [destinataire]
+        if copie and copie.strip().lower() != destinataire.strip().lower():
+            message["Cc"] = copie
+            destinataires.append(copie)
         message["Subject"] = sujet
         if corps_html is None:
             message.attach(MIMEText(corps, "plain"))
@@ -87,4 +94,4 @@ class EmailEnvoi:
         with smtplib.SMTP(self.hote, self.port) as serveur:
             serveur.starttls()
             serveur.login(self.utilisateur, self.mot_de_passe)
-            serveur.sendmail(self.expediteur, destinataire, message.as_string())
+            serveur.sendmail(self.expediteur, destinataires, message.as_string())

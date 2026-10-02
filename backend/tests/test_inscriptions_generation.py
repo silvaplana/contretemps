@@ -151,7 +151,7 @@ def test_email_envoie_avec_pieces_jointes(monkeypatch):
 
     assert appels["login"] == ("admin@example.com", "secret")
     expediteur, destinataire, message = appels["sendmail"]
-    assert destinataire == "famille@example.com"
+    assert destinataire == ["famille@example.com"]
     assert "dossier.pdf" in message
     assert "facture.pdf" in message
 
@@ -179,3 +179,27 @@ def test_email_erreur_smtp_est_propagee(monkeypatch):
     service = EmailEnvoi()
     with pytest.raises(smtplib.SMTPException):
         service.envoyer_confirmation("a@b.fr", "Sujet", "Corps", [])
+
+
+def test_email_en_copie(monkeypatch):
+    """La copie part aussi à l'adresse en Cc (inscription en ligne : copie à
+    l'administrateur), sauf si c'est déjà le destinataire."""
+    from inscriptions.email_envoi import EmailEnvoi
+
+    envois = []
+
+    class FauxSMTP:
+        def __init__(self, *a): pass
+        def __enter__(self): return self
+        def __exit__(self, *a): return False
+        def starttls(self): pass
+        def login(self, *a): pass
+        def sendmail(self, expediteur, destinataires, message): envois.append((destinataires, message))
+
+    monkeypatch.setattr("inscriptions.email_envoi.smtplib.SMTP", FauxSMTP)
+    email = EmailEnvoi()
+    email.actif = True
+    email.envoyer_confirmation("famille@example.com", "Sujet", "Corps", [], copie="admin@example.com")
+    email.envoyer_confirmation("admin@example.com", "Sujet", "Corps", [], copie="Admin@example.com")
+    assert envois[0][0] == ["famille@example.com", "admin@example.com"] and "Cc: admin@example.com" in envois[0][1]
+    assert envois[1][0] == ["admin@example.com"] and "Cc:" not in envois[1][1]

@@ -70,6 +70,7 @@ ROUTES_PUBLIQUES = {
     ("GET", "/inscriptions/fiches/{jeton}"),
     ("GET", "/inscriptions/fiches/{jeton}/pages/{numero}"),
     ("DELETE", "/inscriptions/fiches/{jeton}"),
+    ("POST", "/inscriptions/fiches/{jeton}/eleve"),
     ("POST", "/inscriptions/{token}/photo"),
     ("GET", "/inscriptions/{token}"),
     ("POST", "/inscriptions/{token}/paiement/helloasso"),

@@ -14,11 +14,12 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
-from .fiches import FicheInvalide, FichesPapier
+from .fiches import EleveDejaInscrit, FicheInvalide, FichesPapier
 from .helloasso import HelloAssoError
 from .inscriptions import Inscriptions
 from .lecture_fiche import LectureIndisponible, Page
 from .schemas import (
+    EleveEnregistreSortie,
     FicheBrouillonSortie,
     FicheLueSortie,
     InscriptionCreation,
@@ -32,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 
 class InscriptionsReceiver:
-    def __init__(self, client: Inscriptions, app: FastAPI, fiches: FichesPapier | None = None) -> None:
+    def __init__(self, client: Inscriptions, app: FastAPI, fiches: FichesPapier) -> None:
         self.client = client
-        self.fiches = fiches or FichesPapier(client.cours)
+        self.fiches = fiches
         self.app = app
         self._register_routes()
 
@@ -63,6 +64,9 @@ class InscriptionsReceiver:
         )
         self.app.get("/inscriptions/fiches/{jeton}/pages/{numero}")(self.page_fiche)
         self.app.delete("/inscriptions/fiches/{jeton}", status_code=204)(self.supprimer_fiche)
+        self.app.post(
+            "/inscriptions/fiches/{jeton}/eleve", response_model=EleveEnregistreSortie, status_code=201
+        )(self.enregistrer_eleve)
         self.app.post("/inscriptions/{token}/photo", status_code=204)(self.photo)
         self.app.get("/inscriptions/{token}", response_model=InscriptionSortie)(self.obtenir)
         self.app.post(
@@ -107,21 +111,12 @@ class InscriptionsReceiver:
         ecole_id: int,
         donnees: InscriptionCreation,
         request: Request,
-        fiche: str | None = None,
         db: Session = Depends(get_db),
     ):
-        """`fiche` : jeton d'une fiche papier lue par un admin (voir
-        fiches.py). Seul cas où l'email peut manquer."""
-        if fiche is not None:
-            brouillon = self.fiches.obtenir(fiche)
-            if brouillon is None or brouillon["ecole_id"] != ecole_id:
-                raise HTTPException(status_code=404, detail="Fiche introuvable ou expirée")
-        elif not donnees.eleve_email:
+        if not donnees.eleve_email:
             raise HTTPException(status_code=422, detail="L'email est obligatoire")
         ip = request.client.host if request.client else None
         inscription = self.client.creer(db, ecole_id, donnees, ip)
-        if fiche is not None:
-            self.fiches.rattacher(fiche, inscription)
         return self._vers_sortie(db, inscription)
 
     def lire_fiche(
@@ -169,6 +164,26 @@ class InscriptionsReceiver:
 
     def supprimer_fiche(self, jeton: str):
         self.fiches.supprimer(jeton)
+
+    def enregistrer_eleve(
+        self,
+        jeton: str,
+        donnees: InscriptionCreation,
+        malgre_homonyme: bool = False,
+        db: Session = Depends(get_db),
+    ):
+        """« Enregistrer l'élève » : la fiche papier, corrigée par l'admin,
+        devient un élève de la liste officielle (voir fiches.py)."""
+        try:
+            resultat = self.fiches.enregistrer_eleve(db, jeton, donnees, malgre_homonyme)
+        except EleveDejaInscrit as erreur:
+            raise HTTPException(
+                status_code=409,
+                detail=f"Un élève nommé {donnees.eleve_prenom} {donnees.eleve_nom} existe déjà dans l'école.",
+            ) from erreur
+        if resultat is None:
+            raise HTTPException(status_code=404, detail="Fiche introuvable ou expirée")
+        return EleveEnregistreSortie(**resultat)
 
     def photo(self, token: str, fichier: UploadFile = File(...), db: Session = Depends(get_db)):
         """Upload de la photo de l'élève, appelé juste après la création

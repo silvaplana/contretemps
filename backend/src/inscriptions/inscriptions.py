@@ -258,8 +258,10 @@ class Inscriptions:
                 )
             self.email.envoyer_confirmation(
                 inscription.eleve_email,
-                f"Inscription validée de {inscription.eleve_prenom} {inscription.eleve_nom} "
-                f"à l'école de danse {nom_ecole} pour la saison {inscription.saison}",
+                # Titre et copie à l'administrateur : demande utilisateur du
+                # 2026-10-02.
+                f"Inscription en ligne validée de {inscription.eleve_prenom} {inscription.eleve_nom} "
+                f"à l'école {nom_ecole} pour la saison {inscription.saison}",
                 (
                     f"Bonjour,\n\nNous confirmons la bonne réception de l'inscription de "
                     f"{inscription.eleve_prenom} {inscription.eleve_nom} pour la saison "
@@ -267,6 +269,7 @@ class Inscriptions:
                     f"facture correspondante.\n\nÀ bientôt,\nL'équipe {nom_ecole}"
                 ),
                 pieces_jointes,
+                copie=self.email.adresse_admin,
             )
             # `envoyer_confirmation` ne fait rien (mais ne lève rien non
             # plus) si le SMTP n'est pas configuré — voir

@@ -43,7 +43,7 @@ def _appels_email(monkeypatch):
     monkeypatch.setattr(
         inscriptions_client.email,
         "envoyer_confirmation",
-        lambda destinataire, sujet, corps, pieces_jointes: appels.append(
+        lambda destinataire, sujet, corps, pieces_jointes, copie=None: appels.append(
             (destinataire, sujet, corps, pieces_jointes)
         ),
     )
@@ -124,7 +124,7 @@ def test_echec_mail_famille_n_empeche_pas_le_mail_admin(
 
     appels = []
 
-    def _envoyer(destinataire, sujet, corps_mail, pieces_jointes):
+    def _envoyer(destinataire, sujet, corps_mail, pieces_jointes, copie=None):
         if destinataire == "marie@example.com":
             raise RuntimeError("SMTP en panne")
         appels.append(destinataire)

@@ -1,5 +1,10 @@
 import { useMemo, useState } from 'react'
-import { creerInscription, supprimerFiche, uploaderPhotoEleve } from './api/backend.js'
+import {
+  creerInscription,
+  enregistrerEleveDepuisFiche,
+  supprimerFiche,
+  uploaderPhotoEleve,
+} from './api/backend.js'
 import { formaterCout } from './cout.js'
 import { COURS_PUBLICS } from './coursPublics.js'
 import { calculerTarifIndicatif, LIBELLE_PALIER } from './tarifs.js'
@@ -73,13 +78,22 @@ function valeursDeDepart(fiche, cours) {
 // `fiche` : brouillon d'une fiche papier lue automatiquement (voir
 // App.jsx) — le formulaire est alors rempli par un admin, qui corrige la
 // lecture. Les champs incertains sont signalés jusqu'à ce qu'il y touche.
-export default function FormulaireInscription({ ecole, cours, fiche = null, onAnnuler, onSoumis }) {
+export default function FormulaireInscription({
+  ecole,
+  cours,
+  fiche = null,
+  onAnnuler,
+  onEleveEnregistre,
+  onSoumis,
+}) {
   const [valeurs, setValeurs] = useState(() => valeursDeDepart(fiche, cours))
   const [douteux, setDouteux] = useState(() => new Set(fiche?.champsDouteux ?? []))
   const [elevePhoto, setElevePhoto] = useState(null)
   const [apercuPhoto, setApercuPhoto] = useState(null)
   const [envoiEnCours, setEnvoiEnCours] = useState(false)
   const [erreur, setErreur] = useState(null)
+  // Fiche papier : un élève du même nom existe déjà, à confirmer.
+  const [homonyme, setHomonyme] = useState(false)
 
   function choisirPhoto(e) {
     const fichier = e.target.files?.[0] ?? null
@@ -206,7 +220,7 @@ export default function FormulaireInscription({ ecole, cours, fiche = null, onAn
     setErreur(null)
     setEnvoiEnCours(true)
     try {
-      const resultat = await creerInscription(ecole.id, {
+      const donnees = {
         eleve_nom: valeurs.eleveNom.trim(),
         eleve_prenom: valeurs.elevePrenom.trim(),
         eleve_date_naissance: valeurs.eleveDateNaissance,
@@ -231,7 +245,14 @@ export default function FormulaireInscription({ ecole, cours, fiche = null, onAn
         // PaiementEtape.jsx) qui le fixe, une fois les informations
         // validées (voir spec/SPEC-inscription.md).
         reduction_famille_demandee: valeurs.reductionFamilleDemandee,
-      }, fiche?.jeton)
+      }
+      // Fiche papier : l'élève entre directement dans la liste officielle
+      // de l'école, sans étape de paiement (décision du 2026-10-02).
+      if (fiche) {
+        onEleveEnregistre(await enregistrerEleveDepuisFiche(fiche.jeton, donnees, homonyme))
+        return
+      }
+      const resultat = await creerInscription(ecole.id, donnees)
 
       let photoEnvoyee = false
       if (elevePhoto) {
@@ -243,13 +264,9 @@ export default function FormulaireInscription({ ecole, cours, fiche = null, onAn
           // api/backend.js) — juste signalé sur l'écran de confirmation.
         }
       }
-      onSoumis({
-        ...resultat,
-        photoEnvoyee,
-        photoChoisie: Boolean(elevePhoto),
-        coutLectureUsd: fiche?.coutUsd,
-      })
+      onSoumis({ ...resultat, photoEnvoyee, photoChoisie: Boolean(elevePhoto) })
     } catch (err) {
+      setHomonyme(Boolean(err.homonyme))
       setErreur(err.message || "L'inscription n'a pas pu être envoyée. Réessayez.")
     } finally {
       setEnvoiEnCours(false)
@@ -338,13 +355,13 @@ export default function FormulaireInscription({ ecole, cours, fiche = null, onAn
             />
           </div>
         </div>
-        <div className="champ">
+        {!fiche && <div className="champ">
           <label htmlFor="eleve-photo">Photo de l'élève</label>
           <input id="eleve-photo" type="file" accept="image/*" onChange={choisirPhoto} />
           {apercuPhoto && (
             <img src={apercuPhoto} alt="Aperçu de la photo de l'élève" className="photo-apercu" />
           )}
-        </div>
+        </div>}
       </section>
 
       <section className="section">
@@ -546,7 +563,13 @@ export default function FormulaireInscription({ ecole, cours, fiche = null, onAn
         disabled={envoiEnCours || valeurs.coursIds.length === 0}
       >
         {envoiEnCours && <span className="spinner" aria-hidden="true" />}
-        {envoiEnCours ? 'Validation en cours…' : 'Valider et continuer vers le paiement'}
+        {envoiEnCours
+          ? 'Validation en cours…'
+          : !fiche
+            ? 'Valider et continuer vers le paiement'
+            : homonyme
+              ? "Enregistrer quand même l'élève"
+              : "Enregistrer l'élève"}
       </button>
       {fiche && (
         <button className="bouton bouton--secondaire" type="button" disabled={envoiEnCours} onClick={annuler}>
@@ -556,7 +579,7 @@ export default function FormulaireInscription({ ecole, cours, fiche = null, onAn
       {!envoiEnCours && valeurs.coursIds.length === 0 && (
         <p className="envoi-note">Choisissez au moins un cours pour continuer.</p>
       )}
-      {envoiEnCours && (
+      {envoiEnCours && !fiche && (
         <p className="envoi-note">
           Enregistrement des informations — l'étape suivante propose le choix du paiement.
         </p>

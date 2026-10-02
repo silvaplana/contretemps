@@ -96,36 +96,70 @@ def test_date_illisible_ecartee(client, ecole_et_cours, lecture):
     assert brouillon["champs_douteux"] == ["eleve_date_naissance"]
 
 
-def test_inscription_depuis_une_fiche_sans_email(client, ecole_et_cours, lecture):
-    """La fiche papier peut ne pas porter d'email ; ses photos sont
-    rattachées à l'inscription et le brouillon disparaît."""
+def test_enregistrer_l_eleve_dans_la_liste_officielle(client, db_session, ecole_et_cours, lecture, monkeypatch):
+    """Pas d'inscription en attente : un élève de la liste officielle, avec
+    ses cours et son contact, et un mail à l'admin avec les photos."""
+    from inscriptions.models import Inscription
+    from sqlalchemy import select
+
     ecole, cours = ecole_et_cours
+    fiches = inscriptions_receiver.fiches
+    mails = []
+    monkeypatch.setattr(fiches.email, "actif", True)
+    monkeypatch.setattr(fiches.email, "adresse_admin", "admin@example.com")
+    monkeypatch.setattr(fiches.email, "envoyer_confirmation", lambda *a, **k: mails.append(a))
     jeton = _lire(client, ecole).json()["jeton"]
-    donnees = _donnees_formulaire([cours["Éveil"].id], eleve_email=None)
+    donnees = _donnees_formulaire([cours["Class Ini"].id, cours["Jazz Ini"].id], eleve_email=None)
 
-    reponse = client.post("/inscriptions", params={"ecole_id": ecole.id, "fiche": jeton}, json=donnees)
+    reponse = client.post(f"/inscriptions/fiches/{jeton}/eleve", json=donnees)
     assert reponse.status_code == 201
-    token = reponse.json()["token_public"]
-    dossier = DOSSIER_INSCRIPTIONS / str(ecole.id)
-    assert sorted(f.name for f in dossier.glob(f"{token}-fiche-*")) == [
-        f"{token}-fiche-1.jpg", f"{token}-fiche-2.jpg",
-    ]
-    assert not list(dossier.glob("fiche-*"))
-    assert client.get(f"/inscriptions/fiches/{jeton}").status_code == 404
+    corps = reponse.json()
+    assert corps["mail_envoye"] is True and corps["mail_adresse"] == "admin@example.com"
+    assert corps["cout_usd"] == 0.022
 
-    # Paiement par chèque : la finalisation passe, sans mail à envoyer.
-    paiement = client.post(
-        f"/inscriptions/{token}/paiement/choix", json={"moyen_paiement": "cheque", "paiement_nb_echeances": 1}
-    )
-    assert paiement.status_code == 200 and paiement.json()["email_envoye"] is False
+    eleve = next(e for e in client.get("/eleves", params={"ecole_id": ecole.id}).json() if e["id"] == corps["eleve_id"])
+    assert (eleve["nom"], eleve["prenom"], eleve["date_naissance"]) == ("Dupont", "Marie", "2018-11-17")
+    assert eleve["contacts"][0]["prenom"] == "Jean" and eleve["contacts"][0]["lien"] == "Père"
+    assert "Droit à l'image : oui (site internet)" in eleve["commentaire_admin"]
+    assert "Règlement signé par Jean Dupont" in eleve["commentaire_admin"]
+    assert eleve["montant_total_annee"] == 40 + 3 * 150
+    assert sorted(c.nom for c in fiches.cours.cours_de_leleve(db_session, eleve["id"])) == ["Class Ini", "Jazz Ini"]
+    assert db_session.scalars(select(Inscription).where(Inscription.ecole_id == ecole.id)).all() == []
+
+    destinataire, sujet, texte, pieces = mails[0]
+    assert destinataire == "admin@example.com"
+    assert sujet == f"Inscription papier validée de Marie Dupont à l'école {ecole.nom} pour la saison {corps['saison']}"
+    # Le dossier rempli (même PDF que l'inscription en ligne), puis les photos.
+    assert [nom for nom, _ in pieces] == [
+        f"dossier_marie_dupont_{corps['saison'].replace('-', '')}.pdf", "fiche-1.jpg", "fiche-2.jpg",
+    ]
+    assert pieces[0][1].startswith(b"%PDF") and pieces[1][1] == JPEG
+
+    # Le brouillon et ses photos sont effacés ; il ne sert qu'une fois.
+    assert not list((DOSSIER_INSCRIPTIONS / str(ecole.id)).glob("fiche-*"))
+    assert client.post(f"/inscriptions/fiches/{jeton}/eleve", json=donnees).status_code == 404
+
+
+def test_homonyme_signale_avant_d_enregistrer(client, ecole_et_cours, lecture):
+    ecole, cours = ecole_et_cours
+    donnees = _donnees_formulaire([cours["Éveil"].id])
+    jeton = _lire(client, ecole).json()["jeton"]
+    assert client.post(f"/inscriptions/fiches/{jeton}/eleve", json=donnees).status_code == 201
+
+    jeton = _lire(client, ecole).json()["jeton"]
+    refus = client.post(f"/inscriptions/fiches/{jeton}/eleve", json=donnees)
+    assert refus.status_code == 409 and "existe déjà" in refus.json()["detail"]
+    # Le brouillon est toujours là : l'admin peut confirmer.
+    force = client.post(f"/inscriptions/fiches/{jeton}/eleve", params={"malgre_homonyme": True}, json=donnees)
+    assert force.status_code == 201 and force.json()["mail_envoye"] is False
 
 
 def test_sans_fiche_l_email_reste_obligatoire(client, ecole_et_cours):
     ecole, cours = ecole_et_cours
     donnees = _donnees_formulaire([cours["Éveil"].id], eleve_email=None)
     assert client.post("/inscriptions", params={"ecole_id": ecole.id}, json=donnees).status_code == 422
-    inconnue = {"ecole_id": ecole.id, "fiche": "5b1d0a3e-0000-4000-8000-000000000000"}
-    assert client.post("/inscriptions", params=inconnue, json=donnees).status_code == 404
+    inconnu = "5b1d0a3e-0000-4000-8000-000000000000"
+    assert client.post(f"/inscriptions/fiches/{inconnu}/eleve", json=donnees).status_code == 404
 
 
 def test_annuler_efface_le_brouillon(client, ecole_et_cours, lecture):

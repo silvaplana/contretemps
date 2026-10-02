@@ -25,6 +25,7 @@ from db import Base, engine
 from ecoles import EcoleExport, Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
 from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
+from inscriptions.fiches import FichesPapier
 from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
 from notifications import Notifications, NotificationsReceiver
 from presence import Presence, PresenceReceiver
@@ -197,7 +198,11 @@ messagerie_receiver = MessagerieReceiver(
 # atteignable sans compte), depend de cours (resolution des cours choisis).
 helloasso_client = HelloAsso()
 inscriptions_client = Inscriptions(cours=cours_client, helloasso=helloasso_client)
-inscriptions_receiver = InscriptionsReceiver(client=inscriptions_client, app=app)
+inscriptions_receiver = InscriptionsReceiver(
+    client=inscriptions_client,
+    app=app,
+    fiches=FichesPapier(cours=cours_client, eleves=eleves_client),
+)
 
 
 def main() -> None:

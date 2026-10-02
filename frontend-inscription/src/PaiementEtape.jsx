@@ -9,14 +9,13 @@ import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 // à l'écran de confirmation. HelloAsso : redirige vers HelloAsso ; en
 // cas d'échec au retour, App.jsx réaffiche CET écran (retour à l'étape
 // 2), jamais l'écran de confirmation.
-export default function PaiementEtape({ inscription, parFiche = false, messageEchec, onPaiementParCheque, onRetourFormulaire }) {
+export default function PaiementEtape({ inscription, messageEchec, onPaiementParCheque, onRetourFormulaire }) {
   // "helloasso" (carte bancaire) par défaut — inscription.moyen_paiement
   // vaut toujours "cheque" à ce stade pour une inscription fraîche (voir
   // schemas.py:InscriptionCreation, simple valeur de départ tant que le
   // paiement n'est pas choisi), ce n'est donc pas un signal utilisable
   // ici.
-  // Fiche papier saisie par un admin : la famille a remis des chèques.
-  const [moyen, setMoyen] = useState(parFiche ? 'cheque' : 'helloasso')
+  const [moyen, setMoyen] = useState('helloasso')
   const [nbEcheances, setNbEcheances] = useState(inscription.paiement_nb_echeances === 3 ? 3 : 1)
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState(null)

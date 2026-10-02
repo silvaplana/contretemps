@@ -63,16 +63,31 @@ export async function supprimerFiche(jeton) {
   await requete(`/inscriptions/fiches/${encodeURIComponent(jeton)}`, { method: 'DELETE' })
 }
 
+// « Enregistrer l'élève » : la fiche corrigée devient un élève de la
+// liste officielle de l'école (pas une inscription en attente), et
+// l'administrateur reçoit un mail avec les photos de la fiche. Erreur de
+// statut 409 (`err.homonyme`) si un élève porte déjà ce nom : rappeler
+// avec `malgreHomonyme` pour confirmer.
+export async function enregistrerEleveDepuisFiche(jeton, donnees, malgreHomonyme = false) {
+  const reponse = await fetch(
+    `${BASE_URL}/inscriptions/fiches/${encodeURIComponent(jeton)}/eleve?malgre_homonyme=${malgreHomonyme}`,
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(donnees) }
+  )
+  if (!reponse.ok) {
+    const detail = (await reponse.json().catch(() => null))?.detail
+    const erreur = new Error(typeof detail === 'string' ? detail : `Requête échouée (${reponse.status})`)
+    erreur.homonyme = reponse.status === 409
+    throw erreur
+  }
+  return reponse.json()
+}
+
 export async function listerCours(ecoleId) {
   return requete(`/cours?ecole_id=${ecoleId}`)
 }
 
-// `ficheJeton` : inscription saisie par un admin à partir d'une fiche
-// papier lue automatiquement (voir obtenirFiche) — ses photos sont alors
-// rattachées à l'inscription, et l'email n'est plus obligatoire.
-export async function creerInscription(ecoleId, donnees, ficheJeton = null) {
-  const fiche = ficheJeton ? `&fiche=${encodeURIComponent(ficheJeton)}` : ''
-  return requete(`/inscriptions?ecole_id=${ecoleId}${fiche}`, {
+export async function creerInscription(ecoleId, donnees) {
+  return requete(`/inscriptions?ecole_id=${ecoleId}`, {
     method: 'POST',
     body: JSON.stringify(donnees),
   })

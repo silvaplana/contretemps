@@ -7,6 +7,7 @@ import {
   verifierPaiementHelloAsso,
 } from './api/backend.js'
 import Confirmation from './Confirmation.jsx'
+import { formaterCout } from './cout.js'
 import FormulaireInscription from './FormulaireInscription.jsx'
 import PaiementEtape from './PaiementEtape.jsx'
 import { saisonActuelle } from './saison.js'
@@ -88,13 +89,6 @@ export default function App() {
     }
   }, [])
 
-  // La fiche papier ne sert qu'une fois : validée ou annulée, elle quitte
-  // l'adresse de la page (un rechargement ne doit pas la redemander).
-  function oublierFiche() {
-    window.history.replaceState({}, '', window.location.pathname)
-    setEtat((e) => ({ ...e, fiche: null }))
-  }
-
   function recommencer() {
     setInscription(null)
     setMessageEchecPaiement(null)
@@ -109,6 +103,31 @@ export default function App() {
             ? 'Vérification du paiement en cours…'
             : 'Chargement du formulaire…'}
         </p>
+      </div>
+    )
+  }
+
+  // Fiche papier : l'élève est dans la liste officielle, pas de paiement.
+  if (etat.statut === 'eleve-enregistre') {
+    const { eleve } = etat
+    return (
+      <div className="page">
+        <div className="section">
+          <h2>Élève enregistré ✅</h2>
+          <p>
+            <strong>{eleve.eleve_prenom} {eleve.eleve_nom}</strong> est inscrit(e) pour la saison{' '}
+            <strong>{eleve.saison}</strong> et figure dans la liste des élèves (Admin &gt; Élèves).
+          </p>
+          <p>
+            {eleve.mail_envoye
+              ? `Un mail avec le dossier rempli et les photos de la fiche a été envoyé à ${eleve.mail_adresse}.`
+              : "Le mail avec le dossier rempli et les photos de la fiche n'a pas pu être envoyé."}
+          </p>
+          <p>
+            Coût de la lecture : <strong>{formaterCout(eleve.cout_usd)}</strong>
+          </p>
+          <p className="chargement">Vous pouvez fermer cet onglet.</p>
+        </div>
       </div>
     )
   }
@@ -154,7 +173,6 @@ export default function App() {
       ) : etape === 'paiement' && inscription ? (
         <PaiementEtape
           inscription={inscription}
-          parFiche={Boolean(inscription.coutLectureUsd != null)}
           messageEchec={messageEchecPaiement}
           onPaiementParCheque={(resultat) => {
             setInscription((precedente) => ({ ...precedente, ...resultat }))
@@ -168,8 +186,11 @@ export default function App() {
           cours={etat.cours}
           fiche={etat.fiche}
           onAnnuler={() => setEtat({ statut: 'fiche-annulee' })}
+          onEleveEnregistre={(eleve) => {
+            window.history.replaceState({}, '', window.location.pathname)
+            setEtat({ statut: 'eleve-enregistre', eleve })
+          }}
           onSoumis={(resultat) => {
-            if (etat.fiche) oublierFiche()
             setInscription(resultat)
             setMessageEchecPaiement(null)
             setEtape('paiement')

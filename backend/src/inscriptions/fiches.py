@@ -2,9 +2,12 @@
 (OCR) », voir spec/SPEC-inscription.md). Une fiche lue est un BROUILLON :
 les champs proposés et les photos, gardés quelques heures dans le dossier
 de l'école, le temps que l'admin les corrige dans le formulaire
-d'inscription en ligne. À la validation, l'inscription suit le chemin
-habituel (voir inscriptions.py:creer) et les photos de la fiche lui sont
-rattachées, comme preuve.
+d'inscription en ligne. « Enregistrer l'élève » l'ajoute alors
+DIRECTEMENT à la liste officielle des élèves (Admin > Élèves), sans passer
+par les inscriptions en attente ni par le paiement — décision utilisateur
+du 2026-10-02 — et envoie à l'administrateur un mail avec, en pièces jointes, le
+dossier d'inscription rempli (le même PDF que pour une inscription en ligne)
+et les photos de la fiche. Le brouillon est ensuite effacé.
 
 Pas de table : un fichier `fiche-<jeton>.json` et ses pages
 `fiche-<jeton>-<n>.<ext>`. Le jeton, tiré au hasard, sert de clé d'accès
@@ -19,12 +22,21 @@ import logging
 import uuid
 from pathlib import Path
 
+from comptes import Compte
 from cours import CoursService
+from ecoles.models import Ecole
+from eleves import Eleves
 from sqlalchemy.orm import Session
 
 from . import stockage
-from .lecture_fiche import TYPE_PDF, TYPES_IMAGE, LectureFiche, Page
+from .dossier_html import generer_dossier_pdf
+from .email_envoi import EmailEnvoi
 from .models import Inscription
+from .pdf import nom_fichier_dossier
+from .lecture_fiche import TYPE_PDF, TYPES_IMAGE, LectureFiche, Page
+from .saison import saison_des_inscriptions
+from .schemas import InscriptionCreation
+from .tarifs import NB_TRIMESTRES, calculer_tarif
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +60,31 @@ class FicheInvalide(ValueError):
     """Fichiers refusés ; le message est montrable à l'admin."""
 
 
+def _commentaire(donnees: InscriptionCreation) -> str:
+    """Ce que la fiche élève ne sait pas ranger ailleurs : droit à l'image
+    et règlement intérieur, dans le commentaire de l'admin."""
+    if donnees.droit_image_autorise:
+        usages = [
+            libelle
+            for libelle, accorde in (
+                ("site internet", donnees.droit_image_site),
+                ("réseaux sociaux", donnees.droit_image_reseaux),
+                ("affiches", donnees.droit_image_affiches),
+            )
+            if accorde
+        ]
+        image = "Droit à l'image : oui" + (f" ({', '.join(usages)})" if usages else "")
+    else:
+        image = "Droit à l'image : non"
+    reglement = (
+        f"Règlement signé par {donnees.signataire_nom.strip()}"
+        if donnees.reglement_lu_approuve
+        else "Règlement non signé"
+    )
+    jour = dt.date.today().strftime("%d/%m/%Y")
+    return f"Fiche papier du {jour}. {image}. {reglement}."
+
+
 def _jeton_valide(jeton: str) -> bool:
     # Le jeton entre dans un nom de fichier : rien d'autre qu'un UUID.
     try:
@@ -56,10 +93,18 @@ def _jeton_valide(jeton: str) -> bool:
         return False
 
 
+class EleveDejaInscrit(Exception):
+    """Un élève de l'école porte déjà ce nom et ce prénom."""
+
+
 class FichesPapier:
-    def __init__(self, cours: CoursService, lecture: LectureFiche | None = None) -> None:
+    def __init__(
+        self, cours: CoursService, eleves: Eleves, lecture: LectureFiche | None = None
+    ) -> None:
         self.cours = cours
+        self.eleves = eleves
         self.lecture = lecture or LectureFiche()
+        self.email = EmailEnvoi()
 
     def lire(self, db: Session, ecole_id: int, pages: list[Page]) -> dict:
         """Fait lire la fiche et enregistre le brouillon. Lève FicheInvalide
@@ -159,20 +204,128 @@ class FichesPapier:
         for fichier in chemin.parent.glob(f"fiche-{jeton}*"):
             fichier.unlink(missing_ok=True)
 
-    def rattacher(self, jeton: str, inscription: Inscription) -> None:
-        """Inscription validée : les photos de la fiche portent désormais
-        son nom (`<token>-fiche-<n>.<ext>`), le brouillon est effacé."""
-        chemin = self._chemin(jeton)
-        if chemin is None:
-            return
-        brouillon = json.loads(chemin.read_text(encoding="utf-8"))
-        for numero, page in enumerate(brouillon["pages"], start=1):
-            source = chemin.parent / page["nom"]
-            if source.exists():
-                source.rename(
-                    chemin.parent / f"{inscription.token_public}-fiche-{numero}{source.suffix}"
-                )
-        chemin.unlink(missing_ok=True)
+    def enregistrer_eleve(
+        self, db: Session, jeton: str, donnees: InscriptionCreation, malgre_homonyme: bool = False
+    ) -> dict | None:
+        """Ajoute l'élève à la liste officielle de l'école, avec ses cours
+        et son contact d'urgence, prévient l'administrateur par mail (photos
+        de la fiche jointes), puis efface le brouillon. `None` si le
+        brouillon n'existe plus."""
+        brouillon = self.obtenir(jeton)
+        if brouillon is None:
+            return None
+        ecole_id = brouillon["ecole_id"]
+        nom, prenom = donnees.eleve_nom.strip(), donnees.eleve_prenom.strip()
+        if not malgre_homonyme and self.eleves.comptes.trouver_par_nom_prenom(
+            db, ecole_id, nom, prenom, role="eleve"
+        ):
+            raise EleveDejaInscrit()
+
+        cours_ecole = {c.id: c.nom for c in self.cours.list(db, ecole_id)}
+        cours_ids = [cid for cid in dict.fromkeys(donnees.cours_ids) if cid in cours_ecole]
+        tarif = calculer_tarif(
+            [cours_ecole[cid] for cid in cours_ids],
+            reduction_famille=donnees.reduction_famille_demandee,
+        )
+        compte, _ = self.eleves.create(
+            db,
+            ecole_id=ecole_id,
+            nom=nom,
+            prenom=prenom,
+            email=(donnees.eleve_email or "").strip() or None,
+            telephone=donnees.eleve_telephone,
+            date_naissance=donnees.eleve_date_naissance,
+            adresse=donnees.eleve_adresse,
+            allergies=donnees.allergies,
+            traitement_medical=donnees.traitement_medical,
+            informations_importantes=donnees.informations_importantes,
+            montant_total_annee=tarif.montant_adhesion + tarif.montant_trimestriel * NB_TRIMESTRES,
+            commentaire_admin=_commentaire(donnees),
+        )
+        for cours_id in cours_ids:
+            self.cours.inscrire_eleve(db, cours_id, compte.id)
+        if donnees.contact_urgence_nom or donnees.contact_urgence_prenom or donnees.contact_urgence_telephone:
+            self.eleves.ajouter_contact(
+                db,
+                compte.id,
+                nom=donnees.contact_urgence_nom,
+                prenom=donnees.contact_urgence_prenom,
+                lien=donnees.contact_urgence_lien,
+                telephone=donnees.contact_urgence_telephone,
+            )
+
+        saison = saison_des_inscriptions(db, ecole_id)
+        ecole = db.get(Ecole, ecole_id)
+        nom_ecole = ecole.nom if ecole is not None else "Contretemps"
+        dossier_pdf = self._dossier_pdf(compte, donnees, saison, [cours_ecole[cid] for cid in cours_ids])
+        mail_envoye = self._prevenir_admin(compte, saison, nom_ecole, brouillon, dossier_pdf)
+        self.supprimer(jeton)
+        return {
+            "eleve_id": compte.id,
+            "eleve_nom": compte.nom,
+            "eleve_prenom": compte.prenom,
+            "saison": saison,
+            "mail_envoye": mail_envoye,
+            "mail_adresse": self.email.adresse_admin if mail_envoye else None,
+            "cout_usd": brouillon["cout_usd"],
+        }
+
+    def _dossier_pdf(
+        self, compte: Compte, donnees: InscriptionCreation, saison: str, noms_cours: list[str]
+    ) -> tuple[str, bytes] | None:
+        """Le même dossier PDF que celui d'une inscription en ligne (voir
+        dossier_html.py), avec les champs validés par l'admin. Il se
+        fabrique à partir d'une inscription : on lui en présente une,
+        jamais enregistrée. Jamais bloquant."""
+        try:
+            fictive = Inscription(
+                **donnees.model_dump(exclude={"cours_ids", "reduction_famille_demandee"}),
+                id=compte.id,
+                saison=saison,
+                created_at=dt.datetime.now(dt.UTC),
+                ip_soumission=None,
+                alerte_palier_mixte=False,
+            )
+            return nom_fichier_dossier(fictive), generer_dossier_pdf(fictive, noms_cours, None)
+        except Exception:
+            logger.exception("Dossier PDF non généré pour la fiche papier (élève %s)", compte.id)
+            return None
+
+    def _prevenir_admin(
+        self,
+        compte: Compte,
+        saison: str,
+        nom_ecole: str,
+        brouillon: dict,
+        dossier_pdf: tuple[str, bytes] | None,
+    ) -> bool:
+        """Jamais bloquant : l'élève est déjà enregistré."""
+        if not self.email.actif:
+            return False
+        try:
+            dossier = stockage.dossier_ecole(brouillon["ecole_id"])
+            pieces = [dossier_pdf] if dossier_pdf else []
+            for numero, page in enumerate(brouillon["pages"], start=1):
+                chemin = dossier / page["nom"]
+                if chemin.exists():
+                    pieces.append((f"fiche-{numero}{chemin.suffix}", chemin.read_bytes()))
+            nom_complet = f"{compte.prenom} {compte.nom}"
+            self.email.envoyer_confirmation(
+                self.email.adresse_admin,
+                # Titre demandé par l'utilisateur (2026-10-02).
+                f"Inscription papier validée de {nom_complet} à l'école {nom_ecole} pour la saison {saison}",
+                (
+                    f"Bonjour,\n\nL'élève {nom_complet} est désormais inscrit(e) pour la saison "
+                    f"{saison} de {nom_ecole}, à partir de sa fiche d'inscription papier. Il ou elle figure "
+                    "dans la liste des élèves de l'application.\n\nEn pièces jointes : "
+                    "le dossier d'inscription rempli, et les photos de la fiche papier."
+                ),
+                pieces,
+            )
+            return True
+        except Exception:
+            logger.exception("Mail d'inscription par fiche papier non envoyé (élève %s)", compte.id)
+            return False
 
     def _purger(self, ecole_id: int) -> None:
         """Brouillons abandonnés depuis plus de 24 heures."""

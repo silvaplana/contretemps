@@ -20,9 +20,9 @@ class InscriptionCreation(BaseModel):
     eleve_telephone: str | None = None
     # Obligatoire pour une famille (voir FormulaireInscription.jsx) : sert
     # à recevoir la confirmation ET, si HelloAsso est choisi, à payer (voir
-    # inscriptions.py:initier_paiement_helloasso — payer.email). Seule
-    # exception, vérifiée dans receiver.py:creer : une fiche papier saisie
-    # par un admin, qui peut ne pas porter d'email.
+    # inscriptions.py:initier_paiement_helloasso — payer.email), ce que
+    # vérifie receiver.py:creer. Facultatif seulement pour une fiche
+    # papier saisie par un admin (receiver.py:enregistrer_eleve).
     eleve_email: str | None = None
 
     cours_ids: list[int]
@@ -135,4 +135,17 @@ class FicheBrouillonSortie(BaseModel):
     champs_douteux: list[str]
     remarques: str | None
     types_pages: list[str]
+    cout_usd: float
+
+
+class EleveEnregistreSortie(BaseModel):
+    """Élève ajouté à la liste officielle à partir d'une fiche papier
+    (voir fiches.py:enregistrer_eleve)."""
+
+    eleve_id: int
+    eleve_nom: str
+    eleve_prenom: str
+    saison: str
+    mail_envoye: bool
+    mail_adresse: str | None
     cout_usd: float
