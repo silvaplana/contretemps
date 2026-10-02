@@ -5,7 +5,6 @@ import {
   supprimerFiche,
   uploaderPhotoEleve,
 } from './api/backend.js'
-import { formaterCout } from './cout.js'
 import { COURS_PUBLICS } from './coursPublics.js'
 import { calculerTarifIndicatif, LIBELLE_PALIER } from './tarifs.js'
 
@@ -286,9 +285,6 @@ export default function FormulaireInscription({
             incertaine.
           </p>
           {fiche.remarques && <p className="alerte">{fiche.remarques}</p>}
-          <p>
-            Coût de la lecture : <strong>{formaterCout(fiche.coutUsd)}</strong>
-          </p>
           <details>
             <summary>Voir la fiche ({fiche.pages.length} page{fiche.pages.length > 1 ? 's' : ''})</summary>
             <div className="fiche-lue__pages">
