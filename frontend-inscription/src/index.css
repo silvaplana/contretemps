@@ -361,7 +361,20 @@ h3 {
    bandeau d'explication, et champs dont la lecture est incertaine. --- */
 
 .fiche-lue {
-  border-left: 4px solid var(--accent);
+  border: 2px solid var(--accent);
+}
+
+/* La consigne doit se voir tout de suite (demande utilisateur du 2026-10-02). */
+.fiche-lue__consigne {
+  margin: -16px -16px 12px;
+  padding: 14px 16px;
+  background: var(--accent);
+  color: white;
+  font-family: var(--font-titre);
+  font-size: 1.35rem;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 8px 8px 0 0;
 }
 
 .fiche-lue summary {

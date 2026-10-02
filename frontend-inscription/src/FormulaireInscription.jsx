@@ -279,9 +279,9 @@ export default function FormulaireInscription({
 
       {fiche && (
         <section className="section fiche-lue">
-          <h2>Fiche papier lue automatiquement</h2>
+          <p className="fiche-lue__consigne">Vérifiez, corrigez, validez</p>
           <p>
-            Vérifiez chaque champ en le comparant à la fiche. Les champs{' '}
+            Fiche papier lue automatiquement : comparez chaque champ à la fiche. Les champs{' '}
             <span className="fiche-lue__marque">surlignés</span> sont ceux dont la lecture est
             incertaine.
           </p>

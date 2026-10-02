@@ -166,17 +166,17 @@ export default function App() {
 
   return (
     <div className="page">
-      <header className="entete">
-        <h1>
-          Inscription — École de danse <span className="entete__logo">Contretemps</span>
-        </h1>
-        <p>
-          Saison {saisonActuelle()} —{' '}
-          {etat.fiche
-            ? 'fiche papier lue automatiquement : vérifiez, corrigez, puis validez.'
-            : 'remplissez ce formulaire pour inscrire votre élève.'}
-        </p>
-      </header>
+      {/* Fiche papier : pas d'en-tête, la consigne « Vérifiez, corrigez,
+          validez » doit être la première chose vue (voir
+          FormulaireInscription.jsx). */}
+      {!etat.fiche && (
+        <header className="entete">
+          <h1>
+            Inscription — École de danse <span className="entete__logo">Contretemps</span>
+          </h1>
+          <p>Saison {saisonActuelle()} — remplissez ce formulaire pour inscrire votre élève.</p>
+        </header>
+      )}
 
       {etape === 'confirmation' && inscription ? (
         <Confirmation resultat={inscription} onNouvelleInscription={recommencer} />
