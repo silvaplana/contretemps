@@ -118,15 +118,18 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
         La fiche d’inscription est en recto verso : il faut <strong>2 photos</strong>, une par face,
         bien à plat et nettes.
       </p>
-      {FACES.map((face) => (
-        <FaceFiche
-          key={face.cle}
-          face={face}
-          fichier={fichiers[face.cle]}
-          desactive={enCours}
-          onChoisir={(fichier) => choisir(face.cle, fichier)}
-        />
-      ))}
+      {/* Recto et verso côte à côte (demande utilisateur du 2026-10-02). */}
+      <div className="ocr__faces">
+        {FACES.map((face) => (
+          <FaceFiche
+            key={face.cle}
+            face={face}
+            fichier={fichiers[face.cle]}
+            desactive={enCours}
+            onChoisir={(fichier) => choisir(face.cle, fichier)}
+          />
+        ))}
+      </div>
       {fichiers.recto && !fichiers.verso && !enCours && (
         <p className="muted">
           Sans le verso, le droit à l’image et le règlement intérieur seront à remplir à la main.

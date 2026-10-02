@@ -5,7 +5,9 @@ import Icon from './Icon.jsx'
 
 // Menu ⋮ d'un écran, placé dans l'en-tête à droite du badge (voir
 // ActionsEntete.jsx) — même présentation que celui d'Admin > École
-// (SauvegardeEcoleMenu.jsx). `actions` : [{ label, icon, onClick }].
+// (SauvegardeEcoleMenu.jsx). `actions` : [{ label, icon, onClick,
+// groupeAvecSuivante }] ; `groupeAvecSuivante` retire le trait de séparation
+// sous une entrée de même nature que la suivante.
 export default function MenuEntete({ label, actions }) {
   const [ouvert, setOuvert] = useState(false)
   const menuRef = useRef(null)
@@ -23,6 +25,7 @@ export default function MenuEntete({ label, actions }) {
               <button
                 key={action.label}
                 type="button"
+                className={action.groupeAvecSuivante ? 'header-menu__groupe' : undefined}
                 onClick={() => {
                   setOuvert(false)
                   action.onClick()

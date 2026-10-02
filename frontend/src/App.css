@@ -2924,12 +2924,24 @@
 
 /* --- Ajouter élève (OCR) : voir screens/admin/AjoutEleveOcr.jsx --- */
 
+.dropdown-menu button.header-menu__groupe {
+  border-bottom: none;
+}
+
+.ocr__faces {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0;
+  align-items: start;
+}
+
 .ocr__face {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px;
-  margin: 12px 0;
+  padding: 10px;
+  min-width: 0;
   border: 1px solid var(--border);
   border-radius: 12px;
 }
@@ -2942,14 +2954,13 @@
 
 .ocr__boutons {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
 
 .ocr__boutons .btn {
-  flex: 1 1 110px;
-  padding-left: 12px;
-  padding-right: 12px;
+  padding-left: 10px;
+  padding-right: 10px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2964,7 +2975,7 @@
 }
 
 .ocr__apercu img {
-  max-width: 120px;
+  max-width: min(120px, calc(100% - 44px));
   max-height: 160px;
   border-radius: 8px;
   border: 1px solid var(--border);
