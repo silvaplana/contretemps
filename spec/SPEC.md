@@ -133,7 +133,7 @@ Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'
 3. **Un seul mail par adresse**, même si elle porte plusieurs profils : « L'école Contretemps
    vous invite sur l'application. Profils : Léa, Tom. [Créer mon mot de passe] ».
 4. **Le lien** : `https://silvaplana.cloud/contretemps/activer?jeton=…`, à usage unique,
-   valable **7 jours**, stocké haché en base (§6.3ter). Un admin peut le renvoyer, ce qui
+   valable **15 jours** (décision du 2026-10-02), personnel et à usage unique, stocké haché en base (§6.3ter). Un admin peut le renvoyer, ce qui
    annule le précédent.
 5. **Le clic** ouvre directement l'appli Android si elle est installée (lien profond, voir
    plus bas). Sinon, la même page s'ouvre dans le navigateur (c'est la même appli web), et
@@ -940,7 +940,7 @@ le rattache à une autre ligne, qu'il faudra inviter. Le Superuser y a aussi sa 
 | acces_email_id | FK → acces_emails | Obl. |
 | type | `invitation` ou `reinitialisation` | Obl. |
 | jeton_hache | texte (seul le haché est stocké) | Obl. |
-| expire_le | datetime (7 jours / 1 heure) | Obl. |
+| expire_le | datetime (15 jours / 1 heure) | Obl. |
 | utilise_le | datetime | Opt. |
 | ecole_id | FK → écoles (école qui invite) | Opt. |
 | created_at | datetime | Obl. (auto) |

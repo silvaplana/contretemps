@@ -288,7 +288,7 @@ def test_un_nouveau_lien_annule_le_precedent_et_un_lien_expire(client, db_sessio
     assert client.get(f"/auth/liens/{second}").status_code == 200
 
     lien = db_session.query(LienInvitationReinit).one()
-    assert timedelta(days=6, hours=23) < lien.expire_le - maintenant() <= timedelta(days=7)
+    assert timedelta(days=14, hours=23) < lien.expire_le - maintenant() <= timedelta(days=15)
     lien.expire_le = maintenant() - timedelta(minutes=1)
     db_session.commit()
     assert client.get(f"/auth/liens/{second}").status_code == 404

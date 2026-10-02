@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from .models import INVITATION, REINITIALISATION, LienInvitationReinit, AccesEmail, maintenant
 
 LONGUEUR_MIN = 8  # au moins 8 caractères, sans autre règle (§2.2)
-DUREES = {INVITATION: timedelta(days=7), REINITIALISATION: timedelta(hours=1)}
+DUREES = {INVITATION: timedelta(days=15), REINITIALISATION: timedelta(hours=1)}
 
 # Statuts du suivi de l'invitation (§2.2), dans l'ordre des étapes.
 PAS_EMAIL = "pas_email"

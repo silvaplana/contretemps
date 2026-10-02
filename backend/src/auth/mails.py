@@ -66,7 +66,8 @@ class MailsAcces:
             "Activer mon accès",
             self.lien("activer", jeton),
             [
-                "Ce lien est valable 7 jours et ne peut servir qu'une fois.",
+                "Ce lien vous est personnel : ne le transférez à personne. Il est valable "
+                "15 jours et ne fonctionne qu'une seule fois.",
                 f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
             ],
