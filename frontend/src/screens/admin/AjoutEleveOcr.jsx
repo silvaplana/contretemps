@@ -50,7 +50,7 @@ export default function AjoutEleveOcr({ ecoleId, onClose }) {
 
   if (lue) {
     return (
-      <Modal title="Ajouter élève (OCR)" onClose={annuler}>
+      <Modal title="Inscription élève (OCR)" onClose={annuler}>
         <p>
           <strong>Fiche lue.</strong>{' '}
           {lue.nbChampsDouteux > 0
@@ -78,7 +78,7 @@ export default function AjoutEleveOcr({ ecoleId, onClose }) {
 
   return (
     <Modal
-      title="Ajouter élève (OCR)"
+      title="Inscription élève (OCR)"
       onClose={onClose}
       footer={
         <button

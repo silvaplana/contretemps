@@ -263,8 +263,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
       <MenuEntete
         label="Menu Élèves"
         actions={[
-          { label: 'Inscription élève', icon: 'users', onClick: ouvrirInscriptionEleve },
-          { label: 'Ajouter élève (OCR)', icon: 'camera', onClick: () => setOcrOuvert(true) },
+          { label: 'Inscription élève (web)', icon: 'users', onClick: ouvrirInscriptionEleve },
+          { label: 'Inscription élève (OCR)', icon: 'camera', onClick: () => setOcrOuvert(true) },
         ]}
       />
       {ocrOuvert && <AjoutEleveOcr ecoleId={ecoleId} onClose={() => setOcrOuvert(false)} />}
