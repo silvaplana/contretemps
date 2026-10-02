@@ -171,3 +171,15 @@ def test_une_case_cochee_vaut_autorisation_du_droit_a_l_image(client, ecole_et_c
     brouillon = client.get(f"/inscriptions/fiches/{_lire(client, ecole).json()['jeton']}").json()
     assert brouillon["donnees"]["droit_image_autorise"] is False
     assert "droit_image_autorise" in brouillon["champs_douteux"]
+
+
+def test_paiement_en_especes_finalise_tout_de_suite(client, ecole_et_cours):
+    ecole, cours = ecole_et_cours
+    token = client.post(
+        "/inscriptions", params={"ecole_id": ecole.id}, json=_donnees_formulaire([cours["Éveil"].id])
+    ).json()["token_public"]
+    reponse = client.post(
+        f"/inscriptions/{token}/paiement/choix", json={"moyen_paiement": "especes", "paiement_nb_echeances": 3}
+    )
+    assert reponse.status_code == 200 and reponse.json()["moyen_paiement"] == "especes"
+    assert client.get(f"/inscriptions/{token}/facture.pdf").status_code == 200

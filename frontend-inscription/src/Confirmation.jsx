@@ -2,7 +2,7 @@ import { urlDossierPdf, urlFacturePdf } from './api/backend.js'
 import { formaterCout } from './cout.js'
 import { LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
-const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', helloasso: 'Carte bancaire' }
+const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', especes: 'Espèces', helloasso: 'Carte bancaire' }
 
 // Écran final (étape 3, voir spec/SPEC-inscription.md) : affiché
 // uniquement une fois le paiement réellement acquis — chèque confirmé
@@ -95,6 +95,21 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
               "en 1 chèque, remis avec celui de l'adhésion."
             )}{' '}
             Les chèques sont à mettre à l'ordre de Contretemps et à remettre à l'école.
+          </>
+        )}
+        {resultat.moyen_paiement === 'especes' && (
+          <>
+            {' '}: {resultat.montant_adhesion} € à l'inscription, puis le solde de{' '}
+            {montantTroisTrimestres} €{' '}
+            {resultat.paiement_nb_echeances === 3 ? (
+              <>
+                en 3 versements de {resultat.montant_trimestriel} € chacun, en début de trimestre en{' '}
+                {moisEncaissementsAVenir(resultat.saison).join(', ') || 'ce mois-ci'}.
+              </>
+            ) : (
+              "en 1 fois, remis avec l'adhésion."
+            )}{' '}
+            Les espèces sont à remettre à l'école.
           </>
         )}
         {resultat.moyen_paiement === 'helloasso' && (

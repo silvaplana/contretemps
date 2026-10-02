@@ -169,7 +169,7 @@ class Inscriptions:
         finalisation (PDF/Excel/email) a lieu tout de suite. HelloAsso :
         seul le choix est enregistré ici, la finalisation attend la
         confirmation réelle du paiement (voir verifier_paiement_helloasso)."""
-        if moyen_paiement not in ("cheque", "helloasso"):
+        if moyen_paiement not in ("cheque", "especes", "helloasso"):
             raise ValueError("Moyen de paiement inconnu")
         if paiement_nb_echeances not in (1, 3):
             raise ValueError("paiement_nb_echeances doit être 1 ou 3")
@@ -183,7 +183,8 @@ class Inscriptions:
         db.commit()
         db.refresh(inscription)
 
-        if moyen_paiement == "cheque":
+        # Chèque ou espèces : remis à l'école, rien à attendre en ligne.
+        if moyen_paiement in ("cheque", "especes"):
             self._finaliser(db, inscription)
         return inscription
 

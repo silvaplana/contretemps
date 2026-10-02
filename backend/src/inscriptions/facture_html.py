@@ -176,7 +176,30 @@ def _reglement_html(inscription) -> str:
     "carte bancaire"."""
     if inscription.moyen_paiement == "cheque":
         return _reglement_cheque_html(inscription)
+    if inscription.moyen_paiement == "especes":
+        return _reglement_especes_html(inscription)
     return _reglement_carte_html(inscription)
+
+
+def _reglement_especes_html(inscription) -> str:
+    """Mêmes échéances que le chèque (voir _reglement_cheque_html), remises
+    en espèces à l'école."""
+    lignes = ["Moyen de paiement : <b>Espèces</b>", "À remettre à l'école."]
+    base = f"{_euros(inscription.montant_adhesion)} à l'inscription, puis le solde"
+    mois_a_venir = (
+        mois_encaissements_a_venir(inscription.saison)
+        if inscription.paiement_nb_echeances == 3
+        else []
+    )
+    if mois_a_venir:
+        dates = ", ".join(_libelle_mois(d) for d in mois_a_venir)
+        lignes.append(
+            f"{base} en {len(mois_a_venir)} versements de {_euros(inscription.montant_trimestriel)} "
+            f"chacun, en début de trimestre : {dates}."
+        )
+    else:
+        lignes.append(f"{base} en 1 fois, remis avec l'adhésion.")
+    return "<br>".join(lignes)
 
 
 def _reglement_cheque_html(inscription) -> str:

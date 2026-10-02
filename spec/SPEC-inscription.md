@@ -126,3 +126,4 @@ Pour les familles qui rendent la fiche d'inscription papier, remplie à la main.
 - **Brouillon** : gardé 24 heures au plus, dans le dossier privé de l'école, accessible par un jeton tiré au hasard. Pas de table.
 - **Données personnelles** : la fiche (données d'un enfant, dont santé) est envoyée à Anthropic pour lecture. À mentionner dans le règlement ou sur la fiche.
 - **Droit à l'image** : une case cochée (site, réseaux, affiches) vaut autorisation, même si la mention « J'autorise / Je n'autorise pas » n'est pas rayée.
+- **Espèces** (2026-10-02) : troisième moyen de paiement du formulaire, sous « Chèque », avec les mêmes échéances (1 ou 3 fois) ; remis à l'école, l'inscription est finalisée tout de suite comme pour un chèque. Dans le parcours fiche papier, « Chèque » reste proposé par défaut (la fiche n'indique pas le moyen de paiement).

@@ -33,8 +33,9 @@ export default function PaiementEtape({ inscription, parFiche = false, messageEc
     setErreur(null)
     setEnCours(true)
     try {
-      if (moyen === 'cheque') {
-        const resultat = await choisirPaiement(inscription.token_public, 'cheque', nbEcheances)
+      // Chèque ou espèces : remis à l'école, rien à payer en ligne.
+      if (moyen !== 'helloasso') {
+        const resultat = await choisirPaiement(inscription.token_public, moyen, nbEcheances)
         onPaiementParCheque(resultat)
         return
       }
@@ -152,6 +153,15 @@ export default function PaiementEtape({ inscription, parFiche = false, messageEc
           />
           Chèque
         </label>
+        <label className="paiement-option">
+          <input
+            type="radio"
+            name="paiement"
+            checked={moyen === 'especes'}
+            onChange={() => setMoyen('especes')}
+          />
+          Espèces
+        </label>
       </div>
 
       <div className="sous-cases" style={{ marginTop: 10 }}>
@@ -166,6 +176,20 @@ export default function PaiementEtape({ inscription, parFiche = false, messageEc
               </>
             ) : (
               "en 1 chèque, remis avec celui de l'adhésion."
+            )}
+          </p>
+        )}
+        {moyen === 'especes' && (
+          <p className="champ__aide">
+            {inscription.montant_adhesion} € en espèces à l'inscription, puis le solde de{' '}
+            {montantTroisTrimestres} €{' '}
+            {nbEcheances === 3 ? (
+              <>
+                en 3 versements de {inscription.montant_trimestriel} € chacun, en début de trimestre
+                en {moisEncaissementsAVenir(inscription.saison).join(', ') || 'ce mois-ci'}.
+              </>
+            ) : (
+              "en 1 fois, remis avec l'adhésion."
             )}
           </p>
         )}
@@ -207,6 +231,8 @@ export default function PaiementEtape({ inscription, parFiche = false, messageEc
           ? 'Un instant…'
           : moyen === 'cheque'
             ? 'Confirmer le paiement par chèque'
+            : moyen === 'especes'
+              ? 'Confirmer le paiement en espèces'
             : `Payer par carte bancaire en ${nbEcheances === 3 ? '3 fois' : '1 fois'}`}
       </button>
     </div>
