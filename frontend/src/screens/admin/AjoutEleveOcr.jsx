@@ -200,7 +200,7 @@ function FaceFiche({ face, fichier, desactive, onChoisir }) {
           disabled={desactive}
           onClick={() => galerieRef.current?.click()}
         >
-          <Icon name="camera" size={18} /> Galerie
+          <Icon name="image" size={18} /> Galerie
         </button>
         <button
           type="button"
