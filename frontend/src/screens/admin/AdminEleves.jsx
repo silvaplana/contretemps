@@ -91,6 +91,28 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   // Accès à l'appli (spec §2.2) : colonnes « Inviter » et « Statut ».
   const acces = useAcces(ecoleId)
   const [ocrOuvert, setOcrOuvert] = useState(false)
+
+  // Un élève peut être ajouté depuis un autre onglet (« Inscription élève
+  // (OCR) » ouvre le formulaire à part) : la liste est relue dès qu'on
+  // revient sur l'appli, sans avoir à la recharger.
+  useEffect(() => {
+    let dernier = 0
+    async function relire() {
+      if (document.visibilityState !== 'visible' || Date.now() - dernier < 2000) return
+      dernier = Date.now()
+      try {
+        setEleves(await elevesApi.lister(ecoleId))
+      } catch {
+        // Hors ligne : la liste affichée reste en place.
+      }
+    }
+    document.addEventListener('visibilitychange', relire)
+    window.addEventListener('focus', relire)
+    return () => {
+      document.removeEventListener('visibilitychange', relire)
+      window.removeEventListener('focus', relire)
+    }
+  }, [ecoleId, setEleves])
   // Élève ajouté, supprimé, ou email changé : les statuts sont relus (un
   // email modifié rattache la fiche à une autre adresse, à inviter).
   const emails = eleves.map((el) => `${el.id}:${el.email ?? ''}`).join('|')
