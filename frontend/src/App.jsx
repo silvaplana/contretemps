@@ -51,6 +51,13 @@ const ECOLE_VIDE = {
   codePostal: '',
 }
 
+// Onglet sur lequel ouvrir l'appli : le dernier affiché sur cet appareil
+// (voir api/session.js), s'il est permis à ce profil ; sinon les messages.
+function ongletDeDepart(compte) {
+  const tab = TABS.find((t) => t.key === sessionApi.lireEcran('onglet'))
+  return tab && aUnDesRoles(compte, tab.roles) ? tab.key : 'messagerie'
+}
+
 function App() {
   const [loggedIn, setLoggedIn] = useState(false)
   // Écran plein écran d'installation (voir screens/InstallationScreen.jsx) —
@@ -183,10 +190,7 @@ function App() {
           setEcole(ecoleRestauree ?? ECOLE_VIDE)
           // Onglet retenu mais plus permis à ce profil (rôle retiré...) :
           // retour aux messages.
-          setActiveTab((onglet) => {
-            const tab = TABS.find((t) => t.key === onglet)
-            return tab && aUnDesRoles(compte, tab.roles) ? onglet : 'messagerie'
-          })
+          setActiveTab(ongletDeDepart(compte))
           setLoggedIn(true)
           const proposerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
           if (compteIdHandoff != null) {
@@ -850,7 +854,9 @@ function App() {
     saisonApi.consulterSaison(null)
     setCompteReel(resultat.compte)
     setEcole(resultat.ecole ?? ECOLE_VIDE)
-    setActiveTab('messagerie')
+    // Même après une reconnexion (session expirée, déconnexion), on repart
+    // du dernier onglet affiché sur cet appareil.
+    setActiveTab(ongletDeDepart(resultat.compte))
     setLoggedIn(true)
     // Si l'appli tourne déjà en standalone à cet instant (rare pour
     // une connexion EXPLICITE, mais possible après une déconnexion

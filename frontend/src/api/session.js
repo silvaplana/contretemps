@@ -80,9 +80,9 @@ export function effacerCompteSauvegarde() {
     localStorage.removeItem(CLE)
     localStorage.removeItem(CLE_JETON)
     localStorage.removeItem(CLE_ECOLE_CHOISIE)
-    for (const cle of Object.keys(localStorage)) {
-      if (cle.startsWith(PREFIXE_ECRAN)) localStorage.removeItem(cle)
-    }
+    // Le dernier écran (PREFIXE_ECRAN) est volontairement conservé : une
+    // session expirée (12 heures pour le Superuser) ne doit pas faire
+    // repartir des messages à chaque reconnexion.
   } catch {
     // Idem.
   }
