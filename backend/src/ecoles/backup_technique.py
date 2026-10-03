@@ -28,7 +28,7 @@ import io
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from choregraphies.models import Choregraphie, choregraphies_eleves
+from choregraphies.models import Choregraphie, choregraphies_eleves, choregraphies_videos
 from comptes import roles
 from comptes.models import Compte, Famille, RoleCompte
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
@@ -283,10 +283,23 @@ def _construire_tables() -> list[_Table]:
             "Videos",
             Video,
             [
-                "id", "cours_id", "choregraphie_id", "nom", "description", "lien_fichier",
-                "poster", "date_publication", "uploaded_by", "duree_secondes", "ordre",
+                "id", "ecole_id", "saison_id", "nom", "description", "lien_fichier",
+                "poster", "date_publication", "uploaded_by", "duree_secondes",
             ],
-            lambda db, eid: list(db.scalars(select(Video).where(Video.cours_id.in_(_sous_requete_cours_ecole(eid))))),
+            lambda db, eid: list(db.scalars(select(Video).where(Video.ecole_id == eid))),
+            colonne_ecole_id="ecole_id",
+        ),
+        _Table(
+            # Vidéos de chaque chorégraphie, dans l'ordre (les vidéos
+            # elles-mêmes ne connaissent pas les chorégraphies).
+            "ChoregraphiesVideos",
+            choregraphies_videos,
+            ["choregraphie_id", "video_id", "ordre"],
+            lambda db, eid: db.execute(
+                select(choregraphies_videos).where(
+                    choregraphies_videos.c.choregraphie_id.in_(_sous_requete_choregraphies_ecole(eid))
+                )
+            ).all(),
         ),
     ]
 
@@ -451,6 +464,10 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
     # dans une colonne "role" de l'onglet Comptes, pas d'onglet
     # RolesComptes. Relu ici puis converti en fin de restauration.
     ancien_role_par_compte: dict[int, str] = {}
+    # Sauvegarde d'avant le module vidéo générique (2026-10-03) : chaque
+    # vidéo portait son cours et sa chorégraphie, pas d'onglet
+    # ChoregraphiesVideos. Relu ici, converti au fil de la restauration.
+    anciens_liens_videos: list[dict] = []
 
     for table in _construire_tables():
         if table.feuille not in classeur.sheetnames:
@@ -466,6 +483,17 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
                 champs[table.colonne_ecole_id] = ecole.id
             if table.objet is Compte and "role" in champs:
                 ancien_role_par_compte[champs["id"]] = champs.pop("role")
+            if table.objet is Video and "cours_id" in champs:
+                cours = db.get(Cours, champs["cours_id"])
+                champs.setdefault("saison_id", cours.saison_id if cours is not None else None)
+                if champs.get("choregraphie_id") is not None:
+                    anciens_liens_videos.append(
+                        {
+                            "choregraphie_id": champs["choregraphie_id"],
+                            "video_id": champs["id"],
+                            "ordre": champs.get("ordre") or 0,
+                        }
+                    )
             # Colonnes disparues depuis la sauvegarde (ex. code de
             # récupération, retiré le 2026-10-01) : ignorées.
             connues = table.objet.c if isinstance(table.objet, Table) else table.objet.__table__.c
@@ -480,6 +508,9 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
                 db.add(table.objet(**champs))
         db.flush()
 
+    if anciens_liens_videos and "ChoregraphiesVideos" not in classeur.sheetnames:
+        db.execute(choregraphies_videos.insert(), anciens_liens_videos)
+        db.flush()
     if ancien_role_par_compte and "RolesComptes" not in classeur.sheetnames:
         _convertir_anciens_roles(db, ancien_role_par_compte)
 

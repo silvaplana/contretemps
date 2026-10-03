@@ -57,8 +57,6 @@ PARENTS: dict[str, tuple[str, str]] = {
     "profils_eleves": ("compte_id", "comptes"),
     "roles_compte": ("compte_id", "comptes"),
     "seances_presence": ("cours_id", "cours"),
-    "televersements_video": ("cours_id", "cours"),
-    "videos": ("cours_id", "cours"),
 }
 
 # Colonnes qui peuvent changer même sur une fiche d'une ancienne saison :

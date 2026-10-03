@@ -155,12 +155,15 @@ ecoles_receiver = EcolesReceiver(
 )
 
 # Monte les routes des choregraphies (/cours/{id}/choregraphies, /choregraphies/...) - depend de cours.
-choregraphies_client = Choregraphies(cours=cours_client)
+# Module generique (voir videos/models.py) : aucune dependance metier. Monte
+# AVANT les choregraphies, qui s'appuient dessus.
+videos_client = Videos()
+videos_receiver = VideosReceiver(client=videos_client, app=app)
+
+choregraphies_client = Choregraphies(cours=cours_client, videos=videos_client)
 choregraphies_receiver = ChoregraphiesReceiver(client=choregraphies_client, app=app)
 
 # Monte les routes des videos (/cours/{id}/videos, /choregraphies/{id}/videos, /videos/...).
-videos_client = Videos(cours=cours_client)
-videos_receiver = VideosReceiver(client=videos_client, app=app)
 
 # Sert les fichiers video eux-memes en statique (un dossier par ecole,
 # voir videos/stockage.py) - videos.lien_fichier stocke le chemin relatif

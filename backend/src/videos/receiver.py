@@ -1,5 +1,11 @@
 """Routes REST des vidéos — reçoit les requêtes HTTP, délègue tout à
 Videos (voir videos.py), ne fait aucun calcul métier ici.
+
+Module générique (voir models.py) : ces routes ne couvrent que ce qui ne
+dépend d'aucun métier — envoyer un fichier, lire une vidéo, l'administrer.
+Créer une vidéo à partir d'un envoi, et décider qui peut la modifier ou la
+supprimer en dehors des admins, revient au métier qui la rattache à ses
+objets (pour Contretemps : choregraphies/receiver.py).
 """
 
 from comptes import Compte, rbac
@@ -9,12 +15,9 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .schemas import (
-    FinaliserVideoEntree,
-    ReordonnerVideos,
     TeleversementCreation,
     TeleversementSortie,
     UsageVideosEcole,
-    VideoCreation,
     VideoModification,
     VideoSortie,
 )
@@ -28,19 +31,11 @@ class VideosReceiver:
         self._register_routes()
 
     def _register_routes(self) -> None:
-        self.app.get("/cours/{cours_id}/videos", response_model=list[VideoSortie])(
-            self.lister_par_cours
-        )
+        # Upload par blocs (voir videos.py : Televersement). Dans l'ordre
+        # d'utilisation : ouvrir la session, y écrire des blocs. La vidéo
+        # elle-même est créée par le métier (clic "Ajouter").
         self.app.post(
-            "/cours/{cours_id}/videos", response_model=VideoSortie, status_code=201
-        )(self.creer)
-        # Upload par blocs (voir videos.py : Televersement) — mutualisé
-        # entre l'écran Vidéo et le détail d'une chorégraphie (même
-        # AddVideoModal.jsx côté frontend). 3 routes séparées, dans
-        # l'ordre d'utilisation : ouvrir la session, y écrire des blocs,
-        # créer la ligne Video (au clic "Ajouter", même si pas fini).
-        self.app.post(
-            "/cours/{cours_id}/videos/televersements",
+            "/ecoles/{ecole_id}/videos/televersements",
             response_model=TeleversementSortie,
             status_code=201,
         )(self.ouvrir_televersement)
@@ -53,17 +48,6 @@ class VideosReceiver:
         self.app.delete("/videos/televersements/{upload_id}", status_code=204)(
             self.annuler_televersement
         )
-        self.app.post(
-            "/cours/{cours_id}/videos/depuis-televersement",
-            response_model=VideoSortie,
-            status_code=201,
-        )(self.finaliser)
-        self.app.get(
-            "/choregraphies/{choregraphie_id}/videos", response_model=list[VideoSortie]
-        )(self.lister_par_choregraphie)
-        self.app.put(
-            "/choregraphies/{choregraphie_id}/videos/ordre", status_code=204
-        )(self.reordonner)
 
         self.app.get("/videos/{video_id}", response_model=VideoSortie)(self.obtenir)
         self.app.put("/videos/{video_id}", response_model=VideoSortie)(self.modifier)
@@ -76,24 +60,15 @@ class VideosReceiver:
             dependencies=[Depends(self._admin_ecole)],
         )(self.usage)
 
-    def lister_par_cours(self, cours_id: int, db: Session = Depends(get_db)):
-        return self.client.list_par_cours(db, cours_id)
-
-    def lister_par_choregraphie(self, choregraphie_id: int, db: Session = Depends(get_db)):
-        return self.client.list_par_choregraphie(db, choregraphie_id)
-
-    def creer(self, cours_id: int, donnees: VideoCreation, db: Session = Depends(get_db)):
-        return self.client.create(db, cours_id, **donnees.model_dump())
-
     def ouvrir_televersement(
-        self, cours_id: int, donnees: TeleversementCreation, db: Session = Depends(get_db)
+        self,
+        ecole_id: int,
+        donnees: TeleversementCreation,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        televersement = self.client.creer_televersement(
-            db, cours_id, donnees.extension, donnees.octets_total
-        )
-        if televersement is None:
-            raise HTTPException(status_code=404, detail="Cours introuvable")
-        return televersement
+        rbac.require_membre(appelant, ecole_id)
+        return self.client.creer_televersement(db, ecole_id, donnees.extension, donnees.octets_total)
 
     async def ecrire_bloc(self, upload_id: str, request: Request, db: Session = Depends(get_db)):
         donnees = await request.body()
@@ -121,43 +96,44 @@ class VideosReceiver:
         if not self.client.annuler_televersement(db, upload_id):
             raise HTTPException(status_code=404, detail="Envoi introuvable")
 
-    def finaliser(
-        self, cours_id: int, donnees: FinaliserVideoEntree, db: Session = Depends(get_db)
-    ):
-        video = self.client.finaliser(
-            db,
-            cours_id,
-            donnees.upload_id,
-            nom=donnees.nom,
-            uploaded_by=donnees.uploaded_by,
-            description=donnees.description or "",
-            choregraphie_id=donnees.choregraphie_id,
-        )
-        if video is None:
-            raise HTTPException(status_code=404, detail="Envoi introuvable")
-        return video
-
-    def obtenir(self, video_id: int, db: Session = Depends(get_db)):
+    def _video(self, db: Session, video_id: int):
         video = self.client.get(db, video_id)
         if video is None:
             raise HTTPException(status_code=404, detail="Vidéo introuvable")
         return video
 
-    def modifier(self, video_id: int, donnees: VideoModification, db: Session = Depends(get_db)):
-        video = self.client.update(db, video_id, **donnees.model_dump(exclude_unset=True))
-        if video is None:
-            raise HTTPException(status_code=404, detail="Vidéo introuvable")
+    def obtenir(
+        self,
+        video_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        video = self._video(db, video_id)
+        rbac.require_membre(appelant, video.ecole_id)
         return video
 
-    def supprimer(self, video_id: int, db: Session = Depends(get_db)):
-        if not self.client.delete(db, video_id):
-            raise HTTPException(status_code=404, detail="Vidéo introuvable")
+    # Modifier ou supprimer une vidéo par son seul numéro : réservé aux
+    # admins de son école (panneau "Usage vidéo"). Les autres passent par
+    # le métier, qui applique ses propres règles.
 
-    def reordonner(
-        self, choregraphie_id: int, donnees: ReordonnerVideos, db: Session = Depends(get_db)
+    def modifier(
+        self,
+        video_id: int,
+        donnees: VideoModification,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        self.client.reordonner(db, choregraphie_id, donnees.ordre_video_ids)
+        rbac.require_admin(appelant, self._video(db, video_id).ecole_id)
+        return self.client.update(db, video_id, **donnees.model_dump(exclude_unset=True))
 
+    def supprimer(
+        self,
+        video_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        rbac.require_admin(appelant, self._video(db, video_id).ecole_id)
+        self.client.delete(db, video_id)
 
     # --- RBAC (spec §2.4) : l'école que touche chaque route protégée, la
     # règle elle-même étant dans comptes/rbac.py. ---

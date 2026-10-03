@@ -232,7 +232,7 @@ def test_supprimer_une_ancienne_saison(client, db_session, ecole_en_cours, sauve
     ecole_id = e["ecole"].id
     fichier = dossier_ecole(ecole_id) / "ancienne.mp4"
     fichier.write_bytes(b"x")
-    db_session.add(Video(cours_id=e["jazz"].id, nom="Filage", lien_fichier=f"{ecole_id}/ancienne.mp4", uploaded_by=e["owner"].id))
+    db_session.add(Video(ecole_id=ecole_id, nom="Filage", lien_fichier=f"{ecole_id}/ancienne.mp4", uploaded_by=e["owner"].id))
     db_session.commit()
     nouvelle_id = _creer(client, ecole_id, dupliquer_profs=True, dupliquer_cours=True, dupliquer_eleves=True).json()["saison"]["id"]
 

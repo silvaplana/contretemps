@@ -208,6 +208,18 @@ def require_admin(appelant: Compte, ecole_id: int | None) -> None:
         raise HTTPException(status_code=403, detail="Réservé aux administrateurs de cette école")
 
 
+def require_membre(appelant: Compte | None, ecole_id: int | None) -> None:
+    """L'appelant doit appartenir à `ecole_id` (tous rôles confondus) : ce
+    que chacun peut consulter dans SON école, jamais dans une autre.
+    `appelant=None` : droits neutralisés (tests, voir tests/conftest.py).
+
+    Le Superuser passe toujours (§2.5)."""
+    if appelant is None or roles.is_superuser(appelant):
+        return
+    if ecole_id is not None and appelant.ecole_id != ecole_id:
+        raise HTTPException(status_code=403, detail="Réservé aux membres de cette école")
+
+
 def require_owner(appelant: Compte, ecole_id: int | None) -> None:
     """Comme `require_admin`, et l'appelant doit en plus être Owner de
     l'école : gestion de la liste des administrateurs (§2.4). Le

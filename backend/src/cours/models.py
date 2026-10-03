@@ -37,6 +37,12 @@ class Cours(Base):
     # texte libre, pas un enum fermé (voir §6.5 : permet d'ajouter un
     # nouveau type de cours plus tard sans migration).
     nom: Mapped[str] = mapped_column(String(150), nullable=False)
+    # Discipline (Classique, Jazz...) et niveau (Initiation, Moyen...) :
+    # texte libre, pré-rempli d'après le nom (voir classement.py) puis
+    # modifiable dans Admin > Cours. Le sélecteur de l'écran Chorégraphie
+    # (spec §5.3) filtre sur ces deux champs.
+    discipline: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    niveau: Mapped[str | None] = mapped_column(String(50), nullable=True)
     jour: Mapped[str | None] = mapped_column(String(20), nullable=True)
     heure_debut: Mapped[str | None] = mapped_column(String(10), nullable=True)
     heure_fin: Mapped[str | None] = mapped_column(String(10), nullable=True)

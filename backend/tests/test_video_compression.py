@@ -22,18 +22,18 @@ def _setup(db_session):
 
 def test_videos_a_compresser_ignore_en_cours_et_deja_compresse(db_session):
     ecole, cours, admin = _setup(db_session)
-    videos_client = Videos(cours=CoursService())
+    videos_client = Videos()
 
     en_cours = videos_client.create(
-        db_session, cours_id=cours.id, nom="En cours", lien_fichier="", uploaded_by=admin.id,
+        db_session, ecole_id=ecole.id, nom="En cours", lien_fichier="", uploaded_by=admin.id,
         statut="en_cours",
     )
     deja_compresse = videos_client.create(
-        db_session, cours_id=cours.id, nom="Déjà fait", lien_fichier="x.mp4",
+        db_session, ecole_id=ecole.id, nom="Déjà fait", lien_fichier="x.mp4",
         uploaded_by=admin.id, statut="complete", compresse=True,
     )
     a_faire = videos_client.create(
-        db_session, cours_id=cours.id, nom="À compresser", lien_fichier="y.mp4",
+        db_session, ecole_id=ecole.id, nom="À compresser", lien_fichier="y.mp4",
         uploaded_by=admin.id, statut="complete",
     )
 
@@ -49,7 +49,7 @@ def test_compresser_remplace_le_fichier_et_reduit_la_taille(db_session):
     identique) et plus petit, pas la valeur exacte (dépend de la version
     ffmpeg)."""
     ecole, cours, admin = _setup(db_session)
-    videos_client = Videos(cours=CoursService())
+    videos_client = Videos()
 
     dossier = dossier_ecole(ecole.id)
     chemin = dossier / "original.mp4"
@@ -57,7 +57,7 @@ def test_compresser_remplace_le_fichier_et_reduit_la_taille(db_session):
     taille_originale = chemin.stat().st_size
 
     video = videos_client.create(
-        db_session, cours_id=cours.id, nom="À compresser",
+        db_session, ecole_id=ecole.id, nom="À compresser",
         lien_fichier=chemin_relatif(ecole.id, "original.mp4"),
         uploaded_by=admin.id, statut="complete",
     )
@@ -77,9 +77,9 @@ def test_compresser_remplace_le_fichier_et_reduit_la_taille(db_session):
 
 def test_compresser_fichier_source_manquant_echoue_proprement(db_session):
     ecole, cours, admin = _setup(db_session)
-    videos_client = Videos(cours=CoursService())
+    videos_client = Videos()
     video = videos_client.create(
-        db_session, cours_id=cours.id, nom="Fichier absent",
+        db_session, ecole_id=ecole.id, nom="Fichier absent",
         lien_fichier=chemin_relatif(ecole.id, "inexistant.mp4"),
         uploaded_by=admin.id, statut="complete",
     )

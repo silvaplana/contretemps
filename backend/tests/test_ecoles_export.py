@@ -240,7 +240,7 @@ def test_video_sans_fichier_survit_a_une_restauration(client, db_session):
     db_session.commit()
     admin = comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="A", prenom="B")
     cours = cours_service.create(db_session, ecole_id=ecole.id, nom="Éveil")
-    db_session.add(Video(cours_id=cours.id, nom="Sans fichier", lien_fichier="", uploaded_by=admin.id))
+    db_session.add(Video(ecole_id=ecole.id, nom="Sans fichier", lien_fichier="", uploaded_by=admin.id))
     db_session.commit()
 
     sauvegarde = client.get(f"/ecoles/{ecole.id}/export-technique").content
@@ -250,7 +250,7 @@ def test_video_sans_fichier_survit_a_une_restauration(client, db_session):
     )
     assert reponse.status_code == 204
 
-    video_restauree = db_session.query(Video).filter(Video.cours_id == cours.id).one()
+    video_restauree = db_session.query(Video).filter(Video.ecole_id == ecole.id).one()
     assert video_restauree.lien_fichier == ""
 
 

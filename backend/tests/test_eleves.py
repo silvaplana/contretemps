@@ -69,12 +69,12 @@ def test_supprimer_eleve_retire_ses_inscriptions(client, db_session):
         "/eleves", params={"ecole_id": ecole.id}, json={"nom": "Perrin", "prenom": "Léon"}
     ).json()
     client.post(f"/cours/{cours['id']}/eleves/{parti['id']}")
-    client.post(f"/choregraphies/{choregraphie['id']}/eleves/{parti['id']}")
+    client.put(f"/choregraphies/{choregraphie['id']}", json={"eleve_ids": [parti["id"]]})
 
     assert client.delete(f"/eleves/{parti['id']}").status_code == 204
 
     assert client.get(f"/cours/{cours['id']}/eleves").json() == []
-    assert client.get(f"/choregraphies/{choregraphie['id']}/eleves").json() == []
+    assert client.get(f"/choregraphies/{choregraphie['id']}").json()["eleve_ids"] == []
     assert client.get("/cours-par-eleve", params={"ecole_id": ecole.id}).json() == {}
 
     nouveau = client.post(

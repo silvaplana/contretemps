@@ -1,4 +1,11 @@
-"""Logique métier des vidéos (voir spec/SPEC.md §6.8)."""
+"""Logique des vidéos (voir spec/SPEC.md §6.8) : recevoir un fichier par
+blocs, le stocker, le mesurer, le compresser, le supprimer, compter la
+place occupée.
+
+Module générique (voir models.py) : il ne connaît ni les cours ni les
+chorégraphies. Le métier qui rattache des vidéos à ses objets s'inscrit à
+`quand_supprimee` pour défaire ses liens quand une vidéo disparaît.
+"""
 
 from __future__ import annotations
 
@@ -9,8 +16,8 @@ from uuid import uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from choregraphies import Choregraphie
-from cours import CoursService
+from collections.abc import Callable
+
 from saisons.portee import toutes_saisons
 
 from .compression import compresser as compresser_fichier
@@ -42,27 +49,19 @@ class DecalageInvalide(Exception):
 
 
 class Videos:
-    def __init__(self, cours: CoursService) -> None:
-        self.cours = cours
+    def __init__(self) -> None:
+        self._a_la_suppression: list[Callable[[Session, int], None]] = []
 
-    def list_par_cours(self, db: Session, cours_id: int) -> list[Video]:
-        """Écran Vidéo (liste générale) : tri par date_publication, les
-        plus récentes en premier — `ordre` est ignoré (voir §6.8)."""
-        return list(
-            db.scalars(
-                select(Video)
-                .where(Video.cours_id == cours_id)
-                .order_by(Video.date_publication.desc())
-            )
-        )
+    def quand_supprimee(self, rappel: Callable[[Session, int], None]) -> None:
+        """`rappel(db, video_id)` est appelé juste avant la suppression
+        d'une vidéo, d'où qu'elle vienne (route, annulation d'un envoi) :
+        le métier y défait ses propres liens."""
+        self._a_la_suppression.append(rappel)
 
-    def list_par_choregraphie(self, db: Session, choregraphie_id: int) -> list[Video]:
-        """Dans une chorégraphie : triées par `ordre` manuel (voir §6.8),
-        les vidéos sans ordre défini passent en dernier."""
-        videos = list(
-            db.scalars(select(Video).where(Video.choregraphie_id == choregraphie_id))
-        )
-        return sorted(videos, key=lambda v: (v.ordre is None, v.ordre))
+    def par_ids(self, db: Session, video_ids: list[int]) -> dict[int, Video]:
+        if not video_ids:
+            return {}
+        return {v.id: v for v in db.scalars(select(Video).where(Video.id.in_(video_ids)))}
 
     def get(self, db: Session, video_id: int) -> Video | None:
         return db.get(Video, video_id)
@@ -70,14 +69,14 @@ class Videos:
     def create(
         self,
         db: Session,
-        cours_id: int,
+        ecole_id: int,
         nom: str,
         lien_fichier: str,
         uploaded_by: int,
         **champs,
     ) -> Video:
         video = Video(
-            cours_id=cours_id, nom=nom, lien_fichier=lien_fichier, uploaded_by=uploaded_by,
+            ecole_id=ecole_id, nom=nom, lien_fichier=lien_fichier, uploaded_by=uploaded_by,
             **champs,
         )
         db.add(video)
@@ -87,27 +86,22 @@ class Videos:
 
     # --- Upload par blocs (voir Televersement dans models.py) ---
     #
-    # 3 temps, mutualisés entre l'écran Vidéo et le détail d'une
-    # chorégraphie (même composant frontend, même api/videos.js) :
+    # 3 temps :
     #  1. creer_televersement : dès le fichier choisi/filmé, AVANT toute
     #     métadonnée — juste une session, pas encore de ligne `Video`.
     #  2. ecrire_bloc : appelé en boucle pendant que l'admin remplit le
-    #     formulaire (titre/chorégraphie/description) en parallèle.
+    #     formulaire (titre/description) en parallèle.
     #  3. finaliser : au clic "Ajouter" — crée la ligne tout de suite,
     #     même si l'envoi n'est pas fini (statut 'en_cours'), voir
     #     _finaliser_fichier pour la suite une fois le fichier complet.
 
     def creer_televersement(
-        self, db: Session, cours_id: int, extension: str, octets_total: int
-    ) -> Televersement | None:
-        cours = self.cours.get(db, cours_id)
-        if cours is None:
-            return None
+        self, db: Session, ecole_id: int, extension: str, octets_total: int
+    ) -> Televersement:
         self._nettoyer_abandonnes(db)
         televersement = Televersement(
             id=uuid4().hex,
-            ecole_id=cours.ecole_id,
-            cours_id=cours_id,
+            ecole_id=ecole_id,
             extension=extension or ".mp4",
             octets_total=octets_total,
         )
@@ -167,18 +161,16 @@ class Videos:
     def finaliser(
         self,
         db: Session,
-        cours_id: int,
         upload_id: str,
         nom: str,
         uploaded_by: int,
         description: str = "",
-        choregraphie_id: int | None = None,
     ) -> Video | None:
         """Clic "Ajouter" — crée la ligne tout de suite (voir Video.statut :
         'en_cours' si le fichier n'est pas encore complet à cet instant,
         auquel cas ecrire_bloc terminera le travail au dernier bloc)."""
         televersement = self.obtenir_televersement(db, upload_id)
-        if televersement is None or televersement.cours_id != cours_id:
+        if televersement is None:
             return None
         if televersement.video_id is not None:
             # Double clic/double appel (voir AdminEleves.jsx pour un motif
@@ -188,12 +180,11 @@ class Videos:
 
         video = self.create(
             db,
-            cours_id=cours_id,
+            ecole_id=televersement.ecole_id,
             nom=nom,
             lien_fichier="",
             uploaded_by=uploaded_by,
             description=description,
-            choregraphie_id=choregraphie_id,
             statut="complete" if televersement.complet else "en_cours",
         )
         televersement.video_id = video.id
@@ -257,9 +248,7 @@ class Videos:
         # `champs` ne contient déjà que les champs explicitement fournis
         # (le receiver appelle model_dump(exclude_unset=True)) — un
         # `if valeur is not None` ici empêchait à tort de vider un champ
-        # nullable (ex. détacher une vidéo d'une chorégraphie en envoyant
-        # choregraphie_id=null, bug signalé : "on ne peut prendre que les
-        # vidéos qui sont taguées pour cette chorégraphie").
+        # nullable (ex. effacer une description).
         for cle, valeur in champs.items():
             setattr(video, cle, valeur)
         db.commit()
@@ -270,12 +259,14 @@ class Videos:
         video = self.get(db, video_id)
         if video is None:
             return False
-        # Aucune table ne référence videos.id (pas de FK entrante) — rien
-        # d'autre à nettoyer côté base. Le vrai risque d'orphelin, c'est
+        # Le métier défait d'abord ses liens vers cette vidéo (voir
+        # quand_supprimee). L'autre risque d'orphelin, c'est
         # le FICHIER lui-même : sans ça, le fichier (et sa vignette)
         # restait sur le disque pour toujours, jamais compté nulle part
         # une fois la ligne supprimée (bug latent trouvé en construisant
         # le panneau "Usage vidéo", qui aurait fini par lister du vide).
+        for rappel in self._a_la_suppression:
+            rappel(db, video_id)
         for chemin_relatif in (video.lien_fichier, video.poster):
             if not chemin_relatif:
                 continue
@@ -328,87 +319,38 @@ class Videos:
         db.commit()
         return True
 
-    def reordonner(self, db: Session, choregraphie_id: int, ordre_video_ids: list[int]) -> None:
-        """Réordonnancement manuel (glisser-déposer côté IHM, voir §6.8) :
-        `ordre_video_ids` donne le nouvel ordre complet des vidéos de
-        cette chorégraphie."""
-        for position, video_id in enumerate(ordre_video_ids):
-            video = self.get(db, video_id)
-            if video is not None and video.choregraphie_id == choregraphie_id:
-                video.ordre = position
-        db.commit()
-
     def usage_ecole(self, db: Session, ecole_id: int) -> UsageVideosEcole:
         """Panneau "Usage vidéo" (Admin > École) : Go utilisés, minutes de
         vidéo, top 10 par taille décroissante — toutes les vidéos AVEC un
-        vrai fichier (lien_fichier non vide), tous cours de l'école
-        confondus. La taille se lit sur le disque à la demande (pas
-        stockée, toujours exacte même si un fichier est remplacé à la
-        main) ; la durée vient de Video.duree_secondes (mesurée une fois,
-        voir duree.py).
+        vrai fichier (lien_fichier non vide) de l'école. La taille se lit
+        sur le disque à la demande (pas stockée, toujours exacte même si
+        un fichier est remplacé à la main) ; la durée vient de
+        Video.duree_secondes (mesurée une fois, voir duree.py).
 
         Saisons (spec §2.6) : tout porte sur la saison affichée, sauf
         `total_toutes_saisons_*`, cumul de toutes les saisons de l'école."""
         with toutes_saisons(db):
-            tous_cours = [c.id for c in self.cours.list(db, ecole_id)]
-            toutes = self._videos_avec_fichier(db, tous_cours)
-        mesurees = self._tailles(toutes)
-        total_toutes_octets = sum(taille for _, taille in mesurees)
-        total_toutes_secondes = sum(video.duree_secondes or 0 for video, _ in mesurees)
-
-        cours_par_id = {c.id: c for c in self.cours.list(db, ecole_id)}
-        if not cours_par_id:
-            return UsageVideosEcole(
-                total_octets=0,
-                total_secondes=0,
-                total_toutes_saisons_octets=total_toutes_octets,
-                total_toutes_saisons_secondes=total_toutes_secondes,
-                top_videos=[],
+            toutes = self._tailles(self._videos_avec_fichier(db, ecole_id))
+        mesurees = self._tailles(self._videos_avec_fichier(db, ecole_id))
+        lignes = [
+            VideoUsage(
+                id=video.id, titre=video.nom, taille_octets=taille, duree_secondes=video.duree_secondes
             )
-
-        videos = self._videos_avec_fichier(db, list(cours_par_id))
-
-        choregraphie_ids = {v.choregraphie_id for v in videos if v.choregraphie_id is not None}
-        noms_choregraphies = (
-            {
-                c.id: c.nom
-                for c in db.scalars(select(Choregraphie).where(Choregraphie.id.in_(choregraphie_ids)))
-            }
-            if choregraphie_ids
-            else {}
-        )
-
-        lignes: list[VideoUsage] = []
-        total_octets = 0
-        total_secondes = 0
-        for video, taille in self._tailles(videos):
-            total_octets += taille
-            total_secondes += video.duree_secondes or 0
-            lignes.append(
-                VideoUsage(
-                    id=video.id,
-                    titre=video.nom,
-                    cours=cours_par_id[video.cours_id].nom,
-                    choregraphie=noms_choregraphies.get(video.choregraphie_id),
-                    taille_octets=taille,
-                    duree_secondes=video.duree_secondes,
-                )
-            )
-
-        lignes.sort(key=lambda l: l.taille_octets, reverse=True)
+            for video, taille in mesurees
+        ]
+        lignes.sort(key=lambda ligne: ligne.taille_octets, reverse=True)
         return UsageVideosEcole(
-            total_octets=total_octets,
-            total_secondes=total_secondes,
-            total_toutes_saisons_octets=total_toutes_octets,
-            total_toutes_saisons_secondes=total_toutes_secondes,
+            total_octets=sum(taille for _, taille in mesurees),
+            total_secondes=sum(video.duree_secondes or 0 for video, _ in mesurees),
+            total_toutes_saisons_octets=sum(taille for _, taille in toutes),
+            total_toutes_saisons_secondes=sum(video.duree_secondes or 0 for video, _ in toutes),
             top_videos=lignes[:10],
         )
 
-    def _videos_avec_fichier(self, db: Session, cours_ids: list[int]) -> list[Video]:
-        if not cours_ids:
-            return []
+    def _videos_avec_fichier(self, db: Session, ecole_id: int) -> list[Video]:
+        # La saison affichée filtre d'elle-même (voir saisons/portee.py).
         return list(
-            db.scalars(select(Video).where(Video.cours_id.in_(cours_ids), Video.lien_fichier != ""))
+            db.scalars(select(Video).where(Video.ecole_id == ecole_id, Video.lien_fichier != ""))
         )
 
     def _tailles(self, videos: list[Video]) -> list[tuple[Video, int]]:

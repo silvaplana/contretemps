@@ -7,6 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from saisons.portee import verifier_modifiable
 
+from .classement import classer
 from .models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 
 
@@ -40,6 +41,12 @@ class CoursService:
         if champs.get("ordre") is None:
             max_ordre = db.scalar(select(func.max(Cours.ordre)).where(Cours.ecole_id == ecole_id))
             champs["ordre"] = (max_ordre or 0) + 1
+        # Discipline et niveau non fournis : déduits du nom (voir classement.py).
+        discipline, niveau = classer(nom)
+        if not champs.get("discipline"):
+            champs["discipline"] = discipline
+        if not champs.get("niveau"):
+            champs["niveau"] = niveau
         cours = Cours(ecole_id=ecole_id, nom=nom, **champs)
         if horaires_supplementaires:
             cours.horaires_supplementaires = [

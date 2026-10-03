@@ -1,4 +1,11 @@
-"""Table des vidéos (voir spec/SPEC.md §6.8)."""
+"""Tables des vidéos (voir spec/SPEC.md §6.8).
+
+Module GÉNÉRIQUE, destiné à être réutilisé hors de Contretemps (décision
+utilisateur du 2026-10-03) : une vidéo appartient à une école (et à sa
+saison), rien de plus. Elle ne sait pas à quoi elle sert : c'est le métier
+qui la référence (pour Contretemps, `choregraphies_videos`, voir
+choregraphies/models.py), jamais l'inverse.
+"""
 
 from __future__ import annotations
 
@@ -18,10 +25,9 @@ class Video(Base):
     __tablename__ = "videos"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    cours_id: Mapped[int] = mapped_column(ForeignKey("cours.id"), nullable=False, index=True)
-    choregraphie_id: Mapped[int | None] = mapped_column(
-        ForeignKey("choregraphies.id"), nullable=True, index=True
-    )
+    ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False, index=True)
+    # Voir spec §2.6 ; rempli automatiquement, voir saisons/automatique.py.
+    saison_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, index=True)
     nom: Mapped[str] = mapped_column(String(150), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     # Chemin/URL, pas le fichier lui-même (voir §6.8).
@@ -42,9 +48,6 @@ class Video(Base):
     # vidéo" (Admin > École) — la taille, elle, se lit directement sur le
     # disque à la demande (voir videos.py : usage_ecole), pas stockée.
     duree_secondes: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    # Ordre manuel, utilisé uniquement dans le contexte d'une chorégraphie
-    # (voir §6.8 : ignoré sur l'écran Vidéo, trié par date_publication là-bas).
-    ordre: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Upload par blocs (voir Televersement ci-dessous et videos.py) : la
     # ligne peut exister en base AVANT que le fichier soit entièrement
     # reçu (demande utilisateur explicite : "Ajouter" enregistre tout de
@@ -75,7 +78,6 @@ class Televersement(Base):
 
     id: Mapped[str] = mapped_column(String(32), primary_key=True)
     ecole_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False)
-    cours_id: Mapped[int] = mapped_column(ForeignKey("cours.id"), nullable=False)
     extension: Mapped[str] = mapped_column(String(20), nullable=False)
     octets_total: Mapped[int] = mapped_column(Integer, nullable=False)
     octets_recus: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

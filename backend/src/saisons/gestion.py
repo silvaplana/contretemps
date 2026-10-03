@@ -117,7 +117,7 @@ class GestionSaisons:
             fichiers = [
                 chemin
                 for lien, poster in db.execute(
-                    text(f"SELECT lien_fichier, poster FROM videos WHERE cours_id IN ({_COURS}) OR uploaded_by IN ({_COMPTES})"),
+                    text(f"SELECT lien_fichier, poster FROM videos WHERE {_VIDEOS}"),
                     {"s": saison_id},
                 )
                 for chemin in (lien, poster)
@@ -267,6 +267,8 @@ class GestionSaisons:
 _COURS = "SELECT id FROM cours WHERE saison_id = :s"
 _COMPTES = "SELECT id FROM comptes WHERE saison_id = :s"
 _CONVERSATIONS = "SELECT id FROM conversations WHERE saison_id = :s"
+# Les vidéos portent leur saison (voir videos/models.py).
+_VIDEOS = f"saison_id = :s OR uploaded_by IN ({_COMPTES})"
 
 # Enfants d'abord : aucune clé étrangère ne doit pointer dans le vide.
 # Les tables sans `saison_id` sont retrouvées par leur cours, leur fiche ou
@@ -280,8 +282,9 @@ _SUPPRESSIONS = [
     f"DELETE FROM presences_profs WHERE seance_id IN (SELECT id FROM seances_presence WHERE cours_id IN ({_COURS})) OR professeur_id IN ({_COMPTES})",
     f"DELETE FROM seances_presence WHERE cours_id IN ({_COURS})",
     f"DELETE FROM choregraphies_eleves WHERE choregraphie_id IN (SELECT id FROM choregraphies WHERE cours_id IN ({_COURS})) OR eleve_id IN ({_COMPTES})",
-    f"DELETE FROM televersements_video WHERE cours_id IN ({_COURS}) OR video_id IN (SELECT id FROM videos WHERE cours_id IN ({_COURS}) OR uploaded_by IN ({_COMPTES}))",
-    f"DELETE FROM videos WHERE cours_id IN ({_COURS}) OR uploaded_by IN ({_COMPTES})",
+    f"DELETE FROM choregraphies_videos WHERE choregraphie_id IN (SELECT id FROM choregraphies WHERE cours_id IN ({_COURS})) OR video_id IN (SELECT id FROM videos WHERE {_VIDEOS})",
+    f"DELETE FROM televersements_video WHERE video_id IN (SELECT id FROM videos WHERE {_VIDEOS})",
+    f"DELETE FROM videos WHERE {_VIDEOS}",
     f"DELETE FROM choregraphies WHERE cours_id IN ({_COURS})",
     f"DELETE FROM cours_professeurs WHERE cours_id IN ({_COURS}) OR professeur_id IN ({_COMPTES})",
     f"DELETE FROM eleves_cours WHERE cours_id IN ({_COURS}) OR eleve_id IN ({_COMPTES})",

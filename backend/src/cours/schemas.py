@@ -23,6 +23,9 @@ class HoraireSupplementaireSortie(HoraireSupplementaire):
 
 class CoursCreation(BaseModel):
     nom: str
+    # Laissés vides : déduits du nom (voir classement.py).
+    discipline: str | None = None
+    niveau: str | None = None
     jour: str | None = None
     heure_debut: str | None = None
     heure_fin: str | None = None
@@ -33,6 +36,8 @@ class CoursCreation(BaseModel):
 
 class CoursModification(BaseModel):
     nom: str | None = None
+    discipline: str | None = None
+    niveau: str | None = None
     jour: str | None = None
     heure_debut: str | None = None
     heure_fin: str | None = None
@@ -51,6 +56,8 @@ class CoursSortie(BaseModel):
     id: int
     ecole_id: int
     nom: str
+    discipline: str | None = None
+    niveau: str | None = None
     jour: str | None = None
     heure_debut: str | None = None
     heure_fin: str | None = None

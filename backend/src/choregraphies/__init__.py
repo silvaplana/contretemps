@@ -1,5 +1,11 @@
 from .choregraphies import Choregraphies
-from .models import Choregraphie, choregraphies_eleves
+from .models import Choregraphie, choregraphies_eleves, choregraphies_videos
 from .receiver import ChoregraphiesReceiver
 
-__all__ = ["Choregraphie", "Choregraphies", "ChoregraphiesReceiver", "choregraphies_eleves"]
+__all__ = [
+    "Choregraphie",
+    "Choregraphies",
+    "ChoregraphiesReceiver",
+    "choregraphies_eleves",
+    "choregraphies_videos",
+]

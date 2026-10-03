@@ -289,8 +289,8 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
         return resultats[0] if resultats else None
 
     presence = Presence(cours=cours_service)
-    choregraphies_service = Choregraphies(cours=cours_service)
-    videos_service = Videos(cours=cours_service)
+    videos_service = Videos()
+    choregraphies_service = Choregraphies(cours=cours_service, videos=videos_service)
     cours_par_nom = {c.nom: c for c in cours_service.list(db, ecole.id)}
 
     for nom_cours, donnees in PRESENCES_DEMO.items():
@@ -326,12 +326,14 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
                 costume=ch_donnees["costume"],
                 horaire_repetition=ch_donnees["horaire_repetition"],
             )
+            participants = []
             for nom, prenom in ch_donnees["eleves"]:
                 eleve = trouver_eleve(nom, prenom)
                 if eleve is None:
                     continue
                 cours_service.inscrire_eleve(db, cours.id, eleve.id)
-                choregraphies_service.ajouter_eleve(db, choregraphie.id, eleve.id)
+                participants.append(eleve.id)
+            choregraphies_service.definir_eleves(db, choregraphie.id, participants)
             for v in ch_donnees["videos"]:
                 lien_fichier = ""
                 poster = None
@@ -350,17 +352,17 @@ def _peupler_presence_choregraphies_videos(db, ecole, comptes, cours_service, pr
                     # Mesurée une fois ici (voir videos/duree.py) — le vrai
                     # upload (chantier suivant) fera pareil à la volée.
                     duree = duree_secondes(DOSSIER_VIDEOS_LIVE / lien_fichier)
-                videos_service.create(
+                video = videos_service.create(
                     db,
-                    cours_id=cours.id,
+                    ecole_id=ecole.id,
                     nom=v["nom"],
                     lien_fichier=lien_fichier,
                     poster=poster,
                     duree_secondes=duree,
                     description=v.get("description", ""),
-                    choregraphie_id=choregraphie.id,
                     uploaded_by=admin.id,
                 )
+                choregraphies_service.attacher_video(db, choregraphie.id, video.id)
             print(f"Chorégraphie '{ch_donnees['nom']}' créée pour '{nom_cours}'.")
 
 

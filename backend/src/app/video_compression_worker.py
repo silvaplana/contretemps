@@ -19,7 +19,6 @@ from __future__ import annotations
 
 import time
 
-from cours import CoursService
 from db import SessionLocal
 from videos import Videos
 
@@ -27,7 +26,7 @@ INTERVALLE_SECONDES = 30
 
 
 def run() -> None:
-    videos_client = Videos(cours=CoursService())
+    videos_client = Videos()
     print(f"Compression vidéo démarrée (vérifie toutes les {INTERVALLE_SECONDES}s).")
     while True:
         time.sleep(INTERVALLE_SECONDES)
