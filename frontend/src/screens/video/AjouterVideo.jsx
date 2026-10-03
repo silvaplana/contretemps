@@ -9,10 +9,11 @@ import {
   useProgressionTeleversement,
 } from '../../utils/videoUploads.js'
 
-// Ajout d'une vidéo, façon WhatsApp (demande utilisateur explicite) —
-// réutilisé par l'onglet Vidéo (VideoScreen.jsx) et le détail d'une
-// chorégraphie (ChoregraphieDetailScreen.jsx), même composant pour les
-// deux (une seule implémentation). Déroulé :
+// Ajout d'une vidéo, façon WhatsApp (demande utilisateur explicite).
+// Composant GÉNÉRIQUE (voir api/videos.js) : il envoie le fichier dans
+// l'école `ecoleId`, et laisse le métier créer la vidéo là où il veut par
+// `creerVideo(uploadId, { nom, description })` (ex. dans une chorégraphie,
+// voir ChoregraphieScreen.jsx). Déroulé :
 //  1. Les 2 boutons "Filmer"/"Choisir une vidéo" sont TOUJOURS visibles
 //     (pas cachés derrière un "+" à ouvrir d'abord).
 //  2. Dès le fichier choisi/filmé, l'envoi démarre tout de suite (voir
@@ -23,11 +24,10 @@ import {
 //     pas fini, voir backend/src/videos/videos.py : statut 'en_cours') —
 //     l'envoi continue en tâche de fond, indépendant de cette modale.
 //     "Annuler" arrête tout et nettoie côté serveur.
-export default function AjouterVideo({ coursId, choregraphies = [], lockedChoregraphieId, uploaderId, onAdded }) {
+export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
   const [session, setSession] = useState(null) // { uploadId, previewUrl }
   const [titre, setTitre] = useState('')
   const [description, setDescription] = useState('')
-  const [choregraphieId, setChoregraphieId] = useState('')
   // Garde-fou contre un double-clic (voir AdminEleves.jsx pour le même
   // motif) : "Ajouter" appelle finaliserTeleversement, async.
   const [enCours, setEnCours] = useState(false)
@@ -49,7 +49,7 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
       onProgress: setCompressionPourcentage,
     })
     setCompressionPourcentage(null)
-    const uploadId = await demarrerTeleversement(coursId, fichierAEnvoyer)
+    const uploadId = await demarrerTeleversement(ecoleId, fichierAEnvoyer)
     setSession({ uploadId, previewUrl })
   }
 
@@ -58,7 +58,6 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
     setSession(null)
     setTitre('')
     setDescription('')
-    setChoregraphieId('')
     setEnCours(false)
     setCompressionPourcentage(null)
   }
@@ -72,12 +71,9 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
     if (enCours || !session?.uploadId) return
     setEnCours(true)
     try {
-      const video = await finaliserTeleversement(coursId, session.uploadId, {
-        nom: titre,
-        description,
-        choregraphieId: lockedChoregraphieId ?? (choregraphieId || null),
-        uploaderId,
-      })
+      const video = await finaliserTeleversement(session.uploadId, (uploadId) =>
+        creerVideo(uploadId, { nom: titre, description }),
+      )
       onAdded(video)
       reinitialiser()
     } catch (err) {
@@ -150,24 +146,6 @@ export default function AjouterVideo({ coursId, choregraphies = [], lockedChoreg
 
           <label htmlFor="add-video-titre">Titre</label>
           <input id="add-video-titre" value={titre} onChange={(e) => setTitre(e.target.value)} />
-
-          {lockedChoregraphieId === undefined && (
-            <>
-              <label htmlFor="add-video-choregraphie">Chorégraphie</label>
-              <select
-                id="add-video-choregraphie"
-                value={choregraphieId}
-                onChange={(e) => setChoregraphieId(e.target.value)}
-              >
-                <option value="">Aucune</option>
-                {choregraphies.map((ch) => (
-                  <option key={ch.id} value={ch.id}>
-                    {ch.nom}
-                  </option>
-                ))}
-              </select>
-            </>
-          )}
 
           <label htmlFor="add-video-desc">Description (optionnelle)</label>
           <textarea

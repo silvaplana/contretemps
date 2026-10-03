@@ -35,7 +35,8 @@ import UsageVideoSection from './UsageVideoSection.jsx'
 export default function AdminParametres({
   ecole,
   setEcole,
-  setVideos,
+  choregraphies,
+  setChoregraphies,
   cours,
   eleves,
   setEleves,
@@ -115,7 +116,11 @@ export default function AdminParametres({
       />
 
       {/* `key` : recalculé quand la saison affichée change (spec §2.6). */}
-      <UsageVideoSection key={saisonConsultee?.id ?? 'courante'} ecoleId={ecole.id} setVideos={setVideos} />
+      <UsageVideoSection key={saisonConsultee?.id ?? 'courante'} ecoleId={ecole.id}
+        choregraphies={choregraphies}
+        cours={cours}
+        setChoregraphies={setChoregraphies}
+      />
     </div>
   )
 }

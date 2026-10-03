@@ -10,7 +10,7 @@ export const TABS = [
     icon: 'choregraphie',
     roles: ['admin', 'professeur', 'eleve'],
   },
-  { key: 'video', label: 'Vidéo', icon: 'video', roles: ['admin', 'professeur', 'eleve'] },
+  // Plus d'onglet Vidéo (2026-10-03) : les vidéos se gèrent dans les chorégraphies.
   {
     key: 'messagerie',
     label: 'Messages',

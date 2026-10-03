@@ -13,7 +13,6 @@ import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import * as saisonApi from './api/saison.js'
 import * as sessionApi from './api/session.js'
-import * as videosApi from './api/videos.js'
 import { effacerFrappe, signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { lienRecu, oublierLienRecu } from './utils/lienRecu.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
@@ -38,7 +37,6 @@ import MessagerieScreen from './screens/MessagerieScreen.jsx'
 import PresenceScreen from './screens/PresenceScreen.jsx'
 import ProfilScreen from './screens/ProfilScreen.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
-import VideoScreen from './screens/VideoScreen.jsx'
 
 // Rôle Admin, Professeur ou Élève selon le compte connecté (voir
 // spec/SPEC.md). Toutes les données viennent du vrai backend via
@@ -279,21 +277,22 @@ function App() {
   // compte de l'école (admin compris), pas seulement élèves/profs.
   const [admins, setAdmins] = useState([])
   const [presences, setPresences] = useState({})
-  const [choregraphies, setChoregraphies] = useState({})
-  const [videos, setVideos] = useState({})
+  // Toutes les chorégraphies de l'école, chacune avec ses vidéos (voir
+  // api/choregraphies.js) — plus d'onglet Vidéo (refonte du 2026-10-03).
+  const [choregraphies, setChoregraphies] = useState([])
   // Upload vidéo par blocs (voir screens/video/AjouterVideo.jsx et
   // utils/videoUploads.js) : une vidéo ajoutée "en_cours" continue son
   // envoi en tâche de fond, indépendamment de l'écran affiché — ce hook
-  // la rafraîchit ici, au niveau où `videos`/`setVideos` vivent, pour que
-  // ça marche même si l'utilisateur a quitté l'écran Vidéo/Chorégraphie
-  // entre-temps.
+  // la rafraîchit ici, au niveau où les chorégraphies vivent, pour que ça
+  // marche même si l'utilisateur a quitté l'écran entre-temps.
   useTeleversementsTermines((videoFraiche) => {
-    setVideos((byC) => ({
-      ...byC,
-      [videoFraiche.coursId]: (byC[videoFraiche.coursId] ?? []).map((v) =>
-        v.id === videoFraiche.id ? videoFraiche : v,
+    setChoregraphies((liste) =>
+      liste.map((ch) =>
+        ch.videos.some((v) => v.id === videoFraiche.id)
+          ? { ...ch, videos: ch.videos.map((v) => (v.id === videoFraiche.id ? videoFraiche : v)) }
+          : ch,
       ),
-    }))
+    )
   })
   const [conversations, setConversations] = useState([])
   // "Nouveau groupe" (menu 3 points de Messagerie, voir menuExtra
@@ -392,8 +391,7 @@ function App() {
   // cours eux-mêmes changent), rechargé par les effets ci-dessous.
   useEffect(() => {
     setPresences({})
-    setChoregraphies({})
-    setVideos({})
+    setChoregraphies([])
     setSelectedCoursId(null)
   }, [saisonConsultee?.id])
 
@@ -679,29 +677,13 @@ function App() {
     }
   }, [loggedIn, cours])
 
-  // Chorégraphies : contrairement à eleves/profs/cours/presence, chargées
-  // seulement pour le cours actuellement sélectionné (voir
-  // ChoregraphieScreen.jsx/VideoScreen.jsx : jamais utilisées pour un
-  // autre cours en même temps) — pas besoin de tout charger d'un coup.
+  // Chorégraphies : toutes celles de l'école (saison affichée), avec leurs
+  // élèves et leurs vidéos, en une requête (voir api/choregraphies.js).
   useEffect(() => {
-    if (loggedIn && selectedCoursId) {
-      choregraphiesApi.lister(selectedCoursId).then((liste) =>
-        setChoregraphies((byC) => ({ ...byC, [selectedCoursId]: liste })),
-      )
+    if (loggedIn && ecole.id) {
+      choregraphiesApi.lister(ecole.id).then(setChoregraphies).catch(() => {})
     }
-  }, [loggedIn, selectedCoursId, versionDonnees])
-
-  // Vidéos : même principe que les chorégraphies ci-dessus — seulement
-  // le cours actuellement sélectionné (voir VideoScreen.jsx/
-  // ChoregraphieScreen.jsx : jamais utilisées pour un autre cours en
-  // même temps).
-  useEffect(() => {
-    if (loggedIn && selectedCoursId) {
-      videosApi.lister(selectedCoursId).then((liste) =>
-        setVideos((byC) => ({ ...byC, [selectedCoursId]: liste })),
-      )
-    }
-  }, [loggedIn, selectedCoursId, versionDonnees])
+  }, [loggedIn, ecole.id, versionDonnees])
 
   // "Ajouter une date" (Présence) : contrôlé ici, pas en état interne à
   // PresenceScreen, pour que le menu 3 points de l'en-tête (voir Header)
@@ -953,7 +935,10 @@ function App() {
     activeTab === 'profil' ||
     activeTab === 'heures' ||
     activeTab === 'supervision' ||
-    activeTab === 'docs'
+    activeTab === 'docs' ||
+    // Chorégraphie : pas de sélecteur de cours, l'écran a le sien
+    // (discipline / niveau) et montre toute l'école.
+    activeTab === 'choregraphie'
       ? 'simple'
       : 'course'
   const headerTitle =
@@ -967,7 +952,9 @@ function App() {
             ? 'Supervision'
             : activeTab === 'docs'
               ? 'Docs'
-              : 'Sélectionner un cours'
+              : activeTab === 'choregraphie'
+                ? 'Chorégraphies'
+                : 'Sélectionner un cours'
 
   return (
     <div className={lectureSeule ? 'app app--lecture-seule' : 'app'}>
@@ -1044,7 +1031,8 @@ function App() {
             setGroupes={setGroupes}
             ecole={ecole}
             setEcole={setEcole}
-            setVideos={setVideos}
+            choregraphies={choregraphies}
+            setChoregraphies={setChoregraphies}
             onOpenHeures={(profId) => openHeures(profId, 'admin')}
             activeUser={activeUser}
             onSaisonCreee={surSaisonCreee}
@@ -1080,26 +1068,12 @@ function App() {
 
         {activeTab === 'choregraphie' && (
           <ChoregraphieScreen
-            cours={selectedCours}
-            list={choregraphies[selectedCoursId] ?? []}
+            ecoleId={ecole.id}
+            cours={cours}
+            list={choregraphies}
             setList={setChoregraphies}
             eleves={eleves}
-            videos={videos[selectedCoursId] ?? []}
-            setVideos={setVideos}
-            // Consultation seule pour un élève (voir spec §2.1 sur les
-            // droits par rôle) — Admin/Professeur peuvent créer/éditer.
-            peutModifier={aUnDesRoles(activeUser, ['admin', 'professeur'])}
-            uploaderId={activeUser.id}
-          />
-        )}
-
-        {activeTab === 'video' && (
-          <VideoScreen
-            cours={selectedCours}
-            list={videos}
-            setList={setVideos}
-            choregraphies={choregraphies[selectedCoursId] ?? []}
-            uploaderId={activeUser.id}
+            activeUser={activeUser}
           />
         )}
 

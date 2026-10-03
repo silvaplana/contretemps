@@ -31,7 +31,8 @@ export default function AdminScreen({
   setGroupes,
   ecole,
   setEcole,
-  setVideos,
+  choregraphies,
+  setChoregraphies,
   onOpenHeures,
   activeUser,
   onSaisonCreee,
@@ -71,7 +72,8 @@ export default function AdminScreen({
         <AdminParametres
           ecole={ecole}
           setEcole={setEcole}
-          setVideos={setVideos}
+          choregraphies={choregraphies}
+          setChoregraphies={setChoregraphies}
           cours={cours}
           eleves={eleves}
           setEleves={setEleves}

@@ -1,5 +1,8 @@
-// Domaine "vidéos" (écran Vidéo + onglet vidéos d'une chorégraphie, voir
-// spec/SPEC.md §6.8) — voir api/README.md pour le principe général.
+// Domaine "vidéos" (voir spec/SPEC.md §6.8) — module GÉNÉRIQUE, appelé à
+// être réutilisé dans d'autres applis : une vidéo appartient à une école,
+// elle ne connaît ni cours ni chorégraphie. C'est le métier qui la rattache
+// à ses objets (ici : api/choregraphies.js) et qui la crée à partir d'un
+// envoi. Voir api/README.md pour le principe général.
 //
 // Upload par blocs, façon WhatsApp (demande utilisateur explicite) — voir
 // utils/videoUploads.js pour l'orchestration (progression, reprise sur
@@ -8,7 +11,8 @@
 //   1. ouvrirTeleversement — dès le fichier choisi/filmé, avant toute
 //      métadonnée (voir backend/src/videos/receiver.py).
 //   2. ecrireBloc — répété pendant l'envoi.
-//   3. finaliserVideo — au clic "Ajouter", même si l'envoi continue.
+//   3. la vidéo est créée par le métier au clic "Ajouter" (ex.
+//      choregraphies.js : ajouterVideo), même si l'envoi continue.
 // annulerTeleversement à tout moment (bouton "Annuler").
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
@@ -32,59 +36,39 @@ function urlMedia(cheminRelatif) {
   return cheminRelatif ? `${BASE_URL}/media/videos/${cheminRelatif}` : null
 }
 
-function versEcran(v) {
+export function versEcran(v) {
   return {
     id: v.id,
-    coursId: v.cours_id,
     titre: v.nom,
     description: v.description ?? '',
-    duree: '', // pas de champ backend pour la durée d'une vidéo réelle
     url: urlMedia(v.lien_fichier),
     poster: urlMedia(v.poster),
-    choregraphieId: v.choregraphie_id,
+    // Celui qui a ajouté la vidéo : le métier peut lui laisser le droit de
+    // la retirer.
+    auteurId: v.uploaded_by,
     datePublication: v.date_publication.slice(8, 10) + '/' + v.date_publication.slice(5, 7),
-    // 'en_cours' : fichier pas encore complet (voir statut plus haut,
-    // Televersement côté backend) — url/poster valent alors null, une
-    // vraie lecture locale (aperçu direct du fichier choisi, sans
-    // dépendre du serveur) prend le relais côté IHM, voir VideoThumb.jsx
-    // et utils/videoUploads.js.
+    // 'en_cours' : fichier pas encore complet (voir Televersement côté
+    // backend) — url/poster valent alors null, une vraie lecture locale
+    // (aperçu direct du fichier choisi, sans dépendre du serveur) prend le
+    // relais côté IHM, voir VideoThumb.jsx et utils/videoUploads.js.
     statut: v.statut,
   }
-}
-
-export async function lister(coursId) {
-  const liste = await requete(`/cours/${coursId}/videos`)
-  return liste.map(versEcran)
 }
 
 export async function obtenir(videoId) {
   return versEcran(await requete(`/videos/${videoId}`))
 }
 
-export async function modifier(videoId, { titre, choregraphieId, ...reste }) {
-  const patch = {
-    ...reste,
-    ...(titre !== undefined && { nom: titre }),
-    ...(choregraphieId !== undefined && { choregraphie_id: choregraphieId }),
-  }
-  const v = await requete(`/videos/${videoId}`, { method: 'PUT', body: JSON.stringify(patch) })
-  return versEcran(v)
-}
-
-export async function supprimer(_coursId, videoId) {
-  await requete(`/videos/${videoId}`, { method: 'DELETE' })
-}
-
-// Utilisée par le panneau "Usage vidéo" (Admin > École), qui ne connaît
-// que l'id de la vidéo, pas son cours.
+// Par son seul numéro : réservé aux admins (panneau "Usage vidéo", Admin >
+// École). Les autres passent par le métier (ex. choregraphies.js).
 export async function supprimerParId(videoId) {
   await requete(`/videos/${videoId}`, { method: 'DELETE' })
 }
 
 // --- Upload par blocs (voir utils/videoUploads.js pour l'orchestration) ---
 
-export async function ouvrirTeleversement(coursId, extension, octetsTotal) {
-  return requete(`/cours/${coursId}/videos/televersements`, {
+export async function ouvrirTeleversement(ecoleId, extension, octetsTotal) {
+  return requete(`/ecoles/${ecoleId}/videos/televersements`, {
     method: 'POST',
     body: JSON.stringify({ extension, octets_total: octetsTotal }),
   })
@@ -117,20 +101,6 @@ export async function annulerTeleversement(uploadId) {
   await fetch(`${BASE_URL}/videos/televersements/${uploadId}`, { method: 'DELETE' })
 }
 
-export async function finaliserVideo(coursId, uploadId, { nom, description, choregraphieId, uploaderId }) {
-  const v = await requete(`/cours/${coursId}/videos/depuis-televersement`, {
-    method: 'POST',
-    body: JSON.stringify({
-      upload_id: uploadId,
-      nom,
-      description: description || '',
-      choregraphie_id: choregraphieId ?? null,
-      uploaded_by: uploaderId,
-    }),
-  })
-  return versEcran(v)
-}
-
 function versEcranUsage(u) {
   return {
     totalOctets: u.total_octets,
@@ -140,8 +110,6 @@ function versEcranUsage(u) {
     topVideos: u.top_videos.map((v) => ({
       id: v.id,
       titre: v.titre,
-      cours: v.cours,
-      choregraphie: v.choregraphie,
       tailleOctets: v.taille_octets,
       dureeSecondes: v.duree_secondes,
     })),

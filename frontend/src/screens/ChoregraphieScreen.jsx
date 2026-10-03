@@ -1,114 +1,126 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import * as choregraphiesApi from '../api/choregraphies.js'
-import * as videosApi from '../api/videos.js'
 import Modal from '../components/Modal.jsx'
+import { isAdmin } from '../data/roles.js'
+import ChoixElevesPanel from './choregraphie/ChoixElevesPanel.jsx'
 import ChoregraphieDetailScreen from './choregraphie/ChoregraphieDetailScreen.jsx'
 import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 
-// Écran Chorégraphie (Admin, Professeur, Élève — voir spec/SPEC.md 5.3 et
-// images/choregraphie.png). Deux écrans distincts, comme la Messagerie : la
-// liste des chorégraphies du cours, puis (au clic) le détail en plein écran
-// avec une flèche de retour — jamais les deux affichés en même temps.
+// Écran Chorégraphie (voir spec/SPEC.md §5.3, refonte du 2026-10-03).
+// Deux écrans distincts, comme la Messagerie : la liste, puis (au clic) le
+// détail en plein écran avec une flèche de retour.
 //
-// Chorégraphies (nom/costume/horaire/élèves participants) via
-// api/choregraphies.js, vidéos via api/videos.js (voir api/README.md) —
-// `list`/`setList`/`videos`/`setVideos` viennent de App.jsx.
-export default function ChoregraphieScreen({
-  cours,
-  list,
-  setList,
-  eleves,
-  videos,
-  setVideos,
-  uploaderId,
-  peutModifier,
-}) {
+// - Tout le monde voit TOUTES les chorégraphies de l'école ; un sélecteur à
+//   deux niveaux (discipline, puis niveau) filtre la liste.
+// - Les vidéos se gèrent ici (plus d'onglet Vidéo) : chacun peut en ajouter
+//   une dans une chorégraphie.
+// - Créer, modifier, supprimer une chorégraphie, modifier ou supprimer une
+//   vidéo : un admin, ou un professeur du cours de la chorégraphie. Le
+//   serveur revérifie tout (backend/src/choregraphies/receiver.py).
+//
+// `list`/`setList` (toutes les chorégraphies de l'école) viennent de App.jsx.
+export default function ChoregraphieScreen({ ecoleId, cours, list, setList, eleves, activeUser }) {
   const [selectedId, setSelectedId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
+  const [discipline, setDiscipline] = useState('')
+  const [niveau, setNiveau] = useState('')
+  const [erreur, setErreur] = useState('')
 
-  if (!cours) return null
+  const coursParId = useMemo(() => new Map(cours.map((c) => [c.id, c])), [cours])
+  const peutGerer = (c) => Boolean(c) && (isAdmin(activeUser) || c.professeurIds.includes(activeUser.id))
+  const coursGerables = cours.filter(peutGerer)
+
+  // Sélecteur : les disciplines des cours de l'école, puis les niveaux de
+  // la discipline choisie (dans l'ordre des cours, jamais alphabétique).
+  const disciplines = [...new Set(cours.map((c) => c.discipline).filter(Boolean))]
+  const niveaux = [
+    ...new Set(cours.filter((c) => c.discipline === discipline).map((c) => c.niveau).filter(Boolean)),
+  ]
+  const correspond = (c) =>
+    Boolean(c) && (!discipline || c.discipline === discipline) && (!niveau || c.niveau === niveau)
+  const filtrees = list.filter((ch) => correspond(coursParId.get(ch.coursId)))
 
   const selected = list.find((ch) => ch.id === selectedId) ?? null
 
-  function remplacer(choregraphieMiseAJour) {
-    setList((byC) => ({
-      ...byC,
-      [cours.id]: byC[cours.id].map((ch) =>
-        ch.id === choregraphieMiseAJour.id ? choregraphieMiseAJour : ch,
-      ),
-    }))
+  function remplacer(choregraphie) {
+    setList((liste) => liste.map((ch) => (ch.id === choregraphie.id ? choregraphie : ch)))
   }
 
-  async function update(id, patch) {
-    remplacer(await choregraphiesApi.modifier(id, patch))
+  // Un refus du serveur (droits, saison terminée) s'affiche, sans casser l'écran.
+  async function tenter(action) {
+    setErreur('')
+    try {
+      return await action()
+    } catch (err) {
+      setErreur(err.message)
+      return undefined
+    }
   }
 
-  async function removeChoregraphie(id) {
-    if (!window.confirm('Supprimer cette chorégraphie ?')) return
-    await choregraphiesApi.supprimer(cours.id, id)
-    setList((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((ch) => ch.id !== id) }))
-    setSelectedId(null)
-  }
-
-  // Gestion des vidéos depuis le détail d'une chorégraphie : mêmes données
-  // que l'onglet Vidéo (api/videos.js), juste manipulées depuis cet écran.
-  // AjouterVideo (voir video/AjouterVideo.jsx) a déjà créé la ligne côté
-  // serveur (upload par blocs) avant d'appeler ceci — rien à envoyer ici,
-  // juste refléter le résultat dans la liste locale.
-  function addVideo(video) {
-    // Voir AdminEleves.jsx : updater idempotent, StrictMode (dev) peut
-    // l'appliquer 2 fois de suite sur son propre résultat.
-    setVideos((byC) => {
-      const liste = byC[cours.id] ?? []
-      return liste.some((v) => v.id === video.id) ? byC : { ...byC, [cours.id]: [...liste, video] }
-    })
-  }
-
-  async function updateVideo(id, patch) {
-    const miseAJour = await videosApi.modifier(id, patch)
-    setVideos((byC) => ({
-      ...byC,
-      [cours.id]: byC[cours.id].map((v) => (v.id === id ? miseAJour : v)),
-    }))
-  }
-
-  async function removeVideo(id) {
-    if (!window.confirm('Supprimer cette vidéo ?')) return
-    await videosApi.supprimer(cours.id, id)
-    setVideos((byC) => ({ ...byC, [cours.id]: byC[cours.id].filter((v) => v.id !== id) }))
-  }
-
-  async function toggleVideoTag(id, choregraphieId) {
-    const video = videos.find((v) => v.id === id)
-    const nouvelleValeur = video?.choregraphieId === choregraphieId ? null : choregraphieId
-    const miseAJour = await videosApi.modifier(id, { choregraphieId: nouvelleValeur })
-    setVideos((byC) => ({
-      ...byC,
-      [cours.id]: byC[cours.id].map((v) => (v.id === id ? miseAJour : v)),
-    }))
+  function majVideos(choregraphieId, transformer) {
+    setList((liste) =>
+      liste.map((ch) => (ch.id === choregraphieId ? { ...ch, videos: transformer(ch.videos) } : ch)),
+    )
   }
 
   if (selected) {
+    const id = selected.id
     return (
       <ChoregraphieDetailScreen
         choregraphie={selected}
+        cours={coursParId.get(selected.coursId) ?? null}
+        coursGerables={coursGerables}
+        tousLesCours={cours}
         eleves={eleves}
-        peutModifier={peutModifier}
-        // Élèves proposés pour la choré : ceux inscrits à ce cours (voir
-        // eleves[].coursIds), pas toute la base élèves de l'école.
-        roster={eleves.filter((el) => el.coursIds.includes(cours.id))}
-        // Toutes les vidéos du cours : le détail filtre lui-même celles
-        // taguées à cette chorégraphie, et permet d'en (dé)taguer d'autres.
-        videosDuCours={videos}
-        coursId={cours.id}
-        uploaderId={uploaderId}
-        onBack={() => setSelectedId(null)}
-        onUpdate={(patch) => update(selected.id, patch)}
-        onRemove={() => removeChoregraphie(selected.id)}
-        onAddVideo={addVideo}
-        onUpdateVideo={updateVideo}
-        onRemoveVideo={removeVideo}
-        onToggleVideoTag={(id) => toggleVideoTag(id, selected.id)}
+        ecoleId={ecoleId}
+        utilisateurId={activeUser.id}
+        peutModifier={peutGerer(coursParId.get(selected.coursId))}
+        erreur={erreur}
+        onBack={() => {
+          setErreur('')
+          setSelectedId(null)
+        }}
+        onUpdate={(patch) =>
+          tenter(async () => remplacer(await choregraphiesApi.modifier(id, patch)))
+        }
+        onRemove={() =>
+          tenter(async () => {
+            if (!window.confirm('Supprimer cette chorégraphie et ses vidéos ?')) return
+            await choregraphiesApi.supprimer(id)
+            setList((liste) => liste.filter((ch) => ch.id !== id))
+            setSelectedId(null)
+          })
+        }
+        // AjouterVideo a déjà envoyé le fichier (voir video/AjouterVideo.jsx) :
+        // ici, l'envoi devient une vidéo de CETTE chorégraphie.
+        creerVideo={(uploadId, meta) => choregraphiesApi.ajouterVideo(id, uploadId, meta)}
+        onAddVideo={(video) =>
+          // Idempotent : StrictMode (dev) peut l'appliquer 2 fois.
+          majVideos(id, (videos) => (videos.some((v) => v.id === video.id) ? videos : [...videos, video]))
+        }
+        onUpdateVideo={(videoId, patch) =>
+          tenter(async () => {
+            const maj = await choregraphiesApi.modifierVideo(id, videoId, patch)
+            majVideos(id, (videos) => videos.map((v) => (v.id === videoId ? maj : v)))
+          })
+        }
+        onRemoveVideo={(videoId) =>
+          tenter(async () => {
+            if (!window.confirm('Supprimer cette vidéo ?')) return
+            await choregraphiesApi.supprimerVideo(id, videoId)
+            majVideos(id, (videos) => videos.filter((v) => v.id !== videoId))
+          })
+        }
+        onMonterVideo={(videoId) =>
+          tenter(async () => {
+            const ids = selected.videos.map((v) => v.id)
+            const i = ids.indexOf(videoId)
+            if (i <= 0) return
+            ;[ids[i - 1], ids[i]] = [ids[i], ids[i - 1]]
+            await choregraphiesApi.reordonnerVideos(id, ids)
+            majVideos(id, (videos) => ids.map((vid) => videos.find((v) => v.id === vid)).filter(Boolean))
+          })
+        }
       />
     )
   }
@@ -116,28 +128,57 @@ export default function ChoregraphieScreen({
   return (
     <>
       <ChoregraphieListScreen
-        list={list}
+        filtres={
+          <div className="choregraphie-filtres">
+            <select
+              aria-label="Discipline"
+              value={discipline}
+              onChange={(e) => {
+                setDiscipline(e.target.value)
+                setNiveau('')
+              }}
+            >
+              <option value="">Toutes les disciplines</option>
+              {disciplines.map((d) => (
+                <option key={d} value={d}>
+                  {d}
+                </option>
+              ))}
+            </select>
+            <select
+              aria-label="Niveau"
+              value={niveau}
+              disabled={!discipline}
+              onChange={(e) => setNiveau(e.target.value)}
+            >
+              <option value="">Tous les niveaux</option>
+              {niveaux.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </div>
+        }
+        list={filtrees}
+        coursParId={coursParId}
         onSelect={setSelectedId}
         onAddNew={() => setShowAdd(true)}
-        peutModifier={peutModifier}
+        peutCreer={coursGerables.length > 0}
       />
 
-      {showAdd && peutModifier && (
+      {showAdd && coursGerables.length > 0 && (
         <Modal title="Nouvelle chorégraphie" onClose={() => setShowAdd(false)}>
           <NewChoregraphieForm
-            // Les élèves proposés sont ceux inscrits à ce cours (voir
-            // eleves[].coursIds) — pas toute la base élèves de l'école.
-            roster={eleves.filter((el) => el.coursIds.includes(cours.id))}
-            onCreate={async (donnees) => {
-              const nouvelle = await choregraphiesApi.creer(cours.id, donnees)
-              // Voir AdminEleves.jsx : updater idempotent, StrictMode
-              // (dev) peut l'appliquer 2 fois de suite sur son résultat.
-              setList((byC) => {
-                const liste = byC[cours.id] ?? []
-                return liste.some((ch) => ch.id === nouvelle.id)
-                  ? byC
-                  : { ...byC, [cours.id]: [...liste, nouvelle] }
-              })
+            coursGerables={coursGerables}
+            // Le filtre en cours propose déjà son cours, s'il n'y en a qu'un.
+            coursPropose={coursGerables.filter(correspond).length === 1 ? coursGerables.filter(correspond)[0].id : ''}
+            eleves={eleves}
+            tousLesCours={cours}
+            onCreate={async ({ coursId, ...donnees }) => {
+              const nouvelle = await choregraphiesApi.creer(coursId, donnees)
+              // Idempotent : StrictMode (dev) peut l'appliquer 2 fois.
+              setList((liste) => (liste.some((ch) => ch.id === nouvelle.id) ? liste : [...liste, nouvelle]))
               setSelectedId(nouvelle.id)
               setShowAdd(false)
             }}
@@ -148,23 +189,28 @@ export default function ChoregraphieScreen({
   )
 }
 
-function NewChoregraphieForm({ roster, onCreate }) {
+function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours, onCreate }) {
   const [nom, setNom] = useState('')
+  // Une chorégraphie est associée à un cours dès sa création (spec §5.3).
+  const [coursId, setCoursId] = useState(coursPropose)
   const [eleveIds, setEleveIds] = useState([])
+  const [choixEleves, setChoixEleves] = useState(false)
   const [costume, setCostume] = useState('')
   const [horaireRepetition, setHoraireRepetition] = useState('')
-  // Garde-fou contre un double-appel (voir AdminEleves.jsx) : l'appel est
-  // async désormais.
+  const [erreur, setErreur] = useState('')
+  // Garde-fou contre un double-appel (voir AdminEleves.jsx).
   const [enCours, setEnCours] = useState(false)
-
-  function toggleEleve(id) {
-    setEleveIds((ids) => (ids.includes(id) ? ids.filter((i) => i !== id) : [...ids, id]))
-  }
 
   async function valider() {
     if (enCours) return
     setEnCours(true)
-    await onCreate({ nom, eleveIds, costume, horaireRepetition })
+    setErreur('')
+    try {
+      await onCreate({ coursId: Number(coursId), nom, eleveIds, costume, horaireRepetition })
+    } catch (err) {
+      setErreur(err.message)
+      setEnCours(false)
+    }
   }
 
   return (
@@ -172,20 +218,22 @@ function NewChoregraphieForm({ roster, onCreate }) {
       <label htmlFor="new-choregraphie-nom">Nom</label>
       <input id="new-choregraphie-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
 
-      <label>Élèves du cours</label>
-      <div className="checkbox-list">
-        {roster.map((el) => (
-          <label key={el.id} className="checkbox-list__item">
-            <input
-              type="checkbox"
-              checked={eleveIds.includes(el.id)}
-              onChange={() => toggleEleve(el.id)}
-            />
-            {el.prenom} {el.nom}
-          </label>
+      <label htmlFor="new-choregraphie-cours">Cours</label>
+      <select id="new-choregraphie-cours" value={coursId} onChange={(e) => setCoursId(e.target.value)}>
+        <option value="">Choisir un cours…</option>
+        {coursGerables.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.nom}
+          </option>
         ))}
-        {roster.length === 0 && <p className="muted">Aucun élève inscrit à ce cours.</p>}
-      </div>
+      </select>
+
+      <label>Élèves</label>
+      <button type="button" className="btn btn--secondary" onClick={() => setChoixEleves(true)}>
+        {eleveIds.length === 0
+          ? 'Choisir des élèves'
+          : `${eleveIds.length} élève${eleveIds.length > 1 ? 's' : ''} choisi${eleveIds.length > 1 ? 's' : ''}`}
+      </button>
 
       <label htmlFor="new-choregraphie-costume">Costume (optionnel)</label>
       <textarea
@@ -203,9 +251,29 @@ function NewChoregraphieForm({ roster, onCreate }) {
         onChange={(e) => setHoraireRepetition(e.target.value)}
       />
 
-      <button type="button" className="btn btn--primary btn--block" disabled={!nom || enCours} onClick={valider}>
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      <button
+        type="button"
+        className="btn btn--primary btn--block"
+        disabled={!nom || !coursId || enCours}
+        onClick={valider}
+      >
         Créer
       </button>
+
+      {choixEleves && (
+        <ChoixElevesPanel
+          eleves={eleves}
+          cours={tousLesCours}
+          coursInitial={coursId ? Number(coursId) : null}
+          choisis={eleveIds}
+          onValider={(ids) => {
+            setEleveIds(ids)
+            setChoixEleves(false)
+          }}
+          onClose={() => setChoixEleves(false)}
+        />
+      )}
     </>
   )
 }

@@ -3135,3 +3135,55 @@ a.btn {
   justify-content: center;
   gap: 4px;
 }
+
+/* --- Chorégraphies : sélecteur discipline / niveau, choix des élèves
+   (voir screens/ChoregraphieScreen.jsx, refonte du 2026-10-03) --- */
+
+.choregraphie-filtres,
+.choix-eleves__filtres,
+.cours-classement {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.choregraphie-filtres {
+  padding: 12px 14px 4px;
+}
+
+.choregraphie-filtres select,
+.choix-eleves__filtres select,
+.choix-eleves__filtres input {
+  width: 100%;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-h);
+}
+
+.choix-eleves__filtres {
+  margin-bottom: 8px;
+}
+
+.choix-eleves__tous {
+  font-weight: 600;
+}
+
+.cours-classement > div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+/* Le chevron « gauche » tourné vers le haut : monter une vidéo d'un cran. */
+.icone--vers-le-haut {
+  transform: rotate(90deg);
+}
+
+/* Les boutons d'ajout de vidéo flottent au-dessus du détail. */
+.choregraphie-detail {
+  padding-bottom: var(--fab-clearance);
+}

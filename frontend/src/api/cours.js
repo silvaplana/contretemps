@@ -23,10 +23,16 @@ async function requete(chemin, options) {
 
 // `professeurId` est passé d'avance par `lister` (voir plus bas), sinon
 // `avecProfesseurId` va le chercher lui-même.
-function construireCours(cours, professeurId) {
+function construireCours(cours, professeurId, professeurIds = professeurId ? [professeurId] : []) {
   return {
     id: cours.id,
     nom: cours.nom,
+    // Discipline et niveau : sélecteur de l'écran Chorégraphie (spec §5.3).
+    discipline: cours.discipline ?? '',
+    niveau: cours.niveau ?? '',
+    // TOUS les professeurs du cours (droits sur ses chorégraphies), alors
+    // que `professeurId` n'en garde qu'un (voir l'en-tête du fichier).
+    professeurIds,
     jour: cours.jour ?? '',
     heureDebut: cours.heure_debut ?? '',
     heureFin: cours.heure_fin ?? '',
@@ -46,7 +52,7 @@ function construireCours(cours, professeurId) {
 
 async function avecProfesseurId(cours) {
   const professeurs = await requete(`/cours/${cours.id}/professeurs`)
-  return construireCours(cours, professeurs[0]?.id ?? '')
+  return construireCours(cours, professeurs[0]?.id ?? '', professeurs.map((p) => p.id))
 }
 
 // Deux requêtes, PAS une par cours — même correctif que dans eleves.js
@@ -59,7 +65,9 @@ export async function lister(ecoleId) {
   ])
   // `[0]` : un seul prof retenu par cours, voir l'avertissement en tête
   // de fichier.
-  return liste.map((cours) => construireCours(cours, professeursParCours[cours.id]?.[0] ?? ''))
+  return liste.map((cours) =>
+    construireCours(cours, professeursParCours[cours.id]?.[0] ?? '', professeursParCours[cours.id] ?? []),
+  )
 }
 
 function versChampsBackend({ heureDebut, heureFin, horairesSupplementaires, ...reste }) {

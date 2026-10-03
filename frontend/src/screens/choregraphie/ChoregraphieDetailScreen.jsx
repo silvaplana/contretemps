@@ -2,51 +2,50 @@ import { useState } from 'react'
 import Badge from '../../components/Badge.jsx'
 import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
-import Modal from '../../components/Modal.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
 import AjouterVideo from '../video/AjouterVideo.jsx'
 import EditVideoModal from '../video/EditVideoModal.jsx'
+import ChoixElevesPanel from './ChoixElevesPanel.jsx'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
 // avec une flèche de retour vers ChoregraphieListScreen — même principe que
 // la Messagerie. Consultation par défaut ; le bouton stylo (à côté de la
-// poubelle) bascule en mode édition pour Admin/Professeur (voir droits,
-// spec/SPEC.md section 3). En édition, les vidéos de la chorégraphie
-// peuvent aussi être choisies parmi celles du cours, ajoutées, éditées ou
-// supprimées — pas seulement consultées.
+// poubelle) bascule en mode édition pour qui peut gérer la chorégraphie
+// (admin, ou professeur de son cours — spec §5.3).
+//
+// Vidéos (plus d'onglet Vidéo, refonte du 2026-10-03) : tout le monde peut
+// en ajouter une ; la modifier est réservé à qui gère la chorégraphie ; la
+// supprimer aussi, plus celui qui l'a ajoutée.
 export default function ChoregraphieDetailScreen({
   choregraphie,
+  cours,
+  coursGerables,
+  tousLesCours,
   eleves,
-  roster,
-  videosDuCours,
-  coursId,
-  uploaderId,
+  ecoleId,
+  utilisateurId,
   peutModifier,
+  erreur,
   onBack,
   onUpdate,
   onRemove,
+  creerVideo,
   onAddVideo,
   onUpdateVideo,
   onRemoveVideo,
-  onToggleVideoTag,
+  onMonterVideo,
 }) {
-  // Toujours en lecture pour un élève, même si `editing` restait vrai en
-  // mémoire d'une bascule de profil famille précédente (voir spec §2.1).
+  // Toujours en lecture pour qui ne gère pas la chorégraphie, même si
+  // `editing` restait vrai d'une bascule de profil famille précédente.
   const [editingVoulu, setEditing] = useState(false)
   const editing = editingVoulu && peutModifier
-  const [showChoose, setShowChoose] = useState(false)
   const [editingVideo, setEditingVideo] = useState(null)
   const [showChooseEleves, setShowChooseEleves] = useState(false)
 
-  const videos = videosDuCours.filter((v) => v.choregraphieId === choregraphie.id)
+  const videos = choregraphie.videos
 
-  function toggleEleve(id) {
-    const dansLaListe = choregraphie.eleveIds.includes(id)
-    onUpdate({
-      eleveIds: dansLaListe
-        ? choregraphie.eleveIds.filter((x) => x !== id)
-        : [...choregraphie.eleveIds, id],
-    })
+  function retirerEleve(id) {
+    onUpdate({ eleveIds: choregraphie.eleveIds.filter((x) => x !== id) })
   }
 
   return (
@@ -85,6 +84,29 @@ export default function ChoregraphieDetailScreen({
       </div>
 
       <div className="choregraphie-detail">
+        {erreur && <p className="login-screen__erreur">{erreur}</p>}
+
+        <section>
+          <h3>Cours</h3>
+          {editing ? (
+            <select
+              className="field-input"
+              aria-label="Cours de la chorégraphie"
+              value={choregraphie.coursId}
+              onChange={(e) => onUpdate({ coursId: Number(e.target.value) })}
+            >
+              {/* Le cours actuel d'abord, puis ceux que l'on peut gérer. */}
+              {[cours, ...coursGerables.filter((c) => c.id !== cours?.id)].filter(Boolean).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nom}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p>{cours?.nom || <span className="muted">—</span>}</p>
+          )}
+        </section>
+
         <section>
           <h3>
             <Icon name="users" size={16} /> Élèves
@@ -99,7 +121,7 @@ export default function ChoregraphieDetailScreen({
                   <button
                     type="button"
                     className="icon-btn"
-                    onClick={() => toggleEleve(id)}
+                    onClick={() => retirerEleve(id)}
                     aria-label={`Retirer ${el.prenom}`}
                   >
                     <Icon name="x" size={12} />
@@ -162,106 +184,69 @@ export default function ChoregraphieDetailScreen({
                       <strong>{v.titre}</strong>
                       {v.description && <p>{v.description}</p>}
                     </div>
-                    {/* Édition/suppression d'une vidéo : même comportement que
-                        l'onglet Vidéo (VideoScreen.jsx) — toujours visible,
-                        indépendant du mode édition de la chorégraphie
-                        elle-même (nom/costume/horaire, réservé à
-                        Admin/Professeur, voir §5.3). Une vidéo appartient au
-                        cours, pas à la chorégraphie. */}
                     <div className="row-actions">
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn--sm"
-                        onClick={() => setEditingVideo(v)}
-                        aria-label={`Modifier ${v.titre}`}
-                      >
-                        <Icon name="edit" size={14} />
-                      </button>
-                      <button
-                        type="button"
-                        className="icon-btn icon-btn--sm icon-btn--danger"
-                        onClick={() => onRemoveVideo(v.id)}
-                        aria-label={`Supprimer ${v.titre}`}
-                      >
-                        <Icon name="trash" size={14} />
-                      </button>
+                      {editing && videos[0].id !== v.id && (
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--sm"
+                          onClick={() => onMonterVideo(v.id)}
+                          aria-label={`Monter ${v.titre}`}
+                        >
+                          <Icon name="chevronLeft" size={14} className="icone--vers-le-haut" />
+                        </button>
+                      )}
+                      {peutModifier && (
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--sm"
+                          onClick={() => setEditingVideo(v)}
+                          aria-label={`Modifier ${v.titre}`}
+                        >
+                          <Icon name="edit" size={14} />
+                        </button>
+                      )}
+                      {/* Celui qui a ajouté la vidéo peut toujours la retirer. */}
+                      {(peutModifier || v.auteurId === utilisateurId) && (
+                        <button
+                          type="button"
+                          className="icon-btn icon-btn--sm icon-btn--danger"
+                          onClick={() => onRemoveVideo(v.id)}
+                          aria-label={`Supprimer ${v.titre}`}
+                        >
+                          <Icon name="trash" size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="muted">Aucune vidéo taguée pour cette chorégraphie.</p>
+            <p className="muted">Aucune vidéo pour cette chorégraphie.</p>
           )}
 
-          {editing ? (
-            <>
-              <button type="button" className="btn btn--secondary" onClick={() => setShowChoose(true)}>
-                <Icon name="folder" size={16} /> Choisir parmi les vidéos du cours
-              </button>
-              <AjouterVideo
-                coursId={coursId}
-                lockedChoregraphieId={choregraphie.id}
-                uploaderId={uploaderId}
-                onAdded={onAddVideo}
-              />
-            </>
-          ) : (
-            // Modifier/supprimer une vidéo ne dépend plus du mode édition
-            // (voir plus haut) — seuls choisir/ajouter en dépendent encore,
-            // et seulement pour Admin/Professeur (§5.3) : rien à afficher
-            // à un élève, qui n'a accès à aucune des deux.
-            peutModifier && (
-              <p className="muted choregraphie-detail__video-hint">
-                Passez en édition pour choisir ou ajouter des vidéos.
-              </p>
-            )
-          )}
+          {/* Ajouter une vidéo : ouvert à tous (spec §5.3). */}
+          <AjouterVideo ecoleId={ecoleId} creerVideo={creerVideo} onAdded={onAddVideo} />
         </section>
       </div>
 
       {showChooseEleves && (
-        <Modal title="Choisir des élèves" onClose={() => setShowChooseEleves(false)}>
-          <div className="checkbox-list">
-            {roster.map((el) => (
-              <label key={el.id} className="checkbox-list__item">
-                <input
-                  type="checkbox"
-                  checked={choregraphie.eleveIds.includes(el.id)}
-                  onChange={() => toggleEleve(el.id)}
-                />
-                {el.prenom} {el.nom}
-              </label>
-            ))}
-            {roster.length === 0 && <p className="muted">Aucun élève inscrit à ce cours.</p>}
-          </div>
-        </Modal>
-      )}
-
-      {showChoose && (
-        <Modal title="Choisir des vidéos" onClose={() => setShowChoose(false)}>
-          <div className="checkbox-list">
-            {videosDuCours.map((v) => (
-              <label key={v.id} className="checkbox-list__item">
-                <input
-                  type="checkbox"
-                  checked={v.choregraphieId === choregraphie.id}
-                  onChange={() => onToggleVideoTag(v.id)}
-                />
-                {v.titre}
-              </label>
-            ))}
-            {videosDuCours.length === 0 && (
-              <p className="muted">Aucune vidéo pour ce cours — ajoutez-en une.</p>
-            )}
-          </div>
-        </Modal>
+        <ChoixElevesPanel
+          eleves={eleves}
+          cours={tousLesCours}
+          coursInitial={choregraphie.coursId}
+          choisis={choregraphie.eleveIds}
+          onValider={(ids) => {
+            onUpdate({ eleveIds: ids })
+            setShowChooseEleves(false)
+          }}
+          onClose={() => setShowChooseEleves(false)}
+        />
       )}
 
       {editingVideo && (
         <EditVideoModal
           video={editingVideo}
-          lockedChoregraphieId={choregraphie.id}
           onClose={() => setEditingVideo(null)}
           onSave={(patch) => {
             onUpdateVideo(editingVideo.id, patch)

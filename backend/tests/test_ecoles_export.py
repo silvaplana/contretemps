@@ -345,3 +345,49 @@ def test_restaurer_une_sauvegarde_d_avant_les_roles_cumulables(client, scenario,
         scenario["prof"].id: ["professeur"],
         scenario["eleve"].id: ["eleve"],
     }
+
+
+def test_restaurer_une_sauvegarde_d_avant_les_videos_generiques(client, db_session):
+    """Avant le 2026-10-03, chaque vidéo portait son cours et sa
+    chorégraphie, et l'onglet ChoregraphiesVideos n'existait pas : une telle
+    sauvegarde se restaure quand même, liens et saison retrouvés."""
+    import io
+
+    from app.main import choregraphies_client, cours_client, videos_client
+    from comptes import Comptes
+    from ecoles.models import Ecole
+    from openpyxl import load_workbook
+
+    ecole = Ecole(id=3, nom="Ancienne", code_postal="83000")
+    db_session.add(ecole)
+    db_session.commit()
+    admin = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="A", prenom="B")
+    cours = cours_client.create(db_session, ecole_id=ecole.id, nom="Jazz Ini")
+    choregraphie = choregraphies_client.create(db_session, cours.id, nom="Spectacle")
+    video = videos_client.create(db_session, ecole_id=ecole.id, nom="Filage", lien_fichier="", uploaded_by=admin.id)
+    choregraphies_client.attacher_video(db_session, choregraphie.id, video.id)
+    choregraphie_id, video_id, cours_id = choregraphie.id, video.id, cours.id
+
+    # Sauvegarde d'aujourd'hui, ramenée à l'ancienne forme.
+    classeur = load_workbook(io.BytesIO(client.get(f"/ecoles/{ecole.id}/export-technique").content))
+    del classeur["ChoregraphiesVideos"]
+    feuille = classeur["Videos"]
+    en_tetes = [c.value for c in feuille[1]]
+    for nom, valeur in (("cours_id", cours_id), ("choregraphie_id", choregraphie_id), ("ordre", 4)):
+        feuille.cell(row=1, column=len(en_tetes) + 1, value=nom)
+        feuille.cell(row=2, column=len(en_tetes) + 1, value=valeur)
+        en_tetes.append(nom)
+    for nom in ("ecole_id", "saison_id"):
+        feuille.cell(row=2, column=en_tetes.index(nom) + 1, value=None)
+        feuille.cell(row=1, column=en_tetes.index(nom) + 1, value=f"ancien_{nom}")
+    ancien = io.BytesIO()
+    classeur.save(ancien)
+
+    reponse = client.post(
+        f"/ecoles/{ecole.id}/restaurer",
+        files={"fichier": ("backup.xlsx", ancien.getvalue(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")},
+    )
+    assert reponse.status_code == 204
+    restauree = client.get(f"/choregraphies/{choregraphie_id}").json()
+    assert [v["id"] for v in restauree["videos"]] == [video_id]
+    assert restauree["videos"][0]["ecole_id"] == ecole.id

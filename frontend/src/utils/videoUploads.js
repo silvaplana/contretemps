@@ -61,10 +61,10 @@ export function useTeleversementsTermines(onTermine) {
 // choisi/filmé, avant même de connaître le titre) — renvoie l'id de
 // session dès qu'il est connu, l'envoi des blocs continue derrière sans
 // attendre l'appelant.
-export async function demarrerTeleversement(coursId, fichier) {
+export async function demarrerTeleversement(ecoleId, fichier) {
   const previewUrl = URL.createObjectURL(fichier)
   const extension = `.${fichier.name.split('.').pop() || 'mp4'}`
-  const session = await videosApi.ouvrirTeleversement(coursId, extension, fichier.size)
+  const session = await videosApi.ouvrirTeleversement(ecoleId, extension, fichier.size)
   sessions.set(session.id, {
     octetsEnvoyes: 0,
     octetsTotal: fichier.size,
@@ -166,8 +166,10 @@ export function annulerTeleversement(uploadId) {
 
 // Clic "Ajouter" — crée la ligne en base tout de suite (voir spec),
 // l'envoi continue derrière si pas encore fini (voir envoyerBlocs).
-export async function finaliserTeleversement(coursId, uploadId, metadonnees) {
-  const video = await videosApi.finaliserVideo(coursId, uploadId, metadonnees)
+// `creer(uploadId)` : fourni par le métier, qui sait où ranger la vidéo
+// (ex. dans une chorégraphie, voir api/choregraphies.js : ajouterVideo).
+export async function finaliserTeleversement(uploadId, creer) {
+  const video = await creer(uploadId)
   const etat = sessions.get(uploadId)
   if (etat) {
     if (etat.complet) {

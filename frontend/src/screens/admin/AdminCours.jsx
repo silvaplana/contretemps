@@ -452,6 +452,10 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
     initial?.horairesSupplementaires ?? []
   )
   const [salle, setSalle] = useState(initial?.salle ?? '')
+  // Discipline et niveau : sélecteur de l'écran Chorégraphie (spec §5.3).
+  // Laissés vides à la création, le serveur les déduit du nom.
+  const [discipline, setDiscipline] = useState(initial?.discipline ?? '')
+  const [niveau, setNiveau] = useState(initial?.niveau ?? '')
   // Pas de professeur choisi par défaut pour un nouveau cours (voir
   // §6.5 : "0 prof" est un cas normal, pas une erreur à combler) — un
   // cours en édition garde le sien.
@@ -481,6 +485,8 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
       heureDebut,
       heureFin,
       salle,
+      discipline,
+      niveau,
       professeurId,
       horairesSupplementaires,
       avecConversation: initial ? undefined : avecConversation,
@@ -591,6 +597,26 @@ function CoursModal({ title, submitLabel, initial, professeurs, onClose, onSubmi
 
       <label htmlFor="cours-salle">Salle</label>
       <input id="cours-salle" value={salle} onChange={(e) => setSalle(e.target.value)} />
+      <div className="cours-classement">
+        <div>
+          <label htmlFor="cours-discipline">Discipline</label>
+          <input
+            id="cours-discipline"
+            value={discipline}
+            placeholder={initial ? '' : 'D’après le nom'}
+            onChange={(e) => setDiscipline(e.target.value)}
+          />
+        </div>
+        <div>
+          <label htmlFor="cours-niveau">Niveau</label>
+          <input
+            id="cours-niveau"
+            value={niveau}
+            placeholder={initial ? '' : 'D’après le nom'}
+            onChange={(e) => setNiveau(e.target.value)}
+          />
+        </div>
+      </div>
       <label htmlFor="cours-prof">Professeur</label>
       {/* Un cours peut ne pas encore avoir de professeur déclaré (voir
           §6.5) — d'où cette option vide, pas de sélection forcée. */}

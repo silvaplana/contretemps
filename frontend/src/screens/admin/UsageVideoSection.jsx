@@ -37,7 +37,10 @@ function formatDuree(secondes) {
 // titre l'ouvre. Chargée seulement à la première ouverture — la taille est
 // lue sur le disque à la demande côté backend (voir videos.py :
 // usage_ecole), inutile de la calculer si personne ne regarde.
-export default function UsageVideoSection({ ecoleId, setVideos }) {
+// `choregraphies`/`cours` : pour dire où se trouve chaque vidéo. Le module
+// vidéo, générique, ne le sait pas (voir api/videos.js) ; c'est ici, dans
+// l'appli, qu'on fait le rapprochement.
+export default function UsageVideoSection({ ecoleId, choregraphies = [], cours = [], setChoregraphies }) {
   const [ouvert, setOuvert] = useState(false)
   const [usage, setUsage] = useState(null)
 
@@ -66,22 +69,23 @@ export default function UsageVideoSection({ ecoleId, setVideos }) {
       totalToutesSaisonsSecondes: u.totalToutesSaisonsSecondes - (video.dureeSecondes || 0),
       topVideos: u.topVideos.filter((v) => v.id !== video.id),
     }))
-    // Bug signalé : sans ça, l'écran Vidéo (et Chorégraphie) gardait la
-    // vidéo supprimée en mémoire (App.jsx : `videos`, chargé une fois
-    // par cours, pas revalidé à chaque changement d'onglet) — on y
-    // revoyait la ligne avec une image/vidéo cassée (fichier réellement
-    // effacé du disque côté serveur, voir videos.py : delete). Ce
-    // panneau ne connaît pas le coursId de chaque vidéo (seulement son
-    // nom), donc on retire l'id de TOUTES les listes plutôt que de
-    // cibler la bonne.
-    setVideos?.((byC) =>
-      Object.fromEntries(
-        Object.entries(byC).map(([coursId, liste]) => [
-          coursId,
-          liste.filter((v) => v.id !== video.id),
-        ]),
+    // Sans ça, l'écran Chorégraphie garderait la vidéo supprimée en
+    // mémoire (image cassée : le fichier est réellement effacé).
+    setChoregraphies?.((liste) =>
+      liste.map((ch) =>
+        ch.videos.some((v) => v.id === video.id)
+          ? { ...ch, videos: ch.videos.filter((v) => v.id !== video.id) }
+          : ch,
       ),
     )
+  }
+
+  function emplacement(videoId) {
+    const choregraphie = choregraphies.find((ch) => ch.videos.some((v) => v.id === videoId))
+    return {
+      choregraphie: choregraphie?.nom ?? null,
+      cours: cours.find((c) => c.id === choregraphie?.coursId)?.nom ?? null,
+    }
   }
 
   return (
@@ -130,12 +134,12 @@ export default function UsageVideoSection({ ecoleId, setVideos }) {
             <p className="muted">Aucune vidéo avec un fichier pour l’instant.</p>
           ) : (
             <div className="usage-video__liste">
-              {usage.topVideos.map((v) => (
+              {usage.topVideos.map((video) => ({ ...video, ...emplacement(video.id) })).map((v) => (
                 <div key={v.id} className="usage-video__ligne">
                   <div className="usage-video__titre">
                     <div className="usage-video__titre-ligne">
                       <strong>{v.titre}</strong>
-                      <span className="muted"> — {v.cours}</span>
+                      {v.cours && <span className="muted"> — {v.cours}</span>}
                     </div>
                     {v.choregraphie && (
                       <Badge className="usage-video__choregraphie">

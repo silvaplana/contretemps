@@ -555,9 +555,9 @@ professeur-admin a tout ce qu'a un professeur ET tout ce qu'a un admin.
 | Gérer la liste des administrateurs (créer/modifier/supprimer un admin) | ✅ si Owner uniquement (§2.4) | ❌ (✅ si professeur-admin ET Owner, voir §2.4) | ❌ |
 | Onglet Présence                                   | ✅     | ✅          | ❌                                   |
 | Onglet Chorégraphie (consultation)                | ✅     | ✅          | ✅                                   |
-| Ajout/suppression/modification Chorégraphie       | ✅     | ✅          | ❌                                   |
-| Onglet Vidéo (consultation)                       | ✅     | ✅          | ✅                                   |
-| Ajout/suppression une vidéo                       | ✅     | ✅          | ✅ (pour le cours où il est inscrit) |
+| Ajout/suppression/modification Chorégraphie       | ✅     | ✅ (professeur du cours de la chorégraphie) | ❌     |
+| Ajouter une vidéo dans une chorégraphie           | ✅     | ✅          | ✅                                   |
+| Modifier / supprimer une vidéo                    | ✅     | ✅ (professeur du cours de la chorégraphie) | ❌ (✅ supprimer la sienne) |
 | Messagerie (conversations, envoi mail)            | ✅     | ✅          | ✅                                   |
 | Onglet Profil                                     | ✅     | ✅          | ✅                                   |
 | Comptage d'heures (voir §5.7)                     | ✅ (tous les profs) | ✅ (soi-même uniquement) | ❌                       |
@@ -570,9 +570,9 @@ professeur-admin a tout ce qu'a un professeur ET tout ce qu'a un admin.
 
 ## 4. Navigation par rôle
 
-- **Admin** : Admin · Présence · Chorégraphie · Vidéo · Messagerie · Profil. Accès à tous les cours de son école. Messagerie : toutes les conversations.
-- **Professeur** : Présence · Chorégraphie · Vidéo · Messagerie · Profil. Accès aux cours où il est inscrit (sélecteur de cours). Messagerie : toutes les conversations où il est membre.
-- **Élève** : Chorégraphie · Vidéo · Messagerie · Profil. Accès aux cours où il est inscrit. Messagerie : toutes les conversations où il est membre.
+- **Admin** : Admin · Présence · Chorégraphie · Messagerie · Profil. Accès à tous les cours de son école. Messagerie : toutes les conversations.
+- **Professeur** : Présence · Chorégraphie · Messagerie · Profil. Accès aux cours où il est inscrit (sélecteur de cours). Messagerie : toutes les conversations où il est membre.
+- **Élève** : Chorégraphie · Messagerie · Profil. Accès aux cours où il est inscrit (sauf Chorégraphie : toute l'école, voir §5.3). Messagerie : toutes les conversations où il est membre.
 
 L'en-tête de chaque écran (hors Admin) affiche :
 
@@ -584,7 +584,7 @@ L'en-tête de chaque écran (hors Admin) affiche :
 
 ## 5. Écrans
 
-*Ordre suivant la navigation du rôle Admin (le plus complet) : Admin · Présence · Chorégraphie · Vidéo · Messagerie · Profil.*
+*Ordre suivant la navigation du rôle Admin (le plus complet) : Admin · Présence · Chorégraphie · Messagerie · Profil. L'onglet Vidéo a disparu le 2026-10-03 : les vidéos se gèrent dans les chorégraphies (§5.3).*
 
 **⚠️ Toutes les captures d'écran ci-dessous datent de l'ancienne logique de rôles
 (Admin/Professeur/Parent, mono-école) et sont à reprendre par Claude Code une fois l'IHM
@@ -694,20 +694,29 @@ Une **séance de présence** par cours et par date. Tableau avec les dates en co
 
 ![Écran de présence](images/presence.png)
 
-### 5.3 Chorégraphie *(Admin, Professeur, Élève)*
+### 5.3 Chorégraphie *(Admin, Professeur, Élève)* — refonte du 2026-10-03
 
-- Zone haute : liste des chorégraphies du cours sélectionné
-- Zone basse : détail — **Élèves participants** (sélection spécifique parmi les élèves du cours, pas automatiquement tous), **Costume** (un seul texte pour toute la chorégraphie), **Horaire de répétition**, **Vidéos liées** (calculé, voir §6.7)
-- **Créer/modifier/supprimer une chorégraphie réservé à Admin et Professeur** — un élève consulte seulement (pas de bouton **+**, pas de bouton d'édition/suppression). Différent de l'écran Vidéo (§5.4), où le **+** est ouvert aux 3 rôles.
+**Droits**
+- Tous les utilisateurs ont le même accès en lecture à **toutes** les chorégraphies de l'école (pas seulement celles de leurs cours).
+- Tous les utilisateurs peuvent **ajouter une vidéo** dans une chorégraphie.
+- Seuls un admin ou un **professeur du cours de la chorégraphie** peuvent créer, modifier, supprimer une chorégraphie, et modifier, réordonner ou supprimer une vidéo. Exception : celui qui a ajouté une vidéo peut supprimer la sienne.
+- Le serveur applique ces règles lui-même (`choregraphies/receiver.py`) ; l'écran ne fait que masquer les boutons.
+
+**Écran liste**
+- En haut, un sélecteur à 2 niveaux, **discipline** puis **niveau** (champs des cours, §6.5), avec « Toutes les disciplines » / « Tous les niveaux ». Il remplace, sur cet onglet, le sélecteur de cours de l'en-tête.
+- En dessous, les chorégraphies retenues par le sélecteur : nom, cours, nombre d'élèves et de vidéos.
+- Bouton **+** pour qui peut gérer au moins un cours. À la création, la chorégraphie est **associée à un cours** (choisi parmi ceux que l'on peut gérer) ; elle peut en changer ensuite.
+
+**Écran détail** (au clic) : cours, **élèves participants**, **costume** (un seul texte), **horaire de répétition**, **vidéos** (dans l'ordre choisi).
+- **Choix des élèves** : parmi **tous les élèves de l'école**, dans un panneau qui s'ouvre, filtrable par cours (ouvert sur le cours de la chorégraphie) et par nom.
+- **Vidéos** : ajout par « Filmer » ou « Choisir une vidéo » (envoi par blocs, §8) ; modification du titre et de la description ; suppression ; ordre modifiable en mode édition.
+- Supprimer une chorégraphie supprime ses vidéos et leurs fichiers.
 
 ![Écran chorégraphie](images/choregraphie.png)
 
-### 5.4 Vidéo *(Admin, Professeur, Élève)*
+### 5.4 Vidéo — onglet supprimé le 2026-10-03
 
-Liste défilante de vidéos : vignette, titre, date, description optionnelle, chorégraphie liée
-(optionnelle). Bouton **+** flottant pour ajouter (accessible aux 3 rôles).
-
-![Écran vidéo](images/video.png)
+Il n'y a plus d'écran Vidéo : les vidéos se gèrent dans les chorégraphies (§5.3). Le module vidéo, lui, subsiste comme brique générique (§6.8).
 
 ### 5.5 Messagerie *(Admin, Professeur, Élève)*
 
@@ -1061,13 +1070,17 @@ numéro d'origine n'est pas garanti récupérable automatiquement depuis cette f
 | heure_debut / heure_fin | heure | Obl. | Éditable |
 | salle | texte | Opt. | Éditable |
 | descriptif | texte | Opt. | Éditable |
+| discipline | texte libre (Classique, Jazz…) | Opt. | Éditable, pré-rempli d'après le nom |
+| niveau | texte libre (Initiation, Moyen…) | Opt. | Éditable, pré-rempli d'après le nom |
+
+`discipline` et `niveau` (2026-10-03) alimentent le sélecteur de l'écran Chorégraphie (§5.3). Ils sont déduits du nom à la création (« Class Ini » : Classique, Initiation — voir `cours/classement.py`) et modifiables dans Admin > Cours.
 
 **Relations (tables de jointure, pas de listes stockées sur `cours`)** :
 ```
 cours_professeurs : cours_id (FK), professeur_id (FK -> comptes)   -- plusieurs profs possibles
 eleves_cours      : eleve_id (FK -> comptes), cours_id (FK)
 ```
-Séances de présence et vidéos : reliées par leur propre `cours_id`, jamais listées sur `cours`
+Séances de présence et chorégraphies : reliées par leur propre `cours_id`, jamais listées sur `cours`
 (champs **calculés**, obtenus par requête — voir réponse à ta question sur les champs
 techniques).
 
@@ -1141,42 +1154,43 @@ statut à cocher comme pour un élève) est donc remplacée par **3 lignes** : "
 | Champ | Type | Obl./Opt. |
 |---|---|---|
 | id | PK | — |
-| cours_id | FK → cours | Obl. |
+| cours_id | FK → cours (associé dès la création ; désigne les professeurs qui gèrent la chorégraphie) | Obl. |
 | nom | texte | Obl. |
 | horaire_repetition | texte/datetime | Opt. |
 | costume | texte (un seul, pour toute la chorégraphie) | Opt. |
 
-**Sélection des élèves participants** : une chorégraphie ne rassemble pas forcément *tous* les
-élèves du cours lié — l'admin/prof choisit une sélection spécifique parmi eux, via une table
-de jointure dédiée (et non le lien `eleves_cours` du cours, qui reste plus large) :
-
 ```
 choregraphies_eleves : choregraphie_id (FK), eleve_id (FK -> comptes)
-                        -- sous-ensemble des élèves du cours lié à la chorégraphie ;
-                        -- seuls les élèves déjà inscrits au cours peuvent y être ajoutés
+                        -- élèves participants, choisis dans TOUTE l'école (2026-10-03)
+choregraphies_videos : choregraphie_id (FK), video_id (FK -> videos, unique), ordre
+                        -- les vidéos de la chorégraphie, dans l'ordre choisi
 ```
 
-Vidéos liées : champ **calculé**, obtenu via `videos.choregraphie_id`, pas stocké ici.
+C'est la chorégraphie qui référence ses vidéos : le module vidéo ne la connaît pas (§6.8). Une vidéo n'appartient qu'à une chorégraphie.
 
-### 6.8 Vidéos
+### 6.8 Vidéos — module générique (2026-10-03)
+
+Le module vidéo est une brique **réutilisable**, destinée au futur socle commun à plusieurs applis : il sait recevoir un fichier par blocs, le stocker, le mesurer, le compresser, le servir, le supprimer, et compter la place occupée. Il ne connaît **ni les cours ni les chorégraphies**. C'est le métier qui rattache des vidéos à ses objets (ici `choregraphies_videos`) et qui décide des droits propres au métier.
 
 | Champ | Type | Obl./Opt. |
 |---|---|---|
 | id | PK | — |
-| cours_id | FK → cours | Obl. |
-| choregraphie_id | FK → chorégraphies | Opt. |
+| ecole_id | FK → écoles | Obl. |
+| saison_id | FK → saisons (rempli automatiquement, §2.6) | Obl. |
 | nom | texte | Obl. |
 | description | texte | Opt. |
 | lien_fichier | texte (chemin/URL) | Obl. |
 | poster | texte (chemin/URL) | Opt. |
 | date_publication | datetime | Obl. (auto) |
-| uploaded_by | FK → comptes | Obl. |
-| ordre | entier | Opt. |
+| uploaded_by | FK → comptes (l'appelant, jamais une valeur envoyée) | Obl. |
 | duree_secondes | entier | Opt. |
+| statut | `en_cours` / `complete` | Obl. |
+| compresse | booléen | Obl. |
 
-**Tri différent selon l'écran** :
-- **Écran Vidéo** (liste générale) : tri par `date_publication`, les plus récentes en premier — `ordre` est ignoré
-- **Dans une chorégraphie** : le prof/admin qui édite la chorégraphie choisit l'ordre des vidéos manuellement (champ `ordre`, réordonnable dans l'IHM, ex. glisser-déposer)
+- Routes du module : ouvrir un envoi dans une école, écrire des blocs, annuler ; lire une vidéo (membres de l'école) ; la modifier ou la supprimer par son seul numéro (admins : panneau « Usage vidéo ») ; usage par école.
+- Créer une vidéo à partir d'un envoi se fait par le métier (`POST /choregraphies/{id}/videos`).
+- Quand une vidéo est supprimée, le module prévient le métier, qui défait ses liens (`Videos.quand_supprimee`).
+- Les vidéos portent leur saison : elles sont filtrées et verrouillées comme les autres données d'une saison (§2.6), et supprimées avec elle.
 
 ### 6.9 Conversations (messagerie WhatsApp-like)
 
@@ -1353,7 +1367,8 @@ encore branché).
     code postal seulement pour la liste publique, codes réservés aux admins
     (`GET /ecoles/{id}`), code de récupération jamais renvoyé (seulement s'il est défini).
     **Hors périmètre de l'étape 2** (routes partagées avec les profs/élèves, inchangées) :
-    Présence, chorégraphies, vidéos, messages, lectures de listes. `POST /ecoles` (création
+    Présence, messages, lectures de listes. Chorégraphies et vidéos sont protégées depuis
+    le 2026-10-03 (§5.3). `POST /ecoles` (création
     d'école) et `POST /messagerie/relancer` (toutes écoles) restent ouvertes : elles
     relèvent du Superuser (étape 4).
   - **Étape 3, faite** : tableau des administrateurs et ses modales (module
