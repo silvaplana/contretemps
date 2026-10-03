@@ -6,7 +6,7 @@ export const TABS = [
   { key: 'presence', label: 'Présence', icon: 'presence', roles: ['admin', 'professeur'] },
   {
     key: 'choregraphie',
-    label: 'Chorégraphie',
+    label: 'Chorégraphies',
     icon: 'choregraphie',
     roles: ['admin', 'professeur', 'eleve'],
   },
