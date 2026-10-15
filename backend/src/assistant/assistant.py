@@ -16,6 +16,7 @@ revenir à l'identique).
 
 from __future__ import annotations
 
+import io
 import json
 import logging
 import os
@@ -72,7 +73,16 @@ dossier ou d'un fichier.
 proposition s'affiche à la personne avec « Faire » et « Annuler » : elle décide. Dis-le en \
 une phrase, sans prétendre que c'est fait. Tu sauras au message suivant si elle l'a faite.
 - Un message commence par le contexte (où la personne se trouve dans Docs) : sers-t'en \
-pour comprendre « ce dossier » ou « ce fichier »."""
+pour comprendre « ce dossier » ou « ce fichier ».
+
+Tu disposes d'un ordinateur (l'outil d'exécution de code, Python, sans accès à internet) pour \
+calculer, tracer des courbes (matplotlib) et fabriquer des fichiers (PDF, Excel, Word, \
+PowerPoint, images). Pour travailler sur un fichier de l'école, copie-le d'abord dans \
+l'ordinateur avec « copier_fichier_dans_l_ordinateur ». Pour remettre un fichier à la \
+personne, enregistre-le dans le dossier $OUTPUT_DIR, dans la même commande que celle qui le \
+fabrique, et liste ce dossier pour vérifier : il lui sera proposé avec « Faire / Annuler », \
+rangé dans le dossier qu'elle regarde. Donne-lui un nom clair en français (ex. \
+« Courbe des inscriptions.pdf »)."""
 
 
 def _prop(type_, description, **autres):
@@ -106,6 +116,10 @@ OUTILS = [
     _outil("fichiers_recents", "Les derniers fichiers modifiés, tous espaces confondus.", {}),
     _outil("lire_fichier", "Lit le contenu d'un fichier (PDF, Word, Excel, texte, photo).",
            {"fichier_id": _prop("integer", "Numéro du fichier.")}),
+    _outil("copier_fichier_dans_l_ordinateur",
+           "Copie un fichier de l'école dans ton ordinateur (outil d'exécution de code) pour le traiter en Python. "
+           "Il y apparaît sous son nom ; retrouve-le avec `find / -name '<nom>' 2>/dev/null`.",
+           {"fichier_id": _prop("integer", "Numéro du fichier.")}),
     _outil("proposer_creer_dossier", "Propose de créer un dossier (la personne confirme).",
            {"espace": ESPACE, "dossier_parent_id": DOSSIER, "nom": _prop("string", "Nom du dossier.")}),
     _outil("proposer_creer_fichier_texte",
@@ -118,7 +132,13 @@ OUTILS = [
     _outil("proposer_renommer", "Propose de renommer un dossier ou un fichier (la personne confirme).",
            {"element_id": _prop("integer", "Numéro de l'élément."),
             "nouveau_nom": _prop("string", "Nouveau nom.")}),
+    # Ordinateur d'Anthropic (Python, sans internet) : courbes, calculs, PDF,
+    # Excel, Word, PowerPoint. Les fichiers déposés dans $OUTPUT_DIR
+    # reviennent ici (voir _fichiers_produits).
+    {"type": "code_execution_20260521", "name": "code_execution"},
 ]
+TAILLE_MAX_PRODUIT = 50 * 1024 * 1024
+EN_ATTENTE_MAX = 40  # fichiers produits gardés en mémoire, en attente de « Faire »
 
 
 class AssistantIndisponible(Exception):
@@ -139,6 +159,9 @@ class Conversation:
     person_id: int
     messages: list = field(default_factory=list)
     cout_usd: float = 0.0
+    # Ordinateur de la conversation (réutilisé d'un message à l'autre : les
+    # fichiers copiés et calculés y restent).
+    container_id: str | None = None
     # Une ligne par question : modèle, nombre d'appels, jetons, coût.
     tours: list = field(default_factory=list)
     verrou: threading.Lock = field(default_factory=threading.Lock)
@@ -149,14 +172,21 @@ def _evenement(**donnees) -> str:
 
 
 class Assistant:
-    def __init__(self, documents: Documents, client: anthropic.Anthropic | None = None, noter_cout=None) -> None:
+    def __init__(
+        self, documents: Documents, client: anthropic.Anthropic | None = None, noter_cout=None, cout_saison=None
+    ) -> None:
         """`noter_cout(db, org_id, cout_usd, detail)` : reporte le coût de
         chaque question dans « Usage des ressources & IA » (catégorie
         « Chat documents », branchée par app/main.py)."""
         self.documents = documents
         self._client = client
         self.noter_cout = noter_cout
+        # cout_saison(db, org_id) : cumul « Chat documents » de la saison.
+        self.cout_saison = cout_saison
         self.conversations: dict[str, Conversation] = {}
+        # Fichiers fabriqués par l'ordinateur, en attente de « Faire » :
+        # jeton -> (org_id, person_id, nom, contenu).
+        self.produits: dict[str, tuple[int, int, str, bytes]] = {}
 
     @property
     def actif(self) -> bool:
@@ -186,6 +216,7 @@ class Assistant:
             try:
                 d = self.documents.detail(db, member, int(dossier_id))
                 chemin = " › ".join([ESPACES[espace], *(p["name"] for p in d.get("path", [])), d["name"]])
+                contexte["lieu"] = chemin
                 lignes[0] = f"Contexte : la personne regarde le dossier « {chemin} » (id {d['id']})"
             except (DocError, ValueError):
                 pass
@@ -242,6 +273,11 @@ class Assistant:
         if nom == "lire_fichier":
             chemin, nom_fichier, mime = d.content(db, member, args["fichier_id"])
             return contenu_pour_claude(chemin, nom_fichier, mime), None
+        if nom == "copier_fichier_dans_l_ordinateur":
+            chemin, nom_fichier, mime = d.content(db, member, args["fichier_id"])
+            envoye = self._claude().files.upload(file=(nom_fichier, chemin.read_bytes(), mime))
+            # Le bloc container_upload accompagne le résultat (voir repondre).
+            return f"COPIE:{envoye.id}:{nom_fichier}", None
         return self._proposer(db, member, nom, args)
 
     def _nom_dossier(self, db, member: Member, espace: str, dossier_id: int | None) -> str:
@@ -273,6 +309,53 @@ class Assistant:
             carte,
         )
 
+    def _fichiers_produits(self, member: Member, reponse, contexte: dict) -> list[dict]:
+        """Fichiers déposés par l'ordinateur dans $OUTPUT_DIR : téléchargés,
+        gardés en attente, et proposés en carte « Ajouter … dans … »."""
+        cartes = []
+        for bloc in reponse.content:
+            if getattr(bloc, "type", "") != "bash_code_execution_tool_result":
+                continue
+            resultat = bloc.content
+            if getattr(resultat, "type", "") != "bash_code_execution_result":
+                continue
+            for sortie in getattr(resultat, "content", None) or []:
+                file_id = getattr(sortie, "file_id", None)
+                if not file_id:
+                    continue
+                try:
+                    meta = self._claude().files.retrieve_metadata(file_id)
+                    contenu = self._claude().files.download(file_id).read()
+                except anthropic.APIError:
+                    logger.exception("Fichier produit illisible (%s)", file_id)
+                    continue
+                nom = (meta.filename or "fichier").replace("/", "-").replace("\\", "-").strip() or "fichier"
+                if len(contenu) > TAILLE_MAX_PRODUIT:
+                    continue
+                while len(self.produits) >= EN_ATTENTE_MAX:
+                    self.produits.pop(next(iter(self.produits)))
+                jeton = uuid.uuid4().hex
+                self.produits[jeton] = (member.org_id, member.person_id, nom, contenu)
+                espace = contexte.get("space") if contexte.get("space") in ESPACES else "private"
+                dossier = contexte.get("folder_id") if not contexte.get("recents") else None
+                cartes.append({
+                    "id": jeton[:12], "kind": "ajouter_fichier", "jeton": jeton, "nom": nom,
+                    "espace": espace, "dossier_parent_id": dossier, "taille": len(contenu),
+                    "libelle": f"Ajouter « {nom} » dans {contexte.get('lieu') or ESPACES[espace]}",
+                })
+        return cartes
+
+    def ajouter_produit(self, db, member: Member, jeton: str, espace: str, dossier_id: int | None) -> dict:
+        """« Faire » sur une carte de fichier fabriqué : il entre dans Docs,
+        avec les droits de la personne (comme un import)."""
+        produit = self.produits.get(jeton)
+        if produit is None or produit[0] != member.org_id or produit[1] != member.person_id:
+            raise DocError(404, "Ce fichier n'est plus disponible : redemandez-le à l'assistant.")
+        _, _, nom, contenu = produit
+        cree = self.documents.upload(db, member, espace, dossier_id, nom, io.BytesIO(contenu))
+        self.produits.pop(jeton, None)
+        return cree
+
     # ------------------------------------------------------------------
     # Un tour de conversation, en flux (Server-Sent Events)
     # ------------------------------------------------------------------
@@ -300,31 +383,42 @@ class Assistant:
             for _ in range(TOURS_MAX):
                 reponse = None
                 debut_appel = True
-                for morceau, fin in self._un_appel(conv, modele):
-                    if fin is None:
+                for genre, valeur in self._un_appel(conv, modele):
+                    if genre == "texte":
                         # Nouvel appel après des outils : nouveau paragraphe.
                         if debut_appel and deja_ecrit:
-                            morceau = "\n\n" + morceau
+                            valeur = "\n\n" + valeur
                         debut_appel = False
                         deja_ecrit = True
-                        yield _evenement(type="texte", texte=morceau)
+                        yield _evenement(type="texte", texte=valeur)
+                    elif genre == "outil":
+                        yield _evenement(type="outil", nom=valeur)
                     else:
-                        reponse = fin
+                        reponse = valeur
                 cout += cout_usd(reponse.model, reponse.usage)
                 nb_appels += 1
                 entree += reponse.usage.input_tokens + (getattr(reponse.usage, "cache_read_input_tokens", 0) or 0)
                 sortie += reponse.usage.output_tokens
                 conv.messages.append({"role": "assistant", "content": [b.model_dump(exclude_none=True) for b in reponse.content]})
+                conteneur = getattr(reponse, "container", None)
+                if conteneur is not None and getattr(conteneur, "id", None):
+                    conv.container_id = conteneur.id
+                for carte in self._fichiers_produits(member, reponse, contexte):
+                    yield _evenement(type="action", **carte)
                 appels = [b for b in reponse.content if b.type == "tool_use"]
                 if reponse.stop_reason == "refusal":
                     yield _evenement(type="texte", texte="\n\nJe ne peux pas répondre à cette demande.")
                     break
+                if reponse.stop_reason == "pause_turn":
+                    # L'ordinateur a travaillé longtemps : on relance la suite.
+                    continue
                 if not appels:
                     break
                 if reponse.stop_reason == "max_tokens":
                     yield _evenement(type="erreur", message="Réponse trop longue, interrompue.")
                     break
                 resultats = []
+                copies = []
                 for appel in appels:
                     yield _evenement(type="outil", nom=appel.name)
                     try:
@@ -333,11 +427,19 @@ class Assistant:
                         contenu, carte = self._executer(db, member, appel.name, appel.input)
                         if carte is not None:
                             yield _evenement(type="action", **carte)
+                        if isinstance(contenu, str) and contenu.startswith("COPIE:"):
+                            _, file_id, nom_copie = contenu.split(":", 2)
+                            copies.append({"type": "container_upload", "file_id": file_id})
+                            contenu = f"« {nom_copie} » est copié dans ton ordinateur."
                         resultats.append({"type": "tool_result", "tool_use_id": appel.id, "content": contenu})
+                    except anthropic.APIError as erreur:
+                        logger.exception("Copie vers l'ordinateur impossible")
+                        resultats.append({"type": "tool_result", "tool_use_id": appel.id, "is_error": True,
+                                          "content": f"Copie impossible : {erreur.__class__.__name__}"})
                     except (DocError, KeyError, TypeError, ValueError) as erreur:
                         message = getattr(erreur, "message", None) or str(erreur)
                         resultats.append({"type": "tool_result", "tool_use_id": appel.id, "is_error": True, "content": message})
-                conv.messages.append({"role": "user", "content": resultats})
+                conv.messages.append({"role": "user", "content": resultats + copies})
             conv.cout_usd += cout
             tour = {
                 "question": texte[:120],
@@ -351,21 +453,26 @@ class Assistant:
             if self.noter_cout is not None and cout > 0:
                 self.noter_cout(db, member.org_id, cout, f"{MODELES[modele]} : {texte[:150]}")
             logger.info("Assistant : conversation %s, %s, tour à %.4f $ (total %.4f $)", conv.id, modele, cout, conv.cout_usd)
-            yield _evenement(type="fin", cout_usd=round(cout, 5), cout_total_usd=round(conv.cout_usd, 5), tour=tour)
+            saison = self.cout_saison(db, member.org_id) if self.cout_saison is not None else None
+            yield _evenement(
+                type="fin", cout_usd=round(cout, 5), cout_total_usd=round(conv.cout_usd, 5), cout_saison_usd=saison, tour=tour
+            )
         except AssistantIndisponible as erreur:
             yield _evenement(type="erreur", message=str(erreur))
         finally:
             conv.verrou.release()
 
     def _un_appel(self, conv: Conversation, modele: str = MODELE) -> Iterator[tuple[str, object]]:
-        """Un appel à Claude, en flux : (texte, None) au fil de l'eau, puis
-        ("", message final). Changer de modèle en cours de conversation est
+        """Un appel à Claude, en flux : ("texte", morceau) et ("outil", nom)
+        au fil de l'eau, puis ("fin", message final). Changer de modèle en cours de conversation est
         possible : les blocs de réflexion d'un autre modèle sont ignorés."""
         options = {}
         if modele != "claude-haiku-5-5":
             # Si le modèle décline la demande, l'API la rejoue sur le modèle
             # de repli qu'Anthropic recommande (pas de repli pour Haiku).
             options = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
+        if conv.container_id:
+            options["container"] = conv.container_id
         try:
             with self._claude().beta.messages.stream(
                 model=modele,
@@ -379,8 +486,10 @@ class Assistant:
             ) as flux:
                 for evenement in flux:
                     if evenement.type == "text":
-                        yield evenement.text, None
-                yield "", flux.get_final_message()
+                        yield "texte", evenement.text
+                    elif evenement.type == "content_block_start" and getattr(evenement.content_block, "type", "") == "server_tool_use":
+                        yield "outil", "code_execution"
+                yield "fin", flux.get_final_message()
         except anthropic.AuthenticationError as erreur:
             logger.exception("Clé Anthropic refusée")
             raise AssistantIndisponible("La clé de l'API Claude est refusée.") from erreur

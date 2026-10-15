@@ -152,6 +152,10 @@ def test_choix_du_modele(client, monde, monkeypatch):
     usage = client.get(f"/ecoles/{monde['ecole'].id}/ressources", headers=entetes).json()
     ligne = next(l for l in usage["ia"] if l["categorie"] == "chat_documents")
     assert ligne["libelle"] == "Chat documents" and ligne["nombre"] == 2 and ligne["cout_usd"] > 0
+    # Cumul de la saison, rendu à chaque réponse et à l'ouverture de l'assistant.
+    assert fin["cout_saison_usd"] > 0
+    acces = client.get(f"/assistant/acces?org_id={monde['ecole'].id}", headers=entetes).json()
+    assert acces["autorise"] is True and acces["cout_saison_usd"] == pytest.approx(ligne["cout_usd"], abs=1e-4)
 
 
 def test_lire_un_fichier(client, monde, monkeypatch):
@@ -184,7 +188,66 @@ def test_la_fiche_d_ecole_du_super_user_y_a_acces(client, db_session, monde, mon
     monkeypatch.setattr(main.assistant_client, "_client", FauxClaude([_message(Bloc(type="text", text="Bonjour."))]))
     seb = Comptes().create(db_session, ecole_id=monde["ecole"].id, role="admin", nom="Richard", prenom="Seb", email="su@test.fr")
     entetes = entetes_session(seb)
-    assert client.get("/assistant/acces", headers=entetes).json() == {"autorise": True}
-    assert client.get("/assistant/acces", headers=entetes_session(monde["admin"])).json() == {"autorise": False}
+    assert client.get("/assistant/acces", headers=entetes).json()["autorise"] is True
+    assert client.get("/assistant/acces", headers=entetes_session(monde["admin"])).json()["autorise"] is False
     reponse = client.post(f"/assistant/orgs/{monde['ecole'].id}/messages", json={"texte": "Bonjour"}, headers=entetes)
     assert reponse.status_code == 200 and _evenements(reponse)[-1]["type"] == "fin"
+
+
+class FauxFichiers:
+    def __init__(self):
+        self.envoyes = []
+
+    def upload(self, file):
+        self.envoyes.append(file[0])
+        return SimpleNamespace(id=f"file_envoye_{len(self.envoyes)}")
+
+    def retrieve_metadata(self, file_id):
+        return SimpleNamespace(filename="Courbe des inscriptions.pdf")
+
+    def download(self, file_id):
+        return SimpleNamespace(read=lambda: b"%PDF-1.7 courbe")
+
+
+def test_l_ordinateur_fabrique_un_fichier_propose_puis_ajoute(client, monde, monkeypatch):
+    ecole = monde["ecole"]
+    entetes = {"Authorization": f"Bearer {_en_superuser(client)}", rbac.ENTETE_COMPTE: str(monde["su"].id)}
+    base = f"/documents/orgs/{ecole.id}"
+    saison = next(e for e in client.get(f"{base}/spaces/private", headers=entetes).json()["items"] if e["system_kind"] == "period")
+    chiffres = client.post(
+        f"{base}/files", data={"space": "private", "parent_id": str(saison["id"])},
+        files={"file": ("Inscriptions.csv", io.BytesIO(b"mois;nombre\nsept;40\noct;52"))}, headers=entetes,
+    ).json()
+    sortie = Bloc(type="bash_code_execution_output", file_id="file_courbe")
+    resultat = Bloc(type="bash_code_execution_tool_result", tool_use_id="srv1",
+                    content=Bloc(type="bash_code_execution_result", stdout="", stderr="", return_code=0, content=[sortie]))
+    faux = FauxClaude([
+        _message(Bloc(type="tool_use", id="t1", name="copier_fichier_dans_l_ordinateur", input={"fichier_id": chiffres["id"]}), stop="tool_use"),
+        _message(Bloc(type="server_tool_use", id="srv1", name="bash_code_execution", input={"command": "python courbe.py"}), resultat,
+                 Bloc(type="text", text="Voici la courbe.")),
+    ])
+    faux.files = FauxFichiers()
+    monkeypatch.setattr(main.assistant_client, "_client", faux)
+
+    reponse = client.post(
+        f"/assistant/orgs/{ecole.id}/messages",
+        json={"texte": "Trace la courbe des inscriptions en PDF", "contexte": {"space": "private", "folder_id": saison["id"]}},
+        headers=entetes,
+    )
+    evenements = _evenements(reponse)
+    assert "erreur" not in [e["type"] for e in evenements]
+    # Le fichier de l'école est copié dans l'ordinateur (container_upload joint au résultat).
+    assert faux.files.envoyes == ["Inscriptions.csv"]
+    assert {"type": "container_upload", "file_id": "file_envoye_1"} in faux.demandes[1][-1]["content"]
+    # Le PDF fabriqué est proposé, rangé dans le dossier regardé.
+    carte = next(e for e in evenements if e["type"] == "action")
+    assert carte["kind"] == "ajouter_fichier" and carte["nom"] == "Courbe des inscriptions.pdf"
+    assert carte["libelle"].startswith("Ajouter « Courbe des inscriptions.pdf » dans Privé › Saison")
+    noms = lambda: [e["name"] for e in client.get(f"{base}/spaces/private?folder={saison['id']}", headers=entetes).json()["items"]]
+    assert "Courbe des inscriptions.pdf" not in noms()
+    # « Faire » : il entre dans Documents, une seule fois.
+    url = f"/assistant/orgs/{ecole.id}/produits/{carte['jeton']}"
+    corps = {"espace": carte["espace"], "dossier_parent_id": carte["dossier_parent_id"]}
+    assert client.post(url, json=corps, headers=entetes).status_code == 200
+    assert "Courbe des inscriptions.pdf" in noms()
+    assert client.post(url, json=corps, headers=entetes).status_code == 404

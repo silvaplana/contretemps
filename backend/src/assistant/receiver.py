@@ -12,6 +12,7 @@ from comptes.models import RoleCompte
 from saisons.portee import toutes_saisons
 from sqlalchemy import select
 from documents.ports import Member
+from documents.service import DocError
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
@@ -54,16 +55,47 @@ def autorise(db: Session, compte: Compte) -> bool:
         return normaliser_email(compte.email) in {normaliser_email(e) for e in emails if e}
 
 
+class AjoutProduit(BaseModel):
+    espace: str
+    dossier_parent_id: int | None = None
+
+
 class AssistantReceiver:
     def __init__(self, client: Assistant, app: FastAPI, current_member) -> None:
         self.client = client
         self.current_member = current_member
         app.post("/assistant/orgs/{org_id}/messages")(self._route())
 
+        @app.post("/assistant/orgs/{org_id}/produits/{jeton}")
+        def ajouter_produit(
+            org_id: int,
+            jeton: str,
+            donnees: AjoutProduit,
+            compte: Compte = Depends(rbac.compte_appelant),
+            membre: Member = Depends(current_member),
+            db: Session = Depends(get_db),
+        ):
+            """« Faire » sur un fichier fabriqué par l'ordinateur de l'assistant."""
+            if not autorise(db, compte):
+                raise HTTPException(status_code=403, detail="L'assistant est en essai : réservé au Super User.")
+            try:
+                return self.client.ajouter_produit(
+                    db, replace(membre, org_id=org_id), jeton, donnees.espace, donnees.dossier_parent_id
+                )
+            except DocError as erreur:
+                raise HTTPException(status_code=erreur.status, detail=erreur.message) from erreur
+
         @app.get("/assistant/acces")
-        def acces(db: Session = Depends(get_db), compte: Compte = Depends(rbac.compte_appelant)):
-            """L'appli demande si elle doit ouvrir l'assistant (bulle)."""
-            return {"autorise": autorise(db, compte)}
+        def acces(
+            org_id: int | None = None, db: Session = Depends(get_db), compte: Compte = Depends(rbac.compte_appelant)
+        ):
+            """L'appli demande si elle doit ouvrir l'assistant (bulle), et le
+            cumul « Chat documents » de la saison de l'école `org_id`."""
+            ok = autorise(db, compte)
+            saison = None
+            if ok and org_id is not None and self.client.cout_saison is not None:
+                saison = self.client.cout_saison(db, org_id)
+            return {"autorise": ok, "cout_saison_usd": saison}
 
     def _route(self):
         current_member = self.current_member

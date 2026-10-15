@@ -14,6 +14,8 @@ const EN_TRAIN_DE = {
   chercher: 'Je cherche…',
   fichiers_recents: 'Je regarde les derniers fichiers…',
   lire_fichier: 'Je lis le fichier…',
+  copier_fichier_dans_l_ordinateur: 'Je prépare le fichier…',
+  code_execution: 'Je travaille sur l’ordinateur…',
 }
 
 // Modèles au choix (panneau du coût, Seb 15 octobre), avec leur prix en
@@ -74,13 +76,16 @@ function Texte({ texte }) {
   })
 }
 
-export default function Assistant({ orgId, contexte, onClose, onFaire }) {
+export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaisonInitial = null }) {
   const [echanges, setEchanges] = useState([]) // { role, texte, actions?, etat? }
   const [conversationId, setConversationId] = useState(null)
   const [saisie, setSaisie] = useState('')
   const [enCours, setEnCours] = useState(false)
   const [activite, setActivite] = useState('')
   const [cout, setCout] = useState(0)
+  // Cumul « Chat documents » de l'école sur la saison (même relevé que
+  // « Usage des ressources & IA »).
+  const [coutSaison, setCoutSaison] = useState(coutSaisonInitial)
   const [tours, setTours] = useState([]) // coût de chaque question
   const [panneauCout, setPanneauCout] = useState(false)
   const [modele, setModele] = useState(lireModele)
@@ -134,6 +139,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire }) {
         else if (e.type === 'action') majDernier((m) => ({ ...m, actions: [...m.actions, { ...e, etat: 'proposee' }] }))
         else if (e.type === 'fin') {
           setCout(e.cout_total_usd)
+          if (e.cout_saison_usd != null) setCoutSaison(e.cout_saison_usd)
           setTours((t) => [...t, e.tour])
         }
         else if (e.type === 'erreur') majDernier((m) => ({ ...m, erreur: e.message }))
@@ -196,9 +202,9 @@ export default function Assistant({ orgId, contexte, onClose, onFaire }) {
           className="dx-chat__cout-bouton"
           onClick={() => setPanneauCout((o) => !o)}
           aria-expanded={panneauCout}
-          title="Coût et modèle"
+          title="Coût de cette conversation / de « Chat documents » sur la saison"
         >
-          {dollars(cout)}
+          {dollars(cout)} / {dollars(coutSaison ?? cout)}
         </button>
         <button type="button" className="dx-ico" onClick={onClose} aria-label="Fermer l’assistant">
           ✕
@@ -208,6 +214,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire }) {
       {panneauCout && (
         <div className="dx-chat__panneau">
           <h3>Coût de cette conversation : {dollars(cout)}</h3>
+          <p className="dx-chat__etat">« Chat documents » sur la saison : {dollars(coutSaison ?? cout)}</p>
           {tours.length === 0 ? (
             <p className="dx-chat__etat">Aucune demande pour l’instant.</p>
           ) : (

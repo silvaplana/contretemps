@@ -7,9 +7,31 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 // L'assistant est-il ouvert à cette personne ? (essai : le Super User)
-export async function accesAssistant() {
-  const reponse = await fetch(`${BASE_URL}/assistant/acces`)
-  return reponse.ok ? (await reponse.json()).autorise : false
+// Avec le cumul « Chat documents » de la saison : { autorise, cout_saison_usd }.
+export async function accesAssistant(orgId) {
+  const reponse = await fetch(`${BASE_URL}/assistant/acces?org_id=${orgId}`)
+  return reponse.ok ? reponse.json() : { autorise: false, cout_saison_usd: null }
+}
+
+// « Faire » sur un fichier fabriqué par l'ordinateur de l'assistant : il
+// entre dans Documents, dans l'espace et le dossier indiqués.
+export async function ajouterProduit(orgId, jeton, espace, dossierParentId) {
+  const reponse = await fetch(`${BASE_URL}/assistant/orgs/${orgId}/produits/${jeton}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ espace, dossier_parent_id: dossierParentId }),
+  })
+  if (!reponse.ok) {
+    let message = `Ajout impossible (${reponse.status})`
+    try {
+      const { detail } = await reponse.json()
+      if (typeof detail === 'string') message = detail
+    } catch {
+      // pas de JSON : message par défaut
+    }
+    throw new Error(message)
+  }
+  return reponse.json()
 }
 
 export async function poserQuestion(orgId, { conversationId, texte, contexte, modele }, surEvenement) {

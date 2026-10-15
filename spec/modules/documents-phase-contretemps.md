@@ -201,7 +201,13 @@ Word, Excel, texte), et **propose** des actions (créer un dossier, un fichier t
 renommer) sous forme de cartes « Faire / Annuler » que l'appli exécute avec les droits de la
 personne. Réponse en flux. Coût affiché en haut à droite ; au clic, le coût de chaque demande et le
 choix du modèle (Opus 5.5 par défaut, Sonnet 5.5, Haiku 5.5, Fable 5.1). Conversations en mémoire
-du serveur (perdues à son redémarrage), coût non encore reporté dans « Usage des ressources & IA ».
+du serveur (perdues à son redémarrage) ; coût reporté dans « Usage des ressources & IA », catégorie
+« Chat documents ». *Ordinateur (2026-10-16)* : l'outil d'exécution de code d'Anthropic
+(`code_execution_20260521`, Python sans internet) pour tracer des courbes, calculer, fabriquer des
+PDF / Excel / Word / PowerPoint ; un fichier de l'école y est copié par l'outil
+« copier_fichier_dans_l_ordinateur » (Files API + `container_upload`) ; ce que Claude dépose dans
+`$OUTPUT_DIR` revient en carte « Ajouter … dans … » (Faire / Annuler) ; un ordinateur par
+conversation, réutilisé. 1 550 heures de calcul offertes par mois, 0,05 $/h au-delà.
 
 ### Étape 6 : kit AG
 

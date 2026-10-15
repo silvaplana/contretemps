@@ -5,7 +5,7 @@ import FolderPicker from './FolderPicker.jsx'
 import NewScreen from './NewScreen.jsx'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
-import { accesAssistant } from '../../api/assistant.js'
+import { accesAssistant, ajouterProduit } from '../../api/assistant.js'
 import Arbre from './Arbre.jsx'
 import Assistant from './Assistant.jsx'
 import Trash from './Trash.jsx'
@@ -115,10 +115,17 @@ export default function Explorer({ orgId, memoire }) {
   const bureau = useBureau()
   const [assistantOuvert, setAssistantOuvert] = useState(false)
   const [assistant, setAssistant] = useState(false)
+  const [coutSaison, setCoutSaison] = useState(null)
+  // Une fois ouvert, l'assistant reste en mémoire quand on le ferme : on
+  // retrouve la conversation (et son coût) en le rouvrant (Seb, 16 octobre).
+  const [assistantMonte, setAssistantMonte] = useState(false)
   const [hauteurChat, setHauteurChat] = useState(lireHauteurChat)
   useEffect(() => {
-    accesAssistant().then(setAssistant, () => {})
-  }, [])
+    accesAssistant(orgId).then((x) => {
+      setAssistant(x.autorise)
+      setCoutSaison(x.cout_saison_usd)
+    }, () => {})
+  }, [orgId])
   const api = useMemo(() => documentsApi(orgId), [orgId])
   const [spaces, setSpaces] = useState([])
   const [space, setSpace] = useState(() => lireEndroit(memoire).space)
@@ -743,7 +750,10 @@ export default function Explorer({ orgId, memoire }) {
   }
 
   function ouvrirAssistant() {
-    if (assistant) setAssistantOuvert(true)
+    if (assistant) {
+      setAssistantOuvert(true)
+      setAssistantMonte(true)
+    }
     else montrerToast('L’assistant est en essai : réservé au Super User pour l’instant.')
   }
 
@@ -756,6 +766,7 @@ export default function Explorer({ orgId, memoire }) {
       await api.upload(carte.espace, carte.dossier_parent_id, fichier)
     } else if (carte.kind === 'deplacer') await api.move(carte.element_id, carte.espace, carte.dossier_destination_id)
     else if (carte.kind === 'renommer') await api.rename(carte.element_id, carte.nouveau_nom)
+    else if (carte.kind === 'ajouter_fichier') await ajouterProduit(orgId, carte.jeton, carte.espace, carte.dossier_parent_id)
     await recharger()
     montrerToast(`Fait : ${carte.libelle}`)
   }
@@ -783,9 +794,10 @@ export default function Explorer({ orgId, memoire }) {
     window.addEventListener('pointerup', lacher)
   }
 
-  const conversation = assistantOuvert && (
+  const conversation = assistantMonte && (
     <Assistant
       orgId={orgId}
+      coutSaisonInitial={coutSaison}
       contexte={{ space, folder_id: folder, selection_id: selection?.id ?? null, recents: recentsActif }}
       onClose={() => setAssistantOuvert(false)}
       onFaire={faireAction}
@@ -944,7 +956,7 @@ export default function Explorer({ orgId, memoire }) {
       </div>
 
       {conversation && (
-        <div className="dx-chat-bas" style={{ height: hauteurChat }}>
+        <div className="dx-chat-bas" style={{ height: hauteurChat, display: assistantOuvert ? undefined : 'none' }}>
           <div
             className="dx-chat-poignee"
             role="separator"
