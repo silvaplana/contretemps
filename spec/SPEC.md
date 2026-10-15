@@ -796,7 +796,7 @@ Elle contient, dans cet ordre :
     documents de l'école (vérifié dans son PDF : Great Vibes pour le titre, Poppins pour le reste),
     réservée au nom car illisible pour des textes courants ;
 - **Slogan** (texte, une ligne, 80 caractères au plus), à la place de « Gestion d'école de
-  danse du cours au gala » ;
+  danse du cours au gala » , avec sa **police du slogan** (même liste que la police du nom, demande du 2026-10-15) ;
 - **Couleurs** : *fond*, *texte* et *accent* (boutons, bandeaux, onglet actif : l'orange
   actuel). Un message prévient si le texte est peu lisible sur le fond (contraste trop
   faible), sans bloquer ;
