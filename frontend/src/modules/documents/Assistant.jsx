@@ -17,6 +17,16 @@ const EN_TRAIN_DE = {
   lire_fichier: 'Je lis le fichier…',
   copier_fichier_dans_l_ordinateur: 'Je prépare le fichier…',
   code_execution: 'Je travaille sur l’ordinateur…',
+  resume_ecole: 'Je regarde les chiffres de l’école…',
+  lister_cours: 'Je regarde les cours…',
+  lister_eleves: 'Je regarde les élèves…',
+  fiche_eleve: 'Je regarde la fiche de l’élève…',
+  lister_professeurs: 'Je regarde les professeurs…',
+  presences: 'Je regarde les présences…',
+  heures_professeurs: 'Je regarde les heures des professeurs…',
+  lister_choregraphies: 'Je regarde les chorégraphies…',
+  lister_inscriptions_en_ligne: 'Je regarde les inscriptions…',
+  lister_saisons: 'Je regarde les saisons…',
 }
 
 // Modèles au choix (panneau du coût, Seb 15 octobre), avec leur prix en

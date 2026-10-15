@@ -113,7 +113,7 @@ class AssistantReceiver:
             conv = self.client.conversation(membre, question.conversation_id)
             return StreamingResponse(
                 self.client.repondre(
-                    db, membre, conv, question.texte, question.contexte.model_dump(), question.modele or MODELE
+                    db, membre, conv, question.texte, question.contexte.model_dump(), question.modele or MODELE, compte
                 ),
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},

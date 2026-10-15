@@ -29,6 +29,8 @@ import anthropic
 from documents.ports import Member
 from documents.service import DocError, Documents
 
+from .donnees import NOMS as OUTILS_ECOLE
+from .donnees import OUTILS_DONNEES, DonneesEcole
 from .lecture import contenu_pour_claude
 
 logger = logging.getLogger(__name__)
@@ -55,9 +57,13 @@ TOURS_MAX = 10  # appels d'outils enchaînés au plus pour une seule question
 
 ESPACES = {"public": "Public", "private": "Privé", "personal": "Personnel"}
 
-CONSIGNE = """Tu es l'assistant de l'onglet « Docs » d'une appli d'école de danse (une \
-association). Tu aides la personne à retrouver, lire, résumer et ranger les dossiers et \
-fichiers de l'école.
+CONSIGNE = """Tu es l'assistant de Contretemps, l'appli d'une école de danse gérée par une \
+association loi 1901. Tu aides la personne à retrouver, lire, résumer et ranger les dossiers \
+et fichiers de l'onglet « Docs », et tu réponds aux questions sur les données de l'école \
+(élèves, cours, professeurs, présences, heures des professeurs, chorégraphies, inscriptions, \
+saisons) grâce aux outils de lecture : ne réponds jamais de mémoire sur ces données, \
+consulte-les. Tu ne vois que ce que la personne a le droit de voir, et jamais les \
+informations de santé. Tu ne modifies aucune donnée de l'école.
 
 Les espaces : « Public » (visible par tous), « Privé » (l'équipe ; un dossier « Permanent » \
 et un dossier par saison), « Personnel » (les fichiers de la personne seule). Les éléments \
@@ -136,6 +142,9 @@ OUTILS = [
     # Excel, Word, PowerPoint. Les fichiers déposés dans $OUTPUT_DIR
     # reviennent ici (voir _fichiers_produits).
     {"type": "code_execution_20260521", "name": "code_execution"},
+    # Données de l'école (élèves, cours, présences…), en lecture, avec les
+    # droits de la personne (voir donnees.py).
+    *OUTILS_DONNEES,
 ]
 TAILLE_MAX_PRODUIT = 50 * 1024 * 1024
 EN_ATTENTE_MAX = 40  # fichiers produits gardés en mémoire, en attente de « Faire »
@@ -187,6 +196,7 @@ class Assistant:
         # Fichiers fabriqués par l'ordinateur, en attente de « Faire » :
         # jeton -> (org_id, person_id, nom, contenu).
         self.produits: dict[str, tuple[int, int, str, bytes]] = {}
+        self.donnees = DonneesEcole()
 
     @property
     def actif(self) -> bool:
@@ -248,8 +258,12 @@ class Assistant:
         auteur = f", par {e['updated_by']}" if e.get("updated_by") else ""
         return f"- [fichier] {e['name']} (id {e['id']}, {(e.get('size') or 0) // 1024} Ko, modifié le {date}{auteur})"
 
-    def _executer(self, db, member: Member, nom: str, args: dict) -> tuple[list[dict] | str, dict | None]:
+    def _executer(self, db, member: Member, nom: str, args: dict, compte=None) -> tuple[list[dict] | str, dict | None]:
         """(résultat pour Claude, éventuelle carte d'action pour l'écran)."""
+        if nom in OUTILS_ECOLE:
+            if compte is None:
+                raise ValueError("données de l'école indisponibles")
+            return self.donnees.executer(db, compte, member.org_id, nom, args), None
         d = self.documents
         if nom == "lister_dossier":
             x = d.browse(db, member, args["espace"], args["dossier_id"])
@@ -361,7 +375,7 @@ class Assistant:
     # ------------------------------------------------------------------
 
     def repondre(
-        self, db, member: Member, conv: Conversation, texte: str, contexte: dict, modele: str = MODELE
+        self, db, member: Member, conv: Conversation, texte: str, contexte: dict, modele: str = MODELE, compte=None
     ) -> Iterator[str]:
         """`db` : la session de la requête, ouverte jusqu'à la fin du flux
         (FastAPI ferme les dépendances après l'envoi de la réponse)."""
@@ -424,7 +438,7 @@ class Assistant:
                     try:
                         if not isinstance(appel.input, dict):
                             raise ValueError("paramètres illisibles")
-                        contenu, carte = self._executer(db, member, appel.name, appel.input)
+                        contenu, carte = self._executer(db, member, appel.name, appel.input, compte)
                         if carte is not None:
                             yield _evenement(type="action", **carte)
                         if isinstance(contenu, str) and contenu.startswith("COPIE:"):
