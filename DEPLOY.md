@@ -147,5 +147,6 @@ Chaque école a son adresse `https://<adresse>.contretemps.silvaplana.cloud`
   `frontend`, construit à la racine (`VITE_BASE=/`, API sous `/api`), avec
   `frontend/Caddyfile.ecoles` : manifest, icônes et nom de l'appli dans
   `index.html` viennent du backend, selon l'école de l'adresse (en-tête Host).
-- **Liens des mails** vers l'adresse de l'école : variable
-  `ADRESSE_PAR_ECOLE=1` dans `backend/.env`.
+- **Liens des mails** : toujours vers l'adresse de l'école (celle de
+  Personnalisation), depuis le 2026-10-15. `ADRESSE_PAR_ECOLE=0` dans
+  `backend/.env` revient à l'adresse générique (dépannage seulement).

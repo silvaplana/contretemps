@@ -28,9 +28,11 @@ class MailsAcces:
     def __init__(self, envoi: EmailEnvoi | None = None) -> None:
         self.envoi = envoi or EmailEnvoi()
         self.url_appli = os.environ.get("URL_APPLI", "https://silvaplana.cloud/contretemps").rstrip("/")
-        # Liens vers l'adresse de l'école (spec §2.7) : activé seulement une
-        # fois les adresses d'école en service (HTTPS vérifié), voir DEPLOY.md.
-        self.adresse_par_ecole = os.environ.get("ADRESSE_PAR_ECOLE") == "1"
+        # Liens vers l'adresse de l'école, celle choisie dans Admin > École >
+        # Personnalisation (spec §2.7) : toujours, depuis le 2026-10-15
+        # (demande : « il faut toujours avoir la bonne adresse du site »).
+        # `ADRESSE_PAR_ECOLE=0` revient à l'adresse générique (dépannage).
+        self.adresse_par_ecole = os.environ.get("ADRESSE_PAR_ECOLE", "1") != "0"
         # Développement sans SMTP : le mail est écrit dans les journaux du
         # serveur au lieu d'être envoyé (jamais en production).
         self.dans_les_journaux = os.environ.get("MAILS_DANS_LES_JOURNAUX") == "1"

@@ -209,6 +209,8 @@ def test_connexion_sur_l_adresse_de_l_ecole(client, db_session, ecole, monkeypat
     corps = {"identifiant": "zoe@example.com", "mot_de_passe": MOT_DE_PASSE}
 
     assert len(client.post("/auth/login", json=corps).json()["choix"]) == 2
+    # Adresse générique forcée (ADRESSE_PAR_ECOLE=0, dépannage).
+    monkeypatch.setattr(auth_receiver.invitations.mails, "adresse_par_ecole", False)
     sur_l_ecole = client.post("/auth/login", json=corps, headers={"Host": HOTE}).json()
     assert sur_l_ecole["compte"]["id"] == ici.id and sur_l_ecole["adresse_ecole"] is None
 
