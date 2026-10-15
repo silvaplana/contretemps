@@ -24,6 +24,7 @@ export default function AdministrateursTableau({
   creationOuverte,
   onFermerCreation,
 }) {
+  const [ouvert, setOuvert] = useState(false)
   const [administrateurs, setAdministrateurs] = useState([])
   // Accès à l'appli (spec §2.2) : même bouton « Inviter » et même statut
   // que dans Admin > Élèves.
@@ -79,84 +80,99 @@ export default function AdministrateursTableau({
 
   return (
     <section className="admin-administrateurs">
-      <h3 className="section-label">Administrateurs</h3>
-      {erreur && <p className="admin-panel__erreur">{erreur}</p>}
-      <MessageAcces acces={acces} />
-      <div className="table-scroll">
-        <table className="data-table">
-          <thead>
-            <tr>
-              <th>Nom</th>
-              <th>Prénom</th>
-              <th>Email</th>
-              <th>Administrateur principal</th>
-              <th>Inviter</th>
-              <th>Statut</th>
-              {peutGerer && <th aria-label="Actions" />}
-            </tr>
-          </thead>
-          <tbody>
-            {administrateurs.map((a) => (
-              <tr key={a.id}>
-                <td className="data-table__name">
-                  {a.nom} {a.estProf && <Badge tone="neutral">Prof</Badge>}
-                  {a.estEleve && <Badge tone="neutral">Élève</Badge>}
-                </td>
-                <td>{a.prenom}</td>
-                <td>{a.email || <span className="muted">—</span>}</td>
-                <td>{a.estOwner ? <Badge>Oui</Badge> : <span className="muted">—</span>}</td>
-                <td>
-                  <BoutonInviter acces={acces} compteId={a.id} prenom={a.prenom} />
-                </td>
-                <td>
-                  <StatutAcces acces={acces} compteId={a.id} />
-                </td>
-                {peutGerer && (
-                  <td>
-                    {a.id !== activeUser.id && (
-                      <div className="row-actions">
-                        <button
-                          type="button"
-                          className="icon-btn"
-                          onClick={() => setEnEdition(a)}
-                          aria-label={`Modifier ${a.prenom} ${a.nom}`}
-                        >
-                          <Icon name="edit" size={18} />
-                        </button>
-                        <button
-                          type="button"
-                          className="icon-btn icon-btn--danger"
-                          onClick={() => supprimer(a)}
-                          aria-label={`Supprimer ${a.prenom} ${a.nom}`}
-                        >
-                          <Icon name="trash" size={18} />
-                        </button>
-                      </div>
+      {/* Dépliable, fermée par défaut (demande du 2026-10-15). */}
+      <h3 className="section-label">
+        <button
+          type="button"
+          className="section-label__depliant"
+          aria-expanded={ouvert}
+          onClick={() => setOuvert((o) => !o)}
+        >
+          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
+          Administrateurs
+        </button>
+      </h3>
+      {ouvert && (
+        <>
+          {erreur && <p className="admin-panel__erreur">{erreur}</p>}
+          <MessageAcces acces={acces} />
+          <div className="table-scroll">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Nom</th>
+                  <th>Prénom</th>
+                  <th>Email</th>
+                  <th>Administrateur principal</th>
+                  <th>Inviter</th>
+                  <th>Statut</th>
+                  {peutGerer && <th aria-label="Actions" />}
+                </tr>
+              </thead>
+              <tbody>
+                {administrateurs.map((a) => (
+                  <tr key={a.id}>
+                    <td className="data-table__name">
+                      {a.nom} {a.estProf && <Badge tone="neutral">Prof</Badge>}
+                      {a.estEleve && <Badge tone="neutral">Élève</Badge>}
+                    </td>
+                    <td>{a.prenom}</td>
+                    <td>{a.email || <span className="muted">—</span>}</td>
+                    <td>{a.estOwner ? <Badge>Oui</Badge> : <span className="muted">—</span>}</td>
+                    <td>
+                      <BoutonInviter acces={acces} compteId={a.id} prenom={a.prenom} />
+                    </td>
+                    <td>
+                      <StatutAcces acces={acces} compteId={a.id} />
+                    </td>
+                    {peutGerer && (
+                      <td>
+                        {a.id !== activeUser.id && (
+                          <div className="row-actions">
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              onClick={() => setEnEdition(a)}
+                              aria-label={`Modifier ${a.prenom} ${a.nom}`}
+                            >
+                              <Icon name="edit" size={18} />
+                            </button>
+                            <button
+                              type="button"
+                              className="icon-btn icon-btn--danger"
+                              onClick={() => supprimer(a)}
+                              aria-label={`Supprimer ${a.prenom} ${a.nom}`}
+                            >
+                              <Icon name="trash" size={18} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
                     )}
-                  </td>
-                )}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
-      {peutGerer && creationOuverte && (
-        <AdministrateurModal
-          professeurs={profsPromouvables}
-          eleves={elevesPromouvables}
-          onValider={(donnees) => administrateursApi.creer(ecoleId, donnees)}
-          onEnregistre={enregistree}
-          onClose={onFermerCreation}
-        />
-      )}
-      {peutGerer && enEdition && (
-        <AdministrateurModal
-          admin={enEdition}
-          onValider={(donnees) => administrateursApi.modifier(enEdition.id, donnees)}
-          onEnregistre={enregistree}
-          onClose={() => setEnEdition(null)}
-        />
+          {peutGerer && creationOuverte && (
+            <AdministrateurModal
+              professeurs={profsPromouvables}
+              eleves={elevesPromouvables}
+              onValider={(donnees) => administrateursApi.creer(ecoleId, donnees)}
+              onEnregistre={enregistree}
+              onClose={onFermerCreation}
+            />
+          )}
+          {peutGerer && enEdition && (
+            <AdministrateurModal
+              admin={enEdition}
+              onValider={(donnees) => administrateursApi.modifier(enEdition.id, donnees)}
+              onEnregistre={enregistree}
+              onClose={() => setEnEdition(null)}
+            />
+          )}
+        </>
       )}
     </section>
   )

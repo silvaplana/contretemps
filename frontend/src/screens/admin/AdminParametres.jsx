@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as ecolesApi from '../../api/ecoles.js'
+import Icon from '../../components/Icon.jsx'
 import { useSaisonConsultee } from '../../api/saison.js'
 import AdministrateursTableau from './AdministrateursTableau.jsx'
 import { isOwner } from '../../data/roles.js'
@@ -46,6 +47,7 @@ export default function AdminParametres({
   onSaisonSupprimee,
 }) {
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
+  const [coordonneesOuvertes, setCoordonneesOuvertes] = useState(false)
   const saisonConsultee = useSaisonConsultee()
 
   // Réglages de sauvegarde : chargés ici, par la route réservée aux
@@ -86,62 +88,79 @@ export default function AdminParametres({
         onAjouterAdministrateur={isOwner(activeUser) ? () => setCreationAdminOuverte(true) : null}
       />
 
-      <div className="form-fields">
-        <label htmlFor="ecole-param-nom">Nom de l’école</label>
-        <input
-          id="ecole-param-nom"
-          className="field-input"
-          value={ecole.nom}
-          onChange={(e) => update({ nom: e.target.value })}
-        />
+      {/* Premier volet dépliable (demande du 2026-10-15) : nom, code
+          postal et coordonnées imprimées sur les documents. */}
+      <section className="admin-coordonnees">
+        <h3 className="section-label">
+          <button
+            type="button"
+            className="section-label__depliant"
+            aria-expanded={coordonneesOuvertes}
+            onClick={() => setCoordonneesOuvertes((o) => !o)}
+          >
+            <Icon name={coordonneesOuvertes ? 'chevronDown' : 'chevronRight'} size={14} />
+            Coordonnées
+          </button>
+        </h3>
+        {coordonneesOuvertes && (
+          <div className="form-fields">
+            <label htmlFor="ecole-param-nom">Nom de l’école</label>
+            <input
+              id="ecole-param-nom"
+              className="field-input"
+              value={ecole.nom}
+              onChange={(e) => update({ nom: e.target.value })}
+            />
 
-        <label htmlFor="ecole-param-cp">Code postal</label>
-        <input
-          id="ecole-param-cp"
-          className="field-input"
-          value={ecole.codePostal}
-          onChange={(e) => update({ codePostal: e.target.value })}
-        />
+            <label htmlFor="ecole-param-cp">Code postal</label>
+            <input
+              id="ecole-param-cp"
+              className="field-input"
+              value={ecole.codePostal}
+              onChange={(e) => update({ codePostal: e.target.value })}
+            />
 
-        {/* Coordonnées (spec §6.1, demande du 2026-10-15) : imprimées sur la
-            facture et le dossier d'inscription à la place des valeurs par
-            défaut. */}
-        <label htmlFor="ecole-param-adresse">Adresse</label>
-        <textarea
-          id="ecole-param-adresse"
-          className="field-input"
-          rows={2}
-          value={ecole.adresse ?? ''}
-          placeholder="Numéro et rue"
-          onChange={(e) => update({ adresse: e.target.value })}
-        />
+            {/* Coordonnées (spec §6.1, demande du 2026-10-15) : imprimées sur la
+                facture et le dossier d'inscription à la place des valeurs par
+                défaut. */}
+            <label htmlFor="ecole-param-adresse">Adresse</label>
+            <textarea
+              id="ecole-param-adresse"
+              className="field-input"
+              rows={2}
+              value={ecole.adresse ?? ''}
+              placeholder="Numéro et rue"
+              onChange={(e) => update({ adresse: e.target.value })}
+            />
 
-        <label htmlFor="ecole-param-ville">Ville</label>
-        <input
-          id="ecole-param-ville"
-          className="field-input"
-          value={ecole.ville ?? ''}
-          onChange={(e) => update({ ville: e.target.value })}
-        />
+            <label htmlFor="ecole-param-ville">Ville</label>
+            <input
+              id="ecole-param-ville"
+              className="field-input"
+              value={ecole.ville ?? ''}
+              onChange={(e) => update({ ville: e.target.value })}
+            />
 
-        <ChampVerifie
-          id="ecole-param-siret"
-          label="SIRET"
-          placeholder="123 456 789 00012"
-          valeur={ecole.siret ?? ''}
-          afficher={siretLisible}
-          enregistrer={(siret) => enregistrerVerifie({ siret })}
-        />
+            <ChampVerifie
+              id="ecole-param-siret"
+              label="SIRET"
+              placeholder="123 456 789 00012"
+              valeur={ecole.siret ?? ''}
+              afficher={siretLisible}
+              enregistrer={(siret) => enregistrerVerifie({ siret })}
+            />
 
-        <ChampVerifie
-          id="ecole-param-iban"
-          label="IBAN"
-          placeholder="FR76 3000 6000 0112 3456 7890 189"
-          valeur={ecole.iban ?? ''}
-          afficher={ibanLisible}
-          enregistrer={(iban) => enregistrerVerifie({ iban })}
-        />
-      </div>
+            <ChampVerifie
+              id="ecole-param-iban"
+              label="IBAN"
+              placeholder="FR76 3000 6000 0112 3456 7890 189"
+              valeur={ecole.iban ?? ''}
+              afficher={ibanLisible}
+              enregistrer={(iban) => enregistrerVerifie({ iban })}
+            />
+          </div>
+        )}
+      </section>
 
       {/* Sections au même niveau, même format de titre (demande du
           2026-09-21) : Saisons (spec §2.6, entre les codes d'accès et les
