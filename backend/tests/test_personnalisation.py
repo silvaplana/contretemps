@@ -225,3 +225,30 @@ def test_apparence_lisible_sans_connexion(client, ecole):
     vue = client.get(f"/ecoles/{ecole.id}/apparence").json()
     assert (vue["couleur_accent"], vue["sous_domaine"]) == ("#123456", "le-beausset")
     assert client.get("/ecoles/999/apparence").status_code == 404
+
+
+def test_historique_des_logos(client, ecole):
+    """Les logos validés sont gardés : on peut revenir à un ancien, ou le
+    supprimer (jamais celui en place)."""
+    def envoyer_et_valider():
+        client.post(f"/ecoles/{ecole.id}/personnalisation/images/logo", files={"fichier": ("l.png", _logo_sur_fond_blanc(), "image/png")})
+        return client.post(f"/ecoles/{ecole.id}/personnalisation/images/logo/valider").json()
+
+    envoyer_et_valider()
+    envoyer_et_valider()
+    historique = client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()
+    assert len(historique) == 2 and historique[0]["actuelle"] and not historique[1]["actuelle"]
+    ancien, actuel = historique[1]["fichier"], historique[0]["fichier"]
+    assert client.get(f"/ecoles/{ecole.id}/personnalisation/{ancien}").status_code == 200
+
+    assert client.delete(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique/{actuel}").status_code == 400
+    vue = client.post(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique/{ancien}").json()
+    assert vue["logo_personnalise"] is True
+    assert [i["fichier"] for i in client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json() if i["actuelle"]] == [ancien]
+    assert client.delete(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique/{actuel}").status_code == 204
+    assert len(client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()) == 1
+
+    # Revenir au défaut garde l'historique.
+    client.post(f"/ecoles/{ecole.id}/personnalisation/defaut")
+    historique = client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()
+    assert [i["actuelle"] for i in historique] == [False]

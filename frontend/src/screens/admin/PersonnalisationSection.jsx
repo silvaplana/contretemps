@@ -323,6 +323,19 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
               </select>
             </>
           )}
+          <Historique
+            ecoleId={ecole.id}
+            type="logo"
+            version={enPlace.version}
+            desactive={enCours}
+            onReprendre={(fichier) =>
+              tenter(async () => {
+                const vue = await personnalisationApi.reprendreImage(ecole.id, 'logo', fichier)
+                setEnPlace(vue)
+                mettreAJour(vue)
+              })
+            }
+          />
           <p className="muted perso__aide">
             {enPlace.logoPersonnalise
               ? 'Sert aussi d’icône de l’appli installée, posé sur la couleur de fond.'
@@ -350,6 +363,20 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
               Changer l’image du nom
             </button>
           )}
+          <Historique
+            ecoleId={ecole.id}
+            type="nom"
+            version={enPlace.version}
+            desactive={enCours}
+            onReprendre={(fichier) =>
+              tenter(async () => {
+                const vue = await personnalisationApi.reprendreImage(ecole.id, 'nom', fichier)
+                setEnPlace(vue)
+                setChamps((c) => ({ ...c, nomMode: vue.nomMode }))
+                mettreAJour(vue)
+              })
+            }
+          />
           <input
             ref={choixNom}
             type="file"
@@ -448,6 +475,73 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
         </button>
       )}
     </section>
+  )
+}
+
+// Images déjà validées (demande du 2026-10-15) : un clic remet l'une en
+// place ; la poubelle supprime celles dont on ne veut plus (jamais celle en
+// place). Rien d'affiché tant qu'il n'y a qu'une image ou aucune.
+function Historique({ ecoleId, type, version, desactive, onReprendre }) {
+  const [images, setImages] = useState([])
+  const [erreur, setErreur] = useState('')
+
+  useEffect(() => {
+    let annule = false
+    personnalisationApi
+      .historique(ecoleId, type)
+      .then((liste) => !annule && setImages(liste))
+      .catch(() => {})
+    return () => {
+      annule = true
+    }
+  }, [ecoleId, type, version])
+
+  async function supprimer(fichier) {
+    if (!window.confirm('Supprimer définitivement cette image ?')) return
+    setErreur('')
+    try {
+      await personnalisationApi.supprimerImage(ecoleId, type, fichier)
+      setImages((liste) => liste.filter((i) => i.fichier !== fichier))
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
+  if (images.length < 2 && !images.some((i) => !i.actuelle)) return null
+  return (
+    <div className="perso__historique">
+      <span className="perso__sous-label">{type === 'logo' ? 'Logos précédents' : 'Noms en image précédents'}</span>
+      <div className="perso__vignettes">
+        {images.map((image) => (
+          <div key={image.fichier} className={`perso__vignette ${image.actuelle ? 'is-active' : ''}`}>
+            <button
+              type="button"
+              className="perso__damier"
+              disabled={desactive || image.actuelle}
+              onClick={() => onReprendre(image.fichier)}
+              title={image.actuelle ? 'En place' : 'Remettre cette image'}
+              aria-label={image.actuelle ? 'Image en place' : 'Remettre cette image'}
+            >
+              <img src={urlFichier(ecoleId, image.fichier)} alt="" />
+            </button>
+            {image.actuelle ? (
+              <small>En place</small>
+            ) : (
+              <button
+                type="button"
+                className="icon-btn icon-btn--sm icon-btn--danger"
+                disabled={desactive}
+                onClick={() => supprimer(image.fichier)}
+                aria-label="Supprimer cette image"
+              >
+                <Icon name="trash" size={14} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+    </div>
   )
 }
 

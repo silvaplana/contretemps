@@ -44,6 +44,8 @@ TYPES_IMAGE = ("logo", "nom")
 
 _COULEUR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 _BROUILLON = re.compile(r"^brouillon-[0-9a-f]{16}(-original)?\.png$")
+# Images validées, gardées pour pouvoir y revenir (demande du 2026-10-15).
+_IMAGE_GARDEE = re.compile(r"^(logo|nom)-(\d+)(-original)?\.png$")
 
 
 class PersonnalisationRefusee(ValueError):
@@ -172,9 +174,11 @@ class Personnalisation:
         ecole.nom_mode = "texte"
         ecole.personnalisation_version = (ecole.personnalisation_version or 1) + 1
         db.commit()
-        dossier = self._dossier(ecole.id)
-        if dossier.exists():
-            shutil.rmtree(dossier)
+        # Les images validées restent dans l'historique (on peut y revenir) ;
+        # seuls les brouillons et les icônes fabriquées disparaissent.
+        for type_image in TYPES_IMAGE:
+            self.annuler_image(ecole.id, type_image)
+        shutil.rmtree(self._dossier(ecole.id) / "icones", ignore_errors=True)
         db.refresh(ecole)
         return ecole
 
@@ -258,7 +262,6 @@ class Personnalisation:
         version = (ecole.personnalisation_version or 1) + 1
         nom_traite = f"{type_image}-{version}.png"
         nom_original = f"{type_image}-{version}-original.png"
-        anciens = (ecole.logo, ecole.logo_original) if type_image == "logo" else (ecole.nom_image, ecole.nom_image_original)
         (dossier / brouillon["traite"]).rename(dossier / nom_traite)
         if brouillon["original"].startswith("brouillon-"):
             (dossier / brouillon["original"]).rename(dossier / nom_original)
@@ -271,12 +274,52 @@ class Personnalisation:
             ecole.nom_image_detourage, ecole.nom_mode = brouillon["detourage"], "image"
         ecole.personnalisation_version = version
         db.commit()
-        for ancien in anciens:
-            if ancien and ancien not in (nom_traite, nom_original):
-                (dossier / ancien).unlink(missing_ok=True)
+        # Les précédentes restent dans l'historique (voir historique).
         self.annuler_image(ecole.id, type_image)
         db.refresh(ecole)
         return ecole
+
+    # --- Historique des images validées (demande du 2026-10-15) ---
+
+    def historique(self, ecole: Ecole, type_image: str) -> list[dict]:
+        """Les images déjà validées pour ce type, la plus récente d'abord ;
+        `actuelle` : celle en place."""
+        dossier = self._dossier(ecole.id)
+        en_place = ecole.logo if type_image == "logo" else ecole.nom_image
+        resultat = []
+        for chemin in dossier.glob(f"{type_image}-*.png") if dossier.exists() else []:
+            correspondance = _IMAGE_GARDEE.match(chemin.name)
+            if correspondance and not correspondance.group(3):
+                resultat.append({"fichier": chemin.name, "version": int(correspondance.group(2)), "actuelle": chemin.name == en_place})
+        return sorted(resultat, key=lambda image: image["version"], reverse=True)
+
+    def reprendre_image(self, db: Session, ecole: Ecole, type_image: str, fichier: str) -> Ecole:
+        """Remet en place une image de l'historique."""
+        if fichier not in {image["fichier"] for image in self.historique(ecole, type_image)}:
+            raise PersonnalisationRefusee("Cette image n'existe plus.")
+        original = fichier.replace(".png", "-original.png")
+        if not (self._dossier(ecole.id) / original).exists():
+            original = fichier
+        if type_image == "logo":
+            ecole.logo, ecole.logo_original, ecole.logo_detourage = fichier, original, None
+        else:
+            ecole.nom_image, ecole.nom_image_original, ecole.nom_image_detourage = fichier, original, None
+            ecole.nom_mode = "image"
+        ecole.personnalisation_version = (ecole.personnalisation_version or 1) + 1
+        db.commit()
+        db.refresh(ecole)
+        return ecole
+
+    def supprimer_image(self, ecole: Ecole, type_image: str, fichier: str) -> None:
+        """Retire une image de l'historique ; jamais celle en place."""
+        images = {image["fichier"]: image for image in self.historique(ecole, type_image)}
+        if fichier not in images:
+            raise PersonnalisationRefusee("Cette image n'existe plus.")
+        if images[fichier]["actuelle"]:
+            raise PersonnalisationRefusee("C'est l'image en place : choisissez-en une autre d'abord.")
+        dossier = self._dossier(ecole.id)
+        (dossier / fichier).unlink(missing_ok=True)
+        (dossier / fichier.replace(".png", "-original.png")).unlink(missing_ok=True)
 
     def annuler_image(self, ecole_id: int, type_image: str) -> None:
         brouillon = self._lire_brouillon(ecole_id, type_image)
@@ -302,7 +345,7 @@ class Personnalisation:
             return self._dossier(ecole.id) / ecole.logo if ecole.logo else DOSSIER_DEFAUT / "logo-contretemps.png"
         if nom == "nom.png":
             return self._dossier(ecole.id) / ecole.nom_image if ecole.nom_image else None
-        if _BROUILLON.match(nom):
+        if _BROUILLON.match(nom) or _IMAGE_GARDEE.match(nom):
             chemin = self._dossier(ecole.id) / nom
             return chemin if chemin.exists() else None
         return None

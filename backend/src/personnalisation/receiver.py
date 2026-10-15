@@ -73,6 +73,19 @@ class PersonnalisationReceiver:
             "/ecoles/{ecole_id}/personnalisation/images/{type_image}/valider",
             dependencies=[Depends(self._admin)],
         )(self.valider)
+        r.get(
+            "/ecoles/{ecole_id}/personnalisation/images/{type_image}/historique",
+            dependencies=[Depends(self._admin)],
+        )(self.historique)
+        r.post(
+            "/ecoles/{ecole_id}/personnalisation/images/{type_image}/historique/{fichier}",
+            dependencies=[Depends(self._admin)],
+        )(self.reprendre)
+        r.delete(
+            "/ecoles/{ecole_id}/personnalisation/images/{type_image}/historique/{fichier}",
+            status_code=204,
+            dependencies=[Depends(self._admin)],
+        )(self.supprimer_de_l_historique)
         r.delete(
             "/ecoles/{ecole_id}/personnalisation/images/{type_image}",
             status_code=204,
@@ -209,6 +222,22 @@ class PersonnalisationReceiver:
         except PersonnalisationRefusee as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         return self.client.vue(ecole)
+
+    def historique(self, ecole_id: int, type_image: str, db: Session = Depends(get_db)):
+        return self.client.historique(self._ecole(db, ecole_id), self._type(type_image))
+
+    def reprendre(self, ecole_id: int, type_image: str, fichier: str, db: Session = Depends(get_db)):
+        try:
+            ecole = self.client.reprendre_image(db, self._ecole(db, ecole_id), self._type(type_image), fichier)
+        except PersonnalisationRefusee as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        return self.client.vue(ecole)
+
+    def supprimer_de_l_historique(self, ecole_id: int, type_image: str, fichier: str, db: Session = Depends(get_db)):
+        try:
+            self.client.supprimer_image(self._ecole(db, ecole_id), self._type(type_image), fichier)
+        except PersonnalisationRefusee as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
 
     def annuler(self, ecole_id: int, type_image: str, db: Session = Depends(get_db)):
         self._ecole(db, ecole_id)

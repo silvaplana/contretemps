@@ -87,3 +87,20 @@ export async function validerImage(ecoleId, type) {
 export async function annulerImage(ecoleId, type) {
   await requete(`/ecoles/${ecoleId}/personnalisation/images/${type}`, { method: 'DELETE' }).catch(() => {})
 }
+
+// --- Historique des images validées (demande du 2026-10-15) ---
+
+// [{ fichier, version, actuelle }], la plus récente d'abord.
+export async function historique(ecoleId, type) {
+  return requete(`/ecoles/${ecoleId}/personnalisation/images/${type}/historique`)
+}
+
+export async function reprendreImage(ecoleId, type, fichier) {
+  return versEcran(
+    await requete(`/ecoles/${ecoleId}/personnalisation/images/${type}/historique/${fichier}`, { method: 'POST' }),
+  )
+}
+
+export async function supprimerImage(ecoleId, type, fichier) {
+  await requete(`/ecoles/${ecoleId}/personnalisation/images/${type}/historique/${fichier}`, { method: 'DELETE' })
+}
