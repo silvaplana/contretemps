@@ -1175,14 +1175,21 @@ export default function Explorer({ orgId, memoire }) {
       </div>
 
       {conversation && (
-        <div className="dx-chat-bas" style={{ height: hauteurChat, display: assistantOuvert ? undefined : 'none' }}>
-          <div
-            className="dx-chat-poignee"
-            role="separator"
-            aria-orientation="horizontal"
-            aria-label="Régler la hauteur de l’assistant"
-            onPointerDown={redimensionnerChat}
-          />
+        // Sur téléphone, l'écran est trop petit pour la liste et la
+        // conversation : l'assistant prend tout l'écran (Seb, 16 octobre).
+        <div
+          className={`dx-chat-bas${bureau ? '' : ' dx-chat-bas--plein'}`}
+          style={{ height: bureau ? hauteurChat : undefined, display: assistantOuvert ? undefined : 'none' }}
+        >
+          {bureau && (
+            <div
+              className="dx-chat-poignee"
+              role="separator"
+              aria-orientation="horizontal"
+              aria-label="Régler la hauteur de l’assistant"
+              onPointerDown={redimensionnerChat}
+            />
+          )}
           {conversation}
         </div>
       )}

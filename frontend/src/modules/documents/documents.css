@@ -1918,3 +1918,32 @@
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   pointer-events: none;
 }
+
+/* Téléphone : l'assistant prend tout l'écran (Seb, 16 octobre). */
+.dx-chat-bas--plein {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  height: 100dvh;
+  max-height: none;
+  border-top: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* En-tête de l'assistant sur un écran étroit : rien ne se chevauche. */
+.dx-chat__haut > * {
+  flex-shrink: 0;
+}
+
+.dx-chat__haut > .dx-chat__titre {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+
+@media (max-width: 480px) {
+  .dx-chat__titre-mot {
+    display: none;
+  }
+}

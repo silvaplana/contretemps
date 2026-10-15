@@ -264,7 +264,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
     >
       <div className="dx-chat__haut">
         <span className="dx-chat__titre">
-          <BubbleIcon /> Assistant
+          <BubbleIcon /> <span className="dx-chat__titre-mot">Assistant</span>
         </span>
         {echanges.length > 0 && (
           <button
