@@ -704,26 +704,6 @@ export default function Explorer({ orgId, memoire }) {
         ))}
       </div>
 
-      {!resultats && (
-        <nav className="dx-crumb" aria-label="Emplacement">
-          <button type="button" className={`dx-crumb__part${survol === 'root' ? ' dx-crumb--drop' : ''}`} data-drop-folder="root" onClick={() => allerA(null)}>
-            {data?.shared_with_me ? 'Partagés avec vous' : libelleEspace}
-          </button>
-          {(data?.breadcrumb ?? []).map((b, i, fil) => (
-            <span key={b.id} className={survol === b.id ? 'dx-crumb--drop' : undefined}>
-              {' › '}
-              {i === fil.length - 1 ? (
-                <b>{b.name}</b>
-              ) : (
-                <button type="button" className="dx-crumb__part" data-drop-folder={b.id} onClick={() => allerA(b.id)}>
-                  {b.name}
-                </button>
-              )}
-            </span>
-          ))}
-        </nav>
-      )}
-
       <div className="dx-ficons" role="group" aria-label="Filtres">
         {Object.entries(STATUSES).map(([cle, s]) => (
           boutonFiltre({
@@ -747,6 +727,27 @@ export default function Explorer({ orgId, memoire }) {
         ))}
       </div>
       {bulle && <div className="dx-tip" role="status">{bulle}</div>}
+
+      {/* Le chemin sous les filtres (Seb, 15 octobre). */}
+      {!resultats && (
+        <nav className="dx-crumb" aria-label="Emplacement">
+          <button type="button" className={`dx-crumb__part${survol === 'root' ? ' dx-crumb--drop' : ''}`} data-drop-folder="root" onClick={() => allerA(null)}>
+            {data?.shared_with_me ? 'Partagés avec vous' : libelleEspace}
+          </button>
+          {(data?.breadcrumb ?? []).map((b, i, fil) => (
+            <span key={b.id} className={survol === b.id ? 'dx-crumb--drop' : undefined}>
+              {' › '}
+              {i === fil.length - 1 ? (
+                <b>{b.name}</b>
+              ) : (
+                <button type="button" className="dx-crumb__part" data-drop-folder={b.id} onClick={() => allerA(b.id)}>
+                  {b.name}
+                </button>
+              )}
+            </span>
+          ))}
+        </nav>
+      )}
 
       <div
         ref={listeRef}
