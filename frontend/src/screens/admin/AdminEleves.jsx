@@ -36,6 +36,13 @@ const CHAMP_LABEL = {
   certificat: 'Certificat médical',
 }
 
+// « Prénom Nom (Lien) », sans « (null) » ni parenthèses vides quand un
+// champ manque (cas des contacts importés sans lien de parenté).
+function nomContact(c) {
+  const nom = [c.prenom, c.nom].filter(Boolean).join(' ')
+  return c.lien ? `${nom} (${c.lien})` : nom
+}
+
 function valeurCellule(el, champ, cours) {
   switch (champ) {
     case 'nom':
@@ -54,7 +61,7 @@ function valeurCellule(el, champ, cours) {
     }
     case 'contacts':
       return el.contactsEleve
-        .map((c) => `${c.prenom} ${c.nom} (${c.lien}) — ${c.telephone} — ${c.email}`)
+        .map((c) => [nomContact(c), c.telephone, c.email].filter(Boolean).join(' — '))
         .join('\n')
     case 'telephone':
       return el.telephone
@@ -244,10 +251,28 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
 
 
   const eleveEnFiche = eleves.find((el) => el.id === ficheId)
+
+  // Le tableau occupe exactement la hauteur restante de l'écran (demande du
+  // 2026-10-15) : seul lui défile, la page reste en place et son en-tête de
+  // colonnes ne passe plus sous la barre des onglets Admin.
+  const boiteTableauRef = useRef(null)
+  useEffect(() => {
+    const boite = boiteTableauRef.current
+    const page = boite?.closest('.app__content')
+    if (!boite || !page) return undefined
+    function ajuster() {
+      const haut = boite.getBoundingClientRect().top - page.getBoundingClientRect().top + page.scrollTop
+      boite.style.maxHeight = `${Math.max(240, page.clientHeight - haut - 16)}px`
+    }
+    ajuster()
+    const observateur = new ResizeObserver(ajuster)
+    observateur.observe(page)
+    return () => observateur.disconnect()
+  }, [])
   const eleveAppuye = pressed ? eleves.find((el) => el.id === pressed.eleveId) : null
 
   return (
-    <div className="admin-panel">
+    <div className="admin-panel admin-panel--eleves">
       {/* Menu ⋮ dans l'en-tête (demande du 2026-09-25). */}
       <MenuEntete
         label="Menu Élèves"
@@ -274,7 +299,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
       </div>
       <MessageAcces acces={acces} />
 
-      <div className="table-scroll table-scroll--eleves">
+      <div className="table-scroll table-scroll--eleves" ref={boiteTableauRef}>
         <table className="data-table data-table--eleves">
           <thead>
             <tr>
@@ -357,7 +382,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                       {el.contactsEleve.length === 0 ? (
                         <span className="muted">—</span>
                       ) : el.contactsEleve.length === 1 ? (
-                        `${el.contactsEleve[0].prenom} ${el.contactsEleve[0].nom} (${el.contactsEleve[0].lien})`
+                        nomContact(el.contactsEleve[0])
                       ) : (
                         `${el.contactsEleve.length} contacts`
                       )}

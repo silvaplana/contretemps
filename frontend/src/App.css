@@ -3679,3 +3679,43 @@ a.btn {
 .fiche-eleve__boutons .btn {
   flex: 1;
 }
+
+/* Admin > Élèves (demande du 2026-10-15) : la 1re colonne (nom de l'élève)
+   reste visible au défilement horizontal, comme l'en-tête au défilement
+   vertical ; la case d'angle passe au-dessus des deux. Fond opaque, sinon
+   les autres colonnes se voient au travers. Pas d'italique dans ce tableau. */
+.data-table--eleves td:first-child,
+.data-table--eleves th:first-child {
+  position: sticky;
+  left: 0;
+  box-shadow: 1px 0 0 var(--border);
+}
+
+.data-table--eleves td:first-child {
+  z-index: 2;
+  background: var(--card-bg);
+}
+
+.data-table--eleves th:first-child {
+  z-index: 5;
+}
+
+.data-table--eleves .cell-comment {
+  font-style: normal;
+}
+
+/* Voir AdminEleves.jsx (boiteTableauRef) : la hauteur du tableau est
+   calculée pour remplir l'écran ; la place laissée aux boutons flottants
+   (+ et import) passe DANS le tableau, sous sa dernière ligne, au lieu
+   d'agrandir la page. */
+.admin-panel--eleves {
+  padding-bottom: 0;
+}
+
+.table-scroll--eleves {
+  overscroll-behavior: contain;
+}
+
+.data-table--eleves {
+  margin-bottom: 140px;
+}
