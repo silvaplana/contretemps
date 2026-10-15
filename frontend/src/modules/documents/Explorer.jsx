@@ -182,7 +182,20 @@ export default function Explorer({ orgId, memoire }) {
   }, [recharger])
 
   const rechercheActive = recherche != null && recherche.trim().length >= 2
-  const resultats = rechercheActive && trouves ? trouves.r : null
+  // « Récents » (arborescence sur ordinateur) : les derniers fichiers
+  // modifiés, tous espaces, affichés comme des résultats de recherche.
+  // Rechargés à chaque changement (`data`).
+  const [recentsActif, setRecentsActif] = useState(false)
+  const [recents, setRecents] = useState(null)
+  useEffect(() => {
+    if (!recentsActif) return undefined
+    let annule = false
+    api.recent().then((r) => !annule && setRecents(r), (e) => !annule && setErreur(e.message))
+    return () => {
+      annule = true
+    }
+  }, [api, recentsActif, data])
+  const resultats = rechercheActive && trouves ? trouves.r : recentsActif ? (recents ?? []) : null
   useEffect(() => {
     if (!rechercheActive) return undefined
     let annule = false
@@ -202,6 +215,7 @@ export default function Explorer({ orgId, memoire }) {
       if (item.space !== space) setSpace(item.space)
       setFolder(item.id)
       setRecherche(null)
+      setRecentsActif(false)
       setSelection(null)
     } else {
       setVue(item)
@@ -211,6 +225,7 @@ export default function Explorer({ orgId, memoire }) {
   function allerA(id) {
     setFolder(id)
     setSelection(null)
+    setRecentsActif(false)
   }
 
   function changerEspace(cle) {
@@ -218,6 +233,7 @@ export default function Explorer({ orgId, memoire }) {
     setFolder(null)
     setSelection(null)
     setRecherche(null)
+    setRecentsActif(false)
   }
 
   const peutAjouter = Boolean(data?.can_add)
@@ -572,7 +588,15 @@ export default function Explorer({ orgId, memoire }) {
 
   function ligne(item) {
     const estDossier = item.kind === 'folder'
-    const sousTitre = resultats && item.path ? item.path.map((p) => p.name).join(' › ') || libelleEspace : subtitle(item)
+    const chemin = item.path?.map((p) => p.name).join(' › ') || spaces.find((s) => s.key === item.space)?.label || libelleEspace
+    // Récents : où est le fichier, puis quand et par qui il a été modifié.
+    const espaceDe = spaces.find((s) => s.key === item.space)?.label
+    const sousTitre =
+      recentsActif && !rechercheActive
+        ? `${[espaceDe, ...(item.path ?? []).map((p) => p.name)].filter(Boolean).join(' › ')} · ${subtitle(item)}`
+        : resultats && item.path
+          ? chemin
+          : subtitle(item)
     return (
       <div
         key={item.id}
@@ -683,8 +707,17 @@ export default function Explorer({ orgId, memoire }) {
     setFeuille(null)
     setRecherche(null)
     setSelection(null)
+    setRecentsActif(false)
     if (s !== space) setSpace(s)
     setFolder(id)
+  }
+
+  function voirRecents() {
+    setFeuille(null)
+    setRecherche(null)
+    setSelection(null)
+    setRecents(null)
+    setRecentsActif(true)
   }
 
   const explorateur = (
@@ -755,6 +788,11 @@ export default function Explorer({ orgId, memoire }) {
       {bulle && <div className="dx-tip" role="status">{bulle}</div>}
 
       {/* Le chemin sous les filtres (Seb, 15 octobre). */}
+      {recentsActif && !rechercheActive && (
+        <nav className="dx-crumb" aria-label="Emplacement">
+          <b>Récents</b>
+        </nav>
+      )}
       {!resultats && (
         <nav className="dx-crumb" aria-label="Emplacement">
           <button type="button" className={`dx-crumb__part${survol === 'root' ? ' dx-crumb--drop' : ''}`} data-drop-folder="root" onClick={() => allerA(null)}>
@@ -807,7 +845,11 @@ export default function Explorer({ orgId, memoire }) {
         )}
         {data && dossiers.length === 0 && lesFichiers.length === 0 && anciennesSaisons.length === 0 && (
           <p className="dx-empty">
-            {resultats
+            {recentsActif && !rechercheActive
+              ? recents === null
+                ? ''
+                : 'Aucun fichier pour l’instant.'
+              : resultats
               ? 'Rien ne correspond à cette recherche.'
               : filtreStatut || filtreFamille
                 ? 'Aucun élément ne correspond à ces filtres dans ce dossier.'
@@ -1060,6 +1102,9 @@ export default function Explorer({ orgId, memoire }) {
         breadcrumb={data?.breadcrumb}
         version={data}
         onOpen={ouvrirDepuisArbre}
+        recentsActif={recentsActif}
+        onRecents={voirRecents}
+        onAccueil={() => ouvrirDepuisArbre('private', null)}
       />
       {explorateur}
     </div>

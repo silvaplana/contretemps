@@ -348,3 +348,18 @@ def test_copier_coller(client, ecole):
     assert copier(ag, saison).json()["name"] == "AG (2)"
     assert copier(ag, ag).status_code == 409
     assert copier(permanent, saison).status_code == 409
+
+
+def test_recents(client, ecole):
+    """Les derniers fichiers modifiés, tous espaces, seulement ceux qu'on peut voir."""
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    eleve = Docs(client, ecole["id"], ecole["eleve"])
+    saison = _saison(admin)["id"]
+    admin.fichier("Budget.xlsx", saison)
+    admin.fichier("Affiche.pdf", espace="public")
+    admin.fichier("Brouillon perso.txt", espace="personal")
+    recents = admin.get("/recent").json()
+    assert [r["name"] for r in recents][:3] == ["Brouillon perso.txt", "Affiche.pdf", "Budget.xlsx"]
+    assert recents[2]["path"][-1]["id"] == saison and recents[2]["space"] == "private"
+    # L'élève ne voit que le Public.
+    assert [r["name"] for r in eleve.get("/recent").json()] == ["Affiche.pdf"]

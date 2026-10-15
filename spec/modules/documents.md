@@ -1347,6 +1347,9 @@ nom ouvre le dossier à droite, la flèche déplie sans ouvrir ; le chemin du do
 déplié et surligné. Les onglets Public / Privé / Personnel disparaissent sur ordinateur (les espaces
 sont dans l'arbre). Téléphone et tablette au doigt : inchangés. Pas encore : glisser-déposer vers
 l'arbre, colonnes Modifié / Taille / Par, aperçu à droite.
+En haut de l'arborescence (Seb, 15 octobre, comme Google Drive) : **Accueil** (retour au départ :
+la racine de Privé) et **Récents** (les 30 derniers fichiers modifiés, tous espaces, parmi ceux qu'on
+peut voir, avec leur emplacement ; `GET /documents/orgs/{org}/recent`).
 
 ### 6.3 bis Gestes et écran Propriétés (question de Seb du 15 octobre)
 

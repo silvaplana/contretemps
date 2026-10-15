@@ -39,7 +39,15 @@ function IconeEspace({ espace }) {
   )
 }
 
-export default function Arbre({ api, spaces, space, folder, breadcrumb, version, onOpen }) {
+function IconeLigne({ children }) {
+  return (
+    <svg className="dx-arbre__espace" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {children}
+    </svg>
+  )
+}
+
+export default function Arbre({ api, spaces, space, folder, breadcrumb, version, onOpen, recentsActif, onRecents, onAccueil }) {
   const [enfants, setEnfants] = useState({}) // clé -> dossiers enfants
   // Choix de l'utilisateur (déplier / replier) ; sans choix, seul le chemin
   // du dossier ouvert est déplié.
@@ -104,7 +112,7 @@ export default function Arbre({ api, spaces, space, folder, breadcrumb, version,
                 id: d.id,
                 nom: d.name,
                 profondeur: profondeur + 1,
-                actif: s === space && d.id === folder,
+                actif: !recentsActif && s === space && d.id === folder,
                 icone: <FolderIcon restricted={d.restricted} />,
               }),
             )}
@@ -116,6 +124,31 @@ export default function Arbre({ api, spaces, space, folder, breadcrumb, version,
 
   return (
     <nav className="dx-arbre" aria-label="Dossiers">
+      {/* Accueil (revenir au départ) et Récents, comme dans Google Drive. */}
+      <ul className="dx-arbre__raccourcis">
+        <li>
+          <div className={`dx-arbre__ligne${!recentsActif && space === 'private' && folder == null ? ' is-active' : ''}`}>
+            <button type="button" className="dx-arbre__nom" onClick={onAccueil}>
+              <IconeLigne>
+                <path d="M4 11l8-6.5 8 6.5" />
+                <path d="M6 9.5V20h12V9.5" />
+              </IconeLigne>
+              <span>Accueil</span>
+            </button>
+          </div>
+        </li>
+        <li>
+          <div className={`dx-arbre__ligne${recentsActif ? ' is-active' : ''}`}>
+            <button type="button" className="dx-arbre__nom" onClick={onRecents}>
+              <IconeLigne>
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 7.5V12l3 2" />
+              </IconeLigne>
+              <span>Récents</span>
+            </button>
+          </div>
+        </li>
+      </ul>
       <ul>
         {spaces.map((sp) =>
           ligne({
@@ -123,7 +156,7 @@ export default function Arbre({ api, spaces, space, folder, breadcrumb, version,
             id: null,
             nom: sp.label,
             profondeur: 0,
-            actif: sp.key === space && folder == null,
+            actif: !recentsActif && sp.key === space && folder == null,
             icone: <IconeEspace espace={sp.key} />,
           }),
         )}

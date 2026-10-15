@@ -104,6 +104,10 @@ class DocumentsReceiver:
         def browse(org_id: int, space: str, folder: int | None = None, db: Session = db_dep, m: Member = member):
             return appel(lambda: self.client.browse(db, self._member(org_id, m), space, folder))
 
+        @self.app.get(base + "/recent")
+        def recent(org_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: self.client.recent(db, self._member(org_id, m)))
+
         @self.app.get(base + "/spaces/{space}/search")
         def search(org_id: int, space: str, q: str = "", db: Session = db_dep, m: Member = member):
             return appel(lambda: self.client.search(db, self._member(org_id, m), space, q))

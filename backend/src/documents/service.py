@@ -487,6 +487,43 @@ class Documents:
                 break
         return resultats
 
+    def recent(self, db: Session, member: Member, limit: int = 30) -> list[dict]:
+        """« Récents » (façon Google Drive, Seb 15 octobre) : les derniers
+        fichiers modifiés, tous espaces confondus, parmi ceux que `member`
+        peut voir — avec leur chemin, comme pour la recherche."""
+        espaces = [e["key"] for e in self.spaces(member)]
+        requete = (
+            select(DocNode)
+            .where(
+                DocNode.org_id == member.org_id,
+                DocNode.kind == KIND_FILE,
+                DocNode.deleted_at.is_(None),
+                DocNode.space.in_(espaces),
+                or_(DocNode.space != "personal", DocNode.owner_person_id == member.person_id),
+            )
+            .order_by(DocNode.updated_at.desc(), DocNode.id.desc())
+        )
+        fermees = self._closed_periods(db, member.org_id)
+        periodes = {p.id: p for p in self.periods.list(db, member.org_id)}
+        visibles = []
+        for node in db.scalars(requete.limit(300)):
+            loc = self._locate(db, member, node)
+            if any(n.deleted_at is not None for n in loc.path):
+                continue
+            niveau = self._level(member, loc, self._acl(db, {n.id for n in loc.path}), fermees)
+            if niveau is not None:
+                visibles.append((node, niveau, loc))
+            if len(visibles) >= limit:
+                break
+        # Qui a modifié : « … · Julia Dho », comme dans un dossier.
+        noms = self.directory.person_names(db, member.org_id, {n.updated_by for n, _, _ in visibles if n.updated_by})
+        resultats = []
+        for node, niveau, loc in visibles:
+            resume = self._summary(node, niveau, loc.path, fermees, {}, noms, periodes)
+            resume["path"] = [{"id": n.id, "name": n.name} for n in loc.path[:-1]]
+            resultats.append(resume)
+        return resultats
+
     # ------------------------------------------------------------------
     # Création
     # ------------------------------------------------------------------

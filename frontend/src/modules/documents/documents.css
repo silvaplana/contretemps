@@ -1312,3 +1312,13 @@
   height: 22px;
   color: var(--text-muted);
 }
+
+.dx-arbre__raccourcis {
+  margin-bottom: 10px !important;
+  padding-bottom: 10px !important;
+  border-bottom: 1px solid var(--border);
+}
+
+.dx-arbre__raccourcis .dx-arbre__nom {
+  padding-left: 14px;
+}
