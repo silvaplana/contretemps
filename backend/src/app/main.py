@@ -13,7 +13,6 @@ from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from administrateurs import Administrateurs, AdministrateursReceiver
 from acces import Acces
@@ -180,11 +179,10 @@ choregraphies_receiver = ChoregraphiesReceiver(client=choregraphies_client, app=
 
 # Monte les routes des videos (/cours/{id}/videos, /choregraphies/{id}/videos, /videos/...).
 
-# Sert les fichiers video eux-memes en statique (un dossier par ecole,
-# voir videos/stockage.py) - videos.lien_fichier stocke le chemin relatif
-# a DOSSIER_VIDEOS_LIVE, servi ici sous /media/videos/<ce chemin>.
+# Les fichiers vidéo (un dossier par école, voir videos/stockage.py) ne
+# sont plus servis en statique : seulement par /videos/{id}/fichier, avec
+# un lien signé à durée limitée (voir securite/liens.py).
 DOSSIER_VIDEOS_LIVE.mkdir(parents=True, exist_ok=True)
-app.mount("/media/videos", StaticFiles(directory=str(DOSSIER_VIDEOS_LIVE)), name="videos")
 
 # Monte les routes des notifications push (/push/..., voir
 # notifications/) - independant des autres modules, mais utilise par

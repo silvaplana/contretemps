@@ -26,14 +26,12 @@ async function requete(chemin, options) {
   return reponse.status === 204 ? null : reponse.json()
 }
 
-// `lien_fichier`/`poster` en base sont des chemins RELATIFS (voir
-// backend/src/videos/stockage.py, ex. "1/xxx.mp4") — pas des URL. Le
-// backend les sert sous /media/videos/<ce chemin> (voir app/main.py) :
-// sans ce préfixe, le <video>/poster pointerait sur une URL relative à
-// la PAGE (jamais valide) plutôt qu'à l'API. Bug réel trouvé en testant
-// sur un vrai téléphone (rien ne se chargeait, aucune erreur visible).
-function urlMedia(cheminRelatif) {
-  return cheminRelatif ? `${BASE_URL}/media/videos/${cheminRelatif}` : null
+// Le fichier et son aperçu ne sont plus servis en accès libre : le serveur
+// remet `url`/`poster_url`, des liens signés à durée limitée (6 à 12 h,
+// voir backend/src/securite/liens.py), relatifs à l'API. La balise <video>
+// les lit sans session ; un lien copié cesse de marcher à l'expiration.
+function urlMedia(lienSigne) {
+  return lienSigne ? `${BASE_URL}${lienSigne}` : null
 }
 
 export function versEcran(v) {
@@ -41,8 +39,8 @@ export function versEcran(v) {
     id: v.id,
     titre: v.nom,
     description: v.description ?? '',
-    url: urlMedia(v.lien_fichier),
-    poster: urlMedia(v.poster),
+    url: urlMedia(v.url),
+    poster: urlMedia(v.poster_url),
     // Celui qui a ajouté la vidéo : le métier peut lui laisser le droit de
     // la retirer.
     auteurId: v.uploaded_by,

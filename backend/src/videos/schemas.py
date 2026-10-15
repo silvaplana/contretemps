@@ -4,7 +4,8 @@ models.py).
 
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, computed_field
+from securite import liens
 
 
 class VideoModification(BaseModel):
@@ -29,6 +30,22 @@ class VideoSortie(BaseModel):
     statut: str = "complete"
 
     model_config = {"from_attributes": True}
+
+    # Adresses à lire par le navigateur (<video>, aperçu), relatives à l'API :
+    # liens signés à durée limitée (securite/liens.py), seule façon de lire
+    # le fichier — il n'est plus servi en accès libre.
+    @computed_field
+    @property
+    def url(self) -> str | None:
+        return self._lien("fichier") if self.lien_fichier else None
+
+    @computed_field
+    @property
+    def poster_url(self) -> str | None:
+        return self._lien("poster") if self.poster else None
+
+    def _lien(self, quoi: str) -> str:
+        return f"/videos/{self.id}/{quoi}?{liens.parametres(f'video:{self.id}:{quoi}')}"
 
 
 # --- Upload par blocs (voir videos.py : Televersement, creer_televersement/

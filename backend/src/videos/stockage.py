@@ -16,8 +16,9 @@ uploads arbitraires.
 import os
 from pathlib import Path
 
-# Dossier "live" réellement servi par l'appli (voir app/main.py, monté en
-# statique sous /media/videos). Vide par défaut — rempli par les uploads,
+# Dossier "live" réellement servi par l'appli, jamais en accès libre :
+# seulement par /videos/{id}/fichier avec un lien signé (voir receiver.py et
+# securite/liens.py). Vide par défaut — rempli par les uploads,
 # ou par reset_demo.py qui le recopie depuis DOSSIER_VIDEOS_REFERENCE.
 DOSSIER_VIDEOS_LIVE = Path(os.environ.get("VIDEOS_DIR", "./uploads/videos"))
 

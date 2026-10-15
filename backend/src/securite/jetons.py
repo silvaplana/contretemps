@@ -103,6 +103,15 @@ def _signer(charge: str) -> str:
     return _b64(hmac.new(_secret(), charge.encode("ascii"), hashlib.sha256).digest())
 
 
+def signer(charge: str) -> str:
+    """Signature d'un texte quelconque (liens signés, voir liens.py)."""
+    return _signer(charge)
+
+
+def signatures_egales(a: str, b: str) -> bool:
+    return hmac.compare_digest(a.encode("ascii", "ignore"), b.encode("ascii", "ignore"))
+
+
 def emettre(
     acces_email_id: int,
     *,

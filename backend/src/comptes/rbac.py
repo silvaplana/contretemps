@@ -58,6 +58,10 @@ ROUTES_PUBLIQUES = {
     # Appelée par Brevo (remise des mails) : protégée par une clé dans l'adresse.
     ("POST", "/mails/brevo/{cle}"),
     ("GET", "/ecoles"),
+    # Fichier vidéo et aperçu, lus par la balise <video> : protégés par un
+    # lien signé à durée limitée (securite/liens.py), pas par la session.
+    ("GET", "/videos/{video_id}/fichier"),
+    ("GET", "/videos/{video_id}/poster"),
     # Personnalisation par école (spec §2.7) : lue avant toute connexion,
     # par Caddy (certificat), par le téléphone (installation de l'appli) et
     # par la page de connexion.

@@ -83,8 +83,10 @@ alembic upgrade head
 Les fichiers eux-mêmes (pas leur métadonnée, en base) vivent sur disque,
 **un dossier par école** (voir `videos/stockage.py`) — jamais dans git :
 
-- `backend/uploads/videos/<ecole_id>/...` — dossier "live", servi en
-  statique sous `/media/videos/...` (voir `app/main.py`). Modifiable en
+- `backend/uploads/videos/<ecole_id>/...` — dossier "live", jamais servi
+  en accès libre : seulement par `/videos/{id}/fichier` et
+  `/videos/{id}/poster`, avec un lien signé valable 6 à 12 h
+  (`securite/liens.py`). Modifiable en
   cours de test (upload, suppression manuelle...).
 - `backend/videos_reference/` — jeu de vidéos de démo stable, recopié
   par-dessus le dossier "live" par `reset_demo.py`.

@@ -77,6 +77,12 @@ une étape avant que la précédente soit en production.
   avec contrôle de droit et prise en charge de `Range`, vignettes (Pillow, pypdfium2), détection du type
   (puremagic). Disque local derrière obstore (`documents.md` §3.2, §4.1).
 - Les vidéos passent dessus ; suppression du montage statique `/media/videos`.
+- *Fait le 2026-10-15, première version* : montage statique supprimé ; le fichier et l'aperçu ne se
+  lisent plus que par `/videos/{id}/fichier` et `/videos/{id}/poster`, avec un **lien signé à durée
+  limitée** (6 à 12 h, `securite/liens.py`) remis à qui peut voir la vidéo (la balise `<video>` ne sait
+  pas envoyer la session). Lecture progressive (`Range`) conservée ; lien expiré : l'appli en redemande
+  un. Pas encore : stockage par empreinte (`backend/src/storage/`) ni migration des fichiers, qui
+  restent à leur place.
 - *Acceptation* : une URL de vidéo copiée ne marche plus sans session (test) ; les vidéos existantes
   sont migrées par un script idempotent ; la lecture mobile et la vignette fonctionnent comme avant.
 

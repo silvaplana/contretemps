@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { obtenir } from '../api/videos.js'
 import { useProgressionVideo } from '../utils/videoUploads.js'
 import Icon from './Icon.jsx'
 
@@ -21,8 +22,19 @@ import Icon from './Icon.jsx'
 // fois : la vignette est immédiate, et une fois monté avec `autoPlay`, le
 // navigateur a tout de suite les infos nécessaires pour afficher les
 // contrôles complets, plein écran inclus.
-export default function VideoThumb({ video }) {
+export default function VideoThumb({ video: recue }) {
   const [lecture, setLecture] = useState(false)
+  // Liens signés à durée limitée (voir api/videos.js) : appli restée
+  // ouverte longtemps, le lien a pu expirer. Au premier échec, on redemande
+  // la vidéo au serveur, qui remet des liens neufs (une seule fois).
+  const [fraiche, setFraiche] = useState(null)
+  const [redemandee, setRedemandee] = useState(false)
+  const video = fraiche ?? recue
+  function rafraichir() {
+    if (redemandee) return
+    setRedemandee(true)
+    obtenir(recue.id).then(setFraiche, () => {})
+  }
   const enCours = video.statut === 'en_cours'
   const progression = useProgressionVideo(enCours ? video.id : null)
 
@@ -64,6 +76,7 @@ export default function VideoThumb({ video }) {
           // navigateur (Smart pop-up view), pas garanti désactivable
           // depuis une page web — sinon, réglage côté Samsung Internet.
           disablePictureInPicture
+          onError={rafraichir}
         />
       </div>
     )
@@ -71,7 +84,7 @@ export default function VideoThumb({ video }) {
 
   return (
     <div className="video-card__thumb">
-      {video.poster && <img className="video-card__poster" src={video.poster} alt={video.titre} />}
+      {video.poster && <img className="video-card__poster" src={video.poster} alt={video.titre} onError={rafraichir} />}
       <button
         type="button"
         className="video-card__play"
