@@ -6,6 +6,7 @@ import shutil
 import pytest
 from app.main import ressources_client
 from comptes import Comptes
+from documents_contretemps import DOSSIER_DOCUMENTS
 from ecoles import Ecoles
 from inscriptions.stockage import DOSSIER_INSCRIPTIONS
 from videos import dossier_ecole
@@ -17,6 +18,7 @@ def ecole(db_session):
     # D'autres tests laissent des fichiers sous le même numéro d'école.
     shutil.rmtree(DOSSIER_INSCRIPTIONS / str(ecole.id), ignore_errors=True)
     shutil.rmtree(dossier_ecole(ecole.id), ignore_errors=True)
+    shutil.rmtree(DOSSIER_DOCUMENTS / str(ecole.id), ignore_errors=True)
     yield ecole
     shutil.rmtree(DOSSIER_INSCRIPTIONS / str(ecole.id), ignore_errors=True)
     shutil.rmtree(dossier_ecole(ecole.id), ignore_errors=True)
@@ -36,7 +38,7 @@ def test_memoire_et_ia_par_poste(client, db_session, ecole):
 
     usage = client.get(f"/ecoles/{ecole.id}/ressources").json()
     assert usage["saison"]
-    assert {r["cle"]: r["octets"] for r in usage["memoire"]} == {"videos": 3000, "documents": 500, "personnalisation": 0}
+    assert {r["cle"]: r["octets"] for r in usage["memoire"]} == {"videos": 3000, "documents": 500, "personnalisation": 0, "documents_partages": 0}
     assert usage["memoire_total_octets"] == 3500
     assert usage["ia"] == [
         {"categorie": "lecture_fiche", "libelle": "Lecture des fiches d'inscription", "nombre": 2, "cout_usd": 0.05},

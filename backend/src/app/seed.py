@@ -409,6 +409,21 @@ def _creer_conversations_demo(db, ecole, comptes, cours_service, profs_par_nom_p
     print("Conversations de démo créées (Eveil, Equipe pédagogique, DM avec Charlotte).")
 
 
+def _creer_documents_demo(db, admin) -> None:
+    """Onglet Docs : dossiers et fichiers d'exemple (PDF, Word, Excel,
+    photos), voir documents_contretemps/exemples.py."""
+    from documents import Documents, LocalStorage
+    from documents_contretemps import DOSSIER_DOCUMENTS, TAILLE_MAX_MO, AnnuaireContretemps, SaisonsContretemps
+    from documents_contretemps.exemples import peupler
+
+    Base.metadata.create_all(bind=engine)  # tables doc_* (module importé ici)
+    docs = Documents(LocalStorage(DOSSIER_DOCUMENTS, TAILLE_MAX_MO * 1024 * 1024), AnnuaireContretemps(), SaisonsContretemps())
+    if peupler(db, docs, admin):
+        print("Dossiers et fichiers d'exemple créés (onglet Docs).")
+    else:
+        print("Onglet Docs déjà rempli, exemples ignorés.")
+
+
 def run() -> None:
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
@@ -496,7 +511,7 @@ def run() -> None:
             print(f"Fichier de démo introuvable ({FICHIER_ELEVES_DEMO}), élèves non importés.")
         else:
             with open(FICHIER_ELEVES_DEMO, "rb") as f:
-                apercu = import_excel.previsualiser(db, ecole.id, f)
+                apercu = import_excel.previsualiser(db, ecole.id, f, FICHIER_ELEVES_DEMO.name)
             resultat = import_excel.valider(db, ecole.id, apercu.lignes)
             print(f"Élèves importés depuis eleves_demo.xlsx : {resultat}")
 
@@ -510,6 +525,7 @@ def run() -> None:
             db, ecole, comptes, cours_service, profs_par_nom_prenom, admin
         )
         _creer_conversations_demo(db, ecole, comptes, cours_service, profs_par_nom_prenom, admin)
+        _creer_documents_demo(db, admin)
 
         print("Seed terminé.")
     finally:

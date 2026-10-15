@@ -27,6 +27,7 @@ from acces.models import LienInvitationReinit, AccesEmail  # noqa: F401
 from presence.models import PresenceEleve, PresenceProf, SeancePresence  # noqa: F401
 from saisons.models import Saison  # noqa: F401
 from videos.models import Video  # noqa: F401
+from documents.models import DocAcl, DocActivity, DocNode, DocVersion, StoredFile  # noqa: F401
 
 config = context.config
 
