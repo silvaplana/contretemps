@@ -6,6 +6,12 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// L'assistant est-il ouvert à cette personne ? (essai : le Super User)
+export async function accesAssistant() {
+  const reponse = await fetch(`${BASE_URL}/assistant/acces`)
+  return reponse.ok ? (await reponse.json()).autorise : false
+}
+
 export async function poserQuestion(orgId, { conversationId, texte, contexte, modele }, surEvenement) {
   const reponse = await fetch(`${BASE_URL}/assistant/orgs/${orgId}/messages`, {
     method: 'POST',

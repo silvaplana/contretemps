@@ -1008,7 +1008,8 @@ class Documents:
             "level": niveau,
             "restricted": node.restricted,
             "can_manage": access.at_least(niveau, LEVEL_MANAGE),
-            "can_restrict": node.kind == KIND_FOLDER and (member.is_admin or member.is_superuser),
+            # Dossier ou fichier (Seb, 15 octobre : le cadenas vaut pour les deux).
+            "can_restrict": member.is_admin or member.is_superuser,
             "personal": False,
             "inherited_from": parent,
             "inherited": [
@@ -1031,10 +1032,9 @@ class Documents:
             raise DocError(409, "Un élément de l'espace Personnel ne se partage pas : rangez-le dans Privé ou Public.")
         self._require(db, member, loc, LEVEL_MANAGE)
         if restricted != node.restricted:
-            if node.kind != KIND_FOLDER:
-                raise DocError(422, "Seul un dossier peut être restreint.")
+            # Dossier ou fichier (Seb, 15 octobre).
             if not (member.is_admin or member.is_superuser):
-                raise DocError(403, "Seuls les administrateurs restreignent un dossier.")
+                raise DocError(403, "Seuls les administrateurs restreignent l'accès.")
             node.restricted = restricted
             self._log(db, member, node, "restricted" if restricted else "unrestricted")
         voulus: dict[tuple[str, str], str] = {}

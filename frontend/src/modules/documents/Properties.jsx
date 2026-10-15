@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { StatusBadge } from './icons.jsx'
+import { Cadenas, StatusBadge } from './icons.jsx'
 import { formatDate, formatSize, historyText, levelLabel } from './format.js'
 
 // Propriétés (spec documents.md §6.3 bis) : Infos | Accès | Historique, un
@@ -179,7 +179,15 @@ export default function Properties({ api, itemId, initialTab = 'Infos', onClose,
                     <span className="dx-lvl">{levelLabel(p.level)}</span>
                   </div>
                 ))}
-                <div className="dx-sec">{acces.restricted ? '🔒 Restreint' : `Hérité de « ${acces.inherited_from} »`}</div>
+                <div className="dx-sec">
+                  {acces.restricted ? (
+                    <>
+                      <Cadenas className="dx-cadenas-texte" /> Restreint
+                    </>
+                  ) : (
+                    `Hérité de « ${acces.inherited_from} »`
+                  )}
+                </div>
                 {acces.inherited.map((p) => (
                   <div key={`${p.type}:${p.id}`} className="dx-who dx-who--inh">
                     <div className="dx-av">{p.id === 'role:admin' ? '★' : '👥'}</div>

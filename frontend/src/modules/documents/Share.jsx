@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { levelLabel } from './format.js'
+import { Cadenas } from './icons.jsx'
 
 // « Qui a accès ? » (spec documents.md §4.4 bis) : comme le dossier, ou
 // restreint ; les accès hérités grisés ; « En plus » avec Voir | Modifier ;
@@ -98,37 +99,35 @@ export default function Share({ api, item, onClose, onToast }) {
         <div className="dx-muted dx-share__name">« {item.name} »</div>
         {erreur && <p className="dx-error">{erreur}</p>}
 
-        {item.kind === 'folder' && (
-          <>
-            <button
-              type="button"
-              className={`dx-opt${!restreint ? ' dx-opt--on' : ''}`}
-              disabled={!acces.can_restrict}
-              onClick={() => restreint && appliquer(false, entrees(acces), 'Accès comme le dossier')}
-            >
-              <span className="dx-opt__rad" />
-              <span>
-                <span className="dx-opt__t">Comme le dossier « {acces.inherited_from} »</span>
-                <span className="dx-opt__d">Ceux qui ont accès au dossier au-dessus ont accès ici. Vous pouvez en ajouter.</span>
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`dx-opt${restreint ? ' dx-opt--on' : ''}`}
-              disabled={!acces.can_restrict}
-              onClick={() => !restreint && appliquer(true, entrees(acces), 'Dossier restreint')}
-            >
-              <span className="dx-opt__rad" />
-              <span>
-                <span className="dx-opt__t">🔒 Restreint</span>
-                <span className="dx-opt__d">
-                  Seulement les personnes ci-dessous, et les admins.
-                  {!acces.can_restrict && ' Réservé aux admins.'}
-                </span>
-              </span>
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className={`dx-opt${!restreint ? ' dx-opt--on' : ''}`}
+          disabled={!acces.can_restrict}
+          onClick={() => restreint && appliquer(false, entrees(acces), 'Accès comme le dossier')}
+        >
+          <span className="dx-opt__rad" />
+          <span>
+            <span className="dx-opt__t">Comme le dossier « {acces.inherited_from} »</span>
+            <span className="dx-opt__d">Ceux qui ont accès au dossier au-dessus ont accès ici. Vous pouvez en ajouter.</span>
+          </span>
+        </button>
+        <button
+          type="button"
+          className={`dx-opt${restreint ? ' dx-opt--on' : ''}`}
+          disabled={!acces.can_restrict}
+          onClick={() => !restreint && appliquer(true, entrees(acces), item.kind === 'folder' ? 'Dossier restreint' : 'Fichier restreint')}
+        >
+          <span className="dx-opt__rad" />
+          <span>
+            <span className="dx-opt__t">
+              <Cadenas className="dx-cadenas-texte" /> Restreint
+            </span>
+            <span className="dx-opt__d">
+              Seulement les personnes ci-dessous, et les admins.
+              {!acces.can_restrict && ' Réservé aux admins.'}
+            </span>
+          </span>
+        </button>
 
         <div className="dx-sec">{restreint ? 'Ont toujours accès' : 'Ont accès par le dossier'}</div>
         {acces.inherited.map((p) => (

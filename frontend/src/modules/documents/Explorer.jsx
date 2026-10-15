@@ -5,11 +5,12 @@ import FolderPicker from './FolderPicker.jsx'
 import NewScreen from './NewScreen.jsx'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
+import { accesAssistant } from '../../api/assistant.js'
 import Arbre from './Arbre.jsx'
 import Assistant from './Assistant.jsx'
 import Trash from './Trash.jsx'
 import Viewer from './Viewer.jsx'
-import { BubbleIcon, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
+import { BubbleIcon, Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
 import { FAMILIES, STATUSES, isImage } from './kinds.js'
 import { subtitle } from './format.js'
 import './documents.css'
@@ -53,8 +54,15 @@ function Thumb({ api, item }) {
 
 function ItemIcon({ api, item }) {
   if (item.kind === 'folder') return <FolderIcon restricted={item.restricted} />
-  if (isImage(item) && item.has_thumbnail) return <Thumb api={api} item={item} />
-  return <FileIcon name={item.name} family={item.family} />
+  const icone = isImage(item) && item.has_thumbnail ? <Thumb api={api} item={item} /> : <FileIcon name={item.name} family={item.family} />
+  if (!item.restricted) return icone
+  // Fichier en accès restreint : le même cadenas que sur les dossiers.
+  return (
+    <span className="dx-verrouille">
+      {icone}
+      <Cadenas />
+    </span>
+  )
 }
 
 function hasFiles(e) {
@@ -89,9 +97,28 @@ function useBureau() {
   return bureau
 }
 
-export default function Explorer({ orgId, memoire, assistant = false }) {
+// Assistant : panneau en bas du dossier ouvert, à mi-hauteur au départ,
+// hauteur réglable à la poignée et gardée sur l'appareil (Seb, 15 octobre).
+const CLE_HAUTEUR_CHAT = 'contretemps.assistant.hauteur'
+
+function lireHauteurChat() {
+  try {
+    const h = Number(localStorage.getItem(CLE_HAUTEUR_CHAT))
+    if (h >= 160) return Math.min(h, Math.round(window.innerHeight * 0.85))
+  } catch {
+    // stockage indisponible : mi-hauteur
+  }
+  return Math.round(window.innerHeight * 0.45)
+}
+
+export default function Explorer({ orgId, memoire }) {
   const bureau = useBureau()
   const [assistantOuvert, setAssistantOuvert] = useState(false)
+  const [assistant, setAssistant] = useState(false)
+  const [hauteurChat, setHauteurChat] = useState(lireHauteurChat)
+  useEffect(() => {
+    accesAssistant().then(setAssistant, () => {})
+  }, [])
   const api = useMemo(() => documentsApi(orgId), [orgId])
   const [spaces, setSpaces] = useState([])
   const [space, setSpace] = useState(() => lireEndroit(memoire).space)
@@ -640,7 +667,7 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
             {item.system_kind === 'period' && item.period_current && <span className="dx-current">en cours</span>}
           </div>
           <div className="dx-s">
-            {item.status && <StatusBadge status={item.status} compact />} {item.closed_period && item.system_kind === 'period' ? '🔒 ' : ''}
+            {item.status && <StatusBadge status={item.status} compact />}
             {sousTitre}
           </div>
         </div>
@@ -717,7 +744,7 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
 
   function ouvrirAssistant() {
     if (assistant) setAssistantOuvert(true)
-    else montrerToast('Bientôt : l’assistant arrive dans une prochaine version.')
+    else montrerToast('L’assistant est en essai : réservé au Super User pour l’instant.')
   }
 
   // Carte « Faire » de l'assistant : l'action passe par les mêmes routes
@@ -731,6 +758,29 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
     else if (carte.kind === 'renommer') await api.rename(carte.element_id, carte.nouveau_nom)
     await recharger()
     montrerToast(`Fait : ${carte.libelle}`)
+  }
+
+  // Poignée : glisser vers le haut agrandit l'assistant, vers le bas le réduit.
+  function redimensionnerChat(e) {
+    e.preventDefault()
+    const depart = e.clientY
+    const hauteurDepart = hauteurChat
+    let derniere = hauteurDepart
+    const bouger = (ev) => {
+      derniere = Math.max(160, Math.min(Math.round(window.innerHeight * 0.85), hauteurDepart + depart - ev.clientY))
+      setHauteurChat(derniere)
+    }
+    const lacher = () => {
+      window.removeEventListener('pointermove', bouger)
+      window.removeEventListener('pointerup', lacher)
+      try {
+        localStorage.setItem(CLE_HAUTEUR_CHAT, String(derniere))
+      } catch {
+        // stockage indisponible : la hauteur vaut pour cette fois
+      }
+    }
+    window.addEventListener('pointermove', bouger)
+    window.addEventListener('pointerup', lacher)
   }
 
   const conversation = assistantOuvert && (
@@ -893,6 +943,19 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
         )}
       </div>
 
+      {conversation && (
+        <div className="dx-chat-bas" style={{ height: hauteurChat }}>
+          <div
+            className="dx-chat-poignee"
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label="Régler la hauteur de l’assistant"
+            onPointerDown={redimensionnerChat}
+          />
+          {conversation}
+        </div>
+      )}
+
       {pressePapier && !panneauOuvert && (
         <div className="dx-clip">
           <span>
@@ -907,7 +970,7 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
         </div>
       )}
 
-      {!panneauOuvert && (
+      {!panneauOuvert && !assistantOuvert && (
         <>
           {/* Bulle de l'assistant, juste au-dessus du + (spec documents.md
               §7.1 ter) : l'assistant arrive avec l'étape 5 bis du plan. */}
@@ -1098,7 +1161,6 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
         <div className="dx-hint" role="status">Glissez sur un dossier pour déplacer, ou lâchez pour le menu</div>
       )}
 
-      {!bureau && conversation && <div className="dx-chat-plein">{conversation}</div>}
 
       {toast && (
         <div className={`dx-toast${pressePapier ? ' dx-toast--haut' : ''}`} role="status">
@@ -1142,7 +1204,6 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
         onAssistant={ouvrirAssistant}
       />
       {explorateur}
-      {conversation}
     </div>
   )
 }

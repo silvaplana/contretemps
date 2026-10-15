@@ -316,11 +316,36 @@
   height: 100%;
 }
 
-.dx-folder__lock {
+/* Cadenas « Accès restreint », en bas à droite de l'icône. */
+.dx-cadenas {
   position: absolute;
-  right: -2px;
+  right: -4px;
   bottom: -4px;
-  font-size: 16px;
+  width: 22px;
+  height: 22px;
+  padding: 1px;
+  border-radius: 50%;
+  background: var(--card-bg);
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.dx-verrouille {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.dx-cadenas-texte {
+  width: 16px;
+  height: 16px;
+  vertical-align: -2px;
+}
+
+.dx-arbre .dx-cadenas {
+  width: 14px;
+  height: 14px;
+  right: -5px;
+  bottom: -5px;
 }
 
 .dx-page {
@@ -1653,4 +1678,42 @@
 /* Barre « Coller ici » affichée au même endroit : la notification passe au-dessus. */
 .dx-toast--haut {
   bottom: calc(var(--bottom-nav-height) + 84px + env(safe-area-inset-bottom));
+}
+
+/* Assistant en bas du dossier ouvert (Seb, 15 octobre), hauteur réglable. */
+.dx-chat-bas {
+  flex: 0 1 auto;
+  min-height: 160px;
+  /* Toujours de la place pour le haut de l'explorateur et un bout de liste. */
+  max-height: calc(100% - 170px);
+  display: flex;
+  flex-direction: column;
+  border-top: 2px solid var(--accent);
+  background: var(--card-bg);
+}
+
+.dx-chat-bas .dx-chat {
+  flex: 1;
+  min-height: 0;
+  border-left: 0;
+}
+
+.dx-chat-poignee {
+  flex: 0 0 14px;
+  display: grid;
+  place-items: center;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.dx-chat-poignee::before {
+  content: '';
+  width: 48px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.dx-chat-bas .dx-chat__haut {
+  padding-top: 2px;
 }

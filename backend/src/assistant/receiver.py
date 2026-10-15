@@ -6,7 +6,11 @@ from __future__ import annotations
 
 from dataclasses import replace
 
+from acces import normaliser_email
 from comptes import Compte, rbac, roles
+from comptes.models import RoleCompte
+from saisons.portee import toutes_saisons
+from sqlalchemy import select
 from documents.ports import Member
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
@@ -35,11 +39,31 @@ class Question(BaseModel):
     contexte: Contexte = Field(default_factory=Contexte)
 
 
+def autorise(db: Session, compte: Compte) -> bool:
+    """Pendant l'essai, « toi seul » (Seb, 15 octobre) : le Super User, ou
+    une fiche d'école qui a la même adresse email que lui (Seb se connecte
+    le plus souvent avec sa fiche d'admin de l'école)."""
+    if roles.is_superuser(compte):
+        return True
+    if not compte.email:
+        return False
+    with toutes_saisons(db):
+        emails = db.scalars(
+            select(Compte.email).join(RoleCompte, RoleCompte.compte_id == Compte.id).where(RoleCompte.role == roles.SUPERUSER)
+        )
+        return normaliser_email(compte.email) in {normaliser_email(e) for e in emails if e}
+
+
 class AssistantReceiver:
     def __init__(self, client: Assistant, app: FastAPI, current_member) -> None:
         self.client = client
         self.current_member = current_member
         app.post("/assistant/orgs/{org_id}/messages")(self._route())
+
+        @app.get("/assistant/acces")
+        def acces(db: Session = Depends(get_db), compte: Compte = Depends(rbac.compte_appelant)):
+            """L'appli demande si elle doit ouvrir l'assistant (bulle)."""
+            return {"autorise": autorise(db, compte)}
 
     def _route(self):
         current_member = self.current_member
@@ -51,7 +75,7 @@ class AssistantReceiver:
             membre: Member = Depends(current_member),
             db: Session = Depends(get_db),
         ):
-            if not roles.is_superuser(compte):
+            if not autorise(db, compte):
                 raise HTTPException(status_code=403, detail="L'assistant est en essai : réservé au Super User.")
             membre = replace(membre, org_id=org_id)
             conv = self.client.conversation(membre, question.conversation_id)

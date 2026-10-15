@@ -177,3 +177,14 @@ def test_reserve_au_superuser(client, monde, monkeypatch):
         f"/assistant/orgs/{monde['ecole'].id}/messages", json={"texte": "Bonjour"}, headers=entetes_session(monde["admin"]),
     )
     assert reponse.status_code == 403
+
+
+def test_la_fiche_d_ecole_du_super_user_y_a_acces(client, db_session, monde, monkeypatch):
+    """Même adresse email que le Super User : c'est lui, connecté avec sa fiche d'admin."""
+    monkeypatch.setattr(main.assistant_client, "_client", FauxClaude([_message(Bloc(type="text", text="Bonjour."))]))
+    seb = Comptes().create(db_session, ecole_id=monde["ecole"].id, role="admin", nom="Richard", prenom="Seb", email="su@test.fr")
+    entetes = entetes_session(seb)
+    assert client.get("/assistant/acces", headers=entetes).json() == {"autorise": True}
+    assert client.get("/assistant/acces", headers=entetes_session(monde["admin"])).json() == {"autorise": False}
+    reponse = client.post(f"/assistant/orgs/{monde['ecole'].id}/messages", json={"texte": "Bonjour"}, headers=entetes)
+    assert reponse.status_code == 200 and _evenements(reponse)[-1]["type"] == "fin"

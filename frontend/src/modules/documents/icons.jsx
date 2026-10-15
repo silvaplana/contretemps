@@ -59,6 +59,18 @@ export function FamilyDot({ family, size = 20 }) {
   )
 }
 
+// Cadenas de l'« Accès restreint », posé sur l'icône d'un dossier ou d'un
+// fichier (dessin plutôt qu'émoji : même rendu sur tous les appareils).
+export function Cadenas({ className = 'dx-cadenas' }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4.5" y="10.5" width="15" height="11" rx="2.5" fill="#6b4a2b" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="#6b4a2b" strokeWidth="2.6" />
+      <circle cx="12" cy="16" r="1.7" fill="#fff" />
+    </svg>
+  )
+}
+
 export function FolderIcon({ restricted = false }) {
   return (
     <span className="dx-folder" aria-hidden="true">
@@ -66,7 +78,7 @@ export function FolderIcon({ restricted = false }) {
         <path d="M4 8a4 4 0 0 1 4-4h13l5 6h22a4 4 0 0 1 4 4v24a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="var(--dx-folder-back)" />
         <path d="M4 16a4 4 0 0 1 4-4h40a4 4 0 0 1 4 4v22a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4z" fill="var(--dx-folder)" />
       </svg>
-      {restricted && <span className="dx-folder__lock">🔒</span>}
+      {restricted && <Cadenas />}
     </span>
   )
 }

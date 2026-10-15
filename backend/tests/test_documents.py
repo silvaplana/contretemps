@@ -155,9 +155,7 @@ def test_dossier_restreint(client, ecole):
     assert admin.acces(bureau, restricted=True).status_code == 200
     assert "Bureau" not in _par_nom(prof.racine(dossier=permanent))
     assert admin.racine(dossier=bureau).status_code == 200
-    # Un fichier ne se restreint pas, on le range dans un dossier restreint.
-    fichier = admin.fichier("Compte.xlsx", permanent).json()["id"]
-    assert admin.acces(fichier, restricted=True).status_code == 422
+    # Un fichier aussi peut être restreint (Seb, 15 octobre) : voir test_fichier_en_acces_restreint.
 
 
 def test_officiel_fige_le_contenu(client, ecole):
@@ -363,3 +361,17 @@ def test_recents(client, ecole):
     assert recents[2]["path"][-1]["id"] == saison and recents[2]["space"] == "private"
     # L'élève ne voit que le Public.
     assert [r["name"] for r in eleve.get("/recent").json()] == ["Affiche.pdf"]
+
+
+def test_fichier_en_acces_restreint(client, ecole):
+    """Le cadenas vaut aussi pour un fichier (Seb, 15 octobre) : restreint,
+    il n'est plus visible que des personnes choisies et des admins."""
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    prof = Docs(client, ecole["id"], ecole["prof"])
+    saison = _saison(admin)["id"]
+    fichier = admin.fichier("Salaires.xlsx", saison).json()["id"]
+    assert "Salaires.xlsx" in _par_nom(prof.racine(dossier=saison))
+    assert admin.get(f"/nodes/{fichier}/access").json()["can_restrict"] is True
+    assert admin.acces(fichier, restricted=True).status_code == 200
+    assert _par_nom(admin.racine(dossier=saison))["Salaires.xlsx"]["restricted"] is True
+    assert "Salaires.xlsx" not in _par_nom(prof.racine(dossier=saison))
