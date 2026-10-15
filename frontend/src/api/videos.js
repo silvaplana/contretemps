@@ -45,6 +45,9 @@ export function versEcran(v) {
     // la retirer.
     auteurId: v.uploaded_by,
     datePublication: v.date_publication.slice(8, 10) + '/' + v.date_publication.slice(5, 7),
+    // Instant exact de l'envoi : distingue deux vidéos qui auraient eu le
+    // même numéro (la base réutilise celui d'une vidéo supprimée).
+    publieeLe: v.date_publication,
     // 'en_cours' : fichier pas encore complet (voir Televersement côté
     // backend) — url/poster valent alors null, une vraie lecture locale
     // (aperçu direct du fichier choisi, sans dépendre du serveur) prend le

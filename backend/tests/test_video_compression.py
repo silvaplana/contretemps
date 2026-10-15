@@ -65,14 +65,24 @@ def test_compresser_remplace_le_fichier_et_reduit_la_taille(db_session):
     try:
         assert videos_client.compresser(db_session, video) is True
         assert video.compresse is True
-        assert video.lien_fichier.endswith(".mp4")
+        # Nouveau nom : l'original n'est jamais remplacé sous un lecteur.
+        assert video.lien_fichier.endswith("original-c.mp4")
         chemin_final = DOSSIER_VIDEOS_LIVE / video.lien_fichier
         assert chemin_final.exists()
         assert chemin_final.stat().st_size < taille_originale
-        assert not chemin.with_name("original-c.mp4").exists()  # fichier temporaire nettoyé
+        # L'original reste une heure, marqué à effacer.
+        assert chemin.read_bytes() == _FICHIER_DEMO.read_bytes()
+        temoin = chemin.with_name("original.mp4.a-effacer")
+        assert temoin.exists()
+        assert videos_client.effacer_originaux() == 0
+        import datetime as dt
+
+        assert videos_client.effacer_originaux(dt.datetime.now() + dt.timedelta(hours=1, minutes=1)) == 1
+        assert not chemin.exists() and not temoin.exists() and chemin_final.exists()
     finally:
         (DOSSIER_VIDEOS_LIVE / video.lien_fichier).unlink(missing_ok=True)
         chemin.unlink(missing_ok=True)
+        chemin.with_name("original.mp4.a-effacer").unlink(missing_ok=True)
 
 
 def test_compresser_fichier_source_manquant_echoue_proprement(db_session):

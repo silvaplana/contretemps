@@ -3,6 +3,8 @@ models.py).
 """
 
 from datetime import datetime
+from pathlib import PurePosixPath
+from urllib.parse import quote
 
 from pydantic import BaseModel, computed_field
 from securite import liens
@@ -45,7 +47,9 @@ class VideoSortie(BaseModel):
         return self._lien("poster") if self.poster else None
 
     def _lien(self, quoi: str) -> str:
-        return f"/videos/{self.id}/{quoi}?{liens.parametres(f'video:{self.id}:{quoi}')}"
+        # Le nom du fichier fait partie du lien signé : voir receiver.py.
+        nom = PurePosixPath(self.lien_fichier if quoi == "fichier" else self.poster).name
+        return f"/videos/{self.id}/{quoi}?n={quote(nom)}&{liens.parametres(f'video:{self.id}:{quoi}:{nom}')}"
 
 
 # --- Upload par blocs (voir videos.py : Televersement, creer_televersement/

@@ -56,17 +56,39 @@ def test_sans_lien_signe_rien(client, video):
     lue = client.get(f"/videos/{v.id}", headers=entetes_session(video["admin"])).json()
     params = parse_qs(urlsplit(lue["url"]).query)
     # Signature d'une autre vidéo, ou du fichier pour l'aperçu : refusé.
-    assert client.get(f"/videos/{v.id + 1}/fichier?e={params['e'][0]}&s={params['s'][0]}").status_code == 403
-    assert client.get(f"/videos/{v.id}/poster?e={params['e'][0]}&s={params['s'][0]}").status_code == 403
+    n, e, s = params["n"][0], params["e"][0], params["s"][0]
+    assert client.get(f"/videos/{v.id + 1}/fichier?n={n}&e={e}&s={s}").status_code == 403
+    assert client.get(f"/videos/{v.id}/poster?n={n}&e={e}&s={s}").status_code == 403
     # Date d'expiration rallongée à la main : la signature ne correspond plus.
     plus_tard = int(params["e"][0]) + 86400
-    assert client.get(f"/videos/{v.id}/fichier?e={plus_tard}&s={params['s'][0]}").status_code == 403
+    assert client.get(f"/videos/{v.id}/fichier?n={n}&e={plus_tard}&s={s}").status_code == 403
 
 
 def test_le_lien_expire(client, video):
     v = video["video"]
-    vieux = liens.parametres(f"video:{v.id}:fichier", maintenant=time.time() - 2 * 86400)
-    assert client.get(f"/videos/{v.id}/fichier?{vieux}").status_code == 403
+    vieux = liens.parametres(f"video:{v.id}:fichier:protegee.mp4", maintenant=time.time() - 2 * 86400)
+    assert client.get(f"/videos/{v.id}/fichier?n=protegee.mp4&{vieux}").status_code == 403
+    frais = liens.parametres(f"video:{v.id}:fichier:protegee.mp4")
+    assert client.get(f"/videos/{v.id}/fichier?n=protegee.mp4&{frais}").status_code == 200
+
+
+def test_un_lien_designe_un_fichier_precis(client, video, db_session):
+    """Après compression, qui lisait l'original le finit (même lien), et
+    les nouveaux liens donnent la version compressée."""
+    v, h = video["video"], entetes_session(video["admin"])
+    ancien = client.get(f"/videos/{v.id}", headers=h).json()["url"]
+    compressee = dossier_ecole(v.ecole_id) / "protegee-c.mp4"
+    compressee.write_bytes(b"compressee")
+    try:
+        v.lien_fichier = chemin_relatif(v.ecole_id, compressee.name)
+        db_session.commit()
+        assert client.get(ancien).content == CONTENU
+        nouveau = client.get(f"/videos/{v.id}", headers=h).json()["url"]
+        assert "n=protegee-c.mp4" in nouveau and client.get(nouveau).content == b"compressee"
+        # Nom changé à la main dans un lien : la signature ne correspond plus.
+        assert client.get(ancien.replace("n=protegee.mp4", "n=protegee-c.mp4")).status_code == 403
+    finally:
+        compressee.unlink(missing_ok=True)
 
 
 def test_une_autre_ecole_n_obtient_pas_de_lien(client, video):

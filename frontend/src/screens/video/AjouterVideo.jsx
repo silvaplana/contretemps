@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { compresserOuOriginal } from '../../utils/videoCompression.js'
@@ -38,6 +38,15 @@ export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
   // soit déjà finie et l'envoi par blocs a pris le relais).
   const [compressionPourcentage, setCompressionPourcentage] = useState(null)
   const progression = useProgressionTeleversement(session?.uploadId)
+  // « Envoi terminé » ne reste affiché que 2,5 s, puis disparaît (Seb).
+  const envoiTermine = Boolean(progression?.complet)
+  const [termineMasque, setTermineMasque] = useState(false)
+  const termineVisible = envoiTermine && !termineMasque
+  useEffect(() => {
+    if (!envoiTermine) return undefined
+    const minuteur = setTimeout(() => setTermineMasque(true), 2500)
+    return () => clearTimeout(minuteur)
+  }, [envoiTermine])
 
   async function choisir(fichier) {
     if (!fichier) return
@@ -60,6 +69,7 @@ export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
     setDescription('')
     setEnCours(false)
     setCompressionPourcentage(null)
+    setTermineMasque(false)
   }
 
   function annuler() {
@@ -135,14 +145,16 @@ export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
               </div>
             )}
           </div>
-          <p className="muted">
-            <Icon name={progression?.complet ? 'check' : 'clock'} size={14} />{' '}
-            {compressionPourcentage !== null
-              ? `Compression… ${compressionPourcentage}%`
-              : progression?.complet
-                ? 'Envoi terminé'
-                : `Envoi en cours… ${pourcentage}%`}
-          </p>
+          {(!envoiTermine || termineVisible || compressionPourcentage !== null) && (
+            <p className="muted">
+              <Icon name={envoiTermine ? 'check' : 'clock'} size={14} />{' '}
+              {compressionPourcentage !== null
+                ? `Compression… ${compressionPourcentage}%`
+                : envoiTermine
+                  ? 'Envoi terminé'
+                  : `Envoi en cours… ${pourcentage}%`}
+            </p>
+          )}
 
           <label htmlFor="add-video-titre">Titre</label>
           <input id="add-video-titre" value={titre} onChange={(e) => setTitre(e.target.value)} />

@@ -44,6 +44,8 @@ def run() -> None:
         time.sleep(INTERVALLE_SECONDES)
         db = SessionLocal()
         try:
+            if videos_client.effacer_originaux():
+                print("Originaux compressés depuis plus d'une heure effacés.")
             for video in videos_client.videos_a_compresser(db):
                 try:
                     if videos_client.compresser(db, video):

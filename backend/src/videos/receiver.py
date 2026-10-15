@@ -110,22 +110,31 @@ class VideosReceiver:
             raise HTTPException(status_code=404, detail="Vidéo introuvable")
         return video
 
-    def _fichier_signe(self, db: Session, video_id: int, quoi: str, e: str | None, s: str | None) -> FileResponse:
-        if not liens.valide(f"video:{video_id}:{quoi}", e, s):
+    def _fichier_signe(
+        self, db: Session, video_id: int, quoi: str, n: str | None, e: str | None, s: str | None
+    ) -> FileResponse:
+        # Le lien désigne UN fichier précis (`n`) : après compression, qui
+        # lisait l'original le finit, sans recevoir des morceaux de l'autre.
+        if not n or not liens.valide(f"video:{video_id}:{quoi}:{n}", e, s):
             raise HTTPException(status_code=403, detail="Lien expiré : rouvrez la vidéo dans l'appli")
         with toutes_saisons(db):
             video = self.client.get(db, video_id)
-        chemin = self.client.chemin(video, quoi) if video is not None else None
+        chemin = self.client.chemin_nomme(video, n) if video is not None else None
         if chemin is None or not chemin.is_file():
             raise HTTPException(status_code=404, detail="Vidéo introuvable")
         # FileResponse gère `Range` : lecture progressive et avance rapide.
+        # Un nom ne désigne jamais deux contenus : cache sans risque.
         return FileResponse(chemin, headers={"Cache-Control": "private, max-age=21600"})
 
-    def fichier(self, video_id: int, e: str | None = None, s: str | None = None, db: Session = Depends(get_db)):
-        return self._fichier_signe(db, video_id, "fichier", e, s)
+    def fichier(
+        self, video_id: int, n: str | None = None, e: str | None = None, s: str | None = None, db: Session = Depends(get_db)
+    ):
+        return self._fichier_signe(db, video_id, "fichier", n, e, s)
 
-    def poster(self, video_id: int, e: str | None = None, s: str | None = None, db: Session = Depends(get_db)):
-        return self._fichier_signe(db, video_id, "poster", e, s)
+    def poster(
+        self, video_id: int, n: str | None = None, e: str | None = None, s: str | None = None, db: Session = Depends(get_db)
+    ):
+        return self._fichier_signe(db, video_id, "poster", n, e, s)
 
     def obtenir(
         self,

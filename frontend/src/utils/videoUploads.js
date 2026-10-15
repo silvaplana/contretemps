@@ -20,6 +20,19 @@ const videoIdVersUploadId = new Map()
 const abandonnes = new Set()
 const abonnesProgression = new Set()
 const abonnesTermines = new Set() // (video au format écran) => void
+// videoId -> { url, publieeLe } : URL locale du fichier envoyé depuis CE
+// téléphone, et l'instant d'envoi de la vidéo (un numéro de vidéo supprimée
+// peut être réutilisé : on ne montre la copie qu'à la bonne). Une fois
+// l'envoi fini, on continue de lire cette copie tant que l'appli reste
+// ouverte (Seb, 2026-10-15) — pas de coupure de la lecture à la fin de
+// l'envoi, pas d'attente du téléchargement, et pas de mélange avec le
+// fichier que le serveur compresse juste après.
+const copiesLocales = new Map()
+
+function garderCopieLocale(video, previewUrl) {
+  if (video?.id && previewUrl) copiesLocales.set(video.id, { url: previewUrl, publieeLe: video.publieeLe })
+  else if (previewUrl) URL.revokeObjectURL(previewUrl)
+}
 
 function notifierProgression() {
   for (const f of abonnesProgression) f()
@@ -44,6 +57,17 @@ export function useProgressionVideo(videoId) {
   return useSyncExternalStore(sabonner, () => {
     const uploadId = videoIdVersUploadId.get(videoId)
     return uploadId ? sessions.get(uploadId) : undefined
+  })
+}
+
+// La vidéo, lisible depuis ce téléphone sans rien télécharger : pendant
+// l'envoi, puis après (voir copiesLocales). `undefined` sinon.
+export function useCopieLocale(video) {
+  return useSyncExternalStore(sabonner, () => {
+    const uploadId = videoIdVersUploadId.get(video.id)
+    if (uploadId && sessions.get(uploadId)?.previewUrl) return sessions.get(uploadId).previewUrl
+    const copie = copiesLocales.get(video.id)
+    return copie && copie.publieeLe === video.publieeLe ? copie.url : undefined
   })
 }
 
@@ -111,7 +135,7 @@ async function envoyerBlocs(uploadId, fichier) {
   if (etat.videoId) {
     const video = await videosApi.obtenir(etat.videoId)
     for (const f of abonnesTermines) f(video)
-    URL.revokeObjectURL(etat.previewUrl)
+    garderCopieLocale(video, etat.previewUrl)
     sessions.delete(uploadId)
     videoIdVersUploadId.delete(etat.videoId)
     notifierProgression()
@@ -179,9 +203,9 @@ export async function finaliserTeleversement(uploadId, creer) {
       // n'a rien rafraîchi (videoId pas encore connu à ce moment-là) :
       // sans ce rappel, la vidéo restait affichée « Envoi… » jusqu'au
       // rechargement (bug vu le 2026-10-15).
-      URL.revokeObjectURL(etat.previewUrl)
       sessions.delete(uploadId)
       if (video.statut === 'en_cours') video = await videosApi.obtenir(video.id)
+      garderCopieLocale(video, etat.previewUrl)
     } else {
       sessions.set(uploadId, { ...etat, videoId: video.id })
       videoIdVersUploadId.set(video.id, uploadId)

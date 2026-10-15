@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { obtenir } from '../api/videos.js'
-import { useProgressionVideo } from '../utils/videoUploads.js'
+import { useCopieLocale, useProgressionVideo } from '../utils/videoUploads.js'
 import Icon from './Icon.jsx'
 
 // Vignette vidéo réutilisée par l'onglet Vidéo (VideoScreen.jsx) et le
@@ -39,6 +39,7 @@ export default function VideoThumb({ video: recue }) {
   }
   const enCours = video.statut === 'en_cours'
   const progression = useProgressionVideo(enCours ? video.id : null)
+  const copieLocale = useCopieLocale(video)
 
   // « Envoi… » sans envoi en cours sur CET appareil (envoyée d'un autre
   // téléphone, ou réponse du serveur arrivée dans le désordre) : on
@@ -61,17 +62,21 @@ export default function VideoThumb({ video: recue }) {
   // jouable tout de suite, sans dépendre du serveur (demande utilisateur
   // explicite : "tu peux voir la vidéo" pendant l'envoi, "ça fait
   // magique" — même effet que sur WhatsApp), avec une barre de
-  // progression discrète superposée.
-  if (enCours && progression?.previewUrl) {
-    const pourcentage = progression.octetsTotal
+  // progression discrète superposée. Envoi fini, on garde cette copie
+  // locale tant que l'appli reste ouverte (même <video>, même adresse :
+  // la lecture en cours n'est pas coupée à la fin de l'envoi).
+  if (copieLocale) {
+    const pourcentage = progression?.octetsTotal
       ? Math.round((progression.octetsEnvoyes / progression.octetsTotal) * 100)
       : 0
     return (
       <div className="video-card__thumb">
-        <video className="video-card__player" src={progression.previewUrl} controls playsInline />
-        <div className="video-card__upload-progress">
-          <div className="video-card__upload-progress-bar" style={{ width: `${pourcentage}%` }} />
-        </div>
+        <video className="video-card__player" src={copieLocale} controls playsInline />
+        {enCours && progression && (
+          <div className="video-card__upload-progress">
+            <div className="video-card__upload-progress-bar" style={{ width: `${pourcentage}%` }} />
+          </div>
+        )}
       </div>
     )
   }

@@ -35,6 +35,13 @@ from .stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, chemin_televersement,
 # plus pour un cas aussi rare.
 DELAI_ABANDON = dt.timedelta(hours=6)
 
+# Après compression, l'original est gardé ce temps-là avant d'être effacé :
+# quelqu'un qui le lisait (vidéo regardée juste après l'envoi) finit sa
+# lecture sans que le fichier change sous lui (Seb, 2026-10-15). Repéré par
+# un fichier témoin « <nom>.a-effacer » posé à côté (voir compresser).
+DELAI_ORIGINAL = dt.timedelta(hours=1)
+SUFFIXE_A_EFFACER = ".a-effacer"
+
 
 class DecalageInvalide(Exception):
     """Le bloc envoyé ne commence pas là où le serveur l'attend (voir
@@ -64,13 +71,15 @@ class Videos:
         return {v.id: v for v in db.scalars(select(Video).where(Video.id.in_(video_ids)))}
 
     @staticmethod
-    def chemin(video: Video, quoi: str) -> Path | None:
-        """Le fichier sur disque : "fichier" (la vidéo) ou "poster" (l'aperçu)."""
-        relatif = video.lien_fichier if quoi == "fichier" else video.poster
-        if not relatif:
+    def chemin_nomme(video: Video, nom: str) -> Path | None:
+        """Le fichier `nom` du dossier de l'école de la vidéo — celui que
+        désigne un lien signé : l'actuel, ou l'original encore gardé une
+        heure après la compression (voir DELAI_ORIGINAL)."""
+        if not nom or "/" in nom or "\\" in nom or nom.startswith(".") or nom.endswith(SUFFIXE_A_EFFACER):
             return None
-        chemin = (DOSSIER_VIDEOS_LIVE / relatif).resolve()
-        return chemin if chemin.is_relative_to(DOSSIER_VIDEOS_LIVE.resolve()) else None
+        dossier = dossier_ecole(video.ecole_id).resolve()
+        chemin = (dossier / nom).resolve()
+        return chemin if chemin.parent == dossier else None
 
     def get(self, db: Session, video_id: int) -> Video | None:
         return db.get(Video, video_id)
@@ -320,12 +329,15 @@ class Videos:
         if not compresser_fichier(chemin_source, chemin_dest):
             chemin_dest.unlink(missing_ok=True)
             return False
-        # La base d'abord, le fichier ensuite : si l'enregistrement échoue,
-        # l'original reste intact. Dans l'ordre inverse, la vidéo restait
-        # « à compresser » avec un fichier déjà compressé, et le worker la
-        # recompressait en boucle (bug du 2026-10-15, qualité détruite).
-        chemin_final = chemin_source.with_suffix(".mp4")
-        video.lien_fichier = str(Path(video.lien_fichier).with_suffix(".mp4"))
+        # La version compressée garde son NOUVEAU nom : l'original n'est
+        # jamais remplacé sous quelqu'un qui le lit (une lecture se fait par
+        # morceaux ; mélanger des morceaux des deux fichiers bloquait la
+        # lecture d'une vidéo regardée juste après l'envoi). Les nouveaux
+        # liens désignent la version compressée ; l'original est effacé au
+        # bout de DELAI_ORIGINAL (voir effacer_originaux).
+        # La base d'abord : si l'enregistrement échoue, rien n'a changé
+        # (bug du 2026-10-15 : compression en boucle, qualité détruite).
+        video.lien_fichier = str(Path(video.lien_fichier).with_name(chemin_dest.name))
         video.compresse = True
         try:
             db.commit()
@@ -333,10 +345,21 @@ class Videos:
             db.rollback()
             chemin_dest.unlink(missing_ok=True)
             raise
-        chemin_dest.replace(chemin_final)
-        if chemin_source != chemin_final:
-            chemin_source.unlink(missing_ok=True)
+        chemin_source.with_name(chemin_source.name + SUFFIXE_A_EFFACER).touch()
         return True
+
+    def effacer_originaux(self, maintenant: dt.datetime | None = None) -> int:
+        """Efface les originaux compressés depuis plus de DELAI_ORIGINAL
+        (appelé à chaque passage du worker)."""
+        limite = (maintenant or dt.datetime.now()).timestamp() - DELAI_ORIGINAL.total_seconds()
+        effaces = 0
+        for temoin in DOSSIER_VIDEOS_LIVE.glob(f"*/*{SUFFIXE_A_EFFACER}"):
+            if temoin.stat().st_mtime > limite:
+                continue
+            temoin.with_name(temoin.name.removesuffix(SUFFIXE_A_EFFACER)).unlink(missing_ok=True)
+            temoin.unlink(missing_ok=True)
+            effaces += 1
+        return effaces
 
     def usage_ecole(self, db: Session, ecole_id: int) -> UsageVideosEcole:
         """Panneau "Usage vidéo" (Admin > École) : Go utilisés, minutes de
