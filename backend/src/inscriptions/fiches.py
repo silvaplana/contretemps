@@ -20,6 +20,7 @@ import datetime as dt
 import json
 import logging
 import uuid
+from collections.abc import Callable
 from pathlib import Path
 
 from comptes import Compte
@@ -100,11 +101,18 @@ class EleveDejaInscrit(Exception):
 
 class FichesPapier:
     def __init__(
-        self, cours: CoursService, eleves: Eleves, lecture: LectureFiche | None = None
+        self,
+        cours: CoursService,
+        eleves: Eleves,
+        lecture: LectureFiche | None = None,
+        noter_cout: Callable[[Session, int, float, str], None] | None = None,
     ) -> None:
+        """`noter_cout(db, ecole_id, cout_usd, detail)` : relève le coût de
+        chaque lecture (« Usage ressources et IA », voir ressources/)."""
         self.cours = cours
         self.eleves = eleves
         self.lecture = lecture or LectureFiche()
+        self.noter_cout = noter_cout
         self.email = EmailEnvoi()
 
     def lire(
@@ -125,6 +133,8 @@ class FichesPapier:
 
         cours_ecole = [(c.id, c.nom) for c in self.cours.list(db, ecole_id)]
         resultat = self.lecture.lire(pages, cours_ecole)
+        if self.noter_cout is not None:
+            self.noter_cout(db, ecole_id, resultat.cout_usd, f"{len(pages)} page(s), {resultat.modele}")
 
         donnees = resultat.fiche.model_dump()
         douteux = set(donnees.pop("champs_douteux"))

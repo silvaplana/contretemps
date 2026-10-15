@@ -3187,3 +3187,30 @@ a.btn {
 .choregraphie-detail {
   padding-bottom: var(--fab-clearance);
 }
+
+/* « Usage ressources et IA de la saison » (voir UsageVideoSection.jsx). */
+.usage-ressources__rubrique {
+  margin: 14px 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-h);
+}
+
+.usage-ressources__lignes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.usage-ressources__ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.usage-ressources__ligne--total {
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+  font-weight: 700;
+}

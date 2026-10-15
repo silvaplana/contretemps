@@ -292,6 +292,7 @@ _SUPPRESSIONS = [
     f"DELETE FROM mappings_colonnes_import WHERE saison_id = :s OR cours_id IN ({_COURS})",
     f"DELETE FROM inscriptions_cours WHERE inscription_id IN (SELECT id FROM inscriptions WHERE saison_id = :s) OR cours_id IN ({_COURS})",
     "DELETE FROM inscriptions WHERE saison_id = :s",
+    "DELETE FROM consommations_ia WHERE saison_id = :s",
     "DELETE FROM cours WHERE saison_id = :s",
     f"DELETE FROM roles_compte WHERE compte_id IN ({_COMPTES})",
     f"DELETE FROM profils_eleves WHERE compte_id IN ({_COMPTES})",

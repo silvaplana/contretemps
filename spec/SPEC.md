@@ -720,6 +720,17 @@ demandée) — supprime aussi le fichier et sa vignette, pas seulement l'entrée
 **total toutes saisons** (seul chiffre qui sort de la saison affichée) ; la liste des 10 plus
 lourdes porte sur la saison affichée.
 
+**Section « Usage ressources et IA de la saison <nom> »** *(demande du 2026-10-15, remplace
+« Usage vidéo »)* : même place, repliable. Trois rubriques :
+- **Mémoire** : place occupée sur le disque par l'école (vidéos, documents d'inscription, et
+  plus tard les images de personnalisation), et le total ;
+- **IA** : coût cumulé, pour la saison affichée, des opérations d'IA, **par poste** (lecture des
+  fiches d'inscription, détourage du logo…), avec le nombre d'opérations, le total de la saison
+  et le total toutes saisons. Chaque opération est relevée dans la table `consommations_ia`
+  (école, saison, poste, coût en dollars, date) ; une opération gratuite (détourage sur notre
+  serveur) est relevée à 0 $ ;
+- **Vidéos** : les chiffres et la liste des 10 plus lourdes, comme avant.
+
 **Section "Saison 2026-2027"** *(spécifié le 2026-09-23, voir §2.6)* : repliable comme
 "Usage vidéo", placée **après le code postal et avant "Administrateurs"**. Son titre
 est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande utilisateur du

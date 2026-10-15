@@ -40,6 +40,7 @@ from saisons import Saison, saison_courante_id
 from saisons.portee import toutes_saisons
 from sqlalchemy import Table, delete, select, text
 from sqlalchemy.orm import Session
+from ressources.models import ConsommationIA
 from videos.models import Video
 
 from .models import Ecole
@@ -287,6 +288,13 @@ def _construire_tables() -> list[_Table]:
                 "poster", "date_publication", "uploaded_by", "duree_secondes",
             ],
             lambda db, eid: list(db.scalars(select(Video).where(Video.ecole_id == eid))),
+            colonne_ecole_id="ecole_id",
+        ),
+        _Table(
+            "ConsommationsIA",
+            ConsommationIA,
+            ["id", "ecole_id", "saison_id", "categorie", "cout_usd", "detail", "cree_le"],
+            lambda db, eid: list(db.scalars(select(ConsommationIA).where(ConsommationIA.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
         ),
         _Table(
@@ -570,7 +578,7 @@ def _reajuster_sequences_postgres(db: Session) -> None:
     tables_avec_id = [
         Saison, Famille, Compte, ContactEleve, Cours, CoursHoraireSupplementaire,
         Conversation, ConversationMembre, Message, MessageDelivery, SeancePresence,
-        PresenceEleve, PresenceProf, Choregraphie, Video,
+        PresenceEleve, PresenceProf, Choregraphie, Video, ConsommationIA,
     ]
     for classe in tables_avec_id:
         nom_table = classe.__tablename__

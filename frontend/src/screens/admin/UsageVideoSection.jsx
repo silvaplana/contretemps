@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import * as ressourcesApi from '../../api/ressources.js'
 import * as videosApi from '../../api/videos.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
+import { formaterCout } from '../../utils/inscriptionEleve.js'
 
 // Mo tant que ça reste sous 1 Go (demande : une vidéo ou même le total
 // dépasse rarement 1 Go en démo, "0.01 Go" ne distinguait pas deux
@@ -28,7 +30,9 @@ function formatDuree(secondes) {
   return `${mm}:${ss}`
 }
 
-// Section "Usage vidéo" (Admin > École, voir spec/SPEC.md §5.1.1) : Go
+// Section « Usage ressources et IA de la saison » (Admin > École, voir
+// spec/SPEC.md §5.1.1 ; « Usage vidéo » jusqu'au 2026-10-15) : mémoire et IA
+// (voir api/ressources.js), puis les vidéos : Go
 // utilisés et minutes de vidéo pour toute l'école, tous cours confondus,
 // puis les 10 plus grosses vidéos. Affichée directement, au même niveau et
 // sous le même format de titre que la section "Administrateurs" (demande
@@ -43,6 +47,20 @@ function formatDuree(secondes) {
 export default function UsageVideoSection({ ecoleId, choregraphies = [], cours = [], setChoregraphies }) {
   const [ouvert, setOuvert] = useState(false)
   const [usage, setUsage] = useState(null)
+  // Mémoire et IA (voir api/ressources.js) : chargés tout de suite, le
+  // titre porte le nom de la saison affichée.
+  const [ressources, setRessources] = useState(null)
+
+  useEffect(() => {
+    let annule = false
+    ressourcesApi
+      .usage(ecoleId)
+      .then((r) => !annule && setRessources(r))
+      .catch(() => {})
+    return () => {
+      annule = true
+    }
+  }, [ecoleId])
 
   useEffect(() => {
     if (!ouvert || usage !== null) return
@@ -98,13 +116,55 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
           onClick={() => setOuvert((o) => !o)}
         >
           <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
-          Usage vidéo
+          Usage ressources et IA{ressources?.saison ? ` de la saison ${ressources.saison}` : ''}
         </button>
       </h3>
       {!ouvert ? null : usage === null ? (
         <p className="muted">Calcul en cours…</p>
       ) : (
         <>
+          {/* Rubriques demandées le 2026-10-15 : « Mémoire » (place sur le
+              disque, toute l'école) et « IA » (coût de la saison, par poste). */}
+          {ressources && (
+            <>
+              <h4 className="usage-ressources__rubrique">Mémoire</h4>
+              <div className="usage-ressources__lignes">
+                {ressources.memoire.map((r) => (
+                  <div key={r.cle} className="usage-ressources__ligne">
+                    <span>{r.libelle}</span>
+                    <span>{formatTaille(r.octets)}</span>
+                  </div>
+                ))}
+                <div className="usage-ressources__ligne usage-ressources__ligne--total">
+                  <span>Total sur le disque</span>
+                  <span>{formatTaille(ressources.memoireTotalOctets)}</span>
+                </div>
+              </div>
+
+              <h4 className="usage-ressources__rubrique">IA</h4>
+              <div className="usage-ressources__lignes">
+                {ressources.ia.length === 0 && <p className="muted">Aucune opération d’IA cette saison.</p>}
+                {ressources.ia.map((p) => (
+                  <div key={p.categorie} className="usage-ressources__ligne">
+                    <span>
+                      {p.libelle} <span className="muted">({p.nombre})</span>
+                    </span>
+                    <span>{formaterCout(p.coutUsd)}</span>
+                  </div>
+                ))}
+                <div className="usage-ressources__ligne usage-ressources__ligne--total">
+                  <span>Total de la saison</span>
+                  <span>{formaterCout(ressources.iaTotalUsd)}</span>
+                </div>
+                <div className="usage-ressources__ligne">
+                  <span className="muted">Toutes saisons</span>
+                  <span className="muted">{formaterCout(ressources.iaTotalToutesSaisonsUsd)}</span>
+                </div>
+              </div>
+
+              <h4 className="usage-ressources__rubrique">Vidéos</h4>
+            </>
+          )}
           {/* Saisons (spec §2.6) : la saison affichée, puis le cumul de
               toutes les saisons (seul chiffre qui sort de la saison
               affichée). */}
