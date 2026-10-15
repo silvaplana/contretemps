@@ -1804,3 +1804,61 @@
   box-sizing: border-box;
   text-align: left;
 }
+
+/* Fichiers glissés dans l'assistant. */
+.dx-chat--survol {
+  outline: 3px dashed var(--accent);
+  outline-offset: -6px;
+  background: var(--dx-soft);
+}
+
+.dx-chat__pieces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px 0;
+}
+
+.dx-chat__piece {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 4px 4px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dx-chat__piece--erreur {
+  border-color: var(--danger-text);
+  color: var(--danger-text);
+}
+
+.dx-chat__piece button {
+  min-width: 28px;
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+.dx-chat__trombone {
+  flex: 0 0 44px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dx-chat__joints {
+  margin-bottom: 4px;
+  font-size: 14px;
+  color: var(--text-muted);
+}

@@ -34,11 +34,30 @@ export async function ajouterProduit(orgId, jeton, espace, dossierParentId) {
   return reponse.json()
 }
 
-export async function poserQuestion(orgId, { conversationId, texte, contexte, modele }, surEvenement) {
+// Fichier glissé dans l'assistant : déposé tout de suite, joint à la
+// question suivante par son identifiant. { id, nom, taille }.
+export async function deposerPiece(orgId, fichier) {
+  const donnees = new FormData()
+  donnees.append('fichier', fichier, fichier.name)
+  const reponse = await fetch(`${BASE_URL}/assistant/orgs/${orgId}/pieces`, { method: 'POST', body: donnees })
+  if (!reponse.ok) {
+    let message = `« ${fichier.name} » n'a pas pu être joint (${reponse.status})`
+    try {
+      const { detail } = await reponse.json()
+      if (typeof detail === 'string') message = detail
+    } catch {
+      // pas de JSON : message par défaut
+    }
+    throw new Error(message)
+  }
+  return reponse.json()
+}
+
+export async function poserQuestion(orgId, { conversationId, texte, contexte, modele, pieces = [] }, surEvenement) {
   const reponse = await fetch(`${BASE_URL}/assistant/orgs/${orgId}/messages`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ conversation_id: conversationId, texte, contexte, modele }),
+    body: JSON.stringify({ conversation_id: conversationId, texte, contexte, modele, pieces }),
   })
   if (!reponse.ok) {
     let message = `L'assistant ne répond pas (${reponse.status})`

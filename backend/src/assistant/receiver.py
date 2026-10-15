@@ -13,7 +13,7 @@ from saisons.portee import toutes_saisons
 from sqlalchemy import select
 from documents.ports import Member
 from documents.service import DocError
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -37,6 +37,8 @@ class Question(BaseModel):
     texte: str = Field(min_length=1, max_length=8000)
     # Modèle choisi dans le panneau du coût (voir assistant.MODELES).
     modele: str | None = None
+    # Fichiers glissés dans l'assistant (identifiants donnés par /pieces).
+    pieces: list[str] = Field(default_factory=list, max_length=5)
     contexte: Contexte = Field(default_factory=Contexte)
 
 
@@ -65,6 +67,22 @@ class AssistantReceiver:
         self.client = client
         self.current_member = current_member
         app.post("/assistant/orgs/{org_id}/messages")(self._route())
+
+        @app.post("/assistant/orgs/{org_id}/pieces")
+        async def deposer_piece(
+            org_id: int,
+            fichier: UploadFile,
+            compte: Compte = Depends(rbac.compte_appelant),
+            membre: Member = Depends(current_member),
+            db: Session = Depends(get_db),
+        ):
+            """Fichier glissé dans l'assistant, joint à la question suivante."""
+            if not autorise(db, compte):
+                raise HTTPException(status_code=403, detail="L'assistant est en essai : réservé au Super User.")
+            try:
+                return self.client.deposer_piece(replace(membre, org_id=org_id), fichier.filename, await fichier.read())
+            except DocError as erreur:
+                raise HTTPException(status_code=erreur.status, detail=erreur.message) from erreur
 
         @app.post("/assistant/orgs/{org_id}/produits/{jeton}")
         def ajouter_produit(
@@ -113,7 +131,8 @@ class AssistantReceiver:
             conv = self.client.conversation(membre, question.conversation_id)
             return StreamingResponse(
                 self.client.repondre(
-                    db, membre, conv, question.texte, question.contexte.model_dump(), question.modele or MODELE, compte
+                    db, membre, conv, question.texte, question.contexte.model_dump(), question.modele or MODELE, compte,
+                    question.pieces,
                 ),
                 media_type="text/event-stream",
                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},

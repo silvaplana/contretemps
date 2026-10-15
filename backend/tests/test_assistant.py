@@ -251,3 +251,25 @@ def test_l_ordinateur_fabrique_un_fichier_propose_puis_ajoute(client, monde, mon
     assert client.post(url, json=corps, headers=entetes).status_code == 200
     assert "Courbe des inscriptions.pdf" in noms()
     assert client.post(url, json=corps, headers=entetes).status_code == 404
+
+
+def test_fichiers_glisses_dans_l_assistant(client, monde, monkeypatch):
+    entetes = {"Authorization": f"Bearer {_en_superuser(client)}", rbac.ENTETE_COMPTE: str(monde["su"].id)}
+    faux = FauxClaude([_message(Bloc(type="text", text="Lu."))])
+    faux.files = FauxFichiers()
+    monkeypatch.setattr(main.assistant_client, "_client", faux)
+    url = f"/assistant/orgs/{monde['ecole'].id}"
+    note = client.post(f"{url}/pieces", files={"fichier": ("Note.txt", io.BytesIO(b"Gala le 12 juin"))}, headers=entetes).json()
+    chiffres = client.post(f"{url}/pieces", files={"fichier": ("Chiffres.csv", io.BytesIO(b"a;b\n1;2"))}, headers=entetes).json()
+    assert note["nom"] == "Note.txt" and note["taille"] == 15
+
+    client.post(f"{url}/messages", json={"texte": "Résume", "pieces": [note["id"], chiffres["id"]]}, headers=entetes)
+    contenu = faux.demandes[0][0]["content"]
+    textes = " ".join(b.get("text", "") for b in contenu)
+    assert "Gala le 12 juin" in textes and "Fichier joint « Note.txt »" in textes
+    # Les données vont aussi dans l'ordinateur ; la question vient en dernier.
+    assert faux.files.envoyes == ["Chiffres.csv"]
+    assert {"type": "container_upload", "file_id": "file_envoye_1"} in contenu
+    assert contenu[-1]["text"].endswith("Résume")
+    # Une pièce ne sert qu'une fois.
+    assert note["id"] not in main.assistant_client.pieces

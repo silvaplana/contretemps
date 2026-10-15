@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { poserQuestion } from '../../api/assistant.js'
+import { deposerPiece, poserQuestion } from '../../api/assistant.js'
 import { enEuros } from '../../utils/euros.js'
 import { BubbleIcon } from './icons.jsx'
 
@@ -113,6 +113,10 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
   // Ce que la personne a fait des propositions, dit à l'assistant au
   // message suivant (« Fait : … », « Annulé : … »).
   const issues = useRef([])
+  // Fichiers glissés (ou choisis au trombone), joints à la question suivante.
+  const [pieces, setPieces] = useState([]) // { cle, nom, id?, erreur? }
+  const [survol, setSurvol] = useState(false)
+  const choixFichiers = useRef(null)
   const fil = useRef(null)
   const champ = useRef(null)
 
@@ -132,17 +136,37 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
     })
   }
 
+  async function joindre(liste) {
+    for (const fichier of [...liste].slice(0, 5)) {
+      const cle = `${fichier.name}-${Date.now()}-${Math.random()}`
+      setPieces((p) => [...p, { cle, nom: fichier.name }].slice(-5))
+      deposerPiece(orgId, fichier).then(
+        (x) => setPieces((p) => p.map((q) => (q.cle === cle ? { ...q, id: x.id } : q))),
+        (e) => setPieces((p) => p.map((q) => (q.cle === cle ? { ...q, erreur: e.message } : q))),
+      )
+    }
+  }
+
+  const piecesPretes = pieces.filter((p) => p.id)
+  const piecesEnCours = pieces.some((p) => !p.id && !p.erreur)
+
   async function envoyer(texte) {
-    const question = texte.trim()
-    if (!question || enCours) return
+    const question = texte.trim() || (piecesPretes.length ? 'Voici le fichier joint.' : '')
+    if (!question || enCours || piecesEnCours) return
+    const jointes = piecesPretes
+    setPieces([])
     setSaisie('')
     setEnCours(true)
     setActivite('')
-    setEchanges((l) => [...l, { role: 'user', texte: question }, { role: 'assistant', texte: '', actions: [] }])
+    setEchanges((l) => [
+      ...l,
+      { role: 'user', texte: question, fichiers: jointes.map((p) => p.nom) },
+      { role: 'assistant', texte: '', actions: [] },
+    ])
     const actions = issues.current
     issues.current = []
     try {
-      await poserQuestion(orgId, { conversationId, texte: question, contexte: { ...contexte, actions }, modele }, (e) => {
+      await poserQuestion(orgId, { conversationId, texte: question, contexte: { ...contexte, actions }, modele, pieces: jointes.map((p) => p.id) }, (e) => {
         if (e.type === 'conversation') setConversationId(e.id)
         else if (e.type === 'texte') {
           setActivite('')
@@ -188,7 +212,28 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
   }
 
   return (
-    <aside className="dx-chat" aria-label="Assistant">
+    <aside
+      className={`dx-chat${survol ? ' dx-chat--survol' : ''}`}
+      aria-label="Assistant"
+      // Glisser un fichier sur l'assistant : joint à la question suivante
+      // (sans le ranger dans Docs : l'explorateur derrière n'est pas concerné).
+      onDragOver={(e) => {
+        if (![...e.dataTransfer.types].includes('Files')) return
+        e.preventDefault()
+        e.stopPropagation()
+        setSurvol(true)
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setSurvol(false)
+      }}
+      onDrop={(e) => {
+        if (!e.dataTransfer.files?.length) return
+        e.preventDefault()
+        e.stopPropagation()
+        setSurvol(false)
+        joindre(e.dataTransfer.files)
+      }}
+    >
       <div className="dx-chat__haut">
         <span className="dx-chat__titre">
           <BubbleIcon /> Assistant
@@ -284,6 +329,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
         {echanges.map((m, i) =>
           m.role === 'user' ? (
             <div key={i} className="dx-chat__moi">
+              {m.fichiers?.length > 0 && <div className="dx-chat__joints">Joint : {m.fichiers.join(', ')}</div>}
               {m.texte}
             </div>
           ) : (
@@ -317,6 +363,19 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
         )}
       </div>
 
+      {pieces.length > 0 && (
+        <div className="dx-chat__pieces">
+          {pieces.map((p) => (
+            <span key={p.cle} className={`dx-chat__piece${p.erreur ? ' dx-chat__piece--erreur' : ''}`} title={p.erreur || p.nom}>
+              {p.erreur ? '! ' : p.id ? '' : '… '}
+              {p.nom}
+              <button type="button" aria-label={`Retirer ${p.nom}`} onClick={() => setPieces((l) => l.filter((q) => q.cle !== p.cle))}>
+                ✕
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
       <form
         className="dx-chat__saisie"
         onSubmit={(e) => {
@@ -324,6 +383,27 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
           envoyer(saisie)
         }}
       >
+        <button
+          type="button"
+          className="dx-chat__trombone"
+          onClick={() => choixFichiers.current?.click()}
+          aria-label="Joindre un fichier"
+          title="Joindre un fichier (ou glissez-le ici)"
+        >
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" />
+          </svg>
+        </button>
+        <input
+          ref={choixFichiers}
+          type="file"
+          multiple
+          hidden
+          onChange={(e) => {
+            joindre(e.target.files)
+            e.target.value = ''
+          }}
+        />
         <textarea
           ref={champ}
           rows={2}
@@ -337,7 +417,11 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
             }
           }}
         />
-        <button type="submit" className="dx-btn dx-btn--small" disabled={enCours || !saisie.trim()}>
+        <button
+          type="submit"
+          className="dx-btn dx-btn--small"
+          disabled={enCours || piecesEnCours || (!saisie.trim() && piecesPretes.length === 0)}
+        >
           Envoyer
         </button>
       </form>

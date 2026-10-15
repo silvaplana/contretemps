@@ -20,14 +20,17 @@ import io
 import json
 import logging
 import os
+import tempfile
 import threading
 import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import anthropic
 from documents.ports import Member
 from documents.service import DocError, Documents
+from documents.storage import guess_mime
 
 from .donnees import NOMS as OUTILS_ECOLE
 from .donnees import OUTILS_DONNEES, DonneesEcole
@@ -147,6 +150,12 @@ OUTILS = [
     *OUTILS_DONNEES,
 ]
 TAILLE_MAX_PRODUIT = 50 * 1024 * 1024
+# Fichiers glissés dans l'assistant (pièces jointes d'une question).
+TAILLE_MAX_PIECE = 20 * 1024 * 1024
+PIECES_MAX = 5
+PIECES_EN_ATTENTE_MAX = 30
+# Données à copier aussi dans l'ordinateur, pour calculer dessus.
+POUR_L_ORDINATEUR = (".xlsx", ".xls", ".csv", ".json", ".ods")
 EN_ATTENTE_MAX = 40  # fichiers produits gardés en mémoire, en attente de « Faire »
 
 
@@ -197,6 +206,9 @@ class Assistant:
         # jeton -> (org_id, person_id, nom, contenu).
         self.produits: dict[str, tuple[int, int, str, bytes]] = {}
         self.donnees = DonneesEcole()
+        # Fichiers glissés dans l'assistant, en attente de la question :
+        # jeton -> (org_id, person_id, nom, contenu).
+        self.pieces: dict[str, tuple[int, int, str, bytes]] = {}
 
     @property
     def actif(self) -> bool:
@@ -359,6 +371,45 @@ class Assistant:
                 })
         return cartes
 
+    def deposer_piece(self, member: Member, nom: str, contenu: bytes) -> dict:
+        """Fichier glissé dans l'assistant : gardé jusqu'à la question qui
+        l'accompagne (voir _blocs_pieces)."""
+        if len(contenu) > TAILLE_MAX_PIECE:
+            raise DocError(413, f"Fichier trop gros pour l'assistant ({TAILLE_MAX_PIECE // (1024 * 1024)} Mo au plus).")
+        nom = (nom or "fichier").replace("/", "-").replace("\\", "-").strip() or "fichier"
+        while len(self.pieces) >= PIECES_EN_ATTENTE_MAX:
+            self.pieces.pop(next(iter(self.pieces)))
+        jeton = uuid.uuid4().hex
+        self.pieces[jeton] = (member.org_id, member.person_id, nom, contenu)
+        return {"id": jeton, "nom": nom, "taille": len(contenu)}
+
+    def _blocs_pieces(self, member: Member, jetons: list[str]) -> list[dict]:
+        """Ce que Claude reçoit des fichiers glissés : le contenu (PDF et
+        photos lus directement, Word / Excel / texte en texte) et, pour les
+        données, une copie dans son ordinateur."""
+        blocs = []
+        for jeton in jetons[:PIECES_MAX]:
+            piece = self.pieces.pop(jeton, None)
+            if piece is None or piece[0] != member.org_id or piece[1] != member.person_id:
+                continue
+            _, _, nom, contenu = piece
+            mime = guess_mime(nom)
+            with tempfile.TemporaryDirectory(prefix="piece-") as dossier:
+                chemin = Path(dossier) / "piece"
+                chemin.write_bytes(contenu)
+                blocs += [
+                    {**b, "text": b["text"].replace("Fichier « ", "Fichier joint « ", 1)} if b.get("type") == "text" else b
+                    for b in contenu_pour_claude(chemin, nom, mime)
+                ]
+            if nom.lower().endswith(POUR_L_ORDINATEUR):
+                try:
+                    envoye = self._claude().files.upload(file=(nom, contenu, mime))
+                    blocs.append({"type": "container_upload", "file_id": envoye.id})
+                    blocs.append({"type": "text", "text": f"(« {nom} » est aussi copié dans ton ordinateur.)"})
+                except anthropic.APIError:
+                    logger.exception("Copie de la pièce jointe vers l'ordinateur impossible")
+        return blocs
+
     def ajouter_produit(self, db, member: Member, jeton: str, espace: str, dossier_id: int | None) -> dict:
         """« Faire » sur une carte de fichier fabriqué : il entre dans Docs,
         avec les droits de la personne (comme un import)."""
@@ -375,7 +426,8 @@ class Assistant:
     # ------------------------------------------------------------------
 
     def repondre(
-        self, db, member: Member, conv: Conversation, texte: str, contexte: dict, modele: str = MODELE, compte=None
+        self, db, member: Member, conv: Conversation, texte: str, contexte: dict, modele: str = MODELE, compte=None,
+        pieces: list[str] | None = None,
     ) -> Iterator[str]:
         """`db` : la session de la requête, ouverte jusqu'à la fin du flux
         (FastAPI ferme les dépendances après l'envoi de la réponse)."""
@@ -387,9 +439,13 @@ class Assistant:
             return
         try:
             yield _evenement(type="conversation", id=conv.id)
-            conv.messages.append(
-                {"role": "user", "content": [{"type": "text", "text": self._contexte(db, member, contexte) + "\n\n" + texte}]}
-            )
+            conv.messages.append({
+                "role": "user",
+                "content": [
+                    *self._blocs_pieces(member, pieces or []),
+                    {"type": "text", "text": self._contexte(db, member, contexte) + "\n\n" + texte},
+                ],
+            })
             modele = modele if modele in MODELES else MODELE
             cout = 0.0
             nb_appels, entree, sortie = 0, 0, 0
