@@ -26,6 +26,7 @@ import eleves  # noqa: F401
 import messagerie  # noqa: F401
 import presence  # noqa: F401
 from db import Base, engine
+from documents_contretemps import DOSSIER_DOCUMENTS
 from videos import DOSSIER_VIDEOS_LIVE, DOSSIER_VIDEOS_REFERENCE
 
 from . import seed
@@ -50,9 +51,16 @@ def reset_videos() -> None:
         shutil.copytree(DOSSIER_VIDEOS_REFERENCE, DOSSIER_VIDEOS_LIVE, dirs_exist_ok=True)
 
 
+def reset_documents() -> None:
+    """Vide les fichiers de l'onglet Docs (le seed recrée les exemples)."""
+    if DOSSIER_DOCUMENTS.exists():
+        shutil.rmtree(DOSSIER_DOCUMENTS)
+
+
 def run() -> None:
     print("Réinitialisation de la base...")
     reset_base()
+    reset_documents()
     print("Rejeu du seed de démo (école, comptes, cours, élèves)...")
     seed.run()
     print("Réinitialisation des vidéos...")

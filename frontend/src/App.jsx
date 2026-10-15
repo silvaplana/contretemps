@@ -1098,7 +1098,7 @@ function App() {
 
         {activeTab === 'supervision' && isSuperuser(activeUser) && <SupervisionScreen />}
 
-        {activeTab === 'docs' && <DocsScreen user={activeUser} />}
+        {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} />}
 
         {activeTab === 'profil' && (
           <ProfilScreen

@@ -1,0 +1,76 @@
+// Petits textes de l'explorateur : tailles, dates, historique.
+
+export function formatSize(octets) {
+  if (octets == null) return ''
+  if (octets < 1024) return `${octets} o`
+  if (octets < 1024 * 1024) return `${Math.round(octets / 1024)} Ko`
+  return `${(octets / 1024 / 1024).toFixed(1).replace('.', ',')} Mo`
+}
+
+// Dates du serveur : UTC sans fuseau (voir documents/models.py utcnow).
+function versDate(iso) {
+  return new Date(iso.endsWith('Z') ? iso : `${iso}Z`)
+}
+
+export function formatDate(iso) {
+  if (!iso) return ''
+  const d = versDate(iso)
+  const aujourdhui = new Date()
+  const hier = new Date()
+  hier.setDate(aujourdhui.getDate() - 1)
+  const heure = d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  if (d.toDateString() === aujourdhui.toDateString()) return `aujourd'hui ${heure}`
+  if (d.toDateString() === hier.toDateString()) return `hier ${heure}`
+  const options = { day: 'numeric', month: 'short' }
+  if (d.getFullYear() !== aujourdhui.getFullYear()) options.year = 'numeric'
+  return d.toLocaleDateString('fr-FR', options)
+}
+
+export function subtitle(item) {
+  if (item.kind === 'folder') {
+    const n = item.child_count ?? 0
+    if (item.closed_period) return `${n} élément${n > 1 ? 's' : ''} · saison terminée`
+    return `${n} élément${n > 1 ? 's' : ''}`
+  }
+  return [formatSize(item.size), formatDate(item.updated_at), item.updated_by].filter(Boolean).join(' · ')
+}
+
+const LEVELS = { view: 'Peut voir', edit: 'Peut modifier', manage: 'Gère tout' }
+export const levelLabel = (level) => LEVELS[level] ?? ''
+
+const STATUS_NAMES = { draft: 'Brouillon', validated: 'Validé', official: 'Officiel' }
+
+export function historyText(h) {
+  const d = h.detail ?? {}
+  const qui = h.by ?? 'Quelqu’un'
+  switch (h.action) {
+    case 'created':
+      return `${qui} a créé le dossier`
+    case 'uploaded':
+      return `${qui} a importé le fichier`
+    case 'new_version':
+      return `${qui} a envoyé une nouvelle version`
+    case 'renamed':
+      return `${qui} a renommé « ${d.from} » en « ${d.to} »`
+    case 'moved':
+      return `${qui} a déplacé de ${d.from} vers ${d.to}`
+    case 'copied':
+      return `${qui} a créé cette copie de « ${d.from} »`
+    case 'status':
+      return d.to ? `${qui} a passé en ${STATUS_NAMES[d.to]}` : `${qui} a retiré le statut`
+    case 'deleted':
+      return `${qui} a mis à la corbeille`
+    case 'restored':
+      return `${qui} a restauré depuis la corbeille`
+    case 'shared':
+      return `${qui} a partagé avec ${d.who} (${d.level === 'edit' ? 'peut modifier' : 'peut voir'})`
+    case 'unshared':
+      return `${qui} a retiré l’accès de ${d.who}`
+    case 'restricted':
+      return `${qui} a restreint l’accès`
+    case 'unrestricted':
+      return `${qui} a remis l’accès comme le dossier`
+    default:
+      return `${qui} : ${h.action}`
+  }
+}
