@@ -830,8 +830,13 @@ plus une version « maskable » avec marge).
 
 #### 5.1.2 Élèves
 
-Tableau éditable — voir la liste complète des champs en §6.4, plus une colonne **Âge** juste
-après **Date de naissance** (calculée à la volée, non éditable directement). Bouton **+**
+Tableau en **lecture seule** *(depuis le 2026-10-15 ; il était modifiable case par case)* — voir
+la liste complète des champs en §6.4, plus une colonne **Âge** juste après **Date de naissance**
+(calculée à la volée). Un clic sur une ligne ouvre la **fiche de l'élève**, en lecture ; le bouton
+**Modifier** rend ses champs modifiables (prénom et nom séparés, date de naissance, coordonnées,
+cours, paiement, contacts, santé, commentaire) ; **Valider** enregistre tout d'un coup,
+**Annuler** revient à la fiche sans rien changer. L'appui long sur une case garde sa bulle
+(voir en entier, copier, marquer en rouge). Bouton **+**
 flottant pour ajouter, icône poubelle par ligne pour supprimer. Bouton **"Importer depuis
 Excel"** — mécanisme détaillé en §6.4bis (mapping des colonnes de cours, alerte sur colonne
 inconnue).

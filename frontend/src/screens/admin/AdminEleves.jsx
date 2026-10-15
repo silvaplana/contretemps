@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as elevesApi from '../../api/eleves.js'
 import Badge from '../../components/Badge.jsx'
-import EditableText from '../../components/EditableText.jsx'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -10,6 +9,7 @@ import { calculerAge } from '../../utils/age.js'
 import { ouvrirInscriptionEleve } from '../../utils/inscriptionEleve.js'
 import { correspond } from '../../utils/recherche.js'
 import AjoutEleveOcr from './AjoutEleveOcr.jsx'
+import FicheEleve from './FicheEleve.jsx'
 import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
 
@@ -124,11 +124,9 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     acces.recharger()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emails])
-  const [coursEditId, setCoursEditId] = useState(null)
-  const [commentEditId, setCommentEditId] = useState(null)
-  const [paiementEditId, setPaiementEditId] = useState(null)
-  const [contactsEditId, setContactsEditId] = useState(null)
-  const [santeEditId, setSanteEditId] = useState(null)
+  // Fiche de l'élève (voir FicheEleve.jsx), ouverte d'un clic sur sa
+  // ligne : le tableau n'est plus modifiable (demande du 2026-10-15).
+  const [ficheId, setFicheId] = useState(null)
   const [showAdd, setShowAdd] = useState(false)
   const [showImport, setShowImport] = useState(false)
   // Appui long sur une cellule (voir spec — trop petite pour tout montrer
@@ -162,9 +160,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     clearTimeout(minuteurRef.current)
     minuteurRef.current = setTimeout(() => {
       ignorerProchainClicRef.current = true
-      // La cellule peut contenir un champ texte (EditableText) : sur mobile,
-      // l'appui a déjà pu lui donner le focus et ouvrir le clavier avant que
-      // ce timer se déclenche — on le referme, sinon il cache la popover.
+      // Un élément de la cellule a pu prendre le focus pendant l'appui :
+      // on le lui retire, la popover passe devant.
       document.activeElement?.blur?.()
       setPressed({ eleveId, champ })
     }, DUREE_APPUI_LONG)
@@ -224,13 +221,6 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     setEleves((list) => list.map((el) => (el.id === eleveMisAJour.id ? eleveMisAJour : el)))
   }
 
-  async function update(id, patch) {
-    remplacer(await elevesApi.modifier(id, patch))
-  }
-
-  async function toggleCours(eleveId, coursId) {
-    remplacer(await elevesApi.basculerCours(eleveId, coursId))
-  }
 
   async function remove(id) {
     if (!window.confirm('Supprimer cet élève ?')) return
@@ -252,35 +242,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     setEleves((list) => (list.some((el) => el.id === nouveau.id) ? list : [...list, nouveau]))
   }
 
-  // Plusieurs contacts possibles par élève (voir spec §6.4) — remplace
-  // l'ancien champ "urgence" unique, insuffisant dès que les 2 parents ont
-  // des coordonnées séparées.
-  async function addContact(eleveId) {
-    const eleve = eleves.find((el) => el.id === eleveId)
-    remplacer(
-      await elevesApi.ajouterContact(eleveId, {
-        nom: eleve?.nom ?? '',
-        prenom: '',
-        lien: '',
-        telephone: '',
-        email: '',
-      }),
-    )
-  }
 
-  async function updateContact(eleveId, contactId, patch) {
-    remplacer(await elevesApi.modifierContact(eleveId, contactId, patch))
-  }
-
-  async function removeContact(eleveId, contactId) {
-    remplacer(await elevesApi.supprimerContact(eleveId, contactId))
-  }
-
-  const coursEnEdition = eleves.find((el) => el.id === coursEditId)
-  const commentEnEdition = eleves.find((el) => el.id === commentEditId)
-  const paiementEnEdition = eleves.find((el) => el.id === paiementEditId)
-  const contactsEnEdition = eleves.find((el) => el.id === contactsEditId)
-  const santeEnEdition = eleves.find((el) => el.id === santeEditId)
+  const eleveEnFiche = eleves.find((el) => el.id === ficheId)
   const eleveAppuye = pressed ? eleves.find((el) => el.id === pressed.eleveId) : null
 
   return (
@@ -343,19 +306,15 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
               return (
                 <tr key={el.id} className={ligneRouge ? 'is-ligne-rouge' : ''}>
                   <td className={`data-table__name ${classeCellule('nom')}`} {...celluleProps(el.id, 'nom')}>
-                    <EditableText
-                      value={`${el.prenom} ${el.nom}`}
-                      onChange={(v) => {
-                        const [prenom, ...rest] = v.split(' ')
-                        update(el.id, { prenom, nom: rest.join(' ') })
-                      }}
-                    />
+                    <button type="button" className="cell-comment cell-comment--nom" onClick={() => setFicheId(el.id)}>
+                      {el.prenom} {el.nom}
+                    </button>
                   </td>
                   <td className={classeCellule('cours')} {...celluleProps(el.id, 'cours')}>
                     <button
                       type="button"
                       className="badge-list badge-list--button"
-                      onClick={() => setCoursEditId(el.id)}
+                      onClick={() => setFicheId(el.id)}
                     >
                       {el.coursIds.length === 0 && <span className="muted">—</span>}
                       {el.coursIds.map((cid) => (
@@ -367,7 +326,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     <button
                       type="button"
                       className={`select-pill select-pill--${PAIEMENT_TONE[el.statutPaiement]}`}
-                      onClick={() => setPaiementEditId(el.id)}
+                      onClick={() => setFicheId(el.id)}
                     >
                       {paiementLabels[el.statutPaiement]} — {el.montantPaye}€/{el.montantTotalAnnee}€
                     </button>
@@ -376,17 +335,15 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     <button
                       type="button"
                       className="cell-comment"
-                      onClick={() => setCommentEditId(el.id)}
+                      onClick={() => setFicheId(el.id)}
                     >
                       {el.commentaireAdmin || <span className="muted">—</span>}
                     </button>
                   </td>
                   <td className={classeCellule('naissance')} {...celluleProps(el.id, 'naissance')}>
-                    <EditableText
-                      type="date"
-                      value={el.dateNaissance}
-                      onChange={(v) => update(el.id, { dateNaissance: v })}
-                    />
+                    <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
+                      {el.dateNaissance ? el.dateNaissance.split('-').reverse().join('/') : <span className="muted">—</span>}
+                    </button>
                   </td>
                   <td className={classeCellule('age')} {...celluleProps(el.id, 'age')}>
                     {calculerAge(el.dateNaissance) ?? <span className="muted">—</span>}
@@ -395,7 +352,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     <button
                       type="button"
                       className="cell-comment"
-                      onClick={() => setContactsEditId(el.id)}
+                      onClick={() => setFicheId(el.id)}
                     >
                       {el.contactsEleve.length === 0 ? (
                         <span className="muted">—</span>
@@ -407,25 +364,25 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     </button>
                   </td>
                   <td className={classeCellule('telephone')} {...celluleProps(el.id, 'telephone')}>
-                    <EditableText
-                      value={el.telephone}
-                      onChange={(v) => update(el.id, { telephone: v })}
-                    />
+                    <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
+                      {el.telephone || <span className="muted">—</span>}
+                    </button>
                   </td>
                   <td className={classeCellule('email')} {...celluleProps(el.id, 'email')}>
-                    <EditableText value={el.email} onChange={(v) => update(el.id, { email: v })} />
+                    <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
+                      {el.email || <span className="muted">—</span>}
+                    </button>
                   </td>
                   <td className={classeCellule('adresse')} {...celluleProps(el.id, 'adresse')}>
-                    <EditableText
-                      value={el.adresse}
-                      onChange={(v) => update(el.id, { adresse: v })}
-                    />
+                    <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
+                      {el.adresse || <span className="muted">—</span>}
+                    </button>
                   </td>
                   <td className={classeCellule('sante')} {...celluleProps(el.id, 'sante')}>
                     <button
                       type="button"
                       className="cell-comment"
-                      onClick={() => setSanteEditId(el.id)}
+                      onClick={() => setFicheId(el.id)}
                     >
                       {el.allergies || el.traitementMedical || el.informationsImportantes ? (
                         'Voir'
@@ -435,13 +392,9 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     </button>
                   </td>
                   <td className={classeCellule('certificat')} {...celluleProps(el.id, 'certificat')}>
-                    <button
-                      type="button"
-                      className={`toggle-chip ${el.certificatMedical ? 'is-on' : ''}`}
-                      onClick={() => update(el.id, { certificatMedical: !el.certificatMedical })}
-                    >
+                    <span className={`toggle-chip ${el.certificatMedical ? 'is-on' : ''}`}>
                       {el.certificatMedical ? 'Reçu' : 'Manquant'}
-                    </button>
+                    </span>
                   </td>
                   <td>
                     <BoutonInviter acces={acces} compteId={el.id} prenom={el.prenom} />
@@ -478,173 +431,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         <Icon name="plus" size={24} />
       </button>
 
-      {coursEnEdition && (
-        <Modal title={`Cours de ${coursEnEdition.prenom}`} onClose={() => setCoursEditId(null)}>
-          <div className="checkbox-list">
-            {cours.map((c) => (
-              <label key={c.id} className="checkbox-list__item">
-                <input
-                  type="checkbox"
-                  checked={coursEnEdition.coursIds.includes(c.id)}
-                  onChange={() => toggleCours(coursEnEdition.id, c.id)}
-                />
-                {c.nom}
-              </label>
-            ))}
-          </div>
-        </Modal>
-      )}
-
-      {commentEnEdition && (
-        <Modal title={`Commentaire — ${commentEnEdition.prenom}`} onClose={() => setCommentEditId(null)}>
-          <textarea
-            className="modal-textarea"
-            rows={6}
-            value={commentEnEdition.commentaireAdmin}
-            onChange={(e) => update(commentEnEdition.id, { commentaireAdmin: e.target.value })}
-            placeholder="Remarque interne, réservée à l'admin."
-          />
-        </Modal>
-      )}
-
-      {paiementEnEdition && (
-        <Modal title={`Paiement — ${paiementEnEdition.prenom}`} onClose={() => setPaiementEditId(null)}>
-          <div className="form-fields">
-            <label htmlFor="paiement-statut">Statut</label>
-            <select
-              id="paiement-statut"
-              className="field-input"
-              value={paiementEnEdition.statutPaiement}
-              onChange={(e) => update(paiementEnEdition.id, { statutPaiement: e.target.value })}
-            >
-              {Object.entries(paiementLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <label htmlFor="paiement-total">Montant total de l’année (€)</label>
-            <input
-              id="paiement-total"
-              type="number"
-              className="field-input"
-              value={paiementEnEdition.montantTotalAnnee}
-              onChange={(e) =>
-                update(paiementEnEdition.id, { montantTotalAnnee: Number(e.target.value) })
-              }
-            />
-            <label htmlFor="paiement-paye">Montant payé (€)</label>
-            <input
-              id="paiement-paye"
-              type="number"
-              className="field-input"
-              value={paiementEnEdition.montantPaye}
-              onChange={(e) => update(paiementEnEdition.id, { montantPaye: Number(e.target.value) })}
-            />
-          </div>
-        </Modal>
-      )}
-
-      {contactsEnEdition && (
-        <Modal
-          title={`Contacts — ${contactsEnEdition.prenom}`}
-          onClose={() => setContactsEditId(null)}
-        >
-          <p className="muted">
-            Plusieurs contacts possibles (ex. mère et père séparément, chacun avec son propre
-            téléphone/email).
-          </p>
-          <div className="contacts-eleve-list">
-            {contactsEnEdition.contactsEleve.map((c) => (
-              <div key={c.id} className="contacts-eleve-list__item">
-                <div className="contacts-eleve-list__row">
-                  <input
-                    className="field-input"
-                    placeholder="Prénom"
-                    value={c.prenom}
-                    onChange={(e) => updateContact(contactsEnEdition.id, c.id, { prenom: e.target.value })}
-                  />
-                  <input
-                    className="field-input"
-                    placeholder="Nom"
-                    value={c.nom}
-                    onChange={(e) => updateContact(contactsEnEdition.id, c.id, { nom: e.target.value })}
-                  />
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn--danger"
-                    onClick={() => removeContact(contactsEnEdition.id, c.id)}
-                    aria-label="Retirer ce contact"
-                  >
-                    <Icon name="x" size={16} />
-                  </button>
-                </div>
-                <input
-                  className="field-input"
-                  placeholder="Lien (ex. Mère, Père...)"
-                  value={c.lien}
-                  onChange={(e) => updateContact(contactsEnEdition.id, c.id, { lien: e.target.value })}
-                />
-                <input
-                  className="field-input"
-                  placeholder="Téléphone"
-                  value={c.telephone}
-                  onChange={(e) => updateContact(contactsEnEdition.id, c.id, { telephone: e.target.value })}
-                />
-                <input
-                  className="field-input"
-                  type="email"
-                  placeholder="Email"
-                  value={c.email}
-                  onChange={(e) => updateContact(contactsEnEdition.id, c.id, { email: e.target.value })}
-                />
-              </div>
-            ))}
-            {contactsEnEdition.contactsEleve.length === 0 && (
-              <p className="muted">Aucun contact pour l'instant.</p>
-            )}
-          </div>
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={() => addContact(contactsEnEdition.id)}
-          >
-            <Icon name="plus" size={16} /> Ajouter un contact
-          </button>
-        </Modal>
-      )}
-
-      {santeEnEdition && (
-        <Modal title={`Santé — ${santeEnEdition.prenom}`} onClose={() => setSanteEditId(null)}>
-          <div className="form-fields">
-            <label htmlFor="sante-allergies">Allergies</label>
-            <textarea
-              id="sante-allergies"
-              className="modal-textarea"
-              rows={2}
-              value={santeEnEdition.allergies}
-              onChange={(e) => update(santeEnEdition.id, { allergies: e.target.value })}
-            />
-            <label htmlFor="sante-traitement">Traitement médical</label>
-            <textarea
-              id="sante-traitement"
-              className="modal-textarea"
-              rows={2}
-              value={santeEnEdition.traitementMedical}
-              onChange={(e) => update(santeEnEdition.id, { traitementMedical: e.target.value })}
-            />
-            <label htmlFor="sante-infos">Informations importantes</label>
-            <textarea
-              id="sante-infos"
-              className="modal-textarea"
-              rows={2}
-              value={santeEnEdition.informationsImportantes}
-              onChange={(e) =>
-                update(santeEnEdition.id, { informationsImportantes: e.target.value })
-              }
-            />
-          </div>
-        </Modal>
+      {eleveEnFiche && (
+        <FicheEleve eleve={eleveEnFiche} cours={cours} onClose={() => setFicheId(null)} onEnregistre={remplacer} />
       )}
 
       {eleveAppuye && (

@@ -1,0 +1,408 @@
+import { useState } from 'react'
+import * as elevesApi from '../../api/eleves.js'
+import Icon from '../../components/Icon.jsx'
+import Modal from '../../components/Modal.jsx'
+import { paiementLabels } from '../../data/paiement.js'
+import { calculerAge } from '../../utils/age.js'
+
+// Fiche d'un élève (Admin > Élèves, demande du 2026-10-15) : ouverte d'un
+// clic sur une ligne du tableau, qui n'est plus modifiable. Elle s'ouvre en
+// lecture ; « Modifier » rend les champs modifiables, « Valider » enregistre
+// tout d'un coup, « Annuler » revient à la fiche sans rien changer.
+// Le prénom et le nom sont deux champs séparés : l'ancienne case unique
+// « Prénom Nom » du tableau coupait un prénom composé (« Anne Sophie »).
+
+const CHAMPS_TEXTE = [
+  'prenom',
+  'nom',
+  'dateNaissance',
+  'telephone',
+  'email',
+  'adresse',
+  'statutPaiement',
+  'montantTotalAnnee',
+  'montantPaye',
+  'commentaireAdmin',
+  'allergies',
+  'traitementMedical',
+  'informationsImportantes',
+]
+
+function brouillonDe(eleve) {
+  const brouillon = { coursIds: [...eleve.coursIds], contacts: eleve.contactsEleve.map((c) => ({ ...c })) }
+  for (const cle of CHAMPS_TEXTE) brouillon[cle] = eleve[cle] ?? ''
+  return brouillon
+}
+
+function dateFrancaise(iso) {
+  if (!iso) return ''
+  const [a, m, j] = iso.split('-')
+  return `${j}/${m}/${a}`
+}
+
+export default function FicheEleve({ eleve, cours, onClose, onEnregistre }) {
+  const [brouillon, setBrouillon] = useState(null) // null = lecture
+  const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const enEdition = brouillon !== null
+
+  function changer(cle, valeur) {
+    setBrouillon((b) => ({ ...b, [cle]: valeur }))
+  }
+
+  function changerContact(index, cle, valeur) {
+    setBrouillon((b) => ({
+      ...b,
+      contacts: b.contacts.map((c, i) => (i === index ? { ...c, [cle]: valeur } : c)),
+    }))
+  }
+
+  function basculerCours(coursId) {
+    setBrouillon((b) => ({
+      ...b,
+      coursIds: b.coursIds.includes(coursId) ? b.coursIds.filter((id) => id !== coursId) : [...b.coursIds, coursId],
+    }))
+  }
+
+  async function valider() {
+    setEnCours(true)
+    setErreur('')
+    try {
+      // Cours et contacts d'abord, la fiche elle-même en dernier : sa
+      // réponse est l'élève à jour, avec ses cours et ses contacts.
+      const coursChanges = cours
+        .map((c) => c.id)
+        .filter((id) => eleve.coursIds.includes(id) !== brouillon.coursIds.includes(id))
+      for (const coursId of coursChanges) await elevesApi.basculerCours(eleve.id, coursId)
+
+      const gardes = new Set(brouillon.contacts.filter((c) => c.id).map((c) => c.id))
+      for (const ancien of eleve.contactsEleve) {
+        if (!gardes.has(ancien.id)) await elevesApi.supprimerContact(eleve.id, ancien.id)
+      }
+      for (const contact of brouillon.contacts) {
+        const champs = {
+          prenom: contact.prenom ?? '',
+          nom: contact.nom ?? '',
+          lien: contact.lien ?? '',
+          telephone: contact.telephone ?? '',
+          email: contact.email ?? '',
+        }
+        if (!contact.id) {
+          await elevesApi.ajouterContact(eleve.id, champs)
+        } else {
+          const avant = eleve.contactsEleve.find((c) => c.id === contact.id)
+          if (Object.keys(champs).some((cle) => (avant[cle] ?? '') !== champs[cle])) {
+            await elevesApi.modifierContact(eleve.id, contact.id, champs)
+          }
+        }
+      }
+
+      const misAJour = await elevesApi.modifier(eleve.id, {
+        prenom: brouillon.prenom.trim(),
+        nom: brouillon.nom.trim(),
+        dateNaissance: brouillon.dateNaissance || null,
+        telephone: brouillon.telephone,
+        email: brouillon.email.trim(),
+        adresse: brouillon.adresse,
+        statutPaiement: brouillon.statutPaiement,
+        montantTotalAnnee: Number(brouillon.montantTotalAnnee) || 0,
+        montantPaye: Number(brouillon.montantPaye) || 0,
+        commentaireAdmin: brouillon.commentaireAdmin,
+        allergies: brouillon.allergies,
+        traitementMedical: brouillon.traitementMedical,
+        informationsImportantes: brouillon.informationsImportantes,
+      })
+      onEnregistre(misAJour)
+      setBrouillon(null)
+    } catch {
+      setErreur('L’enregistrement a échoué : vérifiez la connexion, puis réessayez.')
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  const age = calculerAge(eleve.dateNaissance)
+  const nomCours = (id) => cours.find((c) => c.id === id)?.nom
+
+  const piedLecture = (
+    <button type="button" className="btn btn--primary btn--block" onClick={() => setBrouillon(brouillonDe(eleve))}>
+      <Icon name="edit" size={16} /> Modifier
+    </button>
+  )
+  const piedEdition = (
+    <div className="fiche-eleve__boutons">
+      <button
+        type="button"
+        className="btn btn--secondary"
+        disabled={enCours}
+        onClick={() => {
+          setBrouillon(null)
+          setErreur('')
+        }}
+      >
+        Annuler
+      </button>
+      <button
+        type="button"
+        className="btn btn--primary"
+        disabled={enCours || !brouillon?.prenom.trim() || !brouillon?.nom.trim()}
+        onClick={valider}
+      >
+        {enCours ? 'Enregistrement…' : 'Valider'}
+      </button>
+    </div>
+  )
+
+  return (
+    <Modal
+      title={`${eleve.prenom} ${eleve.nom}`}
+      onClose={() => {
+        if (!enEdition || window.confirm('Abandonner les modifications de la fiche ?')) onClose()
+      }}
+      footer={
+        <>
+          {erreur && <p className="login-screen__erreur">{erreur}</p>}
+          {enEdition ? piedEdition : piedLecture}
+        </>
+      }
+    >
+      {enEdition ? (
+        <div className="fiche-eleve form-fields">
+          <Rubrique titre="Identité">
+            <Saisie id="fiche-prenom" libelle="Prénom" valeur={brouillon.prenom} onChange={(v) => changer('prenom', v)} />
+            <Saisie id="fiche-nom" libelle="Nom" valeur={brouillon.nom} onChange={(v) => changer('nom', v)} />
+            <Saisie
+              id="fiche-naissance"
+              libelle="Date de naissance"
+              type="date"
+              valeur={brouillon.dateNaissance}
+              onChange={(v) => changer('dateNaissance', v)}
+            />
+          </Rubrique>
+          <Rubrique titre="Coordonnées">
+            <Saisie
+              id="fiche-telephone"
+              libelle="Téléphone"
+              type="tel"
+              valeur={brouillon.telephone}
+              onChange={(v) => changer('telephone', v)}
+            />
+            <Saisie
+              id="fiche-email"
+              libelle="Email"
+              type="email"
+              valeur={brouillon.email}
+              onChange={(v) => changer('email', v)}
+            />
+            <Saisie id="fiche-adresse" libelle="Adresse" valeur={brouillon.adresse} onChange={(v) => changer('adresse', v)} />
+          </Rubrique>
+          <Rubrique titre="Cours suivis">
+            <div className="checkbox-list">
+              {cours.map((c) => (
+                <label key={c.id} className="checkbox-list__item">
+                  <input type="checkbox" checked={brouillon.coursIds.includes(c.id)} onChange={() => basculerCours(c.id)} />
+                  {c.nom}
+                </label>
+              ))}
+            </div>
+          </Rubrique>
+          <Rubrique titre="Paiement">
+            <label htmlFor="fiche-statut">Statut</label>
+            <select
+              id="fiche-statut"
+              className="field-input"
+              value={brouillon.statutPaiement}
+              onChange={(e) => changer('statutPaiement', e.target.value)}
+            >
+              {Object.entries(paiementLabels).map(([valeur, libelle]) => (
+                <option key={valeur} value={valeur}>
+                  {libelle}
+                </option>
+              ))}
+            </select>
+            <Saisie
+              id="fiche-total"
+              libelle="Montant total de l’année (€)"
+              type="number"
+              valeur={brouillon.montantTotalAnnee}
+              onChange={(v) => changer('montantTotalAnnee', v)}
+            />
+            <Saisie
+              id="fiche-paye"
+              libelle="Montant payé (€)"
+              type="number"
+              valeur={brouillon.montantPaye}
+              onChange={(v) => changer('montantPaye', v)}
+            />
+          </Rubrique>
+          <Rubrique titre="Contacts">
+            {brouillon.contacts.map((c, i) => (
+              <div key={c.id ?? `nouveau-${i}`} className="contacts-eleve-list__item">
+                <div className="contacts-eleve-list__row">
+                  <input
+                    className="field-input"
+                    placeholder="Prénom"
+                    value={c.prenom ?? ''}
+                    onChange={(e) => changerContact(i, 'prenom', e.target.value)}
+                  />
+                  <input
+                    className="field-input"
+                    placeholder="Nom"
+                    value={c.nom ?? ''}
+                    onChange={(e) => changerContact(i, 'nom', e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="icon-btn icon-btn--danger"
+                    onClick={() => changer('contacts', brouillon.contacts.filter((_, j) => j !== i))}
+                    aria-label="Retirer ce contact"
+                  >
+                    <Icon name="trash" size={16} />
+                  </button>
+                </div>
+                <input
+                  className="field-input"
+                  placeholder="Lien (ex. Mère, Père...)"
+                  value={c.lien ?? ''}
+                  onChange={(e) => changerContact(i, 'lien', e.target.value)}
+                />
+                <input
+                  className="field-input"
+                  type="tel"
+                  placeholder="Téléphone"
+                  value={c.telephone ?? ''}
+                  onChange={(e) => changerContact(i, 'telephone', e.target.value)}
+                />
+                <input
+                  className="field-input"
+                  type="email"
+                  placeholder="Email"
+                  value={c.email ?? ''}
+                  onChange={(e) => changerContact(i, 'email', e.target.value)}
+                />
+              </div>
+            ))}
+            <button
+              type="button"
+              className="btn btn--secondary"
+              onClick={() =>
+                changer('contacts', [
+                  ...brouillon.contacts,
+                  { id: null, prenom: '', nom: brouillon.nom, lien: '', telephone: '', email: '' },
+                ])
+              }
+            >
+              <Icon name="plus" size={16} /> Ajouter un contact
+            </button>
+          </Rubrique>
+          <Rubrique titre="Santé">
+            <ZoneTexte
+              id="fiche-allergies"
+              libelle="Allergies"
+              valeur={brouillon.allergies}
+              onChange={(v) => changer('allergies', v)}
+            />
+            <ZoneTexte
+              id="fiche-traitement"
+              libelle="Traitement médical"
+              valeur={brouillon.traitementMedical}
+              onChange={(v) => changer('traitementMedical', v)}
+            />
+            <ZoneTexte
+              id="fiche-infos"
+              libelle="Informations importantes"
+              valeur={brouillon.informationsImportantes}
+              onChange={(v) => changer('informationsImportantes', v)}
+            />
+          </Rubrique>
+          <Rubrique titre="Commentaire (réservé à l’admin)">
+            <ZoneTexte
+              id="fiche-commentaire"
+              libelle="Commentaire"
+              valeur={brouillon.commentaireAdmin}
+              onChange={(v) => changer('commentaireAdmin', v)}
+            />
+          </Rubrique>
+        </div>
+      ) : (
+        <div className="fiche-eleve">
+          <Rubrique titre="Identité">
+            <Ligne libelle="Prénom" valeur={eleve.prenom} />
+            <Ligne libelle="Nom" valeur={eleve.nom} />
+            <Ligne
+              libelle="Date de naissance"
+              valeur={eleve.dateNaissance && `${dateFrancaise(eleve.dateNaissance)}${age != null ? ` (${age} ans)` : ''}`}
+            />
+          </Rubrique>
+          <Rubrique titre="Coordonnées">
+            <Ligne libelle="Téléphone" valeur={eleve.telephone} />
+            <Ligne libelle="Email" valeur={eleve.email} />
+            <Ligne libelle="Adresse" valeur={eleve.adresse} />
+          </Rubrique>
+          <Rubrique titre="Cours suivis">
+            <Ligne valeur={eleve.coursIds.map(nomCours).filter(Boolean).join(', ')} />
+          </Rubrique>
+          <Rubrique titre="Paiement">
+            <Ligne
+              valeur={`${paiementLabels[eleve.statutPaiement]} — ${eleve.montantPaye} € payés sur ${eleve.montantTotalAnnee} €`}
+            />
+          </Rubrique>
+          <Rubrique titre="Contacts">
+            {eleve.contactsEleve.length === 0 && <Ligne valeur="" />}
+            {eleve.contactsEleve.map((c) => (
+              <Ligne
+                key={c.id}
+                libelle={[c.prenom, c.nom].filter(Boolean).join(' ') + (c.lien ? ` (${c.lien})` : '')}
+                valeur={[c.telephone, c.email].filter(Boolean).join(' · ')}
+              />
+            ))}
+          </Rubrique>
+          <Rubrique titre="Santé">
+            <Ligne libelle="Allergies" valeur={eleve.allergies} />
+            <Ligne libelle="Traitement médical" valeur={eleve.traitementMedical} />
+            <Ligne libelle="Informations importantes" valeur={eleve.informationsImportantes} />
+          </Rubrique>
+          <Rubrique titre="Commentaire (réservé à l’admin)">
+            <Ligne valeur={eleve.commentaireAdmin} />
+          </Rubrique>
+        </div>
+      )}
+    </Modal>
+  )
+}
+
+function Rubrique({ titre, children }) {
+  return (
+    <section className="fiche-eleve__rubrique">
+      <h3 className="fiche-eleve__titre">{titre}</h3>
+      {children}
+    </section>
+  )
+}
+
+function Ligne({ libelle, valeur }) {
+  return (
+    <div className="fiche-eleve__ligne">
+      {libelle && <span className="muted">{libelle}</span>}
+      <span>{valeur || <span className="muted">—</span>}</span>
+    </div>
+  )
+}
+
+function Saisie({ id, libelle, valeur, onChange, type = 'text' }) {
+  return (
+    <>
+      <label htmlFor={id}>{libelle}</label>
+      <input id={id} className="field-input" type={type} value={valeur} onChange={(e) => onChange(e.target.value)} />
+    </>
+  )
+}
+
+function ZoneTexte({ id, libelle, valeur, onChange }) {
+  return (
+    <>
+      <label htmlFor={id}>{libelle}</label>
+      <textarea id={id} className="modal-textarea" rows={2} value={valeur} onChange={(e) => onChange(e.target.value)} />
+    </>
+  )
+}

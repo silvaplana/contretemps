@@ -3639,3 +3639,43 @@ a.btn {
   font-size: 28px;
   font-weight: 400;
 }
+
+/* Fiche élève (Admin > Élèves, voir FicheEleve.jsx). */
+.cell-comment--nom {
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fiche-eleve__rubrique + .fiche-eleve__rubrique {
+  margin-top: 14px;
+}
+
+.fiche-eleve__titre {
+  margin: 0 0 6px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent);
+}
+
+.fiche-eleve__ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.fiche-eleve__ligne > span:last-child {
+  text-align: right;
+  overflow-wrap: anywhere;
+}
+
+.fiche-eleve__boutons {
+  display: flex;
+  gap: 8px;
+}
+
+.fiche-eleve__boutons .btn {
+  flex: 1;
+}
