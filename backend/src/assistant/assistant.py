@@ -394,16 +394,39 @@ class Assistant:
         self.pieces[jeton] = (member.org_id, member.person_id, nom, contenu)
         return {"id": jeton, "nom": nom, "taille": len(contenu)}
 
-    def _blocs_pieces(self, member: Member, jetons: list[str]) -> list[dict]:
-        """Ce que Claude reçoit des fichiers glissés : le contenu (PDF et
-        photos lus directement, Word / Excel / texte en texte) et, pour les
-        données, une copie dans son ordinateur."""
+    def _piece_de_docs(self, db, member: Member, jeton: str) -> tuple[str, bytes] | str | None:
+        """Élément de Docs glissé dans l'assistant (« doc:<id> »), avec les
+        droits de la personne : (nom, contenu) d'un fichier, ou une phrase
+        pour un dossier."""
+        try:
+            identifiant = int(jeton.removeprefix("doc:"))
+            detail = self.documents.detail(db, member, identifiant)
+            if detail["kind"] == "folder":
+                return f"La personne a joint le dossier « {detail['name']} » (id {identifiant})."
+            chemin, nom, _ = self.documents.content(db, member, identifiant)
+            return nom, Path(chemin).read_bytes()
+        except (DocError, ValueError, OSError):
+            return None
+
+    def _blocs_pieces(self, member: Member, jetons: list[str], db=None) -> list[dict]:
+        """Ce que Claude reçoit des fichiers glissés (de l'ordinateur ou de
+        Docs) : le contenu (PDF et photos lus directement, Word / Excel /
+        texte en texte) et, pour les données, une copie dans son ordinateur."""
         blocs = []
         for jeton in jetons[:PIECES_MAX]:
-            piece = self.pieces.pop(jeton, None)
-            if piece is None or piece[0] != member.org_id or piece[1] != member.person_id:
-                continue
-            _, _, nom, contenu = piece
+            if jeton.startswith("doc:"):
+                piece = self._piece_de_docs(db, member, jeton) if db is not None else None
+                if piece is None:
+                    continue
+                if isinstance(piece, str):
+                    blocs.append({"type": "text", "text": piece})
+                    continue
+                nom, contenu = piece
+            else:
+                piece = self.pieces.pop(jeton, None)
+                if piece is None or piece[0] != member.org_id or piece[1] != member.person_id:
+                    continue
+                _, _, nom, contenu = piece
             mime = guess_mime(nom)
             with tempfile.TemporaryDirectory(prefix="piece-") as dossier:
                 chemin = Path(dossier) / "piece"
@@ -453,7 +476,7 @@ class Assistant:
             conv.messages.append({
                 "role": "user",
                 "content": [
-                    *self._blocs_pieces(member, pieces or []),
+                    *self._blocs_pieces(member, pieces or [], db),
                     {"type": "text", "text": self._contexte(db, member, contexte) + "\n\n" + texte},
                 ],
             })

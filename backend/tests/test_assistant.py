@@ -273,3 +273,19 @@ def test_fichiers_glisses_dans_l_assistant(client, monde, monkeypatch):
     assert contenu[-1]["text"].endswith("Résume")
     # Une pièce ne sert qu'une fois.
     assert note["id"] not in main.assistant_client.pieces
+
+
+def test_element_de_docs_glisse_dans_l_assistant(client, monde, monkeypatch):
+    entetes = {"Authorization": f"Bearer {_en_superuser(client)}", rbac.ENTETE_COMPTE: str(monde["su"].id)}
+    faux = FauxClaude([_message(Bloc(type="text", text="Lu."))])
+    monkeypatch.setattr(main.assistant_client, "_client", faux)
+    url = f"/assistant/orgs/{monde['ecole'].id}"
+    docs = f"/documents/orgs/{monde['ecole'].id}"
+    saison = next(e for e in client.get(f"{docs}/spaces/private", headers=entetes).json()["items"] if e["system_kind"] == "period")
+    fichier = client.post(
+        f"{docs}/files", data={"space": "private", "parent_id": str(saison["id"])},
+        files={"file": ("Gala.txt", io.BytesIO(b"Gala le 12 juin"))}, headers=entetes,
+    ).json()
+    client.post(f"{url}/messages", json={"texte": "Résume", "pieces": [f"doc:{fichier['id']}", "doc:999999"]}, headers=entetes)
+    textes = " ".join(b.get("text", "") for b in faux.demandes[0][0]["content"])
+    assert "Gala le 12 juin" in textes

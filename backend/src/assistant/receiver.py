@@ -39,7 +39,8 @@ class Question(BaseModel):
     texte: str = Field(min_length=1, max_length=8000)
     # Modèle choisi dans le panneau du coût (voir assistant.MODELES).
     modele: str | None = None
-    # Fichiers glissés dans l'assistant (identifiants donnés par /pieces).
+    # Fichiers glissés dans l'assistant : identifiants donnés par /pieces,
+    # ou « doc:<id> » pour un élément glissé depuis Docs.
     pieces: list[str] = Field(default_factory=list, max_length=5)
     contexte: Contexte = Field(default_factory=Contexte)
 

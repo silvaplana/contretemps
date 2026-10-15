@@ -147,6 +147,20 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
     }
   }
 
+  // Éléments de Docs glissés sur l'assistant : joints par leur numéro
+  // (le serveur les lit avec les droits de la personne).
+  function joindreDocs(liste) {
+    setPieces((p) => [...p, ...liste.map((x) => ({ cle: `doc-${x.id}-${Date.now()}`, nom: x.nom, id: `doc:${x.id}` }))].slice(-5))
+  }
+
+  // Au doigt, l'explorateur prévient par un événement (appui long, glisser,
+  // lâcher sur l'assistant).
+  useEffect(() => {
+    const surJoindre = (e) => joindreDocs(e.detail)
+    window.addEventListener('dx-joindre', surJoindre)
+    return () => window.removeEventListener('dx-joindre', surJoindre)
+  }, [])
+
   const piecesPretes = pieces.filter((p) => p.id)
   const piecesEnCours = pieces.some((p) => !p.id && !p.erreur)
 
@@ -217,8 +231,10 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
       aria-label="Assistant"
       // Glisser un fichier sur l'assistant : joint à la question suivante
       // (sans le ranger dans Docs : l'explorateur derrière n'est pas concerné).
+      data-drop-folder="assistant"
       onDragOver={(e) => {
-        if (![...e.dataTransfer.types].includes('Files')) return
+        const types = [...e.dataTransfer.types]
+        if (!types.includes('Files') && !types.includes('application/x-dx-noms')) return
         e.preventDefault()
         e.stopPropagation()
         setSurvol(true)
@@ -227,6 +243,18 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
         if (!e.currentTarget.contains(e.relatedTarget)) setSurvol(false)
       }}
       onDrop={(e) => {
+        const docs = e.dataTransfer.getData('application/x-dx-noms')
+        if (docs) {
+          e.preventDefault()
+          e.stopPropagation()
+          setSurvol(false)
+          try {
+            joindreDocs(JSON.parse(docs))
+          } catch {
+            // données illisibles : rien à joindre
+          }
+          return
+        }
         if (!e.dataTransfer.files?.length) return
         e.preventDefault()
         e.stopPropagation()

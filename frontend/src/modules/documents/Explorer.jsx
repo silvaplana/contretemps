@@ -550,6 +550,7 @@ export default function Explorer({ orgId, memoire }) {
     const el = document.elementFromPoint(x, y)?.closest('[data-drop-folder]')
     if (!el) return null
     const id = el.dataset.dropFolder
+    if (id === 'assistant') return id
     if (id === String(item.id)) return null
     return id === 'root' ? 'root' : Number(id)
   }
@@ -591,7 +592,12 @@ export default function Explorer({ orgId, memoire }) {
       if (g?.actif) {
         const cible = cibleSous(e.clientX, e.clientY, item)
         setSurvol(null)
-        if (cible === 'root') {
+        if (cible === 'assistant') {
+          // Lâché sur l'assistant : joint à la question suivante.
+          window.dispatchEvent(
+            new CustomEvent('dx-joindre', { detail: groupeDe(item).map((x) => ({ id: x.id, nom: x.name })) }),
+          )
+        } else if (cible === 'root') {
           if (folder != null) deplacer(groupeDe(item), space, null)
         } else if (cible != null && cible !== folder) {
           deplacer(groupeDe(item), space, cible)
@@ -641,6 +647,8 @@ export default function Explorer({ orgId, memoire }) {
     annulerAppui()
     const groupe = groupeDe(item)
     e.dataTransfer.setData('application/x-dx-node', groupe.map((x) => x.id).join(','))
+    // Pour l'assistant : on peut aussi lâcher ces éléments dans la conversation.
+    e.dataTransfer.setData('application/x-dx-noms', JSON.stringify(groupe.map((x) => ({ id: x.id, nom: x.name }))))
     e.dataTransfer.effectAllowed = 'move'
     if (!selIds.includes(item.id)) setSelection(item)
   }
