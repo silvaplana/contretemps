@@ -18,6 +18,7 @@ import { effacerFrappe, signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { lienRecu, oublierLienRecu } from './utils/lienRecu.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
+import { chargerTauxChange } from './utils/euros.js'
 import { useTeleversementsTermines } from './utils/videoUploads.js'
 import BandeauInstallation from './components/BandeauInstallation.jsx'
 import BandeauNotifications from './components/BandeauNotifications.jsx'
@@ -92,6 +93,10 @@ function App() {
   // bas) ne plante pas AVANT ce premier login.
   const [compteReel, setCompteReel] = useState(null)
   const activeUser = compteReel ?? { id: null, type: null, nom: '', prenom: '', initiales: '' }
+  // Taux dollar -> euro pour afficher les coûts d'IA (une fois par session).
+  useEffect(() => {
+    if (compteReel?.id) chargerTauxChange()
+  }, [compteReel?.id])
 
   // Session persistante (voir spec §2.2, api/session.js) : au tout
   // premier rendu, on ne sait pas encore s'il y a un profil à restaurer

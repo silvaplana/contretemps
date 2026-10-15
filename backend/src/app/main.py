@@ -18,6 +18,7 @@ from administrateurs import Administrateurs, AdministrateursReceiver
 from acces import Acces
 from auth import Auth, AuthReceiver, Invitations, MailsAcces
 from assistant import Assistant, AssistantReceiver
+from change import TauxChange, TauxChangeReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
@@ -251,6 +252,11 @@ gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
 
 # Assistant de l'onglet Docs (prototype, réservé au Super User) : lit les
 # dossiers et fichiers, propose des actions que l'appli exécute après « Faire ».
+# Taux dollar -> euro (BCE, une lecture par jour) : les coûts d'IA sont
+# affichés en euros (voir change/taux.py).
+taux_change_client = TauxChange(fichier=DOSSIER_DOCUMENTS.parent / "taux_change.json")
+taux_change_receiver = TauxChangeReceiver(client=taux_change_client, app=app)
+
 assistant_client = Assistant(
     documents=documents_client,
     noter_cout=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "chat_documents", cout, detail),

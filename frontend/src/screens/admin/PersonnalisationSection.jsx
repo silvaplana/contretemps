@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { familleDuNom, familleDuSlogan, mettreAJour, POLICES, POLICES_NOM, urlFichier, urlLogo, urlNomImage } from '../../api/apparence.js'
 import * as personnalisationApi from '../../api/personnalisation.js'
+import { enEuros } from '../../utils/euros.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { isOwner, isSuperuser } from '../../data/roles.js'
@@ -672,7 +673,7 @@ function ImageEnAttente({ ecoleId, brouillon, couleurFond, enCours, erreur, onDe
       </select>
       <p className="muted">
         {brouillon.detourage === 'ia'
-          ? `Détouré par IA sur le serveur, sans service payant : ${brouillon.coutUsd.toFixed(2)} $.`
+          ? `Détouré par IA sur le serveur, sans service payant : ${enEuros(brouillon.coutUsd)}.`
           : brouillon.detourage === 'simple'
             ? 'Retire le fond uni autour du dessin. Ne convient pas à une photo : essayez alors « Par IA ».'
             : 'Image gardée telle quelle.'}

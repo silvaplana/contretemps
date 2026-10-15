@@ -4,6 +4,8 @@
 // d'Admin > Élèves (retirée d'Admin > École le 2026-10-02).
 // Aucun paramètre : la page retrouve l'école toute seule.
 // VITE_INSCRIPTION_URL permet de pointer ailleurs en développement.
+import { enEuros } from './euros.js'
+
 const URL_INSCRIPTION = import.meta.env.VITE_INSCRIPTION_URL ?? '/contretemps-inscription/'
 
 // Nouvel onglet : l'admin garde l'appli ouverte (et, dans l'appli
@@ -18,7 +20,7 @@ export function urlInscriptionDepuisFiche(jeton) {
   return `${URL_INSCRIPTION}?fiche=${encodeURIComponent(jeton)}`
 }
 
-// Coût d'une lecture, facturé en dollars par Anthropic.
+// Coût d'une lecture, facturé en dollars par Anthropic, affiché en euros.
 export function formaterCout(coutUsd) {
-  return `${coutUsd.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 3 })} $`
+  return enEuros(coutUsd)
 }

@@ -8,6 +8,8 @@ import os
 # securite/jetons.py en générerait un dans un FICHIER à côté de la base
 # de dev (voir _chemin_fichier_secret). Avant tout import de l'appli.
 os.environ.setdefault("SECRET_JETONS", "secret-des-tests-uniquement")
+# Pas de lecture du taux de change sur internet pendant les tests.
+os.environ.setdefault("TAUX_EUR_PAR_USD", "0.9")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402

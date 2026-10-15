@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { poserQuestion } from '../../api/assistant.js'
+import { enEuros } from '../../utils/euros.js'
 import { BubbleIcon } from './icons.jsx'
 
 // Conversation avec l'assistant (prototype, Seb 15 octobre ; spec
@@ -37,7 +38,8 @@ function lireModele() {
   }
 }
 
-const dollars = (n) => `${(n ?? 0).toFixed(3).replace('.', ',')} $`
+// Coûts affichés en euros (taux BCE, voir utils/euros.js).
+const euros = enEuros
 
 const SUGGESTIONS = [
   'Que contient ce dossier ?',
@@ -204,7 +206,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
           aria-expanded={panneauCout}
           title="Coût de cette conversation / de « Chat documents » sur la saison"
         >
-          {dollars(cout)} / {dollars(coutSaison ?? cout)}
+          {euros(cout)} / {euros(coutSaison ?? cout)}
         </button>
         <button type="button" className="dx-ico" onClick={onClose} aria-label="Fermer l’assistant">
           ✕
@@ -213,8 +215,8 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
 
       {panneauCout && (
         <div className="dx-chat__panneau">
-          <h3>Coût de cette conversation : {dollars(cout)}</h3>
-          <p className="dx-chat__etat">« Chat documents » sur la saison : {dollars(coutSaison ?? cout)}</p>
+          <h3>Coût de cette conversation : {euros(cout)}</h3>
+          <p className="dx-chat__etat">« Chat documents » sur la saison : {euros(coutSaison ?? cout)}</p>
           {tours.length === 0 ? (
             <p className="dx-chat__etat">Aucune demande pour l’instant.</p>
           ) : (
@@ -236,7 +238,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
                       {t.jetons_entree.toLocaleString('fr-FR')} + {t.jetons_sortie.toLocaleString('fr-FR')}
                       {t.appels > 1 ? ` (${t.appels} appels)` : ''}
                     </td>
-                    <td>{dollars(t.cout_usd)}</td>
+                    <td>{euros(t.cout_usd)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -248,7 +250,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
               <input type="radio" name="modele" checked={modele === m.id} onChange={() => choisirModele(m.id)} />
               <span>
                 <b>{m.nom}</b> · {m.detail}
-                <small>{m.prix} $ par million de jetons (entrée / sortie)</small>
+                <small>{m.prix} $ par million de jetons (entrée / sortie), facturés en dollars</small>
               </span>
             </label>
           ))}
