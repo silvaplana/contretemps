@@ -13,7 +13,7 @@ import datetime as dt
 from pathlib import Path
 from uuid import uuid4
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from collections.abc import Callable
@@ -40,6 +40,11 @@ DELAI_ABANDON = dt.timedelta(hours=6)
 # lecture sans que le fichier change sous lui (Seb, 2026-10-15). Repéré par
 # un fichier témoin « <nom>.a-effacer » posé à côté (voir compresser).
 DELAI_ORIGINAL = dt.timedelta(hours=1)
+# Envoi commencé mais jamais terminé : abandonné au bout d'un jour.
+DELAI_ENVOI_INTERROMPU = dt.timedelta(days=1)
+# Fichier du dossier vidéos qui ne correspond plus à rien (ni vidéo, ni
+# envoi en cours, ni original gardé) : effacé s'il a plus d'un jour.
+DELAI_ORPHELIN = dt.timedelta(days=1)
 SUFFIXE_A_EFFACER = ".a-effacer"
 
 
@@ -248,10 +253,15 @@ class Videos:
         """Fichier choisi puis onglet fermé sans "Ajouter" ni "Annuler" —
         voir DELAI_ABANDON. Appelé à chaque nouvelle session plutôt que par
         un worker dédié : ce cas doit rester rare, pas besoin de plus."""
-        limite = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None) - DELAI_ABANDON
+        maintenant = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+        # Sans « Ajouter » au bout de 6 h ; ou commencé il y a plus d'un
+        # jour et jamais fini (envoi interrompu), même rattaché à une vidéo.
         abandonnes = db.scalars(
             select(Televersement).where(
-                Televersement.video_id.is_(None), Televersement.cree_le < limite
+                or_(
+                    (Televersement.video_id.is_(None)) & (Televersement.cree_le < maintenant - DELAI_ABANDON),
+                    (Televersement.complet.is_(False)) & (Televersement.cree_le < maintenant - DELAI_ENVOI_INTERROMPU),
+                )
             )
         )
         for televersement in abandonnes:
@@ -299,6 +309,13 @@ class Videos:
             cible = (DOSSIER_VIDEOS_LIVE / chemin_relatif).resolve()
             if cible.is_relative_to(DOSSIER_VIDEOS_LIVE.resolve()):
                 cible.unlink(missing_ok=True)
+        # Ses envois aussi (et un éventuel fichier partiel) : la base
+        # réutilise le numéro d'une vidéo supprimée, un envoi resté rattaché
+        # à ce numéro désignerait ensuite une autre vidéo (vu le 2026-10-15 :
+        # 210 Mo d'envoi interrompu jamais nettoyé).
+        for televersement in db.scalars(select(Televersement).where(Televersement.video_id == video_id)):
+            chemin_televersement(televersement.ecole_id, televersement.id).unlink(missing_ok=True)
+            db.delete(televersement)
         db.delete(video)
         db.commit()
         return True
@@ -347,6 +364,37 @@ class Videos:
             raise
         chemin_source.with_name(chemin_source.name + SUFFIXE_A_EFFACER).touch()
         return True
+
+    def effacer_orphelins(self, db: Session, maintenant: dt.datetime | None = None) -> list[Path]:
+        """Efface les fichiers du dossier vidéos qui ne servent plus à rien
+        et ont plus de DELAI_ORPHELIN : ni fichier ni aperçu d'une vidéo,
+        ni envoi connu, ni original en attente d'effacement. Rattrape les
+        restes d'anciens bugs (le panneau « Usage des ressources » comptait
+        220 Mo de plus que les vidéos, vu le 2026-10-15). Renvoie la liste."""
+        self._nettoyer_abandonnes(db)
+        limite = (maintenant or dt.datetime.now()).timestamp() - DELAI_ORPHELIN.total_seconds()
+        racine = DOSSIER_VIDEOS_LIVE.resolve()
+        with toutes_saisons(db):
+            utiles = {
+                (racine / relatif).resolve()
+                for v in db.scalars(select(Video))
+                for relatif in (v.lien_fichier, v.poster)
+                if relatif
+            }
+        envois = {(t.ecole_id, t.id) for t in db.scalars(select(Televersement))}
+        effaces = []
+        for fichier in racine.glob("*/**/*"):
+            if not fichier.is_file() or fichier.stat().st_mtime > limite or fichier in utiles:
+                continue
+            if fichier.name.endswith(SUFFIXE_A_EFFACER) or fichier.with_name(fichier.name + SUFFIXE_A_EFFACER).exists():
+                continue  # original gardé une heure : voir effacer_originaux
+            if fichier.parent.name == "_uploads":
+                ecole = fichier.parent.parent.name
+                if ecole.isdigit() and (int(ecole), fichier.stem) in envois:
+                    continue
+            fichier.unlink(missing_ok=True)
+            effaces.append(fichier)
+        return effaces
 
     def effacer_originaux(self, maintenant: dt.datetime | None = None) -> int:
         """Efface les originaux compressés depuis plus de DELAI_ORIGINAL

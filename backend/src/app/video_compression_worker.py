@@ -39,6 +39,7 @@ INTERVALLE_SECONDES = 30
 def run() -> None:
     configure_mappers()
     videos_client = Videos()
+    dernier_menage = 0.0
     print(f"Compression vidéo démarrée (vérifie toutes les {INTERVALLE_SECONDES}s).")
     while True:
         time.sleep(INTERVALLE_SECONDES)
@@ -46,6 +47,11 @@ def run() -> None:
         try:
             if videos_client.effacer_originaux():
                 print("Originaux compressés depuis plus d'une heure effacés.")
+            # Fichiers orphelins : une fois par heure suffit.
+            if time.time() - dernier_menage > 3600:
+                dernier_menage = time.time()
+                for fichier in videos_client.effacer_orphelins(db):
+                    print(f"Fichier vidéo orphelin effacé : {fichier.name}")
             for video in videos_client.videos_a_compresser(db):
                 try:
                     if videos_client.compresser(db, video):

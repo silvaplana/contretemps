@@ -140,3 +140,63 @@ def test_echec_d_enregistrement_garde_l_original(db_session, monkeypatch):
         assert not chemin.with_name("intact-c.mp4").exists()
     finally:
         chemin.unlink(missing_ok=True)
+
+
+def test_menage_des_fichiers_orphelins(db_session, tmp_path, monkeypatch):
+    """Restes d'anciens bugs (vu le 2026-10-15 : 220 Mo comptés en trop) :
+    seuls les fichiers qui ne servent à rien et ont plus d'un jour partent."""
+    import datetime as dt
+    import os
+
+    import videos.videos as module_videos
+    from videos.models import Televersement
+
+    monkeypatch.setattr(module_videos, "DOSSIER_VIDEOS_LIVE", tmp_path)
+    ecole, cours, admin = _setup(db_session)
+    dossier = tmp_path / str(ecole.id)
+    (dossier / "_uploads").mkdir(parents=True)
+    vieux = (dt.datetime.now() - dt.timedelta(days=2)).timestamp()
+
+    def fichier(nom, age=vieux):
+        chemin = dossier / nom
+        chemin.write_bytes(b"x")
+        os.utime(chemin, (age, age))
+        return chemin
+
+    utile = fichier("utile.mp4")
+    apercu = fichier("utile.jpg")
+    Videos().create(
+        db_session, ecole_id=ecole.id, nom="Gardée", uploaded_by=admin.id,
+        lien_fichier=f"{ecole.id}/utile.mp4", poster=f"{ecole.id}/utile.jpg",
+    )
+    orphelin = fichier("reste-de-bug.mp4")
+    recent = fichier("tout-frais.mp4", age=dt.datetime.now().timestamp())
+    original = fichier("original.mp4")
+    fichier("original.mp4.a-effacer", age=dt.datetime.now().timestamp())
+    envoi_inconnu = fichier("_uploads/perdu.part")
+    db_session.add(Televersement(id="encours", ecole_id=ecole.id, extension=".mp4", octets_total=10))
+    db_session.commit()
+    envoi_en_cours = fichier("_uploads/encours.part", age=dt.datetime.now().timestamp())
+
+    effaces = Videos().effacer_orphelins(db_session)
+
+    assert set(effaces) == {orphelin.resolve(), envoi_inconnu.resolve()}
+    for garde in (utile, apercu, recent, original, envoi_en_cours):
+        assert garde.exists()
+
+
+def test_supprimer_une_video_efface_ses_envois(db_session, monkeypatch):
+    """La base réutilise le numéro d'une vidéo supprimée : ses envois (et
+    un fichier partiel) partent avec elle."""
+    from videos.stockage import chemin_televersement
+    from videos.models import Televersement
+
+    ecole, cours, admin = _setup(db_session)
+    videos_client = Videos()
+    video = videos_client.create(db_session, ecole_id=ecole.id, nom="V", lien_fichier="", uploaded_by=admin.id)
+    db_session.add(Televersement(id="interrompu", ecole_id=ecole.id, extension=".mp4", octets_total=10, video_id=video.id))
+    db_session.commit()
+    partiel = chemin_televersement(ecole.id, "interrompu")
+    partiel.write_bytes(b"x")
+    assert videos_client.delete(db_session, video.id) is True
+    assert not partiel.exists() and db_session.get(Televersement, "interrompu") is None
