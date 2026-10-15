@@ -140,7 +140,13 @@ export default function Explorer({ orgId, memoire }) {
   const [bulle, setBulle] = useState(null)
   const [recherche, setRecherche] = useState(null)
   const [trouves, setTrouves] = useState(null)
-  const [selection, setSelection] = useState(null)
+  // Sélection de plusieurs éléments (Seb, 16 octobre). Ordinateur : clic,
+  // Ctrl+clic, Maj+clic, Ctrl+A, encadrement à la souris. Téléphone :
+  // « Sélectionner plusieurs » dans le menu, puis toucher les éléments.
+  const [selIds, setSelIds] = useState([])
+  const [ancre, setAncre] = useState(null) // dernier élément cliqué (Maj+clic)
+  const [modeChoix, setModeChoix] = useState(false)
+  const [cadre, setCadre] = useState(null) // rectangle d'encadrement à l'écran
   const [feuille, setFeuilleEtat] = useState(null)
   const feuilleOuverteA = useRef(0)
   const setFeuille = (valeur) => {
@@ -152,10 +158,10 @@ export default function Explorer({ orgId, memoire }) {
   const [partage, setPartage] = useState(null)
   const [nouveau, setNouveau] = useState(false)
   const [vue, setVue] = useState(null)
-  const [choix, setChoix] = useState(null) // { item, mode: 'move' | 'copy' }
+  const [choix, setChoix] = useState(null) // { items, mode: 'move' | 'copy' }
   const [nom, setNom] = useState(null) // { mode: 'folder' | 'rename', item?, value }
   const [corbeille, setCorbeille] = useState(false)
-  const [pressePapier, setPressePapier] = useState(null) // { item, mode: 'copy' | 'cut' }
+  const [pressePapier, setPressePapier] = useState(null) // { items, mode: 'copy' | 'cut' }
   const [toast, setToast] = useState(null)
   const [survol, setSurvol] = useState(null) // id du dossier survolé, ou 'list'
   const fichiers = useRef(null)
@@ -248,6 +254,19 @@ export default function Explorer({ orgId, memoire }) {
     }
   }, [api, space, recherche, rechercheActive])
 
+  // Ce qui est affiché (recherche, Récents ou dossier), après les filtres.
+  const items = resultats ?? data?.items ?? []
+  const visible = (x) => (!filtreStatut || x.status === filtreStatut) && (!filtreFamille || x.family === filtreFamille)
+  // Dossiers des saisons passées : en lecture seule, regroupés à part sous
+  // « Saisons précédentes » (Seb, 15 octobre).
+  const anciennesSaisons = items.filter((x) => x.system_kind === 'period' && !x.period_current && visible(x))
+  const dossiers = items.filter((x) => x.kind === 'folder' && visible(x) && !anciennesSaisons.includes(x))
+  const lesFichiers = items.filter((x) => x.kind === 'file' && visible(x))
+  // Dans l'ordre de l'écran (Maj+clic, Ctrl+A).
+  const ordre = [...dossiers, ...lesFichiers, ...anciennesSaisons]
+  const selectionnes = ordre.filter((x) => selIds.includes(x.id))
+  const selection = selectionnes.length === 1 ? selectionnes[0] : null
+
   function ouvrir(item) {
     setFeuille(null)
     setPlus(false)
@@ -295,56 +314,111 @@ export default function Explorer({ orgId, memoire }) {
     if (ok) montrerToast(ok > 1 ? `${ok} fichiers importés` : `« ${tous[0].name} » importé`)
   }
 
-  async function supprimer(item) {
+  function setSelection(item) {
+    setSelIds(item ? [item.id] : [])
+    setAncre(item?.id ?? null)
+    if (!item) setModeChoix(false)
+  }
+
+  function basculer(item) {
+    setAncre(item.id)
+    const suivant = selIds.includes(item.id) ? selIds.filter((id) => id !== item.id) : [...selIds, item.id]
+    setSelIds(suivant)
+    if (suivant.length === 0) setModeChoix(false)
+  }
+
+  // Clic à la souris : Ctrl ajoute ou retire, Maj prend toute la plage
+  // depuis le dernier élément cliqué (comme l'explorateur Windows).
+  function cliquer(item, e) {
+    const ctrl = e.ctrlKey || e.metaKey
+    if (e.shiftKey && ancre != null) {
+      const i = ordre.findIndex((x) => x.id === ancre)
+      const j = ordre.findIndex((x) => x.id === item.id)
+      if (i >= 0 && j >= 0) {
+        const plage = ordre.slice(Math.min(i, j), Math.max(i, j) + 1).map((x) => x.id)
+        setSelIds(ctrl ? [...new Set([...selIds, ...plage])] : plage)
+        return
+      }
+    }
+    if (ctrl) basculer(item)
+    else setSelection(item)
+  }
+
+  // Ce qu'on prend en glissant un élément : toute la sélection s'il en fait partie.
+  const groupeDe = (item) => (selIds.includes(item.id) && selectionnes.length > 1 ? selectionnes : [item])
+  const enListe = (x) => (Array.isArray(x) ? x : [x])
+  const nommer = (liste) => (liste.length > 1 ? `${liste.length} éléments` : `« ${liste[0].name} »`)
+  const accord = (liste) => (liste.length > 1 ? 's' : '')
+
+  async function supprimer(x) {
+    const liste = enListe(x)
     setFeuille(null)
-    try {
-      await api.remove(item.id)
-      setSelection(null)
-      await recharger()
-      montrerToast(`« ${item.name} » mis à la corbeille`, async () => {
-        await api.restore(item.id)
+    const faits = []
+    for (const item of liste) {
+      try {
+        await api.remove(item.id)
+        faits.push(item)
+      } catch (e) {
+        echec(e)
+      }
+    }
+    setSelection(null)
+    await recharger()
+    if (faits.length) {
+      montrerToast(`${nommer(faits)} mis à la corbeille`, async () => {
+        for (const item of faits) await api.restore(item.id)
         await recharger()
       })
-    } catch (e) {
-      echec(e)
     }
   }
 
-  async function deplacer(item, versEspace, versDossier) {
-    const avant = { space: item.space, parent: folder }
-    try {
-      await api.move(item.id, versEspace, versDossier)
-      await recharger()
-      montrerToast(`« ${item.name} » déplacé`, async () => {
-        await api.move(item.id, avant.space, avant.parent)
+  async function deplacer(x, versEspace, versDossier) {
+    const liste = enListe(x).filter((item) => item.id !== versDossier)
+    const avant = folder
+    const faits = []
+    for (const item of liste) {
+      try {
+        await api.move(item.id, versEspace, versDossier)
+        faits.push(item)
+      } catch (e) {
+        echec(e)
+      }
+    }
+    await recharger()
+    if (faits.length) {
+      montrerToast(`${nommer(faits)} déplacé${accord(faits)}`, async () => {
+        for (const item of faits) await api.move(item.id, item.space, avant)
         await recharger()
       })
-    } catch (e) {
-      echec(e)
     }
   }
 
-  async function copier(item, versEspace, versDossier) {
-    try {
-      const copie = await api.copy(item.id, versEspace, versDossier)
-      await recharger()
-      montrerToast(`« ${copie.name} » collé`, async () => {
-        await api.remove(copie.id)
+  async function copier(x, versEspace, versDossier) {
+    const copies = []
+    for (const item of enListe(x)) {
+      try {
+        copies.push(await api.copy(item.id, versEspace, versDossier))
+      } catch (e) {
+        echec(e)
+      }
+    }
+    await recharger()
+    if (copies.length) {
+      montrerToast(`${nommer(copies)} collé${accord(copies)}`, async () => {
+        for (const copie of copies) await api.remove(copie.id)
         await recharger()
       })
-    } catch (e) {
-      echec(e)
     }
   }
 
   async function coller() {
     if (!pressePapier) return
-    const { item, mode } = pressePapier
+    const { items: liste, mode } = pressePapier
     if (mode === 'cut') {
       setPressePapier(null)
-      await deplacer(item, space, folder)
+      await deplacer(liste, space, folder)
     } else {
-      await copier(item, space, folder)
+      await copier(liste, space, folder)
     }
   }
 
@@ -391,18 +465,22 @@ export default function Explorer({ orgId, memoire }) {
       if (e.target.closest?.('input, textarea, [contenteditable="true"]')) return
       if (proprietes || partage || vue || nom || choix || nouveau || corbeille) return
       const ctrl = e.ctrlKey || e.metaKey
-      if (ctrl && e.key === 'c' && selection) {
-        setPressePapier({ item: selection, mode: 'copy' })
-        montrerToast(`« ${selection.name} » copié : ouvrez un dossier puis Ctrl+V`)
-      } else if (ctrl && e.key === 'x' && selection && selection.can_restructure !== false) {
-        setPressePapier({ item: selection, mode: 'cut' })
-        montrerToast(`« ${selection.name} » coupé : ouvrez un dossier puis Ctrl+V`)
+      const choisis = selectionnes
+      if (ctrl && e.key.toLowerCase() === 'a') {
+        e.preventDefault()
+        setSelIds(ordre.map((x) => x.id))
+      } else if (ctrl && e.key === 'c' && choisis.length) {
+        setPressePapier({ items: choisis, mode: 'copy' })
+        montrerToast(`${nommer(choisis)} copié${accord(choisis)} : ouvrez un dossier puis Ctrl+V`)
+      } else if (ctrl && e.key === 'x' && choisis.length && choisis.every((x) => x.can_restructure !== false)) {
+        setPressePapier({ items: choisis, mode: 'cut' })
+        montrerToast(`${nommer(choisis)} coupé${accord(choisis)} : ouvrez un dossier puis Ctrl+V`)
       } else if (ctrl && e.key === 'v' && pressePapier && peutAjouter) {
         e.preventDefault()
         coller()
-      } else if ((e.key === 'Delete' || e.key === 'Backspace') && selection) {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && choisis.length) {
         e.preventDefault()
-        supprimer(selection)
+        supprimer(choisis)
       } else if (e.key === 'Enter' && selection) {
         ouvrir(selection)
       } else if (e.key === 'Escape') {
@@ -514,16 +592,17 @@ export default function Explorer({ orgId, memoire }) {
         const cible = cibleSous(e.clientX, e.clientY, item)
         setSurvol(null)
         if (cible === 'root') {
-          if (folder != null) deplacer(item, space, null)
+          if (folder != null) deplacer(groupeDe(item), space, null)
         } else if (cible != null && cible !== folder) {
-          deplacer(item, space, cible)
+          deplacer(groupeDe(item), space, cible)
         }
       } else {
         setFeuille(item)
       }
       return
     }
-    if (a.souris) setSelection(item)
+    if (a.souris) cliquer(item, e)
+    else if (modeChoix) basculer(item)
     else ouvrir(item)
   }
 
@@ -560,15 +639,16 @@ export default function Explorer({ orgId, memoire }) {
   // --- Glisser-déposer (ordinateur) ---
   function dragStart(e, item) {
     annulerAppui()
-    e.dataTransfer.setData('application/x-dx-node', String(item.id))
+    const groupe = groupeDe(item)
+    e.dataTransfer.setData('application/x-dx-node', groupe.map((x) => x.id).join(','))
     e.dataTransfer.effectAllowed = 'move'
-    setSelection(item)
+    if (!selIds.includes(item.id)) setSelection(item)
   }
 
   function dragOver(e, cible) {
     const interne = Array.from(e.dataTransfer.types).includes('application/x-dx-node')
     if (!interne && !hasFiles(e)) return
-    if (cible !== 'list' && interne && selection?.id === cible) return
+    if (cible !== 'list' && interne && selIds.includes(cible)) return
     e.preventDefault()
     e.stopPropagation()
     e.dataTransfer.dropEffect = interne ? 'move' : 'copy'
@@ -579,23 +659,67 @@ export default function Explorer({ orgId, memoire }) {
     e.preventDefault()
     e.stopPropagation()
     setSurvol(null)
-    const id = e.dataTransfer.getData('application/x-dx-node')
-    if (id) {
-      const item = data?.items.find((x) => String(x.id) === id)
-      if (item && cibleDossier && item.id !== cibleDossier) deplacer(item, space, cibleDossier)
+    const ids = e.dataTransfer.getData('application/x-dx-node')
+    if (ids) {
+      const liste = ids.split(',').map((id) => items.find((x) => String(x.id) === id)).filter(Boolean)
+      if (liste.length && cibleDossier) deplacer(liste, space, cibleDossier)
       return
     }
     if (e.dataTransfer.files?.length) importer(e.dataTransfer.files, cibleDossier ?? folder)
   }
 
+  // Encadrement à la souris, en partant d'un endroit vide de la liste
+  // (Ctrl ou Maj : ajoute à la sélection). Défile près des bords.
+  function commencerCadre(e) {
+    const liste = listeRef.current
+    if (!liste) return
+    e.preventDefault()
+    const ajout = e.ctrlKey || e.metaKey || e.shiftKey
+    const base = ajout ? selIds : []
+    const departX = e.clientX
+    const departY = e.clientY + liste.scrollTop
+    let dernier = { x: e.clientX, y: e.clientY }
+    let bouge = false
+    const maj = () => {
+      const y0 = departY - liste.scrollTop
+      const r = {
+        left: Math.min(departX, dernier.x),
+        right: Math.max(departX, dernier.x),
+        top: Math.min(y0, dernier.y),
+        bottom: Math.max(y0, dernier.y),
+      }
+      setCadre(r)
+      const dans = [...liste.querySelectorAll('[data-id]')]
+        .filter((el) => {
+          const b = el.getBoundingClientRect()
+          return b.right > r.left && b.left < r.right && b.bottom > r.top && b.top < r.bottom
+        })
+        .map((el) => Number(el.dataset.id))
+      setSelIds([...new Set([...base, ...dans])])
+    }
+    const bouger = (ev) => {
+      dernier = { x: ev.clientX, y: ev.clientY }
+      if (!bouge && Math.hypot(ev.clientX - departX, ev.clientY - e.clientY) < 5) return
+      bouge = true
+      const b = liste.getBoundingClientRect()
+      if (ev.clientY < b.top + 30) liste.scrollTop -= 16
+      else if (ev.clientY > b.bottom - 30) liste.scrollTop += 16
+      maj()
+    }
+    const defiler = () => bouge && maj()
+    const lacher = () => {
+      window.removeEventListener('pointermove', bouger)
+      window.removeEventListener('pointerup', lacher)
+      liste.removeEventListener('scroll', defiler)
+      setCadre(null)
+      if (!bouge && !ajout) setSelection(null)
+    }
+    window.addEventListener('pointermove', bouger)
+    window.addEventListener('pointerup', lacher)
+    liste.addEventListener('scroll', defiler)
+  }
+
   // --- Affichage ---
-  const items = resultats ?? data?.items ?? []
-  const visible = (x) => (!filtreStatut || x.status === filtreStatut) && (!filtreFamille || x.family === filtreFamille)
-  // Dossiers des saisons passées : en lecture seule, regroupés à part sous
-  // « Saisons précédentes » (Seb, 15 octobre).
-  const anciennesSaisons = items.filter((x) => x.system_kind === 'period' && !x.period_current && visible(x))
-  const dossiers = items.filter((x) => x.kind === 'folder' && visible(x) && !anciennesSaisons.includes(x))
-  const lesFichiers = items.filter((x) => x.kind === 'file' && visible(x))
   const libelleEspace = spaces.find((s) => s.key === space)?.label ?? ''
 
   function montrerBulle(texte) {
@@ -637,12 +761,15 @@ export default function Explorer({ orgId, memoire }) {
         : resultats && item.path
           ? chemin
           : subtitle(item)
+    const choisi = selIds.includes(item.id)
     return (
       <div
         key={item.id}
         role="button"
         tabIndex={0}
-        className={`dx-row${estDossier ? ' dx-row--dir' : ''}${selection?.id === item.id ? ' dx-row--sel' : ''}${survol === item.id ? ' dx-row--drop' : ''}${glisse?.item.id === item.id ? ' dx-row--lift' : ''}${pressePapier?.mode === 'cut' && pressePapier.item.id === item.id ? ' dx-row--cut' : ''}`}
+        className={`dx-row${estDossier ? ' dx-row--dir' : ''}${choisi ? ' dx-row--sel' : ''}${survol === item.id ? ' dx-row--drop' : ''}${glisse?.item.id === item.id ? ' dx-row--lift' : ''}${pressePapier?.mode === 'cut' && pressePapier.items.some((x) => x.id === item.id) ? ' dx-row--cut' : ''}`}
+        data-id={item.id}
+        aria-pressed={modeChoix ? choisi : undefined}
         data-drop-folder={estDossier ? item.id : undefined}
         draggable={souris && item.system_kind == null}
         onDragStart={(e) => dragStart(e, item)}
@@ -660,7 +787,7 @@ export default function Explorer({ orgId, memoire }) {
           // l'appui long est déjà géré ci-dessus.
           if (appui.current && !appui.current.souris) return
           annulerAppui()
-          setSelection(item)
+          if (!selIds.includes(item.id)) setSelection(item)
           setFeuille(item)
         }}
         onKeyDown={(e) => {
@@ -670,6 +797,11 @@ export default function Explorer({ orgId, memoire }) {
           }
         }}
       >
+        {modeChoix && (
+          <span className={`dx-coche${choisi ? ' dx-coche--on' : ''}`} aria-hidden="true">
+            {choisi ? '✓' : ''}
+          </span>
+        )}
         <ItemIcon api={api} item={item} />
         <div className="dx-meta">
           <div className="dx-n">
@@ -716,13 +848,23 @@ export default function Explorer({ orgId, memoire }) {
       { icone: '↗', libelle: 'Ouvrir', faire: () => ouvrir(item) },
       { icone: '👥', libelle: 'Partager', faire: () => (setFeuille(null), setPartage(item)), off: item.space === 'personal' && 'Espace Personnel : déplacez-le pour partager' },
       { icone: '✎', libelle: 'Renommer', faire: () => (setFeuille(null), setNom({ mode: 'rename', item, value: item.name })), off: !restructurer && raison },
-      { icone: '➜', libelle: 'Déplacer…', faire: () => (setFeuille(null), setChoix({ item, mode: 'move' })), off: !restructurer && raison },
+      { icone: '➜', libelle: 'Déplacer…', faire: () => (setFeuille(null), setChoix({ items: [item], mode: 'move' })), off: !restructurer && raison },
       { icone: '☰', libelle: 'Propriétés', faire: () => (setFeuille(null), setProprietes({ id: item.id, tab: 'Infos' })), hl: true },
       { icone: '🗑', libelle: 'Supprimer', faire: () => supprimer(item), off: !restructurer && raison, danger: true },
     ]
     const autres = [
-      { icone: '⧉', libelle: 'Copier', faire: () => (setFeuille(null), setPressePapier({ item, mode: 'copy' }), montrerToast(`« ${item.name} » copié : ouvrez un dossier puis « Coller ici »`)), off: systeme && 'Copiez plutôt son contenu' },
-      { icone: '⧉', libelle: 'Copier vers…', faire: () => (setFeuille(null), setChoix({ item, mode: 'copy' })), off: systeme && 'Copiez plutôt son contenu' },
+      {
+        icone: '☑',
+        libelle: 'Sélectionner plusieurs',
+        faire: () => {
+          setFeuille(null)
+          setPlus(false)
+          setSelection(item)
+          setModeChoix(true)
+        },
+      },
+      { icone: '⧉', libelle: 'Copier', faire: () => (setFeuille(null), setPressePapier({ items: [item], mode: 'copy' }), montrerToast(`« ${item.name} » copié : ouvrez un dossier puis « Coller ici »`)), off: systeme && 'Copiez plutôt son contenu' },
+      { icone: '⧉', libelle: 'Copier vers…', faire: () => (setFeuille(null), setChoix({ items: [item], mode: 'copy' })), off: systeme && 'Copiez plutôt son contenu' },
       ...(item.kind === 'file'
         ? [
             { icone: '⤓', libelle: 'Télécharger', faire: () => (setFeuille(null), telecharger(item)) },
@@ -742,6 +884,7 @@ export default function Explorer({ orgId, memoire }) {
   }
 
   const panneauOuvert = proprietes || partage || vue || choix || nouveau || corbeille
+  const multiRestructurable = selectionnes.every((x) => x.system_kind == null && !x.frozen && peutAjouterDans(x))
 
   function ouvrirDepuisArbre(s, id) {
     setFeuille(null)
@@ -822,7 +965,7 @@ export default function Explorer({ orgId, memoire }) {
     <Assistant
       orgId={orgId}
       coutSaisonInitial={coutSaison}
-      contexte={{ space, folder_id: folder, selection_id: selection?.id ?? null, recents: recentsActif }}
+      contexte={{ space, folder_id: folder, selection_id: selection?.id ?? null, selection_ids: selIds.slice(0, 50), recents: recentsActif }}
       onClose={() => setAssistantOuvert(false)}
       onFaire={faireAction}
     />
@@ -931,6 +1074,47 @@ export default function Explorer({ orgId, memoire }) {
         </nav>
       )}
 
+      {(selectionnes.length > 1 || modeChoix) && !panneauOuvert && (
+        <div className="dx-multi" role="toolbar" aria-label="Sélection">
+          <span className="dx-multi__n">
+            {selectionnes.length} sélectionné{accord(selectionnes)}
+          </span>
+          <button type="button" className="dx-btn dx-btn--small dx-btn--ghost" onClick={() => setSelIds(ordre.map((x) => x.id))}>
+            Tout
+          </button>
+          <button
+            type="button"
+            className="dx-btn dx-btn--small dx-btn--ghost"
+            disabled={!selectionnes.length || !multiRestructurable}
+            onClick={() => setChoix({ items: selectionnes, mode: 'move' })}
+          >
+            Déplacer…
+          </button>
+          <button
+            type="button"
+            className="dx-btn dx-btn--small dx-btn--ghost"
+            disabled={!selectionnes.length || selectionnes.some((x) => x.system_kind != null)}
+            onClick={() => {
+              setPressePapier({ items: selectionnes, mode: 'copy' })
+              montrerToast(`${nommer(selectionnes)} copié${accord(selectionnes)} : ouvrez un dossier puis « Coller ici »`)
+            }}
+          >
+            Copier
+          </button>
+          <button
+            type="button"
+            className="dx-btn dx-btn--small dx-btn--ghost dx-multi__suppr"
+            disabled={!selectionnes.length || !multiRestructurable}
+            onClick={() => supprimer(selectionnes)}
+          >
+            Supprimer
+          </button>
+          <button type="button" className="dx-rm" aria-label="Tout désélectionner" onClick={() => setSelection(null)}>
+            ✕
+          </button>
+        </div>
+      )}
+
       <div
         ref={listeRef}
         className={`dx-list${survol === 'list' ? ' dx-list--drop' : ''}`}
@@ -940,7 +1124,9 @@ export default function Explorer({ orgId, memoire }) {
         }}
         onDrop={peutAjouter && !resultats ? (e) => drop(e, null) : undefined}
         onPointerDown={(e) => {
-          if (e.target === e.currentTarget) setSelection(null)
+          if (e.target.closest('.dx-row, button, input, a, p')) return
+          if (e.button === 0 && e.pointerType === 'mouse') commencerCadre(e)
+          else if (e.target === e.currentTarget) setSelection(null)
         }}
       >
         {erreur && <p className="dx-error">{erreur}</p>}
@@ -996,7 +1182,8 @@ export default function Explorer({ orgId, memoire }) {
       {pressePapier && !panneauOuvert && (
         <div className="dx-clip">
           <span>
-            « {pressePapier.item.name} » {pressePapier.mode === 'cut' ? 'coupé' : 'copié'}
+            {nommer(pressePapier.items)} {pressePapier.mode === 'cut' ? 'coupé' : 'copié'}
+            {accord(pressePapier.items)}
           </span>
           <button type="button" className="dx-btn dx-btn--small" disabled={!peutAjouter || Boolean(resultats)} onClick={coller}>
             Coller ici
@@ -1133,16 +1320,16 @@ export default function Explorer({ orgId, memoire }) {
         <FolderPicker
           api={api}
           spaces={spaces}
-          item={choix.item}
+          items={choix.items}
           mode={choix.mode}
           startSpace={space}
           startFolder={folder}
           onClose={() => setChoix(null)}
           onPick={(versEspace, versDossier) => {
-            const { item, mode } = choix
+            const { items: liste, mode } = choix
             setChoix(null)
-            if (mode === 'copy') copier(item, versEspace, versDossier)
-            else deplacer(item, versEspace, versDossier)
+            if (mode === 'copy') copier(liste, versEspace, versDossier)
+            else deplacer(liste, versEspace, versDossier)
           }}
         />
       )}
@@ -1202,8 +1389,18 @@ export default function Explorer({ orgId, memoire }) {
       {glisse?.actif && (
         <div className="dx-ghost" style={{ left: glisse.x, top: glisse.y }} aria-hidden="true">
           <ItemIcon api={api} item={glisse.item} />
-          <span>{glisse.item.name}</span>
+          <span>
+            {glisse.item.name}
+            {groupeDe(glisse.item).length > 1 && ` et ${groupeDe(glisse.item).length - 1} autre${groupeDe(glisse.item).length > 2 ? 's' : ''}`}
+          </span>
         </div>
+      )}
+      {cadre && (
+        <div
+          className="dx-cadre"
+          style={{ left: cadre.left, top: cadre.top, width: cadre.right - cadre.left, height: cadre.bottom - cadre.top }}
+          aria-hidden="true"
+        />
       )}
       {glisse && !glisse.actif && (
         <div className="dx-hint" role="status">Glissez sur un dossier pour déplacer, ou lâchez pour le menu</div>

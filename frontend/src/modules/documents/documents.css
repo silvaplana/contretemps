@@ -1862,3 +1862,59 @@
   font-size: 14px;
   color: var(--text-muted);
 }
+
+/* Sélection de plusieurs éléments (Seb, 16 octobre). */
+.dx-list {
+  user-select: none;
+}
+
+.dx-multi {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 12px 6px;
+  padding: 6px 6px 6px 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+.dx-multi__n {
+  flex: 1 0 auto;
+  font-weight: 700;
+  font-size: 17px;
+}
+
+.dx-multi .dx-btn--small {
+  min-height: 48px;
+}
+
+.dx-multi__suppr:not(:disabled) {
+  color: var(--danger-text);
+}
+
+.dx-coche {
+  flex: 0 0 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  font-weight: 700;
+  color: #fff;
+}
+
+.dx-coche--on {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.dx-cadre {
+  position: fixed;
+  z-index: 30;
+  border: 1.5px solid var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  pointer-events: none;
+}

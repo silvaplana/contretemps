@@ -4,7 +4,9 @@ import { FolderIcon } from './icons.jsx'
 // « Déplacer… » et « Copier vers… » : on descend dans les dossiers, puis
 // « Déplacer ici ». Seuls les dossiers où l'on peut ajouter sont choisis.
 
-export default function FolderPicker({ api, spaces, item, mode, startSpace, startFolder, onClose, onPick }) {
+export default function FolderPicker({ api, spaces, items, mode, startSpace, startFolder, onClose, onPick }) {
+  const ids = items.map((x) => x.id)
+  const titre = items.length > 1 ? `${items.length} éléments` : `« ${items[0].name} »`
   const [space, setSpace] = useState(startSpace)
   const [folder, setFolder] = useState(startFolder)
   const [data, setData] = useState(null)
@@ -21,8 +23,8 @@ export default function FolderPicker({ api, spaces, item, mode, startSpace, star
     }
   }, [api, space, folder])
 
-  const dossiers = (data?.items ?? []).filter((x) => x.kind === 'folder' && x.id !== item.id)
-  const ici = data && data.can_add && !(data.folder?.id === item.id)
+  const dossiers = (data?.items ?? []).filter((x) => x.kind === 'folder' && !ids.includes(x.id))
+  const ici = data && data.can_add && !ids.includes(data.folder?.id)
   const verbe = mode === 'copy' ? 'Copier' : 'Déplacer'
   const remonter = () => {
     const fil = data?.breadcrumb ?? []
@@ -30,7 +32,7 @@ export default function FolderPicker({ api, spaces, item, mode, startSpace, star
   }
 
   return (
-    <div className="dx-panel" role="dialog" aria-label={`${verbe} « ${item.name} »`}>
+    <div className="dx-panel" role="dialog" aria-label={`${verbe} ${titre}`}>
       <div className="dx-top">
         <button type="button" className="dx-ico" onClick={onClose} aria-label="Fermer">✕</button>
         <h2>{verbe} vers…</h2>

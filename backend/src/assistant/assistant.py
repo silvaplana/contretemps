@@ -254,6 +254,17 @@ class Assistant:
                 lignes.append(f"Elle a sélectionné {genre} « {s['name']} » (id {s['id']}).")
             except (DocError, ValueError):
                 pass
+        plusieurs = contexte.get("selection_ids") or []
+        if len(plusieurs) > 1:
+            noms = []
+            for identifiant in plusieurs[:50]:
+                try:
+                    s = self.documents.detail(db, member, int(identifiant))
+                    noms.append(f"« {s['name']} » (id {s['id']})")
+                except (DocError, ValueError):
+                    pass
+            if noms:
+                lignes.append(f"Elle a sélectionné {len(noms)} éléments : {', '.join(noms)}.")
         for issue in contexte.get("actions") or []:
             lignes.append(f"Suite à ta proposition : {str(issue)[:300]}")
         return "\n".join(lignes)

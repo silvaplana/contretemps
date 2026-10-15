@@ -27,6 +27,8 @@ class Contexte(BaseModel):
     space: str | None = None
     folder_id: int | None = None
     selection_id: int | None = None
+    # Sélection de plusieurs éléments dans l'explorateur.
+    selection_ids: list[int] = Field(default_factory=list, max_length=50)
     recents: bool = False
     # Ce que la personne a fait des propositions précédentes (« Fait : … »).
     actions: list[str] = Field(default_factory=list, max_length=20)
