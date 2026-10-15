@@ -3,6 +3,22 @@
    navigateur ne télécharge que celle qui est utilisée. Vite préfixe ces
    chemins par la base de l'appli (/contretemps/ ou /). */
 @font-face {
+  font-family: 'Prompt';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/fonts/prompt-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Prompt';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/fonts/prompt-700.woff2') format('woff2');
+}
+
+@font-face {
   font-family: 'Great Vibes';
   font-style: normal;
   font-weight: 400;

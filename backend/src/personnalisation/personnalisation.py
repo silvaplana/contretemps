@@ -38,7 +38,7 @@ DEFAUTS = {
     "couleur_accent": "#D8722A",
 }
 # Polices hébergées (frontend/public/fonts, licence SIL OFL) ; vide = système.
-POLICES = {"montserrat", "poppins", "nunito", "josefin-sans", "playfair-display"}
+POLICES = {"montserrat", "poppins", "prompt", "nunito", "josefin-sans", "playfair-display"}
 # Pour le nom de l'école seulement : en plus, une écriture manuscrite,
 # illisible pour des textes courants (demande du 2026-10-15).
 POLICES_NOM = POLICES | {"great-vibes"}

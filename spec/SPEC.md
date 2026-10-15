@@ -803,7 +803,7 @@ Elle contient, dans cet ordre :
 - **Police** : choix parmi une **courte liste de polices hébergées sur le serveur** (pas de
   fichier libre, pour garder licences et lisibilité sous contrôle), présentées chacune par le
   nom de l'école écrit dans la police : *Système* (celle d'aujourd'hui, par défaut),
-  Montserrat, Poppins, Nunito, Josefin Sans, Playfair Display (fichiers woff2 dans
+  Montserrat, Poppins, Prompt (celle des textes du site de l'école, ajoutée le 2026-10-15), Nunito, Josefin Sans, Playfair Display (fichiers woff2 dans
   `frontend/public/fonts/`, licence SIL OFL). La police choisie s'applique à toute l'appli
   (`--sans` dans `index.css`) ;
 - un bouton **"Revenir à l'apparence par défaut"** (avec confirmation) : remet logo, nom en

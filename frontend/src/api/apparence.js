@@ -12,6 +12,8 @@ export const POLICES = [
   { cle: '', nom: 'Système', famille: "system-ui, 'Segoe UI', Roboto, sans-serif" },
   { cle: 'montserrat', nom: 'Montserrat', famille: "'Montserrat', system-ui, sans-serif" },
   { cle: 'poppins', nom: 'Poppins', famille: "'Poppins', system-ui, sans-serif" },
+  // Celle des textes du site de l'école (dansecontretemps.fr).
+  { cle: 'prompt', nom: 'Prompt', famille: "'Prompt', system-ui, sans-serif" },
   { cle: 'nunito', nom: 'Nunito', famille: "'Nunito', system-ui, sans-serif" },
   { cle: 'josefin-sans', nom: 'Josefin Sans', famille: "'Josefin Sans', system-ui, sans-serif" },
   { cle: 'playfair-display', nom: 'Playfair Display', famille: "'Playfair Display', Georgia, serif" },
