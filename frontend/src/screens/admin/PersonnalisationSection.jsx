@@ -445,6 +445,26 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
             onChoisir={(cle) => changer('policeSlogan', cle)}
           />
 
+          <span className="perso__label">Polices</span>
+          <ChoixPolice
+            id="perso-police-titres"
+            libelle="Titres de l’appli"
+            options={[{ cle: '', nom: 'Comme les textes', famille: null }, ...POLICES.slice(1)]}
+            valeur={champs.policeTitres}
+            texte="Administration"
+            titre
+            familleParDefaut={famille}
+            onChoisir={(cle) => changer('policeTitres', cle)}
+          />
+          <ChoixPolice
+            id="perso-police-textes"
+            libelle="Textes de l’appli"
+            options={POLICES}
+            valeur={champs.police}
+            texte="Les cours de la semaine et les messages de l’école."
+            onChoisir={(cle) => changer('police', cle)}
+          />
+
           <span className="perso__label">Couleurs</span>
           <div className="perso__couleurs">
             {[
@@ -459,26 +479,6 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
             ))}
           </div>
           {contrasteFaible && <p className="perso__avertissement">Le texte est peu lisible sur ce fond.</p>}
-
-          <span className="perso__label">Polices</span>
-          <ChoixPolice
-            id="perso-police-textes"
-            libelle="Textes de l’appli"
-            options={POLICES}
-            valeur={champs.police}
-            texte="Les cours de la semaine et les messages de l’école."
-            onChoisir={(cle) => changer('police', cle)}
-          />
-          <ChoixPolice
-            id="perso-police-titres"
-            libelle="Titres de l’appli"
-            options={[{ cle: '', nom: 'Comme les textes', famille: null }, ...POLICES.slice(1)]}
-            valeur={champs.policeTitres}
-            texte="Administration"
-            titre
-            familleParDefaut={famille}
-            onChoisir={(cle) => changer('policeTitres', cle)}
-          />
 
           {erreur && <p className="login-screen__erreur">{erreur}</p>}
           <div className="perso__actions">
@@ -599,10 +599,12 @@ function Historique({ ecoleId, type, version, desactive, onReprendre }) {
               title={image.actuelle ? 'En place' : 'Remettre cette image'}
               aria-label={image.actuelle ? 'Image en place' : 'Remettre cette image'}
             >
-              <img src={urlFichier(ecoleId, image.fichier)} alt="" />
+              <img src={image.defaut ? urlLogo({}) : urlFichier(ecoleId, image.fichier)} alt="" />
             </button>
             {image.actuelle ? (
               <small>En place</small>
+            ) : image.defaut ? (
+              <small>Contretemps</small>
             ) : (
               <button
                 type="button"

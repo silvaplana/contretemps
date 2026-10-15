@@ -823,7 +823,7 @@ valider :
   service extérieur). Détoure n'importe quelle image, photo comprise, en quelques secondes,
   mais peut effacer une partie claire à l'intérieur du dessin : d'où l'aperçu.
 
-L'original est conservé, pour pouvoir changer de détourage sans renvoyer l'image. **Les images validées sont gardées** (demande du 2026-10-15) : sous le logo et sous le nom en image, les précédentes s'affichent en vignettes ; un clic en remet une en place, une poubelle supprime celles dont on ne veut plus (jamais celle en place). « Revenir à l'apparence par défaut » ne les efface pas. Pour
+L'original est conservé, pour pouvoir changer de détourage sans renvoyer l'image. **Les images validées sont gardées** (demande du 2026-10-15) : sous le logo et sous le nom en image, les précédentes s'affichent en vignettes ; un clic en remet une en place, une poubelle supprime celles dont on ne veut plus (jamais celle en place). « Revenir à l'apparence par défaut » ne les efface pas, et remet le logo Contretemps, **toujours proposé en dernière vignette** des logos (jamais supprimable). Ordre du volet *(2026-10-15)* : … slogan, **polices** (titres, puis textes), **couleurs** en dernier. Pour
 l'**icône de l'appli installée**, le serveur pose le logo sur la couleur de fond (Android et
 iPhone affichent mal une icône transparente) et génère les tailles demandées (192 et 512 px,
 plus une version « maskable » avec marge).

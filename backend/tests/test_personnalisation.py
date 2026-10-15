@@ -237,7 +237,9 @@ def test_historique_des_logos(client, ecole):
     envoyer_et_valider()
     envoyer_et_valider()
     historique = client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()
-    assert len(historique) == 2 and historique[0]["actuelle"] and not historique[1]["actuelle"]
+    # Deux logos envoyés, puis le logo Contretemps, toujours proposé.
+    assert len(historique) == 3 and historique[0]["actuelle"] and not historique[1]["actuelle"]
+    assert historique[2] == {"fichier": "defaut", "version": 0, "actuelle": False, "defaut": True}
     ancien, actuel = historique[1]["fichier"], historique[0]["fichier"]
     assert client.get(f"/ecoles/{ecole.id}/personnalisation/{ancien}").status_code == 200
 
@@ -246,12 +248,17 @@ def test_historique_des_logos(client, ecole):
     assert vue["logo_personnalise"] is True
     assert [i["fichier"] for i in client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json() if i["actuelle"]] == [ancien]
     assert client.delete(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique/{actuel}").status_code == 204
-    assert len(client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()) == 1
+    assert len(client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()) == 2
+    assert client.delete(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique/defaut").status_code == 400
 
-    # Revenir au défaut garde l'historique.
-    client.post(f"/ecoles/{ecole.id}/personnalisation/defaut")
+    # Revenir au défaut remet le logo Contretemps et garde l'historique.
+    assert client.post(f"/ecoles/{ecole.id}/personnalisation/defaut").json()["logo_personnalise"] is False
     historique = client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()
-    assert [i["actuelle"] for i in historique] == [False]
+    assert [i["actuelle"] for i in historique] == [False, True]
+
+    # Le logo Contretemps se remet aussi d'un clic, comme un autre.
+    client.post(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique/{ancien}")
+    assert client.post(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique/defaut").json()["logo_personnalise"] is False
 
 
 def test_police_du_nom(client, ecole):

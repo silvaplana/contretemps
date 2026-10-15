@@ -38,6 +38,8 @@ DEFAUTS = {
     "couleur_accent": "#D8722A",
 }
 # Polices hébergées (frontend/public/fonts, licence SIL OFL) ; vide = système.
+# Le logo Contretemps dans l'historique des logos (voir historique).
+LOGO_DEFAUT = "defaut"
 POLICES = {"montserrat", "poppins", "prompt", "nunito", "josefin-sans", "playfair-display"}
 # Pour le nom de l'école seulement : en plus, une écriture manuscrite,
 # illisible pour des textes courants (demande du 2026-10-15).
@@ -304,12 +306,24 @@ class Personnalisation:
             correspondance = _IMAGE_GARDEE.match(chemin.name)
             if correspondance and not correspondance.group(3):
                 resultat.append({"fichier": chemin.name, "version": int(correspondance.group(2)), "actuelle": chemin.name == en_place})
-        return sorted(resultat, key=lambda image: image["version"], reverse=True)
+        resultat.sort(key=lambda image: image["version"], reverse=True)
+        if type_image == "logo":
+            # Le logo Contretemps reste toujours proposé, en dernier, et ne
+            # peut pas être supprimé (demande du 2026-10-15).
+            resultat.append({"fichier": LOGO_DEFAUT, "version": 0, "actuelle": not ecole.logo, "defaut": True})
+        return resultat
 
     def reprendre_image(self, db: Session, ecole: Ecole, type_image: str, fichier: str) -> Ecole:
         """Remet en place une image de l'historique."""
         if fichier not in {image["fichier"] for image in self.historique(ecole, type_image)}:
             raise PersonnalisationRefusee("Cette image n'existe plus.")
+        if fichier == LOGO_DEFAUT:
+            ecole.logo = ecole.logo_original = ecole.logo_detourage = None
+            ecole.personnalisation_version = (ecole.personnalisation_version or 1) + 1
+            db.commit()
+            shutil.rmtree(self._dossier(ecole.id) / "icones", ignore_errors=True)
+            db.refresh(ecole)
+            return ecole
         original = fichier.replace(".png", "-original.png")
         if not (self._dossier(ecole.id) / original).exists():
             original = fichier
@@ -328,6 +342,8 @@ class Personnalisation:
         images = {image["fichier"]: image for image in self.historique(ecole, type_image)}
         if fichier not in images:
             raise PersonnalisationRefusee("Cette image n'existe plus.")
+        if images[fichier].get("defaut"):
+            raise PersonnalisationRefusee("Le logo Contretemps ne peut pas être supprimé.")
         if images[fichier]["actuelle"]:
             raise PersonnalisationRefusee("C'est l'image en place : choisissez-en une autre d'abord.")
         dossier = self._dossier(ecole.id)
