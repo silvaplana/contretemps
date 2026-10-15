@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { mettreAJour, POLICES, urlFichier, urlLogo, urlNomImage } from '../../api/apparence.js'
+import { familleDuNom, mettreAJour, POLICES, POLICES_NOM, urlFichier, urlLogo, urlNomImage } from '../../api/apparence.js'
 import * as personnalisationApi from '../../api/personnalisation.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -40,6 +40,7 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
       couleurTexte: vue.couleurTexte,
       couleurAccent: vue.couleurAccent,
       police: vue.police ?? '',
+      policeNom: vue.policeNom ?? '',
     })
     setAdresse(vue.sousDomaine)
   }
@@ -161,7 +162,8 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
   }
 
   // L'aperçu suit les champs en cours de saisie, sur les images enregistrées.
-  const apercu = enPlace && champs ? { ...enPlace, ...champs, police: champs.police || null } : null
+  const apercu =
+    enPlace && champs ? { ...enPlace, ...champs, police: champs.police || null, policeNom: champs.policeNom || null } : null
   const famille = (POLICES.find((p) => p.cle === (champs?.police ?? '')) ?? POLICES[0]).famille
   const contrasteFaible = champs && contraste(champs.couleurTexte, champs.couleurFond) < 4.5
 
@@ -194,7 +196,12 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
             {apercu.nomMode === 'image' && urlNomImage(apercu) ? (
               <img src={urlNomImage(apercu)} alt={apercu.nom} className="perso__connexion-nom-image" />
             ) : (
-              <strong className="perso__connexion-nom">{apercu.nom}</strong>
+              <strong
+                className={`perso__connexion-nom ${apercu.policeNom === 'great-vibes' ? 'perso__connexion-nom--manuscrit' : ''}`}
+                style={{ fontFamily: familleDuNom(apercu) }}
+              >
+                {apercu.nom}
+              </strong>
             )}
             <span>{apercu.slogan}</span>
             <span className="perso__connexion-bouton" style={{ background: apercu.couleurAccent }}>
@@ -362,6 +369,33 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
             <button type="button" className="btn--link" onClick={() => choixNom.current?.click()}>
               Changer l’image du nom
             </button>
+          )}
+          {/* Police du nom écrit en texte (demande du 2026-10-15), dont
+              Great Vibes, l'écriture du site de l'école. */}
+          {champs.nomMode === 'texte' && (
+            <>
+              <span className="perso__sous-label">Police du nom</span>
+              <div className="perso__polices" role="radiogroup" aria-label="Police du nom">
+                {POLICES_NOM.map((p) => (
+                  <button
+                    key={p.cle || 'appli'}
+                    type="button"
+                    role="radio"
+                    aria-checked={(champs.policeNom ?? '') === p.cle}
+                    className={`perso__police ${(champs.policeNom ?? '') === p.cle ? 'is-active' : ''}`}
+                    onClick={() => changer('policeNom', p.cle)}
+                  >
+                    <span
+                      className={p.cle === 'great-vibes' ? 'perso__police--manuscrit' : undefined}
+                      style={{ fontFamily: p.famille ?? famille }}
+                    >
+                      {apercu.nom}
+                    </span>
+                    <small>{p.nom}</small>
+                  </button>
+                ))}
+              </div>
+            </>
           )}
           <Historique
             ecoleId={ecole.id}

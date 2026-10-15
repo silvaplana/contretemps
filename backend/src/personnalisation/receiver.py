@@ -32,6 +32,7 @@ class PersonnalisationModification(BaseModel):
     couleur_texte: str | None = None
     couleur_accent: str | None = None
     police: str | None = None
+    police_nom: str | None = None
 
 
 class AdresseModification(BaseModel):

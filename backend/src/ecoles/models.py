@@ -54,6 +54,9 @@ class Ecole(Base):
     couleur_texte: Mapped[str | None] = mapped_column(String(7), nullable=True)
     couleur_accent: Mapped[str | None] = mapped_column(String(7), nullable=True)
     police: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Police du nom de l'école écrit en texte (ex. Great Vibes, l'écriture
+    # du site de l'école) ; vide = la même police que l'appli.
+    police_nom: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Adresse web : https://<sous_domaine>.contretemps.silvaplana.cloud
     # (voir personnalisation/adresse.py). L'ancienne redirige 6 mois.
     sous_domaine: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)

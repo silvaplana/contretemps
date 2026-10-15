@@ -17,6 +17,20 @@ export const POLICES = [
   { cle: 'playfair-display', nom: 'Playfair Display', famille: "'Playfair Display', Georgia, serif" },
 ]
 
+// Police du nom de l'école écrit en texte : vide = celle de l'appli. En plus
+// des précédentes, une écriture manuscrite (celle du site de l'école),
+// réservée au nom : illisible pour des textes courants.
+export const POLICES_NOM = [
+  { cle: '', nom: 'Comme l’appli', famille: null },
+  { cle: 'great-vibes', nom: 'Great Vibes', famille: "'Great Vibes', cursive" },
+  ...POLICES.slice(1),
+]
+
+export function familleDuNom(apparence) {
+  const police = POLICES_NOM.find((p) => p.cle === (apparence.policeNom ?? ''))
+  return police?.famille ?? undefined
+}
+
 export const DEFAUT = {
   ecoleId: null,
   nom: 'Contretemps',
@@ -27,6 +41,7 @@ export const DEFAUT = {
   couleurTexte: '#3A2410',
   couleurAccent: '#D8722A',
   police: null,
+  policeNom: null,
   logoPersonnalise: false,
   nomImage: false,
   version: 0,
@@ -45,6 +60,7 @@ export function versEcran(v) {
     couleurTexte: v.couleur_texte,
     couleurAccent: v.couleur_accent,
     police: v.police,
+    policeNom: v.police_nom,
     logoPersonnalise: v.logo_personnalise,
     nomImage: v.nom_image,
     version: v.version,

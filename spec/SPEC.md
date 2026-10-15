@@ -791,6 +791,10 @@ Elle contient, dans cet ordre :
 - **Nom de l'école**, au choix :
   - *Texte* : le nom de l'école (§6.1), écrit dans la police de l'appli ;
   - *Image* : le nom dessiné, avec sa propre graphie ;
+  - en *Texte*, une **police du nom** à part (demande du 2026-10-15) : « Comme l'appli » par
+    défaut, ou une des polices de la liste, ou **Great Vibes**, l'écriture manuscrite du site et des
+    documents de l'école (vérifié dans son PDF : Great Vibes pour le titre, Poppins pour le reste),
+    réservée au nom car illisible pour des textes courants ;
 - **Slogan** (texte, une ligne, 80 caractères au plus), à la place de « Gestion d'école de
   danse du cours au gala » ;
 - **Couleurs** : *fond*, *texte* et *accent* (boutons, bandeaux, onglet actif : l'orange

@@ -6,7 +6,7 @@ import * as auth from '../api/auth.js'
 import * as notificationsApi from '../api/notifications.js'
 import { ROLE_LABEL } from '../data/roles.js'
 import { identifiantPropose } from '../utils/lienRecu.js'
-import { urlNomImage, useApparence } from '../api/apparence.js'
+import { familleDuNom, urlNomImage, useApparence } from '../api/apparence.js'
 
 // Écran de connexion (voir spec/SPEC.md §2.2) : une seule page pour toutes
 // les écoles. Nom prénom ou email, et le mot de passe personnel (créé à
@@ -62,7 +62,9 @@ export default function LoginScreen({ onLogin }) {
         {apparence.nomMode === 'image' && urlNomImage(apparence) ? (
           <img className="login-screen__nom-image" src={urlNomImage(apparence)} alt={apparence.nom} />
         ) : (
-          <h1>{apparence.nom}</h1>
+          <h1 className={apparence.policeNom === 'great-vibes' ? 'login-screen__nom-manuscrit' : undefined} style={{ fontFamily: familleDuNom(apparence) }}>
+            {apparence.nom}
+          </h1>
         )}
         <p>{apparence.slogan}</p>
       </div>

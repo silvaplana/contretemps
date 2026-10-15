@@ -252,3 +252,11 @@ def test_historique_des_logos(client, ecole):
     client.post(f"/ecoles/{ecole.id}/personnalisation/defaut")
     historique = client.get(f"/ecoles/{ecole.id}/personnalisation/images/logo/historique").json()
     assert [i["actuelle"] for i in historique] == [False]
+
+
+def test_police_du_nom(client, ecole):
+    vue = client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police_nom": "great-vibes"}).json()
+    assert vue["police_nom"] == "great-vibes"
+    # Réservée au nom : pas comme police de toute l'appli.
+    assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police": "great-vibes"}).status_code == 400
+    assert client.post(f"/ecoles/{ecole.id}/personnalisation/defaut").json()["police_nom"] is None

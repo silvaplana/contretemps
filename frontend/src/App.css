@@ -3594,3 +3594,18 @@ a.btn {
   border-color: var(--accent);
   cursor: default;
 }
+
+/* Écriture manuscrite (Great Vibes) : plus grande pour rester lisible. */
+.login-screen h1.login-screen__nom-manuscrit {
+  font-size: 3rem;
+  font-weight: 400;
+}
+
+.perso__connexion-nom--manuscrit {
+  font-size: 34px;
+  font-weight: 400;
+}
+
+.perso__police span.perso__police--manuscrit {
+  font-size: 24px;
+}

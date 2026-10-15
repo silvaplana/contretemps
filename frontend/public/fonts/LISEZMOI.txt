@@ -1,5 +1,6 @@
 Polices proposées dans Admin > École > Personnalisation de l'application
-(spec §5.1.1) : Montserrat, Poppins, Nunito, Josefin Sans, Playfair Display.
+(spec §5.1.1) : Montserrat, Poppins, Nunito, Josefin Sans, Playfair Display,
+et, pour le nom de l'école seulement, Great Vibes (graisse 400).
 Fichiers woff2 (alphabet latin, graisses 400 et 700) récupérés le 2026-10-15
 sur Google Fonts. Licence : SIL Open Font License 1.1
 (https://openfontlicense.org). Déclarées dans src/index.css (@font-face) :
