@@ -201,6 +201,27 @@ def test_corbeille_et_restauration(client, ecole):
     assert _par_nom(prof.racine(dossier=saison))["Photos"]["child_count"] == 1
 
 
+def test_vider_la_corbeille(client, ecole, stockage):
+    prof = Docs(client, ecole["id"], ecole["prof"])
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    saison = _saison(prof)["id"]
+    photos = prof.dossier("Photos", saison).json()["id"]
+    prof.fichier("gala.jpg", photos, contenu=b"photo du gala")
+    prof.supprimer(photos)
+    admin.supprimer(admin.dossier("Brouillons admin", saison).json()["id"])
+    fichiers_avant = [f for f in stockage.rglob("*") if f.is_file()]
+    assert fichiers_avant
+
+    # Le prof ne vide que ce qu'il a supprimé lui-même.
+    vide = client.delete(f"{prof.base}/spaces/private/trash", headers=prof.h)
+    assert vide.status_code == 200 and vide.json() == {"erased": 1}
+    assert prof.get("/spaces/private/trash").json() == []
+    assert [e["name"] for e in admin.get("/spaces/private/trash").json()] == ["Brouillons admin"]
+    # Plus restaurable, et le fichier a quitté le disque.
+    assert client.post(f"{prof.base}/nodes/{photos}/restore", headers=prof.h).status_code == 404
+    assert not [f for f in stockage.rglob("*") if f.is_file() and f.read_bytes() == b"photo du gala"]
+
+
 def test_noms_en_double(client, ecole):
     prof = Docs(client, ecole["id"], ecole["prof"])
     saison = _saison(prof)["id"]

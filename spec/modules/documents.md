@@ -376,6 +376,12 @@ sur ordinateur, et d'un appareil à l'autre :
 - au changement de saison, si le dernier endroit était dans la saison qui vient de se clore, on
   propose « Aller à la saison en cours ».
 
+*Fait dans Contretemps le 2026-10-15, première version* (Seb : « stocker pour l'utilisateur dans ses
+données locales ») : l'espace et le dossier sont gardés **sur l'appareil** (`localStorage`, une clé par
+école et par profil, donnée par l'appli hôte : prop `memoire` de l'explorateur). Dossier disparu : retour
+à la racine, puis à Privé. Pas encore : `doc_member_state` côté serveur (d'un appareil à l'autre),
+l'aperçu ouvert, le bandeau d'explication.
+
 ## 5. Types de documents vivants
 
 ### 5.1 Déclaration côté backend
@@ -1257,6 +1263,9 @@ vérifiées en revue :
   avec les trois boutons de navigation et sur un iPhone.
 - **Contraste** AA minimum (4,5:1), y compris en mode sombre.
 - **Erreurs rattrapables** : Annuler pendant 10 s plutôt que des confirmations ; corbeille 30 jours.
+  **Vider la corbeille** (Seb, 15 octobre) : bouton dans la corbeille, efface tout de suite et pour de bon
+  ce que la personne y voit (admins : tout ; les autres : ce qu'ils ont supprimé) ; seule action du module
+  avec une question de confirmation, car rien ne peut plus la rattraper (`DELETE /spaces/{espace}/trash`).
 - **Test** : sur 2 ou 3 vrais membres du club, sur leur propre téléphone, avant de valider l'étape 2.
 
 ### 6.1 Place dans la navigation (règle IHM)
@@ -1437,9 +1446,10 @@ bulle au survol sur ordinateur et à l'appui long sur téléphone.
 **Écran principal** : deux boutons flottants au-dessus de la barre du bas :
 
 - **gros bouton + orange** en bas à droite (66 px, même style que le `.fab` de Contretemps, couleur
-  `--accent` de l'appli) : ouvre « Que voulez-vous faire ? » avec trois sections
-  dépliables **Informer / Questionner / Agir**, chacune avec ses modèles en tuiles, puis « Ou simplement » :
-  **Créer un dossier** et **Créer un fichier** (fichier vierge : sa famille se déduit ensuite de ce qu'on y
+  `--accent` de l'appli) : ouvre « Que voulez-vous faire ? ». **Ordre (Seb, 15 octobre)** : en haut
+  **Créer un fichier** et **Créer un dossier**, puis **Importer un fichier ou une photo**, puis les trois
+  sections dépliables **Informer / Questionner / Agir**, **fermées au départ**, chacune avec ses modèles en
+  tuiles. Sous-titres avec une majuscule (« À lire, personne ne répond »…). **Créer un dossier** et **Créer un fichier** (fichier vierge : sa famille se déduit ensuite de ce qu'on y
   met, rien à choisir à la création), et un lien « Importer un fichier ou une photo ». Tuiles = modèles, libellées par un **verbe** (ce qu'on veut faire) :
   - *Informer* (Seb, 15 octobre) : **Préparer le PowerPoint d'AG**, **Préparer le bilan financier d'AG**,
     **Faire un cours**, **Faire un dossier de subvention**, **Faire un prévisionnel financier**, **Faire un plan marketing**, **Faire une étude marketing**, **Faire une publi de blog**, **Faire une publi de photos** (Seb, 15 octobre), **Faire le site web public de l'asso** (A-site du §5.7, un seul par organisation, à la racine

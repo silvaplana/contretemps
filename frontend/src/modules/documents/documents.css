@@ -478,6 +478,23 @@
   height: 34px;
 }
 
+/* Bulle de l'assistant : plus petite, empilée juste au-dessus du +. */
+.dx-fab--assistant {
+  right: 25px;
+  bottom: calc(var(--bottom-nav-height) + 16px + 66px + 12px + env(safe-area-inset-bottom));
+  width: 48px;
+  height: 48px;
+  background: var(--card-bg);
+  color: var(--accent) !important;
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 4px 12px rgba(58, 36, 16, 0.15);
+}
+
+.dx-fab--assistant svg {
+  width: 26px;
+  height: 26px;
+}
+
 .dx-clip {
   position: fixed;
   left: 12px;
@@ -727,6 +744,22 @@
   background: transparent;
   color: var(--accent) !important;
   border: 1.5px solid var(--accent);
+}
+
+.dx-btn--danger {
+  background: var(--danger-text);
+  color: #fff !important;
+}
+
+/* Corbeille : « Vider la corbeille » puis sa question de confirmation. */
+.dx-trash-empty {
+  margin: 0 16px 16px;
+  width: calc(100% - 32px);
+}
+
+.dx-trash-empty p {
+  margin: 12px 0 0;
+  font-size: 17px;
 }
 
 .dx-btn--small {

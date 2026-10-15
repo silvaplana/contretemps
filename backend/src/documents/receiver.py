@@ -154,6 +154,10 @@ class DocumentsReceiver:
         def copy(org_id: int, node_id: int, data: CopyTarget, db: Session = db_dep, m: Member = member):
             return appel(lambda: self.client.copy(db, self._member(org_id, m), node_id, data.space, data.parent_id))
 
+        @self.app.delete(base + "/spaces/{space}/trash")
+        def empty_trash(org_id: int, space: str, db: Session = db_dep, m: Member = member):
+            return appel(lambda: {"erased": self.client.empty_trash(db, self._member(org_id, m), space)})
+
         @self.app.post(base + "/nodes/{node_id}/restore")
         def restore(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: self.client.restore(db, self._member(org_id, m), node_id))

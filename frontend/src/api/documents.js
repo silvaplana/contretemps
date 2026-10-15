@@ -41,6 +41,7 @@ export function documentsApi(orgId) {
     browse: (space, folderId) => appel(`${base}/spaces/${space}${folderId ? `?folder=${folderId}` : ''}`),
     search: (space, q) => appel(`${base}/spaces/${space}/search?q=${encodeURIComponent(q)}`),
     trash: (space) => appel(`${base}/spaces/${space}/trash`),
+    emptyTrash: (space) => appel(`${base}/spaces/${space}/trash`, { method: 'DELETE' }),
     detail: (id) => appel(`${base}/nodes/${id}`),
     createFolder: (space, parentId, name) => appel(`${base}/folders`, json('POST', { space, parent_id: parentId, name })),
     upload: (space, parentId, file) => {

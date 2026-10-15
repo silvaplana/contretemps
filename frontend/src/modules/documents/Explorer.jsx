@@ -7,7 +7,7 @@ import Properties from './Properties.jsx'
 import Share from './Share.jsx'
 import Trash from './Trash.jsx'
 import Viewer from './Viewer.jsx'
-import { FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
+import { BubbleIcon, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
 import { FAMILIES, STATUSES, isImage } from './kinds.js'
 import { subtitle } from './format.js'
 import './documents.css'
@@ -808,9 +808,21 @@ export default function Explorer({ orgId, memoire }) {
       )}
 
       {!panneauOuvert && (
-        <button type="button" className="dx-fab" onClick={() => setNouveau(true)} aria-label="Nouveau">
-          <PlusIcon />
-        </button>
+        <>
+          {/* Bulle de l'assistant, juste au-dessus du + (spec documents.md
+              §7.1 ter) : l'assistant arrive avec l'étape 5 bis du plan. */}
+          <button
+            type="button"
+            className="dx-fab dx-fab--assistant"
+            onClick={() => montrerToast('Bientôt : l’assistant arrive dans une prochaine version.')}
+            aria-label="Assistant"
+          >
+            <BubbleIcon />
+          </button>
+          <button type="button" className="dx-fab" onClick={() => setNouveau(true)} aria-label="Nouveau">
+            <PlusIcon />
+          </button>
+        </>
       )}
 
       <input
@@ -950,6 +962,8 @@ export default function Explorer({ orgId, memoire }) {
             recharger()
             montrerToast(`« ${x.name} » restauré`)
           }}
+          // Plus rien à annuler : l'ancien « Annuler » viserait du vide.
+          onEmptied={(n) => montrerToast(n > 1 ? `${n} éléments effacés pour de bon` : 'Effacé pour de bon')}
         />
       )}
 

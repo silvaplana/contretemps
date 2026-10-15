@@ -11,7 +11,7 @@ import { FAMILIES } from './kinds.js'
 
 const MODELES = {
   inform: {
-    hint: 'à lire, personne ne répond',
+    hint: 'À lire, personne ne répond',
     tiles: [
       'Préparer le PowerPoint d’AG',
       'Préparer le bilan financier d’AG',
@@ -26,9 +26,9 @@ const MODELES = {
       'Faire une publication web',
     ],
   },
-  question: { hint: 'chacun répond', tiles: ['Convoquer l’AG', 'Faire un sondage'] },
+  question: { hint: 'Chacun répond', tiles: ['Convoquer l’AG', 'Faire un sondage'] },
   act: {
-    hint: 'la réponse crée une inscription, un paiement…',
+    hint: 'La réponse crée une inscription, un paiement…',
     tiles: ['Ouvrir les inscriptions annuelles', 'Ouvrir les inscriptions au spectacle', 'Faire une note de frais'],
   },
 }

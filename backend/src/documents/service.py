@@ -812,17 +812,31 @@ class Documents:
             return node.owner_person_id == member.person_id
         return member.is_admin or member.is_superuser or node.deleted_by == member.person_id
 
-    def trash(self, db: Session, member: Member, space: str) -> list[dict]:
-        self._check_space(member, space)
-        self.purge(db, member.org_id)
+    def _trash_items(self, db: Session, member: Member, space: str) -> list[DocNode]:
+        """Ce que `member` voit dans la corbeille de l'espace : seulement ce
+        qui a été supprimé tel quel, pas le contenu d'un dossier supprimé
+        (il revient, ou part, avec son dossier)."""
         requete = select(DocNode).where(
             DocNode.org_id == member.org_id, DocNode.space == space, DocNode.deleted_at.is_not(None)
         ).order_by(DocNode.deleted_at.desc())
         elements = [n for n in db.scalars(requete) if self._may_see_in_trash(db, member, n)]
-        # Seulement ce qui a été supprimé tel quel, pas le contenu d'un
-        # dossier supprimé (il revient avec son dossier).
         ids = {n.id for n in elements}
-        elements = [n for n in elements if n.parent_id not in ids]
+        return [n for n in elements if n.parent_id not in ids]
+
+    def empty_trash(self, db: Session, member: Member, space: str) -> int:
+        """Vider la corbeille : efface pour de bon, tout de suite, ce que
+        `member` y voit (les admins : tout ; les autres : ce qu'ils ont
+        supprimé eux-mêmes). Renvoie le nombre d'éléments effacés."""
+        self._check_space(member, space)
+        elements = self._trash_items(db, member, space)
+        if elements:
+            self._erase(db, member.org_id, elements)
+        return len(elements)
+
+    def trash(self, db: Session, member: Member, space: str) -> list[dict]:
+        self._check_space(member, space)
+        self.purge(db, member.org_id)
+        elements = self._trash_items(db, member, space)
         noms = self.directory.person_names(db, member.org_id, {n.deleted_by for n in elements if n.deleted_by})
         return [
             {
@@ -847,9 +861,15 @@ class Documents:
         )
         if not vieux:
             return 0
+        return self._erase(db, org_id, vieux)
+
+    def _erase(self, db: Session, org_id: int, nodes: list[DocNode]) -> int:
+        """Efface pour de bon ces éléments et tout leur contenu, et les
+        fichiers stockés qui ne servent plus à personne."""
         a_effacer: list[DocNode] = []
-        for node in vieux:
+        for node in nodes:
             a_effacer += self._subtree(db, node)
+        a_effacer = list({n.id: n for n in a_effacer}.values())
         ids = {n.id for n in a_effacer}
         fichiers = set(db.scalars(select(DocVersion.stored_file_id).where(DocVersion.node_id.in_(ids))))
         for modele in (DocVersion, DocAcl, DocActivity):
