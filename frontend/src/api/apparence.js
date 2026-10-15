@@ -31,6 +31,12 @@ export function familleDuNom(apparence) {
   return police?.famille ?? undefined
 }
 
+// Même liste pour le slogan.
+export function familleDuSlogan(apparence) {
+  const police = POLICES_NOM.find((p) => p.cle === (apparence.policeSlogan ?? ''))
+  return police?.famille ?? undefined
+}
+
 export const DEFAUT = {
   ecoleId: null,
   nom: 'Contretemps',
@@ -42,6 +48,7 @@ export const DEFAUT = {
   couleurAccent: '#D8722A',
   police: null,
   policeNom: null,
+  policeSlogan: null,
   logoPersonnalise: false,
   nomImage: false,
   version: 0,
@@ -61,6 +68,7 @@ export function versEcran(v) {
     couleurAccent: v.couleur_accent,
     police: v.police,
     policeNom: v.police_nom,
+    policeSlogan: v.police_slogan,
     logoPersonnalise: v.logo_personnalise,
     nomImage: v.nom_image,
     version: v.version,

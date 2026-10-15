@@ -3609,3 +3609,8 @@ a.btn {
 .perso__police span.perso__police--manuscrit {
   font-size: 24px;
 }
+
+.login-screen p.login-screen__slogan-manuscrit,
+.perso__connexion-slogan--manuscrit {
+  font-size: 1.6rem;
+}

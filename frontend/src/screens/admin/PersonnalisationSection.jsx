@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { familleDuNom, mettreAJour, POLICES, POLICES_NOM, urlFichier, urlLogo, urlNomImage } from '../../api/apparence.js'
+import { familleDuNom, familleDuSlogan, mettreAJour, POLICES, POLICES_NOM, urlFichier, urlLogo, urlNomImage } from '../../api/apparence.js'
 import * as personnalisationApi from '../../api/personnalisation.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
@@ -41,6 +41,7 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
       couleurAccent: vue.couleurAccent,
       police: vue.police ?? '',
       policeNom: vue.policeNom ?? '',
+      policeSlogan: vue.policeSlogan ?? '',
     })
     setAdresse(vue.sousDomaine)
   }
@@ -163,7 +164,13 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
 
   // L'aperçu suit les champs en cours de saisie, sur les images enregistrées.
   const apercu =
-    enPlace && champs ? { ...enPlace, ...champs, police: champs.police || null, policeNom: champs.policeNom || null } : null
+    enPlace && champs ? {
+          ...enPlace,
+          ...champs,
+          police: champs.police || null,
+          policeNom: champs.policeNom || null,
+          policeSlogan: champs.policeSlogan || null,
+        } : null
   const famille = (POLICES.find((p) => p.cle === (champs?.police ?? '')) ?? POLICES[0]).famille
   const contrasteFaible = champs && contraste(champs.couleurTexte, champs.couleurFond) < 4.5
 
@@ -203,7 +210,12 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
                 {apercu.nom}
               </strong>
             )}
-            <span>{apercu.slogan}</span>
+            <span
+              className={apercu.policeSlogan === 'great-vibes' ? 'perso__connexion-slogan--manuscrit' : undefined}
+              style={{ fontFamily: familleDuSlogan(apercu) }}
+            >
+              {apercu.slogan}
+            </span>
             <span className="perso__connexion-bouton" style={{ background: apercu.couleurAccent }}>
               Se connecter
             </span>
@@ -375,26 +387,13 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
           {champs.nomMode === 'texte' && (
             <>
               <span className="perso__sous-label">Police du nom</span>
-              <div className="perso__polices" role="radiogroup" aria-label="Police du nom">
-                {POLICES_NOM.map((p) => (
-                  <button
-                    key={p.cle || 'appli'}
-                    type="button"
-                    role="radio"
-                    aria-checked={(champs.policeNom ?? '') === p.cle}
-                    className={`perso__police ${(champs.policeNom ?? '') === p.cle ? 'is-active' : ''}`}
-                    onClick={() => changer('policeNom', p.cle)}
-                  >
-                    <span
-                      className={p.cle === 'great-vibes' ? 'perso__police--manuscrit' : undefined}
-                      style={{ fontFamily: p.famille ?? famille }}
-                    >
-                      {apercu.nom}
-                    </span>
-                    <small>{p.nom}</small>
-                  </button>
-                ))}
-              </div>
+              <ChoixPolice
+                libelle="Police du nom"
+                valeur={champs.policeNom}
+                texte={apercu.nom}
+                familleParDefaut={famille}
+                onChoisir={(cle) => changer('policeNom', cle)}
+              />
             </>
           )}
           <Historique
@@ -431,6 +430,14 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
             maxLength={80}
             value={champs.slogan}
             onChange={(e) => changer('slogan', e.target.value)}
+          />
+          <span className="perso__sous-label">Police du slogan</span>
+          <ChoixPolice
+            libelle="Police du slogan"
+            valeur={champs.policeSlogan}
+            texte={champs.slogan || apercu.nom}
+            familleParDefaut={famille}
+            onChoisir={(cle) => changer('policeSlogan', cle)}
           />
 
           <span className="perso__label">Couleurs</span>
@@ -509,6 +516,33 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
         </button>
       )}
     </section>
+  )
+}
+
+// Choix de la police du nom ou du slogan : « Comme l'appli », une des
+// polices de la liste, ou Great Vibes (l'écriture du site de l'école).
+function ChoixPolice({ libelle, valeur, texte, familleParDefaut, onChoisir }) {
+  return (
+    <div className="perso__polices" role="radiogroup" aria-label={libelle}>
+      {POLICES_NOM.map((p) => (
+        <button
+          key={p.cle || 'appli'}
+          type="button"
+          role="radio"
+          aria-checked={(valeur ?? '') === p.cle}
+          className={`perso__police ${(valeur ?? '') === p.cle ? 'is-active' : ''}`}
+          onClick={() => onChoisir(p.cle)}
+        >
+          <span
+            className={p.cle === 'great-vibes' ? 'perso__police--manuscrit' : undefined}
+            style={{ fontFamily: p.famille ?? familleParDefaut }}
+          >
+            {texte}
+          </span>
+          <small>{p.nom}</small>
+        </button>
+      ))}
+    </div>
   )
 }
 

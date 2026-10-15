@@ -32,6 +32,7 @@ export async function modifier(ecoleId, champs) {
     couleur_accent: champs.couleurAccent,
     police: champs.police || null,
     police_nom: champs.policeNom || null,
+    police_slogan: champs.policeSlogan || null,
   }
   return versEcran(await requete(`/ecoles/${ecoleId}/personnalisation`, { method: 'PATCH', body: JSON.stringify(corps) }))
 }

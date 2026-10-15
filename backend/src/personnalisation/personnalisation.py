@@ -99,7 +99,7 @@ class Personnalisation:
                 "ecole_id": None, "sous_domaine": GENERIQUE, "nom": "Contretemps", "nom_appli": "Contretemps",
                 "nom_mode": "texte", "slogan": DEFAUTS["slogan"], "couleur_fond": DEFAUTS["couleur_fond"],
                 "couleur_texte": DEFAUTS["couleur_texte"], "couleur_accent": DEFAUTS["couleur_accent"],
-                "police": None, "police_nom": None, "logo_personnalise": False, "nom_image": False, "version": 0,
+                "police": None, "police_nom": None, "police_slogan": None, "logo_personnalise": False, "nom_image": False, "version": 0,
                 "adresse": f"https://{GENERIQUE}.{DOMAINE_ECOLES}",
             }
         return {
@@ -114,6 +114,7 @@ class Personnalisation:
             "couleur_accent": ecole.couleur_accent or DEFAUTS["couleur_accent"],
             "police": ecole.police,
             "police_nom": ecole.police_nom,
+            "police_slogan": ecole.police_slogan,
             "logo_personnalise": bool(ecole.logo),
             "nom_image": bool(ecole.nom_image),
             "version": ecole.personnalisation_version or 1,
@@ -147,7 +148,7 @@ class Personnalisation:
                 if valeur and not _COULEUR.match(valeur):
                     raise PersonnalisationRefusee("Une couleur s'écrit #RRGGBB (ex. #D8722A).")
                 champs[cle] = valeur.upper() or None
-        for cle, permises in (("police", POLICES), ("police_nom", POLICES_NOM)):
+        for cle, permises in (("police", POLICES), ("police_nom", POLICES_NOM), ("police_slogan", POLICES_NOM)):
             if cle in champs:
                 police = (champs[cle] or "").strip() or None
                 if police is not None and police not in permises:
@@ -174,7 +175,7 @@ class Personnalisation:
         for cle in (
             "logo", "logo_original", "logo_detourage", "nom_image", "nom_image_original",
             "nom_image_detourage", "slogan", "couleur_fond", "couleur_texte", "couleur_accent", "police",
-            "police_nom",
+            "police_nom", "police_slogan",
         ):
             setattr(ecole, cle, None)
         ecole.nom_mode = "texte"
