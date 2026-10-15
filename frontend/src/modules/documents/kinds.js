@@ -38,3 +38,15 @@ export function isImage(item) {
 export function isPdf(item) {
   return item.mime === 'application/pdf'
 }
+
+const extension = (item) => (item.name.match(/\.[^.]+$/)?.[0] ?? '').toLowerCase()
+
+// Texte brut : affiché et modifiable dans l'appli.
+export function isTexte(item) {
+  return ['.txt', '.md', '.csv', '.log'].includes(extension(item)) || (item.mime ?? '').startsWith('text/plain')
+}
+
+// Word, Excel, PowerPoint (et OpenDocument) : aperçu en PDF fait par le serveur.
+export function isOffice(item) {
+  return ['.doc', '.docx', '.odt', '.rtf', '.xls', '.xlsx', '.ods', '.ppt', '.pptx', '.odp'].includes(extension(item))
+}

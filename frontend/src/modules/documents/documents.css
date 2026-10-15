@@ -1717,3 +1717,47 @@
 .dx-chat-bas .dx-chat__haut {
   padding-top: 2px;
 }
+
+/* Fichier texte affiché (et modifié) dans la visionneuse. */
+.dx-viewer__texte {
+  width: 100%;
+  max-width: 900px;
+  min-height: 60vh;
+  margin: 0 auto;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: 16px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  text-align: left;
+  user-select: text;
+  -webkit-user-select: text;
+  box-sizing: border-box;
+}
+
+.dx-viewer__texte--edition {
+  resize: vertical;
+  border: 2px solid var(--accent);
+}
+
+.dx-tuile a.dx-btn {
+  display: grid;
+  place-items: center;
+  text-decoration: none;
+}
+
+.dx-footer--rang {
+  display: flex;
+  gap: 10px;
+  max-width: 900px;
+  width: 100%;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+
+.dx-footer--rang .dx-btn {
+  flex: 1;
+}

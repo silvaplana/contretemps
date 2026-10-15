@@ -1052,7 +1052,17 @@ export default function Explorer({ orgId, memoire }) {
       )}
 
       {vue && (
-        <Viewer api={api} item={vue} onClose={() => setVue(null)} onMore={(x) => setFeuille(x)} onDownload={telecharger} />
+        <Viewer
+          api={api}
+          item={vue}
+          onClose={() => setVue(null)}
+          onMore={(x) => setFeuille(x)}
+          onDownload={telecharger}
+          onSaved={(x) => {
+            recharger()
+            montrerToast(`« ${x.name} » enregistré`)
+          }}
+        />
       )}
 
       {proprietes && (

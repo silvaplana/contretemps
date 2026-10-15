@@ -14,11 +14,16 @@ WORKDIR /app
 # (ex. "✓", la coche du règlement intérieur, voir dossier_html.py) sans
 # une police les couvrant — bug constaté en prod, invisible en dev local
 # (dont les polices système couvrent déjà ces caractères).
+# LibreOffice sans écran : aperçu en PDF des fichiers Word, Excel et
+# PowerPoint de l'onglet Documents (voir documents/preview.py).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     fonts-liberation \
     fonts-dejavu-core \
     libcairo2 \
+    libreoffice-writer-nogui \
+    libreoffice-calc-nogui \
+    libreoffice-impress-nogui \
     && rm -rf /var/lib/apt/lists/*
 
 # Détourage par IA du logo (voir personnalisation/ia.py) : le modèle (environ

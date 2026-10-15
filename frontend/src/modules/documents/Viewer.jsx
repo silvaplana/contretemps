@@ -1,22 +1,32 @@
 import { useEffect, useState } from 'react'
 import { FileIcon, StatusBadge } from './icons.jsx'
-import { isImage, isPdf } from './kinds.js'
+import { isImage, isOffice, isPdf, isTexte } from './kinds.js'
 import { subtitle } from './format.js'
 
-// Ouvrir un fichier importé (spec documents.md §7.2) : photo en grand, PDF
-// dans la page (sur ordinateur), sinon une grande tuile avec Télécharger.
-// Le contenu est lu avec la session puis montré par une URL blob:.
+// Ouvrir un fichier (spec documents.md §7.2) : photo en grand ; PDF dans la
+// page ; Word, Excel, PowerPoint montrés par leur aperçu PDF (fait par le
+// serveur avec LibreOffice) ; texte (.txt, .md, .csv) affiché, et
+// modifiable par qui peut modifier (« Enregistrer » crée une nouvelle
+// version, l'ancienne reste dans l'historique). Sinon une grande tuile avec
+// Télécharger. Le contenu est lu avec la session puis montré par une URL blob:.
 
-export default function Viewer({ api, item, onClose, onMore, onDownload }) {
+export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved }) {
   const [url, setUrl] = useState(null)
+  const [texte, setTexte] = useState(null)
+  const [brouillon, setBrouillon] = useState(null) // non null : en modification
+  const [enregistrement, setEnregistrement] = useState(false)
   const [erreur, setErreur] = useState('')
-  const apercu = isImage(item) || isPdf(item)
+  const office = isOffice(item)
+  const enPdf = isPdf(item) || office
+  const apercu = isImage(item) || enPdf
+  const estTexte = isTexte(item)
+  const modifiable = estTexte && item.level !== 'view' && !item.closed_period && !item.frozen
 
   useEffect(() => {
     if (!apercu) return undefined
     let lien = null
     let annule = false
-    api.blobUrl(item.id).then(
+    api.blobUrl(item.id, { preview: office }).then(
       (u) => {
         if (annule) URL.revokeObjectURL(u)
         else setUrl((lien = u))
@@ -27,7 +37,34 @@ export default function Viewer({ api, item, onClose, onMore, onDownload }) {
       annule = true
       if (lien) URL.revokeObjectURL(lien)
     }
-  }, [api, item.id, apercu])
+  }, [api, item.id, apercu, office])
+
+  useEffect(() => {
+    if (!estTexte) return undefined
+    let annule = false
+    api.texte(item.id).then(
+      (t) => !annule && setTexte(t),
+      (e) => !annule && setErreur(e.message),
+    )
+    return () => {
+      annule = true
+    }
+  }, [api, item.id, estTexte])
+
+  async function enregistrer() {
+    setEnregistrement(true)
+    setErreur('')
+    try {
+      await api.newVersion(item.id, new File([brouillon], item.name, { type: 'text/plain' }))
+      setTexte(brouillon)
+      setBrouillon(null)
+      onSaved?.(item)
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setEnregistrement(false)
+    }
+  }
 
   return (
     <div className="dx-panel dx-viewer" role="dialog" aria-label={item.name}>
@@ -39,24 +76,61 @@ export default function Viewer({ api, item, onClose, onMore, onDownload }) {
       <div className="dx-viewer__body">
         {erreur && <p className="dx-error">{erreur}</p>}
         {isImage(item) && url && <img className="dx-viewer__img" src={url} alt={item.name} />}
-        {isPdf(item) && url && (
+        {enPdf && url && (
           <object className="dx-viewer__pdf" data={url} type="application/pdf" aria-label={item.name}>
-            <Tuile item={item} onDownload={onDownload} />
+            <Tuile item={item} onDownload={onDownload} apercuUrl={url} />
           </object>
         )}
-        {!apercu && <Tuile item={item} onDownload={onDownload} />}
-        {apercu && !url && !erreur && <p className="dx-muted">Chargement…</p>}
+        {office && erreur && <Tuile item={item} onDownload={onDownload} />}
+        {estTexte &&
+          (brouillon != null ? (
+            <textarea
+              className="dx-viewer__texte dx-viewer__texte--edition"
+              value={brouillon}
+              onChange={(e) => setBrouillon(e.target.value)}
+              autoFocus
+              spellCheck
+            />
+          ) : (
+            texte != null && <pre className="dx-viewer__texte">{texte || '(fichier vide)'}</pre>
+          ))}
+        {!apercu && !estTexte && <Tuile item={item} onDownload={onDownload} />}
+        {((apercu && !url) || (estTexte && texte == null)) && !erreur && (
+          <p className="dx-muted">{office ? 'Préparation de l’aperçu…' : 'Chargement…'}</p>
+        )}
       </div>
-      {apercu && (
-        <div className="dx-footer">
-          <button type="button" className="dx-btn dx-btn--ghost" onClick={() => onDownload(item)}>Télécharger</button>
+      {((apercu && !(office && erreur)) || estTexte) && (
+        <div className="dx-footer dx-footer--rang">
+          {brouillon != null ? (
+            <>
+              <button type="button" className="dx-btn dx-btn--ghost" disabled={enregistrement} onClick={() => setBrouillon(null)}>
+                Annuler
+              </button>
+              <button type="button" className="dx-btn" disabled={enregistrement || brouillon === texte} onClick={enregistrer}>
+                {enregistrement ? 'Enregistrement…' : 'Enregistrer'}
+              </button>
+            </>
+          ) : (
+            <>
+              {modifiable && texte != null && (
+                <button type="button" className="dx-btn" onClick={() => setBrouillon(texte)}>
+                  Modifier
+                </button>
+              )}
+              <button type="button" className="dx-btn dx-btn--ghost" onClick={() => onDownload(item)}>
+                Télécharger
+              </button>
+            </>
+          )}
         </div>
       )}
     </div>
   )
 }
 
-function Tuile({ item, onDownload }) {
+// Quand l'aperçu ne s'affiche pas dans la page (PDF sur certains
+// téléphones) : l'ouvrir dans un nouvel onglet, ou télécharger le fichier.
+function Tuile({ item, onDownload, apercuUrl }) {
   return (
     <div className="dx-tuile">
       <FileIcon name={item.name} family={item.family} />
@@ -64,7 +138,14 @@ function Tuile({ item, onDownload }) {
       <div className="dx-s">
         {item.status && <StatusBadge status={item.status} />} {subtitle(item)}
       </div>
-      <button type="button" className="dx-btn" onClick={() => onDownload(item)}>Télécharger</button>
+      {apercuUrl && (
+        <a className="dx-btn" href={apercuUrl} target="_blank" rel="noreferrer">
+          Voir l’aperçu
+        </a>
+      )}
+      <button type="button" className={`dx-btn${apercuUrl ? ' dx-btn--ghost' : ''}`} onClick={() => onDownload(item)}>
+        Télécharger
+      </button>
       <p className="dx-muted dx-small">Il s’ouvrira avec l’application de votre téléphone ou de votre ordinateur (Word, Excel…).</p>
     </div>
   )

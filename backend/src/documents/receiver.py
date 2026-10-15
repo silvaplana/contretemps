@@ -193,6 +193,11 @@ class DocumentsReceiver:
             chemin = appel(lambda: self.client.thumbnail(db, self._member(org_id, m), node_id))
             return FileResponse(chemin, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
 
+        @self.app.get(base + "/nodes/{node_id}/preview")
+        def preview(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            chemin = appel(lambda: self.client.preview(db, self._member(org_id, m), node_id))
+            return FileResponse(chemin, media_type="application/pdf", headers={"Cache-Control": "private, max-age=3600"})
+
         @self.app.get(base + "/nodes/{node_id}/access")
         def get_access(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: self.client.get_access(db, self._member(org_id, m), node_id))

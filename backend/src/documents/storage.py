@@ -37,6 +37,10 @@ class LocalStorage:
     def thumbnail_path(self, org_id: int, sha256: str) -> Path:
         return self.root / str(org_id) / "vignettes" / f"{sha256}.jpg"
 
+    def preview_path(self, org_id: int, sha256: str) -> Path:
+        """PDF preview of an office file (see preview.py)."""
+        return self.root / str(org_id) / "apercus" / f"{sha256}.pdf"
+
     def put(self, org_id: int, source: BinaryIO) -> tuple[str, int]:
         """Copie `source` dans le stockage ; renvoie (sha256, taille).
         Écrit d'abord dans un fichier temporaire du même disque, puis le
@@ -69,7 +73,7 @@ class LocalStorage:
             raise
 
     def delete(self, org_id: int, sha256: str) -> None:
-        for chemin in (self.path(org_id, sha256), self.thumbnail_path(org_id, sha256)):
+        for chemin in (self.path(org_id, sha256), self.thumbnail_path(org_id, sha256), self.preview_path(org_id, sha256)):
             try:
                 chemin.unlink()
             except FileNotFoundError:

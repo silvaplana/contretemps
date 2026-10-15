@@ -375,3 +375,36 @@ def test_fichier_en_acces_restreint(client, ecole):
     assert admin.acces(fichier, restricted=True).status_code == 200
     assert _par_nom(admin.racine(dossier=saison))["Salaires.xlsx"]["restricted"] is True
     assert "Salaires.xlsx" not in _par_nom(prof.racine(dossier=saison))
+
+
+def test_apercu_pdf_des_fichiers_office(client, ecole, monkeypatch):
+    """Word / Excel / PowerPoint : aperçu en PDF par LibreOffice (simulé ici),
+    fait une seule fois puis gardé ; pas d'aperçu pour les autres formats."""
+    import documents.service as service
+
+    appels = []
+
+    def faux_convertir(source, nom, cible):
+        appels.append(nom)
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        cible.write_bytes(b"%PDF-1.4 apercu")
+        return True
+
+    monkeypatch.setattr(service, "convert_to_pdf", faux_convertir)
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    eleve = Docs(client, ecole["id"], ecole["eleve"])
+    saison = _saison(admin)["id"]
+    budget = admin.fichier("Budget.xlsx", saison, contenu=b"PK fake xlsx").json()["id"]
+    for _ in range(2):
+        reponse = admin.get(f"/nodes/{budget}/preview")
+        assert reponse.status_code == 200 and reponse.headers["content-type"] == "application/pdf"
+        assert reponse.content == b"%PDF-1.4 apercu"
+    assert appels == ["Budget.xlsx"]  # converti une seule fois
+    # Pas d'aperçu pour un texte (affiché tel quel par l'appli), ni pour qui ne voit pas le fichier.
+    note = admin.fichier("Note.txt", saison).json()["id"]
+    assert admin.get(f"/nodes/{note}/preview").status_code == 415
+    assert eleve.get(f"/nodes/{budget}/preview").status_code == 404
+    # Conversion impossible (LibreOffice absent) : message clair.
+    monkeypatch.setattr(service, "convert_to_pdf", lambda *a: False)
+    autre = admin.fichier("Lettre.docx", saison, contenu=b"PK fake docx").json()["id"]
+    assert admin.get(f"/nodes/{autre}/preview").status_code == 503

@@ -69,13 +69,31 @@ export function documentsApi(orgId) {
     principals: (q) => appel(`${base}/principals?q=${encodeURIComponent(q)}`),
     // Contenu protégé : lu avec la session, rendu par une URL blob: (à
     // libérer avec URL.revokeObjectURL quand on n'en a plus besoin).
-    blobUrl: async (id, { thumbnail = false, version } = {}) => {
+    // `preview` : aperçu PDF d'un fichier Word, Excel ou PowerPoint.
+    blobUrl: async (id, { thumbnail = false, preview = false, version } = {}) => {
       const chemin = thumbnail
         ? `${base}/nodes/${id}/thumbnail`
-        : `${base}/nodes/${id}/content${version ? `?version=${version}` : ''}`
+        : preview
+          ? `${base}/nodes/${id}/preview`
+          : `${base}/nodes/${id}/content${version ? `?version=${version}` : ''}`
       const reponse = await fetch(`${BASE_URL}${chemin}`)
-      if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
+      if (!reponse.ok) {
+        let message = `Requête échouée (${reponse.status})`
+        try {
+          const { detail } = await reponse.json()
+          if (typeof detail === 'string') message = detail
+        } catch {
+          // réponse sans JSON : message par défaut
+        }
+        throw new ErreurDocuments(reponse.status, message)
+      }
       return URL.createObjectURL(await reponse.blob())
+    },
+    // Contenu d'un fichier texte (.txt, .md, .csv…), lu avec la session.
+    texte: async (id) => {
+      const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/content`)
+      if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
+      return reponse.text()
     },
   }
 }

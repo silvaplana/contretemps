@@ -38,6 +38,7 @@ from .models import (
     utcnow,
 )
 from .ports import DEFAULT_PRIVATE_EDITORS, Directory, Member, Periods, Principal
+from .preview import can_preview, convert_to_pdf
 from .storage import LocalStorage, guess_mime, make_thumbnail
 
 TRASH_DAYS = 30
@@ -953,6 +954,22 @@ class Documents:
         if not vignette.exists() and not make_thumbnail(self.storage.path(node.org_id, stocke.sha256), vignette):
             raise not_found()
         return vignette
+
+    def preview(self, db: Session, member: Member, node_id: int) -> Path:
+        """PDF preview of a Word / Excel / PowerPoint file (preview.py),
+        made once per content and kept."""
+        node = self._node(db, member, node_id)
+        if node.kind != KIND_FILE or not can_preview(node.name):
+            raise DocError(415, "Pas d'aperçu pour ce type de fichier : téléchargez-le.")
+        self._require(db, member, self._locate(db, member, node), LEVEL_VIEW)
+        version = db.get(DocVersion, node.current_version_id or 0)
+        stocke = db.get(StoredFile, version.stored_file_id) if version else None
+        if stocke is None:
+            raise not_found()
+        apercu = self.storage.preview_path(node.org_id, stocke.sha256)
+        if not apercu.exists() and not convert_to_pdf(self.storage.path(node.org_id, stocke.sha256), node.name, apercu):
+            raise DocError(503, "Aperçu indisponible pour l'instant : téléchargez le fichier.")
+        return apercu
 
     # ------------------------------------------------------------------
     # Accès (« Qui a accès ? », §4.4 bis)
