@@ -599,8 +599,10 @@ interaction supplémentaire.
 
 #### 5.1.1 École
 
-Nom de l'école et code postal, modifiables par tout admin (plus de codes d'accès depuis le
-2026-10-01, §2.2). Onglet le plus à gauche du sélecteur segmenté.
+Nom de l'école, code postal, **adresse**, **ville** et **numéro SIRET** (ajoutés le
+2026-10-15, §6.1), modifiables par tout admin (plus de codes d'accès depuis le 2026-10-01,
+§2.2). Ordre des champs : Nom de l'école, Adresse, Code postal, Ville, SIRET. Onglet le plus à
+gauche du sélecteur segmenté.
 
 **Bouton "Usage vidéo"** : ouvre un panneau d'information sur les vidéos de l'école (tous cours
 confondus) — espace utilisé (Mo tant que ça reste sous 1 Go, Go au-delà) et durée totale
@@ -796,11 +798,25 @@ champs techniques.
 | id | PK | — |
 | nom | texte | Obl. |
 | code_postal | texte | Obl. |
+| adresse | texte (numéro et rue, une ou deux lignes) | Opt. |
+| ville | texte | Opt. |
+| siret | texte (14 chiffres) | Opt. |
 | created_at | datetime | Obl. (auto) |
 
 **Le nom seul n'est pas unique** : deux écoles différentes peuvent porter le même nom (ex. deux
 associations "Contretemps" dans des villes différentes) — c'est le couple **(nom, code_postal)**
 qui doit être unique, pas le nom seul. D'où le code postal obligatoire dès la création.
+
+**Adresse, ville et SIRET** *(demande utilisateur du 2026-10-15)* : optionnels, pour ne pas
+bloquer une école qui ne les a pas encore, et modifiables dans Admin > École (§5.1.1).
+- **SIRET** : 14 chiffres. La saisie accepte les espaces (« 123 456 789 00012 ») et le serveur
+  les retire avant d'enregistrer. Un SIRET qui n'a pas 14 chiffres est refusé avec un message
+  clair. Affiché groupé 3-3-3-5.
+- **Usage** : la facture et le dossier d'inscription (`backend/src/inscriptions/facture_html.py`,
+  `dossier_html.py`) prennent l'adresse et le SIRET **de l'école** au lieu des valeurs écrites
+  en dur dans `inscriptions/coordonnees_association.py` (dont le SIRET actuel est provisoire).
+  Un champ vide côté école reprend la valeur de ce fichier, pour ne jamais produire une facture
+  sans adresse.
 
 Modifiable par tout admin de l'école après création. Les 3 colonnes `code_acces_admin`,
 `code_acces_prof` et `code_acces_eleve` sont supprimées (décision du 2026-10-01, §2.2).
