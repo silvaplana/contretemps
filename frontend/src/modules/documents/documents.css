@@ -523,11 +523,12 @@
   white-space: nowrap;
 }
 
+/* Juste au-dessus de la barre du bas, à gauche du bouton + (Seb, 15 octobre). */
 .dx-toast {
   position: fixed;
   left: 12px;
-  right: 12px;
-  bottom: calc(var(--bottom-nav-height) + 96px + env(safe-area-inset-bottom));
+  right: 96px;
+  bottom: calc(var(--bottom-nav-height) + 14px + env(safe-area-inset-bottom));
   z-index: 80;
   display: flex;
   align-items: center;
@@ -1642,4 +1643,14 @@
   display: block;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+/* Ordinateur : pas de bouton rond en bas, la notification est centrée. */
+.dx-bureau .dx-toast {
+  right: 12px;
+}
+
+/* Barre « Coller ici » affichée au même endroit : la notification passe au-dessus. */
+.dx-toast--haut {
+  bottom: calc(var(--bottom-nav-height) + 84px + env(safe-area-inset-bottom));
 }

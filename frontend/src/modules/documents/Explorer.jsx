@@ -27,7 +27,8 @@ import './documents.css'
 //   Suppr = corbeille.
 
 const LONG_PRESS_MS = 500
-const TOAST_MS = 10000
+// Notifications plus courtes (Seb, 15 octobre) : « Annuler » 5 s, message 2,5 s.
+const TOAST_MS = 5000
 
 function Thumb({ api, item }) {
   const [url, setUrl] = useState(null)
@@ -140,8 +141,8 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
   const montrerToast = useCallback((texte, annuler) => {
     clearTimeout(minuteurToast.current)
     setToast({ texte, annuler })
-    // Annuler reste proposé 10 s (§6.0 bis) ; un simple message, 4 s.
-    minuteurToast.current = setTimeout(() => setToast(null), annuler ? TOAST_MS : 4000)
+    // Annuler reste proposé 5 s ; un simple message, 2,5 s (voir TOAST_MS).
+    minuteurToast.current = setTimeout(() => setToast(null), annuler ? TOAST_MS : 2500)
   }, [])
 
   const echec = useCallback((e) => montrerToast(e.message ?? String(e)), [montrerToast])
@@ -1100,7 +1101,7 @@ export default function Explorer({ orgId, memoire, assistant = false }) {
       {!bureau && conversation && <div className="dx-chat-plein">{conversation}</div>}
 
       {toast && (
-        <div className="dx-toast" role="status">
+        <div className={`dx-toast${pressePapier ? ' dx-toast--haut' : ''}`} role="status">
           <span>{toast.texte}</span>
           {toast.annuler && (
             <button

@@ -148,6 +148,10 @@ def test_choix_du_modele(client, monde, monkeypatch):
     # Modèle inconnu : celui par défaut.
     client.post(url, json={"texte": "Bonjour", "modele": "gpt"}, headers=entetes)
     assert vus == [("claude-haiku-5-5", False), ("claude-opus-5-5", True)]
+    # Chaque question est reportée dans « Usage des ressources & IA ».
+    usage = client.get(f"/ecoles/{monde['ecole'].id}/ressources", headers=entetes).json()
+    ligne = next(l for l in usage["ia"] if l["categorie"] == "chat_documents")
+    assert ligne["libelle"] == "Chat documents" and ligne["nombre"] == 2 and ligne["cout_usd"] > 0
 
 
 def test_lire_un_fichier(client, monde, monkeypatch):

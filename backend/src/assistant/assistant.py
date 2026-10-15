@@ -149,9 +149,13 @@ def _evenement(**donnees) -> str:
 
 
 class Assistant:
-    def __init__(self, documents: Documents, client: anthropic.Anthropic | None = None) -> None:
+    def __init__(self, documents: Documents, client: anthropic.Anthropic | None = None, noter_cout=None) -> None:
+        """`noter_cout(db, org_id, cout_usd, detail)` : reporte le coût de
+        chaque question dans « Usage des ressources & IA » (catégorie
+        « Chat documents », branchée par app/main.py)."""
         self.documents = documents
         self._client = client
+        self.noter_cout = noter_cout
         self.conversations: dict[str, Conversation] = {}
 
     @property
@@ -344,6 +348,8 @@ class Assistant:
                 "cout_usd": round(cout, 5),
             }
             conv.tours.append(tour)
+            if self.noter_cout is not None and cout > 0:
+                self.noter_cout(db, member.org_id, cout, f"{MODELES[modele]} : {texte[:150]}")
             logger.info("Assistant : conversation %s, %s, tour à %.4f $ (total %.4f $)", conv.id, modele, cout, conv.cout_usd)
             yield _evenement(type="fin", cout_usd=round(cout, 5), cout_total_usd=round(conv.cout_usd, 5), tour=tour)
         except AssistantIndisponible as erreur:

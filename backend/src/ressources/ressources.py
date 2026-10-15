@@ -23,6 +23,7 @@ from .models import ConsommationIA
 CATEGORIES_IA = {
     "lecture_fiche": "Lecture des fiches d'inscription",
     "detourage_logo": "Personnalisation : détourage du logo",
+    "chat_documents": "Chat documents",
 }
 
 

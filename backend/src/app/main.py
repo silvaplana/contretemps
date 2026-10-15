@@ -251,7 +251,10 @@ gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
 
 # Assistant de l'onglet Docs (prototype, réservé au Super User) : lit les
 # dossiers et fichiers, propose des actions que l'appli exécute après « Faire ».
-assistant_client = Assistant(documents=documents_client)
+assistant_client = Assistant(
+    documents=documents_client,
+    noter_cout=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "chat_documents", cout, detail),
+)
 assistant_receiver = AssistantReceiver(client=assistant_client, app=app, current_member=membre_appelant)
 
 inscriptions_receiver = InscriptionsReceiver(
