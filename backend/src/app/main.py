@@ -18,6 +18,7 @@ from administrateurs import Administrateurs, AdministrateursReceiver
 from acces import Acces
 from auth import Auth, AuthReceiver, Invitations, MailsAcces
 from assistant import Assistant, AssistantReceiver
+from bureautique import Bureautique, BureautiqueReceiver
 from change import TauxChange, TauxChangeReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver, rbac
@@ -252,6 +253,21 @@ gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
 
 # Assistant de l'onglet Docs (prototype, réservé au Super User) : lit les
 # dossiers et fichiers, propose des actions que l'appli exécute après « Faire ».
+# Édition Word / Excel / PowerPoint avec OnlyOffice (essai, réservé au
+# Super User) : serveur de documents partagé du VPS (voir bureautique/).
+def _membre_de(db, compte_id: int, org_id: int):
+    from dataclasses import replace as _replace
+
+    from comptes.models import Compte as _Compte
+    from saisons.portee import TOUTES_SAISONS
+
+    compte = db.get(_Compte, compte_id, execution_options={TOUTES_SAISONS: True})
+    return _replace(membre_appelant(db=db, compte=compte), org_id=org_id)
+
+
+bureautique_client = Bureautique(documents=documents_client, membre_de=_membre_de)
+bureautique_receiver = BureautiqueReceiver(client=bureautique_client, app=app, current_member=membre_appelant)
+
 # Taux dollar -> euro (BCE, une lecture par jour) : les coûts d'IA sont
 # affichés en euros (voir change/taux.py).
 taux_change_client = TauxChange(fichier=DOSSIER_DOCUMENTS.parent / "taux_change.json")

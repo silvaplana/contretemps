@@ -10,7 +10,7 @@ import { subtitle } from './format.js'
 // version, l'ancienne reste dans l'historique). Sinon une grande tuile avec
 // Télécharger. Le contenu est lu avec la session puis montré par une URL blob:.
 
-export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved }) {
+export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved, onEditer }) {
   const [url, setUrl] = useState(null)
   const [texte, setTexte] = useState(null)
   const [brouillon, setBrouillon] = useState(null) // non null : en modification
@@ -99,7 +99,7 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
           <p className="dx-muted">{office ? 'Préparation de l’aperçu…' : 'Chargement…'}</p>
         )}
       </div>
-      {((apercu && !(office && erreur)) || estTexte) && (
+      {((apercu && !(office && erreur && !onEditer)) || estTexte) && (
         <div className="dx-footer dx-footer--rang">
           {brouillon != null ? (
             <>
@@ -114,6 +114,11 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
             <>
               {modifiable && texte != null && (
                 <button type="button" className="dx-btn" onClick={() => setBrouillon(texte)}>
+                  Modifier
+                </button>
+              )}
+              {office && onEditer && (
+                <button type="button" className="dx-btn" onClick={() => onEditer(item)}>
                   Modifier
                 </button>
               )}

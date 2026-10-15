@@ -62,6 +62,10 @@ ROUTES_PUBLIQUES = {
     # lien signé à durée limitée (securite/liens.py), pas par la session.
     ("GET", "/videos/{video_id}/fichier"),
     ("GET", "/videos/{video_id}/poster"),
+    # Édition OnlyOffice : appelées par le serveur OnlyOffice, protégées par
+    # un jeton signé dans l'adresse (voir bureautique/).
+    ("GET", "/bureautique/fichier/{jeton}"),
+    ("POST", "/bureautique/retour/{jeton}"),
     # Personnalisation par école (spec §2.7) : lue avant toute connexion,
     # par Caddy (certificat), par le téléphone (installation de l'appli) et
     # par la page de connexion.

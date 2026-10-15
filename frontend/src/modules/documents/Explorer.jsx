@@ -8,6 +8,7 @@ import Share from './Share.jsx'
 import { accesAssistant, ajouterProduit } from '../../api/assistant.js'
 import Arbre from './Arbre.jsx'
 import Assistant from './Assistant.jsx'
+import Editeur from './Editeur.jsx'
 import Trash from './Trash.jsx'
 import Viewer from './Viewer.jsx'
 import { BubbleIcon, Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
@@ -119,6 +120,8 @@ export default function Explorer({ orgId, memoire }) {
   // Une fois ouvert, l'assistant reste en mémoire quand on le ferme : on
   // retrouve la conversation (et son coût) en le rouvrant (Seb, 16 octobre).
   const [assistantMonte, setAssistantMonte] = useState(false)
+  // Fichier ouvert dans l'éditeur OnlyOffice (essai, même accès que l'assistant).
+  const [enEdition, setEnEdition] = useState(null)
   const [hauteurChat, setHauteurChat] = useState(lireHauteurChat)
   useEffect(() => {
     accesAssistant(orgId).then((x) => {
@@ -1074,6 +1077,7 @@ export default function Explorer({ orgId, memoire }) {
             recharger()
             montrerToast(`« ${x.name} » enregistré`)
           }}
+          onEditer={assistant ? (x) => setEnEdition(x) : undefined}
         />
       )}
 
@@ -1183,6 +1187,20 @@ export default function Explorer({ orgId, memoire }) {
         <div className="dx-hint" role="status">Glissez sur un dossier pour déplacer, ou lâchez pour le menu</div>
       )}
 
+
+      {enEdition && (
+        <Editeur
+          orgId={orgId}
+          item={enEdition}
+          onClose={() => {
+            setEnEdition(null)
+            setVue(null)
+            montrerToast('Enregistrement des modifications…')
+            // OnlyOffice renvoie le fichier quelques secondes après la fermeture.
+            setTimeout(recharger, 6000)
+          }}
+        />
+      )}
 
       {toast && (
         <div className={`dx-toast${pressePapier ? ' dx-toast--haut' : ''}`} role="status">

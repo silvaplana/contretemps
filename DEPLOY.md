@@ -150,3 +150,20 @@ Chaque école a son adresse `https://<adresse>.contretemps.silvaplana.cloud`
 - **Liens des mails** : toujours vers l'adresse de l'école (celle de
   Personnalisation), depuis le 2026-10-15. `ADRESSE_PAR_ECOLE=0` dans
   `backend/.env` revient à l'adresse générique (dépannage seulement).
+
+
+## OnlyOffice (édition Word / Excel / PowerPoint, essai depuis le 2026-10-16)
+
+Serveur de documents **partagé par toutes les applis du VPS**, hors de ce dépôt :
+`~/onlyoffice/docker-compose.yml` (image `onlyoffice/documentserver:9.4.0.1`, limité à 3 Go de mémoire,
+réseau `web`), clé `JWT_SECRET` dans `~/onlyoffice/.env` (générée sur le serveur, jamais affichée).
+Servi par la passerelle sous `https://silvaplana.cloud/onlyoffice/` (bloc `handle_path /onlyoffice/*`
+de `~/gateway/Caddyfile`, avec `X-Forwarded-Host {host}/onlyoffice`).
+
+Contretemps s'y branche par `backend/src/bureautique/` avec `ONLYOFFICE_JWT_SECRET` (même valeur,
+dans `backend/.env`) et `ONLYOFFICE_URL` (par défaut `https://silvaplana.cloud/onlyoffice`).
+Une autre appli s'y branche de la même façon (configuration signée, adresse de lecture du fichier,
+adresse de retour). Version gratuite : 20 connexions simultanées au total, toutes applis confondues.
+
+    cd ~/onlyoffice && docker compose up -d        # démarrer / mettre à jour
+    docker exec onlyoffice curl -s http://localhost/healthcheck   # true
