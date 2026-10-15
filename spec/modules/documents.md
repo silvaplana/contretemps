@@ -1340,6 +1340,14 @@ mêmes actions que la feuille mobile.
 
 Entre 600 et 1024 px : liste + aperçu en tiroir, arbre en tiroir comme sur téléphone.
 
+*Fait le 2026-10-15, première version* (Seb : « qu'on ressemble à Google Drive ; seulement sur
+ordinateur ») : à partir de 900 px avec une souris, **arborescence à gauche** (290 px, faite maison,
+`modules/documents/Arbre.jsx`) avec les espaces en racines et leurs dossiers à déplier ; un clic sur un
+nom ouvre le dossier à droite, la flèche déplie sans ouvrir ; le chemin du dossier ouvert est toujours
+déplié et surligné. Les onglets Public / Privé / Personnel disparaissent sur ordinateur (les espaces
+sont dans l'arbre). Téléphone et tablette au doigt : inchangés. Pas encore : glisser-déposer vers
+l'arbre, colonnes Modifié / Taille / Par, aperçu à droite.
+
 ### 6.3 bis Gestes et écran Propriétés (question de Seb du 15 octobre)
 
 | Geste | Ordinateur | Téléphone |

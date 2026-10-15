@@ -5,6 +5,7 @@ import FolderPicker from './FolderPicker.jsx'
 import NewScreen from './NewScreen.jsx'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
+import Arbre from './Arbre.jsx'
 import Trash from './Trash.jsx'
 import Viewer from './Viewer.jsx'
 import { BubbleIcon, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
@@ -70,7 +71,24 @@ function lireEndroit(memoire) {
   return { space: 'private', folder: null }
 }
 
+// Ordinateur (écran large et souris) : arborescence à gauche, façon Google
+// Drive (Seb, 15 octobre). Le téléphone garde l'affichage d'une colonne.
+const ECRAN_BUREAU = '(min-width: 900px) and (hover: hover) and (pointer: fine)'
+
+function useBureau() {
+  const [bureau, setBureau] = useState(() => window.matchMedia?.(ECRAN_BUREAU).matches ?? false)
+  useEffect(() => {
+    const mq = window.matchMedia?.(ECRAN_BUREAU)
+    if (!mq) return undefined
+    const suivre = (e) => setBureau(e.matches)
+    mq.addEventListener('change', suivre)
+    return () => mq.removeEventListener('change', suivre)
+  }, [])
+  return bureau
+}
+
 export default function Explorer({ orgId, memoire }) {
+  const bureau = useBureau()
   const api = useMemo(() => documentsApi(orgId), [orgId])
   const [spaces, setSpaces] = useState([])
   const [space, setSpace] = useState(() => lireEndroit(memoire).space)
@@ -661,7 +679,15 @@ export default function Explorer({ orgId, memoire }) {
 
   const panneauOuvert = proprietes || partage || vue || choix || nouveau || corbeille
 
-  return (
+  function ouvrirDepuisArbre(s, id) {
+    setFeuille(null)
+    setRecherche(null)
+    setSelection(null)
+    if (s !== space) setSpace(s)
+    setFolder(id)
+  }
+
+  const explorateur = (
     <div className="dx">
       <div className="dx-top">
         {recherche == null ? (
@@ -1020,6 +1046,22 @@ export default function Explorer({ orgId, memoire }) {
           )}
         </div>
       )}
+    </div>
+  )
+
+  if (!bureau) return explorateur
+  return (
+    <div className="dx-bureau">
+      <Arbre
+        api={api}
+        spaces={spaces}
+        space={space}
+        folder={folder}
+        breadcrumb={data?.breadcrumb}
+        version={data}
+        onOpen={ouvrirDepuisArbre}
+      />
+      {explorateur}
     </div>
   )
 }
