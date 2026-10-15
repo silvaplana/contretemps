@@ -6,6 +6,7 @@ import NewScreen from './NewScreen.jsx'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
 import Arbre from './Arbre.jsx'
+import Assistant from './Assistant.jsx'
 import Trash from './Trash.jsx'
 import Viewer from './Viewer.jsx'
 import { BubbleIcon, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
@@ -87,8 +88,9 @@ function useBureau() {
   return bureau
 }
 
-export default function Explorer({ orgId, memoire }) {
+export default function Explorer({ orgId, memoire, assistant = false }) {
   const bureau = useBureau()
+  const [assistantOuvert, setAssistantOuvert] = useState(false)
   const api = useMemo(() => documentsApi(orgId), [orgId])
   const [spaces, setSpaces] = useState([])
   const [space, setSpace] = useState(() => lireEndroit(memoire).space)
@@ -712,6 +714,33 @@ export default function Explorer({ orgId, memoire }) {
     setFolder(id)
   }
 
+  function ouvrirAssistant() {
+    if (assistant) setAssistantOuvert(true)
+    else montrerToast('Bientôt : l’assistant arrive dans une prochaine version.')
+  }
+
+  // Carte « Faire » de l'assistant : l'action passe par les mêmes routes
+  // que l'explorateur, avec les droits de la personne.
+  async function faireAction(carte) {
+    if (carte.kind === 'creer_dossier') await api.createFolder(carte.espace, carte.dossier_parent_id, carte.nom)
+    else if (carte.kind === 'creer_fichier_texte') {
+      const fichier = new File([carte.contenu], carte.nom, { type: 'text/plain' })
+      await api.upload(carte.espace, carte.dossier_parent_id, fichier)
+    } else if (carte.kind === 'deplacer') await api.move(carte.element_id, carte.espace, carte.dossier_destination_id)
+    else if (carte.kind === 'renommer') await api.rename(carte.element_id, carte.nouveau_nom)
+    await recharger()
+    montrerToast(`Fait : ${carte.libelle}`)
+  }
+
+  const conversation = assistantOuvert && (
+    <Assistant
+      orgId={orgId}
+      contexte={{ space, folder_id: folder, selection_id: selection?.id ?? null, recents: recentsActif }}
+      onClose={() => setAssistantOuvert(false)}
+      onFaire={faireAction}
+    />
+  )
+
   function voirRecents() {
     setFeuille(null)
     setRecherche(null)
@@ -725,7 +754,8 @@ export default function Explorer({ orgId, memoire }) {
       <div className="dx-top">
         {recherche == null ? (
           <>
-            <h2>Documents</h2>
+            {/* Le titre « Documents » est déjà dans la barre du haut (Seb). */}
+            <span className="dx-top__vide" />
             <button type="button" className="dx-ico" onClick={() => setRecherche('')} aria-label="Rechercher">
               <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                 <circle cx="10.5" cy="10.5" r="6.5" />
@@ -883,7 +913,7 @@ export default function Explorer({ orgId, memoire }) {
           <button
             type="button"
             className="dx-fab dx-fab--assistant"
-            onClick={() => montrerToast('Bientôt : l’assistant arrive dans une prochaine version.')}
+            onClick={ouvrirAssistant}
             aria-label="Assistant"
           >
             <BubbleIcon />
@@ -1067,6 +1097,8 @@ export default function Explorer({ orgId, memoire }) {
         <div className="dx-hint" role="status">Glissez sur un dossier pour déplacer, ou lâchez pour le menu</div>
       )}
 
+      {!bureau && conversation && <div className="dx-chat-plein">{conversation}</div>}
+
       {toast && (
         <div className="dx-toast" role="status">
           <span>{toast.texte}</span>
@@ -1105,8 +1137,11 @@ export default function Explorer({ orgId, memoire }) {
         recentsActif={recentsActif}
         onRecents={voirRecents}
         onAccueil={() => ouvrirDepuisArbre('private', null)}
+        onNouveau={() => setNouveau(true)}
+        onAssistant={ouvrirAssistant}
       />
       {explorateur}
+      {conversation}
     </div>
   )
 }

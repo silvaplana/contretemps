@@ -192,6 +192,17 @@ séparé `backend/src/assistant/` (futur core d'AppBase). Spec détaillée à é
   l'assistant existent (définition de « terminé »).
 - Plus tard : exposer le même registre en serveur MCP pour l'utiliser depuis Claude.
 
+*Prototype fait le 2026-10-15* (Seb : « un chat comme Claude, avec Puis-je vous aider ? ») :
+`backend/src/assistant/` et `frontend/src/modules/documents/Assistant.jsx`. Réservé au Super User.
+Sur ordinateur, panneau à droite de l'explorateur (bouton en haut de l'arborescence, à côté de
+« + Nouveau ») ; sur téléphone, plein écran (bulle au-dessus du +). L'assistant connaît le dossier
+ouvert et l'élément sélectionné, lit dossiers et fichiers (PDF et photos lus directement par Claude,
+Word, Excel, texte), et **propose** des actions (créer un dossier, un fichier texte, déplacer,
+renommer) sous forme de cartes « Faire / Annuler » que l'appli exécute avec les droits de la
+personne. Réponse en flux. Coût affiché en haut à droite ; au clic, le coût de chaque demande et le
+choix du modèle (Opus 5.5 par défaut, Sonnet 5.5, Haiku 5.5, Fable 5.1). Conversations en mémoire
+du serveur (perdues à son redémarrage), coût non encore reporté dans « Usage des ressources & IA ».
+
 ### Étape 6 : kit AG
 
 - **Blocs du socle A-document**, dans le paquet `documents` (pas dans un module AG), donc utilisables

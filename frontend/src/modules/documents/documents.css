@@ -44,6 +44,10 @@
   padding: 12px 12px 8px 16px;
 }
 
+.dx-top__vide {
+  flex: 1;
+}
+
 .dx-top h2 {
   flex: 1;
   margin: 0;
@@ -1321,4 +1325,321 @@
 
 .dx-arbre__raccourcis .dx-arbre__nom {
   padding-left: 14px;
+}
+
+/* Ordinateur : « Nouveau » et l'assistant en haut de l'arborescence, les
+   boutons ronds du bas disparaissent. */
+.dx-bureau .dx-fab {
+  display: none;
+}
+
+.dx-arbre__boutons {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 4px 14px;
+}
+
+.dx-arbre__nouveau {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 22px 0 16px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(58, 36, 16, 0.18);
+  cursor: pointer;
+}
+
+.dx-arbre__nouveau svg {
+  width: 22px;
+  height: 22px;
+}
+
+.dx-arbre__assistant {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 1.5px solid var(--accent);
+  border-radius: 50%;
+  background: var(--card-bg);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.dx-arbre__assistant svg {
+  width: 26px;
+  height: 26px;
+}
+
+/* Assistant : panneau à droite sur ordinateur, plein écran sur téléphone. */
+.dx-chat {
+  flex: 0 0 400px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 17px;
+}
+
+.dx-chat-plein {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  background: var(--card-bg);
+}
+
+.dx-chat-plein .dx-chat {
+  flex: 1;
+  border-left: 0;
+}
+
+.dx-chat__haut {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dx-chat__titre {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.dx-chat__titre svg {
+  width: 24px;
+  height: 24px;
+  color: var(--accent);
+}
+
+.dx-chat__nouvelle {
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.dx-chat__fil {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.dx-chat__accueil {
+  margin: auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dx-chat__bonjour {
+  margin: 0 0 6px;
+  font-size: 24px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.dx-chat__suggestion {
+  min-height: 48px;
+  padding: 8px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dx-chat__moi {
+  align-self: flex-end;
+  max-width: 85%;
+  padding: 10px 14px;
+  border-radius: 16px 16px 4px 16px;
+  background: var(--accent-bg);
+  white-space: pre-wrap;
+}
+
+.dx-chat__lui {
+  max-width: 100%;
+  line-height: 1.45;
+}
+
+.dx-chat__lui p {
+  margin: 0 0 10px;
+}
+
+.dx-chat__lui ul {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+
+.dx-chat__activite {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.dx-chat__carte {
+  margin: 8px 0;
+  padding: 12px 14px;
+  border: 1.5px solid var(--accent);
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.dx-chat__carte--annulee {
+  border-color: var(--border);
+  opacity: 0.7;
+}
+
+.dx-chat__carte p {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.dx-chat__apercu {
+  max-height: 160px;
+  overflow: auto;
+  margin: 0 0 8px;
+  padding: 8px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+
+.dx-chat__choix {
+  display: flex;
+  gap: 8px;
+}
+
+.dx-chat__etat {
+  color: var(--text-muted);
+  font-weight: 400 !important;
+}
+
+.dx-chat__saisie {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border);
+}
+
+.dx-chat__saisie textarea {
+  flex: 1;
+  min-height: 48px;
+  max-height: 160px;
+  padding: 10px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+.dx-chat__cout {
+  margin: 0;
+  padding: 0 14px 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.dx-chat__nouvelle,
+.dx-chat__cout-bouton {
+  white-space: nowrap;
+}
+
+.dx-chat__cout-bouton {
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+}
+
+.dx-chat__panneau {
+  max-height: 70%;
+  overflow-y: auto;
+  padding: 12px 16px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.dx-chat__panneau h3 {
+  margin: 4px 0 10px;
+  font-size: 17px;
+}
+
+.dx-chat__tours {
+  width: 100%;
+  margin-bottom: 12px;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+.dx-chat__tours th,
+.dx-chat__tours td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dx-chat__tours th:first-child,
+.dx-chat__tours td:first-child {
+  width: 38%;
+}
+
+.dx-chat__modele {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+
+.dx-chat__modele input {
+  margin-top: 5px;
+  width: 20px;
+  height: 20px;
+}
+
+.dx-chat__modele small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 13px;
 }

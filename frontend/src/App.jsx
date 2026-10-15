@@ -954,7 +954,7 @@ function App() {
           : activeTab === 'supervision'
             ? 'Supervision'
             : activeTab === 'docs'
-              ? 'Docs'
+              ? 'Documents'
               : activeTab === 'choregraphie'
                 ? 'Chorégraphies'
                 : 'Sélectionner un cours'
@@ -1098,7 +1098,7 @@ function App() {
 
         {activeTab === 'supervision' && isSuperuser(activeUser) && <SupervisionScreen />}
 
-        {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} />}
+        {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} assistant={isSuperuser(activeUser)} />}
 
         {activeTab === 'profil' && (
           <ProfilScreen

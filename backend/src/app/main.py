@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from administrateurs import Administrateurs, AdministrateursReceiver
 from acces import Acces
 from auth import Auth, AuthReceiver, Invitations, MailsAcces
+from assistant import Assistant, AssistantReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
@@ -247,6 +248,11 @@ documents_client = Documents(
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Création de saison : « recopier le dossier de la saison précédente ».
 gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
+
+# Assistant de l'onglet Docs (prototype, réservé au Super User) : lit les
+# dossiers et fichiers, propose des actions que l'appli exécute après « Faire ».
+assistant_client = Assistant(documents=documents_client)
+assistant_receiver = AssistantReceiver(client=assistant_client, app=app, current_member=membre_appelant)
 
 inscriptions_receiver = InscriptionsReceiver(
     client=inscriptions_client,

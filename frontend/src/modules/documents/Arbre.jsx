@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FolderIcon } from './icons.jsx'
+import { BubbleIcon, FolderIcon, PlusIcon } from './icons.jsx'
 
 // Arborescence à gauche, sur ordinateur seulement (façon Google Drive, Seb
 // 15 octobre) : les espaces, et leurs dossiers à déplier. Un clic sur un nom
@@ -47,7 +47,9 @@ function IconeLigne({ children }) {
   )
 }
 
-export default function Arbre({ api, spaces, space, folder, breadcrumb, version, onOpen, recentsActif, onRecents, onAccueil }) {
+export default function Arbre({
+  api, spaces, space, folder, breadcrumb, version, onOpen, recentsActif, onRecents, onAccueil, onNouveau, onAssistant,
+}) {
   const [enfants, setEnfants] = useState({}) // clé -> dossiers enfants
   // Choix de l'utilisateur (déplier / replier) ; sans choix, seul le chemin
   // du dossier ouvert est déplié.
@@ -124,6 +126,17 @@ export default function Arbre({ api, spaces, space, folder, breadcrumb, version,
 
   return (
     <nav className="dx-arbre" aria-label="Dossiers">
+      {/* « Nouveau » et l'assistant en haut à gauche, comme dans Google Drive
+          (sur ordinateur, à la place des boutons ronds en bas, Seb 15 octobre). */}
+      <div className="dx-arbre__boutons">
+        <button type="button" className="dx-arbre__nouveau" onClick={onNouveau}>
+          <PlusIcon />
+          Nouveau
+        </button>
+        <button type="button" className="dx-arbre__assistant" onClick={onAssistant} aria-label="Assistant" title="Assistant">
+          <BubbleIcon />
+        </button>
+      </div>
       {/* Accueil (revenir au départ) et Récents, comme dans Google Drive. */}
       <ul className="dx-arbre__raccourcis">
         <li>
