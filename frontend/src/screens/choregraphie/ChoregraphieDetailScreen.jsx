@@ -16,6 +16,21 @@ import ChoixElevesPanel from './ChoixElevesPanel.jsx'
 // Vidéos (plus d'onglet Vidéo, refonte du 2026-10-03) : tout le monde peut
 // en ajouter une ; la modifier est réservé à qui gère la chorégraphie ; la
 // supprimer aussi, plus celui qui l'a ajoutée.
+//
+// Cours, élèves, costume et horaire sont rangés dans le volet
+// « Description » (Seb, 15 octobre), fermé par défaut ; ouvert ou fermé,
+// il reste comme on l'a laissé (gardé sur l'appareil). Ouvert d'office
+// pendant une modification.
+const CLE_DESCRIPTION = 'contretemps.choregraphie.descriptionOuverte'
+
+function lireDescriptionOuverte() {
+  try {
+    return localStorage.getItem(CLE_DESCRIPTION) === '1'
+  } catch {
+    return false
+  }
+}
+
 export default function ChoregraphieDetailScreen({
   choregraphie,
   cours,
@@ -41,6 +56,18 @@ export default function ChoregraphieDetailScreen({
   const editing = editingVoulu && peutModifier
   const [editingVideo, setEditingVideo] = useState(null)
   const [showChooseEleves, setShowChooseEleves] = useState(false)
+  const [descriptionVoulue, setDescriptionVoulue] = useState(lireDescriptionOuverte)
+  const descriptionOuverte = descriptionVoulue || editing
+
+  function basculerDescription() {
+    const ouverte = !descriptionOuverte
+    setDescriptionVoulue(ouverte)
+    try {
+      localStorage.setItem(CLE_DESCRIPTION, ouverte ? '1' : '0')
+    } catch {
+      // stockage indisponible : le volet repartira fermé
+    }
+  }
 
   const videos = choregraphie.videos
 
@@ -87,88 +114,111 @@ export default function ChoregraphieDetailScreen({
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
 
         <section>
-          <h3>Cours</h3>
-          {editing ? (
-            <select
-              className="field-input"
-              aria-label="Cours de la chorégraphie"
-              value={choregraphie.coursId}
-              onChange={(e) => onUpdate({ coursId: Number(e.target.value) })}
-            >
-              {/* Le cours actuel d'abord, puis ceux que l'on peut gérer. */}
-              {[cours, ...coursGerables.filter((c) => c.id !== cours?.id)].filter(Boolean).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nom}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p>{cours?.nom || <span className="muted">—</span>}</p>
-          )}
-        </section>
-
-        <section>
           <h3>
-            <Icon name="users" size={16} /> Élèves
-          </h3>
-          <div className="badge-list">
-            {choregraphie.eleveIds.map((id) => {
-              const el = eleves.find((e) => e.id === id)
-              if (!el) return null
-              return editing ? (
-                <span key={id} className="removable-badge">
-                  <Badge>{el.prenom}</Badge>
-                  <button
-                    type="button"
-                    className="icon-btn"
-                    onClick={() => retirerEleve(id)}
-                    aria-label={`Retirer ${el.prenom}`}
-                  >
-                    <Icon name="x" size={12} />
-                  </button>
-                </span>
-              ) : (
-                <Badge key={id}>{el.prenom}</Badge>
-              )
-            })}
-          </div>
-          {editing && (
             <button
               type="button"
-              className="btn btn--secondary choregraphie-detail__eleves-btn"
-              onClick={() => setShowChooseEleves(true)}
+              className="section-label__depliant"
+              aria-expanded={descriptionOuverte}
+              onClick={basculerDescription}
+              disabled={editing}
             >
-              <Icon name="folder" size={16} /> Élèves
+              <Icon name={descriptionOuverte ? 'chevronDown' : 'chevronRight'} size={14} />
+              Description
             </button>
-          )}
+          </h3>
         </section>
 
-        <section>
-          <h3>Costume</h3>
-          {editing ? (
-            <textarea
-              className="modal-textarea"
-              rows={2}
-              value={choregraphie.costume}
-              onChange={(e) => onUpdate({ costume: e.target.value })}
-            />
-          ) : (
-            <p>{choregraphie.costume || <span className="muted">—</span>}</p>
-          )}
-        </section>
+        {descriptionOuverte && (
+          <div className="choregraphie-detail__description">
+            <section>
+              {editing ? (
+                <>
+                  <h3>Cours</h3>
+                  <select
+                    className="field-input"
+                    aria-label="Cours de la chorégraphie"
+                    value={choregraphie.coursId}
+                    onChange={(e) => onUpdate({ coursId: Number(e.target.value) })}
+                  >
+                    {/* Le cours actuel d'abord, puis ceux que l'on peut gérer. */}
+                    {[cours, ...coursGerables.filter((c) => c.id !== cours?.id)].filter(Boolean).map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.nom}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              ) : (
+                <p className="choregraphie-detail__cours">
+                  <strong>Cours :</strong> {cours?.nom || <span className="muted">—</span>}
+                </p>
+              )}
+            </section>
 
-        <section>
-          <h3>Horaire de répétition</h3>
-          {editing ? (
-            <input
-              className="field-input"
-              value={choregraphie.horaireRepetition}
-              onChange={(e) => onUpdate({ horaireRepetition: e.target.value })}
-            />
-          ) : (
-            <p>{choregraphie.horaireRepetition || <span className="muted">—</span>}</p>
-          )}
-        </section>
+            <section>
+              <h3>
+                <Icon name="users" size={16} /> Élèves
+              </h3>
+              <div className="badge-list">
+                {choregraphie.eleveIds.map((id) => {
+                  const el = eleves.find((e) => e.id === id)
+                  if (!el) return null
+                  return editing ? (
+                    <span key={id} className="removable-badge">
+                      <Badge>{el.prenom}</Badge>
+                      <button
+                        type="button"
+                        className="icon-btn"
+                        onClick={() => retirerEleve(id)}
+                        aria-label={`Retirer ${el.prenom}`}
+                      >
+                        <Icon name="x" size={12} />
+                      </button>
+                    </span>
+                  ) : (
+                    <Badge key={id}>{el.prenom}</Badge>
+                  )
+                })}
+              </div>
+              {editing && (
+                <button
+                  type="button"
+                  className="btn btn--secondary choregraphie-detail__eleves-btn"
+                  onClick={() => setShowChooseEleves(true)}
+                >
+                  <Icon name="folder" size={16} /> Élèves
+                </button>
+              )}
+            </section>
+
+            <section>
+              <h3>Costume</h3>
+              {editing ? (
+                <textarea
+                  className="modal-textarea"
+                  rows={2}
+                  value={choregraphie.costume}
+                  onChange={(e) => onUpdate({ costume: e.target.value })}
+                />
+              ) : (
+                <p>{choregraphie.costume || <span className="muted">—</span>}</p>
+              )}
+            </section>
+
+            <section>
+              <h3>Horaire de répétition</h3>
+              {editing ? (
+                <input
+                  className="field-input"
+                  value={choregraphie.horaireRepetition}
+                  onChange={(e) => onUpdate({ horaireRepetition: e.target.value })}
+                />
+              ) : (
+                <p>{choregraphie.horaireRepetition || <span className="muted">—</span>}</p>
+              )}
+            </section>
+          </div>
+        )}
 
         <section>
           <h3>
