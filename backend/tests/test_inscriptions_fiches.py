@@ -255,3 +255,34 @@ def test_famille_imposee_pour_des_fiches_lues_ensemble(client, ecole_et_cours, l
     ).json()["jeton"]
     brouillon = client.get(f"/inscriptions/fiches/{jeton}").json()
     assert brouillon["donnees"]["famille_membres"] == 2 and brouillon["champs_douteux"] == []
+
+
+def test_paiement_par_virement_seulement_avec_un_iban(client, db_session, ecole_et_cours):
+    ecole, cours = ecole_et_cours
+    corps = client.post(
+        "/inscriptions", params={"ecole_id": ecole.id}, json=_donnees_formulaire([cours["Éveil"].id])
+    ).json()
+    token = corps["token_public"]
+    assert corps["iban_ecole"] is None
+    choix = {"moyen_paiement": "virement", "paiement_nb_echeances": 3}
+    assert client.post(f"/inscriptions/{token}/paiement/choix", json=choix).status_code == 400
+
+    ecole.iban = "FR7630006000011234567890189"
+    db_session.commit()
+    reponse = client.post(f"/inscriptions/{token}/paiement/choix", json=choix)
+    assert reponse.status_code == 200
+    assert (reponse.json()["moyen_paiement"], reponse.json()["iban_ecole"]) == ("virement", ecole.iban)
+    assert client.get(f"/inscriptions/{token}/facture.pdf").status_code == 200
+
+
+def test_facture_virement_affiche_l_iban():
+    from types import SimpleNamespace
+
+    from inscriptions.facture_html import _reglement_html
+
+    inscription = SimpleNamespace(
+        moyen_paiement="virement", eleve_prenom="Zoé", eleve_nom="Martin", montant_adhesion=40.0,
+        montant_trimestriel=125.0, paiement_nb_echeances=1, saison="2026-2027",
+    )
+    texte = _reglement_html(inscription, "FR7630006000011234567890189")
+    assert "Virement" in texte and "FR76 3000 6000 0112 3456 7890 189" in texte and "Inscription Zoé Martin" in texte

@@ -161,6 +161,18 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
           />
           Espèces
         </label>
+        {/* Virement : seulement si l'école a donné son IBAN (Admin > École). */}
+        {inscription.iban_ecole && (
+          <label className="paiement-option">
+            <input
+              type="radio"
+              name="paiement"
+              checked={moyen === 'virement'}
+              onChange={() => setMoyen('virement')}
+            />
+            Virement
+          </label>
+        )}
       </div>
 
       <div className="sous-cases" style={{ marginTop: 10 }}>
@@ -190,6 +202,21 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
             ) : (
               "en 1 fois, remis avec l'adhésion."
             )}
+          </p>
+        )}
+        {moyen === 'virement' && (
+          <p className="champ__aide">
+            {euros(inscription.montant_adhesion)} par virement à l'inscription, puis le solde de{' '}
+            {montantTroisTrimestres} €{' '}
+            {nbEcheances === 3 ? (
+              <>
+                en 3 virements de {inscription.montant_trimestriel} € chacun, en début de trimestre
+                en {moisEncaissementsAVenir(inscription.saison).join(', ') || 'ce mois-ci'}.
+              </>
+            ) : (
+              'en 1 fois, avec l’adhésion.'
+            )}{' '}
+            IBAN : <strong>{ibanLisible(inscription.iban_ecole)}</strong>
           </p>
         )}
         {moyen === 'helloasso' && nbEcheances === 3 && (
@@ -232,8 +259,15 @@ export default function PaiementEtape({ inscription, messageEchec, onPaiementPar
             ? 'Confirmer le paiement par chèque'
             : moyen === 'especes'
               ? 'Confirmer le paiement en espèces'
+              : moyen === 'virement'
+                ? 'Confirmer le paiement par virement'
             : `Payer par carte bancaire en ${nbEcheances === 3 ? '3 fois' : '1 fois'}`}
       </button>
     </div>
   )
+}
+
+// IBAN par groupes de 4.
+function ibanLisible(iban) {
+  return (iban ?? '').replace(/(.{4})/g, '$1 ').trim()
 }

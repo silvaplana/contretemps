@@ -13,6 +13,7 @@ from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, Up
 from sqlalchemy.orm import Session
 
 from db import get_db
+from ecoles.models import Ecole
 
 from .fiches import EleveDejaInscrit, FicheInvalide, FichesPapier
 from .helloasso import HelloAssoError
@@ -106,6 +107,7 @@ class InscriptionsReceiver:
             paiement_nb_echeances=inscription.paiement_nb_echeances,
             statut_paiement=inscription.statut_paiement,
             email_envoye=inscription.email_envoye,
+            iban_ecole=getattr(db.get(Ecole, inscription.ecole_id), "iban", None),
         )
 
     def creer(

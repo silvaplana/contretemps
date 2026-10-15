@@ -999,8 +999,10 @@ bloquer une école qui ne les a pas encore, et modifiables dans Admin > École (
   sans adresse.
 - **IBAN** *(demande du 2026-10-15)* : saisi avec ou sans espaces, rangé sans espaces en
   majuscules ; la clé de contrôle est vérifiée (un IBAN mal recopié est refusé). Affiché par
-  groupes de 4. Stocké seulement pour l'instant : son usage (facture, paiement par virement)
-  reste à décider.
+  groupes de 4. Il active le moyen de paiement **« Virement »** du formulaire d'inscription
+  (décision du 2026-10-15) : proposé seulement si l'école a un IBAN, mêmes échéances que le
+  chèque (1 ou 3 fois), IBAN et libellé « Inscription Prénom Nom » affichés à l'étape de
+  paiement, sur la confirmation et sur la facture ; l'inscription est finalisée tout de suite.
 
 Modifiable par tout admin de l'école après création. Les 3 colonnes `code_acces_admin`,
 `code_acces_prof` et `code_acces_eleve` sont supprimées (décision du 2026-10-01, §2.2).

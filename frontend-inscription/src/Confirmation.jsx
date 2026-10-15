@@ -1,7 +1,7 @@
 import { urlDossierPdf, urlFacturePdf } from './api/backend.js'
 import { euros, LIBELLE_PALIER, moisEncaissementsAVenir } from './tarifs.js'
 
-const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', especes: 'Espèces', helloasso: 'Carte bancaire' }
+const LIBELLE_MOYEN_PAIEMENT = { cheque: 'Chèque', especes: 'Espèces', virement: 'Virement', helloasso: 'Carte bancaire' }
 
 // Écran final (étape 3, voir spec/SPEC-inscription.md) : affiché
 // uniquement une fois le paiement réellement acquis — chèque confirmé
@@ -101,6 +101,18 @@ export default function Confirmation({ resultat, onNouvelleInscription }) {
               "en 1 fois, remis avec l'adhésion."
             )}{' '}
             Les espèces sont à remettre à l'école.
+          </>
+        )}
+        {resultat.moyen_paiement === 'virement' && (
+          <>
+            {' '}: {euros(resultat.montant_adhesion)} à l'inscription, puis le solde de{' '}
+            {montantTroisTrimestres} €{' '}
+            {resultat.paiement_nb_echeances === 3
+              ? `en 3 virements de ${resultat.montant_trimestriel} € chacun, en début de trimestre.`
+              : 'en 1 fois, avec l’adhésion.'}{' '}
+            IBAN :{' '}
+            <strong>{(resultat.iban_ecole ?? '').replace(/(.{4})/g, '$1 ').trim()}</strong>, libellé
+            « Inscription {resultat.eleve_prenom} {resultat.eleve_nom} ».
           </>
         )}
         {resultat.moyen_paiement === 'helloasso' && (

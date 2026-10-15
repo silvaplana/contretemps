@@ -91,6 +91,9 @@ class InscriptionSortie(BaseModel):
     paiement_nb_echeances: int
     statut_paiement: str
     email_envoye: bool
+    # IBAN de l'école (Admin > École) : propose le paiement par virement.
+    # Absent = pas de virement proposé.
+    iban_ecole: str | None = None
 
 
 class PaiementChoixEntree(BaseModel):

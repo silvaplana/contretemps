@@ -170,7 +170,7 @@ def _libelle_mois(date) -> str:
     return f"{_MOIS_FR[date.month - 1]} {date.year}"
 
 
-def _reglement_html(inscription) -> str:
+def _reglement_html(inscription, iban: str | None = None) -> str:
     """"HelloAsso" n'apparaît jamais — prestataire invisible pour la
     famille (voir frontend-inscription/src/PaiementEtape.jsx), juste
     "carte bancaire"."""
@@ -178,7 +178,37 @@ def _reglement_html(inscription) -> str:
         return _reglement_cheque_html(inscription)
     if inscription.moyen_paiement == "especes":
         return _reglement_especes_html(inscription)
+    if inscription.moyen_paiement == "virement":
+        return _reglement_virement_html(inscription, iban)
     return _reglement_carte_html(inscription)
+
+
+def _reglement_virement_html(inscription, iban: str | None) -> str:
+    """Mêmes échéances que le chèque, par virement sur le compte de
+    l'école (IBAN saisi dans Admin > École)."""
+    lignes = ["Moyen de paiement : <b>Virement</b>"]
+    if iban:
+        groupes = " ".join(iban[i : i + 4] for i in range(0, len(iban), 4))
+        lignes.append(f"IBAN : <b>{_echappe(groupes)}</b>")
+    lignes.append(
+        "Libellé du virement : « Inscription "
+        f"{_echappe(inscription.eleve_prenom)} {_echappe(inscription.eleve_nom)} »."
+    )
+    base = f"{_euros(inscription.montant_adhesion)} à l'inscription, puis le solde"
+    mois_a_venir = (
+        mois_encaissements_a_venir(inscription.saison)
+        if inscription.paiement_nb_echeances == 3
+        else []
+    )
+    if mois_a_venir:
+        dates = ", ".join(_libelle_mois(d) for d in mois_a_venir)
+        lignes.append(
+            f"{base} en {len(mois_a_venir)} virements de {_euros(inscription.montant_trimestriel)} "
+            f"chacun, en début de trimestre : {dates}."
+        )
+    else:
+        lignes.append(f"{base} en 1 fois, avec l'adhésion.")
+    return "<br>".join(lignes)
 
 
 def _reglement_especes_html(inscription) -> str:
@@ -328,7 +358,7 @@ def generer_facture_pdf(inscription, noms_cours: list[str], ecole=None) -> bytes
         "ELEVE": _echappe(f"{inscription.eleve_prenom} {inscription.eleve_nom}"),
         "LIGNES": _lignes_html(inscription, noms_cours),
         "TOTAUX": _totaux_html(inscription),
-        "REGLEMENT": _reglement_html(inscription),
+        "REGLEMENT": _reglement_html(inscription, getattr(ecole, "iban", None)),
         "NOTE_PALIER_MIXTE": _note_palier_mixte_html(inscription),
         "ACQUIT": _acquit_html(inscription),
     }
