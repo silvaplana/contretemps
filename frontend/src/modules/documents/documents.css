@@ -1798,7 +1798,9 @@
 
 /* Toute la largeur de la colonne (sinon réduite à son contenu et centrée) :
    elle démarre au bord gauche de la liste. */
-.dx > .dx-top {
+.dx > .dx-top,
+.dx > .dx-crumb {
   width: 100%;
   box-sizing: border-box;
+  text-align: left;
 }
