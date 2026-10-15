@@ -289,3 +289,14 @@ def test_element_de_docs_glisse_dans_l_assistant(client, monde, monkeypatch):
     client.post(f"{url}/messages", json={"texte": "Résume", "pieces": [f"doc:{fichier['id']}", "doc:999999"]}, headers=entetes)
     textes = " ".join(b.get("text", "") for b in faux.demandes[0][0]["content"])
     assert "Gala le 12 juin" in textes
+
+
+def test_internet_dans_les_outils_et_le_cout():
+    from types import SimpleNamespace
+
+    from assistant.assistant import OUTILS, cout_usd
+
+    noms = {o["name"] for o in OUTILS}
+    assert {"web_search", "web_fetch", "code_execution"} <= noms
+    usage = SimpleNamespace(input_tokens=0, output_tokens=0, server_tool_use=SimpleNamespace(web_search_requests=3))
+    assert cout_usd("claude-opus-5-5", usage) == pytest.approx(0.03)

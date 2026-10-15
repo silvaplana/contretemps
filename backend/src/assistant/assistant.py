@@ -84,7 +84,12 @@ une phrase, sans prétendre que c'est fait. Tu sauras au message suivant si elle
 - Un message commence par le contexte (où la personne se trouve dans Docs) : sers-t'en \
 pour comprendre « ce dossier » ou « ce fichier ».
 
-Tu disposes d'un ordinateur (l'outil d'exécution de code, Python, sans accès à internet) pour \
+Tu as accès à internet : « web_search » pour chercher (actualité, lois et règles des \
+associations, sites officiels…) et « web_fetch » pour lire une page dont l'adresse est dans la \
+conversation (par exemple le site de l'école). Cite tes sources. Ne mets jamais de données \
+personnelles des élèves, familles ou professeurs (noms, contacts, adresses) dans une recherche.
+
+Tu disposes aussi d'un ordinateur (l'outil d'exécution de code, Python, sans accès à internet) pour \
 calculer, tracer des courbes (matplotlib) et fabriquer des fichiers (PDF, Excel, Word, \
 PowerPoint, images). Pour travailler sur un fichier de l'école, copie-le d'abord dans \
 l'ordinateur avec « copier_fichier_dans_l_ordinateur ». Pour remettre un fichier à la \
@@ -145,6 +150,13 @@ OUTILS = [
     # Excel, Word, PowerPoint. Les fichiers déposés dans $OUTPUT_DIR
     # reviennent ici (voir _fichiers_produits).
     {"type": "code_execution_20260521", "name": "code_execution"},
+    # Internet (Seb, 16 octobre) : recherche et lecture de pages. Versions
+    # sans filtrage par code, pour ne pas créer un second ordinateur à côté
+    # de code_execution. web_fetch ne lit que des adresses déjà citées dans
+    # la conversation (par la personne ou par une recherche).
+    {"type": "web_search_20250305", "name": "web_search", "max_uses": 5,
+     "user_location": {"type": "approximate", "country": "FR", "timezone": "Europe/Paris"}},
+    {"type": "web_fetch_20250910", "name": "web_fetch", "max_uses": 5},
     # Données de l'école (élèves, cours, présences…), en lecture, avec les
     # droits de la personne (voir donnees.py).
     *OUTILS_DONNEES,
@@ -167,7 +179,13 @@ def cout_usd(modele: str, usage) -> float:
     entree, sortie, cache = PRIX.get(modele, PRIX[MODELE])
     lu = getattr(usage, "cache_read_input_tokens", 0) or 0
     ecrit = getattr(usage, "cache_creation_input_tokens", 0) or 0
-    return (usage.input_tokens * entree + ecrit * entree * 1.25 + lu * cache + usage.output_tokens * sortie) / 1e6
+    serveur = getattr(usage, "server_tool_use", None)
+    recherches = getattr(serveur, "web_search_requests", 0) or 0
+    # Recherche sur internet : 10 $ les 1 000 ; la lecture de pages ne
+    # coûte que ses jetons.
+    return (
+        usage.input_tokens * entree + ecrit * entree * 1.25 + lu * cache + usage.output_tokens * sortie
+    ) / 1e6 + recherches * 0.01
 
 
 @dataclass
@@ -592,7 +610,7 @@ class Assistant:
                     if evenement.type == "text":
                         yield "texte", evenement.text
                     elif evenement.type == "content_block_start" and getattr(evenement.content_block, "type", "") == "server_tool_use":
-                        yield "outil", "code_execution"
+                        yield "outil", getattr(evenement.content_block, "name", "") or "code_execution"
                 yield "fin", flux.get_final_message()
         except anthropic.AuthenticationError as erreur:
             logger.exception("Clé Anthropic refusée")

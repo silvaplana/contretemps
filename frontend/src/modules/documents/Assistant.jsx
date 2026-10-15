@@ -17,6 +17,8 @@ const EN_TRAIN_DE = {
   lire_fichier: 'Je lis le fichier…',
   copier_fichier_dans_l_ordinateur: 'Je prépare le fichier…',
   code_execution: 'Je travaille sur l’ordinateur…',
+  web_search: 'Je cherche sur internet…',
+  web_fetch: 'Je lis la page sur internet…',
   resume_ecole: 'Je regarde les chiffres de l’école…',
   lister_cours: 'Je regarde les cours…',
   lister_eleves: 'Je regarde les élèves…',
@@ -185,7 +187,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
         else if (e.type === 'texte') {
           setActivite('')
           majDernier((m) => ({ ...m, texte: m.texte + e.texte }))
-        } else if (e.type === 'outil') setActivite(EN_TRAIN_DE[e.nom] ?? 'Je prépare une proposition…')
+        } else if (e.type === 'outil') setActivite(EN_TRAIN_DE[e.nom] ?? (e.nom?.includes('code_execution') ? EN_TRAIN_DE.code_execution : 'Je prépare une proposition…'))
         else if (e.type === 'action') majDernier((m) => ({ ...m, actions: [...m.actions, { ...e, etat: 'proposee' }] }))
         else if (e.type === 'fin') {
           setCout(e.cout_total_usd)
