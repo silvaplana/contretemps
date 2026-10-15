@@ -6,12 +6,14 @@ import * as auth from '../api/auth.js'
 import * as notificationsApi from '../api/notifications.js'
 import { ROLE_LABEL } from '../data/roles.js'
 import { identifiantPropose } from '../utils/lienRecu.js'
+import { urlNomImage, useApparence } from '../api/apparence.js'
 
 // Écran de connexion (voir spec/SPEC.md §2.2) : une seule page pour toutes
 // les écoles. Nom prénom ou email, et le mot de passe personnel (créé à
 // partir d'une invitation reçue par mail). Créer une école est réservé au
 // Super User (décision du 2026-10-01, voir ChoixEcoleScreen.jsx).
 export default function LoginScreen({ onLogin }) {
+  const apparence = useApparence()
   // Pré-rempli quand on arrive par le lien d'un mail de rappel.
   const [identifiant, setIdentifiant] = useState(identifiantPropose)
   const [motDePasse, setMotDePasse] = useState('')
@@ -55,8 +57,14 @@ export default function LoginScreen({ onLogin }) {
     <div className="login-screen">
       <div className="login-screen__brand">
         <Logo size={110} />
-        <h1>Contretemps</h1>
-        <p>Gestion d'école de danse du cours au gala</p>
+        {/* Nom (texte ou image) et slogan de l'école de l'adresse visitée
+            (spec §5.1.1) ; ceux de Contretemps sur l'adresse générique. */}
+        {apparence.nomMode === 'image' && urlNomImage(apparence) ? (
+          <img className="login-screen__nom-image" src={urlNomImage(apparence)} alt={apparence.nom} />
+        ) : (
+          <h1>{apparence.nom}</h1>
+        )}
+        <p>{apparence.slogan}</p>
       </div>
 
       <form className="login-screen__form" onSubmit={seConnecter}>

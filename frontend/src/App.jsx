@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import * as authApi from './api/auth.js'
+import * as apparenceApi from './api/apparence.js'
 import * as choregraphiesApi from './api/choregraphies.js'
 import * as comptesApi from './api/comptes.js'
 import * as conversationsApi from './api/conversations.js'
@@ -681,6 +682,8 @@ function App() {
   // élèves et leurs vidéos, en une requête (voir api/choregraphies.js).
   useEffect(() => {
     if (loggedIn && ecole.id) {
+      // Apparence de l'école du compte (spec §5.1.1), quelle que soit l'adresse.
+      apparenceApi.chargerEcole(ecole.id)
       choregraphiesApi.lister(ecole.id).then(setChoregraphies).catch(() => {})
     }
   }, [loggedIn, ecole.id, versionDonnees])

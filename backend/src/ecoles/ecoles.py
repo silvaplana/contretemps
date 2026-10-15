@@ -95,6 +95,11 @@ class Ecoles:
     def disponibilite(self, db: Session, adresse: str, ecole_id: int | None = None) -> dict:
         """Pour la vérification pendant la frappe : `raison` vaut
         'invalide', 'reserve' ou 'pris' ; `proposition` est une adresse libre."""
+        # Proposition : la ville de l'école (ou son code postal) d'abord,
+        # comme à la création (spec §2.7).
+        ecole = self.get(db, ecole_id) if ecole_id is not None else None
+        ville = ecole.ville if ecole is not None else None
+        code_postal = ecole.code_postal if ecole is not None else None
         try:
             propre = verifier(adresse)
         except AdresseInvalide as erreur:
@@ -103,14 +108,16 @@ class Ecoles:
                 "adresse": normaliser(adresse),
                 "disponible": False,
                 "raison": erreur.raison,
-                "proposition": self.proposer_adresse(db, base, sauf_ecole_id=ecole_id) if erreur.raison == "reserve" else None,
+                "proposition": self.proposer_adresse(db, base, ville, code_postal, ecole_id)
+                if erreur.raison == "reserve"
+                else None,
             }
         if self.adresse_prise(db, propre, ecole_id):
             return {
                 "adresse": propre,
                 "disponible": False,
                 "raison": "pris",
-                "proposition": self.proposer_adresse(db, propre, sauf_ecole_id=ecole_id),
+                "proposition": self.proposer_adresse(db, propre, ville, code_postal, ecole_id),
             }
         return {"adresse": propre, "disponible": True, "raison": None, "proposition": None}
 

@@ -762,8 +762,9 @@ est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande
   la saison à supprimer, ce qui sera supprimé, puis le nom de la saison à retaper avant que
   **"Supprimer définitivement"** ne soit utilisable.
 
-**Section "Personnalisation de l'application"** *(demande utilisateur du 2026-10-15, pas
-encore implémenté ; **maquette validée par l'utilisateur le 2026-10-15 :
+**Section "Personnalisation de l'application"** *(demande utilisateur du 2026-10-15,
+implémentée le même jour, **dernier volet d'Admin > École**, après « Usage des ressources & IA »
+(demande du 2026-10-15, à la place de « juste après Saison ») ; **maquette validée par l'utilisateur le 2026-10-15 :
 `spec/maquettes/personnalisation-ecole.html`**, à ouvrir dans un navigateur, tout y est
 cliquable)* : repliable comme "Saison", placée **juste après "Saison"**. Tout admin de l'école
 peut la modifier, sauf l'adresse web (Owners, §2.7). **Par défaut, tous les champs sont remplis

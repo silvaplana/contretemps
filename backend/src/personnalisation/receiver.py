@@ -57,6 +57,7 @@ class PersonnalisationReceiver:
         r.get("/par-host/site.webmanifest")(self.manifest)
         r.get("/par-host/icons/{nom}")(self.icone_par_host)
         r.get("/par-host/{nom}")(self.icone_par_host)
+        r.get("/ecoles/{ecole_id}/apparence")(self.apparence)
         r.get("/ecoles/{ecole_id}/personnalisation", dependencies=[Depends(self._admin)])(self.obtenir)
         r.patch("/ecoles/{ecole_id}/personnalisation", dependencies=[Depends(self._admin)])(self.modifier)
         r.post("/ecoles/{ecole_id}/personnalisation/defaut", dependencies=[Depends(self._admin)])(self.defaut)
@@ -141,6 +142,12 @@ class PersonnalisationReceiver:
         if contenu is None:
             raise HTTPException(status_code=404)
         return Response(contenu, media_type="image/png", headers={"Cache-Control": "public, max-age=3600"})
+
+    def apparence(self, ecole_id: int, db: Session = Depends(get_db)):
+        """L'apparence d'une école (couleurs, police, logo, nom, slogan) :
+        rien de secret, lue par l'appli une fois connectée, quelle que soit
+        l'adresse (sur l'adresse générique, l'école est celle du compte)."""
+        return self.client.vue(self._ecole(db, ecole_id))
 
     def fichier(self, ecole_id: int, fichier: str, db: Session = Depends(get_db)):
         chemin = self.client.fichier_image(self._ecole(db, ecole_id), fichier)

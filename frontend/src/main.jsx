@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.jsx'
 import { installerIdentiteAppelant } from './api/identite.js'
+import { chargerParAdresse } from './api/apparence.js'
 import { ecouterInstallation } from './api/installation.js'
 
 // Avant tout rendu : chaque appel à notre API porte l'id du profil actif
@@ -11,6 +12,9 @@ installerIdentiteAppelant()
 // Tout de suite : l'annonce "installable" du navigateur peut arriver avant
 // le premier affichage (voir api/installation.js).
 ecouterInstallation()
+// L'apparence de l'école de l'adresse visitée (spec §2.7), avant même la
+// page de connexion ; rien à faire sur l'adresse générique.
+chargerParAdresse()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

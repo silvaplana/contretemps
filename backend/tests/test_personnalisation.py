@@ -218,3 +218,10 @@ def test_connexion_sur_l_adresse_de_l_ecole(client, db_session, ecole, monkeypat
     assert auth_receiver.invitations.mails.lien("activer", "J", "le-beausset") == (
         "https://le-beausset.contretemps.silvaplana.cloud/activer?jeton=J"
     )
+
+
+def test_apparence_lisible_sans_connexion(client, ecole):
+    client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"couleur_accent": "#123456"})
+    vue = client.get(f"/ecoles/{ecole.id}/apparence").json()
+    assert (vue["couleur_accent"], vue["sous_domaine"]) == ("#123456", "le-beausset")
+    assert client.get("/ecoles/999/apparence").status_code == 404

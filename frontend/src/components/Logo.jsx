@@ -1,3 +1,5 @@
+import { urlLogo, useApparence } from '../api/apparence.js'
+
 // Logo Contretemps : image fournie par l'utilisateur (public/images/
 // logo-contretemps.png — même image que le favicon/l'icône Android, voir
 // index.html et android/app/src/main/res/mipmap-*). Affichée grande sur
@@ -12,17 +14,21 @@
 // en dessous, gardé intact, au cas où on voudrait un jour s'en ressortir
 // sans avoir à le réécrire — passer AFFICHER_LOGO_PHOTO à `false` pour y
 // revenir.
+//
+// Depuis le 2026-10-15, une école peut avoir son propre logo (Admin > École
+// > Personnalisation de l'application, voir api/apparence.js).
 const AFFICHER_LOGO_PHOTO = true
-const BASE_URL = import.meta.env.BASE_URL
 
 export default function Logo({ size = 40 }) {
+  const apparence = useApparence()
   if (AFFICHER_LOGO_PHOTO) {
     return (
       <img
-        src={`${BASE_URL}images/logo-contretemps.png`}
+        src={urlLogo(apparence)}
         width={size}
         height={size}
-        alt="Logo Contretemps"
+        style={{ objectFit: 'contain' }}
+        alt={`Logo ${apparence.nom}`}
       />
     )
   }

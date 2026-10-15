@@ -68,6 +68,7 @@ ROUTES_PUBLIQUES = {
     ("GET", "/par-host/icons/{nom}"),
     ("GET", "/par-host/{nom}"),
     ("GET", "/ecoles/{ecole_id}/personnalisation/{fichier}"),
+    ("GET", "/ecoles/{ecole_id}/apparence"),
     ("GET", "/cours"),
     ("GET", "/push/cle-publique"),
     # Ne révèle qu'un numéro de fiche ; sert à la reprise de session quand

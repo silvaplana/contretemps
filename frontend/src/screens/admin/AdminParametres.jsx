@@ -6,6 +6,7 @@ import AdministrateursTableau from './AdministrateursTableau.jsx'
 import { isOwner } from '../../data/roles.js'
 import SaisonsSection from './SaisonsSection.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
+import PersonnalisationSection from './PersonnalisationSection.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
 
 // Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école
@@ -187,6 +188,10 @@ export default function AdminParametres({
         cours={cours}
         setChoregraphies={setChoregraphies}
       />
+
+      {/* Dernier volet (demande du 2026-10-15) : apparence de l'appli et
+          adresse web de l'école (spec §2.7, §5.1.1). */}
+      <PersonnalisationSection ecole={ecole} activeUser={activeUser} />
     </div>
   )
 }
