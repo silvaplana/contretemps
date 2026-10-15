@@ -111,3 +111,41 @@ docker compose up -d --build frontend
 Sans ce fichier, `GOOGLE_CLIENT_ID` reste vide et le frontend se construit
 quand même — seule la destination "Cet appareil" est proposée dans le
 menu sauvegarde, sans erreur.
+
+
+## Adresses d'école (spec §2.7, mises en service le 2026-10-15)
+
+Chaque école a son adresse `https://<adresse>.contretemps.silvaplana.cloud`
+(Contretemps : `le-beausset`).
+
+- **DNS** (Hostinger, zone `silvaplana.cloud`) : un enregistrement `A`
+  `*.contretemps` -> `187.124.17.136`. Toutes les adresses, même futures,
+  arrivent ainsi au VPS.
+- **Gateway** (`~/gateway/Caddyfile`, hors repo) : certificat créé à la
+  première visite, après accord du backend, puis tout est transmis au
+  conteneur `contretemps-frontend-ecoles` sans retirer de préfixe :
+
+```caddyfile
+{
+	email {$ACME_EMAIL}
+	on_demand_tls {
+		ask http://contretemps-frontend-ecoles/api/sous-domaines/existe
+	}
+}
+
+*.contretemps.silvaplana.cloud {
+	tls {
+		on_demand
+	}
+	reverse_proxy contretemps-frontend-ecoles:80
+}
+```
+
+  Avant de recharger : `docker compose exec caddy caddy validate --config
+  /etc/caddy/Caddyfile --adapter caddyfile`, puis `caddy reload`.
+- **Conteneur** `frontend-ecoles` (docker-compose.yml) : même code que
+  `frontend`, construit à la racine (`VITE_BASE=/`, API sous `/api`), avec
+  `frontend/Caddyfile.ecoles` : manifest, icônes et nom de l'appli dans
+  `index.html` viennent du backend, selon l'école de l'adresse (en-tête Host).
+- **Liens des mails** vers l'adresse de l'école : variable
+  `ADRESSE_PAR_ECOLE=1` dans `backend/.env`.

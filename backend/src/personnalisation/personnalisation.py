@@ -317,7 +317,7 @@ class Personnalisation:
             for taille in (192, 512)
             for suffixe, but in (("", "any"), ("-maskable", "maskable"))
         ]
-        fond = vue["couleur_fond"] if ecole is not None and (ecole.logo or ecole.couleur_fond) else "#F46E19"
+        fond = self._couleur_appli(ecole)
         return {
             "name": vue["nom_appli"],
             "short_name": vue["nom_appli"],
@@ -330,6 +330,14 @@ class Personnalisation:
             "theme_color": fond,
             "icons": icones,
         }
+
+    def _couleur_appli(self, ecole: Ecole | None) -> str:
+        """Couleur de la barre et de l'écran de lancement de l'appli
+        installée : celle de l'école si elle a personnalisé son logo ou son
+        fond, sinon l'orange des icônes d'aujourd'hui."""
+        if ecole is not None and (ecole.logo or ecole.couleur_fond):
+            return self.vue(ecole)["couleur_fond"]
+        return "#F46E19"
 
     def icone(self, ecole: Ecole | None, nom: str) -> bytes | None:
         """`nom` : icon-192.png, icon-512-maskable.png, favicon.png,
@@ -365,5 +373,5 @@ class Personnalisation:
         return (
             f"<title>{nom}</title>\n"
             f'    <meta name="apple-mobile-web-app-title" content="{nom}" />\n'
-            f'    <meta name="theme-color" content="{escape(vue["couleur_fond"])}" />'
+            f'    <meta name="theme-color" content="{escape(self._couleur_appli(ecole))}" />'
         )
