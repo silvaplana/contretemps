@@ -643,7 +643,14 @@ export default function Explorer({ orgId }) {
                 <path d="M15.5 15.5L20 20" />
               </svg>
             </button>
-            <button type="button" className="dx-ico" onClick={() => setCorbeille(true)} aria-label="Corbeille">🗑</button>
+            <button type="button" className="dx-ico" onClick={() => setCorbeille(true)} aria-label="Corbeille">
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 7h16" />
+                <path d="M9 7V4.5h6V7" />
+                <path d="M6 7l1 13h10l1-13" />
+                <path d="M10 11v5M14 11v5" />
+              </svg>
+            </button>
           </>
         ) : (
           <>
