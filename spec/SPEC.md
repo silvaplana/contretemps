@@ -132,7 +132,9 @@ Jusqu'ici, le serveur croyait sur parole l'en-tête `X-Compte-Id` envoyé par l'
    l'invitation » ci-dessous). Même bouton pour les professeurs et les administrateurs.
 3. **Un seul mail par adresse**, même si elle porte plusieurs profils : « L'école Contretemps
    vous invite sur l'application. Profils : Léa, Tom. [Créer mon mot de passe] ».
-4. **Le lien** : `https://silvaplana.cloud/contretemps/activer?jeton=…`, à usage unique,
+4. **Le lien** : `https://<adresse-de-l-ecole>.contretemps.silvaplana.cloud/activer?jeton=…`
+   (adresse web propre à chaque école, §2.7 ; avant cette décision du 2026-10-15 :
+   `https://silvaplana.cloud/contretemps/activer?jeton=…`), à usage unique,
    valable **15 jours** (décision du 2026-10-02), personnel et à usage unique, stocké haché en base (§6.3ter). Un admin peut le renvoyer, ce qui
    annule le précédent.
 5. **Le clic** ouvre directement l'appli Android si elle est installée (lien profond, voir
@@ -544,6 +546,110 @@ Les vidéos, seules données lourdes, ne sont jamais dupliquées.
 
 ---
 
+### 2.7 Adresse web par école *(décision utilisateur du 2026-10-15, pas encore implémenté)*
+
+**Pourquoi.** Le nom et l'icône d'une appli installée (PWA) sont lus par le téléphone au moment
+de l'installation, dans le *manifest* de l'adresse visitée, avant toute connexion. Tant que
+toutes les écoles partagent l'adresse `silvaplana.cloud/contretemps/`, elles installent toutes
+la même appli « Contretemps » avec le même logo. Pour que chaque école ait **son nom et son
+logo sur l'écran d'accueil du téléphone**, il faut **une adresse par école**.
+
+**Choix : un sous-domaine par école**, sous le nom de l'appli, lui-même sous le domaine déjà
+possédé :
+
+> `https://<adresse>.contretemps.silvaplana.cloud`   ex. `https://le-beausset.contretemps.silvaplana.cloud`
+
+Options écartées : un chemin par école (`silvaplana.cloud/contretemps/e/<adresse>/`, plus
+simple côté serveur mais toutes les écoles restent la même « origine » pour le navigateur, donc
+sessions, abonnements push et installation mélangés) ; `<entreprise>.silvaplana.cloud` sans le
+nom de l'appli (collisions de noms entre les applis hébergées sur silvaplana.cloud, et le
+serveur ne saurait pas vers quelle appli aiguiller) ; un domaine dédié type `contretemps.app`
+(le plus « pro », à envisager plus tard : la bascule ne change que la racine, rien d'autre).
+
+**Attention au nom** : le produit s'appelle Contretemps **et** la première école aussi
+(Le Beausset). L'adresse `contretemps.contretemps.silvaplana.cloud` est volontairement interdite
+(nom réservé) ; pour cette école, l'adresse proposée est la ville : `le-beausset`.
+
+#### L'adresse
+
+- Champ **« Adresse web de l'appli »** de la section Personnalisation (§5.1.1), affiché
+  `https://` **[à choisir]** `.contretemps.silvaplana.cloud`. Colonne `sous_domaine` de la
+  table écoles (§6.1), **unique**, 3 à 40 caractères, lettres minuscules sans accent, chiffres
+  et tirets (ni au début ni à la fin). La saisie est normalisée en direct (accents retirés,
+  espaces → tirets, minuscules) et le serveur vérifie la disponibilité pendant la frappe :
+  « Disponible » / « Déjà prise par une autre école » / « Ce nom est réservé », avec une
+  proposition cliquable (`<adresse>-2`, ou la ville).
+- **Noms réservés** : `www`, `api`, `admin`, `app`, `mail`, `contretemps`, et tout nom de
+  moins de 3 caractères.
+- **Proposée automatiquement** à la création de l'école (§2.3) à partir de son nom
+  (`Danse Lyon 3e` → `danse-lyon-3e`). Si le nom normalisé est réservé ou déjà pris, on
+  propose la ville (code postal → ville, ou saisie) puis `nom-ville`. L'école peut la changer
+  dans le formulaire de création et plus tard dans Personnalisation.
+- **Changer l'adresse est réservé aux Owners** (§2.4) : c'est la seule action de la section
+  qui oblige les élèves à réinstaller l'appli. Un avertissement le dit avant d'enregistrer.
+  L'ancienne adresse **redirige vers la nouvelle pendant 6 mois** (colonnes
+  `ancien_sous_domaine`, `ancien_sous_domaine_jusqu_au`, §6.1) puis redevient libre. Les liens
+  d'invitation et de mot de passe oublié encore valides continuent donc de marcher.
+- **Migration** : l'école Contretemps existante reçoit `le-beausset` ; EcoleTest reçoit
+  `ecoletest`. Toute école doit avoir une adresse (colonne obligatoire après migration).
+
+#### Côté serveur : rien à relancer quand une école est créée
+
+- **DNS** : une seule ligne `*.contretemps.silvaplana.cloud` (enregistrement A ou CNAME) vers
+  le VPS. Tous les sous-domaines, y compris ceux qui n'existent pas encore, arrivent au
+  serveur.
+- **Caddy « gateway »** (hors de ce repo, voir DEPLOY.md) : un seul bloc
+  `*.contretemps.silvaplana.cloud` qui route vers le conteneur frontend de Contretemps **sans
+  retirer de préfixe** (l'appli est à la racine sur ces adresses), avec le **TLS à la demande**
+  (`on_demand_tls` + `ask`) : à la première visite d'un sous-domaine, Caddy interroge
+  `GET /api/ecoles/sous-domaine/<adresse>/existe` ; si le backend répond 200, Caddy obtient un
+  certificat Let's Encrypt en quelques secondes et le garde ; sinon (404) il refuse la
+  connexion, ce qui empêche la fabrication de certificats pour des adresses inventées. Pas de
+  certificat wildcard (qui exigerait un accès API au DNS), pas de redémarrage.
+- **L'ancienne adresse `silvaplana.cloud/contretemps/`** reste servie, comme **page générique**
+  du produit : connexion « dans toutes les écoles » (§2.2), « Nouvelle école ? » (§2.3),
+  Superuser (§2.5), et l'appli Android Capacitor qui la vise. Une personne qui s'y connecte
+  est **renvoyée vers l'adresse de son école** après connexion (ou après le choix de l'école),
+  avec son jeton, pour que la session vive sur la bonne origine. Le manifest de l'adresse
+  générique garde le nom et le logo Contretemps par défaut.
+- **Frontend** : Vite est construit **une seule fois** avec `base: '/'` pour les sous-domaines ;
+  le build actuel en `/contretemps/` ne sert plus qu'à l'adresse générique (soit deux builds,
+  soit, plus simple, l'adresse générique redirige vers `app.contretemps.silvaplana.cloud`, qui
+  porte la page générique : **à trancher par Claude Code selon ce qui est le moins fragile** ;
+  dans ce second cas `app` reste réservé pour cet usage). Le service worker (`sw.js`) est
+  enregistré à la racine de chaque sous-domaine : une installation, un cache et des abonnements
+  push **par école**, ce qui est voulu.
+
+#### Ce qui dépend de l'adresse de l'école
+
+Sur un sous-domaine d'école, le backend identifie l'école par l'en-tête `Host` (ou le
+sous-domaine passé par le frontend) **pour les routes publiques seulement** ; les routes
+authentifiées continuent de déduire l'école du compte (§6.3). Routes publiques dépendantes :
+
+- `GET /site.webmanifest` → **manifest généré** : `name` et `short_name` = **nom sous l'icône**
+  (§5.1.1, par défaut le nom de l'école), `description` = slogan, `theme_color` et
+  `background_color` = couleur de fond de l'école, `id`/`start_url`/`scope` = `/`, `icons` =
+  les tailles générées depuis le logo de l'école (§5.1.1 : logo posé sur la couleur de fond,
+  192 et 512 px + versions « maskable »). Servi avec `Cache-Control: no-cache`.
+- `GET /icons/…`, `GET /favicon.png`, `GET /apple-touch-icon.png` → les images de l'école.
+- `index.html` : `<title>`, `<meta name="apple-mobile-web-app-title">` et
+  `<meta name="theme-color">` injectés par le serveur avec les valeurs de l'école (l'iPhone lit
+  le nom dans cette balise, pas dans le manifest).
+- **Connexion** sur un sous-domaine : la recherche du compte se fait **d'abord dans cette
+  école** ; si le nom prénom n'y est pas, on cherche dans toutes les écoles (§2.2) et, si on le
+  trouve ailleurs, on envoie la personne vers l'adresse de son école.
+- **Mails** (invitation, mot de passe oublié) : les liens pointent vers l'adresse de l'école.
+- `GET /api/ecoles/sous-domaine/<adresse>/existe` (pour Caddy) et
+  `GET /api/ecoles/sous-domaine/<adresse>/disponible` (pour le formulaire).
+
+**Limites connues, à écrire dans l'aide de la section** : sur iPhone, nom et icône sont figés
+à l'installation (changer de logo demande de réinstaller l'appli) ; Android les met à jour
+tout seul au bout de quelques jours. Les appareils où l'appli est déjà installée depuis
+l'adresse générique gardent « Contretemps » jusqu'à une réinstallation depuis la nouvelle
+adresse (le statut « appli installée » de §2.2 permet de voir qui est concerné).
+
+---
+
 ## 3. Droits par rôle
 
 Un compte qui cumule plusieurs rôles (§2.1) a **l'union de leurs droits** : un
@@ -631,13 +737,31 @@ est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande
   la saison à supprimer, ce qui sera supprimé, puis le nom de la saison à retaper avant que
   **"Supprimer définitivement"** ne soit utilisable.
 
-**Section "Personnalisation"** *(demande utilisateur du 2026-10-15, pas encore implémenté)* :
-repliable comme "Saison", placée **juste après "Saison"**. Tout admin de l'école peut la
-modifier. Un **aperçu en direct** de l'en-tête de la page de connexion (logo, nom, slogan, sur
-les couleurs choisies) est affiché au-dessus des champs. Elle contient :
+**Section "Personnalisation de l'application"** *(demande utilisateur du 2026-10-15, pas
+encore implémenté ; **maquette validée par l'utilisateur le 2026-10-15 :
+`spec/maquettes/personnalisation-ecole.html`**, à ouvrir dans un navigateur, tout y est
+cliquable)* : repliable comme "Saison", placée **juste après "Saison"**. Tout admin de l'école
+peut la modifier, sauf l'adresse web (Owners, §2.7). **Par défaut, tous les champs sont remplis
+avec le logo, le nom, les couleurs et la police actuels de Contretemps** : une école qui ne
+touche à rien garde l'apparence d'aujourd'hui. Deux aperçus en direct, légendés, sont affichés
+au-dessus des champs :
+1. **« Aperçu de la page de connexion »** : logo, nom, slogan, sur les couleurs et la police
+   choisies ;
+2. **« Aperçu de l'écran d'accueil du téléphone »** : une rangée d'icônes dont celle de
+   l'appli, avec le logo de l'école posé sur sa couleur de fond et, dessous, le nom sous
+   l'icône. Il montre à l'admin ce que donne l'installation de la PWA (§2.7).
+
+Elle contient, dans cet ordre :
+- **Adresse web de l'appli** : `https://` **[à choisir]** `.contretemps.silvaplana.cloud`, avec
+  la vérification en direct, les propositions et l'avertissement de réinstallation décrits en
+  §2.7. Aide : « Lettres minuscules, chiffres et tirets. C'est l'adresse mise dans les mails
+  d'invitation. » ;
+- **Nom sous l'icône du téléphone** (texte, 30 caractères au plus) : pré-rempli avec le nom de
+  l'école ; c'est le `name`/`short_name` du manifest (§2.7). Un compteur prévient au-delà de
+  12 caractères (« risque d'être coupé sur le téléphone »), sans bloquer ;
 - **Logo** (image) : affiché en grand sur la page de connexion, en petit dans l'en-tête de
-  l'appli, et sert d'icône de l'appli installée (voir le fil « Personnalisation par école »
-  pour l'adresse propre à chaque école dont dépend cette icône) ;
+  l'appli, et sert d'icône de l'appli installée (§2.7). Par défaut, le logo actuel de
+  Contretemps ;
 - **Nom de l'école**, au choix :
   - *Texte* : le nom de l'école (§6.1), écrit dans la police de l'appli ;
   - *Image* : le nom dessiné, avec sa propre graphie ;
@@ -646,7 +770,14 @@ les couleurs choisies) est affiché au-dessus des champs. Elle contient :
 - **Couleurs** : *fond*, *texte* et *accent* (boutons, bandeaux, onglet actif : l'orange
   actuel). Un message prévient si le texte est peu lisible sur le fond (contraste trop
   faible), sans bloquer ;
-- un bouton **"Revenir à l'apparence par défaut"** (avec confirmation).
+- **Police** : choix parmi une **courte liste de polices hébergées sur le serveur** (pas de
+  fichier libre, pour garder licences et lisibilité sous contrôle), présentées chacune par le
+  nom de l'école écrit dans la police : *Système* (celle d'aujourd'hui, par défaut),
+  Montserrat, Poppins, Nunito, Josefin Sans, Playfair Display (fichiers woff2 dans
+  `frontend/public/fonts/`, licence SIL OFL). La police choisie s'applique à toute l'appli
+  (`--sans` dans `index.css`) ;
+- un bouton **"Revenir à l'apparence par défaut"** (avec confirmation) : remet logo, nom en
+  texte, slogan, couleurs et police par défaut ; **ne touche pas à l'adresse web**.
 
 **Envoi d'une image** (logo ou nom en image) : PNG, JPG, WebP ou SVG, 5 Mo au plus. Le
 serveur recadre les marges vides et redimensionne (512 px de côté au plus pour le logo). Le
@@ -844,6 +975,11 @@ champs techniques.
 | couleur_fond | couleur `#RRGGBB` | Opt. (vide = `#FDECD8`) |
 | couleur_texte | couleur `#RRGGBB` | Opt. (vide = `#3A2410`) |
 | couleur_accent | couleur `#RRGGBB` | Opt. (vide = `#D8722A`) |
+| police | texte (clé de la liste §5.1.1, ex. `montserrat`) | Opt. (vide = police système) |
+| sous_domaine | texte (3-40 car., `[a-z0-9-]`), **UNIQUE** | Obl. (§2.7 ; migration : `le-beausset`, `ecoletest`) |
+| nom_appli | texte (30 car. max) | Opt. (vide = `nom`) — nom sous l'icône, §2.7 |
+| ancien_sous_domaine | texte, UNIQUE | Opt. — redirige vers `sous_domaine` (§2.7) |
+| ancien_sous_domaine_jusqu_au | date | Opt. — fin de la redirection (6 mois) |
 | created_at | datetime | Obl. (auto) |
 
 **Le nom seul n'est pas unique** : deux écoles différentes peuvent porter le même nom (ex. deux
@@ -1353,9 +1489,11 @@ encore branché).
 - **Texte principal** : noir / brun foncé (`#000`, `#3A2410`)
 - **Accent** : orange soutenu (`#D8722A`)
 - **Logo** : monogramme "Ct" (pour Contretemps) — un grand C en arc entourant un "t" italique, sur fond circulaire orange.
+- **Police** : système (`system-ui`, Segoe UI, Roboto…)
 - Ces valeurs sont celles **par défaut** : chaque école peut choisir son logo, son nom en image,
-  son slogan et ses trois couleurs (fond, texte, accent) dans Admin > École > Personnalisation
-  (§5.1.1, 2026-10-15).
+  son slogan, ses trois couleurs (fond, texte, accent) et sa police dans Admin > École >
+  Personnalisation de l'application (§5.1.1, 2026-10-15), et le nom et l'icône de l'appli
+  installée suivent, grâce à l'adresse web propre à chaque école (§2.7).
 - Icônes : style Tabler Icons (traits fins, cohérents)
 - Barre de navigation basse fixe, en fond orange clair légèrement plus soutenu que le fond général
 
@@ -1379,9 +1517,10 @@ encore branché).
 - Intégration HelloAsso : synchronisation ponctuelle ou temps réel via webhook ?
 - Politique de confidentialité (obligatoire, données concernant des mineurs, notamment les champs santé/urgence en §6.4)
 - Captures d'écran de la section 5 à reprendre entièrement une fois l'IHM adaptée (Claude Code, qui a accès à l'app réelle)
-- Logo/charte : **spécifié le 2026-10-15** (Admin > École > Personnalisation, §5.1.1). Reste
-  ouvert : nom et icône de l'appli installée propres à chaque école, qui demandent une adresse
-  par école (fil « Personnalisation par école », en attente de décision).
+- Logo/charte : **spécifié le 2026-10-15** (Admin > École > Personnalisation de l'application,
+  §5.1.1). Nom et icône de l'appli installée propres à chaque école : **spécifié le
+  2026-10-15** (adresse web par école, §2.7). Reste ouvert : un domaine dédié (ex.
+  `contretemps.app`) à la place de `contretemps.silvaplana.cloud`, quand le budget le permettra.
 - Messagerie : le "tuyau" du groupe WhatsApp miroir est en place (statut stocké, écran Admin
   > Conversations, voir §6.9) mais **pas le vrai envoi** — reste à faire : intégrer Baileys
   (ou équivalent), créer réellement le groupe (numéros de téléphone des membres), envoyer les
