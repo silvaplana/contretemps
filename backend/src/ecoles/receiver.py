@@ -122,7 +122,10 @@ class EcolesReceiver:
                 status_code=409,
                 detail="Une école avec ce nom et ce code postal existe déjà",
             )
-        return self.client.create(db, **donnees.model_dump())
+        try:
+            return self.client.create(db, **donnees.model_dump())
+        except ValueError as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
 
     def modifier(self, ecole_id: int, donnees: EcoleModification, db: Session = Depends(get_db)):
         try:

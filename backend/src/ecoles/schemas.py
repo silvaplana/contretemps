@@ -10,6 +10,9 @@ from pydantic import BaseModel
 class EcoleCreation(BaseModel):
     nom: str
     code_postal: str
+    # Adresse web (spec §2.7) : vide = proposée d'après le nom.
+    sous_domaine: str | None = None
+    ville: str | None = None
 
 
 class EcoleModification(BaseModel):
@@ -30,6 +33,7 @@ class EcolePublique(BaseModel):
     id: int
     nom: str
     code_postal: str
+    sous_domaine: str | None = None
 
     model_config = {"from_attributes": True}
 
@@ -45,6 +49,7 @@ class EcoleSortie(BaseModel):
     ville: str | None = None
     siret: str | None = None
     iban: str | None = None
+    sous_domaine: str | None = None
     created_at: datetime
     sauvegarde_active: bool
     sauvegarde_periodicite: str

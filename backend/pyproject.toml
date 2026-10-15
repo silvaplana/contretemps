@@ -31,6 +31,13 @@ dependencies = [
     # Lecture des fiches d'inscription papier par Claude (voir
     # inscriptions/lecture_fiche.py) — clé dans ANTHROPIC_API_KEY.
     "anthropic>=1.0",
+    # Personnalisation de l'école (voir personnalisation/) : images du logo
+    # et du nom (recadrage, détourage simple, icônes de l'appli installée),
+    # logo en SVG, et détourage par IA sur le serveur (modèle téléchargé à
+    # la première utilisation, voir U2NET_HOME dans le Dockerfile).
+    "pillow",
+    "cairosvg",
+    "rembg[cpu]",
     # Les 2 PDF d'inscription (dossier + facture, voir
     # inscriptions/dossier_html.py et facture_html.py) sont générés en
     # HTML/CSS + Chromium headless (gabarits fournis par l'utilisateur,
@@ -80,3 +87,4 @@ where = ["src"]
 # installé).
 [tool.setuptools.package-data]
 inscriptions = ["facture_template/*", "dossier_template/*"]
+personnalisation = ["defaut/*"]

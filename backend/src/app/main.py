@@ -28,6 +28,9 @@ from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
 from inscriptions.fiches import FichesPapier
 from inscriptions.stockage import DOSSIER_INSCRIPTIONS
 from ressources import Ressources, RessourcesReceiver
+from personnalisation.ia import detourage_ia_disponible
+from personnalisation.personnalisation import DOSSIER_PERSONNALISATION, Personnalisation
+from personnalisation.receiver import PersonnalisationReceiver
 from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
 from notifications import Notifications, NotificationsReceiver
 from presence import Presence, PresenceReceiver
@@ -203,12 +206,22 @@ messagerie_receiver = MessagerieReceiver(
 # atteignable sans compte), depend de cours (resolution des cours choisis).
 helloasso_client = HelloAsso()
 inscriptions_client = Inscriptions(cours=cours_client, helloasso=helloasso_client)
+# Personnalisation par ecole (spec §2.7, §5.1.1) : adresse web, nom et
+# icone de l'appli installee, logo, couleurs, police.
+personnalisation_client = Personnalisation(
+    ecoles=ecoles_client,
+    detourage_ia=detourage_ia_disponible(),
+    noter_cout=lambda db, ecole_id, poste, cout, detail: ressources_client.noter_ia(db, ecole_id, poste, cout, detail),
+)
+personnalisation_receiver = PersonnalisationReceiver(client=personnalisation_client, app=app)
+
 # "Usage ressources et IA de la saison" (Admin > Ecole) : place sur le
 # disque par ecole, et cout des operations d'IA (voir ressources/).
 ressources_client = Ressources(
     {
         "videos": ("Vidéos", DOSSIER_VIDEOS_LIVE),
         "documents": ("Documents d'inscription", DOSSIER_INSCRIPTIONS),
+        "personnalisation": ("Personnalisation (logo, nom)", DOSSIER_PERSONNALISATION),
     }
 )
 ressources_receiver = RessourcesReceiver(client=ressources_client, app=app)

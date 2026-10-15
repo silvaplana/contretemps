@@ -620,6 +620,20 @@ serveur ne saurait pas vers quelle appli aiguiller) ; un domaine dédié type `c
   enregistré à la racine de chaque sous-domaine : une installation, un cache et des abonnements
   push **par école**, ce qui est voulu.
 
+#### Réalisation (2026-10-15)
+
+- Routes du serveur (préfixe `/api` vu du navigateur) : `GET /sous-domaines/existe?domain=…`
+  (Caddy), `GET /sous-domaines/{adresse}/disponible`, `GET /par-host/personnalisation`,
+  `/par-host/entete.html`, `/par-host/site.webmanifest`, `/par-host/icons/…`,
+  `/par-host/favicon.png`, `/par-host/apple-touch-icon.png` ; admin :
+  `GET|PATCH /ecoles/{id}/personnalisation`, `POST …/personnalisation/defaut`, images
+  `POST …/personnalisation/images/{logo|nom}` puis `…/detourage`, `…/valider`, ou `DELETE`
+  (brouillon) ; Owner : `PATCH /ecoles/{id}/sous-domaine`.
+- Les liens des mails et la redirection après connexion vers l'adresse de l'école sont activés
+  par la variable `ADRESSE_PAR_ECOLE=1`, posée seulement une fois les adresses d'école en
+  service en HTTPS.
+- Sans logo ni couleur de fond personnalisés, l'appli installée garde les icônes d'aujourd'hui.
+
 #### Ce qui dépend de l'adresse de l'école
 
 Sur un sous-domaine d'école, le backend identifie l'école par l'en-tête `Host` (ou le

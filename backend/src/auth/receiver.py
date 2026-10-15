@@ -89,12 +89,26 @@ class AuthReceiver:
         rbac.require_admin(appelant, ecole_id)
 
     def _session(self, db: Session, compte: Compte) -> SessionOuverte:
-        return SessionOuverte(compte=compte, jeton=self.client.ouvrir_session(db, compte))
+        ecole = db.get(Ecole, compte.ecole_id) if compte.ecole_id else None
+        adresse = self.invitations.mails.appli(ecole.sous_domaine) if ecole is not None else None
+        return SessionOuverte(
+            compte=compte,
+            jeton=self.client.ouvrir_session(db, compte),
+            adresse_ecole=adresse if adresse != self.invitations.mails.url_appli else None,
+        )
 
     # --- Connexion ---
 
-    def login(self, donnees: Connexion, db: Session = Depends(get_db)):
+    def login(self, donnees: Connexion, request: Request, db: Session = Depends(get_db)):
         profils = self.client.profils_possibles(db, donnees.identifiant, donnees.mot_de_passe)
+        # Sur l'adresse d'une école (spec §2.7), ses profils d'abord : si la
+        # personne y a une fiche, pas de « Choisissez votre école ».
+        from personnalisation.personnalisation import etiquette_du_host
+
+        etiquette = etiquette_du_host(request.headers.get("x-forwarded-host") or request.headers.get("host"))
+        dans_l_ecole = [p for p in profils if p.ecole_id and db.get(Ecole, p.ecole_id).sous_domaine == etiquette]
+        if donnees.compte_id is None and dans_l_ecole:
+            profils = dans_l_ecole
         if donnees.compte_id is not None:
             profils = [p for p in profils if p.id == donnees.compte_id]
         if not profils:
@@ -178,7 +192,8 @@ class AuthReceiver:
             ecole = db.get(Ecole, fiche.ecole_id) if fiche.ecole_id else None
             try:
                 self.invitations.mails.reinitialisation(
-                    fiche.email.strip(), ecole.nom if ecole else None, f"{fiche.prenom} {fiche.nom}", jeton
+                    fiche.email.strip(), ecole.nom if ecole else None, f"{fiche.prenom} {fiche.nom}", jeton,
+                    sous_domaine=ecole.sous_domaine if ecole else None,
                 )
             except Exception:  # noqa: BLE001 — ne rien révéler à l'écran
                 logger.exception("Mail de réinitialisation non envoyé")

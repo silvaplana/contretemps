@@ -120,7 +120,8 @@ def test_la_liste_publique_des_ecoles_ne_donne_plus_les_codes(client, ecole_comp
     ecoles = client.get("/ecoles").json()
     assert ecoles
     for ecole in ecoles:
-        assert set(ecole) == {"id", "nom", "code_postal"}
+        # L'adresse web sert à renvoyer chacun vers son école (spec §2.7).
+        assert set(ecole) == {"id", "nom", "code_postal", "sous_domaine"}
 
 
 def test_ni_code_ni_mot_de_passe_dans_les_reponses(client, ecole_complete):

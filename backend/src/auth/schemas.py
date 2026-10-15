@@ -49,6 +49,10 @@ class SessionOuverte(BaseModel):
     compte: CompteConnecte | None = None
     jeton: str | None = None
     choix: list[ChoixEcole] = []
+    # Adresse de l'école de ce profil (spec §2.7) : si la connexion s'est
+    # faite ailleurs, l'appli y renvoie la personne avec sa session. Vide
+    # tant que les adresses d'école ne sont pas en service.
+    adresse_ecole: str | None = None
 
 
 class Bascule(BaseModel):

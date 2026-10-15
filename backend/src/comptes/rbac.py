@@ -58,6 +58,16 @@ ROUTES_PUBLIQUES = {
     # Appelée par Brevo (remise des mails) : protégée par une clé dans l'adresse.
     ("POST", "/mails/brevo/{cle}"),
     ("GET", "/ecoles"),
+    # Personnalisation par école (spec §2.7) : lue avant toute connexion,
+    # par Caddy (certificat), par le téléphone (installation de l'appli) et
+    # par la page de connexion.
+    ("GET", "/sous-domaines/existe"),
+    ("GET", "/par-host/personnalisation"),
+    ("GET", "/par-host/entete.html"),
+    ("GET", "/par-host/site.webmanifest"),
+    ("GET", "/par-host/icons/{nom}"),
+    ("GET", "/par-host/{nom}"),
+    ("GET", "/ecoles/{ecole_id}/personnalisation/{fichier}"),
     ("GET", "/cours"),
     ("GET", "/push/cle-publique"),
     # Ne révèle qu'un numéro de fiche ; sert à la reprise de session quand

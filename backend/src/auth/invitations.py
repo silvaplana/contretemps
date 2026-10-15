@@ -54,10 +54,10 @@ class Invitations:
             if acces_email.mot_de_passe_hache:
                 # Accès déjà créé : un rappel pour se connecter, sans lien
                 # pour choisir un mot de passe.
-                self.mails.rappel(email, ecole.nom, nom, prenoms)
+                self.mails.rappel(email, ecole.nom, nom, prenoms, sous_domaine=ecole.sous_domaine)
             else:
                 jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
-                self.mails.invitation(email, ecole.nom, nom, prenoms, jeton)
+                self.mails.invitation(email, ecole.nom, nom, prenoms, jeton, sous_domaine=ecole.sous_domaine)
         except MailsIndisponibles:
             raise  # réglage du serveur, pas un problème de cette adresse
         except Exception as erreur:

@@ -28,6 +28,9 @@ class MailsAcces:
     def __init__(self, envoi: EmailEnvoi | None = None) -> None:
         self.envoi = envoi or EmailEnvoi()
         self.url_appli = os.environ.get("URL_APPLI", "https://silvaplana.cloud/contretemps").rstrip("/")
+        # Liens vers l'adresse de l'école (spec §2.7) : activé seulement une
+        # fois les adresses d'école en service (HTTPS vérifié), voir DEPLOY.md.
+        self.adresse_par_ecole = os.environ.get("ADRESSE_PAR_ECOLE") == "1"
         # Développement sans SMTP : le mail est écrit dans les journaux du
         # serveur au lieu d'être envoyé (jamais en production).
         self.dans_les_journaux = os.environ.get("MAILS_DANS_LES_JOURNAUX") == "1"
@@ -37,8 +40,16 @@ class MailsAcces:
         """Un mail peut-il partir de ce serveur ?"""
         return self.envoi.actif or self.dans_les_journaux
 
-    def lien(self, page: str, jeton: str) -> str:
-        return f"{self.url_appli}/{page}?jeton={jeton}"
+    def appli(self, sous_domaine: str | None = None) -> str:
+        """L'adresse de l'appli pour cette école, ou l'adresse générique."""
+        if self.adresse_par_ecole and sous_domaine:
+            from personnalisation.personnalisation import DOMAINE_ECOLES
+
+            return f"https://{sous_domaine}.{DOMAINE_ECOLES}"
+        return self.url_appli
+
+    def lien(self, page: str, jeton: str, sous_domaine: str | None = None) -> str:
+        return f"{self.appli(sous_domaine)}/{page}?jeton={jeton}"
 
     # Mails rédigés pour ne pas finir en spam (constaté le 2026-10-01 avec
     # Gmail : un titre qui parle de « mot de passe », trois lignes et un lien
@@ -49,7 +60,10 @@ class MailsAcces:
     def _sujet(self, ecole_nom: str | None) -> str:
         return f"Votre accès à l'application {ecole_nom or 'Contretemps'}"
 
-    def invitation(self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], jeton: str) -> None:
+    def invitation(
+        self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], jeton: str,
+        sous_domaine: str | None = None,
+    ) -> None:
         paragraphes = [
             f"L'école {ecole_nom} utilise une application pour ses élèves, leurs familles et ses "
             "professeurs : messages de l'école, vidéos et chorégraphies des cours, présences.",
@@ -64,7 +78,7 @@ class MailsAcces:
             destinataire,
             paragraphes,
             "Activer mon accès",
-            self.lien("activer", jeton),
+            self.lien("activer", jeton, sous_domaine),
             [
                 "Ce lien vous est personnel : ne le transférez à personne. Il est valable "
                 "15 jours et ne fonctionne qu'une seule fois.",
@@ -73,7 +87,9 @@ class MailsAcces:
             ],
         )
 
-    def rappel(self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str]) -> None:
+    def rappel(
+        self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], sous_domaine: str | None = None
+    ) -> None:
         """Réinvitation d'une personne qui a DÉJÀ créé son mot de passe
         (demande utilisateur du 2026-10-02) : pas de lien pour en choisir
         un, juste l'adresse de l'appli et le rappel de « Mot de passe
@@ -95,14 +111,16 @@ class MailsAcces:
             "Ouvrir l'application",
             # Le nom voyage dans le lien : l'écran de connexion s'ouvre avec
             # « Nom Prénom ou Email » déjà rempli (demande du 2026-10-02).
-            f"{self.url_appli}/?identifiant={quote_plus(destinataire)}",
+            f"{self.appli(sous_domaine)}/?identifiant={quote_plus(destinataire)}",
             [
                 f"Ce message vous est envoyé à la demande de l'école {ecole_nom}. "
                 "Si vous ne la connaissez pas, vous pouvez l'ignorer.",
             ],
         )
 
-    def reinitialisation(self, email: str, ecole_nom: str | None, destinataire: str, jeton: str) -> None:
+    def reinitialisation(
+        self, email: str, ecole_nom: str | None, destinataire: str, jeton: str, sous_domaine: str | None = None
+    ) -> None:
         nom = ecole_nom or "Contretemps"
         self._composer(
             email,
@@ -113,7 +131,7 @@ class MailsAcces:
                 "Ouvrez le lien ci-dessous pour le définir.",
             ],
             "Choisir mon mot de passe",
-            self.lien("reinitialiser", jeton),
+            self.lien("reinitialiser", jeton, sous_domaine),
             [
                 "Ce lien est valable 1 heure et ne peut servir qu'une fois.",
                 "Si vous n'avez rien demandé, ignorez ce message : votre mot de passe ne change pas.",

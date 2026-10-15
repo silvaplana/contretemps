@@ -18,7 +18,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     chromium \
     fonts-liberation \
     fonts-dejavu-core \
+    libcairo2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Détourage par IA du logo (voir personnalisation/ia.py) : le modèle (environ
+# 170 Mo) est téléchargé à la première utilisation, dans le volume persistant
+# plutôt que dans le conteneur (sinon re-téléchargé à chaque déploiement).
+ENV U2NET_HOME=/app/data/u2net
 
 # On copie d'abord uniquement ce qui decrit les dependances puis le code
 # source. Docker met en cache chaque etape : si tu ne changes que le
@@ -66,6 +72,7 @@ ENV VIDEOS_DIR=/app/data/uploads/videos
 # même volume /app/data que VIDEOS_DIR ci-dessus, pour survivre aux
 # redéploiements.
 ENV INSCRIPTIONS_DIR=/app/data/inscriptions
+ENV PERSONNALISATION_DIR=/app/data/personnalisation
 # Contrairement à VIDEOS_DIR ci-dessus (mutable, dans le volume), la
 # référence pointe vers le dossier figé dans l'image (voir COPY plus
 # haut) — jamais modifiée à l'exécution, seulement lue par

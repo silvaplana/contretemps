@@ -4,7 +4,10 @@ dépendance FastAPI ici, juste des méthodes appelées par receiver.py.
 
 from __future__ import annotations
 
-from sqlalchemy import select
+import datetime as dt
+
+from personnalisation.adresse import AdresseInvalide, normaliser, verifier
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from .models import Ecole
@@ -51,13 +54,118 @@ class Ecoles:
             select(Ecole).where(Ecole.nom == nom, Ecole.code_postal == code_postal)
         )
 
+    # --- Adresse web (spec §2.7) ---
+
+    def adresse_prise(self, db: Session, adresse: str, sauf_ecole_id: int | None = None) -> bool:
+        """Prise par une autre école, comme adresse actuelle ou comme
+        ancienne adresse qui redirige encore."""
+        aujourdhui = dt.date.today()
+        requete = select(Ecole.id).where(
+            or_(
+                Ecole.sous_domaine == adresse,
+                (Ecole.ancien_sous_domaine == adresse) & (Ecole.ancien_sous_domaine_jusqu_au >= aujourdhui),
+            )
+        )
+        if sauf_ecole_id is not None:
+            requete = requete.where(Ecole.id != sauf_ecole_id)
+        return db.scalar(requete) is not None
+
+    def proposer_adresse(
+        self, db: Session, nom: str, ville: str | None = None, code_postal: str | None = None,
+        sauf_ecole_id: int | None = None,
+    ) -> str:
+        """Le nom normalisé ; s'il est réservé ou pris, la ville, puis
+        nom-ville (ou nom-code postal) ; puis un numéro à la suite."""
+        candidats = [normaliser(nom), normaliser(ville or ""), normaliser(f"{nom} {ville or code_postal or ''}")]
+        for candidat in candidats:
+            try:
+                propre = verifier(candidat)
+            except AdresseInvalide:
+                continue
+            if not self.adresse_prise(db, propre, sauf_ecole_id):
+                return propre
+        base = next((c for c in candidats if len(c) >= 2), "ecole")
+        numero = 2
+        while True:
+            candidat = f"{base[:36]}-{numero}"
+            if not self.adresse_prise(db, candidat, sauf_ecole_id):
+                return candidat
+            numero += 1
+
+    def disponibilite(self, db: Session, adresse: str, ecole_id: int | None = None) -> dict:
+        """Pour la vérification pendant la frappe : `raison` vaut
+        'invalide', 'reserve' ou 'pris' ; `proposition` est une adresse libre."""
+        try:
+            propre = verifier(adresse)
+        except AdresseInvalide as erreur:
+            base = normaliser(adresse) or "ecole"
+            return {
+                "adresse": normaliser(adresse),
+                "disponible": False,
+                "raison": erreur.raison,
+                "proposition": self.proposer_adresse(db, base, sauf_ecole_id=ecole_id) if erreur.raison == "reserve" else None,
+            }
+        if self.adresse_prise(db, propre, ecole_id):
+            return {
+                "adresse": propre,
+                "disponible": False,
+                "raison": "pris",
+                "proposition": self.proposer_adresse(db, propre, sauf_ecole_id=ecole_id),
+            }
+        return {"adresse": propre, "disponible": True, "raison": None, "proposition": None}
+
+    def par_adresse(self, db: Session, adresse: str) -> tuple[Ecole | None, bool]:
+        """(école, adresse ancienne ?) : l'école dont c'est l'adresse, ou
+        l'ancienne adresse qui redirige encore."""
+        ecole = db.scalar(select(Ecole).where(Ecole.sous_domaine == adresse))
+        if ecole is not None:
+            return ecole, False
+        ecole = db.scalar(
+            select(Ecole).where(
+                Ecole.ancien_sous_domaine == adresse,
+                Ecole.ancien_sous_domaine_jusqu_au >= dt.date.today(),
+            )
+        )
+        return ecole, ecole is not None
+
+    def changer_adresse(self, db: Session, ecole: Ecole, adresse: str) -> Ecole:
+        """Lève AdresseInvalide ou ValueError (prise). L'ancienne adresse
+        redirige vers la nouvelle pendant 6 mois (spec §2.7)."""
+        propre = verifier(adresse)
+        if propre == ecole.sous_domaine:
+            return ecole
+        if self.adresse_prise(db, propre, ecole.id):
+            raise ValueError("Cette adresse est déjà prise par une autre école.")
+        if ecole.ancien_sous_domaine == propre:
+            ecole.ancien_sous_domaine = None
+            ecole.ancien_sous_domaine_jusqu_au = None
+        else:
+            ecole.ancien_sous_domaine = ecole.sous_domaine
+            ecole.ancien_sous_domaine_jusqu_au = dt.date.today() + dt.timedelta(days=183)
+        ecole.sous_domaine = propre
+        ecole.personnalisation_version = (ecole.personnalisation_version or 1) + 1
+        db.commit()
+        db.refresh(ecole)
+        return ecole
+
     def create(
         self,
         db: Session,
         nom: str,
         code_postal: str,
+        sous_domaine: str | None = None,
+        ville: str | None = None,
     ) -> Ecole:
-        ecole = Ecole(nom=nom, code_postal=code_postal)
+        """Toute école a une adresse web (spec §2.7) : celle demandée
+        (vérifiée), sinon une proposée d'après le nom. Lève AdresseInvalide
+        ou ValueError (prise)."""
+        if sous_domaine:
+            sous_domaine = verifier(sous_domaine)
+            if self.adresse_prise(db, sous_domaine):
+                raise ValueError("Cette adresse est déjà prise par une autre école.")
+        else:
+            sous_domaine = self.proposer_adresse(db, nom, ville, code_postal)
+        ecole = Ecole(nom=nom, code_postal=code_postal, sous_domaine=sous_domaine, ville=ville)
         db.add(ecole)
         db.commit()
         db.refresh(ecole)

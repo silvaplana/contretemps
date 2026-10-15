@@ -36,7 +36,7 @@ def test_memoire_et_ia_par_poste(client, db_session, ecole):
 
     usage = client.get(f"/ecoles/{ecole.id}/ressources").json()
     assert usage["saison"]
-    assert {r["cle"]: r["octets"] for r in usage["memoire"]} == {"videos": 3000, "documents": 500}
+    assert {r["cle"]: r["octets"] for r in usage["memoire"]} == {"videos": 3000, "documents": 500, "personnalisation": 0}
     assert usage["memoire_total_octets"] == 3500
     assert usage["ia"] == [
         {"categorie": "lecture_fiche", "libelle": "Lecture des fiches d'inscription", "nombre": 2, "cout_usd": 0.05},

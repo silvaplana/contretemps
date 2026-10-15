@@ -2,9 +2,9 @@
 la logique (création avec ses codes par défaut, etc.) vit dans ecoles.py.
 """
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Integer, String, Text, UniqueConstraint, event, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -36,6 +36,33 @@ class Ecole(Base):
     # IBAN (demande du 2026-10-15) : rangé sans espaces, en majuscules,
     # clé de contrôle vérifiée (voir ecoles.py:normaliser_iban).
     iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+
+    # --- Personnalisation de l'application (spec §2.7, §5.1.1, §6.1 ;
+    # 2026-10-15). Vide = valeur par défaut de Contretemps (§7). Les images
+    # sont des chemins relatifs au dossier de personnalisation (voir
+    # personnalisation/stockage.py) ; l'original est gardé pour pouvoir
+    # changer de détourage sans renvoyer l'image.
+    logo: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    logo_original: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    logo_detourage: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    nom_mode: Mapped[str] = mapped_column(String(10), nullable=False, default="texte")
+    nom_image: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    nom_image_original: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    nom_image_detourage: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    slogan: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    couleur_fond: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    couleur_texte: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    couleur_accent: Mapped[str | None] = mapped_column(String(7), nullable=True)
+    police: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Adresse web : https://<sous_domaine>.contretemps.silvaplana.cloud
+    # (voir personnalisation/adresse.py). L'ancienne redirige 6 mois.
+    sous_domaine: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
+    nom_appli: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    ancien_sous_domaine: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True)
+    ancien_sous_domaine_jusqu_au: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Augmenté à chaque changement d'apparence : les adresses des icônes en
+    # dépendent, pour que téléphones et navigateurs reprennent les nouvelles.
+    personnalisation_version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     # Plus de codes d'accès depuis le 2026-10-01 (spec §2.2) : chacun a son
     # mot de passe (table acces_emails).
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
@@ -58,3 +85,20 @@ class Ecole(Base):
     # se redéclencher plusieurs fois dans le même créneau si le worker
     # est relancé (redéploiement...).
     sauvegarde_derniere_execution: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+@event.listens_for(Ecole, "before_insert")
+def _adresse_par_defaut(mapper, connexion, ecole: Ecole) -> None:
+    """Toute école a une adresse web (spec §2.7). Le chemin normal la
+    choisit avant (voir ecoles.py:create) ; ceci couvre les autres
+    créations (tests, outils) : le nom normalisé, numéroté s'il est pris."""
+    if ecole.sous_domaine:
+        return
+    from personnalisation.adresse import RESERVES, normaliser
+
+    base = normaliser(f"{ecole.nom} {ecole.code_postal}") or "ecole"
+    prises = {ligne[0] for ligne in connexion.execute(text("SELECT sous_domaine FROM ecoles"))}
+    adresse, numero = base, 2
+    while adresse in prises or adresse in RESERVES or len(adresse) < 3:
+        adresse, numero = f"{base}-{numero}", numero + 1
+    ecole.sous_domaine = adresse
