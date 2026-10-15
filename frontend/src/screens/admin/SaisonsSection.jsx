@@ -288,7 +288,7 @@ export default function SaisonsSection({ ecoleId, onSaisonCreee, onSaisonSupprim
           onClick={() => setOuvert((o) => !o)}
         >
           <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
-          Saison {consultee?.nom ?? courante?.nom ?? ''}
+          Saisons (sélectionnée {consultee?.nom ?? courante?.nom ?? ''})
         </button>
       </h3>
       {ouvert && courante && (

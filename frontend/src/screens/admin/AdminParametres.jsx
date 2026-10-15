@@ -80,7 +80,7 @@ export default function AdminParametres({
   }
 
   return (
-    <div className="admin-panel">
+    <div className="admin-panel admin-panel--ecole">
       <SauvegardeEcoleMenu
         ecole={ecole}
         cours={cours}

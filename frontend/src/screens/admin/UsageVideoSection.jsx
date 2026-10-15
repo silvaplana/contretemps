@@ -116,7 +116,7 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
           onClick={() => setOuvert((o) => !o)}
         >
           <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
-          Usage ressources et IA{ressources?.saison ? ` de la saison ${ressources.saison}` : ''}
+          Usage des ressources &amp; IA{ressources?.saison ? ` (${ressources.saison} sélectionnée)` : ''}
         </button>
       </h3>
       {!ouvert ? null : usage === null ? (
@@ -141,28 +141,7 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
                 </div>
               </div>
 
-              <h4 className="usage-ressources__rubrique">IA</h4>
-              <div className="usage-ressources__lignes">
-                {ressources.ia.length === 0 && <p className="muted">Aucune opération d’IA cette saison.</p>}
-                {ressources.ia.map((p) => (
-                  <div key={p.categorie} className="usage-ressources__ligne">
-                    <span>
-                      {p.libelle} <span className="muted">({p.nombre})</span>
-                    </span>
-                    <span>{formaterCout(p.coutUsd)}</span>
-                  </div>
-                ))}
-                <div className="usage-ressources__ligne usage-ressources__ligne--total">
-                  <span>Total de la saison</span>
-                  <span>{formaterCout(ressources.iaTotalUsd)}</span>
-                </div>
-                <div className="usage-ressources__ligne">
-                  <span className="muted">Toutes saisons</span>
-                  <span className="muted">{formaterCout(ressources.iaTotalToutesSaisonsUsd)}</span>
-                </div>
-              </div>
-
-              <h4 className="usage-ressources__rubrique">Vidéos</h4>
+              <h5 className="usage-ressources__sous-titre">Détail des vidéos</h5>
             </>
           )}
           {/* Saisons (spec §2.6) : la saison affichée, puis le cumul de
@@ -222,6 +201,32 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
                 </div>
               ))}
             </div>
+          )}
+          {/* Seconde sous-catégorie : le coût de l'IA (demande du 2026-10-15). */}
+          {ressources && (
+            <>
+              <h4 className="usage-ressources__rubrique">IA</h4>
+              <div className="usage-ressources__lignes">
+                {ressources.ia.length === 0 && <p className="muted">Aucune opération d’IA cette saison.</p>}
+                {ressources.ia.map((p) => (
+                  <div key={p.categorie} className="usage-ressources__ligne">
+                    <span>
+                      {p.libelle} <span className="muted">({p.nombre})</span>
+                    </span>
+                    <span>{formaterCout(p.coutUsd)}</span>
+                  </div>
+                ))}
+                <div className="usage-ressources__ligne usage-ressources__ligne--total">
+                  <span>Total de la saison</span>
+                  <span>{formaterCout(ressources.iaTotalUsd)}</span>
+                </div>
+                <div className="usage-ressources__ligne">
+                  <span className="muted">Toutes saisons</span>
+                  <span className="muted">{formaterCout(ressources.iaTotalToutesSaisonsUsd)}</span>
+                </div>
+              </div>
+
+            </>
           )}
         </>
       )}

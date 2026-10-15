@@ -3214,3 +3214,30 @@ a.btn {
   padding-top: 4px;
   font-weight: 700;
 }
+
+/* Admin > École : titres des volets un cran plus grands (demande du
+   2026-10-15). */
+.admin-panel--ecole .section-label {
+  font-size: 14px;
+}
+
+.usage-ressources__sous-titre {
+  margin: 12px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* Les chiffres restent visibles, collés à leur libellé, sur un grand écran
+   comme sur un téléphone. */
+.admin-usage-video {
+  max-width: 100%;
+  min-width: 0;
+}
+
+.usage-ressources__lignes {
+  max-width: 460px;
+}
+
+.admin-usage-video .heures-cards {
+  max-width: 460px;
+}
