@@ -104,8 +104,8 @@ def test_couleurs_police_et_refus(client, ecole):
     assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"couleur_fond": "rouge"}).status_code == 400
     assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police": "comic"}).status_code == 400
     assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"slogan": "x" * 81}).status_code == 400
-    # Fond personnalisé : l'icône est fabriquée sur cette couleur.
-    icone = Image.open(io.BytesIO(client.get("/par-host/icons/icon-512.png", headers={"Host": HOTE}).content)).convert("RGB")
+    # Fond personnalisé : l'icône d'Android (rognée en cercle) est fabriquée sur cette couleur.
+    icone = Image.open(io.BytesIO(client.get("/par-host/icons/icon-512-maskable.png", headers={"Host": HOTE}).content)).convert("RGB")
     assert icone.getpixel((2, 2)) == (10, 27, 44)
 
 
@@ -133,9 +133,19 @@ def test_logo_envoye_detoure_puis_valide(client, ecole):
     assert client.get(f"/ecoles/{ecole.id}/personnalisation/logo.png").status_code == 200
     # Plus de brouillon après validation.
     assert client.get(f"/ecoles/{ecole.id}/personnalisation/{aucun['traite']}").status_code == 404
-    # Avec un logo, l'icône est fabriquée (logo sur le fond de l'appli).
-    icone = Image.open(io.BytesIO(client.get("/par-host/icons/icon-192.png", headers={"Host": HOTE}).content)).convert("RGB")
-    assert icone.getpixel((1, 1)) == (0xFD, 0xEC, 0xD8)
+    # Avec un logo, les icônes sont fabriquées : fond transparent pour
+    # l'ordinateur (raccourci, onglet), fond de l'appli pour Android et l'iPhone.
+    for nom in ("icons/icon-192.png", "favicon.png"):
+        icone = Image.open(io.BytesIO(client.get(f"/par-host/{nom}", headers={"Host": HOTE}).content))
+        assert icone.mode == "RGBA" and icone.getpixel((1, 1))[3] == 0
+    for nom in ("icons/icon-192-maskable.png", "apple-touch-icon.png"):
+        icone = Image.open(io.BytesIO(client.get(f"/par-host/{nom}", headers={"Host": HOTE}).content)).convert("RGB")
+        assert icone.getpixel((1, 1)) == (0xFD, 0xEC, 0xD8)
+    # Nouveau logo, nouvelle adresse : le navigateur ne garde pas l'ancienne icône.
+    entete = client.get("/par-host/entete.html", headers={"Host": HOTE}).text
+    manifest = client.get("/par-host/site.webmanifest", headers={"Host": HOTE}).json()
+    version = manifest["icons"][0]["src"].split("?v=")[1]
+    assert f'href="/favicon.png?v={version}"' in entete and f'href="/apple-touch-icon.png?v={version}"' in entete
 
 
 def test_image_refusee(client, ecole):

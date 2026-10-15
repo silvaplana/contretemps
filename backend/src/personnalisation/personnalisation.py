@@ -53,6 +53,11 @@ _BROUILLON = re.compile(r"^brouillon-[0-9a-f]{16}(-original)?\.png$")
 _IMAGE_GARDEE = re.compile(r"^(logo|nom)-(\d+)(-original)?\.png$")
 
 
+# Façon de fabriquer les icônes : à augmenter quand elle change, pour que
+# les navigateurs et les applis installées reprennent les nouvelles.
+# 2 (2026-10-15) : fond transparent pour l'ordinateur.
+FORMAT_ICONES = 2
+
 class PersonnalisationRefusee(ValueError):
     """Le message est montrable."""
 
@@ -381,9 +386,15 @@ class Personnalisation:
 
     # --- Ce que lit le téléphone à l'installation (spec §2.7) ---
 
+    def _version_icones(self, ecole: Ecole | None) -> str:
+        """Dans l'adresse des icônes : change à chaque nouveau logo (le
+        navigateur reprend alors l'icône au lieu de garder l'ancienne), et
+        avec FORMAT_ICONES quand la façon de les fabriquer change."""
+        return f"{self.vue(ecole)['version']}.{FORMAT_ICONES}"
+
     def manifest(self, ecole: Ecole | None) -> dict:
         vue = self.vue(ecole)
-        v = f"?v={vue['version']}"
+        v = f"?v={self._version_icones(ecole)}"
         icones = [
             {"src": f"/icons/icon-{taille}{suffixe}.png{v}", "sizes": f"{taille}x{taille}", "type": "image/png", "purpose": but}
             for taille in (192, 512)
@@ -415,24 +426,29 @@ class Personnalisation:
         """`nom` : icon-192.png, icon-512-maskable.png, favicon.png,
         apple-touch-icon.png. Sans logo ni couleur de fond personnalisés,
         les icônes d'aujourd'hui ; sinon fabriquées et gardées sur disque."""
+        # (taille, maskable, fond plein). Fond transparent pour l'ordinateur
+        # (raccourci, barre des tâches, onglet) ; fond plein là où il le
+        # faut : Android rogne l'icône « maskable » en cercle, et l'iPhone
+        # remplace la transparence par du noir.
         tailles = {
-            "icon-192.png": (192, False), "icon-512.png": (512, False),
-            "icon-192-maskable.png": (192, True), "icon-512-maskable.png": (512, True),
-            "favicon.png": (64, False), "apple-touch-icon.png": (180, False),
+            "icon-192.png": (192, False, False), "icon-512.png": (512, False, False),
+            "icon-192-maskable.png": (192, True, True), "icon-512-maskable.png": (512, True, True),
+            "favicon.png": (64, False, False), "apple-touch-icon.png": (180, False, True),
         }
         if nom not in tailles:
             return None
         if ecole is None or not (ecole.logo or ecole.couleur_fond):
             return (DOSSIER_DEFAUT / nom).read_bytes()
-        taille, maskable = tailles[nom]
-        version = ecole.personnalisation_version or 1
+        taille, maskable, plein = tailles[nom]
+        version = f"{ecole.personnalisation_version or 1}.{FORMAT_ICONES}"
         cache = self._dossier(ecole.id) / "icones" / f"v{version}-{nom}"
         if not cache.exists():
             cache.parent.mkdir(parents=True, exist_ok=True)
             for ancien in cache.parent.glob(f"v*-{nom}"):
                 ancien.unlink(missing_ok=True)
             logo = images.Image.open(self.fichier_image(ecole, "logo.png")).convert("RGBA")
-            cache.write_bytes(images.icone(logo, self.vue(ecole)["couleur_fond"], taille, maskable))
+            fond = self.vue(ecole)["couleur_fond"] if plein else None
+            cache.write_bytes(images.icone(logo, fond, taille, maskable))
         return cache.read_bytes()
 
     def entete_html(self, ecole: Ecole | None) -> str:
@@ -442,8 +458,11 @@ class Personnalisation:
 
         vue = self.vue(ecole)
         nom = escape(vue["nom_appli"])
+        v = self._version_icones(ecole)
         return (
-            f"<title>{nom}</title>\n"
+            f'<link rel="icon" type="image/png" href="/favicon.png?v={v}" />\n'
+            f'    <link rel="apple-touch-icon" href="/apple-touch-icon.png?v={v}" />\n'
+            f"    <title>{nom}</title>\n"
             f'    <meta name="apple-mobile-web-app-title" content="{nom}" />\n'
             f'    <meta name="theme-color" content="{escape(self._couleur_appli(ecole))}" />'
         )

@@ -125,12 +125,14 @@ def en_png(image: Image.Image) -> bytes:
     return sortie.getvalue()
 
 
-def icone(logo: Image.Image, couleur_fond: str, taille: int, maskable: bool = False) -> bytes:
-    """Le logo centré sur un carré de la couleur de fond. « maskable » :
+def icone(logo: Image.Image, couleur_fond: str | None, taille: int, maskable: bool = False) -> bytes:
+    """Le logo centré, sur un carré de la couleur de fond, ou sur un fond
+    transparent si `couleur_fond` vaut None (ordinateur : raccourci, barre
+    des tâches, onglet, qui affichent l'icône telle quelle). « maskable » :
     marge plus large, Android pouvant rogner l'icône en cercle."""
-    fond = Image.new("RGBA", (taille, taille), couleur_fond)
+    fond = Image.new("RGBA", (taille, taille), couleur_fond or (0, 0, 0, 0))
     marge = 0.2 if maskable else 0.08
     cote = int(taille * (1 - 2 * marge))
     dessin = reduire(logo, cote)
     fond.alpha_composite(dessin, ((taille - dessin.width) // 2, (taille - dessin.height) // 2))
-    return en_png(fond.convert("RGB"))
+    return en_png(fond if couleur_fond is None else fond.convert("RGB"))

@@ -6,13 +6,15 @@
          chemin "/en dur : sous le build web, l'app est servie sous
          /contretemps/ (voir le commentaire sur `base` dans vite.config.js) —
          un chemin racine casserait ces icônes une fois déployées. -->
-    <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
-    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <link rel="manifest" href="%BASE_URL%site.webmanifest" />
     <!-- iPhone : ajoutée à l'écran d'accueil, l'appli s'ouvre en plein écran
          avec son nom (voir components/InvitationInstallation.jsx). -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <!-- Bloc remplacé, à l'adresse d'une école, par ses icônes (avec leur
+         version), son nom et sa couleur (voir vite.config.js) -->
     <!-- entete-ecole -->
+    <link rel="icon" type="image/png" href="%BASE_URL%favicon.png" />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <title>Contretemps</title>
     <meta name="apple-mobile-web-app-title" content="Contretemps" />
     <meta name="theme-color" content="#F46E19" />
