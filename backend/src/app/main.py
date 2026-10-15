@@ -22,6 +22,14 @@ from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
 from db import Base, engine
+from documents import Documents, DocumentsReceiver, LocalStorage
+from documents_contretemps import (
+    DOSSIER_DOCUMENTS,
+    TAILLE_MAX_MO,
+    AnnuaireContretemps,
+    SaisonsContretemps,
+    membre_appelant,
+)
 from ecoles import EcoleExport, Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
 from inscriptions import HelloAsso, Inscriptions, InscriptionsReceiver
@@ -222,9 +230,21 @@ ressources_client = Ressources(
         "videos": ("Vidéos", DOSSIER_VIDEOS_LIVE),
         "documents": ("Documents d'inscription", DOSSIER_INSCRIPTIONS),
         "personnalisation": ("Personnalisation (logo, nom)", DOSSIER_PERSONNALISATION),
+        "documents_partages": ("Documents (onglet Docs)", DOSSIER_DOCUMENTS),
     }
 )
 ressources_receiver = RessourcesReceiver(client=ressources_client, app=app)
+
+# Onglet Docs : dossiers et fichiers (module `documents`, futur module
+# d'AppBase, branché sur Contretemps par documents_contretemps/). Les
+# fichiers sont protégés : jamais servis en statique, seulement par ses
+# routes, après contrôle des droits.
+documents_client = Documents(
+    storage=LocalStorage(DOSSIER_DOCUMENTS, TAILLE_MAX_MO * 1024 * 1024),
+    directory=AnnuaireContretemps(),
+    periods=SaisonsContretemps(),
+)
+documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 
 inscriptions_receiver = InscriptionsReceiver(
     client=inscriptions_client,

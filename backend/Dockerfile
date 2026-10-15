@@ -73,6 +73,9 @@ ENV VIDEOS_DIR=/app/data/uploads/videos
 # redéploiements.
 ENV INSCRIPTIONS_DIR=/app/data/inscriptions
 ENV PERSONNALISATION_DIR=/app/data/personnalisation
+# Onglet Docs (module documents) : fichiers protégés, jamais servis en
+# statique, dans le même volume /app/data.
+ENV DOCUMENTS_DIR=/app/data/documents
 # Contrairement à VIDEOS_DIR ci-dessus (mutable, dans le volume), la
 # référence pointe vers le dossier figé dans l'image (voir COPY plus
 # haut) — jamais modifiée à l'exécution, seulement lue par
