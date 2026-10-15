@@ -18,6 +18,8 @@ const MODELES = {
       'Faire un prévisionnel financier',
       'Faire un plan marketing',
       'Faire une étude marketing',
+      'Faire une publi de blog',
+      'Faire une publi de photos',
       'Faire le site web public de l’asso',
       'Faire une publication web',
     ],

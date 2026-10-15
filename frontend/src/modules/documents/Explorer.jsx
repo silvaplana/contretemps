@@ -71,7 +71,12 @@ export default function Explorer({ orgId }) {
   const [recherche, setRecherche] = useState(null)
   const [trouves, setTrouves] = useState(null)
   const [selection, setSelection] = useState(null)
-  const [feuille, setFeuille] = useState(null)
+  const [feuille, setFeuilleEtat] = useState(null)
+  const feuilleOuverteA = useRef(0)
+  const setFeuille = (valeur) => {
+    if (valeur) feuilleOuverteA.current = Date.now()
+    setFeuilleEtat(valeur)
+  }
   const [plus, setPlus] = useState(false)
   const [proprietes, setProprietes] = useState(null)
   const [partage, setPartage] = useState(null)
@@ -85,6 +90,18 @@ export default function Explorer({ orgId }) {
   const [survol, setSurvol] = useState(null) // id du dossier survolé, ou 'list'
   const fichiers = useRef(null)
   const appui = useRef(null)
+  const [glisse, setGlisseEtat] = useState(null) // { item, x, y, actif } : glisser au doigt
+  const glisseRef = useRef(null)
+  const setGlisse = (valeur) => {
+    glisseRef.current = valeur
+    setGlisseEtat(valeur)
+  }
+  const listeRef = useRef(null)
+  const pointerMoveRef = useRef(null)
+  const pointerUpRef = useRef(null)
+  // Glisser-déposer du navigateur seulement avec une souris : au doigt,
+  // c'est l'appui long puis glisser ci-dessous.
+  const souris = useMemo(() => window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true, [])
   const minuteurToast = useRef(null)
   const minuteurBulle = useRef(null)
 
@@ -309,19 +326,29 @@ export default function Explorer({ orgId }) {
   })
 
   // --- Gestes sur une ligne ---
+  // Appui long sans bouger : menu. Appui long puis glisser : déplacer
+  // (téléphone, §6.3 bis) ; on lâche sur un dossier ou sur le fil d'Ariane.
   function pointerDown(e, item) {
     if (e.button !== 0 || e.target.closest('.dx-more')) return
+    const ligneEl = e.currentTarget
     const x = e.clientX
     const y = e.clientY
     appui.current = {
       item,
       x,
       y,
+      id: e.pointerId,
       souris: e.pointerType === 'mouse',
       long: false,
       t: setTimeout(() => {
-        if (!appui.current) return
-        appui.current.long = true
+        const a = appui.current
+        if (!a) return
+        a.long = true
+        try {
+          ligneEl.setPointerCapture(a.id)
+        } catch {
+          // pointeur déjà relâché
+        }
         if (navigator.vibrate) {
           try {
             navigator.vibrate(15)
@@ -329,33 +356,105 @@ export default function Explorer({ orgId }) {
             // vibration indisponible
           }
         }
-        setFeuille(item)
+        // Souris : l'appui long ouvre le menu tout de suite (le glisser
+        // passe par le glisser-déposer du navigateur).
+        if (a.souris) {
+          setFeuille(item)
+          return
+        }
+        setGlisse({ item, x, y, actif: false })
       }, LONG_PRESS_MS),
     }
   }
 
+  function cibleSous(x, y, item) {
+    const el = document.elementFromPoint(x, y)?.closest('[data-drop-folder]')
+    if (!el) return null
+    const id = el.dataset.dropFolder
+    if (id === String(item.id)) return null
+    return id === 'root' ? 'root' : Number(id)
+  }
+
   function pointerMove(e) {
     const a = appui.current
-    if (a && Math.hypot(e.clientX - a.x, e.clientY - a.y) > 10) {
-      clearTimeout(a.t)
-      appui.current = null
+    if (!a) return
+    const loin = Math.hypot(e.clientX - a.x, e.clientY - a.y) > 10
+    if (!a.long) {
+      if (loin) {
+        clearTimeout(a.t)
+        appui.current = null
+      }
+      return
+    }
+    if (a.souris || (!loin && !glisseRef.current?.actif)) return
+    const cible = cibleSous(e.clientX, e.clientY, a.item)
+    setGlisse({ item: a.item, x: e.clientX, y: e.clientY, actif: true })
+    setSurvol(cible)
+    // Défilement automatique près des bords de la liste.
+    const liste = listeRef.current
+    if (liste) {
+      const r = liste.getBoundingClientRect()
+      if (e.clientY < r.top + 56) liste.scrollTop -= 12
+      else if (e.clientY > r.bottom - 56) liste.scrollTop += 12
     }
   }
 
-  function pointerUp(e, item) {
+  function pointerUp(e) {
     const a = appui.current
+    const g = glisseRef.current
     appui.current = null
-    if (!a || a.item.id !== item.id) return
+    setGlisse(null)
+    if (!a) return
+    const item = a.item
     clearTimeout(a.t)
-    if (a.long) return
+    if (a.long) {
+      if (a.souris) return
+      if (g?.actif) {
+        const cible = cibleSous(e.clientX, e.clientY, item)
+        setSurvol(null)
+        if (cible === 'root') {
+          if (folder != null) deplacer(item, space, null)
+        } else if (cible != null && cible !== folder) {
+          deplacer(item, space, cible)
+        }
+      } else {
+        setFeuille(item)
+      }
+      return
+    }
     if (a.souris) setSelection(item)
     else ouvrir(item)
   }
 
+  useEffect(() => {
+    pointerMoveRef.current = pointerMove
+    pointerUpRef.current = pointerUp
+  })
+
   function annulerAppui() {
     if (appui.current) clearTimeout(appui.current.t)
     appui.current = null
+    setGlisse(null)
+    setSurvol(null)
   }
+
+  // Pendant le glisser au doigt, la page ne défile pas, et on suit le
+  // doigt où qu'il aille (au-dessus du fil d'Ariane, de la bulle d'aide…).
+  const arme = Boolean(glisse)
+  useEffect(() => {
+    if (!arme) return undefined
+    const bloquer = (e) => e.cancelable && e.preventDefault()
+    const bouger = (e) => pointerMoveRef.current(e)
+    const lacher = (e) => pointerUpRef.current(e)
+    document.addEventListener('touchmove', bloquer, { passive: false })
+    window.addEventListener('pointermove', bouger)
+    window.addEventListener('pointerup', lacher)
+    return () => {
+      document.removeEventListener('touchmove', bloquer)
+      window.removeEventListener('pointermove', bouger)
+      window.removeEventListener('pointerup', lacher)
+    }
+  }, [arme])
 
   // --- Glisser-déposer (ordinateur) ---
   function dragStart(e, item) {
@@ -431,19 +530,23 @@ export default function Explorer({ orgId }) {
         key={item.id}
         role="button"
         tabIndex={0}
-        className={`dx-row${estDossier ? ' dx-row--dir' : ''}${selection?.id === item.id ? ' dx-row--sel' : ''}${survol === item.id ? ' dx-row--drop' : ''}${pressePapier?.mode === 'cut' && pressePapier.item.id === item.id ? ' dx-row--cut' : ''}`}
-        draggable={item.system_kind == null}
+        className={`dx-row${estDossier ? ' dx-row--dir' : ''}${selection?.id === item.id ? ' dx-row--sel' : ''}${survol === item.id ? ' dx-row--drop' : ''}${glisse?.item.id === item.id ? ' dx-row--lift' : ''}${pressePapier?.mode === 'cut' && pressePapier.item.id === item.id ? ' dx-row--cut' : ''}`}
+        data-drop-folder={estDossier ? item.id : undefined}
+        draggable={souris && item.system_kind == null}
         onDragStart={(e) => dragStart(e, item)}
         onDragOver={estDossier ? (e) => dragOver(e, item.id) : undefined}
         onDragLeave={estDossier ? () => setSurvol((s) => (s === item.id ? null : s)) : undefined}
         onDrop={estDossier ? (e) => drop(e, item.id) : undefined}
         onPointerDown={(e) => pointerDown(e, item)}
-        onPointerMove={pointerMove}
-        onPointerUp={(e) => pointerUp(e, item)}
+        onPointerMove={(e) => !glisseRef.current && pointerMove(e)}
+        onPointerUp={(e) => !glisseRef.current && pointerUp(e)}
         onPointerCancel={annulerAppui}
         onDoubleClick={() => ouvrir(item)}
         onContextMenu={(e) => {
           e.preventDefault()
+          // Au doigt, Android envoie aussi un clic droit sur l'appui long :
+          // l'appui long est déjà géré ci-dessus.
+          if (appui.current && !appui.current.souris) return
           annulerAppui()
           setSelection(item)
           setFeuille(item)
@@ -462,7 +565,7 @@ export default function Explorer({ orgId }) {
             {item.system_kind === 'period' && item.period_current && <span className="dx-current">en cours</span>}
           </div>
           <div className="dx-s">
-            {item.status && <StatusBadge status={item.status} />} {item.closed_period && item.system_kind === 'period' ? '🔒 ' : ''}
+            {item.status && <StatusBadge status={item.status} compact />} {item.closed_period && item.system_kind === 'period' ? '🔒 ' : ''}
             {sousTitre}
           </div>
         </div>
@@ -566,16 +669,16 @@ export default function Explorer({ orgId }) {
 
       {!resultats && (
         <nav className="dx-crumb" aria-label="Emplacement">
-          <button type="button" className="dx-crumb__part" onClick={() => allerA(null)}>
+          <button type="button" className={`dx-crumb__part${survol === 'root' ? ' dx-crumb--drop' : ''}`} data-drop-folder="root" onClick={() => allerA(null)}>
             {data?.shared_with_me ? 'Partagés avec vous' : libelleEspace}
           </button>
           {(data?.breadcrumb ?? []).map((b, i, fil) => (
-            <span key={b.id}>
+            <span key={b.id} className={survol === b.id ? 'dx-crumb--drop' : undefined}>
               {' › '}
               {i === fil.length - 1 ? (
                 <b>{b.name}</b>
               ) : (
-                <button type="button" className="dx-crumb__part" onClick={() => allerA(b.id)}>
+                <button type="button" className="dx-crumb__part" data-drop-folder={b.id} onClick={() => allerA(b.id)}>
                   {b.name}
                 </button>
               )}
@@ -609,6 +712,7 @@ export default function Explorer({ orgId }) {
       {bulle && <div className="dx-tip" role="status">{bulle}</div>}
 
       <div
+        ref={listeRef}
         className={`dx-list${survol === 'list' ? ' dx-list--drop' : ''}`}
         onDragOver={peutAjouter && !resultats ? (e) => dragOver(e, 'list') : undefined}
         onDragLeave={(e) => {
@@ -680,7 +784,16 @@ export default function Explorer({ orgId }) {
 
       {feuille && (
         <>
-          <div className="dx-scrim" onClick={() => (setFeuille(null), setPlus(false))} />
+          <div
+            className="dx-scrim"
+            onClick={() => {
+              // Le « clic » qui suit le lâcher d'un appui long tombe sur le
+              // menu tout juste ouvert (voile ou action) : on l'ignore.
+              if (Date.now() - feuilleOuverteA.current < 450) return
+              setFeuille(null)
+              setPlus(false)
+            }}
+          />
           <div className="dx-sheet" role="dialog" aria-label={`Actions sur ${feuille.name}`}>
             <div className="dx-grab" />
             <div className="dx-sheet__title">
@@ -696,7 +809,7 @@ export default function Explorer({ orgId }) {
                 type="button"
                 className={`dx-act${a.hl ? ' dx-act--hl' : ''}${a.danger ? ' dx-act--danger' : ''}`}
                 disabled={Boolean(a.off)}
-                onClick={a.faire}
+                onClick={() => Date.now() - feuilleOuverteA.current > 450 && a.faire()}
               >
                 <i>{a.icone}</i>
                 <span>
@@ -816,6 +929,16 @@ export default function Explorer({ orgId }) {
             onKeyDown={(e) => e.key === 'Enter' && validerNom()}
           />
         </Modal>
+      )}
+
+      {glisse?.actif && (
+        <div className="dx-ghost" style={{ left: glisse.x, top: glisse.y }} aria-hidden="true">
+          <ItemIcon api={api} item={glisse.item} />
+          <span>{glisse.item.name}</span>
+        </div>
+      )}
+      {glisse && !glisse.actif && (
+        <div className="dx-hint" role="status">Glissez sur un dossier pour déplacer, ou lâchez pour le menu</div>
       )}
 
       {toast && (

@@ -28,13 +28,20 @@ export function StatusIcon({ status }) {
   )
 }
 
-export function StatusBadge({ status }) {
+// `compact` : le symbole seul (listes, Seb 15 octobre) ; le mot reste en
+// bulle au survol et pour les lecteurs d'écran.
+export function StatusBadge({ status, compact = false }) {
   const s = STATUSES[status]
   if (!s) return null
   return (
-    <span className={`dx-badge dx-badge--${s.className}`}>
+    <span
+      className={`dx-badge dx-badge--${s.className}${compact ? ' dx-badge--compact' : ''}`}
+      title={compact ? s.label : undefined}
+      aria-label={compact ? s.label : undefined}
+      role={compact ? 'img' : undefined}
+    >
       <StatusIcon status={status} />
-      {s.label}
+      {!compact && s.label}
     </span>
   )
 }
