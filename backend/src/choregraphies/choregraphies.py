@@ -180,13 +180,15 @@ class Choregraphies:
         nom: str,
         uploaded_by: int,
         description: str = "",
+        deja_compresse: bool = False,
     ) -> Video | None:
         """Clic « Ajouter » : l'envoi devient une vidéo (voir
         videos.py:finaliser), rangée à la fin de la chorégraphie. `None`
         si l'envoi est inconnu."""
         verifier_modifiable(db, "choregraphies", choregraphie_id)
         video = self.videos.finaliser(
-            db, upload_id, nom=nom, uploaded_by=uploaded_by, description=description
+            db, upload_id, nom=nom, uploaded_by=uploaded_by, description=description,
+            deja_compresse=deja_compresse,
         )
         if video is None:
             return None

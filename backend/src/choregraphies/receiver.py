@@ -193,6 +193,7 @@ class ChoregraphiesReceiver:
             nom=donnees.nom,
             uploaded_by=appelant.id,
             description=donnees.description or "",
+            deja_compresse=donnees.deja_compresse,
         )
 
     def modifier_video(

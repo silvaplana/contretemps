@@ -42,6 +42,9 @@ class VideoAjout(BaseModel):
     upload_id: str
     nom: str
     description: str | None = None
+    # Le téléphone a compressé la vidéo avant l'envoi : le serveur ne la
+    # recompresse pas (une seule compression, Seb 2026-10-15).
+    deja_compresse: bool = False
 
 
 class ReordonnerVideos(BaseModel):

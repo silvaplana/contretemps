@@ -188,10 +188,17 @@ class Videos:
         nom: str,
         uploaded_by: int,
         description: str = "",
+        deja_compresse: bool = False,
     ) -> Video | None:
         """Clic "Ajouter" — crée la ligne tout de suite (voir Video.statut :
         'en_cours' si le fichier n'est pas encore complet à cet instant,
-        auquel cas ecrire_bloc terminera le travail au dernier bloc)."""
+        auquel cas ecrire_bloc terminera le travail au dernier bloc).
+
+        `deja_compresse` : le téléphone a compressé la vidéo avant l'envoi
+        (voir frontend utils/videoCompression.js). Elle est marquée
+        compressée d'office : le worker ne compresse que les vidéos
+        arrivées telles que filmées — une seule compression, jamais deux
+        (Seb, 2026-10-15)."""
         televersement = self.obtenir_televersement(db, upload_id)
         if televersement is None:
             return None
@@ -209,6 +216,7 @@ class Videos:
             uploaded_by=uploaded_by,
             description=description,
             statut="complete" if televersement.complet else "en_cours",
+            compresse=deja_compresse,
         )
         televersement.video_id = video.id
         db.commit()

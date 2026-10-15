@@ -74,11 +74,18 @@ export async function supprimer(choregraphieId) {
 
 // Clic "Ajouter" : l'envoi (voir utils/videoUploads.js) devient une vidéo
 // de la chorégraphie. Ouvert à tous ; l'auteur est l'appelant.
-export async function ajouterVideo(choregraphieId, uploadId, { nom, description }) {
+// `dejaCompresse` : le téléphone a compressé la vidéo avant l'envoi — le
+// serveur ne la recompresse pas (une seule compression).
+export async function ajouterVideo(choregraphieId, uploadId, { nom, description, dejaCompresse = false }) {
   return videoVersEcran(
     await requete(`/choregraphies/${choregraphieId}/videos`, {
       method: 'POST',
-      body: JSON.stringify({ upload_id: uploadId, nom, description: description || '' }),
+      body: JSON.stringify({
+        upload_id: uploadId,
+        nom,
+        description: description || '',
+        deja_compresse: dejaCompresse,
+      }),
     }),
   )
 }

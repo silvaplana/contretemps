@@ -262,3 +262,23 @@ def test_droits_sur_les_videos_d_une_choregraphie(client, db_session, e):
     assert client.delete(f"/choregraphies/{ch}/videos/{de_zoe}", headers=s["zoe"]).status_code == 204
     assert client.delete(f"/choregraphies/{ch}/videos/{de_lea}", headers=s["prof_jazz"]).status_code == 204
     assert client.delete(f"/choregraphies/{ch}/videos/{du_prof}", headers=s["prof_classique"]).status_code == 204
+
+
+def test_une_video_compressee_par_le_telephone_n_est_pas_recompressee(client, db_session, e, en_tant_que):
+    """Une seule compression (Seb, 2026-10-15) : le téléphone a compressé,
+    le serveur n'y touche pas ; arrivée telle que filmée, il la compresse."""
+    from app.main import videos_client
+    from videos.models import Video
+
+    en_tant_que(e["admin"])
+    ch = client.post(f"/cours/{e['jazz'].id}/choregraphies", json={"nom": "Spectacle"}).json()
+    par_le_telephone = client.post(
+        f"/choregraphies/{ch['id']}/videos",
+        json={"upload_id": _envoi(client, e["ecole"]), "nom": "Compressée", "deja_compresse": True},
+    ).json()
+    brute = _ajouter_video(client, ch["id"], e["ecole"], nom="Telle que filmée").json()
+    for v in db_session.query(Video).filter(Video.id.in_([par_le_telephone["id"], brute["id"]])):
+        v.statut, v.lien_fichier = "complete", f"{e['ecole'].id}/x{v.id}.mp4"
+    db_session.commit()
+    a_compresser = {v.id for v in videos_client.videos_a_compresser(db_session)}
+    assert brute["id"] in a_compresser and par_le_telephone["id"] not in a_compresser

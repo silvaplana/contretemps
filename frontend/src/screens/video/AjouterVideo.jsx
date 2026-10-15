@@ -12,7 +12,7 @@ import {
 // Ajout d'une vidéo, façon WhatsApp (demande utilisateur explicite).
 // Composant GÉNÉRIQUE (voir api/videos.js) : il envoie le fichier dans
 // l'école `ecoleId`, et laisse le métier créer la vidéo là où il veut par
-// `creerVideo(uploadId, { nom, description })` (ex. dans une chorégraphie,
+// `creerVideo(uploadId, { nom, description, dejaCompresse })` (ex. dans une chorégraphie,
 // voir ChoregraphieScreen.jsx). Déroulé :
 //  1. Les 2 boutons "Filmer"/"Choisir une vidéo" sont TOUJOURS visibles
 //     (pas cachés derrière un "+" à ouvrir d'abord).
@@ -25,7 +25,7 @@ import {
 //     l'envoi continue en tâche de fond, indépendant de cette modale.
 //     "Annuler" arrête tout et nettoie côté serveur.
 export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
-  const [session, setSession] = useState(null) // { uploadId, previewUrl }
+  const [session, setSession] = useState(null) // { uploadId, previewUrl, dejaCompresse }
   const [titre, setTitre] = useState('')
   const [description, setDescription] = useState('')
   // Garde-fou contre un double-clic (voir AdminEleves.jsx pour le même
@@ -59,7 +59,10 @@ export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
     })
     setCompressionPourcentage(null)
     const uploadId = await demarrerTeleversement(ecoleId, fichierAEnvoyer)
-    setSession({ uploadId, previewUrl })
+    // Une seule compression (Seb, 2026-10-15) : si le téléphone a compressé,
+    // le serveur le saura et ne recompressera pas ; sinon (téléphone qui ne
+    // sait pas, son impossible à réencoder…), c'est lui qui compressera.
+    setSession({ uploadId, previewUrl, dejaCompresse: fichierAEnvoyer !== fichier })
   }
 
   function reinitialiser() {
@@ -82,7 +85,7 @@ export default function AjouterVideo({ ecoleId, creerVideo, onAdded }) {
     setEnCours(true)
     try {
       const video = await finaliserTeleversement(session.uploadId, (uploadId) =>
-        creerVideo(uploadId, { nom: titre, description }),
+        creerVideo(uploadId, { nom: titre, description, dejaCompresse: session.dejaCompresse }),
       )
       onAdded(video)
       reinitialiser()
