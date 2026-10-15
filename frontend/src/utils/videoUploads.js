@@ -169,15 +169,19 @@ export function annulerTeleversement(uploadId) {
 // `creer(uploadId)` : fourni par le métier, qui sait où ranger la vidéo
 // (ex. dans une chorégraphie, voir api/choregraphies.js : ajouterVideo).
 export async function finaliserTeleversement(uploadId, creer) {
-  const video = await creer(uploadId)
+  let video = await creer(uploadId)
   const etat = sessions.get(uploadId)
   if (etat) {
     if (etat.complet) {
-      // L'envoi s'est terminé avant le clic "Ajouter" (fichier assez
-      // petit/réseau assez rapide) — le backend a déjà tout finalisé
-      // (voir finaliser() : renvoie 'complete' direct), rien à suivre.
+      // L'envoi s'est terminé avant la réponse à "Ajouter" — le backend a
+      // tout finalisé. Mais si "Ajouter" est arrivé au serveur AVANT le
+      // dernier bloc, sa réponse dit encore 'en_cours', et envoyerBlocs
+      // n'a rien rafraîchi (videoId pas encore connu à ce moment-là) :
+      // sans ce rappel, la vidéo restait affichée « Envoi… » jusqu'au
+      // rechargement (bug vu le 2026-10-15).
       URL.revokeObjectURL(etat.previewUrl)
       sessions.delete(uploadId)
+      if (video.statut === 'en_cours') video = await videosApi.obtenir(video.id)
     } else {
       sessions.set(uploadId, { ...etat, videoId: video.id })
       videoIdVersUploadId.set(video.id, uploadId)

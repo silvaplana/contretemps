@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { obtenir } from '../api/videos.js'
 import { useProgressionVideo } from '../utils/videoUploads.js'
 import Icon from './Icon.jsx'
@@ -29,7 +29,9 @@ export default function VideoThumb({ video: recue }) {
   // la vidéo au serveur, qui remet des liens neufs (une seule fois).
   const [fraiche, setFraiche] = useState(null)
   const [redemandee, setRedemandee] = useState(false)
-  const video = fraiche ?? recue
+  // La version redemandée ne sert que tant que la vidéo reçue est en retard
+  // (encore « en cours », ou lien expiré) : un titre modifié ensuite passe.
+  const video = fraiche && (recue.statut === 'en_cours' || redemandee) ? fraiche : recue
   function rafraichir() {
     if (redemandee) return
     setRedemandee(true)
@@ -37,6 +39,22 @@ export default function VideoThumb({ video: recue }) {
   }
   const enCours = video.statut === 'en_cours'
   const progression = useProgressionVideo(enCours ? video.id : null)
+
+  // « Envoi… » sans envoi en cours sur CET appareil (envoyée d'un autre
+  // téléphone, ou réponse du serveur arrivée dans le désordre) : on
+  // redemande la vidéo toutes les 5 s jusqu'à ce qu'elle soit prête, au
+  // lieu d'attendre un rechargement de la page.
+  const aSurveiller = enCours && !progression
+  useEffect(() => {
+    if (!aSurveiller) return undefined
+    const minuteur = setInterval(() => {
+      obtenir(recue.id).then(
+        (v) => v.statut !== 'en_cours' && setFraiche(v),
+        () => {},
+      )
+    }, 5000)
+    return () => clearInterval(minuteur)
+  }, [aSurveiller, recue.id])
 
   // Fichier pas encore complet (voir utils/videoUploads.js) : le
   // navigateur a déjà les octets du fichier choisi/filmé EN LOCAL —
