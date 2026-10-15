@@ -39,15 +39,20 @@ class Invitations:
         fiches = db.scalars(select(Compte).where(Compte.ecole_id == ecole_id, Compte.id.in_(compte_ids)))
         return sorted({normaliser_email(f.email) for f in fiches} - {None})
 
-    def inviter(self, db: Session, ecole, email: str) -> None:
+    def inviter(self, db: Session, ecole, email: str, compte_ids: list[int] | None = None) -> None:
         """Envoie le mail (nouveau lien, qui annule le précédent), puis note
-        « Invité le… ». Lève une exception si le mail ne part pas."""
+        « Invité le… ». Lève une exception si le mail ne part pas.
+        `compte_ids` : les fiches sur lesquelles l'admin a cliqué ; le mail
+        salue l'une d'elles, pas un autre profil qui partage l'adresse (vécu
+        le 2026-10-15 : « Inviter » sur un élève saluait la professeure qui
+        avait la même adresse, de plus haut rang)."""
         profils = db.scalars(
             select(Compte).where(Compte.ecole_id == ecole.id, Compte.email.isnot(None)).order_by(Compte.id)
         )
         profils = [p for p in profils if normaliser_email(p.email) == email]
         prenoms = [p.prenom for p in profils]
-        a_qui = destinataire(profils)
+        demandes = [p for p in profils if compte_ids and p.id in compte_ids]
+        a_qui = destinataire(demandes or profils)
         acces_email = self.acces.obtenir_ou_creer(db, email)
         nom = f"{a_qui.prenom} {a_qui.nom}"
         try:

@@ -294,6 +294,15 @@ def test_un_nouveau_lien_annule_le_precedent_et_un_lien_expire(client, db_sessio
     assert client.get(f"/auth/liens/{second}").status_code == 404
 
 
+def test_l_invitation_salue_la_personne_invitee(client, db_session, ecole, mails):
+    """Vécu le 2026-10-15 : « Inviter » sur un élève dont l'adresse est
+    aussi celle d'une professeure saluait la professeure (plus haut rang)."""
+    Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Thomas", prenom="Marysa", email="b@x.fr")
+    eleve = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="Richard", prenom="Sébastien", email="b@x.fr")
+    client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [eleve.id]})
+    assert len(mails) == 1 and mails[0][2].startswith("Bonjour Sébastien Richard,\n")
+
+
 def test_inviter_plusieurs_adresses_un_mail_par_adresse(client, ecole, mails):
     tous = [ecole[c].id for c in ("admin", "enfant", "prof", "sans_email")]
     reponse = client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": tous})

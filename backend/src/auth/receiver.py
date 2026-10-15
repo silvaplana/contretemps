@@ -284,7 +284,7 @@ class AuthReceiver:
             # Une seule adresse : envoi immédiat, l'admin voit tout de
             # suite si le mail est parti.
             try:
-                self.invitations.inviter(db, ecole, emails[0])
+                self.invitations.inviter(db, ecole, emails[0], donnees.compte_ids)
             except MailsIndisponibles as erreur:
                 raise HTTPException(status_code=503, detail=str(erreur)) from erreur
             except Exception as erreur:  # noqa: BLE001
@@ -296,15 +296,15 @@ class AuthReceiver:
         # « Inviter tous les non-invités » : des dizaines de mails, envoyés
         # après la réponse. Sa propre session de base : celle de la requête
         # est déjà refermée à ce moment-là.
-        taches.add_task(self._inviter_en_tache_de_fond, db.get_bind(), ecole_id, emails)
+        taches.add_task(self._inviter_en_tache_de_fond, db.get_bind(), ecole_id, emails, donnees.compte_ids)
         return InvitationSortie(emails=len(emails), en_cours=True, adresses=emails)
 
-    def _inviter_en_tache_de_fond(self, moteur, ecole_id: int, emails: list[str]) -> None:
+    def _inviter_en_tache_de_fond(self, moteur, ecole_id: int, emails: list[str], compte_ids: list[int]) -> None:
         with Session(moteur) as db:
             ecole = db.get(Ecole, ecole_id)
             for email in emails:
                 try:
-                    self.invitations.inviter(db, ecole, email)
+                    self.invitations.inviter(db, ecole, email, compte_ids)
                 except Exception:  # noqa: BLE001 — une adresse en échec n'arrête pas les autres
                     db.rollback()
                     logger.exception("Invitation non envoyée à une adresse")
