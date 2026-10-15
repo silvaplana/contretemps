@@ -29,6 +29,7 @@ from documents_contretemps import (
     AnnuaireContretemps,
     SaisonsContretemps,
     membre_appelant,
+    recopieur_de_saison,
 )
 from ecoles import EcoleExport, Ecoles, EcolesReceiver
 from eleves import Eleves, ElevesReceiver, ImportExcel, ImportExcelReceiver
@@ -122,7 +123,8 @@ administrateurs_receiver = AdministrateursReceiver(client=administrateurs_client
 
 # Saisons (Admin > École, spec §2.6) : lister, créer avec duplication,
 # éditer la saison courante.
-saisons_receiver = SaisonsReceiver(client=GestionSaisons(), app=app)
+gestion_saisons = GestionSaisons()
+saisons_receiver = SaisonsReceiver(client=gestion_saisons, app=app)
 
 # Monte les routes de connexion (/auth/...) - depend de ecoles et comptes.
 acces_client = Acces()
@@ -245,6 +247,8 @@ documents_client = Documents(
     periods=SaisonsContretemps(),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
+# Création de saison : « recopier le dossier de la saison précédente ».
+gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
 
 inscriptions_receiver = InscriptionsReceiver(
     client=inscriptions_client,

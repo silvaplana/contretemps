@@ -4,6 +4,7 @@ from .adapter import (
     AnnuaireContretemps,
     SaisonsContretemps,
     membre_appelant,
+    recopieur_de_saison,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "AnnuaireContretemps",
     "SaisonsContretemps",
     "membre_appelant",
+    "recopieur_de_saison",
 ]

@@ -169,3 +169,29 @@ class SaisonsContretemps:
             saisons = list(db.scalars(select(Saison).where(Saison.ecole_id == org_id).order_by(Saison.id)))
         courante = saisons[-1].id if saisons else None
         return [Period(id=s.id, name=s.nom, is_current=s.id == courante) for s in saisons]
+
+
+def recopieur_de_saison(documents):
+    """Pour GestionSaisons : à la création d'une saison, si l'admin l'a
+    demandé, recopie le dossier de la saison précédente dans celui de la
+    nouvelle. Les partages avec un cours suivent le cours recopié ; ceux
+    avec un cours non recopié sont abandonnés."""
+
+    def recopier(db: Session, ecole_id: int, ancienne_id: int, nouvelle_id: int, auteur_id, cours: dict[int, int]) -> None:
+        auteur = db.get(Compte, auteur_id, execution_options={TOUTES_SAISONS: True}) if auteur_id else None
+        membre = Member(
+            person_id=personne_id(db, auteur) if auteur else 0,
+            org_id=ecole_id,
+            display_name=nom_affiche(auteur) if auteur else "",
+            is_admin=True,
+        )
+
+        def groupe(cle: str) -> str | None:
+            if cle.startswith("course:"):
+                nouveau = cours.get(int(cle[7:])) if cle[7:].isdigit() else None
+                return f"course:{nouveau}" if nouveau else None
+            return cle
+
+        documents.copy_period(db, membre, ancienne_id, nouvelle_id, remap_group=groupe)
+
+    return recopier

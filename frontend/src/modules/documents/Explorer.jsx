@@ -490,7 +490,10 @@ export default function Explorer({ orgId }) {
   // --- Affichage ---
   const items = resultats ?? data?.items ?? []
   const visible = (x) => (!filtreStatut || x.status === filtreStatut) && (!filtreFamille || x.family === filtreFamille)
-  const dossiers = items.filter((x) => x.kind === 'folder' && visible(x))
+  // Dossiers des saisons passées : en lecture seule, regroupés à part sous
+  // « Saisons précédentes » (Seb, 15 octobre).
+  const anciennesSaisons = items.filter((x) => x.system_kind === 'period' && !x.period_current && visible(x))
+  const dossiers = items.filter((x) => x.kind === 'folder' && visible(x) && !anciennesSaisons.includes(x))
   const lesFichiers = items.filter((x) => x.kind === 'file' && visible(x))
   const libelleEspace = spaces.find((s) => s.key === space)?.label ?? ''
 
@@ -742,7 +745,13 @@ export default function Explorer({ orgId }) {
         )}
         {lesFichiers.length > 0 && <div className="dx-grp">Fichiers</div>}
         {lesFichiers.map((x) => ligne(x))}
-        {data && dossiers.length === 0 && lesFichiers.length === 0 && (
+        {anciennesSaisons.length > 0 && <div className="dx-grp">Saisons précédentes</div>}
+        {anciennesSaisons.length > 0 && (
+          <div className="dx-dirs">
+            {anciennesSaisons.map((x) => ligne(x))}
+          </div>
+        )}
+        {data && dossiers.length === 0 && lesFichiers.length === 0 && anciennesSaisons.length === 0 && (
           <p className="dx-empty">
             {resultats
               ? 'Rien ne correspond à cette recherche.'

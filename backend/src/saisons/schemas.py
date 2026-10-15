@@ -27,6 +27,8 @@ class SaisonCreation(SaisonModification):
     dupliquer_profs: bool = False
     dupliquer_cours: bool = False
     dupliquer_eleves: bool = False
+    # Onglet Docs : recopier le dossier de la saison précédente.
+    dupliquer_documents: bool = False
 
 
 class SaisonCreee(BaseModel):

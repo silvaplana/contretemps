@@ -27,13 +27,14 @@ function PanneauSaison({ mode, courante, onValider, onClose }) {
       ? saisonSuivante(courante)
       : { nom: courante.nom, dateDebut: courante.dateDebut, dateFin: courante.dateFin },
   )
-  const [cases, setCases] = useState({ profs: false, cours: false, eleves: false })
+  const [cases, setCases] = useState({ profs: false, cours: false, eleves: false, documents: false })
   const [erreur, setErreur] = useState(null)
   const [enCours, setEnCours] = useState(false)
 
   function cocher(nom, coche) {
     setCases((c) => {
-      if (nom === 'profs') return coche ? { ...c, profs: true } : { profs: false, cours: false, eleves: false }
+      if (nom === 'documents') return { ...c, documents: coche }
+      if (nom === 'profs') return coche ? { ...c, profs: true } : { ...c, profs: false, cours: false, eleves: false }
       if (nom === 'cours') return coche ? { ...c, cours: true } : { ...c, cours: false, eleves: false }
       return { ...c, eleves: coche }
     })
@@ -117,8 +118,17 @@ function PanneauSaison({ mode, courante, onValider, onClose }) {
             />
             Élèves (avec les mêmes cours)
           </label>
+          <label className="checkbox-inline">
+            <input
+              type="checkbox"
+              checked={cases.documents}
+              onChange={(e) => cocher('documents', e.target.checked)}
+            />
+            Dossiers et fichiers de la saison (onglet Docs)
+          </label>
           <p className="muted saison-panneau__note">
-            Les administrateurs sont toujours recopiés. Dès la validation, la nouvelle saison devient la
+            Les administrateurs sont toujours recopiés. Sans la dernière case, le dossier de la nouvelle
+            saison dans Docs part vide. Dès la validation, la nouvelle saison devient la
             saison courante et la saison {courante.nom} passe en lecture seule.
           </p>
         </div>

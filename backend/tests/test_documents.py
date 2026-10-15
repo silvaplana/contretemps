@@ -245,6 +245,48 @@ def test_saison_passee_en_lecture_seule(client, ecole):
     assert admin.racine(dossier=ag).status_code == 200
 
 
+def test_nouvelle_saison_recopie_le_dossier_de_la_precedente(client, ecole):
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    ancienne = _saison(admin)["id"]
+    ag = admin.dossier("AG", ancienne).json()["id"]
+    admin.fichier("Convocation.pdf", ag, contenu=b"%PDF convocation")
+    assert admin.modifier(ag, change_status=True, status="official").status_code == 200
+    eveil = admin.dossier("Éveil", ancienne).json()["id"]
+    cle_eveil = f"course:{ecole['cours'].id}"
+    entrees = [{"type": "group", "id": cle_eveil, "level": "view"}]
+    assert admin.acces(eveil, restricted=True, entries=entrees).status_code == 200
+    jete = admin.dossier("Brouillons", ancienne).json()["id"]
+    admin.supprimer(jete)
+
+    cases = {"dupliquer_profs": True, "dupliquer_cours": True, "dupliquer_eleves": True, "dupliquer_documents": True}
+    reponse = client.post(f"/ecoles/{ecole['id']}/saisons", json={**NOUVELLE, **cases}, headers=admin.h)
+    assert reponse.status_code == 201
+    admin.h = {**admin.h, "X-Compte-Id": str(reponse.json()["compte_id"])}
+
+    nouvelle = _saison(admin)
+    assert nouvelle["name"] == "Saison 2027-2028" and nouvelle["period_current"] is True
+    contenu = _par_nom(admin.racine(dossier=nouvelle["id"]))
+    # Le contenu est recopié (pas la corbeille), modifiable, et repart en Brouillon.
+    assert set(contenu) == {"AG", "Éveil"}
+    assert contenu["AG"]["status"] == "draft" and contenu["AG"]["level"] == "manage"
+    assert set(_par_nom(admin.racine(dossier=contenu["AG"]["id"]))) == {"Convocation.pdf"}
+    # « Accès restreint » suit, et le partage passe au cours Éveil de la nouvelle saison.
+    acces = admin.get(f"/nodes/{contenu['Éveil']['id']}/access").json()
+    assert acces["restricted"] is True
+    cles = [e["id"] for e in acces["direct"]]
+    assert cles and cle_eveil not in cles and all(c.startswith("course:") for c in cles)
+    # L'ancienne saison est intacte.
+    assert set(_par_nom(admin.racine(dossier=ancienne))) == {"AG", "Éveil"}
+
+
+def test_nouvelle_saison_sans_recopie_des_documents(client, ecole):
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    admin.dossier("AG", _saison(admin)["id"])
+    reponse = client.post(f"/ecoles/{ecole['id']}/saisons", json=NOUVELLE, headers=admin.h)
+    admin.h = {**admin.h, "X-Compte-Id": str(reponse.json()["compte_id"])}
+    assert admin.racine(dossier=_saison(admin)["id"]).json()["items"] == []
+
+
 def test_autre_ecole_refusee(client, ecole):
     voisin = Docs(client, ecole["id"], ecole["admin_voisin"])
     assert voisin.racine().status_code == 403

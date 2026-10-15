@@ -40,6 +40,7 @@ export async function creer(ecoleId, { nom, dateDebut, dateFin, cases }) {
       dupliquer_profs: cases.profs,
       dupliquer_cours: cases.cours,
       dupliquer_eleves: cases.eleves,
+      dupliquer_documents: cases.documents,
     }),
   })
   return { saison: versEcran(resultat.saison), compteId: resultat.compte_id }

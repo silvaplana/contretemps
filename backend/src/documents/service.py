@@ -9,7 +9,7 @@ vérifie elle-même ses droits (access.py) : aucune route ne peut l'oublier.
 from __future__ import annotations
 
 import unicodedata
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import timedelta
 from pathlib import Path
@@ -665,14 +665,68 @@ class Documents:
         db.commit()
         return {"id": racine.id, "name": racine.name}
 
-    def _copy_node(self, db, member, source: DocNode, cible: Location, parent_id, nom) -> DocNode:
+    def copy_period(
+        self,
+        db: Session,
+        member: Member,
+        from_period_id: int,
+        to_period_id: int,
+        remap_group: Callable[[str], str | None] | None = None,
+    ) -> int:
+        """Nouvelle période : recopie le contenu du dossier de la période
+        `from_period_id` dans celui de `to_period_id` (§4.7, « copier la
+        saison précédente »). Contrairement à Copier / Coller, l'organisation
+        des droits suit : « Accès restreint » et partages sont repris, chaque
+        clé de groupe passant par `remap_group` (l'appli hôte y traduit les
+        groupes propres à une période, ou renvoie None pour ne pas reprendre
+        le partage). Renvoie le nombre d'éléments recopiés à la racine."""
+        self.ensure_system_folders(db, member.org_id)
+        dossiers = {
+            n.period_id: n
+            for n in db.scalars(
+                select(DocNode).where(
+                    DocNode.org_id == member.org_id,
+                    DocNode.system_kind == SYSTEM_PERIOD,
+                    DocNode.period_id.in_([from_period_id, to_period_id]),
+                )
+            )
+        }
+        source, cible = dossiers.get(from_period_id), dossiers.get(to_period_id)
+        if source is None or cible is None or source.id == cible.id:
+            return 0
+        loc = Location("private", None, [cible])
+        droits = remap_group or (lambda cle: cle)
+        enfants = list(
+            db.scalars(
+                select(DocNode)
+                .where(DocNode.parent_id == source.id, DocNode.deleted_at.is_(None))
+                .order_by(DocNode.id)
+            )
+        )
+        for enfant in enfants:
+            self._copy_node(db, member, enfant, loc, cible.id, enfant.name, rights=droits)
+        if enfants:
+            self._log(db, member, cible, "copied", {"from": source.name})
+        db.commit()
+        return len(enfants)
+
+    def _copy_node(self, db, member, source: DocNode, cible: Location, parent_id, nom, rights=None) -> DocNode:
+        """`rights` : None, la copie prend les droits de son nouveau dossier ;
+        sinon elle garde « Accès restreint » et les partages de l'original,
+        clés de groupe traduites par `rights` (copie de période)."""
         copie = self._new_node(
             member.org_id, cible.space, parent_id, source.kind, nom, member.person_id,
             owner_person_id=cible.owner_person_id, family=source.family,
             status="draft" if source.status in ("validated", "official") else source.status,
+            restricted=source.restricted if rights is not None else False,
         )
         db.add(copie)
         db.flush()
+        if rights is not None:
+            for ligne in db.scalars(select(DocAcl).where(DocAcl.node_id == source.id)):
+                principal = ligne.principal_id if ligne.principal_type != "group" else rights(ligne.principal_id)
+                if principal is not None:
+                    db.add(DocAcl(node_id=copie.id, principal_type=ligne.principal_type, principal_id=principal, level=ligne.level))
         if source.kind == KIND_FILE and source.current_version_id:
             version = db.get(DocVersion, source.current_version_id)
             self._add_version(db, member, copie, db.get(StoredFile, version.stored_file_id), version.filename)
@@ -681,7 +735,7 @@ class Documents:
                 select(DocNode).where(DocNode.parent_id == source.id, DocNode.deleted_at.is_(None))
             )
             for enfant in list(enfants):
-                self._copy_node(db, member, enfant, cible, copie.id, enfant.name)
+                self._copy_node(db, member, enfant, cible, copie.id, enfant.name, rights=rights)
         return copie
 
     @staticmethod

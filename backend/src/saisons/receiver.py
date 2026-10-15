@@ -68,7 +68,9 @@ class SaisonsReceiver:
                     profs=donnees.dupliquer_profs,
                     cours=donnees.dupliquer_cours,
                     eleves=donnees.dupliquer_eleves,
+                    documents=donnees.dupliquer_documents,
                 ),
+                auteur_id=appelant.id if appelant is not None else None,
             )
         except ErreurSaison as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur

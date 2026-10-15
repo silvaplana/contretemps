@@ -516,6 +516,13 @@ des cases à cocher pour **dupliquer** des données de la saison courante vers l
   n'est possible que si la précédente est cochée : on ne recopie pas des cours sans leurs
   professeurs, ni des élèves sans leurs cours ;
 - les élèves dupliqués **gardent les mêmes cours** (les cours recopiés) ;
+- case indépendante **Dossiers et fichiers de la saison (onglet Docs)** *(2026-10-15)* :
+  recopie le contenu du dossier de la saison courante (Docs > Privé) dans celui de la
+  nouvelle saison, sans la corbeille. Les copies repartent en Brouillon. « Accès restreint »
+  et les partages suivent ; un partage avec un cours passe au cours recopié, et il est
+  abandonné si le cours n'est pas recopié. Sans la case, le dossier de la nouvelle saison
+  part vide. Dans Docs, les dossiers des saisons passées restent lisibles (lecture seule),
+  regroupés sous « Saisons précédentes » (voir `spec/modules/documents.md` §4.7) ;
 - ce qui est propre à une saison **repart à zéro** : paiement (statut, montants, commentaire),
   présences, chorégraphies, vidéos, conversations et messages. Recopier les conversations
   n'est pas prévu ;

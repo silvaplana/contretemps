@@ -9,6 +9,7 @@ importé que par le receiver.
 from __future__ import annotations
 
 import datetime as dt
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from comptes import roles as r
@@ -38,9 +39,22 @@ class Duplication:
     profs: bool = False
     cours: bool = False
     eleves: bool = False
+    # Recopier le dossier de la saison dans l'onglet Docs (indépendant des
+    # trois cases ci-dessus).
+    documents: bool = False
+
+
+# Recopie du dossier de saison de l'onglet Docs, branchée par app/main.py
+# (le module documents ne dépend pas des saisons, ni l'inverse) :
+# (db, ecole_id, ancienne_saison_id, nouvelle_saison_id, auteur_id,
+#  correspondance ancien cours → nouveau cours).
+RecopieDocuments = Callable[[Session, int, int, int, "int | None", dict[int, int]], None]
 
 
 class GestionSaisons:
+    def __init__(self, recopier_documents: RecopieDocuments | None = None) -> None:
+        self.recopier_documents = recopier_documents
+
     def lister(self, db: Session, ecole_id: int) -> list[Saison]:
         """De la plus récente (la courante) à la plus ancienne."""
         return list(db.scalars(select(Saison).where(Saison.ecole_id == ecole_id).order_by(Saison.id.desc())))
@@ -62,11 +76,13 @@ class GestionSaisons:
         date_debut: dt.date,
         date_fin: dt.date,
         duplication: Duplication,
+        auteur_id: int | None = None,
     ) -> tuple[Saison, dict[int, int]]:
         """Crée la saison, qui devient aussitôt la courante (la précédente
         passe en lecture seule), et y recopie ce qui est demandé. Renvoie
         aussi la correspondance ancienne fiche → nouvelle fiche, pour que
-        l'admin qui crée la saison bascule sur sa nouvelle fiche."""
+        l'admin qui crée la saison bascule sur sa nouvelle fiche.
+        `auteur_id` : la fiche de l'admin, auteur des documents recopiés."""
         nom = self._valider(db, ecole_id, nom, date_debut, date_fin)
         if duplication.cours and not duplication.profs:
             raise ErreurSaison("Pour recopier les cours, recopiez aussi les professeurs")
@@ -79,9 +95,12 @@ class GestionSaisons:
             db.add(saison)
             db.flush()
             fiches = self._recopier_comptes(db, ecole_id, ancienne_id, saison.id, duplication)
+            cours: dict[int, int] = {}
             if duplication.cours:
-                self._recopier_cours(db, ancienne_id, saison, fiches, duplication.eleves)
+                cours = self._recopier_cours(db, ancienne_id, saison, fiches, duplication.eleves)
             db.commit()
+        if duplication.documents and ancienne_id is not None and self.recopier_documents is not None:
+            self.recopier_documents(db, ecole_id, ancienne_id, saison.id, fiches.get(auteur_id, auteur_id), cours)
         db.refresh(saison)
         return saison, fiches
 
@@ -223,10 +242,10 @@ class GestionSaisons:
 
     def _recopier_cours(
         self, db: Session, ancienne_id: int, saison: Saison, fiches: dict[int, int], avec_eleves: bool
-    ) -> None:
+    ) -> dict[int, int]:
         """Cours et leurs horaires, avec les mêmes professeurs et, si demandé,
         les mêmes élèves. Présences, chorégraphies, vidéos et conversations
-        ne sont jamais recopiées."""
+        ne sont jamais recopiées. Renvoie ancien cours → nouveau cours."""
         anciens = list(db.scalars(select(Cours).where(Cours.saison_id == ancienne_id).order_by(Cours.ordre, Cours.id)))
         nouveaux: dict[int, int] = {}
         for ancien in anciens:
@@ -249,7 +268,7 @@ class GestionSaisons:
             db.flush()
             nouveaux[ancien.id] = nouveau.id
         if not nouveaux:
-            return
+            return nouveaux
 
         liaisons = [(cours_professeurs, "professeur_id")]
         if avec_eleves:
@@ -260,6 +279,7 @@ class GestionSaisons:
                 personne = fiches.get(getattr(ligne, colonne))
                 if personne is not None:
                     db.execute(table.insert().values(cours_id=nouveaux[ligne.cours_id], **{colonne: personne}))
+        return nouveaux
 
 
 # --- Suppression d'une saison (voir GestionSaisons.supprimer) ---
