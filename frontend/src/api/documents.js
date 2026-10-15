@@ -70,12 +70,17 @@ export function documentsApi(orgId) {
     // Contenu protégé : lu avec la session, rendu par une URL blob: (à
     // libérer avec URL.revokeObjectURL quand on n'en a plus besoin).
     // `preview` : aperçu PDF d'un fichier Word, Excel ou PowerPoint.
-    blobUrl: async (id, { thumbnail = false, preview = false, version } = {}) => {
+    // `modifie` (date de dernière modification) entre dans l'adresse : une
+    // nouvelle version a une adresse neuve, le navigateur ne ressort pas
+    // l'ancienne de son cache (vu le 2026-10-16 après une modification
+    // OnlyOffice : l'aperçu montrait encore l'ancien fichier).
+    blobUrl: async (id, { thumbnail = false, preview = false, version, modifie } = {}) => {
+      const v = modifie ? `v=${encodeURIComponent(modifie)}` : ''
       const chemin = thumbnail
-        ? `${base}/nodes/${id}/thumbnail`
+        ? `${base}/nodes/${id}/thumbnail${v ? `?${v}` : ''}`
         : preview
-          ? `${base}/nodes/${id}/preview`
-          : `${base}/nodes/${id}/content${version ? `?version=${version}` : ''}`
+          ? `${base}/nodes/${id}/preview${v ? `?${v}` : ''}`
+          : `${base}/nodes/${id}/content${version ? `?version=${version}` : v ? `?${v}` : ''}`
       const reponse = await fetch(`${BASE_URL}${chemin}`)
       if (!reponse.ok) {
         let message = `Requête échouée (${reponse.status})`
@@ -90,8 +95,9 @@ export function documentsApi(orgId) {
       return URL.createObjectURL(await reponse.blob())
     },
     // Contenu d'un fichier texte (.txt, .md, .csv…), lu avec la session.
-    texte: async (id) => {
-      const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/content`)
+    texte: async (id, modifie) => {
+      const v = modifie ? `?v=${encodeURIComponent(modifie)}` : ''
+      const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/content${v}`)
       if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
       return reponse.text()
     },

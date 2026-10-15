@@ -37,7 +37,7 @@ function Thumb({ api, item }) {
   useEffect(() => {
     let lien = null
     let annule = false
-    api.blobUrl(item.id, { thumbnail: true }).then(
+    api.blobUrl(item.id, { thumbnail: true, modifie: item.updated_at }).then(
       (u) => {
         if (annule) URL.revokeObjectURL(u)
         else setUrl((lien = u))
@@ -350,7 +350,7 @@ export default function Explorer({ orgId, memoire }) {
 
   async function telecharger(item, version) {
     try {
-      const url = await api.blobUrl(item.id, { version: version?.id })
+      const url = await api.blobUrl(item.id, { version: version?.id, modifie: item.updated_at })
       const a = document.createElement('a')
       a.href = url
       a.download = version ? version.filename : item.name
@@ -774,6 +774,27 @@ export default function Explorer({ orgId, memoire }) {
     montrerToast(`Fait : ${carte.libelle}`)
   }
 
+  // OnlyOffice renvoie le fichier quelques secondes après la fermeture de
+  // l'éditeur : on surveille le fichier (toutes les 2 s, 30 s au plus) et
+  // on met la liste à jour dès que la nouvelle version est là.
+  async function attendreNouvelleVersion(fichier) {
+    for (let essai = 0; essai < 15; essai += 1) {
+      await new Promise((r) => setTimeout(r, 2000))
+      try {
+        const detail = await api.detail(fichier.id)
+        if (detail.updated_at !== fichier.updated_at) {
+          await recharger()
+          montrerToast(`« ${fichier.name} » enregistré`)
+          return
+        }
+      } catch {
+        // fichier devenu inaccessible : on arrête
+        return
+      }
+    }
+    await recharger()
+  }
+
   // Poignée : glisser vers le haut agrandit l'assistant, vers le bas le réduit.
   function redimensionnerChat(e) {
     e.preventDefault()
@@ -1194,11 +1215,11 @@ export default function Explorer({ orgId, memoire }) {
           orgId={orgId}
           item={enEdition}
           onClose={() => {
+            const fichier = enEdition
             setEnEdition(null)
             setVue(null)
             montrerToast('Enregistrement des modifications…')
-            // OnlyOffice renvoie le fichier quelques secondes après la fermeture.
-            setTimeout(recharger, 6000)
+            attendreNouvelleVersion(fichier)
           }}
         />
       )}

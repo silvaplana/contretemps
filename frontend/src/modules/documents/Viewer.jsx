@@ -26,7 +26,7 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
     if (!apercu) return undefined
     let lien = null
     let annule = false
-    api.blobUrl(item.id, { preview: office }).then(
+    api.blobUrl(item.id, { preview: office, modifie: item.updated_at }).then(
       (u) => {
         if (annule) URL.revokeObjectURL(u)
         else setUrl((lien = u))
@@ -37,19 +37,19 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
       annule = true
       if (lien) URL.revokeObjectURL(lien)
     }
-  }, [api, item.id, apercu, office])
+  }, [api, item.id, apercu, office, item.updated_at])
 
   useEffect(() => {
     if (!estTexte) return undefined
     let annule = false
-    api.texte(item.id).then(
+    api.texte(item.id, item.updated_at).then(
       (t) => !annule && setTexte(t),
       (e) => !annule && setErreur(e.message),
     )
     return () => {
       annule = true
     }
-  }, [api, item.id, estTexte])
+  }, [api, item.id, estTexte, item.updated_at])
 
   async function enregistrer() {
     setEnregistrement(true)

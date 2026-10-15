@@ -19,7 +19,7 @@ export const TABS = [
   },
   // Documents (demande du 2026-09-25, prototype) : tout le monde, juste
   // avant Profil.
-  { key: 'docs', label: 'Documents', icon: 'docs', roles: ['admin', 'professeur', 'eleve'] },
+  { key: 'docs', label: 'Docs', icon: 'docs', roles: ['admin', 'professeur', 'eleve'] },
   // Super User seulement (§2.5) : `superuser` n'est jamais ajouté aux autres
   // comptes, contrairement à admin/owner qu'IL reçoit en plus (voir
   // data/roles.js : rolesDe) — les autres ne voient donc jamais cet onglet.
