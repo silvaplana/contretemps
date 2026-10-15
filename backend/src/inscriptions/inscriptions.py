@@ -209,6 +209,7 @@ class Inscriptions:
 
     def _generer_pdf(self, db: Session, inscription: Inscription, noms_cours: list[str]) -> None:
         try:
+            ecole = db.get(Ecole, inscription.ecole_id)
             dossier = dossier_ecole(inscription.ecole_id)
             nom_dossier = f"{inscription.token_public}-dossier.pdf"
             nom_facture = f"{inscription.token_public}-facture.pdf"
@@ -218,9 +219,9 @@ class Inscriptions:
                 else None
             )
             (dossier / nom_dossier).write_bytes(
-                generer_dossier_pdf(inscription, noms_cours, chemin_photo)
+                generer_dossier_pdf(inscription, noms_cours, chemin_photo, ecole)
             )
-            (dossier / nom_facture).write_bytes(generer_facture_pdf(inscription, noms_cours))
+            (dossier / nom_facture).write_bytes(generer_facture_pdf(inscription, noms_cours, ecole))
             inscription.pdf_dossier_chemin = chemin_relatif(inscription.ecole_id, nom_dossier)
             inscription.pdf_facture_chemin = chemin_relatif(inscription.ecole_id, nom_facture)
             db.commit()

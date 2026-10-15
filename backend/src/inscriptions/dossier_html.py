@@ -30,7 +30,7 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-from .coordonnees_association import ADRESSE_L1, ADRESSE_L2, EMAIL, RNA, SIRET, TELEPHONE
+from .coordonnees_association import EMAIL, RNA, TELEPHONE, coordonnees
 
 logger = logging.getLogger(__name__)
 
@@ -108,12 +108,15 @@ def _trouver_chromium() -> str:
     )
 
 
-def generer_dossier_pdf(inscription, noms_cours: list[str], chemin_photo: Path | None = None) -> bytes:
+def generer_dossier_pdf(inscription, noms_cours: list[str], chemin_photo: Path | None = None, ecole=None) -> bytes:
+    """`ecole` : ses coordonnées (adresse, SIRET) remplacent celles par
+    défaut (voir coordonnees_association.py:coordonnees)."""
     autor_txt, autor_cls = _pill(inscription.droit_image_autorise)
     site_txt, site_cls = _pill(inscription.droit_image_site)
     rs_txt, rs_cls = _pill(inscription.droit_image_reseaux)
     aff_txt, aff_cls = _pill(inscription.droit_image_affiches)
 
+    coord = coordonnees(ecole)
     valeurs = {
         "LOGO": _LOGO_B64,
         "SAISON": inscription.saison,
@@ -121,10 +124,10 @@ def generer_dossier_pdf(inscription, noms_cours: list[str], chemin_photo: Path |
         "DATE_DEPOT": f"{inscription.created_at:%d/%m/%Y}",
         "TEL": TELEPHONE,
         "EMAIL": EMAIL,
-        "SIRET": SIRET,
+        "SIRET": coord["SIRET"],
         "RNA": RNA,
-        "ADRESSE_L1": ADRESSE_L1,
-        "ADRESSE_L2": ADRESSE_L2,
+        "ADRESSE_L1": _echappe(coord["ADRESSE_L1"]),
+        "ADRESSE_L2": _echappe(coord["ADRESSE_L2"]),
         "ELEVE_NOM": _echappe(inscription.eleve_nom),
         "ELEVE_PRENOM": _echappe(inscription.eleve_prenom),
         "ELEVE_NAISSANCE": f"{inscription.eleve_date_naissance:%d/%m/%Y}",

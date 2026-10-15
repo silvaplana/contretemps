@@ -968,6 +968,7 @@ champs techniques.
 | adresse | texte (numéro et rue, une ou deux lignes) | Opt. |
 | ville | texte | Opt. |
 | siret | texte (14 chiffres) | Opt. |
+| iban | texte (IBAN, sans espaces, clé vérifiée) | Opt. *(demande du 2026-10-15)* |
 | logo | fichier image (original + version traitée) | Opt. (vide = logo par défaut) |
 | nom_mode | `texte` ou `image` | Obl. (défaut `texte`) |
 | nom_image | fichier image (original + version traitée) | Opt. |
@@ -996,6 +997,10 @@ bloquer une école qui ne les a pas encore, et modifiables dans Admin > École (
   en dur dans `inscriptions/coordonnees_association.py` (dont le SIRET actuel est provisoire).
   Un champ vide côté école reprend la valeur de ce fichier, pour ne jamais produire une facture
   sans adresse.
+- **IBAN** *(demande du 2026-10-15)* : saisi avec ou sans espaces, rangé sans espaces en
+  majuscules ; la clé de contrôle est vérifiée (un IBAN mal recopié est refusé). Affiché par
+  groupes de 4. Stocké seulement pour l'instant : son usage (facture, paiement par virement)
+  reste à décider.
 
 Modifiable par tout admin de l'école après création. Les 3 colonnes `code_acces_admin`,
 `code_acces_prof` et `code_acces_eleve` sont supprimées (décision du 2026-10-01, §2.2).

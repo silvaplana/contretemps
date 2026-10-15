@@ -269,7 +269,7 @@ class FichesPapier:
         saison = saison_des_inscriptions(db, ecole_id)
         ecole = db.get(Ecole, ecole_id)
         nom_ecole = ecole.nom if ecole is not None else "Contretemps"
-        dossier_pdf = self._dossier_pdf(compte, donnees, saison, [cours_ecole[cid] for cid in cours_ids])
+        dossier_pdf = self._dossier_pdf(db, compte, donnees, saison, [cours_ecole[cid] for cid in cours_ids])
         mail_envoye = self._prevenir_admin(compte, saison, nom_ecole, brouillon, dossier_pdf)
         self.supprimer(jeton)
         return {
@@ -283,7 +283,7 @@ class FichesPapier:
         }
 
     def _dossier_pdf(
-        self, compte: Compte, donnees: InscriptionCreation, saison: str, noms_cours: list[str]
+        self, db: Session, compte: Compte, donnees: InscriptionCreation, saison: str, noms_cours: list[str]
     ) -> tuple[str, bytes] | None:
         """Le même dossier PDF que celui d'une inscription en ligne (voir
         dossier_html.py), avec les champs validés par l'admin. Il se
@@ -298,7 +298,7 @@ class FichesPapier:
                 ip_soumission=None,
                 alerte_palier_mixte=False,
             )
-            return nom_fichier_dossier(fictive), generer_dossier_pdf(fictive, noms_cours, None)
+            return nom_fichier_dossier(fictive), generer_dossier_pdf(fictive, noms_cours, None, db.get(Ecole, compte.ecole_id))
         except Exception:
             logger.exception("Dossier PDF non généré pour la fiche papier (élève %s)", compte.id)
             return None

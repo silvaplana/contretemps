@@ -125,7 +125,10 @@ class EcolesReceiver:
         return self.client.create(db, **donnees.model_dump())
 
     def modifier(self, ecole_id: int, donnees: EcoleModification, db: Session = Depends(get_db)):
-        ecole = self.client.update(db, ecole_id, **donnees.model_dump(exclude_unset=True))
+        try:
+            ecole = self.client.update(db, ecole_id, **donnees.model_dump(exclude_unset=True))
+        except ValueError as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         if ecole is None:
             raise HTTPException(status_code=404, detail="École introuvable")
         return ecole

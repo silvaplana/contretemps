@@ -15,6 +15,12 @@ class EcoleCreation(BaseModel):
 class EcoleModification(BaseModel):
     nom: str | None = None
     code_postal: str | None = None
+    adresse: str | None = None
+    ville: str | None = None
+    # Espaces acceptés (« 123 456 789 00012 ») ; 14 chiffres sinon refusé.
+    siret: str | None = None
+    # Espaces acceptés ; clé de contrôle vérifiée.
+    iban: str | None = None
 
 
 class EcolePublique(BaseModel):
@@ -35,6 +41,10 @@ class EcoleSortie(BaseModel):
     id: int
     nom: str
     code_postal: str
+    adresse: str | None = None
+    ville: str | None = None
+    siret: str | None = None
+    iban: str | None = None
     created_at: datetime
     sauvegarde_active: bool
     sauvegarde_periodicite: str

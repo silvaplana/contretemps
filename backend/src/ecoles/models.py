@@ -4,7 +4,7 @@ la logique (création avec ses codes par défaut, etc.) vit dans ecoles.py.
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, DateTime, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -26,6 +26,16 @@ class Ecole(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     nom: Mapped[str] = mapped_column(String(150), nullable=False)
     code_postal: Mapped[str] = mapped_column(String(10), nullable=False)
+    # Coordonnées (spec §6.1, demande du 2026-10-15) : optionnelles, elles
+    # remplacent sur la facture et le dossier d'inscription les valeurs de
+    # inscriptions/coordonnees_association.py. Le SIRET est rangé sans
+    # espaces (14 chiffres, voir ecoles.py:normaliser_siret).
+    adresse: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ville: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    siret: Mapped[str | None] = mapped_column(String(14), nullable=True)
+    # IBAN (demande du 2026-10-15) : rangé sans espaces, en majuscules,
+    # clé de contrôle vérifiée (voir ecoles.py:normaliser_iban).
+    iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
     # Plus de codes d'accès depuis le 2026-10-01 (spec §2.2) : chacun a son
     # mot de passe (table acces_emails).
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

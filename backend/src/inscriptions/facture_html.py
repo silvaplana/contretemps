@@ -25,15 +25,13 @@ import tempfile
 from pathlib import Path
 
 from .coordonnees_association import (
-    ADRESSE_L1,
-    ADRESSE_L2,
     APE,
     EMAIL,
     NOM_TRESORIER,
     RNA,
-    SIRET,
     SITE,
     TELEPHONE,
+    coordonnees,
 )
 from .tarifs import (
     ADHESION,
@@ -303,23 +301,26 @@ def _trouver_chromium() -> str:
     )
 
 
-def generer_facture_pdf(inscription, noms_cours: list[str]) -> bytes:
+def generer_facture_pdf(inscription, noms_cours: list[str], ecole=None) -> bytes:
+    """`ecole` : ses coordonnées (adresse, SIRET) remplacent celles par
+    défaut (voir coordonnees_association.py:coordonnees)."""
     from datetime import datetime
 
+    coord = coordonnees(ecole)
     valeurs = {
         "LOGO": _LOGO_B64,
         "NUM_FACTURE": _numero_facture(inscription),
         "DATE_EMISSION": f"{datetime.now():%d/%m/%Y}",
         "SAISON": inscription.saison,
         "NUM_ADHERENT": _numero_adherent(inscription),
-        "SIRET": SIRET,
+        "SIRET": coord["SIRET"],
         "APE": APE,
         "RNA": RNA,
         "TEL": TELEPHONE,
         "EMAIL": EMAIL,
         "SITE": SITE,
-        "ADRESSE_L1": ADRESSE_L1,
-        "ADRESSE_L2": ADRESSE_L2,
+        "ADRESSE_L1": _echappe(coord["ADRESSE_L1"]),
+        "ADRESSE_L2": _echappe(coord["ADRESSE_L2"]),
         "CLIENT_NOM": _echappe(inscription.signataire_nom) or _echappe(
             f"{inscription.eleve_prenom} {inscription.eleve_nom}"
         ),

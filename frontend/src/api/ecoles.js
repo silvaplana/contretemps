@@ -16,6 +16,12 @@ function versEcran(e) {
     id: e.id,
     nom: e.nom,
     codePostal: e.code_postal,
+    // Coordonnées (facture, dossier d'inscription) : absentes de la liste
+    // publique, présentes dans la vue complète réservée aux admins.
+    adresse: e.adresse ?? '',
+    ville: e.ville ?? '',
+    siret: e.siret ?? '',
+    iban: e.iban ?? '',
     sauvegardeActive: e.sauvegarde_active,
     sauvegardePeriodicite: e.sauvegarde_periodicite,
     sauvegardeJourSemaine: e.sauvegarde_jour_semaine,
@@ -29,7 +35,10 @@ async function requete(chemin, options) {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   })
-  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+  if (!reponse.ok) {
+    const detail = (await reponse.json().catch(() => null))?.detail
+    throw new Error(typeof detail === 'string' ? detail : `Requête échouée (${reponse.status})`)
+  }
   return reponse.status === 204 ? null : reponse.json()
 }
 
@@ -44,6 +53,10 @@ export async function modifier(ecoleId, patch) {
   const corps = {
     ...(patch.nom !== undefined && { nom: patch.nom }),
     ...(patch.codePostal !== undefined && { code_postal: patch.codePostal }),
+    ...(patch.adresse !== undefined && { adresse: patch.adresse }),
+    ...(patch.ville !== undefined && { ville: patch.ville }),
+    ...(patch.siret !== undefined && { siret: patch.siret }),
+    ...(patch.iban !== undefined && { iban: patch.iban }),
   }
   return versEcran(await requete(`/ecoles/${ecoleId}`, { method: 'PUT', body: JSON.stringify(corps) }))
 }

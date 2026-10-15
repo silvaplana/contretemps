@@ -69,6 +69,14 @@ export default function AdminParametres({
     ecolesApi.modifier(ecole.id, patch).catch((err) => console.error(err))
   }
 
+  // SIRET, IBAN : vérifiés par le serveur, enregistrés en quittant le champ
+  // (pas à chaque touche, qui serait refusée tant que la saisie n'est pas
+  // finie). Lève l'erreur du serveur, affichée sous le champ.
+  async function enregistrerVerifie(patch) {
+    const complete = await ecolesApi.modifier(ecole.id, patch)
+    setEcole((e) => ({ ...e, siret: complete.siret, iban: complete.iban }))
+  }
+
   return (
     <div className="admin-panel">
       <SauvegardeEcoleMenu
@@ -93,6 +101,45 @@ export default function AdminParametres({
           className="field-input"
           value={ecole.codePostal}
           onChange={(e) => update({ codePostal: e.target.value })}
+        />
+
+        {/* Coordonnées (spec §6.1, demande du 2026-10-15) : imprimées sur la
+            facture et le dossier d'inscription à la place des valeurs par
+            défaut. */}
+        <label htmlFor="ecole-param-adresse">Adresse</label>
+        <textarea
+          id="ecole-param-adresse"
+          className="field-input"
+          rows={2}
+          value={ecole.adresse ?? ''}
+          placeholder="Numéro et rue"
+          onChange={(e) => update({ adresse: e.target.value })}
+        />
+
+        <label htmlFor="ecole-param-ville">Ville</label>
+        <input
+          id="ecole-param-ville"
+          className="field-input"
+          value={ecole.ville ?? ''}
+          onChange={(e) => update({ ville: e.target.value })}
+        />
+
+        <ChampVerifie
+          id="ecole-param-siret"
+          label="SIRET"
+          placeholder="123 456 789 00012"
+          valeur={ecole.siret ?? ''}
+          afficher={siretLisible}
+          enregistrer={(siret) => enregistrerVerifie({ siret })}
+        />
+
+        <ChampVerifie
+          id="ecole-param-iban"
+          label="IBAN"
+          placeholder="FR76 3000 6000 0112 3456 7890 189"
+          valeur={ecole.iban ?? ''}
+          afficher={ibanLisible}
+          enregistrer={(iban) => enregistrerVerifie({ iban })}
         />
       </div>
 
@@ -122,5 +169,52 @@ export default function AdminParametres({
         setChoregraphies={setChoregraphies}
       />
     </div>
+  )
+}
+
+// « 12345678900012 » -> « 123 456 789 00012 » (spec §6.1).
+function siretLisible(siret) {
+  return siret.length === 14 ? `${siret.slice(0, 3)} ${siret.slice(3, 6)} ${siret.slice(6, 9)} ${siret.slice(9)}` : siret
+}
+
+// IBAN par groupes de 4.
+function ibanLisible(iban) {
+  return iban.replace(/(.{4})/g, '$1 ').trim()
+}
+
+// Champ vérifié par le serveur (SIRET, IBAN) : saisie libre, enregistrée en
+// quittant le champ ; l'erreur éventuelle reste affichée dessous.
+function ChampVerifie({ id, label, placeholder, valeur, afficher, enregistrer }) {
+  const [saisie, setSaisie] = useState(null) // null : pas en cours de saisie
+  const [erreur, setErreur] = useState('')
+
+  async function quitter() {
+    if (saisie === null) return
+    if (saisie.replace(/\s/g, '').toUpperCase() === valeur) {
+      setSaisie(null)
+      return
+    }
+    try {
+      await enregistrer(saisie)
+      setErreur('')
+      setSaisie(null)
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
+  return (
+    <>
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        className="field-input"
+        value={saisie ?? afficher(valeur)}
+        placeholder={placeholder}
+        onChange={(e) => setSaisie(e.target.value)}
+        onBlur={quitter}
+      />
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+    </>
   )
 }
