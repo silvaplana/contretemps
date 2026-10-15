@@ -3235,9 +3235,18 @@ a.btn {
 }
 
 .usage-ressources__lignes {
-  max-width: 460px;
+  max-width: 560px;
 }
 
 .admin-usage-video .heures-cards {
-  max-width: 460px;
+  max-width: 560px;
+}
+
+/* Mémoire et IA : en retrait sous le titre « Usage des ressources & IA ». */
+.usage-ressources__rubrique-bloc {
+  margin-left: 18px;
+}
+
+.usage-ressources__corps {
+  padding-left: 18px;
 }

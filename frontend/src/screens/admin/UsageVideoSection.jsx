@@ -50,6 +50,8 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
   // Mémoire et IA (voir api/ressources.js) : chargés tout de suite, le
   // titre porte le nom de la saison affichée.
   const [ressources, setRessources] = useState(null)
+  const [memoireOuverte, setMemoireOuverte] = useState(false)
+  const [iaOuverte, setIaOuverte] = useState(false)
 
   useEffect(() => {
     let annule = false
@@ -123,113 +125,128 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
         <p className="muted">Calcul en cours…</p>
       ) : (
         <>
-          {/* Rubriques demandées le 2026-10-15 : « Mémoire » (place sur le
-              disque, toute l'école) et « IA » (coût de la saison, par poste). */}
-          {ressources && (
-            <>
-              <h4 className="usage-ressources__rubrique">Mémoire</h4>
-              <div className="usage-ressources__lignes">
-                {ressources.memoire.map((r) => (
-                  <div key={r.cle} className="usage-ressources__ligne">
-                    <span>{r.libelle}</span>
-                    <span>{formatTaille(r.octets)}</span>
-                  </div>
-                ))}
-                <div className="usage-ressources__ligne usage-ressources__ligne--total">
-                  <span>Total sur le disque</span>
-                  <span>{formatTaille(ressources.memoireTotalOctets)}</span>
-                </div>
-              </div>
-
-              <h5 className="usage-ressources__sous-titre">Détail des vidéos</h5>
-            </>
-          )}
-          {/* Saisons (spec §2.6) : la saison affichée, puis le cumul de
-              toutes les saisons (seul chiffre qui sort de la saison
-              affichée). */}
-          <div className="heures-cards">
-            <div className="heures-card">
-              <span className="muted">Espace utilisé (saison)</span>
-              <strong>{formatTaille(usage.totalOctets)}</strong>
-            </div>
-            <div className="heures-card">
-              <span className="muted">Durée (saison)</span>
-              <strong>{formatDureeTotale(usage.totalSecondes)}</strong>
-            </div>
-          </div>
-          <div className="heures-cards">
-            <div className="heures-card">
-              <span className="muted">Espace, toutes saisons</span>
-              <strong>{formatTaille(usage.totalToutesSaisonsOctets)}</strong>
-            </div>
-            <div className="heures-card">
-              <span className="muted">Durée, toutes saisons</span>
-              <strong>{formatDureeTotale(usage.totalToutesSaisonsSecondes)}</strong>
-            </div>
-          </div>
-
-          <h3 className="usage-video__titre-liste">Les plus grosses vidéos</h3>
-          {usage.topVideos.length === 0 ? (
-            <p className="muted">Aucune vidéo avec un fichier pour l’instant.</p>
-          ) : (
-            <div className="usage-video__liste">
-              {usage.topVideos.map((video) => ({ ...video, ...emplacement(video.id) })).map((v) => (
-                <div key={v.id} className="usage-video__ligne">
-                  <div className="usage-video__titre">
-                    <div className="usage-video__titre-ligne">
-                      <strong>{v.titre}</strong>
-                      {v.cours && <span className="muted"> — {v.cours}</span>}
+          {/* Deux sous-catégories dépliables, en retrait sous le titre
+              (demandes du 2026-10-15) : « Mémoire » (place sur le disque,
+              puis le détail des vidéos) et « IA » (coût par poste). */}
+          <Rubrique titre="Mémoire" ouvert={memoireOuverte} onBascule={() => setMemoireOuverte((o) => !o)}>
+            {ressources && (
+              <>
+                <div className="usage-ressources__lignes">
+                  {ressources.memoire.map((r) => (
+                    <div key={r.cle} className="usage-ressources__ligne">
+                      <span>{r.libelle}</span>
+                      <span>{formatTaille(r.octets)}</span>
                     </div>
-                    {v.choregraphie && (
-                      <Badge className="usage-video__choregraphie">
-                        <Icon name="music" size={12} /> {v.choregraphie}
-                      </Badge>
-                    )}
+                  ))}
+                  <div className="usage-ressources__ligne usage-ressources__ligne--total">
+                    <span>Total sur le disque</span>
+                    <span>{formatTaille(ressources.memoireTotalOctets)}</span>
                   </div>
-                  <div className="usage-video__meta">
-                    <span>{formatTaille(v.tailleOctets)}</span>
-                    <span className="muted">{formatDuree(v.dureeSecondes)}</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="icon-btn icon-btn--sm"
-                    onClick={() => supprimer(v)}
-                    aria-label={`Supprimer ${v.titre}`}
-                  >
-                    <Icon name="trash" size={16} />
-                  </button>
                 </div>
-              ))}
+              </>
+            )}
+            <h5 className="usage-ressources__sous-titre">Détail des vidéos</h5>
+            {/* Saisons (spec §2.6) : la saison affichée, puis le cumul de
+                toutes les saisons (seul chiffre qui sort de la saison
+                affichée). */}
+            <div className="heures-cards">
+              <div className="heures-card">
+                <span className="muted">{`Mémoire utilisée (${ressources?.saison ?? 'saison sélectionnée'})`}</span>
+                <strong>{formatTaille(usage.totalOctets)}</strong>
+              </div>
+              <div className="heures-card">
+                <span className="muted">{`Durée vidéo (${ressources?.saison ?? 'saison sélectionnée'})`}</span>
+                <strong>{formatDureeTotale(usage.totalSecondes)}</strong>
+              </div>
             </div>
-          )}
-          {/* Seconde sous-catégorie : le coût de l'IA (demande du 2026-10-15). */}
-          {ressources && (
-            <>
-              <h4 className="usage-ressources__rubrique">IA</h4>
-              <div className="usage-ressources__lignes">
-                {ressources.ia.length === 0 && <p className="muted">Aucune opération d’IA cette saison.</p>}
-                {ressources.ia.map((p) => (
-                  <div key={p.categorie} className="usage-ressources__ligne">
-                    <span>
-                      {p.libelle} <span className="muted">({p.nombre})</span>
-                    </span>
-                    <span>{formaterCout(p.coutUsd)}</span>
+            <div className="heures-cards">
+              <div className="heures-card">
+                <span className="muted">Mémoire utilisée (toutes saisons)</span>
+                <strong>{formatTaille(usage.totalToutesSaisonsOctets)}</strong>
+              </div>
+              <div className="heures-card">
+                <span className="muted">Durée des vidéos, toutes saisons</span>
+                <strong>{formatDureeTotale(usage.totalToutesSaisonsSecondes)}</strong>
+              </div>
+            </div>
+
+            <h3 className="usage-video__titre-liste">Les plus grosses vidéos</h3>
+            {usage.topVideos.length === 0 ? (
+              <p className="muted">Aucune vidéo avec un fichier pour l’instant.</p>
+            ) : (
+              <div className="usage-video__liste">
+                {usage.topVideos.map((video) => ({ ...video, ...emplacement(video.id) })).map((v) => (
+                  <div key={v.id} className="usage-video__ligne">
+                    <div className="usage-video__titre">
+                      <div className="usage-video__titre-ligne">
+                        <strong>{v.titre}</strong>
+                        {v.cours && <span className="muted"> — {v.cours}</span>}
+                      </div>
+                      {v.choregraphie && (
+                        <Badge className="usage-video__choregraphie">
+                          <Icon name="music" size={12} /> {v.choregraphie}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="usage-video__meta">
+                      <span>{formatTaille(v.tailleOctets)}</span>
+                      <span className="muted">{formatDuree(v.dureeSecondes)}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="icon-btn icon-btn--sm"
+                      onClick={() => supprimer(v)}
+                      aria-label={`Supprimer ${v.titre}`}
+                    >
+                      <Icon name="trash" size={16} />
+                    </button>
                   </div>
                 ))}
-                <div className="usage-ressources__ligne usage-ressources__ligne--total">
-                  <span>Total de la saison</span>
-                  <span>{formaterCout(ressources.iaTotalUsd)}</span>
-                </div>
-                <div className="usage-ressources__ligne">
-                  <span className="muted">Toutes saisons</span>
-                  <span className="muted">{formaterCout(ressources.iaTotalToutesSaisonsUsd)}</span>
-                </div>
               </div>
-
-            </>
-          )}
+            )}
+          </Rubrique>
+          <Rubrique titre="IA" ouvert={iaOuverte} onBascule={() => setIaOuverte((o) => !o)}>
+            {ressources && (
+              <>
+                <div className="usage-ressources__lignes">
+                  {ressources.ia.length === 0 && <p className="muted">Aucune opération d’IA cette saison.</p>}
+                  {ressources.ia.map((p) => (
+                    <div key={p.categorie} className="usage-ressources__ligne">
+                      <span>
+                        {p.libelle} <span className="muted">({p.nombre})</span>
+                      </span>
+                      <span>{formaterCout(p.coutUsd)}</span>
+                    </div>
+                  ))}
+                  <div className="usage-ressources__ligne usage-ressources__ligne--total">
+                    <span>Total de la saison</span>
+                    <span>{formaterCout(ressources.iaTotalUsd)}</span>
+                  </div>
+                  <div className="usage-ressources__ligne">
+                    <span className="muted">Toutes saisons</span>
+                    <span className="muted">{formaterCout(ressources.iaTotalToutesSaisonsUsd)}</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </Rubrique>
         </>
       )}
     </section>
+  )
+}
+
+// Sous-catégorie dépliable, en retrait sous le titre de la section.
+function Rubrique({ titre, ouvert, onBascule, children }) {
+  return (
+    <div className="usage-ressources__rubrique-bloc">
+      <h4 className="usage-ressources__rubrique">
+        <button type="button" className="section-label__depliant" aria-expanded={ouvert} onClick={onBascule}>
+          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={13} />
+          {titre}
+        </button>
+      </h4>
+      {ouvert && <div className="usage-ressources__corps">{children}</div>}
+    </div>
   )
 }
