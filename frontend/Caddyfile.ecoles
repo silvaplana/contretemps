@@ -1,0 +1,53 @@
+# Configuration Caddy INTERNE des adresses d'école
+# (https://<adresse>.contretemps.silvaplana.cloud, spec §2.7). Même principe
+# que Caddyfile : pas de TLS ici, c'est le Caddy "gateway" qui reçoit
+# *.contretemps.silvaplana.cloud et transmet tout à ce conteneur, SANS
+# retirer de préfixe (l'app est à la racine) et en gardant l'en-tête Host :
+# c'est lui qui dit au backend de quelle école il s'agit.
+:80 {
+	root * /srv
+	encode gzip zstd
+
+	# Requêtes /api/... -> conteneur "backend", en retirant le préfixe /api.
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy backend:8000
+	}
+
+	# Ce que lit le téléphone à l'installation : propre à l'école de
+	# l'adresse visitée, fabriqué par le backend (personnalisation/).
+	handle /site.webmanifest {
+		rewrite * /par-host/site.webmanifest
+		reverse_proxy backend:8000
+	}
+	handle /icons/* {
+		rewrite * /par-host{path}
+		reverse_proxy backend:8000
+	}
+	handle /favicon.png {
+		rewrite * /par-host/favicon.png
+		reverse_proxy backend:8000
+	}
+	handle /apple-touch-icon.png {
+		rewrite * /par-host/apple-touch-icon.png
+		reverse_proxy backend:8000
+	}
+
+	# Assets Vite : nom contenant un hash du contenu, cache long sans risque.
+	handle /assets/* {
+		header Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+
+	# L'app React (routage côté client : toute route inconnue -> index.html).
+	# `templates` : index.html porte le nom et la couleur de l'école
+	# (voir vite.config.js : enteteEcole), demandés au backend à chaque envoi.
+	handle {
+		header Cache-Control "no-cache"
+		try_files {path} /index.html
+		templates {
+			mime text/html
+		}
+		file_server
+	}
+}

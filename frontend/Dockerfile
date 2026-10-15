@@ -21,9 +21,20 @@ ARG VITE_API_URL=/api
 # (voir sa docstring), vide par défaut : sans lui, seule la destination
 # "Cet appareil" est proposée, sans erreur (voir utils/googleDrive.js).
 ARG VITE_GOOGLE_CLIENT_ID=
-RUN printf 'VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=%s\n' "${VITE_API_URL}" "${VITE_GOOGLE_CLIENT_ID}" > .env.production
+# Adresses d'école (spec §2.7, service "frontend-ecoles" de
+# docker-compose.yml) : l'app à la racine, et le nom de l'école dans
+# index.html (voir vite.config.js : enteteEcole). Vides : build de
+# l'adresse générique /contretemps/.
+ARG VITE_BASE=
+ARG VITE_ENTETE_ECOLE=
+ENV VITE_ENTETE_ECOLE=${VITE_ENTETE_ECOLE}
+# Page d'inscription (« Inscription élève » d'Admin > Élèves) : sur une
+# adresse d'école, elle reste sur silvaplana.cloud, d'où une adresse complète.
+ARG VITE_INSCRIPTION_URL=
+RUN printf 'VITE_API_URL=%s\nVITE_GOOGLE_CLIENT_ID=%s\n' "${VITE_API_URL}" "${VITE_GOOGLE_CLIENT_ID}" > .env.production \
+    && if [ -n "$VITE_INSCRIPTION_URL" ]; then printf 'VITE_INSCRIPTION_URL=%s\n' "$VITE_INSCRIPTION_URL" >> .env.production; fi
 
-RUN npm run build
+RUN if [ -n "$VITE_BASE" ]; then VITE_BASE="$VITE_BASE" npm run build; else npm run build; fi
 
 # ---- Étape 2 : image finale — juste Caddy + les fichiers statiques ----
 # Caddy sert ici les fichiers statiques et fait le reverse proxy vers
@@ -33,6 +44,9 @@ RUN npm run build
 FROM caddy:alpine
 
 COPY --from=build /app/dist /srv
-COPY Caddyfile /etc/caddy/Caddyfile
+# Caddyfile (adresse générique /contretemps/) ou Caddyfile.ecoles (adresses
+# d'école), voir docker-compose.yml.
+ARG CADDYFILE=Caddyfile
+COPY ${CADDYFILE} /etc/caddy/Caddyfile
 
 EXPOSE 80

@@ -114,6 +114,28 @@ services:
     depends_on:
       - backend
 
+  # Adresses d'école (spec §2.7) : https://<adresse>.contretemps.silvaplana.cloud.
+  # Même code que "frontend", construit à la racine (VITE_BASE=/) avec son
+  # API sous /api, et le nom de l'école injecté dans index.html. Le
+  # gateway envoie *.contretemps.silvaplana.cloud ici (voir DEPLOY.md).
+  frontend-ecoles:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: /api
+        VITE_BASE: /
+        VITE_ENTETE_ECOLE: "1"
+        CADDYFILE: Caddyfile.ecoles
+        VITE_INSCRIPTION_URL: https://silvaplana.cloud/contretemps-inscription/
+        VITE_GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+    restart: unless-stopped
+    container_name: contretemps-frontend-ecoles
+    networks:
+      - default
+      - web
+    depends_on:
+      - backend
+
   # Page publique d'inscription (voir spec/SPEC-inscription.md et
   # frontend-inscription/) — appli sœur séparée, même patron que
   # "frontend" ci-dessus, mais sert /contretemps-inscription/* et parle
