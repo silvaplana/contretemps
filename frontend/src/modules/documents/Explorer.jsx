@@ -58,11 +58,23 @@ function hasFiles(e) {
   return Array.from(e.dataTransfer?.types ?? []).includes('Files')
 }
 
-export default function Explorer({ orgId }) {
+// Dernier endroit ouvert (espace + dossier), gardé sur l'appareil sous la
+// clé `memoire` donnée par l'appli : on y revient la fois suivante.
+function lireEndroit(memoire) {
+  try {
+    const x = memoire && JSON.parse(localStorage.getItem(memoire) ?? 'null')
+    if (x && typeof x.space === 'string') return { space: x.space, folder: Number.isInteger(x.folder) ? x.folder : null }
+  } catch {
+    // stockage indisponible (navigation privée) : on part de Privé
+  }
+  return { space: 'private', folder: null }
+}
+
+export default function Explorer({ orgId, memoire }) {
   const api = useMemo(() => documentsApi(orgId), [orgId])
   const [spaces, setSpaces] = useState([])
-  const [space, setSpace] = useState('private')
-  const [folder, setFolder] = useState(null)
+  const [space, setSpace] = useState(() => lireEndroit(memoire).space)
+  const [folder, setFolder] = useState(() => lireEndroit(memoire).folder)
   const [data, setData] = useState(null)
   const [erreur, setErreur] = useState('')
   const [filtreStatut, setFiltreStatut] = useState(null)
@@ -124,13 +136,28 @@ export default function Explorer({ orgId }) {
       setData(x)
       setErreur('')
     } catch (e) {
+      // Dossier supprimé ou plus accessible, espace retiré : on repart
+      // de la racine, puis de Privé.
       if (e.status === 404 && folder) {
         setFolder(null)
+        return
+      }
+      if (e.status === 404 && space !== 'private') {
+        setSpace('private')
         return
       }
       setErreur(e.message)
     }
   }, [api, space, folder])
+
+  useEffect(() => {
+    if (!memoire) return
+    try {
+      localStorage.setItem(memoire, JSON.stringify({ space, folder }))
+    } catch {
+      // stockage indisponible : tant pis, on repartira de Privé
+    }
+  }, [memoire, space, folder])
 
   useEffect(() => {
     recharger()

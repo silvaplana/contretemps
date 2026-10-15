@@ -3,6 +3,8 @@ import { FileIcon, FolderIcon } from './icons.jsx'
 import { FAMILIES } from './kinds.js'
 
 // Écran du + « Que voulez-vous faire ? » (spec documents.md §7.1 ter).
+// Ordre voulu par Seb (15 octobre) : Créer un fichier, Créer un dossier,
+// Importer, puis les familles Informer / Questionner / Agir.
 // Les modèles sont livrés avec l'appli, chaque asso pourra les modifier.
 // Pour l'instant seuls « Créer un dossier » et « Importer » marchent : les
 // fichiers de l'appli (Informer / Questionner / Agir) arrivent ensuite.
@@ -32,7 +34,8 @@ const MODELES = {
 }
 
 export default function NewScreen({ canAdd, onClose, onNewFolder, onImport, onToast }) {
-  const [ouvert, setOuvert] = useState('inform')
+  // Informer, Questionner, Agir : fermés au départ (Seb, 15 octobre).
+  const [ouvert, setOuvert] = useState(null)
   const bientot = () => onToast('Bientôt : ces fichiers arrivent dans une prochaine version.')
 
   return (
@@ -43,6 +46,21 @@ export default function NewScreen({ canAdd, onClose, onNewFolder, onImport, onTo
       </div>
       <div className="dx-body">
         {!canAdd && <p className="dx-note">Vous ne pouvez rien ajouter dans ce dossier. Ouvrez un dossier où vous pouvez modifier.</p>}
+        <div className="dx-blank">
+          <button type="button" onClick={bientot}>
+            <FileIcon blank />
+            <span>Créer un fichier</span>
+            <span className="dx-tpl__soon">bientôt</span>
+          </button>
+          <button type="button" disabled={!canAdd} onClick={onNewFolder}>
+            <FolderIcon />
+            <span>Créer un dossier</span>
+          </button>
+        </div>
+        <button type="button" className="dx-import" disabled={!canAdd} onClick={onImport}>
+          ⤒ Importer un fichier ou une photo
+        </button>
+
         {Object.entries(MODELES).map(([cle, m]) => {
           const f = FAMILIES[cle]
           const estOuvert = ouvert === cle
@@ -69,22 +87,6 @@ export default function NewScreen({ canAdd, onClose, onNewFolder, onImport, onTo
             </div>
           )
         })}
-
-        <div className="dx-sec">Ou simplement</div>
-        <div className="dx-blank">
-          <button type="button" disabled={!canAdd} onClick={onNewFolder}>
-            <FolderIcon />
-            <span>Créer un dossier</span>
-          </button>
-          <button type="button" onClick={bientot}>
-            <FileIcon blank />
-            <span>Créer un fichier</span>
-            <span className="dx-tpl__soon">bientôt</span>
-          </button>
-        </div>
-        <button type="button" className="dx-import" disabled={!canAdd} onClick={onImport}>
-          ⤒ Importer un fichier ou une photo
-        </button>
       </div>
     </div>
   )
