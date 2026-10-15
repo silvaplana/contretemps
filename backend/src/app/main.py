@@ -254,6 +254,7 @@ gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
 assistant_client = Assistant(
     documents=documents_client,
     noter_cout=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "chat_documents", cout, detail),
+    cout_saison=lambda db, ecole_id: ressources_client.cout_categorie(db, ecole_id, "chat_documents"),
 )
 assistant_receiver = AssistantReceiver(client=assistant_client, app=app, current_member=membre_appelant)
 

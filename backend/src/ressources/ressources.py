@@ -53,6 +53,15 @@ class Ressources:
         db.add(ConsommationIA(ecole_id=ecole_id, categorie=categorie, cout_usd=cout_usd, detail=detail))
         db.commit()
 
+    def cout_categorie(self, db: Session, ecole_id: int, categorie: str) -> float:
+        """Total d'un poste sur la saison affichée (filtre de saison automatique)."""
+        total = db.scalar(
+            select(func.coalesce(func.sum(ConsommationIA.cout_usd), 0.0)).where(
+                ConsommationIA.ecole_id == ecole_id, ConsommationIA.categorie == categorie
+            )
+        )
+        return round(float(total or 0.0), 5)
+
     def usage(self, db: Session, ecole_id: int) -> dict:
         memoire = [
             {"cle": cle, "libelle": libelle, "octets": _taille(racine / str(ecole_id))}
