@@ -631,6 +631,42 @@ est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande
   la saison à supprimer, ce qui sera supprimé, puis le nom de la saison à retaper avant que
   **"Supprimer définitivement"** ne soit utilisable.
 
+**Section "Personnalisation"** *(demande utilisateur du 2026-10-15, pas encore implémenté)* :
+repliable comme "Saison", placée **juste après "Saison"**. Tout admin de l'école peut la
+modifier. Un **aperçu en direct** de l'en-tête de la page de connexion (logo, nom, slogan, sur
+les couleurs choisies) est affiché au-dessus des champs. Elle contient :
+- **Logo** (image) : affiché en grand sur la page de connexion, en petit dans l'en-tête de
+  l'appli, et sert d'icône de l'appli installée (voir le fil « Personnalisation par école »
+  pour l'adresse propre à chaque école dont dépend cette icône) ;
+- **Nom de l'école**, au choix :
+  - *Texte* : le nom de l'école (§6.1), écrit dans la police de l'appli ;
+  - *Image* : le nom dessiné, avec sa propre graphie ;
+- **Slogan** (texte, une ligne, 80 caractères au plus), à la place de « Gestion d'école de
+  danse du cours au gala » ;
+- **Couleurs** : *fond*, *texte* et *accent* (boutons, bandeaux, onglet actif : l'orange
+  actuel). Un message prévient si le texte est peu lisible sur le fond (contraste trop
+  faible), sans bloquer ;
+- un bouton **"Revenir à l'apparence par défaut"** (avec confirmation).
+
+**Envoi d'une image** (logo ou nom en image) : PNG, JPG, WebP ou SVG, 5 Mo au plus. Le
+serveur recadre les marges vides et redimensionne (512 px de côté au plus pour le logo). Le
+**détourage est optionnel** (décision utilisateur du 2026-10-15), au choix dans une liste
+**"Détourage : Aucun / Simple / Par IA"**, avec un **aperçu avant/après** sur damier avant de
+valider :
+- *Aucun* : l'image est gardée telle quelle. Choix par défaut quand l'image a déjà de la
+  transparence (PNG détouré, SVG) ;
+- *Simple* : le serveur retire le fond uni autour du dessin (couleur lue dans les coins, pixels
+  proches de cette couleur et reliés au bord), avec Pillow, sans IA. Instantané, idéal pour un
+  logo sur fond blanc ou uni ; ne convient pas à une photo. Choix par défaut sinon ;
+- *Par IA* : modèle de détourage exécuté sur le serveur (`rembg`, environ 170 Mo, aucun
+  service extérieur). Détoure n'importe quelle image, photo comprise, en quelques secondes,
+  mais peut effacer une partie claire à l'intérieur du dessin : d'où l'aperçu.
+
+L'original est conservé, pour pouvoir changer de détourage sans renvoyer l'image. Pour
+l'**icône de l'appli installée**, le serveur pose le logo sur la couleur de fond (Android et
+iPhone affichent mal une icône transparente) et génère les tailles demandées (192 et 512 px,
+plus une version « maskable » avec marge).
+
 #### 5.1.2 Élèves
 
 Tableau éditable — voir la liste complète des champs en §6.4, plus une colonne **Âge** juste
@@ -801,6 +837,13 @@ champs techniques.
 | adresse | texte (numéro et rue, une ou deux lignes) | Opt. |
 | ville | texte | Opt. |
 | siret | texte (14 chiffres) | Opt. |
+| logo | fichier image (original + version traitée) | Opt. (vide = logo par défaut) |
+| nom_mode | `texte` ou `image` | Obl. (défaut `texte`) |
+| nom_image | fichier image (original + version traitée) | Opt. |
+| slogan | texte (80 car. max) | Opt. (vide = slogan par défaut) |
+| couleur_fond | couleur `#RRGGBB` | Opt. (vide = `#FDECD8`) |
+| couleur_texte | couleur `#RRGGBB` | Opt. (vide = `#3A2410`) |
+| couleur_accent | couleur `#RRGGBB` | Opt. (vide = `#D8722A`) |
 | created_at | datetime | Obl. (auto) |
 
 **Le nom seul n'est pas unique** : deux écoles différentes peuvent porter le même nom (ex. deux
@@ -1309,7 +1352,10 @@ encore branché).
 - **Fond** : orange clair (`#FDECD8`)
 - **Texte principal** : noir / brun foncé (`#000`, `#3A2410`)
 - **Accent** : orange soutenu (`#D8722A`)
-- **Logo** : monogramme "Ct" (pour Contretemps) — un grand C en arc entourant un "t" italique, sur fond circulaire orange. *À généraliser/paramétrer par école pour le multi-écoles.*
+- **Logo** : monogramme "Ct" (pour Contretemps) — un grand C en arc entourant un "t" italique, sur fond circulaire orange.
+- Ces valeurs sont celles **par défaut** : chaque école peut choisir son logo, son nom en image,
+  son slogan et ses trois couleurs (fond, texte, accent) dans Admin > École > Personnalisation
+  (§5.1.1, 2026-10-15).
 - Icônes : style Tabler Icons (traits fins, cohérents)
 - Barre de navigation basse fixe, en fond orange clair légèrement plus soutenu que le fond général
 
@@ -1333,7 +1379,9 @@ encore branché).
 - Intégration HelloAsso : synchronisation ponctuelle ou temps réel via webhook ?
 - Politique de confidentialité (obligatoire, données concernant des mineurs, notamment les champs santé/urgence en §6.4)
 - Captures d'écran de la section 5 à reprendre entièrement une fois l'IHM adaptée (Claude Code, qui a accès à l'app réelle)
-- Logo/charte : comment se décline-t-il pour une école autre que Contretemps ?
+- Logo/charte : **spécifié le 2026-10-15** (Admin > École > Personnalisation, §5.1.1). Reste
+  ouvert : nom et icône de l'appli installée propres à chaque école, qui demandent une adresse
+  par école (fil « Personnalisation par école », en attente de décision).
 - Messagerie : le "tuyau" du groupe WhatsApp miroir est en place (statut stocké, écran Admin
   > Conversations, voir §6.9) mais **pas le vrai envoi** — reste à faire : intégrer Baileys
   (ou équivalent), créer réellement le groupe (numéros de téléphone des membres), envoyer les
