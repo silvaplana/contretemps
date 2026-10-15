@@ -357,6 +357,21 @@ def test_mot_de_passe_oublie(client, db_session, ecole, mails):
     assert _login(client, "a.roux@x.fr", "tout-nouveau-mdp").status_code == 200
 
 
+def test_mot_de_passe_oublie_du_superuser_mene_a_l_ecole(client, db_session, ecole, mails):
+    """Vécu le 2026-10-15 : le Superuser a aussi une fiche dans une école,
+    au même email ; le lien partait vers l'adresse générique (sa fiche
+    Superuser n'a pas d'école). Il doit mener à l'adresse de l'école."""
+    ecole["ecole"].sous_domaine = "le-beausset"
+    db_session.commit()
+    Comptes().enregistrer_superuser(
+        db_session, nom="Richard", prenom="Sébastien", email="s.r@x.fr", mot_de_passe_hache="x"
+    )
+    Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="admin", nom="Richard", prenom="Sébastien", email="s.r@x.fr")
+    assert client.post("/auth/mot-de-passe-oublie", json={"identifiant": "s.r@x.fr"}).status_code == 204
+    assert len(mails) == 1
+    assert "https://le-beausset.contretemps.silvaplana.cloud/reinitialiser?jeton=" in mails[0][2]
+
+
 def test_mot_de_passe_oublie_remplace_l_ancien(client, ecole, mails):
     client.post("/auth/mot-de-passe-oublie", json={"identifiant": "m.p@x.fr"})
     jeton = _jeton_du_mail(mails, "reinitialiser")

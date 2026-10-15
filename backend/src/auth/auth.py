@@ -159,7 +159,7 @@ class Auth:
                 continue
             limiteur.noter_echec(cle)
             acces_email = self.acces.obtenir_ou_creer(db, email)
-            liens.append((destinataire(fiches), self.acces.creer_lien(db, acces_email, REINITIALISATION)))
+            liens.append((destinataire(fiches), self.acces.creer_lien(db, acces_email, REINITIALISATION), fiches))
         return liens
 
     def changer_mot_de_passe(self, db: Session, acces_email: AccesEmail, ancien: str, nouveau: str) -> bool:

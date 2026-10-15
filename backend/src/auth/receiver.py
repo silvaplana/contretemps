@@ -186,10 +186,21 @@ class AuthReceiver:
             return SessionOuverte()
         return self._session(db, compte)
 
-    def mot_de_passe_oublie(self, donnees: MotDePasseOublie, db: Session = Depends(get_db)):
+    def mot_de_passe_oublie(self, donnees: MotDePasseOublie, request: Request, db: Session = Depends(get_db)):
         """Toujours la même réponse, qu'un compte existe ou non (§2.2)."""
-        for fiche, jeton in self.client.liens_de_reinitialisation(db, donnees.identifiant):
-            ecole = db.get(Ecole, fiche.ecole_id) if fiche.ecole_id else None
+        from personnalisation.personnalisation import etiquette_du_host
+
+        etiquette = etiquette_du_host(request.headers.get("x-forwarded-host") or request.headers.get("host"))
+        for fiche, jeton, fiches in self.client.liens_de_reinitialisation(db, donnees.identifiant):
+            # Le lien mène à l'adresse d'une école (spec §2.7) : celle où la
+            # demande a été faite si la personne y a une fiche, sinon une
+            # école où elle en a une. Le profil Superuser, rattaché à aucune
+            # école, ne doit pas faire partir le lien vers l'adresse
+            # générique (vécu le 2026-10-15).
+            ecoles = [db.get(Ecole, f.ecole_id) for f in fiches if f.ecole_id]
+            ecole = next((e for e in ecoles if e.sous_domaine == etiquette), None) or (
+                db.get(Ecole, fiche.ecole_id) if fiche.ecole_id else next(iter(ecoles), None)
+            )
             try:
                 self.invitations.mails.reinitialisation(
                     fiche.email.strip(), ecole.nom if ecole else None, f"{fiche.prenom} {fiche.nom}", jeton,
