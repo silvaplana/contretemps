@@ -15,7 +15,7 @@ from datetime import timedelta
 from pathlib import Path
 from typing import BinaryIO
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from . import access
@@ -260,6 +260,8 @@ class Documents:
         niveau = self._level(member, loc, acl, fermees)
         if niveau is None and loc.path:
             raise not_found()
+        if niveau is None and space == "private":
+            return self._shared_with_me(db, member, fermees)
 
         comptes = self._child_counts(db, [n.id for n in enfants if n.kind == KIND_FOLDER])
         noms = self.directory.person_names(db, member.org_id, {n.updated_by for n in enfants if n.updated_by})
@@ -279,11 +281,60 @@ class Documents:
         return {
             "space": space,
             "folder": self._summary(dossier, niveau, loc.path, fermees, {}, {}, periodes) if dossier else None,
-            "breadcrumb": [{"id": n.id, "name": n.name} for n in loc.path],
+            "breadcrumb": self._breadcrumb(member, loc, acl, fermees),
             "level": niveau,
             "can_add": access.at_least(niveau, LEVEL_EDIT) and self._official_lock(loc.path) is None,
             "items": elements,
         }
+
+    def _breadcrumb(self, member: Member, loc: Location, acl, fermees) -> list[dict]:
+        """Le fil d'Ariane commence au premier dossier visible : un élève ne
+        voit pas le dossier de saison au-dessus d'un dossier qu'on lui a
+        partagé."""
+        debut = 0
+        for i in range(len(loc.path)):
+            if access.effective_level(
+                member, loc.space, loc.owner_person_id, loc.path[: i + 1], acl, self.private_editors, fermees
+            ) is not None:
+                debut = i
+                break
+        return [{"id": n.id, "name": n.name} for n in loc.path[debut:]]
+
+    def _shared_with_me(self, db: Session, member: Member, fermees: set[int]) -> dict:
+        """Racine de Privé pour qui n'y a aucun droit par défaut (un élève) :
+        les éléments les plus hauts qui lui sont partagés, comme « Partagés
+        avec moi » de Google Drive, puisqu'il ne peut pas descendre jusqu'à
+        eux depuis la racine."""
+        cles = [("member", str(member.person_id))] + [("group", g) for g in member.groups]
+        lignes = db.scalars(
+            select(DocAcl.node_id).where(
+                or_(*[(DocAcl.principal_type == t) & (DocAcl.principal_id == i) for t, i in cles])
+            )
+        )
+        candidats = [
+            n for n in (db.get(DocNode, i) for i in set(lignes))
+            if n is not None and n.org_id == member.org_id and n.space == "private" and n.deleted_at is None
+        ]
+        periodes = {p.id: p for p in self.periods.list(db, member.org_id)}
+        elements, vus = [], set()
+        for node in candidats:
+            chemin = self._path(db, node)
+            if any(n.deleted_at is not None for n in chemin):
+                continue
+            acl = self._acl(db, {n.id for n in chemin})
+            # Le plus haut élément visible du chemin.
+            for i in range(len(chemin)):
+                niveau = access.effective_level(member, "private", None, chemin[: i + 1], acl, self.private_editors, fermees)
+                if niveau is not None:
+                    haut = chemin[i]
+                    if haut.id not in vus:
+                        vus.add(haut.id)
+                        comptes = self._child_counts(db, [haut.id]) if haut.kind == KIND_FOLDER else {}
+                        elements.append(self._summary(haut, niveau, chemin[: i + 1], fermees, comptes, {}, periodes))
+                    break
+        elements.sort(key=self._sort_key(periodes))
+        return {"space": "private", "folder": None, "breadcrumb": [], "level": None, "can_add": False,
+                "shared_with_me": True, "items": elements}
 
     @staticmethod
     def _sort_key(periodes):
@@ -595,6 +646,43 @@ class Documents:
         node.updated_by, node.updated_at = member.person_id, utcnow()
         apres = " › ".join(n.name for n in cible.path) or self._space_label(cible.space)
         self._log(db, member, node, "moved", {"from": avant, "to": apres})
+
+    def copy(self, db: Session, member: Member, node_id: int, space: str, parent_id: int | None) -> dict:
+        """Copier / Coller : le dossier ou le fichier et tout son contenu.
+        Les contenus ne sont pas dupliqués sur le disque (même empreinte) ;
+        la copie prend les droits de son nouveau dossier, et un élément
+        Validé ou Officiel redevient Brouillon (ce n'est plus le même)."""
+        source = self._node(db, member, node_id)
+        self._require(db, member, self._locate(db, member, source), LEVEL_VIEW)
+        cible = self._target(db, member, space, parent_id)
+        if any(n.id == source.id for n in cible.path):
+            raise DocError(409, "Impossible de copier un dossier dans lui-même.")
+        if source.system_kind is not None:
+            raise DocError(409, "Ce dossier fait partie de l'organisation de l'appli : copiez plutôt son contenu.")
+        nom = self._free_name(db, member, cible, source.name) or source.name
+        racine = self._copy_node(db, member, source, cible, cible.folder.id if cible.folder else None, nom)
+        self._log(db, member, racine, "copied", {"from": source.name})
+        db.commit()
+        return {"id": racine.id, "name": racine.name}
+
+    def _copy_node(self, db, member, source: DocNode, cible: Location, parent_id, nom) -> DocNode:
+        copie = self._new_node(
+            member.org_id, cible.space, parent_id, source.kind, nom, member.person_id,
+            owner_person_id=cible.owner_person_id, family=source.family,
+            status="draft" if source.status in ("validated", "official") else source.status,
+        )
+        db.add(copie)
+        db.flush()
+        if source.kind == KIND_FILE and source.current_version_id:
+            version = db.get(DocVersion, source.current_version_id)
+            self._add_version(db, member, copie, db.get(StoredFile, version.stored_file_id), version.filename)
+        else:
+            enfants = db.scalars(
+                select(DocNode).where(DocNode.parent_id == source.id, DocNode.deleted_at.is_(None))
+            )
+            for enfant in list(enfants):
+                self._copy_node(db, member, enfant, cible, copie.id, enfant.name)
+        return copie
 
     @staticmethod
     def _space_label(space: str) -> str:

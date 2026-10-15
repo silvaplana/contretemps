@@ -42,6 +42,11 @@ class NodeUpdate(BaseModel):
     pinned: bool | None = None
 
 
+class CopyTarget(BaseModel):
+    space: str
+    parent_id: int | None = None
+
+
 class AccessEntry(BaseModel):
     type: str
     id: str
@@ -144,6 +149,10 @@ class DocumentsReceiver:
         @self.app.delete(base + "/nodes/{node_id}", status_code=204)
         def delete(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             appel(lambda: self.client.delete(db, self._member(org_id, m), node_id))
+
+        @self.app.post(base + "/nodes/{node_id}/copy", status_code=201)
+        def copy(org_id: int, node_id: int, data: CopyTarget, db: Session = db_dep, m: Member = member):
+            return appel(lambda: self.client.copy(db, self._member(org_id, m), node_id, data.space, data.parent_id))
 
         @self.app.post(base + "/nodes/{node_id}/restore")
         def restore(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
