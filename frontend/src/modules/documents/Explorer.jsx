@@ -821,7 +821,6 @@ export default function Explorer({ orgId, memoire }) {
         {recherche == null ? (
           <>
             {/* Le titre « Documents » est déjà dans la barre du haut (Seb). */}
-            <span className="dx-top__vide" />
             <button type="button" className="dx-ico" onClick={() => setRecherche('')} aria-label="Rechercher">
               <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                 <circle cx="10.5" cy="10.5" r="6.5" />
@@ -849,6 +848,30 @@ export default function Explorer({ orgId, memoire }) {
             <button type="button" className="dx-ico" onClick={() => setRecherche(null)} aria-label="Fermer la recherche">✕</button>
           </>
         )}
+        {/* Loupe, corbeille et filtres sur une seule ligne, en haut à gauche
+            (Seb, 16 octobre) ; elle passe à la ligne si la place manque. */}
+        <div className="dx-ficons" role="group" aria-label="Filtres">
+          {Object.entries(STATUSES).map(([cle, s]) => (
+            boutonFiltre({
+              cle,
+              actif: filtreStatut === cle,
+              titre: s.label,
+              className: `dx-fi--${s.className}`,
+              onClick: () => setFiltreStatut(filtreStatut === cle ? null : cle),
+              children: <StatusIcon status={cle} />,
+            })
+          ))}
+          <span className="dx-fsep" />
+          {Object.entries(FAMILIES).map(([cle, f]) => (
+            boutonFiltre({
+              cle,
+              actif: filtreFamille === cle,
+              titre: f.label,
+              onClick: () => setFiltreFamille(filtreFamille === cle ? null : cle),
+              children: <FamilyDot family={cle} />,
+            })
+          ))}
+        </div>
       </div>
 
       <div className="dx-seg" role="tablist" aria-label="Espaces">
@@ -859,28 +882,6 @@ export default function Explorer({ orgId, memoire }) {
         ))}
       </div>
 
-      <div className="dx-ficons" role="group" aria-label="Filtres">
-        {Object.entries(STATUSES).map(([cle, s]) => (
-          boutonFiltre({
-            cle,
-            actif: filtreStatut === cle,
-            titre: s.label,
-            className: `dx-fi--${s.className}`,
-            onClick: () => setFiltreStatut(filtreStatut === cle ? null : cle),
-            children: <StatusIcon status={cle} />,
-          })
-        ))}
-        <span className="dx-fsep" />
-        {Object.entries(FAMILIES).map(([cle, f]) => (
-          boutonFiltre({
-            cle,
-            actif: filtreFamille === cle,
-            titre: f.label,
-            onClick: () => setFiltreFamille(filtreFamille === cle ? null : cle),
-            children: <FamilyDot family={cle} />,
-          })
-        ))}
-      </div>
       {bulle && <div className="dx-tip" role="status">{bulle}</div>}
 
       {/* Le chemin sous les filtres (Seb, 15 octobre). */}

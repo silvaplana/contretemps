@@ -1785,3 +1785,20 @@
   color: var(--text-muted);
   font-weight: 400;
 }
+
+/* Une seule ligne en haut à gauche : loupe, corbeille, filtres. */
+.dx-top {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.dx-top > .dx-ficons {
+  display: contents;
+}
+
+/* Toute la largeur de la colonne (sinon réduite à son contenu et centrée) :
+   elle démarre au bord gauche de la liste. */
+.dx > .dx-top {
+  width: 100%;
+  box-sizing: border-box;
+}
