@@ -19,6 +19,17 @@ from __future__ import annotations
 
 import time
 
+# Les vidéos pointent vers les écoles, les saisons et les comptes (clés étrangères) :
+# sans ces modèles chargés, SQLAlchemy ne sait pas enregistrer une vidéo.
+# Bug du 2026-10-15 : l'enregistrement échouait APRÈS le remplacement du
+# fichier, la vidéo restait « à compresser » et était recompressée toutes
+# les 30 s, de plus en plus abîmée. `configure_mappers` fait échouer le
+# démarrage tout de suite si un modèle manque, au lieu de boucler.
+import comptes.models  # noqa: F401
+import ecoles.models  # noqa: F401
+import saisons.models  # noqa: F401
+from sqlalchemy.orm import configure_mappers
+
 from db import SessionLocal
 from videos import Videos
 
@@ -26,6 +37,7 @@ INTERVALLE_SECONDES = 30
 
 
 def run() -> None:
+    configure_mappers()
     videos_client = Videos()
     print(f"Compression vidéo démarrée (vérifie toutes les {INTERVALLE_SECONDES}s).")
     while True:

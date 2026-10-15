@@ -85,3 +85,48 @@ def test_compresser_fichier_source_manquant_echoue_proprement(db_session):
     )
     assert videos_client.compresser(db_session, video) is False
     assert video.compresse is False
+
+
+def test_le_worker_seul_sait_enregistrer_une_video(tmp_path):
+    """Bug du 2026-10-15 : lancé seul (comme en production), le worker ne
+    chargeait pas le modèle des écoles ; l'enregistrement échouait après la
+    compression, et la vidéo était recompressée en boucle. Processus séparé :
+    dans pytest, app.main a déjà tout chargé et masquerait le problème."""
+    import subprocess
+    import sys
+
+    src = Path(__file__).resolve().parents[1] / "src"
+    resultat = subprocess.run(
+        [sys.executable, "-c", "import app.video_compression_worker as w; from db import Base, engine; from sqlalchemy.orm import configure_mappers; configure_mappers(); "
+         "Base.metadata.create_all(engine)"],
+        cwd=src, capture_output=True, text=True,
+        env={"PYTHONPATH": str(src), "DATABASE_URL": f"sqlite:///{tmp_path}/vide.db", "PATH": ""},
+    )
+    assert resultat.returncode == 0, resultat.stderr
+
+
+def test_echec_d_enregistrement_garde_l_original(db_session, monkeypatch):
+    """La base est enregistrée AVANT de remplacer le fichier : si elle
+    échoue, l'original reste intact et rien n'est recompressé par-dessus."""
+    import pytest
+
+    ecole, cours, admin = _setup(db_session)
+    videos_client = Videos()
+    chemin = dossier_ecole(ecole.id) / "intact.mp4"
+    chemin.write_bytes(_FICHIER_DEMO.read_bytes())
+    video = videos_client.create(
+        db_session, ecole_id=ecole.id, nom="Intacte",
+        lien_fichier=chemin_relatif(ecole.id, "intact.mp4"), uploaded_by=admin.id, statut="complete",
+    )
+
+    def panne():
+        raise RuntimeError("base indisponible")
+
+    monkeypatch.setattr(db_session, "commit", panne)
+    try:
+        with pytest.raises(RuntimeError):
+            videos_client.compresser(db_session, video)
+        assert chemin.read_bytes() == _FICHIER_DEMO.read_bytes()
+        assert not chemin.with_name("intact-c.mp4").exists()
+    finally:
+        chemin.unlink(missing_ok=True)
