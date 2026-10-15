@@ -40,6 +40,7 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
       couleurTexte: vue.couleurTexte,
       couleurAccent: vue.couleurAccent,
       police: vue.police ?? '',
+      policeTitres: vue.policeTitres ?? '',
       policeNom: vue.policeNom ?? '',
       policeSlogan: vue.policeSlogan ?? '',
     })
@@ -168,6 +169,7 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
           ...enPlace,
           ...champs,
           police: champs.police || null,
+          policeTitres: champs.policeTitres || null,
           policeNom: champs.policeNom || null,
           policeSlogan: champs.policeSlogan || null,
         } : null
@@ -386,11 +388,13 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
               Great Vibes, l'écriture du site de l'école. */}
           {champs.nomMode === 'texte' && (
             <>
-              <span className="perso__sous-label">Police du nom</span>
               <ChoixPolice
+                id="perso-police-nom"
                 libelle="Police du nom"
+                options={POLICES_NOM}
                 valeur={champs.policeNom}
                 texte={apercu.nom}
+                titre
                 familleParDefaut={famille}
                 onChoisir={(cle) => changer('policeNom', cle)}
               />
@@ -431,9 +435,10 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
             value={champs.slogan}
             onChange={(e) => changer('slogan', e.target.value)}
           />
-          <span className="perso__sous-label">Police du slogan</span>
           <ChoixPolice
+            id="perso-police-slogan"
             libelle="Police du slogan"
+            options={POLICES_NOM}
             valeur={champs.policeSlogan}
             texte={champs.slogan || apercu.nom}
             familleParDefaut={famille}
@@ -455,22 +460,25 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
           </div>
           {contrasteFaible && <p className="perso__avertissement">Le texte est peu lisible sur ce fond.</p>}
 
-          <span className="perso__label">Police</span>
-          <div className="perso__polices" role="radiogroup" aria-label="Police">
-            {POLICES.map((p) => (
-              <button
-                key={p.cle || 'systeme'}
-                type="button"
-                role="radio"
-                aria-checked={(champs.police ?? '') === p.cle}
-                className={`perso__police ${(champs.police ?? '') === p.cle ? 'is-active' : ''}`}
-                onClick={() => changer('police', p.cle)}
-              >
-                <span style={{ fontFamily: p.famille }}>{apercu.nom}</span>
-                <small>{p.nom}</small>
-              </button>
-            ))}
-          </div>
+          <span className="perso__label">Polices</span>
+          <ChoixPolice
+            id="perso-police-textes"
+            libelle="Textes de l’appli"
+            options={POLICES}
+            valeur={champs.police}
+            texte="Les cours de la semaine et les messages de l’école."
+            onChoisir={(cle) => changer('police', cle)}
+          />
+          <ChoixPolice
+            id="perso-police-titres"
+            libelle="Titres de l’appli"
+            options={[{ cle: '', nom: 'Comme les textes', famille: null }, ...POLICES.slice(1)]}
+            valeur={champs.policeTitres}
+            texte="Administration"
+            titre
+            familleParDefaut={famille}
+            onChoisir={(cle) => changer('policeTitres', cle)}
+          />
 
           {erreur && <p className="login-screen__erreur">{erreur}</p>}
           <div className="perso__actions">
@@ -519,29 +527,30 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
   )
 }
 
-// Choix de la police du nom ou du slogan : « Comme l'appli », une des
-// polices de la liste, ou Great Vibes (l'écriture du site de l'école).
-function ChoixPolice({ libelle, valeur, texte, familleParDefaut, onChoisir }) {
+// Choix d'une police en liste déroulante (demande du 2026-10-15), suivi
+// d'un exemple écrit dans la police choisie (un téléphone n'affiche pas
+// chaque choix de la liste dans sa police).
+function ChoixPolice({ id, libelle, options, valeur, texte, titre = false, familleParDefaut, onChoisir }) {
+  const choisie = options.find((p) => p.cle === (valeur ?? '')) ?? options[0]
+  const manuscrite = choisie.cle === 'great-vibes'
   return (
-    <div className="perso__polices" role="radiogroup" aria-label={libelle}>
-      {POLICES_NOM.map((p) => (
-        <button
-          key={p.cle || 'appli'}
-          type="button"
-          role="radio"
-          aria-checked={(valeur ?? '') === p.cle}
-          className={`perso__police ${(valeur ?? '') === p.cle ? 'is-active' : ''}`}
-          onClick={() => onChoisir(p.cle)}
-        >
-          <span
-            className={p.cle === 'great-vibes' ? 'perso__police--manuscrit' : undefined}
-            style={{ fontFamily: p.famille ?? familleParDefaut }}
-          >
-            {texte}
-          </span>
-          <small>{p.nom}</small>
-        </button>
-      ))}
+    <div className="perso__choix-police">
+      <label htmlFor={id} className="perso__sous-label">
+        {libelle}
+      </label>
+      <select id={id} className="field-input" value={valeur ?? ''} onChange={(e) => onChoisir(e.target.value)}>
+        {options.map((p) => (
+          <option key={p.cle || 'defaut'} value={p.cle} style={{ fontFamily: p.famille ?? familleParDefaut }}>
+            {p.nom}
+          </option>
+        ))}
+      </select>
+      <span
+        className={`perso__exemple-police ${titre ? 'perso__exemple-police--titre' : ''} ${manuscrite ? 'perso__police--manuscrit' : ''}`}
+        style={{ fontFamily: choisie.famille ?? familleParDefaut }}
+      >
+        {texte}
+      </span>
     </div>
   )
 }

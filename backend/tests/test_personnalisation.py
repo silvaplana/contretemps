@@ -258,6 +258,8 @@ def test_police_du_nom(client, ecole):
     vue = client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police_nom": "great-vibes", "police_slogan": "poppins"}).json()
     assert (vue["police_nom"], vue["police_slogan"]) == ("great-vibes", "poppins")
     assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police_slogan": "comic"}).status_code == 400
+    assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police_titres": "poppins"}).json()["police_titres"] == "poppins"
+    assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police_titres": "great-vibes"}).status_code == 400
     # Réservée au nom : pas comme police de toute l'appli.
     assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police": "great-vibes"}).status_code == 400
     assert client.post(f"/ecoles/{ecole.id}/personnalisation/defaut").json()["police_nom"] is None

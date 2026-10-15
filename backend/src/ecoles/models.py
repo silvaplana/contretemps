@@ -57,6 +57,8 @@ class Ecole(Base):
     # Police du nom de l'école écrit en texte (ex. Great Vibes, l'écriture
     # du site de l'école) ; vide = la même police que l'appli.
     police_nom: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Police des titres de l'appli ; vide = celle des textes (`police`).
+    police_titres: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Pareil pour le slogan.
     police_slogan: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # Adresse web : https://<sous_domaine>.contretemps.silvaplana.cloud

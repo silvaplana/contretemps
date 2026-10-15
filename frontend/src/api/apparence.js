@@ -49,6 +49,7 @@ export const DEFAUT = {
   couleurTexte: '#3A2410',
   couleurAccent: '#D8722A',
   police: null,
+  policeTitres: null,
   policeNom: null,
   policeSlogan: null,
   logoPersonnalise: false,
@@ -69,6 +70,7 @@ export function versEcran(v) {
     couleurTexte: v.couleur_texte,
     couleurAccent: v.couleur_accent,
     police: v.police,
+    policeTitres: v.police_titres,
     policeNom: v.police_nom,
     policeSlogan: v.police_slogan,
     logoPersonnalise: v.logo_personnalise,
@@ -111,6 +113,9 @@ export function appliquer(apparence) {
   racine.setProperty('--accent-bg', rgba(apparence.couleurAccent, 0.14))
   const police = POLICES.find((p) => p.cle === (apparence.police ?? ''))
   racine.setProperty('--sans', (police ?? POLICES[0]).famille)
+  // Titres : leur police, sinon celle des textes (voir index.css : --titres).
+  const titres = POLICES.find((p) => p.cle === (apparence.policeTitres ?? '') && p.cle !== '')
+  racine.setProperty('--titres', (titres ?? police ?? POLICES[0]).famille)
 }
 
 let actuelle = DEFAUT

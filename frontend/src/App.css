@@ -3614,3 +3614,28 @@ a.btn {
 .perso__connexion-slogan--manuscrit {
   font-size: 1.6rem;
 }
+
+/* Choix d'une police en liste déroulante, avec son exemple. */
+.perso__choix-police {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.perso__exemple-police {
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: var(--card-bg);
+  font-size: 16px;
+}
+
+.perso__exemple-police--titre {
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.perso__exemple-police.perso__police--manuscrit {
+  font-size: 28px;
+  font-weight: 400;
+}

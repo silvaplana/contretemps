@@ -31,6 +31,7 @@ export async function modifier(ecoleId, champs) {
     couleur_texte: champs.couleurTexte,
     couleur_accent: champs.couleurAccent,
     police: champs.police || null,
+    police_titres: champs.policeTitres || null,
     police_nom: champs.policeNom || null,
     police_slogan: champs.policeSlogan || null,
   }

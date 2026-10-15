@@ -222,3 +222,13 @@ textarea {
 .muted {
   color: var(--text-muted);
 }
+
+/* Titres : police choisie par l'école pour les titres (Admin > École >
+   Personnalisation, voir api/apparence.js), sinon celle des textes. */
+h1,
+h2,
+h3,
+h4,
+h5 {
+  font-family: var(--titres, var(--sans));
+}

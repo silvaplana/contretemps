@@ -800,7 +800,7 @@ Elle contient, dans cet ordre :
 - **Couleurs** : *fond*, *texte* et *accent* (boutons, bandeaux, onglet actif : l'orange
   actuel). Un message prévient si le texte est peu lisible sur le fond (contraste trop
   faible), sans bloquer ;
-- **Police** : choix parmi une **courte liste de polices hébergées sur le serveur** (pas de
+- **Polices** *(précisé le 2026-10-15)* : en **listes déroulantes**, chacune suivie d'un exemple écrit dans la police choisie : **textes de l'appli**, **titres de l'appli** (par défaut comme les textes), **nom de l'école** et **slogan** (ces deux derniers peuvent aussi prendre Great Vibes). Par défaut, la police système, celle de l'appli depuis sa création. Choix parmi une **courte liste de polices hébergées sur le serveur** (pas de
   fichier libre, pour garder licences et lisibilité sous contrôle), présentées chacune par le
   nom de l'école écrit dans la police : *Système* (celle d'aujourd'hui, par défaut),
   Montserrat, Poppins, Prompt (celle des textes du site de l'école, ajoutée le 2026-10-15), Nunito, Josefin Sans, Playfair Display (fichiers woff2 dans
