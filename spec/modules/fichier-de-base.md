@@ -64,8 +64,18 @@ Le seul onglet où l'on modifie. Deux positions quand il y a des questions :
   regroupement (par cours, par famille), calculs (bloc Calcul §5.8 : l'IA écrit la formule, jamais le
   chiffre).
 
-La bulle d'assistant, dans un fichier ouvert, est l'assistant de ce fichier (§5.4) : il modifie la page
-ou les résultats bloc par bloc, sur cartes Faire / Annuler.
+**Comment on conçoit (Seb, 16 octobre)** :
+
+- **Par le chat, et seulement par le chat pour l'instant.** **Un seul chat par fichier**, pour la page et
+  les résultats ensemble : les deux sont liés (une question de la page = une colonne des résultats), une
+  demande comme « ajoute une question sur les allergies » modifie les deux d'un coup. Le chat sait quel
+  formulaire est affiché et part de là ; on peut viser l'autre (« dans les résultats, fais le total par
+  cours »). Toute la discussion est gardée en base avec le fichier ; chaque réponse de l'IA crée une
+  version, sur laquelle on peut revenir (§5.4). L'IA répond par opérations sur les blocs, jamais par du
+  HTML.
+- **Plus tard : à la main avec BlockNote** (éditeur visuel façon Notion, §5.4 « Édition à la main »).
+  BlockNote lit et écrit du JSON de blocs, le même format que celui du chat : l'ajouter ne change rien au
+  stockage, ni à ce que le chat a déjà produit.
 
 ### 2.2 Aperçu
 
