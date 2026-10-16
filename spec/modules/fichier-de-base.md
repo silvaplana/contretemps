@@ -132,6 +132,22 @@ On diffuse **le formulaire d'entrée** seulement. Quand les répondants doivent 
 sondage, un choix de date), c'est le réglage « visibilité des réponses » (Résultats visibles ou Publique,
 §5.10) : le formulaire de résultat s'affiche sous le formulaire d'entrée après qu'on a répondu.
 
+**L'email envoyé (Seb, 16 octobre)** :
+
+- **Expéditeur** : le nom de l'école avec une adresse de l'appli (« École de danse du Beausset »
+  `<noreply@contretemps.silvaplana.cloud>`), et **réponse à** l'adresse de contact de l'école (souvent un
+  Gmail) : quand quelqu'un clique Répondre, ça arrive dans le Gmail de l'asso. On n'envoie jamais *depuis*
+  l'adresse Gmail elle-même : Gmail interdit à un autre serveur d'envoyer en son nom (DMARC), le mail
+  finirait en indésirables ou serait refusé. Envoyer vraiment depuis le compte Gmail de l'asso (connexion
+  Google) serait possible plus tard, limité à environ 500 messages par jour.
+- **Contenu** : un email ne peut pas contenir un vrai site (pas de script, formulaires mal supportés,
+  bloqués par Gmail et Outlook). Le mail affiche donc **une version lisible de la page**, fabriquée depuis
+  le même JSON : pour Informer, tout le texte et les images, plus un bouton « Voir en ligne » ; pour
+  Questionner et Agir, l'introduction, les questions affichées et un gros bouton **Répondre** (lien
+  personnel). Quand la première question est un choix simple (« Je viens / Je donne procuration / Je ne
+  viens pas »), chaque choix est **un bouton dans le mail** : un clic ouvre la page avec la réponse déjà
+  cochée, il ne reste qu'à confirmer.
+
 Canaux : **email** (core, §5 de la mémoire email), **notification de l'appli**, **SMS** (nouveau : via le
 même prestataire que l'email, Brevo ou équivalent, payant au message, coût affiché avant l'envoi ; un SMS
 ne contient que le texte court et le lien personnel).
