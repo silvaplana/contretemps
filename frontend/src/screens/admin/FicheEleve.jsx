@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import * as elevesApi from '../../api/eleves.js'
 import Icon from '../../components/Icon.jsx'
+import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
@@ -187,13 +188,10 @@ export default function FicheEleve({ eleve, cours, onClose, onEnregistre }) {
               valeur={brouillon.telephone}
               onChange={(v) => changer('telephone', v)}
             />
-            <Saisie
-              id="fiche-email"
-              libelle="Email"
-              type="email"
-              valeur={brouillon.email}
-              onChange={(v) => changer('email', v)}
-            />
+            {/* Plusieurs emails possibles (§2.1) : chacun permet de se
+                connecter, et relie la fiche aux autres qui l'ont. */}
+            <label htmlFor="fiche-email">Emails</label>
+            <ListeEmails id="fiche-email" valeur={brouillon.email} onChange={(v) => changer('email', v)} />
             <Saisie id="fiche-adresse" libelle="Adresse" valeur={brouillon.adresse} onChange={(v) => changer('adresse', v)} />
           </Rubrique>
           <Rubrique titre="Cours suivis">
@@ -336,7 +334,7 @@ export default function FicheEleve({ eleve, cours, onClose, onEnregistre }) {
           </Rubrique>
           <Rubrique titre="Coordonnées">
             <Ligne libelle="Téléphone" valeur={eleve.telephone} />
-            <Ligne libelle="Email" valeur={eleve.email} />
+            <Ligne libelle={eleve.emails?.length > 1 ? 'Emails' : 'Email'} valeur={eleve.email} />
             <Ligne libelle="Adresse" valeur={eleve.adresse} />
           </Rubrique>
           <Rubrique titre="Cours suivis">

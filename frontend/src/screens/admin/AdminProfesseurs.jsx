@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import * as profsApi from '../../api/profs.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
+import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
 import { correspond } from '../../utils/recherche.js'
 import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
@@ -232,8 +233,8 @@ function ProfModal({ title, submitLabel, initial, onClose, onSubmit }) {
         onChange={(e) => setTelephone(e.target.value)}
         placeholder="Ex. 06 12 34 56 78"
       />
-      <label htmlFor="prof-email">Email</label>
-      <input id="prof-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+      <label htmlFor="prof-email">Emails</label>
+      <ListeEmails id="prof-email" valeur={email} onChange={setEmail} />
     </Modal>
   )
 }

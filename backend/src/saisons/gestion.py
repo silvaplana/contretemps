@@ -202,9 +202,9 @@ class GestionSaisons:
                 compte_precedent_id=ancien.id,
                 nom=ancien.nom,
                 prenom=ancien.prenom,
-                email=ancien.email,
                 telephone=ancien.telephone,
             )
+            nouveau.definir_emails(ancien.emails)
             nouveau.roles = [RoleCompte(role=role) for role in roles]
             db.add(nouveau)
             db.flush()

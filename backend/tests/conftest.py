@@ -99,11 +99,11 @@ def entetes_session(compte, mot_de_passe: str = MOT_DE_PASSE) -> dict[str, str]:
     from sqlalchemy.orm import object_session
 
     db = object_session(compte)
-    if not compte.email:
-        compte.email = f"compte{compte.id}@test.fr"
+    if not compte.emails:
+        compte.definir_emails(f"compte{compte.id}@test.fr")
         db.commit()
     acces = Acces()
-    acces_email = acces.obtenir_ou_creer(db, compte.email)
+    acces_email = acces.obtenir_ou_creer(db, compte.emails[0])
     if acces_email.mot_de_passe_hache is None:
         if mot_de_passe == MOT_DE_PASSE:
             _HACHE = _HACHE or mots_de_passe.hacher(MOT_DE_PASSE)
@@ -111,7 +111,7 @@ def entetes_session(compte, mot_de_passe: str = MOT_DE_PASSE) -> dict[str, str]:
         else:
             acces_email.mot_de_passe_hache = mots_de_passe.hacher(mot_de_passe)
     db.commit()
-    jeton = Auth(Comptes(), acces).ouvrir_session(db, compte)
+    jeton = Auth(Comptes(), acces).ouvrir_session(db, compte, compte.emails[0])
     return {"X-Compte-Id": str(compte.id), "Authorization": f"Bearer {jeton}"}
 
 

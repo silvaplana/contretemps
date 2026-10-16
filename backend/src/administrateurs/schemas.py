@@ -9,6 +9,7 @@ class AdministrateurSortie(BaseModel):
     nom: str
     prenom: str
     email: str | None
+    emails: list[str] = []
     est_owner: bool
     # Professeur-admin ou élève-admin : son nom/prénom/email se modifient
     # depuis Admin > Profs ou Admin > Élèves, pas depuis ce tableau (voir

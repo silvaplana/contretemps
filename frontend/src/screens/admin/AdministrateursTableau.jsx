@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import * as administrateursApi from '../../api/administrateurs.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
+import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
 import { isOwner } from '../../data/roles.js'
 import { BoutonInviter, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
@@ -297,14 +298,8 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
             <input id="admin-nom" className="field-input" value={nom} onChange={(e) => setNom(e.target.value)} />
             <label htmlFor="admin-prenom">Prénom</label>
             <input id="admin-prenom" className="field-input" value={prenom} onChange={(e) => setPrenom(e.target.value)} />
-            <label htmlFor="admin-email">Email</label>
-            <input
-              id="admin-email"
-              className="field-input"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <label htmlFor="admin-email">Emails</label>
+            <ListeEmails id="admin-email" valeur={email} onChange={setEmail} />
           </>
         )}
         {!enCreation && (admin.estProf || admin.estEleve) && (

@@ -23,6 +23,9 @@ class ProfSortie(BaseModel):
     nom: str
     prenom: str
     email: str | None = None
+    # Plusieurs emails par fiche (§2.1) ; `email` les donne séparés par
+    # une virgule, et accepte cette forme en entrée.
+    emails: list[str] = []
     telephone: str | None = None
     # Voir §6.5 : relation, pas un champ stocké — calculé à la sortie
     # via cours.cours_du_professeur (l'assignation elle-même se fait par

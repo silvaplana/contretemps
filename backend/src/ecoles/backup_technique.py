@@ -30,7 +30,7 @@ from typing import Any, Callable
 
 from choregraphies.models import Choregraphie, choregraphies_eleves, choregraphies_videos
 from comptes import roles
-from comptes.models import Compte, Famille, RoleCompte
+from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
@@ -123,7 +123,7 @@ def _construire_tables() -> list[_Table]:
             Compte,
             [
                 "id", "ecole_id", "famille_id", "saison_id", "compte_precedent_id", "nom", "prenom",
-                "email", "telephone", "created_at",
+                "telephone", "created_at",
             ],
             lambda db, eid: list(db.scalars(select(Compte).where(Compte.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
@@ -137,6 +137,17 @@ def _construire_tables() -> list[_Table]:
             ["compte_id", "role", "created_at"],
             lambda db, eid: list(
                 db.scalars(select(RoleCompte).where(RoleCompte.compte_id.in_(_sous_requete_comptes_ecole(eid))))
+            ),
+        ),
+        # Emails des fiches (plusieurs par fiche, §2.1), depuis le
+        # 2026-10-16. Une sauvegarde plus ancienne a une colonne "email"
+        # dans "Comptes" : voir `restaurer()`.
+        _Table(
+            "EmailsComptes",
+            EmailCompte,
+            ["id", "compte_id", "email", "created_at"],
+            lambda db, eid: list(
+                db.scalars(select(EmailCompte).where(EmailCompte.compte_id.in_(_sous_requete_comptes_ecole(eid))))
             ),
         ),
         _Table(
@@ -394,7 +405,7 @@ def _vider(db: Session, ecole_id: int, garder_compte_id: int | None) -> None:
         # comptes/models.py, delete-orphan) — donc PAS ceux du compte
         # conservé, qui garde ses droits. Les supprimer aussi ici les
         # supprimerait deux fois.
-        if table.objet is RoleCompte:
+        if table.objet in (RoleCompte, EmailCompte):
             continue
         lignes = table.lignes_ecole(db, ecole_id)
         if not lignes:
@@ -472,6 +483,7 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
     # dans une colonne "role" de l'onglet Comptes, pas d'onglet
     # RolesComptes. Relu ici puis converti en fin de restauration.
     ancien_role_par_compte: dict[int, str] = {}
+    ancien_email_par_compte: dict[int, str] = {}
     # Sauvegarde d'avant le module vidéo générique (2026-10-03) : chaque
     # vidéo portait son cours et sa chorégraphie, pas d'onglet
     # ChoregraphiesVideos. Relu ici, converti au fil de la restauration.
@@ -491,6 +503,8 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
                 champs[table.colonne_ecole_id] = ecole.id
             if table.objet is Compte and "role" in champs:
                 ancien_role_par_compte[champs["id"]] = champs.pop("role")
+            if table.objet is Compte and champs.get("email"):
+                ancien_email_par_compte[champs["id"]] = champs.pop("email")
             if table.objet is Video and "cours_id" in champs:
                 cours = db.get(Cours, champs["cours_id"])
                 champs.setdefault("saison_id", cours.saison_id if cours is not None else None)
@@ -521,6 +535,11 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
         db.flush()
     if ancien_role_par_compte and "RolesComptes" not in classeur.sheetnames:
         _convertir_anciens_roles(db, ancien_role_par_compte)
+    if ancien_email_par_compte and "EmailsComptes" not in classeur.sheetnames:
+        for compte_id, email in ancien_email_par_compte.items():
+            for adresse in separer_emails(email):
+                db.add(EmailCompte(compte_id=compte_id, email=adresse))
+        db.flush()
 
 
 def _convertir_anciens_roles(db: Session, ancien_role_par_compte: dict[int, str]) -> None:

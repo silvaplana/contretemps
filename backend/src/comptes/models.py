@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -19,9 +19,10 @@ def _utcnow() -> datetime:
 
 
 class Famille(Base):
-    """Regroupe les comptes qui partagent le même email, DANS une même
-    école (voir §6.2) — calculée automatiquement à la création d'un
-    compte, jamais éditée directement."""
+    """Regroupe les comptes reliés de proche en proche par un email commun,
+    DANS une même école (voir §6.2) — recalculée automatiquement à chaque
+    changement d'emails (Comptes.recalculer_familles), jamais éditée
+    directement."""
 
     __tablename__ = "familles"
 
@@ -41,13 +42,6 @@ class Compte(Base):
 
     __tablename__ = "comptes"
     __table_args__ = (
-        # PAS unique : plusieurs comptes (frères/sœurs, voir §6.2) peuvent
-        # légitimement partager le même email dans une même école — c'est
-        # justement ce que `get_or_create_famille` détecte pour les
-        # regrouper. Un bug antérieur avait une UniqueConstraint ici, qui
-        # empêchait cet usage prévu par la spec (trouvé en import Excel :
-        # 80 élèves fictifs avec des emails partagés entre frères/sœurs).
-        Index("ix_compte_ecole_email", "ecole_id", "email"),
         Index("ix_compte_dedup", "ecole_id", "nom", "prenom"),
     )
 
@@ -70,12 +64,13 @@ class Compte(Base):
 
     nom: Mapped[str] = mapped_column(String(100), nullable=False)
     prenom: Mapped[str] = mapped_column(String(100), nullable=False)
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Texte libre, sans validation de format (voir §6.4bis : le fichier
     # réel contient des cas qu'une validation stricte rejetterait).
     telephone: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    # Aucun mot de passe ici : il appartient à l'adresse email (table
-    # acces_emails, spec §2.2 et §6.3ter), retrouvée par `email`.
+    # Emails : table `emails_compte` (plusieurs par fiche, §2.1, décision
+    # du 2026-10-16), voir `adresses` et `emails` ci-dessous. Aucun mot de
+    # passe ici : il appartient à l'adresse email (table acces_emails,
+    # spec §2.2 et §6.3ter).
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     # "Dernière connexion" (voir messagerie/connexions.py) — mis à jour
     # seulement à la FERMETURE du dernier flux SSE ouvert de ce compte,
@@ -95,6 +90,45 @@ class Compte(Base):
         lazy="selectin",
         cascade="all, delete-orphan",
     )
+
+    # Emails de la fiche (§2.1, 2026-10-16) : tous équivalents, aucun
+    # « principal ». Toujours écrits par `definir_emails`.
+    adresses: Mapped[list["EmailCompte"]] = relationship(
+        "EmailCompte",
+        back_populates="compte",
+        lazy="selectin",
+        cascade="all, delete-orphan",
+        order_by="EmailCompte.id",
+    )
+
+    @property
+    def emails(self) -> list[str]:
+        return [a.email for a in self.adresses]
+
+    @property
+    def email(self) -> str | None:
+        """Pour l'AFFICHAGE seulement (tableaux, exports, schémas d'API) :
+        les adresses séparées par une virgule. Jamais pour reconnaître une
+        personne : utiliser `emails`."""
+        return ", ".join(self.emails) or None
+
+    def a_l_email(self, email: str | None) -> bool:
+        from acces import normaliser_email
+
+        email = normaliser_email(email)
+        return email is not None and email in self.emails
+
+    def definir_emails(self, emails) -> bool:
+        """Remplace les emails de la fiche (ordre et doublons ignorés,
+        minuscules). True si quelque chose a changé : il faut alors
+        recalculer les familles (Comptes.recalculer_familles)."""
+        voulus = separer_emails(emails)
+        if voulus == self.emails:
+            return False
+        gardes = [a for a in self.adresses if a.email in voulus]
+        deja = {a.email for a in gardes}
+        self.adresses = gardes + [EmailCompte(email=e) for e in voulus if e not in deja]
+        return True
 
     # Lus par les schémas d'API (CompteSortie...), qui exposent à la fois
     # la liste `roles` et un `role` principal pour l'affichage.
@@ -126,3 +160,39 @@ class RoleCompte(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
 
     compte: Mapped[Compte] = relationship("Compte", back_populates="roles")
+
+
+def separer_emails(valeur) -> list[str]:
+    """Une ou plusieurs adresses (liste, ou texte séparé par « ; », « , »
+    ou des espaces, comme dans une cellule Excel, §6.4bis) : liste sans
+    doublon, en minuscules, dans l'ordre de saisie."""
+    import re
+
+    if valeur is None:
+        return []
+    morceaux = [valeur] if isinstance(valeur, str) else list(valeur)
+    resultat: list[str] = []
+    for morceau in morceaux:
+        for email in re.split(r"[;,\s]+", morceau or ""):
+            email = email.strip().lower()
+            if email and email not in resultat:
+                resultat.append(email)
+    return resultat
+
+
+class EmailCompte(Base):
+    """Un email d'une fiche (§6.3, décision du 2026-10-16) : zéro, une ou
+    plusieurs lignes par compte. Les fiches qui partagent un email sont de
+    la même famille (§6.2) ; chaque email a son mot de passe
+    (acces_emails, §6.3ter)."""
+
+    __tablename__ = "emails_compte"
+    __table_args__ = (UniqueConstraint("compte_id", "email", name="uq_email_compte"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    compte_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False, index=True)
+    # En minuscules (separer_emails).
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+    compte: Mapped[Compte] = relationship("Compte", back_populates="adresses")

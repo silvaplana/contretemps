@@ -71,8 +71,10 @@ class EmailEnvoi:
         message["To"] = destinataire
         # `copie` : adresse en copie visible (Cc), ignorée si c'est déjà le
         # destinataire.
-        destinataires = [destinataire]
-        if copie and copie.strip().lower() != destinataire.strip().lower():
+        # Plusieurs adresses séparées par une virgule (une fiche à plusieurs
+        # emails, spec §2.1) : toutes destinataires.
+        destinataires = [a.strip() for a in destinataire.split(",") if a.strip()]
+        if copie and copie.strip().lower() not in {a.lower() for a in destinataires}:
             message["Cc"] = copie
             destinataires.append(copie)
         message["Subject"] = sujet

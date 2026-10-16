@@ -15,7 +15,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from . import roles as r
-from .models import Compte, Famille, RoleCompte
+from .models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
 
 
 class RegleRoles(ValueError):
@@ -93,11 +93,11 @@ class Comptes:
         # ni Postgres n'ont un équivalent portable d'unaccent() en natif.
         # Le filtre ecole_id (indexé) garde ça peu coûteux même sans
         # égalité SQL directe sur `email`.
-        cible = _normaliser(email)
+        cible = _normaliser(email.strip())
         for compte in db.scalars(
-            select(Compte).where(Compte.ecole_id == ecole_id, Compte.email.isnot(None))
+            select(Compte).where(Compte.ecole_id == ecole_id, Compte.adresses.any()).order_by(Compte.id)
         ):
-            if _normaliser(compte.email) == cible:
+            if any(_normaliser(e) == cible for e in compte.emails):
                 return compte
         return None
 
@@ -120,19 +120,73 @@ class Comptes:
             if _normaliser(compte.nom) == nom_cible and _normaliser(compte.prenom) == prenom_cible
         ]
 
-    def get_or_create_famille(self, db: Session, ecole_id: int, email: str | None) -> Famille:
-        """Regroupement automatique par email, DANS une même école (voir
-        §6.2). Un compte sans email reste seul dans sa propre famille."""
-        if email:
-            existant = db.scalar(
-                select(Compte).where(Compte.ecole_id == ecole_id, Compte.email == email)
-            )
-            if existant is not None:
-                return existant.famille
-        famille = Famille(ecole_id=ecole_id)
-        db.add(famille)
+    def recalculer_familles(self, db: Session, ecole_id: int | None) -> None:
+        """Regroupement automatique (§6.2, 2026-10-16) : une famille = les
+        comptes de l'école (saison affichée) reliés DE PROCHE EN PROCHE par
+        un email commun. Margot (email du père + le sien) et Lison (email
+        du père) sont de la même famille. Un compte sans email reste seul.
+        Chaque groupe garde, si possible, la famille que la plupart de ses
+        membres avaient déjà : rien ne bouge pour les familles inchangées,
+        un ajout d'email fusionne, un retrait peut séparer en deux."""
+        if ecole_id is None:
+            return
         db.flush()
-        return famille
+        comptes = list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id).order_by(Compte.id)))
+        parent = {c.id: c.id for c in comptes}
+
+        def racine(i: int) -> int:
+            while parent[i] != i:
+                parent[i] = parent[parent[i]]
+                i = parent[i]
+            return i
+
+        premier_par_email: dict[str, int] = {}
+        for c in comptes:
+            for e in c.emails:
+                if e in premier_par_email:
+                    parent[racine(c.id)] = racine(premier_par_email[e])
+                else:
+                    premier_par_email[e] = c.id
+        groupes: dict[int, list[Compte]] = {}
+        for c in comptes:
+            groupes.setdefault(racine(c.id), []).append(c)
+        prises: set[int] = set()
+        # Les plus grands groupes choisissent d'abord leur famille.
+        for membres in sorted(groupes.values(), key=lambda g: (-len(g), g[0].id)):
+            votes: dict[int, int] = {}
+            for c in membres:
+                if c.famille_id is not None and c.famille_id not in prises:
+                    votes[c.famille_id] = votes.get(c.famille_id, 0) + 1
+            if votes:
+                famille_id = max(votes, key=lambda f: (votes[f], -f))
+            else:
+                famille = Famille(ecole_id=ecole_id)
+                db.add(famille)
+                db.flush()
+                famille_id = famille.id
+            prises.add(famille_id)
+            for c in membres:
+                if c.famille_id != famille_id:
+                    c.famille_id = famille_id
+        db.flush()
+
+    def profils_de_l_email(self, db: Session, compte: Compte, emails: list[str]) -> list[Compte]:
+        """Pour le sélecteur de profil (§2.1, §4) : les fiches de la même
+        école (saison affichée) qui portent l'email connecté — pas toute
+        la famille, pour que deux sœurs n'entrent pas l'une chez l'autre
+        avec leur propre mot de passe. La fiche elle-même au minimum."""
+        if compte.ecole_id is None or not emails:
+            return [compte]
+        return list(
+            db.scalars(
+                select(Compte)
+                .where(
+                    Compte.ecole_id == compte.ecole_id,
+                    Compte.adresses.any(EmailCompte.email.in_(separer_emails(emails))),
+                )
+                .order_by(Compte.id)
+            )
+        ) or [compte]
 
     def create(
         self,
@@ -141,29 +195,30 @@ class Comptes:
         role: str,
         nom: str,
         prenom: str,
-        email: str | None = None,
+        email=None,
         telephone: str | None = None,
     ) -> Compte:
         if role not in r.ROLES or role in (r.OWNER, r.SUPERUSER):
             # Owner ne se donne pas à la création : il s'ajoute à un admin
             # (voir ci-dessous et §2.4), jamais seul (owner ⇒ admin).
             raise ValueError(f"Rôle inconnu ou non attribuable à la création : {role}")
-        famille = self.get_or_create_famille(db, ecole_id, email)
         # Le premier admin d'une école en devient Owner (§2.4) — décidé
         # AVANT d'ajouter ce compte, sinon il se compterait lui-même.
         devient_owner = role == r.ADMIN and not self.list_par_role(db, ecole_id, r.OWNER)
         compte = Compte(
             ecole_id=ecole_id,
-            famille_id=famille.id,
             nom=nom,
             prenom=prenom,
-            email=email,
             telephone=telephone,
         )
+        # `email` : une adresse, plusieurs séparées par « ; » ou « , », ou
+        # une liste (§2.1, plusieurs emails par fiche).
+        compte.definir_emails(email)
         compte.roles.append(RoleCompte(role=role))
         if devient_owner:
             compte.roles.append(RoleCompte(role=r.OWNER))
         db.add(compte)
+        self.recalculer_familles(db, ecole_id)
         db.commit()
         db.refresh(compte)
         return compte
@@ -176,16 +231,15 @@ class Comptes:
         compte = self.get(db, compte_id)
         if compte is None:
             return None
-        # Le regroupement familial (§6.2) se fait par email partagé, PAS
-        # figé à la création (get_or_create_famille) — sans ça, changer
-        # l'email d'un compte laissait `famille_id` périmé : plus
-        # regroupé avec la bonne famille (ou toujours avec l'ancienne).
-        # Calculé AVANT le setattr ci-dessous : la recherche d'un compte
-        # existant avec ce nouvel email doit se faire sur l'email ACTUEL
-        # (pas encore changé) de `compte`, sinon il se retrouverait à se
-        # matcher lui-même.
-        if "email" in champs and champs["email"] != compte.email:
-            compte.famille_id = self.get_or_create_famille(db, compte.ecole_id, champs["email"]).id
+        # Emails (§2.1) : `emails` (liste) ou `email` (texte, plusieurs
+        # adresses séparées par « ; » ou « , »). Le regroupement familial
+        # (§6.2) suit : recalculé dès que les emails changent.
+        emails = champs.pop("emails", None)
+        if emails is None and "email" in champs:
+            emails = champs.pop("email") or []
+        champs.pop("email", None)
+        if emails is not None and compte.definir_emails(emails):
+            self.recalculer_familles(db, compte.ecole_id)
         # `champs` ne contient déjà que les champs explicitement fournis
         # (exclude_unset=True côté receiver) — un `if valeur is not None`
         # ici empêchait à tort de vider un champ nullable (ex. effacer
@@ -265,8 +319,7 @@ class Comptes:
         )
         for compte in superusers:
             noms = {_normaliser(f"{compte.prenom} {compte.nom}")}
-            if compte.email:
-                noms.add(_normaliser(compte.email))
+            noms |= {_normaliser(e) for e in compte.emails}
             if cible in noms:
                 return compte
         return None
@@ -278,7 +331,8 @@ class Comptes:
         mot de passe). Appelé UNIQUEMENT par la commande serveur."""
         compte = self.trouver_superuser(db, email)
         if compte is None:
-            compte = Compte(ecole_id=None, famille_id=None, nom=nom, prenom=prenom, email=email)
+            compte = Compte(ecole_id=None, famille_id=None, nom=nom, prenom=prenom)
+            compte.definir_emails(email)
             compte.roles.append(RoleCompte(role=r.SUPERUSER))
             db.add(compte)
         compte.nom, compte.prenom = nom, prenom
@@ -302,13 +356,17 @@ class Comptes:
         compte = self.get(db, compte_id)
         if compte is None:
             return False
+        ecole_id = compte.ecole_id
         db.delete(compte)
+        # Une fiche peut être le seul lien entre deux groupes (§6.2).
+        self.recalculer_familles(db, ecole_id)
         db.commit()
         return True
 
     def membres_de_la_famille(self, db: Session, compte_id: int) -> list[Compte]:
-        """Pour l'écran Profil et le sélecteur de profil famille (§2.1,
-        §4) : les autres comptes de la même famille, lui compris."""
+        """Les comptes de la même famille, lui compris (vue d'ensemble :
+        ce n'est PAS la liste du sélecteur de profil, voir
+        profils_de_l_email)."""
         compte = self.get(db, compte_id)
         if compte is None:
             return []

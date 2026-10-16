@@ -4,8 +4,9 @@ import * as authApi from '../../api/auth.js'
 // Invitation et suivi de l'accès à l'appli (voir spec/SPEC.md §2.2 :
 // « Invitation » et « Suivi de l'invitation ») — colonnes « Inviter » et
 // « Statut » des tableaux Admin > Élèves, Profs et Administrateurs.
-// Le statut appartient à l'adresse email : tous les profils d'une même
-// famille affichent le même. Toutes les étapes sont déclarées au serveur
+// Le statut appartient à l'adresse email : tous les profils qui partagent
+// une adresse affichent le même pour elle. Une fiche à plusieurs emails
+// (§2.1) affiche une ligne par adresse, chacune avec son « Inviter ». Toutes les étapes sont déclarées au serveur
 // par l'appli elle-même : l'admin n'a rien à saisir.
 
 const LIBELLES = {
@@ -56,15 +57,16 @@ export function useAcces(ecoleId) {
     return () => clearTimeout(minuteur)
   }, [message])
 
-  async function inviter(compteIds) {
+  // `email` : une seule adresse d'une fiche qui en a plusieurs.
+  async function inviter(compteIds, email = null) {
     setMessage(null)
     setEnvoiEnCours(true)
     try {
-      const { emails, enCours, adresses } = await authApi.inviter(ecoleId, compteIds)
+      const { emails, enCours, adresses } = await authApi.inviter(ecoleId, compteIds, email)
       setMessage({
         texte: enCours
           ? `Envoi de ${emails} mails en cours : les statuts se mettent à jour au fur et à mesure.`
-          : `Mail envoyé à ${adresses[0] ?? 'son adresse'}`,
+          : `Mail envoyé à ${adresses.join(', ') || 'son adresse'}`,
       })
       await recharger()
       // Plusieurs adresses : les mails partent en tâche de fond côté
@@ -85,12 +87,11 @@ export function useAcces(ecoleId) {
   return { statuts, inviter, message, fermerMessage: () => setMessage(null), envoiEnCours, recharger }
 }
 
-export function StatutAcces({ acces, compteId }) {
-  const etat = acces.statuts[compteId]
-  if (!etat) return <span className="muted">—</span>
+function LigneStatut({ etat, prefixe }) {
   const date = jourMois(etat.date)
   return (
     <span className={`acces-statut acces-statut--${etat.statut}`}>
+      {prefixe && <span className="acces-statut__adresse">{prefixe} : </span>}
       {LIBELLES[etat.statut] ?? etat.statut}
       {etat.statut === 'finalise' && etat.par && ` par ${etat.par}`}
       {date && ` le ${date}`}
@@ -98,6 +99,37 @@ export function StatutAcces({ acces, compteId }) {
       {etat.detail && <span className="acces-statut__detail">{etat.detail}</span>}
     </span>
   )
+}
+
+export function StatutAcces({ acces, compteId }) {
+  const etat = acces.statuts[compteId]
+  if (!etat) return <span className="muted">—</span>
+  if (!etat.adresses?.length) return <LigneStatut etat={etat} />
+  // Plusieurs emails (§2.1) : une ligne par adresse, avec son bouton.
+  return (
+    <span className="acces-statut__adresses">
+      {etat.adresses.map((a) => (
+        <span key={a.email} className="acces-statut__ligne">
+          <LigneStatut etat={a} prefixe={a.email} />
+          <button
+            type="button"
+            className="btn btn--secondary acces-inviter acces-inviter--petit"
+            disabled={acces.envoiEnCours}
+            onClick={() => acces.inviter([compteId], a.email)}
+            aria-label={`Inviter ${a.email}`}
+          >
+            {a.statut === 'pas_invite' ? 'Inviter' : 'Réinviter'}
+          </button>
+        </span>
+      ))}
+    </span>
+  )
+}
+
+// Une adresse au moins de la fiche n'a jamais été invitée.
+function aDesAdressesNonInvitees(etat) {
+  if (!etat) return false
+  return etat.adresses?.length ? etat.adresses.some((a) => a.statut === 'pas_invite') : etat.statut === 'pas_invite'
 }
 
 // Disponible à chaque étape (un nouveau lien annule le précédent), grisé
@@ -114,7 +146,7 @@ export function BoutonInviter({ acces, compteId, prenom }) {
       onClick={() => acces.inviter([compteId])}
       aria-label={`Inviter ${prenom}`}
     >
-      {etat && !['pas_email', 'pas_invite'].includes(etat.statut) ? 'Réinviter' : 'Inviter'}
+      {etat && !['pas_email', 'pas_invite'].includes(etat.statut) && !aDesAdressesNonInvitees(etat) ? 'Réinviter' : 'Inviter'}
     </button>
   )
 }
@@ -123,7 +155,7 @@ export function BoutonInviter({ acces, compteId, prenom }) {
 // affichées qui ont un email et n'ont jamais été invitées (un seul mail par
 // adresse). Évite de cliquer ligne par ligne le jour de la coupure.
 export function InviterTous({ acces, compteIds }) {
-  const aInviter = compteIds.filter((id) => acces.statuts[id]?.statut === 'pas_invite')
+  const aInviter = compteIds.filter((id) => aDesAdressesNonInvitees(acces.statuts[id]))
   return (
     <button
       type="button"

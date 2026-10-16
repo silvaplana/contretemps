@@ -9,7 +9,7 @@ import smtplib
 
 from acces import INVITATION, Acces, AccesEmail, normaliser_email
 from acces.acces import FINALISE, INSTALLEE
-from comptes import Compte
+from comptes import Compte, EmailCompte
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -33,11 +33,18 @@ class Invitations:
         self.acces = acces
         self.mails = mails
 
-    def emails_a_inviter(self, db: Session, ecole_id: int, compte_ids: list[int]) -> list[str]:
+    def emails_a_inviter(
+        self, db: Session, ecole_id: int, compte_ids: list[int], email: str | None = None
+    ) -> list[str]:
         """Adresses distinctes des fiches demandées (celles de cette école,
-        saison affichée ; les fiches sans email sont ignorées)."""
+        saison affichée ; les fiches sans email sont ignorées). Toutes les
+        adresses de chaque fiche (§2.1), ou seulement `email` s'il est
+        donné (bouton « Inviter » d'une adresse dans la fiche)."""
         fiches = db.scalars(select(Compte).where(Compte.ecole_id == ecole_id, Compte.id.in_(compte_ids)))
-        return sorted({normaliser_email(f.email) for f in fiches} - {None})
+        emails = {e for f in fiches for e in f.emails}
+        if email is not None:
+            emails &= {normaliser_email(email)}
+        return sorted(emails)
 
     def inviter(self, db: Session, ecole, email: str, compte_ids: list[int] | None = None) -> None:
         """Envoie le mail (nouveau lien, qui annule le précédent), puis note
@@ -46,10 +53,13 @@ class Invitations:
         salue l'une d'elles, pas un autre profil qui partage l'adresse (vécu
         le 2026-10-15 : « Inviter » sur un élève saluait la professeure qui
         avait la même adresse, de plus haut rang)."""
-        profils = db.scalars(
-            select(Compte).where(Compte.ecole_id == ecole.id, Compte.email.isnot(None)).order_by(Compte.id)
+        profils = list(
+            db.scalars(
+                select(Compte)
+                .where(Compte.ecole_id == ecole.id, Compte.adresses.any(EmailCompte.email == email))
+                .order_by(Compte.id)
+            )
         )
-        profils = [p for p in profils if normaliser_email(p.email) == email]
         prenoms = [p.prenom for p in profils]
         demandes = [p for p in profils if compte_ids and p.id in compte_ids]
         a_qui = destinataire(demandes or profils)
@@ -78,9 +88,11 @@ class Invitations:
     def statuts(self, db: Session, ecole_id: int) -> dict[int, dict]:
         """{compte_id: {"statut", "date"}} pour toutes les fiches de
         l'école (saison affichée). Le statut appartient à l'email : les
-        profils d'une famille affichent le même."""
+        profils qui partagent une adresse affichent le même pour elle. Une
+        fiche à plusieurs emails (§2.1) a une ligne par adresse dans
+        `adresses` ; le statut principal est celui de sa première adresse."""
         fiches = list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id)))
-        emails = {normaliser_email(f.email) for f in fiches} - {None}
+        emails = {e for f in fiches for e in f.emails}
         acces_emails = (
             {u.email: u for u in db.scalars(select(AccesEmail).where(AccesEmail.email.in_(emails)))}
             if emails
@@ -88,14 +100,20 @@ class Invitations:
         )
         par_email: dict[str, list[Compte]] = {}
         for fiche in fiches:
-            if normaliser_email(fiche.email):
-                par_email.setdefault(normaliser_email(fiche.email), []).append(fiche)
-        resultat = {}
-        for fiche in fiches:
-            email = normaliser_email(fiche.email)
-            statut, date, detail = self.acces.statut(fiche.email, acces_emails.get(email))
+            for email in fiche.emails:
+                par_email.setdefault(email, []).append(fiche)
+
+        def ligne(email: str | None) -> dict:
+            statut, date, detail = self.acces.statut(email, acces_emails.get(email))
             # « Profil finalisé par <prénom> » : le profil de cette adresse à
             # qui les mails s'adressent (voir auth.py : destinataire).
             par = destinataire(par_email[email]).prenom if statut in (FINALISE, INSTALLEE) else None
-            resultat[fiche.id] = {"statut": statut, "date": date, "detail": detail, "par": par}
+            return {"email": email, "statut": statut, "date": date, "detail": detail, "par": par}
+
+        resultat = {}
+        for fiche in fiches:
+            adresses = [ligne(e) for e in fiche.emails]
+            principal = dict(adresses[0]) if adresses else ligne(None)
+            principal["adresses"] = adresses if len(adresses) > 1 else []
+            resultat[fiche.id] = principal
         return resultat

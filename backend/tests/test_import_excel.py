@@ -200,7 +200,9 @@ def test_difference_par_champ_est_detectee_et_appliquee_selon_le_choix(client, d
     assert champs_differents == {"email", "adresse"}
     diff_email = next(d for d in ligne["differences"] if d["champ"] == "email")
     assert diff_email["valeur_actuelle"] == "ancien@test.fr"
-    assert diff_email["valeur_fichier"] == "nouveau@test.fr"
+    # Plusieurs emails par fiche (§6.4bis, 2026-10-16) : les adresses du
+    # fichier s'ajoutent, jamais retirées.
+    assert diff_email["valeur_fichier"] == "ancien@test.fr, nouveau@test.fr"
 
     # L'admin choisit d'appliquer SEULEMENT l'email, pas l'adresse.
     ligne["champs_a_appliquer"] = ["email"]
@@ -210,7 +212,7 @@ def test_difference_par_champ_est_detectee_et_appliquee_selon_le_choix(client, d
     assert resultat == {"crees": 0, "mis_a_jour": 1, "inchanges": 0}
 
     eleve_maj = client.get(f"/eleves/{compte.id}").json()
-    assert eleve_maj["email"] == "nouveau@test.fr"
+    assert eleve_maj["emails"] == ["ancien@test.fr", "nouveau@test.fr"]
     assert eleve_maj["adresse"] == "1 rue Ancienne"  # jamais appliqué, resté tel quel
 
 

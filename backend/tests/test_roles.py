@@ -102,7 +102,7 @@ def test_professeur_admin_connecte_a_tous_ses_roles(client, db_session):
     """Avec son mot de passe (§2.2), il obtient tous ses rôles et voit
     donc l'onglet Admin."""
     ecole, prof = _ecole_avec_prof_admin(db_session)
-    prof.email = "marie@x.fr"
+    prof.definir_emails("marie@x.fr")
     db_session.commit()
     donner_mot_de_passe(db_session, "marie@x.fr")
     reponse = client.post("/auth/login", json={"identifiant": "Marie Pesenti", "mot_de_passe": MOT_DE_PASSE})

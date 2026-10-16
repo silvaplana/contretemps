@@ -23,7 +23,10 @@ class CompteConnecte(BaseModel):
     roles: list[str] = Field(default_factory=list, validation_alias=AliasChoices("noms_roles", "roles"))
     nom: str
     prenom: str
+    # Toutes les adresses séparées par une virgule (affichage) ; la liste
+    # dans `emails` (plusieurs emails par fiche, §2.1).
     email: str | None
+    emails: list[str] = Field(default_factory=list)
     telephone: str | None = None
 
     model_config = {"from_attributes": True}
@@ -89,6 +92,8 @@ class Invitation(BaseModel):
     # Fiches à inviter (les fiches sans email sont ignorées ; un seul mail
     # par adresse).
     compte_ids: list[int]
+    # Une seule adresse de la fiche (plusieurs emails, §2.1) ; toutes sinon.
+    email: str | None = None
 
 
 class InvitationSortie(BaseModel):
@@ -108,3 +113,7 @@ class StatutAcces(BaseModel):
     detail: str | None = None
     # Pour « Profil finalisé par <prénom> ».
     par: str | None = None
+    # L'adresse de cette ligne.
+    email: str | None = None
+    # Fiche à plusieurs emails (§2.1) : une ligne par adresse (vide sinon).
+    adresses: list["StatutAcces"] = Field(default_factory=list)

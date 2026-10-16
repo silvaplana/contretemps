@@ -36,7 +36,7 @@ def _superuser(client, db_session):
     from comptes.models import Compte
 
     jeton = client.post("/auth/login", json={"identifiant": "Sébastien Richard", "mot_de_passe": MOT_DE_PASSE}).json()["jeton"]
-    su = db_session.query(Compte).filter(Compte.email == "su@test.fr").first()
+    su = next(c for c in db_session.query(Compte).all() if c.a_l_email("su@test.fr"))
     return {"Authorization": f"Bearer {jeton}", rbac.ENTETE_COMPTE: str(su.id)}
 
 

@@ -1157,8 +1157,11 @@ Le champ unique `email` est remplacé *(décision du 2026-10-16, §2.1)* par la 
 
 Unique sur (compte_id, email) ; index sur email (recherche de la famille et des profils de
 l'email connecté). Pas de colonne d'ordre : les emails sont équivalents. Migration : chaque
-`comptes.email` non vide devient une ligne, puis la colonne disparaît. Les emails sont recopiés
-avec le compte à chaque nouvelle saison (§2.6).
+`comptes.email` non vide devient une ligne (`e5c7a9b1d3f4`). La colonne reste en base mais
+n'est plus lue ni écrite, pour pouvoir revenir en arrière sans perte. Les emails sont recopiés
+avec le compte à chaque nouvelle saison (§2.6), et figurent dans la sauvegarde technique (onglet
+« EmailsComptes » ; une ancienne sauvegarde avec une colonne « email » se relit toujours).
+*Implémenté le 2026-10-16.*
 
 *Admin* : aucun champ supplémentaire. `code_recuperation` (question de récupération) et
 `hashed_password_ou_code` disparaissent avec le §2.2 (2026-10-01) : le mot de passe vit dans

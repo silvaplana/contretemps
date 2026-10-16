@@ -28,6 +28,7 @@ def _fusionner(compte: Compte, profil: ProfilEleve) -> dict:
         "nom": compte.nom,
         "prenom": compte.prenom,
         "email": compte.email,
+        "emails": compte.emails,
         "telephone": compte.telephone,
         "date_naissance": profil.date_naissance,
         "age": calculer_age(profil.date_naissance),

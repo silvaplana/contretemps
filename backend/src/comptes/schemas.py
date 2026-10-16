@@ -8,6 +8,8 @@ class CompteModification(BaseModel):
     # ont déjà leurs propres routes de modification pour ces champs
     # (voir §6.4/§6.5).
     email: str | None = None
+    # Plusieurs emails (§2.1) : la liste remplace `email` si elle est donnée.
+    emails: list[str] | None = None
     telephone: str | None = None
 
 
@@ -23,7 +25,10 @@ class CompteSortie(BaseModel):
     roles: list[str] = Field(default_factory=list, validation_alias=AliasChoices("noms_roles", "roles"))
     nom: str
     prenom: str
+    # Toutes les adresses séparées par une virgule (affichage) ; la liste
+    # dans `emails` (plusieurs emails par fiche, §2.1).
     email: str | None
+    emails: list[str] = Field(default_factory=list)
     telephone: str | None
 
     model_config = {"from_attributes": True}

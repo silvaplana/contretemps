@@ -16,6 +16,7 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
+from comptes import separer_emails
 from cours import CoursService
 from openpyxl import load_workbook
 from sqlalchemy import select
@@ -341,7 +342,9 @@ class ImportExcel:
                 continue  # ligne vide (ex. fin de fichier)
 
             brut_email = valeur(ligne, idx_email)
-            email = str(brut_email).strip() or None if brut_email else None
+            # Plusieurs adresses possibles dans la cellule (« ; », « , » ou
+            # espace, §6.4bis) : remises sous la forme « a@x, b@y ».
+            email = ", ".join(separer_emails(str(brut_email))) or None if brut_email else None
             telephone, telephone_suspect = _telephone_texte(valeur(ligne, idx_telephone))
             brut_adresse = valeur(ligne, idx_adresse)
             adresse = str(brut_adresse).strip() or None if brut_adresse else None
@@ -481,7 +484,17 @@ class ImportExcel:
             if fichier != actuelle:
                 differences.append(DifferenceChamp(champ=champ, valeur_actuelle=actuelle, valeur_fichier=fichier))
 
-        _ajouter("email", compte.email if compte else None, email)
+        # Emails (§6.4bis) : les adresses du fichier s'AJOUTENT à celles de
+        # la fiche, jamais retirées. Différence seulement s'il y en a de
+        # nouvelles ; la valeur du fichier est alors la liste résultante.
+        actuels = compte.emails if compte else []
+        nouveaux = [e for e in separer_emails(email) if e not in actuels]
+        if nouveaux:
+            differences.append(
+                DifferenceChamp(
+                    champ="email", valeur_actuelle=", ".join(actuels) or None, valeur_fichier=", ".join(actuels + nouveaux)
+                )
+            )
         _ajouter("telephone", compte.telephone if compte else None, telephone)
         _ajouter("adresse", profil.adresse if profil else None, adresse)
         _ajouter("date_naissance", profil.date_naissance if profil else None, date_naissance)
@@ -541,7 +554,8 @@ class ImportExcel:
             champs_compte: dict = {}
             champs_profil: dict = {}
             if "email" in ligne.champs_a_appliquer:
-                champs_compte["email"] = ligne.email
+                existant = self.eleves.get_compte(db, eleve_id)
+                champs_compte["emails"] = (existant.emails if existant else []) + separer_emails(ligne.email)
             if "telephone" in ligne.champs_a_appliquer:
                 champs_compte["telephone"] = ligne.telephone
             if "adresse" in ligne.champs_a_appliquer:

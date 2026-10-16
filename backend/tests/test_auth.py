@@ -234,7 +234,9 @@ def test_invitation_de_bout_en_bout(client, db_session, ecole, mails):
     eleve = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="Roux", prenom="Ana", email="Parent@X.fr")
     frere = Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="eleve", nom="Roux", prenom="Tom", email="parent@x.fr")
     avant = _statuts(client, ecole)
-    assert avant[str(eleve.id)] == {"statut": "pas_invite", "date": None, "detail": None, "par": None}
+    assert avant[str(eleve.id)] == {
+        "statut": "pas_invite", "date": None, "detail": None, "par": None, "email": "parent@x.fr", "adresses": [],
+    }
     assert avant[str(ecole["sans_email"].id)]["statut"] == "pas_email"
 
     invitation = client.post(f"/ecoles/{ecole['ecole'].id}/invitations", json={"compte_ids": [eleve.id]})

@@ -58,6 +58,7 @@ class ProfsReceiver:
             "nom": compte.nom,
             "prenom": compte.prenom,
             "email": compte.email,
+            "emails": compte.emails,
             "telephone": compte.telephone,
             "cours_ids": [c.id for c in self.client.cours.cours_du_professeur(db, compte.id)],
         }

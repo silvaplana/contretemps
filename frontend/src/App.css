@@ -3622,3 +3622,49 @@ a.btn {
 .data-table--eleves {
   margin-bottom: 140px;
 }
+
+/* Fiche à plusieurs emails (spec §2.1) : une ligne de statut par adresse,
+   chacune avec son bouton « Inviter ». */
+.acces-statut__adresses {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.acces-statut__ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.acces-statut__adresse {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.acces-inviter--petit {
+  padding: 3px 8px;
+  font-size: 12px;
+}
+
+/* Emails d'une fiche (components/ListeEmails.jsx) : une adresse par ligne. */
+.liste-emails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.liste-emails__ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.liste-emails__ligne .field-input {
+  flex: 1;
+  min-width: 0;
+}
+
+.liste-emails__ajouter {
+  align-self: flex-start;
+}

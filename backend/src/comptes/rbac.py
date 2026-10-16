@@ -27,7 +27,7 @@ la passe ici : un admin d'une école n'a aucun droit sur une autre (§2.1).
 
 from __future__ import annotations
 
-from acces import AccesEmail, normaliser_email
+from acces import AccesEmail
 from acces.acces import Acces
 from fastapi import Depends, HTTPException, Request, Response
 from sqlalchemy.orm import Session
@@ -139,8 +139,12 @@ def _identifier(request: Request, response: Response, db: Session) -> Compte:
     # saison affichée (un admin qui consulte une ancienne saison), ou plus
     # de la saison courante (voir _verifier_saison).
     compte = db.get(Compte, int(compte_id), execution_options={TOUTES_SAISONS: True})
-    if compte is None or normaliser_email(compte.email) != acces_email.email:
+    if compte is None or not compte.a_l_email(acces_email.email):
         raise HTTPException(status_code=401, detail="Ce profil n'appartient pas à votre compte")
+    # L'email avec lequel la session a été ouverte (une fiche peut en avoir
+    # plusieurs, §2.1) : il fixe les profils accessibles (meme_personne,
+    # sélecteur de profil).
+    compte.email_connecte = acces_email.email
     if roles.is_superuser(compte):
         if jeton.portee != jetons.SUPERUSER:
             raise _refus_session()
@@ -177,12 +181,15 @@ def session_requise(request: Request, response: Response, db: Session = Depends(
 
 def meme_personne(appelant: Compte | None, compte_id: int, db: Session) -> None:
     """La route vise la fiche `compte_id` : ce doit être le profil actif, ou
-    une autre fiche du même email (un autre profil de la famille). `appelant`
-    vaut None seulement dans les tests où la session est neutralisée."""
+    une autre fiche de l'email connecté (§2.1 : pas toute la famille).
+    `appelant` vaut None seulement dans les tests où la session est
+    neutralisée."""
     if appelant is None or appelant.id == compte_id or roles.is_superuser(appelant):
         return
     cible = db.get(Compte, compte_id, execution_options={TOUTES_SAISONS: True})
-    if cible is None or normaliser_email(cible.email) != normaliser_email(appelant.email):
+    email = getattr(appelant, "email_connecte", None)
+    autorises = [email] if email else appelant.emails
+    if cible is None or not any(cible.a_l_email(e) for e in autorises):
         raise HTTPException(status_code=403, detail="Ce profil n'appartient pas à votre compte")
 
 

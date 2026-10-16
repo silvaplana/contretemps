@@ -279,9 +279,9 @@ def test_diffuser_aux_personnes_choisies(client, ecole, db_session, mails):
     """Diffuser (fichier-de-base.md §2.3) : en Validé, aux relecteurs
     seulement et réponses d'essai ; en Officiel, aux groupes, réponses
     comptées ; un lien personnel par personne, une réponse par lien."""
-    ecole["admin"].email = "julia@exemple.fr"
-    ecole["eleve"].email = "leon@exemple.fr"
-    ecole["prof"].email = "panne@exemple.fr"
+    ecole["admin"].definir_emails("julia@exemple.fr")
+    ecole["eleve"].definir_emails("leon@exemple.fr")
+    ecole["prof"].definir_emails("panne@exemple.fr")
     db_session.commit()
     admin = Docs(client, ecole["id"], ecole["admin"])
     saison = _saison(admin)["id"]

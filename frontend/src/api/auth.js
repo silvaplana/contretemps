@@ -193,8 +193,8 @@ export async function statutsAcces(ecoleId) {
 // Un seul mail par adresse, même pour plusieurs profils. Renvoie
 // { emails, enCours } : pour plusieurs adresses, les mails partent en tâche
 // de fond et les statuts se mettent à jour au fil de l'eau.
-export async function inviter(ecoleId, compteIds) {
-  const reponse = await poster(`/ecoles/${ecoleId}/invitations`, { compte_ids: compteIds })
+export async function inviter(ecoleId, compteIds, email = null) {
+  const reponse = await poster(`/ecoles/${ecoleId}/invitations`, { compte_ids: compteIds, ...(email && { email }) })
   if (!reponse.ok) throw new Error(await messageErreur(reponse, "L'invitation n'a pas pu être envoyée"))
   const resultat = await reponse.json()
   return { emails: resultat.emails, enCours: resultat.en_cours, adresses: resultat.adresses ?? [] }

@@ -94,5 +94,12 @@ class ComptesReceiver:
         db: Session = Depends(get_db),
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
+        """Les profils du sélecteur (§2.1, §4) : ceux de l'email connecté."""
         rbac.meme_personne(appelant, compte_id, db)
-        return self.client.membres_de_la_famille(db, compte_id)
+        compte = self.client.get(db, compte_id)
+        if compte is None:
+            return []
+        # Sans session (tests où elle est neutralisée) : tous les emails de
+        # la fiche.
+        email = getattr(appelant, "email_connecte", None)
+        return self.client.profils_de_l_email(db, compte, [email] if email else compte.emails)

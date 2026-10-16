@@ -6,7 +6,6 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from acces import normaliser_email
 from comptes import Compte, rbac, roles
 from comptes.models import RoleCompte
 from saisons.portee import toutes_saisons
@@ -63,13 +62,13 @@ def autorise(db: Session, compte: Compte) -> bool:
     le plus souvent avec sa fiche d'admin de l'école)."""
     if roles.is_superuser(compte):
         return True
-    if not compte.email:
+    if not compte.emails:
         return False
     with toutes_saisons(db):
-        emails = db.scalars(
-            select(Compte.email).join(RoleCompte, RoleCompte.compte_id == Compte.id).where(RoleCompte.role == roles.SUPERUSER)
+        superusers = db.scalars(
+            select(Compte).join(RoleCompte, RoleCompte.compte_id == Compte.id).where(RoleCompte.role == roles.SUPERUSER)
         )
-        return normaliser_email(compte.email) in {normaliser_email(e) for e in emails if e}
+        return bool({e for s in superusers for e in s.emails} & set(compte.emails))
 
 
 class AjoutProduit(BaseModel):

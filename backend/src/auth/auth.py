@@ -57,14 +57,17 @@ class Auth:
             return []
         toutes = db.scalars(select(Compte).order_by(Compte.id))
         if "@" in cible:
-            return [c for c in toutes if c.email and _normaliser(c.email) == cible]
+            return [c for c in toutes if any(_normaliser(e) == cible for e in c.emails)]
         return [c for c in toutes if _normaliser(f"{c.prenom} {c.nom}") == cible]
 
-    def _emails_dont_le_mot_de_passe_est_bon(self, db: Session, fiches: list[Compte], mot_de_passe: str) -> set[str]:
+    def _emails_dont_le_mot_de_passe_est_bon(
+        self, db: Session, fiches: list[Compte], mot_de_passe: str, seulement: set[str] | None = None
+    ) -> set[str]:
         """Essais limités PAR EMAIL (§2.2) : 5 mots de passe faux bloquent
         cet email 15 minutes, bon mot de passe compris."""
         bons: set[str] = set()
-        for email in {normaliser_email(c.email) for c in fiches} - {None}:
+        emails = {e for c in fiches for e in c.emails}
+        for email in sorted(emails & seulement if seulement is not None else emails):
             cle = _cle_connexion(email)
             if limiteur.est_bloque(cle):
                 continue
@@ -77,28 +80,38 @@ class Auth:
 
     # --- Connexion ---
 
-    def profils_possibles(self, db: Session, identifiant: str, mot_de_passe: str) -> list[Compte]:
+    def profils_possibles(self, db: Session, identifiant: str, mot_de_passe: str) -> list[tuple[Compte, str]]:
         """Une fiche par école où cette personne peut entrer (le Superuser
         compte comme une « école » à part). Vide : identifiant ou mot de
         passe incorrect. Plusieurs : l'écran demande « Choisissez votre
         école ». Dans une école, plusieurs fiches possibles (famille
         connectée par son email) : celle de plus haut rang, puis la plus
-        ancienne (décision utilisateur du 2026-10-01)."""
+        ancienne (décision utilisateur du 2026-10-01).
+
+        Renvoie (fiche, email connecté) : une fiche peut avoir plusieurs
+        emails (§2.1), c'est celui dont le mot de passe est bon qui ouvre
+        la session — et fixe les profils du sélecteur. Saisi en email,
+        c'est celui-là ; saisi en nom, le premier dont le mot de passe va."""
         fiches = self.fiches_designees(db, identifiant)
-        bons = self._emails_dont_le_mot_de_passe_est_bon(db, fiches, mot_de_passe)
-        par_ecole: dict[int | None, Compte] = {}
+        saisi = normaliser_email(identifiant) if "@" in (identifiant or "") else None
+        # Saisi en email : seul le mot de passe de CETTE adresse ouvre la
+        # porte, pas celui d'une autre adresse de la même fiche.
+        bons = self._emails_dont_le_mot_de_passe_est_bon(db, fiches, mot_de_passe, {saisi} if saisi else None)
+        par_ecole: dict[int | None, tuple[Compte, str]] = {}
         for fiche in fiches:
-            if normaliser_email(fiche.email) not in bons:
+            email = next((e for e in fiche.emails if e in bons), None)
+            if email is None:
                 continue
             retenue = par_ecole.get(fiche.ecole_id)
-            if retenue is None or r.rang(fiche) > r.rang(retenue):
-                par_ecole[fiche.ecole_id] = fiche
+            if retenue is None or r.rang(fiche) > r.rang(retenue[0]):
+                par_ecole[fiche.ecole_id] = (fiche, email)
         return list(par_ecole.values())
 
-    def ouvrir_session(self, db: Session, compte: Compte, rang: int | None = None) -> str:
-        """Le jeton de session pour ce profil : portée "superuser" (12 h)
-        pour le Superuser, "standard" (30 jours glissants) sinon."""
-        acces_email = self.acces.par_email(db, compte.email)
+    def ouvrir_session(self, db: Session, compte: Compte, email: str, rang: int | None = None) -> str:
+        """Le jeton de session pour ce profil, ouverte avec cet email (un
+        des emails de la fiche, §2.1) : portée "superuser" (12 h) pour le
+        Superuser, "standard" (30 jours glissants) sinon."""
+        acces_email = self.acces.par_email(db, email)
         return jetons.emettre(
             acces_email.id,
             portee=jetons.SUPERUSER if r.is_superuser(compte) else jetons.STANDARD,
@@ -129,7 +142,7 @@ class Auth:
         vers un enfant puis remonter redemande donc le mot de passe.
         None : profil inconnu, ou mot de passe faux."""
         vers = self.comptes.get(db, vers_compte_id)
-        if vers is None or r.is_superuser(vers) or normaliser_email(vers.email) != acces_email.email:
+        if vers is None or r.is_superuser(vers) or not vers.a_l_email(acces_email.email):
             return None
         if r.rang(vers) > jeton.rang:
             if not mot_de_passe:
@@ -139,27 +152,31 @@ class Auth:
                 limiteur.noter_echec(cle)
                 return None
             limiteur.noter_succes(cle)
-        return vers, self.ouvrir_session(db, vers)
+        return vers, self.ouvrir_session(db, vers, acces_email.email)
 
     # --- Mot de passe oublié ---
 
-    def liens_de_reinitialisation(self, db: Session, identifiant: str) -> list[tuple[Compte, str]]:
-        """(fiche destinataire, jeton en clair) pour chaque adresse que désigne
+    def liens_de_reinitialisation(self, db: Session, identifiant: str) -> list[tuple[str, Compte, str, list[Compte]]]:
+        """(adresse, fiche destinataire, jeton en clair, fiches de l'adresse)
+        pour chaque adresse que désigne
         l'identifiant — toute personne dont l'email est dans une école,
         même jamais invitée (décision utilisateur du 2026-10-01). Demandes
         limitées par email, comme les essais de connexion."""
         liens = []
         par_email: dict[str, list[Compte]] = {}
+        saisi = normaliser_email(identifiant) if "@" in (identifiant or "") else None
         for fiche in self.fiches_designees(db, identifiant):
-            if normaliser_email(fiche.email):
-                par_email.setdefault(normaliser_email(fiche.email), []).append(fiche)
+            # Saisi en email : cette adresse seulement. Saisi en nom : un
+            # lien à chaque adresse de la fiche (§2.1).
+            for email in [saisi] if saisi else fiche.emails:
+                par_email.setdefault(email, []).append(fiche)
         for email, fiches in par_email.items():
             cle = f"oubli:{email}"
             if limiteur.est_bloque(cle):
                 continue
             limiteur.noter_echec(cle)
             acces_email = self.acces.obtenir_ou_creer(db, email)
-            liens.append((destinataire(fiches), self.acces.creer_lien(db, acces_email, REINITIALISATION), fiches))
+            liens.append((email, destinataire(fiches), self.acces.creer_lien(db, acces_email, REINITIALISATION), fiches))
         return liens
 
     def changer_mot_de_passe(self, db: Session, acces_email: AccesEmail, ancien: str, nouveau: str) -> bool:

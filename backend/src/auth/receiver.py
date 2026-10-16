@@ -88,12 +88,12 @@ class AuthReceiver:
     def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_admin(appelant, ecole_id)
 
-    def _session(self, db: Session, compte: Compte) -> SessionOuverte:
+    def _session(self, db: Session, compte: Compte, email: str) -> SessionOuverte:
         ecole = db.get(Ecole, compte.ecole_id) if compte.ecole_id else None
         adresse = self.invitations.mails.appli(ecole.sous_domaine) if ecole is not None else None
         return SessionOuverte(
             compte=compte,
-            jeton=self.client.ouvrir_session(db, compte),
+            jeton=self.client.ouvrir_session(db, compte, email),
             adresse_ecole=adresse if adresse != self.invitations.mails.url_appli else None,
         )
 
@@ -106,16 +106,18 @@ class AuthReceiver:
         from personnalisation.personnalisation import etiquette_du_host
 
         etiquette = etiquette_du_host(request.headers.get("x-forwarded-host") or request.headers.get("host"))
-        dans_l_ecole = [p for p in profils if p.ecole_id and db.get(Ecole, p.ecole_id).sous_domaine == etiquette]
+        dans_l_ecole = [
+            (p, e) for p, e in profils if p.ecole_id and db.get(Ecole, p.ecole_id).sous_domaine == etiquette
+        ]
         if donnees.compte_id is None and dans_l_ecole:
             profils = dans_l_ecole
         if donnees.compte_id is not None:
-            profils = [p for p in profils if p.id == donnees.compte_id]
+            profils = [(p, e) for p, e in profils if p.id == donnees.compte_id]
         if not profils:
             raise HTTPException(status_code=401, detail=_REFUS)
         if len(profils) == 1:
-            return self._session(db, profils[0])
-        ecoles = {p.ecole_id: db.get(Ecole, p.ecole_id) for p in profils if p.ecole_id is not None}
+            return self._session(db, *profils[0])
+        ecoles = {p.ecole_id: db.get(Ecole, p.ecole_id) for p, _ in profils if p.ecole_id is not None}
         return SessionOuverte(
             choix=[
                 ChoixEcole(
@@ -126,7 +128,7 @@ class AuthReceiver:
                     nom=p.nom,
                     role=p.role_principal,
                 )
-                for p in profils
+                for p, _ in profils
             ]
         )
 
@@ -184,14 +186,14 @@ class AuthReceiver:
             # Mot de passe créé, mais plus aucune fiche à cet email dans la
             # saison courante : rien à ouvrir.
             return SessionOuverte()
-        return self._session(db, compte)
+        return self._session(db, compte, acces_email.email)
 
     def mot_de_passe_oublie(self, donnees: MotDePasseOublie, request: Request, db: Session = Depends(get_db)):
         """Toujours la même réponse, qu'un compte existe ou non (§2.2)."""
         from personnalisation.personnalisation import etiquette_du_host
 
         etiquette = etiquette_du_host(request.headers.get("x-forwarded-host") or request.headers.get("host"))
-        for fiche, jeton, fiches in self.client.liens_de_reinitialisation(db, donnees.identifiant):
+        for email, fiche, jeton, fiches in self.client.liens_de_reinitialisation(db, donnees.identifiant):
             # Le lien mène à l'adresse d'une école (spec §2.7) : celle où la
             # demande a été faite si la personne y a une fiche, sinon une
             # école où elle en a une. Le profil Superuser, rattaché à aucune
@@ -203,7 +205,7 @@ class AuthReceiver:
             )
             try:
                 self.invitations.mails.reinitialisation(
-                    fiche.email.strip(), ecole.nom if ecole else None, f"{fiche.prenom} {fiche.nom}", jeton,
+                    email, ecole.nom if ecole else None, f"{fiche.prenom} {fiche.nom}", jeton,
                     sous_domaine=ecole.sous_domaine if ecole else None,
                 )
             except Exception:  # noqa: BLE001 — ne rien révéler à l'écran
@@ -270,7 +272,7 @@ class AuthReceiver:
         ecole = db.get(Ecole, ecole_id)
         if ecole is None:
             raise HTTPException(status_code=404, detail="École introuvable")
-        emails = self.invitations.emails_a_inviter(db, ecole_id, donnees.compte_ids)
+        emails = self.invitations.emails_a_inviter(db, ecole_id, donnees.compte_ids, donnees.email)
         if not emails:
             raise HTTPException(status_code=409, detail="Aucune adresse email à inviter")
         # Adresses mal saisies : notées en échec dans le Statut, jamais envoyées.

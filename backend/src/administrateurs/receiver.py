@@ -24,6 +24,7 @@ def _sortie(compte: Compte) -> dict:
         "nom": compte.nom,
         "prenom": compte.prenom,
         "email": compte.email,
+        "emails": compte.emails,
         "est_owner": roles.is_owner(compte),
         "est_prof": roles.is_prof(compte),
         "est_eleve": roles.is_eleve(compte),

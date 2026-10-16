@@ -74,6 +74,9 @@ class EleveSortie(BaseModel):
     nom: str
     prenom: str
     email: str | None = None
+    # Plusieurs emails par fiche (§2.1) ; `email` les donne séparés par
+    # une virgule, et accepte cette forme en entrée.
+    emails: list[str] = []
     telephone: str | None = None
     date_naissance: dt.date | None = None
     age: int | None = None
