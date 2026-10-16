@@ -105,6 +105,26 @@ function useBureau() {
 // hauteur réglable à la poignée et gardée sur l'appareil (Seb, 15 octobre).
 const CLE_HAUTEUR_CHAT = 'contretemps.assistant.hauteur'
 
+// Chat ouvert ou fermé : gardé sur l'appareil, Docs le rouvre comme on
+// l'avait laissé (Seb, 16 octobre).
+const CLE_CHAT_OUVERT = 'contretemps.assistant.ouvert'
+
+function lireChatOuvert() {
+  try {
+    return localStorage.getItem(CLE_CHAT_OUVERT) === '1'
+  } catch {
+    return false
+  }
+}
+
+function garderChatOuvert(ouvert) {
+  try {
+    localStorage.setItem(CLE_CHAT_OUVERT, ouvert ? '1' : '0')
+  } catch {
+    // stockage indisponible : vaut pour cette fois
+  }
+}
+
 function lireHauteurChat() {
   try {
     const h = Number(localStorage.getItem(CLE_HAUTEUR_CHAT))
@@ -117,12 +137,14 @@ function lireHauteurChat() {
 
 export default function Explorer({ orgId, memoire }) {
   const bureau = useBureau()
-  const [assistantOuvert, setAssistantOuvert] = useState(false)
+  const [chatVoulu, setAssistantOuvert] = useState(lireChatOuvert)
   const [assistant, setAssistant] = useState(false)
   const [coutSaison, setCoutSaison] = useState(null)
   // Une fois ouvert, l'assistant reste en mémoire quand on le ferme : on
   // retrouve la conversation (et son coût) en le rouvrant (Seb, 16 octobre).
-  const [assistantMonte, setAssistantMonte] = useState(false)
+  const [assistantMonte, setAssistantMonte] = useState(lireChatOuvert)
+  // Ouvert seulement quand l'assistant est permis (réponse du serveur).
+  const assistantOuvert = chatVoulu && assistant
   // Fichier ouvert dans l'éditeur OnlyOffice (essai, même accès que l'assistant).
   const [enEdition, setEnEdition] = useState(null)
   const [hauteurChat, setHauteurChat] = useState(lireHauteurChat)
@@ -914,6 +936,7 @@ export default function Explorer({ orgId, memoire }) {
     if (assistant) {
       setAssistantOuvert(true)
       setAssistantMonte(true)
+      garderChatOuvert(true)
     }
     else montrerToast('L’assistant est en essai : réservé au Super User pour l’instant.')
   }
@@ -984,12 +1007,15 @@ export default function Explorer({ orgId, memoire }) {
     window.addEventListener('pointerup', lacher)
   }
 
-  const conversation = assistantMonte && (
+  const conversation = assistantMonte && assistant && (
     <Assistant
       orgId={orgId}
       coutSaisonInitial={coutSaison}
       contexte={{ space, folder_id: folder, selection_id: selection?.id ?? null, selection_ids: selIds.slice(0, 50), recents: recentsActif }}
-      onClose={() => setAssistantOuvert(false)}
+      onClose={() => {
+        setAssistantOuvert(false)
+        garderChatOuvert(false)
+      }}
       onFaire={faireAction}
     />
   )

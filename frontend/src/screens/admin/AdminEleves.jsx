@@ -90,9 +90,9 @@ function valeurCellule(el, champ, cours) {
 //
 // Données métier (nom, contacts, cours suivis...) via api/eleves.js (voir
 // api/README.md) — `eleves`/`setEleves` viennent de App.jsx, mis à jour ici
-// après chaque appel réussi. Le surlignage rouge (appui long) N'EST PAS une
-// donnée métier (le backend n'en a aucune notion) : gardé en état purement
-// local à cet écran, séparé de `eleves`.
+// après chaque appel réussi. Le surlignage rouge (appui long) est gardé en
+// base depuis le 2026-10-16 (`ligne_rouge`, `cellules_rouges` du profil) :
+// tous les admins le voient, et l'assistant peut le poser.
 export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const [search, setSearch] = useState('')
   // Accès à l'appli (spec §2.2) : colonnes « Inviter » et « Statut ».
@@ -144,11 +144,10 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const minuteurRef = useRef(null)
   const ignorerProchainClicRef = useRef(false)
 
-  // Surlignage rouge — voir note en tête de fichier : { [eleveId]: {
-  // cellulesRouges: string[], ligneRouge: bool } }, jamais envoyé à l'API.
-  const [surlignage, setSurlignage] = useState({})
+  // Surlignage rouge — voir note en tête de fichier.
   function surlignageDe(eleveId) {
-    return surlignage[eleveId] ?? { cellulesRouges: [], ligneRouge: false }
+    const el = eleves.find((x) => x.id === eleveId)
+    return { cellulesRouges: el?.cellules_rouges ?? [], ligneRouge: Boolean(el?.ligne_rouge) }
   }
 
   async function copierValeur(valeur) {
@@ -198,27 +197,25 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     }
   }
 
+  // Tout de suite à l'écran, puis enregistré ; remis comme avant si l'appel échoue.
+  async function changerRouge(eleveId, patch) {
+    const avant = eleves.find((x) => x.id === eleveId)
+    setEleves((list) => list.map((el) => (el.id === eleveId ? { ...el, ...patch } : el)))
+    try {
+      remplacer(await elevesApi.modifier(eleveId, patch))
+    } catch {
+      if (avant) remplacer(avant)
+    }
+  }
+
   function toggleCelluleRouge(eleveId, champ) {
-    setSurlignage((s) => {
-      const actuel = s[eleveId] ?? { cellulesRouges: [], ligneRouge: false }
-      const deja = actuel.cellulesRouges.includes(champ)
-      return {
-        ...s,
-        [eleveId]: {
-          ...actuel,
-          cellulesRouges: deja
-            ? actuel.cellulesRouges.filter((c) => c !== champ)
-            : [...actuel.cellulesRouges, champ],
-        },
-      }
-    })
+    const { cellulesRouges } = surlignageDe(eleveId)
+    const cellules = cellulesRouges.includes(champ) ? cellulesRouges.filter((c) => c !== champ) : [...cellulesRouges, champ]
+    changerRouge(eleveId, { cellules_rouges: cellules })
   }
 
   function toggleLigneRouge(eleveId) {
-    setSurlignage((s) => {
-      const actuel = s[eleveId] ?? { cellulesRouges: [], ligneRouge: false }
-      return { ...s, [eleveId]: { ...actuel, ligneRouge: !actuel.ligneRouge } }
-    })
+    changerRouge(eleveId, { ligne_rouge: !surlignageDe(eleveId).ligneRouge })
   }
 
   const filtered = eleves.filter((el) => correspond(`${el.prenom} ${el.nom}`, search))

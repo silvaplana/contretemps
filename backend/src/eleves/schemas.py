@@ -64,6 +64,8 @@ class EleveModification(BaseModel):
     montant_total_annee: float | None = None
     montant_paye: float | None = None
     commentaire_admin: str | None = None
+    ligne_rouge: bool | None = None
+    cellules_rouges: list[str] | None = None
 
 
 class EleveSortie(BaseModel):
@@ -83,6 +85,8 @@ class EleveSortie(BaseModel):
     montant_total_annee: float | None = None
     montant_paye: float
     commentaire_admin: str | None = None
+    ligne_rouge: bool = False
+    cellules_rouges: list[str] = []
     contacts: list[ContactSortie] = []
 
 

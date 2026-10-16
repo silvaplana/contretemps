@@ -10,7 +10,9 @@ La saison est celle affichée dans l'appli (filtre de saison automatique,
 voir saisons/portee.py).
 
 Jamais transmis à l'assistant (Seb) : la santé (allergies, traitement,
-informations importantes) et le commentaire libre de l'administration."""
+informations importantes). Le commentaire de l'administration et le
+surlignage rouge d'Admin > Élèves : aux admins et au Super User seulement
+(Seb, 16 octobre)."""
 
 from __future__ import annotations
 
@@ -91,6 +93,14 @@ class Perimetre:
     cours_ids: set[int] | None  # None : tous
     eleve_ids: set[int] | None  # None : tous
     paiements: bool
+
+
+# Colonnes d'Admin > Élèves qu'on peut mettre en rouge (AdminEleves.jsx).
+COLONNES_ROUGES = {
+    "nom": "élève", "cours": "cours suivis", "paiement": "paiement", "commentaire": "commentaire",
+    "naissance": "date de naissance", "age": "âge", "contacts": "contacts", "telephone": "téléphone",
+    "email": "email", "adresse": "adresse", "sante": "santé", "certificat": "certificat médical",
+}
 
 
 def _nom(c: Compte) -> str:
@@ -213,6 +223,8 @@ class DonneesEcole:
             morceaux = [f"- {_nom(e)} (id {e.id})", f"{age} ans" if age is not None else "âge ?", ", ".join(cours[e.id]) or "aucun cours"]
             if p.paiements and pr:
                 morceaux.append(f"paiement {pr.statut_paiement} {pr.montant_paye or 0:.0f}/{pr.montant_total_annee or 0:.0f} €")
+            if p.tout and pr and pr.ligne_rouge:
+                morceaux.append("en rouge")
             morceaux.append(" ".join(x for x in (e.email, e.telephone) if x) or "sans contact")
             lignes.append(" ; ".join(morceaux))
         reste = len(eleves) - LIGNES_MAX
@@ -231,6 +243,11 @@ class DonneesEcole:
             lignes.append(f"Né(e) le {pr.date_naissance or '?'} ({age if age is not None else '?'} ans) ; adresse : {pr.adresse or '?'}")
             if p.paiements:
                 lignes.append(f"Paiement : {pr.statut_paiement}, {pr.montant_paye or 0:.2f} € payés sur {pr.montant_total_annee or 0:.2f} €")
+            if p.tout:
+                lignes.append(f"Commentaire de l'administration : {pr.commentaire_admin or 'aucun'}")
+                rouge = ["toute la ligne"] if pr.ligne_rouge else []
+                rouge += [COLONNES_ROUGES.get(c, c) for c in pr.cellules_rouges or []]
+                lignes.append("En rouge dans Admin > Élèves : " + (", ".join(rouge) or "non"))
         lignes.append(f"Contact : {e.email or '?'} {e.telephone or ''}")
         for ct in db.scalars(select(ContactEleve).where(ContactEleve.eleve_id == e.id)):
             lignes.append(f"Contact {ct.lien or ''} : {ct.prenom or ''} {ct.nom or ''} {ct.telephone or ''} {ct.email or ''}".strip())
