@@ -24,6 +24,8 @@ class EcoleModification(BaseModel):
     siret: str | None = None
     # Espaces acceptés ; clé de contrôle vérifiée.
     iban: str | None = None
+    email_contact: str | None = None
+    email_tresorier: str | None = None
 
 
 class EcolePublique(BaseModel):
@@ -49,6 +51,8 @@ class EcoleSortie(BaseModel):
     ville: str | None = None
     siret: str | None = None
     iban: str | None = None
+    email_contact: str | None = None
+    email_tresorier: str | None = None
     sous_domaine: str | None = None
     created_at: datetime
     sauvegarde_active: bool

@@ -39,6 +39,18 @@ def normaliser_siret(siret: str | None) -> str | None:
     return chiffres
 
 
+def normaliser_email(email: str | None) -> str | None:
+    """« Tresorier@Asso.fr » -> « tresorier@asso.fr » ; vide -> None. Lève
+    ValueError si ce n'est visiblement pas une adresse."""
+    texte = (email or "").strip().lower()
+    if not texte:
+        return None
+    nom, _, domaine = texte.partition("@")
+    if not nom or "." not in domaine or " " in texte or domaine.startswith(".") or domaine.endswith("."):
+        raise ValueError(f"« {email.strip()} » n'est pas une adresse mail valide.")
+    return texte
+
+
 class Ecoles:
     def list(self, db: Session) -> list[Ecole]:
         return list(db.scalars(select(Ecole)))
@@ -187,6 +199,9 @@ class Ecoles:
             champs["siret"] = normaliser_siret(champs["siret"])
         if "iban" in champs:
             champs["iban"] = normaliser_iban(champs["iban"])
+        for cle in ("email_contact", "email_tresorier"):
+            if cle in champs:
+                champs[cle] = normaliser_email(champs[cle])
         for cle in ("adresse", "ville"):
             if cle in champs:
                 champs[cle] = (champs[cle] or "").strip() or None

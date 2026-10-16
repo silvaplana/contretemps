@@ -1,0 +1,287 @@
+/* Module notes de frais (voir spec/modules/notes-de-frais.md). Mêmes
+   variables de couleur que le reste de l'appli (index.css). */
+
+.nf-screen {
+  padding-bottom: 96px;
+}
+
+.nf-retour {
+  align-self: flex-start;
+  padding: 0;
+  text-decoration: none;
+}
+
+.nf-liste {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nf-ligne {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text-h);
+  text-align: left;
+  width: 100%;
+}
+
+.nf-ligne input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.nf-ligne__corps {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  min-height: auto;
+}
+
+.nf-ligne__corps .muted {
+  font-size: 13px;
+}
+
+.nf-ligne__titre {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.nf-ligne__droite {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex: none;
+}
+
+.nf-ligne__montant {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nf-mini {
+  margin-left: 6px;
+  padding: 1px 8px;
+  font-size: 12px;
+}
+
+/* Barre du bas : « Envoyer (n) · total » et « + » (§4.1). */
+.nf-barre {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--bottom-nav-height) + var(--chat-hauteur, 0px) + 12px);
+  display: flex;
+  gap: 10px;
+  z-index: 10;
+}
+
+.nf-barre__envoyer {
+  flex: 1;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
+}
+
+.nf-barre__plus {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border-radius: 50%;
+  border: none;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.nf-boutons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.nf-boutons > .btn {
+  flex: 1;
+}
+
+.nf-boutons--gauche > .btn {
+  flex: 0 1 auto;
+  padding: 10px 16px;
+}
+
+.nf-vignettes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nf-vignette {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.nf-vignette__ouvrir {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.nf-vignette__ouvrir img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.nf-vignette__retirer {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 24px;
+  height: 24px;
+  min-height: auto;
+  min-width: auto;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nf-plein-ecran {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.nf-plein-ecran img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.nf-a-verifier {
+  align-self: flex-start;
+}
+
+.nf-case {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-h) !important;
+  font-weight: 500 !important;
+}
+
+.modal-body .nf-case input {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
+.nf-iban {
+  font-variant-numeric: tabular-nums;
+  word-break: break-all;
+}
+
+.nf-entete-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nf-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nf-detail__depense {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nf-detail__ligne {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.nf-total {
+  text-align: right;
+}
+
+.nf-titre-ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nf-titre-ligne .section-label {
+  margin: 0;
+}
+
+.nf-periode {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.nf-periode label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+  flex: 1 1 120px;
+}
+
+/* Profil : compteur sur la ligne « Mes notes de frais ». */
+.nf-compteur {
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.nf-nowrap {
+  white-space: nowrap;
+}

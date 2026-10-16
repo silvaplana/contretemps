@@ -26,7 +26,7 @@ import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import Logo from './components/Logo.jsx'
 import { TABS } from './data/nav.js'
-import { aUnDesRoles, isAdmin, isEleve, isProf, isSuperuser } from './data/roles.js'
+import { aUnDesRoles, isAdmin, isEleve, isProf, isSuperuser, isTresorier } from './data/roles.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
@@ -40,6 +40,8 @@ import LoginScreen from './screens/LoginScreen.jsx'
 import MessagerieScreen from './screens/MessagerieScreen.jsx'
 import PresenceScreen from './screens/PresenceScreen.jsx'
 import ProfilScreen from './screens/ProfilScreen.jsx'
+import Financier from './modules/notes-frais/Financier.jsx'
+import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
 
 // Rôle Admin, Professeur ou Élève selon le compte connecté (voir
@@ -954,6 +956,8 @@ function App() {
     activeTab === 'admin' ||
     activeTab === 'profil' ||
     activeTab === 'heures' ||
+    activeTab === 'notes-frais' ||
+    activeTab === 'financier' ||
     activeTab === 'supervision' ||
     activeTab === 'docs' ||
     // Chorégraphie : pas de sélecteur de cours, l'écran a le sien
@@ -968,6 +972,10 @@ function App() {
         ? 'Profil'
         : activeTab === 'heures'
           ? 'Heures'
+          : activeTab === 'notes-frais'
+            ? 'Mes notes de frais'
+            : activeTab === 'financier'
+              ? 'Financier'
           : activeTab === 'supervision'
             ? 'Supervision'
             : activeTab === 'docs'
@@ -1058,6 +1066,12 @@ function App() {
             activeUser={activeUser}
             onSaisonCreee={surSaisonCreee}
             onSaisonSupprimee={surSaisonSupprimee}
+            onMonRoleTresorier={(oui) =>
+              setCompteReel((u) => ({
+                ...u,
+                roles: oui ? [...new Set([...(u.roles ?? []), 'tresorier'])] : (u.roles ?? []).filter((r) => r !== 'tresorier'),
+              }))
+            }
           />
         )}
 
@@ -1116,6 +1130,14 @@ function App() {
 
         {activeTab === 'supervision' && isSuperuser(activeUser) && <SupervisionScreen />}
 
+        {/* Notes de frais (spec/modules/notes-de-frais.md) : écran hors
+            barre du bas, ouvert depuis Profil ; Financier pour les
+            trésoriers. `key` : rechargé au changement de profil. */}
+        {activeTab === 'notes-frais' && (
+          <MesNotesDeFrais key={activeUser.id} onBack={() => setActiveTab('profil')} />
+        )}
+        {activeTab === 'financier' && isTresorier(activeUser) && <Financier key={activeUser.id} />}
+
         {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} />}
 
         {activeTab === 'profil' && (
@@ -1124,6 +1146,7 @@ function App() {
             famille={familleReelle}
             onLogout={logout}
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
+            onOpenNotesFrais={() => setActiveTab('notes-frais')}
             onUpdateUser={mettreAJourActiveUser}
             onChangerEcole={isSuperuser(activeUser) ? changerEcole : undefined}
           />

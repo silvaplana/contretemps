@@ -63,3 +63,16 @@ def test_iban(client, db_session):
     assert faux.status_code == 400 and "incorrect" in faux.json()["detail"]
     assert client.put(f"/ecoles/{ecole.id}", json={"iban": "12345"}).status_code == 400
     assert client.put(f"/ecoles/{ecole.id}", json={"iban": ""}).json()["iban"] is None
+
+
+def test_adresses_mail_de_l_ecole(client, db_session):
+    from ecoles import Ecoles
+
+    ecole = Ecoles().create(db_session, nom="Contretemps", code_postal="83330")
+    reponse = client.put(
+        f"/ecoles/{ecole.id}", json={"email_contact": " Contact@Asso.fr ", "email_tresorier": "tresorerie@asso.fr"}
+    )
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["email_contact"] == "contact@asso.fr"
+    assert reponse.json()["email_tresorier"] == "tresorerie@asso.fr"
+    assert client.put(f"/ecoles/{ecole.id}", json={"email_tresorier": "pas une adresse"}).status_code in (400, 422)

@@ -81,6 +81,9 @@ ENV PERSONNALISATION_DIR=/app/data/personnalisation
 # Onglet Docs (module documents) : fichiers protégés, jamais servis en
 # statique, dans le même volume /app/data.
 ENV DOCUMENTS_DIR=/app/data/documents
+# Justificatifs des notes de frais (module notes_frais), rangés en
+# enveloppes par personne, même volume.
+ENV NOTES_FRAIS_DIR=/app/data/notes_frais
 # Contrairement à VIDEOS_DIR ci-dessus (mutable, dans le volume), la
 # référence pointe vers le dossier figé dans l'image (voir COPY plus
 # haut) — jamais modifiée à l'exécution, seulement lue par

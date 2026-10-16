@@ -24,6 +24,7 @@ export default function AdministrateursTableau({
   eleves = [],
   creationOuverte,
   onFermerCreation,
+  onMonRoleTresorier,
 }) {
   const [ouvert, setOuvert] = useState(false)
   const [administrateurs, setAdministrateurs] = useState([])
@@ -61,6 +62,17 @@ export default function AdministrateursTableau({
     try {
       await administrateursApi.supprimer(admin.id)
       setAdministrateurs((liste) => liste.filter((a) => a.id !== admin.id))
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
+  async function basculerTresorier(admin, tresorier) {
+    setErreur(null)
+    try {
+      enregistree(await administrateursApi.modifier(admin.id, { tresorier }))
+      // Sa propre ligne : l'onglet Financier apparaît (ou part) tout de suite.
+      if (admin.id === activeUser.id) onMonRoleTresorier?.(tresorier)
     } catch (err) {
       setErreur(err.message)
     }
@@ -105,6 +117,7 @@ export default function AdministrateursTableau({
                   <th>Prénom</th>
                   <th>Email</th>
                   <th>Administrateur principal</th>
+                  <th>Trésorier</th>
                   <th>Inviter</th>
                   <th>Statut</th>
                   {peutGerer && <th aria-label="Actions" />}
@@ -120,6 +133,22 @@ export default function AdministrateursTableau({
                     <td>{a.prenom}</td>
                     <td>{a.email || <span className="muted">—</span>}</td>
                     <td>{a.estOwner ? <Badge>Oui</Badge> : <span className="muted">—</span>}</td>
+                    {/* Seul endroit où l'on nomme un trésorier (module notes
+                        de frais §6) ; un Owner coche aussi sa propre ligne. */}
+                    <td>
+                      {peutGerer ? (
+                        <input
+                          type="checkbox"
+                          checked={a.estTresorier}
+                          onChange={(e) => basculerTresorier(a, e.target.checked)}
+                          aria-label={`${a.prenom} ${a.nom} trésorier`}
+                        />
+                      ) : a.estTresorier ? (
+                        <Badge>Oui</Badge>
+                      ) : (
+                        <span className="muted">—</span>
+                      )}
+                    </td>
                     <td>
                       <BoutonInviter acces={acces} compteId={a.id} prenom={a.prenom} />
                     </td>

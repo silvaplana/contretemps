@@ -7,11 +7,13 @@ export const ROLE_LABEL = {
   owner: 'Administrateur principal',
   professeur: 'Professeur',
   eleve: 'Élève',
+  // Toujours un admin (module notes de frais §6) : un droit en plus.
+  tresorier: 'Trésorier',
   superuser: 'Super User',
 }
 
 // Ordre d'affichage de TOUS les rôles d'un profil (voir libellesRoles).
-const ORDRE_AFFICHAGE = ['superuser', 'admin', 'owner', 'professeur', 'eleve']
+const ORDRE_AFFICHAGE = ['superuser', 'admin', 'owner', 'tresorier', 'professeur', 'eleve']
 
 // Libellés de tous les rôles d'un profil, pas seulement le principal (Profil,
 // demande du 2026-09-21) : un professeur-admin Owner affiche
@@ -62,7 +64,7 @@ function rolesDe(profil) {
   // Le Superuser (§2.5) voit et fait tout ce que fait un Owner, dans
   // l'école qu'il a choisie : mêmes onglets, mêmes boutons. Le serveur
   // l'autorise de son côté (voir comptes/rbac.py).
-  return roles.includes('superuser') ? [...roles, 'admin', 'owner'] : roles
+  return roles.includes('superuser') ? [...roles, 'admin', 'owner', 'tresorier'] : roles
 }
 
 export function aUnDesRoles(profil, roles) {
@@ -74,3 +76,4 @@ export const isProf = (profil) => aUnDesRoles(profil, ['professeur'])
 export const isAdmin = (profil) => aUnDesRoles(profil, ['admin'])
 export const isOwner = (profil) => aUnDesRoles(profil, ['owner'])
 export const isSuperuser = (profil) => aUnDesRoles(profil, ['superuser'])
+export const isTresorier = (profil) => aUnDesRoles(profil, ['tresorier'])

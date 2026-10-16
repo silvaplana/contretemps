@@ -115,7 +115,8 @@ envoyée ──valider──▶ validée ──marquer remboursée──▶ remb
 - Nouveau rôle **`tresorier`**, réservé aux **admins** : un trésorier est toujours un admin (décision de
   Seb, 16 octobre), comme Owner. Il ne change pas le rang (bascule de profil, libellé principal) : c'est un
   droit en plus. Retirer le rôle admin retire aussi le rôle trésorier.
-- Donné et retiré par un **admin** de l'organisation : dans Admin › École, le tableau des
+- Donné et retiré par un **administrateur principal** (Owner, le seul qui modifie ce tableau ; il peut
+  cocher sa propre ligne, pour qu'une école à un seul Owner ait un trésorier) : dans Admin › École, le tableau des
   administrateurs a une **colonne « Trésorier » à cocher** (décision de Seb, 16 octobre). C'est le
   **seul endroit** où l'on nomme ou retire un trésorier (ni fiche élève, ni Assistant).
 - Une organisation peut avoir plusieurs trésoriers. Sans trésorier, les notes envoyées attendent, et
@@ -165,22 +166,43 @@ mails de l'appli.
 
 ## 10. Données
 
-- `depenses` : id, organisation, compte (qui a payé), date, montant (centimes), devise (EUR), catégorie,
-  description, sans_justificatif (calculé : aucune pièce), note_id (null = « À envoyer »), créée le,
-  lu_par_ia (bool).
-- `depense_pieces` : id, depense_id, fichier (photo ou PDF, stockage privé de l'organisation), ordre.
-- `notes_frais` : id, organisation, compte, titre, statut (`envoyee`, `validee`, `refusee`, `remboursee`),
-  don (bool), rib (copie au moment de l'envoi), motif_refus, envoyée le, validée le / par, refusée le /
-  par, remboursée le / par.
-- `categories_frais` : id, organisation, libellé, ordre, active.
-- RIB du membre (titulaire, IBAN, BIC), facultatif : champs de son compte (Profil › Paramètres › Mon RIB),
-  visibles de lui et des trésoriers seulement.
-- Organisation : `email_tresorier` (à côté de l'email de contact).
+Tables préfixées `nf_` (module autonome) :
+
+- `nf_depenses` : id, organisation, personne (qui a payé), date, montant (centimes), catégorie,
+  description, lue_par_ia, note_id (null = « À envoyer »), créée le. « Sans justificatif » = aucune pièce.
+- `nf_pieces` : id, depense_id, chemin du fichier (voir « Rangement sur le disque »), type, nom, taille,
+  ordre. 5 pièces au plus par dépense, 20 Mo par fichier.
+- `nf_notes` : id, organisation, personne, titre, statut (`envoyee`, `validee`, `refusee`, `remboursee`),
+  don, RIB (copie au moment de l'envoi), motif_refus, envoyée le, traitée le / par, remboursée le / par.
+- `nf_categories` : id, organisation, libellé, ordre, active.
+- `nf_ribs` : RIB du membre (titulaire, IBAN, BIC), facultatif, un par personne (Profil › Mon RIB),
+  visible de lui et des trésoriers seulement.
+- Organisation : `email_tresorier` et `email_contact` *(Contretemps : colonnes de `ecoles`, Admin › École
+  › Coordonnées)*.
 - Rôle `tresorier` dans la table des rôles du compte *(Contretemps : `roles_compte`, SPEC.md §6.3bis)*.
 
 Montants en centimes entiers ; total d'une note = somme de ses dépenses, jamais stocké à part.
-Une dépense ou une note appartient à une saison comme le reste des données *(Contretemps, SPEC.md
-§2.6)* ; les trésoriers voient aussi les notes des saisons passées dans « Terminées ».
+
+**Pas de saison** : dépenses et notes appartiennent à la **personne**, pas à une saison (décision du
+16 octobre). Une note envoyée en juin et remboursée en septembre reste visible des deux côtés après le
+changement de saison. *(Contretemps : la « personne » est le premier compte de la chaîne
+`compte_precedent_id`, comme pour les documents.)*
+
+### Rangement sur le disque (décision de Seb, 16 octobre)
+
+Les justificatifs sont rangés en **enveloppes**, un dossier par personne :
+
+```
+<NOTES_FRAIS_DIR>/<organisation>/<n° de la personne> <Nom Prénom>/
+    depenses/                                   tickets pas encore envoyés
+    notes/<AAAA-MM-JJ> <titre> (<n° de note>)/  une enveloppe par note envoyée
+```
+
+Fichier : `<date> <description> <n° de dépense>-<n° de pièce>.<ext>`. À l'envoi, les fichiers passent de
+`depenses/` à l'enveloppe de la note ; une note reprise les y renvoie et son enveloppe vide disparaît. Le
+numéro en tête du dossier de la personne le retrouve même si son nom change ou si deux personnes ont le
+même nom. Jamais servis en accès direct : seulement par les routes du module, à l'auteur et aux
+trésoriers. *(Contretemps : `NOTES_FRAIS_DIR`, `/app/data/notes_frais` dans l'image Docker, dans le volume de données.)*
 
 ## 11. Droits
 

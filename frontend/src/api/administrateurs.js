@@ -26,6 +26,8 @@ function versEcran(a) {
     prenom: a.prenom,
     email: a.email ?? '',
     estOwner: a.est_owner,
+    // Module notes de frais §6 : coché dans ce tableau seulement.
+    estTresorier: a.est_tresorier ?? false,
     // Professeur-admin : nom/prénom/email se modifient dans Admin > Profs,
     // et le "supprimer" lui retire seulement les droits d'admin.
     estProf: a.est_prof,
@@ -47,12 +49,13 @@ export async function creer(ecoleId, { compteId, nom, prenom, email, owner }) {
 }
 
 // Seuls les champs présents dans `patch` sont envoyés (et modifiés).
-export async function modifier(id, { nom, prenom, email, owner }) {
+export async function modifier(id, { nom, prenom, email, owner, tresorier }) {
   const corps = {
     ...(nom !== undefined && { nom }),
     ...(prenom !== undefined && { prenom }),
     ...(email !== undefined && { email: email || null }),
     ...(owner !== undefined && { owner }),
+    ...(tresorier !== undefined && { tresorier }),
   }
   return versEcran(await requete(`/administrateurs/${id}`, { method: 'PUT', body: JSON.stringify(corps) }))
 }

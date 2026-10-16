@@ -271,3 +271,37 @@ def test_supprimer_depuis_admin_profs_le_dernier_owner_refuse(client, db_session
     reponse = client.delete(f"/profs/{prof.id}", headers=_en_tant_que(admin))
     assert reponse.status_code == 409
     assert comptes.get(db_session, prof.id) is not None
+
+
+# --- Trésorier (notes de frais §6) ---
+
+
+def test_owner_coche_tresorier_y_compris_pour_lui_meme(client, ecole, db_session):
+    for cible in ("admin", "owner"):
+        reponse = client.put(
+            f"/administrateurs/{ecole[cible].id}", json={"tresorier": True}, headers=_en_tant_que(ecole["owner"])
+        )
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["est_tresorier"] is True
+    # Sur sa propre ligne, seule la case Trésorier se modifie.
+    reponse = client.put(f"/administrateurs/{ecole['owner'].id}", json={"nom": "X"}, headers=_en_tant_que(ecole["owner"]))
+    assert reponse.status_code == 403
+
+
+def test_un_simple_admin_ne_nomme_pas_de_tresorier(client, ecole):
+    reponse = client.put(f"/administrateurs/{ecole['owner'].id}", json={"tresorier": True}, headers=_en_tant_que(ecole["admin"]))
+    assert reponse.status_code == 403
+
+
+def test_tresorier_toujours_admin(db_session, ecole):
+    comptes = Comptes()
+    with pytest.raises(RegleRoles):
+        comptes.ajouter_role(db_session, ecole["prof"], roles.TRESORIER)
+    comptes.ajouter_role(db_session, ecole["admin"], roles.TRESORIER)
+    assert roles.role_principal(r.role for r in ecole["admin"].roles) == roles.ADMIN
+    # Retirer admin retire aussi trésorier.
+    prof_admin = ecole["prof"]
+    comptes.ajouter_role(db_session, prof_admin, roles.ADMIN)
+    comptes.ajouter_role(db_session, prof_admin, roles.TRESORIER)
+    comptes.retirer_role(db_session, prof_admin, roles.ADMIN)
+    assert _roles(db_session, prof_admin) == ["professeur"]

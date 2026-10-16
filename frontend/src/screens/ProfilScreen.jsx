@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import * as authApi from '../api/auth.js'
 import * as notificationsApi from '../api/notifications.js'
+import * as notesFraisApi from '../api/notesFrais.js'
+import RibModal from '../modules/notes-frais/RibModal.jsx'
 import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
 import { ChampMotDePasse } from './LoginScreen.jsx'
@@ -89,8 +91,28 @@ function ChampAdminEditable({ prefixe = '', valeur, placeholderVide, type = 'tex
 // cliquables (demande) : la bascule de profil se fait depuis le menu
 // "Changer de profil" du Header (voir Header.jsx), pas doublée ici.
 // `onChangerEcole` : Superuser seulement (§2.5), revenir au choix d'école.
-export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHeures, onUpdateUser, onChangerEcole }) {
+export default function ProfilScreen({
+  user,
+  famille = [],
+  onLogout,
+  onOpenMesHeures,
+  onOpenNotesFrais,
+  onUpdateUser,
+  onChangerEcole,
+}) {
   const [changementMotDePasse, setChangementMotDePasse] = useState(false)
+  const [ribOuvert, setRibOuvert] = useState(false)
+  // Notes de frais (spec/modules/notes-de-frais.md §3) : pour tout le monde
+  // sauf le Super User, qui n'est membre d'aucune école.
+  const notesFrais = !isSuperuser(user)
+  const [compteursFrais, setCompteursFrais] = useState(null)
+  useEffect(() => {
+    if (!notesFrais) return
+    notesFraisApi
+      .compteurs()
+      .then(setCompteursFrais)
+      .catch(() => {})
+  }, [notesFrais, user.id])
   const autresProfils = trierParRole(famille.filter((p) => p.id !== user.id))
 
   // Notifications push (voir api/notifications.js) : reflète l'état RÉEL
@@ -198,6 +220,22 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
         </section>
       )}
 
+      {notesFrais && (
+        <section>
+          <h3 className="section-label">Remboursements</h3>
+          <button type="button" className="settings-row settings-row--button" onClick={onOpenNotesFrais}>
+            <span>Mes notes de frais</span>
+            {compteursFrais?.a_envoyer > 0 && (
+              <span className="badge badge--warning nf-compteur">{compteursFrais.a_envoyer} à envoyer</span>
+            )}
+            {!compteursFrais?.a_envoyer && compteursFrais?.en_attente > 0 && (
+              <span className="badge nf-compteur">{compteursFrais.en_attente} en cours</span>
+            )}
+            <Icon name="chevronRight" size={18} />
+          </button>
+        </section>
+      )}
+
       <section>
         <h3 className="section-label">Paramètres</h3>
         <div className="settings-row">
@@ -229,9 +267,18 @@ export default function ProfilScreen({ user, famille = [], onLogout, onOpenMesHe
             <Icon name="chevronRight" size={18} />
           </button>
         )}
+        {notesFrais && (
+          <button type="button" className="settings-row settings-row--button" onClick={() => setRibOuvert(true)}>
+            <span>
+              Mon RIB <span className="muted">(facultatif, pour les remboursements)</span>
+            </span>
+            <Icon name="chevronRight" size={18} />
+          </button>
+        )}
       </section>
 
       {changementMotDePasse && <ChangerMotDePasseModal onClose={() => setChangementMotDePasse(false)} />}
+      {ribOuvert && <RibModal onClose={() => setRibOuvert(false)} />}
 
       {onChangerEcole && (
         <button type="button" className="btn btn--secondary btn--block" onClick={onChangerEcole}>

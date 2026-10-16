@@ -17,18 +17,21 @@ ELEVE = "eleve"
 PROFESSEUR = "professeur"
 ADMIN = "admin"
 OWNER = "owner"
+# Trésorier (module notes de frais, spec/modules/notes-de-frais.md §6) :
+# toujours un admin, comme Owner ; un droit en plus, pas un rang.
+TRESORIER = "tresorier"
 # Propriétaire de l'application, au-dessus des écoles (§2.5) : compte sans
 # école, jamais cumulé, jamais attribué depuis l'appli.
 SUPERUSER = "superuser"
 
-ROLES = (ELEVE, PROFESSEUR, ADMIN, OWNER, SUPERUSER)
+ROLES = (ELEVE, PROFESSEUR, ADMIN, OWNER, TRESORIER, SUPERUSER)
 
 # Rang, du plus faible au plus fort (voir §2.2) : sert à savoir si passer
 # d'un profil familial à l'autre est une montée en privilège, et à choisir
 # le rôle principal affiché. Owner compte comme Admin : ce n'est qu'un
 # droit en plus sur la gestion des admins (§2.4), pas un rang au-dessus.
 # Même règle que le frontend (frontend/src/data/roles.js).
-RANG = {ELEVE: 0, PROFESSEUR: 1, ADMIN: 2, OWNER: 2, SUPERUSER: 3}
+RANG = {ELEVE: 0, PROFESSEUR: 1, ADMIN: 2, OWNER: 2, TRESORIER: 2, SUPERUSER: 3}
 
 
 def noms_roles(compte: Compte) -> list[str]:
@@ -57,6 +60,10 @@ def is_owner(compte: Compte) -> bool:
     return a_le_role(compte, OWNER)
 
 
+def is_tresorier(compte: Compte) -> bool:
+    return a_le_role(compte, TRESORIER)
+
+
 def is_superuser(compte: Compte) -> bool:
     return a_le_role(compte, SUPERUSER)
 
@@ -64,8 +71,9 @@ def is_superuser(compte: Compte) -> bool:
 def role_principal(noms: Iterable[str]) -> str:
     """Le rôle le plus élevé, Owner ramené à Admin : c'est celui qu'on
     affiche comme libellé ("Admin", "Professeur"...) et qui sert de rang
-    pour la bascule de profil familial (§2.2)."""
-    noms = [ADMIN if nom == OWNER else nom for nom in noms]
+    pour la bascule de profil familial (§2.2). Trésorier aussi : un droit
+    en plus d'admin, comme Owner."""
+    noms = [ADMIN if nom in (OWNER, TRESORIER) else nom for nom in noms]
     return max(noms, key=lambda nom: RANG[nom])
 
 

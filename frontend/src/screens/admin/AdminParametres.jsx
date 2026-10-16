@@ -46,6 +46,7 @@ export default function AdminParametres({
   professeurs,
   onSaisonCreee,
   onSaisonSupprimee,
+  onMonRoleTresorier,
 }) {
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
   const [coordonneesOuvertes, setCoordonneesOuvertes] = useState(false)
@@ -77,7 +78,13 @@ export default function AdminParametres({
   // finie). Lève l'erreur du serveur, affichée sous le champ.
   async function enregistrerVerifie(patch) {
     const complete = await ecolesApi.modifier(ecole.id, patch)
-    setEcole((e) => ({ ...e, siret: complete.siret, iban: complete.iban }))
+    setEcole((e) => ({
+      ...e,
+      siret: complete.siret,
+      iban: complete.iban,
+      emailContact: complete.emailContact,
+      emailTresorier: complete.emailTresorier,
+    }))
   }
 
   return (
@@ -159,6 +166,27 @@ export default function AdminParametres({
               afficher={ibanLisible}
               enregistrer={(iban) => enregistrerVerifie({ iban })}
             />
+
+            <ChampVerifie
+              id="ecole-param-email-contact"
+              label="Adresse mail de contact"
+              placeholder="contact@monecole.fr"
+              valeur={ecole.emailContact ?? ''}
+              afficher={(v) => v}
+              enregistrer={(emailContact) => enregistrerVerifie({ emailContact })}
+            />
+            <ChampVerifie
+              id="ecole-param-email-tresorier"
+              label="Adresse mail de la trésorerie"
+              placeholder="tresorerie@monecole.fr"
+              valeur={ecole.emailTresorier ?? ''}
+              afficher={(v) => v}
+              enregistrer={(emailTresorier) => enregistrerVerifie({ emailTresorier })}
+            />
+            <p className="muted">
+              Les notes de frais envoyées arrivent à l’adresse de la trésorerie (sinon à chaque trésorier) ; les réponses
+              aux mails de l’appli vont à l’adresse de contact.
+            </p>
           </div>
         )}
       </section>
@@ -180,6 +208,7 @@ export default function AdminParametres({
         eleves={eleves}
         creationOuverte={creationAdminOuverte}
         onFermerCreation={() => setCreationAdminOuverte(false)}
+        onMonRoleTresorier={onMonRoleTresorier}
       />
 
       {/* `key` : recalculé quand la saison affichée change (spec §2.6). */}

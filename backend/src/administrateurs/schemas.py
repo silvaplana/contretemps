@@ -11,6 +11,8 @@ class AdministrateurSortie(BaseModel):
     email: str | None
     emails: list[str] = []
     est_owner: bool
+    # Trésorier (module notes de frais §6) : coché dans ce tableau seulement.
+    est_tresorier: bool = False
     # Professeur-admin ou élève-admin : son nom/prénom/email se modifient
     # depuis Admin > Profs ou Admin > Élèves, pas depuis ce tableau (voir
     # administrateurs.py).
@@ -49,3 +51,5 @@ class AdministrateurModification(BaseModel):
     prenom: str | None = None
     email: str | None = None
     owner: bool | None = None
+    # Donner (True) ou retirer (False) le rôle trésorier ; absent : inchangé.
+    tresorier: bool | None = None

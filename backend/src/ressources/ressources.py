@@ -26,7 +26,12 @@ CATEGORIES_IA = {
     "lecture_fiche": "Lecture des fiches d'inscription",
     "detourage_logo": "Personnalisation : détourage du logo",
     "chat_documents": "Chat documents",
+    "lecture_ticket": "Notes de frais : lecture des tickets",
 }
+
+# Postes comptés dans le plafond mensuel de l'assistant (la lecture des
+# tickets aussi : spec/modules/notes-de-frais.md §12).
+POSTES_PLAFOND = ("chat_documents", "lecture_ticket")
 
 
 def _taille(dossier: Path) -> int:
@@ -83,7 +88,8 @@ class Ressources:
         return float(ecole.assistant_plafond_mensuel_usd) if ecole is not None else 0.0
 
     def plafond_assistant_atteint(self, db: Session, ecole_id: int) -> bool:
-        return self.cout_du_mois(db, ecole_id, "chat_documents") >= self.plafond_assistant(db, ecole_id)
+        depense = sum(self.cout_du_mois(db, ecole_id, poste) for poste in POSTES_PLAFOND)
+        return depense >= self.plafond_assistant(db, ecole_id)
 
     def definir_plafond_assistant(self, db: Session, ecole_id: int, plafond_usd: float) -> float:
         ecole = db.get(Ecole, ecole_id)

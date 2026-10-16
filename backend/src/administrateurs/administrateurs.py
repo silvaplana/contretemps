@@ -83,11 +83,18 @@ class Administrateurs:
         return compte
 
     def modifier(
-        self, db: Session, admin: Compte, *, champs: dict, owner: bool | None, par_superuser: bool = False
+        self,
+        db: Session,
+        admin: Compte,
+        *,
+        champs: dict,
+        owner: bool | None,
+        tresorier: bool | None = None,
+        par_superuser: bool = False,
     ) -> Compte:
         """`champs` : nom, prénom, email, code de récupération (seulement
         ceux fournis). `owner` : True/False pour donner/retirer ce statut,
-        None pour ne pas y toucher."""
+        None pour ne pas y toucher. `tresorier` : pareil pour le rôle trésorier."""
         if _promu(admin) and CHAMPS_IDENTITE & champs.keys():
             ecran = "Admin > Profs" if roles.is_prof(admin) else "Admin > Élèves"
             raise RegleRoles(f"Son nom, son prénom et son email se modifient depuis {ecran}")
@@ -97,6 +104,10 @@ class Administrateurs:
             self.comptes.ajouter_role(db, admin, roles.OWNER)
         elif owner is False:
             self.comptes.retirer_role(db, admin, roles.OWNER, autoriser_sans_owner=par_superuser)
+        if tresorier is True:
+            self.comptes.ajouter_role(db, admin, roles.TRESORIER)
+        elif tresorier is False and roles.is_tresorier(admin):
+            self.comptes.retirer_role(db, admin, roles.TRESORIER)
         db.refresh(admin)
         return admin
 

@@ -20,6 +20,9 @@ export const TABS = [
   // Documents (demande du 2026-09-25, prototype) : tout le monde, juste
   // avant Profil.
   { key: 'docs', label: 'Docs', icon: 'docs', roles: ['admin', 'professeur', 'eleve'] },
+  // Trésoriers seulement (module notes de frais §7) : notes à valider et
+  // à rembourser ; plus tard le budget.
+  { key: 'financier', label: 'Financier', icon: 'calculator', roles: ['tresorier'] },
   // Super User seulement (§2.5) : `superuser` n'est jamais ajouté aux autres
   // comptes, contrairement à admin/owner qu'IL reçoit en plus (voir
   // data/roles.js : rolesDe) — les autres ne voient donc jamais cet onglet.

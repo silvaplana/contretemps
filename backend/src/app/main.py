@@ -6,7 +6,9 @@ N'appartient a aucun des modules qu'il monte.
 """
 
 import asyncio
+import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
 from dotenv import load_dotenv
@@ -46,6 +48,13 @@ from personnalisation.personnalisation import DOSSIER_PERSONNALISATION, Personna
 from personnalisation.receiver import PersonnalisationReceiver
 from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
 from notifications import Notifications, NotificationsReceiver
+from notes_frais import LecteurClaude, NotesDeFrais, NotesDeFraisReceiver, Ports, StockageEnveloppes
+from notes_frais_contretemps import (
+    AnnuaireContretemps as AnnuaireNotesFrais,
+    MessagerContretemps,
+    NotifieurContretemps,
+    membre_appelant as membre_notes_frais,
+)
 from presence import Presence, PresenceReceiver
 from saisons.gestion import GestionSaisons
 from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
@@ -239,6 +248,10 @@ personnalisation_client = Personnalisation(
 )
 personnalisation_receiver = PersonnalisationReceiver(client=personnalisation_client, app=app)
 
+# Justificatifs des notes de frais (module `notes_frais`) : jamais servis
+# en statique, seulement par ses routes, après contrôle des droits.
+DOSSIER_NOTES_FRAIS = Path(os.environ.get("NOTES_FRAIS_DIR", "./data/notes_frais"))
+
 # "Usage ressources et IA de la saison" (Admin > Ecole) : place sur le
 # disque par ecole, et cout des operations d'IA (voir ressources/).
 ressources_client = Ressources(
@@ -247,6 +260,7 @@ ressources_client = Ressources(
         "documents": ("Documents d'inscription", DOSSIER_INSCRIPTIONS),
         "personnalisation": ("Personnalisation (logo, nom)", DOSSIER_PERSONNALISATION),
         "documents_partages": ("Documents (onglet Docs)", DOSSIER_DOCUMENTS),
+        "notes_frais": ("Notes de frais (justificatifs)", DOSSIER_NOTES_FRAIS),
     }
 )
 ressources_receiver = RessourcesReceiver(client=ressources_client, app=app)
@@ -300,6 +314,22 @@ assistant_client.modifications = Modifications(
     presence=presence_client, choregraphies=choregraphies_client,
 )
 assistant_receiver = AssistantReceiver(client=assistant_client, app=app, current_member=membre_appelant)
+
+# Notes de frais (module `notes_frais`, futur module d'AppBase, branché sur
+# Contretemps par notes_frais_contretemps/ ; spec/modules/notes-de-frais.md).
+notes_frais_client = NotesDeFrais(
+    ports=Ports(
+        annuaire=AnnuaireNotesFrais(),
+        messager=MessagerContretemps(),
+        notifieur=NotifieurContretemps(notifications_client),
+        lecteur=LecteurClaude(
+            noter_cout=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "lecture_ticket", cout, detail),
+            plafond_atteint=ressources_client.plafond_assistant_atteint,
+        ),
+    ),
+    stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
+)
+notes_frais_receiver = NotesDeFraisReceiver(client=notes_frais_client, app=app, membre_courant=membre_notes_frais)
 
 inscriptions_receiver = InscriptionsReceiver(
     client=inscriptions_client,

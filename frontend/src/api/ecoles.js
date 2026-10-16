@@ -22,6 +22,10 @@ function versEcran(e) {
     ville: e.ville ?? '',
     siret: e.siret ?? '',
     iban: e.iban ?? '',
+    // Adresses de l'école (module notes de frais §9) : contact (réponse
+    // aux mails de l'appli) et trésorerie (reçoit les notes de frais).
+    emailContact: e.email_contact ?? '',
+    emailTresorier: e.email_tresorier ?? '',
     sauvegardeActive: e.sauvegarde_active,
     sauvegardePeriodicite: e.sauvegarde_periodicite,
     sauvegardeJourSemaine: e.sauvegarde_jour_semaine,
@@ -57,6 +61,8 @@ export async function modifier(ecoleId, patch) {
     ...(patch.ville !== undefined && { ville: patch.ville }),
     ...(patch.siret !== undefined && { siret: patch.siret }),
     ...(patch.iban !== undefined && { iban: patch.iban }),
+    ...(patch.emailContact !== undefined && { email_contact: patch.emailContact }),
+    ...(patch.emailTresorier !== undefined && { email_tresorier: patch.emailTresorier }),
   }
   return versEcran(await requete(`/ecoles/${ecoleId}`, { method: 'PUT', body: JSON.stringify(corps) }))
 }

@@ -198,7 +198,7 @@ class Comptes:
         email=None,
         telephone: str | None = None,
     ) -> Compte:
-        if role not in r.ROLES or role in (r.OWNER, r.SUPERUSER):
+        if role not in r.ROLES or role in (r.OWNER, r.TRESORIER, r.SUPERUSER):
             # Owner ne se donne pas à la création : il s'ajoute à un admin
             # (voir ci-dessous et §2.4), jamais seul (owner ⇒ admin).
             raise ValueError(f"Rôle inconnu ou non attribuable à la création : {role}")
@@ -267,6 +267,8 @@ class Comptes:
             return
         if role == r.OWNER and not r.is_admin(compte):
             raise RegleRoles("Seul un administrateur peut être administrateur principal")
+        if role == r.TRESORIER and not r.is_admin(compte):
+            raise RegleRoles("Seul un administrateur peut être trésorier")
         # Un élève peut être administrateur (et administrateur principal),
         # mais jamais professeur ; et le rôle élève ne s'ajoute pas après
         # coup à un compte existant (il vient avec sa fiche élève).
@@ -281,11 +283,11 @@ class Comptes:
     def retirer_role(
         self, db: Session, compte: Compte, role: str, *, autoriser_sans_owner: bool = False
     ) -> None:
-        """Retirer `admin` retire aussi `owner` (owner ⇒ admin). Refusé si
+        """Retirer `admin` retire aussi `owner` et `tresorier` (tous deux ⇒ admin). Refusé si
         l'école se retrouverait sans aucun Owner, ou le compte sans rôle.
         `autoriser_sans_owner` : réservé au Superuser, qui peut dépanner une
         école en retirant même son dernier Owner (§2.5)."""
-        a_retirer = {role, r.OWNER} if role == r.ADMIN else {role}
+        a_retirer = {role, r.OWNER, r.TRESORIER} if role == r.ADMIN else {role}
         restants = [ligne for ligne in compte.roles if ligne.role not in a_retirer]
         if not restants:
             raise RegleRoles("Un compte doit garder au moins un rôle")

@@ -36,6 +36,11 @@ class Ecole(Base):
     # IBAN (demande du 2026-10-15) : rangé sans espaces, en majuscules,
     # clé de contrôle vérifiée (voir ecoles.py:normaliser_iban).
     iban: Mapped[str | None] = mapped_column(String(34), nullable=True)
+    # Adresses mail de l'école (16 octobre, spec/modules/notes-de-frais.md
+    # §9) : contact (« répondre à » des mails de l'école) et trésorerie
+    # (reçoit les notes de frais envoyées). Optionnelles, en minuscules.
+    email_contact: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    email_tresorier: Mapped[str | None] = mapped_column(String(255), nullable=True)
 
     # --- Personnalisation de l'application (spec §2.7, §5.1.1, §6.1 ;
     # 2026-10-15). Vide = valeur par défaut de Contretemps (§7). Les images

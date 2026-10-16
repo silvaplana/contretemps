@@ -26,6 +26,7 @@ def _sortie(compte: Compte) -> dict:
         "email": compte.email,
         "emails": compte.emails,
         "est_owner": roles.is_owner(compte),
+        "est_tresorier": roles.is_tresorier(compte),
         "est_prof": roles.is_prof(compte),
         "est_eleve": roles.is_eleve(compte),
     }
@@ -67,15 +68,19 @@ class AdministrateursReceiver:
     def _owner_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_owner(appelant, ecole_id)
 
-    def _cible_pour_owner(self, db: Session, compte_id: int, appelant: Compte) -> Compte:
+    def _cible_pour_owner(
+        self, db: Session, compte_id: int, appelant: Compte, *, soi_meme_permis: bool = False
+    ) -> Compte:
         """L'administrateur visé, après les vérifications : l'appelant est
-        Owner de SON école, et ce n'est pas lui-même."""
+        Owner de SON école, et ce n'est pas lui-même (sauf `soi_meme_permis` :
+        cocher ou décocher sa propre case Trésorier, souvent le cas d'un
+        bureau d'une seule personne)."""
         cible = self.client.get(db, compte_id)
         rbac.require_owner(appelant, cible.ecole_id if cible else None)
         if cible is None:
             raise HTTPException(status_code=404, detail="Administrateur introuvable")
         # `appelant` peut être None quand les tests neutralisent le RBAC.
-        if appelant is not None and appelant.id == cible.id:
+        if appelant is not None and appelant.id == cible.id and not soi_meme_permis:
             raise HTTPException(
                 status_code=403, detail="Un administrateur principal ne peut pas modifier ou supprimer sa propre ligne"
             )
@@ -117,12 +122,14 @@ class AdministrateursReceiver:
         db: Session = Depends(get_db),
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        cible = self._cible_pour_owner(db, compte_id, appelant)
         champs = donnees.model_dump(exclude_unset=True)
+        seulement_tresorier = set(champs) == {"tresorier"}
+        cible = self._cible_pour_owner(db, compte_id, appelant, soi_meme_permis=seulement_tresorier)
         owner = champs.pop("owner", None)
+        tresorier = champs.pop("tresorier", None)
         try:
             cible = self.client.modifier(
-                db, cible, champs=champs, owner=owner, par_superuser=_est_superuser(appelant)
+                db, cible, champs=champs, owner=owner, tresorier=tresorier, par_superuser=_est_superuser(appelant)
             )
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
