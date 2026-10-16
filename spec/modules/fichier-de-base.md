@@ -74,6 +74,14 @@ Deux manières, **au choix et mélangeables** (Seb, 16 octobre) :
   peut viser l'autre (« dans les résultats, fais le total par cours »). Toute la discussion est gardée en
   base avec le fichier ; chaque réponse de l'IA crée une version, sur laquelle on peut revenir (§5.4).
   L'IA répond par opérations sur les blocs, jamais par du HTML.
+  **Sources d'inspiration (Seb, 16 octobre)** : dans le chat, on peut **glisser, coller ou joindre**
+  une image (capture d'un formulaire vu sur WhatsApp, photo d'une affiche), **prendre une photo avec le
+  téléphone** (appareil photo), ou coller un **lien** vers une page web, puis dire « fais la même
+  chose ». Bouton trombone à gauche de la zone de saisie : Prendre une photo · Choisir une image ·
+  Coller un lien ; sur ordinateur, glisser-déposer dans le fil ou Ctrl+V. L'IA lit l'image (modèle avec
+  vision) ou la page (lecture web de l'assistant, déjà en place) et en tire la structure et les questions,
+  jamais le texte ou les images tels quels si elles ne sont pas à l'école. Les pièces jointes restent dans
+  l'historique du chat, avec le fichier ; une image peut aussi être reprise dans la page (bloc Image).
 - **À la main avec BlockNote**, en « ce que vous voyez est ce que vous obtenez » : on clique dans le texte
   et on corrige, « / » ajoute un bloc, on glisse les blocs pour les réordonner. BlockNote lit et écrit le
   même JSON de blocs que le chat. Nos blocs à nous (question, signature, paiement…) sont déclarés comme
