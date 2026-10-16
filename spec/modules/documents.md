@@ -1437,8 +1437,8 @@ ressemblent.
   ajoutent le compteur dans la sous-ligne (« 12/30 réponses », « 48 inscrits »).
 - « + Nouveau » montre les trois familles, chacune avec ses **modèles** (Convocation AG, Sondage,
   Inscription, Bilan financier, Présentation d'AG, Page de cours…) ; on en ajoute sans coder (§5.6).
-- La famille découle des blocs : un bloc qui pose une question fait passer en Question ; un bloc qui écrit
-  dans l'appli (inscription, paiement, adhésion) fait passer en Action. Elle est calculée, pas choisie.
+- ~~La famille découle des blocs~~ : **depuis le 16 octobre (Seb), la nature se choisit** à la création
+  (Informer · Questionner · Agir) et décide des blocs proposés ; voir `fichier-de-base.md` §1.
 - Page, diaporama ou tableau n'est que la **forme de sortie** (PDF A4, .pptx, .xlsx), indépendante de la
   famille.
 

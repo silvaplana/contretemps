@@ -19,9 +19,14 @@ Un fichier de base contient **au plus deux formulaires**, qui sont toujours des 
 | **d'entrée** | **Formulaire d'entrée** | ce que les gens reçoivent et ouvrent | page à lire | page avec des questions | page avec des questions qui créent quelque chose (inscription, paiement…) |
 | **de sortie** | **Formulaire de résultat** | le tableau qui rassemble les réponses | aucun | les réponses, restées dans le fichier | les réponses, plus ce qu'elles ont créé (membres, inscriptions, paiements, « À rapprocher ») |
 
-La famille reste **déduite du contenu** (§7.1 bis) : dès qu'on ajoute une question à la page, le fichier
-passe en Questionner et le formulaire de sortie apparaît ; dès qu'une question écrit dans l'appli, il
-passe en Agir. Rien n'est choisi à la création.
+**La nature se choisit** (Seb, 16 octobre, remplace « déduite du contenu » du 15 octobre) : un fichier
+vierge s'ouvre sur « Que voulez-vous faire avec ce fichier ? » et trois cartes Informer · Questionner ·
+Agir (une phrase et des exemples chacune). Un fichier créé depuis une tuile du « + » ou par l'assistant
+arrive déjà avec sa nature. Elle décide de ce qui est proposé : les blocs du menu « + Ajouter un bloc »
+(Informer : mise en page seulement ; Questionner : + questions ; Agir : + blocs qui écrivent dans
+l'appli), la présence du formulaire de résultat et de l'onglet Résultats, les réglages de Diffuser. Elle
+se change en touchant la pastille de nature dans l'en-tête, tant que le fichier est en Brouillon ; les
+blocs devenus inutiles sont retirés, avec Annuler 10 s.
 
 Comme tout fichier, il a **son état** (Brouillon / Validé / Officiel, §5.4 et §7.1 ter) et **ses
 permissions** (§4.4, Qui a accès ?), déjà définis : le fichier de base s'y appuie sans rien y changer.
