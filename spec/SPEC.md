@@ -983,6 +983,8 @@ vocabulaire entre l'admin et l'utilisateur (voir §6.8).
 ⚠️ **Proposition non validée.** Identité de la personne connectée, autres profils de la
 famille, paramètres (notifications, **changer mon mot de passe**, §2.2), bouton **Se déconnecter**. Pour un
 compte Professeur, lien **"Mes heures"** vers l'écran Comptage d'heures (§5.7).
+Pour tous les rôles, ligne **"Mes notes de frais"** (décision de Seb, 16 octobre) : module
+[`modules/notes-de-frais.md`](modules/notes-de-frais.md), traité par les trésoriers dans l'onglet Financier.
 
 ![Écran profil (proposition)](images/profil.png)
 
