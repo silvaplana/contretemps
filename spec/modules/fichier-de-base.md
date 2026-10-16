@@ -16,8 +16,8 @@ Un fichier de base contient **au plus deux formulaires**, qui sont toujours des 
 
 | Formulaire | À l'écran | Ce que c'est | Informer | Questionner | Agir |
 |---|---|---|---|---|---|
-| **d'entrée** | **La page** | ce que les gens reçoivent et ouvrent | page à lire | page avec des questions | page avec des questions qui créent quelque chose (inscription, paiement…) |
-| **de sortie** | **Les résultats** | le tableau qui rassemble les réponses | aucun | les réponses, restées dans le fichier | les réponses, plus ce qu'elles ont créé (membres, inscriptions, paiements, « À rapprocher ») |
+| **d'entrée** | **Formulaire d'entrée** | ce que les gens reçoivent et ouvrent | page à lire | page avec des questions | page avec des questions qui créent quelque chose (inscription, paiement…) |
+| **de sortie** | **Formulaire de résultat** | le tableau qui rassemble les réponses | aucun | les réponses, restées dans le fichier | les réponses, plus ce qu'elles ont créé (membres, inscriptions, paiements, « À rapprocher ») |
 
 La famille reste **déduite du contenu** (§7.1 bis) : dès qu'on ajoute une question à la page, le fichier
 passe en Questionner et le formulaire de sortie apparaît ; dès qu'une question écrit dans l'appli, il
@@ -43,7 +43,7 @@ remplacent ceux de Docs, il n'y a donc pas de quatrième niveau de navigation (�
 
 | Onglet | Rôle | Sélecteur interne | Bouton principal | Informer | Questionner | Agir |
 |---|---|---|---|---|---|---|
-| **Préparer** | concevoir les formulaires (design, à préciser par Seb) | `La page \| Les résultats` | **Valider** | ✓ (sans sélecteur) | ✓ | ✓ |
+| **Préparer** | concevoir les formulaires (design, à préciser par Seb) | `Formulaire d'entrée \| Formulaire de résultat` | **Valider** | ✓ (sans sélecteur) | ✓ | ✓ |
 | **Aperçu** | voir exactement ce que les gens verront, et l'essayer | `Téléphone \| Ordinateur \| A4` | **Essayer** | ✓ | ✓ | ✓ |
 | **Diffuser** | qui reçoit, comment, jusqu'à quand | `Des personnes choisies \| Tout le monde` (§5.9) | **Envoyer** ou **Publier** | ✓ | ✓ | ✓ |
 | **Résultats** | le formulaire de sortie, rempli | aucun | **Exporter** | — | ✓ | ✓ |
@@ -55,9 +55,9 @@ Libellés courts pour tenir à quatre sur 360 px en 17 px (« Préparer », « A
 
 Le seul onglet où l'on modifie. Deux positions quand il y a des questions :
 
-- **La page** : le formulaire d'entrée, fait de blocs (texte, image, vidéo, questions, signature,
+- **Formulaire d'entrée** : fait de blocs (texte, image, vidéo, questions, signature,
   paiement… §5.8). Pour Informer c'est tout l'onglet.
-- **Les résultats** : le formulaire de sortie. Il est **fabriqué tout seul** à partir des questions
+- **Formulaire de résultat** : lui aussi fait de blocs (voir plus bas). Il est **fabriqué tout seul** à partir des questions
   (une colonne par question, un compteur par choix, total des montants), donc on peut ne jamais y
   toucher. On peut le retoucher : ordre et visibilité des colonnes, compteurs en tête (« 48 / 63 ont
   répondu », « 2 340 € encaissés », « quorum atteint »), un graphique simple par question à choix,
@@ -79,16 +79,21 @@ Deux manières, **au choix et mélangeables** (Seb, 16 octobre) :
   même JSON de blocs que le chat. Nos blocs à nous (question, signature, paiement…) sont déclarés comme
   blocs BlockNote **avec les mêmes composants React que l'Aperçu** : ce qu'on voit en modifiant est ce que
   les gens recevront.
-- Les deux se suivent sans conflit : une modification à la main crée une version « modifiée à la main » et
-  est signalée au chat, qui repart toujours de la version courante (§5.4).
-- Les résultats se retouchent par le chat ; à la main, seulement l'ordre et l'affichage des colonnes et
-  des compteurs (pas de BlockNote, ce n'est pas du texte).
+- **Une seule source : le JSON** (Seb, 16 octobre). Le chat et BlockNote modifient le même JSON et
+  l'écoutent tous les deux : une opération du chat apparaît aussitôt dans BlockNote, une correction à la
+  main est enregistrée (version « modifiée à la main ») et le chat repart toujours de la version courante
+  (§5.4).
+- **Les deux formulaires s'éditent des deux façons**. Le formulaire de résultat est lui aussi une suite de
+  blocs : texte libre (un titre, une phrase d'explication) et blocs de résultat propres au socle
+  (**Tableau des réponses**, **Compteur** « 48 / 63 ont répondu », **Graphique** d'une question à choix,
+  **Total** d'un montant, **À rapprocher** pour Agir). On les déplace et on les règle dans BlockNote
+  comme n'importe quel bloc ; le contenu (les réponses) vient de la base, jamais écrit à la main.
 
 ### 2.2 Aperçu
 
 La page telle que la recevra un membre, sans aucun outil autour : téléphone, ordinateur, ou A4 (le PDF
 figé est imprimé par Chromium depuis cette même page). Pour Questionner et Agir, le sélecteur
-`La page | Les résultats` existe aussi ici : les résultats sont montrés avec des réponses d'exemple tant
+`Formulaire d'entrée | Formulaire de résultat` existe aussi ici : les résultats sont montrés avec des réponses d'exemple tant
 qu'il n'y en a pas de vraies.
 
 **Essayer** remplit la page pour de vrai, en mode test : la réponse apparaît dans les résultats avec une
@@ -147,7 +152,7 @@ peuvent servir de fichier lié (le PV lit les votes).
 - Un **parcours** (Convoquer l'AG) est un modèle qui pose d'abord quelques questions **à celui qui crée
   le fichier** (date, lieu, ordre du jour), pas aux membres. Ce n'est pas un formulaire de plus : quand on
   modifie le modèle lui-même, l'onglet Préparer gagne une troisième position
-  `La page | Les résultats | Avant de commencer` (questions au créateur, §5.6), qui n'existe que sur les
+  `Formulaire d'entrée | Formulaire de résultat | Avant de commencer` (questions au créateur, §5.6), qui n'existe que sur les
   modèles. L'éditeur `Contenu | Questions | Envoi` du §5.6 devient donc ces onglets-ci, il n'y a qu'un
   seul éditeur.
 
@@ -161,12 +166,12 @@ Pas de nouvelle table pour le cadre (le détail des blocs viendra avec le design
 
 ```json
 { "schema": 1,
-  "page":    { "blocks": [ ... ] },
-  "results": { "columns": [ ... ], "summaries": [ ... ], "group_by": null },
+  "entry":   { "blocks": [ ... ] },
+  "result":  { "blocks": [ ... ] },
   "starter": { "questions": [ ... ] } }
 ```
 
-  `results` vide = fabriqué automatiquement depuis les questions ; `starter` seulement sur un modèle ;
+  `result` vide = fabriqué automatiquement depuis les questions (Tableau des réponses + un Compteur) ; `starter` seulement sur un modèle ;
 - la diffusion dans `doc_collections`, les réponses dans `doc_responses` (§5.10), avec une colonne
   `is_test` pour les essais.
 
@@ -174,7 +179,7 @@ Pas de nouvelle table pour le cadre (le détail des blocs viendra avec le design
 
 1. **Noms des onglets** : `Préparer | Aperçu | Diffuser | Résultats`. Recommandation : **ceux-là**.
    « Diffuser » plutôt que « Publier », parce qu'il couvre aussi l'envoi à des personnes choisies.
-2. **Noms des deux formulaires à l'écran** : « La page » et « Les résultats » (recommandé), ou
-   « Formulaire d'entrée » et « Formulaire de sortie ».
+2. ~~Noms des deux formulaires~~ : **décidé par Seb le 16 octobre : « Formulaire d'entrée » et
+   « Formulaire de résultat »**, toujours ces deux noms.
 3. **Informer sans onglet Résultats**, le « qui a lu » étant dans Diffuser. Recommandation : **oui**.
 4. **Onglet d'ouverture** : Aperçu, sauf fichier neuf sur Préparer. Recommandation : **oui**.
