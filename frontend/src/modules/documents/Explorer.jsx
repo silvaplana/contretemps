@@ -928,6 +928,14 @@ export default function Explorer({ orgId, memoire }) {
     } else if (carte.kind === 'deplacer') await api.move(carte.element_id, carte.espace, carte.dossier_destination_id)
     else if (carte.kind === 'renommer') await api.rename(carte.element_id, carte.nouveau_nom)
     else if (carte.kind === 'ajouter_fichier') await ajouterProduit(orgId, carte.jeton, carte.espace, carte.dossier_parent_id)
+    else if (carte.kind === 'creer_fichier_appli') {
+      // Comme + > Créer un fichier : le fichier s'ouvre aussitôt, en Brouillon.
+      const f = await api.createApp(carte.espace, carte.dossier_parent_id, carte.nature, carte.nom)
+      await recharger()
+      setAppli({ id: f.id, name: f.name, kind: 'app', family: carte.nature })
+      montrerToast(`Fait : ${carte.libelle}`)
+      return
+    }
     await recharger()
     montrerToast(`Fait : ${carte.libelle}`)
   }

@@ -149,6 +149,11 @@ OUTILS = [
            "Propose de créer un fichier texte rédigé par toi (la personne confirme). Nom en .txt ou .md.",
            {"espace": ESPACE, "dossier_parent_id": DOSSIER, "nom": _prop("string", "Nom du fichier."),
             "contenu": _prop("string", "Texte complet du fichier.")}),
+    _outil("proposer_creer_fichier_appli",
+           "Propose de créer un fichier de l'appli vide (la personne confirme ; il s'ouvre alors, en Brouillon). "
+           "Nature : inform (Informer, à lire), question (Questionner), act (Agir : inscriptions, paiements).",
+           {"espace": ESPACE, "dossier_parent_id": DOSSIER, "nature": _prop("string", "Nature du fichier.", enum=["inform", "question", "act"]),
+            "nom": _prop("string", "Nom du fichier.")}),
     _outil("proposer_deplacer", "Propose de déplacer un dossier ou un fichier (la personne confirme).",
            {"element_id": _prop("integer", "Numéro de l'élément à déplacer."), "espace": ESPACE,
             "dossier_destination_id": DOSSIER}),
@@ -381,6 +386,10 @@ class Assistant:
         elif nom == "proposer_creer_fichier_texte":
             ou = self._nom_dossier(db, member, args["espace"], args["dossier_parent_id"])
             carte["libelle"] = f"Créer le fichier « {args['nom']} » dans {ou}"
+        elif nom == "proposer_creer_fichier_appli":
+            ou = self._nom_dossier(db, member, args["espace"], args["dossier_parent_id"])
+            nature = {"inform": "Informer", "question": "Questionner", "act": "Agir"}.get(args["nature"], args["nature"])
+            carte["libelle"] = f"Créer le fichier {nature} « {args['nom']} » dans {ou}"
         elif nom == "proposer_deplacer":
             element = self.documents.detail(db, member, args["element_id"])
             ou = self._nom_dossier(db, member, args["espace"], args["dossier_destination_id"])

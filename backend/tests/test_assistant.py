@@ -353,3 +353,29 @@ def test_l_assistant_ecrit_un_fichier_de_l_appli(client, monde, monkeypatch):
     retour = faux.demandes[-1][-1]["content"][0]
     assert retour["is_error"] and "Agir" in retour["content"]
     assert client.get(f"{base}/nodes/{f['id']}/app", headers=entetes).json()["version"]["number"] == 3
+
+
+def test_l_assistant_propose_de_creer_un_fichier_de_l_appli(client, monde, monkeypatch):
+    """« Crée un fichier Informer nommé trumuche » : une carte Faire / Annuler,
+    comme + > Créer un fichier ; rien n'est créé avant « Faire »."""
+    ecole = monde["ecole"]
+    entetes = {"Authorization": f"Bearer {_en_superuser(client)}", rbac.ENTETE_COMPTE: str(monde["su"].id)}
+    saison = next(e for e in client.get(f"/documents/orgs/{ecole.id}/spaces/private", headers=entetes).json()["items"]
+                  if e["system_kind"] == "period")
+    faux = FauxClaude([
+        _message(Bloc(type="tool_use", id="t1", name="proposer_creer_fichier_appli",
+                      input={"espace": "private", "dossier_parent_id": saison["id"], "nature": "inform", "nom": "trumuche"}),
+                 stop="tool_use"),
+        _message(Bloc(type="text", text="Je vous propose de créer « trumuche ».")),
+    ])
+    monkeypatch.setattr(main.assistant_client, "_client", faux)
+    reponse = client.post(
+        f"/assistant/orgs/{ecole.id}/messages",
+        json={"texte": "Crée un nouveau fichier informer nommé trumuche", "contexte": {"space": "private", "folder_id": saison["id"]}},
+        headers=entetes,
+    )
+    carte = next(e for e in _evenements(reponse) if e["type"] == "action")
+    assert carte["kind"] == "creer_fichier_appli" and carte["nature"] == "inform" and carte["nom"] == "trumuche"
+    assert carte["libelle"].startswith("Créer le fichier Informer « trumuche » dans Privé › Saison")
+    noms = [e["name"] for e in client.get(f"/documents/orgs/{ecole.id}/spaces/private?folder={saison['id']}", headers=entetes).json()["items"]]
+    assert "trumuche" not in noms
