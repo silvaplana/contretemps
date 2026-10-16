@@ -5,6 +5,8 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+const cibles = (liste) => liste.map(({ type, id }) => ({ type, id }))
+
 export class ErreurDocuments extends Error {
   constructor(status, message) {
     super(message)
@@ -67,6 +69,31 @@ export function documentsApi(orgId) {
     setAccess: (id, restricted, entries) =>
       appel(`${base}/nodes/${id}/access`, json('PUT', { restricted, entries })),
     principals: (q) => appel(`${base}/principals?q=${encodeURIComponent(q)}`),
+    // Fichiers de l'appli (fichier de base, spec fichier-de-base.md).
+    createApp: (space, parentId, family, name) =>
+      appel(`${base}/apps`, json('POST', { space, parent_id: parentId, family, name })),
+    getApp: (id) => appel(`${base}/nodes/${id}/app`),
+    saveApp: (id, content, family, baseVersion) =>
+      appel(`${base}/nodes/${id}/app`, json('PUT', { content, family, base_version: baseVersion })),
+    tryApp: (id, values) => appel(`${base}/nodes/${id}/app/try`, json('POST', { values })),
+    appResponses: (id) => appel(`${base}/nodes/${id}/app/responses`),
+    clearTests: (id) => appel(`${base}/nodes/${id}/app/responses/tests`, { method: 'DELETE' }),
+    // Page en ligne (tout le monde, sans compte).
+    publish: (id) => appel(`${base}/nodes/${id}/app/publication`, { method: 'POST' }),
+    unpublish: (id) => appel(`${base}/nodes/${id}/app/publication`, { method: 'DELETE' }),
+    // Envoi à des personnes choisies (lien personnel par email).
+    sendPreview: (id, principals) =>
+      appel(`${base}/nodes/${id}/app/sends/preview`, json('POST', { principals: cibles(principals) })),
+    send: (id, principals, message) =>
+      appel(`${base}/nodes/${id}/app/sends`, json('POST', { principals: cibles(principals), message: message || null })),
+    sends: (id) => appel(`${base}/nodes/${id}/app/sends`),
+    // Modèles de l'école (« Faire un modèle », tuiles du +).
+    makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
+    templates: () => appel(`${base}/app-templates`),
+    useTemplate: (templateId, space, parentId) =>
+      appel(`${base}/app-templates/${templateId}/use`, json('POST', { space, parent_id: parentId })),
+    updateTemplate: (templateId, changes) => appel(`${base}/app-templates/${templateId}`, json('PATCH', changes)),
+    deleteTemplate: (templateId) => appel(`${base}/app-templates/${templateId}`, { method: 'DELETE' }),
     // Contenu protégé : lu avec la session, rendu par une URL blob: (à
     // libérer avec URL.revokeObjectURL quand on n'en a plus besoin).
     // `preview` : aperçu PDF d'un fichier Word, Excel ou PowerPoint.

@@ -108,6 +108,21 @@
   color: var(--text-h);
 }
 
+.app-header__assistant {
+  width: 44px;
+  height: 44px;
+  color: var(--accent);
+}
+
+.app-header__assistant svg {
+  width: 26px;
+  height: 26px;
+}
+
+.app-header__assistant.is-active {
+  background: var(--accent-bg);
+}
+
 .famille-selector__role {
   margin-left: auto;
   font-size: 12px;

@@ -39,6 +39,8 @@ def _fusionner(compte: Compte, profil: ProfilEleve) -> dict:
         "montant_total_annee": profil.montant_total_annee,
         "montant_paye": profil.montant_paye,
         "commentaire_admin": profil.commentaire_admin,
+        "ligne_rouge": bool(profil.ligne_rouge),
+        "cellules_rouges": list(profil.cellules_rouges or []),
         "contacts": [],
     }
 
@@ -139,6 +141,8 @@ class ElevesReceiver:
         }
         if champs_compte:
             self.comptes.update(db, eleve_id, **champs_compte)
+        if "ligne_rouge" in champs:
+            champs["ligne_rouge"] = bool(champs["ligne_rouge"])
         if champs:
             self.client.update_profil(db, eleve_id, **champs)
         compte, profil = self._obtenir_ou_404(db, eleve_id)

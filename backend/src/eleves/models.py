@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -31,6 +31,12 @@ class ProfilEleve(Base):
     montant_total_annee: Mapped[float | None] = mapped_column(Float, nullable=True)
     montant_paye: Mapped[float] = mapped_column(Float, nullable=False, default=0)
     commentaire_admin: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Surlignage rouge d'Admin > Élèves (appui long) : toute la ligne, ou
+    # certaines colonnes (`nom`, `paiement`, `commentaire`… voir
+    # AdminEleves.jsx). Gardé en base depuis le 2026-10-16 pour que
+    # l'assistant puisse le poser et que tous les admins le voient.
+    ligne_rouge: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
+    cellules_rouges: Mapped[list | None] = mapped_column(JSON, nullable=True)
 
 
 class ContactEleve(Base):

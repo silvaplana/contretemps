@@ -11,9 +11,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -21,6 +21,16 @@ from db import get_db
 from .ports import Member
 from .service import DocError, Documents
 from .storage import FileTooLarge
+
+
+class Target(BaseModel):
+    type: str
+    id: str
+
+
+class SendRequest(BaseModel):
+    principals: list[Target] = Field(default_factory=list, max_length=200)
+    message: str | None = Field(default=None, max_length=2000)
 
 
 class NewFolder(BaseModel):
@@ -45,6 +55,39 @@ class NodeUpdate(BaseModel):
 class CopyTarget(BaseModel):
     space: str
     parent_id: int | None = None
+
+
+class NewApp(BaseModel):
+    space: str
+    parent_id: int | None = None
+    family: str
+    name: str | None = None
+
+
+class AppSave(BaseModel):
+    content: dict
+    family: str | None = None
+    # Version sur laquelle l'éditeur travaillait (détecte une modification
+    # faite ailleurs entre-temps).
+    base_version: int | None = None
+
+
+class AppAnswer(BaseModel):
+    values: dict
+
+
+class TemplateNew(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class TemplateUse(BaseModel):
+    space: str
+    parent_id: int | None = None
+
+
+class TemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    hidden: bool | None = None
 
 
 class AccessEntry(BaseModel):
@@ -209,6 +252,105 @@ class DocumentsReceiver:
                     db, self._member(org_id, m), node_id, data.restricted, [e.model_dump() for e in data.entries]
                 )
             )
+
+        # Fichiers de l'appli (fichier-de-base.md)
+        apps = self.client.apps
+
+        @self.app.post(base + "/apps", status_code=201)
+        def create_app(org_id: int, data: NewApp, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.create(db, self._member(org_id, m), data.space, data.parent_id, data.family, data.name))
+
+        @self.app.get(base + "/nodes/{node_id}/app")
+        def get_app(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.get(db, self._member(org_id, m), node_id))
+
+        @self.app.put(base + "/nodes/{node_id}/app")
+        def save_app(org_id: int, node_id: int, data: AppSave, db: Session = db_dep, m: Member = member):
+            return appel(
+                lambda: apps.save(db, self._member(org_id, m), node_id, data.content, data.family, data.base_version)
+            )
+
+        @self.app.post(base + "/nodes/{node_id}/app/try", status_code=201)
+        def try_app(org_id: int, node_id: int, data: AppAnswer, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.try_answer(db, self._member(org_id, m), node_id, data.values))
+
+        @self.app.get(base + "/nodes/{node_id}/app/responses")
+        def app_responses(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.responses(db, self._member(org_id, m), node_id))
+
+        @self.app.delete(base + "/nodes/{node_id}/app/responses/tests")
+        def clear_tests(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.clear_tests(db, self._member(org_id, m), node_id))
+
+        # Page en ligne (documents.md §5.5)
+        @self.app.post(base + "/nodes/{node_id}/app/publication")
+        def publish(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.publish(db, self._member(org_id, m), node_id))
+
+        @self.app.delete(base + "/nodes/{node_id}/app/publication")
+        def unpublish(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.unpublish(db, self._member(org_id, m), node_id))
+
+        # Routes publiques (sans compte) : la page en ligne et ses réponses.
+        # L'appli les déclare publiques (comptes/rbac.py).
+        @self.app.get("/documents/public/orgs/{org_id}/pages/{slug}")
+        def public_page(org_id: int, slug: str, db: Session = db_dep):
+            return appel(lambda: apps.public_page(db, org_id, slug))
+
+        @self.app.post("/documents/public/orgs/{org_id}/pages/{slug}/answers", status_code=201)
+        def public_answer(org_id: int, slug: str, data: AppAnswer, db: Session = db_dep):
+            return appel(lambda: apps.public_answer(db, org_id, slug, data.values))
+
+        # Diffuser à des personnes choisies (fichier-de-base.md §2.3)
+        sends = self.client.sends
+
+        @self.app.post(base + "/nodes/{node_id}/app/sends/preview")
+        def send_preview(org_id: int, node_id: int, data: SendRequest, db: Session = db_dep, m: Member = member):
+            cibles = [p.model_dump() for p in data.principals]
+            return appel(lambda: sends.preview(db, self._member(org_id, m), node_id, cibles))
+
+        @self.app.post(base + "/nodes/{node_id}/app/sends", status_code=201)
+        def send(
+            org_id: int, node_id: int, data: SendRequest, taches: BackgroundTasks, db: Session = db_dep, m: Member = member
+        ):
+            cibles = [p.model_dump() for p in data.principals]
+            resume, jobs = appel(lambda: sends.send(db, self._member(org_id, m), node_id, cibles, data.message))
+            taches.add_task(sends.deliver, db.get_bind(), jobs)
+            return resume
+
+        @self.app.get(base + "/nodes/{node_id}/app/sends")
+        def send_list(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: sends.list(db, self._member(org_id, m), node_id))
+
+        # Le lien personnel reçu par email (public, sans compte).
+        @self.app.get("/documents/public/links/{token}")
+        def link_page(token: str, db: Session = db_dep):
+            return appel(lambda: sends.link_page(db, token))
+
+        @self.app.post("/documents/public/links/{token}/answers", status_code=201)
+        def link_answer(token: str, data: AppAnswer, db: Session = db_dep):
+            return appel(lambda: sends.link_answer(db, token, data.values))
+
+        # Modèles de l'école (fichier-de-base.md §5)
+        @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)
+        def make_template(org_id: int, node_id: int, data: TemplateNew, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.make_template(db, self._member(org_id, m), node_id, data.name))
+
+        @self.app.get(base + "/app-templates")
+        def templates(org_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.templates(db, self._member(org_id, m)))
+
+        @self.app.post(base + "/app-templates/{template_id}/use", status_code=201)
+        def use_template(org_id: int, template_id: int, data: TemplateUse, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.use_template(db, self._member(org_id, m), template_id, data.space, data.parent_id))
+
+        @self.app.patch(base + "/app-templates/{template_id}")
+        def update_template(org_id: int, template_id: int, data: TemplateUpdate, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.update_template(db, self._member(org_id, m), template_id, data.name, data.hidden))
+
+        @self.app.delete(base + "/app-templates/{template_id}", status_code=204)
+        def delete_template(org_id: int, template_id: int, db: Session = db_dep, m: Member = member):
+            appel(lambda: apps.delete_template(db, self._member(org_id, m), template_id))
 
         @self.app.get(base + "/principals")
         def principals(org_id: int, q: str = "", db: Session = db_dep, m: Member = member):

@@ -1,0 +1,49 @@
+/* Page en ligne d'un fichier de l'appli : la page seule, aux couleurs de
+   l'école (variables posées par api/apparence.js). */
+.pp {
+  /* Les variables du module documents utilisées par la page (documents.css). */
+  --dx-page: #ffffff;
+  --dx-page-line: #c9b59a;
+  --dx-line: var(--border);
+  --dx-muted: var(--text-muted);
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  padding: env(safe-area-inset-top) max(16px, env(safe-area-inset-right)) env(safe-area-inset-bottom) max(16px, env(safe-area-inset-left));
+}
+
+.pp-haut {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 16px 0;
+  font-family: var(--titres);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.pp-haut img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.pp-corps {
+  max-width: 430px;
+  margin: 0 auto;
+  padding-bottom: 32px;
+}
+
+.pp-erreur,
+.pp-note,
+.pp-attente {
+  margin: 12px 0;
+  font-size: 17px;
+}
+
+.pp-erreur {
+  color: var(--danger-text);
+}

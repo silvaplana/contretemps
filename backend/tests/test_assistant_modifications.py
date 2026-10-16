@@ -94,3 +94,33 @@ def test_creations_et_heures(db_session, monde):
     ana = db_session.query(Compte).filter_by(prenom="Ana").one()
     assert ana.telephone == "0600"
     assert [c.nom for c in CoursService().cours_de_leleve(db_session, ana.id)] == ["Éveil"]
+
+
+def test_commentaire_et_rouge_par_le_super_user(db_session, monde):
+    """Seb, 16 octobre : le Super User (comme un admin) lit et modifie le
+    commentaire de l'administration et met un élève en rouge par le chat."""
+    from assistant.donnees import DonneesEcole
+    from securite import mots_de_passe
+
+    su = Comptes().enregistrer_superuser(
+        db_session, nom="Richard", prenom="Sébastien", email="su@test.fr", mot_de_passe_hache=mots_de_passe.hacher("x" * 12),
+    )
+    m, e, leon = monde["m"], monde["ecole"], monde["leon"]
+    texte, carte = m.proposer(db_session, su, e, 9, {"titre": "Léon", "changements": [
+        {"type": "modifier_eleve", "eleve_id": leon.id, "champs": {
+            "commentaire_admin": "Rappeler la maman", "ligne_rouge": True, "cellules_rouges": ["paiement"],
+        }},
+        {"type": "modifier_eleve", "eleve_id": leon.id, "champs": {"cellules_rouges": ["inconnue"]}},
+    ]})
+    assert carte["lignes"] == ["Léon Perrin : commentaire vide → Rappeler la maman, en rouge non → oui, colonnes en rouge vide → paiement"]
+    assert "cellules_rouges" in texte  # la colonne inconnue est refusée
+    m.executer(db_session, su, e, 9, carte["jeton"], [0])
+    profil = db_session.query(ProfilEleve).filter_by(compte_id=leon.id).first()
+    assert profil.commentaire_admin == "Rappeler la maman" and profil.ligne_rouge is True and profil.cellules_rouges == ["paiement"]
+
+    fiche = DonneesEcole().executer(db_session, su, e, "fiche_eleve", {"eleve_id": leon.id})
+    assert "Commentaire de l'administration : Rappeler la maman" in fiche
+    assert "En rouge dans Admin > Élèves : toute la ligne, paiement" in fiche
+    # Le professeur ne voit ni le commentaire ni le rouge.
+    fiche_prof = DonneesEcole().executer(db_session, monde["prof"], e, "fiche_eleve", {"eleve_id": leon.id})
+    assert "Rappeler" not in fiche_prof and "rouge" not in fiche_prof

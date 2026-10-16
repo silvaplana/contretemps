@@ -33,6 +33,7 @@ from documents.service import DocError, Documents
 from documents.storage import guess_mime
 
 from .donnees import NOMS as OUTILS_ECOLE
+from .fichier_appli import CONSIGNE_FICHIER, OUTIL_FICHIER, FichierAppli
 from .donnees import OUTILS_DONNEES, DonneesEcole
 from .lecture import contenu_pour_claude
 from .modifications import OUTIL_MODIFICATIONS
@@ -67,7 +68,7 @@ et fichiers de l'onglet « Docs », et tu réponds aux questions sur les donnée
 (élèves, cours, professeurs, présences, heures des professeurs, chorégraphies, inscriptions, \
 saisons) grâce aux outils de lecture : ne réponds jamais de mémoire sur ces données, \
 consulte-les. Tu ne vois que ce que la personne a le droit de voir, et jamais les \
-informations de santé. Tu ne modifies aucune donnée de l'école.
+informations de santé. Tu ne modifies rien directement : tu proposes (voir plus bas).
 
 Les espaces : « Public » (visible par tous), « Privé » (l'équipe ; un dossier « Permanent » \
 et un dossier par saison), « Personnel » (les fichiers de la personne seule). Les éléments \
@@ -82,11 +83,13 @@ dossier ou d'un fichier.
 - Pour toute modification (créer, ranger, renommer), utilise un outil « proposer_… ». La \
 proposition s'affiche à la personne avec « Faire » et « Annuler » : elle décide. Dis-le en \
 une phrase, sans prétendre que c'est fait. Tu sauras au message suivant si elle l'a faite.
-- Un message commence par le contexte (où la personne se trouve dans Docs) : sers-t'en \
-pour comprendre « ce dossier » ou « ce fichier ».
+- Un message commence par le contexte (l'onglet de l'appli, ou dans Docs le dossier ouvert) : \
+sers-t'en pour comprendre « ce dossier » ou « ce fichier ». Tu es le même assistant dans tous \
+les onglets, avec la même conversation.
 
 Tu peux aussi proposer des changements dans les données de l'école (élèves, inscriptions aux \
-cours, paiements, présences, heures des professeurs, cours, chorégraphies) avec \
+cours, paiements, commentaire de l'administration, élève en rouge, présences, heures des \
+professeurs, cours, chorégraphies) avec \
 « proposer_modifications » : lis d'abord les données, puis regroupe tous les changements d'une \
 demande en un seul appel. La personne voit une carte récapitulative, décoche ce qu'elle ne veut \
 pas et valide : ne prétends jamais que c'est fait avant de l'apprendre au message suivant.
@@ -104,6 +107,7 @@ personne, enregistre-le dans le dossier $OUTPUT_DIR, dans la même commande que 
 fabrique, et liste ce dossier pour vérifier : il lui sera proposé avec « Faire / Annuler », \
 rangé dans le dossier qu'elle regarde. Donne-lui un nom clair en français (ex. \
 « Courbe des inscriptions.pdf »)."""
+CONSIGNE += CONSIGNE_FICHIER
 
 
 def _prop(type_, description, **autres):
@@ -147,6 +151,11 @@ OUTILS = [
            "Propose de créer un fichier texte rédigé par toi (la personne confirme). Nom en .txt ou .md.",
            {"espace": ESPACE, "dossier_parent_id": DOSSIER, "nom": _prop("string", "Nom du fichier."),
             "contenu": _prop("string", "Texte complet du fichier.")}),
+    _outil("proposer_creer_fichier_appli",
+           "Propose de créer un fichier de l'appli vide (la personne confirme ; il s'ouvre alors, en Brouillon). "
+           "Nature : inform (Informer, à lire), question (Questionner), act (Agir : inscriptions, paiements).",
+           {"espace": ESPACE, "dossier_parent_id": DOSSIER, "nature": _prop("string", "Nature du fichier.", enum=["inform", "question", "act"]),
+            "nom": _prop("string", "Nom du fichier.")}),
     _outil("proposer_deplacer", "Propose de déplacer un dossier ou un fichier (la personne confirme).",
            {"element_id": _prop("integer", "Numéro de l'élément à déplacer."), "espace": ESPACE,
             "dossier_destination_id": DOSSIER}),
@@ -170,6 +179,8 @@ OUTILS = [
     # Modifications des données de l'école, validées par la personne sur une
     # carte récapitulative (voir modifications.py).
     OUTIL_MODIFICATIONS,
+    # Fichier de l'appli ouvert : écrire ses deux formulaires (voir fichier_appli.py).
+    OUTIL_FICHIER,
 ]
 TAILLE_MAX_PRODUIT = 50 * 1024 * 1024
 # Fichiers glissés dans l'assistant (pièces jointes d'une question).
@@ -239,6 +250,7 @@ class Assistant:
         # Fichiers glissés dans l'assistant, en attente de la question :
         # jeton -> (org_id, person_id, nom, contenu).
         self.pieces: dict[str, tuple[int, int, str, bytes]] = {}
+        self.fichier_appli = FichierAppli(documents)
 
     @property
     def actif(self) -> bool:
@@ -264,7 +276,10 @@ class Assistant:
         espace = contexte.get("space") if contexte.get("space") in ESPACES else "private"
         lignes = [f"Contexte : la personne est dans l'espace « {ESPACES[espace]} »"]
         dossier_id = contexte.get("folder_id")
-        if dossier_id:
+        if contexte.get("onglet"):
+            # Hors de Docs : pas de dossier ouvert (« ici » = les fichiers vont à la racine de Privé).
+            lignes = [f"Contexte : la personne est dans l'onglet « {contexte['onglet']} » de l'appli, pas dans Docs"]
+        elif dossier_id:
             try:
                 d = self.documents.detail(db, member, int(dossier_id))
                 chemin = " › ".join([ESPACES[espace], *(p["name"] for p in d.get("path", [])), d["name"]])
@@ -295,6 +310,11 @@ class Assistant:
                     pass
             if noms:
                 lignes.append(f"Elle a sélectionné {len(noms)} éléments : {', '.join(noms)}.")
+        if contexte.get("app_id"):
+            try:
+                lignes.append(self.fichier_appli.contexte(db, member, int(contexte["app_id"]), contexte.get("form")))
+            except (DocError, ValueError):
+                pass
         for issue in contexte.get("actions") or []:
             lignes.append(f"Suite à ta proposition : {str(issue)[:300]}")
         return "\n".join(lignes)
@@ -305,6 +325,8 @@ class Assistant:
 
     @staticmethod
     def _ligne(e: dict) -> str:
+        if e["kind"] == "app":
+            return f"- [fichier de l'appli] {e['name']} (id {e['id']})"
         if e["kind"] == "folder":
             return f"- [dossier] {e['name']} (id {e['id']}, {e.get('child_count') or 0} éléments)"
         date = (e.get("updated_at") or "")[:10]
@@ -341,7 +363,11 @@ class Assistant:
                 self._ligne(e) + " dans " + " › ".join([ESPACES.get(e["space"], ""), *(p["name"] for p in e.get("path", []))])
                 for e in recents
             ) or "Aucun fichier.", None
+        if nom == "modifier_fichier_appli":
+            return self.fichier_appli.modifier(db, member, args)
         if nom == "lire_fichier":
+            if d.detail(db, member, args["fichier_id"])["kind"] == "app":
+                return self.fichier_appli.lire(db, member, args["fichier_id"]), None
             chemin, nom_fichier, mime = d.content(db, member, args["fichier_id"])
             return contenu_pour_claude(chemin, nom_fichier, mime), None
         if nom == "copier_fichier_dans_l_ordinateur":
@@ -365,6 +391,10 @@ class Assistant:
         elif nom == "proposer_creer_fichier_texte":
             ou = self._nom_dossier(db, member, args["espace"], args["dossier_parent_id"])
             carte["libelle"] = f"Créer le fichier « {args['nom']} » dans {ou}"
+        elif nom == "proposer_creer_fichier_appli":
+            ou = self._nom_dossier(db, member, args["espace"], args["dossier_parent_id"])
+            nature = {"inform": "Informer", "question": "Questionner", "act": "Agir"}.get(args["nature"], args["nature"])
+            carte["libelle"] = f"Créer le fichier {nature} « {args['nom']} » dans {ou}"
         elif nom == "proposer_deplacer":
             element = self.documents.detail(db, member, args["element_id"])
             ou = self._nom_dossier(db, member, args["espace"], args["dossier_destination_id"])

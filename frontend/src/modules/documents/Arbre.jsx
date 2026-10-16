@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { BubbleIcon, FolderIcon, PlusIcon } from './icons.jsx'
+import { FolderIcon, PlusIcon } from './icons.jsx'
 
 // Arborescence à gauche, sur ordinateur seulement (façon Google Drive, Seb
 // 15 octobre) : les espaces, et leurs dossiers à déplier. Un clic sur un nom
@@ -48,7 +48,7 @@ function IconeLigne({ children }) {
 }
 
 export default function Arbre({
-  api, spaces, space, folder, breadcrumb, version, onOpen, recentsActif, onRecents, onAccueil, onNouveau, onAssistant,
+  api, spaces, space, folder, breadcrumb, version, onOpen, recentsActif, onRecents, onAccueil, onNouveau,
 }) {
   const [enfants, setEnfants] = useState({}) // clé -> dossiers enfants
   // Choix de l'utilisateur (déplier / replier) ; sans choix, seul le chemin
@@ -126,15 +126,13 @@ export default function Arbre({
 
   return (
     <nav className="dx-arbre" aria-label="Dossiers">
-      {/* « Nouveau » et l'assistant en haut à gauche, comme dans Google Drive
-          (sur ordinateur, à la place des boutons ronds en bas, Seb 15 octobre). */}
+      {/* « Nouveau » en haut à gauche, comme dans Google Drive (sur
+          ordinateur, à la place du bouton rond en bas, Seb 15 octobre).
+          L'assistant est dans l'en-tête de l'appli (16 octobre). */}
       <div className="dx-arbre__boutons">
         <button type="button" className="dx-arbre__nouveau" onClick={onNouveau}>
           <PlusIcon />
           Nouveau
-        </button>
-        <button type="button" className="dx-arbre__assistant" onClick={onAssistant} aria-label="Assistant" title="Assistant">
-          <BubbleIcon />
         </button>
       </div>
       {/* Accueil (revenir au départ) et Récents, comme dans Google Drive. */}

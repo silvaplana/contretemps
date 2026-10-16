@@ -152,6 +152,33 @@ Chaque école a son adresse `https://<adresse>.contretemps.silvaplana.cloud`
   `backend/.env` revient à l'adresse générique (dépannage seulement).
 
 
+## Pages en ligne des fichiers (documents.md §5.5, depuis le 2026-10-16)
+
+Un fichier de l'appli « mis en ligne » (onglet Diffuser, en Officiel) a son
+adresse sous celle de l'école : `https://<page>.<adresse>.contretemps.silvaplana.cloud`
+(ex. `https://spectacle-de-juin.le-beausset.contretemps.silvaplana.cloud`).
+
+- **DNS** : rien à faire, le joker `*.contretemps` couvre aussi les noms à
+  deux niveaux.
+- **Gateway** (`~/gateway/Caddyfile`) : un bloc de plus, identique à celui
+  des écoles, pour les noms à deux niveaux (le `*` de Caddy ne vaut que pour
+  un niveau). Le backend n'accepte le certificat que si l'école existe et que
+  la page est en ligne (`/sous-domaines/existe`) :
+
+```caddyfile
+*.*.contretemps.silvaplana.cloud {
+	tls {
+		on_demand
+	}
+	reverse_proxy contretemps-frontend-ecoles:80
+}
+```
+
+  Puis `caddy validate` et `caddy reload` comme ci-dessus.
+- Le conteneur `frontend-ecoles` sert la page sans rien changer : l'appli
+  reconnaît l'adresse et n'affiche que la page (`frontend/src/pagePublique/`).
+
+
 ## OnlyOffice (édition Word / Excel / PowerPoint, essai depuis le 2026-10-16)
 
 Serveur de documents **partagé par toutes les applis du VPS**, hors de ce dépôt :

@@ -489,6 +489,9 @@ s'affiche avec une tuile grise « Type inconnu » et n'est pas ouvrable : erreur
 
 ### 5.4 Socle commun des A-documents (précisions de Seb du 14 octobre)
 
+> Le cadre d'un fichier de l'appli ouvert (onglets Préparer, Aperçu, Diffuser, Résultats ; formulaire
+> d'entrée et de sortie) est décrit dans `fichier-de-base.md`.
+
 Tout A-document (document vivant) a les mêmes six choses, fournies **par le module documents** et non
 réécrites par chaque type : un état, un espace de génération par IA avec ses prompts, des modèles dont
 s'inspirer, un choix du modèle d'IA, une version générée puis des versions modifiées, et le meilleur
@@ -864,16 +867,26 @@ Certains types produisent une **page publique** : un formulaire d'inscription, u
 page d'événement. Ils déclarent `publishable=True`. L'action « Publier en ligne » rend la page
 accessible immédiatement, **sans déploiement** :
 
-- adresse : `https://<préfixe>.<appli>.silvaplana.cloud/<slug>`, ex.
-  `https://le-beausset.contretemps.silvaplana.cloud/inscription`. Le **préfixe** est choisi par
-  l'organisation dans sa Personnalisation (« Adresse web de l'appli », colonne `sous_domaine`, déjà en
-  place dans Contretemps, SPEC §2.7) ; le `slug` de la page est proposé à partir du nom et modifiable,
-  unique dans l'organisation ;
-- le DNS `*.<appli>.silvaplana.cloud` et le TLS à la demande de Caddy amènent déjà tous les
-  sous-domaines à l'app ; le serveur reconnaît l'organisation par l'en-tête `Host` (routes publiques
-  seulement), puis une route publique du core `GET /{page_slug}` cherche la publication et demande au
-  module du type de rendre la page. Changer de préfixe : l'ancien redirige 6 mois (déjà en place).
-  Publier, dépublier ou changer de version = une ligne en base, effet immédiat ;
+- adresse (Seb, 16 octobre) : **chaque page publiée a son propre sous-domaine, sous celui de l'école** :
+  `https://<page>.<école>.<appli>.silvaplana.cloud`, ex.
+  `https://inscription.le-beausset.contretemps.silvaplana.cloud`. `<école>` est l'adresse choisie par
+  l'organisation dans sa Personnalisation (colonne `sous_domaine`, SPEC §2.7) ; `<page>` est **créé
+  automatiquement** à partir du nom du fichier (minuscules, sans accents, `[a-z0-9-]`, 3 à 40 caractères :
+  « Convocation AG 2026 » → `convocation-ag-2026`), modifiable ensuite ;
+- **jamais deux fois le même nom dans une école** : contrainte d'unicité `(org_id, slug)` sur
+  `doc_publications`, y compris pour les pages dépubliées (un vieux lien ne doit jamais tomber sur une
+  autre page). Si le nom est pris, l'appli ajoute un numéro : `convocation-ag-2026-2`, `-3`… Noms réservés
+  refusés : `www`, `api`, `admin`, `app`, `docs`, `mail`, `static`. Renommer une page : l'ancien nom reste
+  réservé et redirige 6 mois, comme pour l'école ;
+- la racine `https://<école>.<appli>.silvaplana.cloud/` reste l'appli de l'école (et plus tard son site
+  public, §5.7) ;
+- le DNS `*.<appli>.silvaplana.cloud` couvre aussi ces adresses à deux niveaux (un joker DNS vaut pour
+  tous les noms en dessous) ; Caddy obtient un certificat par adresse à la première visite
+  (`on_demand_tls`), après avoir demandé au backend si la page existe
+  (`GET /api/ecoles/sous-domaine/<adresse>/existe` reconnaît aussi `<page>.<école>`). Le serveur
+  reconnaît l'école et la page par l'en-tête `Host` (routes publiques seulement), cherche la publication
+  et demande au module du type de rendre la page. Publier, dépublier ou changer de version = une ligne
+  en base, effet immédiat ;
 - table `doc_publications` : nœud, `slug`, version publiée (`pinned_version_id`, jamais le brouillon en
   cours), `published_by`, `published_at`, `unpublished_at`, compteur de visites ;
 - seule une version **Validée ou Officielle** peut être publiée, par le niveau `manage` ; modifier le
@@ -1164,7 +1177,7 @@ choses varient, et elles sont indépendantes :
 | Position | Qui reçoit la page | Ce que ça donne |
 |---|---|---|
 | **Des personnes choisies** | membres, groupes, rôles, adresses externes | un **lien personnel** par personne : on sait qui a lu ou répondu, réponses pré-remplies avec sa fiche, relances aux retardataires, date limite, droits de lecture ou de modification dans l'appli ; export PDF ou Word possible |
-| **Tout le monde** | n'importe qui ayant l'adresse | une **adresse publique** `https://<préfixe>.<appli>.silvaplana.cloud/<page>` (§5.5), à mettre sur le site, une affiche (QR code), les réseaux ; les répondants s'identifient en remplissant (nom, email) ; réservé aux versions Validées ou Officielles |
+| **Tout le monde** | n'importe qui ayant l'adresse | une **adresse publique** `https://<page>.<école>.<appli>.silvaplana.cloud` (§5.5), à mettre sur le site, une affiche (QR code), les réseaux ; les répondants s'identifient en remplissant (nom, email) ; réservé aux versions Validées ou Officielles |
 
 Si le document contient des blocs à remplir, les deux positions alimentent **le même tableau de réponses**
 (§5.10) : une inscription peut être envoyée aux anciens adhérents par lien personnel **et** publiée pour
@@ -1424,8 +1437,8 @@ ressemblent.
   ajoutent le compteur dans la sous-ligne (« 12/30 réponses », « 48 inscrits »).
 - « + Nouveau » montre les trois familles, chacune avec ses **modèles** (Convocation AG, Sondage,
   Inscription, Bilan financier, Présentation d'AG, Page de cours…) ; on en ajoute sans coder (§5.6).
-- La famille découle des blocs : un bloc qui pose une question fait passer en Question ; un bloc qui écrit
-  dans l'appli (inscription, paiement, adhésion) fait passer en Action. Elle est calculée, pas choisie.
+- ~~La famille découle des blocs~~ : **depuis le 16 octobre (Seb), la nature se choisit** à la création
+  (Informer · Questionner · Agir) et décide des blocs proposés ; voir `fichier-de-base.md` §1.
 - Page, diaporama ou tableau n'est que la **forme de sortie** (PDF A4, .pptx, .xlsx), indépendante de la
   famille.
 
@@ -1465,7 +1478,7 @@ bulle au survol sur ordinateur et à l'appui long sur téléphone.
   - *Informer* (Seb, 15 octobre) : **Préparer le PowerPoint d'AG**, **Préparer le bilan financier d'AG**,
     **Faire un cours**, **Faire un dossier de subvention**, **Faire un prévisionnel financier**, **Faire un plan marketing**, **Faire une étude marketing**, **Faire une publi de blog**, **Faire une publi de photos** (Seb, 15 octobre), **Faire le site web public de l'asso** (A-site du §5.7, un seul par organisation, à la racine
     `https://<préfixe>.<appli>.silvaplana.cloud/`), **Faire une publication web** (une page publiée, autant qu'on
-    veut : un spectacle, un stage, un événement ; §5.5, adresse `https://<préfixe>.<appli>.silvaplana.cloud/<nom>`) ;
+    veut : un spectacle, un stage, un événement ; §5.5, adresse `https://<page>.<école>.<appli>.silvaplana.cloud`) ;
   - *Questionner* (Seb) : **Convoquer l'AG**, **Faire un sondage** (liste en cours) ;
   - *Agir* (Seb) : **Ouvrir les inscriptions annuelles**, **Ouvrir les inscriptions au spectacle**, **Faire une note de frais** (Seb, 15 octobre : crée une dépense à rembourser dans les finances) (libellés
     mis au verbe par Claude, à confirmer) ;

@@ -25,12 +25,18 @@ from .modifications import Refus
 
 
 class Contexte(BaseModel):
+    # Onglet de l'appli quand on n'est pas dans Docs (l'assistant est
+    # ouvert partout, Seb 16 octobre).
+    onglet: str | None = Field(default=None, max_length=40)
     space: str | None = None
     folder_id: int | None = None
     selection_id: int | None = None
     # Sélection de plusieurs éléments dans l'explorateur.
     selection_ids: list[int] = Field(default_factory=list, max_length=50)
     recents: bool = False
+    # Fichier de l'appli ouvert, et le formulaire affiché (entry / result).
+    app_id: int | None = None
+    form: str | None = Field(default=None, pattern="^(entry|result)$")
     # Ce que la personne a fait des propositions précédentes (« Fait : … »).
     actions: list[str] = Field(default_factory=list, max_length=20)
 

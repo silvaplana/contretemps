@@ -282,3 +282,23 @@ def test_police_du_nom(client, ecole):
     # Réservée au nom : pas comme police de toute l'appli.
     assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"police": "great-vibes"}).status_code == 400
     assert client.post(f"/ecoles/{ecole.id}/personnalisation/defaut").json()["police_nom"] is None
+
+
+def test_page_en_ligne_sous_l_adresse_de_l_ecole(client, ecole, monkeypatch):
+    """<page>.<école>.contretemps.silvaplana.cloud (documents.md §5.5) :
+    l'apparence est celle de l'école ; Caddy n'obtient un certificat que si
+    la page est en ligne."""
+    from personnalisation.personnalisation import page_du_host
+
+    assert page_du_host("fete.le-beausset.contretemps.silvaplana.cloud:443") == ("fete", "le-beausset")
+    assert page_du_host("fete.le-beausset.localhost") == ("fete", "le-beausset")
+    assert page_du_host(HOTE) is None and page_du_host("a.b.c.contretemps.silvaplana.cloud") is None
+    vues = []
+    monkeypatch.setattr(personnalisation_client, "page_existe", lambda db, ecole_id, page: vues.append(page) or page == "fete")
+    existe = lambda d: client.get("/sous-domaines/existe", params={"domain": d}).status_code
+    assert existe("fete." + HOTE) == 200
+    assert existe("autre." + HOTE) == 404
+    assert existe("fete.inventee.contretemps.silvaplana.cloud") == 404
+    assert vues == ["fete", "autre"]
+    vue = client.get("/par-host/personnalisation", headers={"Host": "fete." + HOTE}).json()
+    assert vue["sous_domaine"] == "le-beausset"

@@ -70,6 +70,12 @@ ROUTES_PUBLIQUES = {
     # par Caddy (certificat), par le téléphone (installation de l'appli) et
     # par la page de connexion.
     ("GET", "/sous-domaines/existe"),
+    # Page en ligne d'un fichier de l'appli (documents.md §5.5) : lue et
+    # remplie par tout le monde, sans compte.
+    ("GET", "/documents/public/orgs/{org_id}/pages/{slug}"),
+    ("POST", "/documents/public/orgs/{org_id}/pages/{slug}/answers"),
+    ("GET", "/documents/public/links/{token}"),
+    ("POST", "/documents/public/links/{token}/answers"),
     ("GET", "/par-host/personnalisation"),
     ("GET", "/par-host/entete.html"),
     ("GET", "/par-host/site.webmanifest"),

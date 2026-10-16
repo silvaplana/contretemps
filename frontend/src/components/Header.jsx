@@ -8,6 +8,7 @@ import Icon from './Icon.jsx'
 import { InstructionsInstallation } from './InstructionsInstallation.jsx'
 import Logo from './Logo.jsx'
 import Modal from './Modal.jsx'
+import { BubbleIcon } from '../modules/documents/icons.jsx'
 
 // En-tête d'écran (voir spec/SPEC.md section 4).
 // - mode="simple" : logo + titre (écrans Admin et Profil, non "scopés cours").
@@ -28,6 +29,9 @@ export default function Header({
   // date" sur Présence — fait la même chose que le "+", juste accessible
   // aussi depuis ce menu) : { label, icon, onClick }, optionnel.
   menuExtra,
+  // Assistant de toute l'appli (modules/documents/AssistantGlobal.jsx) :
+  // { permis, ouvert, basculer }. Bouton à droite du badge.
+  assistant,
 }) {
   const [coursOpen, setCoursOpen] = useState(false)
   const [familleOpen, setFamilleOpen] = useState(false)
@@ -161,6 +165,18 @@ export default function Header({
               </div>
             )}
           </div>
+          {assistant?.permis && (
+            <button
+              type="button"
+              className={`icon-btn app-header__assistant${assistant.ouvert ? ' is-active' : ''}`}
+              onClick={assistant.basculer}
+              aria-label={assistant.ouvert ? 'Fermer l’assistant' : 'Assistant'}
+              aria-pressed={assistant.ouvert}
+              title="Assistant"
+            >
+              <BubbleIcon />
+            </button>
+          )}
           {/* Action propre à l'écran affiché, à droite du badge (ex. menu ⋮
               d'Admin > École) : voir ActionsEntete.jsx. */}
           <div id={ID_ACTIONS_ENTETE} className="app-header__actions" />

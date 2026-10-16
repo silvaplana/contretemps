@@ -9,8 +9,7 @@ l'affiche en une carte récapitulative (cases à décocher, « Tout faire » ou
 « Annuler »), puis seuls les changements cochés sont faits, par les mêmes
 services que les écrans de l'appli.
 
-Réservé aux administrateurs et au Super User. Jamais les champs de santé
-ni le commentaire libre de l'administration."""
+Réservé aux administrateurs et au Super User. Jamais les champs de santé."""
 
 from __future__ import annotations
 
@@ -30,7 +29,7 @@ from saisons.portee import SaisonEnLectureSeule
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .donnees import DonneesEcole
+from .donnees import COLONNES_ROUGES, DonneesEcole
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +40,7 @@ CHAMPS_ELEVE = {
     "nom": "nom", "prenom": "prénom", "email": "email", "telephone": "téléphone", "adresse": "adresse",
     "date_naissance": "date de naissance", "montant_total_annee": "montant de l'année",
     "montant_paye": "montant payé", "statut_paiement": "paiement",
+    "commentaire_admin": "commentaire", "ligne_rouge": "en rouge", "cellules_rouges": "colonnes en rouge",
 }
 CHAMPS_COMPTE = ("nom", "prenom", "email", "telephone")
 CHAMPS_CONTACT = {"nom": "nom", "prenom": "prénom", "lien": "lien", "telephone": "téléphone", "email": "email"}
@@ -80,7 +80,10 @@ OUTIL_MODIFICATIONS = {
         "actuelles) avec les outils de lecture. Types et paramètres : "
         + " ; ".join(f"{t} ({p})" for t, p in TYPES.items())
         + ". Champs d'un élève : " + ", ".join(CHAMPS_ELEVE) + " (statut_paiement : en_cours ou paye ; "
-        "date_naissance : AAAA-MM-JJ). Champs d'un cours : " + ", ".join(CHAMPS_COURS)
+        "date_naissance : AAAA-MM-JJ ; commentaire_admin : le commentaire de l'administration, donne le texte "
+        "complet, en gardant l'ancien si on ajoute ; ligne_rouge : true ou false, toute la ligne en rouge dans "
+        "Admin > Élèves ; cellules_rouges : la liste complète des colonnes en rouge parmi "
+        + ", ".join(COLONNES_ROUGES) + "). Champs d'un cours : " + ", ".join(CHAMPS_COURS)
         + ". Dates : AAAA-MM-JJ. Jamais les informations de santé."
     ),
     "eager_input_streaming": True,
@@ -128,6 +131,10 @@ def _nom(c: Compte) -> str:
 
 
 def _valeur(v) -> str:
+    if isinstance(v, bool):
+        return "oui" if v else "non"
+    if isinstance(v, list):
+        return ", ".join(COLONNES_ROUGES.get(c, str(c)) for c in v) or "aucune"
     if v is None or v == "":
         return "vide"
     if isinstance(v, float):
@@ -276,6 +283,13 @@ class Modifications:
                     raise Refus(f"montant illisible « {v} »") from erreur
                 if v < 0:
                     raise Refus("montant négatif")
+            elif cle == "ligne_rouge":
+                if not isinstance(v, bool):
+                    raise Refus("ligne_rouge : true ou false")
+            elif cle == "cellules_rouges":
+                if not isinstance(v, list) or any(c not in COLONNES_ROUGES for c in v):
+                    raise Refus("cellules_rouges : liste de colonnes parmi " + ", ".join(COLONNES_ROUGES))
+                v = list(dict.fromkeys(v))
             elif cle == "statut_paiement":
                 if v not in STATUTS_PAIEMENT:
                     raise Refus("statut_paiement : en_cours ou paye")
