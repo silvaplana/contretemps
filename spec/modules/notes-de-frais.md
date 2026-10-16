@@ -112,8 +112,9 @@ envoyée ──valider──▶ validée ──marquer remboursée──▶ remb
 
 ## 6. Rôle trésorier
 
-- Nouveau rôle **`tresorier`**, cumulable avec les autres (un élève ou un admin peut être trésorier).
-  Il ne change pas le rang (bascule de profil, libellé principal) : c'est un droit en plus, comme Owner.
+- Nouveau rôle **`tresorier`**, réservé aux **admins** : un trésorier est toujours un admin (décision de
+  Seb, 16 octobre), comme Owner. Il ne change pas le rang (bascule de profil, libellé principal) : c'est un
+  droit en plus. Retirer le rôle admin retire aussi le rôle trésorier.
 - Donné et retiré par un **admin** de l'organisation : dans Admin › École, le tableau des
   administrateurs a une **colonne « Trésorier » à cocher** (décision de Seb, 16 octobre).
 - Une organisation peut avoir plusieurs trésoriers. Sans trésorier, les notes envoyées attendent, et
