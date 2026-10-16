@@ -116,7 +116,8 @@ envoyée ──valider──▶ validée ──marquer remboursée──▶ remb
   Seb, 16 octobre), comme Owner. Il ne change pas le rang (bascule de profil, libellé principal) : c'est un
   droit en plus. Retirer le rôle admin retire aussi le rôle trésorier.
 - Donné et retiré par un **admin** de l'organisation : dans Admin › École, le tableau des
-  administrateurs a une **colonne « Trésorier » à cocher** (décision de Seb, 16 octobre).
+  administrateurs a une **colonne « Trésorier » à cocher** (décision de Seb, 16 octobre). C'est le
+  **seul endroit** où l'on nomme ou retire un trésorier (ni fiche élève, ni Assistant).
 - Une organisation peut avoir plusieurs trésoriers. Sans trésorier, les notes envoyées attendent, et
   l'envoi prévient la personne que personne ne peut encore les traiter.
 - Un trésorier ne valide pas ses propres notes s'il y a un autre trésorier ; s'il est seul, il peut.
