@@ -67,6 +67,15 @@ export function documentsApi(orgId) {
     setAccess: (id, restricted, entries) =>
       appel(`${base}/nodes/${id}/access`, json('PUT', { restricted, entries })),
     principals: (q) => appel(`${base}/principals?q=${encodeURIComponent(q)}`),
+    // Fichiers de l'appli (fichier de base, spec fichier-de-base.md).
+    createApp: (space, parentId, family, name) =>
+      appel(`${base}/apps`, json('POST', { space, parent_id: parentId, family, name })),
+    getApp: (id) => appel(`${base}/nodes/${id}/app`),
+    saveApp: (id, content, family, baseVersion) =>
+      appel(`${base}/nodes/${id}/app`, json('PUT', { content, family, base_version: baseVersion })),
+    tryApp: (id, values) => appel(`${base}/nodes/${id}/app/try`, json('POST', { values })),
+    appResponses: (id) => appel(`${base}/nodes/${id}/app/responses`),
+    clearTests: (id) => appel(`${base}/nodes/${id}/app/responses/tests`, { method: 'DELETE' }),
     // Contenu protégé : lu avec la session, rendu par une URL blob: (à
     // libérer avec URL.revokeObjectURL quand on n'en a plus besoin).
     // `preview` : aperçu PDF d'un fichier Word, Excel ou PowerPoint.

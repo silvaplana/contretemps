@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Modal from '../../components/Modal.jsx'
 import { documentsApi } from '../../api/documents.js'
 import FolderPicker from './FolderPicker.jsx'
@@ -11,6 +11,9 @@ import Assistant from './Assistant.jsx'
 import Editeur from './Editeur.jsx'
 import Trash from './Trash.jsx'
 import Viewer from './Viewer.jsx'
+
+// Le fichier de base embarque BlockNote : chargé seulement quand on l'ouvre.
+const AppFile = lazy(() => import('./app/AppFile.jsx'))
 import { BubbleIcon, Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
 import { FAMILIES, STATUSES, isImage } from './kinds.js'
 import { subtitle } from './format.js'
@@ -158,6 +161,8 @@ export default function Explorer({ orgId, memoire }) {
   const [partage, setPartage] = useState(null)
   const [nouveau, setNouveau] = useState(false)
   const [vue, setVue] = useState(null)
+  // Fichier de l'appli ouvert (fichier de base, spec fichier-de-base.md).
+  const [appli, setAppli] = useState(null)
   const [choix, setChoix] = useState(null) // { items, mode: 'move' | 'copy' }
   const [nom, setNom] = useState(null) // { mode: 'folder' | 'rename', item?, value }
   const [corbeille, setCorbeille] = useState(false)
@@ -261,7 +266,7 @@ export default function Explorer({ orgId, memoire }) {
   // « Saisons précédentes » (Seb, 15 octobre).
   const anciennesSaisons = items.filter((x) => x.system_kind === 'period' && !x.period_current && visible(x))
   const dossiers = items.filter((x) => x.kind === 'folder' && visible(x) && !anciennesSaisons.includes(x))
-  const lesFichiers = items.filter((x) => x.kind === 'file' && visible(x))
+  const lesFichiers = items.filter((x) => (x.kind === 'file' || x.kind === 'app') && visible(x))
   // Dans l'ordre de l'écran (Maj+clic, Ctrl+A).
   const ordre = [...dossiers, ...lesFichiers, ...anciennesSaisons]
   const selectionnes = ordre.filter((x) => selIds.includes(x.id))
@@ -276,6 +281,8 @@ export default function Explorer({ orgId, memoire }) {
       setRecherche(null)
       setRecentsActif(false)
       setSelection(null)
+    } else if (item.kind === 'app') {
+      setAppli(item)
     } else {
       setVue(item)
     }
@@ -1305,6 +1312,25 @@ export default function Explorer({ orgId, memoire }) {
         />
       )}
 
+      {appli && (
+        <Suspense fallback={<div className="dx-panel" aria-busy="true" />}>
+        <AppFile
+          key={appli.id}
+          api={api}
+          item={appli}
+          onClose={() => setAppli(null)}
+          onToast={montrerToast}
+          onShare={(x) => setPartage(x)}
+          onProperties={(id) => setProprietes({ id, tab: 'Infos' })}
+          onDelete={(x) => {
+            setAppli(null)
+            supprimer(x)
+          }}
+          onChanged={recharger}
+        />
+        </Suspense>
+      )}
+
       {proprietes && (
         <Properties
           key={proprietes.id}
@@ -1360,6 +1386,16 @@ export default function Explorer({ orgId, memoire }) {
           onImport={() => {
             setNouveau(false)
             fichiers.current?.click()
+          }}
+          onNewApp={async (famille) => {
+            try {
+              const f = await api.createApp(space, folder, famille)
+              setNouveau(false)
+              await recharger()
+              setAppli({ id: f.id, name: f.name, kind: 'app', family: famille })
+            } catch (e) {
+              echec(e)
+            }
           }}
           onToast={montrerToast}
         />
