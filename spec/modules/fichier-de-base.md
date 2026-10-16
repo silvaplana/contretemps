@@ -202,6 +202,17 @@ Déplacer, Télécharger, Propriétés, Supprimer). Le ⋯ existe déjà dans la
 
 - Un **modèle** (§5.6) est un fichier de base promu : page + réglages des résultats + réglages de
   diffusion par défaut, sans les réponses.
+- **Faire un modèle (Seb, 16 octobre)** : action **« Faire un modèle »** dans le menu ⋯ du fichier ouvert
+  (et dans « Plus… » de l'explorateur), réservée aux admins (niveau `manage`). Une feuille courte :
+  **nom de la tuile, au verbe** (proposé par l'IA : « Organiser la fête de fin d'année »), **section du +**
+  (la nature du fichier, déjà connue), et, facultatif, **« Ce qui change à chaque fois »** : l'IA repère
+  dates, lieux, montants et propose d'en faire des questions posées à la création (cases à cocher).
+  Bouton **Créer le modèle**. Copié : les deux formulaires et les réglages de diffusion ; jamais les
+  réponses, les destinataires nommés ni l'historique du chat.
+- **Dans le +** : la tuile apparaît dans la section de sa nature (Informer, Questionner, Agir), avec un
+  petit coin plié et la mention « de l'école » pour la distinguer des modèles livrés. Toucher la tuile crée
+  un fichier Brouillon déjà rempli (après les questions éventuelles), ouvert sur Préparer. Les modèles se
+  renomment, se cachent ou se suppriment par appui long sur la tuile (admins).
 - Un **parcours** (Convoquer l'AG) est un modèle qui pose d'abord quelques questions **à celui qui crée
   le fichier** (date, lieu, ordre du jour), pas aux membres. Ce n'est pas un formulaire de plus : quand on
   modifie le modèle lui-même, l'onglet Préparer gagne une troisième position
