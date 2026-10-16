@@ -15,6 +15,27 @@ export async function accesAssistant(orgId) {
 
 // « Faire » sur un fichier fabriqué par l'ordinateur de l'assistant : il
 // entre dans Documents, dans l'espace et le dossier indiqués.
+// « Tout faire » sur une carte de modifications : seulement les lignes
+// cochées. Renvoie une ligne par changement : { index, libelle, ok, erreur? }.
+export async function faireModifications(orgId, jeton, indices) {
+  const reponse = await fetch(`${BASE_URL}/assistant/orgs/${orgId}/modifications/${jeton}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ indices }),
+  })
+  if (!reponse.ok) {
+    let message = `Modification impossible (${reponse.status})`
+    try {
+      const { detail } = await reponse.json()
+      if (typeof detail === 'string') message = detail
+    } catch {
+      // pas de JSON : message par défaut
+    }
+    throw new Error(message)
+  }
+  return reponse.json()
+}
+
 export async function ajouterProduit(orgId, jeton, espace, dossierParentId) {
   const reponse = await fetch(`${BASE_URL}/assistant/orgs/${orgId}/produits/${jeton}`, {
     method: 'POST',

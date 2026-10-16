@@ -1947,3 +1947,42 @@
     display: none;
   }
 }
+
+/* Carte récapitulative des modifications proposées par l'assistant. */
+.dx-chat__modifs {
+  margin: 6px 0 10px;
+  padding: 0;
+  list-style: none;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+
+.dx-chat__modifs li {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+}
+
+.dx-chat__modifs label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.dx-chat__modifs input[type='checkbox'] {
+  flex: 0 0 24px;
+  width: 24px;
+  height: 24px;
+  margin-top: 1px;
+  accent-color: var(--accent);
+}
+
+.dx-chat__modif--non {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.dx-chat__lui .dx-chat__modifs {
+  padding-left: 0;
+}

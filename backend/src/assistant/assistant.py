@@ -35,6 +35,7 @@ from documents.storage import guess_mime
 from .donnees import NOMS as OUTILS_ECOLE
 from .donnees import OUTILS_DONNEES, DonneesEcole
 from .lecture import contenu_pour_claude
+from .modifications import OUTIL_MODIFICATIONS
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +84,12 @@ proposition s'affiche à la personne avec « Faire » et « Annuler » : elle d�
 une phrase, sans prétendre que c'est fait. Tu sauras au message suivant si elle l'a faite.
 - Un message commence par le contexte (où la personne se trouve dans Docs) : sers-t'en \
 pour comprendre « ce dossier » ou « ce fichier ».
+
+Tu peux aussi proposer des changements dans les données de l'école (élèves, inscriptions aux \
+cours, paiements, présences, heures des professeurs, cours, chorégraphies) avec \
+« proposer_modifications » : lis d'abord les données, puis regroupe tous les changements d'une \
+demande en un seul appel. La personne voit une carte récapitulative, décoche ce qu'elle ne veut \
+pas et valide : ne prétends jamais que c'est fait avant de l'apprendre au message suivant.
 
 Tu as accès à internet : « web_search » pour chercher (actualité, lois et règles des \
 associations, sites officiels…) et « web_fetch » pour lire une page dont l'adresse est dans la \
@@ -160,6 +167,9 @@ OUTILS = [
     # Données de l'école (élèves, cours, présences…), en lecture, avec les
     # droits de la personne (voir donnees.py).
     *OUTILS_DONNEES,
+    # Modifications des données de l'école, validées par la personne sur une
+    # carte récapitulative (voir modifications.py).
+    OUTIL_MODIFICATIONS,
 ]
 TAILLE_MAX_PRODUIT = 50 * 1024 * 1024
 # Fichiers glissés dans l'assistant (pièces jointes d'une question).
@@ -224,6 +234,8 @@ class Assistant:
         # jeton -> (org_id, person_id, nom, contenu).
         self.produits: dict[str, tuple[int, int, str, bytes]] = {}
         self.donnees = DonneesEcole()
+        # Branché par app/main.py (services des élèves, cours, présences…).
+        self.modifications = None
         # Fichiers glissés dans l'assistant, en attente de la question :
         # jeton -> (org_id, person_id, nom, contenu).
         self.pieces: dict[str, tuple[int, int, str, bytes]] = {}
@@ -301,6 +313,10 @@ class Assistant:
 
     def _executer(self, db, member: Member, nom: str, args: dict, compte=None) -> tuple[list[dict] | str, dict | None]:
         """(résultat pour Claude, éventuelle carte d'action pour l'écran)."""
+        if nom == "proposer_modifications":
+            if compte is None or self.modifications is None:
+                raise ValueError("modifications indisponibles")
+            return self.modifications.proposer(db, compte, member.org_id, member.person_id, args)
         if nom in OUTILS_ECOLE:
             if compte is None:
                 raise ValueError("données de l'école indisponibles")

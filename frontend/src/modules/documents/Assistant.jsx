@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { deposerPiece, poserQuestion } from '../../api/assistant.js'
+import { deposerPiece, faireModifications, poserQuestion } from '../../api/assistant.js'
 import { enEuros } from '../../utils/euros.js'
 import { BubbleIcon } from './icons.jsx'
 
@@ -29,6 +29,7 @@ const EN_TRAIN_DE = {
   lister_choregraphies: 'Je regarde les chorégraphies…',
   lister_inscriptions_en_ligne: 'Je regarde les inscriptions…',
   lister_saisons: 'Je regarde les saisons…',
+  proposer_modifications: 'Je prépare les changements…',
 }
 
 // Modèles au choix (panneau du coût, Seb 15 octobre), avec leur prix en
@@ -204,13 +205,43 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
     }
   }
 
+  function majCarte(index, carte, champs) {
+    setEchanges((liste) =>
+      liste.map((m, i) =>
+        i === index ? { ...m, actions: m.actions.map((a) => (a.id === carte.id ? { ...a, ...champs } : a)) } : m,
+      ),
+    )
+  }
+
+  // Carte récapitulative des modifications de données (cases à décocher).
+  async function deciderModifications(index, carte, faire) {
+    if (!faire) {
+      majCarte(index, carte, { etat: 'annulee' })
+      issues.current.push(`Annulé : ${carte.libelle} (rien n’a été modifié)`)
+      return
+    }
+    const decochees = carte.decochees ?? []
+    const indices = carte.lignes.map((_, i) => i).filter((i) => !decochees.includes(i))
+    majCarte(index, carte, { etat: 'en_cours', erreur: null })
+    try {
+      const resultats = await faireModifications(orgId, carte.jeton, indices)
+      majCarte(index, carte, { etat: 'faite', resultats })
+      const faits = resultats.filter((r) => r.ok).map((r) => r.libelle)
+      const echecs = resultats.filter((r) => !r.ok).map((r) => `${r.libelle} (${r.erreur})`)
+      const ignores = decochees.map((i) => carte.lignes[i])
+      if (faits.length) issues.current.push(`Fait : ${faits.join(' ; ')}`)
+      if (echecs.length) issues.current.push(`Échec : ${echecs.join(' ; ')}`)
+      if (ignores.length) issues.current.push(`Décoché par la personne, non fait : ${ignores.join(' ; ')}`)
+      // Les autres écrans de l'appli rechargent leurs données.
+      window.dispatchEvent(new Event('contretemps:donnees-modifiees'))
+    } catch (err) {
+      majCarte(index, carte, { etat: 'proposee', erreur: err.message })
+    }
+  }
+
   async function decider(index, carte, faire) {
-    const changer = (etat, erreur) =>
-      setEchanges((liste) =>
-        liste.map((m, i) =>
-          i === index ? { ...m, actions: m.actions.map((a) => (a.id === carte.id ? { ...a, etat, erreur } : a)) } : m,
-        ),
-      )
+    if (carte.kind === 'modifications') return deciderModifications(index, carte, faire)
+    const changer = (etat, erreur) => majCarte(index, carte, { etat, erreur })
     if (!faire) {
       changer('annulee')
       issues.current.push(`Annulé : ${carte.libelle}`)
@@ -369,18 +400,68 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
                 <div key={a.id} className={`dx-chat__carte dx-chat__carte--${a.etat}`}>
                   <p>{a.libelle}</p>
                   {a.kind === 'creer_fichier_texte' && <pre className="dx-chat__apercu">{a.contenu}</pre>}
+                  {a.kind === 'modifications' && (
+                    <ul className="dx-chat__modifs">
+                      {a.lignes.map((ligne, j) => {
+                        const resultat = a.resultats?.find((r) => r.index === j)
+                        const coche = !(a.decochees ?? []).includes(j)
+                        return (
+                          <li key={j}>
+                            {a.etat === 'proposee' || a.etat === 'en_cours' ? (
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={coche}
+                                  disabled={a.etat === 'en_cours'}
+                                  onChange={() =>
+                                    majCarte(i, a, {
+                                      decochees: coche ? [...(a.decochees ?? []), j] : (a.decochees ?? []).filter((x) => x !== j),
+                                    })
+                                  }
+                                />
+                                <span>{ligne}</span>
+                              </label>
+                            ) : (
+                              <span className={resultat && !resultat.ok ? 'dx-error' : coche ? undefined : 'dx-chat__modif--non'}>
+                                {resultat ? (resultat.ok ? '✓ ' : '✗ ') : '– '}
+                                {ligne}
+                                {resultat && !resultat.ok && ` : ${resultat.erreur}`}
+                              </span>
+                            )}
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
                   {a.erreur && <p className="dx-error">{a.erreur}</p>}
                   {a.etat === 'proposee' || a.etat === 'en_cours' ? (
                     <div className="dx-chat__choix">
-                      <button type="button" className="dx-btn dx-btn--small" disabled={a.etat === 'en_cours'} onClick={() => decider(i, a, true)}>
-                        Faire
+                      <button
+                        type="button"
+                        className="dx-btn dx-btn--small"
+                        disabled={a.etat === 'en_cours' || (a.kind === 'modifications' && (a.decochees ?? []).length === a.lignes.length)}
+                        onClick={() => decider(i, a, true)}
+                      >
+                        {a.kind === 'modifications'
+                          ? a.etat === 'en_cours'
+                            ? 'En cours…'
+                            : a.lignes.length - (a.decochees ?? []).length === a.lignes.length
+                              ? 'Tout faire'
+                              : `Faire (${a.lignes.length - (a.decochees ?? []).length})`
+                          : 'Faire'}
                       </button>
                       <button type="button" className="dx-btn dx-btn--small dx-btn--ghost" disabled={a.etat === 'en_cours'} onClick={() => decider(i, a, false)}>
                         Annuler
                       </button>
                     </div>
                   ) : (
-                    <p className="dx-chat__etat">{a.etat === 'faite' ? '✓ Fait' : 'Annulé'}</p>
+                    <p className="dx-chat__etat">
+                      {a.etat === 'annulee'
+                        ? 'Annulé'
+                        : a.resultats?.some((r) => !r.ok)
+                          ? 'Fait en partie'
+                          : '✓ Fait'}
+                    </p>
                   )}
                 </div>
               ))}

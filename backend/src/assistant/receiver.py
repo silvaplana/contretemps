@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .assistant import MODELE, Assistant
+from .modifications import Refus
 
 
 class Contexte(BaseModel):
@@ -32,6 +33,11 @@ class Contexte(BaseModel):
     recents: bool = False
     # Ce que la personne a fait des propositions précédentes (« Fait : … »).
     actions: list[str] = Field(default_factory=list, max_length=20)
+
+
+class ChoixModifications(BaseModel):
+    # Numéros (dans l'ordre de la carte) des changements cochés.
+    indices: list[int] = Field(default_factory=list, max_length=100)
 
 
 class Question(BaseModel):
@@ -105,6 +111,24 @@ class AssistantReceiver:
                 )
             except DocError as erreur:
                 raise HTTPException(status_code=erreur.status, detail=erreur.message) from erreur
+
+        @app.post("/assistant/orgs/{org_id}/modifications/{jeton}")
+        def faire_modifications(
+            org_id: int,
+            jeton: str,
+            donnees: ChoixModifications,
+            compte: Compte = Depends(rbac.compte_appelant),
+            membre: Member = Depends(current_member),
+            db: Session = Depends(get_db),
+        ):
+            """« Tout faire » sur la carte récapitulative : seulement les
+            changements cochés, chacun à part (une erreur n'arrête pas les autres)."""
+            if not autorise(db, compte) or self.client.modifications is None:
+                raise HTTPException(status_code=403, detail="L'assistant est en essai : réservé au Super User.")
+            try:
+                return self.client.modifications.executer(db, compte, org_id, membre.person_id, jeton, donnees.indices)
+            except Refus as erreur:
+                raise HTTPException(status_code=409, detail=str(erreur)) from erreur
 
         @app.get("/assistant/acces")
         def acces(

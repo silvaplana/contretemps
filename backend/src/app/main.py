@@ -18,6 +18,7 @@ from administrateurs import Administrateurs, AdministrateursReceiver
 from acces import Acces
 from auth import Auth, AuthReceiver, Invitations, MailsAcces
 from assistant import Assistant, AssistantReceiver
+from assistant.modifications import Modifications
 from bureautique import Bureautique, BureautiqueReceiver
 from change import TauxChange, TauxChangeReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
@@ -277,6 +278,10 @@ assistant_client = Assistant(
     documents=documents_client,
     noter_cout=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "chat_documents", cout, detail),
     cout_saison=lambda db, ecole_id: ressources_client.cout_categorie(db, ecole_id, "chat_documents"),
+)
+assistant_client.modifications = Modifications(
+    eleves=eleves_client, comptes=comptes_client, cours=cours_client,
+    presence=presence_client, choregraphies=choregraphies_client,
 )
 assistant_receiver = AssistantReceiver(client=assistant_client, app=app, current_member=membre_appelant)
 

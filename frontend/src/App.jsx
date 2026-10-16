@@ -450,6 +450,13 @@ function App() {
     coursApi.lister(ecole.id).then(setCours)
   }
 
+  // Données modifiées par l'assistant (carte « Tout faire ») : on recharge.
+  useEffect(() => {
+    const recharger = () => setVersionDonnees((v) => v + 1)
+    window.addEventListener('contretemps:donnees-modifiees', recharger)
+    return () => window.removeEventListener('contretemps:donnees-modifiees', recharger)
+  }, [])
+
   useEffect(() => {
     // Pas d'école choisie (Superuser, §2.5) : rien à charger encore.
     if (!loggedIn || !ecole.id) return
