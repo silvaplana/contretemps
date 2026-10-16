@@ -152,7 +152,10 @@ l'adresse mail de contact, qui est à créer elle aussi (décision de Seb, 16 oc
 Mails : envoyés par l'appli (adresse technique d'expédition, au nom de l'organisation), comme les autres
 mails de l'appli.
 - **Note envoyée** : le mail part à l'**adresse mail du trésorier** de l'organisation ; si elle n'est pas
-  remplie, à l'email de chaque trésorier. « Répondre à » : la personne qui a envoyé la note. La
+  remplie, à l'email de chaque trésorier. **Exception** : si la personne qui envoie la note a elle-même
+  l'adresse mail du trésorier (c'est le trésorier qui se fait rembourser), le mail part à l'email
+  personnel des **autres** trésoriers, jamais à elle-même (décision de Seb, 16 octobre). « Répondre à » :
+  la personne qui a envoyé la note. La
   notification dans l'appli, elle, va à chaque trésorier.
 - **Note validée, refusée, remboursée** : mail à la personne, « répondre à » l'**adresse mail du
   trésorier** (repli : le trésorier qui a fait l'action, puis l'adresse de contact de l'organisation).
