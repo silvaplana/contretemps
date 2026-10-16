@@ -107,6 +107,21 @@ qui s'ouvre sur Préparer.
 
 Reprend l'écran « Diffuser » du §5.9 et la collecte du §5.10, en un seul endroit :
 
+**Pourquoi un onglet à part et pas dans Préparer (question de Seb du 16 octobre)** : on diffuse quand le
+fichier est Validé ou Officiel, donc justement quand Préparer est grisé ; la diffusion a une suite à
+suivre (qui l'a reçu, ouvert, relances, adresse, QR code) ; et un envoi ne se rattrape pas, il faut un
+écran récapitulatif avant d'envoyer. Mais **le chat peut tout remplir** : « envoie par mail et SMS au
+cours Éveil, relance une semaine avant » dans la bulle (disponible dans tous les onglets) ouvre Diffuser
+déjà rempli ; l'envoi ne part qu'au bouton **Envoyer**, sur la carte Faire / Annuler.
+
+On diffuse **le formulaire d'entrée** seulement. Quand les répondants doivent voir les résultats (un
+sondage, un choix de date), c'est le réglage « visibilité des réponses » (Résultats visibles ou Publique,
+§5.10) : le formulaire de résultat s'affiche sous le formulaire d'entrée après qu'on a répondu.
+
+Canaux : **email** (core, §5 de la mémoire email), **notification de l'appli**, **SMS** (nouveau : via le
+même prestataire que l'email, Brevo ou équivalent, payant au message, coût affiché avant l'envoi ; un SMS
+ne contient que le texte court et le lien personnel).
+
 - **Des personnes choisies** : membres, groupes (un cours, Professeurs…), rôles, adresses externes ;
   lien personnel par personne ; canal (email, notification de l'appli) ; pour Questionner et Agir :
   date limite, relances aux non-répondants, une ou plusieurs réponses, réponse modifiable ou non,
