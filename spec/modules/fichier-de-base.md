@@ -66,16 +66,23 @@ Le seul onglet où l'on modifie. Deux positions quand il y a des questions :
 
 **Comment on conçoit (Seb, 16 octobre)** :
 
-- **Par le chat, et seulement par le chat pour l'instant.** **Un seul chat par fichier**, pour la page et
-  les résultats ensemble : les deux sont liés (une question de la page = une colonne des résultats), une
-  demande comme « ajoute une question sur les allergies » modifie les deux d'un coup. Le chat sait quel
-  formulaire est affiché et part de là ; on peut viser l'autre (« dans les résultats, fais le total par
-  cours »). Toute la discussion est gardée en base avec le fichier ; chaque réponse de l'IA crée une
-  version, sur laquelle on peut revenir (§5.4). L'IA répond par opérations sur les blocs, jamais par du
-  HTML.
-- **Plus tard : à la main avec BlockNote** (éditeur visuel façon Notion, §5.4 « Édition à la main »).
-  BlockNote lit et écrit du JSON de blocs, le même format que celui du chat : l'ajouter ne change rien au
-  stockage, ni à ce que le chat a déjà produit.
+Deux manières, **au choix et mélangeables** (Seb, 16 octobre) :
+
+- **Par le chat**, **un seul chat par fichier**, pour la page et les résultats ensemble : les deux sont
+  liés (une question de la page = une colonne des résultats), une demande comme « ajoute une question sur
+  les allergies » modifie les deux d'un coup. Le chat sait quel formulaire est affiché et part de là ; on
+  peut viser l'autre (« dans les résultats, fais le total par cours »). Toute la discussion est gardée en
+  base avec le fichier ; chaque réponse de l'IA crée une version, sur laquelle on peut revenir (§5.4).
+  L'IA répond par opérations sur les blocs, jamais par du HTML.
+- **À la main avec BlockNote**, en « ce que vous voyez est ce que vous obtenez » : on clique dans le texte
+  et on corrige, « / » ajoute un bloc, on glisse les blocs pour les réordonner. BlockNote lit et écrit le
+  même JSON de blocs que le chat. Nos blocs à nous (question, signature, paiement…) sont déclarés comme
+  blocs BlockNote **avec les mêmes composants React que l'Aperçu** : ce qu'on voit en modifiant est ce que
+  les gens recevront.
+- Les deux se suivent sans conflit : une modification à la main crée une version « modifiée à la main » et
+  est signalée au chat, qui repart toujours de la version courante (§5.4).
+- Les résultats se retouchent par le chat ; à la main, seulement l'ordre et l'affichage des colonnes et
+  des compteurs (pas de BlockNote, ce n'est pas du texte).
 
 ### 2.2 Aperçu
 
