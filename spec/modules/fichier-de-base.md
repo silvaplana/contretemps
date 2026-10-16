@@ -1,0 +1,163 @@
+# Le fichier de base (fichiers de l'appli)
+
+Version 0.1 du 16 octobre 2026, proposition de Claude à partir de la demande de Seb du même jour.
+Complète `documents.md` (§5.4 socle, §5.6 modèles et parcours, §5.8 blocs, §5.9 diffusion,
+§5.10 collecte, §7.1 bis familles). Le design des formulaires (contenu de l'onglet Préparer) sera
+précisé par Seb ensuite : cette section n'en fixe que le cadre.
+
+## 1. Idée
+
+Tous les fichiers de l'appli (Informer ⓘ, Questionner ?, Agir ⚡) sont **le même fichier**, le fichier
+de base. Ce qui change d'un fichier à l'autre, c'est ce qu'on met dedans, jamais le code. Les tuiles du
+« + » (Convoquer l'AG, Faire un sondage, Ouvrir les inscriptions…) sont des **modèles** de ce fichier,
+livrés avec l'appli et modifiables par chaque école (§5.6).
+
+Un fichier de base contient **au plus deux formulaires**, qui sont toujours des pages web :
+
+| Formulaire | À l'écran | Ce que c'est | Informer | Questionner | Agir |
+|---|---|---|---|---|---|
+| **d'entrée** | **La page** | ce que les gens reçoivent et ouvrent | page à lire | page avec des questions | page avec des questions qui créent quelque chose (inscription, paiement…) |
+| **de sortie** | **Les résultats** | le tableau qui rassemble les réponses | aucun | les réponses, restées dans le fichier | les réponses, plus ce qu'elles ont créé (membres, inscriptions, paiements, « À rapprocher ») |
+
+La famille reste **déduite du contenu** (§7.1 bis) : dès qu'on ajoute une question à la page, le fichier
+passe en Questionner et le formulaire de sortie apparaît ; dès qu'une question écrit dans l'appli, il
+passe en Agir. Rien n'est choisi à la création.
+
+Comme tout fichier, il a **son état** (Brouillon / Validé / Officiel, §5.4 et §7.1 ter) et **ses
+permissions** (§4.4, Qui a accès ?), déjà définis : le fichier de base s'y appuie sans rien y changer.
+
+## 2. Les quatre onglets
+
+Un fichier de l'appli s'ouvre en **plein écran** (comme la visionneuse actuelle) ; ses onglets
+remplacent ceux de Docs, il n'y a donc pas de quatrième niveau de navigation (§6.1).
+
+```
+┌ ← Convocation AG 2026          ✎  ⋯ ┐   titre, badge de statut, menu
+│ Préparer │ Aperçu │ Diffuser │ Résultats │   onglets (Résultats : Questionner et Agir)
+│                                          │
+│   …contenu de l'onglet…                  │
+│                                          │
+│            [ bouton principal ]          │   un seul, change avec l'onglet
+└──────────────────────────────────────────┘
+```
+
+| Onglet | Rôle | Sélecteur interne | Bouton principal | Informer | Questionner | Agir |
+|---|---|---|---|---|---|---|
+| **Préparer** | concevoir les formulaires (design, à préciser par Seb) | `La page \| Les résultats` | **Valider** | ✓ (sans sélecteur) | ✓ | ✓ |
+| **Aperçu** | voir exactement ce que les gens verront, et l'essayer | `Téléphone \| Ordinateur \| A4` | **Essayer** | ✓ | ✓ | ✓ |
+| **Diffuser** | qui reçoit, comment, jusqu'à quand | `Des personnes choisies \| Tout le monde` (§5.9) | **Envoyer** ou **Publier** | ✓ | ✓ | ✓ |
+| **Résultats** | le formulaire de sortie, rempli | aucun | **Exporter** | — | ✓ | ✓ |
+
+Libellés courts pour tenir à quatre sur 360 px en 17 px (« Préparer », « Aperçu », « Diffuser »,
+« Résultats » font moins de 90 px chacun).
+
+### 2.1 Préparer
+
+Le seul onglet où l'on modifie. Deux positions quand il y a des questions :
+
+- **La page** : le formulaire d'entrée, fait de blocs (texte, image, vidéo, questions, signature,
+  paiement… §5.8). Pour Informer c'est tout l'onglet.
+- **Les résultats** : le formulaire de sortie. Il est **fabriqué tout seul** à partir des questions
+  (une colonne par question, un compteur par choix, total des montants), donc on peut ne jamais y
+  toucher. On peut le retoucher : ordre et visibilité des colonnes, compteurs en tête (« 48 / 63 ont
+  répondu », « 2 340 € encaissés », « quorum atteint »), un graphique simple par question à choix,
+  regroupement (par cours, par famille), calculs (bloc Calcul §5.8 : l'IA écrit la formule, jamais le
+  chiffre).
+
+La bulle d'assistant, dans un fichier ouvert, est l'assistant de ce fichier (§5.4) : il modifie la page
+ou les résultats bloc par bloc, sur cartes Faire / Annuler.
+
+### 2.2 Aperçu
+
+La page telle que la recevra un membre, sans aucun outil autour : téléphone, ordinateur, ou A4 (le PDF
+figé est imprimé par Chromium depuis cette même page). Pour Questionner et Agir, le sélecteur
+`La page | Les résultats` existe aussi ici : les résultats sont montrés avec des réponses d'exemple tant
+qu'il n'y en a pas de vraies.
+
+**Essayer** remplit la page pour de vrai, en mode test : la réponse apparaît dans les résultats avec une
+pastille « Essai » et ne crée rien dans l'appli (ni membre, ni paiement) ; « Effacer les essais » les
+retire. C'est le « Essayer » des parcours (§5.6).
+
+C'est l'onglet d'ouverture par défaut (principe « aperçu d'abord », §5.4), sauf pour un fichier neuf,
+qui s'ouvre sur Préparer.
+
+### 2.3 Diffuser
+
+Reprend l'écran « Diffuser » du §5.9 et la collecte du §5.10, en un seul endroit :
+
+- **Des personnes choisies** : membres, groupes (un cours, Professeurs…), rôles, adresses externes ;
+  lien personnel par personne ; canal (email, notification de l'appli) ; pour Questionner et Agir :
+  date limite, relances aux non-répondants, une ou plusieurs réponses, réponse modifiable ou non,
+  visibilité des réponses (Privée, Résultats visibles, Publique).
+- **Tout le monde** : adresse publique `https://<préfixe>.contretemps.silvaplana.cloud/<page>`, bouton
+  Copier, QR code pour l'affiche. Confirmation « Visible par tout le monde sur internet ».
+- Les deux à la fois sont possibles ; toutes les réponses vont au même tableau (colonne Provenance).
+- Règle de statut : on ne diffuse qu'une version **Validée ou Officielle**. Sur un brouillon, l'onglet
+  s'affiche mais le bouton est grisé avec la raison (« Validez d'abord le fichier »).
+- Pour Informer, l'onglet montre aussi **qui a ouvert** (« 23 / 30 ont lu »), grâce aux liens
+  personnels : c'est ce qui remplace l'onglet Résultats.
+
+### 2.4 Résultats
+
+Le formulaire de sortie, rempli. En tête les compteurs choisis dans Préparer, puis le tableau (une ligne
+par personne : répondu / en cours / pas répondu), filtres, Exporter (.xlsx). Pour Agir, en plus : ce que
+chaque réponse a créé (lien vers le membre, l'inscription, le paiement) et la file **À rapprocher** quand
+l'appli n'est pas sûre de la personne (§5.9). À la clôture, les résultats sont figés avec la version et
+peuvent servir de fichier lié (le PV lit les votes).
+
+## 3. Qui voit quoi
+
+- **Ceux qui peuvent modifier le fichier** (profs et admins dans Privé, ou droit Modifier) voient les
+  quatre onglets.
+- **Ceux qui peuvent seulement le voir** n'ont pas d'onglets : ils ont la page, comme un destinataire.
+  S'ils sont aussi destinataires, ils y répondent directement.
+- **Les résultats** suivent la visibilité choisie dans Diffuser : avec « Résultats visibles » ou
+  « Publique », un destinataire voit les totaux (ou les réponses) sous la page après avoir répondu.
+
+## 4. Statut et modifications en cours de route
+
+- Le badge ✎ / ✓ / sceau est dans l'en-tête ; Valider (bouton de Préparer) fait passer en Validé.
+- Modifier la page **après** la diffusion crée un brouillon ; ce qui est en ligne ne change qu'au
+  bouton « Mettre à jour la page diffusée » (même règle que la publication, §5.5).
+- Ajouter une question après les premières réponses : permis, la colonne est vide pour ceux qui ont déjà
+  répondu. Supprimer une question qui a des réponses : la colonne est **masquée**, pas effacée.
+- Officiel : tout est figé, page et résultats (PDF figé, tableau figé).
+
+## 5. Modèles et parcours
+
+- Un **modèle** (§5.6) est un fichier de base promu : page + réglages des résultats + réglages de
+  diffusion par défaut, sans les réponses.
+- Un **parcours** (Convoquer l'AG) est un modèle qui pose d'abord quelques questions **à celui qui crée
+  le fichier** (date, lieu, ordre du jour), pas aux membres. Ce n'est pas un formulaire de plus : quand on
+  modifie le modèle lui-même, l'onglet Préparer gagne une troisième position
+  `La page | Les résultats | Avant de commencer` (questions au créateur, §5.6), qui n'existe que sur les
+  modèles. L'éditeur `Contenu | Questions | Envoi` du §5.6 devient donc ces onglets-ci, il n'y a qu'un
+  seul éditeur.
+
+## 6. Données
+
+Pas de nouvelle table pour le cadre (le détail des blocs viendra avec le design) :
+
+- `doc_nodes.kind = 'app'` pour un fichier de l'appli, `family` recalculée à chaque enregistrement à
+  partir des blocs, `status` comme aujourd'hui ;
+- `doc_versions.content_json` porte les deux formulaires, versionnés et figés ensemble :
+
+```json
+{ "schema": 1,
+  "page":    { "blocks": [ ... ] },
+  "results": { "columns": [ ... ], "summaries": [ ... ], "group_by": null },
+  "starter": { "questions": [ ... ] } }
+```
+
+  `results` vide = fabriqué automatiquement depuis les questions ; `starter` seulement sur un modèle ;
+- la diffusion dans `doc_collections`, les réponses dans `doc_responses` (§5.10), avec une colonne
+  `is_test` pour les essais.
+
+## 7. À trancher par Seb
+
+1. **Noms des onglets** : `Préparer | Aperçu | Diffuser | Résultats`. Recommandation : **ceux-là**.
+   « Diffuser » plutôt que « Publier », parce qu'il couvre aussi l'envoi à des personnes choisies.
+2. **Noms des deux formulaires à l'écran** : « La page » et « Les résultats » (recommandé), ou
+   « Formulaire d'entrée » et « Formulaire de sortie ».
+3. **Informer sans onglet Résultats**, le « qui a lu » étant dans Diffuser. Recommandation : **oui**.
+4. **Onglet d'ouverture** : Aperçu, sauf fichier neuf sur Préparer. Recommandation : **oui**.

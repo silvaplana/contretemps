@@ -489,6 +489,9 @@ s'affiche avec une tuile grise « Type inconnu » et n'est pas ouvrable : erreur
 
 ### 5.4 Socle commun des A-documents (précisions de Seb du 14 octobre)
 
+> Le cadre d'un fichier de l'appli ouvert (onglets Préparer, Aperçu, Diffuser, Résultats ; formulaire
+> d'entrée et de sortie) est décrit dans `fichier-de-base.md`.
+
 Tout A-document (document vivant) a les mêmes six choses, fournies **par le module documents** et non
 réécrites par chaque type : un état, un espace de génération par IA avec ses prompts, des modèles dont
 s'inspirer, un choix du modèle d'IA, une version générée puis des versions modifiées, et le meilleur
