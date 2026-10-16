@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { deposerPiece, faireModifications, poserQuestion } from '../../api/assistant.js'
 import { enEuros } from '../../utils/euros.js'
+import { dicteeDisponible, useDictee } from './Dictee.js'
 import { BubbleIcon } from './icons.jsx'
 
 // Conversation avec l'assistant (prototype, Seb 15 octobre ; spec
@@ -102,6 +103,12 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
   const [echanges, setEchanges] = useState(garde?.echanges ?? []) // { role, texte, actions?, etat? }
   const [conversationId, setConversationId] = useState(garde?.conversationId ?? null)
   const [saisie, setSaisie] = useState('')
+  // Dictée (micro) : complète ce qui est déjà écrit.
+  const saisieRef = useRef('')
+  useEffect(() => {
+    saisieRef.current = saisie
+  }, [saisie])
+  const dictee = useDictee(() => saisieRef.current, setSaisie)
   const [enCours, setEnCours] = useState(false)
   const [activite, setActivite] = useState('')
   const [cout, setCout] = useState(garde?.cout ?? 0)
@@ -130,6 +137,22 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
   const [pieces, setPieces] = useState([]) // { cle, nom, id?, erreur? }
   const [survol, setSurvol] = useState(false)
   const choixFichiers = useRef(null)
+  const choixPhotos = useRef(null)
+  const choixPhotoCamera = useRef(null)
+  const [menuPlus, setMenuPlus] = useState(false)
+  function choisir(ref) {
+    setMenuPlus(false)
+    ref.current?.click()
+  }
+  // Menu « + » ouvert : un appui ailleurs le ferme.
+  useEffect(() => {
+    if (!menuPlus) return
+    const fermer = (e) => {
+      if (!e.target.closest?.('.dx-chat__plus')) setMenuPlus(false)
+    }
+    document.addEventListener('pointerdown', fermer)
+    return () => document.removeEventListener('pointerdown', fermer)
+  }, [menuPlus])
   const fil = useRef(null)
   const champ = useRef(null)
 
@@ -519,39 +542,22 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
           ))}
         </div>
       )}
+      {/* Saisie façon appli Claude (demande de Seb, 2026-10-16) : « + » à
+          gauche (photo, photos, fichiers), micro et flèche d'envoi à droite.
+          Glisser-déposer et coller une capture marchent toujours. */}
       <form
         className="dx-chat__saisie"
         onSubmit={(e) => {
           e.preventDefault()
+          dictee.arreter()
           envoyer(saisie)
         }}
       >
-        <button
-          type="button"
-          className="dx-chat__trombone"
-          onClick={() => choixFichiers.current?.click()}
-          aria-label="Joindre un fichier ou une photo"
-          title="Joindre un fichier ou une photo (ou glissez-le ici, ou collez une capture)"
-        >
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" />
-          </svg>
-        </button>
-        <input
-          ref={choixFichiers}
-          type="file"
-          multiple
-          hidden
-          onChange={(e) => {
-            joindre(e.target.files)
-            e.target.value = ''
-          }}
-        />
         <textarea
           ref={champ}
           rows={2}
           value={saisie}
-          placeholder="Écrivez votre demande…"
+          placeholder={dictee.ecoute ? 'Parlez, le texte s’écrit ici…' : 'Écrivez votre demande…'}
           onChange={(e) => setSaisie(e.target.value)}
           // Coller une capture d'écran (Ctrl+V) : jointe à la question.
           onPaste={(e) => {
@@ -564,17 +570,97 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
+              dictee.arreter()
               envoyer(saisie)
             }
           }}
         />
-        <button
-          type="submit"
-          className="dx-btn dx-btn--small"
-          disabled={enCours || piecesEnCours || (!saisie.trim() && piecesPretes.length === 0)}
-        >
-          Envoyer
-        </button>
+        {dictee.erreur && <p className="dx-chat__dictee-erreur">{dictee.erreur}</p>}
+        <div className="dx-chat__outils">
+          <div className="dx-chat__plus">
+            <button
+              type="button"
+              className="dx-chat__rond"
+              aria-label="Ajouter une photo ou un fichier"
+              aria-expanded={menuPlus}
+              onClick={() => setMenuPlus((v) => !v)}
+            >
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+            {menuPlus && (
+              <div className="dx-chat__menu" role="menu">
+                <button type="button" role="menuitem" onClick={() => choisir(choixPhotoCamera)}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+                    <circle cx="12" cy="13" r="3.5" />
+                  </svg>
+                  Prendre une photo
+                </button>
+                <button type="button" role="menuitem" onClick={() => choisir(choixPhotos)}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="16" rx="2" />
+                    <circle cx="9" cy="10" r="2" />
+                    <path d="M21 16l-5-5-9 9" />
+                  </svg>
+                  Photos
+                </button>
+                <button type="button" role="menuitem" onClick={() => choisir(choixFichiers)}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M14 3H6v18h12V7z" />
+                    <path d="M14 3v4h4" />
+                  </svg>
+                  Fichiers
+                </button>
+              </div>
+            )}
+            {[
+              [choixPhotoCamera, { accept: 'image/*', capture: 'environment' }],
+              [choixPhotos, { accept: 'image/*', multiple: true }],
+              [choixFichiers, { multiple: true }],
+            ].map(([ref, attributs], i) => (
+              <input
+                key={i}
+                ref={ref}
+                type="file"
+                hidden
+                {...attributs}
+                onChange={(e) => {
+                  joindre(e.target.files)
+                  e.target.value = ''
+                }}
+              />
+            ))}
+          </div>
+          <div className="dx-chat__droite">
+            {dicteeDisponible && (
+              <button
+                type="button"
+                className={`dx-chat__rond${dictee.ecoute ? ' dx-chat__rond--ecoute' : ''}`}
+                aria-label={dictee.ecoute ? 'Arrêter la dictée' : 'Dicter'}
+                aria-pressed={dictee.ecoute}
+                title={dictee.ecoute ? 'Arrêter la dictée' : 'Dicter'}
+                onClick={dictee.basculer}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="9" y="3" width="6" height="11" rx="3" />
+                  <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+                </svg>
+              </button>
+            )}
+            <button
+              type="submit"
+              className="dx-chat__rond dx-chat__rond--envoyer"
+              aria-label="Envoyer"
+              disabled={enCours || piecesEnCours || (!saisie.trim() && piecesPretes.length === 0)}
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M12 19V5M5 12l7-7 7 7" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </form>
     </aside>
   )

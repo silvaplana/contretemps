@@ -1667,25 +1667,122 @@
 
 .dx-chat__saisie {
   display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
+  flex-direction: column;
+  gap: 6px;
+  margin: 8px 10px 10px;
+  padding: 8px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 20px;
+  background: var(--card-bg);
 }
 
 .dx-chat__saisie textarea {
-  flex: 1;
-  min-height: 48px;
+  width: 100%;
+  min-height: 44px;
   max-height: 160px;
-  padding: 10px 12px;
-  border: 1.5px solid var(--border);
-  border-radius: 14px;
-  background: var(--card-bg);
+  padding: 6px 4px;
+  border: 0;
+  outline: none;
+  background: transparent;
   color: var(--text);
   font: inherit;
-  resize: vertical;
+  resize: none;
   user-select: text;
   -webkit-user-select: text;
+}
+
+/* Barre sous le champ, façon appli Claude : « + » à gauche, micro et
+   envoi à droite. */
+.dx-chat__outils {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.dx-chat__plus {
+  position: relative;
+}
+
+.dx-chat__droite {
+  display: flex;
+  gap: 6px;
+}
+
+.dx-chat__rond {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1.5px solid var(--border);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.dx-chat__rond--envoyer {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+.dx-chat__rond--envoyer:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Micro en écoute : rouge qui pulse. */
+.dx-chat__rond--ecoute {
+  border-color: #d93a2b;
+  background: #d93a2b;
+  color: #fff;
+  animation: dx-ecoute 1.2s ease-in-out infinite;
+}
+
+@keyframes dx-ecoute {
+  50% {
+    box-shadow: 0 0 0 6px rgba(217, 58, 43, 0.2);
+  }
+}
+
+.dx-chat__menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  box-shadow: 0 8px 24px rgba(58, 36, 16, 0.18);
+}
+
+.dx-chat__menu button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.dx-chat__menu button:hover {
+  background: var(--accent-bg);
+}
+
+.dx-chat__dictee-erreur {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger-text);
 }
 
 .dx-chat__cout {
@@ -1944,15 +2041,6 @@
   border: 0;
   background: transparent;
   color: inherit;
-  cursor: pointer;
-}
-
-.dx-chat__trombone {
-  flex: 0 0 44px;
-  height: 48px;
-  border: 0;
-  background: transparent;
-  color: var(--text-muted);
   cursor: pointer;
 }
 
