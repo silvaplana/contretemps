@@ -199,3 +199,25 @@ class DocResponse(Base):
     values: Mapped[dict] = mapped_column(JSON, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class DocAppTemplate(Base):
+    """Modèle de l'école : un fichier de l'appli promu par « Faire un modèle »
+    (fichier-de-base.md §5). Une tuile dans le + : la toucher crée une copie
+    en Brouillon. Le contenu est recopié au moment de la promotion (jamais
+    les réponses) ; le fichier d'origine peut ensuite changer ou disparaître."""
+
+    __tablename__ = "doc_app_templates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # Nom de la tuile, au verbe (« Organiser la fête de fin d'année »).
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    family: Mapped[str] = mapped_column(String(10), nullable=False)
+    content: Mapped[dict] = mapped_column(JSON, nullable=False)
+    source_node_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Caché du + (les admins le voient encore, grisé).
+    hidden: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

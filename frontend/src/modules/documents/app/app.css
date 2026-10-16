@@ -253,6 +253,17 @@
   padding: 0;
 }
 
+.af-label {
+  display: block;
+  margin: 4px 0 6px;
+  font-weight: 600;
+}
+
+.af-pad .dx-btn {
+  width: 100%;
+  margin-top: 12px;
+}
+
 .af-name {
   width: 100%;
   min-height: 52px;

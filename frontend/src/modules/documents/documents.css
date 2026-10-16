@@ -1059,6 +1059,105 @@
   font-weight: 600;
 }
 
+/* Tuile « de l'école » (Faire un modèle) : coin plié, mention, ⋯ des
+   admins (fichier-de-base.md §5). */
+.dx-tpl--ecole {
+  padding: 0;
+  border-color: var(--accent);
+  background: var(--card-bg);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+}
+
+.dx-tpl--ecole::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  background: linear-gradient(225deg, transparent 50%, var(--accent) 50%);
+}
+
+.dx-tpl--cache {
+  opacity: 0.55;
+  border-style: dashed;
+}
+
+.dx-tpl__main {
+  flex: 1;
+  align-self: stretch;
+  display: flex;
+  align-items: flex-end;
+  min-height: 76px;
+  padding: 24px 12px 12px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dx-tpl__ecole {
+  position: absolute;
+  top: 6px;
+  left: 12px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
+.dx-tpl__plus {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--dx-muted);
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.dx-tpl--reglage {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  cursor: default;
+}
+
+.dx-tpl--reglage form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dx-tpl--reglage input {
+  flex: 1 1 180px;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 10px;
+  border: 1px solid var(--dx-line);
+  border-radius: 10px;
+  font-size: 17px;
+}
+
+.dx-tpl__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.dx-acc__n {
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .dx-blank {
   display: grid;
   grid-template-columns: 1fr 1fr;

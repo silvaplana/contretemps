@@ -13,7 +13,7 @@ from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -64,6 +64,20 @@ class AppSave(BaseModel):
 
 class AppAnswer(BaseModel):
     values: dict
+
+
+class TemplateNew(BaseModel):
+    name: str = Field(min_length=1, max_length=200)
+
+
+class TemplateUse(BaseModel):
+    space: str
+    parent_id: int | None = None
+
+
+class TemplateUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    hidden: bool | None = None
 
 
 class AccessEntry(BaseModel):
@@ -257,6 +271,27 @@ class DocumentsReceiver:
         @self.app.delete(base + "/nodes/{node_id}/app/responses/tests")
         def clear_tests(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: apps.clear_tests(db, self._member(org_id, m), node_id))
+
+        # Modèles de l'école (fichier-de-base.md §5)
+        @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)
+        def make_template(org_id: int, node_id: int, data: TemplateNew, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.make_template(db, self._member(org_id, m), node_id, data.name))
+
+        @self.app.get(base + "/app-templates")
+        def templates(org_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.templates(db, self._member(org_id, m)))
+
+        @self.app.post(base + "/app-templates/{template_id}/use", status_code=201)
+        def use_template(org_id: int, template_id: int, data: TemplateUse, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.use_template(db, self._member(org_id, m), template_id, data.space, data.parent_id))
+
+        @self.app.patch(base + "/app-templates/{template_id}")
+        def update_template(org_id: int, template_id: int, data: TemplateUpdate, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.update_template(db, self._member(org_id, m), template_id, data.name, data.hidden))
+
+        @self.app.delete(base + "/app-templates/{template_id}", status_code=204)
+        def delete_template(org_id: int, template_id: int, db: Session = db_dep, m: Member = member):
+            appel(lambda: apps.delete_template(db, self._member(org_id, m), template_id))
 
         @self.app.get(base + "/principals")
         def principals(org_id: int, q: str = "", db: Session = db_dep, m: Member = member):

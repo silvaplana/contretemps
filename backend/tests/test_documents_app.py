@@ -105,7 +105,7 @@ def test_essayer_et_reponses(client, ecole):
     prof, eleve = Docs(client, ecole["id"], ecole["prof"]), Docs(client, ecole["id"], ecole["eleve"])
     ident = creer(prof, "question", _saison(prof)["id"]).json()["id"]
     enregistrer(prof, ident, SONDAGE)
-    essai = lambda d, v: d.c.post(f"{d.base}/nodes/{ident}/app/try", json={"values": v}, headers=d.h)  # noqa: E731
+    essai = lambda d, v: d.c.post(f"{d.base}/nodes/{ident}/app/try", json={"values": v}, headers=d.h)
     assert essai(prof, {}).status_code == 422  # question obligatoire
     assert essai(prof, {"q1": "14 juillet"}).status_code == 422  # choix inexistant
     assert essai(prof, {"q1": "20 juin", "zz": 1}).status_code == 422  # question inconnue
@@ -170,3 +170,40 @@ def test_valeurs_des_questions():
         app_content.check_values(contenu, {"m": {"last_name": "M", "email": "c@e.fr"}, "p": True}, test=False)
     # Changer de nature retire les blocs qui n'y existent pas.
     assert [b["id"] for b in app_content.drop_for_family(contenu, "question")["entry"]["blocks"]] == ["d", "n", "o", "c"]
+
+
+def test_faire_un_modele_puis_l_utiliser(client, ecole):
+    """« Faire un modèle » (fichier-de-base.md §5) : admins seulement, le
+    contenu est recopié sans les réponses ; la tuile crée une copie en
+    Brouillon ; renommer, cacher, supprimer."""
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    prof = Docs(client, ecole["id"], ecole["prof"])
+    saison = _saison(admin)["id"]
+    ident = creer(admin, "question", saison).json()["id"]
+    modele = lambda docs, nom: docs.c.post(f"{docs.base}/nodes/{ident}/app/template", json={"name": nom}, headers=docs.h)
+    assert modele(admin, "Organiser la fête").status_code == 409  # fichier vide
+    enregistrer(admin, ident, SONDAGE)
+    admin.c.post(f"{admin.base}/nodes/{ident}/app/try", json={"values": {"q1": "20 juin"}}, headers=admin.h)
+
+    m = modele(admin, "Organiser la fête")
+    assert m.status_code == 201 and m.json()["family"] == "question" and m.json()["question_count"] == 2
+    deux = modele(admin, "organiser la fête").json()
+    assert deux["name"] == "organiser la fête (2)"
+    # Un prof (pas admin) ne fait pas de modèle, mais voit les tuiles.
+    assert modele(prof, "X").status_code == 403
+    liste = prof.get("/app-templates").json()
+    assert len(liste["items"]) == 2 and liste["can_manage"] is False
+
+    copie = prof.c.post(f"{prof.base}/app-templates/{m.json()['id']}/use", json={"space": "private", "parent_id": saison}, headers=prof.h)
+    assert copie.status_code == 201
+    lue = prof.get(f"/nodes/{copie.json()['id']}/app").json()
+    assert lue["name"] == "Organiser la fête" and lue["status"] == "draft" and lue["family"] == "question"
+    assert lue["content"]["entry"]["blocks"][1]["id"] == "q1" and lue["response_count"] == 0
+
+    # Cacher : disparaît pour les autres, reste listé (caché) aux admins.
+    admin.c.patch(f"{admin.base}/app-templates/{deux['id']}", json={"hidden": True, "name": "Fête 2"}, headers=admin.h)
+    assert len(prof.get("/app-templates").json()["items"]) == 1
+    assert [t["name"] for t in admin.get("/app-templates").json()["items"] if t["hidden"]] == ["Fête 2"]
+    assert prof.c.delete(f"{prof.base}/app-templates/{deux['id']}", headers=prof.h).status_code == 403
+    assert admin.c.delete(f"{admin.base}/app-templates/{deux['id']}", headers=admin.h).status_code == 204
+    assert len(admin.get("/app-templates").json()["items"]) == 1

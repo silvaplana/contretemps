@@ -1,4 +1,4 @@
-"""Documents : fichiers de l'appli (versions JSON et réponses)
+"""Documents : fichiers de l'appli (versions JSON, réponses, modèles de l'école)
 
 Revision ID: c7e9a1b3d5f2
 Revises: f8c1d3e5a7b9
@@ -53,8 +53,24 @@ def upgrade() -> None:
         )
         op.create_index('ix_doc_responses_org_id', 'doc_responses', ['org_id'])
         op.create_index('ix_doc_responses_node_id', 'doc_responses', ['node_id'])
+    if 'doc_app_templates' not in tables:
+        op.create_table(
+            'doc_app_templates',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('org_id', sa.Integer(), nullable=False),
+            sa.Column('name', sa.String(length=200), nullable=False),
+            sa.Column('family', sa.String(length=10), nullable=False),
+            sa.Column('content', sa.JSON(), nullable=False),
+            sa.Column('source_node_id', sa.Integer(), nullable=True),
+            sa.Column('hidden', sa.Boolean(), nullable=False),
+            sa.Column('created_by', sa.Integer(), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=True),
+            sa.Column('updated_at', sa.DateTime(), nullable=True),
+        )
+        op.create_index('ix_doc_app_templates_org_id', 'doc_app_templates', ['org_id'])
 
 
 def downgrade() -> None:
+    op.drop_table('doc_app_templates')
     op.drop_table('doc_responses')
     op.drop_table('doc_app_versions')

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FileIcon, FolderIcon } from './icons.jsx'
 import { FAMILIES } from './kinds.js'
 import FamilyCards from './app/FamilyCards.jsx'
@@ -8,8 +8,65 @@ import FamilyCards from './app/FamilyCards.jsx'
 // Importer, puis les familles Informer / Questionner / Agir.
 // Les modèles sont livrés avec l'appli, chaque asso pourra les modifier.
 // « Créer un fichier » demande d'abord sa nature (Informer, Questionner,
-// Agir : spec fichier-de-base.md §1). Les tuiles des modèles arrivent avec
-// « Faire un modèle ».
+// Agir : spec fichier-de-base.md §1). Les tuiles « de l'école » viennent de
+// « Faire un modèle » (fichier-de-base.md §5) : les toucher crée une copie
+// en Brouillon ; les admins les renomment, les cachent ou les suppriment.
+
+function TuileEcole({ t, admin, api, onUse, onChanged, onToast }) {
+  const [reglage, setReglage] = useState(false)
+  const [nom, setNom] = useState(t.name)
+  const [supprimer, setSupprimer] = useState(false)
+  const faire = async (action, message) => {
+    try {
+      await action()
+      onChanged()
+      if (message) onToast(message)
+    } catch (e) {
+      onToast(e.message)
+    }
+  }
+  if (reglage) {
+    return (
+      <div className="dx-tpl dx-tpl--reglage">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            faire(() => api.updateTemplate(t.id, { name: nom }), 'Modèle renommé').then(() => setReglage(false))
+          }}
+        >
+          <input aria-label="Nom de la tuile" value={nom} onChange={(e) => setNom(e.target.value)} />
+          <button type="submit" className="dx-btn dx-btn--small" disabled={!nom.trim() || nom === t.name}>Renommer</button>
+        </form>
+        <div className="dx-tpl__actions">
+          <button type="button" className="dx-btn dx-btn--small dx-btn--ghost" onClick={() => faire(() => api.updateTemplate(t.id, { hidden: !t.hidden }), t.hidden ? 'Modèle remis dans le +' : 'Modèle caché : seuls les admins le voient')}>
+            {t.hidden ? 'Montrer' : 'Cacher'}
+          </button>
+          <button
+            type="button"
+            className="dx-btn dx-btn--small dx-btn--ghost dx-btn--danger"
+            onClick={() => (supprimer ? faire(() => api.deleteTemplate(t.id), 'Modèle supprimé') : setSupprimer(true))}
+          >
+            {supprimer ? 'Vraiment supprimer ?' : 'Supprimer'}
+          </button>
+          <button type="button" className="dx-btn dx-btn--small dx-btn--ghost" onClick={() => setReglage(false)}>Fermer</button>
+        </div>
+      </div>
+    )
+  }
+  return (
+    <div className={`dx-tpl dx-tpl--ecole${t.hidden ? ' dx-tpl--cache' : ''}`}>
+      <button type="button" className="dx-tpl__main" onClick={() => onUse(t)}>
+        {t.name}
+      </button>
+      <span className="dx-tpl__ecole">{t.hidden ? 'caché' : 'de l’école'}</span>
+      {admin && (
+        <button type="button" className="dx-tpl__plus" aria-label={`Régler le modèle ${t.name}`} onClick={() => setReglage(true)}>
+          ⋯
+        </button>
+      )}
+    </div>
+  )
+}
 
 const MODELES = {
   inform: {
@@ -35,11 +92,17 @@ const MODELES = {
   },
 }
 
-export default function NewScreen({ canAdd, onClose, onNewFolder, onImport, onNewApp, onToast }) {
+export default function NewScreen({ api, canAdd, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onToast }) {
   // Informer, Questionner, Agir : fermés au départ (Seb, 15 octobre).
   const [ouvert, setOuvert] = useState(null)
   const [nature, setNature] = useState(false)
   const bientot = () => onToast('Bientôt : ces modèles arrivent dans une prochaine version.')
+  const [ecole, setEcole] = useState({ items: [], can_manage: false })
+  const [tour, setTour] = useState(0)
+  useEffect(() => {
+    api.templates().then(setEcole, () => {})
+  }, [api, tour])
+  const recharger = () => setTour((n) => n + 1)
 
   if (nature) {
     return (
@@ -90,10 +153,26 @@ export default function NewScreen({ canAdd, onClose, onNewFolder, onImport, onNe
                   <span className="dx-n">{f.label}</span>
                   <span className="dx-s">{m.hint}</span>
                 </span>
+                {ecole.items.some((t) => t.family === cle && !t.hidden) && (
+                  <span className="dx-acc__n">{ecole.items.filter((t) => t.family === cle && !t.hidden).length} de l’école</span>
+                )}
                 <span className="dx-acc__arr">›</span>
               </button>
               {estOuvert && (
                 <div className="dx-tpls">
+                  {ecole.items
+                    .filter((t) => t.family === cle)
+                    .map((t) => (
+                      <TuileEcole
+                        key={t.id}
+                        t={t}
+                        admin={ecole.can_manage}
+                        api={api}
+                        onUse={(x) => (canAdd ? onUseTemplate(x) : onToast('Ouvrez un dossier où vous pouvez ajouter.'))}
+                        onChanged={recharger}
+                        onToast={onToast}
+                      />
+                    ))}
                   {m.tiles.map((t) => (
                     <button key={t} type="button" className="dx-tpl" onClick={bientot}>
                       {t}

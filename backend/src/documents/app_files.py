@@ -21,6 +21,7 @@ from .models import (
     LEVEL_EDIT,
     LEVEL_MANAGE,
     LEVEL_VIEW,
+    DocAppTemplate,
     DocAppVersion,
     DocNode,
     DocResponse,
@@ -72,7 +73,10 @@ class AppFiles:
 
     # ------------------------------------------------------------------
 
-    def create(self, db: Session, member: Member, space: str, parent_id: int | None, family: str, name: str | None) -> dict:
+    def create(
+        self, db: Session, member: Member, space: str, parent_id: int | None, family: str, name: str | None,
+        content: dict | None = None,
+    ) -> dict:
         if family not in FAMILIES:
             raise self._error(422, "Choisissez Informer, Questionner ou Agir.")
         from .service import clean_name
@@ -86,7 +90,7 @@ class AppFiles:
         node.owner_person_id = loc.owner_person_id
         db.add(node)
         db.flush()
-        self._add_version(db, member, node, app_content.empty_content(), "created")
+        self._add_version(db, member, node, content or app_content.empty_content(), "created")
         self.docs._log(db, member, node, "created")
         db.commit()
         return {"id": node.id, "name": node.name}
@@ -97,6 +101,7 @@ class AppFiles:
         niveau = self.docs._require(db, member, loc, LEVEL_VIEW)
         version = self.current_version(db, node)
         peut_modifier = access.at_least(niveau, LEVEL_EDIT)
+        verrou = self.docs._official_lock(loc.path)
         reponses = 0
         if peut_modifier:
             reponses = db.scalar(select(func.count()).select_from(DocResponse).where(DocResponse.node_id == node.id)) or 0
@@ -112,8 +117,8 @@ class AppFiles:
             "can_manage": access.at_least(niveau, LEVEL_MANAGE),
             # Le contenu se modifie en Brouillon seulement (§4), et pas sous
             # un dossier Officiel.
-            "editable": peut_modifier and node.status in (None, "draft") and self.docs._official_lock(loc.path) is None,
-            "frozen_by": (lambda v: v.name if v is not None else None)(self.docs._official_lock(loc.path)),
+            "editable": peut_modifier and node.status in (None, "draft") and verrou is None,
+            "frozen_by": verrou.name if verrou is not None else None,
             "content": version.content if version else app_content.empty_content(),
             "version": {"id": version.id, "number": version.number} if version else None,
             "response_count": reponses,
@@ -238,3 +243,96 @@ class AppFiles:
     def erase(db: Session, ids: set[int]) -> None:
         for modele in (DocResponse, DocAppVersion):
             db.query(modele).filter(modele.node_id.in_(ids)).delete(synchronize_session=False)
+
+
+    # ------------------------------------------------------------------
+    # Modèles de l'école (fichier-de-base.md §5)
+    # ------------------------------------------------------------------
+
+    def _require_admin(self, member: Member) -> None:
+        if not (member.is_admin or member.is_superuser):
+            raise self._error(403, "Seuls les admins font et rangent les modèles de l'école.")
+
+    def _template(self, db: Session, member: Member, template_id: int) -> DocAppTemplate:
+        modele = db.get(DocAppTemplate, template_id)
+        if modele is None or modele.org_id != member.org_id:
+            raise self._error(404, "Ce modèle n'existe plus.")
+        return modele
+
+    def _template_name(self, db: Session, member: Member, name: str, sauf: int | None = None) -> str:
+        from .service import clean_name
+
+        nom = clean_name(name)
+        pris = {
+            n.lower()
+            for n in db.scalars(
+                select(DocAppTemplate.name).where(DocAppTemplate.org_id == member.org_id, DocAppTemplate.id != (sauf or 0))
+            )
+        }
+        libre, n = nom, 2
+        while libre.lower() in pris:
+            libre, n = f"{nom} ({n})", n + 1
+        return libre
+
+    @staticmethod
+    def _template_dict(modele: DocAppTemplate) -> dict:
+        return {
+            "id": modele.id,
+            "name": modele.name,
+            "family": modele.family,
+            "hidden": modele.hidden,
+            "source_node_id": modele.source_node_id,
+            "question_count": len(app_content.questions(modele.content)),
+        }
+
+    def make_template(self, db: Session, member: Member, node_id: int, name: str) -> dict:
+        """« Faire un modèle » : recopie les deux formulaires, jamais les
+        réponses ni le chat."""
+        self._require_admin(member)
+        node = self._app_node(db, member, node_id)
+        self.docs._require(db, member, self.docs._locate(db, member, node), LEVEL_VIEW)
+        version = self.current_version(db, node)
+        contenu = version.content if version else app_content.empty_content()
+        if not contenu.get("entry", {}).get("blocks"):
+            raise self._error(409, "Le fichier est vide : préparez-le avant d'en faire un modèle.")
+        modele = DocAppTemplate(
+            org_id=member.org_id, name=self._template_name(db, member, name), family=node.family,
+            content=contenu, source_node_id=node.id, created_by=member.person_id,
+        )
+        db.add(modele)
+        self.docs._log(db, member, node, "template", {"name": modele.name})
+        db.commit()
+        return self._template_dict(modele)
+
+    def templates(self, db: Session, member: Member) -> dict:
+        """Les tuiles « de l'école » du + ; les modèles cachés ne sont
+        listés qu'aux admins."""
+        requete = select(DocAppTemplate).where(DocAppTemplate.org_id == member.org_id)
+        admin = member.is_admin or member.is_superuser
+        if not admin:
+            requete = requete.where(DocAppTemplate.hidden.is_(False))
+        modeles = db.scalars(requete.order_by(DocAppTemplate.name)).all()
+        return {"items": [self._template_dict(m) for m in modeles], "can_manage": admin}
+
+    def use_template(self, db: Session, member: Member, template_id: int, space: str, parent_id: int | None) -> dict:
+        """Toucher la tuile : une copie en Brouillon, déjà remplie."""
+        modele = self._template(db, member, template_id)
+        if modele.hidden and not (member.is_admin or member.is_superuser):
+            raise self._error(404, "Ce modèle n'existe plus.")
+        return self.create(db, member, space, parent_id, modele.family, modele.name, content=modele.content)
+
+    def update_template(self, db: Session, member: Member, template_id: int, name: str | None, hidden: bool | None) -> dict:
+        self._require_admin(member)
+        modele = self._template(db, member, template_id)
+        if name is not None:
+            modele.name = self._template_name(db, member, name, sauf=modele.id)
+        if hidden is not None:
+            modele.hidden = hidden
+        modele.updated_at = utcnow()
+        db.commit()
+        return self._template_dict(modele)
+
+    def delete_template(self, db: Session, member: Member, template_id: int) -> None:
+        self._require_admin(member)
+        db.delete(self._template(db, member, template_id))
+        db.commit()

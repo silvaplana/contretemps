@@ -14,7 +14,7 @@ documents-phase-contretemps.md, §1 « Règles pour rester extractible ») :
   groupe (un rôle ou un cours), période (une saison).
 """
 
-from .models import DocAcl, DocActivity, DocAppVersion, DocNode, DocResponse, DocVersion, StoredFile
+from .models import DocAcl, DocActivity, DocAppTemplate, DocAppVersion, DocNode, DocResponse, DocVersion, StoredFile
 from .receiver import DocumentsReceiver
 from .service import Documents
 from .storage import LocalStorage
@@ -22,6 +22,7 @@ from .storage import LocalStorage
 __all__ = [
     "DocAcl",
     "DocActivity",
+    "DocAppTemplate",
     "DocAppVersion",
     "DocNode",
     "DocResponse",

@@ -1378,6 +1378,7 @@ export default function Explorer({ orgId, memoire }) {
 
       {nouveau && (
         <NewScreen
+          api={api}
           canAdd={peutAjouter}
           onClose={() => setNouveau(false)}
           onNewFolder={() => {
@@ -1387,6 +1388,16 @@ export default function Explorer({ orgId, memoire }) {
           onImport={() => {
             setNouveau(false)
             fichiers.current?.click()
+          }}
+          onUseTemplate={async (modele) => {
+            try {
+              const f = await api.useTemplate(modele.id, space, folder)
+              setNouveau(false)
+              await recharger()
+              setAppli({ id: f.id, name: f.name, kind: 'app', family: modele.family })
+            } catch (e) {
+              echec(e)
+            }
           }}
           onNewApp={async (famille) => {
             try {

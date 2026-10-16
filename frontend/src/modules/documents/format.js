@@ -66,6 +66,12 @@ export function historyText(h) {
       return `${qui} a partagé avec ${d.who} (${d.level === 'edit' ? 'peut modifier' : 'peut voir'})`
     case 'unshared':
       return `${qui} a retiré l’accès de ${d.who}`
+    case 'edited':
+      return `${qui} a modifié le contenu (version ${d.version})`
+    case 'family':
+      return `${qui} a changé la nature`
+    case 'template':
+      return `${qui} en a fait le modèle « ${d.name} »`
     case 'restricted':
       return `${qui} a restreint l’accès`
     case 'unrestricted':

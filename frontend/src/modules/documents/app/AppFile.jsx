@@ -460,6 +460,36 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
                 <button type="submit" className="dx-btn" disabled={!nom.trim()}>Renommer</button>
               </form>
             )}
+            {sheet === 'template' && (
+              <form
+                className="af-pad"
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  try {
+                    const m = await api.makeTemplate(file.id, nom)
+                    setSheet(null)
+                    onToast(`Modèle « ${m.name} » créé : il est dans le +, section ${FAMILIES[m.family].label}`)
+                  } catch (err) {
+                    onToast(err.message)
+                  }
+                }}
+              >
+                <h3 className="af-sheet__title">Faire un modèle</h3>
+                <p className="af-hint">
+                  Une tuile apparaîtra dans le +, section {FAMILIES[file.family].label}. La toucher créera une copie de ce fichier, sans les réponses.
+                </p>
+                <label className="af-label" htmlFor="af-modele">Nom de la tuile, avec un verbe</label>
+                <input
+                  className="af-name"
+                  id="af-modele"
+                  placeholder="Organiser la fête de fin d’année"
+                  value={nom}
+                  onChange={(e) => setNom(e.target.value)}
+                  autoFocus
+                />
+                <button type="submit" className="dx-btn" disabled={!nom.trim()}>Créer le modèle</button>
+              </form>
+            )}
             {sheet === 'more' && (
               <>
                 <button type="button" className="dx-act" onClick={() => (setSheet(null), onShare(lienShare))} disabled={file.space === 'personal'}>
@@ -467,6 +497,20 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
                 </button>
                 <button type="button" className="dx-act" onClick={() => (setNom(file.name), setSheet('rename'))}>
                   <i>✎</i><span>Renommer</span>
+                </button>
+                <button
+                  type="button"
+                  className="dx-act"
+                  disabled={!file.can_manage || !c.entry.blocks.length}
+                  onClick={() => (setNom(file.name), setSheet('template'))}
+                >
+                  <i>⧉</i>
+                  <span>
+                    Faire un modèle
+                    {(!file.can_manage || !c.entry.blocks.length) && (
+                      <span className="dx-act__why">{!file.can_manage ? 'Réservé aux admins' : 'Préparez d’abord le fichier'}</span>
+                    )}
+                  </span>
                 </button>
                 <button type="button" className="dx-act" onClick={() => (setSheet(null), onProperties(file.id))}>
                   <i>☰</i><span>Propriétés</span>
