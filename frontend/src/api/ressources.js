@@ -15,5 +15,19 @@ export async function usage(ecoleId) {
     ia: u.ia.map((p) => ({ categorie: p.categorie, libelle: p.libelle, nombre: p.nombre, coutUsd: p.cout_usd })),
     iaTotalUsd: u.ia_total_usd,
     iaTotalToutesSaisonsUsd: u.ia_total_toutes_saisons_usd,
+    assistantPlafondUsd: u.assistant_plafond_mensuel_usd,
+    assistantCoutDuMoisUsd: u.assistant_cout_du_mois_usd,
+    assistantPlafondModifiable: u.assistant_plafond_modifiable,
   }
+}
+
+// Plafond mensuel de l'assistant de l'école, en dollars (Super User seul).
+export async function definirPlafondAssistant(ecoleId, plafondUsd) {
+  const reponse = await fetch(`${BASE_URL}/ecoles/${ecoleId}/assistant-plafond`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ plafond_usd: plafondUsd }),
+  })
+  if (!reponse.ok) throw new Error(`Plafond non enregistré (${reponse.status})`)
+  return (await reponse.json()).plafond_usd
 }

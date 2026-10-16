@@ -4,7 +4,7 @@ la logique (création avec ses codes par défaut, etc.) vit dans ecoles.py.
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, Integer, String, Text, UniqueConstraint, event, text
+from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text, UniqueConstraint, event, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -73,6 +73,12 @@ class Ecole(Base):
     # Plus de codes d'accès depuis le 2026-10-01 (spec §2.2) : chacun a son
     # mot de passe (table acces_emails).
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    # Assistant ouvert aux admins et profs (Seb, 16 octobre) : dépense
+    # maximale par mois civil, en dollars, réglée par le Super User (qui
+    # n'est jamais bloqué). Voir ressources.py et assistant/receiver.py.
+    assistant_plafond_mensuel_usd: Mapped[float] = mapped_column(
+        Float, nullable=False, default=10.0, server_default="10"
+    )
 
     # Sauvegarde programmée (Admin > École > menu > "Programmer sauvegarde
     # École") — EN BASE, pas en localStorage : décision utilisateur

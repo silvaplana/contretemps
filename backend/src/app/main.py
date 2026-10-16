@@ -109,6 +109,11 @@ from comptes.reprise_emails import reprendre_anciens_emails  # noqa: E402
 
 reprendre_anciens_emails(engine)
 
+# Plafond mensuel de l'assistant : même filet, si la migration manque.
+from ecoles.colonne_plafond import ajouter_colonne_plafond  # noqa: E402
+
+ajouter_colonne_plafond(engine)
+
 
 @app.get("/health")
 def health() -> dict:
@@ -289,6 +294,7 @@ assistant_client = Assistant(
     noter_cout=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "chat_documents", cout, detail),
     cout_saison=lambda db, ecole_id: ressources_client.cout_categorie(db, ecole_id, "chat_documents"),
 )
+assistant_client.plafond_atteint = ressources_client.plafond_assistant_atteint
 assistant_client.modifications = Modifications(
     eleves=eleves_client, comptes=comptes_client, cours=cours_client,
     presence=presence_client, choregraphies=choregraphies_client,

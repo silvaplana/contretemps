@@ -8,7 +8,7 @@ from __future__ import annotations
 import logging
 from dataclasses import replace
 
-from assistant.receiver import autorise
+from assistant.receiver import super_user_ou_sa_fiche
 from comptes import Compte, rbac
 from documents.ports import Member
 from documents.service import DocError
@@ -35,7 +35,7 @@ class BureautiqueReceiver:
             membre: Member = Depends(current_member),
             db: Session = Depends(get_db),
         ):
-            if not autorise(db, compte):
+            if compte is None or not super_user_ou_sa_fiche(db, compte):
                 raise HTTPException(status_code=403, detail="L'édition en ligne est en essai : réservée au Super User.")
             if not c.actif:
                 raise HTTPException(status_code=503, detail="L'édition en ligne n'est pas configurée sur ce serveur.")

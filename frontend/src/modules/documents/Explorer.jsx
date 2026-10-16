@@ -107,11 +107,13 @@ export default function Explorer({ orgId, memoire }) {
   // l'en-tête) ; Docs lui donne le dossier ouvert et fait ses cartes.
   const [assistant, setAssistant] = useState(false)
   const [coutSaison, setCoutSaison] = useState(null)
-  // Fichier ouvert dans l'éditeur OnlyOffice (essai, même accès que l'assistant).
+  // Éditeur OnlyOffice : encore en essai, le Super User seul.
+  const [editeur, setEditeur] = useState(false)
   const [enEdition, setEnEdition] = useState(null)
   useEffect(() => {
     accesAssistant(orgId).then((x) => {
       setAssistant(x.autorise)
+      setEditeur(Boolean(x.editeur))
       setCoutSaison(x.cout_saison_usd)
     }, () => {})
   }, [orgId])
@@ -1240,7 +1242,7 @@ export default function Explorer({ orgId, memoire }) {
             recharger()
             montrerToast(`« ${x.name} » enregistré`)
           }}
-          onEditer={assistant ? (x) => setEnEdition(x) : undefined}
+          onEditer={editeur ? (x) => setEnEdition(x) : undefined}
         />
       )}
 

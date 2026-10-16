@@ -227,12 +227,78 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
                     <span className="muted">{formaterCout(ressources.iaTotalToutesSaisonsUsd)}</span>
                   </div>
                 </div>
+                <PlafondAssistant ecoleId={ecoleId} ressources={ressources} setRessources={setRessources} />
               </>
             )}
           </Rubrique>
         </>
       )}
     </section>
+  )
+}
+
+// Plafond mensuel de l'assistant (Seb, 16 octobre) : ce que l'assistant a
+// coûté depuis le 1er du mois, sur le plafond. Au-delà, il ne répond plus
+// aux admins et aux profs jusqu'au mois suivant (jamais bloqué pour le
+// Super User). Le plafond, en dollars comme la facture d'Anthropic, ne se
+// règle que par le Super User.
+function PlafondAssistant({ ecoleId, ressources, setRessources }) {
+  const [saisie, setSaisie] = useState(null)
+  const [erreur, setErreur] = useState(null)
+  const plafond = ressources.assistantPlafondUsd
+  const depasse = ressources.assistantCoutDuMoisUsd >= plafond
+
+  async function enregistrer() {
+    const valeur = Number(String(saisie).replace(',', '.'))
+    if (!Number.isFinite(valeur) || valeur < 0) {
+      setErreur('Montant invalide.')
+      return
+    }
+    setErreur(null)
+    try {
+      const nouveau = await ressourcesApi.definirPlafondAssistant(ecoleId, valeur)
+      setRessources((r) => ({ ...r, assistantPlafondUsd: nouveau }))
+      setSaisie(null)
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
+  return (
+    <div className="usage-ressources__lignes">
+      <div className="usage-ressources__ligne usage-ressources__ligne--total">
+        <span>Assistant ce mois-ci</span>
+        <span className={depasse ? 'usage-ressources__depasse' : undefined}>
+          {formaterCout(ressources.assistantCoutDuMoisUsd)} / {formaterCout(plafond)}{' '}
+          <span className="muted">({plafond.toLocaleString('fr-FR')} $)</span>
+        </span>
+      </div>
+      {depasse && <p className="muted">Plafond atteint : l’assistant reviendra le 1er du mois.</p>}
+      {ressources.assistantPlafondModifiable &&
+        (saisie === null ? (
+          <button type="button" className="btn btn--secondary" onClick={() => setSaisie(String(plafond))}>
+            Changer le plafond mensuel
+          </button>
+        ) : (
+          <div className="usage-ressources__plafond">
+            <label htmlFor="plafond-assistant">Plafond mensuel (en dollars)</label>
+            <input
+              id="plafond-assistant"
+              className="field-input"
+              inputMode="decimal"
+              value={saisie}
+              onChange={(e) => setSaisie(e.target.value)}
+            />
+            <button type="button" className="btn btn--primary" onClick={enregistrer}>
+              Enregistrer
+            </button>
+            <button type="button" className="btn btn--secondary" onClick={() => setSaisie(null)}>
+              Annuler
+            </button>
+          </div>
+        ))}
+      {erreur && <p className="admin-panel__erreur">{erreur}</p>}
+    </div>
   )
 }
 

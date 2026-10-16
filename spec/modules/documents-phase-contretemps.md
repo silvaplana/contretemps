@@ -193,7 +193,8 @@ séparé `backend/src/assistant/` (futur core d'AppBase). Spec détaillée à é
 - Plus tard : exposer le même registre en serveur MCP pour l'utiliser depuis Claude.
 
 *Prototype fait le 2026-10-15* (Seb : « un chat comme Claude, avec Puis-je vous aider ? ») :
-`backend/src/assistant/` et `frontend/src/modules/documents/Assistant.jsx`. Réservé au Super User.
+`backend/src/assistant/` et `frontend/src/modules/documents/Assistant.jsx`. Réservé au Super User
+pendant l'essai, puis ouvert aux admins et aux profs (voir plus bas).
 Sur ordinateur, panneau à droite de l'explorateur (bouton en haut de l'arborescence, à côté de
 « + Nouveau ») ; sur téléphone, plein écran (bulle au-dessus du +). L'assistant connaît le dossier
 ouvert et l'élément sélectionné, lit dossiers et fichiers (PDF et photos lus directement par Claude,
@@ -208,6 +209,28 @@ PDF / Excel / Word / PowerPoint ; un fichier de l'école y est copié par l'outi
 « copier_fichier_dans_l_ordinateur » (Files API + `container_upload`) ; ce que Claude dépose dans
 `$OUTPUT_DIR` revient en carte « Ajouter … dans … » (Faire / Annuler) ; un ordinateur par
 conversation, réutilisé. 1 550 heures de calcul offertes par mois, 0,05 $/h au-delà.
+
+*Ouvert aux admins et aux profs (Seb, 2026-10-16)* : le Super User, les administrateurs (Owners
+compris) et les professeurs ; pas les élèves. Règle de Seb : **par l'assistant, chacun ne peut faire
+et voir que ce qu'il ferait en cliquant**, rien de plus. Concrètement :
+- admins et Owners : tous les outils (données de l'école et carte de modifications), dans leur école ;
+- professeurs : ni modifications ni données réservées aux admins. Ils ont leurs cours, les élèves de
+  leurs cours (nom et cours seulement : pas d'âge, de contact, de paiement), leurs présences, leurs
+  propres heures, leurs chorégraphies. Pas de fiche élève, de liste des profs, d'inscriptions en ligne
+  ni de saisons. Les outils refusés ne sont même pas proposés à Claude, et le serveur les refuse aussi
+  (`assistant/donnees.py`, `POUR_TOUS`) ;
+- Docs : les droits de la personne, comme avant ;
+- on ne vise que son école (403 sinon), sauf le Super User ;
+- le cumul « Chat documents » de la saison n'est montré qu'aux admins (le prof voit le coût de sa
+  conversation) ;
+- l'éditeur en ligne (OnlyOffice) reste en essai : le Super User seul.
+
+**Plafond mensuel par école** : dépense « Chat documents » du mois civil (UTC, toutes saisons), 10 $
+par défaut (`ecoles.assistant_plafond_mensuel_usd`). Atteint, l'assistant répond « Le budget mensuel
+de l'assistant de l'école est atteint. Il revient le 1er du mois. » (429). Le Super User n'est jamais
+bloqué, même connecté avec sa fiche d'école (même email), mais sa dépense compte dans le total du
+mois. Affiché dans Admin > École > Usage des ressources & IA > IA (« Assistant ce mois-ci : dépense /
+plafond ») ; le plafond, en dollars, ne se change que par le Super User.
 
 ### Étape 6 : kit AG
 

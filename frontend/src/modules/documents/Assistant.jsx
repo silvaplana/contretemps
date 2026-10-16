@@ -368,9 +368,10 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
           className="dx-chat__cout-bouton"
           onClick={() => setPanneauCout((o) => !o)}
           aria-expanded={panneauCout}
-          title="Coût de cette conversation / de « Chat documents » sur la saison"
+          title={coutSaison != null ? 'Coût de cette conversation / de « Chat documents » sur la saison' : 'Coût de cette conversation'}
         >
-          {euros(cout)} / {euros(coutSaison ?? cout)}
+          {euros(cout)}
+          {coutSaison != null && ` / ${euros(coutSaison)}`}
         </button>
         <button type="button" className="dx-ico" onClick={onClose} aria-label="Fermer l’assistant">
           ✕
@@ -380,7 +381,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
       {panneauCout && (
         <div className="dx-chat__panneau">
           <h3>Coût de cette conversation : {euros(cout)}</h3>
-          <p className="dx-chat__etat">« Chat documents » sur la saison : {euros(coutSaison ?? cout)}</p>
+          {coutSaison != null && <p className="dx-chat__etat">« Chat documents » sur la saison : {euros(coutSaison)}</p>}
           {tours.length === 0 ? (
             <p className="dx-chat__etat">Aucune demande pour l’instant.</p>
           ) : (

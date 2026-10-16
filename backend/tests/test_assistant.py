@@ -1,6 +1,7 @@
 """Assistant de l'onglet Docs (prototype) : un faux Claude, aucun appel
 réel. Vérifie la boucle d'outils, les cartes « Faire / Annuler » (rien
-n'est fait par l'assistant lui-même) et l'accès réservé au Super User."""
+n'est fait par l'assistant lui-même), l'accès (admins et profs, chacun avec
+les droits de ses écrans) et le plafond mensuel de l'école."""
 
 import io
 import json
@@ -51,10 +52,12 @@ class FauxClaude:
     def __init__(self, reponses):
         self.reponses = list(reponses)
         self.demandes = []
+        self.outils = []
         self.beta = SimpleNamespace(messages=SimpleNamespace(stream=self._stream))
 
     def _stream(self, **demande):
         self.demandes.append(json.loads(json.dumps(demande["messages"], default=str)))
+        self.outils.append({o["name"] for o in demande["tools"]})
         return FauxFlux(self.reponses.pop(0))
 
 
@@ -175,23 +178,106 @@ def test_lire_un_fichier(client, monde, monkeypatch):
     assert any("Lundi 18h : Jazz" in b.get("text", "") for b in contenu)
 
 
-def test_reserve_au_superuser(client, monde, monkeypatch):
-    monkeypatch.setattr(main.assistant_client, "_client", FauxClaude([]))
-    reponse = client.post(
-        f"/assistant/orgs/{monde['ecole'].id}/messages", json={"texte": "Bonjour"}, headers=entetes_session(monde["admin"]),
-    )
+def _bonjour(monkeypatch, n=1):
+    faux = FauxClaude([_message(Bloc(type="text", text="Bonjour.")) for _ in range(n)])
+    monkeypatch.setattr(main.assistant_client, "_client", faux)
+    return faux
+
+
+def test_pas_pour_les_eleves(client, db_session, monde, monkeypatch):
+    _bonjour(monkeypatch)
+    eleve = Comptes().create(db_session, ecole_id=monde["ecole"].id, role="eleve", nom="Béraud", prenom="Margot")
+    entetes = entetes_session(eleve)
+    assert client.get("/assistant/acces", headers=entetes).json()["autorise"] is False
+    reponse = client.post(f"/assistant/orgs/{monde['ecole'].id}/messages", json={"texte": "Bonjour"}, headers=entetes)
     assert reponse.status_code == 403
 
 
-def test_la_fiche_d_ecole_du_super_user_y_a_acces(client, db_session, monde, monkeypatch):
-    """Même adresse email que le Super User : c'est lui, connecté avec sa fiche d'admin."""
-    monkeypatch.setattr(main.assistant_client, "_client", FauxClaude([_message(Bloc(type="text", text="Bonjour."))]))
-    seb = Comptes().create(db_session, ecole_id=monde["ecole"].id, role="admin", nom="Richard", prenom="Seb", email="su@test.fr")
-    entetes = entetes_session(seb)
-    assert client.get("/assistant/acces", headers=entetes).json()["autorise"] is True
-    assert client.get("/assistant/acces", headers=entetes_session(monde["admin"])).json()["autorise"] is False
-    reponse = client.post(f"/assistant/orgs/{monde['ecole'].id}/messages", json={"texte": "Bonjour"}, headers=entetes)
-    assert reponse.status_code == 200 and _evenements(reponse)[-1]["type"] == "fin"
+def test_admins_et_profs_y_ont_acces(client, db_session, monde, monkeypatch):
+    faux = _bonjour(monkeypatch, 2)
+    prof = Comptes().create(db_session, ecole_id=monde["ecole"].id, role="professeur", nom="Kim", prenom="Léa")
+    for compte in (monde["admin"], prof):
+        acces = client.get(f"/assistant/acces?org_id={monde['ecole'].id}", headers=entetes_session(compte)).json()
+        assert acces["autorise"] is True and acces["editeur"] is False
+        reponse = client.post(
+            f"/assistant/orgs/{monde['ecole'].id}/messages", json={"texte": "Bonjour"}, headers=entetes_session(compte)
+        )
+        assert reponse.status_code == 200 and _evenements(reponse)[-1]["type"] == "fin"
+    # Le prof n'a ni les modifications ni les données réservées aux admins.
+    admin_outils, prof_outils = faux.outils
+    assert "proposer_modifications" in admin_outils and "fiche_eleve" in admin_outils
+    assert "proposer_modifications" not in prof_outils
+    assert not {"fiche_eleve", "lister_professeurs", "lister_inscriptions_en_ligne", "lister_saisons"} & prof_outils
+    assert {"lister_cours", "lister_eleves", "presences", "heures_professeurs", "lister_dossier"} <= prof_outils
+    # Le cumul de l'école : à l'admin, pas au prof.
+    acces_prof = client.get(f"/assistant/acces?org_id={monde['ecole'].id}", headers=entetes_session(prof)).json()
+    assert acces_prof["cout_saison_usd"] is None
+
+
+def test_pas_l_ecole_d_un_autre(client, db_session, monde, monkeypatch):
+    _bonjour(monkeypatch)
+    autre = Ecoles().create(db_session, nom="Autre", code_postal="75001")
+    reponse = client.post(f"/assistant/orgs/{autre.id}/messages", json={"texte": "Bonjour"}, headers=entetes_session(monde["admin"]))
+    assert reponse.status_code == 403
+    assert client.get(f"/assistant/acces?org_id={autre.id}", headers=entetes_session(monde["admin"])).json()["autorise"] is False
+
+
+def test_un_prof_ne_voit_que_ce_que_ses_ecrans_montrent(db_session, monde):
+    from assistant.donnees import DonneesEcole
+    from cours.models import Cours, cours_professeurs, eleves_cours
+    from presence.models import PresenceProf, SeancePresence
+
+    ecole_id = monde["ecole"].id
+    comptes = Comptes()
+    prof = comptes.create(db_session, ecole_id=ecole_id, role="professeur", nom="Kim", prenom="Léa")
+    autre_prof = comptes.create(db_session, ecole_id=ecole_id, role="professeur", nom="Roy", prenom="Max")
+    eleve = comptes.create(db_session, ecole_id=ecole_id, role="eleve", nom="Béraud", prenom="Margot", email="margot@test.fr")
+    cours = Cours(ecole_id=ecole_id, nom="Jazz", jour="Lundi", heure_debut="18:00", heure_fin="19:00")
+    db_session.add(cours)
+    db_session.flush()
+    db_session.execute(cours_professeurs.insert().values(cours_id=cours.id, professeur_id=prof.id))
+    db_session.execute(cours_professeurs.insert().values(cours_id=cours.id, professeur_id=autre_prof.id))
+    db_session.execute(eleves_cours.insert().values(cours_id=cours.id, eleve_id=eleve.id))
+    seance = SeancePresence(cours_id=cours.id, date=__import__("datetime").date(2026, 10, 5))
+    db_session.add(seance)
+    db_session.flush()
+    for p in (prof, autre_prof):
+        db_session.add(PresenceProf(seance_id=seance.id, professeur_id=p.id))
+    db_session.commit()
+
+    d = DonneesEcole()
+    eleves = d.executer(db_session, prof, ecole_id, "lister_eleves", {})
+    assert "Margot Béraud" in eleves and "Jazz" in eleves and "margot@test.fr" not in eleves and " ans" not in eleves
+    assert "margot@test.fr" in d.executer(db_session, monde["admin"], ecole_id, "lister_eleves", {})
+    for refuse in ("fiche_eleve", "lister_professeurs", "lister_inscriptions_en_ligne", "lister_saisons"):
+        args = {"eleve_id": eleve.id} if refuse == "fiche_eleve" else {}
+        assert d.executer(db_session, prof, ecole_id, refuse, args) == "Réservé aux administrateurs."
+    heures = d.executer(db_session, prof, ecole_id, "heures_professeurs", {"professeur_id": None, "mois": None})
+    assert "Léa Kim" in heures and "Max Roy" not in heures
+    assert "propres heures" in d.executer(
+        db_session, prof, ecole_id, "heures_professeurs", {"professeur_id": autre_prof.id, "mois": None}
+    )
+
+
+def test_plafond_mensuel_de_l_ecole(client, db_session, monde, monkeypatch):
+    _bonjour(monkeypatch, 2)
+    ecole_id = monde["ecole"].id
+    main.ressources_client.noter_ia(db_session, ecole_id, "chat_documents", 10.5, "avant")
+    reponse = client.post(f"/assistant/orgs/{ecole_id}/messages", json={"texte": "Bonjour"}, headers=entetes_session(monde["admin"]))
+    assert reponse.status_code == 429 and "1er du mois" in reponse.json()["detail"]
+    # Le Super User n'est jamais bloqué, même avec sa fiche d'école.
+    seb = Comptes().create(db_session, ecole_id=ecole_id, role="admin", nom="Richard", prenom="Seb", email="su@test.fr")
+    reponse = client.post(f"/assistant/orgs/{ecole_id}/messages", json={"texte": "Bonjour"}, headers=entetes_session(seb))
+    assert reponse.status_code == 200
+    # Le plafond se règle par le Super User seul.
+    url = f"/ecoles/{ecole_id}/assistant-plafond"
+    assert client.put(url, json={"plafond_usd": 50}, headers=entetes_session(monde["admin"])).status_code == 403
+    assert client.put(url, json={"plafond_usd": 50}, headers=entetes_session(seb)).json() == {"plafond_usd": 50}
+    usage = client.get(f"/ecoles/{ecole_id}/ressources", headers=entetes_session(monde["admin"])).json()
+    assert usage["assistant_plafond_mensuel_usd"] == 50 and usage["assistant_cout_du_mois_usd"] >= 10.5
+    assert usage["assistant_plafond_modifiable"] is False
+    reponse = client.post(f"/assistant/orgs/{ecole_id}/messages", json={"texte": "Bonjour"}, headers=entetes_session(monde["admin"]))
+    assert reponse.status_code == 200
 
 
 class FauxFichiers:

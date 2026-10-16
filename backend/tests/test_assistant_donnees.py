@@ -59,7 +59,8 @@ def test_le_prof_ne_voit_que_ses_cours_sans_paiements(db_session, ecole):
     d = DonneesEcole()
     eleves = d.executer(db_session, ecole["prof"], ecole["id"], "lister_eleves", {"cours_id": None, "nom": None, "statut_paiement": None})
     assert "Léon Perrin" in eleves and "Ana Roux" not in eleves and "€" not in eleves
-    assert "hors de vos droits" in d.executer(db_session, ecole["prof"], ecole["id"], "fiche_eleve", {"eleve_id": ecole["ana"].id})
+    # Pas de fiche élève pour un prof (Seb, 16 octobre : pas plus que ses écrans).
+    assert d.executer(db_session, ecole["prof"], ecole["id"], "fiche_eleve", {"eleve_id": ecole["leon"].id}) == "Réservé aux administrateurs."
     assert d.executer(db_session, ecole["prof"], ecole["id"], "lister_professeurs", {}) == "Réservé aux administrateurs."
 
 

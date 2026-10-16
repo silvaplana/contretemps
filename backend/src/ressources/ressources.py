@@ -9,11 +9,13 @@ d'eux au-delà du nom de leur poste.
 
 from __future__ import annotations
 
+import datetime as dt
 from pathlib import Path
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from ecoles.models import Ecole
 from saisons import Saison
 from saisons.portee import saison_demandee, toutes_saisons
 
@@ -62,6 +64,35 @@ class Ressources:
         )
         return round(float(total or 0.0), 5)
 
+    def cout_du_mois(self, db: Session, ecole_id: int, categorie: str) -> float:
+        """Total d'un poste depuis le 1er du mois civil (UTC), toutes saisons
+        confondues : c'est ce que compte le plafond de l'assistant."""
+        debut = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None, day=1, hour=0, minute=0, second=0, microsecond=0)
+        with toutes_saisons(db):
+            total = db.scalar(
+                select(func.coalesce(func.sum(ConsommationIA.cout_usd), 0.0)).where(
+                    ConsommationIA.ecole_id == ecole_id,
+                    ConsommationIA.categorie == categorie,
+                    ConsommationIA.cree_le >= debut,
+                )
+            )
+        return round(float(total or 0.0), 5)
+
+    def plafond_assistant(self, db: Session, ecole_id: int) -> float:
+        ecole = db.get(Ecole, ecole_id)
+        return float(ecole.assistant_plafond_mensuel_usd) if ecole is not None else 0.0
+
+    def plafond_assistant_atteint(self, db: Session, ecole_id: int) -> bool:
+        return self.cout_du_mois(db, ecole_id, "chat_documents") >= self.plafond_assistant(db, ecole_id)
+
+    def definir_plafond_assistant(self, db: Session, ecole_id: int, plafond_usd: float) -> float:
+        ecole = db.get(Ecole, ecole_id)
+        if ecole is None:
+            raise LookupError(ecole_id)
+        ecole.assistant_plafond_mensuel_usd = round(max(0.0, float(plafond_usd)), 2)
+        db.commit()
+        return ecole.assistant_plafond_mensuel_usd
+
     def usage(self, db: Session, ecole_id: int) -> dict:
         memoire = [
             {"cle": cle, "libelle": libelle, "octets": _taille(racine / str(ecole_id))}
@@ -97,4 +128,6 @@ class Ressources:
             "ia": ia,
             "ia_total_usd": round(sum(ligne["cout_usd"] for ligne in ia), 4),
             "ia_total_toutes_saisons_usd": round(total_toutes or 0.0, 4),
+            "assistant_plafond_mensuel_usd": self.plafond_assistant(db, ecole_id),
+            "assistant_cout_du_mois_usd": round(self.cout_du_mois(db, ecole_id, "chat_documents"), 4),
         }

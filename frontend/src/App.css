@@ -3118,6 +3118,26 @@ a.btn {
   font-weight: 700;
 }
 
+/* Plafond mensuel de l'assistant (Admin > École > Usage > IA). */
+.usage-ressources__lignes + .usage-ressources__lignes {
+  margin-top: 12px;
+}
+
+.usage-ressources__depasse {
+  color: var(--danger, #c0392b);
+}
+
+.usage-ressources__plafond {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.usage-ressources__plafond .field-input {
+  width: 90px;
+}
+
 /* Admin > École : titres des volets un cran plus grands (demande du
    2026-10-15). */
 .admin-panel--ecole .section-label {

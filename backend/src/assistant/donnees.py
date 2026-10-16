@@ -84,6 +84,11 @@ OUTILS_DONNEES = [
     _outil("lister_saisons", "Les saisons de l'école (nom, dates, laquelle est en cours).", {}),
 ]
 NOMS = {o["name"] for o in OUTILS_DONNEES}
+# Hors admins (un professeur) : seulement ce que ses écrans montrent (Seb,
+# 16 octobre : « pas plus qu'en cliquant ») : ses cours, leurs élèves (nom et
+# cours), leurs présences, ses propres heures, leurs chorégraphies. Pas de
+# fiche élève, de contacts, d'âge, de paiements, ni des autres profs.
+POUR_TOUS = {"resume_ecole", "lister_cours", "lister_eleves", "presences", "heures_professeurs", "lister_choregraphies"}
 
 
 @dataclass
@@ -93,6 +98,7 @@ class Perimetre:
     cours_ids: set[int] | None  # None : tous
     eleve_ids: set[int] | None  # None : tous
     paiements: bool
+    compte_id: int | None = None  # la personne (un prof ne voit que ses heures)
 
 
 # Colonnes d'Admin > Élèves qu'on peut mettre en rouge (AdminEleves.jsx).
@@ -114,7 +120,7 @@ class DonneesEcole:
         if roles.is_prof(compte):
             cours = set(db.scalars(select(cours_professeurs.c.cours_id).where(cours_professeurs.c.professeur_id == compte.id)))
             eleves = set(db.scalars(select(eleves_cours.c.eleve_id).where(eleves_cours.c.cours_id.in_(cours)))) if cours else set()
-            return Perimetre(ecole_id, False, cours, eleves, False)
+            return Perimetre(ecole_id, False, cours, eleves, False, compte.id)
         famille = {compte.id}
         if compte.famille_id:
             famille |= set(db.scalars(select(Compte.id).where(Compte.famille_id == compte.famille_id)))
@@ -123,6 +129,8 @@ class DonneesEcole:
 
     def executer(self, db: Session, compte: Compte, ecole_id: int, nom: str, args: dict) -> str:
         p = self.perimetre(db, compte, ecole_id)
+        if not p.tout and nom not in POUR_TOUS:
+            return "Réservé aux administrateurs."
         return getattr(self, f"_{nom}")(db, p, **args)
 
     # --- Aides ---------------------------------------------------------
@@ -219,13 +227,17 @@ class DonneesEcole:
         lignes = []
         for e in eleves[:LIGNES_MAX]:
             pr = profils.get(e.id)
-            age = calculer_age(pr.date_naissance) if pr else None
-            morceaux = [f"- {_nom(e)} (id {e.id})", f"{age} ans" if age is not None else "âge ?", ", ".join(cours[e.id]) or "aucun cours"]
+            morceaux = [f"- {_nom(e)} (id {e.id})"]
+            if p.tout:
+                age = calculer_age(pr.date_naissance) if pr else None
+                morceaux.append(f"{age} ans" if age is not None else "âge ?")
+            morceaux.append(", ".join(cours[e.id]) or "aucun cours")
             if p.paiements and pr:
                 morceaux.append(f"paiement {pr.statut_paiement} {pr.montant_paye or 0:.0f}/{pr.montant_total_annee or 0:.0f} €")
             if p.tout and pr and pr.ligne_rouge:
                 morceaux.append("en rouge")
-            morceaux.append(" ".join(x for x in (e.email, e.telephone) if x) or "sans contact")
+            if p.tout:
+                morceaux.append(" ".join(x for x in (e.email, e.telephone) if x) or "sans contact")
             lignes.append(" ; ".join(morceaux))
         reste = len(eleves) - LIGNES_MAX
         return f"{len(eleves)} élèves.\n" + "\n".join(lignes) + (f"\n… et {reste} de plus." if reste > 0 else "")
@@ -309,7 +321,10 @@ class DonneesEcole:
 
     def _heures_professeurs(self, db: Session, p: Perimetre, professeur_id=None, mois=None) -> str:
         if not p.tout:
-            return "Réservé aux administrateurs."
+            # Un professeur : ses propres heures (Profil > Mes heures).
+            if p.compte_id is None or professeur_id not in (None, p.compte_id):
+                return "Réservé aux administrateurs : vous ne voyez que vos propres heures."
+            professeur_id = p.compte_id
         requete = (
             select(PresenceProf, SeancePresence, Cours)
             .join(SeancePresence, SeancePresence.id == PresenceProf.seance_id)

@@ -6,11 +6,13 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
-// L'assistant est-il ouvert à cette personne ? (essai : le Super User)
-// Avec le cumul « Chat documents » de la saison : { autorise, cout_saison_usd }.
+// L'assistant est-il ouvert à cette personne ? (admins et profs, Seb
+// 16 octobre). { autorise, cout_saison_usd, editeur } : le cumul « Chat
+// documents » de la saison (admins seulement, sinon null) et l'éditeur
+// en ligne (encore en essai : le Super User).
 export async function accesAssistant(orgId) {
   const reponse = await fetch(`${BASE_URL}/assistant/acces?org_id=${orgId}`)
-  return reponse.ok ? reponse.json() : { autorise: false, cout_saison_usd: null }
+  return reponse.ok ? reponse.json() : { autorise: false, cout_saison_usd: null, editeur: false }
 }
 
 // « Faire » sur un fichier fabriqué par l'ordinateur de l'assistant : il

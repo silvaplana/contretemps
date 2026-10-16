@@ -34,7 +34,7 @@ from documents.storage import guess_mime
 
 from .donnees import NOMS as OUTILS_ECOLE
 from .fichier_appli import CONSIGNE_FICHIER, OUTIL_FICHIER, FichierAppli
-from .donnees import OUTILS_DONNEES, DonneesEcole
+from .donnees import OUTILS_DONNEES, POUR_TOUS, DonneesEcole
 from .lecture import contenu_pour_claude
 from .modifications import OUTIL_MODIFICATIONS
 
@@ -182,6 +182,20 @@ OUTILS = [
     # Fichier de l'appli ouvert : écrire ses deux formulaires (voir fichier_appli.py).
     OUTIL_FICHIER,
 ]
+# Hors admins (un professeur) : ni modifications, ni les données réservées
+# aux administrateurs (Seb, 16 octobre : « pas plus qu'en cliquant »). Les
+# outils restent de toute façon vérifiés côté serveur (donnees.py,
+# modifications.py, droits des documents).
+OUTILS_RESTREINTS = [
+    o for o in OUTILS
+    if o is not OUTIL_MODIFICATIONS and (o.get("name") not in OUTILS_ECOLE or o["name"] in POUR_TOUS)
+]
+
+
+def outils_pour(admin: bool) -> list[dict]:
+    return OUTILS if admin else OUTILS_RESTREINTS
+
+
 TAILLE_MAX_PRODUIT = 50 * 1024 * 1024
 # Fichiers glissés dans l'assistant (pièces jointes d'une question).
 TAILLE_MAX_PIECE = 20 * 1024 * 1024
@@ -240,6 +254,9 @@ class Assistant:
         self.noter_cout = noter_cout
         # cout_saison(db, org_id) : cumul « Chat documents » de la saison.
         self.cout_saison = cout_saison
+        # plafond_atteint(db, org_id) -> bool : plafond mensuel de l'école
+        # atteint (branché par app/main.py ; jamais pour le Super User).
+        self.plafond_atteint = None
         self.conversations: dict[str, Conversation] = {}
         # Fichiers fabriqués par l'ordinateur, en attente de « Faire » :
         # jeton -> (org_id, person_id, nom, contenu).
@@ -545,13 +562,15 @@ class Assistant:
                 ],
             })
             modele = modele if modele in MODELES else MODELE
+            admin = compte is not None and self.donnees.perimetre(db, compte, member.org_id).tout
+            outils = outils_pour(admin)
             cout = 0.0
             nb_appels, entree, sortie = 0, 0, 0
             deja_ecrit = False
             for _ in range(TOURS_MAX):
                 reponse = None
                 debut_appel = True
-                for genre, valeur in self._un_appel(conv, modele):
+                for genre, valeur in self._un_appel(conv, modele, outils):
                     if genre == "texte":
                         # Nouvel appel après des outils : nouveau paragraphe.
                         if debut_appel and deja_ecrit:
@@ -621,7 +640,8 @@ class Assistant:
             if self.noter_cout is not None and cout > 0:
                 self.noter_cout(db, member.org_id, cout, f"{MODELES[modele]} : {texte[:150]}")
             logger.info("Assistant : conversation %s, %s, tour à %.4f $ (total %.4f $)", conv.id, modele, cout, conv.cout_usd)
-            saison = self.cout_saison(db, member.org_id) if self.cout_saison is not None else None
+            # Le cumul de l'école : aux admins seulement (comme Admin > École).
+            saison = self.cout_saison(db, member.org_id) if self.cout_saison is not None and admin else None
             yield _evenement(
                 type="fin", cout_usd=round(cout, 5), cout_total_usd=round(conv.cout_usd, 5), cout_saison_usd=saison, tour=tour
             )
@@ -630,7 +650,7 @@ class Assistant:
         finally:
             conv.verrou.release()
 
-    def _un_appel(self, conv: Conversation, modele: str = MODELE) -> Iterator[tuple[str, object]]:
+    def _un_appel(self, conv: Conversation, modele: str = MODELE, outils: list[dict] = OUTILS) -> Iterator[tuple[str, object]]:
         """Un appel à Claude, en flux : ("texte", morceau) et ("outil", nom)
         au fil de l'eau, puis ("fin", message final). Changer de modèle en cours de conversation est
         possible : les blocs de réflexion d'un autre modèle sont ignorés."""
@@ -646,7 +666,7 @@ class Assistant:
                 model=modele,
                 max_tokens=32000,
                 system=CONSIGNE,
-                tools=OUTILS,
+                tools=outils,
                 messages=conv.messages,
                 output_config={"effort": "medium"},
                 cache_control={"type": "ephemeral"},
