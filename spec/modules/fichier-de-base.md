@@ -136,14 +136,38 @@ peuvent servir de fichier lié (le PV lit les votes).
 - **Les résultats** suivent la visibilité choisie dans Diffuser : avec « Résultats visibles » ou
   « Publique », un destinataire voit les totaux (ou les réponses) sous la page après avoir répondu.
 
-## 4. Statut et modifications en cours de route
+## 4. Statut, onglets et droits (Seb, 16 octobre)
 
-- Le badge ✎ / ✓ / sceau est dans l'en-tête ; Valider (bouton de Préparer) fait passer en Validé.
-- Modifier la page **après** la diffusion crée un brouillon ; ce qui est en ligne ne change qu'au
+**L'état se change en un geste** : le badge de l'en-tête (✎ / ✓ / sceau, avec le mot en entier) est un
+bouton ; le toucher ouvre `Brouillon | Validé | Officiel`, l'état actuel coché. Les règles du §5.4
+restent : Officiel demande le niveau `manage` et fige le contenu ; pour modifier un fichier Officiel on
+crée un nouveau brouillon ; un Validé peut revenir en Brouillon.
+
+**Les onglets suivent l'état** :
+
+| État | Préparer | Aperçu | Diffuser | Résultats |
+|---|---|---|---|---|
+| Brouillon | ✓ | ✓ | grisé | grisé |
+| Validé | grisé | ✓ | ✓ | grisé (à confirmer, voir §7) |
+| Officiel | grisé | ✓ | ✓ | ✓ |
+
+Un onglet indisponible reste visible, **grisé avec sa raison** au toucher (« Repassez en Brouillon pour
+modifier », « Validez d'abord le fichier ») : même règle que les actions interdites de l'explorateur
+(§6.3 bis), et on comprend toujours où l'on en est. Pour Informer, l'onglet Résultats n'existe pas du
+tout.
+
+**Droits** : un bouton **Partager** (icône personnes) toujours visible dans l'en-tête ouvre « Qui a
+accès ? » (§4.4 bis), et le menu ⋯ reprend la feuille d'actions de l'explorateur (Partager, Renommer,
+Déplacer, Télécharger, Propriétés, Supprimer). Le ⋯ existe déjà dans la visionneuse actuelle.
+
+**Modifications en cours de route** :
+
+- Modifier un fichier déjà diffusé : on repasse en Brouillon ; ce qui est en ligne ne change qu'au
   bouton « Mettre à jour la page diffusée » (même règle que la publication, §5.5).
 - Ajouter une question après les premières réponses : permis, la colonne est vide pour ceux qui ont déjà
   répondu. Supprimer une question qui a des réponses : la colonne est **masquée**, pas effacée.
-- Officiel : tout est figé, page et résultats (PDF figé, tableau figé).
+- Officiel : le contenu est figé (PDF figé) ; les réponses continuent d'arriver jusqu'à la date limite,
+  puis le tableau est figé à la clôture.
 
 ## 5. Modèles et parcours
 
@@ -183,3 +207,7 @@ Pas de nouvelle table pour le cadre (le détail des blocs viendra avec le design
    « Formulaire de résultat »**, toujours ces deux noms.
 3. **Informer sans onglet Résultats**, le « qui a lu » étant dans Diffuser. Recommandation : **oui**.
 4. **Onglet d'ouverture** : Aperçu, sauf fichier neuf sur Préparer. Recommandation : **oui**.
+5. **En Validé, où vont les réponses ?** Avec le tableau du §4, un fichier Validé peut être diffusé mais
+   n'a pas d'onglet Résultats. Recommandation : **en Validé, on diffuse seulement à soi et aux
+   relecteurs (essai grandeur nature) ; la diffusion à tous et la collecte s'ouvrent en Officiel.**
+   Autre possibilité : afficher Résultats dès qu'on diffuse, en Validé comme en Officiel.
