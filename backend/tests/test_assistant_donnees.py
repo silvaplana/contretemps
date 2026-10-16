@@ -42,11 +42,17 @@ def _tout(db_session, compte, ecole_id, eleve_id):
     return "\n".join(sorties)
 
 
-def test_jamais_la_sante_ni_le_commentaire(db_session, ecole):
+def test_jamais_la_sante_commentaire_pour_les_admins_seulement(db_session, ecole):
     texte = _tout(db_session, ecole["admin"], ecole["id"], ecole["leon"].id)
     assert "Léon Perrin" in texte and "Ana Roux" in texte and "100/300 €" in texte
-    for secret in ("ARACHIDES", "VENTOLINE", "COMMENTAIRE-SECRET"):
+    for secret in ("ARACHIDES", "VENTOLINE"):
         assert secret not in texte
+    # Le commentaire de l'administration : aux admins et au Super User
+    # seulement (Seb, 16 octobre).
+    assert "COMMENTAIRE-SECRET" in texte
+    texte_prof = _tout(db_session, ecole["prof"], ecole["id"], ecole["leon"].id)
+    for secret in ("ARACHIDES", "VENTOLINE", "COMMENTAIRE-SECRET"):
+        assert secret not in texte_prof
 
 
 def test_le_prof_ne_voit_que_ses_cours_sans_paiements(db_session, ecole):
