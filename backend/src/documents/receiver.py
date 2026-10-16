@@ -47,6 +47,25 @@ class CopyTarget(BaseModel):
     parent_id: int | None = None
 
 
+class NewApp(BaseModel):
+    space: str
+    parent_id: int | None = None
+    family: str
+    name: str | None = None
+
+
+class AppSave(BaseModel):
+    content: dict
+    family: str | None = None
+    # Version sur laquelle l'éditeur travaillait (détecte une modification
+    # faite ailleurs entre-temps).
+    base_version: int | None = None
+
+
+class AppAnswer(BaseModel):
+    values: dict
+
+
 class AccessEntry(BaseModel):
     type: str
     id: str
@@ -209,6 +228,35 @@ class DocumentsReceiver:
                     db, self._member(org_id, m), node_id, data.restricted, [e.model_dump() for e in data.entries]
                 )
             )
+
+        # Fichiers de l'appli (fichier-de-base.md)
+        apps = self.client.apps
+
+        @self.app.post(base + "/apps", status_code=201)
+        def create_app(org_id: int, data: NewApp, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.create(db, self._member(org_id, m), data.space, data.parent_id, data.family, data.name))
+
+        @self.app.get(base + "/nodes/{node_id}/app")
+        def get_app(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.get(db, self._member(org_id, m), node_id))
+
+        @self.app.put(base + "/nodes/{node_id}/app")
+        def save_app(org_id: int, node_id: int, data: AppSave, db: Session = db_dep, m: Member = member):
+            return appel(
+                lambda: apps.save(db, self._member(org_id, m), node_id, data.content, data.family, data.base_version)
+            )
+
+        @self.app.post(base + "/nodes/{node_id}/app/try", status_code=201)
+        def try_app(org_id: int, node_id: int, data: AppAnswer, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.try_answer(db, self._member(org_id, m), node_id, data.values))
+
+        @self.app.get(base + "/nodes/{node_id}/app/responses")
+        def app_responses(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.responses(db, self._member(org_id, m), node_id))
+
+        @self.app.delete(base + "/nodes/{node_id}/app/responses/tests")
+        def clear_tests(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.clear_tests(db, self._member(org_id, m), node_id))
 
         @self.app.get(base + "/principals")
         def principals(org_id: int, q: str = "", db: Session = db_dep, m: Member = member):

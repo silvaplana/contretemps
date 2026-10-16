@@ -38,6 +38,9 @@ SPACES = ("public", "private", "personal")
 
 KIND_FOLDER = "folder"
 KIND_FILE = "file"
+# Fichier de l'appli (fichier de base, spec fichier-de-base.md) : son
+# contenu est un JSON de blocs versionné (DocAppVersion), pas un binaire.
+KIND_APP = "app"
 
 # Statuts (§5.4, badges §7.1 ter) ; None = pas de badge.
 STATUSES = ("draft", "validated", "official")
@@ -152,3 +155,47 @@ class DocActivity(Base):
     action: Mapped[str] = mapped_column(String(30), nullable=False)
     detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class DocAppVersion(Base):
+    """Une version du contenu d'un fichier de l'appli : les deux formulaires
+    (entrée, résultat) en JSON de blocs, jamais de HTML (fichier-de-base.md
+    §6). La plus récente (plus grand `number`) est la version courante."""
+
+    __tablename__ = "doc_app_versions"
+    __table_args__ = (UniqueConstraint("node_id", "number", name="uq_doc_app_version_number"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("doc_nodes.id"), nullable=False, index=True)
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    content: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # "created" (fichier neuf ou copie), "human" (modifié à la main), "ai".
+    origin: Mapped[str] = mapped_column(String(10), nullable=False, default="human")
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class DocResponse(Base):
+    """Une réponse au formulaire d'entrée d'un fichier de l'appli : une ligne
+    par personne (fichier-de-base.md §6.1). Les valeurs sont rangées sous
+    l'identifiant stable de chaque question ; la version dit à quel
+    formulaire la personne a répondu."""
+
+    __tablename__ = "doc_responses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(ForeignKey("doc_nodes.id"), nullable=False, index=True)
+    version_id: Mapped[int] = mapped_column(ForeignKey("doc_app_versions.id"), nullable=False)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # "answered" ; "pending" et "started" viendront avec la diffusion.
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="answered")
+    # Essai depuis l'Aperçu : ne crée rien dans l'appli, effaçable.
+    is_test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # "test" pour l'instant ; "link" (lien personnel), "public" ensuite.
+    source: Mapped[str] = mapped_column(String(10), nullable=False, default="test")
+    values: Mapped[dict] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)

@@ -21,6 +21,7 @@ from sqlalchemy.orm import Session
 from . import access
 from .models import (
     FAMILIES,
+    KIND_APP,
     KIND_FILE,
     KIND_FOLDER,
     LEVEL_EDIT,
@@ -107,6 +108,9 @@ class Documents:
         self.periods = periods
         self.period_label = period_label
         self.private_editors = tuple(private_editors)
+        from .app_files import AppFiles
+
+        self.apps = AppFiles(self)
 
     # ------------------------------------------------------------------
     # Espaces et droits
@@ -497,7 +501,7 @@ class Documents:
             select(DocNode)
             .where(
                 DocNode.org_id == member.org_id,
-                DocNode.kind == KIND_FILE,
+                DocNode.kind.in_((KIND_FILE, KIND_APP)),
                 DocNode.deleted_at.is_(None),
                 DocNode.space.in_(espaces),
                 or_(DocNode.space != "personal", DocNode.owner_person_id == member.person_id),
@@ -768,6 +772,8 @@ class Documents:
         if source.kind == KIND_FILE and source.current_version_id:
             version = db.get(DocVersion, source.current_version_id)
             self._add_version(db, member, copie, db.get(StoredFile, version.stored_file_id), version.filename)
+        elif source.kind == KIND_APP:
+            self.apps.copy_content(db, member, source, copie)
         else:
             enfants = db.scalars(
                 select(DocNode).where(DocNode.parent_id == source.id, DocNode.deleted_at.is_(None))
@@ -910,6 +916,7 @@ class Documents:
         a_effacer = list({n.id: n for n in a_effacer}.values())
         ids = {n.id for n in a_effacer}
         fichiers = set(db.scalars(select(DocVersion.stored_file_id).where(DocVersion.node_id.in_(ids))))
+        self.apps.erase(db, ids)
         for modele in (DocVersion, DocAcl, DocActivity):
             db.query(modele).filter(modele.node_id.in_(ids)).delete(synchronize_session=False)
         # Enfants avant parents (clé étrangère parent_id).
