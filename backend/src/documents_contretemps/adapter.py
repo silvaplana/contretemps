@@ -15,7 +15,9 @@ dit ce qu'ils sont.
 
 from __future__ import annotations
 
+import logging
 import os
+from copy import copy
 from pathlib import Path
 
 from fastapi import Depends, HTTPException
@@ -25,7 +27,7 @@ from sqlalchemy.orm import Session
 from comptes import Compte, rbac, roles
 from cours.models import Cours, cours_professeurs, eleves_cours
 from db import get_db
-from documents.ports import Member, Period, Principal
+from documents.ports import Member, Period, Principal, Recipient
 from documents.service import normalize_search
 from saisons import Saison
 from saisons.portee import TOUTES_SAISONS, toutes_saisons
@@ -33,6 +35,8 @@ from saisons.portee import TOUTES_SAISONS, toutes_saisons
 DOSSIER_DOCUMENTS = Path(os.environ.get("DOCUMENTS_DIR", "./data/documents"))
 # Taille maximale d'un fichier envoyé (Mo).
 TAILLE_MAX_MO = int(os.environ.get("DOCUMENTS_TAILLE_MAX_MO", "200"))
+
+logger = logging.getLogger(__name__)
 
 _ROLES = {
     roles.ADMIN: ("Admins", "rôle"),
@@ -158,6 +162,80 @@ class AnnuaireContretemps:
                 detail = {"admin": "admin", "professeur": "professeur", "eleve": "élève"}.get(role, "membre")
                 personnes.append(Principal("member", str(pid), nom_affiche(compte), detail))
         return (groupes + personnes)[:limit]
+
+
+    def recipients(self, db: Session, org_id: int, principals: list[tuple[str, str]]) -> list[Recipient]:
+        """Diffuser : chaque personne une fois, avec le compte de la saison en
+        cours (son adresse d'aujourd'hui) ; à défaut, son dernier compte connu."""
+        saison = _saison_courante(db, org_id)
+        with toutes_saisons(db):
+            courants = list(db.scalars(select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == saison)))
+        par_personne = {personne_id(db, c): c for c in courants}
+        choisis: dict[int, Compte] = {}
+
+        def ajouter(compte: Compte | None) -> None:
+            if compte is None or compte.ecole_id != org_id:
+                return
+            pid = personne_id(db, compte)
+            choisis.setdefault(pid, par_personne.get(pid, compte))
+
+        for t, i in principals:
+            if t == "member" and i.isdigit():
+                pid = int(i)
+                ajouter(par_personne.get(pid) or self._personnes(db, {pid}).get(pid))
+            elif t == "group" and i.startswith("role:"):
+                test = {
+                    roles.ADMIN: lambda c: roles.is_admin(c) or roles.is_owner(c),
+                    roles.PROFESSEUR: roles.is_prof,
+                    roles.ELEVE: roles.is_eleve,
+                }.get(i[5:])
+                for c in courants if test else []:
+                    if test(c):
+                        ajouter(c)
+            elif t == "group" and i.startswith("course:") and i[7:].isdigit():
+                cours_id = int(i[7:])
+                ids = set(db.scalars(select(cours_professeurs.c.professeur_id).where(cours_professeurs.c.cours_id == cours_id)))
+                ids |= set(db.scalars(select(eleves_cours.c.eleve_id).where(eleves_cours.c.cours_id == cours_id)))
+                for c in self._personnes(db, ids).values():
+                    ajouter(c)
+        gens = [Recipient(pid, nom_affiche(c), (c.email or "").strip() or None) for pid, c in choisis.items()]
+        return sorted(gens, key=lambda r: r.name.lower())
+
+
+class MessagerieContretemps:
+    """Port `Mailer` : les emails partent par le SMTP de l'appli
+    (inscriptions/email_envoi.py), au nom de l'école ; en développement,
+    `MAILS_DANS_LES_JOURNAUX=1` les écrit dans les journaux."""
+
+    def __init__(self) -> None:
+        from inscriptions.email_envoi import EmailEnvoi
+
+        self.envoi = EmailEnvoi()
+        self.dans_les_journaux = os.environ.get("MAILS_DANS_LES_JOURNAUX") == "1"
+
+    @property
+    def available(self) -> bool:
+        return self.envoi.actif or self.dans_les_journaux
+
+    def org(self, db: Session, org_id: int) -> tuple[str, str]:
+        from ecoles.models import Ecole
+        from personnalisation.personnalisation import adresse_de_l_ecole
+
+        ecole = db.get(Ecole, org_id)
+        if ecole is None:
+            return "Contretemps", os.environ.get("URL_APPLI", "https://silvaplana.cloud/contretemps").rstrip("/")
+        return ecole.nom, adresse_de_l_ecole(ecole)
+
+    def send(self, to: str, subject: str, text: str, html: str, sender_name: str, reply_to: str | None) -> None:
+        if not self.envoi.actif:
+            logger.warning("Mail non envoyé (pas de SMTP) à %s : %s\n%s", to, subject, text)
+            return
+        # Expéditeur = nom de l'école avec l'adresse de l'appli ; les
+        # réponses vont à la personne qui envoie (fichier-de-base.md §2.3).
+        envoi = copy(self.envoi)
+        envoi.nom_expediteur = sender_name
+        envoi.repondre_a = reply_to or self.envoi.repondre_a
+        envoi.envoyer_confirmation(to, subject, text, [], html)
 
 
 class SaisonsContretemps:

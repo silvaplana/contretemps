@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -21,6 +21,16 @@ from db import get_db
 from .ports import Member
 from .service import DocError, Documents
 from .storage import FileTooLarge
+
+
+class Target(BaseModel):
+    type: str
+    id: str
+
+
+class SendRequest(BaseModel):
+    principals: list[Target] = Field(default_factory=list, max_length=200)
+    message: str | None = Field(default=None, max_length=2000)
 
 
 class NewFolder(BaseModel):
@@ -290,6 +300,36 @@ class DocumentsReceiver:
         @self.app.post("/documents/public/orgs/{org_id}/pages/{slug}/answers", status_code=201)
         def public_answer(org_id: int, slug: str, data: AppAnswer, db: Session = db_dep):
             return appel(lambda: apps.public_answer(db, org_id, slug, data.values))
+
+        # Diffuser à des personnes choisies (fichier-de-base.md §2.3)
+        sends = self.client.sends
+
+        @self.app.post(base + "/nodes/{node_id}/app/sends/preview")
+        def send_preview(org_id: int, node_id: int, data: SendRequest, db: Session = db_dep, m: Member = member):
+            cibles = [p.model_dump() for p in data.principals]
+            return appel(lambda: sends.preview(db, self._member(org_id, m), node_id, cibles))
+
+        @self.app.post(base + "/nodes/{node_id}/app/sends", status_code=201)
+        def send(
+            org_id: int, node_id: int, data: SendRequest, taches: BackgroundTasks, db: Session = db_dep, m: Member = member
+        ):
+            cibles = [p.model_dump() for p in data.principals]
+            resume, jobs = appel(lambda: sends.send(db, self._member(org_id, m), node_id, cibles, data.message))
+            taches.add_task(sends.deliver, db.get_bind(), jobs)
+            return resume
+
+        @self.app.get(base + "/nodes/{node_id}/app/sends")
+        def send_list(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: sends.list(db, self._member(org_id, m), node_id))
+
+        # Le lien personnel reçu par email (public, sans compte).
+        @self.app.get("/documents/public/links/{token}")
+        def link_page(token: str, db: Session = db_dep):
+            return appel(lambda: sends.link_page(db, token))
+
+        @self.app.post("/documents/public/links/{token}/answers", status_code=201)
+        def link_answer(token: str, data: AppAnswer, db: Session = db_dep):
+            return appel(lambda: sends.link_answer(db, token, data.values))
 
         # Modèles de l'école (fichier-de-base.md §5)
         @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)

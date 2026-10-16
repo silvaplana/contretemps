@@ -1,4 +1,4 @@
-"""Documents : fichiers de l'appli (versions JSON, réponses, modèles de l'école, pages en ligne)
+"""Documents : fichiers de l'appli (versions JSON, réponses, modèles de l'école, pages en ligne, envois)
 
 Revision ID: c7e9a1b3d5f2
 Revises: f8c1d3e5a7b9
@@ -84,9 +84,33 @@ def upgrade() -> None:
         )
         op.create_index('ix_doc_publications_org_id', 'doc_publications', ['org_id'])
         op.create_index('ix_doc_publications_node_id', 'doc_publications', ['node_id'])
+    if 'doc_sends' not in tables:
+        op.create_table(
+            'doc_sends',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('org_id', sa.Integer(), nullable=False),
+            sa.Column('node_id', sa.Integer(), nullable=False),
+            sa.Column('token', sa.String(length=64), nullable=False, unique=True),
+            sa.Column('person_id', sa.Integer(), nullable=True),
+            sa.Column('name', sa.String(length=255), nullable=False),
+            sa.Column('email', sa.String(length=255), nullable=True),
+            sa.Column('channel', sa.String(length=10), nullable=False),
+            sa.Column('test', sa.Boolean(), nullable=False),
+            sa.Column('status', sa.String(length=10), nullable=False),
+            sa.Column('error', sa.String(length=255), nullable=True),
+            sa.Column('sent_by', sa.Integer(), nullable=True),
+            sa.Column('created_at', sa.DateTime(), nullable=True),
+            sa.Column('sent_at', sa.DateTime(), nullable=True),
+            sa.Column('opened_at', sa.DateTime(), nullable=True),
+            sa.Column('answered_at', sa.DateTime(), nullable=True),
+            sa.Column('response_id', sa.Integer(), nullable=True),
+        )
+        op.create_index('ix_doc_sends_org_id', 'doc_sends', ['org_id'])
+        op.create_index('ix_doc_sends_node_id', 'doc_sends', ['node_id'])
 
 
 def downgrade() -> None:
+    op.drop_table('doc_sends')
     op.drop_table('doc_publications')
     op.drop_table('doc_app_templates')
     op.drop_table('doc_responses')

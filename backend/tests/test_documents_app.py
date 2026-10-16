@@ -251,6 +251,92 @@ def test_mettre_en_ligne_et_repondre_sans_compte(client, ecole):
     assert prof.c.post(f"{prof.base}/nodes/{autre}/app/publication", headers=prof.h).status_code == 403
 
 
+class FauxMails:
+    available = True
+
+    def __init__(self):
+        self.envoyes = []
+
+    def org(self, db, org_id):
+        return "Contretemps", "https://contretemps-83330.contretemps.silvaplana.cloud"
+
+    def send(self, to, subject, text, html, sender_name, reply_to):
+        if to == "panne@exemple.fr":
+            raise RuntimeError("Boîte pleine")
+        self.envoyes.append({"to": to, "subject": subject, "text": text, "html": html, "from": sender_name, "reply_to": reply_to})
+
+
+@pytest.fixture
+def mails(monkeypatch):
+    from app.main import documents_client
+
+    faux = FauxMails()
+    monkeypatch.setattr(documents_client, "mailer", faux)
+    return faux
+
+
+def test_diffuser_aux_personnes_choisies(client, ecole, db_session, mails):
+    """Diffuser (fichier-de-base.md §2.3) : en Validé, aux relecteurs
+    seulement et réponses d'essai ; en Officiel, aux groupes, réponses
+    comptées ; un lien personnel par personne, une réponse par lien."""
+    ecole["admin"].email = "julia@exemple.fr"
+    ecole["eleve"].email = "leon@exemple.fr"
+    ecole["prof"].email = "panne@exemple.fr"
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    saison = _saison(admin)["id"]
+    ident = creer(admin, "question", saison, "Fête de l'école").json()["id"]
+    enregistrer(admin, ident, SONDAGE)
+    url = f"{admin.base}/nodes/{ident}/app/sends"
+    envoyer = lambda cibles, **autres: admin.c.post(url, json={"principals": cibles, **autres}, headers=admin.h)
+    personne = lambda c: {"type": "member", "id": str(c.id)}
+    cours = {"type": "group", "id": f"course:{ecole['cours'].id}"}
+
+    assert envoyer([personne(ecole["admin"])]).status_code == 409  # Brouillon
+    admin.modifier(ident, change_status=True, status="validated")
+    assert envoyer([cours]).status_code == 409  # Validé : un par un
+    apercu = admin.c.post(url + "/preview", json={"principals": [personne(ecole["admin"]), personne(ecole["autre"])]}, headers=admin.h).json()
+    assert apercu == {"test": True, "available": True, "count": 1, "without_email": ["Ana Roux"]}
+    r = envoyer([personne(ecole["admin"])], message="Tu relis ?")
+    assert r.status_code == 201 and r.json() == {"sent": 1, "test": True}
+    mail = mails.envoyes[-1]
+    assert mail["to"] == "julia@exemple.fr" and mail["subject"] == "[Relecture] Fête de l'école"
+    assert mail["from"] == "Contretemps" and mail["reply_to"] == "julia@exemple.fr"
+    assert "Tu relis ?" in mail["text"] and "Fête de fin d'année" in mail["text"] and "Quelle date" not in mail["text"]
+    lien = mail["text"].split("https://contretemps-83330.contretemps.silvaplana.cloud/r/")[1].split()[0]
+    assert "<a " not in mail["html"]
+
+    page = client.get(f"/documents/public/links/{lien}")
+    assert page.status_code == 200 and page.json()["accepting"] is True and page.json()["test"] is True
+    assert page.json()["person"] == "Julia Dho" and page.json()["values"] is None
+    assert client.post(f"/documents/public/links/{lien}/answers", json={"values": {"q1": "20 juin"}}).status_code == 201
+    assert client.post(f"/documents/public/links/{lien}/answers", json={"values": {"q1": "21 juin"}}).status_code == 201
+    rep = admin.get(f"/nodes/{ident}/app/responses").json()["items"]
+    assert len(rep) == 1 and rep[0]["is_test"] is True and rep[0]["source"] == "link" and rep[0]["values"]["q1"] == "21 juin"
+    assert client.get(f"/documents/public/links/{lien}").json()["values"]["q1"] == "21 juin"
+
+    # Officiel : au cours (Léon) et au prof (son adresse est en panne).
+    admin.modifier(ident, change_status=True, status="official")
+    assert client.post(f"/documents/public/links/{lien}/answers", json={"values": {"q1": "20 juin"}}).status_code == 409
+    r = envoyer([cours, personne(ecole["prof"]), personne(ecole["autre"])])
+    assert r.json() == {"sent": 2, "test": False}
+    suivi = {s["name"]: s for s in admin.get(f"/nodes/{ident}/app/sends").json()["items"]}
+    assert suivi["Léon Perrin"]["status"] == "sent" and suivi["Léon Perrin"]["test"] is False
+    assert suivi["Ima Blanc"]["status"] == "failed" and suivi["Ima Blanc"]["error"] == "Boîte pleine"
+    assert suivi["Julia Dho"]["answered_at"] and suivi["Julia Dho"]["test"] is True
+    lien_leon = next(m for m in mails.envoyes if m["to"] == "leon@exemple.fr")["text"].split("/r/")[1].split()[0]
+    assert client.post(f"/documents/public/links/{lien_leon}/answers", json={"values": {"q1": "20 juin"}}).status_code == 201
+    rep = admin.get(f"/nodes/{ident}/app/responses").json()["items"]
+    assert [(r["who"], r["is_test"]) for r in rep] == [("Julia Dho", True), ("Léon Perrin", False)]
+    # Renvoyer : le même lien.
+    envoyer([cours])
+    assert mails.envoyes[-1]["text"].split("/r/")[1].split()[0] == lien_leon
+    # Le prof ne diffuse pas (niveau gérer) ; un lien inconnu ne mène à rien.
+    prof = Docs(client, ecole["id"], ecole["prof"])
+    assert prof.c.post(f"{prof.base}/nodes/{ident}/app/sends", json={"principals": [cours]}, headers=prof.h).status_code == 403
+    assert client.get("/documents/public/links/inconnu").status_code == 404
+
+
 def test_slugify():
     from documents.app_files import slugify
 

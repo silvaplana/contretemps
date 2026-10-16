@@ -30,6 +30,7 @@ from documents_contretemps import (
     DOSSIER_DOCUMENTS,
     TAILLE_MAX_MO,
     AnnuaireContretemps,
+    MessagerieContretemps,
     SaisonsContretemps,
     membre_appelant,
     recopieur_de_saison,
@@ -247,6 +248,7 @@ documents_client = Documents(
     storage=LocalStorage(DOSSIER_DOCUMENTS, TAILLE_MAX_MO * 1024 * 1024),
     directory=AnnuaireContretemps(),
     periods=SaisonsContretemps(),
+    mailer=MessagerieContretemps(),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.

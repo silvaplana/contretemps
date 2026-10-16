@@ -233,8 +233,9 @@ function Blocks({ blocks, values, setValue, disabled }) {
 }
 
 // `onSubmit(values)` : renvoie une promesse ; absent = page à lire seulement.
-export default function Page({ content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note }) {
-  const [values, setValues] = useState({})
+// `initial` : la réponse déjà donnée (lien personnel) ; on la corrige.
+export default function Page({ content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note, initial }) {
+  const [values, setValues] = useState(initial ?? {})
   const [envoi, setEnvoi] = useState(false)
   const [merci, setMerci] = useState(false)
   const blocks = content?.entry?.blocks ?? []
@@ -247,8 +248,8 @@ export default function Page({ content, size = 'phone', onSubmit, submitLabel = 
     return (
       <div className={`ap-page ap-page--${size}`}>
         <div className="ap-merci">Merci, votre réponse est enregistrée.{note && <span> {note}</span>}</div>
-        <button type="button" className="ap-link" onClick={() => (setValues({}), setMerci(false))}>
-          Répondre encore
+        <button type="button" className="ap-link" onClick={() => (initial ? null : setValues({}), setMerci(false))}>
+          {initial ? 'Modifier ma réponse' : 'Répondre encore'}
         </button>
       </div>
     )

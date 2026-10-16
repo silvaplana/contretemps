@@ -7,6 +7,8 @@ import './pagePublique.css'
 // La page en ligne d'un fichier de l'appli (documents.md §5.5,
 // fichier-de-base.md §2.3) : le formulaire d'entrée, aux couleurs de
 // l'école, rempli sans compte. Rien d'autre de l'appli n'est chargé.
+// Aussi le lien personnel reçu par email (`<adresse de l'école>/r/<jeton>`) :
+// même page, la réponse est celle de la personne et se corrige.
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -25,7 +27,7 @@ async function lire(url, options) {
   return r.json()
 }
 
-export default function PagePublique({ slug }) {
+export default function PagePublique({ slug, jeton }) {
   const apparence = useApparence()
   const [page, setPage] = useState(null)
   const [erreur, setErreur] = useState('')
@@ -36,22 +38,29 @@ export default function PagePublique({ slug }) {
     ;(async () => {
       try {
         const vue = versEcran(await lire(`${BASE_URL}/par-host/personnalisation?host=${encodeURIComponent(window.location.host)}`))
-        if (!vue.ecoleId) throw new Error('Cette adresse ne correspond à aucune école.')
-        mettreAJour(vue)
+        if (!vue.ecoleId && !jeton) throw new Error('Cette adresse ne correspond à aucune école.')
+        if (vue.ecoleId) mettreAJour(vue)
         setEcoleId(vue.ecoleId)
-        const p = await lire(`${BASE_URL}/documents/public/orgs/${vue.ecoleId}/pages/${encodeURIComponent(slug)}`)
+        const p = await lire(
+          jeton
+            ? `${BASE_URL}/documents/public/links/${encodeURIComponent(jeton)}`
+            : `${BASE_URL}/documents/public/orgs/${vue.ecoleId}/pages/${encodeURIComponent(slug)}`,
+        )
         setPage(p)
         document.title = `${p.name} · ${vue.nom}`
       } catch (e) {
         setErreur(e.message)
       }
     })()
-  }, [slug])
+  }, [slug, jeton])
 
   async function repondre(values) {
     setEnvoiErreur('')
     try {
-      await lire(`${BASE_URL}/documents/public/orgs/${ecoleId}/pages/${encodeURIComponent(slug)}/answers`, {
+      const url = jeton
+        ? `${BASE_URL}/documents/public/links/${encodeURIComponent(jeton)}/answers`
+        : `${BASE_URL}/documents/public/orgs/${ecoleId}/pages/${encodeURIComponent(slug)}/answers`
+      await lire(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ values }),
@@ -73,8 +82,16 @@ export default function PagePublique({ slug }) {
         {!erreur && !page && <p className="pp-attente">Chargement…</p>}
         {page && (
           <>
+            {page.person && <p className="pp-note">Bonjour {page.person}{page.values ? ' : votre réponse est enregistrée, vous pouvez la corriger.' : ''}</p>}
+            {page.test && page.accepting && <p className="pp-note">Relecture : vos réponses sont des essais, elles ne comptent pas.</p>}
             {page.family !== 'inform' && !page.accepting && <p className="pp-note">Les réponses sont fermées.</p>}
-            <Page content={page.content} size="phone" onSubmit={page.accepting ? repondre : undefined} />
+            <Page
+              content={page.content}
+              size="phone"
+              onSubmit={page.accepting ? repondre : undefined}
+              initial={page.values ?? undefined}
+              submitLabel={page.values ? 'Enregistrer ma réponse' : undefined}
+            />
             {envoiErreur && <p className="pp-erreur" role="alert">{envoiErreur}</p>}
           </>
         )}

@@ -41,6 +41,16 @@ class Principal:
 
 
 @dataclass(frozen=True)
+class Recipient:
+    """Une personne à qui envoyer un fichier (Diffuser) ; `email` vide :
+    rien ne peut lui partir."""
+
+    person_id: int
+    name: str
+    email: str | None
+
+
+@dataclass(frozen=True)
 class Period:
     id: int
     name: str
@@ -58,6 +68,24 @@ class Directory(Protocol):
 
     def person_names(self, db: Session, org_id: int, person_ids: set[int]) -> dict[int, str]:
         """Nom affiché de chaque personne (auteurs, historique)."""
+
+    def recipients(self, db: Session, org_id: int, principals: list[tuple[str, str]]) -> list[Recipient]:
+        """Les personnes derrière des personnes et groupes (type, id), chacune
+        une fois, avec son adresse email d'aujourd'hui (Diffuser)."""
+
+
+class Mailer(Protocol):
+    """Envoi des emails du module (Diffuser), branché par l'appli hôte."""
+
+    @property
+    def available(self) -> bool:
+        """Un email peut-il partir de ce serveur ?"""
+
+    def org(self, db: Session, org_id: int) -> tuple[str, str]:
+        """(nom de l'organisation, adresse web de son appli, sans / final)."""
+
+    def send(self, to: str, subject: str, text: str, html: str, sender_name: str, reply_to: str | None) -> None:
+        """Envoie ou lève une exception (message lisible)."""
 
 
 class Periods(Protocol):

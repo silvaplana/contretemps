@@ -156,6 +156,15 @@ ne contient que le texte court et le lien personnel).
   lien personnel par personne ; canal (email, notification de l'appli) ; pour Questionner et Agir :
   date limite, relances aux non-répondants, une ou plusieurs réponses, réponse modifiable ou non,
   visibilité des réponses (Privée, Résultats visibles, Publique).
+  *Codé le 16 octobre (email seulement)* : recherche de personnes, cours et rôles, un mot en tête du
+  mail, récapitulatif « Envoyer par email à N personnes » avec ceux qui n'ont pas d'adresse, bouton
+  Envoyer, puis suivi par personne (Envoyé, A ouvert, A répondu, Échec). Le lien personnel
+  `<adresse de l'école>/r/<jeton>` ouvre le formulaire sans compte ; une seule réponse par lien, qu'on
+  corrige en y revenant. Renvoyer à quelqu'un lui renvoie le même lien. En Validé, la carte s'appelle
+  « Faire relire » : personnes choisies une par une (10 au plus), sujet « [Relecture] », réponses
+  d'essai, lien fermé au passage en Officiel. Réponses au mail : à l'adresse de la personne qui envoie
+  (l'école n'a pas encore d'adresse de contact). Restent : notification de l'appli, SMS, relances,
+  date limite, visibilité des réponses, adresses externes.
 - **Tout le monde** (codé le 16 octobre : bouton « Mettre en ligne » en Officiel, confirmation, adresse, Copier, QR code, « Retirer d'internet » ; réponses sans compte, provenance « Page en ligne ») : adresse publique `https://<page>.<école>.contretemps.silvaplana.cloud`, nom de page créé automatiquement et jamais en double dans l'école (§5.5), bouton
   Copier, QR code pour l'affiche. Confirmation « Visible par tout le monde sur internet ».
 - Les deux à la fois sont possibles ; toutes les réponses vont au même tableau (colonne Provenance).

@@ -245,3 +245,31 @@ class DocPublication(Base):
     published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     unpublished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     visits: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+
+
+class DocSend(Base):
+    """Un envoi de « Diffuser » à une personne choisie (fichier-de-base.md
+    §2.3) : son lien personnel (`token`), où il en est (envoyé, ouvert,
+    répondu). En Validé, l'envoi va aux relecteurs et leurs réponses sont des
+    essais (`test`, décision de Seb du 16 octobre)."""
+
+    __tablename__ = "doc_sends"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    token: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    channel: Mapped[str] = mapped_column(String(10), nullable=False, default="email")
+    test: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # "pending" (en cours d'envoi), "sent", "failed".
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="pending")
+    error: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    sent_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    answered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    response_id: Mapped[int | None] = mapped_column(Integer, nullable=True)

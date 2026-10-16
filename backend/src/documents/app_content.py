@@ -242,3 +242,48 @@ def _check_value(q: dict, v, test: bool):
             raise ContentError("Le paiement en ligne n'est pas encore branché.")
         return {"amount": (q.get("props") or {}).get("amount"), "test": True}
     raise ContentError("Question inconnue")
+
+
+def _inline_text(contenu) -> str:
+    morceaux = []
+    for m in contenu or []:
+        if not isinstance(m, dict):
+            continue
+        if m.get("type") == "link":
+            texte = _inline_text(m.get("content"))
+            href = str(m.get("href") or "")
+            morceaux.append(f"{texte} ({href})" if href and href != texte else texte or href)
+        else:
+            morceaux.append(str(m.get("text") or ""))
+    return "".join(morceaux)
+
+
+def readable(content: dict, intro_only: bool) -> list[str]:
+    """Version lisible du formulaire d'entrée, un paragraphe par ligne (email
+    de diffusion, fichier-de-base.md §2.3) : tout le texte pour un fichier à
+    lire ; avec `intro_only`, le texte qui précède la première question (la
+    suite se remplit en ligne)."""
+    lignes: list[str] = []
+    numero = 0
+    for bloc in _walk(content.get("entry", {}).get("blocks", [])):
+        genre = bloc.get("type")
+        if genre in QUESTION_TYPES | ACT_TYPES:
+            if intro_only:
+                break
+            continue
+        if genre == "divider":
+            continue
+        texte = _inline_text(bloc.get("content")).strip()
+        if not texte:
+            continue
+        if genre == "numberedListItem":
+            numero += 1
+            texte = f"{numero}. {texte}"
+        else:
+            numero = 0
+            if genre == "bulletListItem":
+                texte = f"• {texte}"
+            elif genre == "checkListItem":
+                texte = ("☑ " if (bloc.get("props") or {}).get("checked") else "☐ ") + texte
+        lignes.append(texte)
+    return lignes

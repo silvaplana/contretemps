@@ -5,6 +5,8 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+const cibles = (liste) => liste.map(({ type, id }) => ({ type, id }))
+
 export class ErreurDocuments extends Error {
   constructor(status, message) {
     super(message)
@@ -79,6 +81,12 @@ export function documentsApi(orgId) {
     // Page en ligne (tout le monde, sans compte).
     publish: (id) => appel(`${base}/nodes/${id}/app/publication`, { method: 'POST' }),
     unpublish: (id) => appel(`${base}/nodes/${id}/app/publication`, { method: 'DELETE' }),
+    // Envoi à des personnes choisies (lien personnel par email).
+    sendPreview: (id, principals) =>
+      appel(`${base}/nodes/${id}/app/sends/preview`, json('POST', { principals: cibles(principals) })),
+    send: (id, principals, message) =>
+      appel(`${base}/nodes/${id}/app/sends`, json('POST', { principals: cibles(principals), message: message || null })),
+    sends: (id) => appel(`${base}/nodes/${id}/app/sends`),
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),

@@ -9,7 +9,9 @@ import { pageDuHost } from './pagePublique/hote.js'
 
 // <page>.<école>.contretemps.silvaplana.cloud : la page en ligne d'un
 // fichier de l'appli (documents.md §5.5), sans le reste de l'appli.
-const pagePublique = pageDuHost(window.location.hostname)
+// <adresse de l'école>/r/<jeton> : le lien personnel reçu par email.
+const lienPersonnel = window.location.pathname.match(/\/r\/([A-Za-z0-9_-]{16,})\/?$/)?.[1]
+const pagePublique = lienPersonnel ? { jeton: lienPersonnel } : pageDuHost(window.location.hostname)
 const PagePublique = lazy(() => import('./pagePublique/PagePublique.jsx'))
 
 // Avant tout rendu : chaque appel à notre API porte l'id du profil actif
@@ -26,7 +28,7 @@ createRoot(document.getElementById('root')).render(
   <StrictMode>
     {pagePublique ? (
       <Suspense fallback={null}>
-        <PagePublique slug={pagePublique.page} />
+        <PagePublique slug={pagePublique.page} jeton={pagePublique.jeton} />
       </Suspense>
     ) : (
       <App />

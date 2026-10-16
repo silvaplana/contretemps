@@ -38,7 +38,7 @@ from .models import (
     StoredFile,
     utcnow,
 )
-from .ports import DEFAULT_PRIVATE_EDITORS, Directory, Member, Periods, Principal
+from .ports import DEFAULT_PRIVATE_EDITORS, Directory, Mailer, Member, Periods, Principal
 from .preview import can_preview, convert_to_pdf
 from .storage import LocalStorage, guess_mime, make_thumbnail
 
@@ -102,15 +102,19 @@ class Documents:
         periods: Periods,
         period_label: str = "Saison",
         private_editors: Sequence[str] = DEFAULT_PRIVATE_EDITORS,
+        mailer: Mailer | None = None,
     ) -> None:
         self.storage = storage
         self.directory = directory
         self.periods = periods
         self.period_label = period_label
         self.private_editors = tuple(private_editors)
+        self.mailer = mailer
         from .app_files import AppFiles
+        from .app_sends import AppSends
 
         self.apps = AppFiles(self)
+        self.sends = AppSends(self)
 
     # ------------------------------------------------------------------
     # Espaces et droits

@@ -26,6 +26,7 @@ from .models import (
     DocNode,
     DocPublication,
     DocResponse,
+    DocSend,
     utcnow,
 )
 from .ports import Member
@@ -243,7 +244,7 @@ class AppFiles:
 
     @staticmethod
     def erase(db: Session, ids: set[int]) -> None:
-        for modele in (DocResponse, DocAppVersion):
+        for modele in (DocSend, DocResponse, DocAppVersion):
             db.query(modele).filter(modele.node_id.in_(ids)).delete(synchronize_session=False)
         # Le nom de la page reste réservé ; la page ne s'affiche plus.
         db.query(DocPublication).filter(DocPublication.node_id.in_(ids)).update(

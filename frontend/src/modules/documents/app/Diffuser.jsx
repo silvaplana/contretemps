@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react'
 import qrcode from 'qrcode-generator'
 import { useApparence } from '../../../api/apparence.js'
 import { adresseDeLaPage } from '../../../pagePublique/hote.js'
+import DiffuserChoisis from './DiffuserChoisis.jsx'
 
 // Onglet Diffuser (fichier-de-base.md §2.3). « Tout le monde » : la page en
 // ligne (documents.md §5.5), en Officiel seulement (en Validé, on diffuse aux
-// relecteurs : décision de Seb du 16 octobre). « Des personnes choisies »
-// (emails, SMS, relances) arrive ensuite.
+// relecteurs : décision de Seb du 16 octobre). « Des personnes choisies » :
+// emails avec lien personnel (DiffuserChoisis) ; SMS et relances ensuite.
 
 function Qr({ texte }) {
   const { n, cases } = useMemo(() => {
@@ -55,8 +56,11 @@ export default function Diffuser({ file, api, onToast, onChanged }) {
     }
   }
 
+  // En Validé, on fait relire d'abord : la carte vient en tête.
+  const choisis = <DiffuserChoisis file={file} api={api} onToast={onToast} />
   return (
     <div className="ad">
+      {file.status === 'validated' && choisis}
       <section className="ad-carte">
         <h3>Tout le monde</h3>
         {enLigne ? (
@@ -120,13 +124,7 @@ export default function Diffuser({ file, api, onToast, onChanged }) {
         )}
       </section>
 
-      <section className="ad-carte ad-carte--bientot">
-        <h3>Des personnes choisies</h3>
-        <p className="af-hint">
-          Bientôt : envoyer le formulaire d’entrée à un cours, aux professeurs ou à quelques personnes, par email ou SMS, avec un lien personnel et des relances.
-          {file.status === 'validated' && ' En Validé, on l’enverra aux relecteurs pour un essai grandeur nature.'}
-        </p>
-      </section>
+      {file.status !== 'validated' && choisis}
     </div>
   )
 }
