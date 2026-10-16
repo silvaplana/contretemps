@@ -540,7 +540,7 @@
      rester fixe). "fixed" l'ancre au viewport, au-dessus de la nav du bas. */
   position: fixed;
   right: 16px;
-  bottom: calc(var(--bottom-nav-height) + 16px);
+  bottom: calc(var(--bottom-nav-height) + var(--chat-hauteur, 0px) + 16px);
   width: 56px;
   height: 56px;
   border-radius: 50%;
@@ -559,7 +559,7 @@
 .fab--secondary {
   position: fixed;
   right: 16px;
-  bottom: calc(var(--bottom-nav-height) + 16px + 64px);
+  bottom: calc(var(--bottom-nav-height) + var(--chat-hauteur, 0px) + 16px + 64px);
   width: 48px;
   height: 48px;
   border-radius: 50%;
@@ -2764,7 +2764,7 @@
 .acces-message {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--bottom-nav-height) + 20px);
+  bottom: calc(var(--bottom-nav-height) + var(--chat-hauteur, 0px) + 20px);
   transform: translateX(-50%);
   z-index: 50;
   max-width: min(92vw, 520px);

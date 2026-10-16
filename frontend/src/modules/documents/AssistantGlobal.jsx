@@ -45,6 +45,15 @@ export default function AssistantGlobal({ etat, onglet, onNavigate }) {
   const [hauteur, setHauteur] = useState(hauteurDeDepart)
   const [message, setMessage] = useState('')
 
+  // Sur ordinateur, le chat occupe le bas de l'écran : les boutons +
+  // (et les messages) des écrans remontent d'autant pour ne pas cacher ses
+  // boutons (Seb, 16 octobre). Sur téléphone, il couvre tout l'écran.
+  useEffect(() => {
+    const racine = document.documentElement.style
+    racine.setProperty('--chat-hauteur', `${etat.monte && etat.ouvert && bureau ? hauteur : 0}px`)
+    return () => racine.removeProperty('--chat-hauteur')
+  }, [etat.monte, etat.ouvert, bureau, hauteur])
+
   if (!etat.monte) return null
 
   // Hors de Docs, les cartes passent directement par les routes du module.

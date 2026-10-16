@@ -14,6 +14,8 @@ export const dicteeDisponible = Boolean(Reconnaissance)
 export function useDictee(texteActuel, ecrire) {
   const [ecoute, setEcoute] = useState(false)
   const [erreur, setErreur] = useState(null)
+  // On entend une voix : les ondes s'agitent davantage.
+  const [parle, setParle] = useState(false)
   const reco = useRef(null)
 
   useEffect(() => () => reco.current?.abort(), [])
@@ -40,9 +42,12 @@ export function useDictee(texteActuel, ecrire) {
       if (e.error === 'not-allowed' || e.error === 'service-not-allowed') setErreur('Micro refusé : autorisez-le dans le navigateur.')
       else if (e.error !== 'aborted' && e.error !== 'no-speech') setErreur('La dictée s’est interrompue.')
     }
+    r.onspeechstart = () => setParle(true)
+    r.onspeechend = () => setParle(false)
     r.onend = () => {
       reco.current = null
       setEcoute(false)
+      setParle(false)
     }
     reco.current = r
     r.start()
@@ -53,5 +58,5 @@ export function useDictee(texteActuel, ecrire) {
     reco.current?.stop()
   }
 
-  return { ecoute, erreur, basculer: () => (reco.current ? arreter() : demarrer()), arreter }
+  return { ecoute, parle, erreur, basculer: () => (reco.current ? arreter() : demarrer()), arreter }
 }

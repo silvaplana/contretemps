@@ -638,16 +638,25 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
             {dicteeDisponible && (
               <button
                 type="button"
-                className={`dx-chat__rond${dictee.ecoute ? ' dx-chat__rond--ecoute' : ''}`}
+                className={`dx-chat__rond${dictee.ecoute ? ' dx-chat__rond--ecoute' : ''}${dictee.parle ? ' dx-chat__rond--parle' : ''}`}
                 aria-label={dictee.ecoute ? 'Arrêter la dictée' : 'Dicter'}
                 aria-pressed={dictee.ecoute}
                 title={dictee.ecoute ? 'Arrêter la dictée' : 'Dicter'}
                 onClick={dictee.basculer}
               >
-                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect x="9" y="3" width="6" height="11" rx="3" />
-                  <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-                </svg>
+                {dictee.ecoute ? (
+                  // En écoute : des ondes qui bougent, comme l'appli Claude.
+                  <span className="dx-ondes" aria-hidden="true">
+                    {[0, 1, 2, 3, 4].map((i) => (
+                      <i key={i} />
+                    ))}
+                  </span>
+                ) : (
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="9" y="3" width="6" height="11" rx="3" />
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+                  </svg>
+                )}
               </button>
             )}
             <button
