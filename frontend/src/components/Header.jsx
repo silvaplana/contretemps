@@ -30,7 +30,7 @@ export default function Header({
   // aussi depuis ce menu) : { label, icon, onClick }, optionnel.
   menuExtra,
   // Assistant de toute l'appli (modules/documents/AssistantGlobal.jsx) :
-  // { permis, ouvert, basculer }. Bouton à droite du badge.
+  // { permis, ouvert, basculer }. Bouton à gauche du badge.
   assistant,
 }) {
   const [coursOpen, setCoursOpen] = useState(false)
@@ -120,6 +120,19 @@ export default function Header({
               autres profils de la famille s'il y en a (voir spec §4) et, tout
               en bas, "Se déconnecter" (demande du 2026-09-21). Le menu "..."
               plus bas, lui, reste réservé au mode "course". */}
+          {/* Bouton du chat, à gauche du badge (Seb, 16 octobre). */}
+          {assistant?.permis && (
+            <button
+              type="button"
+              className={`icon-btn app-header__assistant${assistant.ouvert ? ' is-active' : ''}`}
+              onClick={assistant.basculer}
+              aria-label={assistant.ouvert ? 'Fermer l’assistant' : 'Assistant'}
+              aria-pressed={assistant.ouvert}
+              title="Assistant"
+            >
+              <BubbleIcon />
+            </button>
+          )}
           <div className="famille-selector" ref={familleSelectorRef}>
             <button
               ref={familleBoutonRef}
@@ -165,18 +178,6 @@ export default function Header({
               </div>
             )}
           </div>
-          {assistant?.permis && (
-            <button
-              type="button"
-              className={`icon-btn app-header__assistant${assistant.ouvert ? ' is-active' : ''}`}
-              onClick={assistant.basculer}
-              aria-label={assistant.ouvert ? 'Fermer l’assistant' : 'Assistant'}
-              aria-pressed={assistant.ouvert}
-              title="Assistant"
-            >
-              <BubbleIcon />
-            </button>
-          )}
           {/* Action propre à l'écran affiché, à droite du badge (ex. menu ⋮
               d'Admin > École) : voir ActionsEntete.jsx. */}
           <div id={ID_ACTIONS_ENTETE} className="app-header__actions" />
