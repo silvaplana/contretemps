@@ -103,6 +103,12 @@ app.add_middleware(
 # tables sur Base.metadata au moment de l'import.
 Base.metadata.create_all(bind=engine)
 
+# Plusieurs emails par fiche (spec §6.3) : reprend les anciennes adresses
+# si la migration n'a pas encore été lancée.
+from comptes.reprise_emails import reprendre_anciens_emails  # noqa: E402
+
+reprendre_anciens_emails(engine)
+
 
 @app.get("/health")
 def health() -> dict:

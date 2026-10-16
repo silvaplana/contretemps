@@ -173,3 +173,20 @@ def test_migration_reprend_les_emails(tmp_path, monkeypatch):
         assert lignes == [(5, "pere@x.fr"), (6, "a@x.fr"), (6, "b@x.fr")]
     command.downgrade(config, "d4b6f8a0c2e1")
     moteur.dispose()
+
+
+def test_filet_de_securite_au_demarrage(tmp_path):
+    """Sans la migration, les anciennes adresses sont reprises au démarrage."""
+    import sqlalchemy as sa
+    from comptes.reprise_emails import reprendre_anciens_emails
+
+    moteur = sa.create_engine(f"sqlite:///{tmp_path / 'b.db'}")
+    with moteur.begin() as c:
+        c.execute(sa.text("CREATE TABLE comptes (id INTEGER PRIMARY KEY, email TEXT, created_at DATETIME)"))
+        c.execute(sa.text("CREATE TABLE emails_compte (id INTEGER PRIMARY KEY, compte_id INT, email TEXT, created_at DATETIME)"))
+        c.execute(sa.text("INSERT INTO comptes VALUES (1, 'A@x.fr', NULL), (2, NULL, NULL)"))
+    reprendre_anciens_emails(moteur)
+    reprendre_anciens_emails(moteur)  # une seule fois
+    with moteur.connect() as c:
+        assert c.execute(sa.text("SELECT compte_id, email FROM emails_compte")).all() == [(1, "a@x.fr")]
+    moteur.dispose()
