@@ -310,7 +310,6 @@ Exemple d'une inscription avec deux enfants :
    « Formulaire de résultat »**, toujours ces deux noms.
 3. **Informer sans onglet Résultats**, le « qui a lu » étant dans Diffuser. Recommandation : **oui**.
 4. ~~Onglet d'ouverture~~ : **décidé par Seb le 16 octobre, selon l'état** (voir §2.2).
-5. **En Validé, où vont les réponses ?** Avec le tableau du §4, un fichier Validé peut être diffusé mais
-   n'a pas d'onglet Résultats. Recommandation : **en Validé, on diffuse seulement à soi et aux
-   relecteurs (essai grandeur nature) ; la diffusion à tous et la collecte s'ouvrent en Officiel.**
-   Autre possibilité : afficher Résultats dès qu'on diffuse, en Validé comme en Officiel.
+5. ~~En Validé, où vont les réponses ?~~ : **décidé par Seb le 16 octobre : en Validé, on diffuse
+   seulement à soi et aux relecteurs (essai grandeur nature, réponses marquées comme essais) ; la
+   diffusion à tous et la collecte s'ouvrent en Officiel.**
