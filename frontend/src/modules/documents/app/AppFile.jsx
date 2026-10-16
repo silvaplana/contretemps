@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FamilyDot, StatusIcon } from '../icons.jsx'
+import Assistant from '../Assistant.jsx'
+import { BubbleIcon, FamilyDot, StatusIcon } from '../icons.jsx'
 import { FAMILIES, STATUSES } from '../kinds.js'
 import Editor from './Editor.jsx'
 import Page from './Page.jsx'
@@ -11,7 +12,8 @@ import './app.css'
 // Le fichier de base ouvert en plein écran (spec fichier-de-base.md) :
 // onglets Préparer | Aperçu | Diffuser | Résultats, grisés selon l'état ;
 // formulaire d'entrée et formulaire de résultat ; état et nature dans
-// l'en-tête, Partager toujours visible.
+// l'en-tête, Partager toujours visible. La bulle ouvre le même assistant que
+// dans Docs, qui voit le fichier et peut écrire ses formulaires (§2.1).
 
 const TABS = [
   ['prep', 'Préparer'],
@@ -44,7 +46,7 @@ function Seg({ value, options, onChange, label }) {
   )
 }
 
-export default function AppFile({ api, item, onClose, onToast, onShare, onProperties, onDelete, onChanged }) {
+export default function AppFile({ api, item, onClose, onToast, onShare, onProperties, onDelete, onChanged, chat }) {
   const [file, setFile] = useState(null)
   const [erreur, setErreur] = useState('')
   const [tab, setTab] = useState(null)
@@ -60,6 +62,10 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   const version = useRef(null)
   const minuteur = useRef(null)
   const enCours = useRef(Promise.resolve())
+  // Assistant : gardé monté une fois ouvert (la réponse continue d'arriver
+  // si on le ferme pour regarder le fichier).
+  const [chatOuvert, setChatOuvert] = useState(false)
+  const [chatMonte, setChatMonte] = useState(false)
 
   const charger = useCallback(
     async (premier = false) => {
@@ -158,6 +164,30 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     } catch {
       // message déjà affiché
     }
+  }
+
+  function ouvrirChat() {
+    if (!chat?.autorise) {
+      onToast('L’assistant est en essai : réservé au Super User pour l’instant.')
+      return
+    }
+    setChatOuvert(true)
+    setChatMonte(true)
+  }
+
+  // L'assistant a enregistré une nouvelle version (ou « Annuler » sur sa
+  // carte) : on recharge le fichier, l'éditeur repart du nouveau contenu.
+  async function surFichier(carte) {
+    clearTimeout(minuteur.current)
+    if (carte.annuler) {
+      await enCours.current.catch(() => {})
+      const f = await api.getApp(item.id)
+      await api.saveApp(item.id, carte.avant, undefined, f.version?.number ?? null)
+    }
+    setSaving('')
+    setTab('prep')
+    await charger()
+    onChanged?.()
   }
 
   async function essayer(values) {
@@ -294,7 +324,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   }
 
   return (
-    <div className="dx-panel af" role="dialog" aria-label={file.name}>
+    <div className={`dx-panel af${chatOuvert && chat?.bureau ? ' af--chat' : ''}`} role="dialog" aria-label={file.name}>
       <div className="dx-top">
         <button type="button" className="dx-ico" onClick={fermer} aria-label="Retour">←</button>
         <h2 title={file.name}>{file.name}</h2>
@@ -345,6 +375,29 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       )}
       <div className="dx-body af-body">{corps}</div>
       {bas && <div className="dx-footer">{bas}</div>}
+
+      {tab === 'prep' && !chatOuvert && (
+        <button type="button" className="af-fab" onClick={ouvrirChat} aria-label="Assistant">
+          <BubbleIcon />
+        </button>
+      )}
+      {chatMonte && (
+        <div
+          className={chat.bureau ? 'af-chat' : 'dx-chat-bas dx-chat-bas--plein'}
+          style={{ display: chatOuvert ? undefined : 'none' }}
+        >
+          <Assistant
+            orgId={chat.orgId}
+            titre="Assistant du fichier"
+            memoire={`app-${file.id}`}
+            coutSaisonInitial={chat.coutSaison}
+            contexte={{ space: file.space, folder_id: file.parent_id, selection_id: file.id, app_id: file.id, form: formActif }}
+            onClose={() => setChatOuvert(false)}
+            onFaire={chat.onFaire}
+            onFichier={surFichier}
+          />
+        </div>
+      )}
 
       {sheet && (
         <>

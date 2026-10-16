@@ -1327,6 +1327,7 @@ export default function Explorer({ orgId, memoire }) {
             supprimer(x)
           }}
           onChanged={recharger}
+          chat={{ autorise: assistant, orgId, coutSaison, bureau, onFaire: faireAction }}
         />
         </Suspense>
       )}

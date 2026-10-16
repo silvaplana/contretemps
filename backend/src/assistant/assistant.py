@@ -33,6 +33,7 @@ from documents.service import DocError, Documents
 from documents.storage import guess_mime
 
 from .donnees import NOMS as OUTILS_ECOLE
+from .fichier_appli import CONSIGNE_FICHIER, OUTIL_FICHIER, FichierAppli
 from .donnees import OUTILS_DONNEES, DonneesEcole
 from .lecture import contenu_pour_claude
 from .modifications import OUTIL_MODIFICATIONS
@@ -104,6 +105,7 @@ personne, enregistre-le dans le dossier $OUTPUT_DIR, dans la même commande que 
 fabrique, et liste ce dossier pour vérifier : il lui sera proposé avec « Faire / Annuler », \
 rangé dans le dossier qu'elle regarde. Donne-lui un nom clair en français (ex. \
 « Courbe des inscriptions.pdf »)."""
+CONSIGNE += CONSIGNE_FICHIER
 
 
 def _prop(type_, description, **autres):
@@ -170,6 +172,8 @@ OUTILS = [
     # Modifications des données de l'école, validées par la personne sur une
     # carte récapitulative (voir modifications.py).
     OUTIL_MODIFICATIONS,
+    # Fichier de l'appli ouvert : écrire ses deux formulaires (voir fichier_appli.py).
+    OUTIL_FICHIER,
 ]
 TAILLE_MAX_PRODUIT = 50 * 1024 * 1024
 # Fichiers glissés dans l'assistant (pièces jointes d'une question).
@@ -239,6 +243,7 @@ class Assistant:
         # Fichiers glissés dans l'assistant, en attente de la question :
         # jeton -> (org_id, person_id, nom, contenu).
         self.pieces: dict[str, tuple[int, int, str, bytes]] = {}
+        self.fichier_appli = FichierAppli(documents)
 
     @property
     def actif(self) -> bool:
@@ -295,6 +300,11 @@ class Assistant:
                     pass
             if noms:
                 lignes.append(f"Elle a sélectionné {len(noms)} éléments : {', '.join(noms)}.")
+        if contexte.get("app_id"):
+            try:
+                lignes.append(self.fichier_appli.contexte(db, member, int(contexte["app_id"]), contexte.get("form")))
+            except (DocError, ValueError):
+                pass
         for issue in contexte.get("actions") or []:
             lignes.append(f"Suite à ta proposition : {str(issue)[:300]}")
         return "\n".join(lignes)
@@ -305,6 +315,8 @@ class Assistant:
 
     @staticmethod
     def _ligne(e: dict) -> str:
+        if e["kind"] == "app":
+            return f"- [fichier de l'appli] {e['name']} (id {e['id']})"
         if e["kind"] == "folder":
             return f"- [dossier] {e['name']} (id {e['id']}, {e.get('child_count') or 0} éléments)"
         date = (e.get("updated_at") or "")[:10]
@@ -341,7 +353,11 @@ class Assistant:
                 self._ligne(e) + " dans " + " › ".join([ESPACES.get(e["space"], ""), *(p["name"] for p in e.get("path", []))])
                 for e in recents
             ) or "Aucun fichier.", None
+        if nom == "modifier_fichier_appli":
+            return self.fichier_appli.modifier(db, member, args)
         if nom == "lire_fichier":
+            if d.detail(db, member, args["fichier_id"])["kind"] == "app":
+                return self.fichier_appli.lire(db, member, args["fichier_id"]), None
             chemin, nom_fichier, mime = d.content(db, member, args["fichier_id"])
             return contenu_pour_claude(chemin, nom_fichier, mime), None
         if nom == "copier_fichier_dans_l_ordinateur":

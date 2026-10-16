@@ -30,7 +30,13 @@ const EN_TRAIN_DE = {
   lister_inscriptions_en_ligne: 'Je regarde les inscriptions…',
   lister_saisons: 'Je regarde les saisons…',
   proposer_modifications: 'Je prépare les changements…',
+  modifier_fichier_appli: 'Je modifie le fichier…',
 }
+
+// Conversations gardées le temps de la visite, une par fichier de l'appli
+// (`memoire`) : on la retrouve en rouvrant le fichier (un seul chat par
+// fichier, fichier-de-base.md §2.1).
+const conversationsGardees = new Map()
 
 // Modèles au choix (panneau du coût, Seb 15 octobre), avec leur prix en
 // dollars par million de jetons (entrée / sortie). Choix gardé sur l'appareil.
@@ -91,17 +97,21 @@ function Texte({ texte }) {
   })
 }
 
-export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaisonInitial = null }) {
-  const [echanges, setEchanges] = useState([]) // { role, texte, actions?, etat? }
-  const [conversationId, setConversationId] = useState(null)
+export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier, memoire, titre = 'Assistant', coutSaisonInitial = null }) {
+  const garde = memoire ? conversationsGardees.get(memoire) : null
+  const [echanges, setEchanges] = useState(garde?.echanges ?? []) // { role, texte, actions?, etat? }
+  const [conversationId, setConversationId] = useState(garde?.conversationId ?? null)
   const [saisie, setSaisie] = useState('')
   const [enCours, setEnCours] = useState(false)
   const [activite, setActivite] = useState('')
-  const [cout, setCout] = useState(0)
+  const [cout, setCout] = useState(garde?.cout ?? 0)
   // Cumul « Chat documents » de l'école sur la saison (même relevé que
   // « Usage des ressources & IA »).
   const [coutSaison, setCoutSaison] = useState(coutSaisonInitial)
-  const [tours, setTours] = useState([]) // coût de chaque question
+  const [tours, setTours] = useState(garde?.tours ?? []) // coût de chaque question
+  useEffect(() => {
+    if (memoire) conversationsGardees.set(memoire, { echanges, conversationId, cout, tours })
+  }, [memoire, echanges, conversationId, cout, tours])
   const [panneauCout, setPanneauCout] = useState(false)
   const [modele, setModele] = useState(lireModele)
 
@@ -189,7 +199,11 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
           setActivite('')
           majDernier((m) => ({ ...m, texte: m.texte + e.texte }))
         } else if (e.type === 'outil') setActivite(EN_TRAIN_DE[e.nom] ?? (e.nom?.includes('code_execution') ? EN_TRAIN_DE.code_execution : 'Je prépare une proposition…'))
-        else if (e.type === 'action') majDernier((m) => ({ ...m, actions: [...m.actions, { ...e, etat: 'proposee' }] }))
+        else if (e.type === 'action' && e.kind === 'fichier_modifie') {
+          // Déjà enregistré par le serveur : l'écran du fichier le montre.
+          onFichier?.(e)
+          majDernier((m) => ({ ...m, actions: [...m.actions, { ...e, content: undefined }] }))
+        } else if (e.type === 'action') majDernier((m) => ({ ...m, actions: [...m.actions, { ...e, etat: 'proposee' }] }))
         else if (e.type === 'fin') {
           setCout(e.cout_total_usd)
           if (e.cout_saison_usd != null) setCoutSaison(e.cout_saison_usd)
@@ -236,6 +250,17 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
       window.dispatchEvent(new Event('contretemps:donnees-modifiees'))
     } catch (err) {
       majCarte(index, carte, { etat: 'proposee', erreur: err.message })
+    }
+  }
+
+  async function annulerFichier(index, carte) {
+    majCarte(index, carte, { etat: 'en_cours', erreur: null })
+    try {
+      await onFichier?.({ ...carte, annuler: true, avant: carte.avant })
+      majCarte(index, carte, { etat: 'annulee' })
+      issues.current.push(`Annulé par la personne, le fichier est revenu comme avant : ${carte.libelle}`)
+    } catch (err) {
+      majCarte(index, carte, { etat: 'faite', erreur: err.message })
     }
   }
 
@@ -297,7 +322,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
     >
       <div className="dx-chat__haut">
         <span className="dx-chat__titre">
-          <BubbleIcon /> <span className="dx-chat__titre-mot">Assistant</span>
+          <BubbleIcon /> <span className="dx-chat__titre-mot">{titre}</span>
         </span>
         {echanges.length > 0 && (
           <button
@@ -454,6 +479,13 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
                         Annuler
                       </button>
                     </div>
+                  ) : a.kind === 'fichier_modifie' && a.etat === 'faite' && a.avant ? (
+                    <div className="dx-chat__choix">
+                      <span className="dx-chat__etat">✓ Fait</span>
+                      <button type="button" className="dx-btn dx-btn--small dx-btn--ghost" onClick={() => annulerFichier(i, a)}>
+                        Annuler
+                      </button>
+                    </div>
                   ) : (
                     <p className="dx-chat__etat">
                       {a.etat === 'annulee'
@@ -498,8 +530,8 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
           type="button"
           className="dx-chat__trombone"
           onClick={() => choixFichiers.current?.click()}
-          aria-label="Joindre un fichier"
-          title="Joindre un fichier (ou glissez-le ici)"
+          aria-label="Joindre un fichier ou une photo"
+          title="Joindre un fichier ou une photo (ou glissez-le ici, ou collez une capture)"
         >
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7l-8.5 8.5a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" />
@@ -521,6 +553,14 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, coutSaiso
           value={saisie}
           placeholder="Écrivez votre demande…"
           onChange={(e) => setSaisie(e.target.value)}
+          // Coller une capture d'écran (Ctrl+V) : jointe à la question.
+          onPaste={(e) => {
+            const images = [...(e.clipboardData?.files ?? [])]
+            if (images.length) {
+              e.preventDefault()
+              joindre(images)
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()

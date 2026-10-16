@@ -31,6 +31,9 @@ class Contexte(BaseModel):
     # Sélection de plusieurs éléments dans l'explorateur.
     selection_ids: list[int] = Field(default_factory=list, max_length=50)
     recents: bool = False
+    # Fichier de l'appli ouvert, et le formulaire affiché (entry / result).
+    app_id: int | None = None
+    form: str | None = Field(default=None, pattern="^(entry|result)$")
     # Ce que la personne a fait des propositions précédentes (« Fait : … »).
     actions: list[str] = Field(default_factory=list, max_length=20)
 

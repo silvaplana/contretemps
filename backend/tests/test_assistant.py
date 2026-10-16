@@ -300,3 +300,56 @@ def test_internet_dans_les_outils_et_le_cout():
     assert {"web_search", "web_fetch", "code_execution"} <= noms
     usage = SimpleNamespace(input_tokens=0, output_tokens=0, server_tool_use=SimpleNamespace(web_search_requests=3))
     assert cout_usd("claude-opus-5-5", usage) == pytest.approx(0.03)
+
+
+def test_l_assistant_ecrit_un_fichier_de_l_appli(client, monde, monkeypatch):
+    """Le chat dans un fichier de l'appli (fichier-de-base.md §2.1) : il voit
+    le contenu actuel, écrit les formulaires entiers, garde les id et en
+    donne aux nouveaux blocs ; une version « ai » est créée."""
+    ecole = monde["ecole"]
+    entetes = {"Authorization": f"Bearer {_en_superuser(client)}", rbac.ENTETE_COMPTE: str(monde["su"].id)}
+    base = f"/documents/orgs/{ecole.id}"
+    f = client.post(f"{base}/apps", json={"space": "public", "parent_id": None, "family": "question"}, headers=entetes).json()
+    client.put(f"{base}/nodes/{f['id']}/app", json={"content": {"schema": 1, "entry": {"blocks": [
+        {"id": "q1", "type": "shortText", "props": {"label": "Votre nom"}, "content": [], "children": []},
+    ]}, "result": {"blocks": []}}}, headers=entetes)
+    entree = [
+        {"id": "q1", "type": "shortText", "props": {"label": "Votre nom", "required": True}},
+        {"type": "heading", "props": {"level": 2}, "content": "Le spectacle"},
+        {"type": "choice", "props": {"label": "Venez-vous ?", "options": "Oui\nNon"}},
+    ]
+    faux = FauxClaude([
+        _message(Bloc(type="tool_use", id="t1", name="modifier_fichier_appli", input={
+            "fichier_id": f["id"], "formulaire_entree": entree, "formulaire_resultat": None, "resume": "2 blocs ajoutés",
+        }), stop="tool_use"),
+        _message(Bloc(type="text", text="C'est fait.")),
+    ])
+    monkeypatch.setattr(main.assistant_client, "_client", faux)
+    evenements = _evenements(client.post(
+        f"/assistant/orgs/{ecole.id}/messages",
+        json={"texte": "Ajoute une question sur la venue", "contexte": {"space": "public", "app_id": f["id"], "form": "entry"}},
+        headers=entetes,
+    ))
+    assert "erreur" not in [e["type"] for e in evenements]
+    contexte = faux.demandes[0][0]["content"][0]["text"]
+    assert "fichier de l'appli « Nouvelles questions »" in contexte and '"q1"' in contexte and "formulaire d'entrée" in contexte
+    carte = next(e for e in evenements if e["type"] == "action")
+    assert carte["kind"] == "fichier_modifie" and carte["libelle"].endswith("2 blocs ajoutés")
+    lu = client.get(f"{base}/nodes/{f['id']}/app", headers=entetes).json()
+    blocs = lu["content"]["entry"]["blocks"]
+    assert [b["type"] for b in blocs] == ["shortText", "heading", "choice"]
+    assert blocs[0]["id"] == "q1" and blocs[1]["id"] and blocs[1]["content"][0]["text"] == "Le spectacle"
+    assert lu["version"]["number"] == carte["version"] == 3
+
+    # Bloc refusé (Agir dans un fichier Questionner) : l'erreur revient au modèle, rien n'est changé.
+    faux.reponses += [
+        _message(Bloc(type="tool_use", id="t2", name="modifier_fichier_appli", input={
+            "fichier_id": f["id"], "formulaire_entree": [{"type": "payment", "props": {"label": "Cotisation", "amount": 20}}],
+            "formulaire_resultat": None, "resume": "paiement",
+        }), stop="tool_use"),
+        _message(Bloc(type="text", text="Impossible.")),
+    ]
+    client.post(f"/assistant/orgs/{ecole.id}/messages", json={"texte": "Ajoute un paiement", "contexte": {"app_id": f["id"]}}, headers=entetes)
+    retour = faux.demandes[-1][-1]["content"][0]
+    assert retour["is_error"] and "Agir" in retour["content"]
+    assert client.get(f"{base}/nodes/{f['id']}/app", headers=entetes).json()["version"]["number"] == 3
