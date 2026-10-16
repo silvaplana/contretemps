@@ -148,6 +148,19 @@ sondage, un choix de date), c'est le réglage « visibilité des réponses » (R
   viens pas »), chaque choix est **un bouton dans le mail** : un clic ouvre la page avec la réponse déjà
   cochée, il ne reste qu'à confirmer.
 
+**Dire à qui, et confirmer (Seb, 16 octobre)** : avant tout envoi, l'écran nomme les destinataires (nom
+et adresse de chacun) puis demande « Envoyer « … » à N personnes ? » avec **Oui, envoyer à N** / Annuler.
+« Tout le monde » dit en clair qui verra (toute personne ayant l'adresse ou le QR code, sans compte, même
+hors de l'école), que chacun pourra répondre, que **rien n'est envoyé** (c'est à soi de partager) et
+qu'on peut retirer la page ; bouton **Oui, mettre en ligne** / Annuler. *Codé le 16 octobre.*
+
+**Essayer sur moi (Seb, 16 octobre)** : en tête de Diffuser, « M'envoyer un essai » envoie le mail à
+l'adresse avec laquelle on s'est connecté (même pour le Super User hors de l'école), exactement comme les
+autres le recevront, sujet « [Essai] … ». On répond par son lien ; la réponse arrive dans Résultats (ou sous
+la page dans Aperçu avant Officiel) avec la mention « Essai », sans compter ; le bouton « Voir les
+réponses » y mène. Le lien d'essai reste ouvert dans tous les états et resert à chaque nouvel essai
+(`doc_sends.channel = "trial"`, route `POST …/app/sends/trial`). *Codé le 16 octobre.*
+
 Canaux : **email** (core, §5 de la mémoire email), **notification de l'appli**, **SMS** (nouveau : via le
 même prestataire que l'email, Brevo ou équivalent, payant au message, coût affiché avant l'envoi ; un SMS
 ne contient que le texte court et le lien personnel).

@@ -37,6 +37,8 @@ export default function DiffuserChoisis({ file, api, onToast }) {
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState('')
   const [suivi, setSuivi] = useState(null)
+  // Confirmation avant l'envoi, avec la liste nominative (Seb, 16 octobre).
+  const [confirmer, setConfirmer] = useState(false)
   const champ = useRef(null)
 
   const recharger = useCallback(() => {
@@ -90,6 +92,7 @@ export default function DiffuserChoisis({ file, api, onToast }) {
     try {
       const r = await api.send(file.id, choisis, message)
       onToast(`${r.sent} email${r.sent > 1 ? 's' : ''} en route`)
+      setConfirmer(false)
       setChoisis([])
       setMessage('')
       recharger()
@@ -112,7 +115,7 @@ export default function DiffuserChoisis({ file, api, onToast }) {
         <>
           <p className="af-hint">
             {relecture
-              ? 'Envoyez-le à vous-même ou à quelques relecteurs : chacun reçoit un email avec son lien. Leurs réponses sont des essais, elles ne comptent pas.'
+              ? 'Envoyez-le à quelques relecteurs (10 au plus) : chacun reçoit un email avec son lien. Leurs réponses sont des essais, elles ne comptent pas.'
               : 'Un email à chacun, avec son lien personnel : on répond sans compte, une seule réponse par personne (on peut la corriger).'}
           </p>
           {choisis.length > 0 && (
@@ -170,10 +173,20 @@ export default function DiffuserChoisis({ file, api, onToast }) {
               {recap && (
                 <div className="ad-recap">
                   {recap.count > 0 ? (
-                    <p>
-                      Envoyer par email à <strong>{recap.count} personne{recap.count > 1 ? 's' : ''}</strong>
-                      {recap.test ? ', pour relecture' : ''}.
-                    </p>
+                    <>
+                      <p>
+                        Recevront un email{recap.test ? ' pour relecture' : ''} :{' '}
+                        <strong>{recap.count} personne{recap.count > 1 ? 's' : ''}</strong>
+                      </p>
+                      <ul className="ad-destinataires">
+                        {(recap.recipients ?? []).map((d) => (
+                          <li key={d.email + d.name}>
+                            <span className="ad-destinataires__nom">{d.name}</span>
+                            <span className="ad-destinataires__email">{d.email}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
                   ) : (
                     <p>Personne n’a d’adresse email parmi les personnes choisies.</p>
                   )}
@@ -183,14 +196,36 @@ export default function DiffuserChoisis({ file, api, onToast }) {
                   {!recap.available && <p className="ad-raison">L’envoi d’emails n’est pas configuré sur ce serveur.</p>}
                 </div>
               )}
-              <button
-                type="button"
-                className="dx-btn"
-                disabled={enCours || !recap || recap.count === 0 || !recap.available}
-                onClick={envoyer}
-              >
-                {enCours ? 'Envoi…' : 'Envoyer'}
-              </button>
+              {confirmer && recap ? (
+                <div className="ad-attention">
+                  <p>
+                    <strong>
+                      Envoyer « {file.name} » à {recap.count} personne{recap.count > 1 ? 's' : ''} ?
+                    </strong>
+                  </p>
+                  <p>
+                    Chacune reçoit un email avec son lien personnel
+                    {recap.test ? ' ; ses réponses seront des essais' : ''}. Un email envoyé ne se reprend pas.
+                  </p>
+                  <div className="ad-boutons">
+                    <button type="button" className="dx-btn" disabled={enCours} onClick={envoyer}>
+                      {enCours ? 'Envoi…' : `Oui, envoyer à ${recap.count}`}
+                    </button>
+                    <button type="button" className="dx-btn dx-btn--ghost" disabled={enCours} onClick={() => setConfirmer(false)}>
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="dx-btn"
+                  disabled={!recap || recap.count === 0 || !recap.available}
+                  onClick={() => setConfirmer(true)}
+                >
+                  Envoyer…
+                </button>
+              )}
             </>
           )}
           {(erreur || erreurApercu) && <p className="dx-error" role="alert">{erreur || erreurApercu}</p>}
@@ -208,7 +243,7 @@ export default function DiffuserChoisis({ file, api, onToast }) {
               <div key={s.id} className="ad-suivi__ligne">
                 <span className="ad-suivi__nom">
                   {s.name}
-                  {s.test && <span className="ad-essai">relecture</span>}
+                  {s.trial ? <span className="ad-essai">essai</span> : s.test && <span className="ad-essai">relecture</span>}
                 </span>
                 <span className={`ad-suivi__etat ${e.classe}`} title={e.detail || s.email || ''}>{e.texte}</span>
               </div>

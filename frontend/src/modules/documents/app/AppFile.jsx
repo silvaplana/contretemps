@@ -317,6 +317,15 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         file={file}
         api={api}
         onToast={onToast}
+        // Après un essai sur soi : les réponses sont dans Résultats en
+        // Officiel, sinon sous la page dans Aperçu.
+        onVoirReponses={() => {
+          if (statut === 'official') setTab('results')
+          else {
+            setForm('result')
+            setTab('preview')
+          }
+        }}
         onChanged={async () => {
           await charger()
           onChanged?.()

@@ -91,10 +91,54 @@ class AppSends:
             "available": self._mailer_ok(),
             "count": sum(1 for g in gens if g.email),
             "without_email": [g.name for g in gens if not g.email],
+            # Qui reçoit, nommément (Seb : « ce n'est pas clair à qui »).
+            "recipients": [{"name": g.name, "email": g.email} for g in gens if g.email],
         }
 
     def _mailer_ok(self) -> bool:
         return self.docs.mailer is not None and self.docs.mailer.available
+
+    # ------------------------------------------------------------------
+    # Essai sur soi-même (Seb, 16 octobre)
+    # ------------------------------------------------------------------
+
+    def trial(self, db: Session, member: Member, node_id: int) -> tuple[dict, list[dict]]:
+        """Envoie le fichier à soi-même, dans tous les états : on reçoit le
+        mail, on répond par son lien, la réponse arrive dans Résultats comme
+        un essai (elle ne compte pas). Le même lien resert à chaque essai."""
+        node = self.apps._app_node(db, member, node_id)
+        self.docs._require(db, member, self.docs._locate(db, member, node), LEVEL_MANAGE)
+        version = self.apps.current_version(db, node)
+        if version is None or not version.content.get("entry", {}).get("blocks"):
+            raise self._error(409, "Le formulaire d'entrée est vide.")
+        if not self._mailer_ok():
+            raise self._error(409, "L'envoi d'emails n'est pas configuré sur ce serveur.")
+        # L'adresse de connexion d'abord ; sinon celle de sa fiche dans l'école.
+        trouves = self.docs.directory.recipients(db, member.org_id, [("member", str(member.person_id))])
+        nom = trouves[0].name if trouves else member.display_name
+        email = member.email or (trouves[0].email if trouves else None)
+        if not email:
+            raise self._error(409, "Votre fiche n'a pas d'adresse email.")
+        s = db.scalar(
+            select(DocSend).where(DocSend.node_id == node.id, DocSend.channel == "trial", DocSend.person_id == member.person_id)
+        )
+        if s is None:
+            s = DocSend(
+                org_id=node.org_id, node_id=node.id, token=secrets.token_urlsafe(24), person_id=member.person_id,
+                channel="trial", test=True,
+            )
+            db.add(s)
+        s.name, s.email, s.status, s.error, s.sent_by = nom, email, "pending", None, member.person_id
+        self.docs._log(db, member, node, "sent", {"count": 1, "test": True, "trial": True})
+        db.commit()
+        ecole, adresse = self.docs.mailer.org(db, node.org_id)
+        sujet, texte, html = compose(
+            node.name, node.family, version.content, s.name, "", f"{adresse}/r/{s.token}",
+            ecole, member.display_name, True, False, trial=True,
+        )
+        job = {"send_id": s.id, "to": s.email, "subject": sujet, "text": texte, "html": html,
+               "sender_name": ecole, "reply_to": None}
+        return {"sent": 1, "test": True, "email": s.email}, [job]
 
     # ------------------------------------------------------------------
     # Envoyer
@@ -169,6 +213,7 @@ class AppSends:
                     "name": s.name,
                     "email": s.email,
                     "test": s.test,
+                    "trial": s.channel == "trial",
                     "status": s.status,
                     "error": s.error,
                     "sent_at": s.sent_at.isoformat() if s.sent_at else None,
@@ -195,6 +240,9 @@ class AppSends:
     def _accepting(s: DocSend, node: DocNode) -> bool:
         if node.family == "inform":
             return False
+        # Un essai sur soi-même reste ouvert, quel que soit l'état.
+        if s.channel == "trial":
+            return True
         # Un lien de relecture se ferme quand le fichier passe en Officiel.
         return node.status == ("validated" if s.test else "official")
 
@@ -213,6 +261,7 @@ class AppSends:
             "family": node.family,
             "person": s.name,
             "test": s.test,
+            "trial": s.channel == "trial",
             "content": {"schema": version.content.get("schema", 1), "entry": version.content.get("entry", {"blocks": []})},
             "accepting": self._accepting(s, node),
             "values": reponse.values if reponse is not None else None,
@@ -243,15 +292,20 @@ class AppSends:
 
 def compose(
     name: str, family: str, content: dict, person: str, message: str, link: str,
-    org_name: str, sender: str, test: bool, can_reply: bool,
+    org_name: str, sender: str, test: bool, can_reply: bool, trial: bool = False,
 ) -> tuple[str, str, str]:
     """L'email : une version lisible du formulaire d'entrée (tout le texte
     pour un fichier à lire, l'introduction sinon) et le lien personnel,
     écrit en clair (auth/mails.py : Brevo réécrit les liens cliquables)."""
-    sujet = ("[Relecture] " if test else "") + name
+    sujet = ("[Essai] " if trial else "[Relecture] " if test else "") + name
     paragraphes = [message] if message else []
     paragraphes += app_content.readable(content, intro_only=family != "inform")
-    if test:
+    if trial:
+        paragraphes.append(
+            "Essai : vous vous êtes envoyé ce fichier pour voir ce que recevront les autres. "
+            "Votre réponse est un essai : elle apparaîtra dans Résultats avec la mention « Essai », sans compter."
+        )
+    elif test:
         paragraphes.append(
             f"Relecture : {sender} vous demande de vérifier ce fichier avant son envoi. "
             "Vos réponses sont des essais, elles ne comptent pas."

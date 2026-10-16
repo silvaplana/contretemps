@@ -83,7 +83,8 @@ export default function PagePublique({ slug, jeton }) {
         {page && (
           <>
             {page.person && <p className="pp-note">Bonjour {page.person}{page.values ? ' : votre réponse est enregistrée, vous pouvez la corriger.' : ''}</p>}
-            {page.test && page.accepting && <p className="pp-note">Relecture : vos réponses sont des essais, elles ne comptent pas.</p>}
+            {page.trial && page.accepting && <p className="pp-note">Essai : votre réponse apparaîtra dans Résultats avec la mention « Essai », sans compter.</p>}
+            {page.test && !page.trial && page.accepting && <p className="pp-note">Relecture : vos réponses sont des essais, elles ne comptent pas.</p>}
             {page.family !== 'inform' && !page.accepting && <p className="pp-note">Les réponses sont fermées.</p>}
             <Page
               content={page.content}

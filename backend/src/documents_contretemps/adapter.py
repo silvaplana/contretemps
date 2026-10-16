@@ -91,6 +91,8 @@ def membre_appelant(db: Session = Depends(get_db), compte: Compte = Depends(rbac
         # Pas d'espace Personnel pour les élèves (Seb, 15 octobre).
         has_personal_space=superuser or admin or roles.is_prof(compte),
         groups=_groupes(db, compte),
+        # « M'envoyer un essai » : l'adresse de connexion, sinon la première.
+        email=getattr(compte, "email_connecte", None) or next(iter(compte.emails), None),
     )
 
 

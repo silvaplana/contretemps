@@ -296,7 +296,10 @@ def test_diffuser_aux_personnes_choisies(client, ecole, db_session, mails):
     admin.modifier(ident, change_status=True, status="validated")
     assert envoyer([cours]).status_code == 409  # Validé : un par un
     apercu = admin.c.post(url + "/preview", json={"principals": [personne(ecole["admin"]), personne(ecole["autre"])]}, headers=admin.h).json()
-    assert apercu == {"test": True, "available": True, "count": 1, "without_email": ["Ana Roux"]}
+    assert apercu == {
+        "test": True, "available": True, "count": 1, "without_email": ["Ana Roux"],
+        "recipients": [{"name": "Julia Dho", "email": "julia@exemple.fr"}],
+    }
     r = envoyer([personne(ecole["admin"])], message="Tu relis ?")
     assert r.status_code == 201 and r.json() == {"sent": 1, "test": True}
     mail = mails.envoyes[-1]
@@ -335,6 +338,40 @@ def test_diffuser_aux_personnes_choisies(client, ecole, db_session, mails):
     prof = Docs(client, ecole["id"], ecole["prof"])
     assert prof.c.post(f"{prof.base}/nodes/{ident}/app/sends", json={"principals": [cours]}, headers=prof.h).status_code == 403
     assert client.get("/documents/public/links/inconnu").status_code == 404
+
+
+def test_essai_sur_soi_meme(client, ecole, db_session, mails):
+    """M'envoyer un essai (Seb, 16 octobre) : dans tous les états, à soi
+    seul ; on répond par son lien, la réponse est un essai dans Résultats ;
+    le lien reste ouvert en Officiel."""
+    ecole["admin"].definir_emails("julia@exemple.fr")
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    ident = creer(admin, "question", _saison(admin)["id"], "Fête de l'école").json()["id"]
+    url = f"{admin.base}/nodes/{ident}/app/sends/trial"
+    assert admin.c.post(url, headers=admin.h).status_code == 409  # formulaire vide
+    enregistrer(admin, ident, SONDAGE)
+    r = admin.c.post(url, headers=admin.h)  # en Brouillon
+    assert r.status_code == 201 and r.json() == {"sent": 1, "test": True, "email": "julia@exemple.fr"}
+    mail = mails.envoyes[-1]
+    assert mail["to"] == "julia@exemple.fr" and mail["subject"] == "[Essai] Fête de l'école" and "Essai" in mail["text"]
+    lien = mail["text"].split("/r/")[1].split()[0]
+    page = client.get(f"/documents/public/links/{lien}").json()
+    assert page["accepting"] is True and page["trial"] is True
+    assert client.post(f"/documents/public/links/{lien}/answers", json={"values": {"q1": "20 juin"}}).status_code == 201
+    rep = admin.get(f"/nodes/{ident}/app/responses").json()["items"]
+    assert len(rep) == 1 and rep[0]["is_test"] is True
+    suivi = admin.get(f"/nodes/{ident}/app/sends").json()["items"]
+    assert suivi[0]["trial"] is True and suivi[0]["answered_at"]
+    # Un nouvel essai : le même lien ; toujours ouvert en Officiel.
+    admin.modifier(ident, change_status=True, status="validated")
+    admin.modifier(ident, change_status=True, status="official")
+    admin.c.post(url, headers=admin.h)
+    assert mails.envoyes[-1]["text"].split("/r/")[1].split()[0] == lien
+    assert client.get(f"/documents/public/links/{lien}").json()["accepting"] is True
+    # Le prof n'envoie pas d'essai d'un fichier qu'il ne gère pas.
+    prof = Docs(client, ecole["id"], ecole["prof"])
+    assert prof.c.post(f"{prof.base}/nodes/{ident}/app/sends/trial", headers=prof.h).status_code == 403
 
 
 def test_slugify():

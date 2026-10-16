@@ -318,6 +318,12 @@ class DocumentsReceiver:
             taches.add_task(sends.deliver, db.get_bind(), jobs)
             return resume
 
+        @self.app.post(base + "/nodes/{node_id}/app/sends/trial", status_code=201)
+        def send_trial(org_id: int, node_id: int, taches: BackgroundTasks, db: Session = db_dep, m: Member = member):
+            resume, jobs = appel(lambda: sends.trial(db, self._member(org_id, m), node_id))
+            taches.add_task(sends.deliver, db.get_bind(), jobs)
+            return resume
+
         @self.app.get(base + "/nodes/{node_id}/app/sends")
         def send_list(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: sends.list(db, self._member(org_id, m), node_id))

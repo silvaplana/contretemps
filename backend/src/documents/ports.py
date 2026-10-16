@@ -28,6 +28,9 @@ class Member:
     # Peut avoir un espace Personnel (pas les élèves, Seb 15 octobre).
     has_personal_space: bool = False
     groups: frozenset[str] = field(default_factory=frozenset)
+    # The address the person signed in with (or their first one): used to
+    # send a trial to oneself, also for a superuser outside the school.
+    email: str | None = None
 
 
 @dataclass(frozen=True)

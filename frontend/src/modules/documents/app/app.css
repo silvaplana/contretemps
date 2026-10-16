@@ -893,3 +893,54 @@ h3.ap-h {
   color: var(--danger-text);
   font-weight: 700;
 }
+
+/* Diffuser : qui reçoit, en clair (Seb, 16 octobre). */
+.ad-qui {
+  margin: 0 0 10px;
+  font-size: 17px;
+  color: var(--text-muted);
+}
+
+.ad-ok {
+  margin: 0 0 10px;
+  font-size: 17px;
+}
+
+.ad-attention ul {
+  margin: 6px 0 12px;
+  padding-left: 20px;
+}
+
+.ad-attention li {
+  margin-bottom: 4px;
+}
+
+.ad-destinataires {
+  max-height: 260px;
+  margin: 6px 0 4px;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.ad-destinataires li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+}
+
+.ad-destinataires li:last-child {
+  border-bottom: 0;
+}
+
+.ad-destinataires__email {
+  color: var(--text-muted);
+  font-size: 15px;
+  word-break: break-all;
+}

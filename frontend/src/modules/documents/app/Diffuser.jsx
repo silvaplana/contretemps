@@ -27,7 +27,49 @@ function Qr({ texte }) {
   )
 }
 
-export default function Diffuser({ file, api, onToast, onChanged }) {
+// M'envoyer un essai (Seb, 16 octobre) : on reçoit le mail comme les
+// autres, on répond par son lien, et l'on regarde ce que donnent les réponses.
+function EssaiSurMoi({ file, api, onToast, onVoirReponses }) {
+  const [etat, setEtat] = useState(null) // null | 'envoi' | { email } | { erreur }
+  async function envoyer() {
+    setEtat('envoi')
+    try {
+      const r = await api.sendTrial(file.id)
+      setEtat({ email: r.email })
+      onToast(`Essai envoyé à ${r.email}`)
+    } catch (e) {
+      setEtat({ erreur: e.message })
+    }
+  }
+  return (
+    <section className="ad-carte">
+      <h3>Essayer sur moi</h3>
+      <p className="af-hint">
+        Recevez le mail exactement comme les autres le recevront
+        {file.family !== 'inform' ? ', répondez, puis regardez vos réponses. Votre réponse est marquée « Essai » et ne compte pas.' : '.'}
+      </p>
+      {etat?.email && (
+        <p className="ad-ok">
+          Envoyé à <strong>{etat.email}</strong>. Ouvrez le mail{file.family !== 'inform' ? ', répondez par le lien, puis revenez ici.' : '.'}
+        </p>
+      )}
+      {etat?.erreur && <p className="dx-error" role="alert">{etat.erreur}</p>}
+      <div className="ad-boutons">
+        <button type="button" className="dx-btn dx-btn--small" disabled={etat === 'envoi' || !file.can_manage} onClick={envoyer}>
+          {etat === 'envoi' ? 'Envoi…' : etat?.email ? 'Me renvoyer l’essai' : 'M’envoyer un essai'}
+        </button>
+        {etat?.email && file.family !== 'inform' && (
+          <button type="button" className="dx-btn dx-btn--small dx-btn--ghost" onClick={onVoirReponses}>
+            Voir les réponses
+          </button>
+        )}
+      </div>
+      {!file.can_manage && <p className="ad-raison">Un admin peut s’envoyer un essai.</p>}
+    </section>
+  )
+}
+
+export default function Diffuser({ file, api, onToast, onChanged, onVoirReponses }) {
   const apparence = useApparence()
   const [confirmer, setConfirmer] = useState(false)
   const [enCours, setEnCours] = useState(false)
@@ -60,9 +102,11 @@ export default function Diffuser({ file, api, onToast, onChanged }) {
   const choisis = <DiffuserChoisis file={file} api={api} onToast={onToast} />
   return (
     <div className="ad">
+      <EssaiSurMoi file={file} api={api} onToast={onToast} onVoirReponses={onVoirReponses} />
       {file.status === 'validated' && choisis}
       <section className="ad-carte">
         <h3>Tout le monde</h3>
+        <p className="ad-qui">Qui : toute personne qui a l’adresse ou le QR code, sur internet, sans compte.</p>
         {enLigne ? (
           <>
             <p className="ad-etat">
@@ -102,10 +146,18 @@ export default function Diffuser({ file, api, onToast, onChanged }) {
           </>
         ) : confirmer ? (
           <>
-            <p className="ad-attention">Visible par tout le monde sur internet, sans compte. {file.family !== 'inform' && 'Chacun pourra répondre.'}</p>
+            <div className="ad-attention">
+              <p><strong>Rendre « {file.name} » public ?</strong></p>
+              <ul>
+                <li>N’importe qui ayant l’adresse ou le QR code pourra le voir sur internet, même hors de l’école, sans compte.</li>
+                {file.family !== 'inform' && <li>Chacun pourra répondre ; les réponses arriveront dans Résultats.</li>}
+                <li>Personne n’est prévenu : rien n’est envoyé. C’est vous qui partagerez l’adresse ou le QR code.</li>
+                <li>Vous pourrez le retirer d’internet à tout moment.</li>
+              </ul>
+            </div>
             <div className="ad-boutons">
               <button type="button" className="dx-btn" disabled={enCours} onClick={() => faire(() => api.publish(file.id), 'La page est en ligne')}>
-                Mettre en ligne
+                Oui, mettre en ligne
               </button>
               <button type="button" className="dx-btn dx-btn--ghost" onClick={() => setConfirmer(false)}>Annuler</button>
             </div>
@@ -117,7 +169,7 @@ export default function Diffuser({ file, api, onToast, onChanged }) {
               {pub && ' La page avait été retirée : elle reprendra la même adresse.'}
             </p>
             <button type="button" className="dx-btn" disabled={Boolean(raison)} onClick={() => setConfirmer(true)}>
-              Mettre en ligne
+              Mettre en ligne…
             </button>
             {raison && <p className="ad-raison">{raison}.</p>}
           </>

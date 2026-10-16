@@ -87,6 +87,8 @@ export function documentsApi(orgId) {
     send: (id, principals, message) =>
       appel(`${base}/nodes/${id}/app/sends`, json('POST', { principals: cibles(principals), message: message || null })),
     sends: (id) => appel(`${base}/nodes/${id}/app/sends`),
+    // M'envoyer un essai : à soi seul, réponse marquée « Essai ».
+    sendTrial: (id) => appel(`${base}/nodes/${id}/app/sends/trial`, { method: 'POST' }),
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),
