@@ -41,11 +41,35 @@ Il n'y a pas de rôle "Parent" séparé — un élève est lui-même un compte, 
 champs (voir §6), qu'il soit mineur ou majeur.
 
 **Profils familiaux façon Netflix** : au sein d'une même école, les comptes (admin, professeur,
-élève) qui partagent le même email sont automatiquement regroupés en une même **famille**.
+élève) qui partagent un même email sont automatiquement regroupés en une même **famille**.
 Toute personne connectée peut, via un menu déroulant, **basculer sans reconnexion** vers un
-autre profil de la même famille — ex. un parent-admin qui bascule vers le profil de son fils
-élève, ou entre deux enfants d'une même fratrie. Une famille peut mélanger les rôles (ex. un
-parent Admin + ses deux enfants Élèves).
+autre profil rattaché à **l'email avec lequel elle s'est connectée** — ex. un parent-admin qui
+bascule vers le profil de son fils élève, ou entre deux enfants d'une même fratrie. Une famille
+peut mélanger les rôles (ex. un parent Admin + ses deux enfants Élèves).
+
+**Plusieurs emails par fiche** *(décision utilisateur du 2026-10-16, pas encore implémenté)* :
+une fiche peut porter **plusieurs emails**, tous équivalents (aucun ordre, pas d'email
+« principal »). Cas réel : Margot Béraud et sa sœur Lison ont été saisies avec l'email de leur
+père (qui n'a pas de fiche), puis Margot a donné le sien. Résultat :
+
+| Fiche | Emails |
+|---|---|
+| Margot | email du père, email de Margot |
+| Lison | email du père (et le sien si elle en donne un) |
+
+- **Famille** : toutes les fiches reliées par au moins un email commun, de proche en proche
+  (ici Margot et Lison, grâce à l'email du père). C'est ce que voit l'admin ;
+- **Connexion** : chaque email garde son propre mot de passe (§2.2). Margot se connecte avec
+  son email et son mot de passe ; le père avec les siens ;
+- **Sélecteur de profil** : il montre les fiches rattachées à **l'email connecté**, pas toute la
+  famille. Connectée avec son email, Margot ne voit que sa fiche ; connecté avec l'email du
+  père, on voit Margot et Lison et on bascule de l'une à l'autre. Ainsi deux sœurs n'entrent
+  pas dans la fiche de l'autre avec leur propre mot de passe ;
+- **Mails envoyés par l'appli** (relances de messagerie, etc.) : à **toutes** les adresses de
+  la fiche. Les invitations restent une par adresse (§2.2).
+
+*À reprendre dans AppBase* : cette notion (personne, emails de connexion, famille, bascule de
+profil) est générique ; elle est spécifiée ici parce qu'AppBase n'existe pas encore.
 
 ### 2.2 Connexion par mot de passe *(spécifié le 2026-10-01, serveur implémenté le 2026-10-01)*
 
@@ -86,9 +110,11 @@ l'onglet **Profil**. Le Superuser utilise le même écran (§2.5).
 
 Le mot de passe appartient à une **adresse email** (table `acces_emails`, §6.3ter), pas à un
 compte :
-- avec une connexion par nom prénom, le serveur trouve le compte, puis son email, puis vérifie
-  le mot de passe de cet email ;
-- les profils d'une même famille (même email, §2.1) partagent donc le même mot de passe ;
+- avec une connexion par nom prénom, le serveur trouve le compte, puis ses emails, puis vérifie
+  le mot de passe saisi contre **chacun** de ses emails : celui qui correspond devient l'email
+  connecté (et fixe les profils du sélecteur, §2.1) ;
+- les profils qui partagent un email (§2.1) partagent donc le mot de passe de cet email. Une
+  fiche à plusieurs emails a un mot de passe par email ;
 - le mot de passe survit à la recopie des comptes à chaque saison (§2.6), sans rien recopier ;
 - un compte **sans email** ne peut pas se connecter. Pour un enfant, l'email d'un parent suffit
   (il rejoint alors la famille) ;
@@ -159,8 +185,9 @@ La colonne **Statut** d'Admin > Élèves affiche la dernière étape atteinte, a
 | *Appli installée le 04/10* | l'installation passe par le parcours de l'appli elle-même (`frontend/src/api/installation.js`, écran d'installation après connexion), donc la personne est déjà connectée et l'appli prévient le serveur, voir ci-dessous |
 
 Toutes les étapes sont déclarées au serveur par l'appli elle-même : l'admin n'a rien à
-saisir. Le statut appartient à l'**adresse email** (§6.3ter) : tous les profils d'une même
-famille affichent donc le même statut. Le bouton « Inviter » reste disponible à chaque étape
+saisir. Le statut appartient à l'**adresse email** (§6.3ter) : tous les profils qui partagent
+une adresse affichent le même statut pour elle. Une fiche à plusieurs emails affiche **une
+ligne de statut par adresse**, chacune avec son bouton « Inviter » (§2.1, 2026-10-16). Le bouton « Inviter » reste disponible à chaque étape
 pour renvoyer un lien (un nouveau lien annule le précédent).
 
 **Comment l'appli sait qu'elle est installée** (le premier signal reçu fixe la date, les
@@ -226,6 +253,9 @@ Les routes `/auth/recuperation/*`, la question de récupération et le champ
   Exemple : un enfant sur le téléphone d'un parent admin. Limite connue : un membre de la
   famille qui connaît le mot de passe commun peut basculer. Un admin ou un professeur qui veut
   s'en protéger utilise son propre email.
+- La bascule ne propose que les profils rattachés à l'**email connecté** (§2.1 « Plusieurs
+  emails par fiche »). Le jeton désigne déjà cet email, et le serveur vérifie déjà que le profil
+  actif lui appartient : la règle découle de là.
 
 #### Transition
 
@@ -704,7 +734,7 @@ professeur-admin a tout ce qu'a un professeur ET tout ce qu'a un admin.
 L'en-tête de chaque écran (hors Admin) affiche :
 
 - **Zone gauche** : logo de l'école, et généralement le **sélecteur de cours** (cours actif + chevron, menu déroulant listant les cours accessibles)
-- **Zone droite** : **sélecteur de profil famille**, affiché **uniquement si le compte connecté appartient à une famille de plus d'1 membre** (avatar + chevron, menu déroulant permanent listant les profils du foyer) — invisible/absent pour un compte seul dans sa famille
+- **Zone droite** : **sélecteur de profil famille**, affiché **uniquement si l'email connecté porte plus d'un profil** (avatar + chevron, menu déroulant permanent listant ces profils, §2.1) — invisible/absent sinon
 - **Menu 3 points verticaux** : propose l'accès au **Profil** et la **Déconnexion**
 
 ---
@@ -851,7 +881,11 @@ inconnue).
 **Accès à l'appli** *(2026-10-01, §2.2)* : deux colonnes à droite du tableau, **« Inviter »**
 (bouton qui envoie le mail d'invitation) et **Statut** (*Pas d'email*, *Pas invité*, *Invité
 le…*, *Invitation consultée le…*, *Profil finalisé le…*, *Appli installée le…*, voir §2.2
-« Suivi de l'invitation »).
+« Suivi de l'invitation »). Une fiche à plusieurs emails y a une ligne par adresse.
+
+**Emails de la fiche** *(2026-10-16, §2.1)* : en mode **Modifier**, le champ Email devient une
+petite liste (une adresse par ligne, bouton **+ Ajouter un email**, croix pour en retirer une).
+L'ordre n'a pas d'importance. Même liste pour les professeurs et les administrateurs.
 
 ![Admin — gestion des élèves](images/admin-eleves.png)
 
@@ -1094,6 +1128,11 @@ Calculée automatiquement : à la création d'un compte, si l'email saisi existe
 autre compte de la même école, le nouveau compte rejoint la même famille ; sinon une nouvelle
 famille est créée. Un compte sans email reste seul dans sa propre famille.
 
+Avec plusieurs emails par compte (§2.1, 2026-10-16) : une famille regroupe les comptes de la
+même école reliés **de proche en proche** par un email commun. Elle est recalculée à chaque
+ajout ou retrait d'un email : un ajout peut fusionner deux familles, un retrait peut en
+séparer une en deux.
+
 ### 6.3 Comptes (partie commune Admin/Professeur/Élève)
 
 | Champ | Type | Obl./Opt. |
@@ -1103,9 +1142,23 @@ famille est créée. Un compte sans email reste seul dans sa propre famille.
 | famille_id | FK → familles | Obl. (calculé ; vide uniquement pour le Superuser) |
 | nom | texte | Obl. |
 | prenom | texte | Obl. |
-| email | texte | Opt. |
 | telephone | texte | Opt. |
 | created_at | datetime | Obl. (auto) |
+
+Le champ unique `email` est remplacé *(décision du 2026-10-16, §2.1)* par la table
+**`emails_compte`**, zéro, une ou plusieurs lignes par compte :
+
+| Champ | Type | Obl./Opt. |
+|---|---|---|
+| id | PK | — |
+| compte_id | FK → comptes | Obl. |
+| email | texte (minuscules) | Obl. |
+| created_at | datetime | Obl. (auto) |
+
+Unique sur (compte_id, email) ; index sur email (recherche de la famille et des profils de
+l'email connecté). Pas de colonne d'ordre : les emails sont équivalents. Migration : chaque
+`comptes.email` non vide devient une ligne, puis la colonne disparaît. Les emails sont recopiés
+avec le compte à chaque nouvelle saison (§2.6).
 
 *Admin* : aucun champ supplémentaire. `code_recuperation` (question de récupération) et
 `hashed_password_ou_code` disparaissent avec le §2.2 (2026-10-01) : le mot de passe vit dans
@@ -1183,8 +1236,9 @@ avec l'utilisateur le 2026-10-01, à la place de `utilisateurs`).
 | appli_installee_le | datetime | Opt. (signalée par l'appli, voir §2.2 « Suivi de l'invitation ») |
 | created_at | datetime | Obl. (auto) |
 
-Les comptes s'y rattachent par leur email (comparé en minuscules). Changer l'email d'un compte
-le rattache à une autre ligne, qu'il faudra inviter. Le Superuser y a aussi sa ligne.
+Les comptes s'y rattachent par leurs emails (`emails_compte`, §6.3, comparés en minuscules) :
+un compte à plusieurs emails est rattaché à plusieurs lignes. Ajouter ou changer un email
+rattache le compte à une autre ligne, qu'il faudra inviter. Le Superuser y a aussi sa ligne.
 
 **`liens_invitation_reinit`** : liens d'invitation et de réinitialisation.
 
@@ -1279,6 +1333,11 @@ Le **regroupement en famille reste inchangé pendant l'import** : chaque élève
 à jour) crée/conserve son propre compte, et le mécanisme automatique de regroupement par email
 (§6.2) s'applique normalement — deux frères/sœurs du fichier avec le même email rejoignent
 naturellement la même famille, sans logique spéciale à ajouter pour l'import.
+
+**Plusieurs emails dans la cellule** *(2026-10-16, §2.1)* : la colonne Email peut contenir
+plusieurs adresses séparées par `;`, `,` ou un espace ; chacune devient un email de la fiche.
+À la mise à jour d'un élève existant, les adresses du fichier sont **ajoutées** à celles de la
+fiche, jamais retirées (un email ajouté dans l'appli ne disparaît pas au réimport).
 
 Pour les lignes correspondant à un élève existant, l'écran de relecture pré-import propose :
 - Un **choix global par défaut** en haut de l'écran, ex. *"Pour tous les élèves déjà
