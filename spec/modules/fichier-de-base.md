@@ -100,8 +100,9 @@ qu'il n'y en a pas de vraies.
 pastille « Essai » et ne crée rien dans l'appli (ni membre, ni paiement) ; « Effacer les essais » les
 retire. C'est le « Essayer » des parcours (§5.6).
 
-C'est l'onglet d'ouverture par défaut (principe « aperçu d'abord », §5.4), sauf pour un fichier neuf,
-qui s'ouvre sur Préparer.
+**Onglet d'ouverture selon l'état (Seb, 16 octobre)** : Brouillon → Préparer ; Validé → Diffuser ;
+Officiel → Résultats (Aperçu pour Informer, qui n'a pas de Résultats). Ceux qui ne peuvent que voir le
+fichier arrivent toujours sur la page elle-même.
 
 ### 2.3 Diffuser
 
@@ -221,7 +222,7 @@ Pas de nouvelle table pour le cadre (le détail des blocs viendra avec le design
 2. ~~Noms des deux formulaires~~ : **décidé par Seb le 16 octobre : « Formulaire d'entrée » et
    « Formulaire de résultat »**, toujours ces deux noms.
 3. **Informer sans onglet Résultats**, le « qui a lu » étant dans Diffuser. Recommandation : **oui**.
-4. **Onglet d'ouverture** : Aperçu, sauf fichier neuf sur Préparer. Recommandation : **oui**.
+4. ~~Onglet d'ouverture~~ : **décidé par Seb le 16 octobre, selon l'état** (voir §2.2).
 5. **En Validé, où vont les réponses ?** Avec le tableau du §4, un fichier Validé peut être diffusé mais
    n'a pas d'onglet Résultats. Recommandation : **en Validé, on diffuse seulement à soi et aux
    relecteurs (essai grandeur nature) ; la diffusion à tous et la collecte s'ouvrent en Officiel.**
