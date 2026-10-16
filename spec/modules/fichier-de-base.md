@@ -89,7 +89,7 @@ Reprend l'écran « Diffuser » du §5.9 et la collecte du §5.10, en un seul en
   lien personnel par personne ; canal (email, notification de l'appli) ; pour Questionner et Agir :
   date limite, relances aux non-répondants, une ou plusieurs réponses, réponse modifiable ou non,
   visibilité des réponses (Privée, Résultats visibles, Publique).
-- **Tout le monde** : adresse publique `https://<préfixe>.contretemps.silvaplana.cloud/<page>`, bouton
+- **Tout le monde** : adresse publique `https://<page>.<école>.contretemps.silvaplana.cloud`, nom de page créé automatiquement et jamais en double dans l'école (§5.5), bouton
   Copier, QR code pour l'affiche. Confirmation « Visible par tout le monde sur internet ».
 - Les deux à la fois sont possibles ; toutes les réponses vont au même tableau (colonne Provenance).
 - Règle de statut : on ne diffuse qu'une version **Validée ou Officielle**. Sur un brouillon, l'onglet
