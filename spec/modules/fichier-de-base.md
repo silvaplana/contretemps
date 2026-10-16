@@ -215,6 +215,53 @@ Pas de nouvelle table pour le cadre (le détail des blocs viendra avec le design
 - la diffusion dans `doc_collections`, les réponses dans `doc_responses` (§5.10), avec une colonne
   `is_test` pour les essais.
 
+### 6.1 Où vont les réponses : pas de table créée à la volée (question de Seb du 16 octobre)
+
+On ne sait pas à l'avance ce que contient un formulaire, mais **on ne crée jamais de table ni de fichier
+par formulaire**. Une table créée à la volée, c'est des migrations par école impossibles à suivre, des
+sauvegardes et des droits à refaire à chaque fois ; un fichier (CSV, Excel) ne supporte pas deux
+personnes qui répondent en même temps ni les droits par personne. À la place, **une table générique
+unique**, `doc_responses`, et c'est le **formulaire d'entrée lui-même qui sert de schéma** :
+
+| Colonne | Remarque |
+|---|---|
+| `id`, `org_id`, `node_id` | le fichier |
+| `version_id` | la version du formulaire à laquelle la personne a répondu |
+| `person_id` null, `email`, `token` | qui (lien personnel) ou anonyme (adresse publique) |
+| `status` | pas répondu / en cours / répondu ; `is_test` pour les essais |
+| `values` | **JSON** : une entrée par question, sous son identifiant stable |
+| `links` | JSON : ce que la réponse a créé (membre, inscription, paiement, fichier déposé) |
+| `source`, `created_at`, `updated_at` | provenance (lien personnel, adresse publique), dates |
+
+Exemple d'une inscription avec deux enfants :
+
+```json
+{ "q_payeur_nom": "Martin", "q_payeur_email": "c.martin@exemple.fr",
+  "q_enfants": [
+    { "q_prenom": "Léa", "q_naissance": "2017-03-02", "q_cours": ["eveil"], "q_certificat": {"file": 812} },
+    { "q_prenom": "Tom", "q_naissance": "2014-11-20", "q_cours": ["jazz-1", "hip-hop"] } ],
+  "q_droit_image": true, "q_signature": {"proof": 55}, "q_paiement": {"payment": 301} }
+```
+
+- **Formulaires complexes** : un bloc **Groupe répété** (« Ajouter un enfant ») donne une liste d'objets ;
+  les conditions (« seulement si… ») masquent des questions sans changer le stockage ; les fichiers,
+  signatures et paiements sont rangés dans leurs propres tables (`stored_files`, preuves de signature,
+  paiements) et la réponse n'en garde que la référence.
+- **Contrôle** : à l'envoi, le serveur valide `values` contre le formulaire de la version (types,
+  obligatoires, choix permis, tailles) ; une réponse invalide est refusée, jamais stockée à moitié.
+- **Affichage** : le formulaire de résultat lit les lignes et la définition des questions (libellés,
+  types) pour faire colonnes, compteurs et graphiques. Volumes d'une asso : quelques centaines de lignes
+  par fichier, calculés sans souci ; SQLite sait lire le JSON (`json_extract`), Postgres l'indexe (JSONB).
+  Export .xlsx : une colonne par question, une ligne par enfant pour un groupe répété.
+- **Le formulaire change après des réponses** : l'identifiant d'une question ne change jamais, même si on
+  la renomme ; une question supprimée garde ses réponses (colonne masquée) ; chaque réponse sait à quelle
+  version elle a répondu.
+- **Agir : deux couches.** La réponse brute reste toujours dans `doc_responses`. En plus, les liaisons du
+  §5.9 écrivent dans les **vraies tables existantes** (membres, inscriptions aux cours, paiements) par des
+  actions déclarées par les modules ; une information que la base ne connaît pas va dans les **champs
+  personnalisés** des membres (§5.9, JSON aussi). L'IA ne crée donc jamais de structure, elle choisit
+  parmi les actions et les champs qui existent.
+
 ## 7. À trancher par Seb
 
 1. **Noms des onglets** : `Préparer | Aperçu | Diffuser | Résultats`. Recommandation : **ceux-là**.
