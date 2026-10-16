@@ -24,6 +24,7 @@ from .models import (
     DocAppTemplate,
     DocAppVersion,
     DocNode,
+    DocPublication,
     DocResponse,
     utcnow,
 )
@@ -122,6 +123,7 @@ class AppFiles:
             "content": version.content if version else app_content.empty_content(),
             "version": {"id": version.id, "number": version.number} if version else None,
             "response_count": reponses,
+            "publication": self._publication_dict(db, node),
             "updated_at": node.updated_at.isoformat() if node.updated_at else None,
         }
 
@@ -206,7 +208,7 @@ class AppFiles:
             "items": [
                 {
                     "id": r.id,
-                    "who": noms.get(r.person_id) or r.email or "Anonyme",
+                    "who": noms.get(r.person_id) or r.email or ("Page en ligne" if r.source == "public" else "Anonyme"),
                     "is_test": r.is_test,
                     "source": r.source,
                     "status": r.status,
@@ -243,6 +245,10 @@ class AppFiles:
     def erase(db: Session, ids: set[int]) -> None:
         for modele in (DocResponse, DocAppVersion):
             db.query(modele).filter(modele.node_id.in_(ids)).delete(synchronize_session=False)
+        # Le nom de la page reste réservé ; la page ne s'affiche plus.
+        db.query(DocPublication).filter(DocPublication.node_id.in_(ids)).update(
+            {"unpublished_at": utcnow(), "version_id": None}, synchronize_session=False
+        )
 
 
     # ------------------------------------------------------------------
@@ -336,3 +342,135 @@ class AppFiles:
         self._require_admin(member)
         db.delete(self._template(db, member, template_id))
         db.commit()
+
+
+    # ------------------------------------------------------------------
+    # Page en ligne (documents.md §5.5, fichier-de-base.md §2.3)
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _publication(db: Session, node: DocNode) -> DocPublication | None:
+        return db.scalar(select(DocPublication).where(DocPublication.node_id == node.id).order_by(DocPublication.id.desc()).limit(1))
+
+    def _publication_dict(self, db: Session, node: DocNode) -> dict | None:
+        p = self._publication(db, node)
+        if p is None:
+            return None
+        en_ligne = p.unpublished_at is None and p.version_id is not None
+        version = db.get(DocAppVersion, p.version_id) if p.version_id else None
+        return {
+            "slug": p.slug,
+            "online": en_ligne,
+            "version": version.number if version else None,
+            "published_at": p.published_at.isoformat() if p.published_at else None,
+            "visits": p.visits,
+        }
+
+    def _free_slug(self, db: Session, org_id: int, name: str) -> str:
+        base = slugify(name)
+        pris = set(db.scalars(select(DocPublication.slug).where(DocPublication.org_id == org_id)))
+        libre, n = base, 2
+        while libre in pris or libre in RESERVED_SLUGS:
+            suffixe = f"-{n}"
+            libre, n = base[: 40 - len(suffixe)] + suffixe, n + 1
+        return libre
+
+    def publish(self, db: Session, member: Member, node_id: int) -> dict:
+        """« Mettre en ligne » : ouvert à tout le monde, donc en Officiel
+        seulement (en Validé, on diffuse aux relecteurs : décision de Seb du
+        16 octobre, fichier-de-base.md §7)."""
+        node = self._app_node(db, member, node_id)
+        self.docs._require(db, member, self.docs._locate(db, member, node), LEVEL_MANAGE)
+        if node.space == "personal":
+            raise self._error(409, "Un fichier de l'espace Personnel ne se met pas en ligne.")
+        if node.status != "official":
+            raise self._error(409, "Passez d'abord le fichier en Officiel pour l'ouvrir à tout le monde.")
+        version = self.current_version(db, node)
+        if version is None or not version.content.get("entry", {}).get("blocks"):
+            raise self._error(409, "La page est vide.")
+        p = self._publication(db, node)
+        if p is None:
+            p = DocPublication(org_id=node.org_id, node_id=node.id, slug=self._free_slug(db, node.org_id, node.name))
+            db.add(p)
+        p.version_id, p.published_by, p.published_at, p.unpublished_at = version.id, member.person_id, utcnow(), None
+        self.docs._log(db, member, node, "published", {"slug": p.slug})
+        db.commit()
+        return self._publication_dict(db, node)
+
+    def unpublish(self, db: Session, member: Member, node_id: int) -> dict | None:
+        node = self._app_node(db, member, node_id)
+        self.docs._require(db, member, self.docs._locate(db, member, node), LEVEL_MANAGE)
+        p = self._publication(db, node)
+        if p is not None and p.unpublished_at is None:
+            p.unpublished_at = utcnow()
+            self.docs._log(db, member, node, "unpublished", {"slug": p.slug})
+            db.commit()
+        return self._publication_dict(db, node)
+
+    # Routes publiques : pas de membre, l'organisation vient de l'adresse.
+
+    def _online(self, db: Session, org_id: int, slug: str) -> tuple[DocPublication, DocNode, DocAppVersion]:
+        p = db.scalar(select(DocPublication).where(DocPublication.org_id == org_id, DocPublication.slug == slug))
+        node = db.get(DocNode, p.node_id) if p is not None else None
+        version = db.get(DocAppVersion, p.version_id) if p is not None and p.version_id else None
+        if p is None or p.unpublished_at is not None or node is None or node.deleted_at is not None or version is None:
+            raise self._error(404, "Cette page n'est pas (ou plus) en ligne.")
+        return p, node, version
+
+    def page_exists(self, db: Session, org_id: int, slug: str) -> bool:
+        from .service import DocError
+
+        try:
+            self._online(db, org_id, slug)
+            return True
+        except DocError:
+            return False
+
+    def public_page(self, db: Session, org_id: int, slug: str) -> dict:
+        p, node, version = self._online(db, org_id, slug)
+        p.visits = (p.visits or 0) + 1
+        db.commit()
+        return {
+            "name": node.name,
+            "family": node.family,
+            "content": {"schema": version.content.get("schema", 1), "entry": version.content.get("entry", {"blocks": []})},
+            # Les réponses arrivent tant que le fichier reste Officiel.
+            "accepting": node.family != "inform" and node.status == "official",
+        }
+
+    def public_answer(self, db: Session, org_id: int, slug: str, values) -> dict:
+        _, node, version = self._online(db, org_id, slug)
+        if node.family == "inform" or node.status != "official":
+            raise self._error(409, "Les réponses sont fermées.")
+        try:
+            gardees = app_content.check_values(version.content, values, test=False)
+        except ContentError as erreur:
+            raise self._error(422, str(erreur)) from erreur
+        db.add(DocResponse(
+            org_id=node.org_id, node_id=node.id, version_id=version.id, status="answered",
+            is_test=False, source="public", values=gardees,
+        ))
+        db.commit()
+        return {"ok": True}
+
+
+RESERVED_SLUGS = {"www", "api", "admin", "app", "docs", "mail", "static"}
+
+
+def slugify(name: str) -> str:
+    """« Convocation AG 2026 » -> « convocation-ag-2026 » : minuscules, sans
+    accents, [a-z0-9-], 3 à 40 caractères."""
+    import unicodedata
+
+    texte = unicodedata.normalize("NFKD", name or "").encode("ascii", "ignore").decode().lower()
+    morceaux, courant = [], ""
+    for c in texte:
+        if c.isalnum():
+            courant += c
+        elif courant:
+            morceaux.append(courant)
+            courant = ""
+    if courant:
+        morceaux.append(courant)
+    slug = "-".join(morceaux)[:40].strip("-")
+    return slug if len(slug) >= 3 else (slug + "-page").strip("-")

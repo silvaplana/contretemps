@@ -249,6 +249,8 @@ documents_client = Documents(
     periods=SaisonsContretemps(),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
+# Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.
+personnalisation_client.page_existe = documents_client.apps.page_exists
 # Création de saison : « recopier le dossier de la saison précédente ».
 gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
 

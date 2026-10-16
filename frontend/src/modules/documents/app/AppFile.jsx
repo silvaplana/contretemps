@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Assistant from '../Assistant.jsx'
 import { BubbleIcon, FamilyDot, StatusIcon } from '../icons.jsx'
 import { FAMILIES, STATUSES } from '../kinds.js'
+import Diffuser from './Diffuser.jsx'
 import Editor from './Editor.jsx'
 import Page from './Page.jsx'
 import Results, { exampleRows } from './Results.jsx'
@@ -90,6 +91,18 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   useEffect(() => {
     charger(true)
   }, [charger])
+
+  // Les réponses arrivent aussi de la page en ligne : relues en ouvrant
+  // Résultats ou l'Aperçu.
+  const peutLireReponses = Boolean(file?.can_edit) && file?.family !== 'inform'
+  useEffect(() => {
+    if (!peutLireReponses || (tab !== 'results' && tab !== 'preview')) return
+    let actif = true
+    api.appResponses(item.id).then((r) => actif && setRows(r.items), () => {})
+    return () => {
+      actif = false
+    }
+  }, [api, item.id, tab, peutLireReponses])
 
   // Enregistrement automatique, une demande à la fois.
   const enregistrer = useCallback(
@@ -300,12 +313,16 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     )
   } else if (tab === 'diffuse') {
     corps = (
-      <div className="af-soon">
-        <b>Bientôt</b>
-        <p>Ici, on choisira à qui envoyer le formulaire d’entrée (des personnes choisies ou tout le monde), par email, notification ou SMS, avec les relances et la page publique.</p>
-      </div>
+      <Diffuser
+        file={file}
+        api={api}
+        onToast={onToast}
+        onChanged={async () => {
+          await charger()
+          onChanged?.()
+        }}
+      />
     )
-    bas = <button type="button" className="dx-btn" disabled>Envoyer</button>
   } else {
     corps = <Results content={c} rows={rows} />
     bas = essais > 0 && (

@@ -46,7 +46,10 @@ class DetourageChoix(BaseModel):
 
 
 def _host(request: Request) -> str | None:
-    return request.headers.get("x-forwarded-host") or request.headers.get("host")
+    # `?host=` : la page en ligne d'un fichier (<page>.<école>…, documents.md
+    # §5.5) demande l'école de son adresse, y compris en développement où
+    # l'API est sur une autre adresse que la page.
+    return request.query_params.get("host") or request.headers.get("x-forwarded-host") or request.headers.get("host")
 
 
 class PersonnalisationReceiver:

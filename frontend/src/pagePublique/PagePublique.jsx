@@ -1,0 +1,84 @@
+import { useEffect, useState } from 'react'
+import { mettreAJour, urlLogo, useApparence, versEcran } from '../api/apparence.js'
+import Page from '../modules/documents/app/Page.jsx'
+import '../modules/documents/app/app.css'
+import './pagePublique.css'
+
+// La page en ligne d'un fichier de l'appli (documents.md §5.5,
+// fichier-de-base.md §2.3) : le formulaire d'entrée, aux couleurs de
+// l'école, rempli sans compte. Rien d'autre de l'appli n'est chargé.
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+async function lire(url, options) {
+  const r = await fetch(url, options)
+  if (!r.ok) {
+    let message = 'Cette page ne répond pas. Réessayez plus tard.'
+    try {
+      const { detail } = await r.json()
+      if (typeof detail === 'string') message = detail
+    } catch {
+      // pas de JSON : message par défaut
+    }
+    throw new Error(message)
+  }
+  return r.json()
+}
+
+export default function PagePublique({ slug }) {
+  const apparence = useApparence()
+  const [page, setPage] = useState(null)
+  const [erreur, setErreur] = useState('')
+  const [ecoleId, setEcoleId] = useState(null)
+  const [envoiErreur, setEnvoiErreur] = useState('')
+
+  useEffect(() => {
+    ;(async () => {
+      try {
+        const vue = versEcran(await lire(`${BASE_URL}/par-host/personnalisation?host=${encodeURIComponent(window.location.host)}`))
+        if (!vue.ecoleId) throw new Error('Cette adresse ne correspond à aucune école.')
+        mettreAJour(vue)
+        setEcoleId(vue.ecoleId)
+        const p = await lire(`${BASE_URL}/documents/public/orgs/${vue.ecoleId}/pages/${encodeURIComponent(slug)}`)
+        setPage(p)
+        document.title = `${p.name} · ${vue.nom}`
+      } catch (e) {
+        setErreur(e.message)
+      }
+    })()
+  }, [slug])
+
+  async function repondre(values) {
+    setEnvoiErreur('')
+    try {
+      await lire(`${BASE_URL}/documents/public/orgs/${ecoleId}/pages/${encodeURIComponent(slug)}/answers`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values }),
+      })
+    } catch (e) {
+      setEnvoiErreur(e.message)
+      throw e
+    }
+  }
+
+  return (
+    <div className="pp">
+      <header className="pp-haut">
+        <img src={urlLogo(apparence)} alt="" />
+        <span>{apparence.nom}</span>
+      </header>
+      <main className="pp-corps">
+        {erreur && <p className="pp-erreur">{erreur}</p>}
+        {!erreur && !page && <p className="pp-attente">Chargement…</p>}
+        {page && (
+          <>
+            {page.family !== 'inform' && !page.accepting && <p className="pp-note">Les réponses sont fermées.</p>}
+            <Page content={page.content} size="phone" onSubmit={page.accepting ? repondre : undefined} />
+            {envoiErreur && <p className="pp-erreur" role="alert">{envoiErreur}</p>}
+          </>
+        )}
+      </main>
+    </div>
+  )
+}

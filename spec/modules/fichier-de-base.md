@@ -156,7 +156,7 @@ ne contient que le texte court et le lien personnel).
   lien personnel par personne ; canal (email, notification de l'appli) ; pour Questionner et Agir :
   date limite, relances aux non-répondants, une ou plusieurs réponses, réponse modifiable ou non,
   visibilité des réponses (Privée, Résultats visibles, Publique).
-- **Tout le monde** : adresse publique `https://<page>.<école>.contretemps.silvaplana.cloud`, nom de page créé automatiquement et jamais en double dans l'école (§5.5), bouton
+- **Tout le monde** (codé le 16 octobre : bouton « Mettre en ligne » en Officiel, confirmation, adresse, Copier, QR code, « Retirer d'internet » ; réponses sans compte, provenance « Page en ligne ») : adresse publique `https://<page>.<école>.contretemps.silvaplana.cloud`, nom de page créé automatiquement et jamais en double dans l'école (§5.5), bouton
   Copier, QR code pour l'affiche. Confirmation « Visible par tout le monde sur internet ».
 - Les deux à la fois sont possibles ; toutes les réponses vont au même tableau (colonne Provenance).
 - Règle de statut : on ne diffuse qu'une version **Validée ou Officielle**. Sur un brouillon, l'onglet

@@ -221,3 +221,27 @@ class DocAppTemplate(Base):
     created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+
+
+class DocPublication(Base):
+    """Page en ligne d'un fichier de l'appli (documents.md §5.5,
+    fichier-de-base.md §2.3) : `https://<slug>.<école>.<appli>…`. Le nom
+    (`slug`) n'est jamais réutilisé dans l'organisation, même dépublié, pour
+    qu'un vieux lien ne tombe jamais sur une autre page. La page montre la
+    version épinglée, jamais le brouillon en cours.
+
+    Pas de clé étrangère : la ligne reste (nom réservé) quand le fichier est
+    effacé de la corbeille."""
+
+    __tablename__ = "doc_publications"
+    __table_args__ = (UniqueConstraint("org_id", "slug", name="uq_doc_publication_slug"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    slug: Mapped[str] = mapped_column(String(40), nullable=False)
+    version_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    published_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    unpublished_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    visits: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

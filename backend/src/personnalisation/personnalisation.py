@@ -66,6 +66,20 @@ def adresse_de_l_ecole(ecole: Ecole) -> str:
     return f"https://{ecole.sous_domaine}.{DOMAINE_ECOLES}"
 
 
+def page_du_host(host: str | None) -> tuple[str, str] | None:
+    """« inscription.le-beausset.contretemps.silvaplana.cloud » ->
+    (« inscription », « le-beausset ») : page en ligne d'un fichier de l'école
+    (documents.md §5.5). Aussi « <page>.<adresse>.localhost ». None sinon."""
+    hote = (host or "").split(":")[0].strip().lower().rstrip(".")
+    for domaine in (DOMAINE_ECOLES, "localhost"):
+        suffixe = f".{domaine}"
+        if hote.endswith(suffixe):
+            morceaux = hote[: -len(suffixe)].split(".")
+            if len(morceaux) == 2 and all(morceaux):
+                return morceaux[0], morceaux[1]
+    return None
+
+
 def etiquette_du_host(host: str | None) -> str | None:
     """« le-beausset.contretemps.silvaplana.cloud:443 » -> « le-beausset ».
     Accepte aussi « <adresse>.localhost » pour le développement. None pour
@@ -91,6 +105,9 @@ class Personnalisation:
         `noter_cout(db, ecole_id, poste, cout_usd, detail)` : relève chaque
         opération d'IA (« Usage ressources et IA », voir ressources/)."""
         self.ecoles = ecoles
+        # page_existe(db, ecole_id, page) : branché par app/main.py sur le
+        # module documents (pages en ligne, documents.md §5.5).
+        self.page_existe: Callable[[Session, int, str], bool] | None = None
         self.detourage_ia = detourage_ia
         self.noter_cout = noter_cout
 
@@ -131,7 +148,8 @@ class Personnalisation:
 
     def ecole_du_host(self, db: Session, host: str | None) -> tuple[Ecole | None, bool]:
         """(école, adresse ancienne ?) de l'adresse visitée."""
-        etiquette = etiquette_du_host(host)
+        page = page_du_host(host)
+        etiquette = page[1] if page else etiquette_du_host(host)
         if etiquette is None or etiquette == GENERIQUE:
             return None, False
         return self.ecoles.par_adresse(db, etiquette)
@@ -139,6 +157,11 @@ class Personnalisation:
     def existe(self, db: Session, domaine: str | None) -> bool:
         """Caddy demande s'il peut créer un certificat pour `domaine` (spec
         §2.7) : oui pour l'adresse générique et les adresses d'école."""
+        page = page_du_host(domaine)
+        if page is not None:
+            # Page en ligne : l'école existe et la page y est publiée.
+            ecole, ancienne = self.ecoles.par_adresse(db, page[1])
+            return ecole is not None and not ancienne and self.page_existe is not None and self.page_existe(db, ecole.id, page[0])
         etiquette = etiquette_du_host(domaine)
         if etiquette is None:
             return False

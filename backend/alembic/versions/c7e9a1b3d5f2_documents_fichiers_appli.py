@@ -1,4 +1,4 @@
-"""Documents : fichiers de l'appli (versions JSON, réponses, modèles de l'école)
+"""Documents : fichiers de l'appli (versions JSON, réponses, modèles de l'école, pages en ligne)
 
 Revision ID: c7e9a1b3d5f2
 Revises: f8c1d3e5a7b9
@@ -68,9 +68,26 @@ def upgrade() -> None:
             sa.Column('updated_at', sa.DateTime(), nullable=True),
         )
         op.create_index('ix_doc_app_templates_org_id', 'doc_app_templates', ['org_id'])
+    if 'doc_publications' not in tables:
+        op.create_table(
+            'doc_publications',
+            sa.Column('id', sa.Integer(), primary_key=True),
+            sa.Column('org_id', sa.Integer(), nullable=False),
+            sa.Column('node_id', sa.Integer(), nullable=False),
+            sa.Column('slug', sa.String(length=40), nullable=False),
+            sa.Column('version_id', sa.Integer(), nullable=True),
+            sa.Column('published_by', sa.Integer(), nullable=True),
+            sa.Column('published_at', sa.DateTime(), nullable=True),
+            sa.Column('unpublished_at', sa.DateTime(), nullable=True),
+            sa.Column('visits', sa.Integer(), nullable=False),
+            sa.UniqueConstraint('org_id', 'slug', name='uq_doc_publication_slug'),
+        )
+        op.create_index('ix_doc_publications_org_id', 'doc_publications', ['org_id'])
+        op.create_index('ix_doc_publications_node_id', 'doc_publications', ['node_id'])
 
 
 def downgrade() -> None:
+    op.drop_table('doc_publications')
     op.drop_table('doc_app_templates')
     op.drop_table('doc_responses')
     op.drop_table('doc_app_versions')

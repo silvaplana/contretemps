@@ -272,6 +272,25 @@ class DocumentsReceiver:
         def clear_tests(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: apps.clear_tests(db, self._member(org_id, m), node_id))
 
+        # Page en ligne (documents.md §5.5)
+        @self.app.post(base + "/nodes/{node_id}/app/publication")
+        def publish(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.publish(db, self._member(org_id, m), node_id))
+
+        @self.app.delete(base + "/nodes/{node_id}/app/publication")
+        def unpublish(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: apps.unpublish(db, self._member(org_id, m), node_id))
+
+        # Routes publiques (sans compte) : la page en ligne et ses réponses.
+        # L'appli les déclare publiques (comptes/rbac.py).
+        @self.app.get("/documents/public/orgs/{org_id}/pages/{slug}")
+        def public_page(org_id: int, slug: str, db: Session = db_dep):
+            return appel(lambda: apps.public_page(db, org_id, slug))
+
+        @self.app.post("/documents/public/orgs/{org_id}/pages/{slug}/answers", status_code=201)
+        def public_answer(org_id: int, slug: str, data: AppAnswer, db: Session = db_dep):
+            return appel(lambda: apps.public_answer(db, org_id, slug, data.values))
+
         # Modèles de l'école (fichier-de-base.md §5)
         @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)
         def make_template(org_id: int, node_id: int, data: TemplateNew, db: Session = db_dep, m: Member = member):

@@ -76,6 +76,9 @@ export function documentsApi(orgId) {
     tryApp: (id, values) => appel(`${base}/nodes/${id}/app/try`, json('POST', { values })),
     appResponses: (id) => appel(`${base}/nodes/${id}/app/responses`),
     clearTests: (id) => appel(`${base}/nodes/${id}/app/responses/tests`, { method: 'DELETE' }),
+    // Page en ligne (tout le monde, sans compte).
+    publish: (id) => appel(`${base}/nodes/${id}/app/publication`, { method: 'POST' }),
+    unpublish: (id) => appel(`${base}/nodes/${id}/app/publication`, { method: 'DELETE' }),
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),

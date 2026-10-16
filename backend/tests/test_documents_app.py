@@ -207,3 +207,54 @@ def test_faire_un_modele_puis_l_utiliser(client, ecole):
     assert prof.c.delete(f"{prof.base}/app-templates/{deux['id']}", headers=prof.h).status_code == 403
     assert admin.c.delete(f"{admin.base}/app-templates/{deux['id']}", headers=admin.h).status_code == 204
     assert len(admin.get("/app-templates").json()["items"]) == 1
+
+
+def test_mettre_en_ligne_et_repondre_sans_compte(client, ecole):
+    """Page en ligne (documents.md §5.5) : en Officiel seulement, nom créé
+    depuis le nom du fichier et jamais en double ; on y répond sans compte,
+    la réponse arrive dans Résultats (provenance « public »)."""
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    saison = _saison(admin)["id"]
+    ident = creer(admin, "question", saison, "Fête de l'école").json()["id"]
+    enregistrer(admin, ident, SONDAGE)
+    publier = lambda i: admin.c.post(f"{admin.base}/nodes/{i}/app/publication", headers=admin.h)
+    assert publier(ident).status_code == 409  # Brouillon
+    admin.modifier(ident, change_status=True, status="validated")
+    assert publier(ident).status_code == 409  # Validé : relecteurs seulement
+    admin.modifier(ident, change_status=True, status="official")
+    p = publier(ident)
+    assert p.status_code == 200 and p.json()["slug"] == "fete-de-l-ecole" and p.json()["online"] is True
+    assert admin.get(f"/nodes/{ident}/app").json()["publication"]["slug"] == "fete-de-l-ecole"
+
+    # Un second fichier du même nom : un autre nom de page.
+    autre = creer(admin, "question", saison, "Fête de l'école").json()["id"]
+    enregistrer(admin, autre, SONDAGE)
+    admin.modifier(autre, change_status=True, status="official")
+    assert publier(autre).json()["slug"] == "fete-de-l-ecole-2"
+
+    page = f"/documents/public/orgs/{ecole['id']}/pages/fete-de-l-ecole"
+    lue = client.get(page)
+    assert lue.status_code == 200 and lue.json()["accepting"] is True
+    assert [b["id"] for b in lue.json()["content"]["entry"]["blocks"]] == ["h1", "q1", "q2"]
+    assert "result" not in lue.json()["content"]
+    assert client.post(page + "/answers", json={"values": {}}).status_code == 422  # q1 obligatoire
+    assert client.post(page + "/answers", json={"values": {"q1": "21 juin"}}).status_code == 201
+    rep = admin.get(f"/nodes/{ident}/app/responses").json()["items"]
+    assert len(rep) == 1 and rep[0]["source"] == "public" and rep[0]["is_test"] is False
+
+    # Retirer : la page n'est plus là, le nom reste réservé.
+    admin.c.delete(f"{admin.base}/nodes/{ident}/app/publication", headers=admin.h)
+    assert client.get(page).status_code == 404
+    assert publier(ident).json()["slug"] == "fete-de-l-ecole"
+    # Le prof ne met pas en ligne (niveau gérer).
+    prof = Docs(client, ecole["id"], ecole["prof"])
+    assert prof.c.post(f"{prof.base}/nodes/{autre}/app/publication", headers=prof.h).status_code == 403
+
+
+def test_slugify():
+    from documents.app_files import slugify
+
+    assert slugify("Convocation AG 2026") == "convocation-ag-2026"
+    assert slugify("  Été à l'école !! ") == "ete-a-l-ecole"
+    assert len(slugify("x" * 80)) == 40
+    assert slugify("A") == "a-page"

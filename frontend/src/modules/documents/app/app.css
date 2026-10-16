@@ -28,19 +28,19 @@
   height: 18px;
 }
 
-.af-status--draft {
+.dx .af-status--draft {
   border: 2px dashed var(--dx-page-line);
   background: var(--card-bg);
   color: var(--dx-muted);
 }
 
-.af-status--validated {
+.dx .af-status--validated {
   border: 2px solid var(--dx-ok);
   background: var(--success-bg);
   color: var(--dx-ok);
 }
 
-.af-status--official {
+.dx .af-status--official {
   border: 2px solid var(--dx-official);
   background: var(--dx-official);
   color: #fff;
@@ -60,7 +60,7 @@
   opacity: 1;
 }
 
-.af-status--official:disabled {
+.dx .af-status--official:disabled {
   color: #fff;
 }
 
@@ -578,6 +578,7 @@ h3.ap-h {
 /* Résultats (formulaire de résultat) */
 .ar {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -692,4 +693,94 @@ h3.ap-h {
 .ar-none,
 .ar-missing {
   color: var(--dx-muted);
+}
+
+/* Diffuser */
+.ad {
+  display: grid;
+  gap: 14px;
+}
+
+.ad-carte {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  border: 1px solid var(--dx-line);
+  border-radius: 16px;
+  background: var(--dx-page);
+}
+
+.ad-carte h3 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.ad-carte--bientot {
+  border-style: dashed;
+  background: transparent;
+}
+
+.ad-etat {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dx-ok);
+  font-weight: 700;
+}
+
+.ad-pastille {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dx-ok);
+}
+
+.ad-vues {
+  color: var(--dx-muted);
+  font-weight: 400;
+}
+
+.ad-adresse {
+  overflow-wrap: anywhere;
+  color: var(--accent);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.ad-boutons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ad-qr {
+  width: 180px;
+  max-width: 100%;
+  height: auto;
+}
+
+.ad-retirer {
+  justify-self: start;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--danger-text);
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ad-attention {
+  margin: 0;
+  padding: 12px;
+  border-radius: 12px;
+  background: var(--accent-bg);
+  font-weight: 600;
+}
+
+.ad-raison {
+  margin: 0;
+  color: var(--dx-muted);
+  font-size: 15px;
 }
