@@ -7,14 +7,14 @@ import Properties from './Properties.jsx'
 import Share from './Share.jsx'
 import { accesAssistant, ajouterProduit } from '../../api/assistant.js'
 import Arbre from './Arbre.jsx'
-import Assistant from './Assistant.jsx'
+import { brancherDocs, prendreFichierAOuvrir } from './assistantGlobal.js'
 import Editeur from './Editeur.jsx'
 import Trash from './Trash.jsx'
 import Viewer from './Viewer.jsx'
 
 // Le fichier de base embarque BlockNote : chargé seulement quand on l'ouvre.
 const AppFile = lazy(() => import('./app/AppFile.jsx'))
-import { BubbleIcon, Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
+import { Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
 import { FAMILIES, STATUSES, isImage } from './kinds.js'
 import { subtitle } from './format.js'
 import './documents.css'
@@ -101,53 +101,14 @@ function useBureau() {
   return bureau
 }
 
-// Assistant : panneau en bas du dossier ouvert, à mi-hauteur au départ,
-// hauteur réglable à la poignée et gardée sur l'appareil (Seb, 15 octobre).
-const CLE_HAUTEUR_CHAT = 'contretemps.assistant.hauteur'
-
-// Chat ouvert ou fermé : gardé sur l'appareil, Docs le rouvre comme on
-// l'avait laissé (Seb, 16 octobre).
-const CLE_CHAT_OUVERT = 'contretemps.assistant.ouvert'
-
-function lireChatOuvert() {
-  try {
-    return localStorage.getItem(CLE_CHAT_OUVERT) === '1'
-  } catch {
-    return false
-  }
-}
-
-function garderChatOuvert(ouvert) {
-  try {
-    localStorage.setItem(CLE_CHAT_OUVERT, ouvert ? '1' : '0')
-  } catch {
-    // stockage indisponible : vaut pour cette fois
-  }
-}
-
-function lireHauteurChat() {
-  try {
-    const h = Number(localStorage.getItem(CLE_HAUTEUR_CHAT))
-    if (h >= 160) return Math.min(h, Math.round(window.innerHeight * 0.85))
-  } catch {
-    // stockage indisponible : mi-hauteur
-  }
-  return Math.round(window.innerHeight * 0.45)
-}
-
 export default function Explorer({ orgId, memoire }) {
   const bureau = useBureau()
-  const [chatVoulu, setAssistantOuvert] = useState(lireChatOuvert)
+  // L'assistant est celui de toute l'appli (AssistantGlobal.jsx, bouton de
+  // l'en-tête) ; Docs lui donne le dossier ouvert et fait ses cartes.
   const [assistant, setAssistant] = useState(false)
   const [coutSaison, setCoutSaison] = useState(null)
-  // Une fois ouvert, l'assistant reste en mémoire quand on le ferme : on
-  // retrouve la conversation (et son coût) en le rouvrant (Seb, 16 octobre).
-  const [assistantMonte, setAssistantMonte] = useState(lireChatOuvert)
-  // Ouvert seulement quand l'assistant est permis (réponse du serveur).
-  const assistantOuvert = chatVoulu && assistant
   // Fichier ouvert dans l'éditeur OnlyOffice (essai, même accès que l'assistant).
   const [enEdition, setEnEdition] = useState(null)
-  const [hauteurChat, setHauteurChat] = useState(lireHauteurChat)
   useEffect(() => {
     accesAssistant(orgId).then((x) => {
       setAssistant(x.autorise)
@@ -156,8 +117,10 @@ export default function Explorer({ orgId, memoire }) {
   }, [orgId])
   const api = useMemo(() => documentsApi(orgId), [orgId])
   const [spaces, setSpaces] = useState([])
-  const [space, setSpace] = useState(() => lireEndroit(memoire).space)
-  const [folder, setFolder] = useState(() => lireEndroit(memoire).folder)
+  // Fichier créé par l'assistant depuis un autre onglet : Docs s'ouvre dessus.
+  const [aOuvrir] = useState(prendreFichierAOuvrir)
+  const [space, setSpace] = useState(() => aOuvrir?.space ?? lireEndroit(memoire).space)
+  const [folder, setFolder] = useState(() => (aOuvrir ? aOuvrir.parent_id : lireEndroit(memoire).folder))
   const [data, setData] = useState(null)
   const [erreur, setErreur] = useState('')
   const [filtreStatut, setFiltreStatut] = useState(null)
@@ -184,7 +147,7 @@ export default function Explorer({ orgId, memoire }) {
   const [nouveau, setNouveau] = useState(false)
   const [vue, setVue] = useState(null)
   // Fichier de l'appli ouvert (fichier de base, spec fichier-de-base.md).
-  const [appli, setAppli] = useState(null)
+  const [appli, setAppli] = useState(aOuvrir)
   const [choix, setChoix] = useState(null) // { items, mode: 'move' | 'copy' }
   const [nom, setNom] = useState(null) // { mode: 'folder' | 'rename', item?, value }
   const [corbeille, setCorbeille] = useState(false)
@@ -932,15 +895,6 @@ export default function Explorer({ orgId, memoire }) {
     setFolder(id)
   }
 
-  function ouvrirAssistant() {
-    if (assistant) {
-      setAssistantOuvert(true)
-      setAssistantMonte(true)
-      garderChatOuvert(true)
-    }
-    else montrerToast('L’assistant est en essai : réservé au Super User pour l’instant.')
-  }
-
   // Carte « Faire » de l'assistant : l'action passe par les mêmes routes
   // que l'explorateur, avec les droits de la personne.
   async function faireAction(carte) {
@@ -984,41 +938,17 @@ export default function Explorer({ orgId, memoire }) {
     await recharger()
   }
 
-  // Poignée : glisser vers le haut agrandit l'assistant, vers le bas le réduit.
-  function redimensionnerChat(e) {
-    e.preventDefault()
-    const depart = e.clientY
-    const hauteurDepart = hauteurChat
-    let derniere = hauteurDepart
-    const bouger = (ev) => {
-      derniere = Math.max(160, Math.min(Math.round(window.innerHeight * 0.85), hauteurDepart + depart - ev.clientY))
-      setHauteurChat(derniere)
+  // Branchement sur l'assistant de l'appli : ce que Docs montre, lu au
+  // moment d'envoyer, et ses cartes « Faire ».
+  const branche = useRef(null)
+  useEffect(() => {
+    branche.current = {
+      contexte: () => ({ space, folder_id: folder, selection_id: selection?.id ?? null, selection_ids: selIds.slice(0, 50), recents: recentsActif }),
+      faire: faireAction,
     }
-    const lacher = () => {
-      window.removeEventListener('pointermove', bouger)
-      window.removeEventListener('pointerup', lacher)
-      try {
-        localStorage.setItem(CLE_HAUTEUR_CHAT, String(derniere))
-      } catch {
-        // stockage indisponible : la hauteur vaut pour cette fois
-      }
-    }
-    window.addEventListener('pointermove', bouger)
-    window.addEventListener('pointerup', lacher)
-  }
+  })
+  useEffect(() => brancherDocs({ contexte: () => branche.current.contexte(), faire: (carte) => branche.current.faire(carte) }), [])
 
-  const conversation = assistantMonte && assistant && (
-    <Assistant
-      orgId={orgId}
-      coutSaisonInitial={coutSaison}
-      contexte={{ space, folder_id: folder, selection_id: selection?.id ?? null, selection_ids: selIds.slice(0, 50), recents: recentsActif }}
-      onClose={() => {
-        setAssistantOuvert(false)
-        garderChatOuvert(false)
-      }}
-      onFaire={faireAction}
-    />
-  )
 
   function voirRecents() {
     setFeuille(null)
@@ -1215,26 +1145,6 @@ export default function Explorer({ orgId, memoire }) {
         )}
       </div>
 
-      {conversation && (
-        // Sur téléphone, l'écran est trop petit pour la liste et la
-        // conversation : l'assistant prend tout l'écran (Seb, 16 octobre).
-        <div
-          className={`dx-chat-bas${bureau ? '' : ' dx-chat-bas--plein'}`}
-          style={{ height: bureau ? hauteurChat : undefined, display: assistantOuvert ? undefined : 'none' }}
-        >
-          {bureau && (
-            <div
-              className="dx-chat-poignee"
-              role="separator"
-              aria-orientation="horizontal"
-              aria-label="Régler la hauteur de l’assistant"
-              onPointerDown={redimensionnerChat}
-            />
-          )}
-          {conversation}
-        </div>
-      )}
-
       {pressePapier && !panneauOuvert && (
         <div className="dx-clip">
           <span>
@@ -1250,22 +1160,10 @@ export default function Explorer({ orgId, memoire }) {
         </div>
       )}
 
-      {!panneauOuvert && !assistantOuvert && (
-        <>
-          {/* Bulle de l'assistant, juste au-dessus du + (spec documents.md
-              §7.1 ter) : l'assistant arrive avec l'étape 5 bis du plan. */}
-          <button
-            type="button"
-            className="dx-fab dx-fab--assistant"
-            onClick={ouvrirAssistant}
-            aria-label="Assistant"
-          >
-            <BubbleIcon />
-          </button>
-          <button type="button" className="dx-fab" onClick={() => setNouveau(true)} aria-label="Nouveau">
-            <PlusIcon />
-          </button>
-        </>
+      {!panneauOuvert && (
+        <button type="button" className="dx-fab" onClick={() => setNouveau(true)} aria-label="Nouveau">
+          <PlusIcon />
+        </button>
       )}
 
       <input
@@ -1557,7 +1455,6 @@ export default function Explorer({ orgId, memoire }) {
         onRecents={voirRecents}
         onAccueil={() => ouvrirDepuisArbre('private', null)}
         onNouveau={() => setNouveau(true)}
-        onAssistant={ouvrirAssistant}
       />
       {explorateur}
     </div>

@@ -83,8 +83,9 @@ dossier ou d'un fichier.
 - Pour toute modification (créer, ranger, renommer), utilise un outil « proposer_… ». La \
 proposition s'affiche à la personne avec « Faire » et « Annuler » : elle décide. Dis-le en \
 une phrase, sans prétendre que c'est fait. Tu sauras au message suivant si elle l'a faite.
-- Un message commence par le contexte (où la personne se trouve dans Docs) : sers-t'en \
-pour comprendre « ce dossier » ou « ce fichier ».
+- Un message commence par le contexte (l'onglet de l'appli, ou dans Docs le dossier ouvert) : \
+sers-t'en pour comprendre « ce dossier » ou « ce fichier ». Tu es le même assistant dans tous \
+les onglets, avec la même conversation.
 
 Tu peux aussi proposer des changements dans les données de l'école (élèves, inscriptions aux \
 cours, paiements, commentaire de l'administration, élève en rouge, présences, heures des \
@@ -275,7 +276,10 @@ class Assistant:
         espace = contexte.get("space") if contexte.get("space") in ESPACES else "private"
         lignes = [f"Contexte : la personne est dans l'espace « {ESPACES[espace]} »"]
         dossier_id = contexte.get("folder_id")
-        if dossier_id:
+        if contexte.get("onglet"):
+            # Hors de Docs : pas de dossier ouvert (« ici » = les fichiers vont à la racine de Privé).
+            lignes = [f"Contexte : la personne est dans l'onglet « {contexte['onglet']} » de l'appli, pas dans Docs"]
+        elif dossier_id:
             try:
                 d = self.documents.detail(db, member, int(dossier_id))
                 chemin = " › ".join([ESPACES[espace], *(p["name"] for p in d.get("path", [])), d["name"]])

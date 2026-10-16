@@ -25,6 +25,9 @@ from .modifications import Refus
 
 
 class Contexte(BaseModel):
+    # Onglet de l'appli quand on n'est pas dans Docs (l'assistant est
+    # ouvert partout, Seb 16 octobre).
+    onglet: str | None = Field(default=None, max_length=40)
     space: str | None = None
     folder_id: int | None = None
     selection_id: int | None = None

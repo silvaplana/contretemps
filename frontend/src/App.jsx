@@ -32,6 +32,8 @@ import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
 import ChoregraphieScreen from './screens/ChoregraphieScreen.jsx'
 import CreerMotDePasseScreen from './screens/CreerMotDePasseScreen.jsx'
 import DocsScreen from './screens/DocsScreen.jsx'
+import AssistantGlobal from './modules/documents/AssistantGlobal.jsx'
+import { useAssistantGlobal } from './modules/documents/assistantGlobal.js'
 import HeuresScreen from './screens/HeuresScreen.jsx'
 import InstallationScreen from './screens/InstallationScreen.jsx'
 import LoginScreen from './screens/LoginScreen.jsx'
@@ -307,6 +309,9 @@ function App() {
   // ancêtre commun avec Header (qui porte le bouton).
   const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false)
   const [ecole, setEcole] = useState(ECOLE_VIDE)
+  // L'assistant de toute l'appli : bouton dans l'en-tête, même conversation
+  // dans tous les onglets (Seb, 16 octobre).
+  const assistant = useAssistantGlobal(ecole.id, activeUser.id)
 
   // Saisons (spec §2.6) : saison affichée (voir api/saison.js). `null` = la
   // courante ; sinon un admin consulte une ancienne saison, en lecture
@@ -984,6 +989,7 @@ function App() {
         onSwitchProfil={switchProfil}
         onNavigate={setActiveTab}
         onLogout={logout}
+        assistant={assistant}
         menuExtra={
           lectureSeule
             ? undefined
@@ -1123,6 +1129,8 @@ function App() {
           />
         )}
       </main>
+
+      <AssistantGlobal etat={assistant} onglet={activeTab} onNavigate={setActiveTab} />
 
       <BottomNav
         active={activeTab}

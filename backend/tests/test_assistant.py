@@ -379,3 +379,14 @@ def test_l_assistant_propose_de_creer_un_fichier_de_l_appli(client, monde, monke
     assert carte["libelle"].startswith("Créer le fichier Informer « trumuche » dans Privé › Saison")
     noms = [e["name"] for e in client.get(f"/documents/orgs/{ecole.id}/spaces/private?folder={saison['id']}", headers=entetes).json()["items"]]
     assert "trumuche" not in noms
+
+
+def test_l_assistant_hors_de_docs(client, monde, monkeypatch):
+    """Ouvert depuis un autre onglet : le contexte dit l'onglet, pas un dossier."""
+    ecole = monde["ecole"]
+    entetes = {"Authorization": f"Bearer {_en_superuser(client)}", rbac.ENTETE_COMPTE: str(monde["su"].id)}
+    faux = FauxClaude([_message(Bloc(type="text", text="D'accord."))])
+    monkeypatch.setattr(main.assistant_client, "_client", faux)
+    client.post(f"/assistant/orgs/{ecole.id}/messages", json={"texte": "Bonjour", "contexte": {"onglet": "Présence"}}, headers=entetes)
+    premiere = faux.demandes[0][0]["content"][0]["text"]
+    assert "dans l'onglet « Présence » de l'appli, pas dans Docs" in premiere and "espace" not in premiere.split("Bonjour")[0]

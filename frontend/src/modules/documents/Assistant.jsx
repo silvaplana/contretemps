@@ -193,7 +193,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
     const actions = issues.current
     issues.current = []
     try {
-      await poserQuestion(orgId, { conversationId, texte: question, contexte: { ...contexte, actions }, modele, pieces: jointes.map((p) => p.id) }, (e) => {
+      await poserQuestion(orgId, { conversationId, texte: question, contexte: { ...(typeof contexte === 'function' ? contexte() : contexte), actions }, modele, pieces: jointes.map((p) => p.id) }, (e) => {
         if (e.type === 'conversation') setConversationId(e.id)
         else if (e.type === 'texte') {
           setActivite('')
