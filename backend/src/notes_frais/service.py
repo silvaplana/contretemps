@@ -272,8 +272,9 @@ class NotesDeFrais:
             raise LookupError("Note de frais introuvable.")
         tampon = io.BytesIO()
         with zipfile.ZipFile(tampon, "w", zipfile.ZIP_STORED) as archive:
-            recap = self.stockage.chemin(membre.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
-            if recap.exists():
+            actuelle = self._enveloppe_actuelle(note)
+            recap = self.stockage.chemin(membre.org_id, f"{actuelle}/{recapitulatif.NOM_FICHIER}") if actuelle else None
+            if recap is not None and recap.exists():
                 archive.write(recap, recap.name)
             for depense in note.depenses:
                 for piece in depense.pieces:
@@ -375,7 +376,9 @@ class NotesDeFrais:
             raise LookupError("Note de frais introuvable.")
         if note.statut not in (ENVOYEE, REFUSEE):
             raise ValueError("Cette note est déjà validée : elle ne peut plus être reprise.")
-        self.stockage.delete(membre.org_id, f"{self._enveloppe(note, membre.nom)}/{recapitulatif.NOM_FICHIER}")
+        actuelle = self._enveloppe_actuelle(note)
+        if actuelle is not None:
+            self.stockage.delete(membre.org_id, f"{actuelle}/{recapitulatif.NOM_FICHIER}")
         dossier = self.stockage.dossier_depenses(membre.org_id, membre.person_id, membre.nom)
         for depense in list(note.depenses):
             depense.note_id = None
@@ -467,18 +470,58 @@ class NotesDeFrais:
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
-        self._ecrire_recapitulatif(db, note)
-        self._classer(db, membre, note)
+        self._apres_changement(db, membre, note, classer=True)
         if note.don:
             self._prevenir_auteur(db, membre, note, "validée (don à l'association)", "Merci pour votre don : votre note de frais a été validée.")
         else:
             self._prevenir_auteur(db, membre, note, "validée", "Votre note de frais a été validée ; le remboursement suivra.")
         return note
 
-    def _enveloppe(self, note: NoteFrais, nom_auteur: str) -> str:
+    @staticmethod
+    def dossier_statut(note: NoteFrais) -> str:
+        """Le dossier de statut de l'enveloppe (Seb, 17 octobre), le même
+        sur le disque et dans les documents."""
+        if note.statut == VALIDEE:
+            return "Dons" if note.don else "À rembourser"
+        return {ENVOYEE: "En attente", REFUSEE: "Refusées", REMBOURSEE: "Remboursées"}[note.statut]
+
+    def _nom_auteur(self, db: Session, note: NoteFrais) -> str:
+        auteur = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        return auteur.nom if auteur else ""
+
+    def _enveloppe(self, note: NoteFrais, nom_auteur: str = "") -> str:
+        """Où l'enveloppe doit être pour le statut actuel de la note."""
         return self.stockage.dossier_note(
-            note.org_id, note.person_id, nom_auteur, note.envoyee_le.date().isoformat(), note.titre, note.id
+            note.org_id, note.person_id, nom_auteur, self.dossier_statut(note),
+            note.envoyee_le.date().isoformat(), note.titre, note.id,
         )
+
+    def _enveloppe_actuelle(self, note: NoteFrais) -> str | None:
+        return self.stockage.trouver_enveloppe(note.org_id, note.person_id, "", note.id)
+
+    def _ranger_note(self, db: Session, note: NoteFrais) -> None:
+        """Passe l'enveloppe dans le dossier de son nouveau statut."""
+        cible = self._enveloppe(note, self._nom_auteur(db, note))
+        actuelle = self._enveloppe_actuelle(note)
+        if actuelle is None or actuelle == cible:
+            return
+        self.stockage.deplacer_dossier(note.org_id, actuelle, cible)
+        for depense in note.depenses:
+            for piece in depense.pieces:
+                piece.chemin = f"{cible}/{Path(piece.chemin).name}"
+        db.commit()
+
+    def _apres_changement(self, db: Session, tresorier: Membre, note: NoteFrais, classer: bool, seulement_pdf: bool = False) -> None:
+        """Après validation, refus ou remboursement : l'enveloppe change de
+        dossier, son PDF est refait, et les documents suivent."""
+        try:
+            self._ranger_note(db, note)
+        except Exception:
+            db.rollback()
+            logger.exception("Note de frais %s : enveloppe non déplacée", note.id)
+        recap = self._ecrire_recapitulatif(db, note)
+        if classer:
+            self._classer(db, tresorier, note, seulement=[recap] if seulement_pdf and recap else None)
 
     def _ecrire_recapitulatif(self, db: Session, note: NoteFrais) -> Path | None:
         """(Re)fait « Note de frais.pdf » dans l'enveloppe de la note. Un
@@ -505,7 +548,7 @@ class NotesDeFrais:
             )
             relatif = self.stockage.ecrire(
                 note.org_id, self._enveloppe(note, nom(note.person_id) or ""), recapitulatif.NOM_FICHIER, contenu
-            )
+            )  # l'enveloppe est déjà rangée dans son dossier de statut
             return self.stockage.chemin(note.org_id, relatif)
         except Exception:
             logger.exception("Note de frais %s : récapitulatif PDF impossible", note.id)
@@ -523,7 +566,7 @@ class NotesDeFrais:
         else:
             # Toute l'enveloppe : le PDF récapitulatif et les justificatifs.
             fichiers = []
-            recap = self.stockage.chemin(note.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
+            recap = self.stockage.chemin(note.org_id, f"{self._enveloppe(note)}/{recapitulatif.NOM_FICHIER}")
             if recap.exists():
                 fichiers.append((recap.name, recap))
             for depense in note.depenses:
@@ -533,12 +576,10 @@ class NotesDeFrais:
                         fichiers.append((chemin.name, chemin))
         if not fichiers:
             return
-        auteur = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
-        dossier = nom_propre(
-            f"{note.envoyee_le.date().isoformat()} {auteur.nom if auteur else ''} - {note.titre} ({note.id})", 150
-        )
+        # Mêmes noms que sur le disque : personne / statut / enveloppe.
+        chemin_note = self._enveloppe(note).split("/")
         try:
-            classeur.classer(db, tresorier, dossier, fichiers)
+            classeur.classer(db, tresorier, chemin_note, fichiers)
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : rangement dans les documents impossible", note.id)
@@ -555,7 +596,7 @@ class NotesDeFrais:
         note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
-        self._ecrire_recapitulatif(db, note)
+        self._apres_changement(db, membre, note, classer=False)
         self._prevenir_auteur(
             db, membre, note, "refusée",
             f"Votre note de frais a été refusée. Motif : {motif}\nVous pouvez la reprendre pour la corriger et la renvoyer.",
@@ -576,10 +617,9 @@ class NotesDeFrais:
         db.commit()
         for note in notes:
             db.refresh(note)
-            recap = self._ecrire_recapitulatif(db, note)
-            if recap is not None:
-                # La copie de Docs › Financier passe aussi à « remboursée ».
-                self._classer(db, membre, note, seulement=[recap])
+            # Docs › Financier suit : l'enveloppe passe dans « Remboursées »
+            # et le PDF y reçoit une nouvelle version.
+            self._apres_changement(db, membre, note, classer=True, seulement_pdf=True)
             self._prevenir_auteur(
                 db, membre, note, "remboursée",
                 f"Votre note de frais a été remboursée : {euros(self.total(note))} par virement.",

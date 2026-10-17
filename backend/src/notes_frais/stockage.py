@@ -2,11 +2,13 @@
 Seb, 16 octobre) :
 
     <racine>/<org_id>/<person_id> <Nom>/
-        depenses/                              tickets pas encore envoyés
-        notes/<AAAA-MM-JJ> <titre> (<id>)/     une enveloppe par note envoyée
+        depenses/                                tickets pas encore envoyés
+        <statut>/<AAAA-MM-JJ> <titre> (<id>)/    une enveloppe par note envoyée
 
-À l'envoi, les fichiers passent de `depenses/` à l'enveloppe de la note ;
-une note reprise les y renvoie. Chaque enveloppe contient aussi
+<statut> : En attente, Refusées, À rembourser, Remboursées, Dons (Seb,
+17 octobre) ; l'enveloppe change de dossier avec le statut de la note. À
+l'envoi, les fichiers passent de `depenses/` à l'enveloppe ; une note
+reprise les y renvoie. Chaque enveloppe contient aussi
 « Note de frais.pdf » (récapitulatif et photos, voir recapitulatif.py),
 refait à chaque étape. Le dossier d'une personne commence par son
 numéro (stable d'une saison à l'autre) : il est retrouvé même si son nom
@@ -62,8 +64,32 @@ class StockageEnveloppes:
     def dossier_depenses(self, org_id: int, person_id: int, nom: str) -> str:
         return f"{self.dossier_personne(org_id, person_id, nom)}/depenses"
 
-    def dossier_note(self, org_id: int, person_id: int, nom: str, jour: str, titre: str, note_id: int) -> str:
-        return f"{self.dossier_personne(org_id, person_id, nom)}/notes/{jour} {nom_propre(titre)} ({note_id})"
+    def dossier_note(
+        self, org_id: int, person_id: int, nom: str, statut: str, jour: str, titre: str, note_id: int
+    ) -> str:
+        return f"{self.dossier_personne(org_id, person_id, nom)}/{statut}/{jour} {nom_propre(titre)} ({note_id})"
+
+    def trouver_enveloppe(self, org_id: int, person_id: int, nom: str, note_id: int) -> str | None:
+        """Où est l'enveloppe de la note aujourd'hui (quel que soit son
+        dossier de statut), en chemin relatif."""
+        personne = self.chemin(org_id, self.dossier_personne(org_id, person_id, nom))
+        if not personne.is_dir():
+            return None
+        fin = f"({note_id})"
+        for statut in personne.iterdir():
+            if statut.is_dir() and statut.name != "depenses":
+                for enveloppe in statut.iterdir():
+                    if enveloppe.is_dir() and enveloppe.name.endswith(fin):
+                        return enveloppe.relative_to(self._org(org_id).resolve()).as_posix()
+        return None
+
+    def deplacer_dossier(self, org_id: int, de: str, vers: str) -> None:
+        source, cible = self.chemin(org_id, de), self.chemin(org_id, vers)
+        if source == cible or not source.is_dir():
+            return
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(source, cible)
+        self._ranger(source.parent, org_id)
 
     def _libre(self, dossier: Path, nom_fichier: str) -> Path:
         cible = dossier / nom_fichier
@@ -129,6 +155,15 @@ class StockageEnveloppes:
         self._ranger(cible.parent, org_id)
 
     def _ranger(self, dossier: Path, org_id: int) -> None:
-        """Retire une enveloppe de note restée vide (pas `depenses/`)."""
-        if dossier.parent.name == "notes" and dossier.is_dir() and not any(dossier.iterdir()):
+        """Retire une enveloppe de note restée vide, puis son dossier de
+        statut s'il est vide aussi (jamais `depenses/` ni la personne)."""
+        org = self._org(org_id).resolve()
+        dossier = dossier.resolve()
+        while (
+            dossier.is_dir()
+            and dossier.name != "depenses"
+            and len(dossier.relative_to(org).parts) >= 2
+            and not any(dossier.iterdir())
+        ):
             dossier.rmdir()
+            dossier = dossier.parent
