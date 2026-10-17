@@ -364,6 +364,7 @@ class NotesDeFrais:
         db.commit()
         db.refresh(note)
         self._ecrire_recapitulatif(db, note)
+        self._classer(db, membre, note)
         self._prevenir_tresoriers(db, membre, note)
         return note
 
@@ -376,6 +377,7 @@ class NotesDeFrais:
         if note.statut not in (ENVOYEE, REFUSEE):
             raise ValueError("Cette note est déjà validée : elle ne peut plus être reprise.")
         self.stockage.delete(membre.org_id, f"{self._enveloppe(note, membre.nom)}/{recapitulatif.NOM_FICHIER}")
+        self._declasser(db, membre, note)
         dossier = self.stockage.dossier_depenses(membre.org_id, membre.person_id, membre.nom)
         for depense in list(note.depenses):
             depense.note_id = None
@@ -476,13 +478,13 @@ class NotesDeFrais:
         return note
 
     @staticmethod
-    def dossier_statut(note: NoteFrais) -> str:
-        """Dossier de statut d'une note dans Docs et dans la partie lisible
-        de la sauvegarde (Seb, 17 octobre). Sur le disque, l'enveloppe ne
-        bouge plus après l'envoi."""
+    def statut_docs(note: NoteFrais) -> str:
+        """Badge du dossier de la note dans Docs (Seb, 17 octobre) : rien n'y
+        bouge, le statut se lit au badge. Brouillon = en attente ; Refusé ;
+        Validé = à rembourser ; Officiel (figé) = remboursée ou don."""
         if note.statut == VALIDEE:
-            return "Dons" if note.don else "À rembourser"
-        return {ENVOYEE: "En attente", REFUSEE: "Refusées", REMBOURSEE: "Remboursées"}[note.statut]
+            return "official" if note.don else "validated"
+        return {ENVOYEE: "draft", REFUSEE: "refused", REMBOURSEE: "official"}[note.statut]
 
     def _enveloppe(self, note: NoteFrais, nom_auteur: str) -> str:
         return self.stockage.dossier_note(
@@ -520,35 +522,44 @@ class NotesDeFrais:
             logger.exception("Note de frais %s : récapitulatif PDF impossible", note.id)
             return None
 
-    def _classer(self, db: Session, tresorier: Membre, note: NoteFrais, seulement: list[Path] | None = None) -> None:
-        """Copie les justificatifs d'une note validée dans les documents
-        (§7 bis). Un échec n'annule pas la validation : il est seulement
-        journalisé (les fichiers restent dans l'enveloppe, téléchargeables)."""
+    def _classer(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+        """Range la note dans les documents, dès l'envoi, et met à jour son
+        PDF et son badge à chaque étape (§7 bis). Un échec n'annule pas
+        l'action : il est seulement journalisé (les fichiers restent dans
+        l'enveloppe, téléchargeables)."""
         classeur = self.ports.classeur
         if classeur is None:
             return
-        if seulement is not None:
-            fichiers = [(c.name, c) for c in seulement]
-        else:
-            # Toute l'enveloppe : le PDF récapitulatif et les justificatifs.
-            fichiers = []
-            recap = self.stockage.chemin(note.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
-            if recap.exists():
-                fichiers.append((recap.name, recap))
-            for depense in note.depenses:
-                for piece in depense.pieces:
-                    chemin = self.stockage.chemin(note.org_id, piece.chemin)
-                    if chemin.exists():
-                        fichiers.append((chemin.name, chemin))
-        if not fichiers:
-            return
-        # Mêmes noms que sur le disque : dossier de la personne, statut, enveloppe.
+        fichiers = []
+        recap = self.stockage.chemin(note.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
+        if recap.exists():
+            fichiers.append((recap.name, recap))
+        for depense in note.depenses:
+            for piece in depense.pieces:
+                chemin = self.stockage.chemin(note.org_id, piece.chemin)
+                if chemin.exists():
+                    fichiers.append((chemin.name, chemin))
+        # Mêmes noms que sur le disque : dossier de la personne, enveloppe.
         personne, _, enveloppe = self._enveloppe(note, "").split("/")
         try:
-            classeur.classer(db, tresorier, [personne, self.dossier_statut(note), enveloppe], fichiers)
+            classeur.classer(
+                db, membre, [personne, enveloppe], fichiers, self.statut_docs(note),
+                remplacer={recapitulatif.NOM_FICHIER},
+            )
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : rangement dans les documents impossible", note.id)
+
+    def _declasser(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+        """Note reprise : son dossier part à la corbeille des documents."""
+        if self.ports.classeur is None:
+            return
+        personne, _, enveloppe = self._enveloppe(note, "").split("/")
+        try:
+            self.ports.classeur.retirer(db, membre, [personne, enveloppe])
+        except Exception:
+            db.rollback()
+            logger.exception("Note de frais %s : retrait des documents impossible", note.id)
 
     def refuser(self, db: Session, membre: Membre, note_id: int, motif: str) -> NoteFrais:
         self._exiger_tresorier(membre)
@@ -563,6 +574,7 @@ class NotesDeFrais:
         db.commit()
         db.refresh(note)
         self._ecrire_recapitulatif(db, note)
+        self._classer(db, membre, note)
         self._prevenir_auteur(
             db, membre, note, "refusée",
             f"Votre note de frais a été refusée. Motif : {motif}\nVous pouvez la reprendre pour la corriger et la renvoyer.",
@@ -583,11 +595,10 @@ class NotesDeFrais:
         db.commit()
         for note in notes:
             db.refresh(note)
-            recap = self._ecrire_recapitulatif(db, note)
-            if recap is not None:
-                # Docs › Financier : la note passe dans « Remboursées », son
-                # PDF y reçoit une nouvelle version.
-                self._classer(db, membre, note, seulement=[recap])
+            self._ecrire_recapitulatif(db, note)
+            # Docs › Financier : le PDF reçoit une nouvelle version, puis le
+            # dossier de la note passe Officiel (figé).
+            self._classer(db, membre, note)
             self._prevenir_auteur(
                 db, membre, note, "remboursée",
                 f"Votre note de frais a été remboursée : {euros(self.total(note))} par virement.",

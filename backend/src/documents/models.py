@@ -43,7 +43,7 @@ KIND_FILE = "file"
 KIND_APP = "app"
 
 # Statuts (§5.4, badges §7.1 ter) ; None = pas de badge.
-STATUSES = ("draft", "validated", "official")
+STATUSES = ("draft", "refused", "validated", "official")
 
 # Familles des fichiers de l'appli (§7.1 bis) ; None = fichier importé.
 FAMILIES = ("inform", "question", "act")

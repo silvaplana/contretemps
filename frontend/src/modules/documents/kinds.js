@@ -2,6 +2,7 @@
 
 export const STATUSES = {
   draft: { label: 'Brouillon', className: 'brouillon' },
+  refused: { label: 'Refusé', className: 'refuse' },
   validated: { label: 'Validé', className: 'valide' },
   official: { label: 'Officiel', className: 'officiel' },
 }

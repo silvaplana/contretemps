@@ -865,9 +865,9 @@ class Documents:
         niveau = self._require(db, member, loc, LEVEL_EDIT)
         # Officiel : seule la Gestion y fait entrer ou en fait sortir (une
         # erreur reste réparable par un admin).
-        if node.status == "official" or status in ("validated", "official"):
+        if node.status == "official" or status in ("refused", "validated", "official"):
             if not access.at_least(niveau, LEVEL_MANAGE):
-                raise DocError(403, "Seuls ceux qui gèrent ce document peuvent le valider ou le rendre officiel.")
+                raise DocError(403, "Seuls ceux qui gèrent ce document peuvent le valider, le refuser ou le rendre officiel.")
         else:
             self._require_unfrozen(loc.path)
         avant = node.status

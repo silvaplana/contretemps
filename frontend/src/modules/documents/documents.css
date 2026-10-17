@@ -420,6 +420,11 @@
   border: 1.5px dashed var(--dx-muted);
 }
 
+.dx-badge--refuse {
+  color: var(--danger-text);
+  border: 1.5px solid var(--danger-text);
+}
+
 .dx-badge--valide {
   color: var(--dx-ok);
   border: 1.5px solid var(--dx-ok);

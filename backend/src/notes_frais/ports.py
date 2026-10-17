@@ -87,15 +87,26 @@ class LecteurTicket(Protocol):
 
 
 class Classeur(Protocol):
-    """Range une note validée dans les documents de l'organisation (§7 bis :
-    Docs › Privé › Saison › Financier › Notes de frais › personne › statut ›
-    note)."""
+    """Range les notes envoyées dans les documents de l'organisation (§7 bis :
+    Docs › Privé › Saison › Financier › Notes de frais › personne › note).
+    Rien n'y bouge ensuite : le statut se lit au badge du dossier de la note."""
 
-    def classer(self, db: Session, tresorier: Membre, chemin: list[str], fichiers: list[tuple[str, Path]]) -> None:
-        """`chemin` = [personne, statut, note]. Crée ce qu'il manque, y
-        déplace la note si elle était rangée sous un autre statut, et y copie
-        les fichiers (nom, chemin) : un fichier du même nom devient une
-        nouvelle version."""
+    def classer(
+        self,
+        db: Session,
+        membre: Membre,
+        chemin: list[str],
+        fichiers: list[tuple[str, Path]],
+        statut: str,
+        remplacer: set[str] = frozenset(),
+    ) -> None:
+        """`chemin` = [personne, note]. Crée ce qu'il manque et y copie les
+        fichiers (nom, chemin) absents ; ceux de `remplacer` déjà là
+        reçoivent une nouvelle version. Puis donne au dossier de la note le
+        statut des documents `statut` (draft, refused, validated, official)."""
+
+    def retirer(self, db: Session, membre: Membre, chemin: list[str]) -> None:
+        """Met à la corbeille le dossier de la note (reprise par son auteur)."""
 
 
 class LectureImpossible(Exception):

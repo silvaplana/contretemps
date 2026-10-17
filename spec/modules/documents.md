@@ -515,6 +515,8 @@ aperçu possible. Le type n'apporte que ce qui lui est propre (schéma du conten
 
 Colonne `status` sur `doc_nodes` (A-documents seulement) : `draft` (Brouillon) → `validated` (Validé)
 → `official` (Officiel), plus `archived`.
+Plus `refused` (Refusé, badge rouge en sens interdit, niveau `manage`), ajouté le 17 octobre pour les
+notes de frais (notes-de-frais.md §7 bis) ; il ne fige rien. Les dossiers peuvent aussi porter un statut.
 
 | Passage | Qui | Effet |
 |---|---|---|

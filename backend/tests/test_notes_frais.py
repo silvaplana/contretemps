@@ -275,7 +275,6 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole
     fichiers = {"fichier": ("ticket.png", io.BytesIO(b"\x89PNG faux"), "image/png")}
     client.post(f"/notes-frais/depenses/{d['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
     note = _envoyer(client, eleve, [d["id"]]).json()
-    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
 
     def parcourir(qui, dossier=None):
         url = f"/documents/orgs/{org}/spaces/private" + (f"?folder={dossier}" if dossier else "")
@@ -289,20 +288,22 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole
     financier = enfant(tresorier, saison["id"], "Financier")
     assert financier["system_kind"] == "reserved"
     notes = enfant(tresorier, financier["id"], "Notes de frais")
-    # Notes de frais › personne › statut › note (§7 bis).
+    # Rangée dès l'envoi, en Brouillon (= en attente).
+    [personne] = parcourir(tresorier, notes["id"]).json()["items"]
+    assert enfant(tresorier, personne["id"], "2026")["status"] == "draft"
+    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    # Notes de frais › personne › note (§7 bis), badge Validé, sans doublon.
     [personne] = parcourir(tresorier, notes["id"]).json()["items"]
     assert "Perrin" in personne["name"] and personne["name"].split()[0].isdigit()
-    a_rembourser = enfant(tresorier, personne["id"], "À rembourser")
-    dossier_note = enfant(tresorier, a_rembourser["id"], "2026")
-    assert "Costumes gala" in dossier_note["name"]
+    dossier_note = enfant(tresorier, personne["id"], "2026")
+    assert "Costumes gala" in dossier_note["name"] and dossier_note["status"] == "validated"
     noms = sorted(i["name"] for i in parcourir(tresorier, dossier_note["id"]).json()["items"])
     assert noms[1] == "Note de frais.pdf" and noms[0].endswith(".png")
-    # Remboursée : la note passe dans « Remboursées », son PDF reçoit une
-    # nouvelle version (pas de doublon), le dossier vide disparaît.
+    # Remboursée : rien ne bouge, le PDF reçoit une nouvelle version (pas de
+    # doublon) et le dossier passe Officiel.
     assert client.post("/notes-frais/remboursements", json={"note_ids": [note["id"]]}, headers=entetes_session(tresorier)).status_code == 200
-    assert [i["name"] for i in parcourir(tresorier, personne["id"]).json()["items"]] == ["Remboursées"]
-    remboursees = enfant(tresorier, personne["id"], "Remboursées")
-    assert enfant(tresorier, remboursees["id"], "2026")["id"] == dossier_note["id"]
+    [apres] = parcourir(tresorier, personne["id"]).json()["items"]
+    assert apres["id"] == dossier_note["id"] and apres["status"] == "official"
     assert len(parcourir(tresorier, dossier_note["id"]).json()["items"]) == 2
 
     # Un autre admin ne voit ni n'ouvre le dossier Financier.
@@ -316,3 +317,25 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole
         headers=entetes_session(tresorier),
     )
     assert acces.status_code == 409
+
+
+def test_note_refusee_badge_refuse_puis_reprise_retiree_des_docs(client, ecole):
+    eleve, tresorier = ecole["eleve"], ecole["tresorier"]
+    org = ecole["ecole"].id
+    note = _envoyer(client, eleve, [_depense(client, eleve)["id"]]).json()
+    refus = client.post(f"/notes-frais/notes/{note['id']}/refuser", json={"motif": "Ticket illisible"}, headers=entetes_session(tresorier))
+    assert refus.status_code == 200
+
+    def items(dossier=None):
+        url = f"/documents/orgs/{org}/spaces/private" + (f"?folder={dossier}" if dossier else "")
+        return client.get(url, headers=entetes_session(tresorier)).json()["items"]
+
+    saison = next(i for i in items() if i["system_kind"] == "period")
+    financier = next(i for i in items(saison["id"]) if i["name"] == "Financier")
+    notes = next(i for i in items(financier["id"]) if i["name"] == "Notes de frais")
+    [personne] = items(notes["id"])
+    [dossier_note] = items(personne["id"])
+    assert dossier_note["status"] == "refused"
+    assert client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve)).status_code == 204
+    assert items(personne["id"]) == []
+

@@ -13,6 +13,15 @@ export function StatusIcon({ status }) {
       </svg>
     )
   }
+  if (status === 'refused') {
+    // Sens interdit (Seb, 17 octobre).
+    return (
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="8.5" />
+        <path d="M7.5 12h9" />
+      </svg>
+    )
+  }
   if (status === 'validated') {
     return (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

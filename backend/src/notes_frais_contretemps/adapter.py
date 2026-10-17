@@ -145,55 +145,67 @@ class ClasseurContretemps:
         self.documents = documents
         self.financier = financier
 
-    def classer(self, db: Session, tresorier: Membre, chemin: list[str], fichiers: list) -> None:
-        from documents.models import KIND_FOLDER, DocNode
+    def _acces(self, db: Session, qui: Membre):
+        """Le dossier Financier de la saison en cours, et le membre (droits
+        des trésoriers) sous lequel l'appli y range les notes."""
         from documents.ports import Member
 
-        racine = self.documents.reserved_folder(db, tresorier.org_id, self.financier)
+        racine = self.documents.reserved_folder(db, qui.org_id, self.financier)
         if racine is None:
-            logger.warning("Pas de dossier %s pour l'école %s : note non rangée", self.financier, tresorier.org_id)
-            return
+            logger.warning("Pas de dossier %s pour l'école %s : note non rangée", self.financier, qui.org_id)
         membre = Member(
-            person_id=tresorier.person_id,
-            org_id=tresorier.org_id,
-            display_name=tresorier.nom,
+            person_id=qui.person_id,
+            org_id=qui.org_id,
+            display_name=qui.nom,
             is_admin=True,
             groups=frozenset({"role:admin", "role:tresorier"}),
         )
+        return racine, membre
 
-        def enfants(parent_id: int, kind: str | None = KIND_FOLDER) -> list:
-            requete = select(DocNode).where(DocNode.parent_id == parent_id, DocNode.deleted_at.is_(None))
-            if kind is not None:
-                requete = requete.where(DocNode.kind == kind)
-            return list(db.scalars(requete))
+    @staticmethod
+    def _enfant(db: Session, parent_id: int, nom: str, dossier: bool = True):
+        from documents.models import KIND_FOLDER, DocNode
+
+        requete = select(DocNode).where(DocNode.parent_id == parent_id, DocNode.name == nom, DocNode.deleted_at.is_(None))
+        if dossier:
+            requete = requete.where(DocNode.kind == KIND_FOLDER)
+        return db.scalars(requete).first()
+
+    def classer(
+        self, db: Session, membre: Membre, chemin: list[str], fichiers: list, statut: str, remplacer=frozenset()
+    ) -> None:
+        racine, qui = self._acces(db, membre)
+        if racine is None:
+            return
 
         def dossier(parent_id: int, nom: str) -> int:
-            existant = next((n.id for n in enfants(parent_id) if n.name == nom), None)
+            existant = self._enfant(db, parent_id, nom)
             if existant is not None:
-                return existant
-            return self.documents.create_folder(db, membre, "private", parent_id, nom)["id"]
+                return existant.id
+            return self.documents.create_folder(db, qui, "private", parent_id, nom)["id"]
 
-        personne, statut, nom_note = chemin
-        personne_id = dossier(dossier(racine.id, self.DOSSIER), personne)
-        statut_id = dossier(personne_id, statut)
-        # Déjà rangée sous un autre statut (ex. validée puis remboursée) :
-        # la note change de dossier, ses fichiers restent les mêmes.
-        note_id = next((n.id for n in enfants(statut_id) if n.name == nom_note), None)
-        if note_id is None:
-            for autre in enfants(personne_id):
-                ancienne = next((n for n in enfants(autre.id) if n.name == nom_note), None)
-                if ancienne is not None:
-                    self.documents.update(db, membre, ancienne.id, parent_id=statut_id, move=True, space="private")
-                    note_id = ancienne.id
-                    if not enfants(autre.id, kind=None):
-                        self.documents.delete(db, membre, autre.id)
-                    break
-        if note_id is None:
-            note_id = self.documents.create_folder(db, membre, "private", statut_id, nom_note)["id"]
+        personne, nom_note = chemin
+        note_id = dossier(dossier(dossier(racine.id, self.DOSSIER), personne), nom_note)
         for nom, chemin_fichier in fichiers:
-            existant = next((n.id for n in enfants(note_id, kind=None) if n.name == nom), None)
+            existant = self._enfant(db, note_id, nom, dossier=False)
+            if existant is not None and nom not in remplacer:
+                continue
             with open(chemin_fichier, "rb") as source:
                 if existant is not None:
-                    self.documents.new_version(db, membre, existant, nom, source)
+                    self.documents.new_version(db, qui, existant.id, nom, source)
                 else:
-                    self.documents.upload(db, membre, "private", note_id, nom, source)
+                    self.documents.upload(db, qui, "private", note_id, nom, source)
+        # Le dossier ne bouge plus : son badge dit où en est la note.
+        self.documents.update(db, qui, note_id, status=statut, change_status=True)
+
+    def retirer(self, db: Session, membre: Membre, chemin: list[str]) -> None:
+        racine, qui = self._acces(db, membre)
+        if racine is None:
+            return
+        noeud = self._enfant(db, racine.id, self.DOSSIER)
+        for nom in chemin:
+            if noeud is None:
+                return
+            noeud = self._enfant(db, noeud.id, nom)
+        if noeud is not None:
+            self.documents.delete(db, qui, noeud.id)
