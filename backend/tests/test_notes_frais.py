@@ -289,12 +289,20 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole
     financier = enfant(tresorier, saison["id"], "Financier")
     assert financier["system_kind"] == "reserved"
     notes = enfant(tresorier, financier["id"], "Notes de frais")
-    dossier_note = enfant(tresorier, notes["id"], "2026")
-    assert "Perrin" in dossier_note["name"] and "Costumes gala" in dossier_note["name"]
+    # Notes de frais › personne › statut › note (§7 bis).
+    [personne] = parcourir(tresorier, notes["id"]).json()["items"]
+    assert "Perrin" in personne["name"] and personne["name"].split()[0].isdigit()
+    a_rembourser = enfant(tresorier, personne["id"], "À rembourser")
+    dossier_note = enfant(tresorier, a_rembourser["id"], "2026")
+    assert "Costumes gala" in dossier_note["name"]
     noms = sorted(i["name"] for i in parcourir(tresorier, dossier_note["id"]).json()["items"])
     assert noms[1] == "Note de frais.pdf" and noms[0].endswith(".png")
-    # Remboursée : le PDF de Docs reçoit une nouvelle version, pas un doublon.
+    # Remboursée : la note passe dans « Remboursées », son PDF reçoit une
+    # nouvelle version (pas de doublon), le dossier vide disparaît.
     assert client.post("/notes-frais/remboursements", json={"note_ids": [note["id"]]}, headers=entetes_session(tresorier)).status_code == 200
+    assert [i["name"] for i in parcourir(tresorier, personne["id"]).json()["items"]] == ["Remboursées"]
+    remboursees = enfant(tresorier, personne["id"], "Remboursées")
+    assert enfant(tresorier, remboursees["id"], "2026")["id"] == dossier_note["id"]
     assert len(parcourir(tresorier, dossier_note["id"]).json()["items"]) == 2
 
     # Un autre admin ne voit ni n'ouvre le dossier Financier.

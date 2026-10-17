@@ -88,10 +88,14 @@ class LecteurTicket(Protocol):
 
 class Classeur(Protocol):
     """Range une note validée dans les documents de l'organisation (§7 bis :
-    Docs › Privé › Saison › Financier › Notes de frais)."""
+    Docs › Privé › Saison › Financier › Notes de frais › personne › statut ›
+    note)."""
 
-    def classer(self, db: Session, tresorier: Membre, dossier: str, fichiers: list[tuple[str, Path]]) -> None:
-        """Crée le dossier `dossier` et y copie les fichiers (nom, chemin)."""
+    def classer(self, db: Session, tresorier: Membre, chemin: list[str], fichiers: list[tuple[str, Path]]) -> None:
+        """`chemin` = [personne, statut, note]. Crée ce qu'il manque, y
+        déplace la note si elle était rangée sous un autre statut, et y copie
+        les fichiers (nom, chemin) : un fichier du même nom devient une
+        nouvelle version."""
 
 
 class LectureImpossible(Exception):

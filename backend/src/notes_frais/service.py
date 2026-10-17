@@ -475,6 +475,15 @@ class NotesDeFrais:
             self._prevenir_auteur(db, membre, note, "validée", "Votre note de frais a été validée ; le remboursement suivra.")
         return note
 
+    @staticmethod
+    def dossier_statut(note: NoteFrais) -> str:
+        """Dossier de statut d'une note dans Docs et dans la partie lisible
+        de la sauvegarde (Seb, 17 octobre). Sur le disque, l'enveloppe ne
+        bouge plus après l'envoi."""
+        if note.statut == VALIDEE:
+            return "Dons" if note.don else "À rembourser"
+        return {ENVOYEE: "En attente", REFUSEE: "Refusées", REMBOURSEE: "Remboursées"}[note.statut]
+
     def _enveloppe(self, note: NoteFrais, nom_auteur: str) -> str:
         return self.stockage.dossier_note(
             note.org_id, note.person_id, nom_auteur, note.envoyee_le.date().isoformat(), note.titre, note.id
@@ -533,12 +542,10 @@ class NotesDeFrais:
                         fichiers.append((chemin.name, chemin))
         if not fichiers:
             return
-        auteur = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
-        dossier = nom_propre(
-            f"{note.envoyee_le.date().isoformat()} {auteur.nom if auteur else ''} - {note.titre} ({note.id})", 150
-        )
+        # Mêmes noms que sur le disque : dossier de la personne, statut, enveloppe.
+        personne, _, enveloppe = self._enveloppe(note, "").split("/")
         try:
-            classeur.classer(db, tresorier, dossier, fichiers)
+            classeur.classer(db, tresorier, [personne, self.dossier_statut(note), enveloppe], fichiers)
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : rangement dans les documents impossible", note.id)
@@ -578,7 +585,8 @@ class NotesDeFrais:
             db.refresh(note)
             recap = self._ecrire_recapitulatif(db, note)
             if recap is not None:
-                # La copie de Docs › Financier passe aussi à « remboursée ».
+                # Docs › Financier : la note passe dans « Remboursées », son
+                # PDF y reçoit une nouvelle version.
                 self._classer(db, membre, note, seulement=[recap])
             self._prevenir_auteur(
                 db, membre, note, "remboursée",

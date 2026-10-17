@@ -145,7 +145,7 @@ class ClasseurContretemps:
         self.documents = documents
         self.financier = financier
 
-    def classer(self, db: Session, tresorier: Membre, dossier: str, fichiers: list) -> None:
+    def classer(self, db: Session, tresorier: Membre, chemin: list[str], fichiers: list) -> None:
         from documents.models import KIND_FOLDER, DocNode
         from documents.ports import Member
 
@@ -160,25 +160,39 @@ class ClasseurContretemps:
             is_admin=True,
             groups=frozenset({"role:admin", "role:tresorier"}),
         )
-        def enfant(parent_id: int, nom: str, kind: str | None = KIND_FOLDER) -> int | None:
-            requete = select(DocNode.id).where(
-                DocNode.parent_id == parent_id, DocNode.name == nom, DocNode.deleted_at.is_(None)
-            )
+
+        def enfants(parent_id: int, kind: str | None = KIND_FOLDER) -> list:
+            requete = select(DocNode).where(DocNode.parent_id == parent_id, DocNode.deleted_at.is_(None))
             if kind is not None:
                 requete = requete.where(DocNode.kind == kind)
-            return db.scalar(requete)
+            return list(db.scalars(requete))
 
-        notes_id = enfant(racine.id, self.DOSSIER)
-        if notes_id is None:
-            notes_id = self.documents.create_folder(db, membre, "private", racine.id, self.DOSSIER)["id"]
-        # Rangée une 2e fois (ex. au remboursement) : même dossier, et un
-        # fichier du même nom devient une nouvelle version.
-        note_id = enfant(notes_id, dossier)
+        def dossier(parent_id: int, nom: str) -> int:
+            existant = next((n.id for n in enfants(parent_id) if n.name == nom), None)
+            if existant is not None:
+                return existant
+            return self.documents.create_folder(db, membre, "private", parent_id, nom)["id"]
+
+        personne, statut, nom_note = chemin
+        personne_id = dossier(dossier(racine.id, self.DOSSIER), personne)
+        statut_id = dossier(personne_id, statut)
+        # Déjà rangée sous un autre statut (ex. validée puis remboursée) :
+        # la note change de dossier, ses fichiers restent les mêmes.
+        note_id = next((n.id for n in enfants(statut_id) if n.name == nom_note), None)
         if note_id is None:
-            note_id = self.documents.create_folder(db, membre, "private", notes_id, dossier)["id"]
-        for nom, chemin in fichiers:
-            existant = enfant(note_id, nom, kind=None)
-            with open(chemin, "rb") as source:
+            for autre in enfants(personne_id):
+                ancienne = next((n for n in enfants(autre.id) if n.name == nom_note), None)
+                if ancienne is not None:
+                    self.documents.update(db, membre, ancienne.id, parent_id=statut_id, move=True, space="private")
+                    note_id = ancienne.id
+                    if not enfants(autre.id, kind=None):
+                        self.documents.delete(db, membre, autre.id)
+                    break
+        if note_id is None:
+            note_id = self.documents.create_folder(db, membre, "private", statut_id, nom_note)["id"]
+        for nom, chemin_fichier in fichiers:
+            existant = next((n.id for n in enfants(note_id, kind=None) if n.name == nom), None)
+            with open(chemin_fichier, "rb") as source:
                 if existant is not None:
                     self.documents.new_version(db, membre, existant, nom, source)
                 else:

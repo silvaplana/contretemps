@@ -141,10 +141,15 @@ justificatifs »** : un zip des photos de la note, nommées comme sur le disque 
 ### 7 bis Rangement dans Docs (Seb, 17 octobre)
 
 À la **validation**, l'appli copie les justificatifs de la note dans les documents, sans rien demander :
-**Privé › Saison en cours › Financier › Notes de frais › `<date d'envoi> <Nom> - <titre> (<n°>)`**. Le
+**Privé › Saison en cours › Financier › Notes de frais › `<n° personne> <Nom>` › `<statut>` ›
+`<date d'envoi> <titre> (<n°>)`** (mêmes noms que les enveloppes du disque). Statuts dans Docs :
+**À rembourser**, **Remboursées**, **Dons**. Au remboursement, le dossier de la note passe de « À rembourser »
+à « Remboursées » et son PDF reçoit une nouvelle version ; un dossier de statut vidé est supprimé. Sur le
+disque, l'enveloppe ne bouge plus après l'envoi : le statut est dans la base et dans le PDF (Seb, 17 octobre).
+Le
 dossier Financier existe dans chaque saison et n'est visible que des trésoriers, même pas des autres
 admins (documents.md §4.7 bis) ; « Notes de frais » y est créé à la première note. La saison est celle
-du jour de la validation. Une note refusée ou reprise n'y arrive jamais ; une note sans justificatif n'y
+du jour de la validation. Une note en attente, refusée ou reprise n'y arrive jamais ; une note sans justificatif n'y
 crée qu'un dossier avec le PDF récapitulatif. Si le rangement échoue, la validation reste faite (les photos restent dans
 l'enveloppe et le bouton « Télécharger les justificatifs »).
 
