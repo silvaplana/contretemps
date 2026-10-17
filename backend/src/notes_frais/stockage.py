@@ -6,7 +6,9 @@ Seb, 16 octobre) :
         notes/<AAAA-MM-JJ> <titre> (<id>)/     une enveloppe par note envoyée
 
 À l'envoi, les fichiers passent de `depenses/` à l'enveloppe de la note ;
-une note reprise les y renvoie. Le dossier d'une personne commence par son
+une note reprise les y renvoie. Chaque enveloppe contient aussi
+« Note de frais.pdf » (récapitulatif et photos, voir recapitulatif.py),
+refait à chaque étape. Le dossier d'une personne commence par son
 numéro (stable d'une saison à l'autre) : il est retrouvé même si son nom
 change. Jamais servis en accès direct : seulement par les routes du module.
 """
@@ -93,6 +95,18 @@ class StockageEnveloppes:
             if os.path.exists(temporaire):
                 os.unlink(temporaire)
             raise
+
+    def ecrire(self, org_id: int, dossier: str, nom_fichier: str, contenu: bytes) -> str:
+        """Écrit (ou remplace) `nom_fichier` dans `dossier` ; renvoie son
+        chemin relatif. Fichier temporaire d'abord : jamais à moitié écrit."""
+        cible_dossier = self.chemin(org_id, dossier)
+        cible_dossier.mkdir(parents=True, exist_ok=True)
+        descripteur, temporaire = tempfile.mkstemp(dir=cible_dossier, prefix=".envoi-")
+        with os.fdopen(descripteur, "wb") as sortie:
+            sortie.write(contenu)
+        cible = cible_dossier / nom_fichier
+        os.replace(temporaire, cible)
+        return cible.relative_to(self._org(org_id).resolve()).as_posix()
 
     def deplacer(self, org_id: int, relatif: str, dossier: str) -> str:
         """Déplace un fichier dans `dossier` ; renvoie son nouveau chemin."""

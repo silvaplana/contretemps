@@ -160,17 +160,26 @@ class ClasseurContretemps:
             is_admin=True,
             groups=frozenset({"role:admin", "role:tresorier"}),
         )
-        notes_id = db.scalar(
-            select(DocNode.id).where(
-                DocNode.parent_id == racine.id,
-                DocNode.kind == KIND_FOLDER,
-                DocNode.name == self.DOSSIER,
-                DocNode.deleted_at.is_(None),
+        def enfant(parent_id: int, nom: str, kind: str | None = KIND_FOLDER) -> int | None:
+            requete = select(DocNode.id).where(
+                DocNode.parent_id == parent_id, DocNode.name == nom, DocNode.deleted_at.is_(None)
             )
-        )
+            if kind is not None:
+                requete = requete.where(DocNode.kind == kind)
+            return db.scalar(requete)
+
+        notes_id = enfant(racine.id, self.DOSSIER)
         if notes_id is None:
             notes_id = self.documents.create_folder(db, membre, "private", racine.id, self.DOSSIER)["id"]
-        note_id = self.documents.create_folder(db, membre, "private", notes_id, dossier)["id"]
+        # Rangée une 2e fois (ex. au remboursement) : même dossier, et un
+        # fichier du même nom devient une nouvelle version.
+        note_id = enfant(notes_id, dossier)
+        if note_id is None:
+            note_id = self.documents.create_folder(db, membre, "private", notes_id, dossier)["id"]
         for nom, chemin in fichiers:
+            existant = enfant(note_id, nom, kind=None)
             with open(chemin, "rb") as source:
-                self.documents.upload(db, membre, "private", note_id, nom, source)
+                if existant is not None:
+                    self.documents.new_version(db, membre, existant, nom, source)
+                else:
+                    self.documents.upload(db, membre, "private", note_id, nom, source)

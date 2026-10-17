@@ -33,6 +33,7 @@ from .models import (
     Rib,
 )
 from .ports import LectureImpossible, Membre, Personne, Ports, TicketLu
+from . import recapitulatif
 from .stockage import StockageEnveloppes, nom_propre
 
 logger = logging.getLogger(__name__)
@@ -271,6 +272,9 @@ class NotesDeFrais:
             raise LookupError("Note de frais introuvable.")
         tampon = io.BytesIO()
         with zipfile.ZipFile(tampon, "w", zipfile.ZIP_STORED) as archive:
+            recap = self.stockage.chemin(membre.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
+            if recap.exists():
+                archive.write(recap, recap.name)
             for depense in note.depenses:
                 for piece in depense.pieces:
                     chemin = self.stockage.chemin(membre.org_id, piece.chemin)
@@ -359,6 +363,7 @@ class NotesDeFrais:
                 piece.chemin = self.stockage.deplacer(membre.org_id, piece.chemin, enveloppe)
         db.commit()
         db.refresh(note)
+        self._ecrire_recapitulatif(db, note)
         self._prevenir_tresoriers(db, membre, note)
         return note
 
@@ -370,6 +375,7 @@ class NotesDeFrais:
             raise LookupError("Note de frais introuvable.")
         if note.statut not in (ENVOYEE, REFUSEE):
             raise ValueError("Cette note est déjà validée : elle ne peut plus être reprise.")
+        self.stockage.delete(membre.org_id, f"{self._enveloppe(note, membre.nom)}/{recapitulatif.NOM_FICHIER}")
         dossier = self.stockage.dossier_depenses(membre.org_id, membre.person_id, membre.nom)
         for depense in list(note.depenses):
             depense.note_id = None
@@ -461,6 +467,7 @@ class NotesDeFrais:
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
+        self._ecrire_recapitulatif(db, note)
         self._classer(db, membre, note)
         if note.don:
             self._prevenir_auteur(db, membre, note, "validée (don à l'association)", "Merci pour votre don : votre note de frais a été validée.")
@@ -468,19 +475,62 @@ class NotesDeFrais:
             self._prevenir_auteur(db, membre, note, "validée", "Votre note de frais a été validée ; le remboursement suivra.")
         return note
 
-    def _classer(self, db: Session, tresorier: Membre, note: NoteFrais) -> None:
+    def _enveloppe(self, note: NoteFrais, nom_auteur: str) -> str:
+        return self.stockage.dossier_note(
+            note.org_id, note.person_id, nom_auteur, note.envoyee_le.date().isoformat(), note.titre, note.id
+        )
+
+    def _ecrire_recapitulatif(self, db: Session, note: NoteFrais) -> Path | None:
+        """(Re)fait « Note de frais.pdf » dans l'enveloppe de la note. Un
+        échec ne bloque pas l'action : il est journalisé."""
+        try:
+            ids = {note.person_id} | {i for i in (note.traitee_par, note.remboursee_par) if i}
+            personnes = self.ports.annuaire.personnes(db, note.org_id, ids)
+            nom = lambda i: personnes[i].nom if i in personnes else None  # noqa: E731
+            pieces = {
+                d.id: [
+                    recapitulatif.Piece(p.nom or Path(p.chemin).name, self.stockage.chemin(note.org_id, p.chemin), p.type_mime)
+                    for p in d.pieces
+                ]
+                for d in note.depenses
+            }
+            contenu = recapitulatif.generer(
+                organisation=self.ports.annuaire.organisation(db, note.org_id).nom,
+                note=note,
+                auteur=nom(note.person_id) or "?",
+                traitee_par=nom(note.traitee_par) if note.traitee_par else None,
+                remboursee_par=nom(note.remboursee_par) if note.remboursee_par else None,
+                statut=self.libelle_statut(note),
+                pieces_par_depense=pieces,
+            )
+            relatif = self.stockage.ecrire(
+                note.org_id, self._enveloppe(note, nom(note.person_id) or ""), recapitulatif.NOM_FICHIER, contenu
+            )
+            return self.stockage.chemin(note.org_id, relatif)
+        except Exception:
+            logger.exception("Note de frais %s : récapitulatif PDF impossible", note.id)
+            return None
+
+    def _classer(self, db: Session, tresorier: Membre, note: NoteFrais, seulement: list[Path] | None = None) -> None:
         """Copie les justificatifs d'une note validée dans les documents
         (§7 bis). Un échec n'annule pas la validation : il est seulement
         journalisé (les fichiers restent dans l'enveloppe, téléchargeables)."""
         classeur = self.ports.classeur
         if classeur is None:
             return
-        fichiers = []
-        for depense in note.depenses:
-            for piece in depense.pieces:
-                chemin = self.stockage.chemin(note.org_id, piece.chemin)
-                if chemin.exists():
-                    fichiers.append((chemin.name, chemin))
+        if seulement is not None:
+            fichiers = [(c.name, c) for c in seulement]
+        else:
+            # Toute l'enveloppe : le PDF récapitulatif et les justificatifs.
+            fichiers = []
+            recap = self.stockage.chemin(note.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
+            if recap.exists():
+                fichiers.append((recap.name, recap))
+            for depense in note.depenses:
+                for piece in depense.pieces:
+                    chemin = self.stockage.chemin(note.org_id, piece.chemin)
+                    if chemin.exists():
+                        fichiers.append((chemin.name, chemin))
         if not fichiers:
             return
         auteur = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
@@ -505,6 +555,7 @@ class NotesDeFrais:
         note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
+        self._ecrire_recapitulatif(db, note)
         self._prevenir_auteur(
             db, membre, note, "refusée",
             f"Votre note de frais a été refusée. Motif : {motif}\nVous pouvez la reprendre pour la corriger et la renvoyer.",
@@ -525,6 +576,10 @@ class NotesDeFrais:
         db.commit()
         for note in notes:
             db.refresh(note)
+            recap = self._ecrire_recapitulatif(db, note)
+            if recap is not None:
+                # La copie de Docs › Financier passe aussi à « remboursée ».
+                self._classer(db, membre, note, seulement=[recap])
             self._prevenir_auteur(
                 db, membre, note, "remboursée",
                 f"Votre note de frais a été remboursée : {euros(self.total(note))} par virement.",

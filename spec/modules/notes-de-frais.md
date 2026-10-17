@@ -145,7 +145,7 @@ justificatifs »** : un zip des photos de la note, nommées comme sur le disque 
 dossier Financier existe dans chaque saison et n'est visible que des trésoriers, même pas des autres
 admins (documents.md §4.7 bis) ; « Notes de frais » y est créé à la première note. La saison est celle
 du jour de la validation. Une note refusée ou reprise n'y arrive jamais ; une note sans justificatif n'y
-crée pas de dossier. Si le rangement échoue, la validation reste faite (les photos restent dans
+crée qu'un dossier avec le PDF récapitulatif. Si le rangement échoue, la validation reste faite (les photos restent dans
 l'enveloppe et le bouton « Télécharger les justificatifs »).
 
 ## 8. Don à l'association
@@ -207,7 +207,17 @@ Les justificatifs sont rangés en **enveloppes**, un dossier par personne :
 <NOTES_FRAIS_DIR>/<organisation>/<n° de la personne> <Nom Prénom>/
     depenses/                                   tickets pas encore envoyés
     notes/<AAAA-MM-JJ> <titre> (<n° de note>)/  une enveloppe par note envoyée
+        Note de frais.pdf                       récapitulatif + une page par photo
+        <date> <description> <n°>-<n°>.jpg      les justificatifs
 ```
+
+**Le dossier du serveur suffit à tout retrouver**, même si la base de données était perdue (Seb,
+17 octobre) : chaque enveloppe contient « Note de frais.pdf », avec une page de récapitulatif (personne,
+titre, dépenses avec date, catégorie, description et montant, total, statut avec ses dates et qui l'a
+traitée, motif de refus, RIB ou don), puis une page par photo de ticket (les PDF joints restent à côté).
+Il est refait à chaque étape : envoi, validation, refus, remboursement ; il part avec les photos dans
+Docs › Financier à la validation, et y reçoit une nouvelle version au remboursement. Il est aussi dans le
+zip « Télécharger les justificatifs ».
 
 Fichier : `<date> <description> <n° de dépense>-<n° de pièce>.<ext>`. À l'envoi, les fichiers passent de
 `depenses/` à l'enveloppe de la note ; une note reprise les y renvoie et son enveloppe vide disparaît. Le

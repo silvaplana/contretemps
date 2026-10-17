@@ -236,7 +236,10 @@ def test_tickets_ranges_en_enveloppes(client, ecole, tmp_path):
     note = _envoyer(client, eleve, [d["id"]]).json()
     (enveloppe,) = (personne / "notes").iterdir()
     assert enveloppe.name.endswith(f"Costumes gala ({note['id']})")
-    assert len(list(enveloppe.iterdir())) == 1 and not list((personne / "depenses").iterdir())
+    assert sorted(f.name for f in enveloppe.iterdir()) == [f"2026-10-12 Tissu costumes {d['id']}-1.jpg", "Note de frais.pdf"]
+    assert not list((personne / "depenses").iterdir())
+    # Le PDF récapitulatif suit chaque étape (Seb, 17 octobre).
+    assert (enveloppe / "Note de frais.pdf").read_bytes().startswith(b"%PDF")
 
     client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve))
     assert not list((personne / "notes").iterdir())
@@ -258,7 +261,9 @@ def test_telecharger_les_justificatifs_d_une_note(client, ecole):
     assert reponse.status_code == 200
     assert "Costumes%20gala" in reponse.headers["content-disposition"]
     archive = zipfile.ZipFile(io.BytesIO(reponse.content))
-    assert [archive.read(n) for n in archive.namelist()] == [b"\x89PNG faux"]
+    assert archive.namelist()[0] == "Note de frais.pdf"
+    assert archive.read(archive.namelist()[0]).startswith(b"%PDF")
+    assert [archive.read(n) for n in archive.namelist()[1:]] == [b"\x89PNG faux"]
     assert client.get(url, headers=entetes_session(eleve)).status_code == 200
     assert client.get(url, headers=entetes_session(ecole["admin"])).status_code == 404
 
@@ -286,8 +291,11 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole
     notes = enfant(tresorier, financier["id"], "Notes de frais")
     dossier_note = enfant(tresorier, notes["id"], "2026")
     assert "Perrin" in dossier_note["name"] and "Costumes gala" in dossier_note["name"]
-    fichier = parcourir(tresorier, dossier_note["id"]).json()["items"][0]
-    assert fichier["name"].endswith(".png")
+    noms = sorted(i["name"] for i in parcourir(tresorier, dossier_note["id"]).json()["items"])
+    assert noms[1] == "Note de frais.pdf" and noms[0].endswith(".png")
+    # Remboursée : le PDF de Docs reçoit une nouvelle version, pas un doublon.
+    assert client.post("/notes-frais/remboursements", json={"note_ids": [note["id"]]}, headers=entetes_session(tresorier)).status_code == 200
+    assert len(parcourir(tresorier, dossier_note["id"]).json()["items"]) == 2
 
     # Un autre admin ne voit ni n'ouvre le dossier Financier.
     assert enfant(admin, saison["id"], "Financier") is None
