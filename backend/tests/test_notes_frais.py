@@ -242,3 +242,21 @@ def test_tickets_ranges_en_enveloppes(client, ecole, tmp_path):
     assert len(list((personne / "depenses").iterdir())) == 1
     piece_id = client.get("/notes-frais/moi", headers=entetes_session(eleve)).json()["a_envoyer"][0]["pieces"][0]["id"]
     assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(eleve)).content == b"jpeg"
+
+
+def test_telecharger_les_justificatifs_d_une_note(client, ecole):
+    import zipfile
+
+    eleve = ecole["eleve"]
+    d1, d2 = _depense(client, eleve), _depense(client, eleve, description="Péage")
+    fichiers = {"fichier": ("ticket.png", io.BytesIO(b"\x89PNG faux"), "image/png")}
+    client.post(f"/notes-frais/depenses/{d1['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
+    note = _envoyer(client, eleve, [d1["id"], d2["id"]]).json()
+    url = f"/notes-frais/notes/{note['id']}/justificatifs.zip"
+    reponse = client.get(url, headers=entetes_session(ecole["tresorier"]))
+    assert reponse.status_code == 200
+    assert "Costumes%20gala" in reponse.headers["content-disposition"]
+    archive = zipfile.ZipFile(io.BytesIO(reponse.content))
+    assert [archive.read(n) for n in archive.namelist()] == [b"\x89PNG faux"]
+    assert client.get(url, headers=entetes_session(eleve)).status_code == 200
+    assert client.get(url, headers=entetes_session(ecole["admin"])).status_code == 404

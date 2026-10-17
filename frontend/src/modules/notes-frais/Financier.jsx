@@ -261,6 +261,17 @@ function NoteTresorierModal({ note, onClose, onTraitee }) {
         </p>
       ) : null}
       {note.motif_refus && <p className="login-screen__erreur">Motif du refus : {note.motif_refus}</p>}
+      {note.depenses.some((d) => d.pieces.length) && (
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() =>
+            telechargerFichier(api.urlJustificatifs(note.id), 'justificatifs.zip').catch((err) => setErreur(err.message))
+          }
+        >
+          <Icon name="download" size={18} /> Télécharger les justificatifs
+        </button>
+      )}
       {refus !== null && (
         <>
           <label htmlFor="nf-motif">Motif du refus (envoyé à la personne)</label>

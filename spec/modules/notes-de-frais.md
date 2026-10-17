@@ -135,7 +135,8 @@ Trois filtres, avec un compteur chacun :
    montant, note, statut).
 
 Détail d'une note : chaque dépense avec sa photo (agrandissable), la mention « sans justificatif » le cas
-échéant, le total, le RIB ; boutons **Valider** et **Refuser…** (motif obligatoire).
+échéant, le total, le RIB ; boutons **Valider** et **Refuser…** (motif obligatoire), et **« Télécharger les
+justificatifs »** : un zip des photos de la note, nommées comme sur le disque (décision de Seb, 17 octobre).
 
 ## 8. Don à l'association
 
@@ -200,7 +201,7 @@ Les justificatifs sont rangés en **enveloppes**, un dossier par personne :
 
 Fichier : `<date> <description> <n° de dépense>-<n° de pièce>.<ext>`. À l'envoi, les fichiers passent de
 `depenses/` à l'enveloppe de la note ; une note reprise les y renvoie et son enveloppe vide disparaît. Le
-numéro en tête du dossier de la personne le retrouve même si son nom change ou si deux personnes ont le
+numéro en tête du dossier de la personne (gardé, décision de Seb du 17 octobre) le retrouve même si son nom change ou si deux personnes ont le
 même nom. Jamais servis en accès direct : seulement par les routes du module, à l'auteur et aux
 trésoriers. *(Contretemps : `NOTES_FRAIS_DIR`, `/app/data/notes_frais` dans l'image Docker, dans le volume de données.)*
 

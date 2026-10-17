@@ -10,8 +10,10 @@ toutes celles de l'organisation (§11).
 from __future__ import annotations
 
 import html
+import io
 import logging
 import re
+import zipfile
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import BinaryIO
@@ -31,7 +33,7 @@ from .models import (
     Rib,
 )
 from .ports import LectureImpossible, Membre, Personne, Ports, TicketLu
-from .stockage import StockageEnveloppes
+from .stockage import StockageEnveloppes, nom_propre
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +262,22 @@ class NotesDeFrais:
         if not chemin.exists():
             raise LookupError("Fichier du justificatif introuvable.")
         return chemin, piece.type_mime, piece.nom
+
+    def archive_justificatifs(self, db: Session, membre: Membre, note_id: int) -> tuple[bytes, str]:
+        """Zip des justificatifs d'une note (§7), pour un trésorier ou
+        l'auteur : (contenu, nom du fichier). Noms tels que sur le disque."""
+        note = self._note(db, membre.org_id, note_id)
+        if note.person_id != membre.person_id and not (membre.est_tresorier or membre.est_superuser):
+            raise LookupError("Note de frais introuvable.")
+        tampon = io.BytesIO()
+        with zipfile.ZipFile(tampon, "w", zipfile.ZIP_STORED) as archive:
+            for depense in note.depenses:
+                for piece in depense.pieces:
+                    chemin = self.stockage.chemin(membre.org_id, piece.chemin)
+                    if chemin.exists():
+                        archive.write(chemin, chemin.name)
+        nom = nom_propre(f"{note.envoyee_le.date().isoformat()} {note.titre} ({note.id})", 100)
+        return tampon.getvalue(), f"{nom}.zip"
 
     # --- Lecture du ticket (§12) ---
 

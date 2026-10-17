@@ -6,6 +6,7 @@ renvoie un `Membre`) ; les droits sont vérifiés par le service.
 from __future__ import annotations
 
 import io
+from urllib.parse import quote
 from collections.abc import Callable
 import datetime as dt
 
@@ -160,6 +161,15 @@ class NotesDeFraisReceiver:
                 rib=corps.rib.model_dump() if corps.rib else None,
             )
             return nf.note_dict(note)
+
+        @app.get("/notes-frais/notes/{note_id}/justificatifs.zip")
+        def justificatifs(note_id: int, db: Session = db_dep, m: Membre = membre):
+            contenu, nom = appeler(nf.archive_justificatifs, db, m, note_id)
+            return Response(
+                content=contenu,
+                media_type="application/zip",
+                headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nom)}"},
+            )
 
         @app.post("/notes-frais/notes/{note_id}/reprendre", status_code=204)
         def reprendre(note_id: int, db: Session = db_dep, m: Membre = membre):

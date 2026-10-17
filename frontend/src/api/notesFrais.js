@@ -73,6 +73,8 @@ export const rembourser = (noteIds) => appel('/remboursements', json('POST', { n
 export const categories = () => appel('/categories')
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
 
+export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`
+
 export function urlExport(debut, fin) {
   const params = new URLSearchParams()
   if (debut) params.set('debut', debut)

@@ -12,8 +12,10 @@ async function recupererFichier(url, nomSecours) {
   const reponse = await fetch(url)
   if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
   const entete = reponse.headers.get('Content-Disposition') ?? ''
+  // `filename*=UTF-8''…` (noms accentués, ex. notes de frais) ou `filename="…"`.
+  const encode = entete.match(/filename\*=UTF-8''([^;]+)/i)
   const correspondance = entete.match(/filename="([^"]+)"/)
-  const nom = correspondance ? correspondance[1] : nomSecours
+  const nom = encode ? decodeURIComponent(encode[1]) : correspondance ? correspondance[1] : nomSecours
   const blob = await reponse.blob()
   return { nom, blob }
 }
@@ -24,6 +26,12 @@ async function recupererFichier(url, nomSecours) {
 // choisir le dossier. Ailleurs (Firefox, Safari, mobile), repli sur le
 // téléchargement classique (dossier de téléchargement par défaut du
 // navigateur, comme api/inscriptions.js:telechargerNouvellesInscriptions).
+const TYPE_EXCEL = {
+  description: 'Classeur Excel',
+  accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] },
+}
+const TYPE_ZIP = { description: 'Archive zip', accept: { 'application/zip': ['.zip'] } }
+
 export async function telechargerFichier(url, nomSecours) {
   const { nom, blob } = await recupererFichier(url, nomSecours)
 
@@ -31,14 +39,7 @@ export async function telechargerFichier(url, nomSecours) {
     try {
       const handle = await window.showSaveFilePicker({
         suggestedName: nom,
-        types: [
-          {
-            description: 'Classeur Excel',
-            accept: {
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-            },
-          },
-        ],
+        types: [nom.endsWith('.zip') ? TYPE_ZIP : TYPE_EXCEL],
       })
       const flux = await handle.createWritable()
       await flux.write(blob)
