@@ -38,7 +38,8 @@ def espion(monkeypatch, tmp_path):
     ports = main.notes_frais_client.ports
     monkeypatch.setattr(ports, "messager", espion)
     monkeypatch.setattr(ports, "notifieur", espion)
-    monkeypatch.setattr(main.notes_frais_client.stockage, "root", tmp_path)
+    monkeypatch.setattr(main.notes_frais_client.stockage, "root", tmp_path / "notes")
+    monkeypatch.setattr(main.documents_client.storage, "root", tmp_path / "docs")
     return espion
 
 
@@ -227,7 +228,7 @@ def test_tickets_ranges_en_enveloppes(client, ecole, tmp_path):
     d = _depense(client, eleve)
     fichiers = {"fichier": ("IMG_001.jpg", io.BytesIO(b"jpeg"), "image/jpeg")}
     client.post(f"/notes-frais/depenses/{d['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
-    org = tmp_path / str(ecole["ecole"].id)
+    org = tmp_path / "notes" / str(ecole["ecole"].id)
     (personne,) = org.iterdir()
     assert personne.name == f"{eleve.id} Margot Perrin"
     assert [f.name for f in (personne / "depenses").iterdir()] == [f"2026-10-12 Tissu costumes {d['id']}-1.jpg"]
@@ -260,3 +261,42 @@ def test_telecharger_les_justificatifs_d_une_note(client, ecole):
     assert [archive.read(n) for n in archive.namelist()] == [b"\x89PNG faux"]
     assert client.get(url, headers=entetes_session(eleve)).status_code == 200
     assert client.get(url, headers=entetes_session(ecole["admin"])).status_code == 404
+
+
+def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole):
+    eleve, tresorier, admin = ecole["eleve"], ecole["tresorier"], ecole["admin"]
+    org = ecole["ecole"].id
+    d = _depense(client, eleve)
+    fichiers = {"fichier": ("ticket.png", io.BytesIO(b"\x89PNG faux"), "image/png")}
+    client.post(f"/notes-frais/depenses/{d['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
+    note = _envoyer(client, eleve, [d["id"]]).json()
+    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+
+    def parcourir(qui, dossier=None):
+        url = f"/documents/orgs/{org}/spaces/private" + (f"?folder={dossier}" if dossier else "")
+        return client.get(url, headers=entetes_session(qui))
+
+    def enfant(qui, dossier, nom):
+        items = parcourir(qui, dossier).json()["items"]
+        return next((i for i in items if i["name"].startswith(nom)), None)
+
+    saison = next(i for i in parcourir(tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = enfant(tresorier, saison["id"], "Financier")
+    assert financier["system_kind"] == "reserved"
+    notes = enfant(tresorier, financier["id"], "Notes de frais")
+    dossier_note = enfant(tresorier, notes["id"], "2026")
+    assert "Perrin" in dossier_note["name"] and "Costumes gala" in dossier_note["name"]
+    fichier = parcourir(tresorier, dossier_note["id"]).json()["items"][0]
+    assert fichier["name"].endswith(".png")
+
+    # Un autre admin ne voit ni n'ouvre le dossier Financier.
+    assert enfant(admin, saison["id"], "Financier") is None
+    assert parcourir(admin, financier["id"]).status_code == 404
+    assert client.get(f"/documents/orgs/{org}/spaces/private/search?q=Costumes", headers=entetes_session(admin)).json() == []
+    # Ses accès suivent le rôle : on ne les change pas à la main.
+    acces = client.put(
+        f"/documents/orgs/{org}/nodes/{financier['id']}/access",
+        json={"restricted": False, "entries": []},
+        headers=entetes_session(tresorier),
+    )
+    assert acces.status_code == 409

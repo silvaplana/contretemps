@@ -31,6 +31,7 @@ from .models import (
     STATUSES,
     SYSTEM_PERIOD,
     SYSTEM_PERMANENT,
+    SYSTEM_RESERVED,
     DocAcl,
     DocActivity,
     DocNode,
@@ -103,6 +104,7 @@ class Documents:
         period_label: str = "Saison",
         private_editors: Sequence[str] = DEFAULT_PRIVATE_EDITORS,
         mailer: Mailer | None = None,
+        reserved_folders: Sequence[tuple[str, str]] = (),
     ) -> None:
         self.storage = storage
         self.directory = directory
@@ -110,6 +112,9 @@ class Documents:
         self.period_label = period_label
         self.private_editors = tuple(private_editors)
         self.mailer = mailer
+        # (nom, clé de groupe) : un dossier réservé dans chaque dossier de
+        # période (§4.7 bis), ex. ("Financier", "role:tresorier").
+        self.reserved_folders = tuple(reserved_folders)
         from .app_files import AppFiles
         from .app_sends import AppSends
 
@@ -226,8 +231,57 @@ class Documents:
             elif dossier.name != nom:
                 dossier.name, dossier.name_search = nom, normalize_search(nom)
                 change = True
+        if self.reserved_folders:
+            db.flush()
+            change = self._ensure_reserved_folders(db, org_id) or change
         if change:
             db.commit()
+
+    def _ensure_reserved_folders(self, db: Session, org_id: int) -> bool:
+        """Dans chaque dossier de période, les dossiers réservés (§4.7 bis) :
+        accès restreint, Gestion pour leur groupe seulement."""
+        periodes = list(
+            db.scalars(select(DocNode).where(DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_PERIOD))
+        )
+        existants = {
+            (n.parent_id, n.name)
+            for n in db.scalars(
+                select(DocNode).where(DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_RESERVED)
+            )
+        }
+        change = False
+        for periode in periodes:
+            for nom, groupe in self.reserved_folders:
+                if (periode.id, nom) in existants:
+                    continue
+                dossier = self._new_node(
+                    org_id, "private", periode.id, KIND_FOLDER, nom, None, system_kind=SYSTEM_RESERVED, restricted=True
+                )
+                db.add(dossier)
+                db.flush()
+                db.add(DocAcl(node_id=dossier.id, principal_type="group", principal_id=groupe, level=LEVEL_MANAGE))
+                change = True
+        return change
+
+    def reserved_folder(self, db: Session, org_id: int, name: str) -> DocNode | None:
+        """Le dossier réservé `name` de la période en cours (créé au besoin),
+        pour qu'un autre module y range ses fichiers."""
+        self.ensure_system_folders(db, org_id)
+        courante = next((p for p in self.periods.list(db, org_id) if p.is_current), None)
+        if courante is None:
+            return None
+        periode = db.scalar(
+            select(DocNode).where(
+                DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_PERIOD, DocNode.period_id == courante.id
+            )
+        )
+        if periode is None:
+            return None
+        return db.scalar(
+            select(DocNode).where(
+                DocNode.parent_id == periode.id, DocNode.system_kind == SYSTEM_RESERVED, DocNode.name == name
+            )
+        )
 
     @staticmethod
     def _new_node(org_id, space, parent_id, kind, name, person_id, **autres) -> DocNode:
@@ -353,6 +407,8 @@ class Documents:
             if e["system_kind"] == SYSTEM_PERIOD:
                 # Saison la plus récente d'abord.
                 return (1, -(e["period_id"] or 0), "")
+            if e["system_kind"] == SYSTEM_RESERVED:
+                return (1, 0, e["name"].lower())
             return (2 if e["kind"] == KIND_FOLDER else 3, 0 if e["pinned"] else 1, e["name"].lower())
 
         return cle
@@ -749,6 +805,9 @@ class Documents:
                 .order_by(DocNode.id)
             )
         )
+        # Les dossiers réservés (Financier) ne se recopient pas : chaque
+        # saison a déjà le sien, vide.
+        enfants = [e for e in enfants if e.system_kind is None]
         for enfant in enfants:
             self._copy_node(db, member, enfant, loc, cible.id, enfant.name, rights=droits)
         if enfants:
@@ -858,6 +917,11 @@ class Documents:
     def _may_see_in_trash(self, db, member, node) -> bool:
         if node.space == "personal":
             return node.owner_person_id == member.person_id
+        chemin = self._path(db, node)
+        if any(n.system_kind == SYSTEM_RESERVED for n in chemin):
+            # Dossier réservé : seulement ceux qui y ont accès.
+            loc = Location(node.space, None, chemin)
+            return self._level(member, loc, self._acl(db, {n.id for n in chemin}), set()) is not None
         return member.is_admin or member.is_superuser or node.deleted_by == member.person_id
 
     def _trash_items(self, db: Session, member: Member, space: str) -> list[DocNode]:
@@ -1058,6 +1122,8 @@ class Documents:
         loc = self._locate(db, member, node)
         if node.space == "personal":
             raise DocError(409, "Un élément de l'espace Personnel ne se partage pas : rangez-le dans Privé ou Public.")
+        if node.system_kind == SYSTEM_RESERVED:
+            raise DocError(409, "Dossier de l'appli : son accès suit un rôle (ex. trésorier), il ne se modifie pas ici.")
         self._require(db, member, loc, LEVEL_MANAGE)
         if restricted != node.restricted:
             # Dossier ou fichier (Seb, 15 octobre).

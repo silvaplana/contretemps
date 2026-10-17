@@ -51,6 +51,9 @@ FAMILIES = ("inform", "question", "act")
 # Dossiers système (§4.7) : impossibles à renommer, déplacer, supprimer.
 SYSTEM_PERMANENT = "permanent"
 SYSTEM_PERIOD = "period"
+# Dossier réservé à un groupe (§4.7 bis), ex. « Financier » des trésoriers :
+# même les admins n'y entrent pas sans faire partie du groupe.
+SYSTEM_RESERVED = "reserved"
 
 LEVEL_VIEW = "view"
 LEVEL_EDIT = "edit"

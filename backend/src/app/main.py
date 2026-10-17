@@ -51,6 +51,7 @@ from notifications import Notifications, NotificationsReceiver
 from notes_frais import LecteurClaude, NotesDeFrais, NotesDeFraisReceiver, Ports, StockageEnveloppes
 from notes_frais_contretemps import (
     AnnuaireContretemps as AnnuaireNotesFrais,
+    ClasseurContretemps,
     MessagerContretemps,
     NotifieurContretemps,
     membre_appelant as membre_notes_frais,
@@ -274,6 +275,9 @@ documents_client = Documents(
     directory=AnnuaireContretemps(),
     periods=SaisonsContretemps(),
     mailer=MessagerieContretemps(),
+    # Dossier « Financier » de chaque saison : trésoriers seulement, même
+    # pas les autres admins (Seb, 17 octobre).
+    reserved_folders=(("Financier", "role:tresorier"),),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.
@@ -326,6 +330,7 @@ notes_frais_client = NotesDeFrais(
             noter_cout=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "lecture_ticket", cout, detail),
             plafond_atteint=ressources_client.plafond_assistant_atteint,
         ),
+        classeur=ClasseurContretemps(documents_client),
     ),
     stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
 )

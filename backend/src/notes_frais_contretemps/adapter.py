@@ -131,3 +131,46 @@ class NotifieurContretemps:
 
     def notifier(self, db: Session, notification_id: int, titre: str, corps: str) -> None:
         self.notifications.envoyer_a_compte(db, notification_id, titre, corps)
+
+
+class ClasseurContretemps:
+    """Range les notes validées dans Docs › Privé › Saison en cours ›
+    Financier › Notes de frais (§7 bis), par le module documents. Le dossier
+    Financier est réservé aux trésoriers (dossier système, voir
+    documents.md §4.7 bis)."""
+
+    DOSSIER = "Notes de frais"
+
+    def __init__(self, documents, financier: str = "Financier") -> None:
+        self.documents = documents
+        self.financier = financier
+
+    def classer(self, db: Session, tresorier: Membre, dossier: str, fichiers: list) -> None:
+        from documents.models import KIND_FOLDER, DocNode
+        from documents.ports import Member
+
+        racine = self.documents.reserved_folder(db, tresorier.org_id, self.financier)
+        if racine is None:
+            logger.warning("Pas de dossier %s pour l'école %s : note non rangée", self.financier, tresorier.org_id)
+            return
+        membre = Member(
+            person_id=tresorier.person_id,
+            org_id=tresorier.org_id,
+            display_name=tresorier.nom,
+            is_admin=True,
+            groups=frozenset({"role:admin", "role:tresorier"}),
+        )
+        notes_id = db.scalar(
+            select(DocNode.id).where(
+                DocNode.parent_id == racine.id,
+                DocNode.kind == KIND_FOLDER,
+                DocNode.name == self.DOSSIER,
+                DocNode.deleted_at.is_(None),
+            )
+        )
+        if notes_id is None:
+            notes_id = self.documents.create_folder(db, membre, "private", racine.id, self.DOSSIER)["id"]
+        note_id = self.documents.create_folder(db, membre, "private", notes_id, dossier)["id"]
+        for nom, chemin in fichiers:
+            with open(chemin, "rb") as source:
+                self.documents.upload(db, membre, "private", note_id, nom, source)

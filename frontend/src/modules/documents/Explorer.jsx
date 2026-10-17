@@ -809,6 +809,7 @@ export default function Explorer({ orgId, memoire }) {
           <div className="dx-n">
             {item.name}
             {item.system_kind === 'period' && item.period_current && <span className="dx-current">en cours</span>}
+            {item.system_kind === 'reserved' && <span className="dx-current">trésoriers seulement</span>}
           </div>
           <div className="dx-s">
             {item.status && <StatusBadge status={item.status} compact />}

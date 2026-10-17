@@ -359,6 +359,20 @@ Privé
 - Sur ordinateur et téléphone, les saisons passées sont regroupées sous un dossier repliable
   « Saisons précédentes » dès qu'il y en a plus de trois, avec le cadenas sur leurs tuiles.
 
+### 4.7 bis Dossiers réservés à un rôle (Seb, 17 octobre)
+
+L'appli hôte peut déclarer des **dossiers réservés** : (nom, groupe), créés automatiquement dans **chaque
+dossier de saison** de Privé, comme les dossiers système (ni renommés, ni déplacés, ni supprimés,
+`system_kind = reserved`). Accès restreint, **Gestion pour le groupe seulement** : c'est la seule
+exception à « les admins voient tout » (§4.4 règle 1), le superuser non plus n'y entre pas. Le dossier
+n'apparaît ni dans la liste, ni dans la recherche, ni dans Récents, ni dans la corbeille pour les autres.
+Son accès suit le rôle (un trésorier nommé ou retiré y gagne ou perd l'accès) et ne se modifie pas dans
+« Qui a accès ? » ; ses sous-dossiers, eux, se partagent normalement. « Copier la saison précédente »
+ne le recopie pas : chaque saison a déjà le sien, vide.
+
+*(Contretemps : « Financier », rôle trésorier. Les notes de frais validées y sont rangées, voir
+notes-de-frais.md §7 bis.)*
+
 ### 4.8 Retour au dernier endroit (demande de Seb du 14 octobre)
 
 L'explorateur **se souvient d'où l'on était** et y revient à la prochaine ouverture, sur téléphone comme

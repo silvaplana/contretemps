@@ -461,11 +461,37 @@ class NotesDeFrais:
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
+        self._classer(db, membre, note)
         if note.don:
             self._prevenir_auteur(db, membre, note, "validée (don à l'association)", "Merci pour votre don : votre note de frais a été validée.")
         else:
             self._prevenir_auteur(db, membre, note, "validée", "Votre note de frais a été validée ; le remboursement suivra.")
         return note
+
+    def _classer(self, db: Session, tresorier: Membre, note: NoteFrais) -> None:
+        """Copie les justificatifs d'une note validée dans les documents
+        (§7 bis). Un échec n'annule pas la validation : il est seulement
+        journalisé (les fichiers restent dans l'enveloppe, téléchargeables)."""
+        classeur = self.ports.classeur
+        if classeur is None:
+            return
+        fichiers = []
+        for depense in note.depenses:
+            for piece in depense.pieces:
+                chemin = self.stockage.chemin(note.org_id, piece.chemin)
+                if chemin.exists():
+                    fichiers.append((chemin.name, chemin))
+        if not fichiers:
+            return
+        auteur = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        dossier = nom_propre(
+            f"{note.envoyee_le.date().isoformat()} {auteur.nom if auteur else ''} - {note.titre} ({note.id})", 150
+        )
+        try:
+            classeur.classer(db, tresorier, dossier, fichiers)
+        except Exception:
+            db.rollback()
+            logger.exception("Note de frais %s : rangement dans les documents impossible", note.id)
 
     def refuser(self, db: Session, membre: Membre, note_id: int, motif: str) -> NoteFrais:
         self._exiger_tresorier(membre)

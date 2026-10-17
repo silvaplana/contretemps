@@ -6,6 +6,7 @@ notes_frais_contretemps/adapter.py.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Protocol
 
 from sqlalchemy.orm import Session
@@ -85,6 +86,14 @@ class LecteurTicket(Protocol):
         """Lit un justificatif. Lève LectureImpossible (message montrable)."""
 
 
+class Classeur(Protocol):
+    """Range une note validée dans les documents de l'organisation (§7 bis :
+    Docs › Privé › Saison › Financier › Notes de frais)."""
+
+    def classer(self, db: Session, tresorier: Membre, dossier: str, fichiers: list[tuple[str, Path]]) -> None:
+        """Crée le dossier `dossier` et y copie les fichiers (nom, chemin)."""
+
+
 class LectureImpossible(Exception):
     """La lecture n'a pas eu lieu ; le formulaire se remplit à la main."""
 
@@ -99,4 +108,5 @@ class Ports:
     messager: Messager
     notifieur: Notifieur
     lecteur: LecteurTicket | None = None
+    classeur: Classeur | None = None
     categories_par_defaut: tuple[str, ...] = field(default=CATEGORIES_PAR_DEFAUT)
