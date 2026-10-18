@@ -309,6 +309,17 @@ class Comptes:
 
     # --- Superuser (§2.5) : hors de toute école ---
 
+    def superusers(self, db: Session) -> list[Compte]:
+        """Tous les Superusers (comptes hors école, §2.5), triés par id."""
+        return list(
+            db.scalars(
+                select(Compte)
+                .join(RoleCompte, RoleCompte.compte_id == Compte.id)
+                .where(Compte.ecole_id.is_(None), RoleCompte.role == r.SUPERUSER)
+                .order_by(Compte.id)
+            )
+        )
+
     def trouver_superuser(self, db: Session, identifiant: str) -> Compte | None:
         """Le Superuser désigné par `identifiant` (email, ou "Prénom Nom"),
         mêmes règles de saisie qu'à la connexion d'école (casse et accents

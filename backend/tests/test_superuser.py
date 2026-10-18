@@ -239,3 +239,26 @@ def test_migration_autorise_un_compte_sans_ecole(tmp_path, monkeypatch):
     with moteur.connect() as c:
         assert c.execute(sa.text("SELECT COUNT(*) FROM comptes")).scalar() == 0
     moteur.dispose()
+
+
+def test_contact_de_la_messagerie_dans_toute_ecole(client, monde):
+    """Absent des listes, mais trouvable et ajoutable dans les conversations
+    de toute école (spec/core.md §6.1), sans son email ni son téléphone."""
+    reponse = client.get("/super-users", headers=entetes_session(monde["admin_b"]))
+    assert reponse.status_code == 200
+    [su] = reponse.json()
+    assert (su["id"], su["prenom"], su["role"]) == (monde["su"].id, "Sébastien", "superuser")
+    assert su["email"] is None and su["emails"] == [] and su["telephone"] is None
+    assert client.get("/super-users").status_code == 401
+    # Il peut être membre d'une conversation de l'école B, et la voit.
+    dm = client.post(
+        "/dm",
+        params={"ecole_id": monde["b"].id, "compte_a_id": monde["admin_b"].id, "compte_b_id": monde["su"].id},
+        headers=entetes_session(monde["admin_b"]),
+    )
+    assert dm.status_code == 201, dm.text
+    convs = client.get(
+        "/conversations", params={"ecole_id": monde["b"].id, "compte_id": monde["su"].id},
+        headers=_en_superuser(client, monde),
+    ).json()
+    assert [c["id"] for c in convs] == [dm.json()["id"]]

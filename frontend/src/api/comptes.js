@@ -7,10 +7,18 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// Admins de l'école, plus le Super User : absent des listes de personnes,
+// il se trouve et s'ajoute dans les conversations de toute école
+// (spec/core.md §6.1). Cette liste ne sert qu'aux conversations.
 export async function listerAdmins(ecoleId) {
-  const reponse = await fetch(`${BASE_URL}/comptes?ecole_id=${ecoleId}&role=admin`)
-  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
-  return reponse.json()
+  const [admins, superusers] = await Promise.all(
+    [`${BASE_URL}/comptes?ecole_id=${ecoleId}&role=admin`, `${BASE_URL}/super-users`].map(async (url) => {
+      const reponse = await fetch(url)
+      if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+      return reponse.json()
+    }),
+  )
+  return [...admins, ...superusers]
 }
 
 function versFamilleEcran(c) {

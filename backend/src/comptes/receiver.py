@@ -22,6 +22,8 @@ class ComptesReceiver:
 
     def _register_routes(self) -> None:
         self.app.get("/comptes", response_model=list[CompteSortie])(self.lister)
+        # Contacts de la messagerie dans toute école (spec/core.md §6.1).
+        self.app.get("/super-users", response_model=list[CompteSortie])(self.lister_superusers)
         self.app.get("/comptes/{compte_id}", response_model=CompteSortie)(self.obtenir)
         # Profil admin (email/téléphone/code de récupération) : réservé aux
         # admins de l'école du compte modifié (RBAC, §2.4).
@@ -43,6 +45,20 @@ class ComptesReceiver:
         d'écran de gestion multi-admin dédié (spec/SPEC.md §8), donc pas
         de route plus générale pour l'instant."""
         return self.client.list_par_role(db, ecole_id, role)
+
+    def lister_superusers(self, db: Session = Depends(get_db)):
+        """Le Super User reste absent des listes de personnes, mais on le
+        trouve et on l'ajoute dans les conversations de toute école
+        (décision de Seb du 2026-10-18, spec/core.md §6.1). Nom et prénom
+        seulement : ni email ni téléphone."""
+        return [
+            {
+                "id": c.id, "ecole_id": None, "famille_id": None, "role": roles.SUPERUSER,
+                "roles": [roles.SUPERUSER], "nom": c.nom, "prenom": c.prenom,
+                "email": None, "emails": [], "telephone": None,
+            }
+            for c in self.client.superusers(db)
+        ]
 
     def _admin_du_compte(
         self,
