@@ -153,9 +153,11 @@ Règles, imposées par le serveur et pas seulement cachées à l'écran :
   n'agit sur sa propre ligne (ne se retire pas son niveau, ne se supprime pas), sauf
   un Administrateur principal qui peut cocher ou décocher Trésorier pour lui-même. Seul le Super
   User peut dépanner une organisation sans Administrateur principal.
-- Le **Super User** n'appartient à aucune organisation, ne se cumule avec rien, est invisible
-  des listes et de la messagerie. Après connexion, il choisit l'organisation où il intervient
-  et la voit comme un Administrateur principal.
+- Le **Super User** n'appartient à aucune organisation et ne se cumule avec rien. Après
+  connexion, il choisit l'organisation où il intervient et la voit comme un Administrateur
+  principal. Il reste absent des listes de personnes, mais **on peut le trouver et l'ajouter
+  dans les conversations de toute organisation** (décision de Seb du 18 octobre), comme une
+  personne de l'organisation.
 
 ### 6.2 Les rôles métier, ajoutés par l'appli
 
