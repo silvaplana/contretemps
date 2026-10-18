@@ -144,16 +144,15 @@ sans savoir qui il y a derrière.
 - Même règle que les autres recherches : sans accents ni majuscules, sur le prénom et le nom.
 - Aucun résultat : « Personne de ce nom dans le groupe. »
 
-### 3.4 Ajouter tout le monde d'un coup
+### 3.4 Ajouter le Super User *(remplace « Tous » le 2026-10-18)*
 
-- Dans « Ajouter un membre », le sélecteur Admin | Prof | Élève | Cours reçoit une première position
-  **Tous**, à gauche d'Admin : Tous | Admin | Prof | Élève | Cours.
-- Avec **Tous**, la liste déroulante disparaît et le bouton devient **« Ajouter tout le monde »** : il ajoute
-  tous les admins, tous les profs et tous les élèves de l'organisation à la liste « Personnes ».
-- Chaque personne est ajoutée une par une, comme si on l'avait choisie à la main : on peut ensuite en
-  retirer quelques-unes avec leur croix. Quelqu'un déjà dans la liste n'est pas ajouté deux fois.
-- C'est une photo du moment : une personne qui arrive plus tard dans l'organisation n'entre pas toute
-  seule dans le groupe (contrairement à un cours, qui suit ses élèves).
+- Dans « Ajouter un membre », le sélecteur a une première position **Super User**, à gauche d'Admin :
+  Super User | Admin | Prof | Élève | Cours.
+- Avec **Super User**, le bouton devient **« Ajouter le Super User »** : il l'ajoute à la liste « Personnes »,
+  comme une personne choisie à la main (retirable par sa croix, jamais ajouté deux fois).
+- Le Super User n'est pas de l'organisation et n'apparaît dans aucune autre liste (Admin, Prof, Élève) :
+  ce bouton et la recherche des contacts sont les seuls moyens de l'ajouter (`spec/core.md` §6.1).
+- « Tous » (ajouter tout le monde d'un coup) est retiré : il ne servait à rien (Seb, 18 octobre).
 
 ### 3.5 Choisir plusieurs personnes d'un coup
 
@@ -176,7 +175,7 @@ sélection multiple.
 - La flèche ← en haut revient à la fenêtre sans rien changer.
 - Revenu dans la fenêtre, un bouton « Choisir des admins » (ou profs, élèves, cours) sous le sélecteur
   rouvre le même écran.
-- **Tous** (§3.4) reste un bouton direct « Ajouter tout le monde », sans écran de choix.
+- **Super User** (§3.4) reste un bouton direct « Ajouter le Super User », sans écran de choix.
 
 ## 4. Hors de cette étape
 

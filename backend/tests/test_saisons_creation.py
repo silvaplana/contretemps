@@ -80,6 +80,7 @@ def test_validations(client, ecole_en_cours):
 
 def test_sans_duplication_seuls_les_admins_sont_recopies(client, db_session, ecole_en_cours):
     e = ecole_en_cours
+    Comptes().ajouter_role(db_session, e["owner"], roles.TRESORIER)
     reponse = _creer(client, e["ecole"].id)
     assert reponse.status_code == 201
     nouvelle = reponse.json()["saison"]
@@ -89,9 +90,9 @@ def test_sans_duplication_seuls_les_admins_sont_recopies(client, db_session, eco
     assert [(s["nom"], s["courante"]) for s in saisons] == [("2027-2028", True), ("2026-2027", False)]
 
     fiches = _fiches(db_session, nouvelle["id"])
-    # L'owner le reste ; le professeur-admin devient admin pur.
-    assert set(fiches) == {("Julia", ("admin", "owner")), ("Ima", ("admin",))}
-    assert fiches[("Julia", ("admin", "owner"))].compte_precedent_id == e["owner"].id
+    # L'owner et le trésorier le restent ; le professeur-admin devient admin pur.
+    assert set(fiches) == {("Julia", ("admin", "owner", "tresorier")), ("Ima", ("admin",))}
+    assert fiches[("Julia", ("admin", "owner", "tresorier"))].compte_precedent_id == e["owner"].id
     assert client.get("/cours", params={"ecole_id": e["ecole"].id}).json() == []
     # L'ancienne saison est désormais en lecture seule.
     ancienne = {"X-Saison-Id": str(e["ancienne"])}

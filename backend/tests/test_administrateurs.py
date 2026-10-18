@@ -246,14 +246,14 @@ def test_retirer_le_dernier_owner_refuse(db_session, ecole):
         Comptes().retirer_role(db_session, ecole["owner"], roles.ADMIN)
 
 
-def test_owner_exige_admin_et_eleve_jamais_professeur(db_session, ecole):
+def test_owner_exige_admin_et_tous_les_roles_se_cumulent(db_session, ecole):
     with pytest.raises(RegleRoles):
         Comptes().ajouter_role(db_session, ecole["prof"], roles.OWNER)
-    with pytest.raises(RegleRoles):
-        Comptes().ajouter_role(db_session, ecole["eleve"], roles.PROFESSEUR)
-    # Un élève peut, en revanche, être administrateur (§2.4).
+    # Une personne = une fiche (spec/core.md §4) : élève, professeur et
+    # administrateur à la fois.
+    Comptes().ajouter_role(db_session, ecole["eleve"], roles.PROFESSEUR)
     Comptes().ajouter_role(db_session, ecole["eleve"], roles.ADMIN)
-    assert roles.noms_roles(ecole["eleve"]) == ["admin", "eleve"]
+    assert roles.noms_roles(ecole["eleve"]) == ["admin", "professeur", "eleve"]
 
 
 def test_supprimer_depuis_admin_profs_le_dernier_owner_refuse(client, db_session):

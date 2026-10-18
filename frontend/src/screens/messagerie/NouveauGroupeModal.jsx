@@ -12,10 +12,11 @@ import QuiEstDansLeGroupeScreen from './QuiEstDansLeGroupeScreen.jsx'
 const TONE_PAR_TYPE = { admin: 'danger', professeur: 'success', eleve: 'neutral', cours: 'neutral' }
 
 // Sélecteur de « Ajouter un membre » (spec/modules/messagerie-instantanee.md
-// §3.4-3.5) : « Tous » ajoute tout le monde d'un coup, les autres ouvrent
-// le choix multiple (ChoixMembresScreen.jsx).
+// §3.4-3.5) : « Super User » l'ajoute d'un geste (il n'est pas de
+// l'école, spec/core.md §6.1 ; remplace « Tous » le 2026-10-18), les
+// autres ouvrent le choix multiple (ChoixMembresScreen.jsx).
 const SEGMENTS = [
-  ['tous', 'Tous'],
+  ['superuser', 'Super User'],
   ['admin', 'Admin'],
   ['professeur', 'Prof'],
   ['eleve', 'Élève'],
@@ -56,7 +57,7 @@ function libelleMembre(membre, { admins, professeurs, eleves, cours }) {
 //
 // Depuis le 18 octobre (spec/modules/messagerie-instantanee.md §3) :
 // ouverte par « Nouveau groupe » de l'écran Nouvelle discussion ; choix
-// multiple par écran plein, « Tous », et l'œil « Qui est dans le groupe ? »
+// multiple par écran plein, « Super User », et l'œil « Qui est dans le groupe ? »
 // qui met tout le monde à plat.
 export default function NouveauGroupeModal({
   ecoleId,
@@ -71,33 +72,23 @@ export default function NouveauGroupeModal({
   const [nom, setNom] = useState('')
   const [membres, setMembres] = useState([]) // [{type, id}] — pas encore en base
   const [enCours, setEnCours] = useState(false)
-  const [segment, setSegment] = useState('tous')
+  const [segment, setSegment] = useState('superuser')
   // Écran plein par-dessus la fenêtre : 'qui' (l'œil) ou un type à choisir.
   const [ecran, setEcran] = useState(null)
 
-  const OPTIONS_PAR_TYPE = { admin: admins, professeur: professeurs, eleve: eleves, cours }
+  // La liste des admins porte aussi le Super User (api/comptes.js) : il a
+  // son propre bouton.
+  const superusers = admins.filter((a) => a.role === 'superuser')
+  const OPTIONS_PAR_TYPE = { admin: admins.filter((a) => a.role !== 'superuser'), professeur: professeurs, eleve: eleves, cours }
   const personnes = personnesDuGroupe(membres, { admins, professeurs, eleves, cours, compteId })
   // Le créateur, toujours ajouté, ne compte pas tant qu'il n'y a personne.
   const nbTouches = membres.length === 0 ? 0 : personnes.length
 
-  // « Tous » (§3.4) : chaque personne ajoutée une par une, sans doublon,
-  // pour pouvoir en retirer ensuite. Photo du moment, pas un lien.
-  function ajouterToutLeMonde() {
+  // « Super User » : ajouté comme une personne, sans doublon.
+  function ajouterSuperUser() {
     setMembres((liste) => {
       const dejaLa = new Set(liste.filter((m) => m.type !== 'cours').map((m) => m.id))
-      const ajouts = []
-      for (const [type, comptes] of [
-        ['admin', admins],
-        ['professeur', professeurs],
-        ['eleve', eleves],
-      ]) {
-        for (const c of comptes) {
-          if (dejaLa.has(c.id)) continue
-          dejaLa.add(c.id)
-          ajouts.push({ type, id: c.id })
-        }
-      }
-      return [...liste, ...ajouts]
+      return [...liste, ...superusers.filter((c) => !dejaLa.has(c.id)).map((c) => ({ type: 'admin', id: c.id }))]
     })
   }
 
@@ -218,16 +209,21 @@ export default function NouveauGroupeModal({
               className={`segmented__option ${segment === t ? 'is-active' : ''}`}
               onClick={() => {
                 setSegment(t)
-                if (t !== 'tous') setEcran(t)
+                if (t !== 'superuser') setEcran(t)
               }}
             >
               {libelle}
             </button>
           ))}
         </div>
-        {segment === 'tous' ? (
-          <button type="button" className="btn btn--secondary btn--block" onClick={ajouterToutLeMonde}>
-            Ajouter tout le monde
+        {segment === 'superuser' ? (
+          <button
+            type="button"
+            className="btn btn--secondary btn--block"
+            disabled={superusers.length === 0}
+            onClick={ajouterSuperUser}
+          >
+            Ajouter le Super User
           </button>
         ) : (
           <button type="button" className="btn btn--secondary btn--block" onClick={() => setEcran(segment)}>

@@ -83,8 +83,23 @@ Détail : `SPEC.md` §2.1, §2.3, §2.7, §6.1.
 
 Détail : `SPEC.md` §2.1, §6.2, §6.3.
 
-- Une **fiche** par personne, dans une organisation, pour une saison (§7). Nom, prénom,
-  téléphone, et **plusieurs emails** tous équivalents (aucun « principal »). Les champs propres
+- **Une personne = une fiche** *(décision de Seb du 18 octobre 2026)* : une seule fiche par
+  personne, dans une organisation, pour une saison (§7). Tous ses rôles s'ajoutent sur cette fiche
+  (élève, professeur, admin, trésorier…), au lieu d'une fiche par rôle. Cas réels qui l'ont
+  décidé : Julia Dho, admin puis inscrite comme élève, et Jacqueline Cilpa, élève, professeure et
+  admin, apparaissaient deux ou trois fois dans la messagerie.
+- **Saisir une personne qui a déjà une fiche** (fiche papier, import Excel, assistant) : si une
+  seule fiche non élève porte ce nom et ce prénom, elle est complétée (rôle élève, fiche élève,
+  emails) au lieu d'en créer une autre. Exception : on n'ajoute jamais une adresse nouvelle à la
+  fiche d'un admin, car cette adresse obtiendrait ses droits ; une fiche à part est alors créée,
+  et l'Administrateur principal fusionne.
+- **Fusionner avec…** (bouton de la fiche élève) : on choisit l'autre fiche de la même personne,
+  les fiches au même nom en tête. Il n'en reste qu'une, avec tout ce qu'avaient les deux : rôles,
+  emails, fiche élève, cours, présences, messages et conversations, notes de frais, fichiers de
+  Docs. Un admin fusionne deux fiches ordinaires ; dès qu'une des deux est admin, seul
+  l'Administrateur principal (ou le Super User) le peut. Sa propre fiche est toujours celle qui
+  reste. Le Super User ne se fusionne pas.
+- Fiche : nom, prénom, téléphone, et **plusieurs emails** tous équivalents (aucun « principal »). Les champs propres
   à un rôle métier (date de naissance, santé, paiement d'un élève) vivent dans le module ou
   l'appli, jamais dans la fiche du core.
 - **Famille** : toutes les fiches reliées par au moins un email commun, de proche en proche,
@@ -157,7 +172,9 @@ Règles, imposées par le serveur et pas seulement cachées à l'écran :
   connexion, il choisit l'organisation où il intervient et la voit comme un Administrateur
   principal. Il reste absent des listes de personnes, mais **on peut le trouver et l'ajouter
   dans les conversations de toute organisation** (décision de Seb du 18 octobre), comme une
-  personne de l'organisation.
+  personne de l'organisation : recherche des contacts, et bouton « Super User » de « Nouveau
+  groupe » (`spec/modules/messagerie-instantanee.md` §3.4). Seuls son nom et son prénom sont
+  montrés.
 
 ### 6.2 Les rôles métier, ajoutés par l'appli
 
@@ -168,9 +185,8 @@ Une appli peut ajouter ses propres rôles. Chacun déclare :
 - avec quoi il se cumule ou non ;
 - les onglets et droits qu'il ouvre.
 
-Exemple, Contretemps : **Professeur**, rang entre Membre (« Élève ») et Admin, ne se cumule pas
-avec Élève (un adulte à la fois élève et professeur a deux fiches dans la même famille), peut
-être promu Admin. Ses droits sont dans `SPEC.md` §3.
+Exemple, Contretemps : **Professeur**, rang entre Membre (« Élève ») et Admin. Il se cumule avec
+tout, Élève compris (une personne = une fiche, §4). Ses droits sont dans `SPEC.md` §3.
 
 ### 6.3 Un seul endroit pour lire les droits
 
@@ -212,6 +228,15 @@ Détail : `SPEC.md` §2.2 (« Suivi de l'invitation »), §2.7. Code : `personna
   enregistrée sur l'adresse de connexion (« appli installée le … ») quand le téléphone le permet.
 - Changer de logo demande de réinstaller sur iPhone ; un avertissement le dit avant
   d'enregistrer.
+
+---
+
+## 8 bis. Barre d'onglets du bas
+
+Quand les onglets ne tiennent pas dans la largeur (un Super User en a huit), les derniers passent
+sous un bouton **« Plus » (⋯)** en bas à droite, qui les ouvre dans un petit menu *(demande de Seb
+du 18 octobre 2026)*. L'onglet actif caché dans le menu allume le bouton « Plus », et les pastilles
+des onglets cachés s'y additionnent.
 
 ---
 

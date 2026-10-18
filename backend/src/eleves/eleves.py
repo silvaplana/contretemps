@@ -9,6 +9,7 @@ import datetime as dt
 
 from choregraphies.models import choregraphies_eleves
 from comptes import Compte, Comptes, RegleRoles, roles
+from comptes.models import RoleCompte, separer_emails
 from cours.models import eleves_cours
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -54,20 +55,45 @@ class Eleves:
         date_naissance: dt.date | None = None,
         **profil_champs,
     ) -> tuple[Compte, ProfilEleve]:
-        compte = self.comptes.create(
-            db,
-            ecole_id=ecole_id,
-            role="eleve",
-            nom=nom,
-            prenom=prenom,
-            email=email,
-            telephone=telephone,
-        )
+        """Une personne = une fiche (spec/core.md §4) : si la personne a déjà
+        une fiche dans l'école sans être élève (un prof, un admin), on la
+        complète au lieu d'en créer une autre."""
+        compte = self._fiche_a_completer(db, ecole_id, nom, prenom, email)
+        if compte is not None:
+            if email:
+                compte.definir_emails(compte.emails + separer_emails(email))
+            compte.telephone = compte.telephone or telephone
+            compte.roles.append(RoleCompte(role=roles.ELEVE))
+            db.commit()
+            self.comptes.recalculer_familles(db, ecole_id)
+        else:
+            compte = self.comptes.create(
+                db,
+                ecole_id=ecole_id,
+                role="eleve",
+                nom=nom,
+                prenom=prenom,
+                email=email,
+                telephone=telephone,
+            )
         profil = ProfilEleve(compte_id=compte.id, date_naissance=date_naissance, **profil_champs)
         db.add(profil)
         db.commit()
         db.refresh(profil)
         return compte, profil
+
+    def _fiche_a_completer(self, db: Session, ecole_id: int, nom: str, prenom: str, email: str | None) -> Compte | None:
+        """La seule fiche non élève à ce nom et prénom. Jamais celle d'un
+        admin qui recevrait une adresse nouvelle : cette adresse obtiendrait
+        ses droits ; un Administrateur principal fusionne alors les deux
+        fiches lui-même (Fusion)."""
+        fiches = [c for c in self.comptes.trouver_par_nom_prenom(db, ecole_id, nom, prenom) if not roles.is_eleve(c)]
+        if len(fiches) != 1:
+            return None
+        fiche = fiches[0]
+        if roles.is_admin(fiche) and not set(separer_emails(email)) <= set(fiche.emails):
+            return None
+        return fiche
 
     def delete(self, db: Session, eleve_id: int) -> bool:
         """Supprime le profil + les contacts avant le compte lui-même

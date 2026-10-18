@@ -61,6 +61,7 @@ from saisons.gestion import GestionSaisons
 from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
 from saisons.receiver import SaisonsReceiver
 from profs import Profs, ProfsReceiver
+from fusion import Fusion, FusionReceiver
 from videos import DOSSIER_VIDEOS_LIVE, Videos, VideosReceiver
 
 load_dotenv()  # charge backend/.env si present
@@ -178,6 +179,8 @@ import_excel_receiver = ImportExcelReceiver(client=import_excel_client, app=app)
 # Monte les routes des profs (/profs) - depend de comptes et cours.
 profs_client = Profs(comptes=comptes_client, cours=cours_client)
 profs_receiver = ProfsReceiver(client=profs_client, app=app)
+# Une personne = une fiche (spec/core.md §4) : « Fusionner avec… ».
+fusion_receiver = FusionReceiver(client=Fusion(comptes_client), app=app)
 
 # Monte les routes de presence (/seances, /cours/{id}/seances, /profs/{id}/heures) - depend de cours.
 presence_client = Presence(cours=cours_client)

@@ -454,7 +454,17 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
       </button>
 
       {eleveEnFiche && (
-        <FicheEleve eleve={eleveEnFiche} cours={cours} onClose={() => setFicheId(null)} onEnregistre={remplacer} />
+        <FicheEleve
+          ecoleId={ecoleId}
+          eleve={eleveEnFiche}
+          cours={cours}
+          onClose={() => setFicheId(null)}
+          onEnregistre={remplacer}
+          onFusionnee={() => {
+            setFicheId(null)
+            relireEleves()
+          }}
+        />
       )}
 
       {eleveAppuye && (

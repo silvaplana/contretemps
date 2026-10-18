@@ -60,3 +60,20 @@ export async function ficheCourante(compteId) {
   if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
   return (await reponse.json()).compte_id
 }
+
+// Une personne = une fiche (spec/core.md §4) : `gardeId` garde tout ce
+// qu'avait `autreId`, qui disparaît. Refus lisible (409 : mauvaise fiche,
+// 403 : réservé à l'Administrateur principal dès qu'une fiche est admin).
+export async function fusionner(gardeId, autreId) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${gardeId}/fusion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ autre_id: autreId }),
+  })
+  if (reponse.status === 403) throw new Error('Une fiche admin ne se fusionne que par un administrateur principal.')
+  if (!reponse.ok) {
+    const corps = await reponse.json().catch(() => ({}))
+    throw new Error(typeof corps.detail === 'string' ? corps.detail : `Requête échouée (${reponse.status})`)
+  }
+  return reponse.json()
+}

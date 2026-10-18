@@ -32,8 +32,8 @@ plusieurs rôles** (décision du 2026-09-21), par exemple Professeur ET Admin. L
 stockés dans une table de liaison compte ↔ rôle (§6.3bis), et le code ne les lit qu'à travers
 des fonctions centrales (`isAdmin`, `isProf`..., voir §6.3bis). Deux règles de cumul :
 - **Owner implique Admin** : un Owner a toujours aussi le rôle Admin ;
-- **Élève ne se cumule jamais avec Professeur** : un adulte à la fois élève et professeur a
-  deux comptes, regroupés dans la même famille (voir ci-dessous). Un élève peut en revanche
+- ~~**Élève ne se cumule jamais avec Professeur**~~ *(remplacé le 2026-10-18 : une personne =
+  une fiche, tous les rôles se cumulent, voir `spec/core.md` §4)*. Un élève peut en revanche
   être promu Admin, voire Owner, mais ses droits d'admin ne sont actifs qu'avec le code
   d'accès Admin de l'école (§2.4, « Élève-admin »).
 

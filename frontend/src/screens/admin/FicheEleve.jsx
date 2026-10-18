@@ -5,6 +5,7 @@ import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
+import FusionnerAvec from './FusionnerAvec.jsx'
 
 // Fiche d'un élève (Admin > Élèves, demande du 2026-10-15) : ouverte d'un
 // clic sur une ligne du tableau, qui n'est plus modifiable. Elle s'ouvre en
@@ -41,7 +42,8 @@ function dateFrancaise(iso) {
   return `${j}/${m}/${a}`
 }
 
-export default function FicheEleve({ eleve, cours, onClose, onEnregistre }) {
+export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistre, onFusionnee }) {
+  const [fusionOuverte, setFusionOuverte] = useState(false)
   const [brouillon, setBrouillon] = useState(null) // null = lecture
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState('')
@@ -126,9 +128,15 @@ export default function FicheEleve({ eleve, cours, onClose, onEnregistre }) {
   const nomCours = (id) => cours.find((c) => c.id === id)?.nom
 
   const piedLecture = (
-    <button type="button" className="btn btn--primary btn--block" onClick={() => setBrouillon(brouillonDe(eleve))}>
-      <Icon name="edit" size={16} /> Modifier
-    </button>
+    <div className="fiche-eleve__boutons">
+      {/* Une personne = une fiche (spec/core.md §4). */}
+      <button type="button" className="btn btn--secondary" onClick={() => setFusionOuverte(true)}>
+        Fusionner avec…
+      </button>
+      <button type="button" className="btn btn--primary" onClick={() => setBrouillon(brouillonDe(eleve))}>
+        <Icon name="edit" size={16} /> Modifier
+      </button>
+    </div>
   )
   const piedEdition = (
     <div className="fiche-eleve__boutons">
@@ -153,6 +161,10 @@ export default function FicheEleve({ eleve, cours, onClose, onEnregistre }) {
       </button>
     </div>
   )
+
+  if (fusionOuverte) {
+    return <FusionnerAvec ecoleId={ecoleId} fiche={eleve} onClose={() => setFusionOuverte(false)} onFait={onFusionnee} />
+  }
 
   return (
     <Modal

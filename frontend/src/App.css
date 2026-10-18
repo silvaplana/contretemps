@@ -359,6 +359,51 @@
   }
 }
 
+/* « Plus » (⋯) : les onglets qui ne tiennent pas dans la barre (voir
+   BottomNav.jsx), en menu au-dessus de son coin droit. */
+.bottom-nav__voile {
+  position: fixed;
+  inset: 0;
+  background: transparent;
+  border: none;
+  z-index: 40;
+}
+
+.bottom-nav__menu {
+  position: absolute;
+  right: 8px;
+  bottom: calc(100% + 8px);
+  z-index: 41;
+  display: flex;
+  flex-direction: column;
+  min-width: 200px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+
+.bottom-nav__menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 12px;
+  background: none;
+  border: none;
+  border-radius: 10px;
+  color: var(--text);
+  font-size: 17px;
+  text-align: left;
+}
+
+.bottom-nav__menu-item.is-active {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+
 /* Badge numéroté "il y a X choses à voir" (voir BottomNav.jsx : props
    `alertes` — pour l'instant, messages non lus). `position: relative` sur
    le conteneur de l'icône, pas sur .bottom-nav__item entier : le badge
