@@ -3688,3 +3688,135 @@ a.btn {
 .liste-emails__ajouter {
   align-self: flex-start;
 }
+
+/* ==========================================================================
+   Messagerie : Nouvelle discussion, Nouveau groupe, Qui est dans le groupe ?
+   (spec/modules/messagerie-instantanee.md §2-3)
+   ========================================================================== */
+
+/* La liste défile sous le bouton + sans que la dernière ligne s'y cache. */
+.conversation-list-screen {
+  padding-bottom: calc(16px + 56px + 16px);
+}
+
+.nouvelle-discussion__titre {
+  flex: 1;
+}
+
+.nouvelle-discussion__recherche {
+  flex: 1;
+  min-height: 44px;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: 17px;
+  color: var(--text-h);
+}
+
+/* Lignes « gros et simple » (SPEC §6.0 bis) : 76 px, texte 17 px. */
+.nouvelle-discussion__ligne {
+  min-height: 76px;
+}
+
+.nouvelle-discussion__ligne .conversation-list__text strong,
+.nouvelle-discussion__action strong {
+  font-size: 17px;
+}
+
+.nouvelle-discussion__rond {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.nouvelle-discussion__action {
+  min-height: 76px;
+  color: var(--text-h);
+}
+
+/* Écran plein par-dessus la fenêtre « Nouveau groupe » (.modal-overlay est
+   à 50) : choix multiple et « Qui est dans le groupe ? ». */
+.ecran-dessus {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  padding-top: env(safe-area-inset-top);
+}
+
+.ecran-dessus__liste {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 16px 16px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* « Valider » toujours visible : la liste défile derrière lui, au-dessus
+   de la barre système Android / iPhone. */
+.ecran-dessus__pied {
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--bg);
+}
+
+.choix-membres__ligne {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 56px;
+  font-size: 17px;
+  color: var(--text-h);
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.choix-membres__ligne input {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.choix-membres__tout {
+  font-weight: 700;
+}
+
+.choix-membres__recherche {
+  margin: 10px 0 4px;
+}
+
+.surlignage {
+  background: var(--warning-bg);
+  color: inherit;
+  border-radius: 3px;
+}
+
+.nouveau-groupe__personnes {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nouveau-groupe__oeil {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-bg);
+  color: var(--text-h);
+  font-weight: 700;
+}
+
+.nouveau-groupe__oeil:disabled {
+  opacity: 0.5;
+}

@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import * as messagesApi from '../api/messages.js'
+import Icon from '../components/Icon.jsx'
 import { initialiserPresence } from '../utils/presenceEnLigne.js'
 import ConversationListScreen from './messagerie/ConversationListScreen.jsx'
 import ConversationThreadScreen from './messagerie/ConversationThreadScreen.jsx'
 import NouveauGroupeModal from './messagerie/NouveauGroupeModal.jsx'
+import NouvelleDiscussionScreen from './messagerie/NouvelleDiscussionScreen.jsx'
 import ProfilContactScreen from './messagerie/ProfilContactScreen.jsx'
 
 // Écran Messagerie (Admin, Professeur, Élève — voir spec/SPEC.md 5.5).
@@ -31,15 +33,17 @@ export default function MessagerieScreen({
   professeurs,
   eleves,
   cours,
-  // "Nouveau groupe" (menu 3 points, Admin seulement — voir App.jsx) :
-  // contrôlé depuis App.jsx (seul ancêtre commun avec Header, qui porte
-  // le déclencheur), mais la modale elle-même vit ICI — demande
-  // utilisateur du 2026-09-18 : rester dans Messagerie, jamais basculer
-  // vers Admin > Messagerie comme avant.
-  nouveauGroupeOuvert,
-  onFermerNouveauGroupe,
+  // « Nouveau groupe » (admins) et lecture seule d'une ancienne saison :
+  // décidés par App.jsx.
+  peutCreerGroupe,
+  lectureSeule,
 }) {
   const [selectedId, setSelectedId] = useState(null)
+  // Écran « Nouvelle discussion », ouvert par le bouton + de la liste
+  // (spec/modules/messagerie-instantanee.md §2). « Nouveau groupe » s'ouvre
+  // depuis cet écran (§2.5 : plus dans le menu ⋯ de l'en-tête).
+  const [nouvelleDiscussion, setNouvelleDiscussion] = useState(false)
+  const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false)
   const [profilStack, setProfilStack] = useState([]) // [{ cible, vueInfos, directInfo }]
   // Garde-fou contre un double-clic sur "Message" (carte de profil) ou
   // sur une ligne "Nouvelle discussion" pendant que la création du DM est
@@ -87,16 +91,17 @@ export default function MessagerieScreen({
       initialiserPresence(conv.membres)
       setConversations((liste) => (liste.some((c) => c.id === conv.id) ? liste : [...liste, conv]))
       setProfilStack([])
+      // Retour arrière depuis la discussion : la liste, pas cet écran (§2.3).
+      setNouvelleDiscussion(false)
       setSelectedId(conv.id)
     } finally {
       setCreationEnCours(false)
     }
   }
 
-  // Un seul `return` (au lieu des 3 précédents) : la modale "Nouveau
-  // groupe" ci-dessous doit pouvoir s'afficher PAR-DESSUS n'importe
-  // laquelle de ces 3 vues (elle s'ouvre depuis le menu de l'en-tête,
-  // accessible peu importe l'écran Messagerie affiché à ce moment-là).
+  // Un seul `return` : la modale "Nouveau groupe" ci-dessous s'affiche
+  // PAR-DESSUS l'écran Nouvelle discussion, et le bouton + par-dessus la
+  // liste.
   let corps
   if (selected) {
     corps = (
@@ -137,6 +142,22 @@ export default function MessagerieScreen({
         }}
       />
     )
+  } else if (nouvelleDiscussion) {
+    corps = (
+      <NouvelleDiscussionScreen
+        compteId={compteId}
+        admins={admins}
+        professeurs={professeurs}
+        eleves={eleves}
+        cours={cours}
+        peutCreerGroupe={peutCreerGroupe}
+        onBack={() => setNouvelleDiscussion(false)}
+        onNouveauGroupe={() => setNouveauGroupeOuvert(true)}
+        onOpenContact={ouvrirAvecContact}
+        onAvatarClick={(compte) => empilerProfil({ type: 'contact', compte })}
+        contactActionEnCours={creationEnCours}
+      />
+    )
   } else {
     corps = (
       <ConversationListScreen
@@ -153,9 +174,16 @@ export default function MessagerieScreen({
     )
   }
 
+  const surLaListe = !selected && !frame && !nouvelleDiscussion
+
   return (
     <>
       {corps}
+      {surLaListe && !lectureSeule && (
+        <button type="button" className="fab" onClick={() => setNouvelleDiscussion(true)} aria-label="Nouvelle discussion">
+          <Icon name="plus" size={28} />
+        </button>
+      )}
       {nouveauGroupeOuvert && (
         <NouveauGroupeModal
           ecoleId={ecoleId}
@@ -164,12 +192,13 @@ export default function MessagerieScreen({
           professeurs={professeurs}
           eleves={eleves}
           cours={cours}
-          onClose={onFermerNouveauGroupe}
+          onClose={() => setNouveauGroupeOuvert(false)}
           onCree={(conversation) => {
             setConversations((liste) =>
               liste.some((c) => c.id === conversation.id) ? liste : [...liste, conversation],
             )
-            onFermerNouveauGroupe()
+            setNouveauGroupeOuvert(false)
+            setNouvelleDiscussion(false)
             // Ouvre directement son fil — confirmation visuelle immédiate
             // que le groupe existe bien (voir demande utilisateur :
             // "doit s'afficher chez moi le créateur").
