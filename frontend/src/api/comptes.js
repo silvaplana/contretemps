@@ -7,10 +7,18 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
+// Admins de l'école, plus le Super User : absent des listes de personnes,
+// il se trouve et s'ajoute dans les conversations de toute école
+// (spec/core.md §6.1). Cette liste ne sert qu'aux conversations.
 export async function listerAdmins(ecoleId) {
-  const reponse = await fetch(`${BASE_URL}/comptes?ecole_id=${ecoleId}&role=admin`)
-  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
-  return reponse.json()
+  const [admins, superusers] = await Promise.all(
+    [`${BASE_URL}/comptes?ecole_id=${ecoleId}&role=admin`, `${BASE_URL}/super-users`].map(async (url) => {
+      const reponse = await fetch(url)
+      if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+      return reponse.json()
+    }),
+  )
+  return [...admins, ...superusers]
 }
 
 function versFamilleEcran(c) {
@@ -51,4 +59,21 @@ export async function ficheCourante(compteId) {
   if (reponse.status === 404) return null
   if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
   return (await reponse.json()).compte_id
+}
+
+// Une personne = une fiche (spec/core.md §4) : `gardeId` garde tout ce
+// qu'avait `autreId`, qui disparaît. Refus lisible (409 : mauvaise fiche,
+// 403 : réservé à l'Administrateur principal dès qu'une fiche est admin).
+export async function fusionner(gardeId, autreId) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${gardeId}/fusion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ autre_id: autreId }),
+  })
+  if (reponse.status === 403) throw new Error('Une fiche admin ne se fusionne que par un administrateur principal.')
+  if (!reponse.ok) {
+    const corps = await reponse.json().catch(() => ({}))
+    throw new Error(typeof corps.detail === 'string' ? corps.detail : `Requête échouée (${reponse.status})`)
+  }
+  return reponse.json()
 }

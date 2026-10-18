@@ -6,9 +6,9 @@ from documents.models import DocAcl, DocNode
 from documents.ports import DEFAULT_PRIVATE_EDITORS, Member
 
 
-def membre(person_id=1, admin=False, groups=()):
+def membre(person_id=1, admin=False, groups=(), superuser=False):
     return Member(
-        person_id=person_id, org_id=1, display_name="X", is_admin=admin, is_superuser=False,
+        person_id=person_id, org_id=1, display_name="X", is_admin=admin, is_superuser=superuser,
         has_personal_space=True, groups=frozenset(groups),
     )
 
@@ -28,6 +28,7 @@ def niveau(m, space, path, acl=None, owner=None, fermees=frozenset()):
 PROF = membre(2, groups={"role:professeur"})
 ELEVE = membre(3, groups={"role:eleve", "course:7"})
 ADMIN = membre(4, admin=True, groups={"role:admin"})
+SUPERUSER = membre(5, superuser=True)
 
 
 def test_defauts_des_racines():
@@ -66,3 +67,14 @@ def test_saison_close_plafonnee_a_la_lecture_admin_compris():
     assert niveau(PROF, "private", [saison], fermees={9}) == "view"
     assert niveau(ELEVE, "private", [saison], fermees={9}) is None
     assert niveau(PROF, "private", [saison], fermees={8}) == "edit"
+
+
+def test_dossier_reserve_au_groupe_et_au_superuser():
+    """Financier (spec/core.md §6.1) : le trésorier et le Super User, pas
+    les autres admins."""
+    saison, financier = dossier(1, system_kind="period"), dossier(2, restricted=True, system_kind="reserved")
+    acl = {2: [droit(2, "role:tresorier", "manage")]}
+    tresorier = membre(6, admin=True, groups={"role:admin", "role:tresorier"})
+    assert niveau(tresorier, "private", [saison, financier], acl) == "manage"
+    assert niveau(SUPERUSER, "private", [saison, financier], acl) == "manage"
+    assert niveau(ADMIN, "private", [saison, financier], acl) is None

@@ -255,8 +255,8 @@ class Comptes:
     # appliquées par le serveur, jamais seulement masquées dans l'IHM. ---
 
     def ajouter_role(self, db: Session, compte: Compte, role: str) -> None:
-        """Règles : `owner` exige `admin` ; `eleve` ne se cumule avec aucun
-        autre rôle. Sans effet si le compte a déjà ce rôle."""
+        """Règles : `owner` et `tresorier` exigent `admin`. Sans effet si le
+        compte a déjà ce rôle."""
         if role not in r.ROLES:
             raise RegleRoles(f"Rôle inconnu : {role}")
         if role == r.SUPERUSER or r.is_superuser(compte):
@@ -269,13 +269,10 @@ class Comptes:
             raise RegleRoles("Seul un administrateur peut être administrateur principal")
         if role == r.TRESORIER and not r.is_admin(compte):
             raise RegleRoles("Seul un administrateur peut être trésorier")
-        # Un élève peut être administrateur (et administrateur principal),
-        # mais jamais professeur ; et le rôle élève ne s'ajoute pas après
-        # coup à un compte existant (il vient avec sa fiche élève).
-        if role == r.ELEVE and compte.roles:
-            raise RegleRoles("Le rôle élève ne s'ajoute pas à un compte existant")
-        if role == r.PROFESSEUR and r.is_eleve(compte):
-            raise RegleRoles("Un élève ne peut pas être aussi professeur")
+        # Une personne = une fiche (spec/core.md §4, décision de Seb du
+        # 2026-10-18) : tous les rôles se cumulent, élève et professeur
+        # compris. Le rôle élève vient avec sa fiche élève : l'ajouter par
+        # Eleves.create ou la fusion, jamais seul.
         compte.roles.append(RoleCompte(role=role))
         db.commit()
         db.refresh(compte)
@@ -308,6 +305,17 @@ class Comptes:
         return [c.id for c in owners] == [compte.id]
 
     # --- Superuser (§2.5) : hors de toute école ---
+
+    def superusers(self, db: Session) -> list[Compte]:
+        """Tous les Superusers (comptes hors école, §2.5), triés par id."""
+        return list(
+            db.scalars(
+                select(Compte)
+                .join(RoleCompte, RoleCompte.compte_id == Compte.id)
+                .where(Compte.ecole_id.is_(None), RoleCompte.role == r.SUPERUSER)
+                .order_by(Compte.id)
+            )
+        )
 
     def trouver_superuser(self, db: Session, identifiant: str) -> Compte | None:
         """Le Superuser désigné par `identifiant` (email, ou "Prénom Nom"),

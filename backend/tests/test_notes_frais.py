@@ -268,7 +268,7 @@ def test_telecharger_les_justificatifs_d_une_note(client, ecole):
     assert client.get(url, headers=entetes_session(ecole["admin"])).status_code == 404
 
 
-def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole):
+def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, db_session, ecole):
     eleve, tresorier, admin = ecole["eleve"], ecole["tresorier"], ecole["admin"]
     org = ecole["ecole"].id
     d = _depense(client, eleve)
@@ -306,6 +306,13 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole
     assert apres["id"] == dossier_note["id"] and apres["status"] == "official"
     assert len(parcourir(tresorier, dossier_note["id"]).json()["items"]) == 2
 
+    # Le Super User, qui a tous les droits (spec/core.md §6.1), y entre.
+    su = Comptes().enregistrer_superuser(
+        db_session, nom="Richard", prenom="Sébastien", email="su@test.fr", mot_de_passe_hache=None
+    )
+    assert enfant(su, saison["id"], "Financier")["id"] == financier["id"]
+    assert parcourir(su, financier["id"]).status_code == 200
+
     # Un autre admin ne voit ni n'ouvre le dossier Financier.
     assert enfant(admin, saison["id"], "Financier") is None
     assert parcourir(admin, financier["id"]).status_code == 404
@@ -339,3 +346,27 @@ def test_note_refusee_badge_refuse_puis_reprise_retiree_des_docs(client, ecole):
     assert client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve)).status_code == 204
     assert items(personne["id"]) == []
 
+
+
+def test_vider_les_notes_de_frais_d_une_ecole(client, db_session, ecole, tmp_path):
+    """Commande serveur app/vider_notes_frais.py : notes, dépenses,
+    justificatifs et dossier Docs effacés ; catégories gardées."""
+    from app.vider_notes_frais import _compter, _dossiers_docs, vider
+
+    eleve, tresorier = ecole["eleve"], ecole["tresorier"]
+    org = ecole["ecole"].id
+    d = _depense(client, eleve)
+    fichiers = {"fichier": ("ticket.png", io.BytesIO(b"\x89PNG faux"), "image/png")}
+    client.post(f"/notes-frais/depenses/{d['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
+    _envoyer(client, eleve, [d["id"]])
+    _depense(client, eleve, montant=100)
+    assert _compter(db_session, org) == (1, 2, 1)
+    assert _dossiers_docs(db_session, org)
+    categories = client.get("/notes-frais/categories", headers=entetes_session(tresorier)).json()
+
+    vider(db_session, org)
+
+    assert _compter(db_session, org) == (0, 0, 0)
+    assert _dossiers_docs(db_session, org) == []
+    assert client.get("/notes-frais/moi", headers=entetes_session(eleve)).status_code == 200
+    assert client.get("/notes-frais/categories", headers=entetes_session(tresorier)).json() == categories

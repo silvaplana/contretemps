@@ -6,7 +6,7 @@ import { normaliserRecherche } from '../../utils/recherche.js'
 // Avatar Admin/Professeur dans une couleur distincte de celui d'un élève
 // (voir .avatar--staff dans App.css).
 export function estStaff(role) {
-  return role === 'admin' || role === 'professeur'
+  return role === 'admin' || role === 'professeur' || role === 'superuser'
 }
 
 export function initiales(compte) {

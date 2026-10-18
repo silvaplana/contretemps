@@ -7,8 +7,10 @@ droits déjà chargés, sans toucher à la base. Testées à part
 Règles, dans l'ordre :
 
 0. dossier d'une saison close : plafonné à Lecture pour tout le monde ;
-1. superuser et admins : Gestion partout, sauf l'espace Personnel des autres
-   et les dossiers réservés à un groupe (§4.7 bis, ex. Financier) ;
+1. superuser : Gestion partout, dossiers réservés compris (il a tous les
+   droits, spec/core.md §6.1), sauf l'espace Personnel des autres ;
+   admins : pareil, sauf aussi les dossiers réservés à un groupe (§4.7 bis,
+   ex. Financier, réservé aux trésoriers) ;
 2. espace Personnel : le propriétaire a Gestion, personne d'autre ;
 3. héritage par ajout : on remonte le chemin et on garde le plus fort des
    droits trouvés pour la personne et ses groupes. Un dossier « Restreint »
@@ -87,8 +89,10 @@ def _level_without_lock(member, space, owner_person_id, path, acl_by_node, priva
         if owner_person_id == member.person_id:
             return LEVEL_MANAGE
         return None
+    if member.is_superuser:
+        return LEVEL_MANAGE
     reserve = any(n.system_kind == SYSTEM_RESERVED for n in path)
-    if (member.is_superuser or member.is_admin) and not reserve:
+    if member.is_admin and not reserve:
         return LEVEL_MANAGE
     found: list[str | None] = []
     stopped = False

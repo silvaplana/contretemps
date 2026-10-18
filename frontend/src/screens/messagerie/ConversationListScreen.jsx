@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { compterNonLus } from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import { normaliserRecherche } from '../../utils/recherche.js'
+import { tousLesComptes } from './personnes.js'
 
 // Avatar Admin/Professeur dans une couleur distincte de celui d'un élève
 // (décision utilisateur explicite, voir .avatar--staff dans App.css) —
@@ -81,16 +82,11 @@ export default function ConversationListScreen({
       .filter((c) => c.type === 'individuelle')
       .flatMap((c) => c.membres.map((m) => m.id)),
   )
-  // `role` forcé explicitement : contrairement aux admins (déjà porté par
-  // le backend, voir comptesApi.listerAdmins), ni professeurs.js ni
-  // eleves.js n'exposent ce champ (pas besoin jusqu'ici) — la carte de
-  // profil (voir ProfilContactScreen.jsx) en a besoin pour son sous-titre.
-  const tousLesComptes = [
-    ...admins.map((c) => ({ ...c, role: c.role ?? 'admin' })),
-    ...professeurs.map((c) => ({ ...c, role: 'professeur' })),
-    ...eleves.map((c) => ({ ...c, role: 'eleve' })),
-  ]
-  const nouveauxContacts = tousLesComptes.filter(
+  // Chaque fiche une seule fois (bug signalé le 2026-10-18 : une
+  // professeure-admin sortait à la fois des admins et des profs), avec son
+  // `role` pour le sous-titre de la carte de profil (ProfilContactScreen.jsx).
+  const contacts = tousLesComptes(admins, professeurs, eleves)
+  const nouveauxContacts = contacts.filter(
     (c) =>
       c.id !== compteId &&
       !idsDejaEnDm.has(c.id) &&

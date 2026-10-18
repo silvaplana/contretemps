@@ -24,7 +24,7 @@ from .portee import toutes_saisons
 from .saisons import saison_courante_id
 
 # Ordre d'attribution des rôles recopiés (owner exige admin, voir §6.3bis).
-_ORDRE_ROLES = [r.ELEVE, r.PROFESSEUR, r.ADMIN, r.OWNER]
+_ORDRE_ROLES = [r.ELEVE, r.PROFESSEUR, r.ADMIN, r.OWNER, r.TRESORIER]
 
 
 class ErreurSaison(ValueError):
@@ -177,7 +177,8 @@ class GestionSaisons:
         était aussi professeur ou élève n'est recopié qu'en admin si la case
         correspondante n'est pas cochée (§2.6). Familles recopiées telles
         quelles pour les fiches reprises ; paiement remis à zéro."""
-        roles_repris = {r.ADMIN, r.OWNER}
+        # Trésorier aussi (spec/core.md §7) : un droit d'admin, comme Owner.
+        roles_repris = {r.ADMIN, r.OWNER, r.TRESORIER}
         if duplication.profs:
             roles_repris.add(r.PROFESSEUR)
         if duplication.eleves:

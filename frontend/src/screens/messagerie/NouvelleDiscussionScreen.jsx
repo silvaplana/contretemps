@@ -3,7 +3,7 @@ import Icon from '../../components/Icon.jsx'
 import { normaliserRecherche } from '../../utils/recherche.js'
 import { estStaff, initiales, tousLesComptes, trierParNom } from './personnes.js'
 
-const ROLE_LIBELLE = { admin: 'Admin', professeur: 'Professeur' }
+const ROLE_LIBELLE = { superuser: 'Super User', admin: 'Admin', professeur: 'Professeur' }
 
 // Sous-titre d'un contact (spec §2.3) : son rôle, ou les cours d'un élève.
 function sousTitre(compte, cours) {
