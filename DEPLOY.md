@@ -69,18 +69,27 @@ Le site est alors accessible sur `https://silvaplana.cloud/contretemps/` et
 
 ## 3. Mettre à jour après un nouveau push GitHub
 
+**Automatique depuis le 2026-10-18** : chaque fusion dans `main` est mise en
+ligne par GitHub Actions (voir section 5). À la main, en dépannage, une
+seule commande fait tout ce qui suit (pull, build, migrations, vérification) :
+
 ```bash
 ssh vps
 cd contretemps
+./deploy.sh
+```
+
+Le détail de ce que fait `deploy.sh` :
+
+```bash
 git pull
 docker compose up -d --build
 ```
 
 `Base.metadata.create_all` (voir `app/main.py`) crée automatiquement les tables MANQUANTES au
 démarrage — pratique, mais ça ne fait JAMAIS rien pour une colonne ajoutée à une table déjà
-existante. Si le changement déployé ajoute une migration Alembic (nouveau fichier dans
-`backend/alembic/versions/`), il faut l'appliquer explicitement après le `docker compose up -d
---build` ci-dessus :
+existante. C'est pourquoi `deploy.sh` applique toujours les migrations Alembic après le `docker compose up
+-d --build` ci-dessus (sans effet s'il n'y en a pas de nouvelle) :
 
 ```bash
 docker compose exec backend alembic upgrade head
@@ -111,6 +120,89 @@ docker compose up -d --build frontend
 Sans ce fichier, `GOOGLE_CLIENT_ID` reste vide et le frontend se construit
 quand même — seule la destination "Cet appareil" est proposée dans le
 menu sauvegarde, sans erreur.
+
+## 5. Mise en ligne automatique (GitHub Actions)
+
+À chaque fusion dans `main` (et à la demande, onglet **Actions** du dépôt >
+« Déployer sur le VPS » > **Run workflow**), GitHub se connecte au VPS en
+SSH, lance `deploy.sh`, puis vérifie que `/contretemps/api/health`,
+`/contretemps/` et `/contretemps-inscription/` répondent. Un déploiement raté
+apparaît en rouge dans l'onglet Actions, avec le journal complet, et GitHub
+envoie un mail.
+
+- Fichiers : `.github/workflows/deploy.yml` (côté GitHub) et `deploy.sh`
+  (côté VPS).
+- La clé de déploiement est rangée dans les secrets du dépôt, jamais dans le
+  dépôt. Sur le VPS, `authorized_keys` la limite à lancer `deploy.sh` : elle
+  ne donne pas de terminal et ne peut lancer aucune autre commande.
+- `deploy.sh` vient du dépôt : la relecture des PR reste le garde-fou de ce
+  qui tourne sur le serveur.
+- Les `.env` (racine et `backend/`) restent sur le VPS, `git pull` n'y touche
+  pas.
+- Tant que les secrets ne sont pas en place, le workflow ne fait rien (simple
+  avertissement, pas d'erreur).
+
+### Mise en place (une seule fois)
+
+Sur le VPS (`ssh vps`) :
+
+1. Récupérer `deploy.sh` et vérifier qu'il marche à la main :
+
+   ```bash
+   cd ~/contretemps && git pull && ./deploy.sh
+   ```
+
+   Si `docker` demande `sudo`, ajouter l'utilisateur au groupe docker, se
+   déconnecter puis se reconnecter : `sudo usermod -aG docker $USER`.
+
+2. Créer la clé de déploiement (sans mot de passe, GitHub ne pourrait pas
+   le taper) :
+
+   ```bash
+   ssh-keygen -t ed25519 -N "" -C "github-actions-contretemps" -f ~/deploy_contretemps
+   ```
+
+3. L'autoriser, limitée à `deploy.sh` :
+
+   ```bash
+   echo "command=\"$HOME/contretemps/deploy.sh\",restrict $(cat ~/deploy_contretemps.pub)" >> ~/.ssh/authorized_keys
+   ```
+
+4. Afficher les quatre valeurs à coller dans GitHub (étape 5) :
+
+   ```bash
+   whoami                                                              # -> VPS_USER
+   cat ~/deploy_contretemps                                            # -> VPS_SSH_KEY (tout, lignes BEGIN et END comprises)
+   echo "187.124.17.136 $(cut -d' ' -f1,2 /etc/ssh/ssh_host_ed25519_key.pub)"   # -> VPS_KNOWN_HOSTS
+   ```
+
+   `VPS_HOST` vaut `187.124.17.136`. Si SSH n'écoute pas sur le port 22,
+   ajouter aussi un secret `VPS_PORT` et écrire `[187.124.17.136]:PORT` au
+   début de `VPS_KNOWN_HOSTS` au lieu de l'adresse seule.
+
+Dans GitHub, page
+<https://github.com/silvaplana/contretemps/settings/secrets/actions>
+(Settings > Secrets and variables > Actions) :
+
+5. Pour chacune des quatre valeurs, **New repository secret**, nom
+   `VPS_HOST`, `VPS_USER`, `VPS_SSH_KEY` ou `VPS_KNOWN_HOSTS`, coller la
+   valeur, **Add secret**.
+
+De retour sur le VPS :
+
+6. Effacer la clé privée, qui n'a plus besoin d'être sur le serveur :
+
+   ```bash
+   rm ~/deploy_contretemps ~/deploy_contretemps.pub
+   ```
+
+Puis dans GitHub :
+
+7. Onglet **Actions** > « Déployer sur le VPS » > **Run workflow** > **Run
+   workflow**. Le déploiement doit passer au vert.
+
+Pour couper l'accès : supprimer la ligne `github-actions-contretemps` de
+`~/.ssh/authorized_keys` sur le VPS.
 
 
 ## Adresses d'école (spec §2.7, mises en service le 2026-10-15)
