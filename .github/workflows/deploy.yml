@@ -1,0 +1,78 @@
+# Mise en ligne automatique sur le VPS (voir DEPLOY.md §5).
+#
+# À chaque fusion (ou push) dans main, et à la demande par le bouton
+# « Run workflow » de l'onglet Actions, GitHub se connecte au VPS en SSH et
+# y lance deploy.sh (git pull, docker compose up -d --build, alembic upgrade
+# head), puis vérifie que l'appli répond depuis Internet.
+#
+# La clé vient des secrets du dépôt, jamais du dépôt lui-même. Sur le VPS,
+# elle ne peut lancer que deploy.sh (voir DEPLOY.md §5).
+name: Déployer sur le VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Un seul déploiement à la fois ; deux fusions rapprochées se suivent
+# au lieu de s'interrompre.
+concurrency:
+  group: deploiement-vps
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deployer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USER: ${{ secrets.VPS_USER }}
+      VPS_PORT: ${{ secrets.VPS_PORT || '22' }}
+      VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+      VPS_KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+    steps:
+      - name: Vérifier que les secrets sont en place
+        id: secrets
+        run: |
+          if [ -z "$VPS_HOST" ] || [ -z "$VPS_USER" ] || [ -z "$VPS_SSH_KEY" ] || [ -z "$VPS_KNOWN_HOSTS" ]; then
+            echo "::warning::Déploiement automatique pas encore configuré (secrets manquants, voir DEPLOY.md §5). Rien n'a été déployé."
+            echo "pret=non" >> "$GITHUB_OUTPUT"
+          else
+            echo "pret=oui" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Préparer la clé SSH
+        if: steps.secrets.outputs.pret == 'oui'
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$VPS_SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$VPS_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Déployer (deploy.sh sur le VPS)
+        if: steps.secrets.outputs.pret == 'oui'
+        # La commande lancée est imposée côté VPS (authorized_keys) : rien à
+        # passer ici, la connexion suffit.
+        run: |
+          ssh -i ~/.ssh/deploy -p "$VPS_PORT" \
+            -o StrictHostKeyChecking=yes -o BatchMode=yes \
+            -o ServerAliveInterval=30 \
+            "$VPS_USER@$VPS_HOST"
+
+      - name: Vérifier que l'appli répond
+        if: steps.secrets.outputs.pret == 'oui'
+        run: |
+          for url in \
+            https://silvaplana.cloud/contretemps/api/health \
+            https://silvaplana.cloud/contretemps/ \
+            https://silvaplana.cloud/contretemps-inscription/ ; do
+            echo "-> $url"
+            curl -fsS --retry 5 --retry-delay 5 --retry-all-errors -o /dev/null "$url"
+          done
+
+      - name: Effacer la clé
+        if: always()
+        run: rm -f ~/.ssh/deploy
