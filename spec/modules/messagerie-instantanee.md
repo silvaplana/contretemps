@@ -174,6 +174,8 @@ sélection multiple.
   soit la position dans la liste : la liste défile derrière lui. Il reporte les choix dans « Personnes »
   et revient à la fenêtre.
 - La flèche ← en haut revient à la fenêtre sans rien changer.
+- Revenu dans la fenêtre, un bouton « Choisir des admins » (ou profs, élèves, cours) sous le sélecteur
+  rouvre le même écran.
 - **Tous** (§3.4) reste un bouton direct « Ajouter tout le monde », sans écran de choix.
 
 ## 4. Hors de cette étape

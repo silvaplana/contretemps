@@ -309,7 +309,6 @@ function App() {
   // ci-dessous) — la modale elle-même vit dans MessagerieScreen.jsx (pas
   // ici) : ce booléen ne fait que la déclencher, App.jsx étant le seul
   // ancêtre commun avec Header (qui porte le bouton).
-  const [nouveauGroupeOuvert, setNouveauGroupeOuvert] = useState(false)
   const [ecole, setEcole] = useState(ECOLE_VIDE)
   // L'assistant de toute l'appli : bouton dans l'en-tête, même conversation
   // dans tous les onglets (Seb, 16 octobre).
@@ -960,6 +959,9 @@ function App() {
     activeTab === 'financier' ||
     activeTab === 'supervision' ||
     activeTab === 'docs' ||
+    // Messagerie : rien à voir avec les cours (spec/modules/
+    // messagerie-instantanee.md §2.6).
+    activeTab === 'messagerie' ||
     // Chorégraphie : pas de sélecteur de cours, l'écran a le sien
     // (discipline / niveau) et montre toute l'école.
     activeTab === 'choregraphie'
@@ -982,7 +984,9 @@ function App() {
               ? 'Documents'
               : activeTab === 'choregraphie'
                 ? 'Chorégraphies'
-                : 'Sélectionner un cours'
+                : activeTab === 'messagerie'
+                  ? 'Messagerie'
+                  : 'Sélectionner un cours'
 
   return (
     <div className={lectureSeule ? 'app app--lecture-seule' : 'app'}>
@@ -1007,13 +1011,7 @@ function App() {
                 icon: 'plus',
                 onClick: () => setPresenceShowAdd(true),
               }
-            : activeTab === 'messagerie' && isAdmin(activeUser)
-              ? {
-                  label: 'Nouveau groupe',
-                  icon: 'plus',
-                  onClick: () => setNouveauGroupeOuvert(true),
-                }
-              : undefined
+            : undefined
         }
       />
 
@@ -1123,8 +1121,8 @@ function App() {
             professeurs={professeurs}
             eleves={eleves}
             cours={cours}
-            nouveauGroupeOuvert={nouveauGroupeOuvert}
-            onFermerNouveauGroupe={() => setNouveauGroupeOuvert(false)}
+            peutCreerGroupe={isAdmin(activeUser)}
+            lectureSeule={lectureSeule}
           />
         )}
 
