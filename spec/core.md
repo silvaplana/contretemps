@@ -238,11 +238,8 @@ Déjà codés dans Contretemps, à spécifier en détail plus tard dans ce docum
 
 ## 11. Écarts entre ce document et le code (18 octobre 2026)
 
-- **Dossier Financier de Docs et Super User** : le code ne laisse entrer dans un dossier réservé
-  que son groupe (`role:tresorier`) ; le Super User n'y a pas accès
-  (`documents/access.py`, `_level_without_lock`), alors qu'il le devrait (§6.1). L'onglet
-  Financier, lui, lui est déjà ouvert (`frontend/src/data/roles.js`, `rolesDe`).
-- **« Qui a accès ? » d'un dossier réservé** : affiche « Admins, toujours » alors que les admins
-  non trésoriers n'y entrent pas (`documents/service.py`, ligne `role:admin` ajoutée d'office).
+- **Corrigé dans la même PR** : le Super User entre maintenant dans le dossier Financier de
+  Docs (il en était exclu), et « Qui a accès ? » d'un dossier réservé n'affiche plus
+  « Admins, toujours ».
 - **Mentions périmées dans `SPEC.md`** : §2.4 (Administrateur principal) et §2.6 (Saisons)
   disent « pas encore implémenté » alors que le code existe.

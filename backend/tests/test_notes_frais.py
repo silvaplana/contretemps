@@ -268,7 +268,7 @@ def test_telecharger_les_justificatifs_d_une_note(client, ecole):
     assert client.get(url, headers=entetes_session(ecole["admin"])).status_code == 404
 
 
-def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole):
+def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, db_session, ecole):
     eleve, tresorier, admin = ecole["eleve"], ecole["tresorier"], ecole["admin"]
     org = ecole["ecole"].id
     d = _depense(client, eleve)
@@ -305,6 +305,13 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, ecole
     [apres] = parcourir(tresorier, personne["id"]).json()["items"]
     assert apres["id"] == dossier_note["id"] and apres["status"] == "official"
     assert len(parcourir(tresorier, dossier_note["id"]).json()["items"]) == 2
+
+    # Le Super User, qui a tous les droits (spec/core.md §6.1), y entre.
+    su = Comptes().enregistrer_superuser(
+        db_session, nom="Richard", prenom="Sébastien", email="su@test.fr", mot_de_passe_hache=None
+    )
+    assert enfant(su, saison["id"], "Financier")["id"] == financier["id"]
+    assert parcourir(su, financier["id"]).status_code == 200
 
     # Un autre admin ne voit ni n'ouvre le dossier Financier.
     assert enfant(admin, saison["id"], "Financier") is None

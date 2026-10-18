@@ -1079,7 +1079,10 @@ class Documents:
                     herites.append(("group", groupe, LEVEL_EDIT, origine))
         if node.restricted:
             herites = []
-        herites.insert(0, ("group", "role:admin", LEVEL_MANAGE, "toujours"))
+        # Les admins gèrent tout, sauf un dossier réservé (ex. Financier),
+        # qu'ils ne voient pas : « Qui a accès ? » ne les y affiche pas.
+        if not any(n.system_kind == SYSTEM_RESERVED for n in loc.path):
+            herites.insert(0, ("group", "role:admin", LEVEL_MANAGE, "toujours"))
         directs = [(l.principal_type, l.principal_id, l.level) for l in acl.get(node.id, [])]
         libelles = self.directory.describe(
             db, member.org_id, [(t, i) for t, i, *_ in herites + directs if i != "everyone"]
