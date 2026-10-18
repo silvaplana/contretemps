@@ -135,6 +135,17 @@ sans savoir qui il y a derrière.
 - Même règle que les autres recherches : sans accents ni majuscules, sur le prénom et le nom.
 - Aucun résultat : « Personne de ce nom dans le groupe. »
 
+### 3.4 Ajouter tout le monde d'un coup
+
+- Dans « Ajouter un membre », le sélecteur Admin | Prof | Élève | Cours reçoit une première position
+  **Tous**, à gauche d'Admin : Tous | Admin | Prof | Élève | Cours.
+- Avec **Tous**, la liste déroulante disparaît et le bouton devient **« Ajouter tout le monde »** : il ajoute
+  tous les admins, tous les profs et tous les élèves de l'organisation à la liste « Personnes ».
+- Chaque personne est ajoutée une par une, comme si on l'avait choisie à la main : on peut ensuite en
+  retirer quelques-unes avec leur croix. Quelqu'un déjà dans la liste n'est pas ajouté deux fois.
+- C'est une photo du moment : une personne qui arrive plus tard dans l'organisation n'entre pas toute
+  seule dans le groupe (contrairement à un cours, qui suit ses élèves).
+
 ## 4. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
