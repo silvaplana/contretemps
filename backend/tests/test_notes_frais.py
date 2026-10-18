@@ -346,3 +346,27 @@ def test_note_refusee_badge_refuse_puis_reprise_retiree_des_docs(client, ecole):
     assert client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve)).status_code == 204
     assert items(personne["id"]) == []
 
+
+
+def test_vider_les_notes_de_frais_d_une_ecole(client, db_session, ecole, tmp_path):
+    """Commande serveur app/vider_notes_frais.py : notes, dépenses,
+    justificatifs et dossier Docs effacés ; catégories gardées."""
+    from app.vider_notes_frais import _compter, _dossiers_docs, vider
+
+    eleve, tresorier = ecole["eleve"], ecole["tresorier"]
+    org = ecole["ecole"].id
+    d = _depense(client, eleve)
+    fichiers = {"fichier": ("ticket.png", io.BytesIO(b"\x89PNG faux"), "image/png")}
+    client.post(f"/notes-frais/depenses/{d['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
+    _envoyer(client, eleve, [d["id"]])
+    _depense(client, eleve, montant=100)
+    assert _compter(db_session, org) == (1, 2, 1)
+    assert _dossiers_docs(db_session, org)
+    categories = client.get("/notes-frais/categories", headers=entetes_session(tresorier)).json()
+
+    vider(db_session, org)
+
+    assert _compter(db_session, org) == (0, 0, 0)
+    assert _dossiers_docs(db_session, org) == []
+    assert client.get("/notes-frais/moi", headers=entetes_session(eleve)).status_code == 200
+    assert client.get("/notes-frais/categories", headers=entetes_session(tresorier)).json() == categories
