@@ -134,8 +134,8 @@ Détail : `SPEC.md` §2.1, §2.4, §2.5, §3, §6.3bis. Code : `comptes/roles.py
 |---|---|---|
 | **Membre** | Utiliser l'appli pour lui-même et sa famille | Un admin, en créant la fiche |
 | **Admin** | Gérer l'organisation : personnes, réglages, modules | L'Administrateur principal |
-| **Administrateur principal** | Un admin qui gère en plus la liste des admins | Un autre Administrateur principal |
-| **Trésorier** | Un admin qui a en plus l'onglet **Financier** | L'Administrateur principal |
+| **Administrateur principal** | Un admin qui gère en plus la liste des admins | Un Administrateur principal ou le Super User |
+| **Trésorier** | Un admin qui a en plus l'onglet **Financier** | Un Administrateur principal ou le Super User |
 | **Super User** | Tout, dans toutes les organisations | Une commande sur le serveur, jamais l'appli |
 
 Règles, imposées par le serveur et pas seulement cachées à l'écran :
@@ -146,8 +146,12 @@ Règles, imposées par le serveur et pas seulement cachées à l'écran :
   l'onglet Financier** et peuvent lire le dossier **Financier** de l'onglet Docs ; même
   l'Administrateur principal ne les voit pas s'il n'est pas trésorier. Il peut y avoir
   plusieurs trésoriers.
+- **Seuls un Administrateur principal et le Super User** cochent ou décochent « Administrateur
+  principal » et « Trésorier » dans la liste des admins. Un admin ordinaire voit ces coches sans
+  pouvoir les changer.
 - Il reste **toujours au moins un Administrateur principal** par organisation, et personne
-  n'agit sur sa propre ligne (ne se retire pas son niveau, ne se supprime pas). Seul le Super
+  n'agit sur sa propre ligne (ne se retire pas son niveau, ne se supprime pas), sauf
+  un Administrateur principal qui peut cocher ou décocher Trésorier pour lui-même. Seul le Super
   User peut dépanner une organisation sans Administrateur principal.
 - Le **Super User** n'appartient à aucune organisation, ne se cumule avec rien, est invisible
   des listes et de la messagerie. Après connexion, il choisit l'organisation où il intervient
