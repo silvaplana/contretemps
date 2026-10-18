@@ -92,6 +92,15 @@ L'écran défile en entier (actions comprises), comme WhatsApp.
 - « Nouveau groupe » dans le menu ⋯ de l'en-tête de la messagerie : remplacé par la ligne de l'écran
   « Nouvelle discussion », pour n'avoir qu'un seul chemin.
 
+### 2.6 Plus de choix du cours dans l'en-tête (Seb, 18 octobre)
+
+- La messagerie instantanée **n'a rien à voir avec les cours** : le badge « Éveil 1 ⌄ » en haut à gauche
+  (choix du cours, `components/Header.jsx`, mode `course`) disparaît dans l'onglet Messagerie.
+- À sa place, le titre simple **« Messagerie »**, comme dans Docs ou Administration (mode `simple` de
+  l'en-tête, liste `headerMode` dans `App.jsx`).
+- Rien d'autre ne change : la liste des conversations ne dépendait déjà pas du cours choisi. Les
+  conversations de cours restent dans la liste comme les autres.
+
 ## 3. Nouveau groupe : voir tout le monde (Seb, 18 octobre)
 
 La fenêtre « Nouveau groupe » existante (`NouveauGroupeModal.jsx` : Nom, Personnes, Ajouter un membre,
