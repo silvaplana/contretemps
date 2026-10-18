@@ -92,13 +92,57 @@ L'écran défile en entier (actions comprises), comme WhatsApp.
 - « Nouveau groupe » dans le menu ⋯ de l'en-tête de la messagerie : remplacé par la ligne de l'écran
   « Nouvelle discussion », pour n'avoir qu'un seul chemin.
 
-## 3. Hors de cette étape
+## 3. Nouveau groupe : voir tout le monde (Seb, 18 octobre)
+
+La fenêtre « Nouveau groupe » existante (`NouveauGroupeModal.jsx` : Nom, Personnes, Ajouter un membre,
+Créer le groupe) est gardée telle quelle. On y ajoute un moyen de voir **qui sera vraiment dans le
+groupe**.
+
+Le problème : un groupe se compose de personnes (admins, profs, élèves) mais aussi de **cours**, et un
+cours compte tous ses élèves et ses profs (SPEC §6.9). Dans la liste « Personnes », on voit « Éveil 1 »
+sans savoir qui il y a derrière.
+
+### 3.1 Le bouton œil
+
+- À droite du titre « Personnes », un bouton **œil** avec le nombre total de personnes touchées
+  (« 👁 23 »).
+- Grisé tant que la liste est vide.
+- Le toucher ouvre l'écran « Qui est dans le groupe ? » (§3.2), par-dessus la fenêtre ; la flèche ←
+  y revient sans rien perdre de ce qui était saisi.
+
+### 3.2 L'écran « Qui est dans le groupe ? »
+
+- Titre « Qui est dans le groupe ? », et en dessous le nombre de personnes.
+- **Toutes les personnes à plat**, une ligne par personne, par ordre alphabétique (prénom puis nom, sans
+  accents ni majuscules) : chaque cours est remplacé par ses élèves et ses profs.
+- Une personne présente plusieurs fois (ajoutée seule et aussi par un cours, ou dans deux cours)
+  n'apparaît **qu'une fois**.
+- Chaque ligne : avatar (couleur admins et profs comme ailleurs), « Prénom Nom », et en petit dessous
+  **par où elle est dans le groupe** : « Ajoutée directement », « Par Éveil 1 », « Par Éveil 1, Jazz
+  ados ».
+- Le créateur du groupe y figure aussi, puisqu'il en fait toujours partie (« Vous, créateur du
+  groupe »).
+- Le calcul suit la même règle que le serveur (`membres_resolus` dans
+  `backend/src/messagerie/conversations.py`) : ce qu'on voit est exactement qui recevra les messages.
+- Écran en lecture seule : on n'y retire personne (on retire un cours ou une personne dans la
+  fenêtre).
+
+### 3.3 La recherche dans cet écran
+
+- Un champ de recherche en haut de la liste.
+- En tapant, la liste ne garde que les personnes qui correspondent, et **la partie qui correspond est
+  surlignée** dans le nom (« **Stel**lina Revelles »).
+- Même règle que les autres recherches : sans accents ni majuscules, sur le prénom et le nom.
+- Aucun résultat : « Personne de ce nom dans le groupe. »
+
+## 4. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
   notes) : pas dans cette étape.
 - Les lettres A, B, C… en bord de liste pour sauter dans l'alphabet.
+- Le même œil dans les Infos d'un groupe déjà créé (carte du groupe) : à décider.
 
-## 4. Écarté
+## 5. Écarté
 
 - **Nouveau contact** et **Nouvelle communauté** de WhatsApp : pas repris (Seb, 18 octobre). La messagerie
   est fermée, réservée aux membres de l'organisation, qui sont déjà tous dans la liste.
