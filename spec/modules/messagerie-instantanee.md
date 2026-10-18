@@ -146,6 +146,27 @@ sans savoir qui il y a derrière.
 - C'est une photo du moment : une personne qui arrive plus tard dans l'organisation n'entre pas toute
   seule dans le groupe (contrairement à un cours, qui suit ses élèves).
 
+### 3.5 Choisir plusieurs personnes d'un coup
+
+Aujourd'hui on ajoute une personne à la fois (liste déroulante puis « Ajouter »). On passe à une
+sélection multiple.
+
+- Toucher **Admin**, **Prof**, **Élève** ou **Cours** dans le sélecteur ouvre un écran de choix en plein
+  écran, par-dessus la fenêtre : « Choisir des admins », « Choisir des profs », « Choisir des élèves »,
+  « Choisir des cours ». La liste déroulante et le bouton « Ajouter » disparaissent.
+- Une ligne par personne (ou par cours), par ordre alphabétique, avec une **case à cocher** ; toucher la
+  ligne coche ou décoche.
+- **Tout en haut, « Tout sélectionner »** : coche tous les admins, tous les profs, tous les élèves ou
+  tous les cours de la liste. Retouché, il décoche tout.
+- Un champ de recherche sous « Tout sélectionner », pour les longues listes (élèves) ; la recherche ne
+  décoche rien.
+- Ceux qui sont déjà dans « Personnes » arrivent **déjà cochés** ; les décocher les retire.
+- **Bouton « Valider (N) » toujours visible en bas**, fixé au-dessus de la barre système, quelle que
+  soit la position dans la liste : la liste défile derrière lui. Il reporte les choix dans « Personnes »
+  et revient à la fenêtre.
+- La flèche ← en haut revient à la fenêtre sans rien changer.
+- **Tous** (§3.4) reste un bouton direct « Ajouter tout le monde », sans écran de choix.
+
 ## 4. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
