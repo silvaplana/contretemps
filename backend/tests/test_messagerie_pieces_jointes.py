@@ -141,3 +141,25 @@ def test_only_members_read_an_attachment(client, db_session):
     # The admin created the group but is not in it (only the course is).
     assert client.get(f"/attachments/{piece['id']}", headers=entetes_session(admin)).status_code == 403
     assert _televerser(client, conv["id"], "b.pdf", b"x", headers=entetes_session(admin)).status_code == 403
+
+
+def test_migration_passe_si_la_table_existe_deja(tmp_path, monkeypatch):
+    # The backend's create_all runs before `alembic upgrade head` in deploy.sh,
+    # so msg_attachments may already exist when the migration runs.
+    from pathlib import Path
+
+    import sqlalchemy as sa
+    from alembic import command
+    from alembic.config import Config
+
+    from messagerie.models import MessageAttachment
+
+    backend = Path(__file__).resolve().parents[1]
+    url = f"sqlite:///{tmp_path / 'deja.db'}"
+    monkeypatch.setenv("DATABASE_URL", url)
+    config = Config(str(backend / "alembic.ini"))
+    config.set_main_option("script_location", str(backend / "alembic"))
+
+    command.upgrade(config, "c3e5a7b9d1f2")
+    MessageAttachment.__table__.create(sa.create_engine(url))
+    command.upgrade(config, "head")
