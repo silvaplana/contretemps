@@ -40,7 +40,7 @@ from .models import (
     StoredFile,
     utcnow,
 )
-from .ports import DEFAULT_PRIVATE_EDITORS, Directory, Mailer, Member, Periods, Principal
+from .ports import DEFAULT_PRIVATE_EDITORS, Directory, Mailer, Member, Notifier, Periods, Principal
 from .preview import can_preview, convert_to_pdf
 from .storage import LocalStorage, guess_mime, make_thumbnail
 
@@ -109,6 +109,7 @@ class Documents:
         private_editors: Sequence[str] = DEFAULT_PRIVATE_EDITORS,
         mailer: Mailer | None = None,
         reserved_folders: Sequence[tuple[str, str]] = (),
+        notifier: Notifier | None = None,
     ) -> None:
         self.storage = storage
         self.directory = directory
@@ -119,6 +120,7 @@ class Documents:
         # (nom, clé de groupe) : un dossier réservé dans chaque dossier de
         # période (§4.7 bis), ex. ("Financier", "role:tresorier").
         self.reserved_folders = tuple(reserved_folders)
+        self.notifier = notifier
         from .app_files import AppFiles
         from .app_sends import AppSends
 
@@ -423,6 +425,19 @@ class Documents:
             )
         elements.sort(key=lambda e: par_id[e["id"]].created_at or utcnow(), reverse=True)
 
+    def _notify_recipients(self, db: Session, member: Member, node: DocNode, principal: tuple[str, str]) -> None:
+        """« Julia Dho vous a déposé « Planning.xlsx » » (§4.7 ter), à chacun
+        des destinataires sauf soi-même."""
+        if self.notifier is None:
+            return
+        gens = self.directory.recipients(db, member.org_id, [principal])
+        ids = [r.person_id for r in gens if r.person_id != member.person_id]
+        if ids:
+            self.notifier.notify(
+                db, member.org_id, ids, "Nouveau fichier dans Échanges",
+                f"{member.display_name} vous a déposé « {node.name} »",
+            )
+
     def set_recipient(self, db: Session, member: Member, node_id: int, principal: tuple[str, str] | None) -> dict:
         """« Pour : » d'un élément d'un bac (§4.7 ter) : None = tout le monde."""
         node = self._node(db, member, node_id)
@@ -439,10 +454,13 @@ class Documents:
             if trouve is None:
                 raise DocError(422, "Personne ou groupe inconnu")
             libelle = trouve.label
+        avant = (node.for_type, node.for_id)
         node.for_type, node.for_id = principal if principal else (None, None)
         node.picked_at = None
         self._log(db, member, node, "addressed", {"to": libelle})
         db.commit()
+        if principal is not None and principal != avant:
+            self._notify_recipients(db, member, node, principal)
         return {"id": node.id, "for_label": libelle}
 
     def _breadcrumb(self, member: Member, loc: Location, acl, fermees) -> list[dict]:

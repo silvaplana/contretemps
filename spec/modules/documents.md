@@ -402,8 +402,10 @@ rangement. Ce n'est pas un dossier de plus : on y dépose, l'autre prend, et le 
   celui qui l'a déposé voit « récupéré ».
 - **Ranger…** est la première action du menu d'un élément du bac (choisir son vrai dossier) : il
   quitte le bac et perd son destinataire et sa date de fin.
-- *Pas encore* : la notification « Marie vous a déposé un fichier » (il faut d'abord un port de
-  notification entre le module et l'appli hôte).
+- **Notification** (Seb, 19 octobre) : quand on choisit un destinataire, chacun reçoit sur son
+  téléphone « Nouveau fichier dans Échanges · Marie Dupont vous a déposé « Planning.xlsx » » (pas
+  soi-même ; rien pour « Tout le monde »). Port `Notifier` du module, branché par l'appli hôte sur
+  ses notifications push.
 
 ### 4.8 Retour au dernier endroit (demande de Seb du 14 octobre)
 

@@ -204,6 +204,26 @@ class AnnuaireContretemps:
         return sorted(gens, key=lambda r: r.name.lower())
 
 
+class NotifieurDocuments:
+    """Port `Notifier` : notification push au compte de la saison en cours
+    de chaque personne (notifications/notifications.py)."""
+
+    def __init__(self, notifications) -> None:
+        self.notifications = notifications
+
+    def notify(self, db: Session, org_id: int, person_ids: list[int], title: str, body: str) -> None:
+        saison = _saison_courante(db, org_id)
+        with toutes_saisons(db):
+            courants = list(db.scalars(select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == saison)))
+        voulus = set(person_ids)
+        for compte in courants:
+            if personne_id(db, compte) in voulus:
+                try:
+                    self.notifications.envoyer_a_compte(db, compte.id, title, body)
+                except Exception:  # noqa: BLE001 - une notification ne fait jamais échouer le dépôt
+                    logger.exception("Notification Docs non envoyée au compte %s", compte.id)
+
+
 class MessagerieContretemps:
     """Port `Mailer` : les emails partent par le SMTP de l'appli
     (inscriptions/email_envoi.py), au nom de l'école ; en développement,
