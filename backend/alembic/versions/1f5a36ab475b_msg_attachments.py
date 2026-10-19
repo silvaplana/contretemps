@@ -2,6 +2,8 @@
 
 Photos and files of the messages (spec/modules/messagerie-instantanee.md §4.3-4.4).
 Written from the autogenerate output, without its unrelated drift (nf_ tables...).
+The backend's create_all runs before `alembic upgrade head` in deploy.sh, so the
+table (and its indexes) may already exist: then there is nothing to do.
 
 Revision ID: 1f5a36ab475b
 Revises: c3e5a7b9d1f2
@@ -22,6 +24,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
+    if sa.inspect(op.get_bind()).has_table('msg_attachments'):
+        return
     op.create_table('msg_attachments',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('message_id', sa.Integer(), nullable=True),
