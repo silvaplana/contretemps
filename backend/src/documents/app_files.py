@@ -90,6 +90,7 @@ class AppFiles:
             member.org_id, loc.space, parent_id, KIND_APP, nom, member.person_id, family=family, status="draft"
         )
         node.owner_person_id = loc.owner_person_id
+        self.docs._arrive(node, loc)
         db.add(node)
         db.flush()
         self._add_version(db, member, node, content or app_content.empty_content(), "created")

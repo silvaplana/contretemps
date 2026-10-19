@@ -373,6 +373,38 @@ ne le recopie pas : chaque saison a déjà le sien, vide.
 *(Contretemps : « Financier », rôle trésorier. Les notes de frais validées y sont rangées, voir
 notes-de-frais.md §7 bis.)*
 
+### 4.7 ter Bacs « Échanges » (Seb, 19 octobre)
+
+Un endroit de passage pour **déposer un fichier afin qu'un autre le récupère**, sans réfléchir à son
+rangement. Ce n'est pas un dossier de plus : on y dépose, l'autre prend, et le bac se vide tout seul.
+
+- **Deux bacs, créés automatiquement** (`system_kind = exchange`, ni renommés, ni déplacés, ni
+  supprimés), avec une icône de plateau, et non le dossier jaune :
+  - **Échanges** en tête de la racine de Privé, hors saison : droits de la racine (professeurs et
+    admins y déposent et y prennent, les élèves ne le voient pas) ;
+  - **Échanges** en tête de chaque dossier réservé (Contretemps : Financier, donc les trésoriers et le
+    Super User seulement), avec les droits du dossier réservé.
+- **Pas de sous-dossier** : on ne crée pas de dossier dans un bac. Un dossier copié dans le bac y
+  arrive entier.
+- **30 jours** : un élément déposé directement dans un bac part à la corbeille 30 jours après son
+  arrivée (`exchange_until`), avec « reste N j » sur sa ligne. La personne qui l'a déposé le retrouve
+  dans sa corbeille pendant 30 jours de plus.
+- **Glisser vers le bac = copier** (l'original reste à sa place, le bac se vidant tout seul) ;
+  glisser hors du bac vers un dossier = déplacer. Pas de lien vers l'original : une copie, qui ne
+  prend pas de place en plus (même contenu stocké une fois). Copier / Coller et Importer y marchent
+  comme ailleurs.
+- **« Pour : »** (facultatif, réglé sur « Tout le monde ») : après un dépôt, l'écran « Pour qui ? »
+  propose Tout le monde, puis une personne ou un groupe (un cours…). Un élément adressé n'est visible
+  que par qui l'a déposé, son ou ses destinataires et les admins (dans le bac d'un dossier réservé :
+  ceux du groupe qui l'ont déposé ou reçu, et le Super User). On peut changer le destinataire
+  ensuite (« Pour… » dans le menu, si on l'a déposé ou si on gère le bac).
+- **Sur la ligne** : « De Marie · pour toi · reste 12 j ». Quand le destinataire a ouvert le fichier,
+  celui qui l'a déposé voit « récupéré ».
+- **Ranger…** est la première action du menu d'un élément du bac (choisir son vrai dossier) : il
+  quitte le bac et perd son destinataire et sa date de fin.
+- *Pas encore* : la notification « Marie vous a déposé un fichier » (il faut d'abord un port de
+  notification entre le module et l'appli hôte).
+
 ### 4.8 Retour au dernier endroit (demande de Seb du 14 octobre)
 
 L'explorateur **se souvient d'où l'on était** et y revient à la prochaine ouverture, sur téléphone comme

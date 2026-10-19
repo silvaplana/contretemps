@@ -12,6 +12,8 @@ Règles, dans l'ordre :
    admins : pareil, sauf aussi les dossiers réservés à un groupe (§4.7 bis,
    ex. Financier, réservé aux trésoriers) ;
 2. espace Personnel : le propriétaire a Gestion, personne d'autre ;
+2 bis. élément d'un bac « Échanges » adressé à quelqu'un (§4.7 ter) : seuls
+   qui l'a déposé et ses destinataires le voient (en plus de la règle 1) ;
 3. héritage par ajout : on remonte le chemin et on garde le plus fort des
    droits trouvés pour la personne et ses groupes. Un dossier « Restreint »
    arrête la remontée : seuls ses droits (et ceux d'en dessous) comptent ;
@@ -55,6 +57,15 @@ def matches(acl: DocAcl, member: Member) -> bool:
     return acl.principal_id in member.groups
 
 
+def addressed_to(node: DocNode, member: Member) -> bool:
+    """Élément adressé (§4.7 ter) : `member` l'a-t-il déposé ou reçu ?"""
+    if node.created_by == member.person_id:
+        return True
+    if node.for_type == "member":
+        return node.for_id == str(member.person_id)
+    return node.for_id in member.groups
+
+
 def root_level(space: str, member: Member, private_editors: Sequence[str]) -> str | None:
     if space == "public":
         return LEVEL_VIEW
@@ -94,6 +105,9 @@ def _level_without_lock(member, space, owner_person_id, path, acl_by_node, priva
     reserve = any(n.system_kind == SYSTEM_RESERVED for n in path)
     if member.is_admin and not reserve:
         return LEVEL_MANAGE
+    adresse = next((n for n in path if n.for_id), None)
+    if adresse is not None and not addressed_to(adresse, member):
+        return None
     found: list[str | None] = []
     stopped = False
     for node in reversed(path):
