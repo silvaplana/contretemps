@@ -177,14 +177,149 @@ sélection multiple.
   rouvre le même écran.
 - **Super User** (§3.4) reste un bouton direct « Ajouter le Super User », sans écran de choix.
 
-## 4. Hors de cette étape
+## 4. Liens, actions sur un message, pièces jointes (Seb, 19 octobre)
+
+Modèle : WhatsApp (capture de Seb du 19 octobre : barre d'actions en haut après un appui long, trombone et
+appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.2, puis §4.3-4.4, puis §4.5.
+
+### 4.1 Liens
+
+- Une adresse web dans un message (`https://…`, `http://…`, `www.…`) devient **cliquable** dans la bulle,
+  soulignée, et s'ouvre dans un nouvel onglet.
+- Rien à faire pour l'écrire : on la tape ou on la colle.
+- Pas d'aperçu de la page (image, titre) dans cette étape.
+- **Lien vers les Docs** de la même école (`<adresse de l'école>/docs/<id>`, fichier ou dossier, format fixé
+  par le module Documents) : affiché comme un bouton « Ouvrir dans Docs » au lieu de l'adresse ; le toucher
+  ouvre l'onglet Docs à cet endroit (événement `dx-ouvrir`), Documents vérifie les droits. Le nom du fichier
+  est sur la ligne au-dessus, écrite par Documents.
+
+### 4.2 Actions sur un message
+
+- **Appui long** sur une bulle (clic droit sur ordinateur) : la bulle est sélectionnée (fond teinté) et
+  l'en-tête du fil est remplacé par une **barre d'actions**, comme WhatsApp : ← pour annuler, le nombre de
+  messages sélectionnés, puis les actions.
+- Toucher d'autres bulles pendant ce mode les ajoute ou les retire de la sélection.
+- Un bouton **⋯** visible sur chaque bulle au survol (ordinateur) double l'appui long (« gros et simple »).
+- Actions (icône + mot en bulle à l'appui long, touches ≥ 48 px) :
+  - **Répondre** (flèche ↩, Seb, 19 octobre) : un seul message à la fois. Un bandeau au-dessus de la zone
+    de saisie rappelle le message (nom de l'auteur, début du texte, croix pour renoncer). Une fois envoyée,
+    la réponse affiche ce rappel en haut de sa bulle ; le toucher fait défiler jusqu'au message d'origine
+    et le fait clignoter. Si l'original a été supprimé, le rappel dit « Ce message a été supprimé ».
+    Sur ordinateur, la flèche apparaît aussi au survol de la bulle.
+  - **Copier** : copie le texte (plusieurs messages : l'un sous l'autre).
+  - **Transférer** : ouvre la liste des conversations et des contacts (même écran que « Nouvelle
+    discussion », avec cases à cocher et « Envoyer (N) » toujours visible en bas) ; le message part dans
+    chaque conversation choisie, marqué **« Transféré »** au-dessus du texte, avec ses pièces jointes.
+  - **Modifier** : seulement ses propres messages, un seul à la fois, et pendant **15 minutes**
+    après l'envoi, comme WhatsApp (Seb, 19 octobre) : le délai compte, pas le fait que l'autre l'ait lu.
+    Passé ce délai, Modifier n'apparaît plus. Le texte
+    revient dans la zone de saisie, « Modifier » remplace « Envoyer » ; le message garde sa place et
+    affiche **« modifié »** à côté de l'heure.
+  - **Supprimer** : seulement ses propres messages (un admin peut supprimer n'importe quel message d'une
+    conversation de groupe, pour la modération). Chez tout le monde, la bulle devient « Ce message a été
+    supprimé ». **Annuler 10 s** en bas de l'écran plutôt qu'une confirmation. Les pièces jointes sont
+    effacées du disque si plus rien ne les utilise.
+- Une action impossible pour la sélection (Modifier sur deux messages, Supprimer le message d'un autre)
+  n'apparaît pas.
+- Modifier et Supprimer arrivent **en direct** chez les autres (comme les nouveaux messages).
+- Données : nouvelles colonnes `messages.edited_at`, `messages.deleted_at` (le texte d'un message
+  supprimé est vidé en base), `messages.forwarded` (booléen) et `messages.reply_to_id` (le message
+  auquel on répond, dans la même conversation), en anglais comme tout nouveau code
+  (CLAUDE.md) ; la table garde son nom.
+
+### 4.3 Photos et fichiers
+
+- Dans la zone de saisie, à droite du texte : un **trombone** (Fichier) et un **appareil photo** (Photo),
+  comme WhatsApp. Sur téléphone, l'appareil photo propose « Prendre une photo » ou « Choisir dans mes
+  photos » (choix du téléphone).
+- On peut joindre **plusieurs** fichiers ; ils s'affichent en vignettes au-dessus de la zone de saisie,
+  avec une croix pour les retirer, et un texte facultatif part avec eux.
+- **Photo** : réduite sur le téléphone avant l'envoi (côté le plus long 1 600 px, JPEG), soit environ
+  300 Ko au lieu de 4 Mo. Dans la bulle : la photo elle-même ; la toucher l'ouvre en plein écran, avec
+  « Télécharger ».
+- **Fichier** (PDF, Word, Excel…) : une carte avec l'icône, le nom et la taille ; la toucher l'ouvre ou le
+  télécharge. Limite : 25 Mo par fichier.
+- Barre de progression pendant l'envoi ; en cas d'échec, la bulle reste « Échec, toucher pour réessayer »
+  comme pour le texte.
+
+### 4.4 Où sont rangés les fichiers (Seb, 19 octobre)
+
+- Un **dossier à part, à côté de celui des vidéos de chorégraphie** : `uploads/messagerie/<école>/` à côté de
+  `uploads/videos/<école>/` (réglable par `MESSAGERIE_DIR`, comme `VIDEOS_DIR`). Même disque, mêmes
+  sauvegardes, et l'on voit d'un coup d'œil ce que pèse la messagerie.
+- Dans ce dossier, chaque contenu est rangé par son empreinte, comme dans Documents : un même fichier
+  envoyé deux fois (une photo transférée dans trois groupes) n'est gardé qu'une fois. On réutilise pour cela
+  la classe de stockage déjà écrite (`documents/storage.py`), sortie dans le core pour que la messagerie ne
+  dépende pas du module Documents.
+- **Jamais servi en direct** : un fichier ne sort que par une route de la messagerie, après vérification que
+  la personne fait partie de la conversation.
+- Nouvelle table `msg_attachments` (préfixe du module, en anglais, CLAUDE.md) : `message_id`, `sha256`,
+  `filename`, `kind` (photo, video, file), `size`, `width` et `height` pour une photo.
+- **Compression, comme WhatsApp**, pour que ça circule vite : la photo est réduite sur le téléphone avant
+  l'envoi (§4.3), la vidéo est compressée sur le serveur juste après (§4.5). Les fichiers (PDF, Word…) ne
+  sont pas touchés.
+- Plus tard, quand le disque sera trop petit : un stockage en ligne (de l'ordre d'un centime par Go et par
+  mois) prend la place du dossier sans changer le reste.
+
+### 4.5 Vidéos
+
+- Choisies par le trombone ou l'appareil photo (« Filmer » / « Choisir une vidéo »).
+- Même chaîne que le module Vidéos : envoi en morceaux (reprend après une coupure), compression sur le
+  serveur après coup (H.264, 1080p au plus), image d'aperçu. La bulle montre l'aperçu avec ▶ et la durée ;
+  la vidéo se lit dans l'appli.
+- Limite : **100 Mo** par vidéo avant compression.
+- L'espace utilisé par la messagerie de chaque école s'affiche dans Admin, à côté de celui des vidéos.
+
+### 4.6 Ce qui se télécharge, et quand (Seb, 19 octobre)
+
+WhatsApp ne télécharge pas tout : selon le réglage (Wi-Fi ou données mobiles, par nature de média), il
+montre une vignette floue avec la taille et un bouton de téléchargement. Ici, sans réglage à faire :
+
+- **Photo** : la bulle charge une **vignette** légère (environ 20 Ko, faite à l'envoi) ; la photo réduite
+  (§4.3) n'est chargée qu'en la touchant pour l'ouvrir en plein écran.
+- **Vidéo** : la bulle montre l'image d'aperçu, ▶, la durée et la taille ; la vidéo ne se charge qu'en
+  touchant ▶, et se lit au fur et à mesure (pas besoin d'attendre la fin du téléchargement).
+- **Fichier** : une carte avec le nom et la taille ; il ne se télécharge qu'en le touchant.
+- Une conversation pleine de photos s'ouvre donc vite, même en 4G : on ne paie que les vignettes.
+- Pas de réglage « télécharger automatiquement » dans cette étape.
+
+### 4.7 Partager depuis une autre appli (Seb, 19 octobre)
+
+Depuis YouTube, la galerie photos, Chrome…, le bouton **Partager** du téléphone propose Contretemps dans
+la liste des applis, comme WhatsApp.
+
+- Techniquement, deux façons d'installer l'appli existent, et chacune a sa porte :
+  - **appli web installée** (écran « Installez l'application » → icône sur l'écran d'accueil, manifeste
+    par école servi par `personnalisation/`, `public/sw.js`) : le manifeste se déclare « cible de partage »
+    (`share_target`, méthode GET vers `/partage?title=…&text=…&url=…`, lue par `utils/envoyerA.js`). C'est ce qu'utilisent les membres
+    aujourd'hui (le README, qui dit « pas de PWA », est en retard sur le code) ;
+  - **appli Android Capacitor** (`frontend/android/`, ANDROID.md) si elle est un jour distribuée : un filtre
+    d'intent `ACTION_SEND` dans `AndroidManifest.xml` et un greffon de partage entrant, qui ouvrent le même
+    écran.
+- Partager ouvre l'écran **« Envoyer à… »** : le même que pour Transférer (§4.2), conversations et contacts
+  avec cases à cocher et recherche, et en haut un aperçu de ce qui part (le lien, le texte, la photo).
+  « Envoyer (N) » toujours visible en bas ; on arrive ensuite dans la conversation si un seul destinataire,
+  sinon dans la liste.
+- Pas connecté : on se connecte d'abord, puis l'écran « Envoyer à… » s'ouvre avec ce qui a été partagé.
+- Un **autre module** de l'appli ouvre le même écran avec `envoyerDansLaMessagerie(texte)`
+  (`frontend/src/utils/envoyerA.js`) : par exemple « Envoyer le lien… » sur un fichier des Docs.
+- Ce qui peut être partagé : un lien et du texte (première PR, avec §4.1-4.2), puis des photos, vidéos et
+  fichiers (avec §4.3-4.5).
+- **Limite** : fonctionne sur **Android** quand l'appli est installée. **Pas sur iPhone** tant qu'il n'y a
+  qu'une appli web : Apple ne le permet pas. Le filtre d'intent de l'appli Capacitor viendra le jour où elle
+  sera distribuée (elle ne peut pas être essayée ici). Le jour où une appli iPhone Capacitor existera, une extension
+  de partage iOS le permettra. D'ici là, sur iPhone, on continue par copier-coller.
+
+## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
   notes) : pas dans cette étape.
 - Les lettres A, B, C… en bord de liste pour sauter dans l'alphabet.
 - Le même œil dans les Infos d'un groupe déjà créé (carte du groupe) : à décider.
+- Réactions par emoji, épingler, étoile, notes vocales,
+  aperçu des liens : pas dans cette étape.
 
-## 5. Écarté
+## 6. Écarté
 
 - **Nouveau contact** et **Nouvelle communauté** de WhatsApp : pas repris (Seb, 18 octobre). La messagerie
   est fermée, réservée aux membres de l'organisation, qui sont déjà tous dans la liste.

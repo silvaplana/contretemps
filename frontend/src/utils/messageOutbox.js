@@ -89,13 +89,15 @@ export function useMessagesEnvoyes(onEnvoye) {
   }, [onEnvoye])
 }
 
-export function envoyerAvecReprise(conversationId, compteId, contenu, canal) {
+// `options` : { reponseA, transfere }, voir api/messages.js: envoyerBrut.
+export function envoyerAvecReprise(conversationId, compteId, contenu, canal, options = {}) {
   const clientId = crypto.randomUUID()
   enAttente.set(clientId, {
     conversationId,
     compteId,
     contenu,
     canal,
+    options,
     etat: 'en_cours',
     tentative: 0,
     creeLe: Date.now(),
@@ -109,7 +111,7 @@ async function tenter(clientId) {
   const m = enAttente.get(clientId)
   if (!m) return
   try {
-    const messageBrut = await messagesApi.envoyerBrut(m.conversationId, m.compteId, m.contenu, m.canal, clientId)
+    const messageBrut = await messagesApi.envoyerBrut(m.conversationId, m.compteId, m.contenu, m.canal, clientId, m.options)
     enAttente.delete(clientId)
     sauvegarder()
     notifierProgression()

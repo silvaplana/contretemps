@@ -101,8 +101,15 @@ export function versMessageEcran(message, compteId, membres) {
     // Expéditeur supprimé depuis : ses messages restent (historique
     // conservé, décision du 2026-09-21), affichés sous ce libellé.
     auteur: auteur ? `${auteur.prenom} ${auteur.nom}` : COMPTE_SUPPRIME,
+    expediteurId: message.expediteur_id,
     estMoi: message.expediteur_id === compteId,
     contenu: message.contenu,
+    // Actions sur un message (spec/modules/messagerie-instantanee.md §4.2).
+    envoyeLe: message.created_at,
+    modifie: Boolean(message.edited_at),
+    supprime: Boolean(message.deleted_at),
+    transfere: Boolean(message.forwarded),
+    reponseA: message.reply_to_id ?? null,
     heure: new Date(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     statut: statutAgrege(message.deliveries),
     envoyeParMail: message.deliveries.some((d) => d.canal === 'email'),
@@ -223,11 +230,30 @@ export async function obtenirConversation(conversationId, compteId, cours) {
 // résultat dans la conversation concernée. `client_id` : voir
 // messageOutbox.js, permet un renvoi sûr sans jamais créer de doublon
 // (voir backend/src/messagerie/messages.py: envoyer).
-export async function envoyerBrut(conversationId, compteId, contenu, canal, clientId) {
+// `reponseA` : id du message auquel on répond ; `transfere` : copie
+// envoyée par « Transférer » (spec §4.2).
+export async function envoyerBrut(conversationId, compteId, contenu, canal, clientId, { reponseA = null, transfere = false } = {}) {
   return requete(`/conversations/${conversationId}/messages`, {
     method: 'POST',
-    body: JSON.stringify({ expediteur_id: compteId, contenu, canal, client_id: clientId }),
+    body: JSON.stringify({
+      expediteur_id: compteId,
+      contenu,
+      canal,
+      client_id: clientId,
+      reply_to_id: reponseA,
+      forwarded: transfere,
+    }),
   })
+}
+
+// Modifier / Supprimer (spec §4.2) : renvoient le message à jour, qui
+// arrive aussi en direct chez les autres membres (SSE `message_maj`).
+export async function modifierMessage(messageId, contenu) {
+  return requete(`/messages/${messageId}`, { method: 'PUT', body: JSON.stringify({ contenu }) })
+}
+
+export async function supprimerMessage(messageId) {
+  return requete(`/messages/${messageId}`, { method: 'DELETE' })
 }
 
 // "Nouvelle discussion" depuis la recherche (voir ConversationListScreen.jsx,
@@ -305,6 +331,7 @@ export function ouvrirFluxEvenements(
     onConversationMaj,
     onConversationSupprimee,
     onMessageStatut,
+    onMessageMaj,
     onCoursMaj,
   },
 ) {
@@ -329,6 +356,7 @@ export function ouvrirFluxEvenements(
       else if (evenement.type === 'conversation_maj') onConversationMaj?.(evenement)
       else if (evenement.type === 'conversation_supprimee') onConversationSupprimee?.(evenement)
       else if (evenement.type === 'message_statut') onMessageStatut?.(evenement)
+      else if (evenement.type === 'message_maj') onMessageMaj?.(evenement)
       else if (evenement.type === 'cours_maj') onCoursMaj?.(evenement)
     }
     return s

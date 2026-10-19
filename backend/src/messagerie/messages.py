@@ -19,6 +19,20 @@ def _utcnow() -> dt.datetime:
     return dt.datetime.now(dt.timezone.utc)
 
 
+# Spec §4.2: like WhatsApp, a message can be edited for 15 minutes after
+# it was sent, whether or not it has been read.
+EDIT_WINDOW = dt.timedelta(minutes=15)
+
+
+def can_still_edit(message: Message, now: dt.datetime | None = None) -> bool:
+    if message.deleted_at is not None:
+        return False
+    sent = message.created_at
+    if sent.tzinfo is None:  # SQLite gives back naive datetimes (stored in UTC)
+        sent = sent.replace(tzinfo=dt.timezone.utc)
+    return (now or _utcnow()) - sent <= EDIT_WINDOW
+
+
 class Messages:
     def __init__(self, conversations: Conversations) -> None:
         self.conversations = conversations
@@ -31,6 +45,8 @@ class Messages:
         contenu: str,
         canal: str = "app",
         client_id: str | None = None,
+        reply_to_id: int | None = None,
+        forwarded: bool = False,
     ) -> tuple[Message, bool]:
         """Crée le message + une `MessageDelivery` par destinataire résolu
         (tous les membres de la conversation, sauf l'expéditeur). Voir
@@ -63,6 +79,8 @@ class Messages:
             expediteur_id=expediteur_id,
             contenu=contenu,
             client_id=client_id,
+            reply_to_id=reply_to_id,
+            forwarded=forwarded,
         )
         db.add(message)
         try:
@@ -99,6 +117,24 @@ class Messages:
 
     def get(self, db: Session, message_id: int) -> Message | None:
         return db.get(Message, message_id)
+
+    def edit(self, db: Session, message: Message, contenu: str) -> Message:
+        """Spec §4.2: the caller (checked in receiver.py) changes the text
+        of their own message; the bubble then shows "modifié"."""
+        message.contenu = contenu
+        message.edited_at = _utcnow()
+        db.commit()
+        db.refresh(message)
+        return message
+
+    def delete(self, db: Session, message: Message) -> Message:
+        """Spec §4.2: the row stays so the thread keeps its place and
+        replies keep their target; only the text is erased."""
+        message.contenu = ""
+        message.deleted_at = _utcnow()
+        db.commit()
+        db.refresh(message)
+        return message
 
     def messages_de_la_conversation(self, db: Session, conversation_id: int) -> list[Message]:
         return list(
