@@ -145,6 +145,12 @@ class AssistantReceiver:
             """« Tout faire » sur la carte récapitulative : seulement les
             changements cochés, chacun à part (une erreur n'arrête pas les autres)."""
             verifier(db, compte, org_id)
+            if jeton in self.client.actions.pending:
+                # Carte d'une action déclarée par un module (actions.py).
+                try:
+                    return self.client.actions.execute(db, org_id, membre.person_id, jeton)
+                except Refus as erreur:
+                    raise HTTPException(status_code=409, detail=str(erreur)) from erreur
             if self.client.modifications is None:
                 raise HTTPException(status_code=403, detail="Modifications indisponibles.")
             try:

@@ -32,6 +32,7 @@ from documents.ports import Member
 from documents.service import DocError, Documents
 from documents.storage import guess_mime
 
+from .actions import Actions
 from .donnees import NOMS as OUTILS_ECOLE
 from .fichier_appli import CONSIGNE_FICHIER, OUTIL_FICHIER, FichierAppli
 from .donnees import OUTILS_DONNEES, POUR_TOUS, DonneesEcole
@@ -92,7 +93,9 @@ cours, paiements, commentaire de l'administration, élève en rouge, présences,
 professeurs, cours, chorégraphies) avec \
 « proposer_modifications » : lis d'abord les données, puis regroupe tous les changements d'une \
 demande en un seul appel. La personne voit une carte récapitulative, décoche ce qu'elle ne veut \
-pas et valide : ne prétends jamais que c'est fait avant de l'apprendre au message suivant.
+pas et valide : ne prétends jamais que c'est fait avant de l'apprendre au message suivant. \
+Les autres outils qui changent quelque chose (groupes de la messagerie, cours, notes de frais…) \
+affichent eux aussi une carte « Faire / Annuler » : même règle.
 
 Tu as accès à internet : « web_search » pour chercher (actualité, lois et règles des \
 associations, sites officiels…) et « web_fetch » pour lire une page dont l'adresse est dans la \
@@ -264,6 +267,9 @@ class Assistant:
         self.donnees = DonneesEcole()
         # Branché par app/main.py (services des élèves, cours, présences…).
         self.modifications = None
+        # Actions déclarées par les modules (actions.py de chacun), remises
+        # par app/main.py.
+        self.actions = Actions([])
         # Fichiers glissés dans l'assistant, en attente de la question :
         # jeton -> (org_id, person_id, nom, contenu).
         self.pieces: dict[str, tuple[int, int, str, bytes]] = {}
@@ -356,6 +362,10 @@ class Assistant:
             if compte is None or self.modifications is None:
                 raise ValueError("modifications indisponibles")
             return self.modifications.proposer(db, compte, member.org_id, member.person_id, args)
+        if nom in self.actions.by_name:
+            if compte is None:
+                raise ValueError("actions indisponibles")
+            return self.actions.propose(db, compte, member.org_id, member.person_id, nom, args)
         if nom in OUTILS_ECOLE:
             if compte is None:
                 raise ValueError("données de l'école indisponibles")
@@ -563,7 +573,7 @@ class Assistant:
             })
             modele = modele if modele in MODELES else MODELE
             admin = compte is not None and self.donnees.perimetre(db, compte, member.org_id).tout
-            outils = outils_pour(admin)
+            outils = outils_pour(admin) + self.actions.tools(admin)
             cout = 0.0
             nb_appels, entree, sortie = 0, 0, 0
             deja_ecrit = False

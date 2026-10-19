@@ -20,12 +20,14 @@ from administrateurs import Administrateurs, AdministrateursReceiver
 from acces import Acces
 from auth import Auth, AuthReceiver, Invitations, MailsAcces
 from assistant import Assistant, AssistantReceiver
+from assistant.actions import Actions
 from assistant.modifications import Modifications
 from bureautique import Bureautique, BureautiqueReceiver
 from change import TauxChange, TauxChangeReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
+from cours.actions import actions as actions_cours
 from db import Base, engine
 from documents import Documents, DocumentsReceiver, LocalStorage
 from documents_contretemps import (
@@ -47,6 +49,7 @@ from personnalisation.ia import detourage_ia_disponible
 from personnalisation.personnalisation import DOSSIER_PERSONNALISATION, Personnalisation
 from personnalisation.receiver import PersonnalisationReceiver
 from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
+from messagerie.actions import actions as actions_messagerie
 from notifications import Notifications, NotificationsReceiver
 from notes_frais import LecteurClaude, NotesDeFrais, NotesDeFraisReceiver, Ports, StockageEnveloppes
 from notes_frais_contretemps import (
@@ -56,6 +59,7 @@ from notes_frais_contretemps import (
     NotifieurContretemps,
     membre_appelant as membre_notes_frais,
 )
+from notes_frais_contretemps.actions import actions as actions_notes_frais
 from presence import Presence, PresenceReceiver
 from saisons.gestion import GestionSaisons
 from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
@@ -338,6 +342,14 @@ notes_frais_client = NotesDeFrais(
     stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
 )
 notes_frais_receiver = NotesDeFraisReceiver(client=notes_frais_client, app=app, membre_courant=membre_notes_frais)
+
+# Actions que les modules ouvrent à l'assistant (spec/modules/assistant-ia.md
+# §3) : chaque module les déclare dans son actions.py, la liste est ici.
+assistant_client.actions = Actions([
+    *actions_messagerie(messagerie_receiver),
+    *actions_cours(cours_receiver),
+    *actions_notes_frais(notes_frais_client),
+])
 
 inscriptions_receiver = InscriptionsReceiver(
     client=inscriptions_client,
