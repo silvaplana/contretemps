@@ -20,6 +20,7 @@ const paths = {
   reply: 'M9 14l-4-4 4-4 M5 10h11a4 4 0 0 1 4 4v4',
   forward: 'M15 14l4-4-4-4 M19 10H8a4 4 0 0 0-4 4v4',
   copy: 'M8 8h12v12H8z M16 8V4H4v12h4',
+  paperclip: 'M15 7l-6.5 6.5a1.5 1.5 0 0 0 3 3L18 10a3 3 0 0 0-6-6l-6.5 6.5a4.5 4.5 0 0 0 9 9L21 13',
   trash: 'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 11v6 M14 11v6',
   chevronDown: 'M6 9l6 6 6-6',
   chevronRight: 'M9 6l6 6-6 6',

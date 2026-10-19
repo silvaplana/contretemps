@@ -35,6 +35,7 @@ from documents_contretemps import (
     TAILLE_MAX_MO,
     AnnuaireContretemps,
     MessagerieContretemps,
+    NotifieurDocuments,
     SaisonsContretemps,
     membre_appelant,
     recopieur_de_saison,
@@ -48,7 +49,7 @@ from ressources import Ressources, RessourcesReceiver
 from personnalisation.ia import detourage_ia_disponible
 from personnalisation.personnalisation import DOSSIER_PERSONNALISATION, Personnalisation
 from personnalisation.receiver import PersonnalisationReceiver
-from messagerie import Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
+from messagerie import Attachments, Connexions, Conversations, Evenements, Frappe, MessagerieReceiver, Messages
 from messagerie.actions import actions as actions_messagerie
 from notifications import Notifications, NotificationsReceiver
 from notes_frais import LecteurClaude, NotesDeFrais, NotesDeFraisReceiver, Ports, StockageEnveloppes
@@ -232,6 +233,10 @@ connexions_client = Connexions(
     comptes=comptes_client, conversations=conversations_client, evenements=evenements_client
 )
 frappe_client = Frappe()
+# Photos et fichiers de la messagerie (spec/modules/messagerie-instantanee.md
+# §4.4) : un dossier à part, à côté de celui des vidéos de chorégraphie.
+DOSSIER_MESSAGERIE = Path(os.environ.get("MESSAGERIE_DIR", DOSSIER_VIDEOS_LIVE.parent / "messagerie"))
+TAILLE_MAX_PIECE_JOINTE = 25 * 1024 * 1024
 messagerie_receiver = MessagerieReceiver(
     conversations=conversations_client,
     messages=messages_client,
@@ -239,6 +244,7 @@ messagerie_receiver = MessagerieReceiver(
     connexions=connexions_client,
     frappe=frappe_client,
     notifications=notifications_client,
+    attachments=Attachments(LocalStorage(DOSSIER_MESSAGERIE, TAILLE_MAX_PIECE_JOINTE)),
     app=app,
 )
 
@@ -269,6 +275,7 @@ ressources_client = Ressources(
         "personnalisation": ("Personnalisation (logo, nom)", DOSSIER_PERSONNALISATION),
         "documents_partages": ("Documents (onglet Docs)", DOSSIER_DOCUMENTS),
         "notes_frais": ("Notes de frais (justificatifs)", DOSSIER_NOTES_FRAIS),
+        "messagerie": ("Messagerie (photos et fichiers)", DOSSIER_MESSAGERIE),
     }
 )
 ressources_receiver = RessourcesReceiver(client=ressources_client, app=app)
@@ -285,6 +292,7 @@ documents_client = Documents(
     # Dossier « Financier » de chaque saison : trésoriers seulement, même
     # pas les autres admins (Seb, 17 octobre).
     reserved_folders=(("Financier", "role:tresorier"),),
+    notifier=NotifieurDocuments(notifications_client),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.

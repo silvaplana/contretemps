@@ -17,7 +17,7 @@
 // comme lui, la relance mail ne fait QUE changer le canal en base, aucune
 // vraie infrastructure d'envoi de mail n'existe dans ce projet.
 
-import { jetonEnCours } from './session.js'
+import { compteEnCours, jetonEnCours } from './session.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -110,6 +110,8 @@ export function versMessageEcran(message, compteId, membres) {
     supprime: Boolean(message.deleted_at),
     transfere: Boolean(message.forwarded),
     reponseA: message.reply_to_id ?? null,
+    // Photos et fichiers (spec §4.3) : { id, filename, kind, size, width, height }.
+    pieces: message.attachments ?? [],
     heure: new Date(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     statut: statutAgrege(message.deliveries),
     envoyeParMail: message.deliveries.some((d) => d.canal === 'email'),
@@ -232,7 +234,14 @@ export async function obtenirConversation(conversationId, compteId, cours) {
 // (voir backend/src/messagerie/messages.py: envoyer).
 // `reponseA` : id du message auquel on répond ; `transfere` : copie
 // envoyée par « Transférer » (spec §4.2).
-export async function envoyerBrut(conversationId, compteId, contenu, canal, clientId, { reponseA = null, transfere = false } = {}) {
+export async function envoyerBrut(
+  conversationId,
+  compteId,
+  contenu,
+  canal,
+  clientId,
+  { reponseA = null, transfere = false, pieces = [] } = {},
+) {
   return requete(`/conversations/${conversationId}/messages`, {
     method: 'POST',
     body: JSON.stringify({
@@ -242,6 +251,7 @@ export async function envoyerBrut(conversationId, compteId, contenu, canal, clie
       client_id: clientId,
       reply_to_id: reponseA,
       forwarded: transfere,
+      attachment_ids: pieces,
     }),
   })
 }
@@ -254,6 +264,58 @@ export async function modifierMessage(messageId, contenu) {
 
 export async function supprimerMessage(messageId) {
   return requete(`/messages/${messageId}`, { method: 'DELETE' })
+}
+
+// Ce qu'on montre d'un message en une ligne (liste des conversations).
+export function apercuMessage(m) {
+  if (!m) return ''
+  if (m.supprime) return 'Ce message a été supprimé'
+  if (m.contenu) return m.contenu
+  if (m.pieces.length === 0) return ''
+  return m.pieces.every((p) => p.kind === 'photo') ? '📷 Photo' : '📎 Fichier'
+}
+
+// Envoie une photo ou un fichier avant le message (spec §4.3) ; renvoie
+// la pièce jointe ({ id, ... }). XMLHttpRequest plutôt que fetch pour
+// suivre la progression (`onProgression(0..1)`) : les en-têtes de session
+// sont donc posés ici (voir api/identite.js pour fetch).
+export function televerserPiece(conversationId, fichier, nom, onProgression) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${BASE_URL}/conversations/${conversationId}/attachments`)
+    const compteId = compteEnCours()
+    const jeton = jetonEnCours()
+    if (compteId !== null) xhr.setRequestHeader('X-Compte-Id', String(compteId))
+    if (jeton) xhr.setRequestHeader('Authorization', `Bearer ${jeton}`)
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgression?.(e.loaded / e.total)
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) return resolve(JSON.parse(xhr.responseText))
+      const erreur = new Error(`Requête échouée (${xhr.status})`)
+      erreur.status = xhr.status
+      reject(erreur)
+    }
+    xhr.onerror = () => reject(new Error('Réseau indisponible'))
+    const corps = new FormData()
+    corps.append('fichier', fichier, nom)
+    xhr.send(corps)
+  })
+}
+
+// Contenu protégé d'une pièce jointe, lu avec la session puis montré par
+// une adresse locale (blob:) ; gardé en mémoire : une pièce ne change
+// jamais (spec §4.6 : la vignette d'abord, la photo en la touchant).
+const blobs = new Map()
+export function blobPiece(pieceId, { vignette = false } = {}) {
+  const chemin = `/attachments/${pieceId}${vignette ? '/thumbnail' : ''}`
+  if (!blobs.has(chemin)) {
+    const promesse = fetch(`${BASE_URL}${chemin}`).then(async (reponse) => {
+      if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+      return URL.createObjectURL(await reponse.blob())
+    })
+    promesse.catch(() => blobs.delete(chemin))
+    blobs.set(chemin, promesse)
+  }
+  return blobs.get(chemin)
 }
 
 // "Nouvelle discussion" depuis la recherche (voir ConversationListScreen.jsx,

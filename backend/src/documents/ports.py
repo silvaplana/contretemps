@@ -91,6 +91,14 @@ class Mailer(Protocol):
         """Envoie ou lève une exception (message lisible)."""
 
 
+class Notifier(Protocol):
+    """Notifications sur le téléphone, branchées par l'appli hôte (dépôt dans
+    un bac Échanges, §4.7 ter)."""
+
+    def notify(self, db: Session, org_id: int, person_ids: list[int], title: str, body: str) -> None:
+        """Prévient ces personnes ; ne lève jamais d'exception."""
+
+
 class Periods(Protocol):
     """Saisons (ou exercices) de l'organisation."""
 

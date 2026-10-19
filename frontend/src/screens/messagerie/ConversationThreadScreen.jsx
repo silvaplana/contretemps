@@ -6,6 +6,8 @@ import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.j
 import { useFrappeEnCours, useSignalerFrappe } from '../../utils/frappeIndicateur.js'
 import { envoyerAvecReprise, reessayer, useMessagesEnAttente } from '../../utils/messageOutbox.js'
 import { libellePresence, usePresence, usePresenceListe } from '../../utils/presenceEnLigne.js'
+import { PhotoPleinEcran, PiecesDuMessage } from './pieces.jsx'
+import { TAILLE_MAX_FICHIER, preparerPhoto, tailleLisible } from './piecesOutils.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
@@ -182,6 +184,11 @@ export default function ConversationThreadScreen({
   const aSupprimerRef = useRef(null)
   const [bandeau, setBandeau] = useState(null) // petit message en bas (« Copié »)
   const [clignote, setClignote] = useState(null) // id du message rappelé par une réponse
+  // Photos et fichiers à envoyer avec le prochain message (spec §4.3).
+  const [aJoindre, setAJoindre] = useState([]) // [{ cle, fichier, nom, kind, apercu }]
+  const fichierRef = useRef(null)
+  const photoRef = useRef(null)
+  const [photoOuverte, setPhotoOuverte] = useState(null)
 
   const [canalOpen, setCanalOpen] = useState(false)
   const canalSelectorRef = useRef(null)
@@ -266,8 +273,24 @@ export default function ConversationThreadScreen({
   // Envoi par la messagerie de l'appli — mail et WhatsApp ne sont pas de
   // vrais canaux d'envoi pour l'instant (voir le menu "Autres moyens
   // d'envoi" plus bas, qui n'appelle plus cette fonction du tout).
+  async function ajouterFichiers(liste, commePhotos) {
+    const prets = []
+    for (const fichier of liste) {
+      const piece =
+        commePhotos || fichier.type.startsWith('image/')
+          ? await preparerPhoto(fichier)
+          : { fichier, nom: fichier.name, kind: 'file', apercu: null }
+      if (piece.fichier.size > TAILLE_MAX_FICHIER) {
+        window.alert(`« ${fichier.name} » est trop gros : 25 Mo au maximum.`)
+        continue
+      }
+      prets.push({ ...piece, cle: crypto.randomUUID() })
+    }
+    setAJoindre((a) => [...a, ...prets])
+  }
+
   function send() {
-    if (!draft.trim()) return
+    if (!draft.trim() && aJoindre.length === 0) return
     const contenu = draft.trim()
     setDraft('')
     if (enModification) {
@@ -284,6 +307,8 @@ export default function ConversationThreadScreen({
     }
     const options = reponseA ? { reponseA: reponseA.id } : {}
     setReponseA(null)
+    const fichiers = aJoindre.map(({ fichier, nom, kind, apercu }) => ({ fichier, nom, kind, apercu }))
+    setAJoindre([])
     // Revient à 1 ligne après l'envoi — sinon la textarea, agrandie
     // manuellement (voir ajusterHauteur), garde sa hauteur même une fois
     // vide.
@@ -293,7 +318,7 @@ export default function ConversationThreadScreen({
     // l'envoi échoue (bug signalé). L'insertion du message CONFIRMÉ dans
     // la conversation se fait ailleurs (voir App.jsx: useMessagesEnvoyes),
     // pas ici — ça marche pareil qu'on reste sur cet écran ou pas.
-    envoyerAvecReprise(conversation.id, compteId, contenu, 'app', options)
+    envoyerAvecReprise(conversation.id, compteId, contenu, 'app', options, fichiers)
   }
 
   function remplacerMessage(brut) {
@@ -371,10 +396,15 @@ export default function ConversationThreadScreen({
     montrerBandeau('Copié')
   }
 
+  // Le message part avec ses photos et fichiers (spec §4.2).
   function transferer() {
-    const textes = selectionnes.map((m) => m.contenu)
+    const messages = selectionnes.map((m) => ({
+      contenu: m.contenu,
+      pieces: m.pieces.map((p) => p.id),
+      apercu: messagesApi.apercuMessage(m),
+    }))
     setSelection([])
-    onTransferer(textes)
+    onTransferer(messages)
   }
 
   function modifier() {
@@ -566,10 +596,13 @@ export default function ConversationThreadScreen({
                   sur plusieurs lignes (voir la textarea ci-dessous) doit
                   aussi s'afficher sur plusieurs lignes, pas être aplati
                   en un seul paragraphe comme le ferait un <p> normal. */}
+              {!supprime && (
+                <PiecesDuMessage pieces={m.pieces} onOuvrirPhoto={setPhotoOuverte} desactivees={enSelection} />
+              )}
               {supprime ? (
                 <p className="message-bubble__contenu message-bubble__contenu--supprime">{SUPPRIME}</p>
               ) : (
-                <p className="message-bubble__contenu">
+                m.contenu && <p className="message-bubble__contenu">
                   <AvecLiens texte={m.contenu} desactives={enSelection} onOuvrirDocs={onOuvrirDocs} />
                 </p>
               )}
@@ -608,7 +641,19 @@ export default function ConversationThreadScreen({
               disabled={m.etat !== 'echec'}
               onClick={() => reessayer(m.clientId)}
             >
-              <p className="message-bubble__contenu">{m.contenu}</p>
+              {(m.fichiers?.length > 0 || m.options?.pieces?.length > 0) && (
+                <span className="message-bubble__envoi-pieces">
+                  {m.fichiers?.map((f, i) =>
+                    f.apercu ? <img key={i} src={f.apercu} alt="" /> : <span key={i}>📎 {f.nom}</span>,
+                  )}
+                  {m.etat !== 'echec' && m.fichiers?.length > 0 && (
+                    <span className="barre-progression">
+                      <span style={{ width: `${Math.round(m.progression * 100)}%` }} />
+                    </span>
+                  )}
+                </span>
+              )}
+              {m.contenu && <p className="message-bubble__contenu">{m.contenu}</p>}
               <span className="message-bubble__meta">
                 {m.etat === 'echec' ? (
                   <>
@@ -662,6 +707,46 @@ export default function ConversationThreadScreen({
           </button>
         </div>
       )}
+      {aJoindre.length > 0 && (
+        <div className="thread-a-joindre">
+          {aJoindre.map((p) => (
+            <span key={p.cle} className="thread-a-joindre__piece">
+              {p.apercu ? <img src={p.apercu} alt="" /> : <span className="thread-a-joindre__nom">📎 {p.nom}</span>}
+              <button
+                type="button"
+                className="thread-a-joindre__retirer"
+                aria-label={`Retirer ${p.nom}`}
+                onClick={() => setAJoindre((a) => a.filter((x) => x.cle !== p.cle))}
+              >
+                <Icon name="x" size={16} />
+              </button>
+              {!p.apercu && <span className="thread-a-joindre__taille">{tailleLisible(p.fichier.size)}</span>}
+            </span>
+          ))}
+        </div>
+      )}
+      <input
+        ref={fichierRef}
+        type="file"
+        multiple
+        hidden
+        onChange={(e) => {
+          ajouterFichiers([...e.target.files], false)
+          e.target.value = ''
+        }}
+      />
+      <input
+        ref={photoRef}
+        type="file"
+        accept="image/*"
+        multiple
+        hidden
+        onChange={(e) => {
+          ajouterFichiers([...e.target.files], true)
+          e.target.value = ''
+        }}
+      />
+      {photoOuverte && <PhotoPleinEcran piece={photoOuverte} onFermer={() => setPhotoOuverte(null)} />}
       <div className="conversation-thread__input">
         {emojiOpen && (
           <div className="emoji-picker" ref={emojiSelectorRef}>
@@ -709,6 +794,16 @@ export default function ConversationThreadScreen({
               }
             }}
           />
+          {!enModification && !lectureSeule && (
+            <>
+              <button type="button" className="icon-btn" onClick={() => fichierRef.current?.click()} aria-label="Joindre un fichier">
+                <Icon name="paperclip" size={20} />
+              </button>
+              <button type="button" className="icon-btn" onClick={() => photoRef.current?.click()} aria-label="Joindre une photo">
+                <Icon name="camera" size={20} />
+              </button>
+            </>
+          )}
           <div className="conversation-thread__pill-envoi" ref={canalSelectorRef}>
             <button
               type="button"

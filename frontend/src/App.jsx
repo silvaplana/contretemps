@@ -17,6 +17,7 @@ import * as sessionApi from './api/session.js'
 import { effacerFrappe, signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { lienRecu, oublierLienRecu } from './utils/lienRecu.js'
 import { PARTAGE_ENTRANT, useEnvoyerA } from './utils/envoyerA.js'
+import { DOCS_AU_CHARGEMENT } from './modules/documents/lienDocs.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
 import { chargerTauxChange } from './utils/euros.js'
@@ -84,6 +85,8 @@ function App() {
   const [bandeauInstallationAMontrer, setBandeauInstallationAMontrer] = useState(false)
   // Repart du dernier onglet affiché sur cet appareil (voir api/session.js).
   const [activeTab, setActiveTab] = useState(() => {
+    // Arrivé par un lien vers un fichier des Docs (modules/documents/lienDocs.js).
+    if (DOCS_AU_CHARGEMENT) return 'docs'
     const dernier = sessionApi.lireEcran('onglet')
     return TABS.some((t) => t.key === dernier) ? dernier : 'messagerie'
   })
