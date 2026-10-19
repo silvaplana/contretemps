@@ -175,6 +175,34 @@ def test_le_super_user_fait_une_note_dans_l_ecole_choisie(client, db_session, ec
     assert client.get("/notes-frais/moi", headers={**sans_ecole, "X-Ecole-Id": "999"}).status_code == 403
 
 
+def test_le_tresorier_saisit_et_envoie_pour_quelqu_un(client, ecole, espion):
+    """Financier › ⋯ « pour quelqu'un » (décision de Seb, 19 octobre) : la
+    dépense et la note sont au nom de la personne choisie."""
+    eleve, tresorier, admin = ecole["eleve"], ecole["tresorier"], ecole["admin"]
+    personnes = client.get("/notes-frais/personnes", headers=entetes_session(tresorier)).json()
+    assert "Margot Perrin" in [p["nom"] for p in personnes]
+    margot = next(p["person_id"] for p in personnes if p["nom"] == "Margot Perrin")
+    pour = {**entetes_session(tresorier), "X-Pour-Personne": str(margot)}
+    d = client.post(
+        "/notes-frais/depenses", json={"date": "2026-10-12", "montant_centimes": 1500, "description": "Facture"}, headers=pour
+    )
+    assert d.status_code == 201, d.text
+    reponse = client.post(
+        "/notes-frais/notes", json={"depense_ids": [d.json()["id"]], "titre": "Factures", "rib": {"iban": IBAN}}, headers=pour
+    )
+    assert reponse.status_code == 201, reponse.text
+    # Margot la retrouve dans « Mes notes de frais », avec le RIB saisi.
+    espace = client.get("/notes-frais/moi", headers=entetes_session(eleve)).json()
+    assert [n["titre"] for n in espace["notes"]] == ["Factures"]
+    assert espace["rib"]["iban"] == IBAN
+    # Rien chez le trésorier lui-même.
+    assert client.get("/notes-frais/moi", headers=entetes_session(tresorier)).json()["notes"] == []
+    # Réservé aux trésoriers ; la personne doit être de l'école.
+    assert client.get("/notes-frais/personnes", headers=entetes_session(admin)).status_code == 403
+    assert client.get("/notes-frais/moi", headers={**entetes_session(admin), "X-Pour-Personne": str(margot)}).status_code == 403
+    assert client.get("/notes-frais/moi", headers={**entetes_session(tresorier), "X-Pour-Personne": "99999"}).status_code == 404
+
+
 def test_on_ne_voit_pas_les_depenses_des_autres(client, ecole):
     d = _depense(client, ecole["eleve"])
     assert client.delete(f"/notes-frais/depenses/{d['id']}", headers=entetes_session(ecole["admin"])).status_code == 404

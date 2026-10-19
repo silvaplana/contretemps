@@ -63,6 +63,9 @@ class Annuaire(Protocol):
     def tresoriers(self, db: Session, org_id: int) -> list[Personne]:
         """Les trésoriers actuels de l'organisation."""
 
+    def toutes(self, db: Session, org_id: int) -> list[Personne]:
+        """Toutes les personnes actuelles de l'organisation, par nom."""
+
     def organisation(self, db: Session, org_id: int) -> Organisation: ...
 
 
