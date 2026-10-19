@@ -16,6 +16,9 @@ pour Contretemps est marqué *(Contretemps)*.
   ses écrans lui permettent déjà (« pas plus qu'en cliquant », Seb, 16 octobre).
 - Coût affiché en euros, choix du modèle, plafond mensuel par école (jamais pour le Super User).
 - Saisie façon appli Claude : + (photo, fichiers), micro pour dicter, flèche d'envoi.
+- À l'ouverture, deux ou trois suggestions **propres à l'onglet ouvert** (Docs : le dossier ; Présence :
+  les absences ; Administration : créer un cours…), plus « Fais une note de frais » partout. Créer un
+  groupe n'est suggéré qu'aux administrateurs. Le fichier de l'appli a les siennes (Seb, 19 octobre).
 - Code : `backend/src/assistant/`, `frontend/src/modules/documents/Assistant.jsx`, `AssistantGlobal.jsx`.
 
 ## 2. Règles
@@ -85,6 +88,10 @@ quelle, avec les routes, les onglets et les rôles.
 
 ## 4. Dictée
 
+- Pendant la dictée (comme l'appli Claude, Seb 19 octobre) : sous le texte qui s'écrit, une barre avec ✕
+  (annule et remet le texte d'avant), un fil de points qui s'agite quand une voix est entendue, ■ (arrête,
+  garde le texte) et ↑ (envoie). Le fil suit la voix détectée, pas le volume exact : mesurer le micro en
+  même temps que la reconnaissance la gênerait sur Android.
 - Le micro utilise la reconnaissance vocale du navigateur, gratuite (absente de Firefox : pas de micro).
 - Sur Chrome Android, les morceaux entendus reprennent chacun le précédent : le texte est reconstruit à
   chaque fois, sans répéter les mots (correctif du 18 octobre, `Dictee.js`).

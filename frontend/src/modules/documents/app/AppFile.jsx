@@ -421,6 +421,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
             onClose={() => setChatOuvert(false)}
             onFaire={chat.onFaire}
             onFichier={surFichier}
+            suggestions={['Rends le texte plus court et plus clair', 'Corrige les fautes']}
           />
         </div>
       )}

@@ -1744,71 +1744,56 @@
   cursor: default;
 }
 
-/* Micro en écoute : une pastille avec des ondes qui bougent (comme
-   l'appli Claude), plus amples quand on entend une voix. */
-.dx-chat__rond--ecoute {
-  width: 64px;
-  border-radius: 18px;
-  border-color: var(--accent);
-  background: var(--dx-soft);
+/* Dictée en cours (comme l'appli Claude) : ✕, un fil de points qui
+   deviennent des barres agitées quand on entend une voix, ■ et ↑. */
+.dx-chat__outils--ecoute {
+  gap: 8px;
+}
+
+.dx-fil {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+  height: 28px;
+  overflow: hidden;
   color: var(--accent);
 }
 
-.dx-ondes {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 20px;
-}
-
-.dx-ondes i {
+.dx-fil i {
   display: block;
-  width: 3px;
+  flex: none;
+  width: 4px;
   height: 100%;
   border-radius: 2px;
   background: currentColor;
-  transform: scaleY(0.25);
-  animation: dx-onde 1.1s ease-in-out infinite;
+  transform: scaleY(0.15);
+  opacity: 0.6;
+  transition: opacity 0.2s;
 }
 
-.dx-ondes i:nth-child(2) {
-  animation-delay: -0.9s;
+.dx-fil--parle i {
+  opacity: 1;
+  animation: dx-onde 0.6s ease-in-out infinite;
 }
 
-.dx-ondes i:nth-child(3) {
-  animation-delay: -0.4s;
-}
-
-.dx-ondes i:nth-child(4) {
-  animation-delay: -0.7s;
-}
-
-.dx-ondes i:nth-child(5) {
+.dx-fil--parle i:nth-child(3n) {
   animation-delay: -0.2s;
 }
 
-.dx-chat__rond--parle .dx-ondes i {
-  animation-duration: 0.55s;
+.dx-fil--parle i:nth-child(3n + 1) {
+  animation-delay: -0.45s;
+}
+
+.dx-fil--parle i:nth-child(4n) {
+  animation-duration: 0.8s;
 }
 
 @keyframes dx-onde {
   0%,
   100% {
-    transform: scaleY(0.25);
-  }
-  50% {
-    transform: scaleY(0.6);
-  }
-}
-
-.dx-chat__rond--parle .dx-ondes i {
-  animation-name: dx-onde-forte;
-}
-
-@keyframes dx-onde-forte {
-  0%,
-  100% {
-    transform: scaleY(0.3);
+    transform: scaleY(0.15);
   }
   50% {
     transform: scaleY(1);
@@ -1816,9 +1801,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .dx-ondes i {
+  .dx-fil--parle i {
     animation: none;
-    transform: scaleY(0.6);
+    transform: scaleY(0.5);
   }
 }
 
