@@ -205,6 +205,26 @@ Pour couper l'accès : supprimer la ligne `github-actions-contretemps` de
 `~/.ssh/authorized_keys` sur le VPS.
 
 
+## 6. Maintenance à la demande (GitHub Actions)
+
+Pour les quelques commandes à lancer sur le serveur sans s'y connecter :
+onglet **Actions** du dépôt > « Maintenance du VPS » > **Run workflow**, puis
+choisir la tâche. Un fil Claude peut aussi la lancer quand on le lui demande.
+Claude n'a jamais de clé SSH : c'est GitHub qui se connecte, avec la clé de
+déploiement (§5).
+
+| Tâche | Ce qu'elle fait |
+|---|---|
+| Lister les écoles et leurs notes de frais | Affiche chaque école, son numéro, et combien de notes, dépenses et justificatifs elle a. N'efface rien. |
+| Effacer les notes de frais d'une école | Demande le numéro de l'école et son nom exact (confirmation). Efface notes, dépenses, justificatifs et le dossier « Notes de frais » de Docs › Financier ; garde catégories et RIB. Irréversible. |
+
+- Fichiers : `.github/workflows/maintenance.yml` (le formulaire) et le début
+  de `deploy.sh` (la liste fermée des tâches). La clé ne peut toujours lancer
+  que `deploy.sh` ; une tâche absente de cette liste est refusée.
+- Ajouter une tâche = une PR qui l'ajoute aux deux fichiers, relue comme le
+  reste.
+- Une tâche n'attend jamais un déploiement en cours : elle passe après.
+
 ## Adresses d'école (spec §2.7, mises en service le 2026-10-15)
 
 Chaque école a son adresse `https://<adresse>.contretemps.silvaplana.cloud`

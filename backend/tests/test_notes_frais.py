@@ -401,3 +401,18 @@ def test_vider_les_notes_de_frais_d_une_ecole(client, db_session, ecole, tmp_pat
     assert _dossiers_docs(db_session, org) == []
     assert client.get("/notes-frais/moi", headers=entetes_session(eleve)).status_code == 200
     assert client.get("/notes-frais/categories", headers=entetes_session(tresorier)).json() == categories
+
+
+def test_vider_sans_clavier_exige_le_nom_exact(client, db_session, ecole):
+    """Action GitHub « Maintenance » (DEPLOY.md §6) : --ecole et --nom."""
+    from app.vider_notes_frais import _compter, _effacer
+
+    org = ecole["ecole"]
+    _depense(client, ecole["eleve"])
+    with pytest.raises(SystemExit):
+        _effacer(db_session, [org], str(org.id), "contretemps")
+    with pytest.raises(SystemExit):
+        _effacer(db_session, [org], "999", org.nom)
+    assert _compter(db_session, org.id)[1] == 1
+    _effacer(db_session, [org], str(org.id), org.nom)
+    assert _compter(db_session, org.id) == (0, 0, 0)

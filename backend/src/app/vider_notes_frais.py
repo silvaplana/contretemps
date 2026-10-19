@@ -9,10 +9,19 @@ Garde les catégories et les RIB. Pour repartir de zéro après des essais
 
 La commande affiche les écoles et ce qu'elles contiennent, demande le
 numéro de l'école, puis de retaper son nom avant d'effacer quoi que ce soit.
+
+Sans clavier (action GitHub « Maintenance », voir DEPLOY.md §6) :
+
+    python -m app.vider_notes_frais --lister
+    python -m app.vider_notes_frais --ecole 3 --nom "Contretemps"
+
+`--nom` tient lieu de confirmation : rien n'est effacé s'il ne correspond
+pas exactement au nom de l'école.
 """
 
 from __future__ import annotations
 
+import argparse
 import shutil
 import sys
 
@@ -65,20 +74,43 @@ def vider(db, org_id: int) -> None:
     shutil.rmtree(appli.notes_frais_client.stockage._org(org_id), ignore_errors=True)
 
 
+def _lister(db) -> list[Ecole]:
+    ecoles = list(db.scalars(select(Ecole).order_by(Ecole.id)))
+    for ecole in ecoles:
+        notes, depenses, pieces = _compter(db, ecole.id)
+        print(f"{ecole.id:>3}  {ecole.nom} ({ecole.code_postal}) : {notes} notes, {depenses} dépenses, {pieces} justificatifs")
+    return ecoles
+
+
+def _effacer(db, ecoles: list[Ecole], numero: str, nom: str) -> None:
+    ecole = next((e for e in ecoles if str(e.id) == numero.strip()), None)
+    if ecole is None:
+        sys.exit("École inconnue : rien n'a été effacé.")
+    if nom.strip() != ecole.nom:
+        sys.exit(f"Le nom ne correspond pas à « {ecole.nom} » : rien n'a été effacé.")
+    vider(db, ecole.id)
+    print(f"Notes de frais de « {ecole.nom} » effacées (catégories et RIB gardés).")
+
+
 def main() -> None:
+    options = argparse.ArgumentParser(description="Efface les notes de frais d'une école.")
+    options.add_argument("--lister", action="store_true", help="afficher les écoles et ce qu'elles contiennent, sans rien effacer")
+    options.add_argument("--ecole", help="numéro de l'école à vider")
+    options.add_argument("--nom", help="nom exact de l'école, en confirmation")
+    arguments = options.parse_args()
     with SessionLocal() as db:
-        ecoles = list(db.scalars(select(Ecole).order_by(Ecole.id)))
-        for ecole in ecoles:
-            notes, depenses, pieces = _compter(db, ecole.id)
-            print(f"{ecole.id:>3}  {ecole.nom} ({ecole.code_postal}) : {notes} notes, {depenses} dépenses, {pieces} justificatifs")
+        ecoles = _lister(db)
+        if arguments.lister:
+            return
+        if arguments.ecole is not None:
+            _effacer(db, ecoles, arguments.ecole, arguments.nom or "")
+            return
         choix = input("Numéro de l'école à vider (Entrée pour annuler) : ").strip()
-        ecole = next((e for e in ecoles if str(e.id) == choix), None)
-        if ecole is None:
+        if not choix:
             sys.exit("Rien n'a été effacé.")
-        if input(f"Retapez le nom « {ecole.nom} » pour tout effacer : ").strip() != ecole.nom:
-            sys.exit("Nom différent : rien n'a été effacé.")
-        vider(db, ecole.id)
-        print(f"Notes de frais de « {ecole.nom} » effacées (catégories et RIB gardés).")
+        ecole = next((e for e in ecoles if str(e.id) == choix), None)
+        nom = input(f"Retapez le nom « {ecole.nom} » pour tout effacer : ") if ecole else ""
+        _effacer(db, ecoles, choix, nom)
 
 
 if __name__ == "__main__":
