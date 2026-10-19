@@ -62,6 +62,9 @@ export function documentsApi(orgId) {
     rename: (id, name) => appel(`${base}/nodes/${id}`, json('PATCH', { name })),
     move: (id, space, parentId) => appel(`${base}/nodes/${id}`, json('PATCH', { move: true, space, parent_id: parentId })),
     copy: (id, space, parentId) => appel(`${base}/nodes/${id}/copy`, json('POST', { space, parent_id: parentId })),
+    // Bac Échanges : pour qui (null = tout le monde).
+    setRecipient: (id, principal) =>
+      appel(`${base}/nodes/${id}/recipient`, json('PUT', principal ? { type: principal.type, id: principal.id } : {})),
     setStatus: (id, status) => appel(`${base}/nodes/${id}`, json('PATCH', { change_status: true, status })),
     remove: (id) => appel(`${base}/nodes/${id}`, { method: 'DELETE' }),
     restore: (id) => appel(`${base}/nodes/${id}/restore`, { method: 'POST' }),

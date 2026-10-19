@@ -3,6 +3,7 @@ import Modal from '../../components/Modal.jsx'
 import { documentsApi } from '../../api/documents.js'
 import FolderPicker from './FolderPicker.jsx'
 import NewScreen from './NewScreen.jsx'
+import PourQui from './PourQui.jsx'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
 import { accesAssistant, ajouterProduit } from '../../api/assistant.js'
@@ -14,9 +15,9 @@ import Viewer from './Viewer.jsx'
 
 // Le fichier de base embarque BlockNote : chargé seulement quand on l'ouvre.
 const AppFile = lazy(() => import('./app/AppFile.jsx'))
-import { Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon } from './icons.jsx'
+import { Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon, TrayIcon } from './icons.jsx'
 import { FAMILIES, STATUSES, isImage } from './kinds.js'
-import { subtitle } from './format.js'
+import { exchangeSubtitle, subtitle } from './format.js'
 import './documents.css'
 
 // Explorateur de l'onglet Docs (spec appbase documents.md §6, §7 ; maquette
@@ -57,6 +58,7 @@ function Thumb({ api, item }) {
 }
 
 function ItemIcon({ api, item }) {
+  if (item.system_kind === 'exchange') return <TrayIcon />
   if (item.kind === 'folder') return <FolderIcon restricted={item.restricted} />
   const icone = isImage(item) && item.has_thumbnail ? <Thumb api={api} item={item} /> : <FileIcon name={item.name} family={item.family} />
   if (!item.restricted) return icone
@@ -147,6 +149,8 @@ export default function Explorer({ orgId, memoire }) {
   const [proprietes, setProprietes] = useState(null)
   const [partage, setPartage] = useState(null)
   const [nouveau, setNouveau] = useState(false)
+  // Éléments qu'on vient de déposer dans un bac Échanges : « Pour qui ? ».
+  const [pourQui, setPourQui] = useState(null)
   const [vue, setVue] = useState(null)
   // Fichier de l'appli ouvert (fichier de base, spec fichier-de-base.md).
   const [appli, setAppli] = useState(aOuvrir)
@@ -290,22 +294,26 @@ export default function Explorer({ orgId, memoire }) {
   }
 
   const peutAjouter = Boolean(data?.can_add)
+  // Bac Échanges (§4.7 ter) : le dossier ouvert, ou une ligne de la liste.
+  const estBac = (id) =>
+    id != null && (id === folder ? data?.folder?.system_kind === 'exchange' : items.some((x) => x.id === id && x.system_kind === 'exchange'))
 
-  async function importer(liste, dossierId = folder) {
+  async function importer(liste, dossierId = folder, versEspace = space, bac = estBac(dossierId)) {
     const tous = Array.from(liste ?? [])
     if (tous.length === 0) return
     montrerToast(tous.length > 1 ? `Envoi de ${tous.length} fichiers…` : `Envoi de « ${tous[0].name} »…`)
-    let ok = 0
+    const faits = []
     for (const f of tous) {
       try {
-        await api.upload(space, dossierId, f)
-        ok += 1
+        faits.push(await api.upload(versEspace, dossierId, f))
       } catch (e) {
         echec(e)
       }
     }
     await recharger()
+    const ok = faits.length
     if (ok) montrerToast(ok > 1 ? `${ok} fichiers importés` : `« ${tous[0].name} » importé`)
+    if (ok && bac) setPourQui(faits)
   }
 
   function setSelection(item) {
@@ -387,7 +395,7 @@ export default function Explorer({ orgId, memoire }) {
     }
   }
 
-  async function copier(x, versEspace, versDossier) {
+  async function copier(x, versEspace, versDossier, bac = estBac(versDossier)) {
     const copies = []
     for (const item of enListe(x)) {
       try {
@@ -398,10 +406,29 @@ export default function Explorer({ orgId, memoire }) {
     }
     await recharger()
     if (copies.length) {
-      montrerToast(`${nommer(copies)} collé${accord(copies)}`, async () => {
+      montrerToast(`${nommer(copies)} ${bac ? 'copié' : 'collé'}${accord(copies)}${bac ? ' dans Échanges' : ''}`, async () => {
         for (const copie of copies) await api.remove(copie.id)
         await recharger()
       })
+      if (bac) setPourQui(copies)
+    }
+  }
+
+  // Glisser sur un dossier : déplace ; sur le bac Échanges : copie (il se
+  // vide tout seul, l'original reste à sa place).
+  function poser(liste, versEspace, versDossier, bac = estBac(versDossier)) {
+    if (bac) copier(liste, versEspace, versDossier, true)
+    else deplacer(liste, versEspace, versDossier)
+  }
+
+  // Lâché sur une ligne de l'arborescence (ordinateur).
+  function lacherSurArbre(versEspace, versDossier, bac, e) {
+    const ids = e.dataTransfer.getData('application/x-dx-node')
+    if (ids) {
+      const liste = ids.split(',').map((id) => items.find((x) => String(x.id) === id)).filter(Boolean)
+      if (liste.length) poser(liste, versEspace, versDossier, bac)
+    } else if (e.dataTransfer.files?.length) {
+      importer(e.dataTransfer.files, versDossier, versEspace, bac)
     }
   }
 
@@ -594,7 +621,7 @@ export default function Explorer({ orgId, memoire }) {
         } else if (cible === 'root') {
           if (folder != null) deplacer(groupeDe(item), space, null)
         } else if (cible != null && cible !== folder) {
-          deplacer(groupeDe(item), space, cible)
+          poser(groupeDe(item), space, cible)
         }
       } else {
         setFeuille(item)
@@ -664,7 +691,7 @@ export default function Explorer({ orgId, memoire }) {
     const ids = e.dataTransfer.getData('application/x-dx-node')
     if (ids) {
       const liste = ids.split(',').map((id) => items.find((x) => String(x.id) === id)).filter(Boolean)
-      if (liste.length && cibleDossier) deplacer(liste, space, cibleDossier)
+      if (liste.length && cibleDossier) poser(liste, space, cibleDossier)
       return
     }
     if (e.dataTransfer.files?.length) importer(e.dataTransfer.files, cibleDossier ?? folder)
@@ -762,7 +789,9 @@ export default function Explorer({ orgId, memoire }) {
         ? `${[espaceDe, ...(item.path ?? []).map((p) => p.name)].filter(Boolean).join(' › ')} · ${subtitle(item)}`
         : resultats && item.path
           ? chemin
-          : subtitle(item)
+          : item.exchange_until
+            ? exchangeSubtitle(item)
+            : subtitle(item)
     const choisi = selIds.includes(item.id)
     return (
       <div
@@ -810,6 +839,7 @@ export default function Explorer({ orgId, memoire }) {
             {item.name}
             {item.system_kind === 'period' && item.period_current && <span className="dx-current">en cours</span>}
             {item.system_kind === 'reserved' && <span className="dx-current">trésoriers seulement</span>}
+            {item.system_kind === 'exchange' && <span className="dx-current">se vide en 30 jours</span>}
           </div>
           <div className="dx-s">
             {item.status && <StatusBadge status={item.status} compact />}
@@ -855,6 +885,11 @@ export default function Explorer({ orgId, memoire }) {
       { icone: '☰', libelle: 'Propriétés', faire: () => (setFeuille(null), setProprietes({ id: item.id, tab: 'Infos' })), hl: true },
       { icone: '🗑', libelle: 'Supprimer', faire: () => supprimer(item), off: !restructurer && raison, danger: true },
     ]
+    // Dans le bac Échanges : « Ranger… » d'abord (choisir son vrai dossier).
+    if (item.exchange_until) {
+      const ranger = principales.splice(3, 1)[0]
+      principales.unshift({ ...ranger, libelle: 'Ranger…' })
+    }
     const autres = [
       {
         icone: '☑',
@@ -875,6 +910,9 @@ export default function Explorer({ orgId, memoire }) {
           ]
         : []),
     ]
+    if (item.exchange_until && (item.sent_by_me || data?.level === 'manage')) {
+      autres.unshift({ icone: '✉', libelle: 'Pour…', faire: () => (setFeuille(null), setPlus(false), setPourQui([item])) })
+    }
     return { principales, autres }
   }
 
@@ -1311,10 +1349,25 @@ export default function Explorer({ orgId, memoire }) {
         />
       )}
 
+      {pourQui && (
+        <PourQui
+          api={api}
+          items={pourQui}
+          onClose={() => setPourQui(null)}
+          onError={echec}
+          onDone={async (message) => {
+            setPourQui(null)
+            await recharger()
+            montrerToast(message)
+          }}
+        />
+      )}
+
       {nouveau && (
         <NewScreen
           api={api}
           canAdd={peutAjouter}
+          canAddFolder={data?.can_add_folder !== false}
           onClose={() => setNouveau(false)}
           onNewFolder={() => {
             setNouveau(false)
@@ -1458,6 +1511,7 @@ export default function Explorer({ orgId, memoire }) {
         onRecents={voirRecents}
         onAccueil={() => ouvrirDepuisArbre('private', null)}
         onNouveau={() => setNouveau(true)}
+        onDropOn={lacherSurArbre}
       />
       {explorateur}
     </div>

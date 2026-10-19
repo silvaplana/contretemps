@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { FolderIcon, PlusIcon } from './icons.jsx'
+import { FolderIcon, PlusIcon, TrayIcon } from './icons.jsx'
 
 // Arborescence à gauche, sur ordinateur seulement (façon Google Drive, Seb
 // 15 octobre) : les espaces, et leurs dossiers à déplier. Un clic sur un nom
@@ -48,12 +48,13 @@ function IconeLigne({ children }) {
 }
 
 export default function Arbre({
-  api, spaces, space, folder, breadcrumb, version, onOpen, recentsActif, onRecents, onAccueil, onNouveau,
+  api, spaces, space, folder, breadcrumb, version, onOpen, recentsActif, onRecents, onAccueil, onNouveau, onDropOn,
 }) {
   const [enfants, setEnfants] = useState({}) // clé -> dossiers enfants
   // Choix de l'utilisateur (déplier / replier) ; sans choix, seul le chemin
   // du dossier ouvert est déplié.
   const [choix, setChoix] = useState({}) // clé -> true (déplié) / false (replié)
+  const [survol, setSurvol] = useState(null) // clé de la ligne survolée en glissant
 
   const charger = useCallback(
     (s, id) =>
@@ -83,14 +84,35 @@ export default function Arbre({
     setChoix((c) => ({ ...c, [k]: !estOuvert(k) }))
   }
 
-  function ligne({ s, id, nom, profondeur, actif, icone }) {
+  // On peut lâcher sur une ligne des éléments de la liste ou des fichiers de
+  // l'ordinateur (déplacer, ou copier dans le bac Échanges : voir Explorer).
+  const glisseQuelqueChose = (e) =>
+    ['application/x-dx-node', 'Files'].some((t) => Array.from(e.dataTransfer?.types ?? []).includes(t))
+
+  function ligne({ s, id, nom, profondeur, actif, icone, bac = false }) {
     const k = cle(s, id)
     const ouvert = estOuvert(k)
     const liste = enfants[k]
     const vide = liste && liste.length === 0
     return (
       <li key={k}>
-        <div className={`dx-arbre__ligne${actif ? ' is-active' : ''}`} style={{ paddingLeft: 8 + profondeur * 18 }}>
+        <div
+          className={`dx-arbre__ligne${actif ? ' is-active' : ''}${survol === k ? ' is-drop' : ''}`}
+          style={{ paddingLeft: 8 + profondeur * 18 }}
+          onDragOver={(e) => {
+            if (!onDropOn || !glisseQuelqueChose(e)) return
+            e.preventDefault()
+            e.dataTransfer.dropEffect = bac || !e.dataTransfer.types.includes('application/x-dx-node') ? 'copy' : 'move'
+            setSurvol(k)
+          }}
+          onDragLeave={() => setSurvol((x) => (x === k ? null : x))}
+          onDrop={(e) => {
+            if (!onDropOn) return
+            e.preventDefault()
+            setSurvol(null)
+            onDropOn(s, id, bac, e)
+          }}
+        >
           <button
             type="button"
             className="dx-arbre__fleche"
@@ -115,7 +137,8 @@ export default function Arbre({
                 nom: d.name,
                 profondeur: profondeur + 1,
                 actif: !recentsActif && s === space && d.id === folder,
-                icone: <FolderIcon restricted={d.restricted} />,
+                icone: d.system_kind === 'exchange' ? <TrayIcon /> : <FolderIcon restricted={d.restricted} />,
+                bac: d.system_kind === 'exchange',
               }),
             )}
           </ul>
