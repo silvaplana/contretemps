@@ -211,8 +211,9 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
 - Une action impossible pour la sélection (Modifier sur deux messages, Supprimer le message d'un autre)
   n'apparaît pas.
 - Modifier et Supprimer arrivent **en direct** chez les autres (comme les nouveaux messages).
-- Données : `messages.modifie_at` et `messages.supprime_at` (le texte d'un message supprimé est vidé en
-  base), `messages.transfere` (booléen).
+- Données : nouvelles colonnes `messages.edited_at`, `messages.deleted_at` (le texte d'un message
+  supprimé est vidé en base) et `messages.forwarded` (booléen), en anglais comme tout nouveau code
+  (CLAUDE.md) ; la table garde son nom.
 
 ### 4.3 Photos et fichiers
 
@@ -240,8 +241,8 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
   dépende pas du module Documents.
 - **Jamais servi en direct** : un fichier ne sort que par une route de la messagerie, après vérification que
   la personne fait partie de la conversation.
-- Table `message_pieces_jointes` : message, empreinte, nom d'origine, nature (photo, vidéo, fichier),
-  taille, largeur et hauteur pour une photo.
+- Nouvelle table `msg_attachments` (préfixe du module, en anglais, CLAUDE.md) : `message_id`, `sha256`,
+  `filename`, `kind` (photo, video, file), `size`, `width` et `height` pour une photo.
 - **Compression, comme WhatsApp**, pour que ça circule vite : la photo est réduite sur le téléphone avant
   l'envoi (§4.3), la vidéo est compressée sur le serveur juste après (§4.5). Les fichiers (PDF, Word…) ne
   sont pas touchés.
