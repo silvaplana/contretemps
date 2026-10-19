@@ -250,16 +250,6 @@
   text-align: right;
 }
 
-.nf-titre-ligne {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.nf-titre-ligne .section-label {
-  margin: 0;
-}
-
 .nf-periode {
   display: flex;
   flex-wrap: wrap;
