@@ -27,7 +27,11 @@ from change import TauxChange, TauxChangeReceiver
 from choregraphies import Choregraphies, ChoregraphiesReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
+from administrateurs.actions import actions as actions_administrateurs
+from choregraphies.actions import actions as actions_choregraphies
 from cours.actions import actions as actions_cours
+from ecoles.actions import actions as actions_ecoles
+from eleves.actions import actions as actions_eleves
 from db import Base, engine
 from documents import Documents, DocumentsReceiver, LocalStorage
 from documents_contretemps import (
@@ -62,6 +66,7 @@ from notes_frais_contretemps import (
     membre_appelant as membre_notes_frais,
 )
 from notes_frais_contretemps.actions import actions as actions_notes_frais
+from profs.actions import actions as actions_profs
 from presence import Presence, PresenceReceiver
 from saisons.gestion import GestionSaisons
 from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
@@ -351,8 +356,13 @@ notes_frais_receiver = NotesDeFraisReceiver(client=notes_frais_client, app=app, 
 # Actions que les modules ouvrent à l'assistant (spec/modules/assistant-ia.md
 # §3) : chaque module les déclare dans son actions.py, la liste est ici.
 assistant_client.actions = Actions([
+    *actions_ecoles(ecoles_client),
+    *actions_administrateurs(administrateurs_client),
+    *actions_eleves(eleves_client),
+    *actions_profs(profs_client),
     *actions_messagerie(messagerie_receiver),
     *actions_cours(cours_receiver),
+    *actions_choregraphies(choregraphies_client),
     *actions_notes_frais(notes_frais_client),
 ])
 

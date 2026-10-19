@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from assistant.actions import Action
 from assistant.modifications import Ligne, Refus
-from comptes import rbac
+from comptes import rbac, roles
 from comptes.models import Compte
 from cours.models import Cours
 from pydantic import BaseModel, Field
@@ -62,7 +62,7 @@ def actions(receiver: MessagerieReceiver) -> list[Action]:
         rbac.require_admin(compte, org_id)
         personnes = [db.get(Compte, i) for i in dict.fromkeys(p.member_ids)]
         cours = [db.get(Cours, i) for i in dict.fromkeys(p.course_ids)]
-        if any(x is None or x.ecole_id != org_id for x in [*personnes, *cours]):
+        if any(not dans_l_ecole(x, org_id) for x in [*personnes, *cours]):
             raise Refus("une personne ou un cours est introuvable dans cette école")
         noms = [f"{x.prenom} {x.nom}".strip() for x in personnes] + [f"le cours {c.nom}" for c in cours]
         membres = [MembreEntree(membre_type="compte", membre_id=x.id) for x in personnes] + [
@@ -99,7 +99,7 @@ def actions(receiver: MessagerieReceiver) -> list[Action]:
 
         def lire(modele, ids):
             trouves = [db.get(modele, i) for i in dict.fromkeys(ids)]
-            if any(x is None or x.ecole_id != org_id for x in trouves):
+            if any(not dans_l_ecole(x, org_id) for x in trouves):
                 raise Refus("une personne ou un cours est introuvable dans cette école")
             return trouves
 
@@ -146,3 +146,9 @@ def libelle(x) -> str:
     if isinstance(x, Cours):
         return f"le cours {x.nom}"
     return f"{x.prenom} {x.nom}".strip()
+
+
+def dans_l_ecole(x, org_id: int) -> bool:
+    """Une personne ou un cours de l'école ; le Super User, hors école, s'ajoute
+    dans toute école (spec/core.md §6.1)."""
+    return x is not None and (x.ecole_id == org_id or (isinstance(x, Compte) and roles.is_superuser(x)))

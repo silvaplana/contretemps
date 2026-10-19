@@ -77,11 +77,26 @@ quelle, avec les routes, les onglets et les rôles.
 
 | Module | Action | Qui |
 |---|---|---|
-| Messagerie | Créer un groupe (personnes et cours), le renommer, le supprimer, ajouter ou retirer des membres (aussi dans le groupe d'un cours). Les groupes automatiques des cours ne se suppriment pas. | Administrateurs |
+| Messagerie | Créer un groupe (personnes et cours), le renommer, le supprimer, ajouter ou retirer des membres (aussi dans le groupe d'un cours). Les groupes automatiques des cours ne se suppriment pas. Le Super User, qui n'a pas de fiche d'école, s'ajoute comme dans l'écran Nouveau groupe. | Administrateurs |
 | Cours *(Contretemps)* | Créer un cours, le supprimer. Le modifier passe déjà par la carte des modifications de données. | Administrateurs |
+| École | Modifier les coordonnées d'Admin > École (nom, adresse, SIRET, IBAN, emails). | Administrateurs |
+| Rôles | Nommer ou retirer un administrateur, un trésorier, un administrateur principal ; créer une personne qui n'est qu'administrateur. Comme le tableau des administrateurs : jamais sur sa propre ligne, sauf la case Trésorier. | **Administrateurs principaux** et Super User (Seb, 19 octobre) |
+| Professeurs | Créer, modifier, supprimer un professeur. L'affecter à un cours passe par la carte des modifications de données. | Administrateurs |
+| Élèves | Supprimer un élève. Le créer et le modifier passent par la carte des modifications de données. | Administrateurs |
+| Chorégraphies *(Contretemps)* | Supprimer une chorégraphie avec ses vidéos. La créer et la modifier passent par la carte des modifications de données. | Administrateurs |
 | Notes de frais | Faire une note (une ou plusieurs dépenses) et l'envoyer aux trésoriers, pour soi ou, si on est trésorier, pour quelqu'un d'autre. Sans RIB enregistré, seulement en don. Les justificatifs s'ajoutent ensuite dans l'appli. | Tous ceux qui ont l'assistant |
 
+En lecture (Seb, 19 octobre : « tout ce que contient l'onglet Admin »), réservé aux administrateurs :
+toutes les personnes avec leurs rôles, Super Users compris, filtrables par rôle ; les coordonnées de
+l'école (de l'IBAN, l'assistant ne voit que les 4 derniers chiffres) ; les groupes de la messagerie et
+leurs membres. Le reste d'Admin (élèves, profs, cours, chorégraphies, saisons) se lisait déjà.
+
 ### 3.4 Plus tard
+
+- Ajouter une vidéo à une chorégraphie : le fichier passe aujourd'hui par l'écran de la chorégraphie
+  (envoi par morceaux, compression) ; les fichiers joints à l'assistant sont limités à 20 Mo et lus par
+  lui. À décider avec Seb.
+- Admin > École encore sans action : saisons, personnalisation (logo, couleurs), sauvegardes.
 
 - Déplacer dans leurs modules les outils écrits aujourd'hui dans `assistant/` : documents, données de
   l'école en lecture, modifications de données (`donnees.py`, `modifications.py`).

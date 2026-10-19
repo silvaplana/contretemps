@@ -68,3 +68,24 @@ def test_l_eleve_ne_voit_que_lui(db_session, ecole):
     d = DonneesEcole()
     eleves = d.executer(db_session, ecole["leon"], ecole["id"], "lister_eleves", {"cours_id": None, "nom": None, "statut_paiement": None})
     assert "Léon Perrin" in eleves and "Ana Roux" not in eleves
+
+
+def test_personnes_par_role_avec_le_super_user(db_session, ecole):
+    """Seb, 19 octobre : l'assistant connaît toutes les personnes et leurs
+    rôles, Super User compris (pour l'ajouter à un groupe)."""
+    comptes = Comptes()
+    comptes.ajouter_role(db_session, ecole["admin"], "tresorier")
+    su = comptes.enregistrer_superuser(db_session, nom="Richard", prenom="Seb", email="seb@test.fr", mot_de_passe_hache="x")
+    d = DonneesEcole()
+    tous = d.executer(db_session, ecole["admin"], ecole["id"], "lister_personnes", {"role": None})
+    assert f"Julia Dho (id {ecole['admin'].id}) : administrateur, trésorier, administrateur principal" in tous
+    assert f"Seb Richard (id {su.id}) : Super User" in tous and "Léon Perrin" in tous
+    tresoriers = d.executer(db_session, ecole["admin"], ecole["id"], "lister_personnes", {"role": "tresorier"})
+    assert "Julia Dho" in tresoriers and "Ima Blanc" not in tresoriers and "Seb Richard" not in tresoriers
+    assert d.executer(db_session, ecole["prof"], ecole["id"], "lister_personnes", {"role": None}) == "Réservé aux administrateurs."
+
+
+def test_infos_ecole_sans_l_iban_entier(db_session, ecole):
+    Ecoles().update(db_session, ecole["id"], iban="FR76 3000 6000 0112 3456 7890 189", ville="Toulon")
+    texte = DonneesEcole().executer(db_session, ecole["admin"], ecole["id"], "infos_ecole", {})
+    assert "Toulon" in texte and "se termine par 0189" in texte and "FR76" not in texte

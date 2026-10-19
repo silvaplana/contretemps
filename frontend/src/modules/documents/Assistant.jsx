@@ -30,6 +30,9 @@ const EN_TRAIN_DE = {
   lister_choregraphies: 'Je regarde les chorégraphies…',
   lister_inscriptions_en_ligne: 'Je regarde les inscriptions…',
   lister_saisons: 'Je regarde les saisons…',
+  lister_personnes: 'Je regarde les personnes…',
+  infos_ecole: 'Je regarde les coordonnées de l’école…',
+  lister_groupes: 'Je regarde les groupes…',
   proposer_modifications: 'Je prépare les changements…',
   modifier_fichier_appli: 'Je modifie le fichier…',
 }
