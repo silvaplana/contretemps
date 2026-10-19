@@ -26,6 +26,12 @@ pour Contretemps est marqué *(Contretemps)*.
 - **Les droits sont ceux de la personne**, vérifiés par le serveur au moment de proposer, avec les mêmes
   règles que les écrans.
 - À l'écran, jamais le mot « IA » : c'est « l'assistant ».
+- **Il répond court** (Seb, 19 octobre : « il parle trop, on croit qu'il n'a pas compris ») : une à
+  trois phrases, en commençant par la réponse ou par ce qu'il a fait, sans reformuler la demande ni
+  commenter ce qu'il fait pendant qu'il cherche (l'écran le montre déjà).
+- **Il propose au lieu d'expliquer** (Seb, 19 octobre) : si un outil permet la suite, il la met sur une
+  carte Faire / Annuler plutôt que de laisser des étapes à la personne. S'il doit demander, c'est une
+  seule question fermée, avec deux ou trois choix à répondre d'un mot.
 
 ## 3. Les actions des modules (Seb, 19 octobre)
 
