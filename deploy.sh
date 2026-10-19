@@ -10,10 +10,45 @@
 #
 # Le script se met d'abord à jour lui-même (git pull), puis se relance pour
 # que ce soit toujours la dernière version qui fasse le reste.
+#
+# Maintenance (DEPLOY.md §6) : l'action GitHub « Maintenance » demande une
+# tâche par la connexion SSH ; elle arrive dans SSH_ORIGINAL_COMMAND (la
+# clé ne peut lancer que ce script). Seules les tâches de la liste
+# ci-dessous existent ; tout le reste est refusé. Rien n'est jamais évalué.
 set -euo pipefail
 
 script="$(readlink -f "$0")"
 cd "$(dirname "$script")"
+
+if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
+  read -r -a demande <<< "$SSH_ORIGINAL_COMMAND"
+  tache="${demande[0]:-}"
+  case "$tache" in
+    notes-frais-lister)
+      echo "==> Notes de frais par école (rien n'est effacé)"
+      docker compose exec -T backend python -m app.vider_notes_frais --lister
+      ;;
+    notes-frais-vider)
+      ecole="${demande[1]:-}"
+      if ! [[ "$ecole" =~ ^[0-9]+$ ]]; then
+        echo "Numéro d'école invalide : rien n'a été effacé." >&2
+        exit 2
+      fi
+      # Nom en base64 : il peut contenir des espaces et des accents.
+      if ! nom="$(printf '%s' "${demande[2]:-}" | base64 -d 2>/dev/null)"; then
+        echo "Nom illisible : rien n'a été effacé." >&2
+        exit 2
+      fi
+      echo "==> Effacement des notes de frais de l'école $ecole"
+      docker compose exec -T backend python -m app.vider_notes_frais --ecole "$ecole" --nom "$nom"
+      ;;
+    *)
+      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider." >&2
+      exit 2
+      ;;
+  esac
+  exit 0
+fi
 
 if [ -z "${DEPLOY_APRES_PULL:-}" ]; then
   echo "==> git pull"
