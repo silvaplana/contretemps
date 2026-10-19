@@ -249,12 +249,18 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
   sauvegardes, et l'on voit d'un coup d'œil ce que pèse la messagerie.
 - Dans ce dossier, chaque contenu est rangé par son empreinte, comme dans Documents : un même fichier
   envoyé deux fois (une photo transférée dans trois groupes) n'est gardé qu'une fois. On réutilise pour cela
-  la classe de stockage déjà écrite (`documents/storage.py`), sortie dans le core pour que la messagerie ne
+  la classe de stockage déjà écrite (`documents/storage.py`), sortie dans le core (`backend/src/storage/`) pour que la messagerie ne
   dépende pas du module Documents.
 - **Jamais servi en direct** : un fichier ne sort que par une route de la messagerie, après vérification que
   la personne fait partie de la conversation.
 - Nouvelle table `msg_attachments` (préfixe du module, en anglais, CLAUDE.md) : `message_id`, `sha256`,
-  `filename`, `kind` (photo, video, file), `size`, `width` et `height` pour une photo.
+  `filename`, `kind` (photo, video, file), `size`, `width` et `height` pour une photo, plus
+  `conversation_id` et `uploader_id` : une photo part d'abord seule (barre de progression), puis le
+  message la reprend ; seul celui qui l'a envoyée peut la joindre. Transférer recopie la ligne, pas le
+  contenu.
+- La place prise s'ajoute à « Usage ressources » (Admin > École), ligne « Messagerie (photos et fichiers) ».
+- Le dossier par défaut est `uploads/messagerie` à côté de `VIDEOS_DIR` (donc dans le volume `/app/data` en
+  production, sans toucher au Dockerfile).
 - **Compression, comme WhatsApp**, pour que ça circule vite : la photo est réduite sur le téléphone avant
   l'envoi (§4.3), la vidéo est compressée sur le serveur juste après (§4.5). Les fichiers (PDF, Word…) ne
   sont pas touchés.

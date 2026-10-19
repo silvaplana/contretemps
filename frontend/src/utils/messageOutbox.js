@@ -42,7 +42,10 @@ function notifierProgression() {
 
 function sauvegarder() {
   try {
-    localStorage.setItem(CLE_STOCKAGE, JSON.stringify(Array.from(enAttente.entries())))
+    // Un message dont les photos ou fichiers ne sont pas encore tous partis
+    // n'est pas gardé : leur contenu ne tient pas dans localStorage.
+    const gardables = Array.from(enAttente.entries()).filter(([, m]) => !m.fichiers?.length)
+    localStorage.setItem(CLE_STOCKAGE, JSON.stringify(gardables))
   } catch {
     // Stockage indisponible (navigation privée...) — pas grave, juste
     // pas de reprise après un rechargement de page dans ce cas précis
@@ -89,8 +92,11 @@ export function useMessagesEnvoyes(onEnvoye) {
   }, [onEnvoye])
 }
 
-// `options` : { reponseA, transfere }, voir api/messages.js: envoyerBrut.
-export function envoyerAvecReprise(conversationId, compteId, contenu, canal, options = {}) {
+// `options` : { reponseA, transfere, pieces }, voir api/messages.js:
+// envoyerBrut. `fichiers` : photos et fichiers à envoyer d'abord (spec
+// §4.3), [{ fichier: Blob, nom, kind, apercu }] ; chacun devient une pièce
+// de `options.pieces` une fois parti, avec sa progression dans la bulle.
+export function envoyerAvecReprise(conversationId, compteId, contenu, canal, options = {}, fichiers = []) {
   const clientId = crypto.randomUUID()
   enAttente.set(clientId, {
     conversationId,
@@ -98,6 +104,8 @@ export function envoyerAvecReprise(conversationId, compteId, contenu, canal, opt
     contenu,
     canal,
     options,
+    fichiers,
+    progression: 0,
     etat: 'en_cours',
     tentative: 0,
     creeLe: Date.now(),
@@ -111,6 +119,24 @@ async function tenter(clientId) {
   const m = enAttente.get(clientId)
   if (!m) return
   try {
+    while (m.fichiers?.length) {
+      const [suivant, ...reste] = m.fichiers
+      const piece = await messagesApi.televerserPiece(m.conversationId, suivant.fichier, suivant.nom, (p) => {
+        const courant = enAttente.get(clientId)
+        if (!courant) return
+        enAttente.set(clientId, { ...courant, progression: p })
+        notifierProgression()
+      })
+      // `m` reste à jour : un renvoi repart du premier fichier pas encore parti.
+      Object.assign(m, {
+        fichiers: reste,
+        options: { ...m.options, pieces: [...(m.options?.pieces ?? []), piece.id] },
+        progression: 0,
+      })
+      enAttente.set(clientId, { ...m })
+      sauvegarder()
+      notifierProgression()
+    }
     const messageBrut = await messagesApi.envoyerBrut(m.conversationId, m.compteId, m.contenu, m.canal, clientId, m.options)
     enAttente.delete(clientId)
     sauvegarder()

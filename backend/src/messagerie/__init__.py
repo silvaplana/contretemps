@@ -1,3 +1,4 @@
+from .attachments import Attachments
 from .connexions import Connexions
 from .conversations import Conversations
 from .evenements import Evenements
@@ -7,6 +8,7 @@ from .models import Conversation, ConversationMembre, Message, MessageDelivery
 from .receiver import MessagerieReceiver
 
 __all__ = [
+    "Attachments",
     "Connexions",
     "Conversations",
     "Evenements",

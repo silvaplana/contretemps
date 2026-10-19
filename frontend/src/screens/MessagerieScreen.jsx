@@ -56,9 +56,10 @@ export default function MessagerieScreen({
   // sur une ligne "Nouvelle discussion" pendant que la création du DM est
   // en cours (même principe qu'ailleurs, voir AdminCours.jsx/AdminEleves.jsx).
   const [creationEnCours, setCreationEnCours] = useState(false)
-  // « Envoyer à… » (spec §4.2 Transférer) : { textes, transfere }.
+  // « Envoyer à… » (spec §4.2 Transférer) : { messages: [{ contenu, pieces, apercu }], transfere }.
   const [transfert, setTransfert] = useState(null)
-  const envoiA = transfert ?? (partage && !lectureSeule ? { textes: [partage], transfere: false } : null)
+  const envoiA =
+    transfert ?? (partage && !lectureSeule ? { messages: [{ contenu: partage, pieces: [] }], transfere: false } : null)
 
   function fermerEnvoiA() {
     if (transfert) setTransfert(null)
@@ -69,7 +70,7 @@ export default function MessagerieScreen({
   // la discussion à deux avec un contact. Une seule destination : on
   // l'ouvre, comme WhatsApp.
   async function envoyerA({ conversationIds, contacts }) {
-    const { textes, transfere } = envoiA
+    const { messages, transfere } = envoiA
     fermerEnvoiA()
     const ids = [...conversationIds]
     for (const compte of contacts) {
@@ -79,7 +80,7 @@ export default function MessagerieScreen({
       ids.push(conv.id)
     }
     for (const id of ids) {
-      for (const texte of textes) envoyerAvecReprise(id, compteId, texte, 'app', { transfere })
+      for (const { contenu, pieces } of messages) envoyerAvecReprise(id, compteId, contenu, 'app', { transfere, pieces })
     }
     setProfilStack([])
     setNouvelleDiscussion(false)
@@ -148,7 +149,7 @@ export default function MessagerieScreen({
         compteId={compteId}
         peutModerer={peutCreerGroupe}
         lectureSeule={lectureSeule}
-        onTransferer={(textes) => setTransfert({ textes, transfere: true })}
+        onTransferer={(messages) => setTransfert({ messages, transfere: true })}
         onOuvrirDocs={onOuvrirDocs}
       />
     )
@@ -221,7 +222,7 @@ export default function MessagerieScreen({
       {corps}
       {envoiA && (
         <EnvoyerAScreen
-          apercu={envoiA.textes.join('\n')}
+          apercu={envoiA.messages.map((m) => m.apercu ?? m.contenu).join('\n')}
           conversations={conversations}
           compteId={compteId}
           admins={admins}
