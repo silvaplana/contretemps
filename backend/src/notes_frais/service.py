@@ -14,6 +14,7 @@ import io
 import logging
 import re
 import zipfile
+from dataclasses import replace
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import BinaryIO
@@ -435,6 +436,20 @@ class NotesDeFrais:
     def _exiger_tresorier(self, membre: Membre) -> None:
         if not (membre.est_tresorier or membre.est_superuser):
             raise PermissionError("Réservé aux trésoriers de l'association.")
+
+    def personnes(self, db: Session, membre: Membre) -> list[Personne]:
+        """Pour qui un trésorier peut saisir (Financier › ⋯ « pour quelqu'un »)."""
+        self._exiger_tresorier(membre)
+        return self.ports.annuaire.toutes(db, membre.org_id)
+
+    def agir_pour(self, db: Session, membre: Membre, person_id: int) -> Membre:
+        """Le trésorier saisit et envoie pour une personne de l'organisation :
+        dépenses, RIB et notes sont alors à son nom à elle."""
+        self._exiger_tresorier(membre)
+        personne = self.ports.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
+        if personne is None:
+            raise LookupError("Personne inconnue dans cette organisation.")
+        return replace(membre, person_id=personne.person_id, nom=personne.nom, emails=personne.emails)
 
     def tresorerie(self, db: Session, membre: Membre, filtre: str) -> list[dict]:
         self._exiger_tresorier(membre)

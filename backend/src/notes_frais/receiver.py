@@ -10,7 +10,7 @@ from urllib.parse import quote
 from collections.abc import Callable
 import datetime as dt
 
-from fastapi import Depends, FastAPI, File, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -73,6 +73,11 @@ def _http(erreur: Exception) -> HTTPException:
     return HTTPException(status_code=400, detail=str(erreur))
 
 
+# Un trésorier qui saisit pour quelqu'un (Financier › ⋯) envoie l'id de la
+# personne dans cet en-tête : il agit alors en son nom (service.agir_pour).
+ENTETE_POUR = "X-Pour-Personne"
+
+
 class NotesDeFraisReceiver:
     def __init__(self, client: NotesDeFrais, app: FastAPI, membre_courant: Callable[..., Membre]) -> None:
         self.client = client
@@ -83,13 +88,18 @@ class NotesDeFraisReceiver:
     def _routes(self) -> None:  # noqa: C901 - une fonction par route, comme documents/receiver.py
         app, nf = self.app, self.client
         db_dep = Depends(get_db)
-        membre = Depends(self.membre_courant)
 
         def appeler(fonction, *args, **kwargs):
             try:
                 return fonction(*args, **kwargs)
             except (LookupError, PermissionError, ValueError) as erreur:
                 raise _http(erreur) from erreur
+
+        def membre_ou_personne(request: Request, db: Session = db_dep, m: Membre = Depends(self.membre_courant)) -> Membre:
+            pour = request.headers.get(ENTETE_POUR, "")
+            return appeler(nf.agir_pour, db, m, int(pour)) if pour.isdigit() else m
+
+        membre = Depends(membre_ou_personne)
 
         # --- Membre ---
 
@@ -177,6 +187,10 @@ class NotesDeFraisReceiver:
             return Response(status_code=204)
 
         # --- Trésoriers ---
+
+        @app.get("/notes-frais/personnes")
+        def personnes(db: Session = db_dep, m: Membre = membre):
+            return [{"person_id": p.person_id, "nom": p.nom, "role": p.role} for p in appeler(nf.personnes, db, m)]
 
         @app.get("/notes-frais/tresorerie")
         def tresorerie(filtre: str = "a_valider", db: Session = db_dep, m: Membre = membre):

@@ -9,11 +9,13 @@ import './notes-frais.css'
 
 // Profil > « Mes notes de frais » (spec/modules/notes-de-frais.md §4) :
 // en haut les dépenses « À envoyer » (cochées par défaut), en dessous les
-// notes envoyées et leur statut.
-export default function MesNotesDeFrais({ onBack }) {
+// notes envoyées et leur statut. Aussi ouvert depuis Financier › ⋯ par un
+// trésorier qui saisit `pour` quelqu'un (api.agirPour déjà réglé), avec
+// `nouvelleDepense` pour ouvrir tout de suite la saisie.
+export default function MesNotesDeFrais({ onBack, pour = null, nouvelleDepense = false }) {
   const [donnees, setDonnees] = useState(null)
   const [decochees, setDecochees] = useState(() => new Set())
-  const [edition, setEdition] = useState(null) // null | 'nouvelle' | dépense
+  const [edition, setEdition] = useState(nouvelleDepense ? 'nouvelle' : null) // null | 'nouvelle' | dépense
   const [envoi, setEnvoi] = useState(false)
   const [noteOuverte, setNoteOuverte] = useState(null)
   const [erreur, setErreur] = useState('')
@@ -29,7 +31,7 @@ export default function MesNotesDeFrais({ onBack }) {
   if (!donnees) {
     return (
       <div className="screen nf-screen">
-        <Retour onBack={onBack} />
+        <Retour onBack={onBack} pour={pour} />
         {erreur ? <p className="login-screen__erreur">{erreur}</p> : <p className="muted">Chargement…</p>}
       </div>
     )
@@ -49,7 +51,8 @@ export default function MesNotesDeFrais({ onBack }) {
 
   return (
     <div className="screen nf-screen">
-      <Retour onBack={onBack} />
+      <Retour onBack={onBack} pour={pour} />
+      {pour && <h3 className="section-label">Pour {pour.nom}</h3>}
 
       <section>
         <h3 className="section-label">À envoyer</h3>
@@ -157,10 +160,10 @@ export default function MesNotesDeFrais({ onBack }) {
   )
 }
 
-function Retour({ onBack }) {
+function Retour({ onBack, pour }) {
   return (
     <button type="button" className="btn btn--link nf-retour" onClick={onBack}>
-      <Icon name="chevronLeft" size={18} /> Profil
+      <Icon name="chevronLeft" size={18} /> {pour ? 'Financier' : 'Profil'}
     </button>
   )
 }

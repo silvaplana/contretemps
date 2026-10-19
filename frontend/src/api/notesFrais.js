@@ -14,8 +14,22 @@ export class ErreurNotesFrais extends Error {
   }
 }
 
+// Trésorier qui saisit pour quelqu'un (Financier › ⋯) : tant que c'est réglé,
+// chaque appel se fait au nom de cette personne (en-tête lu par le serveur).
+let pourPersonne = null
+export function agirPour(personId) {
+  pourPersonne = personId
+}
+
+function avecPersonne(options = {}) {
+  if (pourPersonne === null) return options
+  const headers = new Headers(options.headers)
+  headers.set('X-Pour-Personne', String(pourPersonne))
+  return { ...options, headers }
+}
+
 async function appel(chemin, options = {}) {
-  const reponse = await fetch(`${BASE}${chemin}`, options)
+  const reponse = await fetch(`${BASE}${chemin}`, avecPersonne(options))
   if (!reponse.ok) {
     let message = `Requête échouée (${reponse.status})`
     try {
@@ -59,13 +73,14 @@ export const envoyer = ({ depenseIds, titre, don, rib }) =>
 export const reprendre = (noteId) => appel(`/notes/${noteId}/reprendre`, { method: 'POST' })
 
 export async function urlPiece(id) {
-  const reponse = await fetch(`${BASE}/pieces/${id}`)
+  const reponse = await fetch(`${BASE}/pieces/${id}`, avecPersonne())
   if (!reponse.ok) throw new ErreurNotesFrais(reponse.status, 'Justificatif introuvable')
   return URL.createObjectURL(await reponse.blob())
 }
 
 // --- Trésoriers ---
 
+export const personnes = () => appel('/personnes')
 export const tresorerie = (filtre) => appel(`/tresorerie?filtre=${filtre}`)
 export const valider = (noteId) => appel(`/notes/${noteId}/valider`, { method: 'POST' })
 export const refuser = (noteId, motif) => appel(`/notes/${noteId}/refuser`, json('POST', { motif }))
