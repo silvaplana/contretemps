@@ -83,6 +83,26 @@ def test_groupe_cree_renomme_supprime(db_session, ecole):
     assert db_session.query(Conversation).count() == 0
 
 
+def test_membres_d_un_groupe_ajoutes_et_retires(db_session, ecole):
+    admin, prof, eleve = ecole["admin"], ecole["prof"], ecole["eleve"]
+    _, carte = _proposer(db_session, admin, ecole, "create_group_chat", {"name": "Bureau", "member_ids": [prof.id]})
+    _faire(db_session, admin, ecole, carte)
+    groupe = db_session.query(Conversation).one()
+
+    args = {"group_name": "bureau", "add_member_ids": [eleve.id], "remove_member_ids": [prof.id]}
+    texte, carte = _proposer(db_session, prof, ecole, "update_group_chat_members", args)
+    assert carte is None and texte.startswith("Refusé")  # admins seulement
+    _, carte = _proposer(db_session, admin, ecole, "update_group_chat_members", args)
+    assert carte["lignes"] == ["Groupe « Bureau » : ajouter Margot Perrin ; retirer Ima Blanc"]
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    membres = db_session.query(ConversationMembre).filter_by(conversation_id=groupe.id).all()
+    assert [m.membre_id for m in membres] == [eleve.id]
+
+    # Retirer quelqu'un qui n'est pas dans le groupe : refusé avant la carte.
+    texte, carte = _proposer(db_session, admin, ecole, "update_group_chat_members", {"group_name": "Bureau", "remove_member_ids": [prof.id]})
+    assert carte is None and "n'est pas membre" in texte
+
+
 def test_cours_cree_puis_supprime_par_un_admin_seulement(db_session, ecole):
     admin, prof = ecole["admin"], ecole["prof"]
     args = {"name": "Salsa débutants", "day": "Mardi", "start": "19:00", "end": "20:00", "room": "Grande salle"}

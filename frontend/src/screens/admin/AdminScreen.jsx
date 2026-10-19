@@ -3,7 +3,6 @@ import * as sessionApi from '../../api/session.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
 import AdminEleves from './AdminEleves.jsx'
-import AdminGroupes from './AdminGroupes.jsx'
 import AdminParametres from './AdminParametres.jsx'
 import AdminProfesseurs from './AdminProfesseurs.jsx'
 
@@ -12,11 +11,11 @@ const SUB_TABS = [
   { value: 'eleves', label: 'Élèves' },
   { value: 'professeurs', label: 'Profs' },
   { value: 'cours', label: 'Cours' },
-  { value: 'groupes', label: 'Messages' },
 ]
 
-// Onglet Admin (voir spec/SPEC.md §5.1) : réservé au rôle Admin, 5 sous-onglets
-// — "École" en premier (le plus à gauche). Si les 5 ne tiennent pas sur une
+// Onglet Admin (voir spec/SPEC.md §5.1) : réservé au rôle Admin, 4 sous-onglets
+// — "École" en premier (le plus à gauche). Les groupes de la messagerie se
+// gèrent dans l'onglet Messages (19 octobre, Seb). Si les 4 ne tiennent pas sur une
 // ligne, SegmentedTabs passe à la ligne plutôt que de défiler (voir App.css).
 // L'état de toutes les données de gestion est possédé ici et redescendu aux
 // autres écrans (Présence, Chorégraphie, Vidéo...) via App.jsx.
@@ -106,16 +105,6 @@ export default function AdminScreen({
           ecoleId={ecole.id}
           groupes={groupes}
           setGroupes={setGroupes}
-        />
-      )}
-      {subTab === 'groupes' && (
-        <AdminGroupes
-          groupes={groupes}
-          setGroupes={setGroupes}
-          professeurs={professeurs}
-          eleves={eleves}
-          cours={cours}
-          ecoleId={ecole.id}
         />
       )}
     </div>

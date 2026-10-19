@@ -133,6 +133,9 @@ export default function ConversationThreadScreen({
   onTransferer,
   // Toucher un lien vers les Docs (voir idDocs).
   onOuvrirDocs,
+  // Groupe, admins seulement (voir MessagerieScreen.jsx) : absents sinon.
+  onModifierGroupe,
+  onSupprimerGroupe,
 }) {
   const [draft, setDraft] = useState('')
   const messagesRef = useRef(null)
@@ -549,6 +552,16 @@ export default function ConversationThreadScreen({
           <strong>{conversation.nom}</strong>
           <span className={frappeur ? 'thread-screen__frappe' : 'muted'}>{sousTitre}</span>
         </span>
+        {onModifierGroupe && (
+          <button type="button" className="icon-btn" onClick={onModifierGroupe} aria-label="Modifier le groupe">
+            <Icon name="edit" size={20} />
+          </button>
+        )}
+        {onSupprimerGroupe && (
+          <button type="button" className="icon-btn icon-btn--danger" onClick={onSupprimerGroupe} aria-label="Supprimer le groupe">
+            <Icon name="trash" size={20} />
+          </button>
+        )}
       </div>
       )}
 

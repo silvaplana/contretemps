@@ -77,7 +77,7 @@ quelle, avec les routes, les onglets et les rôles.
 
 | Module | Action | Qui |
 |---|---|---|
-| Messagerie | Créer un groupe (personnes et cours), le renommer, le supprimer. Les groupes automatiques des cours ne se suppriment pas. | Administrateurs |
+| Messagerie | Créer un groupe (personnes et cours), le renommer, le supprimer, ajouter ou retirer des membres (aussi dans le groupe d'un cours). Les groupes automatiques des cours ne se suppriment pas. | Administrateurs |
 | Cours *(Contretemps)* | Créer un cours, le supprimer. Le modifier passe déjà par la carte des modifications de données. | Administrateurs |
 | Notes de frais | Faire une note (une ou plusieurs dépenses) et l'envoyer aux trésoriers, pour soi ou, si on est trésorier, pour quelqu'un d'autre. Sans RIB enregistré, seulement en don. Les justificatifs s'ajoutent ensuite dans l'appli. | Tous ceux qui ont l'assistant |
 
