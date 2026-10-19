@@ -257,6 +257,19 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
 - Limite : **100 Mo** par vidéo avant compression.
 - L'espace utilisé par la messagerie de chaque école s'affiche dans Admin, à côté de celui des vidéos.
 
+### 4.6 Ce qui se télécharge, et quand (Seb, 19 octobre)
+
+WhatsApp ne télécharge pas tout : selon le réglage (Wi-Fi ou données mobiles, par nature de média), il
+montre une vignette floue avec la taille et un bouton de téléchargement. Ici, sans réglage à faire :
+
+- **Photo** : la bulle charge une **vignette** légère (environ 20 Ko, faite à l'envoi) ; la photo réduite
+  (§4.3) n'est chargée qu'en la touchant pour l'ouvrir en plein écran.
+- **Vidéo** : la bulle montre l'image d'aperçu, ▶, la durée et la taille ; la vidéo ne se charge qu'en
+  touchant ▶, et se lit au fur et à mesure (pas besoin d'attendre la fin du téléchargement).
+- **Fichier** : une carte avec le nom et la taille ; il ne se télécharge qu'en le touchant.
+- Une conversation pleine de photos s'ouvre donc vite, même en 4G : on ne paie que les vignettes.
+- Pas de réglage « télécharger automatiquement » dans cette étape.
+
 ## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
