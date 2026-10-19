@@ -108,7 +108,26 @@ export default function Assistant({
   useEffect(() => {
     saisieRef.current = saisie
   }, [saisie])
-  const dictee = useDictee(() => saisieRef.current, setSaisie)
+  // ✕ pendant la dictée : on revient au texte d'avant, et ce qui arrive
+  // encore de la reconnaissance est ignoré.
+  const avantDictee = useRef('')
+  const dicteeAnnulee = useRef(false)
+  const dictee = useDictee(
+    () => saisieRef.current,
+    (texte) => {
+      if (!dicteeAnnulee.current) setSaisie(texte)
+    },
+  )
+  function dicter() {
+    avantDictee.current = saisieRef.current
+    dicteeAnnulee.current = false
+    dictee.basculer()
+  }
+  function annulerDictee() {
+    dicteeAnnulee.current = true
+    dictee.arreter()
+    setSaisie(avantDictee.current)
+  }
   const [enCours, setEnCours] = useState(false)
   const [activite, setActivite] = useState('')
   const [cout, setCout] = useState(garde?.cout ?? 0)
@@ -577,88 +596,25 @@ export default function Assistant({
           }}
         />
         {dictee.erreur && <p className="dx-chat__dictee-erreur">{dictee.erreur}</p>}
-        <div className="dx-chat__outils">
-          <div className="dx-chat__plus">
-            <button
-              type="button"
-              className="dx-chat__rond"
-              aria-label="Ajouter une photo ou un fichier"
-              aria-expanded={menuPlus}
-              onClick={() => setMenuPlus((v) => !v)}
-            >
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" />
+        {dictee.ecoute ? (
+          // En écoute (Seb, 19 octobre, comme l'appli Claude) : ✕ annule, un
+          // fil qui s'agite quand on entend une voix, ■ arrête, ↑ envoie.
+          <div className="dx-chat__outils dx-chat__outils--ecoute">
+            <button type="button" className="dx-chat__rond" aria-label="Annuler la dictée" onClick={annulerDictee}>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18" />
               </svg>
             </button>
-            {menuPlus && (
-              <div className="dx-chat__menu" role="menu">
-                <button type="button" role="menuitem" onClick={() => choisir(choixPhotoCamera)}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
-                    <circle cx="12" cy="13" r="3.5" />
-                  </svg>
-                  Prendre une photo
-                </button>
-                <button type="button" role="menuitem" onClick={() => choisir(choixPhotos)}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="3" y="4" width="18" height="16" rx="2" />
-                    <circle cx="9" cy="10" r="2" />
-                    <path d="M21 16l-5-5-9 9" />
-                  </svg>
-                  Photos
-                </button>
-                <button type="button" role="menuitem" onClick={() => choisir(choixFichiers)}>
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M14 3H6v18h12V7z" />
-                    <path d="M14 3v4h4" />
-                  </svg>
-                  Fichiers
-                </button>
-              </div>
-            )}
-            {[
-              [choixPhotoCamera, { accept: 'image/*', capture: 'environment' }],
-              [choixPhotos, { accept: 'image/*', multiple: true }],
-              [choixFichiers, { multiple: true }],
-            ].map(([ref, attributs], i) => (
-              <input
-                key={i}
-                ref={ref}
-                type="file"
-                hidden
-                {...attributs}
-                onChange={(e) => {
-                  joindre(e.target.files)
-                  e.target.value = ''
-                }}
-              />
-            ))}
-          </div>
-          <div className="dx-chat__droite">
-            {dicteeDisponible && (
-              <button
-                type="button"
-                className={`dx-chat__rond${dictee.ecoute ? ' dx-chat__rond--ecoute' : ''}${dictee.parle ? ' dx-chat__rond--parle' : ''}`}
-                aria-label={dictee.ecoute ? 'Arrêter la dictée' : 'Dicter'}
-                aria-pressed={dictee.ecoute}
-                title={dictee.ecoute ? 'Arrêter la dictée' : 'Dicter'}
-                onClick={dictee.basculer}
-              >
-                {dictee.ecoute ? (
-                  // En écoute : des ondes qui bougent, comme l'appli Claude.
-                  <span className="dx-ondes" aria-hidden="true">
-                    {[0, 1, 2, 3, 4].map((i) => (
-                      <i key={i} />
-                    ))}
-                  </span>
-                ) : (
-                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <rect x="9" y="3" width="6" height="11" rx="3" />
-                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-                  </svg>
-                )}
-              </button>
-            )}
+            <span className={`dx-fil${dictee.parle ? ' dx-fil--parle' : ''}`} aria-hidden="true">
+              {Array.from({ length: 24 }, (_, i) => (
+                <i key={i} />
+              ))}
+            </span>
+            <button type="button" className="dx-chat__rond" aria-label="Arrêter la dictée" onClick={dictee.arreter}>
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                <rect x="5" y="5" width="14" height="14" rx="2" fill="currentColor" />
+              </svg>
+            </button>
             <button
               type="submit"
               className="dx-chat__rond dx-chat__rond--envoyer"
@@ -670,7 +626,86 @@ export default function Assistant({
               </svg>
             </button>
           </div>
-        </div>
+        ) : (
+          <div className="dx-chat__outils">
+            <div className="dx-chat__plus">
+              <button
+                type="button"
+                className="dx-chat__rond"
+                aria-label="Ajouter une photo ou un fichier"
+                aria-expanded={menuPlus}
+                onClick={() => setMenuPlus((v) => !v)}
+              >
+                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </button>
+              {menuPlus && (
+                <div className="dx-chat__menu" role="menu">
+                  <button type="button" role="menuitem" onClick={() => choisir(choixPhotoCamera)}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M4 8h3l2-3h6l2 3h3v11H4z" />
+                      <circle cx="12" cy="13" r="3.5" />
+                    </svg>
+                    Prendre une photo
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => choisir(choixPhotos)}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <rect x="3" y="4" width="18" height="16" rx="2" />
+                      <circle cx="9" cy="10" r="2" />
+                      <path d="M21 16l-5-5-9 9" />
+                    </svg>
+                    Photos
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => choisir(choixFichiers)}>
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M14 3H6v18h12V7z" />
+                      <path d="M14 3v4h4" />
+                    </svg>
+                    Fichiers
+                  </button>
+                </div>
+              )}
+              {[
+                [choixPhotoCamera, { accept: 'image/*', capture: 'environment' }],
+                [choixPhotos, { accept: 'image/*', multiple: true }],
+                [choixFichiers, { multiple: true }],
+              ].map(([ref, attributs], i) => (
+                <input
+                  key={i}
+                  ref={ref}
+                  type="file"
+                  hidden
+                  {...attributs}
+                  onChange={(e) => {
+                    joindre(e.target.files)
+                    e.target.value = ''
+                  }}
+                />
+              ))}
+            </div>
+            <div className="dx-chat__droite">
+              {dicteeDisponible && (
+                <button type="button" className="dx-chat__rond" aria-label="Dicter" title="Dicter" onClick={dicter}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="9" y="3" width="6" height="11" rx="3" />
+                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+                  </svg>
+                </button>
+              )}
+              <button
+                type="submit"
+                className="dx-chat__rond dx-chat__rond--envoyer"
+                aria-label="Envoyer"
+                disabled={enCours || piecesEnCours || (!saisie.trim() && piecesPretes.length === 0)}
+              >
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M12 19V5M5 12l7-7 7 7" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        )}
       </form>
     </aside>
   )
