@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
+import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeStatut } from './commun.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
-import { DetailDepenses } from './MesNotesDeFrais.jsx'
+import MesNotesDeFrais, { DetailDepenses } from './MesNotesDeFrais.jsx'
 import './notes-frais.css'
 
 const SOUS_ONGLETS = [
@@ -25,9 +26,45 @@ export default function Financier() {
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier', sousOnglet)
   }, [sousOnglet])
+  // Saisie pour quelqu'un (menu ⋯) : d'abord choisir la personne, puis les
+  // mêmes écrans que Profil › « Mes notes de frais », à son nom.
+  const [choix, setChoix] = useState(null) // null | 'depense' | 'note'
+  const [pour, setPour] = useState(null) // { personne, action }
+  useEffect(() => () => api.agirPour(null), [])
+
+  if (pour) {
+    return (
+      <MesNotesDeFrais
+        key={pour.personne.person_id}
+        pour={pour.personne}
+        nouvelleDepense={pour.action === 'depense'}
+        onBack={() => {
+          api.agirPour(null)
+          setPour(null)
+        }}
+      />
+    )
+  }
 
   return (
     <div className="screen nf-screen">
+      <MenuEntete
+        label="Actions des notes de frais"
+        actions={[
+          { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
+          { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
+        ]}
+      />
+      {choix && (
+        <ChoixPersonneModal
+          onClose={() => setChoix(null)}
+          onChoisie={(personne) => {
+            api.agirPour(personne.person_id)
+            setPour({ personne, action: choix })
+            setChoix(null)
+          }}
+        />
+      )}
       <SegmentedTabs
         options={SOUS_ONGLETS}
         value={sousOnglet}
@@ -303,6 +340,48 @@ function NoteTresorierModal({ note, onClose, onTraitee }) {
           <textarea id="nf-motif" rows={3} value={refus} onChange={(e) => setRefus(e.target.value)} autoFocus />
         </>
       )}
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+    </Modal>
+  )
+}
+
+// Choix de la personne pour qui le trésorier saisit : toutes les personnes
+// de l'école, avec une recherche par nom.
+function ChoixPersonneModal({ onClose, onChoisie }) {
+  const [personnes, setPersonnes] = useState(null)
+  const [recherche, setRecherche] = useState('')
+  const [erreur, setErreur] = useState('')
+
+  useEffect(() => {
+    api
+      .personnes()
+      .then(setPersonnes)
+      .catch((err) => setErreur(err.message))
+  }, [])
+
+  const cle = recherche.trim().toLocaleLowerCase('fr')
+  const trouvees = (personnes ?? []).filter((p) => p.nom.toLocaleLowerCase('fr').includes(cle))
+
+  return (
+    <Modal title="Pour qui ?" onClose={onClose}>
+      <input
+        type="search"
+        className="field-input"
+        placeholder="Rechercher un nom"
+        value={recherche}
+        onChange={(e) => setRecherche(e.target.value)}
+      />
+      {!personnes && !erreur && <p className="muted">Chargement…</p>}
+      <div className="nf-liste">
+        {trouvees.map((p) => (
+          <button key={p.person_id} type="button" className="nf-ligne nf-ligne--note" onClick={() => onChoisie(p)}>
+            <span className="nf-ligne__corps">
+              <span className="nf-ligne__titre">{p.nom}</span>
+              {p.role && <span className="muted">{p.role}</span>}
+            </span>
+          </button>
+        ))}
+      </div>
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
   )
