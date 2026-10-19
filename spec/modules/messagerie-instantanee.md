@@ -270,6 +270,25 @@ montre une vignette floue avec la taille et un bouton de téléchargement. Ici, 
 - Une conversation pleine de photos s'ouvre donc vite, même en 4G : on ne paie que les vignettes.
 - Pas de réglage « télécharger automatiquement » dans cette étape.
 
+### 4.7 Partager depuis une autre appli (Seb, 19 octobre)
+
+Depuis YouTube, la galerie photos, Chrome…, le bouton **Partager** du téléphone propose Contretemps dans
+la liste des applis, comme WhatsApp.
+
+- Techniquement : l'appli installée (sur l'écran d'accueil) se déclare « cible de partage » dans son
+  manifeste (`share_target`, manifeste par école servi par `personnalisation/`), et le service worker
+  (`public/sw.js`) reçoit ce qui est partagé.
+- Partager ouvre l'écran **« Envoyer à… »** : le même que pour Transférer (§4.2), conversations et contacts
+  avec cases à cocher et recherche, et en haut un aperçu de ce qui part (le lien, le texte, la photo).
+  « Envoyer (N) » toujours visible en bas ; on arrive ensuite dans la conversation si un seul destinataire,
+  sinon dans la liste.
+- Pas connecté : on se connecte d'abord, puis l'écran « Envoyer à… » s'ouvre avec ce qui a été partagé.
+- Ce qui peut être partagé : un lien et du texte (première PR, avec §4.1-4.2), puis des photos, vidéos et
+  fichiers (avec §4.3-4.5).
+- **Limite** : fonctionne sur **Android** (Chrome) quand l'appli est installée. **Pas sur iPhone** : Apple ne
+  le permet pas pour une appli web ; il faudrait une vraie appli iPhone (voir ANDROID.md pour la piste
+  d'appli native). Sur iPhone on continue par copier-coller.
+
 ## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
