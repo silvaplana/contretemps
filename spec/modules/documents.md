@@ -1445,6 +1445,17 @@ laisse pas déposer un fichier dans le presse-papier du PC ; pour sortir un fich
 Les actions impossibles restent visibles mais grisées, avec la raison au toucher (« Le dossier AG 2026 est
 en lecture seule pour vous », « Document officiel : créez une nouvelle version »).
 
+### 6.3 ter Envoyer le lien d'un fichier ou d'un dossier (Seb, 19 octobre)
+
+- **Envoyer le lien…** (menu d'un fichier ou d'un dossier, « Plus… ») ouvre l'écran « Envoyer à… » de la
+  messagerie (`envoyerDansLaMessagerie`, spec messagerie-instantanee.md), avec le nom puis le lien
+  `<adresse de l'école>/docs/<id>`.
+- Dans une bulle, le lien devient « Ouvrir dans Docs » : l'onglet Docs s'ouvre dans le dossier, ou sur
+  l'aperçu du fichier dans son dossier. Ouvert depuis un email ou un autre onglet, l'adresse fait de
+  même (après la connexion si besoin).
+- Le lien ne donne **aucun droit** : sans accès (ou s'il n'existe plus), « Vous n'avez pas accès à ce
+  fichier, ou il n'existe plus. »
+
 ### 6.4 Écrans d'administration
 
 Contribution au slot `admin.tabs` : onglet « Documents » avec sélecteur `Stockage | Corbeille | Activité` :
