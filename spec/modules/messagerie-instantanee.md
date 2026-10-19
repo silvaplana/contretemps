@@ -229,18 +229,24 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
 - Barre de progression pendant l'envoi ; en cas d'échec, la bulle reste « Échec, toucher pour réessayer »
   comme pour le texte.
 
-### 4.4 Où sont rangés les fichiers
+### 4.4 Où sont rangés les fichiers (Seb, 19 octobre)
 
-- On réutilise le **stockage protégé** déjà écrit pour Documents (`backend/src/documents/storage.py`) :
-  disque du serveur, un dossier par école, chaque contenu rangé par son empreinte (un même fichier envoyé
-  deux fois n'est gardé qu'une fois), **jamais servi en direct** : il ne sort que par une route de la
-  messagerie, après vérification que la personne fait partie de la conversation.
-- Ce stockage devient un **service du core** (« fichiers stockés »), utilisé par Documents et par la
-  messagerie ; la messagerie ne dépend pas du module Documents.
-- Table `message_pieces_jointes` : message, contenu stocké, nom d'origine, nature (photo, vidéo,
-  fichier), taille, largeur et hauteur pour une photo.
+- Un **dossier à part, à côté de celui des vidéos de chorégraphie** : `uploads/messagerie/<école>/` à côté de
+  `uploads/videos/<école>/` (réglable par `MESSAGERIE_DIR`, comme `VIDEOS_DIR`). Même disque, mêmes
+  sauvegardes, et l'on voit d'un coup d'œil ce que pèse la messagerie.
+- Dans ce dossier, chaque contenu est rangé par son empreinte, comme dans Documents : un même fichier
+  envoyé deux fois (une photo transférée dans trois groupes) n'est gardé qu'une fois. On réutilise pour cela
+  la classe de stockage déjà écrite (`documents/storage.py`), sortie dans le core pour que la messagerie ne
+  dépende pas du module Documents.
+- **Jamais servi en direct** : un fichier ne sort que par une route de la messagerie, après vérification que
+  la personne fait partie de la conversation.
+- Table `message_pieces_jointes` : message, empreinte, nom d'origine, nature (photo, vidéo, fichier),
+  taille, largeur et hauteur pour une photo.
+- **Compression, comme WhatsApp**, pour que ça circule vite : la photo est réduite sur le téléphone avant
+  l'envoi (§4.3), la vidéo est compressée sur le serveur juste après (§4.5). Les fichiers (PDF, Word…) ne
+  sont pas touchés.
 - Plus tard, quand le disque sera trop petit : un stockage en ligne (de l'ordre d'un centime par Go et par
-  mois) prend la place du disque sans changer le reste.
+  mois) prend la place du dossier sans changer le reste.
 
 ### 4.5 Vidéos
 
