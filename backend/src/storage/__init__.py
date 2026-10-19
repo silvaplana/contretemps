@@ -44,8 +44,9 @@ class LocalStorage:
         """PDF preview of an office file (see preview.py)."""
         return self.root / str(org_id) / "apercus" / f"{sha256}.pdf"
 
-    def put(self, org_id: int, source: BinaryIO) -> tuple[str, int]:
+    def put(self, org_id: int, source: BinaryIO, max_bytes: int | None = None) -> tuple[str, int]:
         """Copie `source` dans le stockage ; renvoie (sha256, taille).
+        `max_bytes` remplace la limite habituelle (ex. vidéos de la messagerie).
         Écrit d'abord dans un fichier temporaire du même disque, puis le
         déplace : un envoi interrompu ne laisse jamais de fichier à moitié
         écrit sous son empreinte."""
@@ -58,8 +59,8 @@ class LocalStorage:
             with os.fdopen(descripteur, "wb") as sortie:
                 while bloc := source.read(BLOC):
                     taille += len(bloc)
-                    if taille > self.max_bytes:
-                        raise FileTooLarge(self.max_bytes)
+                    if taille > (max_bytes or self.max_bytes):
+                        raise FileTooLarge(max_bytes or self.max_bytes)
                     empreinte.update(bloc)
                     sortie.write(bloc)
             sha = empreinte.hexdigest()

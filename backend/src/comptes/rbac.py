@@ -62,6 +62,9 @@ ROUTES_PUBLIQUES = {
     # lien signé à durée limitée (securite/liens.py), pas par la session.
     ("GET", "/videos/{video_id}/fichier"),
     ("GET", "/videos/{video_id}/poster"),
+    # Vidéo d'un message, lue par la balise <video> : lien signé aussi
+    # (spec/modules/messagerie-instantanee.md §4.5).
+    ("GET", "/attachments/{attachment_id}/video"),
     # Édition OnlyOffice : appelées par le serveur OnlyOffice, protégées par
     # un jeton signé dans l'adresse (voir bureautique/).
     ("GET", "/bureautique/fichier/{jeton}"),

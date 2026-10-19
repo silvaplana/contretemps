@@ -26,10 +26,13 @@ import time
 # les 30 s, de plus en plus abîmée. `configure_mappers` fait échouer le
 # démarrage tout de suite si un modèle manque, au lieu de boucler.
 import comptes.models  # noqa: F401
+import cours.models  # noqa: F401
 import ecoles.models  # noqa: F401
+import messagerie.models  # noqa: F401
 import saisons.models  # noqa: F401
 from sqlalchemy.orm import configure_mappers
 
+from app.messagerie_stockage import pieces_jointes
 from db import SessionLocal
 from videos import Videos
 
@@ -39,6 +42,9 @@ INTERVALLE_SECONDES = 30
 def run() -> None:
     configure_mappers()
     videos_client = Videos()
+    # Vidéos de la messagerie (spec/modules/messagerie-instantanee.md §4.5) :
+    # celles que le téléphone n'a pas su compresser.
+    messagerie_pieces = pieces_jointes()
     dernier_menage = 0.0
     print(f"Compression vidéo démarrée (vérifie toutes les {INTERVALLE_SECONDES}s).")
     while True:
@@ -50,6 +56,8 @@ def run() -> None:
             # Fichiers orphelins : une fois par heure suffit.
             if time.time() - dernier_menage > 3600:
                 dernier_menage = time.time()
+                if messagerie_pieces.clean_abandoned_uploads():
+                    print("Envois de vidéos de la messagerie abandonnés effacés.")
                 for fichier in videos_client.effacer_orphelins(db):
                     print(f"Fichier vidéo orphelin effacé : {fichier.name}")
             for video in videos_client.videos_a_compresser(db):
@@ -61,6 +69,12 @@ def run() -> None:
                 except Exception:
                     db.rollback()
                     print(f"Vidéo {video.id} ({video.nom}) : erreur pendant la compression.")
+            try:
+                if compressees := messagerie_pieces.compress_pending(db):
+                    print(f"Messagerie : {compressees} vidéo(s) compressée(s).")
+            except Exception:
+                db.rollback()
+                print("Messagerie : erreur pendant la compression d'une vidéo.")
         finally:
             db.close()
 

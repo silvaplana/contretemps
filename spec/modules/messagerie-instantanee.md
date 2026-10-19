@@ -269,12 +269,20 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
 
 ### 4.5 Vidéos
 
-- Choisies par le trombone ou l'appareil photo (« Filmer » / « Choisir une vidéo »).
-- Même chaîne que le module Vidéos : envoi en morceaux (reprend après une coupure), compression sur le
-  serveur après coup (H.264, 1080p au plus), image d'aperçu. La bulle montre l'aperçu avec ▶ et la durée ;
-  la vidéo se lit dans l'appli.
+- Choisies par le trombone ou l'appareil photo (qui propose photo ou vidéo, filmer ou choisir).
+- Même chaîne que le module Vidéos :
+  - **compression sur le téléphone** avant l'envoi quand il sait le faire (H.264, 1080p au plus, même
+    réglage que les chorégraphies) ; la bulle d'envoi dit « Préparation de la vidéo… » pendant ce temps ;
+  - **envoi en morceaux** de 2 Mo, qui reprend là où une coupure l'a arrêté ;
+  - **compression sur le serveur** après coup, une seule fois, seulement pour une vidéo que le téléphone
+    n'a pas su compresser (gardée telle quelle si elle ne devient pas plus petite) ;
+  - image d'aperçu et durée lues par le serveur à la réception.
+- La bulle montre l'aperçu avec ▶, la durée et la taille ; toucher ▶ ouvre la vidéo en plein écran, lue au
+  fur et à mesure (§4.6) par un lien signé valable quelques heures, comme les vidéos de chorégraphie.
 - Limite : **100 Mo** par vidéo avant compression.
-- L'espace utilisé par la messagerie de chaque école s'affiche dans Admin, à côté de celui des vidéos.
+- Les vidéos restent dans le dossier de la messagerie (pas dans la liste des vidéos de chorégraphie) ;
+  l'espace utilisé s'affiche dans Admin, ligne « Messagerie (photos, vidéos et fichiers) ».
+- Un envoi jamais terminé est effacé au bout d'un jour.
 
 ### 4.6 Ce qui se télécharge, et quand (Seb, 19 octobre)
 

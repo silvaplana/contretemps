@@ -17,6 +17,7 @@
 // retry automatique sûr.
 import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import * as messagesApi from '../api/messages.js'
+import { compresserOuOriginal } from './videoCompression.js'
 
 const CLE_STOCKAGE = 'contretemps-messages-en-attente'
 // Backoff avec un peu de jitter — voir tenter() ci-dessous.
@@ -121,17 +122,33 @@ async function tenter(clientId) {
   try {
     while (m.fichiers?.length) {
       const [suivant, ...reste] = m.fichiers
-      const piece = await messagesApi.televerserPiece(m.conversationId, suivant.fichier, suivant.nom, (p) => {
+      const suivre = (etape) => (p) => {
         const courant = enAttente.get(clientId)
         if (!courant) return
-        enAttente.set(clientId, { ...courant, progression: p })
+        enAttente.set(clientId, { ...courant, progression: p, etape })
         notifierProgression()
-      })
+      }
+      let piece
+      if (suivant.kind === 'video') {
+        // Compressée sur le téléphone d'abord quand il sait le faire (spec
+        // §4.5), une seule fois même si l'envoi est repris.
+        if (!suivant.prete) {
+          const original = suivant.fichier
+          suivant.fichier = await compresserOuOriginal(original, { onProgress: (p) => suivre('compression')(p / 100) })
+          suivant.compresse = suivant.fichier !== original
+          if (suivant.compresse) suivant.nom = suivant.fichier.name
+          suivant.prete = true
+        }
+        piece = await messagesApi.televerserVideo(m.conversationId, suivant, suivre('envoi'))
+      } else {
+        piece = await messagesApi.televerserPiece(m.conversationId, suivant.fichier, suivant.nom, suivre('envoi'))
+      }
       // `m` reste à jour : un renvoi repart du premier fichier pas encore parti.
       Object.assign(m, {
         fichiers: reste,
         options: { ...m.options, pieces: [...(m.options?.pieces ?? []), piece.id] },
         progression: 0,
+        etape: 'envoi',
       })
       enAttente.set(clientId, { ...m })
       sauvegarder()

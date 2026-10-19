@@ -1,11 +1,17 @@
 // Photos et fichiers à envoyer (spec/modules/messagerie-instantanee.md §4.3).
 
 export const TAILLE_MAX_FICHIER = 25 * 1024 * 1024 // comme le serveur
+export const TAILLE_MAX_VIDEO = 100 * 1024 * 1024 // avant compression (§4.5)
 const COTE_MAX_PHOTO = 1600
 
 export function tailleLisible(octets) {
   if (octets < 1024 * 1024) return `${Math.max(1, Math.round(octets / 1024))} Ko`
   return `${(octets / (1024 * 1024)).toFixed(1).replace('.', ',')} Mo`
+}
+
+// « 1:05 » : durée d'une vidéo dans sa bulle.
+export function dureeLisible(secondes) {
+  return `${Math.floor(secondes / 60)}:${String(secondes % 60).padStart(2, '0')}`
 }
 
 // Réduit une photo sur le téléphone avant l'envoi (§4.3) : côté le plus

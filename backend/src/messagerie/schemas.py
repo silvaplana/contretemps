@@ -108,12 +108,26 @@ class DeliverySortie(BaseModel):
 class AttachmentOut(BaseModel):
     id: int
     filename: str
-    kind: str  # 'photo' | 'file'
+    kind: str  # 'photo' | 'file' | 'video'
     size: int
     width: int | None = None
     height: int | None = None
+    duration: int | None = None  # video, seconds
 
     model_config = {"from_attributes": True}
+
+
+class VideoUploadCreation(BaseModel):
+    filename: str
+    size: int
+    # The phone already compressed it (frontend utils/videoCompression.js):
+    # the server will not compress it again (§4.5).
+    compressed: bool = False
+
+
+class VideoBlockOut(BaseModel):
+    received: int
+    attachment: AttachmentOut | None = None  # once the last block is in
 
 
 class MessageSortie(BaseModel):

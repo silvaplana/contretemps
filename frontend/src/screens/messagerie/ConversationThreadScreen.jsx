@@ -6,8 +6,8 @@ import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.j
 import { useFrappeEnCours, useSignalerFrappe } from '../../utils/frappeIndicateur.js'
 import { envoyerAvecReprise, reessayer, useMessagesEnAttente } from '../../utils/messageOutbox.js'
 import { libellePresence, usePresence, usePresenceListe } from '../../utils/presenceEnLigne.js'
-import { PhotoPleinEcran, PiecesDuMessage } from './pieces.jsx'
-import { TAILLE_MAX_FICHIER, preparerPhoto, tailleLisible } from './piecesOutils.js'
+import { PhotoPleinEcran, PiecesDuMessage, VideoPleinEcran } from './pieces.jsx'
+import { TAILLE_MAX_FICHIER, TAILLE_MAX_VIDEO, preparerPhoto, tailleLisible } from './piecesOutils.js'
 
 const STATUT_ICON = { envoye: 'check', recu: 'checkCheck', vu: 'checkCheck' }
 
@@ -276,6 +276,15 @@ export default function ConversationThreadScreen({
   async function ajouterFichiers(liste, commePhotos) {
     const prets = []
     for (const fichier of liste) {
+      if (fichier.type.startsWith('video/')) {
+        // Compressée au moment de l'envoi (voir utils/messageOutbox.js).
+        if (fichier.size > TAILLE_MAX_VIDEO) {
+          window.alert(`« ${fichier.name} » est trop grosse : 100 Mo au maximum.`)
+          continue
+        }
+        prets.push({ fichier, nom: fichier.name, kind: 'video', apercu: null, cle: crypto.randomUUID() })
+        continue
+      }
       const piece =
         commePhotos || fichier.type.startsWith('image/')
           ? await preparerPhoto(fichier)
@@ -644,8 +653,15 @@ export default function ConversationThreadScreen({
               {(m.fichiers?.length > 0 || m.options?.pieces?.length > 0) && (
                 <span className="message-bubble__envoi-pieces">
                   {m.fichiers?.map((f, i) =>
-                    f.apercu ? <img key={i} src={f.apercu} alt="" /> : <span key={i}>📎 {f.nom}</span>,
+                    f.apercu ? (
+                      <img key={i} src={f.apercu} alt="" />
+                    ) : (
+                      <span key={i}>
+                        {f.kind === 'video' ? '🎬' : '📎'} {f.nom}
+                      </span>
+                    ),
                   )}
+                  {m.etat !== 'echec' && m.etape === 'compression' && <span>Préparation de la vidéo…</span>}
                   {m.etat !== 'echec' && m.fichiers?.length > 0 && (
                     <span className="barre-progression">
                       <span style={{ width: `${Math.round(m.progression * 100)}%` }} />
@@ -711,7 +727,13 @@ export default function ConversationThreadScreen({
         <div className="thread-a-joindre">
           {aJoindre.map((p) => (
             <span key={p.cle} className="thread-a-joindre__piece">
-              {p.apercu ? <img src={p.apercu} alt="" /> : <span className="thread-a-joindre__nom">📎 {p.nom}</span>}
+              {p.apercu ? (
+                <img src={p.apercu} alt="" />
+              ) : (
+                <span className="thread-a-joindre__nom">
+                  {p.kind === 'video' ? '🎬' : '📎'} {p.nom}
+                </span>
+              )}
               <button
                 type="button"
                 className="thread-a-joindre__retirer"
@@ -738,7 +760,7 @@ export default function ConversationThreadScreen({
       <input
         ref={photoRef}
         type="file"
-        accept="image/*"
+        accept="image/*,video/*"
         multiple
         hidden
         onChange={(e) => {
@@ -746,7 +768,10 @@ export default function ConversationThreadScreen({
           e.target.value = ''
         }}
       />
-      {photoOuverte && <PhotoPleinEcran piece={photoOuverte} onFermer={() => setPhotoOuverte(null)} />}
+      {photoOuverte?.kind === 'video' && <VideoPleinEcran piece={photoOuverte} onFermer={() => setPhotoOuverte(null)} />}
+      {photoOuverte && photoOuverte.kind !== 'video' && (
+        <PhotoPleinEcran piece={photoOuverte} onFermer={() => setPhotoOuverte(null)} />
+      )}
       <div className="conversation-thread__input">
         {emojiOpen && (
           <div className="emoji-picker" ref={emojiSelectorRef}>
@@ -799,7 +824,7 @@ export default function ConversationThreadScreen({
               <button type="button" className="icon-btn" onClick={() => fichierRef.current?.click()} aria-label="Joindre un fichier">
                 <Icon name="paperclip" size={20} />
               </button>
-              <button type="button" className="icon-btn" onClick={() => photoRef.current?.click()} aria-label="Joindre une photo">
+              <button type="button" className="icon-btn" onClick={() => photoRef.current?.click()} aria-label="Joindre une photo ou une vidéo">
                 <Icon name="camera" size={20} />
               </button>
             </>
