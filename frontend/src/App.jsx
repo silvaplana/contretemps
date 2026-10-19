@@ -16,6 +16,7 @@ import * as saisonApi from './api/saison.js'
 import * as sessionApi from './api/session.js'
 import { effacerFrappe, signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { lienRecu, oublierLienRecu } from './utils/lienRecu.js'
+import { PARTAGE_ENTRANT, useEnvoyerA } from './utils/envoyerA.js'
 import { useMessagesEnvoyes } from './utils/messageOutbox.js'
 import { appliquerEtatConnexion, initialiserPresence } from './utils/presenceEnLigne.js'
 import { chargerTauxChange } from './utils/euros.js'
@@ -90,12 +91,20 @@ function App() {
     // Seuls les onglets de la barre du bas sont retenus (pas l'écran Heures).
     if (TABS.some((t) => t.key === activeTab)) sessionApi.sauvegarderEcran('onglet', activeTab)
   }, [activeTab])
+  // Texte à envoyer avec « Envoyer à… » de la messagerie : partagé depuis
+  // une autre appli ou envoyé par un autre module (voir utils/envoyerA.js).
+  // Ouvre la messagerie, aussi juste après la connexion.
+  const [partage, setPartage] = useState(PARTAGE_ENTRANT)
+  useEnvoyerA(setPartage)
   // Compte réellement connecté (voir api/auth.js : `resultat.compte`) —
   // toujours renseigné une fois `loggedIn` vrai (voir onLogin ci-dessous).
   // Le repli `activeUser` ci-dessous (objet vide) ne sert qu'à ce que le
   // rendu qui précède l'écran de connexion (coursDuProfil, etc., voir plus
   // bas) ne plante pas AVANT ce premier login.
   const [compteReel, setCompteReel] = useState(null)
+  useEffect(() => {
+    if (partage && compteReel) setActiveTab('messagerie')
+  }, [partage, compteReel])
   const activeUser = compteReel ?? { id: null, type: null, nom: '', prenom: '', initiales: '' }
   // Taux dollar -> euro pour afficher les coûts d'IA (une fois par session).
   useEffect(() => {
@@ -500,6 +509,21 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id, ecole.id, cours, saisonConsultee?.id, versionDonnees])
 
+  // Remplace une bulle déjà affichée (statut reçu/lu, modification,
+  // suppression), reçue en direct par le flux ci-dessous.
+  function remplacerMessage({ conversation_id, message }) {
+    setConversations((liste) => {
+      const conv = liste.find((c) => c.id === conversation_id)
+      if (!conv) return liste
+      const messageMaj = messagesApi.versMessageEcran(message, compteReel.id, conv.membres)
+      return liste.map((c) =>
+        c.id === conversation_id
+          ? { ...c, messages: c.messages.map((m) => (m.id === messageMaj.id ? messageMaj : m)) }
+          : c,
+      )
+    })
+  }
+
   // Réception en direct (voir api/messages.js : ouvrirFluxEvenements) :
   // UN SEUL flux SSE ouvert dès la connexion, fermé à la déconnexion —
   // pas un flux par conversation ouverte (voir le commentaire de
@@ -571,18 +595,10 @@ function App() {
       // _publier_statut_message). Bug signalé : la coche ne passait au
       // bleu qu'en fermant/rouvrant le fil, jamais en direct pendant que
       // l'autre lisait le message.
-      onMessageStatut: ({ conversation_id, message }) => {
-        setConversations((liste) => {
-          const conv = liste.find((c) => c.id === conversation_id)
-          if (!conv) return liste
-          const messageMaj = messagesApi.versMessageEcran(message, compteReel.id, conv.membres)
-          return liste.map((c) =>
-            c.id === conversation_id
-              ? { ...c, messages: c.messages.map((m) => (m.id === messageMaj.id ? messageMaj : m)) }
-              : c,
-          )
-        })
-      },
+      onMessageStatut: remplacerMessage,
+      // Message modifié ou supprimé (spec/modules/messagerie-instantanee.md
+      // §4.2) : même remplacement de la bulle, chez tous les membres.
+      onMessageMaj: remplacerMessage,
       onCoursMaj: resynchroniserCours,
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1123,6 +1139,14 @@ function App() {
             cours={cours}
             peutCreerGroupe={isAdmin(activeUser)}
             lectureSeule={lectureSeule}
+            partage={partage}
+            onPartageTraite={() => setPartage(null)}
+            // Lien vers les Docs dans une bulle : l'onglet Docs ouvre le
+            // fichier ou le dossier (événement écouté par le module Documents).
+            onOuvrirDocs={(id) => {
+              setActiveTab('docs')
+              setTimeout(() => window.dispatchEvent(new CustomEvent('dx-ouvrir', { detail: { id } })), 0)
+            }}
           />
         )}
 
