@@ -1,0 +1,94 @@
+# AppBase — Module `assistant-ia`
+
+Version 0.1, 19 octobre 2026. Statut : **brouillon, en cours de validation avec Seb** (fil « Module :
+Assistant IA » du projet). À ne pas confondre avec la messagerie instantanée (le chat entre membres).
+
+Écrit comme un module AppBase : quand AppBase existera, ce fichier y part tel quel. Ce qui ne vaut que
+pour Contretemps est marqué *(Contretemps)*.
+
+---
+
+## 1. Ce qui existe déjà
+
+- Un seul assistant pour toute l'appli : un bouton dans l'en-tête, la même conversation dans tous les
+  onglets. Chaque fichier de l'appli a aussi le sien (`spec/modules/fichier-de-base.md`).
+- Ouvert aux administrateurs et aux professeurs, pas aux élèves. Chacun n'y voit et n'y fait que ce que
+  ses écrans lui permettent déjà (« pas plus qu'en cliquant », Seb, 16 octobre).
+- Coût affiché en euros, choix du modèle, plafond mensuel par école (jamais pour le Super User).
+- Saisie façon appli Claude : + (photo, fichiers), micro pour dicter, flèche d'envoi.
+- Code : `backend/src/assistant/`, `frontend/src/modules/documents/Assistant.jsx`, `AssistantGlobal.jsx`.
+
+## 2. Règles
+
+- **L'assistant ne change rien tout seul.** Toute action s'affiche sur une carte Faire / Annuler, et ne
+  se fait qu'au clic. La carte dit en mots du métier ce qui va se passer (« Créer le cours « Salsa
+  débutants », Mardi 19:00-20:00 »).
+- **Les droits sont ceux de la personne**, vérifiés par le serveur au moment de proposer, avec les mêmes
+  règles que les écrans.
+- À l'écran, jamais le mot « IA » : c'est « l'assistant ».
+
+## 3. Les actions des modules (Seb, 19 octobre)
+
+L'assistant ne connaît aucun module. **Chaque module déclare les actions qu'il lui ouvre** dans son
+propre fichier `actions.py`, et l'appli les lui remet au démarrage. Une action devient un outil de
+l'assistant.
+
+### 3.1 La forme d'une action
+
+```python
+@dataclass(frozen=True)
+class Action:
+    name: str                    # nom de l'outil, ex. "create_group_chat"
+    module: str                  # titre de la carte, ex. "Messagerie"
+    description: str             # ce que l'assistant lit pour choisir l'action
+    params: type[BaseModel]      # paramètres (Pydantic), vérifiés avant tout
+    prepare: Callable            # (db, compte, org_id, params) -> Ligne
+    admin_only: bool = True      # outil montré seulement aux administrateurs
+```
+
+- `prepare` vérifie les droits et les données, puis rend une `Ligne` : le libellé de la carte et la
+  fonction à lancer au clic. Il ne change rien. Un refus (droits, donnée introuvable) revient à
+  l'assistant avec sa raison, pour qu'il l'explique ou corrige.
+- La fonction lancée au clic est **celle que les écrans utilisent déjà** : mêmes vérifications, et les
+  écrans ouverts se mettent à jour pareil.
+- Les paramètres désignent les choses comme l'assistant les connaît : un numéro lu avec les outils de
+  lecture, ou un nom quand aucun outil ne donne le numéro (un groupe de la messagerie, une personne pour
+  une note de frais). Un nom introuvable est refusé avec la liste des noms possibles.
+- Code : `backend/src/assistant/actions.py` (la forme et la carte), `<module>/actions.py` (les actions).
+  Quand le module a besoin de l'appli hôte pour agir, ses actions vont dans `<module>_contretemps/`.
+
+### 3.2 Le ramassage
+
+Une seule liste, dans `app/main.py` *(Contretemps)*, une ligne par module :
+`actions_messagerie(...)`, `actions_cours(...)`, `actions_notes_frais(...)`. Pas de registre de modules
+pour l'instant : la section « Enregistrement des modules » de `spec/core.md` reprendra cette liste telle
+quelle, avec les routes, les onglets et les rôles.
+
+### 3.3 Les premières actions
+
+| Module | Action | Qui |
+|---|---|---|
+| Messagerie | Créer un groupe (personnes et cours), le renommer, le supprimer. Les groupes automatiques des cours ne se suppriment pas. | Administrateurs |
+| Cours *(Contretemps)* | Créer un cours, le supprimer. Le modifier passe déjà par la carte des modifications de données. | Administrateurs |
+| Notes de frais | Faire une note (une ou plusieurs dépenses) et l'envoyer aux trésoriers, pour soi ou, si on est trésorier, pour quelqu'un d'autre. Sans RIB enregistré, seulement en don. Les justificatifs s'ajoutent ensuite dans l'appli. | Tous ceux qui ont l'assistant |
+
+### 3.4 Plus tard
+
+- Déplacer dans leurs modules les outils écrits aujourd'hui dans `assistant/` : documents, données de
+  l'école en lecture, modifications de données (`donnees.py`, `modifications.py`).
+
+## 4. Dictée
+
+- Le micro utilise la reconnaissance vocale du navigateur, gratuite (absente de Firefox : pas de micro).
+- Sur Chrome Android, les morceaux entendus reprennent chacun le précédent : le texte est reconstruit à
+  chaque fois, sans répéter les mots (correctif du 18 octobre, `Dictee.js`).
+
+## 5. Pistes (non décidées)
+
+- **Serveur MCP** : les mêmes actions ouvertes à Claude ou ChatGPT, où l'on ajoute l'appli comme
+  connecteur. À régler : connexion avec le compte de l'appli (droits de la personne), confirmation faite
+  par Claude ou ChatGPT, coût payé par l'abonnement de la personne.
+- **Démarrage guidé** : un mode d'emploi court (saison, cours, élèves, profs, paiements), plus une action
+  « où en est l'école » (« 0 cours, HelloAsso pas branché »), pour que l'assistant ou Claude propose
+  l'étape suivante. Le même texte sert à l'assistant, au serveur MCP et au site public.
+- Conversations gardées en base (aujourd'hui en mémoire du serveur, voir `spec/a-faire.md`).
