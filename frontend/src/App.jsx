@@ -1140,6 +1140,8 @@ function App() {
             professeurs={professeurs}
             eleves={eleves}
             cours={cours}
+            groupes={groupes}
+            setGroupes={setGroupes}
             peutCreerGroupe={isAdmin(activeUser)}
             lectureSeule={lectureSeule}
             partage={partage}

@@ -749,7 +749,8 @@ adaptée.**
 
 ### 5.1 Admin *(Admin uniquement)*
 
-Sous-onglets (sélecteur segmenté) : École, Élèves, Professeurs, Cours, Conversations. Si les
+Sous-onglets (sélecteur segmenté) : École, Élèves, Professeurs, Cours (Conversations retiré le
+2026-10-19, voir §5.1.5). Si les
 sous-onglets ne tiennent pas sur une seule ligne (écran étroit), **retour à la ligne
 automatique** plutôt que défilement horizontal — tous les onglets restent visibles sans
 interaction supplémentaire.
@@ -914,6 +915,13 @@ sans professeur"**.
 ![Admin — planning hebdomadaire (proposition)](images/planning-hebdo.png)
 
 #### 5.1.5 Conversations *(gestion admin des conversations de groupe)*
+
+> **Retiré d'Admin le 2026-10-19 (Seb)** : tout ce qui concerne les messages se fait dans
+> l'onglet Messages du bas. Dans le fil d'un groupe, un admin a deux boutons dans l'en-tête :
+> **Modifier le groupe** (même modale qu'avant : nom, membres compte/cours, WhatsApp lié) et
+> **Supprimer le groupe** (confirmation, messages compris). Un admin ne voit dans Messages que
+> les groupes dont il est membre ; l'Assistant peut aussi changer les membres de n'importe quel
+> groupe, y compris celui d'un cours. Le texte ci-dessous décrit l'ancien écran.
 
 Colonnes : Nom, Membres. Contient à la fois les conversations automatiques (une par cours,
 créées dès la création du cours) et celles créées manuellement par l'admin. Les deux sont

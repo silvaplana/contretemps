@@ -90,7 +90,7 @@ OUTILS_DONNEES = [
            {"role": _prop(["string", "null"], "eleve, professeur, admin, tresorier, owner (administrateur principal), "
                           "superuser, ou null pour tous.")}),
     _outil("infos_ecole", "Les coordonnées de l'école (Admin > École) : nom, adresse, SIRET, IBAN, emails, adresse de l'appli.", {}),
-    _outil("lister_groupes", "Les groupes de la messagerie (Admin > Messages) et leurs membres (personnes et cours).", {}),
+    _outil("lister_groupes", "Les groupes de la messagerie et leurs membres (personnes et cours).", {}),
 ]
 NOMS = {o["name"] for o in OUTILS_DONNEES}
 # Hors admins (un professeur) : seulement ce que ses écrans montrent (Seb,

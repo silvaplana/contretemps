@@ -77,9 +77,8 @@ quelle, avec les routes, les onglets et les rôles.
 
 | Module | Action | Qui |
 |---|---|---|
-| Messagerie | Créer un groupe (personnes et cours), le renommer, le supprimer. Les groupes automatiques des cours ne se suppriment pas. | Administrateurs |
+| Messagerie | Créer un groupe (personnes et cours), le renommer, le supprimer, ajouter ou retirer des membres (aussi dans le groupe d'un cours). Les groupes automatiques des cours ne se suppriment pas. Le Super User, qui n'a pas de fiche d'école, s'ajoute comme dans l'écran Nouveau groupe. | Administrateurs |
 | Cours *(Contretemps)* | Créer un cours, le supprimer. Le modifier passe déjà par la carte des modifications de données. | Administrateurs |
-| Messagerie | Ajouter des personnes ou des cours à un groupe, en retirer. Le Super User, qui n'a pas de fiche d'école, s'ajoute comme dans l'écran Nouveau groupe. | Administrateurs |
 | École | Modifier les coordonnées d'Admin > École (nom, adresse, SIRET, IBAN, emails). | Administrateurs |
 | Rôles | Nommer ou retirer un administrateur, un trésorier, un administrateur principal ; créer une personne qui n'est qu'administrateur. Comme le tableau des administrateurs : jamais sur sa propre ligne, sauf la case Trésorier. | **Administrateurs principaux** et Super User (Seb, 19 octobre) |
 | Professeurs | Créer, modifier, supprimer un professeur. L'affecter à un cours passe par la carte des modifications de données. | Administrateurs |

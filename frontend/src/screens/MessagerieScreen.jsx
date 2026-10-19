@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import * as conversationsApi from '../api/conversations.js'
 import * as messagesApi from '../api/messages.js'
 import Icon from '../components/Icon.jsx'
 import { envoyerAvecReprise } from '../utils/messageOutbox.js'
@@ -9,6 +10,8 @@ import EnvoyerAScreen from './messagerie/EnvoyerAScreen.jsx'
 import NouveauGroupeModal from './messagerie/NouveauGroupeModal.jsx'
 import NouvelleDiscussionScreen from './messagerie/NouvelleDiscussionScreen.jsx'
 import ProfilContactScreen from './messagerie/ProfilContactScreen.jsx'
+import ConversationEditModal from './admin/ConversationEditModal.jsx'
+import { useConversationEditor } from './admin/useConversationEditor.js'
 
 // Écran Messagerie (Admin, Professeur, Élève — voir spec/SPEC.md 5.5).
 // 3 écrans distincts, comme WhatsApp, jamais 2 affichés en même temps :
@@ -35,6 +38,10 @@ export default function MessagerieScreen({
   professeurs,
   eleves,
   cours,
+  // Groupes de l'école tels qu'Admin > Cours les édite (blocs compte/cours,
+  // voir App.jsx) : pour « Modifier le groupe » dans l'en-tête d'un fil.
+  groupes,
+  setGroupes,
   // « Nouveau groupe » (admins) et lecture seule d'une ancienne saison :
   // décidés par App.jsx.
   peutCreerGroupe,
@@ -88,6 +95,24 @@ export default function MessagerieScreen({
   }
 
   const selected = conversations.find((c) => c.id === selectedId)
+
+  // Modifier / supprimer un groupe depuis l'en-tête de son fil (admins) —
+  // l'ancien onglet Admin > Messages, retiré le 19 octobre (Seb) : même
+  // modale qu'Admin > Cours. La liste des groupes est relue avant d'ouvrir,
+  // un groupe tout juste créé ici n'y étant pas encore.
+  const editeur = useConversationEditor(groupes, setGroupes)
+  async function modifierGroupe(id) {
+    setGroupes(await conversationsApi.listerEcole(ecoleId))
+    editeur.setEditId(id)
+  }
+  async function supprimerGroupe(id) {
+    if (!window.confirm('Supprimer ce groupe et tous ses messages ?')) return
+    await conversationsApi.supprimer(id)
+    setGroupes((liste) => liste.filter((g) => g.id !== id))
+    setConversations((liste) => liste.filter((c) => c.id !== id))
+    setSelectedId(null)
+  }
+  const gereGroupe = peutCreerGroupe && !lectureSeule && selected?.type === 'groupe'
   const frame = profilStack[profilStack.length - 1] ?? null
 
   // `directInfo` (voir onMembreClick plus bas) : ce frame a été empilé en
@@ -149,6 +174,8 @@ export default function MessagerieScreen({
         compteId={compteId}
         peutModerer={peutCreerGroupe}
         lectureSeule={lectureSeule}
+        onModifierGroupe={gereGroupe ? () => modifierGroupe(selected.id) : undefined}
+        onSupprimerGroupe={gereGroupe ? () => supprimerGroupe(selected.id) : undefined}
         onTransferer={(messages) => setTransfert({ messages, transfere: true })}
         onOuvrirDocs={onOuvrirDocs}
       />
@@ -236,6 +263,21 @@ export default function MessagerieScreen({
         <button type="button" className="fab" onClick={() => setNouvelleDiscussion(true)} aria-label="Nouvelle discussion">
           <Icon name="plus" size={28} />
         </button>
+      )}
+      {editeur.enEdition && (
+        <ConversationEditModal
+          conversation={editeur.enEdition}
+          nouvelle={false}
+          admins={admins}
+          professeurs={professeurs}
+          eleves={eleves}
+          cours={cours}
+          onClose={editeur.fermerEdition}
+          onRename={(nom) => editeur.renameGroupe(editeur.enEdition.id, nom)}
+          onAddMembre={(membre) => editeur.addMembre(editeur.enEdition.id, membre)}
+          onRemoveMembre={(membre, index) => editeur.removeMembre(editeur.enEdition.id, membre, index)}
+          onCreerGroupeWhatsapp={() => editeur.creerGroupeWhatsapp(editeur.enEdition.id)}
+        />
       )}
       {nouveauGroupeOuvert && (
         <NouveauGroupeModal

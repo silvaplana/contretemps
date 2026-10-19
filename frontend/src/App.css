@@ -3497,7 +3497,10 @@ a.btn {
   gap: 8px;
 }
 
+/* Un filtre par ligne : sur deux colonnes, « Toutes les disciplines » était
+   coupé sur téléphone (Seb, 19 octobre). */
 .choregraphie-filtres {
+  grid-template-columns: 1fr;
   padding: 12px 14px 4px;
 }
 
