@@ -2480,11 +2480,48 @@
   color: #fff;
 }
 
-.photo-plein-ecran img {
+.photo-plein-ecran img,
+.photo-plein-ecran video {
   flex: 1;
   min-height: 0;
   width: 100%;
   object-fit: contain;
+}
+
+.photo-plein-ecran p {
+  margin: auto;
+  font-size: 17px;
+}
+
+/* Vidéo d'un message (spec/modules/messagerie-instantanee.md §4.5-4.6). */
+.piece-video {
+  position: relative;
+}
+
+.piece-video__lecture {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 24px;
+}
+
+.piece-video__infos {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 14px;
 }
 
 .envoyer-a__apercu {

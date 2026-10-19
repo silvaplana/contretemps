@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false, true
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -124,8 +124,12 @@ class MessageAttachment(Base):
     uploader_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False)
     sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
-    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # 'photo' | 'file' ('video' later)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # 'photo' | 'file' | 'video'
     size: Mapped[int] = mapped_column(Integer, nullable=False)
     width: Mapped[int | None] = mapped_column(Integer, nullable=True)
     height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Video only (§4.5): length in seconds, and whether it still waits for
+    # the server compression (a phone that could not compress it).
+    duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    compressed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

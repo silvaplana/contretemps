@@ -7,15 +7,16 @@ import asyncio
 import json
 
 from comptes import Compte, rbac, roles
-from fastapi import Depends, FastAPI, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from db import SessionLocal, get_db
 from notifications import Notifications
+from securite import liens
 from storage import FileTooLarge, guess_mime
 
-from .attachments import Attachments, InvalidAttachment
+from .attachments import Attachments, InvalidAttachment, UploadNotFound, UploadOffsetMismatch
 from .connexions import Connexions
 from .conversations import Conversations
 from .evenements import Evenements
@@ -33,6 +34,8 @@ from .schemas import (
     MessageSortie,
     RelanceDemande,
     StatutModification,
+    VideoBlockOut,
+    VideoUploadCreation,
 )
 
 # Entre deux vrais événements, un commentaire SSE (ligne commençant par
@@ -113,6 +116,14 @@ class MessagerieReceiver:
         )(self.upload_attachment)
         self.app.get("/attachments/{attachment_id}")(self.attachment_content)
         self.app.get("/attachments/{attachment_id}/thumbnail")(self.attachment_thumbnail)
+        # Videos (§4.5): sent in blocks, read by the <video> tag through a
+        # signed link (it cannot send the session header).
+        self.app.post("/conversations/{conversation_id}/video-uploads", status_code=201)(
+            self.start_video_upload
+        )
+        self.app.put("/video-uploads/{upload_id}", response_model=VideoBlockOut)(self.write_video_block)
+        self.app.get("/attachments/{attachment_id}/link")(self.video_link)
+        self.app.get("/attachments/{attachment_id}/video")(self.video_content)
 
         # Actions on a message (spec/modules/messagerie-instantanee.md §4.2).
         self.app.put("/messages/{message_id}", response_model=MessageSortie)(self.edit_message)
@@ -497,10 +508,91 @@ class MessagerieReceiver:
     ):
         attachment, ecole_id = self._attachment_for(db, attachment_id, appelant)
         chemin = self.attachments.thumbnail_path(attachment, ecole_id)
-        if attachment.kind != "photo" or not chemin.exists():
+        if attachment.kind not in ("photo", "video") or not chemin.exists():
             raise HTTPException(status_code=404, detail="Pas de vignette")
         return FileResponse(
             chemin, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"}
+        )
+
+    def start_video_upload(
+        self,
+        conversation_id: int,
+        donnees: VideoUploadCreation,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        conversation = self.conversations.get(db, conversation_id)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation introuvable")
+        self._require_member(db, appelant, conversation_id)
+        try:
+            upload_id = self.attachments.start_video_upload(
+                conversation, appelant.id, donnees.filename, donnees.size, donnees.compressed
+            )
+        except FileTooLarge as erreur:
+            raise HTTPException(status_code=413, detail=str(erreur)) from erreur
+        except InvalidAttachment as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from erreur
+        return {"id": upload_id}
+
+    async def write_video_block(
+        self,
+        upload_id: str,
+        offset: int,
+        request: Request,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        data = await request.body()
+        try:
+            # The last block reads the whole video (poster, length): off the
+            # event loop, so other requests do not wait.
+            received, attachment = await asyncio.to_thread(
+                self.attachments.write_video_block, db, upload_id, appelant.id if appelant else None, offset, data
+            )
+        except UploadNotFound as erreur:
+            raise HTTPException(status_code=404, detail="Envoi introuvable") from erreur
+        except UploadOffsetMismatch as erreur:
+            # The client resumes from the real offset.
+            raise HTTPException(status_code=409, detail={"received": erreur.received}) from erreur
+        except InvalidAttachment as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from erreur
+        return {"received": received, "attachment": attachment}
+
+    def video_link(
+        self,
+        attachment_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        attachment, _ = self._attachment_for(db, attachment_id, appelant)
+        if attachment.kind != "video":
+            raise HTTPException(status_code=404, detail="Pas une vidéo")
+        # Signed for this content: after the server compression, the link
+        # of the old content stops, a new one is handed out.
+        objet = f"msg-video:{attachment.id}:{attachment.sha256}"
+        return {"url": f"/attachments/{attachment.id}/video?h={attachment.sha256}&{liens.parametres(objet)}"}
+
+    def video_content(
+        self,
+        attachment_id: int,
+        h: str | None = None,
+        e: str | None = None,
+        s: str | None = None,
+        db: Session = Depends(get_db),
+    ):
+        if not h or not liens.valide(f"msg-video:{attachment_id}:{h}", e, s):
+            raise HTTPException(status_code=403, detail="Lien expiré : rouvrez la vidéo dans l'appli")
+        attachment = self.attachments.get(db, attachment_id)
+        if attachment is None or attachment.sha256 != h:
+            raise HTTPException(status_code=404, detail="Vidéo introuvable")
+        ecole_id = self.conversations.get(db, attachment.conversation_id).ecole_id
+        chemin = self.attachments.content_path(attachment, ecole_id)
+        if not chemin.is_file():
+            raise HTTPException(status_code=404, detail="Vidéo introuvable")
+        # FileResponse answers `Range`: the video plays as it downloads.
+        return FileResponse(
+            chemin, media_type=guess_mime(attachment.filename), headers={"Cache-Control": "private, max-age=21600"}
         )
 
     def _publier_message_maj(self, db: Session, sortie: dict) -> None:
@@ -633,4 +725,6 @@ def _apercu(sortie: dict) -> str:
     kinds = [a.kind for a in sortie["attachments"]]
     if not kinds:
         return ""
-    return "📷 Photo" if all(k == "photo" for k in kinds) else "📎 Fichier"
+    if all(k == "photo" for k in kinds):
+        return "📷 Photo"
+    return "🎬 Vidéo" if all(k == "video" for k in kinds) else "📎 Fichier"

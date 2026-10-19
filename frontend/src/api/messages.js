@@ -272,7 +272,8 @@ export function apercuMessage(m) {
   if (m.supprime) return 'Ce message a été supprimé'
   if (m.contenu) return m.contenu
   if (m.pieces.length === 0) return ''
-  return m.pieces.every((p) => p.kind === 'photo') ? '📷 Photo' : '📎 Fichier'
+  if (m.pieces.every((p) => p.kind === 'photo')) return '📷 Photo'
+  return m.pieces.every((p) => p.kind === 'video') ? '🎬 Vidéo' : '📎 Fichier'
 }
 
 // Envoie une photo ou un fichier avant le message (spec §4.3) ; renvoie
@@ -299,6 +300,62 @@ export function televerserPiece(conversationId, fichier, nom, onProgression) {
     corps.append('fichier', fichier, nom)
     xhr.send(corps)
   })
+}
+
+// Vidéo envoyée par morceaux de 2 Mo (spec §4.5). `envoi` garde l'id et
+// la position de l'envoi : un renvoi (voir utils/messageOutbox.js) reprend
+// là où la coupure l'a arrêté. Renvoie la pièce jointe une fois le dernier
+// morceau reçu.
+const TAILLE_BLOC_VIDEO = 2 * 1024 * 1024
+export async function televerserVideo(conversationId, envoi, onProgression) {
+  const { fichier } = envoi
+  if (!envoi.envoiId) {
+    const { id } = await requete(`/conversations/${conversationId}/video-uploads`, {
+      method: 'POST',
+      body: JSON.stringify({ filename: envoi.nom, size: fichier.size, compressed: Boolean(envoi.compresse) }),
+    })
+    Object.assign(envoi, { envoiId: id, decalage: 0 })
+  }
+  for (;;) {
+    const controleur = new AbortController()
+    const minuteur = setTimeout(() => controleur.abort(), 60000)
+    let reponse
+    try {
+      reponse = await fetch(`${BASE_URL}/video-uploads/${envoi.envoiId}?offset=${envoi.decalage}`, {
+        method: 'PUT',
+        body: fichier.slice(envoi.decalage, envoi.decalage + TAILLE_BLOC_VIDEO),
+        signal: controleur.signal,
+      })
+    } finally {
+      clearTimeout(minuteur)
+    }
+    if (reponse.status === 409) {
+      // Le serveur dit où il en est vraiment : on reprend de là.
+      envoi.decalage = (await reponse.json()).detail.received
+      continue
+    }
+    if (reponse.status === 404) {
+      // Envoi effacé (abandonné trop longtemps) : le prochain essai repart de zéro.
+      envoi.envoiId = null
+      throw new Error('Envoi à recommencer')
+    }
+    if (!reponse.ok) {
+      const erreur = new Error(`Requête échouée (${reponse.status})`)
+      erreur.status = reponse.status
+      throw erreur
+    }
+    const resultat = await reponse.json()
+    envoi.decalage = resultat.received
+    onProgression?.(resultat.received / fichier.size)
+    if (resultat.attachment) return resultat.attachment
+  }
+}
+
+// Adresse de lecture d'une vidéo, pour la balise <video> qui ne sait pas
+// joindre la session : un lien signé, valable quelques heures.
+export async function lienVideo(pieceId) {
+  const { url } = await requete(`/attachments/${pieceId}/link`)
+  return `${BASE_URL}${url}`
 }
 
 // Contenu protégé d'une pièce jointe, lu avec la session puis montré par
