@@ -131,6 +131,19 @@ export function FileIcon({ name, family, blank = false }) {
   )
 }
 
+// Bac « Échanges » (§4.7 ter) : un plateau, pas le dossier jaune.
+export function TrayIcon() {
+  return (
+    <span className="dx-folder dx-tray" aria-hidden="true">
+      <svg viewBox="0 0 56 46">
+        <path d="M6 24l7-16a3 3 0 0 1 3-2h24a3 3 0 0 1 3 2l7 16v12a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z" fill="var(--dx-tray-back)" />
+        <path d="M6 24h13a2 2 0 0 1 2 2 4 4 0 0 0 4 4h6a4 4 0 0 0 4-4 2 2 0 0 1 2-2h13v12a4 4 0 0 1-4 4H10a4 4 0 0 1-4-4z" fill="var(--dx-tray)" />
+        <path d="M28 10v12M23 17l5 5 5-5" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  )
+}
+
 export function PlusIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" aria-hidden="true">

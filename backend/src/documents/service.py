@@ -31,6 +31,7 @@ from .models import (
     STATUSES,
     SYSTEM_PERIOD,
     SYSTEM_PERMANENT,
+    SYSTEM_EXCHANGE,
     SYSTEM_RESERVED,
     DocAcl,
     DocActivity,
@@ -45,6 +46,9 @@ from .storage import LocalStorage, guess_mime, make_thumbnail
 
 TRASH_DAYS = 30
 PERMANENT_NAME = "Permanent"
+# Bacs « Échanges » (§4.7 ter).
+EXCHANGE_NAME = "Échanges"
+EXCHANGE_DAYS = 30
 
 
 class DocError(Exception):
@@ -234,6 +238,8 @@ class Documents:
         if self.reserved_folders:
             db.flush()
             change = self._ensure_reserved_folders(db, org_id) or change
+        db.flush()
+        change = self._ensure_exchanges(db, org_id) or change
         if change:
             db.commit()
 
@@ -262,6 +268,48 @@ class Documents:
                 db.add(DocAcl(node_id=dossier.id, principal_type="group", principal_id=groupe, level=LEVEL_MANAGE))
                 change = True
         return change
+
+    def _ensure_exchanges(self, db: Session, org_id: int) -> bool:
+        """Un bac « Échanges » (§4.7 ter) à la racine de Privé et dans chaque
+        dossier réservé ; il prend les droits de l'endroit où il est."""
+        parents = [None] + list(
+            db.scalars(select(DocNode.id).where(DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_RESERVED))
+        )
+        existants = set(
+            db.scalars(select(DocNode.parent_id).where(DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_EXCHANGE))
+        )
+        manquants = [p for p in parents if p not in existants]
+        for parent_id in manquants:
+            db.add(self._new_node(org_id, "private", parent_id, KIND_FOLDER, EXCHANGE_NAME, None, system_kind=SYSTEM_EXCHANGE))
+        return bool(manquants)
+
+    @staticmethod
+    def _in_exchange(loc: Location) -> bool:
+        return loc.folder is not None and loc.folder.system_kind == SYSTEM_EXCHANGE
+
+    def _arrive(self, node: DocNode, cible: Location) -> None:
+        """`node` vient d'être posé dans `cible` : dans un bac, il part à la
+        corbeille dans 30 jours ; ailleurs, il perd tout ce qui tient au bac."""
+        if self._in_exchange(cible):
+            node.exchange_until = utcnow() + timedelta(days=EXCHANGE_DAYS)
+        else:
+            node.exchange_until = node.for_type = node.for_id = node.picked_at = None
+
+    def _expire_exchanges(self, db: Session, org_id: int) -> None:
+        """Ce qui est dans un bac depuis 30 jours part à la corbeille, celle
+        de qui l'avait déposé (il peut encore le restaurer)."""
+        vieux = list(
+            db.scalars(
+                select(DocNode).where(
+                    DocNode.org_id == org_id, DocNode.deleted_at.is_(None), DocNode.exchange_until < utcnow()
+                )
+            )
+        )
+        for node in vieux:
+            node.deleted_at, node.deleted_by = utcnow(), node.created_by
+            db.add(DocActivity(org_id=org_id, node_id=node.id, person_id=None, action="expired"))
+        if vieux:
+            db.commit()
 
     def reserved_folder(self, db: Session, org_id: int, name: str) -> DocNode | None:
         """Le dossier réservé `name` de la période en cours (créé au besoin),
@@ -313,6 +361,7 @@ class Documents:
         self._check_space(member, space)
         if space == "private" and folder_id is None:
             self.ensure_system_folders(db, member.org_id)
+        self._expire_exchanges(db, member.org_id)
         dossier = self._node(db, member, folder_id) if folder_id is not None else None
         if dossier is not None and (dossier.space != space or dossier.kind != KIND_FOLDER):
             raise not_found()
@@ -341,14 +390,60 @@ class Documents:
                 self._summary(enfant, niveau_enfant, chemin, fermees, comptes, noms, periodes)
             )
         elements.sort(key=self._sort_key(periodes))
+        if self._in_exchange(loc):
+            self._exchange_details(db, member, enfants, elements)
         return {
             "space": space,
             "folder": self._summary(dossier, niveau, loc.path, fermees, {}, {}, periodes) if dossier else None,
             "breadcrumb": self._breadcrumb(member, loc, acl, fermees),
             "level": niveau,
             "can_add": access.at_least(niveau, LEVEL_EDIT) and self._official_lock(loc.path) is None,
+            "can_add_folder": not self._in_exchange(loc),
             "items": elements,
         }
+
+    def _exchange_details(self, db: Session, member: Member, enfants: list[DocNode], elements: list[dict]) -> None:
+        """Lignes d'un bac (§4.7 ter) : « De Marie · pour toi · reste 12 j »,
+        le plus récent en haut."""
+        par_id = {n.id: n for n in enfants}
+        noms = self.directory.person_names(db, member.org_id, {n.created_by for n in enfants if n.created_by})
+        pour = self.directory.describe(
+            db, member.org_id, list({(n.for_type, n.for_id) for n in enfants if n.for_id})
+        )
+        for e in elements:
+            n = par_id[e["id"]]
+            p = pour.get((n.for_type, n.for_id)) if n.for_id else None
+            e.update(
+                exchange_until=n.exchange_until.isoformat() if n.exchange_until else None,
+                sender=noms.get(n.created_by),
+                sent_by_me=n.created_by == member.person_id,
+                for_label=p.label if p else None,
+                for_me=bool(n.for_id) and n.created_by != member.person_id and access.addressed_to(n, member),
+                picked=n.picked_at is not None,
+            )
+        elements.sort(key=lambda e: par_id[e["id"]].created_at or utcnow(), reverse=True)
+
+    def set_recipient(self, db: Session, member: Member, node_id: int, principal: tuple[str, str] | None) -> dict:
+        """« Pour : » d'un élément d'un bac (§4.7 ter) : None = tout le monde."""
+        node = self._node(db, member, node_id)
+        loc = self._locate(db, member, node)
+        bac = Location(loc.space, loc.owner_person_id, loc.path[:-1])
+        if not self._in_exchange(bac):
+            raise DocError(409, "Seul un élément du bac Échanges s'adresse à quelqu'un.")
+        niveau = self._require(db, member, bac, LEVEL_EDIT)
+        if node.created_by != member.person_id and not access.at_least(niveau, LEVEL_MANAGE):
+            raise DocError(403, "Seule la personne qui l'a déposé choisit pour qui c'est.")
+        libelle = None
+        if principal is not None:
+            trouve = self.directory.describe(db, member.org_id, [principal]).get(principal)
+            if trouve is None:
+                raise DocError(422, "Personne ou groupe inconnu")
+            libelle = trouve.label
+        node.for_type, node.for_id = principal if principal else (None, None)
+        node.picked_at = None
+        self._log(db, member, node, "addressed", {"to": libelle})
+        db.commit()
+        return {"id": node.id, "for_label": libelle}
 
     def _breadcrumb(self, member: Member, loc: Location, acl, fermees) -> list[dict]:
         """Le fil d'Ariane commence au premier dossier visible : un élève ne
@@ -402,6 +497,8 @@ class Documents:
     @staticmethod
     def _sort_key(periodes):
         def cle(e):
+            if e["system_kind"] == SYSTEM_EXCHANGE:
+                return (-1, 0, "")
             if e["system_kind"] == SYSTEM_PERMANENT:
                 return (0, 0, "")
             if e["system_kind"] == SYSTEM_PERIOD:
@@ -557,6 +654,7 @@ class Documents:
         fichiers modifiés, tous espaces confondus, parmi ceux que `member`
         peut voir — avec leur chemin, comme pour la recherche."""
         espaces = [e["key"] for e in self.spaces(member)]
+        self._expire_exchanges(db, member.org_id)
         requete = (
             select(DocNode)
             .where(
@@ -616,6 +714,8 @@ class Documents:
 
     def create_folder(self, db: Session, member: Member, space: str, parent_id: int | None, name: str) -> dict:
         loc = self._target(db, member, space, parent_id)
+        if self._in_exchange(loc):
+            raise DocError(409, "Pas de dossier dans le bac Échanges : déposez-y seulement des fichiers.")
         nom = clean_name(name)
         nom = self._free_name(db, member, loc, nom) or nom
         node = self._new_node(member.org_id, loc.space, parent_id, KIND_FOLDER, nom, member.person_id)
@@ -635,6 +735,7 @@ class Documents:
         nom = self._free_name(db, member, loc, nom) or nom
         node = self._new_node(member.org_id, loc.space, parent_id, KIND_FILE, nom, member.person_id)
         node.owner_person_id = loc.owner_person_id
+        self._arrive(node, loc)
         db.add(node)
         db.flush()
         self._add_version(db, member, node, stocke, nom)
@@ -742,6 +843,7 @@ class Documents:
             raise DocError(409, "Un élément du dossier de destination porte déjà ce nom.")
         avant = " › ".join(n.name for n in loc.path[:-1]) or self._space_label(loc.space)
         node.parent_id = cible.folder.id if cible.folder else None
+        self._arrive(node, cible)
         if cible.space != node.space or cible.owner_person_id != node.owner_person_id:
             for element in self._subtree(db, node):
                 element.space, element.owner_person_id = cible.space, cible.owner_person_id
@@ -763,6 +865,7 @@ class Documents:
             raise DocError(409, "Ce dossier fait partie de l'organisation de l'appli : copiez plutôt son contenu.")
         nom = self._free_name(db, member, cible, source.name) or source.name
         racine = self._copy_node(db, member, source, cible, cible.folder.id if cible.folder else None, nom)
+        self._arrive(racine, cible)
         self._log(db, member, racine, "copied", {"from": source.name})
         db.commit()
         return {"id": racine.id, "name": racine.name}
@@ -910,6 +1013,9 @@ class Documents:
         if nom:
             node.name, node.name_search = nom, normalize_search(nom)
         node.deleted_at, node.deleted_by = None, None
+        # Remis dans un bac : il y reste encore 30 jours.
+        if node.exchange_until is not None:
+            self._arrive(node, loc)
         self._log(db, member, node, "restored")
         db.commit()
         return {"id": node.id, "parent_id": node.parent_id, "space": node.space}
@@ -947,6 +1053,7 @@ class Documents:
 
     def trash(self, db: Session, member: Member, space: str) -> list[dict]:
         self._check_space(member, space)
+        self._expire_exchanges(db, member.org_id)
         self.purge(db, member.org_id)
         elements = self._trash_items(db, member, space)
         noms = self.directory.person_names(db, member.org_id, {n.deleted_by for n in elements if n.deleted_by})
@@ -1012,6 +1119,10 @@ class Documents:
         version = db.get(DocVersion, version_id or node.current_version_id or 0)
         if version is None or version.node_id != node.id:
             raise not_found()
+        # Déposé pour lui dans un bac (§4.7 ter) : il l'a récupéré.
+        if node.for_id and node.picked_at is None and node.created_by != member.person_id and access.addressed_to(node, member):
+            node.picked_at = utcnow()
+            db.commit()
         stocke = db.get(StoredFile, version.stored_file_id)
         nom = node.name if version.id == node.current_version_id else version.filename
         return self.storage.path(node.org_id, stocke.sha256), nom, stocke.mime

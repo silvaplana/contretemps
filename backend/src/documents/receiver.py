@@ -57,6 +57,13 @@ class CopyTarget(BaseModel):
     parent_id: int | None = None
 
 
+class Recipient(BaseModel):
+    """« Pour : » d'un élément du bac Échanges ; type et id vides = tout le monde."""
+
+    type: str | None = None
+    id: str | None = None
+
+
 class NewApp(BaseModel):
     space: str
     parent_id: int | None = None
@@ -200,6 +207,11 @@ class DocumentsReceiver:
         @self.app.post(base + "/nodes/{node_id}/copy", status_code=201)
         def copy(org_id: int, node_id: int, data: CopyTarget, db: Session = db_dep, m: Member = member):
             return appel(lambda: self.client.copy(db, self._member(org_id, m), node_id, data.space, data.parent_id))
+
+        @self.app.put(base + "/nodes/{node_id}/recipient")
+        def set_recipient(org_id: int, node_id: int, data: Recipient, db: Session = db_dep, m: Member = member):
+            principal = (data.type, data.id) if data.type and data.id else None
+            return appel(lambda: self.client.set_recipient(db, self._member(org_id, m), node_id, principal))
 
         @self.app.delete(base + "/spaces/{space}/trash")
         def empty_trash(org_id: int, space: str, db: Session = db_dep, m: Member = member):

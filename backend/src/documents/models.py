@@ -54,6 +54,9 @@ SYSTEM_PERIOD = "period"
 # Dossier réservé à un groupe (§4.7 bis), ex. « Financier » des trésoriers :
 # même les admins n'y entrent pas sans faire partie du groupe.
 SYSTEM_RESERVED = "reserved"
+# Bac « Échanges » (§4.7 ter) : on y dépose pour qu'un autre récupère, il se
+# vide tout seul au bout de 30 jours.
+SYSTEM_EXCHANGE = "exchange"
 
 LEVEL_VIEW = "view"
 LEVEL_EDIT = "edit"
@@ -109,6 +112,13 @@ class DocNode(Base):
     updated_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    # Bac « Échanges » (§4.7 ter), éléments posés directement dans un bac :
+    # date de départ à la corbeille, destinataire facultatif (comme une ligne
+    # de doc_acl : "member" ou "group"), date où il a ouvert le fichier.
+    exchange_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    for_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    for_id: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    picked_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Corbeille (30 jours, puis effacé pour de bon).
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_by: Mapped[int | None] = mapped_column(Integer, nullable=True)

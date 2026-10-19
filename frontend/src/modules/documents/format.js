@@ -35,6 +35,20 @@ export function subtitle(item) {
   return [formatSize(item.size), formatDate(item.updated_at), item.updated_by].filter(Boolean).join(' · ')
 }
 
+// Ligne d'un élément du bac Échanges (§4.7 ter) : « De Marie · pour vous · reste 12 j ».
+export function exchangeSubtitle(item) {
+  const jours = Math.max(0, Math.ceil((versDate(item.exchange_until) - new Date()) / 86400000))
+  const pour = item.for_me ? 'pour vous' : item.for_label ? `pour ${item.for_label}` : ''
+  return [
+    item.sent_by_me ? 'Déposé par vous' : item.sender && `De ${item.sender}`,
+    pour,
+    item.sent_by_me && item.for_label && item.picked ? 'récupéré' : '',
+    jours > 1 ? `reste ${jours} j` : 'part demain à la corbeille',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 const LEVELS = { view: 'Peut voir', edit: 'Peut modifier', manage: 'Gère tout' }
 export const levelLabel = (level) => LEVELS[level] ?? ''
 

@@ -79,6 +79,10 @@ def _par_nom(reponse):
     return {e["name"]: e for e in reponse.json()["items"]}
 
 
+def _systeme(docs, genre):
+    return next(e for e in docs.racine().json()["items"] if e["system_kind"] == genre)
+
+
 def _saison(docs):
     return next(e for e in docs.racine().json()["items"] if e["system_kind"] == "period")
 
@@ -86,9 +90,10 @@ def _saison(docs):
 def test_dossiers_systeme_de_prive(client, ecole):
     admin = Docs(client, ecole["id"], ecole["admin"])
     elements = admin.racine().json()["items"]
-    assert [e["system_kind"] for e in elements] == ["permanent", "period"]
-    assert elements[0]["name"] == "Permanent"
-    assert elements[1]["name"].startswith("Saison ")
+    assert [e["system_kind"] for e in elements] == ["exchange", "permanent", "period"]
+    assert elements[0]["name"] == "Échanges"
+    assert elements[1]["name"] == "Permanent"
+    assert elements[2]["name"].startswith("Saison ")
     for e in elements:
         assert admin.modifier(e["id"], name="Autre").status_code == 409
         assert admin.supprimer(e["id"]).status_code == 409
@@ -149,7 +154,7 @@ def test_partager_un_dossier_a_un_cours(client, ecole):
 
 def test_dossier_restreint(client, ecole):
     admin, prof = Docs(client, ecole["id"], ecole["admin"]), Docs(client, ecole["id"], ecole["prof"])
-    permanent = admin.racine().json()["items"][0]["id"]
+    permanent = _systeme(admin, "permanent")["id"]
     bureau = admin.dossier("Bureau", permanent).json()["id"]
     assert prof.acces(bureau, restricted=True).status_code == 403
     assert admin.acces(bureau, restricted=True).status_code == 200
@@ -231,8 +236,7 @@ def test_noms_en_double(client, ecole):
 
 def test_deplacer(client, ecole):
     prof = Docs(client, ecole["id"], ecole["prof"])
-    racine = prof.racine().json()["items"]
-    permanent, saison = racine[0]["id"], racine[1]["id"]
+    permanent, saison = _systeme(prof, "permanent")["id"], _saison(prof)["id"]
     a = prof.dossier("A", saison).json()["id"]
     b = prof.dossier("B", a).json()["id"]
     assert prof.modifier(a, move=True, space="private", parent_id=b).status_code == 409
@@ -328,8 +332,7 @@ def test_vignette_d_une_photo(client, ecole):
 
 def test_copier_coller(client, ecole):
     admin, prof = Docs(client, ecole["id"], ecole["admin"]), Docs(client, ecole["id"], ecole["prof"])
-    racine = prof.racine().json()["items"]
-    permanent, saison = racine[0]["id"], racine[1]["id"]
+    permanent, saison = _systeme(prof, "permanent")["id"], _saison(prof)["id"]
     ag = prof.dossier("AG", saison).json()["id"]
     pv = prof.fichier("PV.docx", ag, contenu=b"pv").json()["id"]
     assert admin.modifier(pv, change_status=True, status="official").status_code == 200
