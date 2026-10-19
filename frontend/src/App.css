@@ -2135,6 +2135,198 @@
   opacity: 1;
 }
 
+/* Actions sur un message (spec/modules/messagerie-instantanee.md §4.2). */
+.message-row {
+  -webkit-touch-callout: none; /* l'appui long sélectionne la bulle, pas le texte (iPhone) */
+}
+
+.message-row--choisi {
+  background: var(--accent-bg);
+  border-radius: 12px;
+}
+
+.message-row--clignote .message-bubble {
+  animation: message-clignote 0.5s ease-in-out 3;
+}
+
+@keyframes message-clignote {
+  50% {
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+}
+
+.message-bubble {
+  position: relative;
+}
+
+/* ⋯ au survol (ordinateur), double l'appui long. */
+.message-bubble__plus {
+  display: none;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .message-bubble:hover .message-bubble__plus {
+    display: flex;
+  }
+}
+
+.message-bubble__contenu a {
+  color: inherit;
+  text-decoration: underline;
+  word-break: break-all;
+}
+
+.message-bubble__lien-docs {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  font-weight: 700;
+  text-decoration: none !important;
+  word-break: normal !important;
+}
+
+.message-bubble__contenu--supprime {
+  font-style: italic;
+  opacity: 0.75;
+}
+
+.message-bubble__transfere {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  font-style: italic;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+/* Rappel du message auquel on répond, en haut de la bulle. */
+.message-bubble__citation {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 6px 10px;
+  border: none;
+  border-left: 4px solid currentColor;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.08);
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-bubble__citation span,
+.thread-rappel__texte span {
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  white-space: pre-wrap;
+}
+
+/* Barre d'actions : remplace l'en-tête du fil pendant la sélection. */
+.barre-actions {
+  gap: 4px;
+  background: var(--accent-bg);
+}
+
+.barre-actions__nombre {
+  flex: 1;
+  font-size: 18px;
+}
+
+.barre-actions__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 56px;
+  padding: 4px;
+  border: none;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Bandeau « Message supprimé · Annuler », « Copié ». */
+.thread-bandeau {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 16px 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--card-bg);
+  font-size: 17px;
+}
+
+.thread-bandeau__action {
+  min-height: 48px;
+  padding: 0 12px;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Au-dessus de la saisie : « Répondre à… » ou « Modifier le message ». */
+.thread-rappel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-top: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
+  background: var(--surface);
+}
+
+.thread-rappel__texte {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.thread-rappel__texte strong {
+  color: var(--accent);
+}
+
+.envoyer-a__apercu {
+  flex-shrink: 0;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--accent);
+  border-radius: 8px;
+  background: var(--card-bg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow: hidden;
+}
+
 .conversation-thread__input {
   position: relative;
   display: flex;

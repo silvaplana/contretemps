@@ -188,6 +188,10 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
   soulignée, et s'ouvre dans un nouvel onglet.
 - Rien à faire pour l'écrire : on la tape ou on la colle.
 - Pas d'aperçu de la page (image, titre) dans cette étape.
+- **Lien vers les Docs** de la même école (`<adresse de l'école>/docs/<id>`, fichier ou dossier, format fixé
+  par le module Documents) : affiché comme un bouton « Ouvrir dans Docs » au lieu de l'adresse ; le toucher
+  ouvre l'onglet Docs à cet endroit (événement `dx-ouvrir`), Documents vérifie les droits. Le nom du fichier
+  est sur la ligne au-dessus, écrite par Documents.
 
 ### 4.2 Actions sur un message
 
@@ -197,11 +201,18 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
 - Toucher d'autres bulles pendant ce mode les ajoute ou les retire de la sélection.
 - Un bouton **⋯** visible sur chaque bulle au survol (ordinateur) double l'appui long (« gros et simple »).
 - Actions (icône + mot en bulle à l'appui long, touches ≥ 48 px) :
+  - **Répondre** (flèche ↩, Seb, 19 octobre) : un seul message à la fois. Un bandeau au-dessus de la zone
+    de saisie rappelle le message (nom de l'auteur, début du texte, croix pour renoncer). Une fois envoyée,
+    la réponse affiche ce rappel en haut de sa bulle ; le toucher fait défiler jusqu'au message d'origine
+    et le fait clignoter. Si l'original a été supprimé, le rappel dit « Ce message a été supprimé ».
+    Sur ordinateur, la flèche apparaît aussi au survol de la bulle.
   - **Copier** : copie le texte (plusieurs messages : l'un sous l'autre).
   - **Transférer** : ouvre la liste des conversations et des contacts (même écran que « Nouvelle
     discussion », avec cases à cocher et « Envoyer (N) » toujours visible en bas) ; le message part dans
     chaque conversation choisie, marqué **« Transféré »** au-dessus du texte, avec ses pièces jointes.
-  - **Modifier** : seulement ses propres messages, un seul à la fois, et pendant **24 heures**. Le texte
+  - **Modifier** : seulement ses propres messages, un seul à la fois, et pendant **15 minutes**
+    après l'envoi, comme WhatsApp (Seb, 19 octobre) : le délai compte, pas le fait que l'autre l'ait lu.
+    Passé ce délai, Modifier n'apparaît plus. Le texte
     revient dans la zone de saisie, « Modifier » remplace « Envoyer » ; le message garde sa place et
     affiche **« modifié »** à côté de l'heure.
   - **Supprimer** : seulement ses propres messages (un admin peut supprimer n'importe quel message d'une
@@ -212,7 +223,8 @@ appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.
   n'apparaît pas.
 - Modifier et Supprimer arrivent **en direct** chez les autres (comme les nouveaux messages).
 - Données : nouvelles colonnes `messages.edited_at`, `messages.deleted_at` (le texte d'un message
-  supprimé est vidé en base) et `messages.forwarded` (booléen), en anglais comme tout nouveau code
+  supprimé est vidé en base), `messages.forwarded` (booléen) et `messages.reply_to_id` (le message
+  auquel on répond, dans la même conversation), en anglais comme tout nouveau code
   (CLAUDE.md) ; la table garde son nom.
 
 ### 4.3 Photos et fichiers
@@ -279,7 +291,7 @@ la liste des applis, comme WhatsApp.
 - Techniquement, deux façons d'installer l'appli existent, et chacune a sa porte :
   - **appli web installée** (écran « Installez l'application » → icône sur l'écran d'accueil, manifeste
     par école servi par `personnalisation/`, `public/sw.js`) : le manifeste se déclare « cible de partage »
-    (`share_target`) et le service worker reçoit ce qui est partagé. C'est ce qu'utilisent les membres
+    (`share_target`, méthode GET vers `/partage?title=…&text=…&url=…`, lue par `utils/envoyerA.js`). C'est ce qu'utilisent les membres
     aujourd'hui (le README, qui dit « pas de PWA », est en retard sur le code) ;
   - **appli Android Capacitor** (`frontend/android/`, ANDROID.md) si elle est un jour distribuée : un filtre
     d'intent `ACTION_SEND` dans `AndroidManifest.xml` et un greffon de partage entrant, qui ouvrent le même
@@ -289,10 +301,13 @@ la liste des applis, comme WhatsApp.
   « Envoyer (N) » toujours visible en bas ; on arrive ensuite dans la conversation si un seul destinataire,
   sinon dans la liste.
 - Pas connecté : on se connecte d'abord, puis l'écran « Envoyer à… » s'ouvre avec ce qui a été partagé.
+- Un **autre module** de l'appli ouvre le même écran avec `envoyerDansLaMessagerie(texte)`
+  (`frontend/src/utils/envoyerA.js`) : par exemple « Envoyer le lien… » sur un fichier des Docs.
 - Ce qui peut être partagé : un lien et du texte (première PR, avec §4.1-4.2), puis des photos, vidéos et
   fichiers (avec §4.3-4.5).
 - **Limite** : fonctionne sur **Android** quand l'appli est installée. **Pas sur iPhone** tant qu'il n'y a
-  qu'une appli web : Apple ne le permet pas. Le jour où une appli iPhone Capacitor existera, une extension
+  qu'une appli web : Apple ne le permet pas. Le filtre d'intent de l'appli Capacitor viendra le jour où elle
+  sera distribuée (elle ne peut pas être essayée ici). Le jour où une appli iPhone Capacitor existera, une extension
   de partage iOS le permettra. D'ici là, sur iPhone, on continue par copier-coller.
 
 ## 5. Hors de cette étape
@@ -301,7 +316,7 @@ la liste des applis, comme WhatsApp.
   notes) : pas dans cette étape.
 - Les lettres A, B, C… en bord de liste pour sauter dans l'alphabet.
 - Le même œil dans les Infos d'un groupe déjà créé (carte du groupe) : à décider.
-- Répondre à un message précis (citation), réactions par emoji, épingler, étoile, notes vocales,
+- Réactions par emoji, épingler, étoile, notes vocales,
   aperçu des liens : pas dans cette étape.
 
 ## 6. Écarté

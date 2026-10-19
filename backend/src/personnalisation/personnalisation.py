@@ -435,6 +435,14 @@ class Personnalisation:
             "background_color": fond,
             "theme_color": fond,
             "icons": icones,
+            # Partager depuis une autre appli (bouton Partager de YouTube...)
+            # vers la messagerie : spec/modules/messagerie-instantanee.md §4.7,
+            # lu par frontend/src/utils/envoyerA.js.
+            "share_target": {
+                "action": "/partage",
+                "method": "GET",
+                "params": {"title": "title", "text": "text", "url": "url"},
+            },
         }
 
     def _couleur_appli(self, ecole: Ecole | None) -> str:
