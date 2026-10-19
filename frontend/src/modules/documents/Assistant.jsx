@@ -61,11 +61,9 @@ function lireModele() {
 // Coûts affichés en euros (taux BCE, voir utils/euros.js).
 const euros = enEuros
 
-const SUGGESTIONS = [
-  'Que contient ce dossier ?',
-  'Quels sont les derniers fichiers modifiés ?',
-  'Résume le fichier sélectionné',
-]
+// Suggestions de l'accueil par défaut (Docs) ; chaque écran peut donner
+// les siennes (`suggestions`), selon l'onglet ouvert.
+const SUGGESTIONS = ['Que contient ce dossier ?', 'Quels sont les derniers fichiers modifiés ?']
 
 // Mise en forme légère des réponses : paragraphes, listes « - », **gras**.
 function Texte({ texte }) {
@@ -98,7 +96,9 @@ function Texte({ texte }) {
   })
 }
 
-export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier, memoire, titre = 'Assistant', coutSaisonInitial = null }) {
+export default function Assistant({
+  orgId, contexte, onClose, onFaire, onFichier, memoire, titre = 'Assistant', coutSaisonInitial = null, suggestions = SUGGESTIONS,
+}) {
   const garde = memoire ? conversationsGardees.get(memoire) : null
   const [echanges, setEchanges] = useState(garde?.echanges ?? []) // { role, texte, actions?, etat? }
   const [conversationId, setConversationId] = useState(garde?.conversationId ?? null)
@@ -429,7 +429,7 @@ export default function Assistant({ orgId, contexte, onClose, onFaire, onFichier
         {echanges.length === 0 && (
           <div className="dx-chat__accueil">
             <p className="dx-chat__bonjour">Puis-je vous aider ?</p>
-            {SUGGESTIONS.map((s) => (
+            {suggestions.map((s) => (
               <button key={s} type="button" className="dx-chat__suggestion" onClick={() => envoyer(s)}>
                 {s}
               </button>

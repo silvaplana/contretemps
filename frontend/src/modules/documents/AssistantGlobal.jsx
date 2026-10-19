@@ -40,7 +40,21 @@ const ONGLETS = {
   admin: 'Administration', profil: 'Profil', supervision: 'Supervision', docs: 'Docs',
 }
 
-export default function AssistantGlobal({ etat, onglet, onNavigate }) {
+// Suggestions de l'accueil selon l'onglet (Seb, 19 octobre : celles de Docs
+// étaient hors sujet ailleurs). Créer un cours ou un groupe : administrateurs.
+function suggestionsPour(onglet, admin) {
+  const parOnglet = {
+    docs: ['Que contient ce dossier ?', 'Quels sont les derniers fichiers modifiés ?'],
+    presence: ['Qui a été absent cette semaine ?', 'Taux de présence de chaque cours ce mois-ci'],
+    heures: ['Combien d’heures ont été faites ce mois-ci ?'],
+    choregraphie: ['Quels élèves sont dans chaque chorégraphie ?'],
+    messagerie: admin ? ['Crée un groupe avec tous les professeurs'] : [],
+    admin: ['Crée un nouveau cours', 'Quels élèves n’ont pas fini de payer ?'],
+  }
+  return [...(parOnglet[onglet] ?? ['Résume l’école cette saison']), 'Fais une note de frais']
+}
+
+export default function AssistantGlobal({ etat, onglet, onNavigate, admin = false }) {
   const bureau = useBureau()
   const [hauteur, setHauteur] = useState(hauteurDeDepart)
   const [message, setMessage] = useState('')
@@ -124,6 +138,7 @@ export default function AssistantGlobal({ etat, onglet, onNavigate }) {
         memoire={`appli:${etat.orgId}`}
         onClose={etat.fermer}
         onFaire={faire}
+        suggestions={suggestionsPour(onglet, admin)}
       />
       {message && <div className="dx-toast" role="status">{message}</div>}
     </div>

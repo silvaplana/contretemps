@@ -1178,7 +1178,12 @@ function App() {
         )}
       </main>
 
-      <AssistantGlobal etat={assistant} onglet={activeTab} onNavigate={setActiveTab} />
+      <AssistantGlobal
+        etat={assistant}
+        onglet={activeTab}
+        onNavigate={setActiveTab}
+        admin={isAdmin(activeUser) || isSuperuser(activeUser)}
+      />
 
       <BottomNav
         active={activeTab}
