@@ -81,6 +81,9 @@ class MessageCreation(BaseModel):
     # this one is a copy sent with "Transférer".
     reply_to_id: int | None = None
     forwarded: bool = False
+    # Photos and files uploaded first (POST /conversations/{id}/attachments),
+    # or those of a forwarded message (§4.3).
+    attachment_ids: list[int] = []
 
 
 class MessageEdit(BaseModel):
@@ -102,6 +105,17 @@ class DeliverySortie(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AttachmentOut(BaseModel):
+    id: int
+    filename: str
+    kind: str  # 'photo' | 'file'
+    size: int
+    width: int | None = None
+    height: int | None = None
+
+    model_config = {"from_attributes": True}
+
+
 class MessageSortie(BaseModel):
     id: int
     conversation_id: int
@@ -113,6 +127,7 @@ class MessageSortie(BaseModel):
     deleted_at: dt.datetime | None = None
     forwarded: bool = False
     reply_to_id: int | None = None
+    attachments: list[AttachmentOut] = []
     deliveries: list[DeliverySortie] = []
 
 
