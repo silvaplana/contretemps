@@ -73,9 +73,9 @@ Détail : `SPEC.md` §2.1, §2.3, §2.7, §6.1.
   choisi par l'organisation, pour que chacune ait son nom et son logo sur l'écran d'accueil du
   téléphone. L'ancienne adresse reste valable un temps après un changement.
 - **Apparence** : logo, nom (texte ou image), slogan, couleurs, polices.
-- **Modules activés** *(nouveau, à spécifier)* : la liste des modules dont l'organisation se
-  sert. Un module non activé n'a ni onglet, ni route, ni table remplie pour elle. Choisi par le
-  Super User à la création ; plus tard, peut-être par l'Administrateur principal.
+- **Modules activés** : la liste des modules dont l'organisation se sert. Un module non
+  activé n'a ni onglet, ni route, ni action de l'assistant pour elle. Choisi par le Super User.
+  Détail : §9 bis.3.
 
 ---
 
@@ -252,6 +252,122 @@ Déjà codés dans Contretemps, à spécifier en détail plus tard dans ce docum
   `app/sauvegarde_worker.py`.
 - **Temps réel** : flux par session, utilisé aujourd'hui par la messagerie.
 
+## 9 bis. Enregistrement des modules
+
+*Décision de Seb du 19 octobre 2026 : le core ne connaît pas les modules, ce sont eux qui se
+présentent. On écrit la règle maintenant et on la code avec « modules activés par
+organisation » (§3).*
+
+Aujourd'hui, le core connaît chaque module : `backend/src/app/main.py` les importe et les
+branche un par un, `frontend/src/data/nav.js` écrit leurs onglets en dur, et `App.jsx` choisit
+l'écran de chaque onglet. Ajouter un module, c'est toucher ces trois fichiers.
+
+Le but : **ajouter un module = écrire sa déclaration dans son propre dossier, puis ajouter une
+ligne à la liste de l'appli.** Le core lit cette liste et ne connaît rien d'autre.
+
+C'est la version courte du « manifeste de module » de `01-architecture` §3 et §7 : pas de
+chargement dynamique, pas d'emplacements d'écran (« slots »), pas de contrôle des imports en
+CI. Ces trois-là viendront quand une deuxième appli en aura besoin.
+
+### 9 bis.1 La déclaration d'un module
+
+Chaque module a, dans son dossier, **un fichier de déclaration côté serveur et un côté écran**,
+et rien d'autre ne le décrit ailleurs.
+
+Côté serveur, `backend/src/<module>/module.py` :
+
+```python
+MODULE = Module(
+    key="documents",                 # identifiant stable, en anglais
+    label="Documents",               # nom à l'écran (Supervision, choix des modules)
+    requires=[],                     # autres modules sans lesquels il ne marche pas
+    mount=mount,                     # fonction qui monte ses routes : mount(app, core)
+    actions=ACTIONS,                 # actions de l'assistant, depuis son actions.py
+    start=None,                      # tâche de fond éventuelle (worker), sinon None
+)
+```
+
+- `mount(app, core)` reçoit l'appli FastAPI et **les services du core** (fiche appelante,
+  contrôle des droits, email, notifications, saison, stockage). Un module n'importe jamais un
+  autre module : quand il a besoin d'un autre (les notes de frais rangent leurs justificatifs
+  dans Docs), c'est **l'appli** qui les relie, dans `<module>_contretemps/`, comme aujourd'hui
+  avec les `Ports` des notes de frais.
+- `actions` reprend telle quelle la liste que le module déclare déjà dans son `actions.py`
+  (`spec/modules/assistant-ia.md` §3 : une `Action` par action, avec son nom, sa description,
+  ses paramètres, sa fonction `prepare` qui vérifie les droits et rend la carte Faire/Annuler).
+  Il n'y a donc qu'une seule façon de déclarer, pas deux.
+- Les tables d'un module restent dans son `models.py`, préfixées par le module, et se créent
+  par les migrations Alembic, comme aujourd'hui.
+
+Côté écran, `frontend/src/modules/<module>/module.js` :
+
+```js
+export default {
+  key: 'documents',
+  tabs: [
+    { key: 'docs', label: 'Docs', icon: 'docs', roles: ['admin', 'professeur', 'eleve'],
+      screen: lazy(() => import('./DocsScreen.jsx')) },
+  ],
+}
+```
+
+- `tabs` : les onglets de la barre du bas que le module apporte, avec les rôles qui les voient
+  et l'écran à ouvrir. La barre du bas (§8 bis) les lit au lieu de `nav.js`.
+- `roles` sert seulement à **montrer ou cacher** l'onglet. Le vrai contrôle reste sur chaque
+  route du serveur (§6.3), un onglet caché n'ouvre aucun droit.
+
+### 9 bis.2 La liste des modules de l'appli
+
+L'appli choisit ses modules dans **une seule liste, une ligne par module**, côté serveur
+(`backend/src/app/modules.py`) et côté écran (`frontend/src/app/modules.js`) :
+
+```python
+MODULES = [
+    messaging.MODULE,
+    documents.MODULE,
+    expense_notes.MODULE,   # requires=["documents"]
+    assistant.MODULE,
+    ...
+]
+```
+
+Au démarrage, le core parcourt la liste dans l'ordre : il vérifie que chaque `requires` est
+présent plus haut (sinon il refuse de démarrer, avec un message clair), monte les routes, lance
+les tâches de fond et donne à l'assistant les actions de tous les modules. La pizzeria aura sa
+propre liste, avec le même core.
+
+Les onglets du core restent au core : **Admin** et **Profil** (et Supervision pour le Super
+User). Les onglets des modules se placent entre eux, dans l'ordre de la liste.
+
+### 9 bis.3 Modules activés par organisation
+
+La liste de l'appli dit ce que l'appli **sait** faire ; chaque organisation choisit ce qu'elle
+**utilise** (§3).
+
+- Une table du core, `org_modules` (organisation, module, date d'activation), dit quels
+  modules sont activés pour chaque organisation.
+- Pour un module non activé dans une organisation, **pas d'onglet, pas d'action de
+  l'assistant, et ses routes répondent « introuvable »** pour cette organisation. Le core le
+  vérifie une fois pour toutes les routes du module, aucun module ne peut l'oublier.
+- **Désactiver n'efface rien** : les données restent, et réactiver retrouve tout. Effacer les
+  données d'un module est une autre action, plus tard, avec sauvegarde avant.
+- On ne peut pas désactiver un module dont un autre module activé a besoin (`requires`), et
+  activer un module active aussi ceux dont il a besoin.
+- **Par défaut, tous les modules de l'appli sont activés** : les écoles existantes ne voient
+  aucun changement.
+- **Qui choisit** : le Super User, à la création de l'organisation et ensuite depuis
+  Supervision, avec une case par module. Plus tard, peut-être l'Administrateur principal.
+
+### 9 bis.4 Étapes de code
+
+Chaque étape est une PR, sans rien changer à l'écran avant l'étape 3 :
+
+1. **Déclarations** : `module.py` et `module.js` pour chaque module, la liste de l'appli, et
+   `main.py`, `nav.js` et `App.jsx` qui lisent la liste au lieu de tout écrire à la main.
+2. **Assistant** : l'appli lui remet les actions de la liste des modules au lieu de les
+   assembler à la main (`actions_messagerie(...)`, `actions_cours(...)`…, assistant-ia.md §3).
+3. **Activation** : table `org_modules`, contrôle des routes, cases dans Supervision.
+
 ---
 
 ## 10. Reste à décider
@@ -259,8 +375,6 @@ Déjà codés dans Contretemps, à spécifier en détail plus tard dans ce docum
 - **Groupes** : un groupe générique dans le core (un cours = un groupe + horaires), pour que
   messagerie, vidéos et présence ne dépendent plus du cours. Recommandé dans
   `01-architecture` §10, pas encore tranché.
-- **Modules activés** (§3) : qui les choisit, et ce qui arrive aux données d'un module qu'on
-  désactive.
 - **Base de données** : Postgres dès l'extraction du core, ou plus tard.
 
 ## 11. Écarts entre ce document et le code (18 octobre 2026)
