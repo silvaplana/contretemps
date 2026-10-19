@@ -6,6 +6,8 @@
   --dx-folder: #f2b731;
   --dx-folder-back: #d99a12;
   --dx-folder-bg: #fdf3d6;
+  --dx-tray: #2f8f9d;
+  --dx-tray-back: #1f6b76;
   --dx-page: #ffffff;
   --dx-page-fold: #f3e6d2;
   --dx-page-line: #c9b59a;
@@ -1369,6 +1371,8 @@
 .dx-arbre {
   --dx-folder: #f2b731;
   --dx-folder-back: #d99a12;
+  --dx-tray: #2f8f9d;
+  --dx-tray-back: #1f6b76;
   flex: 0 0 290px;
   overflow-y: auto;
   padding: 12px 8px 24px;
@@ -1399,6 +1403,10 @@
 .dx-arbre__ligne.is-active {
   background: var(--accent-bg);
   font-weight: 700;
+}
+
+.dx-arbre__ligne.is-drop {
+  box-shadow: inset 0 0 0 3px var(--accent);
 }
 
 .dx-arbre__fleche {

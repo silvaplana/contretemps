@@ -92,7 +92,7 @@ const MODELES = {
   },
 }
 
-export default function NewScreen({ api, canAdd, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onToast }) {
+export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onToast }) {
   // Informer, Questionner, Agir : fermés au départ (Seb, 15 octobre).
   const [ouvert, setOuvert] = useState(null)
   const [nature, setNature] = useState(false)
@@ -133,7 +133,7 @@ export default function NewScreen({ api, canAdd, onClose, onNewFolder, onImport,
             <FileIcon blank />
             <span>Créer un fichier</span>
           </button>
-          <button type="button" disabled={!canAdd} onClick={onNewFolder}>
+          <button type="button" disabled={!canAdd || !canAddFolder} onClick={onNewFolder}>
             <FolderIcon />
             <span>Créer un dossier</span>
           </button>
