@@ -6,14 +6,14 @@ son destinataire (comme une ligne de doc_acl) et la date où il l'a ouvert.
 Les bacs eux-mêmes sont des dossiers système, créés par l'appli.
 
 Revision ID: c3e5a7b9d1f2
-Revises: b2d4f6a8c0e1
+Revises: fd4abbeaf71e
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "c3e5a7b9d1f2"
-down_revision = "b2d4f6a8c0e1"
+down_revision = "fd4abbeaf71e"
 branch_labels = None
 depends_on = None
 
