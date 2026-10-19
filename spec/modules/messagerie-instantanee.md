@@ -177,14 +177,90 @@ sélection multiple.
   rouvre le même écran.
 - **Super User** (§3.4) reste un bouton direct « Ajouter le Super User », sans écran de choix.
 
-## 4. Hors de cette étape
+## 4. Liens, actions sur un message, pièces jointes (Seb, 19 octobre)
+
+Modèle : WhatsApp (capture de Seb du 19 octobre : barre d'actions en haut après un appui long, trombone et
+appareil photo dans la zone de saisie). Trois étapes, une PR chacune : §4.1-4.2, puis §4.3-4.4, puis §4.5.
+
+### 4.1 Liens
+
+- Une adresse web dans un message (`https://…`, `http://…`, `www.…`) devient **cliquable** dans la bulle,
+  soulignée, et s'ouvre dans un nouvel onglet.
+- Rien à faire pour l'écrire : on la tape ou on la colle.
+- Pas d'aperçu de la page (image, titre) dans cette étape.
+
+### 4.2 Actions sur un message
+
+- **Appui long** sur une bulle (clic droit sur ordinateur) : la bulle est sélectionnée (fond teinté) et
+  l'en-tête du fil est remplacé par une **barre d'actions**, comme WhatsApp : ← pour annuler, le nombre de
+  messages sélectionnés, puis les actions.
+- Toucher d'autres bulles pendant ce mode les ajoute ou les retire de la sélection.
+- Un bouton **⋯** visible sur chaque bulle au survol (ordinateur) double l'appui long (« gros et simple »).
+- Actions (icône + mot en bulle à l'appui long, touches ≥ 48 px) :
+  - **Copier** : copie le texte (plusieurs messages : l'un sous l'autre).
+  - **Transférer** : ouvre la liste des conversations et des contacts (même écran que « Nouvelle
+    discussion », avec cases à cocher et « Envoyer (N) » toujours visible en bas) ; le message part dans
+    chaque conversation choisie, marqué **« Transféré »** au-dessus du texte, avec ses pièces jointes.
+  - **Modifier** : seulement ses propres messages, un seul à la fois, et pendant **24 heures**. Le texte
+    revient dans la zone de saisie, « Modifier » remplace « Envoyer » ; le message garde sa place et
+    affiche **« modifié »** à côté de l'heure.
+  - **Supprimer** : seulement ses propres messages (un admin peut supprimer n'importe quel message d'une
+    conversation de groupe, pour la modération). Chez tout le monde, la bulle devient « Ce message a été
+    supprimé ». **Annuler 10 s** en bas de l'écran plutôt qu'une confirmation. Les pièces jointes sont
+    effacées du disque si plus rien ne les utilise.
+- Une action impossible pour la sélection (Modifier sur deux messages, Supprimer le message d'un autre)
+  n'apparaît pas.
+- Modifier et Supprimer arrivent **en direct** chez les autres (comme les nouveaux messages).
+- Données : `messages.modifie_at` et `messages.supprime_at` (le texte d'un message supprimé est vidé en
+  base), `messages.transfere` (booléen).
+
+### 4.3 Photos et fichiers
+
+- Dans la zone de saisie, à droite du texte : un **trombone** (Fichier) et un **appareil photo** (Photo),
+  comme WhatsApp. Sur téléphone, l'appareil photo propose « Prendre une photo » ou « Choisir dans mes
+  photos » (choix du téléphone).
+- On peut joindre **plusieurs** fichiers ; ils s'affichent en vignettes au-dessus de la zone de saisie,
+  avec une croix pour les retirer, et un texte facultatif part avec eux.
+- **Photo** : réduite sur le téléphone avant l'envoi (côté le plus long 1 600 px, JPEG), soit environ
+  300 Ko au lieu de 4 Mo. Dans la bulle : la photo elle-même ; la toucher l'ouvre en plein écran, avec
+  « Télécharger ».
+- **Fichier** (PDF, Word, Excel…) : une carte avec l'icône, le nom et la taille ; la toucher l'ouvre ou le
+  télécharge. Limite : 25 Mo par fichier.
+- Barre de progression pendant l'envoi ; en cas d'échec, la bulle reste « Échec, toucher pour réessayer »
+  comme pour le texte.
+
+### 4.4 Où sont rangés les fichiers
+
+- On réutilise le **stockage protégé** déjà écrit pour Documents (`backend/src/documents/storage.py`) :
+  disque du serveur, un dossier par école, chaque contenu rangé par son empreinte (un même fichier envoyé
+  deux fois n'est gardé qu'une fois), **jamais servi en direct** : il ne sort que par une route de la
+  messagerie, après vérification que la personne fait partie de la conversation.
+- Ce stockage devient un **service du core** (« fichiers stockés »), utilisé par Documents et par la
+  messagerie ; la messagerie ne dépend pas du module Documents.
+- Table `message_pieces_jointes` : message, contenu stocké, nom d'origine, nature (photo, vidéo,
+  fichier), taille, largeur et hauteur pour une photo.
+- Plus tard, quand le disque sera trop petit : un stockage en ligne (de l'ordre d'un centime par Go et par
+  mois) prend la place du disque sans changer le reste.
+
+### 4.5 Vidéos
+
+- Choisies par le trombone ou l'appareil photo (« Filmer » / « Choisir une vidéo »).
+- Même chaîne que le module Vidéos : envoi en morceaux (reprend après une coupure), compression sur le
+  serveur après coup (H.264, 1080p au plus), image d'aperçu. La bulle montre l'aperçu avec ▶ et la durée ;
+  la vidéo se lit dans l'appli.
+- Limite : **100 Mo** par vidéo avant compression.
+- L'espace utilisé par la messagerie de chaque école s'affiche dans Admin, à côté de celui des vidéos.
+
+## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
   notes) : pas dans cette étape.
 - Les lettres A, B, C… en bord de liste pour sauter dans l'alphabet.
 - Le même œil dans les Infos d'un groupe déjà créé (carte du groupe) : à décider.
+- Répondre à un message précis (citation), réactions par emoji, épingler, étoile, notes vocales,
+  aperçu des liens : pas dans cette étape.
 
-## 5. Écarté
+## 6. Écarté
 
 - **Nouveau contact** et **Nouvelle communauté** de WhatsApp : pas repris (Seb, 18 octobre). La messagerie
   est fermée, réservée aux membres de l'organisation, qui sont déjà tous dans la liste.
