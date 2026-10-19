@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
+import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
@@ -9,14 +10,45 @@ import { masquerIban } from './EnvoiModal.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import './notes-frais.css'
 
-// Onglet Financier, trésoriers seulement (spec/modules/notes-de-frais.md
-// §7) : notes à valider, à rembourser, terminées.
+const SOUS_ONGLETS = [
+  { value: 'comptes', label: 'Comptes' },
+  { value: 'notes', label: 'Notes de frais' },
+]
+
+// Onglet Financier, trésoriers et Super User seulement (spec/modules/
+// notes-de-frais.md §7) : Comptes (en chantier), puis Notes de frais.
 export default function Financier() {
+  // Repart du dernier sous-onglet affiché sur cet appareil.
+  const [sousOnglet, setSousOnglet] = useState(() =>
+    sessionApi.lireEcran('financier') === 'comptes' ? 'comptes' : 'notes',
+  )
+  useEffect(() => {
+    sessionApi.sauvegarderEcran('financier', sousOnglet)
+  }, [sousOnglet])
+
+  return (
+    <div className="screen nf-screen">
+      <SegmentedTabs
+        options={SOUS_ONGLETS}
+        value={sousOnglet}
+        onChange={setSousOnglet}
+        className="admin-screen__tabs"
+      />
+      {sousOnglet === 'comptes' ? (
+        <p className="muted">En chantier : les comptes de l’association arrivent bientôt.</p>
+      ) : (
+        <NotesATraiter />
+      )}
+    </div>
+  )
+}
+
+// Notes à valider, à rembourser, terminées.
+function NotesATraiter() {
   const [filtre, setFiltre] = useState('a_valider')
   const [donnees, setDonnees] = useState(null)
   const [ouverte, setOuverte] = useState(null)
   const [cochees, setCochees] = useState(() => new Set())
-  const [categoriesOuvertes, setCategoriesOuvertes] = useState(false)
   const [periode, setPeriode] = useState({ debut: '', fin: '' })
   const [erreur, setErreur] = useState('')
 
@@ -35,7 +67,7 @@ export default function Financier() {
   const options = [
     { value: 'a_valider', label: `À valider${compteurs.a_valider ? ` (${compteurs.a_valider})` : ''}` },
     { value: 'a_rembourser', label: `À rembourser${compteurs.a_rembourser ? ` (${compteurs.a_rembourser})` : ''}` },
-    { value: 'terminees', label: 'Terminées' },
+    { value: 'terminees', label: `Terminées${compteurs.terminees ? ` (${compteurs.terminees})` : ''}` },
   ]
 
   let notes = donnees?.notes ?? []
@@ -68,13 +100,7 @@ export default function Financier() {
   }
 
   return (
-    <div className="screen nf-screen">
-      <div className="nf-titre-ligne">
-        <h3 className="section-label">Notes de frais</h3>
-        <button type="button" className="btn btn--link" onClick={() => setCategoriesOuvertes(true)}>
-          Catégories
-        </button>
-      </div>
+    <>
       <SegmentedTabs
         options={options}
         value={filtre}
@@ -185,8 +211,7 @@ export default function Financier() {
           }}
         />
       )}
-      {categoriesOuvertes && <CategoriesModal onClose={() => setCategoriesOuvertes(false)} />}
-    </div>
+    </>
   )
 }
 
@@ -278,45 +303,6 @@ function NoteTresorierModal({ note, onClose, onTraitee }) {
           <textarea id="nf-motif" rows={3} value={refus} onChange={(e) => setRefus(e.target.value)} autoFocus />
         </>
       )}
-      {erreur && <p className="login-screen__erreur">{erreur}</p>}
-    </Modal>
-  )
-}
-
-// Liste des catégories de l'organisation (§4.6), modifiable par les
-// trésoriers : une par ligne.
-function CategoriesModal({ onClose }) {
-  const [texte, setTexte] = useState(null)
-  const [erreur, setErreur] = useState('')
-
-  useEffect(() => {
-    api
-      .categories()
-      .then((liste) => setTexte(liste.map((c) => c.libelle).join('\n')))
-      .catch((err) => setErreur(err.message))
-  }, [])
-
-  async function enregistrer() {
-    try {
-      await api.definirCategories(texte.split('\n').map((l) => l.trim()).filter(Boolean))
-      onClose()
-    } catch (err) {
-      setErreur(err.message)
-    }
-  }
-
-  return (
-    <Modal
-      title="Catégories de dépenses"
-      onClose={onClose}
-      footer={
-        <button type="button" className="btn btn--primary btn--block" disabled={texte === null} onClick={enregistrer}>
-          Enregistrer
-        </button>
-      }
-    >
-      <p className="muted">Une catégorie par ligne. Une catégorie retirée reste sur les dépenses déjà saisies.</p>
-      {texte !== null && <textarea rows={8} value={texte} onChange={(e) => setTexte(e.target.value)} />}
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
   )

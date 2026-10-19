@@ -13,10 +13,13 @@
 // connaître ce jeton.
 
 import { ENTETE_SAISON, lireSaisonConsultee, signalerSaison } from './saison.js'
-import { compteEnCours, jetonEnCours, remplacerJeton } from './session.js'
+import { compteEnCours, jetonEnCours, lireEcoleChoisie, remplacerJeton } from './session.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 export const ENTETE_COMPTE = 'X-Compte-Id'
+// École où intervient le Super User, qui n'en a pas (voir
+// backend/src/notes_frais_contretemps/adapter.py) ; ignoré pour les autres.
+const ENTETE_ECOLE = 'X-Ecole-Id'
 const ENTETE_JETON_RENOUVELE = 'X-Jeton-Renouvele'
 
 // BASE_URL peut être relative en prod ("/contretemps/api") ou absolue en
@@ -42,6 +45,8 @@ export function installerIdentiteAppelant() {
     // Ancienne saison consultée par un admin (voir api/saison.js).
     const saison = lireSaisonConsultee()
     if (saison) entetes.set(ENTETE_SAISON, String(saison.id))
+    const ecoleChoisie = lireEcoleChoisie()
+    if (ecoleChoisie) entetes.set(ENTETE_ECOLE, String(ecoleChoisie))
     return fetchNatif(entree, { ...options, headers: entetes }).then((reponse) => {
       // Session prolongée (30 jours glissants) : le serveur remet de temps
       // en temps un jeton neuf, qui remplace l'ancien.

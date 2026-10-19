@@ -455,7 +455,7 @@ class NotesDeFrais:
 
     def compteurs_tresorerie(self, db: Session, membre: Membre) -> dict:
         self._exiger_tresorier(membre)
-        return {filtre: len(self.tresorerie(db, membre, filtre)) for filtre in ("a_valider", "a_rembourser")}
+        return {filtre: len(self.tresorerie(db, membre, filtre)) for filtre in FILTRES}
 
     def valider(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
         self._exiger_tresorier(membre)

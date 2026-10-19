@@ -28,15 +28,25 @@ signale dans l'appli.
 
 ## 3. Accès
 
-- **Membres** : une ligne **« Mes notes de frais »** dans l'écran **Profil**, pour tous les rôles, avec un
+- **Membres** : une ligne **« Mes notes de frais »** dans l'écran **Profil**, pour tous les rôles, Super User
+  compris (§3 bis), avec un
   compteur (« 3 à envoyer », « 1 en attente »). Elle ouvre un écran à part, hors de la barre du bas (même
   principe que Profil › « Mes heures », SPEC.md §5.7). Pas de nouvel onglet : la barre du bas est déjà
   pleine (décision de Seb, 16 octobre).
-- **Trésoriers** : onglet **Financier**, visible des seuls trésoriers, sous-onglet « Notes de frais » (§7).
-  Financier accueillera plus tard d'autres sous-onglets (budget…).
+- **Trésoriers** (et Super User) : onglet **Financier**, sous-onglets **Comptes** puis **Notes de frais**
+  (§7). Comptes est en chantier : il affiche « En chantier » en attendant la spec du module Financier
+  (décision de Seb, 19 octobre).
 - Autres entrées possibles plus tard, qui mènent au même écran : l'Assistant (« j'ai payé 48 € de
   costumes », avec la photo) et le modèle « Faire une note de frais » du module documents
   (`documents.md` §5.6).
+
+### 3 bis Le Super User (décision de Seb, 19 octobre)
+
+Le Super User peut tout faire, donc aussi des notes de frais, **dans l'école où il intervient** (celle
+qu'il a choisie après la connexion, `spec/core.md` §6.1). Il n'a pas de fiche dans l'école : sa dépense
+et sa note sont **à son nom, rattachées à son compte**, sans fiche créée pour lui. L'appli envoie au
+serveur l'école choisie (en-tête `X-Ecole-Id`), lu pour le seul Super User ; une école qui n'existe pas
+est refusée. Sa note suit le même chemin que les autres : un trésorier la valide et la rembourse.
 
 ## 4. Côté membre
 
@@ -88,7 +98,8 @@ rembourser vos notes de frais ; seuls les trésoriers de l'association le voient
 
 ### 4.6 Catégories
 
-Liste par organisation, modifiable par les trésoriers. Par défaut : Costumes, Déplacement, Matériel,
+Liste par organisation. Plus de bouton « Catégories » dans Financier (décision de Seb, 19 octobre) : la
+liste par défaut s'applique. Par défaut : Costumes, Déplacement, Matériel,
 Location de salle, Alimentation, Autre. *(Contretemps : la liste par défaut ci-dessus.)*
 
 Déplacements en voiture : **au ticket** (essence, péage) pour l'instant, pas de barème kilométrique
@@ -125,7 +136,7 @@ envoyée ──valider──▶ validée ──marquer remboursée──▶ remb
 
 ## 7. Côté trésorier : Financier › Notes de frais
 
-Trois filtres, avec un compteur chacun :
+Trois filtres, avec un compteur chacun (Terminées compris, décision de Seb, 19 octobre) :
 1. **À valider** : notes envoyées. Ligne : titre, qui (et son rôle), date d'envoi, nombre de dépenses,
    total. Total général en bas.
 2. **À rembourser** : notes validées sans don. Cases à cocher, RIB de chacun visible ; bouton
@@ -245,8 +256,7 @@ trésoriers. *(Contretemps : `NOTES_FRAIS_DIR`, `/app/data/notes_frais` dans l'i
 | Créer, modifier, supprimer une dépense « À envoyer » | son auteur |
 | Envoyer, reprendre une note (tant que pas validée) | son auteur |
 | Voir ses dépenses et ses notes | son auteur (et les autres fiches du même email) |
-| Voir toutes les notes, valider, refuser, marquer remboursée, exporter | trésoriers de l'organisation |
-| Gérer les catégories | trésoriers |
+| Voir toutes les notes, valider, refuser, marquer remboursée, exporter | trésoriers de l'organisation, Super User |
 | Donner, retirer le rôle trésorier | admins |
 
 Les admins non trésoriers ne voient pas les notes des autres. Via l'Assistant, chacun fait et voit
