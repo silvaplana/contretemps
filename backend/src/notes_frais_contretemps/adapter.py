@@ -10,7 +10,7 @@ import logging
 import os
 from copy import copy
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -35,14 +35,30 @@ def _emails(compte: Compte) -> tuple[str, ...]:
     return tuple(adresses)
 
 
-def membre_appelant(db: Session = Depends(get_db), compte: Compte = Depends(rbac.compte_appelant)) -> Membre:
+# Le Super User n'a pas de fiche dans les écoles (spec/core.md §6.1) : il
+# dit dans quelle école il intervient par cet en-tête, et sa note est à son
+# nom (son compte), sans fiche créée pour lui.
+ENTETE_ECOLE = "X-Ecole-Id"
+
+
+def _ecole_choisie(db: Session, request: Request) -> int | None:
+    from ecoles.models import Ecole
+
+    valeur = request.headers.get(ENTETE_ECOLE, "")
+    return int(valeur) if valeur.isdigit() and db.get(Ecole, int(valeur)) is not None else None
+
+
+def membre_appelant(
+    request: Request, db: Session = Depends(get_db), compte: Compte = Depends(rbac.compte_appelant)
+) -> Membre:
     if compte is None:
         raise HTTPException(status_code=401, detail="Session requise")
-    if compte.ecole_id is None:
+    ecole_id = _ecole_choisie(db, request) if roles.is_superuser(compte) else compte.ecole_id
+    if ecole_id is None:
         raise HTTPException(status_code=403, detail="Choisissez d'abord une école")
     return Membre(
         person_id=personne_id(db, compte),
-        org_id=compte.ecole_id,
+        org_id=ecole_id,
         nom=nom_affiche(compte),
         emails=_emails(compte),
         est_tresorier=roles.is_tresorier(compte),
@@ -79,7 +95,7 @@ class AnnuaireContretemps:
                 resultat[personne.person_id] = personne
         for pid in person_ids - resultat.keys():
             compte = db.get(Compte, pid, execution_options={TOUTES_SAISONS: True})
-            if compte is not None and compte.ecole_id == org_id:
+            if compte is not None and (compte.ecole_id == org_id or roles.is_superuser(compte)):
                 # Plus inscrite cette saison : pas de notification dans l'appli.
                 resultat[pid] = Personne(pid, nom_affiche(compte), tuple(compte.emails), None)
         return resultat

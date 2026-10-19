@@ -147,6 +147,34 @@ def test_seuls_les_tresoriers_traitent(client, ecole):
         assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(qui)).status_code == 403
 
 
+def test_le_super_user_fait_une_note_dans_l_ecole_choisie(client, db_session, ecole, espion):
+    """Le Super User n'a pas de fiche dans l'école : sa note est à son nom
+    (son compte), dans l'école où il intervient (en-tête X-Ecole-Id)."""
+    su = Comptes().enregistrer_superuser(
+        db_session, nom="Richard", prenom="Sébastien", email="su@test.fr", mot_de_passe_hache=None
+    )
+    sans_ecole = entetes_session(su)
+    assert client.get("/notes-frais/moi", headers=sans_ecole).status_code == 403
+    entetes = {**sans_ecole, "X-Ecole-Id": str(ecole["ecole"].id)}
+    d = client.post(
+        "/notes-frais/depenses",
+        json={"date": "2026-10-12", "montant_centimes": 2000, "description": "Gaffer"},
+        headers=entetes,
+    )
+    assert d.status_code == 201, d.text
+    reponse = client.post(
+        "/notes-frais/notes", json={"depense_ids": [d.json()["id"]], "titre": "Gala", "rib": {"iban": IBAN}}, headers=entetes
+    )
+    assert reponse.status_code == 201, reponse.text
+    assert espion.mails[-1]["a"] == ["julia@test.fr"]
+    notes = client.get("/notes-frais/tresorerie", headers=entetes_session(ecole["tresorier"])).json()["notes"]
+    assert notes[0]["personne"]["nom"] == "Sébastien Richard"
+    # Il traite aussi les notes, comme un trésorier.
+    assert client.get("/notes-frais/tresorerie", headers=entetes).status_code == 200
+    # Une école qui n'existe pas est refusée.
+    assert client.get("/notes-frais/moi", headers={**sans_ecole, "X-Ecole-Id": "999"}).status_code == 403
+
+
 def test_on_ne_voit_pas_les_depenses_des_autres(client, ecole):
     d = _depense(client, ecole["eleve"])
     assert client.delete(f"/notes-frais/depenses/{d['id']}", headers=entetes_session(ecole["admin"])).status_code == 404
@@ -302,6 +330,9 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, db_se
     # Remboursée : rien ne bouge, le PDF reçoit une nouvelle version (pas de
     # doublon) et le dossier passe Officiel.
     assert client.post("/notes-frais/remboursements", json={"note_ids": [note["id"]]}, headers=entetes_session(tresorier)).status_code == 200
+    # Chaque filtre affiche son nombre, Terminées compris.
+    compteurs = client.get("/notes-frais/tresorerie?filtre=terminees", headers=entetes_session(tresorier)).json()["compteurs"]
+    assert compteurs == {"a_valider": 0, "a_rembourser": 0, "terminees": 1}
     [apres] = parcourir(tresorier, personne["id"]).json()["items"]
     assert apres["id"] == dossier_note["id"] and apres["status"] == "official"
     assert len(parcourir(tresorier, dossier_note["id"]).json()["items"]) == 2

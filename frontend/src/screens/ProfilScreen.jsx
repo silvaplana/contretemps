@@ -102,17 +102,15 @@ export default function ProfilScreen({
 }) {
   const [changementMotDePasse, setChangementMotDePasse] = useState(false)
   const [ribOuvert, setRibOuvert] = useState(false)
-  // Notes de frais (spec/modules/notes-de-frais.md §3) : pour tout le monde
-  // sauf le Super User, qui n'est membre d'aucune école.
-  const notesFrais = !isSuperuser(user)
+  // Notes de frais (spec/modules/notes-de-frais.md §3) : pour tout le monde,
+  // Super User compris, dans l'école où il intervient.
   const [compteursFrais, setCompteursFrais] = useState(null)
   useEffect(() => {
-    if (!notesFrais) return
     notesFraisApi
       .compteurs()
       .then(setCompteursFrais)
       .catch(() => {})
-  }, [notesFrais, user.id])
+  }, [user.id])
   const autresProfils = trierParRole(famille.filter((p) => p.id !== user.id))
 
   // Notifications push (voir api/notifications.js) : reflète l'état RÉEL
@@ -220,21 +218,19 @@ export default function ProfilScreen({
         </section>
       )}
 
-      {notesFrais && (
-        <section>
-          <h3 className="section-label">Remboursements</h3>
-          <button type="button" className="settings-row settings-row--button" onClick={onOpenNotesFrais}>
-            <span>Mes notes de frais</span>
-            {compteursFrais?.a_envoyer > 0 && (
-              <span className="badge badge--warning nf-compteur">{compteursFrais.a_envoyer} à envoyer</span>
-            )}
-            {!compteursFrais?.a_envoyer && compteursFrais?.en_attente > 0 && (
-              <span className="badge nf-compteur">{compteursFrais.en_attente} en cours</span>
-            )}
-            <Icon name="chevronRight" size={18} />
-          </button>
-        </section>
-      )}
+      <section>
+        <h3 className="section-label">Remboursements</h3>
+        <button type="button" className="settings-row settings-row--button" onClick={onOpenNotesFrais}>
+          <span>Mes notes de frais</span>
+          {compteursFrais?.a_envoyer > 0 && (
+            <span className="badge badge--warning nf-compteur">{compteursFrais.a_envoyer} à envoyer</span>
+          )}
+          {!compteursFrais?.a_envoyer && compteursFrais?.en_attente > 0 && (
+            <span className="badge nf-compteur">{compteursFrais.en_attente} en cours</span>
+          )}
+          <Icon name="chevronRight" size={18} />
+        </button>
+      </section>
 
       <section>
         <h3 className="section-label">Paramètres</h3>
@@ -267,14 +263,12 @@ export default function ProfilScreen({
             <Icon name="chevronRight" size={18} />
           </button>
         )}
-        {notesFrais && (
-          <button type="button" className="settings-row settings-row--button" onClick={() => setRibOuvert(true)}>
-            <span>
-              Mon RIB <span className="muted">(facultatif, pour les remboursements)</span>
-            </span>
-            <Icon name="chevronRight" size={18} />
-          </button>
-        )}
+        <button type="button" className="settings-row settings-row--button" onClick={() => setRibOuvert(true)}>
+          <span>
+            Mon RIB <span className="muted">(facultatif, pour les remboursements)</span>
+          </span>
+          <Icon name="chevronRight" size={18} />
+        </button>
       </section>
 
       {changementMotDePasse && <ChangerMotDePasseModal onClose={() => setChangementMotDePasse(false)} />}
