@@ -104,3 +104,28 @@ class MessageDelivery(Base):
     envoye_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
     recu_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     lu_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class MessageAttachment(Base):
+    """A photo or a file sent with a message
+    (spec/modules/messagerie-instantanee.md §4.3-4.4). The content lives in
+    the shared storage (`storage/`), under `MESSAGERIE_DIR/<school>/`, by its
+    sha256: the same photo forwarded to three groups is kept once.
+
+    Uploaded first (`message_id` empty, only its uploader may attach it),
+    then attached when the message is sent."""
+
+    __tablename__ = "msg_attachments"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    message_id: Mapped[int | None] = mapped_column(ForeignKey("messages.id"), nullable=True, index=True)
+    # Where it was uploaded (access check before the message exists).
+    conversation_id: Mapped[int] = mapped_column(ForeignKey("conversations.id"), nullable=False)
+    uploader_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), nullable=False)
+    sha256: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    kind: Mapped[str] = mapped_column(String(10), nullable=False)  # 'photo' | 'file' ('video' later)
+    size: Mapped[int] = mapped_column(Integer, nullable=False)
+    width: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    height: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

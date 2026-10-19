@@ -6,20 +6,23 @@ aucun calcul métier ici à part fusionner les sorties JSON.
 import asyncio
 import json
 
-from comptes import Compte, rbac
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import StreamingResponse
+from comptes import Compte, rbac, roles
+from fastapi import Depends, FastAPI, HTTPException, UploadFile
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from db import SessionLocal, get_db
 from notifications import Notifications
+from storage import FileTooLarge, guess_mime
 
+from .attachments import Attachments, InvalidAttachment
 from .connexions import Connexions
 from .conversations import Conversations
 from .evenements import Evenements
 from .frappe import Frappe
 from .messages import Messages, can_still_edit
 from .schemas import (
+    AttachmentOut,
     ConversationCreation,
     ConversationModification,
     ConversationSortie,
@@ -49,6 +52,7 @@ class MessagerieReceiver:
         connexions: Connexions,
         frappe: Frappe,
         notifications: Notifications,
+        attachments: Attachments,
         app: FastAPI,
     ) -> None:
         self.conversations = conversations
@@ -57,6 +61,7 @@ class MessagerieReceiver:
         self.connexions = connexions
         self.frappe = frappe
         self.notifications = notifications
+        self.attachments = attachments
         self.app = app
         self._register_routes()
 
@@ -98,6 +103,16 @@ class MessagerieReceiver:
             response_model=MessageSortie,
             status_code=201,
         )(self.envoyer_message)
+
+        # Photos and files (spec/modules/messagerie-instantanee.md §4.3-4.6):
+        # never served as static files, only here, to members.
+        self.app.post(
+            "/conversations/{conversation_id}/attachments",
+            response_model=AttachmentOut,
+            status_code=201,
+        )(self.upload_attachment)
+        self.app.get("/attachments/{attachment_id}")(self.attachment_content)
+        self.app.get("/attachments/{attachment_id}/thumbnail")(self.attachment_thumbnail)
 
         # Actions on a message (spec/modules/messagerie-instantanee.md §4.2).
         self.app.put("/messages/{message_id}", response_model=MessageSortie)(self.edit_message)
@@ -307,6 +322,7 @@ class MessagerieReceiver:
             "deleted_at": message.deleted_at,
             "forwarded": message.forwarded,
             "reply_to_id": message.reply_to_id,
+            "attachments": self.attachments.of_message(db, message.id),
             "deliveries": self.messages.deliveries_du_message(db, message.id),
         }
 
@@ -317,6 +333,21 @@ class MessagerieReceiver:
             cible = self.messages.get(db, donnees.reply_to_id)
             if cible is None or cible.conversation_id != conversation_id:
                 raise HTTPException(status_code=422, detail="Message d'origine introuvable")
+        pieces = []
+        if donnees.attachment_ids:
+            conversation = self.conversations.get(db, conversation_id)
+            if conversation is None:
+                raise HTTPException(status_code=404, detail="Conversation introuvable")
+            try:
+                pieces = self.attachments.check(
+                    db,
+                    donnees.attachment_ids,
+                    conversation,
+                    donnees.expediteur_id,
+                    lambda cid: self._is_member(db, donnees.expediteur_id, cid),
+                )
+            except InvalidAttachment as erreur:
+                raise HTTPException(status_code=422, detail=str(erreur)) from erreur
         message, nouveau = self.messages.envoyer(
             db,
             conversation_id,
@@ -327,6 +358,8 @@ class MessagerieReceiver:
             donnees.reply_to_id,
             donnees.forwarded,
         )
+        if nouveau and pieces:
+            self.attachments.attach(db, message, pieces)
         sortie = self._sortie_message(db, message)
         # Un renvoi idempotent (`nouveau=False`, voir messages.py: envoyer)
         # ne republie RIEN — sinon un simple retry réseau côté client
@@ -356,7 +389,7 @@ class MessagerieReceiver:
                 {"type": "message", "conversation_id": conversation_id, "message": evenement_message},
             )
             if membre.id != sortie["expediteur_id"]:
-                self.notifications.envoyer_a_compte(db, membre.id, titre, sortie["contenu"])
+                self.notifications.envoyer_a_compte(db, membre.id, titre, _apercu(sortie))
 
     def _message_or_404(self, db: Session, message_id: int):
         message = self.messages.get(db, message_id)
@@ -400,9 +433,75 @@ class MessagerieReceiver:
             rbac.require_admin(appelant, conversation.ecole_id)
         if message.deleted_at is not None:  # already deleted: nothing to publish
             return self._sortie_message(db, message)
+        conversation = self.conversations.get(db, message.conversation_id)
+        self.attachments.remove_from_message(db, message, conversation.ecole_id)
         sortie = self._sortie_message(db, self.messages.delete(db, message))
         self._publier_message_maj(db, sortie)
         return sortie
+
+    def _is_member(self, db: Session, compte_id: int, conversation_id: int) -> bool:
+        return any(m.id == compte_id for m in self.conversations.membres_resolus(db, conversation_id))
+
+    def _require_member(self, db: Session, appelant: Compte | None, conversation_id: int) -> None:
+        """Photos and files only go to the members of their conversation
+        (§4.4). `appelant` is None only in tests."""
+        if appelant is None or roles.is_superuser(appelant):
+            return
+        if not self._is_member(db, appelant.id, conversation_id):
+            raise HTTPException(status_code=403, detail="Réservé aux membres de la conversation")
+
+    def upload_attachment(
+        self,
+        conversation_id: int,
+        fichier: UploadFile,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        conversation = self.conversations.get(db, conversation_id)
+        if conversation is None:
+            raise HTTPException(status_code=404, detail="Conversation introuvable")
+        self._require_member(db, appelant, conversation_id)
+        try:
+            return self.attachments.upload(db, conversation, appelant.id, fichier.filename or "", fichier.file)
+        except FileTooLarge as erreur:
+            raise HTTPException(status_code=413, detail=str(erreur)) from erreur
+
+    def _attachment_for(self, db: Session, attachment_id: int, appelant: Compte | None):
+        attachment = self.attachments.get(db, attachment_id)
+        if attachment is None:
+            raise HTTPException(status_code=404, detail="Pièce jointe introuvable")
+        self._require_member(db, appelant, attachment.conversation_id)
+        return attachment, self.conversations.get(db, attachment.conversation_id).ecole_id
+
+    def attachment_content(
+        self,
+        attachment_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        attachment, ecole_id = self._attachment_for(db, attachment_id, appelant)
+        return FileResponse(
+            self.attachments.content_path(attachment, ecole_id),
+            media_type=guess_mime(attachment.filename),
+            filename=attachment.filename,
+            content_disposition_type="inline",
+            # Content never changes for an id (sha256): cache it.
+            headers={"Cache-Control": "private, max-age=31536000, immutable"},
+        )
+
+    def attachment_thumbnail(
+        self,
+        attachment_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        attachment, ecole_id = self._attachment_for(db, attachment_id, appelant)
+        chemin = self.attachments.thumbnail_path(attachment, ecole_id)
+        if attachment.kind != "photo" or not chemin.exists():
+            raise HTTPException(status_code=404, detail="Pas de vignette")
+        return FileResponse(
+            chemin, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"}
+        )
 
     def _publier_message_maj(self, db: Session, sortie: dict) -> None:
         """Edit or deletion: every member's open thread replaces the bubble
@@ -525,3 +624,13 @@ class MessagerieReceiver:
             methode(db, compte_id)
         finally:
             db.close()
+
+
+def _apercu(sortie: dict) -> str:
+    """Text of a notification: the message, or what it carries (§4.3)."""
+    if sortie["contenu"]:
+        return sortie["contenu"]
+    kinds = [a.kind for a in sortie["attachments"]]
+    if not kinds:
+        return ""
+    return "📷 Photo" if all(k == "photo" for k in kinds) else "📎 Fichier"

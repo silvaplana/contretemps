@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { compterNonLus } from '../../api/messages.js'
+import { apercuMessage, compterNonLus } from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import { normaliserRecherche } from '../../utils/recherche.js'
 import { tousLesComptes } from './personnes.js'
@@ -193,7 +193,7 @@ function LigneConversation({ conversation: c, compteId, onOpen, onAvatarClick })
       <button type="button" className="conversation-list__content" onClick={onOpen}>
         <span className="conversation-list__text">
           <strong>{c.nom}</strong>
-          <span className="muted">{last?.contenu}</span>
+          <span className="muted">{apercuMessage(last)}</span>
         </span>
         {last?.envoyeParMail && <Icon name="mail" size={16} className="muted" />}
         {nonLus > 0 && <span className="conversation-list__badge">{nonLus}</span>}
