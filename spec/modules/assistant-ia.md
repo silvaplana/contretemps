@@ -82,6 +82,9 @@ quelle, avec les routes, les onglets et les rôles.
 - Le micro utilise la reconnaissance vocale du navigateur, gratuite (absente de Firefox : pas de micro).
 - Sur Chrome Android, les morceaux entendus reprennent chacun le précédent : le texte est reconstruit à
   chaque fois, sans répéter les mots (correctif du 18 octobre, `Dictee.js`).
+- Chrome Android arrête l'écoute après chaque phrase : la dictée écoute une phrase à la fois et se relance
+  aussitôt, jusqu'à ce qu'on touche le micro ou après un long silence (deux écoutes sans rien entendre,
+  une dizaine de secondes). Correctif du 19 octobre.
 
 ## 5. Pistes (non décidées)
 
