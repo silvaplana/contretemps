@@ -18,7 +18,7 @@ from .connexions import Connexions
 from .conversations import Conversations
 from .evenements import Evenements
 from .frappe import Frappe
-from .messages import Messages
+from .messages import Messages, can_still_edit
 from .schemas import (
     ConversationCreation,
     ConversationModification,
@@ -26,6 +26,7 @@ from .schemas import (
     FrappeEntree,
     MembreEntree,
     MessageCreation,
+    MessageEdit,
     MessageSortie,
     RelanceDemande,
     StatutModification,
@@ -97,6 +98,12 @@ class MessagerieReceiver:
             response_model=MessageSortie,
             status_code=201,
         )(self.envoyer_message)
+
+        # Actions on a message (spec/modules/messagerie-instantanee.md §4.2).
+        self.app.put("/messages/{message_id}", response_model=MessageSortie)(self.edit_message)
+        self.app.delete("/messages/{message_id}", response_model=MessageSortie)(
+            self.delete_message
+        )
 
         self.app.put(
             "/messages/{message_id}/deliveries/{destinataire_id}", status_code=204
@@ -296,12 +303,20 @@ class MessagerieReceiver:
             "contenu": message.contenu,
             "created_at": message.created_at,
             "client_id": message.client_id,
+            "edited_at": message.edited_at,
+            "deleted_at": message.deleted_at,
+            "forwarded": message.forwarded,
+            "reply_to_id": message.reply_to_id,
             "deliveries": self.messages.deliveries_du_message(db, message.id),
         }
 
     def envoyer_message(
         self, conversation_id: int, donnees: MessageCreation, db: Session = Depends(get_db)
     ):
+        if donnees.reply_to_id is not None:
+            cible = self.messages.get(db, donnees.reply_to_id)
+            if cible is None or cible.conversation_id != conversation_id:
+                raise HTTPException(status_code=422, detail="Message d'origine introuvable")
         message, nouveau = self.messages.envoyer(
             db,
             conversation_id,
@@ -309,6 +324,8 @@ class MessagerieReceiver:
             donnees.contenu,
             donnees.canal,
             donnees.client_id,
+            donnees.reply_to_id,
+            donnees.forwarded,
         )
         sortie = self._sortie_message(db, message)
         # Un renvoi idempotent (`nouveau=False`, voir messages.py: envoyer)
@@ -340,6 +357,66 @@ class MessagerieReceiver:
             )
             if membre.id != sortie["expediteur_id"]:
                 self.notifications.envoyer_a_compte(db, membre.id, titre, sortie["contenu"])
+
+    def _message_or_404(self, db: Session, message_id: int):
+        message = self.messages.get(db, message_id)
+        if message is None:
+            raise HTTPException(status_code=404, detail="Message introuvable")
+        return message
+
+    def edit_message(
+        self,
+        message_id: int,
+        donnees: MessageEdit,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        message = self._message_or_404(db, message_id)
+        # Only the author edits (appelant is None only in tests).
+        rbac.meme_personne(appelant, message.expediteur_id, db)
+        if not donnees.contenu.strip():
+            raise HTTPException(status_code=422, detail="Le message est vide")
+        if not can_still_edit(message):
+            raise HTTPException(status_code=409, detail="Ce message ne peut plus être modifié")
+        sortie = self._sortie_message(db, self.messages.edit(db, message, donnees.contenu))
+        self._publier_message_maj(db, sortie)
+        return sortie
+
+    def delete_message(
+        self,
+        message_id: int,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """The author deletes their message; an admin of the school may also
+        delete any message of a group conversation (moderation, §4.2)."""
+        message = self._message_or_404(db, message_id)
+        try:
+            rbac.meme_personne(appelant, message.expediteur_id, db)
+        except HTTPException:
+            conversation = self.conversations.get(db, message.conversation_id)
+            if conversation.type != "groupe":
+                raise
+            rbac.require_admin(appelant, conversation.ecole_id)
+        if message.deleted_at is not None:  # already deleted: nothing to publish
+            return self._sortie_message(db, message)
+        sortie = self._sortie_message(db, self.messages.delete(db, message))
+        self._publier_message_maj(db, sortie)
+        return sortie
+
+    def _publier_message_maj(self, db: Session, sortie: dict) -> None:
+        """Edit or deletion: every member's open thread replaces the bubble
+        live (no push notification, unlike a new message)."""
+        evenement_message = MessageSortie.model_validate(sortie).model_dump(mode="json")
+        for membre in self.conversations.membres_resolus(db, sortie["conversation_id"]):
+            self.evenements.publier(
+                membre.id,
+                {
+                    "type": "message_maj",
+                    "conversation_id": sortie["conversation_id"],
+                    "message": evenement_message,
+                },
+            )
 
     def modifier_statut(
         self,

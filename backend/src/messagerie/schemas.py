@@ -77,6 +77,14 @@ class MessageCreation(BaseModel):
     # Généré côté navigateur avant l'envoi — voir messages.py: envoyer()
     # et frontend/src/utils/messageOutbox.js (idempotence des renvois).
     client_id: str | None = None
+    # §4.2: the message being answered (same conversation), and whether
+    # this one is a copy sent with "Transférer".
+    reply_to_id: int | None = None
+    forwarded: bool = False
+
+
+class MessageEdit(BaseModel):
+    contenu: str
 
 
 class FrappeEntree(BaseModel):
@@ -101,6 +109,10 @@ class MessageSortie(BaseModel):
     contenu: str
     created_at: dt.datetime
     client_id: str | None = None
+    edited_at: dt.datetime | None = None
+    deleted_at: dt.datetime | None = None
+    forwarded: bool = False
+    reply_to_id: int | None = None
     deliveries: list[DeliverySortie] = []
 
 

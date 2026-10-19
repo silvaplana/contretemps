@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import * as messagesApi from '../api/messages.js'
 import Icon from '../components/Icon.jsx'
+import { envoyerAvecReprise } from '../utils/messageOutbox.js'
 import { initialiserPresence } from '../utils/presenceEnLigne.js'
 import ConversationListScreen from './messagerie/ConversationListScreen.jsx'
 import ConversationThreadScreen from './messagerie/ConversationThreadScreen.jsx'
+import EnvoyerAScreen from './messagerie/EnvoyerAScreen.jsx'
 import NouveauGroupeModal from './messagerie/NouveauGroupeModal.jsx'
 import NouvelleDiscussionScreen from './messagerie/NouvelleDiscussionScreen.jsx'
 import ProfilContactScreen from './messagerie/ProfilContactScreen.jsx'
@@ -37,6 +39,11 @@ export default function MessagerieScreen({
   // décidés par App.jsx.
   peutCreerGroupe,
   lectureSeule,
+  // Texte partagé depuis une autre appli (spec §4.7, voir App.jsx) : ouvre
+  // « Envoyer à… » ; `onPartageTraite` l'oublie une fois envoyé ou annulé.
+  partage,
+  onPartageTraite,
+  onOuvrirDocs,
 }) {
   const [selectedId, setSelectedId] = useState(null)
   // Écran « Nouvelle discussion », ouvert par le bouton + de la liste
@@ -49,6 +56,35 @@ export default function MessagerieScreen({
   // sur une ligne "Nouvelle discussion" pendant que la création du DM est
   // en cours (même principe qu'ailleurs, voir AdminCours.jsx/AdminEleves.jsx).
   const [creationEnCours, setCreationEnCours] = useState(false)
+  // « Envoyer à… » (spec §4.2 Transférer) : { textes, transfere }.
+  const [transfert, setTransfert] = useState(null)
+  const envoiA = transfert ?? (partage && !lectureSeule ? { textes: [partage], transfere: false } : null)
+
+  function fermerEnvoiA() {
+    if (transfert) setTransfert(null)
+    else onPartageTraite?.()
+  }
+
+  // Envoie chaque texte dans chaque discussion choisie, en créant au besoin
+  // la discussion à deux avec un contact. Une seule destination : on
+  // l'ouvre, comme WhatsApp.
+  async function envoyerA({ conversationIds, contacts }) {
+    const { textes, transfere } = envoiA
+    fermerEnvoiA()
+    const ids = [...conversationIds]
+    for (const compte of contacts) {
+      const conv = await messagesApi.creerOuObtenirDm(ecoleId, compteId, compte.id)
+      initialiserPresence(conv.membres)
+      setConversations((liste) => (liste.some((c) => c.id === conv.id) ? liste : [...liste, conv]))
+      ids.push(conv.id)
+    }
+    for (const id of ids) {
+      for (const texte of textes) envoyerAvecReprise(id, compteId, texte, 'app', { transfere })
+    }
+    setProfilStack([])
+    setNouvelleDiscussion(false)
+    setSelectedId(ids.length === 1 ? ids[0] : null)
+  }
 
   const selected = conversations.find((c) => c.id === selectedId)
   const frame = profilStack[profilStack.length - 1] ?? null
@@ -110,6 +146,10 @@ export default function MessagerieScreen({
         onBack={() => setSelectedId(null)}
         setConversations={setConversations}
         compteId={compteId}
+        peutModerer={peutCreerGroupe}
+        lectureSeule={lectureSeule}
+        onTransferer={(textes) => setTransfert({ textes, transfere: true })}
+        onOuvrirDocs={onOuvrirDocs}
       />
     )
   } else if (frame) {
@@ -179,6 +219,18 @@ export default function MessagerieScreen({
   return (
     <>
       {corps}
+      {envoiA && (
+        <EnvoyerAScreen
+          apercu={envoiA.textes.join('\n')}
+          conversations={conversations}
+          compteId={compteId}
+          admins={admins}
+          professeurs={professeurs}
+          eleves={eleves}
+          onBack={fermerEnvoiA}
+          onEnvoyer={envoyerA}
+        />
+      )}
       {surLaListe && !lectureSeule && (
         <button type="button" className="fab" onClick={() => setNouvelleDiscussion(true)} aria-label="Nouvelle discussion">
           <Icon name="plus" size={28} />

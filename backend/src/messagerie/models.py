@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, false
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -74,6 +74,13 @@ class Message(Base):
     # message créé autrement (démo, ancien code) — l'idempotence ne joue
     # alors simplement pas, comme avant.
     client_id: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    # Actions sur un message (spec/modules/messagerie-instantanee.md §4.2).
+    edited_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # A deleted message keeps its row (and its place in the thread) with an
+    # empty `contenu`: everyone sees "Ce message a été supprimé".
+    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    forwarded: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    reply_to_id: Mapped[int | None] = mapped_column(ForeignKey("messages.id"), nullable=True)
 
 
 class MessageDelivery(Base):
