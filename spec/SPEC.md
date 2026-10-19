@@ -846,8 +846,10 @@ Elle contient, dans cet ordre :
 - un bouton **"Revenir à l'apparence par défaut"** (avec confirmation) : remet logo, nom en
   texte, slogan, couleurs et police par défaut ; **ne touche pas à l'adresse web**.
 
-**Envoi d'une image** (logo ou nom en image) : PNG, JPG, WebP ou SVG, 5 Mo au plus. Le
-serveur recadre les marges vides et redimensionne (512 px de côté au plus pour le logo). Le
+**Envoi d'une image** (logo ou nom en image) : PNG, JPG, WebP, **AVIF** (demande utilisateur
+du 2026-10-15 : accepté à l'envoi, converti en PNG par le serveur, qui garde la transparence ;
+Pillow avec `pillow-avif-plugin`, ou `pillow-heif`) ou SVG, 5 Mo au plus. Le serveur recadre
+les marges vides et redimensionne (512 px de côté au plus pour le logo). Le
 **détourage est optionnel** (décision utilisateur du 2026-10-15), au choix dans une liste
 **"Détourage : Aucun / Simple / Par IA"**, avec un **aperçu avant/après** sur damier avant de
 valider :
