@@ -292,9 +292,10 @@ MODULE = Module(
   autre module : quand il a besoin d'un autre (les notes de frais rangent leurs justificatifs
   dans Docs), c'est **l'appli** qui les relie, dans `<module>_contretemps/`, comme aujourd'hui
   avec les `Ports` des notes de frais.
-- `actions` reprend telle quelle la forme décidée dans le fil Assistant IA (`actions.py`, une
-  `Action` par action : nom, description, paramètres, droit, libellé de la carte Faire/Annuler,
-  fonction du module). Il n'y a donc qu'une seule façon de déclarer, pas deux.
+- `actions` reprend telle quelle la liste que le module déclare déjà dans son `actions.py`
+  (`spec/modules/assistant-ia.md` §3 : une `Action` par action, avec son nom, sa description,
+  ses paramètres, sa fonction `prepare` qui vérifie les droits et rend la carte Faire/Annuler).
+  Il n'y a donc qu'une seule façon de déclarer, pas deux.
 - Les tables d'un module restent dans son `models.py`, préfixées par le module, et se créent
   par les migrations Alembic, comme aujourd'hui.
 
@@ -363,7 +364,8 @@ Chaque étape est une PR, sans rien changer à l'écran avant l'étape 3 :
 
 1. **Déclarations** : `module.py` et `module.js` pour chaque module, la liste de l'appli, et
    `main.py`, `nav.js` et `App.jsx` qui lisent la liste au lieu de tout écrire à la main.
-2. **Assistant** : il prend ses actions dans la liste au lieu de sa propre liste d'imports.
+2. **Assistant** : l'appli lui remet les actions de la liste des modules au lieu de les
+   assembler à la main (`actions_messagerie(...)`, `actions_cours(...)`…, assistant-ia.md §3).
 3. **Activation** : table `org_modules`, contrôle des routes, cases dans Supervision.
 
 ---
