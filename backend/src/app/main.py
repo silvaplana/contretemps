@@ -33,6 +33,7 @@ from documents_contretemps import (
     TAILLE_MAX_MO,
     AnnuaireContretemps,
     MessagerieContretemps,
+    NotifieurDocuments,
     SaisonsContretemps,
     membre_appelant,
     recopieur_de_saison,
@@ -281,6 +282,7 @@ documents_client = Documents(
     # Dossier « Financier » de chaque saison : trésoriers seulement, même
     # pas les autres admins (Seb, 17 octobre).
     reserved_folders=(("Financier", "role:tresorier"),),
+    notifier=NotifieurDocuments(notifications_client),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.

@@ -116,3 +116,26 @@ def test_le_bac_de_financier(client, db_session, ecole):  # noqa: F811
 
     # Un admin qui n'est pas trésorier n'y entre pas.
     assert admin.racine(dossier=bac["id"]).status_code == 404
+
+
+def test_le_destinataire_est_prevenu(client, ecole, profs, monkeypatch):  # noqa: F811
+    from app import main
+
+    recus = []
+    monkeypatch.setattr(
+        main.documents_client.notifier.notifications, "envoyer_a_compte",
+        lambda db, compte_id, titre, corps: recus.append((compte_id, titre, corps)),
+    )
+    ima = Docs(client, ecole["id"], ecole["prof"])
+    bac = _bac(ima)
+    node_id = ima.fichier("Planning.xlsx", bac).json()["id"]
+    url = f"{ima.base}/nodes/{node_id}/recipient"
+    assert ima.c.put(url, json={"type": "member", "id": str(profs["zoe"].id)}, headers=ima.h).status_code == 200
+    assert recus == [(profs["zoe"].id, "Nouveau fichier dans Échanges", "Ima Blanc vous a déposé « Planning.xlsx »")]
+    # Même destinataire : pas de deuxième notification ; tout le monde : aucune.
+    ima.c.put(url, json={"type": "member", "id": str(profs["zoe"].id)}, headers=ima.h)
+    ima.c.put(url, json={}, headers=ima.h)
+    assert len(recus) == 1
+    # Un groupe : chacun sauf soi-même.
+    ima.c.put(url, json={"type": "group", "id": "role:professeur"}, headers=ima.h)
+    assert {r[0] for r in recus[1:]} == {profs["zoe"].id, profs["max"].id}

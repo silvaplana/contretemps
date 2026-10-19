@@ -4,6 +4,8 @@ import { documentsApi } from '../../api/documents.js'
 import FolderPicker from './FolderPicker.jsx'
 import NewScreen from './NewScreen.jsx'
 import PourQui from './PourQui.jsx'
+import { texteDuLien, useOuvrirDocs } from './lienDocs.js'
+import { envoyerDansLaMessagerie } from '../../utils/envoyerA.js'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
 import { accesAssistant, ajouterProduit } from '../../api/assistant.js'
@@ -278,6 +280,24 @@ export default function Explorer({ orgId, memoire }) {
       setVue(item)
     }
   }
+
+  // Lien /docs/<id> (messagerie, email) : le dossier, ou le fichier dans
+  // son dossier. Sans droit, le serveur répond comme si rien n'existait.
+  async function ouvrirParLien(id) {
+    try {
+      const x = await api.detail(id)
+      const parent = x.path?.at(-1)?.id ?? null
+      ouvrirDepuisArbre(x.space, x.kind === 'folder' ? x.id : parent)
+      if (x.kind !== 'folder') ouvrir(x)
+    } catch {
+      montrerToast('Vous n’avez pas accès à ce fichier, ou il n’existe plus.')
+    }
+  }
+  const lienRef = useRef(null)
+  useEffect(() => {
+    lienRef.current = ouvrirParLien
+  })
+  useOuvrirDocs(useCallback((id) => lienRef.current?.(id), []))
 
   function allerA(id) {
     setFolder(id)
@@ -910,6 +930,15 @@ export default function Explorer({ orgId, memoire }) {
           ]
         : []),
     ]
+    autres.unshift({
+      icone: '💬',
+      libelle: 'Envoyer le lien…',
+      faire: () => {
+        setFeuille(null)
+        setPlus(false)
+        envoyerDansLaMessagerie(texteDuLien(item))
+      },
+    })
     if (item.exchange_until && (item.sent_by_me || data?.level === 'manage')) {
       autres.unshift({ icone: '✉', libelle: 'Pour…', faire: () => (setFeuille(null), setPlus(false), setPourQui([item])) })
     }
