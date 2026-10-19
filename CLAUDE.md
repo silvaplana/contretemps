@@ -57,7 +57,7 @@ SaaS vite. Chaque module se code ici de façon isolée pour être extrait tel qu
   `backend/src/<module>/` et `frontend/src/modules/<module>/`, sans dépendre de Contretemps.
   Ce qui est propre à Contretemps va dans `<module>_contretemps/` (ex. `documents_contretemps/`).
 - Cible : un contrat d'enregistrement minimal (routes, menu, droits) ; le core ne connaît pas les
-  modules. Aujourd'hui `app/main.py` les assemble à la main.
+  modules ([spec/core.md](spec/core.md) §9 bis). Aujourd'hui `app/main.py` les assemble à la main.
 - Données spécialisées par composition (clé étrangère vers la fiche), pas par héritage.
 - Multi-organisation : les écoles sont étanches. Toute requête de données filtre par école
   (`ecole_id` ; modèle : `saisons/portee.py`). Attention : un « groupe » est un cours, pas une école.
