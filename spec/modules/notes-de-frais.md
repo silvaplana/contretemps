@@ -149,6 +149,21 @@ Détail d'une note : chaque dépense avec sa photo (agrandissable), la mention �
 échéant, le total, le RIB ; boutons **Valider** et **Refuser…** (motif obligatoire), et **« Télécharger les
 justificatifs »** : un zip des photos de la note, nommées comme sur le disque (décision de Seb, 17 octobre).
 
+### 7 ter Saisir pour quelqu'un (décision de Seb, 19 octobre)
+
+Le trésorier reçoit souvent des papiers et des factures à la place des gens. Dans Financier, le menu
+**⋯** propose **« Créer une dépense pour quelqu'un »** et **« Envoyer une note pour quelqu'un »**. Les
+deux commencent par **« Pour qui ? »** : la liste de toutes les personnes de l'école, avec une recherche
+par nom. Ensuite, ce sont **les mêmes écrans que Profil › « Mes notes de frais »**, au nom de cette
+personne (« Pour Margot Perrin », retour vers Financier) ; « Créer une dépense » ouvre directement la
+saisie.
+
+Tout est **au nom de la personne choisie** : ses dépenses, sa note, son RIB (celui qu'on saisit à
+l'envoi s'il manque). Elle les retrouve dans son « Mes notes de frais », et la note suit le chemin
+habituel (à valider, puis à rembourser). Réservé aux trésoriers et au Super User. Technique : l'appli
+envoie l'id de la personne dans l'en-tête `X-Pour-Personne` ; le serveur vérifie le droit et que la
+personne est de l'organisation.
+
 ### 7 bis Rangement dans Docs (Seb, 17 octobre)
 
 Dès l'**envoi**, l'appli range la note dans les documents, sans rien demander :
@@ -257,6 +272,7 @@ trésoriers. *(Contretemps : `NOTES_FRAIS_DIR`, `/app/data/notes_frais` dans l'i
 | Envoyer, reprendre une note (tant que pas validée) | son auteur |
 | Voir ses dépenses et ses notes | son auteur (et les autres fiches du même email) |
 | Voir toutes les notes, valider, refuser, marquer remboursée, exporter | trésoriers de l'organisation, Super User |
+| Créer des dépenses et envoyer des notes pour quelqu'un (§7 ter) | trésoriers de l'organisation, Super User |
 | Donner, retirer le rôle trésorier | admins |
 
 Les admins non trésoriers ne voient pas les notes des autres. Via l'Assistant, chacun fait et voit

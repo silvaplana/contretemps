@@ -103,6 +103,9 @@ class AnnuaireContretemps:
     def tresoriers(self, db: Session, org_id: int) -> list[Personne]:
         return [_personne(db, c) for c in self._comptes_courants(db, org_id) if roles.is_tresorier(c)]
 
+    def toutes(self, db: Session, org_id: int) -> list[Personne]:
+        return sorted((_personne(db, c) for c in self._comptes_courants(db, org_id)), key=lambda p: p.nom.casefold())
+
     def organisation(self, db: Session, org_id: int) -> Organisation:
         from ecoles.models import Ecole
         from personnalisation.personnalisation import adresse_de_l_ecole
