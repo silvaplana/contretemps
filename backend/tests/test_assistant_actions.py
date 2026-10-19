@@ -130,3 +130,108 @@ def test_date_future_refusee(db_session, ecole):
         "title": "x", "expenses": [{"date": demain, "amount_euros": 5, "description": "Café"}], "donation": True,
     })
     assert carte is None and "futur" in texte
+
+
+def _superuser(db):
+    return Comptes().enregistrer_superuser(db, nom="Richard", prenom="Seb", email="seb@test.fr", mot_de_passe_hache="x")
+
+
+def test_groupe_avec_les_tresoriers_et_le_super_user(db_session, ecole):
+    """Seb, 19 octobre : le Super User n'a pas de fiche d'école, mais on
+    l'ajoute aux groupes comme dans l'écran Nouveau groupe."""
+    admin, su = ecole["admin"], _superuser(db_session)
+    _, carte = _proposer(db_session, admin, ecole, "create_group_chat", {"name": "Trésorerie", "member_ids": [admin.id, su.id]})
+    assert carte["lignes"] == ["Créer le groupe « Trésorerie » avec Julia Dho, Seb Richard"]
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    assert {m.membre_id for m in db_session.query(ConversationMembre)} == {admin.id, su.id}
+
+
+def test_ajouter_et_retirer_des_membres_d_un_groupe(db_session, ecole):
+    admin, prof, eleve = ecole["admin"], ecole["prof"], ecole["eleve"]
+    _, carte = _proposer(db_session, admin, ecole, "create_group_chat", {"name": "Bureau", "member_ids": [admin.id]})
+    _faire(db_session, admin, ecole, carte)
+    _, carte = _proposer(db_session, admin, ecole, "add_group_members", {"group_name": "Bureau", "member_ids": [prof.id, eleve.id]})
+    assert carte["lignes"] == ["Ajouter au groupe « Bureau » : Ima Blanc, Margot Perrin"]
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    _, carte = _proposer(db_session, admin, ecole, "remove_group_members", {"group_name": "Bureau", "member_ids": [eleve.id]})
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    assert {m.membre_id for m in db_session.query(ConversationMembre)} == {admin.id, prof.id}
+
+
+def test_roles_changes_par_l_administrateur_principal_seulement(db_session, ecole):
+    """Seb, 19 octobre : seul un administrateur principal nomme des
+    trésoriers ou des administrateurs."""
+    owner, prof = ecole["admin"], ecole["prof"]
+    autre_admin = Comptes().create(db_session, ecole_id=ecole["id"], role="admin", nom="Silpa", prenom="Jacqueline")
+    texte, carte = _proposer(db_session, autre_admin, ecole, "change_roles", {"person_id": prof.id, "admin": True})
+    assert carte is None and "administrateurs principaux" in texte
+
+    _, carte = _proposer(db_session, owner, ecole, "change_roles", {"person_id": prof.id, "admin": True, "treasurer": True})
+    assert carte["lignes"] == ["Ima Blanc : devient administrateur, devient trésorier"]
+    assert not roles.is_admin(prof)  # rien avant le clic
+    assert _faire(db_session, owner, ecole, carte)[0]["ok"]
+    db_session.refresh(prof)
+    assert roles.is_admin(prof) and roles.is_tresorier(prof) and roles.is_prof(prof)
+
+    # Retirer administrateur retire aussi trésorier ; le professeur reste.
+    _, carte = _proposer(db_session, owner, ecole, "change_roles", {"person_id": prof.id, "admin": False})
+    assert carte["lignes"] == ["Ima Blanc : n'est plus administrateur, n'est plus trésorier"]
+    _faire(db_session, owner, ecole, carte)
+    db_session.refresh(prof)
+    assert not roles.is_admin(prof) and not roles.is_tresorier(prof) and roles.is_prof(prof)
+
+    # Pas sur sa propre ligne, sauf la case Trésorier.
+    texte, carte = _proposer(db_session, owner, ecole, "change_roles", {"person_id": owner.id, "main_admin": False})
+    assert carte is None
+    _, carte = _proposer(db_session, owner, ecole, "change_roles", {"person_id": owner.id, "treasurer": False})
+    assert _faire(db_session, owner, ecole, carte)[0]["ok"]
+
+
+def test_le_super_user_change_les_roles_et_cree_un_administrateur(db_session, ecole):
+    su, eleve = _superuser(db_session), ecole["eleve"]
+    _, carte = _proposer(db_session, su, ecole, "change_roles", {"person_id": eleve.id, "admin": True, "main_admin": True})
+    assert _faire(db_session, su, ecole, carte)[0]["ok"]
+    db_session.refresh(eleve)
+    assert roles.is_owner(eleve)
+    _, carte = _proposer(db_session, su, ecole, "create_admin", {"last_name": "Martin", "first_name": "Paul", "email": "paul@test.fr"})
+    assert carte["lignes"] == ["Créer l'administrateur Paul Martin (paul@test.fr)"]
+    assert _faire(db_session, su, ecole, carte)[0]["ok"]
+
+
+def test_coordonnees_de_l_ecole(db_session, ecole):
+    admin, prof = ecole["admin"], ecole["prof"]
+    texte, carte = _proposer(db_session, admin, ecole, "update_school", {"siret": "123"})
+    assert carte is None and "Refusé" in texte  # SIRET faux : refusé avant la carte
+    _, carte = _proposer(db_session, prof, ecole, "update_school", {"city": "Le Beausset"})
+    assert carte is None
+    _, carte = _proposer(db_session, admin, ecole, "update_school", {"city": "Le Beausset", "contact_email": "bureau@test.fr"})
+    assert carte["lignes"] == ["Coordonnées de l'école : ville : Le Beausset, email de contact : bureau@test.fr"]
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    assert Ecoles().get(db_session, ecole["id"]).ville == "Le Beausset"
+
+
+def test_professeur_cree_modifie_supprime(db_session, ecole):
+    admin = ecole["admin"]
+    _, carte = _proposer(db_session, admin, ecole, "create_teacher", {"last_name": "Noir", "first_name": "Léa"})
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    lea = main.profs_client.list(db_session, ecole["id"])[-1]
+    _, carte = _proposer(db_session, admin, ecole, "update_teacher", {"teacher_id": lea.id, "phone": "0600000000"})
+    assert carte["lignes"] == ["Professeur Léa Noir : téléphone : 0600000000"]
+    _faire(db_session, admin, ecole, carte)
+    assert main.profs_client.get(db_session, lea.id).telephone == "0600000000"
+    _, carte = _proposer(db_session, admin, ecole, "delete_teacher", {"teacher_id": lea.id})
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    assert main.profs_client.get(db_session, lea.id) is None
+
+
+def test_eleve_et_choregraphie_supprimes(db_session, ecole):
+    admin, eleve = ecole["admin"], ecole["eleve"]
+    cours = main.cours_client.create(db_session, ecole_id=ecole["id"], nom="Jazz")
+    chore = main.choregraphies_client.create(db_session, cours.id, nom="Gala")
+    _, carte = _proposer(db_session, admin, ecole, "delete_choreography", {"choreography_id": chore.id})
+    assert carte["lignes"] == ["Supprimer la chorégraphie « Gala »"]
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    assert main.choregraphies_client.get(db_session, chore.id) is None
+    _, carte = _proposer(db_session, admin, ecole, "delete_student", {"student_id": eleve.id})
+    assert _faire(db_session, admin, ecole, carte)[0]["ok"]
+    assert main.eleves_client.get_compte(db_session, eleve.id) is None

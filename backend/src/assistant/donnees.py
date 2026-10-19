@@ -24,9 +24,11 @@ from choregraphies.models import Choregraphie, choregraphies_eleves, choregraphi
 from comptes import roles
 from comptes.models import Compte
 from cours.models import Cours, cours_professeurs, eleves_cours
+from ecoles.models import Ecole
 from eleves.eleves import calculer_age
 from eleves.models import ContactEleve, ProfilEleve
 from inscriptions.models import Inscription
+from messagerie.models import Conversation, ConversationMembre
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
 from saisons.models import Saison
 from saisons.portee import toutes_saisons
@@ -82,6 +84,13 @@ OUTILS_DONNEES = [
     _outil("lister_inscriptions_en_ligne",
            "Les fiches d'inscription reçues par la page publique : élève, date, moyen et statut de paiement, montants.", {}),
     _outil("lister_saisons", "Les saisons de l'école (nom, dates, laquelle est en cours).", {}),
+    _outil("lister_personnes",
+           "Toutes les personnes de l'école avec leurs rôles (élève, professeur, administrateur, trésorier, "
+           "administrateur principal), plus les Super Users, qu'on peut ajouter aux groupes. Filtre facultatif : un rôle.",
+           {"role": _prop(["string", "null"], "eleve, professeur, admin, tresorier, owner (administrateur principal), "
+                          "superuser, ou null pour tous.")}),
+    _outil("infos_ecole", "Les coordonnées de l'école (Admin > École) : nom, adresse, SIRET, IBAN, emails, adresse de l'appli.", {}),
+    _outil("lister_groupes", "Les groupes de la messagerie (Admin > Messages) et leurs membres (personnes et cours).", {}),
 ]
 NOMS = {o["name"] for o in OUTILS_DONNEES}
 # Hors admins (un professeur) : seulement ce que ses écrans montrent (Seb,
@@ -111,6 +120,13 @@ COLONNES_ROUGES = {
 
 def _nom(c: Compte) -> str:
     return f"{c.prenom} {c.nom}".strip()
+
+
+# Noms des rôles à l'écran (spec/core.md §4).
+NOMS_ROLES = {
+    roles.ELEVE: "élève", roles.PROFESSEUR: "professeur", roles.ADMIN: "administrateur",
+    roles.TRESORIER: "trésorier", roles.OWNER: "administrateur principal", roles.SUPERUSER: "Super User",
+}
 
 
 class DonneesEcole:
@@ -389,3 +405,49 @@ class DonneesEcole:
         return "\n".join(
             f"- {s.nom} : du {s.date_debut} au {s.date_fin}{' (en cours)' if s.id == courante else ''}" for s in saisons
         ) or "Aucune saison."
+
+    def _lister_personnes(self, db: Session, p: Perimetre, role=None) -> str:
+        if role is not None and role not in NOMS_ROLES:
+            return f"Rôle inconnu « {role} » : {', '.join(NOMS_ROLES)}."
+        # Le Super User n'a pas de fiche d'école (spec/core.md §6.1) : listé à part.
+        super_user = Compte.ecole_id.is_(None) & Compte.roles.any(role=roles.SUPERUSER)
+        requete = select(Compte).where((Compte.ecole_id == p.ecole_id) | super_user).order_by(Compte.nom, Compte.prenom)
+        if role is not None:
+            requete = requete.where(Compte.roles.any(role=role))
+        personnes = list(db.scalars(requete))
+        lignes = []
+        for c in personnes[:LIGNES_MAX]:
+            noms = [NOMS_ROLES[r] for r in NOMS_ROLES if roles.a_le_role(c, r)]
+            contact = "" if roles.is_superuser(c) else " ; " + (" ".join(x for x in (c.email, c.telephone) if x) or "sans contact")
+            lignes.append(f"- {_nom(c)} (id {c.id}) : {', '.join(noms)}{contact}")
+        reste = len(personnes) - LIGNES_MAX
+        return f"{len(personnes)} personnes.\n" + "\n".join(lignes) + (f"\n… et {reste} de plus." if reste > 0 else "")
+
+    def _infos_ecole(self, db: Session, p: Perimetre) -> str:
+        e = db.get(Ecole, p.ecole_id)
+        if e is None:
+            return "École introuvable."
+        # L'IBAN entier reste dans Admin > École : l'assistant n'en voit que la fin.
+        iban = f"se termine par {e.iban[-4:]}" if e.iban else "?"
+        return "\n".join([
+            f"{e.nom} (id {e.id})",
+            f"Adresse : {e.adresse or '?'}, {e.code_postal} {e.ville or ''}".rstrip(),
+            f"SIRET : {e.siret or '?'} ; IBAN : {iban}",
+            f"Email de contact : {e.email_contact or '?'} ; email du trésorier : {e.email_tresorier or '?'}",
+            f"Adresse de l'appli : {e.sous_domaine} ; nom de l'appli : {e.nom_appli or e.nom} ; slogan : {e.slogan or 'aucun'}",
+        ])
+
+    def _lister_groupes(self, db: Session, p: Perimetre) -> str:
+        groupes = list(db.scalars(
+            select(Conversation).where(Conversation.ecole_id == p.ecole_id, Conversation.type == "groupe").order_by(Conversation.nom)
+        ))
+        lignes = []
+        for g in groupes:
+            membres = list(db.scalars(select(ConversationMembre).where(ConversationMembre.conversation_id == g.id)))
+            noms = []
+            for m in membres:
+                x = db.get(Compte if m.membre_type == "compte" else Cours, m.membre_id)
+                if x is not None:
+                    noms.append(_nom(x) if m.membre_type == "compte" else f"le cours {x.nom}")
+            lignes.append(f"- « {g.nom or 'sans nom'} » (id {g.id}) : {', '.join(noms) or 'aucun membre'}")
+        return "\n".join(lignes) or "Aucun groupe."
