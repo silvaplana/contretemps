@@ -275,9 +275,14 @@ montre une vignette floue avec la taille et un bouton de téléchargement. Ici, 
 Depuis YouTube, la galerie photos, Chrome…, le bouton **Partager** du téléphone propose Contretemps dans
 la liste des applis, comme WhatsApp.
 
-- Techniquement : l'appli installée (sur l'écran d'accueil) se déclare « cible de partage » dans son
-  manifeste (`share_target`, manifeste par école servi par `personnalisation/`), et le service worker
-  (`public/sw.js`) reçoit ce qui est partagé.
+- Techniquement, deux façons d'installer l'appli existent, et chacune a sa porte :
+  - **appli web installée** (écran « Installez l'application » → icône sur l'écran d'accueil, manifeste
+    par école servi par `personnalisation/`, `public/sw.js`) : le manifeste se déclare « cible de partage »
+    (`share_target`) et le service worker reçoit ce qui est partagé. C'est ce qu'utilisent les membres
+    aujourd'hui (le README, qui dit « pas de PWA », est en retard sur le code) ;
+  - **appli Android Capacitor** (`frontend/android/`, ANDROID.md) si elle est un jour distribuée : un filtre
+    d'intent `ACTION_SEND` dans `AndroidManifest.xml` et un greffon de partage entrant, qui ouvrent le même
+    écran.
 - Partager ouvre l'écran **« Envoyer à… »** : le même que pour Transférer (§4.2), conversations et contacts
   avec cases à cocher et recherche, et en haut un aperçu de ce qui part (le lien, le texte, la photo).
   « Envoyer (N) » toujours visible en bas ; on arrive ensuite dans la conversation si un seul destinataire,
@@ -285,9 +290,9 @@ la liste des applis, comme WhatsApp.
 - Pas connecté : on se connecte d'abord, puis l'écran « Envoyer à… » s'ouvre avec ce qui a été partagé.
 - Ce qui peut être partagé : un lien et du texte (première PR, avec §4.1-4.2), puis des photos, vidéos et
   fichiers (avec §4.3-4.5).
-- **Limite** : fonctionne sur **Android** (Chrome) quand l'appli est installée. **Pas sur iPhone** : Apple ne
-  le permet pas pour une appli web ; il faudrait une vraie appli iPhone (voir ANDROID.md pour la piste
-  d'appli native). Sur iPhone on continue par copier-coller.
+- **Limite** : fonctionne sur **Android** quand l'appli est installée. **Pas sur iPhone** tant qu'il n'y a
+  qu'une appli web : Apple ne le permet pas. Le jour où une appli iPhone Capacitor existera, une extension
+  de partage iOS le permettra. D'ici là, sur iPhone, on continue par copier-coller.
 
 ## 5. Hors de cette étape
 
