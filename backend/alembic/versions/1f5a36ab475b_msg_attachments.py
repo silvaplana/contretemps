@@ -4,7 +4,7 @@ Photos and files of the messages (spec/modules/messagerie-instantanee.md §4.3-4
 Written from the autogenerate output, without its unrelated drift (nf_ tables...).
 
 Revision ID: 1f5a36ab475b
-Revises: fd4abbeaf71e
+Revises: c3e5a7b9d1f2
 Create Date: 2026-10-19 12:47:02.674858
 
 """
@@ -16,7 +16,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '1f5a36ab475b'
-down_revision: Union[str, Sequence[str], None] = 'fd4abbeaf71e'
+down_revision: Union[str, Sequence[str], None] = 'c3e5a7b9d1f2'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
