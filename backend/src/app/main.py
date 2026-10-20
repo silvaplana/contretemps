@@ -32,7 +32,7 @@ from choregraphies.actions import actions as actions_choregraphies
 from cours.actions import actions as actions_cours
 from ecoles.actions import actions as actions_ecoles
 from eleves.actions import actions as actions_eleves
-from db import Base, engine
+from db import Base, SessionLocal, engine
 from documents import Documents, DocumentsReceiver, LocalStorage
 from documents_contretemps import (
     DOSSIER_DOCUMENTS,
@@ -66,7 +66,7 @@ from notes_frais_contretemps import (
     membre_appelant as membre_notes_frais,
 )
 from notes_frais_contretemps.actions import actions as actions_notes_frais
-from finances import Finances, FinancesReceiver
+from finances import Finances, FinancesReceiver, FinancialReports
 from finances_contretemps import membre_appelant as membre_finances, saisons_de_l_ecole
 from profs.actions import actions as actions_profs
 from presence import Presence, PresenceReceiver
@@ -358,7 +358,17 @@ notes_frais_receiver = NotesDeFraisReceiver(client=notes_frais_client, app=app, 
 # Comptes (module `finances`, repris de Sambo Admin, branché sur Contretemps
 # par finances_contretemps/ ; spec/modules/financier.md).
 finances_client = Finances()
-finances_receiver = FinancesReceiver(client=finances_client, app=app, current_member=membre_finances, seasons=saisons_de_l_ecole)
+# Bilan : tableau calculé depuis l'historique des comptes, analyse par l'API
+# Claude (ANTHROPIC_API_KEY), coût noté à l'école comme celui de l'assistant.
+finances_reports = FinancialReports(
+    ledger=finances_client.get_ledger,
+    seasons=saisons_de_l_ecole,
+    session_factory=SessionLocal,
+    note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "bilan_financier", cout, detail),
+)
+finances_receiver = FinancesReceiver(
+    client=finances_client, app=app, current_member=membre_finances, seasons=saisons_de_l_ecole, reports=finances_reports
+)
 
 # Actions que les modules ouvrent à l'assistant (spec/modules/assistant-ia.md
 # §3) : chaque module les déclare dans son actions.py, la liste est ici.

@@ -5,6 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
+import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestStatementImport } from '../finances/Comptes.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeStatut } from './commun.jsx'
@@ -15,16 +16,18 @@ import './notes-frais.css'
 const SOUS_ONGLETS = [
   { value: 'comptes', label: 'Comptes' },
   { value: 'notes', label: 'Notes de frais' },
+  { value: 'bilan', label: 'Bilan' },
 ]
 
 // Onglet Financier, trésoriers et Super User seulement (spec/modules/
-// notes-de-frais.md §7) : Comptes (spec/modules/financier.md), puis Notes
-// de frais.
+// notes-de-frais.md §7) : Comptes et Bilan (spec/modules/financier.md),
+// Notes de frais.
 export default function Financier() {
   // Repart du dernier sous-onglet affiché sur cet appareil.
-  const [sousOnglet, setSousOnglet] = useState(() =>
-    sessionApi.lireEcran('financier') === 'comptes' ? 'comptes' : 'notes',
-  )
+  const [sousOnglet, setSousOnglet] = useState(() => {
+    const dernier = sessionApi.lireEcran('financier')
+    return SOUS_ONGLETS.some((o) => o.value === dernier) ? dernier : 'notes'
+  })
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier', sousOnglet)
   }, [sousOnglet])
@@ -55,7 +58,9 @@ export default function Financier() {
         actions={
           sousOnglet === 'comptes'
             ? [{ label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport }]
-            : [
+            : sousOnglet === 'bilan'
+              ? [{ label: 'Nouveau bilan', icon: 'plus', onClick: requestNewReport }]
+              : [
                 { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
                 { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
               ]
@@ -79,6 +84,8 @@ export default function Financier() {
       />
       {sousOnglet === 'comptes' ? (
         <Comptes />
+      ) : sousOnglet === 'bilan' ? (
+        <Bilan />
       ) : (
         <NotesATraiter />
       )}

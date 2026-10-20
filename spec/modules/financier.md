@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.1, 20 octobre 2026. Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.2, 20 octobre 2026. Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -21,9 +21,9 @@ d'une saisie ni d'une IA ; l'appli calcule, l'assistant commente.
 
 Onglet **Financier**, trésoriers et Super User seulement (`core.md` §4). Sous-onglets, dans l'ordre :
 
-1. **Comptes** (§3) — fait, cette version.
+1. **Comptes** (§3) — fait.
 2. **Notes de frais** (`notes-de-frais.md`) — fait.
-3. **Bilan** — à reprendre de Sambo Admin (`financialreports/`).
+3. **Bilan** (§4) — fait, cette version.
 4. **Assemblée générale** — à reprendre (`generalassemblies/`, PPT du trésorier).
 5. **Prévisionnel** — à reprendre (`forecasts/`).
 
@@ -82,9 +82,49 @@ organisation ne voit que ses comptes (`org_id`).
 L'appli hôte fournit le membre (`finances_contretemps/adapter.py` : trésorier, ou Super User avec
 l'école choisie par l'en-tête `X-Ecole-Id`) et les saisons de l'organisation.
 
-## 4. Reste à faire
+## 4. Bilan
 
-- Bilan, Assemblée générale, Prévisionnel : repris de Sambo Admin, dans cet ordre, une PR chacun.
+Repris de Sambo Admin (`financialreports/`). Un **bilan** est le compte d'exploitation d'une saison,
+calculé par l'appli à partir des opérations de tous les comptes (§3), virements internes exclus.
+
+### 4.1 Ce que fait l'appli, ce que fait l'analyse
+
+- **L'appli calcule** : recettes et dépenses par catégorie et par mois, résultat, soldes de début et
+  de fin (tous les comptes), et la **vérification** « solde de début + recettes − dépenses = solde de
+  fin réel » (écart affiché sinon). Saison en cours : arrêtée au dernier jour connu des comptes.
+  Comparaison avec la saison précédente (écart en % par catégorie) et rappel des trois saisons
+  d'avant.
+- **L'analyse** (modèle de langage, jamais nommé « IA » à l'écran) classe les opérations restées
+  dans « Autres » (marquées « classé automatiquement ») et écrit **5 lignes** de commentaire selon
+  les consignes du trésorier. Elle ne produit aucun chiffre : le tableau est recalculé avec son
+  classement. Les classements d'un bilan **Officiel** servent de référence aux bilans suivants.
+- Modèle au choix (Haiku, Sonnet par défaut, Opus, Fable), **coût** affiché en euros et noté dans
+  Ressources (catégorie « Financier : analyse des bilans »). Le calcul tourne en arrière-plan, l'écran
+  relit le bilan jusqu'à la fin.
+
+### 4.2 L'écran
+
+Sous-onglet **Bilan** : saison (celle en cours par défaut, nombre de bilans par saison), puces
+Tous | Brouillon | Validé | Officiel, liste des bilans (nom, état, modèle, coût, date ; suppression).
+**⋯ › Nouveau bilan**. Un bilan : nom, état, consignes pour l'analyse, modèle, coût cumulé ;
+**Enregistrer** et **Produire le bilan** ; résultat : période, vérification, quatre chiffres
+(recettes, dépenses, excédent ou déficit, solde de fin, avec la saison précédente), analyse, tableau
+**Par catégorie** (avec écart) ou **Par mois** (le modèle du trésorier) ; téléchargement **Excel** et
+**PDF**. Un seul bilan Officiel par saison : passer un bilan en Officiel ramène l'ancien en Validé.
+
+Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées ; pas de fichier
+Docs (décision de Seb : les produits seront rangés dans Docs › Financier plus tard).
+
+### 4.3 Données et routes
+
+Table `fin_reports` (organisation, saison, nom, état brouillon / valide / officiel, consignes,
+modèle, coût cumulé en dollars, résultat JSON, statut du calcul, erreur). Routes
+`GET /finances/reports?seasonId=`, `POST /finances/reports`, `GET|PUT|DELETE /finances/reports/{id}`,
+`POST /finances/reports/{id}/run`, `GET /finances/reports/{id}/download?format=xlsx|pdf`.
+
+## 5. Reste à faire
+
+- Assemblée générale, Prévisionnel : repris de Sambo Admin, dans cet ordre, une PR chacun.
 - Actions de l'Assistant IA pour les quatre sous-modules.
 - Connexion bancaire (Enable Banking) quand le contrat est réglé.
 - Améliorations notées : tableau plus lisible sur téléphone, catégories modifiables, « reste à

@@ -17,7 +17,7 @@ async function appel(chemin, options = {}) {
     }
     throw new Error(message)
   }
-  return reponse.json()
+  return reponse.status === 204 ? null : reponse.json()
 }
 
 // Historique de tous les comptes (accountId absent) ou d'un seul.
@@ -41,3 +41,17 @@ export function dateFr(isoDate) {
   const [year, month, day] = isoDate.split('-')
   return `${day}/${month}/${year}`
 }
+
+// --- Bilan (sous-module, spec §4) ---
+
+const json = (method, corps) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) })
+
+// Bilans de la saison, modèles et états possibles, nombre de bilans par saison.
+export const bilans = (seasonId) => appel(`/reports?seasonId=${seasonId}`)
+export const bilan = (id) => appel(`/reports/${id}`)
+export const creerBilan = (donnees) => appel('/reports', json('POST', donnees))
+export const modifierBilan = (id, donnees) => appel(`/reports/${id}`, json('PUT', donnees))
+export const supprimerBilan = (id) => appel(`/reports/${id}`, { method: 'DELETE' })
+// Lance le calcul (tableau + analyse) : le bilan revient en « running ».
+export const calculerBilan = (id, donnees) => appel(`/reports/${id}/run`, json('POST', donnees))
+export const urlTelechargementBilan = (id, format) => `${BASE}/reports/${id}/download?format=${format}`
