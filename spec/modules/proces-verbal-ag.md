@@ -141,10 +141,13 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
 
 ## 5. Données
 
-- **Présents** : la table `doc_attendance` prévue à l'étape 2 des procurations (`procurations.md` §5 :
-  `id`, `org_id`, `node_id` de la convocation, `person_id`, `present_at`, `marked_by`), plus une colonne
-  `source` (`photo` ou `hand`). La photo et la feuille d'émargement écrivent la même table : une seule
-  liste des présents par AG. À coordonner avec le fil des procurations (une seule migration).
+- **Présents** : la table `doc_attendance` de la feuille d'émargement (procurations, PR #38 :
+  `id`, `org_id`, `node_id` de la convocation, `person_id` unique par convocation, `present_at`,
+  `marked_by`, `source` `hand` ou `photo`). La photo pointe par `assembly.mark(..., source="photo")`
+  et le décompte du jour (présents, représentés, pouvoirs perdus, quorum) vient de
+  `assembly.sheet(...)` : une seule liste des présents par AG, **pas de nouvelle table** pour le PV.
+  Un nom lu sur la photo et rapproché de personne n'est pas pointé : il est montré dans les doutes
+  (« Ajouter une personne » ou « Ignorer »).
 - **Lien PV → convocation** : le PV garde l'identifiant de la convocation dans son contenu
   (`content_json.source`, sans nouvelle colonne), pour retrouver présents, pouvoirs et ordre du jour.
 - **Chiffres du Financier** : lus par un port de `documents/ports.py` (`approved_report(org_id, season)`),
@@ -173,14 +176,14 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
 
 ## 7. Étapes (une PR chacune, sur « vas-y »)
 
-Après l'étape 1 des procurations (convocation, procurations signées, `validate_app_file`,
-`send_app_file`, `app_file_pdf`).
+Prérequis : l'étape 1 des procurations (PR #34, en ligne le 21 octobre) et la feuille d'émargement
+(PR #38) dans `main`.
 
 0. **Le bureau** (core) : la coche Trésorier renommée « Accès au Financier » à l'écran, colonne
    Bureau dans École › Administrateurs, `bureau_functions`, recopie
    à la création de saison, outil de l'assistant pour la changer (mêmes droits que les coches).
-1. **La liste des présents** : photo, lecture, rapprochement, doutes, écran du quorum, table
-   `doc_attendance`, outils `start_minutes`, `read_attendance_photo`, `save_attendance`.
+1. **La liste des présents** : photo, lecture, rapprochement, doutes, écran du quorum (repris de
+   la feuille d'émargement, `assembly.sheet`), outils `start_minutes`, `read_attendance_photo`, `save_attendance`.
    *Vérification* : tests du rapprochement (homonymes, initiales, inconnu), du comptage (procuration
    annulée par la présence, pouvoir perdu), de l'étanchéité ; essai avec une vraie photo de feuille.
 2. **Le PV** : bandeau et tuile, gabarit, proposition à partir du PV de l'an dernier, contrôle des
