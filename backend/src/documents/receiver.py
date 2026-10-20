@@ -12,12 +12,13 @@ from collections.abc import Callable
 from urllib.parse import quote
 
 from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from db import get_db
 
+from . import assembly
 from .ports import Member
 from .service import DocError, Documents
 from .storage import FileTooLarge
@@ -29,7 +30,7 @@ class Target(BaseModel):
 
 
 class SendRequest(BaseModel):
-    principals: list[Target] = Field(default_factory=list, max_length=200)
+    principals: list[Target] = Field(default_factory=list, max_length=1000)
     message: str | None = Field(default=None, max_length=2000)
 
 
@@ -81,6 +82,17 @@ class AppSave(BaseModel):
 
 class AppAnswer(BaseModel):
     values: dict
+
+
+class TrialRequest(BaseModel):
+    person_id: int | None = None
+
+
+class Convene(BaseModel):
+    kind: str
+    starts_at: str = Field(max_length=40)
+    folder_id: int | None = None
+    new_folder: bool = False
 
 
 class TemplateNew(BaseModel):
@@ -331,8 +343,12 @@ class DocumentsReceiver:
             return resume
 
         @self.app.post(base + "/nodes/{node_id}/app/sends/trial", status_code=201)
-        def send_trial(org_id: int, node_id: int, taches: BackgroundTasks, db: Session = db_dep, m: Member = member):
-            resume, jobs = appel(lambda: sends.trial(db, self._member(org_id, m), node_id))
+        def send_trial(
+            org_id: int, node_id: int, taches: BackgroundTasks, data: TrialRequest | None = None,
+            db: Session = db_dep, m: Member = member,
+        ):
+            qui = data.person_id if data else None
+            resume, jobs = appel(lambda: sends.trial(db, self._member(org_id, m), node_id, qui))
             taches.add_task(sends.deliver, db.get_bind(), jobs)
             return resume
 
@@ -348,6 +364,24 @@ class DocumentsReceiver:
         @self.app.post("/documents/public/links/{token}/answers", status_code=201)
         def link_answer(token: str, data: AppAnswer, db: Session = db_dep):
             return appel(lambda: sends.link_answer(db, token, data.values))
+
+        # Assemblée générale : convocation et procurations (procurations.md)
+        @self.app.post(base + "/assemblies", status_code=201)
+        def convene(org_id: int, data: Convene, db: Session = db_dep, m: Member = member):
+            return appel(lambda: assembly.convene(
+                self.client, db, self._member(org_id, m), data.kind, data.starts_at, data.folder_id, data.new_folder,
+            ))
+
+        @self.app.get(base + "/nodes/{node_id}/app/assembly")
+        def assembly_overview(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: assembly.overview(self.client, db, self._member(org_id, m), node_id))
+
+        @self.app.get(base + "/nodes/{node_id}/app/assembly/{what}")
+        def assembly_export(org_id: int, node_id: int, what: str, db: Session = db_dep, m: Member = member):
+            if what not in ("summary.pdf", "summary.xlsx", "convocation.pdf"):
+                raise HTTPException(status_code=404, detail="Introuvable")
+            contenu, mime, nom = appel(lambda: assembly.export(self.client, db, self._member(org_id, m), node_id, what))
+            return Response(contenu, media_type=mime, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nom)}"})
 
         # Modèles de l'école (fichier-de-base.md §5)
         @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)

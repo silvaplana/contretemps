@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from . import access, app_content
+from . import access, app_content, assembly
 from .app_content import ContentError
 from .models import (
     FAMILIES,
@@ -189,6 +189,7 @@ class AppFiles:
             raise self._error(409, "Rien à remplir : ce fichier se lit seulement.")
         try:
             gardees = app_content.check_values(version.content, values, test=True)
+            gardees = assembly.check_answer(self.docs, db, node, version.content, gardees, member.person_id, None, test=True)
         except ContentError as erreur:
             raise self._error(422, str(erreur)) from erreur
         reponse = DocResponse(
@@ -390,6 +391,8 @@ class AppFiles:
         version = self.current_version(db, node)
         if version is None or not version.content.get("entry", {}).get("blocks"):
             raise self._error(409, "La page est vide.")
+        if assembly.block_of(version.content) is not None:
+            raise self._error(409, "Une convocation part par lien personnel : chacun répond et signe pour lui-même.")
         p = self._publication(db, node)
         if p is None:
             p = DocPublication(org_id=node.org_id, node_id=node.id, slug=self._free_slug(db, node.org_id, node.name))
@@ -442,7 +445,7 @@ class AppFiles:
 
     def public_answer(self, db: Session, org_id: int, slug: str, values) -> dict:
         _, node, version = self._online(db, org_id, slug)
-        if node.family == "inform" or node.status != "official":
+        if node.family == "inform" or node.status != "official" or assembly.block_of(version.content) is not None:
             raise self._error(409, "Les réponses sont fermées.")
         try:
             gardees = app_content.check_values(version.content, values, test=False)

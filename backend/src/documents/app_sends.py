@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import app_content
+from . import app_content, assembly
 from .app_content import ContentError
 from .models import LEVEL_MANAGE, DocNode, DocResponse, DocSend, utcnow
 from .ports import Member
@@ -102,10 +102,12 @@ class AppSends:
     # Essai sur soi-même (Seb, 16 octobre)
     # ------------------------------------------------------------------
 
-    def trial(self, db: Session, member: Member, node_id: int) -> tuple[dict, list[dict]]:
+    def trial(self, db: Session, member: Member, node_id: int, person_id: int | None = None) -> tuple[dict, list[dict]]:
         """Envoie le fichier à soi-même, dans tous les états : on reçoit le
         mail, on répond par son lien, la réponse arrive dans Résultats comme
-        un essai (elle ne compte pas). Le même lien resert à chaque essai."""
+        un essai (elle ne compte pas). Le même lien resert à chaque essai.
+        `person_id` : l'essai part à un autre membre choisi (procurations.md
+        §1.3, « Faire un essai avec un membre »)."""
         node = self.apps._app_node(db, member, node_id)
         self.docs._require(db, member, self.docs._locate(db, member, node), LEVEL_MANAGE)
         version = self.apps.current_version(db, node)
@@ -113,18 +115,22 @@ class AppSends:
             raise self._error(409, "Le formulaire d'entrée est vide.")
         if not self._mailer_ok():
             raise self._error(409, "L'envoi d'emails n'est pas configuré sur ce serveur.")
+        autre = person_id is not None and person_id != member.person_id
+        qui = person_id if autre else member.person_id
         # L'adresse de connexion d'abord ; sinon celle de sa fiche dans l'école.
-        trouves = self.docs.directory.recipients(db, member.org_id, [("member", str(member.person_id))])
+        trouves = self.docs.directory.recipients(db, member.org_id, [("member", str(qui))])
+        if autre and not trouves:
+            raise self._error(404, "Membre introuvable")
         nom = trouves[0].name if trouves else member.display_name
-        email = member.email or (trouves[0].email if trouves else None)
+        email = (trouves[0].email if trouves else None) if autre else member.email or (trouves[0].email if trouves else None)
         if not email:
-            raise self._error(409, "Votre fiche n'a pas d'adresse email.")
+            raise self._error(409, f"La fiche de {nom} n'a pas d'adresse email." if autre else "Votre fiche n'a pas d'adresse email.")
         s = db.scalar(
-            select(DocSend).where(DocSend.node_id == node.id, DocSend.channel == "trial", DocSend.person_id == member.person_id)
+            select(DocSend).where(DocSend.node_id == node.id, DocSend.channel == "trial", DocSend.person_id == qui)
         )
         if s is None:
             s = DocSend(
-                org_id=node.org_id, node_id=node.id, token=secrets.token_urlsafe(24), person_id=member.person_id,
+                org_id=node.org_id, node_id=node.id, token=secrets.token_urlsafe(24), person_id=qui,
                 channel="trial", test=True,
             )
             db.add(s)
@@ -134,7 +140,7 @@ class AppSends:
         ecole, adresse = self.docs.mailer.org(db, node.org_id)
         sujet, texte, html = compose(
             node.name, node.family, version.content, s.name, "", f"{adresse}/r/{s.token}",
-            ecole, member.display_name, True, False, trial=True,
+            ecole, member.display_name, True, False, trial="other" if autre else True,
         )
         job = {"send_id": s.id, "to": s.email, "subject": sujet, "text": texte, "html": html,
                "sender_name": ecole, "reply_to": None}
@@ -265,6 +271,8 @@ class AppSends:
             "content": {"schema": version.content.get("schema", 1), "entry": version.content.get("entry", {"blocks": []})},
             "accepting": self._accepting(s, node),
             "values": reponse.values if reponse is not None else None,
+            # Convocation : qui peut représenter ce membre (procurations.md §3).
+            "assembly": assembly.link_context(self.docs, db, node, version.content, s.person_id),
         }
 
     def link_answer(self, db: Session, token: str, values) -> dict:
@@ -274,9 +282,14 @@ class AppSends:
         version = self.apps.current_version(db, node)
         try:
             gardees = app_content.check_values(version.content, values, test=s.test)
+            reponse = db.get(DocResponse, s.response_id) if s.response_id else None
+            bloc = assembly.block_of(version.content)
+            avant = (reponse.values or {}).get(bloc["id"]) if reponse is not None and bloc is not None else None
+            gardees = assembly.check_answer(
+                self.docs, db, node, version.content, gardees, s.person_id, reponse.id if reponse else None, s.test, avant,
+            )
         except ContentError as erreur:
             raise self._error(422, str(erreur)) from erreur
-        reponse = db.get(DocResponse, s.response_id) if s.response_id else None
         if reponse is None:
             reponse = DocResponse(
                 org_id=node.org_id, node_id=node.id, person_id=s.person_id, email=s.email,
@@ -287,12 +300,14 @@ class AppSends:
         db.flush()
         s.response_id, s.answered_at = reponse.id, utcnow()
         db.commit()
+        if bloc is not None and not s.test:
+            assembly.after_answer(self.docs, db, node, reponse, s.name, avant)
         return {"ok": True}
 
 
 def compose(
     name: str, family: str, content: dict, person: str, message: str, link: str,
-    org_name: str, sender: str, test: bool, can_reply: bool, trial: bool = False,
+    org_name: str, sender: str, test: bool, can_reply: bool, trial: bool | str = False,
 ) -> tuple[str, str, str]:
     """L'email : une version lisible du formulaire d'entrée (tout le texte
     pour un fichier à lire, l'introduction sinon) et le lien personnel,
@@ -300,7 +315,12 @@ def compose(
     sujet = ("[Essai] " if trial else "[Relecture] " if test else "") + name
     paragraphes = [message] if message else []
     paragraphes += app_content.readable(content, intro_only=family != "inform")
-    if trial:
+    if trial == "other":
+        paragraphes.append(
+            f"Essai : {sender} vous envoie ce fichier pour vérifier ce que recevront les membres. "
+            "Votre réponse est un essai : elle ne compte pas."
+        )
+    elif trial:
         paragraphes.append(
             "Essai : vous vous êtes envoyé ce fichier pour voir ce que recevront les autres. "
             "Votre réponse est un essai : elle apparaîtra dans Résultats avec la mention « Essai », sans compter."
@@ -311,20 +331,28 @@ def compose(
             "Vos réponses sont des essais, elles ne comptent pas."
         )
     bouton = BUTTONS.get(family, "Ouvrir")
+    # Convocation : un lien par réponse (procurations.md §1.1).
+    choix = [(texte, f"{link}?c={c}") for c, texte in assembly.CHOICES] if assembly.block_of(content) else []
     fin = ["Ce lien vous est personnel : ne le transférez à personne."]
+    if choix:
+        fin.insert(0, "Vous pourrez changer d'avis avec le même lien jusqu'au début de l'assemblée.")
     fin.append(
         f"Message envoyé par {sender} pour {org_name}."
         + (" Pour lui écrire, répondez simplement à ce mail." if can_reply else "")
     )
-    texte = "\n\n".join([f"Bonjour {person},", *paragraphes, f"{bouton} :\n{link}", *fin]) + "\n"
+    liens = [f"{t} :\n{u}" for t, u in choix] or [f"{bouton} :\n{link}"]
+    texte = "\n\n".join([f"Bonjour {person},", *paragraphes, *liens, *fin]) + "\n"
     p = '<p style="margin:0 0 16px;white-space:pre-line">{}</p>'
     html = (
         '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#222;max-width:520px">'
         + f'<p style="margin:0 0 16px;font-size:20px;font-weight:bold">{escape(name)}</p>'
         + p.format(f"Bonjour {escape(person)},")
         + "".join(p.format(escape(x)) for x in paragraphes)
-        + f'<p style="margin:24px 0 4px;font-weight:bold">{escape(bouton)} :</p>'
-        + f'<p style="margin:0 0 24px;word-break:break-all">{escape(link)}</p>'
+        + "".join(
+            f'<p style="margin:24px 0 4px;font-weight:bold">{escape(t)} :</p>'
+            f'<p style="margin:0 0 24px;word-break:break-all">{escape(u)}</p>'
+            for t, u in choix or [(bouton, link)]
+        )
         + "".join(f'<p style="margin:0 0 8px;font-size:13px;color:#777">{escape(x)}</p>' for x in fin)
         + "</div>"
     )
