@@ -28,6 +28,7 @@ CATEGORIES_IA = {
     "chat_documents": "Chat documents",
     "lecture_ticket": "Notes de frais : lecture des tickets",
     "bilan_financier": "Financier : analyse des bilans",
+    "assemblee_generale": "Financier : PowerPoint des assemblées générales",
 }
 
 # Postes comptés dans le plafond mensuel de l'assistant (la lecture des

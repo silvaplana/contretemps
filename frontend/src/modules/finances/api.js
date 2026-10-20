@@ -55,3 +55,30 @@ export const supprimerBilan = (id) => appel(`/reports/${id}`, { method: 'DELETE'
 // Lance le calcul (tableau + analyse) : le bilan revient en « running ».
 export const calculerBilan = (id, donnees) => appel(`/reports/${id}/run`, json('POST', donnees))
 export const urlTelechargementBilan = (id, format) => `${BASE}/reports/${id}/download?format=${format}`
+
+// --- Assemblée générale (sous-module, spec §5) ---
+
+const fichier = (chemin, f) => {
+  const body = new FormData()
+  body.append('file', f)
+  return appel(chemin, { method: 'POST', body })
+}
+
+// AG de la saison, modèles et états, bilan et PowerPoint modèle par défaut,
+// nombre d'AG par saison.
+export const assemblees = (seasonId) => appel(`/assemblies?seasonId=${seasonId}`)
+export const assemblee = (id) => appel(`/assemblies/${id}`)
+export const creerAssemblee = (donnees) => appel('/assemblies', json('POST', donnees))
+export const modifierAssemblee = (id, donnees) => appel(`/assemblies/${id}`, json('PUT', donnees))
+export const supprimerAssemblee = (id) => appel(`/assemblies/${id}`, { method: 'DELETE' })
+// Lance la préparation du PowerPoint : l'AG revient en « running ».
+export const produireAssemblee = (id, donnees) => appel(`/assemblies/${id}/run`, json('POST', donnees))
+// PowerPoint retouché par le trésorier, PowerPoint modèle de l'AG, modèle général de l'école.
+export const envoyerPptModifie = (id, f) => fichier(`/assemblies/${id}/upload`, f)
+export const envoyerPptModele = (id, f) => fichier(`/assemblies/${id}/model`, f)
+export const envoyerModeleGeneral = (f) => fichier('/assemblies/template', f)
+export const copierPptModele = (id, sourceId, kind) => appel(`/assemblies/${id}/model`, json('PUT', { sourceId, kind }))
+export const sourcesDeModele = (exclude) => appel(`/assemblies/model-sources${exclude == null ? '' : `?exclude=${exclude}`}`)
+export const urlTelechargementAssemblee = (id, kind) => `${BASE}/assemblies/${id}/download${kind ? `?kind=${kind}` : ''}`
+export const diapos = (id, kind) => appel(`/assemblies/${id}/files/${kind}/slides`)
+export const urlDiapo = (id, kind, image) => `${BASE}/assemblies/${id}/files/${kind}/slides/${image}.png`

@@ -32,3 +32,5 @@ class Season:
     start_date: str
     end_date: str
     current: bool = False
+    # Nombre d'inscrits de la saison (rapport d'activité de l'AG), si connu.
+    members: int | None = None
