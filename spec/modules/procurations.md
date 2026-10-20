@@ -128,6 +128,26 @@ appelée par la tuile et par l'action `convene_assembly` de `documents/actions.p
    convocation » est proposé à côté. L'assistant ne signe jamais à la place d'un membre et n'écrit
    aucun chiffre (dates et effectifs viennent du code).
 
+### 1.4 Les outils de l'assistant (Seb, 20 octobre : « à toi de savoir quels outils il faut »)
+
+Règle : **un bouton de l'écran = un outil de l'assistant**, qui appelle la même fonction du code.
+Déclarés dans `documents/actions.py` (dataclass Action, format de l'Assistant IA), droits identiques à
+l'écran (niveau `manage` sur le fichier, comme Diffuser).
+
+| Étape à l'écran | Outil | Carte | Existe déjà ? |
+|---|---|---|---|
+| Convoquer l'AG + les deux questions + dossier | `convene_assembly(kind, date, time, folder_id?)` : crée la convocation en Brouillon ; si le dossier est incertain, renvoie les dossiers trouvés et l'assistant pose la question | aucune (un brouillon s'efface) | non, étape 1 |
+| Corriger l'aperçu | `modifier_fichier_appli` | Annuler sous la modification | **oui** (`assistant/fichier_appli.py`) |
+| Valider | `validate_app_file(node_id)` : passe en Officiel | Faire / Annuler | non, étape 1 |
+| Envoyer aux N membres | `send_app_file(node_id, recipients?)` : destinataires par défaut comme à l'écran ; le nombre et les noms de la carte viennent du code | Faire / Annuler | non, étape 1 (reprend `app_sends.py`) |
+| Télécharger la convocation | `app_file_pdf(node_id)` : renvoie le lien du PDF | aucune | non, étape 1 |
+| Voir les réponses | `assembly_status(node_id)` : viennent, procurations (qui à qui), ne viennent pas, sans réponse, quorum ; chiffres calculés par le code | aucune | non, étape 4 |
+| Relancer | `remind_non_respondents(node_id)` | Faire / Annuler | non, étape 4 |
+| Télécharger le récapitulatif, les pouvoirs | `assembly_summary_pdf(node_id)`, `assembly_proxies_zip(node_id)` | aucune | non, étape 4 |
+
+`validate_app_file`, `send_app_file` et `app_file_pdf` servent à tout fichier de base, pas seulement à
+l'AG. Jamais d'outil pour signer, ni pour répondre à la place d'un membre.
+
 ## 2. Hypothèses (à confirmer par Seb)
 
 1. **Un bloc, pas un écran à part.** La procuration est un bloc du fichier de base, nature Questionner :
@@ -288,5 +308,6 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
    aux non-répondants J-7 (`a-faire.md`, déjà prête à faire).
 4. **L'Assistant IA, le reste** : où en est le quorum, qui n'a pas répondu, relancer.
 
-L'action **Convoquer l'AG** de l'assistant (`documents/actions.py`, §1.3) vient avec l'étape 1, à la
-demande de Seb (20 octobre) : l'outil doit marcher par l'assistant dès le départ.
+Les outils de l'assistant des étapes de la convocation (§1.4 : `convene_assembly`,
+`validate_app_file`, `send_app_file`, `app_file_pdf`) viennent avec l'étape 1, à la demande de Seb
+(20 octobre) : tout ce que fait l'écran doit marcher par l'assistant dès le départ.
