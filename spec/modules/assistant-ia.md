@@ -85,6 +85,7 @@ quelle, avec les routes, les onglets et les rôles.
 | Élèves | Supprimer un élève. Le créer et le modifier passent par la carte des modifications de données. | Administrateurs |
 | Chorégraphies *(Contretemps)* | Supprimer une chorégraphie avec ses vidéos. La créer et la modifier passent par la carte des modifications de données. | Administrateurs |
 | Notes de frais | Faire une note (une ou plusieurs dépenses) et l'envoyer aux trésoriers, pour soi ou, si on est trésorier, pour quelqu'un d'autre. Sans RIB enregistré, seulement en don. Les justificatifs s'ajoutent ensuite dans l'appli. | Tous ceux qui ont l'assistant |
+| Financier | Produire le bilan, le PowerPoint de l'AG (à partir du bilan et d'un PowerPoint modèle) ou un prévisionnel d'une saison (`financier.md` §7). | Trésoriers et Super User |
 
 En lecture (Seb, 19 octobre : « tout ce que contient l'onglet Admin »), réservé aux administrateurs :
 toutes les personnes avec leurs rôles, Super Users compris, filtrables par rôle ; les coordonnées de

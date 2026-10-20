@@ -52,7 +52,9 @@ def _faire(db, compte, ecole, carte):
 
 
 def test_outils_montres_selon_le_role():
-    assert [t["name"] for t in actions.tools(admin=False)] == ["submit_expense_report"]
+    assert [t["name"] for t in actions.tools(admin=False)] == [
+        "submit_expense_report", "produce_financial_report", "produce_general_assembly", "produce_forecast",
+    ]
     assert {"create_group_chat", "delete_course"} <= {t["name"] for t in actions.tools(admin=True)}
 
 
