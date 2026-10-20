@@ -131,7 +131,7 @@ Déclarés dans `documents/actions.py`, mêmes droits que l'écran (niveau `mana
 | Proposer le procès-verbal | `draft_minutes(node_id)` : crée le PV en Brouillon | aucune (un brouillon s'efface) |
 | Écrire dans le texte | `modifier_fichier_appli` (existe déjà) | Annuler sous la modification |
 | Valider | `validate_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
-| Envoyer pour signature | `send_app_file(node_id, recipients)` (procurations, étape 1), destinataires par défaut = présidence et secrétaire | Faire / Annuler (noms et fonctions écrits par le code) |
+| Envoyer pour signature | `send_app_file(node_id, recipients)` (procurations, étape 1 ; n'accepte aujourd'hui que la convocation, élargi au PV à l'étape 2), destinataires par défaut = présidence et secrétaire | Faire / Annuler (noms et fonctions écrits par le code) |
 | Suivi, Relancer | `signature_status(node_id)`, `remind_non_respondents(node_id)` (procurations, étape 4) | aucune ; Faire / Annuler pour relancer |
 | Télécharger le PDF | `app_file_pdf(node_id)` (procurations, étape 1) | aucune |
 | Envoyer aux N membres | `send_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
