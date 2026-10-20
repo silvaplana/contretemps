@@ -175,7 +175,8 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
 Après l'étape 1 des procurations (convocation, procurations signées, `validate_app_file`,
 `send_app_file`, `app_file_pdf`).
 
-0. **Le bureau** (core) : colonne Bureau dans École › Administrateurs, `bureau_functions`, recopie
+0. **Le bureau** (core) : la coche Trésorier renommée « Accès au Financier » à l'écran, colonne
+   Bureau dans École › Administrateurs, `bureau_functions`, recopie
    à la création de saison, outil de l'assistant pour la changer (mêmes droits que les coches).
 1. **La liste des présents** : photo, lecture, rapprochement, doutes, écran du quorum, table
    `doc_attendance`, outils `start_minutes`, `read_attendance_photo`, `save_attendance`.

@@ -200,7 +200,10 @@ Décision de Seb du 20 octobre (`spec/modules/proces-verbal-ag.md` §2 bis) : da
 admins, une colonne **Bureau** donne à chaque admin zéro, une ou plusieurs **fonctions** :
 Président·e, Vice-président·e, Secrétaire, Trésorier·e. Ce sont des titres, pas des niveaux : elles
 ne donnent aucun droit (Seb, 20 octobre : la fonction Trésorier·e n'ouvre pas l'onglet Financier,
-la coche Trésorier reste à part). Elles servent aux documents (signataires d'un procès-verbal, « Martine
+la coche Trésorier reste à part).
+**À l'écran, la coche « Trésorier » devient « Accès au Financier »** (Seb, 20 octobre) : la liste
+des admins a donc deux colonnes distinctes, **Accès au Financier** (le droit, §6.1 ; le niveau garde
+son nom `tresorier` dans le code, `is_tresorier`) et **Bureau** (les fonctions). Elles servent aux documents (signataires d'un procès-verbal, « Martine
 Colin, présidente », pouvoir en blanc donné à la présidence). Mêmes personnes qui les changent que
 les coches Administrateur principal et Trésorier. Recopiées à la création d'une saison.
 
