@@ -26,9 +26,10 @@ Diffuser.
 > aperçu, le secrétaire peut mettre son texte et après valider, et on peut télécharger un PDF. »
 
 **Où on le lance** : dans le dossier de l'AG (Docs › Privé › Saison › Réunions › « AGO du
-21 novembre 2026 »), un bandeau « L'assemblée a eu lieu » avec le bouton **Rédiger le procès-verbal**
-(dès que la date de l'AG est passée et tant qu'il n'y a pas de PV). Aussi : Docs › + › tuile
-**Rédiger le PV de l'AG** (section Informer), et l'assistant (« rédige le PV de l'AG »).
+21 novembre 2026 »), un bandeau « L'assemblée a eu lieu » avec le bouton **Produire le PV d'AG**
+(même libellé que la tuile ; dès que la date de l'AG est passée et tant qu'il n'y a pas de PV). Aussi : Docs › + › tuile
+**Produire le PV d'AG**, juste à côté de **Convoquer l'AG** (Seb, 20 octobre : « dans l'écran, il y a
+Convoquer l'AG et il y a aussi Produire le PV d'AG »), et l'assistant (« rédige le PV de l'AG »).
 **Quelle AG** : la convocation d'AG Officielle la plus récente dont la date est passée et qui n'a pas
 de PV ; s'il y en a plusieurs, une question « Quelle assemblée ? » avec la liste.
 
@@ -124,7 +125,7 @@ Déclarés dans `documents/actions.py`, mêmes droits que l'écran (niveau `mana
 
 | Étape à l'écran | Outil | Carte |
 |---|---|---|
-| Rédiger le procès-verbal (trouver l'AG) | `start_minutes(folder_id?)` : renvoie l'AG trouvée ou la liste si plusieurs | aucune |
+| Produire le PV d'AG (trouver l'AG) | `start_minutes(folder_id?)` : renvoie l'AG trouvée ou la liste si plusieurs | aucune |
 | Lire la liste | `read_attendance_photo(node_id, image)` : noms reconnus, doutes | aucune |
 | Choisir / ajouter / Continuer | `save_attendance(node_id, person_ids)` : enregistre les présents, renvoie le quorum calculé | Faire / Annuler (nombres et noms écrits par le code) |
 | Proposer le procès-verbal | `draft_minutes(node_id)` : crée le PV en Brouillon | aucune (un brouillon s'efface) |
