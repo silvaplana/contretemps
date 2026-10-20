@@ -59,7 +59,13 @@ Puis un écran par étape, un seul bouton principal chacun :
    Colin, présidente, certifie ce procès-verbal exact », la signature au doigt, **Signer**. Lien
    « Je ne suis pas d'accord : écrire à <celui qui a envoyé> » (Messagerie instantanée). Celui qui
    envoie et qui doit aussi signer signe directement depuis l'écran de suivi (**Signer moi-même**).
-7. **Suivi des signatures** : une ligne par signataire (« a signé le 23/11 ✓ » ou « pas encore
+7. **À chaque signature** (Seb, 20 octobre) : un email part à l'**adresse de contact de l'école**
+   (`email_contact`, École › Personnalisation) : « Martine Colin (présidente) a signé le procès-verbal
+   de l'AGO du 21 novembre 2026 (2 signatures sur 3) », avec le PDF à jour en pièce jointe. Et le
+   **PDF est refait** avec les signatures déjà reçues (les zones des autres restent vides, mention
+   « en attente de signature ») : on télécharge toujours la dernière version, rangée dans le dossier de
+   l'AG à la place de la précédente.
+8. **Suivi des signatures** : une ligne par signataire (« a signé le 23/11 ✓ » ou « pas encore
    signé », **Relancer**). Quand tous ont signé, le PV passe **tout seul en Officiel**, PDF A4 par
    Chromium avec les signatures (image, nom, fonction, date). Bouton principal **Télécharger le PDF** ;
    dessous, **Envoyer aux N membres…** (même envoi que Diffuser, confirmation puis Annuler 10 s).
@@ -142,6 +148,10 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
   (`content_json.source`, sans nouvelle colonne), pour retrouver présents, pouvoirs et ordre du jour.
 - **Chiffres du Financier** : lus par un port de `documents/ports.py` (`approved_report(org_id, season)`),
   branché sur `finances` dans `documents_contretemps/adapter.py` : Documents ne dépend pas de Finances.
+- **PDF à chaque signature** : refait par Chromium dans la tâche qui enregistre la réponse
+  (arrière-plan, comme les autres PDF), remplace le fichier « PV de l'AGO du … .pdf » du dossier (une
+  version de plus dans `doc_versions`, l'ancienne reste dans l'historique). Email à
+  `email_contact` par `send_email` du core ; pas d'adresse de contact : à l'Administrateur principal.
 - **Signatures** : réponses du bloc Signature dans `doc_responses` (existant), une par signataire ;
   « tous ont signé » = toutes les personnes de `doc_sends` (non essai) ont répondu → passage en
   Officiel par le code. **Pas de nouvelle table.**
