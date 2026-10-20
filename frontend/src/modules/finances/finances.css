@@ -1,0 +1,510 @@
+/* Sous-module Comptes (voir Comptes.jsx), styles repris de Sambo Admin
+   (App.css) et ramenés aux variables de couleur de l'appli (index.css).
+   Tout est sous .fin-comptes pour ne rien changer ailleurs. */
+
+.fin-comptes {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: var(--card-bg);
+  text-align: left;
+}
+
+.fin-comptes .account-card-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.fin-comptes .account-card-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  color: var(--text-h);
+}
+
+.fin-comptes .account-iban {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.fin-comptes .account-balance {
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text-h);
+  white-space: nowrap;
+}
+
+.fin-comptes > p {
+  margin: 0 0 1rem;
+}
+
+.fin-comptes .loading-label {
+  font-style: italic;
+}
+
+.fin-comptes .history-report {
+  color: var(--text-h);
+}
+
+/* Puces (comptes affichés, Graphique / Tableau, périodes) : sur une seule
+   ligne, celles qui ne tiennent pas défilent. */
+.fin-comptes .filter-chips {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.fin-comptes .filter-chip {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0.4rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.fin-comptes .filter-chip-active,
+.fin-comptes .filter-chip-active:hover {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.fin-comptes .history-toolbar {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.fin-comptes .history-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.75rem 0;
+}
+
+/* 16px minimum : en dessous, Safari sur iPhone zoome sur le champ. */
+.fin-comptes .history-filters select {
+  flex: 1 1 12rem;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-h);
+  font: inherit;
+  font-size: 16px;
+}
+
+.fin-comptes .history-filters select.history-filter-active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.fin-comptes .member-search {
+  flex: 2 1 14rem;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.55rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+}
+
+.fin-comptes .member-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: none;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 16px;
+}
+
+.fin-comptes .history-selection {
+  margin: 0 0 0.75rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.fin-comptes .history-selection p {
+  margin: 0;
+}
+
+.fin-comptes .history-selection ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fin-comptes .history-selection small {
+  color: var(--text-muted);
+}
+
+.fin-comptes .history-category {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-h);
+  font: inherit;
+  text-decoration: underline dotted var(--accent);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.fin-comptes .history-chart-note {
+  margin: 0 0 0.25rem;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.fin-comptes .success-state {
+  color: var(--success-text);
+}
+
+.fin-comptes .unpaid-amount {
+  color: var(--danger-text);
+  font-weight: 600;
+}
+
+.fin-comptes .empty-state {
+  text-align: center;
+  padding: 2.5rem 1rem;
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+
+/* Tableau des opérations : fenêtre de 10 lignes qui défile, en-tête fixe. */
+.fin-comptes .table-wrapper {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.fin-comptes table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.fin-comptes th,
+.fin-comptes td {
+  padding: 0.65rem 0.6rem;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  white-space: nowrap;
+  vertical-align: top;
+}
+
+.fin-comptes th {
+  background: var(--surface);
+  color: var(--text-muted);
+  font-weight: 600;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.fin-comptes .operations-scroll {
+  max-height: calc(11 * 2.62rem);
+  overflow-y: auto;
+}
+
+.fin-comptes .operations-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.fin-comptes .amount-cell {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-comptes .history-table td:nth-child(2) {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  min-width: 10rem;
+}
+
+.fin-comptes .history-more {
+  height: 1px;
+}
+
+.fin-comptes .history-details {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.fin-comptes .history-transfer td {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.fin-comptes .history-balance {
+  color: var(--text-muted);
+}
+
+.fin-comptes .history-total {
+  font-weight: 600;
+  color: var(--text-h);
+}
+
+.fin-comptes .history-statements {
+  margin-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.fin-comptes .history-statements p {
+  margin: 0 0 0.3rem;
+}
+
+/* Graphique d'évolution du solde (voir BalanceChart.jsx), façon graphique
+   boursier. Les boutons de durée réutilisent .filter-chip. */
+.fin-comptes .balance-chart {
+  margin-bottom: 1rem;
+}
+
+.fin-comptes .balance-chart-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.fin-comptes .balance-chart-figures {
+  display: flex;
+  flex-direction: column;
+  min-height: 2.9rem;
+}
+
+.fin-comptes .balance-chart-value {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-h);
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-comptes .balance-chart-sub {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+/* Périodes sur une seule ligne, sous les chiffres. */
+.fin-comptes .balance-chart-ranges {
+  display: flex;
+  flex: 1 1 100%;
+  gap: 0.35rem;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.fin-comptes .balance-chart-ranges .filter-chip {
+  padding-inline: 0.8rem;
+}
+
+.fin-comptes .balance-chart-plot {
+  position: relative;
+  width: 100%;
+  cursor: crosshair;
+  user-select: none;
+}
+
+.fin-comptes .balance-chart-plot svg {
+  display: block;
+  overflow: visible;
+}
+
+.fin-comptes .balance-chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+
+.fin-comptes .balance-chart-axis {
+  fill: var(--text-muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-comptes .balance-chart-cursor {
+  stroke: var(--text);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  opacity: 0.7;
+}
+
+.fin-comptes .balance-chart-empty {
+  margin: 0 0 1rem;
+  color: var(--text-muted);
+}
+
+/* Infobulle des opérations du jour survolé. */
+.fin-comptes .balance-chart-tooltip {
+  position: absolute;
+  z-index: 2;
+  width: max-content;
+  max-width: min(340px, 70%);
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--card-bg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.fin-comptes .balance-chart-tooltip-op {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.9rem;
+  padding: 0.1rem 0;
+  color: var(--text-h);
+}
+
+.fin-comptes .balance-chart-tooltip-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fin-comptes .balance-chart-tooltip-date {
+  color: var(--text-muted);
+}
+
+.fin-comptes .balance-chart-tooltip-op > span:last-child {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.fin-comptes .balance-chart-tooltip-more {
+  margin-top: 0.15rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.fin-comptes .op-credit {
+  color: var(--success-text);
+}
+
+.fin-comptes .op-debit {
+  color: var(--danger-text);
+}
+
+/* Période « Saisons » (voir CurveChart.jsx) : une courbe par saison. */
+.fin-comptes .seasons-chart {
+  position: relative;
+  width: 100%;
+}
+
+/* Le doigt lit les valeurs en glissant de gauche à droite ; de haut en bas,
+   la page défile normalement. */
+.fin-comptes .seasons-chart svg {
+  display: block;
+  touch-action: pan-y;
+}
+
+.fin-comptes .seasons-chart-dot {
+  stroke: var(--card-bg);
+  stroke-width: 2;
+}
+
+.fin-comptes .seasons-tooltip-date {
+  margin-bottom: 0.15rem;
+}
+
+.fin-comptes .seasons-tooltip-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.9rem;
+}
+
+.fin-comptes .seasons-tooltip-row b {
+  color: var(--text-h);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-comptes .seasons-tooltip-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.fin-comptes .seasons-tooltip-row i,
+.fin-comptes .seasons-legend i {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+}
+
+.fin-comptes .seasons-axis-strong {
+  fill: var(--text-h);
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-comptes .seasons-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 0.4rem;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+/* Chaque saison de la légende est un bouton (sans cadre) qui la masque ou
+   la réaffiche. */
+.fin-comptes .seasons-legend button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 40px;
+  padding: 0.3rem 0.5rem;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.fin-comptes .seasons-legend .seasons-legend-off {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.fin-comptes .seasons-legend .seasons-legend-selected {
+  color: var(--text-h);
+  font-weight: 600;
+}

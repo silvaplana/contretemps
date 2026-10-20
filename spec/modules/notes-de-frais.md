@@ -34,8 +34,7 @@ signale dans l'appli.
   principe que Profil › « Mes heures », SPEC.md §5.7). Pas de nouvel onglet : la barre du bas est déjà
   pleine (décision de Seb, 16 octobre).
 - **Trésoriers** (et Super User) : onglet **Financier**, sous-onglets **Comptes** puis **Notes de frais**
-  (§7). Comptes est en chantier : il affiche « En chantier » en attendant la spec du module Financier
-  (décision de Seb, 19 octobre).
+  (§7). Comptes : voir `financier.md` §3 (relevés bancaires repris de Sambo Admin, 20 octobre).
 - Autres entrées possibles plus tard, qui mènent au même écran : l'Assistant (« j'ai payé 48 € de
   costumes », avec la photo) et le modèle « Faire une note de frais » du module documents
   (`documents.md` §5.6).
