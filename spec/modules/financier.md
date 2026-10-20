@@ -25,11 +25,11 @@ Onglet **Financier**, trésoriers et Super User seulement (`core.md` §4). Sous-
 2. **Notes de frais** (`notes-de-frais.md`) — fait.
 3. **Bilan** (§4) — fait.
 4. **Assemblée générale** (§5) — fait.
-5. **Prévisionnel** (§6) — fait, cette version.
+5. **Prévisionnel** (§6) — fait.
 
 Chaque sous-module expose ses actions à l'Assistant IA (`assistant-ia.md` §3, `actions.py`) : cible
 de Seb, « fais-moi le PPT de l'AG de cette année à partir de celui de l'année dernière et du bilan
-financier de cette année ». À faire une fois les quatre sous-modules repris.
+financier de cette année ». Fait, cette version (§7).
 
 ## 3. Comptes
 
@@ -220,9 +220,26 @@ position des curseurs ; résultat JSON : formule, explication, curseurs, donnée
 `GET|POST /finances/forecasts`, `GET|PUT|DELETE /finances/forecasts/{id}`, `POST …/{id}/run`,
 `PUT …/{id}/params`, `GET …/{id}/download?format=png|pdf&seasons=`.
 
-## 7. Reste à faire
+## 7. Actions de l'Assistant IA
 
-- Actions de l'Assistant IA pour les quatre sous-modules.
+Comme les autres modules (`assistant-ia.md` §3), le Financier ouvre ses actions à l'assistant
+dans `finances_contretemps/actions.py` (il faut passer du compte de Contretemps au `Member` du
+module). Chacune propose une carte Faire / Annuler, et ne fait au clic que ce que le bouton
+« Produire… » du sous-onglet fait déjà ; le calcul tourne en arrière-plan, le résultat se lit
+dans l'appli. Réservées aux trésoriers et au Super User (refus sinon) :
+
+| Action | Ce qu'elle fait |
+|---|---|
+| `produce_financial_report` | Crée un bilan (saison par son nom, ou la saison en cours ; nom, consignes, état, modèle) et lance son calcul. |
+| `produce_general_assembly` | Crée une AG et lance le PowerPoint : il faut un bilan calculé (sinon refus qui renvoie au bilan) et un PowerPoint modèle (par défaut l'AG officielle de la saison précédente, sinon le modèle général ; ou `template` : une AG désignée par son nom ou sa saison, « modèle général »). |
+| `produce_forecast` | Crée un prévisionnel (date de départ facultative, vérifiée dans la saison) et lance son calcul. |
+
+Pas d'action pour Comptes : importer des relevés demande un fichier, que l'assistant ne transmet
+pas aux actions. L'assistant ne lit pas encore les chiffres du Financier (soldes, bilans) : à
+décider avec Seb.
+
+## 8. Reste à faire
+
 - Connexion bancaire (Enable Banking) quand le contrat est réglé.
 - Améliorations notées : tableau plus lisible sur téléphone, catégories modifiables, « reste à
   recevoir » HelloAsso, textes ≥ 17 px (l'écran est repris tel quel).

@@ -69,6 +69,7 @@ from documents_contretemps.actions import actions as actions_documents
 from notes_frais_contretemps.actions import actions as actions_notes_frais
 from finances import Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
 from finances_contretemps import membre_appelant as membre_finances, saisons_de_l_ecole
+from finances_contretemps.actions import actions as actions_finances
 from profs.actions import actions as actions_profs
 from presence import Presence, PresenceReceiver
 from saisons.gestion import GestionSaisons
@@ -410,6 +411,7 @@ assistant_client.actions = Actions([
     *actions_choregraphies(choregraphies_client),
     *actions_notes_frais(notes_frais_client),
     *actions_documents(documents_client),
+    *actions_finances(finances_reports, finances_assemblies, finances_forecasts, finances_client, saisons_de_l_ecole),
 ])
 
 inscriptions_receiver = InscriptionsReceiver(
