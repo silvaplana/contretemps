@@ -361,3 +361,21 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
 - Pas encore fait : rappel si la convocation part moins de 15 jours avant ; « Changer » le pouvoir
   d'un membre par le bureau.
 
+## 9. Fait à l'étape 2 (feuille d'émargement)
+
+- Table `doc_attendance` (migration `e3f5a7b9c1d4`, crée la table seulement si absente) : une ligne par
+  personne pointée présente, `source` = `hand` (écran) ou `photo` (procès-verbal). Décocher efface la
+  ligne. Effacée avec le fichier (corbeille vidée).
+- Décompte du jour (`assembly.sheet`) : présents pointés ; un pouvoir compte si son mandataire est
+  pointé présent ou s'il est en blanc (porté par le bureau) ; il est perdu sinon ; il ne compte plus si
+  le mandant est pointé présent (sa présence l'emporte). Voix = présents + pouvoirs qui comptent ;
+  quorum sur le nombre de convoqués.
+- Écran (Résultats › **Feuille d'émargement**, une fois la convocation envoyée) : chiffres et quorum
+  en direct, recherche, une ligne par membre convoqué (touche = présent, Annuler 10 s), sous le nom :
+  « Représenté par … », « Pouvoir à …, perdu s'il ne vient pas », pouvoirs portés ; **+ Ajouter une
+  personne** (membre de l'école non convoqué). Bouton principal **Enregistrer la feuille (PDF)** : rangée
+  à côté de la convocation (« Feuille d'émargement AGO du … .pdf »), nouvelle version à chaque fois.
+- Réservé à ceux qui peuvent modifier la convocation, en Officiel seulement.
+- Pas fait : signature des présents sur l'écran (la feuille papier reste), photo de la feuille (fil
+  procès-verbal).
+

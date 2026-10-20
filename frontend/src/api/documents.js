@@ -99,6 +99,10 @@ export function documentsApi(orgId) {
     convene: (kind, startsAt, folderId, newFolder) =>
       appel(`${base}/assemblies`, json('POST', { kind, starts_at: startsAt, folder_id: folderId ?? null, new_folder: !!newFolder })),
     assembly: (id) => appel(`${base}/nodes/${id}/app/assembly`),
+    // Feuille d'émargement : pointer, décompte du jour, PDF rangé.
+    attendance: (id) => appel(`${base}/nodes/${id}/app/attendance`),
+    mark: (id, personId, present) => appel(`${base}/nodes/${id}/app/attendance/${personId}`, json('PUT', { present })),
+    storeSheet: (id) => appel(`${base}/nodes/${id}/app/attendance/pdf`, { method: 'POST' }),
     // « summary.pdf », « summary.xlsx » ou « convocation.pdf ».
     assemblyFile: async (id, what) => {
       const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/assembly/${what}`)

@@ -1068,3 +1068,94 @@ h3.ap-h {
   background: var(--surface);
   font-weight: 600;
 }
+
+/* Feuille d'émargement (procurations.md §4, étape 2) */
+.em-haut {
+  display: grid;
+  gap: 10px;
+  padding: 0 16px 10px;
+}
+
+.em-chiffres {
+  display: flex;
+  justify-content: space-between;
+  font-size: 17px;
+}
+
+.em-chiffres b {
+  font-size: 24px;
+}
+
+.em-quorum {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface);
+}
+
+.em-quorum--ok {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.em-liste {
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.em-ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  padding: 8px 14px;
+  border: 1px solid var(--dx-line);
+  border-radius: 14px;
+  background: var(--card-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.em-ligne--on {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.em-coche {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border: 2px solid var(--dx-line);
+  border-radius: 50%;
+  color: var(--accent-contrast);
+  font-weight: 700;
+}
+
+.em-ligne--on .em-coche {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.em-nom {
+  display: grid;
+  gap: 2px;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.em-nom small,
+.em-ligne > small {
+  color: var(--dx-muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.af-emargement {
+  width: 100%;
+  margin-bottom: 12px;
+}

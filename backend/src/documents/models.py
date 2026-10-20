@@ -286,3 +286,22 @@ class DocSend(Base):
     opened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     answered_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     response_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+
+class DocAttendance(Base):
+    """Feuille d'émargement d'une assemblée (procurations.md §4, étape 2) :
+    une ligne par personne pointée présente. Saisie par le bureau, pas par le
+    membre : elle ne va donc pas dans sa réponse. `source` : « hand » (touché
+    à l'écran) ou « photo » (lu sur la photo de la feuille papier,
+    proces-verbal-ag.md). Décocher efface la ligne."""
+
+    __tablename__ = "doc_attendance"
+    __table_args__ = (UniqueConstraint("node_id", "person_id", name="uq_doc_attendance_person"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    person_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    present_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
+    marked_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    source: Mapped[str] = mapped_column(String(10), nullable=False, default="hand")
