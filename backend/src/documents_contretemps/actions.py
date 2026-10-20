@@ -11,15 +11,16 @@ import threading
 from dataclasses import replace
 from typing import Literal
 
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from assistant.actions import Action
 from assistant.modifications import Ligne, Refus
 from documents import Documents, assembly
 from documents.models import KIND_APP, DocNode
 from documents.ports import Member
 from documents.service import DocError
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 from .adapter import membre_appelant
 

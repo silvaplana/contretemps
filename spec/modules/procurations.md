@@ -288,8 +288,10 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
   (`QUESTION_TYPES`, contrôle dans `_check_value`) et le contrôle croisé (plafond, chaîne, convoqué)
   dans une fonction du module documents qui lit les autres réponses du même fichier.
 - Étape 2 : une table **`doc_attendance`** (`id`, `org_id`, `node_id`, `person_id`, `present_at`,
-  `marked_by`) : l'émargement est saisi par le bureau, pas par le membre, il ne va donc pas dans sa
-  réponse. Migration qui teste `has_table` (piège connu du `create_all`).
+  `marked_by`, `source` = `hand` ou `photo`) : l'émargement est saisi par le bureau, pas par le membre,
+  il ne va donc pas dans sa réponse. Une seule liste des présents par AG, partagée avec le procès-verbal
+  (`proces-verbal-ag.md`, qui la remplit depuis une photo de la feuille : `source = 'photo'`). Migration
+  qui teste `has_table` (piège connu du `create_all`).
 - Toutes les requêtes filtrent par `org_id`, avec un test d'étanchéité entre écoles.
 
 ## 6. À trancher par Seb
@@ -317,3 +319,45 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
 Les outils de l'assistant des étapes de la convocation (§1.4 : `convene_assembly`,
 `validate_app_file`, `send_app_file`, `app_file_pdf`) viennent avec l'étape 1, à la demande de Seb
 (20 octobre) : tout ce que fait l'écran doit marcher par l'assistant dès le départ.
+
+## 8. Fait à l'étape 1 (PR #34), et écarts avec ce qui précède
+
+Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
+`documents_contretemps/actions.py` (outils de l'assistant), écrans `ConvoquerAG.jsx`,
+`app/AssemblySend.jsx`, bloc dans `app/Page.jsx`, `app/Editor.jsx`, `app/Results.jsx`. Tests :
+`backend/tests/test_documents_assembly.py`.
+
+Écarts, décidés en codant (à revoir avec Seb s'ils gênent) :
+
+- **Lieu** : celui de la dernière AG de même sorte, sinon « [lieu à préciser] » dans le texte (le module
+  documents ne connaît pas l'adresse de l'école).
+- **Destinataires par défaut** : les convoqués de la dernière AG envoyée, sinon tous les membres de la
+  saison (élèves, profs, admins : réglage `members` de `Documents`, posé par `app/main.py`).
+- **Pouvoir en blanc** : un nom écrit dans le bloc, par défaut la personne qui convoque. Quand la
+  colonne « Bureau » des administrateurs existera (`core.md` §6.4, PR #36), la présidence la remplacera.
+- **Quorum** : aucun, un quart, un tiers ou la moitié des membres convoqués ; pas encore « un nombre ».
+- **Pouvoir perdu** : seulement si le mandataire a répondu « Je ne viens pas » ; tant qu'il n'a pas
+  répondu, le pouvoir est « en attente » (ni compté, ni perdu) dans la prévision.
+- **Envoyer** : pas de question « Envoyer la convocation ? » ; le bouton lance un compte à rebours de
+  10 s avec **Annuler** (« Annuler plutôt que confirmer »). Une fois envoyée, l'écran dit « Convocation
+  envoyée à N membres » ; « Changer » ouvre le Diffuser habituel (ajouter des personnes).
+- **Valider** passe directement en Officiel. Pour corriger ensuite : menu de l'état › Brouillon (admin),
+  comme tout fichier ; « Faire relire » dans ⋯ n'est pas fait.
+- **L'email** porte trois liens en clair, « Je viens », « Je donne procuration », « Je ne viens pas »
+  (`…/r/<jeton>?c=proxy`) : la page s'ouvre avec ce choix déjà fait.
+- **Mettre en ligne** (page publique) est refusé pour une convocation : chacun répond et signe par son
+  lien personnel.
+- **Résultats** : toucher un compteur (viennent, procurations, ne viennent pas, sans réponse) affiche
+  la liste ; « Qui représente qui » ; boutons **Télécharger le récapitulatif** (PDF) et **Excel**. Les
+  pouvoirs signés sont dans le dossier « Pouvoirs » (« Pouvoir d'Agathe Lambert à Capucine
+  Martinez.pdf ») ; pas encore de bouton PDF par ligne ni d'archive de tous les pouvoirs. Le
+  récapitulatif se télécharge, il n'est pas rangé dans le dossier.
+- **PDF** faits par pymupdf, pas par Chromium (les tests tournent sans Chromium).
+- **Assistant** : `convene_assembly`, `validate_app_file`, `send_app_file`, chacun sur une carte
+  Faire / Annuler (les actions des modules n'ont que des cartes : préparer la convocation en a donc une
+  aussi). L'assistant ne l'ouvre pas à côté de la discussion : on la retrouve dans Docs › Réunions.
+  `send_app_file` n'envoie qu'une convocation d'AG (aux destinataires par défaut). `app_file_pdf`
+  passe à l'étape 4 (il faut un outil qui rend un lien, pas une carte).
+- Pas encore fait : rappel si la convocation part moins de 15 jours avant ; « Changer » le pouvoir
+  d'un membre par le bureau.
+

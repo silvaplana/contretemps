@@ -89,6 +89,9 @@ def test_regles_des_procurations(client, ecole, ag, mails):
     assert "Je donne procuration :" in mail["text"] and "?c=proxy" in mail["text"]
 
     assert procuration(client, leon, gens["Ana Roux"]).status_code == 201
+    # Ana n'a pas répondu : le pouvoir est en attente, ni compté ni perdu.
+    s = ag["admin"].get(f"/nodes/{ag['id']}/app/assembly").json()["summary"]
+    assert (s["votes"], s["lost"], s["holders"][0]["pending"]) == (0, 0, True)
     a_ana = {g["name"]: g["id"] for g in client.get(f"/documents/public/links/{ana}").json()["assembly"]["candidates"]}
     # Ana a reçu un pouvoir : elle ne peut pas en donner.
     r = procuration(client, ana, a_ana["Ima Blanc"])

@@ -324,7 +324,8 @@ def after_answer(docs: Documents, db: Session, node: DocNode, response: DocRespo
         pdf = proxy_pdf(mandant, ecole, v, p, node.name)
         dossier = _child_folder(docs, db, systeme, node.parent_id, PROXIES_FOLDER)
         qui = "le bureau" if v["proxy_to"] == "blank" else v.get("proxy_name", "")
-        cree = docs.upload(db, systeme, node.space, dossier, f"Pouvoir de {mandant} à {qui}.pdf", io.BytesIO(pdf))
+        de = "d'" if _norm(mandant)[:1] in tuple("aeiouyh") else "de "
+        cree = docs.upload(db, systeme, node.space, dossier, f"Pouvoir {de}{mandant} à {qui}.pdf", io.BytesIO(pdf))
         v["pdf_id"] = cree["id"]
         response.values = {**response.values, bloc["id"]: v}
         db.commit()
@@ -360,8 +361,12 @@ def summary(docs: Documents, db: Session, node: DocNode, content: dict) -> dict 
     recus: dict = {}
     for pid in sorted(procurations, key=lambda x: _norm(gens[x])):
         recus.setdefault(reponse(pid).get("proxy_to"), []).append(pid)
-    perdus = sum(len(m) for qui, m in recus.items() if qui != "blank" and qui not in viennent)
-    voix = len(viennent) + len(procurations) - perdus
+    # Un pouvoir compte si son représentant vient ; il est perdu s'il a dit
+    # qu'il ne viendrait pas ; en attente tant qu'il n'a pas répondu.
+    absents = {pid for pid in gens if reponse(pid).get("answer") in ("absent", "proxy")}
+    perdus = sum(len(m) for qui, m in recus.items() if qui in absents)
+    portes = sum(len(m) for qui, m in recus.items() if qui == "blank" or qui in viennent)
+    voix = len(viennent) + portes
     seuil = {"quarter": 4, "third": 3, "half": 2}.get(p["quorum"])
     lignes = []
     for pid, nom in sorted(gens.items(), key=lambda x: _norm(x[1])):
@@ -380,7 +385,7 @@ def summary(docs: Documents, db: Session, node: DocNode, content: dict) -> dict 
     ]
     porteurs = [
         {"name": gens.get(qui, "?"), "person_id": qui, "count": len(m), "from": [gens[x] for x in m],
-         "lost": qui not in viennent}
+         "lost": qui in absents, "pending": qui not in viennent and qui not in absents}
         for qui, m in recus.items() if qui != "blank"
     ]
     porteurs.sort(key=lambda h: (-h["count"], _norm(h["name"])))
@@ -407,6 +412,12 @@ def summary(docs: Documents, db: Session, node: DocNode, content: dict) -> dict 
 
 
 QUORUM_WORDS = {"quarter": "un quart", "third": "un tiers", "half": "la moitié"}
+
+
+def _holder_note(holder: dict) -> str:
+    if holder["lost"]:
+        return " (ne vient pas : pouvoirs perdus)"
+    return " (n'a pas encore répondu)" if holder.get("pending") else ""
 
 
 def _votes(holder: dict) -> str:
@@ -436,7 +447,7 @@ def summary_html(s: dict, title: str, org_name: str) -> str:
     viennent = [r["name"] for r in s["rows"] if r["answer"] == "attend"]
     parts.append(f"<h2>Viennent ({len(viennent)})</h2><p>{escape(', '.join(viennent)) or '—'}</p>")
     lignes = "".join(
-        f"<tr><td><b>{escape(h['name'])}</b>{' (absent : pouvoirs perdus)' if h['lost'] else ''}</td>"
+        f"<tr><td><b>{escape(h['name'])}</b>{_holder_note(h)}</td>"
         f"<td>{escape(', '.join(h['from']))}</td><td>{_votes(h)}</td></tr>"
         for h in s["holders"]
     )
@@ -493,7 +504,7 @@ def _pdf(html: str, extra=None) -> bytes:
         return buffer.getvalue()
     doc = pymupdf.open(stream=buffer.getvalue(), filetype="pdf")
     extra(doc[-1], rempli[3] if rempli is not None else 400)
-    sortie = doc.tobytes()
+    sortie = doc.tobytes(garbage=3, deflate=True)
     doc.close()
     return sortie
 

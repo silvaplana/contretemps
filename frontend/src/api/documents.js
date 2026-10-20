@@ -91,7 +91,20 @@ export function documentsApi(orgId) {
       appel(`${base}/nodes/${id}/app/sends`, json('POST', { principals: cibles(principals), message: message || null })),
     sends: (id) => appel(`${base}/nodes/${id}/app/sends`),
     // M'envoyer un essai : à soi seul, réponse marquée « Essai ».
-    sendTrial: (id) => appel(`${base}/nodes/${id}/app/sends/trial`, { method: 'POST' }),
+    // `personId` : l'essai part à un membre choisi (convocation d'AG).
+    sendTrial: (id, personId) =>
+      appel(`${base}/nodes/${id}/app/sends/trial`, personId ? json('POST', { person_id: personId }) : { method: 'POST' }),
+    // Assemblée générale (spec procurations.md) : convoquer, décompte.
+    // Réponse `{ folders }` : l'appli demande où ranger la convocation.
+    convene: (kind, startsAt, folderId, newFolder) =>
+      appel(`${base}/assemblies`, json('POST', { kind, starts_at: startsAt, folder_id: folderId ?? null, new_folder: !!newFolder })),
+    assembly: (id) => appel(`${base}/nodes/${id}/app/assembly`),
+    // « summary.pdf », « summary.xlsx » ou « convocation.pdf ».
+    assemblyFile: async (id, what) => {
+      const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/assembly/${what}`)
+      if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
+      return reponse.blob()
+    },
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),
