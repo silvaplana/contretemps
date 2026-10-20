@@ -27,6 +27,7 @@ CATEGORIES_IA = {
     "detourage_logo": "Personnalisation : détourage du logo",
     "chat_documents": "Chat documents",
     "lecture_ticket": "Notes de frais : lecture des tickets",
+    "bilan_financier": "Financier : analyse des bilans",
 }
 
 # Postes comptés dans le plafond mensuel de l'assistant (la lecture des

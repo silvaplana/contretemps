@@ -31,6 +31,7 @@ const TYPE_EXCEL = {
   accept: { 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'] },
 }
 const TYPE_ZIP = { description: 'Archive zip', accept: { 'application/zip': ['.zip'] } }
+const TYPE_PDF = { description: 'Document PDF', accept: { 'application/pdf': ['.pdf'] } }
 
 export async function telechargerFichier(url, nomSecours) {
   const { nom, blob } = await recupererFichier(url, nomSecours)
@@ -39,7 +40,7 @@ export async function telechargerFichier(url, nomSecours) {
     try {
       const handle = await window.showSaveFilePicker({
         suggestedName: nom,
-        types: [nom.endsWith('.zip') ? TYPE_ZIP : TYPE_EXCEL],
+        types: [nom.endsWith('.zip') ? TYPE_ZIP : nom.endsWith('.pdf') ? TYPE_PDF : TYPE_EXCEL],
       })
       const flux = await handle.createWritable()
       await flux.write(blob)
