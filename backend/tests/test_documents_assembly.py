@@ -196,3 +196,59 @@ def test_par_l_assistant(client, ecole, db_session, mails):
     assert carte["lignes"][0].startswith(f"Envoyer « {nom} » par email à 1 membre (Léon Perrin) ; sans adresse email : ")
     texte, carte = proposer("convene_assembly", {"kind": "ordinary", "date": "2001-01-01", "time": "10:00"})
     assert carte is None and "passée" in texte
+
+
+def test_feuille_d_emargement(client, ecole, ag, mails, db_session):
+    """Le jour de l'AG (procurations.md §3.5, §4) : un pouvoir compte si son
+    mandataire est pointé présent, il est perdu sinon, et un mandant présent
+    reprend sa voix."""
+    from comptes import Comptes
+
+    admin, ident = ag["admin"], ag["id"]
+    url = f"{admin.base}/nodes/{ident}/app/attendance"
+    pointer = lambda pid, oui=True: admin.c.put(f"{url}/{pid}", json={"present": oui}, headers=admin.h)  # noqa: E731
+    leon, ima = lien(mails, "leon@exemple.fr"), lien(mails, "ima@exemple.fr")
+    ana = next(g["id"] for g in client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"] if g["name"] == "Ana Roux")
+    assert procuration(client, leon, ana).status_code == 201
+    assert procuration(client, ima, "blank").status_code == 201
+
+    s = admin.get(f"/nodes/{ident}/app/attendance").json()
+    assert (s["present"], s["represented"], s["lost"], s["votes"]) == (0, 1, 1, 1)  # seul le blanc compte
+    s = pointer(ana).json()
+    assert (s["present"], s["represented"], s["absent"], s["votes"]) == (1, 2, 1, 3)
+    lignes = {r["name"]: r for r in s["rows"]}
+    assert lignes["Léon Perrin"]["represented_by"] == "Ana Roux" and lignes["Ana Roux"]["holds"] == 1
+    assert lignes["Ima Blanc"]["represented_by"] == "le bureau"
+    # Léon vient finalement : sa présence l'emporte sur son pouvoir.
+    s = pointer(ecole["eleve"].id).json()
+    assert (s["present"], s["represented"], s["votes"]) == (2, 1, 3)
+    # Ana repart : Léon reste présent, rien n'est perdu ; Léon repart : son pouvoir est perdu.
+    pointer(ana, False)
+    s = pointer(ecole["eleve"].id, False).json()
+    assert (s["present"], s["lost"], s["votes"]) == (0, 1, 1)
+    lignes = {r["name"]: r for r in s["rows"]}
+    assert lignes["Ana Roux"]["lost"] == ["Léon Perrin"] and lignes["Léon Perrin"]["proxy_name"] == "Ana Roux"
+
+    # Une personne de l'école non convoquée peut être ajoutée ; pas d'ailleurs.
+    nouvelle = Comptes().create(db_session, ecole_id=ecole["id"], role="eleve", nom="Neuf", prenom="Zoé")
+    db_session.commit()
+    s = pointer(nouvelle.id).json()
+    assert {r["name"]: r for r in s["rows"]}["Zoé Neuf"]["convoked"] is False and s["present"] == 1
+    assert pointer(ecole["admin_voisin"].id).status_code == 404
+    assert pointer(999999).status_code == 404
+
+    # Le PDF se range à côté de la convocation ; refait, il devient une nouvelle version.
+    r = admin.c.post(f"{url}/pdf", headers=admin.h)
+    assert r.status_code == 201 and r.json()["name"] == "Feuille d'émargement AGO du 21 novembre 2099.pdf"
+    assert admin.c.post(f"{url}/pdf", headers=admin.h).json()["id"] == r.json()["id"]
+    assert "Feuille d'émargement AGO du 21 novembre 2099.pdf" in _par_nom(admin.racine(dossier=ag["folder"]))
+
+    voisin = Docs(client, ecole["id"], ecole["admin_voisin"])
+    assert voisin.get(f"/nodes/{ident}/app/attendance").status_code == 403
+
+
+def test_emargement_seulement_en_officiel(client, ecole):
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    ident = convoquer(admin).json()["id"]
+    r = admin.c.put(f"{admin.base}/nodes/{ident}/app/attendance/{ecole['eleve'].id}", json={"present": True}, headers=admin.h)
+    assert r.status_code == 409

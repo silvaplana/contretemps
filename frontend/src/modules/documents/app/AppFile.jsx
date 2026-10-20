@@ -5,6 +5,7 @@ import { FAMILIES, STATUSES } from '../kinds.js'
 import AssemblySend from './AssemblySend.jsx'
 import Diffuser from './Diffuser.jsx'
 import Editor from './Editor.jsx'
+import Emargement from './Emargement.jsx'
 import Page from './Page.jsx'
 import Results, { exampleRows } from './Results.jsx'
 import FamilyCards from './FamilyCards.jsx'
@@ -72,6 +73,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   // défaut ; « Changer » ramène au Diffuser habituel.
   const [ag, setAg] = useState(null)
   const [diffuserTout, setDiffuserTout] = useState(false)
+  const [emargement, setEmargement] = useState(false)
 
   const charger = useCallback(
     // `ouvrir` : choisir l'onglet d'après l'état (ouverture, changement d'état).
@@ -370,7 +372,16 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       }
     }
     const titre = file.name.replace(/^Convocation /, '')
-    corps = <Results content={c} rows={rows} summary={ag.summary.convoked ? ag.summary : null} />
+    corps = (
+      <>
+        {ag.summary.convoked > 0 && (
+          <button type="button" className="dx-btn dx-btn--ghost af-emargement" onClick={() => setEmargement(true)}>
+            Feuille d’émargement (le jour de l’AG)
+          </button>
+        )}
+        <Results content={c} rows={rows} summary={ag.summary.convoked ? ag.summary : null} />
+      </>
+    )
     bas = (
       <>
         <button type="button" className="dx-btn" onClick={() => fichier('summary.pdf', `Récapitulatif ${titre}.pdf`)}>
@@ -395,6 +406,20 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       >
         Effacer les essais ({essais})
       </button>
+    )
+  }
+
+  if (emargement) {
+    return (
+      <Emargement
+        file={file}
+        api={api}
+        onToast={onToast}
+        onClose={async () => {
+          setEmargement(false)
+          setAg(await api.assembly(item.id))
+        }}
+      />
     )
   }
 

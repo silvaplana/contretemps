@@ -88,6 +88,10 @@ class TrialRequest(BaseModel):
     person_id: int | None = None
 
 
+class Mark(BaseModel):
+    present: bool
+
+
 class Convene(BaseModel):
     kind: str
     starts_at: str = Field(max_length=40)
@@ -382,6 +386,19 @@ class DocumentsReceiver:
                 raise HTTPException(status_code=404, detail="Introuvable")
             contenu, mime, nom = appel(lambda: assembly.export(self.client, db, self._member(org_id, m), node_id, what))
             return Response(contenu, media_type=mime, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nom)}"})
+
+        # Feuille d'émargement (procurations.md §4, étape 2)
+        @self.app.get(base + "/nodes/{node_id}/app/attendance")
+        def attendance(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: assembly.attendance(self.client, db, self._member(org_id, m), node_id))
+
+        @self.app.put(base + "/nodes/{node_id}/app/attendance/{person_id}")
+        def mark(org_id: int, node_id: int, person_id: int, data: Mark, db: Session = db_dep, m: Member = member):
+            return appel(lambda: assembly.mark(self.client, db, self._member(org_id, m), node_id, person_id, data.present))
+
+        @self.app.post(base + "/nodes/{node_id}/app/attendance/pdf", status_code=201)
+        def store_sheet(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: assembly.store_sheet(self.client, db, self._member(org_id, m), node_id))
 
         # Modèles de l'école (fichier-de-base.md §5)
         @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)
