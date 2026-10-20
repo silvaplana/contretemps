@@ -99,10 +99,17 @@ Le reste est rempli d'avance, modifiable ensuite dans Préparer :
 (La maquette « Convoquer l'AG », https://claude.ai/artifact/1Ptq5myAcGYw8d6rsmjBRj, posait trois
 questions date / lieu / ordre du jour : remplacée par ces deux-là.)
 
-Puis **la convocation s'affiche, prête** (Aperçu), avec en dessous « Pour : 87 membres · par email ».
-Bouton principal **Envoyer aux 87 membres** ; « Modifier » ouvre Préparer. Le fichier passe en Officiel
-et part en un seul geste (confirmation « Envoyer la convocation ? », puis Annuler 10 s). Les destinataires
-proposés : ceux de la dernière AG, sinon tous les membres de la saison ; « Changer » ouvre Diffuser.
+Puis, **trois temps** (Seb, 20 octobre) :
+
+1. **Aperçu modifiable** : la convocation s'affiche telle que les membres la recevront, et on la corrige
+   directement dedans (on touche un texte et on écrit, comme dans Préparer). Bouton principal **Valider**.
+2. **Valider** fige la convocation : le fichier passe directement en **Officiel** (pas d'étape
+   « Validé / relecteurs » pour ce parcours ; « Faire relire » reste dans le menu ⋯ pour qui le veut).
+   Pour la corriger ensuite : ⋯ › Modifier, qui repasse en Brouillon tant que rien n'est envoyé.
+3. Apparaissent alors **Envoyer aux 87 membres** (bouton principal ; confirmation « Envoyer la
+   convocation ? », puis Annuler 10 s) et **Télécharger la convocation** (PDF A4, pour l'imprimer ou
+   l'envoyer autrement). Sous le bouton : « Pour : 87 membres · par email », « Changer » ouvre Diffuser.
+   Les destinataires proposés : ceux de la dernière AG, sinon tous les membres de la saison.
 
 **Deux portes, même résultat (Seb, 20 octobre)** : la tuile **Docs › + › Convoquer l'AG**, ou
 l'**Assistant IA** : « convoque l'AG le 21 novembre à 14 h à la salle des fêtes ». L'assistant crée le
