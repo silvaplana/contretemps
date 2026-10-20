@@ -38,6 +38,7 @@ from .models import (
     KIND_FOLDER,
     LEVEL_EDIT,
     SYSTEM_PERIOD,
+    DocActivity,
     DocAttendance,
     DocNode,
     DocResponse,
@@ -333,6 +334,124 @@ def after_answer(docs: Documents, db: Session, node: DocNode, response: DocRespo
     except Exception:  # le pouvoir reste dans les réponses
         logger.exception("Pouvoir non rangé en PDF (fichier %s, réponse %s)", node.id, response.id)
         db.rollback()
+        return
+    _send_copies(docs, db, node, response, v, p, mandant, ecole, pdf)
+
+
+def _letter(person: str, paragraphs: list[str], org_name: str) -> tuple[str, str]:
+    """Un email simple (texte et HTML), écrit comme ceux de Diffuser."""
+    lignes = [f"Bonjour {person},", *paragraphs, f"Message envoyé par {org_name}."]
+    texte = "\n\n".join(lignes) + "\n"
+    html = (
+        '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#222;max-width:520px">'
+        + "".join(f'<p style="margin:0 0 16px;white-space:pre-line">{escape(x)}</p>' for x in lignes)
+        + "</div>"
+    )
+    return texte, html
+
+
+def _send_copies(
+    docs: Documents, db: Session, node: DocNode, response: DocResponse, v: dict, p: dict, mandant: str,
+    org_name: str, pdf: bytes,
+) -> None:
+    """Étape 3 (spec §1.1) : le mandataire apprend qu'il a un pouvoir, le
+    mandant reçoit la copie de son pouvoir signé ; le PDF est joint. Un
+    échec d'envoi est noté, la réponse reste."""
+    if docs.mailer is None or not docs.mailer.available:
+        return
+    assemblee = f"l'assemblée générale du {day_text(p['start'])}" if p["start"] else "l'assemblée générale"
+    quand = f" le {when_text(p['start'])}" if p["start"] else ""
+    piece = [("Pouvoir.pdf", pdf)]
+    mails = []
+    if v["proxy_to"] != "blank":
+        porteur = docs.directory.recipients(db, node.org_id, [("member", str(v["proxy_to"]))])
+        if porteur and porteur[0].email:
+            mails.append((porteur[0].email, f"{mandant} vous a donné procuration pour {assemblee}", _letter(porteur[0].name, [
+                f"{mandant} vous a donné procuration : vous voterez en son nom à {assemblee}{quand}.",
+                "Son pouvoir signé est joint à ce mail.",
+                (
+                    f"Si vous ne pouvez pas venir, prévenez {mandant}, qui peut choisir quelqu'un d'autre avec son lien "
+                    "jusqu'au début de l'assemblée. Sans vous, son pouvoir sera perdu."
+                ),
+            ], org_name)))
+    envoi = db.scalar(
+        select(DocSend).where(DocSend.node_id == node.id, DocSend.person_id == response.person_id,
+                              DocSend.channel == "email", DocSend.test.is_(False))
+    )
+    if response.email and envoi is not None:
+        adresse = docs.mailer.org(db, node.org_id)[1]
+        qui = "le bureau désignera la personne qui vous représente" if v["proxy_to"] == "blank" else f"{v.get('proxy_name', '')} vous représentera"
+        mails.append((response.email, f"Votre procuration pour {assemblee}", _letter(mandant, [
+            f"Votre procuration est enregistrée : {qui} à {assemblee}{quand}.",
+            "Votre pouvoir signé est joint à ce mail.",
+            f"Vous pouvez changer d'avis avec le même lien jusqu'au début de l'assemblée :\n{adresse}/r/{envoi.token}",
+        ], org_name)))
+    for a, sujet, (texte, html) in mails:
+        try:
+            docs.mailer.send(a, sujet, texte, html, org_name, None, piece)
+        except Exception as erreur:  # noqa: BLE001 (la réponse est enregistrée)
+            logger.warning("Copie du pouvoir non envoyée à %s : %s", a, erreur)
+
+
+# ----------------------------------------------------------------------
+# La relance sept jours avant (étape 3)
+# ----------------------------------------------------------------------
+
+REMIND_DAYS = 7
+
+
+def remind_due(db: Session, mailer, directory, now: datetime | None = None) -> int:
+    """Sept jours avant l'assemblée, relance une fois les convoqués qui n'ont
+    pas répondu, avec leur lien. Seulement si la convocation est partie avant
+    J-7 (sinon elle vient d'arriver). Appelé chaque minute par
+    `app.relance_worker` ; rend le nombre d'emails envoyés."""
+    from datetime import UTC, timedelta
+
+    from .app_files import AppFiles
+    from .app_sends import compose
+
+    if mailer is None or not mailer.available:
+        return 0
+    now = now or now_local()
+    deja = select(DocActivity.node_id).where(DocActivity.action == "reminded")
+    attente = select(DocSend.node_id).where(
+        DocSend.test.is_(False), DocSend.channel == "email", DocSend.status == "sent", DocSend.answered_at.is_(None),
+    )
+    fichiers = db.scalars(select(DocNode).where(
+        DocNode.kind == KIND_APP, DocNode.status == "official", DocNode.deleted_at.is_(None),
+        DocNode.id.in_(attente), DocNode.id.not_in(deja),
+    ))
+    total = 0
+    for node in list(fichiers):
+        version = AppFiles.current_version(db, node)
+        bloc = block_of(version.content) if version else None
+        debut = props(bloc)["start"] if bloc else None
+        if debut is None or not debut - timedelta(days=REMIND_DAYS) <= now < debut:
+            continue
+        envois = list(db.scalars(select(DocSend).where(
+            DocSend.node_id == node.id, DocSend.test.is_(False), DocSend.channel == "email",
+        )))
+        parti = min((s.sent_at for s in envois if s.sent_at), default=None)
+        if parti is None or parti.replace(tzinfo=UTC).astimezone(TZ).replace(tzinfo=None) > debut - timedelta(days=REMIND_DAYS):
+            continue
+        cibles = [s for s in envois if s.status == "sent" and s.answered_at is None and s.email]
+        # Noté avant d'envoyer : jamais deux relances, même si l'envoi casse.
+        db.add(DocActivity(org_id=node.org_id, node_id=node.id, person_id=None, action="reminded", detail={"count": len(cibles)}))
+        db.commit()
+        ecole, adresse = mailer.org(db, node.org_id)
+        expediteur = directory.person_names(db, node.org_id, {cibles[0].sent_by}).get(cibles[0].sent_by, ecole) if cibles else ecole
+        rappel = f"Rappel : l'assemblée a lieu dans une semaine, le {when_text(debut)}, et nous n'avons pas encore votre réponse."
+        for s in cibles:
+            sujet, texte, html = compose(
+                node.name, node.family, version.content, s.name, rappel, f"{adresse}/r/{s.token}",
+                ecole, expediteur, False, False,
+            )
+            try:
+                mailer.send(s.email, f"Rappel : {sujet}", texte, html, ecole, None)
+                total += 1
+            except Exception as erreur:  # noqa: BLE001 (on continue avec les autres)
+                logger.warning("Relance de l'AG non envoyée à %s : %s", s.email, erreur)
+    return total
 
 
 def _child_folder(docs: Documents, db: Session, member: Member, parent_id: int, name: str) -> int:

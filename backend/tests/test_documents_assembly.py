@@ -252,3 +252,56 @@ def test_emargement_seulement_en_officiel(client, ecole):
     ident = convoquer(admin).json()["id"]
     r = admin.c.put(f"{admin.base}/nodes/{ident}/app/attendance/{ecole['eleve'].id}", json={"present": True}, headers=admin.h)
     assert r.status_code == 409
+
+
+def test_copies_du_pouvoir(client, ecole, ag, mails):
+    """Étape 3 : le mandataire est prévenu, le mandant reçoit la copie de son
+    pouvoir signé ; tous deux avec le PDF joint."""
+    leon, julia = lien(mails, "leon@exemple.fr"), lien(mails, "julia@exemple.fr")
+    ana = next(g["id"] for g in client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"] if g["name"] == "Ana Roux")
+    avant = len(mails.envoyes)
+    assert procuration(client, leon, ana).status_code == 201
+    nouveaux = {m["to"]: m for m in mails.envoyes[avant:]}
+    assert set(nouveaux) == {"ana@exemple.fr", "leon@exemple.fr"}
+    a_ana, a_leon = nouveaux["ana@exemple.fr"], nouveaux["leon@exemple.fr"]
+    assert a_ana["subject"] == "Léon Perrin vous a donné procuration pour l'assemblée générale du 21 novembre 2099"
+    assert "Bonjour Ana Roux," in a_ana["text"] and "son pouvoir sera perdu" in a_ana["text"]
+    assert a_leon["subject"] == "Votre procuration pour l'assemblée générale du 21 novembre 2099"
+    assert "Ana Roux vous représentera" in a_leon["text"] and f"/r/{leon}" in a_leon["text"]
+    for m in (a_ana, a_leon):
+        assert [n for n, _ in m["attachments"]] == ["Pouvoir.pdf"] and m["attachments"][0][1].startswith(b"%PDF")
+    # Même réponse renvoyée : pas de nouveau mail.
+    avant = len(mails.envoyes)
+    assert procuration(client, leon, ana).status_code == 201
+    assert len(mails.envoyes) == avant
+    # En blanc : seulement la copie au mandant.
+    assert procuration(client, julia, "blank").status_code == 201
+    nouveaux = mails.envoyes[avant:]
+    assert [m["to"] for m in nouveaux] == ["julia@exemple.fr"]
+    assert "le bureau désignera la personne qui vous représente" in nouveaux[0]["text"]
+
+
+def test_relance_sept_jours_avant(client, ecole, ag, mails, db_session):
+    """Étape 3 : sept jours avant l'assemblée, une relance part une fois aux
+    convoqués qui n'ont pas répondu, avec leur lien."""
+    from datetime import datetime
+
+    from app.main import documents_client
+    from documents import assembly
+
+    leon = lien(mails, "leon@exemple.fr")
+    assert repondre(client, leon, answer="attend").status_code == 201
+    relancer = lambda quand: assembly.remind_due(db_session, mails, documents_client.directory, now=quand)
+    avant = len(mails.envoyes)
+    assert relancer(datetime(2099, 11, 13, 14, 0)) == 0  # J-8 : trop tôt
+    assert relancer(datetime(2099, 11, 14, 15, 0)) == 3
+    relances = mails.envoyes[avant:]
+    assert {m["to"] for m in relances} == {"julia@exemple.fr", "ima@exemple.fr", "ana@exemple.fr"}
+    ima = next(m for m in relances if m["to"] == "ima@exemple.fr")
+    assert ima["subject"].startswith("Rappel : ") and f"/r/{lien(mails, 'ima@exemple.fr')}?c=proxy" in ima["text"]
+    assert "dans une semaine" in ima["text"]
+    assert relancer(datetime(2099, 11, 15, 9, 0)) == 0  # une seule fois
+    from documents.models import DocActivity
+
+    trace = db_session.query(DocActivity).filter_by(node_id=ag["id"], action="reminded").one()
+    assert trace.detail == {"count": 3}

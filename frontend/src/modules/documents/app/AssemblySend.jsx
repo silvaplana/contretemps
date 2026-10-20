@@ -66,7 +66,10 @@ export default function AssemblySend({ file, api, onToast, onChanger, onSent }) 
   return (
     <div className="ag-send">
       {deja > 0 ? (
-        <p className="ad-ok">Convocation envoyée à {deja} membre{deja > 1 ? 's' : ''}. Les réponses arrivent dans Résultats.</p>
+        <>
+          <p className="ad-ok">Convocation envoyée à {deja} membre{deja > 1 ? 's' : ''}. Les réponses arrivent dans Résultats.</p>
+          <p className="af-hint">Sept jours avant l’assemblée, ceux qui n’ont pas répondu reçoivent un rappel par email.</p>
+        </>
       ) : (
         <p className="ag-pour">
           Pour : <strong>{avecEmail.length} membre{avecEmail.length > 1 ? 's' : ''}</strong> · par email ·{' '}

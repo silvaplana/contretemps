@@ -87,8 +87,12 @@ class Mailer(Protocol):
     def org(self, db: Session, org_id: int) -> tuple[str, str]:
         """(nom de l'organisation, adresse web de son appli, sans / final)."""
 
-    def send(self, to: str, subject: str, text: str, html: str, sender_name: str, reply_to: str | None) -> None:
-        """Envoie ou lève une exception (message lisible)."""
+    def send(
+        self, to: str, subject: str, text: str, html: str, sender_name: str, reply_to: str | None,
+        attachments: list[tuple[str, bytes]] | None = None,
+    ) -> None:
+        """Envoie ou lève une exception (message lisible). `attachments` :
+        (nom du fichier, contenu), par exemple le pouvoir signé."""
 
 
 class Notifier(Protocol):

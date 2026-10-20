@@ -88,6 +88,8 @@ export function historyText(h) {
       return `${qui} en a fait le modèle « ${d.name} »`
     case 'restricted':
       return `${qui} a restreint l’accès`
+    case 'reminded':
+      return `Rappel envoyé à ${d.count} membre${d.count > 1 ? 's' : ''} sans réponse`
     case 'unrestricted':
       return `${qui} a remis l’accès comme le dossier`
     default:

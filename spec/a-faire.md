@@ -15,7 +15,7 @@ de chaque session ; rayer ou retirer ce qui est fait.
 
 ## Prêt à faire
 
-- Relances par email aux non-répondants (`doc_sends` sans `answered_at`),
+- Relances par email aux non-répondants (`doc_sends` sans `answered_at`) ; fait pour la convocation d'AG (procurations.md §10),
   même lien (voir `passation-fichier-de-base.md` §3).
 - Garder les conversations de l'assistant en base (aujourd'hui en mémoire du
   serveur, perdues à chaque redémarrage ou mise en ligne).

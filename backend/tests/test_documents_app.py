@@ -260,10 +260,13 @@ class FauxMails:
     def org(self, db, org_id):
         return "Contretemps", "https://contretemps-83330.contretemps.silvaplana.cloud"
 
-    def send(self, to, subject, text, html, sender_name, reply_to):
+    def send(self, to, subject, text, html, sender_name, reply_to, attachments=None):
         if to == "panne@exemple.fr":
             raise RuntimeError("Boîte pleine")
-        self.envoyes.append({"to": to, "subject": subject, "text": text, "html": html, "from": sender_name, "reply_to": reply_to})
+        self.envoyes.append({
+            "to": to, "subject": subject, "text": text, "html": html, "from": sender_name, "reply_to": reply_to,
+            "attachments": list(attachments or []),
+        })
 
 
 @pytest.fixture

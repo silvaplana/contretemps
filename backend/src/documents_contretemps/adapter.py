@@ -248,7 +248,10 @@ class MessagerieContretemps:
             return "Contretemps", os.environ.get("URL_APPLI", "https://silvaplana.cloud/contretemps").rstrip("/")
         return ecole.nom, adresse_de_l_ecole(ecole)
 
-    def send(self, to: str, subject: str, text: str, html: str, sender_name: str, reply_to: str | None) -> None:
+    def send(
+        self, to: str, subject: str, text: str, html: str, sender_name: str, reply_to: str | None,
+        attachments: list[tuple[str, bytes]] | None = None,
+    ) -> None:
         if not self.envoi.actif:
             logger.warning("Mail non envoyé (pas de SMTP) à %s : %s\n%s", to, subject, text)
             return
@@ -257,7 +260,7 @@ class MessagerieContretemps:
         envoi = copy(self.envoi)
         envoi.nom_expediteur = sender_name
         envoi.repondre_a = reply_to or self.envoi.repondre_a
-        envoi.envoyer_confirmation(to, subject, text, [], html)
+        envoi.envoyer_confirmation(to, subject, text, list(attachments or []), html)
 
 
 class SaisonsContretemps:
