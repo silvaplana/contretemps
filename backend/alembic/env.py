@@ -28,6 +28,7 @@ from presence.models import PresenceEleve, PresenceProf, SeancePresence  # noqa:
 from saisons.models import Saison  # noqa: F401
 from videos.models import Video  # noqa: F401
 from documents.models import DocAcl, DocActivity, DocNode, DocVersion, StoredFile  # noqa: F401
+from finances.models import FinAccount, FinOperation, FinStatement  # noqa: F401
 
 config = context.config
 

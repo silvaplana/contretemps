@@ -5,6 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
+import Comptes, { requestStatementImport } from '../finances/Comptes.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeStatut } from './commun.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
@@ -17,7 +18,8 @@ const SOUS_ONGLETS = [
 ]
 
 // Onglet Financier, trésoriers et Super User seulement (spec/modules/
-// notes-de-frais.md §7) : Comptes (en chantier), puis Notes de frais.
+// notes-de-frais.md §7) : Comptes (spec/modules/financier.md), puis Notes
+// de frais.
 export default function Financier() {
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [sousOnglet, setSousOnglet] = useState(() =>
@@ -49,11 +51,15 @@ export default function Financier() {
   return (
     <div className="screen nf-screen">
       <MenuEntete
-        label="Actions des notes de frais"
-        actions={[
-          { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
-          { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
-        ]}
+        label="Actions du Financier"
+        actions={
+          sousOnglet === 'comptes'
+            ? [{ label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport }]
+            : [
+                { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
+                { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
+              ]
+        }
       />
       {choix && (
         <ChoixPersonneModal
@@ -72,7 +78,7 @@ export default function Financier() {
         className="admin-screen__tabs"
       />
       {sousOnglet === 'comptes' ? (
-        <p className="muted">En chantier : les comptes de l’association arrivent bientôt.</p>
+        <Comptes />
       ) : (
         <NotesATraiter />
       )}

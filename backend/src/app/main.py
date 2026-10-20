@@ -66,6 +66,8 @@ from notes_frais_contretemps import (
     membre_appelant as membre_notes_frais,
 )
 from notes_frais_contretemps.actions import actions as actions_notes_frais
+from finances import Finances, FinancesReceiver
+from finances_contretemps import membre_appelant as membre_finances, saisons_de_l_ecole
 from profs.actions import actions as actions_profs
 from presence import Presence, PresenceReceiver
 from saisons.gestion import GestionSaisons
@@ -352,6 +354,11 @@ notes_frais_client = NotesDeFrais(
     stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
 )
 notes_frais_receiver = NotesDeFraisReceiver(client=notes_frais_client, app=app, membre_courant=membre_notes_frais)
+
+# Comptes (module `finances`, repris de Sambo Admin, branché sur Contretemps
+# par finances_contretemps/ ; spec/modules/financier.md).
+finances_client = Finances()
+finances_receiver = FinancesReceiver(client=finances_client, app=app, current_member=membre_finances, seasons=saisons_de_l_ecole)
 
 # Actions que les modules ouvrent à l'assistant (spec/modules/assistant-ia.md
 # §3) : chaque module les déclare dans son actions.py, la liste est ici.
