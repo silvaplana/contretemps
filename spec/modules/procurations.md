@@ -80,6 +80,12 @@ nombre de voix de chacun) pour le procès-verbal.
 
 ### 1.3 Ce que fait celui qui convoque
 
+**Deux portes, même résultat (Seb, 20 octobre)** : la tuile **Docs › + › Convoquer l'AG**, ou
+l'**Assistant IA** : « convoque l'AG le 21 novembre à 14 h à la salle des fêtes ». L'assistant crée le
+même fichier (même dossier, §4), le remplit avec la date, le lieu et l'ordre du jour (repris de la
+dernière AG s'il y en a une), puis montre une carte **Faire / Annuler** : « Envoyer la convocation à
+87 membres ? ». Rien ne part sans ce toucher ; l'assistant ne signe jamais à la place d'un membre.
+
 Dans Docs, **+ › Questionner › Convoquer l'AG** (tuile aujourd'hui « bientôt ») : un fichier de base
 déjà rempli (convocation, bloc **Présence et procuration**), ouvert sur Préparer. Il corrige la date,
 le lieu et l'ordre du jour dans le texte, règle le bloc (§3.1), passe le fichier en Officiel, puis
@@ -234,5 +240,7 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
 2. **La feuille d'émargement** : table `doc_attendance`, écran, quorum en direct, PDF.
 3. **Les copies** : email au mandataire, copie du pouvoir signé au mandant, relance
    aux non-répondants J-7 (`a-faire.md`, déjà prête à faire).
-4. **L'Assistant IA** : `actions.py` (convoquer l'AG à partir de la dernière, où en est le quorum,
-   relancer) ; l'assistant prépare, le bureau envoie, jamais de signature par l'assistant.
+4. **L'Assistant IA, le reste** : où en est le quorum, qui n'a pas répondu, relancer.
+
+L'action **Convoquer l'AG** de l'assistant (`documents/actions.py`, §1.3) vient avec l'étape 1, à la
+demande de Seb (20 octobre) : l'outil doit marcher par l'assistant dès le départ.
