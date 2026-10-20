@@ -18,6 +18,7 @@
 // vraie infrastructure d'envoi de mail n'existe dans ce projet.
 
 import { compteEnCours, jetonEnCours } from './session.js'
+import { dateServeur } from '../utils/datesMessagerie.js'
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -112,7 +113,7 @@ export function versMessageEcran(message, compteId, membres) {
     reponseA: message.reply_to_id ?? null,
     // Photos et fichiers (spec §4.3) : { id, filename, kind, size, width, height }.
     pieces: message.attachments ?? [],
-    heure: new Date(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
+    heure: dateServeur(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     statut: statutAgrege(message.deliveries),
     envoyeParMail: message.deliveries.some((d) => d.canal === 'email'),
     // Marqueur d'INTENTION seulement (voir backend/src/messagerie/
@@ -186,6 +187,8 @@ async function construireConversation(conv, compteId, cours) {
     type: conv.type,
     nom: nomAffiche(conv, compteId, cours),
     membres: conv.membres,
+    // Classe une conversation encore vide dans la liste (voir utils/datesMessagerie.js).
+    creeLe: conv.created_at,
     messages: messages.map((m) => versMessageEcran(m, compteId, conv.membres)),
   }
 }
@@ -395,6 +398,8 @@ export async function creerOuObtenirDm(ecoleId, compteId, autreCompteId) {
     // conversation de groupe, jamais pour une individuelle (voir plus haut).
     nom: nomAffiche(conv, compteId, []),
     membres: conv.membres,
+    // Classe une conversation encore vide dans la liste (voir utils/datesMessagerie.js).
+    creeLe: conv.created_at,
     messages: messages.map((m) => versMessageEcran(m, compteId, conv.membres)),
   }
 }

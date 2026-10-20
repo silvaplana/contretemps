@@ -1879,6 +1879,32 @@
   white-space: nowrap;
 }
 
+/* Heure ou jour du dernier message, au-dessus du nombre de non-lus (spec messagerie §4.8). */
+.conversation-list__fin {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.conversation-list__date {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.conversation-list__date--non-lu {
+  color: var(--rouge-surlignage);
+  font-weight: 600;
+}
+
+.conversation-list__marques {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 20px;
+}
+
 /* Nombre de messages non lus (voir ConversationListScreen.jsx :
    compterNonLus) — même rouge que le point de BottomNav.jsx, cohérent
    entre les deux niveaux (liste des conversations / icône Messagerie). */
@@ -2047,6 +2073,21 @@
   flex-direction: column;
   gap: 10px;
   padding: 14px 16px;
+}
+
+/* Séparateur de jour entre les messages, comme WhatsApp (spec messagerie §4.8). */
+.conversation-thread__jour {
+  display: flex;
+  justify-content: center;
+}
+
+.conversation-thread__jour span {
+  padding: 4px 12px;
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 15px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
 }
 
 .message-row {

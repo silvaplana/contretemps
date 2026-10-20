@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { apercuMessage, compterNonLus } from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
+import { dernierMoment, libelleListe, plusRecentesDabord } from '../../utils/datesMessagerie.js'
 import { normaliserRecherche } from '../../utils/recherche.js'
 import { tousLesComptes } from './personnes.js'
 
@@ -35,7 +36,7 @@ function estStaff(role) {
 // de suite (voir ProfilContactScreen.jsx : le bouton "Message" s'en
 // charge, seulement si on le demande vraiment).
 export default function ConversationListScreen({
-  conversations,
+  conversations: nonTriees,
   onOpenConversation,
   onOpenContact,
   onAvatarClick,
@@ -46,6 +47,8 @@ export default function ConversationListScreen({
   contactActionEnCours,
 }) {
   const [recherche, setRecherche] = useState('')
+  // La plus récente en haut, comme WhatsApp (spec §4.8).
+  const conversations = plusRecentesDabord(nonTriees)
 
   const requete = normaliserRecherche(recherche.trim())
   const enModeRecherche = requete !== ''
@@ -174,6 +177,7 @@ function BarreRecherche({ valeur, onChange }) {
 // de fichier.
 function LigneConversation({ conversation: c, compteId, onOpen, onAvatarClick }) {
   const last = c.messages[c.messages.length - 1]
+  const moment = dernierMoment(c)
   const nonLus = compterNonLus(c)
   // Rôle de l'AUTRE personne, pour la couleur d'avatar (voir estStaff) —
   // sans objet pour un groupe (.avatar--groupe prime de toute façon).
@@ -195,8 +199,13 @@ function LigneConversation({ conversation: c, compteId, onOpen, onAvatarClick })
           <strong>{c.nom}</strong>
           <span className="muted">{apercuMessage(last)}</span>
         </span>
-        {last?.envoyeParMail && <Icon name="mail" size={16} className="muted" />}
-        {nonLus > 0 && <span className="conversation-list__badge">{nonLus}</span>}
+        <span className="conversation-list__fin">
+          {moment && <span className={`conversation-list__date ${nonLus > 0 ? 'conversation-list__date--non-lu' : ''}`}>{libelleListe(moment)}</span>}
+          <span className="conversation-list__marques">
+            {last?.envoyeParMail && <Icon name="mail" size={16} className="muted" />}
+            {nonLus > 0 && <span className="conversation-list__badge">{nonLus}</span>}
+          </span>
+        </span>
       </button>
     </div>
   )

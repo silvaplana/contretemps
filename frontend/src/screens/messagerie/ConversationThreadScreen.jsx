@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
@@ -6,6 +6,7 @@ import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.j
 import { useFrappeEnCours, useSignalerFrappe } from '../../utils/frappeIndicateur.js'
 import { envoyerAvecReprise, reessayer, useMessagesEnAttente } from '../../utils/messageOutbox.js'
 import { libellePresence, usePresence, usePresenceListe } from '../../utils/presenceEnLigne.js'
+import { dateDuMessage, libelleJour } from '../../utils/datesMessagerie.js'
 import { PhotoPleinEcran, PiecesDuMessage, VideoPleinEcran } from './pieces.jsx'
 import { TAILLE_MAX_FICHIER, TAILLE_MAX_VIDEO, preparerPhoto, tailleLisible } from './piecesOutils.js'
 
@@ -143,6 +144,8 @@ export default function ConversationThreadScreen({
   // des messages dont le `client_id` est déjà arrivé côté serveur (SSE
   // ou réponse directe), pour ne jamais l'afficher 2 fois pendant la
   // toute petite fenêtre où les deux peuvent se chevaucher.
+  const dernierMessage = conversation.messages[conversation.messages.length - 1]
+  const dernierJour = dernierMessage ? libelleJour(dateDuMessage(dernierMessage)) : null
   const enAttenteBrut = useMessagesEnAttente(conversation.id)
   const enAttente = enAttenteBrut.filter(
     (m) => !conversation.messages.some((cm) => cm.clientId === m.clientId),
@@ -566,12 +569,16 @@ export default function ConversationThreadScreen({
       )}
 
       <div className="conversation-thread__messages" ref={messagesRef}>
-        {conversation.messages.map((m) => {
+        {conversation.messages.map((m, i) => {
           const supprime = supprimeLocalement(m)
           const original = m.reponseA ? conversation.messages.find((o) => o.id === m.reponseA) : null
+          // Un séparateur à chaque nouveau jour, comme WhatsApp (spec §4.8).
+          const jour = libelleJour(dateDuMessage(m))
+          const nouveauJour = i === 0 || jour !== libelleJour(dateDuMessage(conversation.messages[i - 1]))
           return (
+          <Fragment key={m.id}>
+          {nouveauJour && <div className="conversation-thread__jour"><span>{jour}</span></div>}
           <div
-            key={m.id}
             id={`message-${m.id}`}
             className={`message-row ${m.estMoi ? 'message-row--moi' : ''} ${
               selection.includes(m.id) ? 'message-row--choisi' : ''
@@ -647,12 +654,16 @@ export default function ConversationThreadScreen({
               </span>
             </div>
           </div>
+          </Fragment>
           )
         })}
         {/* Bulles "en cours d'envoi"/"échec" (voir utils/messageOutbox.js)
             — un message tapé reste toujours visible à l'écran, jamais
             perdu en silence (bug signalé). Tap sur une bulle en échec :
             réessaie. */}
+        {enAttente.length > 0 && libelleJour(new Date()) !== dernierJour && (
+          <div className="conversation-thread__jour"><span>{libelleJour(new Date())}</span></div>
+        )}
         {enAttente.map((m) => (
           <div key={m.clientId} className="message-row message-row--moi">
             <button
@@ -847,13 +858,14 @@ export default function ConversationThreadScreen({
               type="button"
               className="icon-btn icon-btn--mail"
               onClick={() => setCanalOpen((o) => !o)}
-              aria-label="Autres moyens d'envoi (mail, WhatsApp)"
+              aria-label="Autres moyens d'envoi (mail)"
             >
               <Icon name="moreHorizontal" size={18} />
             </button>
             {canalOpen && (
               <div className="dropdown-menu canal-picker">
-                {/* Ni mail ni WhatsApp ne sont de vrais canaux d'envoi
+                {/* Plus d'envoi par WhatsApp (Seb, 20 octobre 2026). Le mail
+                    n'est pas un vrai canal d'envoi
                     pour l'instant (voir messages.py: Messages.envoyer —
                     juste un marqueur d'intention, aucune vraie
                     infrastructure d'envoi) — demande utilisateur du
@@ -867,15 +879,6 @@ export default function ConversationThreadScreen({
                   }}
                 >
                   <Icon name="mail" size={16} /> Par mail
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCanalOpen(false)
-                    window.alert('Fonctionnalité en cours de développement')
-                  }}
-                >
-                  <WhatsappBadge size={16} /> Par WhatsApp
                 </button>
               </div>
             )}
