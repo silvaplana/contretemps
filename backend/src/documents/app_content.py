@@ -30,11 +30,11 @@ LAYOUT_TYPES = {
     "paragraph", "heading", "quote", "bulletListItem", "numberedListItem", "checkListItem", "divider",
 }
 # Questions : Questionner et Agir.
-QUESTION_TYPES = {"shortText", "longText", "choice", "date", "number", "yesNo", "signature"}
+QUESTION_TYPES = {"shortText", "longText", "choice", "date", "number", "yesNo", "signature", "assembly"}
 # Blocs qui écrivent dans l'appli : Agir seulement.
 ACT_TYPES = {"member", "payment"}
 # Blocs du formulaire de résultat.
-RESULT_TYPES = {"responseCount", "responseTable", "choiceChart", "total"}
+RESULT_TYPES = {"responseCount", "responseTable", "choiceChart", "total", "assemblyQuorum", "assemblyProxies"}
 
 FAMILY_ENTRY_TYPES = {
     "inform": LAYOUT_TYPES,
@@ -44,7 +44,7 @@ FAMILY_ENTRY_TYPES = {
 
 TYPE_LABELS = {
     "shortText": "Réponse courte", "longText": "Réponse longue", "choice": "Choix", "date": "Date",
-    "number": "Nombre", "yesNo": "Oui / non", "signature": "Signature",
+    "number": "Nombre", "yesNo": "Oui / non", "signature": "Signature", "assembly": "Présence et procuration",
     "member": "Coordonnées", "payment": "Paiement",
 }
 
@@ -52,6 +52,10 @@ MEMBER_FIELDS = ("last_name", "first_name", "email", "phone")
 EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 SIGNATURE = re.compile(r"^data:image/png;base64,[A-Za-z0-9+/=]+$")
 MAX_SIGNATURE = 200_000
+# Bloc « Présence et procuration » (spec procurations.md §3).
+ASSEMBLY_ANSWERS = ("attend", "proxy", "absent")
+ASSEMBLY_KINDS = ("ordinary", "extraordinary")
+ASSEMBLY_QUORUMS = ("none", "quarter", "third", "half")
 
 
 class ContentError(ValueError):
@@ -113,6 +117,14 @@ def _check_block(bloc, permis: set[str], profondeur: int, ids: set[str]) -> None
     _check_inline(bloc.get("content", []), TYPE_LABELS.get(genre, "Texte"))
     if genre == "choice" and not _options(bloc):
         raise ContentError("Une question à choix doit avoir au moins un choix.")
+    if genre == "assembly":
+        if props.get("kind", "ordinary") not in ASSEMBLY_KINDS:
+            raise ContentError("Assemblée : ordinaire ou extraordinaire.")
+        if props.get("quorum", "none") not in ASSEMBLY_QUORUMS:
+            raise ContentError("Quorum inconnu.")
+        plafond = props.get("maxProxies", 2)
+        if not isinstance(plafond, int) or isinstance(plafond, bool) or not 0 <= plafond <= 50:
+            raise ContentError("Pouvoirs par personne : un nombre entre 0 (sans limite) et 50.")
     if genre == "payment":
         montant = props.get("amount")
         if not isinstance(montant, (int, float)) or isinstance(montant, bool) or not 0 < montant <= 10_000:
@@ -146,6 +158,8 @@ def check_content(content, family: str) -> dict:
     ids: set[str] = set()
     for bloc in entree:
         _check_block(bloc, FAMILY_ENTRY_TYPES[family], 0, ids)
+    if sum(1 for b in _walk(entree) if b["type"] == "assembly") > 1:
+        raise ContentError("Un seul bloc « Présence et procuration » par fichier.")
     if family == "inform" and resultat:
         raise ContentError("Un fichier Informer n'a pas de formulaire de résultat.")
     for bloc in resultat:
@@ -186,7 +200,7 @@ def check_values(content: dict, values, test: bool) -> dict:
         valeur = values.get(q["id"])
         vide = valeur is None or valeur == "" or valeur == [] or valeur == {}
         if vide:
-            if (q.get("props") or {}).get("required") and q["type"] != "payment":
+            if ((q.get("props") or {}).get("required") or q["type"] == "assembly") and q["type"] != "payment":
                 raise ContentError(f"Répondez à « {_label(q)} ».")
             continue
         gardees[q["id"]] = _check_value(q, valeur, test)
@@ -226,6 +240,8 @@ def _check_value(q: dict, v, test: bool):
         if not isinstance(v, str) or len(v) > MAX_SIGNATURE or not SIGNATURE.match(v):
             raise ContentError(f"« {nom} » : signature illisible, recommencez.")
         return v
+    if genre == "assembly":
+        return _check_assembly(v)
     if genre == "member":
         if not isinstance(v, dict) or set(v) - set(MEMBER_FIELDS):
             raise ContentError(f"« {nom} » : coordonnées mal formées.")
@@ -242,6 +258,26 @@ def _check_value(q: dict, v, test: bool):
             raise ContentError("Le paiement en ligne n'est pas encore branché.")
         return {"amount": (q.get("props") or {}).get("amount"), "test": True}
     raise ContentError("Question inconnue")
+
+
+def _check_assembly(v) -> dict:
+    """Forme de la réponse seulement ; les règles qui dépendent des autres
+    réponses (plafond, chaîne, membre convoqué) sont dans assembly.py."""
+    if not isinstance(v, dict) or v.get("answer") not in ASSEMBLY_ANSWERS:
+        raise ContentError("Répondez : je viens, je donne procuration ou je ne viens pas.")
+    if v["answer"] != "proxy":
+        return {"answer": v["answer"]}
+    qui = v.get("proxy_to")
+    if qui != "blank" and (not isinstance(qui, int) or isinstance(qui, bool)):
+        raise ContentError("Choisissez qui vous représente.")
+    signature = v.get("signature")
+    if not isinstance(signature, str) or len(signature) > MAX_SIGNATURE or not SIGNATURE.match(signature):
+        raise ContentError("Signez la procuration avec le doigt.")
+    return {"answer": "proxy", "proxy_to": qui, "signature": signature}
+
+
+def assembly_block(content: dict) -> dict | None:
+    return next((b for b in _walk(content.get("entry", {}).get("blocks", [])) if b.get("type") == "assembly"), None)
 
 
 def _inline_text(contenu) -> str:

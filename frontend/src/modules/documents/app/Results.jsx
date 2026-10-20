@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { Inline } from './Page.jsx'
-import { BLOCKS, euros, formatValue, label, options, questions, resultBlocks } from './blocks.js'
+import { ASSEMBLY_ANSWERS, BLOCKS, euros, formatValue, label, options, questions, resultBlocks } from './blocks.js'
 
 // Le formulaire de résultat, rempli avec les réponses (fichier-de-base.md
 // §2.4 et §6.1) : il relit les questions du formulaire d'entrée pour savoir
@@ -103,6 +104,85 @@ function Table({ qs, rows }) {
   )
 }
 
+// Convocation d'AG (procurations.md §4) : le décompte vient du serveur
+// (`summary`), jamais calculé ici. Toucher un compteur filtre la liste.
+const QUORUM = { quarter: 'un quart', third: 'un tiers', half: 'la moitié' }
+
+function AssemblyQuorum({ summary: s }) {
+  const [filtre, setFiltre] = useState(null)
+  if (!s) return <p className="ar-missing">Le décompte s’affiche quand la convocation est envoyée.</p>
+  const compteurs = [
+    ['attend', s.attend, 'viennent'],
+    ['proxy', s.proxy, 'procurations'],
+    ['absent', s.absent, 'ne viennent pas'],
+    ['none', s.none, 'sans réponse'],
+  ]
+  const q = s.quorum
+  const lignes = filtre ? s.rows.filter((r) => r.answer === filtre) : []
+  return (
+    <div className="ar-ag">
+      <p className="af-hint">{s.convoked} membres convoqués</p>
+      <div className="ar-counters">
+        {compteurs.map(([cle, n, texte]) => (
+          <button
+            key={cle}
+            type="button"
+            className={`ar-counter ar-counter--btn${filtre === cle ? ' ar-counter--on' : ''}`}
+            aria-pressed={filtre === cle}
+            onClick={() => setFiltre(filtre === cle ? null : cle)}
+          >
+            <b>{n}</b>
+            <span>{texte}</span>
+          </button>
+        ))}
+      </div>
+      <p className="ar-quorum">
+        {q
+          ? `Quorum (prévision) : ${q.votes} voix présentes ou représentées, il en faut ${q.needed} (${QUORUM[q.rule]} des membres). ${q.reached ? 'Atteint.' : 'Pas atteint.'}`
+          : `Voix présentes ou représentées (prévision) : ${s.votes} sur ${s.convoked}.`}
+        {s.lost > 0 && ` ${s.lost} pouvoir${s.lost > 1 ? 's' : ''} perdu${s.lost > 1 ? 's' : ''} : leur représentant ne vient pas.`}
+      </p>
+      {filtre && (
+        <ul className="ar-liste">
+          {lignes.length === 0 && <li className="ar-none">Personne.</li>}
+          {lignes.map((r) => (
+            <li key={r.person_id}>
+              <span>{r.name}</span>
+              <small>{r.answer === 'proxy' ? `→ ${r.proxy_name}` : ASSEMBLY_ANSWERS[r.answer]}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+      {s.tests.length > 0 && <p className="af-hint">{s.tests.length} réponse{s.tests.length > 1 ? 's' : ''} d’essai, non comptée{s.tests.length > 1 ? 's' : ''}.</p>}
+    </div>
+  )
+}
+
+function AssemblyProxies({ summary: s }) {
+  if (!s) return null
+  return (
+    <div className="ar-ag">
+      <h4>Qui représente qui</h4>
+      {s.holders.length === 0 && <p className="ar-none">Aucune procuration pour l’instant.</p>}
+      <ul className="ar-liste">
+        {s.holders.map((h) => (
+          <li key={h.person_id ?? 'blank'}>
+            <span>
+              <strong>{h.name}</strong>
+              {h.lost && <small> · ne vient pas : pouvoirs perdus</small>}
+              {h.pending && <small> · n’a pas encore répondu</small>}
+            </span>
+            <small>
+              {h.from.join(', ')}
+              {h.person_id != null && ` · 1 + ${h.count} voix`}
+            </small>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 // Réponses d'exemple pour l'Aperçu du formulaire de résultat, tant qu'il
 // n'y en a pas de vraies (marquées « Exemple »).
 export function exampleRows(content) {
@@ -125,6 +205,7 @@ export function exampleRows(content) {
           shortText: 'Oui, avec plaisir',
           longText: 'Merci pour l’organisation !',
           signature: 'signé',
+          assembly: [{ answer: 'attend' }, { answer: 'proxy', proxy_to: 'blank' }, { answer: 'absent' }][i % 3],
         }[q.type]
         return [q.id, v]
       }),
@@ -132,7 +213,7 @@ export function exampleRows(content) {
   }))
 }
 
-export default function Results({ content, rows, expected }) {
+export default function Results({ content, rows, expected, summary }) {
   const qs = questions(content)
   if (!qs.length) {
     return <p className="ar-missing">Ajoutez une question au formulaire d’entrée : le formulaire de résultat se fabriquera tout seul.</p>
@@ -146,6 +227,8 @@ export default function Results({ content, rows, expected }) {
         else if (b.type === 'choiceChart') corps = <Chart question={parId[b.props?.questionId]} rows={rows} />
         else if (b.type === 'total') corps = <Total question={parId[b.props?.questionId]} rows={rows} />
         else if (b.type === 'responseTable') corps = <Table qs={qs} rows={rows} />
+        else if (b.type === 'assemblyQuorum') corps = <AssemblyQuorum summary={summary} />
+        else if (b.type === 'assemblyProxies') corps = <AssemblyProxies summary={summary} />
         else if (b.type === 'heading') corps = <h3 className="ap-h"><Inline content={b.content} /></h3>
         else if (b.type === 'divider') corps = <hr className="ap-hr" />
         else corps = <p className="ap-p"><Inline content={b.content} /></p>

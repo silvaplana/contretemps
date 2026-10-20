@@ -27,6 +27,13 @@ async function lire(url, options) {
   return r.json()
 }
 
+// Convocation d'AG : le mail porte un lien par réponse (`?c=proxy`), la page
+// s'ouvre avec ce choix déjà fait (procurations.md §1.1).
+function choixDuMail(assembly) {
+  const c = new URLSearchParams(window.location.search).get('c')
+  return assembly && ['attend', 'proxy', 'absent'].includes(c) ? { [assembly.block_id]: { answer: c } } : undefined
+}
+
 export default function PagePublique({ slug, jeton }) {
   const apparence = useApparence()
   const [page, setPage] = useState(null)
@@ -90,7 +97,8 @@ export default function PagePublique({ slug, jeton }) {
               content={page.content}
               size="phone"
               onSubmit={page.accepting ? repondre : undefined}
-              initial={page.values ?? undefined}
+              initial={page.values ?? choixDuMail(page.assembly)}
+              assembly={page.assembly ? { ...page.assembly, person: page.person } : undefined}
               submitLabel={page.values ? 'Enregistrer ma réponse' : undefined}
             />
             {envoiErreur && <p className="pp-erreur" role="alert">{envoiErreur}</p>}

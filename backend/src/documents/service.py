@@ -110,6 +110,7 @@ class Documents:
         mailer: Mailer | None = None,
         reserved_folders: Sequence[tuple[str, str]] = (),
         notifier: Notifier | None = None,
+        members: Sequence[tuple[str, str]] = (),
     ) -> None:
         self.storage = storage
         self.directory = directory
@@ -121,6 +122,9 @@ class Documents:
         # période (§4.7 bis), ex. ("Financier", "role:tresorier").
         self.reserved_folders = tuple(reserved_folders)
         self.notifier = notifier
+        # Tous les membres, en destinataires de Diffuser (("group", "role:eleve"),
+        # …) : à qui convoquer une première assemblée (procurations.md §1.3).
+        self.members = tuple(members)
         from .app_files import AppFiles
         from .app_sends import AppSends
 

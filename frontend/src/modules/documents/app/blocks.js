@@ -3,9 +3,9 @@
 // BlockNote, contrôlé par le serveur (backend/src/documents/app_content.py).
 
 export const LAYOUT_TYPES = ['paragraph', 'heading', 'quote', 'bulletListItem', 'numberedListItem', 'checkListItem', 'divider']
-export const QUESTION_TYPES = ['shortText', 'longText', 'choice', 'date', 'number', 'yesNo', 'signature']
+export const QUESTION_TYPES = ['shortText', 'longText', 'choice', 'date', 'number', 'yesNo', 'signature', 'assembly']
 export const ACT_TYPES = ['member', 'payment']
-export const RESULT_TYPES = ['responseCount', 'responseTable', 'choiceChart', 'total']
+export const RESULT_TYPES = ['responseCount', 'responseTable', 'choiceChart', 'total', 'assemblyQuorum', 'assemblyProxies']
 
 export const FAMILY_TYPES = {
   inform: LAYOUT_TYPES,
@@ -28,12 +28,15 @@ export const BLOCKS = {
   number: { label: 'Nombre', icon: '#', hint: 'Un âge, une quantité' },
   yesNo: { label: 'Oui / non', icon: '✓', hint: 'Une case à cocher' },
   signature: { label: 'Signature', icon: '✍', hint: 'Signer au doigt' },
+  assembly: { label: 'Présence et procuration', icon: '⚖', hint: 'Je viens, je donne procuration, je ne viens pas' },
   member: { label: 'Coordonnées', icon: '⚡', hint: 'Nom, email, téléphone : met à jour le membre' },
   payment: { label: 'Paiement', icon: '€', hint: 'Une somme à régler' },
   responseCount: { label: 'Compteur', icon: '①', hint: 'Combien ont répondu' },
   responseTable: { label: 'Tableau des réponses', icon: '▦', hint: 'Une ligne par personne' },
   choiceChart: { label: 'Graphique', icon: '▮', hint: 'Les réponses d’une question à choix' },
   total: { label: 'Total', icon: 'Σ', hint: 'La somme d’un paiement ou d’un nombre' },
+  assemblyQuorum: { label: 'Présences et quorum', icon: '⚖', hint: 'Viennent, procurations, quorum' },
+  assemblyProxies: { label: 'Qui représente qui', icon: '⇄', hint: 'Les pouvoirs reçus' },
 }
 
 export const MEMBER_FIELDS = [
@@ -88,7 +91,9 @@ const nouvelId = () => (crypto.randomUUID ? crypto.randomUUID() : `b${Date.now()
 export function defaultResultBlocks(content) {
   const qs = questions(content)
   const bloc = (type, props = {}) => ({ id: nouvelId(), type, props, children: [] })
+  const ag = qs.some((q) => q.type === 'assembly') ? [bloc('assemblyQuorum'), bloc('assemblyProxies')] : []
   return [
+    ...ag,
     bloc('responseCount'),
     ...qs.filter((q) => q.type === 'choice' || q.type === 'yesNo').map((q) => bloc('choiceChart', { questionId: q.id })),
     ...qs.filter((q) => q.type === 'payment' || q.type === 'number').map((q) => bloc('total', { questionId: q.id })),
@@ -107,12 +112,20 @@ export function formatValue(q, v) {
   if (q.type === 'yesNo') return v ? 'Oui' : 'Non'
   if (q.type === 'choice') return Array.isArray(v) ? v.join(', ') : String(v)
   if (q.type === 'signature') return 'Signé'
+  if (q.type === 'assembly') {
+    if (v.answer !== 'proxy') return ASSEMBLY_ANSWERS[v.answer] ?? ''
+    return `Procuration à ${v.proxy_to === 'blank' ? 'le bureau' : v.proxy_name ?? '?'}`
+  }
   if (q.type === 'payment') return `${euros(v.amount)}${v.test ? ' (essai)' : ''}`
   if (q.type === 'member') return [v.first_name, v.last_name, v.email].filter(Boolean).join(' ')
   if (q.type === 'date') return new Date(`${v}T12:00`).toLocaleDateString('fr-FR')
   if (q.type === 'number') return Number(v).toLocaleString('fr-FR')
   return String(v)
 }
+
+export const ASSEMBLY_ANSWERS = { attend: 'Vient', proxy: 'Procuration', absent: 'Ne vient pas', none: 'Pas encore répondu' }
+
+export const assemblyBlock = (content) => walk(content?.entry?.blocks).find((b) => b.type === 'assembly')
 
 export const euros = (n) => `${Number(n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`
 
@@ -130,4 +143,16 @@ export function openingTab(file) {
   if (file.status === 'validated') return 'diffuse'
   if (file.status === 'official') return file.family === 'inform' ? 'preview' : 'results'
   return 'prep'
+}
+
+// Un fichier reçu du serveur, enregistré par le navigateur.
+export function telecharger(blob, nom) {
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = nom
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }

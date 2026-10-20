@@ -65,6 +65,7 @@ from notes_frais_contretemps import (
     NotifieurContretemps,
     membre_appelant as membre_notes_frais,
 )
+from documents_contretemps.actions import actions as actions_documents
 from notes_frais_contretemps.actions import actions as actions_notes_frais
 from finances import Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
 from finances_contretemps import membre_appelant as membre_finances, saisons_de_l_ecole
@@ -297,6 +298,8 @@ documents_client = Documents(
     # pas les autres admins (Seb, 17 octobre).
     reserved_folders=(("Financier", "role:tresorier"),),
     notifier=NotifieurDocuments(notifications_client),
+    # Convoquer une première AG : tous les membres de la saison.
+    members=(("group", "role:eleve"), ("group", "role:professeur"), ("group", "role:admin")),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.
@@ -406,6 +409,7 @@ assistant_client.actions = Actions([
     *actions_cours(cours_receiver),
     *actions_choregraphies(choregraphies_client),
     *actions_notes_frais(notes_frais_client),
+    *actions_documents(documents_client),
 ])
 
 inscriptions_receiver = InscriptionsReceiver(

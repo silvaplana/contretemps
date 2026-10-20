@@ -2,12 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Assistant from '../Assistant.jsx'
 import { BubbleIcon, FamilyDot, StatusIcon } from '../icons.jsx'
 import { FAMILIES, STATUSES } from '../kinds.js'
+import AssemblySend from './AssemblySend.jsx'
 import Diffuser from './Diffuser.jsx'
 import Editor from './Editor.jsx'
 import Page from './Page.jsx'
 import Results, { exampleRows } from './Results.jsx'
 import FamilyCards from './FamilyCards.jsx'
-import { dropForFamily, openingTab, questions, resultBlocks, tabReason } from './blocks.js'
+import { assemblyBlock, dropForFamily, openingTab, questions, resultBlocks, tabReason, telecharger } from './blocks.js'
 import './app.css'
 
 // Le fichier de base ouvert en plein écran (spec fichier-de-base.md) :
@@ -67,16 +68,25 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   // si on le ferme pour regarder le fichier).
   const [chatOuvert, setChatOuvert] = useState(false)
   const [chatMonte, setChatMonte] = useState(false)
+  // Convocation d'AG (procurations.md) : décompte et destinataires par
+  // défaut ; « Changer » ramène au Diffuser habituel.
+  const [ag, setAg] = useState(null)
+  const [diffuserTout, setDiffuserTout] = useState(false)
 
   const charger = useCallback(
-    async (premier = false) => {
+    // `ouvrir` : choisir l'onglet d'après l'état (ouverture, changement d'état).
+    async (ouvrir = false) => {
       try {
         const f = await api.getApp(item.id)
         content.current = f.content
         setContenu(f.content)
         version.current = f.version?.number ?? null
         setFile(f)
-        if (premier) setTab(openingTab(f))
+        const convocation = Boolean(assemblyBlock(f.content)) && f.can_edit
+        const vue = convocation ? await api.assembly(item.id).catch(() => null) : null
+        setAg(vue)
+        // Une convocation officielle pas encore envoyée s'ouvre sur l'envoi.
+        if (ouvrir) setTab(vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : openingTab(f))
         if (f.can_edit && f.family !== 'inform') setRows((await api.appResponses(item.id)).items)
         setEditorKey((k) => k + 1)
         return f
@@ -99,6 +109,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     if (!peutLireReponses || (tab !== 'results' && tab !== 'preview')) return
     let actif = true
     api.appResponses(item.id).then((r) => actif && setRows(r.items), () => {})
+    if (assemblyBlock(content.current)) api.assembly(item.id).then((v) => actif && setAg(v), () => {})
     return () => {
       actif = false
     }
@@ -146,8 +157,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     try {
       if (saving === 'pending') await enregistrer(content.current)
       await api.setStatus(item.id, status)
-      const f = await charger()
-      if (f) setTab(openingTab(f))
+      await charger(true)
       onToast(`Fichier ${STATUSES[status].label}`)
       onChanged?.()
     } catch (e) {
@@ -273,7 +283,8 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         className="dx-btn"
         disabled={!file.can_manage || !c.entry.blocks.length}
         title={!file.can_manage ? 'Un admin valide le fichier' : undefined}
-        onClick={() => changerEtat('validated')}
+        // Une convocation passe directement en Officiel (procurations.md §1.3).
+        onClick={() => changerEtat(assemblyBlock(c) ? 'official' : 'validated')}
       >
         Valider
       </button>
@@ -301,15 +312,33 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
               size={size}
               onSubmit={!informer && file.can_edit ? essayer : undefined}
               submitLabel="Envoyer ma réponse (essai)"
+              assembly={
+                ag && {
+                  candidates: ag.recipients.map((r) => ({ id: r.person_id, name: r.name })),
+                }
+              }
             />
           </>
         ) : (
           <>
             <p className="af-hint">{rows.length ? 'Avec les réponses reçues.' : 'Avec des réponses d’exemple, en attendant les vraies.'}</p>
-            <Results content={c} rows={rows.length ? rows : exampleRows(c)} />
+            <Results content={c} rows={rows.length ? rows : exampleRows(c)} summary={ag?.summary.convoked ? ag.summary : null} />
           </>
         )}
       </>
+    )
+  } else if (tab === 'diffuse' && ag && statut === 'official' && !diffuserTout) {
+    corps = (
+      <AssemblySend
+        file={file}
+        api={api}
+        onToast={onToast}
+        onChanger={() => setDiffuserTout(true)}
+        onSent={async () => {
+          setAg(await api.assembly(item.id))
+          onChanged?.()
+        }}
+      />
     )
   } else if (tab === 'diffuse') {
     corps = (
@@ -331,6 +360,26 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
           onChanged?.()
         }}
       />
+    )
+  } else if (ag) {
+    const fichier = async (quoi, nom) => {
+      try {
+        telecharger(await api.assemblyFile(item.id, quoi), nom)
+      } catch (e) {
+        onToast(e.message)
+      }
+    }
+    const titre = file.name.replace(/^Convocation /, '')
+    corps = <Results content={c} rows={rows} summary={ag.summary.convoked ? ag.summary : null} />
+    bas = (
+      <>
+        <button type="button" className="dx-btn" onClick={() => fichier('summary.pdf', `Récapitulatif ${titre}.pdf`)}>
+          Télécharger le récapitulatif
+        </button>
+        <button type="button" className="dx-btn dx-btn--ghost" onClick={() => fichier('summary.xlsx', `Récapitulatif ${titre}.xlsx`)}>
+          Excel
+        </button>
+      </>
     )
   } else {
     corps = <Results content={c} rows={rows} />

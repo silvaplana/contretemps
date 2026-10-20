@@ -92,7 +92,9 @@ const MODELES = {
   },
 }
 
-export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onToast }) {
+// Tuiles qui marchent déjà : elles ouvrent leur propre parcours.
+// « Convoquer l’AG » : spec procurations.md §1.3.
+export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onAssembly, onToast }) {
   // Informer, Questionner, Agir : fermés au départ (Seb, 15 octobre).
   const [ouvert, setOuvert] = useState(null)
   const [nature, setNature] = useState(false)
@@ -173,12 +175,18 @@ export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, o
                         onToast={onToast}
                       />
                     ))}
-                  {m.tiles.map((t) => (
-                    <button key={t} type="button" className="dx-tpl" onClick={bientot}>
-                      {t}
-                      <span className="dx-tpl__soon">bientôt</span>
-                    </button>
-                  ))}
+                  {m.tiles.map((t) =>
+                    t === 'Convoquer l’AG' && onAssembly ? (
+                      <button key={t} type="button" className="dx-tpl" onClick={onAssembly}>
+                        {t}
+                      </button>
+                    ) : (
+                      <button key={t} type="button" className="dx-tpl" onClick={bientot}>
+                        {t}
+                        <span className="dx-tpl__soon">bientôt</span>
+                      </button>
+                    ),
+                  )}
                 </div>
               )}
             </div>
