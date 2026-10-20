@@ -194,6 +194,19 @@ Aucune route, aucun écran ne teste un niveau lui-même : tout passe par les fon
 (`is_admin`, `is_tresorier`, `require_admin`… côté serveur ; `frontend/src/data/roles.js` côté
 appli). Changer la façon de stocker les niveaux ne touche qu'un fichier.
 
+### 6.4 Le bureau (fonctions)
+
+Décision de Seb du 20 octobre (`spec/modules/proces-verbal-ag.md` §2 bis) : dans la liste des
+admins, une colonne **Bureau** donne à chaque admin zéro, une ou plusieurs **fonctions** :
+Président·e, Vice-président·e, Secrétaire, Trésorier·e. Ce sont des titres, pas des niveaux : elles
+ne donnent aucun droit (Seb, 20 octobre : la fonction Trésorier·e n'ouvre pas l'onglet Financier,
+la coche Trésorier reste à part).
+**À l'écran, la coche « Trésorier » devient « Accès au Financier »** (Seb, 20 octobre) : la liste
+des admins a donc deux colonnes distinctes, **Accès au Financier** (le droit, §6.1 ; le niveau garde
+son nom `tresorier` dans le code, `is_tresorier`) et **Bureau** (les fonctions). Elles servent aux documents (signataires d'un procès-verbal, « Martine
+Colin, présidente », pouvoir en blanc donné à la présidence). Mêmes personnes qui les changent que
+les coches Administrateur principal et Trésorier. Recopiées à la création d'une saison.
+
 ---
 
 ## 7. Saisons
