@@ -226,7 +226,8 @@ def test_feuille_d_emargement(client, ecole, ag, mails, db_session):
     pointer(ana, False)
     s = pointer(ecole["eleve"].id, False).json()
     assert (s["present"], s["lost"], s["votes"]) == (0, 1, 1)
-    assert {r["name"]: r for r in s["rows"]}["Ana Roux"]["lost"] == ["Léon Perrin"]
+    lignes = {r["name"]: r for r in s["rows"]}
+    assert lignes["Ana Roux"]["lost"] == ["Léon Perrin"] and lignes["Léon Perrin"]["proxy_name"] == "Ana Roux"
 
     # Une personne de l'école non convoquée peut être ajoutée ; pas d'ailleurs.
     nouvelle = Comptes().create(db_session, ecole_id=ecole["id"], role="eleve", nom="Neuf", prenom="Zoé")

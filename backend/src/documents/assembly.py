@@ -844,6 +844,8 @@ def sheet(docs: Documents, db: Session, node: DocNode, content: dict) -> dict:
             "present": a is not None, "source": a.source if a else None,
             "answer": reponses.get(pid, {}).get("answer", "none"),
             "represented_by": None if qui is None else "le bureau" if qui == "blank" else noms.get(qui, "?"),
+            # Sa procuration, quand elle ne compte pas (lui présent, ou mandataire absent).
+            "proxy_name": reponses.get(pid, {}).get("proxy_name") if qui is None else None,
             "holds": len(valides.get(pid, [])),
             "lost": [noms[m] for m in perdus.get(pid, [])],
         })
@@ -910,6 +912,8 @@ def sheet_html(s: dict, title: str, org_name: str) -> str:
             voix = 1 + r["holds"]
         elif r["represented_by"]:
             etat, voix = f"Représenté par {r['represented_by']}", ""
+        elif r["proxy_name"]:
+            etat, voix = f"Absent (pouvoir à {r['proxy_name']}, perdu)", ""
         else:
             etat, voix = "Absent", ""
         perdus = f"<br/><small>Pouvoir perdu : {escape(', '.join(r['lost']))}</small>" if r["lost"] else ""
