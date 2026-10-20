@@ -111,6 +111,9 @@ Puis, **trois temps** (Seb, 20 octobre) :
    convocation ? », puis Annuler 10 s) et **Télécharger la convocation** (PDF A4, pour l'imprimer ou
    l'envoyer autrement). Sous le bouton : « Pour : 87 membres · par email », « Changer » ouvre Diffuser.
    Les destinataires proposés : ceux de la dernière AG, sinon tous les membres de la saison.
+   Dessous, facultatif (Seb, 20 octobre) : **Faire un essai avec un membre** : on choisit une personne,
+   elle reçoit le mail avec « [Essai] » ; sa réponse arrive dans Résultats marquée « Essai », sans
+   compter (comme « M'envoyer un essai », `fichier-de-base.md` §2.3, mais à la personne choisie).
 
 **Deux portes, même résultat (Seb, 20 octobre)** : l'**Assistant IA** suit exactement les mêmes
 étapes que l'écran, par la même fonction du code (une seule fonction « préparer la convocation »,
