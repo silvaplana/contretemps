@@ -163,8 +163,8 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
 
 ## 6. À trancher par Seb
 
-1. **La fonction Trésorier·e du bureau donne-t-elle aussi l'onglet Financier ?** Recommandation :
-   **non**, deux choses séparées : la fonction est un titre (qui signe, ce qu'on écrit dans le PV), la
+1. ~~La fonction Trésorier·e du bureau donne-t-elle aussi l'onglet Financier ?~~ **Décidé par Seb
+   le 20 octobre : non**, deux choses séparées : la fonction est un titre (qui signe, ce qu'on écrit dans le PV), la
    coche Trésorier est un droit (un trésorier adjoint peut avoir le Financier sans être au bureau).
    L'écran propose de cocher Trésorier quand on donne la fonction, sans le faire tout seul.
 2. **Envoi aux membres** : en lien secondaire sous « Télécharger le PDF » une fois signé.

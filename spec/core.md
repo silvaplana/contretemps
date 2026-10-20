@@ -199,7 +199,8 @@ appli). Changer la façon de stocker les niveaux ne touche qu'un fichier.
 Décision de Seb du 20 octobre (`spec/modules/proces-verbal-ag.md` §2 bis) : dans la liste des
 admins, une colonne **Bureau** donne à chaque admin zéro, une ou plusieurs **fonctions** :
 Président·e, Vice-président·e, Secrétaire, Trésorier·e. Ce sont des titres, pas des niveaux : elles
-ne donnent aucun droit. Elles servent aux documents (signataires d'un procès-verbal, « Martine
+ne donnent aucun droit (Seb, 20 octobre : la fonction Trésorier·e n'ouvre pas l'onglet Financier,
+la coche Trésorier reste à part). Elles servent aux documents (signataires d'un procès-verbal, « Martine
 Colin, présidente », pouvoir en blanc donné à la présidence). Mêmes personnes qui les changent que
 les coches Administrateur principal et Trésorier. Recopiées à la création d'une saison.
 
