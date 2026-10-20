@@ -29,6 +29,9 @@ class Conversation(Base):
     # 'individuelle' | 'groupe' — texte, pas Enum (même choix que
     # roles_compte.role, voir backend/README.md).
     type: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Classe une conversation encore vide dans la liste, comme WhatsApp
+    # (spec/modules/messagerie-instantanee.md §4.8). Vide pour celles d'avant.
+    created_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, default=_utcnow)
 
     # Groupe WhatsApp miroir (voir spec/SPEC.md §6.9 et conversations.py :
     # creer_groupe_whatsapp) — le "tuyau" pour un futur envoi réel via

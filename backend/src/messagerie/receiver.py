@@ -174,6 +174,7 @@ class MessagerieReceiver:
                 else None
             ),
             "type": conversation.type,
+            "created_at": conversation.created_at,
             "membres": membres,
             "blocs": self.conversations.blocs(db, conversation.id),
             "whatsapp_statut": conversation.whatsapp_statut,

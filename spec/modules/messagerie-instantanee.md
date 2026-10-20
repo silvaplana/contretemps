@@ -324,6 +324,25 @@ la liste des applis, comme WhatsApp.
   sera distribuée (elle ne peut pas être essayée ici). Le jour où une appli iPhone Capacitor existera, une extension
   de partage iOS le permettra. D'ici là, sur iPhone, on continue par copier-coller.
 
+### 4.8 Dates et ordre, comme WhatsApp (Seb, 20 octobre)
+
+- **Un séparateur à chaque nouveau jour** dans le fil, centré :
+  « Aujourd'hui », « Hier », le jour de la semaine (« Lundi ») pour les six derniers jours, puis la date
+  (« 12 octobre », avec l'année si ce n'est pas celle-ci). Chaque bulle garde son heure.
+- **La liste des discussions** est triée comme WhatsApp : la plus récente en haut, d'après son dernier
+  message, ou sa création tant qu'elle n'en a aucun (une discussion ou un groupe qu'on vient de créer
+  monte donc en haut). Les discussions vides d'avant le 20 octobre n'ont pas de date de création et restent
+  en bas. Elle remonte aussitôt quand un message arrive ou part. À droite de chaque ligne : l'heure du
+  dernier message aujourd'hui, sinon « Hier », le jour de la semaine ou la date (12/10/2026).
+- Les heures sont celles du téléphone : le serveur garde tout en UTC et l'appli les convertit (elles
+  s'affichaient deux heures trop tôt en été).
+- Code : `frontend/src/utils/datesMessagerie.js` ; colonne `conversations.created_at`.
+
+### 4.9 Plus d'envoi par WhatsApp (Seb, 20 octobre)
+
+Le choix « Par WhatsApp » du menu ⋯ de la zone de saisie est retiré : la messagerie de l'appli suffit. Reste
+« Par mail ». La case « Groupe WhatsApp » des groupes (Admin, Infos d'un groupe) n'est pas touchée.
+
 ## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des

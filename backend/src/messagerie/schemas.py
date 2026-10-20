@@ -59,6 +59,7 @@ class ConversationSortie(BaseModel):
     # résolu côté client (voir frontend/src/api/messages.js: nomAffiche).
     nom_affiche: str | None = None
     type: str
+    created_at: dt.datetime | None = None
     membres: list[CompteResume] = []
     # Composition brute (pas résolue) — pour l'édition côté Admin >
     # Conversations, voir conversations.py: blocs().
