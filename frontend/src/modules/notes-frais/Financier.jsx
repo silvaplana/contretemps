@@ -5,6 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
+import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestStatementImport } from '../finances/Comptes.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
@@ -17,11 +18,12 @@ const SOUS_ONGLETS = [
   { value: 'comptes', label: 'Comptes' },
   { value: 'notes', label: 'Notes de frais' },
   { value: 'bilan', label: 'Bilan' },
+  { value: 'ag', label: 'AG' },
 ]
 
 // Onglet Financier, trésoriers et Super User seulement (spec/modules/
-// notes-de-frais.md §7) : Comptes et Bilan (spec/modules/financier.md),
-// Notes de frais.
+// notes-de-frais.md §7) : Comptes, Bilan et Assemblée générale
+// (spec/modules/financier.md), Notes de frais.
 export default function Financier() {
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [sousOnglet, setSousOnglet] = useState(() => {
@@ -60,7 +62,12 @@ export default function Financier() {
             ? [{ label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport }]
             : sousOnglet === 'bilan'
               ? [{ label: 'Nouveau bilan', icon: 'plus', onClick: requestNewReport }]
-              : [
+              : sousOnglet === 'ag'
+                ? [
+                    { label: 'Nouvelle AG', icon: 'plus', onClick: requestNewAssembly },
+                    { label: 'Modèle général de PowerPoint…', icon: 'paperclip', onClick: requestGeneralTemplate },
+                  ]
+                : [
                 { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
                 { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
               ]
@@ -86,6 +93,8 @@ export default function Financier() {
         <Comptes />
       ) : sousOnglet === 'bilan' ? (
         <Bilan />
+      ) : sousOnglet === 'ag' ? (
+        <AssembleeGenerale />
       ) : (
         <NotesATraiter />
       )}

@@ -5,13 +5,14 @@ X-Ecole-Id, comme pour les notes de frais), saisons = celles de l'école."""
 from __future__ import annotations
 
 from fastapi import Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from comptes import Compte, rbac, roles
 from db import get_db
 from documents_contretemps.adapter import nom_affiche, personne_id
 from finances.ports import Member, Season
+from inscriptions.models import Inscription
 from notes_frais_contretemps.adapter import _ecole_choisie
 from saisons.models import Saison
 from saisons.portee import toutes_saisons
@@ -39,7 +40,20 @@ def saisons_de_l_ecole(db: Session, ecole_id: int) -> list[Season]:
     créée (voir saisons/saisons.py)."""
     with toutes_saisons(db):
         saisons = list(db.scalars(select(Saison).where(Saison.ecole_id == ecole_id).order_by(Saison.id)))
+    # Inscrits par saison : les fiches d'inscription de l'école.
+    inscrits = dict(
+        db.execute(
+            select(Inscription.saison_id, func.count()).where(Inscription.ecole_id == ecole_id).group_by(Inscription.saison_id)
+        ).all()
+    )
     return [
-        Season(id=s.id, name=s.nom, start_date=s.date_debut.isoformat(), end_date=s.date_fin.isoformat(), current=i == len(saisons) - 1)
+        Season(
+            id=s.id,
+            name=s.nom,
+            start_date=s.date_debut.isoformat(),
+            end_date=s.date_fin.isoformat(),
+            current=i == len(saisons) - 1,
+            members=inscrits.get(s.id, 0),
+        )
         for i, s in enumerate(saisons)
     ]

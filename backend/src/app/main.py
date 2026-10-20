@@ -66,7 +66,7 @@ from notes_frais_contretemps import (
     membre_appelant as membre_notes_frais,
 )
 from notes_frais_contretemps.actions import actions as actions_notes_frais
-from finances import Finances, FinancesReceiver, FinancialReports
+from finances import Finances, FinancesReceiver, FinancialReports, GeneralAssemblies
 from finances_contretemps import membre_appelant as membre_finances, saisons_de_l_ecole
 from profs.actions import actions as actions_profs
 from presence import Presence, PresenceReceiver
@@ -366,8 +366,24 @@ finances_reports = FinancialReports(
     session_factory=SessionLocal,
     note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "bilan_financier", cout, detail),
 )
+# Assemblée générale : base du PowerPoint de l'AG écrite à partir du bilan,
+# PowerPoint gardés sur le disque (volume Docker), images des diapos par
+# LibreOffice Impress s'il est installé.
+finances_assemblies = GeneralAssemblies(
+    storage_dir=Path(os.environ.get("FINANCES_DIR", "./data/finances")) / "assemblies",
+    seasons=saisons_de_l_ecole,
+    reports=finances_reports.list,
+    report=finances_reports.get,
+    session_factory=SessionLocal,
+    note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "assemblee_generale", cout, detail),
+)
 finances_receiver = FinancesReceiver(
-    client=finances_client, app=app, current_member=membre_finances, seasons=saisons_de_l_ecole, reports=finances_reports
+    client=finances_client,
+    app=app,
+    current_member=membre_finances,
+    seasons=saisons_de_l_ecole,
+    reports=finances_reports,
+    assemblies=finances_assemblies,
 )
 
 # Actions que les modules ouvrent à l'assistant (spec/modules/assistant-ia.md

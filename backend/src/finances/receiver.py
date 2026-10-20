@@ -7,13 +7,17 @@ from __future__ import annotations
 import datetime as dt
 from collections.abc import Callable
 
+from urllib.parse import quote
+
 from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db import get_db
 
+from .assemblies import PPTX, AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .exports import to_pdf, to_xlsx
 from .ports import Member, Season
 from .reports import FinancialReports, ReportError, ReportNotFoundError
@@ -39,9 +43,20 @@ class RunRequest(BaseModel):
     model: str | None = None
 
 
+class ModelRequest(BaseModel):
+    """Corps de PUT /finances/assemblies/{id}/model : PowerPoint à copier
+    comme modèle de l'AG. kind : "modele", "genere" ou "modifie" d'une autre
+    AG (sourceId), ou "general" (modèle général de l'organisation)."""
+
+    sourceId: int | None = None
+    kind: str
+
+
 def _http(error: Exception) -> HTTPException:
     if isinstance(error, ReportNotFoundError):
         return HTTPException(status_code=404, detail="Bilan inconnu")
+    if isinstance(error, AssemblyNotFoundError):
+        return HTTPException(status_code=404, detail="Introuvable")
     if isinstance(error, PermissionError):
         return HTTPException(status_code=403, detail=str(error))
     return HTTPException(status_code=400, detail=str(error))
@@ -55,17 +70,22 @@ class FinancesReceiver:
         current_member: Callable[..., Member],
         seasons: Callable[[Session, int], list[Season]],
         reports: FinancialReports | None = None,
+        assemblies: GeneralAssemblies | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
-        « Saisons » du graphique) ; reports : sous-module Bilan."""
+        « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
+        sous-module Assemblée générale."""
         self.client = client
         self.app = app
         self.current_member = current_member
         self.seasons = seasons
         self.reports = reports
+        self.assemblies = assemblies
         self._register_routes()
         if reports is not None:
             self._register_report_routes()
+        if assemblies is not None:
+            self._register_assembly_routes()
 
     def _register_routes(self) -> None:
         app, client = self.app, self.client
@@ -167,3 +187,91 @@ class FinancesReceiver:
                 raise HTTPException(status_code=400, detail="Format inconnu (xlsx ou pdf)")
             name = f"bilan-{report['result']['seasonName']}-{report['id']}.{format}"
             return Response(content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    def _register_assembly_routes(self) -> None:
+        """Routes du sous-module Assemblée générale (/finances/assemblies)."""
+        app, assemblies = self.app, self.assemblies
+        db_dep = Depends(get_db)
+        member_dep = Depends(self.current_member)
+
+        def call(action, *args):
+            try:
+                return action(*args)
+            except (AssemblyError, AssemblyNotFoundError, PermissionError) as error:
+                raise _http(error) from error
+
+        @app.get("/finances/assemblies")
+        def list_assemblies(seasonId: int | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """AG de la saison, modèles, états, bilan et PowerPoint modèle que
+            prendrait un calcul, nombre d'AG par saison."""
+            return {
+                **call(assemblies.options, db, member, seasonId),
+                "counts": call(assemblies.counts, db, member),
+                "assemblies": call(assemblies.list, db, member, seasonId) if seasonId is not None else [],
+            }
+
+        @app.post("/finances/assemblies", status_code=201)
+        def create_assembly(request: ReportRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(assemblies.create, db, member, request.model_dump())
+
+        @app.post("/finances/assemblies/template")
+        async def upload_template(file: UploadFile, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Modèle général de l'organisation (pris quand la saison
+            précédente n'a pas d'AG officielle)."""
+            content = await file.read()
+            return call(assemblies.set_template, member, content)
+
+        # Avant /finances/assemblies/{assembly_id} : sinon pris pour un id.
+        @app.get("/finances/assemblies/model-sources")
+        def model_sources(exclude: int | None = None, db: Session = db_dep, member: Member = member_dep) -> list[dict]:
+            return call(assemblies.model_sources, db, member, exclude)
+
+        @app.get("/finances/assemblies/{assembly_id}")
+        def get_assembly(assembly_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(assemblies.get, db, member, assembly_id)
+
+        @app.put("/finances/assemblies/{assembly_id}")
+        def update_assembly(assembly_id: int, request: ReportRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(assemblies.update, db, member, assembly_id, request.model_dump())
+
+        @app.delete("/finances/assemblies/{assembly_id}", status_code=204)
+        def delete_assembly(assembly_id: int, db: Session = db_dep, member: Member = member_dep) -> Response:
+            call(assemblies.delete, db, member, assembly_id)
+            return Response(status_code=204)
+
+        @app.post("/finances/assemblies/{assembly_id}/run")
+        def run_assembly(assembly_id: int, request: RunRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Lance la préparation du PowerPoint en arrière-plan."""
+            return call(assemblies.run, db, member, assembly_id, request.model_dump())
+
+        @app.post("/finances/assemblies/{assembly_id}/upload")
+        async def upload_modified(assembly_id: int, file: UploadFile, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """PowerPoint retouché par le trésorier (remplace le précédent)."""
+            content = await file.read()
+            return call(assemblies.upload, db, member, assembly_id, content, file.filename or "ag.pptx")
+
+        @app.post("/finances/assemblies/{assembly_id}/model")
+        async def upload_model(assembly_id: int, file: UploadFile, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """PowerPoint modèle de l'AG, envoyé depuis l'ordinateur."""
+            content = await file.read()
+            return call(assemblies.set_model, db, member, assembly_id, content, file.filename or "modele.pptx")
+
+        @app.put("/finances/assemblies/{assembly_id}/model")
+        def copy_model(assembly_id: int, request: ModelRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(assemblies.copy_model, db, member, assembly_id, request.sourceId, request.kind)
+
+        @app.get("/finances/assemblies/{assembly_id}/download")
+        def download_assembly(assembly_id: int, kind: str | None = None, db: Session = db_dep, member: Member = member_dep) -> FileResponse:
+            """Un des 3 PowerPoint de l'AG (kind "modele", "genere", "modifie") ;
+            sans kind, le PowerPoint final (modifié, sinon produit)."""
+            path, filename = call(assemblies.file_path, db, member, assembly_id, kind)
+            return FileResponse(path, media_type=PPTX, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"})
+
+        @app.get("/finances/assemblies/{assembly_id}/files/{kind}/slides")
+        async def get_slides(assembly_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Textes des diapos et images disponibles (LibreOffice)."""
+            return await run_in_threadpool(call, assemblies.slides, db, member, assembly_id, kind)
+
+        @app.get("/finances/assemblies/{assembly_id}/files/{kind}/slides/{image}.png")
+        def get_thumbnail(assembly_id: int, kind: str, image: int, db: Session = db_dep, member: Member = member_dep) -> FileResponse:
+            return FileResponse(call(assemblies.thumbnail, db, member, assembly_id, kind, image), media_type="image/png")

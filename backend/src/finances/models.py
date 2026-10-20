@@ -106,3 +106,47 @@ class FinReport(Base):
     run_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinAssembly(Base):
+    """Assemblée générale d'une saison (sous-module Assemblée générale, spec
+    §5) : la base du PowerPoint de l'AG, préparée à partir du bilan de la
+    saison. Mêmes champs qu'un bilan (`FinReport`) ; ses PowerPoint sont dans
+    `fin_assembly_files`, les fichiers sur le disque (voir assemblies.py)."""
+
+    __tablename__ = "fin_assemblies"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default=DRAFT)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    model: Mapped[str] = mapped_column(String(40), nullable=False)
+    ai_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    # Résultat du dernier calcul (JSON : bilan et modèle utilisés, diapos
+    # écrites, résumé, montants à vérifier).
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="idle")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    run_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinAssemblyFile(Base):
+    """Un PowerPoint d'une AG : `origin` "modele" (l'exemple dont on reprend
+    la mise en page), "genere" (produit par le calcul) ou "envoye" (retouché
+    par le trésorier et renvoyé). Un nouveau fichier remplace celui de la
+    même origine ; `number` numérote les fichiers de l'AG (v<n>.pptx sur le
+    disque). `source` : d'où vient le fichier, en clair."""
+
+    __tablename__ = "fin_assembly_files"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    assembly_id: Mapped[int] = mapped_column(ForeignKey("fin_assemblies.id", ondelete="CASCADE"), nullable=False, index=True)
+    number: Mapped[int] = mapped_column(Integer, nullable=False)
+    origin: Mapped[str] = mapped_column(String(10), nullable=False)
+    filename: Mapped[str] = mapped_column(String(255), nullable=False)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
