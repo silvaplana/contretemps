@@ -128,6 +128,27 @@ appelée par la tuile et par l'action `convene_assembly` de `documents/actions.p
    convocation » est proposé à côté. L'assistant ne signe jamais à la place d'un membre et n'écrit
    aucun chiffre (dates et effectifs viennent du code).
 
+## 2. Hypothèses (à confirmer par Seb)
+
+1. **Un bloc, pas un écran à part.** La procuration est un bloc du fichier de base, nature Questionner :
+   la diffusion par email, le lien personnel, la signature au doigt, la collecte dans `doc_responses`
+   et l'onglet Résultats existent déjà et servent tels quels. Pas de nouveau module, pas de nouveau
+   point de branchement.
+2. **Les membres convoqués = les destinataires de Diffuser.** Celui qui convoque choisit qui vote
+   (rôle, cours, personnes) ; l'appli ne décide pas qui est « à jour de cotisation ». *(Contretemps : une
+   personne = une fiche ; pour un mineur, on convoque le parent dont l'adresse est sur la fiche, comme
+   tous les envois d'aujourd'hui.)*
+3. **On ne peut donner procuration qu'à un membre convoqué** (pas à une personne extérieure), ce que
+   prévoient la plupart des statuts.
+4. **Signature simple maison** (`documents.md` §12 décision 13) : le lien personnel prouve l'adresse
+   email, le tracé au doigt et l'horodatage font le reste. Pas de code par SMS.
+5. **Pas de page publique** pour ce bloc : une procuration exige de savoir qui la donne, donc un lien
+   personnel. « Tout le monde » (adresse publique) est refusé avec la raison.
+6. **Les votes eux-mêmes** (résolution par résolution) sont hors de ce sous-module : la feuille
+   d'émargement donne le nombre de voix de chaque présent, le futur bloc Vote s'en servira.
+
+## 3. Le bloc « Présence et procuration »
+
 ### 3.1 Réglages (dans Préparer, au toucher du bloc)
 
 Trois au plus, avec des valeurs par défaut qui conviennent à la plupart des statuts :
