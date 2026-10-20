@@ -476,3 +476,22 @@ def test_l_assistant_hors_de_docs(client, monde, monkeypatch):
     client.post(f"/assistant/orgs/{ecole.id}/messages", json={"texte": "Bonjour", "contexte": {"onglet": "Présence"}}, headers=entetes)
     premiere = faux.demandes[0][0]["content"][0]["text"]
     assert "dans l'onglet « Présence » de l'appli, pas dans Docs" in premiere and "espace" not in premiere.split("Bonjour")[0]
+
+
+def test_pas_plus_de_20_outils_stricts():
+    """L'API refuse une requête avec plus de 20 outils « strict » (vu par
+    Seb le 20 octobre après l'ajout des outils d'Admin)."""
+    from assistant.assistant import OUTILS
+
+    assert sum(1 for o in OUTILS if o.get("strict")) <= 20
+
+
+def test_parametre_manquant_renvoye_a_l_assistant(db_session):
+    from assistant.donnees import DonneesEcole
+    from comptes import Comptes
+    from ecoles import Ecoles
+
+    ecole = Ecoles().create(db_session, nom="Contretemps", code_postal="83330")
+    admin = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia")
+    texte = DonneesEcole().executer(db_session, admin, ecole.id, "fiche_eleve", {})
+    assert texte.startswith("Paramètres invalides. Paramètres attendus : eleve_id")
