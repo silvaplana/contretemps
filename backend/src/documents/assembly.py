@@ -38,6 +38,7 @@ from .models import (
     KIND_FOLDER,
     LEVEL_EDIT,
     SYSTEM_PERIOD,
+    DocAttendance,
     DocNode,
     DocResponse,
     DocSend,
@@ -805,3 +806,143 @@ def export(docs: Documents, db: Session, member: Member, node_id: int, what: str
 
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+# ----------------------------------------------------------------------
+# Le jour de l'assemblée : la feuille d'émargement (étape 2, §3.5 et §4)
+# ----------------------------------------------------------------------
+
+
+def sheet(docs: Documents, db: Session, node: DocNode, content: dict) -> dict:
+    """Le décompte du jour. Présents = pointés sur la feuille. Un pouvoir
+    compte si son mandataire est présent (ou s'il est en blanc) ; il est
+    perdu sinon ; il ne compte plus si le mandant est venu (sa présence
+    l'emporte)."""
+    bloc = block_of(content)
+    p = props(bloc)
+    gens = convoked(db, node)
+    pointes = {
+        a.person_id: a for a in db.scalars(select(DocAttendance).where(DocAttendance.node_id == node.id))
+    }
+    hors = set(pointes) - set(gens)
+    noms = {**gens, **(docs.directory.person_names(db, node.org_id, hors) if hors else {})}
+    reponses = {r.person_id: r.values[bloc["id"]] for r in _answers(db, node, bloc["id"]) if r.person_id in gens}
+    valides: dict = {}
+    perdus: dict = {}
+    for mandant, v in reponses.items():
+        if v.get("answer") != "proxy" or mandant in pointes:
+            continue
+        qui = v.get("proxy_to")
+        (valides if qui == "blank" or qui in pointes else perdus).setdefault(qui, []).append(mandant)
+    represente = {m: qui for qui, ms in valides.items() for m in ms}
+    lignes = []
+    for pid, nom in sorted(noms.items(), key=lambda x: _norm(x[1])):
+        qui = represente.get(pid)
+        a = pointes.get(pid)
+        lignes.append({
+            "person_id": pid, "name": nom, "convoked": pid in gens,
+            "present": a is not None, "source": a.source if a else None,
+            "answer": reponses.get(pid, {}).get("answer", "none"),
+            "represented_by": None if qui is None else "le bureau" if qui == "blank" else noms.get(qui, "?"),
+            "holds": len(valides.get(pid, [])),
+            "lost": [noms[m] for m in perdus.get(pid, [])],
+        })
+    portes = sum(len(m) for m in valides.values())
+    voix = len(pointes) + portes
+    seuil = {"quarter": 4, "third": 3, "half": 2}.get(p["quorum"])
+    il_faut = math.ceil(len(gens) / seuil) if seuil and gens else None
+    return {
+        "convoked": len(gens),
+        "present": len(pointes),
+        "represented": portes,
+        "absent": sum(1 for pid in gens if pid not in pointes and pid not in represente),
+        "lost": sum(len(m) for m in perdus.values()),
+        "blank": len(valides.get("blank", [])),
+        "votes": voix,
+        "quorum": {"rule": p["quorum"], "needed": il_faut, "votes": voix, "reached": voix >= il_faut} if il_faut else None,
+        "rows": lignes,
+    }
+
+
+def attendance(docs: Documents, db: Session, member: Member, node_id: int) -> dict:
+    node, contenu = _node_for(docs, db, member, node_id)
+    return sheet(docs, db, node, contenu)
+
+
+def mark(docs: Documents, db: Session, member: Member, node_id: int, person_id: int, present: bool, source: str = "hand") -> dict:
+    """Pointer (ou dépointer) une personne. Un membre de l'école non convoqué
+    peut être ajouté (« Ajouter une personne »)."""
+    from .service import DocError
+
+    node, contenu = _node_for(docs, db, member, node_id)
+    if node.status != "official":
+        raise DocError(409, "La feuille d'émargement s'ouvre quand la convocation est officielle.")
+    ligne = db.scalar(select(DocAttendance).where(DocAttendance.node_id == node.id, DocAttendance.person_id == person_id))
+    if present and ligne is None:
+        # `recipients` ne rend que les personnes de cette école.
+        if person_id not in convoked(db, node) and not docs.directory.recipients(db, node.org_id, [("member", str(person_id))]):
+            raise DocError(404, "Membre introuvable")
+        db.add(DocAttendance(
+            org_id=node.org_id, node_id=node.id, person_id=person_id, marked_by=member.person_id,
+            source=source if source in ("hand", "photo") else "hand",
+        ))
+        db.commit()
+    elif not present and ligne is not None:
+        db.delete(ligne)
+        db.commit()
+    return sheet(docs, db, node, contenu)
+
+
+STATE_WORDS = {"present": "Présent", "represented": "Représenté", "absent": "Absent"}
+
+
+def sheet_html(s: dict, title: str, org_name: str) -> str:
+    q = s["quorum"]
+    quorum = (
+        f"Quorum : {q['votes']} voix présentes ou représentées sur {s['convoked']} ; il en faut {q['needed']} "
+        f"({QUORUM_WORDS.get(q['rule'], '')} des membres). {'Atteint' if q['reached'] else 'Pas atteint'}."
+        if q else f"Voix présentes ou représentées : {s['votes']} sur {s['convoked']}."
+    )
+    lignes = []
+    for r in s["rows"]:
+        if r["present"]:
+            etat = "Présent" + ("" if r["convoked"] else " (non convoqué)")
+            voix = 1 + r["holds"]
+        elif r["represented_by"]:
+            etat, voix = f"Représenté par {r['represented_by']}", ""
+        else:
+            etat, voix = "Absent", ""
+        perdus = f"<br/><small>Pouvoir perdu : {escape(', '.join(r['lost']))}</small>" if r["lost"] else ""
+        lignes.append(f"<tr><td>{escape(r['name'])}</td><td>{escape(etat)}{perdus}</td><td>{voix}</td></tr>")
+    blanc = f"<p>Pouvoirs en blanc, portés par le bureau : {s['blank']}.</p>" if s["blank"] else ""
+    return (
+        f"<p class='org'>{escape(org_name.upper())}</p><h1>Feuille d'émargement</h1>"
+        f"<p class='sub'>{escape(title)} · arrêtée le {now_local():%d/%m/%Y à %H h %M}</p>"
+        "<table class='kpi'><tr>"
+        + "".join(f"<td><b>{n}</b><br/>{escape(t)}</td>" for n, t in (
+            (s["convoked"], "membres convoqués"), (s["present"], "présents"), (s["represented"], "représentés"), (s["lost"], "pouvoirs perdus"),
+        ))
+        + f"</tr></table><p class='q'>{escape(quorum)}</p>{blanc}"
+        "<table class='t'><tr><th>MEMBRE</th><th>PRÉSENCE</th><th>VOIX</th></tr>" + "".join(lignes) + "</table>"
+        "<p class='foot'>Présents pointés par le bureau ; procurations signées en ligne, rangées dans le dossier « Pouvoirs ». "
+        "Un mandant présent reprend sa voix ; un pouvoir dont le mandataire est absent est perdu.</p>"
+    )
+
+
+def store_sheet(docs: Documents, db: Session, member: Member, node_id: int) -> dict:
+    """La feuille en PDF, rangée à côté de la convocation (nouvelle version
+    si elle y est déjà)."""
+    node, contenu = _node_for(docs, db, member, node_id)
+    titre = node.name.removeprefix("Convocation ")
+    ecole = docs.mailer.org(db, node.org_id)[0] if docs.mailer is not None else ""
+    pdf = _pdf(sheet_html(sheet(docs, db, node, contenu), titre, ecole))
+    nom = f"Feuille d'émargement {titre}.pdf"
+    deja = db.scalar(select(DocNode).where(
+        DocNode.parent_id == node.parent_id, DocNode.name == nom, DocNode.kind == "file", DocNode.deleted_at.is_(None),
+    ))
+    if deja is not None:
+        docs.new_version(db, member, deja.id, nom, io.BytesIO(pdf))
+        return {"id": deja.id, "name": nom}
+    cree = docs.upload(db, member, node.space, node.parent_id, nom, io.BytesIO(pdf))
+    return {"id": cree["id"], "name": cree.get("name", nom)}
+
