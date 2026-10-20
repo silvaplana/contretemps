@@ -184,7 +184,7 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
   **PDF** pour chaque procuration ; le filtre Procurations montre en tête **Pouvoirs reçus** (par
   mandataire : nombre, en blanc, noms des mandants). Bouton principal **Télécharger le récapitulatif** ;
   ⋯ › **Télécharger les pouvoirs** (tous les PDF en une archive) et **Exporter en Excel**.
-- **Récapitulatif PDF** (A4, Chromium) : chiffres, quorum, tableau « qui représente qui » avec le
+- **Récapitulatif PDF** (A4, Chromium) : chiffres, quorum, liste de ceux qui viennent, tableau « qui représente qui » avec le
   nombre de voix, liste des absents sans procuration et des sans-réponse, date et heure de l'état.
 - **Rangement** : chaque pouvoir signé est enregistré en PDF à la signature, dans un dossier
   « Pouvoirs » à côté du fichier de l'AG (Docs, mêmes droits que le fichier) ; le récapitulatif s'y
