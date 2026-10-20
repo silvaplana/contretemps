@@ -44,10 +44,12 @@ def _prop(type_, description, **autres):
 
 
 def _outil(nom: str, description: str, proprietes: dict) -> dict:
+    # Pas "strict" : l'API en refuse plus de 20 par requête, et les outils des
+    # documents le sont déjà (assistant.py). Un paramètre manquant ou en trop
+    # est renvoyé à l'assistant par `executer`.
     return {
         "name": nom,
         "description": description,
-        "strict": True,
         "eager_input_streaming": True,
         "input_schema": {
             "type": "object",
@@ -93,6 +95,8 @@ OUTILS_DONNEES = [
     _outil("lister_groupes", "Les groupes de la messagerie et leurs membres (personnes et cours).", {}),
 ]
 NOMS = {o["name"] for o in OUTILS_DONNEES}
+# Les autres paramètres valent null quand l'assistant ne les donne pas.
+REQUIS = {"eleve_id"}
 # Hors admins (un professeur) : seulement ce que ses écrans montrent (Seb,
 # 16 octobre : « pas plus qu'en cliquant ») : ses cours, leurs élèves (nom et
 # cours), leurs présences, ses propres heures, leurs chorégraphies. Pas de
@@ -147,7 +151,11 @@ class DonneesEcole:
         p = self.perimetre(db, compte, ecole_id)
         if not p.tout and nom not in POUR_TOUS:
             return "Réservé aux administrateurs."
-        return getattr(self, f"_{nom}")(db, p, **args)
+        attendus = next(o for o in OUTILS_DONNEES if o["name"] == nom)["input_schema"]["properties"]
+        inconnus = set(args) - set(attendus)
+        if inconnus or any(args.get(k) is None for k in attendus if k in REQUIS):
+            return f"Paramètres invalides. Paramètres attendus : {', '.join(attendus) or 'aucun'}."
+        return getattr(self, f"_{nom}")(db, p, **{k: args.get(k) for k in attendus})
 
     # --- Aides ---------------------------------------------------------
 
