@@ -29,7 +29,7 @@ Diffuser.
 21 novembre 2026 »), un bandeau « L'assemblée a eu lieu » avec le bouton **Produire le PV d'AG**
 (même libellé que la tuile ; dès que la date de l'AG est passée et tant qu'il n'y a pas de PV). Aussi : Docs › + › tuile
 **Produire le PV d'AG**, juste à côté de **Convoquer l'AG** (Seb, 20 octobre : « dans l'écran, il y a
-Convoquer l'AG et il y a aussi Produire le PV d'AG »), et l'assistant (« rédige le PV de l'AG »).
+Convoquer l'AG et il y a aussi Produire le PV d'AG »), et l'assistant (« produis le PV de l'AG », Seb 20 octobre).
 **Quelle AG** : la convocation d'AG Officielle la plus récente dont la date est passée et qui n'a pas
 de PV ; s'il y en a plusieurs, une question « Quelle assemblée ? » avec la liste.
 
