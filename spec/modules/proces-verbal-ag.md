@@ -1,0 +1,141 @@
+# Sous-module `proces-verbal-ag` (module Documents)
+
+Version 0.1 du 20 octobre 2026, proposition de Claude à partir de la demande de Seb du même jour :
+« une nouvelle action, une action Informer : rédiger le PV d'AG ». Maquette cliquable :
+https://claude.ai/artifact/JAaRZA9NXEaNP9hvXzsrAf
+
+Sous-module du module Documents, à la suite des procurations (`procurations.md`) : la convocation
+donne la date, le lieu, la sorte d'assemblée (AGO / AGE), l'ordre du jour et les procurations signées ;
+le PV y ajoute **la liste des présents**, calcule le quorum et propose le texte. Rien de propre à la
+danse : il part tel quel dans AppBase.
+
+Le PV est un **fichier de base de nature Informer** (`fichier-de-base.md`), caché derrière le parcours
+comme la convocation (décision de Seb du 20 octobre pour les procurations, même essai ici) : à l'écran,
+ni « nature » ni « Informer ».
+
+---
+
+## 1. Le parcours (Seb, 20 octobre)
+
+> « La première chose qu'il doit demander, c'est prendre en photo la liste des présents. C'est
+> important pour les votes. Et ensuite, en analysant les procurations et la liste des présents, il sait
+> faire les quorums. […] Il propose, comme pour les procurations, sa proposition. […] Il propose en
+> aperçu, le secrétaire peut mettre son texte et après valider, et on peut télécharger un PDF. »
+
+**Où on le lance** : dans le dossier de l'AG (Docs › Privé › Saison › Réunions › « AGO du
+21 novembre 2026 »), un bandeau « L'assemblée a eu lieu » avec le bouton **Rédiger le procès-verbal**
+(dès que la date de l'AG est passée et tant qu'il n'y a pas de PV). Aussi : Docs › + › tuile
+**Rédiger le PV de l'AG** (section Informer), et l'assistant (« rédige le PV de l'AG »).
+**Quelle AG** : la convocation d'AG Officielle la plus récente dont la date est passée et qui n'a pas
+de PV ; s'il y en a plusieurs, une question « Quelle assemblée ? » avec la liste.
+
+Puis un écran par étape, un seul bouton principal chacun :
+
+1. **Prenez en photo la liste des présents** (la feuille signée à l'entrée ; une photo par page,
+   ou une image choisie). Bouton **Lire la liste**. Lien « Pas de liste papier : cocher les présents »
+   (la liste des membres convoqués, une touche = présent : la feuille d'émargement de `procurations.md`
+   §4).
+2. **N présents reconnus** : les noms lus sur la photo, rapprochés des membres convoqués. Les noms
+   sûrs ont ✓ ; les doutes sont en jaune avec la raison (« Deux membres « Leroy » : Annie ou
+   Claire ? ») et un bouton **Choisir**. « + Ajouter une personne ». **Continuer** reste grisé tant
+   qu'il reste un doute.
+3. **Le quorum** : présents, représentés, voix sur N convoqués, seuil (réglage du bloc de la
+   convocation) atteint ou non ; la liste des porteurs de pouvoirs avec leurs voix, les procurations
+   annulées (le mandant est venu) et les **pouvoirs perdus** (mandataire absent). Règles de comptage :
+   `procurations.md` §3.5. Quorum non atteint : écrit tel quel dans le PV (« le quorum n'étant pas
+   atteint… »), pas de blocage. Bouton **Proposer le procès-verbal**.
+4. **Le PV proposé** (Brouillon), en aperçu modifiable : le secrétaire touche un texte et écrit, comme
+   dans Préparer. Les chiffres comptés par l'appli sont en bleu, ce qu'elle ne sait pas est surligné en
+   jaune « À compléter : … ». Bouton **Valider**.
+5. **Valider** fige le PV : il passe directement en **Officiel** (comme la convocation), PDF A4 par
+   Chromium. Bouton principal **Télécharger le PDF** ; dessous, **Envoyer aux N membres…** (même envoi
+   que Diffuser, confirmation puis Annuler 10 s). Pour corriger ensuite : ⋯ › Modifier, qui repasse en
+   Brouillon tant qu'il n'est pas envoyé.
+
+## 2. Le texte proposé
+
+**Ce que l'appli écrit elle-même** (gabarit fixe, jamais le modèle de langage) : le titre
+(« Procès-verbal de l'assemblée générale ordinaire / extraordinaire »), le nom de l'association, date,
+heure, lieu, la date d'envoi et le nombre de convoqués, les présents, représentés, voix, le seuil du
+quorum et s'il est atteint, l'ordre du jour (celui de la convocation), les noms sous les signatures, et,
+pour le point « rapport financier », recettes, dépenses et résultat du **bilan Officiel** de la saison
+(Financier › Bilan, `financier.md` §4 ; sans bilan Officiel, « À compléter »).
+
+**Ce que propose le modèle de langage** (jamais nommé « IA » à l'écran) : le plan et les formules du
+**PV de l'année précédente** (même sorte d'assemblée, rangé dans un dossier d'AG de la saison d'avant),
+sinon un PV de base ; une phrase d'introduction par point de l'ordre du jour ; « À compléter : … » pour
+ce qu'il ne sait pas (ce qui a été dit, les votes, les élus, l'heure de fin). Pas d'écran des votes ni
+des résolutions : **le secrétaire écrit les résultats des votes dans le texte** (Seb, 20 octobre).
+**Il n'écrit aucun chiffre** : tout nombre de sa proposition qui ne vient pas de l'appli est signalé en
+jaune « à vérifier » (même contrôle que le PowerPoint d'AG, `financier.md` §5.1).
+
+**Présidence et secrétariat** : repris du PV de l'année précédente, sinon « À compléter » ; corrigés
+dans le texte.
+
+**Mentions d'un PV d'AG loi 1901** (aucune n'est imposée par la loi, les statuts décident ; ce sont
+celles de l'usage, toutes dans le gabarit) : association, nature AGO / AGE, date, heure et lieu, mode
+et date de convocation, présidence et secrétaire de séance, présents, représentés, quorum, ordre du
+jour, délibérations et résultat des votes point par point, heure de clôture, signatures du président et
+du secrétaire. La liste des présents (photo et liste reconnue) et les pouvoirs sont joints en annexe du
+PDF.
+
+**Signatures** : des lignes de signature dans le PDF, à signer sur papier. Pas de signature au doigt
+dans l'appli à cette étape (Seb n'en a pas parlé ; voir §6).
+
+## 3. Rangement
+
+Dans le même dossier que la convocation : « PV de l'AGO du 21 novembre 2026 » (fichier) et, au
+passage en Officiel, son PDF. La photo de la liste des présents est rangée à côté (« Liste des
+présents.jpg »). Mêmes droits que le dossier (bureau, profs).
+
+## 4. L'assistant fait la même chose (un bouton = un outil)
+
+Déclarés dans `documents/actions.py`, mêmes droits que l'écran (niveau `manage` sur le dossier de l'AG).
+
+| Étape à l'écran | Outil | Carte |
+|---|---|---|
+| Rédiger le procès-verbal (trouver l'AG) | `start_minutes(folder_id?)` : renvoie l'AG trouvée ou la liste si plusieurs | aucune |
+| Lire la liste | `read_attendance_photo(node_id, image)` : noms reconnus, doutes | aucune |
+| Choisir / ajouter / Continuer | `save_attendance(node_id, person_ids)` : enregistre les présents, renvoie le quorum calculé | Faire / Annuler (nombres et noms écrits par le code) |
+| Proposer le procès-verbal | `draft_minutes(node_id)` : crée le PV en Brouillon | aucune (un brouillon s'efface) |
+| Écrire dans le texte | `modifier_fichier_appli` (existe déjà) | Annuler sous la modification |
+| Valider | `validate_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
+| Télécharger le PDF | `app_file_pdf(node_id)` (procurations, étape 1) | aucune |
+| Envoyer aux N membres | `send_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
+
+L'assistant ne fait que transcrire dans le texte ce que la personne lui dit (« rapport moral adopté à
+l'unanimité ») ; il n'invente jamais un résultat de vote.
+
+## 5. Données
+
+- **Présents** : la table `doc_attendance` prévue à l'étape 2 des procurations (`procurations.md` §5 :
+  `id`, `org_id`, `node_id` de la convocation, `person_id`, `present_at`, `marked_by`), plus une colonne
+  `source` (`photo` ou `hand`). La photo et la feuille d'émargement écrivent la même table : une seule
+  liste des présents par AG. À coordonner avec le fil des procurations (une seule migration).
+- **Lien PV → convocation** : le PV garde l'identifiant de la convocation dans son contenu
+  (`content_json.source`, sans nouvelle colonne), pour retrouver présents, pouvoirs et ordre du jour.
+- **Chiffres du Financier** : lus par un port de `documents/ports.py` (`approved_report(org_id, season)`),
+  branché sur `finances` dans `documents_contretemps/adapter.py` : Documents ne dépend pas de Finances.
+- Lecture de la photo : modèle avec vision, coût noté dans Ressources (« Procès-verbal d'AG »).
+- Toutes les requêtes filtrent par `org_id`, test d'étanchéité entre écoles.
+
+## 6. À trancher par Seb
+
+1. **Envoi aux membres** : en lien secondaire sous « Télécharger le PDF ». Recommandation : **oui**,
+   l'usage est d'informer les membres, mais rien ne part sans le toucher.
+2. **Signatures** : sur papier (PDF imprimé) d'abord ; signature au doigt de la présidente et du
+   secrétaire dans l'appli plus tard si besoin. Recommandation : **papier d'abord**.
+
+## 7. Étapes (une PR chacune, sur « vas-y »)
+
+Après l'étape 1 des procurations (convocation, procurations signées, `validate_app_file`,
+`send_app_file`, `app_file_pdf`).
+
+1. **La liste des présents** : photo, lecture, rapprochement, doutes, écran du quorum, table
+   `doc_attendance`, outils `start_minutes`, `read_attendance_photo`, `save_attendance`.
+   *Vérification* : tests du rapprochement (homonymes, initiales, inconnu), du comptage (procuration
+   annulée par la présence, pouvoir perdu), de l'étanchéité ; essai avec une vraie photo de feuille.
+2. **Le PV** : bandeau et tuile, gabarit, proposition à partir du PV de l'an dernier, contrôle des
+   chiffres, aperçu modifiable, Valider, PDF avec annexes, rangement, outil `draft_minutes`.
+   *Vérification* : tests du gabarit (AGO, AGE, quorum non atteint, sans bilan Officiel), d'un nombre
+   inventé signalé ; essai de bout en bout sur l'école de démo.
