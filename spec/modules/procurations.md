@@ -291,7 +291,9 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
 
 ## 6. À trancher par Seb
 
-1. **Un bloc dans le fichier de base, plutôt qu'un écran à part.** Recommandation : **oui** (§2.1).
+1. ~~Un bloc dans le fichier de base, plutôt qu'un écran à part~~ : **décidé par Seb le 20 octobre :
+   oui, le fichier Questionner sert de socle, caché derrière le parcours** (tuile ou assistant : on ne
+   voit ni la nature ni les quatre onglets, qui restent accessibles ensuite).
 2. **Pouvoirs en blanc hors plafond de la présidence ?** Recommandation : **oui**.
 3. **Pouvoir perdu quand le mandataire est absent**, sans report à la présidence ? Recommandation :
    **oui**, sauf si vos statuts disent autre chose.
