@@ -67,7 +67,7 @@ from notes_frais_contretemps import (
 )
 from documents_contretemps.actions import actions as actions_documents
 from notes_frais_contretemps.actions import actions as actions_notes_frais
-from finances import Finances, FinancesReceiver, FinancialReports, GeneralAssemblies
+from finances import Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
 from finances_contretemps import membre_appelant as membre_finances, saisons_de_l_ecole
 from profs.actions import actions as actions_profs
 from presence import Presence, PresenceReceiver
@@ -380,6 +380,14 @@ finances_assemblies = GeneralAssemblies(
     session_factory=SessionLocal,
     note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "assemblee_generale", cout, detail),
 )
+# Prévisionnel : formule écrite par l'API Claude d'après l'historique des
+# comptes, exécutée à part (sandbox.py), rejouée à chaque curseur.
+finances_forecasts = Forecasts(
+    ledger=finances_client.get_ledger,
+    seasons=saisons_de_l_ecole,
+    session_factory=SessionLocal,
+    note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "previsionnel", cout, detail),
+)
 finances_receiver = FinancesReceiver(
     client=finances_client,
     app=app,
@@ -387,6 +395,7 @@ finances_receiver = FinancesReceiver(
     seasons=saisons_de_l_ecole,
     reports=finances_reports,
     assemblies=finances_assemblies,
+    forecasts=finances_forecasts,
 )
 
 # Actions que les modules ouvrent à l'assistant (spec/modules/assistant-ia.md

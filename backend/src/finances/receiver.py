@@ -1,4 +1,4 @@
-"""Routes REST du sous-module Comptes (/finances/...). Qui appelle est
+"""Routes REST du module finances (/finances/...). Qui appelle est
 fourni par l'appli hôte (`current_member`, une dépendance FastAPI qui
 renvoie un `Member`) ; les droits sont vérifiés par le service."""
 
@@ -6,7 +6,6 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Callable
-
 from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile
@@ -19,6 +18,7 @@ from db import get_db
 
 from .assemblies import PPTX, AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .exports import to_pdf, to_xlsx
+from .forecasts import ForecastError, ForecastNotFoundError, Forecasts
 from .ports import Member, Season
 from .reports import FinancialReports, ReportError, ReportNotFoundError
 from .service import AccountNotFoundError, Finances
@@ -43,6 +43,36 @@ class RunRequest(BaseModel):
     model: str | None = None
 
 
+class ForecastRequest(BaseModel):
+    """Corps de POST /finances/forecasts et PUT /finances/forecasts/{id} :
+    comme ReportRequest, plus startDate (AAAA-MM-JJ, vide pour le dernier
+    jour connu des comptes)."""
+
+    seasonId: int | None = None
+    name: str
+    state: str = "brouillon"
+    prompt: str = ""
+    model: str | None = None
+    startDate: str | None = None
+
+
+class ForecastRunRequest(BaseModel):
+    """Corps de POST /finances/forecasts/{id}/run : champs du formulaire,
+    enregistrés avant le calcul."""
+
+    name: str | None = None
+    state: str | None = None
+    prompt: str | None = None
+    model: str | None = None
+    startDate: str | None = None
+
+
+class ParamsRequest(BaseModel):
+    """Corps de PUT /finances/forecasts/{id}/params : position des curseurs."""
+
+    params: dict[str, float]
+
+
 class ModelRequest(BaseModel):
     """Corps de PUT /finances/assemblies/{id}/model : PowerPoint à copier
     comme modèle de l'AG. kind : "modele", "genere" ou "modifie" d'une autre
@@ -57,6 +87,8 @@ def _http(error: Exception) -> HTTPException:
         return HTTPException(status_code=404, detail="Bilan inconnu")
     if isinstance(error, AssemblyNotFoundError):
         return HTTPException(status_code=404, detail="Introuvable")
+    if isinstance(error, ForecastNotFoundError):
+        return HTTPException(status_code=404, detail="Prévisionnel inconnu")
     if isinstance(error, PermissionError):
         return HTTPException(status_code=403, detail=str(error))
     return HTTPException(status_code=400, detail=str(error))
@@ -71,21 +103,25 @@ class FinancesReceiver:
         seasons: Callable[[Session, int], list[Season]],
         reports: FinancialReports | None = None,
         assemblies: GeneralAssemblies | None = None,
+        forecasts: Forecasts | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
-        sous-module Assemblée générale."""
+        sous-module Assemblée générale ; forecasts : sous-module Prévisionnel."""
         self.client = client
         self.app = app
         self.current_member = current_member
         self.seasons = seasons
         self.reports = reports
         self.assemblies = assemblies
+        self.forecasts = forecasts
         self._register_routes()
         if reports is not None:
             self._register_report_routes()
         if assemblies is not None:
             self._register_assembly_routes()
+        if forecasts is not None:
+            self._register_forecast_routes()
 
     def _register_routes(self) -> None:
         app, client = self.app, self.client
@@ -275,3 +311,64 @@ class FinancesReceiver:
         @app.get("/finances/assemblies/{assembly_id}/files/{kind}/slides/{image}.png")
         def get_thumbnail(assembly_id: int, kind: str, image: int, db: Session = db_dep, member: Member = member_dep) -> FileResponse:
             return FileResponse(call(assemblies.thumbnail, db, member, assembly_id, kind, image), media_type="image/png")
+
+    def _register_forecast_routes(self) -> None:
+        """Routes du sous-module Prévisionnel (/finances/forecasts)."""
+        app, forecasts = self.app, self.forecasts
+        db_dep = Depends(get_db)
+        member_dep = Depends(self.current_member)
+
+        def call(action, *args):
+            try:
+                return action(*args)
+            except (ForecastError, ForecastNotFoundError, PermissionError, ValueError) as error:
+                raise _http(error) from error
+
+        @app.get("/finances/forecasts")
+        def list_forecasts(seasonId: int | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Prévisionnels de la saison (sans leur résultat), modèles et
+            états possibles, nombre de prévisionnels par saison."""
+            return {
+                **forecasts.models(),
+                "counts": call(forecasts.counts, db, member),
+                "forecasts": call(forecasts.list, db, member, seasonId) if seasonId is not None else [],
+            }
+
+        @app.post("/finances/forecasts", status_code=201)
+        def create_forecast(request: ForecastRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(forecasts.create, db, member, request.model_dump())
+
+        @app.get("/finances/forecasts/{forecast_id}")
+        def get_forecast(forecast_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Prévisionnel complet (formule, curseurs, courbe), relu par
+            l'écran pendant un calcul."""
+            return call(forecasts.get, db, member, forecast_id)
+
+        @app.put("/finances/forecasts/{forecast_id}")
+        def update_forecast(forecast_id: int, request: ForecastRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(forecasts.update, db, member, forecast_id, request.model_dump())
+
+        @app.delete("/finances/forecasts/{forecast_id}", status_code=204)
+        def delete_forecast(forecast_id: int, db: Session = db_dep, member: Member = member_dep) -> Response:
+            call(forecasts.delete, db, member, forecast_id)
+            return Response(status_code=204)
+
+        @app.post("/finances/forecasts/{forecast_id}/run")
+        def run_forecast(forecast_id: int, request: ForecastRunRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Lance le calcul (formule + courbe) en arrière-plan."""
+            return call(forecasts.run, db, member, forecast_id, request.model_dump())
+
+        @app.put("/finances/forecasts/{forecast_id}/params")
+        def set_forecast_params(forecast_id: int, request: ParamsRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Rejoue la formule avec les curseurs (sans rappeler le modèle)."""
+            return call(forecasts.set_params, db, member, forecast_id, request.params)
+
+        @app.get("/finances/forecasts/{forecast_id}/download")
+        def download_forecast(
+            forecast_id: int, format: str = "png", seasons: str | None = None, db: Session = db_dep, member: Member = member_dep
+        ) -> Response:
+            """Résultat en image (png) ou PDF. seasons : ids des saisons
+            comparées, séparés par des virgules (absent : la précédente)."""
+            ids = [int(s) for s in seasons.split(",") if s.strip()] if seasons is not None else None
+            content, media_type, name = call(forecasts.export, db, member, forecast_id, format, ids)
+            return Response(content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"'})
