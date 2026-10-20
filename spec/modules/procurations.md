@@ -111,38 +111,22 @@ Puis, **trois temps** (Seb, 20 octobre) :
    l'envoyer autrement). Sous le bouton : « Pour : 87 membres · par email », « Changer » ouvre Diffuser.
    Les destinataires proposés : ceux de la dernière AG, sinon tous les membres de la saison.
 
-**Deux portes, même résultat (Seb, 20 octobre)** : la tuile **Docs › + › Convoquer l'AG**, ou
-l'**Assistant IA** : « convoque l'AG le 21 novembre à 14 h à la salle des fêtes ». L'assistant crée le
-même fichier (même dossier, §4), le remplit avec la date, le lieu et l'ordre du jour (repris de la
-dernière AG s'il y en a une), puis montre une carte **Faire / Annuler** : « Envoyer la convocation à
-87 membres ? ». Rien ne part sans ce toucher ; l'assistant ne signe jamais à la place d'un membre.
+**Deux portes, même résultat (Seb, 20 octobre)** : l'**Assistant IA** suit exactement les mêmes
+étapes que l'écran, par la même fonction du code (une seule fonction « préparer la convocation »,
+appelée par la tuile et par l'action `convene_assembly` de `documents/actions.py`) :
 
-Dans Docs, **+ › Questionner › Convoquer l'AG** (tuile aujourd'hui « bientôt ») : un fichier de base
-déjà rempli (convocation, bloc **Présence et procuration**), ouvert sur Préparer. Il corrige la date,
-le lieu et l'ordre du jour dans le texte, règle le bloc (§3.1), passe le fichier en Officiel, puis
-**Diffuser › Des personnes choisies** (tous les membres à convoquer) › **Envoyer**. Tout ça existe déjà
-dans le fichier de base, sauf le bloc.
-
-## 2. Hypothèses (à confirmer par Seb)
-
-1. **Un bloc, pas un écran à part.** La procuration est un bloc du fichier de base, nature Questionner :
-   la diffusion par email, le lien personnel, la signature au doigt, la collecte dans `doc_responses`
-   et l'onglet Résultats existent déjà et servent tels quels. Pas de nouveau module, pas de nouveau
-   point de branchement.
-2. **Les membres convoqués = les destinataires de Diffuser.** Celui qui convoque choisit qui vote
-   (rôle, cours, personnes) ; l'appli ne décide pas qui est « à jour de cotisation ». *(Contretemps : une
-   personne = une fiche ; pour un mineur, on convoque le parent dont l'adresse est sur la fiche, comme
-   tous les envois d'aujourd'hui.)*
-3. **On ne peut donner procuration qu'à un membre convoqué** (pas à une personne extérieure), ce que
-   prévoient la plupart des statuts.
-4. **Signature simple maison** (`documents.md` §12 décision 13) : le lien personnel prouve l'adresse
-   email, le tracé au doigt et l'horodatage font le reste. Pas de code par SMS.
-5. **Pas de page publique** pour ce bloc : une procuration exige de savoir qui la donne, donc un lien
-   personnel. « Tout le monde » (adresse publique) est refusé avec la raison.
-6. **Les votes eux-mêmes** (résolution par résolution) sont hors de ce sous-module : la feuille
-   d'émargement donne le nombre de voix de chaque présent, le futur bloc Vote s'en servira.
-
-## 3. Le bloc « Présence et procuration »
+1. **Les deux questions, sauf si la demande y répond déjà.** « Prépare l'AG extraordinaire du
+   17 mars à 19 h » : rien à demander. « Prépare l'AG » : l'assistant demande « Ordinaire ou
+   extraordinaire ? » puis « Quelle date ? », une question fermée à la fois. Même recherche du dossier
+   (§4), même question s'il n'est pas sûr.
+2. **L'aperçu** : l'assistant crée le fichier (Brouillon) et le montre ouvert à côté de la discussion
+   (sur téléphone, une carte « Convocation AGE du 17 mars » qui l'ouvre). On le corrige **par la
+   discussion** (« ajoute un point sur le spectacle », « change la salle ») ou à la main ; chaque
+   modification avec Annuler, comme pour tout fichier de base (`fichier-de-base.md` §2.1).
+3. **Valider puis Envoyer** : deux cartes **Faire / Annuler**, « Valider la convocation ? » puis
+   « Envoyer la convocation à 87 membres ? ». Rien ne part sans ce toucher ; « Télécharger la
+   convocation » est proposé à côté. L'assistant ne signe jamais à la place d'un membre et n'écrit
+   aucun chiffre (dates et effectifs viennent du code).
 
 ### 3.1 Réglages (dans Préparer, au toucher du bloc)
 
