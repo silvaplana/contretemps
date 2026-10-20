@@ -186,9 +186,14 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
   ⋯ › **Télécharger les pouvoirs** (tous les PDF en une archive) et **Exporter en Excel**.
 - **Récapitulatif PDF** (A4, Chromium) : chiffres, quorum, liste de ceux qui viennent, tableau « qui représente qui » avec le
   nombre de voix, liste des absents sans procuration et des sans-réponse, date et heure de l'état.
-- **Rangement** : chaque pouvoir signé est enregistré en PDF à la signature, dans un dossier
-  « Pouvoirs » à côté du fichier de l'AG (Docs, mêmes droits que le fichier) ; le récapitulatif s'y
-  range aussi quand on le télécharge. Une procuration retirée garde son PDF, marqué « Retiré le … ».
+- **Rangement automatique (Seb, 20 octobre : « dans Réunions / AG »)** : la tuile « Convoquer l'AG »
+  crée le fichier dans **Docs › Privé › Saison en cours › Réunions › AG du 21 novembre 2026** (dossiers
+  créés s'ils manquent, nom tiré de la date). Dans ce dossier : le fichier de convocation, un sous-dossier
+  **Pouvoirs** (un PDF par procuration, enregistré à la signature, nommé « Pouvoir de Karim Benali à
+  Martine Colin.pdf ») et le **récapitulatif** (remplacé à chaque téléchargement, une version par
+  état). Mêmes droits que le dossier Privé de la saison (bureau, profs). Une procuration retirée garde
+  son PDF, marqué « Retiré le … ». Si l'on déplace le fichier de convocation, les PDF suivent son
+  dossier.
 
 - **Formulaire de résultat par défaut** du modèle : Compteur (« 61 / 87 ont répondu »), un nouveau
   bloc de résultat **Quorum** (§3.5), un nouveau bloc **Pouvoirs reçus** (une ligne par mandataire,
