@@ -8,6 +8,7 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestStatementImport } from '../finances/Comptes.jsx'
+import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeStatut } from './commun.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
@@ -19,10 +20,11 @@ const SOUS_ONGLETS = [
   { value: 'notes', label: 'Notes de frais' },
   { value: 'bilan', label: 'Bilan' },
   { value: 'ag', label: 'AG' },
+  { value: 'previsionnel', label: 'Prévisionnel' },
 ]
 
 // Onglet Financier, trésoriers et Super User seulement (spec/modules/
-// notes-de-frais.md §7) : Comptes, Bilan et Assemblée générale
+// notes-de-frais.md §7) : Comptes, Bilan, Assemblée générale et Prévisionnel
 // (spec/modules/financier.md), Notes de frais.
 export default function Financier() {
   // Repart du dernier sous-onglet affiché sur cet appareil.
@@ -67,7 +69,9 @@ export default function Financier() {
                     { label: 'Nouvelle AG', icon: 'plus', onClick: requestNewAssembly },
                     { label: 'Modèle général de PowerPoint…', icon: 'paperclip', onClick: requestGeneralTemplate },
                   ]
-                : [
+                : sousOnglet === 'previsionnel'
+                  ? [{ label: 'Nouveau prévisionnel', icon: 'plus', onClick: requestNewForecast }]
+                  : [
                 { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
                 { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
               ]
@@ -95,6 +99,8 @@ export default function Financier() {
         <Bilan />
       ) : sousOnglet === 'ag' ? (
         <AssembleeGenerale />
+      ) : sousOnglet === 'previsionnel' ? (
+        <Previsionnel />
       ) : (
         <NotesATraiter />
       )}

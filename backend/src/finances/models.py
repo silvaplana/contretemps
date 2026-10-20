@@ -150,3 +150,30 @@ class FinAssemblyFile(Base):
     filename: Mapped[str] = mapped_column(String(255), nullable=False)
     source: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinForecast(Base):
+    """Prévisionnel d'une saison (sous-module Prévisionnel, spec §6) : mêmes
+    champs qu'un bilan (`FinReport`), plus la date de départ du calcul (vide :
+    dernier jour connu des comptes) et la dernière position des curseurs
+    (`params`, JSON). Le résultat (JSON) garde la formule, ses paramètres, ses
+    données et la courbe (voir forecasts.py)."""
+
+    __tablename__ = "fin_forecasts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default=DRAFT)
+    start_date: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    model: Mapped[str] = mapped_column(String(40), nullable=False)
+    ai_cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    params: Mapped[str | None] = mapped_column(Text, nullable=True)
+    status: Mapped[str] = mapped_column(String(10), nullable=False, default="idle")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    run_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)

@@ -82,3 +82,19 @@ export const sourcesDeModele = (exclude) => appel(`/assemblies/model-sources${ex
 export const urlTelechargementAssemblee = (id, kind) => `${BASE}/assemblies/${id}/download${kind ? `?kind=${kind}` : ''}`
 export const diapos = (id, kind) => appel(`/assemblies/${id}/files/${kind}/slides`)
 export const urlDiapo = (id, kind, image) => `${BASE}/assemblies/${id}/files/${kind}/slides/${image}.png`
+
+// --- Prévisionnel (sous-module, spec §6) ---
+
+// Prévisionnels de la saison, modèles et états possibles, nombre par saison.
+export const previsionnels = (seasonId) => appel(`/forecasts?seasonId=${seasonId}`)
+export const previsionnel = (id) => appel(`/forecasts/${id}`)
+export const creerPrevisionnel = (donnees) => appel('/forecasts', json('POST', donnees))
+export const modifierPrevisionnel = (id, donnees) => appel(`/forecasts/${id}`, json('PUT', donnees))
+export const supprimerPrevisionnel = (id) => appel(`/forecasts/${id}`, { method: 'DELETE' })
+// Lance le calcul (formule + courbe) : le prévisionnel revient en « running ».
+export const calculerPrevisionnel = (id, donnees) => appel(`/forecasts/${id}/run`, json('POST', donnees))
+// Rejoue la formule avec la position des curseurs (sans rappeler le modèle).
+export const reglerPrevisionnel = (id, params) => appel(`/forecasts/${id}/params`, json('PUT', { params }))
+// Image (png) ou PDF, avec les saisons comparées à l'écran.
+export const urlTelechargementPrevisionnel = (id, format, seasonIds) =>
+  `${BASE}/forecasts/${id}/download?format=${format}&seasons=${seasonIds.join(',')}`

@@ -1,6 +1,6 @@
 """Module « finances » (spec/modules/financier.md), repris de Sambo Admin :
 sous-modules Comptes (relevés bancaires, historique), Bilan, Assemblée
-générale (PowerPoint), puis Prévisionnel.
+générale (PowerPoint) et Prévisionnel.
 
 Développé dans Contretemps pour devenir tel quel un module d'AppBase, comme
 `notes_frais` : il ne connaît pas Contretemps, tout passe par les ports de
@@ -8,7 +8,8 @@ Développé dans Contretemps pour devenir tel quel un module d'AppBase, comme
 """
 
 from .assemblies import AssemblyError, AssemblyNotFoundError, GeneralAssemblies
-from .models import FinAccount, FinAssembly, FinAssemblyFile, FinOperation, FinReport, FinStatement
+from .forecasts import ForecastError, ForecastNotFoundError, Forecasts
+from .models import FinAccount, FinAssembly, FinAssemblyFile, FinForecast, FinOperation, FinReport, FinStatement
 from .parser import StatementParseError, parse_statement
 from .ports import Member, Season
 from .receiver import FinancesReceiver
@@ -22,11 +23,15 @@ __all__ = [
     "FinAccount",
     "FinAssembly",
     "FinAssemblyFile",
+    "FinForecast",
     "FinOperation",
     "FinReport",
     "FinancialReports",
     "FinStatement",
     "Finances",
+    "ForecastError",
+    "ForecastNotFoundError",
+    "Forecasts",
     "GeneralAssemblies",
     "FinancesReceiver",
     "Member",

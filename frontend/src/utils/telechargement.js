@@ -32,6 +32,7 @@ const TYPE_EXCEL = {
 }
 const TYPE_ZIP = { description: 'Archive zip', accept: { 'application/zip': ['.zip'] } }
 const TYPE_PDF = { description: 'Document PDF', accept: { 'application/pdf': ['.pdf'] } }
+const TYPE_PNG = { description: 'Image PNG', accept: { 'image/png': ['.png'] } }
 const TYPE_PPTX = {
   description: 'Présentation PowerPoint',
   accept: { 'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'] },
@@ -44,7 +45,9 @@ export async function telechargerFichier(url, nomSecours) {
     try {
       const handle = await window.showSaveFilePicker({
         suggestedName: nom,
-        types: [nom.endsWith('.zip') ? TYPE_ZIP : nom.endsWith('.pdf') ? TYPE_PDF : nom.endsWith('.pptx') ? TYPE_PPTX : TYPE_EXCEL],
+        types: [
+          nom.endsWith('.zip') ? TYPE_ZIP : nom.endsWith('.pdf') ? TYPE_PDF : nom.endsWith('.pptx') ? TYPE_PPTX : nom.endsWith('.png') ? TYPE_PNG : TYPE_EXCEL,
+        ],
       })
       const flux = await handle.createWritable()
       await flux.write(blob)

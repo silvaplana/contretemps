@@ -24,8 +24,8 @@ Onglet **Financier**, trésoriers et Super User seulement (`core.md` §4). Sous-
 1. **Comptes** (§3) — fait.
 2. **Notes de frais** (`notes-de-frais.md`) — fait.
 3. **Bilan** (§4) — fait.
-4. **Assemblée générale** (§5) — fait, cette version.
-5. **Prévisionnel** — à reprendre (`forecasts/`).
+4. **Assemblée générale** (§5) — fait.
+5. **Prévisionnel** (§6) — fait, cette version.
 
 Chaque sous-module expose ses actions à l'Assistant IA (`assistant-ia.md` §3, `actions.py`) : cible
 de Seb, « fais-moi le PPT de l'AG de cette année à partir de celui de l'année dernière et du bilan
@@ -172,9 +172,56 @@ modele / genere / envoye, nom, provenance). Fichiers `data/finances/assemblies/<
 `POST …/{id}/run`, `POST …/{id}/upload`, `POST|PUT …/{id}/model`, `GET …/{id}/download?kind=`,
 `GET …/{id}/files/{kind}/slides` et `…/slides/{n}.png`.
 
-## 6. Reste à faire
+## 6. Prévisionnel
 
-- Prévisionnel : repris de Sambo Admin, une PR.
+Repris de Sambo Admin (`forecasts/`). Un **prévisionnel** prévoit le solde de tous les comptes de
+l'organisation, semaine par semaine, d'une date de départ jusqu'à la fin de la saison.
+
+### 6.1 Ce que fait l'appli, ce que fait le calcul
+
+- **L'appli prépare les données** : solde réel à la date de départ (celle du prévisionnel, sinon le
+  dernier jour connu des comptes, au plus aujourd'hui ; saison terminée : une date est obligatoire,
+  pour tester le prévisionnel sur le passé), solde au début de la saison, semaines jusqu'à la fin
+  de saison (avec les mois qui commencent), ce qui est déjà passé sur le mois en cours, les 12 mois
+  précédents par catégorie et leur moyenne mensuelle. Pas d'inscrits ni d'échéances de paiement
+  (Sambo Admin les lisait dans HelloAsso) : le modèle fait sans.
+- **Produire le prévisionnel** : le modèle de langage (jamais nommé « IA » à l'écran) n'écrit
+  aucun chiffre : il écrit une **formule Python** `prevoir(donnees, p)` d'après les consignes du
+  trésorier et déclare ses **curseurs** (nom, libellé, min, max, défaut, pas, unité), avec une
+  explication en quelques phrases. **L'appli vérifie la formule** (une seule fonction, imports
+  limités à `math` et `datetime`, ni fichier, ni réseau, ni nom ou attribut commençant par `_`) et
+  **l'exécute à part** (processus séparé, `python -I`, garde-fous d'audit, délai maximal). Une
+  formule refusée ou en erreur est renvoyée une fois au modèle pour correction.
+- **Bouger un curseur rejoue la formule** sans rappeler le modèle ; la position des curseurs est
+  enregistrée et reprise au calcul suivant (si le curseur existe toujours).
+- Modèle au choix, coût en euros noté dans Ressources (« Financier : prévisionnels »). Calcul en
+  arrière-plan, l'écran relit le prévisionnel jusqu'à la fin. Plusieurs prévisionnels officiels par
+  saison (ce sont des hypothèses, pas un document de référence).
+
+### 6.2 L'écran
+
+Sous-onglet **Prévisionnel** : même écran que Bilan (saison, puces d'état, liste ; **⋯ › Nouveau
+prévisionnel**). Un prévisionnel : nom, état, date de départ (raccourcis « Aujourd'hui », « Début
+de saison », « Dernier relevé »), consignes, modèle, coût cumulé ; **Enregistrer** et **Produire le
+prévisionnel** ; résultat : **Formule** (Explication | Formule Python, encart « Formule vérifiée »),
+**Curseurs** (un curseur par paramètre, « Revenir aux défauts »), trois chiffres (solde au début de
+saison, solde prévu en fin de saison, résultat prévu), **graphique** : réalisé de la saison, prévision
+en pointillés, réel après le départ quand la date est passée, ligne d'équilibre (solde de début de
+saison), saisons précédentes superposées au choix (retenu sur l'appareil) ; téléchargement en
+**image** ou **PDF** avec les mêmes saisons.
+
+Laissé de côté de Sambo Admin : réordonnancement des cartes, consignes enregistrées, zones
+repliables mémorisées, inscrits HelloAsso.
+
+### 6.3 Données et routes
+
+Table `fin_forecasts` (mêmes colonnes que `fin_reports`, plus `start_date` et `params` : dernière
+position des curseurs ; résultat JSON : formule, explication, curseurs, données, courbe). Routes
+`GET|POST /finances/forecasts`, `GET|PUT|DELETE /finances/forecasts/{id}`, `POST …/{id}/run`,
+`PUT …/{id}/params`, `GET …/{id}/download?format=png|pdf&seasons=`.
+
+## 7. Reste à faire
+
 - Actions de l'Assistant IA pour les quatre sous-modules.
 - Connexion bancaire (Enable Banking) quand le contrat est réglé.
 - Améliorations notées : tableau plus lisible sur téléphone, catégories modifiables, « reste à
