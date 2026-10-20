@@ -1,0 +1,198 @@
+"""Convocation d'assemblée générale et procurations (procurations.md) :
+dossier automatique, envoi, règles d'une procuration, pouvoirs signés en
+PDF, décompte et récapitulatif."""
+
+import pytest
+from test_documents import (  # noqa: F401 (fixtures)
+    Docs,
+    _par_nom,
+    _saison,
+    ecole,
+    stockage,
+)
+from test_documents_app import mails  # noqa: F401 (fixture)
+
+pytestmark = pytest.mark.rbac_reel
+
+PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=="
+QUAND = "2099-11-21T14:00"
+
+
+def convoquer(docs, **corps):
+    return docs.c.post(docs.base + "/assemblies", json={"kind": "ordinary", "starts_at": QUAND, **corps}, headers=docs.h)
+
+
+def lien(mails, adresse):
+    return next(m for m in reversed(mails.envoyes) if m["to"] == adresse)["text"].split("/r/")[1].split("?")[0].split()[0]
+
+
+def repondre(client, jeton, **valeur):
+    page = client.get(f"/documents/public/links/{jeton}").json()
+    return client.post(f"/documents/public/links/{jeton}/answers", json={"values": {page["assembly"]["block_id"]: valeur}})
+
+
+def procuration(client, jeton, qui):
+    return repondre(client, jeton, answer="proxy", proxy_to=qui, signature=PNG)
+
+
+@pytest.fixture
+def ag(client, ecole, db_session, mails):
+    """Une AGO convoquée et envoyée aux quatre membres de l'école."""
+    for compte, adresse in (("admin", "julia"), ("prof", "ima"), ("eleve", "leon"), ("autre", "ana")):
+        ecole[compte].definir_emails(f"{adresse}@exemple.fr")
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    r = convoquer(admin)
+    assert r.status_code == 201, r.text
+    ident = r.json()["id"]
+    assert admin.modifier(ident, change_status=True, status="official").status_code == 200
+    vue = admin.get(f"/nodes/{ident}/app/assembly").json()
+    assert len(vue["recipients"]) == 4
+    envoi = admin.c.post(f"{admin.base}/nodes/{ident}/app/sends", json={"principals": vue["principals"]}, headers=admin.h)
+    assert envoi.json()["sent"] == 4
+    return {"admin": admin, "id": ident, "folder": r.json()["folder_id"]}
+
+
+def test_convoquer_range_dans_reunions(client, ecole):
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    saison = _saison(admin)["id"]
+    r = convoquer(admin)
+    assert r.status_code == 201
+    assert r.json()["name"] == "Convocation AGO du 21 novembre 2099"
+    reunions = _par_nom(admin.racine(dossier=saison))["Réunions"]
+    assert "AGO du 21 novembre 2099" in _par_nom(admin.racine(dossier=reunions["id"]))
+    f = admin.get(f"/nodes/{r.json()['id']}/app").json()
+    textes = [b["content"][0]["text"] for b in f["content"]["entry"]["blocks"] if b["content"]]
+    assert "Rapport financier et approbation des comptes" in textes
+    assert any("samedi 21 novembre 2099 à 14 h" in t for t in textes)
+    # Deux dossiers d'AG possibles : l'appli demande, sans rien créer.
+    admin.dossier("Assemblée générale", reunions["id"])
+    r = convoquer(admin, starts_at="2099-12-05T18:30")
+    assert r.status_code == 201 and {d["name"] for d in r.json()["folders"]} == {"AGO du 21 novembre 2099", "Assemblée générale"}
+    choisi = r.json()["folders"][1]["id"]
+    assert convoquer(admin, starts_at="2099-12-05T18:30", folder_id=choisi).json()["folder_id"] == choisi
+    # L'extraordinaire a son ordre du jour à elle.
+    e = convoquer(admin, kind="extraordinary", new_folder=True).json()
+    textes = [b["content"][0]["text"] for b in admin.get(f"/nodes/{e['id']}/app").json()["content"]["entry"]["blocks"] if b["content"]]
+    assert "Modification des statuts" in textes
+    assert convoquer(admin, starts_at="2001-01-01T10:00").status_code == 422
+    assert convoquer(admin, kind="autre").status_code == 422
+
+
+def test_regles_des_procurations(client, ecole, ag, mails):
+    julia, ima, leon, ana = (lien(mails, f"{x}@exemple.fr") for x in ("julia", "ima", "leon", "ana"))
+    page = client.get(f"/documents/public/links/{leon}").json()
+    gens = {g["name"]: g["id"] for g in page["assembly"]["candidates"]}
+    assert set(gens) == {"Julia Dho", "Ima Blanc", "Ana Roux"}  # pas soi-même
+    # Le mail porte les trois réponses.
+    mail = next(m for m in mails.envoyes if m["to"] == "leon@exemple.fr")
+    assert "Je donne procuration :" in mail["text"] and "?c=proxy" in mail["text"]
+
+    assert procuration(client, leon, gens["Ana Roux"]).status_code == 201
+    # Ana n'a pas répondu : le pouvoir est en attente, ni compté ni perdu.
+    s = ag["admin"].get(f"/nodes/{ag['id']}/app/assembly").json()["summary"]
+    assert (s["votes"], s["lost"], s["holders"][0]["pending"]) == (0, 0, True)
+    a_ana = {g["name"]: g["id"] for g in client.get(f"/documents/public/links/{ana}").json()["assembly"]["candidates"]}
+    # Ana a reçu un pouvoir : elle ne peut pas en donner.
+    r = procuration(client, ana, a_ana["Ima Blanc"])
+    assert r.status_code == 422 and "venez" in r.json()["detail"]
+    # Léon a déjà donné le sien : pas de chaîne.
+    r = procuration(client, ima, a_ana["Léon Perrin"])
+    assert r.status_code == 422 and "lui-même donné" in r.json()["detail"]
+    assert procuration(client, ima, gens["Ana Roux"]).status_code == 201
+    # Ana a ses 2 pouvoirs.
+    r = procuration(client, julia, gens["Ana Roux"])
+    assert r.status_code == 422 and "déjà 2 pouvoirs" in r.json()["detail"]
+    complet = {g["name"]: g for g in client.get(f"/documents/public/links/{julia}").json()["assembly"]["candidates"]}
+    assert complet["Ana Roux"]["full"] is True
+    assert procuration(client, julia, ecole["admin"].id).status_code == 422  # soi-même
+    assert procuration(client, julia, 999999).status_code == 422  # pas convoqué
+    assert repondre(client, julia, answer="proxy", proxy_to="blank").status_code == 422  # sans signature
+    # Un pouvoir en blanc ne compte pas dans le plafond.
+    assert procuration(client, julia, "blank").status_code == 201
+    assert repondre(client, ana, answer="attend").status_code == 201
+
+    s = ag["admin"].get(f"/nodes/{ag['id']}/app/assembly").json()["summary"]
+    assert (s["convoked"], s["attend"], s["proxy"], s["absent"], s["none"], s["votes"]) == (4, 1, 3, 0, 0, 4)
+    porteurs = {h["name"]: h for h in s["holders"]}
+    assert porteurs["Ana Roux"]["count"] == 2 and porteurs["Ana Roux"]["from"] == ["Ima Blanc", "Léon Perrin"]
+    assert any(h["person_id"] is None and h["count"] == 1 for h in s["holders"])
+    # Ana ne vient plus : les pouvoirs qu'elle porte sont perdus.
+    assert repondre(client, ana, answer="absent").status_code == 201
+    s = ag["admin"].get(f"/nodes/{ag['id']}/app/assembly").json()["summary"]
+    assert s["lost"] == 2 and s["votes"] == 1
+
+
+def test_pouvoirs_en_pdf_dans_le_dossier(client, ecole, ag, mails):
+    admin = ag["admin"]
+    leon = lien(mails, "leon@exemple.fr")
+    ana = next(g["id"] for g in client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"] if g["name"] == "Ana Roux")
+    assert procuration(client, leon, ana).status_code == 201
+    pouvoirs = _par_nom(admin.racine(dossier=ag["folder"]))["Pouvoirs"]
+    fichiers = _par_nom(admin.racine(dossier=pouvoirs["id"]))
+    assert list(fichiers) == ["Pouvoir de Léon Perrin à Ana Roux.pdf"]
+    # Il change d'avis : le pouvoir reste, marqué retiré.
+    assert repondre(client, leon, answer="attend").status_code == 201
+    noms = list(_par_nom(admin.racine(dossier=pouvoirs["id"])))
+    assert len(noms) == 1 and "(retiré le" in noms[0]
+    # Récapitulatif PDF et Excel, convocation imprimable.
+    for quoi, debut in (("summary.pdf", b"%PDF"), ("convocation.pdf", b"%PDF"), ("summary.xlsx", b"PK")):
+        r = admin.get(f"/nodes/{ag['id']}/app/assembly/{quoi}")
+        assert r.status_code == 200 and r.content.startswith(debut), quoi
+
+
+def test_essai_avec_un_membre_et_pas_de_page_publique(client, ecole, mails, db_session):
+    ecole["admin"].definir_emails("julia@exemple.fr")
+    ecole["eleve"].definir_emails("leon@exemple.fr")
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    ident = convoquer(admin).json()["id"]
+    admin.modifier(ident, change_status=True, status="official")
+    r = admin.c.post(f"{admin.base}/nodes/{ident}/app/sends/trial", json={"person_id": ecole["eleve"].id}, headers=admin.h)
+    assert r.status_code == 201 and r.json()["email"] == "leon@exemple.fr"
+    mail = mails.envoyes[-1]
+    assert mail["subject"].startswith("[Essai] ") and "Julia Dho vous envoie" in mail["text"]
+    # La réponse d'essai ne compte pas, et ne range aucun pouvoir.
+    jeton = lien(mails, "leon@exemple.fr")
+    julia = next(g["id"] for g in client.get(f"/documents/public/links/{jeton}").json()["assembly"]["candidates"] if g["name"] == "Julia Dho")
+    assert procuration(client, jeton, julia).status_code == 201
+    s = admin.get(f"/nodes/{ident}/app/assembly").json()["summary"]
+    assert s["proxy"] == 0 and s["tests"][0]["answer"] == "proxy"
+    # Une convocation ne se met pas en ligne : chacun signe pour lui-même.
+    assert admin.c.post(f"{admin.base}/nodes/{ident}/app/publication", headers=admin.h).status_code == 409
+
+
+def test_ecoles_etanches(client, ecole, ag):
+    voisin = Docs(client, ecole["id"], ecole["admin_voisin"])
+    assert voisin.get(f"/nodes/{ag['id']}/app/assembly").status_code == 403
+    assert voisin.get(f"/nodes/{ag['id']}/app/assembly/summary.pdf").status_code == 403
+    assert convoquer(voisin).status_code == 403
+
+
+def test_par_l_assistant(client, ecole, db_session, mails):
+    """L'assistant fait comme l'écran (procurations.md §1.4) : convoquer,
+    valider, envoyer, chaque fois sur une carte Faire / Annuler."""
+    from app import main
+
+    actions = main.assistant_client.actions
+    admin = ecole["admin"]
+    ecole["eleve"].definir_emails("leon@exemple.fr")
+    db_session.commit()
+    proposer = lambda nom, args: actions.propose(db_session, admin, ecole["id"], admin.id, nom, args)  # noqa: E731
+    faire = lambda carte: actions.execute(db_session, ecole["id"], admin.id, carte["jeton"])  # noqa: E731
+
+    _, carte = proposer("convene_assembly", {"kind": "ordinary", "date": "2099-11-21", "time": "14:00"})
+    assert carte["lignes"] == [
+        "Préparer la convocation de l'AGO du 21 novembre 2099 à 14 h, rangée dans Réunions › AGO du 21 novembre 2099 "
+        "(nouveau dossier) (brouillon « Convocation AGO du 21 novembre 2099 », à relire avant de valider)"
+    ]
+    assert faire(carte)[0]["ok"]
+    nom = "Convocation AGO du 21 novembre 2099"
+    texte, carte = proposer("send_app_file", {"file": nom})
+    assert carte is None and "pas encore validé" in texte
+    _, carte = proposer("validate_app_file", {"file": nom})
+    assert faire(carte)[0]["ok"]
+    _, carte = proposer("send_app_file", {"file": nom})
+    assert carte["lignes"][0].startswith(f"Envoyer « {nom} » par email à 1 membre (Léon Perrin) ; sans adresse email : ")
+    texte, carte = proposer("convene_assembly", {"kind": "ordinary", "date": "2001-01-01", "time": "10:00"})
+    assert carte is None and "passée" in texte

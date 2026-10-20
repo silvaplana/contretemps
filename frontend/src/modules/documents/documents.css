@@ -2235,3 +2235,15 @@
 .dx-chat__lui .dx-chat__modifs {
   padding-left: 0;
 }
+
+/* Convoquer l'AG (procurations.md §1.3) */
+.cag-seg {
+  margin: 0 0 8px;
+}
+
+.cag-quand {
+  display: grid;
+  grid-template-columns: 1fr 130px;
+  gap: 10px;
+  margin-bottom: 8px;
+}

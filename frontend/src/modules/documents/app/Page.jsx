@@ -107,7 +107,106 @@ function Signature({ value, onChange, disabled }) {
   )
 }
 
-function Question({ block, value, onChange, disabled }) {
+const sansAccents = (t) => String(t ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const MOIS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
+const leJour = (iso) => {
+  const d = new Date(iso)
+  return `${d.getDate()}${d.getDate() === 1 ? 'er' : ''} ${MOIS[d.getMonth()]} ${d.getFullYear()}`
+}
+
+// Présence et procuration (spec procurations.md §1.1 et §3) : trois choix ;
+// pour une procuration, qui me représente (recherche + liste), le texte du
+// pouvoir rempli par l'appli, la signature au doigt. `ctx` vient du serveur
+// (lien personnel) : les membres convoqués, ceux qui ont déjà assez de pouvoirs.
+function Assembly({ block, value, onChange, disabled, ctx }) {
+  const [cherche, setCherche] = useState('')
+  const v = value ?? {}
+  const p = block.props ?? {}
+  const gens = ctx?.candidates ?? []
+  const choisir = (answer) => onChange(answer === 'proxy' ? { answer, proxy_to: v.proxy_to, signature: v.signature } : { answer })
+  const nom = v.proxy_to === 'blank' ? null : gens.find((g) => g.id === v.proxy_to)?.name ?? v.proxy_name
+  const sorte = (ctx?.kind ?? p.kind) === 'extraordinary' ? 'extraordinaire' : 'ordinaire'
+  const debut = ctx?.starts_at ?? p.startsAt
+  const qui =
+    v.proxy_to === 'blank'
+      ? `la personne désignée par le bureau${ctx?.blank_to || p.blankTo ? ` (à défaut, ${ctx?.blank_to || p.blankTo})` : ''}`
+      : nom
+  const filtre = sansAccents(cherche.trim())
+  const liste = filtre ? gens.filter((g) => sansAccents(g.name).includes(filtre)) : gens
+  const ferme = disabled || ctx?.closed
+  return (
+    <fieldset className="ap-field ap-ag" disabled={ferme}>
+      <legend className="ap-q">{label(block)}</legend>
+      {ctx?.closed && <p className="ap-ag__note">L’assemblée a commencé : la réponse ne peut plus changer.</p>}
+      {ctx?.received > 0 && (
+        <p className="ap-ag__note">
+          Vous avez reçu {ctx.received} pouvoir{ctx.received > 1 ? 's' : ''} : venez à l’assemblée pour voter pour eux.
+        </p>
+      )}
+      <div className="ap-ag__choix">
+        {[['attend', 'Je viens'], ['proxy', 'Je donne procuration'], ['absent', 'Je ne viens pas']].map(([c, t]) => (
+          <button
+            key={c}
+            type="button"
+            className={`ap-ag__btn${v.answer === c ? ' ap-ag__btn--on' : ''}`}
+            aria-pressed={v.answer === c}
+            onClick={() => choisir(c)}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      {v.answer === 'proxy' && (
+        <>
+          <p className="ap-q">Qui vous représente ?</p>
+          <input
+            className="ap-input"
+            type="search"
+            placeholder="Chercher un membre"
+            aria-label="Chercher un membre"
+            value={cherche}
+            onChange={(e) => setCherche(e.target.value)}
+          />
+          <div className="ap-ag__liste" role="radiogroup" aria-label="Membres">
+            <label className="ap-choice">
+              <input type="radio" name={`ag-${block.id}`} checked={v.proxy_to === 'blank'} onChange={() => onChange({ ...v, proxy_to: 'blank' })} />
+              <span>Je laisse le bureau choisir</span>
+            </label>
+            {liste.map((g) => (
+              <label key={g.id} className={`ap-choice${g.full ? ' ap-choice--off' : ''}`}>
+                <input
+                  type="radio"
+                  name={`ag-${block.id}`}
+                  disabled={g.full}
+                  checked={v.proxy_to === g.id}
+                  onChange={() => onChange({ ...v, proxy_to: g.id })}
+                />
+                <span>
+                  {g.name}
+                  {g.full && <small> · {g.why}</small>}
+                </span>
+              </label>
+            ))}
+            {!gens.length && <p className="ap-ag__note">La liste des membres s’affiche dans le lien reçu par email.</p>}
+            {gens.length > 0 && !liste.length && <p className="ap-ag__note">Personne à ce nom.</p>}
+          </div>
+          {v.proxy_to != null && (
+            <>
+              <p className="ap-ag__pouvoir">
+                Je soussigné(e) {ctx?.person ?? '…'}, membre de {ctx?.org_name || 'l’association'}, donne pouvoir à {qui} pour me
+                représenter à l’assemblée générale {sorte}
+                {debut ? ` du ${leJour(debut)}` : ''} et prendre part aux votes en mon nom.
+              </p>
+              <Signature value={v.signature} onChange={(signature) => onChange({ ...v, signature })} disabled={ferme} />
+            </>
+          )}
+        </>
+      )}
+    </fieldset>
+  )
+}
+
+function Question({ block, value, onChange, disabled, ctx }) {
   const p = block.props ?? {}
   const id = `ap-${block.id}`
   const titre = (
@@ -181,6 +280,9 @@ function Question({ block, value, onChange, disabled }) {
       </div>
     )
   }
+  if (block.type === 'assembly') {
+    return <Assembly block={block} value={value} onChange={onChange} disabled={disabled} ctx={ctx} />
+  }
   if (block.type === 'signature') {
     return (
       <div className="ap-field">
@@ -206,19 +308,19 @@ function Question({ block, value, onChange, disabled }) {
   )
 }
 
-function Blocks({ blocks, values, setValue, disabled }) {
+function Blocks({ blocks, values, setValue, disabled, ctx }) {
   let numero = 0
   return blocks.map((b) => {
     numero = b.type === 'numberedListItem' ? numero + 1 : 0
     const enfants = b.children?.length ? (
       <div className="ap-children">
-        <Blocks blocks={b.children} values={values} setValue={setValue} disabled={disabled} />
+        <Blocks blocks={b.children} values={values} setValue={setValue} disabled={disabled} ctx={ctx} />
       </div>
     ) : null
     if (BLOCKS[b.type]) {
       return (
         <div key={b.id}>
-          <Question block={b} value={values[b.id]} onChange={(v) => setValue(b.id, v)} disabled={disabled} />
+          <Question block={b} value={values[b.id]} onChange={(v) => setValue(b.id, v)} disabled={disabled} ctx={ctx} />
           {enfants}
         </div>
       )
@@ -234,7 +336,8 @@ function Blocks({ blocks, values, setValue, disabled }) {
 
 // `onSubmit(values)` : renvoie une promesse ; absent = page à lire seulement.
 // `initial` : la réponse déjà donnée (lien personnel) ; on la corrige.
-export default function Page({ content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note, initial }) {
+// `assembly` : ce que le serveur dit du bloc Présence et procuration.
+export default function Page({ content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note, initial, assembly }) {
   const [values, setValues] = useState(initial ?? {})
   const [envoi, setEnvoi] = useState(false)
   const [merci, setMerci] = useState(false)
@@ -272,7 +375,7 @@ export default function Page({ content, size = 'phone', onSubmit, submitLabel = 
         }
       }}
     >
-      <Blocks blocks={blocks} values={values} setValue={setValue} disabled={!onSubmit || size === 'a4'} />
+      <Blocks blocks={blocks} values={values} setValue={setValue} disabled={!onSubmit || size === 'a4'} ctx={assembly} />
       {onSubmit && size !== 'a4' && (
         <button type="submit" className="ap-send" disabled={envoi}>
           {envoi ? 'Envoi…' : submitLabel}

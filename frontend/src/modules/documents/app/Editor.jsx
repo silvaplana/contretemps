@@ -69,6 +69,42 @@ function Case({ block, editor, prop, children }) {
   )
 }
 
+// Réglages du bloc Présence et procuration (procurations.md §3.1) ; la
+// sorte et la date viennent de « Convoquer l’AG ».
+function AssemblyFields({ block, editor }) {
+  const p = block.props
+  const changer = (props) => editor.updateBlock(block, { props })
+  return (
+    <>
+      <span className="ae-help">Je viens · Je donne procuration (signée au doigt) · Je ne viens pas</span>
+      <label className="ae-amount">
+        Pouvoirs par personne, au plus
+        <input
+          className="ae-input"
+          type="number"
+          min="0"
+          max="50"
+          value={p.maxProxies}
+          disabled={!editor.isEditable}
+          onKeyDown={stop}
+          onChange={(e) => changer({ maxProxies: Math.max(0, Math.min(50, Number(e.target.value) || 0)) })}
+        />
+      </label>
+      <span className="ae-help">0 : sans limite. Les pouvoirs en blanc ne comptent pas.</span>
+      <span className="ae-help">Pouvoir en blanc : confié par le bureau, à défaut à</span>
+      <Champ block={block} editor={editor} prop="blankTo" placeholder="Nom de la présidente ou du président" />
+      <span className="ae-help">Lieu</span>
+      <Champ block={block} editor={editor} prop="place" placeholder="Salle, adresse" />
+      <select className="ae-input" aria-label="Quorum" value={p.quorum} disabled={!editor.isEditable} onChange={(e) => changer({ quorum: e.target.value })}>
+        <option value="none">Pas de quorum</option>
+        <option value="quarter">Quorum : un quart des membres</option>
+        <option value="third">Quorum : un tiers des membres</option>
+        <option value="half">Quorum : la moitié des membres</option>
+      </select>
+    </>
+  )
+}
+
 function QuestionCard({ block, editor }) {
   const act = ACT_TYPES.includes(block.type)
   return (
@@ -97,8 +133,9 @@ function QuestionCard({ block, editor }) {
           €
         </label>
       )}
+      {block.type === 'assembly' && <AssemblyFields block={block} editor={editor} />}
       {block.type === 'member' && <span className="ae-help">Nom, prénom, email, téléphone : relié à la fiche du membre</span>}
-      {block.type !== 'payment' && <Case block={block} editor={editor} prop="required">Réponse obligatoire</Case>}
+      {block.type !== 'payment' && block.type !== 'assembly' && <Case block={block} editor={editor} prop="required">Réponse obligatoire</Case>}
       {block.type === 'payment' && <span className="ae-help">Le paiement en ligne (HelloAsso) arrive avec Diffuser. En essai : {euros(block.props.amount)}, rien n’est payé.</span>}
     </Carte>
   )
@@ -111,6 +148,8 @@ function ResultCard({ block, editor }) {
     <Carte block={block} editor={editor}>
       {block.type === 'responseCount' && <span className="ae-help">« 12 / 30 ont répondu »</span>}
       {block.type === 'responseTable' && <span className="ae-help">Une ligne par personne, une colonne par question</span>}
+      {block.type === 'assemblyQuorum' && <span className="ae-help">Viennent, procurations, ne viennent pas, sans réponse, quorum</span>}
+      {block.type === 'assemblyProxies' && <span className="ae-help">Chaque représentant et les pouvoirs qu’il porte</span>}
       {(block.type === 'choiceChart' || block.type === 'total') && (
         <select
           className="ae-input"
@@ -146,10 +185,20 @@ const CUSTOM = {
   signature: q('signature'),
   member: q('member'),
   payment: q('payment', { amount: { default: 10 } }),
+  assembly: q('assembly', {
+    kind: { default: 'ordinary' },
+    startsAt: { default: '' },
+    place: { default: '' },
+    maxProxies: { default: 2 },
+    blankTo: { default: '' },
+    quorum: { default: 'none' },
+  }),
   responseCount: r('responseCount'),
   responseTable: r('responseTable'),
   choiceChart: r('choiceChart', { questionId: { default: '' } }),
   total: r('total', { questionId: { default: '' } }),
+  assemblyQuorum: r('assemblyQuorum'),
+  assemblyProxies: r('assemblyProxies'),
 }
 
 function schemaFor(form, family) {
@@ -180,7 +229,10 @@ export default function Editor({ blocks, form, family, entryQuestions, editable,
     [schema],
   )
   questionsParEditeur.set(editor, entryQuestions ?? [])
-  const nos = form === 'result' ? RESULT_TYPES : [...QUESTION_TYPES, ...(family === 'act' ? ACT_TYPES : [])].filter((t) => FAMILY_TYPES[family].includes(t))
+  const ag = (entryQuestions ?? []).some((x) => x.type === 'assembly')
+  const nos = (form === 'result' ? RESULT_TYPES : [...QUESTION_TYPES, ...(family === 'act' ? ACT_TYPES : [])].filter((t) => FAMILY_TYPES[family].includes(t)))
+    // Les blocs d'AG : seulement dans une convocation (un seul bloc de présence).
+    .filter((t) => (t === 'assemblyQuorum' || t === 'assemblyProxies' ? ag : t === 'assembly' ? !ag : true))
 
   // « + Ajouter un bloc » toujours visible (le + de BlockNote n'apparaît
   // qu'au survol, absent sur téléphone).
