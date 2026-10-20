@@ -45,7 +45,8 @@ Pas de compte ni de mot de passe : ce lien est le vôtre.
 Chaque bouton ouvre la page de l'AG avec ce choix déjà coché (lien personnel, `fichier-de-base.md`
 §2.3). « Je donne procuration » mène à deux écrans, gros et simples :
 
-1. **Qui vous représente ?** La liste des membres convoqués (nom seulement), plus en tête
+1. **Qui vous représente ?** Un champ **Chercher un membre** (on tape quelques lettres du nom), puis
+   la liste des membres convoqués par ordre alphabétique (nom seulement), plus en tête
    **« Je laisse le bureau choisir »** (pouvoir en blanc, §3.4). Un membre qui a déjà son nombre
    maximal de pouvoirs est grisé, avec « a déjà 2 pouvoirs ». Bouton **Continuer**.
 2. **Signez avec le doigt.** La phrase du pouvoir en entier (§3.3), la zone de signature (bloc
