@@ -84,6 +84,11 @@ nombre de voix de chacun) pour le procès-verbal.
 (https://claude.ai/artifact/1Ptq5myAcGYw8d6rsmjBRj) : Docs › + › **Convoquer l'AG**, puis trois
 questions, une par écran, chaque réponse proposée d'avance depuis la dernière AG :
 
+0. **Quelle assemblée ?** **Ordinaire** (une fois par an : comptes, bureau ; cochée d'avance) ou
+   **Extraordinaire** (statuts, dissolution, fusion). Une seule tuile, pas deux (Seb, 20 octobre :
+   « demander, ou deux fonctions » ; recommandé : demander, l'écran reste court puisque Ordinaire est
+   déjà choisi). Le mot va dans le titre (« Assemblée générale extraordinaire du … »), dans le pouvoir
+   et dans le nom du dossier ; le quorum par défaut de l'extraordinaire est réglé à part dans le bloc ;
 1. **Quand ?** (date et heure ; rappel si la convocation part moins de 15 jours avant) ;
 2. **Où ?** ;
 3. **L'ordre du jour** (les points de la dernière AG cochés, un champ « Autre point »).
@@ -210,7 +215,9 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
   **L'appli cherche d'abord, et demande si elle n'est pas sûre** (Seb, 20 octobre) :
   - le dossier Réunions de la saison : nom comparé sans accents ni majuscules ni pluriel
     (« Réunions », « reunion », « Réunion du bureau » non) ; absent → créé ;
-  - dedans, un dossier d'AG : nom contenant « AG » ou « assemblée », sans convocation déjà diffusée.
+  - dedans, un dossier d'AG : nom contenant, sans accents ni majuscules, « AG », « AGO », « AGE » ou
+    « assemblée générale » (Seb, 20 octobre), de la même sorte (ordinaire / extraordinaire, quand le nom
+    le dit), sans convocation déjà diffusée.
     **Un seul** → on l'utilise ; **aucun** → « AG du 21 novembre 2026 » est créé ; **plusieurs**, ou un
     dont la date ne colle pas → une question après « L'ordre du jour » : « Où ranger la convocation ? »
     avec les dossiers trouvés et « Nouveau dossier AG du 21 novembre 2026 » (proposé par défaut).
