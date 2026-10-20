@@ -80,6 +80,19 @@ nombre de voix de chacun) pour le procès-verbal.
 
 ### 1.3 Ce que fait celui qui convoque
 
+**Par l'écran, sans l'assistant (Seb, 20 octobre)**, comme la maquette « Convoquer l'AG »
+(https://claude.ai/artifact/1Ptq5myAcGYw8d6rsmjBRj) : Docs › + › **Convoquer l'AG**, puis trois
+questions, une par écran, chaque réponse proposée d'avance depuis la dernière AG :
+
+1. **Quand ?** (date et heure ; rappel si la convocation part moins de 15 jours avant) ;
+2. **Où ?** ;
+3. **L'ordre du jour** (les points de la dernière AG cochés, un champ « Autre point »).
+
+Puis **la convocation s'affiche, prête** (Aperçu), avec en dessous « Pour : 87 membres · par email ».
+Bouton principal **Envoyer aux 87 membres** ; « Modifier » ouvre Préparer. Le fichier passe en Officiel
+et part en un seul geste (confirmation « Envoyer la convocation ? », puis Annuler 10 s). Les destinataires
+proposés : ceux de la dernière AG, sinon tous les membres de la saison ; « Changer » ouvre Diffuser.
+
 **Deux portes, même résultat (Seb, 20 octobre)** : la tuile **Docs › + › Convoquer l'AG**, ou
 l'**Assistant IA** : « convoque l'AG le 21 novembre à 14 h à la salle des fêtes ». L'assistant crée le
 même fichier (même dossier, §4), le remplit avec la date, le lieu et l'ordre du jour (repris de la
@@ -193,8 +206,15 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
 - **Récapitulatif PDF** (A4, Chromium) : chiffres, quorum, liste de ceux qui viennent, tableau « qui représente qui » avec le
   nombre de voix, liste des absents sans procuration et des sans-réponse, date et heure de l'état.
 - **Rangement automatique (Seb, 20 octobre : « dans Réunions / AG »)** : la tuile « Convoquer l'AG »
-  crée le fichier dans **Docs › Privé › Saison en cours › Réunions › AG du 21 novembre 2026** (dossiers
-  créés s'ils manquent, nom tiré de la date). Dans ce dossier : le fichier de convocation, un sous-dossier
+  crée le fichier dans **Docs › Privé › Saison en cours › Réunions › AG du 21 novembre 2026**.
+  **L'appli cherche d'abord, et demande si elle n'est pas sûre** (Seb, 20 octobre) :
+  - le dossier Réunions de la saison : nom comparé sans accents ni majuscules ni pluriel
+    (« Réunions », « reunion », « Réunion du bureau » non) ; absent → créé ;
+  - dedans, un dossier d'AG : nom contenant « AG » ou « assemblée », sans convocation déjà diffusée.
+    **Un seul** → on l'utilise ; **aucun** → « AG du 21 novembre 2026 » est créé ; **plusieurs**, ou un
+    dont la date ne colle pas → une question après « L'ordre du jour » : « Où ranger la convocation ? »
+    avec les dossiers trouvés et « Nouveau dossier AG du 21 novembre 2026 » (proposé par défaut).
+  L'assistant suit la même règle et pose la même question sur sa carte. Dans ce dossier : le fichier de convocation, un sous-dossier
   **Pouvoirs** (un PDF par procuration, enregistré à la signature, nommé « Pouvoir de Karim Benali à
   Martine Colin.pdf ») et le **récapitulatif** (remplacé à chaque téléchargement, une version par
   état). Mêmes droits que le dossier Privé de la saison (bureau, profs). Une procuration retirée garde
