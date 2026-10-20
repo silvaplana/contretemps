@@ -175,6 +175,21 @@ Calculé par le code, jamais par l'IA :
 
 ## 4. Résultats et émargement
 
+**Ce qu'on collecte (Seb, 20 octobre)** : les pouvoirs signés, un PDF par procuration, et un
+récapitulatif (tableau à l'écran, PDF et Excel) : qui vient, qui ne vient pas, qui donne procuration à
+qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultats » et « Le récapitulatif ».
+
+- **Écran Résultats** : compteurs (viennent, procurations, ne viennent pas), quorum, filtres
+  `Tous | Viennent | Procurations | Ne viennent pas | Sans réponse`, une ligne par membre avec un bouton
+  **PDF** pour chaque procuration ; le filtre Procurations montre en tête **Pouvoirs reçus** (par
+  mandataire : nombre, en blanc, noms des mandants). Bouton principal **Télécharger le récapitulatif** ;
+  ⋯ › **Télécharger les pouvoirs** (tous les PDF en une archive) et **Exporter en Excel**.
+- **Récapitulatif PDF** (A4, Chromium) : chiffres, quorum, tableau « qui représente qui » avec le
+  nombre de voix, liste des absents sans procuration et des sans-réponse, date et heure de l'état.
+- **Rangement** : chaque pouvoir signé est enregistré en PDF à la signature, dans un dossier
+  « Pouvoirs » à côté du fichier de l'AG (Docs, mêmes droits que le fichier) ; le récapitulatif s'y
+  range aussi quand on le télécharge. Une procuration retirée garde son PDF, marqué « Retiré le … ».
+
 - **Formulaire de résultat par défaut** du modèle : Compteur (« 61 / 87 ont répondu »), un nouveau
   bloc de résultat **Quorum** (§3.5), un nouveau bloc **Pouvoirs reçus** (une ligne par mandataire,
   nombre de pouvoirs, noms des mandants au toucher), puis le Tableau des réponses (colonne « Procuration
@@ -208,10 +223,11 @@ Calculé par le code, jamais par l'IA :
 
 1. **Le bloc et la tuile.** Bloc Présence et procuration (écrans du membre, réglages, contrôles §3.4),
    boutons de réponse dans l'email, tuile « Convoquer l'AG » active avec son modèle, blocs de résultat
-   Quorum (prévision) et Pouvoirs reçus. *Vérification* : tests du contrôle (plafond, chaîne, soi-même,
+   Quorum (prévision) et Pouvoirs reçus, écran Résultats avec filtres, récapitulatif PDF et Excel,
+   un PDF par pouvoir signé rangé dans « Pouvoirs ». *Vérification* : tests du contrôle (plafond, chaîne, soi-même,
    non convoqué, page publique refusée, étanchéité) ; essai sur téléphone avec « M'envoyer un essai ».
 2. **La feuille d'émargement** : table `doc_attendance`, écran, quorum en direct, PDF.
-3. **Les copies** : email au mandataire, PDF de chaque procuration signée (copie au mandant), relance
+3. **Les copies** : email au mandataire, copie du pouvoir signé au mandant, relance
    aux non-répondants J-7 (`a-faire.md`, déjà prête à faire).
 4. **L'Assistant IA** : `actions.py` (convoquer l'AG à partir de la dernière, où en est le quorum,
    relancer) ; l'assistant prépare, le bureau envoie, jamais de signature par l'assistant.
