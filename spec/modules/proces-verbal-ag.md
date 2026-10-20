@@ -9,9 +9,12 @@ donne la date, le lieu, la sorte d'assemblée (AGO / AGE), l'ordre du jour et le
 le PV y ajoute **la liste des présents**, calcule le quorum et propose le texte. Rien de propre à la
 danse : il part tel quel dans AppBase.
 
-Le PV est un **fichier de base de nature Informer** (`fichier-de-base.md`), caché derrière le parcours
-comme la convocation (décision de Seb du 20 octobre pour les procurations, même essai ici) : à l'écran,
-ni « nature » ni « Informer ».
+Le PV est un **fichier de base de nature Questionner** (`fichier-de-base.md`), caché derrière le
+parcours comme la convocation (décision de Seb du 20 octobre pour les procurations, même essai ici) : à
+l'écran, ni « nature » ni « Questionner ». Seb, 20 octobre : « philosophiquement un Informer, mais on
+demande quand même quelque chose, des signatures, donc c'est aussi Questionner ». La seule question du
+fichier est le **bloc Signature**, qui existe déjà ; les signataires sont les destinataires de
+Diffuser.
 
 ---
 
@@ -47,10 +50,21 @@ Puis un écran par étape, un seul bouton principal chacun :
 4. **Le PV proposé** (Brouillon), en aperçu modifiable : le secrétaire touche un texte et écrit, comme
    dans Préparer. Les chiffres comptés par l'appli sont en bleu, ce qu'elle ne sait pas est surligné en
    jaune « À compléter : … ». Bouton **Valider**.
-5. **Valider** fige le PV : il passe directement en **Officiel** (comme la convocation), PDF A4 par
-   Chromium. Bouton principal **Télécharger le PDF** ; dessous, **Envoyer aux N membres…** (même envoi
-   que Diffuser, confirmation puis Annuler 10 s). Pour corriger ensuite : ⋯ › Modifier, qui repasse en
-   Brouillon tant qu'il n'est pas envoyé.
+5. **Valider** fige le texte : le PV passe en **Validé**. Écran **Qui doit signer ?** (Seb,
+   20 octobre) : les membres du bureau (colonne Bureau d'École › Administrateurs, §2 bis), présidence
+   et secrétaire cochés d'avance, trésorerie et autres à cocher, « + Une autre personne ». Bouton
+   principal **Envoyer pour signature** ; dessous, **Télécharger le PDF (sans signatures)**.
+6. **Chaque signataire reçoit un email** « À signer : procès-verbal de l'AGO du 21 novembre 2026 »
+   avec son lien personnel (pas de compte) : le PV en entier, la phrase « Je soussigné(e) Martine
+   Colin, présidente, certifie ce procès-verbal exact », la signature au doigt, **Signer**. Lien
+   « Je ne suis pas d'accord : écrire à <celui qui a envoyé> » (Messagerie instantanée). Celui qui
+   envoie et qui doit aussi signer signe directement depuis l'écran de suivi (**Signer moi-même**).
+7. **Suivi des signatures** : une ligne par signataire (« a signé le 23/11 ✓ » ou « pas encore
+   signé », **Relancer**). Quand tous ont signé, le PV passe **tout seul en Officiel**, PDF A4 par
+   Chromium avec les signatures (image, nom, fonction, date). Bouton principal **Télécharger le PDF** ;
+   dessous, **Envoyer aux N membres…** (même envoi que Diffuser, confirmation puis Annuler 10 s).
+   Pour corriger le texte après Valider : ⋯ › Modifier, qui repasse en Brouillon et efface les
+   signatures déjà faites (avec un avertissement).
 
 ## 2. Le texte proposé
 
@@ -79,8 +93,18 @@ jour, délibérations et résultat des votes point par point, heure de clôture,
 du secrétaire. La liste des présents (photo et liste reconnue) et les pouvoirs sont joints en annexe du
 PDF.
 
-**Signatures** : des lignes de signature dans le PDF, à signer sur papier. Pas de signature au doigt
-dans l'appli à cette étape (Seb n'en a pas parlé ; voir §6).
+**Signatures** : dans l'appli, au doigt, par les membres du bureau choisis (étapes 5 à 7 du §1). Le
+PDF montre une zone de signature par signataire choisi, remplie à mesure.
+
+## 2 bis. Le bureau (core, École › Administrateurs)
+
+Seb, 20 octobre : « dans École › Administrateurs, on rajoute une colonne Bureau où, pour chaque
+admin, on peut mettre une ou plusieurs fonctions : président, trésorier, secrétaire ». Fonctions
+proposées : **Président·e, Vice-président·e, Secrétaire, Trésorier·e** (accord selon le genre de la
+fiche ou forme neutre). Elles servent à proposer les signataires, à écrire « Martine Colin,
+présidente » dans le PV et le pouvoir en blanc des procurations (« donné à la présidence »). Elles ne
+donnent **aucun droit** : les droits restent les niveaux du core (`core.md` §6.1). Décrit dans
+`core.md` §6.4.
 
 ## 3. Rangement
 
@@ -100,10 +124,12 @@ Déclarés dans `documents/actions.py`, mêmes droits que l'écran (niveau `mana
 | Proposer le procès-verbal | `draft_minutes(node_id)` : crée le PV en Brouillon | aucune (un brouillon s'efface) |
 | Écrire dans le texte | `modifier_fichier_appli` (existe déjà) | Annuler sous la modification |
 | Valider | `validate_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
+| Envoyer pour signature | `send_app_file(node_id, recipients)` (procurations, étape 1), destinataires par défaut = présidence et secrétaire | Faire / Annuler (noms et fonctions écrits par le code) |
+| Suivi, Relancer | `signature_status(node_id)`, `remind_non_respondents(node_id)` (procurations, étape 4) | aucune ; Faire / Annuler pour relancer |
 | Télécharger le PDF | `app_file_pdf(node_id)` (procurations, étape 1) | aucune |
 | Envoyer aux N membres | `send_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
 
-L'assistant ne fait que transcrire dans le texte ce que la personne lui dit (« rapport moral adopté à
+L'assistant ne signe jamais à la place de quelqu'un. Il ne fait que transcrire dans le texte ce que la personne lui dit (« rapport moral adopté à
 l'unanimité ») ; il n'invente jamais un résultat de vote.
 
 ## 5. Données
@@ -116,26 +142,37 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
   (`content_json.source`, sans nouvelle colonne), pour retrouver présents, pouvoirs et ordre du jour.
 - **Chiffres du Financier** : lus par un port de `documents/ports.py` (`approved_report(org_id, season)`),
   branché sur `finances` dans `documents_contretemps/adapter.py` : Documents ne dépend pas de Finances.
+- **Signatures** : réponses du bloc Signature dans `doc_responses` (existant), une par signataire ;
+  « tous ont signé » = toutes les personnes de `doc_sends` (non essai) ont répondu → passage en
+  Officiel par le code. **Pas de nouvelle table.**
+- **Fonctions du bureau** (core) : une colonne `bureau_functions` (liste JSON) sur la fiche
+  (`comptes`), recopiée avec elle à la création d'une saison. Ce ne sont pas des rôles (`roles`) :
+  elles ne donnent aucun droit. Migration qui ajoute une colonne, sans `has_table`.
 - Lecture de la photo : modèle avec vision, coût noté dans Ressources (« Procès-verbal d'AG »).
 - Toutes les requêtes filtrent par `org_id`, test d'étanchéité entre écoles.
 
 ## 6. À trancher par Seb
 
-1. **Envoi aux membres** : en lien secondaire sous « Télécharger le PDF ». Recommandation : **oui**,
-   l'usage est d'informer les membres, mais rien ne part sans le toucher.
-2. **Signatures** : sur papier (PDF imprimé) d'abord ; signature au doigt de la présidente et du
-   secrétaire dans l'appli plus tard si besoin. Recommandation : **papier d'abord**.
+1. **La fonction Trésorier·e du bureau donne-t-elle aussi l'onglet Financier ?** Recommandation :
+   **non**, deux choses séparées : la fonction est un titre (qui signe, ce qu'on écrit dans le PV), la
+   coche Trésorier est un droit (un trésorier adjoint peut avoir le Financier sans être au bureau).
+   L'écran propose de cocher Trésorier quand on donne la fonction, sans le faire tout seul.
+2. **Envoi aux membres** : en lien secondaire sous « Télécharger le PDF » une fois signé.
+   Recommandation : **oui**, rien ne part sans le toucher.
 
 ## 7. Étapes (une PR chacune, sur « vas-y »)
 
 Après l'étape 1 des procurations (convocation, procurations signées, `validate_app_file`,
 `send_app_file`, `app_file_pdf`).
 
+0. **Le bureau** (core) : colonne Bureau dans École › Administrateurs, `bureau_functions`, recopie
+   à la création de saison, outil de l'assistant pour la changer (mêmes droits que les coches).
 1. **La liste des présents** : photo, lecture, rapprochement, doutes, écran du quorum, table
    `doc_attendance`, outils `start_minutes`, `read_attendance_photo`, `save_attendance`.
    *Vérification* : tests du rapprochement (homonymes, initiales, inconnu), du comptage (procuration
    annulée par la présence, pouvoir perdu), de l'étanchéité ; essai avec une vraie photo de feuille.
 2. **Le PV** : bandeau et tuile, gabarit, proposition à partir du PV de l'an dernier, contrôle des
-   chiffres, aperçu modifiable, Valider, PDF avec annexes, rangement, outil `draft_minutes`.
+   chiffres, aperçu modifiable, Valider, envoi pour signature au bureau, suivi, passage en Officiel
+   quand tous ont signé, PDF avec signatures et annexes, rangement, outil `draft_minutes`.
    *Vérification* : tests du gabarit (AGO, AGE, quorum non atteint, sans bilan Officiel), d'un nombre
    inventé signalé ; essai de bout en bout sur l'école de démo.
