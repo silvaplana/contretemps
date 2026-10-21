@@ -61,7 +61,7 @@ export default function BottomNav({ active, onChange, profil, alertes = {} }) {
   }
 
   return (
-    <nav className="bottom-nav" ref={navRef}>
+    <nav className={`bottom-nav ${deborde && menuOuvert ? 'bottom-nav--menu-ouvert' : ''}`} ref={navRef}>
       {dansLaBarre.map((tab) => (
         <button
           key={tab.key}

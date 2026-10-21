@@ -377,11 +377,19 @@
 }
 
 /* « Plus » (⋯) : les onglets qui ne tiennent pas dans la barre (voir
-   BottomNav.jsx), en menu au-dessus de son coin droit. */
+   BottomNav.jsx), en menu au-dessus de son coin droit. Menu modal et
+   prioritaire (Seb, 21/10) : la barre étant `sticky`, le menu ne passe
+   au-dessus du reste (lignes de tableau, boutons flottants, z-index jusqu'à
+   300) que si la barre entière monte au premier plan pendant qu'il est
+   ouvert. Le voile assombrit l'écran et ferme le menu au toucher. */
+.bottom-nav--menu-ouvert {
+  z-index: 1000;
+}
+
 .bottom-nav__voile {
   position: fixed;
   inset: 0;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.3);
   border: none;
   z-index: 40;
 }
