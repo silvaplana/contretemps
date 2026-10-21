@@ -360,6 +360,12 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
   payant : « Le texte vous va ? Dites-moi ce qu'il faut changer, ou modifiez-le vous-même ; quand il est
   bon, dites « valide » ou touchez Valider : rien ne part avant. » Le résultat de « Faire » porte le
   fichier à ouvrir (`ouvrir`, `assistant/actions.py`).
+- **Aperçu modifiable** (Seb, 21 octobre, §1.3) : une convocation ou un PV tout juste préparés (tuile ou
+  assistant) s'ouvrent sur l'**Aperçu** ; en Brouillon, on touche un titre ou un paragraphe et on écrit
+  (enregistré en quittant le texte ; style gardé s'il était le même sur tout le bloc ; les questions et le
+  bloc procuration se règlent dans Préparer). Bouton principal **Valider** dans l'Aperçu aussi. Plus de
+  « Envoyer ma réponse (essai) » dans l'Aperçu : on essaie depuis Diffuser (« M'envoyer un essai »). La
+  nature (Questionner) ne s'affiche pas sur une convocation ni sur un PV.
   `send_app_file` n'envoie qu'une convocation d'AG (aux destinataires par défaut). `app_file_pdf`
   passe à l'étape 4 (il faut un outil qui rend un lien, pas une carte).
 - Pas encore fait : rappel si la convocation part moins de 15 jours avant ; « Changer » le pouvoir

@@ -158,3 +158,24 @@ export function telecharger(blob, nom) {
   a.remove()
   setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
+
+// Aperçu modifiable (procurations.md §1.3, Seb 21 octobre) : le texte brut
+// d'un bloc, et le bloc `id` (cherché aussi dans les enfants) avec son
+// nouveau texte. Le style est gardé s'il était le même sur tout le bloc.
+export function texteBrut(content) {
+  if (typeof content === 'string') return content
+  return (content ?? []).map((m) => (m.type === 'link' ? texteBrut(m.content) : m.text ?? '')).join('')
+}
+
+export function avecTexte(blocks, id, texte) {
+  return blocks.map((b) => {
+    if (b.id === id) {
+      const morceaux = Array.isArray(b.content) ? b.content : []
+      const styles = morceaux.length && morceaux.every((m) => JSON.stringify(m.styles ?? {}) === JSON.stringify(morceaux[0].styles ?? {}))
+        ? morceaux[0].styles ?? {}
+        : {}
+      return { ...b, content: texte ? [{ type: 'text', text: texte, styles }] : [] }
+    }
+    return b.children?.length ? { ...b, children: avecTexte(b.children, id, texte) } : b
+  })
+}

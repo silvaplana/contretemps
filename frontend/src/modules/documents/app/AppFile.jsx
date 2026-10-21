@@ -11,7 +11,7 @@ import Emargement from './Emargement.jsx'
 import Page from './Page.jsx'
 import Results, { exampleRows } from './Results.jsx'
 import FamilyCards from './FamilyCards.jsx'
-import { assemblyBlock, dropForFamily, minutesBlock, openingTab, questions, resultBlocks, tabReason, telecharger } from './blocks.js'
+import { assemblyBlock, avecTexte, dropForFamily, minutesBlock, openingTab, questions, resultBlocks, tabReason, telecharger } from './blocks.js'
 import './app.css'
 
 // Le fichier de base ouvert en plein écran (spec fichier-de-base.md) :
@@ -86,7 +86,8 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         const vue = convocation ? await api.assembly(item.id).catch(() => null) : null
         setAg(vue)
         // Une convocation officielle pas encore envoyée s'ouvre sur l'envoi.
-        if (ouvrir) setTab(vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : openingTab(f))
+        // `item.tab` : l'onglet demandé (ex. l'Aperçu d'une convocation tout juste préparée).
+        if (ouvrir) setTab(item.tab ?? (vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : openingTab(f)))
         if (f.can_edit && f.family !== 'inform') setRows((await api.appResponses(item.id)).items)
         setEditorKey((k) => k + 1)
         return f
@@ -95,7 +96,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         return null
       }
     },
-    [api, item.id],
+    [api, item.id, item.tab],
   )
 
   useEffect(() => {
@@ -134,6 +135,18 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     },
     [api, item.id, onToast, charger],
   )
+
+  // Un texte corrigé dans l'Aperçu : même enregistrement que Préparer ;
+  // l'éditeur de Préparer repartira du nouveau contenu.
+  function modifieTexte(id, texte) {
+    const c = content.current
+    content.current = { ...c, entry: { blocks: avecTexte(c.entry.blocks, id, texte) } }
+    setContenu(content.current)
+    setEditorKey((k) => k + 1)
+    setSaving('pending')
+    clearTimeout(minuteur.current)
+    minuteur.current = setTimeout(() => enregistrer(content.current).catch(() => {}), SAVE_DELAY)
+  }
 
   function modifie(blocs) {
     const c = content.current
@@ -230,17 +243,6 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     [],
   )
 
-  async function essayer(values) {
-    try {
-      await api.tryApp(item.id, values)
-      setRows((await api.appResponses(item.id)).items)
-      onToast('Réponse d’essai enregistrée : rien n’est créé dans l’appli')
-    } catch (e) {
-      onToast(e.message)
-      throw e
-    }
-  }
-
   if (erreur) {
     return (
       <div className="dx-panel" role="dialog" aria-label={item.name}>
@@ -307,6 +309,20 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       </button>
     )
   } else if (tab === 'preview') {
+    // Aperçu modifiable d'un brouillon : on peut valider d'ici (procurations.md §1.3).
+    if (statut === 'draft' && file.editable) {
+      bas = (
+        <button
+          type="button"
+          className="dx-btn"
+          disabled={!file.can_manage || !c.entry.blocks.length}
+          title={!file.can_manage ? 'Un admin valide le fichier' : undefined}
+          onClick={() => changerEtat(assemblyBlock(c) ? 'official' : 'validated')}
+        >
+          Valider
+        </button>
+      )
+    }
     corps = (
       <>
         {!informer && <Seg label="Formulaire" value={formActif} options={formOptions} onChange={setForm} />}
@@ -322,13 +338,18 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
               ]}
               onChange={setSize}
             />
-            {!informer && file.can_edit && size !== 'a4' && <p className="af-hint">Remplissez la page pour l’essayer : la réponse est marquée « Essai » et ne crée rien.</p>}
+            {file.editable && statut === 'draft' && (
+              <p className="af-hint af-hint--fort">
+                Touchez un texte pour le corriger directement, ou demandez à l’assistant ce qu’il faut changer.
+              </p>
+            )}
             <Page
               key={`${editorKey}-${size}`}
               content={c}
               size={size}
-              onSubmit={!informer && file.can_edit ? essayer : undefined}
-              submitLabel="Envoyer ma réponse (essai)"
+              // Pas de réponse d'essai ici : on essaie depuis Diffuser
+              // (« M'envoyer un essai », Seb 21 octobre).
+              onTexte={file.editable && statut === 'draft' ? modifieTexte : undefined}
               assembly={
                 ag && {
                   candidates: ag.recipients.map((r) => ({ id: r.person_id, name: r.name })),
@@ -466,19 +487,23 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
           {STATUSES[statut].label}
           {file.can_edit && <span className="af-chev" aria-hidden="true">▾</span>}
         </button>
-        <button
-          type="button"
-          className="af-family"
-          style={{ color: FAMILIES[file.family].color }}
-          disabled={!file.editable}
-          onClick={() => setSheet('family')}
-          title={file.editable ? 'Changer la nature' : undefined}
-        >
-          <FamilyDot family={file.family} size={24} />
-          {FAMILIES[file.family].label}
-          {file.editable && <span className="af-chev" aria-hidden="true">▾</span>}
-        </button>
-        {saving && tab === 'prep' && <span className="af-saved">{saving === 'pending' ? 'Enregistrement…' : 'Enregistré'}</span>}
+        {/* Convocation et PV d'AG : la nature ne s'affiche pas, le parcours la
+            cache (procurations.md §6, Seb 21 octobre). */}
+        {!assemblyBlock(c) && !minutesBlock(c) && (
+          <button
+            type="button"
+            className="af-family"
+            style={{ color: FAMILIES[file.family].color }}
+            disabled={!file.editable}
+            onClick={() => setSheet('family')}
+            title={file.editable ? 'Changer la nature' : undefined}
+          >
+            <FamilyDot family={file.family} size={24} />
+            {FAMILIES[file.family].label}
+            {file.editable && <span className="af-chev" aria-hidden="true">▾</span>}
+          </button>
+        )}
+        {saving && (tab === 'prep' || tab === 'preview') && <span className="af-saved">{saving === 'pending' ? 'Enregistrement…' : 'Enregistré'}</span>}
       </div>
       {file.can_edit && (
         <div className="af-tabs" role="tablist" style={{ '--n': onglets.length }}>

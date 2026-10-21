@@ -305,9 +305,9 @@ export default function Assistant({
           {
             role: 'assistant',
             texte:
-              `« ${aOuvrir.name} » est ouvert au-dessus. Le texte vous va ?\n\n` +
-              'Dites-moi ce qu’il faut changer et je le corrige, ou modifiez-le vous-même directement. ' +
-              'Quand il est bon, dites-moi « valide » ou touchez **Valider** : rien ne part avant.',
+              `« ${aOuvrir.name} » est ouvert au-dessus, dans l’Aperçu. Le texte vous va ?\n\n` +
+              'Touchez un texte de l’Aperçu pour le corriger directement, ou dites-moi ce qu’il faut changer. ' +
+              'Quand il est bon, touchez **Valider** (ou dites-moi « valide ») : rien ne part avant.',
             actions: [],
           },
         ])

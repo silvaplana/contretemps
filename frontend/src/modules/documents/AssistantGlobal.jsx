@@ -116,7 +116,7 @@ export default function AssistantGlobal({ etat, onglet, onNavigate, admin = fals
     const docs = docsBranche()
     if (docs?.ouvrir) docs.ouvrir(fichier)
     else {
-      ouvrirDansDocs(fichier)
+      ouvrirDansDocs({ ...fichier, tab: 'preview' })
       onNavigate('docs')
     }
     if (!bureau) etat.fermer()

@@ -1039,7 +1039,7 @@ export default function Explorer({ orgId, memoire }) {
       // Fichier créé par l'assistant : son dossier, puis le fichier ouvert.
       ouvrir: (f) => {
         ouvrirDepuisArbre(f.space, f.parent_id)
-        setAppli({ id: f.id, name: f.name, kind: 'app', family: f.family })
+        setAppli({ id: f.id, name: f.name, kind: 'app', family: f.family, tab: 'preview' })
       },
     }
   })
@@ -1486,7 +1486,8 @@ export default function Explorer({ orgId, memoire }) {
           onCreated={async (f) => {
             setConvoquer(false)
             await recharger()
-            setAppli({ id: f.id, name: f.name, kind: 'app', family: 'question' })
+            // Ouverte sur l'Aperçu, qu'on corrige directement (procurations.md §1.3).
+            setAppli({ id: f.id, name: f.name, kind: 'app', family: 'question', tab: 'preview' })
           }}
         />
       )}
@@ -1500,7 +1501,8 @@ export default function Explorer({ orgId, memoire }) {
           onCreated={async (f) => {
             setPv(null)
             await recharger()
-            setAppli({ id: f.id, name: f.name, kind: 'app', family: 'question' })
+            // Ouvert sur l'Aperçu, qu'on corrige directement (proces-verbal-ag.md §1).
+            setAppli({ id: f.id, name: f.name, kind: 'app', family: 'question', tab: 'preview' })
           }}
         />
       )}

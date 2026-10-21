@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BLOCKS, MEMBER_FIELDS, euros, label, options } from './blocks.js'
+import { BLOCKS, MEMBER_FIELDS, euros, label, options, texteBrut } from './blocks.js'
 
 // Le formulaire d'entrée tel que le reçoivent les gens (Aperçu, et plus tard
 // la page publique), dessiné depuis le JSON : jamais de HTML stocké, le
@@ -31,8 +31,44 @@ export function Inline({ content }) {
   })
 }
 
-function Layout({ block, index }) {
-  const c = <Inline content={block.content} />
+// Blocs de texte qu'on peut corriger dans l'Aperçu (pas ceux qui ont un lien).
+const TEXTES = ['heading', 'paragraph', 'quote', 'bulletListItem', 'numberedListItem', 'checkListItem']
+
+// Un texte de l'Aperçu modifiable : on le touche et on écrit ; enregistré en
+// quittant le texte (Entrée aussi). La clé suit le texte : React repart du
+// nouveau contenu au lieu de se battre avec ce qui a été tapé.
+function Modifiable({ as: Balise, block, onTexte, className, children }) {
+  return (
+    <Balise
+      className={`${className ?? ''} ap-modifiable`}
+      contentEditable
+      suppressContentEditableWarning
+      spellCheck
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          e.currentTarget.blur()
+        }
+      }}
+      onBlur={(e) => {
+        const texte = e.currentTarget.innerText.replace(/\s+/g, ' ').trim()
+        if (texte !== texteBrut(block.content).replace(/\s+/g, ' ').trim()) onTexte(block.id, texte)
+      }}
+    >
+      {children}
+    </Balise>
+  )
+}
+
+function Layout({ block, index, onTexte }) {
+  const modifiable = onTexte && TEXTES.includes(block.type) && !(block.content ?? []).some?.((m) => m.type === 'link')
+  const c = modifiable ? (
+    <Modifiable key={texteBrut(block.content)} as="span" block={block} onTexte={onTexte}>
+      <Inline content={block.content} />
+    </Modifiable>
+  ) : (
+    <Inline content={block.content} />
+  )
   switch (block.type) {
     case 'heading': {
       const H = `h${Math.min(Math.max(block.props?.level ?? 1, 1), 3) + 1}`
@@ -308,13 +344,13 @@ function Question({ block, value, onChange, disabled, ctx }) {
   )
 }
 
-function Blocks({ blocks, values, setValue, disabled, ctx }) {
+function Blocks({ blocks, values, setValue, disabled, ctx, onTexte }) {
   let numero = 0
   return blocks.map((b) => {
     numero = b.type === 'numberedListItem' ? numero + 1 : 0
     const enfants = b.children?.length ? (
       <div className="ap-children">
-        <Blocks blocks={b.children} values={values} setValue={setValue} disabled={disabled} ctx={ctx} />
+        <Blocks blocks={b.children} values={values} setValue={setValue} disabled={disabled} ctx={ctx} onTexte={onTexte} />
       </div>
     ) : null
     if (BLOCKS[b.type]) {
@@ -327,7 +363,7 @@ function Blocks({ blocks, values, setValue, disabled, ctx }) {
     }
     return (
       <div key={b.id}>
-        <Layout block={b} index={numero} />
+        <Layout block={b} index={numero} onTexte={onTexte} />
         {enfants}
       </div>
     )
@@ -337,7 +373,9 @@ function Blocks({ blocks, values, setValue, disabled, ctx }) {
 // `onSubmit(values)` : renvoie une promesse ; absent = page à lire seulement.
 // `initial` : la réponse déjà donnée (lien personnel) ; on la corrige.
 // `assembly` : ce que le serveur dit du bloc Présence et procuration.
-export default function Page({ content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note, initial, assembly }) {
+// `onTexte(id, texte)` : présent, les textes se corrigent en les touchant
+// (Aperçu d'un brouillon).
+export default function Page({ content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note, initial, assembly, onTexte }) {
   const [values, setValues] = useState(initial ?? {})
   const [envoi, setEnvoi] = useState(false)
   const [merci, setMerci] = useState(false)
@@ -375,7 +413,7 @@ export default function Page({ content, size = 'phone', onSubmit, submitLabel = 
         }
       }}
     >
-      <Blocks blocks={blocks} values={values} setValue={setValue} disabled={!onSubmit || size === 'a4'} ctx={assembly} />
+      <Blocks blocks={blocks} values={values} setValue={setValue} disabled={!onSubmit || size === 'a4'} ctx={assembly} onTexte={onTexte} />
       {onSubmit && size !== 'a4' && (
         <button type="submit" className="ap-send" disabled={envoi}>
           {envoi ? 'Envoi…' : submitLabel}

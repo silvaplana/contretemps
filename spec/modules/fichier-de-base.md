@@ -111,7 +111,9 @@ qu'il n'y en a pas de vraies.
 
 **Essayer** remplit la page pour de vrai, en mode test : la réponse apparaît dans les résultats avec une
 pastille « Essai » et ne crée rien dans l'appli (ni membre, ni paiement) ; « Effacer les essais » les
-retire. C'est le « Essayer » des parcours (§5.6).
+retire. C'est le « Essayer » des parcours (§5.6). *Changé le 21 octobre (Seb) : on n'essaie plus en remplissant l'Aperçu (plus de bouton « Envoyer
+ma réponse (essai) ») ; on essaie depuis Diffuser, « M'envoyer un essai » (§2.3). Le bouton principal de
+l'Aperçu d'un Brouillon est **Valider**, et ses textes se corrigent en les touchant.*
 
 **Onglet d'ouverture selon l'état (Seb, 16 octobre)** : Brouillon → Préparer ; Validé → Diffuser ;
 Officiel → Résultats (Aperçu pour Informer, qui n'a pas de Résultats). Ceux qui ne peuvent que voir le
