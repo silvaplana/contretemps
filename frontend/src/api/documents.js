@@ -103,6 +103,7 @@ export function documentsApi(orgId) {
     attendance: (id) => appel(`${base}/nodes/${id}/app/attendance`),
     mark: (id, personId, present) => appel(`${base}/nodes/${id}/app/attendance/${personId}`, json('PUT', { present })),
     storeSheet: (id) => appel(`${base}/nodes/${id}/app/attendance/pdf`, { method: 'POST' }),
+    remind: (id) => appel(`${base}/nodes/${id}/app/assembly/remind`, { method: 'POST' }),
     // « summary.pdf », « summary.xlsx » ou « convocation.pdf ».
     assemblyFile: async (id, what) => {
       const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/assembly/${what}`)

@@ -39,6 +39,13 @@ class AppFile(BaseModel):
     file: str = Field(min_length=1, max_length=200, description="Nom exact du fichier (ex. « Convocation AGO du 21 novembre 2026 ») ou son id.")
 
 
+class AssemblyPdf(BaseModel):
+    file: str = Field(min_length=1, max_length=200, description="Nom exact de la convocation (ex. « Convocation AGO du 21 novembre 2026 ») ou son id.")
+    document: Literal["summary", "convocation"] = Field(
+        description="summary : le récapitulatif des réponses (qui vient, qui représente qui, quorum) ; convocation : la convocation."
+    )
+
+
 def _member(db: Session, compte, org_id: int) -> Member:
     return replace(membre_appelant(db, compte), org_id=org_id)
 
@@ -131,6 +138,43 @@ def actions(docs: Documents) -> list[Action]:
 
         return Ligne(f"Envoyer « {node.name} » par email à {apercu['count']} membre{'s' if apercu['count'] > 1 else ''} ({liste}){sans}", faire)
 
+    def remind(db: Session, compte, org_id: int, p: AppFile) -> Ligne:
+        member = _member(db, compte, org_id)
+        node = _file(docs, db, member, p.file)
+        version = docs.apps.current_version(db, node)
+        if version is None or assembly.block_of(version.content) is None:
+            raise Refus("ce fichier n'est pas une convocation d'AG")
+        if node.status != "official":
+            raise Refus(f"« {node.name} » n'est pas encore validé ni envoyé")
+        cibles = assembly.non_respondents(db, node)
+        if not cibles:
+            raise Refus("tout le monde a répondu : personne à relancer")
+        noms = [s.name for s in cibles]
+        liste = ", ".join(noms[:5]) + (f" et {len(noms) - 5} autres" if len(noms) > 5 else "")
+
+        def faire(db: Session) -> None:
+            _, jobs = _refus(lambda: assembly.remind(docs, db, member, node.id))
+            threading.Thread(target=assembly.send_reminders, args=(docs.mailer, jobs), daemon=True).start()
+
+        n = len(cibles)
+        return Ligne(f"Relancer par email {'les' if n > 1 else 'le'} {n} membre{'s' if n > 1 else ''} qui n'{'ont' if n > 1 else 'a'} "
+                     f"pas répondu à « {node.name} » ({liste})", faire)
+
+    def store_pdf(db: Session, compte, org_id: int, p: AssemblyPdf) -> Ligne:
+        member = _member(db, compte, org_id)
+        node = _file(docs, db, member, p.file)
+        version = docs.apps.current_version(db, node)
+        if version is None or assembly.block_of(version.content) is None:
+            raise Refus("ce fichier n'est pas une convocation d'AG")
+        dossier = db.get(DocNode, node.parent_id) if node.parent_id else None
+        parent = db.get(DocNode, dossier.parent_id) if dossier is not None and dossier.parent_id else None
+        ou = f"{parent.name} › {dossier.name}" if parent is not None else (dossier.name if dossier is not None else "le dossier")
+
+        def faire(db: Session) -> None:
+            _refus(lambda: assembly.store(docs, db, member, node.id, p.document))
+
+        return Ligne(f"Ranger « {assembly.stored_name(node, p.document)} » dans {ou}", faire)
+
     return [
         Action("convene_assembly", "Docs",
                "Convoquer l'assemblée générale (comme Docs › + › Convoquer l'AG) : prépare la convocation en brouillon, "
@@ -147,4 +191,14 @@ def actions(docs: Documents) -> list[Action]:
                "de la saison), chacun avec son lien personnel pour répondre. Jamais pour répondre ou signer à la place "
                "d'un membre : chacun répond lui-même.",
                AppFile, send),
+        Action("remind_assembly", "Docs",
+               "Relance par email, tout de suite, les membres convoqués à une AG qui n'ont pas encore répondu (comme "
+               "Résultats › Relancer). Pour savoir où en sont les réponses et le quorum, lis d'abord la convocation "
+               "avec lire_fichier.",
+               AppFile, remind),
+        Action("store_assembly_pdf", "Docs",
+               "Range en PDF, dans le dossier de l'AG, le récapitulatif des réponses ou la convocation, pour que la "
+               "personne l'ouvre ou l'imprime (comme les boutons Télécharger de l'écran). Les pouvoirs signés sont "
+               "déjà dans le dossier « Pouvoirs ».",
+               AssemblyPdf, store_pdf),
     ]

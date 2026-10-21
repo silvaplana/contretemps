@@ -28,7 +28,7 @@ from zoneinfo import ZoneInfo
 import pymupdf
 from openpyxl import Workbook
 from openpyxl.styles import Font
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from . import app_content
@@ -400,20 +400,82 @@ def _send_copies(
 REMIND_DAYS = 7
 
 
+def non_respondents(db: Session, node: DocNode) -> list[DocSend]:
+    """Les convoqués sans réponse, joignables par email."""
+    return list(db.scalars(select(DocSend).where(
+        DocSend.node_id == node.id, DocSend.test.is_(False), DocSend.channel == "email",
+        DocSend.status == "sent", DocSend.answered_at.is_(None), DocSend.email.is_not(None),
+    ).order_by(DocSend.name)))
+
+
+def _reminder_jobs(db: Session, mailer, directory, node: DocNode, content: dict, cibles: list[DocSend], rappel: str) -> list[dict]:
+    """Le mail de la convocation, précédé du rappel, avec le lien de chacun."""
+    from .app_sends import compose
+
+    ecole, adresse = mailer.org(db, node.org_id)
+    qui = cibles[0].sent_by if cibles else None
+    expediteur = directory.person_names(db, node.org_id, {qui}).get(qui, ecole) if qui else ecole
+    jobs = []
+    for s in cibles:
+        sujet, texte, html = compose(
+            node.name, node.family, content, s.name, rappel, f"{adresse}/r/{s.token}", ecole, expediteur, False, False,
+        )
+        jobs.append({"to": s.email, "subject": f"Rappel : {sujet}", "text": texte, "html": html, "sender_name": ecole})
+    return jobs
+
+
+def send_reminders(mailer, jobs: list[dict]) -> int:
+    """Fait partir les rappels ; rend le nombre d'emails envoyés."""
+    total = 0
+    for job in jobs:
+        try:
+            mailer.send(job["to"], job["subject"], job["text"], job["html"], job["sender_name"], None)
+            total += 1
+        except Exception as erreur:  # noqa: BLE001 (on continue avec les autres)
+            logger.warning("Relance de l'AG non envoyée à %s : %s", job["to"], erreur)
+    return total
+
+
+def remind(docs: Documents, db: Session, member: Member, node_id: int) -> tuple[dict, list[dict]]:
+    """Relancer maintenant les convoqués sans réponse (Résultats, ou
+    l'assistant). Rend (récapitulatif, emails à faire partir)."""
+    from .service import DocError
+
+    node, contenu = _node_for(docs, db, member, node_id)
+    debut = props(block_of(contenu))["start"]
+    if node.status != "official":
+        raise DocError(409, "La convocation n'est pas encore validée.")
+    if debut is not None and now_local() >= debut:
+        raise DocError(409, "L'assemblée a commencé : les réponses sont fermées.")
+    if docs.mailer is None or not docs.mailer.available:
+        raise DocError(409, "L'envoi d'emails n'est pas configuré sur ce serveur.")
+    cibles = non_respondents(db, node)
+    if not cibles:
+        raise DocError(409, "Tout le monde a répondu : personne à relancer.")
+    quand = f", le {when_text(debut)}" if debut else ""
+    jobs = _reminder_jobs(
+        db, docs.mailer, docs.directory, node, contenu, cibles,
+        f"Rappel : l'assemblée a lieu bientôt{quand}, et nous n'avons pas encore votre réponse.",
+    )
+    docs._log(db, member, node, "reminded", {"count": len(cibles)})
+    db.commit()
+    return {"sent": len(jobs)}, jobs
+
+
 def remind_due(db: Session, mailer, directory, now: datetime | None = None) -> int:
     """Sept jours avant l'assemblée, relance une fois les convoqués qui n'ont
     pas répondu, avec leur lien. Seulement si la convocation est partie avant
     J-7 (sinon elle vient d'arriver). Appelé chaque minute par
-    `app.relance_worker` ; rend le nombre d'emails envoyés."""
+    `app.relance_worker` ; rend le nombre d'emails envoyés. Une relance
+    faite à la main avant ne l'empêche pas."""
     from datetime import UTC, timedelta
 
     from .app_files import AppFiles
-    from .app_sends import compose
 
     if mailer is None or not mailer.available:
         return 0
     now = now or now_local()
-    deja = select(DocActivity.node_id).where(DocActivity.action == "reminded")
+    deja = select(DocActivity.node_id).where(DocActivity.action == "reminded", DocActivity.person_id.is_(None))
     attente = select(DocSend.node_id).where(
         DocSend.test.is_(False), DocSend.channel == "email", DocSend.status == "sent", DocSend.answered_at.is_(None),
     )
@@ -428,29 +490,17 @@ def remind_due(db: Session, mailer, directory, now: datetime | None = None) -> i
         debut = props(bloc)["start"] if bloc else None
         if debut is None or not debut - timedelta(days=REMIND_DAYS) <= now < debut:
             continue
-        envois = list(db.scalars(select(DocSend).where(
+        parti = db.scalar(select(func.min(DocSend.sent_at)).where(
             DocSend.node_id == node.id, DocSend.test.is_(False), DocSend.channel == "email",
-        )))
-        parti = min((s.sent_at for s in envois if s.sent_at), default=None)
+        ))
         if parti is None or parti.replace(tzinfo=UTC).astimezone(TZ).replace(tzinfo=None) > debut - timedelta(days=REMIND_DAYS):
             continue
-        cibles = [s for s in envois if s.status == "sent" and s.answered_at is None and s.email]
+        cibles = non_respondents(db, node)
         # Noté avant d'envoyer : jamais deux relances, même si l'envoi casse.
         db.add(DocActivity(org_id=node.org_id, node_id=node.id, person_id=None, action="reminded", detail={"count": len(cibles)}))
         db.commit()
-        ecole, adresse = mailer.org(db, node.org_id)
-        expediteur = directory.person_names(db, node.org_id, {cibles[0].sent_by}).get(cibles[0].sent_by, ecole) if cibles else ecole
         rappel = f"Rappel : l'assemblée a lieu dans une semaine, le {when_text(debut)}, et nous n'avons pas encore votre réponse."
-        for s in cibles:
-            sujet, texte, html = compose(
-                node.name, node.family, version.content, s.name, rappel, f"{adresse}/r/{s.token}",
-                ecole, expediteur, False, False,
-            )
-            try:
-                mailer.send(s.email, f"Rappel : {sujet}", texte, html, ecole, None)
-                total += 1
-            except Exception as erreur:  # noqa: BLE001 (on continue avec les autres)
-                logger.warning("Relance de l'AG non envoyée à %s : %s", s.email, erreur)
+        total += send_reminders(mailer, _reminder_jobs(db, mailer, directory, node, version.content, cibles, rappel))
     return total
 
 
@@ -1059,7 +1109,21 @@ def store_sheet(docs: Documents, db: Session, member: Member, node_id: int) -> d
     titre = node.name.removeprefix("Convocation ")
     ecole = docs.mailer.org(db, node.org_id)[0] if docs.mailer is not None else ""
     pdf = _pdf(sheet_html(sheet(docs, db, node, contenu), titre, ecole))
-    nom = f"Feuille d'émargement {titre}.pdf"
+    return _store(docs, db, member, node, f"Feuille d'émargement {titre}.pdf", pdf)
+
+
+def store(docs: Documents, db: Session, member: Member, node_id: int, what: str) -> dict:
+    """Le récapitulatif (« summary ») ou la convocation (« convocation »)
+    en PDF, rangé à côté de la convocation (l'assistant ne télécharge pas)."""
+    pdf, _, nom = export(docs, db, member, node_id, "convocation.pdf" if what == "convocation" else "summary.pdf")
+    return _store(docs, db, member, docs.apps._app_node(db, member, node_id), nom, pdf)
+
+
+def stored_name(node: DocNode, what: str) -> str:
+    return f"{node.name}.pdf" if what == "convocation" else f"Récapitulatif {node.name.removeprefix('Convocation ')}.pdf"
+
+
+def _store(docs: Documents, db: Session, member: Member, node: DocNode, nom: str, pdf: bytes) -> dict:
     deja = db.scalar(select(DocNode).where(
         DocNode.parent_id == node.parent_id, DocNode.name == nom, DocNode.kind == "file", DocNode.deleted_at.is_(None),
     ))
@@ -1069,3 +1133,43 @@ def store_sheet(docs: Documents, db: Session, member: Member, node_id: int) -> d
     cree = docs.upload(db, member, node.space, node.parent_id, nom, io.BytesIO(pdf))
     return {"id": cree["id"], "name": cree.get("name", nom)}
 
+
+def _names(rows: list[dict]) -> str:
+    return ", ".join(r["name"] for r in rows)
+
+
+def status_text(docs: Documents, db: Session, node: DocNode, content: dict) -> str:
+    """Où en est l'AG, en phrases, pour l'assistant : les chiffres viennent
+    d'ici (summary, sheet), l'assistant ne compte rien."""
+    s = summary(docs, db, node, content)
+    if s is None:
+        return ""
+    if not s["convoked"]:
+        return "Convocation pas encore envoyée."
+    pluriel = lambda n, mot: f"{n} {mot}{'s' if n > 1 else ''}"
+    par = {a: [r for r in s["rows"] if r["answer"] == a] for a in ANSWER_WORDS}
+    lignes = [(
+        f"{pluriel(s['convoked'], 'convoqué')}, {s['answered']} {'ont' if s['answered'] > 1 else 'a'} répondu : "
+        f"{s['attend']} {'viennent' if s['attend'] > 1 else 'vient'}, {pluriel(s['proxy'], 'procuration')}, "
+        f"{s['absent']} {'ne viennent pas' if s['absent'] > 1 else 'ne vient pas'}."
+    )]
+    for cle, mot in (("attend", "Viennent"), ("absent", "Ne viennent pas"), ("none", "Sans réponse")):
+        if par[cle]:
+            lignes.append(f"{mot} ({len(par[cle])}) : {_names(par[cle])}.")
+    for h in s["holders"]:
+        lignes.append(f"Pouvoirs : {h['name']} porte {h['count']} ({', '.join(h['from'])}){_holder_note(h)}.")
+    q = s["quorum"]
+    lignes.append(
+        f"Voix prévues : {s['votes']}"
+        + (f" ; quorum ({QUORUM_WORDS[q['rule']]} des convoqués) : il en faut {q['needed']}, "
+           f"{'atteint' if q['reached'] else 'pas atteint'}." if q else " ; pas de quorum demandé.")
+        + (f" {s['lost']} pouvoir(s) perdu(s)." if s["lost"] else "")
+    )
+    if db.scalar(select(DocAttendance.id).where(DocAttendance.node_id == node.id).limit(1)) is not None:
+        t = sheet(docs, db, node, content)
+        lignes.append(
+            f"Le jour de l'AG (feuille d'émargement) : {t['present']} présents, {t['represented']} représentés, "
+            f"{t['votes']} voix" + (f", quorum {'atteint' if t['quorum']['reached'] else 'pas atteint'}" if t.get("quorum") else "") + "."
+        )
+    lignes.append("Les pouvoirs signés sont dans le dossier « Pouvoirs » à côté de la convocation.")
+    return "\n".join(lignes)

@@ -396,6 +396,12 @@ class DocumentsReceiver:
         def mark(org_id: int, node_id: int, person_id: int, data: Mark, db: Session = db_dep, m: Member = member):
             return appel(lambda: assembly.mark(self.client, db, self._member(org_id, m), node_id, person_id, data.present))
 
+        @self.app.post(base + "/nodes/{node_id}/app/assembly/remind", status_code=201)
+        def remind(org_id: int, node_id: int, taches: BackgroundTasks, db: Session = db_dep, m: Member = member):
+            resume, jobs = appel(lambda: assembly.remind(self.client, db, self._member(org_id, m), node_id))
+            taches.add_task(assembly.send_reminders, self.client.mailer, jobs)
+            return resume
+
         @self.app.post(base + "/nodes/{node_id}/app/attendance/pdf", status_code=201)
         def store_sheet(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: assembly.store_sheet(self.client, db, self._member(org_id, m), node_id))

@@ -14,6 +14,7 @@ from __future__ import annotations
 import json
 import uuid
 
+from documents import assembly
 from documents.app_content import (
     ACT_TYPES,
     FAMILY_ENTRY_TYPES,
@@ -21,6 +22,7 @@ from documents.app_content import (
     QUESTION_TYPES,
     RESULT_TYPES,
 )
+from documents.models import DocNode
 from documents.ports import Member
 from documents.service import DocError, Documents
 
@@ -137,11 +139,17 @@ class FichierAppli:
 
     def lire(self, db, member: Member, fichier_id: int) -> str:
         f = self.apps.get(db, member, fichier_id)
-        return (
+        texte = (
             f"Fichier de l'appli « {f['name']} », nature {NATURES.get(f['family'], f['family'])}, "
             f"état {ETATS.get(f['status'], f['status'])} : "
             + json.dumps(f["content"], ensure_ascii=False, separators=(",", ":"))
         )
+        # Convocation d'AG : où en sont les réponses, comme Résultats
+        # (procurations.md §1.4), pour qui peut voir Résultats.
+        if f["can_edit"] and assembly.block_of(f["content"]):
+            node = db.get(DocNode, f["id"])
+            texte += "\n\nRéponses à la convocation (chiffres de l'appli) :\n" + assembly.status_text(self.documents, db, node, f["content"])
+        return texte
 
     def modifier(self, db, member: Member, args: dict) -> tuple[str, dict]:
         entree, resultat = args.get("formulaire_entree"), args.get("formulaire_resultat")
