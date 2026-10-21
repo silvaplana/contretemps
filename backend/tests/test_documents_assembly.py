@@ -2,6 +2,8 @@
 dossier automatique, envoi, règles d'une procuration, pouvoirs signés en
 PDF, décompte et récapitulatif."""
 
+import time
+
 import pytest
 from test_documents import (  # noqa: F401 (fixtures)
     Docs,
@@ -305,3 +307,65 @@ def test_relance_sept_jours_avant(client, ecole, ag, mails, db_session):
 
     trace = db_session.query(DocActivity).filter_by(node_id=ag["id"], action="reminded").one()
     assert trace.detail == {"count": 3}
+
+
+def test_assistant_etat_relance_et_pdf(client, ecole, ag, mails, db_session):
+    """Étape 4 (procurations.md §1.4) : l'assistant lit où en est l'AG
+    (chiffres de l'appli), relance les sans-réponse comme le bouton de
+    Résultats, et range le récapitulatif en PDF dans le dossier de l'AG."""
+    from datetime import datetime
+
+    from app import main
+    from documents import assembly
+
+    admin, compte = ag["admin"], ecole["admin"]
+    actions = main.assistant_client.actions
+    proposer = lambda nom, args: actions.propose(db_session, compte, ecole["id"], compte.id, nom, args)
+    faire = lambda carte: actions.execute(db_session, ecole["id"], compte.id, carte["jeton"])
+    nom = "Convocation AGO du 21 novembre 2099"
+    leon = lien(mails, "leon@exemple.fr")
+    assert repondre(client, leon, answer="attend").status_code == 201
+
+    # Où en est l'AG : lu avec le fichier, chiffres calculés par l'appli.
+    etat = main.assistant_client.fichier_appli.lire(db_session, main._membre_de(db_session, compte.id, ecole["id"]), ag["id"])
+    assert "4 convoqués, 1 a répondu : 1 vient, 0 procuration, 0 ne vient pas" in etat
+    assert "Sans réponse (3) : Ana Roux, Ima Blanc, Julia Dho" in etat
+
+    # Relancer à l'écran.
+    avant = len(mails.envoyes)
+    r = admin.c.post(f"{admin.base}/nodes/{ag['id']}/app/assembly/remind", headers=admin.h)
+    assert r.status_code == 201 and r.json() == {"sent": 3}
+    relances = mails.envoyes[avant:]
+    assert {m["to"] for m in relances} == {"julia@exemple.fr", "ima@exemple.fr", "ana@exemple.fr"}
+    assert all(m["subject"] == f"Rappel : {nom}" and "pas encore votre réponse" in m["text"] for m in relances)
+    # Le rappel automatique de J-7 part quand même.
+    assert assembly.remind_due(db_session, mails, main.documents_client.directory, now=datetime(2099, 11, 14, 15, 0)) == 3
+
+    # Relancer par l'assistant : même chose, sur une carte.
+    _, carte = proposer("remind_assembly", {"file": nom})
+    assert carte["lignes"] == [f"Relancer par email les 3 membres qui n'ont pas répondu à « {nom} » (Ana Roux, Ima Blanc, Julia Dho)"]
+    avant = len(mails.envoyes)
+    assert faire(carte)[0]["ok"]
+    for _ in range(50):  # les emails partent à côté, comme Envoyer
+        if len(mails.envoyes) == avant + 3:
+            break
+        time.sleep(0.02)
+    assert len(mails.envoyes) == avant + 3
+
+    # Ranger le récapitulatif : une seule fois dans le dossier, mis à jour ensuite.
+    _, carte = proposer("store_assembly_pdf", {"file": nom, "document": "summary"})
+    assert carte["lignes"] == ["Ranger « Récapitulatif AGO du 21 novembre 2099.pdf » dans Réunions › AGO du 21 novembre 2099"]
+    assert faire(carte)[0]["ok"]
+    _, carte = proposer("store_assembly_pdf", {"file": nom, "document": "summary"})
+    assert faire(carte)[0]["ok"]
+    _, carte = proposer("store_assembly_pdf", {"file": nom, "document": "convocation"})
+    assert faire(carte)[0]["ok"]
+    noms = list(_par_nom(admin.racine(dossier=ag["folder"])))
+    assert noms.count("Récapitulatif AGO du 21 novembre 2099.pdf") == 1 and f"{nom}.pdf" in noms
+
+    # Tout le monde a répondu : plus rien à relancer.
+    for x in ("julia", "ima", "ana"):
+        assert repondre(client, lien(mails, f"{x}@exemple.fr"), answer="absent").status_code == 201
+    texte, carte = proposer("remind_assembly", {"file": nom})
+    assert carte is None and "tout le monde a répondu" in texte
+    assert admin.c.post(f"{admin.base}/nodes/{ag['id']}/app/assembly/remind", headers=admin.h).status_code == 409

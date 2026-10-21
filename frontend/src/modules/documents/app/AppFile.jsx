@@ -5,6 +5,7 @@ import { FAMILIES, STATUSES } from '../kinds.js'
 import AssemblySend from './AssemblySend.jsx'
 import Diffuser from './Diffuser.jsx'
 import Editor from './Editor.jsx'
+import AssemblyRemind from './AssemblyRemind.jsx'
 import Emargement from './Emargement.jsx'
 import Page from './Page.jsx'
 import Results, { exampleRows } from './Results.jsx'
@@ -378,6 +379,15 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
           <button type="button" className="dx-btn dx-btn--ghost af-emargement" onClick={() => setEmargement(true)}>
             Feuille d’émargement (le jour de l’AG)
           </button>
+        )}
+        {ag.summary.none > 0 && !(ag.summary.starts_at && new Date(ag.summary.starts_at) <= new Date()) && (
+          <AssemblyRemind
+            file={file}
+            api={api}
+            count={ag.summary.none}
+            onToast={onToast}
+            onSent={async () => setAg(await api.assembly(item.id))}
+          />
         )}
         <Results content={c} rows={rows} summary={ag.summary.convoked ? ag.summary : null} />
       </>
