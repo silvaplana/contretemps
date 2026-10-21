@@ -115,6 +115,11 @@ retire. C'est le « Essayer » des parcours (§5.6). *Changé le 21 octobre (Seb
 ma réponse (essai) ») ; on essaie depuis Diffuser, « M'envoyer un essai » (§2.3). Le bouton principal de
 l'Aperçu d'un Brouillon est **Valider**, et ses textes se corrigent en les touchant.*
 
+*Aperçu (Seb, 21 octobre)* : les questions s'y cliquent comme un membre le ferait (choix, procuration,
+liste des représentants…), sans bouton d'envoi et sans rien enregistrer. Le bouton principal s'appelle
+**« Valider pour passer à l'étape de diffusion »** (dans les deux vues de « 1. Préparer ») et mène à
+« 2. Diffuser ».
+
 *En-tête (Seb, 21 octobre)* : un fichier ouvert met dans le bandeau du haut de l'appli **← son nom**, son
 **état** (Brouillon…), **qui a accès** et **⋮** (points verticaux), à la place du logo et du titre de
 l'onglet ; le fichier s'affiche sous ce bandeau. Sur téléphone, l'état n'y montre que son pictogramme.

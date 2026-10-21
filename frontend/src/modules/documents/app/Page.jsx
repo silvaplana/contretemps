@@ -374,8 +374,11 @@ function Blocks({ blocks, values, setValue, disabled, ctx, onTexte }) {
 // `initial` : la réponse déjà donnée (lien personnel) ; on la corrige.
 // `assembly` : ce que le serveur dit du bloc Présence et procuration.
 // `onTexte(id, texte)` : présent, les textes se corrigent en les touchant
-// (Aperçu d'un brouillon).
-export default function Page({ content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note, initial, assembly, onTexte }) {
+// (Aperçu d'un brouillon). `interactif` : les questions se cliquent sans
+// bouton d'envoi (Aperçu).
+export default function Page({
+  content, size = 'phone', onSubmit, submitLabel = 'Envoyer ma réponse', note, initial, assembly, onTexte, interactif = false,
+}) {
   const [values, setValues] = useState(initial ?? {})
   const [envoi, setEnvoi] = useState(false)
   const [merci, setMerci] = useState(false)
@@ -413,7 +416,7 @@ export default function Page({ content, size = 'phone', onSubmit, submitLabel = 
         }
       }}
     >
-      <Blocks blocks={blocks} values={values} setValue={setValue} disabled={!onSubmit || size === 'a4'} ctx={assembly} onTexte={onTexte} />
+      <Blocks blocks={blocks} values={values} setValue={setValue} disabled={!(onSubmit || interactif) || size === 'a4'} ctx={assembly} onTexte={onTexte} />
       {onSubmit && size !== 'a4' && (
         <button type="submit" className="ap-send" disabled={envoi}>
           {envoi ? 'Envoi…' : submitLabel}

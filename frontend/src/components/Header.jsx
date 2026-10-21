@@ -8,7 +8,7 @@ import Icon from './Icon.jsx'
 import { InstructionsInstallation } from './InstructionsInstallation.jsx'
 import Logo from './Logo.jsx'
 import Modal from './Modal.jsx'
-import { BubbleIcon } from '../modules/documents/icons.jsx'
+import { BubbleCloseIcon, BubbleIcon } from '../modules/documents/icons.jsx'
 
 // En-tête d'écran (voir spec/SPEC.md section 4).
 // - mode="simple" : logo + titre (écrans Admin et Profil, non "scopés cours").
@@ -130,9 +130,9 @@ export default function Header({
               onClick={assistant.basculer}
               aria-label={assistant.ouvert ? 'Fermer l’assistant' : 'Assistant'}
               aria-pressed={assistant.ouvert}
-              title="Assistant"
+              title={assistant.ouvert ? 'Fermer l’assistant' : 'Assistant'}
             >
-              <BubbleIcon />
+              {assistant.ouvert ? <BubbleCloseIcon /> : <BubbleIcon />}
             </button>
           )}
           <div className="famille-selector" ref={familleSelectorRef}>

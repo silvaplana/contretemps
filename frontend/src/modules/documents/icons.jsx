@@ -152,6 +152,17 @@ export function PlusIcon() {
   )
 }
 
+// Bulle barrée d'une croix : « fermer l'assistant » (bouton de l'en-tête
+// quand le chat est ouvert, Seb 21 octobre).
+export function BubbleCloseIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 18V7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3H8z" />
+      <path d="M9.5 7.5l5 5M14.5 7.5l-5 5" />
+    </svg>
+  )
+}
+
 export function BubbleIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

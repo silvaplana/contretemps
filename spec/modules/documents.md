@@ -562,7 +562,9 @@ notes de frais (notes-de-frais.md §7 bis) ; il ne fige rien. Les dossiers peuve
 | Officiel → modifier | niveau `edit` | crée un nouveau brouillon à partir de l'officiel ; l'officiel reste en vigueur et visible tant que le brouillon n'est pas officialisé à son tour |
 | → Archivé | niveau `manage` | lecture seule, masqué des récents |
 
-L'état s'affiche en pastille sur la ligne (gris, bleu, vert) et se filtre dans la recherche. Le type
+L'état s'affiche en pastille sur la ligne (gris, bleu, vert) et se filtre dans la recherche. *(Seb,
+21 octobre : les boutons de filtre par état et par nature en haut de Docs sont retirés, « ils ne servent à
+rien ».)* Le type
 peut restreindre les états utiles (`statuses=("draft", "official")`) ; il ne peut pas en inventer.
 
 #### Espace de génération par IA

@@ -61,6 +61,8 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   const [file, setFile] = useState(null)
   const [erreur, setErreur] = useState('')
   const [tab, setTab] = useState(null)
+  // L'onglet demandé à l'ouverture (`item.tab`), pris une seule fois.
+  const premierOnglet = useRef(item.tab ?? null)
   const [form, setForm] = useState('entry')
   const [size, setSize] = useState('phone')
   const [rows, setRows] = useState([])
@@ -95,7 +97,10 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         setAg(vue)
         // Une convocation officielle pas encore envoyée s'ouvre sur l'envoi.
         // `item.tab` : l'onglet demandé (ex. l'Aperçu d'une convocation tout juste préparée).
-        if (ouvrir) setTab(item.tab ?? (vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : openingTab(f)))
+        if (ouvrir) {
+          setTab(premierOnglet.current ?? (vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : openingTab(f)))
+          premierOnglet.current = null
+        }
         if (f.can_edit && f.family !== 'inform') setRows((await api.appResponses(item.id)).items)
         setEditorKey((k) => k + 1)
         return f
@@ -104,7 +109,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         return null
       }
     },
-    [api, item.id, item.tab],
+    [api, item.id],
   )
 
   useEffect(() => {
@@ -181,9 +186,17 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       await charger(true)
       onToast(`Fichier ${STATUSES[status].label}`)
       onChanged?.()
+      return true
     } catch (e) {
       onToast(e.message)
+      return false
     }
+  }
+
+  // « Valider pour passer à l'étape de diffusion » (Seb, 21 octobre) : une
+  // convocation passe en Officiel, le reste en Validé, puis on va à Diffuser.
+  async function valider() {
+    if (await changerEtat(assemblyBlock(content.current) ? 'official' : 'validated')) setTab('diffuse')
   }
 
   async function changerNature(famille) {
@@ -311,9 +324,9 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         disabled={!file.can_manage || !c.entry.blocks.length}
         title={!file.can_manage ? 'Un admin valide le fichier' : undefined}
         // Une convocation passe directement en Officiel (procurations.md §1.3).
-        onClick={() => changerEtat(assemblyBlock(c) ? 'official' : 'validated')}
+        onClick={valider}
       >
-        Valider
+        Valider pour passer à l’étape de diffusion
       </button>
     )
   } else if (tab === 'preview') {
@@ -325,9 +338,9 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
           className="dx-btn"
           disabled={!file.can_manage || !c.entry.blocks.length}
           title={!file.can_manage ? 'Un admin valide le fichier' : undefined}
-          onClick={() => changerEtat(assemblyBlock(c) ? 'official' : 'validated')}
+          onClick={valider}
         >
-          Valider
+          Valider pour passer à l’étape de diffusion
         </button>
       )
     }
@@ -355,8 +368,9 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
               key={`${editorKey}-${size}`}
               content={c}
               size={size}
-              // Pas de réponse d'essai ici : on essaie depuis Diffuser
-              // (« M'envoyer un essai », Seb 21 octobre).
+              // On clique les questions comme un membre, rien n'est enregistré ;
+              // la vraie réponse d'essai passe par Diffuser (Seb, 21 octobre).
+              interactif={size !== 'a4'}
               onTexte={file.editable && statut === 'draft' ? modifieTexte : undefined}
               assembly={
                 ag && {

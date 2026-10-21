@@ -19,8 +19,8 @@ import Viewer from './Viewer.jsx'
 
 // Le fichier de base embarque BlockNote : chargé seulement quand on l'ouvre.
 const AppFile = lazy(() => import('./app/AppFile.jsx'))
-import { Cadenas, FamilyDot, FileIcon, FolderIcon, PlusIcon, StatusBadge, StatusIcon, TrayIcon } from './icons.jsx'
-import { FAMILIES, STATUSES, isImage } from './kinds.js'
+import { Cadenas, FileIcon, FolderIcon, PlusIcon, StatusBadge, TrayIcon } from './icons.jsx'
+import { isImage } from './kinds.js'
 import { exchangeSubtitle, subtitle } from './format.js'
 import './documents.css'
 
@@ -127,9 +127,6 @@ export default function Explorer({ orgId, memoire }) {
   const [folder, setFolder] = useState(() => (aOuvrir ? aOuvrir.parent_id : lireEndroit(memoire).folder))
   const [data, setData] = useState(null)
   const [erreur, setErreur] = useState('')
-  const [filtreStatut, setFiltreStatut] = useState(null)
-  const [filtreFamille, setFiltreFamille] = useState(null)
-  const [bulle, setBulle] = useState(null)
   const [recherche, setRecherche] = useState(null)
   const [trouves, setTrouves] = useState(null)
   // Sélection de plusieurs éléments (Seb, 16 octobre). Ordinateur : clic,
@@ -180,7 +177,6 @@ export default function Explorer({ orgId, memoire }) {
   // c'est l'appui long puis glisser ci-dessous.
   const souris = useMemo(() => window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? true, [])
   const minuteurToast = useRef(null)
-  const minuteurBulle = useRef(null)
 
   const montrerToast = useCallback((texte, annuler) => {
     clearTimeout(minuteurToast.current)
@@ -267,12 +263,11 @@ export default function Explorer({ orgId, memoire }) {
 
   // Ce qui est affiché (recherche, Récents ou dossier), après les filtres.
   const items = resultats ?? data?.items ?? []
-  const visible = (x) => (!filtreStatut || x.status === filtreStatut) && (!filtreFamille || x.family === filtreFamille)
   // Dossiers des saisons passées : en lecture seule, regroupés à part sous
   // « Saisons précédentes » (Seb, 15 octobre).
-  const anciennesSaisons = items.filter((x) => x.system_kind === 'period' && !x.period_current && visible(x))
-  const dossiers = items.filter((x) => x.kind === 'folder' && visible(x) && !anciennesSaisons.includes(x))
-  const lesFichiers = items.filter((x) => (x.kind === 'file' || x.kind === 'app') && visible(x))
+  const anciennesSaisons = items.filter((x) => x.system_kind === 'period' && !x.period_current)
+  const dossiers = items.filter((x) => x.kind === 'folder' && !anciennesSaisons.includes(x))
+  const lesFichiers = items.filter((x) => x.kind === 'file' || x.kind === 'app')
   // Dans l'ordre de l'écran (Maj+clic, Ctrl+A).
   const ordre = [...dossiers, ...lesFichiers, ...anciennesSaisons]
   const selectionnes = ordre.filter((x) => selIds.includes(x.id))
@@ -784,34 +779,6 @@ export default function Explorer({ orgId, memoire }) {
   // --- Affichage ---
   const libelleEspace = spaces.find((s) => s.key === space)?.label ?? ''
 
-  function montrerBulle(texte) {
-    setBulle(texte)
-    setTimeout(() => setBulle((b) => (b === texte ? null : b)), 1500)
-  }
-
-  function boutonFiltre({ cle, actif, onClick, titre, className = '', children }) {
-    const minuteur = minuteurBulle
-    return (
-      <button
-        key={cle}
-        type="button"
-        className={`dx-fi ${className}${actif ? ' dx-fi--on' : ''}`}
-        title={titre}
-        aria-label={titre}
-        aria-pressed={actif}
-        onClick={onClick}
-        onPointerDown={(e) => {
-          if (e.pointerType !== 'mouse') minuteur.current = setTimeout(() => montrerBulle(titre), 450)
-        }}
-        onPointerUp={() => clearTimeout(minuteur.current)}
-        onPointerLeave={() => clearTimeout(minuteur.current)}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        {children}
-      </button>
-    )
-  }
-
   function ligne(item) {
     const estDossier = item.kind === 'folder'
     const chemin = item.path?.map((p) => p.name).join(' › ') || spaces.find((s) => s.key === item.space)?.label || libelleEspace
@@ -1097,30 +1064,6 @@ export default function Explorer({ orgId, memoire }) {
             <button type="button" className="dx-ico" onClick={() => setRecherche(null)} aria-label="Fermer la recherche">✕</button>
           </>
         )}
-        {/* Loupe, corbeille et filtres sur une seule ligne, en haut à gauche
-            (Seb, 16 octobre) ; elle passe à la ligne si la place manque. */}
-        <div className="dx-ficons" role="group" aria-label="Filtres">
-          {Object.entries(STATUSES).map(([cle, s]) => (
-            boutonFiltre({
-              cle,
-              actif: filtreStatut === cle,
-              titre: s.label,
-              className: `dx-fi--${s.className}`,
-              onClick: () => setFiltreStatut(filtreStatut === cle ? null : cle),
-              children: <StatusIcon status={cle} />,
-            })
-          ))}
-          <span className="dx-fsep" />
-          {Object.entries(FAMILIES).map(([cle, f]) => (
-            boutonFiltre({
-              cle,
-              actif: filtreFamille === cle,
-              titre: f.label,
-              onClick: () => setFiltreFamille(filtreFamille === cle ? null : cle),
-              children: <FamilyDot family={cle} />,
-            })
-          ))}
-        </div>
       </div>
 
       <div className="dx-seg" role="tablist" aria-label="Espaces">
@@ -1131,7 +1074,6 @@ export default function Explorer({ orgId, memoire }) {
         ))}
       </div>
 
-      {bulle && <div className="dx-tip" role="status">{bulle}</div>}
 
       {/* Le chemin sous les filtres (Seb, 15 octobre). */}
       {recentsActif && !rechercheActive && (
@@ -1248,9 +1190,7 @@ export default function Explorer({ orgId, memoire }) {
                 : 'Aucun fichier pour l’instant.'
               : resultats
               ? 'Rien ne correspond à cette recherche.'
-              : filtreStatut || filtreFamille
-                ? 'Aucun élément ne correspond à ces filtres dans ce dossier.'
-                : data.shared_with_me
+              : data.shared_with_me
                   ? 'Rien n’a encore été partagé avec vous.'
                   : peutAjouter
                     ? 'Ce dossier est vide. Touchez + pour ajouter, ou glissez des fichiers ici.'

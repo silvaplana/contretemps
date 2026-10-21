@@ -138,67 +138,6 @@
   font-size: inherit;
 }
 
-.dx-ficons {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 16px 8px;
-  flex-wrap: wrap;
-}
-
-.dx-fi {
-  width: 48px;
-  height: 44px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid var(--dx-line);
-  border-radius: 12px;
-  background: var(--card-bg);
-  cursor: pointer;
-}
-
-.dx-fi svg {
-  width: 20px;
-  height: 20px;
-}
-
-.dx-fi--brouillon {
-  color: var(--dx-muted) !important;
-}
-
-.dx-fi--valide {
-  color: var(--dx-ok) !important;
-}
-
-.dx-fi--officiel {
-  color: var(--dx-official) !important;
-}
-
-.dx-fi--on {
-  border: 2.5px solid var(--text);
-  background: var(--dx-soft);
-}
-
-.dx-fsep {
-  width: 1px;
-  height: 28px;
-  margin: 0 4px;
-  background: var(--dx-line);
-}
-
-.dx-tip {
-  position: fixed;
-  left: 16px;
-  top: 30%;
-  z-index: 60;
-  padding: 8px 12px;
-  border-radius: 10px;
-  background: var(--text);
-  color: var(--card-bg);
-  font-weight: 600;
-}
-
 .dx-famdot,
 .dx-dot {
   display: grid;
@@ -1260,7 +1199,6 @@
   .dx > .dx-top,
   .dx > .dx-seg,
   .dx > .dx-crumb,
-  .dx > .dx-ficons,
   .dx-list > * {
     max-width: 900px;
     margin-left: auto;
@@ -2047,14 +1985,10 @@
   font-weight: 400;
 }
 
-/* Une seule ligne en haut à gauche : loupe, corbeille, filtres. */
+/* Une seule ligne en haut à gauche : loupe et corbeille. */
 .dx-top {
   flex-wrap: wrap;
   justify-content: flex-start;
-}
-
-.dx-top > .dx-ficons {
-  display: contents;
 }
 
 /* Toute la largeur de la colonne (sinon réduite à son contenu et centrée) :
