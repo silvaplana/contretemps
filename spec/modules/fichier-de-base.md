@@ -344,8 +344,9 @@ Exemple d'une inscription avec deux enfants :
 
 1. ~~**Noms des onglets**~~ : **décidé par Seb le 21 octobre : trois étapes, « 1. Préparer », « 2. Diffuser »,
    « 3. Voir les résultats »** ; « 1. Préparer » a deux modes, choisis dans le bandeau du haut par un menu
-   déroulant **Mode : Aperçu** (par défaut, modifiable en Brouillon) **ou Édition** (l'éditeur) ; un
-   fichier s'ouvre sur l'Aperçu. Les règles du tableau ci-dessus restent
+   déroulant **Mode** : **Édition** (l'éditeur), **Aperçu smartphone** (par défaut) ou **Aperçu
+   ordinateur** (l'Aperçu est modifiable en Brouillon) ; un fichier s'ouvre sur l'Aperçu smartphone. Le
+   choix de taille au-dessus de l'Aperçu (Téléphone, Ordinateur, A4) est retiré. Les règles du tableau ci-dessus restent
    (Préparation grisée hors Brouillon). Avant : `Préparer | Aperçu | Diffuser | Résultats`.
    « Diffuser » plutôt que « Publier », parce qu'il couvre aussi l'envoi à des personnes choisies.
 2. ~~Noms des deux formulaires~~ : **décidé par Seb le 16 octobre : « Formulaire d'entrée » et

@@ -21,16 +21,19 @@ import './app.css'
 // l'en-tête, Partager toujours visible. La bulle ouvre le même assistant que
 // dans Docs, qui voit le fichier et peut écrire ses formulaires (§2.1).
 
-// Trois étapes (Seb, 21 octobre). « 1. Préparer » a deux modes, choisis dans
-// le bandeau du haut : Aperçu (`preview`, par défaut) et Édition (`prep`).
+// Trois étapes (Seb, 21 octobre). « 1. Préparer » a ses modes, choisis dans
+// le bandeau du haut : Édition (`prep`) ou Aperçu (`preview`, par défaut),
+// en taille smartphone (par défaut) ou ordinateur.
 const TABS = [
   ['etape1', '1. Préparer'],
   ['diffuse', '2. Diffuser'],
   ['results', '3. Voir les résultats'],
 ]
-const VUES_ETAPE1 = [
-  ['preview', 'Aperçu'],
+// Le menu « Mode » (Seb, 21 octobre) : l'aperçu choisit aussi sa taille.
+const MODES = [
   ['prep', 'Édition'],
+  ['phone', 'Aperçu smartphone'],
+  ['desktop', 'Aperçu ordinateur'],
 ]
 const SAVE_DELAY = 800
 
@@ -353,16 +356,6 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         {!informer && <Seg label="Formulaire" value={formActif} options={formOptions} onChange={setForm} />}
         {formActif === 'entry' ? (
           <>
-            <Seg
-              label="Taille"
-              value={size}
-              options={[
-                ['phone', 'Téléphone'],
-                ['desktop', 'Ordinateur'],
-                ['a4', 'A4'],
-              ]}
-              onChange={setSize}
-            />
             {file.editable && statut === 'draft' && (
               <p className="af-hint af-hint--fort">
                 Touchez un texte pour le corriger directement, ou demandez à l’assistant ce qu’il faut changer.
@@ -374,7 +367,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
               size={size}
               // On clique les questions comme un membre, rien n'est enregistré ;
               // la vraie réponse d'essai passe par Diffuser (Seb, 21 octobre).
-              interactif={size !== 'a4'}
+              interactif
               onTexte={file.editable && statut === 'draft' ? modifieTexte : undefined}
               assembly={
                 ag && {
@@ -515,8 +508,18 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
           {file.can_edit && (tab === 'prep' || tab === 'preview') && (
             <label className="af-mode">
               <span className="af-mode__mot">Mode</span>
-              <select aria-label="Mode" value={tab} onChange={(e) => setTab(e.target.value)}>
-                {VUES_ETAPE1.map(([cle, texte]) => (
+              <select
+                aria-label="Mode"
+                value={tab === 'prep' ? 'prep' : size === 'desktop' ? 'desktop' : 'phone'}
+                onChange={(e) => {
+                  if (e.target.value === 'prep') setTab('prep')
+                  else {
+                    setSize(e.target.value)
+                    setTab('preview')
+                  }
+                }}
+              >
+                {MODES.map(([cle, texte]) => (
                   <option key={cle} value={cle}>
                     {texte}
                   </option>
