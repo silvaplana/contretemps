@@ -262,6 +262,9 @@ l'ordre) :
   une nouvelle version qui repart en Brouillon ;
 - **Officiel** : **figé pour tout le monde**, admin compris ; pour le changer, on crée une nouvelle version
   Brouillon (la version officielle reste consultable) ;
+  *exception (Seb, 21 octobre)* : un **admin** peut mettre à la corbeille un élément Officiel lui-même
+  (Annuler, restaurable depuis la corbeille) ; il ne le renomme ni ne le déplace, et ce qui est *dans* un
+  dossier Officiel reste figé ;
 - **Archivé** : lecture seule.
 
 Les **groupes** sont en base (étape 2 bis du plan Contretemps : automatiques, par règle, manuels) ; un

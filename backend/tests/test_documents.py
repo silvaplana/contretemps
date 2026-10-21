@@ -411,3 +411,23 @@ def test_apercu_pdf_des_fichiers_office(client, ecole, monkeypatch):
     monkeypatch.setattr(service, "convert_to_pdf", lambda *a: False)
     autre = admin.fichier("Lettre.docx", saison, contenu=b"PK fake docx").json()["id"]
     assert admin.get(f"/nodes/{autre}/preview").status_code == 503
+
+
+def test_un_admin_supprime_un_fichier_officiel(client, ecole):
+    """Seb, 21 octobre : un admin met à la corbeille un fichier Officiel (il
+    reste restaurable) ; les autres non, et ce qui est DANS un dossier
+    Officiel reste figé."""
+    admin, prof = Docs(client, ecole["id"], ecole["admin"]), Docs(client, ecole["id"], ecole["prof"])
+    saison = _saison(admin)["id"]
+    statuts = prof.fichier("Statuts.pdf", saison).json()["id"]
+    assert admin.modifier(statuts, change_status=True, status="official").status_code == 200
+    assert prof.supprimer(statuts).status_code == 409
+    assert admin.racine(dossier=saison).json()["can_delete_official"] is True
+    assert prof.racine(dossier=saison).json()["can_delete_official"] is False
+    assert admin.modifier(statuts, name="Statuts 2027.pdf").status_code == 409  # renommer : toujours non
+    assert admin.supprimer(statuts).status_code == 204
+    assert "Statuts.pdf" not in _par_nom(admin.racine(dossier=saison))
+    ag = admin.dossier("AG", saison).json()["id"]
+    pv = admin.fichier("PV.docx", ag).json()["id"]
+    assert admin.modifier(ag, change_status=True, status="official").status_code == 200
+    assert admin.supprimer(pv).status_code == 409

@@ -413,6 +413,8 @@ class Documents:
             "level": niveau,
             "can_add": access.at_least(niveau, LEVEL_EDIT) and self._official_lock(loc.path) is None,
             "can_add_folder": not self._in_exchange(loc),
+            # An admin may trash an official item itself (Seb, 21 October).
+            "can_delete_official": member.is_admin or member.is_superuser,
             "items": elements,
         }
 
@@ -846,10 +848,14 @@ class Documents:
         db.commit()
         return {"id": node.id, "name": node.name}
 
-    def _check_restructure(self, db, member, node, loc) -> None:
+    def _check_restructure(self, db, member, node, loc, deleting: bool = False) -> None:
         if node.system_kind is not None:
             raise DocError(409, "Ce dossier fait partie de l'organisation de l'appli : il ne se renomme, ne se déplace ni ne se supprime.")
-        self._require_unfrozen(loc.path)
+        # An admin may put an official item itself in the trash (Seb, 21 October);
+        # what lies inside an official folder stays frozen.
+        admin_deletes_official = deleting and (member.is_admin or member.is_superuser) and self._official_lock(loc.path) is node
+        if not admin_deletes_official:
+            self._require_unfrozen(loc.path)
         parent = Location(loc.space, loc.owner_person_id, loc.path[:-1])
         self._require(db, member, parent, LEVEL_EDIT)
 
@@ -1028,7 +1034,7 @@ class Documents:
     def delete(self, db: Session, member: Member, node_id: int) -> None:
         node = self._node(db, member, node_id)
         loc = self._locate(db, member, node)
-        self._check_restructure(db, member, node, loc)
+        self._check_restructure(db, member, node, loc, deleting=True)
         node.deleted_at, node.deleted_by = utcnow(), member.person_id
         self._log(db, member, node, "deleted")
         db.commit()

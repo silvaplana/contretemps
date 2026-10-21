@@ -903,6 +903,8 @@ export default function Explorer({ orgId, memoire }) {
     const systeme = item.system_kind != null
     const lecture = item.level === 'view' || item.closed_period
     const restructurer = !systeme && !item.frozen && peutAjouterDans(item)
+    // Un admin met à la corbeille un fichier Officiel (Seb, 21 octobre).
+    const supprimable = restructurer || (!systeme && item.status === 'official' && Boolean(data?.can_delete_official))
     const raison = systeme
       ? 'Dossier de l’appli : ni renommé, ni déplacé, ni supprimé'
       : item.closed_period
@@ -916,7 +918,7 @@ export default function Explorer({ orgId, memoire }) {
       { icone: '✎', libelle: 'Renommer', faire: () => (setFeuille(null), setNom({ mode: 'rename', item, value: item.name })), off: !restructurer && raison },
       { icone: '➜', libelle: 'Déplacer…', faire: () => (setFeuille(null), setChoix({ items: [item], mode: 'move' })), off: !restructurer && raison },
       { icone: '☰', libelle: 'Propriétés', faire: () => (setFeuille(null), setProprietes({ id: item.id, tab: 'Infos' })), hl: true },
-      { icone: '🗑', libelle: 'Supprimer', faire: () => supprimer(item), off: !restructurer && raison, danger: true },
+      { icone: '🗑', libelle: 'Supprimer', faire: () => supprimer(item), off: !supprimable && raison, danger: true },
     ]
     // Dans le bac Échanges : « Ranger… » d'abord (choisir son vrai dossier).
     if (item.exchange_until) {
