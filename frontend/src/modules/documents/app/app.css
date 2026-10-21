@@ -370,13 +370,18 @@
 
 .ap-h {
   margin: 0;
-  font-size: 1.4em;
+  font-size: 1.3em;
   line-height: 1.2;
   text-wrap: balance;
 }
 
-h3.ap-h {
+/* Titre 1 > titre 2 > titre 3 (avant, le titre 2 était plus grand que le 1). */
+h2.ap-h {
   font-size: 1.6em;
+}
+
+h4.ap-h {
+  font-size: 1.1em;
 }
 
 .ap-p {
@@ -1244,4 +1249,44 @@ h3.ap-h {
 /* « 1. Préparer » : Préparation | Aperçu (Seb, 21 octobre). */
 .af-vues {
   padding: 8px 16px 0;
+}
+
+/* Préparation en WYSIWYG (Seb, 21 octobre) : l'éditeur prend l'allure de
+   la page reçue (.ap-page--desktop) : carte blanche, police, tailles. */
+.af-wysiwyg {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 10px 0;
+  border: 1px solid var(--dx-line);
+  border-radius: 16px;
+  background: #fff;
+}
+
+.af-wysiwyg .ae {
+  margin: 0;
+}
+
+.af-wysiwyg .bn-container,
+.af-wysiwyg .bn-editor,
+.af-wysiwyg .bn-default-styles,
+.af-wysiwyg .bn-inline-content {
+  font-family: inherit;
+}
+
+.af-wysiwyg .bn-editor {
+  padding-inline: 40px 16px;
+  color: var(--text);
+}
+
+.af-wysiwyg .bn-block-content[data-content-type='heading'] .bn-inline-content {
+  font-size: calc(1.6 * 17px);
+  line-height: 1.2;
+}
+
+.af-wysiwyg .bn-block-content[data-content-type='heading'][data-level='2'] .bn-inline-content {
+  font-size: calc(1.3 * 17px);
+}
+
+.af-wysiwyg .bn-block-content[data-content-type='heading'][data-level='3'] .bn-inline-content {
+  font-size: calc(1.1 * 17px);
 }

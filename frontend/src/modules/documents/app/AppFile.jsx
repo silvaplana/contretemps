@@ -306,6 +306,9 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
           </p>
         )}
         {formActif === 'result' && <p className="af-hint">Fabriqué tout seul à partir des questions. Déplacez, retirez ou ajoutez des blocs avec « / ».</p>}
+        {/* WYSIWYG (Seb, 21 octobre) : l'éditeur a l'allure de la page reçue
+            par les membres (même carte, largeur, texte et titres). */}
+        <div className={formActif === 'entry' ? 'af-wysiwyg' : undefined}>
         <Editor
           key={`${editorKey}-${formActif}-${file.family}`}
           blocks={formActif === 'entry' ? c.entry.blocks : resultBlocks(c)}
@@ -315,6 +318,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
           editable={file.editable}
           onChange={modifie}
         />
+        </div>
       </>
     )
     bas = (

@@ -115,6 +115,11 @@ retire. C'est le « Essayer » des parcours (§5.6). *Changé le 21 octobre (Seb
 ma réponse (essai) ») ; on essaie depuis Diffuser, « M'envoyer un essai » (§2.3). Le bouton principal de
 l'Aperçu d'un Brouillon est **Valider**, et ses textes se corrigent en les touchant.*
 
+*Préparation en WYSIWYG (Seb, 21 octobre)* : la vue Préparation (l'éditeur complet) a l'allure de la
+page reçue (carte blanche, largeur « Ordinateur », police, tailles des titres et du texte) ; les blocs de
+question y gardent leur carte de réglages. L'Aperçu reste la page telle qu'un membre la voit et la clique.
+Titres : niveau 1 > 2 > 3 (dans la page reçue, le niveau 2 était plus grand que le 1, corrigé).
+
 *Aperçu (Seb, 21 octobre)* : les questions s'y cliquent comme un membre le ferait (choix, procuration,
 liste des représentants…), sans bouton d'envoi et sans rien enregistrer. Le bouton principal s'appelle
 **« Valider pour passer à l'étape de diffusion »** (dans les deux vues de « 1. Préparer ») et mène à
