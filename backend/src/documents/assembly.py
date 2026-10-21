@@ -706,6 +706,8 @@ h2 { font-size: 11pt; margin: 12pt 0 4pt 0; }
 .foot { font-size: 8pt; color: #4f5f5b; margin-top: 14pt; }
 .big { font-size: 12pt; line-height: 1.5; }
 .small { font-size: 8pt; color: #4f5f5b; }
+.sign td { padding: 9pt 3pt; border: 1px solid #d7dfdc; }
+.w10 { width: 10%; } .w12 { width: 12%; } .w24 { width: 24%; } .w30 { width: 30%; }
 """
 
 
@@ -1323,3 +1325,73 @@ def status_text(docs: Documents, db: Session, node: DocNode, content: dict) -> s
         )
     lignes.append(f"Les pouvoirs signés sont dans le dossier « {proxies_folder(node.name)} » à côté de la convocation.")
     return "\n".join(lignes)
+
+
+# ----------------------------------------------------------------------
+# La feuille d'émargement à signer (Seb, 21 octobre)
+# ----------------------------------------------------------------------
+
+
+def signing_rows(docs: Documents, db: Session, node: DocNode, content: dict) -> list[dict]:
+    """Une ligne par adhérent (réglage `voters`), plus ceux qui portent un
+    pouvoir sans être adhérents : présent (pointé), procuration, voix =
+    1 + les procurations reçues (pas de voix à soi pour un nom hors liste)."""
+    bloc = block_of(content)
+    cibles = list(docs.voters or docs.members)
+    gens = {r.person_id: r.name for r in docs.directory.recipients(db, node.org_id, cibles)}
+    pointes = set(db.scalars(select(DocAttendance.person_id).where(DocAttendance.node_id == node.id)))
+    donnes: dict[int, str] = {}
+    recus: dict = {}
+    noms: dict = {}
+    for r in _answers(db, node, bloc["id"]):
+        v = r.values[bloc["id"]]
+        if v.get("answer") != "proxy" or r.person_id is None:
+            continue
+        cle = _key(v)
+        donnes[r.person_id] = "le bureau" if cle == "blank" else v.get("proxy_name") or "?"
+        recus.setdefault(cle, []).append(r.person_id)
+    mandants = set(donnes) - set(gens)
+    noms.update(docs.directory.person_names(db, node.org_id, mandants | {k for k in recus if isinstance(k, int) and k not in gens}))
+    noms.update(gens)
+    lignes = []
+    for pid, nom in sorted({**{k: noms.get(k, "?") for k in recus if isinstance(k, int)}, **gens}.items(), key=lambda x: _norm(x[1])):
+        de = recus.get(pid, [])
+        lignes.append({
+            "name": nom, "present": pid in pointes,
+            "proxy": f"à {donnes[pid]}" if pid in donnes else f"de {', '.join(noms.get(m, '?') for m in de)}" if de else "",
+            "votes": 1 + len(de),
+        })
+    for cle, de in recus.items():
+        if not isinstance(cle, int):
+            nom = "Le bureau (pouvoirs en blanc)" if cle == "blank" else f"{cle[1]} (hors liste)"
+            lignes.append({"name": nom, "present": False, "proxy": f"de {', '.join(noms.get(m, '?') for m in de)}", "votes": len(de)})
+    return lignes
+
+
+def signing_html(rows: list[dict], title: str, org_name: str) -> str:
+    lignes = "".join(
+        f"<tr><td>{escape(r['name'])}</td><td>{'Oui' if r['present'] else '&#9744;'}</td><td>{escape(r['proxy'])}</td>"
+        f"<td>{r['votes']}</td><td>&#160;</td></tr>"
+        for r in rows
+    )
+    return (
+        f"<p class='org'>{escape(org_name.upper())}</p><h1>Feuille d'émargement</h1>"
+        f"<p class='sub'>{escape(title)} · {len(rows)} lignes · {sum(r['votes'] for r in rows)} voix au plus</p>"
+        "<table class='t sign'><tr><th class='w24'>PRÉNOM NOM</th><th class='w10'>PRÉSENT</th><th class='w24'>PROCURATION</th>"
+        "<th class='w12'>NOMBRE DE VOIX</th><th class='w30'>SIGNATURE</th></tr>" + lignes + "</table>"
+        "<p class='foot'>Nombre de voix : 1, plus une par procuration reçue. Un membre qui a donné procuration et vient "
+        "reprend sa voix : rayer alors la procuration chez son représentant.</p>"
+    )
+
+
+def signing_sheet(docs: Documents, db: Session, member: Member, node_id: int) -> tuple[bytes, str]:
+    """« Produire la feuille d'émargement » : le PDF à signer, rangé à côté
+    de la convocation (nouvelle version s'il y est déjà) et rendu pour
+    l'ouvrir."""
+    node, contenu = _node_for(docs, db, member, node_id)
+    titre = node.name.removeprefix("Convocation ")
+    ecole = docs.mailer.org(db, node.org_id)[0] if docs.mailer is not None else ""
+    pdf = _pdf(signing_html(signing_rows(docs, db, node, contenu), titre, ecole))
+    nom = f"Feuille d'émargement à signer {titre}.pdf"
+    _store(docs, db, member, node, nom, pdf)
+    return pdf, nom

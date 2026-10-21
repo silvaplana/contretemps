@@ -303,6 +303,8 @@ documents_client = Documents(
     notifier=NotifieurDocuments(notifications_client),
     # Convoquer une première AG : tous les membres de la saison.
     members=(("group", "role:eleve"), ("group", "role:professeur"), ("group", "role:admin")),
+    # Feuille d'émargement à signer : les membres payants, c'est-à-dire les élèves.
+    voters=(("group", "role:eleve"),),
     attendance_reader=AttendanceReader(
         note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "liste_presents", cout, detail),
     ),

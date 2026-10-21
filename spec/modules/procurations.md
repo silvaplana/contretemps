@@ -461,3 +461,17 @@ n'importe quel adhérent. » Cela remplace le pouvoir en blanc (§3.4, §6.2) :
   Un nom hors liste : pas de mail au mandataire (pas d'adresse), il ne compte pas dans le plafond, et son
   pouvoir compte dans la prévision et le jour de l'AG (le bureau vérifie à l'entrée), affiché
   « <nom> (hors liste) » dans « Qui représente qui ».
+
+## 13. Feuille d'émargement à signer (Seb, 21 octobre)
+
+« On doit pouvoir cliquer sur Produire la feuille d'émargement. Ça crée la feuille en PDF et ça lance la
+visionneuse PDF. » Bouton **Produire la feuille d'émargement** dans « 3. Voir les résultats » (il
+remplace « Feuille d'émargement (PDF) ») : le PDF s'ouvre dans la visionneuse du téléphone et se range à
+côté de la convocation (« Feuille d'émargement à signer AGO du … .pdf », nouvelle version ensuite).
+
+- Lignes : **tous les membres payants** (réglage `voters` du module, posé à « les élèves » par
+  Contretemps), plus ceux qui portent une procuration sans en être (un professeur, un nom hors liste).
+- Colonnes : **Prénom Nom**, **Présent** (case à cocher, « Oui » si déjà pointé sur l'écran du jour),
+  **Procuration** (« à X » pour qui l'a donnée, « de A, B » pour qui la porte), **Nombre de voix**
+  (1 + les procurations reçues ; un nom hors liste n'a que les procurations reçues), **Signature** (vide).
+- La feuille du jour (écran de pointage, décompte du quorum) reste comme au §9.

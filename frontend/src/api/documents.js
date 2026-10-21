@@ -113,6 +113,12 @@ export function documentsApi(orgId) {
     markMany: (id, personIds) => appel(`${base}/nodes/${id}/app/attendance/batch`, json('POST', { person_ids: personIds })),
     remind: (id) => appel(`${base}/nodes/${id}/app/assembly/remind`, { method: 'POST' }),
     // « summary.pdf », « summary.xlsx » ou « convocation.pdf ».
+    // « Produire la feuille d'émargement » : le PDF à signer, rangé à côté de la convocation.
+    signingSheet: async (id) => {
+      const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/assembly/signing-sheet`, { method: 'POST' })
+      if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
+      return reponse.blob()
+    },
     assemblyFile: async (id, what) => {
       const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/assembly/${what}`)
       if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
