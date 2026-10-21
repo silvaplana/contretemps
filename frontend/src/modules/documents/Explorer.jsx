@@ -1521,7 +1521,7 @@ export default function Explorer({ orgId, memoire }) {
       )}
 
       {toast && (
-        <div className={`dx-toast${pressePapier ? ' dx-toast--haut' : ''}`} role="status">
+        <div className={`dx-toast${pressePapier ? ' dx-toast--haut' : ''}${appli ? ' dx-toast--centre' : ''}`} role="status">
           <span>{toast.texte}</span>
           {toast.annuler && (
             <button

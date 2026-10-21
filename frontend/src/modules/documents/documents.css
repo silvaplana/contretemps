@@ -2198,3 +2198,13 @@
   background: var(--surface);
   font-size: 17px;
 }
+
+/* Fichier ouvert (pas de bouton + à côté) : la notification est au centre
+   (Seb, 21 octobre). */
+.dx-toast.dx-toast--centre {
+  left: 50%;
+  right: auto;
+  width: max-content;
+  max-width: min(92vw, 560px);
+  transform: translateX(-50%);
+}

@@ -36,7 +36,8 @@ function EssaiSurMoi({ file, api, onToast, onVoirReponses }) {
     try {
       const r = await api.sendTrial(file.id)
       setEtat({ email: r.email })
-      onToast(`Essai envoyé à ${r.email}`)
+      // Message temporaire en bas au centre, pas de texte qui reste (Seb, 21 octobre).
+      onToast(`Essai envoyé à ${r.email} : ouvrez le mail${file.family !== 'inform' ? ' et répondez par le lien' : ''}`)
     } catch (e) {
       setEtat({ erreur: e.message })
     }
@@ -48,11 +49,6 @@ function EssaiSurMoi({ file, api, onToast, onVoirReponses }) {
         Recevez le mail exactement comme les autres le recevront
         {file.family !== 'inform' ? ', répondez, puis regardez vos réponses. Votre réponse est marquée « Essai » et ne compte pas.' : '.'}
       </p>
-      {etat?.email && (
-        <p className="ad-ok">
-          Envoyé à <strong>{etat.email}</strong>. Ouvrez le mail{file.family !== 'inform' ? ', répondez par le lien, puis revenez ici.' : '.'}
-        </p>
-      )}
       {etat?.erreur && <p className="dx-error" role="alert">{etat.erreur}</p>}
       <div className="ad-boutons">
         <button type="button" className="dx-btn dx-btn--small" disabled={etat === 'envoi' || !file.can_manage} onClick={envoyer}>
