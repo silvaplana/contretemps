@@ -338,6 +338,15 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
 - **Quorum** : aucun, un quart, un tiers ou la moitié des membres convoqués ; pas encore « un nombre ».
 - **Pouvoir perdu** : seulement si le mandataire a répondu « Je ne viens pas » ; tant qu'il n'a pas
   répondu, le pouvoir est « en attente » (ni compté, ni perdu) dans la prévision.
+- **Dossier des pouvoirs (Seb, 21 octobre)** : les pouvoirs signés (un PDF par procuration) sont rangés
+  dans **« Procurations - <nom du fichier de convocation> »**, à côté de la convocation (avant :
+  « Pouvoirs »).
+- **Feuille d'émargement à télécharger (Seb, 21 octobre)** : « Télécharger la feuille (PDF) » sur la
+  feuille d'émargement et « Feuille d'émargement (PDF) » dans « 3. Voir les résultats »
+  (`GET …/app/assembly/attendance.pdf`), en plus de « Enregistrer la feuille (PDF) ».
+- **Plusieurs adresses (Seb, 21 octobre)** : un membre dont la fiche a plusieurs adresses reçoit la
+  convocation sur chacune, avec le même lien personnel ; sa dernière réponse compte (test
+  `test_plusieurs_adresses_un_seul_lien`).
 - **Copie à l'association (Seb, 21 octobre)** : chaque envoi de convocation, chaque relance (bouton ou
   rappel de J-7) part aussi **une fois** à l'adresse de contact de l'association (`ecoles.email_contact`,
   sinon l'Administrateur principal) : « Copie : … », le même texte et la liste des destinataires, **sans

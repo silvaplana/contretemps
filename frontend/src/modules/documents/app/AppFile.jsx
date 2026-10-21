@@ -457,6 +457,11 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         <button type="button" className="dx-btn dx-btn--ghost" onClick={() => fichier('summary.xlsx', `Récapitulatif ${titre}.xlsx`)}>
           Excel
         </button>
+        {ag.summary.convoked > 0 && (
+          <button type="button" className="dx-btn dx-btn--ghost" onClick={() => fichier('attendance.pdf', `Feuille d’émargement ${titre}.pdf`)}>
+            Feuille d’émargement (PDF)
+          </button>
+        )}
       </>
     )
   } else {

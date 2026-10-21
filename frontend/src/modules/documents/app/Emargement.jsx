@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { reduirePhoto } from '../../../utils/reduirePhoto.js'
+import { telecharger } from './blocks.js'
 
 // Feuille d'émargement, le jour de l'AG (spec procurations.md §4, étape 2) :
 // une ligne par membre convoqué, une touche = présent (Annuler 10 s), le
@@ -212,6 +213,20 @@ export default function Emargement({ file, api, onClose, onToast }) {
           }}
         >
           Enregistrer la feuille (PDF)
+        </button>
+        {/* Télécharger la feuille (Seb, 21 octobre). */}
+        <button
+          type="button"
+          className="dx-btn dx-btn--ghost"
+          onClick={async () => {
+            try {
+              telecharger(await api.assemblyFile(file.id, 'attendance.pdf'), `Feuille d’émargement ${file.name.replace(/^Convocation /, '')}.pdf`)
+            } catch (e) {
+              onToast(e.message)
+            }
+          }}
+        >
+          Télécharger la feuille (PDF)
         </button>
       </div>
     </div>

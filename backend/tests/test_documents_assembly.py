@@ -136,7 +136,8 @@ def test_pouvoirs_en_pdf_dans_le_dossier(client, ecole, ag, mails):
     leon = lien(mails, "leon@exemple.fr")
     ana = next(g["id"] for g in client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"] if g["name"] == "Ana Roux")
     assert procuration(client, leon, ana).status_code == 201
-    pouvoirs = _par_nom(admin.racine(dossier=ag["folder"]))["Pouvoirs"]
+    # Dossier « Procurations - <nom de la convocation> » (Seb, 21 octobre).
+    pouvoirs = _par_nom(admin.racine(dossier=ag["folder"]))["Procurations - Convocation AGO du 21 novembre 2099"]
     fichiers = _par_nom(admin.racine(dossier=pouvoirs["id"]))
     assert list(fichiers) == ["Pouvoir de Léon Perrin à Ana Roux.pdf"]
     # Il change d'avis : le pouvoir reste, marqué retiré.
@@ -517,3 +518,32 @@ def test_copie_a_l_adresse_de_contact(client, ecole, db_session, mails):
                         association=documents_client.association)
     copies = [m for m in mails.envoyes if m["to"] == "contact@asso.fr"]
     assert len(copies) == 3 and "/r/" not in copies[2]["text"]
+
+
+def test_plusieurs_adresses_un_seul_lien(client, ecole, db_session, mails):
+    """Seb, 21 octobre : un membre à plusieurs adresses reçoit la convocation
+    sur chacune ; c'est le même lien personnel, sa dernière réponse compte."""
+    for compte, adresse in (("admin", "julia@exemple.fr"), ("prof", "ima@exemple.fr"), ("autre", "ana@exemple.fr")):
+        ecole[compte].definir_emails(adresse)
+    ecole["eleve"].definir_emails("leon@exemple.fr, maman.leon@exemple.fr")
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    ident = convoquer(admin).json()["id"]
+    admin.modifier(ident, change_status=True, status="official")
+    vue = admin.get(f"/nodes/{ident}/app/assembly").json()
+    admin.c.post(f"{admin.base}/nodes/{ident}/app/sends", json={"principals": vue["principals"]}, headers=admin.h)
+    mail = next(m for m in mails.envoyes if "leon@exemple.fr" in m["to"])
+    assert {a.strip() for a in mail["to"].split(",")} == {"leon@exemple.fr", "maman.leon@exemple.fr"}
+    jeton = mail["text"].split("/r/")[1].split("?")[0].split()[0]
+    assert repondre(client, jeton, answer="attend").status_code == 201
+    assert repondre(client, jeton, answer="absent").status_code == 201  # depuis l'autre adresse : même lien
+    s = admin.get(f"/nodes/{ident}/app/assembly").json()["summary"]
+    assert s["absent"] == 1 and s["attend"] == 0
+
+
+def test_telecharger_la_feuille_d_emargement(client, ecole, ag):
+    """Seb, 21 octobre : la feuille d'émargement se télécharge aussi."""
+    admin = ag["admin"]
+    r = admin.get(f"/nodes/{ag['id']}/app/assembly/attendance.pdf")
+    assert r.status_code == 200 and r.content.startswith(b"%PDF")
+    assert "Feuille%20d%27%C3%A9margement%20AGO%20du%2021%20novembre%202099.pdf" in r.headers["content-disposition"]

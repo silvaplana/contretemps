@@ -390,7 +390,7 @@ class DocumentsReceiver:
 
         @self.app.get(base + "/nodes/{node_id}/app/assembly/{what}")
         def assembly_export(org_id: int, node_id: int, what: str, db: Session = db_dep, m: Member = member):
-            if what not in ("summary.pdf", "summary.xlsx", "convocation.pdf"):
+            if what not in ("summary.pdf", "summary.xlsx", "convocation.pdf", "attendance.pdf"):
                 raise HTTPException(status_code=404, detail="Introuvable")
             contenu, mime, nom = appel(lambda: assembly.export(self.client, db, self._member(org_id, m), node_id, what))
             return Response(contenu, media_type=mime, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nom)}"})

@@ -239,7 +239,7 @@ export default function AssemblySend({ file, api, onToast, onSent }) {
       ) : (
         deja === 0 && (
           <button type="button" className="dx-btn" disabled={!file.can_manage || !nb} onClick={lancer}>
-            Envoyer aux {nb} membre{nb > 1 ? 's' : ''}
+            {nb > 1 ? `Envoyer aux ${nb} membres` : `Envoyer à ${nb} membre`}
           </button>
         )
       )}

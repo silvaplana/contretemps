@@ -7,7 +7,7 @@ tous les fichiers de l'appli. Ce module ajoute :
 - la convocation toute prête (`convene`), rangée dans Réunions ;
 - les règles d'une procuration, qui dépendent des autres réponses
   (plafond, pas de chaîne, membre convoqué), contrôlées à chaque réponse ;
-- le pouvoir signé en PDF, rangé dans « Pouvoirs » à côté de la convocation ;
+- le pouvoir signé en PDF, rangé dans « Procurations - <convocation> » à côté d'elle ;
 - le décompte (présents, procurations, quorum), le récapitulatif PDF et Excel.
 
 Tous les chiffres sont calculés ici, jamais par l'assistant.
@@ -70,7 +70,10 @@ BASE_AGENDA = {
 DAYS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 MONTHS = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
 CHOICES = (("attend", "Je viens"), ("proxy", "Je donne procuration"), ("absent", "Je ne viens pas"))
-PROXIES_FOLDER = "Pouvoirs"
+def proxies_folder(node_name: str) -> str:
+    """Le dossier des pouvoirs signés, à côté de la convocation (Seb,
+    21 octobre) : « Procurations - <nom du fichier de convocation> »."""
+    return f"Procurations - {node_name}"
 MEETINGS_FOLDER = "Réunions"
 
 
@@ -302,7 +305,7 @@ def _system_member(node: DocNode, person_id: int | None) -> Member:
 
 def after_answer(docs: Documents, db: Session, node: DocNode, response: DocResponse, mandant: str, previous: dict | None) -> None:
     """Après une vraie réponse : le pouvoir signé est enregistré en PDF dans
-    « Pouvoirs » ; un pouvoir remplacé ou retiré garde son PDF, marqué
+    « Procurations - <convocation> » ; un pouvoir remplacé ou retiré garde son PDF, marqué
     « retiré ». Un échec ici ne perd jamais la réponse."""
     from .app_files import AppFiles
 
@@ -324,7 +327,7 @@ def after_answer(docs: Documents, db: Session, node: DocNode, response: DocRespo
         p = props(bloc)
         ecole = docs.mailer.org(db, node.org_id)[0] if docs.mailer is not None else ""
         pdf = proxy_pdf(mandant, ecole, v, p, node.name)
-        dossier = _child_folder(docs, db, systeme, node.parent_id, PROXIES_FOLDER)
+        dossier = _child_folder(docs, db, systeme, node.parent_id, proxies_folder(node.name))
         qui = "le bureau" if v["proxy_to"] == "blank" else v.get("proxy_name", "")
         de = "d'" if _norm(mandant)[:1] in tuple("aeiouyh") else "de "
         cree = docs.upload(db, systeme, node.space, dossier, f"Pouvoir {de}{mandant} à {qui}.pdf", io.BytesIO(pdf))
@@ -663,7 +666,7 @@ def summary_html(s: dict, title: str, org_name: str) -> str:
     sans = [r["name"] for r in s["rows"] if r["answer"] == "none"]
     parts.append(f"<h2>Sans réponse ({len(sans)})</h2><p>{escape(', '.join(sans)) or '—'}</p>")
     parts.append(
-        "<p class='foot'>Les pouvoirs signés sont rangés un par un en PDF dans le dossier « Pouvoirs ». "
+        f"<p class='foot'>Les pouvoirs signés sont rangés un par un en PDF dans le dossier « {escape(proxies_folder('Convocation ' + title))} ». "
         "Chiffres calculés par l'appli à partir des réponses ; la feuille d'émargement du jour remplace cette prévision.</p>"
     )
     return "".join(parts)
@@ -995,10 +998,13 @@ def overview(docs: Documents, db: Session, member: Member, node_id: int) -> dict
 
 
 def export(docs: Documents, db: Session, member: Member, node_id: int, what: str) -> tuple[bytes, str, str]:
-    """(contenu, type, nom) : « summary.pdf », « summary.xlsx », « convocation.pdf »."""
+    """(contenu, type, nom) : « summary.pdf », « summary.xlsx », « convocation.pdf »,
+    « attendance.pdf » (la feuille d'émargement, Seb 21 octobre)."""
     node, contenu = _node_for(docs, db, member, node_id)
     ecole = docs.mailer.org(db, node.org_id)[0] if docs.mailer is not None else ""
     titre = node.name.removeprefix("Convocation ")
+    if what == "attendance.pdf":
+        return _pdf(sheet_html(sheet(docs, db, node, contenu), titre, ecole)), "application/pdf", f"Feuille d'émargement {titre}.pdf"
     if what == "convocation.pdf":
         return convocation_pdf(contenu, node.name, ecole), "application/pdf", f"{node.name}.pdf"
     s = summary(docs, db, node, contenu)
@@ -1130,7 +1136,7 @@ def sheet_html(s: dict, title: str, org_name: str) -> str:
         ))
         + f"</tr></table><p class='q'>{escape(quorum)}</p>{blanc}"
         "<table class='t'><tr><th>MEMBRE</th><th>PRÉSENCE</th><th>VOIX</th></tr>" + "".join(lignes) + "</table>"
-        "<p class='foot'>Présents pointés par le bureau ; procurations signées en ligne, rangées dans le dossier « Pouvoirs ». "
+        f"<p class='foot'>Présents pointés par le bureau ; procurations signées en ligne, rangées dans le dossier « {escape(proxies_folder('Convocation ' + title))} ». "
         "Un mandant présent reprend sa voix ; un pouvoir dont le mandataire est absent est perdu.</p>"
     )
 
@@ -1297,5 +1303,5 @@ def status_text(docs: Documents, db: Session, node: DocNode, content: dict) -> s
             f"Le jour de l'AG (feuille d'émargement) : {t['present']} présents, {t['represented']} représentés, "
             f"{t['votes']} voix" + (f", quorum {'atteint' if t['quorum']['reached'] else 'pas atteint'}" if t.get("quorum") else "") + "."
         )
-    lignes.append("Les pouvoirs signés sont dans le dossier « Pouvoirs » à côté de la convocation.")
+    lignes.append(f"Les pouvoirs signés sont dans le dossier « {proxies_folder(node.name)} » à côté de la convocation.")
     return "\n".join(lignes)
