@@ -204,6 +204,7 @@ class GestionSaisons:
                 nom=ancien.nom,
                 prenom=ancien.prenom,
                 telephone=ancien.telephone,
+                bureau_functions=list(ancien.bureau_functions or []),
             )
             nouveau.definir_emails(ancien.emails)
             nouveau.roles = [RoleCompte(role=role) for role in roles]

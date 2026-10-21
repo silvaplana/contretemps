@@ -205,7 +205,9 @@ la coche Trésorier reste à part).
 des admins a donc deux colonnes distinctes, **Accès au Financier** (le droit, §6.1 ; le niveau garde
 son nom `tresorier` dans le code, `is_tresorier`) et **Bureau** (les fonctions). Elles servent aux documents (signataires d'un procès-verbal, « Martine
 Colin, présidente », pouvoir en blanc donné à la présidence). Mêmes personnes qui les changent que
-les coches Administrateur principal et Trésorier. Recopiées à la création d'une saison.
+les coches Administrateur principal et Trésorier, y compris sur sa propre ligne. Recopiées à la
+création d'une saison. Données : `comptes.bureau_functions`, liste JSON parmi `president`,
+`vice_president`, `secretary`, `treasurer` (ordre fixe) ; l'assistant les change par `change_roles`.
 
 ---
 

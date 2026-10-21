@@ -27,6 +27,7 @@ def _sortie(compte: Compte) -> dict:
         "emails": compte.emails,
         "est_owner": roles.is_owner(compte),
         "est_tresorier": roles.is_tresorier(compte),
+        "bureau_functions": compte.bureau_functions or [],
         "est_prof": roles.is_prof(compte),
         "est_eleve": roles.is_eleve(compte),
     }
@@ -73,8 +74,8 @@ class AdministrateursReceiver:
     ) -> Compte:
         """L'administrateur visé, après les vérifications : l'appelant est
         Owner de SON école, et ce n'est pas lui-même (sauf `soi_meme_permis` :
-        cocher ou décocher sa propre case Trésorier, souvent le cas d'un
-        bureau d'une seule personne)."""
+        cocher ou décocher sa propre case Trésorier, ou ses fonctions au
+        bureau, souvent le cas d'un bureau d'une seule personne)."""
         cible = self.client.get(db, compte_id)
         rbac.require_owner(appelant, cible.ecole_id if cible else None)
         if cible is None:
@@ -123,13 +124,16 @@ class AdministrateursReceiver:
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
         champs = donnees.model_dump(exclude_unset=True)
-        seulement_tresorier = set(champs) == {"tresorier"}
-        cible = self._cible_pour_owner(db, compte_id, appelant, soi_meme_permis=seulement_tresorier)
+        # Sur sa propre ligne : la case Trésorier et les fonctions au bureau.
+        soi_meme_permis = bool(champs) and set(champs) <= {"tresorier", "bureau_functions"}
+        cible = self._cible_pour_owner(db, compte_id, appelant, soi_meme_permis=soi_meme_permis)
         owner = champs.pop("owner", None)
         tresorier = champs.pop("tresorier", None)
+        bureau = champs.pop("bureau_functions", None)
         try:
             cible = self.client.modifier(
-                db, cible, champs=champs, owner=owner, tresorier=tresorier, par_superuser=_est_superuser(appelant)
+                db, cible, champs=champs, owner=owner, tresorier=tresorier, bureau_functions=bureau,
+                par_superuser=_est_superuser(appelant),
             )
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
