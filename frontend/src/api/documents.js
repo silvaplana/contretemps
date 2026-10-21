@@ -111,6 +111,7 @@ export function documentsApi(orgId) {
       return appel(`${base}/nodes/${id}/app/attendance/photo`, { method: 'POST', body: donnees })
     },
     markMany: (id, personIds) => appel(`${base}/nodes/${id}/app/attendance/batch`, json('POST', { person_ids: personIds })),
+    remind: (id) => appel(`${base}/nodes/${id}/app/assembly/remind`, { method: 'POST' }),
     // « summary.pdf », « summary.xlsx » ou « convocation.pdf ».
     assemblyFile: async (id, what) => {
       const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/assembly/${what}`)

@@ -314,7 +314,7 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
 2. **La feuille d'émargement** : table `doc_attendance`, écran, quorum en direct, PDF.
 3. **Les copies** (fait, §10) : email au mandataire, copie du pouvoir signé au mandant, relance
    aux non-répondants J-7 (`a-faire.md`, déjà prête à faire).
-4. **L'Assistant IA, le reste** : où en est le quorum, qui n'a pas répondu, relancer.
+4. **L'Assistant IA, le reste** (fait, §11) : où en est le quorum, qui n'a pas répondu, relancer.
 
 Les outils de l'assistant des étapes de la convocation (§1.4 : `convene_assembly`,
 `validate_app_file`, `send_app_file`, `app_file_pdf`) viennent avec l'étape 1, à la demande de Seb
@@ -394,3 +394,22 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
   fichier (« Rappel envoyé à N membres sans réponse ») ; l'écran Diffuser l'annonce.
 - Le port `Mailer.send` du module accepte des pièces jointes (`attachments`), utilisées aussi par le
   procès-verbal.
+
+## 11. Fait à l'étape 4 (l'assistant, le reste)
+
+- **Où en est l'AG** : pas d'outil `assembly_status` à part. Quand l'assistant lit une convocation
+  (`lire_fichier`), l'appli ajoute l'état des réponses en phrases, calculées par le code
+  (`assembly.status_text`) : convoqués, réponses, qui vient, qui ne vient pas, sans réponse (noms),
+  pouvoirs (qui porte quoi, perdus, en attente), voix prévues et quorum, puis le décompte du jour si la
+  feuille d'émargement est commencée. Seulement pour qui peut voir Résultats (droit de modifier).
+- **Relancer** : bouton **Relancer les N sans réponse** dans Résultats (avant le début de l'AG), le mail
+  part après 10 s, **Annuler** d'ici là ; outil `remind_assembly(file)` sur une carte Faire / Annuler
+  (« Relancer par email les 3 membres qui n'ont pas répondu à … (noms) »). Même fonction
+  (`assembly.remind`) : le mail de la convocation précédé de « Rappel : l'assemblée a lieu bientôt, le …,
+  et nous n'avons pas encore votre réponse. ». Noté dans l'historique ; le rappel automatique de J-7
+  (§10) part quand même.
+- **Télécharger** : l'assistant ne donne pas de lien (les fichiers ne s'ouvrent qu'avec la connexion).
+  Outil `store_assembly_pdf(file, document)` sur une carte : range « Récapitulatif AGO du … .pdf » ou
+  « Convocation AGO du … .pdf » dans le dossier de l'AG (nouvelle version s'il y est déjà). Pas
+  d'archive des pouvoirs : ils sont déjà un par un dans « Pouvoirs », l'assistant le dit.
+- Pas fait : l'outil générique `app_file_pdf` pour tout fichier de base (seule la convocation l'a).
