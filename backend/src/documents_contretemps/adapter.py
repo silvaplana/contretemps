@@ -38,8 +38,12 @@ TAILLE_MAX_MO = int(os.environ.get("DOCUMENTS_TAILLE_MAX_MO", "200"))
 
 logger = logging.getLogger(__name__)
 
+# « Tout le monde » : tous les membres de l'école de la saison (Seb, 21 octobre).
+TOUS = "tous"
 _ROLES = {
+    TOUS: ("Tout le monde", "tous les membres"),
     roles.ADMIN: ("Admins", "rôle"),
+    roles.TRESORIER: ("Trésoriers", "rôle"),
     roles.PROFESSEUR: ("Professeurs", "rôle"),
     roles.ELEVE: ("Élèves", "rôle"),
 }
@@ -70,6 +74,8 @@ def _groupes(db: Session, compte: Compte) -> frozenset[str]:
     noms = {f"role:{r.role}" for r in compte.roles}
     if roles.is_owner(compte):
         noms.add("role:admin")
+    if compte.ecole_id is not None:
+        noms.add(f"role:{TOUS}")
     cours_prof = db.scalars(select(cours_professeurs.c.cours_id).where(cours_professeurs.c.professeur_id == compte.id))
     cours_eleve = db.scalars(select(eleves_cours.c.cours_id).where(eleves_cours.c.eleve_id == compte.id))
     noms |= {f"course:{i}" for i in list(cours_prof) + list(cours_eleve)}
@@ -187,7 +193,9 @@ class AnnuaireContretemps:
                 ajouter(par_personne.get(pid) or self._personnes(db, {pid}).get(pid))
             elif t == "group" and i.startswith("role:"):
                 test = {
+                    TOUS: lambda c: True,
                     roles.ADMIN: lambda c: roles.is_admin(c) or roles.is_owner(c),
+                    roles.TRESORIER: roles.is_tresorier,
                     roles.PROFESSEUR: roles.is_prof,
                     roles.ELEVE: roles.is_eleve,
                 }.get(i[5:])

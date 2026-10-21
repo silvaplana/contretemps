@@ -338,6 +338,12 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
 - **Quorum** : aucun, un quart, un tiers ou la moitié des membres convoqués ; pas encore « un nombre ».
 - **Pouvoir perdu** : seulement si le mandataire a répondu « Je ne viens pas » ; tant qu'il n'a pas
   répondu, le pouvoir est « en attente » (ni compté, ni perdu) dans la prévision.
+- **À qui (Seb, 21 octobre)** : l'écran d'envoi propose **Tout le monde, Admins, Trésoriers, Professeurs,
+  Élèves** (à cocher, pas les cours) et **Ajouter une personne** (recherche par nom) ; les convoqués de la
+  dernière AG, proposés d'office, forment une seule étiquette retirable. « Recevront la convocation :
+  N personnes » et un **œil** qui déplie la liste par ordre alphabétique, « Prénom Nom (adresse) ». Le lien
+  « Changer » vers le Diffuser habituel est retiré. Groupes `role:tous` et `role:tresorier` dans
+  l'annuaire (aussi pour partager un dossier).
 - **Envoyer** : pas de question « Envoyer la convocation ? » ; le bouton lance un compte à rebours de
   10 s avec **Annuler** (« Annuler plutôt que confirmer »). Une fois envoyée, l'écran dit « Convocation
   envoyée à N membres » ; « Changer » ouvre le Diffuser habituel (ajouter des personnes).

@@ -431,3 +431,20 @@ def test_un_admin_supprime_un_fichier_officiel(client, ecole):
     pv = admin.fichier("PV.docx", ag).json()["id"]
     assert admin.modifier(ag, change_status=True, status="official").status_code == 200
     assert admin.supprimer(pv).status_code == 409
+
+
+def test_destinataires_tout_le_monde_et_tresoriers(client, ecole, db_session):
+    """Diffuser (Seb, 21 octobre) : on peut choisir « Tout le monde » et
+    « Trésoriers » ; chacun une fois, les autres écoles jamais."""
+    from comptes import Comptes
+    from documents_contretemps.adapter import AnnuaireContretemps
+
+    Comptes().ajouter_role(db_session, ecole["admin"], "tresorier")
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    groupes = {p["id"]: p["label"] for p in admin.get("/principals").json() if p["type"] == "group"}
+    assert groupes["role:tous"] == "Tout le monde" and groupes["role:tresorier"] == "Trésoriers"
+    annuaire = AnnuaireContretemps()
+    noms = lambda cle: [r.name for r in annuaire.recipients(db_session, ecole["id"], [("group", cle)])]  # noqa: E731
+    assert noms("role:tresorier") == ["Julia Dho"]
+    assert noms("role:tous") == ["Ana Roux", "Ima Blanc", "Julia Dho", "Léon Perrin"]

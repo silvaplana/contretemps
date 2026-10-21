@@ -1312,3 +1312,39 @@ h4.ap-h {
 .af-wysiwyg .bn-block-content[data-content-type='heading'][data-level='3'] .bn-inline-content {
   font-size: calc(1.1 * 17px);
 }
+
+/* Convocation : à qui envoyer (Seb, 21 octobre). */
+.ag-qui h3 {
+  margin: 0 0 8px;
+}
+
+.ag-groupes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.ag-groupe {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.ag-groupe--on {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-weight: 700;
+}
+
+.ag-oeil {
+  vertical-align: middle;
+  margin-left: 6px;
+}
