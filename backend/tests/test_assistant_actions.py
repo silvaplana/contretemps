@@ -197,6 +197,28 @@ def test_roles_changes_par_l_administrateur_principal_seulement(db_session, ecol
     assert _faire(db_session, owner, ecole, carte)[0]["ok"]
 
 
+def test_fonctions_du_bureau_par_l_assistant(db_session, ecole):
+    """Spec core.md §6.4 : un bouton de l'écran = un outil de l'assistant ;
+    les fonctions au bureau ne donnent aucun droit."""
+    owner, prof = ecole["admin"], ecole["prof"]
+    _, carte = _proposer(db_session, owner, ecole, "change_roles", {"person_id": owner.id, "bureau_functions": ["secretary", "president"]})
+    assert carte["lignes"] == ["Julia Dho : bureau : président·e, secrétaire"]
+    assert _faire(db_session, owner, ecole, carte)[0]["ok"]
+    db_session.refresh(owner)
+    assert owner.bureau_functions == ["president", "secretary"]
+
+    texte, carte = _proposer(db_session, owner, ecole, "change_roles", {"person_id": prof.id, "bureau_functions": ["treasurer"]})
+    assert carte is None and "administrateur" in texte
+
+    _, carte = _proposer(
+        db_session, owner, ecole, "change_roles", {"person_id": prof.id, "admin": True, "bureau_functions": ["treasurer"]}
+    )
+    assert carte["lignes"] == ["Ima Blanc : devient administrateur, bureau : trésorier·e"]
+    _faire(db_session, owner, ecole, carte)
+    db_session.refresh(prof)
+    assert prof.bureau_functions == ["treasurer"] and not roles.is_tresorier(prof)
+
+
 def test_le_super_user_change_les_roles_et_cree_un_administrateur(db_session, ecole):
     su, eleve = _superuser(db_session), ecole["eleve"]
     _, carte = _proposer(db_session, su, ecole, "change_roles", {"person_id": eleve.id, "admin": True, "main_admin": True})

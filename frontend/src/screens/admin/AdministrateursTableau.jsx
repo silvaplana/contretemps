@@ -7,6 +7,19 @@ import Modal from '../../components/Modal.jsx'
 import { isOwner } from '../../data/roles.js'
 import { BoutonInviter, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 
+// Fonctions au bureau de l'association (spec/core.md §6.4), dans l'ordre du
+// serveur (backend/src/administrateurs/schemas.py) : des titres, aucun droit.
+const BUREAU = [
+  ['president', 'Président·e'],
+  ['vice_president', 'Vice-président·e'],
+  ['secretary', 'Secrétaire'],
+  ['treasurer', 'Trésorier·e'],
+]
+
+function libellesBureau(fonctions) {
+  return BUREAU.filter(([cle]) => fonctions.includes(cle)).map(([, libelle]) => libelle).join(', ')
+}
+
 // Tableau des administrateurs (Admin > École, au-dessus de "Usage vidéo" —
 // voir spec/SPEC.md §2.4). Visible par TOUS les admins de l'école ; seuls
 // les Owners ont le crayon et la poubelle, et jamais sur leur propre ligne.
@@ -37,6 +50,7 @@ export default function AdministrateursTableau({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emails])
   const [enEdition, setEnEdition] = useState(null)
+  const [bureauDe, setBureauDe] = useState(null)
   const [erreur, setErreur] = useState(null)
   const peutGerer = isOwner(activeUser)
 
@@ -117,7 +131,10 @@ export default function AdministrateursTableau({
                   <th>Prénom</th>
                   <th>Email</th>
                   <th>Administrateur principal</th>
-                  <th>Trésorier</th>
+                  {/* Le droit (onglet Financier) et le titre (Bureau) sont
+                      deux colonnes distinctes (Seb, 20 octobre 2026). */}
+                  <th>Accès au Financier</th>
+                  <th>Bureau</th>
                   <th>Inviter</th>
                   <th>Statut</th>
                   {peutGerer && <th aria-label="Actions" />}
@@ -141,12 +158,28 @@ export default function AdministrateursTableau({
                           type="checkbox"
                           checked={a.estTresorier}
                           onChange={(e) => basculerTresorier(a, e.target.checked)}
-                          aria-label={`${a.prenom} ${a.nom} trésorier`}
+                          aria-label={`${a.prenom} ${a.nom} : accès au Financier`}
                         />
                       ) : a.estTresorier ? (
                         <Badge>Oui</Badge>
                       ) : (
                         <span className="muted">—</span>
+                      )}
+                    </td>
+                    {/* Un Owner change aussi sa propre ligne (bureau d'une
+                        seule personne), comme la case Accès au Financier. */}
+                    <td>
+                      {peutGerer ? (
+                        <button
+                          type="button"
+                          className="btn btn--ghost"
+                          onClick={() => setBureauDe(a)}
+                          aria-label={`Fonctions au bureau de ${a.prenom} ${a.nom}`}
+                        >
+                          {libellesBureau(a.bureauFunctions) || 'Choisir'}
+                        </button>
+                      ) : (
+                        libellesBureau(a.bureauFunctions) || <span className="muted">—</span>
                       )}
                     </td>
                     <td>
@@ -200,6 +233,14 @@ export default function AdministrateursTableau({
               onValider={(donnees) => administrateursApi.modifier(enEdition.id, donnees)}
               onEnregistre={enregistree}
               onClose={() => setEnEdition(null)}
+            />
+          )}
+          {peutGerer && bureauDe && (
+            <BureauModal
+              admin={bureauDe}
+              onValider={(bureauFunctions) => administrateursApi.modifier(bureauDe.id, { bureauFunctions })}
+              onEnregistre={enregistree}
+              onClose={() => setBureauDe(null)}
             />
           )}
         </>
@@ -342,6 +383,55 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
           Administrateur principal (peut gérer les administrateurs)
         </label>
 
+        {erreur && <p className="admin-panel__erreur">{erreur}</p>}
+      </div>
+    </Modal>
+  )
+}
+
+// Fonctions au bureau d'un administrateur (spec/core.md §6.4) : zéro, une ou
+// plusieurs. Elles proposent les signataires d'un procès-verbal d'AG.
+function BureauModal({ admin, onValider, onEnregistre, onClose }) {
+  const [fonctions, setFonctions] = useState(admin.bureauFunctions)
+  const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState(null)
+
+  function basculer(cle, coche) {
+    setFonctions((liste) => (coche ? [...liste, cle] : liste.filter((f) => f !== cle)))
+  }
+
+  async function valider() {
+    if (enCours) return
+    setEnCours(true)
+    setErreur(null)
+    try {
+      onEnregistre(await onValider(BUREAU.map(([cle]) => cle).filter((cle) => fonctions.includes(cle))))
+      onClose()
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  return (
+    <Modal
+      title={`Bureau : ${admin.prenom} ${admin.nom}`}
+      onClose={onClose}
+      footer={
+        <button type="button" className="btn btn--primary btn--block" disabled={enCours} onClick={valider}>
+          Enregistrer
+        </button>
+      }
+    >
+      <div className="form-fields">
+        {BUREAU.map(([cle, libelle]) => (
+          <label key={cle} className="checkbox-inline">
+            <input type="checkbox" checked={fonctions.includes(cle)} onChange={(e) => basculer(cle, e.target.checked)} />
+            {libelle}
+          </label>
+        ))}
+        <p className="muted">Un titre, sans droit en plus : l’onglet Financier se donne par la case Accès au Financier.</p>
         {erreur && <p className="admin-panel__erreur">{erreur}</p>}
       </div>
     </Modal>

@@ -1,4 +1,16 @@
-from pydantic import BaseModel, model_validator
+from typing import Literal
+
+from pydantic import BaseModel, field_validator, model_validator
+
+# Fonctions au bureau (spec/core.md §6.4), dans l'ordre d'affichage : des
+# titres, aucun droit (l'onglet Financier reste la coche Trésorier).
+BUREAU_FUNCTIONS = ("president", "vice_president", "secretary", "treasurer")
+BureauFunction = Literal["president", "vice_president", "secretary", "treasurer"]
+
+
+def ordered_functions(functions) -> list[str]:
+    """Sans doublon, dans l'ordre de BUREAU_FUNCTIONS."""
+    return [f for f in BUREAU_FUNCTIONS if f in set(functions)]
 
 
 class AdministrateurSortie(BaseModel):
@@ -13,6 +25,7 @@ class AdministrateurSortie(BaseModel):
     est_owner: bool
     # Trésorier (module notes de frais §6) : coché dans ce tableau seulement.
     est_tresorier: bool = False
+    bureau_functions: list[str] = []
     # Professeur-admin ou élève-admin : son nom/prénom/email se modifient
     # depuis Admin > Profs ou Admin > Élèves, pas depuis ce tableau (voir
     # administrateurs.py).
@@ -53,3 +66,10 @@ class AdministrateurModification(BaseModel):
     owner: bool | None = None
     # Donner (True) ou retirer (False) le rôle trésorier ; absent : inchangé.
     tresorier: bool | None = None
+    # Remplace les fonctions au bureau ; absent : inchangées.
+    bureau_functions: list[BureauFunction] | None = None
+
+    @field_validator("bureau_functions")
+    @classmethod
+    def _ordre(cls, v):
+        return None if v is None else ordered_functions(v)

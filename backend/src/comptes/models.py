@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -67,6 +67,9 @@ class Compte(Base):
     # Texte libre, sans validation de format (voir §6.4bis : le fichier
     # réel contient des cas qu'une validation stricte rejetterait).
     telephone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Fonctions au bureau de l'association (spec/core.md §6.4) : titres sans
+    # aucun droit, voir administrateurs/schemas.py:BUREAU_FUNCTIONS. Recopiées avec la fiche.
+    bureau_functions: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list, server_default="[]")
     # Emails : table `emails_compte` (plusieurs par fiche, §2.1, décision
     # du 2026-10-16), voir `adresses` et `emails` ci-dessous. Aucun mot de
     # passe ici : il appartient à l'adresse email (table acces_emails,

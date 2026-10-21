@@ -305,3 +305,41 @@ def test_tresorier_toujours_admin(db_session, ecole):
     comptes.ajouter_role(db_session, prof_admin, roles.TRESORIER)
     comptes.retirer_role(db_session, prof_admin, roles.ADMIN)
     assert _roles(db_session, prof_admin) == ["professeur"]
+
+
+# --- Bureau (spec/core.md §6.4) : fonctions sans droits ---
+
+
+def test_owner_donne_les_fonctions_du_bureau_y_compris_a_lui_meme(client, ecole):
+    for cible, fonctions in (("admin", ["secretary"]), ("owner", ["president", "treasurer"])):
+        reponse = client.put(
+            f"/administrateurs/{ecole[cible].id}", json={"bureau_functions": fonctions}, headers=_en_tant_que(ecole["owner"])
+        )
+        assert reponse.status_code == 200, reponse.text
+        assert reponse.json()["bureau_functions"] == fonctions
+    liste = client.get(f"/ecoles/{ecole['ecole'].id}/administrateurs", headers=_en_tant_que(ecole["admin"])).json()
+    assert {a["id"]: a["bureau_functions"] for a in liste}[ecole["admin"].id] == ["secretary"]
+
+
+def test_fonction_tresorier_ne_donne_pas_le_financier(client, ecole):
+    reponse = client.put(
+        f"/administrateurs/{ecole['admin'].id}", json={"bureau_functions": ["treasurer"]}, headers=_en_tant_que(ecole["owner"])
+    )
+    assert reponse.json()["est_tresorier"] is False
+
+
+def test_fonctions_du_bureau_controlees(client, ecole):
+    entetes = _en_tant_que(ecole["owner"])
+    url = f"/administrateurs/{ecole['admin'].id}"
+    assert client.put(url, json={"bureau_functions": ["roi"]}, headers=entetes).status_code == 422
+    # Doublons retirés, ordre fixe (président d'abord).
+    reponse = client.put(url, json={"bureau_functions": ["secretary", "president", "secretary"]}, headers=entetes)
+    assert reponse.json()["bureau_functions"] == ["president", "secretary"]
+    assert client.put(url, json={"bureau_functions": []}, headers=entetes).json()["bureau_functions"] == []
+
+
+def test_un_simple_admin_ne_change_pas_le_bureau(client, ecole):
+    reponse = client.put(
+        f"/administrateurs/{ecole['owner'].id}", json={"bureau_functions": ["president"]}, headers=_en_tant_que(ecole["admin"])
+    )
+    assert reponse.status_code == 403

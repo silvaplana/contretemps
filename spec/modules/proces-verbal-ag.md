@@ -179,7 +179,8 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
 Prérequis : l'étape 1 des procurations (PR #34, en ligne le 21 octobre) et la feuille d'émargement
 (PR #38) dans `main`.
 
-0. **Le bureau** (core) : la coche Trésorier renommée « Accès au Financier » à l'écran, colonne
+0. **Le bureau** (core, codé le 21 octobre : colonne `comptes.bureau_functions`, migration
+   `a4c6e8f0b2d5`, `PUT /administrateurs/{id}` avec `bureau_functions`, action `change_roles`) : la coche Trésorier renommée « Accès au Financier » à l'écran, colonne
    Bureau dans École › Administrateurs, `bureau_functions`, recopie
    à la création de saison, outil de l'assistant pour la changer (mêmes droits que les coches).
 1. **La liste des présents** : photo, lecture, rapprochement, doutes, écran du quorum (repris de
