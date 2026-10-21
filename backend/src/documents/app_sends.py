@@ -364,9 +364,10 @@ def compose(
         + f'<p style="margin:0 0 16px;font-size:20px;font-weight:bold">{escape(name)}</p>'
         + p.format(f"Bonjour {escape(person)},")
         + "".join(p.format(escape(x)) for x in paragraphes)
-        + '<div style="margin:24px 0">'
+        # Boutons centrés, de même largeur (Seb, 21 octobre).
+        + '<div style="margin:24px 0;text-align:center">'
         + "".join(
-            f'<p style="margin:0 0 12px"><a href="{escape(u)}" style="display:inline-block;padding:14px 26px;'
+            f'<p style="margin:0 0 12px"><a href="{escape(u)}" style="display:inline-block;min-width:220px;padding:14px 26px;'
             'border-radius:999px;background:#d9732b;color:#ffffff;font-size:17px;font-weight:bold;'
             f'text-decoration:none">{escape(t)}</a></p>'
             for t, u in choix or [(bouton, link)]
