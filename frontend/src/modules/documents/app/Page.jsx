@@ -153,13 +153,15 @@ const leJour = (iso) => {
 // Présence et procuration (spec procurations.md §1.1 et §3) : trois choix ;
 // pour une procuration, qui me représente (recherche + liste), le texte du
 // pouvoir rempli par l'appli, la signature au doigt. `ctx` vient du serveur
-// (lien personnel) : les membres convoqués, ceux qui ont déjà assez de pouvoirs.
+// (lien personnel) : les adhérents, ceux qui ont déjà assez de pouvoirs. Un nom
+// absent de la liste s'écrit à la main (Seb, 21 octobre) ; pas de pouvoir en blanc.
 function Assembly({ block, value, onChange, disabled, ctx }) {
   const [cherche, setCherche] = useState('')
   const v = value ?? {}
   const p = block.props ?? {}
   const gens = ctx?.candidates ?? []
-  const choisir = (answer) => onChange(answer === 'proxy' ? { answer, proxy_to: v.proxy_to, signature: v.signature } : { answer })
+  const choisir = (answer) =>
+    onChange(answer === 'proxy' ? { answer, proxy_to: v.proxy_to, proxy_name: v.proxy_name, signature: v.signature } : { answer })
   const nom = v.proxy_to === 'blank' ? null : gens.find((g) => g.id === v.proxy_to)?.name ?? v.proxy_name
   const sorte = (ctx?.kind ?? p.kind) === 'extraordinary' ? 'extraordinaire' : 'ordinaire'
   const debut = ctx?.starts_at ?? p.startsAt
@@ -169,6 +171,8 @@ function Assembly({ block, value, onChange, disabled, ctx }) {
       : nom
   const filtre = sansAccents(cherche.trim())
   const liste = filtre ? gens.filter((g) => sansAccents(g.name).includes(filtre)) : gens
+  const libre = cherche.trim().replace(/\s+/g, ' ')
+  const exact = gens.some((g) => sansAccents(g.name) === sansAccents(libre))
   const ferme = disabled || ctx?.closed
   return (
     <fieldset className="ap-field ap-ag" disabled={ferme}>
@@ -198,16 +202,18 @@ function Assembly({ block, value, onChange, disabled, ctx }) {
           <input
             className="ap-input"
             type="search"
-            placeholder="Chercher un membre"
-            aria-label="Chercher un membre"
+            placeholder="Nom de la personne"
+            aria-label="Nom de la personne"
             value={cherche}
             onChange={(e) => setCherche(e.target.value)}
           />
           <div className="ap-ag__liste" role="radiogroup" aria-label="Membres">
-            <label className="ap-choice">
-              <input type="radio" name={`ag-${block.id}`} checked={v.proxy_to === 'blank'} onChange={() => onChange({ ...v, proxy_to: 'blank' })} />
-              <span>Je laisse le bureau choisir</span>
-            </label>
+            {v.proxy_to === 'other' && v.proxy_name && !libre && (
+              <label className="ap-choice">
+                <input type="radio" name={`ag-${block.id}`} checked readOnly />
+                <span>{v.proxy_name}</span>
+              </label>
+            )}
             {liste.map((g) => (
               <label key={g.id} className={`ap-choice${g.full ? ' ap-choice--off' : ''}`}>
                 <input
@@ -223,8 +229,18 @@ function Assembly({ block, value, onChange, disabled, ctx }) {
                 </span>
               </label>
             ))}
-            {!gens.length && <p className="ap-ag__note">La liste des membres s’affiche dans le lien reçu par email.</p>}
-            {gens.length > 0 && !liste.length && <p className="ap-ag__note">Personne à ce nom.</p>}
+            {libre && !exact && (
+              <label className="ap-choice">
+                <input
+                  type="radio"
+                  name={`ag-${block.id}`}
+                  checked={v.proxy_to === 'other' && v.proxy_name === libre}
+                  onChange={() => onChange({ ...v, proxy_to: 'other', proxy_name: libre })}
+                />
+                <span>{liste.length ? `Une autre personne : ${libre}` : libre}</span>
+              </label>
+            )}
+            {!gens.length && !libre && <p className="ap-ag__note">La liste des membres s’affiche dans le lien reçu par email ; vous pouvez aussi écrire un nom.</p>}
           </div>
           {v.proxy_to != null && (
             <>

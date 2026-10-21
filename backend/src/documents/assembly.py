@@ -175,13 +175,16 @@ def default_principals(docs: Documents, db: Session, node: DocNode) -> list[dict
 
 
 def candidates(docs: Documents, db: Session, node: DocNode) -> dict[int, str]:
-    """Qui peut recevoir une procuration : les convoqués ; avant le premier
-    envoi (un essai), ceux qui seront convoqués par défaut."""
-    gens = convoked(db, node)
-    if gens:
-        return gens
-    cibles = [(p["type"], p["id"]) for p in default_principals(docs, db, node)]
-    return {r.person_id: r.name for r in docs.directory.recipients(db, node.org_id, cibles)}
+    """Qui peut recevoir une procuration : n'importe quel adhérent (Seb,
+    21 octobre), c'est-à-dire les membres de la saison et les convoqués."""
+    tous = {r.person_id: r.name for r in docs.directory.recipients(db, node.org_id, list(docs.members))}
+    return {**tous, **convoked(db, node)}
+
+
+def _key(v: dict):
+    """Qui porte le pouvoir, pour le décompte : un membre (son id), un nom
+    écrit à la main ((« other », nom)), ou « blank » (anciennes réponses)."""
+    return ("other", v.get("proxy_name") or "") if v.get("proxy_to") == "other" else v.get("proxy_to")
 
 
 def _answers(db: Session, node: DocNode, block_id: str, real_only: bool = True) -> list[DocResponse]:
@@ -262,7 +265,16 @@ def check_answer(
         raise ContentError("Une procuration se donne depuis son lien personnel, reçu par email.")
     qui = v["proxy_to"]
     reponses = _answers(db, node, bloc["id"])
-    if qui != "blank":
+    avant = previous or {}
+    if qui == "blank" and not (avant.get("proxy_to") == "blank" and avant.get("signature") == v["signature"]):
+        raise ContentError("Choisissez la personne qui vous représente.")
+    if qui == "other":
+        # Un nom écrit qui est celui d'un adhérent : c'est cet adhérent.
+        trouves = [pid for pid, nom in candidates(docs, db, node).items() if _norm(nom) == _norm(v["proxy_name"])]
+        if len(trouves) == 1:
+            qui = v["proxy_to"] = trouves[0]
+            v.pop("proxy_name", None)
+    if qui not in ("blank", "other"):
         if qui == person_id:
             raise ContentError("Vous ne pouvez pas vous donner procuration à vous-même.")
         gens = candidates(docs, db, node)
@@ -285,8 +297,8 @@ def check_answer(
                 f"Vous avez reçu {len(mes_mandants)} pouvoir{'s' if len(mes_mandants) > 1 else ''} : venez à l'assemblée, "
                 f"ou prévenez {liste} pour qu'ils choisissent quelqu'un d'autre."
             )
-    avant = previous or {}
-    meme = avant.get("answer") == "proxy" and avant.get("proxy_to") == qui and avant.get("signature") == v["signature"]
+    meme = (avant.get("answer") == "proxy" and avant.get("proxy_to") == qui and avant.get("proxy_name") == v.get("proxy_name")
+            and avant.get("signature") == v["signature"])
     v["signed_at"] = avant.get("signed_at") if meme and avant.get("signed_at") else utcnow().isoformat(timespec="seconds")
     if meme and avant.get("pdf_id"):
         v["pdf_id"] = avant["pdf_id"]
@@ -366,7 +378,7 @@ def _send_copies(
     quand = f" le {when_text(p['start'])}" if p["start"] else ""
     piece = [("Pouvoir.pdf", pdf)]
     mails = []
-    if v["proxy_to"] != "blank":
+    if isinstance(v["proxy_to"], int):
         porteur = docs.directory.recipients(db, node.org_id, [("member", str(v["proxy_to"]))])
         if porteur and porteur[0].email:
             mails.append((porteur[0].email, f"{mandant} vous a donné procuration pour {assemblee}", _letter(porteur[0].name, [
@@ -566,12 +578,14 @@ def summary(docs: Documents, db: Session, node: DocNode, content: dict) -> dict 
     procurations = {pid for pid in gens if reponse(pid).get("answer") == "proxy"}
     recus: dict = {}
     for pid in sorted(procurations, key=lambda x: _norm(gens[x])):
-        recus.setdefault(reponse(pid).get("proxy_to"), []).append(pid)
+        recus.setdefault(_key(reponse(pid)), []).append(pid)
     # Un pouvoir compte si son représentant vient ; il est perdu s'il a dit
     # qu'il ne viendrait pas ; en attente tant qu'il n'a pas répondu.
     absents = {pid for pid in gens if reponse(pid).get("answer") in ("absent", "proxy")}
     perdus = sum(len(m) for qui, m in recus.items() if qui in absents)
-    portes = sum(len(m) for qui, m in recus.items() if qui == "blank" or qui in viennent)
+    # Un pouvoir à un nom écrit à la main compte, comme un pouvoir en blanc :
+    # le bureau vérifie à l'entrée.
+    portes = sum(len(m) for qui, m in recus.items() if not isinstance(qui, int) or qui in viennent)
     voix = len(viennent) + portes
     seuil = {"quarter": 4, "third": 3, "half": 2}.get(p["quorum"])
     lignes = []
@@ -590,9 +604,13 @@ def summary(docs: Documents, db: Session, node: DocNode, content: dict) -> dict 
         for r in toutes if r.is_test
     ]
     porteurs = [
-        {"name": gens.get(qui, "?"), "person_id": qui, "count": len(m), "from": [gens[x] for x in m],
+        {"name": gens.get(qui) or reponse(m[0]).get("proxy_name", "?"), "person_id": qui, "count": len(m), "from": [gens[x] for x in m],
          "lost": qui in absents, "pending": qui not in viennent and qui not in absents}
-        for qui, m in recus.items() if qui != "blank"
+        for qui, m in recus.items() if isinstance(qui, int)
+    ]
+    porteurs += [
+        {"name": f"{qui[1]} (hors liste)", "person_id": None, "count": len(m), "from": [gens[x] for x in m], "lost": False}
+        for qui, m in recus.items() if isinstance(qui, tuple)
     ]
     porteurs.sort(key=lambda h: (-h["count"], _norm(h["name"])))
     if "blank" in recus:
@@ -1040,8 +1058,8 @@ def sheet(docs: Documents, db: Session, node: DocNode, content: dict) -> dict:
     for mandant, v in reponses.items():
         if v.get("answer") != "proxy" or mandant in pointes:
             continue
-        qui = v.get("proxy_to")
-        (valides if qui == "blank" or qui in pointes else perdus).setdefault(qui, []).append(mandant)
+        qui = _key(v)
+        (valides if not isinstance(qui, int) or qui in pointes else perdus).setdefault(qui, []).append(mandant)
     represente = {m: qui for qui, ms in valides.items() for m in ms}
     lignes = []
     for pid, nom in sorted(noms.items(), key=lambda x: _norm(x[1])):
@@ -1051,7 +1069,7 @@ def sheet(docs: Documents, db: Session, node: DocNode, content: dict) -> dict:
             "person_id": pid, "name": nom, "convoked": pid in gens,
             "present": a is not None, "source": a.source if a else None,
             "answer": reponses.get(pid, {}).get("answer", "none"),
-            "represented_by": None if qui is None else "le bureau" if qui == "blank" else noms.get(qui, "?"),
+            "represented_by": None if qui is None else "le bureau" if qui == "blank" else qui[1] if isinstance(qui, tuple) else noms.get(qui, "?"),
             # Sa procuration, quand elle ne compte pas (lui présent, ou mandataire absent).
             "proxy_name": reponses.get(pid, {}).get("proxy_name") if qui is None else None,
             "holds": len(valides.get(pid, [])),

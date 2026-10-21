@@ -443,3 +443,21 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
   « Convocation AGO du … .pdf » dans le dossier de l'AG (nouvelle version s'il y est déjà). Pas
   d'archive des pouvoirs : ils sont déjà un par un dans « Pouvoirs », l'assistant le dit.
 - Pas fait : l'outil générique `app_file_pdf` pour tout fichier de base (seule la convocation l'a).
+
+## 12. Changement du 21 octobre (Seb, après essai sur téléphone)
+
+« Il faut pouvoir mettre un nom libre. Il ne faut pas pouvoir choisir le bureau. Il faut pouvoir choisir
+n'importe quel adhérent. » Cela remplace le pouvoir en blanc (§3.4, §6.2) :
+
+- **Plus de « Je laisse le bureau choisir »** : refusé par l'appli (`proxy_to: "blank"`) ; les réponses
+  déjà enregistrées ainsi restent comptées comme avant. Le réglage « Pouvoir en blanc » du bloc disparaît.
+- **N'importe quel adhérent** : la liste « Qui vous représente ? » contient les membres de la saison
+  (réglage `members`) et les convoqués, plus seulement les convoqués. Mêmes règles : pas soi-même, pas
+  de chaîne, plafond de pouvoirs. Un adhérent non convoqué qui porte un pouvoir est pointé le jour de
+  l'AG par « + Ajouter une personne » sur la feuille d'émargement.
+- **Nom libre** : le champ s'appelle « Nom de la personne » ; si le nom écrit n'est pas dans la liste,
+  « Une autre personne : <nom> » se choisit (`proxy_to: "other"`, `proxy_name`). Si le nom écrit est
+  exactement celui d'un adhérent (sans tenir compte des accents ni des majuscules), c'est cet adhérent.
+  Un nom hors liste : pas de mail au mandataire (pas d'adresse), il ne compte pas dans le plafond, et son
+  pouvoir compte dans la prévision et le jour de l'AG (le bureau vérifie à l'entrée), affiché
+  « <nom> (hors liste) » dans « Qui représente qui ».
