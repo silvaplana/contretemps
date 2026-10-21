@@ -1159,3 +1159,41 @@ h3.ap-h {
   width: 100%;
   margin-bottom: 12px;
 }
+
+/* Liste des présents en photo (proces-verbal-ag.md §1). */
+.em-photo {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.em-doute {
+  display: grid;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+
+.em-doute--ok {
+  background: var(--card-bg);
+  color: inherit;
+  border: 1px solid var(--dx-line);
+}
+
+.em-choix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.em-choix .dx-btn {
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.em-choix .dx-btn[aria-pressed='true'] {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}

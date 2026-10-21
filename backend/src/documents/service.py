@@ -111,6 +111,7 @@ class Documents:
         reserved_folders: Sequence[tuple[str, str]] = (),
         notifier: Notifier | None = None,
         members: Sequence[tuple[str, str]] = (),
+        attendance_reader=None,
     ) -> None:
         self.storage = storage
         self.directory = directory
@@ -125,6 +126,9 @@ class Documents:
         # Tous les membres, en destinataires de Diffuser (("group", "role:eleve"),
         # …) : à qui convoquer une première assemblée (procurations.md §1.3).
         self.members = tuple(members)
+        # Lecture de la liste des présents en photo (proces-verbal-ag.md §1),
+        # voir attendance_photo.AttendanceReader ; None : indisponible.
+        self.attendance_reader = attendance_reader
         from .app_files import AppFiles
         from .app_sends import AppSends
 

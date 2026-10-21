@@ -309,6 +309,106 @@ def test_relance_sept_jours_avant(client, ecole, ag, mails, db_session):
     assert trace.detail == {"count": 3}
 
 
+# --- Procès-verbal, étape 1 : la liste des présents en photo (proces-verbal-ag.md §1) ---
+
+
+class LecteurFactice:
+    """Remplace la lecture par Claude : rend les lignes données, en gardant
+    ce qu'on lui a demandé."""
+
+    actif = True
+
+    def __init__(self, lignes):
+        self.lignes = lignes
+        self.appels = []
+
+    def read(self, db, org_id, pages, people):
+        from documents.attendance_photo import ReadLine
+
+        self.appels.append((org_id, [t for _, t in pages], dict(people)))
+        return [ReadLine(**l) for l in self.lignes(people)]
+
+
+def _id(people, nom):
+    return next(pid for pid, n in people.items() if n == nom)
+
+
+def test_photo_de_la_liste_des_presents(client, ecole, ag, mails, db_session, monkeypatch):
+    from app import main
+
+    admin, ident = ag["admin"], ag["id"]
+    leon = lien(mails, "leon@exemple.fr")
+    candidats = client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"]
+    ana = next(g["id"] for g in candidats if g["name"] == "Ana Roux")
+    assert procuration(client, leon, ana).status_code == 201
+
+    lecteur = LecteurFactice(lambda people: [
+        {"written": "Ana Roux", "person_id": _id(people, "Ana Roux"), "candidates": [], "doubt": None},
+        {"written": "J. Dho", "person_id": None, "candidates": [_id(people, "Julia Dho"), 999999], "doubt": "Initiale seulement"},
+        {"written": "Marcel Inconnu", "person_id": None, "candidates": [], "doubt": None},
+        {"written": "Ana R.", "person_id": _id(people, "Ana Roux"), "candidates": [], "doubt": None},  # doublon
+        {"written": "Pirate", "person_id": 424242, "candidates": [], "doubt": None},  # hors de la liste
+    ])
+    monkeypatch.setattr(main.documents_client, "attendance_reader", lecteur)
+    url = f"{admin.base}/nodes/{ident}/app/attendance"
+    photo = ("files", ("liste.jpg", b"\xff\xd8\xff photo", "image/jpeg"))
+    r = admin.c.post(f"{url}/photo", files=[photo, ("files", ("page2.png", b"\x89PNG", "image/png"))], headers=admin.h)
+    assert r.status_code == 200, r.text
+    lu = r.json()
+    assert lecteur.appels[0][1] == ["image/jpeg", "image/png"]
+    assert set(lecteur.appels[0][2].values()) == {"Julia Dho", "Ima Blanc", "Léon Perrin", "Ana Roux"}
+    assert [(p["name"], p["written"]) for p in lu["sure"]] == [("Ana Roux", "Ana Roux")]
+    assert lu["doubts"] == [{"written": "J. Dho", "reason": "Initiale seulement",
+                             "candidates": [{"person_id": ecole["admin"].id, "name": "Julia Dho"}]}]
+    assert [u["written"] for u in lu["unknown"]] == ["Marcel Inconnu", "Pirate"]
+    # Les photos sont rangées dans le dossier de l'AG ; rien n'est encore pointé.
+    noms = set(_par_nom(admin.racine(dossier=ag["folder"])))
+    assert {"Liste des présents.jpg", "Liste des présents (page 2).png"} <= noms
+    assert lu["photos"] == ["Liste des présents.jpg", "Liste des présents (page 2).png"]
+    assert admin.get(f"/nodes/{ident}/app/attendance").json()["present"] == 0
+
+    # « Continuer » : on pointe les présents retenus, d'un coup.
+    r = admin.c.post(f"{url}/batch", json={"person_ids": [ana, ecole["admin"].id]}, headers=admin.h)
+    s = r.json()
+    assert (s["present"], s["represented"], s["votes"]) == (2, 1, 3)
+    assert {r["source"] for r in s["rows"] if r["present"]} == {"photo"}
+    # Une autre école ne lit pas cette AG.
+    voisin = Docs(client, ecole["id"], ecole["admin_voisin"])
+    assert voisin.c.post(f"{url}/photo", files=[photo], headers=voisin.h).status_code in (403, 404)
+
+
+def test_photo_sans_lecture_configuree(client, ecole, ag, monkeypatch):
+    from app import main
+
+    class Eteint:
+        actif = False
+
+    monkeypatch.setattr(main.documents_client, "attendance_reader", Eteint())
+    admin = ag["admin"]
+    r = admin.c.post(
+        f"{admin.base}/nodes/{ag['id']}/app/attendance/photo", files=[("files", ("l.jpg", b"x", "image/jpeg"))], headers=admin.h
+    )
+    assert r.status_code == 503 and "cochez les présents" in r.json()["detail"]
+
+
+def test_presents_par_l_assistant(client, ecole, ag, db_session):
+    """L'assistant lit lui-même la photo envoyée dans la discussion, puis
+    pointe les présents par leur nom, sur une carte Faire / Annuler."""
+    from app import main
+
+    actions = main.assistant_client.actions
+    admin = ecole["admin"]
+    proposer = lambda args: actions.propose(db_session, admin, ecole["id"], admin.id, "mark_attendance", args)  # noqa: E731
+    nom = "Convocation AGO du 21 novembre 2099"
+    texte, carte = proposer({"file": nom, "names": ["ana roux", "Dupont"]})
+    assert carte is None and "Dupont" in texte
+    _, carte = proposer({"file": nom, "names": ["Ana ROUX", "Perrin Léon"]})
+    assert carte["lignes"] == [f"Pointer présents pour « {nom} » : Ana Roux, Léon Perrin (2 personnes)"]
+    assert actions.execute(db_session, ecole["id"], admin.id, carte["jeton"])[0]["ok"]
+    s = ag["admin"].get(f"/nodes/{ag['id']}/app/attendance").json()
+    assert s["present"] == 2
+
+
 def test_assistant_etat_relance_et_pdf(client, ecole, ag, mails, db_session):
     """Étape 4 (procurations.md §1.4) : l'assistant lit où en est l'AG
     (chiffres de l'appli), relance les sans-réponse comme le bouton de

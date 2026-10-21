@@ -39,6 +39,13 @@ class AppFile(BaseModel):
     file: str = Field(min_length=1, max_length=200, description="Nom exact du fichier (ex. « Convocation AGO du 21 novembre 2026 ») ou son id.")
 
 
+class MarkAttendance(AppFile):
+    names: list[str] = Field(
+        min_length=1, max_length=500,
+        description="Les noms des présents, « Prénom Nom », tels que tu les as lus sur la photo et vérifiés avec la personne.",
+    )
+
+
 class AssemblyPdf(BaseModel):
     file: str = Field(min_length=1, max_length=200, description="Nom exact de la convocation (ex. « Convocation AGO du 21 novembre 2026 ») ou son id.")
     document: Literal["summary", "convocation"] = Field(
@@ -138,6 +145,28 @@ def actions(docs: Documents) -> list[Action]:
 
         return Ligne(f"Envoyer « {node.name} » par email à {apercu['count']} membre{'s' if apercu['count'] > 1 else ''} ({liste}){sans}", faire)
 
+    def mark_attendance(db: Session, compte, org_id: int, p: MarkAttendance) -> Ligne:
+        member = _member(db, compte, org_id)
+        node = _file(docs, db, member, p.file)
+        version = docs.apps.current_version(db, node)
+        if version is None or assembly.block_of(version.content) is None:
+            raise Refus(f"« {node.name} » n'est pas une convocation d'AG")
+        if node.status != "official":
+            raise Refus(f"« {node.name} » n'est pas encore officielle")
+        gens = assembly.convoked(db, node)
+        ids, restes = assembly.match_names(gens, p.names)
+        if restes:
+            raise Refus(
+                f"pas de membre convoqué unique pour : {', '.join(restes)}. Demande à la personne qui c'est "
+                "(nom et prénom complets), ou ajoute-le à la main sur la feuille d'émargement."
+            )
+        noms = ", ".join(gens[i] for i in ids)
+
+        def faire(db: Session) -> None:
+            _refus(lambda: assembly.mark_many(docs, db, member, node.id, ids))
+
+        return Ligne(f"Pointer présents pour « {node.name} » : {noms} ({len(ids)} personne{'s' if len(ids) > 1 else ''})", faire)
+
     def remind(db: Session, compte, org_id: int, p: AppFile) -> Ligne:
         member = _member(db, compte, org_id)
         node = _file(docs, db, member, p.file)
@@ -176,6 +205,11 @@ def actions(docs: Documents) -> list[Action]:
         return Ligne(f"Ranger « {assembly.stored_name(node, p.document)} » dans {ou}", faire)
 
     return [
+        Action("mark_attendance", "Docs",
+               "Pointe les présents d'une assemblée générale sur la feuille d'émargement de sa convocation (comme "
+               "« Lire la liste » après la photo de la liste des présents). Lis toi-même la photo envoyée, vérifie avec "
+               "la personne les noms dont tu n'es pas sûr, puis donne les noms. Le quorum est recalculé par l'appli.",
+               MarkAttendance, mark_attendance),
         Action("convene_assembly", "Docs",
                "Convoquer l'assemblée générale (comme Docs › + › Convoquer l'AG) : prépare la convocation en brouillon, "
                "avec l'ordre du jour de l'an dernier ou un ordre du jour de base, rangée dans Réunions. Demande d'abord "

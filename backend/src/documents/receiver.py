@@ -92,6 +92,10 @@ class Mark(BaseModel):
     present: bool
 
 
+class MarkMany(BaseModel):
+    person_ids: list[int]
+
+
 class Convene(BaseModel):
     kind: str
     starts_at: str = Field(max_length=40)
@@ -395,6 +399,18 @@ class DocumentsReceiver:
         @self.app.put(base + "/nodes/{node_id}/app/attendance/{person_id}")
         def mark(org_id: int, node_id: int, person_id: int, data: Mark, db: Session = db_dep, m: Member = member):
             return appel(lambda: assembly.mark(self.client, db, self._member(org_id, m), node_id, person_id, data.present))
+
+        # Procès-verbal, étape 1 : la liste des présents en photo (proces-verbal-ag.md §1)
+        @self.app.post(base + "/nodes/{node_id}/app/attendance/photo")
+        def attendance_photo(
+            org_id: int, node_id: int, files: list[UploadFile] = File(...), db: Session = db_dep, m: Member = member
+        ):
+            pages = [(f.file.read(), f.content_type or "") for f in files]
+            return appel(lambda: assembly.read_photo(self.client, db, self._member(org_id, m), node_id, pages))
+
+        @self.app.post(base + "/nodes/{node_id}/app/attendance/batch")
+        def attendance_batch(org_id: int, node_id: int, data: MarkMany, db: Session = db_dep, m: Member = member):
+            return appel(lambda: assembly.mark_many(self.client, db, self._member(org_id, m), node_id, data.person_ids))
 
         @self.app.post(base + "/nodes/{node_id}/app/assembly/remind", status_code=201)
         def remind(org_id: int, node_id: int, taches: BackgroundTasks, db: Session = db_dep, m: Member = member):
