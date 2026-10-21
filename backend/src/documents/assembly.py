@@ -1069,3 +1069,95 @@ def store_sheet(docs: Documents, db: Session, member: Member, node_id: int) -> d
     cree = docs.upload(db, member, node.space, node.parent_id, nom, io.BytesIO(pdf))
     return {"id": cree["id"], "name": cree.get("name", nom)}
 
+
+
+# ----------------------------------------------------------------------
+# Procès-verbal, étape 1 : la liste des présents en photo
+# (proces-verbal-ag.md §1 et §4)
+# ----------------------------------------------------------------------
+
+PHOTO_NAME = "Liste des présents"
+PHOTO_EXT = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif", "application/pdf": ".pdf"}
+
+
+def _store_file(docs: Documents, db: Session, member: Member, node: DocNode, nom: str, data: bytes) -> None:
+    """Range un fichier à côté de la convocation (nouvelle version s'il y est déjà)."""
+    deja = db.scalar(select(DocNode).where(
+        DocNode.parent_id == node.parent_id, DocNode.name == nom, DocNode.kind == "file", DocNode.deleted_at.is_(None),
+    ))
+    if deja is not None:
+        docs.new_version(db, member, deja.id, nom, io.BytesIO(data))
+    else:
+        docs.upload(db, member, node.space, node.parent_id, nom, io.BytesIO(data))
+
+
+def read_photo(docs: Documents, db: Session, member: Member, node_id: int, pages: list[tuple[bytes, str]]) -> dict:
+    """« Lire la liste » : les photos rangées dans le dossier de l'AG, puis lues.
+    Rien n'est pointé ici : la personne vérifie d'abord (`mark_many`). Les
+    numéros rendus par la lecture sont recontrôlés : seulement des convoqués."""
+    from .attendance_photo import PhotoUnreadable
+    from .service import DocError
+
+    node, _ = _node_for(docs, db, member, node_id)
+    if node.status != "official":
+        raise DocError(409, "La liste des présents se lit quand la convocation est officielle.")
+    if not pages:
+        raise DocError(422, "Prenez la liste des présents en photo.")
+    lecteur = docs.attendance_reader
+    if lecteur is None or not lecteur.actif:
+        raise DocError(503, "La lecture des photos n'est pas disponible : cochez les présents sur la feuille d'émargement.")
+    noms = []
+    for i, (data, mime) in enumerate(pages, start=1):
+        nom = PHOTO_NAME + ("" if i == 1 else f" (page {i})") + PHOTO_EXT.get(mime, ".jpg")
+        _store_file(docs, db, member, node, nom, data)
+        noms.append(nom)
+    gens = convoked(db, node)
+    try:
+        lignes = lecteur.read(db, node.org_id, pages, gens)
+    except PhotoUnreadable as erreur:
+        raise DocError(422, str(erreur)) from erreur
+    surs, doutes, inconnus, vus = [], [], [], set()
+    for l in lignes:
+        if l.person_id in gens and not l.doubt:
+            if l.person_id not in vus:
+                vus.add(l.person_id)
+                surs.append({"person_id": l.person_id, "name": gens[l.person_id], "written": l.written})
+            continue
+        possibles = [p for p in dict.fromkeys([*([l.person_id] if l.person_id else []), *l.candidates]) if p in gens]
+        if possibles:
+            doutes.append({
+                "written": l.written, "reason": l.doubt or "À vérifier",
+                "candidates": [{"person_id": p, "name": gens[p]} for p in possibles],
+            })
+        else:
+            inconnus.append({"written": l.written})
+    surs.sort(key=lambda x: _norm(x["name"]))
+    return {"sure": surs, "doubts": doutes, "unknown": inconnus, "photos": noms}
+
+
+def mark_many(docs: Documents, db: Session, member: Member, node_id: int, person_ids: list[int], source: str = "photo") -> dict:
+    """Pointe présents plusieurs personnes d'un coup (« Continuer » après la
+    photo, ou l'assistant). Ceux déjà pointés le restent."""
+    s = None
+    for pid in dict.fromkeys(person_ids):
+        s = mark(docs, db, member, node_id, pid, True, source=source)
+    return s if s is not None else attendance(docs, db, member, node_id)
+
+
+def match_names(people: dict[int, str], names: list[str]) -> tuple[list[int], list[str]]:
+    """Rapproche des noms écrits proprement (« Ana Roux », « ROUX Ana ») des
+    convoqués : (numéros trouvés, noms sans membre unique)."""
+    index: dict[str, list[int]] = {}
+    for pid, nom in people.items():
+        mots = _norm(nom).split()
+        for cle in {" ".join(mots), " ".join(reversed(mots)), " ".join(sorted(mots))}:
+            index.setdefault(cle, []).append(pid)
+    trouves, restes = [], []
+    for nom in names:
+        mots = _norm(nom).split()
+        possibles = set(index.get(" ".join(mots), [])) | set(index.get(" ".join(sorted(mots)), []))
+        if len(possibles) == 1:
+            trouves.append(possibles.pop())
+        else:
+            restes.append(nom)
+    return list(dict.fromkeys(trouves)), restes

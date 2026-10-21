@@ -103,6 +103,14 @@ export function documentsApi(orgId) {
     attendance: (id) => appel(`${base}/nodes/${id}/app/attendance`),
     mark: (id, personId, present) => appel(`${base}/nodes/${id}/app/attendance/${personId}`, json('PUT', { present })),
     storeSheet: (id) => appel(`${base}/nodes/${id}/app/attendance/pdf`, { method: 'POST' }),
+    // Liste des présents en photo (proces-verbal-ag.md §1) : lue, rien pointé ;
+    // puis on pointe d'un coup ceux qu'on a retenus.
+    readAttendancePhoto: (id, files) => {
+      const donnees = new FormData()
+      for (const f of files) donnees.append('files', f, f.name)
+      return appel(`${base}/nodes/${id}/app/attendance/photo`, { method: 'POST', body: donnees })
+    },
+    markMany: (id, personIds) => appel(`${base}/nodes/${id}/app/attendance/batch`, json('POST', { person_ids: personIds })),
     // « summary.pdf », « summary.xlsx » ou « convocation.pdf ».
     assemblyFile: async (id, what) => {
       const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/assembly/${what}`)

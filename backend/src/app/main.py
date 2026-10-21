@@ -34,6 +34,7 @@ from ecoles.actions import actions as actions_ecoles
 from eleves.actions import actions as actions_eleves
 from db import Base, SessionLocal, engine
 from documents import Documents, DocumentsReceiver, LocalStorage
+from documents.attendance_photo import AttendanceReader
 from documents_contretemps import (
     DOSSIER_DOCUMENTS,
     TAILLE_MAX_MO,
@@ -301,6 +302,9 @@ documents_client = Documents(
     notifier=NotifieurDocuments(notifications_client),
     # Convoquer une première AG : tous les membres de la saison.
     members=(("group", "role:eleve"), ("group", "role:professeur"), ("group", "role:admin")),
+    attendance_reader=AttendanceReader(
+        note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "liste_presents", cout, detail),
+    ),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.

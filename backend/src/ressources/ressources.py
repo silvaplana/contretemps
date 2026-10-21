@@ -30,6 +30,7 @@ CATEGORIES_IA = {
     "bilan_financier": "Financier : analyse des bilans",
     "assemblee_generale": "Financier : PowerPoint des assemblées générales",
     "previsionnel": "Financier : prévisionnels",
+    "liste_presents": "Assemblée générale : lecture de la liste des présents",
 }
 
 # Postes comptés dans le plafond mensuel de l'assistant (la lecture des

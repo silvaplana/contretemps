@@ -121,13 +121,12 @@ présents.jpg »). Mêmes droits que le dossier (bureau, profs).
 
 ## 4. L'assistant fait la même chose (un bouton = un outil)
 
-Déclarés dans `documents/actions.py`, mêmes droits que l'écran (niveau `manage` sur le dossier de l'AG).
+Déclarés dans `documents_contretemps/actions.py` (comme ceux des procurations), mêmes droits que l'écran (niveau `manage` sur le dossier de l'AG).
 
 | Étape à l'écran | Outil | Carte |
 |---|---|---|
 | Produire le PV d'AG (trouver l'AG) | `start_minutes(folder_id?)` : renvoie l'AG trouvée ou la liste si plusieurs | aucune |
-| Lire la liste | `read_attendance_photo(node_id, image)` : noms reconnus, doutes | aucune |
-| Choisir / ajouter / Continuer | `save_attendance(node_id, person_ids)` : enregistre les présents, renvoie le quorum calculé | Faire / Annuler (nombres et noms écrits par le code) |
+| Lire la liste, Choisir, Pointer les N présents | `mark_attendance(file, names)` : l'assistant lit lui-même la photo envoyée dans la discussion, vérifie les doutes avec la personne, puis donne les noms ; l'appli les rapproche des convoqués (un seul membre par nom, sinon refus avec les noms à préciser) et pointe ; le quorum est recalculé par l'appli | Faire / Annuler (noms et nombre écrits par le code) |
 | Proposer le procès-verbal | `draft_minutes(node_id)` : crée le PV en Brouillon | aucune (un brouillon s'efface) |
 | Écrire dans le texte | `modifier_fichier_appli` (existe déjà) | Annuler sous la modification |
 | Valider | `validate_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
@@ -183,10 +182,22 @@ Prérequis : l'étape 1 des procurations (PR #34, en ligne le 21 octobre) et la 
    `a4c6e8f0b2d5`, `PUT /administrateurs/{id}` avec `bureau_functions`, action `change_roles`) : la coche Trésorier renommée « Accès au Financier » à l'écran, colonne
    Bureau dans École › Administrateurs, `bureau_functions`, recopie
    à la création de saison, outil de l'assistant pour la changer (mêmes droits que les coches).
-1. **La liste des présents** : photo, lecture, rapprochement, doutes, écran du quorum (repris de
-   la feuille d'émargement, `assembly.sheet`), outils `start_minutes`, `read_attendance_photo`, `save_attendance`.
-   *Vérification* : tests du rapprochement (homonymes, initiales, inconnu), du comptage (procuration
-   annulée par la présence, pouvoir perdu), de l'étanchéité ; essai avec une vraie photo de feuille.
+1. **La liste des présents** (codée le 21 octobre). Dans la feuille d'émargement de la convocation,
+   en tête : **Prendre en photo la liste des présents** (une ou plusieurs pages, réduites dans le
+   téléphone avant l'envoi). Le serveur range les photos dans le dossier de l'AG (« Liste des
+   présents.jpg », « Liste des présents (page 2).jpg », nouvelle version si elles y sont déjà) et
+   les fait lire (`documents/attendance_photo.py`, Opus, coût noté dans Ressources « Assemblée
+   générale : lecture de la liste des présents ») avec la liste des convoqués ; les numéros rendus
+   sont recontrôlés (seulement des convoqués, sans doublon). Écran **N présents reconnus** : les
+   doutes en jaune avec un bouton par membre possible et « Personne », les noms sûrs cochés, les
+   noms qui ne sont pas des convoqués listés (à ajouter ensuite par « + Ajouter une personne »).
+   **Pointer les N présents** reste grisé tant qu'un doute n'est pas tranché ; il pointe tout le
+   monde d'un coup (`source = photo`), sans dépointer ceux déjà pointés, et l'on revient à la
+   feuille avec le quorum recalculé. Routes `POST …/nodes/{id}/app/attendance/photo` (fichiers
+   `files`, rien n'est pointé) et `POST …/app/attendance/batch` (`person_ids`). Sans clé d'API : 503
+   « cochez les présents sur la feuille d'émargement ». Outil `mark_attendance` (§4).
+   *Vérification* : tests de la lecture (sûrs, doutes, inconnus, doublon, numéro hors liste,
+   photos rangées), du pointage groupé et du quorum, de l'étanchéité, de l'outil de l'assistant.
 2. **Le PV** : bandeau et tuile, gabarit, proposition à partir du PV de l'an dernier, contrôle des
    chiffres, aperçu modifiable, Valider, envoi pour signature au bureau, suivi, passage en Officiel
    quand tous ont signé, PDF avec signatures et annexes, rangement, outil `draft_minutes`.
