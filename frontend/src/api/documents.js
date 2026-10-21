@@ -46,6 +46,9 @@ export function documentsApi(orgId) {
     recent: () => appel(`${base}/recent`),
     emptyTrash: (space) => appel(`${base}/spaces/${space}/trash`, { method: 'DELETE' }),
     detail: (id) => appel(`${base}/nodes/${id}`),
+    // Adresse signée du fichier, que le navigateur ouvre sans la session
+    // (PDF dans la visionneuse du téléphone).
+    lienFichier: async (id) => new URL(`${BASE_URL}${(await appel(`${base}/nodes/${id}/link`)).url}`, window.location.href).href,
     createFolder: (space, parentId, name) => appel(`${base}/folders`, json('POST', { space, parent_id: parentId, name })),
     upload: (space, parentId, file) => {
       const donnees = new FormData()

@@ -65,6 +65,9 @@ ROUTES_PUBLIQUES = {
     # Vidéo d'un message, lue par la balise <video> : lien signé aussi
     # (spec/modules/messagerie-instantanee.md §4.5).
     ("GET", "/attachments/{attachment_id}/video"),
+    # PDF des Docs, ouvert par la visionneuse du téléphone : lien signé aussi
+    # (documents_contretemps/lien_fichier.py).
+    ("GET", "/documents/fichiers/{node_id}"),
     # Édition OnlyOffice : appelées par le serveur OnlyOffice, protégées par
     # un jeton signé dans l'adresse (voir bureautique/).
     ("GET", "/bureautique/fichier/{jeton}"),

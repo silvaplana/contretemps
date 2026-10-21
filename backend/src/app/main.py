@@ -67,6 +67,7 @@ from notes_frais_contretemps import (
     NotifieurContretemps,
     membre_appelant as membre_notes_frais,
 )
+from documents_contretemps import lien_fichier
 from documents_contretemps.actions import actions as actions_documents
 from notes_frais_contretemps.actions import actions as actions_notes_frais
 from finances import Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
@@ -309,6 +310,8 @@ documents_client = Documents(
     association=AssociationContretemps(),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
+# PDF ouvert dans la visionneuse du téléphone, par un lien signé.
+lien_fichier.brancher(app, documents_client, membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.
 personnalisation_client.page_existe = documents_client.apps.page_exists
 # Création de saison : « recopier le dossier de la saison précédente ».

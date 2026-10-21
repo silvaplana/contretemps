@@ -1389,7 +1389,9 @@ Détails :
   changeant d'écran (comme les vidéos aujourd'hui). Partage depuis une autre appli Android vers
   AppBase via `share_target` du manifeste PWA (phase 2).
 - **Déplacer** : feuille plein écran qui navigue dans les dossiers, bouton « Déplacer ici ».
-- **Ouvrir** : image → visionneuse plein écran ; PDF → lecteur pdf.js ; Office → aperçu PDF converti
+- **Ouvrir** : image → visionneuse plein écran ; PDF → affiché dans la page sur ordinateur, et sur
+  téléphone ouvert directement dans la visionneuse PDF du téléphone (Seb, 21 octobre : pas d'écran
+  intermédiaire), par une adresse signée à durée limitée ; Office → aperçu PDF converti
   si disponible, sinon téléchargement et ouverture dans l'appli du téléphone ; vidéo → lecteur natif
   avec vignette ; document vivant → écran du module propriétaire.
 - **États vides illustrés** : un dossier vide montre une illustration légère et deux boutons
