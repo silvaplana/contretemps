@@ -40,7 +40,7 @@ from .models import (
     StoredFile,
     utcnow,
 )
-from .ports import DEFAULT_PRIVATE_EDITORS, Directory, Mailer, Member, Notifier, Periods, Principal
+from .ports import DEFAULT_PRIVATE_EDITORS, Association, Directory, Mailer, Member, Notifier, Periods, Principal
 from .preview import can_preview, convert_to_pdf
 from .storage import LocalStorage, guess_mime, make_thumbnail
 
@@ -112,6 +112,7 @@ class Documents:
         notifier: Notifier | None = None,
         members: Sequence[tuple[str, str]] = (),
         attendance_reader=None,
+        association: Association | None = None,
     ) -> None:
         self.storage = storage
         self.directory = directory
@@ -129,6 +130,9 @@ class Documents:
         # Lecture de la liste des présents en photo (proces-verbal-ag.md §1),
         # voir attendance_photo.AttendanceReader ; None : indisponible.
         self.attendance_reader = attendance_reader
+        # Bureau, adresse de contact et bilan officiel, pour le procès-verbal
+        # d'AG (proces-verbal-ag.md §5) ; None : rien de tout cela.
+        self.association = association
         from .app_files import AppFiles
         from .app_sends import AppSends
 
@@ -1003,6 +1007,12 @@ class Documents:
         node.status = status
         node.updated_by, node.updated_at = member.person_id, utcnow()
         self._log(db, member, node, "status", {"from": avant, "to": status})
+        if node.kind == KIND_APP and status in (None, "draft"):
+            from . import minutes
+
+            version = self.apps.current_version(db, node)
+            if version is not None and minutes.block_of(version.content) is not None:
+                minutes.reset_signatures(db, node)
 
     def set_family(self, db: Session, node: DocNode, family: str | None) -> None:
         """Famille calculée à partir du contenu (§7.1 bis) ; réservé aux

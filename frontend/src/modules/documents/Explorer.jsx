@@ -4,6 +4,7 @@ import { documentsApi } from '../../api/documents.js'
 import FolderPicker from './FolderPicker.jsx'
 import NewScreen from './NewScreen.jsx'
 import ConvoquerAG from './ConvoquerAG.jsx'
+import ProduirePV from './ProduirePV.jsx'
 import PourQui from './PourQui.jsx'
 import { texteDuLien, useOuvrirDocs } from './lienDocs.js'
 import { envoyerDansLaMessagerie } from '../../utils/envoyerA.js'
@@ -158,6 +159,10 @@ export default function Explorer({ orgId, memoire }) {
   // Fichier de l'appli ouvert (fichier de base, spec fichier-de-base.md).
   const [appli, setAppli] = useState(aOuvrir)
   const [convoquer, setConvoquer] = useState(false)
+  // Produire le PV d'AG (proces-verbal-ag.md §1) : { folderId } ; et le
+  // bandeau « L'assemblée a eu lieu » dans le dossier d'une AG passée sans PV.
+  const [pv, setPv] = useState(null)
+  const [agPassee, setAgPassee] = useState(false)
   const [choix, setChoix] = useState(null) // { items, mode: 'move' | 'copy' }
   const [nom, setNom] = useState(null) // { mode: 'folder' | 'rename', item?, value }
   const [corbeille, setCorbeille] = useState(false)
@@ -226,6 +231,16 @@ export default function Explorer({ orgId, memoire }) {
   useEffect(() => {
     recharger()
   }, [recharger])
+
+  useEffect(() => {
+    if (space !== 'private' || folder == null || !data) return
+    let actif = true
+    api.minutesPending(folder).then((r) => actif && setAgPassee(r.items.length > 0), () => {})
+    return () => {
+      actif = false
+      setAgPassee(false)
+    }
+  }, [api, space, folder, data])
 
   const rechercheActive = recherche != null && recherche.trim().length >= 2
   // « Récents » (arborescence sur ordinateur) : les derniers fichiers
@@ -1184,6 +1199,14 @@ export default function Explorer({ orgId, memoire }) {
         {data?.shared_with_me && !resultats && (
           <p className="dx-note dx-note--pad">Voici ce qu’on a partagé avec vous.</p>
         )}
+        {agPassee && !resultats && (
+          <div className="dx-bandeau">
+            <span>L’assemblée a eu lieu.</span>
+            <button type="button" className="dx-btn dx-btn--small" onClick={() => setPv({ folderId: folder })}>
+              Produire le PV d’AG
+            </button>
+          </div>
+        )}
         {dossiers.length > 0 && <div className="dx-grp">Dossiers</div>}
         {dossiers.length > 0 && (
           <div className="dx-dirs">
@@ -1422,6 +1445,10 @@ export default function Explorer({ orgId, memoire }) {
             setNouveau(false)
             setConvoquer(true)
           }}
+          onMinutes={() => {
+            setNouveau(false)
+            setPv({ folderId: null })
+          }}
           onNewApp={async (famille) => {
             try {
               const f = await api.createApp(space, folder, famille)
@@ -1442,6 +1469,20 @@ export default function Explorer({ orgId, memoire }) {
           onClose={() => setConvoquer(false)}
           onCreated={async (f) => {
             setConvoquer(false)
+            await recharger()
+            setAppli({ id: f.id, name: f.name, kind: 'app', family: 'question' })
+          }}
+        />
+      )}
+
+      {pv && (
+        <ProduirePV
+          api={api}
+          folderId={pv.folderId}
+          onClose={() => setPv(null)}
+          onToast={montrerToast}
+          onCreated={async (f) => {
+            setPv(null)
             await recharger()
             setAppli({ id: f.id, name: f.name, kind: 'app', family: 'question' })
           }}

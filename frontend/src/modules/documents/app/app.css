@@ -1197,3 +1197,10 @@ h3.ap-h {
   color: var(--accent-contrast);
   border-color: var(--accent);
 }
+
+/* Produire le PV d'AG (proces-verbal-ag.md §1) */
+.pv-corps {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}

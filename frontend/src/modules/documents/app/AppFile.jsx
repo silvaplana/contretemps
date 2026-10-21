@@ -3,6 +3,7 @@ import Assistant from '../Assistant.jsx'
 import { BubbleIcon, FamilyDot, StatusIcon } from '../icons.jsx'
 import { FAMILIES, STATUSES } from '../kinds.js'
 import AssemblySend from './AssemblySend.jsx'
+import MinutesSign from './MinutesSign.jsx'
 import Diffuser from './Diffuser.jsx'
 import Editor from './Editor.jsx'
 import AssemblyRemind from './AssemblyRemind.jsx'
@@ -10,7 +11,7 @@ import Emargement from './Emargement.jsx'
 import Page from './Page.jsx'
 import Results, { exampleRows } from './Results.jsx'
 import FamilyCards from './FamilyCards.jsx'
-import { assemblyBlock, dropForFamily, openingTab, questions, resultBlocks, tabReason, telecharger } from './blocks.js'
+import { assemblyBlock, dropForFamily, minutesBlock, openingTab, questions, resultBlocks, tabReason, telecharger } from './blocks.js'
 import './app.css'
 
 // Le fichier de base ouvert en plein écran (spec fichier-de-base.md) :
@@ -343,6 +344,9 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         }}
       />
     )
+  } else if (tab === 'diffuse' && minutesBlock(c) && statut !== 'draft' && !diffuserTout) {
+    // Procès-verbal d'AG : signatures du bureau, puis envoi aux membres.
+    corps = <MinutesSign file={file} api={api} onToast={onToast} onChanger={() => setDiffuserTout(true)} />
   } else if (tab === 'diffuse') {
     corps = (
       <Diffuser
@@ -531,7 +535,12 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
                       <span className={`af-status af-status--${cle} af-status--icon`}><StatusIcon status={cle} /></span>
                       <span className="dx-meta">
                         <span className="dx-n">{s.label}{cle === statut && ' ✓'}</span>
-                        <span className="dx-s">{interdit ?? { draft: 'On prépare, rien n’est diffusé', validated: 'Relu, prêt à être diffusé', official: 'Contenu figé, on collecte les réponses' }[cle]}</span>
+                        <span className="dx-s">
+                          {interdit ??
+                            (minutesBlock(c)
+                              ? { draft: statut === 'draft' ? 'On écrit le procès-verbal' : 'Pour corriger le texte : les signatures déjà faites s’effacent', validated: 'Texte figé, prêt à envoyer pour signature', official: 'Signé par tous' }
+                              : { draft: 'On prépare, rien n’est diffusé', validated: 'Relu, prêt à être diffusé', official: 'Contenu figé, on collecte les réponses' })[cle]}
+                        </span>
                       </span>
                     </button>
                   )

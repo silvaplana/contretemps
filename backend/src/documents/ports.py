@@ -103,6 +103,32 @@ class Notifier(Protocol):
         """Prévient ces personnes ; ne lève jamais d'exception."""
 
 
+@dataclass(frozen=True)
+class BoardMember:
+    """Une personne du bureau (fonctions : "president", "vice_president",
+    "secretary", "treasurer")."""
+
+    person_id: int
+    name: str
+    functions: tuple[str, ...]
+
+
+class Association(Protocol):
+    """Ce que le procès-verbal d'AG lit de l'appli hôte
+    (proces-verbal-ag.md §5)."""
+
+    def board(self, db: Session, org_id: int) -> list[BoardMember]:
+        """Les membres du bureau d'aujourd'hui, avec leurs fonctions."""
+
+    def contact_email(self, db: Session, org_id: int) -> str | None:
+        """L'adresse de contact de l'organisation (à défaut, celle de
+        l'administrateur principal)."""
+
+    def approved_report(self, db: Session, org_id: int) -> dict | None:
+        """Le dernier bilan financier officiel : {"season", "income",
+        "expense", "result"} en euros ; None s'il n'y en a pas."""
+
+
 class Periods(Protocol):
     """Saisons (ou exercices) de l'organisation."""
 

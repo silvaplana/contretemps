@@ -99,7 +99,7 @@ export default function PagePublique({ slug, jeton }) {
               onSubmit={page.accepting ? repondre : undefined}
               initial={page.values ?? choixDuMail(page.assembly)}
               assembly={page.assembly ? { ...page.assembly, person: page.person } : undefined}
-              submitLabel={page.values ? 'Enregistrer ma réponse' : undefined}
+              submitLabel={page.signer ? 'Signer' : page.values ? 'Enregistrer ma réponse' : undefined}
             />
             {envoiErreur && <p className="pp-erreur" role="alert">{envoiErreur}</p>}
           </>

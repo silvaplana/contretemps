@@ -82,16 +82,20 @@ quorum et s'il est atteint, l'ordre du jour (celui de la convocation), les noms 
 pour le point « rapport financier », recettes, dépenses et résultat du **bilan Officiel** de la saison
 (Financier › Bilan, `financier.md` §4 ; sans bilan Officiel, « À compléter »).
 
-**Ce que propose le modèle de langage** (jamais nommé « IA » à l'écran) : le plan et les formules du
-**PV de l'année précédente** (même sorte d'assemblée, rangé dans un dossier d'AG de la saison d'avant),
-sinon un PV de base ; une phrase d'introduction par point de l'ordre du jour ; « À compléter : … » pour
-ce qu'il ne sait pas (ce qui a été dit, les votes, les élus, l'heure de fin). Pas d'écran des votes ni
-des résolutions : **le secrétaire écrit les résultats des votes dans le texte** (Seb, 20 octobre).
-**Il n'écrit aucun chiffre** : tout nombre de sa proposition qui ne vient pas de l'appli est signalé en
-jaune « à vérifier » (même contrôle que le PowerPoint d'AG, `financier.md` §5.1).
+**Le reste du texte** (codé le 21 octobre, comme la convocation : **sans modèle de langage**, gratuit et
+toujours le même) : sous chaque point de l'ordre du jour, les paragraphes du **PV de l'année
+précédente** rangés sous le même titre (même sorte d'assemblée), précédés de « À compléter : texte repris
+du procès-verbal de l'an dernier, à adapter », **chaque nombre repris surligné en jaune** (à vérifier) ;
+sans PV de l'an dernier, « À compléter : ce qui a été dit et le résultat du vote ». Clôture : « la séance
+est levée à À compléter : l'heure ». Pas d'écran des votes ni des résolutions : **le secrétaire écrit les
+résultats des votes dans le texte** (Seb, 20 octobre). Pour reformuler, l'assistant du fichier
+(`modifier_fichier_appli`) ; il n'écrit que ce que la personne lui dit, jamais un chiffre ni un vote.
 
-**Présidence et secrétariat** : repris du PV de l'année précédente, sinon « À compléter » ; corrigés
-dans le texte.
+**Présidence et secrétariat** : les membres qui ont la fonction Président·e et Secrétaire dans la
+colonne Bureau (§2 bis), sinon « À compléter » ; corrigés dans le texte.
+
+**À l'écran** : les chiffres de l'appli en bleu (`textColor: blue`), les « À compléter » et les nombres
+repris en jaune (`backgroundColor: yellow`), styles ordinaires de l'éditeur.
 
 **Mentions d'un PV d'AG loi 1901** (aucune n'est imposée par la loi, les statuts décident ; ce sont
 celles de l'usage, toutes dans le gabarit) : association, nature AGO / AGE, date, heure et lieu, mode
@@ -125,15 +129,15 @@ Déclarés dans `documents_contretemps/actions.py` (comme ceux des procurations)
 
 | Étape à l'écran | Outil | Carte |
 |---|---|---|
-| Produire le PV d'AG (trouver l'AG) | `start_minutes(folder_id?)` : renvoie l'AG trouvée ou la liste si plusieurs | aucune |
+| Produire le PV d'AG (trouver l'AG) | dans `draft_minutes` : sans AG passée sans PV, ou si plusieurs, refus avec la liste (l'assistant demande laquelle) | aucune |
 | Lire la liste, Choisir, Pointer les N présents | `mark_attendance(file, names)` : l'assistant lit lui-même la photo envoyée dans la discussion, vérifie les doutes avec la personne, puis donne les noms ; l'appli les rapproche des convoqués (un seul membre par nom, sinon refus avec les noms à préciser) et pointe ; le quorum est recalculé par l'appli | Faire / Annuler (noms et nombre écrits par le code) |
-| Proposer le procès-verbal | `draft_minutes(node_id)` : crée le PV en Brouillon | aucune (un brouillon s'efface) |
+| Proposer le procès-verbal | `draft_minutes(assembly?)` : crée le PV en Brouillon ; refusé tant que personne n'est pointé présent (la photo d'abord) | Faire / Annuler (toute action de l'assistant a sa carte) |
 | Écrire dans le texte | `modifier_fichier_appli` (existe déjà) | Annuler sous la modification |
-| Valider | `validate_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
-| Envoyer pour signature | `send_app_file(node_id, recipients)` (procurations, étape 1 ; n'accepte aujourd'hui que la convocation, élargi au PV à l'étape 2), destinataires par défaut = présidence et secrétaire | Faire / Annuler (noms et fonctions écrits par le code) |
-| Suivi, Relancer | `signature_status(node_id)`, `remind_non_respondents(node_id)` (procurations, étape 4) | aucune ; Faire / Annuler pour relancer |
-| Télécharger le PDF | `app_file_pdf(node_id)` (procurations, étape 1) | aucune |
-| Envoyer aux N membres | `send_app_file(node_id)` (procurations, étape 1) | Faire / Annuler |
+| Valider | `validate_app_file(file)` : un PV passe en **Validé** (une convocation, en Officiel) | Faire / Annuler |
+| Envoyer pour signature | `send_app_file(file, signers?)` : PV Validé, aux noms donnés, sinon présidence et secrétariat du bureau (refus si personne n'a ces fonctions) | Faire / Annuler (noms et fonctions écrits par le code) |
+| Suivi, Relancer | où en sont les signatures : lu avec le fichier (`lire_fichier`) ; relancer : `send_app_file(file)` quand l'envoi est déjà parti (ceux qui n'ont pas signé) | aucune ; Faire / Annuler pour relancer |
+| Télécharger le PDF | pas d'outil : le PDF à jour est rangé dans le dossier de l'AG à chaque signature | — |
+| Envoyer aux N membres | `send_app_file(file)` sur le PV Officiel : aux membres convoqués à l'assemblée, à lire | Faire / Annuler |
 
 L'assistant ne signe jamais à la place de quelqu'un. Il ne fait que transcrire dans le texte ce que la personne lui dit (« rapport moral adopté à
 l'unanimité ») ; il n'invente jamais un résultat de vote.
@@ -147,17 +151,25 @@ l'unanimité ») ; il n'invente jamais un résultat de vote.
   `assembly.sheet(...)` : une seule liste des présents par AG, **pas de nouvelle table** pour le PV.
   Un nom lu sur la photo et rapproché de personne n'est pas pointé : il est montré dans les doutes
   (« Ajouter une personne » ou « Ignorer »).
-- **Lien PV → convocation** : le PV garde l'identifiant de la convocation dans son contenu
-  (`content_json.source`, sans nouvelle colonne), pour retrouver présents, pouvoirs et ordre du jour.
-- **Chiffres du Financier** : lus par un port de `documents/ports.py` (`approved_report(org_id, season)`),
-  branché sur `finances` dans `documents_contretemps/adapter.py` : Documents ne dépend pas de Finances.
-- **PDF à chaque signature** : refait par Chromium dans la tâche qui enregistre la réponse
-  (arrière-plan, comme les autres PDF), remplace le fichier « PV de l'AGO du … .pdf » du dossier (une
-  version de plus dans `doc_versions`, l'ancienne reste dans l'historique). Email à
-  `email_contact` par `send_email` du core ; pas d'adresse de contact : à l'Administrateur principal.
-- **Signatures** : réponses du bloc Signature dans `doc_responses` (existant), une par signataire ;
-  « tous ont signé » = toutes les personnes de `doc_sends` (non essai) ont répondu → passage en
-  Officiel par le code. **Pas de nouvelle table.**
+- **Lien PV → convocation** : le bloc Signature du PV porte l'id de la convocation dans un réglage
+  `minutesOf` (le contenu enregistré ne garde que `schema`, `entry` et `result` : pas de
+  `content_json.source`). C'est aussi ce qui fait d'un fichier un PV (`documents/minutes.py`,
+  `block_of`). Sans nouvelle colonne.
+- **Ce que Documents lit de Contretemps** : un port `Association` (`documents/ports.py`) : `board`
+  (fonctions du bureau), `contact_email` (`ecoles.email_contact`, sinon l'Administrateur principal),
+  `approved_report` (le dernier bilan Officiel de `fin_reports` : recettes, dépenses, résultat),
+  branché par `AssociationContretemps` dans `documents_contretemps/adapter.py` : Documents ne dépend ni
+  des comptes, ni des écoles, ni de Finances.
+- **PDF à chaque signature** : refait (pymupdf, comme le pouvoir signé, sans Chromium) au moment où la
+  signature est enregistrée, rangé à côté de la convocation sous « PV de l'AGO du … .pdf » (une
+  version de plus, l'ancienne reste dans l'historique) ; le texte, une case par signataire (image,
+  nom, fonction, date, ou « En attente de signature »), puis en annexe la feuille d'émargement.
+  Email à l'adresse de contact par le port `Mailer`, PDF joint.
+- **Signatures** : réponses du bloc Signature dans `doc_responses` (existant), une par signataire. Les
+  signataires sont des envois `doc_sends` de canal `sign` (même lien personnel `/r/<jeton>`, ouvert
+  tant que le PV est Validé ; l'envoi aux membres reste le canal `email`, à lire, sans signature).
+  « Tous ont signé » = tous les envois `sign` ont une réponse → passage en Officiel par le code.
+  Repasser le PV en Brouillon efface les signatures (les liens restent). **Pas de nouvelle table.**
 - **Fonctions du bureau** (core) : une colonne `bureau_functions` (liste JSON) sur la fiche
   (`comptes`), recopiée avec elle à la création d'une saison. Ce ne sont pas des rôles (`roles`) :
   elles ne donnent aucun droit. Migration qui ajoute une colonne, sans `has_table`.
@@ -198,8 +210,20 @@ Prérequis : l'étape 1 des procurations (PR #34, en ligne le 21 octobre) et la 
    « cochez les présents sur la feuille d'émargement ». Outil `mark_attendance` (§4).
    *Vérification* : tests de la lecture (sûrs, doutes, inconnus, doublon, numéro hors liste,
    photos rangées), du pointage groupé et du quorum, de l'étanchéité, de l'outil de l'assistant.
-2. **Le PV** : bandeau et tuile, gabarit, proposition à partir du PV de l'an dernier, contrôle des
-   chiffres, aperçu modifiable, Valider, envoi pour signature au bureau, suivi, passage en Officiel
-   quand tous ont signé, PDF avec signatures et annexes, rangement, outil `draft_minutes`.
-   *Vérification* : tests du gabarit (AGO, AGE, quorum non atteint, sans bilan Officiel), d'un nombre
-   inventé signalé ; essai de bout en bout sur l'école de démo.
+2. **Le PV** (codé le 21 octobre, `documents/minutes.py`). Tuile **Produire le PV d'AG** dans Docs › +
+   (Questionner, après Convoquer l'AG) et bandeau « L'assemblée a eu lieu » dans le dossier de l'AG
+   (`GET …/minutes/pending?folder_id=`) ; écran `ProduirePV.jsx` : quelle assemblée (si plusieurs),
+   présents, représentés, voix et quorum, **La liste des présents** (feuille d'émargement, avec la photo)
+   tant que personne n'est pointé, puis **Proposer le procès-verbal** (`POST …/minutes`) : le PV
+   s'ouvre en Brouillon dans l'éditeur habituel. Valider → Validé ; onglet Diffuser du PV
+   (`MinutesSign.jsx`) : **Qui doit signer ?** (bureau, présidence et secrétariat cochés, « + Une
+   autre personne »), **Envoyer pour signature** (`POST …/app/minutes/sign`), suivi avec **Relancer**
+   et **Signer moi-même** ; Officiel : **Télécharger le PDF**, **Envoyer aux N membres…** (Diffuser
+   habituel). Le lien du signataire montre « Je soussigné(e) …, certifie ce procès-verbal exact » et le
+   bouton **Signer**. Outils `draft_minutes`, `validate_app_file` et `send_app_file` élargis (§4).
+   *Vérification* : tests (`tests/test_documents_minutes.py`) du texte proposé (chiffres, présidence,
+   quorum atteint ou non, bilan officiel, texte de l'an dernier avec nombres surlignés), des AG en
+   attente et de l'étanchéité entre écoles, des signatures (lien, mail au contact avec PDF, PDF rangé,
+   Officiel quand tous ont signé, liens fermés, envoi aux membres sans signature, retour en Brouillon),
+   de l'assistant ; parcours essayé à l'écran sur l'école de démo (bandeau, proposition, Valider, Qui doit
+   signer, Signer moi-même, PDF signé).

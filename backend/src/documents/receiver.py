@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
-from . import assembly
+from . import assembly, minutes
 from .ports import Member
 from .service import DocError, Documents
 from .storage import FileTooLarge
@@ -94,6 +94,10 @@ class Mark(BaseModel):
 
 class MarkMany(BaseModel):
     person_ids: list[int]
+
+
+class MinutesNew(BaseModel):
+    convocation_id: int
 
 
 class Convene(BaseModel):
@@ -421,6 +425,32 @@ class DocumentsReceiver:
         @self.app.post(base + "/nodes/{node_id}/app/attendance/pdf", status_code=201)
         def store_sheet(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: assembly.store_sheet(self.client, db, self._member(org_id, m), node_id))
+
+        # Procès-verbal, étape 2 (proces-verbal-ag.md §1)
+        @self.app.get(base + "/minutes/pending")
+        def minutes_pending(org_id: int, folder_id: int | None = None, db: Session = db_dep, m: Member = member):
+            return {"items": appel(lambda: minutes.pending(self.client, db, self._member(org_id, m), folder_id))}
+
+        @self.app.post(base + "/minutes", status_code=201)
+        def minutes_draft(org_id: int, data: MinutesNew, db: Session = db_dep, m: Member = member):
+            return appel(lambda: minutes.draft(self.client, db, self._member(org_id, m), data.convocation_id))
+
+        @self.app.get(base + "/nodes/{node_id}/app/minutes")
+        def minutes_status(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: minutes.status(self.client, db, self._member(org_id, m), node_id))
+
+        @self.app.post(base + "/nodes/{node_id}/app/minutes/sign", status_code=201)
+        def minutes_sign(
+            org_id: int, node_id: int, data: MarkMany, taches: BackgroundTasks, db: Session = db_dep, m: Member = member
+        ):
+            resume, jobs = appel(lambda: minutes.send_for_signature(self.client, db, self._member(org_id, m), node_id, data.person_ids))
+            taches.add_task(self.client.sends.deliver, db.get_bind(), jobs)
+            return resume
+
+        @self.app.get(base + "/nodes/{node_id}/app/minutes/pdf")
+        def minutes_pdf(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            contenu, nom = appel(lambda: minutes.export(self.client, db, self._member(org_id, m), node_id))
+            return Response(contenu, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nom)}"})
 
         # Modèles de l'école (fichier-de-base.md §5)
         @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)

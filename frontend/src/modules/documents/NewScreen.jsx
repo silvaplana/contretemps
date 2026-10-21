@@ -85,7 +85,7 @@ const MODELES = {
       'Faire une publication web',
     ],
   },
-  question: { hint: 'Chacun répond', tiles: ['Convoquer l’AG', 'Faire un sondage'] },
+  question: { hint: 'Chacun répond', tiles: ['Convoquer l’AG', 'Produire le PV d’AG', 'Faire un sondage'] },
   act: {
     hint: 'La réponse crée une inscription, un paiement…',
     tiles: ['Ouvrir les inscriptions annuelles', 'Ouvrir les inscriptions au spectacle', 'Faire une note de frais'],
@@ -93,8 +93,9 @@ const MODELES = {
 }
 
 // Tuiles qui marchent déjà : elles ouvrent leur propre parcours.
-// « Convoquer l’AG » : spec procurations.md §1.3.
-export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onAssembly, onToast }) {
+// « Convoquer l’AG » : spec procurations.md §1.3 ; « Produire le PV d’AG » :
+// proces-verbal-ag.md §1.
+export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onAssembly, onMinutes, onToast }) {
   // Informer, Questionner, Agir : fermés au départ (Seb, 15 octobre).
   const [ouvert, setOuvert] = useState(null)
   const [nature, setNature] = useState(false)
@@ -176,8 +177,8 @@ export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, o
                       />
                     ))}
                   {m.tiles.map((t) =>
-                    t === 'Convoquer l’AG' && onAssembly ? (
-                      <button key={t} type="button" className="dx-tpl" onClick={onAssembly}>
+                    (t === 'Convoquer l’AG' && onAssembly) || (t === 'Produire le PV d’AG' && onMinutes) ? (
+                      <button key={t} type="button" className="dx-tpl" onClick={t === 'Convoquer l’AG' ? onAssembly : onMinutes}>
                         {t}
                       </button>
                     ) : (
