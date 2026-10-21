@@ -111,6 +111,7 @@ class Documents:
         reserved_folders: Sequence[tuple[str, str]] = (),
         notifier: Notifier | None = None,
         members: Sequence[tuple[str, str]] = (),
+        voters: Sequence[tuple[str, str]] = (),
         attendance_reader=None,
         association: Association | None = None,
     ) -> None:
@@ -127,6 +128,9 @@ class Documents:
         # Tous les membres, en destinataires de Diffuser (("group", "role:eleve"),
         # …) : à qui convoquer une première assemblée (procurations.md §1.3).
         self.members = tuple(members)
+        # Les adhérents qui votent (membres payants), lignes de la feuille
+        # d'émargement à signer (Seb, 21 octobre) ; vide : tous les membres.
+        self.voters = tuple(voters)
         # Lecture de la liste des présents en photo (proces-verbal-ag.md §1),
         # voir attendance_photo.AttendanceReader ; None : indisponible.
         self.attendance_reader = attendance_reader

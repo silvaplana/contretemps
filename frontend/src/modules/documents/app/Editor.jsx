@@ -90,9 +90,7 @@ function AssemblyFields({ block, editor }) {
           onChange={(e) => changer({ maxProxies: Math.max(0, Math.min(50, Number(e.target.value) || 0)) })}
         />
       </label>
-      <span className="ae-help">0 : sans limite. Les pouvoirs en blanc ne comptent pas.</span>
-      <span className="ae-help">Pouvoir en blanc : confié par le bureau, à défaut à</span>
-      <Champ block={block} editor={editor} prop="blankTo" placeholder="Nom de la présidente ou du président" />
+      <span className="ae-help">0 : sans limite. Un nom écrit à la main (hors liste) ne compte pas.</span>
       <span className="ae-help">Lieu</span>
       <Champ block={block} editor={editor} prop="place" placeholder="Salle, adresse" />
       <select className="ae-input" aria-label="Quorum" value={p.quorum} disabled={!editor.isEditable} onChange={(e) => changer({ quorum: e.target.value })}>

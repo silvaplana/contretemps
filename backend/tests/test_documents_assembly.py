@@ -40,6 +40,11 @@ def procuration(client, jeton, qui):
     return repondre(client, jeton, answer="proxy", proxy_to=qui, signature=PNG)
 
 
+def a_la_main(client, jeton, nom):
+    """Procuration à un nom écrit à la main."""
+    return repondre(client, jeton, answer="proxy", proxy_to="other", proxy_name=nom, signature=PNG)
+
+
 @pytest.fixture
 def ag(client, ecole, db_session, mails):
     """Une AGO convoquée et envoyée aux quatre membres de l'école."""
@@ -115,16 +120,18 @@ def test_regles_des_procurations(client, ecole, ag, mails):
     assert complet["Ana Roux"]["full"] is True
     assert procuration(client, julia, ecole["admin"].id).status_code == 422  # soi-même
     assert procuration(client, julia, 999999).status_code == 422  # pas convoqué
-    assert repondre(client, julia, answer="proxy", proxy_to="blank").status_code == 422  # sans signature
-    # Un pouvoir en blanc ne compte pas dans le plafond.
-    assert procuration(client, julia, "blank").status_code == 201
+    assert repondre(client, julia, answer="proxy", proxy_to="other", proxy_name="Martine Colin").status_code == 422  # sans signature
+    assert procuration(client, julia, "blank").status_code == 422  # plus de pouvoir en blanc (Seb, 21 octobre)
+    assert a_la_main(client, julia, "  ").status_code == 422
+    # Un nom écrit à la main : hors liste, il compte (le bureau vérifie à l'entrée).
+    assert a_la_main(client, julia, "Martine  Colin").status_code == 201
     assert repondre(client, ana, answer="attend").status_code == 201
 
     s = ag["admin"].get(f"/nodes/{ag['id']}/app/assembly").json()["summary"]
     assert (s["convoked"], s["attend"], s["proxy"], s["absent"], s["none"], s["votes"]) == (4, 1, 3, 0, 0, 4)
     porteurs = {h["name"]: h for h in s["holders"]}
     assert porteurs["Ana Roux"]["count"] == 2 and porteurs["Ana Roux"]["from"] == ["Ima Blanc", "Léon Perrin"]
-    assert any(h["person_id"] is None and h["count"] == 1 for h in s["holders"])
+    assert porteurs["Martine Colin (hors liste)"]["count"] == 1
     # Ana ne vient plus : les pouvoirs qu'elle porte sont perdus.
     assert repondre(client, ana, answer="absent").status_code == 201
     s = ag["admin"].get(f"/nodes/{ag['id']}/app/assembly").json()["summary"]
@@ -223,15 +230,15 @@ def test_feuille_d_emargement(client, ecole, ag, mails, db_session):
     leon, ima = lien(mails, "leon@exemple.fr"), lien(mails, "ima@exemple.fr")
     ana = next(g["id"] for g in client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"] if g["name"] == "Ana Roux")
     assert procuration(client, leon, ana).status_code == 201
-    assert procuration(client, ima, "blank").status_code == 201
+    assert a_la_main(client, ima, "Martine Colin").status_code == 201
 
     s = admin.get(f"/nodes/{ident}/app/attendance").json()
-    assert (s["present"], s["represented"], s["lost"], s["votes"]) == (0, 1, 1, 1)  # seul le blanc compte
+    assert (s["present"], s["represented"], s["lost"], s["votes"]) == (0, 1, 1, 1)  # seul le nom hors liste compte
     s = pointer(ana).json()
     assert (s["present"], s["represented"], s["absent"], s["votes"]) == (1, 2, 1, 3)
     lignes = {r["name"]: r for r in s["rows"]}
     assert lignes["Léon Perrin"]["represented_by"] == "Ana Roux" and lignes["Ana Roux"]["holds"] == 1
-    assert lignes["Ima Blanc"]["represented_by"] == "le bureau"
+    assert lignes["Ima Blanc"]["represented_by"] == "Martine Colin"
     # Léon vient finalement : sa présence l'emporte sur son pouvoir.
     s = pointer(ecole["eleve"].id).json()
     assert (s["present"], s["represented"], s["votes"]) == (2, 1, 3)
@@ -287,11 +294,11 @@ def test_copies_du_pouvoir(client, ecole, ag, mails):
     avant = len(mails.envoyes)
     assert procuration(client, leon, ana).status_code == 201
     assert len(mails.envoyes) == avant
-    # En blanc : seulement la copie au mandant.
-    assert procuration(client, julia, "blank").status_code == 201
+    # Nom écrit à la main : seulement la copie au mandant.
+    assert a_la_main(client, julia, "Martine Colin").status_code == 201
     nouveaux = mails.envoyes[avant:]
     assert [m["to"] for m in nouveaux] == ["julia@exemple.fr"]
-    assert "le bureau désignera la personne qui vous représente" in nouveaux[0]["text"]
+    assert "Martine Colin vous représentera" in nouveaux[0]["text"]
 
 
 def test_relance_sept_jours_avant(client, ecole, ag, mails, db_session):
@@ -547,3 +554,48 @@ def test_telecharger_la_feuille_d_emargement(client, ecole, ag):
     r = admin.get(f"/nodes/{ag['id']}/app/assembly/attendance.pdf")
     assert r.status_code == 200 and r.content.startswith(b"%PDF")
     assert "Feuille%20d%27%C3%A9margement%20AGO%20du%2021%20novembre%202099.pdf" in r.headers["content-disposition"]
+
+
+def test_procuration_a_n_importe_quel_adherent(client, ecole, ag, mails, db_session):
+    """Seb, 21 octobre : on choisit n'importe quel adhérent, même non
+    convoqué ; un nom écrit qui est celui d'un adhérent devient cet adhérent."""
+    from comptes import Comptes
+
+    zoe = Comptes().create(db_session, ecole_id=ecole["id"], role="eleve", nom="Neuf", prenom="Zoé")
+    db_session.commit()
+    leon, ima = lien(mails, "leon@exemple.fr"), lien(mails, "ima@exemple.fr")
+    gens = {g["name"]: g["id"] for g in client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"]}
+    assert gens["Zoé Neuf"] == zoe.id
+    assert procuration(client, leon, zoe.id).status_code == 201
+    assert a_la_main(client, ima, "zoe NEUF").status_code == 201
+    s = ag["admin"].get(f"/nodes/{ag['id']}/app/assembly").json()["summary"]
+    porteurs = {h["name"]: h for h in s["holders"]}
+    assert porteurs["Zoé Neuf"]["count"] == 2 and porteurs["Zoé Neuf"]["person_id"] == zoe.id
+    # Le plafond vaut aussi pour elle.
+    r = a_la_main(client, lien(mails, "julia@exemple.fr"), "Zoé Neuf")
+    assert r.status_code == 422 and "déjà 2 pouvoirs" in r.json()["detail"]
+
+
+def test_feuille_a_signer(client, ecole, ag, mails, db_session):
+    """Seb, 21 octobre : « Produire la feuille d'émargement » fait le PDF à
+    signer : tous les adhérents (membres payants), présent, procuration,
+    nombre de voix (1 + les procurations reçues), signature."""
+    import pymupdf
+
+    admin = ag["admin"]
+    leon, ima = lien(mails, "leon@exemple.fr"), lien(mails, "ima@exemple.fr")
+    assert procuration(client, leon, ecole["autre"].id).status_code == 201
+    assert a_la_main(client, ima, "Martine Colin").status_code == 201
+
+    r = admin.c.post(f"{admin.base}/nodes/{ag['id']}/app/assembly/signing-sheet", headers=admin.h)
+    assert r.status_code == 201 and r.headers["content-type"] == "application/pdf"
+    texte = " ".join(pymupdf.open(stream=r.content, filetype="pdf")[0].get_text().split())
+    assert "PRÉNOM NOM PRÉSENT PROCURATION NOMBRE DE VOIX SIGNATURE" in texte
+    assert "Ana Roux ☐ de Léon Perrin 2" in texte
+    assert "Léon Perrin ☐ à Ana Roux 1" in texte
+    assert "Martine Colin (hors liste) ☐ de Ima Blanc 1" in texte
+    assert "Julia Dho" not in texte  # pas une adhérente (admin seulement), ne porte rien
+    # Rangée à côté de la convocation, une seule fois.
+    admin.c.post(f"{admin.base}/nodes/{ag['id']}/app/assembly/signing-sheet", headers=admin.h)
+    noms = list(_par_nom(admin.racine(dossier=ag["folder"])))
+    assert noms.count("Feuille d'émargement à signer AGO du 21 novembre 2099.pdf") == 1

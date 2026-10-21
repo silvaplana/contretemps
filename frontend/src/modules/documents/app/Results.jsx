@@ -166,7 +166,7 @@ function AssemblyProxies({ summary: s }) {
       {s.holders.length === 0 && <p className="ar-none">Aucune procuration pour l’instant.</p>}
       <ul className="ar-liste">
         {s.holders.map((h) => (
-          <li key={h.person_id ?? 'blank'}>
+          <li key={h.person_id ?? h.name}>
             <span>
               <strong>{h.name}</strong>
               {h.lost && <small> · ne vient pas : pouvoirs perdus</small>}
@@ -205,7 +205,7 @@ export function exampleRows(content) {
           shortText: 'Oui, avec plaisir',
           longText: 'Merci pour l’organisation !',
           signature: 'signé',
-          assembly: [{ answer: 'attend' }, { answer: 'proxy', proxy_to: 'blank' }, { answer: 'absent' }][i % 3],
+          assembly: [{ answer: 'attend' }, { answer: 'proxy', proxy_to: 'other', proxy_name: 'Martine Colin' }, { answer: 'absent' }][i % 3],
         }[q.type]
         return [q.id, v]
       }),
