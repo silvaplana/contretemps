@@ -14,3 +14,13 @@ export default function ActionsEntete({ children }) {
   const [cible] = useState(() => document.getElementById(ID_ACTIONS_ENTETE))
   return cible ? createPortal(children, cible) : null
 }
+
+// Emplacement, à GAUCHE de l'en-tête, pour le titre d'un écran ouvert par
+// dessus (ex. un fichier de Docs : ← nom, état ; Seb, 21 octobre). Tant
+// qu'il est rempli, il remplace le logo et le titre de l'onglet.
+export const ID_TITRE_ENTETE = 'titre-entete'
+
+export function TitreEntete({ children }) {
+  const [cible] = useState(() => document.getElementById(ID_TITRE_ENTETE))
+  return cible ? createPortal(children, cible) : null
+}

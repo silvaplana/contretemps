@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import * as installation from '../api/installation.js'
 import { ROLE_LABEL, estMonteeEnPrivilege, trierParRole } from '../data/roles.js'
 import { useFermerAuClicExterieur } from '../hooks/useFermerAuClicExterieur.js'
-import { ID_ACTIONS_ENTETE } from './ActionsEntete.jsx'
+import { ID_ACTIONS_ENTETE, ID_TITRE_ENTETE } from './ActionsEntete.jsx'
 import CodeConfirmModal from './CodeConfirmModal.jsx'
 import Icon from './Icon.jsx'
 import { InstructionsInstallation } from './InstructionsInstallation.jsx'
@@ -82,6 +82,8 @@ export default function Header({
       <div className="app-header__left">
         <Logo size={36} />
         {mode === 'simple' && <h1 className="app-header__title">{title}</h1>}
+        {/* Titre d'un écran ouvert par-dessus (ActionsEntete.jsx : TitreEntete). */}
+        <div id={ID_TITRE_ENTETE} className="app-header__ecran" />
         {mode === 'course' && (
           <div className="cours-selector" ref={coursSelectorRef}>
             <button

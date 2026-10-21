@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import ActionsEntete, { TitreEntete } from '../../../components/ActionsEntete.jsx'
 import { brancherFichier } from '../assistantGlobal.js'
 import { FamilyDot, StatusIcon } from '../icons.jsx'
 import { FAMILIES, STATUSES } from '../kinds.js'
@@ -58,6 +59,8 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   const [form, setForm] = useState('entry')
   const [size, setSize] = useState('phone')
   const [rows, setRows] = useState([])
+  // Le fichier commence sous l'en-tête de l'appli (qui porte son titre).
+  const [hautEntete] = useState(() => Math.round(document.querySelector('.app-header')?.getBoundingClientRect().bottom ?? 0))
   const [sheet, setSheet] = useState(null)
   const [saving, setSaving] = useState('') // '', 'pending', 'saved'
   const [editorKey, setEditorKey] = useState(0)
@@ -472,21 +475,30 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   }
 
   return (
-    <div className="dx-panel af" role="dialog" aria-label={file.name}>
-      <div className="dx-top">
-        <button type="button" className="dx-ico" onClick={fermer} aria-label="Retour">←</button>
-        <h2 title={file.name}>{file.name}</h2>
-        <button type="button" className="dx-ico" onClick={() => onShare(lienShare)} aria-label="Partager : qui a accès ?" disabled={file.space === 'personal'}>
-          <ShareIcon />
-        </button>
-        <button type="button" className="dx-ico" onClick={() => setSheet('more')} aria-label="Plus d’actions">⋯</button>
-      </div>
+    // Sous l'en-tête de l'appli, qui porte ← le nom, l'état, qui a accès et ⋮
+    // (Seb, 21 octobre).
+    <div className="dx-panel af" role="dialog" aria-label={file.name} style={{ top: `max(var(--panneau-haut, 0px), ${hautEntete}px)` }}>
+      <TitreEntete>
+        {/* `dx` : les styles de Docs (pastille d'état…) valent aussi dans l'en-tête. */}
+        <div className="dx af-entete">
+          <button type="button" className="dx-ico af-retour" onClick={fermer} aria-label="Retour">←</button>
+          <h1 className="af-titre-entete" title={file.name}>{file.name}</h1>
+          <button type="button" className={`af-status af-status--${statut}`} onClick={() => setSheet('status')} disabled={!file.can_edit && !file.can_manage}>
+            <StatusIcon status={statut} />
+            {STATUSES[statut].label}
+            {file.can_edit && <span className="af-chev" aria-hidden="true">▾</span>}
+          </button>
+        </div>
+      </TitreEntete>
+      <ActionsEntete>
+        <div className="dx af-entete">
+          <button type="button" className="dx-ico" onClick={() => onShare(lienShare)} aria-label="Partager : qui a accès ?" disabled={file.space === 'personal'}>
+            <ShareIcon />
+          </button>
+          <button type="button" className="dx-ico" onClick={() => setSheet('more')} aria-label="Plus d’actions">⋮</button>
+        </div>
+      </ActionsEntete>
       <div className="af-sub">
-        <button type="button" className={`af-status af-status--${statut}`} onClick={() => setSheet('status')} disabled={!file.can_edit && !file.can_manage}>
-          <StatusIcon status={statut} />
-          {STATUSES[statut].label}
-          {file.can_edit && <span className="af-chev" aria-hidden="true">▾</span>}
-        </button>
         {/* Convocation et PV d'AG : la nature ne s'affiche pas, le parcours la
             cache (procurations.md §6, Seb 21 octobre). */}
         {!assemblyBlock(c) && !minutesBlock(c) && (

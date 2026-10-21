@@ -1180,3 +1180,63 @@ h3.ap-h {
   background: color-mix(in srgb, var(--accent) 14%, transparent);
   box-shadow: 0 0 0 2px var(--accent);
 }
+
+/* Titre du fichier dans l'en-tête de l'appli (Seb, 21 octobre). */
+.af-titre-entete {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 18px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.af-retour {
+  flex: none;
+}
+
+.app-header__ecran .af-status {
+  flex: none;
+}
+
+.dx.af-entete {
+  flex: 0 1 auto;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  background: transparent;
+}
+
+.app-header__left:has(.af-entete) {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.app-header__ecran .af-entete,
+.app-header__ecran {
+  flex: 1 1 auto;
+}
+
+.af-titre-entete {
+  flex: 0 1 auto;
+}
+
+/* Téléphone : l'état réduit à son pictogramme, le nom coupé « … ». */
+@media (max-width: 600px) {
+  .app-header__ecran .af-status {
+    gap: 0;
+    min-height: 40px;
+    padding: 0 8px;
+    font-size: 0;
+  }
+
+  .app-header__ecran .af-status .af-chev {
+    display: none;
+  }
+
+  .af-titre-entete {
+    font-size: 16px;
+  }
+}

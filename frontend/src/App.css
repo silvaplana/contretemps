@@ -55,6 +55,23 @@
   min-width: 0;
 }
 
+/* Un écran ouvert par-dessus a mis son titre dans l'en-tête (TitreEntete) :
+   il remplace le logo et le titre de l'onglet. */
+.app-header__ecran {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.app-header__ecran:empty {
+  display: none;
+}
+
+.app-header__left:has(.app-header__ecran:not(:empty)) > :not(.app-header__ecran) {
+  display: none;
+}
+
 .app-header__title {
   margin: 0;
   font-size: 20px;
