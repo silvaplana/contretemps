@@ -1240,3 +1240,8 @@ h3.ap-h {
     font-size: 16px;
   }
 }
+
+/* « 1. Préparer » : Préparation | Aperçu (Seb, 21 octobre). */
+.af-vues {
+  padding: 8px 16px 0;
+}

@@ -332,7 +332,10 @@ Exemple d'une inscription avec deux enfants :
 
 ## 7. À trancher par Seb
 
-1. **Noms des onglets** : `Préparer | Aperçu | Diffuser | Résultats`. Recommandation : **ceux-là**.
+1. ~~**Noms des onglets**~~ : **décidé par Seb le 21 octobre : trois étapes, « 1. Préparer », « 2. Diffuser »,
+   « 3. Voir les résultats »** ; « 1. Préparer » a deux vues, **Préparation** (l'éditeur) et **Aperçu**
+   (modifiable en Brouillon) ; un fichier s'ouvre sur l'Aperçu. Les règles du tableau ci-dessus restent
+   (Préparation grisée hors Brouillon). Avant : `Préparer | Aperçu | Diffuser | Résultats`.
    « Diffuser » plutôt que « Publier », parce qu'il couvre aussi l'envoi à des personnes choisies.
 2. ~~Noms des deux formulaires~~ : **décidé par Seb le 16 octobre : « Formulaire d'entrée » et
    « Formulaire de résultat »**, toujours ces deux noms.

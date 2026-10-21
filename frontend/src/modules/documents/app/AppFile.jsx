@@ -21,11 +21,16 @@ import './app.css'
 // l'en-tête, Partager toujours visible. La bulle ouvre le même assistant que
 // dans Docs, qui voit le fichier et peut écrire ses formulaires (§2.1).
 
+// Trois étapes (Seb, 21 octobre). « 1. Préparer » a deux vues, Préparation
+// (l'éditeur, `prep`) et Aperçu (`preview`) ; on y arrive sur l'Aperçu.
 const TABS = [
-  ['prep', 'Préparer'],
+  ['etape1', '1. Préparer'],
+  ['diffuse', '2. Diffuser'],
+  ['results', '3. Voir les résultats'],
+]
+const VUES_ETAPE1 = [
+  ['prep', 'Préparation'],
   ['preview', 'Aperçu'],
-  ['diffuse', 'Diffuser'],
-  ['results', 'Résultats'],
 ]
 const SAVE_DELAY = 800
 
@@ -520,21 +525,27 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       {file.can_edit && (
         <div className="af-tabs" role="tablist" style={{ '--n': onglets.length }}>
           {onglets.map(([cle, texte]) => {
-            const r = tabReason(cle, statut)
+            const r = cle === 'etape1' ? null : tabReason(cle, statut)
+            const actif = cle === 'etape1' ? tab === 'prep' || tab === 'preview' : tab === cle
             return (
               <button
                 key={cle}
                 type="button"
                 role="tab"
-                aria-selected={tab === cle}
+                aria-selected={actif}
                 className={r ? 'af-tab--off' : ''}
                 title={r ?? undefined}
-                onClick={() => (r ? onToast(r) : setTab(cle))}
+                onClick={() => (r ? onToast(r) : !actif && setTab(cle === 'etape1' ? 'preview' : cle))}
               >
                 {texte}
               </button>
             )
           })}
+        </div>
+      )}
+      {file.can_edit && (tab === 'prep' || tab === 'preview') && (
+        <div className="af-vues">
+          <Seg label="Vue" value={tab} options={VUES_ETAPE1} onChange={setTab} />
         </div>
       )}
       <div className="dx-body af-body">{corps}</div>

@@ -144,7 +144,8 @@ export function openingTab(file) {
   if (!file.can_edit) return 'preview'
   if (file.status === 'validated') return 'diffuse'
   if (file.status === 'official') return file.family === 'inform' ? 'preview' : 'results'
-  return 'prep'
+  // Brouillon : « 1. Préparer », vue Aperçu (Seb, 21 octobre).
+  return 'preview'
 }
 
 // Un fichier reçu du serveur, enregistré par le navigateur.
