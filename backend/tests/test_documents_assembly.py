@@ -188,8 +188,12 @@ def test_par_l_assistant(client, ecole, db_session, mails):
         "Préparer la convocation de l'AGO du 21 novembre 2099 à 14 h, rangée dans Réunions › AGO du 21 novembre 2099 "
         "(nouveau dossier) (brouillon « Convocation AGO du 21 novembre 2099 », à relire avant de valider)"
     ]
-    assert faire(carte)[0]["ok"]
+    fait = faire(carte)[0]
     nom = "Convocation AGO du 21 novembre 2099"
+    # Le brouillon s'ouvre au-dessus de l'assistant pour être relu (Seb, 21 octobre).
+    ouvrir = fait["ouvrir"]
+    assert fait["ok"] and ouvrir["name"] == nom and ouvrir["kind"] == "app" and ouvrir["family"] == "question"
+    assert ouvrir["space"] == "private" and ouvrir["parent_id"] and ouvrir["id"]
     texte, carte = proposer("send_app_file", {"file": nom})
     assert carte is None and "pas encore validé" in texte
     _, carte = proposer("validate_app_file", {"file": nom})

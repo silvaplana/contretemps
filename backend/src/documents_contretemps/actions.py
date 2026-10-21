@@ -90,6 +90,13 @@ def _refus(appel):
         raise Refus(erreur.message) from erreur
 
 
+def _a_ouvrir(cree: dict) -> dict:
+    """Le fichier de l'appli créé, à ouvrir à l'écran pour le relire
+    (Seb, 21 octobre : il s'ouvre au-dessus de l'assistant)."""
+    return {"open": {"id": cree["id"], "name": cree["name"], "kind": "app", "family": cree["family"],
+                     "space": "private", "parent_id": cree["folder_id"]}}
+
+
 def actions(docs: Documents) -> list[Action]:
     def convene(db: Session, compte, org_id: int, p: ConveneAssembly) -> Ligne:
         member = _member(db, compte, org_id)
@@ -115,11 +122,11 @@ def actions(docs: Documents) -> list[Action]:
         if dossier is not None:
             ou = f"Réunions › {dossier['name']}"
 
-        def faire(db: Session) -> None:
-            _refus(lambda: assembly.convene(
+        def faire(db: Session) -> dict:
+            return _a_ouvrir(_refus(lambda: assembly.convene(
                 docs, db, member, p.kind, debut.isoformat(timespec="minutes"),
                 folder_id=dossier["id"] if dossier else None, new_folder=dossier is None,
-            ))
+            )))
 
         return Ligne(
             f"Préparer la convocation de l'{titre} à {assembly.when_text(debut).split(' à ')[1]}, rangée dans {ou} "
@@ -242,8 +249,8 @@ def actions(docs: Documents) -> list[Action]:
                 "présents (puis mark_attendance)"
             )
 
-        def faire(db: Session) -> None:
-            _refus(lambda: minutes.draft(docs, db, member, ag["id"]))
+        def faire(db: Session) -> dict:
+            return _a_ouvrir(_refus(lambda: minutes.draft(docs, db, member, ag["id"])))
 
         return Ligne(
             f"Préparer le procès-verbal de l'{ag['title']} en brouillon (« PV de l'{ag['title']} », à côté de la convocation ; "

@@ -79,9 +79,13 @@ class Actions:
         self.pending.pop(jeton)
         ligne = attente[2]
         try:
-            ligne.faire(db)
+            rendu = ligne.faire(db)
             db.commit()
-            return [{"index": 0, "libelle": ligne.libelle, "ok": True}]
+            fait = {"index": 0, "libelle": ligne.libelle, "ok": True}
+            # Le fichier créé s'ouvre à l'écran, au-dessus de l'assistant.
+            if isinstance(rendu, dict) and rendu.get("open"):
+                fait["ouvrir"] = rendu["open"]
+            return [fait]
         except Exception as erreur:
             db.rollback()
             if isinstance(erreur, SaisonEnLectureSeule):

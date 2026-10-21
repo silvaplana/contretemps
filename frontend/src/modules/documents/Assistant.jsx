@@ -100,7 +100,8 @@ function Texte({ texte }) {
 }
 
 export default function Assistant({
-  orgId, contexte, onClose, onFaire, onFichier, memoire, titre = 'Assistant', coutSaisonInitial = null, suggestions = SUGGESTIONS,
+  orgId, contexte, onClose, onFaire, onFichier, onOuvrir, memoire, titre = 'Assistant', coutSaisonInitial = null,
+  suggestions = SUGGESTIONS,
 }) {
   const garde = memoire ? conversationsGardees.get(memoire) : null
   const [echanges, setEchanges] = useState(garde?.echanges ?? []) // { role, texte, actions?, etat? }
@@ -293,6 +294,24 @@ export default function Assistant({
       if (ignores.length) issues.current.push(`Décoché par la personne, non fait : ${ignores.join(' ; ')}`)
       // Les autres écrans de l'appli rechargent leurs données.
       window.dispatchEvent(new Event('contretemps:donnees-modifiees'))
+      // Un fichier créé (convocation, procès-verbal) s'ouvre au-dessus pour
+      // être relu ; la question vient de l'appli, sans appel payant
+      // (Seb, 21 octobre).
+      const aOuvrir = resultats.find((r) => r.ok && r.ouvrir)?.ouvrir
+      if (aOuvrir && onOuvrir) {
+        onOuvrir(aOuvrir)
+        setEchanges((l) => [
+          ...l,
+          {
+            role: 'assistant',
+            texte:
+              `« ${aOuvrir.name} » est ouvert au-dessus. Le texte vous va ?\n\n` +
+              'Dites-moi ce qu’il faut changer et je le corrige, ou modifiez-le vous-même directement. ' +
+              'Quand il est bon, dites-moi « valide » ou touchez **Valider** : rien ne part avant.',
+            actions: [],
+          },
+        ])
+      }
     } catch (err) {
       majCarte(index, carte, { etat: 'proposee', erreur: err.message })
     }

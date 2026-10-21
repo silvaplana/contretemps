@@ -183,51 +183,6 @@
 
 /* Assistant du fichier : bulle au-dessus du bouton du bas ; sur
    ordinateur, panneau à droite du fichier. */
-.af-fab {
-  position: fixed;
-  right: 20px;
-  bottom: calc(92px + env(safe-area-inset-bottom));
-  z-index: 52;
-  width: 52px;
-  height: 52px;
-  display: grid;
-  place-items: center;
-  border: 1.5px solid var(--accent);
-  border-radius: 50%;
-  background: var(--card-bg);
-  color: var(--accent);
-  box-shadow: 0 4px 12px rgba(58, 36, 16, 0.15);
-  cursor: pointer;
-}
-
-.af-fab svg {
-  width: 26px;
-  height: 26px;
-}
-
-.af--chat {
-  padding-right: 420px;
-}
-
-.af-chat {
-  position: fixed;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 54;
-  width: 420px;
-  display: flex;
-  flex-direction: column;
-  border-left: 2px solid var(--accent);
-  background: var(--card-bg);
-}
-
-.af-chat .dx-chat {
-  flex: 1;
-  min-height: 0;
-  border-left: 0;
-}
-
 /* Feuilles du fichier : au-dessus du panneau plein écran. */
 .af-scrim {
   z-index: 55;

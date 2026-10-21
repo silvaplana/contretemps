@@ -73,7 +73,7 @@ Le seul onglet où l'on modifie. Deux positions quand il y a des questions :
 
 Deux manières, **au choix et mélangeables** (Seb, 16 octobre) :
 
-- **Par le chat** (le même assistant que dans Docs, même bulle et même panneau, Seb 16 octobre ; il voit le fichier ouvert et écrit ses formulaires, chaque modification avec « Annuler »), **un seul chat par fichier**, pour la page et les résultats ensemble : les deux sont
+- **Par le chat** (le même assistant que dans Docs, même bulle et même panneau, Seb 16 octobre ; il voit le fichier ouvert et écrit ses formulaires, chaque modification avec « Annuler »), **l'assistant principal de l'appli** (Seb, 21 octobre : plus de chat propre au fichier ; le fichier ouvert se déclare à l'assistant, qui le lit et le corrige avec « Annuler » ; sur ordinateur, le fichier s'affiche au-dessus du chat), pour la page et les résultats ensemble : les deux sont
   liés (une question de la page = une colonne des résultats), une demande comme « ajoute une question sur
   les allergies » modifie les deux d'un coup. Le chat sait quel formulaire est affiché et part de là ; on
   peut viser l'autre (« dans les résultats, fais le total par cours »). Toute la discussion est gardée en

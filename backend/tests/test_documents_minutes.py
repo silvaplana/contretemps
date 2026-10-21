@@ -208,7 +208,9 @@ def test_pv_par_l_assistant(client, ecole, ag, mails, apres_ag, db_session):
     _, carte = proposer("draft_minutes", {})
     assert carte["lignes"][0].startswith(f"Préparer le procès-verbal de l'{TITRE} en brouillon")
     assert "2 présents, 0 représentés" in carte["lignes"][0]
-    assert faire(carte)[0]["ok"]
+    fait = faire(carte)[0]
+    # Le PV proposé s'ouvre au-dessus de l'assistant pour être relu (Seb, 21 octobre).
+    assert fait["ok"] and fait["ouvrir"]["name"] == PV and fait["ouvrir"]["kind"] == "app"
 
     # Valider : le PV passe en Validé, pas en Officiel.
     _, carte = proposer("validate_app_file", {"file": PV})

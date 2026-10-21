@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import Assistant from '../Assistant.jsx'
-import { BubbleIcon, FamilyDot, StatusIcon } from '../icons.jsx'
+import { brancherFichier } from '../assistantGlobal.js'
+import { FamilyDot, StatusIcon } from '../icons.jsx'
 import { FAMILIES, STATUSES } from '../kinds.js'
 import AssemblySend from './AssemblySend.jsx'
 import MinutesSign from './MinutesSign.jsx'
@@ -51,7 +51,7 @@ function Seg({ value, options, onChange, label }) {
   )
 }
 
-export default function AppFile({ api, item, onClose, onToast, onShare, onProperties, onDelete, onChanged, chat }) {
+export default function AppFile({ api, item, onClose, onToast, onShare, onProperties, onDelete, onChanged }) {
   const [file, setFile] = useState(null)
   const [erreur, setErreur] = useState('')
   const [tab, setTab] = useState(null)
@@ -67,10 +67,6 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   const version = useRef(null)
   const minuteur = useRef(null)
   const enCours = useRef(Promise.resolve())
-  // Assistant : gardé monté une fois ouvert (la réponse continue d'arriver
-  // si on le ferme pour regarder le fichier).
-  const [chatOuvert, setChatOuvert] = useState(false)
-  const [chatMonte, setChatMonte] = useState(false)
   // Convocation d'AG (procurations.md) : décompte et destinataires par
   // défaut ; « Changer » ramène au Diffuser habituel.
   const [ag, setAg] = useState(null)
@@ -193,15 +189,6 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     }
   }
 
-  function ouvrirChat() {
-    if (!chat?.autorise) {
-      onToast('L’assistant est en essai : réservé au Super User pour l’instant.')
-      return
-    }
-    setChatOuvert(true)
-    setChatMonte(true)
-  }
-
   // L'assistant a enregistré une nouvelle version (ou « Annuler » sur sa
   // carte) : on recharge le fichier, l'éditeur repart du nouveau contenu.
   async function surFichier(carte) {
@@ -216,6 +203,32 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     await charger()
     onChanged?.()
   }
+
+  // Le fichier ouvert se branche sur l'assistant de l'appli (Seb,
+  // 21 octobre) : il le lit, le corrige, et « Annuler » sous sa carte
+  // revient à la version d'avant.
+  const pourAssistant = useRef(null)
+  useEffect(() => {
+    pourAssistant.current = {
+      contexte: () =>
+        file && {
+          space: file.space,
+          folder_id: file.parent_id,
+          selection_id: file.id,
+          app_id: file.id,
+          form: file.family === 'inform' ? 'entry' : form,
+        },
+      surFichier,
+    }
+  })
+  useEffect(
+    () =>
+      brancherFichier({
+        contexte: () => pourAssistant.current.contexte(),
+        surFichier: (carte) => pourAssistant.current.surFichier(carte),
+      }),
+    [],
+  )
 
   async function essayer(values) {
     try {
@@ -438,7 +451,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   }
 
   return (
-    <div className={`dx-panel af${chatOuvert && chat?.bureau ? ' af--chat' : ''}`} role="dialog" aria-label={file.name}>
+    <div className="dx-panel af" role="dialog" aria-label={file.name}>
       <div className="dx-top">
         <button type="button" className="dx-ico" onClick={fermer} aria-label="Retour">←</button>
         <h2 title={file.name}>{file.name}</h2>
@@ -489,30 +502,6 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       )}
       <div className="dx-body af-body">{corps}</div>
       {bas && <div className="dx-footer">{bas}</div>}
-
-      {tab === 'prep' && !chatOuvert && (
-        <button type="button" className="af-fab" onClick={ouvrirChat} aria-label="Assistant">
-          <BubbleIcon />
-        </button>
-      )}
-      {chatMonte && (
-        <div
-          className={chat.bureau ? 'af-chat' : 'dx-chat-bas dx-chat-bas--plein'}
-          style={{ display: chatOuvert ? undefined : 'none' }}
-        >
-          <Assistant
-            orgId={chat.orgId}
-            titre="Assistant du fichier"
-            memoire={`app-${file.id}`}
-            coutSaisonInitial={chat.coutSaison}
-            contexte={{ space: file.space, folder_id: file.parent_id, selection_id: file.id, app_id: file.id, form: formActif }}
-            onClose={() => setChatOuvert(false)}
-            onFaire={chat.onFaire}
-            onFichier={surFichier}
-            suggestions={['Rends le texte plus court et plus clair', 'Corrige les fautes']}
-          />
-        </div>
-      )}
 
       {sheet && (
         <>

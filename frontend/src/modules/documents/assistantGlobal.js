@@ -42,6 +42,21 @@ export function brancherDocs(branche) {
   }
 }
 
+// Fichier de l'appli ouvert (AppFile) : l'assistant de l'appli le lit et le
+// corrige, avec Annuler (Seb, 21 octobre : plus de chat propre au fichier).
+let fichier = null
+
+export function fichierBranche() {
+  return fichier
+}
+
+export function brancherFichier(branche) {
+  fichier = branche
+  return () => {
+    if (fichier === branche) fichier = null
+  }
+}
+
 // Fichier de l'appli créé depuis un autre onglet : Docs l'ouvre en arrivant.
 export function prendreFichierAOuvrir() {
   const f = aOuvrir

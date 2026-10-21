@@ -687,6 +687,9 @@
 .dx-panel {
   position: fixed;
   inset: 0;
+  /* Chat de l'appli ouvert (AssistantGlobal.jsx) : entre l'en-tête et le chat. */
+  top: var(--panneau-haut, 0px);
+  bottom: var(--chat-dessus, 0px);
   z-index: 50;
   display: flex;
   flex-direction: column;

@@ -355,7 +355,11 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
 - **PDF** faits par pymupdf, pas par Chromium (les tests tournent sans Chromium).
 - **Assistant** : `convene_assembly`, `validate_app_file`, `send_app_file`, chacun sur une carte
   Faire / Annuler (les actions des modules n'ont que des cartes : préparer la convocation en a donc une
-  aussi). L'assistant ne l'ouvre pas à côté de la discussion : on la retrouve dans Docs › Réunions.
+  aussi). Après « Faire », la convocation (ou le PV) **s'ouvre au-dessus de l'assistant** (Seb,
+  21 octobre ; sur téléphone, le chat se ferme pour la montrer), et l'appli écrit dans le chat, sans appel
+  payant : « Le texte vous va ? Dites-moi ce qu'il faut changer, ou modifiez-le vous-même ; quand il est
+  bon, dites « valide » ou touchez Valider : rien ne part avant. » Le résultat de « Faire » porte le
+  fichier à ouvrir (`ouvrir`, `assistant/actions.py`).
   `send_app_file` n'envoie qu'une convocation d'AG (aux destinataires par défaut). `app_file_pdf`
   passe à l'étape 4 (il faut un outil qui rend un lien, pas une carte).
 - Pas encore fait : rappel si la convocation part moins de 15 jours avant ; « Changer » le pouvoir

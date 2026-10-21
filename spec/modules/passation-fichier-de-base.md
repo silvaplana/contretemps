@@ -39,9 +39,11 @@ est dans `main` (PR #6, fusionnée le 16 octobre, commit `de38f4a`).
   l'appareil (`AssistantGlobal.jsx`, état dans `assistantGlobal.js`). Dans Docs,
   l'explorateur s'y branche (`brancherDocs`) pour donner le dossier ouvert et
   faire les cartes ; ailleurs, le contexte envoyé est `{onglet}`.
-- Chaque fichier de l'appli a son propre chat, qui part de zéro (bulle dans
-  Préparer, `AppFile.jsx`) ; il écrit les formulaires avec l'outil
-  `modifier_fichier_appli` (`assistant/fichier_appli.py`), avec « Annuler ».
+- ~~Chaque fichier de l'appli a son propre chat~~ : retiré le 21 octobre (Seb :
+  « on peut rester sur l'assistant principal »). Le fichier ouvert (`AppFile.jsx`)
+  se déclare à l'assistant de l'appli (`brancherFichier`, `assistantGlobal.js`),
+  qui écrit les formulaires avec l'outil `modifier_fichier_appli`
+  (`assistant/fichier_appli.py`), avec « Annuler ».
 - Outils ajoutés : `proposer_creer_fichier_appli` (carte Faire / Annuler) ;
   `proposer_modifications` accepte `commentaire_admin`, `ligne_rouge`,
   `cellules_rouges` (admins et Super User ; jamais la santé).

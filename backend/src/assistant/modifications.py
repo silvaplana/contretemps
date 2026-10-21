@@ -123,7 +123,9 @@ class Refus(ValueError):
 @dataclass
 class Ligne:
     libelle: str
-    faire: Callable[[Session], None]
+    # Peut rendre un fichier à ouvrir à l'écran une fois fait
+    # ({"open": {...}}, voir assistant/actions.py).
+    faire: Callable[[Session], dict | None]
 
 
 def _nom(c: Compte) -> str:

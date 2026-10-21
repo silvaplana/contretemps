@@ -111,16 +111,12 @@ export default function Explorer({ orgId, memoire }) {
   const bureau = useBureau()
   // L'assistant est celui de toute l'appli (AssistantGlobal.jsx, bouton de
   // l'en-tête) ; Docs lui donne le dossier ouvert et fait ses cartes.
-  const [assistant, setAssistant] = useState(false)
-  const [coutSaison, setCoutSaison] = useState(null)
   // Éditeur OnlyOffice : encore en essai, le Super User seul.
   const [editeur, setEditeur] = useState(false)
   const [enEdition, setEnEdition] = useState(null)
   useEffect(() => {
     accesAssistant(orgId).then((x) => {
-      setAssistant(x.autorise)
       setEditeur(Boolean(x.editeur))
-      setCoutSaison(x.cout_saison_usd)
     }, () => {})
   }, [orgId])
   const api = useMemo(() => documentsApi(orgId), [orgId])
@@ -1032,9 +1028,22 @@ export default function Explorer({ orgId, memoire }) {
     branche.current = {
       contexte: () => ({ space, folder_id: folder, selection_id: selection?.id ?? null, selection_ids: selIds.slice(0, 50), recents: recentsActif }),
       faire: faireAction,
+      // Fichier créé par l'assistant : son dossier, puis le fichier ouvert.
+      ouvrir: (f) => {
+        ouvrirDepuisArbre(f.space, f.parent_id)
+        setAppli({ id: f.id, name: f.name, kind: 'app', family: f.family })
+      },
     }
   })
-  useEffect(() => brancherDocs({ contexte: () => branche.current.contexte(), faire: (carte) => branche.current.faire(carte) }), [])
+  useEffect(
+    () =>
+      brancherDocs({
+        contexte: () => branche.current.contexte(),
+        faire: (carte) => branche.current.faire(carte),
+        ouvrir: (f) => branche.current.ouvrir(f),
+      }),
+    [],
+  )
 
 
   function voirRecents() {
@@ -1354,7 +1363,6 @@ export default function Explorer({ orgId, memoire }) {
             supprimer(x)
           }}
           onChanged={recharger}
-          chat={{ autorise: assistant, orgId, coutSaison, bureau, onFaire: faireAction }}
         />
         </Suspense>
       )}

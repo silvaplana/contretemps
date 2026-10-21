@@ -1,8 +1,8 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ajouterProduit } from '../../api/assistant.js'
 import { documentsApi } from '../../api/documents.js'
 import Assistant from './Assistant.jsx'
-import { docsBranche, ecrireStockage, lireStockage, ouvrirDansDocs } from './assistantGlobal.js'
+import { docsBranche, ecrireStockage, fichierBranche, lireStockage, ouvrirDansDocs } from './assistantGlobal.js'
 import './documents.css'
 
 // L'assistant de toute l'appli (Seb, 16 octobre) : un seul chat, ouvert par
@@ -58,14 +58,33 @@ export default function AssistantGlobal({ etat, onglet, onNavigate, admin = fals
   const bureau = useBureau()
   const [hauteur, setHauteur] = useState(hauteurDeDepart)
   const [message, setMessage] = useState('')
+  const cadre = useRef(null)
 
   // Sur ordinateur, le chat occupe le bas de l'écran : les boutons +
   // (et les messages) des écrans remontent d'autant pour ne pas cacher ses
   // boutons (Seb, 16 octobre). Sur téléphone, il couvre tout l'écran.
   useEffect(() => {
     const racine = document.documentElement.style
-    racine.setProperty('--chat-hauteur', `${etat.monte && etat.ouvert && bureau ? hauteur : 0}px`)
-    return () => racine.removeProperty('--chat-hauteur')
+    const ouvert = etat.monte && etat.ouvert && bureau
+    racine.setProperty('--chat-hauteur', `${ouvert ? hauteur : 0}px`)
+    // Les panneaux de Docs (fichier ouvert, visionneuse…) s'arrêtent au-dessus
+    // du chat au lieu de le cacher (Seb, 21 octobre) : mesuré sur le chat.
+    // Sur ordinateur, chat ouvert : les panneaux de Docs (fichier ouvert…)
+    // tiennent entre l'en-tête et le chat (Seb, 21 octobre).
+    const mesurer = () => {
+      const haut = cadre.current?.getBoundingClientRect().top
+      const entete = document.querySelector('.app-header')?.getBoundingClientRect().bottom
+      racine.setProperty('--chat-dessus', ouvert && haut ? `${Math.max(0, window.innerHeight - haut)}px` : '0px')
+      racine.setProperty('--panneau-haut', ouvert && entete ? `${Math.max(0, entete)}px` : '0px')
+    }
+    mesurer()
+    window.addEventListener('resize', mesurer)
+    return () => {
+      window.removeEventListener('resize', mesurer)
+      racine.removeProperty('--chat-hauteur')
+      racine.removeProperty('--chat-dessus')
+      racine.removeProperty('--panneau-haut')
+    }
   }, [etat.monte, etat.ouvert, bureau, hauteur])
 
   if (!etat.monte) return null
@@ -90,9 +109,25 @@ export default function AssistantGlobal({ etat, onglet, onNavigate, admin = fals
     setTimeout(() => setMessage(''), 3000)
   }
 
+  // Fichier créé par une carte (convocation, procès-verbal) : ouvert dans
+  // Docs, au-dessus de l'assistant. Sur téléphone, le chat couvre l'écran :
+  // on le ferme pour voir le fichier (la conversation reste).
+  function ouvrir(fichier) {
+    const docs = docsBranche()
+    if (docs?.ouvrir) docs.ouvrir(fichier)
+    else {
+      ouvrirDansDocs(fichier)
+      onNavigate('docs')
+    }
+    if (!bureau) etat.fermer()
+  }
+
   // Lu au moment d'envoyer : le dossier ouvert dans Docs, ou l'onglet.
   function contexte() {
     const docs = docsBranche()
+    // Un fichier de l'appli ouvert : l'assistant travaille dessus.
+    const ouvert = onglet === 'docs' ? fichierBranche()?.contexte() : null
+    if (ouvert) return ouvert
     if (onglet === 'docs' && docs) return docs.contexte()
     return { onglet: ONGLETS[onglet] ?? onglet }
   }
@@ -119,6 +154,7 @@ export default function AssistantGlobal({ etat, onglet, onNavigate, admin = fals
     // Sur téléphone, l'écran est trop petit pour l'onglet et la
     // conversation : l'assistant prend tout l'écran (Seb, 16 octobre).
     <div
+      ref={cadre}
       className={`dx dx-chat-global dx-chat-bas${bureau ? '' : ' dx-chat-bas--plein'}`}
       style={{ height: bureau ? hauteur : undefined, display: etat.ouvert ? undefined : 'none' }}
     >
@@ -138,6 +174,8 @@ export default function AssistantGlobal({ etat, onglet, onNavigate, admin = fals
         memoire={`appli:${etat.orgId}`}
         onClose={etat.fermer}
         onFaire={faire}
+        onOuvrir={ouvrir}
+        onFichier={(carte) => fichierBranche()?.surFichier(carte)}
         suggestions={suggestionsPour(onglet, admin)}
       />
       {message && <div className="dx-toast" role="status">{message}</div>}
