@@ -1021,6 +1021,14 @@ export default function Explorer({ orgId, memoire }) {
     await recharger()
   }
 
+  // Une carte de l'assistant a changé quelque chose (convocation créée,
+  // fichier rangé…) : la liste se recharge (Seb, 21 octobre).
+  useEffect(() => {
+    const surModif = () => recharger()
+    window.addEventListener('contretemps:donnees-modifiees', surModif)
+    return () => window.removeEventListener('contretemps:donnees-modifiees', surModif)
+  }, [recharger])
+
   // Branchement sur l'assistant de l'appli : ce que Docs montre, lu au
   // moment d'envoyer, et ses cartes « Faire ».
   const branche = useRef(null)
