@@ -150,6 +150,11 @@ sondage, un choix de date), c'est le réglage « visibilité des réponses » (R
 
 **L'email envoyé (Seb, 16 octobre)** :
 
+*Boutons (Seb, 21 octobre)* : le lien personnel est un **vrai bouton** (« Répondre », « Je viens »…), plus
+une adresse écrite en clair. Brevo réécrit ces liens pour compter les clics (ils passent par son domaine
+avant l'appli) : accepté par Seb. Le texte brut du mail garde l'adresse. Les mails de connexion et
+d'invitation (`auth/mails.py`) gardent l'adresse en clair.
+
 - **Expéditeur** : le nom de l'école avec une adresse de l'appli (« École de danse du Beausset »
   `<noreply@contretemps.silvaplana.cloud>`), et **réponse à** l'adresse de contact de l'école (souvent un
   Gmail) : quand quelqu'un clique Répondre, ça arrive dans le Gmail de l'asso. On n'envoie jamais *depuis*

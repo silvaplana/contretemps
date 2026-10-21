@@ -89,6 +89,9 @@ def test_regles_des_procurations(client, ecole, ag, mails):
     # Le mail porte les trois réponses.
     mail = next(m for m in mails.envoyes if m["to"] == "leon@exemple.fr")
     assert "Je donne procuration :" in mail["text"] and "?c=proxy" in mail["text"]
+    # Trois vrais boutons dans le mail (Seb, 21 octobre).
+    assert f'/r/{leon}?c=proxy"' in mail["html"] and ">Je donne procuration</a>" in mail["html"]
+    assert ">Je viens</a>" in mail["html"] and ">Je ne viens pas</a>" in mail["html"]
 
     assert procuration(client, leon, gens["Ana Roux"]).status_code == 201
     # Ana n'a pas répondu : le pouvoir est en attente, ni compté ni perdu.

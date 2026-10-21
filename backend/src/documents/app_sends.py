@@ -325,8 +325,9 @@ def compose(
     org_name: str, sender: str, test: bool, can_reply: bool, trial: bool | str = False,
 ) -> tuple[str, str, str]:
     """L'email : une version lisible du formulaire d'entrée (tout le texte
-    pour un fichier à lire, l'introduction sinon) et le lien personnel,
-    écrit en clair (auth/mails.py : Brevo réécrit les liens cliquables)."""
+    pour un fichier à lire, l'introduction sinon) et le lien personnel en
+    vrais boutons (Seb, 21 octobre : Brevo réécrit ces liens pour compter les
+    clics, ils marchent quand même) ; le texte brut garde l'adresse."""
     sujet = ("[Essai] " if trial else "[Relecture] " if test else "") + name
     paragraphes = [message] if message else []
     paragraphes += app_content.readable(content, intro_only=family != "inform")
@@ -363,11 +364,14 @@ def compose(
         + f'<p style="margin:0 0 16px;font-size:20px;font-weight:bold">{escape(name)}</p>'
         + p.format(f"Bonjour {escape(person)},")
         + "".join(p.format(escape(x)) for x in paragraphes)
+        + '<div style="margin:24px 0">'
         + "".join(
-            f'<p style="margin:24px 0 4px;font-weight:bold">{escape(t)} :</p>'
-            f'<p style="margin:0 0 24px;word-break:break-all">{escape(u)}</p>'
+            f'<p style="margin:0 0 12px"><a href="{escape(u)}" style="display:inline-block;padding:14px 26px;'
+            'border-radius:999px;background:#d9732b;color:#ffffff;font-size:17px;font-weight:bold;'
+            f'text-decoration:none">{escape(t)}</a></p>'
             for t, u in choix or [(bouton, link)]
         )
+        + "</div>"
         + "".join(f'<p style="margin:0 0 8px;font-size:13px;color:#777">{escape(x)}</p>' for x in fin)
         + "</div>"
     )

@@ -310,7 +310,9 @@ def test_diffuser_aux_personnes_choisies(client, ecole, db_session, mails):
     assert mail["from"] == "Contretemps" and mail["reply_to"] == "julia@exemple.fr"
     assert "Tu relis ?" in mail["text"] and "Fête de fin d'année" in mail["text"] and "Quelle date" not in mail["text"]
     lien = mail["text"].split("https://contretemps-83330.contretemps.silvaplana.cloud/r/")[1].split()[0]
-    assert "<a " not in mail["html"]
+    # De vrais boutons (Seb, 21 octobre), le texte brut garde l'adresse.
+    assert f'href="https://contretemps-83330.contretemps.silvaplana.cloud/r/{lien}"' in mail["html"]
+    assert ">Répondre</a>" in mail["html"]
 
     page = client.get(f"/documents/public/links/{lien}")
     assert page.status_code == 200 and page.json()["accepting"] is True and page.json()["test"] is True

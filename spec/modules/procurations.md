@@ -343,7 +343,7 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
   envoyée à N membres » ; « Changer » ouvre le Diffuser habituel (ajouter des personnes).
 - **Valider** passe directement en Officiel. Pour corriger ensuite : menu de l'état › Brouillon (admin),
   comme tout fichier ; « Faire relire » dans ⋯ n'est pas fait.
-- **L'email** porte trois liens en clair, « Je viens », « Je donne procuration », « Je ne viens pas »
+- **L'email** porte trois **vrais boutons** (Seb, 21 octobre ; avant, liens en clair), « Je viens », « Je donne procuration », « Je ne viens pas »
   (`…/r/<jeton>?c=proxy`) : la page s'ouvre avec ce choix déjà fait.
 - **Mettre en ligne** (page publique) est refusé pour une convocation : chacun répond et signe par son
   lien personnel.
