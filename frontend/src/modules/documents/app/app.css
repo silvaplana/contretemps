@@ -1246,9 +1246,31 @@ h4.ap-h {
   }
 }
 
-/* « 1. Préparer » : Préparation | Aperçu (Seb, 21 octobre). */
-.af-vues {
-  padding: 8px 16px 0;
+/* Menu « Mode » du bandeau : Aperçu ou Édition (Seb, 21 octobre). */
+.af-mode {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 6px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.af-mode select {
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+@media (max-width: 600px) {
+  .af-mode__mot {
+    display: none;
+  }
 }
 
 /* Préparation en WYSIWYG (Seb, 21 octobre) : l'éditeur prend l'allure de

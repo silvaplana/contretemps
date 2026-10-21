@@ -21,16 +21,16 @@ import './app.css'
 // l'en-tête, Partager toujours visible. La bulle ouvre le même assistant que
 // dans Docs, qui voit le fichier et peut écrire ses formulaires (§2.1).
 
-// Trois étapes (Seb, 21 octobre). « 1. Préparer » a deux vues, Préparation
-// (l'éditeur, `prep`) et Aperçu (`preview`) ; on y arrive sur l'Aperçu.
+// Trois étapes (Seb, 21 octobre). « 1. Préparer » a deux modes, choisis dans
+// le bandeau du haut : Aperçu (`preview`, par défaut) et Édition (`prep`).
 const TABS = [
   ['etape1', '1. Préparer'],
   ['diffuse', '2. Diffuser'],
   ['results', '3. Voir les résultats'],
 ]
 const VUES_ETAPE1 = [
-  ['prep', 'Préparation'],
   ['preview', 'Aperçu'],
+  ['prep', 'Édition'],
 ]
 const SAVE_DELAY = 800
 
@@ -511,6 +511,19 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
             {STATUSES[statut].label}
             {file.can_edit && <span className="af-chev" aria-hidden="true">▾</span>}
           </button>
+          {/* « 1. Préparer » : menu Mode, Aperçu par défaut ou Édition (Seb, 21 octobre). */}
+          {file.can_edit && (tab === 'prep' || tab === 'preview') && (
+            <label className="af-mode">
+              <span className="af-mode__mot">Mode</span>
+              <select aria-label="Mode" value={tab} onChange={(e) => setTab(e.target.value)}>
+                {VUES_ETAPE1.map(([cle, texte]) => (
+                  <option key={cle} value={cle}>
+                    {texte}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
         </div>
       </TitreEntete>
       <ActionsEntete>
@@ -559,11 +572,6 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
               </button>
             )
           })}
-        </div>
-      )}
-      {file.can_edit && (tab === 'prep' || tab === 'preview') && (
-        <div className="af-vues">
-          <Seg label="Vue" value={tab} options={VUES_ETAPE1} onChange={setTab} />
         </div>
       )}
       <div className="dx-body af-body">{corps}</div>
