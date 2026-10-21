@@ -54,7 +54,7 @@ export default function AssemblyRemind({ file, api, count, onToast, onSent }) {
   }
   return (
     <button type="button" className="dx-btn dx-btn--ghost af-emargement" disabled={!file.can_edit} onClick={lancer}>
-      Relancer {count > 1 ? `les ${count}` : 'la personne'} sans réponse
+      Renvoyer un rappel {count > 1 ? `aux ${count} personnes qui n’ont` : 'à la personne qui n’a'} pas encore répondu
     </button>
   )
 }

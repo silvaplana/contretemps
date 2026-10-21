@@ -194,12 +194,25 @@ class AppSends:
             )
             jobs.append({"send_id": s.id, "to": s.email, "subject": sujet, "text": texte, "html": html,
                          "sender_name": ecole, "reply_to": reply_to})
+        # Convocation d'AG : une copie à l'adresse de contact de l'association
+        # (Seb, 21 octobre), pas pour une relecture.
+        if not test and assembly.block_of(version.content):
+            copie = assembly.copy_job(db, mailer, self.docs.association, node, version.content, [s.name for s in envois])
+            if copie:
+                jobs.append(copie)
         return {"sent": len(envois), "test": test}, jobs
 
     def deliver(self, bind, jobs: list[dict]) -> None:
         """Fait partir les emails (après la réponse) et note le résultat."""
         with Session(bind=bind) as db:
             for job in jobs:
+                if job.get("send_id") is None:
+                    # La copie pour l'association : envoyée, rien à noter.
+                    try:
+                        self.docs.mailer.send(job["to"], job["subject"], job["text"], job["html"], job["sender_name"], None)
+                    except Exception as erreur:  # noqa: BLE001
+                        logger.warning("Copie pour l'association non envoyée à %s : %s", job["to"], erreur)
+                    continue
                 s = db.get(DocSend, job["send_id"])
                 if s is None:
                     continue

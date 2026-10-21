@@ -24,7 +24,7 @@ from comptes import Comptes
 from cours import CoursService
 from db import SessionLocal
 from documents import assembly
-from documents_contretemps import AnnuaireContretemps, MessagerieContretemps
+from documents_contretemps import AnnuaireContretemps, AssociationContretemps, MessagerieContretemps
 from messagerie import Conversations, Messages
 
 INTERVALLE_SECONDES = 60
@@ -34,6 +34,8 @@ DELAI_MINUTES = 15
 def run() -> None:
     messages_client = Messages(Conversations(comptes=Comptes(), cours=CoursService()))
     annuaire, mails = AnnuaireContretemps(), MessagerieContretemps()
+    # La copie des rappels pour l'adresse de contact de l'association.
+    association = AssociationContretemps()
     print(
         f"Relance auto démarrée (vérifie toutes les {INTERVALLE_SECONDES}s, "
         f"délai {DELAI_MINUTES} min)."
@@ -46,7 +48,7 @@ def run() -> None:
             if relancees:
                 print(f"Relance auto : {len(relancees)} message(s) basculé(s) en 'email'.")
             try:
-                envoyes = assembly.remind_due(db, mails, annuaire)
+                envoyes = assembly.remind_due(db, mails, annuaire, association=association)
                 if envoyes:
                     print(f"Relance AG : {envoyes} email(s) envoyé(s).")
             except Exception as erreur:  # noqa: BLE001 (la boucle continue)

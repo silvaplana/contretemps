@@ -25,7 +25,10 @@ def convoquer(docs, **corps):
 
 
 def lien(mails, adresse):
-    return next(m for m in reversed(mails.envoyes) if m["to"] == adresse)["text"].split("/r/")[1].split("?")[0].split()[0]
+    # Les copies pour l'association (sans lien) ne comptent pas.
+    return next(
+        m for m in reversed(mails.envoyes) if m["to"] == adresse and not m["subject"].startswith("Copie : ")
+    )["text"].split("/r/")[1].split("?")[0].split()[0]
 
 
 def repondre(client, jeton, **valeur):
@@ -442,7 +445,7 @@ def test_assistant_etat_relance_et_pdf(client, ecole, ag, mails, db_session):
     avant = len(mails.envoyes)
     r = admin.c.post(f"{admin.base}/nodes/{ag['id']}/app/assembly/remind", headers=admin.h)
     assert r.status_code == 201 and r.json() == {"sent": 3}
-    relances = mails.envoyes[avant:]
+    relances = [m for m in mails.envoyes[avant:] if not m["subject"].startswith("Copie : ")]
     assert {m["to"] for m in relances} == {"julia@exemple.fr", "ima@exemple.fr", "ana@exemple.fr"}
     assert all(m["subject"] == f"Rappel : {nom}" and "pas encore votre réponse" in m["text"] for m in relances)
     # Le rappel automatique de J-7 part quand même.
@@ -453,11 +456,12 @@ def test_assistant_etat_relance_et_pdf(client, ecole, ag, mails, db_session):
     assert carte["lignes"] == [f"Relancer par email les 3 membres qui n'ont pas répondu à « {nom} » (Ana Roux, Ima Blanc, Julia Dho)"]
     avant = len(mails.envoyes)
     assert faire(carte)[0]["ok"]
+    # Trois rappels, plus une copie pour l'association (Seb, 21 octobre).
     for _ in range(50):  # les emails partent à côté, comme Envoyer
-        if len(mails.envoyes) == avant + 3:
+        if len(mails.envoyes) == avant + 4:
             break
         time.sleep(0.02)
-    assert len(mails.envoyes) == avant + 3
+    assert len(mails.envoyes) == avant + 4
 
     # Ranger le récapitulatif : une seule fois dans le dossier, mis à jour ensuite.
     _, carte = proposer("store_assembly_pdf", {"file": nom, "document": "summary"})
@@ -476,3 +480,40 @@ def test_assistant_etat_relance_et_pdf(client, ecole, ag, mails, db_session):
     texte, carte = proposer("remind_assembly", {"file": nom})
     assert carte is None and "tout le monde a répondu" in texte
     assert admin.c.post(f"{admin.base}/nodes/{ag['id']}/app/assembly/remind", headers=admin.h).status_code == 409
+
+
+def test_copie_a_l_adresse_de_contact(client, ecole, db_session, mails):
+    """Seb, 21 octobre : chaque envoi de convocation ou de relance part aussi,
+    une fois, à l'adresse de contact de l'association : même texte, la liste
+    des destinataires, aucun lien personnel."""
+    from datetime import datetime
+
+    from app.main import documents_client
+    from documents import assembly
+    from ecoles.models import Ecole
+
+    db_session.get(Ecole, ecole["id"]).email_contact = "contact@asso.fr"
+    for compte, adresse in (("admin", "julia"), ("prof", "ima"), ("eleve", "leon"), ("autre", "ana")):
+        ecole[compte].definir_emails(f"{adresse}@exemple.fr")
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    ident = convoquer(admin).json()["id"]
+    admin.modifier(ident, change_status=True, status="official")
+    vue = admin.get(f"/nodes/{ident}/app/assembly").json()
+    assert admin.c.post(f"{admin.base}/nodes/{ident}/app/sends", json={"principals": vue["principals"]}, headers=admin.h).json()["sent"] == 4
+    copies = [m for m in mails.envoyes if m["to"] == "contact@asso.fr"]
+    assert len(copies) == 1
+    copie = copies[0]
+    assert copie["subject"] == "Copie : Convocation AGO du 21 novembre 2099"
+    assert "envoyée à 4 membres" in copie["text"] and "Ana Roux, Ima Blanc, Julia Dho, Léon Perrin" in copie["text"]
+    assert "/r/" not in copie["text"] and "/r/" not in copie["html"]
+
+    # La relance faite à la main : une copie aussi.
+    assert admin.c.post(f"{admin.base}/nodes/{ident}/app/assembly/remind", headers=admin.h).json()["sent"] == 4
+    copies = [m for m in mails.envoyes if m["to"] == "contact@asso.fr"]
+    assert len(copies) == 2 and copies[1]["subject"] == "Copie : Rappel : Convocation AGO du 21 novembre 2099"
+    # Le rappel automatique de J-7 : une copie aussi.
+    assembly.remind_due(db_session, mails, documents_client.directory, now=datetime(2099, 11, 14, 15, 0),
+                        association=documents_client.association)
+    copies = [m for m in mails.envoyes if m["to"] == "contact@asso.fr"]
+    assert len(copies) == 3 and "/r/" not in copies[2]["text"]

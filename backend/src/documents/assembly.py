@@ -424,6 +424,31 @@ def _reminder_jobs(db: Session, mailer, directory, node: DocNode, content: dict,
     return jobs
 
 
+def copy_job(db: Session, mailer, association, node: DocNode, content: dict, names: list[str], prefix: str = "") -> dict | None:
+    """Une copie de l'envoi pour l'adresse de contact de l'association
+    (Seb, 21 octobre) : un seul mail par envoi, le même texte et la liste des
+    destinataires, sans lien personnel. None sans adresse de contact."""
+    contact = association.contact_email(db, node.org_id) if association is not None else None
+    if not contact or mailer is None:
+        return None
+    ecole, _ = mailer.org(db, node.org_id)
+    noms = sorted(names, key=str.lower)
+    quoi = "Ce rappel" if prefix else "Cette convocation"
+    paragraphes = [
+        f"Copie pour l'association : {quoi.lower()} a été envoyé{'' if prefix else 'e'} à {len(noms)} "
+        f"membre{'s' if len(noms) > 1 else ''} : {', '.join(noms)}.",
+        *app_content.readable(content, intro_only=node.family != "inform"),
+    ]
+    p = '<p style="margin:0 0 16px;white-space:pre-line">{}</p>'
+    html = (
+        '<div style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.5;color:#222;max-width:520px">'
+        + "".join(p.format(escape(x)) for x in paragraphes)
+        + "</div>"
+    )
+    return {"send_id": None, "to": contact, "subject": f"Copie : {prefix}{node.name}", "text": "\n\n".join(paragraphes) + "\n",
+            "html": html, "sender_name": ecole, "reply_to": None}
+
+
 def send_reminders(mailer, jobs: list[dict]) -> int:
     """Fait partir les rappels ; rend le nombre d'emails envoyés."""
     total = 0
@@ -457,12 +482,16 @@ def remind(docs: Documents, db: Session, member: Member, node_id: int) -> tuple[
         db, docs.mailer, docs.directory, node, contenu, cibles,
         f"Rappel : l'assemblée a lieu bientôt{quand}, et nous n'avons pas encore votre réponse.",
     )
+    envoyes = len(jobs)
+    copie = copy_job(db, docs.mailer, docs.association, node, contenu, [s.name for s in cibles], "Rappel : ")
+    if copie:
+        jobs.append(copie)
     docs._log(db, member, node, "reminded", {"count": len(cibles)})
     db.commit()
-    return {"sent": len(jobs)}, jobs
+    return {"sent": envoyes}, jobs
 
 
-def remind_due(db: Session, mailer, directory, now: datetime | None = None) -> int:
+def remind_due(db: Session, mailer, directory, now: datetime | None = None, association=None) -> int:
     """Sept jours avant l'assemblée, relance une fois les convoqués qui n'ont
     pas répondu, avec leur lien. Seulement si la convocation est partie avant
     J-7 (sinon elle vient d'arriver). Appelé chaque minute par
@@ -501,6 +530,10 @@ def remind_due(db: Session, mailer, directory, now: datetime | None = None) -> i
         db.commit()
         rappel = f"Rappel : l'assemblée a lieu dans une semaine, le {when_text(debut)}, et nous n'avons pas encore votre réponse."
         total += send_reminders(mailer, _reminder_jobs(db, mailer, directory, node, version.content, cibles, rappel))
+        # Une copie pour l'adresse de contact (pas comptée dans le total).
+        copie = copy_job(db, mailer, association, node, version.content, [s.name for s in cibles], "Rappel : ")
+        if copie:
+            send_reminders(mailer, [copie])
     return total
 
 

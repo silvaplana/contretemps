@@ -338,6 +338,10 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
 - **Quorum** : aucun, un quart, un tiers ou la moitié des membres convoqués ; pas encore « un nombre ».
 - **Pouvoir perdu** : seulement si le mandataire a répondu « Je ne viens pas » ; tant qu'il n'a pas
   répondu, le pouvoir est « en attente » (ni compté, ni perdu) dans la prévision.
+- **Copie à l'association (Seb, 21 octobre)** : chaque envoi de convocation, chaque relance (bouton ou
+  rappel de J-7) part aussi **une fois** à l'adresse de contact de l'association (`ecoles.email_contact`,
+  sinon l'Administrateur principal) : « Copie : … », le même texte et la liste des destinataires, **sans
+  lien personnel** (personne ne peut répondre à la place d'un membre). Rien pour un essai ou une relecture.
 - **À qui (Seb, 21 octobre)** : l'écran d'envoi propose **Tout le monde, Admins, Trésoriers, Professeurs,
   Élèves** (à cocher, pas les cours) et **Ajouter une personne** (recherche par nom) ; les convoqués de la
   dernière AG, proposés d'office, forment une seule étiquette retirable. « Recevront la convocation :
@@ -418,7 +422,8 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
   (`assembly.status_text`) : convoqués, réponses, qui vient, qui ne vient pas, sans réponse (noms),
   pouvoirs (qui porte quoi, perdus, en attente), voix prévues et quorum, puis le décompte du jour si la
   feuille d'émargement est commencée. Seulement pour qui peut voir Résultats (droit de modifier).
-- **Relancer** : bouton **Relancer les N sans réponse** dans Résultats (avant le début de l'AG), le mail
+- **Relancer** : bouton **Renvoyer un rappel aux N personnes qui n'ont pas encore répondu** (libellé de Seb,
+  21 octobre ; avant « Relancer les N sans réponse ») dans Résultats (avant le début de l'AG), le mail
   part après 10 s, **Annuler** d'ici là ; outil `remind_assembly(file)` sur une carte Faire / Annuler
   (« Relancer par email les 3 membres qui n'ont pas répondu à … (noms) »). Même fonction
   (`assembly.remind`) : le mail de la convocation précédé de « Rappel : l'assemblée a lieu bientôt, le …,
