@@ -126,6 +126,8 @@ export function formatValue(q, v) {
 export const ASSEMBLY_ANSWERS = { attend: 'Vient', proxy: 'Procuration', absent: 'Ne vient pas', none: 'Pas encore répondu' }
 
 export const assemblyBlock = (content) => walk(content?.entry?.blocks).find((b) => b.type === 'assembly')
+// Procès-verbal d'AG : son bloc Signature porte l'id de la convocation.
+export const minutesBlock = (content) => walk(content?.entry?.blocks).find((b) => b.type === 'signature' && b.props?.minutesOf > 0)
 
 export const euros = (n) => `${Number(n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`
 

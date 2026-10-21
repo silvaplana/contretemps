@@ -39,6 +39,7 @@ from documents_contretemps import (
     DOSSIER_DOCUMENTS,
     TAILLE_MAX_MO,
     AnnuaireContretemps,
+    AssociationContretemps,
     MessagerieContretemps,
     NotifieurDocuments,
     SaisonsContretemps,
@@ -305,6 +306,7 @@ documents_client = Documents(
     attendance_reader=AttendanceReader(
         note_cost=lambda db, ecole_id, cout, detail: ressources_client.noter_ia(db, ecole_id, "liste_presents", cout, detail),
     ),
+    association=AssociationContretemps(),
 )
 documents_receiver = DocumentsReceiver(client=documents_client, app=app, current_member=membre_appelant)
 # Caddy demande un certificat pour <page>.<école>… : la page doit être en ligne.

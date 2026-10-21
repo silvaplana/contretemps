@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import app_content, assembly
+from . import app_content, assembly, minutes
 from .app_content import ContentError
 from .models import LEVEL_MANAGE, DocNode, DocResponse, DocSend, utcnow
 from .ports import Member
@@ -184,9 +184,12 @@ class AppSends:
         db.commit()
 
         jobs = []
+        # Le procès-verbal part aux membres pour être lu (les signataires ont
+        # leur propre envoi, minutes.py).
+        famille = "inform" if minutes.block_of(version.content) is not None else node.family
         for s in envois:
             sujet, texte, html = compose(
-                node.name, node.family, version.content, s.name, message, f"{adresse}/r/{s.token}",
+                node.name, famille, version.content, s.name, message, f"{adresse}/r/{s.token}",
                 ecole, member.display_name, test, bool(reply_to),
             )
             jobs.append({"send_id": s.id, "to": s.email, "subject": sujet, "text": texte, "html": html,
@@ -243,12 +246,16 @@ class AppSends:
         return s, node
 
     @staticmethod
-    def _accepting(s: DocSend, node: DocNode) -> bool:
+    def _accepting(s: DocSend, node: DocNode, content: dict) -> bool:
         if node.family == "inform":
             return False
         # Un essai sur soi-même reste ouvert, quel que soit l'état.
         if s.channel == "trial":
             return True
+        # Procès-verbal : seuls les signataires signent, tant qu'il est Validé
+        # (proces-verbal-ag.md §1) ; les membres le lisent.
+        if minutes.block_of(content) is not None:
+            return s.channel == minutes.SIGN and node.status == "validated"
         # Un lien de relecture se ferme quand le fichier passe en Officiel.
         return node.status == ("validated" if s.test else "official")
 
@@ -261,15 +268,21 @@ class AppSends:
             s.opened_at = utcnow()
             db.commit()
         reponse = db.get(DocResponse, s.response_id) if s.response_id else None
+        pv = minutes.block_of(version.content) is not None
         return {
             "org_id": node.org_id,
             "name": node.name,
-            "family": node.family,
+            # Un membre lit le procès-verbal ; le signataire le signe.
+            "family": "inform" if pv and s.channel != minutes.SIGN else node.family,
             "person": s.name,
             "test": s.test,
             "trial": s.channel == "trial",
-            "content": {"schema": version.content.get("schema", 1), "entry": version.content.get("entry", {"blocks": []})},
-            "accepting": self._accepting(s, node),
+            "signer": pv and s.channel == minutes.SIGN,
+            "content": (
+                minutes.link_content(self.docs, db, node, version.content, s) if pv
+                else {"schema": version.content.get("schema", 1), "entry": version.content.get("entry", {"blocks": []})}
+            ),
+            "accepting": self._accepting(s, node, version.content),
             "values": reponse.values if reponse is not None else None,
             # Convocation : qui peut représenter ce membre (procurations.md §3).
             "assembly": assembly.link_context(self.docs, db, node, version.content, s.person_id),
@@ -277,9 +290,9 @@ class AppSends:
 
     def link_answer(self, db: Session, token: str, values) -> dict:
         s, node = self._link(db, token)
-        if not self._accepting(s, node):
-            raise self._error(409, "Les réponses sont fermées.")
         version = self.apps.current_version(db, node)
+        if version is None or not self._accepting(s, node, version.content):
+            raise self._error(409, "Les réponses sont fermées.")
         try:
             gardees = app_content.check_values(version.content, values, test=s.test)
             reponse = db.get(DocResponse, s.response_id) if s.response_id else None
@@ -302,6 +315,8 @@ class AppSends:
         db.commit()
         if bloc is not None and not s.test:
             assembly.after_answer(self.docs, db, node, reponse, s.name, avant)
+        if s.channel == minutes.SIGN:
+            minutes.after_signature(self.docs, db, node, reponse, s.name)
         return {"ok": True}
 
 

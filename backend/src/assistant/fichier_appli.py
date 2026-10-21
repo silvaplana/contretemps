@@ -14,7 +14,7 @@ from __future__ import annotations
 import json
 import uuid
 
-from documents import assembly
+from documents import assembly, minutes
 from documents.app_content import (
     ACT_TYPES,
     FAMILY_ENTRY_TYPES,
@@ -149,6 +149,9 @@ class FichierAppli:
         if f["can_edit"] and assembly.block_of(f["content"]):
             node = db.get(DocNode, f["id"])
             texte += "\n\nRéponses à la convocation (chiffres de l'appli) :\n" + assembly.status_text(self.documents, db, node, f["content"])
+        # Procès-verbal d'AG : où en sont les signatures (proces-verbal-ag.md §4).
+        if f["can_edit"] and minutes.block_of(f["content"]):
+            texte += "\n\nSignatures du procès-verbal (état de l'appli) : " + minutes.status_text(self.documents, db, db.get(DocNode, f["id"]))
         return texte
 
     def modifier(self, db, member: Member, args: dict) -> tuple[str, dict]:

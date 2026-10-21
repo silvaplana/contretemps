@@ -118,6 +118,17 @@ export function documentsApi(orgId) {
       if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
       return reponse.blob()
     },
+    // Procès-verbal d'AG (proces-verbal-ag.md) : les assemblées passées sans
+    // PV (`folderId` : celles de ce dossier), le PV proposé, les signatures.
+    minutesPending: (folderId) => appel(`${base}/minutes/pending${folderId ? `?folder_id=${folderId}` : ''}`),
+    draftMinutes: (convocationId) => appel(`${base}/minutes`, json('POST', { convocation_id: convocationId })),
+    minutes: (id) => appel(`${base}/nodes/${id}/app/minutes`),
+    signMinutes: (id, personIds) => appel(`${base}/nodes/${id}/app/minutes/sign`, json('POST', { person_ids: personIds })),
+    minutesPdf: async (id) => {
+      const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/minutes/pdf`)
+      if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
+      return reponse.blob()
+    },
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),

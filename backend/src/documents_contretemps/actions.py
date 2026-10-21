@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from assistant.actions import Action
 from assistant.modifications import Ligne, Refus
-from documents import Documents, assembly
+from documents import Documents, assembly, minutes
 from documents.models import KIND_APP, DocNode
 from documents.ports import Member
 from documents.service import DocError
@@ -43,6 +43,21 @@ class MarkAttendance(AppFile):
     names: list[str] = Field(
         min_length=1, max_length=500,
         description="Les noms des présents, « Prénom Nom », tels que tu les as lus sur la photo et vérifiés avec la personne.",
+    )
+
+
+class SendAppFile(AppFile):
+    signers: list[str] | None = Field(
+        default=None, max_length=10,
+        description="Procès-verbal Validé seulement : les noms de qui doit signer, si la personne les a dits ; "
+        "null = la présidence et le secrétariat du bureau (ou relancer ceux qui n'ont pas encore signé).",
+    )
+
+
+class DraftMinutes(BaseModel):
+    assembly: str | None = Field(
+        default=None, max_length=200,
+        description="L'assemblée (ex. « AGO du 21 novembre 2026 ») quand l'outil a demandé laquelle ; null sinon.",
     )
 
 
@@ -117,16 +132,28 @@ def actions(docs: Documents) -> list[Action]:
         node = _file(docs, db, member, p.file)
         if node.status == "official":
             raise Refus(f"« {node.name} » est déjà Officiel")
+        version = docs.apps.current_version(db, node)
+        if version is not None and minutes.block_of(version.content) is not None:
+            # Le PV devient Officiel quand tout le monde a signé (proces-verbal-ag.md §1).
+            if node.status == "validated":
+                raise Refus(f"« {node.name} » est déjà validé : il reste à l'envoyer pour signature")
+
+            def valider(db: Session) -> None:
+                _refus(lambda: docs.update(db, member, node.id, status="validated", change_status=True))
+
+            return Ligne(f"Valider « {node.name} » : le texte est figé, prêt à envoyer pour signature au bureau", valider)
 
         def faire(db: Session) -> None:
             _refus(lambda: docs.update(db, member, node.id, status="official", change_status=True))
 
         return Ligne(f"Valider « {node.name} » : il devient Officiel (figé), prêt à envoyer", faire)
 
-    def send(db: Session, compte, org_id: int, p: AppFile) -> Ligne:
+    def send(db: Session, compte, org_id: int, p: SendAppFile) -> Ligne:
         member = _member(db, compte, org_id)
         node = _file(docs, db, member, p.file)
         version = docs.apps.current_version(db, node)
+        if version is not None and minutes.block_of(version.content) is not None:
+            return send_minutes(db, member, node, version.content, p.signers)
         if version is None or assembly.block_of(version.content) is None:
             raise Refus("pour ce fichier, l'envoi se fait à l'écran (Diffuser) : choisir les personnes")
         if node.status != "official":
@@ -144,6 +171,85 @@ def actions(docs: Documents) -> list[Action]:
             threading.Thread(target=docs.sends.deliver, args=(db.get_bind(), jobs), daemon=True).start()
 
         return Ligne(f"Envoyer « {node.name} » par email à {apercu['count']} membre{'s' if apercu['count'] > 1 else ''} ({liste}){sans}", faire)
+
+    def send_minutes(db: Session, member: Member, node: DocNode, content: dict, noms: list[str] | None) -> Ligne:
+        """Validé : pour signature ; Officiel (tout le monde a signé) : aux membres."""
+        if node.status == "official":
+            convocation = db.get(DocNode, minutes.source_of(content))
+            gens = assembly.convoked(db, convocation) if convocation is not None else {}
+            if not gens:
+                raise Refus("la convocation de cette assemblée est introuvable : envoyer à l'écran (Diffuser)")
+            cibles = [{"type": "member", "id": str(i)} for i in gens]
+            apercu = _refus(lambda: docs.sends.preview(db, member, node.id, cibles))
+
+            def envoyer(db: Session) -> None:
+                _, jobs = _refus(lambda: docs.sends.send(db, member, node.id, cibles, None))
+                threading.Thread(target=docs.sends.deliver, args=(db.get_bind(), jobs), daemon=True).start()
+
+            return Ligne(f"Envoyer « {node.name} » à lire par email aux {apercu['count']} membres convoqués à l'assemblée", envoyer)
+        if node.status != "validated":
+            raise Refus(f"« {node.name} » n'est pas encore validé : le valider d'abord (validate_app_file)")
+        etat = _refus(lambda: minutes.status(docs, db, member, node.id))
+        bureau = {b["person_id"]: b for b in etat["board"]}
+        if noms:
+            gens = {b["person_id"]: b["name"] for b in etat["board"]}
+            convocation = db.get(DocNode, etat["convocation_id"]) if etat["convocation_id"] else None
+            if convocation is not None:
+                gens = {**assembly.convoked(db, convocation), **gens}
+            ids, restes = assembly.match_names(gens, noms)
+            if restes:
+                raise Refus(f"pas de membre unique pour : {', '.join(restes)}. Demande le nom et le prénom complets.")
+            qui = [(i, gens[i]) for i in ids]
+        elif etat["signers"]:
+            qui = [(s["person_id"], s["name"]) for s in etat["signers"] if not s["signed_at"]]
+            if not qui:
+                raise Refus("tout le monde a signé")
+        else:
+            qui = [(b["person_id"], b["name"]) for b in etat["board"] if b["default"]]
+            if not qui:
+                raise Refus(
+                    "personne n'a la fonction Président·e ou Secrétaire (École › Administrateurs, colonne Bureau) : "
+                    "demande à la personne qui doit signer, puis rappelle l'outil avec leurs noms"
+                )
+        liste = ", ".join(f"{n} ({bureau[i]['functions']})" if i in bureau and bureau[i]["functions"] else n for i, n in qui)
+        relance = bool(etat["signers"]) and not noms
+
+        def signer(db: Session) -> None:
+            _, jobs = _refus(lambda: minutes.send_for_signature(docs, db, member, node.id, [i for i, _ in qui]))
+            threading.Thread(target=docs.sends.deliver, args=(db.get_bind(), jobs), daemon=True).start()
+
+        return Ligne(f"{'Relancer pour' if relance else 'Envoyer pour'} signature « {node.name} » à {liste}", signer)
+
+    def draft_minutes(db: Session, compte, org_id: int, p: DraftMinutes) -> Ligne:
+        member = _member(db, compte, org_id)
+        possibles = _refus(lambda: minutes.pending(docs, db, member))
+        if p.assembly:
+            cle = assembly._norm(p.assembly.removeprefix("Convocation "))
+            possibles = [a for a in possibles if assembly._norm(a["title"]) == cle]
+            if not possibles:
+                raise Refus(f"pas d'assemblée passée sans procès-verbal qui s'appelle « {p.assembly} »")
+        if not possibles:
+            raise Refus("aucune assemblée passée n'attend son procès-verbal (convocation officielle, envoyée, date passée)")
+        if len(possibles) > 1:
+            noms = ", ".join(f"« {a['title']} »" for a in possibles)
+            raise Refus(f"plusieurs assemblées attendent leur procès-verbal : {noms}. Demande laquelle, puis rappelle l'outil.")
+        ag = possibles[0]
+        convocation = db.get(DocNode, ag["id"])
+        feuille = assembly.sheet(docs, db, convocation, docs.apps.current_version(db, convocation).content)
+        if not feuille["present"]:
+            raise Refus(
+                "personne n'est pointé présent sur la feuille d'émargement : demande d'abord la photo de la liste des "
+                "présents (puis mark_attendance)"
+            )
+
+        def faire(db: Session) -> None:
+            _refus(lambda: minutes.draft(docs, db, member, ag["id"]))
+
+        return Ligne(
+            f"Préparer le procès-verbal de l'{ag['title']} en brouillon (« PV de l'{ag['title']} », à côté de la convocation ; "
+            f"{feuille['present']} présents, {feuille['represented']} représentés, comptés par l'appli)",
+            faire,
+        )
 
     def mark_attendance(db: Session, compte, org_id: int, p: MarkAttendance) -> Ligne:
         member = _member(db, compte, org_id)
@@ -216,15 +322,26 @@ def actions(docs: Documents) -> list[Action]:
                "à la personne ce qui manque : ordinaire ou extraordinaire, la date et l'heure. Ensuite la personne relit "
                "et corrige le brouillon, puis on le valide (validate_app_file) et on l'envoie (send_app_file).",
                ConveneAssembly, convene),
+        Action("draft_minutes", "Docs",
+               "Produire le procès-verbal d'une assemblée générale passée (comme Docs › + › Produire le PV d'AG) : "
+               "prépare le PV en brouillon à côté de la convocation, chiffres (présents, représentés, quorum, bilan) "
+               "écrits par l'appli, plan repris du PV de l'an dernier, « À compléter » pour le reste. Il faut d'abord "
+               "les présents pointés (mark_attendance). Ensuite tu n'écris dans le texte que ce que la personne te dit "
+               "(jamais un résultat de vote inventé), puis on valide (validate_app_file) et on envoie pour signature "
+               "(send_app_file).",
+               DraftMinutes, draft_minutes),
         Action("validate_app_file", "Docs",
-               "Valide un fichier de Docs (convocation, questionnaire) : il passe en Officiel, figé, prêt à envoyer. "
-               "Seulement quand la personne a relu et le demande.",
+               "Valide un fichier de Docs : une convocation ou un questionnaire passe en Officiel, figé, prêt à envoyer ; "
+               "un procès-verbal passe en Validé, figé, prêt à envoyer pour signature. Seulement quand la personne a "
+               "relu et le demande.",
                AppFile, validate),
         Action("send_app_file", "Docs",
-               "Envoie une convocation d'AG validée par email aux membres (ceux de la dernière AG, sinon tous les membres "
-               "de la saison), chacun avec son lien personnel pour répondre. Jamais pour répondre ou signer à la place "
-               "d'un membre : chacun répond lui-même.",
-               AppFile, send),
+               "Envoie par email, chacun avec son lien personnel : une convocation d'AG validée aux membres (ceux de la "
+               "dernière AG, sinon tous les membres de la saison) ; un procès-verbal validé pour signature au bureau "
+               "(présidence et secrétariat, ou les noms donnés ; s'il est déjà parti, relance ceux qui n'ont pas signé) ; "
+               "un procès-verbal signé de tous, à lire, aux membres convoqués. Jamais pour répondre ou signer à la "
+               "place de quelqu'un : chacun répond et signe lui-même.",
+               SendAppFile, send),
         Action("remind_assembly", "Docs",
                "Relance par email, tout de suite, les membres convoqués à une AG qui n'ont pas encore répondu (comme "
                "Résultats › Relancer). Pour savoir où en sont les réponses et le quorum, lis d'abord la convocation "

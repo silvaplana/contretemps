@@ -182,7 +182,8 @@ const CUSTOM = {
   date: q('date'),
   number: q('number'),
   yesNo: q('yesNo'),
-  signature: q('signature'),
+  // `minutesOf` : la convocation dont ce bloc signe le procès-verbal (0 : aucune).
+  signature: q('signature', { minutesOf: { default: 0 } }),
   member: q('member'),
   payment: q('payment', { amount: { default: 10 } }),
   assembly: q('assembly', {

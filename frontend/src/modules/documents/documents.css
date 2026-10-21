@@ -2247,3 +2247,17 @@
   gap: 10px;
   margin-bottom: 8px;
 }
+
+/* Bandeau « L'assemblée a eu lieu » (proces-verbal-ag.md §1) */
+.dx-bandeau {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+  font-size: 17px;
+}

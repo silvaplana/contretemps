@@ -27,7 +27,7 @@ from sqlalchemy.orm import Session
 from comptes import Compte, rbac, roles
 from cours.models import Cours, cours_professeurs, eleves_cours
 from db import get_db
-from documents.ports import Member, Period, Principal, Recipient
+from documents.ports import BoardMember, Member, Period, Principal, Recipient
 from documents.service import normalize_search
 from saisons import Saison
 from saisons.portee import TOUTES_SAISONS, toutes_saisons
@@ -261,6 +261,54 @@ class MessagerieContretemps:
         envoi.nom_expediteur = sender_name
         envoi.repondre_a = reply_to or self.envoi.repondre_a
         envoi.envoyer_confirmation(to, subject, text, list(attachments or []), html)
+
+
+class AssociationContretemps:
+    """Port `Association` : le bureau (colonne Bureau d'École ›
+    Administrateurs), l'adresse de contact de l'école et son dernier bilan
+    officiel (Financier › Bilan), pour le procès-verbal d'AG."""
+
+    def _courants(self, db: Session, org_id: int) -> list[Compte]:
+        saison = _saison_courante(db, org_id)
+        with toutes_saisons(db):
+            return list(db.scalars(select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == saison)))
+
+    def board(self, db: Session, org_id: int) -> list[BoardMember]:
+        from administrateurs.schemas import ordered_functions
+
+        gens = [
+            BoardMember(personne_id(db, c), nom_affiche(c), tuple(ordered_functions(c.bureau_functions or [])))
+            for c in self._courants(db, org_id) if c.bureau_functions
+        ]
+        return sorted(gens, key=lambda b: b.name.lower())
+
+    def contact_email(self, db: Session, org_id: int) -> str | None:
+        from ecoles.models import Ecole
+
+        ecole = db.get(Ecole, org_id)
+        if ecole is not None and (ecole.email_contact or "").strip():
+            return ecole.email_contact.strip()
+        principal = next((c for c in self._courants(db, org_id) if roles.is_owner(c) and c.emails), None)
+        return principal.emails[0] if principal is not None else None
+
+    def approved_report(self, db: Session, org_id: int) -> dict | None:
+        import json
+
+        from finances.models import OFFICIAL, FinReport
+
+        bilan = db.scalar(
+            select(FinReport).where(FinReport.org_id == org_id, FinReport.state == OFFICIAL, FinReport.result.is_not(None))
+            .order_by(FinReport.season_id.desc()).limit(1)
+        )
+        if bilan is None:
+            return None
+        r = json.loads(bilan.result)
+        with toutes_saisons(db):
+            saison = db.get(Saison, bilan.season_id)
+        return {
+            "season": r.get("seasonName") or (saison.nom if saison else ""),
+            "income": r.get("totalIncome"), "expense": r.get("totalExpense"), "result": r.get("result"),
+        }
 
 
 class SaisonsContretemps:
