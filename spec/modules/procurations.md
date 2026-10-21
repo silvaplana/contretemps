@@ -312,7 +312,7 @@ qui, qui n'a pas répondu. Maquette : artboards « Côté bureau : les résultat
    un PDF par pouvoir signé rangé dans « Pouvoirs ». *Vérification* : tests du contrôle (plafond, chaîne, soi-même,
    non convoqué, page publique refusée, étanchéité) ; essai sur téléphone avec « M'envoyer un essai ».
 2. **La feuille d'émargement** : table `doc_attendance`, écran, quorum en direct, PDF.
-3. **Les copies** : email au mandataire, copie du pouvoir signé au mandant, relance
+3. **Les copies** (fait, §10) : email au mandataire, copie du pouvoir signé au mandant, relance
    aux non-répondants J-7 (`a-faire.md`, déjà prête à faire).
 4. **L'Assistant IA, le reste** : où en est le quorum, qui n'a pas répondu, relancer.
 
@@ -379,3 +379,18 @@ Code : `backend/src/documents/assembly.py` (règles, décompte, PDF, convoquer),
 - Pas fait : signature des présents sur l'écran (la feuille papier reste), photo de la feuille (fil
   procès-verbal).
 
+## 10. Fait à l'étape 3 (copies et relance)
+
+- **Mail au mandataire** dès qu'un pouvoir nommé est signé : « Léon Perrin vous a donné procuration pour
+  l'assemblée générale du 21 novembre 2026 », le pouvoir signé en pièce jointe (« Pouvoir.pdf »), et
+  « sans vous, son pouvoir sera perdu ». Pas de mail pour un pouvoir en blanc (pas de personne nommée).
+- **Copie au mandant** : « Votre procuration pour l'assemblée générale du … », qui le représente (ou
+  « le bureau désignera »), le PDF joint et son lien pour changer d'avis.
+- Les deux partent une seule fois par pouvoir signé : renvoyer la même réponse ne renvoie rien ; un
+  nouveau mandataire reçoit son mail. L'ancien mandataire n'est pas prévenu qu'on lui retire un pouvoir.
+- **Rappel sept jours avant**, automatique et une seule fois, aux convoqués sans réponse : le mail de la
+  convocation avec « Rappel : » et ses trois liens. Seulement si la convocation est partie avant J-7.
+  Fait par le processus de relance déjà en place (`app.relance_worker`), noté dans l'historique du
+  fichier (« Rappel envoyé à N membres sans réponse ») ; l'écran Diffuser l'annonce.
+- Le port `Mailer.send` du module accepte des pièces jointes (`attachments`), utilisées aussi par le
+  procès-verbal.
