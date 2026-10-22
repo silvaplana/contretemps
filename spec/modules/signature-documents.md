@@ -77,10 +77,14 @@ toutes seules (§3).
 
 - **Word** : en Brouillon, **le texte se corrige directement dans l'Aperçu**, comme celui de la
   convocation (Seb, 22 octobre). Pour cela, le Word est transformé en document de l'appli (même
-  éditeur que le fichier de base) au moment où on le dépose : titres, paragraphes, listes, tableaux
-  et gras sont gardés ; une mise en page compliquée (en-tête avec logo, colonnes, zones de texte)
+  éditeur que le fichier de base) au moment où on le dépose : titres, paragraphes, listes, gras,
+  italique et souligné sont gardés ; chaque ligne d'un tableau devient une ligne de texte (cases
+  séparées par « · ») ; une mise en page compliquée (en-tête avec logo, colonnes, zones de texte)
   est simplifiée. Le Word d'origine ne change pas.
 - **PDF** : il ne se modifie pas. Pour corriger, on dépose une nouvelle version dans Préparer.
+
+Tant que l'étape 2 n'est pas codée, l'onglet Diffuser dit que « Faire signer à qui ? » arrive
+dans la prochaine version, et le Diffuser habituel (mail, essai) est refusé pour ce fichier.
 
 Bouton principal **Valider** : le document est figé (obligation 1), le fichier passe en **Validé**
 et l'on va à Diffuser.
@@ -156,18 +160,25 @@ restent les mêmes, il faudra renvoyer.
 
 ## 3. Le PDF
 
-**Le PDF à signer** (produit à Valider, figé) :
+**Le PDF à signer** (produit à Valider, figé) : **le document seul**, sans zone de signature
+(choix de l'étape 1 : la mise en page des cases dépend des signataires, connus seulement à
+Diffuser ; l'Aperçu montre où elles iront) :
 
-- **Word** : le texte du document de l'appli mis en page A4 (même moteur que le PV, pymupdf), puis
-  la section **Signatures** à la suite du texte ;
-- **PDF** : le PDF déposé tel quel, puis **une page Signatures** ajoutée à la fin (on n'écrit pas
-  par-dessus le contenu d'un PDF venu d'ailleurs : on ne sait pas où il y a de la place).
+- **Word** : le texte du document de l'appli mis en page A4 (même moteur que le PV, pymupdf) ;
+- **PDF** : le PDF déposé tel quel (refusé s'il est illisible ou protégé par un mot de passe).
+
+**Les signatures** s'ajoutent au PDF signé (« Produire le document signé ») : pour un Word, la
+section **Signatures** à la suite du texte ; pour un PDF, **une page Signatures** ajoutée à la fin
+(on n'écrit pas par-dessus le contenu d'un PDF venu d'ailleurs : on ne sait pas où il y a de la
+place).
 
 La section Signatures a une case par signataire : mention, signature, nom, fonction (bureau) ou
 qualité, « Signé en ligne le … à … », ou vide (« En attente de signature »). Le paraphe : une
 petite case par signataire en bas à droite de chaque page, dans la marge.
 
-**L'empreinte** est celle de ce PDF à signer, sans signatures. Elle est enregistrée à Valider.
+**L'empreinte** est celle de ce PDF à signer, sans signatures. Elle est enregistrée à Valider
+(événement `validated` du journal, avec le fichier rangé, le nombre de pages et le document
+d'origine).
 
 **Le PDF signé** (produit par « Produire le document signé ») : le PDF à signer, recalculé à partir
 du fichier rangé (on vérifie que son empreinte n'a pas changé, sinon refus et alerte), avec les
@@ -222,10 +233,12 @@ l'historique `doc_activity` (pensé pour l'onglet Historique, lié au nœud).
   contenu (ils se corrigent comme tout fichier de l'appli) ; pour un PDF, le bloc est seul et
   l'Aperçu montre les pages du PDF.
 - **Import d'un Word** : LibreOffice (déjà dans l'image pour les aperçus, `preview.py`) le passe
-  en HTML, puis le navigateur le transforme en blocs (`tryParseHTMLToBlocks` de BlockNote) et
-  l'enregistre comme une modification ordinaire.
+  en HTML (filtre « HTML (StarWriter) », qui garde le gras), puis le serveur le transforme en
+  blocs (`signing.html_to_blocks`) et l'enregistre comme une modification ordinaire. Côté serveur
+  plutôt que navigateur : l'assistant et « ⋯ › Faire signer… » importent aussi un Word.
 - **Le PDF figé** : rangé dans le stockage protégé par son empreinte (`doc_stored_files`), sans
-  nœud visible dans le dossier.
+  nœud visible dans le dossier. Sortir du Brouillon (Valider, ou Officiel directement) le produit ;
+  revenir en Brouillon note `reset` au journal, et la prochaine validation fige de nouveau.
 - **Les signataires** : des envois `doc_sends` de canal `sign` (comme le PV) ; `person_id` vide et
   `name` + `email` remplis pour quelqu'un hors de l'école. Expiration : `sent_at` du dernier envoi
   \+ 14 jours, calculée, pas de colonne.
@@ -246,8 +259,12 @@ l'historique `doc_activity` (pensé pour l'onglet Historique, lié au nœud).
   ni case cochée.
 - Toutes les requêtes filtrent par `org_id` ; test d'étanchéité entre écoles.
 - Code : `backend/src/documents/signing.py` (comme `minutes.py`), écrans dans
-  `frontend/src/modules/documents/app/` (`SignPrepare.jsx`, `SignSend.jsx`, `SignResults.jsx`),
-  page du signataire dans la page du lien personnel existante.
+  `frontend/src/modules/documents/app/` (`SignPrepare.jsx`, `SignPreview.jsx`, puis `SignSend.jsx`,
+  `SignResults.jsx`), page du signataire dans la page du lien personnel existante.
+- **Routes de l'étape 1** (`receiver.py`) : `POST …/signings` (créer, avec ou sans document),
+  `PUT …/nodes/{id}/app/signing/document` (choisir le document), `GET …/nodes/{id}/app/signing`
+  (document, pages, empreinte), `GET …/nodes/{id}/app/signing/pages/{n}` (image d'une page pour
+  l'Aperçu).
 
 ## 7. Le PV d'AG passe par ce circuit
 
@@ -277,7 +294,7 @@ signature, passage en Officiel tout seul quand tous ont signé (le PV garde ce c
 
 ## 9. Étapes (une PR chacune, sur « vas-y »)
 
-1. **Préparer** : tuile Faire signer un document, ⋯ › Faire signer…, les trois questions, import
+1. **Préparer** *(codée)* : tuile Faire signer un document, ⋯ › Faire signer…, les trois questions, import
    du Word, Aperçu (pages du PDF, zones de signature), **Valider** qui fige (PDF à signer,
    empreinte), table `doc_sign_events` et sa migration, outils `prepare_signature` et
    `validate_app_file`.

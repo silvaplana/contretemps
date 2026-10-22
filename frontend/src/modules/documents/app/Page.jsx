@@ -258,6 +258,22 @@ function Assembly({ block, value, onChange, disabled, ctx }) {
   )
 }
 
+// Document à signer (signature-documents.md §3) : où iront les signatures,
+// ajoutées à la fin du document, une case par signataire.
+export function SignZone({ block }) {
+  const p = block.props ?? {}
+  return (
+    <div className="ap-field sg-zone">
+      <b>Signatures</b>
+      <span>
+        Une case par signataire, ajoutée à la fin du document
+        {p.mode === 'initials' ? ', et un paraphe en bas de chaque page' : ''}.
+      </span>
+      {p.mention && <span>Écrit au-dessus de chaque signature : « {p.mention} ».</span>}
+    </div>
+  )
+}
+
 function Question({ block, value, onChange, disabled, ctx }) {
   const p = block.props ?? {}
   const id = `ap-${block.id}`
@@ -332,6 +348,7 @@ function Question({ block, value, onChange, disabled, ctx }) {
       </div>
     )
   }
+  if (block.type === 'signDocument') return <SignZone block={block} />
   if (block.type === 'assembly') {
     return <Assembly block={block} value={value} onChange={onChange} disabled={disabled} ctx={ctx} />
   }

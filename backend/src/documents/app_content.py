@@ -30,7 +30,7 @@ LAYOUT_TYPES = {
     "paragraph", "heading", "quote", "bulletListItem", "numberedListItem", "checkListItem", "divider",
 }
 # Questions : Questionner et Agir.
-QUESTION_TYPES = {"shortText", "longText", "choice", "date", "number", "yesNo", "signature", "assembly"}
+QUESTION_TYPES = {"shortText", "longText", "choice", "date", "number", "yesNo", "signature", "assembly", "signDocument"}
 # Blocs qui écrivent dans l'appli : Agir seulement.
 ACT_TYPES = {"member", "payment"}
 # Blocs du formulaire de résultat.
@@ -45,6 +45,7 @@ FAMILY_ENTRY_TYPES = {
 TYPE_LABELS = {
     "shortText": "Réponse courte", "longText": "Réponse longue", "choice": "Choix", "date": "Date",
     "number": "Nombre", "yesNo": "Oui / non", "signature": "Signature", "assembly": "Présence et procuration",
+    "signDocument": "Signer le document",
     "member": "Coordonnées", "payment": "Paiement",
 }
 
@@ -56,6 +57,8 @@ MAX_SIGNATURE = 200_000
 ASSEMBLY_ANSWERS = ("attend", "proxy", "absent")
 ASSEMBLY_KINDS = ("ordinary", "extraordinary")
 ASSEMBLY_QUORUMS = ("none", "quarter", "third", "half")
+# Bloc « Signer le document » (spec signature-documents.md §2.1).
+SIGN_MODES = ("end", "initials")
 
 
 class ContentError(ValueError):
@@ -125,6 +128,16 @@ def _check_block(bloc, permis: set[str], profondeur: int, ids: set[str]) -> None
         plafond = props.get("maxProxies", 2)
         if not isinstance(plafond, int) or isinstance(plafond, bool) or not 0 <= plafond <= 50:
             raise ContentError("Pouvoirs par personne : un nombre entre 0 (sans limite) et 50.")
+    if genre == "signDocument":
+        source = props.get("source", 0)
+        if not isinstance(source, int) or isinstance(source, bool) or source < 0:
+            raise ContentError("Document à signer mal indiqué.")
+        if props.get("mode", "end") not in SIGN_MODES:
+            raise ContentError("Où signer : à la fin, ou à la fin avec un paraphe sur chaque page.")
+        if len(str(props.get("mention") or "")) > 120:
+            raise ContentError("La mention au-dessus de la signature : 120 caractères au plus.")
+        if len(str(props.get("message") or "")) > 2000:
+            raise ContentError("Le message aux signataires : 2 000 caractères au plus.")
     if genre == "payment":
         montant = props.get("amount")
         if not isinstance(montant, (int, float)) or isinstance(montant, bool) or not 0 < montant <= 10_000:
@@ -160,6 +173,8 @@ def check_content(content, family: str) -> dict:
         _check_block(bloc, FAMILY_ENTRY_TYPES[family], 0, ids)
     if sum(1 for b in _walk(entree) if b["type"] == "assembly") > 1:
         raise ContentError("Un seul bloc « Présence et procuration » par fichier.")
+    if sum(1 for b in _walk(entree) if b["type"] == "signDocument") > 1:
+        raise ContentError("Un seul document à signer par fichier.")
     if family == "inform" and resultat:
         raise ContentError("Un fichier Informer n'a pas de formulaire de résultat.")
     for bloc in resultat:
@@ -242,6 +257,9 @@ def _check_value(q: dict, v, test: bool):
         return v
     if genre == "assembly":
         return _check_assembly(v)
+    if genre == "signDocument":
+        # Chacun signe depuis son lien personnel (étape 2), jamais par un essai.
+        raise ContentError("On signe ce document depuis son lien personnel.")
     if genre == "member":
         if not isinstance(v, dict) or set(v) - set(MEMBER_FIELDS):
             raise ContentError(f"« {nom} » : coordonnées mal formées.")

@@ -1013,6 +1013,11 @@ class Documents:
                 raise DocError(403, "Seuls ceux qui gèrent ce document peuvent le valider, le refuser ou le rendre officiel.")
         else:
             self._require_unfrozen(loc.path)
+        if node.kind == KIND_APP:
+            from . import signing
+
+            # Document à signer : sortir du Brouillon le fige (signature-documents.md §1).
+            signing.on_status(self, db, member, node, status)
         avant = node.status
         node.status = status
         node.updated_by, node.updated_at = member.person_id, utcnow()

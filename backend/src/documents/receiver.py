@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
-from . import assembly, minutes
+from . import assembly, minutes, signing
 from .ports import Member
 from .service import DocError, Documents
 from .storage import FileTooLarge
@@ -98,6 +98,16 @@ class MarkMany(BaseModel):
 
 class MinutesNew(BaseModel):
     convocation_id: int
+
+
+class SigningNew(BaseModel):
+    space: str = "private"
+    parent_id: int | None = None
+    source_id: int | None = None
+
+
+class SigningDocument(BaseModel):
+    source_id: int
 
 
 class Convene(BaseModel):
@@ -457,6 +467,24 @@ class DocumentsReceiver:
         def minutes_pdf(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             contenu, nom = appel(lambda: minutes.export(self.client, db, self._member(org_id, m), node_id))
             return Response(contenu, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(nom)}"})
+
+        # Signer un document, étape 1 : Préparer (signature-documents.md §2)
+        @self.app.post(base + "/signings", status_code=201)
+        def signing_new(org_id: int, data: SigningNew, db: Session = db_dep, m: Member = member):
+            return appel(lambda: signing.create(self.client, db, self._member(org_id, m), data.space, data.parent_id, data.source_id))
+
+        @self.app.put(base + "/nodes/{node_id}/app/signing/document")
+        def signing_document(org_id: int, node_id: int, data: SigningDocument, db: Session = db_dep, m: Member = member):
+            return appel(lambda: signing.attach(self.client, db, self._member(org_id, m), node_id, data.source_id))
+
+        @self.app.get(base + "/nodes/{node_id}/app/signing")
+        def signing_overview(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: signing.overview(self.client, db, self._member(org_id, m), node_id))
+
+        @self.app.get(base + "/nodes/{node_id}/app/signing/pages/{number}")
+        def signing_page(org_id: int, node_id: int, number: int, db: Session = db_dep, m: Member = member):
+            image = appel(lambda: signing.page_png(self.client, db, self._member(org_id, m), node_id, number))
+            return Response(image, media_type="image/png", headers={"Cache-Control": "private, no-store"})
 
         # Modèles de l'école (fichier-de-base.md §5)
         @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)

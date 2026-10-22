@@ -1348,3 +1348,156 @@ h4.ap-h {
   vertical-align: middle;
   margin-left: 6px;
 }
+
+/* Document à signer (signature-documents.md) : sg-. */
+
+.sg {
+  display: grid;
+  gap: 22px;
+}
+
+.sg-q {
+  display: grid;
+  gap: 10px;
+}
+
+.sg-q h3 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.sg-doc {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--dx-line);
+  border-radius: 14px;
+  background: var(--dx-card);
+}
+
+.sg-doc span:last-child {
+  display: grid;
+  min-width: 0;
+}
+
+.sg-doc b {
+  overflow-wrap: anywhere;
+}
+
+.sg-doc small,
+.sg-drop small {
+  color: var(--dx-muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.sg-ico {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: var(--dx-soft);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.sg-drop {
+  display: grid;
+  gap: 4px;
+  min-height: 64px;
+  padding: 12px;
+  border: 2px dashed var(--dx-line);
+  border-radius: 14px;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.sg-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 8px 12px;
+  border: 1px solid var(--dx-line);
+  border-radius: 14px;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.sg-row--on {
+  border-color: var(--accent);
+  background: var(--dx-soft);
+}
+
+.sg-row input {
+  width: 22px;
+  height: 22px;
+  flex: none;
+}
+
+.sg-apercu {
+  display: grid;
+  gap: 14px;
+  margin: 0 auto;
+  width: 100%;
+  max-width: 480px;
+}
+
+.sg-apercu--desktop {
+  max-width: 820px;
+}
+
+.sg-page {
+  position: relative;
+  margin: 0;
+  border: 1px solid var(--dx-line);
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.sg-page img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.sg-paraphe {
+  position: absolute;
+  right: 4%;
+  bottom: 2%;
+  padding: 2px 8px;
+  border: 1.5px dashed var(--dx-official);
+  border-radius: 6px;
+  color: var(--dx-official);
+  font-size: 13px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.sg-zone {
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border: 2px dashed var(--dx-official);
+  border-radius: 12px;
+  color: var(--dx-official);
+}
+
+.sg-seal {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--success-bg);
+  color: var(--dx-ok);
+  font-size: 16px;
+}
+
+.sg-seal code {
+  font-size: 14px;
+}

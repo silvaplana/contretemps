@@ -138,6 +138,18 @@ export function documentsApi(orgId) {
       if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
       return reponse.blob()
     },
+    // Signer un document, étape 1 (signature-documents.md §2) : le fichier de
+    // signature (avec le document, ou sans : tuile du +), le document choisi,
+    // ce que montre l'Aperçu, une page en image.
+    createSigning: (space, parentId, sourceId) =>
+      appel(`${base}/signings`, json('POST', { space, parent_id: parentId ?? null, source_id: sourceId ?? null })),
+    signingDocument: (id, sourceId) => appel(`${base}/nodes/${id}/app/signing/document`, json('PUT', { source_id: sourceId })),
+    signing: (id) => appel(`${base}/nodes/${id}/app/signing`),
+    signingPage: async (id, n) => {
+      const reponse = await fetch(`${BASE_URL}${base}/nodes/${id}/app/signing/pages/${n}`)
+      if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
+      return reponse.blob()
+    },
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),

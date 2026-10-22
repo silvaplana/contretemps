@@ -3,7 +3,7 @@
 // BlockNote, contrôlé par le serveur (backend/src/documents/app_content.py).
 
 export const LAYOUT_TYPES = ['paragraph', 'heading', 'quote', 'bulletListItem', 'numberedListItem', 'checkListItem', 'divider']
-export const QUESTION_TYPES = ['shortText', 'longText', 'choice', 'date', 'number', 'yesNo', 'signature', 'assembly']
+export const QUESTION_TYPES = ['shortText', 'longText', 'choice', 'date', 'number', 'yesNo', 'signature', 'assembly', 'signDocument']
 export const ACT_TYPES = ['member', 'payment']
 export const RESULT_TYPES = ['responseCount', 'responseTable', 'choiceChart', 'total', 'assemblyQuorum', 'assemblyProxies']
 
@@ -29,6 +29,7 @@ export const BLOCKS = {
   yesNo: { label: 'Oui / non', icon: '✓', hint: 'Une case à cocher' },
   signature: { label: 'Signature', icon: '✍', hint: 'Signer au doigt' },
   assembly: { label: 'Présence et procuration', icon: '⚖', hint: 'Je viens, je donne procuration, je ne viens pas' },
+  signDocument: { label: 'Signer le document', icon: '✍', hint: 'Un PDF ou un Word à faire signer' },
   member: { label: 'Coordonnées', icon: '⚡', hint: 'Nom, email, téléphone : met à jour le membre' },
   payment: { label: 'Paiement', icon: '€', hint: 'Une somme à régler' },
   responseCount: { label: 'Compteur', icon: '①', hint: 'Combien ont répondu' },
@@ -128,6 +129,8 @@ export const ASSEMBLY_ANSWERS = { attend: 'Vient', proxy: 'Procuration', absent:
 export const assemblyBlock = (content) => walk(content?.entry?.blocks).find((b) => b.type === 'assembly')
 // Procès-verbal d'AG : son bloc Signature porte l'id de la convocation.
 export const minutesBlock = (content) => walk(content?.entry?.blocks).find((b) => b.type === 'signature' && b.props?.minutesOf > 0)
+// Document à signer (signature-documents.md) : un seul bloc, le document et ses réglages.
+export const signBlock = (content) => walk(content?.entry?.blocks).find((b) => b.type === 'signDocument')
 
 export const euros = (n) => `${Number(n ?? 0).toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 2 })} €`
 

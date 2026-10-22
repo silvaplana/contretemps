@@ -305,3 +305,23 @@ class DocAttendance(Base):
     present_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     marked_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     source: Mapped[str] = mapped_column(String(10), nullable=False, default="hand")
+
+
+class DocSignEvent(Base):
+    """Journal de preuves d'une signature (signature-documents.md §1 et §6) :
+    une ligne par événement (validé, envoyé, ouvert, lu, signé…), à l'heure
+    du serveur, avec l'adresse IP et l'appareil quand ils viennent d'un
+    navigateur. On n'y fait que des INSERT. Pas de clé étrangère : la preuve
+    reste quand le fichier est effacé de la corbeille."""
+
+    __tablename__ = "doc_sign_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    node_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    send_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    event: Mapped[str] = mapped_column(String(12), nullable=False)
+    at: Mapped[datetime] = mapped_column(DateTime, default=utcnow, nullable=False)
+    ip: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
