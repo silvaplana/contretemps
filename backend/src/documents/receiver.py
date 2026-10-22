@@ -422,6 +422,12 @@ class DocumentsReceiver:
             taches.add_task(assembly.send_reminders, self.client.mailer, jobs)
             return resume
 
+        @self.app.post(base + "/nodes/{node_id}/app/assembly/signing-sheet", status_code=201)
+        def signing_sheet(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            contenu, nom = appel(lambda: assembly.signing_sheet(self.client, db, self._member(org_id, m), node_id))
+            return Response(contenu, status_code=201, media_type="application/pdf",
+                            headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(nom)}"})
+
         @self.app.post(base + "/nodes/{node_id}/app/attendance/pdf", status_code=201)
         def store_sheet(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
             return appel(lambda: assembly.store_sheet(self.client, db, self._member(org_id, m), node_id))

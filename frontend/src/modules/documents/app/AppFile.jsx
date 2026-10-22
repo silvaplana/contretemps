@@ -430,6 +430,19 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       }
     }
     const titre = file.name.replace(/^Convocation /, '')
+    const produireFeuille = async () => {
+      // Fenêtre ouverte tout de suite (sinon bloquée), le PDF y arrive ensuite.
+      const fenetre = window.open('', '_blank')
+      try {
+        const blob = await api.signingSheet(item.id)
+        if (fenetre) fenetre.location.href = URL.createObjectURL(blob)
+        else telecharger(blob, `Feuille d’émargement à signer ${titre}.pdf`)
+        onToast('Feuille d’émargement rangée dans le dossier de l’AG')
+      } catch (e) {
+        fenetre?.close()
+        onToast(e.message)
+      }
+    }
     corps = (
       <>
         {ag.summary.convoked > 0 && (
@@ -457,11 +470,10 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         <button type="button" className="dx-btn dx-btn--ghost" onClick={() => fichier('summary.xlsx', `Récapitulatif ${titre}.xlsx`)}>
           Excel
         </button>
-        {ag.summary.convoked > 0 && (
-          <button type="button" className="dx-btn dx-btn--ghost" onClick={() => fichier('attendance.pdf', `Feuille d’émargement ${titre}.pdf`)}>
-            Feuille d’émargement (PDF)
-          </button>
-        )}
+        {/* Seb, 21 octobre : le PDF à signer, ouvert dans la visionneuse PDF. */}
+        <button type="button" className="dx-btn dx-btn--ghost" onClick={produireFeuille}>
+          Produire la feuille d’émargement
+        </button>
       </>
     )
   } else {

@@ -268,12 +268,14 @@ def _check_assembly(v) -> dict:
     if v["answer"] != "proxy":
         return {"answer": v["answer"]}
     qui = v.get("proxy_to")
-    if qui != "blank" and (not isinstance(qui, int) or isinstance(qui, bool)):
+    # « other » : un nom écrit à la main (Seb, 21 octobre), dans proxy_name.
+    nom = " ".join(str(v.get("proxy_name") or "").split())[:120] if qui == "other" else None
+    if qui not in ("blank", "other") and (not isinstance(qui, int) or isinstance(qui, bool)) or qui == "other" and not nom:
         raise ContentError("Choisissez qui vous représente.")
     signature = v.get("signature")
     if not isinstance(signature, str) or len(signature) > MAX_SIGNATURE or not SIGNATURE.match(signature):
         raise ContentError("Signez la procuration avec le doigt.")
-    return {"answer": "proxy", "proxy_to": qui, "signature": signature}
+    return {"answer": "proxy", "proxy_to": qui, "signature": signature, **({"proxy_name": nom} if nom else {})}
 
 
 def assembly_block(content: dict) -> dict | None:
