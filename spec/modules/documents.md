@@ -1392,6 +1392,8 @@ Détails :
 - **Loupe et corbeille** (Seb, 22 octobre) : dans la barre du haut de l'appli, à côté du titre
   « Documents », pour laisser la place aux fichiers. La barre du haut offre un emplacement que
   l'onglet ouvert remplit (`#entete-onglet` dans `components/Header.jsx`).
+  Un fichier ouvert reprend la barre : ← et son nom, sans loupe ni corbeille ; son état (Brouillon,
+  Validé, Officiel) n'y figure pas, il se change par ⋮ > « État du fichier » (Seb, 22 octobre).
 - **Noms longs** (Seb, 22 octobre) : dans la liste, le nom tient sur deux lignes ; trop long sur
   téléphone, il est coupé au milieu en gardant le début et la fin avec l'extension ; le nom complet
   s'affiche en tête du menu d'appui long. Pas de nom qui défile.
