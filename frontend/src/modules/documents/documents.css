@@ -241,6 +241,21 @@
   border-bottom: 0;
 }
 
+/* Noms longs : deux lignes dans la liste, et en entier en tête du menu
+   d'appui long (Seb, 22 octobre). */
+.dx-row .dx-n {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.dx-sheet__title .dx-n {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
 .dx-row--dir .dx-n {
   font-weight: 700;
 }

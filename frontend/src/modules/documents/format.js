@@ -12,6 +12,15 @@ function versDate(iso) {
   return new Date(iso.endsWith('Z') ? iso : `${iso}Z`)
 }
 
+// Nom trop long pour deux lignes sur téléphone : coupé au milieu, on garde
+// le début et la fin avec l'extension (« Convocation AGO du 1…2026.pdf »).
+// Le nom complet est en tête du menu d'appui long.
+export function nomCoupe(nom, max = 48) {
+  if (nom.length <= max) return nom
+  const fin = nom.length - (nom.match(/\.[^.]{1,6}$/)?.[0].length ?? 0) - 8
+  return `${nom.slice(0, max - (nom.length - fin) - 1).trimEnd()}…${nom.slice(fin)}`
+}
+
 export function formatDate(iso) {
   if (!iso) return ''
   const d = versDate(iso)

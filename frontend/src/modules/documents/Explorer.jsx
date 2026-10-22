@@ -21,7 +21,7 @@ import Viewer from './Viewer.jsx'
 const AppFile = lazy(() => import('./app/AppFile.jsx'))
 import { Cadenas, FileIcon, FolderIcon, PlusIcon, StatusBadge, TrayIcon } from './icons.jsx'
 import { isImage, isPdf } from './kinds.js'
-import { exchangeSubtitle, subtitle } from './format.js'
+import { exchangeSubtitle, nomCoupe, subtitle } from './format.js'
 import './documents.css'
 
 // Explorateur de l'onglet Docs (spec appbase documents.md §6, §7 ; maquette
@@ -852,8 +852,8 @@ export default function Explorer({ orgId, memoire }) {
         )}
         <ItemIcon api={api} item={item} />
         <div className="dx-meta">
-          <div className="dx-n">
-            {item.name}
+          <div className="dx-n" title={item.name}>
+            {bureau ? item.name : nomCoupe(item.name)}
             {item.system_kind === 'period' && item.period_current && <span className="dx-current">en cours</span>}
             {item.system_kind === 'reserved' && <span className="dx-current">trésoriers seulement</span>}
             {item.system_kind === 'exchange' && <span className="dx-current">se vide en 30 jours</span>}

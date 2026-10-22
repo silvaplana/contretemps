@@ -1389,6 +1389,9 @@ Détails :
   changeant d'écran (comme les vidéos aujourd'hui). Partage depuis une autre appli Android vers
   AppBase via `share_target` du manifeste PWA (phase 2).
 - **Déplacer** : feuille plein écran qui navigue dans les dossiers, bouton « Déplacer ici ».
+- **Noms longs** (Seb, 22 octobre) : dans la liste, le nom tient sur deux lignes ; trop long sur
+  téléphone, il est coupé au milieu en gardant le début et la fin avec l'extension ; le nom complet
+  s'affiche en tête du menu d'appui long. Pas de nom qui défile.
 - **Ouvrir** : image → visionneuse plein écran ; PDF → affiché dans la page sur ordinateur, et sur
   téléphone ouvert directement dans la visionneuse PDF du téléphone (Seb, 21 octobre : pas d'écran
   intermédiaire), par une adresse signée à durée limitée ; Office → aperçu PDF converti
