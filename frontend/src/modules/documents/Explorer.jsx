@@ -1095,7 +1095,8 @@ export default function Explorer({ orgId, memoire }) {
     <div className="dx">
       {/* Loupe et corbeille dans la barre du haut de l'appli, à côté du titre
           « Documents » (Seb, 22 octobre) ; ici tant qu'elle n'est pas là. */}
-      {enTete && createPortal(boutonsDuHaut, enTete)}
+      {/* Pas quand un fichier ou la corbeille est ouvert par-dessus. */}
+      {enTete && !appli && !vue && !corbeille && createPortal(boutonsDuHaut, enTete)}
       {(recherche != null || !enTete) && (
       <div className="dx-top">
         {recherche == null ? (

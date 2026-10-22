@@ -599,19 +599,14 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   }
 
   return (
-    // Sous l'en-tête de l'appli, qui porte ← le nom, l'état, qui a accès et ⋮
-    // (Seb, 21 octobre).
+    // Sous l'en-tête de l'appli, qui porte ← le nom, qui a accès et ⋮ (Seb,
+    // 21 octobre). L'état n'y est plus (Seb, 22 octobre) : il se change par ⋮.
     <div className="dx-panel af" role="dialog" aria-label={file.name} style={{ top: `max(var(--panneau-haut, 0px), ${hautEntete}px)` }}>
       <TitreEntete>
         {/* `dx` : les styles de Docs (pastille d'état…) valent aussi dans l'en-tête. */}
         <div className="dx af-entete">
           <button type="button" className="dx-ico af-retour" onClick={fermer} aria-label="Retour">←</button>
           <h1 className="af-titre-entete" title={file.name}>{file.name}</h1>
-          <button type="button" className={`af-status af-status--${statut}`} onClick={() => setSheet('status')} disabled={!file.can_edit && !file.can_manage}>
-            <StatusIcon status={statut} />
-            {STATUSES[statut].label}
-            {file.can_edit && <span className="af-chev" aria-hidden="true">▾</span>}
-          </button>
           {/* « 1. Préparer » : menu Mode, Aperçu par défaut ou Édition (Seb, 21 octobre). */}
           {file.can_edit && (tab === 'prep' || tab === 'preview') && (
             <label className="af-mode">
@@ -793,6 +788,10 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
                 </button>
                 <button type="button" className="dx-act" onClick={() => (setNom(file.name), setSheet('rename'))}>
                   <i>✎</i><span>Renommer</span>
+                </button>
+                <button type="button" className="dx-act" onClick={() => setSheet('status')} disabled={!file.can_edit && !file.can_manage}>
+                  <i><StatusIcon status={statut} /></i>
+                  <span>État du fichier : {STATUSES[statut].label}</span>
                 </button>
                 <button
                   type="button"
