@@ -586,6 +586,8 @@ def test_document_signe(client, ecole, mails, a_signer, db_session):
     signatures = doc[2].get_text()
     assert "Signatures" in signatures and "Ima Blanc" in signatures and "Paul Expert" in signatures and "Lu et approuvé" in signatures
     assert "paul@cabinet.fr" in signatures and "Signé en ligne le" in signatures
+    # Seb, 22 octobre : en bas, les initiales de qui a signé.
+    assert "Signé_IB_PE" in signatures
     certificat = "".join(doc[i].get_text() for i in range(3, doc.page_count))
     fige = pdf_fige(db_session, a_signer)
     for attendu in ("Certificat de preuves", "Bail (2 pages)", hashlib.sha256(fige).hexdigest(), "203.0.113.7",
@@ -623,6 +625,10 @@ def signing_node(db_session, node_id):
     from documents.models import DocNode
 
     return db_session.get(DocNode, node_id)
+
+
+def test_initiales():
+    assert signing.initials("Marie-Laure Pesenti") == "MLP" and signing.initials("jean de la Tour") == "JDLT"
 
 
 def test_appareil_en_clair():

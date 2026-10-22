@@ -965,7 +965,14 @@ def _signatures_html(docs: Documents, db: Session, node: DocNode, bloc: dict, ge
             + f"<br/><span class='small'>Signé en ligne le {_when(s.answered_at)}</span></td>"
         )
     lignes = "".join(f"<tr>{''.join(cases[i:i + 2])}</tr>" for i in range(0, len(cases), 2))
-    return f"<h2>Signatures</h2><table class='t sign'>{lignes}</table>"
+    # Seb, 22 octobre : en bas, qui a signé d'un coup d'œil (« Signé_MLP_MT »).
+    qui = "_".join(initials(s.name) for s in gens)
+    return f"<h2>Signatures</h2><table class='t sign'>{lignes}</table><p><b>Signé_{escape(qui)}</b></p>"
+
+
+def initials(name: str) -> str:
+    """« Marie-Laure Pesenti » -> « MLP »."""
+    return "".join(mot[0] for mot in re.split(r"[\s\-]+", name) if mot).upper()
 
 
 def _initials(pdf: pymupdf.Document, pages: int, images: list[bytes]) -> None:
