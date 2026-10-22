@@ -512,3 +512,148 @@ def test_envoi_par_l_assistant(client, ecole, mails, a_signer, db_session):
     assert carte["lignes"] == ["Relancer pour signature « Signature : Bail » : Ima Blanc, Julia Dho"]
     assert faire(carte)[0]["ok"]
     assert evenements(db_session, a_signer).count("reminded") == 2
+
+
+# ----------------------------------------------------------------------
+# Étape 3 : le journal de preuves et le document signé (§2.5, §3)
+# ----------------------------------------------------------------------
+
+
+def signer_par_lien(client, mails, adresse, initiales=True):
+    base = f"/documents/public/signing/{jeton(mails, adresse)}"
+    client.get(base, headers=NAVIGATEUR)
+    assert client.post(f"{base}/read", headers=NAVIGATEUR).status_code == 200
+    corps = {"consent": True, "signature": PNG, "initials": PNG if initiales else None}
+    assert client.post(f"{base}/sign", json=corps, headers=NAVIGATEUR).status_code == 201
+    return base
+
+
+def produire(admin, node_id):
+    return admin.c.post(f"{admin.base}/nodes/{node_id}/app/signing/produce", headers=admin.h)
+
+
+def test_document_signe(client, ecole, mails, a_signer, db_session):
+    from app import main
+
+    admin, a_signer = a_signer
+    compte = ecole["admin"]
+    actions = main.assistant_client.actions
+    proposer = lambda args: actions.propose(db_session, compte, ecole["id"], compte.id, "produce_signed", args)  # noqa: E731
+    assert etat(admin, a_signer, "validated").status_code == 200
+    envoyer(admin, a_signer, [{"type": "member", "id": str(ecole["prof"].id)}], [{"name": "Paul Expert", "email": "paul@cabinet.fr"}])
+    base_ima = signer_par_lien(client, mails, "ima@exemple.fr")
+
+    # Pas de document signé partiel (décision de Seb), ni par l'écran ni par l'assistant.
+    r = produire(admin, a_signer)
+    assert r.status_code == 409 and r.json()["detail"] == "Possible quand tout le monde a signé : il manque Paul Expert."
+    texte, carte = proposer({"file": "Signature : Bail"})
+    assert carte is None and "il manque la signature de Paul Expert" in texte
+
+    # Le journal de preuves, en clair, pour Voir les résultats.
+    vue = admin.get(f"/nodes/{a_signer}/app/signing/signers").json()
+    journal = vue["journal"]
+    assert journal[0]["event"] == "validated" and journal[0]["text"] == "Document validé et figé par Julia Dho, empreinte enregistrée"
+    signe = next(e for e in journal if e["event"] == "signed")
+    assert (signe["text"], signe["ip"], signe["device"]) == ("Signature de Ima Blanc enregistrée", "203.0.113.7", "Chrome sur Android")
+    assert "Lien personnel envoyé à Paul Expert (paul@cabinet.fr)" in [e["text"] for e in journal]
+    assert vue["produced"] is None
+
+    signer_par_lien(client, mails, "paul@cabinet.fr")
+    _, carte = proposer({"file": "Signature : Bail"})
+    assert carte["lignes"] == [(
+        "Produire « Bail (signé).pdf » à côté de l'original (signatures et certificat de preuves), l'envoyer par email "
+        "aux 2 signataires et passer « Signature : Bail » en Officiel"
+    )]
+    avant = len(mails.envoyes)
+    r = produire(admin, a_signer)
+    assert r.status_code == 201, r.text
+    fait = r.json()
+    assert fait["name"] == "Bail (signé).pdf"
+
+    # Rangé à côté de l'original ; le fichier de signature passe Officiel.
+    racine = {x["name"]: x["id"] for x in elements(admin.racine().json())}
+    assert racine["Bail (signé).pdf"] == fait["id"] and "Bail.pdf" in racine
+    assert fichier_appli(admin, a_signer)["status"] == "official"
+    data = admin.get(f"/nodes/{fait['id']}/content").content
+    assert hashlib.sha256(data).hexdigest() == fait["sha256"]
+    produit = db_session.query(DocSignEvent).filter_by(node_id=a_signer, event="produced").one()
+    assert produit.detail["sha256"] == fait["sha256"] and produit.detail["file_id"] == fait["id"]
+
+    # Le PDF : les 2 pages du document, avec les paraphes ; la page Signatures ; le certificat.
+    doc = pymupdf.open(stream=data, filetype="pdf")
+    assert doc.page_count >= 4 and "Article 1" in doc[0].get_text() and "Article 2" in doc[1].get_text()
+    assert len(doc[0].get_images()) == 2 and len(doc[1].get_images()) == 2
+    signatures = doc[2].get_text()
+    assert "Signatures" in signatures and "Ima Blanc" in signatures and "Paul Expert" in signatures and "Lu et approuvé" in signatures
+    assert "paul@cabinet.fr" in signatures and "Signé en ligne le" in signatures
+    certificat = "".join(doc[i].get_text() for i in range(3, doc.page_count))
+    fige = pdf_fige(db_session, a_signer)
+    for attendu in ("Certificat de preuves", "Bail (2 pages)", hashlib.sha256(fige).hexdigest(), "203.0.113.7",
+                    "Chrome sur Android", "Signature de Paul Expert enregistrée", "article 1367 du Code civil"):
+        assert attendu in certificat.replace("\n", " ").replace("\ufb01", "fi"), attendu
+
+    # Les mails : chaque signataire, l'expéditrice et l'adresse de l'école, PDF joint.
+    partis = mails.envoyes[avant:]
+    assert sorted(m["to"] for m in partis) == ["contact@exemple.fr", "ima@exemple.fr", "julia@exemple.fr", "paul@cabinet.fr"]
+    assert all(m["subject"] == "Signé : Bail" and m["attachments"][0] == ("Bail (signé).pdf", data) for m in partis)
+
+    # Le signataire voit toujours « signé » ; le suivi montre le document produit.
+    assert client.get(base_ima).json()["state"] == "signed"
+    vue = admin.get(f"/nodes/{a_signer}/app/signing/signers").json()
+    assert vue["produced"]["id"] == fait["id"] and vue["journal"][-1]["event"] == "produced"
+    assert "Document signé produit : « Bail (signé).pdf »" in signing.status_text(main.documents_client, db_session, signing_node(db_session, a_signer))
+
+    # Le refaire : une nouvelle version du même PDF.
+    r = produire(admin, a_signer)
+    assert r.status_code == 201 and r.json()["id"] == fait["id"]
+
+    # Le PDF figé abîmé dans le stockage : refus, rien n'est produit.
+    chemin = main.documents_client.storage.path(ecole["id"], hashlib.sha256(fige).hexdigest())
+    chemin.write_bytes(fige + b"%")
+    r = produire(admin, a_signer)
+    assert r.status_code == 409 and "a changé depuis la validation" in r.json()["detail"]
+    chemin.write_bytes(fige)
+
+
+def elements(vue):
+    return vue["items"] if isinstance(vue, dict) else vue
+
+
+def signing_node(db_session, node_id):
+    from documents.models import DocNode
+
+    return db_session.get(DocNode, node_id)
+
+
+def test_appareil_en_clair():
+    assert signing.device("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit Version/17.0 Mobile Safari/604.1") == "Safari sur iPhone"
+    assert signing.device("Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130.0 Safari/537.36 Edg/130.0") == "Edge sur Windows"
+    assert signing.device("Mozilla/5.0 (Linux; Android 14; SM-S911B) SamsungBrowser/25.0 Chrome/121 Mobile Safari/537.36") == "Samsung Internet sur Android"
+    assert signing.device(None) == ""
+
+
+@pytest.mark.skipif(shutil.which("soffice") is None, reason="LibreOffice absent")
+def test_document_signe_word(client, ecole, mails, db_session, tmp_path):
+    """Un Word : les signatures à la suite du texte, sur sa dernière page."""
+    ecole["admin"].definir_emails("julia@exemple.fr")
+    db_session.commit()
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    (tmp_path / "pv.html").write_text(HTML_WORD, encoding="utf-8")
+    subprocess.run(
+        ["soffice", "--headless", f"-env:UserInstallation=file://{tmp_path / 'profil'}",
+         "--convert-to", "docx:MS Word 2007 XML", "--outdir", str(tmp_path), str(tmp_path / "pv.html")],
+        capture_output=True, timeout=120, check=True,
+    )
+    source = admin.fichier("PV.docx", contenu=(tmp_path / "pv.docx").read_bytes()).json()["id"]
+    cree = nouveau(admin, source_id=source)["id"]
+    assert etat(admin, cree, "validated").status_code == 200
+    pages = pymupdf.open(stream=pdf_fige(db_session, cree), filetype="pdf").page_count
+    envoyer(admin, cree, [{"type": "member", "id": str(ecole["admin"].id)}])
+    signer_par_lien(client, mails, "julia@exemple.fr", initiales=False)
+    r = produire(admin, cree)
+    assert r.status_code == 201, r.text
+    doc = pymupdf.open(stream=admin.get(f"/nodes/{r.json()['id']}/content").content, filetype="pdf")
+    derniere = doc[pages - 1].get_text()
+    assert "Signatures" in derniere and "Julia Dho" in derniere and "Signé en ligne le" in derniere
+    assert "Certificat" in doc[pages].get_text().replace("ﬁ", "fi")
+    assert r.json()["name"] == "PV (signé).pdf"

@@ -111,7 +111,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         // Un document à signer encore sans document s'ouvre sur l'Édition ;
         // déjà envoyé pour signature, sur le suivi.
         const aDeposer = f.can_edit && f.status === 'draft' && !signBlock(f.content)?.props?.source && Boolean(signBlock(f.content))
-        const suivi = f.can_edit && f.status === 'validated' && signe?.signers > 0
+        const suivi = f.can_edit && ['validated', 'official'].includes(f.status) && signe?.signers > 0
         if (ouvrir) {
           setTab(
             premierOnglet.current ??
@@ -313,7 +313,12 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   const onglets = TABS.filter(([cle]) => cle !== 'results' || !informer)
   const c = contenu
   // Document à signer : « Voir les résultats » s'ouvre dès le premier envoi (§2.5).
-  const raisonOnglet = (cle) => (cle === 'results' && signBlock(c) && statut === 'validated' && sign?.signers ? null : tabReason(cle, statut))
+  const raisonOnglet = (cle) =>
+    signBlock(c) && cle === 'diffuse' && statut === 'official'
+      ? 'Le document est signé par tous'
+      : cle === 'results' && signBlock(c) && statut === 'validated' && sign?.signers
+        ? null
+        : tabReason(cle, statut)
   const raison = raisonOnglet(tab)
   const formOptions = [
     ['entry', 'Formulaire d’entrée'],
@@ -384,7 +389,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       />
     )
   } else if (signe && tab === 'results') {
-    corps = <SignResults file={file} api={api} onToast={onToast} />
+    corps = <SignResults file={file} api={api} onToast={onToast} onProduced={() => (charger(), onChanged?.())} />
   } else if (tab === 'prep') {
     corps = (
       <>

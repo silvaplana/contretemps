@@ -4,6 +4,16 @@
 # *.contretemps.silvaplana.cloud et transmet tout à ce conteneur, SANS
 # retirer de préfixe (l'app est à la racine) et en gardant l'en-tête Host :
 # c'est lui qui dit au backend de quelle école il s'agit.
+# Le Caddy "gateway" est devant : on le croit quand il dit qui est le
+# visiteur (X-Forwarded-For). Sans ça, ce Caddy remplace l'adresse du
+# téléphone par celle du gateway, et le journal de preuves de la signature
+# électronique noterait l'adresse du serveur (signature-documents.md §6).
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 :80 {
 	root * /srv
 	encode gzip zstd

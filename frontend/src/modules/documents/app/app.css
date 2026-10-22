@@ -1567,6 +1567,40 @@ h4.ap-h {
   text-align: center;
 }
 
+.sg-journal summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.sg-journal ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 15px;
+}
+
+.sg-journal li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px;
+  overflow-wrap: anywhere;
+}
+
+.sg-journal small {
+  display: block;
+  color: var(--text-muted);
+}
+
+.sg-heure {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* La page du signataire (lien personnel, §2.4) */
 .sl {
   display: grid;

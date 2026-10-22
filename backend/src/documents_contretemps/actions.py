@@ -345,6 +345,33 @@ def actions(docs: Documents) -> list[Action]:
 
         return Ligne(f"Envoyer pour signature « {node.name} » à {liste}{sans}", envoyer)
 
+    def produce_signed(db: Session, compte, org_id: int, p: AppFile) -> Ligne:
+        """« Produire le document signé » (signature-documents.md §2.5) :
+        refusé tant qu'il manque une signature."""
+        member = _member(db, compte, org_id)
+        node = _file(docs, db, member, p.file)
+        version = docs.apps.current_version(db, node)
+        if version is None or signing.block_of(version.content) is None:
+            raise Refus("ce fichier n'est pas un document à signer")
+        etat = _refus(lambda: signing.signers_status(docs, db, member, node.id))
+        if not etat["frozen"] or not etat["signers"]:
+            raise Refus("personne n'a encore été invité à signer : valider puis envoyer d'abord (send_app_file)")
+        manque = [s["name"] for s in etat["signers"] if s["state"] != "signed"]
+        if manque:
+            raise Refus(f"il manque la signature de {', '.join(manque)} : le document signé se produit quand tout le monde a signé")
+        n = len(etat["signers"])
+        nom = signing._signed_name(signing.frozen(db, node))
+
+        def faire(db: Session) -> None:
+            _, jobs = _refus(lambda: signing.produce(docs, db, member, node.id))
+            threading.Thread(target=signing.deliver_signed, args=(docs.mailer, jobs), daemon=True).start()
+
+        return Ligne(
+            f"Produire « {nom} » à côté de l'original (signatures et certificat de preuves), l'envoyer par email "
+            f"{'aux ' + str(n) + ' signataires' if n > 1 else 'au signataire'} et passer « {node.name} » en Officiel",
+            faire,
+        )
+
     def draft_minutes(db: Session, compte, org_id: int, p: DraftMinutes) -> Ligne:
         member = _member(db, compte, org_id)
         possibles = _refus(lambda: minutes.pending(docs, db, member))
@@ -475,6 +502,12 @@ def actions(docs: Documents) -> list[Action]:
                "qui n'ont ni signé ni refusé). Jamais pour répondre ou signer à la "
                "place de quelqu'un : chacun répond et signe lui-même.",
                SendAppFile, send),
+        Action("produce_signed", "Docs",
+               "Produit le document signé d'un document à signer dont tout le monde a signé (comme Voir les résultats › "
+               "Produire le document signé) : le PDF avec les signatures et le certificat de preuves, rangé à côté de "
+               "l'original, envoyé par email aux signataires ; le fichier passe en Officiel. Refusé tant qu'il manque "
+               "une signature : pour savoir où en sont les signatures, lis le fichier avec lire_fichier.",
+               AppFile, produce_signed),
         Action("remind_assembly", "Docs",
                "Relance par email, tout de suite, les membres convoqués à une AG qui n'ont pas encore répondu (comme "
                "Résultats › Relancer). Pour savoir où en sont les réponses et le quorum, lis d'abord la convocation "

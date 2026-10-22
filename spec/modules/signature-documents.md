@@ -140,14 +140,15 @@ repassé en Brouillon : « Le document est en cours de correction. Vous recevrez
 ### 2.5 Voir les résultats
 
 L'onglet s'ouvre dès le premier envoi (le fichier est encore Validé ; il devient Officiel avec le
-document signé), et le fichier s'ouvre dessus. Étape 2 : le suivi, Relancer et Signer moi-même ;
-le journal et « Produire le document signé » arrivent à l'étape 3 (le bouton est déjà là, grisé).
+document signé), et le fichier s'ouvre dessus. Une fois Officiel, Diffuser est fermé (« Le document
+est signé par tous »).
 
 - « N sur M ont signé » ; une ligne par signataire : **Signé le 23/11 à 18 h 04**, **Pas encore**,
   **A ouvert**, ou **A refusé** avec le motif ;
 - **Relancer les N** (ceux qui n'ont ni signé ni refusé), **Relancer** sur une ligne ;
   **Signer moi-même** si l'expéditeur fait partie des signataires ;
-- **Journal de preuves** (replié) : les événements dans l'ordre, heure de Paris ;
+- **Journal de preuves** (replié) : les événements dans l'ordre, heure de Paris, en clair
+  (« Signature de Karim Benali enregistrée »), avec l'appareil et l'adresse IP en dessous ;
 - bouton principal **Produire le document signé**, grisé avec « Possible quand tout le monde a
   signé » tant qu'il manque une signature (décision de Seb, 22 octobre : pas de document signé
   partiel).
@@ -158,9 +159,11 @@ le journal et « Produire le document signé » arrivent à l'étape 3 (le bouto
 - l'envoie par mail, en pièce jointe, à chaque signataire et à l'expéditeur, et le signale à
   l'adresse de contact de l'école (`email_contact`), PDF joint ;
 - passe le fichier de signature en **Officiel** ;
-- ouvre le PDF dans la visionneuse du téléphone.
+- ouvre le PDF dans la visionneuse du téléphone ; ensuite le bouton principal devient **Voir le
+  document signé** (comme la maquette).
 
-Le refaire (après une erreur d'envoi par exemple) range une nouvelle version du même PDF.
+Le refaire (par l'assistant, `produce_signed`, après une erreur d'envoi par exemple) range une
+nouvelle version du même PDF ; pas de second bouton à l'écran.
 
 **Corriger après Valider** : ⋯ › Modifier repasse en Brouillon, avec un avertissement « Les N
 signatures déjà faites seront annulées ». Elles sont annulées (pas effacées du journal), les liens
@@ -261,9 +264,11 @@ l'historique `doc_activity` (pensé pour l'onglet Historique, lié au nœud).
   `detail` (JSON : empreinte pour `validated` et `produced`, motif pour `refused`, nombre pour
   `sent`). Une migration Alembic qui crée la table (avec `has_table`, `create_all` passe avant).
 - **Adresse IP** : la première adresse de `X-Forwarded-For` posé par Caddy, sinon
-  `request.client.host`. **À vérifier en ligne** : il y a deux Caddy (le partagé, puis celui du
-  frontend) ; sans `trusted_proxies` dans `frontend/Caddyfile*`, le second remplace l'adresse du
-  téléphone par celle du premier. Changer le Caddyfile demande l'accord de Seb.
+  `request.client.host`. Il y a deux Caddy (le partagé, puis celui du frontend) : `frontend/Caddyfile*`
+  déclare `trusted_proxies static private_ranges` (accord de Seb, 22 octobre, étape 3) pour que le
+  second garde l'adresse du téléphone au lieu de mettre celle du premier.
+- **Appareil** : le texte brut du navigateur (`User-Agent`) au journal ; à l'écran et sur le
+  certificat, en clair (« Chrome sur Android », `signing.device`).
 - **Ouvert** : chaque ouverture du lien est notée (`opened`), pas seulement la première.
 - **Refusé** : se lit dans le journal (dernier `refused` depuis le document figé), pas de colonne ;
   « Relancer les N » ne relance pas ceux qui ont refusé, « Relancer » sur leur ligne, oui.
@@ -289,6 +294,12 @@ l'historique `doc_activity` (pensé pour l'onglet Historique, lié au nœud).
   `others` : nom + email), `POST …/signing/remind` (`send_ids`, ou tous ceux qui n'ont ni signé ni
   refusé) ; publiques, déclarées dans `comptes/rbac.py` : `GET /documents/public/signing/<jeton>`,
   `GET …/pages/{n}`, `POST …/read`, `POST …/sign`, `POST …/refuse`.
+- **Étape 3** : `GET …/signing/signers` rend aussi `journal` (en clair) et `produced` (le dernier
+  document signé : id, nom, empreinte) ; `POST …/nodes/{id}/app/signing/produce` (409 tant qu'il
+  manque une signature, ou si l'empreinte du PDF figé relu ne correspond plus) ; les mails partent
+  après la réponse. Le PDF signé est rangé à côté de l'original encore présent (sinon à côté du
+  fichier de signature), avec les droits de la personne qui le produit. L'assistant lit l'état des
+  signatures avec le fichier (`signing.status_text`).
 
 ## 7. Le PV d'AG passe par ce circuit
 
@@ -331,7 +342,7 @@ signature, passage en Officiel tout seul quand tous ont signé (le PV garde ce c
    *Vérification* : tests du lien (expiré, fermé après signature, Brouillon), du refus d'une
    signature sans lecture ou sans case, du refus de signer, du journal, d'une personne hors école,
    de l'étanchéité ; signature essayée au doigt sur téléphone.
-3. **Voir les résultats et le document signé** : suivi, journal, Signer moi-même, **Produire le
+3. **Voir les résultats et le document signé** *(codée)* : suivi, journal, Signer moi-même, **Produire le
    document signé** (signatures, paraphes, certificat), mails avec le PDF, Officiel, outil
    `produce_signed`.
    *Vérification* : tests du PDF signé (cases remplies, certificat complet, empreinte d'origine
