@@ -122,6 +122,10 @@ export default function Header({
               autres profils de la famille s'il y en a (voir spec §4) et, tout
               en bas, "Se déconnecter" (demande du 2026-09-21). Le menu "..."
               plus bas, lui, reste réservé au mode "course". */}
+          {/* Boutons de l'onglet ouvert, posés là par son module (loupe et
+              corbeille de Docs : Seb, 22 octobre, pour laisser la place aux
+              fichiers). */}
+          <div id="entete-onglet" className="app-header__onglet" />
           {/* Bouton du chat, à gauche du badge (Seb, 16 octobre). */}
           {assistant?.permis && (
             <button

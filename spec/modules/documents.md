@@ -1389,6 +1389,9 @@ Détails :
   changeant d'écran (comme les vidéos aujourd'hui). Partage depuis une autre appli Android vers
   AppBase via `share_target` du manifeste PWA (phase 2).
 - **Déplacer** : feuille plein écran qui navigue dans les dossiers, bouton « Déplacer ici ».
+- **Loupe et corbeille** (Seb, 22 octobre) : dans la barre du haut de l'appli, à côté du titre
+  « Documents », pour laisser la place aux fichiers. La barre du haut offre un emplacement que
+  l'onglet ouvert remplit (`#entete-onglet` dans `components/Header.jsx`).
 - **Noms longs** (Seb, 22 octobre) : dans la liste, le nom tient sur deux lignes ; trop long sur
   téléphone, il est coupé au milieu en gardant le début et la fin avec l'extension ; le nom complet
   s'affiche en tête du menu d'appui long. Pas de nom qui défile.
