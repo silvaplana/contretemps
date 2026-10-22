@@ -548,6 +548,12 @@ class DocumentsReceiver:
             taches.add_task(self.client.sends.deliver, db.get_bind(), jobs)
             return resume
 
+        @self.app.post(base + "/nodes/{node_id}/app/signing/produce", status_code=201)
+        def signing_produce(org_id: int, node_id: int, request: Request, taches: BackgroundTasks, db: Session = db_dep, m: Member = member):
+            resume, jobs = appel(lambda: signing.produce(self.client, db, self._member(org_id, m), node_id, _client(request)))
+            taches.add_task(signing.deliver_signed, self.client.mailer, jobs)
+            return resume
+
         # Le lien du signataire (public, sans compte ; §2.4)
         @self.app.get("/documents/public/signing/{token}")
         def link_signing(token: str, request: Request, db: Session = db_dep):

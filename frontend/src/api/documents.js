@@ -157,6 +157,7 @@ export function documentsApi(orgId) {
     signSend: (id, principals, others) =>
       appel(`${base}/nodes/${id}/app/signing/send`, json('POST', { principals: cibles(principals), others })),
     signRemind: (id, sendIds) => appel(`${base}/nodes/${id}/app/signing/remind`, json('POST', { send_ids: sendIds ?? null })),
+    signProduce: (id) => appel(`${base}/nodes/${id}/app/signing/produce`, { method: 'POST' }),
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),

@@ -5,6 +5,16 @@
 # /contretemps/* vers ce conteneur en retirant le préfixe avant de le
 # transmettre ici. Ce Caddyfile voit donc les requêtes comme si l'app
 # était servie à la racine.
+# Le Caddy "gateway" est devant : on le croit quand il dit qui est le
+# visiteur (X-Forwarded-For). Sans ça, ce Caddy remplace l'adresse du
+# téléphone par celle du gateway, et le journal de preuves de la signature
+# électronique noterait l'adresse du serveur (signature-documents.md §6).
+{
+	servers {
+		trusted_proxies static private_ranges
+	}
+}
+
 :80 {
 	root * /srv
 	encode gzip zstd
