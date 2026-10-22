@@ -28,7 +28,7 @@ facultatif.
 | 3 | **Faire lire avant de signer** | Le document entier s'affiche ; **Signer** reste grisé tant que la personne n'a pas fait défiler jusqu'en bas. Le serveur refuse une signature sans lecture enregistrée. |
 | 4 | **Recueillir le consentement** | Une case à cocher : « Je soussigné(e) Karim Benali, trésorier, ai lu le document « … » et je le signe », puis la signature au doigt. Le serveur refuse une signature sans la case. |
 | 5 | **Tout noter dans un journal** | Chaque événement (validé, envoyé, ouvert, lu, consenti, signé, refusé, relancé, produit) avec la date et l'heure **du serveur**, l'adresse IP et l'appareil. Le journal ne se modifie jamais : on y ajoute seulement. |
-| 6 | **Remettre le document signé** | « Produire le document signé » fait le PDF avec les signatures visibles et une dernière page **Certificat de preuves**, le range à côté de l'original et l'envoie à chaque signataire. |
+| 6 | **Remettre le document signé** | « Produire le document signé » fait le PDF avec les signatures visibles et, **à part**, le PDF **Certificat de preuves** (Seb, 22 octobre : « le document, c'est le document »), les range à côté de l'original et les envoie à chaque signataire. |
 
 **Code à 6 chiffres par email avant de signer** : non (décision de Seb, 22 octobre). Le lien
 personnel suffit pour une signature simple ; le code ne protège que du mail transféré à quelqu'un
@@ -155,9 +155,12 @@ est signé par tous »).
 
 **Produire le document signé** :
 
-- fait le PDF signé (§3) et le range **à côté de l'original** : « <nom du document> (signé).pdf » ;
-- l'envoie par mail, en pièce jointe, à chaque signataire et à l'expéditeur, et le signale à
-  l'adresse de contact de l'école (`email_contact`), PDF joint ;
+- fait le PDF signé et le certificat de preuves (§3) et les range **à côté de l'original** :
+  « <nom du document>_Signé_MLP_MT_PJ.pdf » (les initiales de chaque signataire, séparées par des
+  underscores, pour voir qui a signé sans ouvrir le fichier ; au-delà de 8 signataires, les 8
+  premiers puis « _et_N ») et « <nom du document>_Preuves de signature.pdf » (Seb, 22 octobre) ;
+- les envoie par mail, en pièces jointes, à chaque signataire et à l'expéditeur, et à l'adresse de
+  contact de l'école (`email_contact`) ;
 - passe le fichier de signature en **Officiel** ;
 - ouvre le PDF dans la visionneuse du téléphone ; ensuite le bouton principal devient **Voir le
   document signé** (comme la maquette).
@@ -178,17 +181,16 @@ Diffuser ; l'Aperçu montre où elles iront) :
 - **Word** : le texte du document de l'appli mis en page A4 (même moteur que le PV, pymupdf) ;
 - **PDF** : le PDF déposé tel quel (refusé s'il est illisible ou protégé par un mot de passe).
 
-**Les signatures** s'ajoutent au PDF signé (« Produire le document signé ») : pour un Word, la
-section **Signatures** à la suite du texte ; pour un PDF, **une page Signatures** ajoutée à la fin
-(on n'écrit pas par-dessus le contenu d'un PDF venu d'ailleurs : on ne sait pas où il y a de la
-place).
+**Les signatures** s'ajoutent au PDF signé (« Produire le document signé ») : la section
+**Signatures** collée à la fin du texte, sur la dernière page, s'il y reste de la place (Seb,
+22 octobre : « pas de nouvelle page si on peut ») ; sinon sur une page ajoutée. Pour un PDF venu
+d'ailleurs, la place se mesure sous le dernier texte, dessin ou image de la dernière page, au-dessus
+du bas de page (numéro, pied) : on n'écrit jamais par-dessus son contenu.
 
-La section Signatures a une case par signataire : mention, signature, nom, fonction (bureau) ou
-qualité, « Signé en ligne le … à … », ou vide (« En attente de signature »). En bas de la section, une
-ligne « Signé_MLP_MT_PJ » : les initiales de chaque signataire séparées par des underscores, pour voir
-d'un coup d'œil qui a signé (Seb, 22 octobre ; les noms complets restent dans les cases et sur le
-certificat). Le paraphe : une
-petite case par signataire en bas à droite de chaque page, dans la marge.
+La section Signatures a une case par signataire, dans l'ordre d'une signature papier (Seb,
+22 octobre) : la fonction au bureau (« Président·e »), le prénom et le nom, la mention, la
+signature, puis « Signé en ligne le … à … ». Sans cadre ni adresse email, jusqu'à trois
+signataires par ligne (Seb, 22 octobre : « faire simple »). Le paraphe : une petite case par signataire en bas à droite de chaque page, dans la marge.
 
 **L'empreinte** est celle de ce PDF à signer, sans signatures. Elle est enregistrée à Valider
 (événement `validated` du journal, avec le fichier rangé, le nombre de pages et le document
@@ -196,18 +198,21 @@ d'origine).
 
 **Le PDF signé** (produit par « Produire le document signé ») : le PDF à signer, recalculé à partir
 du fichier rangé (on vérifie que son empreinte n'a pas changé, sinon refus et alerte), avec les
-signatures et les paraphes posés dans leurs cases, puis la dernière page **Certificat de preuves** :
+signatures et les paraphes posés dans leurs cases ; rien d'autre (les preuves sont à part).
+
+**Le Certificat de preuves**, PDF à part rangé à côté du PDF signé :
 
 - le document (nom, nombre de pages), qui l'a envoyé et quand ;
-- **l'empreinte SHA-256 du document validé** ;
+- **l'empreinte SHA-256 du document validé**, et le nom et l'empreinte du PDF signé (possible
+  maintenant que le certificat est à part) ;
 - les signataires : nom, adresse email du lien, fonction, date et heure de signature ;
 - le journal complet : date et heure (Paris), événement, adresse IP, appareil (navigateur et
   système, en clair : « Chrome sur Android ») ;
 - « Signature électronique simple au sens de l'article 1367 du Code civil et du règlement (UE)
   n° 910/2014. Les preuves sont conservées par <école> dans <appli>. »
 
-L'empreinte du PDF signé ne peut pas figurer dans le PDF lui-même : elle est enregistrée au journal
-(événement « produit ») et affichée dans Voir les résultats.
+Les empreintes du PDF signé et du certificat sont aussi enregistrées au journal (événement
+`produced`), affiché dans Voir les résultats.
 
 ## 4. Rangement et droits
 

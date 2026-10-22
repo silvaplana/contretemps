@@ -360,14 +360,15 @@ def actions(docs: Documents) -> list[Action]:
         if manque:
             raise Refus(f"il manque la signature de {', '.join(manque)} : le document signé se produit quand tout le monde a signé")
         n = len(etat["signers"])
-        nom = signing._signed_name(signing.frozen(db, node))
+        fige = signing.frozen(db, node)
+        nom = signing._signed_name(fige, signing.minutes.signers(db, node))
 
         def faire(db: Session) -> None:
             _, jobs = _refus(lambda: signing.produce(docs, db, member, node.id))
             threading.Thread(target=signing.deliver_signed, args=(docs.mailer, jobs), daemon=True).start()
 
         return Ligne(
-            f"Produire « {nom} » à côté de l'original (signatures et certificat de preuves), l'envoyer par email "
+            f"Produire « {nom} » et ses preuves à côté de l'original, les envoyer par email "
             f"{'aux ' + str(n) + ' signataires' if n > 1 else 'au signataire'} et passer « {node.name} » en Officiel",
             faire,
         )
@@ -504,7 +505,7 @@ def actions(docs: Documents) -> list[Action]:
                SendAppFile, send),
         Action("produce_signed", "Docs",
                "Produit le document signé d'un document à signer dont tout le monde a signé (comme Voir les résultats › "
-               "Produire le document signé) : le PDF avec les signatures et le certificat de preuves, rangé à côté de "
+               "Produire le document signé) : le PDF avec les signatures et, à part, le certificat de preuves, rangés à côté de "
                "l'original, envoyé par email aux signataires ; le fichier passe en Officiel. Refusé tant qu'il manque "
                "une signature : pour savoir où en sont les signatures, lis le fichier avec lire_fichier.",
                AppFile, produce_signed),
