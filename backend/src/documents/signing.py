@@ -905,7 +905,7 @@ def _what(e: DocSignEvent, names: dict[int, str]) -> str:
         "consented": f"Consentement coché par {qui} : « {d.get('text', '')} »",
         "signed": f"Signature de {qui} enregistrée",
         "refused": f"{qui} ne signe pas : « {d.get('reason', '')} »",
-        "produced": f"Document signé produit par {d.get('by_name', '')}, empreinte {d.get('sha256', '')}",
+        "produced": f"Document signé et preuves produits par {d.get('by_name', '')}, empreinte {d.get('sha256', '')}",
     }.get(e.event, e.event)
 
 
@@ -925,11 +925,26 @@ def _produced(evenements: list[DocSignEvent]) -> dict | None:
     if dernier is None:
         return None
     d = dernier.detail or {}
-    return {"id": d.get("file_id"), "name": d.get("name"), "sha256": d.get("sha256"), "at": dernier.at.isoformat()}
+    return {
+        "id": d.get("file_id"), "name": d.get("name"), "sha256": d.get("sha256"),
+        "proof_id": d.get("proof_id"), "proof_name": d.get("proof_name"), "at": dernier.at.isoformat(),
+    }
 
 
-def _signed_name(fige: DocSignEvent) -> str:
-    return f"{_stem(fige.detail['source_name'])} (signé).pdf"
+MAX_NAME_INITIALS = 8
+
+
+def _signed_name(fige: DocSignEvent, gens: list[DocSend]) -> str:
+    """« PV AGO 2026_Signé_MLP_MT_PJ.pdf » : qui a signé, vu dans Docs sans
+    ouvrir le fichier (Seb, 22 octobre). Au-delà de 8 signataires, « _et_N »."""
+    qui = [initials(s.name) for s in gens]
+    reste = len(qui) - MAX_NAME_INITIALS
+    fin = "_".join(qui[:MAX_NAME_INITIALS]) + (f"_et_{reste}" if reste > 0 else "")
+    return f"{_stem(fige.detail['source_name'])}_Signé_{fin}.pdf"
+
+
+def _proof_name(fige: DocSignEvent) -> str:
+    return f"{_stem(fige.detail['source_name'])}_Preuves de signature.pdf"
 
 
 def _frozen_bytes(docs: Documents, db: Session, node: DocNode, fige: DocSignEvent) -> bytes:
@@ -948,8 +963,10 @@ def _png_bytes(data: str) -> bytes:
 
 
 def _signatures_html(docs: Documents, db: Session, node: DocNode, bloc: dict, gens: list[DocSend], archive: pymupdf.Archive) -> str:
-    """La section Signatures : une case par signataire (mention, tracé, nom,
-    fonction ou adresse, date et heure)."""
+    """La section Signatures : une case par signataire, dans l'ordre d'une
+    signature papier (Seb, 22 octobre) : la fonction, le prénom et le nom,
+    la mention, la signature, puis la date et l'heure. Sans cadre, jusqu'à
+    trois par ligne (Seb, 22 octobre : « faire simple »)."""
     bureau = minutes._board(docs, db, node.org_id)
     cases = []
     for i, s in enumerate(gens):
@@ -958,16 +975,15 @@ def _signatures_html(docs: Documents, db: Session, node: DocNode, bloc: dict, ge
         qualite = minutes._labels(bureau[s.person_id].functions) if s.person_id in bureau else ""
         archive.add(_png_bytes(v["signature"]), f"sig{i}.png")
         cases.append(
-            "<td>"
+            "<td style='width:33%;padding:6pt 4pt;vertical-align:top'>"
+            + (f"<b>{escape(qualite[:1].upper() + qualite[1:])}</b><br/>" if qualite else "")
+            + f"{escape(s.name)}<br/>"
             + (f"<i>{escape(v['mention'])}</i><br/>" if v.get("mention") else "")
-            + f"<img src='sig{i}.png' width='160' height='60'/><br/><b>{escape(s.name)}</b>"
-            + f"<br/><span class='small'>{escape(qualite or s.email or '')}</span>"
+            + f"<img src='sig{i}.png' width='140' height='52'/>"
             + f"<br/><span class='small'>Signé en ligne le {_when(s.answered_at)}</span></td>"
         )
-    lignes = "".join(f"<tr>{''.join(cases[i:i + 2])}</tr>" for i in range(0, len(cases), 2))
-    # Seb, 22 octobre : en bas, qui a signé d'un coup d'œil (« Signé_MLP_MT »).
-    qui = "_".join(initials(s.name) for s in gens)
-    return f"<h2>Signatures</h2><table class='t sign'>{lignes}</table><p><b>Signé_{escape(qui)}</b></p>"
+    lignes = "".join(f"<tr>{''.join(cases[i:i + 3])}</tr>" for i in range(0, len(cases), 3))
+    return f"<h2>Signatures</h2><table style='width:100%'>{lignes}</table>"
 
 
 def initials(name: str) -> str:
@@ -987,9 +1003,10 @@ def _initials(pdf: pymupdf.Document, pages: int, images: list[bytes]) -> None:
 
 
 def signed_pdf(docs: Documents, db: Session, node: DocNode, fige: DocSignEvent, bloc: dict) -> bytes:
-    """Le PDF figé, avec les signatures (à la suite du texte d'un Word, sur
-    une page ajoutée pour un PDF venu d'ailleurs), les paraphes, puis la page
-    Certificat de preuves (§3)."""
+    """Le PDF figé, avec les signatures (à la suite du texte, ou sur une page
+    ajoutée s'il n'y a plus de place) et les paraphes (§3). Les
+    preuves sont dans un PDF à part (Seb, 22 octobre : « le document, c'est
+    le document »)."""
     pdf = _open_pdf(_frozen_bytes(docs, db, node, fige))
     pages = pdf.page_count
     gens = minutes.signers(db, node)
@@ -999,25 +1016,36 @@ def signed_pdf(docs: Documents, db: Session, node: DocNode, fige: DocSignEvent, 
         _initials(pdf, pages, [_png_bytes(r.values[bloc["id"]]["initials"]) for r in reponses])
     archive = pymupdf.Archive()
     section = _signatures_html(docs, db, node, bloc, gens, archive)
-    pose = False
-    if kind_of(fige.detail["source_name"]) == "word":
-        # À la suite du texte, s'il reste de la place sur la dernière page
-        # (sinon rien n'est écrit et la section part sur une page ajoutée).
-        derniere = pdf[pages - 1]
-        bas = max((b[3] for b in derniere.get_text("blocks")), default=48)
-        zone = pymupdf.Rect(48, bas + 12, derniere.rect.width - 48, derniere.rect.height - 48)
-        if zone.height > 40:
-            pose = derniere.insert_htmlbox(zone, section, css=assembly._CSS, archive=archive, scale_low=1)[0] >= 0
+    # Collées à la fin du texte s'il reste de la place sur la dernière page
+    # (Seb, 22 octobre), sinon sur une page ajoutée. Le bas de page (numéro,
+    # pied) ne compte pas : la section s'arrête au-dessus.
+    derniere = pdf[pages - 1]
+    pied = derniere.rect.height - 60
+    contenu = [b[:4] for b in derniere.get_text("blocks")]
+    contenu += [tuple(d["rect"]) for d in derniere.get_drawings()]
+    contenu += [tuple(i["bbox"]) for i in derniere.get_image_info()]
+    bas = max((r[3] for r in contenu if r[1] < pied), default=48)
+    zone = pymupdf.Rect(48, bas + 12, derniere.rect.width - 48, pied)
+    pose = zone.height > 40 and derniere.insert_htmlbox(zone, section, css=assembly._CSS, archive=archive, scale_low=1)[0] >= 0
     if not pose:
         titre = f"<p class='org'>{escape(_document(fige, node))}</p>"
         pdf.insert_pdf(pymupdf.open(stream=minutes._render(titre + section, archive), filetype="pdf"))
-    pdf.insert_pdf(pymupdf.open(stream=minutes._render(_certificate_html(docs, db, node, fige, gens, pages)), filetype="pdf"))
     sortie = pdf.tobytes(garbage=3, deflate=True)
     pdf.close()
     return sortie
 
 
-def _certificate_html(docs: Documents, db: Session, node: DocNode, fige: DocSignEvent, gens: list[DocSend], pages: int) -> str:
+def proof_pdf(docs: Documents, db: Session, node: DocNode, fige: DocSignEvent, nom: str, signed: bytes) -> bytes:
+    """Le Certificat de preuves, à part : il désigne le document signé par son
+    nom et son empreinte."""
+    gens = minutes.signers(db, node)
+    return minutes._render(_certificate_html(docs, db, node, fige, gens, nom, hashlib.sha256(signed).hexdigest()))
+
+
+def _certificate_html(
+    docs: Documents, db: Session, node: DocNode, fige: DocSignEvent, gens: list[DocSend], nom: str, signed_sha256: str,
+) -> str:
+    pages = fige.detail["pages"]
     ecole, adresse = docs.mailer.org(db, node.org_id) if docs.mailer is not None else ("", "")
     bureau = minutes._board(docs, db, node.org_id)
     evenements = _since(db, node, fige)
@@ -1039,12 +1067,12 @@ def _certificate_html(docs: Documents, db: Session, node: DocNode, fige: DocSign
         + (f"<br/><b>Envoyé par :</b> {escape(par)}, le {_when(envoi.at)}" if envoi is not None else "")
         + f"<br/><b>Validé et figé le</b> {_when(fige.at)}</p>"
         f"<p><b>Empreinte SHA-256 du document validé :</b><br/>{fige.detail['sha256']}</p>"
+        f"<p><b>Document signé :</b> {escape(nom)}<br/><b>Son empreinte SHA-256 :</b><br/>{signed_sha256}</p>"
         f"<h2>Signataires</h2><table class='t'><tr><th>Nom</th><th>Fonction</th><th>Adresse du lien</th><th>Signé le</th></tr>{signataires}</table>"
         f"<h2>Journal (heure de Paris)</h2><table class='t'><tr><th class='w24'>Date et heure</th><th>Événement</th>"
         f"<th class='w12'>Adresse IP</th><th class='w12'>Appareil</th></tr>{lignes}</table>"
         "<p class='foot'>Signature électronique simple au sens de l'article 1367 du Code civil et du règlement (UE) "
-        f"n° 910/2014. Les preuves sont conservées par {escape(ecole)} ({escape(adresse)}). L'empreinte du présent "
-        "document signé est enregistrée dans le journal de preuves de l'appli.</p>"
+        f"n° 910/2014. Les preuves sont conservées par {escape(ecole)} ({escape(adresse)}).</p>"
     )
 
 
@@ -1075,23 +1103,34 @@ def produce(docs: Documents, db: Session, member: Member, node_id: int, client: 
     if manque:
         raise _error(409, f"Possible quand tout le monde a signé : il manque {', '.join(manque)}.")
     pdf = signed_pdf(docs, db, node, fige, bloc)
+    nom, nom_preuves = _signed_name(fige, gens), _proof_name(fige)
+    preuves = proof_pdf(docs, db, node, fige, nom, pdf)
     source = db.get(DocNode, fige.detail["source_id"])
-    vivant = source is not None and source.org_id == node.org_id and source.deleted_at is None
-    nom = _signed_name(fige)
-    file_id = _store_next_to(docs, db, member, source if vivant else node, nom, pdf)
+    place = source if source is not None and source.org_id == node.org_id and source.deleted_at is None else node
+    file_id = _store_next_to(docs, db, member, place, nom, pdf)
+    proof_id = _store_next_to(docs, db, member, place, nom_preuves, preuves)
     empreinte = hashlib.sha256(pdf).hexdigest()
-    _event(db, node, "produced", None, client, sha256=empreinte, file_id=file_id, name=nom, by=member.person_id, by_name=member.display_name)
+    _event(
+        db, node, "produced", None, client, sha256=empreinte, file_id=file_id, name=nom,
+        proof_id=proof_id, proof_name=nom_preuves, proof_sha256=hashlib.sha256(preuves).hexdigest(),
+        by=member.person_id, by_name=member.display_name,
+    )
     if node.status == "validated":
         node.status, node.updated_at = "official", utcnow()
         docs._log(db, member, node, "status", {"from": "validated", "to": "official"})
     db.commit()
-    return {"id": file_id, "name": nom, "sha256": empreinte}, _signed_mails(docs, db, member, node, fige, gens, nom, pdf)
+    pieces = [(nom, pdf), (nom_preuves, preuves)]
+    return (
+        {"id": file_id, "name": nom, "sha256": empreinte, "proof_id": proof_id, "proof_name": nom_preuves},
+        _signed_mails(docs, db, member, node, fige, gens, pieces),
+    )
 
 
 def _signed_mails(
-    docs: Documents, db: Session, member: Member, node: DocNode, fige: DocSignEvent, gens: list[DocSend], nom: str, pdf: bytes,
+    docs: Documents, db: Session, member: Member, node: DocNode, fige: DocSignEvent, gens: list[DocSend],
+    pieces: list[tuple[str, bytes]],
 ) -> list[dict]:
-    """Le PDF signé par mail : à chaque signataire, à l'expéditeur et à
+    """Le PDF signé et ses preuves par mail : à chaque signataire, à l'expéditeur et à
     l'adresse de contact de l'école (une seule fois par adresse)."""
     if docs.mailer is None or not docs.mailer.available:
         return []
@@ -1109,15 +1148,16 @@ def _signed_mails(
         vus.add(email.lower())
         texte, html = minutes._mail([
             f"Le document « {document} » est signé par tous ({len(gens)} signature{'s' if len(gens) > 1 else ''}).",
-            "Le PDF signé est joint à ce mail, avec en dernière page le certificat de preuves. Gardez-le : il fait foi.",
+            "Le PDF signé est joint à ce mail, avec à part le certificat de preuves. Gardez-les : ils font foi.",
         ], ecole, greeting=qui)
-        jobs.append({"to": email, "subject": f"Signé : {document}", "text": texte, "html": html, "sender_name": ecole, "attachments": [(nom, pdf)]})
+        jobs.append({"to": email, "subject": f"Signé : {document}", "text": texte, "html": html, "sender_name": ecole, "attachments": pieces})
     if contact and contact.lower() not in vus:
         texte, html = minutes._mail([
             f"Le document « {document} » est signé par tous ({len(gens)} signature{'s' if len(gens) > 1 else ''}).",
-            f"Le PDF signé est joint ; il est aussi rangé dans Docs à côté de l'original (produit par {member.display_name}).",
+            f"Le PDF signé et le certificat de preuves sont joints ; ils sont aussi rangés dans Docs à côté de l'original "
+            f"(produits par {member.display_name}).",
         ], ecole)
-        jobs.append({"to": contact, "subject": f"Signé : {document}", "text": texte, "html": html, "sender_name": ecole, "attachments": [(nom, pdf)]})
+        jobs.append({"to": contact, "subject": f"Signé : {document}", "text": texte, "html": html, "sender_name": ecole, "attachments": pieces})
     return jobs
 
 

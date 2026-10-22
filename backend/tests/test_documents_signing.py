@@ -561,49 +561,52 @@ def test_document_signe(client, ecole, mails, a_signer, db_session):
     signer_par_lien(client, mails, "paul@cabinet.fr")
     _, carte = proposer({"file": "Signature : Bail"})
     assert carte["lignes"] == [(
-        "Produire « Bail (signé).pdf » à côté de l'original (signatures et certificat de preuves), l'envoyer par email "
+        "Produire « Bail_Signé_IB_PE.pdf » et ses preuves à côté de l'original, les envoyer par email "
         "aux 2 signataires et passer « Signature : Bail » en Officiel"
     )]
     avant = len(mails.envoyes)
     r = produire(admin, a_signer)
     assert r.status_code == 201, r.text
     fait = r.json()
-    assert fait["name"] == "Bail (signé).pdf"
+    # Seb, 22 octobre : les initiales de qui a signé dans le nom ; les preuves à part.
+    assert (fait["name"], fait["proof_name"]) == ("Bail_Signé_IB_PE.pdf", "Bail_Preuves de signature.pdf")
 
-    # Rangé à côté de l'original ; le fichier de signature passe Officiel.
+    # Rangés à côté de l'original ; le fichier de signature passe Officiel.
     racine = {x["name"]: x["id"] for x in elements(admin.racine().json())}
-    assert racine["Bail (signé).pdf"] == fait["id"] and "Bail.pdf" in racine
+    assert racine["Bail_Signé_IB_PE.pdf"] == fait["id"] and racine["Bail_Preuves de signature.pdf"] == fait["proof_id"]
+    assert "Bail.pdf" in racine
     assert fichier_appli(admin, a_signer)["status"] == "official"
     data = admin.get(f"/nodes/{fait['id']}/content").content
     assert hashlib.sha256(data).hexdigest() == fait["sha256"]
     produit = db_session.query(DocSignEvent).filter_by(node_id=a_signer, event="produced").one()
     assert produit.detail["sha256"] == fait["sha256"] and produit.detail["file_id"] == fait["id"]
 
-    # Le PDF : les 2 pages du document, avec les paraphes ; la page Signatures ; le certificat.
+    # Le PDF : les 2 pages du document, avec les paraphes ; les signatures collées à la fin
+    # du texte (il reste de la place) ; rien d'autre.
     doc = pymupdf.open(stream=data, filetype="pdf")
-    assert doc.page_count >= 4 and "Article 1" in doc[0].get_text() and "Article 2" in doc[1].get_text()
-    assert len(doc[0].get_images()) == 2 and len(doc[1].get_images()) == 2
-    signatures = doc[2].get_text()
+    assert doc.page_count == 2 and "Article 1" in doc[0].get_text() and "Article 2" in doc[1].get_text()
+    assert len(doc[0].get_image_info()) == 2 and len(doc[1].get_image_info()) == 4  # paraphes ; paraphes et signatures
+    signatures = doc[1].get_text()
     assert "Signatures" in signatures and "Ima Blanc" in signatures and "Paul Expert" in signatures and "Lu et approuvé" in signatures
-    assert "paul@cabinet.fr" in signatures and "Signé en ligne le" in signatures
-    # Seb, 22 octobre : en bas, les initiales de qui a signé.
-    assert "Signé_IB_PE" in signatures
-    certificat = "".join(doc[i].get_text() for i in range(3, doc.page_count))
+    assert "Signé en ligne le" in signatures and "paul@cabinet.fr" not in signatures and "Certificat" not in signatures
+    preuves = admin.get(f"/nodes/{fait['proof_id']}/content").content
+    certificat = "".join(p.get_text() for p in pymupdf.open(stream=preuves, filetype="pdf"))
     fige = pdf_fige(db_session, a_signer)
-    for attendu in ("Certificat de preuves", "Bail (2 pages)", hashlib.sha256(fige).hexdigest(), "203.0.113.7",
+    for attendu in ("Certificat de preuves", "Bail (2 pages)", hashlib.sha256(fige).hexdigest(), "Bail_Signé_IB_PE.pdf",
+                    fait["sha256"], "203.0.113.7",
                     "Chrome sur Android", "Signature de Paul Expert enregistrée", "article 1367 du Code civil"):
         assert attendu in certificat.replace("\n", " ").replace("\ufb01", "fi"), attendu
 
-    # Les mails : chaque signataire, l'expéditrice et l'adresse de l'école, PDF joint.
+    # Les mails : chaque signataire, l'expéditrice et l'adresse de l'école, les deux PDF joints.
     partis = mails.envoyes[avant:]
     assert sorted(m["to"] for m in partis) == ["contact@exemple.fr", "ima@exemple.fr", "julia@exemple.fr", "paul@cabinet.fr"]
-    assert all(m["subject"] == "Signé : Bail" and m["attachments"][0] == ("Bail (signé).pdf", data) for m in partis)
+    assert all(m["subject"] == "Signé : Bail" and m["attachments"] == [("Bail_Signé_IB_PE.pdf", data), ("Bail_Preuves de signature.pdf", preuves)] for m in partis)
 
     # Le signataire voit toujours « signé » ; le suivi montre le document produit.
     assert client.get(base_ima).json()["state"] == "signed"
     vue = admin.get(f"/nodes/{a_signer}/app/signing/signers").json()
     assert vue["produced"]["id"] == fait["id"] and vue["journal"][-1]["event"] == "produced"
-    assert "Document signé produit : « Bail (signé).pdf »" in signing.status_text(main.documents_client, db_session, signing_node(db_session, a_signer))
+    assert "Document signé produit : « Bail_Signé_IB_PE.pdf »" in signing.status_text(main.documents_client, db_session, signing_node(db_session, a_signer))
 
     # Le refaire : une nouvelle version du même PDF.
     r = produire(admin, a_signer)
@@ -629,6 +632,10 @@ def signing_node(db_session, node_id):
 
 def test_initiales():
     assert signing.initials("Marie-Laure Pesenti") == "MLP" and signing.initials("jean de la Tour") == "JDLT"
+    fige = DocSignEvent(detail={"source_name": "PV AGO.docx"})
+    gens = [DocSend(name=f"Ana B{i}") for i in range(10)]
+    assert signing._signed_name(fige, gens[:2]) == "PV AGO_Signé_AB_AB.pdf"
+    assert signing._signed_name(fige, gens) == "PV AGO_Signé_" + "_".join(["AB"] * 8) + "_et_2.pdf"
 
 
 def test_appareil_en_clair():
@@ -640,8 +647,10 @@ def test_appareil_en_clair():
 
 @pytest.mark.skipif(shutil.which("soffice") is None, reason="LibreOffice absent")
 def test_document_signe_word(client, ecole, mails, db_session, tmp_path):
-    """Un Word : les signatures à la suite du texte, sur sa dernière page."""
+    """Un Word : les signatures à la suite du texte, sur sa dernière page ;
+    dans la case, la fonction, puis le nom, puis la signature."""
     ecole["admin"].definir_emails("julia@exemple.fr")
+    ecole["admin"].bureau_functions = ["president"]
     db_session.commit()
     admin = Docs(client, ecole["id"], ecole["admin"])
     (tmp_path / "pv.html").write_text(HTML_WORD, encoding="utf-8")
@@ -660,6 +669,6 @@ def test_document_signe_word(client, ecole, mails, db_session, tmp_path):
     assert r.status_code == 201, r.text
     doc = pymupdf.open(stream=admin.get(f"/nodes/{r.json()['id']}/content").content, filetype="pdf")
     derniere = doc[pages - 1].get_text()
-    assert "Signatures" in derniere and "Julia Dho" in derniere and "Signé en ligne le" in derniere
-    assert "Certificat" in doc[pages].get_text().replace("ﬁ", "fi")
-    assert r.json()["name"] == "PV (signé).pdf"
+    assert "Signatures\nPrésident·e\nJulia Dho\nLu et approuvé\nSigné en ligne le" in derniere
+    assert doc.page_count == pages
+    assert r.json()["name"] == "PV_Signé_JD.pdf"
