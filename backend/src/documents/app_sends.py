@@ -21,7 +21,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from . import app_content, assembly, minutes
+from . import app_content, assembly, minutes, signing
 from .app_content import ContentError
 from .models import LEVEL_MANAGE, DocNode, DocResponse, DocSend, utcnow
 from .ports import Member
@@ -33,6 +33,9 @@ logger = logging.getLogger(__name__)
 
 MAX_REVIEWERS = 10
 MAX_MESSAGE = 2000
+# Document à signer : l'envoi pour signature arrive à l'étape 2
+# (signature-documents.md §9), pas par le Diffuser habituel.
+SIGN_LATER = "Ce document s'enverra pour signature depuis « Faire signer à qui ? », bientôt disponible."
 BUTTONS = {"inform": "Voir en ligne", "question": "Répondre", "act": "S'inscrire"}
 
 
@@ -64,6 +67,8 @@ class AppSends:
         version = self.apps.current_version(db, node)
         if version is None or not version.content.get("entry", {}).get("blocks"):
             raise self._error(409, "Le formulaire d'entrée est vide.")
+        if signing.block_of(version.content) is not None:
+            raise self._error(409, SIGN_LATER)
         return node, node.status == "validated"
 
     def _recipients(self, db: Session, member: Member, principals, test: bool):
@@ -113,6 +118,8 @@ class AppSends:
         version = self.apps.current_version(db, node)
         if version is None or not version.content.get("entry", {}).get("blocks"):
             raise self._error(409, "Le formulaire d'entrée est vide.")
+        if signing.block_of(version.content) is not None:
+            raise self._error(409, SIGN_LATER)
         if not self._mailer_ok():
             raise self._error(409, "L'envoi d'emails n'est pas configuré sur ce serveur.")
         autre = person_id is not None and person_id != member.person_id

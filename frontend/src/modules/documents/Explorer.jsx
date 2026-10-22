@@ -938,10 +938,27 @@ export default function Explorer({ orgId, memoire }) {
         envoyerDansLaMessagerie(texteDuLien(item))
       },
     })
+    // Un PDF ou un Word : « Faire signer… » (signature-documents.md §2).
+    if (item.kind === 'file' && /\.(pdf|docx?|odt|rtf)$/i.test(item.name)) {
+      autres.unshift({ icone: '✍', libelle: 'Faire signer…', faire: () => (setFeuille(null), setPlus(false), faireSigner(item)) })
+    }
     if (item.exchange_until && (item.sent_by_me || data?.level === 'manage')) {
       autres.unshift({ icone: '✉', libelle: 'Pour…', faire: () => (setFeuille(null), setPlus(false), setPourQui([item])) })
     }
     return { principales, autres }
+  }
+
+  // Le fichier « Signature : … » se crée à côté du document (ou dans le
+  // dossier ouvert, sans document) et s'ouvre sur « 1. Préparer », Édition.
+  async function faireSigner(item) {
+    try {
+      const f = await api.createSigning(space, folder, item?.id)
+      setNouveau(false)
+      await recharger()
+      setAppli({ id: f.id, name: f.name, kind: 'app', family: 'question', tab: 'prep' })
+    } catch (e) {
+      echec(e)
+    }
   }
 
   // Renommer, déplacer, supprimer : il faut pouvoir modifier le dossier
@@ -1424,6 +1441,7 @@ export default function Explorer({ orgId, memoire }) {
             setNouveau(false)
             setPv({ folderId: null })
           }}
+          onSign={() => faireSigner(null)}
           onNewApp={async (famille) => {
             try {
               const f = await api.createApp(space, folder, famille)

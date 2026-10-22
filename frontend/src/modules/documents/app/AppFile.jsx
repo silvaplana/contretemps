@@ -10,9 +10,11 @@ import Editor from './Editor.jsx'
 import AssemblyRemind from './AssemblyRemind.jsx'
 import Emargement from './Emargement.jsx'
 import Page from './Page.jsx'
+import SignPrepare from './SignPrepare.jsx'
+import SignPreview from './SignPreview.jsx'
 import Results, { exampleRows } from './Results.jsx'
 import FamilyCards from './FamilyCards.jsx'
-import { assemblyBlock, avecTexte, dropForFamily, minutesBlock, openingTab, questions, resultBlocks, tabReason, telecharger } from './blocks.js'
+import { assemblyBlock, avecTexte, dropForFamily, minutesBlock, openingTab, questions, resultBlocks, signBlock, tabReason, telecharger } from './blocks.js'
 import './app.css'
 
 // Le fichier de base ouvert en plein écran (spec fichier-de-base.md) :
@@ -85,6 +87,8 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   const [ag, setAg] = useState(null)
   const [diffuserTout, setDiffuserTout] = useState(false)
   const [emargement, setEmargement] = useState(false)
+  // Document à signer (signature-documents.md) : le document choisi, ses pages, s'il est figé.
+  const [sign, setSign] = useState(null)
 
   const charger = useCallback(
     // `ouvrir` : choisir l'onglet d'après l'état (ouverture, changement d'état).
@@ -98,10 +102,13 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         const convocation = Boolean(assemblyBlock(f.content)) && f.can_edit
         const vue = convocation ? await api.assembly(item.id).catch(() => null) : null
         setAg(vue)
+        setSign(signBlock(f.content) ? await api.signing(item.id).catch(() => null) : null)
         // Une convocation officielle pas encore envoyée s'ouvre sur l'envoi.
         // `item.tab` : l'onglet demandé (ex. l'Aperçu d'une convocation tout juste préparée).
+        // Un document à signer encore sans document s'ouvre sur l'Édition.
+        const aDeposer = f.can_edit && f.status === 'draft' && !signBlock(f.content)?.props?.source && Boolean(signBlock(f.content))
         if (ouvrir) {
-          setTab(premierOnglet.current ?? (vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : openingTab(f)))
+          setTab(premierOnglet.current ?? (vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : aDeposer ? 'prep' : openingTab(f)))
           premierOnglet.current = null
         }
         if (f.can_edit && f.family !== 'inform') setRows((await api.appResponses(item.id)).items)
@@ -159,6 +166,17 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     content.current = { ...c, entry: { blocks: avecTexte(c.entry.blocks, id, texte) } }
     setContenu(content.current)
     setEditorKey((k) => k + 1)
+    setSaving('pending')
+    clearTimeout(minuteur.current)
+    minuteur.current = setTimeout(() => enregistrer(content.current).catch(() => {}), SAVE_DELAY)
+  }
+
+  // Les réglages du document à signer (SignPrepare) : les props de son bloc.
+  function modifieBloc(id, props) {
+    const c = content.current
+    const blocs = c.entry.blocks.map((b) => (b.id === id ? { ...b, props: { ...b.props, ...props } } : b))
+    content.current = { ...c, entry: { blocks: blocs } }
+    setContenu(content.current)
     setSaving('pending')
     clearTimeout(minuteur.current)
     minuteur.current = setTimeout(() => enregistrer(content.current).catch(() => {}), SAVE_DELAY)
@@ -293,12 +311,59 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   ]
   const formActif = informer ? 'entry' : form
   const essais = rows.filter((r) => r.is_test).length
+  const signe = signBlock(c)
+  const boutonValider = (
+    <button
+      type="button"
+      className="dx-btn"
+      disabled={!file.can_manage || !c.entry.blocks.length || (signe && !sign?.source)}
+      title={!file.can_manage ? 'Un admin valide le fichier' : undefined}
+      // Une convocation passe directement en Officiel (procurations.md §1.3).
+      onClick={valider}
+    >
+      Valider pour passer à l’étape de diffusion
+    </button>
+  )
   const lienShare = { id: file.id, name: file.name, space: file.space, kind: 'app' }
 
   let corps
   let bas = null
   if (raison) {
     corps = <p className="dx-note">{raison}.</p>
+  } else if (signe && tab === 'prep') {
+    corps = (
+      <SignPrepare
+        file={file}
+        block={signe}
+        sign={sign}
+        api={api}
+        onToast={onToast}
+        onProps={(props) => modifieBloc(signe.id, props)}
+        onDocument={async () => {
+          clearTimeout(minuteur.current)
+          await enCours.current.catch(() => {})
+          await charger()
+          onChanged?.()
+        }}
+      />
+    )
+    bas = boutonValider
+  } else if (signe && tab === 'preview') {
+    corps = (
+      <SignPreview
+        file={file}
+        content={c}
+        block={signe}
+        sign={sign}
+        api={api}
+        size={size}
+        onTexte={file.editable && statut === 'draft' ? modifieTexte : undefined}
+      />
+    )
+    if (statut === 'draft' && file.editable) bas = boutonValider
+  } else if (signe && tab === 'diffuse') {
+    // Étape 2 (signature-documents.md §9) : « Faire signer à qui ? ».
+    corps = <p className="dx-note">Le document est figé et prêt. « Faire signer à qui ? » arrive dans la prochaine version.</p>
   } else if (tab === 'prep') {
     corps = (
       <>
@@ -557,7 +622,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       <div className="af-sub">
         {/* Convocation et PV d'AG : la nature ne s'affiche pas, le parcours la
             cache (procurations.md §6, Seb 21 octobre). */}
-        {!assemblyBlock(c) && !minutesBlock(c) && (
+        {!assemblyBlock(c) && !minutesBlock(c) && !signe && (
           <button
             type="button"
             className="af-family"
@@ -620,7 +685,9 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
                         <span className="dx-n">{s.label}{cle === statut && ' ✓'}</span>
                         <span className="dx-s">
                           {interdit ??
-                            (minutesBlock(c)
+                            (signe
+                              ? { draft: 'On prépare le document à signer', validated: 'Document figé, prêt à faire signer', official: 'Signé par tous' }
+                              : minutesBlock(c)
                               ? { draft: statut === 'draft' ? 'On écrit le procès-verbal' : 'Pour corriger le texte : les signatures déjà faites s’effacent', validated: 'Texte figé, prêt à envoyer pour signature', official: 'Signé par tous' }
                               : { draft: 'On prépare, rien n’est diffusé', validated: 'Relu, prêt à être diffusé', official: 'Contenu figé, on collecte les réponses' })[cle]}
                         </span>

@@ -17,8 +17,8 @@ from sqlalchemy.orm import Session
 
 from assistant.actions import Action
 from assistant.modifications import Ligne, Refus
-from documents import Documents, assembly, minutes
-from documents.models import KIND_APP, DocNode
+from documents import Documents, assembly, minutes, signing
+from documents.models import KIND_APP, KIND_FILE, DocNode
 from documents.ports import Member
 from documents.service import DocError
 
@@ -52,6 +52,17 @@ class SendAppFile(AppFile):
         description="Procès-verbal Validé seulement : les noms de qui doit signer, si la personne les a dits ; "
         "null = la présidence et le secrétariat du bureau (ou relancer ceux qui n'ont pas encore signé).",
     )
+
+
+class PrepareSignature(BaseModel):
+    document: str = Field(min_length=1, max_length=200, description="Nom exact du PDF ou du Word à faire signer, tel qu'il est dans Docs, ou son id.")
+    mode: Literal["end", "initials"] = Field(
+        default="end", description="end : une signature à la fin ; initials : signature à la fin et paraphe en bas de chaque page.",
+    )
+    mention: str | None = Field(
+        default=None, max_length=120, description="Mention écrite au-dessus de chaque signature ; null = « Lu et approuvé ».",
+    )
+    message: str | None = Field(default=None, max_length=2000, description="Message aux signataires, repris dans le mail ; null = aucun.")
 
 
 class DraftMinutes(BaseModel):
@@ -134,12 +145,48 @@ def actions(docs: Documents) -> list[Action]:
             faire,
         )
 
+    def prepare_signature(db: Session, compte, org_id: int, p: PrepareSignature) -> Ligne:
+        member = _member(db, compte, org_id)
+        requete = select(DocNode).where(DocNode.org_id == org_id, DocNode.kind == KIND_FILE, DocNode.deleted_at.is_(None))
+        nom = p.document.strip()
+        requete = requete.where(DocNode.id == int(nom)) if nom.isdigit() else requete.where(DocNode.name == nom)
+        source = db.scalar(requete.order_by(DocNode.id.desc()).limit(1))
+        if source is None:
+            raise Refus(f"document « {p.document} » introuvable dans Docs")
+        source = _refus(lambda: signing._source(docs, db, member, source.id))
+        ou = "signature à la fin" + (" et paraphe en bas de chaque page" if p.mode == "initials" else "")
+
+        def faire(db: Session) -> dict:
+            cree = _refus(lambda: signing.create(docs, db, member, source.space, source.parent_id, source.id))
+            version = docs.apps.current_version(db, db.get(DocNode, cree["id"]))
+            bloc = signing.block_of(version.content)
+            reglages = {"mode": p.mode, "message": p.message or ""}
+            if p.mention is not None:
+                reglages["mention"] = p.mention
+            blocs = [{**b, "props": {**b["props"], **reglages}} if b is bloc else b for b in version.content["entry"]["blocks"]]
+            _refus(lambda: docs.apps.save(db, member, cree["id"], {**version.content, "entry": {"blocks": blocs}}))
+            return _a_ouvrir(cree)
+
+        return Ligne(
+            f"Préparer « Signature : {signing._stem(source.name)} » à côté de « {source.name} » ({ou}), "
+            "en brouillon, à relire avant de valider",
+            faire,
+        )
+
     def validate(db: Session, compte, org_id: int, p: AppFile) -> Ligne:
         member = _member(db, compte, org_id)
         node = _file(docs, db, member, p.file)
         if node.status == "official":
             raise Refus(f"« {node.name} » est déjà Officiel")
         version = docs.apps.current_version(db, node)
+        if version is not None and signing.block_of(version.content) is not None:
+            if node.status == "validated":
+                raise Refus(f"« {node.name} » est déjà validé : le document est figé")
+
+            def figer(db: Session) -> None:
+                _refus(lambda: docs.update(db, member, node.id, status="validated", change_status=True))
+
+            return Ligne(f"Valider « {node.name} » : le document est figé (empreinte enregistrée), prêt à faire signer", figer)
         if version is not None and minutes.block_of(version.content) is not None:
             # Le PV devient Officiel quand tout le monde a signé (proces-verbal-ag.md §1).
             if node.status == "validated":
@@ -161,6 +208,8 @@ def actions(docs: Documents) -> list[Action]:
         version = docs.apps.current_version(db, node)
         if version is not None and minutes.block_of(version.content) is not None:
             return send_minutes(db, member, node, version.content, p.signers)
+        if version is not None and signing.block_of(version.content) is not None:
+            raise Refus("l'envoi d'un document à signer arrive bientôt (« Faire signer à qui ? ») : rien n'est parti")
         if version is None or assembly.block_of(version.content) is None:
             raise Refus("pour ce fichier, l'envoi se fait à l'écran (Diffuser) : choisir les personnes")
         if node.status != "official":
@@ -337,10 +386,16 @@ def actions(docs: Documents) -> list[Action]:
                "(jamais un résultat de vote inventé), puis on valide (validate_app_file) et on envoie pour signature "
                "(send_app_file).",
                DraftMinutes, draft_minutes),
+        Action("prepare_signature", "Docs",
+               "Faire signer un PDF ou un Word de Docs (comme ⋯ › Faire signer… ou Docs › + › Faire signer un "
+               "document) : prépare en brouillon, à côté du document, le fichier « Signature : … » avec où signer, la "
+               "mention et le message aux signataires. Ensuite la personne relit (un Word se corrige dans l'Aperçu), "
+               "puis on valide (validate_app_file), ce qui fige le document. Tu ne signes jamais à la place de quelqu'un.",
+               PrepareSignature, prepare_signature),
         Action("validate_app_file", "Docs",
                "Valide un fichier de Docs : une convocation ou un questionnaire passe en Officiel, figé, prêt à envoyer ; "
-               "un procès-verbal passe en Validé, figé, prêt à envoyer pour signature. Seulement quand la personne a "
-               "relu et le demande.",
+               "un procès-verbal ou un document à signer passe en Validé, figé, prêt pour les signatures. Seulement "
+               "quand la personne a relu et le demande.",
                AppFile, validate),
         Action("send_app_file", "Docs",
                "Envoie par email, chacun avec son lien personnel : une convocation d'AG validée aux membres (ceux de la "

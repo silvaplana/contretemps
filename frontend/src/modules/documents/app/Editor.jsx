@@ -182,6 +182,8 @@ const CUSTOM = {
   yesNo: q('yesNo'),
   // `minutesOf` : la convocation dont ce bloc signe le procès-verbal (0 : aucune).
   signature: q('signature', { minutesOf: { default: 0 } }),
+  // Document à signer : réglé dans Préparer (SignPrepare.jsx), jamais par « / ».
+  signDocument: q('signDocument', { source: { default: 0 }, mode: { default: 'end' }, mention: { default: '' }, message: { default: '' } }),
   member: q('member'),
   payment: q('payment', { amount: { default: 10 } }),
   assembly: q('assembly', {
@@ -231,7 +233,7 @@ export default function Editor({ blocks, form, family, entryQuestions, editable,
   const ag = (entryQuestions ?? []).some((x) => x.type === 'assembly')
   const nos = (form === 'result' ? RESULT_TYPES : [...QUESTION_TYPES, ...(family === 'act' ? ACT_TYPES : [])].filter((t) => FAMILY_TYPES[family].includes(t)))
     // Les blocs d'AG : seulement dans une convocation (un seul bloc de présence).
-    .filter((t) => (t === 'assemblyQuorum' || t === 'assemblyProxies' ? ag : t === 'assembly' ? !ag : true))
+    .filter((t) => (t === 'assemblyQuorum' || t === 'assemblyProxies' ? ag : t === 'assembly' ? !ag : t !== 'signDocument'))
 
   // « + Ajouter un bloc » toujours visible (le + de BlockNote n'apparaît
   // qu'au survol, absent sur téléphone).
