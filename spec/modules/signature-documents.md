@@ -184,7 +184,10 @@ section **Signatures** à la suite du texte ; pour un PDF, **une page Signatures
 place).
 
 La section Signatures a une case par signataire : mention, signature, nom, fonction (bureau) ou
-qualité, « Signé en ligne le … à … », ou vide (« En attente de signature »). Le paraphe : une
+qualité, « Signé en ligne le … à … », ou vide (« En attente de signature »). En bas de la section, une
+ligne « Signé_MLP_MT_PJ » : les initiales de chaque signataire séparées par des underscores, pour voir
+d'un coup d'œil qui a signé (Seb, 22 octobre ; les noms complets restent dans les cases et sur le
+certificat). Le paraphe : une
 petite case par signataire en bas à droite de chaque page, dans la marge.
 
 **L'empreinte** est celle de ce PDF à signer, sans signatures. Elle est enregistrée à Valider
