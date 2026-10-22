@@ -20,7 +20,7 @@ import Viewer from './Viewer.jsx'
 // Le fichier de base embarque BlockNote : chargé seulement quand on l'ouvre.
 const AppFile = lazy(() => import('./app/AppFile.jsx'))
 import { Cadenas, FileIcon, FolderIcon, PlusIcon, StatusBadge, TrayIcon } from './icons.jsx'
-import { isImage } from './kinds.js'
+import { isImage, isPdf } from './kinds.js'
 import { exchangeSubtitle, subtitle } from './format.js'
 import './documents.css'
 
@@ -284,8 +284,25 @@ export default function Explorer({ orgId, memoire }) {
       setSelection(null)
     } else if (item.kind === 'app') {
       setAppli(item)
+    } else if (isPdf(item) && !navigator.pdfViewerEnabled) {
+      ouvrirPdf(item)
     } else {
       setVue(item)
+    }
+  }
+
+  // Le téléphone n'affiche pas un PDF dans la page : il l'ouvre avec sa
+  // visionneuse, par une adresse signée. L'onglet s'ouvre tout de suite
+  // (pendant le toucher, sinon le navigateur le bloque), l'adresse suit.
+  async function ouvrirPdf(item) {
+    const onglet = window.open('', '_blank')
+    try {
+      const url = await api.lienFichier(item.id)
+      if (onglet) onglet.location.href = url
+      else window.location.href = url
+    } catch (e) {
+      onglet?.close()
+      echec(e)
     }
   }
 
