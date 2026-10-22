@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { debutTrait, finTrait, pointsDe, suiteTrait } from './trait.js'
 
 // La page du signataire (signature-documents.md §2.4, maquette v3), ouverte
 // par son lien personnel, sans compte. Un écran par étape, un bouton
@@ -43,19 +44,16 @@ function Pad({ label, small, onChange }) {
         aria-label={label}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
-          trace.current = true
-          const ctx = toile.current.getContext('2d')
-          ctx.beginPath()
-          ctx.moveTo(...point(e))
+          trace.current = debutTrait(point(e))
         }}
         onPointerMove={(e) => {
           if (!trace.current) return
           const ctx = toile.current.getContext('2d')
-          ctx.lineTo(...point(e))
-          ctx.stroke()
+          for (const p of pointsDe(e)) suiteTrait(ctx, trace.current, point(p))
         }}
         onPointerUp={() => {
           if (!trace.current) return
+          finTrait(toile.current.getContext('2d'), trace.current)
           trace.current = false
           setVide(false)
           onChange(toile.current.toDataURL('image/png'))

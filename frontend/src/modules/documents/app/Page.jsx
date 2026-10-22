@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { BLOCKS, MEMBER_FIELDS, euros, label, options, texteBrut } from './blocks.js'
+import { debutTrait, finTrait, pointsDe, suiteTrait } from './trait.js'
 
 // Le formulaire d'entrée tel que le reçoivent les gens (Aperçu, et plus tard
 // la page publique), dessiné depuis le JSON : jamais de HTML stocké, le
@@ -96,7 +97,7 @@ function Signature({ value, onChange, disabled }) {
   useEffect(() => {
     const c = toile.current
     const ctx = c.getContext('2d')
-    ctx.lineWidth = 2.5
+    ctx.lineWidth = 5
     ctx.lineCap = 'round'
     ctx.strokeStyle = '#3a2410'
     if (!value) ctx.clearRect(0, 0, c.width, c.height)
@@ -110,25 +111,23 @@ function Signature({ value, onChange, disabled }) {
     <div className="ap-sig">
       <canvas
         ref={toile}
-        width={600}
-        height={180}
+        // Deux fois la taille affichée : un trait net à l'écran et dans le PDF.
+        width={1200}
+        height={360}
         aria-label="Zone de signature"
         onPointerDown={(e) => {
           if (disabled) return
           e.currentTarget.setPointerCapture(e.pointerId)
-          trace.current = true
-          const ctx = toile.current.getContext('2d')
-          ctx.beginPath()
-          ctx.moveTo(...point(e))
+          trace.current = debutTrait(point(e))
         }}
         onPointerMove={(e) => {
           if (!trace.current) return
           const ctx = toile.current.getContext('2d')
-          ctx.lineTo(...point(e))
-          ctx.stroke()
+          for (const p of pointsDe(e)) suiteTrait(ctx, trace.current, point(p))
         }}
         onPointerUp={() => {
           if (!trace.current) return
+          finTrait(toile.current.getContext('2d'), trace.current)
           trace.current = false
           onChange(toile.current.toDataURL('image/png'))
         }}

@@ -108,28 +108,37 @@ export default function SignSend({ file, api, onToast, onSent }) {
       )}
 
       <p className="sg-grp">Bureau</p>
-      {etat.board.length ? (
-        <div className="ag-groupes">
-          {etat.board.map((b) => {
-            const p = { type: 'member', id: String(b.person_id), label: b.name }
+      <div className="ag-groupes">
+        {etat.board.map((b) => {
+          // Fonction sans titulaire : la puce reste, et dit où la cocher.
+          if (!b.person_id) {
             return (
               <button
-                key={`${b.function}-${b.person_id}`}
+                key={b.function}
                 type="button"
-                title={b.name}
-                className={`ag-groupe${estChoisi(p) ? ' ag-groupe--on' : ''}`}
-                aria-pressed={estChoisi(p)}
-                onClick={() => basculer(p)}
+                className="ag-groupe sg-vide"
+                onClick={() => onToast(`Personne n’est ${b.function} : cochez-le dans École › Administrateurs, colonne Bureau.`)}
               >
-                {estChoisi(p) ? '✓ ' : ''}
                 {b.function}
               </button>
             )
-          })}
-        </div>
-      ) : (
-        <p className="af-hint">Personne n’a de fonction au bureau : cochez-les dans École › Administrateurs, colonne Bureau.</p>
-      )}
+          }
+          const p = { type: 'member', id: String(b.person_id), label: b.name }
+          return (
+            <button
+              key={`${b.function}-${b.person_id}`}
+              type="button"
+              title={b.name}
+              className={`ag-groupe${estChoisi(p) ? ' ag-groupe--on' : ''}`}
+              aria-pressed={estChoisi(p)}
+              onClick={() => basculer(p)}
+            >
+              {estChoisi(p) ? '✓ ' : ''}
+              {b.function}
+            </button>
+          )
+        })}
+      </div>
 
       {roles.length > 0 && (
         <>
