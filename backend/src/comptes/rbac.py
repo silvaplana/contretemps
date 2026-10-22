@@ -82,6 +82,12 @@ ROUTES_PUBLIQUES = {
     ("POST", "/documents/public/orgs/{org_id}/pages/{slug}/answers"),
     ("GET", "/documents/public/links/{token}"),
     ("POST", "/documents/public/links/{token}/answers"),
+    # Le lien du signataire d'un document à signer (signature-documents.md §2.4).
+    ("GET", "/documents/public/signing/{token}"),
+    ("GET", "/documents/public/signing/{token}/pages/{number}"),
+    ("POST", "/documents/public/signing/{token}/read"),
+    ("POST", "/documents/public/signing/{token}/sign"),
+    ("POST", "/documents/public/signing/{token}/refuse"),
     ("GET", "/par-host/personnalisation"),
     ("GET", "/par-host/entete.html"),
     ("GET", "/par-host/site.webmanifest"),

@@ -150,6 +150,13 @@ export function documentsApi(orgId) {
       if (!reponse.ok) throw new ErreurDocuments(reponse.status, `Requête échouée (${reponse.status})`)
       return reponse.blob()
     },
+    // Étape 2 (§2.3) : « Faire signer à qui ? », le suivi, Relancer.
+    signers: (id) => appel(`${base}/nodes/${id}/app/signing/signers`),
+    signPreview: (id, principals, others) =>
+      appel(`${base}/nodes/${id}/app/signing/preview`, json('POST', { principals: cibles(principals), others })),
+    signSend: (id, principals, others) =>
+      appel(`${base}/nodes/${id}/app/signing/send`, json('POST', { principals: cibles(principals), others })),
+    signRemind: (id, sendIds) => appel(`${base}/nodes/${id}/app/signing/remind`, json('POST', { send_ids: sendIds ?? null })),
     // Modèles de l'école (« Faire un modèle », tuiles du +).
     makeTemplate: (id, name) => appel(`${base}/nodes/${id}/app/template`, json('POST', { name })),
     templates: () => appel(`${base}/app-templates`),

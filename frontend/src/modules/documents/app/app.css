@@ -1501,3 +1501,226 @@ h4.ap-h {
 .sg-seal code {
   font-size: 14px;
 }
+
+/* Document à signer, Diffuser et Voir les résultats (signature-documents.md §2.3, §2.5) */
+.sg-titre {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.sg-grp {
+  margin: 4px 0 0;
+  color: var(--dx-muted);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.sg-autre {
+  display: grid;
+  gap: 8px;
+}
+
+.sg-ligne {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-height: 60px;
+  padding: 8px 14px;
+  border: 1px solid var(--dx-line);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+.sg-ligne .em-nom {
+  flex: 1;
+  min-width: 0;
+}
+
+.sg-motif {
+  font-style: italic;
+}
+
+.sg-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sg-pill--ok {
+  background: var(--success-bg);
+  color: var(--dx-ok);
+}
+
+.sg-pill--ko {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.sg-centre {
+  text-align: center;
+}
+
+/* La page du signataire (lien personnel, §2.4) */
+.sl {
+  display: grid;
+  gap: 16px;
+  font-size: 17px;
+}
+
+.sl p {
+  margin: 0;
+}
+
+.sl-titre {
+  margin: 8px 0 0;
+  font-size: 24px;
+}
+
+.sl-consigne {
+  padding: 8px 12px;
+  border-left: 3px solid var(--accent);
+  border-radius: 0 10px 10px 0;
+  background: var(--accent-bg);
+}
+
+.sl-ok {
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--success-bg);
+  color: var(--success-text);
+  font-weight: 700;
+}
+
+.sl-petit {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.sl-pages {
+  display: grid;
+  gap: 14px;
+}
+
+.sl-fin {
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.sl-bas {
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0 calc(12px + env(safe-area-inset-bottom));
+  background: var(--bg);
+}
+
+.sl-btn {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Grisé mais opaque : le bouton reste lisible au-dessus des pages. */
+.sl-btn:disabled {
+  background: var(--accent-bg);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.sl-btn--ghost {
+  border: 1.5px solid var(--border);
+  background: transparent;
+  color: var(--accent);
+}
+
+.sl-lien {
+  justify-self: center;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 17px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sl-refus {
+  display: grid;
+  gap: 8px;
+}
+
+.sl-refus textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  font: inherit;
+}
+
+.sl-ligne {
+  display: flex;
+  gap: 8px;
+}
+
+.sl-accord {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--accent-bg);
+  cursor: pointer;
+}
+
+.sl-accord input {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  margin: 0;
+}
+
+.sl-pad {
+  position: relative;
+  height: 160px;
+  border: 2px dashed var(--border);
+  border-radius: 14px;
+  background: #fff;
+  touch-action: none;
+}
+
+.sl-pad--small {
+  width: 60%;
+  height: 100px;
+  margin: 0 auto;
+}
+
+.sl-pad canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.sl-pad span {
+  position: absolute;
+  inset: auto 0 10px;
+  color: var(--text-muted);
+  font-size: 15px;
+  text-align: center;
+  pointer-events: none;
+}
