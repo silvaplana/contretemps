@@ -24,7 +24,15 @@ export default function SignSend({ file, api, onToast, onSent }) {
 
   useEffect(() => {
     api.signers(file.id).then(setEtat, (e) => setErreur(e.message))
-    api.principals('').then((l) => setRoles(ROLES.map((r) => l.find((p) => p.id === r)).filter(Boolean)), () => {})
+    // Professeurs, Élèves, avec le nombre de personnes (maquette v3).
+    api.principals('').then(async (l) => {
+      const trouves = ROLES.map((r) => l.find((p) => p.id === r)).filter(Boolean)
+      setRoles(trouves)
+      const nombres = await Promise.all(
+        trouves.map((g) => api.signPreview(file.id, [g], []).then((r) => r.count + r.without_email.length + r.signed.length, () => null)),
+      )
+      setRoles(trouves.map((g, i) => ({ ...g, nombre: nombres[i] })))
+    }, () => {})
   }, [api, file.id])
   useEffect(() => () => clearInterval(minuteur.current), [])
 
@@ -108,12 +116,13 @@ export default function SignSend({ file, api, onToast, onSent }) {
               <button
                 key={`${b.function}-${b.person_id}`}
                 type="button"
+                title={b.name}
                 className={`ag-groupe${estChoisi(p) ? ' ag-groupe--on' : ''}`}
                 aria-pressed={estChoisi(p)}
                 onClick={() => basculer(p)}
               >
                 {estChoisi(p) ? '✓ ' : ''}
-                {b.function} · {b.name}
+                {b.function}
               </button>
             )
           })}
@@ -136,6 +145,7 @@ export default function SignSend({ file, api, onToast, onSent }) {
               >
                 {estChoisi(g) ? '✓ ' : ''}
                 {g.label}
+                {g.nombre != null && ` (${g.nombre})`}
               </button>
             ))}
           </div>

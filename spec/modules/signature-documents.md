@@ -92,9 +92,10 @@ et l'on va à Diffuser.
 ### 2.3 Diffuser : « Faire signer à qui ? »
 
 - **Bureau** (fonctions de la colonne Bureau, `core.md` §6.4) : Président·e, Vice-président·e,
-  Secrétaire, Trésorier·e, une puce chacune avec le nom de la personne ;
-- **Membres** : une puce Professeurs et une puce Élèves (comme la maquette) ; le nombre de
-  personnes se lit dans le récapitulatif nominatif plutôt que sur la puce ;
+  Secrétaire, Trésorier·e, une puce chacune (comme la maquette, sans le nom : les noms se lisent
+  dans le récapitulatif « N signataires : … ») ;
+- **Membres** : une puce Professeurs et une puce Élèves, avec le nombre de personnes (comme la
+  maquette) ;
 - **Quelqu'un d'autre** : un champ de recherche dans les membres et les cours de l'école ; sous
   les résultats, « Ajouter « <nom> » » demande son adresse email (un commissaire aux comptes, un
   intervenant, décision de Seb du 22 octobre).
