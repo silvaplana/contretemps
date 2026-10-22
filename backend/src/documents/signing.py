@@ -484,10 +484,11 @@ def _state(s: DocSend, mine: list[DocSignEvent]) -> tuple[str, DocSignEvent | No
 
 def signers_status(docs: Documents, db: Session, member: Member, node_id: int) -> dict:
     """Le suivi de Diffuser et le bureau pour « Faire signer à qui ? »."""
-    node, _, _ = _node_for(docs, db, member, node_id, LEVEL_MANAGE)
+    node, _, bloc = _node_for(docs, db, member, node_id, LEVEL_MANAGE)
     fige = frozen(db, node)
     bureau = minutes._board(docs, db, node.org_id)
     evenements = _since(db, node, fige)
+    source = _source_node(db, node, bloc)
     lignes = []
     for s in minutes.signers(db, node):
         mine = [e for e in evenements if e.send_id == s.id]
@@ -515,6 +516,8 @@ def signers_status(docs: Documents, db: Session, member: Member, node_id: int) -
         # Étape 3 : le journal de preuves et le document signé (§2.5).
         "journal": journal(db, node, fige),
         "produced": _produced(evenements),
+        # L'original, que Seb propose de mettre à la corbeille une fois le document signé produit.
+        "source": {"id": source.id, "name": source.name} if source is not None else None,
     }
 
 
@@ -1000,7 +1003,7 @@ def _signatures_html(docs: Documents, db: Session, node: DocNode, bloc: dict, ge
             + f"{escape(s.name)}<br/>"
             # Seb, 22 octobre : « Lu et approuvé, le 22/10/2026 », sans l'heure (elle est dans les preuves).
             + f"<i>{escape(v['mention'] + ', le' if v.get('mention') else 'Le')} {_paris(s.answered_at):%d/%m/%Y}</i><br/>"
-            + f"<img src='sig{i}.png' width='140' height='52'/></td>"
+            + f"<img src='sig{i}.png' width='140'/></td>"
         )
     lignes = "".join(f"<tr>{''.join(cases[i:i + 3])}</tr>" for i in range(0, len(cases), 3))
     return f"<table style='width:100%;margin-top:12pt'>{lignes}</table>"

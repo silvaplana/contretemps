@@ -613,6 +613,7 @@ def test_document_signe(client, ecole, mails, a_signer, db_session):
     assert client.get(base_ima).json()["state"] == "signed"
     vue = admin.get(f"/nodes/{a_signer}/app/signing/signers").json()
     assert vue["produced"]["id"] == fait["id"] and vue["journal"][-1]["event"] == "produced"
+    assert vue["source"] == {"id": racine["Bail.pdf"], "name": "Bail.pdf"}
     assert "Document signé produit : « Bail_Signé_IB_PE.pdf »" in signing.status_text(main.documents_client, db_session, signing_node(db_session, a_signer))
 
     # Le refaire : une nouvelle version du même PDF.
@@ -625,6 +626,12 @@ def test_document_signe(client, ecole, mails, a_signer, db_session):
     r = produire(admin, a_signer)
     assert r.status_code == 409 and "a changé depuis la validation" in r.json()["detail"]
     chemin.write_bytes(fige)
+
+    # Seb, 22 octobre : ensuite, l'original et le fichier de signature peuvent
+    # partir à la corbeille (le document signé et les preuves restent).
+    assert admin.supprimer(racine["Bail.pdf"]).status_code == 204
+    assert admin.get(f"/nodes/{a_signer}/app/signing/signers").json()["source"] is None
+    assert admin.supprimer(a_signer).status_code == 204
 
 
 def elements(vue):

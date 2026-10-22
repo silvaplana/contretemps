@@ -35,7 +35,7 @@ function etiquette(s) {
   }
 }
 
-export default function SignResults({ file, api, onToast, onProduced }) {
+export default function SignResults({ file, api, onToast, onProduced, onDelete }) {
   const [etat, setEtat] = useState(null)
   const [erreur, setErreur] = useState('')
   const [envoi, setEnvoi] = useState(false)
@@ -161,9 +161,25 @@ export default function SignResults({ file, api, onToast, onProduced }) {
         </details>
       )}
       {etat.produced ? (
-        <button type="button" className="dx-btn" disabled={envoi} onClick={() => ouvrirPdf(false)}>
-          Voir le document signé
-        </button>
+        <>
+          <button type="button" className="dx-btn" disabled={envoi} onClick={() => ouvrirPdf(false)}>
+            Voir le document signé
+          </button>
+          {/* Seb, 22 octobre : l'original et ce fichier ne servent plus ; à la corbeille (Annuler possible). */}
+          {file.can_manage && (
+            <>
+              <button
+                type="button"
+                className="dx-btn dx-btn--ghost"
+                disabled={envoi}
+                onClick={() => onDelete(etat.source ? [etat.source, { id: file.id, name: file.name }] : { id: file.id, name: file.name })}
+              >
+                {etat.source ? 'Mettre l’original et ce fichier à la corbeille' : 'Mettre ce fichier à la corbeille'}
+              </button>
+              <p className="af-hint sg-centre">Le document signé et les preuves restent.</p>
+            </>
+          )}
+        </>
       ) : (
         <>
           <button type="button" className="dx-btn" disabled={envoi || !file.can_manage || etat.signed < gens.length} onClick={() => ouvrirPdf(true)}>

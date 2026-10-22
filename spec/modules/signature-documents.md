@@ -129,7 +129,9 @@ Un écran par étape, un seul bouton principal chacun :
 3. **Signer** : la case de consentement (§1, obligation 4), la mention qui sera écrite, la zone de
    signature au doigt, et, si le paraphe est demandé, une petite zone **Vos initiales** (dessinées
    une fois, reprises en bas de chaque page). **Effacer**, puis **Signer** (grisé tant que la case
-   n'est pas cochée et que les tracés manquent).
+   n'est pas cochée et que les tracés manquent). Le trait est lissé comme l'encre d'une
+   visionneuse PDF (Seb, 22 octobre) : tous les points captés par l'écran, reliés par des courbes,
+   pas par des segments droits ; dans le PDF signé, la signature garde ses proportions.
 4. **C'est signé** : date et heure, « Vous recevrez le document signé par mail ». Le lien est fermé.
 
 Sous l'étape 2, un lien discret **Je ne signe pas** (décision de Seb, 22 octobre) : un motif à
@@ -167,6 +169,12 @@ est signé par tous »).
 - passe le fichier de signature en **Officiel** ;
 - ouvre le PDF dans la visionneuse du téléphone ; ensuite le bouton principal devient **Voir le
   document signé** (comme la maquette).
+
+Ensuite, sous **Voir le document signé**, un bouton secondaire **Mettre l'original et ce fichier à
+la corbeille** (Seb, 22 octobre : ils ne servent plus), avec « Le document signé et les preuves
+restent. » Il met l'original (le PDF ou le Word déposé) et le fichier de signature à la corbeille,
+avec **Annuler** comme toute suppression dans Docs ; sans original, « Mettre ce fichier à la
+corbeille ».
 
 Le refaire (par l'assistant, `produce_signed`, après une erreur d'envoi par exemple) range une
 nouvelle version du même PDF ; pas de second bouton à l'écran.

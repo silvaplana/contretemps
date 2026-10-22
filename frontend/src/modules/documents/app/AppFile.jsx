@@ -389,7 +389,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       />
     )
   } else if (signe && tab === 'results') {
-    corps = <SignResults file={file} api={api} onToast={onToast} onProduced={() => (charger(), onChanged?.())} />
+    corps = <SignResults file={file} api={api} onToast={onToast} onProduced={() => (charger(), onChanged?.())} onDelete={onDelete} />
   } else if (tab === 'prep') {
     corps = (
       <>
