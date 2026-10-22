@@ -93,7 +93,10 @@ et l'on va à Diffuser.
 
 - **Bureau** (fonctions de la colonne Bureau, `core.md` §6.4) : Président·e, Vice-président·e,
   Secrétaire, Trésorier·e, une puce chacune (comme la maquette, sans le nom : les noms se lisent
-  dans le récapitulatif « N signataires : … ») ;
+  dans le récapitulatif « N signataires : … »). Président·e, Secrétaire et Trésorier·e sont toujours
+  proposés, même sans titulaire (Seb, 22 octobre) : la puce est alors pâle et, touchée, dit
+  « Personne n'est Président·e : cochez-le dans École › Administrateurs, colonne Bureau. » ;
+  Vice-président·e seulement si quelqu'un l'a ;
 - **Membres** : une puce Professeurs et une puce Élèves, avec le nombre de personnes (comme la
   maquette) ;
 - **Quelqu'un d'autre** : un champ de recherche dans les membres et les cours de l'école ; sous
@@ -187,10 +190,12 @@ Diffuser ; l'Aperçu montre où elles iront) :
 d'ailleurs, la place se mesure sous le dernier texte, dessin ou image de la dernière page, au-dessus
 du bas de page (numéro, pied) : on n'écrit jamais par-dessus son contenu.
 
-La section Signatures a une case par signataire, dans l'ordre d'une signature papier (Seb,
-22 octobre) : la fonction au bureau (« Président·e »), le prénom et le nom, la mention, la
-signature, puis « Signé en ligne le … à … ». Sans cadre ni adresse email, jusqu'à trois
-signataires par ligne (Seb, 22 octobre : « faire simple »). Le paraphe : une petite case par signataire en bas à droite de chaque page, dans la marge.
+Les signatures, sans titre (Seb, 22 octobre : « on n'écrit rien du tout »), ont une case par
+signataire, dans l'ordre d'une signature papier : la fonction s'il y en a une (au bureau,
+« Président·e » ; sinon « Professeur » ; rien pour un élève ni pour quelqu'un hors de l'école), le
+prénom et le nom, la mention suivie de la date (« Lu et approuvé, le 22/10/2026 », sans l'heure,
+qui est dans les preuves), puis la signature. Sans cadre ni adresse email, jusqu'à trois
+signataires par ligne (« faire simple »). Le paraphe : une petite case par signataire en bas à droite de chaque page, dans la marge.
 
 **L'empreinte** est celle de ce PDF à signer, sans signatures. Elle est enregistrée à Valider
 (événement `validated` du journal, avec le fichier rangé, le nombre de pages et le document

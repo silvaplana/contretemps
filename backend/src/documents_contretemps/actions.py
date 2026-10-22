@@ -317,7 +317,7 @@ def actions(docs: Documents) -> list[Action]:
                 threading.Thread(target=docs.sends.deliver, args=(db.get_bind(), jobs), daemon=True).start()
 
             return Ligne(f"Relancer pour signature « {node.name} » : {', '.join(qui)}", relancer)
-        bureau = {b["function"]: b["person_id"] for b in etat["board"]}
+        bureau = {b["function"]: b["person_id"] for b in etat["board"] if b["person_id"]}
         tous = {r.person_id: r.name for r in docs.directory.recipients(db, node.org_id, [("group", "role:tous")])}
         cibles, restes = [], []
         for nom in noms:

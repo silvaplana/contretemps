@@ -510,15 +510,32 @@ def signers_status(docs: Documents, db: Session, member: Member, node_id: int) -
         "signers": lignes,
         "signed": sum(1 for x in lignes if x["state"] == "signed"),
         # Une puce par fonction du bureau, avec le nom de la personne (§2.3).
-        "board": [
-            {"function": mot[:1].upper() + mot[1:], "person_id": b.person_id, "name": b.name}
-            for cle, mot in minutes.FUNCTION_WORDS.items() for b in bureau.values() if cle in b.functions
-        ],
+        "board": _board_chips(bureau),
         "available": docs.mailer is not None and docs.mailer.available,
         # Étape 3 : le journal de preuves et le document signé (§2.5).
         "journal": journal(db, node, fige),
         "produced": _produced(evenements),
     }
+
+
+# Toujours proposées dans Diffuser, même sans titulaire (Seb, 22 octobre) ;
+# la vice-présidence seulement si quelqu'un l'a.
+ALWAYS_SHOWN = ("president", "secretary", "treasurer")
+
+
+def _board_chips(bureau: dict) -> list[dict]:
+    """Une puce par fonction du bureau, avec la personne (None si personne n'a
+    la fonction : la puce explique où la cocher)."""
+    puces = []
+    for cle, mot in minutes.FUNCTION_WORDS.items():
+        gens = [b for b in bureau.values() if cle in b.functions]
+        if not gens and cle in ALWAYS_SHOWN:
+            gens = [None]
+        puces += [
+            {"function": mot[:1].upper() + mot[1:], "person_id": b.person_id if b else None, "name": b.name if b else None}
+            for b in gens
+        ]
+    return puces
 
 
 def _wanted(docs: Documents, db: Session, node: DocNode, principals: list[dict], others: list[dict]) -> list[tuple[int | None, str, str | None]]:
@@ -963,27 +980,30 @@ def _png_bytes(data: str) -> bytes:
 
 
 def _signatures_html(docs: Documents, db: Session, node: DocNode, bloc: dict, gens: list[DocSend], archive: pymupdf.Archive) -> str:
-    """La section Signatures : une case par signataire, dans l'ordre d'une
-    signature papier (Seb, 22 octobre) : la fonction, le prénom et le nom,
-    la mention, la signature, puis la date et l'heure. Sans cadre, jusqu'à
-    trois par ligne (Seb, 22 octobre : « faire simple »)."""
+    """Les signatures : une case par signataire, dans l'ordre d'une signature
+    papier (Seb, 22 octobre) : la fonction (au bureau, sinon professeur ;
+    rien pour un élève), le prénom et le nom, la mention et la date, puis la
+    signature. Sans titre ni cadre, jusqu'à trois par ligne (« faire simple »)."""
     bureau = minutes._board(docs, db, node.org_id)
+    profs = {g.person_id for g in docs.directory.recipients(db, node.org_id, [("group", "role:professeur")])}
     cases = []
     for i, s in enumerate(gens):
         reponse = db.get(DocResponse, s.response_id) if s.response_id else None
         v = ((reponse.values or {}).get(bloc["id"]) or {}) if reponse is not None else {}
         qualite = minutes._labels(bureau[s.person_id].functions) if s.person_id in bureau else ""
+        if not qualite and s.person_id is not None and s.person_id in profs:
+            qualite = "professeur"
         archive.add(_png_bytes(v["signature"]), f"sig{i}.png")
         cases.append(
             "<td style='width:33%;padding:6pt 4pt;vertical-align:top'>"
             + (f"<b>{escape(qualite[:1].upper() + qualite[1:])}</b><br/>" if qualite else "")
             + f"{escape(s.name)}<br/>"
-            + (f"<i>{escape(v['mention'])}</i><br/>" if v.get("mention") else "")
-            + f"<img src='sig{i}.png' width='140' height='52'/>"
-            + f"<br/><span class='small'>Signé en ligne le {_when(s.answered_at)}</span></td>"
+            # Seb, 22 octobre : « Lu et approuvé, le 22/10/2026 », sans l'heure (elle est dans les preuves).
+            + f"<i>{escape(v['mention'] + ', le' if v.get('mention') else 'Le')} {_paris(s.answered_at):%d/%m/%Y}</i><br/>"
+            + f"<img src='sig{i}.png' width='140' height='52'/></td>"
         )
     lignes = "".join(f"<tr>{''.join(cases[i:i + 3])}</tr>" for i in range(0, len(cases), 3))
-    return f"<h2>Signatures</h2><table style='width:100%'>{lignes}</table>"
+    return f"<table style='width:100%;margin-top:12pt'>{lignes}</table>"
 
 
 def initials(name: str) -> str:
@@ -1066,8 +1086,9 @@ def _certificate_html(
         f"<p><b>Document :</b> {escape(_document(fige, node))} ({pages} page{'s' if pages > 1 else ''})"
         + (f"<br/><b>Envoyé par :</b> {escape(par)}, le {_when(envoi.at)}" if envoi is not None else "")
         + f"<br/><b>Validé et figé le</b> {_when(fige.at)}</p>"
-        f"<p><b>Empreinte SHA-256 du document validé :</b><br/>{fige.detail['sha256']}</p>"
-        f"<p><b>Document signé :</b> {escape(nom)}<br/><b>Son empreinte SHA-256 :</b><br/>{signed_sha256}</p>"
+        # Les empreintes en police à chasse fixe : sans ligature (« ff »), elles se recopient telles quelles.
+        f"<p><b>Empreinte SHA-256 du document validé :</b><br/><code>{fige.detail['sha256']}</code></p>"
+        f"<p><b>Document signé :</b> {escape(nom)}<br/><b>Son empreinte SHA-256 :</b><br/><code>{signed_sha256}</code></p>"
         f"<h2>Signataires</h2><table class='t'><tr><th>Nom</th><th>Fonction</th><th>Adresse du lien</th><th>Signé le</th></tr>{signataires}</table>"
         f"<h2>Journal (heure de Paris)</h2><table class='t'><tr><th class='w24'>Date et heure</th><th>Événement</th>"
         f"<th class='w12'>Adresse IP</th><th class='w12'>Appareil</th></tr>{lignes}</table>"
@@ -1154,8 +1175,8 @@ def _signed_mails(
     if contact and contact.lower() not in vus:
         texte, html = minutes._mail([
             f"Le document « {document} » est signé par tous ({len(gens)} signature{'s' if len(gens) > 1 else ''}).",
-            f"Le PDF signé et le certificat de preuves sont joints ; ils sont aussi rangés dans Docs à côté de l'original "
-            f"(produits par {member.display_name}).",
+            (f"Le PDF signé et le certificat de preuves sont joints ; ils sont aussi rangés dans Docs à côté de "
+             f"l'original (produits par {member.display_name})."),
         ], ecole)
         jobs.append({"to": contact, "subject": f"Signé : {document}", "text": texte, "html": html, "sender_name": ecole, "attachments": pieces})
     return jobs
