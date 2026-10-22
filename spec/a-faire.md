@@ -23,6 +23,8 @@ de chaque session ; rayer ou retirer ce qui est fait.
   téléphone, l'assistant est en plein écran, on ne peut plus y glisser un
   fichier de la liste.
 
+- Sous-module Signature de documents (`modules/signature-documents.md` §9) : 4 étapes, chacune sur le « vas-y » de Seb.
+
 ## En attente d'une décision de Seb
 
 - SMS : choix d'un prestataire (Brevo proposé, même compte que les emails).
