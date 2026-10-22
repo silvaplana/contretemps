@@ -12,6 +12,8 @@ import Emargement from './Emargement.jsx'
 import Page from './Page.jsx'
 import SignPrepare from './SignPrepare.jsx'
 import SignPreview from './SignPreview.jsx'
+import SignResults from './SignResults.jsx'
+import SignSend from './SignSend.jsx'
 import Results, { exampleRows } from './Results.jsx'
 import FamilyCards from './FamilyCards.jsx'
 import { assemblyBlock, avecTexte, dropForFamily, minutesBlock, openingTab, questions, resultBlocks, signBlock, tabReason, telecharger } from './blocks.js'
@@ -102,13 +104,19 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
         const convocation = Boolean(assemblyBlock(f.content)) && f.can_edit
         const vue = convocation ? await api.assembly(item.id).catch(() => null) : null
         setAg(vue)
-        setSign(signBlock(f.content) ? await api.signing(item.id).catch(() => null) : null)
+        const signe = signBlock(f.content) ? await api.signing(item.id).catch(() => null) : null
+        setSign(signe)
         // Une convocation officielle pas encore envoyée s'ouvre sur l'envoi.
         // `item.tab` : l'onglet demandé (ex. l'Aperçu d'une convocation tout juste préparée).
-        // Un document à signer encore sans document s'ouvre sur l'Édition.
+        // Un document à signer encore sans document s'ouvre sur l'Édition ;
+        // déjà envoyé pour signature, sur le suivi.
         const aDeposer = f.can_edit && f.status === 'draft' && !signBlock(f.content)?.props?.source && Boolean(signBlock(f.content))
+        const suivi = f.can_edit && f.status === 'validated' && signe?.signers > 0
         if (ouvrir) {
-          setTab(premierOnglet.current ?? (vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : aDeposer ? 'prep' : openingTab(f)))
+          setTab(
+            premierOnglet.current ??
+              (vue && f.status === 'official' && !vue.summary.convoked ? 'diffuse' : aDeposer ? 'prep' : suivi ? 'results' : openingTab(f)),
+          )
           premierOnglet.current = null
         }
         if (f.can_edit && f.family !== 'inform') setRows((await api.appResponses(item.id)).items)
@@ -303,8 +311,10 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
   const statut = file.status ?? 'draft'
   const informer = file.family === 'inform'
   const onglets = TABS.filter(([cle]) => cle !== 'results' || !informer)
-  const raison = tabReason(tab, statut)
   const c = contenu
+  // Document à signer : « Voir les résultats » s'ouvre dès le premier envoi (§2.5).
+  const raisonOnglet = (cle) => (cle === 'results' && signBlock(c) && statut === 'validated' && sign?.signers ? null : tabReason(cle, statut))
+  const raison = raisonOnglet(tab)
   const formOptions = [
     ['entry', 'Formulaire d’entrée'],
     ['result', 'Formulaire de résultat'],
@@ -362,8 +372,19 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
     )
     if (statut === 'draft' && file.editable) bas = boutonValider
   } else if (signe && tab === 'diffuse') {
-    // Étape 2 (signature-documents.md §9) : « Faire signer à qui ? ».
-    corps = <p className="dx-note">Le document est figé et prêt. « Faire signer à qui ? » arrive dans la prochaine version.</p>
+    corps = (
+      <SignSend
+        file={file}
+        api={api}
+        onToast={onToast}
+        onSent={async () => {
+          await charger()
+          setTab('results')
+        }}
+      />
+    )
+  } else if (signe && tab === 'results') {
+    corps = <SignResults file={file} api={api} onToast={onToast} />
   } else if (tab === 'prep') {
     corps = (
       <>
@@ -641,7 +662,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
       {file.can_edit && (
         <div className="af-tabs" role="tablist" style={{ '--n': onglets.length }}>
           {onglets.map(([cle, texte]) => {
-            const r = cle === 'etape1' ? null : tabReason(cle, statut)
+            const r = cle === 'etape1' ? null : raisonOnglet(cle)
             const actif = cle === 'etape1' ? tab === 'prep' || tab === 'preview' : tab === cle
             return (
               <button
@@ -686,7 +707,7 @@ export default function AppFile({ api, item, onClose, onToast, onShare, onProper
                         <span className="dx-s">
                           {interdit ??
                             (signe
-                              ? { draft: 'On prépare le document à signer', validated: 'Document figé, prêt à faire signer', official: 'Signé par tous' }
+                              ? { draft: statut === 'draft' ? 'On prépare le document à signer' : 'Pour corriger : les signatures déjà faites sont annulées', validated: 'Document figé, prêt à faire signer', official: 'Signé par tous' }
                               : minutesBlock(c)
                               ? { draft: statut === 'draft' ? 'On écrit le procès-verbal' : 'Pour corriger le texte : les signatures déjà faites s’effacent', validated: 'Texte figé, prêt à envoyer pour signature', official: 'Signé par tous' }
                               : { draft: 'On prépare, rien n’est diffusé', validated: 'Relu, prêt à être diffusé', official: 'Contenu figé, on collecte les réponses' })[cle]}

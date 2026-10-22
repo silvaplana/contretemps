@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { mettreAJour, urlLogo, useApparence, versEcran } from '../api/apparence.js'
 import Page from '../modules/documents/app/Page.jsx'
+import SignLink from '../modules/documents/app/SignLink.jsx'
 import '../modules/documents/app/app.css'
 import './pagePublique.css'
 
@@ -8,7 +9,8 @@ import './pagePublique.css'
 // fichier-de-base.md §2.3) : le formulaire d'entrée, aux couleurs de
 // l'école, rempli sans compte. Rien d'autre de l'appli n'est chargé.
 // Aussi le lien personnel reçu par email (`<adresse de l'école>/r/<jeton>`) :
-// même page, la réponse est celle de la personne et se corrige.
+// même page, la réponse est celle de la personne et se corrige. Le lien d'un
+// document à signer ouvre la page du signataire (signature-documents.md §2.4).
 
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
@@ -87,7 +89,8 @@ export default function PagePublique({ slug, jeton }) {
       <main className="pp-corps">
         {erreur && <p className="pp-erreur">{erreur}</p>}
         {!erreur && !page && <p className="pp-attente">Chargement…</p>}
-        {page && (
+        {page?.signing && <SignLink jeton={jeton} lire={lire} baseUrl={BASE_URL} />}
+        {page && !page.signing && (
           <>
             {page.person && <p className="pp-note">Bonjour {page.person}{page.values ? ' : votre réponse est enregistrée, vous pouvez la corriger.' : ''}</p>}
             {page.trial && page.accepting && <p className="pp-note">Essai : votre réponse apparaîtra dans Résultats avec la mention « Essai », sans compter.</p>}

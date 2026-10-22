@@ -83,8 +83,8 @@ toutes seules (§3).
   est simplifiée. Le Word d'origine ne change pas.
 - **PDF** : il ne se modifie pas. Pour corriger, on dépose une nouvelle version dans Préparer.
 
-Tant que l'étape 2 n'est pas codée, l'onglet Diffuser dit que « Faire signer à qui ? » arrive
-dans la prochaine version, et le Diffuser habituel (mail, essai) est refusé pour ce fichier.
+Le Diffuser habituel (mail, essai) est refusé pour ce fichier : il s'envoie par « Faire signer à
+qui ? » (§2.3).
 
 Bouton principal **Valider** : le document est figé (obligation 1), le fichier passe en **Validé**
 et l'on va à Diffuser.
@@ -92,12 +92,16 @@ et l'on va à Diffuser.
 ### 2.3 Diffuser : « Faire signer à qui ? »
 
 - **Bureau** (fonctions de la colonne Bureau, `core.md` §6.4) : Président·e, Vice-président·e,
-  Secrétaire, Trésorier·e, une puce chacune avec le nom de la personne ;
-- **Membres** : les mêmes choix que le Diffuser habituel (rôles, dont Professeurs, et cours, dont
-  les élèves), avec le nombre de personnes ;
-- **Quelqu'un d'autre** : un champ de recherche dans les membres de l'école ; s'il ne trouve
-  personne, « Ajouter <nom> » demande son adresse email (un commissaire aux comptes, un
+  Secrétaire, Trésorier·e, une puce chacune (comme la maquette, sans le nom : les noms se lisent
+  dans le récapitulatif « N signataires : … ») ;
+- **Membres** : une puce Professeurs et une puce Élèves, avec le nombre de personnes (comme la
+  maquette) ;
+- **Quelqu'un d'autre** : un champ de recherche dans les membres et les cours de l'école ; sous
+  les résultats, « Ajouter « <nom> » » demande son adresse email (un commissaire aux comptes, un
   intervenant, décision de Seb du 22 octobre).
+
+Une fois envoyé, Diffuser reste ouvert pour ajouter des signataires ; renvoyer à quelqu'un qui a
+déjà le lien le relance (même lien). Quelqu'un qui a déjà signé est laissé de côté.
 
 Tout le monde signe **en même temps**, sans ordre (décision de Seb, 22 octobre). Celui qui envoie
 peut se cocher : il signe depuis Voir les résultats (**Signer moi-même**), avec les mêmes étapes de
@@ -134,6 +138,10 @@ Lien expiré : « Ce lien a expiré. Demandez à <expéditeur> de vous le renvoy
 repassé en Brouillon : « Le document est en cours de correction. Vous recevrez un nouveau mail. »
 
 ### 2.5 Voir les résultats
+
+L'onglet s'ouvre dès le premier envoi (le fichier est encore Validé ; il devient Officiel avec le
+document signé), et le fichier s'ouvre dessus. Étape 2 : le suivi, Relancer et Signer moi-même ;
+le journal et « Produire le document signé » arrivent à l'étape 3 (le bouton est déjà là, grisé).
 
 - « N sur M ont signé » ; une ligne par signataire : **Signé le 23/11 à 18 h 04**, **Pas encore**,
   **A ouvert**, ou **A refusé** avec le motif ;
@@ -253,18 +261,34 @@ l'historique `doc_activity` (pensé pour l'onglet Historique, lié au nœud).
   `detail` (JSON : empreinte pour `validated` et `produced`, motif pour `refused`, nombre pour
   `sent`). Une migration Alembic qui crée la table (avec `has_table`, `create_all` passe avant).
 - **Adresse IP** : la première adresse de `X-Forwarded-For` posé par Caddy, sinon
-  `request.client.host`.
-- **Lecture jusqu'en bas** : le navigateur prévient le serveur (`POST /r/<jeton>/read`), qui note
-  l'événement à son heure ; `POST /r/<jeton>/sign` est refusé sans `read` enregistré pour ce lien
-  ni case cochée.
+  `request.client.host`. **À vérifier en ligne** : il y a deux Caddy (le partagé, puis celui du
+  frontend) ; sans `trusted_proxies` dans `frontend/Caddyfile*`, le second remplace l'adresse du
+  téléphone par celle du premier. Changer le Caddyfile demande l'accord de Seb.
+- **Ouvert** : chaque ouverture du lien est notée (`opened`), pas seulement la première.
+- **Refusé** : se lit dans le journal (dernier `refused` depuis le document figé), pas de colonne ;
+  « Relancer les N » ne relance pas ceux qui ont refusé, « Relancer » sur leur ligne, oui.
+- **Expiration** : 14 jours après `sent_at` du dernier envoi (posé quand le mail part) ; une
+  relance rouvre donc un lien expiré.
+- **Lecture jusqu'en bas** : le navigateur prévient le serveur quand la fin de la dernière page
+  paraît à l'écran (`POST /documents/public/signing/<jeton>/read`), qui note l'événement à son
+  heure ; `…/sign` est refusé sans `read` enregistré pour ce lien depuis le document figé, sans
+  case cochée, sans tracé, ou sans initiales quand le paraphe est demandé. Les tracés sont des PNG
+  (300 Ko au plus) ; le journal garde leur empreinte et la phrase de consentement.
 - Toutes les requêtes filtrent par `org_id` ; test d'étanchéité entre écoles.
 - Code : `backend/src/documents/signing.py` (comme `minutes.py`), écrans dans
-  `frontend/src/modules/documents/app/` (`SignPrepare.jsx`, `SignPreview.jsx`, puis `SignSend.jsx`,
-  `SignResults.jsx`), page du signataire dans la page du lien personnel existante.
+  `frontend/src/modules/documents/app/` (`SignPrepare.jsx`, `SignPreview.jsx`, `SignSend.jsx`,
+  `SignResults.jsx`, `SignLink.jsx` pour le signataire). Le lien reçu par mail reste
+  `<adresse de l'école>/r/<jeton>` : la page du lien personnel (`PagePublique.jsx`) voit qu'il
+  s'agit d'un document à signer et affiche `SignLink.jsx`.
 - **Routes de l'étape 1** (`receiver.py`) : `POST …/signings` (créer, avec ou sans document),
   `PUT …/nodes/{id}/app/signing/document` (choisir le document), `GET …/nodes/{id}/app/signing`
   (document, pages, empreinte), `GET …/nodes/{id}/app/signing/pages/{n}` (image d'une page pour
   l'Aperçu).
+- **Routes de l'étape 2** : `GET …/nodes/{id}/app/signing/signers` (bureau et suivi),
+  `POST …/signing/preview` (récapitulatif), `POST …/signing/send` (membres, rôles, cours et
+  `others` : nom + email), `POST …/signing/remind` (`send_ids`, ou tous ceux qui n'ont ni signé ni
+  refusé) ; publiques, déclarées dans `comptes/rbac.py` : `GET /documents/public/signing/<jeton>`,
+  `GET …/pages/{n}`, `POST …/read`, `POST …/sign`, `POST …/refuse`.
 
 ## 7. Le PV d'AG passe par ce circuit
 
@@ -301,7 +325,7 @@ signature, passage en Officiel tout seul quand tous ont signé (le PV garde ce c
    *Vérification* : tests du PDF à signer (Word et PDF, avec et sans paraphe), de l'empreinte,
    du journal `validated`, du retour en Brouillon, de l'étanchéité ; parcours essayé à l'écran
    sur l'école de démo.
-2. **Diffuser et signer** : Faire signer à qui ? (bureau, membres, quelqu'un d'autre), mails,
+2. **Diffuser et signer** *(codée)* : Faire signer à qui ? (bureau, membres, quelqu'un d'autre), mails,
    Annuler 10 s, page du signataire (lecture, consentement, signature, initiales, refus), lien qui
    expire et se ferme, journal avec IP et appareil, Relancer, outil `send_app_file`.
    *Vérification* : tests du lien (expiré, fermé après signature, Brouillon), du refus d'une

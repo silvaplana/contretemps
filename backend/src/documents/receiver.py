@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from urllib.parse import quote
 
-from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, Response
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -104,6 +104,39 @@ class SigningNew(BaseModel):
     space: str = "private"
     parent_id: int | None = None
     source_id: int | None = None
+
+
+class SignOther(BaseModel):
+    """« Quelqu'un d'autre » : hors de l'école, un nom et une adresse email."""
+
+    name: str = Field(max_length=255)
+    email: str = Field(max_length=255)
+
+
+class SigningSend(BaseModel):
+    principals: list[Target] = Field(default_factory=list, max_length=1000)
+    others: list[SignOther] = Field(default_factory=list, max_length=50)
+
+
+class SigningRemind(BaseModel):
+    send_ids: list[int] | None = Field(default=None, max_length=1000)
+
+
+class LinkSign(BaseModel):
+    consent: bool = False
+    signature: str | None = None
+    initials: str | None = None
+
+
+class LinkRefuse(BaseModel):
+    reason: str = Field(default="", max_length=1000)
+
+
+def _client(request: Request) -> tuple[str | None, str | None]:
+    """Adresse IP et appareil pour le journal de preuves : la première adresse
+    de X-Forwarded-For (posée par Caddy), sinon celle de la connexion."""
+    ip = (request.headers.get("x-forwarded-for") or "").split(",")[0].strip() or (request.client.host if request.client else "")
+    return ip[:45] or None, (request.headers.get("user-agent") or "")[:255] or None
 
 
 class SigningDocument(BaseModel):
@@ -485,6 +518,59 @@ class DocumentsReceiver:
         def signing_page(org_id: int, node_id: int, number: int, db: Session = db_dep, m: Member = member):
             image = appel(lambda: signing.page_png(self.client, db, self._member(org_id, m), node_id, number))
             return Response(image, media_type="image/png", headers={"Cache-Control": "private, no-store"})
+
+        # Signer un document, étape 2 : « Faire signer à qui ? » (signature-documents.md §2.3)
+        @self.app.get(base + "/nodes/{node_id}/app/signing/signers")
+        def signing_signers(org_id: int, node_id: int, db: Session = db_dep, m: Member = member):
+            return appel(lambda: signing.signers_status(self.client, db, self._member(org_id, m), node_id))
+
+        @self.app.post(base + "/nodes/{node_id}/app/signing/preview")
+        def signing_preview(org_id: int, node_id: int, data: SigningSend, db: Session = db_dep, m: Member = member):
+            cibles, autres = [p.model_dump() for p in data.principals], [o.model_dump() for o in data.others]
+            return appel(lambda: signing.preview_send(self.client, db, self._member(org_id, m), node_id, cibles, autres))
+
+        @self.app.post(base + "/nodes/{node_id}/app/signing/send", status_code=201)
+        def signing_send(
+            org_id: int, node_id: int, data: SigningSend, request: Request, taches: BackgroundTasks,
+            db: Session = db_dep, m: Member = member,
+        ):
+            cibles, autres = [p.model_dump() for p in data.principals], [o.model_dump() for o in data.others]
+            resume, jobs = appel(lambda: signing.send(self.client, db, self._member(org_id, m), node_id, cibles, autres, _client(request)))
+            taches.add_task(self.client.sends.deliver, db.get_bind(), jobs)
+            return resume
+
+        @self.app.post(base + "/nodes/{node_id}/app/signing/remind", status_code=201)
+        def signing_remind(
+            org_id: int, node_id: int, data: SigningRemind, request: Request, taches: BackgroundTasks,
+            db: Session = db_dep, m: Member = member,
+        ):
+            resume, jobs = appel(lambda: signing.remind(self.client, db, self._member(org_id, m), node_id, data.send_ids, _client(request)))
+            taches.add_task(self.client.sends.deliver, db.get_bind(), jobs)
+            return resume
+
+        # Le lien du signataire (public, sans compte ; §2.4)
+        @self.app.get("/documents/public/signing/{token}")
+        def link_signing(token: str, request: Request, db: Session = db_dep):
+            return appel(lambda: signing.link_view(self.client, db, token, _client(request)))
+
+        @self.app.get("/documents/public/signing/{token}/pages/{number}")
+        def link_signing_page(token: str, number: int, db: Session = db_dep):
+            image = appel(lambda: signing.link_page_png(self.client, db, token, number))
+            return Response(image, media_type="image/png", headers={"Cache-Control": "private, no-store"})
+
+        @self.app.post("/documents/public/signing/{token}/read")
+        def link_signing_read(token: str, request: Request, db: Session = db_dep):
+            return appel(lambda: signing.link_read(self.client, db, token, _client(request)))
+
+        @self.app.post("/documents/public/signing/{token}/sign", status_code=201)
+        def link_signing_sign(token: str, data: LinkSign, request: Request, db: Session = db_dep):
+            return appel(lambda: signing.link_sign(
+                self.client, db, token, data.consent, data.signature, data.initials, _client(request),
+            ))
+
+        @self.app.post("/documents/public/signing/{token}/refuse", status_code=201)
+        def link_signing_refuse(token: str, data: LinkRefuse, request: Request, db: Session = db_dep):
+            return appel(lambda: signing.link_refuse(self.client, db, token, data.reason, _client(request)))
 
         # Modèles de l'école (fichier-de-base.md §5)
         @self.app.post(base + "/nodes/{node_id}/app/template", status_code=201)

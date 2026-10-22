@@ -33,9 +33,9 @@ logger = logging.getLogger(__name__)
 
 MAX_REVIEWERS = 10
 MAX_MESSAGE = 2000
-# Document à signer : l'envoi pour signature arrive à l'étape 2
-# (signature-documents.md §9), pas par le Diffuser habituel.
-SIGN_LATER = "Ce document s'enverra pour signature depuis « Faire signer à qui ? », bientôt disponible."
+# Document à signer : il s'envoie par « Faire signer à qui ? »
+# (signature-documents.md §2.3), pas par le Diffuser habituel.
+SIGN_ELSEWHERE = "Ce document s'envoie pour signature depuis « Faire signer à qui ? »."
 BUTTONS = {"inform": "Voir en ligne", "question": "Répondre", "act": "S'inscrire"}
 
 
@@ -68,7 +68,7 @@ class AppSends:
         if version is None or not version.content.get("entry", {}).get("blocks"):
             raise self._error(409, "Le formulaire d'entrée est vide.")
         if signing.block_of(version.content) is not None:
-            raise self._error(409, SIGN_LATER)
+            raise self._error(409, SIGN_ELSEWHERE)
         return node, node.status == "validated"
 
     def _recipients(self, db: Session, member: Member, principals, test: bool):
@@ -119,7 +119,7 @@ class AppSends:
         if version is None or not version.content.get("entry", {}).get("blocks"):
             raise self._error(409, "Le formulaire d'entrée est vide.")
         if signing.block_of(version.content) is not None:
-            raise self._error(409, SIGN_LATER)
+            raise self._error(409, SIGN_ELSEWHERE)
         if not self._mailer_ok():
             raise self._error(409, "L'envoi d'emails n'est pas configuré sur ce serveur.")
         autre = person_id is not None and person_id != member.person_id
@@ -272,6 +272,9 @@ class AppSends:
         # Un essai sur soi-même reste ouvert, quel que soit l'état.
         if s.channel == "trial":
             return True
+        # Document à signer : on signe sur sa page à lui (signing.py).
+        if signing.is_link(content):
+            return False
         # Procès-verbal : seuls les signataires signent, tant qu'il est Validé
         # (proces-verbal-ag.md §1) ; les membres le lisent.
         if minutes.block_of(content) is not None:
@@ -284,6 +287,9 @@ class AppSends:
         version = self.apps.current_version(db, node)
         if version is None:
             raise self._error(404, "Ce lien ne mène plus à rien.")
+        # Document à signer : la page du signataire (signing.py) prend le relais.
+        if s.channel == minutes.SIGN and signing.is_link(version.content):
+            return {"signing": True, "name": node.name}
         if s.opened_at is None:
             s.opened_at = utcnow()
             db.commit()

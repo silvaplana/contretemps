@@ -25,6 +25,20 @@ from documents.service import DocError
 from .adapter import membre_appelant
 
 
+# « Fais signer le PV au trésorier et aux professeurs » : les mots que
+# l'assistant transmet tels quels, vers une puce de « Faire signer à qui ? ».
+SIGN_GROUPS = {"professeur": "role:professeur", "professeurs": "role:professeur", "eleve": "role:eleve", "eleves": "role:eleve"}
+SIGN_FUNCTIONS = {
+    mot: "Président·e" for mot in ("president", "presidente", "presidence")
+} | {
+    mot: "Vice-président·e" for mot in ("vice-president", "vice-presidente", "vice president", "vice presidente")
+} | {
+    mot: "Secrétaire" for mot in ("secretaire", "secretariat")
+} | {
+    mot: "Trésorier·e" for mot in ("tresorier", "tresoriere")
+}
+
+
 class ConveneAssembly(BaseModel):
     kind: Literal["ordinary", "extraordinary"] = Field(description="ordinary : AG ordinaire (AGO) ; extraordinary : AGE.")
     date: dt.date = Field(description="Jour de l'assemblée, AAAA-MM-JJ.")
@@ -49,8 +63,10 @@ class MarkAttendance(AppFile):
 class SendAppFile(AppFile):
     signers: list[str] | None = Field(
         default=None, max_length=10,
-        description="Procès-verbal Validé seulement : les noms de qui doit signer, si la personne les a dits ; "
-        "null = la présidence et le secrétariat du bureau (ou relancer ceux qui n'ont pas encore signé).",
+        description="Procès-verbal ou document à signer Validé : qui doit signer, si la personne l'a dit : des noms "
+        "(« Prénom Nom »), une fonction du bureau (« président », « trésorier », « secrétaire »), « professeurs » ou "
+        "« élèves » ; null = pour un PV, la présidence et le secrétariat du bureau ; pour les deux, s'il est déjà "
+        "parti, relancer ceux qui n'ont pas encore signé (ni refusé).",
     )
 
 
@@ -209,7 +225,7 @@ def actions(docs: Documents) -> list[Action]:
         if version is not None and minutes.block_of(version.content) is not None:
             return send_minutes(db, member, node, version.content, p.signers)
         if version is not None and signing.block_of(version.content) is not None:
-            raise Refus("l'envoi d'un document à signer arrive bientôt (« Faire signer à qui ? ») : rien n'est parti")
+            return send_signing(db, member, node, p.signers)
         if version is None or assembly.block_of(version.content) is None:
             raise Refus("pour ce fichier, l'envoi se fait à l'écran (Diffuser) : choisir les personnes")
         if node.status != "official":
@@ -275,6 +291,59 @@ def actions(docs: Documents) -> list[Action]:
             threading.Thread(target=docs.sends.deliver, args=(db.get_bind(), jobs), daemon=True).start()
 
         return Ligne(f"{'Relancer pour' if relance else 'Envoyer pour'} signature « {node.name} » à {liste}", signer)
+
+    def send_signing(db: Session, member: Member, node: DocNode, noms: list[str] | None) -> Ligne:
+        """« Faire signer à qui ? » (signature-documents.md §2.3) : des membres,
+        des fonctions du bureau, les professeurs ou les élèves ; sans noms,
+        « Relancer les N ». Quelqu'un hors de l'école s'ajoute à l'écran."""
+        if node.status == "official":
+            raise Refus(f"« {node.name} » est déjà signé par tous")
+        if node.status != "validated":
+            raise Refus(f"« {node.name} » n'est pas encore validé : le valider d'abord (validate_app_file)")
+        etat = _refus(lambda: signing.signers_status(docs, db, member, node.id))
+        if not noms:
+            if not etat["signers"]:
+                raise Refus(
+                    "à qui faire signer ? Demande-le à la personne (des noms, une fonction du bureau, les professeurs "
+                    "ou les élèves), puis rappelle l'outil avec signers"
+                )
+            refus = {s["id"] for s in etat["signers"] if s["state"] == "refused"}
+            qui = [s["name"] for s in etat["signers"] if s["state"] != "signed" and s["id"] not in refus]
+            if not qui:
+                raise Refus("personne à relancer : tout le monde a signé ou refusé")
+
+            def relancer(db: Session) -> None:
+                _, jobs = _refus(lambda: signing.remind(docs, db, member, node.id, None))
+                threading.Thread(target=docs.sends.deliver, args=(db.get_bind(), jobs), daemon=True).start()
+
+            return Ligne(f"Relancer pour signature « {node.name} » : {', '.join(qui)}", relancer)
+        bureau = {b["function"]: b["person_id"] for b in etat["board"]}
+        tous = {r.person_id: r.name for r in docs.directory.recipients(db, node.org_id, [("group", "role:tous")])}
+        cibles, restes = [], []
+        for nom in noms:
+            cle = assembly._norm(nom).removeprefix("le ").removeprefix("la ").removeprefix("les ").strip()
+            fonction = SIGN_FUNCTIONS.get(cle)
+            if cle in SIGN_GROUPS:
+                cibles.append({"type": "group", "id": SIGN_GROUPS[cle]})
+            elif fonction is not None and fonction in bureau:
+                cibles.append({"type": "member", "id": str(bureau[fonction])})
+            else:
+                ids, pas = assembly.match_names(tous, [nom])
+                cibles += [{"type": "member", "id": str(i)} for i in ids]
+                restes += pas
+        if restes:
+            raise Refus(f"pas de membre unique ni de fonction du bureau pour : {', '.join(restes)}. Demande le nom et le prénom complets.")
+        apercu = _refus(lambda: signing.preview_send(docs, db, member, node.id, cibles, []))
+        if not apercu["count"]:
+            raise Refus("tout le monde a déjà signé" if apercu["signed"] else "personne n'a d'adresse email parmi ces personnes")
+        liste = ", ".join(r["name"] for r in apercu["recipients"])
+        sans = f" ; sans adresse email : {', '.join(apercu['without_email'])}" if apercu["without_email"] else ""
+
+        def envoyer(db: Session) -> None:
+            _, jobs = _refus(lambda: signing.send(docs, db, member, node.id, cibles, []))
+            threading.Thread(target=docs.sends.deliver, args=(db.get_bind(), jobs), daemon=True).start()
+
+        return Ligne(f"Envoyer pour signature « {node.name} » à {liste}{sans}", envoyer)
 
     def draft_minutes(db: Session, compte, org_id: int, p: DraftMinutes) -> Ligne:
         member = _member(db, compte, org_id)
@@ -401,7 +470,9 @@ def actions(docs: Documents) -> list[Action]:
                "Envoie par email, chacun avec son lien personnel : une convocation d'AG validée aux membres (ceux de la "
                "dernière AG, sinon tous les membres de la saison) ; un procès-verbal validé pour signature au bureau "
                "(présidence et secrétariat, ou les noms donnés ; s'il est déjà parti, relance ceux qui n'ont pas signé) ; "
-               "un procès-verbal signé de tous, à lire, aux membres convoqués. Jamais pour répondre ou signer à la "
+               "un procès-verbal signé de tous, à lire, aux membres convoqués ; un document à signer validé, aux "
+               "signataires nommés (noms, fonctions du bureau, professeurs, élèves ; s'il est déjà parti, relance ceux "
+               "qui n'ont ni signé ni refusé). Jamais pour répondre ou signer à la "
                "place de quelqu'un : chacun répond et signe lui-même.",
                SendAppFile, send),
         Action("remind_assembly", "Docs",
