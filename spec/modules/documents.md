@@ -1718,6 +1718,8 @@ sauvegardés par leur propre module.
     Recommandation : **maison (signature simple)** pour les procurations, autorisations et droit à
     l'image, qui sont l'essentiel des besoins d'une association ; un prestataire (Yousign, eIDAS
     avancée) seulement plus tard, pour les contrats à fort enjeu.
+    **Décidé par Seb le 22 octobre : maison**, sans code par email ; circuit et preuves dans
+    `signature-documents.md`.
 
 14. **Les saisons passées sont-elles en lecture seule pour tout le monde, y compris les admins ?**
     Recommandation : **oui**, seul le superuser peut rouvrir une saison, avec un motif tracé. C'est ce
