@@ -1,4 +1,5 @@
 import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import Modal from '../../components/Modal.jsx'
 import { documentsApi } from '../../api/documents.js'
 import FolderPicker from './FolderPicker.jsx'
@@ -159,6 +160,12 @@ export default function Explorer({ orgId, memoire }) {
   const [choix, setChoix] = useState(null) // { items, mode: 'move' | 'copy' }
   const [nom, setNom] = useState(null) // { mode: 'folder' | 'rename', item?, value }
   const [corbeille, setCorbeille] = useState(false)
+  // Emplacement des boutons de l'onglet dans la barre du haut (components/Header.jsx).
+  const [enTete, setEnTete] = useState(null)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setEnTete(document.getElementById('entete-onglet')))
+    return () => cancelAnimationFrame(id)
+  }, [])
   const [pressePapier, setPressePapier] = useState(null) // { items, mode: 'copy' | 'cut' }
   const [toast, setToast] = useState(null)
   const [survol, setSurvol] = useState(null) // id du dossier survolé, ou 'list'
@@ -1065,12 +1072,8 @@ export default function Explorer({ orgId, memoire }) {
     setRecentsActif(true)
   }
 
-  const explorateur = (
-    <div className="dx">
-      <div className="dx-top">
-        {recherche == null ? (
-          <>
-            {/* Le titre « Documents » est déjà dans la barre du haut (Seb). */}
+  const boutonsDuHaut = (
+    <>
             <button type="button" className="dx-ico" onClick={() => setRecherche('')} aria-label="Rechercher">
               <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
                 <circle cx="10.5" cy="10.5" r="6.5" />
@@ -1085,7 +1088,18 @@ export default function Explorer({ orgId, memoire }) {
                 <path d="M10 11v5M14 11v5" />
               </svg>
             </button>
-          </>
+    </>
+  )
+
+  const explorateur = (
+    <div className="dx">
+      {/* Loupe et corbeille dans la barre du haut de l'appli, à côté du titre
+          « Documents » (Seb, 22 octobre) ; ici tant qu'elle n'est pas là. */}
+      {enTete && createPortal(boutonsDuHaut, enTete)}
+      {(recherche != null || !enTete) && (
+      <div className="dx-top">
+        {recherche == null ? (
+          boutonsDuHaut
         ) : (
           <>
             <input
@@ -1099,6 +1113,7 @@ export default function Explorer({ orgId, memoire }) {
           </>
         )}
       </div>
+      )}
 
       <div className="dx-seg" role="tablist" aria-label="Espaces">
         {spaces.map((s) => (
