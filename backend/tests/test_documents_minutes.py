@@ -195,6 +195,7 @@ def test_signatures_du_bureau(client, ecole, tenue, mails, apres_ag, db_session)
 
 def test_pv_par_l_assistant(client, ecole, ag, mails, apres_ag, db_session):
     from app import main
+    from documents_contretemps.module import membre_de
 
     compte = ecole["admin"]
     actions = main.assistant_client.actions
@@ -225,7 +226,7 @@ def test_pv_par_l_assistant(client, ecole, ag, mails, apres_ag, db_session):
     noeud = db_session.scalar(assembly.select(assembly.DocNode).where(assembly.DocNode.name == PV))
     assert [s.name for s in minutes.signers(db_session, noeud)] == ["Ana Roux", "Julia Dho"]
     # Où en sont les signatures : lu avec le fichier.
-    lu = main.assistant_client.fichier_appli.lire(db_session, main._membre_de(db_session, compte.id, ecole["id"]), noeud.id)
+    lu = main.assistant_client.fichier_appli.lire(db_session, membre_de(db_session, compte.id, ecole["id"]), noeud.id)
     assert "0 signature sur 2" in lu and "Ana Roux : pas encore signé" in lu
     # Relancer ceux qui n'ont pas signé.
     _, carte = proposer("send_app_file", {"file": PV})

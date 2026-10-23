@@ -289,18 +289,29 @@ CI. Ces trois-là viendront quand une deuxième appli en aura besoin.
 Chaque module a, dans son dossier, **un fichier de déclaration côté serveur et un côté écran**,
 et rien d'autre ne le décrit ailleurs.
 
-Côté serveur, `backend/src/<module>/module.py` :
+Côté serveur, `backend/src/<module>/module.py`, ou `backend/src/<module>_contretemps/module.py`
+quand c'est l'appli qui relie le module à ses fiches et à ses autres modules (Documents, Notes de
+frais, Financier). La forme est dans `backend/src/registry/` :
 
 ```python
 MODULE = Module(
     key="documents",                 # identifiant stable, en anglais
     label="Documents",               # nom à l'écran (Supervision, choix des modules)
-    requires=[],                     # autres modules sans lesquels il ne marche pas
     mount=mount,                     # fonction qui monte ses routes : mount(app, core)
-    actions=ACTIONS,                 # actions de l'assistant, depuis son actions.py
-    start=None,                      # tâche de fond éventuelle (worker), sinon None
+    requires=("videos",),            # modules à monter avant lui (ici, pour l'exemple)
+    roles=(Role("tresorier", "Accès au Financier"),),   # rôles qu'il ajoute aux fiches
 )
 ```
+
+- `roles` *(23 octobre 2026)* : les rôles qu'un module ou l'appli ajoute aux fiches, déclarés
+  comme des données (Professeur par Contretemps, « Accès au Financier » par le module Financier).
+  Le core n'en garde que quatre : Membre, Admin, Administrateur principal et Super User. Le champ
+  existe, mais le core ne le lit pas encore : les rôles restent ceux de `comptes/roles.py`
+  jusqu'au code de l'étude « adhérents par saison ».
+- `mount` range dans `core` ce qu'il construit (ex. `core.documents_client`), pour l'appli et
+  pour les modules montés après lui.
+- Viendront avec l'étape 2 : `actions` (actions de l'assistant) ; et quand un module en aura
+  besoin : `start` (tâche de fond).
 
 - `mount(app, core)` reçoit l'appli FastAPI et **les services du core** (fiche appelante,
   contrôle des droits, email, notifications, saison, stockage). Un module n'importe jamais un
@@ -327,7 +338,8 @@ export default {
 ```
 
 - `tabs` : les onglets de la barre du bas que le module apporte, avec les rôles qui les voient
-  et l'écran à ouvrir. La barre du bas (§8 bis) les lit au lieu de `nav.js`.
+  et l'écran à ouvrir. La barre du bas (§8 bis) les lit au lieu de `nav.js`. Pour l'instant,
+  `screen` n'est pas encore là : `App.jsx` ouvre toujours l'écran de chaque onglet.
 - `roles` sert seulement à **montrer ou cacher** l'onglet. Le vrai contrôle reste sur chaque
   route du serveur (§6.3), un onglet caché n'ouvre aucun droit.
 
@@ -377,8 +389,10 @@ La liste de l'appli dit ce que l'appli **sait** faire ; chaque organisation choi
 
 Chaque étape est une PR, sans rien changer à l'écran avant l'étape 3 :
 
-1. **Déclarations** : `module.py` et `module.js` pour chaque module, la liste de l'appli, et
-   `main.py`, `nav.js` et `App.jsx` qui lisent la liste au lieu de tout écrire à la main.
+1. **Déclarations** *(faite le 23 octobre 2026)* : `module.py` et `module.js` pour chaque
+   module, la liste de l'appli (`app/modules.py`, `app/modules.js`), `main.py` qui monte les
+   modules depuis la liste et `nav.js` qui en lit les onglets. Les écrans (`screen`) restent
+   ouverts par `App.jsx`, à reprendre quand on le découpera.
 2. **Assistant** : l'appli lui remet les actions de la liste des modules au lieu de les
    assembler à la main (`actions_messagerie(...)`, `actions_cours(...)`…, assistant-ia.md §3).
 3. **Activation** : table `org_modules`, contrôle des routes, cases dans Supervision.

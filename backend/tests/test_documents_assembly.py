@@ -434,6 +434,7 @@ def test_assistant_etat_relance_et_pdf(client, ecole, ag, mails, db_session):
     from datetime import datetime
 
     from app import main
+    from documents_contretemps.module import membre_de
     from documents import assembly
 
     admin, compte = ag["admin"], ecole["admin"]
@@ -445,7 +446,7 @@ def test_assistant_etat_relance_et_pdf(client, ecole, ag, mails, db_session):
     assert repondre(client, leon, answer="attend").status_code == 201
 
     # Où en est l'AG : lu avec le fichier, chiffres calculés par l'appli.
-    etat = main.assistant_client.fichier_appli.lire(db_session, main._membre_de(db_session, compte.id, ecole["id"]), ag["id"])
+    etat = main.assistant_client.fichier_appli.lire(db_session, membre_de(db_session, compte.id, ecole["id"]), ag["id"])
     assert "4 convoqués, 1 a répondu : 1 vient, 0 procuration, 0 ne vient pas" in etat
     assert "Sans réponse (3) : Ana Roux, Ima Blanc, Julia Dho" in etat
 
