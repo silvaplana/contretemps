@@ -22,7 +22,7 @@ import Viewer from './Viewer.jsx'
 // Le fichier de base embarque BlockNote : chargé seulement quand on l'ouvre.
 const AppFile = lazy(() => import('./app/AppFile.jsx'))
 import { Cadenas, FileIcon, FolderIcon, PlusIcon, StatusBadge, TrayIcon } from './icons.jsx'
-import { isImage, isPdf } from './kinds.js'
+import { isImage, isOffice, isPdf } from './kinds.js'
 import { exchangeSubtitle, nomCoupe, subtitle } from './format.js'
 import './documents.css'
 
@@ -948,10 +948,31 @@ export default function Explorer({ orgId, memoire }) {
     if (item.kind === 'file' && /\.(pdf|docx?|odt|rtf)$/i.test(item.name)) {
       autres.unshift({ icone: '✍', libelle: 'Faire signer…', faire: () => (setFeuille(null), setPlus(false), faireSigner(item)) })
     }
+    // Word, Excel, PowerPoint : son PDF posé à côté (Seb, 23 octobre).
+    if (item.kind === 'file' && isOffice(item) && !resultats) {
+      autres.unshift({ icone: '⎙', libelle: 'Enregistrer en PDF', faire: () => (setFeuille(null), setPlus(false), enregistrerEnPdf(item)), off: !peutAjouterDans(item) && raison })
+    }
     if (item.exchange_until && (item.sent_by_me || data?.level === 'manage')) {
       autres.unshift({ icone: '✉', libelle: 'Pour…', faire: () => (setFeuille(null), setPlus(false), setPourQui([item])) })
     }
     return { principales, autres }
+  }
+
+  // Le PDF est l'aperçu du fichier (LibreOffice sur le serveur), importé
+  // dans le même dossier sous le même nom ; « (2) » si le nom est pris.
+  async function enregistrerEnPdf(item) {
+    montrerToast(`PDF de « ${item.name} » en préparation…`)
+    try {
+      const lien = await api.blobUrl(item.id, { preview: true, modifie: item.updated_at })
+      const pdf = await (await fetch(lien)).blob()
+      URL.revokeObjectURL(lien)
+      const nom = `${item.name.replace(/\.[^.]+$/, '')}.pdf`
+      const f = await api.upload(space, folder, new File([pdf], nom, { type: 'application/pdf' }))
+      await recharger()
+      montrerToast(`« ${f.name} » enregistré à côté`)
+    } catch (e) {
+      echec(e)
+    }
   }
 
   // Le fichier « Signature : … » se crée à côté du document (ou dans le
