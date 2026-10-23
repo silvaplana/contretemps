@@ -1961,7 +1961,8 @@
   border: 2px solid var(--accent);
 }
 
-.dx-tuile a.dx-btn {
+.dx-tuile a.dx-btn,
+.dx-footer--rang a.dx-btn {
   display: grid;
   place-items: center;
   text-decoration: none;

@@ -18,6 +18,10 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
   const [erreur, setErreur] = useState('')
   const office = isOffice(item)
   const enPdf = isPdf(item) || office
+  // Téléphone : pas d'aperçu PDF dans la page, la fiche du fichier à la
+  // place. Partout : Voir l'aperçu, Modifier, Télécharger côte à côte en bas
+  // (Seb, 23 octobre).
+  const sansVisionneuse = enPdf && !navigator.pdfViewerEnabled
   const apercu = isImage(item) || enPdf
   const estTexte = isTexte(item)
   const modifiable = estTexte && item.level !== 'view' && !item.closed_period && !item.frozen
@@ -76,11 +80,12 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
       <div className="dx-viewer__body">
         {erreur && <p className="dx-error">{erreur}</p>}
         {isImage(item) && url && <img className="dx-viewer__img" src={url} alt={item.name} />}
-        {enPdf && url && (
+        {enPdf && url && !sansVisionneuse && (
           <object className="dx-viewer__pdf" data={url} type="application/pdf" aria-label={item.name}>
             <Tuile item={item} onDownload={onDownload} apercuUrl={url} />
           </object>
         )}
+        {sansVisionneuse && !erreur && <Tuile item={item} />}
         {office && erreur && <Tuile item={item} onDownload={onDownload} />}
         {estTexte &&
           (brouillon != null ? (
@@ -112,6 +117,11 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
             </>
           ) : (
             <>
+              {enPdf && url && (
+                <a className={`dx-btn${office && onEditer ? ' dx-btn--ghost' : ''}`} href={url} target="_blank" rel="noreferrer">
+                  Voir l’aperçu
+                </a>
+              )}
               {modifiable && texte != null && (
                 <button type="button" className="dx-btn" onClick={() => setBrouillon(texte)}>
                   Modifier
@@ -148,10 +158,14 @@ function Tuile({ item, onDownload, apercuUrl }) {
           Voir l’aperçu
         </a>
       )}
-      <button type="button" className={`dx-btn${apercuUrl ? ' dx-btn--ghost' : ''}`} onClick={() => onDownload(item)}>
-        Télécharger
-      </button>
-      <p className="dx-muted dx-small">Il s’ouvrira avec l’application de votre téléphone ou de votre ordinateur (Word, Excel…).</p>
+      {onDownload && (
+        <>
+          <button type="button" className={`dx-btn${apercuUrl ? ' dx-btn--ghost' : ''}`} onClick={() => onDownload(item)}>
+            Télécharger
+          </button>
+          <p className="dx-muted dx-small">Il s’ouvrira avec l’application de votre téléphone ou de votre ordinateur (Word, Excel…).</p>
+        </>
+      )}
     </div>
   )
 }
