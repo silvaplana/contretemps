@@ -1398,6 +1398,9 @@ Détails :
   Modifier, Télécharger côte à côte, chacun une fois, sur téléphone comme sur ordinateur ; sur téléphone
   la fiche du fichier remplace l'aperçu dans la page. Formats .docx, .xlsx, .pptx (lus aussi par
   LibreOffice), pas d'ODT pour les nouveaux fichiers.
+  ⋯ > Plus… > **Enregistrer en PDF** (Seb, 23 octobre ; OnlyOffice ne le propose pas) : le PDF du
+  fichier (son aperçu, fait par LibreOffice sur le serveur) est posé à côté, même nom en .pdf, « (2) »
+  si le nom est pris ; grisé si l'on ne peut pas ajouter dans le dossier, absent des résultats de recherche.
 - **Loupe et corbeille** (Seb, 22 octobre) : dans la barre du haut de l'appli, à côté du titre
   « Documents », pour laisser la place aux fichiers. La barre du haut offre un emplacement que
   l'onglet ouvert remplit (`#entete-onglet` dans `components/Header.jsx`).
