@@ -32,6 +32,9 @@ class Module:
     mount: Callable[[FastAPI, SimpleNamespace], None]
     requires: tuple[str, ...] = ()  # modules à monter avant celui-ci
     roles: tuple[Role, ...] = ()
+    # actions(core) : les actions que le module ouvre à l'assistant (son
+    # actions.py, spec/modules/assistant-ia.md §3), une fois monté.
+    actions: Callable[[SimpleNamespace], list] | None = None
 
 
 def check(modules: list[Module]) -> None:
@@ -48,6 +51,11 @@ def check(modules: list[Module]) -> None:
                 "à placer plus haut dans app/modules.py."
             )
         vus.add(module.key)
+
+
+def actions(modules: list[Module], core: SimpleNamespace) -> list:
+    """Les actions de l'assistant de tous les modules, dans l'ordre de la liste."""
+    return [action for module in modules if module.actions for action in module.actions(core)]
 
 
 def mount_all(app: FastAPI, modules: list[Module], core: SimpleNamespace) -> None:

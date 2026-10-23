@@ -8,6 +8,7 @@ from pathlib import Path
 from notes_frais import LecteurClaude, NotesDeFrais, NotesDeFraisReceiver, Ports, StockageEnveloppes
 from registry import Module
 
+from .actions import actions
 from .adapter import (
     AnnuaireContretemps,
     ClasseurContretemps,
@@ -40,4 +41,7 @@ def mount(app, core) -> None:
     NotesDeFraisReceiver(client=core.notes_frais_client, app=app, membre_courant=membre_appelant)
 
 
-MODULE = Module(key="expense_notes", label="Notes de frais", mount=mount, requires=("documents",))
+MODULE = Module(
+    key="expense_notes", label="Notes de frais", mount=mount, requires=("documents",),
+    actions=lambda core: actions(core.notes_frais_client),
+)

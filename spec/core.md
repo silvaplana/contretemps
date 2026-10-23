@@ -310,8 +310,10 @@ MODULE = Module(
   jusqu'au code de l'étude « adhérents par saison ».
 - `mount` range dans `core` ce qu'il construit (ex. `core.documents_client`), pour l'appli et
   pour les modules montés après lui.
-- Viendront avec l'étape 2 : `actions` (actions de l'assistant) ; et quand un module en aura
-  besoin : `start` (tâche de fond).
+- `actions=lambda core: actions(core.documents_client)` : les actions que le module ouvre à
+  l'assistant, prises dans son `actions.py` une fois le module monté. Les actions du socle de
+  Contretemps (école, administrateurs, élèves, profs, cours) restent listées dans `main.py`.
+- Viendra quand un module en aura besoin : `start` (tâche de fond).
 
 - `mount(app, core)` reçoit l'appli FastAPI et **les services du core** (fiche appelante,
   contrôle des droits, email, notifications, saison, stockage). Un module n'importe jamais un
@@ -393,7 +395,7 @@ Chaque étape est une PR, sans rien changer à l'écran avant l'étape 3 :
    module, la liste de l'appli (`app/modules.py`, `app/modules.js`), `main.py` qui monte les
    modules depuis la liste et `nav.js` qui en lit les onglets. Les écrans (`screen`) restent
    ouverts par `App.jsx`, à reprendre quand on le découpera.
-2. **Assistant** : l'appli lui remet les actions de la liste des modules au lieu de les
+2. **Assistant** *(faite le 23 octobre 2026)* : l'appli lui remet les actions de la liste des modules au lieu de les
    assembler à la main (`actions_messagerie(...)`, `actions_cours(...)`…, assistant-ia.md §3).
 3. **Activation** : table `org_modules`, contrôle des routes, cases dans Supervision.
 

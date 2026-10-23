@@ -9,6 +9,7 @@ from db import SessionLocal
 from finances import Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
 from registry import Module
 
+from .actions import actions
 from .adapter import membre_appelant, saisons_de_l_ecole
 
 
@@ -62,4 +63,10 @@ def mount(app, core) -> None:
     core.finances_forecasts = finances_forecasts
 
 
-MODULE = Module(key="finances", label="Financier", mount=mount)
+MODULE = Module(
+    key="finances", label="Financier", mount=mount,
+    actions=lambda core: actions(
+        core.finances_reports, core.finances_assemblies, core.finances_forecasts,
+        core.finances_client, saisons_de_l_ecole,
+    ),
+)

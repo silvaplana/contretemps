@@ -68,10 +68,10 @@ class Action:
 
 ### 3.2 Le ramassage
 
-Une seule liste, dans `app/main.py` *(Contretemps)*, une ligne par module :
-`actions_messagerie(...)`, `actions_cours(...)`, `actions_notes_frais(...)`. Pas de registre de modules
-pour l'instant : la section « Enregistrement des modules » de `spec/core.md` reprendra cette liste telle
-quelle, avec les routes, les onglets et les rôles.
+Chaque module donne ses actions dans sa déclaration (`module.py`, champ `actions`, voir
+`spec/core.md` §9 bis), et `app/main.py` *(Contretemps)* les remet à l'assistant dans l'ordre de
+`app/modules.py`, après celles du socle de Contretemps (école, administrateurs, élèves, profs,
+cours), qui y restent listées une par ligne *(23 octobre 2026)*.
 
 ### 3.3 Les premières actions
 
