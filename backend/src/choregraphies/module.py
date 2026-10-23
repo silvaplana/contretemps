@@ -3,6 +3,7 @@ Contretemps : il s'appuie sur les cours et sur le module Vidéos."""
 
 from registry import Module
 
+from .actions import actions
 from .choregraphies import Choregraphies
 from .receiver import ChoregraphiesReceiver
 
@@ -12,4 +13,7 @@ def mount(app, core) -> None:
     ChoregraphiesReceiver(client=core.choregraphies_client, app=app)
 
 
-MODULE = Module(key="choregraphies", label="Chorégraphies", mount=mount, requires=("videos",))
+MODULE = Module(
+    key="choregraphies", label="Chorégraphies", mount=mount, requires=("videos",),
+    actions=lambda core: actions(core.choregraphies_client),
+)

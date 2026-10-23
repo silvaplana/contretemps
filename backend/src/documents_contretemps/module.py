@@ -12,6 +12,7 @@ from documents.attendance_photo import AttendanceReader
 from registry import Module
 from saisons.portee import TOUTES_SAISONS
 
+from .actions import actions
 from . import lien_fichier
 from .adapter import (
     DOSSIER_DOCUMENTS,
@@ -68,4 +69,7 @@ def mount(app, core) -> None:
     BureautiqueReceiver(client=Bureautique(documents=documents_client, membre_de=membre_de), app=app, current_member=membre_appelant)
 
 
-MODULE = Module(key="documents", label="Documents", mount=mount)
+MODULE = Module(
+    key="documents", label="Documents", mount=mount,
+    actions=lambda core: actions(core.documents_client),
+)

@@ -2,6 +2,7 @@
 
 from registry import Module
 
+from .actions import actions
 from .connexions import Connexions
 from .conversations import Conversations
 from .frappe import Frappe
@@ -28,4 +29,7 @@ def mount(app, core) -> None:
     )
 
 
-MODULE = Module(key="messaging", label="Messagerie", mount=mount)
+MODULE = Module(
+    key="messaging", label="Messagerie", mount=mount,
+    actions=lambda core: actions(core.messagerie_receiver),
+)

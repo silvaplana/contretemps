@@ -24,3 +24,11 @@ def test_un_module_doit_venir_apres_ceux_dont_il_a_besoin():
 def test_un_module_ne_se_liste_qu_une_fois():
     with pytest.raises(RuntimeError, match="deux fois"):
         registry.check([_module("videos"), _module("videos")])
+
+
+def test_l_assistant_recoit_les_actions_des_modules():
+    from app import main
+
+    noms = set(main.assistant_client.actions.by_name)
+    attendus = {action.name for action in registry.actions(MODULES, main.core)}
+    assert attendus and attendus <= noms

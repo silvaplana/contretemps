@@ -23,7 +23,6 @@ from change import TauxChange, TauxChangeReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
 from administrateurs.actions import actions as actions_administrateurs
-from choregraphies.actions import actions as actions_choregraphies
 from cours.actions import actions as actions_cours
 from ecoles.actions import actions as actions_ecoles
 from eleves.actions import actions as actions_eleves
@@ -39,13 +38,8 @@ from personnalisation.receiver import PersonnalisationReceiver
 from messagerie import Evenements
 from app.messagerie_stockage import DOSSIER_MESSAGERIE, pieces_jointes
 from app.modules import MODULES
-from messagerie.actions import actions as actions_messagerie
 from notifications import Notifications, NotificationsReceiver
 from notes_frais_contretemps.module import DOSSIER_NOTES_FRAIS
-from documents_contretemps.actions import actions as actions_documents
-from notes_frais_contretemps.actions import actions as actions_notes_frais
-from finances_contretemps import saisons_de_l_ecole
-from finances_contretemps.actions import actions as actions_finances
 from profs.actions import actions as actions_profs
 import registry
 from saisons.gestion import GestionSaisons
@@ -249,19 +243,16 @@ ecoles_receiver = EcolesReceiver(
     client=ecoles_client, export=ecole_export_client, comptes=comptes_client, app=app
 )
 
-# Actions que les modules ouvrent à l'assistant (spec/modules/assistant-ia.md
-# §3) : chaque module les déclare dans son actions.py, la liste est ici.
+# Actions ouvertes à l'assistant (spec/modules/assistant-ia.md §3) : celles
+# du socle de Contretemps, puis celles que chaque module déclare dans son
+# module.py (spec/core.md §9 bis), dans l'ordre de app/modules.py.
 assistant_client.actions = Actions([
     *actions_ecoles(ecoles_client),
     *actions_administrateurs(administrateurs_client),
     *actions_eleves(eleves_client),
     *actions_profs(profs_client),
-    *actions_messagerie(messagerie_receiver),
     *actions_cours(cours_receiver),
-    *actions_choregraphies(choregraphies_client),
-    *actions_notes_frais(notes_frais_client),
-    *actions_documents(documents_client),
-    *actions_finances(finances_reports, finances_assemblies, finances_forecasts, finances_client, saisons_de_l_ecole),
+    *registry.actions(MODULES, core),
 ])
 
 
