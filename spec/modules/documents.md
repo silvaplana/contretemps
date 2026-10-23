@@ -1565,7 +1565,7 @@ bulle au survol sur ordinateur et à l'appui long sur téléphone.
     `https://<préfixe>.<appli>.silvaplana.cloud/`), **Faire une publication web** (une page publiée, autant qu'on
     veut : un spectacle, un stage, un événement ; §5.5, adresse `https://<page>.<école>.<appli>.silvaplana.cloud`) ;
   - *Questionner* (Seb) : **Convoquer l'AG**, **Faire un sondage** (liste en cours) ;
-  - *Agir* (Seb) : **Ouvrir les inscriptions annuelles**, **Ouvrir les inscriptions au spectacle**, **Faire une note de frais** (Seb, 15 octobre : crée une dépense à rembourser dans les finances) (libellés
+  - *Agir* (Seb) : **Ouvrir les inscriptions annuelles**, **Ouvrir les inscriptions au spectacle** (« Faire une note de frais » retiré, Seb 23 octobre : elle se fait depuis le profil et le Financier) (libellés
     mis au verbe par Claude, à confirmer) ;
   - **d'où viennent les tuiles** (Seb, 15 octobre) : les modèles sont **livrés avec l'appli** pour toutes les
     écoles, et **chaque asso peut les modifier** ou en ajouter (un modèle modifié devient le sien ; le
