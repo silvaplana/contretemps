@@ -94,7 +94,7 @@ const MODELES = {
   question: { hint: 'Chacun répond', tiles: ['Convoquer l’AG', 'Produire le PV d’AG', 'Faire signer un document', 'Faire un sondage'] },
   act: {
     hint: 'La réponse crée une inscription, un paiement…',
-    tiles: ['Ouvrir les inscriptions annuelles', 'Ouvrir les inscriptions au spectacle', 'Faire une note de frais'],
+    tiles: ['Ouvrir les inscriptions annuelles', 'Ouvrir les inscriptions au spectacle'],
   },
 }
 
