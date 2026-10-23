@@ -1,28 +1,14 @@
+import { MODULES } from '../app/modules.js'
+
 // Onglets de la barre de navigation basse (voir spec/SPEC.md §3 et §4),
 // avec les rôles qui y ont accès — partagé entre BottomNav.jsx (affichage)
 // et App.jsx (retomber sur un onglet accessible après un switch de profil).
+// Le core n'a que Admin, Supervision et Profil ; les onglets des modules
+// viennent de leur déclaration (spec/core.md §9 bis), entre Admin et
+// Supervision, dans l'ordre de app/modules.js.
 export const TABS = [
   { key: 'admin', label: 'Admin', icon: 'admin', roles: ['admin'] },
-  { key: 'presence', label: 'Présence', icon: 'presence', roles: ['admin', 'professeur'] },
-  {
-    key: 'choregraphie',
-    label: 'Chorégraphies',
-    icon: 'choregraphie',
-    roles: ['admin', 'professeur', 'eleve'],
-  },
-  // Plus d'onglet Vidéo (2026-10-03) : les vidéos se gèrent dans les chorégraphies.
-  {
-    key: 'messagerie',
-    label: 'Messages',
-    icon: 'messagerie',
-    roles: ['admin', 'professeur', 'eleve'],
-  },
-  // Documents (demande du 2026-09-25, prototype) : tout le monde, juste
-  // avant Profil.
-  { key: 'docs', label: 'Docs', icon: 'docs', roles: ['admin', 'professeur', 'eleve'] },
-  // Trésoriers seulement (module notes de frais §7) : notes à valider et
-  // à rembourser ; plus tard le budget.
-  { key: 'financier', label: 'Financier', icon: 'calculator', roles: ['tresorier'] },
+  ...MODULES.flatMap((module) => module.tabs),
   // Super User seulement (§2.5) : `superuser` n'est jamais ajouté aux autres
   // comptes, contrairement à admin/owner qu'IL reçoit en plus (voir
   // data/roles.js : rolesDe) — les autres ne voient donc jamais cet onglet.
