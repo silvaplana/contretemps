@@ -12,6 +12,12 @@ import FamilyCards from './app/FamilyCards.jsx'
 // « Faire un modèle » (fichier-de-base.md §5) : les toucher crée une copie
 // en Brouillon ; les admins les renomment, les cachent ou les suppriment.
 
+const BUREAUTIQUE = [
+  ['docx', 'Document Word', 'Nouveau document'],
+  ['xlsx', 'Tableau Excel', 'Nouveau tableau'],
+  ['pptx', 'Présentation', 'Nouvelle présentation'],
+]
+
 function TuileEcole({ t, admin, api, onUse, onChanged, onToast }) {
   const [reglage, setReglage] = useState(false)
   const [nom, setNom] = useState(t.name)
@@ -95,7 +101,7 @@ const MODELES = {
 // Tuiles qui marchent déjà : elles ouvrent leur propre parcours.
 // « Convoquer l’AG » : spec procurations.md §1.3 ; « Produire le PV d’AG » :
 // proces-verbal-ag.md §1 ; « Faire signer un document » : signature-documents.md §2.
-export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onAssembly, onMinutes, onSign, onToast }) {
+export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, onNewFolder, onImport, onNewApp, onUseTemplate, onAssembly, onMinutes, onSign, onOffice, onToast }) {
   // Informer, Questionner, Agir : fermés au départ (Seb, 15 octobre).
   const [ouvert, setOuvert] = useState(null)
   const [nature, setNature] = useState(false)
@@ -141,6 +147,17 @@ export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, o
             <span>Créer un dossier</span>
           </button>
         </div>
+        {/* Édités dans l'appli avec OnlyOffice (Seb, 23 octobre). */}
+        {onOffice && (
+          <div className="dx-blank dx-blank--3">
+            {BUREAUTIQUE.map(([ext, libelle, nom]) => (
+              <button key={ext} type="button" disabled={!canAdd} onClick={() => onOffice(ext, nom)}>
+                <FileIcon name={`x.${ext}`} />
+                <span>{libelle}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <button type="button" className="dx-import" disabled={!canAdd} onClick={onImport}>
           ⤒ Importer un fichier ou une photo
         </button>

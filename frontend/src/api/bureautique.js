@@ -19,6 +19,13 @@ export async function configurationEditeur(orgId, nodeId) {
   return reponse.json()
 }
 
+// L'éditeur est-il configuré sur ce serveur ? (« Modifier » et les tuiles
+// Word, Excel, Présentation du +.)
+export async function editionDisponible() {
+  const reponse = await fetch(`${BASE_URL}/bureautique/etat`)
+  return reponse.ok && (await reponse.json()).actif === true
+}
+
 // Le script d'OnlyOffice, chargé une seule fois.
 const scripts = new Map()
 export function chargerScript(url) {

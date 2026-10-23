@@ -1129,6 +1129,10 @@
   margin-top: 6px;
 }
 
+.dx-blank--3 {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
 .dx-blank button {
   position: relative;
   display: flex;

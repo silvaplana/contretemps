@@ -8,7 +8,6 @@ from __future__ import annotations
 import logging
 from dataclasses import replace
 
-from assistant.receiver import super_user_ou_sa_fiche
 from comptes import Compte, rbac
 from documents.ports import Member
 from documents.service import DocError
@@ -26,6 +25,12 @@ class BureautiqueReceiver:
         self.client = client
         c = client
 
+        # L'appli montre « Modifier » et les tuiles Word, Excel, Présentation
+        # seulement si l'éditeur est configuré sur ce serveur.
+        @app.get("/bureautique/etat")
+        def etat():
+            return {"actif": c.actif}
+
         @app.get("/bureautique/orgs/{org_id}/nodes/{node_id}/configuration")
         def configuration(
             org_id: int,
@@ -35,8 +40,10 @@ class BureautiqueReceiver:
             membre: Member = Depends(current_member),
             db: Session = Depends(get_db),
         ):
-            if compte is None or not super_user_ou_sa_fiche(db, compte):
-                raise HTTPException(status_code=403, detail="L'édition en ligne est en essai : réservée au Super User.")
+            # Ouverte à qui peut lire le fichier ; il modifie s'il peut
+            # modifier le dossier (Seb, 23 octobre), sinon il lit.
+            if compte is None:
+                raise HTTPException(status_code=403, detail="Connectez-vous pour ouvrir l'éditeur.")
             if not c.actif:
                 raise HTTPException(status_code=503, detail="L'édition en ligne n'est pas configurée sur ce serveur.")
             # Adresse publique de l'API telle que l'appli la voit (adresse de
