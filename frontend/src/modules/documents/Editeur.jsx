@@ -5,6 +5,8 @@ import { chargerScript, configurationEditeur } from '../../api/bureautique.js'
 // PowerPoint modifiés dans l'appli. L'enregistrement est automatique ; à la
 // fermeture, OnlyOffice renvoie le fichier au serveur, qui en fait une
 // nouvelle version (historique et retour arrière habituels).
+const FERMETURE_EN_ARRIERE_PLAN = 2 * 60 * 1000
+
 export default function Editeur({ orgId, item, onClose }) {
   const [erreur, setErreur] = useState('')
   const [lecture, setLecture] = useState(false)
@@ -27,6 +29,22 @@ export default function Editeur({ orgId, item, onClose }) {
       editeur.current = null
     }
   }, [orgId, item.id, id])
+
+  // Appli quittée (autre appli, écran éteint) : l'éditeur se ferme au bout
+  // de 2 minutes, ce qui enregistre et libère la place chez OnlyOffice (20
+  // éditeurs ouverts en même temps au plus ; Seb, 23 octobre).
+  useEffect(() => {
+    let minuteur = null
+    const suivre = () => {
+      clearTimeout(minuteur)
+      if (document.visibilityState === 'hidden') minuteur = setTimeout(onClose, FERMETURE_EN_ARRIERE_PLAN)
+    }
+    document.addEventListener('visibilitychange', suivre)
+    return () => {
+      clearTimeout(minuteur)
+      document.removeEventListener('visibilitychange', suivre)
+    }
+  }, [onClose])
 
   return (
     <div className="dx-panel dx-editeur" role="dialog" aria-label={`Modifier ${item.name}`}>

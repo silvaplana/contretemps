@@ -11,7 +11,8 @@ import { texteDuLien, useOuvrirDocs } from './lienDocs.js'
 import { envoyerDansLaMessagerie } from '../../utils/envoyerA.js'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
-import { accesAssistant, ajouterProduit } from '../../api/assistant.js'
+import { ajouterProduit } from '../../api/assistant.js'
+import { editionDisponible } from '../../api/bureautique.js'
 import Arbre from './Arbre.jsx'
 import { brancherDocs, prendreFichierAOuvrir } from './assistantGlobal.js'
 import Editeur from './Editeur.jsx'
@@ -112,14 +113,12 @@ export default function Explorer({ orgId, memoire }) {
   const bureau = useBureau()
   // L'assistant est celui de toute l'appli (AssistantGlobal.jsx, bouton de
   // l'en-tête) ; Docs lui donne le dossier ouvert et fait ses cartes.
-  // Éditeur OnlyOffice : encore en essai, le Super User seul.
+  // Éditeur OnlyOffice : à qui peut modifier le fichier (Seb, 23 octobre).
   const [editeur, setEditeur] = useState(false)
   const [enEdition, setEnEdition] = useState(null)
   useEffect(() => {
-    accesAssistant(orgId).then((x) => {
-      setEditeur(Boolean(x.editeur))
-    }, () => {})
-  }, [orgId])
+    editionDisponible().then(setEditeur, () => {})
+  }, [])
   const api = useMemo(() => documentsApi(orgId), [orgId])
   const [spaces, setSpaces] = useState([])
   // Fichier créé par l'assistant depuis un autre onglet : Docs s'ouvre dessus.
@@ -1010,6 +1009,21 @@ export default function Explorer({ orgId, memoire }) {
     montrerToast(`Fait : ${carte.libelle}`)
   }
 
+  // + > Document Word, Tableau Excel, Présentation : un fichier vide
+  // (frontend/public/modeles/), ouvert aussitôt dans l'éditeur.
+  async function creerBureautique(extension, nom) {
+    try {
+      const vide = await fetch(`${import.meta.env.BASE_URL}modeles/vide.${extension}`)
+      if (!vide.ok) throw new Error('Le fichier vide est introuvable')
+      const f = await api.upload(space, folder, new File([await vide.blob()], `${nom}.${extension}`))
+      setNouveau(false)
+      await recharger()
+      setEnEdition(f)
+    } catch (e) {
+      echec(e)
+    }
+  }
+
   // OnlyOffice renvoie le fichier quelques secondes après la fermeture de
   // l'éditeur : on surveille le fichier (toutes les 2 s, 30 s au plus) et
   // on met la liste à jour dès que la nouvelle version est là.
@@ -1344,7 +1358,7 @@ export default function Explorer({ orgId, memoire }) {
             recharger()
             montrerToast(`« ${x.name} » enregistré`)
           }}
-          onEditer={editeur ? (x) => setEnEdition(x) : undefined}
+          onEditer={editeur && vue.level !== 'view' ? (x) => setEnEdition(x) : undefined}
         />
       )}
 
@@ -1468,6 +1482,7 @@ export default function Explorer({ orgId, memoire }) {
               echec(e)
             }
           }}
+          onOffice={editeur ? creerBureautique : undefined}
           onToast={montrerToast}
         />
       )}

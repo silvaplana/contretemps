@@ -1389,6 +1389,15 @@ Détails :
   changeant d'écran (comme les vidéos aujourd'hui). Partage depuis une autre appli Android vers
   AppBase via `share_target` du manifeste PWA (phase 2).
 - **Déplacer** : feuille plein écran qui navigue dans les dossiers, bouton « Déplacer ici ».
+- **Word, Excel, PowerPoint dans l'appli** (Seb, 23 octobre) : édités avec OnlyOffice (version
+  gratuite sur le VPS : 20 éditeurs ouverts en même temps, toutes applis confondues). Qui peut modifier
+  le dossier modifie ; le + propose Document Word, Tableau Excel, Présentation (un fichier vide ouvert
+  aussitôt dans l'éditeur). Quitter un fichier ferme son éditeur, pour cette personne seulement :
+  ←, autre onglet, ou appli laissée en arrière-plan plus de 2 minutes. L'enregistrement est
+  automatique, rien à confirmer. Fichier ouvert (Word, Excel, PowerPoint, PDF) : en bas, Voir l'aperçu,
+  Modifier, Télécharger côte à côte, chacun une fois, sur téléphone comme sur ordinateur ; sur téléphone
+  la fiche du fichier remplace l'aperçu dans la page. Formats .docx, .xlsx, .pptx (lus aussi par
+  LibreOffice), pas d'ODT pour les nouveaux fichiers.
 - **Loupe et corbeille** (Seb, 22 octobre) : dans la barre du haut de l'appli, à côté du titre
   « Documents », pour laisser la place aux fichiers. La barre du haut offre un emplacement que
   l'onglet ouvert remplit (`#entete-onglet` dans `components/Header.jsx`).

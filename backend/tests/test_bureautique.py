@@ -74,6 +74,16 @@ def test_ouvrir_modifier_et_enregistrer(client, db_session, monde, monkeypatch):
     assert client.post(retour, json={**pirate, "token": jwt_signer(pirate, SECRET)}).json() == {"error": 1}
 
 
-def test_reserve_au_superuser(client, monde):
-    reponse = client.get(f"/bureautique/orgs/{monde['ecole'].id}/nodes/1/configuration", headers=entetes_session(monde["admin"]))
-    assert reponse.status_code == 403
+def test_ouvert_a_qui_peut_modifier(client, db_session, monde):
+    """Seb, 23 octobre : l'édition n'est plus réservée au Super User ; qui
+    peut modifier le dossier modifie, les autres ne l'ouvrent pas."""
+    org = monde["ecole"].id
+    admin = entetes_session(monde["admin"])
+    eleve = entetes_session(Comptes().create(db_session, ecole_id=org, role="eleve", nom="Petit", prenom="Lou"))
+    assert client.get("/bureautique/etat", headers=admin).json() == {"actif": True}
+    fichier = client.post(
+        f"/documents/orgs/{org}/files", data={"space": "private"}, files={"file": ("CR.docx", io.BytesIO(b"PK"))}, headers=admin,
+    ).json()
+    adresse = f"/bureautique/orgs/{org}/nodes/{fichier['id']}/configuration"
+    assert client.get(adresse, headers=admin).json()["config"]["editorConfig"]["mode"] == "edit"
+    assert client.get(adresse, headers=eleve).status_code == 404
