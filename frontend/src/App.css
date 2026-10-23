@@ -4345,3 +4345,9 @@ a.btn {
 .nouveau-groupe__oeil:disabled {
   opacity: 0.5;
 }
+
+/* Supervision (SupervisionScreen.jsx) : une case par module, gros et simple. */
+.supervision__module {
+  min-height: 48px;
+  font-size: 17px;
+}

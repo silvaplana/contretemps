@@ -20,9 +20,12 @@ const LARGEUR_ONGLET = 64
 // messages non lus toutes conversations confondues, voir App.jsx :
 // compterNonLus). Objet plutôt qu'un simple nombre "messagerie" pour
 // rester générique si un jour un autre onglet en a besoin.
-export default function BottomNav({ active, onChange, profil, alertes = {} }) {
+//
+// `eteints` : les modules éteints dans l'école (spec/core.md §9 bis.3), dont
+// les onglets sont cachés.
+export default function BottomNav({ active, onChange, profil, eteints = new Set(), alertes = {} }) {
   // Un profil à plusieurs rôles voit l'union de leurs onglets (spec §3).
-  const visibles = TABS.filter((tab) => aUnDesRoles(profil, tab.roles))
+  const visibles = TABS.filter((tab) => aUnDesRoles(profil, tab.roles) && !eteints.has(tab.module))
   const navRef = useRef(null)
   const [place, setPlace] = useState(visibles.length)
   const [menuOuvert, setMenuOuvert] = useState(false)

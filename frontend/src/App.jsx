@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import * as authApi from './api/auth.js'
+import * as modulesApi from './api/modules.js'
 import * as apparenceApi from './api/apparence.js'
 import * as choregraphiesApi from './api/choregraphies.js'
 import * as comptesApi from './api/comptes.js'
@@ -322,6 +323,18 @@ function App() {
   // ici) : ce booléen ne fait que la déclencher, App.jsx étant le seul
   // ancêtre commun avec Header (qui porte le bouton).
   const [ecole, setEcole] = useState(ECOLE_VIDE)
+  // Modules de l'école (spec/core.md §9 bis.3) : l'onglet d'un module éteint
+  // est caché. Le Super User les allume ou les éteint dans Supervision.
+  const [modules, setModules] = useState([])
+  useEffect(() => {
+    if (!ecole.id) return
+    modulesApi.lister(ecole.id).then(setModules).catch(() => setModules([]))
+  }, [ecole.id])
+  const modulesEteints = new Set(modules.filter((m) => !m.enabled).map((m) => m.key))
+  useEffect(() => {
+    const eteint = (t) => modules.some((m) => m.key === t.module && !m.enabled)
+    if (TABS.some((t) => t.key === activeTab && eteint(t))) setActiveTab('profil')
+  }, [activeTab, modules])
   // L'assistant de toute l'appli : bouton dans l'en-tête, même conversation
   // dans tous les onglets (Seb, 16 octobre).
   const assistant = useAssistantGlobal(ecole.id, activeUser.id)
@@ -1155,7 +1168,9 @@ function App() {
           />
         )}
 
-        {activeTab === 'supervision' && isSuperuser(activeUser) && <SupervisionScreen />}
+        {activeTab === 'supervision' && isSuperuser(activeUser) && (
+          <SupervisionScreen ecole={ecole} modules={modules} onModulesChange={setModules} />
+        )}
 
         {/* Notes de frais (spec/modules/notes-de-frais.md) : écran hors
             barre du bas, ouvert depuis Profil ; Financier pour les
@@ -1191,6 +1206,7 @@ function App() {
         active={activeTab}
         onChange={setActiveTab}
         profil={activeUser}
+        eteints={modulesEteints}
         alertes={{ messagerie: totalNonLus }}
       />
     </div>

@@ -51,11 +51,11 @@ def _faire(db, compte, ecole, carte):
     return actions.execute(db, ecole["id"], compte.id, carte["jeton"])
 
 
-def test_outils_montres_selon_le_role():
-    assert [t["name"] for t in actions.tools(admin=False)] == [
+def test_outils_montres_selon_le_role(db_session, ecole):
+    assert [t["name"] for t in actions.tools(db_session, ecole["id"], admin=False)] == [
         "submit_expense_report", "produce_financial_report", "produce_general_assembly", "produce_forecast",
     ]
-    assert {"create_group_chat", "delete_course"} <= {t["name"] for t in actions.tools(admin=True)}
+    assert {"create_group_chat", "delete_course"} <= {t["name"] for t in actions.tools(db_session, ecole["id"], admin=True)}
 
 
 def test_groupe_cree_renomme_supprime(db_session, ecole):

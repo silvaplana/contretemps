@@ -48,7 +48,7 @@ def _faire(db, compte, ecole, carte):
 
 
 def test_outils_montres_a_tous_mais_reserves_aux_tresoriers(db_session, ecole):
-    noms = {t["name"] for t in actions.tools(admin=False)}
+    noms = {t["name"] for t in actions.tools(db_session, ecole["id"], admin=False)}
     assert {"produce_financial_report", "produce_general_assembly", "produce_forecast"} <= noms
     texte, carte = _proposer(db_session, ecole["admin"], ecole, "produce_financial_report", {})
     assert carte is None and "trésoriers" in texte

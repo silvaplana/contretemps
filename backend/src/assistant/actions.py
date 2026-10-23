@@ -40,19 +40,25 @@ class Action:
 
 
 class Actions:
-    def __init__(self, actions: list[Action]) -> None:
+    def __init__(self, actions: list[Action], hidden: Callable[[Session, int], set[str]] | None = None) -> None:
         self.by_name = {a.name: a for a in actions}
+        # (db, org_id) -> noms des actions cachées dans cette organisation :
+        # celles des modules qu'elle a éteints (spec/core.md §9 bis.3).
+        self.hidden = hidden or (lambda db, org_id: set())
         # jeton -> (org_id, person_id, ligne), en attente de « Faire ».
         self.pending: dict[str, tuple[int, int, Ligne]] = {}
 
-    def tools(self, admin: bool) -> list[dict]:
+    def tools(self, db: Session, org_id: int, admin: bool) -> list[dict]:
+        hidden = self.hidden(db, org_id)
         return [
             {"name": a.name, "description": a.description, "input_schema": a.params.model_json_schema()}
             for a in self.by_name.values()
-            if admin or not a.admin_only
+            if (admin or not a.admin_only) and a.name not in hidden
         ]
 
     def propose(self, db: Session, compte, org_id: int, person_id: int, name: str, args: dict) -> tuple[str, dict | None]:
+        if name in self.hidden(db, org_id):
+            return "Refusé : ce module n'est pas utilisé par l'école.", None
         action = self.by_name[name]
         params = action.params.model_validate(args)  # ValueError : renvoyée telle quelle à l'assistant
         try:

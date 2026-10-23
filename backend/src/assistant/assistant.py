@@ -583,7 +583,7 @@ class Assistant:
             })
             modele = modele if modele in MODELES else MODELE
             admin = compte is not None and self.donnees.perimetre(db, compte, member.org_id).tout
-            outils = outils_pour(admin) + self.actions.tools(admin)
+            outils = outils_pour(admin) + self.actions.tools(db, member.org_id, admin)
             cout = 0.0
             nb_appels, entree, sortie = 0, 0, 0
             deja_ecrit = False

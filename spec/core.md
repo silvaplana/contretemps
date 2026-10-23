@@ -373,11 +373,18 @@ User). Les onglets des modules se placent entre eux, dans l'ordre de la liste.
 La liste de l'appli dit ce que l'appli **sait** faire ; chaque organisation choisit ce qu'elle
 **utilise** (§3).
 
-- Une table du core, `org_modules` (organisation, module, date d'activation), dit quels
-  modules sont activés pour chaque organisation.
+- Une table du core, `org_modules` (organisation, module, allumé ou non, date du changement),
+  dit quels modules une organisation a éteints. **Pas de ligne = module allumé** : les écoles
+  existantes et les modules ajoutés plus tard sont allumés sans rien écrire. Code :
+  `backend/src/registry/` (`models.py`, `activation.py`, `receiver.py`).
 - Pour un module non activé dans une organisation, **pas d'onglet, pas d'action de
   l'assistant, et ses routes répondent « introuvable »** pour cette organisation. Le core le
   vérifie une fois pour toutes les routes du module, aucun module ne peut l'oublier.
+  Concrètement, au montage, le core retient à quel module appartient chaque route, et une
+  vérification branchée sur l'appli entière, juste après la session, répond « introuvable »
+  quand le module est éteint dans l'organisation de l'appelant. Elle ne s'applique ni aux
+  routes publiques (sans appelant) ni au Super User, qui n'appartient à aucune organisation ;
+  pour lui, l'écran cache quand même les onglets de l'organisation choisie.
 - **Désactiver n'efface rien** : les données restent, et réactiver retrouve tout. Effacer les
   données d'un module est une autre action, plus tard, avec sauvegarde avant.
 - On ne peut pas désactiver un module dont un autre module activé a besoin (`requires`), et
@@ -397,7 +404,9 @@ Chaque étape est une PR, sans rien changer à l'écran avant l'étape 3 :
    ouverts par `App.jsx`, à reprendre quand on le découpera.
 2. **Assistant** *(faite le 23 octobre 2026)* : l'appli lui remet les actions de la liste des modules au lieu de les
    assembler à la main (`actions_messagerie(...)`, `actions_cours(...)`…, assistant-ia.md §3).
-3. **Activation** : table `org_modules`, contrôle des routes, cases dans Supervision.
+3. **Activation** *(faite le 23 octobre 2026)* : table `org_modules`, contrôle des routes,
+   actions de l'assistant cachées, onglets cachés, cases dans Supervision (une par module, pour
+   l'organisation choisie ; un refus dit quel module en a besoin).
 
 ---
 

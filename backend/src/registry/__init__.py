@@ -53,12 +53,19 @@ def check(modules: list[Module]) -> None:
         vus.add(module.key)
 
 
-def actions(modules: list[Module], core: SimpleNamespace) -> list:
-    """Les actions de l'assistant de tous les modules, dans l'ordre de la liste."""
-    return [action for module in modules if module.actions for action in module.actions(core)]
+def actions(modules: list[Module], core: SimpleNamespace) -> dict[str, list]:
+    """Les actions de l'assistant de chaque module, dans l'ordre de la liste."""
+    return {module.key: module.actions(core) for module in modules if module.actions}
 
 
 def mount_all(app: FastAPI, modules: list[Module], core: SimpleNamespace) -> None:
+    """Monte les modules dans l'ordre et retient à quel module appartient
+    chaque route, pour répondre « introuvable » quand le module est éteint
+    dans l'organisation de l'appelant (activation.py)."""
     check(modules)
+    app.state.module_of_route = {}
     for module in modules:
+        avant = len(app.router.routes)
         module.mount(app, core)
+        for route in app.router.routes[avant:]:
+            app.state.module_of_route[id(route)] = module.key
