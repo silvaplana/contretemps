@@ -213,20 +213,20 @@ export default function AdminParametres({
         onMonRoleTresorier={onMonRoleTresorier}
       />
 
-      {/* `key` : recalculé quand la saison affichée change (spec §2.6). */}
-      <UsageVideoSection key={saisonConsultee?.id ?? 'courante'} ecoleId={ecole.id}
-        choregraphies={choregraphies}
-        cours={cours}
-        setChoregraphies={setChoregraphies}
-      />
-
-      {/* Dernier volet (demande du 2026-10-15) : apparence de l'appli et
-          adresse web de l'école (spec §2.7, §5.1.1). */}
+      {/* Avant « Usage des ressources & IA » (Seb, 24 octobre) : apparence de
+          l'appli, adresse web de l'école et modules (spec §2.7, §5.1.1). */}
       <PersonnalisationSection
         ecole={ecole}
         activeUser={activeUser}
         modules={modules}
         onModulesChange={onModulesChange}
+      />
+
+      {/* `key` : recalculé quand la saison affichée change (spec §2.6). */}
+      <UsageVideoSection key={saisonConsultee?.id ?? 'courante'} ecoleId={ecole.id}
+        choregraphies={choregraphies}
+        cours={cours}
+        setChoregraphies={setChoregraphies}
       />
     </div>
   )

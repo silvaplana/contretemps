@@ -801,8 +801,8 @@ est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande
   **"Supprimer définitivement"** ne soit utilisable.
 
 **Section "Personnalisation de l'application"** *(demande utilisateur du 2026-10-15,
-implémentée le même jour, **dernier volet d'Admin > École**, après « Usage des ressources & IA »
-(demande du 2026-10-15, à la place de « juste après Saison ») ; **maquette validée par l'utilisateur le 2026-10-15 :
+implémentée le même jour ; **depuis le 24 octobre 2026 (Seb), juste avant « Usage des ressources & IA »**,
+qui devient le dernier volet d'Admin > École) ; **maquette validée par l'utilisateur le 2026-10-15 :
 `spec/maquettes/personnalisation-ecole.html`**, à ouvrir dans un navigateur, tout y est
 cliquable)* : repliable comme "Saison", placée **juste après "Saison"**. *Depuis le 24 octobre
 2026 (Seb), elle a deux sous-parties repliables : « Apparence visuelle », tout ce qui suit, et
