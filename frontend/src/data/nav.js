@@ -8,7 +8,8 @@ import { MODULES } from '../app/modules.js'
 // Supervision, dans l'ordre de app/modules.js.
 export const TABS = [
   { key: 'admin', label: 'Admin', icon: 'admin', roles: ['admin'] },
-  ...MODULES.flatMap((module) => module.tabs),
+  // `module` : pour cacher l'onglet quand l'école a éteint le module (§9 bis.3).
+  ...MODULES.flatMap((module) => module.tabs.map((tab) => ({ ...tab, module: module.key }))),
   // Super User seulement (§2.5) : `superuser` n'est jamais ajouté aux autres
   // comptes, contrairement à admin/owner qu'IL reçoit en plus (voir
   // data/roles.js : rolesDe) — les autres ne voient donc jamais cet onglet.

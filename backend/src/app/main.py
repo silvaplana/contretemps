@@ -42,6 +42,9 @@ from notifications import Notifications, NotificationsReceiver
 from notes_frais_contretemps.module import DOSSIER_NOTES_FRAIS
 from profs.actions import actions as actions_profs
 import registry
+from registry.activation import disabled as modules_eteints
+from registry.activation import route_enabled
+from registry.receiver import ModulesReceiver
 from saisons.gestion import GestionSaisons
 from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
 from saisons.receiver import SaisonsReceiver
@@ -66,8 +69,12 @@ async def lifespan(app: FastAPI):
 
 # Session obligatoire sur TOUTES les routes (spec §2.2), sauf la courte
 # liste des routes publiques (voir comptes/rbac.py : ROUTES_PUBLIQUES).
+# Puis les routes d'un module éteint dans l'école de l'appelant répondent
+# « introuvable » (spec/core.md §9 bis.3, registry/activation.py).
 app = FastAPI(
-    title="Contretemps API", lifespan=lifespan, dependencies=[Depends(rbac.session_requise)]
+    title="Contretemps API",
+    lifespan=lifespan,
+    dependencies=[Depends(rbac.session_requise), Depends(route_enabled)],
 )
 # Saison affichée demandée par le navigateur (en-tête X-Saison-Id), voir
 # saisons/portee.py.
@@ -243,17 +250,28 @@ ecoles_receiver = EcolesReceiver(
     client=ecoles_client, export=ecole_export_client, comptes=comptes_client, app=app
 )
 
+# Modules allumés ou éteints par école (spec/core.md §9 bis.3) : lus par
+# l'appli pour ses onglets, changés par le Super User dans Supervision.
+modules_receiver = ModulesReceiver(modules=MODULES, app=app)
+
 # Actions ouvertes à l'assistant (spec/modules/assistant-ia.md §3) : celles
 # du socle de Contretemps, puis celles que chaque module déclare dans son
-# module.py (spec/core.md §9 bis), dans l'ordre de app/modules.py.
-assistant_client.actions = Actions([
-    *actions_ecoles(ecoles_client),
-    *actions_administrateurs(administrateurs_client),
-    *actions_eleves(eleves_client),
-    *actions_profs(profs_client),
-    *actions_cours(cours_receiver),
-    *registry.actions(MODULES, core),
-])
+# module.py (spec/core.md §9 bis), dans l'ordre de app/modules.py. Celles
+# d'un module éteint dans l'école sont cachées.
+actions_des_modules = registry.actions(MODULES, core)
+assistant_client.actions = Actions(
+    [
+        *actions_ecoles(ecoles_client),
+        *actions_administrateurs(administrateurs_client),
+        *actions_eleves(eleves_client),
+        *actions_profs(profs_client),
+        *actions_cours(cours_receiver),
+        *(action for liste in actions_des_modules.values() for action in liste),
+    ],
+    hidden=lambda db, org_id: {
+        action.name for cle in modules_eteints(db, org_id) for action in actions_des_modules.get(cle, [])
+    },
+)
 
 
 def main() -> None:
