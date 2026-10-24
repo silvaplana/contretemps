@@ -1034,7 +1034,8 @@ function App() {
         onSwitchProfil={switchProfil}
         onNavigate={setActiveTab}
         onLogout={logout}
-        assistant={assistant}
+        // Module Assistant éteint dans l'école (Fonctionnalités) : pas de bouton.
+        assistant={modulesEteints.has('assistant') ? null : assistant}
         menuExtra={
           lectureSeule
             ? undefined
@@ -1198,12 +1199,14 @@ function App() {
         )}
       </main>
 
-      <AssistantGlobal
-        etat={assistant}
-        onglet={activeTab}
-        onNavigate={setActiveTab}
-        admin={isAdmin(activeUser) || isSuperuser(activeUser)}
-      />
+      {!modulesEteints.has('assistant') && (
+        <AssistantGlobal
+          etat={assistant}
+          onglet={activeTab}
+          onNavigate={setActiveTab}
+          admin={isAdmin(activeUser) || isSuperuser(activeUser)}
+        />
+      )}
 
       <BottomNav
         active={activeTab}
