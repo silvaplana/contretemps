@@ -391,8 +391,11 @@ La liste de l'appli dit ce que l'appli **sait** faire ; chaque organisation choi
   activer un module active aussi ceux dont il a besoin.
 - **Par défaut, tous les modules de l'appli sont activés** : les écoles existantes ne voient
   aucun changement.
-- **Qui choisit** : le Super User, à la création de l'organisation et ensuite depuis
-  Supervision, avec une case par module. Plus tard, peut-être l'Administrateur principal.
+- **Où et qui** *(décision de Seb du 24 octobre 2026)* : dans Admin > École > Personnalisation
+  de l'application, qui a deux sous-parties, « Apparence visuelle » (le logo, les couleurs, les
+  polices et l'adresse d'avant) et « Fonctionnalités », avec une case par module. L'Administrateur
+  principal et le Super User cochent ou décochent ; les autres admins voient les cases sans pouvoir
+  les changer. Supervision redevient vide. À la création d'une organisation, tout est allumé.
 
 ### 9 bis.4 Étapes de code
 
@@ -405,8 +408,9 @@ Chaque étape est une PR, sans rien changer à l'écran avant l'étape 3 :
 2. **Assistant** *(faite le 23 octobre 2026)* : l'appli lui remet les actions de la liste des modules au lieu de les
    assembler à la main (`actions_messagerie(...)`, `actions_cours(...)`…, assistant-ia.md §3).
 3. **Activation** *(faite le 23 octobre 2026)* : table `org_modules`, contrôle des routes,
-   actions de l'assistant cachées, onglets cachés, cases dans Supervision (une par module, pour
-   l'organisation choisie ; un refus dit quel module en a besoin).
+   actions de l'assistant cachées, onglets cachés, une case par module (un refus dit quel module
+   en a besoin). Cases déplacées le 24 octobre de Supervision vers École > Personnalisation de
+   l'application > Fonctionnalités.
 
 ---
 

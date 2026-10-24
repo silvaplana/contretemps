@@ -324,7 +324,8 @@ function App() {
   // ancêtre commun avec Header (qui porte le bouton).
   const [ecole, setEcole] = useState(ECOLE_VIDE)
   // Modules de l'école (spec/core.md §9 bis.3) : l'onglet d'un module éteint
-  // est caché. Le Super User les allume ou les éteint dans Supervision.
+  // est caché. Ils s'allument ou s'éteignent dans Admin > École >
+  // Personnalisation de l'application > Fonctionnalités.
   const [modules, setModules] = useState([])
   useEffect(() => {
     if (!ecole.id) return
@@ -1096,6 +1097,8 @@ function App() {
             activeUser={activeUser}
             onSaisonCreee={surSaisonCreee}
             onSaisonSupprimee={surSaisonSupprimee}
+            modules={modules}
+            onModulesChange={setModules}
             onMonRoleTresorier={(oui) =>
               setCompteReel((u) => ({
                 ...u,
@@ -1169,7 +1172,7 @@ function App() {
         )}
 
         {activeTab === 'supervision' && isSuperuser(activeUser) && (
-          <SupervisionScreen ecole={ecole} modules={modules} onModulesChange={setModules} />
+          <SupervisionScreen />
         )}
 
         {/* Notes de frais (spec/modules/notes-de-frais.md) : écran hors

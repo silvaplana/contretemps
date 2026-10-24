@@ -4346,8 +4346,13 @@ a.btn {
   opacity: 0.5;
 }
 
-/* Supervision (SupervisionScreen.jsx) : une case par module, gros et simple. */
-.supervision__module {
+/* Sous-parties de « Personnalisation de l'application » (Admin > École) et
+   cases des modules (FonctionnalitesSection.jsx), gros et simple. */
+.perso__sous-partie {
+  margin-left: 16px;
+}
+
+.fonctionnalites__module {
   min-height: 48px;
   font-size: 17px;
 }

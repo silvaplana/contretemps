@@ -101,9 +101,13 @@ def test_les_routes_d_un_module_eteint_repondent_introuvable(client, db_session)
     db_session.expire_all()
     assert client.get(f"/conversations?ecole_id={ecole.id}", headers=entetes_session(prof)).status_code == 404
     assert client.get(f"/conversations?ecole_id={voisine.id}", headers=entetes_session(voisin)).status_code == 200
-    # La liste des modules reste lisible, et seul le Super User change un module.
+    # La liste des modules reste lisible ; seul l'Administrateur principal
+    # (ou le Super User) change un module, un admin ordinaire non.
     assert _etats(client, ecole.id, entetes_session(prof))["messaging"] is False
-    reponse = client.put(
-        f"/ecoles/{ecole.id}/modules/messaging", json={"enabled": True}, headers=entetes_session(prof)
-    )
-    assert reponse.status_code == 403
+    principal = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia")
+    admin = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="Roux", prenom="Ana")
+    for compte, attendu in ((prof, 403), (admin, 403), (principal, 200)):
+        reponse = client.put(
+            f"/ecoles/{ecole.id}/modules/messaging", json={"enabled": True}, headers=entetes_session(compte)
+        )
+        assert reponse.status_code == attendu

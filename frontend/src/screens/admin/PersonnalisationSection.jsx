@@ -6,6 +6,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { isOwner, isSuperuser } from '../../data/roles.js'
 import { DOMAINE_ECOLES, normaliserAdresse } from '../../utils/adresseEcole.js'
+import FonctionnalitesSection from './FonctionnalitesSection.jsx'
 
 const NOM_CONSEILLE = 12
 const LIBELLE_DETOURAGE = { aucun: 'Aucun', simple: 'Simple', ia: 'Par IA' }
@@ -16,8 +17,14 @@ const LIBELLE_DETOURAGE = { aucun: 'Aucun', simple: 'Simple', ia: 'Par IA' }
 // puis les champs. Tout admin peut tout modifier, sauf l'adresse web
 // (Owners). Rien n'est appliqué à l'appli avant « Enregistrer », sauf les
 // images, validées dans leur propre fenêtre.
-export default function PersonnalisationSection({ ecole, activeUser }) {
-  const [ouvert, setOuvert] = useState(false)
+//
+// Deux sous-parties (Seb, 24 octobre) : « Apparence visuelle » (tout ce qui
+// précède) et « Fonctionnalités » (les modules de l'école, voir
+// FonctionnalitesSection.jsx).
+export default function PersonnalisationSection({ ecole, activeUser, modules, onModulesChange }) {
+  const [chapitreOuvert, setChapitreOuvert] = useState(false)
+  const [fonctionnalitesOuvertes, setFonctionnalitesOuvertes] = useState(false)
+  const [ouvert, setOuvert] = useState(false) // Apparence visuelle
   const [enPlace, setEnPlace] = useState(null) // ce qui est enregistré
   const [champs, setChamps] = useState(null) // ce qui est en cours de saisie
   const [adresse, setAdresse] = useState('')
@@ -183,17 +190,31 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
         <button
           type="button"
           className="section-label__depliant"
-          aria-expanded={ouvert}
-          onClick={() => setOuvert((o) => !o)}
+          aria-expanded={chapitreOuvert}
+          onClick={() => setChapitreOuvert((o) => !o)}
         >
-          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
+          <Icon name={chapitreOuvert ? 'chevronDown' : 'chevronRight'} size={14} />
           Personnalisation de l’application
         </button>
       </h3>
 
-      {ouvert && !apercu && <p className="muted">{erreur || 'Chargement…'}</p>}
+      {chapitreOuvert && (
+        <h4 className="section-label perso__sous-partie">
+          <button
+            type="button"
+            className="section-label__depliant"
+            aria-expanded={ouvert}
+            onClick={() => setOuvert((o) => !o)}
+          >
+            <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
+            Apparence visuelle
+          </button>
+        </h4>
+      )}
 
-      {ouvert && apercu && (
+      {chapitreOuvert && ouvert && !apercu && <p className="muted">{erreur || 'Chargement…'}</p>}
+
+      {chapitreOuvert && ouvert && apercu && (
         <div className="perso">
           <p className="perso__legende">
             <strong>Aperçu de la page de connexion</strong> (se met à jour en direct)
@@ -505,6 +526,28 @@ export default function PersonnalisationSection({ ecole, activeUser }) {
           )}
           <p className="muted perso__aide">Sur iPhone, un nouveau logo ne s’affiche qu’après réinstallation de l’appli.</p>
         </div>
+      )}
+
+      {chapitreOuvert && (
+        <h4 className="section-label perso__sous-partie">
+          <button
+            type="button"
+            className="section-label__depliant"
+            aria-expanded={fonctionnalitesOuvertes}
+            onClick={() => setFonctionnalitesOuvertes((o) => !o)}
+          >
+            <Icon name={fonctionnalitesOuvertes ? 'chevronDown' : 'chevronRight'} size={14} />
+            Fonctionnalités
+          </button>
+        </h4>
+      )}
+      {chapitreOuvert && fonctionnalitesOuvertes && (
+        <FonctionnalitesSection
+          ecole={ecole}
+          activeUser={activeUser}
+          modules={modules}
+          onModulesChange={onModulesChange}
+        />
       )}
 
       {brouillon && (
