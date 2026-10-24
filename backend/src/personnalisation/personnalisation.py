@@ -40,7 +40,7 @@ DEFAUTS = {
 # Polices hébergées (frontend/public/fonts, licence SIL OFL) ; vide = système.
 # Vocabulaire (Seb, 24 octobre) : mot affiché par défaut, que l'école peut
 # remplacer (ecoles/models.py : mot_ecole...).
-MOTS = {"mot_ecole": "École", "mot_eleves": "Élèves", "mot_cours": "Cours"}
+MOTS = {"mot_ecole": "École", "mot_eleves": "Élèves", "mot_profs": "Profs", "mot_cours": "Cours"}
 # Le logo Contretemps dans l'historique des logos (voir historique).
 LOGO_DEFAUT = "defaut"
 POLICES = {"montserrat", "poppins", "prompt", "nunito", "josefin-sans", "playfair-display"}

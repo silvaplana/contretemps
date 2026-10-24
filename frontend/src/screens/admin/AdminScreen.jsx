@@ -54,13 +54,13 @@ export default function AdminScreen({
   // utilisateur). Compté sur `eleves`, la liste réellement chargée : le
   // nombre se remet donc à jour tout seul après un ajout, une
   // suppression ou un import, sans appel supplémentaire au serveur.
-  // Les mots École, Élèves et Cours sont ceux que l'école a choisis
+  // Les mots École, Élèves, Profs et Cours sont ceux que l'école a choisis
   // (Personnalisation de l'application > Vocabulaire).
-  const { motEcole, motEleves, motCours } = useApparence()
+  const { motEcole, motEleves, motProfs, motCours } = useApparence()
   const sousOnglets = useMemo(() => {
-    const mots = { ecole: motEcole, eleves: `${motEleves} (${eleves.length})`, cours: motCours }
+    const mots = { ecole: motEcole, eleves: `${motEleves} (${eleves.length})`, professeurs: motProfs, cours: motCours }
     return SUB_TABS.map((onglet) => (mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet))
-  }, [eleves.length, motEcole, motEleves, motCours])
+  }, [eleves.length, motEcole, motEleves, motProfs, motCours])
 
   return (
     <div className="screen screen--admin">

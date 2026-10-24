@@ -37,6 +37,7 @@ class PersonnalisationModification(BaseModel):
     police_slogan: str | None = None
     mot_ecole: str | None = None
     mot_eleves: str | None = None
+    mot_profs: str | None = None
     mot_cours: str | None = None
 
 
