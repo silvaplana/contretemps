@@ -20,8 +20,9 @@ const LIBELLE_DETOURAGE = { aucun: 'Aucun', simple: 'Simple', ia: 'Par IA' }
 // images, validées dans leur propre fenêtre.
 //
 // Trois sous-parties (Seb, 24 octobre) : « Apparence visuelle » (tout ce qui
-// précède), « Vocabulaire » (VocabulaireSection.jsx) et « Fonctionnalités »
-// (les modules de l'école, voir FonctionnalitesSection.jsx).
+// précède), « Fonctionnalités » (les modules de l'école, voir
+// FonctionnalitesSection.jsx) et, en dernier, « Vocabulaire »
+// (VocabulaireSection.jsx).
 export default function PersonnalisationSection({ ecole, activeUser, modules, onModulesChange }) {
   const [chapitreOuvert, setChapitreOuvert] = useState(false)
   const [vocabulaireOuvert, setVocabulaireOuvert] = useState(false)
@@ -535,21 +536,6 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
           <button
             type="button"
             className="section-label__depliant"
-            aria-expanded={vocabulaireOuvert}
-            onClick={() => setVocabulaireOuvert((o) => !o)}
-          >
-            <Icon name={vocabulaireOuvert ? 'chevronDown' : 'chevronRight'} size={14} />
-            Vocabulaire
-          </button>
-        </h4>
-      )}
-      {chapitreOuvert && vocabulaireOuvert && <VocabulaireSection ecole={ecole} />}
-
-      {chapitreOuvert && (
-        <h4 className="section-label perso__sous-partie">
-          <button
-            type="button"
-            className="section-label__depliant"
             aria-expanded={fonctionnalitesOuvertes}
             onClick={() => setFonctionnalitesOuvertes((o) => !o)}
           >
@@ -566,6 +552,21 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
           onModulesChange={onModulesChange}
         />
       )}
+
+      {chapitreOuvert && (
+        <h4 className="section-label perso__sous-partie">
+          <button
+            type="button"
+            className="section-label__depliant"
+            aria-expanded={vocabulaireOuvert}
+            onClick={() => setVocabulaireOuvert((o) => !o)}
+          >
+            <Icon name={vocabulaireOuvert ? 'chevronDown' : 'chevronRight'} size={14} />
+            Vocabulaire
+          </button>
+        </h4>
+      )}
+      {chapitreOuvert && vocabulaireOuvert && <VocabulaireSection ecole={ecole} />}
 
       {brouillon && (
         <ImageEnAttente

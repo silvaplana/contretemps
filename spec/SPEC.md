@@ -805,12 +805,12 @@ implémentée le même jour ; **depuis le 24 octobre 2026 (Seb), juste avant « 
 qui devient le dernier volet d'Admin > École) ; **maquette validée par l'utilisateur le 2026-10-15 :
 `spec/maquettes/personnalisation-ecole.html`**, à ouvrir dans un navigateur, tout y est
 cliquable)* : repliable comme "Saison", placée **juste après "Saison"**. *Depuis le 24 octobre
-2026 (Seb), elle a trois sous-parties repliables : « Apparence visuelle », tout ce qui suit ;
-« Vocabulaire », les mots que l'école affiche à la place de « École », « Élèves », « Profs » et « Cours »
+2026 (Seb), elle a trois sous-parties repliables, dans cet ordre : « Apparence visuelle », tout ce qui suit ;
+« Fonctionnalités », une case par module (`core.md` §9 bis.3) ; et en dernier « Vocabulaire »,
+les mots que l'école affiche à la place de « École », « Élèves », « Profs » et « Cours »
 (pour l'instant les noms des sous-onglets d'Admin ; sous chaque champ, où le mot s'affiche ;
 vide = le mot par défaut ; « Revenir à l'apparence par défaut » n'y touche pas ; modifiable par
-tout admin, comme l'apparence) ; et « Fonctionnalités », une case par module
-(`core.md` §9 bis.3).* Tout admin de l'école
+tout admin, comme l'apparence).* Tout admin de l'école
 peut la modifier, sauf l'adresse web (Owners, §2.7). **Par défaut, tous les champs sont remplis
 avec le logo, le nom, les couleurs et la police actuels de Contretemps** : une école qui ne
 touche à rien garde l'apparence d'aujourd'hui. Deux aperçus en direct, légendés, sont affichés
