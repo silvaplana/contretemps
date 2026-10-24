@@ -35,6 +35,9 @@ class PersonnalisationModification(BaseModel):
     police_titres: str | None = None
     police_nom: str | None = None
     police_slogan: str | None = None
+    mot_ecole: str | None = None
+    mot_eleves: str | None = None
+    mot_cours: str | None = None
 
 
 class AdresseModification(BaseModel):

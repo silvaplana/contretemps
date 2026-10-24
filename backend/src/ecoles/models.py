@@ -70,6 +70,11 @@ class Ecole(Base):
     # (voir personnalisation/adresse.py). L'ancienne redirige 6 mois.
     sous_domaine: Mapped[str] = mapped_column(String(40), nullable=False, unique=True)
     nom_appli: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Vocabulaire (Seb, 24 octobre) : les mots affichés à la place de
+    # « École », « Élèves » et « Cours ». Vide = ces mots-là.
+    mot_ecole: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    mot_eleves: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    mot_cours: Mapped[str | None] = mapped_column(String(30), nullable=True)
     ancien_sous_domaine: Mapped[str | None] = mapped_column(String(40), nullable=True, unique=True)
     ancien_sous_domaine_jusqu_au: Mapped[date | None] = mapped_column(Date, nullable=True)
     # Augmenté à chaque changement d'apparence : les adresses des icônes en
