@@ -377,8 +377,8 @@ La liste de l'appli dit ce que l'appli **sait** faire ; chaque organisation choi
   dit quels modules une organisation a éteints. **Pas de ligne = module allumé** : les écoles
   existantes et les modules ajoutés plus tard sont allumés sans rien écrire. Code :
   `backend/src/registry/` (`models.py`, `activation.py`, `receiver.py`).
-- Pour un module non activé dans une organisation, **pas d'onglet, pas d'action de
-  l'assistant, et ses routes répondent « introuvable »** pour cette organisation. Le core le
+- Pour un module non activé dans une organisation, **pas d'onglet (ni bouton de l'en-tête pour
+  l'Assistant), pas d'action de l'assistant, et ses routes répondent « introuvable »** pour cette organisation. Le core le
   vérifie une fois pour toutes les routes du module, aucun module ne peut l'oublier.
   Concrètement, au montage, le core retient à quel module appartient chaque route, et une
   vérification branchée sur l'appli entière, juste après la session, répond « introuvable »
