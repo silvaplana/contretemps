@@ -39,8 +39,8 @@ export async function modifier(ecoleId, champs) {
 }
 
 // Vocabulaire (Seb, 24 octobre) : vide = le mot par défaut.
-export async function modifierVocabulaire(ecoleId, { motEcole, motEleves, motCours }) {
-  const corps = { mot_ecole: motEcole, mot_eleves: motEleves, mot_cours: motCours }
+export async function modifierVocabulaire(ecoleId, { motEcole, motEleves, motProfs, motCours }) {
+  const corps = { mot_ecole: motEcole, mot_eleves: motEleves, mot_profs: motProfs, mot_cours: motCours }
   return versEcran(await requete(`/ecoles/${ecoleId}/personnalisation`, { method: 'PATCH', body: JSON.stringify(corps) }))
 }
 

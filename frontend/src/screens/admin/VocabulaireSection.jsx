@@ -6,12 +6,13 @@ import * as personnalisationApi from '../../api/personnalisation.js'
 const MOTS = [
   { cle: 'motEcole', defaut: 'École', ou: 'S’affiche dans Admin : le nom du premier sous-onglet.' },
   { cle: 'motEleves', defaut: 'Élèves', ou: 'S’affiche dans Admin : le nom du sous-onglet de la liste des élèves.' },
+  { cle: 'motProfs', defaut: 'Profs', ou: 'S’affiche dans Admin : le nom du sous-onglet des professeurs.' },
   { cle: 'motCours', defaut: 'Cours', ou: 'S’affiche dans Admin : le nom du sous-onglet des cours.' },
 ]
 
 // « Vocabulaire » (Admin > École > Personnalisation de l'application ; Seb,
-// 24 octobre) : les mots que l'école affiche à la place de École, Élèves et
-// Cours. Un champ vidé reprend le mot par défaut.
+// 24 octobre) : les mots que l'école affiche à la place de École, Élèves,
+// Profs et Cours. Un champ vidé reprend le mot par défaut.
 export default function VocabulaireSection({ ecole }) {
   const apparence = useApparence()
   const [mots, setMots] = useState(() => Object.fromEntries(MOTS.map((m) => [m.cle, apparence[m.cle]])))

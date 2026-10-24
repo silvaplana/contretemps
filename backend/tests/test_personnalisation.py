@@ -114,7 +114,9 @@ def test_vocabulaire(client, ecole):
     ceux-là par défaut, remis quand on vide le champ, gardés par « Revenir à
     l'apparence par défaut »."""
     vue = client.get(f"/ecoles/{ecole.id}/apparence").json()
-    assert (vue["mot_ecole"], vue["mot_eleves"], vue["mot_cours"]) == ("École", "Élèves", "Cours")
+    assert (vue["mot_ecole"], vue["mot_eleves"], vue["mot_profs"], vue["mot_cours"]) == (
+        "École", "Élèves", "Profs", "Cours"
+    )
     vue = client.patch(
         f"/ecoles/{ecole.id}/personnalisation", json={"mot_ecole": " Club ", "mot_eleves": "Adhérents"}
     ).json()
