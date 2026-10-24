@@ -109,6 +109,23 @@ def test_couleurs_police_et_refus(client, ecole):
     assert icone.getpixel((2, 2)) == (10, 27, 44)
 
 
+def test_vocabulaire(client, ecole):
+    """Mots affichés à la place de École, Élèves et Cours (Seb, 24 octobre) :
+    ceux-là par défaut, remis quand on vide le champ, gardés par « Revenir à
+    l'apparence par défaut »."""
+    vue = client.get(f"/ecoles/{ecole.id}/apparence").json()
+    assert (vue["mot_ecole"], vue["mot_eleves"], vue["mot_cours"]) == ("École", "Élèves", "Cours")
+    vue = client.patch(
+        f"/ecoles/{ecole.id}/personnalisation", json={"mot_ecole": " Club ", "mot_eleves": "Adhérents"}
+    ).json()
+    assert (vue["mot_ecole"], vue["mot_eleves"], vue["mot_cours"]) == ("Club", "Adhérents", "Cours")
+    assert client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"mot_cours": "x" * 31}).status_code == 400
+    client.post(f"/ecoles/{ecole.id}/personnalisation/defaut")
+    assert client.get(f"/ecoles/{ecole.id}/apparence").json()["mot_ecole"] == "Club"
+    vue = client.patch(f"/ecoles/{ecole.id}/personnalisation", json={"mot_ecole": ""}).json()
+    assert vue["mot_ecole"] == "École"
+
+
 def test_logo_envoye_detoure_puis_valide(client, ecole):
     envoi = client.post(
         f"/ecoles/{ecole.id}/personnalisation/images/logo",

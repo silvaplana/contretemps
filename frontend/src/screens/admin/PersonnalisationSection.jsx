@@ -7,6 +7,7 @@ import Modal from '../../components/Modal.jsx'
 import { isOwner, isSuperuser } from '../../data/roles.js'
 import { DOMAINE_ECOLES, normaliserAdresse } from '../../utils/adresseEcole.js'
 import FonctionnalitesSection from './FonctionnalitesSection.jsx'
+import VocabulaireSection from './VocabulaireSection.jsx'
 
 const NOM_CONSEILLE = 12
 const LIBELLE_DETOURAGE = { aucun: 'Aucun', simple: 'Simple', ia: 'Par IA' }
@@ -18,11 +19,12 @@ const LIBELLE_DETOURAGE = { aucun: 'Aucun', simple: 'Simple', ia: 'Par IA' }
 // (Owners). Rien n'est appliqué à l'appli avant « Enregistrer », sauf les
 // images, validées dans leur propre fenêtre.
 //
-// Deux sous-parties (Seb, 24 octobre) : « Apparence visuelle » (tout ce qui
-// précède) et « Fonctionnalités » (les modules de l'école, voir
-// FonctionnalitesSection.jsx).
+// Trois sous-parties (Seb, 24 octobre) : « Apparence visuelle » (tout ce qui
+// précède), « Vocabulaire » (VocabulaireSection.jsx) et « Fonctionnalités »
+// (les modules de l'école, voir FonctionnalitesSection.jsx).
 export default function PersonnalisationSection({ ecole, activeUser, modules, onModulesChange }) {
   const [chapitreOuvert, setChapitreOuvert] = useState(false)
+  const [vocabulaireOuvert, setVocabulaireOuvert] = useState(false)
   const [fonctionnalitesOuvertes, setFonctionnalitesOuvertes] = useState(false)
   const [ouvert, setOuvert] = useState(false) // Apparence visuelle
   const [enPlace, setEnPlace] = useState(null) // ce qui est enregistré
@@ -527,6 +529,21 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
           <p className="muted perso__aide">Sur iPhone, un nouveau logo ne s’affiche qu’après réinstallation de l’appli.</p>
         </div>
       )}
+
+      {chapitreOuvert && (
+        <h4 className="section-label perso__sous-partie">
+          <button
+            type="button"
+            className="section-label__depliant"
+            aria-expanded={vocabulaireOuvert}
+            onClick={() => setVocabulaireOuvert((o) => !o)}
+          >
+            <Icon name={vocabulaireOuvert ? 'chevronDown' : 'chevronRight'} size={14} />
+            Vocabulaire
+          </button>
+        </h4>
+      )}
+      {chapitreOuvert && vocabulaireOuvert && <VocabulaireSection ecole={ecole} />}
 
       {chapitreOuvert && (
         <h4 className="section-label perso__sous-partie">

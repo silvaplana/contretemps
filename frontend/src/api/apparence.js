@@ -57,6 +57,10 @@ export const DEFAUT = {
   version: 0,
   sousDomaine: null,
   adresse: null,
+  // Vocabulaire (Seb, 24 octobre) : mots que l'école peut remplacer.
+  motEcole: 'École',
+  motEleves: 'Élèves',
+  motCours: 'Cours',
 }
 
 export function versEcran(v) {
@@ -79,6 +83,9 @@ export function versEcran(v) {
     sousDomaine: v.sous_domaine,
     adresse: v.adresse,
     redirigeVers: v.redirige_vers ?? null,
+    motEcole: v.mot_ecole,
+    motEleves: v.mot_eleves,
+    motCours: v.mot_cours,
     detouragesDisponibles: v.detourages_disponibles,
   }
 }

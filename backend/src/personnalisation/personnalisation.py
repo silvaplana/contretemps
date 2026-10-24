@@ -38,6 +38,9 @@ DEFAUTS = {
     "couleur_accent": "#D8722A",
 }
 # Polices hébergées (frontend/public/fonts, licence SIL OFL) ; vide = système.
+# Vocabulaire (Seb, 24 octobre) : mot affiché par défaut, que l'école peut
+# remplacer (ecoles/models.py : mot_ecole...).
+MOTS = {"mot_ecole": "École", "mot_eleves": "Élèves", "mot_cours": "Cours"}
 # Le logo Contretemps dans l'historique des logos (voir historique).
 LOGO_DEFAUT = "defaut"
 POLICES = {"montserrat", "poppins", "prompt", "nunito", "josefin-sans", "playfair-display"}
@@ -125,6 +128,7 @@ class Personnalisation:
                 "couleur_texte": DEFAUTS["couleur_texte"], "couleur_accent": DEFAUTS["couleur_accent"],
                 "police": None, "police_titres": None, "police_nom": None, "police_slogan": None, "logo_personnalise": False, "nom_image": False, "version": 0,
                 "adresse": f"https://{GENERIQUE}.{DOMAINE_ECOLES}",
+                **MOTS,
             }
         return {
             "ecole_id": ecole.id,
@@ -144,6 +148,7 @@ class Personnalisation:
             "nom_image": bool(ecole.nom_image),
             "version": ecole.personnalisation_version or 1,
             "adresse": adresse_de_l_ecole(ecole),
+            **{cle: getattr(ecole, cle) or defaut for cle, defaut in MOTS.items()},
         }
 
     def ecole_du_host(self, db: Session, host: str | None) -> tuple[Ecole | None, bool]:
@@ -192,7 +197,7 @@ class Personnalisation:
                 champs[cle] = police
         if "nom_mode" in champs and champs["nom_mode"] not in ("texte", "image"):
             raise PersonnalisationRefusee("Le nom s'affiche en texte ou en image.")
-        for cle, longueur in (("slogan", 80), ("nom_appli", 30)):
+        for cle, longueur in (("slogan", 80), ("nom_appli", 30), *((cle, 30) for cle in MOTS)):
             if cle in champs:
                 valeur = (champs[cle] or "").strip()
                 if len(valeur) > longueur:

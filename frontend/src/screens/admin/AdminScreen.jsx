@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useApparence } from '../../api/apparence.js'
 import * as sessionApi from '../../api/session.js'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AdminCours from './AdminCours.jsx'
@@ -53,13 +54,13 @@ export default function AdminScreen({
   // utilisateur). Compté sur `eleves`, la liste réellement chargée : le
   // nombre se remet donc à jour tout seul après un ajout, une
   // suppression ou un import, sans appel supplémentaire au serveur.
-  const sousOnglets = useMemo(
-    () =>
-      SUB_TABS.map((onglet) =>
-        onglet.value === 'eleves' ? { ...onglet, label: `${onglet.label} (${eleves.length})` } : onglet,
-      ),
-    [eleves.length],
-  )
+  // Les mots École, Élèves et Cours sont ceux que l'école a choisis
+  // (Personnalisation de l'application > Vocabulaire).
+  const { motEcole, motEleves, motCours } = useApparence()
+  const sousOnglets = useMemo(() => {
+    const mots = { ecole: motEcole, eleves: `${motEleves} (${eleves.length})`, cours: motCours }
+    return SUB_TABS.map((onglet) => (mots[onglet.value] ? { ...onglet, label: mots[onglet.value] } : onglet))
+  }, [eleves.length, motEcole, motEleves, motCours])
 
   return (
     <div className="screen screen--admin">

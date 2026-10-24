@@ -4356,3 +4356,9 @@ a.btn {
   min-height: 48px;
   font-size: 17px;
 }
+
+/* Vocabulaire (VocabulaireSection.jsx) : où le mot s'affiche, sous son champ. */
+.vocabulaire__ou {
+  margin: 4px 0 0;
+  font-size: 17px;
+}
