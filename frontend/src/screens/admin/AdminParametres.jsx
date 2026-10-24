@@ -47,6 +47,8 @@ export default function AdminParametres({
   onSaisonCreee,
   onSaisonSupprimee,
   onMonRoleTresorier,
+  modules,
+  onModulesChange,
 }) {
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
   const [coordonneesOuvertes, setCoordonneesOuvertes] = useState(false)
@@ -220,7 +222,12 @@ export default function AdminParametres({
 
       {/* Dernier volet (demande du 2026-10-15) : apparence de l'appli et
           adresse web de l'école (spec §2.7, §5.1.1). */}
-      <PersonnalisationSection ecole={ecole} activeUser={activeUser} />
+      <PersonnalisationSection
+        ecole={ecole}
+        activeUser={activeUser}
+        modules={modules}
+        onModulesChange={onModulesChange}
+      />
     </div>
   )
 }

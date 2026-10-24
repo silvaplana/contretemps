@@ -37,6 +37,8 @@ export default function AdminScreen({
   onSaisonCreee,
   onSaisonSupprimee,
   onMonRoleTresorier,
+  modules,
+  onModulesChange,
 }) {
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [subTab, setSubTab] = useState(() => {
@@ -82,6 +84,8 @@ export default function AdminScreen({
           onSaisonCreee={onSaisonCreee}
           onSaisonSupprimee={onSaisonSupprimee}
           onMonRoleTresorier={onMonRoleTresorier}
+          modules={modules}
+          onModulesChange={onModulesChange}
         />
       )}
       {subTab === 'eleves' && (

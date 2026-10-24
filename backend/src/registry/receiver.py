@@ -1,6 +1,7 @@
 """Routes des modules d'une organisation (spec/core.md §9 bis.3) : la liste
-est lue par chaque membre (onglets à montrer) ; seul le Super User allume ou
-éteint un module, depuis Supervision."""
+est lue par chaque membre (onglets à montrer) ; l'Administrateur principal et
+le Super User allument ou éteignent un module (Admin > École >
+Personnalisation de l'application > Fonctionnalités)."""
 
 from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException
@@ -34,7 +35,7 @@ class ModulesReceiver:
         db: Session = Depends(get_db),
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        rbac.require_superuser(appelant)
+        rbac.require_owner(appelant, ecole_id)
         try:
             activation.set_enabled(db, ecole_id, self.modules, key, state.enabled)
         except LookupError:

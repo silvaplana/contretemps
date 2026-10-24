@@ -804,7 +804,9 @@ est « Saison » suivi du nom de la saison affichée, sans parenthèses (demande
 implémentée le même jour, **dernier volet d'Admin > École**, après « Usage des ressources & IA »
 (demande du 2026-10-15, à la place de « juste après Saison ») ; **maquette validée par l'utilisateur le 2026-10-15 :
 `spec/maquettes/personnalisation-ecole.html`**, à ouvrir dans un navigateur, tout y est
-cliquable)* : repliable comme "Saison", placée **juste après "Saison"**. Tout admin de l'école
+cliquable)* : repliable comme "Saison", placée **juste après "Saison"**. *Depuis le 24 octobre
+2026 (Seb), elle a deux sous-parties repliables : « Apparence visuelle », tout ce qui suit, et
+« Fonctionnalités », une case par module (`core.md` §9 bis.3).* Tout admin de l'école
 peut la modifier, sauf l'adresse web (Owners, §2.7). **Par défaut, tous les champs sont remplis
 avec le logo, le nom, les couleurs et la police actuels de Contretemps** : une école qui ne
 touche à rien garde l'apparence d'aujourd'hui. Deux aperçus en direct, légendés, sont affichés
