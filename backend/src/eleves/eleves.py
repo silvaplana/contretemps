@@ -10,7 +10,7 @@ import datetime as dt
 from choregraphies.models import choregraphies_eleves
 from comptes import Compte, Comptes, RegleRoles, roles
 from comptes.models import RoleCompte, separer_emails
-from cours.models import eleves_cours
+from groups import courses
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -107,7 +107,7 @@ class Eleves:
             raise RegleRoles("C'est le dernier administrateur principal de l'école : nommez-en d'abord un autre")
         for contact in self.contacts_de_leleve(db, eleve_id):
             db.delete(contact)
-        # Même ménage que CoursService.delete : `eleves_cours` et
+        # Même ménage que CoursService.delete : ses cours (groupes) et
         # `choregraphies_eleves` sont de simples tables de jointure, que
         # rien ne nettoie tout seul (SQLite tourne sans clés étrangères
         # actives). Sans ça, les inscriptions survivent à l'élève — vu en
@@ -115,7 +115,7 @@ class Eleves:
         # élève en hériterait en silence si SQLite réutilise son id (pas
         # de mot-clé AUTOINCREMENT). Présences et messages, eux, sont
         # volontairement conservés : c'est de l'historique.
-        db.execute(eleves_cours.delete().where(eleves_cours.c.eleve_id == eleve_id))
+        courses.leave_all(db, eleve_id)
         db.execute(
             choregraphies_eleves.delete().where(choregraphies_eleves.c.eleve_id == eleve_id)
         )

@@ -4,7 +4,8 @@ sont des tables de jointure, pas des listes stockées sur `cours`.
 
 from __future__ import annotations
 
-from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text
+from groups.models import GroupMember
+from sqlalchemy import Column, ForeignKey, Integer, String, Table, Text, select
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -15,15 +16,6 @@ cours_professeurs = Table(
     Base.metadata,
     Column("cours_id", ForeignKey("cours.id"), primary_key=True),
     Column("professeur_id", ForeignKey("comptes.id"), primary_key=True),
-)
-
-# Élèves inscrits à un cours — relation "large" (tous les inscrits), pas
-# forcément tous participants à une chorégraphie donnée (voir §6.7).
-eleves_cours = Table(
-    "eleves_cours",
-    Base.metadata,
-    Column("eleve_id", ForeignKey("comptes.id"), primary_key=True),
-    Column("cours_id", ForeignKey("cours.id"), primary_key=True),
 )
 
 
@@ -56,6 +48,9 @@ class Cours(Base):
     # max existant + 1, un nouveau cours va à la fin) — jamais fourni
     # par le formulaire de création, seulement modifiable a posteriori.
     ordre: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Le groupe du cours (spec/core.md §5.1, groups/courses.py) : ses élèves.
+    # Toujours rempli (créé avec le cours) ; nullable pour la migration.
+    group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id"), nullable=True, index=True)
 
     # Créneaux EN PLUS du créneau principal ci-dessus (jour/heure_debut/
     # heure_fin) — rare (voir spec/SPEC.md §6.5), ex. "Éveil" proposé le
@@ -78,3 +73,16 @@ class CoursHoraireSupplementaire(Base):
     jour: Mapped[str] = mapped_column(String(20), nullable=False)
     heure_debut: Mapped[str] = mapped_column(String(10), nullable=False)
     heure_fin: Mapped[str] = mapped_column(String(10), nullable=False)
+
+
+# Élèves inscrits à un cours — relation "large" (tous les inscrits), pas
+# forcément tous participants à une chorégraphie donnée (voir §6.7).
+# Depuis le 27/10/2026, ce sont les membres du groupe du cours
+# (groups/courses.py) ; cette vue garde les colonnes de l'ancienne table
+# `eleves_cours` (`eleve_id`, `cours_id`) pour la lecture. Écrire passe par
+# CoursService (inscrire_eleve, desinscrire_eleve).
+eleves_cours = (
+    select(GroupMember.member_id.label("eleve_id"), Cours.id.label("cours_id"))
+    .join(Cours, Cours.group_id == GroupMember.group_id)
+    .subquery("eleves_cours")
+)
