@@ -11,6 +11,7 @@ from __future__ import annotations
 from assistant.actions import Action
 from assistant.modifications import Ligne, Refus
 from comptes import Compte, rbac, roles
+from groups import board
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -58,7 +59,7 @@ def actions(client: Administrateurs) -> list[Action]:
         noms = {"admin": "administrateur", "treasurer": "trésorier", "main_admin": "administrateur principal"}
         changes = [f"devient {noms[k]}" if apres[k] else f"n'est plus {noms[k]}" for k in noms if apres[k] != avant[k]]
         bureau = None if p.bureau_functions is None else ordered_functions(p.bureau_functions)
-        if bureau is not None and bureau != (cible.bureau_functions or []):
+        if bureau is not None and bureau != board.functions_of(db, cible):
             if not apres["admin"]:
                 raise Refus("seul un administrateur a une fonction au bureau")
             libelles = ", ".join(BUREAU_LABELS[f] for f in bureau)

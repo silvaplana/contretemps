@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from comptes import Compte, RegleRoles, rbac, roles
 from fastapi import Depends, FastAPI, HTTPException
+from groups import board
 from sqlalchemy.orm import Session
 
 from db import get_db
@@ -18,7 +19,7 @@ from .administrateurs import Administrateurs
 from .schemas import AdministrateurCreation, AdministrateurModification, AdministrateurSortie
 
 
-def _sortie(compte: Compte) -> dict:
+def _sortie(db: Session, compte: Compte) -> dict:
     return {
         "id": compte.id,
         "nom": compte.nom,
@@ -27,7 +28,7 @@ def _sortie(compte: Compte) -> dict:
         "emails": compte.emails,
         "est_owner": roles.is_owner(compte),
         "est_tresorier": roles.is_tresorier(compte),
-        "bureau_functions": compte.bureau_functions or [],
+        "bureau_functions": board.functions_of(db, compte),
         "est_prof": roles.is_prof(compte),
         "est_eleve": roles.is_eleve(compte),
     }
@@ -90,7 +91,7 @@ class AdministrateursReceiver:
     # --- Routes ---
 
     def lister(self, ecole_id: int, db: Session = Depends(get_db)):
-        return [_sortie(c) for c in self.client.lister(db, ecole_id)]
+        return [_sortie(db, c) for c in self.client.lister(db, ecole_id)]
 
     def creer(self, ecole_id: int, donnees: AdministrateurCreation, db: Session = Depends(get_db)):
         try:
@@ -114,7 +115,7 @@ class AdministrateursReceiver:
             raise HTTPException(status_code=404, detail=str(erreur)) from erreur
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
-        return _sortie(compte)
+        return _sortie(db, compte)
 
     def modifier(
         self,
@@ -137,7 +138,7 @@ class AdministrateursReceiver:
             )
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
-        return _sortie(cible)
+        return _sortie(db, cible)
 
     def supprimer(
         self,

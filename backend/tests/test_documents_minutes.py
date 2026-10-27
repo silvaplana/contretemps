@@ -18,6 +18,7 @@ from test_documents_assembly import (  # noqa: F401 (fixture)
 
 from documents import assembly, minutes
 from ecoles.models import Ecole
+from groups import board
 
 pytestmark = pytest.mark.rbac_reel
 
@@ -38,8 +39,8 @@ def tenue(client, ecole, ag, mails, db_session):
     leon = lien(mails, "leon@exemple.fr")
     ima = next(g["id"] for g in client.get(f"/documents/public/links/{leon}").json()["assembly"]["candidates"] if g["name"] == "Ima Blanc")
     assert procuration(client, leon, ima).status_code == 201
-    ecole["admin"].bureau_functions = ["president"]
-    ecole["prof"].bureau_functions = ["secretary", "treasurer"]
+    board.set_functions(db_session, ecole["admin"], ["president"])
+    board.set_functions(db_session, ecole["prof"], ["secretary", "treasurer"])
     db_session.get(Ecole, ecole["id"]).email_contact = "contact@exemple.fr"
     db_session.commit()
     admin = ag["admin"]

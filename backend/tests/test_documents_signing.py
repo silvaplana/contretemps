@@ -24,6 +24,7 @@ from documents import signing
 from documents.app_sends import SIGN_ELSEWHERE
 from documents.models import DocSend, DocSignEvent, StoredFile
 from ecoles.models import Ecole
+from groups import board
 
 pytestmark = pytest.mark.rbac_reel
 
@@ -296,7 +297,7 @@ def a_signer(client, ecole, mails, db_session):
     Ima ont une adresse. Rend (Julia dans Docs, id du fichier)."""
     ecole["admin"].definir_emails("julia@exemple.fr")
     ecole["prof"].definir_emails("ima@exemple.fr")
-    ecole["admin"].bureau_functions = ["president"]
+    board.set_functions(db_session, ecole["admin"], ["president"])
     db_session.get(Ecole, ecole["id"]).email_contact = "contact@exemple.fr"
     db_session.commit()
     admin = Docs(client, ecole["id"], ecole["admin"])
@@ -664,7 +665,7 @@ def test_document_signe_word(client, ecole, mails, db_session, tmp_path):
     """Un Word : les signatures à la suite du texte, sur sa dernière page ;
     dans la case, la fonction, puis le nom, puis la signature."""
     ecole["admin"].definir_emails("julia@exemple.fr")
-    ecole["admin"].bureau_functions = ["president"]
+    board.set_functions(db_session, ecole["admin"], ["president"])
     db_session.commit()
     admin = Docs(client, ecole["id"], ecole["admin"])
     (tmp_path / "pv.html").write_text(HTML_WORD, encoding="utf-8")

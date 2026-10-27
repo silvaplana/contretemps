@@ -16,6 +16,7 @@ from comptes import roles as r
 from comptes.models import Compte, Famille, RoleCompte
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
+from groups import board
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -204,12 +205,13 @@ class GestionSaisons:
                 nom=ancien.nom,
                 prenom=ancien.prenom,
                 telephone=ancien.telephone,
-                bureau_functions=list(ancien.bureau_functions or []),
             )
             nouveau.definir_emails(ancien.emails)
             nouveau.roles = [RoleCompte(role=role) for role in roles]
             db.add(nouveau)
             db.flush()
+            if fonctions := board.functions_of(db, ancien):
+                board.set_functions(db, nouveau, fonctions)
             fiches[ancien.id] = nouveau.id
             if r.ELEVE in roles:
                 self._recopier_fiche_eleve(db, ancien.id, nouveau.id)
@@ -316,6 +318,9 @@ _SUPPRESSIONS = [
     "DELETE FROM inscriptions WHERE saison_id = :s",
     "DELETE FROM consommations_ia WHERE saison_id = :s",
     "DELETE FROM cours WHERE saison_id = :s",
+    f"DELETE FROM group_members WHERE member_id IN ({_COMPTES}) OR group_id IN (SELECT id FROM groups WHERE season_id = :s)",
+    "DELETE FROM groups WHERE season_id = :s AND parent_id IS NOT NULL",
+    "DELETE FROM groups WHERE season_id = :s",
     f"DELETE FROM roles_compte WHERE compte_id IN ({_COMPTES})",
     f"DELETE FROM profils_eleves WHERE compte_id IN ({_COMPTES})",
     f"DELETE FROM contacts_eleves WHERE eleve_id IN ({_COMPTES})",

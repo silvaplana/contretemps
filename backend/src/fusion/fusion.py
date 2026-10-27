@@ -32,6 +32,7 @@ LIENS_PAR_COMPTE = (
     ("presences_profs", "professeur_id", "seance_id"),
     ("message_deliveries", "destinataire_id", "message_id"),
     ("contacts_eleves", "eleve_id", "id"),
+    ("group_members", "member_id", "group_id"),
 )
 COLONNES_PAR_COMPTE = (
     ("videos", "uploaded_by"),

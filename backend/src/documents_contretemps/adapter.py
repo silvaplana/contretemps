@@ -282,11 +282,12 @@ class AssociationContretemps:
             return list(db.scalars(select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == saison)))
 
     def board(self, db: Session, org_id: int) -> list[BoardMember]:
-        from administrateurs.schemas import ordered_functions
+        from groups import board
 
+        fonctions = board.board(db, org_id, _saison_courante(db, org_id))
         gens = [
-            BoardMember(personne_id(db, c), nom_affiche(c), tuple(ordered_functions(c.bureau_functions or [])))
-            for c in self._courants(db, org_id) if c.bureau_functions
+            BoardMember(personne_id(db, c), nom_affiche(c), tuple(fonctions[c.id]))
+            for c in self._courants(db, org_id) if c.id in fonctions
         ]
         return sorted(gens, key=lambda b: b.name.lower())
 
