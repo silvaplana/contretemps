@@ -229,6 +229,7 @@ function EtatSeance({ s }) {
     )
   }
   if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
+  if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
   return (
     <>
       <span>
@@ -275,7 +276,7 @@ function Seances({ ecoleId, cours, version, rafraichir, montrer, onOpen }) {
               </span>
             ) : (
               <span className="sc-couverture sc-couverture--attente">
-                {s.status === 'uploading' ? 'La vidéo arrive…' : 'Découpe cette nuit'}
+                {s.status === 'uploading' ? 'La vidéo arrive…' : s.status === 'failed' ? 'Vidéo illisible' : 'Découpe cette nuit'}
               </span>
             )}
             <span className="sc-carte__info">

@@ -1,7 +1,7 @@
 """Logique du module session_clips (spec/modules/video-combats.md §6) :
 séances filmées, clips, noms des participants, file « À vérifier ».
 
-La découpe elle-même (repérer les Y et les X, couper, nommer) est faite par
+La découpe elle-même (repérer les poings levés et les X, couper, nommer) est faite par
 le worker de l'étape 2, qui range ses clips par `add_clip`.
 """
 
@@ -34,6 +34,7 @@ class SessionClips:
         # Une vidéo supprimée (d'ici ou du panneau « Usage vidéo ») emporte
         # son clip, ou détache la séance de sa vidéo brute.
         videos.quand_supprimee(self._video_deleted)
+        videos.rubrique("Sparring", self._video_ids)
 
     # --- Lecture ---
 
@@ -132,7 +133,7 @@ class SessionClips:
         if upload is None or upload.ecole_id != member.org_id:
             raise NotFoundError("Envoi introuvable")
         video = self.videos.finaliser(
-            db, upload_id, nom=f"Séance {title}".strip(), uploaded_by=member.person_id, deja_compresse=True
+            db, upload_id, nom=video_name(held_on, title, "vidéo entière"), uploaded_by=member.person_id, deja_compresse=True
         )
         session = db.scalar(select(ClipSession).where(ClipSession.raw_video_id == video.id))
         if session is None:  # sinon, double clic : la séance existe déjà
@@ -218,6 +219,13 @@ class SessionClips:
         if not member.is_coach:
             raise ForbiddenError("Réservé aux coachs")
 
+    @staticmethod
+    def _video_ids(db: Session) -> set[int]:
+        """Les vidéos du module : clips et vidéos entières des séances."""
+        return set(db.scalars(select(Clip.video_id))) | set(
+            db.scalars(select(ClipSession.raw_video_id).where(ClipSession.raw_video_id.is_not(None)))
+        )
+
     def _video_deleted(self, db: Session, video_id: int) -> None:
         clip_ids = list(db.scalars(select(Clip.id).where(Clip.video_id == video_id)))
         if clip_ids:
@@ -241,3 +249,10 @@ def clip_title(names: list[str | None], repeat: int = 1) -> str:
     else:
         title = f"{', '.join(shown[:-1])} et {shown[-1]}"
     return f"{title} {repeat}" if repeat > 1 else title
+
+
+def video_name(held_on: date, title: str, what: str) -> str:
+    """Nom d'une vidéo de la séance dans le module `videos`, lisible dans
+    « Usage des ressources » (Admin > École) : « Sparring · 23/10/2026 ·
+    Adultes · 19 h · combat 1 »."""
+    return " · ".join(part for part in ("Sparring", held_on.strftime("%d/%m/%Y"), title, what) if part)

@@ -4,7 +4,8 @@ place occupée.
 
 Module générique (voir models.py) : il ne connaît ni les cours ni les
 chorégraphies. Le métier qui rattache des vidéos à ses objets s'inscrit à
-`quand_supprimee` pour défaire ses liens quand une vidéo disparaît.
+`quand_supprimee` pour défaire ses liens quand une vidéo disparaît, et à
+`rubrique` pour que sa place soit détaillée dans « Usage des ressources ».
 """
 
 from __future__ import annotations
@@ -24,7 +25,7 @@ from .compression import compresser as compresser_fichier
 from .duree import duree_secondes
 from .models import Televersement, Video
 from .poster import generer_poster
-from .schemas import UsageVideosEcole, VideoUsage
+from .schemas import RubriqueUsage, UsageVideosEcole, VideoUsage
 from .stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, chemin_televersement, dossier_ecole
 
 # Une session abandonnée (fichier choisi puis onglet fermé sans "Ajouter"
@@ -46,6 +47,8 @@ DELAI_ENVOI_INTERROMPU = dt.timedelta(days=1)
 # envoi en cours, ni original gardé) : effacé s'il a plus d'un jour.
 DELAI_ORPHELIN = dt.timedelta(days=1)
 SUFFIXE_A_EFFACER = ".a-effacer"
+# Rubrique du panneau « Usage » des vidéos qu'aucun module ne réclame.
+AUTRES = "Autres vidéos"
 
 
 class DecalageInvalide(Exception):
@@ -63,12 +66,19 @@ class DecalageInvalide(Exception):
 class Videos:
     def __init__(self) -> None:
         self._a_la_suppression: list[Callable[[Session, int], None]] = []
+        self._rubriques: list[tuple[str, Callable[[Session], set[int]]]] = []
 
     def quand_supprimee(self, rappel: Callable[[Session, int], None]) -> None:
         """`rappel(db, video_id)` est appelé juste avant la suppression
         d'une vidéo, d'où qu'elle vienne (route, annulation d'un envoi) :
         le métier y défait ses propres liens."""
         self._a_la_suppression.append(rappel)
+
+    def rubrique(self, libelle: str, videos_de: Callable[[Session], set[int]]) -> None:
+        """Le panneau « Usage » range dans `libelle` (« Chorégraphies »,
+        « Sparring »…) les vidéos dont `videos_de(db)` donne les numéros ;
+        les autres vont dans « Autres vidéos »."""
+        self._rubriques.append((libelle, videos_de))
 
     def par_ids(self, db: Session, video_ids: list[int]) -> dict[int, Video]:
         if not video_ids:
@@ -430,12 +440,19 @@ class Videos:
         with toutes_saisons(db):
             toutes = self._tailles(self._videos_avec_fichier(db, ecole_id))
         mesurees = self._tailles(self._videos_avec_fichier(db, ecole_id))
+        rubrique_de = self._rubrique_par_video(db)
         lignes = [
             VideoUsage(
-                id=video.id, titre=video.nom, taille_octets=taille, duree_secondes=video.duree_secondes
+                id=video.id, titre=video.nom, taille_octets=taille, duree_secondes=video.duree_secondes,
+                rubrique=rubrique_de.get(video.id, AUTRES),
             )
             for video, taille in mesurees
         ]
+        rubriques: dict[str, RubriqueUsage] = {}
+        for ligne in lignes:
+            r = rubriques.setdefault(ligne.rubrique, RubriqueUsage(libelle=ligne.rubrique, octets=0, secondes=0))
+            r.octets += ligne.taille_octets
+            r.secondes += ligne.duree_secondes or 0
         lignes.sort(key=lambda ligne: ligne.taille_octets, reverse=True)
         return UsageVideosEcole(
             total_octets=sum(taille for _, taille in mesurees),
@@ -443,7 +460,15 @@ class Videos:
             total_toutes_saisons_octets=sum(taille for _, taille in toutes),
             total_toutes_saisons_secondes=sum(video.duree_secondes or 0 for video, _ in toutes),
             top_videos=lignes[:10],
+            rubriques=sorted(rubriques.values(), key=lambda r: r.octets, reverse=True),
         )
+
+    def _rubrique_par_video(self, db: Session) -> dict[int, str]:
+        resultat: dict[int, str] = {}
+        for libelle, videos_de in self._rubriques:
+            for video_id in videos_de(db):
+                resultat.setdefault(video_id, libelle)
+        return resultat
 
     def _videos_avec_fichier(self, db: Session, ecole_id: int) -> list[Video]:
         # La saison affichée filtre d'elle-même (voir saisons/portee.py).

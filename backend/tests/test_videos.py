@@ -134,7 +134,7 @@ def test_usage_ecole_sans_video(client, db_session):
     usage = client.get(f"/ecoles/{ecole.id}/videos/usage").json()
     assert usage == {
         "total_octets": 0, "total_secondes": 0, "total_toutes_saisons_octets": 0,
-        "total_toutes_saisons_secondes": 0, "top_videos": [],
+        "total_toutes_saisons_secondes": 0, "top_videos": [], "rubriques": [],
     }
 
 
