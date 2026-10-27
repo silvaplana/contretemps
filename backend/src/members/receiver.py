@@ -116,7 +116,10 @@ class MembersReceiver:
         return field
 
     def retirer(self, field_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
-        f.remove(self._champ(db, field_id, appelant))
+        try:
+            f.remove(self._champ(db, field_id, appelant))
+        except f.FieldError as erreur:
+            raise _erreur(erreur) from erreur
         db.commit()
         return Response(status_code=204)
 

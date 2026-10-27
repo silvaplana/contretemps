@@ -1,7 +1,8 @@
 // Les modules de l'appli Contretemps côté écran, dans l'ordre des onglets de
 // la barre du bas (spec/core.md §9 bis.2). Un module peut ne pas avoir
 // d'onglet (`tabs: []`) et porter des réglages (`settings` : composant
-// affiché sur sa ligne de Fonctionnalités). Les onglets du core (Admin,
+// affiché sur sa ligne de Fonctionnalités) et un bloc en tête de la fiche
+// d'un membre (`memberFields`, voir ChampsMembres.jsx). Les onglets du core (Admin,
 // Supervision, Profil) sont dans data/nav.js.
 import choregraphies from '../modules/choregraphies/module.js'
 import documents from '../modules/documents/module.js'

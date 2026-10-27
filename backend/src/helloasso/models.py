@@ -28,3 +28,21 @@ class OrgHelloAsso(Base):
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     last_test_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_test_ok: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+
+
+class SeasonHelloAsso(Base):
+    """La campagne HelloAsso d'une saison (spec/modules/helloasso.md §3) :
+    le formulaire dont les questions sont les champs de la fiche."""
+
+    __tablename__ = "season_helloasso"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False)
+    season_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, unique=True)
+    # Nature HelloAsso (`Membership`, `Event`...) et identifiant du formulaire.
+    form_type: Mapped[str] = mapped_column(String(30), nullable=False)
+    form_slug: Mapped[str] = mapped_column(String(255), nullable=False)
+    form_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    chosen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    # Étape 3 (synchronisation).
+    synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
