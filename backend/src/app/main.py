@@ -47,7 +47,6 @@ from registry.activation import route_enabled
 from registry.receiver import ModulesReceiver
 from saisons.gestion import GestionSaisons
 from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
-from saisons.receiver import SaisonsReceiver
 from profs import Profs, ProfsReceiver
 from fusion import Fusion, FusionReceiver
 from members.receiver import DOSSIER_MEMBRES, MembersReceiver
@@ -142,10 +141,9 @@ administrateurs_receiver = AdministrateursReceiver(client=administrateurs_client
 # Champs des membres (spec/core.md §4.3) : la fiche et ses réponses.
 members_receiver = MembersReceiver(app=app)
 
-# Saisons (Admin > École, spec §2.6) : lister, créer avec duplication,
-# éditer la saison courante.
+# Saisons (spec §2.6) : la création avec duplication, reliée plus bas aux
+# documents. Ses routes sont celles du module Saisons (saisons/module.py).
 gestion_saisons = GestionSaisons()
-saisons_receiver = SaisonsReceiver(client=gestion_saisons, app=app)
 
 # Monte les routes de connexion (/auth/...) - depend de ecoles et comptes.
 acces_client = Acces()

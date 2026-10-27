@@ -4,6 +4,7 @@
 import datetime as dt
 from pathlib import Path
 
+import pytest
 import sqlalchemy as sa
 from conftest import MOT_DE_PASSE, donner_mot_de_passe, entetes_session
 from alembic import command
@@ -273,6 +274,29 @@ def test_seul_un_admin_consulte_une_ancienne_saison(client, changement_de_saison
         f"/ecoles/{c['ecole'].id}", headers={**entetes_session(c["nouveau_prof"]), **ancienne}
     )
     assert prof.status_code == 403
+
+
+@pytest.mark.rbac_reel
+def test_module_saisons_eteint(client, changement_de_saison):
+    """spec/modules/saisons.md §2 : routes introuvables, en-tête ignoré."""
+    from app.modules import MODULES
+    from registry.activation import set_enabled
+
+    c = changement_de_saison
+    ecole = c["ecole"]
+    admin = entetes_session(c["nouvel_admin"])
+    ancienne = {"X-Saison-Id": str(c["ancienne"])}
+    assert client.get(f"/ecoles/{ecole.id}/saisons", headers=admin).status_code == 200
+    db = c["admin"]._sa_instance_state.session
+    for cle in ("registration", "finances", "seasons"):
+        set_enabled(db, ecole.id, MODULES, cle, False)
+    db.expire_all()
+    assert client.get(f"/ecoles/{ecole.id}/saisons", headers=admin).status_code == 404
+    # L'ancienne saison ne se consulte plus : on voit la courante.
+    reponse = client.get(f"/ecoles/{ecole.id}/administrateurs", headers={**admin, **ancienne})
+    assert [a["id"] for a in reponse.json()] == [c["nouvel_admin"].id]
+    prof = client.get("/cours", params={"ecole_id": ecole.id}, headers={**entetes_session(c["nouveau_prof"]), **ancienne})
+    assert prof.status_code == 200
 
 
 def test_les_familles_ne_traversent_pas_les_saisons(db_session, changement_de_saison):

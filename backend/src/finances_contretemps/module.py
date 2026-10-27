@@ -64,7 +64,7 @@ def mount(app, core) -> None:
 
 
 MODULE = Module(
-    key="finances", label="Financier", mount=mount,
+    key="finances", label="Financier", mount=mount, requires=("seasons",),
     rights=(Right(FINANCES_ACCESS, "Accès au Financier"),),
     actions=lambda core: actions(
         core.finances_reports, core.finances_assemblies, core.finances_forecasts,

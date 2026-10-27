@@ -25,7 +25,7 @@ Sans le module, il n'y a qu'une période, sans fin affichée : rien ne change po
 ## 2. Ce que le module Saisons apporte
 
 Déclaration `saisons/module.py` : `Module(key="seasons", label="Saisons", mount=mount)`, sans
-`requires`. Côté écran, `frontend/src/modules/saisons/module.js`.
+`requires`, en tête de `app/modules.py`. Pas de `module.js` côté écran : il n'a pas d'onglet.
 
 - Les routes de `saisons/receiver.py` : créer une saison (§3), renommer et changer les dates de la
   courante, supprimer une saison, lister les saisons.
@@ -34,9 +34,10 @@ Déclaration `saisons/module.py` : `Module(key="seasons", label="Saisons", mount
 - Le mot « saison » à l'écran (« Docs › Saison 2026-2027 », « cumul de la saison »…).
 
 **Module éteint** (règles du core, core.md §11.3) : routes de saison « introuvable », en-tête
-`X-Saison-Id` ignoré (`MiddlewareSaison`), section et bandeau cachés, le mot « saison » remplacé ou
-retiré. **Éteindre n'efface rien** : les anciennes saisons restent en base ; on travaille sur la
-dernière.
+`X-Saison-Id` ignoré (`comptes/rbac.py` vide la saison demandée de `portee.py`), section Saisons
+cachée, retour à la saison courante (le bandeau disparaît). **Éteindre n'efface rien** : les
+anciennes saisons restent en base ; on travaille sur la dernière. Le mot « saison » encore écrit
+ailleurs (Docs, Usage des ressources) : remplacé ou retiré au premier client sans saison.
 
 Modules qui en ont besoin, `requires=("seasons",)` : Inscriptions (tarifs et formulaire par saison)
 et Financier (Bilan, AG, Prévisionnel raisonnent par saison). Docs, module éteint : pas de dossier de
@@ -85,5 +86,5 @@ recopiés (ils se réinscrivent). L'organisation ne change que ce qu'elle veut.
 ## 4. Étapes de code (core.md §13, étape 6)
 
 a. **Module Saisons** : déclaration, routes et écrans derrière la case du module, `requires` de
-   Inscriptions et Financier, tests module éteint.
+   Inscriptions et Financier, tests module éteint *(faite le 27 octobre 2026)*.
 b. **Créer une saison en un écran** (§3), à la place du panneau actuel de `SaisonsSection.jsx`.

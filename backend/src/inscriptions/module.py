@@ -23,4 +23,5 @@ def mount(app, core) -> None:
     )
 
 
-MODULE = Module(key="registration", label="Inscription en ligne", mount=mount)
+# Tarifs et formulaire par saison (spec/modules/saisons.md §2).
+MODULE = Module(key="registration", label="Inscription en ligne", mount=mount, requires=("seasons",))

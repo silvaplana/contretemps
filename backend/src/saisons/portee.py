@@ -40,7 +40,10 @@ ENTETE_SAISON = "X-Saison-Id"
 # pour désactiver filtre et verrou.
 TOUTES_SAISONS = "toutes_saisons"
 
-_saison_demandee: ContextVar[int | None] = ContextVar("saison_demandee", default=None)
+# Une boîte {"id": ...} plutôt que l'id : comptes/rbac.py la vide quand le
+# module Saisons est éteint, depuis une dépendance qui tourne dans un autre
+# fil (un `set` n'en reviendrait pas, la boîte est partagée).
+_saison_demandee: ContextVar[dict | None] = ContextVar("saison_demandee", default=None)
 
 # Tables sans `saison_id` : (colonne, table parente) pour remonter jusqu'à
 # une table racine. Une table absente d'ici et sans `saison_id` n'est pas
@@ -77,7 +80,16 @@ class SaisonEnLectureSeule(Exception):
 
 
 def saison_demandee() -> int | None:
-    return _saison_demandee.get()
+    boite = _saison_demandee.get()
+    return boite["id"] if boite else None
+
+
+def ignorer_saison_demandee() -> None:
+    """La suite de la requête voit la saison courante (module Saisons
+    éteint : l'en-tête est ignoré)."""
+    boite = _saison_demandee.get()
+    if boite:
+        boite["id"] = None
 
 
 class MiddlewareSaison:
@@ -102,7 +114,7 @@ class MiddlewareSaison:
                     valeur = int(contenu.decode("latin-1"))
                 except ValueError:
                     valeur = None
-        jeton = _saison_demandee.set(valeur)
+        jeton = _saison_demandee.set({"id": valeur})
         try:
             await self.app(scope, receive, send)
         finally:
