@@ -144,3 +144,36 @@ def test_droits_et_etancheite(client, db_session, e):
 def test_module_eteint_routes_introuvables(client, db_session, e):
     set_enabled(db_session, e["ecole"].id, MODULES, "session_clips", False)
     assert client.get("/session-clips/mine", headers=e["h"]["seb"]).status_code == 404
+
+
+def test_filmer_un_combat(client, db_session, e):
+    """Le + : un combat filmé à la main, gardé puis nommé, va tout de suite
+    dans « Mes combats » ; les combats du jour sont rangés dans une séance."""
+    h = e["h"]["coach"]
+
+    def filmer(people):
+        upload = client.post(
+            f"/ecoles/{e['ecole'].id}/videos/televersements",
+            json={"extension": ".mp4", "octets_total": 100},
+            headers=h,
+        ).json()["id"]
+        return upload, client.post("/session-clips/fights", json={"upload_id": upload, "people": people}, headers=h)
+
+    seb, karim = e["seb"].id, e["karim"].id
+    upload, r = filmer([seb, karim])
+    assert r.status_code == 201, r.text
+    premier = r.json()
+    assert premier["title"] == "Seb R. contre Karim B." and not premier["to_check"]
+    # Double clic sur « C'est bon » : pas de second combat.
+    assert client.post("/session-clips/fights", json={"upload_id": upload, "people": [seb, karim]}, headers=h).json()["id"] == premier["id"]
+    second = filmer([karim, seb])[1].json()
+    assert second["session_id"] == premier["session_id"] and second["position"] == 2
+
+    seances = client.get("/session-clips/sessions", headers=h).json()
+    assert len(seances) == 1 and seances[0]["status"] == "ready" and seances[0]["clip_count"] == 2
+    mine = client.get("/session-clips/mine", headers=e["h"]["seb"]).json()
+    assert [c["title"] for c in mine] == ["Seb R. contre Karim B.", "Karim B. contre Seb R. 2"]
+
+    # Deux combattants différents, coach seulement.
+    assert filmer([seb, seb])[1].status_code == 400
+    assert client.post("/session-clips/fights", json={"upload_id": upload, "people": [seb, karim]}, headers=e["h"]["seb"]).status_code == 403

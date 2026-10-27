@@ -14,4 +14,4 @@ def mount(app, core) -> None:
     SessionClipsReceiver(client=core.session_clips_client, app=app, current_member=membre_appelant)
 
 
-MODULE = Module(key="session_clips", label="Sparring", mount=mount, requires=("videos",))
+MODULE = Module(key="session_clips", label="Fights", mount=mount, requires=("videos",))

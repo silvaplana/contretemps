@@ -1041,7 +1041,7 @@ function App() {
             : activeTab === 'financier'
               ? 'Financier'
             : activeTab === 'sparring'
-              ? 'Sparring'
+              ? 'Fights'
           : activeTab === 'supervision'
             ? 'Supervision'
             : activeTab === 'docs'

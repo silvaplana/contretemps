@@ -392,3 +392,54 @@
   font-weight: 700;
   cursor: pointer;
 }
+
+/* « Filmer un combat » (bouton +) */
+
+.sc-apercu {
+  width: 100%;
+  max-height: 60vh;
+  border-radius: 10px;
+  background: #000;
+}
+
+.sc-combattant {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+  font-size: 17px;
+}
+
+.sc-combattant__cote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.sc-combattant__saisie {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sc-combattant__saisie .field-input {
+  flex: 1;
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.sc-combattant__membre {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 17px;
+  text-align: left;
+}
+
+.sc-micro--ecoute {
+  color: var(--sc-rouge);
+}

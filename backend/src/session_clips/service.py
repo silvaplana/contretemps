@@ -34,7 +34,7 @@ class SessionClips:
         # Une vidéo supprimée (d'ici ou du panneau « Usage vidéo ») emporte
         # son clip, ou détache la séance de sa vidéo brute.
         videos.quand_supprimee(self._video_deleted)
-        videos.rubrique("Sparring", self._video_ids)
+        videos.rubrique("Fights", self._video_ids)
 
     # --- Lecture ---
 
@@ -145,6 +145,43 @@ class SessionClips:
             db.refresh(session)
         return session
 
+    def add_fight(self, db: Session, member: Member, upload_id: str, people: list[int]) -> Clip:
+        """« Filmer un combat » (bouton +) : un combat filmé à la main, gardé,
+        puis nommé. Il rejoint la séance du jour, sans vidéo entière ni
+        découpe, et part tout de suite dans « Mes combats » des combattants.
+        La vidéo est compressée par le worker du module Vidéos."""
+        self._require_coach(member)
+        if len(people) != 2 or people[0] == people[1]:
+            raise ValueError("Choisissez deux combattants différents")
+        known = {p.id for p in self.directory.people(db, member.org_id)}
+        if any(p not in known for p in people):
+            raise ValueError("Ce membre n'est pas de l'organisation")
+        upload = self.videos.obtenir_televersement(db, upload_id)
+        if upload is None or upload.ecole_id != member.org_id:
+            raise NotFoundError("Envoi introuvable")
+        if upload.video_id is not None:  # double clic : le combat existe déjà
+            clip = db.scalar(select(Clip).where(Clip.video_id == upload.video_id))
+            if clip is not None:
+                return clip
+        today = date.today()
+        session = db.scalar(
+            select(ClipSession).where(
+                ClipSession.org_id == member.org_id,
+                ClipSession.held_on == today,
+                ClipSession.raw_video_id.is_(None),
+                ClipSession.status == "ready",
+            )
+        )
+        if session is None:
+            session = ClipSession(org_id=member.org_id, held_on=today, status="ready", created_by=member.person_id)
+            db.add(session)
+            db.flush()
+        position = (db.scalar(select(func.max(Clip.position)).where(Clip.session_id == session.id)) or 0) + 1
+        video = self.videos.finaliser(
+            db, upload_id, nom=video_name(today, "", f"combat {position}"), uploaded_by=member.person_id
+        )
+        return self.add_clip(db, session.id, video.id, people)
+
     def add_clip(
         self,
         db: Session,
@@ -253,6 +290,6 @@ def clip_title(names: list[str | None], repeat: int = 1) -> str:
 
 def video_name(held_on: date, title: str, what: str) -> str:
     """Nom d'une vidéo de la séance dans le module `videos`, lisible dans
-    « Usage des ressources » (Admin > École) : « Sparring · 23/10/2026 ·
+    « Usage des ressources » (Admin > École) : « Fights · 23/10/2026 ·
     Adultes · 19 h · combat 1 »."""
-    return " · ".join(part for part in ("Sparring", held_on.strftime("%d/%m/%Y"), title, what) if part)
+    return " · ".join(part for part in ("Fights", held_on.strftime("%d/%m/%Y"), title, what) if part)

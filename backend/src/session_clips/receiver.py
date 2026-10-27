@@ -16,6 +16,7 @@ from .models import Clip, ClipSession
 from .ports import Member
 from .schemas import (
     ClipOut,
+    FightCreate,
     MeOut,
     ParticipantOut,
     ParticipantsUpdate,
@@ -65,6 +66,10 @@ class SessionClipsReceiver:
             coach(m)
             session = guard(lambda: client.create_session(s, m, body.upload_id, body.title.strip(), body.held_on))
             return self._sessions_out(s, m, [session])[0]
+
+        @app.post(f"{PREFIX}/fights", response_model=ClipOut, status_code=201)
+        def create_fight(body: FightCreate, m: Member = member, s: Session = db):
+            return self._clips_out(s, m, [guard(lambda: client.add_fight(s, m, body.upload_id, body.people))])[0]
 
         @app.get(f"{PREFIX}/sessions/{{session_id}}", response_model=SessionDetail)
         def get_session(session_id: int, m: Member = member, s: Session = db):

@@ -249,7 +249,9 @@ flèche ←.
 
 - **Un bouton de la barre du bas**, nommé **« Sparring »** dans un club de combat. Le nom à l'écran
   dépend de l'organisation. Dans le code, le module est générique (`session_clips`). Décision Seb du
-  27/10 : on garde « Sparring » partout tant qu'on fait la version combat ; en passant à la danse, le
+  27/10 : on garde « Sparring » partout tant qu'on fait la version combat ; puis (Seb, 27/10, 17 h) le
+  bouton, la case de Fonctionnalités, la rubrique d'Usage et le nom des vidéos disent **« Fights »**
+  (comme Fight Lab ; « Sparring » reste dans le code et ce document). En passant à la danse, le
   module deviendra « Clips vidéo » (Fonctionnalités, nom par défaut de l'onglet) et chaque école
   choisira le nom de l'onglet dans Personnalisation > Vocabulaire (« Sparring », « Passages »…).
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
@@ -287,8 +289,20 @@ Une carte ouverte est le **dossier de la séance** : en tête, « Présents reco
 « Seb R. contre Karim B. 2 », etc. Un combat sans poing levé s'appelle « Combat sans nom ». Un clip à vérifier
 porte la pastille « À vérifier ».
 
-Le bouton **+** en bas à droite envoie à la main la vidéo d'une séance filmée avec l'appareil photo
-(étape V1, avant l'enregistreur), par l'envoi par blocs du module `videos`.
+Le bouton **+** en bas à droite **filme un combat** à la main (Seb, 27/10), sans découpe :
+
+1. l'appareil photo du téléphone s'ouvre, le coach filme le combat et l'arrête ;
+2. « Garder ce combat ? » avec la vidéo : **Garder** ou **Jeter** (Annuler 10 s) ; un combat raté se
+   jette sans rien remplir ;
+3. seulement s'il est gardé, « Qui combattait ? » : Rouge et Bleu, chacun par les **premières lettres**
+   de son nom (chaque mot tapé commence un mot du nom) ou par la **voix** (micro, reconnaissance du
+   navigateur), puis un appui sur le bon membre ; **C'est bon**.
+
+L'envoi par blocs du module `videos` démarre dès le combat filmé ; la vidéo est compressée par son
+worker. Le combat rejoint la séance du jour (une carte « Mar. 27 oct. » sans cours), déjà validé : il
+part tout de suite dans « Mes combats » des deux combattants. L'envoi à la main de la vidéo d'une
+séance entière est retiré de l'écran (trop lourd, Seb 27/10) : la séance filmée en continu viendra
+avec l'enregistreur (étape 3) ; la route `POST /session-clips/sessions` et la découpe restent.
 
 **Le bouton caméra.** En haut à droite de Sparring, pour les coachs seulement (y compris sur
 « Mes combats » et « À vérifier ») : une pastille en couleur avec une caméra et un mot.
@@ -455,6 +469,9 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
    appris sur les postures (2 s → « poing levé », « poignée de main », « rien »), entraîné sur le
    VPS à partir d'une séance d'étalonnage de 5 minutes et des corrections des coachs ; YOLO reste
    tel quel pour repérer les corps.
+2 bis. **Filmer un combat** (bouton +, §6.3) : un combat filmé à la main, gardé ou jeté, puis
+   nommé ; route `POST /session-clips/fights` (`SessionClips.add_fight`). Remplace l'envoi à la main
+   d'une séance entière.
 3. **Enregistreur Kotlin** (§11), avec l'envoi par morceaux de 2 minutes et la découpe au fil de la
    séance (§4, §5), puis la pastille caméra.
 
