@@ -10,13 +10,25 @@ from __future__ import annotations
 
 from comptes import Compte, RegleRoles, rbac, roles
 from fastapi import Depends, FastAPI, HTTPException
-from groups import board
+from groups import board, custom
+from saisons import saison_courante_id
+from saisons.portee import saison_demandee
 from sqlalchemy.orm import Session
 
 from db import get_db
 
 from .administrateurs import Administrateurs
-from .schemas import AdministrateurCreation, AdministrateurModification, AdministrateurSortie
+from .schemas import (
+    AdministrateurCreation,
+    AdministrateurModification,
+    AdministrateurSortie,
+    GroupeCreation,
+    GroupeSortie,
+)
+
+# Ce que tout admin de l'école change, sur toutes les lignes, la sienne
+# comprise (spec/core.md §5.1) : les groupes qui ne donnent aucun droit.
+CHAMPS_GROUPES = {"bureau_functions", "prof", "groups"}
 
 
 def _sortie(db: Session, compte: Compte) -> dict:
@@ -29,9 +41,14 @@ def _sortie(db: Session, compte: Compte) -> dict:
         "est_owner": roles.is_owner(compte),
         "est_tresorier": roles.is_tresorier(compte),
         "bureau_functions": board.functions_of(db, compte),
+        "groups": custom.ids_of(db, compte),
         "est_prof": roles.is_prof(compte),
         "est_eleve": roles.is_eleve(compte),
     }
+
+
+def _saison(db: Session, ecole_id: int) -> int | None:
+    return saison_demandee() or saison_courante_id(db, ecole_id)
 
 
 def _est_superuser(appelant: Compte | None) -> bool:
@@ -57,6 +74,17 @@ class AdministrateursReceiver:
             status_code=201,
             dependencies=[Depends(self._owner_ecole)],
         )(self.creer)
+        self.app.get(
+            "/ecoles/{ecole_id}/groupes",
+            response_model=list[GroupeSortie],
+            dependencies=[Depends(self._admin_ecole)],
+        )(self.groupes)
+        self.app.post(
+            "/ecoles/{ecole_id}/groupes",
+            response_model=GroupeSortie,
+            status_code=201,
+            dependencies=[Depends(self._admin_ecole)],
+        )(self.creer_groupe)
         self.app.put("/administrateurs/{compte_id}", response_model=AdministrateurSortie)(
             self.modifier
         )
@@ -89,6 +117,18 @@ class AdministrateursReceiver:
         return cible
 
     # --- Routes ---
+
+    def groupes(self, ecole_id: int, db: Session = Depends(get_db)):
+        """Les groupes faits à la main de la saison affichée."""
+        return custom.groups(db, ecole_id, _saison(db, ecole_id))
+
+    def creer_groupe(self, ecole_id: int, donnees: GroupeCreation, db: Session = Depends(get_db)):
+        try:
+            groupe = custom.create(db, ecole_id, _saison(db, ecole_id), donnees.name)
+        except custom.GroupError as erreur:
+            raise HTTPException(status_code=409, detail=str(erreur)) from erreur
+        db.commit()
+        return groupe
 
     def lister(self, ecole_id: int, db: Session = Depends(get_db)):
         return [_sortie(db, c) for c in self.client.lister(db, ecole_id)]
@@ -125,16 +165,24 @@ class AdministrateursReceiver:
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
         champs = donnees.model_dump(exclude_unset=True)
-        # Sur sa propre ligne : la case Trésorier et les fonctions au bureau.
-        soi_meme_permis = bool(champs) and set(champs) <= {"tresorier", "bureau_functions"}
-        cible = self._cible_pour_owner(db, compte_id, appelant, soi_meme_permis=soi_meme_permis)
+        if champs and set(champs) <= CHAMPS_GROUPES:
+            cible = self.client.get(db, compte_id)
+            rbac.require_admin(appelant, cible.ecole_id if cible else None)
+            if cible is None:
+                raise HTTPException(status_code=404, detail="Administrateur introuvable")
+        else:
+            # Sur sa propre ligne : la case Accès au Financier et les groupes.
+            soi_meme_permis = bool(champs) and set(champs) <= CHAMPS_GROUPES | {"tresorier"}
+            cible = self._cible_pour_owner(db, compte_id, appelant, soi_meme_permis=soi_meme_permis)
         owner = champs.pop("owner", None)
         tresorier = champs.pop("tresorier", None)
         bureau = champs.pop("bureau_functions", None)
+        prof = champs.pop("prof", None)
+        groupes = champs.pop("groups", None)
         try:
             cible = self.client.modifier(
                 db, cible, champs=champs, owner=owner, tresorier=tresorier, bureau_functions=bureau,
-                par_superuser=_est_superuser(appelant),
+                prof=prof, groups=groupes, par_superuser=_est_superuser(appelant),
             )
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur

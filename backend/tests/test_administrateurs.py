@@ -338,8 +338,36 @@ def test_fonctions_du_bureau_controlees(client, ecole):
     assert client.put(url, json={"bureau_functions": []}, headers=entetes).json()["bureau_functions"] == []
 
 
-def test_un_simple_admin_ne_change_pas_le_bureau(client, ecole):
-    reponse = client.put(
-        f"/administrateurs/{ecole['owner'].id}", json={"bureau_functions": ["president"]}, headers=_en_tant_que(ecole["admin"])
-    )
-    assert reponse.status_code == 403
+def test_un_simple_admin_change_les_groupes_mais_pas_le_financier(client, ecole):
+    """Groupes (spec/core.md §5.1) : tout admin les change, sauf ceux qui
+    donnent un droit (🔒 Accès au Financier : administrateur principal)."""
+    url = f"/administrateurs/{ecole['owner'].id}"
+    entetes = _en_tant_que(ecole["admin"])
+    reponse = client.put(url, json={"bureau_functions": ["president"], "prof": True}, headers=entetes)
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["bureau_functions"] == ["president"] and reponse.json()["est_prof"] is True
+    assert client.put(url, json={"tresorier": True}, headers=entetes).status_code == 403
+    assert client.put(url, json={"bureau_functions": [], "tresorier": True}, headers=entetes).status_code == 403
+    assert client.put(url, json={"prof": True}, headers=_en_tant_que(ecole["owner_voisin"])).status_code == 403
+    assert client.put(url, json={"prof": True}, headers=_en_tant_que(ecole["prof"])).status_code == 403
+
+
+def test_groupes_faits_a_la_main(client, ecole):
+    ecole_id = ecole["ecole"].id
+    entetes = _en_tant_que(ecole["admin"])
+    benevoles = client.post(f"/ecoles/{ecole_id}/groupes", json={"name": "  Bénévoles "}, headers=entetes)
+    assert benevoles.status_code == 201, benevoles.text
+    assert benevoles.json()["name"] == "Bénévoles"
+    assert client.post(f"/ecoles/{ecole_id}/groupes", json={"name": "bénévoles"}, headers=entetes).status_code == 409
+    assert client.post(f"/ecoles/{ecole_id}/groupes", json={"name": " "}, headers=entetes).status_code == 409
+    assert client.post(f"/ecoles/{ecole_id}/groupes", json={"name": "X"}, headers=_en_tant_que(ecole["prof"])).status_code == 403
+    assert client.get(f"/ecoles/{ecole_id}/groupes", headers=entetes).json() == [benevoles.json()]
+
+    gid = benevoles.json()["id"]
+    reponse = client.put(f"/administrateurs/{ecole['admin'].id}", json={"groups": [gid]}, headers=entetes)
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["groups"] == [gid]
+    # Un groupe d'une autre école est refusé.
+    autre = client.post(f"/ecoles/{ecole['owner_voisin'].ecole_id}/groupes", json={"name": "Z"}, headers=_en_tant_que(ecole["owner_voisin"])).json()
+    assert client.put(f"/administrateurs/{ecole['admin'].id}", json={"groups": [autre["id"]]}, headers=entetes).status_code == 409
+    assert client.put(f"/administrateurs/{ecole['admin'].id}", json={"groups": []}, headers=entetes).json()["groups"] == []

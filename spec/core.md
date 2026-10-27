@@ -257,6 +257,14 @@ migration y reprend les profs. `comptes/roles.py` le présente toujours comme un
 Le groupe est recopié à la nouvelle saison (case « profs »), suit la fusion et la sauvegarde ; une
 ancienne sauvegarde avec des lignes « professeur » est convertie à la restauration.
 
+**Fait (27 octobre 2026, étape 1c)** : Admin > École > Administrateurs, colonne **Groupes** à la place des
+colonnes « Accès au Financier » et « Bureau » (les autres colonnes ne changent pas). Toucher la case ouvre
+la feuille : Bureau et ses fonctions, Profs, les groupes faits à la main, 🔒 Accès au Financier,
+« + Nouveau groupe… » ; chaque case s'enregistre tout de suite, Annuler 10 s. **Tout admin** change les
+groupes, sa ligne comprise ; 🔒 Accès au Financier reste à l'administrateur principal et au Super User
+(encore le rôle `tresorier`, étape 2). Groupes faits à la main (`groups/custom.py`) : nom unique dans la
+saison, recopiés avec leurs membres à la nouvelle saison ; pas encore de renommage ni de suppression.
+
 ---
 
 ## 6. Connexion
@@ -564,7 +572,7 @@ Déjà codés dans Contretemps :
    a. tables `groups` et `group_members`, Bureau en groupes, reprise de `bureau_functions`
       *(faite le 27 octobre 2026)* ;
    b. Profs en groupe, reprise du rôle Professeur *(faite le 27 octobre 2026)* ;
-   c. Admin > Administrateurs nouveau style (colonne Groupes, maquette).
+   c. Admin > Administrateurs nouveau style (colonne Groupes, maquette) *(faite le 27 octobre 2026)*.
 2. **Droits** : `Right` dans `module.py`, groupe « Accès au Financier », `has_right`, reprise de
    `is_tresorier`.
 3. **Cours = groupes** : `course_details`, messagerie, vidéos et présence sur les groupes.

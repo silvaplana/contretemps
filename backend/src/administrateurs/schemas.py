@@ -22,6 +22,8 @@ class AdministrateurSortie(BaseModel):
     # Trésorier (module notes de frais §6) : coché dans ce tableau seulement.
     est_tresorier: bool = False
     bureau_functions: list[str] = []
+    # Groupes faits à la main (groups/custom.py), par id.
+    groups: list[int] = []
     # Professeur-admin ou élève-admin : son nom/prénom/email se modifient
     # depuis Admin > Profs ou Admin > Élèves, pas depuis ce tableau (voir
     # administrateurs.py).
@@ -64,8 +66,21 @@ class AdministrateurModification(BaseModel):
     tresorier: bool | None = None
     # Remplace les fonctions au bureau ; absent : inchangées.
     bureau_functions: list[BureauFunction] | None = None
+    # Mettre dans le groupe Profs (True) ou l'en retirer (False) ; absent : inchangé.
+    prof: bool | None = None
+    # Remplace ses groupes faits à la main (ids) ; absent : inchangés.
+    groups: list[int] | None = None
 
     @field_validator("bureau_functions")
     @classmethod
     def _ordre(cls, v):
         return None if v is None else ordered_functions(v)
+
+
+class GroupeSortie(BaseModel):
+    id: int
+    name: str
+
+
+class GroupeCreation(BaseModel):
+    name: str
