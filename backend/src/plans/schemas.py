@@ -40,12 +40,16 @@ class AdjustmentIn(BaseModel):
     # Négatif = en moins ; centimes (« eur ») ou centièmes de % (« pct »).
     amount: int
     unit: Literal["eur", "pct"] = "eur"
-    mode: Literal["check", "code"] = "check"
+    mode: Literal["check", "code", "rule"] = "check"
     code: str | None = None
     shown: bool = False
     max_uses: int | None = Field(default=None, ge=1)
     until: dt.date | None = None
     quantity: int | None = Field(default=None, ge=1)
+    # Règle : le texte, ce que l'assistant a compris, le calcul (voir /regle).
+    rule: str | None = None
+    understood: str | None = None
+    calculation: str | None = None
     active: bool = True
     # Vide : toutes les formules.
     plan_ids: list[int] = []
@@ -65,9 +69,25 @@ class AdjustmentOut(BaseModel):
     max_uses: int | None
     until: dt.date | None
     quantity: int | None
+    rule: str | None
+    understood: str | None
+    calculation: str | None
     active: bool
     position: int
     plan_ids: list[int]
+
+
+class RuleIn(BaseModel):
+    rule: str = Field(min_length=1, max_length=1000)
+    # Les formules de l'option : la première sert à l'exemple (« prix »).
+    plan_ids: list[int] = []
+
+
+class RuleOut(BaseModel):
+    understood: str
+    # Vide : la règle demande une information que l'appli n'a pas.
+    calculation: str
+    example: str | None
 
 
 class Previous(BaseModel):

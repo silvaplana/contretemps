@@ -30,4 +30,6 @@ export const dupliquer = (id) => requete(`/tarifs/formules/${id}/dupliquer`, { m
 export const retirer = (id) => requete(`/tarifs/formules/${id}`, { method: 'DELETE' })
 export const creerOption = (ecoleId, option) => requete(`/ecoles/${ecoleId}/tarifs/options`, json('POST', option))
 export const modifierOption = (id, option) => requete(`/tarifs/options/${id}`, json('PUT', option))
+// « Faire comprendre la règle » → { understood, calculation, example }
+export const comprendre = (ecoleId, regle) => requete(`/ecoles/${ecoleId}/tarifs/regle`, json('POST', regle))
 export const retirerOption = (id) => requete(`/tarifs/options/${id}`, { method: 'DELETE' })

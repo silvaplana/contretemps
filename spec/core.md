@@ -533,7 +533,18 @@ d'une option (Nom, Comment l'obtenir : La personne coche / Avec un code, Montant
 € ou %, code en majuscules et unique dans la saison, Montrer dans le formulaire, Utilisations,
 Jusqu'au, Quantité limitée, Sur quelles formules, Proposée cette saison), Retirer avec Annuler 10 s.
 Créer une saison et « Reprendre ceux de… » les recopient, reliés aux copies des formules, date
-limite décalée d'un an. La Règle vient avec l'étape 7c ; pas encore appliquées à un membre.
+limite décalée d'un an. Pas encore appliquées à un membre.
+
+**Fait (étape 7c, 27 octobre 2026)** : « Comment l'obtenir » a sa troisième case, **Règle**. On écrit
+la règle, « Faire comprendre la règle » l'envoie à l'assistant (`plans/rules.py`, coût noté au poste
+« Tarifs : règles en français », compté dans le plafond mensuel de l'assistant), qui renvoie
+« Compris : … » et un calcul : une seule expression Python, montant en euros (négatif = en moins),
+vérifiée nœud par nœud avant d'être gardée et exécutée (nombres, + − × ÷, comparaisons, « si …
+sinon … », min, max, abs, round ; rien d'autre). Variables connues de la fiche : `prix` (la
+formule), `age` (au début de la saison), `annees_anciennete` (saisons d'avant où la personne était
+inscrite), `nb_famille`. L'appli calcule l'exemple sur un vrai membre de la saison. Colonnes `rule`,
+`understood`, `calculation` de `season_adjustments`. Pas encore appliquées au paiement (formulaire
+d'inscription à concevoir).
 
 ---
 
@@ -684,7 +695,7 @@ Déjà codés dans Contretemps :
 7. **Tarifs**, en trois PR :
    a. formules et échéances, Admin > École > Tarifs *(faite le 27 octobre 2026)* ;
    b. options et codes promo (à cocher, avec un code) *(faite le 27 octobre 2026)* ;
-   c. règles en français, comprises par l'assistant.
+   c. règles en français, comprises par l'assistant *(faite le 27 octobre 2026)*.
 8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
 9. Formulaire d'inscription de l'appli (à concevoir).
 
