@@ -20,22 +20,108 @@ par un cadreur et rangé au nom des deux combattants. Chaque membre retrouve ses
 - **Priorité au rendu naturel** : pas d'effet caméra de surveillance. La qualité d'image passe après.
 - **Module activable par organisation**, comme les autres modules.
 
-## 2. Déroulé d'une séance
+## 2. Acteurs, séance et cas d'utilisation
 
-Une séance demande quelques gestes simples, et aucune parole pendant les combats.
+### 2.1 Acteurs
 
-1. **Démarrer** : un admin ou un prof appuie sur « Démarrer la séance ». Le téléphone sur trépied
-   commence à filmer.
-2. **S'enregistrer** : chaque participant passe 2 secondes sur un repère au sol, face à la caméra, et
-   dit son prénom. Le logiciel mémorise sa tenue du jour. S'il change de t-shirt, il repasse.
-3. **Combattre** : dans la zone filmée, les deux combattants lèvent les bras en **Y** pendant
-   2 secondes, puis combattent.
-4. **Finir le combat** : les deux font un **X**, bras croisés au-dessus de la tête. À défaut, le
-   combat se termine quand la zone se vide.
-5. **Terminer la séance** : « Fin de séance ». La vidéo part sur le serveur dès qu'il y a du Wi-Fi,
-   et le traitement tourne la nuit.
-6. **Le lendemain** : chacun trouve ses clips dans « Mes combats ». Les clips incertains sont marqués
-   « à vérifier ».
+| Acteur | Qui | Ce qu'il fait |
+|---|---|---|
+| **Coach** | Un admin ou un prof de l'organisation, depuis sa PWA (Android ou iPhone) | Lance et termine la séance, corrige les clips |
+| **Combattant** | Un membre présent au cours | S'enregistre, signale le début et la fin de ses combats par des gestes |
+| **Membre** | Tout membre, depuis sa PWA | Regarde ses clips, donne ou retire son accord pour être filmé |
+| **Installateur** | Un admin, sur place | Fixe le téléphone, met l'enregistreur en attente, choisit le mode |
+| **Enregistreur** | Le téléphone fixé au mur et sa petite appli Android | Filme, envoie la vidéo, donne son état |
+| **Serveur** | Le backend et son worker de nuit | Reçoit la vidéo, la découpe en clips, les nomme et les range |
+
+### 2.2 Organisation d'une séance (mode connecté)
+
+| Moment | Acteur | Action | Réponse du système |
+|---|---|---|---|
+| Avant le cours | Coach | Ouvre « Vidéo » dans la PWA | Voyant de l'enregistreur : prêt, batterie, place restante |
+| Début du cours | Coach | Appuie sur « Démarrer la séance » | L'enregistreur filme ; la PWA affiche « Enregistrement en cours » |
+| Échauffement | Chaque combattant | Passe 2 s sur le repère au sol, face à la caméra, et dit son prénom | Rien à l'écran : l'enregistrement est repéré au traitement |
+| Avant un combat | Les deux combattants | Entrent dans la zone, font le Y pendant 2 s | Rien à l'écran : le début est repéré au traitement |
+| Fin d'un combat | Les deux combattants | Font le X, ou sortent de la zone | Rien à l'écran : la fin est repérée au traitement |
+| Changement de tenue | Le combattant | Repasse sur le repère | Sa nouvelle tenue remplace l'ancienne pour la suite |
+| Fin du cours | Coach | Appuie sur « Fin de séance » | L'enregistreur s'arrête, envoie la vidéo, puis se remet en attente |
+| La nuit | Serveur | Traite la vidéo | Clips créés, nommés, rangés ; vidéo brute supprimée après validation |
+| Le lendemain | Coach | Ouvre la file « à vérifier » | Corrige les noms inversés ou manquants |
+| Le lendemain | Membre | Ouvre « Mes combats » | Voit ses clips de la séance |
+
+En mode autonome, les lignes « Démarrer » et « Fin de séance » sont remplacées par les créneaux du
+planning, et l'envoi attend la sortie du mode avion (UC 3).
+
+### 2.3 Cas d'utilisation
+
+**UC 1 — Installer l'enregistreur** · Installateur
+
+1. Fixe le téléphone, le branche sur secteur, installe l'APK.
+2. Se connecte avec un compte admin et choisit l'organisation.
+3. Règle Samsung : batterie « Non restreinte », « Protéger la batterie ».
+4. Choisit le mode (connecté par défaut) et appuie sur « Mettre en attente ».
+5. La PWA des coachs affiche l'enregistreur comme prêt.
+
+Variante : après une coupure de courant, la PWA affiche « caméra hors service » ; un installateur
+rouvre l'enregistreur (étape 4).
+
+**UC 2 — Filmer une séance (mode connecté)** · Coach, Enregistreur
+
+1. Le coach appuie sur « Démarrer la séance ».
+2. Le serveur prévient l'enregistreur, qui filme et confirme.
+3. Le coach appuie sur « Fin de séance » ; l'enregistreur s'arrête et envoie la vidéo.
+
+Erreurs : enregistreur injoignable → la PWA le dit et propose de réessayer ; un coach oublie « Fin »
+→ arrêt automatique à la fin du créneau prévu, plus 30 min.
+
+**UC 3 — Filmer une séance (mode autonome)** · Installateur, Enregistreur
+
+1. Avant de passer en mode avion, l'installateur appuie sur « Passer en autonome » : l'enregistreur
+   récupère les créneaux des cours.
+2. Il filme seul pendant chaque créneau.
+3. À la sortie du mode avion, il envoie les vidéos en attente.
+
+Variante : démarrage et arrêt par un appui à l'écran.
+
+**UC 4 — S'enregistrer en début de séance** · Combattant
+
+1. Le combattant se place sur le repère, face à la caméra, 2 s, et dit son prénom.
+2. Au traitement, le prénom est relié à un membre et sa tenue est mémorisée.
+
+Erreurs : prénom inconnu ou ambigu → ses combats sont « à vérifier ».
+
+**UC 5 — Signaler un combat** · Combattants
+
+1. Les deux entrent dans la zone et font le Y 2 s.
+2. Ils combattent, puis font le X (ou quittent la zone).
+
+Variantes : un combat sans Y devient un « combat sans nom » ; un Y sans X se termine quand la zone
+se vide.
+
+**UC 6 — Traiter la séance** · Serveur
+
+1. Repère les enregistrements, les Y et les X.
+2. Identifie les deux combattants de chaque combat par leur tenue.
+3. Découpe, recadre, encode chaque clip en 720p, le range au nom des deux combattants.
+4. Écarte les combats d'un membre qui n'a pas donné son accord.
+
+**UC 7 — Vérifier et corriger les clips** · Coach
+
+1. Ouvre la file « à vérifier ».
+2. Pour chaque clip : valide, inverse les deux noms, choisit un nom manquant ou supprime le clip.
+
+**UC 8 — Regarder ses combats** · Membre
+
+1. Ouvre « Mes combats » : ses clips, du plus récent au plus ancien, avec l'adversaire et la date.
+2. Regarde un clip.
+
+**UC 9 — Donner ou retirer son accord** · Membre (ou parent pour un mineur)
+
+1. Coche ou décoche « J'accepte d'être filmé ».
+2. Sans accord, ses combats ne sont plus gardés ; le retrait supprime aussi ses clips existants.
+
+**UC 10 — Surveiller l'enregistreur** · Coach
+
+1. Voit à tout moment : prêt, en cours, hors service ; batterie ; place restante ; dernier envoi.
 
 ## 3. Installation et matériel *(sambo)*
 
