@@ -114,6 +114,8 @@ function versEcranUsage(u) {
       tailleOctets: v.taille_octets,
       dureeSecondes: v.duree_secondes,
     })),
+    // Place prise par module (Chorégraphies, Sparring…), saison affichée.
+    rubriques: (u.rubriques ?? []).map((r) => ({ libelle: r.libelle, octets: r.octets })),
   }
 }
 

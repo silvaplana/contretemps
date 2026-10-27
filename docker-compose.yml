@@ -88,6 +88,21 @@ services:
       - backend_data:/app/data
     command: ["python", "-u", "-m", "app.video_compression_worker"]
 
+  # Découpe des séances de Sparring en clips (spec/modules/video-combats.md
+  # §5 et §11) — image à part avec YOLO (backend/Dockerfile.sparring), même
+  # volume que "backend" pour lire la vidéo brute et ranger les clips.
+  # Travaille la nuit seulement (SPARRING_HOURS, « 0-6 » par défaut).
+  sparring-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.sparring
+    restart: unless-stopped
+    env_file:
+      - path: ./backend/.env
+        required: false
+    volumes:
+      - backend_data:/app/data
+
   frontend:
     build:
       context: ./frontend

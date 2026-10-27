@@ -24,6 +24,7 @@ class Choregraphies:
         self.videos = videos
         # Une vidéo supprimée (ou dont l'envoi est annulé) quitte sa chorégraphie.
         videos.quand_supprimee(self._detacher_video)
+        videos.rubrique("Chorégraphies", lambda db: set(db.scalars(select(choregraphies_videos.c.video_id))))
 
     # --- Lecture ---
 

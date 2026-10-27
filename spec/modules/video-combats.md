@@ -48,7 +48,7 @@ par un cadreur et rangé au nom des deux combattants. Chaque membre retrouve ses
 | Avant le cours | Coach | Ouvre Sparring et regarde le bouton caméra | Pastille verte « Prête » ; touchée, elle montre batterie et place restante |
 | Début du cours | Coach | Appuie sur « Démarrer la séance » | L'enregistreur filme ; la PWA affiche « Enregistrement en cours » |
 | Échauffement | Chaque combattant | Passe 2 s sur le repère au sol, face à la caméra, et dit son prénom | Rien à l'écran : l'enregistrement est repéré au traitement |
-| Avant un combat | Les deux combattants | Entrent dans la zone, font le Y pendant 2 s | Rien à l'écran : le début est repéré au traitement |
+| Avant un combat | Les deux combattants | Entrent dans la zone, lèvent le poing, bras plié, pendant 2 s | Rien à l'écran : le début est repéré au traitement |
 | Fin d'un combat | Les deux combattants | Se saluent (main serrée), sinon font le X, ou sortent de la zone | Rien à l'écran : la fin est repérée au traitement |
 | Changement de tenue | Le combattant | Repasse sur le repère | Sa nouvelle tenue remplace l'ancienne pour la suite |
 | Pendant le cours | Enregistreur, serveur | Envoie la vidéo par morceaux de 2 min ; le serveur découpe au fur et à mesure | Chaque clip arrive dans Sparring quelques minutes après la fin du combat |
@@ -100,15 +100,17 @@ Erreurs : prénom inconnu ou ambigu → ses combats sont « à vérifier ».
 
 **UC 5 — Signaler un combat** · Combattants
 
-1. Les deux entrent dans la zone et font le Y 2 s.
+1. Les deux entrent dans la zone et lèvent le poing 2 s : bras plié, coude au moins à hauteur d'épaule, poing au-dessus de
+   la tête (décision Seb du 27/10, à la place du Y, pas assez « combat » ; la garde, coudes sous les
+   épaules, ne déclenche rien).
 2. Ils combattent, puis se saluent (sinon font le X, ou quittent la zone).
 
-Variantes : un combat sans Y devient un « combat sans nom » ; un Y sans salut ni X se termine quand la
-zone se vide ou au Y suivant.
+Variantes : un combat sans poing levé devient un « combat sans nom » ; un poing levé sans salut ni X se termine quand la
+zone se vide ou au poing levé suivant.
 
 **UC 6 — Traiter la séance** · Serveur
 
-1. Repère les enregistrements, les Y et les X.
+1. Repère les enregistrements, les poings levés et les X.
 2. Identifie les deux combattants de chaque combat par leur tenue.
 3. Découpe, recadre, encode chaque clip en 720p, le range au nom des deux combattants.
 4. Écarte les combats d'un membre qui n'a pas donné son accord.
@@ -177,8 +179,16 @@ maintenir un build Android de toute l'appli pour une seule fonction.
   arrêt mais écrit des morceaux de 2 minutes collés bout à bout, sans trou (`MediaRecorder.setNextOutputFile`).
   Chaque morceau part dès qu'il est fini ; le téléphone ne fait que filmer et envoyer, il ne cherche
   pas les gestes (chaleur, batterie). On n'arrête pas la caméra à la fin d'un combat : le redémarrage
-  laisserait un trou où le Y suivant serait perdu. Il faut environ 10 Mbit/s en montant au club ;
+  laisserait un trou où le poing levé suivant serait perdu. Il faut environ 10 Mbit/s en montant au club ;
   sinon les morceaux attendent et partent plus tard.
+- **Signal « compris »** (demande Seb du 27/10) : au début et à la fin repérés d'un combat, le
+  téléphone bipe (un bip montant au début, deux bips descendants à la fin) et/ou allume sa lampe une
+  seconde ; choix « Bip / Lampe / Les deux » dans le panneau de la caméra de Sparring, envoyé à
+  l'enregistreur. Il faut donc que l'enregistreur reconnaisse lui-même le poing levé et la poignée de main,
+  avec le même détecteur que le VPS (YOLO pose exporté pour téléphone, TFLite, 5 images par seconde,
+  CameraX filme et analyse en même temps ; pas ML Kit, qui ne suit qu'une personne) ; le VPS garde la découpe, et le
+  bip enregistré l'aide à couper au bon endroit. Gestes gardés : poing levé au début, poignée de main à la
+  fin (le tape de gants arrive aussi en plein combat, l'accolade ressemble au corps-à-corps).
 - **État visible dans la PWA** : bouton caméra de Sparring (§6.3), avec batterie et place restante.
 - **Après une coupure ou un redémarrage**, quelqu'un rouvre l'enregistreur une fois ; la PWA affiche
   « caméra hors service » en attendant.
@@ -203,10 +213,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
 1. **Enregistrements** : il repère les passages sur le repère au sol, transcrit le prénom dit et le
    relie au bon membre. Il en tire une « empreinte » de tenue : couleurs du t-shirt et du short,
    silhouette.
-2. **Signaux** : la détection de posture repère les Y tenus 2 secondes par deux personnes dans la zone
+2. **Signaux** : la détection de posture repère les poings levés tenus 2 secondes par deux personnes dans la zone
    (début), et pour la fin le salut (deux personnes debout, face à face, immobiles, mains jointes
    environ 1 s ; décision Seb 27/10 : geste déjà habituel) ou, en secours, le X. Le combat se termine
-   aussi si la zone se vide quelques secondes ou au Y suivant. Un combat repéré sans Y
+   aussi si la zone se vide quelques secondes ou au poing levé suivant. Un combat repéré sans poing levé
    devient un « combat sans nom ».
 3. **Identification** : il suit chaque personne image par image, et compare les deux combattants aux
    empreintes du jour. Si la confiance est faible, comme avec deux t-shirts noirs unis, le clip est
@@ -222,7 +232,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
     - un masquage de plus de 5 secondes peut être coupé du clip.
 
 **Plus de deux personnes.** La détection de posture voit tout le monde : le clip garde tous ceux qui
-tiennent le Y ensemble (1 à n) ; le cadre les englobe tous ; à plus de deux, le combat se termine quand
+lèvent le poing ensemble (1 à n) ; le cadre les englobe tous ; à plus de deux, le combat se termine quand
 la majorité fait le X, ou quand la zone se vide. Pour le combat, on met au point le cas à deux.
 
 Le clip est ensuite encodé en 720p et rangé comme une vidéo du module `videos`. La vidéo brute est
@@ -238,7 +248,10 @@ flèche ←.
 ### 6.1 Place dans l'appli et nom
 
 - **Un bouton de la barre du bas**, nommé **« Sparring »** dans un club de combat. Le nom à l'écran
-  dépend de l'organisation ; le nom générique du module est proposé : « Clips de séance » (§10).
+  dépend de l'organisation. Dans le code, le module est générique (`session_clips`). Décision Seb du
+  27/10 : on garde « Sparring » partout tant qu'on fait la version combat ; en passant à la danse, le
+  module deviendra « Clips vidéo » (Fonctionnalités, nom par défaut de l'onglet) et chaque école
+  choisira le nom de l'onglet dans Personnalisation > Vocabulaire (« Sparring », « Passages »…).
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
@@ -271,7 +284,7 @@ flèche ←.
 Une carte ouverte est le **dossier de la séance** : en tête, « Présents reconnus : Seb R., Karim B.… »
 (ceux passés sur le repère au sol), puis ses clips dans l'ordre. Chaque clip s'appelle
 **« Seb R. contre Karim B. »** ; si la même paire combat encore dans la séance, le suivant s'appelle
-« Seb R. contre Karim B. 2 », etc. Un combat sans Y s'appelle « Combat sans nom ». Un clip à vérifier
+« Seb R. contre Karim B. 2 », etc. Un combat sans poing levé s'appelle « Combat sans nom ». Un clip à vérifier
 porte la pastille « À vérifier ».
 
 Le bouton **+** en bas à droite envoie à la main la vidéo d'une séance filmée avec l'appareil photo
@@ -306,7 +319,7 @@ Les clips dont l'appli n'est pas sûre, **un par un**, en gros :
 - « 1 sur 3 · Jeu. 23 oct. · combat 2 » ;
 - la vidéo, avec les marques **R** (rouge) et **B** (bleu) au-dessus des deux combattants ;
 - la raison en clair, sur fond jaune : « Deux t-shirts noirs unis : tenues trop proches. »,
-  « Combattants emmêlés au sol : les noms ont pu s'inverser. », « Pas de Y au début : personne n'a été
+  « Combattants emmêlés au sol : les noms ont pu s'inverser. », « Pas de poing levé au début : personne n'a été
   reconnu. » ;
 - deux lignes « ● Rouge Karim B. › » et « ● Bleu Malik A. › » ; toucher une ligne ouvre la liste des
   présents de la séance, plus « Un autre membre… » ; un nom manquant s'affiche « Choisir… » en rouge ;
@@ -336,7 +349,8 @@ couleurs ne servent qu'à deux.
 Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).
 
 - **Place disque** : un clip s'efface seul après quelques jours (7 proposé, réglable), sauf ceux qu'on
-  coche « Garder » ; chacun peut garder un nombre limité de clips. Le téléchargement (§6.5), lui, est
+  coche « Garder » ; chacun peut garder un nombre limité de clips (quota par élève ; décision Seb du
+  27/10 : un combat à deux compte pour moitié à chacun, à n pour 1/n). Le téléchargement (§6.5), lui, est
   là dès le début.
 - **Docs** (Seb, 27 octobre) : les mêmes vidéos se voient aussi dans Docs, dans l'espace de la saison :
   un dossier **Sparring**, avec un sous-dossier par séance (« Jeu. 23 oct. · Adultes ») et ses clips
@@ -396,7 +410,7 @@ Tout est open source et tourne sur le VPS. Aucune API payante.
 | Extraire le son, découper, encoder | ffmpeg |
 | Transcrire les prénoms | faster-whisper (local, français) |
 | Relier un prénom à un membre | rapidfuzz |
-| Détecter les personnes et les postures (Y, X) | Ultralytics YOLO, version pose (licence AGPL : OK en interne, à revoir si on distribue) |
+| Détecter les personnes et les postures (poing levé, X) | Ultralytics YOLO, version pose (licence AGPL : OK en interne, à revoir si on distribue) |
 | Suivre les personnes | ByteTrack, intégré à YOLO |
 | Empreinte de tenue | Modèle de ré-identification (OSNet) et histogrammes de couleur OpenCV |
 | Trajectoire du cadre | NumPy, SciPy |
@@ -413,8 +427,8 @@ Le code suit les conventions du dépôt : `backend/src/session_clips/` et
 Chaque étape est utilisable seule. On s'arrête dès qu'une étape ne vaut plus l'effort.
 
 1. **V0, vidéo de test** : 5 à 10 minutes au S24, depuis l'emplacement prévu, avec un ou deux combats,
-   des Y et des X. Sans elle, on code à l'aveugle.
-2. **V1, clips en plan fixe** : envoi via le module `videos`, détection des Y et des X, découpe, noms
+   des poings levés et des X. Sans elle, on code à l'aveugle.
+2. **V1, clips en plan fixe** : envoi via le module `videos`, détection des poings levés et des X, découpe, noms
    choisis dans l'appli. *Facile.*
 3. **V2, recadrage** : le cadre virtuel lissé. *Moyen, il faudra régler avec de vraies vidéos.*
 4. **V3, noms automatiques** : enregistrement en début de séance et ré-identification par la tenue,
@@ -429,8 +443,18 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
    barre de progression du module `videos`). La séance attend la découpe (« Découpe cette nuit »).
    Pas encore : la pastille caméra et son panneau (rien à piloter avant l'étape 3), le dossier
    Sparring dans Docs, l'effacement automatique.
-2. **Découpe** : conteneur à part `sparring-worker` (§11), qui range ses clips par
-   `SessionClips.add_clip` puis passe la séance à `ready`.
+2. **Découpe (codée, réglages à faire sur la vidéo de test)** : conteneur à part `sparring-worker`
+   (§11). La nuit, il lit chaque séance arrivée à 5 images par seconde avec YOLO pose
+   (`session_clips/detector.py`), repère les gestes (`signals.py`) et les combats (`fights.py`),
+   coupe chaque combat en 720p (`cutting.py`), le range par `SessionClips.add_clip` puis passe la
+   séance à `ready`. Les noms ne sont pas encore reconnus (V3) : chaque clip arrive dans
+   « À vérifier » avec « Choisissez les noms des combattants. ». Combat ignoré s'il dure moins de
+   10 s. Une vidéo illisible passe la séance à `failed` (« Découpe impossible »). Pas encore : les
+   combats sans poing levé, la zone filmée (toute l'image compte pour l'instant).
+   Plus tard, si les règles des gestes se trompent trop (proposé à Seb le 27/10) : un petit modèle
+   appris sur les postures (2 s → « poing levé », « poignée de main », « rien »), entraîné sur le
+   VPS à partir d'une séance d'étalonnage de 5 minutes et des corrections des coachs ; YOLO reste
+   tel quel pour repérer les corps.
 3. **Enregistreur Kotlin** (§11), avec l'envoi par morceaux de 2 minutes et la découpe au fil de la
    séance (§4, §5), puis la pastille caméra.
 
@@ -452,7 +476,7 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
 - Combien de jours garde-t-on un clip non gardé (7 proposé), et combien de clips chacun peut-il garder (§6.6) ?
 - Un membre peut-il voir les combats des autres ? Proposé : non, seulement les siens ; les coachs voient tout.
 - Où recueillir le consentement au droit à l'image : à l'adhésion HelloAsso ou dans l'appli ?
-- Les combats sans Y doivent-ils être gardés, ou ignorés ?
+- Les combats sans poing levé doivent-ils être gardés, ou ignorés ?
 - Nom générique du module : « Clips de séance » proposé, « Sparring » à l'écran pour le combat (§6.1).
 - Contretemps, où il est éteint : fait à l'étape 1 par une ligne `org_modules` éteinte pour chaque
   école existante (migration). Une nouvelle école l'aura allumé ; un défaut « éteint » dans `Module`
@@ -479,13 +503,30 @@ module Vidéos. Module éteint : onglet caché, routes `/session-clips/...` en 4
 **Fichiers.** Aucun dossier nouveau : la vidéo brute d'une séance et chaque clip sont des vidéos du
 module `videos`, rangées dans `VIDEOS_DIR/<id de l'école>/` (dans l'image : `/app/data/uploads/videos`,
 volume Docker `backend_data` monté sur `/app/data`, avec la base SQLite). Changer de VPS = copier ce
-volume, comme pour le reste de l'appli. La vidéo brute n'est pas compressée par le conteneur
+volume, comme pour le reste de l'appli. Leur place se lit dans Admin > École > Usage des ressources >
+Mémoire > Détail des vidéos, ligne « Sparring » (le module s'y inscrit par `Videos.rubrique`, comme
+Chorégraphies ; demande Seb du 27/10), et chaque vidéo y est nommée « Sparring · date · cours · combat N ». La vidéo brute n'est pas compressée par le conteneur
 `video-compression` (envoyée « déjà compressée ») : elle sera découpée puis effacée.
 
-**Conteneurs.** Étape 1 : aucun nouveau, tout passe par `backend`. Étape 2 : `sparring-worker`
-(image à part avec PyTorch et YOLO, même volume `backend_data`) — Dockerfile, bloc
-`docker-compose.yml`, variables et commandes à écrire ici à ce moment-là.
+**Conteneurs.** `sparring-worker` (étape 2) : image `backend/Dockerfile.sparring` (Python 3.12,
+PyTorch processeur seul, Ultralytics, OpenCV, environ 2 Go ; le modèle `yolo11n-pose.pt` est
+téléchargé dans l'image à la construction, sur `/app/models`), bloc `sparring-worker` de
+`docker-compose.yml`, même volume `backend_data` que `backend`. Commande :
+`nice -n 19 python -u -m app.sparring_worker`, qui regarde toutes les 5 minutes, pendant les heures
+de nuit, les séances dont la vidéo brute est arrivée. `deploy.sh` le construit et le relance comme
+les autres (`docker compose up -d --build`). Les clips sont des vidéos du module `videos` (même
+dossier), déjà compressées.
 
-**Variables.** Aucune nouvelle à l'étape 1 (`DATABASE_URL`, `VIDEOS_DIR` existent déjà).
+**Variables.**
+- `SPARRING_HOURS` (`sparring-worker`, défaut `0-6`) : heures de découpe, heure de Paris ; `0-24`
+  pour découper tout de suite (essais).
+- `SPARRING_MODEL` (fixée par l'image) : chemin du modèle YOLO.
+- `YOLO_CONFIG_DIR` (fixée par l'image) : réglages d'Ultralytics, dans le volume.
+- `DATABASE_URL`, `VIDEOS_DIR` : comme le backend.
 
-**Vérifier.** `cd backend && pytest tests/test_session_clips.py`.
+**Commandes utiles.** Suivre la découpe : `docker compose logs -f sparring-worker`. Relancer une
+séance « Découpe impossible » : remettre son `status` à `processing` (commande à écrire au besoin).
+
+**Vérifier.** `cd backend && pytest tests/test_session_clips.py tests/test_session_clips_cutting.py`
+(sans poing levéOLO : un détecteur simulé). Sur le VPS : `docker compose logs sparring-worker` affiche
+« Découpe Sparring démarrée ».

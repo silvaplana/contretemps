@@ -88,6 +88,16 @@ class VideoUsage(BaseModel):
     titre: str
     taille_octets: int
     duree_secondes: int | None = None
+    # Le module qui l'utilise (« Chorégraphies », « Sparring »…), voir Videos.rubrique.
+    rubrique: str = ""
+
+
+class RubriqueUsage(BaseModel):
+    """Place prise par les vidéos d'un module, saison affichée."""
+
+    libelle: str
+    octets: int
+    secondes: int
 
 
 class UsageVideosEcole(BaseModel):
@@ -100,3 +110,4 @@ class UsageVideosEcole(BaseModel):
     total_toutes_saisons_octets: int
     total_toutes_saisons_secondes: int
     top_videos: list[VideoUsage]
+    rubriques: list[RubriqueUsage] = []

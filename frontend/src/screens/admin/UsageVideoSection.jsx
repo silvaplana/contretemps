@@ -146,6 +146,17 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
               </>
             )}
             <h5 className="usage-ressources__sous-titre">Détail des vidéos</h5>
+            {/* Par module (Chorégraphies, Sparring…), saison affichée (Seb, 27 octobre). */}
+            {usage.rubriques.length > 0 && (
+              <div className="usage-ressources__lignes">
+                {usage.rubriques.map((r) => (
+                  <div key={r.libelle} className="usage-ressources__ligne">
+                    <span>{r.libelle}</span>
+                    <span>{formatTaille(r.octets)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             {/* Saisons (spec §2.6) : la saison affichée, puis le cumul de
                 toutes les saisons (seul chiffre qui sort de la saison
                 affichée). */}

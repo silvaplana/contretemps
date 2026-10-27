@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
 import {
   annulerTeleversement,
@@ -135,15 +136,22 @@ function Onglets({ onglet, onChange, version }) {
     ['seances', 'Séances'],
     ['verifier', 'À vérifier'],
   ]
+  // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (
-    <div className="sc-onglets" role="tablist">
-      {onglets.map(([cle, libelle]) => (
-        <button key={cle} type="button" role="tab" aria-selected={onglet === cle} onClick={() => onChange(cle)}>
-          {libelle}
-          {cle === 'verifier' && n > 0 && <span className="sc-pastille">{n}</span>}
-        </button>
-      ))}
-    </div>
+    <SegmentedTabs
+      className="admin-screen__tabs sc-onglets"
+      value={onglet}
+      onChange={onChange}
+      options={onglets.map(([cle, libelle]) => ({
+        value: cle,
+        label: (
+          <>
+            {libelle}
+            {cle === 'verifier' && n > 0 && <span className="sc-pastille">{n}</span>}
+          </>
+        ),
+      }))}
+    />
   )
 }
 
@@ -229,6 +237,7 @@ function EtatSeance({ s }) {
     )
   }
   if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
+  if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
   return (
     <>
       <span>
@@ -275,7 +284,7 @@ function Seances({ ecoleId, cours, version, rafraichir, montrer, onOpen }) {
               </span>
             ) : (
               <span className="sc-couverture sc-couverture--attente">
-                {s.status === 'uploading' ? 'La vidéo arrive…' : 'Découpe cette nuit'}
+                {s.status === 'uploading' ? 'La vidéo arrive…' : s.status === 'failed' ? 'Vidéo illisible' : 'Découpe cette nuit'}
               </span>
             )}
             <span className="sc-carte__info">

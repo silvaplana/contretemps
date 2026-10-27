@@ -34,7 +34,8 @@ class ClipSession(Base):
     title: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     held_on: Mapped[date] = mapped_column(Date, nullable=False)
     raw_video_id: Mapped[int | None] = mapped_column(ForeignKey("videos.id"), nullable=True)
-    # 'processing' : en attente de découpe ; 'ready' : clips prêts.
+    # 'processing' : en attente de découpe ; 'ready' : clips prêts ;
+    # 'failed' : vidéo illisible (voir app/sparring_worker.py).
     # L'envoi en cours se lit sur la vidéo brute (statut 'en_cours').
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="processing")
     created_by: Mapped[int] = mapped_column(Integer, nullable=False)
