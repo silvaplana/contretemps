@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
 import Modal from '../../components/Modal.jsx'
+import AffichageAdmin from './AffichageAdmin.jsx'
 
 // La fiche d'un membre (spec/core.md §4.3, niveau 1 ; maquette « Champs des
 // membres ») : ce que l'école demande à chaque membre, pour la saison
 // affichée. Admin > Élèves > ⋮ > Champs. Les champs du socle sont toujours
 // là, verrouillés ; les autres s'ajoutent, se règlent et se retirent
-// (Annuler 10 s, les réponses sont gardées). L'affichage dans Admin (les
-// colonnes du tableau) viendra ensuite.
+// (Annuler 10 s, les réponses sont gardées). « Affichage dans Admin › » mène
+// aux colonnes du tableau (AffichageAdmin.jsx).
 
 const ANNULER_MS = 10000
 
@@ -42,6 +43,7 @@ function ligneDe(champ, choix) {
 }
 
 export default function ChampsMembres({ ecoleId, onClose }) {
+  const [affichage, setAffichage] = useState(false)
   const [champs, setChamps] = useState(null)
   const [choix, setChoix] = useState({ parents: [], audiences: [] })
   const [courant, setCourant] = useState(null) // brouillon du champ ouvert
@@ -143,6 +145,17 @@ export default function ChampsMembres({ ecoleId, onClose }) {
       )}
     </div>
   )
+
+  if (affichage) {
+    return (
+      <AffichageAdmin
+        ecoleId={ecoleId}
+        champs={champs ?? []}
+        onRetour={() => setAffichage(false)}
+        onClose={onClose}
+      />
+    )
+  }
 
   if (courant) {
     const bloque = courant.verrouille
@@ -334,6 +347,9 @@ export default function ChampsMembres({ ecoleId, onClose }) {
         ))}
         <button type="button" className="btn btn--secondary champs__ajouter" onClick={() => ouvrir(NOUVEAU)}>
           + Ajouter un champ
+        </button>
+        <button type="button" className="champs__lien" onClick={() => setAffichage(true)}>
+          Affichage dans Admin ›
         </button>
       </div>
       {toastAffiche}

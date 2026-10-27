@@ -29,7 +29,7 @@ from registry.models import OrgModule  # noqa: F401
 from saisons.models import Saison  # noqa: F401
 from videos.models import Video  # noqa: F401
 from documents.models import DocAcl, DocActivity, DocNode, DocVersion, StoredFile  # noqa: F401
-from members.models import MemberField, MemberValue  # noqa: F401
+from members.models import MemberColumn, MemberField, MemberValue  # noqa: F401
 from finances.models import FinAccount, FinAssembly, FinAssemblyFile, FinForecast, FinOperation, FinReport, FinStatement  # noqa: F401
 
 config = context.config

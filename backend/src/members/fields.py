@@ -151,9 +151,12 @@ def _same_group(db: Session, old_id: int | None, season_id: int) -> int | None:
 
 
 def copy_season(db: Session, org_id: int, old_season_id: int, new_season_id: int, members: dict[int, int]) -> None:
-    """Nouvelle saison : la même fiche (spec §4.3), et les réponses des
-    fiches recopiées (`members` : ancienne fiche → nouvelle). Après la copie
-    des groupes et des cours."""
+    """Nouvelle saison : la même fiche (spec §4.3) et le même affichage dans
+    Admin, et les réponses des fiches recopiées (`members` : ancienne fiche →
+    nouvelle). Après la copie des groupes et des cours."""
+    from . import columns
+
+    copied: dict[int, int] = {}
     for old in fields(db, org_id, old_season_id):
         new = MemberField(org_id=org_id, season_id=new_season_id, position=old.position)
         for key in SETTINGS:
@@ -162,10 +165,12 @@ def copy_season(db: Session, org_id: int, old_season_id: int, new_season_id: int
         new.for_group_id = _same_group(db, old.for_group_id, new_season_id)
         db.add(new)
         db.flush()
+        copied[old.id] = new.id
         for value in db.scalars(select(MemberValue).where(MemberValue.field_id == old.id)):
             if value.member_id in members:
                 db.add(MemberValue(member_id=members[value.member_id], field_id=new.id, value=value.value))
     db.flush()
+    columns.copy_season(db, org_id, old_season_id, new_season_id, copied)
 
 
 def member_group_ids(db: Session, field: MemberField, member_id: int) -> list[int]:

@@ -9,7 +9,7 @@ from comptes import Comptes
 from cours import CoursService
 from ecoles import Ecoles
 from eleves import Eleves
-from members import MemberField, MemberValue
+from members import MemberColumn, MemberField, MemberValue
 from saisons.portee import toutes_saisons
 from storage import LocalStorage
 
@@ -192,3 +192,38 @@ def test_fusion_suppression_et_sauvegarde(client, db_session, ecole):
     # Suppression de la fiche : ses réponses partent avec elle.
     Eleves(Comptes()).delete(db_session, ecole["eleve"].id)
     assert db_session.scalars(sa.select(MemberValue)).all() == []
+
+
+def test_l_affichage_dans_admin(client, db_session, ecole):
+    ecole_id = ecole["ecole"].id
+    entetes = entetes_session(ecole["admin"])
+    taille = _champ(client, ecole, label="Taille", format="list", choices=["S", "M"])
+    _repondre(client, ecole, taille, "M")
+    url = f"/ecoles/{ecole_id}/colonnes"
+    assert client.get(url, headers=entetes).json() == []  # l'ordre d'origine, tout affiché
+
+    voulu = [{"key": "nom", "shown": True}, {"key": f"field:{taille['id']}", "shown": True},
+             {"key": "paiement", "shown": False}]
+    assert client.put(url, json=voulu, headers=entetes).json() == voulu
+    assert client.get(url, headers=entetes).json() == voulu
+    assert client.put(url, json=voulu, headers=entetes_session(ecole["prof"])).status_code == 403
+    assert client.put(url, json=voulu + [voulu[0]], headers=entetes).status_code == 422
+    assert client.put(url, json=[{"key": "DROP TABLE", "shown": True}], headers=entetes).status_code == 422
+
+    # Les réponses de tous les élèves d'un coup, pour le tableau.
+    reponses = client.get(f"/ecoles/{ecole_id}/champs/reponses", headers=entetes).json()
+    assert reponses == {str(ecole["eleve"].id): {str(taille["id"]): "M"}}
+
+    # Nouvelle saison : même affichage, sur les champs recopiés.
+    reponse = client.post(
+        f"/ecoles/{ecole_id}/saisons", json={"nom": "2027-2028", "date_debut": "2027-09-01", "date_fin": "2028-08-31"},
+        headers=entetes,
+    )
+    assert reponse.status_code == 201, reponse.text
+    nouvelle = reponse.json()["saison"]["id"]
+    with toutes_saisons(db_session):
+        nouveau = db_session.scalar(sa.select(MemberField).where(MemberField.season_id == nouvelle))
+        colonnes = db_session.scalars(
+            sa.select(MemberColumn).where(MemberColumn.season_id == nouvelle).order_by(MemberColumn.position)
+        ).all()
+        assert [(c.key, c.shown) for c in colonnes] == [("nom", True), (f"field:{nouveau.id}", True), ("paiement", False)]

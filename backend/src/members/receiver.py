@@ -18,10 +18,11 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE
 
 from db import get_db
 
+from . import columns as cols
 from . import fields as f
 from . import values
 from .models import MemberField
-from .schemas import AnswerIn, AnswerOut, Choices, FieldIn, FieldOut, FieldPatch
+from .schemas import AnswerIn, AnswerOut, Choices, ColumnIn, ColumnOut, FieldIn, FieldOut, FieldPatch
 
 DOSSIER_MEMBRES = Path(os.environ.get("MEMBRES_DIR", DOSSIER_VIDEOS_LIVE.parent / "membres"))
 TAILLE_MAX_FICHIER = 25 * 1024 * 1024
@@ -45,6 +46,11 @@ class MembersReceiver:
         app.get("/ecoles/{ecole_id}/champs/groupes", response_model=Choices, dependencies=admin)(self.groupes)
         app.post("/ecoles/{ecole_id}/champs", response_model=FieldOut, status_code=201, dependencies=admin)(
             self.creer
+        )
+        app.get("/ecoles/{ecole_id}/champs/reponses", dependencies=admin)(self.toutes_reponses)
+        app.get("/ecoles/{ecole_id}/colonnes", response_model=list[ColumnOut], dependencies=admin)(self.colonnes)
+        app.put("/ecoles/{ecole_id}/colonnes", response_model=list[ColumnOut], dependencies=admin)(
+            self.changer_colonnes
         )
         app.patch("/champs/{field_id}", response_model=FieldOut)(self.modifier)
         app.delete("/champs/{field_id}", status_code=204)(self.retirer)
@@ -119,6 +125,24 @@ class MembersReceiver:
         f.restore(field)
         db.commit()
         return field
+
+    def toutes_reponses(self, ecole_id: int, db: Session = Depends(get_db)):
+        """{fiche: {champ: réponse}} : les colonnes du tableau des membres."""
+        return values.all_answers(db, ecole_id, _saison(db, ecole_id))
+
+    # --- L'affichage dans Admin ---
+
+    def colonnes(self, ecole_id: int, db: Session = Depends(get_db)):
+        return cols.columns(db, ecole_id, _saison(db, ecole_id))
+
+    def changer_colonnes(self, ecole_id: int, donnees: list[ColumnIn], db: Session = Depends(get_db)):
+        try:
+            resultat = cols.save(db, ecole_id, _saison(db, ecole_id), [c.model_dump() for c in donnees])
+        except f.FieldError as erreur:
+            db.rollback()
+            raise _erreur(erreur) from erreur
+        db.commit()
+        return resultat
 
     # --- Les réponses d'une fiche ---
 

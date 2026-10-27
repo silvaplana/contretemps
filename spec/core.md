@@ -182,6 +182,18 @@ Nos champs / Imposés par HelloAsso (avec le module HelloAsso), l'effet des rég
 fiche vue par la personne), l'affichage dans Admin (étape 4b), la reprise des champs actuels des
 élèves (étape 4c).
 
+**Fait (27 octobre 2026, étape 4b)** : le niveau 2, l'affichage dans Admin (table `member_columns` :
+organisation, saison, colonne, affichée, ordre ; pas de ligne = l'ordre d'origine, tout affiché).
+« Affichage dans Admin › », sous la fiche, ouvre l'écran de la maquette : une ligne par colonne du
+tableau des élèves avec sa nature (Saisi, ou **Calculé** / **Bouton** et d'où il vient), la poignée ⠿
+pour l'ordre (au doigt, à la souris ou aux flèches du clavier) et la case Afficher (Annuler 10 s ;
+la colonne Élève reste toujours affichée). Chaque changement est enregistré aussitôt et le tableau
+d'Admin > Élèves le suit, colonnes des champs de l'école comprises (la réponse en clair, appui long
+compris). Recopié à la nouvelle saison, dans la sauvegarde technique (onglet « ColonnesMembres »).
+Les colonnes d'aujourd'hui (Paiement, Âge, Inviter, Statut de connexion…) sont décrites dans
+`frontend/src/data/colonnesEleves.js` ; leur déclaration par les modules dans `module.py` (§11.1)
+viendra avec les modules Paiement et Licences.
+
 ### 4.4 Famille = même email du payeur
 
 Chaque fiche a un champ du socle **Email du payeur** : pour un adulte, son propre email ; pour un
@@ -619,7 +631,8 @@ Déjà codés dans Contretemps :
 4. **Champs des membres**, en trois PR :
    a. `member_fields`, `member_values`, écran « La fiche d'un membre », réponses dans la fiche de
       l'élève *(faite le 27 octobre 2026)* ;
-   b. `member_columns`, écran « Affichage dans Admin », colonnes du tableau des élèves ;
+   b. `member_columns`, écran « Affichage dans Admin », colonnes du tableau des élèves *(faite le
+      27 octobre 2026)* ;
    c. reprise des champs d'`eleves` (date de naissance, adresse, santé…) dans la fiche.
 5. **Famille** par l'email du payeur, commande de reprise.
 6. **Création de saison** en un écran, étape par étape.
