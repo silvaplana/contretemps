@@ -1,6 +1,6 @@
 """Les tarifs de la saison (spec/core.md §9) : les formules, avec leurs
-échéances. Les options et codes promo viendront ensuite (étape 7b)."""
+échéances, et les options et codes promo."""
 
-from .models import SeasonPlan, SeasonPlanInstallment
+from .models import SeasonAdjustment, SeasonPlan, SeasonPlanInstallment, season_adjustment_plans
 
-__all__ = ["SeasonPlan", "SeasonPlanInstallment"]
+__all__ = ["SeasonAdjustment", "SeasonPlan", "SeasonPlanInstallment", "season_adjustment_plans"]

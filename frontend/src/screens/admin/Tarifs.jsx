@@ -4,7 +4,9 @@ import Icon from '../../components/Icon.jsx'
 
 // Tarifs de la saison (spec/core.md §9, maquette « Tarifs de la saison ») :
 // Admin > École > Tarifs. Une formule = un nom, un tarif, une ou plusieurs
-// échéances (date et montant, la somme fait le tarif). Chaque OK enregistre.
+// échéances (date et montant, la somme fait le tarif). Puis une seule liste
+// « Options et codes promo » : en plus ou en moins, en € ou en %, obtenu en
+// cochant ou avec un code (montré ou secret). Chaque OK enregistre.
 
 const ANNULER_MS = 10000
 
@@ -12,6 +14,29 @@ const euros = (centimes) =>
   (centimes / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 })
 const prix = (centimes) => (centimes === 0 ? 'Gratuit' : euros(centimes))
 const enCentimes = (texte) => Math.round((Number(String(texte).replace(',', '.')) || 0) * 100)
+
+const dateCourte = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-FR')
+
+// « +15 € », « −10 % » (montant en centimes ou en centièmes de %).
+const montantOption = (o) =>
+  `${o.amount > 0 ? '+' : '−'}${(Math.abs(o.amount) / 100).toLocaleString('fr-FR')} ${o.unit === 'pct' ? '%' : '€'}`
+
+function resumeOption(o, formules) {
+  const morceaux = [o.mode === 'code' ? null : 'À cocher']
+  const seule = o.plan_ids.length === 1 && formules.find((f) => f.id === o.plan_ids[0])
+  if (seule) morceaux.push(seule.name)
+  if (o.until) morceaux.push(`jusqu’au ${dateCourte(o.until)}`)
+  if (o.quantity) morceaux.push(`${o.quantity} max`)
+  if (o.max_uses) morceaux.push(`${o.max_uses} max`)
+  const suite = morceaux.filter(Boolean).join(' · ')
+  if (o.mode !== 'code') return suite
+  return (
+    <>
+      Code <b className="tarifs__code">{o.code}</b> · {o.shown ? 'montré' : 'secret'}
+      {suite && ` · ${suite}`}
+    </>
+  )
+}
 
 function resumeEcheances(formule) {
   const e = formule.installments
@@ -180,9 +205,214 @@ function Formule({ formule, onNom, onOk, onDupliquer, onRetirer }) {
   )
 }
 
+function Segments({ nom, choix, valeur, onChange }) {
+  return (
+    <div className="champs__seg" role="group" aria-label={nom}>
+      {choix.map(([v, libelle]) => (
+        <button key={v} type="button" aria-pressed={valeur === v} onClick={() => onChange(v)}>
+          {libelle}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function Option({ option, formules, onNom, onOk, onRetirer }) {
+  const [nom, setNom] = useState(option.name)
+  const [mode, setMode] = useState(option.mode)
+  const [signe, setSigne] = useState(option.amount > 0 ? 1 : -1)
+  const [valeur, setValeur] = useState(Math.abs(option.amount) / 100)
+  const [unite, setUnite] = useState(option.unit)
+  const [code, setCode] = useState(option.code ?? '')
+  const [montre, setMontre] = useState(option.shown)
+  const [utilisations, setUtilisations] = useState(option.max_uses ?? '')
+  const [jusquau, setJusquau] = useState(option.until ?? '')
+  const [quantite, setQuantite] = useState(option.quantity ?? '')
+  const [formule, setFormule] = useState(option.plan_ids.length === 1 ? String(option.plan_ids[0]) : '')
+  const [proposee, setProposee] = useState(option.active)
+  const [erreur, setErreur] = useState(null)
+  const [enCours, setEnCours] = useState(false)
+  const nombre = (texte) => (texte === '' ? null : Math.max(1, Math.round(Number(texte))))
+
+  function changerMode(m) {
+    setMode(m)
+    if (m === 'check') setSigne(1)
+  }
+
+  async function valider() {
+    if (!nom.trim()) return
+    setErreur(null)
+    setEnCours(true)
+    try {
+      await onOk({
+        name: nom.trim(),
+        amount: signe * enCentimes(valeur),
+        unit: unite,
+        mode,
+        code: mode === 'code' ? code.trim().toUpperCase() : null,
+        shown: montre,
+        max_uses: mode === 'code' ? nombre(utilisations) : null,
+        until: mode === 'code' && jusquau ? jusquau : null,
+        quantity: mode === 'check' ? nombre(quantite) : null,
+        plan_ids: formule ? [Number(formule)] : [],
+        active: proposee,
+      })
+    } catch (e) {
+      setErreur(e.message)
+      setEnCours(false)
+    }
+  }
+
+  return (
+    <>
+      <div className="form-fields">
+        <label htmlFor="option-nom">Nom</label>
+        <input
+          id="option-nom"
+          className="field-input"
+          value={nom}
+          placeholder="ex. T-shirt, Bienvenue"
+          onChange={(e) => {
+            setNom(e.target.value)
+            onNom(e.target.value)
+          }}
+        />
+        <label>Comment l’obtenir</label>
+        <Segments
+          nom="Comment l’obtenir"
+          choix={[['check', 'La personne coche'], ['code', 'Avec un code']]}
+          valeur={mode}
+          onChange={changerMode}
+        />
+        <label>Montant</label>
+        <Segments nom="Montant" choix={[[1, 'En plus'], [-1, 'En moins']]} valeur={signe} onChange={setSigne} />
+        <div className="tarifs__echeance">
+          <input
+            className="field-input"
+            type="number"
+            min="0"
+            step="0.1"
+            inputMode="decimal"
+            value={valeur}
+            aria-label="Valeur"
+            onChange={(e) => setValeur(e.target.value)}
+          />
+          <Segments nom="Unité" choix={[['eur', '€'], ['pct', '%']]} valeur={unite} onChange={setUnite} />
+        </div>
+        {mode === 'code' && (
+          <>
+            <label htmlFor="option-code">Code à saisir</label>
+            <input
+              id="option-code"
+              className="field-input tarifs__code"
+              value={code}
+              placeholder="ex. BIENVENUE"
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+            />
+          </>
+        )}
+      </div>
+      {mode === 'code' && (
+        <>
+          <label className="champs__case">
+            <input type="checkbox" checked={montre} onChange={(e) => setMontre(e.target.checked)} />
+            <span>
+              Montrer dans le formulaire
+              <small className="tarifs__aide">Montré : la personne le coche. Secret : elle doit le taper.</small>
+            </span>
+          </label>
+          <div className="tarifs__echeance">
+            <div className="form-fields">
+              <label htmlFor="option-max">Utilisations</label>
+              <input
+                id="option-max"
+                className="field-input"
+                type="number"
+                min="1"
+                inputMode="numeric"
+                value={utilisations}
+                placeholder="Sans limite"
+                onChange={(e) => setUtilisations(e.target.value)}
+              />
+            </div>
+            <div className="form-fields">
+              <label htmlFor="option-jusquau">Jusqu’au</label>
+              <input
+                id="option-jusquau"
+                className="field-input"
+                type="date"
+                value={jusquau}
+                onChange={(e) => setJusquau(e.target.value)}
+              />
+            </div>
+          </div>
+        </>
+      )}
+      {mode === 'check' && (
+        <>
+          <label className="champs__case">
+            <input
+              type="checkbox"
+              checked={quantite !== ''}
+              onChange={(e) => setQuantite(e.target.checked ? 20 : '')}
+            />
+            <span>Quantité limitée</span>
+          </label>
+          {quantite !== '' && (
+            <input
+              className="field-input tarifs__sous"
+              type="number"
+              min="1"
+              inputMode="numeric"
+              value={quantite}
+              aria-label="Quantité"
+              onChange={(e) => setQuantite(e.target.value)}
+            />
+          )}
+        </>
+      )}
+      <div className="form-fields">
+        <label htmlFor="option-formules">Sur quelles formules</label>
+        <select
+          id="option-formules"
+          className="field-input"
+          value={formule}
+          onChange={(e) => setFormule(e.target.value)}
+        >
+          <option value="">Tous les tarifs</option>
+          {formules.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <label className="champs__case">
+        <input type="checkbox" checked={proposee} onChange={(e) => setProposee(e.target.checked)} />
+        <span>Proposée cette saison</span>
+      </label>
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      <button
+        type="button"
+        className="btn btn--primary btn--block creer-saison__principal"
+        disabled={enCours || !nom.trim()}
+        onClick={valider}
+      >
+        OK
+      </button>
+      {option.id && (
+        <button type="button" className="creer-saison__lien" onClick={onRetirer}>
+          Retirer
+        </button>
+      )}
+    </>
+  )
+}
+
 export default function Tarifs({ ecoleId, onClose }) {
   const [donnees, setDonnees] = useState(null)
   const [ouverte, setOuverte] = useState(null) // formule ouverte (id absent = nouvelle)
+  const [optionOuverte, setOptionOuverte] = useState(null) // option ou code promo ouvert
   const [nomOuverte, setNomOuverte] = useState('') // le titre suit le nom tapé
   const [erreur, setErreur] = useState(null)
   const [toast, setToast] = useState(null)
@@ -213,7 +443,8 @@ export default function Tarifs({ ecoleId, onClose }) {
       const repris = await tarifsApi.reprendre(ecoleId)
       await relire()
       montrerToast(`Tarifs de ${donnees.previous.name} repris`, async () => {
-        await Promise.all(repris.map((f) => tarifsApi.retirer(f.id)))
+        await Promise.all(repris.adjustments.map((o) => tarifsApi.retirerOption(o.id)))
+        await Promise.all(repris.plans.map((f) => tarifsApi.retirer(f.id)))
         await relire()
       })
     } catch (e) {
@@ -260,6 +491,35 @@ export default function Tarifs({ ecoleId, onClose }) {
     setNomOuverte(formule?.name ?? '')
   }
 
+  function ouvrirOption(option) {
+    setOptionOuverte(option)
+    setNomOuverte(option.name)
+  }
+
+  async function enregistrerOption(option) {
+    if (optionOuverte.id) await tarifsApi.modifierOption(optionOuverte.id, option)
+    else await tarifsApi.creerOption(ecoleId, option)
+    setOptionOuverte(null)
+    await relire()
+  }
+
+  async function retirerOption() {
+    const option = optionOuverte
+    try {
+      await tarifsApi.retirerOption(option.id)
+      setOptionOuverte(null)
+      await relire()
+      montrerToast(`« ${option.name} » retiré`, async () => {
+        // eslint-disable-next-line no-unused-vars
+        const { id, ...reste } = option
+        await tarifsApi.creerOption(ecoleId, reste)
+        await relire()
+      })
+    } catch (e) {
+      setErreur(e.message)
+    }
+  }
+
   const lectureSeule = donnees?.read_only
   let titre = `Tarifs ${donnees?.season ?? ''}`.trim()
   let retour = onClose
@@ -277,6 +537,19 @@ export default function Tarifs({ ecoleId, onClose }) {
         onRetirer={retirer}
       />
     )
+  } else if (optionOuverte) {
+    titre = nomOuverte || 'Nouvelle option ou code promo'
+    retour = () => setOptionOuverte(null)
+    corps = (
+      <Option
+        key={optionOuverte.id ?? 'nouvelle'}
+        option={optionOuverte}
+        formules={donnees.plans}
+        onNom={setNomOuverte}
+        onOk={enregistrerOption}
+        onRetirer={retirerOption}
+      />
+    )
   } else if (donnees) {
     corps = (
       <>
@@ -284,7 +557,10 @@ export default function Tarifs({ ecoleId, onClose }) {
           <div className="creer-saison__cadre">
             <strong>Repartir des tarifs de {donnees.previous.name} ?</strong>
             <p className="creer-saison__note">
-              {donnees.previous.plans} formule{donnees.previous.plans > 1 ? 's' : ''}, que vous pourrez modifier.
+              {donnees.previous.plans} formule{donnees.previous.plans > 1 ? 's' : ''}
+              {donnees.previous.adjustments > 0 &&
+                `, ${donnees.previous.adjustments} option${donnees.previous.adjustments > 1 ? 's' : ''} et codes promo`}
+              , que vous pourrez modifier.
             </p>
             <button type="button" className="btn btn--secondary btn--block tarifs__secondaire" onClick={reprendre}>
               Reprendre ceux de {donnees.previous.name}
@@ -318,6 +594,40 @@ export default function Tarifs({ ecoleId, onClose }) {
             >
               + Ajouter une formule
             </button>
+          </>
+        )}
+        <div className="creer-saison__partie">Options et codes promo</div>
+        {donnees.adjustments.length === 0 && <p className="creer-saison__note">Aucune.</p>}
+        {donnees.adjustments.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            className={`tarifs__ligne${o.active ? '' : ' tarifs__ligne--off'}`}
+            disabled={lectureSeule}
+            onClick={() => ouvrirOption(o)}
+          >
+            <span className="tarifs__nom">
+              {o.name}
+              <small>{resumeOption(o, donnees.plans)}</small>
+            </span>
+            <span className="tarifs__prix">{montantOption(o)}</span>
+            {!lectureSeule && <Icon name="chevronRight" size={18} />}
+          </button>
+        ))}
+        {!lectureSeule && (
+          <>
+            <button
+              type="button"
+              className="btn btn--secondary btn--block tarifs__secondaire"
+              onClick={() =>
+                ouvrirOption({
+                  name: '', amount: -1000, unit: 'pct', mode: 'code', code: '', shown: false,
+                  max_uses: null, until: null, quantity: null, active: true, plan_ids: [],
+                })
+              }
+            >
+              + Ajouter une option ou un code promo
+            </button>
             <button type="button" className="btn btn--primary btn--block creer-saison__principal" onClick={onClose}>
               Valider les tarifs
             </button>
@@ -336,7 +646,7 @@ export default function Tarifs({ ecoleId, onClose }) {
         <h2 className="creer-saison__titre">{titre}</h2>
       </div>
       <div className="creer-saison__corps">
-        {erreur && !ouverte && <p className="login-screen__erreur">{erreur}</p>}
+        {erreur && !ouverte && !optionOuverte && <p className="login-screen__erreur">{erreur}</p>}
         {corps}
       </div>
       {toast && (

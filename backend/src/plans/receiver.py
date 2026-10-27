@@ -14,8 +14,8 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from . import plans as p
-from .models import SeasonPlan
-from .schemas import PlanIn, PlanOut, PlansOut, Previous
+from .models import SeasonAdjustment, SeasonPlan
+from .schemas import AdjustmentIn, AdjustmentOut, PlanIn, PlanOut, PlansOut, Previous, Taken
 
 
 def _installments(data: PlanIn) -> list:
@@ -29,12 +29,15 @@ class PlansReceiver:
         app.post("/ecoles/{ecole_id}/tarifs/formules", response_model=PlanOut, status_code=201, dependencies=admin)(
             self.creer
         )
-        app.post("/ecoles/{ecole_id}/tarifs/reprendre", response_model=list[PlanOut], dependencies=admin)(
-            self.reprendre
-        )
+        app.post("/ecoles/{ecole_id}/tarifs/reprendre", response_model=Taken, dependencies=admin)(self.reprendre)
         app.put("/tarifs/formules/{plan_id}", response_model=PlanOut)(self.modifier)
         app.post("/tarifs/formules/{plan_id}/dupliquer", response_model=PlanOut, status_code=201)(self.dupliquer)
         app.delete("/tarifs/formules/{plan_id}", status_code=204)(self.retirer)
+        app.post(
+            "/ecoles/{ecole_id}/tarifs/options", response_model=AdjustmentOut, status_code=201, dependencies=admin
+        )(self.creer_option)
+        app.put("/tarifs/options/{adjustment_id}", response_model=AdjustmentOut)(self.modifier_option)
+        app.delete("/tarifs/options/{adjustment_id}", status_code=204)(self.retirer_option)
 
     def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_admin(appelant, ecole_id)
@@ -51,6 +54,17 @@ class PlansReceiver:
         return plan
 
     @staticmethod
+    def _option(db: Session, adjustment_id: int, appelant: Compte | None) -> SeasonAdjustment:
+        """Une option ou un code promo de la saison courante de l'école de l'admin."""
+        adjustment = db.get(SeasonAdjustment, adjustment_id)
+        rbac.require_admin(appelant, adjustment.org_id if adjustment else None)
+        if adjustment is None:
+            raise HTTPException(status_code=404, detail="Option introuvable")
+        if adjustment.season_id != saison_courante_id(db, adjustment.org_id):
+            raise SaisonEnLectureSeule()
+        return adjustment
+
+    @staticmethod
     def _courante(db: Session, ecole_id: int) -> int:
         """Les écritures : toujours la saison courante, jamais une ancienne."""
         courante = saison_courante_id(db, ecole_id)
@@ -62,14 +76,18 @@ class PlansReceiver:
         courante = saison_courante_id(db, ecole_id)
         saison = saison_demandee() or courante
         liste = p.plans(db, ecole_id, saison)
+        options = p.adjustments(db, ecole_id, saison)
         previous = None
         avant = db.scalar(
             select(Saison).where(Saison.ecole_id == ecole_id, Saison.id < saison).order_by(Saison.id.desc()).limit(1)
         )
-        if not liste and avant is not None and (n := len(p.plans(db, ecole_id, avant.id))):
-            previous = Previous(name=avant.nom, plans=n)
+        if not liste and not options and avant is not None:
+            n, m = len(p.plans(db, ecole_id, avant.id)), len(p.adjustments(db, ecole_id, avant.id))
+            if n or m:
+                previous = Previous(name=avant.nom, plans=n, adjustments=m)
         return PlansOut(
-            season=db.get(Saison, saison).nom, read_only=saison != courante, plans=liste, previous=previous
+            season=db.get(Saison, saison).nom, read_only=saison != courante, plans=liste, adjustments=options,
+            previous=previous,
         )
 
     def creer(self, ecole_id: int, data: PlanIn, db: Session = Depends(get_db)):
@@ -85,16 +103,16 @@ class PlansReceiver:
 
     def reprendre(self, ecole_id: int, db: Session = Depends(get_db)):
         """« Reprendre ceux de <saison précédente> » : seulement si la saison
-        n'a encore aucune formule."""
+        n'a encore ni formule ni option."""
         courante = self._courante(db, ecole_id)
         avant = db.scalar(
             select(Saison.id).where(Saison.ecole_id == ecole_id, Saison.id < courante).order_by(Saison.id.desc()).limit(1)
         )
-        if avant is None or p.plans(db, ecole_id, courante):
+        if avant is None or p.plans(db, ecole_id, courante) or p.adjustments(db, ecole_id, courante):
             raise HTTPException(status_code=409, detail="Rien à reprendre")
-        copies = p.copy_season(db, ecole_id, avant, courante)
+        plans, adjustments = p.copy_season(db, ecole_id, avant, courante)
         db.commit()
-        return copies
+        return Taken(plans=plans, adjustments=adjustments)
 
     def modifier(self, plan_id: int, data: PlanIn, db: Session = Depends(get_db),
                  appelant: Compte = Depends(rbac.compte_appelant)):
@@ -113,4 +131,27 @@ class PlansReceiver:
 
     def retirer(self, plan_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
         db.delete(self._formule(db, plan_id, appelant))
+        db.commit()
+
+    def creer_option(self, ecole_id: int, data: AdjustmentIn, db: Session = Depends(get_db)):
+        try:
+            adjustment = p.create_adjustment(db, ecole_id, self._courante(db, ecole_id), **data.model_dump())
+        except p.PlanError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+        db.commit()
+        return adjustment
+
+    def modifier_option(self, adjustment_id: int, data: AdjustmentIn, db: Session = Depends(get_db),
+                        appelant: Compte = Depends(rbac.compte_appelant)):
+        adjustment = self._option(db, adjustment_id, appelant)
+        try:
+            p.set_adjustment(db, adjustment, **data.model_dump(exclude={"position"}))
+        except p.PlanError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+        db.commit()
+        return adjustment
+
+    def retirer_option(self, adjustment_id: int, db: Session = Depends(get_db),
+                       appelant: Compte = Depends(rbac.compte_appelant)):
+        db.delete(self._option(db, adjustment_id, appelant))
         db.commit()
