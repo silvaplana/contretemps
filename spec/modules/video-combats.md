@@ -49,7 +49,7 @@ par un cadreur et rangé au nom des deux combattants. Chaque membre retrouve ses
 | Début du cours | Coach | Appuie sur « Démarrer la séance » | L'enregistreur filme ; la PWA affiche « Enregistrement en cours » |
 | Échauffement | Chaque combattant | Passe 2 s sur le repère au sol, face à la caméra, et dit son prénom | Rien à l'écran : l'enregistrement est repéré au traitement |
 | Avant un combat | Les deux combattants | Entrent dans la zone, font le Y pendant 2 s | Rien à l'écran : le début est repéré au traitement |
-| Fin d'un combat | Les deux combattants | Font le X, ou sortent de la zone | Rien à l'écran : la fin est repérée au traitement |
+| Fin d'un combat | Les deux combattants | Se saluent (main serrée), sinon font le X, ou sortent de la zone | Rien à l'écran : la fin est repérée au traitement |
 | Changement de tenue | Le combattant | Repasse sur le repère | Sa nouvelle tenue remplace l'ancienne pour la suite |
 | Fin du cours | Coach | Appuie sur « Fin de séance » | L'enregistreur s'arrête, envoie la vidéo, puis se remet en attente |
 | La nuit | Serveur | Traite la vidéo | Clips créés, nommés, rangés ; vidéo brute supprimée après validation |
@@ -100,10 +100,10 @@ Erreurs : prénom inconnu ou ambigu → ses combats sont « à vérifier ».
 **UC 5 — Signaler un combat** · Combattants
 
 1. Les deux entrent dans la zone et font le Y 2 s.
-2. Ils combattent, puis font le X (ou quittent la zone).
+2. Ils combattent, puis se saluent (sinon font le X, ou quittent la zone).
 
-Variantes : un combat sans Y devient un « combat sans nom » ; un Y sans X se termine quand la zone
-se vide.
+Variantes : un combat sans Y devient un « combat sans nom » ; un Y sans salut ni X se termine quand la
+zone se vide ou au Y suivant.
 
 **UC 6 — Traiter la séance** · Serveur
 
@@ -195,7 +195,9 @@ connaître toute la vidéo à l'avance.
    relie au bon membre. Il en tire une « empreinte » de tenue : couleurs du t-shirt et du short,
    silhouette.
 2. **Signaux** : la détection de posture repère les Y tenus 2 secondes par deux personnes dans la zone
-   (début) et les X (fin). Le combat se termine aussi si la zone se vide. Un combat repéré sans Y
+   (début), et pour la fin le salut (deux personnes debout, face à face, immobiles, mains jointes
+   environ 1 s ; décision Seb 27/10 : geste déjà habituel) ou, en secours, le X. Le combat se termine
+   aussi si la zone se vide quelques secondes ou au Y suivant. Un combat repéré sans Y
    devient un « combat sans nom ».
 3. **Identification** : il suit chaque personne image par image, et compare les deux combattants aux
    empreintes du jour. Si la confiance est faible, comme avec deux t-shirts noirs unis, le clip est
