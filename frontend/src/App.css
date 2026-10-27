@@ -4854,3 +4854,78 @@ a.btn {
   opacity: 0.3;
   cursor: default;
 }
+
+/* Tarifs de la saison (screens/admin/Tarifs.jsx, spec/core.md §9) : même
+   écran plein que « Créer une saison ». */
+.tarifs__ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 58px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tarifs__ligne svg {
+  color: var(--accent);
+}
+
+.tarifs__ligne--off .tarifs__nom {
+  color: var(--text-muted);
+}
+
+.tarifs__nom {
+  flex: 1;
+  min-width: 0;
+}
+
+.tarifs__nom small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.tarifs__prix {
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tarifs__secondaire {
+  min-height: 48px;
+  margin-top: 10px;
+  font-weight: 700;
+}
+
+.tarifs__montant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tarifs__echeance {
+  display: flex;
+  gap: 10px;
+}
+
+.tarifs__echeance > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.tarifs__montant input {
+  text-align: right;
+}
+
+.tarifs__ecart {
+  margin: 0;
+  color: var(--danger-text);
+  font-size: 16px;
+}
