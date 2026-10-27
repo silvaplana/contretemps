@@ -16,7 +16,7 @@ from comptes import roles as r
 from comptes.models import Compte, Famille, RoleCompte
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
-from groups import board, custom, teachers
+from groups import board, custom, rights, teachers
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -209,11 +209,13 @@ class GestionSaisons:
                 telephone=ancien.telephone,
             )
             nouveau.definir_emails(ancien.emails)
-            nouveau.roles = [RoleCompte(role=role) for role in roles if role != r.PROFESSEUR]
+            nouveau.roles = [RoleCompte(role=role) for role in roles if role not in r.ROLES_EN_GROUPE]
             db.add(nouveau)
             db.flush()
             if r.PROFESSEUR in roles:
                 teachers.add(db, nouveau)
+            if r.TRESORIER in roles:
+                rights.add(db, nouveau, r.DROIT_FINANCIER)
             if fonctions := board.functions_of(db, ancien):
                 board.set_functions(db, nouveau, fonctions)
             fiches[ancien.id] = nouveau.id

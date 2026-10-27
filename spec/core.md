@@ -230,8 +230,10 @@ Un droit ouvert par un module (voir l'onglet Financier, lire son dossier) n'est 
 un **groupe 🔒 au nom du droit**, ex. « Accès au Financier ». Le module le déclare dans son
 `module.py` (`Right("finances.access", "Accès au Financier")`), le core crée le groupe et le
 contrôle : `has_right(membre, "finances.access")` côté serveur, une seule fonction pour toutes les
-routes. L'Administrateur principal et le Super User passent toujours et sont seuls à mettre ou
-retirer quelqu'un d'un groupe de droit. Les autres groupes ne donnent aucun droit par eux-mêmes :
+routes. Le Super User passe toujours. L'Administrateur principal et le Super User sont seuls à mettre
+ou retirer quelqu'un d'un groupe de droit ; l'Administrateur principal **ne passe pas** sans être dans
+le groupe, il se coche lui-même s'il veut (décision de Seb du 27 octobre 2026, comme le 17 octobre :
+le Financier pour les trésoriers seulement). Les autres groupes ne donnent aucun droit par eux-mêmes :
 seulement là où on les a choisis (dossier réservé, envoi, conversation).
 
 **Aujourd'hui** : la coche `is_tresorier` (« Accès au Financier »), à reprendre vers le groupe ;
@@ -264,6 +266,16 @@ la feuille : Bureau et ses fonctions, Profs, les groupes faits à la main, 🔒 
 groupes, sa ligne comprise ; 🔒 Accès au Financier reste à l'administrateur principal et au Super User
 (encore le rôle `tresorier`, étape 2). Groupes faits à la main (`groups/custom.py`) : nom unique dans la
 saison, recopiés avec leurs membres à la nouvelle saison ; pas encore de renommage ni de suppression.
+
+**Fait (27 octobre 2026, étape 2)** : `Right(key, label)` dans `registry/`, déclaré par le module
+Financier (`Right("finances.access", "Accès au Financier")`) ; le core en fait un groupe 🔒 par école et
+par saison, clé `right.finances.access` (`groups/rights.py`), recopié à la nouvelle saison. Le rôle
+`tresorier` n'est plus une ligne de `roles_compte` ; la migration y reprend les trésoriers.
+`comptes/roles.py` : `has_right(compte, droit)` (Super User, ou membre du groupe) contrôle le
+Financier ; `is_tresorier` et la liste `roles` de l'API restent (rôle présenté depuis le groupe), si bien
+que l'écran et le dossier Financier de Docs ne changent pas. Les notes de frais lisent encore
+`is_tresorier` (même groupe). Reste : le contrôle des dossiers réservés de Docs par `has_right`, et un
+écran qui liste les droits déclarés au lieu de la case « Accès au Financier » écrite en dur.
 
 ---
 
@@ -574,7 +586,7 @@ Déjà codés dans Contretemps :
    b. Profs en groupe, reprise du rôle Professeur *(faite le 27 octobre 2026)* ;
    c. Admin > Administrateurs nouveau style (colonne Groupes, maquette) *(faite le 27 octobre 2026)*.
 2. **Droits** : `Right` dans `module.py`, groupe « Accès au Financier », `has_right`, reprise de
-   `is_tresorier`.
+   `is_tresorier` *(faite le 27 octobre 2026)*.
 3. **Cours = groupes** : `course_details`, messagerie, vidéos et présence sur les groupes.
 4. **Champs des membres** : `member_fields`, `member_values`, `member_columns`, écran Champs des
    membres, reprise des champs d'`eleves`.

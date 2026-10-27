@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import unicodedata
 
-from groups import teachers
+from groups import rights, teachers
 from saisons import saison_courante_id
 from saisons.portee import TOUTES_SAISONS
 from sqlalchemy import delete, select
@@ -17,6 +17,14 @@ from sqlalchemy.orm import Session
 
 from . import roles as r
 from .models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
+
+
+def _entrer_dans_le_groupe(db: Session, compte: Compte, role: str) -> None:
+    """Professeur et Trésorier sont des groupes (comptes/roles.py)."""
+    if role == r.PROFESSEUR:
+        teachers.add(db, compte)
+    else:
+        rights.add(db, compte, r.DROIT_FINANCIER)
 
 
 class RegleRoles(ValueError):
@@ -219,7 +227,7 @@ class Comptes:
         db.add(compte)
         self.recalculer_familles(db, ecole_id)
         if role == r.PROFESSEUR:
-            teachers.add(db, compte)
+            _entrer_dans_le_groupe(db, compte, role)
         db.commit()
         db.refresh(compte)
         return compte
@@ -274,8 +282,8 @@ class Comptes:
         # 2026-10-18) : tous les rôles se cumulent, élève et professeur
         # compris. Le rôle élève vient avec sa fiche élève : l'ajouter par
         # Eleves.create ou la fusion, jamais seul.
-        if role == r.PROFESSEUR:
-            teachers.add(db, compte)
+        if role in r.ROLES_EN_GROUPE:
+            _entrer_dans_le_groupe(db, compte, role)
         else:
             compte.roles.append(RoleCompte(role=role))
         db.commit()
@@ -290,7 +298,8 @@ class Comptes:
         école en retirant même son dernier Owner (§2.5)."""
         a_retirer = {role, r.OWNER, r.TRESORIER} if role == r.ADMIN else {role}
         restants = [ligne for ligne in compte.roles if ligne.role not in a_retirer]
-        if not restants and (r.PROFESSEUR in a_retirer or not r.is_prof(compte)):
+        en_groupe = [role for role in r.ROLES_EN_GROUPE if role not in a_retirer and r.a_le_role(compte, role)]
+        if not restants and not en_groupe:
             raise RegleRoles("Un compte doit garder au moins un rôle")
         if (
             not autoriser_sans_owner
@@ -302,6 +311,8 @@ class Comptes:
         compte.roles = restants
         if r.PROFESSEUR in a_retirer:
             teachers.remove(db, compte)
+        if r.TRESORIER in a_retirer:
+            rights.remove(db, compte, r.DROIT_FINANCIER)
         db.commit()
         db.refresh(compte)
 

@@ -8,12 +8,15 @@ Si un jour la façon de stocker les rôles change, seul ce fichier change.
 Professeur n'est plus une ligne de `roles_compte` depuis le 27/10/2026 :
 c'est le groupe « Profs » de la saison (groups/teachers.py, spec/core.md
 §5.1). Ce fichier le présente toujours comme un rôle, avec le même rang.
+Trésorier non plus : c'est le groupe 🔒 du droit « Accès au Financier »
+(groups/rights.py, §5.3). Le contrôle d'un droit passe par `has_right`.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterable
 
+from groups import rights
 from groups.models import Group
 from groups.teachers import TEACHERS
 
@@ -40,23 +43,27 @@ ROLES = (ELEVE, PROFESSEUR, ADMIN, OWNER, TRESORIER, SUPERUSER)
 # Même règle que le frontend (frontend/src/data/roles.js).
 RANG = {ELEVE: 0, PROFESSEUR: 1, ADMIN: 2, OWNER: 2, TRESORIER: 2, SUPERUSER: 3}
 
+# Le droit déclaré par le module Financier (finances_contretemps/module.py).
+DROIT_FINANCIER = "finances.access"
+# Rôles qui sont des groupes : rôle → clé du groupe.
+ROLES_EN_GROUPE = {PROFESSEUR: TEACHERS, TRESORIER: rights.group_key(DROIT_FINANCIER)}
 
-def _est_dans_les_profs(compte: Compte) -> bool:
-    return any(g.key == TEACHERS for g in compte.groups)
+
+def _dans_le_groupe(compte: Compte, cle: str) -> bool:
+    return any(g.key == cle for g in compte.groups)
 
 
 def noms_roles(compte: Compte) -> list[str]:
     """Rôles du compte, du plus fort au plus faible — ordre stable pour
     l'API et les tests."""
     noms = [r.role for r in compte.roles]
-    if _est_dans_les_profs(compte):
-        noms.append(PROFESSEUR)
+    noms += [role for role, cle in ROLES_EN_GROUPE.items() if _dans_le_groupe(compte, cle)]
     return sorted(noms, key=lambda nom: (-RANG[nom], nom))
 
 
 def a_le_role(compte: Compte, role: str) -> bool:
-    if role == PROFESSEUR:
-        return _est_dans_les_profs(compte)
+    if role in ROLES_EN_GROUPE:
+        return _dans_le_groupe(compte, ROLES_EN_GROUPE[role])
     return any(r.role == role for r in compte.roles)
 
 
@@ -64,9 +71,16 @@ def filtre_role(role: str):
     """Condition SQL « le compte a ce rôle », pour `select(Compte).where(...)`."""
     from .models import Compte
 
-    if role == PROFESSEUR:
-        return Compte.groups.any(Group.key == TEACHERS)
+    if role in ROLES_EN_GROUPE:
+        return Compte.groups.any(Group.key == ROLES_EN_GROUPE[role])
     return Compte.roles.any(role=role)
+
+
+def has_right(compte: Compte, droit: str) -> bool:
+    """La seule vérification d'un droit de module (spec/core.md §5.3) : le
+    Super User passe toujours ; sinon il faut être dans le groupe 🔒 du droit,
+    de sa saison."""
+    return is_superuser(compte) or _dans_le_groupe(compte, rights.group_key(droit))
 
 
 def is_eleve(compte: Compte) -> bool:

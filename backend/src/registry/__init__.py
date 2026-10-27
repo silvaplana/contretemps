@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from types import SimpleNamespace
 
 from fastapi import FastAPI
+from groups import rights
 
 
 @dataclass(frozen=True)
@@ -18,6 +19,16 @@ class Role:
     """Un rôle qu'un module ajoute aux fiches (ex. « Accès au Financier »).
     Pas encore lu par le core : les rôles restent ceux de comptes/roles.py
     tant que l'étude « adhérents par saison » n'est pas codée."""
+
+    key: str
+    label: str
+
+
+@dataclass(frozen=True)
+class Right:
+    """Un droit qu'un module ouvre (spec/core.md §5.3), ex.
+    `Right("finances.access", "Accès au Financier")` : le core en fait un
+    groupe 🔒 au nom du droit, contrôlé par `comptes.roles.has_right`."""
 
     key: str
     label: str
@@ -32,6 +43,7 @@ class Module:
     mount: Callable[[FastAPI, SimpleNamespace], None]
     requires: tuple[str, ...] = ()  # modules à monter avant celui-ci
     roles: tuple[Role, ...] = ()
+    rights: tuple[Right, ...] = ()
     # actions(core) : les actions que le module ouvre à l'assistant (son
     # actions.py, spec/modules/assistant-ia.md §3), une fois monté.
     actions: Callable[[SimpleNamespace], list] | None = None
@@ -65,6 +77,8 @@ def mount_all(app: FastAPI, modules: list[Module], core: SimpleNamespace) -> Non
     check(modules)
     app.state.module_of_route = {}
     for module in modules:
+        for right in module.rights:
+            rights.declare(right.key, right.label)
         avant = len(app.router.routes)
         module.mount(app, core)
         for route in app.router.routes[avant:]:

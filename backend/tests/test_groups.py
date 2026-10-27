@@ -6,7 +6,7 @@ import pytest
 import sqlalchemy as sa
 from conftest import entetes_session
 
-from comptes import Comptes, RoleCompte, roles
+from comptes import Compte, Comptes, RoleCompte, roles
 from ecoles import Ecoles
 from eleves import Eleves
 from groups import Group, GroupMember, board
@@ -138,8 +138,9 @@ def test_une_ancienne_sauvegarde_remet_les_profs_dans_le_groupe(client, db_sessi
     classeur = load_workbook(io.BytesIO(client.get(f"/ecoles/{ecole_id}/export-technique").content))
     feuille = classeur["RolesComptes"]
     en_tetes = [c.value for c in feuille[1]]
-    ligne = {"compte_id": prof.id, "role": "professeur", "created_at": None}
-    feuille.append([ligne.get(nom) for nom in en_tetes])
+    for compte_id, role in ((prof.id, "professeur"), (ecole["julia_admin"].id, "tresorier")):
+        ligne = {"compte_id": compte_id, "role": role, "created_at": None}
+        feuille.append([ligne.get(nom) for nom in en_tetes])
     for nom in ("Groupes", "MembresGroupes"):
         del classeur[nom]
     sortie = io.BytesIO()
@@ -152,6 +153,7 @@ def test_une_ancienne_sauvegarde_remet_les_profs_dans_le_groupe(client, db_sessi
     with toutes_saisons(db_session):
         assert [c.id for c in Comptes().list_par_role(db_session, ecole_id, "professeur")] == [prof.id]
         assert roles.noms_roles(Comptes().get(db_session, prof.id)) == ["professeur"]
+        assert roles.noms_roles(Comptes().get(db_session, ecole["julia_admin"].id)) == ["admin", "tresorier"]
 
 
 def test_une_nouvelle_saison_recopie_les_groupes_faits_a_la_main(client, db_session, ecole):
@@ -175,3 +177,42 @@ def test_une_nouvelle_saison_recopie_les_groupes_faits_a_la_main(client, db_sess
     membres = db_session.scalars(sa.select(GroupMember.member_id).where(GroupMember.group_id == groupes[0].id)).all()
     with toutes_saisons(db_session):
         assert [Comptes().get(db_session, m).compte_precedent_id for m in membres] == [ecole["owner"].id]
+
+
+def test_acces_au_financier_est_un_groupe_de_droit(db_session, ecole):
+    comptes = Comptes()
+    owner, julia = ecole["owner"], ecole["julia_admin"]
+    comptes.ajouter_role(db_session, julia, roles.TRESORIER)
+
+    groupe = db_session.scalar(sa.select(Group).where(Group.key == "right.finances.access"))
+    assert (groupe.name, groupe.season_id) == ("Accès au Financier", julia.saison_id)
+    assert db_session.scalar(sa.select(sa.func.count()).select_from(RoleCompte).where(RoleCompte.role == "tresorier")) == 0
+    # Vu de l'appli : toujours le rôle Trésorier.
+    assert julia.noms_roles == ["admin", "tresorier"] and roles.is_tresorier(julia)
+    assert [c.id for c in comptes.list_par_role(db_session, ecole["ecole"].id, "tresorier")] == [julia.id]
+    # Le droit : le groupe, ou le Super User. L'administrateur principal se coche
+    # lui-même (Seb, 27 octobre).
+    assert roles.has_right(julia, "finances.access")
+    assert roles.is_owner(owner) and not roles.has_right(owner, "finances.access")
+    superuser = comptes.enregistrer_superuser(db_session, nom="Su", prenom="Per", email="su@x.fr", mot_de_passe_hache="x")
+    assert roles.has_right(superuser, "finances.access")
+
+    # Retirer admin retire aussi le droit.
+    comptes.ajouter_role(db_session, julia, roles.PROFESSEUR)
+    comptes.retirer_role(db_session, julia, roles.ADMIN)
+    assert julia.noms_roles == ["professeur"]
+    assert not roles.has_right(julia, "finances.access")
+
+
+def test_le_droit_suit_la_nouvelle_saison(client, db_session, ecole):
+    Comptes().ajouter_role(db_session, ecole["julia_admin"], roles.TRESORIER)
+
+    reponse = client.post(
+        f"/ecoles/{ecole['ecole'].id}/saisons", json={"nom": "2027-2028", "date_debut": "2027-09-01", "date_fin": "2028-08-31"}
+    )
+
+    assert reponse.status_code == 201, reponse.text
+    nouvelle = reponse.json()["saison"]["id"]
+    with toutes_saisons(db_session):
+        fiche = db_session.scalar(sa.select(Compte).where(Compte.compte_precedent_id == ecole["julia_admin"].id))
+        assert fiche.saison_id == nouvelle and roles.has_right(fiche, "finances.access")

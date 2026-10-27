@@ -7,10 +7,10 @@ from pathlib import Path
 
 from db import SessionLocal
 from finances import Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
-from registry import Module
+from registry import Module, Right
 
 from .actions import actions
-from .adapter import membre_appelant, saisons_de_l_ecole
+from .adapter import FINANCES_ACCESS, membre_appelant, saisons_de_l_ecole
 
 
 def mount(app, core) -> None:
@@ -65,6 +65,7 @@ def mount(app, core) -> None:
 
 MODULE = Module(
     key="finances", label="Financier", mount=mount,
+    rights=(Right(FINANCES_ACCESS, "Accès au Financier"),),
     actions=lambda core: actions(
         core.finances_reports, core.finances_assemblies, core.finances_forecasts,
         core.finances_client, saisons_de_l_ecole,

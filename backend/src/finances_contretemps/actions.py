@@ -72,7 +72,7 @@ class Forecast(BaseModel):
 def _member(db: Session, compte, org_id: int) -> Member:
     member = Member(
         person_id=personne_id(db, compte), org_id=org_id, name=nom_affiche(compte),
-        is_treasurer=roles.is_tresorier(compte), is_superuser=roles.is_superuser(compte),
+        is_treasurer=roles.has_right(compte, roles.DROIT_FINANCIER), is_superuser=roles.is_superuser(compte),
     )
     if not member.keeps_accounts:
         raise PermissionError("réservé aux trésoriers")
