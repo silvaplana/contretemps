@@ -662,7 +662,7 @@ Déjà codés dans Contretemps :
       27 octobre 2026)*.
 5. **Famille** par l'email du payeur, reprise des familles *(faite le 27 octobre 2026)*.
 6. **Saisons** (`modules/saisons.md` §4), en deux PR :
-   a. module Saisons optionnel, la période restant dans le core ;
+   a. module Saisons optionnel, la période restant dans le core *(faite le 27 octobre 2026)* ;
    b. Créer une saison en un écran (maquette « Créer une saison »).
 7. **Tarifs** : formules, options, codes promo, règles par l'assistant.
 8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.

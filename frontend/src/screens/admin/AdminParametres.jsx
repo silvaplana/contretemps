@@ -196,12 +196,15 @@ export default function AdminParametres({
       {/* Sections au même niveau, même format de titre (demande du
           2026-09-21) : Saisons (spec §2.6, entre les codes d'accès et les
           administrateurs), Administrateurs (spec §2.4), puis Usage vidéo. */}
-      <SaisonsSection
-        key={activeUser.id}
-        ecoleId={ecole.id}
-        onSaisonCreee={onSaisonCreee}
-        onSaisonSupprimee={onSaisonSupprimee}
-      />
+      {/* Module Saisons éteint : section cachée (spec/modules/saisons.md §2). */}
+      {!modules.some((m) => m.key === 'seasons' && !m.enabled) && (
+        <SaisonsSection
+          key={activeUser.id}
+          ecoleId={ecole.id}
+          onSaisonCreee={onSaisonCreee}
+          onSaisonSupprimee={onSaisonSupprimee}
+        />
+      )}
 
       <AdministrateursTableau
         ecoleId={ecole.id}

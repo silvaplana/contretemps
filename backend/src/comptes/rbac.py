@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from saisons import Saison, saison_courante_id
-from saisons.portee import TOUTES_SAISONS, saison_demandee
+from saisons.portee import TOUTES_SAISONS, ignorer_saison_demandee, saison_demandee
 from securite import jetons
 
 from . import roles
@@ -212,7 +212,7 @@ def _verifier_saison(db: Session, compte: Compte) -> None:
       nouvelle fiche, pour que l'appli bascule dessus sans reconnexion ;
       sinon 401 ;
     - seule la saison courante se consulte, sauf pour un admin de l'école
-      (en-tête X-Saison-Id, voir saisons/portee.py)."""
+      (en-tête X-Saison-Id, voir saisons/portee.py), module Saisons allumé."""
     courante = saison_courante_id(db, compte.ecole_id)
     if compte.saison_id != courante:
         from .comptes import Comptes
@@ -229,6 +229,14 @@ def _verifier_saison(db: Session, compte: Compte) -> None:
         )
     demandee = saison_demandee()
     if demandee is None or demandee == courante:
+        return
+    from registry.activation import disabled
+    from saisons.module import KEY
+
+    if KEY in disabled(db, compte.ecole_id):
+        # Module Saisons éteint (spec/modules/saisons.md §2) : on reste
+        # sur la saison courante.
+        ignorer_saison_demandee()
         return
     saison = db.get(Saison, demandee)
     if saison is None or saison.ecole_id != compte.ecole_id:
