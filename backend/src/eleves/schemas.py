@@ -55,6 +55,8 @@ class EleveModification(BaseModel):
     prenom: str | None = None
     email: str | None = None
     telephone: str | None = None
+    # Email du payeur (spec/core.md §4.4) ; vide = le premier email.
+    payer_email: str | None = None
     date_naissance: dt.date | None = None
     adresse: str | None = None
     allergies: str | None = None
@@ -78,6 +80,7 @@ class EleveSortie(BaseModel):
     # une virgule, et accepte cette forme en entrée.
     emails: list[str] = []
     telephone: str | None = None
+    payer_email: str | None = None
     date_naissance: dt.date | None = None
     age: int | None = None
     adresse: str | None = None

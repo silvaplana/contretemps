@@ -127,35 +127,18 @@ class Comptes:
         ]
 
     def recalculer_familles(self, db: Session, ecole_id: int | None) -> None:
-        """Regroupement automatique (§6.2, 2026-10-16) : une famille = les
-        comptes de l'école (saison affichée) reliés DE PROCHE EN PROCHE par
-        un email commun. Margot (email du père + le sien) et Lison (email
-        du père) sont de la même famille. Un compte sans email reste seul.
-        Chaque groupe garde, si possible, la famille que la plupart de ses
-        membres avaient déjà : rien ne bouge pour les familles inchangées,
-        un ajout d'email fusionne, un retrait peut séparer en deux."""
+        """Famille = les fiches de l'école (saison affichée) qui ont le même
+        email du payeur (spec/core.md §4.4, `Compte.payeur`), calculée,
+        jamais éditée. Une fiche sans email reste seule. Chaque groupe garde,
+        si possible, la famille que la plupart de ses membres avaient déjà :
+        rien ne bouge pour les familles inchangées."""
         if ecole_id is None:
             return
         db.flush()
         comptes = list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id).order_by(Compte.id)))
-        parent = {c.id: c.id for c in comptes}
-
-        def racine(i: int) -> int:
-            while parent[i] != i:
-                parent[i] = parent[parent[i]]
-                i = parent[i]
-            return i
-
-        premier_par_email: dict[str, int] = {}
+        groupes: dict[object, list[Compte]] = {}
         for c in comptes:
-            for e in c.emails:
-                if e in premier_par_email:
-                    parent[racine(c.id)] = racine(premier_par_email[e])
-                else:
-                    premier_par_email[e] = c.id
-        groupes: dict[int, list[Compte]] = {}
-        for c in comptes:
-            groupes.setdefault(racine(c.id), []).append(c)
+            groupes.setdefault(c.payeur or c.id, []).append(c)
         prises: set[int] = set()
         # Les plus grands groupes choisissent d'abord leur famille.
         for membres in sorted(groupes.values(), key=lambda g: (-len(g), g[0].id)):
@@ -247,7 +230,15 @@ class Comptes:
         if emails is None and "email" in champs:
             emails = champs.pop("email") or []
         champs.pop("email", None)
-        if emails is not None and compte.definir_emails(emails):
+        famille_a_revoir = emails is not None and compte.definir_emails(emails)
+        # Email du payeur (§4.4) : une adresse, vide = le premier email.
+        if "payer_email" in champs:
+            payeur = separer_emails(champs.pop("payer_email"))
+            if len(payeur) > 1:
+                raise ValueError("Un seul email du payeur")
+            famille_a_revoir |= compte.payer_email != (payeur[0] if payeur else None)
+            compte.payer_email = payeur[0] if payeur else None
+        if famille_a_revoir:
             self.recalculer_familles(db, compte.ecole_id)
         # `champs` ne contient déjà que les champs explicitement fournis
         # (exclude_unset=True côté receiver) — un `if valeur is not None`

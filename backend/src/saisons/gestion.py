@@ -211,6 +211,7 @@ class GestionSaisons:
                 nom=ancien.nom,
                 prenom=ancien.prenom,
                 telephone=ancien.telephone,
+                payer_email=ancien.payer_email,
             )
             nouveau.definir_emails(ancien.emails)
             nouveau.roles = [RoleCompte(role=role) for role in roles if role not in r.ROLES_EN_GROUPE]

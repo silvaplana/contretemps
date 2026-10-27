@@ -32,6 +32,7 @@ def _fusionner(compte: Compte, profil: ProfilEleve, champs: dict) -> dict:
         "email": compte.email,
         "emails": compte.emails,
         "telephone": compte.telephone,
+        "payer_email": compte.payer_email,
         **champs,
         "age": calculer_age(champs["date_naissance"]),
         "statut_paiement": profil.statut_paiement,
@@ -142,10 +143,14 @@ class ElevesReceiver:
     def modifier(self, eleve_id: int, donnees: EleveModification, db: Session = Depends(get_db)):
         champs = donnees.model_dump(exclude_unset=True)
         champs_compte = {
-            cle: champs.pop(cle) for cle in ("nom", "prenom", "email", "telephone") if cle in champs
+            cle: champs.pop(cle) for cle in ("nom", "prenom", "email", "telephone", "payer_email") if cle in champs
         }
         if champs_compte:
-            self.comptes.update(db, eleve_id, **champs_compte)
+            try:
+                self.comptes.update(db, eleve_id, **champs_compte)
+            except ValueError as erreur:
+                db.rollback()
+                raise HTTPException(status_code=422, detail=str(erreur)) from erreur
         if "ligne_rouge" in champs:
             champs["ligne_rouge"] = bool(champs["ligne_rouge"])
         if champs:
