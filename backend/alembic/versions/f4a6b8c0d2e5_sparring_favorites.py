@@ -3,15 +3,15 @@
 « ★ Favoris » in Sparring (spec/modules/video-combats.md §6.7): the clips
 each person set aside. New table only: nothing to carry over.
 
-Revision ID: e3f5a7b9c1d2
-Revises: d2e4f6a8b0c1
+Revision ID: f4a6b8c0d2e5
+Revises: e3f5a7b9c1d2
 """
 
 import sqlalchemy as sa
 from alembic import op
 
-revision = "e3f5a7b9c1d2"
-down_revision = "d2e4f6a8b0c1"
+revision = "f4a6b8c0d2e5"
+down_revision = "e3f5a7b9c1d2"
 branch_labels = None
 depends_on = None
 
