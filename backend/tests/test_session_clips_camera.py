@@ -80,6 +80,23 @@ def test_arreter_avant_le_premier_morceau(client, e):
     assert client.get("/session-clips/sessions", headers=e["coach"]).json() == []
 
 
+def test_envoi_expire_rouvert(client, db_session, e, tmp_path, monkeypatch):
+    """Un envoi interrompu plus d'un jour est nettoyé par `videos` : le bloc
+    suivant répond 404 (et non 200 sans rien écrire), le téléphone rouvre le
+    morceau et repart de zéro."""
+    monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
+    tel = _jumeler(client, e)
+    _battre(client, tel)
+    sid = client.post("/session-clips/camera/start", json={"title": ""}, headers=e["coach"]).json()["session_id"]
+    piece = {"session_id": sid, "position": 0, "size": 10}
+    upload = client.post("/session-clips/recorder/pieces", json=piece, headers=tel).json()["upload_id"]
+    core.session_clips_client.videos.annuler_televersement(db_session, upload)
+    r = client.put(f"/session-clips/recorder/pieces/{upload}", content=b"12345", headers={**tel, "X-Decalage": "0"})
+    assert r.status_code == 404
+    rouvert = client.post("/session-clips/recorder/pieces", json=piece, headers=tel).json()
+    assert rouvert["upload_id"] != upload and rouvert["received"] == 0
+
+
 def _morceau(tmp_path, n, secondes=30):
     fichier = tmp_path / f"morceau{n}.mp4"
     subprocess.run(
@@ -134,7 +151,8 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     _envoyer(client, tel, sid, 1, _morceau(tmp_path, 1))
     assert cut_live(db_session, sc, session, detecteur) == 1
     client.post("/session-clips/camera/stop", headers=e["coach"])
-    _envoyer(client, tel, sid, 2, _morceau(tmp_path, 2), last=True)
+    # Numéro 2 sauté (caméra relancée après une erreur) : le 3 suit le 1.
+    _envoyer(client, tel, sid, 3, _morceau(tmp_path, 2), last=True)
     db_session.refresh(session)
     assert cut_live(db_session, sc, session, detecteur) == 1
     assert session.status == "ready" and live_sessions(db_session) == []

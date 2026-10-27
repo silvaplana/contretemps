@@ -1,0 +1,17 @@
+// Appli caméra de la salle de Fights (spec/modules/video-combats.md §4) :
+// un projet Android à part, indépendant du frontend.
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+rootProject.name = "fights-camera"
+include ":app"

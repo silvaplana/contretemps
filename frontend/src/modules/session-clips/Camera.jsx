@@ -9,6 +9,8 @@ import * as api from './api.js'
 // téléphone.
 
 const RELIRE_MS = 5000
+// Construite par l'action GitHub « Appli caméra (APK) » (dossier recorder/).
+const APPLI = 'https://github.com/silvaplana/contretemps/releases/download/camera-latest/fights-camera.apk'
 
 export function useCamera(actif) {
   const [camera, setCamera] = useState(null)
@@ -125,7 +127,13 @@ export function PanneauCamera({ camera, setCamera, cours, montrer, onClose, rafr
           </>
         ) : (
           <>
-            <p className="sc-meta">Installez l’appli caméra sur le téléphone de la salle, puis affichez un code à y taper.</p>
+            <p className="sc-meta">
+              Installez{' '}
+              <a href={APPLI} target="_blank" rel="noreferrer">
+                l’appli caméra
+              </a>{' '}
+              sur le téléphone de la salle, puis affichez un code à y taper.
+            </p>
             <button type="button" className="btn btn--primary" disabled={enCours} onClick={() => faire(api.codeCamera)}>
               Afficher un code
             </button>
