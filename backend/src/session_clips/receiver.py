@@ -201,9 +201,12 @@ class SessionClipsReceiver:
             data = await request.body()
             offset = int(request.headers.get("X-Decalage", "-1"))
             try:
-                client.videos.ecrire_bloc(s, upload_id, offset, data)
+                written = client.videos.ecrire_bloc(s, upload_id, offset, data)
             except DecalageInvalide as err:
                 raise HTTPException(status_code=409, detail={"octets_recus": err.octets_recus}) from err
+            if written is None:
+                # Envoi interrompu plus d'un jour et nettoyé : le téléphone le rouvre.
+                raise HTTPException(status_code=404, detail="Envoi expiré")
             camera.piece_written(s, r)
             return self._piece_out(s, piece)
 

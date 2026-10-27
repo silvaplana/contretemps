@@ -138,7 +138,7 @@ def live_sessions(db: Session) -> list[ClipSession]:
 
 
 def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Detector) -> int:
-    """Lit les postures des morceaux arrivés (dans l'ordre, sans trou), puis
+    """Lit les postures des morceaux arrivés (dans l'ordre), puis
     coupe chaque combat dont la fin est connue et qui ne l'a pas encore été.
     Quand le dernier morceau est lu, coupe aussi le combat resté ouvert et
     passe la séance à `ready`. Renvoie le nombre de clips coupés."""
@@ -148,10 +148,13 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     frames: list[Frame] = []
     sources: list[tuple[Path, float, float]] = []  # fichier, début dans la séance, durée
     offset, read, ended = 0.0, False, False
-    for index, piece in enumerate(pieces):
+    for piece in pieces:
         video = videos.get(piece.video_id)
-        if piece.position != index or video is None or video.statut != "complete":
-            break  # un morceau manque encore : on attend
+        # Le téléphone envoie dans l'ordre : un morceau pas encore complet
+        # bloque la suite. Un numéro sauté (morceau vide, caméra relancée)
+        # ne viendra jamais : on passe.
+        if video is None or video.statut != "complete":
+            break
         source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
         poses = _poses_path(session.org_id, piece.id)
         if piece.duration_seconds is None or not poses.exists():

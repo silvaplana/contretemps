@@ -162,7 +162,7 @@ l'appli, par l'envoi par blocs du module `videos` (SPEC.md §6.8).
 
 **Ensuite, une petite appli Android à part, l'« enregistreur »** : l'appli reste la PWA pour tout le
 monde. L'enregistreur n'est installé que sur le téléphone qui filme. C'est une appli Kotlin minuscule
-(CameraX), indépendante du frontend, distribuée en APK (choix confirmé par Seb le 27 octobre). On n'utilise pas Capacitor, qui obligerait à
+(Camera2 et MediaRecorder d'Android, sans bibliothèque ; dossier `recorder/`), indépendante du frontend, distribuée en APK (choix confirmé par Seb le 27 octobre). On n'utilise pas Capacitor, qui obligerait à
 maintenir un build Android de toute l'appli pour une seule fonction.
 
 - **Téléphone dédié, fixé au mur et branché en permanence.** Une seule caméra pour l'instant ; s'il y
@@ -456,7 +456,7 @@ Tout est open source et tourne sur le VPS. Aucune API payante.
 | Recadrage | OpenCV et ffmpeg |
 | Traitement de nuit | Un worker, comme les autres workers du Docker Compose |
 | Stockage et envoi | Module `videos` existant (SPEC.md §6.8) |
-| Enregistrement de séance | Petite appli Android à part (Kotlin, CameraX, service de premier plan), lancée par la PWA |
+| Enregistrement de séance | Petite appli Android à part (Kotlin, Camera2 et MediaRecorder, service de premier plan), lancée par la PWA |
 
 Le code suit les conventions du dépôt : `backend/src/session_clips/` et
 `frontend/src/modules/session-clips/`, tables préfixées `sc_` (§6.7). Nom à valider avec Seb.
@@ -505,8 +505,15 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
      postures sont gardées dans un fichier, puis les combats de toute la séance sont recherchés ; un
      combat est coupé dès que sa fin est connue, en recollant les morceaux qu'il chevauche ; le
      dernier morceau termine la séance. Pastille, panneau et bande rouge dans Fights (§6.3).
-   - **3b, l'appli caméra Android** (Kotlin, CameraX), dossier `recorder/` ; l'APK est fabriqué par
-     une action GitHub à part (accord de Seb du 27/10 : `dl.google.com` est bloqué là où code Claude).
+   - **3b, l'appli caméra Android (codée)**, dossier `recorder/` ; l'APK est fabriqué par une action
+     GitHub à part (accord de Seb du 27/10 : `dl.google.com` est bloqué là où code Claude). Un écran
+     pour taper le code de Fights, puis l'image de la caméra pour cadrer (tenue en paysage) et l'état :
+     Prête, Filme avec le chrono, morceaux à envoyer. Un service de premier plan demande les ordres
+     toutes les 5 s, filme en 1080p à 30 images/s (environ 62 Mo par morceau de 2 minutes, sans trou)
+     et envoie chaque morceau fini par blocs de 4 Mo ; après une coupure, l'envoi reprend où le serveur
+     s'est arrêté. Si la caméra lâche, le film reprend au battement suivant dans un nouveau morceau (la
+     découpe saute le numéro manquant). Pas encore : les modes Connecté / Autonome, « Ne pas
+     déranger », le redémarrage seul après une coupure de courant, les gestes (3c).
    - **3c, les gestes reconnus par le téléphone**, avec le bip et la lampe.
 
 ## 9. Risques
@@ -555,6 +562,28 @@ routes publiques (`backend/src/comptes/rbac.py`, `ROUTES_PUBLIQUES`) et le recon
 `X-Recorder-Token` (jeton remis au jumelage ; seule son empreinte sha256 est en base). Changer de VPS
 ne demande pas de rejumeler : le jeton est dans la base copiée. L'adresse du serveur est tapée dans
 l'appli caméra.
+
+**Appli caméra (étape 3b).** Code dans `recorder/` (Kotlin, Gradle, sans bibliothèque Android
+en plus ; Android 8 minimum). L'action GitHub `.github/workflows/recorder-apk.yml` (« Appli caméra
+(APK) ») la construit à chaque PR qui touche `recorder/`, et, à chaque fusion dans `main`, la publie
+à une adresse fixe :
+https://github.com/silvaplana/contretemps/releases/download/camera-latest/fights-camera.apk (lien
+aussi dans le panneau de la caméra, « Installer »). Elle ne dépend pas du VPS : rien à faire en
+changeant de serveur, sauf taper la nouvelle adresse dans l'appli (champ « Serveur » de l'écran de
+jumelage, `https://silvaplana.cloud/contretemps/api` par défaut).
+
+Installer sur le téléphone de la salle :
+1. Ouvrir le lien ci-dessus dans Chrome, autoriser « Installer des applis inconnues » pour Chrome.
+2. Ouvrir « Caméra Fights », accepter caméra, micro et notifications, puis « Ne pas optimiser » la
+   batterie quand Android le demande.
+3. Dans Fights : pastille Caméra > « Afficher un code », taper le code dans l'appli.
+4. Réglages Samsung : Applis > Caméra Fights > Batterie > « Non restreinte » ; Batterie > « Protéger
+   la batterie » (téléphone toujours branché).
+5. Fixer le téléphone en paysage. La pastille passe à « Prête ».
+
+Mise à jour : l'APK est signé par une clé de test qui change à chaque construction, donc Android
+refuse la mise à jour par-dessus : désinstaller l'ancienne, installer la nouvelle, refaire le code
+(30 s). Une clé fixe, gardée dans les secrets du dépôt GitHub, évitera cela le jour où ça gêne.
 
 **Allumer le module pour une école.** Admin > École > Personnalisation de l'application >
 Fonctionnalités > case « Sparring » (Administrateur principal ou Super User). Il faut aussi le
