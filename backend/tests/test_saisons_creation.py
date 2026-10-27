@@ -300,3 +300,62 @@ def test_un_prof_ne_supprime_pas_de_saison(client, ecole_en_cours, sauvegardes):
         f"/ecoles/{e['ecole'].id}/saisons/{e['ancienne']}", headers=entetes_session(e["prof"])
     )
     assert reponse.status_code == 403
+
+
+# --- Créer une saison en un écran (spec/modules/saisons.md §3) ---
+
+
+def test_contenu_de_la_saison_courante(client, db_session, ecole_en_cours):
+    e = ecole_en_cours
+    contenu = client.get(f"/ecoles/{e['ecole'].id}/saisons/courante/contenu").json()
+    assert (contenu["eleves"], contenu["profs"], contenu["cours"]) == (2, 2, 1)
+    assert {c["key"] for c in contenu["champs"]} >= {"birth_date", "allergies"}
+
+
+def _champ_ajoute(db_session, e):
+    from members import fields as member_fields
+
+    champ = member_fields.create(db_session, e["ecole"].id, e["ancienne"], label="Taille", format="short_text")
+    db_session.commit()
+    return champ
+
+
+def _champs(db_session, ecole_id, saison_id):
+    from members.models import MemberField
+
+    with toutes_saisons(db_session):
+        return {
+            f.label: f.removed_at is None
+            for f in db_session.scalars(sa.select(MemberField).where(MemberField.season_id == saison_id))
+        }
+
+
+def test_structure_de_l_an_dernier_avec_un_champ_masque(client, db_session, ecole_en_cours):
+    e = ecole_en_cours
+    _champ_ajoute(db_session, e)
+    allergies = next(
+        c["id"] for c in client.get(f"/ecoles/{e['ecole'].id}/saisons/courante/contenu").json()["champs"]
+        if c["key"] == "allergies"
+    )
+    reponse = _creer(
+        client, e["ecole"].id, dupliquer_profs=True, dupliquer_cours=True, dupliquer_eleves=True,
+        champs_masques=[allergies],
+    )
+    champs = _champs(db_session, e["ecole"].id, reponse.json()["saison"]["id"])
+    # Masqué = retiré de la fiche, la réponse d'Ana est gardée.
+    assert champs["Taille"] is True and champs["Allergies"] is False
+    saison_id = reponse.json()["saison"]["id"]
+    ana = _fiches(db_session, saison_id)[("Ana", ("eleve",))]
+    from members import values
+
+    with toutes_saisons(db_session):
+        assert values.known_values(db_session, e["ecole"].id, saison_id)[ana.id]["allergies"] == "Arachide"
+
+
+def test_structure_de_base_sans_les_champs_ajoutes(client, db_session, ecole_en_cours):
+    e = ecole_en_cours
+    _champ_ajoute(db_session, e)
+    reponse = _creer(client, e["ecole"].id, structure_eleves="base")
+    champs = _champs(db_session, e["ecole"].id, reponse.json()["saison"]["id"])
+    assert "Taille" not in champs and champs["Date de naissance"] is True
+    assert _creer(client, e["ecole"].id, structure_eleves="autre").status_code == 422

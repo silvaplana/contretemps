@@ -191,12 +191,19 @@ def _same_group(db: Session, old_id: int | None, season_id: int) -> int | None:
     return new.id
 
 
-def copy_season(db: Session, org_id: int, old_season_id: int, new_season_id: int, members: dict[int, int]) -> None:
+def copy_season(
+    db: Session, org_id: int, old_season_id: int, new_season_id: int, members: dict[int, int],
+    base: bool = False, hidden: set[int] = frozenset(),
+) -> None:
     """Nouvelle saison : la même fiche (spec §4.3) et le même affichage dans
     Admin, et les réponses des fiches recopiées (`members` : ancienne fiche →
-    nouvelle). Après la copie des groupes et des cours."""
+    nouvelle). Après la copie des groupes et des cours.
+    `base` : sans les champs ajoutés par l'école ; `hidden` : champs de
+    l'ancienne saison recopiés retirés (masqués, réponses gardées),
+    spec/modules/saisons.md §3."""
     from . import columns
 
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     copied: dict[int, int] = {}
     # Un champ marqué retiré passe aussi, retiré : sinon `known` le recréerait.
     removed_known = db.scalars(
@@ -206,8 +213,11 @@ def copy_season(db: Session, org_id: int, old_season_id: int, new_season_id: int
         )
     )
     for old in [*fields(db, org_id, old_season_id), *removed_known]:
+        if base and old.key is None:
+            continue
+        removed_at = old.removed_at or (now if old.id in hidden else None)
         new = MemberField(
-            org_id=org_id, season_id=new_season_id, position=old.position, key=old.key, removed_at=old.removed_at
+            org_id=org_id, season_id=new_season_id, position=old.position, key=old.key, removed_at=removed_at
         )
         for key in SETTINGS:
             setattr(new, key, getattr(old, key))

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .gestion import Duplication, ErreurSaison, GestionSaisons
-from .schemas import SaisonCreation, SaisonCreee, SaisonModification, SaisonSortie, SaisonSupprimee
+from .schemas import SaisonContenu, SaisonCreation, SaisonCreee, SaisonModification, SaisonSortie, SaisonSupprimee
 
 
 def _sortie(saison, courante_id: int) -> SaisonSortie:
@@ -38,6 +38,9 @@ class SaisonsReceiver:
         self.app.put("/ecoles/{ecole_id}/saisons/courante", response_model=SaisonSortie, dependencies=admin)(
             self.modifier_courante
         )
+        self.app.get(
+            "/ecoles/{ecole_id}/saisons/courante/contenu", response_model=SaisonContenu, dependencies=admin
+        )(self.contenu)
         self.app.delete(
             "/ecoles/{ecole_id}/saisons/{saison_id}", response_model=SaisonSupprimee, dependencies=admin
         )(self.supprimer)
@@ -69,6 +72,8 @@ class SaisonsReceiver:
                     cours=donnees.dupliquer_cours,
                     eleves=donnees.dupliquer_eleves,
                     documents=donnees.dupliquer_documents,
+                    structure_eleves=donnees.structure_eleves,
+                    champs_masques=set(donnees.champs_masques),
                 ),
                 auteur_id=appelant.id if appelant is not None else None,
             )
@@ -78,6 +83,9 @@ class SaisonsReceiver:
             saison=_sortie(saison, saison.id),
             compte_id=fiches.get(appelant.id) if appelant is not None else None,
         )
+
+    def contenu(self, ecole_id: int, db: Session = Depends(get_db)):
+        return self.client.contenu(db, ecole_id)
 
     def modifier_courante(self, ecole_id: int, donnees: SaisonModification, db: Session = Depends(get_db)):
         try:

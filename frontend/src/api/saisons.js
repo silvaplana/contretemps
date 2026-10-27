@@ -27,10 +27,16 @@ export async function lister(ecoleId) {
   return (await requete(`/ecoles/${ecoleId}/saisons`)).map(versEcran)
 }
 
-// `cases` : { profs, cours, eleves } (voir spec §2.6 : chacune exige la
-// précédente). Renvoie la saison créée et la nouvelle fiche de l'admin qui
-// l'a créée (`compteId`) : sa fiche actuelle vient de passer en lecture seule.
-export async function creer(ecoleId, { nom, dateDebut, dateFin, cases }) {
+// Ce que « Créer une saison » peut reprendre de la courante : nombres
+// d'élèves, de profs et de cours, champs de la fiche des élèves.
+export const contenu = (ecoleId) => requete(`/ecoles/${ecoleId}/saisons/courante/contenu`)
+
+// `cases` : { profs, cours, eleves, documents } (voir spec §2.6 : chacune
+// exige la précédente). `structureEleves` : 'last' ou 'base' ;
+// `champsMasques` : ids des champs à masquer (spec/modules/saisons.md §3).
+// Renvoie la saison créée et la nouvelle fiche de l'admin qui l'a créée
+// (`compteId`) : sa fiche actuelle vient de passer en lecture seule.
+export async function creer(ecoleId, { nom, dateDebut, dateFin, cases, structureEleves = 'last', champsMasques = [] }) {
   const resultat = await requete(`/ecoles/${ecoleId}/saisons`, {
     method: 'POST',
     body: JSON.stringify({
@@ -41,6 +47,8 @@ export async function creer(ecoleId, { nom, dateDebut, dateFin, cases }) {
       dupliquer_cours: cases.cours,
       dupliquer_eleves: cases.eleves,
       dupliquer_documents: cases.documents,
+      structure_eleves: structureEleves,
+      champs_masques: champsMasques,
     }),
   })
   return { saison: versEcran(resultat.saison), compteId: resultat.compte_id }

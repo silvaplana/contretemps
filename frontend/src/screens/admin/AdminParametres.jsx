@@ -201,6 +201,7 @@ export default function AdminParametres({
         <SaisonsSection
           key={activeUser.id}
           ecoleId={ecole.id}
+          documents={!modules.some((m) => m.key === 'documents' && !m.enabled)}
           onSaisonCreee={onSaisonCreee}
           onSaisonSupprimee={onSaisonSupprimee}
         />

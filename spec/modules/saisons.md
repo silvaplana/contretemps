@@ -81,10 +81,14 @@ Par défaut : structure de l'an dernier partout ; profs, cours et documents reco
 recopiés (ils se réinscrivent). L'organisation ne change que ce qu'elle veut.
 
 **Côté serveur** : la route de création reçoit, en plus d'aujourd'hui, la structure des élèves
-(`last` ou `base`) et les champs à masquer ; le reste (`Duplication`) ne change pas.
+(`structure_eleves` : `last` ou `base`) et les champs à masquer (`champs_masques`, ids de la saison
+courante, recopiés retirés) ; le reste (`Duplication`) ne change pas. `GET
+/ecoles/{id}/saisons/courante/contenu` donne les nombres des cases et les champs de la fiche.
+« Annuler » après la création supprime la saison créée (route de suppression, avec sa sauvegarde).
 
 ## 4. Étapes de code (core.md §13, étape 6)
 
 a. **Module Saisons** : déclaration, routes et écrans derrière la case du module, `requires` de
    Inscriptions et Financier, tests module éteint *(faite le 27 octobre 2026)*.
-b. **Créer une saison en un écran** (§3), à la place du panneau actuel de `SaisonsSection.jsx`.
+b. **Créer une saison en un écran** (§3), à la place du panneau actuel de `SaisonsSection.jsx`
+   (`CreerSaison.jsx`) *(faite le 27 octobre 2026)*.
