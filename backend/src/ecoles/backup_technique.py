@@ -33,6 +33,7 @@ from comptes import roles
 from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
+from groups import Group, GroupMember
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
@@ -148,6 +149,23 @@ def _construire_tables() -> list[_Table]:
             ["id", "compte_id", "email", "created_at"],
             lambda db, eid: list(
                 db.scalars(select(EmailCompte).where(EmailCompte.compte_id.in_(_sous_requete_comptes_ecole(eid))))
+            ),
+        ),
+        # Groupes du core (spec/core.md §5), depuis le 2026-10-27 : le bureau.
+        # Parents avant sous-groupes (ordre des ids).
+        _Table(
+            "Groupes",
+            Group,
+            ["id", "org_id", "season_id", "parent_id", "key", "name", "created_at"],
+            lambda db, eid: list(db.scalars(select(Group).where(Group.org_id == eid).order_by(Group.id))),
+            colonne_ecole_id="org_id",
+        ),
+        _Table(
+            "MembresGroupes",
+            GroupMember,
+            ["group_id", "member_id", "created_at"],
+            lambda db, eid: list(
+                db.scalars(select(GroupMember).where(GroupMember.member_id.in_(_sous_requete_comptes_ecole(eid))))
             ),
         ),
         _Table(

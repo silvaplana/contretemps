@@ -14,6 +14,7 @@ le receiver via comptes/rbac.py, pas dans ce service.
 from __future__ import annotations
 
 from comptes import Compte, Comptes, RegleRoles, roles
+from groups import board
 from messagerie.models import ConversationMembre, MessageDelivery
 from notifications.models import PushSubscription
 from sqlalchemy import delete
@@ -112,7 +113,7 @@ class Administrateurs:
         elif tresorier is False and roles.is_tresorier(admin):
             self.comptes.retirer_role(db, admin, roles.TRESORIER)
         if bureau_functions is not None:
-            admin.bureau_functions = list(bureau_functions)
+            board.set_functions(db, admin, bureau_functions)
             db.commit()
         db.refresh(admin)
         return admin

@@ -1,16 +1,12 @@
 from typing import Literal
 
+from groups import board
 from pydantic import BaseModel, field_validator, model_validator
 
-# Fonctions au bureau (spec/core.md §6.4), dans l'ordre d'affichage : des
-# titres, aucun droit (l'onglet Financier reste la coche Trésorier).
-BUREAU_FUNCTIONS = ("president", "vice_president", "secretary", "treasurer")
+# Fonctions au bureau (spec/core.md §5.1) : sous-groupes du groupe Bureau,
+# des titres, aucun droit (l'onglet Financier reste la coche Trésorier).
 BureauFunction = Literal["president", "vice_president", "secretary", "treasurer"]
-
-
-def ordered_functions(functions) -> list[str]:
-    """Sans doublon, dans l'ordre de BUREAU_FUNCTIONS."""
-    return [f for f in BUREAU_FUNCTIONS if f in set(functions)]
+ordered_functions = board.ordered
 
 
 class AdministrateurSortie(BaseModel):

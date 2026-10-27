@@ -11,7 +11,7 @@ import unicodedata
 
 from saisons import saison_courante_id
 from saisons.portee import TOUTES_SAISONS
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from . import roles as r
@@ -367,6 +367,9 @@ class Comptes:
         if compte is None:
             return False
         ecole_id = compte.ecole_id
+        from groups import GroupMember
+
+        db.execute(delete(GroupMember).where(GroupMember.member_id == compte.id))
         db.delete(compte)
         # Une fiche peut être le seul lien entre deux groupes (§6.2).
         self.recalculer_familles(db, ecole_id)

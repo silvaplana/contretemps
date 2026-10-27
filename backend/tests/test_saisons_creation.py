@@ -17,6 +17,7 @@ from inscriptions.saison import saison_des_inscriptions
 from presence.models import SeancePresence
 from saisons import Saison, saison_courante_id
 from saisons.portee import toutes_saisons
+from groups import board
 
 NOUVELLE = {"nom": "2027-2028", "date_debut": "2027-09-01", "date_fin": "2028-08-31"}
 
@@ -81,7 +82,7 @@ def test_validations(client, ecole_en_cours):
 def test_sans_duplication_seuls_les_admins_sont_recopies(client, db_session, ecole_en_cours):
     e = ecole_en_cours
     Comptes().ajouter_role(db_session, e["owner"], roles.TRESORIER)
-    e["owner"].bureau_functions = ["president"]
+    board.set_functions(db_session, e["owner"], ["president"])
     db_session.commit()
     reponse = _creer(client, e["ecole"].id)
     assert reponse.status_code == 201
@@ -95,8 +96,8 @@ def test_sans_duplication_seuls_les_admins_sont_recopies(client, db_session, eco
     # L'owner et le trésorier le restent ; le professeur-admin devient admin pur.
     assert set(fiches) == {("Julia", ("admin", "owner", "tresorier")), ("Ima", ("admin",))}
     assert fiches[("Julia", ("admin", "owner", "tresorier"))].compte_precedent_id == e["owner"].id
-    # Les fonctions du bureau suivent la fiche (spec/core.md §6.4).
-    assert fiches[("Julia", ("admin", "owner", "tresorier"))].bureau_functions == ["president"]
+    # Les fonctions du bureau suivent la fiche (spec/core.md §5.1).
+    assert board.functions_of(db_session, fiches[("Julia", ("admin", "owner", "tresorier"))]) == ["president"]
     assert client.get("/cours", params={"ecole_id": e["ecole"].id}).json() == []
     # L'ancienne saison est désormais en lecture seule.
     ancienne = {"X-Saison-Id": str(e["ancienne"])}

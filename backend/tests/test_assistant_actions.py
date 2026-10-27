@@ -13,6 +13,7 @@ from cours.models import Cours
 from ecoles import Ecoles
 from messagerie.models import Conversation, ConversationMembre
 from notes_frais.models import NoteFrais
+from groups import board
 
 pytestmark = pytest.mark.rbac_reel
 
@@ -205,7 +206,7 @@ def test_fonctions_du_bureau_par_l_assistant(db_session, ecole):
     assert carte["lignes"] == ["Julia Dho : bureau : président·e, secrétaire"]
     assert _faire(db_session, owner, ecole, carte)[0]["ok"]
     db_session.refresh(owner)
-    assert owner.bureau_functions == ["president", "secretary"]
+    assert board.functions_of(db_session, owner) == ["president", "secretary"]
 
     texte, carte = _proposer(db_session, owner, ecole, "change_roles", {"person_id": prof.id, "bureau_functions": ["treasurer"]})
     assert carte is None and "administrateur" in texte
@@ -216,7 +217,7 @@ def test_fonctions_du_bureau_par_l_assistant(db_session, ecole):
     assert carte["lignes"] == ["Ima Blanc : devient administrateur, bureau : trésorier·e"]
     _faire(db_session, owner, ecole, carte)
     db_session.refresh(prof)
-    assert prof.bureau_functions == ["treasurer"] and not roles.is_tresorier(prof)
+    assert board.functions_of(db_session, prof) == ["treasurer"] and not roles.is_tresorier(prof)
 
 
 def test_le_super_user_change_les_roles_et_cree_un_administrateur(db_session, ecole):

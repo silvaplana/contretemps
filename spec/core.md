@@ -238,8 +238,17 @@ seulement là où on les a choisis (dossier réservé, envoi, conversation).
 les rôles cumulés de `comptes/roles.py` ; la table `cours` utilisée par la messagerie, les vidéos et
 la présence. Gros chantier, par étapes, chacune sur le « vas-y » de Seb.
 
-**Données** (cible) : `groups` (organisation, saison ou permanent, nom, `parent_id`, module
-propriétaire, clé du droit ou vide), `group_members` (groupe, membre).
+**Données** : `groups` (`org_id`, `season_id` ou vide pour « permanent », `parent_id`, `key` pour
+les groupes que le code connaît — `board`, `board.president`… —, vide pour un groupe fait à la main,
+`name`), `group_members` (`group_id`, `member_id` = la fiche de la saison). Code : `backend/src/groups/`.
+Une fiche fusionnée garde ses groupes, une fiche supprimée les quitte ; les groupes d'une saison
+partent avec elle et sont dans la sauvegarde technique (onglets « Groupes », « MembresGroupes »).
+
+**Fait (27 octobre 2026, étape 1a)** : les tables, et le **bureau** en groupes (`groups/board.py`) : un
+groupe « Bureau » et ses sous-groupes par école et par saison, créés à la première demande ; recopiés
+à la création d'une saison. La migration reprend `comptes.bureau_functions`, qui n'est plus lue ni
+écrite (colonne gardée en base, à supprimer plus tard). L'API et l'écran n'ont pas changé
+(`bureau_functions` dans Admin > Administrateurs et l'action `change_roles` de l'assistant).
 
 ---
 
@@ -544,8 +553,11 @@ Déjà codés dans Contretemps :
 
 ## 13. Étapes de code (chacune une PR, sur le « vas-y » de Seb)
 
-1. **Groupes** : tables `groups` et `group_members`, Bureau et Profs en groupes, Admin >
-   Administrateurs nouveau style, reprise de `bureau_functions` et du rôle Professeur.
+1. **Groupes**, en trois PR :
+   a. tables `groups` et `group_members`, Bureau en groupes, reprise de `bureau_functions`
+      *(faite le 27 octobre 2026)* ;
+   b. Profs en groupe, reprise du rôle Professeur ;
+   c. Admin > Administrateurs nouveau style (colonne Groupes, maquette).
 2. **Droits** : `Right` dans `module.py`, groupe « Accès au Financier », `has_right`, reprise de
    `is_tresorier`.
 3. **Cours = groupes** : `course_details`, messagerie, vidéos et présence sur les groupes.
