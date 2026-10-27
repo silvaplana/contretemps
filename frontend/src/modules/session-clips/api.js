@@ -53,6 +53,8 @@ export const nommer = async (id, people) => clip(await appel(`/clips/${id}/parti
 export const valider = async (id) => clip(await appel(`/clips/${id}/validate`, { method: 'POST' }))
 export const supprimer = (id) => appel(`/clips/${id}`, { method: 'DELETE' })
 export const membres = () => appel('/people')
+export const favoris = async () => (await appel('/favorites')).map(clip)
+export const favori = async (id, oui) => clip(await appel(`/clips/${id}/favorite`, json('PUT', { favorite: oui })))
 
 // « Jeu. 23 oct. »
 export function jour(iso) {
@@ -68,25 +70,29 @@ async function fichierDuClip(c) {
   return new File([blob], `${c.title}.mp4`, { type: blob.type || 'video/mp4' })
 }
 
-export async function telecharger(c) {
-  const fichier = await fichierDuClip(c)
-  const url = URL.createObjectURL(fichier)
-  const lien = document.createElement('a')
-  lien.href = url
-  lien.download = fichier.name
-  document.body.appendChild(lien)
-  lien.click()
-  lien.remove()
-  setTimeout(() => URL.revokeObjectURL(url), 60000)
+// Un clip ou plusieurs (sélection par appui long).
+export async function telecharger(clips) {
+  for (const c of [].concat(clips)) {
+    const fichier = await fichierDuClip(c)
+    const url = URL.createObjectURL(fichier)
+    const lien = document.createElement('a')
+    lien.href = url
+    lien.download = fichier.name
+    document.body.appendChild(lien)
+    lien.click()
+    lien.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 60000)
+  }
 }
 
 // Le menu Partager du téléphone (WhatsApp, mail…). Faux si le navigateur ne
-// sait pas partager un fichier : on télécharge alors à la place.
-export async function partager(c) {
-  const fichier = await fichierDuClip(c)
-  if (navigator.canShare?.({ files: [fichier] })) {
+// sait pas partager ces fichiers : on télécharge alors à la place.
+export async function partager(clips) {
+  const liste = [].concat(clips)
+  const fichiers = await Promise.all(liste.map(fichierDuClip))
+  if (navigator.canShare?.({ files: fichiers })) {
     try {
-      await navigator.share({ files: [fichier], title: c.title })
+      await navigator.share({ files: fichiers, title: liste.length === 1 ? liste[0].title : 'Combats' })
     } catch (err) {
       if (err.name !== 'AbortError') throw err
     }

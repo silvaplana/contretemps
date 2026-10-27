@@ -43,6 +43,8 @@ const paths = {
   send: 'M4 12l16-8-6 16-3-6-7-2Z',
   edit: 'M4 20h4L18 10l-4-4L4 16v4Z',
   fileCheck: 'M6 3h9l3 3v15H6z M9 12l2 2 4-4',
+  // Favoris (Sparring).
+  star: 'M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9Z',
   // Micro : dire un nom (Sparring, « Filmer un combat »).
   micro: 'M9 6a3 3 0 0 1 6 0v5a3 3 0 0 1-6 0Z M5 11a7 7 0 0 0 14 0 M12 18v3',
   camera: 'M4 8h2l1.5-2h9L18 8h2a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Z M12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z',

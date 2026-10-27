@@ -76,3 +76,13 @@ class SessionAttendee(Base):
 
     session_id: Mapped[int] = mapped_column(ForeignKey("sc_sessions.id"), primary_key=True)
     person_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
+class Favorite(Base):
+    """« ★ Favoris » : les combats qu'une personne a mis de côté. Propres à
+    chacun (un élève ne voit que ses combats, Seb 27/10)."""
+
+    __tablename__ = "sc_favorites"
+
+    person_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    clip_id: Mapped[int] = mapped_column(ForeignKey("sc_clips.id"), primary_key=True, index=True)

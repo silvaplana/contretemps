@@ -67,9 +67,9 @@ def test_seance_envoyee_puis_clips(client, db_session, e):
 
     detail = client.get(f"/session-clips/sessions/{seance['id']}", headers=e["h"]["coach"]).json()
     assert [c["title"] for c in detail["clips"]] == [
-        "Seb R. contre Karim B.",
-        "Lucas M. contre ?",
-        "Karim B. contre Seb R. 2",
+        "Seb R. vs Karim B.",
+        "Lucas M. vs ?",
+        "Karim B. vs Seb R. 2",
     ]
     assert [c["position"] for c in detail["clips"]] == [1, 2, 3]
     assert detail["clips"][1]["to_check"] and detail["to_check_count"] == 1
@@ -78,7 +78,7 @@ def test_seance_envoyee_puis_clips(client, db_session, e):
 
     # Mes combats : les clips validés où Seb apparaît.
     mine = client.get("/session-clips/mine", headers=e["h"]["seb"]).json()
-    assert [c["title"] for c in mine] == ["Seb R. contre Karim B.", "Karim B. contre Seb R. 2"]
+    assert [c["title"] for c in mine] == ["Seb R. vs Karim B.", "Karim B. vs Seb R. 2"]
     # Lucas : son clip attend un coach, il ne le voit pas encore.
     assert client.get("/session-clips/mine", headers=e["h"]["lucas"]).json() == []
 
@@ -95,7 +95,7 @@ def test_verifier_inverser_nommer_valider(client, db_session, e):
     # Tant qu'il manque un nom, « C'est bon » est refusé.
     assert client.post(f"/session-clips/clips/{clip.id}/validate", headers=h).status_code == 400
     r = client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["karim"].id, e["lucas"].id]}, headers=h)
-    assert r.status_code == 200 and r.json()["title"] == "Karim B. contre Lucas M."
+    assert r.status_code == 200 and r.json()["title"] == "Karim B. vs Lucas M."
     # Le nombre de places ne change pas.
     assert client.put(f"/session-clips/clips/{clip.id}/participants", json={"people": [e["karim"].id]}, headers=h).status_code == 400
 
@@ -163,7 +163,7 @@ def test_filmer_un_combat(client, db_session, e):
     upload, r = filmer([seb, karim])
     assert r.status_code == 201, r.text
     premier = r.json()
-    assert premier["title"] == "Seb R. contre Karim B." and not premier["to_check"]
+    assert premier["title"] == "Seb R. vs Karim B." and not premier["to_check"]
     # Double clic sur « C'est bon » : pas de second combat.
     assert client.post("/session-clips/fights", json={"upload_id": upload, "people": [seb, karim]}, headers=h).json()["id"] == premier["id"]
     second = filmer([karim, seb])[1].json()
@@ -172,8 +172,35 @@ def test_filmer_un_combat(client, db_session, e):
     seances = client.get("/session-clips/sessions", headers=h).json()
     assert len(seances) == 1 and seances[0]["status"] == "ready" and seances[0]["clip_count"] == 2
     mine = client.get("/session-clips/mine", headers=e["h"]["seb"]).json()
-    assert [c["title"] for c in mine] == ["Seb R. contre Karim B.", "Karim B. contre Seb R. 2"]
+    assert [c["title"] for c in mine] == ["Seb R. vs Karim B.", "Karim B. vs Seb R. 2"]
 
     # Deux combattants différents, coach seulement.
     assert filmer([seb, seb])[1].status_code == 400
     assert client.post("/session-clips/fights", json={"upload_id": upload, "people": [seb, karim]}, headers=e["h"]["seb"]).status_code == 403
+
+
+def test_favoris(client, db_session, e):
+    """« ★ Favoris » : propres à chacun, limités aux clips visibles, effacés
+    avec le clip."""
+    seance = _session(client, e)
+    sc = core.session_clips_client
+    seb, karim = e["seb"].id, e["karim"].id
+    a = sc.add_clip(db_session, seance["id"], _video(db_session, e["ecole"], "a").id, [seb, karim])
+    b = sc.add_clip(db_session, seance["id"], _video(db_session, e["ecole"], "b").id, [karim, None], check_reason="?")
+
+    def mettre(qui, clip, oui=True):
+        return client.put(f"/session-clips/clips/{clip.id}/favorite", json={"favorite": oui}, headers=e["h"][qui])
+
+    assert mettre("seb", a).json()["favorite"] is True
+    assert [c["id"] for c in client.get("/session-clips/favorites", headers=e["h"]["seb"]).json()] == [a.id]
+    # Les favoris de Seb ne sont pas ceux du coach.
+    assert client.get("/session-clips/favorites", headers=e["h"]["coach"]).json() == []
+    assert client.get(f"/session-clips/clips/{a.id}", headers=e["h"]["coach"]).json()["favorite"] is False
+    # Un clip qu'on ne voit pas ne se met pas en favori.
+    assert mettre("lucas", a).status_code == 404 and mettre("seb", b).status_code == 404
+    assert mettre("seb", a, False).json()["favorite"] is False
+    assert client.get("/session-clips/favorites", headers=e["h"]["seb"]).json() == []
+
+    mettre("coach", a)
+    assert client.delete(f"/session-clips/clips/{a.id}", headers=e["h"]["coach"]).status_code == 204
+    assert client.get("/session-clips/favorites", headers=e["h"]["coach"]).json() == []

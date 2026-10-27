@@ -266,7 +266,7 @@ flèche ←.
 
 - Les clips où la personne apparaît, du plus récent au plus ancien, regroupés par séance (« JEU. 23 OCT.
   · ADULTES »).
-- Chaque ligne : vignette avec la durée, « contre Karim B. », « Combat 3 · 2 min 20 ».
+- Chaque ligne : vignette avec la durée, « vs Karim B. », « Combat 3 · 2 min 20 ».
 - Un clip « à vérifier » n'y apparaît qu'une fois validé par un coach : jamais un mauvais nom sous les
   yeux d'un membre.
 - Vide : « Vos combats filmés apparaîtront ici le lendemain de la séance. »
@@ -285,8 +285,8 @@ flèche ←.
 
 Une carte ouverte est le **dossier de la séance** : en tête, « Présents reconnus : Seb R., Karim B.… »
 (ceux passés sur le repère au sol), puis ses clips dans l'ordre. Chaque clip s'appelle
-**« Seb R. contre Karim B. »** ; si la même paire combat encore dans la séance, le suivant s'appelle
-« Seb R. contre Karim B. 2 », etc. Un combat sans poing levé s'appelle « Combat sans nom ». Un clip à vérifier
+**« Seb R. vs Karim B. »** (« vs » en minuscules, plus court que « contre » : Seb, 27/10) ; si la même paire combat encore dans la séance, le suivant s'appelle
+« Seb R. vs Karim B. 2 », etc. Un combat sans poing levé s'appelle « Combat sans nom ». Un clip à vérifier
 porte la pastille « À vérifier ».
 
 Le bouton **+** en bas à droite **filme un combat** à la main (Seb, 27/10), sans découpe :
@@ -357,6 +357,15 @@ couleurs ne servent qu'à deux.
   le téléphone), « Partager… » (le menu Partager du téléphone avec le fichier : WhatsApp, mail…, par
   le partage web de Chrome) et « Envoyer dans la messagerie… » ; pour un coach aussi « Inverser les noms » (Annuler
   10 s), « Changer un nom », « Supprimer ce clip » (Annuler 10 s).
+- ⋯ propose aussi « Mettre dans les favoris » / « Retirer des favoris ».
+
+**Sélection et Favoris (Seb, 27/10).** Un **appui long** sur un combat (Mes combats, dossier d'une
+séance, Favoris) le sélectionne ; ensuite un appui en ajoute ou en retire. Une barre remplace
+l'en-tête : « ✕ 2 sélectionnés », **★** (mettre dans les favoris, ou les retirer si tous y sont),
+**Partager** (le menu Partager du téléphone avec tous les fichiers, sinon Télécharger) et, pour un
+coach seulement, **Supprimer** (Annuler 10 s). Changer d'écran vide la sélection. En tête de « Mes
+combats » et de « Séances », la ligne **★ Favoris** ouvre la liste de ses favoris ; un combat favori
+porte une petite étoile. Les favoris sont **propres à chacun** (un élève ne voit que ses combats).
 
 ### 6.6 Plus tard
 
@@ -387,6 +396,7 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 | `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`, unique), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte) |
 | `sc_participants` | qui est dans un clip | `clip_id`, `slot` (0 = Rouge, 1 = Bleu à deux ; ordre simple au-delà), `person_id` (la personne, vide = pas encore nommée) |
 | `sc_attendees` | présents reconnus à une séance | `session_id`, `person_id` |
+| `sc_favorites` | « ★ Favoris » de chacun | `person_id`, `clip_id` (effacé avec le clip) |
 | `sc_recorders` | le téléphone qui filme *(étape 3, pas encore créée)* | `id`, `org_id`, `state` (`ready` / `recording` / `offline`), `battery_percent`, `free_bytes`, `last_seen_at`, `last_upload_at` |
 
 `person_id` est la personne, stable d'une saison à l'autre : dans Contretemps, c'est la première
@@ -395,7 +405,7 @@ fiche `comptes` de la chaîne des saisons (comme les documents), fournie par l'a
 dans « À vérifier » ; tant qu'il y est, seuls les coachs le voient. Supprimer un clip efface sa
 vidéo ; effacer une vidéo depuis « Usage vidéo » retire aussi son clip.
 
-Le nom d'un clip (« Seb R. contre Karim B. 2 ») n'est pas stocké : il se calcule à l'affichage, pour
+Le nom d'un clip (« Seb R. vs Karim B. 2 ») n'est pas stocké : il se calcule à l'affichage, pour
 suivre les corrections. Le consentement (§6.8) est une case de la fiche membre.
 
 ### 6.8 Rôles et droit à l'image

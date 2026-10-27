@@ -22,6 +22,7 @@ import './sparring.css'
 // en continu viendra avec l'enregistreur (étape 3).
 
 const ANNULER_MS = 10000
+const AUCUN = new Map()
 
 export default function Sparring({ ecoleId, cours }) {
   const [me, setMe] = useState(null)
@@ -46,19 +47,21 @@ export default function Sparring({ ecoleId, cours }) {
     minuteur.current = setTimeout(() => setToast(null), annuler ? ANNULER_MS : 3000)
   }, [])
 
-  // Supprimer : le clip disparaît tout de suite, part vraiment au bout de 10 s.
+  // Supprimer : les clips disparaissent tout de suite, partent vraiment au
+  // bout de 10 s. Un numéro ou une liste (sélection par appui long).
   const [caches, setCaches] = useState(new Set())
   const supprimer = useCallback(
-    (clipId) => {
-      setCaches((c) => new Set(c).add(clipId))
+    (ids) => {
+      const liste = [].concat(ids)
+      setCaches((c) => new Set([...c, ...liste]))
       const retard = setTimeout(() => {
-        api.supprimer(clipId).then(rafraichir, (e) => montrer(e.message))
+        Promise.all(liste.map((id) => api.supprimer(id))).then(rafraichir, (e) => montrer(e.message))
       }, ANNULER_MS)
-      montrer('Clip supprimé', () => {
+      montrer(liste.length > 1 ? `${liste.length} clips supprimés` : 'Clip supprimé', () => {
         clearTimeout(retard)
         setCaches((c) => {
           const n = new Set(c)
-          n.delete(clipId)
+          liste.forEach((id) => n.delete(id))
           return n
         })
       })
@@ -66,9 +69,28 @@ export default function Sparring({ ecoleId, cours }) {
     [montrer, rafraichir],
   )
 
+  // Sélection par appui long sur un combat (Seb, 27/10) : Favoris, Partager,
+  // Supprimer (coachs). Elle appartient à l'écran où elle a été faite : on
+  // change d'écran, elle disparaît.
+  const cle = `${onglet}|${ouvert?.seanceId ?? ''}|${ouvert?.favoris ? 'f' : ''}|${ouvert?.clipId ?? ''}`
+  const [selection, setSelection] = useState({ cle: '', clips: new Map() })
+  const choisis = selection.cle === cle ? selection.clips : AUCUN
+  const basculer = useCallback(
+    (c) => {
+      setSelection((sel) => {
+        const n = new Map(sel.cle === cle ? sel.clips : AUCUN)
+        if (n.has(c.id)) n.delete(c.id)
+        else n.set(c.id, c)
+        return { cle, clips: n }
+      })
+    },
+    [cle],
+  )
+  const vider = useCallback(() => setSelection({ cle: '', clips: AUCUN }), [])
+
   if (!me) return <div className="screen sc" aria-busy="true" />
 
-  const contexte = { me, ecoleId, cours, version, rafraichir, montrer, supprimer, caches }
+  const contexte = { me, ecoleId, cours, version, rafraichir, montrer, supprimer, caches, choisis, basculer }
 
   let ecran
   if (ouvert?.clipId) {
@@ -78,6 +100,14 @@ export default function Sparring({ ecoleId, cours }) {
         clipId={ouvert.clipId}
         onBack={() => setOuvert(ouvert.retour)}
         onOpen={(id) => setOuvert({ clipId: id, retour: ouvert.retour })}
+      />
+    )
+  } else if (ouvert?.favoris) {
+    ecran = (
+      <Favoris
+        {...contexte}
+        onBack={() => setOuvert(null)}
+        onOpen={(id) => setOuvert({ clipId: id, retour: ouvert })}
       />
     )
   } else if (ouvert?.seanceId) {
@@ -94,6 +124,7 @@ export default function Sparring({ ecoleId, cours }) {
       <div className="screen sc">
         {me.is_coach && <Onglets onglet={onglet} onChange={setOnglet} version={version} />}
         <div className="sc__corps">
+          {onglet !== 'verifier' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
           {onglet === 'seances' && <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />}
           {onglet === 'verifier' && <AVerifier {...contexte} />}
@@ -105,6 +136,9 @@ export default function Sparring({ ecoleId, cours }) {
   return (
     <>
       {ecran}
+      {choisis.size > 0 && (
+        <BarreSelection me={me} choisis={choisis} vider={vider} montrer={montrer} supprimer={supprimer} rafraichir={rafraichir} />
+      )}
       {toast && (
         <div className="sc-toast" role="status">
           <span>{toast.texte}</span>
@@ -170,10 +204,10 @@ function Vignette({ video }) {
 
 function adversaires(c, me) {
   const autres = c.participants.filter((p) => p.person_id !== me.person_id).map((p) => p.name ?? '?')
-  return autres.length ? `contre ${autres.join(', ')}` : c.title
+  return autres.length ? `vs ${autres.join(', ')}` : c.title
 }
 
-function MesCombats({ me, version, caches, onOpen }) {
+function MesCombats({ me, version, caches, choisis, basculer, onOpen }) {
   const [clips, setClips] = useState(null)
   useEffect(() => {
     api.mesCombats().then(setClips, () => setClips([]))
@@ -191,33 +225,167 @@ function MesCombats({ me, version, caches, onOpen }) {
             {c.session_title ? ` · ${c.session_title}` : ''}
           </div>
         )}
-        <button type="button" className="sc-clip" onClick={() => onOpen(c.id)}>
-          <Vignette video={c.video} />
-          <span>
-            <strong>{adversaires(c, me)}</strong>
-            <span className="sc-meta">
-              Combat {c.position}
-              {duree(c.video) && ` · ${duree(c.video)}`}
-            </span>
+        <LigneClip c={c} choisis={choisis} basculer={basculer} onOpen={onOpen}>
+          <strong>{adversaires(c, me)}</strong>
+          <span className="sc-meta">
+            Combat {c.position}
+            {duree(c.video) && ` · ${duree(c.video)}`}
           </span>
-        </button>
+        </LigneClip>
       </div>
     )
   })
 }
 
-function LigneCoach({ c, onOpen }) {
+function LigneCoach({ c, choisis, basculer, onOpen }) {
   return (
-    <button type="button" className="sc-clip" onClick={() => onOpen(c.id)}>
+    <LigneClip c={c} choisis={choisis} basculer={basculer} onOpen={onOpen}>
+      <strong>{c.title}</strong>
+      <span className="sc-meta">
+        Combat {c.position}
+        {c.to_check && <span className="sc-chip sc-chip--warn">À vérifier</span>}
+      </span>
+    </LigneClip>
+  )
+}
+
+// Une ligne de combat : un appui l'ouvre, un appui long la sélectionne ;
+// pendant une sélection, un appui ajoute ou retire.
+function LigneClip({ c, choisis, basculer, onOpen, children }) {
+  const minuteur = useRef(null)
+  const long = useRef(false)
+  const choisi = choisis?.has(c.id)
+  const lacher = () => clearTimeout(minuteur.current)
+  return (
+    <button
+      type="button"
+      className={`sc-clip${choisi ? ' sc-clip--choisi' : ''}`}
+      onPointerDown={() => {
+        long.current = false
+        if (!basculer) return
+        minuteur.current = setTimeout(() => {
+          long.current = true
+          basculer(c)
+        }, 500)
+      }}
+      onPointerUp={lacher}
+      onPointerLeave={lacher}
+      onPointerCancel={lacher}
+      onContextMenu={(e) => e.preventDefault()}
+      onClick={() => {
+        if (long.current) return
+        if (choisis?.size) basculer(c)
+        else onOpen(c.id)
+      }}
+    >
       <Vignette video={c.video} />
       <span>
-        <strong>{c.title}</strong>
-        <span className="sc-meta">
-          Combat {c.position}
-          {c.to_check && <span className="sc-chip sc-chip--warn">À vérifier</span>}
-        </span>
+        {children}
+        {c.favorite && <Icon name="star" size={16} className="sc-etoile" />}
       </span>
     </button>
+  )
+}
+
+// En tête de « Mes combats » et de « Séances » : le dossier ★ Favoris.
+function EntreeFavoris({ onOpen }) {
+  return (
+    <button type="button" className="sc-favoris" onClick={onOpen}>
+      <Icon name="star" size={22} />
+      <strong>Favoris</strong>
+      <Icon name="chevronRight" size={20} />
+    </button>
+  )
+}
+
+function Favoris({ me, version, caches, choisis, basculer, onBack, onOpen, montrer }) {
+  const [clips, setClips] = useState(null)
+  useEffect(() => {
+    api.favoris().then(setClips, (e) => montrer(e.message))
+  }, [version, montrer])
+  const visibles = clips?.filter((c) => !caches.has(c.id))
+  return (
+    <div className="screen sc">
+      <div className="thread-screen__header">
+        <button type="button" className="icon-btn" onClick={onBack} aria-label="Retour">
+          <Icon name="chevronLeft" size={22} />
+        </button>
+        <strong className="sc__titre">Favoris</strong>
+      </div>
+      <div className="sc__corps">
+        {visibles?.length === 0 && (
+          <p className="sc-vide">Appuyez longtemps sur un combat, puis sur l’étoile, pour le garder ici.</p>
+        )}
+        {visibles?.map((c) => (
+          <LigneClip key={c.id} c={c} choisis={choisis} basculer={basculer} onOpen={onOpen}>
+            <strong>{me.is_coach ? c.title : adversaires(c, me)}</strong>
+            <span className="sc-meta">
+              {api.jour(c.held_on)} · combat {c.position}
+            </span>
+          </LigneClip>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// La barre d'une sélection, par-dessus l'en-tête : ★, Partager, Supprimer.
+function BarreSelection({ me, choisis, vider, montrer, supprimer, rafraichir }) {
+  const clips = [...choisis.values()]
+  const tousFavoris = clips.every((c) => c.favorite)
+
+  async function favoris() {
+    try {
+      await Promise.all(clips.map((c) => api.favori(c.id, !tousFavoris)))
+      montrer(tousFavoris ? 'Retiré des favoris' : 'Mis dans les favoris')
+      vider()
+      rafraichir()
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
+  async function partager() {
+    try {
+      if (!(await api.partager(clips))) await api.telecharger(clips)
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
+  return (
+    <div className="sc-selection" role="toolbar">
+      <button type="button" className="icon-btn" onClick={vider} aria-label="Annuler la sélection">
+        <Icon name="x" size={22} />
+      </button>
+      <strong>
+        {clips.length} sélectionné{clips.length > 1 ? 's' : ''}
+      </strong>
+      <button
+        type="button"
+        className="icon-btn"
+        onClick={favoris}
+        aria-label={tousFavoris ? 'Retirer des favoris' : 'Mettre dans les favoris'}
+      >
+        <Icon name="star" size={22} />
+      </button>
+      <button type="button" className="icon-btn" onClick={partager} aria-label="Partager">
+        <Icon name="partager" size={22} />
+      </button>
+      {me.is_coach && (
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => {
+            supprimer(clips.map((c) => c.id))
+            vider()
+          }}
+          aria-label="Supprimer"
+        >
+          <Icon name="trash" size={22} />
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -356,7 +524,7 @@ function FilmerCombat({ ecoleId, onEnvoye, montrer }) {
         const c = await api.filmerCombat({ upload_id: uploadId, people: noms.map((n) => n.id) })
         return c.video
       })
-      montrer(`${noms.map((n) => n.name).join(' contre ')} : gardé`)
+      montrer(`${noms.map((n) => n.name).join(' vs ')} : gardé`)
       fermer()
       onEnvoye()
     } catch (e) {
@@ -514,7 +682,7 @@ function ChoixCombattant({ cote, index, choisi, autre, onChoisir }) {
   )
 }
 
-function DossierSeance({ seanceId, version, caches, onBack, onOpen, montrer }) {
+function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, onOpen, montrer }) {
   const [s, setS] = useState(null)
   useEffect(() => {
     api.detailSeance(seanceId).then(setS, (e) => montrer(e.message))
@@ -534,7 +702,7 @@ function DossierSeance({ seanceId, version, caches, onBack, onOpen, montrer }) {
         {s?.clips
           .filter((c) => !caches.has(c.id))
           .map((c) => (
-            <LigneCoach key={c.id} c={c} onOpen={onOpen} />
+            <LigneCoach key={c.id} c={c} choisis={choisis} basculer={basculer} onOpen={onOpen} />
           ))}
       </div>
     </div>
@@ -709,6 +877,11 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
     try {
       if (quoi === 'telecharger') await api.telecharger(c)
       if (quoi === 'partager' && !(await api.partager(c))) await api.telecharger(c)
+      if (quoi === 'favori') {
+        setC(await api.favori(c.id, !c.favorite))
+        montrer(c.favorite ? 'Retiré des favoris' : 'Mis dans les favoris')
+        rafraichir()
+      }
     } catch (e) {
       montrer(e.message)
     }
@@ -752,6 +925,9 @@ function Lecture({ clipId, me, version, caches, montrer, supprimer, rafraichir, 
             </button>
             <button type="button" onClick={() => action('partager')}>
               <Icon name="partager" size={20} /> Partager… (WhatsApp, etc.)
+            </button>
+            <button type="button" onClick={() => action('favori')}>
+              <Icon name="star" size={20} /> {c.favorite ? 'Retirer des favoris' : 'Mettre dans les favoris'}
             </button>
             {me.is_coach && people.length === 2 && (
               <button

@@ -16,6 +16,7 @@ from .models import Clip, ClipSession
 from .ports import Member
 from .schemas import (
     ClipOut,
+    FavoriteUpdate,
     FightCreate,
     MeOut,
     ParticipantOut,
@@ -107,6 +108,14 @@ class SessionClipsReceiver:
         def validate(clip_id: int, m: Member = member, s: Session = db):
             return self._clips_out(s, m, [guard(lambda: client.validate(s, m, clip_id))])[0]
 
+        @app.get(f"{PREFIX}/favorites", response_model=list[ClipOut])
+        def favorites(m: Member = member, s: Session = db):
+            return self._clips_out(s, m, client.favorites(s, m))
+
+        @app.put(f"{PREFIX}/clips/{{clip_id}}/favorite", response_model=ClipOut)
+        def set_favorite(clip_id: int, body: FavoriteUpdate, m: Member = member, s: Session = db):
+            return self._clips_out(s, m, [guard(lambda: client.set_favorite(s, m, clip_id, body.favorite))])[0]
+
         @app.delete(f"{PREFIX}/clips/{{clip_id}}", status_code=204)
         def delete_clip(clip_id: int, m: Member = member, s: Session = db):
             guard(lambda: client.delete_clip(s, m, clip_id))
@@ -150,8 +159,9 @@ class SessionClipsReceiver:
         people = client.participants(s, [c.id for c in clips])
         names = client.directory.names(s, m.org_id, {p for ps in people.values() for p in ps if p is not None})
         videos = client.video_map(s, [c.video_id for c in clips])
+        favorites = client.favorite_ids(s, m.person_id, [c.id for c in clips])
         sessions = {c.session_id: s.get(ClipSession, c.session_id) for c in clips}
-        # Le rang d'une paire dans sa séance, pour « … contre … 2 ».
+        # Le rang d'une paire dans sa séance, pour « … vs … 2 ».
         order = client.clips_by_session(s, list(sessions))
         rank: dict[int, int] = {}
         for session_clips in order.values():
@@ -173,6 +183,7 @@ class SessionClipsReceiver:
                     position=c.position,
                     title=clip_title(shown, rank.get(c.id, 1)),
                     to_check=c.to_check,
+                    favorite=c.id in favorites,
                     check_reason=c.check_reason,
                     participants=[ParticipantOut(person_id=p, name=n) for p, n in zip(ps, shown)],
                     video=VideoSortie.model_validate(video) if video is not None else None,
