@@ -159,7 +159,7 @@ l'appli, par l'envoi par blocs du module `videos` (SPEC.md §6.8).
 
 **Ensuite, une petite appli Android à part, l'« enregistreur »** : l'appli reste la PWA pour tout le
 monde. L'enregistreur n'est installé que sur le téléphone qui filme. C'est une appli Kotlin minuscule
-(CameraX), indépendante du frontend, distribuée en APK. On n'utilise pas Capacitor, qui obligerait à
+(CameraX), indépendante du frontend, distribuée en APK (choix confirmé par Seb le 27 octobre). On n'utilise pas Capacitor, qui obligerait à
 maintenir un build Android de toute l'appli pour une seule fonction.
 
 - **Téléphone dédié, fixé au mur et branché en permanence.** Une seule caméra pour l'instant ; s'il y
