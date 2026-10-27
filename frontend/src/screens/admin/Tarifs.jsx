@@ -6,7 +6,8 @@ import Icon from '../../components/Icon.jsx'
 // Admin > École > Tarifs. Une formule = un nom, un tarif, une ou plusieurs
 // échéances (date et montant, la somme fait le tarif). Puis une seule liste
 // « Options et codes promo » : en plus ou en moins, en € ou en %, obtenu en
-// cochant ou avec un code (montré ou secret). Chaque OK enregistre.
+// cochant, avec un code (montré ou secret) ou par une règle écrite en
+// français, que l'assistant écrit en calcul. Chaque OK enregistre.
 
 const ANNULER_MS = 10000
 
@@ -19,10 +20,12 @@ const dateCourte = (iso) => new Date(`${iso}T12:00:00`).toLocaleDateString('fr-F
 
 // « +15 € », « −10 % » (montant en centimes ou en centièmes de %).
 const montantOption = (o) =>
-  `${o.amount > 0 ? '+' : '−'}${(Math.abs(o.amount) / 100).toLocaleString('fr-FR')} ${o.unit === 'pct' ? '%' : '€'}`
+  o.mode === 'rule'
+    ? 'Calculé'
+    : `${o.amount > 0 ? '+' : '−'}${(Math.abs(o.amount) / 100).toLocaleString('fr-FR')} ${o.unit === 'pct' ? '%' : '€'}`
 
 function resumeOption(o, formules) {
-  const morceaux = [o.mode === 'code' ? null : 'À cocher']
+  const morceaux = [o.mode === 'check' ? 'À cocher' : o.mode === 'rule' ? o.rule : null]
   const seule = o.plan_ids.length === 1 && formules.find((f) => f.id === o.plan_ids[0])
   if (seule) morceaux.push(seule.name)
   if (o.until) morceaux.push(`jusqu’au ${dateCourte(o.until)}`)
@@ -217,7 +220,7 @@ function Segments({ nom, choix, valeur, onChange }) {
   )
 }
 
-function Option({ option, formules, onNom, onOk, onRetirer }) {
+function Option({ option, formules, onNom, onOk, onRetirer, onComprendre }) {
   const [nom, setNom] = useState(option.name)
   const [mode, setMode] = useState(option.mode)
   const [signe, setSigne] = useState(option.amount > 0 ? 1 : -1)
@@ -230,8 +233,14 @@ function Option({ option, formules, onNom, onOk, onRetirer }) {
   const [quantite, setQuantite] = useState(option.quantity ?? '')
   const [formule, setFormule] = useState(option.plan_ids.length === 1 ? String(option.plan_ids[0]) : '')
   const [proposee, setProposee] = useState(option.active)
+  const [regle, setRegle] = useState(option.rule ?? '')
+  // Ce que l'assistant a compris de la règle : { understood, calculation, example }.
+  const [compris, setCompris] = useState(
+    option.calculation ? { understood: option.understood, calculation: option.calculation, example: null } : null,
+  )
   const [erreur, setErreur] = useState(null)
   const [enCours, setEnCours] = useState(false)
+  const pret = nom.trim() && (mode !== 'rule' || compris?.calculation)
   const nombre = (texte) => (texte === '' ? null : Math.max(1, Math.round(Number(texte))))
 
   function changerMode(m) {
@@ -239,8 +248,19 @@ function Option({ option, formules, onNom, onOk, onRetirer }) {
     if (m === 'check') setSigne(1)
   }
 
+  async function comprendre() {
+    setErreur(null)
+    setEnCours(true)
+    try {
+      setCompris(await onComprendre({ rule: regle.trim(), plan_ids: formule ? [Number(formule)] : [] }))
+    } catch (e) {
+      setErreur(e.message)
+    }
+    setEnCours(false)
+  }
+
   async function valider() {
-    if (!nom.trim()) return
+    if (!pret) return
     setErreur(null)
     setEnCours(true)
     try {
@@ -255,6 +275,9 @@ function Option({ option, formules, onNom, onOk, onRetirer }) {
         until: mode === 'code' && jusquau ? jusquau : null,
         quantity: mode === 'check' ? nombre(quantite) : null,
         plan_ids: formule ? [Number(formule)] : [],
+        rule: mode === 'rule' ? regle.trim() : null,
+        understood: mode === 'rule' ? compris.understood : null,
+        calculation: mode === 'rule' ? compris.calculation : null,
         active: proposee,
       })
     } catch (e) {
@@ -280,25 +303,45 @@ function Option({ option, formules, onNom, onOk, onRetirer }) {
         <label>Comment l’obtenir</label>
         <Segments
           nom="Comment l’obtenir"
-          choix={[['check', 'La personne coche'], ['code', 'Avec un code']]}
+          choix={[['check', 'La personne coche'], ['code', 'Avec un code'], ['rule', 'Règle']]}
           valeur={mode}
           onChange={changerMode}
         />
-        <label>Montant</label>
-        <Segments nom="Montant" choix={[[1, 'En plus'], [-1, 'En moins']]} valeur={signe} onChange={setSigne} />
-        <div className="tarifs__echeance">
-          <input
-            className="field-input"
-            type="number"
-            min="0"
-            step="0.1"
-            inputMode="decimal"
-            value={valeur}
-            aria-label="Valeur"
-            onChange={(e) => setValeur(e.target.value)}
-          />
-          <Segments nom="Unité" choix={[['eur', '€'], ['pct', '%']]} valeur={unite} onChange={setUnite} />
-        </div>
+        {mode !== 'rule' && (
+          <>
+            <label>Montant</label>
+            <Segments nom="Montant" choix={[[1, 'En plus'], [-1, 'En moins']]} valeur={signe} onChange={setSigne} />
+            <div className="tarifs__echeance">
+              <input
+                className="field-input"
+                type="number"
+                min="0"
+                step="0.1"
+                inputMode="decimal"
+                value={valeur}
+                aria-label="Valeur"
+                onChange={(e) => setValeur(e.target.value)}
+              />
+              <Segments nom="Unité" choix={[['eur', '€'], ['pct', '%']]} valeur={unite} onChange={setUnite} />
+            </div>
+          </>
+        )}
+        {mode === 'rule' && (
+          <>
+            <label htmlFor="option-regle">La règle, en français</label>
+            <textarea
+              id="option-regle"
+              className="field-input tarifs__regle"
+              rows={2}
+              value={regle}
+              placeholder="ex. Enlever 10 € par année d’ancienneté"
+              onChange={(e) => {
+                setRegle(e.target.value)
+                setCompris(null)
+              }}
+            />
+          </>
+        )}
         {mode === 'code' && (
           <>
             <label htmlFor="option-code">Code à saisir</label>
@@ -312,6 +355,29 @@ function Option({ option, formules, onNom, onOk, onRetirer }) {
           </>
         )}
       </div>
+      {mode === 'rule' && (
+        <>
+          <button
+            type="button"
+            className="btn btn--secondary btn--block tarifs__secondaire"
+            disabled={enCours || !regle.trim()}
+            onClick={comprendre}
+          >
+            Faire comprendre la règle
+          </button>
+          {compris && (
+            <div className="creer-saison__cadre">
+              <b>Compris :</b> {compris.understood}
+              {compris.example && <p className="creer-saison__note">Exemple : {compris.example}</p>}
+              {compris.calculation && (
+                <p className="creer-saison__note tarifs__calcul">
+                  Appliquée toute seule au paiement, à partir de la fiche. Calcul : <code>{compris.calculation}</code>
+                </p>
+              )}
+            </div>
+          )}
+        </>
+      )}
       {mode === 'code' && (
         <>
           <label className="champs__case">
@@ -395,7 +461,7 @@ function Option({ option, formules, onNom, onOk, onRetirer }) {
       <button
         type="button"
         className="btn btn--primary btn--block creer-saison__principal"
-        disabled={enCours || !nom.trim()}
+        disabled={enCours || !pret}
         onClick={valider}
       >
         OK
@@ -548,6 +614,7 @@ export default function Tarifs({ ecoleId, onClose }) {
         onNom={setNomOuverte}
         onOk={enregistrerOption}
         onRetirer={retirerOption}
+        onComprendre={(regle) => tarifsApi.comprendre(ecoleId, regle)}
       />
     )
   } else if (donnees) {
