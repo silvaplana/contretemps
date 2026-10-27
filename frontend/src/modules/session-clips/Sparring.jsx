@@ -170,7 +170,7 @@ function Vignette({ video }) {
 
 function adversaires(c, me) {
   const autres = c.participants.filter((p) => p.person_id !== me.person_id).map((p) => p.name ?? '?')
-  return autres.length ? `contre ${autres.join(', ')}` : c.title
+  return autres.length ? `vs ${autres.join(', ')}` : c.title
 }
 
 function MesCombats({ me, version, caches, onOpen }) {
@@ -356,7 +356,7 @@ function FilmerCombat({ ecoleId, onEnvoye, montrer }) {
         const c = await api.filmerCombat({ upload_id: uploadId, people: noms.map((n) => n.id) })
         return c.video
       })
-      montrer(`${noms.map((n) => n.name).join(' contre ')} : gardé`)
+      montrer(`${noms.map((n) => n.name).join(' vs ')} : gardé`)
       fermer()
       onEnvoye()
     } catch (e) {

@@ -273,7 +273,7 @@ class SessionClips:
 
 
 def clip_title(names: list[str | None], repeat: int = 1) -> str:
-    """« Seb R. contre Karim B. », suivi de 2, 3… quand la même paire combat
+    """« Seb R. vs Karim B. », suivi de 2, 3… quand la même paire combat
     encore dans la séance (§6.3). « Combat sans nom » quand personne n'est
     nommé."""
     if not names or all(n is None for n in names):
@@ -282,7 +282,7 @@ def clip_title(names: list[str | None], repeat: int = 1) -> str:
     if len(shown) == 1:
         title = shown[0]
     elif len(shown) == 2:
-        title = f"{shown[0]} contre {shown[1]}"
+        title = f"{shown[0]} vs {shown[1]}"
     else:
         title = f"{', '.join(shown[:-1])} et {shown[-1]}"
     return f"{title} {repeat}" if repeat > 1 else title

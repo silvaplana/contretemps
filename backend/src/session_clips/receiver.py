@@ -151,7 +151,7 @@ class SessionClipsReceiver:
         names = client.directory.names(s, m.org_id, {p for ps in people.values() for p in ps if p is not None})
         videos = client.video_map(s, [c.video_id for c in clips])
         sessions = {c.session_id: s.get(ClipSession, c.session_id) for c in clips}
-        # Le rang d'une paire dans sa séance, pour « … contre … 2 ».
+        # Le rang d'une paire dans sa séance, pour « … vs … 2 ».
         order = client.clips_by_session(s, list(sessions))
         rank: dict[int, int] = {}
         for session_clips in order.values():

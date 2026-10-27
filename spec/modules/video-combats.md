@@ -266,7 +266,7 @@ flèche ←.
 
 - Les clips où la personne apparaît, du plus récent au plus ancien, regroupés par séance (« JEU. 23 OCT.
   · ADULTES »).
-- Chaque ligne : vignette avec la durée, « contre Karim B. », « Combat 3 · 2 min 20 ».
+- Chaque ligne : vignette avec la durée, « vs Karim B. », « Combat 3 · 2 min 20 ».
 - Un clip « à vérifier » n'y apparaît qu'une fois validé par un coach : jamais un mauvais nom sous les
   yeux d'un membre.
 - Vide : « Vos combats filmés apparaîtront ici le lendemain de la séance. »
@@ -285,8 +285,8 @@ flèche ←.
 
 Une carte ouverte est le **dossier de la séance** : en tête, « Présents reconnus : Seb R., Karim B.… »
 (ceux passés sur le repère au sol), puis ses clips dans l'ordre. Chaque clip s'appelle
-**« Seb R. contre Karim B. »** ; si la même paire combat encore dans la séance, le suivant s'appelle
-« Seb R. contre Karim B. 2 », etc. Un combat sans poing levé s'appelle « Combat sans nom ». Un clip à vérifier
+**« Seb R. vs Karim B. »** (« vs » en minuscules, plus court que « contre » : Seb, 27/10) ; si la même paire combat encore dans la séance, le suivant s'appelle
+« Seb R. vs Karim B. 2 », etc. Un combat sans poing levé s'appelle « Combat sans nom ». Un clip à vérifier
 porte la pastille « À vérifier ».
 
 Le bouton **+** en bas à droite **filme un combat** à la main (Seb, 27/10), sans découpe :
@@ -395,7 +395,7 @@ fiche `comptes` de la chaîne des saisons (comme les documents), fournie par l'a
 dans « À vérifier » ; tant qu'il y est, seuls les coachs le voient. Supprimer un clip efface sa
 vidéo ; effacer une vidéo depuis « Usage vidéo » retire aussi son clip.
 
-Le nom d'un clip (« Seb R. contre Karim B. 2 ») n'est pas stocké : il se calcule à l'affichage, pour
+Le nom d'un clip (« Seb R. vs Karim B. 2 ») n'est pas stocké : il se calcule à l'affichage, pour
 suivre les corrections. Le consentement (§6.8) est une case de la fiche membre.
 
 ### 6.8 Rôles et droit à l'image
