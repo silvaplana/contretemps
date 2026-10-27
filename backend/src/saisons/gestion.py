@@ -18,6 +18,7 @@ from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import GroupMember, board, courses, custom, rights, teachers
 from members import fields as member_fields
+from plans import plans as season_plans
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -130,6 +131,9 @@ class GestionSaisons:
                     base=duplication.structure_eleves == "base", hidden=duplication.champs_masques,
                 )
             member_fields.known(db, ecole_id, saison.id)
+            # L'école : les tarifs repris de la saison précédente (spec/core.md §8).
+            if ancienne_id is not None:
+                season_plans.copy_season(db, ecole_id, ancienne_id, saison.id)
             db.commit()
         if duplication.documents and ancienne_id is not None and self.recopier_documents is not None:
             self.recopier_documents(db, ecole_id, ancienne_id, saison.id, fiches.get(auteur_id, auteur_id), cours)
@@ -350,6 +354,8 @@ _SUPPRESSIONS = [
     f"DELETE FROM member_values WHERE member_id IN ({_COMPTES}) OR field_id IN (SELECT id FROM member_fields WHERE season_id = :s)",
     "DELETE FROM member_fields WHERE season_id = :s",
     "DELETE FROM member_columns WHERE season_id = :s",
+    "DELETE FROM season_plan_installments WHERE plan_id IN (SELECT id FROM season_plans WHERE season_id = :s)",
+    "DELETE FROM season_plans WHERE season_id = :s",
     f"DELETE FROM group_members WHERE member_id IN ({_COMPTES}) OR group_id IN (SELECT id FROM groups WHERE season_id = :s)",
     "DELETE FROM groups WHERE season_id = :s AND parent_id IS NOT NULL",
     "DELETE FROM groups WHERE season_id = :s",

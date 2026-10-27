@@ -5,6 +5,7 @@ import { useSaisonConsultee } from '../../api/saison.js'
 import AdministrateursTableau from './AdministrateursTableau.jsx'
 import { isOwner } from '../../data/roles.js'
 import SaisonsSection from './SaisonsSection.jsx'
+import Tarifs from './Tarifs.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import PersonnalisationSection from './PersonnalisationSection.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
@@ -52,6 +53,7 @@ export default function AdminParametres({
 }) {
   const [creationAdminOuverte, setCreationAdminOuverte] = useState(false)
   const [coordonneesOuvertes, setCoordonneesOuvertes] = useState(false)
+  const [tarifsOuverts, setTarifsOuverts] = useState(false)
   const saisonConsultee = useSaisonConsultee()
 
   // Réglages de sauvegarde : chargés ici, par la route réservée aux
@@ -206,6 +208,17 @@ export default function AdminParametres({
           onSaisonSupprimee={onSaisonSupprimee}
         />
       )}
+
+      {/* Tarifs de la saison (spec/core.md §9) : un écran à part. */}
+      <section className="admin-tarifs">
+        <h3 className="section-label">
+          <button type="button" className="section-label__depliant" onClick={() => setTarifsOuverts(true)}>
+            <Icon name="chevronRight" size={14} />
+            Tarifs
+          </button>
+        </h3>
+      </section>
+      {tarifsOuverts && <Tarifs ecoleId={ecole.id} onClose={() => setTarifsOuverts(false)} />}
 
       <AdministrateursTableau
         ecoleId={ecole.id}

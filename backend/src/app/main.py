@@ -50,6 +50,7 @@ from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
 from profs import Profs, ProfsReceiver
 from fusion import Fusion, FusionReceiver
 from members.receiver import DOSSIER_MEMBRES, MembersReceiver
+from plans.receiver import PlansReceiver
 from videos import DOSSIER_VIDEOS_LIVE
 
 load_dotenv()  # charge backend/.env si present
@@ -140,6 +141,8 @@ administrateurs_client = Administrateurs(comptes=comptes_client)
 administrateurs_receiver = AdministrateursReceiver(client=administrateurs_client, app=app)
 # Champs des membres (spec/core.md §4.3) : la fiche et ses réponses.
 members_receiver = MembersReceiver(app=app)
+# Tarifs de la saison (spec/core.md §9) : les formules.
+plans_receiver = PlansReceiver(app=app)
 
 # Saisons (spec §2.6) : la création avec duplication, reliée plus bas aux
 # documents. Ses routes sont celles du module Saisons (saisons/module.py).

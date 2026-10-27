@@ -518,6 +518,14 @@ formule ↔ ajustement ; `member_plan` (membre, formule, ajustements appliqués,
 **Aujourd'hui** : `inscriptions/tarifs.py` (adhésion 40 €, réduction famille 35 € / 31,60 €, paliers
 par cours, barèmes mensuel et trimestriel) et `SPEC-inscription.md`, à remplacer par les formules.
 
+**Fait (étape 7a, 27 octobre 2026)** : les formules et leurs échéances (`backend/src/plans/`, tables
+`season_plans` et `season_plan_installments`, montants en centimes), Admin > École > Tarifs
+(`Tarifs.jsx`) : liste, formule (nom, tarif, échéances réparties en parts égales et corrigeables,
+« Proposée cette saison »), Dupliquer, Retirer avec Annuler 10 s, « Reprendre ceux de <saison
+précédente> » quand la saison n'en a aucune. Créer une saison recopie les formules, dates des
+échéances décalées d'un an. Pas encore lues par l'inscription en ligne (`inscriptions/tarifs.py`
+reste).
+
 ---
 
 ## 10. Installation, notifications et navigation
@@ -664,7 +672,10 @@ Déjà codés dans Contretemps :
 6. **Saisons** (`modules/saisons.md` §4), en deux PR :
    a. module Saisons optionnel, la période restant dans le core *(faite le 27 octobre 2026)* ;
    b. Créer une saison en un écran (maquette « Créer une saison ») *(faite le 27 octobre 2026)*.
-7. **Tarifs** : formules, options, codes promo, règles par l'assistant.
+7. **Tarifs**, en trois PR :
+   a. formules et échéances, Admin > École > Tarifs *(faite le 27 octobre 2026)* ;
+   b. options et codes promo (à cocher, avec un code) ;
+   c. règles en français, comprises par l'assistant.
 8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
 9. Formulaire d'inscription de l'appli (à concevoir).
 

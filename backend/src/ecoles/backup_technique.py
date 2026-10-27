@@ -37,6 +37,7 @@ from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import Group, GroupMember, courses, rights, teachers
 from members import MemberColumn, MemberField, MemberValue
+from plans import SeasonPlan, SeasonPlanInstallment
 from members.fields import known
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
@@ -190,6 +191,26 @@ def _construire_tables() -> list[_Table]:
             ["org_id", "season_id", "key", "shown", "position"],
             lambda db, eid: list(db.scalars(select(MemberColumn).where(MemberColumn.org_id == eid))),
             colonne_ecole_id="org_id",
+        ),
+        # Tarifs de la saison (spec/core.md §9), depuis le 2026-10-27.
+        _Table(
+            "Formules",
+            SeasonPlan,
+            ["id", "org_id", "season_id", "name", "price", "active", "position", "created_at"],
+            lambda db, eid: list(db.scalars(select(SeasonPlan).where(SeasonPlan.org_id == eid))),
+            colonne_ecole_id="org_id",
+        ),
+        _Table(
+            "Echeances",
+            SeasonPlanInstallment,
+            ["id", "plan_id", "position", "due_on", "amount"],
+            lambda db, eid: list(
+                db.scalars(
+                    select(SeasonPlanInstallment).where(
+                        SeasonPlanInstallment.plan_id.in_(select(SeasonPlan.id).where(SeasonPlan.org_id == eid))
+                    )
+                )
+            ),
         ),
         _Table(
             "ReponsesMembres",
