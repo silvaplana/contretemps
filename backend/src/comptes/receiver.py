@@ -88,7 +88,10 @@ class ComptesReceiver:
     def modifier(self, compte_id: int, donnees: CompteModification, db: Session = Depends(get_db)):
         """Profil admin (voir ProfilScreen.jsx) : crayon à côté de
         l'email/du code de récupération."""
-        compte = self.client.update(db, compte_id, **donnees.model_dump(exclude_unset=True))
+        try:
+            compte = self.client.update(db, compte_id, **donnees.model_dump(exclude_unset=True))
+        except ValueError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from erreur
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
         return compte

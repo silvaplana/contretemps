@@ -31,7 +31,7 @@ Maquettes validées par Seb (les écrans les suivent exactement) :
 | Famille par l'email du payeur (§4.4) | Inscription publique, HelloAsso (`modules/helloasso.md`) |
 | Connexion : mot de passe, invitation, session (§6) | Messagerie, vidéos, chorégraphies |
 | Niveaux : Membre, Admin, Administrateur principal, Super User (§7) | Documents, Fichier de base, Signature |
-| Saisons et leur création étape par étape (§8) | Financier, notes de frais |
+| Période (§8) ; le module Saisons et la création d'une saison | Financier, notes de frais |
 | Tarifs : formules, options et codes promo (§9) | Catalogue, boutique |
 | Installation sur le téléphone, barre du bas (§10) | Assistant |
 | Enregistrement des modules, modules allumés par organisation (§11) | |
@@ -168,8 +168,8 @@ boutons sont déclarés par les modules dans leur `module.py` (§11.1), jamais �
 
 **Fait (27 octobre 2026, étape 4a)** : le niveau 1, la fiche (`backend/src/members/`, tables
 `member_fields` et `member_values`). Admin > Élèves > ⋮ > Champs ouvre « La fiche d'un membre »
-comme la maquette : les champs du socle verrouillés (Nom, prénom ; Email ; Téléphone ; l'Email du
-payeur arrive à l'étape 5), puis ceux de l'école, « + Ajouter un champ », le détail (intitulé,
+comme la maquette : les champs du socle verrouillés (Nom, prénom ; Email ; Email du payeur, depuis
+l'étape 5 ; Téléphone), puis ceux de l'école, « + Ajouter un champ », le détail (intitulé,
 statut, format de la réponse, choix, « Parmi les groupes de » avec Cours proposé d'office,
 « Plusieurs choix possibles », réglages avancés repliés), « Retirer ce champ » avec Annuler 10 s
 (les réponses sont gardées). La fiche de l'élève a une rubrique « Nos champs » où l'admin lit et
@@ -217,9 +217,17 @@ Contretemps le remplit depuis l'email du parent. La **famille** est l'ensemble d
 même email du payeur, **calculée**, jamais éditée à la main. Le payeur se connecte avec cet email et
 voit ses enfants (sélecteur de profil, §6). Une famille n'est pas un groupe.
 
-**Aujourd'hui** : famille = fiches reliées par un email commun de proche en proche
-(`recalculer_familles`, table `familles`). À remplacer par l'email du payeur, avec une commande de
-reprise.
+**Fait (27 octobre 2026, étape 5)** : colonne `comptes.payer_email` ; vide = le premier email de
+la fiche (`Compte.payeur`). `recalculer_familles` regroupe les fiches de la saison par email du
+payeur (table `familles` et `famille_id` gardées : l'assistant, la messagerie et le reste les lisent
+toujours). L'admin le voit et le change dans la fiche de l'élève (Coordonnées, une seule adresse ;
+vide, le premier email s'affiche en grisé) ; il figure, verrouillé, dans « La fiche d'un membre ». La
+reprise est faite par la migration (pas de commande à lancer) : chaque famille de plusieurs fiches
+reçoit l'adresse que portent le plus de ses fiches (celle du parent), donc les familles restent
+exactement les mêmes (vérifié sur la base de démo : 80 familles avant et après) ; une fiche seule
+reste vide. Recopié à la nouvelle saison, gardé à la fusion, dans la sauvegarde technique (une
+sauvegarde d'avant refait la reprise). Le sélecteur de profil ne change pas (§4.5). HelloAsso le
+remplira à l'étape 8.
 
 ### 4.5 Sélecteur de profil
 
@@ -438,8 +446,10 @@ authentification, en option dans Profil.
 
 Une association vit par années ; la fiche d'une personne, sa structure (§4.3), ses groupes de
 saison et ses tarifs (§9) sont par saison. Une organisation sans saisons (une pizzeria) en a une
-seule, sans fin, et ne voit jamais le mot « saison ». *(Fil ouvert du 24 octobre : faire de
-Saisons un module optionnel, la période restant dans le core ; attend le « vas-y » de Seb.)*
+seule, sans fin, et ne voit jamais le mot « saison ». **Décision de Seb du 27 octobre** : le core
+garde la **période** (table `saisons`, `portee.py`, première période automatique, une fiche par
+période) ; le module optionnel **Saisons** apporte la création, la suppression, les anciennes
+saisons et le mot à l'écran (`modules/saisons.md`). Ce qui suit décrit le module allumé.
 
 - Saison courante = la dernière créée ; elle seule est modifiable, les autres en lecture seule,
   imposé par le serveur (`saisons/portee.py` : un module ne filtre jamais la saison à la main).
@@ -650,8 +660,10 @@ Déjà codés dans Contretemps :
       27 octobre 2026)* ;
    c. reprise des champs d'`eleves` (date de naissance, adresse, santé…) dans la fiche *(faite le
       27 octobre 2026)*.
-5. **Famille** par l'email du payeur, commande de reprise.
-6. **Création de saison** en un écran, étape par étape.
+5. **Famille** par l'email du payeur, reprise des familles *(faite le 27 octobre 2026)*.
+6. **Saisons** (`modules/saisons.md` §4), en deux PR :
+   a. module Saisons optionnel, la période restant dans le core *(faite le 27 octobre 2026)* ;
+   b. Créer une saison en un écran (maquette « Créer une saison »).
 7. **Tarifs** : formules, options, codes promo, règles par l'assistant.
 8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
 9. Formulaire d'inscription de l'appli (à concevoir).
@@ -661,6 +673,5 @@ Déjà codés dans Contretemps :
 ## 14. Reste à décider
 
 - Le mot pour « membre + compte de connexion » (membre, compte utilisateur).
-- Saisons en module optionnel (fil du 24 octobre).
 - Postgres : dès l'extraction du core, ou plus tard.
 - Catalogue (produits, `products.group_id`) : spec à écrire quand un produit en aura besoin.

@@ -15,6 +15,7 @@ const ANNULER_MS = 10000
 const SOCLE = [
   { id: 'nom', label: 'Nom, prénom', required: true, format: 'short_text' },
   { id: 'email', label: 'Email', required: true, format: 'short_text' },
+  { id: 'payeur', label: 'Email du payeur', required: false, format: 'short_text' },
   { id: 'telephone', label: 'Téléphone', required: false, format: 'phone' },
 ]
 

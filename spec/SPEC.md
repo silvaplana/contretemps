@@ -1149,6 +1149,10 @@ même école reliés **de proche en proche** par un email commun. Elle est recal
 ajout ou retrait d'un email : un ajout peut fusionner deux familles, un retrait peut en
 séparer une en deux.
 
+> Depuis le 27 octobre 2026 (core.md §4.4, étape 5) : famille = les fiches qui ont le même **email
+> du payeur** (`comptes.payer_email`, vide = le premier email de la fiche), plus le lien de proche
+> en proche.
+
 ### 6.3 Comptes (partie commune Admin/Professeur/Élève)
 
 | Champ | Type | Obl./Opt. |

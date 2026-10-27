@@ -53,27 +53,57 @@ def test_la_famille_est_reliee_par_l_email_commun(db_session, beraud):
     assert beraud["autre"].famille_id != beraud["lison"].famille_id
 
 
-def test_retirer_l_email_commun_separe_la_famille(db_session, beraud):
-    Comptes().update(db_session, beraud["margot"].id, email=MARGOT)
+def test_la_famille_suit_l_email_du_payeur(db_session, beraud):
+    """Spec core.md §4.4 : famille = même email du payeur ; vide = le premier
+    email de la fiche."""
+    comptes = Comptes()
+    comptes.update(db_session, beraud["margot"].id, email=MARGOT)
     db_session.refresh(beraud["lison"])
     assert beraud["margot"].famille_id != beraud["lison"].famille_id
-    # Et le rajouter les réunit.
-    Comptes().update(db_session, beraud["margot"].id, email=f"{MARGOT}; {PERE}")
+    # Son père paie : elle revient dans la famille, avec seulement son email.
+    comptes.update(db_session, beraud["margot"].id, payer_email=" Pere.Beraud@x.fr ")
     db_session.refresh(beraud["lison"])
+    assert beraud["margot"].payer_email == PERE
     assert beraud["margot"].famille_id == beraud["lison"].famille_id
+    with pytest.raises(ValueError):
+        comptes.update(db_session, beraud["margot"].id, payer_email=f"{PERE}; {MARGOT}")
 
 
-def test_une_fiche_pont_supprimee_separe_la_famille(db_session):
+def test_un_email_en_commun_ne_suffit_plus(db_session):
+    """Avant : de proche en proche par n'importe quel email commun. Une fiche
+    avec deux emails est de la famille de son premier (ou de son payeur)."""
     comptes = Comptes()
     ecole = Ecoles().create(db_session, nom="E", code_postal="83000")
     a = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="A", prenom="A", email="a@x.fr")
     b = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="B", prenom="B", email="b@x.fr")
-    pont = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="P", prenom="P", email="a@x.fr, b@x.fr")
-    assert a.famille_id == b.famille_id == pont.famille_id
-    comptes.delete(db_session, pont.id)
-    db_session.refresh(a)
-    db_session.refresh(b)
-    assert a.famille_id != b.famille_id
+    deux = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="P", prenom="P", email="a@x.fr, b@x.fr")
+    assert a.famille_id == deux.famille_id != b.famille_id
+
+
+def test_la_reprise_garde_les_memes_familles(db_session):
+    """Migration de l'étape 5 : chaque famille d'avant reçoit l'email que
+    portent le plus de ses fiches."""
+    from comptes.reprise_payeurs import reprendre_payeurs
+    from sqlalchemy import update
+
+    from comptes.models import Compte
+
+    comptes = Comptes()
+    ecole = Ecoles().create(db_session, nom="E", code_postal="83000")
+    margot = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="B", prenom="Margot", email=f"{MARGOT}, {PERE}")
+    lison = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="B", prenom="Lison", email=PERE)
+    zoe = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="B", prenom="Zoé", email=PERE)
+    seule = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="R", prenom="Ana", email="ana@x.fr")
+    # Comme avant l'étape 5 : les trois sœurs dans une même famille.
+    db_session.execute(update(Compte).where(Compte.id.in_([margot.id, zoe.id])).values(famille_id=lison.famille_id))
+    db_session.commit()
+
+    assert reprendre_payeurs(db_session.connection()) == 3
+    db_session.commit()
+    db_session.expire_all()
+    assert [c.payer_email for c in (margot, lison, zoe, seule)] == [PERE, PERE, PERE, None]
+    comptes.recalculer_familles(db_session, ecole.id)
+    assert margot.famille_id == lison.famille_id == zoe.famille_id != seule.famille_id
 
 
 @pytest.mark.rbac_reel
@@ -190,3 +220,36 @@ def test_filet_de_securite_au_demarrage(tmp_path):
     with moteur.connect() as c:
         assert c.execute(sa.text("SELECT compte_id, email FROM emails_compte")).all() == [(1, "a@x.fr")]
     moteur.dispose()
+
+
+@pytest.mark.rbac_reel
+def test_une_ancienne_sauvegarde_garde_les_familles(client, db_session, beraud):
+    """Sauvegarde d'avant l'email du payeur : la reprise est refaite."""
+    import io
+
+    from conftest import entetes_session
+    from openpyxl import load_workbook
+
+    from comptes.models import Compte
+
+    ecole_id = beraud["ecole"].id
+    admin = Comptes().create(db_session, ecole_id=ecole_id, role="admin", nom="Dho", prenom="Julia")
+    # Margot a mis son email en premier : seul l'email du payeur la garde avec Lison.
+    Comptes().update(db_session, beraud["margot"].id, emails=[MARGOT, PERE], payer_email=PERE)
+    entetes = entetes_session(admin)
+    classeur = load_workbook(io.BytesIO(client.get(f"/ecoles/{ecole_id}/export-technique", headers=entetes).content))
+    feuille = classeur["Comptes"]
+    colonne = [c.value for c in feuille[1]].index("payer_email") + 1
+    feuille.delete_cols(colonne)
+    sortie = io.BytesIO()
+    classeur.save(sortie)
+    xlsx = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+    reponse = client.post(f"/ecoles/{ecole_id}/restaurer", files={"fichier": ("b.xlsx", sortie.getvalue(), xlsx)}, headers=entetes)
+
+    assert reponse.status_code == 204, reponse.text
+    db_session.expire_all()
+    margot, lison = db_session.get(Compte, beraud["margot"].id), db_session.get(Compte, beraud["lison"].id)
+    assert margot.payer_email == lison.payer_email == PERE
+    Comptes().recalculer_familles(db_session, ecole_id)
+    assert margot.famille_id == lison.famille_id

@@ -72,6 +72,9 @@ def test_on_n_eteint_pas_un_module_dont_un_autre_a_besoin(client, db_session):
     etats = _etats(client, ecole.id)
     assert etats["expense_notes"] and etats["documents"] and not etats["assistant"]
     assert client.put(f"/ecoles/{ecole.id}/modules/inconnu", json={"enabled": False}).status_code == 404
+    # Inscriptions et Financier raisonnent par saison.
+    reponse = client.put(f"/ecoles/{ecole.id}/modules/seasons", json={"enabled": False})
+    assert reponse.status_code == 409 and "Financier" in reponse.json()["detail"]
 
 
 def test_l_assistant_ne_propose_pas_les_actions_d_un_module_eteint(db_session):

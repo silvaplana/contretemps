@@ -348,6 +348,11 @@ function App() {
   // recours).
   const saisonConsultee = saisonApi.useSaisonConsultee()
   const lectureSeule = Boolean(saisonConsultee)
+  // Module Saisons éteint (spec/modules/saisons.md §2) : retour à la
+  // saison courante, le bandeau disparaît.
+  useEffect(() => {
+    if (saisonConsultee && modules.some((m) => m.key === 'seasons' && !m.enabled)) saisonApi.consulterSaison(null)
+  }, [saisonConsultee, modules])
   // Incrémenté pour tout recharger depuis le serveur (voir les effets de
   // chargement plus bas) : saison créée, écriture refusée...
   const [versionDonnees, setVersionDonnees] = useState(0)
