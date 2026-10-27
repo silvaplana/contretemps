@@ -14,7 +14,7 @@ le receiver via comptes/rbac.py, pas dans ce service.
 from __future__ import annotations
 
 from comptes import Compte, Comptes, RegleRoles, roles
-from groups import board
+from groups import board, custom
 from messagerie.models import ConversationMembre, MessageDelivery
 from notifications.models import PushSubscription
 from sqlalchemy import delete
@@ -92,13 +92,16 @@ class Administrateurs:
         owner: bool | None,
         tresorier: bool | None = None,
         bureau_functions: list[str] | None = None,
+        prof: bool | None = None,
+        groups: list[int] | None = None,
         par_superuser: bool = False,
     ) -> Compte:
         """`champs` : nom, prénom, email, code de récupération (seulement
         ceux fournis). `owner` : True/False pour donner/retirer ce statut,
         None pour ne pas y toucher. `tresorier` : pareil pour le rôle trésorier.
         `bureau_functions` : remplace ses fonctions au bureau (déjà
-        validées et ordonnées), None pour ne pas y toucher."""
+        validées et ordonnées), None pour ne pas y toucher. `prof` : le groupe
+        Profs, comme `owner`. `groups` : remplace ses groupes faits à la main."""
         if _promu(admin) and CHAMPS_IDENTITE & champs.keys():
             ecran = "Admin > Profs" if roles.is_prof(admin) else "Admin > Élèves"
             raise RegleRoles(f"Son nom, son prénom et son email se modifient depuis {ecran}")
@@ -112,8 +115,19 @@ class Administrateurs:
             self.comptes.ajouter_role(db, admin, roles.TRESORIER)
         elif tresorier is False and roles.is_tresorier(admin):
             self.comptes.retirer_role(db, admin, roles.TRESORIER)
+        if prof is True:
+            self.comptes.ajouter_role(db, admin, roles.PROFESSEUR)
+        elif prof is False and roles.is_prof(admin):
+            self.comptes.retirer_role(db, admin, roles.PROFESSEUR)
         if bureau_functions is not None:
             board.set_functions(db, admin, bureau_functions)
+            db.commit()
+        if groups is not None:
+            try:
+                custom.set_groups(db, admin, groups)
+            except custom.GroupError as erreur:
+                db.rollback()
+                raise RegleRoles(str(erreur)) from erreur
             db.commit()
         db.refresh(admin)
         return admin

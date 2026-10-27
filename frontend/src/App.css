@@ -4362,3 +4362,119 @@ a.btn {
   margin: 4px 0 0;
   font-size: 17px;
 }
+
+/* Admin > École > Administrateurs : colonne Groupes (spec/core.md §5.2,
+   maquette « Admins nouveau style »). Pastilles toutes du même gris. */
+.admin-groupes__colonne {
+  min-width: 200px;
+}
+
+.admin-groupes__case {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 48px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-groupes__case:hover {
+  background: var(--accent-bg);
+}
+
+.admin-groupes__pastille {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 15px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.admin-groupes__choisir {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.admin-groupes__ligne {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border);
+  font-size: 17px;
+}
+
+.admin-groupes__ligne span {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.admin-groupes__ligne input {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  accent-color: var(--accent);
+}
+
+.admin-groupes__ligne--titre {
+  font-weight: 700;
+}
+
+.admin-groupes__ligne--sous {
+  padding-left: 22px;
+}
+
+.admin-groupes__ligne--grise {
+  opacity: 0.55;
+}
+
+.admin-groupes__nouveau {
+  justify-content: flex-start;
+  min-height: 48px;
+  margin-top: 8px;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 17px;
+}
+
+.admin-groupes__toast {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(var(--bottom-nav-height) + 14px + env(safe-area-inset-bottom));
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 12px 12px 16px;
+  border-radius: 12px;
+  background: var(--text);
+  color: var(--card-bg);
+  font-size: 16px;
+}
+
+.admin-groupes__toast button {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: #ffc78f;
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}

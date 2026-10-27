@@ -1,23 +1,34 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as administrateursApi from '../../api/administrateurs.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
-import { isOwner } from '../../data/roles.js'
+import { isOwner, isSuperuser } from '../../data/roles.js'
 import { BoutonInviter, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 
-// Fonctions au bureau de l'association (spec/core.md §6.4), dans l'ordre du
-// serveur (backend/src/administrateurs/schemas.py) : des titres, aucun droit.
+// Fonctions au bureau de l'association (spec/core.md §5.1), dans l'ordre du
+// serveur (backend/src/groups/board.py) : des titres, aucun droit.
 const BUREAU = [
   ['president', 'Président·e'],
   ['vice_president', 'Vice-président·e'],
   ['secretary', 'Secrétaire'],
   ['treasurer', 'Trésorier·e'],
 ]
+const FINANCIER = '🔒 Accès au Financier'
+const ANNULER_MS = 10000
 
-function libellesBureau(fonctions) {
-  return BUREAU.filter(([cle]) => fonctions.includes(cle)).map(([, libelle]) => libelle).join(', ')
+// Les groupes d'un admin, en pastilles toutes du même gris (maquette
+// « Admins nouveau style ») : « Bureau » avant ses fonctions, puis Profs, les
+// groupes faits à la main, et les 🔒 droits.
+function pastilles(admin, groupesEcole) {
+  const fonctions = BUREAU.filter(([cle]) => admin.bureauFunctions.includes(cle)).map(([, libelle]) => libelle)
+  return [
+    ...(fonctions.length ? ['Bureau', ...fonctions] : []),
+    ...(admin.estProf ? ['Profs'] : []),
+    ...groupesEcole.filter((g) => admin.groups.includes(g.id)).map((g) => g.name),
+    ...(admin.estTresorier ? [FINANCIER] : []),
+  ]
 }
 
 // Tableau des administrateurs (Admin > École, au-dessus de "Usage vidéo" —
@@ -50,9 +61,14 @@ export default function AdministrateursTableau({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emails])
   const [enEdition, setEnEdition] = useState(null)
-  const [bureauDe, setBureauDe] = useState(null)
+  const [groupesDe, setGroupesDe] = useState(null)
+  const [groupesEcole, setGroupesEcole] = useState([])
+  const [toast, setToast] = useState(null)
+  const minuteurToast = useRef(null)
   const [erreur, setErreur] = useState(null)
   const peutGerer = isOwner(activeUser)
+  // 🔒 Groupes qui donnent un droit : administrateur principal et Super User.
+  const peutDonnerDesDroits = peutGerer || isSuperuser(activeUser)
 
   useEffect(() => {
     let annule = false
@@ -62,10 +78,24 @@ export default function AdministrateursTableau({
         if (!annule) setAdministrateurs(liste)
       })
       .catch((err) => setErreur(err.message))
+    administrateursApi
+      .listerGroupes(ecoleId)
+      .then((liste) => {
+        if (!annule) setGroupesEcole(liste)
+      })
+      .catch((err) => setErreur(err.message))
     return () => {
       annule = true
     }
   }, [ecoleId])
+
+  useEffect(() => () => clearTimeout(minuteurToast.current), [])
+
+  function montrerToast(texte, annuler) {
+    clearTimeout(minuteurToast.current)
+    setToast({ texte, annuler })
+    minuteurToast.current = setTimeout(() => setToast(null), ANNULER_MS)
+  }
 
   async function supprimer(admin) {
     const message = admin.estProf || admin.estEleve
@@ -81,12 +111,41 @@ export default function AdministrateursTableau({
     }
   }
 
-  async function basculerTresorier(admin, tresorier) {
+  // Un groupe coché ou décoché dans la feuille : enregistré tout de suite,
+  // Annuler pendant 10 s (pas de confirmation).
+  async function changerGroupe(admin, patch, nom, ajoute) {
+    setErreur(null)
+    const avant = {
+      tresorier: { tresorier: admin.estTresorier },
+      bureauFunctions: { bureauFunctions: admin.bureauFunctions },
+      prof: { prof: admin.estProf },
+      groups: { groups: admin.groups },
+    }[Object.keys(patch)[0]]
+    async function appliquer(changement) {
+      const nouveau = await administrateursApi.modifier(admin.id, changement)
+      enregistree(nouveau)
+      setGroupesDe((ouvert) => (ouvert?.id === nouveau.id ? nouveau : ouvert))
+      // Sa propre ligne : l'onglet Financier apparaît (ou part) tout de suite.
+      if ('tresorier' in changement && admin.id === activeUser.id) onMonRoleTresorier?.(changement.tresorier)
+    }
+    try {
+      await appliquer(patch)
+      montrerToast(`${admin.prenom} ${admin.nom} ${ajoute ? 'ajouté·e à' : 'retiré·e de'} « ${nom} »`, () =>
+        appliquer(avant),
+      )
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
+  async function nouveauGroupe(admin) {
+    const nom = window.prompt('Nom du groupe')
+    if (!nom?.trim()) return
     setErreur(null)
     try {
-      enregistree(await administrateursApi.modifier(admin.id, { tresorier }))
-      // Sa propre ligne : l'onglet Financier apparaît (ou part) tout de suite.
-      if (admin.id === activeUser.id) onMonRoleTresorier?.(tresorier)
+      const groupe = await administrateursApi.creerGroupe(ecoleId, nom.trim())
+      setGroupesEcole((liste) => [...liste, groupe].sort((a, b) => a.name.localeCompare(b.name, 'fr')))
+      await changerGroupe(admin, { groups: [...admin.groups, groupe.id] }, groupe.name, true)
     } catch (err) {
       setErreur(err.message)
     }
@@ -131,10 +190,9 @@ export default function AdministrateursTableau({
                   <th>Prénom</th>
                   <th>Email</th>
                   <th>Administrateur principal</th>
-                  {/* Le droit (onglet Financier) et le titre (Bureau) sont
-                      deux colonnes distinctes (Seb, 20 octobre 2026). */}
-                  <th>Accès au Financier</th>
-                  <th>Bureau</th>
+                  {/* Remplace les colonnes « Accès au Financier » et
+                      « Bureau » (spec/core.md §5.2). */}
+                  <th>Groupes</th>
                   <th>Inviter</th>
                   <th>Statut</th>
                   {peutGerer && <th aria-label="Actions" />}
@@ -150,37 +208,24 @@ export default function AdministrateursTableau({
                     <td>{a.prenom}</td>
                     <td>{a.email || <span className="muted">—</span>}</td>
                     <td>{a.estOwner ? <Badge>Oui</Badge> : <span className="muted">—</span>}</td>
-                    {/* Seul endroit où l'on nomme un trésorier (module notes
-                        de frais §6) ; un Owner coche aussi sa propre ligne. */}
-                    <td>
-                      {peutGerer ? (
-                        <input
-                          type="checkbox"
-                          checked={a.estTresorier}
-                          onChange={(e) => basculerTresorier(a, e.target.checked)}
-                          aria-label={`${a.prenom} ${a.nom} : accès au Financier`}
-                        />
-                      ) : a.estTresorier ? (
-                        <Badge>Oui</Badge>
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
-                    </td>
-                    {/* Un Owner change aussi sa propre ligne (bureau d'une
-                        seule personne), comme la case Accès au Financier. */}
-                    <td>
-                      {peutGerer ? (
-                        <button
-                          type="button"
-                          className="btn btn--ghost"
-                          onClick={() => setBureauDe(a)}
-                          aria-label={`Fonctions au bureau de ${a.prenom} ${a.nom}`}
-                        >
-                          {libellesBureau(a.bureauFunctions) || 'Choisir'}
-                        </button>
-                      ) : (
-                        libellesBureau(a.bureauFunctions) || <span className="muted">—</span>
-                      )}
+                    {/* Tout admin change les groupes, sa ligne comprise ;
+                        les 🔒 droits restent à l'administrateur principal. */}
+                    <td className="admin-groupes__colonne">
+                      <button
+                        type="button"
+                        className="admin-groupes__case"
+                        onClick={() => setGroupesDe(a)}
+                        aria-label={`Groupes de ${a.prenom} ${a.nom}`}
+                      >
+                        {pastilles(a, groupesEcole).map((nom) => (
+                          <span key={nom} className="admin-groupes__pastille">
+                            {nom}
+                          </span>
+                        ))}
+                        {pastilles(a, groupesEcole).length === 0 && (
+                          <span className="admin-groupes__choisir">Choisir…</span>
+                        )}
+                      </button>
                     </td>
                     <td>
                       <BoutonInviter acces={acces} compteId={a.id} prenom={a.prenom} />
@@ -235,13 +280,37 @@ export default function AdministrateursTableau({
               onClose={() => setEnEdition(null)}
             />
           )}
-          {peutGerer && bureauDe && (
-            <BureauModal
-              admin={bureauDe}
-              onValider={(bureauFunctions) => administrateursApi.modifier(bureauDe.id, { bureauFunctions })}
-              onEnregistre={enregistree}
-              onClose={() => setBureauDe(null)}
+          {groupesDe && (
+            <GroupesModal
+              admin={groupesDe}
+              groupesEcole={groupesEcole}
+              peutDonnerDesDroits={peutDonnerDesDroits}
+              onChanger={(patch, nom, ajoute) => changerGroupe(groupesDe, patch, nom, ajoute)}
+              onNouveau={() => nouveauGroupe(groupesDe)}
+              erreur={erreur}
+              onClose={() => setGroupesDe(null)}
             />
+          )}
+          {toast && (
+            <div className="admin-groupes__toast" role="status">
+              <span>{toast.texte}</span>
+              {toast.annuler && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const annuler = toast.annuler
+                    setToast(null)
+                    try {
+                      await annuler()
+                    } catch (err) {
+                      setErreur(err.message)
+                    }
+                  }}
+                >
+                  Annuler
+                </button>
+              )}
+            </div>
           )}
         </>
       )}
@@ -389,49 +458,68 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
   )
 }
 
-// Fonctions au bureau d'un administrateur (spec/core.md §6.4) : zéro, une ou
-// plusieurs. Elles proposent les signataires d'un procès-verbal d'AG.
-function BureauModal({ admin, onValider, onEnregistre, onClose }) {
-  const [fonctions, setFonctions] = useState(admin.bureauFunctions)
-  const [enCours, setEnCours] = useState(false)
-  const [erreur, setErreur] = useState(null)
-
-  function basculer(cle, coche) {
-    setFonctions((liste) => (coche ? [...liste, cle] : liste.filter((f) => f !== cle)))
+// Groupes d'un administrateur (maquette « Admins nouveau style ») : chaque
+// case s'enregistre tout de suite. Bureau et ses fonctions, Profs, les
+// groupes faits à la main, « + Nouveau groupe… », puis les 🔒 droits (grisés
+// sauf pour l'administrateur principal et le Super User).
+function GroupesModal({ admin, groupesEcole, peutDonnerDesDroits, onChanger, onNouveau, erreur, onClose }) {
+  function basculerFonction(cle, coche) {
+    const fonctions = coche ? [...admin.bureauFunctions, cle] : admin.bureauFunctions.filter((f) => f !== cle)
+    onChanger({ bureauFunctions: BUREAU.map(([c]) => c).filter((c) => fonctions.includes(c)) }, BUREAU.find(([c]) => c === cle)[1], coche)
   }
 
-  async function valider() {
-    if (enCours) return
-    setEnCours(true)
-    setErreur(null)
-    try {
-      onEnregistre(await onValider(BUREAU.map(([cle]) => cle).filter((cle) => fonctions.includes(cle))))
-      onClose()
-    } catch (err) {
-      setErreur(err.message)
-    } finally {
-      setEnCours(false)
-    }
+  function basculerGroupe(groupe, coche) {
+    const ids = coche ? [...admin.groups, groupe.id] : admin.groups.filter((id) => id !== groupe.id)
+    onChanger({ groups: ids }, groupe.name, coche)
   }
 
   return (
     <Modal
-      title={`Bureau : ${admin.prenom} ${admin.nom}`}
+      title={`Groupes de ${admin.prenom} ${admin.nom}`}
       onClose={onClose}
       footer={
-        <button type="button" className="btn btn--primary btn--block" disabled={enCours} onClick={valider}>
-          Enregistrer
+        <button type="button" className="btn btn--primary btn--block" onClick={onClose}>
+          OK
         </button>
       }
     >
-      <div className="form-fields">
+      <div className="admin-groupes__feuille">
+        <div className="admin-groupes__ligne admin-groupes__ligne--titre">Bureau</div>
         {BUREAU.map(([cle, libelle]) => (
-          <label key={cle} className="checkbox-inline">
-            <input type="checkbox" checked={fonctions.includes(cle)} onChange={(e) => basculer(cle, e.target.checked)} />
-            {libelle}
+          <label key={cle} className="admin-groupes__ligne admin-groupes__ligne--sous">
+            <input
+              type="checkbox"
+              checked={admin.bureauFunctions.includes(cle)}
+              onChange={(e) => basculerFonction(cle, e.target.checked)}
+            />
+            <span>{libelle}</span>
           </label>
         ))}
-        <p className="muted">Un titre, sans droit en plus : l’onglet Financier se donne par la case Accès au Financier.</p>
+        <label className="admin-groupes__ligne">
+          <input type="checkbox" checked={admin.estProf} onChange={(e) => onChanger({ prof: e.target.checked }, 'Profs', e.target.checked)} />
+          <span>Profs</span>
+        </label>
+        {groupesEcole.map((g) => (
+          <label key={g.id} className="admin-groupes__ligne">
+            <input type="checkbox" checked={admin.groups.includes(g.id)} onChange={(e) => basculerGroupe(g, e.target.checked)} />
+            <span>{g.name}</span>
+          </label>
+        ))}
+        <label className={`admin-groupes__ligne${peutDonnerDesDroits ? '' : ' admin-groupes__ligne--grise'}`}>
+          <input
+            type="checkbox"
+            checked={admin.estTresorier}
+            disabled={!peutDonnerDesDroits}
+            onChange={(e) => onChanger({ tresorier: e.target.checked }, FINANCIER, e.target.checked)}
+          />
+          <span>{FINANCIER}</span>
+        </label>
+        {!peutDonnerDesDroits && (
+          <p className="muted">🔒 : seuls l’administrateur principal et le Super User changent ces groupes.</p>
+        )}
+        <button type="button" className="btn btn--ghost admin-groupes__nouveau" onClick={onNouveau}>
+          + Nouveau groupe…
+        </button>
         {erreur && <p className="admin-panel__erreur">{erreur}</p>}
       </div>
     </Modal>

@@ -16,7 +16,7 @@ from comptes import roles as r
 from comptes.models import Compte, Famille, RoleCompte
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
-from groups import board, teachers
+from groups import board, custom, teachers
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -96,6 +96,8 @@ class GestionSaisons:
             db.add(saison)
             db.flush()
             fiches = self._recopier_comptes(db, ecole_id, ancienne_id, saison.id, duplication)
+            if ancienne_id is not None:
+                custom.copy_season(db, ecole_id, ancienne_id, saison.id, fiches)
             cours: dict[int, int] = {}
             if duplication.cours:
                 cours = self._recopier_cours(db, ancienne_id, saison, fiches, duplication.eleves)

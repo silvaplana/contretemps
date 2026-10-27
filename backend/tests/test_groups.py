@@ -152,3 +152,26 @@ def test_une_ancienne_sauvegarde_remet_les_profs_dans_le_groupe(client, db_sessi
     with toutes_saisons(db_session):
         assert [c.id for c in Comptes().list_par_role(db_session, ecole_id, "professeur")] == [prof.id]
         assert roles.noms_roles(Comptes().get(db_session, prof.id)) == ["professeur"]
+
+
+def test_une_nouvelle_saison_recopie_les_groupes_faits_a_la_main(client, db_session, ecole):
+    from groups import custom
+
+    ecole_id = ecole["ecole"].id
+    ancienne = ecole["owner"].saison_id
+    benevoles = custom.create(db_session, ecole_id, ancienne, "Bénévoles")
+    custom.create(db_session, ecole_id, ancienne, "Vide")
+    custom.set_groups(db_session, ecole["owner"], [benevoles.id])
+    db_session.commit()
+
+    reponse = client.post(
+        f"/ecoles/{ecole_id}/saisons", json={"nom": "2027-2028", "date_debut": "2027-09-01", "date_fin": "2028-08-31"}
+    )
+
+    assert reponse.status_code == 201, reponse.text
+    nouvelle = reponse.json()["saison"]["id"]
+    groupes = custom.groups(db_session, ecole_id, nouvelle)
+    assert [g.name for g in groupes] == ["Bénévoles", "Vide"]
+    membres = db_session.scalars(sa.select(GroupMember.member_id).where(GroupMember.group_id == groupes[0].id)).all()
+    with toutes_saisons(db_session):
+        assert [Comptes().get(db_session, m).compte_precedent_id for m in membres] == [ecole["owner"].id]

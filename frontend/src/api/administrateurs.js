@@ -30,6 +30,8 @@ function versEcran(a) {
     estTresorier: a.est_tresorier ?? false,
     // Fonctions au bureau (spec/core.md §6.4) : des titres, aucun droit.
     bureauFunctions: a.bureau_functions ?? [],
+    // Groupes faits à la main (Bénévoles...), par id.
+    groups: a.groups ?? [],
     // Professeur-admin : nom/prénom/email se modifient dans Admin > Profs,
     // et le "supprimer" lui retire seulement les droits d'admin.
     estProf: a.est_prof,
@@ -51,7 +53,7 @@ export async function creer(ecoleId, { compteId, nom, prenom, email, owner }) {
 }
 
 // Seuls les champs présents dans `patch` sont envoyés (et modifiés).
-export async function modifier(id, { nom, prenom, email, owner, tresorier, bureauFunctions }) {
+export async function modifier(id, { nom, prenom, email, owner, tresorier, bureauFunctions, prof, groups }) {
   const corps = {
     ...(nom !== undefined && { nom }),
     ...(prenom !== undefined && { prenom }),
@@ -59,10 +61,22 @@ export async function modifier(id, { nom, prenom, email, owner, tresorier, burea
     ...(owner !== undefined && { owner }),
     ...(tresorier !== undefined && { tresorier }),
     ...(bureauFunctions !== undefined && { bureau_functions: bureauFunctions }),
+    ...(prof !== undefined && { prof }),
+    ...(groups !== undefined && { groups }),
   }
   return versEcran(await requete(`/administrateurs/${id}`, { method: 'PUT', body: JSON.stringify(corps) }))
 }
 
 export async function supprimer(id) {
   await requete(`/administrateurs/${id}`, { method: 'DELETE' })
+}
+
+// Groupes faits à la main de la saison affichée (spec/core.md §5.1) : tout
+// admin de l'école les voit et en crée.
+export async function listerGroupes(ecoleId) {
+  return requete(`/ecoles/${ecoleId}/groupes`)
+}
+
+export async function creerGroupe(ecoleId, name) {
+  return requete(`/ecoles/${ecoleId}/groupes`, { method: 'POST', body: JSON.stringify({ name }) })
 }
