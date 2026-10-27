@@ -51,8 +51,9 @@ par un cadreur et rangé au nom des deux combattants. Chaque membre retrouve ses
 | Avant un combat | Les deux combattants | Entrent dans la zone, font le Y pendant 2 s | Rien à l'écran : le début est repéré au traitement |
 | Fin d'un combat | Les deux combattants | Se saluent (main serrée), sinon font le X, ou sortent de la zone | Rien à l'écran : la fin est repérée au traitement |
 | Changement de tenue | Le combattant | Repasse sur le repère | Sa nouvelle tenue remplace l'ancienne pour la suite |
-| Fin du cours | Coach | Appuie sur « Fin de séance » | L'enregistreur s'arrête, envoie la vidéo, puis se remet en attente |
-| La nuit | Serveur | Traite la vidéo | Clips créés, nommés, rangés ; vidéo brute supprimée après validation |
+| Pendant le cours | Enregistreur, serveur | Envoie la vidéo par morceaux de 2 min ; le serveur découpe au fur et à mesure | Chaque clip arrive dans Sparring quelques minutes après la fin du combat |
+| Fin du cours | Coach | Appuie sur « Fin de séance » | L'enregistreur s'arrête, envoie le dernier morceau, puis se remet en attente |
+| La nuit | Serveur | Finit ce qui reste (morceaux en retard, séances envoyées à la main) | Clips créés, nommés, rangés ; vidéo brute supprimée après validation |
 | Le lendemain | Coach | Ouvre l'onglet « À vérifier » | Corrige les noms inversés ou manquants |
 | Le lendemain | Membre | Ouvre « Mes combats » | Voit ses clips de la séance |
 
@@ -172,6 +173,12 @@ maintenir un build Android de toute l'appli pour une seule fonction.
   PWA, iPhone compris. Le serveur prévient l'enregistreur (push ou connexion maintenue), qui allume
   la caméra et active « Ne pas déranger » si l'autorisation est donnée. « Fin de séance » arrête et
   lance l'envoi dès qu'il y a du Wi-Fi. Pas de Bluetooth.
+- **Envoi au fil de la séance** (décision Seb du 27/10) : en mode connecté, l'enregistreur filme sans
+  arrêt mais écrit des morceaux de 2 minutes collés bout à bout, sans trou (`MediaRecorder.setNextOutputFile`).
+  Chaque morceau part dès qu'il est fini ; le téléphone ne fait que filmer et envoyer, il ne cherche
+  pas les gestes (chaleur, batterie). On n'arrête pas la caméra à la fin d'un combat : le redémarrage
+  laisserait un trou où le Y suivant serait perdu. Il faut environ 10 Mbit/s en montant au club ;
+  sinon les morceaux attendent et partent plus tard.
 - **État visible dans la PWA** : bouton caméra de Sparring (§6.3), avec batterie et place restante.
 - **Après une coupure ou un redémarrage**, quelqu'un rouvre l'enregistreur une fois ; la PWA affiche
   « caméra hors service » en attendant.
@@ -188,8 +195,10 @@ maintenir un build Android de toute l'appli pour une seule fonction.
 
 ## 5. Traitement
 
-Le serveur traite la vidéo de la séance en quatre passes, de nuit. Il sait exploiter le fait de
-connaître toute la vidéo à l'avance.
+Le serveur traite la vidéo de la séance en quatre passes. Avec l'enregistreur, il les fait au fil des
+morceaux de 2 minutes (§4) : un combat est découpé dès que sa fin est arrivée, et l'analyse se fait
+sur environ 5 images par seconde pour suivre le rythme. Une séance envoyée à la main est traitée
+d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
 
 1. **Enregistrements** : il repère les passages sur le repère au sol, transcrit le prénom dit et le
    relie au bon membre. Il en tire une « empreinte » de tenue : couleurs du t-shirt et du short,
@@ -422,7 +431,8 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
    Sparring dans Docs, l'effacement automatique.
 2. **Découpe** : conteneur à part `sparring-worker` (§11), qui range ses clips par
    `SessionClips.add_clip` puis passe la séance à `ready`.
-3. **Enregistreur Kotlin** (§11), puis la pastille caméra.
+3. **Enregistreur Kotlin** (§11), avec l'envoi par morceaux de 2 minutes et la découpe au fil de la
+   séance (§4, §5), puis la pastille caméra.
 
 ## 9. Risques
 
