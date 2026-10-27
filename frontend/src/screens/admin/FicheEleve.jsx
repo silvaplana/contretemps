@@ -6,6 +6,7 @@ import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
 import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
+import { texteReponse } from '../../utils/reponses.js'
 import FusionnerAvec from './FusionnerAvec.jsx'
 
 // Fiche d'un élève (Admin > Élèves, demande du 2026-10-15) : ouverte d'un
@@ -481,16 +482,6 @@ function ZoneTexte({ id, libelle, valeur, onChange }) {
       <textarea id={id} className="modal-textarea" rows={2} value={valeur} onChange={(e) => onChange(e.target.value)} />
     </>
   )
-}
-
-// Une réponse en clair, pour la fiche en lecture.
-function texteReponse(champ, valeur, sousGroupes) {
-  if (valeur == null || valeur === '') return ''
-  if (champ.format === 'date') return dateFrancaise(valeur)
-  if (champ.format === 'yes_no') return valeur ? 'Oui' : 'Non'
-  if (champ.format === 'group') return sousGroupes.filter((g) => valeur.includes(g.id)).map((g) => g.name).join(', ')
-  if (Array.isArray(valeur)) return valeur.join(', ')
-  return String(valeur)
 }
 
 // La saisie d'un champ de l'école, selon son format.

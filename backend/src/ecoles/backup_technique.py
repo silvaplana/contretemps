@@ -35,7 +35,7 @@ from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_ema
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import Group, GroupMember, courses, rights, teachers
-from members import MemberField, MemberValue
+from members import MemberColumn, MemberField, MemberValue
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
@@ -179,6 +179,13 @@ def _construire_tables() -> list[_Table]:
                 "position", "member_sees", "member_edits", "others_see", "for_group_id", "removed_at", "created_at",
             ],
             lambda db, eid: list(db.scalars(select(MemberField).where(MemberField.org_id == eid))),
+            colonne_ecole_id="org_id",
+        ),
+        _Table(
+            "ColonnesMembres",
+            MemberColumn,
+            ["org_id", "season_id", "key", "shown", "position"],
+            lambda db, eid: list(db.scalars(select(MemberColumn).where(MemberColumn.org_id == eid))),
             colonne_ecole_id="org_id",
         ),
         _Table(

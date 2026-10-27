@@ -1,13 +1,16 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import * as champsApi from '../../api/champs.js'
 import * as elevesApi from '../../api/eleves.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
+import { ordonner } from '../../data/colonnesEleves.js'
 import { paiementLabels } from '../../data/paiement.js'
 import { calculerAge } from '../../utils/age.js'
 import { ouvrirInscriptionEleve } from '../../utils/inscriptionEleve.js'
 import { correspond } from '../../utils/recherche.js'
+import { texteReponse } from '../../utils/reponses.js'
 import AjoutEleveOcr from './AjoutEleveOcr.jsx'
 import ChampsMembres from './ChampsMembres.jsx'
 import FicheEleve from './FicheEleve.jsx'
@@ -100,6 +103,30 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   const acces = useAcces(ecoleId)
   const [ocrOuvert, setOcrOuvert] = useState(false)
   const [champsOuverts, setChampsOuverts] = useState(false)
+  // Colonnes du tableau (spec/core.md §4.3) : l'ordre et la case Afficher
+  // réglés dans « Affichage dans Admin », et les champs de la fiche avec les
+  // réponses de tous les élèves. Relus à la fermeture de « Champs ».
+  const [reglage, setReglage] = useState({ colonnes: [], champs: [], reponses: {}, sousGroupes: {} })
+  const relireColonnes = useCallback(async () => {
+    try {
+      const [colonnes, champs, reponses, choix] = await Promise.all([
+        champsApi.colonnes(ecoleId),
+        champsApi.lister(ecoleId),
+        champsApi.toutesReponses(ecoleId),
+        champsApi.groupes(ecoleId),
+      ])
+      const sousGroupes = Object.fromEntries(choix.parents.map((g) => [g.id, g.children]))
+      setReglage({ colonnes, champs, reponses, sousGroupes })
+    } catch {
+      // Hors ligne : les colonnes d'origine restent affichées.
+    }
+  }, [ecoleId])
+  useEffect(() => {
+    relireColonnes()
+  }, [relireColonnes])
+  const { reponses, sousGroupes } = reglage
+  const toutesColonnes = ordonner(reglage.colonnes, reglage.champs)
+  const affichees = toutesColonnes.filter((c) => c.shown)
 
   // Un élève peut être ajouté depuis un autre onglet (« Inscription élève
   // (OCR) » ouvre le formulaire à part) : la liste est relue dès qu'on
@@ -269,6 +296,12 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     return () => observateur.disconnect()
   }, [])
   const eleveAppuye = pressed ? eleves.find((el) => el.id === pressed.eleveId) : null
+  // Une colonne d'un champ de la fiche : son intitulé et la réponse en clair.
+  const champAppuye = pressed ? toutesColonnes.find((c) => c.key === pressed.champ && c.champ)?.champ : null
+  function valeurAppuyee() {
+    if (!champAppuye) return valeurCellule(eleveAppuye, pressed.champ, cours)
+    return texteReponse(champAppuye, reponses[eleveAppuye.id]?.[champAppuye.id], sousGroupes[champAppuye.group_id])
+  }
 
   return (
     <div className="admin-panel admin-panel--eleves">
@@ -287,7 +320,15 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
           { label: 'Champs', icon: 'edit', onClick: () => setChampsOuverts(true) },
         ]}
       />
-      {champsOuverts && <ChampsMembres ecoleId={ecoleId} onClose={() => setChampsOuverts(false)} />}
+      {champsOuverts && (
+        <ChampsMembres
+          ecoleId={ecoleId}
+          onClose={() => {
+            setChampsOuverts(false)
+            relireColonnes()
+          }}
+        />
+      )}
       {ocrOuvert && (
         <AjoutEleveOcr ecoleId={ecoleId} onEleveAjoute={relireEleves} onClose={() => setOcrOuvert(false)} />
       )}
@@ -305,22 +346,17 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         <table className="data-table data-table--eleves">
           <thead>
             <tr>
-              <th>Élève</th>
-              <th>Cours suivis</th>
-              <th>Paiement</th>
-              <th>Commentaire</th>
-              <th>Date de naissance</th>
-              <th>Âge</th>
-              <th>Contacts</th>
-              <th>Téléphone</th>
-              <th>Email</th>
-              <th>Adresse</th>
-              <th>Santé</th>
-              <th>Certificat médical</th>
-              <th>
-                <InviterTous acces={acces} compteIds={filtered.map((el) => el.id)} />
-              </th>
-              <th>Statut</th>
+              {affichees.map((c) => (
+                <th key={c.key}>
+                  {c.key === 'inviter' ? (
+                    <InviterTous acces={acces} compteIds={filtered.map((el) => el.id)} />
+                  ) : c.key === 'statut' ? (
+                    'Statut'
+                  ) : (
+                    c.label
+                  )}
+                </th>
+              ))}
               <th aria-label="Supprimer" />
             </tr>
           </thead>
@@ -330,13 +366,15 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
               function classeCellule(champ) {
                 return cellulesRouges.includes(champ) ? 'is-cellule-rouge' : ''
               }
-              return (
-                <tr key={el.id} className={ligneRouge ? 'is-ligne-rouge' : ''}>
+              const cellules = {
+                nom: (
                   <td className={`data-table__name ${classeCellule('nom')}`} {...celluleProps(el.id, 'nom')}>
                     <button type="button" className="cell-comment cell-comment--nom" onClick={() => setFicheId(el.id)}>
                       {el.prenom} {el.nom}
                     </button>
                   </td>
+                ),
+                cours: (
                   <td className={classeCellule('cours')} {...celluleProps(el.id, 'cours')}>
                     <button
                       type="button"
@@ -349,6 +387,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                       ))}
                     </button>
                   </td>
+                ),
+                paiement: (
                   <td className={classeCellule('paiement')} {...celluleProps(el.id, 'paiement')}>
                     <button
                       type="button"
@@ -358,6 +398,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                       {paiementLabels[el.statutPaiement]} — {el.montantPaye}€/{el.montantTotalAnnee}€
                     </button>
                   </td>
+                ),
+                commentaire: (
                   <td className={classeCellule('commentaire')} {...celluleProps(el.id, 'commentaire')}>
                     <button
                       type="button"
@@ -367,14 +409,20 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                       {el.commentaireAdmin || <span className="muted">—</span>}
                     </button>
                   </td>
+                ),
+                naissance: (
                   <td className={classeCellule('naissance')} {...celluleProps(el.id, 'naissance')}>
                     <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
                       {el.dateNaissance ? el.dateNaissance.split('-').reverse().join('/') : <span className="muted">—</span>}
                     </button>
                   </td>
+                ),
+                age: (
                   <td className={classeCellule('age')} {...celluleProps(el.id, 'age')}>
                     {calculerAge(el.dateNaissance) ?? <span className="muted">—</span>}
                   </td>
+                ),
+                contacts: (
                   <td className={classeCellule('contacts')} {...celluleProps(el.id, 'contacts')}>
                     <button
                       type="button"
@@ -390,21 +438,29 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                       )}
                     </button>
                   </td>
+                ),
+                telephone: (
                   <td className={classeCellule('telephone')} {...celluleProps(el.id, 'telephone')}>
                     <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
                       {el.telephone || <span className="muted">—</span>}
                     </button>
                   </td>
+                ),
+                email: (
                   <td className={classeCellule('email')} {...celluleProps(el.id, 'email')}>
                     <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
                       {el.email || <span className="muted">—</span>}
                     </button>
                   </td>
+                ),
+                adresse: (
                   <td className={classeCellule('adresse')} {...celluleProps(el.id, 'adresse')}>
                     <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
                       {el.adresse || <span className="muted">—</span>}
                     </button>
                   </td>
+                ),
+                sante: (
                   <td className={classeCellule('sante')} {...celluleProps(el.id, 'sante')}>
                     <button
                       type="button"
@@ -418,17 +474,40 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                       )}
                     </button>
                   </td>
+                ),
+                certificat: (
                   <td className={classeCellule('certificat')} {...celluleProps(el.id, 'certificat')}>
                     <span className={`toggle-chip ${el.certificatMedical ? 'is-on' : ''}`}>
                       {el.certificatMedical ? 'Reçu' : 'Manquant'}
                     </span>
                   </td>
+                ),
+                inviter: (
                   <td>
                     <BoutonInviter acces={acces} compteId={el.id} prenom={el.prenom} />
                   </td>
+                ),
+                statut: (
                   <td>
                     <StatutAcces acces={acces} compteId={el.id} />
                   </td>
+                ),
+              }
+              return (
+                <tr key={el.id} className={ligneRouge ? 'is-ligne-rouge' : ''}>
+                  {affichees.map((c) =>
+                    c.champ ? (
+                      <td key={c.key} className={classeCellule(c.key)} {...celluleProps(el.id, c.key)}>
+                        <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
+                          {texteReponse(c.champ, reponses[el.id]?.[c.champ.id], sousGroupes[c.champ.group_id]) || (
+                            <span className="muted">—</span>
+                          )}
+                        </button>
+                      </td>
+                    ) : (
+                      <Fragment key={c.key}>{cellules[c.key]}</Fragment>
+                    ),
+                  )}
                   <td>
                     <button
                       type="button"
@@ -476,7 +555,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         <div className="cellule-popover-overlay" onClick={() => setPressed(null)}>
           <div className="cellule-popover-panel" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
-              <h2>{CHAMP_LABEL[pressed.champ]}</h2>
+              <h2>{champAppuye?.label ?? CHAMP_LABEL[pressed.champ]}</h2>
               <button
                 type="button"
                 className="icon-btn"
@@ -490,13 +569,13 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
               {eleveAppuye.prenom} {eleveAppuye.nom}
             </p>
             <p className="cellule-popover__valeur">
-              {valeurCellule(eleveAppuye, pressed.champ, cours) || <span className="muted">(vide)</span>}
+              {valeurAppuyee() || <span className="muted">(vide)</span>}
             </p>
             <div className="cellule-popover__actions">
               <button
                 type="button"
                 className="btn btn--secondary"
-                onClick={() => copierValeur(valeurCellule(eleveAppuye, pressed.champ, cours))}
+                onClick={() => copierValeur(valeurAppuyee())}
               >
                 <Icon name="fileCheck" size={16} /> {copieOk ? 'Copié !' : 'Copier dans le presse-papier'}
               </button>

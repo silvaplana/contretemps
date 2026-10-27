@@ -57,3 +57,12 @@ class AnswerIn(BaseModel):
 class AnswerOut(BaseModel):
     field: FieldOut
     value: Any = None
+
+
+class ColumnIn(BaseModel):
+    key: str
+    shown: bool = True
+
+
+class ColumnOut(ColumnIn):
+    model_config = ConfigDict(from_attributes=True)
