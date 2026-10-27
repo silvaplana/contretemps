@@ -18,6 +18,9 @@ from saisons.models import Saison
 from saisons.portee import toutes_saisons
 
 
+# Le droit « Accès au Financier » (spec/core.md §5.3), déclaré dans module.py.
+FINANCES_ACCESS = roles.DROIT_FINANCIER
+
 def membre_appelant(
     request: Request, db: Session = Depends(get_db), compte: Compte = Depends(rbac.compte_appelant)
 ) -> Member:
@@ -30,7 +33,7 @@ def membre_appelant(
         person_id=personne_id(db, compte),
         org_id=ecole_id,
         name=nom_affiche(compte),
-        is_treasurer=roles.is_tresorier(compte),
+        is_treasurer=roles.has_right(compte, FINANCES_ACCESS),
         is_superuser=roles.is_superuser(compte),
     )
 

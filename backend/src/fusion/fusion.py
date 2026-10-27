@@ -97,10 +97,10 @@ class Fusion:
         self.verifier(garde, absorbe)
         pg, pa = personne_id(db, garde), personne_id(db, absorbe)
 
-        # Professeur : groupe « Profs », déplacé avec les autres groupes
-        # (LIENS_PAR_COMPTE, group_members).
+        # Professeur et Trésorier : des groupes, déplacés avec les autres
+        # groupes (LIENS_PAR_COMPTE, group_members).
         for role in roles.noms_roles(absorbe):
-            if role != roles.PROFESSEUR and not roles.a_le_role(garde, role):
+            if role not in roles.ROLES_EN_GROUPE and not roles.a_le_role(garde, role):
                 garde.roles.append(RoleCompte(role=role))
         garde.definir_emails(garde.emails + absorbe.emails)
         garde.telephone = garde.telephone or absorbe.telephone
