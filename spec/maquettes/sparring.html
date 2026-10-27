@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Maquette validée par Seb le 2026-10-27 (voir spec/modules/video-combats.md §6). Ouvrir dans un navigateur : tout est cliquable. -->
+<title>Maquette Sparring</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Archivo+Narrow:wght@500;700&display=swap">
+<style>
+/* Layout : à gauche le téléphone (tout est cliquable), à droite les notes sur l'écran affiché. */
+:root {
+  --page: #eef0f2; --ink: #1d232b; --muted: #5d6874; --line: #d3d8de; --panel: #f8f9fa;
+  --note-accent: #b8322b;
+  --display: 'Archivo', system-ui, sans-serif;
+  --narrow: 'Archivo Narrow', 'Archivo', system-ui, sans-serif;
+  --body: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #15191e; --ink: #e8ecf0; --muted: #9aa5b1; --line: #2c333b; --panel: #1c2128; --note-accent: #ff7a70; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #15191e; --ink: #e8ecf0; --muted: #9aa5b1; --line: #2c333b; --panel: #1c2128; --note-accent: #ff7a70; color-scheme: dark }
+
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; letter-spacing: -.01em; }
+.intro { color: var(--muted); max-width: 62ch; margin: 0 0 18px; line-height: 1.5; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; font-size: 14px; }
+.controls span { color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; border: 0; background: var(--panel); color: var(--ink); padding: 8px 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.seg button:focus-visible { outline: 2px solid var(--note-accent); outline-offset: -2px; }
+.grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.notes { min-width: 0; }
+.notes h2 { font-family: var(--display); font-size: 1.15rem; margin: 0 0 10px; }
+.notes p, .notes li { line-height: 1.55; max-width: 62ch; }
+.notes ul { padding-left: 1.1em; margin: 0 0 14px; }
+.notes .eyebrow { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--note-accent); margin: 0 0 4px; }
+.notes .ask { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+/* ---- Téléphone : charte d'un club de combat (un seul thème, comme l'appli) ---- */
+.phone {
+  --bg: #f3f4f6; --card: #ffffff; --text: #161b22; --muted: #5b6573; --border: #dde1e6;
+  --accent: #c62d26; --accent-bg: #fbe4e2; --rouge: #d0332b; --bleu: #2457b8;
+  --ok-bg: #dcefe0; --ok: #23683a; --warn-bg: #fbeccb; --warn: #8a5a00; --info-bg: #e2e9f6; --info: #23467f;
+  width: 100%; max-width: 390px; height: 780px; margin: 0 auto; border-radius: 34px; border: 10px solid #0e1116;
+  background: var(--bg); color: var(--text); position: relative; overflow: hidden;
+  display: flex; flex-direction: column; font-size: 17px; box-shadow: 0 18px 40px rgba(0,0,0,.18);
+}
+.phone button { font: inherit; color: inherit; }
+.phone :focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+.topbar { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 10px; background: var(--card); border-bottom: 1px solid var(--border); }
+.topbar strong { font-family: var(--display); font-size: 19px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-btn { width: 48px; height: 48px; border: 0; background: none; border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+.icon-btn svg { width: 24px; height: 24px; }
+.tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--border); }
+.tabs button { flex: 1; min-height: 48px; border: 0; background: none; cursor: pointer; font-size: 16px; color: var(--muted); border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+.count { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 4px; border-radius: 11px; background: var(--accent); color: #fff; font-size: 13px; line-height: 22px; font-weight: 700; }
+.body { flex: 1; overflow-y: auto; padding: 14px 14px 90px; display: flex; flex-direction: column; gap: 12px; }
+.daylabel { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .06em; font-size: 14px; color: var(--muted); margin: 6px 2px -4px; }
+.clip { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 8px; cursor: pointer; text-align: left; width: 100%; min-height: 72px; }
+.clip .thumb { width: 112px; flex: none; }
+.clip .who { font-weight: 700; line-height: 1.25; }
+.clip .meta { color: var(--muted); font-size: 15px; margin-top: 2px; }
+.thumb { position: relative; aspect-ratio: 16/9; border-radius: 9px; overflow: hidden; background: #2b5f8f; max-width: 100%; }
+.thumb svg { display: block; width: 100%; height: 100%; }
+.thumb .dur { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.72); color: #fff; font-size: 12px; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: 1px; margin-right: 6px; }
+.dot.r { background: var(--rouge); } .dot.b { background: var(--bleu); }
+.chip { display: inline-block; font-size: 14px; padding: 2px 9px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); } .chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.info { background: var(--info-bg); color: var(--info); } .chip.rec { background: var(--accent-bg); color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+.rec-card { display: flex; flex-direction: column; gap: 10px; }
+.rec-line { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.rec-line .led { width: 12px; height: 12px; border-radius: 50%; background: var(--ok); }
+.rec-line .led.on { background: var(--accent); animation: blink 1.2s infinite; }
+.rec-line .led.off { background: #9aa3ad; }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .rec-line .led.on { animation: none; } }
+.rec-meta { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.btn { min-height: 52px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 700; font-size: 17px; padding: 0 18px; }
+.btn.main { background: var(--accent); color: #fff; }
+.btn.main:disabled { opacity: .4; cursor: default; }
+.btn.second { background: var(--card); border: 1px solid var(--border); }
+.btn.link { background: none; color: var(--muted); font-weight: 500; text-decoration: underline; min-height: 48px; }
+.row { display: flex; gap: 10px; } .row > * { flex: 1; }
+.seance { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 10px 12px 14px; cursor: pointer; text-align: left; width: 100%; min-height: 72px; }
+.seance > div { flex: 1; min-width: 0; }
+.seance .folder { color: #e0a526; flex: none; } .seance .folder svg { width: 30px; height: 30px; display: block; }
+.seance .t { font-weight: 700; }
+.seance .meta { color: var(--muted); font-size: 15px; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--info); }
+.body > * { flex-shrink: 0; }
+.scard { display: block; width: 100%; padding: 0; overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: 16px; text-align: left; cursor: pointer; }
+.scard[aria-disabled="true"] { cursor: default; }
+.scard .info { padding: 12px 14px 14px; }
+.scard .t { font-weight: 700; font-size: 18px; }
+.scard .meta { color: var(--muted); font-size: 15px; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cover { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; aspect-ratio: 16/6; max-width: 100%; background: var(--border); }
+.cover .cv { overflow: hidden; } .cover .cv svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+.cover .cv--big { grid-row: span 2; }
+.cover--wait { aspect-ratio: 16/3; display: grid; place-items: center; grid-template-columns: 1fr; background: repeating-linear-gradient(135deg, #e6e9ed 0 12px, #eef0f3 12px 24px); color: var(--muted); font-weight: 600; }
+.cam-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 12px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 700; font-size: 16px; color: #fff; background: var(--ok); box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+.cam-pill svg { width: 24px; height: 24px; }
+.cam-pill.rec { background: var(--accent); animation: pulse 1.6s infinite; } .cam-pill.off { background: #7d8792; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(198,45,38,.25); } }
+@media (prefers-reduced-motion: reduce) { .cam-pill.rec { animation: none; } }
+.cam { position: relative; } .cam-dot { position: absolute; right: 9px; top: 10px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--card); background: var(--ok); }
+.cam-dot.rec { background: var(--accent); } .cam-dot.off { background: #9aa3ad; }
+.strip { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; border: 0; background: var(--accent-bg); color: var(--accent); font-weight: 700; padding: 0 14px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.strip .led { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite; }
+.strip-open { margin-left: auto; text-decoration: underline; font-weight: 600; }
+.panel-back { position: absolute; inset: 56px 0 0 0; background: rgba(0,0,0,.35); z-index: 4; }
+.panel { background: var(--bg); padding: 14px 14px 4px; border-radius: 0 0 18px 18px; display: flex; flex-direction: column; animation: down .22s ease-out; }
+@keyframes down { from { transform: translateY(-30px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .panel, .strip .led { animation: none; } }
+.fab { position: absolute; right: 18px; bottom: 84px; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--card); box-shadow: 0 4px 12px rgba(0,0,0,.2); cursor: pointer; display: grid; place-items: center; }
+.fab svg { width: 26px; height: 26px; }
+.nav { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; background: var(--card); border-top: 1px solid var(--border); }
+.nav span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: var(--muted); }
+.nav span svg { width: 22px; height: 22px; }
+.nav span.on { color: var(--accent); font-weight: 700; }
+.player { position: relative; background: #000; aspect-ratio: 16/9; max-width: 100%; }
+.player svg.scene { width: 100%; height: 100%; display: block; }
+.player .ctrl { position: absolute; inset: 0; display: grid; place-items: center; background: none; border: 0; cursor: pointer; }
+.player .ctrl b { width: 64px; height: 64px; border-radius: 50%; background: rgba(0,0,0,.55); display: grid; place-items: center; }
+.player .ctrl svg { width: 30px; height: 30px; fill: #fff; }
+.player .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.25); }
+.player .prog i { display: block; height: 100%; width: 0; background: var(--accent); }
+.player .time { position: absolute; right: 8px; bottom: 10px; color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+.names { display: flex; flex-direction: column; gap: 4px; font-size: 19px; font-weight: 700; }
+.muted { color: var(--muted); }
+.pick { display: flex; align-items: center; gap: 10px; min-height: 56px; width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 0 12px; cursor: pointer; text-align: left; }
+.pick .lbl { color: var(--muted); font-size: 15px; width: 54px; }
+.pick b { flex: 1; } .pick b.vide { color: var(--accent); }
+.why { font-size: 15px; color: var(--warn); background: var(--warn-bg); border-radius: 10px; padding: 8px 12px; }
+.empty { text-align: center; color: var(--muted); padding: 40px 10px; line-height: 1.5; }
+.sheet-back { position: absolute; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; z-index: 5; }
+.sheet { background: var(--card); width: 100%; border-radius: 18px 18px 0 0; padding: 8px 0 14px; max-height: 75%; overflow-y: auto; }
+.sheet h3 { font-size: 16px; color: var(--muted); font-weight: 600; margin: 8px 18px; }
+.sheet button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; border: 0; background: none; text-align: left; padding: 0 18px; cursor: pointer; }
+.sheet button:hover { background: var(--bg); }
+.sheet button.danger { color: var(--accent); }
+.toast { position: absolute; left: 12px; right: 12px; bottom: 78px; background: #1d232b; color: #fff; border-radius: 12px; display: flex; align-items: center; padding: 6px 6px 6px 16px; z-index: 6; }
+.toast span { flex: 1; }
+.toast button { background: none; border: 0; color: #ffb4ae; font-weight: 700; min-height: 44px; padding: 0 14px; cursor: pointer; }
+</style>
+</head><body>
+
+<div class="wrap">
+  <h1>Sparring : maquette des écrans</h1>
+  <p class="intro">Le module vu dans l'appli d'un club de combat. Tout est cliquable : ouvrez un combat, démarrez une séance, corrigez un clip. Les clips sont des dessins ; dans l'appli ce sont les vraies vidéos.</p>
+  <div class="controls">
+    <span>Voir comme</span>
+    <div class="seg" role="group" aria-label="Voir comme">
+      <button type="button" id="r-coach" aria-pressed="true">Coach (admin ou prof)</button>
+      <button type="button" id="r-membre" aria-pressed="false">Membre (Seb R.)</button>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone" id="phone"></div>
+    <aside class="notes" id="notes" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  const I = {
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+    more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+    chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg>',
+    pause: '<svg viewBox="0 0 24 24"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+    fight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>',
+    dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+    swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7h12l-3-3M17 17H5l3 3"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 12l16-8-6 16-3-7z"/></svg>',
+    folder: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+    camfill: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 4 17.5z"/><path d="M17 9.5l4-2.6c.5-.3 1 .1 1 .6v9c0 .5-.5.9-1 .6l-4-2.6z"/></svg>',
+    user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>'
+  };
+
+  // Tenues (t-shirt, short) : la seule chose que l'appli utilise pour reconnaître les combattants.
+  const P = {
+    seb: { nom: 'Seb R.', tee: '#1d1f24', short: '#c62d26' },
+    karim: { nom: 'Karim B.', tee: '#e9e6df', short: '#222' },
+    lucas: { nom: 'Lucas M.', tee: '#2e7d4f', short: '#222' },
+    yanis: { nom: 'Yanis D.', tee: '#f0b429', short: '#333' },
+    ines: { nom: 'Inès T.', tee: '#22252b', short: '#2b2f36' },
+    nora: { nom: 'Nora K.', tee: '#1c1e22', short: '#3a3f47' },
+    malik: { nom: 'Malik A.', tee: '#7a3db8', short: '#222' }
+  };
+  const PRESENTS = { s1: ['seb', 'karim', 'lucas', 'yanis', 'ines', 'nora'], s2: ['seb', 'karim', 'lucas', 'yanis', 'malik'] };
+
+  const S = {
+    role: 'coach', screen: 'seances', tab: 'seances', seanceId: null, clipId: null, from: 'seances',
+    rec: 'pret', recStart: 0, playing: false, sheet: null, toast: null, verifIndex: 0, extraSeance: null,
+    seances: [
+      { id: 's4', jour: 'Lun. 27 oct.', cours: 'Adultes · 19 h', etat: 'envoi', pct: 64 },
+      { id: 's3', jour: 'Sam. 25 oct.', cours: 'Ados · 10 h', etat: 'traitement' },
+      { id: 's2', jour: 'Jeu. 23 oct.', cours: 'Adultes · 19 h', etat: 'pret' },
+      { id: 's1', jour: 'Mar. 21 oct.', cours: 'Adultes · 19 h', etat: 'pret' }
+    ],
+    clips: [
+      { id: 'c8', s: 's2', a: 'seb', b: 'lucas', d: '1:58', n: 4, ok: true },
+      { id: 'c7', s: 's2', a: 'seb', b: 'yanis', d: '2:20', n: 3, ok: true },
+      { id: 'c6', s: 's2', a: 'karim', b: 'malik', d: '3:30', n: 2, ok: false, why: 'Combattants emmêlés au sol : les noms ont pu s’inverser.' },
+      { id: 'c5', s: 's2', a: 'seb', b: 'lucas', d: '2:55', n: 1, ok: true },
+      { id: 'c4', s: 's1', a: null, b: null, d: '1:48', n: 4, ok: false, why: 'Pas de Y au début : personne n’a été reconnu.' },
+      { id: 'c3', s: 's1', a: 'ines', b: 'nora', d: '2:05', n: 3, ok: false, why: 'Deux t-shirts noirs unis : tenues trop proches.' },
+      { id: 'c2', s: 's1', a: 'lucas', b: 'yanis', d: '2:40', n: 2, ok: true },
+      { id: 'c1', s: 's1', a: 'seb', b: 'karim', d: '3:12', n: 1, ok: true }
+    ]
+  };
+  const ME = 'seb';
+  const phone = document.getElementById('phone');
+  const notes = document.getElementById('notes');
+  let timer = null, toastTimer = null, playTimer = null, playPos = 0;
+
+  const seance = (id) => S.seances.find((x) => x.id === id) || (S.extraSeance && S.extraSeance.id === id ? S.extraSeance : null);
+  const clip = (id) => S.clips.find((c) => c.id === id);
+  const nom = (k) => (k ? P[k].nom : null);
+  const aVerifier = () => S.clips.filter((c) => !c.ok);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+
+  // Vignette : le tapis vu d'en haut à 30°, les deux combattants dans leur tenue, repérés Rouge et Bleu.
+  function scene(c, frame, marks) {
+    const A = c.a ? P[c.a] : { tee: '#55595f', short: '#2a2d31' };
+    const B = c.b ? P[c.b] : { tee: '#77736c', short: '#2a2d31' };
+    const t = frame || 0;
+    const ax = 120 + Math.sin(t / 7) * 18 + c.n * 6, bx = 200 - Math.cos(t / 9) * 16 - c.n * 4;
+    function fighter(x, f, lean) {
+      return `<g transform="translate(${x} 92) rotate(${lean})"><circle cx="0" cy="-34" r="9" fill="#d9b48f"/>` +
+        `<rect x="-13" y="-25" width="26" height="28" rx="7" fill="${f.tee}" stroke="rgba(255,255,255,.35)" stroke-width="1"/>` +
+        `<rect x="-12" y="2" width="24" height="12" rx="3" fill="${f.short}"/>` +
+        `<rect x="-11" y="13" width="8" height="20" rx="4" fill="#d9b48f"/><rect x="3" y="13" width="8" height="20" rx="4" fill="#d9b48f"/></g>`;
+    }
+    const mk = marks ? `<g font-family="system-ui" font-size="11" font-weight="700"><rect x="${ax - 16}" y="44" width="32" height="15" rx="4" fill="#d0332b"/><text x="${ax}" y="55" fill="#fff" text-anchor="middle">R</text>` +
+      `<rect x="${bx - 16}" y="44" width="32" height="15" rx="4" fill="#2457b8"/><text x="${bx}" y="55" fill="#fff" text-anchor="middle">B</text></g>` : '';
+    return `<svg class="scene" viewBox="0 0 320 180" aria-hidden="true"><rect width="320" height="180" fill="#3a3f46"/>` +
+      `<polygon points="30,180 290,180 250,40 70,40" fill="#2b5f8f"/><polygon points="58,150 262,150 238,64 82,64" fill="#c9443b"/>` +
+      `<polygon points="70,140 250,140 230,72 90,72" fill="#2b5f8f"/>${fighter(ax, A, Math.sin(t / 5) * 8)}${fighter(bx, B, -Math.sin(t / 6) * 8)}${mk}</svg>`;
+  }
+  function thumb(c) {
+    return `<div class="thumb">${scene(c, c.n * 10)}<span class="dur">${c.d}</span></div>`;
+  }
+  // « Seb R. contre Karim B. 2 » : le numéro n'apparaît que si la même paire combat plusieurs fois dans la séance.
+  function titre(c) {
+    if (!c.a) return 'Combat sans nom';
+    const meme = S.clips.filter((x) => x.s === c.s && x.a && [x.a, x.b].sort().join() === [c.a, c.b].sort().join()).sort((x, y) => x.n - y.n);
+    const rang = meme.indexOf(c) + 1;
+    return `${nom(c.a)} contre ${nom(c.b)}` + (rang > 1 ? ` ${rang}` : '');
+  }
+  function clipRow(c, opts) {
+    let who, meta;
+    if (opts && opts.moi) {
+      const adv = c.a === ME ? c.b : c.a;
+      who = `contre ${esc(nom(adv))}`;
+      meta = `Combat ${c.n} · ${c.d.replace(':', ' min ')}`;
+    } else {
+      who = esc(titre(c));
+      meta = `Combat ${c.n}` + (c.ok ? '' : ' · <span class="chip warn">À vérifier</span>');
+    }
+    return `<button type="button" class="clip" data-clip="${c.id}">${thumb(c)}<div><div class="who">${who}</div><div class="meta">${meta}</div></div></button>`;
+  }
+
+  function topbar(title, back, extra) {
+    return `<div class="topbar">${back ? `<button type="button" class="icon-btn" data-act="back" aria-label="Retour">${I.back}</button>` : '<span style="width:6px"></span>'}` +
+      `<strong>${esc(title)}</strong>${extra || ''}</div>`;
+  }
+  function tabs() {
+    if (S.role !== 'coach') return '';
+    const n = aVerifier().length;
+    const t = (k, l) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${S.tab === k}">${l}</button>`;
+    return `<div class="tabs" role="tablist">${t('mes', 'Mes combats')}${t('seances', 'Séances')}${t('verifier', 'À vérifier' + (n ? `<span class="count">${n}</span>` : ''))}</div>`;
+  }
+  function nav() {
+    const it = (ic, l, on) => `<span class="${on ? 'on' : ''}">${ic}${l}</span>`;
+    return `<div class="nav" aria-hidden="true">${it(I.cal, 'Planning')}${it(I.chat, 'Messagerie')}${it(I.fight, 'Sparring', true)}${it(I.doc, 'Docs')}${it(I.dots, 'Plus')}</div>`;
+  }
+
+  function vMes() {
+    const mine = S.clips.filter((c) => c.ok && (c.a === ME || c.b === ME));
+    let h = '';
+    let last = null;
+    mine.forEach((c) => {
+      const s = seance(c.s);
+      if (s.id !== last) { h += `<div class="daylabel">${s.jour} · ${s.cours.split(' · ')[0]}</div>`; last = s.id; }
+      h += clipRow(c, { moi: true });
+    });
+    if (!mine.length) h = '<div class="empty">Vos combats filmés apparaîtront ici le lendemain de la séance.</div>';
+    return h;
+  }
+
+  function recCard() {
+    if (S.rec === 'pret') {
+      return `<div class="card rec-card"><div class="rec-line"><span class="led"></span>Caméra prête</div>` +
+        `<div class="rec-meta">Batterie 86 % · 41 Go libres · dernier envoi jeu. 23 oct.</div>` +
+        `<button type="button" class="btn main" data-act="start">Démarrer la séance</button></div>`;
+    }
+    if (S.rec === 'rec') {
+      return `<div class="card rec-card"><div class="rec-line"><span class="led on"></span>Enregistrement en cours</div>` +
+        `<div class="rec-meta">Adultes · 19 h · <span id="rec-time">${chrono()}</span> · batterie 84 %</div>` +
+        `<button type="button" class="btn main" data-act="stop">Fin de séance</button></div>`;
+    }
+    return `<div class="card rec-card"><div class="rec-line"><span class="led off"></span>Caméra hors service</div>` +
+      `<div class="rec-meta">Coupure ou redémarrage du téléphone. Rouvrez l'enregistreur sur le téléphone de la salle.</div></div>`;
+  }
+  function etat(s) {
+    const n = S.clips.filter((c) => c.s === s.id).length;
+    const nv = S.clips.filter((c) => c.s === s.id && !c.ok).length;
+    if (s.etat === 'envoi') return `<span class="chip info">Envoi ${s.pct} %</span>`;
+    if (s.etat === 'traitement') return '<span class="chip info">Clips prêts demain matin</span>';
+    return `<span>${n} combat${n > 1 ? 's' : ''}</span>` + (nv ? `<span class="chip warn">${nv} à vérifier</span>` : '<span class="chip ok">Vérifié</span>');
+  }
+  function cover(s) {
+    const cs = S.clips.filter((c) => c.s === s.id).sort((x, y) => x.n - y.n).slice(0, 3);
+    if (s.etat !== 'pret' || !cs.length) {
+      const txt = s.etat === 'envoi' ? 'La vidéo arrive…' : 'Découpe cette nuit';
+      return `<div class="cover cover--wait"><span>${txt}</span></div>`;
+    }
+    return `<div class="cover">${cs.map((c, i) => `<div class="cv${i === 0 ? ' cv--big' : ''}">${scene(c, c.n * 10).replace('<svg', '<svg preserveAspectRatio="xMidYMid slice"')}</div>`).join('')}</div>`;
+  }
+  function recStrip() {
+    if (S.role !== 'coach' || S.rec !== 'rec' || S.panel) return '';
+    return `<button type="button" class="strip" data-act="panel"><span class="led on"></span>Enregistrement en cours · ${chrono()}<span class="strip-open">Ouvrir</span></button>`;
+  }
+  function chrono() {
+    const sec = Math.floor((Date.now() - S.recStart) / 1000) + 754;
+    return [Math.floor(sec / 3600), Math.floor(sec / 60) % 60, sec % 60].map((x) => String(x).padStart(2, '0')).join(':');
+  }
+  function panelHtml() {
+    if (!S.panel) return '';
+    return `<div class="panel-back" data-act="panel-close"><div class="panel" role="dialog" aria-label="Caméra de la salle">${recCard()}` +
+      `<button type="button" class="btn link" data-act="panel-close">Fermer</button></div></div>`;
+  }
+  function vSeances() {
+    let h = '';
+    const all = (S.extraSeance ? [S.extraSeance] : []).concat(S.seances);
+    all.forEach((s) => {
+      const clickable = s.etat === 'pret';
+      h += `<button type="button" class="scard" ${clickable ? `data-seance="${s.id}"` : 'aria-disabled="true"'}>${cover(s)}<div class="info"><div class="t">${s.jour} · ${s.cours}</div>` +
+        `<div class="meta">${etat(s)}</div>${s.etat === 'envoi' ? `<div class="bar"><i style="width:${s.pct}%"></i></div>` : ''}</div></button>`;
+    });
+    return h;
+  }
+  function vSeance() {
+    const s = seance(S.seanceId);
+    const cs = S.clips.filter((c) => c.s === s.id).sort((x, y) => x.n - y.n);
+    const pres = PRESENTS[s.id].map((k) => nom(k)).join(', ');
+    return `<div class="muted" style="font-size:15px">Présents reconnus : ${esc(pres)}</div>` + cs.map((c) => clipRow(c)).join('');
+  }
+  function vVerifier() {
+    const list = aVerifier();
+    if (!list.length) return '<div class="empty">Tout est vérifié. Les clips sont dans « Mes combats » de chaque membre.</div>';
+    if (S.verifIndex >= list.length) S.verifIndex = 0;
+    const c = list[S.verifIndex];
+    const s = seance(c.s);
+    const pick = (cote, k) => `<button type="button" class="pick" data-pick="${cote}"><span class="dot ${cote === 'a' ? 'r' : 'b'}"></span><span class="lbl">${cote === 'a' ? 'Rouge' : 'Bleu'}</span><b class="${k ? '' : 'vide'}">${k ? esc(nom(k)) : 'Choisir…'}</b>${I.chev.replace('<svg', '<svg width="20" height="20"')}</button>`;
+    return `<div class="muted" style="font-size:15px">${S.verifIndex + 1} sur ${list.length} · ${s.jour} · combat ${c.n}</div>` +
+      `<div class="player" style="border-radius:12px;overflow:hidden">${scene(c, playPos, true)}<button type="button" class="ctrl" data-act="play" aria-label="Lire"><b>${S.playing ? I.pause : I.play}</b></button><div class="prog"><i style="width:${(playPos % 100)}%"></i></div></div>` +
+      `<div class="why">${esc(c.why)}</div>` + pick('a', c.a) + pick('b', c.b) +
+      `<div class="row"><button type="button" class="btn second" data-act="swap">${'Inverser'}</button><button type="button" class="btn main" data-act="valider" ${c.a && c.b ? '' : 'disabled'}>C'est bon</button></div>` +
+      `<button type="button" class="btn link" data-act="suppr">Supprimer ce clip</button>`;
+  }
+  function vLecture() {
+    const c = clip(S.clipId);
+    const s = seance(c.s);
+    const autres = S.clips.filter((x) => x.s === c.s && x.id !== c.id && x.ok && (S.role === 'coach' || x.a === ME || x.b === ME)).sort((x, y) => x.n - y.n);
+    return `<div class="player">${scene(c, playPos, false)}<button type="button" class="ctrl" data-act="play" aria-label="${S.playing ? 'Pause' : 'Lire'}"><b>${S.playing ? I.pause : I.play}</b></button>` +
+      `<div class="prog"><i style="width:${playPos % 100}%"></i></div><span class="time">${Math.floor((playPos % 100) / 100 * 180 / 60)}:${String(Math.floor((playPos % 100) / 100 * 180) % 60).padStart(2, '0')} / ${c.d}</span></div>` +
+      `<div class="card" style="display:flex;flex-direction:column;gap:6px">` +
+      (c.a ? `<div class="names"><span><span class="dot r"></span>${esc(nom(c.a))}</span><span><span class="dot b"></span>${esc(nom(c.b))}</span></div>` : '<div class="names">Combat sans nom</div>') +
+      `<div class="muted">${s.jour} · ${s.cours} · combat ${c.n}</div></div>` +
+      (autres.length ? `<div class="daylabel">${S.role === 'coach' ? 'Autres combats de la séance' : 'Vos autres combats ce jour-là'}</div>` + autres.map((x) => clipRow(x, S.role === 'coach' ? null : { moi: true })).join('') : '');
+  }
+
+  function sheetHtml() {
+    if (!S.sheet) return '';
+    let inner = '';
+    if (S.sheet.kind === 'menu') {
+      inner = `<button type="button" data-act="send">${I.send}Envoyer dans la messagerie…</button>`;
+      if (S.role === 'coach') inner += `<button type="button" data-act="swap-lecture">${I.swap}Inverser les noms</button><button type="button" data-act="rename">${I.user}Changer un nom</button><button type="button" class="danger" data-act="suppr-lecture">${I.trash}Supprimer ce clip</button>`;
+    } else if (S.sheet.kind === 'pick') {
+      const c = clip(S.sheet.clip);
+      inner = `<h3>Présents à la séance</h3>` + PRESENTS[c.s].map((k) => `<button type="button" data-choose="${k}">${esc(nom(k))}</button>`).join('') +
+        `<button type="button" data-act="autre">Un autre membre…</button>`;
+    } else if (S.sheet.kind === 'which') {
+      const c = clip(S.sheet.clip);
+      inner = `<h3>Quel nom changer ?</h3><button type="button" data-which="a"><span class="dot r"></span>${esc(nom(c.a) || 'Rouge')}</button><button type="button" data-which="b"><span class="dot b"></span>${esc(nom(c.b) || 'Bleu')}</button>`;
+    }
+    return `<div class="sheet-back" data-act="close"><div class="sheet" role="dialog" aria-modal="true">${inner}</div></div>`;
+  }
+  function toastHtml() {
+    if (!S.toast) return '';
+    return `<div class="toast" role="status"><span>${esc(S.toast.text)}</span>${S.toast.undo ? '<button type="button" data-act="undo">Annuler</button>' : ''}</div>`;
+  }
+
+  const NOTES = {
+    mes: ['Mes combats', 'Ce que voit chaque membre. C’est le seul écran d’un membre : pas d’onglets au-dessus.',
+      ['Ses combats, du plus récent au plus ancien, regroupés par séance.', 'Chaque ligne : la vignette, l’adversaire, la durée.', 'Un clip « à vérifier » n’apparaît ici qu’une fois corrigé par un coach : pas de mauvais nom sous les yeux du membre.', 'Un membre qui n’a pas accepté d’être filmé ne voit que « Vos combats ne sont pas filmés » et la case pour changer d’avis (dans son profil).']],
+    seances: ['Séances', 'Pour les coachs. En haut, la caméra de la salle et le bouton principal de l’écran.',
+      ['Un espace de consultation : une carte par séance, avec un aperçu de ses premiers combats.', 'La caméra se commande par le bouton en haut à droite : vert « Prête », rouge « Filme », gris « Hors service ». Il fait descendre le panneau de commande, qu’on referme. Admins et profs seulement.', '« Démarrer la séance » puis « Fin de séance » : essayez-le. Pendant le film, une bande rouge reste sous les onglets ; la séance apparaît ensuite en tête de liste et s’envoie.', 'Chaque séance montre où elle en est : Envoi 64 %, Clips prêts demain matin, 7 combats, 2 à vérifier.', 'Le + en bas : envoyer à la main la vidéo d’une séance filmée avec l’appareil photo (étape V1, avant l’enregistreur).', 'Ouvrir une séance : les présents reconnus et tous ses combats, à la façon d’une chorégraphie et de ses vidéos.']],
+    seance: ['Le dossier d’une séance', 'Chaque séance est un dossier ; dedans, ses clips dans l’ordre, nommés « Seb R. contre Lucas M. ». Si la même paire combat encore, le clip suivant s’appelle « Seb R. contre Lucas M. 2 ».',
+      ['Dans la lecture, Rouge = celui de gauche au début du combat, Bleu = l’autre, comme les coins d’un combat de sambo.', 'Les présents reconnus (ceux passés sur le repère au sol) sont la liste proposée pour corriger un nom.', 'Un combat à vérifier est marqué ; l’ouvrir permet de le lire et de le corriger par ⋯.']],
+    verifier: ['À vérifier', 'La file des clips dont l’appli n’est pas sûre, un par un, en gros.',
+      ['La raison en clair : tenues trop proches, combattants emmêlés, pas de Y.', 'Les marques R et B sur la vidéo montrent qui est qui ; taper un nom pour le changer parmi les présents.', '« Inverser » échange les deux noms. « C’est bon » valide et passe au suivant : le clip part dans « Mes combats » des deux.', '« Supprimer ce clip » se rattrape pendant 10 s (Annuler).']],
+    lecture: ['Lecture d’un clip', 'Plein écran avec la flèche de retour, comme le détail d’une chorégraphie. La vidéo se lit avec le lecteur du module Vidéos, plein écran compris.',
+      ['Sous la vidéo : les deux noms, la date, le cours.', 'Puis les autres combats de la séance (un membre ne voit que les siens).', '⋯ : Envoyer dans la messagerie ; pour un coach aussi Inverser, Changer un nom, Supprimer.']]
+  };
+  function renderNotes() {
+    const n = NOTES[S.screen];
+    notes.innerHTML = `<p class="eyebrow">Écran affiché</p><h2>${n[0]}</h2><p>${n[1]}</p><ul>${n[2].map((x) => `<li>${x}</li>`).join('')}</ul>` +
+      `<p class="ask">« Sparring » est le nom à l'écran pour un club de combat ; le module générique s'appellerait « Clips de séance » (à valider). Le module se cache par organisation (Admin &gt; École &gt; Personnalisation &gt; Fonctionnalités) : éteint pour une école de danse.</p>`;
+  }
+
+  function render() {
+    let title = 'Sparring', back = false, extra = '', body = '';
+    if (S.screen === 'mes') body = vMes();
+    else if (S.screen === 'seances') body = vSeances();
+    else if (S.screen === 'verifier') body = vVerifier();
+    else if (S.screen === 'seance') { const s = seance(S.seanceId); title = `${s.jour} · ${s.cours.split(' · ')[0]}`; back = true; body = vSeance(); }
+    else if (S.screen === 'lecture') { title = titre(clip(S.clipId)); back = true; extra = `<button type="button" class="icon-btn" data-act="menu" aria-label="Plus d'actions">${I.more}</button>`; body = vLecture(); }
+    const showTabs = !back;
+    if (!back && S.role === 'coach') extra = `<button type="button" class="cam-pill ${S.rec}" data-act="panel" aria-label="Caméra de la salle">${I.camfill}<span>${S.rec === 'rec' ? 'Filme' : S.rec === 'pret' ? 'Prête' : 'Hors service'}</span></button>`;
+    const fab = S.screen === 'seances' ? `<button type="button" class="fab" data-act="upload" aria-label="Envoyer la vidéo d'une séance">${I.plus}</button>` : '';
+    phone.innerHTML = topbar(title, back, extra) + (showTabs ? tabs() + recStrip() : '') + `<div class="body" ${S.screen === 'lecture' ? 'style="padding:0 0 90px;gap:12px"' : ''}>${S.screen === 'lecture' ? body.replace('<div class="card"', '<div style="padding:0 14px;display:flex;flex-direction:column;gap:12px"><div class="card"') + '</div>' : body}</div>` + fab + nav() + panelHtml() + sheetHtml() + toastHtml();
+    renderNotes();
+  }
+
+  function go(screen, extra) {
+    stopPlay();
+    Object.assign(S, { screen }, extra || {});
+    if (['mes', 'seances', 'verifier'].includes(screen)) S.tab = screen;
+    render();
+  }
+  function stopPlay() { S.playing = false; clearInterval(playTimer); playTimer = null; playPos = 0; }
+  function showToast(text, undo) {
+    clearTimeout(toastTimer);
+    S.toast = { text, undo };
+    toastTimer = setTimeout(() => { S.toast = null; render(); }, undo ? 10000 : 3000);
+  }
+  function removeClip(id) {
+    const i = S.clips.findIndex((c) => c.id === id);
+    const removed = S.clips.splice(i, 1)[0];
+    showToast('Clip supprimé', () => { S.clips.splice(i, 0, removed); });
+  }
+
+  phone.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-act],[data-tab],[data-clip],[data-seance],[data-pick],[data-choose],[data-which]');
+    if (!el) return;
+    if (el.dataset.act === 'close' && e.target !== el) return;
+    const d = el.dataset;
+    if (d.tab) return go(d.tab);
+    if (d.clip) return go('lecture', { clipId: d.clip, from: S.screen === 'lecture' ? S.from : S.screen, fromSeance: S.screen === 'lecture' ? S.fromSeance : S.seanceId });
+    if (d.seance) return go('seance', { seanceId: d.seance });
+    if (d.pick) { S.sheet = { kind: 'pick', clip: aVerifier()[S.verifIndex].id, side: d.pick }; return render(); }
+    if (d.which) { S.sheet = { kind: 'pick', clip: S.sheet.clip, side: d.which }; return render(); }
+    if (d.choose) {
+      const c = clip(S.sheet.clip);
+      const other = S.sheet.side === 'a' ? 'b' : 'a';
+      if (c[other] === d.choose) c[other] = c[S.sheet.side];
+      c[S.sheet.side] = d.choose;
+      S.sheet = null; return render();
+    }
+    switch (d.act) {
+      case 'back':
+        if (S.screen === 'lecture') return go(S.from, { seanceId: S.fromSeance });
+        return go(S.tab);
+      case 'start': S.rec = 'rec'; S.recStart = Date.now(); render();
+        clearInterval(timer); timer = setInterval(() => { const el2 = document.getElementById('rec-time'); if (!el2) return; render(); }, 1000); return;
+      case 'stop':
+        clearInterval(timer); S.rec = 'pret';
+        S.extraSeance = { id: 's5', jour: 'Aujourd’hui', cours: 'Adultes · 19 h', etat: 'envoi', pct: 0 };
+        render();
+        { const tick = setInterval(() => { if (!S.extraSeance) return clearInterval(tick); S.extraSeance.pct += 9; if (S.extraSeance.pct >= 100) { S.extraSeance.etat = 'traitement'; clearInterval(tick); } if (S.screen === 'seances') render(); }, 450); }
+        return;
+      case 'upload': showToast('Choisir la vidéo de la séance dans le téléphone…'); return render();
+      case 'play':
+        S.playing = !S.playing;
+        if (S.playing) { playTimer = setInterval(() => { playPos += 1; render(); }, 120); } else { clearInterval(playTimer); }
+        return render();
+      case 'swap': { const c = aVerifier()[S.verifIndex]; [c.a, c.b] = [c.b, c.a]; return render(); }
+      case 'valider': { const c = aVerifier()[S.verifIndex]; c.ok = true; stopPlay(); showToast(`${nom(c.a)} – ${nom(c.b)} : validé`); return render(); }
+      case 'suppr': { const c = aVerifier()[S.verifIndex]; stopPlay(); removeClip(c.id); return render(); }
+      case 'undo': if (S.toast && S.toast.undo) S.toast.undo(); clearTimeout(toastTimer); S.toast = null; return render();
+      case 'menu': S.sheet = { kind: 'menu' }; return render();
+      case 'close': S.sheet = null; return render();
+      case 'panel': S.panel = true; return render();
+      case 'panel-close': S.panel = false; return render();
+      case 'send': S.sheet = null; showToast('Choix de la discussion, comme pour un fichier de Docs'); return render();
+      case 'swap-lecture': { const c = clip(S.clipId); [c.a, c.b] = [c.b, c.a]; S.sheet = null; showToast('Noms inversés', () => { [c.a, c.b] = [c.b, c.a]; }); return render(); }
+      case 'rename': S.sheet = { kind: 'which', clip: S.clipId }; return render();
+      case 'autre': S.sheet = null; showToast('Recherche parmi tous les membres du club'); return render();
+      case 'suppr-lecture': { const id = S.clipId; S.sheet = null; go(S.from, { seanceId: S.fromSeance }); removeClip(id); return render(); }
+    }
+  });
+
+  function setRole(r) {
+    S.role = r;
+    document.getElementById('r-coach').setAttribute('aria-pressed', r === 'coach');
+    document.getElementById('r-membre').setAttribute('aria-pressed', r === 'membre');
+    S.sheet = null;
+    go(r === 'coach' ? 'seances' : 'mes');
+  }
+  document.getElementById('r-coach').addEventListener('click', () => setRole('coach'));
+  document.getElementById('r-membre').addEventListener('click', () => setRole('membre'));
+  render();
+})();
+</script>
+</body></html>

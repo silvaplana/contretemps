@@ -1,8 +1,11 @@
 # AppBase — Module `video-combats`
 
-Version 0.1, 27 octobre 2026. Statut : **brouillon, idée à valider avec Seb** (discutée dans le projet
-Claude « sambo-admin », fil « Vidéo des combats : existant »). Rien n'est codé. Le module n'est pas
-encore accepté : il est proposé ici, comme le demande `CLAUDE.md`.
+Version 0.2, 27 octobre 2026. Statut : **brouillon** (captation et traitement discutés dans le projet
+Claude « sambo-admin » ; écrans validés par Seb sur maquette le 27 octobre, fil « Module : Vidéos de
+sparring » d'AppBase). Rien n'est codé, et **rien ne se code tant que le refactor en cours n'est pas
+fini** (Seb, 27 octobre).
+
+Maquette validée : [`spec/maquettes/sparring.html`](../maquettes/sparring.html) (tout est cliquable).
 
 Écrit comme un module AppBase. Premier usage visé : un club de sambo (La Ciotat). Ce qui ne vaut que
 pour ce club est marqué *(sambo)*.
@@ -18,7 +21,12 @@ par un cadreur et rangé au nom des deux combattants. Chaque membre retrouve ses
 - **Aucun produit existant ne couvre le besoin** : Hudl, Pixellot, Veo ou XbotGo visent le foot ou le
   basket, sans découpe par combat ni noms.
 - **Priorité au rendu naturel** : pas d'effet caméra de surveillance. La qualité d'image passe après.
-- **Module activable par organisation**, comme les autres modules.
+- **Module activable par organisation**, comme les autres modules : éteint dans Contretemps au début,
+  prévu pour un club de combat (Fight Lab).
+- **Le combat d'abord** (Seb, 27 octobre) : on conçoit et on met au point le module pour un club de
+  combat, comme un prototype. La danse viendra ensuite (§6.6) ; d'ici là, on ne garde que ce qui ne
+  coûte rien et ne bloque pas la danse : un clip a une **liste de participants** (1 à n), pas deux
+  noms fixes.
 
 ## 2. Acteurs, séance et cas d'utilisation
 
@@ -37,7 +45,7 @@ par un cadreur et rangé au nom des deux combattants. Chaque membre retrouve ses
 
 | Moment | Acteur | Action | Réponse du système |
 |---|---|---|---|
-| Avant le cours | Coach | Ouvre « Vidéo » dans la PWA | Voyant de l'enregistreur : prêt, batterie, place restante |
+| Avant le cours | Coach | Ouvre Sparring et regarde le bouton caméra | Pastille verte « Prête » ; touchée, elle montre batterie et place restante |
 | Début du cours | Coach | Appuie sur « Démarrer la séance » | L'enregistreur filme ; la PWA affiche « Enregistrement en cours » |
 | Échauffement | Chaque combattant | Passe 2 s sur le repère au sol, face à la caméra, et dit son prénom | Rien à l'écran : l'enregistrement est repéré au traitement |
 | Avant un combat | Les deux combattants | Entrent dans la zone, font le Y pendant 2 s | Rien à l'écran : le début est repéré au traitement |
@@ -45,7 +53,7 @@ par un cadreur et rangé au nom des deux combattants. Chaque membre retrouve ses
 | Changement de tenue | Le combattant | Repasse sur le repère | Sa nouvelle tenue remplace l'ancienne pour la suite |
 | Fin du cours | Coach | Appuie sur « Fin de séance » | L'enregistreur s'arrête, envoie la vidéo, puis se remet en attente |
 | La nuit | Serveur | Traite la vidéo | Clips créés, nommés, rangés ; vidéo brute supprimée après validation |
-| Le lendemain | Coach | Ouvre la file « à vérifier » | Corrige les noms inversés ou manquants |
+| Le lendemain | Coach | Ouvre l'onglet « À vérifier » | Corrige les noms inversés ou manquants |
 | Le lendemain | Membre | Ouvre « Mes combats » | Voit ses clips de la séance |
 
 En mode autonome, les lignes « Démarrer » et « Fin de séance » sont remplacées par les créneaux du
@@ -66,7 +74,7 @@ rouvre l'enregistreur (étape 4).
 
 **UC 2 — Filmer une séance (mode connecté)** · Coach, Enregistreur
 
-1. Le coach appuie sur « Démarrer la séance ».
+1. Le coach touche le bouton caméra de Sparring, puis « Démarrer la séance » (§6.3).
 2. Le serveur prévient l'enregistreur, qui filme et confirme.
 3. Le coach appuie sur « Fin de séance » ; l'enregistreur s'arrête et envoie la vidéo.
 
@@ -106,13 +114,14 @@ se vide.
 
 **UC 7 — Vérifier et corriger les clips** · Coach
 
-1. Ouvre la file « à vérifier ».
-2. Pour chaque clip : valide, inverse les deux noms, choisit un nom manquant ou supprime le clip.
+1. Ouvre l'onglet « À vérifier » (§6.4).
+2. Pour chaque clip : valide (« C'est bon »), inverse les deux noms, choisit un nom manquant parmi les
+   présents ou supprime le clip (Annuler 10 s).
 
 **UC 8 — Regarder ses combats** · Membre
 
-1. Ouvre « Mes combats » : ses clips, du plus récent au plus ancien, avec l'adversaire et la date.
-2. Regarde un clip.
+1. Ouvre « Mes combats » (§6.2) : ses clips, du plus récent au plus ancien, avec l'adversaire et la date.
+2. Regarde un clip (§6.5).
 
 **UC 9 — Donner ou retirer son accord** · Membre (ou parent pour un mineur)
 
@@ -121,7 +130,8 @@ se vide.
 
 **UC 10 — Surveiller l'enregistreur** · Coach
 
-1. Voit à tout moment : prêt, en cours, hors service ; batterie ; place restante ; dernier envoi.
+1. Voit à tout moment, par le bouton caméra de Sparring (§6.3) : prête, filme, hors service ; batterie ;
+   place restante ; dernier envoi.
 
 ## 3. Installation et matériel *(sambo)*
 
@@ -162,7 +172,7 @@ maintenir un build Android de toute l'appli pour une seule fonction.
   PWA, iPhone compris. Le serveur prévient l'enregistreur (push ou connexion maintenue), qui allume
   la caméra et active « Ne pas déranger » si l'autorisation est donnée. « Fin de séance » arrête et
   lance l'envoi dès qu'il y a du Wi-Fi. Pas de Bluetooth.
-- **État visible dans la PWA** : caméra prête ou hors service, batterie, place restante.
+- **État visible dans la PWA** : bouton caméra de Sparring (§6.3), avec batterie et place restante.
 - **Après une coupure ou un redémarrage**, quelqu'un rouvre l'enregistreur une fois ; la PWA affiche
   « caméra hors service » en attendant.
 - **Réglages Samsung** : batterie « Non restreinte » pour l'appli, « Protéger la batterie » (charge
@@ -200,25 +210,158 @@ connaître toute la vidéo à l'avance.
       la suivante ;
     - un masquage de plus de 5 secondes peut être coupé du clip.
 
+**Plus de deux personnes.** La détection de posture voit tout le monde : le clip garde tous ceux qui
+tiennent le Y ensemble (1 à n) ; le cadre les englobe tous ; à plus de deux, le combat se termine quand
+la majorité fait le X, ou quand la zone se vide. Pour le combat, on met au point le cas à deux.
+
 Le clip est ensuite encodé en 720p et rangé comme une vidéo du module `videos`. La vidéo brute est
 supprimée une fois le traitement validé.
 
-## 6. Rôles, écrans, droit à l'image
+## 6. Écrans, rôles, droit à l'image
+
+Les écrans suivent exactement la maquette validée le 27 octobre
+([`spec/maquettes/sparring.html`](../maquettes/sparring.html)). Règles de l'appli : texte ≥ 17 px,
+touches ≥ 48 px, un bouton principal par écran, Annuler 10 s plutôt que confirmer, retour par la
+flèche ←.
+
+### 6.1 Place dans l'appli et nom
+
+- **Un bouton de la barre du bas**, nommé **« Sparring »** dans un club de combat. Le nom à l'écran
+  dépend de l'organisation ; le nom générique du module est proposé : « Clips de séance » (§10).
+- **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
+  un bouton (§6.3).
+- **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
+- **Coach** (admin ou prof) : trois onglets, **Mes combats | Séances | À vérifier**. « À vérifier »
+  porte le nombre de clips à vérifier dans une pastille rouge.
+- Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
+  Fonctionnalités) : éteint = bouton caché, routes « introuvable » (spec/core.md §9 bis).
+
+### 6.2 Mes combats *(tous)*
+
+- Les clips où la personne apparaît, du plus récent au plus ancien, regroupés par séance (« JEU. 23 OCT.
+  · ADULTES »).
+- Chaque ligne : vignette avec la durée, « contre Karim B. », « Combat 3 · 2 min 20 ».
+- Un clip « à vérifier » n'y apparaît qu'une fois validé par un coach : jamais un mauvais nom sous les
+  yeux d'un membre.
+- Vide : « Vos combats filmés apparaîtront ici le lendemain de la séance. »
+- Sans accord pour être filmé (§6.8) : « Vos combats ne sont pas filmés », et le lien vers la case du
+  profil.
+
+### 6.3 Séances et commande de la caméra *(coachs)*
+
+**Les séances, en cartes.** Une carte par séance, de la plus récente à la plus ancienne :
+
+- en haut, un aperçu des trois premiers combats (une grande vignette, deux petites) ;
+- dessous, « Jeu. 23 oct. · Adultes · 19 h », puis l'état : « 4 combats » et « 1 à vérifier » (jaune)
+  ou « Vérifié » (vert) ;
+- une séance pas encore découpée a une carte rayée grise : « La vidéo arrive… » avec « Envoi 64 % » et
+  une barre, ou « Découpe cette nuit » avec « Clips prêts demain matin ». Elle ne s'ouvre pas.
+
+Une carte ouverte est le **dossier de la séance** : en tête, « Présents reconnus : Seb R., Karim B.… »
+(ceux passés sur le repère au sol), puis ses clips dans l'ordre. Chaque clip s'appelle
+**« Seb R. contre Karim B. »** ; si la même paire combat encore dans la séance, le suivant s'appelle
+« Seb R. contre Karim B. 2 », etc. Un combat sans Y s'appelle « Combat sans nom ». Un clip à vérifier
+porte la pastille « À vérifier ».
+
+Le bouton **+** en bas à droite envoie à la main la vidéo d'une séance filmée avec l'appareil photo
+(étape V1, avant l'enregistreur), par l'envoi par blocs du module `videos`.
+
+**Le bouton caméra.** En haut à droite de Sparring, pour les coachs seulement (y compris sur
+« Mes combats » et « À vérifier ») : une pastille en couleur avec une caméra et un mot.
+
+| État | Pastille |
+|---|---|
+| Prête | verte, « Prête » |
+| Filme | rouge, « Filme », qui pulse doucement |
+| Hors service | grise, « Hors service » |
+
+Le toucher fait **descendre le panneau de commande** depuis le haut, par-dessus l'écran ; « Fermer »
+(ou un appui à côté) le remonte. Le panneau montre :
+
+- Prête : « Caméra prête », « Batterie 86 % · 41 Go libres · dernier envoi jeu. 23 oct. », bouton
+  principal **« Démarrer la séance »** ;
+- Filme : « Enregistrement en cours », « Adultes · 19 h · 00:12:34 · batterie 84 % », bouton principal
+  **« Fin de séance »** ;
+- Hors service : « Coupure ou redémarrage du téléphone. Rouvrez l'enregistreur sur le téléphone de la
+  salle. », sans bouton.
+
+Pendant le film, une **bande rouge** « ● Enregistrement en cours · 00:12:34 — Ouvrir » reste sous les
+onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît en tête de liste, en envoi.
+
+### 6.4 À vérifier *(coachs)*
+
+Les clips dont l'appli n'est pas sûre, **un par un**, en gros :
+
+- « 1 sur 3 · Jeu. 23 oct. · combat 2 » ;
+- la vidéo, avec les marques **R** (rouge) et **B** (bleu) au-dessus des deux combattants ;
+- la raison en clair, sur fond jaune : « Deux t-shirts noirs unis : tenues trop proches. »,
+  « Combattants emmêlés au sol : les noms ont pu s'inverser. », « Pas de Y au début : personne n'a été
+  reconnu. » ;
+- deux lignes « ● Rouge Karim B. › » et « ● Bleu Malik A. › » ; toucher une ligne ouvre la liste des
+  présents de la séance, plus « Un autre membre… » ; un nom manquant s'affiche « Choisir… » en rouge ;
+- **« Inverser »** (secondaire) et **« C'est bon »** (principal, inactif tant qu'il manque un nom) :
+  « C'est bon » valide le clip, qui part dans « Mes combats » des deux, et passe au suivant ;
+- « Supprimer ce clip », en lien discret, avec Annuler 10 s.
+
+Vide : « Tout est vérifié. Les clips sont dans « Mes combats » de chaque membre. »
+
+Rouge = celui de gauche au début du combat, Bleu = l'autre, comme les coins d'un combat de sambo. Les
+couleurs ne servent qu'à deux.
+
+### 6.5 Lecture d'un clip *(tous)*
+
+- Plein écran, flèche ← et le nom du clip en titre, ⋯ à droite.
+- La vidéo, lue par le lecteur du module `videos` (`VideoThumb`, plein écran compris).
+- Dessous : les deux noms avec leur pastille rouge et bleue, puis « Mar. 21 oct. · Adultes · 19 h ·
+  combat 1 ».
+- Puis « Autres combats de la séance » (coach) ou « Vos autres combats ce jour-là » (membre).
+- ⋯ : « Envoyer dans la messagerie… » pour tous ; pour un coach aussi « Inverser les noms » (Annuler
+  10 s), « Changer un nom », « Supprimer ce clip » (Annuler 10 s).
+
+### 6.6 Plus tard
+
+Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).
+
+- **Place disque** : un clip s'efface seul après quelques jours (7 proposé, réglable), sauf ceux qu'on
+  coche « Garder » ; chacun peut garder un nombre limité de clips ; « Télécharger sur mon téléphone »
+  dans ⋯.
+- **Docs** : un dossier Sparring dans Docs, avec les séances.
+- **Diffuser** : envoyer une séance ou un clip à d'autres.
+- **La danse** : dans Contretemps, pas de bouton dans la barre du bas, mais un onglet **« Passages »**
+  dans Chorégraphies (**Chorégraphies | Passages**), rangé par `session_clips_contretemps/`. Un
+  passage regroupe de 1 à n danseurs ; leurs noms viennent des élèves de la chorégraphie (les costumes
+  sont souvent identiques : pas de reconnaissance par la tenue).
+
+### 6.7 Données
+
+Le module est générique : il ne connaît ni la danse ni le combat. Comme une chorégraphie, il
+référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filtré par organisation.
+
+| Table | Rôle | Colonnes principales |
+|---|---|---|
+| `sc_sessions` | une séance filmée | `id`, `org_id`, `group_id` (le cours, groupe du core, facultatif), `started_at`, `ended_at`, `status` (`uploading` / `processing` / `ready`), `upload_percent`, `raw_video_id` (vidéo brute, effacée après validation) |
+| `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte) |
+| `sc_participants` | qui est dans un clip | `clip_id`, `member_id` (fiche `comptes`, vide = pas encore nommé), `side` (`red` / `blue` à deux, vide au-delà) |
+| `sc_attendees` | présents reconnus à une séance | `session_id`, `member_id` |
+| `sc_recorders` | le téléphone qui filme | `id`, `org_id`, `state` (`ready` / `recording` / `offline`), `battery_percent`, `free_bytes`, `last_seen_at`, `last_upload_at` |
+
+Le nom d'un clip (« Seb R. contre Karim B. 2 ») n'est pas stocké : il se calcule à l'affichage, pour
+suivre les corrections. Le consentement (§6.8) est une case de la fiche membre.
+
+### 6.8 Rôles et droit à l'image
 
 | Rôle | Ce qu'il fait |
 |---|---|
-| Admin ou prof | Démarre et arrête une séance. Voit tous les clips. Corrige les noms (bouton « inverser », nommer un combat sans nom) |
-| Membre | Voit « Mes combats », c'est-à-dire les clips où il apparaît |
+| Admin ou prof | Commande la caméra. Voit toutes les séances et tous les clips. Corrige et supprime |
+| Membre | Voit « Mes combats », c'est-à-dire les clips validés où il apparaît |
 | Téléphone caméra | Filme et envoie la vidéo |
-
-**Écrans** : séances (liste et statut du traitement), clips d'une séance avec vignette et noms,
-mes combats, file « à vérifier ».
 
 **Droit à l'image** :
 
-- On recueille un consentement « j'accepte d'être filmé » à l'adhésion ou dans l'appli. Pour les
-  mineurs, ce sont les parents qui donnent leur accord.
-- Les combats impliquant quelqu'un qui a refusé ne sont pas gardés.
+- On recueille un consentement « J'accepte d'être filmé » à l'adhésion ou dans l'appli (profil). Pour
+  les mineurs, ce sont les parents qui donnent leur accord.
+- Les combats impliquant quelqu'un qui a refusé ne sont pas gardés ; le retrait de l'accord efface
+  aussi ses clips.
 - Pas de reconnaissance faciale, pour rester hors des données biométriques.
 - Les vidéos restent sur notre serveur, sans API cloud.
 
@@ -240,8 +383,8 @@ Tout est open source et tourne sur le VPS. Aucune API payante.
 | Stockage et envoi | Module `videos` existant (SPEC.md §6.8) |
 | Enregistrement de séance | Petite appli Android à part (Kotlin, CameraX, service de premier plan), lancée par la PWA |
 
-Le code suivrait les conventions du dépôt : `backend/src/fight_clips/` et
-`frontend/src/modules/fight_clips/`, tables préfixées `fc_`. Nom à valider.
+Le code suit les conventions du dépôt : `backend/src/session_clips/` et
+`frontend/src/modules/session-clips/`, tables préfixées `sc_` (§6.7). Nom à valider avec Seb.
 
 ## 8. Étapes
 
@@ -272,7 +415,10 @@ Chaque étape est utilisable seule. On s'arrête dès qu'une étape ne vaut plus
 - Les murs de la salle sont-ils en placo ou en plâtre sur brique ? Y a-t-il des espaliers ?
 - Quelle est la marge de puissance du VPS une fois les autres services en place ?
 - Quel débit d'envoi a-t-on depuis le club ?
-- Combien de temps garde-t-on les clips, et qui peut voir les combats des autres ?
+- Combien de jours garde-t-on un clip non gardé (7 proposé), et combien de clips chacun peut-il garder (§6.6) ?
+- Un membre peut-il voir les combats des autres ? Proposé : non, seulement les siens ; les coachs voient tout.
 - Où recueillir le consentement au droit à l'image : à l'adhésion HelloAsso ou dans l'appli ?
 - Les combats sans Y doivent-ils être gardés, ou ignorés ?
-- Le module est-il propre aux sports de combat, ou généralisable (« clips de séance ») ?
+- Nom générique du module : « Clips de séance » proposé, « Sparring » à l'écran pour le combat (§6.1).
+- Contretemps, où il est éteint : une ligne `org_modules` éteinte suffit-elle, ou faut-il un défaut
+  « éteint » dans `Module` (nouveau point d'extension, à décider avec Seb) ?
