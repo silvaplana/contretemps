@@ -7,12 +7,21 @@ from registry import Module
 from .campaign import Campaigns
 from .connection import Connection
 from .receiver import HelloAssoReceiver
+from .sync import Sync
+
+
+def add_member(eleves):
+    """La fiche d'un inscrit : une fiche d'élève de l'appli (Contretemps)."""
+    return lambda db, org_id, nom, prenom, email: eleves.create(db, org_id, nom, prenom, email=email)[0]
 
 
 def mount(app, core) -> None:
     core.helloasso_connection = Connection()
     core.helloasso_campaigns = Campaigns()
-    HelloAssoReceiver(client=core.helloasso_connection, app=app, campaigns=core.helloasso_campaigns)
+    core.helloasso_sync = Sync(add_member=add_member(core.eleves_client))
+    HelloAssoReceiver(
+        client=core.helloasso_connection, app=app, campaigns=core.helloasso_campaigns, sync=core.helloasso_sync
+    )
 
 
 MODULE = Module(key="helloasso", label="HelloAsso", mount=mount)

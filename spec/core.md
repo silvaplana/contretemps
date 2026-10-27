@@ -706,7 +706,7 @@ Déjà codés dans Contretemps :
 8. **HelloAsso** (`modules/helloasso.md` §6), en quatre PR :
    a. connexion de l'organisation (écran, test, clés chiffrées) *(faite le 27 octobre 2026)* ;
    b. campagne d'une saison et champs imposés *(faite le 27 octobre 2026)* ;
-   c. synchronisation des membres et des paiements ;
+   c. synchronisation des membres et des paiements *(faite le 27 octobre 2026)* ;
    d. tarifs HelloAsso en lecture seule dans l'écran Tarifs.
 9. Formulaire d'inscription de l'appli (à concevoir).
 

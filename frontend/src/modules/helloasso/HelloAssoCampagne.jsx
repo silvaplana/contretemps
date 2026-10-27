@@ -21,12 +21,32 @@ function infoDe(form) {
     : null
 }
 
+// « il y a 3 min » : l'heure du serveur est en UTC, sans fuseau.
+function ilYA(quand) {
+  const minutes = Math.max(0, Math.round((Date.now() - new Date(`${quand}Z`).getTime()) / 60000))
+  if (minutes < 1) return 'à l’instant'
+  if (minutes < 60) return `il y a ${minutes} min`
+  const heures = Math.round(minutes / 60)
+  return heures < 24 ? `il y a ${heures} h` : `il y a ${Math.round(heures / 24)} j`
+}
+
+function bilan(r) {
+  const nouvelles = r.created ? `${r.created} nouvelle${r.created > 1 ? 's' : ''} fiche${r.created > 1 ? 's' : ''}` : ''
+  const completees = r.completed
+    ? `${r.completed} fiche${r.completed > 1 ? 's' : ''} complétée${r.completed > 1 ? 's' : ''}`
+    : ''
+  const partis = r.gone ? `${r.gone} plus sur HelloAsso` : ''
+  const aJour = r.updated ? `${r.updated} fiche${r.updated > 1 ? 's' : ''} à jour` : 'aucun inscrit'
+  return `Synchronisé : ${[nouvelles, completees, partis].filter(Boolean).join(', ') || aJour}`
+}
+
 export default function HelloAssoCampagne({ ecoleId, onChange }) {
   const [etat, setEtat] = useState(dejaLu[ecoleId] ?? null)
   const [source, setSource] = useState(dejaLu[ecoleId]?.form ? 'ha' : 'ours')
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
   const [toast, setToast] = useState(null)
+  const [resultat, setResultat] = useState('')
   const minuteur = useRef(null)
 
   async function relire() {
@@ -52,6 +72,20 @@ export default function HelloAssoCampagne({ ecoleId, onChange }) {
     setErreur('')
     try {
       await api.choisirCampagne(ecoleId, { form_type: form.form_type, form_slug: form.form_slug })
+      await relire()
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  async function synchroniser() {
+    setEnCours(true)
+    setErreur('')
+    setResultat('')
+    try {
+      setResultat(bilan(await api.synchroniser(ecoleId)))
       await relire()
     } catch (e) {
       setErreur(e.message)
@@ -125,6 +159,19 @@ export default function HelloAssoCampagne({ ecoleId, onChange }) {
           <p className="champs__note">
             Les champs de la campagne sont verrouillés et remplis par HelloAsso. Vous pouvez en ajouter d’autres à côté.
           </p>
+          {etat.can_sync && (
+            <>
+              <button type="button" className="btn btn--secondary" disabled={enCours} onClick={synchroniser}>
+                {enCours ? 'Synchronisation…' : 'Synchroniser maintenant'}
+              </button>
+              <p className="champs__note">
+                {resultat ||
+                  (etat.synced_at
+                    ? `Inscrits recopiés ${ilYA(etat.synced_at)}, puis toutes les 5 minutes.`
+                    : 'Les inscrits seront recopiés dans les 5 minutes, puis toutes les 5 minutes.')}
+              </p>
+            </>
+          )}
         </div>
       ) : (
         <p className="champs__note">Les champs du socle, plus les vôtres.</p>

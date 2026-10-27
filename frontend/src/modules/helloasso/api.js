@@ -34,3 +34,6 @@ export const reprendre = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/repr
 export const campagne = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/campagne`)
 export const choisirCampagne = (ecoleId, form) => requete(`/ecoles/${ecoleId}/helloasso/campagne`, json('PUT', form))
 export const nosChamps = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/campagne`, { method: 'DELETE' })
+// « Synchroniser maintenant » (spec §4) : tout admin, saison en cours.
+// → { created, completed, updated, gone }
+export const synchroniser = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/synchroniser`, { method: 'POST' })

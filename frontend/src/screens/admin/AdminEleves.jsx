@@ -311,6 +311,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
           onClose={() => {
             setChampsOuverts(false)
             relireColonnes()
+            // « Synchroniser maintenant » (HelloAsso) a pu ajouter des fiches.
+            relireEleves()
           }}
         />
       )}

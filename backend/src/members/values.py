@@ -114,6 +114,13 @@ def _store(db: Session, member: Compte, field: MemberField, value) -> None:
     db.flush()
 
 
+def set_external(db: Session, member: Compte, field: MemberField, value) -> None:
+    """La réponse d'un champ apporté par un module (`field.source`, ex. la
+    réponse HelloAsso), gardée telle que le module la donne : elle ne passe
+    pas par les règles de saisie (sans commit)."""
+    _store(db, member, field, None if value in (None, "", []) else value)
+
+
 def _field_of(db: Session, member: Compte, field_id: int) -> MemberField:
     field = db.get(MemberField, field_id)
     if (

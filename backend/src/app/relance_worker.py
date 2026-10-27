@@ -14,6 +14,9 @@ Fait aussi partir la relance d'une convocation d'AG sept jours avant, aux
 membres qui n'ont pas répondu (spec/modules/procurations.md, étape 3) : un
 vrai email, celui de Diffuser.
 
+Synchronise aussi, toutes les 5 minutes, les inscrits HelloAsso des écoles
+qui ont choisi une campagne (spec/modules/helloasso.md §4).
+
 Usage :
     python -m app.relance_worker
 """
@@ -25,10 +28,14 @@ from cours import CoursService
 from db import SessionLocal
 from documents import assembly
 from documents_contretemps import AnnuaireContretemps, AssociationContretemps, MessagerieContretemps
+from eleves import Eleves
+from helloasso.module import add_member
+from helloasso.sync import Sync, sync_all
 from messagerie import Conversations, Messages
 
 INTERVALLE_SECONDES = 60
 DELAI_MINUTES = 15
+HELLOASSO_TOURS = 5  # une synchronisation HelloAsso tous les 5 tours (5 min)
 
 
 def run() -> None:
@@ -36,6 +43,8 @@ def run() -> None:
     annuaire, mails = AnnuaireContretemps(), MessagerieContretemps()
     # La copie des rappels pour l'adresse de contact de l'association.
     association = AssociationContretemps()
+    helloasso = Sync(add_member=add_member(Eleves(comptes=Comptes())))
+    tour = 0
     print(
         f"Relance auto démarrée (vérifie toutes les {INTERVALLE_SECONDES}s, "
         f"délai {DELAI_MINUTES} min)."
@@ -54,6 +63,14 @@ def run() -> None:
             except Exception as erreur:  # noqa: BLE001 (la boucle continue)
                 db.rollback()
                 print(f"Relance AG en échec : {erreur}")
+            tour += 1
+            if tour % HELLOASSO_TOURS == 0:
+                try:
+                    for ecole_id, resultat in sync_all(db, helloasso).items():
+                        print(f"HelloAsso, école {ecole_id} : {resultat}")
+                except Exception as erreur:  # noqa: BLE001 (la boucle continue)
+                    db.rollback()
+                    print(f"Synchronisation HelloAsso en échec : {erreur}")
         finally:
             db.close()
 

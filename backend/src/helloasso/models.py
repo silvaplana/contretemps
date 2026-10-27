@@ -3,7 +3,7 @@ ligne au plus). La clé secrète est chiffrée (securite/chiffrement.py)."""
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -46,3 +46,35 @@ class SeasonHelloAsso(Base):
     chosen_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     # Étape 3 (synchronisation).
     synced_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class HelloAssoRegistration(Base):
+    """Un inscrit de la campagne (une ligne de commande HelloAsso) et la
+    fiche de la saison qu'il est devenu (spec/modules/helloasso.md §4).
+    L'identifiant HelloAsso évite de recopier deux fois ; la formule, le
+    code promo et les paiements sont gardés tels que HelloAsso les donne."""
+
+    __tablename__ = "helloasso_registrations"
+    __table_args__ = (UniqueConstraint("season_id", "item_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), nullable=False)
+    season_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), nullable=False, index=True)
+    item_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    order_id: Mapped[str] = mapped_column(String(40), nullable=False)
+    member_id: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True, index=True)
+    first_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    last_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    payer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    tier_name: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    # Centimes.
+    amount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    discount_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    state: Mapped[str] = mapped_column(String(30), nullable=False, default="")
+    order_date: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # [{amount (centimes), date, state, means, installment}] : payés ou à venir.
+    payments: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    # « Plus sur HelloAsso » : la ligne a disparu ou a été annulée ; la
+    # fiche reste, l'admin décide.
+    gone_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    synced_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

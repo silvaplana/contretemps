@@ -218,3 +218,116 @@ def test_questions_du_formulaire(monkeypatch):
     assert [(c["source_key"], c["format"], c["required"]) for c in champs] == [
         ("7", "list", True), ("8", "file", False), ("9", "short_text", False),
     ]
+
+
+# --- Étape 8c : la synchronisation (spec §4) ---
+
+
+def _inscrit(item_id, prenom, nom, payeur, reponses=(), state="Processed", montant=12000):
+    return {
+        "item_id": item_id, "order_id": f"c{item_id}", "first_name": prenom, "last_name": nom,
+        "payer_email": payeur, "tier_name": "Adulte", "amount": montant, "discount_code": None,
+        "state": state, "order_date": "2026-09-02T10:00:00", "answers": list(reponses),
+        "payments": [{"amount": montant, "date": "2026-09-02T10:00:00", "state": "Authorized", "means": "Card",
+                      "installment": 1}],
+    }
+
+
+def test_synchroniser_les_inscrits(client, db_session, ecole, campagnes, monkeypatch):
+    from app import main
+    from comptes import Compte, Comptes
+    from eleves import Eleves
+    from helloasso import HelloAssoRegistration
+    from members import values
+
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+    url = f"/ecoles/{ecole.id}/helloasso/synchroniser"
+    refus = client.post(url)
+    assert refus.status_code == 422 and "campagne" in refus.json()["detail"]
+    client.put(f"/ecoles/{ecole.id}/helloasso/campagne", json={"form_type": "Membership", "form_slug": "adhesion"})
+
+    leon, _ = Eleves(Comptes()).create(db_session, ecole.id, nom="Perrin", prenom="Léon", email="leon@test.fr")
+    prof = Comptes().create(db_session, ecole_id=ecole.id, role="professeur", nom="Noir", prenom="Ana")
+    genre = [{"id": "11", "name": "Genre (H/F)", "answer": "F"}]
+    inscrits = [
+        _inscrit("1", "Léa", "Martin", "parent@test.fr", [*genre, {"id": "12", "name": "Date", "answer": "05/11/0017"}]),
+        _inscrit("2", "Tom", "Martin", "parent@test.fr"),
+        _inscrit("3", "Leon", "PERRIN", "leon@test.fr"),
+        _inscrit("4", "Ana", "Noir", "ana@test.fr"),
+        _inscrit("5", "Zoé", "Annulée", "z@test.fr", state="Refunded"),
+    ]
+    monkeypatch.setattr(main.core.helloasso_sync, "orders", lambda *_: inscrits)
+
+    assert client.post(url).json() == {"created": 2, "completed": 2, "updated": 0, "gone": 0}
+    lignes = {r.item_id: r for r in db_session.query(HelloAssoRegistration)}
+    assert set(lignes) == {"1", "2", "3", "4"} and lignes["3"].member_id == leon.id
+    assert lignes["4"].member_id == prof.id and lignes["1"].payments[0]["means"] == "Card"
+    lea = db_session.get(Compte, lignes["1"].member_id)
+    tom = db_session.get(Compte, lignes["2"].member_id)
+    assert (lea.nom, lea.prenom, lea.payeur) == ("Martin", "Léa", "parent@test.fr")
+    assert lea.famille_id is not None and lea.famille_id == tom.famille_id
+    reponses = {(r["field"].label, r["field"].source): r["value"] for r in values.answers(db_session, lea)}
+    assert reponses[("Genre (H/F)", "helloasso")] == "F"
+    assert reponses[("Date de naissance", "helloasso")] == "2017-11-05"
+    # Notre date de naissance (cachée) la reçoit aussi : elle donne l’âge.
+    assert values.known_of(db_session, lea)["birth_date"] == "2017-11-05"
+    assert db_session.query(Compte).filter(Compte.nom == "Annulée").count() == 0
+
+    # Deuxième passage : Tom n'est plus sur HelloAsso, rien n'est recréé.
+    inscrits.pop(1)
+    assert client.post(url).json() == {"created": 0, "completed": 0, "updated": 3, "gone": 1}
+    db_session.expire_all()
+    assert db_session.get(HelloAssoRegistration, lignes["2"].id).gone_at is not None
+    assert db_session.get(Compte, tom.id) is not None
+    assert client.get(f"/ecoles/{ecole.id}/helloasso/campagne").json()["synced_at"] is not None
+
+
+def test_reponses_helloasso():
+    from datetime import date
+
+    from helloasso.sync import answer_value, fix_short_year
+
+    assert fix_short_year(85, today=date(2026, 10, 27)) == 1985 and fix_short_year(17) == 2017
+    assert answer_value("date", "5/11/2012") == "2012-11-05"
+    assert answer_value("date", "2012-11-05T00:00:00") == "2012-11-05"
+    assert answer_value("yes_no", "Oui") is True and answer_value("number", "1,5") == 1.5
+    assert answer_value("short_text", "") is None and answer_value("list", " H ") == "H"
+
+
+def test_commandes_par_l_api(monkeypatch):
+    from helloasso import api
+
+    monkeypatch.setattr(api, "_token", lambda *_: "jeton")
+    pages = {
+        1: {"data": [{
+            "id": 900, "date": "2026-09-02", "payer": {"email": "parent@test.fr", "firstName": "Paul"},
+            "payments": [{"id": 1, "date": "2026-09-02", "state": "Authorized", "paymentMeans": "Card",
+                          "installmentNumber": 1}],
+            "items": [
+                {"id": 7, "type": "Membership", "name": "Enfant", "amount": 9000, "state": "Processed",
+                 "user": {"firstName": "Léa", "lastName": "Martin"}, "discount": {"code": "FRATRIE"},
+                 "customFields": [{"id": 11, "name": "Genre", "answer": "F"}],
+                 "payments": [{"id": 1, "shareAmount": 9000}]},
+                {"id": 8, "type": "Donation", "amount": 500},
+            ],
+        }], "pagination": {"totalPages": 2}},
+        2: {"data": [{"id": 901, "payer": {"email": "x@test.fr", "firstName": "Ana", "lastName": "Noir"},
+                      "items": [{"id": 9, "type": "Registration", "amount": 0}]}],
+            "pagination": {"totalPages": 2}},
+    }
+
+    def get(path, token, params=None):
+        assert path == "/v5/organizations/alliance/forms/Membership/adhesion/orders"
+        return pages[params["pageIndex"]]
+
+    monkeypatch.setattr(api, "_get", get)
+    inscrits = api.orders("id", "secret", "alliance", "Membership", "adhesion")
+    assert [(i["item_id"], i["first_name"], i["last_name"]) for i in inscrits] == [
+        ("7", "Léa", "Martin"), ("9", "Ana", "Noir"),
+    ]
+    assert inscrits[0]["discount_code"] == "FRATRIE" and inscrits[0]["answers"] == [
+        {"id": "11", "name": "Genre", "answer": "F"},
+    ]
+    assert inscrits[0]["payments"] == [
+        {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1},
+    ]
