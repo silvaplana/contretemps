@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
 import {
   annulerTeleversement,
@@ -135,15 +136,22 @@ function Onglets({ onglet, onChange, version }) {
     ['seances', 'Séances'],
     ['verifier', 'À vérifier'],
   ]
+  // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (
-    <div className="sc-onglets" role="tablist">
-      {onglets.map(([cle, libelle]) => (
-        <button key={cle} type="button" role="tab" aria-selected={onglet === cle} onClick={() => onChange(cle)}>
-          {libelle}
-          {cle === 'verifier' && n > 0 && <span className="sc-pastille">{n}</span>}
-        </button>
-      ))}
-    </div>
+    <SegmentedTabs
+      className="admin-screen__tabs sc-onglets"
+      value={onglet}
+      onChange={onChange}
+      options={onglets.map(([cle, libelle]) => ({
+        value: cle,
+        label: (
+          <>
+            {libelle}
+            {cle === 'verifier' && n > 0 && <span className="sc-pastille">{n}</span>}
+          </>
+        ),
+      }))}
+    />
   )
 }
 
