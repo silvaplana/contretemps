@@ -212,7 +212,7 @@ export default function ChampsMembres({ ecoleId, onClose }) {
             id="champ-format"
             className="field-input"
             value={courant.format}
-            disabled={bloque}
+            disabled={bloque || Boolean(courant.key)}
             onChange={(e) => changer('format', e.target.value)}
           >
             {champsApi.FORMATS.filter(([cle]) => cle !== 'group' || choix.parents.length > 0).map(([cle, nom]) => (
@@ -221,6 +221,8 @@ export default function ChampsMembres({ ecoleId, onClose }) {
               </option>
             ))}
           </select>
+          {/* Un champ que l'appli lit (l'âge vient de la date de naissance). */}
+          {courant.key && <p className="champs__note">L’appli s’en sert : son format ne change pas.</p>}
           {courant.format === 'list' && (
             <>
               <label htmlFor="champ-choix">Choix proposés, un par ligne</label>

@@ -5,11 +5,12 @@ métier ici à part fusionner Compte+ProfilEleve pour la sortie JSON.
 
 from comptes import Compte, Comptes, RegleRoles, rbac
 from fastapi import Depends, FastAPI, HTTPException
+from members.fields import FieldError
 from sqlalchemy.orm import Session
 
 from db import get_db
 
-from .eleves import Eleves, calculer_age
+from .eleves import Eleves, calculer_age, champs_fiche
 from .models import ContactEleve, ProfilEleve
 from .schemas import (
     ContactCreation,
@@ -21,7 +22,8 @@ from .schemas import (
 )
 
 
-def _fusionner(compte: Compte, profil: ProfilEleve) -> dict:
+def _fusionner(compte: Compte, profil: ProfilEleve, champs: dict) -> dict:
+    """`champs` : date de naissance, adresse, santé (Eleves.get_champs)."""
     return {
         "id": compte.id,
         "ecole_id": compte.ecole_id,
@@ -30,12 +32,8 @@ def _fusionner(compte: Compte, profil: ProfilEleve) -> dict:
         "email": compte.email,
         "emails": compte.emails,
         "telephone": compte.telephone,
-        "date_naissance": profil.date_naissance,
-        "age": calculer_age(profil.date_naissance),
-        "adresse": profil.adresse,
-        "allergies": profil.allergies,
-        "traitement_medical": profil.traitement_medical,
-        "informations_importantes": profil.informations_importantes,
+        **champs,
+        "age": calculer_age(champs["date_naissance"]),
         "statut_paiement": profil.statut_paiement,
         "montant_total_annee": profil.montant_total_annee,
         "montant_paye": profil.montant_paye,
@@ -114,24 +112,30 @@ class ElevesReceiver:
 
     def lister(self, ecole_id: int, db: Session = Depends(get_db)):
         sortie = []
-        for compte in self.client.list(db, ecole_id):
+        comptes = self.client.list(db, ecole_id)
+        champs = self.client.champs_de_l_ecole(db, ecole_id, comptes[0].saison_id) if comptes else {}
+        vides = champs_fiche({})
+        for compte in comptes:
             profil = self.client.get_profil(db, compte.id)
             if profil is None:
                 continue
-            corps = _fusionner(compte, profil)
+            corps = _fusionner(compte, profil, champs.get(compte.id, vides))
             corps["contacts"] = self.client.contacts_de_leleve(db, compte.id)
             sortie.append(corps)
         return sortie
 
     def obtenir(self, eleve_id: int, db: Session = Depends(get_db)):
         compte, profil = self._obtenir_ou_404(db, eleve_id)
-        corps = _fusionner(compte, profil)
+        corps = _fusionner(compte, profil, self.client.get_champs(db, compte))
         corps["contacts"] = self.client.contacts_de_leleve(db, eleve_id)
         return corps
 
     def creer(self, ecole_id: int, donnees: EleveCreation, db: Session = Depends(get_db)):
-        compte, profil = self.client.create(db, ecole_id, **donnees.model_dump())
-        corps = _fusionner(compte, profil)
+        try:
+            compte, profil = self.client.create(db, ecole_id, **donnees.model_dump())
+        except FieldError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from erreur
+        corps = _fusionner(compte, profil, self.client.get_champs(db, compte))
         corps["contacts"] = []
         return corps
 
@@ -145,9 +149,13 @@ class ElevesReceiver:
         if "ligne_rouge" in champs:
             champs["ligne_rouge"] = bool(champs["ligne_rouge"])
         if champs:
-            self.client.update_profil(db, eleve_id, **champs)
+            try:
+                self.client.update_profil(db, eleve_id, **champs)
+            except FieldError as erreur:
+                db.rollback()
+                raise HTTPException(status_code=422, detail=str(erreur)) from erreur
         compte, profil = self._obtenir_ou_404(db, eleve_id)
-        corps = _fusionner(compte, profil)
+        corps = _fusionner(compte, profil, self.client.get_champs(db, compte))
         corps["contacts"] = self.client.contacts_de_leleve(db, eleve_id)
         return corps
 

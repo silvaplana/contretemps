@@ -18,6 +18,20 @@ SETTINGS = ("label", "required", "format", "choices", "group_id", "multiple",
             "member_sees", "member_edits", "others_see", "for_group_id")
 
 
+# Les champs que l'appli sait lire, repris des anciennes colonnes de
+# `profils_eleves` (spec/core.md §4.3, étape 4c) : clé cachée → intitulé et
+# format de départ. L'organisation peut les renommer, les ranger, les retirer.
+KNOWN = {
+    "birth_date": ("Date de naissance", "date"),
+    "address": ("Adresse", "long_text"),
+    "allergies": ("Allergies", "long_text"),
+    "medical_treatment": ("Traitement médical", "long_text"),
+    "important_info": ("Informations importantes", "long_text"),
+}
+# La santé n'est jamais transmise à l'assistant.
+HEALTH = ("allergies", "medical_treatment", "important_info")
+
+
 class FieldError(ValueError):
     """Message lisible, renvoyé tel quel à l'écran."""
 
@@ -30,6 +44,29 @@ def fields(db: Session, org_id: int, season_id: int) -> list[MemberField]:
             .order_by(MemberField.position, MemberField.id)
         )
     )
+
+
+def known(db: Session, org_id: int, season_id: int) -> dict[str, MemberField]:
+    """Les champs marqués de la saison, retirés compris (leurs réponses
+    restent), créés en tête de la fiche s'ils manquent (sans commit)."""
+    found = {
+        field.key: field
+        for field in db.scalars(
+            select(MemberField).where(
+                MemberField.org_id == org_id, MemberField.season_id == season_id, MemberField.key.is_not(None)
+            )
+        )
+    }
+    missing = [key for key in KNOWN if key not in found]
+    if missing:
+        for position, key in enumerate(missing, start=-len(KNOWN)):
+            label, fmt = KNOWN[key]
+            found[key] = MemberField(
+                org_id=org_id, season_id=season_id, key=key, label=label, format=fmt, position=position
+            )
+            db.add(found[key])
+        db.flush()
+    return found
 
 
 def _not_a_right():
@@ -101,7 +138,8 @@ def create(db: Session, org_id: int, season_id: int, **settings) -> MemberField:
     last = db.scalar(
         select(func.max(MemberField.position)).where(MemberField.org_id == org_id, MemberField.season_id == season_id)
     )
-    field = MemberField(org_id=org_id, season_id=season_id, position=(last or 0) + 1)
+    # Les champs marqués sont en tête, en positions négatives.
+    field = MemberField(org_id=org_id, season_id=season_id, position=max(last or 0, 0) + 1)
     for key, value in settings.items():
         if key in SETTINGS:
             setattr(field, key, value)
@@ -112,6 +150,9 @@ def create(db: Session, org_id: int, season_id: int, **settings) -> MemberField:
 
 
 def update(db: Session, field: MemberField, **settings) -> MemberField:
+    # L'appli lit un champ marqué dans son format (l'âge, une date).
+    if field.key and settings.get("format", field.format) != field.format:
+        raise FieldError("Le format de ce champ ne change pas")
     for key, value in settings.items():
         if key in SETTINGS:
             setattr(field, key, value)
@@ -157,8 +198,17 @@ def copy_season(db: Session, org_id: int, old_season_id: int, new_season_id: int
     from . import columns
 
     copied: dict[int, int] = {}
-    for old in fields(db, org_id, old_season_id):
-        new = MemberField(org_id=org_id, season_id=new_season_id, position=old.position)
+    # Un champ marqué retiré passe aussi, retiré : sinon `known` le recréerait.
+    removed_known = db.scalars(
+        select(MemberField).where(
+            MemberField.org_id == org_id, MemberField.season_id == old_season_id,
+            MemberField.key.is_not(None), MemberField.removed_at.is_not(None),
+        )
+    )
+    for old in [*fields(db, org_id, old_season_id), *removed_known]:
+        new = MemberField(
+            org_id=org_id, season_id=new_season_id, position=old.position, key=old.key, removed_at=old.removed_at
+        )
         for key in SETTINGS:
             setattr(new, key, getattr(old, key))
         new.group_id = _same_group(db, old.group_id, new_season_id)

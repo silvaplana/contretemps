@@ -11,10 +11,31 @@ from choregraphies.models import choregraphies_eleves
 from comptes import Compte, Comptes, RegleRoles, roles
 from comptes.models import RoleCompte, separer_emails
 from groups import courses
+from members import values as member_values
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import ContactEleve, ProfilEleve
+
+
+# Les anciens champs de `profils_eleves` devenus des champs de la fiche
+# (spec/core.md §4.3, étape 4c) : nom ici → clé cachée du champ. Les
+# colonnes restent dans la table, plus lues ni écrites.
+CHAMPS_FICHE = {
+    "date_naissance": "birth_date",
+    "adresse": "address",
+    "allergies": "allergies",
+    "traitement_medical": "medical_treatment",
+    "informations_importantes": "important_info",
+}
+
+
+def champs_fiche(reponses: dict[str, object]) -> dict[str, object]:
+    """Les réponses {clé: réponse} d'une fiche sous les noms d'ici, la date
+    de naissance en `datetime.date`."""
+    champs = {nom: reponses.get(cle) for nom, cle in CHAMPS_FICHE.items()}
+    champs["date_naissance"] = member_values.birth_date(reponses)
+    return champs
 
 
 def calculer_age(date_naissance: dt.date | None, aujourdhui: dt.date | None = None) -> int | None:
@@ -43,6 +64,24 @@ class Eleves:
 
     def get_profil(self, db: Session, eleve_id: int) -> ProfilEleve | None:
         return db.get(ProfilEleve, eleve_id)
+
+    def get_champs(self, db: Session, compte: Compte) -> dict[str, object]:
+        """Date de naissance, adresse, santé : les réponses de la fiche."""
+        return champs_fiche(member_values.known_of(db, compte))
+
+    def champs_de_l_ecole(self, db: Session, ecole_id: int, saison_id: int) -> dict[int, dict[str, object]]:
+        """Pareil pour toutes les fiches de la saison, en une fois : {fiche: champs}."""
+        return {
+            compte_id: champs_fiche(reponses)
+            for compte_id, reponses in member_values.known_values(db, ecole_id, saison_id).items()
+        }
+
+    def _enregistrer_champs(self, db: Session, compte: Compte, champs: dict) -> None:
+        """Retire de `champs` ceux de la fiche et les enregistre (sans commit ;
+        FieldError si une réponse ne va pas)."""
+        for nom, cle in CHAMPS_FICHE.items():
+            if nom in champs:
+                member_values.set_known(db, compte, cle, champs.pop(nom))
 
     def create(
         self,
@@ -76,7 +115,9 @@ class Eleves:
                 email=email,
                 telephone=telephone,
             )
-        profil = ProfilEleve(compte_id=compte.id, date_naissance=date_naissance, **profil_champs)
+        profil_champs["date_naissance"] = date_naissance
+        self._enregistrer_champs(db, compte, profil_champs)
+        profil = ProfilEleve(compte_id=compte.id, **profil_champs)
         db.add(profil)
         db.commit()
         db.refresh(profil)
@@ -133,6 +174,8 @@ class Eleves:
         # (exclude_unset=True côté receiver) — un `if valeur is not None`
         # ici empêchait à tort de vider un champ nullable (ex. effacer une
         # allergie une fois résolue).
+        compte = self.comptes.get(db, eleve_id)
+        self._enregistrer_champs(db, compte, champs)
         for cle, valeur in champs.items():
             setattr(profil, cle, valeur)
         db.commit()

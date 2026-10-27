@@ -30,13 +30,10 @@ const CHAMP_LABEL = {
   cours: 'Cours suivis',
   paiement: 'Paiement',
   commentaire: 'Commentaire',
-  naissance: 'Date de naissance',
   age: 'Âge',
   contacts: 'Contacts',
   telephone: 'Téléphone',
   email: 'Email',
-  adresse: 'Adresse',
-  sante: 'Santé',
   certificat: 'Certificat médical',
 }
 
@@ -57,8 +54,6 @@ function valeurCellule(el, champ, cours) {
       return `${paiementLabels[el.statutPaiement]} — ${el.montantPaye}€ / ${el.montantTotalAnnee}€`
     case 'commentaire':
       return el.commentaireAdmin
-    case 'naissance':
-      return el.dateNaissance
     case 'age': {
       const age = calculerAge(el.dateNaissance)
       return age == null ? '' : `${age} ans`
@@ -71,16 +66,6 @@ function valeurCellule(el, champ, cours) {
       return el.telephone
     case 'email':
       return el.email
-    case 'adresse':
-      return el.adresse
-    case 'sante':
-      return [
-        el.allergies && `Allergies : ${el.allergies}`,
-        el.traitementMedical && `Traitement : ${el.traitementMedical}`,
-        el.informationsImportantes && `Infos : ${el.informationsImportantes}`,
-      ]
-        .filter(Boolean)
-        .join('\n')
     case 'certificat':
       return el.certificatMedical ? 'Reçu' : 'Manquant'
     default:
@@ -410,13 +395,6 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                     </button>
                   </td>
                 ),
-                naissance: (
-                  <td className={classeCellule('naissance')} {...celluleProps(el.id, 'naissance')}>
-                    <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
-                      {el.dateNaissance ? el.dateNaissance.split('-').reverse().join('/') : <span className="muted">—</span>}
-                    </button>
-                  </td>
-                ),
                 age: (
                   <td className={classeCellule('age')} {...celluleProps(el.id, 'age')}>
                     {calculerAge(el.dateNaissance) ?? <span className="muted">—</span>}
@@ -450,28 +428,6 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
                   <td className={classeCellule('email')} {...celluleProps(el.id, 'email')}>
                     <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
                       {el.email || <span className="muted">—</span>}
-                    </button>
-                  </td>
-                ),
-                adresse: (
-                  <td className={classeCellule('adresse')} {...celluleProps(el.id, 'adresse')}>
-                    <button type="button" className="cell-comment" onClick={() => setFicheId(el.id)}>
-                      {el.adresse || <span className="muted">—</span>}
-                    </button>
-                  </td>
-                ),
-                sante: (
-                  <td className={classeCellule('sante')} {...celluleProps(el.id, 'sante')}>
-                    <button
-                      type="button"
-                      className="cell-comment"
-                      onClick={() => setFicheId(el.id)}
-                    >
-                      {el.allergies || el.traitementMedical || el.informationsImportantes ? (
-                        'Voir'
-                      ) : (
-                        <span className="muted">—</span>
-                      )}
                     </button>
                   </td>
                 ),
@@ -543,7 +499,10 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
           eleve={eleveEnFiche}
           cours={cours}
           onClose={() => setFicheId(null)}
-          onEnregistre={remplacer}
+          onEnregistre={(eleve) => {
+            remplacer(eleve)
+            relireColonnes() // les réponses aux champs de la fiche
+          }}
           onFusionnee={() => {
             setFicheId(null)
             relireEleves()

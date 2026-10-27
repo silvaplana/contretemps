@@ -36,12 +36,13 @@ from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import Group, GroupMember, courses, rights, teachers
 from members import MemberColumn, MemberField, MemberValue
+from members.fields import known
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
 from saisons import Saison, saison_courante_id
 from saisons.portee import toutes_saisons
-from sqlalchemy import JSON, Table, delete, select, text, update
+from sqlalchemy import JSON, Table, delete, insert, select, text, update
 from sqlalchemy.orm import Session
 from ressources.models import ConsommationIA
 from videos.models import Video
@@ -176,7 +177,8 @@ def _construire_tables() -> list[_Table]:
             MemberField,
             [
                 "id", "org_id", "season_id", "label", "required", "format", "choices", "group_id", "multiple",
-                "position", "member_sees", "member_edits", "others_see", "for_group_id", "removed_at", "created_at",
+                "position", "member_sees", "member_edits", "others_see", "for_group_id", "key", "removed_at",
+                "created_at",
             ],
             lambda db, eid: list(db.scalars(select(MemberField).where(MemberField.org_id == eid))),
             colonne_ecole_id="org_id",
@@ -583,6 +585,40 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
         db.flush()
     _anciens_profs_en_groupe(db, ecole.id)
     _anciens_eleves_des_cours(db, ecole.id, classeur)
+    _anciens_champs_des_eleves(db, ecole.id, classeur)
+
+
+def _anciens_champs_des_eleves(db: Session, ecole_id: int, classeur) -> None:
+    """Sauvegarde d'avant l'étape 4c (27/10/2026) : naissance, adresse et
+    santé étaient des colonnes de ProfilsEleves. Ils deviennent les champs
+    marqués de chaque saison (members.fields.KNOWN), avec leurs réponses."""
+    if "ChampsMembres" in classeur.sheetnames:
+        en_tetes = next(classeur["ChampsMembres"].iter_rows(values_only=True), ())
+        if "key" in en_tetes:
+            return
+    anciennes = {"birth_date": "date_naissance", "address": "adresse", "allergies": "allergies",
+                 "medical_treatment": "traitement_medical", "important_info": "informations_importantes"}
+    with toutes_saisons(db):
+        for saison_id in db.scalars(select(Saison.id).where(Saison.ecole_id == ecole_id)).all():
+            champs = known(db, ecole_id, saison_id)
+            profils = db.scalars(
+                select(ProfilEleve).join(Compte, Compte.id == ProfilEleve.compte_id).where(Compte.saison_id == saison_id)
+            ).all()
+            for profil in profils:
+                for cle, colonne in anciennes.items():
+                    valeur = getattr(profil, colonne)
+                    if isinstance(valeur, dt.date):
+                        valeur = valeur.isoformat()
+                    if valeur not in (None, ""):
+                        # Requête directe : les saisons passées sont en lecture
+                        # seule pour l'ORM (saisons/portee.py).
+                        db.execute(
+                            insert(MemberValue).values(
+                                member_id=profil.compte_id, field_id=champs[cle].id, value=valeur,
+                                updated_at=dt.datetime.now(dt.timezone.utc).replace(tzinfo=None),
+                            )
+                        )
+        db.flush()
 
 
 def _anciens_eleves_des_cours(db: Session, ecole_id: int, classeur) -> None:

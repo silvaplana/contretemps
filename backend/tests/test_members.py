@@ -1,6 +1,8 @@
 """Champs des membres (spec/core.md §4.3) : la fiche que l'école règle, les
 réponses d'une fiche, et ce qui les suit (saison, fusion, sauvegarde)."""
 
+import datetime as dt
+
 import pytest
 import sqlalchemy as sa
 from conftest import entetes_session
@@ -9,6 +11,7 @@ from comptes import Comptes
 from cours import CoursService
 from ecoles import Ecoles
 from eleves import Eleves
+from eleves.eleves import calculer_age
 from members import MemberColumn, MemberField, MemberValue
 from saisons.portee import toutes_saisons
 from storage import LocalStorage
@@ -45,7 +48,8 @@ def _repondre(client, ecole, champ, valeur):
 def _reponses(client, ecole):
     reponse = client.get(f"/membres/{ecole['eleve'].id}/champs", headers=entetes_session(ecole["admin"]))
     assert reponse.status_code == 200, reponse.text
-    return {r["field"]["label"]: r["value"] for r in reponse.json()}
+    # Les champs marqués (date de naissance, santé…) : test_champs_repris.
+    return {r["field"]["label"]: r["value"] for r in reponse.json() if r["field"]["key"] is None}
 
 
 def test_seuls_les_admins_de_l_ecole_reglent_la_fiche(client, ecole):
@@ -55,7 +59,9 @@ def test_seuls_les_admins_de_l_ecole_reglent_la_fiche(client, ecole):
     champ = _champ(client, ecole, label="  Taille  de t-shirt ", format="list", choices=["S", "M", " ", "L"])
     assert (champ["label"], champ["choices"], champ["position"]) == ("Taille de t-shirt", ["S", "M", "L"], 1)
     assert client.get(url, headers=entetes_session(ecole["prof"])).status_code == 403
-    assert [c["label"] for c in client.get(url, headers=entetes_session(ecole["admin"])).json()] == ["Taille de t-shirt"]
+    assert [c["label"] for c in client.get(url, headers=entetes_session(ecole["admin"])).json()] == [
+        "Date de naissance", "Adresse", "Allergies", "Traitement médical", "Informations importantes", "Taille de t-shirt",
+    ]
     reponse = client.get(f"/membres/{ecole['eleve'].id}/champs", headers=entetes_session(ecole["admin_voisin"]))
     assert reponse.status_code == 403
 
@@ -159,7 +165,9 @@ def test_la_nouvelle_saison_recopie_la_fiche_et_les_reponses(client, db_session,
     assert reponse.status_code == 201, reponse.text
     nouvelle = reponse.json()["saison"]["id"]
     with toutes_saisons(db_session):
-        champs = db_session.scalars(sa.select(MemberField).where(MemberField.season_id == nouvelle)).all()
+        champs = db_session.scalars(
+            sa.select(MemberField).where(MemberField.season_id == nouvelle, MemberField.key.is_(None))
+        ).all()
         assert [c.label for c in champs] == ["Date de naissance", "Vide"]
         valeur = db_session.scalar(sa.select(MemberValue).where(MemberValue.field_id == champs[0].id))
         fiche = Comptes().get(db_session, valeur.member_id)
@@ -222,8 +230,93 @@ def test_l_affichage_dans_admin(client, db_session, ecole):
     assert reponse.status_code == 201, reponse.text
     nouvelle = reponse.json()["saison"]["id"]
     with toutes_saisons(db_session):
-        nouveau = db_session.scalar(sa.select(MemberField).where(MemberField.season_id == nouvelle))
+        nouveau = db_session.scalar(
+            sa.select(MemberField).where(MemberField.season_id == nouvelle, MemberField.key.is_(None))
+        )
         colonnes = db_session.scalars(
             sa.select(MemberColumn).where(MemberColumn.season_id == nouvelle).order_by(MemberColumn.position)
         ).all()
         assert [(c.key, c.shown) for c in colonnes] == [("nom", True), (f"field:{nouveau.id}", True), ("paiement", False)]
+
+
+def test_champs_repris(client, db_session, ecole):
+    """Étape 4c : date de naissance, adresse et santé sont des champs de la
+    fiche comme les autres ; l'école les renomme ou les retire, l'appli les
+    retrouve par leur marque (âge, exports, assistant)."""
+    ecole_id = ecole["ecole"].id
+    entetes = entetes_session(ecole["admin"])
+    eleve, _ = Eleves(Comptes()).create(
+        db_session, ecole_id, nom="Martin", prenom="Ana", date_naissance=dt.date(2015, 3, 2), allergies="Pollen",
+    )
+    champs = {c["key"]: c for c in client.get(f"/ecoles/{ecole_id}/champs", headers=entetes).json() if c["key"]}
+    assert list(champs) == ["birth_date", "address", "allergies", "medical_treatment", "important_info"]
+    reponses = client.get(f"/membres/{eleve.id}/champs", headers=entetes).json()
+    assert {r["field"]["label"]: r["value"] for r in reponses if r["value"]} == {
+        "Date de naissance": "2015-03-02", "Allergies": "Pollen",
+    }
+
+    # Saisi dans « Nos champs » : la fiche de l'élève (et l'âge) suit.
+    url = f"/membres/{eleve.id}/champs/{champs['birth_date']['id']}"
+    assert client.put(url, json={"value": "2016-03-02"}, headers=entetes).status_code == 204
+    corps = client.get(f"/eleves/{eleve.id}", headers=entetes).json()
+    assert (corps["date_naissance"], corps["allergies"]) == ("2016-03-02", "Pollen")
+    assert corps["age"] == calculer_age(dt.date(2016, 3, 2))
+
+    # Renommé : la marque reste ; le format ne change pas (l'âge lit une date).
+    champ = f"/champs/{champs['allergies']['id']}"
+    assert client.patch(champ, json={"label": "Allergies connues"}, headers=entetes).status_code == 200
+    assert client.patch(champ, json={"format": "short_text"}, headers=entetes).status_code == 422
+    assert client.put(f"/eleves/{eleve.id}", json={"allergies": "Arachide"}, headers=entetes).status_code == 200
+    reponses = client.get(f"/membres/{eleve.id}/champs", headers=entetes).json()
+    assert {r["field"]["label"]: r["value"] for r in reponses}["Allergies connues"] == "Arachide"
+
+    # Retiré : il quitte la fiche, n'est pas recréé, et passe retiré à la saison suivante.
+    assert client.delete(champ, headers=entetes).status_code == 204
+    assert client.put(f"/eleves/{eleve.id}", json={"allergies": "Lait"}, headers=entetes).status_code == 200
+    labels = [c["label"] for c in client.get(f"/ecoles/{ecole_id}/champs", headers=entetes).json()]
+    assert "Allergies" not in labels and "Allergies connues" not in labels
+    reponse = client.post(
+        f"/ecoles/{ecole_id}/saisons",
+        json={"nom": "2027-2028", "date_debut": "2027-09-01", "date_fin": "2028-08-31",
+              "dupliquer_profs": True, "dupliquer_cours": True, "dupliquer_eleves": True},
+        headers=entetes,
+    )
+    assert reponse.status_code == 201, reponse.text
+    nouvelle = reponse.json()["saison"]["id"]
+    with toutes_saisons(db_session):
+        repris = db_session.scalars(
+            sa.select(MemberField).where(MemberField.season_id == nouvelle, MemberField.key.is_not(None))
+        ).all()
+        assert sorted((c.key, c.removed_at is not None) for c in repris) == sorted(
+            (k, k == "allergies") for k in champs
+        )
+
+
+def test_une_ancienne_sauvegarde_reprend_les_champs_des_eleves(client, db_session, ecole):
+    """Sauvegarde d'avant l'étape 4c : la santé dans l'onglet ProfilsEleves."""
+    import io
+
+    from openpyxl import load_workbook
+
+    ecole_id = ecole["ecole"].id
+    entetes = entetes_session(ecole["admin"])
+    classeur = load_workbook(io.BytesIO(client.get(f"/ecoles/{ecole_id}/export-technique", headers=entetes).content))
+    feuille = classeur["ProfilsEleves"]
+    en_tetes = [c.value for c in feuille[1]]
+    for ligne in feuille.iter_rows(min_row=2):
+        if ligne[en_tetes.index("compte_id")].value == ecole["eleve"].id:
+            ligne[en_tetes.index("allergies")].value = "Pollen"
+            ligne[en_tetes.index("date_naissance")].value = dt.date(2015, 3, 2)
+    for nom in ("ChampsMembres", "ColonnesMembres", "ReponsesMembres"):
+        del classeur[nom]
+    sortie = io.BytesIO()
+    classeur.save(sortie)
+
+    reponse = client.post(
+        f"/ecoles/{ecole_id}/restaurer", files={"fichier": ("b.xlsx", sortie.getvalue(), XLSX)}, headers=entetes
+    )
+
+    assert reponse.status_code == 204, reponse.text
+    db_session.expire_all()
+    corps = client.get(f"/eleves/{ecole['eleve'].id}", headers=entetes).json()
+    assert (corps["date_naissance"], corps["allergies"]) == ("2015-03-02", "Pollen")

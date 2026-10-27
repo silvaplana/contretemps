@@ -174,3 +174,40 @@ def file_of(db: Session, member: Compte, field_id: int) -> dict:
         raise LookupError("Fichier introuvable")
     return row.value
 
+
+
+def known_values(db: Session, org_id: int, season_id: int) -> dict[int, dict[str, object]]:
+    """Les réponses aux champs marqués (`fields.KNOWN`), retirés compris,
+    de toutes les fiches de la saison : {fiche: {clé: réponse}}."""
+    rows = db.execute(
+        select(MemberValue.member_id, MemberField.key, MemberValue.value)
+        .join(MemberField, MemberField.id == MemberValue.field_id)
+        .where(MemberField.org_id == org_id, MemberField.season_id == season_id, MemberField.key.is_not(None))
+    )
+    result: dict[int, dict[str, object]] = {}
+    for member_id, key, value in rows:
+        result.setdefault(member_id, {})[key] = value
+    return result
+
+
+def known_of(db: Session, member: Compte) -> dict[str, object]:
+    """Les réponses d'une fiche aux champs marqués : {clé: réponse}."""
+    rows = db.execute(
+        select(MemberField.key, MemberValue.value)
+        .join(MemberField, MemberField.id == MemberValue.field_id)
+        .where(MemberValue.member_id == member.id, MemberField.key.is_not(None))
+    )
+    return dict(rows.all())
+
+
+def set_known(db: Session, member: Compte, key: str, value) -> None:
+    """Enregistre la réponse au champ marqué `key` (sans commit), même s'il
+    est retiré de la fiche. Une date peut être un `datetime.date`."""
+    field = f.known(db, member.ecole_id, member.saison_id)[key]
+    _store(db, member, field, _clean(field, value.isoformat() if isinstance(value, dt.date) else value))
+
+
+def birth_date(values: dict[str, object]) -> dt.date | None:
+    """La date de naissance parmi des réponses {clé: réponse}."""
+    value = values.get("birth_date")
+    return dt.date.fromisoformat(value) if value else None

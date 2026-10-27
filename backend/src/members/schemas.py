@@ -36,6 +36,8 @@ class FieldOut(FieldIn):
 
     id: int
     position: int
+    # Champ que l'appli sait lire (fields.KNOWN) : son format ne change pas.
+    key: str | None = None
 
 
 class GroupChoice(BaseModel):

@@ -26,6 +26,8 @@ from comptes.models import Compte
 from cours.models import Cours, cours_professeurs, eleves_cours
 from ecoles.models import Ecole
 from eleves.eleves import calculer_age
+from members.fields import known
+from members.values import birth_date, known_of
 from eleves.models import ContactEleve, ProfilEleve
 from inscriptions.models import Inscription
 from messagerie.models import Conversation, ConversationMembre
@@ -120,6 +122,31 @@ COLONNES_ROUGES = {
     "naissance": "date de naissance", "age": "âge", "contacts": "contacts", "telephone": "téléphone",
     "email": "email", "adresse": "adresse", "sante": "santé", "certificat": "certificat médical",
 }
+# Ces trois-là sont devenues des colonnes de champs de la fiche (« field:<id> »,
+# spec/core.md §4.3 étape 4c) : la santé, ce sont ses trois champs.
+COLONNES_CHAMPS = {"naissance": ("birth_date",), "adresse": ("address",),
+                   "sante": ("allergies", "medical_treatment", "important_info")}
+
+
+def rouges_vers_fiche(db: Session, eleve: Compte, cellules: list[str]) -> list[str]:
+    """Les colonnes en rouge telles que les garde Admin > Élèves."""
+    champs = known(db, eleve.ecole_id, eleve.saison_id)
+    sortie = []
+    for c in cellules:
+        for cle in [f"field:{champs[k].id}" for k in COLONNES_CHAMPS.get(c, ())] or [c]:
+            if cle not in sortie:
+                sortie.append(cle)
+    return sortie
+
+
+def rouges_lisibles(db: Session, eleve: Compte, cellules: list[str]) -> list[str]:
+    """L'inverse : les noms de COLONNES_ROUGES, « field:<id> » pour un autre champ."""
+    noms = {
+        f"field:{champ.id}": nom
+        for nom, cles in COLONNES_CHAMPS.items()
+        for k, champ in known(db, eleve.ecole_id, eleve.saison_id).items() if k in cles
+    }
+    return list(dict.fromkeys(noms.get(c, c) for c in cellules))
 
 
 def _nom(c: Compte) -> str:
@@ -253,7 +280,7 @@ class DonneesEcole:
             pr = profils.get(e.id)
             morceaux = [f"- {_nom(e)} (id {e.id})"]
             if p.tout:
-                age = calculer_age(pr.date_naissance) if pr else None
+                age = calculer_age(birth_date(known_of(db, e)))
                 morceaux.append(f"{age} ans" if age is not None else "âge ?")
             morceaux.append(", ".join(cours[e.id]) or "aucun cours")
             if p.paiements and pr:
@@ -274,15 +301,18 @@ class DonneesEcole:
             return "Élève introuvable."
         pr = self._profils(db, [e.id]).get(e.id)
         lignes = [f"{_nom(e)} (id {e.id})"]
+        # Jamais la santé (voir en tête) : seulement la naissance et l'adresse.
+        reponses = known_of(db, e)
+        naissance = birth_date(reponses)
+        age = calculer_age(naissance)
+        lignes.append(f"Né(e) le {naissance or '?'} ({age if age is not None else '?'} ans) ; adresse : {reponses.get('address') or '?'}")
         if pr:
-            age = calculer_age(pr.date_naissance)
-            lignes.append(f"Né(e) le {pr.date_naissance or '?'} ({age if age is not None else '?'} ans) ; adresse : {pr.adresse or '?'}")
             if p.paiements:
                 lignes.append(f"Paiement : {pr.statut_paiement}, {pr.montant_paye or 0:.2f} € payés sur {pr.montant_total_annee or 0:.2f} €")
             if p.tout:
                 lignes.append(f"Commentaire de l'administration : {pr.commentaire_admin or 'aucun'}")
                 rouge = ["toute la ligne"] if pr.ligne_rouge else []
-                rouge += [COLONNES_ROUGES.get(c, c) for c in pr.cellules_rouges or []]
+                rouge += [COLONNES_ROUGES.get(c, c) for c in rouges_lisibles(db, e, pr.cellules_rouges or [])]
                 lignes.append("En rouge dans Admin > Élèves : " + (", ".join(rouge) or "non"))
         lignes.append(f"Contact : {e.email or '?'} {e.telephone or ''}")
         for ct in db.scalars(select(ContactEleve).where(ContactEleve.eleve_id == e.id)):

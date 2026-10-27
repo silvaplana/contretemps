@@ -458,7 +458,7 @@ class ImportExcel:
             return candidats[0].id, False
         correspondance_date = [
             c for c in candidats
-            if (profil := self.eleves.get_profil(db, c.id)) and profil.date_naissance == date_naissance
+            if self.eleves.get_champs(db, c)["date_naissance"] == date_naissance
         ]
         if len(correspondance_date) == 1:
             return correspondance_date[0].id, False
@@ -475,7 +475,7 @@ class ImportExcel:
         un fichier "officiel" peut légitimement ne pas lister tous les
         cours suivis)."""
         compte = self.eleves.get_compte(db, eleve_id)
-        profil = self.eleves.get_profil(db, eleve_id)
+        champs = self.eleves.get_champs(db, compte) if compte else {}
         differences: list[DifferenceChamp] = []
 
         def _ajouter(champ: str, actuelle, fichier):
@@ -496,8 +496,8 @@ class ImportExcel:
                 )
             )
         _ajouter("telephone", compte.telephone if compte else None, telephone)
-        _ajouter("adresse", profil.adresse if profil else None, adresse)
-        _ajouter("date_naissance", profil.date_naissance if profil else None, date_naissance)
+        _ajouter("adresse", champs.get("adresse"), adresse)
+        _ajouter("date_naissance", champs.get("date_naissance"), date_naissance)
 
         cours_actuels_ids = {c.id for c in self.cours.cours_de_leleve(db, eleve_id)}
         cours_a_ajouter = [cid for cid in cours_ids_fichier if cid not in cours_actuels_ids]
