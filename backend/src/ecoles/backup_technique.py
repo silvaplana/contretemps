@@ -33,7 +33,7 @@ from comptes import roles
 from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
 from eleves.models import ContactEleve, ProfilEleve
-from groups import Group, GroupMember
+from groups import Group, GroupMember, teachers
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
@@ -558,6 +558,23 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
             for adresse in separer_emails(email):
                 db.add(EmailCompte(compte_id=compte_id, email=adresse))
         db.flush()
+    _anciens_profs_en_groupe(db, ecole.id)
+
+
+def _anciens_profs_en_groupe(db: Session, ecole_id: int) -> None:
+    """Sauvegarde d'avant le 27/10/2026 : le rôle Professeur était une ligne
+    de RolesComptes ; il devient le groupe « Profs » (groups/teachers.py)."""
+    with toutes_saisons(db):
+        ids = db.scalars(
+            select(RoleCompte.compte_id).where(
+                RoleCompte.role == roles.PROFESSEUR, RoleCompte.compte_id.in_(_sous_requete_comptes_ecole(ecole_id))
+            )
+        ).all()
+        db.execute(delete(RoleCompte).where(RoleCompte.role == roles.PROFESSEUR, RoleCompte.compte_id.in_(ids)))
+        for compte_id in ids:
+            compte = db.get(Compte, compte_id)
+            db.expire(compte, ["roles"])
+            teachers.add(db, compte)
 
 
 def _convertir_anciens_roles(db: Session, ancien_role_par_compte: dict[int, str]) -> None:

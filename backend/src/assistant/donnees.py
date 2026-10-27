@@ -206,7 +206,7 @@ class DonneesEcole:
         lignes = [f"{len(eleves)} élèves, {len(cours)} cours."]
         if p.tout:
             profs = db.scalar(
-                select(func.count()).select_from(Compte).where(Compte.ecole_id == p.ecole_id, Compte.roles.any(role=roles.PROFESSEUR))
+                select(func.count()).select_from(Compte).where(Compte.ecole_id == p.ecole_id, roles.filtre_role(roles.PROFESSEUR))
             )
             lignes.append(f"{profs} professeurs.")
         if p.paiements and eleves:
@@ -304,7 +304,7 @@ class DonneesEcole:
             return "Réservé aux administrateurs."
         lignes = []
         for prof in db.scalars(
-            select(Compte).where(Compte.ecole_id == p.ecole_id, Compte.roles.any(role=roles.PROFESSEUR)).order_by(Compte.nom)
+            select(Compte).where(Compte.ecole_id == p.ecole_id, roles.filtre_role(roles.PROFESSEUR)).order_by(Compte.nom)
         ):
             cours = list(db.scalars(
                 select(Cours.nom).join(cours_professeurs, cours_professeurs.c.cours_id == Cours.id)
@@ -421,7 +421,7 @@ class DonneesEcole:
         super_user = Compte.ecole_id.is_(None) & Compte.roles.any(role=roles.SUPERUSER)
         requete = select(Compte).where((Compte.ecole_id == p.ecole_id) | super_user).order_by(Compte.nom, Compte.prenom)
         if role is not None:
-            requete = requete.where(Compte.roles.any(role=role))
+            requete = requete.where(roles.filtre_role(role))
         personnes = list(db.scalars(requete))
         lignes = []
         for c in personnes[:LIGNES_MAX]:

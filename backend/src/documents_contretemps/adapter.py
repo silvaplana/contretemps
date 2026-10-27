@@ -71,7 +71,7 @@ def _saison_courante(db: Session, ecole_id: int) -> int | None:
 
 
 def _groupes(db: Session, compte: Compte) -> frozenset[str]:
-    noms = {f"role:{r.role}" for r in compte.roles}
+    noms = {f"role:{role}" for role in roles.noms_roles(compte)}
     if roles.is_owner(compte):
         noms.add("role:admin")
     if compte.ecole_id is not None:
@@ -166,7 +166,7 @@ class AnnuaireContretemps:
                 if pid in vus:
                     continue
                 vus.add(pid)
-                role = roles.role_principal(r.role for r in compte.roles) if compte.roles else "membre"
+                role = compte.role_principal if roles.noms_roles(compte) else "membre"
                 detail = {"admin": "admin", "professeur": "professeur", "eleve": "élève"}.get(role, "membre")
                 personnes.append(Principal("member", str(pid), nom_affiche(compte), detail))
         return (groupes + personnes)[:limit]

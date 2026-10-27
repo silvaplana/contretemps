@@ -67,7 +67,7 @@ def membre_appelant(
 
 
 def _personne(db: Session, compte: Compte) -> Personne:
-    role = roles.role_principal(r.role for r in compte.roles) if compte.roles else ""
+    role = compte.role_principal if roles.noms_roles(compte) else ""
     return Personne(
         person_id=personne_id(db, compte),
         nom=nom_affiche(compte),

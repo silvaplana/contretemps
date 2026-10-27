@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import unicodedata
 
+from groups import teachers
 from saisons import saison_courante_id
 from saisons.portee import TOUTES_SAISONS
 from sqlalchemy import delete, select
@@ -80,8 +81,7 @@ class Comptes:
         return list(
             db.scalars(
                 select(Compte)
-                .join(RoleCompte, RoleCompte.compte_id == Compte.id)
-                .where(Compte.ecole_id == ecole_id, RoleCompte.role == role)
+                .where(Compte.ecole_id == ecole_id, r.filtre_role(role))
                 .order_by(Compte.id)
             )
         )
@@ -111,9 +111,7 @@ class Comptes:
         nom_cible, prenom_cible = _normaliser(nom), _normaliser(prenom)
         requete = select(Compte).where(Compte.ecole_id == ecole_id)
         if role is not None:
-            requete = requete.join(RoleCompte, RoleCompte.compte_id == Compte.id).where(
-                RoleCompte.role == role
-            )
+            requete = requete.where(r.filtre_role(role))
         return [
             compte
             for compte in db.scalars(requete)
@@ -214,11 +212,14 @@ class Comptes:
         # `email` : une adresse, plusieurs séparées par « ; » ou « , », ou
         # une liste (§2.1, plusieurs emails par fiche).
         compte.definir_emails(email)
-        compte.roles.append(RoleCompte(role=role))
+        if role != r.PROFESSEUR:
+            compte.roles.append(RoleCompte(role=role))
         if devient_owner:
             compte.roles.append(RoleCompte(role=r.OWNER))
         db.add(compte)
         self.recalculer_familles(db, ecole_id)
+        if role == r.PROFESSEUR:
+            teachers.add(db, compte)
         db.commit()
         db.refresh(compte)
         return compte
@@ -273,7 +274,10 @@ class Comptes:
         # 2026-10-18) : tous les rôles se cumulent, élève et professeur
         # compris. Le rôle élève vient avec sa fiche élève : l'ajouter par
         # Eleves.create ou la fusion, jamais seul.
-        compte.roles.append(RoleCompte(role=role))
+        if role == r.PROFESSEUR:
+            teachers.add(db, compte)
+        else:
+            compte.roles.append(RoleCompte(role=role))
         db.commit()
         db.refresh(compte)
 
@@ -286,7 +290,7 @@ class Comptes:
         école en retirant même son dernier Owner (§2.5)."""
         a_retirer = {role, r.OWNER, r.TRESORIER} if role == r.ADMIN else {role}
         restants = [ligne for ligne in compte.roles if ligne.role not in a_retirer]
-        if not restants:
+        if not restants and (r.PROFESSEUR in a_retirer or not r.is_prof(compte)):
             raise RegleRoles("Un compte doit garder au moins un rôle")
         if (
             not autoriser_sans_owner
@@ -296,6 +300,8 @@ class Comptes:
         ):
             raise RegleRoles("L'école doit garder au moins un administrateur principal")
         compte.roles = restants
+        if r.PROFESSEUR in a_retirer:
+            teachers.remove(db, compte)
         db.commit()
         db.refresh(compte)
 

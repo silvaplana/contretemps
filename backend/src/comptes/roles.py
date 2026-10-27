@@ -4,11 +4,18 @@ Un compte peut avoir plusieurs rôles (ex. professeur ET admin), stockés
 dans `roles_compte` (voir models.py:RoleCompte). **Le reste du code ne lit
 jamais ces lignes directement** : il passe par les fonctions ci-dessous.
 Si un jour la façon de stocker les rôles change, seul ce fichier change.
+
+Professeur n'est plus une ligne de `roles_compte` depuis le 27/10/2026 :
+c'est le groupe « Profs » de la saison (groups/teachers.py, spec/core.md
+§5.1). Ce fichier le présente toujours comme un rôle, avec le même rang.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Iterable
+
+from groups.models import Group
+from groups.teachers import TEACHERS
 
 if TYPE_CHECKING:
     from .models import Compte
@@ -34,14 +41,32 @@ ROLES = (ELEVE, PROFESSEUR, ADMIN, OWNER, TRESORIER, SUPERUSER)
 RANG = {ELEVE: 0, PROFESSEUR: 1, ADMIN: 2, OWNER: 2, TRESORIER: 2, SUPERUSER: 3}
 
 
+def _est_dans_les_profs(compte: Compte) -> bool:
+    return any(g.key == TEACHERS for g in compte.groups)
+
+
 def noms_roles(compte: Compte) -> list[str]:
     """Rôles du compte, du plus fort au plus faible — ordre stable pour
     l'API et les tests."""
-    return sorted((r.role for r in compte.roles), key=lambda nom: (-RANG[nom], nom))
+    noms = [r.role for r in compte.roles]
+    if _est_dans_les_profs(compte):
+        noms.append(PROFESSEUR)
+    return sorted(noms, key=lambda nom: (-RANG[nom], nom))
 
 
 def a_le_role(compte: Compte, role: str) -> bool:
+    if role == PROFESSEUR:
+        return _est_dans_les_profs(compte)
     return any(r.role == role for r in compte.roles)
+
+
+def filtre_role(role: str):
+    """Condition SQL « le compte a ce rôle », pour `select(Compte).where(...)`."""
+    from .models import Compte
+
+    if role == PROFESSEUR:
+        return Compte.groups.any(Group.key == TEACHERS)
+    return Compte.roles.any(role=role)
 
 
 def is_eleve(compte: Compte) -> bool:
@@ -78,4 +103,4 @@ def role_principal(noms: Iterable[str]) -> str:
 
 
 def rang(compte: Compte) -> int:
-    return RANG[role_principal(r.role for r in compte.roles)]
+    return RANG[role_principal(noms_roles(compte))]
