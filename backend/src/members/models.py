@@ -58,3 +58,18 @@ class MemberValue(Base):
     # un fichier, {"sha256", "name", "size"}.
     value: Mapped[object] = mapped_column(JSON, nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow, onupdate=_utcnow)
+
+
+class MemberColumn(Base):
+    """L'affichage dans Admin (spec/core.md §4.3, niveau 2) : les colonnes du
+    tableau des membres, dans l'ordre, affichées ou non. `key` : une colonne
+    de l'écran (« cours », « paiement »…) ou « field:<id> » pour un champ de
+    la fiche. Pas de ligne pour la saison = l'ordre d'origine, tout affiché."""
+
+    __tablename__ = "member_columns"
+
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), primary_key=True)
+    season_id: Mapped[int] = mapped_column(ForeignKey("saisons.id"), primary_key=True)
+    key: Mapped[str] = mapped_column(String(40), primary_key=True)
+    shown: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

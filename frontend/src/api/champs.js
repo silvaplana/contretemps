@@ -41,6 +41,11 @@ export const modifier = (id, champ) => requete(`/champs/${id}`, json('PATCH', ch
 export const retirer = (id) => requete(`/champs/${id}`, { method: 'DELETE' })
 export const remettre = (id) => requete(`/champs/${id}/remettre`, { method: 'POST' })
 
+export const toutesReponses = (ecoleId) => requete(`/ecoles/${ecoleId}/champs/reponses`)
+export const colonnes = (ecoleId) => requete(`/ecoles/${ecoleId}/colonnes`)
+export const changerColonnes = (ecoleId, liste) =>
+  requete(`/ecoles/${ecoleId}/colonnes`, json('PUT', liste.map(({ key, shown }) => ({ key, shown }))))
+
 export const reponses = (compteId) => requete(`/membres/${compteId}/champs`)
 export const repondre = (compteId, champId, valeur) =>
   requete(`/membres/${compteId}/champs/${champId}`, json('PUT', { value: valeur }))

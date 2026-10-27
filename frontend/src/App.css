@@ -4617,3 +4617,73 @@ a.btn {
   align-items: center;
   gap: 12px;
 }
+
+/* Affichage dans Admin (AffichageAdmin.jsx) : une ligne par colonne du
+   tableau des élèves, poignée ⠿ à gauche, case Afficher à droite. */
+.affichage__entete {
+  display: flex;
+  justify-content: space-between;
+}
+
+.affichage__ligne {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 58px;
+  border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
+}
+
+.affichage__ligne.is-glissee {
+  position: relative;
+  z-index: 2;
+  background: var(--accent-bg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.affichage__poignee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 48px;
+  border-radius: 10px;
+  color: var(--text-muted);
+  font-size: 22px;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.affichage__nom {
+  flex: 1;
+  min-width: 0;
+  font-size: 17px;
+}
+
+.affichage__nom small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.affichage__nom small b {
+  color: #3c5a9a;
+  font-weight: 800;
+}
+
+.affichage__ligne.is-masquee .affichage__nom {
+  color: var(--text-muted);
+}
+
+.affichage__case {
+  display: flex;
+  justify-content: center;
+  width: 76px;
+}
+
+.affichage__case input {
+  width: 26px;
+  height: 26px;
+  accent-color: var(--accent);
+}

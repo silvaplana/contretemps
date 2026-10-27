@@ -37,6 +37,30 @@ def answers(db: Session, member: Compte) -> list[dict]:
     ]
 
 
+def all_answers(db: Session, org_id: int, season_id: int) -> dict[int, dict[int, object]]:
+    """Les réponses de toutes les fiches de la saison, en une fois, pour le
+    tableau des membres : {fiche: {champ: réponse}}."""
+    from groups import Group
+
+    result: dict[int, dict[int, object]] = {}
+    fields = f.fields(db, org_id, season_id)
+    ids = [field.id for field in fields if field.format != "group"]
+    if ids:
+        for value in db.scalars(select(MemberValue).where(MemberValue.field_id.in_(ids))):
+            result.setdefault(value.member_id, {})[value.field_id] = value.value
+    for field in fields:
+        if field.format == "group":
+            rows = db.execute(
+                select(GroupMember.member_id, GroupMember.group_id)
+                .join(Group, Group.id == GroupMember.group_id)
+                .where(Group.parent_id == field.group_id)
+                .order_by(GroupMember.group_id)
+            )
+            for member_id, group_id in rows:
+                result.setdefault(member_id, {}).setdefault(field.id, []).append(group_id)
+    return result
+
+
 def _clean(field: MemberField, value):
     """La réponse telle qu'elle est gardée, ou FieldError. None = vide."""
     if value is None or value == "" or value == []:
