@@ -36,4 +36,7 @@ export const choisirCampagne = (ecoleId, form) => requete(`/ecoles/${ecoleId}/he
 export const nosChamps = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/campagne`, { method: 'DELETE' })
 // « Synchroniser maintenant » (spec §4) : tout admin, saison en cours.
 // → { created, completed, updated, gone }
+// Les tarifs de la campagne de la saison affichée, en lecture seule.
+// → { campaign, form_name, plans, options, codes, error }
+export const tarifs = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/tarifs`)
 export const synchroniser = (ecoleId) => requete(`/ecoles/${ecoleId}/helloasso/synchroniser`, { method: 'POST' })

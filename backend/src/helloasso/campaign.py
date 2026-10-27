@@ -25,10 +25,12 @@ class Campaigns:
         self,
         forms: Callable[[str, str, str], list[api.Form]] = api.forms,
         form_fields: Callable[[str, str, str, str, str], list[dict]] = api.form_fields,
+        form_prices: Callable[[str, str, str, str, str], dict] = api.form_prices,
     ) -> None:
         # Remplaçables dans les tests (pas d'appel réseau).
         self.forms = forms
         self.form_fields = form_fields
+        self.form_prices = form_prices
 
     @staticmethod
     def _keys(connection: OrgHelloAsso) -> tuple[str, str, str]:
@@ -72,3 +74,30 @@ class Campaigns:
         if row is not None:
             db.delete(row)
         db.flush()
+
+    def prices(self, db: Session, org_id: int, season_id: int) -> dict | None:
+        """Les tarifs de la campagne de la saison (spec §3, `core.md` §9.3),
+        en lecture seule : formules et options lues sur HelloAsso, codes
+        promo vus dans les commandes synchronisées. None sans campagne."""
+        from sqlalchemy import func
+
+        from .models import HelloAssoRegistration
+
+        row = self.current(db, season_id)
+        if row is None:
+            return None
+        connection = Connection.row(db, org_id)
+        if connection is None or not connection.active:
+            raise api.HelloAssoError("HelloAsso n’est pas connecté.")
+        prices = self.form_prices(*self._keys(connection), row.form_type, row.form_slug)
+        codes = db.execute(
+            select(HelloAssoRegistration.discount_code, func.count())
+            .where(
+                HelloAssoRegistration.season_id == season_id,
+                HelloAssoRegistration.discount_code.is_not(None),
+                HelloAssoRegistration.gone_at.is_(None),
+            )
+            .group_by(HelloAssoRegistration.discount_code)
+            .order_by(HelloAssoRegistration.discount_code)
+        ).all()
+        return {"form_name": row.form_name, **prices, "codes": [{"code": c, "uses": n} for c, n in codes]}

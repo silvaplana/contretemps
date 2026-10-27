@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as tarifsApi from '../../api/tarifs.js'
+import { MODULES } from '../../app/modules.js'
 import Icon from '../../components/Icon.jsx'
 
 // Tarifs de la saison (spec/core.md §9, maquette « Tarifs de la saison ») :
@@ -8,8 +9,11 @@ import Icon from '../../components/Icon.jsx'
 // « Options et codes promo » : en plus ou en moins, en € ou en %, obtenu en
 // cochant, avec un code (montré ou secret) ou par une règle écrite en
 // français, que l'assistant écrit en calcul. Chaque OK enregistre.
+// Un module peut imposer ses tarifs (`seasonPrices` du module.js : la
+// campagne HelloAsso) : son bloc, en lecture seule, remplace alors les nôtres.
 
 const ANNULER_MS = 10000
+const IMPOSES = MODULES.filter((m) => m.seasonPrices)
 
 const euros = (centimes) =>
   (centimes / 100).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 2 })
@@ -482,6 +486,7 @@ export default function Tarifs({ ecoleId, onClose }) {
   const [nomOuverte, setNomOuverte] = useState('') // le titre suit le nom tapé
   const [erreur, setErreur] = useState(null)
   const [toast, setToast] = useState(null)
+  const [imposes, setImposes] = useState({}) // module → ses tarifs remplacent les nôtres ?
   const minuteur = useRef(null)
 
   async function relire() {
@@ -618,8 +623,20 @@ export default function Tarifs({ ecoleId, onClose }) {
       />
     )
   } else if (donnees) {
-    corps = (
+    const blocs = IMPOSES.map((m) => (
+      <m.seasonPrices
+        key={m.key}
+        ecoleId={ecoleId}
+        onCampaign={(oui) => setImposes((s) => ({ ...s, [m.key]: oui }))}
+      />
+    ))
+    // Tant qu'un module n'a pas répondu, rien : pas de clignotement des nôtres.
+    const enAttente = IMPOSES.some((m) => !(m.key in imposes))
+    corps = enAttente || Object.values(imposes).some(Boolean) ? (
+      blocs
+    ) : (
       <>
+        {blocs}
         {donnees.previous && !lectureSeule && (
           <div className="creer-saison__cadre">
             <strong>Repartir des tarifs de {donnees.previous.name} ?</strong>

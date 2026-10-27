@@ -206,3 +206,35 @@ def orders(client_id: str, client_secret: str, slug: str, form_type: str, form_s
         if page >= total:
             return items
         page += 1
+
+
+# Formules HelloAsso (`tiers[].paymentFrequency`) → ce qu'on affiche.
+FREQUENCIES = {"Installment": "En plusieurs fois", "Monthly": "Tous les mois"}
+
+
+def form_prices(client_id: str, client_secret: str, slug: str, form_type: str, form_slug: str) -> dict:
+    """Les formules (`tiers`) et options (`extraOptions`, sans doublon) du
+    formulaire, en lecture seule (étape 4). Montants en centimes ; None =
+    prix libre (`minAmount` alors donné)."""
+    token = _token(client_id, client_secret)
+    formulaire = _get(f"/v5/organizations/{slug}/forms/{form_type}/{form_slug}/public", token)
+    plans, options = [], {}
+    for tier in formulaire.get("tiers") or []:
+        if tier.get("tierType") == "Donation":
+            continue
+        plans.append(
+            {
+                "name": tier.get("label") or "",
+                "price": tier.get("price"),
+                "min_amount": tier.get("minAmount"),
+                "description": (tier.get("description") or "").strip(),
+                "frequency": FREQUENCIES.get(tier.get("paymentFrequency"), ""),
+            }
+        )
+        for option in tier.get("extraOptions") or []:
+            options.setdefault(
+                option.get("label") or "",
+                {"name": option.get("label") or "", "price": option.get("price") or 0,
+                 "required": bool(option.get("isRequired"))},
+            )
+    return {"plans": plans, "options": list(options.values())}

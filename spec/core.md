@@ -637,7 +637,9 @@ MODULE = Module(
   membre » (Admin > Élèves > ⋯ > Champs ; ex. « Nos champs » / « Imposés par HelloAsso » et la
   campagne de la saison). Les champs qu'un module met sur la fiche portent sa clé
   (`member_fields.source`) : verrouillés, seuls les réglages avancés changent, ils ne se retirent
-  pas et ne sont pas recopiés à la saison suivante. Un module sans onglet a `tabs: []`.
+  pas et ne sont pas recopiés à la saison suivante. Et `seasonPrices` : un bloc de l'écran Tarifs ;
+  quand il dit que la saison a des tarifs imposés (la campagne HelloAsso), il remplace nos formules,
+  en lecture seule. Un module sans onglet a `tabs: []`.
 
 ### 11.2 La liste des modules de l'appli
 
@@ -707,7 +709,7 @@ Déjà codés dans Contretemps :
    a. connexion de l'organisation (écran, test, clés chiffrées) *(faite le 27 octobre 2026)* ;
    b. campagne d'une saison et champs imposés *(faite le 27 octobre 2026)* ;
    c. synchronisation des membres et des paiements *(faite le 27 octobre 2026)* ;
-   d. tarifs HelloAsso en lecture seule dans l'écran Tarifs.
+   d. tarifs HelloAsso en lecture seule dans l'écran Tarifs *(faite le 27 octobre 2026)*.
 9. Formulaire d'inscription de l'appli (à concevoir).
 
 ---
