@@ -249,7 +249,9 @@ flèche ←.
 
 - **Un bouton de la barre du bas**, nommé **« Sparring »** dans un club de combat. Le nom à l'écran
   dépend de l'organisation. Dans le code, le module est générique (`session_clips`). Décision Seb du
-  27/10 : on garde « Sparring » partout tant qu'on fait la version combat ; en passant à la danse, le
+  27/10 : on garde « Sparring » partout tant qu'on fait la version combat ; puis (Seb, 27/10, 17 h) le
+  bouton, la case de Fonctionnalités, la rubrique d'Usage et le nom des vidéos disent **« Fights »**
+  (comme Fight Lab ; « Sparring » reste dans le code et ce document). En passant à la danse, le
   module deviendra « Clips vidéo » (Fonctionnalités, nom par défaut de l'onglet) et chaque école
   choisira le nom de l'onglet dans Personnalisation > Vocabulaire (« Sparring », « Passages »…).
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière

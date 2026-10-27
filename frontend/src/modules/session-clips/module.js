@@ -3,5 +3,5 @@
 // les coachs ont aussi Séances et À vérifier.
 export default {
   key: 'session_clips',
-  tabs: [{ key: 'sparring', label: 'Sparring', icon: 'video', roles: ['admin', 'professeur', 'eleve'] }],
+  tabs: [{ key: 'sparring', label: 'Fights', icon: 'video', roles: ['admin', 'professeur', 'eleve'] }],
 }

@@ -34,7 +34,7 @@ class SessionClips:
         # Une vidéo supprimée (d'ici ou du panneau « Usage vidéo ») emporte
         # son clip, ou détache la séance de sa vidéo brute.
         videos.quand_supprimee(self._video_deleted)
-        videos.rubrique("Sparring", self._video_ids)
+        videos.rubrique("Fights", self._video_ids)
 
     # --- Lecture ---
 
@@ -290,6 +290,6 @@ def clip_title(names: list[str | None], repeat: int = 1) -> str:
 
 def video_name(held_on: date, title: str, what: str) -> str:
     """Nom d'une vidéo de la séance dans le module `videos`, lisible dans
-    « Usage des ressources » (Admin > École) : « Sparring · 23/10/2026 ·
+    « Usage des ressources » (Admin > École) : « Fights · 23/10/2026 ·
     Adultes · 19 h · combat 1 »."""
-    return " · ".join(part for part in ("Sparring", held_on.strftime("%d/%m/%Y"), title, what) if part)
+    return " · ".join(part for part in ("Fights", held_on.strftime("%d/%m/%Y"), title, what) if part)

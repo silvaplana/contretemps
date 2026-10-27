@@ -136,7 +136,7 @@ def test_decoupe_une_seance(db_session, tmp_path, monkeypatch):
     assert sc.participants(db_session, [c.id for c in clips])[clips[0].id] == [None, None]
     videos = sc.video_map(db_session, [c.video_id for c in clips])
     premier = videos[clips[0].video_id]
-    assert premier.nom == "Sparring · 27/10/2026 · Adultes · 19 h · combat 1"
+    assert premier.nom == "Fights · 27/10/2026 · Adultes · 19 h · combat 1"
     assert premier.compresse and premier.poster and 13 <= premier.duree_secondes <= 16
     assert (tmp_path / premier.lien_fichier).exists()
     # La vidéo brute est gardée jusqu'à la validation.
@@ -144,6 +144,6 @@ def test_decoupe_une_seance(db_session, tmp_path, monkeypatch):
 
     # « Usage des ressources » : clips et vidéo entière rangés sous « Sparring ».
     usage = core.videos_client.usage_ecole(db_session, session.org_id)
-    assert [r.libelle for r in usage.rubriques] == ["Sparring"]
+    assert [r.libelle for r in usage.rubriques] == ["Fights"]
     assert usage.rubriques[0].octets == usage.total_octets > 0
-    assert {v.rubrique for v in usage.top_videos} == {"Sparring"}
+    assert {v.rubrique for v in usage.top_videos} == {"Fights"}
