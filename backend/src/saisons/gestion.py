@@ -104,6 +104,7 @@ class GestionSaisons:
                 cours = self._recopier_cours(db, ancienne_id, saison, fiches, duplication.eleves)
             if ancienne_id is not None:
                 member_fields.copy_season(db, ecole_id, ancienne_id, saison.id, fiches)
+            member_fields.known(db, ecole_id, saison.id)
             db.commit()
         if duplication.documents and ancienne_id is not None and self.recopier_documents is not None:
             self.recopier_documents(db, ecole_id, ancienne_id, saison.id, fiches.get(auteur_id, auteur_id), cours)
@@ -230,17 +231,9 @@ class GestionSaisons:
         profil = db.get(ProfilEleve, ancien_id)
         if profil is not None:
             # Paiement (statut, montants, commentaire) : valeurs par défaut,
-            # propre à chaque saison.
-            db.add(
-                ProfilEleve(
-                    compte_id=nouveau_id,
-                    date_naissance=profil.date_naissance,
-                    adresse=profil.adresse,
-                    allergies=profil.allergies,
-                    traitement_medical=profil.traitement_medical,
-                    informations_importantes=profil.informations_importantes,
-                )
-            )
+            # propre à chaque saison. Naissance, adresse, santé : des champs
+            # de la fiche, recopiés avec elle (members.fields.copy_season).
+            db.add(ProfilEleve(compte_id=nouveau_id))
         for contact in db.scalars(select(ContactEleve).where(ContactEleve.eleve_id == ancien_id)):
             db.add(
                 ContactEleve(

@@ -194,6 +194,21 @@ Les colonnes d'aujourd'hui (Paiement, Âge, Inviter, Statut de connexion…) son
 `frontend/src/data/colonnesEleves.js` ; leur déclaration par les modules dans `module.py` (§11.1)
 viendra avec les modules Paiement et Licences.
 
+**Fait (27 octobre 2026, étape 4c)** : la reprise des champs d'`eleves`. Date de naissance,
+Adresse, Allergies, Traitement médical et Informations importantes sont des champs de la fiche
+comme les autres (en tête, Facultatif ; Date ou Texte long) : l'école les renomme, les range, les
+retire. Chacun porte une marque cachée (`member_fields.key` : `birth_date`, `address`,
+`allergies`, `medical_treatment`, `important_info`) par laquelle l'appli les retrouve : l'âge, le
+dossier d'inscription, l'import et l'export Excel, l'assistant (qui ne reçoit toujours jamais la
+santé). Leur format ne change pas. Un champ marqué retiré garde ses réponses, continue d'être
+rempli par l'inscription et l'import, et passe retiré à la saison suivante. Les réponses ont été
+recopiées dans `member_values` (migration) ; les colonnes de `profils_eleves` restent en base, plus
+lues ni écrites. Dans Admin > Élèves, les colonnes Date de naissance, Adresse et Santé deviennent
+les colonnes de ces champs (la Santé en trois colonnes), à la même place ; dans la fiche de
+l'élève, ils sont dans « Nos champs » (l'âge à côté de la date). Une sauvegarde d'avant reprend ces
+champs à la restauration. Restent sur `profils_eleves` : Contacts (plusieurs personnes),
+Commentaire, Paiement (avec le module Paiement).
+
 ### 4.4 Famille = même email du payeur
 
 Chaque fiche a un champ du socle **Email du payeur** : pour un adulte, son propre email ; pour un
@@ -633,7 +648,8 @@ Déjà codés dans Contretemps :
       l'élève *(faite le 27 octobre 2026)* ;
    b. `member_columns`, écran « Affichage dans Admin », colonnes du tableau des élèves *(faite le
       27 octobre 2026)* ;
-   c. reprise des champs d'`eleves` (date de naissance, adresse, santé…) dans la fiche.
+   c. reprise des champs d'`eleves` (date de naissance, adresse, santé…) dans la fiche *(faite le
+      27 octobre 2026)*.
 5. **Famille** par l'email du payeur, commande de reprise.
 6. **Création de saison** en un écran, étape par étape.
 7. **Tarifs** : formules, options, codes promo, règles par l'assistant.

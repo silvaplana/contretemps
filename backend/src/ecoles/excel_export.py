@@ -100,7 +100,6 @@ class EcoleExport:
             + NOMS_COURS
         )
         for compte in comptes_eleves:
-            profil = self.eleves.get_profil(db, compte.id)
             contacts = self.eleves.contacts_de_leleve(db, compte.id)
             # 1er contact enregistré comme "parent" — un élève général n'a
             # pas de champ "contact d'urgence" dédié comme une inscription
@@ -113,7 +112,8 @@ class EcoleExport:
                 if premier_contact
                 else None
             )
-            date_naissance = profil.date_naissance if profil else None
+            champs = self.eleves.get_champs(db, compte)
+            date_naissance = champs["date_naissance"]
             if date_naissance:
                 date_age = f"{date_naissance.strftime('%d/%m/%Y')} = {calculer_age(date_naissance)} ans"
             else:
@@ -124,7 +124,7 @@ class EcoleExport:
                 compte.prenom,
                 contact_parent,
                 compte.email,
-                profil.adresse if profil else None,
+                champs["adresse"],
                 compte.telephone,
                 date_age,
             ]

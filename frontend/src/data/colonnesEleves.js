@@ -8,13 +8,17 @@ export const COLONNES = [
   { key: 'cours', label: 'Cours suivis', nature: 'Saisi' },
   { key: 'paiement', label: 'Paiement', nature: 'Calculé', detail: 'statut et montants' },
   { key: 'commentaire', label: 'Commentaire', nature: 'Saisi' },
-  { key: 'naissance', label: 'Date de naissance', nature: 'Saisi' },
+  // Les champs de la fiche que l'appli sait lire (members/fields.py, KNOWN)
+  // prennent ici la place des anciennes colonnes.
+  { champ: 'birth_date' },
   { key: 'age', label: 'Âge', nature: 'Calculé', detail: 'date de naissance' },
   { key: 'contacts', label: 'Contacts', nature: 'Saisi' },
   { key: 'telephone', label: 'Téléphone', nature: 'Saisi' },
   { key: 'email', label: 'Email', nature: 'Saisi' },
-  { key: 'adresse', label: 'Adresse', nature: 'Saisi' },
-  { key: 'sante', label: 'Santé', nature: 'Saisi' },
+  { champ: 'address' },
+  { champ: 'allergies' },
+  { champ: 'medical_treatment' },
+  { champ: 'important_info' },
   { key: 'certificat', label: 'Certificat médical', nature: 'Saisi' },
   { key: 'inviter', label: 'Inviter', nature: 'Bouton', detail: 'accès à l’appli' },
   { key: 'statut', label: 'Statut de connexion', nature: 'Calculé', detail: 'invité · mot de passe · appli' },
@@ -23,9 +27,10 @@ export const COLONNES = [
 // Toutes les colonnes, dans l'ordre choisi : celles enregistrées d'abord,
 // puis celles qui manquent (nouveau champ, saison jamais réglée), affichées.
 export function ordonner(enregistrees, champs) {
+  const colonneDe = (c) => ({ key: `field:${c.id}`, label: c.label, nature: 'Saisi', champ: c })
   const connues = [
-    ...COLONNES,
-    ...champs.map((c) => ({ key: `field:${c.id}`, label: c.label, nature: 'Saisi', champ: c })),
+    ...COLONNES.flatMap((c) => (c.champ ? champs.filter((f) => f.key === c.champ).map(colonneDe) : [c])),
+    ...champs.filter((f) => !f.key).map(colonneDe),
   ]
   const parCle = new Map(connues.map((c) => [c.key, c]))
   const resultat = []

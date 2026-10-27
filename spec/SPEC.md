@@ -1277,6 +1277,11 @@ admins (§2.2, « Suivi de l'invitation ») se lit dans `acces_emails`.
 
 ### 6.4 Profil Élève (champs spécifiques)
 
+> Depuis le 27 octobre 2026 (core.md §4.3, étape 4c), date de naissance, adresse, allergies,
+> traitement médical et informations importantes sont des champs de la fiche de l'école
+> (`member_fields`, marqués d'une clé cachée), plus des colonnes de `profils_eleves` (gardées en
+> base, plus lues).
+
 | Champ | Type | Obl./Opt. | Éditable/Calculé |
 |---|---|---|---|
 | compte_id | PK, FK → comptes | — | — |

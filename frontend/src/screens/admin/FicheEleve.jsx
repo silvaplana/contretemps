@@ -19,17 +19,12 @@ import FusionnerAvec from './FusionnerAvec.jsx'
 const CHAMPS_TEXTE = [
   'prenom',
   'nom',
-  'dateNaissance',
   'telephone',
   'email',
-  'adresse',
   'statutPaiement',
   'montantTotalAnnee',
   'montantPaye',
   'commentaireAdmin',
-  'allergies',
-  'traitementMedical',
-  'informationsImportantes',
 ]
 
 function brouillonDe(eleve, reponses) {
@@ -40,12 +35,6 @@ function brouillonDe(eleve, reponses) {
   }
   for (const cle of CHAMPS_TEXTE) brouillon[cle] = eleve[cle] ?? ''
   return brouillon
-}
-
-function dateFrancaise(iso) {
-  if (!iso) return ''
-  const [a, m, j] = iso.split('-')
-  return `${j}/${m}/${a}`
 }
 
 export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistre, onFusionnee }) {
@@ -134,17 +123,12 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
       const misAJour = await elevesApi.modifier(eleve.id, {
         prenom: brouillon.prenom.trim(),
         nom: brouillon.nom.trim(),
-        dateNaissance: brouillon.dateNaissance || null,
         telephone: brouillon.telephone,
         email: brouillon.email.trim(),
-        adresse: brouillon.adresse,
         statutPaiement: brouillon.statutPaiement,
         montantTotalAnnee: Number(brouillon.montantTotalAnnee) || 0,
         montantPaye: Number(brouillon.montantPaye) || 0,
         commentaireAdmin: brouillon.commentaireAdmin,
-        allergies: brouillon.allergies,
-        traitementMedical: brouillon.traitementMedical,
-        informationsImportantes: brouillon.informationsImportantes,
       })
       onEnregistre(misAJour)
       setBrouillon(null)
@@ -215,13 +199,6 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
           <Rubrique titre="Identité">
             <Saisie id="fiche-prenom" libelle="Prénom" valeur={brouillon.prenom} onChange={(v) => changer('prenom', v)} />
             <Saisie id="fiche-nom" libelle="Nom" valeur={brouillon.nom} onChange={(v) => changer('nom', v)} />
-            <Saisie
-              id="fiche-naissance"
-              libelle="Date de naissance"
-              type="date"
-              valeur={brouillon.dateNaissance}
-              onChange={(v) => changer('dateNaissance', v)}
-            />
           </Rubrique>
           <Rubrique titre="Coordonnées">
             <Saisie
@@ -235,7 +212,6 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
                 connecter, et relie la fiche aux autres qui l'ont. */}
             <label htmlFor="fiche-email">Emails</label>
             <ListeEmails id="fiche-email" valeur={brouillon.email} onChange={(v) => changer('email', v)} />
-            <Saisie id="fiche-adresse" libelle="Adresse" valeur={brouillon.adresse} onChange={(v) => changer('adresse', v)} />
           </Rubrique>
           <Rubrique titre="Cours suivis">
             <div className="checkbox-list">
@@ -336,26 +312,6 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
               <Icon name="plus" size={16} /> Ajouter un contact
             </button>
           </Rubrique>
-          <Rubrique titre="Santé">
-            <ZoneTexte
-              id="fiche-allergies"
-              libelle="Allergies"
-              valeur={brouillon.allergies}
-              onChange={(v) => changer('allergies', v)}
-            />
-            <ZoneTexte
-              id="fiche-traitement"
-              libelle="Traitement médical"
-              valeur={brouillon.traitementMedical}
-              onChange={(v) => changer('traitementMedical', v)}
-            />
-            <ZoneTexte
-              id="fiche-infos"
-              libelle="Informations importantes"
-              valeur={brouillon.informationsImportantes}
-              onChange={(v) => changer('informationsImportantes', v)}
-            />
-          </Rubrique>
           {reponses.length > 0 && (
             <Rubrique titre="Nos champs">
               {reponses.map(({ field }) => (
@@ -383,15 +339,10 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
           <Rubrique titre="Identité">
             <Ligne libelle="Prénom" valeur={eleve.prenom} />
             <Ligne libelle="Nom" valeur={eleve.nom} />
-            <Ligne
-              libelle="Date de naissance"
-              valeur={eleve.dateNaissance && `${dateFrancaise(eleve.dateNaissance)}${age != null ? ` (${age} ans)` : ''}`}
-            />
           </Rubrique>
           <Rubrique titre="Coordonnées">
             <Ligne libelle="Téléphone" valeur={eleve.telephone} />
             <Ligne libelle={eleve.emails?.length > 1 ? 'Emails' : 'Email'} valeur={eleve.email} />
-            <Ligne libelle="Adresse" valeur={eleve.adresse} />
           </Rubrique>
           <Rubrique titre="Cours suivis">
             <Ligne valeur={eleve.coursIds.map(nomCours).filter(Boolean).join(', ')} />
@@ -411,11 +362,6 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
               />
             ))}
           </Rubrique>
-          <Rubrique titre="Santé">
-            <Ligne libelle="Allergies" valeur={eleve.allergies} />
-            <Ligne libelle="Traitement médical" valeur={eleve.traitementMedical} />
-            <Ligne libelle="Informations importantes" valeur={eleve.informationsImportantes} />
-          </Rubrique>
           {reponses.length > 0 && (
             <Rubrique titre="Nos champs">
               {reponses.map(({ field, value }) => (
@@ -432,7 +378,9 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
                         {value.name}
                       </button>
                     ) : (
-                      texteReponse(field, value, sousGroupes[field.group_id] ?? [])
+                      // La date de naissance garde l'âge à côté.
+                      texteReponse(field, value, sousGroupes[field.group_id] ?? []) +
+                      (field.key === 'birth_date' && age != null ? ` (${age} ans)` : '')
                     )
                   }
                 />

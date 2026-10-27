@@ -8,7 +8,6 @@ from comptes import Comptes, roles
 from cours import CoursService
 from ecoles import Ecoles
 from eleves import Eleves
-from eleves.models import ProfilEleve
 from messagerie.models import ConversationMembre, Message
 
 pytestmark = pytest.mark.rbac_reel
@@ -54,7 +53,7 @@ def test_fusionner_julia_admin_et_eleve(client, db_session, ecole):
     assert set(corps["emails"]) == {"julia@test.fr", "faux@test.fr"}
     db_session.expire_all()
     assert Comptes().get(db_session, autre_id) is None
-    assert db_session.get(ProfilEleve, garde.id).allergies == "Pollen"
+    assert Eleves(Comptes()).get_champs(db_session, Comptes().get(db_session, garde.id))["allergies"] == "Pollen"
     assert [c.id for c in CoursService().cours_de_leleve(db_session, garde.id)] == [ecole["cours"].id]
     assert db_session.query(Message).filter_by(expediteur_id=garde.id).count() == 1
     membres = {m.membre_id for m in db_session.query(ConversationMembre).filter_by(conversation_id=dm["id"])}

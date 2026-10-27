@@ -24,12 +24,14 @@ from choregraphies.models import Choregraphie, choregraphies_eleves
 from comptes import roles
 from comptes.models import Compte
 from cours.models import Cours, cours_professeurs, eleves_cours
+from eleves.eleves import champs_fiche
 from eleves.models import ContactEleve, ProfilEleve
+from members.values import known_of
 from saisons.portee import SaisonEnLectureSeule
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .donnees import COLONNES_ROUGES, DonneesEcole
+from .donnees import COLONNES_ROUGES, DonneesEcole, rouges_lisibles, rouges_vers_fiche
 
 logger = logging.getLogger(__name__)
 
@@ -126,6 +128,11 @@ class Ligne:
     # Peut rendre un fichier à ouvrir à l'écran une fois fait
     # ({"open": {...}}, voir assistant/actions.py).
     faire: Callable[[Session], dict | None]
+
+
+def _champ(colonne) -> bool:
+    """Une colonne d'un champ de la fiche, ex. « field:12 »."""
+    return isinstance(colonne, str) and re.fullmatch(r"field:\d+", colonne) is not None
 
 
 def _nom(c: Compte) -> str:
@@ -289,7 +296,7 @@ class Modifications:
                 if not isinstance(v, bool):
                     raise Refus("ligne_rouge : true ou false")
             elif cle == "cellules_rouges":
-                if not isinstance(v, list) or any(c not in COLONNES_ROUGES for c in v):
+                if not isinstance(v, list) or any(c not in COLONNES_ROUGES and not _champ(c) for c in v):
                     raise Refus("cellules_rouges : liste de colonnes parmi " + ", ".join(COLONNES_ROUGES))
                 v = list(dict.fromkeys(v))
             elif cle == "statut_paiement":
@@ -307,6 +314,8 @@ class Modifications:
         profil = {c: v for c, v in champs.items() if c not in CHAMPS_COMPTE}
         if compte:
             self.comptes.update(db, eleve_id, **compte)
+        if "cellules_rouges" in profil:
+            profil["cellules_rouges"] = rouges_vers_fiche(db, db.get(Compte, eleve_id), profil["cellules_rouges"])
         if profil:
             self.eleves.update_profil(db, eleve_id, **profil)
 
@@ -314,8 +323,12 @@ class Modifications:
     def _actuel(db: Session, eleve: Compte, cle: str):
         if cle in CHAMPS_COMPTE:
             return getattr(eleve, cle)
+        champs = champs_fiche(known_of(db, eleve))
+        if cle in champs:
+            return champs[cle]
         profil = db.scalar(select(ProfilEleve).where(ProfilEleve.compte_id == eleve.id))
-        return getattr(profil, cle, None) if profil else None
+        valeur = getattr(profil, cle, None) if profil else None
+        return rouges_lisibles(db, eleve, valeur) if cle == "cellules_rouges" and valeur else valeur
 
     # --- Les changements -----------------------------------------------
 

@@ -121,7 +121,7 @@ def test_duplication_complete(client, db_session, ecole_en_cours):
     assert ana.famille_id == leo.famille_id != e["ana"].famille_id
 
     profil = db_session.get(ProfilEleve, ana.id)
-    assert profil.allergies == "Arachide"
+    assert Eleves(Comptes()).get_champs(db_session, ana)["allergies"] == "Arachide"
     assert (profil.statut_paiement, profil.montant_paye, profil.commentaire_admin) == ("en_cours", 0, None)
     contacts = db_session.scalars(sa.select(ContactEleve).where(ContactEleve.eleve_id == ana.id)).all()
     assert [(c.prenom, c.lien) for c in contacts] == [("Marc", "Père")]

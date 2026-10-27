@@ -44,6 +44,10 @@ class MemberField(Base):
     others_see: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Pour qui : vide = tous les membres, sinon seulement ce groupe.
     for_group_id: Mapped[int | None] = mapped_column(ForeignKey("groups.id"), nullable=True)
+    # Marque cachée d'un champ que l'appli sait lire (âge, dossier
+    # d'inscription, exports, assistant) : voir `fields.KNOWN`. Vide pour un
+    # champ ajouté par l'organisation.
+    key: Mapped[str | None] = mapped_column(String(30), nullable=True)
     # « Retirer ce champ » : il disparaît de la fiche, ses réponses restent.
     removed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
