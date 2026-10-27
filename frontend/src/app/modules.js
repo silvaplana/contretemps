@@ -6,5 +6,6 @@ import documents from '../modules/documents/module.js'
 import finances from '../modules/finances/module.js'
 import messagerie from '../modules/messagerie/module.js'
 import presence from '../modules/presence/module.js'
+import sessionClips from '../modules/session-clips/module.js'
 
-export const MODULES = [presence, choregraphies, messagerie, documents, finances]
+export const MODULES = [presence, choregraphies, messagerie, documents, finances, sessionClips]
