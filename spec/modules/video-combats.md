@@ -357,6 +357,15 @@ couleurs ne servent qu'à deux.
   le téléphone), « Partager… » (le menu Partager du téléphone avec le fichier : WhatsApp, mail…, par
   le partage web de Chrome) et « Envoyer dans la messagerie… » ; pour un coach aussi « Inverser les noms » (Annuler
   10 s), « Changer un nom », « Supprimer ce clip » (Annuler 10 s).
+- ⋯ propose aussi « Mettre dans les favoris » / « Retirer des favoris ».
+
+**Sélection et Favoris (Seb, 27/10).** Un **appui long** sur un combat (Mes combats, dossier d'une
+séance, Favoris) le sélectionne ; ensuite un appui en ajoute ou en retire. Une barre remplace
+l'en-tête : « ✕ 2 sélectionnés », **★** (mettre dans les favoris, ou les retirer si tous y sont),
+**Partager** (le menu Partager du téléphone avec tous les fichiers, sinon Télécharger) et, pour un
+coach seulement, **Supprimer** (Annuler 10 s). Changer d'écran vide la sélection. En tête de « Mes
+combats » et de « Séances », la ligne **★ Favoris** ouvre la liste de ses favoris ; un combat favori
+porte une petite étoile. Les favoris sont **propres à chacun** (un élève ne voit que ses combats).
 
 ### 6.6 Plus tard
 
@@ -387,6 +396,7 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 | `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`, unique), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte) |
 | `sc_participants` | qui est dans un clip | `clip_id`, `slot` (0 = Rouge, 1 = Bleu à deux ; ordre simple au-delà), `person_id` (la personne, vide = pas encore nommée) |
 | `sc_attendees` | présents reconnus à une séance | `session_id`, `person_id` |
+| `sc_favorites` | « ★ Favoris » de chacun | `person_id`, `clip_id` (effacé avec le clip) |
 | `sc_recorders` | le téléphone qui filme *(étape 3, pas encore créée)* | `id`, `org_id`, `state` (`ready` / `recording` / `offline`), `battery_percent`, `free_bytes`, `last_seen_at`, `last_upload_at` |
 
 `person_id` est la personne, stable d'une saison à l'autre : dans Contretemps, c'est la première

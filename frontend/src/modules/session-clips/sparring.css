@@ -443,3 +443,70 @@
 .sc-micro--ecoute {
   color: var(--sc-rouge);
 }
+
+/* Sélection par appui long, Favoris */
+
+.sc-clip {
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.sc-clip--choisi {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, var(--card-bg));
+}
+
+.sc-etoile {
+  margin-top: 2px;
+  color: var(--accent);
+  fill: currentColor;
+}
+
+.sc-favoris {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.sc-favoris strong {
+  flex: 1;
+}
+
+.sc-favoris .icon--star {
+  color: var(--accent);
+}
+
+.sc-selection {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 64px;
+  padding: env(safe-area-inset-top) 10px 0;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 18px;
+}
+
+.sc-selection strong {
+  flex: 1;
+}
+
+.sc-selection .icon-btn {
+  min-width: 48px;
+  min-height: 48px;
+  color: inherit;
+}

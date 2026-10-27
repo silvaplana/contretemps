@@ -27,6 +27,10 @@ class FightCreate(BaseModel):
     people: list[int]
 
 
+class FavoriteUpdate(BaseModel):
+    favorite: bool
+
+
 class ParticipantsUpdate(BaseModel):
     """Les personnes du clip, dans l'ordre des places (Rouge puis Bleu à
     deux) ; `null` : pas encore nommé."""
@@ -55,6 +59,8 @@ class ClipOut(BaseModel):
     position: int
     title: str
     to_check: bool
+    # Dans les « ★ Favoris » de l'appelant.
+    favorite: bool = False
     check_reason: str | None = None
     participants: list[ParticipantOut]
     video: VideoSortie | None

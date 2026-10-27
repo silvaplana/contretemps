@@ -177,3 +177,30 @@ def test_filmer_un_combat(client, db_session, e):
     # Deux combattants différents, coach seulement.
     assert filmer([seb, seb])[1].status_code == 400
     assert client.post("/session-clips/fights", json={"upload_id": upload, "people": [seb, karim]}, headers=e["h"]["seb"]).status_code == 403
+
+
+def test_favoris(client, db_session, e):
+    """« ★ Favoris » : propres à chacun, limités aux clips visibles, effacés
+    avec le clip."""
+    seance = _session(client, e)
+    sc = core.session_clips_client
+    seb, karim = e["seb"].id, e["karim"].id
+    a = sc.add_clip(db_session, seance["id"], _video(db_session, e["ecole"], "a").id, [seb, karim])
+    b = sc.add_clip(db_session, seance["id"], _video(db_session, e["ecole"], "b").id, [karim, None], check_reason="?")
+
+    def mettre(qui, clip, oui=True):
+        return client.put(f"/session-clips/clips/{clip.id}/favorite", json={"favorite": oui}, headers=e["h"][qui])
+
+    assert mettre("seb", a).json()["favorite"] is True
+    assert [c["id"] for c in client.get("/session-clips/favorites", headers=e["h"]["seb"]).json()] == [a.id]
+    # Les favoris de Seb ne sont pas ceux du coach.
+    assert client.get("/session-clips/favorites", headers=e["h"]["coach"]).json() == []
+    assert client.get(f"/session-clips/clips/{a.id}", headers=e["h"]["coach"]).json()["favorite"] is False
+    # Un clip qu'on ne voit pas ne se met pas en favori.
+    assert mettre("lucas", a).status_code == 404 and mettre("seb", b).status_code == 404
+    assert mettre("seb", a, False).json()["favorite"] is False
+    assert client.get("/session-clips/favorites", headers=e["h"]["seb"]).json() == []
+
+    mettre("coach", a)
+    assert client.delete(f"/session-clips/clips/{a.id}", headers=e["h"]["coach"]).status_code == 204
+    assert client.get("/session-clips/favorites", headers=e["h"]["coach"]).json() == []

@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from saisons.portee import toutes_saisons
 from videos import Video, Videos
 
-from .models import Clip, ClipParticipant, ClipSession, SessionAttendee
+from .models import Clip, ClipParticipant, ClipSession, Favorite, SessionAttendee
 from .ports import Directory, Member
 
 
@@ -121,7 +121,42 @@ class SessionClips:
             )
         )
 
+    def favorites(self, db: Session, member: Member) -> list[Clip]:
+        """« ★ Favoris » de l'appelant, du plus récent au plus ancien, parmi
+        les clips qu'il peut voir."""
+        clips = db.scalars(
+            select(Clip)
+            .join(Favorite, Favorite.clip_id == Clip.id)
+            .join(ClipSession, ClipSession.id == Clip.session_id)
+            .where(Favorite.person_id == member.person_id, ClipSession.org_id == member.org_id)
+            .order_by(ClipSession.held_on.desc(), ClipSession.id.desc(), Clip.position)
+        )
+        visible = []
+        for clip in clips:
+            try:
+                visible.append(self.clip(db, member, clip.id))
+            except NotFoundError:
+                pass
+        return visible
+
+    def favorite_ids(self, db: Session, person_id: int, clip_ids: list[int]) -> set[int]:
+        if not clip_ids:
+            return set()
+        return set(
+            db.scalars(select(Favorite.clip_id).where(Favorite.person_id == person_id, Favorite.clip_id.in_(clip_ids)))
+        )
+
     # --- Écriture ---
+
+    def set_favorite(self, db: Session, member: Member, clip_id: int, favorite: bool) -> Clip:
+        clip = self.clip(db, member, clip_id)
+        row = db.get(Favorite, (member.person_id, clip.id))
+        if favorite and row is None:
+            db.add(Favorite(person_id=member.person_id, clip_id=clip.id))
+        elif not favorite and row is not None:
+            db.delete(row)
+        db.commit()
+        return clip
 
     def create_session(
         self, db: Session, member: Member, upload_id: str, title: str, held_on: date
@@ -267,6 +302,7 @@ class SessionClips:
         clip_ids = list(db.scalars(select(Clip.id).where(Clip.video_id == video_id)))
         if clip_ids:
             db.execute(delete(ClipParticipant).where(ClipParticipant.clip_id.in_(clip_ids)))
+            db.execute(delete(Favorite).where(Favorite.clip_id.in_(clip_ids)))
             db.execute(delete(Clip).where(Clip.id.in_(clip_ids)))
         for session in db.scalars(select(ClipSession).where(ClipSession.raw_video_id == video_id)):
             session.raw_video_id = None
