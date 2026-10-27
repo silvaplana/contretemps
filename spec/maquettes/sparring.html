@@ -185,6 +185,8 @@ h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-heig
     send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 12l16-8-6 16-3-7z"/></svg>',
     folder: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 6a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
     camfill: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h7A2.5 2.5 0 0 1 16 6.5v11a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 4 17.5z"/><path d="M17 9.5l4-2.6c.5-.3 1 .1 1 .6v9c0 .5-.5.9-1 .6l-4-2.6z"/></svg>',
+    dl: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/></svg>',
     user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>'
   };
 
@@ -387,7 +389,7 @@ h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-heig
     if (!S.sheet) return '';
     let inner = '';
     if (S.sheet.kind === 'menu') {
-      inner = `<button type="button" data-act="send">${I.send}Envoyer dans la messagerie…</button>`;
+      inner = `<button type="button" data-act="dl">${I.dl}Télécharger</button><button type="button" data-act="share">${I.share}Partager… (WhatsApp, etc.)</button><button type="button" data-act="send">${I.send}Envoyer dans la messagerie…</button>`;
       if (S.role === 'coach') inner += `<button type="button" data-act="swap-lecture">${I.swap}Inverser les noms</button><button type="button" data-act="rename">${I.user}Changer un nom</button><button type="button" class="danger" data-act="suppr-lecture">${I.trash}Supprimer ce clip</button>`;
     } else if (S.sheet.kind === 'pick') {
       const c = clip(S.sheet.clip);
@@ -414,7 +416,7 @@ h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-heig
     verifier: ['À vérifier', 'La file des clips dont l’appli n’est pas sûre, un par un, en gros.',
       ['La raison en clair : tenues trop proches, combattants emmêlés, pas de Y.', 'Les marques R et B sur la vidéo montrent qui est qui ; taper un nom pour le changer parmi les présents.', '« Inverser » échange les deux noms. « C’est bon » valide et passe au suivant : le clip part dans « Mes combats » des deux.', '« Supprimer ce clip » se rattrape pendant 10 s (Annuler).']],
     lecture: ['Lecture d’un clip', 'Plein écran avec la flèche de retour, comme le détail d’une chorégraphie. La vidéo se lit avec le lecteur du module Vidéos, plein écran compris.',
-      ['Sous la vidéo : les deux noms, la date, le cours.', 'Puis les autres combats de la séance (un membre ne voit que les siens).', '⋯ : Envoyer dans la messagerie ; pour un coach aussi Inverser, Changer un nom, Supprimer.']]
+      ['Sous la vidéo : les deux noms, la date, le cours.', 'Puis les autres combats de la séance (un membre ne voit que les siens).', '⋯ : Télécharger, Partager (WhatsApp…), Envoyer dans la messagerie ; pour un coach aussi Inverser, Changer un nom, Supprimer.']]
   };
   function renderNotes() {
     const n = NOTES[S.screen];
@@ -496,6 +498,8 @@ h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-heig
       case 'close': S.sheet = null; return render();
       case 'panel': S.panel = true; return render();
       case 'panel-close': S.panel = false; return render();
+      case 'dl': S.sheet = null; showToast('Vidéo enregistrée dans le téléphone'); return render();
+      case 'share': S.sheet = null; showToast('Le menu Partager du téléphone s\u2019ouvre : WhatsApp, mail…'); return render();
       case 'send': S.sheet = null; showToast('Choix de la discussion, comme pour un fichier de Docs'); return render();
       case 'swap-lecture': { const c = clip(S.clipId); [c.a, c.b] = [c.b, c.a]; S.sheet = null; showToast('Noms inversés', () => { [c.a, c.b] = [c.b, c.a]; }); return render(); }
       case 'rename': S.sheet = { kind: 'which', clip: S.clipId }; return render();
