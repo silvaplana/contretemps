@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from comptes import roles as r
 from comptes.models import Compte, Famille, RoleCompte
@@ -44,6 +44,11 @@ class Duplication:
     # Recopier le dossier de la saison dans l'onglet Docs (indépendant des
     # trois cases ci-dessus).
     documents: bool = False
+    # La fiche des élèves (spec/modules/saisons.md §3) : "last" (celle de la
+    # saison précédente) ou "base" (sans les champs ajoutés par l'école), et
+    # les champs de la saison précédente à masquer dans la nouvelle.
+    structure_eleves: str = "last"
+    champs_masques: set[int] = field(default_factory=set)
 
 
 # Recopie du dossier de saison de l'onglet Docs, branchée par app/main.py
@@ -60,6 +65,23 @@ class GestionSaisons:
     def lister(self, db: Session, ecole_id: int) -> list[Saison]:
         """De la plus récente (la courante) à la plus ancienne."""
         return list(db.scalars(select(Saison).where(Saison.ecole_id == ecole_id).order_by(Saison.id.desc())))
+
+    def contenu(self, db: Session, ecole_id: int) -> dict:
+        """Ce que « Créer une saison » peut reprendre de la courante."""
+        with toutes_saisons(db):
+            courante = saison_courante_id(db, ecole_id)
+            fiches = list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id, Compte.saison_id == courante)))
+            nb_cours = db.scalar(select(func.count()).select_from(Cours).where(Cours.saison_id == courante))
+            champs = member_fields.fields(db, ecole_id, courante)
+        return {
+            "eleves": sum(r.a_le_role(c, r.ELEVE) for c in fiches),
+            "profs": sum(r.a_le_role(c, r.PROFESSEUR) for c in fiches),
+            "cours": nb_cours,
+            "champs": [
+                {"id": c.id, "label": c.label, "key": c.key, "member_sees": c.member_sees, "others_see": c.others_see}
+                for c in champs
+            ],
+        }
 
     def modifier_courante(self, db: Session, ecole_id: int, nom: str, date_debut: dt.date, date_fin: dt.date) -> Saison:
         """Nom et dates seulement ; les anciennes saisons ne se modifient pas."""
@@ -103,7 +125,10 @@ class GestionSaisons:
             if duplication.cours:
                 cours = self._recopier_cours(db, ancienne_id, saison, fiches, duplication.eleves)
             if ancienne_id is not None:
-                member_fields.copy_season(db, ecole_id, ancienne_id, saison.id, fiches)
+                member_fields.copy_season(
+                    db, ecole_id, ancienne_id, saison.id, fiches,
+                    base=duplication.structure_eleves == "base", hidden=duplication.champs_masques,
+                )
             member_fields.known(db, ecole_id, saison.id)
             db.commit()
         if duplication.documents and ancienne_id is not None and self.recopier_documents is not None:

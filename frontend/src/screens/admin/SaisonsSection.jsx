@@ -3,48 +3,20 @@ import { consulterSaison, useSaisonConsultee } from '../../api/saison.js'
 import * as saisonsApi from '../../api/saisons.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import CreerSaison from './CreerSaison.jsx'
 
-// Proposition pour la saison suivante : "2026-2027" -> "2027-2028", dates
-// décalées d'un an. Juste un point de départ, tout reste modifiable.
-function saisonSuivante(courante) {
-  const decaler = (iso) => (iso ? `${Number(iso.slice(0, 4)) + 1}${iso.slice(4)}` : '')
-  const annees = courante?.nom.match(/^(\d{4})-(\d{4})$/)
-  return {
-    nom: annees ? `${Number(annees[1]) + 1}-${Number(annees[2]) + 1}` : '',
-    dateDebut: decaler(courante?.dateDebut),
-    dateFin: decaler(courante?.dateFin),
-  }
-}
-
-// Panneau "Créer nouvelle saison" / "Éditer saison courante" (spec §2.6 et
-// §5.1.1) : nom et dates, plus — en création seulement — les cases de
-// duplication, dans l'ordre profs → cours → élèves : chacune n'est
-// possible que si la précédente est cochée (on ne recopie pas des cours
-// sans leurs profs, ni des élèves sans leurs cours).
-function PanneauSaison({ mode, courante, onValider, onClose }) {
-  const [champs, setChamps] = useState(() =>
-    mode === 'creation'
-      ? saisonSuivante(courante)
-      : { nom: courante.nom, dateDebut: courante.dateDebut, dateFin: courante.dateFin },
-  )
-  const [cases, setCases] = useState({ profs: false, cours: false, eleves: false, documents: false })
+// Panneau "Éditer saison courante" (spec §2.6 et §5.1.1) : nom et dates.
+// La création est un écran à part (CreerSaison.jsx).
+function PanneauSaison({ courante, onValider, onClose }) {
+  const [champs, setChamps] = useState({ nom: courante.nom, dateDebut: courante.dateDebut, dateFin: courante.dateFin })
   const [erreur, setErreur] = useState(null)
   const [enCours, setEnCours] = useState(false)
-
-  function cocher(nom, coche) {
-    setCases((c) => {
-      if (nom === 'documents') return { ...c, documents: coche }
-      if (nom === 'profs') return coche ? { ...c, profs: true } : { ...c, profs: false, cours: false, eleves: false }
-      if (nom === 'cours') return coche ? { ...c, cours: true } : { ...c, cours: false, eleves: false }
-      return { ...c, eleves: coche }
-    })
-  }
 
   async function valider() {
     setErreur(null)
     setEnCours(true)
     try {
-      await onValider({ ...champs, cases })
+      await onValider(champs)
     } catch (err) {
       setErreur(err.message)
       setEnCours(false)
@@ -53,7 +25,7 @@ function PanneauSaison({ mode, courante, onValider, onClose }) {
 
   return (
     <Modal
-      title={mode === 'creation' ? 'Créer nouvelle saison' : 'Éditer saison courante'}
+      title="Éditer saison courante"
       onClose={onClose}
       footer={
         <button
@@ -92,47 +64,6 @@ function PanneauSaison({ mode, courante, onValider, onClose }) {
           onChange={(e) => setChamps((c) => ({ ...c, dateFin: e.target.value }))}
         />
       </div>
-
-      {mode === 'creation' && (
-        <div className="saison-panneau__duplication">
-          <p className="muted">Recopier depuis la saison {courante.nom} :</p>
-          <label className="checkbox-inline">
-            <input type="checkbox" checked={cases.profs} onChange={(e) => cocher('profs', e.target.checked)} />
-            Professeurs
-          </label>
-          <label className="checkbox-inline">
-            <input
-              type="checkbox"
-              checked={cases.cours}
-              disabled={!cases.profs}
-              onChange={(e) => cocher('cours', e.target.checked)}
-            />
-            Cours
-          </label>
-          <label className="checkbox-inline">
-            <input
-              type="checkbox"
-              checked={cases.eleves}
-              disabled={!cases.cours}
-              onChange={(e) => cocher('eleves', e.target.checked)}
-            />
-            Élèves (avec les mêmes cours)
-          </label>
-          <label className="checkbox-inline">
-            <input
-              type="checkbox"
-              checked={cases.documents}
-              onChange={(e) => cocher('documents', e.target.checked)}
-            />
-            Dossiers et fichiers de la saison (onglet Docs)
-          </label>
-          <p className="muted saison-panneau__note">
-            Les administrateurs sont toujours recopiés. Sans la dernière case, le dossier de la nouvelle
-            saison dans Docs part vide. Dès la validation, la nouvelle saison devient la
-            saison courante et la saison {courante.nom} passe en lecture seule.
-          </p>
-        </div>
-      )}
 
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
@@ -238,7 +169,7 @@ function PanneauSuppression({ saisons, onSupprimer, onClose }) {
 // libellé demandé par l'utilisateur le 2026-09-24), repliable comme
 // "Usage vidéo", entre les codes d'accès et les administrateurs. Chargée
 // dès l'affichage : son titre donne le nom de la saison affichée.
-export default function SaisonsSection({ ecoleId, onSaisonCreee, onSaisonSupprimee }) {
+export default function SaisonsSection({ ecoleId, documents, onSaisonCreee, onSaisonSupprimee }) {
   const [ouvert, setOuvert] = useState(false)
   const [saisons, setSaisons] = useState([])
   const [panneau, setPanneau] = useState(null) // 'creation' | 'edition' | 'suppression' | null
@@ -320,7 +251,7 @@ export default function SaisonsSection({ ecoleId, onSaisonCreee, onSaisonSupprim
           </div>
           <div className="admin-saisons__actions">
             <button type="button" className="btn btn--secondary" onClick={() => setPanneau('creation')}>
-              Créer nouvelle saison
+              Créer une saison
             </button>
             <button type="button" className="btn btn--secondary" onClick={() => setPanneau('edition')}>
               Éditer saison courante
@@ -336,13 +267,17 @@ export default function SaisonsSection({ ecoleId, onSaisonCreee, onSaisonSupprim
       {panneau === 'suppression' && (
         <PanneauSuppression saisons={saisons} onSupprimer={supprimer} onClose={() => setPanneau(null)} />
       )}
-      {(panneau === 'creation' || panneau === 'edition') && courante && (
-        <PanneauSaison
-          mode={panneau}
+      {panneau === 'creation' && courante && (
+        <CreerSaison
+          ecoleId={ecoleId}
           courante={courante}
-          onValider={panneau === 'creation' ? creer : editer}
+          documents={documents}
+          onCreer={creer}
           onClose={() => setPanneau(null)}
         />
+      )}
+      {panneau === 'edition' && courante && (
+        <PanneauSaison courante={courante} onValider={editer} onClose={() => setPanneau(null)} />
       )}
     </section>
   )

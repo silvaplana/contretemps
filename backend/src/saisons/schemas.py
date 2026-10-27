@@ -1,6 +1,7 @@
 """Schémas des routes des saisons (voir receiver.py)."""
 
 import datetime as dt
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -29,6 +30,31 @@ class SaisonCreation(SaisonModification):
     dupliquer_eleves: bool = False
     # Onglet Docs : recopier le dossier de la saison précédente.
     dupliquer_documents: bool = False
+    # La fiche des élèves (spec/modules/saisons.md §3) : celle de la saison
+    # précédente, ou la structure de base (sans les champs ajoutés par
+    # l'école) ; et les champs (ids de la saison précédente) à masquer.
+    structure_eleves: Literal["last", "base"] = "last"
+    champs_masques: list[int] = []
+
+
+class ChampContenu(BaseModel):
+    id: int
+    label: str
+    # Clé des champs que l'appli sait lire (members.fields.KNOWN), sinon
+    # None : un champ ajouté par l'école.
+    key: str | None = None
+    member_sees: bool = False
+    others_see: bool = False
+
+
+class SaisonContenu(BaseModel):
+    """Ce que la nouvelle saison peut reprendre de la courante : les
+    nombres des cases « Recopier… » et les champs de la fiche des élèves."""
+
+    eleves: int
+    profs: int
+    cours: int
+    champs: list[ChampContenu]
 
 
 class SaisonCreee(BaseModel):

@@ -14,6 +14,7 @@ import * as notificationsApi from './api/notifications.js'
 import * as presenceApi from './api/presence.js'
 import * as profsApi from './api/profs.js'
 import * as saisonApi from './api/saison.js'
+import * as saisonsApi from './api/saisons.js'
 import * as sessionApi from './api/session.js'
 import { effacerFrappe, signalerFrappeRecue } from './utils/frappeIndicateur.js'
 import { lienRecu, oublierLienRecu } from './utils/lienRecu.js'
@@ -457,10 +458,31 @@ function App() {
     return true
   }
 
-  function surSaisonCreee({ compteId }) {
+  // Saison créée : « Annuler » pendant 10 s la supprime (spec/modules/
+  // saisons.md §3). Gardé ici : l'écran d'Admin est recréé par la bascule.
+  const [saisonCreee, setSaisonCreee] = useState(null)
+  useEffect(() => {
+    if (!saisonCreee) return
+    const minuteur = setTimeout(() => setSaisonCreee(null), 10000)
+    return () => clearTimeout(minuteur)
+  }, [saisonCreee])
+
+  function surSaisonCreee({ compteId, saison }) {
     saisonApi.consulterSaison(null)
+    setSaisonCreee(saison)
     if (compteId && compteId !== compteReel?.id) basculerVersFiche(compteId)
     else setVersionDonnees((v) => v + 1)
+  }
+
+  async function annulerSaisonCreee() {
+    const saison = saisonCreee
+    setSaisonCreee(null)
+    try {
+      const { compteId } = await saisonsApi.supprimer(ecole.id, saison.id)
+      surSaisonSupprimee({ compteId, saisonId: saison.id })
+    } catch (err) {
+      setAvisSaison(err.message)
+    }
   }
 
   // Superuser (§2.5) : l'école choisie est retenue sur l'appareil (voir
@@ -1073,6 +1095,14 @@ function App() {
       {avisSaison && (
         <div className="bandeau-saison bandeau-saison--avis" role="alert">
           {avisSaison}
+        </div>
+      )}
+      {saisonCreee && (
+        <div className="admin-groupes__toast" role="status">
+          <span>Saison {saisonCreee.nom} créée</span>
+          <button type="button" onClick={annulerSaisonCreee}>
+            Annuler
+          </button>
         </div>
       )}
 

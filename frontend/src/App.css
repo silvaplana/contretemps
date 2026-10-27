@@ -4687,3 +4687,170 @@ a.btn {
   height: 26px;
   accent-color: var(--accent);
 }
+
+/* « Créer une saison » (screens/admin/CreerSaison.jsx, spec/modules/
+   saisons.md §3) : un écran plein, comme la maquette. */
+.creer-saison {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  padding-top: env(safe-area-inset-top);
+  font-size: 17px;
+}
+
+.creer-saison__titre {
+  margin: 0;
+  font-size: 19px;
+}
+
+.creer-saison__corps {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 16px calc(24px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.creer-saison__dates {
+  display: flex;
+  gap: 10px;
+}
+
+.creer-saison__dates > * {
+  flex: 1;
+  min-width: 0;
+}
+
+.creer-saison__lignes {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.creer-saison__ligne {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+.creer-saison__ligne > span {
+  flex: 1;
+  min-width: 0;
+}
+
+.creer-saison__ligne strong {
+  display: block;
+}
+
+.creer-saison__ligne span span {
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.creer-saison__lien {
+  flex: none;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+  text-align: left;
+}
+
+.creer-saison__principal {
+  min-height: 52px;
+  margin-top: 12px;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.creer-saison__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.creer-saison__partie,
+.creer-saison__groupe {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.creer-saison__cadre {
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 16px;
+  background: var(--card-bg);
+}
+
+.creer-saison__aide {
+  display: block;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.creer-saison__champ {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 54px;
+  border-bottom: 1px solid var(--border);
+}
+
+.creer-saison__nom {
+  flex: 1;
+  min-width: 0;
+}
+
+.creer-saison__nom small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.creer-saison__champ--cache .creer-saison__nom {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.creer-saison__nature {
+  flex: none;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.creer-saison__oeil {
+  min-width: 48px;
+  min-height: 48px;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.creer-saison__oeil:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
