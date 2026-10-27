@@ -81,8 +81,13 @@ maintenir un build Android de toute l'appli pour une seule fonction.
   « caméra hors service » en attendant.
 - **Réglages Samsung** : batterie « Non restreinte » pour l'appli, « Protéger la batterie » (charge
   limitée à environ 85 %) pour un téléphone toujours branché.
-- Pas de mode avion : le téléphone doit rester joignable par le Wi-Fi du club. Sans carte SIM, il ne
-  reçoit de toute façon pas d'appels.
+- **Deux modes, au choix dans l'enregistreur** :
+    - **Connecté** (par défaut) : Wi-Fi seul, données mobiles coupées, « Ne pas déranger », rien d'autre
+      qu'un lien très léger avec le serveur. Démarrage à distance, voyant d'état et envoi automatique.
+    - **Autonome** : mode avion, aucune communication. L'enregistreur filme seul pendant les créneaux
+      des cours, récupérés au moment du passage en autonome, ou sur un appui à l'écran. L'envoi se fait
+      quand on sort du mode avion. L'appli ne peut pas activer le mode avion elle-même (Android
+      l'interdit) : on le fait à la main ou avec une routine Samsung.
 - C'est un enregistreur générique, réutilisable ailleurs (par exemple une appli de montagne).
 
 ## 5. Traitement
