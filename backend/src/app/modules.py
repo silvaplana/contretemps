@@ -5,6 +5,7 @@ il a besoin (`requires`) ; sinon le serveur refuse de démarrer."""
 from assistant.module import MODULE as assistant
 from choregraphies.module import MODULE as choregraphies
 from documents_contretemps.module import MODULE as documents
+from helloasso.module import MODULE as helloasso
 from finances_contretemps.module import MODULE as finances
 from inscriptions.module import MODULE as registration
 from messagerie.module import MODULE as messaging
@@ -26,4 +27,5 @@ MODULES = [
     expense_notes,
     finances,
     session_clips,
+    helloasso,
 ]

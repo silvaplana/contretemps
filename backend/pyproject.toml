@@ -60,6 +60,9 @@ dependencies = [
     # passent par `requests` ci-dessus (pas le SDK
     # google-api-python-client, plus lourd, pas nécessaire ici).
     "google-auth",
+    # Clés d'API des organisations chiffrées en base (securite/chiffrement.py,
+    # clé secrète HelloAsso) — déjà installé transitivement (via pywebpush).
+    "cryptography",
 ]
 
 [project.optional-dependencies]

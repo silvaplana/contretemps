@@ -4357,6 +4357,113 @@ a.btn {
   font-size: 17px;
 }
 
+/* Un module avec des réglages : nom, petite ligne d'état et lien sur la
+   même ligne (ex. HelloAsso : « Connecter »). */
+.fonctionnalites__nom {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  column-gap: 8px;
+}
+
+/* Connexion HelloAsso (modules/helloasso/HelloAssoReglages.jsx, maquette
+   « Connexion HelloAsso »). */
+.helloasso__etat {
+  flex-basis: 100%;
+  order: 2;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.helloasso__lien {
+  min-height: 48px;
+  margin-left: auto;
+  padding: 0 4px;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.helloasso__guide {
+  margin: 0;
+  padding-left: 22px;
+}
+
+.helloasso__guide li {
+  margin: 6px 0;
+}
+
+.helloasso__guide a {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.helloasso__cle {
+  display: flex;
+  gap: 6px;
+}
+
+.helloasso__cle input {
+  flex: 1;
+}
+
+.helloasso__resultat {
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.helloasso__resultat strong {
+  display: block;
+}
+
+.helloasso__resultat--ok {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.helloasso__resultat--erreur {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+.helloasso__resultat span {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.helloasso__resultat dl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin: 12px 0 0;
+  font-size: 16px;
+}
+
+.helloasso__resultat dt {
+  color: var(--text-muted);
+}
+
+.helloasso__resultat dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.helloasso__titre {
+  margin: 0;
+  font-weight: 700;
+}
+
+.helloasso__formulaires {
+  margin: 0;
+  padding-left: 20px;
+}
+
 /* Vocabulaire (VocabulaireSection.jsx) : où le mot s'affiche, sous son champ. */
 .vocabulaire__ou {
   margin: 4px 0 0;

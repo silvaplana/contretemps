@@ -631,6 +631,9 @@ MODULE = Module(
   créées par Alembic.
 - Côté écran, `module.js` déclare `tabs` : les onglets de la barre du bas (clé, libellé, icône, qui
   les voit, écran). Montrer ou cacher seulement ; le vrai contrôle reste sur chaque route.
+  Il peut aussi déclarer `settings` : un composant affiché sur la ligne du module dans
+  Fonctionnalités, pour l'Administrateur principal et le Super User (ex. la connexion HelloAsso :
+  « Connecter » / « Voir »). Un module sans onglet a `tabs: []`.
 
 ### 11.2 La liste des modules de l'appli
 
@@ -696,7 +699,11 @@ Déjà codés dans Contretemps :
    a. formules et échéances, Admin > École > Tarifs *(faite le 27 octobre 2026)* ;
    b. options et codes promo (à cocher, avec un code) *(faite le 27 octobre 2026)* ;
    c. règles en français, comprises par l'assistant *(faite le 27 octobre 2026)*.
-8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
+8. **HelloAsso** (`modules/helloasso.md` §6), en quatre PR :
+   a. connexion de l'organisation (écran, test, clés chiffrées) *(faite le 27 octobre 2026)* ;
+   b. campagne d'une saison et champs imposés ;
+   c. synchronisation des membres et des paiements ;
+   d. tarifs HelloAsso en lecture seule dans l'écran Tarifs.
 9. Formulaire d'inscription de l'appli (à concevoir).
 
 ---
