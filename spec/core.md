@@ -31,7 +31,7 @@ Maquettes validées par Seb (les écrans les suivent exactement) :
 | Famille par l'email du payeur (§4.4) | Inscription publique, HelloAsso (`modules/helloasso.md`) |
 | Connexion : mot de passe, invitation, session (§6) | Messagerie, vidéos, chorégraphies |
 | Niveaux : Membre, Admin, Administrateur principal, Super User (§7) | Documents, Fichier de base, Signature |
-| Saisons et leur création étape par étape (§8) | Financier, notes de frais |
+| Période (§8) ; le module Saisons et la création d'une saison | Financier, notes de frais |
 | Tarifs : formules, options et codes promo (§9) | Catalogue, boutique |
 | Installation sur le téléphone, barre du bas (§10) | Assistant |
 | Enregistrement des modules, modules allumés par organisation (§11) | |
@@ -446,8 +446,10 @@ authentification, en option dans Profil.
 
 Une association vit par années ; la fiche d'une personne, sa structure (§4.3), ses groupes de
 saison et ses tarifs (§9) sont par saison. Une organisation sans saisons (une pizzeria) en a une
-seule, sans fin, et ne voit jamais le mot « saison ». *(Fil ouvert du 24 octobre : faire de
-Saisons un module optionnel, la période restant dans le core ; attend le « vas-y » de Seb.)*
+seule, sans fin, et ne voit jamais le mot « saison ». **Décision de Seb du 27 octobre** : le core
+garde la **période** (table `saisons`, `portee.py`, première période automatique, une fiche par
+période) ; le module optionnel **Saisons** apporte la création, la suppression, les anciennes
+saisons et le mot à l'écran (`modules/saisons.md`). Ce qui suit décrit le module allumé.
 
 - Saison courante = la dernière créée ; elle seule est modifiable, les autres en lecture seule,
   imposé par le serveur (`saisons/portee.py` : un module ne filtre jamais la saison à la main).
@@ -659,7 +661,9 @@ Déjà codés dans Contretemps :
    c. reprise des champs d'`eleves` (date de naissance, adresse, santé…) dans la fiche *(faite le
       27 octobre 2026)*.
 5. **Famille** par l'email du payeur, reprise des familles *(faite le 27 octobre 2026)*.
-6. **Création de saison** en un écran, étape par étape.
+6. **Saisons** (`modules/saisons.md` §4), en deux PR :
+   a. module Saisons optionnel, la période restant dans le core ;
+   b. Créer une saison en un écran (maquette « Créer une saison »).
 7. **Tarifs** : formules, options, codes promo, règles par l'assistant.
 8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
 9. Formulaire d'inscription de l'appli (à concevoir).
@@ -669,6 +673,5 @@ Déjà codés dans Contretemps :
 ## 14. Reste à décider
 
 - Le mot pour « membre + compte de connexion » (membre, compte utilisateur).
-- Saisons en module optionnel (fil du 24 octobre).
 - Postgres : dès l'extraction du core, ou plus tard.
 - Catalogue (produits, `products.group_id`) : spec à écrire quand un produit en aura besoin.
