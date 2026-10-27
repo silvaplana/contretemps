@@ -88,6 +88,13 @@ ROUTES_PUBLIQUES = {
     ("POST", "/documents/public/signing/{token}/read"),
     ("POST", "/documents/public/signing/{token}/sign"),
     ("POST", "/documents/public/signing/{token}/refuse"),
+    # La caméra de la salle de Fights (spec/modules/video-combats.md §4) :
+    # un téléphone sans compte, reconnu par le jeton remis au jumelage.
+    ("POST", "/session-clips/recorder/pair"),
+    ("POST", "/session-clips/recorder/heartbeat"),
+    ("POST", "/session-clips/recorder/pieces"),
+    ("GET", "/session-clips/recorder/pieces/{upload_id}"),
+    ("PUT", "/session-clips/recorder/pieces/{upload_id}"),
     ("GET", "/par-host/personnalisation"),
     ("GET", "/par-host/entete.html"),
     ("GET", "/par-host/site.webmanifest"),

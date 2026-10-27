@@ -6,15 +6,27 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from db import get_db
 from videos.schemas import VideoSortie
+from videos.videos import DecalageInvalide
 
-from .models import Clip, ClipSession
+from . import camera
+from .models import Clip, ClipSession, Piece
 from .ports import Member
 from .schemas import (
+    CameraOut,
+    CameraStart,
+    PieceOpen,
+    PieceOut,
+    RecorderHeartbeat,
+    RecorderOrders,
+    RecorderPair,
+    RecorderPaired,
+    SignalUpdate,
     ClipOut,
     FavoriteUpdate,
     FightCreate,
@@ -126,7 +138,80 @@ class SessionClipsReceiver:
             coach(m)
             return [PersonOut(id=p.id, name=p.name) for p in client.directory.people(s, m.org_id)]
 
+        # --- Caméra de la salle (étape 3), côté coachs ---
+
+        @app.get(f"{PREFIX}/camera", response_model=CameraOut)
+        def camera_status(m: Member = member, s: Session = db):
+            return CameraOut(**vars(guard(lambda: camera.status(s, m))))
+
+        @app.post(f"{PREFIX}/camera/pairing-code", response_model=CameraOut)
+        def pairing_code(m: Member = member, s: Session = db):
+            guard(lambda: camera.new_pairing_code(s, m))
+            return CameraOut(**vars(camera.status(s, m)))
+
+        @app.post(f"{PREFIX}/camera/start", response_model=CameraOut)
+        def camera_start(body: CameraStart, m: Member = member, s: Session = db):
+            guard(lambda: camera.start(s, m, body.title.strip()))
+            return CameraOut(**vars(camera.status(s, m)))
+
+        @app.post(f"{PREFIX}/camera/stop", response_model=CameraOut)
+        def camera_stop(m: Member = member, s: Session = db):
+            guard(lambda: camera.stop(s, m))
+            return CameraOut(**vars(camera.status(s, m)))
+
+        @app.put(f"{PREFIX}/camera/signal", response_model=CameraOut)
+        def camera_signal(body: SignalUpdate, m: Member = member, s: Session = db):
+            guard(lambda: camera.set_signal(s, m, body.signal))
+            return CameraOut(**vars(camera.status(s, m)))
+
+        # --- Caméra de la salle, côté téléphone : sans session, avec le
+        # jeton du jumelage (routes publiques, voir comptes/rbac.py) ---
+
+        def recorder(s: Session, token: str | None):
+            return guard(lambda: camera.recorder_for_token(s, token))
+
+        @app.post(f"{PREFIX}/recorder/pair", response_model=RecorderPaired)
+        def recorder_pair(body: RecorderPair, s: Session = db):
+            _, token = guard(lambda: camera.pair(s, body.code))
+            return RecorderPaired(token=token)
+
+        @app.post(f"{PREFIX}/recorder/heartbeat", response_model=RecorderOrders)
+        def recorder_heartbeat(body: RecorderHeartbeat, s: Session = db, x_recorder_token: str | None = Header(None)):
+            r = recorder(s, x_recorder_token)
+            camera.heartbeat(s, r, body.state, body.battery_percent, body.free_bytes, body.pending_pieces)
+            return RecorderOrders(session_id=r.session_id, signal=r.signal)
+
+        @app.post(f"{PREFIX}/recorder/pieces", response_model=PieceOut)
+        def recorder_piece(body: PieceOpen, s: Session = db, x_recorder_token: str | None = Header(None)):
+            r = recorder(s, x_recorder_token)
+            piece = guard(lambda: camera.open_piece(s, client, r, body.session_id, body.position, body.size, body.last))
+            return self._piece_out(s, piece)
+
+        @app.get(f"{PREFIX}/recorder/pieces/{{upload_id}}", response_model=PieceOut)
+        def recorder_piece_state(upload_id: str, s: Session = db, x_recorder_token: str | None = Header(None)):
+            r = recorder(s, x_recorder_token)
+            return self._piece_out(s, guard(lambda: camera.piece_of(s, r, upload_id)))
+
+        @app.put(f"{PREFIX}/recorder/pieces/{{upload_id}}", response_model=PieceOut)
+        async def recorder_piece_block(
+            upload_id: str, request: Request, s: Session = db, x_recorder_token: str | None = Header(None)
+        ):
+            r = recorder(s, x_recorder_token)
+            piece = guard(lambda: camera.piece_of(s, r, upload_id))
+            data = await request.body()
+            offset = int(request.headers.get("X-Decalage", "-1"))
+            try:
+                client.videos.ecrire_bloc(s, upload_id, offset, data)
+            except DecalageInvalide as err:
+                raise HTTPException(status_code=409, detail={"octets_recus": err.octets_recus}) from err
+            camera.piece_written(s, r)
+            return self._piece_out(s, piece)
+
     # --- Mise en forme ---
+
+    def _piece_out(self, s: Session, piece: Piece) -> PieceOut:
+        upload = self.client.videos.obtenir_televersement(s, piece.upload_id)
+        return PieceOut(upload_id=piece.upload_id, received=upload.octets_recus if upload else 0)
 
     def _sessions_out(self, s: Session, m: Member, sessions: list[ClipSession]) -> list[SessionOut]:
         ids = [x.id for x in sessions]
@@ -134,6 +219,7 @@ class SessionClipsReceiver:
         videos = self.client.video_map(
             s, [c.video_id for x in ids for c in clips[x][:3]] + [x.raw_video_id for x in sessions]
         )
+        live = set(s.scalars(select(Piece.session_id).where(Piece.session_id.in_(ids))))
         out = []
         for x in sessions:
             raw = videos.get(x.raw_video_id)
@@ -142,6 +228,7 @@ class SessionClipsReceiver:
                 SessionOut(
                     id=x.id,
                     title=x.title,
+                    live=x.id in live,
                     held_on=x.held_on,
                     status=status,
                     clip_count=len(clips[x.id]),

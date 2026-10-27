@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import BigInteger, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -34,8 +34,9 @@ class ClipSession(Base):
     title: Mapped[str] = mapped_column(String(150), nullable=False, default="")
     held_on: Mapped[date] = mapped_column(Date, nullable=False)
     raw_video_id: Mapped[int | None] = mapped_column(ForeignKey("videos.id"), nullable=True)
-    # 'processing' : en attente de découpe ; 'ready' : clips prêts ;
-    # 'failed' : vidéo illisible (voir app/sparring_worker.py).
+    # 'recording' : la caméra de la salle filme (étape 3) ; 'processing' :
+    # en attente de découpe ; 'ready' : clips prêts ; 'failed' : vidéo
+    # illisible (voir app/sparring_worker.py).
     # L'envoi en cours se lit sur la vidéo brute (statut 'en_cours').
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="processing")
     created_by: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -54,6 +55,10 @@ class Clip(Base):
     # n'apparaît dans « Mes combats » qu'une fois validé.
     to_check: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     check_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Début du combat dans la séance filmée par la caméra de la salle (en
+    # secondes) : la découpe au fil des morceaux ne coupe pas deux fois le
+    # même combat. Vide pour les autres clips.
+    start_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
 
 
 class ClipParticipant(Base):
@@ -86,3 +91,48 @@ class Favorite(Base):
 
     person_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     clip_id: Mapped[int] = mapped_column(ForeignKey("sc_clips.id"), primary_key=True, index=True)
+
+
+class Recorder(Base):
+    """La caméra de la salle (étape 3, §4) : l'appli Android « enregistreur »
+    jumelée à l'organisation par un code. Le téléphone demande toutes les
+    5 s s'il doit filmer (`session_id`) et donne son état."""
+
+    __tablename__ = "sc_recorders"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    # Empreinte (sha256) du jeton remis au téléphone ; vide tant que le code
+    # de jumelage n'a pas été tapé.
+    token_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    pairing_code: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    pairing_expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Ce que le téléphone a dit la dernière fois.
+    state: Mapped[str] = mapped_column(String(20), nullable=False, default="ready")  # 'ready' | 'recording'
+    battery_percent: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    free_bytes: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    pending_pieces: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_upload_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Ce que demandent les coachs : la séance à filmer (vide = rester
+    # prête) et le signal « compris » (étape 3c).
+    session_id: Mapped[int | None] = mapped_column(ForeignKey("sc_sessions.id"), nullable=True)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    signal: Mapped[str] = mapped_column(String(10), nullable=False, default="beep")  # 'beep' | 'light' | 'both'
+
+
+class Piece(Base):
+    """Un morceau de 2 minutes filmé par la caméra de la salle, rangé comme
+    une vidéo du module `videos`. Les morceaux d'une séance se suivent sans
+    trou ; `last` marque celui de « Fin de séance »."""
+
+    __tablename__ = "sc_pieces"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("sc_sessions.id"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)  # 0, 1, 2…
+    upload_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    video_id: Mapped[int | None] = mapped_column(ForeignKey("videos.id"), nullable=True)
+    last: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Rempli par la découpe une fois les postures lues (voir cutting.py).
+    duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)

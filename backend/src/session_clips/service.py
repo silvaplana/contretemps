@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from saisons.portee import toutes_saisons
 from videos import Video, Videos
 
-from .models import Clip, ClipParticipant, ClipSession, Favorite, SessionAttendee
+from .models import Clip, ClipParticipant, ClipSession, Favorite, Piece, SessionAttendee
 from .ports import Directory, Member
 
 
@@ -225,6 +225,7 @@ class SessionClips:
         people: list[int | None],
         to_check: bool = False,
         check_reason: str | None = None,
+        start_seconds: float | None = None,
     ) -> Clip:
         """Range un clip découpé (worker de l'étape 2) à la fin de la séance."""
         last = db.scalar(select(func.max(Clip.position)).where(Clip.session_id == session_id))
@@ -234,6 +235,7 @@ class SessionClips:
             position=(last or 0) + 1,
             to_check=to_check or bool(check_reason) or not people or None in people,
             check_reason=check_reason,
+            start_seconds=start_seconds,
         )
         db.add(clip)
         db.flush()
@@ -293,9 +295,12 @@ class SessionClips:
 
     @staticmethod
     def _video_ids(db: Session) -> set[int]:
-        """Les vidéos du module : clips et vidéos entières des séances."""
-        return set(db.scalars(select(Clip.video_id))) | set(
-            db.scalars(select(ClipSession.raw_video_id).where(ClipSession.raw_video_id.is_not(None)))
+        """Les vidéos du module : clips, vidéos entières des séances et
+        morceaux filmés par la caméra de la salle."""
+        return (
+            set(db.scalars(select(Clip.video_id)))
+            | set(db.scalars(select(ClipSession.raw_video_id).where(ClipSession.raw_video_id.is_not(None))))
+            | set(db.scalars(select(Piece.video_id).where(Piece.video_id.is_not(None))))
         )
 
     def _video_deleted(self, db: Session, video_id: int) -> None:
@@ -306,6 +311,8 @@ class SessionClips:
             db.execute(delete(Clip).where(Clip.id.in_(clip_ids)))
         for session in db.scalars(select(ClipSession).where(ClipSession.raw_video_id == video_id)):
             session.raw_video_id = None
+        for piece in db.scalars(select(Piece).where(Piece.video_id == video_id)):
+            piece.video_id = None
 
 
 def clip_title(names: list[str | None], repeat: int = 1) -> str:

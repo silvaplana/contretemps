@@ -11,6 +11,7 @@ import {
   useTeleversementsTermines,
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
+import { BandeCamera, PanneauCamera, PastilleCamera, useCamera } from './Camera.jsx'
 import './sparring.css'
 
 // Sparring (spec/modules/video-combats.md §6, maquette validée
@@ -88,6 +89,9 @@ export default function Sparring({ ecoleId, cours }) {
   )
   const vider = useCallback(() => setSelection({ cle: '', clips: AUCUN }), [])
 
+  const [camera, setCamera] = useCamera(Boolean(me?.is_coach))
+  const [panneau, setPanneau] = useState(false)
+
   if (!me) return <div className="screen sc" aria-busy="true" />
 
   const contexte = { me, ecoleId, cours, version, rafraichir, montrer, supprimer, caches, choisis, basculer }
@@ -123,6 +127,7 @@ export default function Sparring({ ecoleId, cours }) {
     ecran = (
       <div className="screen sc">
         {me.is_coach && <Onglets onglet={onglet} onChange={setOnglet} version={version} />}
+        {me.is_coach && !panneau && <BandeCamera camera={camera} onOpen={() => setPanneau(true)} />}
         <div className="sc__corps">
           {onglet !== 'verifier' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
@@ -136,6 +141,17 @@ export default function Sparring({ ecoleId, cours }) {
   return (
     <>
       {ecran}
+      {me.is_coach && !ouvert && choisis.size === 0 && <PastilleCamera camera={camera} onOpen={() => setPanneau(true)} />}
+      {panneau && camera && (
+        <PanneauCamera
+          camera={camera}
+          setCamera={setCamera}
+          cours={cours}
+          montrer={montrer}
+          rafraichir={rafraichir}
+          onClose={() => setPanneau(false)}
+        />
+      )}
       {choisis.size > 0 && (
         <BarreSelection me={me} choisis={choisis} vider={vider} montrer={montrer} supprimer={supprimer} rafraichir={rafraichir} />
       )}
@@ -404,7 +420,10 @@ function EtatSeance({ s }) {
       </>
     )
   }
-  if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
+  if (s.status === 'recording') return <span className="sc-chip sc-chip--warn">Filme</span>
+  if (s.status === 'processing') {
+    return <span className="sc-chip sc-chip--info">{s.live ? 'Derniers clips dans quelques minutes' : 'Clips prêts demain matin'}</span>
+  }
   if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
   return (
     <>
@@ -433,7 +452,8 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
         <p className="sc-vide">Aucune séance filmée. Le + filme un combat avec le téléphone.</p>
       )}
       {liste?.map((s) => {
-        const prete = s.status === 'ready'
+        // Filmée par la caméra : ses clips s'ouvrent dès les premiers combats.
+        const prete = s.status === 'ready' || (s.live && s.clip_count > 0)
         return (
           <button
             key={s.id}
@@ -452,7 +472,15 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
               </span>
             ) : (
               <span className="sc-couverture sc-couverture--attente">
-                {s.status === 'uploading' ? 'La vidéo arrive…' : s.status === 'failed' ? 'Vidéo illisible' : 'Découpe cette nuit'}
+                {s.status === 'uploading'
+                  ? 'La vidéo arrive…'
+                  : s.status === 'failed'
+                    ? 'Vidéo illisible'
+                    : s.status === 'recording'
+                      ? 'Filme…'
+                      : s.live
+                        ? 'Découpe en cours'
+                        : 'Découpe cette nuit'}
               </span>
             )}
             <span className="sc-carte__info">

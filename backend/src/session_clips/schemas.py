@@ -3,7 +3,7 @@ models.py)."""
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 
 from pydantic import BaseModel
 
@@ -72,6 +72,8 @@ class ClipOut(BaseModel):
 class SessionOut(BaseModel):
     id: int
     title: str
+    # Filmée par la caméra de la salle (découpe au fil du cours).
+    live: bool = False
     held_on: date
     # 'uploading' (la vidéo arrive), 'processing' (découpe à venir), 'ready'.
     status: str
@@ -86,3 +88,67 @@ class SessionOut(BaseModel):
 class SessionDetail(SessionOut):
     clips: list[ClipOut]
     attendees: list[PersonOut]
+
+
+# --- Caméra de la salle (étape 3) ---
+
+
+class CameraOut(BaseModel):
+    """La pastille et le panneau de la caméra (§6.3). `state` : 'none' (pas
+    encore installée), 'ready', 'recording' ou 'offline'."""
+
+    paired: bool
+    state: str
+    battery_percent: int | None = None
+    free_bytes: int | None = None
+    pending_pieces: int = 0
+    last_upload_at: datetime | None = None
+    session_id: int | None = None
+    session_title: str = ""
+    started_at: datetime | None = None
+    signal: str
+    pairing_code: str | None = None
+    pairing_expires_at: datetime | None = None
+
+
+class CameraStart(BaseModel):
+    title: str = ""
+
+
+class SignalUpdate(BaseModel):
+    signal: str
+
+
+class RecorderPair(BaseModel):
+    code: str
+
+
+class RecorderPaired(BaseModel):
+    token: str
+
+
+class RecorderHeartbeat(BaseModel):
+    state: str  # 'ready' | 'recording'
+    battery_percent: int | None = None
+    free_bytes: int | None = None
+    pending_pieces: int = 0
+
+
+class RecorderOrders(BaseModel):
+    """Ce que le téléphone doit faire : filmer la séance `session_id`
+    (vide = rester prêt), avec ce signal « compris »."""
+
+    session_id: int | None
+    signal: str
+
+
+class PieceOpen(BaseModel):
+    session_id: int
+    position: int
+    size: int
+    last: bool = False
+
+
+class PieceOut(BaseModel):
+    upload_id: str
+    received: int
