@@ -61,9 +61,12 @@ risque de couper un enregistrement d'une heure. Un mode Samsung « Modes et rout
 avion, met la luminosité au minimum et ouvre l'appareil photo. La vidéo est envoyée à la main dans
 l'appli, par l'envoi par blocs du module `videos` (SPEC.md §6.8).
 
-**Ensuite, dans l'appli Android (Capacitor, voir ANDROID.md)** : un plugin natif ajoute
-l'enregistrement de séance.
+**Ensuite, une petite appli Android à part, l'« enregistreur »** : l'appli reste la PWA pour tout le
+monde. L'enregistreur n'est installé que sur le téléphone qui filme. C'est une appli Kotlin minuscule
+(CameraX), indépendante du frontend, distribuée en APK. On n'utilise pas Capacitor, qui obligerait à
+maintenir un build Android de toute l'appli pour une seule fonction.
 
+- La PWA le lance par un lien profond (`intent://`), et il rend la main aussitôt.
 - Il ne tourne que pendant la séance, jamais en permanence : Samsung tue les applis de fond, et
   Android interdit d'allumer la caméra depuis l'arrière-plan.
 - « Démarrer la séance » lance un service de premier plan (caméra, écran éteint, notification
@@ -136,7 +139,7 @@ Tout est open source et tourne sur le VPS. Aucune API payante.
 | Recadrage | OpenCV et ffmpeg |
 | Traitement de nuit | Un worker, comme les autres workers du Docker Compose |
 | Stockage et envoi | Module `videos` existant (SPEC.md §6.8) |
-| Enregistrement de séance | Plugin Capacitor natif (CameraX, service de premier plan) |
+| Enregistrement de séance | Petite appli Android à part (Kotlin, CameraX, service de premier plan), lancée par la PWA |
 
 Le code suivrait les conventions du dépôt : `backend/src/fight_clips/` et
 `frontend/src/modules/fight_clips/`, tables préfixées `fc_`. Nom à valider.
@@ -153,8 +156,7 @@ Chaque étape est utilisable seule. On s'arrête dès qu'une étape ne vaut plus
 4. **V3, noms automatiques** : enregistrement en début de séance et ré-identification par la tenue,
    avec le bouton « inverser » et la file « à vérifier ». *Expérimental.* En bonus, la liste des
    présents.
-5. **V4, enregistrement depuis l'appli Android** : démarrage depuis l'appli, pilotage à distance,
-   envoi automatique.
+5. **V4, enregistreur Android** : démarrage depuis la PWA, pilotage à distance, envoi automatique.
 
 ## 9. Risques
 
