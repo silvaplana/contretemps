@@ -66,15 +66,23 @@ monde. L'enregistreur n'est installé que sur le téléphone qui filme. C'est un
 (CameraX), indépendante du frontend, distribuée en APK. On n'utilise pas Capacitor, qui obligerait à
 maintenir un build Android de toute l'appli pour une seule fonction.
 
-- La PWA le lance par un lien profond (`intent://`), et il rend la main aussitôt.
-- Il ne tourne que pendant la séance, jamais en permanence : Samsung tue les applis de fond, et
-  Android interdit d'allumer la caméra depuis l'arrière-plan.
-- « Démarrer la séance » lance un service de premier plan (caméra, écran éteint, notification
-  « Enregistrement en cours ») et active « Ne pas déranger », si l'autorisation est donnée.
-- Pendant la séance, un admin ou un prof le pilote à distance depuis son propre téléphone, iPhone
-  compris, via le serveur.
-- À la fin, il envoie la vidéo dès qu'il trouve du Wi-Fi.
-- Il ne peut pas activer le mode avion : Android l'interdit aux applis.
+- **Téléphone dédié, fixé au mur et branché en permanence.** Une seule caméra pour l'instant ; s'il y
+  en a plusieurs un jour, on choisira laquelle démarrer.
+- **Mise en attente, une fois** : on ouvre l'enregistreur à l'installation. Il lance un service de
+  premier plan « en attente » (écran éteint, caméra fermée). Android interdit d'allumer la caméra
+  depuis une appli qui n'était pas déjà active : ce lancement à la main est donc nécessaire, ensuite
+  on l'oublie.
+- **Démarrage à distance** : n'importe quel admin ou prof appuie sur « Démarrer la séance » dans sa
+  PWA, iPhone compris. Le serveur prévient l'enregistreur (push ou connexion maintenue), qui allume
+  la caméra et active « Ne pas déranger » si l'autorisation est donnée. « Fin de séance » arrête et
+  lance l'envoi dès qu'il y a du Wi-Fi. Pas de Bluetooth.
+- **État visible dans la PWA** : caméra prête ou hors service, batterie, place restante.
+- **Après une coupure ou un redémarrage**, quelqu'un rouvre l'enregistreur une fois ; la PWA affiche
+  « caméra hors service » en attendant.
+- **Réglages Samsung** : batterie « Non restreinte » pour l'appli, « Protéger la batterie » (charge
+  limitée à environ 85 %) pour un téléphone toujours branché.
+- Pas de mode avion : le téléphone doit rester joignable par le Wi-Fi du club. Sans carte SIM, il ne
+  reçoit de toute façon pas d'appels.
 - C'est un enregistreur générique, réutilisable ailleurs (par exemple une appli de montagne).
 
 ## 5. Traitement
