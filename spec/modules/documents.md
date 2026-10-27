@@ -117,6 +117,21 @@ volume ou un deuxième serveur le demandera. obstore rend ce changement sans cod
 Aperçus Office (Word, Excel, PowerPoint) : conversion en PDF par **LibreOffice sans écran**, dans le
 worker (même image, autre commande, 01 §3.1), seulement à la demande et mise en cache. Voir décision §12.4.
 
+## 3 bis. Rester extractible (repris de « Documents et A-documents : phase Contretemps », 14 octobre 2026)
+
+Décision de Seb du 14 octobre : le module se développe dans Contretemps, isolé, prêt à partir dans
+AppBase sans réécriture. Règles, appliquées dans le code :
+- un paquet `backend/src/documents/` et `frontend/src/modules/documents/`, identifiants en anglais,
+  textes en français ; il ne connaît pas Contretemps : ce dont il a besoin (organisation, membres,
+  groupes, périodes, email, notifications, assistant) est fourni par `documents_contretemps/` et
+  relié dans `app/main.py` ;
+- les droits, auteurs et « dernier endroit » stockent l'identifiant de la **personne** à travers les
+  saisons (`person_id`, premier compte de la chaîne), jamais celui de la fiche d'une saison ;
+- les tables du module ne sont pas des tables « racines » de `saisons/portee.py` : le dossier
+  Permanent n'a pas de saison et les dossiers des saisons passées restent lisibles ; le verrou des
+  saisons closes est appliqué par le module lui-même ;
+- portable SQLite et Postgres (`JSON` de SQLAlchemy, recherche `LIKE` sur un nom normalisé).
+
 ## 4. Modèle de données
 
 Toutes les tables héritent de `OrgScoped` (01 §5). Identifiants en anglais, libellés en français.

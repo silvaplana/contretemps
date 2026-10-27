@@ -1,22 +1,23 @@
 # AppBase — Spécification du core (socle commun)
 
-Version 0.1 du 18 octobre 2026. Destinataire : Claude Code.
+Version 1.0 du 27 octobre 2026. Réécrite de zéro ; remplace la version 0.1 du 18 octobre.
+Destinataire : Claude Code. Décisions de Seb des 18, 19, 20, 22, 24, 26 et 27 octobre 2026.
 
 Le **core** est ce que toute appli bâtie sur AppBase a toujours, quels que soient les modules
-choisis : l'organisation, les personnes, la connexion, les niveaux d'accès, l'installation sur
-le téléphone. Tout le reste (Documents, Financier, messagerie, cours…) est un **module**
-optionnel, décrit dans `spec/modules/`.
+choisis. Tout le reste est un **module**, décrit dans `spec/modules/`. Ce document dit la
+**cible** ; quand le code de Contretemps fait autrement aujourd'hui, un paragraphe « Aujourd'hui »
+le dit. `SPEC.md` reste la référence de ce qui est propre à Contretemps (cours, présence,
+chorégraphies…) et sera réduit à cela.
 
-Ce socle est déjà spécifié et en grande partie codé dans Contretemps, dans `SPEC.md` §2 et §6,
-avec les mots de la danse. Ce document le **généralise** : il dit la règle commune et renvoie
-au paragraphe de `SPEC.md` qui en donne le détail, tant que ce détail n'a pas été déplacé ici.
-En cas de désaccord entre les deux, ce document l'emporte pour AppBase ; `SPEC.md` reste la
-référence de ce qui est propre à Contretemps.
+Maquettes validées par Seb (les écrans les suivent exactement) :
 
-Décisions de Seb du 18 octobre 2026 : spec du core à part (ce fichier) ; la saison reste dans
-le core ; Professeur est un rôle ajouté par Contretemps, pas un niveau du core ; le trésorier
-est toujours un admin, mais un admin n'est pas forcément trésorier, et seuls le trésorier et
-le Super User ont l'onglet Financier et le dossier Financier de Docs.
+| Écran | Maquette |
+|---|---|
+| Créer une saison | https://claude.ai/artifact/HBmtbMrhW3ec3GdAPCkzgz |
+| Champs des membres (la fiche, l'affichage dans Admin, réglages avancés) | https://claude.ai/artifact/Hq9m7zuMaK6ZYwx3BMFSyx |
+| Admin > Administrateurs avec la colonne Groupes | https://claude.ai/artifact/L9ak9YSbWkvGdrQPg48mSR |
+| Tarifs de la saison (formules, options et codes promo) | https://claude.ai/artifact/GFYT9ZndL9hiwKxTHS57od |
+| Connexion HelloAsso (module, `spec/modules/helloasso.md`) | https://claude.ai/artifact/FhTWcRKXpVfdf9toaTSeXS |
 
 ---
 
@@ -24,407 +25,543 @@ le Super User ont l'onglet Financier et le dossier Financier de Docs.
 
 | Dans le core | Hors du core (module ou appli) |
 |---|---|
-| Organisation : création, étanchéité, adresse web, apparence | Cours, planning, présence (Contretemps) |
-| Personnes, emails, familles, sélecteur de profil | Fiche élève : santé, contacts, paiement (Contretemps) |
-| Connexion : mot de passe, invitation, session | Inscription publique, import Excel |
-| Niveaux : Membre, Admin, Administrateur principal, Trésorier, Super User | Rôles métier : Professeur (Contretemps), Serveur (pizzeria)… |
-| Saisons | Messagerie, vidéos, chorégraphies |
-| Installation de l'appli sur le téléphone | Documents, Fichier de base |
-| Modules activés pour une organisation | Financier, notes de frais |
-| Envoi d'emails, notifications push, sauvegarde | Assistant |
+| Organisation : création, étanchéité, adresse web, apparence, vocabulaire | Cours, planning, présence (modules Cours, Profs) |
+| Membres : une fiche par personne, champs définis par l'organisation (§4) | Champs calculés et boutons apportés par les modules |
+| Groupes et sous-groupes, droits (§5) | Les groupes que chaque module déclare (Cours, Profs, Bureau…) |
+| Famille par l'email du payeur (§4.4) | Inscription publique, HelloAsso (`modules/helloasso.md`) |
+| Connexion : mot de passe, invitation, session (§6) | Messagerie, vidéos, chorégraphies |
+| Niveaux : Membre, Admin, Administrateur principal, Super User (§7) | Documents, Fichier de base, Signature |
+| Saisons et leur création étape par étape (§8) | Financier, notes de frais |
+| Tarifs : formules, options et codes promo (§9) | Catalogue, boutique |
+| Installation sur le téléphone, barre du bas (§10) | Assistant |
+| Enregistrement des modules, modules allumés par organisation (§11) | |
+| Email, notifications push, sauvegarde, temps réel (§12) | |
 
 ---
 
 ## 2. Les mots
 
-| Dans AppBase | Dans Contretemps aujourd'hui | Ce que c'est |
+| Dans AppBase (code, tables) | À l'écran (Contretemps) | Ce que c'est |
 |---|---|---|
-| **Organisation** | École (`ecoles`) | Une association, un club, une pizzeria. Ses données sont étanches. |
-| **Fiche** | Compte (`comptes`) | Une personne dans une organisation, pour une saison. |
-| **Adresse de connexion** | `acces_emails` | Une adresse email, avec son mot de passe. |
-| **Famille** | Famille (`familles`) | Les fiches reliées par une adresse email commune. |
-| **Niveau** | Rôle du core | Ce que la personne a le droit de faire dans le core. |
-| **Rôle métier** | Professeur | Un rôle ajouté par l'appli, avec ses propres droits. |
-| **Saison** | Saison (`saisons`) | Une année d'activité. |
+| **organisation** (`org`) | École | Une association, un club, une pizzeria. Ses données sont étanches. |
+| **membre** (`member`) | Élève, Prof, Admin… | Une personne dans une organisation, pour une saison. |
+| **champ** (`field`) | Champ | Une question de la fiche, définie par l'organisation (§4). |
+| **groupe** (`group`) | Groupe, Cours, Bureau… | Des personnes réunies sous un nom (§5). Un cours est un groupe. |
+| **droit** (`right`) | 🔒 Accès au Financier | Un groupe spécial créé pour un droit déclaré par un module (§5.3). |
+| **famille** | Famille | Les fiches qui ont le même email du payeur (§4.4). |
+| **adresse de connexion** | Email | Une adresse email, avec son mot de passe. |
+| **niveau** | — | Ce que la personne a le droit de faire dans le core (§7). |
+| **saison** (`season`) | Saison | Une année d'activité. |
+| **formule** | Formule | Ce qu'un membre choisit et paie pour la saison (§9). |
 
-À l'écran, chaque appli choisit le libellé du niveau Membre : « Élève » dans Contretemps,
-« Adhérent » dans un club, « Client » dans une pizzeria. Le reste des libellés est commun.
-Jamais de mot technique à l'écran (ni « Owner », ni « rôle », ni « tenant »).
+Vocabulaire à l'écran : l'organisation choisit ses mots pour École, Élèves, Profs et Cours
+(Admin > École > Personnalisation de l'application > Vocabulaire, colonnes `mot_*` de `ecoles`,
+vide = mot par défaut du produit). Jamais de mot technique à l'écran (« rôle », « type », « owner »,
+« IA ») : on dit « nature », « module », « sous-module », « assistant ».
 
-Le code de Contretemps garde ses noms français (`ecole_id`, `comptes`) tant que le core n'en
-est pas extrait. Les modules nouveaux écrivent déjà en anglais (`org`, `member`, `group`).
+Le code ancien de Contretemps garde ses noms français (`ecoles`, `comptes`, `cours`). Tout code
+nouveau, toute table nouvelle est en anglais.
 
 ---
 
 ## 3. Organisation
 
-Détail : `SPEC.md` §2.1, §2.3, §2.7, §6.1.
-
 - **Étanchéité** : une organisation ne voit jamais les données d'une autre. Toute table qui
-  appartient à une organisation porte son identifiant, et chaque route sait quelle organisation
-  elle touche et la passe au contrôle des droits (§6). Un admin d'une organisation n'a aucun
-  droit sur une autre.
-- **Création** : par le Super User seulement. Il saisit le nom, le code postal et le premier
-  administrateur, qui devient **Administrateur principal** et reçoit une invitation (§5).
-- **Fiche de l'organisation** : nom, code postal, adresse, SIRET, IBAN, email de contact,
-  email du trésorier. Les mails envoyés par l'appli partent avec le nom de l'organisation et
-  répondent à son email de contact.
-- **Adresse web** : un sous-domaine par organisation (`<adresse>.<appli>.silvaplana.cloud`),
-  choisi par l'organisation, pour que chacune ait son nom et son logo sur l'écran d'accueil du
-  téléphone. L'ancienne adresse reste valable un temps après un changement.
-- **Apparence** : logo, nom (texte ou image), slogan, couleurs, polices.
-- **Modules activés** : la liste des modules dont l'organisation se sert. Un module non
-  activé n'a ni onglet, ni route, ni action de l'assistant pour elle. Choisi par le Super User.
-  Détail : §9 bis.3.
+  appartient à une organisation porte son identifiant ; chaque route sait quelle organisation
+  elle touche et la passe au contrôle des droits. Un admin d'une organisation n'a aucun droit sur
+  une autre.
+- **Création** : par le Super User. Nom, code postal, premier administrateur, qui devient
+  Administrateur principal et reçoit une invitation (§6). Le **produit** (Contretemps Studio,
+  Fight Lab, Asso in the Pocket…) fixe les modules allumés par défaut et les mots par défaut.
+- **Fiche de l'organisation** : nom, code postal, adresse, SIRET, IBAN, email de contact, email du
+  trésorier. Les mails de l'appli partent au nom de l'organisation et répondent à son email de
+  contact.
+- **Adresse web** (décision du 15 octobre, en ligne) : un sous-domaine par organisation,
+  `https://<adresse>.<appli>.silvaplana.cloud` (ex. `le-beausset.contretemps.silvaplana.cloud`),
+  pour que chacune ait **son nom et son logo sur l'écran d'accueil du téléphone** (le manifest est
+  lu avant toute connexion) et ses propres session, cache et abonnements push. Colonne
+  `sous_domaine`, unique, 3 à 40 caractères (minuscules sans accent, chiffres, tirets), normalisée
+  pendant la frappe, disponibilité vérifiée en direct ; noms réservés : `www`, `api`, `admin`,
+  `app`, `mail`, le nom du produit. Proposée à la création depuis le nom (puis la ville). Changer
+  l'adresse est réservé à l'Administrateur principal, avec avertissement (réinstallation) ;
+  l'ancienne adresse redirige 6 mois. Côté serveur : DNS `*.<appli>.silvaplana.cloud`, Caddy avec
+  TLS à la demande (`GET /sous-domaines/existe`), rien à relancer quand une organisation est créée ;
+  l'adresse générique du produit reste la page de connexion « dans toutes les organisations » et
+  renvoie chacun vers l'adresse de son organisation après connexion. Routes publiques par adresse :
+  manifest généré (nom sous l'icône, slogan, couleurs, icônes 192 et 512 px « maskable » depuis le
+  logo), icônes, `index.html` avec `<title>`, `apple-mobile-web-app-title` et `theme-color`
+  injectés. Sur iPhone, nom et icône sont figés à l'installation.
+- **Personnalisation de l'application** (Admin > École), trois parties dans cet ordre :
+  **Apparence visuelle** (logo, nom, slogan, couleurs, polices, adresse), **Fonctionnalités** (une
+  case par module, §11.3) et **Vocabulaire** (§2). Apparence et Vocabulaire : tout admin ;
+  Fonctionnalités : Administrateur principal et Super User seulement.
 
 ---
 
-## 4. Personnes, emails et familles
+## 4. Membres et champs
 
-Détail : `SPEC.md` §2.1, §6.2, §6.3.
+### 4.1 Une personne = une fiche
 
-- **Une personne = une fiche** *(décision de Seb du 18 octobre 2026)* : une seule fiche par
-  personne, dans une organisation, pour une saison (§7). Tous ses rôles s'ajoutent sur cette fiche
-  (élève, professeur, admin, trésorier…), au lieu d'une fiche par rôle. Cas réels qui l'ont
-  décidé : Julia Dho, admin puis inscrite comme élève, et Jacqueline Cilpa, élève, professeure et
-  admin, apparaissaient deux ou trois fois dans la messagerie.
-- **Saisir une personne qui a déjà une fiche** (fiche papier, import Excel, assistant) : si une
-  seule fiche non élève porte ce nom et ce prénom, elle est complétée (rôle élève, fiche élève,
-  emails) au lieu d'en créer une autre. Exception : on n'ajoute jamais une adresse nouvelle à la
-  fiche d'un admin, car cette adresse obtiendrait ses droits ; une fiche à part est alors créée,
-  et l'Administrateur principal fusionne.
-- **Fusionner avec…** (bouton de la fiche élève) : on choisit l'autre fiche de la même personne,
-  les fiches au même nom en tête. Il n'en reste qu'une, avec tout ce qu'avaient les deux : rôles,
-  emails, fiche élève, cours, présences, messages et conversations, notes de frais, fichiers de
-  Docs. Un admin fusionne deux fiches ordinaires ; dès qu'une des deux est admin, seul
-  l'Administrateur principal (ou le Super User) le peut. Sa propre fiche est toujours celle qui
-  reste. Le Super User ne se fusionne pas.
-- Fiche : nom, prénom, téléphone, et **plusieurs emails** tous équivalents (aucun « principal »). Les champs propres
-  à un rôle métier (date de naissance, santé, paiement d'un élève) vivent dans le module ou
-  l'appli, jamais dans la fiche du core.
-- **Famille** : toutes les fiches reliées par au moins un email commun, de proche en proche,
-  dans une même organisation. Recalculée automatiquement, jamais éditée à la main. C'est ce
-  que voit l'admin.
-- **Sélecteur de profil** (façon Netflix) : il montre les fiches rattachées à **l'adresse
-  connectée**, pas toute la famille. Un parent connecté avec son email bascule entre ses enfants
-  sans se reconnecter ; un enfant connecté avec son propre email ne voit que sa fiche.
-- Les mails de l'appli partent vers **toutes** les adresses de la fiche ; les invitations, une
-  par adresse.
+Une seule fiche par personne, dans une organisation, pour une saison. Tout ce qu'elle est
+(élève, prof, admin, membre du bureau…) s'ajoute sur cette fiche par ses groupes (§5) et ses
+niveaux (§7), jamais par une deuxième fiche. Deux fiches de la même personne se **fusionnent**
+(bouton « Fusionner avec… » : il n'en reste qu'une, avec tout ce qu'avaient les deux ; dès qu'une
+des deux est admin, seul l'Administrateur principal ou le Super User le peut ; le Super User ne se
+fusionne pas).
+
+Saisir une personne qui a déjà une fiche (fiche papier, import, assistant, HelloAsso) complète la
+fiche existante au lieu d'en créer une autre, sauf si cette fiche est admin : on n'y ajoute jamais
+une adresse nouvelle (elle obtiendrait ses droits), on crée une fiche à part et l'Administrateur
+principal fusionne.
+
+### 4.2 Les champs du socle
+
+Toujours là, non supprimables : **Nom, prénom** ; **Email** (plusieurs adresses possibles, toutes
+équivalentes, aucune « principale ») ; **Email du payeur** (§4.4) ; téléphone. Tout le reste est un
+champ de l'organisation (§4.3) ou vient d'un module.
+
+### 4.3 La structure des membres : trois niveaux
+
+L'organisation définit elle-même ce qu'elle demande à ses membres. La structure est **portée par
+la saison**, recopiée de la saison précédente à la création (§8). Écran : étape « Membres » de la
+création de saison, et Admin > Élèves > ⋯ > Champs. Maquette : Champs des membres.
+
+**Niveau 1 — La fiche** : la liste de ce qu'on demande à chaque membre, dans l'ordre. Chaque
+champ a :
+- un **intitulé** ;
+- un **statut** : Obligatoire ou Facultatif ;
+- un **format de la réponse**, dans la liste de HelloAsso plus deux : Texte court, Texte long,
+  Nombre, Date, Oui / non, Téléphone, Code postal, Fichier à télécharger, Liste déroulante (choix
+  proposés, un par ligne), **Groupe** (on coche parmi les sous-groupes d'un groupe, ex. « Cours
+  suivis » parmi Cours : la personne entre dans ces groupes) ; Liste et Groupe ont la case
+  « Plusieurs choix possibles ».
+Un champ ajouté par l'organisation est toujours **saisi** (par la personne ou par un admin).
+« + Ajouter un champ », « Retirer ce champ » avec Annuler 10 s.
+
+En haut de la fiche, si le module HelloAsso est allumé pour l'organisation, un choix :
+**Nos champs** (ceux du socle plus les nôtres) ou **Imposés par HelloAsso**, avec la campagne à
+choisir. Les champs de la campagne arrivent verrouillés, marqués « Calculé par HelloAsso », remplis
+par HelloAsso ; on peut seulement ajouter les nôtres à côté. Détail : `modules/helloasso.md`.
+
+**Niveau 2 — L'affichage dans Admin** : les colonnes du tableau des membres. Ce sont les champs
+de la fiche, plus les **champs calculés** et les **boutons** que les modules allumés apportent
+(ex. Ancienneté, Montant payé du module Paiement, « Inscrire au cours » du module Cours,
+« Demander la licence » du module Licences FFST). Pour chaque colonne : **Afficher** (case) et
+l'**ordre**, changé en glissant la poignée ⠿ (jamais de flèches). Un calcul masqué continue de
+travailler en coulisse. L'organisation décide ; les admins voient toutes les colonnes affichées.
+
+**Niveau 3 — Réglages avancés**, repliés sur chaque champ, et qui ne concernent que le **côté
+membre** : la personne le voit, la personne peut le modifier, les autres membres le voient, pour
+qui (tout le monde ou un groupe). Les admins voient tout. Les champs techniques ne sont jamais
+montrés.
+
+À l'écran, jamais le mot « type » : on dit « format de la réponse » ou « nature ».
+
+**Données** (cible) : `member_fields` (organisation, saison, intitulé, statut, format, choix,
+groupe, plusieurs, ordre, source `ours` / `helloasso`, clé HelloAsso) ; `member_values`
+(membre, champ, valeur) ; `member_columns` (saison, colonne — champ, calcul ou bouton d'un
+module —, affichée, ordre) ; réglages côté membre sur `member_fields`. Les champs calculés et les
+boutons sont déclarés par les modules dans leur `module.py` (§11.1), jamais écrits en base.
+
+**Aujourd'hui** : les champs des élèves sont en dur dans `comptes` et `eleves` (`SPEC.md` §6.3,
+§6.4), les colonnes d'Admin > Élèves dans `AdministrateursTableau.jsx` et `ElevesTableau.jsx`.
+
+### 4.4 Famille = même email du payeur
+
+Chaque fiche a un champ du socle **Email du payeur** : pour un adulte, son propre email ; pour un
+enfant, l'email du parent qui paie. HelloAsso le remplit depuis la commande ; la reprise de
+Contretemps le remplit depuis l'email du parent. La **famille** est l'ensemble des fiches qui ont le
+même email du payeur, **calculée**, jamais éditée à la main. Le payeur se connecte avec cet email et
+voit ses enfants (sélecteur de profil, §6). Une famille n'est pas un groupe.
+
+**Aujourd'hui** : famille = fiches reliées par un email commun de proche en proche
+(`recalculer_familles`, table `familles`). À remplacer par l'email du payeur, avec une commande de
+reprise.
+
+### 4.5 Sélecteur de profil
+
+Façon Netflix : il montre les fiches rattachées à **l'adresse connectée**, pas toute la famille. Un
+parent connecté avec son email bascule entre ses enfants sans se reconnecter ; un enfant connecté
+avec son propre email ne voit que sa fiche. Les mails de l'appli partent vers toutes les adresses de
+la fiche.
 
 ---
 
-## 5. Connexion
+## 5. Groupes et droits
 
-Détail : `SPEC.md` §2.2, §6.3ter. Code : `auth/`, `acces/`, `securite/`, `comptes/rbac.py`.
+Décisions de Seb du 26 octobre 2026, inspirées d'AssoConnect, pour simplifier : tout ce qui réunit
+des personnes est un **groupe**, et un cours, les profs, le bureau, un droit sont des groupes.
 
-- **Un mot de passe par adresse email**, pas par fiche. Haché (scrypt), 8 caractères au moins.
-  Une fiche sans email ne se connecte pas ; un enfant utilise l'email d'un parent.
-- **Écran de connexion unique** pour toutes les organisations : « Nom Prénom ou Email » et mot
-  de passe. Si la même personne est dans deux organisations, une fenêtre « Choisissez votre
-  organisation » s'ouvre, et seulement dans ce cas.
-- **Invitation** : un admin invite par un bouton, jamais automatiquement. Un seul mail par
-  adresse, avec les prénoms des profils. Lien à usage unique valable 15 jours, renvoyable.
-  Suivi de chaque étape dans la liste des personnes (invitée, mail remis, lien ouvert, mot de
-  passe créé, appli installée).
-- **Mot de passe oublié** : même lien, même écran.
-- **Session** : jeton signé, 30 jours prolongés à chaque usage, 12 heures pour le Super User.
-  Changer de mot de passe déconnecte les autres appareils. Le profil actif est envoyé à chaque
-  requête et vérifié contre l'adresse du jeton.
-- **Montée en privilège** : passer à un profil de niveau plus élevé de la même famille redemande
-  le mot de passe.
-- **Essais limités** : 5 mots de passe faux bloquent l'adresse 15 minutes.
-- **Toutes les routes exigent une session**, sauf une liste publique courte et testée. Un module
-  qui ajoute une route publique la déclare dans cette liste.
-- **Plus tard** : double authentification, en option dans Profil.
+### 5.1 Groupes et sous-groupes
+
+- Un groupe a un nom, une organisation, une saison ou « permanent », et des membres. Les groupes
+  des modules ont un **parent** (un seul niveau) : le parent réunit automatiquement les membres de
+  ses sous-groupes et dit le genre du groupe. Exemples : Cours › Salsa, Cours › Éveil ;
+  Bureau › Président·e, Vice-président·e, Secrétaire, Trésorier·e ; Profs ; Bénévoles.
+- Pas de colonne « nature » : un cours est un sous-groupe de « Cours », parent qui appartient au
+  module Cours. Le module ajoute ses données **par composition** (clé étrangère vers le groupe,
+  ex. `course_details` : jour, horaire, salle, profs), jamais par héritage.
+- Un groupe réunit des **personnes seulement**. Les produits (une pizza, un stage à vendre) sont
+  dans le catalogue, pas dans les groupes ; un produit peut pointer vers un groupe
+  (`products.group_id`) : l'acheter fait entrer dans le groupe.
+- Qui change les groupes : les admins, sauf les groupes de droit (§5.3). Les groupes des modules
+  (Cours, Profs, Bureau) sont créés par le core quand le module est allumé (§11.1) et ne se
+  suppriment pas ; module éteint = groupe caché, données gardées.
+- Tout ce qui vise des personnes vise un groupe : messagerie, Docs (un dossier peut être réservé à
+  des groupes, voir / modifier, hérité par les sous-dossiers), envois d'emails, signatures, présence.
+- Élèves = l'ensemble des membres (pas un groupe). **Profs** = groupe « Profs » (mot du Vocabulaire) ;
+  le rôle Professeur de Contretemps disparaît. **Bureau** = groupe Bureau avec ses sous-groupes
+  (plusieurs membres possibles, ajout d'une fonction possible) ; `comptes.bureau_functions` disparaît.
+  Trésorier·e est un titre, qui ne donne aucun droit.
+
+### 5.2 Écran
+
+Admin > Administrateurs (maquette « Admins nouveau style ») : colonnes Nom | **Groupes** (pastilles,
+toutes du même gris ; seul 🔒 distingue un groupe de droit ; « Bureau » apparaît quand la personne
+est dans un de ses sous-groupes) | Principal | Statut. La feuille d'ajout propose Bureau et ses
+fonctions, Profs, Bénévoles, les 🔒 droits (grisés sauf pour l'Administrateur principal et le Super
+User), « + Nouveau groupe… ». Dans Asso in the Pocket, les cases **Cours** et **Profs** de
+Personnalisation > Fonctionnalités allument ces modules et leurs onglets Admin > Cours et
+Admin > Profs ; Bureau est toujours là.
+
+### 5.3 Un droit = un groupe
+
+Un droit ouvert par un module (voir l'onglet Financier, lire son dossier) n'est jamais implicite : c'est
+un **groupe 🔒 au nom du droit**, ex. « Accès au Financier ». Le module le déclare dans son
+`module.py` (`Right("finances.access", "Accès au Financier")`), le core crée le groupe et le
+contrôle : `has_right(membre, "finances.access")` côté serveur, une seule fonction pour toutes les
+routes. L'Administrateur principal et le Super User passent toujours et sont seuls à mettre ou
+retirer quelqu'un d'un groupe de droit. Les autres groupes ne donnent aucun droit par eux-mêmes :
+seulement là où on les a choisis (dossier réservé, envoi, conversation).
+
+**Aujourd'hui** : la coche `is_tresorier` (« Accès au Financier »), à reprendre vers le groupe ;
+les rôles cumulés de `comptes/roles.py` ; la table `cours` utilisée par la messagerie, les vidéos et
+la présence. Gros chantier, par étapes, chacune sur le « vas-y » de Seb.
+
+**Données** (cible) : `groups` (organisation, saison ou permanent, nom, `parent_id`, module
+propriétaire, clé du droit ou vide), `group_members` (groupe, membre).
 
 ---
 
-## 6. Niveaux et rôles
+## 6. Connexion
 
-Détail : `SPEC.md` §2.1, §2.4, §2.5, §3, §6.3bis. Code : `comptes/roles.py`, `comptes/rbac.py`.
+Décisions du 1er et 2 octobre 2026, en ligne. Code : `auth/`, `acces/`, `securite/`, `comptes/rbac.py`.
 
-### 6.1 Les niveaux du core
+### 6.1 Écran de connexion
+
+Une seule page pour toutes les organisations : **« Nom Prénom ou Email »**, **« Mot de passe »**
+(œil pour l'afficher), bouton **Se connecter**, lien **« Mot de passe oublié ? »**. Pas de
+« Nouvelle organisation » : la création est réservée au Super User (§3). Sur l'adresse d'une
+organisation, la personne est cherchée d'abord dans cette organisation, puis dans toutes (sans
+majuscules ni accents) ; trouvée ailleurs, elle est envoyée vers l'adresse de son organisation.
+- un seul compte trouvé : connexion directe ;
+- plusieurs organisations possibles : fenêtre **« Choisissez votre organisation »**, seulement dans
+  ce cas ;
+- plusieurs profils de la même organisation à cet email (une famille) : on arrive sur le profil de
+  plus haut rang, puis le plus ancien ; par son nom et prénom, chacun arrive sur sa fiche.
+Seules les fiches de la saison courante se connectent (§8). Plusieurs appareils en même temps ;
+déconnexion depuis Profil. Le Super User utilise le même écran.
+
+### 6.2 Un mot de passe par adresse email
+
+Le mot de passe appartient à une **adresse email** (table `acces_emails`), pas à une fiche : les
+profils qui partagent un email partagent son mot de passe ; une fiche à plusieurs emails a un mot
+de passe par email ; le mot de passe survit à la recopie des fiches à chaque saison. Une fiche sans
+email ne se connecte pas ; un enfant utilise l'email d'un parent. Haché (scrypt), 8 caractères au
+moins, sans autre règle. **Essais limités** : 5 mots de passe faux bloquent l'email 15 minutes, avec
+un message qui ne révèle pas si le compte existe.
+
+### 6.3 Session : un jeton signé
+
+À la connexion, le serveur délivre un **jeton signé** qui désigne l'adresse connectée et le rang du
+profil ; l'appli le garde sur l'appareil et l'envoie à chaque requête avec le profil actif
+(`X-Compte-Id`), que le serveur vérifie contre l'adresse du jeton : un `X-Compte-Id` seul ne donne
+aucun droit. Durée **30 jours, prolongés à chaque usage** ; 12 heures pour le Super User. Changer de
+mot de passe déconnecte tous les autres appareils (le jeton porte une empreinte du mot de passe).
+**Toutes les routes exigent une session**, sauf une courte liste publique (`ROUTES_PUBLIQUES` :
+connexion, liens reçus par mail, mot de passe oublié, inscription publique, manifest et icônes par
+adresse) qu'un test parcourt ; un module qui ajoute une route publique la déclare dans cette
+liste. Le flux temps réel reçoit le jeton dans son adresse ; les fichiers se lisent par lien signé
+à durée limitée.
+
+**Bascule de profil** (famille) sans reconnexion, parmi les profils rattachés à l'email connecté ;
+**une montée en privilège redemande le mot de passe** (Membre < Profs < Admin). **Dernier écran
+retenu** : à la réouverture, l'appli revient sur le dernier onglet, et dans Admin sur le dernier
+sous-onglet, conservé sur l'appareil même après déconnexion.
+
+### 6.4 Invitation
+
+1. L'organisation saisit la personne avec son email (à la main, import, HelloAsso).
+2. **Un admin l'invite par un bouton**, jamais automatiquement (colonne « Inviter » et colonne
+   « Statut » dans la liste des membres ; « Inviter tous les non-invités » en tête de colonne).
+3. **Un seul mail par adresse**, même avec plusieurs profils : « <Organisation> vous invite sur
+   l'application. Profils : Léa, Tom. [Créer mon mot de passe] ». Titre neutre, version texte et
+   mise en forme, « Bonjour Prénom Nom, ».
+4. **Le lien** `https://<adresse>/activer?jeton=…`, personnel, à usage unique, **15 jours**, haché
+   en base ; renvoyable, le nouveau annule l'ancien.
+5. Le clic ouvre l'appli Android si elle est installée (App Links https, `assetlinks.json` servi par
+   Caddy, clé de signature stable), sinon la même page dans le navigateur, qui propose ensuite
+   d'installer l'appli.
+6. **Écran « Créer mon mot de passe »** : email affiché, prénoms des profils, mot de passe saisi deux
+   fois, œil.
+7. À la validation, la personne est **connectée directement**, avec la proposition de notifications.
+
+**Suivi de l'invitation**, enregistré par l'appli elle-même, sur l'adresse email (une ligne par
+adresse) : *Pas d'email* (bouton grisé) → *Pas invité* → *Invité le …* → *Invitation consultée
+le …* (lien cliqué, jamais « mail ouvert », qui n'est pas fiable) → *Profil finalisé le …* (mot de
+passe créé) → *Appli installée le …* (§10).
+
+### 6.5 Mot de passe oublié
+
+Demande le nom prénom ou l'email, répond toujours « Si ce compte existe, un lien vient d'être
+envoyé » ; **toute personne dont l'email figure dans une organisation reçoit le lien, même jamais
+invitée** (elle prouve qu'elle contrôle l'adresse). Lien valable **1 heure**, à usage unique, écran
+« Nouveau mot de passe » identique à « Créer mon mot de passe ». Demandes limitées dans le temps.
+Changement de mot de passe aussi depuis Profil (ancien mot de passe redemandé). Plus tard : double
+authentification, en option dans Profil.
+
+---
+
+## 7. Niveaux
 
 | Niveau | Ce qu'il peut faire | Qui le donne |
 |---|---|---|
 | **Membre** | Utiliser l'appli pour lui-même et sa famille | Un admin, en créant la fiche |
-| **Admin** | Gérer l'organisation : personnes, réglages, modules | L'Administrateur principal |
-| **Administrateur principal** | Un admin qui gère en plus la liste des admins | Un Administrateur principal ou le Super User |
-| **Trésorier** | Un admin qui a en plus l'onglet **Financier** | Un Administrateur principal ou le Super User |
+| **Admin** | Gérer l'organisation : personnes, groupes, réglages | L'Administrateur principal |
+| **Administrateur principal** | Un admin qui gère en plus les admins, les groupes de droit et les Fonctionnalités | Un Administrateur principal ou le Super User |
 | **Super User** | Tout, dans toutes les organisations | Une commande sur le serveur, jamais l'appli |
 
-Règles, imposées par le serveur et pas seulement cachées à l'écran :
-- **Les niveaux se cumulent** et les droits s'additionnent.
-- **Administrateur principal et Trésorier sont toujours des admins.** Retirer Admin retire les
-  deux. Ce sont des droits en plus, pas des rangs au-dessus.
-- **Un admin n'est pas forcément trésorier.** **Seuls le trésorier et le Super User voient
-  l'onglet Financier** et peuvent lire le dossier **Financier** de l'onglet Docs ; même
-  l'Administrateur principal ne les voit pas s'il n'est pas trésorier. Il peut y avoir
-  plusieurs trésoriers.
-- **Seuls un Administrateur principal et le Super User** cochent ou décochent « Administrateur
-  principal » et « Trésorier » dans la liste des admins. Un admin ordinaire voit ces coches sans
-  pouvoir les changer.
-- Il reste **toujours au moins un Administrateur principal** par organisation, et personne
-  n'agit sur sa propre ligne (ne se retire pas son niveau, ne se supprime pas), sauf
-  un Administrateur principal qui peut cocher ou décocher Trésorier pour lui-même. Seul le Super
-  User peut dépanner une organisation sans Administrateur principal.
-- Le **Super User** n'appartient à aucune organisation et ne se cumule avec rien. Après
-  connexion, il choisit l'organisation où il intervient et la voit comme un Administrateur
-  principal. Il reste absent des listes de personnes, mais **on peut le trouver et l'ajouter
-  dans les conversations de toute organisation** (décision de Seb du 18 octobre), comme une
-  personne de l'organisation : recherche des contacts, et bouton « Super User » de « Nouveau
-  groupe » (`spec/modules/messagerie-instantanee.md` §3.4). Seuls son nom et son prénom sont
-  montrés.
-
-### 6.2 Les rôles métier, ajoutés par l'appli
-
-Une appli peut ajouter ses propres rôles. Chacun déclare :
-- son nom et son libellé à l'écran ;
-- son **rang** par rapport aux niveaux du core (entre Membre et Admin, en général), qui sert à
-  la montée en privilège (§5) et au libellé principal affiché ;
-- avec quoi il se cumule ou non ;
-- les onglets et droits qu'il ouvre.
-
-Exemple, Contretemps : **Professeur**, rang entre Membre (« Élève ») et Admin. Il se cumule avec
-tout, Élève compris (une personne = une fiche, §4). Ses droits sont dans `SPEC.md` §3.
-
-### 6.3 Un seul endroit pour lire les droits
-
-Aucune route, aucun écran ne teste un niveau lui-même : tout passe par les fonctions centrales
-(`is_admin`, `is_tresorier`, `require_admin`… côté serveur ; `frontend/src/data/roles.js` côté
-appli). Changer la façon de stocker les niveaux ne touche qu'un fichier.
-
-### 6.4 Le bureau (fonctions)
-
-Décision de Seb du 20 octobre (`spec/modules/proces-verbal-ag.md` §2 bis) : dans la liste des
-admins, une colonne **Bureau** donne à chaque admin zéro, une ou plusieurs **fonctions** :
-Président·e, Vice-président·e, Secrétaire, Trésorier·e. Ce sont des titres, pas des niveaux : elles
-ne donnent aucun droit (Seb, 20 octobre : la fonction Trésorier·e n'ouvre pas l'onglet Financier,
-la coche Trésorier reste à part).
-**À l'écran, la coche « Trésorier » devient « Accès au Financier »** (Seb, 20 octobre) : la liste
-des admins a donc deux colonnes distinctes, **Accès au Financier** (le droit, §6.1 ; le niveau garde
-son nom `tresorier` dans le code, `is_tresorier`) et **Bureau** (les fonctions). Elles servent aux documents (signataires d'un procès-verbal, « Martine
-Colin, présidente », pouvoir en blanc donné à la présidence). Mêmes personnes qui les changent que
-les coches Administrateur principal et Trésorier, y compris sur sa propre ligne. Recopiées à la
-création d'une saison. Données : `comptes.bureau_functions`, liste JSON parmi `president`,
-`vice_president`, `secretary`, `treasurer` (ordre fixe) ; l'assistant les change par `change_roles`.
+- Les niveaux se cumulent, imposés par le serveur et pas seulement cachés à l'écran. Tout autre
+  droit est un groupe (§5.3) ; Trésorier n'est plus un niveau.
+- Il reste toujours au moins un Administrateur principal par organisation ; personne n'agit sur sa
+  propre ligne. Seul le Super User dépanne une organisation sans Administrateur principal.
+- Le **Super User** n'appartient à aucune organisation. Après connexion, il choisit où il intervient
+  et la voit comme un Administrateur principal. Absent des listes de personnes, mais on peut le
+  trouver et l'ajouter dans les conversations de toute organisation (nom et prénom seulement).
+- **Un seul endroit pour lire les droits** : `is_admin`, `require_admin`, `has_right`… côté
+  serveur ; `frontend/src/data/roles.js` côté appli. Aucune route ni écran ne teste un niveau
+  lui-même.
 
 ---
 
-## 7. Saisons
+## 8. Saisons
 
-Détail : `SPEC.md` §2.6, §6.1bis. Code : `saisons/`.
+Une association vit par années ; la fiche d'une personne, sa structure (§4.3), ses groupes de
+saison et ses tarifs (§9) sont par saison. Une organisation sans saisons (une pizzeria) en a une
+seule, sans fin, et ne voit jamais le mot « saison ». *(Fil ouvert du 24 octobre : faire de
+Saisons un module optionnel, la période restant dans le core ; attend le « vas-y » de Seb.)*
 
-La saison reste dans le core : une association vit par années, et la fiche d'une personne est
-par saison. **Une organisation qui n'a pas de saisons (une pizzeria) en a une seule, sans date
-de fin**, et ne voit jamais le mot « saison » à l'écran.
-
-- Saison courante = la dernière créée ; elle seule est modifiable, les autres sont en lecture
-  seule, imposé par le serveur.
-- Seules les fiches de la saison courante peuvent se connecter. Le mot de passe, lui, appartient
-  à l'adresse email et traverse les saisons.
-- Créer une saison recopie toujours les admins (avec leurs niveaux, trésorier compris) ; chaque
-  module dit ce qu'il propose de recopier (cases à cocher), et dans quel ordre.
-- Seuls les admins consultent une ancienne saison.
-- La portée par saison est fournie aux modules par le core (`saisons/portee.py`) : un module ne
-  filtre jamais la saison à la main.
-
----
-
-## 8. Installation sur le téléphone
-
-Détail : `SPEC.md` §2.2 (« Suivi de l'invitation »), §2.7. Code : `personnalisation/`,
-`frontend/src/api/installation.js`.
-
-- L'appli est une appli web installable (PWA), avec une appli Android en plus (`ANDROID.md`).
-- Chaque organisation a son adresse, donc **son nom et son icône** sur l'écran d'accueil, lus
-  avant toute connexion (manifest et icônes servis par adresse).
-- Après la création du mot de passe, l'appli propose de s'installer. L'installation est
-  enregistrée sur l'adresse de connexion (« appli installée le … ») quand le téléphone le permet.
-- Changer de logo demande de réinstaller sur iPhone ; un avertissement le dit avant
-  d'enregistrer.
+- Saison courante = la dernière créée ; elle seule est modifiable, les autres en lecture seule,
+  imposé par le serveur (`saisons/portee.py` : un module ne filtre jamais la saison à la main).
+  Seules les fiches de la saison courante se connectent ; le mot de passe traverse les saisons.
+- **Créer une saison** (maquette « Créer une saison ») : **un seul écran prérempli** — nom, dates,
+  puis une ligne par morceau, chacune avec ce qui sera fait et un bouton « Changer… » — et un seul
+  bouton « Créer la saison ». Les morceaux, dans l'ordre :
+  1. **L'école** : administrateurs et bureau repris, **tarifs** repris de la saison précédente (§9) ;
+  2. **Membres** : la structure (§4.3, écran « Champs des membres » tel quel) reprise de la saison
+     précédente ou imposée par HelloAsso, puis les données : recopier les fiches ou repartir vide ;
+  3. **Profs**, 4. **Cours** (si ces modules sont allumés) : groupes repris ou non ;
+  5. ce que chaque autre module propose de recopier (Documents : dossiers de la saison).
+  Par défaut tout est repris de la saison précédente ; l'organisation ne change que ce qu'elle veut.
+- Seuls les admins consultent une ancienne saison (bandeau lecture seule, §10.4). À la création
+  d'une saison, chaque appareil bascule tout seul sur la nouvelle fiche (notifications comprises) ;
+  une personne non reprise est déconnectée.
+- **Supprimer une saison** (admins) : on choisit la saison, on lit ce qui sera supprimé, on retape
+  son nom ; sauvegarde technique complète juste avant ; les fiches de la saison suivante sont
+  reliées à celle d'avant.
 
 ---
 
-## 8 bis. Barre d'onglets du bas
+## 9. Tarifs : formules, options et codes promo
 
-Quand les onglets ne tiennent pas dans la largeur (un Super User en a huit), les derniers passent
-sous un bouton **« Plus » (⋯)** en bas à droite, qui les ouvre dans un petit menu *(demande de Seb
-du 18 octobre 2026)*. L'onglet actif caché dans le menu allume le bouton « Plus », et les pastilles
-des onglets cachés s'y additionnent.
+Décisions de Seb du 26 octobre 2026, inspirées de HelloAsso et d'AssoConnect. Écran : étape
+« L'école » de la création de saison et Admin > École > Tarifs ; « Reprendre ceux de
+<saison précédente> » en haut. Maquette : Tarifs de la saison.
+
+### 9.1 Formules
+
+Une **formule** est ce qu'un membre choisit pour la saison : un **nom**, un **tarif**, une ou
+plusieurs **échéances** (date et montant ; la somme fait le tarif ; une seule échéance
+« À l'inscription » par défaut ; « + Ajouter une échéance » répartit le tarif, chaque date et montant
+se corrige à la main). « Dupliquer » pour faire « en 3 fois » à partir de « en 1 fois ». Rien d'autre
+sur la formule. Exemples : Contretemps = Adhésion + 1 cours, + 2 cours, + 3 cours, chacune en 1 fois
+ou en 3 fois (six formules) ; ASC Sambo La Ciotat = Solo, Famille duo, Famille trio, en 1 ou 3 fois.
+
+### 9.2 Options et codes promo
+
+Une seule liste, un seul objet : un **nom**, un **montant en plus ou en moins**, en € ou en %, et
+**comment l'obtenir** :
+1. **La personne coche** (t-shirt +15 €, stage +60 €), avec quantité limitée possible ;
+2. **Avec un code** (BIENVENUE −10 %, FAMILLE −5 %), nombre d'utilisations et date limite ;
+   case **Montrer dans le formulaire** : montré, la personne le coche ; secret, elle doit le taper ;
+   plusieurs codes séparés par des virgules ;
+3. **Règle** écrite en français (« Enlever 10 € par année d'ancienneté, 50 € maximum ») : le bouton
+   « Faire comprendre la règle » l'envoie à l'assistant, qui répond « Compris : … » avec un exemple
+   sur un membre et un calcul Python gardé en base ; la règle s'applique toute seule au paiement, à
+   partir de la fiche. L'assistant n'écrit jamais un chiffre lui-même : c'est le calcul qui tourne.
+Chaque option ou code dit sur quelles formules il s'applique (toutes par défaut) et s'il est proposé
+cette saison.
+
+### 9.3 Avec HelloAsso
+
+Si la saison impose une campagne HelloAsso (§4.3), **les tarifs sont ceux de HelloAsso** : formules,
+options et codes promo de la campagne, en lecture seule chez nous ; les membres s'inscrivent et
+paient sur HelloAsso, on récupère la fiche, la formule choisie et les paiements
+(`modules/helloasso.md`). Sans HelloAsso, les formules sont à nous et servent au formulaire
+d'inscription de l'appli, **à concevoir plus tard** (pas de maquette validée).
+
+**Données** (cible) : `season_plans` (saison, nom, tarif, actif, ordre), `season_plan_installments`
+(formule, date, montant), `season_adjustments` (saison, nom, montant, unité, mode coche / code /
+règle, code, montré, utilisations max, date limite, règle en français, calcul, actif), lien
+formule ↔ ajustement ; `member_plan` (membre, formule, ajustements appliqués, codes saisis).
+
+**Aujourd'hui** : `inscriptions/tarifs.py` (adhésion 40 €, réduction famille 35 € / 31,60 €, paliers
+par cours, barèmes mensuel et trimestriel) et `SPEC-inscription.md`, à remplacer par les formules.
 
 ---
 
-## 9. Services communs aux modules
+## 10. Installation, notifications et navigation
 
-Déjà codés dans Contretemps, à spécifier en détail plus tard dans ce document :
-- **Email** : envoi par Brevo, au nom de l'organisation, réponse vers son email de contact ;
-  suivi de remise (webhook). Code : `auth/mails.py`.
-- **Notifications push** : Web Push, abonnement par appareil, réabonnement silencieux à chaque
-  connexion. Code : `notifications/`.
-- **Sauvegarde** : sauvegarde d'une organisation (Excel, Google Drive, périodicité réglable),
-  sauvegarde technique complète avant toute suppression lourde. Code : `ecoles/`,
-  `app/sauvegarde_worker.py`.
-- **Temps réel** : flux par session, utilisé aujourd'hui par la messagerie.
+### 10.1 Installation sur le téléphone
 
-## 9 bis. Enregistrement des modules
+Appli web installable (PWA, manifest et service worker), appli Android en plus (`ANDROID.md`,
+Capacitor). Chaque organisation a son adresse (§3), donc **son nom et son icône** sur l'écran
+d'accueil, une installation, un cache et des abonnements push par organisation. Après la création
+du mot de passe, l'appli propose de s'installer (écran d'installation, `frontend/src/api/installation.js`).
+L'installation est enregistrée sur l'adresse de connexion (« Appli installée le … ») : sur Android
+Chrome et sur ordinateur, à l'événement `appinstalled` ; sur iPhone, Safari Mac et Samsung Internet,
+qui n'en ont pas, à la première ouverture depuis l'icône (mode standalone) ; appli native, à la
+première ouverture. Le premier signal fixe la date. Changer de logo ou d'adresse demande de
+réinstaller sur iPhone ; un avertissement le dit avant d'enregistrer ; Android se met à jour seul.
 
-*Décision de Seb du 19 octobre 2026 : le core ne connaît pas les modules, ce sont eux qui se
-présentent. On écrit la règle maintenant et on la code avec « modules activés par
-organisation » (§3).*
+### 10.2 Notifications push
 
-Aujourd'hui, le core connaît chaque module : `backend/src/app/main.py` les importe et les
-branche un par un, `frontend/src/data/nav.js` écrit leurs onglets en dur, et `App.jsx` choisit
-l'écran de chaque onglet. Ajouter un module, c'est toucher ces trois fichiers.
+Web Push (norme W3C, `backend/src/notifications/`, clés VAPID, `pywebpush`, `public/sw.js`
+`push` / `notificationclick`) : abonnement **par appareil**, demandé sur un vrai clic (jamais au
+chargement), bouton « Notifications » de Profil qui reflète l'abonnement réel de cet appareil,
+**réabonnement silencieux à chaque connexion** (`reabonnerSiAutorise`), donc les notifications
+suivent la nouvelle fiche après un changement de saison. Déclenchées par un nouveau message à
+chaque membre sauf l'expéditeur, et par les modules qui le demandent (envois de Docs, signatures).
+Appli Android native : Firebase Cloud Messaging viendra si elle est un jour distribuée.
 
-Le but : **ajouter un module = écrire sa déclaration dans son propre dossier, puis ajouter une
-ligne à la liste de l'appli.** Le core lit cette liste et ne connaît rien d'autre.
+### 10.3 Profil
 
-C'est la version courte du « manifeste de module » de `01-architecture` §3 et §7 : pas de
-chargement dynamique, pas d'emplacements d'écran (« slots »), pas de contrôle des imports en
-CI. Ces trois-là viendront quand une deuxième appli en aura besoin.
+Identité de la personne connectée, autres profils de la famille (bascule, §6.3), paramètres
+(notifications, changer mon mot de passe), lignes ajoutées par les modules (« Mes notes de frais »,
+« Mes heures »), bouton **Se déconnecter**.
 
-### 9 bis.1 La déclaration d'un module
+### 10.4 Navigation et style
 
-Chaque module a, dans son dossier, **un fichier de déclaration côté serveur et un côté écran**,
-et rien d'autre ne le décrit ailleurs.
+- **Barre du bas** = les fonctions (onglets des modules, entre Admin et Profil, dans l'ordre de la
+  liste des modules, §11.2) ; les onglets d'un écran = ses sous-fonctions ; jamais de 4e niveau.
+  Quand les onglets ne tiennent pas, les derniers passent sous « Plus » (⋯) en bas à droite, menu
+  modal au-dessus de tout ; l'onglet actif caché allume « Plus », les pastilles s'y additionnent.
+  Le bandeau du haut est épuré : ← et le nom quand un fichier est ouvert, une place par onglet
+  pour ses boutons.
+- **Ancienne saison** : bandeau « lecture seule » avec « Revenir à la saison courante », boutons
+  d'écriture masqués, écriture refusée par le serveur.
+- « Gros et simple » : texte ≥ 17 px, touches ≥ 48 px, un bouton principal par écran, 3 questions
+  max, menu ≤ 6 actions + « Plus… », **Annuler 10 s** plutôt que confirmer, retour par ← (geste
+  Android), jamais de croix. Mobile d'abord ; les mêmes fonctions sur ordinateur.
 
-Côté serveur, `backend/src/<module>/module.py`, ou `backend/src/<module>_contretemps/module.py`
-quand c'est l'appli qui relie le module à ses fiches et à ses autres modules (Documents, Notes de
-frais, Financier). La forme est dans `backend/src/registry/` :
+---
+
+## 11. Enregistrement des modules
+
+Décision de Seb du 19 octobre 2026, codée et en ligne le 24 octobre (PR #60 à #68) : le core ne
+connaît pas les modules, ce sont eux qui se présentent. Code : `backend/src/registry/`.
+
+### 11.1 La déclaration d'un module
+
+Un fichier côté serveur, `backend/src/<module>/module.py` (ou `<module>_contretemps/module.py` quand
+c'est l'appli qui relie le module à ses fiches), et un côté écran,
+`frontend/src/modules/<module>/module.js`. Rien d'autre ne décrit le module.
 
 ```python
 MODULE = Module(
-    key="documents",                 # identifiant stable, en anglais
-    label="Documents",               # nom à l'écran (Supervision, choix des modules)
-    mount=mount,                     # fonction qui monte ses routes : mount(app, core)
-    requires=("videos",),            # modules à monter avant lui (ici, pour l'exemple)
-    roles=(Role("tresorier", "Accès au Financier"),),   # rôles qu'il ajoute aux fiches
+    key="finances", label="Financier",
+    mount=mount,                                   # mount(app, core) monte les routes
+    requires=("documents",),                       # modules à monter avant lui
+    actions=lambda core: actions(core.finances),   # actions ouvertes à l'assistant (actions.py)
+    rights=(Right("finances.access", "Accès au Financier"),),  # cible : un groupe 🔒 par droit (§5.3)
+    groups=(Group("Bureau", children=("Président·e", "Vice-président·e", "Secrétaire", "Trésorier·e")),),
+    columns=(Column("Montant payé", compute=amount_paid),),    # cible : colonnes d'Admin (§4.3)
+    buttons=(Button("Demander la licence", action="ffst.request"),),
 )
 ```
 
-- `roles` *(23 octobre 2026)* : les rôles qu'un module ou l'appli ajoute aux fiches, déclarés
-  comme des données (Professeur par Contretemps, « Accès au Financier » par le module Financier).
-  Le core n'en garde que quatre : Membre, Admin, Administrateur principal et Super User. Le champ
-  existe, mais le core ne le lit pas encore : les rôles restent ceux de `comptes/roles.py`
-  jusqu'au code de l'étude « adhérents par saison ».
-- `mount` range dans `core` ce qu'il construit (ex. `core.documents_client`), pour l'appli et
-  pour les modules montés après lui.
-- `actions=lambda core: actions(core.documents_client)` : les actions que le module ouvre à
-  l'assistant, prises dans son `actions.py` une fois le module monté. Les actions du socle de
-  Contretemps (école, administrateurs, élèves, profs, cours) restent listées dans `main.py`.
-- Viendra quand un module en aura besoin : `start` (tâche de fond).
+- `mount` reçoit l'appli FastAPI et les services du core (fiche appelante, droits, email,
+  notifications, saison, stockage) ; il range dans `core` ce qu'il construit. Un module n'importe
+  jamais un autre module : l'appli les relie dans `<module>_contretemps/`.
+- `actions` : la liste de l'assistant, prise telle quelle dans `actions.py`
+  (`spec/modules/assistant-ia.md` §3). Un bouton de l'écran = une action de l'assistant.
+- `rights`, `groups`, `columns`, `buttons` *(cible, étude du 26 octobre)* : ce que le module apporte
+  au core ; le core crée les groupes et les droits quand le module est allumé, et propose les
+  colonnes dans l'affichage d'Admin. Le champ `roles` d'aujourd'hui (Professeur, « Accès au
+  Financier ») disparaît au profit de `rights` et `groups`.
+- Les tables d'un module restent dans son `models.py`, préfixées par le module (`doc_`, `nf_`),
+  créées par Alembic.
+- Côté écran, `module.js` déclare `tabs` : les onglets de la barre du bas (clé, libellé, icône, qui
+  les voit, écran). Montrer ou cacher seulement ; le vrai contrôle reste sur chaque route.
 
-- `mount(app, core)` reçoit l'appli FastAPI et **les services du core** (fiche appelante,
-  contrôle des droits, email, notifications, saison, stockage). Un module n'importe jamais un
-  autre module : quand il a besoin d'un autre (les notes de frais rangent leurs justificatifs
-  dans Docs), c'est **l'appli** qui les relie, dans `<module>_contretemps/`, comme aujourd'hui
-  avec les `Ports` des notes de frais.
-- `actions` reprend telle quelle la liste que le module déclare déjà dans son `actions.py`
-  (`spec/modules/assistant-ia.md` §3 : une `Action` par action, avec son nom, sa description,
-  ses paramètres, sa fonction `prepare` qui vérifie les droits et rend la carte Faire/Annuler).
-  Il n'y a donc qu'une seule façon de déclarer, pas deux.
-- Les tables d'un module restent dans son `models.py`, préfixées par le module, et se créent
-  par les migrations Alembic, comme aujourd'hui.
+### 11.2 La liste des modules de l'appli
 
-Côté écran, `frontend/src/modules/<module>/module.js` :
+Une seule liste, une ligne par module, `backend/src/app/modules.py` et `frontend/src/app/modules.js`.
+Au démarrage, le core vérifie les `requires` (sinon refuse de démarrer, message clair), monte les
+routes, donne à l'assistant les actions de tous les modules. Les onglets du core : Admin, Profil,
+Supervision (Super User). Chaque produit a sa propre liste, avec le même core.
 
-```js
-export default {
-  key: 'documents',
-  tabs: [
-    { key: 'docs', label: 'Docs', icon: 'docs', roles: ['admin', 'professeur', 'eleve'],
-      screen: lazy(() => import('./DocsScreen.jsx')) },
-  ],
-}
-```
+### 11.3 Modules allumés par organisation
 
-- `tabs` : les onglets de la barre du bas que le module apporte, avec les rôles qui les voient
-  et l'écran à ouvrir. La barre du bas (§8 bis) les lit au lieu de `nav.js`. Pour l'instant,
-  `screen` n'est pas encore là : `App.jsx` ouvre toujours l'écran de chaque onglet.
-- `roles` sert seulement à **montrer ou cacher** l'onglet. Le vrai contrôle reste sur chaque
-  route du serveur (§6.3), un onglet caché n'ouvre aucun droit.
-
-### 9 bis.2 La liste des modules de l'appli
-
-L'appli choisit ses modules dans **une seule liste, une ligne par module**, côté serveur
-(`backend/src/app/modules.py`) et côté écran (`frontend/src/app/modules.js`) :
-
-```python
-MODULES = [
-    messaging.MODULE,
-    documents.MODULE,
-    expense_notes.MODULE,   # requires=["documents"]
-    assistant.MODULE,
-    ...
-]
-```
-
-Au démarrage, le core parcourt la liste dans l'ordre : il vérifie que chaque `requires` est
-présent plus haut (sinon il refuse de démarrer, avec un message clair), monte les routes, lance
-les tâches de fond et donne à l'assistant les actions de tous les modules. La pizzeria aura sa
-propre liste, avec le même core.
-
-Les onglets du core restent au core : **Admin** et **Profil** (et Supervision pour le Super
-User). Les onglets des modules se placent entre eux, dans l'ordre de la liste.
-
-### 9 bis.3 Modules activés par organisation
-
-La liste de l'appli dit ce que l'appli **sait** faire ; chaque organisation choisit ce qu'elle
-**utilise** (§3).
-
-- Une table du core, `org_modules` (organisation, module, allumé ou non, date du changement),
-  dit quels modules une organisation a éteints. **Pas de ligne = module allumé** : les écoles
-  existantes et les modules ajoutés plus tard sont allumés sans rien écrire. Code :
-  `backend/src/registry/` (`models.py`, `activation.py`, `receiver.py`).
-- Pour un module non activé dans une organisation, **pas d'onglet (ni bouton de l'en-tête pour
-  l'Assistant), pas d'action de l'assistant, et ses routes répondent « introuvable »** pour cette organisation. Le core le
-  vérifie une fois pour toutes les routes du module, aucun module ne peut l'oublier.
-  Concrètement, au montage, le core retient à quel module appartient chaque route, et une
-  vérification branchée sur l'appli entière, juste après la session, répond « introuvable »
-  quand le module est éteint dans l'organisation de l'appelant. Elle ne s'applique ni aux
-  routes publiques (sans appelant) ni au Super User, qui n'appartient à aucune organisation ;
-  pour lui, l'écran cache quand même les onglets de l'organisation choisie.
-- **Désactiver n'efface rien** : les données restent, et réactiver retrouve tout. Effacer les
-  données d'un module est une autre action, plus tard, avec sauvegarde avant.
-- On ne peut pas désactiver un module dont un autre module activé a besoin (`requires`), et
-  activer un module active aussi ceux dont il a besoin.
-- **Par défaut, tous les modules de l'appli sont activés** : les écoles existantes ne voient
-  aucun changement.
-- **Où et qui** *(décision de Seb du 24 octobre 2026)* : dans Admin > École > Personnalisation
-  de l'application, qui a deux sous-parties, « Apparence visuelle » (le logo, les couleurs, les
-  polices et l'adresse d'avant) et « Fonctionnalités », avec une case par module. L'Administrateur
-  principal et le Super User cochent ou décochent ; les autres admins voient les cases sans pouvoir
-  les changer. Supervision redevient vide. À la création d'une organisation, tout est allumé.
-
-### 9 bis.4 Étapes de code
-
-Chaque étape est une PR, sans rien changer à l'écran avant l'étape 3 :
-
-1. **Déclarations** *(faite le 23 octobre 2026)* : `module.py` et `module.js` pour chaque
-   module, la liste de l'appli (`app/modules.py`, `app/modules.js`), `main.py` qui monte les
-   modules depuis la liste et `nav.js` qui en lit les onglets. Les écrans (`screen`) restent
-   ouverts par `App.jsx`, à reprendre quand on le découpera.
-2. **Assistant** *(faite le 23 octobre 2026)* : l'appli lui remet les actions de la liste des modules au lieu de les
-   assembler à la main (`actions_messagerie(...)`, `actions_cours(...)`…, assistant-ia.md §3).
-3. **Activation** *(faite le 23 octobre 2026)* : table `org_modules`, contrôle des routes,
-   actions de l'assistant cachées, onglets cachés, une case par module (un refus dit quel module
-   en a besoin). Cases déplacées le 24 octobre de Supervision vers École > Personnalisation de
-   l'application > Fonctionnalités.
+- Table `org_modules` (organisation, module, allumé, date) ; **pas de ligne = allumé**.
+- Module éteint pour une organisation : pas d'onglet, pas de bouton d'en-tête, pas d'action de
+  l'assistant, routes « introuvable » (vérifié une fois pour toutes par le core, juste après la
+  session ; pas pour les routes publiques ni le Super User), groupes cachés. **Éteindre n'efface
+  rien.** On n'éteint pas un module dont un autre a besoin ; allumer un module allume ceux qu'il
+  requiert.
+- Écran : Admin > École > Personnalisation de l'application > Fonctionnalités, une case par module
+  (Administrateur principal et Super User). À la création d'une organisation, les défauts du produit.
+- Pas encore : routes publiques de Documents non bloquées ; choix des modules à la création d'une
+  organisation.
 
 ---
 
-## 10. Reste à décider
+## 12. Services communs aux modules
 
-- **Groupes** : un groupe générique dans le core (un cours = un groupe + horaires), pour que
-  messagerie, vidéos et présence ne dépendent plus du cours. Recommandé dans
-  `01-architecture` §10, pas encore tranché.
-- **Base de données** : Postgres dès l'extraction du core, ou plus tard.
+Déjà codés dans Contretemps :
+- **Email** : relais SMTP Brevo (domaine authentifié, DKIM et DMARC), adresse d'expédition du
+  produit au nom de l'organisation, réponses vers son email de contact, suivi de remise (webhook),
+  pièces jointes. Code : `auth/mails.py`, `send_email`.
+- **Notifications push** : §10.2.
+- **Sauvegarde** : par organisation (Excel, Google Drive, périodicité réglable), sauvegarde technique
+  complète avant toute suppression lourde. Code : `ecoles/`, `app/sauvegarde_worker.py`.
+- **Temps réel** : flux par session (messagerie).
+- **Stockage** : contenus par empreinte, liens signés à durée limitée. Code : `storage/`.
+- **Assistant** : chaque module lui déclare ses actions ; l'assistant n'écrit jamais un chiffre, ne
+  voit jamais la santé des membres (`spec/modules/assistant-ia.md`).
 
-## 11. Écarts entre ce document et le code (18 octobre 2026)
+---
 
-- **Corrigé dans la même PR** : le Super User entre maintenant dans le dossier Financier de
-  Docs (il en était exclu), et « Qui a accès ? » d'un dossier réservé n'affiche plus
-  « Admins, toujours ».
-- **Mentions périmées dans `SPEC.md`** : §2.4 (Administrateur principal) et §2.6 (Saisons)
-  disent « pas encore implémenté » alors que le code existe.
+## 13. Étapes de code (chacune une PR, sur le « vas-y » de Seb)
+
+1. **Groupes** : tables `groups` et `group_members`, Bureau et Profs en groupes, Admin >
+   Administrateurs nouveau style, reprise de `bureau_functions` et du rôle Professeur.
+2. **Droits** : `Right` dans `module.py`, groupe « Accès au Financier », `has_right`, reprise de
+   `is_tresorier`.
+3. **Cours = groupes** : `course_details`, messagerie, vidéos et présence sur les groupes.
+4. **Champs des membres** : `member_fields`, `member_values`, `member_columns`, écran Champs des
+   membres, reprise des champs d'`eleves`.
+5. **Famille** par l'email du payeur, commande de reprise.
+6. **Création de saison** en un écran, étape par étape.
+7. **Tarifs** : formules, options, codes promo, règles par l'assistant.
+8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
+9. Formulaire d'inscription de l'appli (à concevoir).
+
+---
+
+## 14. Reste à décider
+
+- Le mot pour « membre + compte de connexion » (membre, compte utilisateur).
+- Saisons en module optionnel (fil du 24 octobre).
+- Postgres : dès l'extraction du core, ou plus tard.
+- Catalogue (produits, `products.group_id`) : spec à écrire quand un produit en aura besoin.
