@@ -6,7 +6,7 @@ import pytest
 import sqlalchemy as sa
 from conftest import entetes_session
 
-from comptes import Comptes, roles
+from comptes import Comptes, RoleCompte, roles
 from ecoles import Ecoles
 from eleves import Eleves
 from groups import Group, GroupMember, board
@@ -89,3 +89,66 @@ def test_la_sauvegarde_technique_garde_le_bureau(client, db_session, ecole):
     with toutes_saisons(db_session):
         julia = Comptes().get(db_session, ecole["julia_admin"].id)
         assert board.functions_of(db_session, julia) == ["president", "treasurer"]
+
+
+def test_les_profs_sont_un_groupe_et_gardent_leur_role(db_session, ecole):
+    comptes = Comptes()
+    prof = comptes.create(db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Noir", prenom="Léa")
+
+    groupe = db_session.scalar(sa.select(Group).where(Group.key == "teachers"))
+    assert (groupe.name, groupe.org_id, groupe.season_id) == ("Profs", ecole["ecole"].id, prof.saison_id)
+    assert db_session.scalar(sa.select(sa.func.count()).where(GroupMember.member_id == prof.id)) == 1
+    assert db_session.scalar(sa.select(sa.func.count()).select_from(RoleCompte).where(RoleCompte.compte_id == prof.id)) == 0
+    # Vu de l'appli, rien ne change : le rôle, le rang, les listes.
+    assert roles.is_prof(prof) and prof.noms_roles == ["professeur"] and prof.role_principal == "professeur"
+    assert roles.rang(prof) == roles.RANG[roles.PROFESSEUR]
+    assert [c.id for c in comptes.list_par_role(db_session, ecole["ecole"].id, "professeur")] == [prof.id]
+
+    # Cumul avec admin, puis retrait du rôle Professeur.
+    comptes.ajouter_role(db_session, ecole["julia_admin"], roles.PROFESSEUR)
+    assert ecole["julia_admin"].noms_roles == ["admin", "professeur"]
+    comptes.retirer_role(db_session, ecole["julia_admin"], roles.PROFESSEUR)
+    assert ecole["julia_admin"].noms_roles == ["admin"]
+    # Un prof seul garde au moins un rôle.
+    with pytest.raises(Exception, match="au moins un rôle"):
+        comptes.retirer_role(db_session, prof, roles.PROFESSEUR)
+
+
+@pytest.mark.rbac_reel
+def test_la_fusion_de_deux_profs_garde_un_seul_prof(client, db_session, ecole):
+    comptes = Comptes()
+    ecole_id = ecole["ecole"].id
+    lea = comptes.create(db_session, ecole_id=ecole_id, role="professeur", nom="Noir", prenom="Léa")
+    doublon = comptes.create(db_session, ecole_id=ecole_id, role="professeur", nom="NOIR", prenom="Léa")
+
+    reponse = client.post(f"/comptes/{lea.id}/fusion", json={"autre_id": doublon.id}, headers=entetes_session(ecole["owner"]))
+
+    assert reponse.status_code == 200, reponse.text
+    db_session.expire_all()
+    assert [c.id for c in comptes.list_par_role(db_session, ecole_id, "professeur")] == [lea.id]
+
+
+def test_une_ancienne_sauvegarde_remet_les_profs_dans_le_groupe(client, db_session, ecole):
+    """Sauvegarde d'avant le groupe : une ligne « professeur » dans RolesComptes."""
+    from openpyxl import load_workbook
+    import io
+
+    ecole_id = ecole["ecole"].id
+    prof = Comptes().create(db_session, ecole_id=ecole_id, role="professeur", nom="Noir", prenom="Léa")
+    classeur = load_workbook(io.BytesIO(client.get(f"/ecoles/{ecole_id}/export-technique").content))
+    feuille = classeur["RolesComptes"]
+    en_tetes = [c.value for c in feuille[1]]
+    ligne = {"compte_id": prof.id, "role": "professeur", "created_at": None}
+    feuille.append([ligne.get(nom) for nom in en_tetes])
+    for nom in ("Groupes", "MembresGroupes"):
+        del classeur[nom]
+    sortie = io.BytesIO()
+    classeur.save(sortie)
+
+    reponse = client.post(f"/ecoles/{ecole_id}/restaurer", files={"fichier": ("backup.xlsx", sortie.getvalue(), XLSX)})
+
+    assert reponse.status_code == 204, reponse.text
+    db_session.expire_all()
+    with toutes_saisons(db_session):
+        assert [c.id for c in Comptes().list_par_role(db_session, ecole_id, "professeur")] == [prof.id]
+        assert roles.noms_roles(Comptes().get(db_session, prof.id)) == ["professeur"]

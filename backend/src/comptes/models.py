@@ -12,6 +12,7 @@ from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConst
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
+from groups.models import Group  # noqa: F401 (relation `groups` ci-dessous)
 
 
 def _utcnow() -> datetime:
@@ -93,6 +94,12 @@ class Compte(Base):
         cascade="all, delete-orphan",
     )
 
+    # Groupes du core (spec/core.md §5), en lecture : Profs, Bureau... Lus
+    # par comptes/roles.py (`is_prof`), écrits par groups/.
+    groups: Mapped[list["Group"]] = relationship(
+        "Group", secondary="group_members", lazy="selectin", viewonly=True
+    )
+
     # Emails de la fiche (§2.1, 2026-10-16) : tous équivalents, aucun
     # « principal ». Toujours écrits par `definir_emails`.
     adresses: Mapped[list["EmailCompte"]] = relationship(
@@ -142,9 +149,9 @@ class Compte(Base):
 
     @property
     def role_principal(self) -> str:
-        from .roles import role_principal
+        from .roles import noms_roles, role_principal
 
-        return role_principal(r.role for r in self.roles)
+        return role_principal(noms_roles(self))
 
 
 class RoleCompte(Base):

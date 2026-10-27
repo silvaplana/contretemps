@@ -157,10 +157,16 @@ def test_migration_convertit_role_unique_en_roles_cumulables(tmp_path, monkeypat
     with moteur.connect() as c:
         lignes = set(c.execute(sa.text("SELECT compte_id, role FROM roles_compte")).all())
         colonnes = [col["name"] for col in sa.inspect(c).get_columns("comptes")]
+        # Professeur : groupe « Profs » depuis la migration a3c5e7f9b1d2.
+        profs = c.execute(sa.text(
+            "SELECT g.org_id, g.name, m.member_id FROM groups g JOIN group_members m ON m.group_id = g.id"
+            " WHERE g.key = 'teachers'"
+        )).all()
     assert lignes == {
-        (3, "admin"), (3, "owner"), (5, "admin"), (4, "professeur"), (6, "eleve"),
+        (3, "admin"), (3, "owner"), (5, "admin"), (6, "eleve"),
         (7, "admin"), (7, "owner"),
     }
+    assert profs == [(1, "Profs", 4)]
     assert "role" not in colonnes
 
     # Et le retour arrière retrouve l'ancien modèle, rôle le plus élevé.

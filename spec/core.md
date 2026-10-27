@@ -250,6 +250,13 @@ groupe « Bureau » et ses sous-groupes par école et par saison, créés à la 
 écrite (colonne gardée en base, à supprimer plus tard). L'API et l'écran n'ont pas changé
 (`bureau_functions` dans Admin > Administrateurs et l'action `change_roles` de l'assistant).
 
+**Fait (27 octobre 2026, étape 1b)** : les **Profs** en groupe (`groups/teachers.py`) : un groupe « Profs »
+par école et par saison, clé `teachers`. Le rôle Professeur n'est plus une ligne de `roles_compte` ; la
+migration y reprend les profs. `comptes/roles.py` le présente toujours comme un rôle (`is_prof`, liste
+`roles` de l'API, même rang) : un prof voit et fait exactement la même chose, rien ne change à l'écran.
+Le groupe est recopié à la nouvelle saison (case « profs »), suit la fusion et la sauvegarde ; une
+ancienne sauvegarde avec des lignes « professeur » est convertie à la restauration.
+
 ---
 
 ## 6. Connexion
@@ -556,7 +563,7 @@ Déjà codés dans Contretemps :
 1. **Groupes**, en trois PR :
    a. tables `groups` et `group_members`, Bureau en groupes, reprise de `bureau_functions`
       *(faite le 27 octobre 2026)* ;
-   b. Profs en groupe, reprise du rôle Professeur ;
+   b. Profs en groupe, reprise du rôle Professeur *(faite le 27 octobre 2026)* ;
    c. Admin > Administrateurs nouveau style (colonne Groupes, maquette).
 2. **Droits** : `Right` dans `module.py`, groupe « Accès au Financier », `has_right`, reprise de
    `is_tresorier`.
