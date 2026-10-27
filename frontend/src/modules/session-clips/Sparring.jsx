@@ -18,8 +18,8 @@ import './sparring.css'
 // a aussi Séances et À vérifier. Une séance ouverte et un clip lu s'affichent
 // en plein écran avec la flèche de retour, comme une chorégraphie.
 //
-// Étape 1 : la vidéo d'une séance s'envoie à la main (+), par l'envoi par
-// blocs du module Vidéos ; la découpe en clips viendra avec l'étape 2.
+// Le + filme un combat à la main (FilmerCombat) ; la séance entière filmée
+// en continu viendra avec l'enregistreur (étape 3).
 
 const ANNULER_MS = 10000
 
@@ -252,7 +252,7 @@ function EtatSeance({ s }) {
   )
 }
 
-function Seances({ ecoleId, cours, version, rafraichir, montrer, onOpen }) {
+function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
   const [liste, setListe] = useState(null)
   useEffect(() => {
     api.seances().then(setListe, (e) => montrer(e.message))
@@ -262,7 +262,7 @@ function Seances({ ecoleId, cours, version, rafraichir, montrer, onOpen }) {
   return (
     <>
       {liste?.length === 0 && (
-        <p className="sc-vide">Aucune séance filmée. Le + envoie la vidéo d’une séance filmée avec le téléphone.</p>
+        <p className="sc-vide">Aucune séance filmée. Le + filme un combat avec le téléphone.</p>
       )}
       {liste?.map((s) => {
         const prete = s.status === 'ready'
@@ -299,52 +299,66 @@ function Seances({ ecoleId, cours, version, rafraichir, montrer, onOpen }) {
           </button>
         )
       })}
-      <EnvoyerSeance ecoleId={ecoleId} cours={cours} onEnvoyee={rafraichir} montrer={montrer} />
+      <FilmerCombat ecoleId={ecoleId} onEnvoye={rafraichir} montrer={montrer} />
     </>
   )
 }
 
-// Le + : la vidéo d'une séance filmée avec l'appareil photo (étape V1).
-// Même envoi que les vidéos d'une chorégraphie (utils/videoUploads.js) : il
-// démarre dès le fichier choisi et continue après « Envoyer ». Pas de
-// compression : la vidéo sera découpée, puis effacée.
-function EnvoyerSeance({ ecoleId, cours, onEnvoyee, montrer }) {
-  const [envoi, setEnvoi] = useState(null) // { uploadId, date }
-  const [titre, setTitre] = useState('')
-  const [date, setDate] = useState('')
+// Le + : « Filmer un combat » (Seb, 27/10). L'appareil photo du téléphone
+// s'ouvre ; une fois le combat filmé, on le garde ou on le jette, et
+// seulement s'il est gardé on choisit les deux combattants. L'envoi par
+// blocs du module Vidéos (utils/videoUploads.js) démarre dès la vidéo
+// filmée ; le combat rejoint la séance du jour, sans découpe.
+function FilmerCombat({ ecoleId, onEnvoye, montrer }) {
+  const [film, setFilm] = useState(null) // { url, uploadId, garde }
+  const [noms, setNoms] = useState([null, null]) // { id, name } Rouge, Bleu
   const [enCours, setEnCours] = useState(false)
 
-  async function choisir(fichier) {
+  async function filme(fichier) {
     if (!fichier) return
-    const jourFichier = new Date(fichier.lastModified || Date.now())
-    const iso = new Date(jourFichier.getTime() - jourFichier.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
-    setDate(iso)
-    setTitre(cours?.[0]?.nom ?? '')
-    setEnvoi({ uploadId: null })
+    const url = URL.createObjectURL(fichier)
+    setNoms([null, null])
+    setFilm({ url, uploadId: null, garde: false })
     try {
-      setEnvoi({ uploadId: await demarrerTeleversement(ecoleId, fichier) })
+      const uploadId = await demarrerTeleversement(ecoleId, fichier)
+      setFilm((f) => (f?.url === url ? { ...f, uploadId } : f))
     } catch (e) {
-      setEnvoi(null)
+      URL.revokeObjectURL(url)
+      setFilm(null)
       montrer(e.message)
     }
   }
 
-  function annuler() {
-    if (envoi?.uploadId) annulerTeleversement(envoi.uploadId)
-    setEnvoi(null)
-    setEnCours(false)
+  function fermer() {
+    URL.revokeObjectURL(film.url)
+    setFilm(null)
   }
 
-  async function envoyer() {
-    if (enCours || !envoi?.uploadId) return
+  // Jeter : la vidéo disparaît, l'envoi s'arrête au bout de 10 s.
+  function jeter() {
+    const f = film
+    setFilm(null)
+    const retard = setTimeout(() => {
+      URL.revokeObjectURL(f.url)
+      if (f.uploadId) annulerTeleversement(f.uploadId)
+    }, ANNULER_MS)
+    montrer('Combat jeté', () => {
+      clearTimeout(retard)
+      setFilm(f)
+    })
+  }
+
+  async function enregistrer() {
+    if (enCours || !film.uploadId) return
     setEnCours(true)
     try {
-      await finaliserTeleversement(envoi.uploadId, async (uploadId) => {
-        const s = await api.creerSeance({ upload_id: uploadId, title: titre, held_on: date })
-        return s.raw_video
+      await finaliserTeleversement(film.uploadId, async (uploadId) => {
+        const c = await api.filmerCombat({ upload_id: uploadId, people: noms.map((n) => n.id) })
+        return c.video
       })
-      setEnvoi(null)
-      onEnvoyee()
+      montrer(`${noms.map((n) => n.name).join(' contre ')} : gardé`)
+      fermer()
+      onEnvoye()
     } catch (e) {
       montrer(e.message)
     } finally {
@@ -354,42 +368,149 @@ function EnvoyerSeance({ ecoleId, cours, onEnvoyee, montrer }) {
 
   return (
     <>
-      <label className="fab" aria-label="Envoyer la vidéo d'une séance">
+      <label className="fab" aria-label="Filmer un combat">
         <Icon name="plus" size={24} />
-        <input type="file" accept="video/*" hidden onChange={(e) => choisir(e.target.files[0])} />
+        <input
+          type="file"
+          accept="video/*"
+          capture="environment"
+          hidden
+          onChange={(e) => {
+            filme(e.target.files[0])
+            e.target.value = ''
+          }}
+        />
       </label>
-      {envoi && (
+      {film && !film.garde && (
         <Modal
-          title="Envoyer une séance"
-          onClose={annuler}
+          title="Garder ce combat ?"
+          onClose={jeter}
           footer={
             <div className="video-upload-form__actions">
-              <button type="button" className="btn btn--secondary" onClick={annuler}>
-                Annuler
+              <button type="button" className="btn btn--secondary" onClick={jeter}>
+                Jeter
               </button>
-              <button
-                type="button"
-                className="btn btn--primary"
-                disabled={!envoi.uploadId || !date || enCours}
-                onClick={envoyer}
-              >
-                Envoyer
+              <button type="button" className="btn btn--primary" onClick={() => setFilm({ ...film, garde: true })}>
+                Garder
               </button>
             </div>
           }
         >
-          <label htmlFor="sc-date">Date de la séance</label>
-          <input id="sc-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-          <label htmlFor="sc-cours">Cours</label>
-          <input id="sc-cours" list="sc-cours-liste" value={titre} onChange={(e) => setTitre(e.target.value)} />
-          <datalist id="sc-cours-liste">
-            {cours?.map((c) => (
-              <option key={c.id} value={c.nom} />
-            ))}
-          </datalist>
+          <video className="sc-apercu" src={film.url} controls playsInline />
+        </Modal>
+      )}
+      {film?.garde && (
+        <Modal
+          title="Qui combattait ?"
+          onClose={jeter}
+          footer={
+            <div className="video-upload-form__actions">
+              <button type="button" className="btn btn--secondary" onClick={jeter}>
+                Jeter
+              </button>
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={!film.uploadId || noms.includes(null) || enCours}
+                onClick={enregistrer}
+              >
+                C’est bon
+              </button>
+            </div>
+          }
+        >
+          {['Rouge', 'Bleu'].map((cote, i) => (
+            <ChoixCombattant
+              key={cote}
+              cote={cote}
+              index={i}
+              choisi={noms[i]}
+              autre={noms[1 - i]}
+              onChoisir={(p) => setNoms((n) => n.map((x, j) => (j === i ? p : x)))}
+            />
+          ))}
         </Modal>
       )}
     </>
+  )
+}
+
+const sansAccents = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+// La voix du navigateur (comme la dictée de l'assistant, modules/documents/
+// Dictee.js) : une seule phrase, ici un nom. Absente de Firefox.
+const Reconnaissance = typeof window !== 'undefined' ? window.SpeechRecognition || window.webkitSpeechRecognition : null
+
+// Un combattant : les premières lettres de son nom ou sa voix, puis un
+// appui sur le bon membre dans la liste.
+function ChoixCombattant({ cote, index, choisi, autre, onChoisir }) {
+  const [membres, setMembres] = useState([])
+  const [cherche, setCherche] = useState('')
+  const [ecoute, setEcoute] = useState(false)
+  useEffect(() => {
+    api.membres().then(setMembres, () => {})
+  }, [])
+
+  function ecouter() {
+    const r = new Reconnaissance()
+    r.lang = 'fr-FR'
+    r.onresult = (e) => setCherche(e.results[0][0].transcript)
+    r.onend = () => setEcoute(false)
+    setEcoute(true)
+    r.start()
+  }
+
+  // Chaque mot tapé ou dit doit commencer un mot du nom : « seb r », « richard ».
+  const mots = sansAccents(cherche).split(/\s+/).filter(Boolean)
+  const liste = mots.length
+    ? membres
+        .filter((p) => p.id !== autre?.id)
+        .filter((p) => {
+          const nom = sansAccents(p.name).split(/[\s.-]+/)
+          return mots.every((m) => nom.some((n) => n.startsWith(m.replace('.', ''))))
+        })
+        .slice(0, 6)
+    : []
+
+  return (
+    <div className="sc-combattant">
+      <div className="sc-combattant__cote">
+        <span className={`sc-point sc-point--${index === 0 ? 'rouge' : 'bleu'}`} />
+        {cote}
+      </div>
+      {choisi ? (
+        <button type="button" className="sc-nom" onClick={() => onChoisir(null)}>
+          <b>{choisi.name}</b>
+          <Icon name="x" size={20} />
+        </button>
+      ) : (
+        <>
+          <div className="sc-combattant__saisie">
+            <input
+              className="field-input"
+              placeholder="Premières lettres du nom"
+              value={cherche}
+              onChange={(e) => setCherche(e.target.value)}
+            />
+            {Reconnaissance && (
+              <button
+                type="button"
+                className={`icon-btn${ecoute ? ' sc-micro--ecoute' : ''}`}
+                aria-label="Dire le nom"
+                onClick={ecouter}
+              >
+                <Icon name="micro" size={22} />
+              </button>
+            )}
+          </div>
+          {liste.map((p) => (
+            <button key={p.id} type="button" className="sc-combattant__membre" onClick={() => onChoisir(p)}>
+              {p.name}
+            </button>
+          ))}
+        </>
+      )}
+    </div>
   )
 }
 

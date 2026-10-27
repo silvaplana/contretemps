@@ -19,6 +19,14 @@ class SessionCreate(BaseModel):
     held_on: date
 
 
+class FightCreate(BaseModel):
+    """« Filmer un combat » : l'envoi (`upload_id`, module Vidéos) et les
+    deux combattants, Rouge puis Bleu."""
+
+    upload_id: str
+    people: list[int]
+
+
 class ParticipantsUpdate(BaseModel):
     """Les personnes du clip, dans l'ordre des places (Rouge puis Bleu à
     deux) ; `null` : pas encore nommé."""
