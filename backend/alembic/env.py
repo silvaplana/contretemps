@@ -30,6 +30,7 @@ from saisons.models import Saison  # noqa: F401
 from videos.models import Video  # noqa: F401
 from documents.models import DocAcl, DocActivity, DocNode, DocVersion, StoredFile  # noqa: F401
 from members.models import MemberColumn, MemberField, MemberValue  # noqa: F401
+from session_clips.models import Clip, ClipParticipant, ClipSession, SessionAttendee  # noqa: F401
 from finances.models import FinAccount, FinAssembly, FinAssemblyFile, FinForecast, FinOperation, FinReport, FinStatement  # noqa: F401
 
 config = context.config

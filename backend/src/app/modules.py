@@ -10,6 +10,7 @@ from inscriptions.module import MODULE as registration
 from messagerie.module import MODULE as messaging
 from notes_frais_contretemps.module import MODULE as expense_notes
 from presence.module import MODULE as presence
+from session_clips_contretemps.module import MODULE as session_clips
 from videos.module import MODULE as videos
 
 MODULES = [
@@ -22,4 +23,5 @@ MODULES = [
     assistant,
     expense_notes,
     finances,
+    session_clips,
 ]

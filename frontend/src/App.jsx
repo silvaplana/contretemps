@@ -44,6 +44,7 @@ import MessagerieScreen from './screens/MessagerieScreen.jsx'
 import PresenceScreen from './screens/PresenceScreen.jsx'
 import ProfilScreen from './screens/ProfilScreen.jsx'
 import Financier from './modules/notes-frais/Financier.jsx'
+import Sparring from './modules/session-clips/Sparring.jsx'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
 
@@ -990,6 +991,7 @@ function App() {
     activeTab === 'heures' ||
     activeTab === 'notes-frais' ||
     activeTab === 'financier' ||
+    activeTab === 'sparring' ||
     activeTab === 'supervision' ||
     activeTab === 'docs' ||
     // Messagerie : rien à voir avec les cours (spec/modules/
@@ -1011,6 +1013,8 @@ function App() {
             ? 'Mes notes de frais'
             : activeTab === 'financier'
               ? 'Financier'
+            : activeTab === 'sparring'
+              ? 'Sparring'
           : activeTab === 'supervision'
             ? 'Supervision'
             : activeTab === 'docs'
@@ -1185,6 +1189,8 @@ function App() {
         {activeTab === 'financier' && isTresorier(activeUser) && <Financier key={activeUser.id} />}
 
         {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} />}
+
+        {activeTab === 'sparring' && <Sparring key={activeUser.id} ecoleId={ecole.id} cours={cours} />}
 
         {activeTab === 'profil' && (
           <ProfilScreen

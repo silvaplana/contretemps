@@ -159,7 +159,7 @@ l'appli, par l'envoi par blocs du module `videos` (SPEC.md §6.8).
 
 **Ensuite, une petite appli Android à part, l'« enregistreur »** : l'appli reste la PWA pour tout le
 monde. L'enregistreur n'est installé que sur le téléphone qui filme. C'est une appli Kotlin minuscule
-(CameraX), indépendante du frontend, distribuée en APK. On n'utilise pas Capacitor, qui obligerait à
+(CameraX), indépendante du frontend, distribuée en APK (choix confirmé par Seb le 27 octobre). On n'utilise pas Capacitor, qui obligerait à
 maintenir un build Android de toute l'appli pour une seule fonction.
 
 - **Téléphone dédié, fixé au mur et branché en permanence.** Une seule caméra pour l'instant ; s'il y
@@ -315,7 +315,9 @@ couleurs ne servent qu'à deux.
 - Dessous : les deux noms avec leur pastille rouge et bleue, puis « Mar. 21 oct. · Adultes · 19 h ·
   combat 1 ».
 - Puis « Autres combats de la séance » (coach) ou « Vos autres combats ce jour-là » (membre).
-- ⋯ : « Envoyer dans la messagerie… » pour tous ; pour un coach aussi « Inverser les noms » (Annuler
+- ⋯ pour tous (Seb, 27 octobre : chacun garde et diffuse ses combats) : « Télécharger » (le clip dans
+  le téléphone), « Partager… » (le menu Partager du téléphone avec le fichier : WhatsApp, mail…, par
+  le partage web de Chrome) et « Envoyer dans la messagerie… » ; pour un coach aussi « Inverser les noms » (Annuler
   10 s), « Changer un nom », « Supprimer ce clip » (Annuler 10 s).
 
 ### 6.6 Plus tard
@@ -323,9 +325,12 @@ couleurs ne servent qu'à deux.
 Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).
 
 - **Place disque** : un clip s'efface seul après quelques jours (7 proposé, réglable), sauf ceux qu'on
-  coche « Garder » ; chacun peut garder un nombre limité de clips ; « Télécharger sur mon téléphone »
-  dans ⋯.
-- **Docs** : un dossier Sparring dans Docs, avec les séances.
+  coche « Garder » ; chacun peut garder un nombre limité de clips. Le téléchargement (§6.5), lui, est
+  là dès le début.
+- **Docs** (Seb, 27 octobre) : les mêmes vidéos se voient aussi dans Docs, dans l'espace de la saison :
+  un dossier **Sparring**, avec un sous-dossier par séance (« Jeu. 23 oct. · Adultes ») et ses clips
+  nommés comme dans Sparring. Ce sont les mêmes fichiers, sans copie : effacer un clip d'un côté
+  l'efface de l'autre. Le dossier suit les droits de l'espace de la saison (Privé : admins et profs).
 - **Diffuser** : envoyer une séance ou un clip à d'autres.
 - **La danse** : dans Contretemps, pas de bouton dans la barre du bas, mais un onglet **« Passages »**
   dans Chorégraphies (**Chorégraphies | Passages**), rangé par `session_clips_contretemps/`. Un
@@ -339,11 +344,17 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 
 | Table | Rôle | Colonnes principales |
 |---|---|---|
-| `sc_sessions` | une séance filmée | `id`, `org_id`, `group_id` (le cours, groupe du core, facultatif), `started_at`, `ended_at`, `status` (`uploading` / `processing` / `ready`), `upload_percent`, `raw_video_id` (vidéo brute, effacée après validation) |
-| `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte) |
-| `sc_participants` | qui est dans un clip | `clip_id`, `member_id` (fiche `comptes`, vide = pas encore nommé), `side` (`red` / `blue` à deux, vide au-delà) |
-| `sc_attendees` | présents reconnus à une séance | `session_id`, `member_id` |
-| `sc_recorders` | le téléphone qui filme | `id`, `org_id`, `state` (`ready` / `recording` / `offline`), `battery_percent`, `free_bytes`, `last_seen_at`, `last_upload_at` |
+| `sc_sessions` | une séance filmée | `id`, `org_id`, `title` (« Adultes · 19 h », le cours choisi ou tapé), `held_on` (date), `raw_video_id` (vidéo brute dans `videos`, vide une fois effacée), `status` (`processing` / `ready` ; « en cours d'envoi » se lit sur la vidéo brute), `created_by`, `created_at` |
+| `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`, unique), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte) |
+| `sc_participants` | qui est dans un clip | `clip_id`, `slot` (0 = Rouge, 1 = Bleu à deux ; ordre simple au-delà), `person_id` (la personne, vide = pas encore nommée) |
+| `sc_attendees` | présents reconnus à une séance | `session_id`, `person_id` |
+| `sc_recorders` | le téléphone qui filme *(étape 3, pas encore créée)* | `id`, `org_id`, `state` (`ready` / `recording` / `offline`), `battery_percent`, `free_bytes`, `last_seen_at`, `last_upload_at` |
+
+`person_id` est la personne, stable d'une saison à l'autre : dans Contretemps, c'est la première
+fiche `comptes` de la chaîne des saisons (comme les documents), fournie par l'adaptateur
+`session_clips_contretemps/`. Un clip créé avec un nom manquant ou un motif (`check_reason`) part
+dans « À vérifier » ; tant qu'il y est, seuls les coachs le voient. Supprimer un clip efface sa
+vidéo ; effacer une vidéo depuis « Usage vidéo » retire aussi son clip.
 
 Le nom d'un clip (« Seb R. contre Karim B. 2 ») n'est pas stocké : il se calcule à l'affichage, pour
 suivre les corrections. Le consentement (§6.8) est une case de la fiche membre.
@@ -400,6 +411,17 @@ Chaque étape est utilisable seule. On s'arrête dès qu'une étape ne vaut plus
    présents.
 5. **V4, enregistreur Android** : démarrage depuis la PWA, pilotage à distance, envoi automatique.
 
+Découpage du code en trois étapes (accord Seb du 27/10) :
+
+1. **Fait (PR #79)** : tables, onglet Sparring (Mes combats, Séances, À vérifier, lecture,
+   Télécharger, Partager), envoi d'une séance à la main par le bouton + (envoi par blocs et
+   barre de progression du module `videos`). La séance attend la découpe (« Découpe cette nuit »).
+   Pas encore : la pastille caméra et son panneau (rien à piloter avant l'étape 3), le dossier
+   Sparring dans Docs, l'effacement automatique.
+2. **Découpe** : conteneur à part `sparring-worker` (§11), qui range ses clips par
+   `SessionClips.add_clip` puis passe la séance à `ready`.
+3. **Enregistreur Kotlin** (§11), puis la pastille caméra.
+
 ## 9. Risques
 
 - **Puissance du VPS** : le traitement prendra peut-être 2 à 5 fois la durée de la vidéo. À vérifier
@@ -420,5 +442,38 @@ Chaque étape est utilisable seule. On s'arrête dès qu'une étape ne vaut plus
 - Où recueillir le consentement au droit à l'image : à l'adhésion HelloAsso ou dans l'appli ?
 - Les combats sans Y doivent-ils être gardés, ou ignorés ?
 - Nom générique du module : « Clips de séance » proposé, « Sparring » à l'écran pour le combat (§6.1).
-- Contretemps, où il est éteint : une ligne `org_modules` éteinte suffit-elle, ou faut-il un défaut
-  « éteint » dans `Module` (nouveau point d'extension, à décider avec Seb) ?
+- Contretemps, où il est éteint : fait à l'étape 1 par une ligne `org_modules` éteinte pour chaque
+  école existante (migration). Une nouvelle école l'aura allumé ; un défaut « éteint » dans `Module`
+  serait un nouveau point d'extension, à décider avec Seb.
+
+## 11. Installation et exploitation
+
+But : pouvoir réinstaller le module sur un autre VPS sans rien deviner. Mis à jour à chaque étape.
+
+**Code.** Backend `backend/src/session_clips/` (générique) et `backend/src/session_clips_contretemps/`
+(branchement : qui est coach, annuaire des personnes, déclaration `module.py`), listé dans
+`backend/src/app/modules.py`. Frontend `frontend/src/modules/session-clips/`, listé dans
+`frontend/src/app/modules.js`, affiché par `App.jsx` (onglet `sparring`).
+
+**Base.** Migration Alembic `ee886b89a201_session_clips` : crée `sc_sessions`, `sc_clips`,
+`sc_participants`, `sc_attendees`, et éteint le module dans chaque école existante (une ligne
+`org_modules` à `enabled = 0`). Une école créée ensuite l'a allumé (pas de ligne = allumé). Rien à
+faire à la main : `deploy.sh` lance `alembic upgrade head`.
+
+**Allumer le module pour une école.** Admin > École > Personnalisation de l'application >
+Fonctionnalités > case « Sparring » (Administrateur principal ou Super User). Il faut aussi le
+module Vidéos. Module éteint : onglet caché, routes `/session-clips/...` en 404.
+
+**Fichiers.** Aucun dossier nouveau : la vidéo brute d'une séance et chaque clip sont des vidéos du
+module `videos`, rangées dans `VIDEOS_DIR/<id de l'école>/` (dans l'image : `/app/data/uploads/videos`,
+volume Docker `backend_data` monté sur `/app/data`, avec la base SQLite). Changer de VPS = copier ce
+volume, comme pour le reste de l'appli. La vidéo brute n'est pas compressée par le conteneur
+`video-compression` (envoyée « déjà compressée ») : elle sera découpée puis effacée.
+
+**Conteneurs.** Étape 1 : aucun nouveau, tout passe par `backend`. Étape 2 : `sparring-worker`
+(image à part avec PyTorch et YOLO, même volume `backend_data`) — Dockerfile, bloc
+`docker-compose.yml`, variables et commandes à écrire ici à ce moment-là.
+
+**Variables.** Aucune nouvelle à l'étape 1 (`DATABASE_URL`, `VIDEOS_DIR` existent déjà).
+
+**Vérifier.** `cd backend && pytest tests/test_session_clips.py`.
