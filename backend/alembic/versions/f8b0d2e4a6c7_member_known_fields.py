@@ -9,7 +9,7 @@ The Admin columns « naissance », « adresse » and « santé » become the
 matching field columns (the red cells too).
 
 Revision ID: f8b0d2e4a6c7
-Revises: e7a9c1d3f5b6
+Revises: ee886b89a201
 """
 
 import datetime as dt
@@ -19,7 +19,7 @@ import sqlalchemy as sa
 from alembic import op
 
 revision = "f8b0d2e4a6c7"
-down_revision = "e7a9c1d3f5b6"
+down_revision = "ee886b89a201"
 branch_labels = None
 depends_on = None
 
