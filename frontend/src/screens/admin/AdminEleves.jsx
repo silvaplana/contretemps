@@ -243,11 +243,8 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   async function remove(id) {
     if (!window.confirm('Supprimer cet élève ?')) return
     await elevesApi.supprimer(id)
+    // Le surlignage rouge est porté par l'élève : il part avec lui.
     setEleves((list) => list.filter((el) => el.id !== id))
-    setSurlignage((s) => {
-      const { [id]: _retire, ...reste } = s
-      return reste
-    })
   }
 
   async function addEleve(nom, prenom) {
