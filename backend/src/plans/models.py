@@ -6,7 +6,7 @@ Montants en centimes, comme le Financier."""
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, Table
+from sqlalchemy import Boolean, Column, Date, DateTime, ForeignKey, Index, Integer, String, Table, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -72,7 +72,7 @@ class SeasonAdjustment(Base):
     # Négatif = en moins. En centimes (« eur ») ou en centièmes de % (« pct »).
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
     unit: Mapped[str] = mapped_column(String(3), nullable=False, default="eur")
-    # Comment l'obtenir : « check » (la personne coche) ou « code ».
+    # Comment l'obtenir : « check » (la personne coche), « code » ou « rule ».
     mode: Mapped[str] = mapped_column(String(10), nullable=False, default="check")
     code: Mapped[str | None] = mapped_column(String(50), nullable=True)
     # Code montré dans le formulaire (la personne le coche) ou secret (elle le tape).
@@ -81,6 +81,11 @@ class SeasonAdjustment(Base):
     until: Mapped[date | None] = mapped_column(Date, nullable=True)
     # À cocher : quantité limitée.
     quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Règle (étape 7c) : écrite en français, redite par l'assistant
+    # (« Compris : … ») et son calcul (rules.py), qui donne le montant.
+    rule: Mapped[str | None] = mapped_column(Text, nullable=True)
+    understood: Mapped[str | None] = mapped_column(Text, nullable=True)
+    calculation: Mapped[str | None] = mapped_column(String(500), nullable=True)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

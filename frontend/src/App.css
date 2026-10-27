@@ -4942,6 +4942,16 @@ a.btn {
   font-weight: 400;
 }
 
+.tarifs__regle {
+  min-height: 72px;
+  padding: 10px 12px;
+  resize: vertical;
+}
+
+.tarifs__calcul {
+  font-size: 14px;
+}
+
 .tarifs__sous {
   margin-left: 38px;
   width: calc(100% - 38px);

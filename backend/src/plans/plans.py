@@ -9,6 +9,7 @@ import datetime as dt
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from . import rules
 from .models import SeasonAdjustment, SeasonPlan, SeasonPlanInstallment
 
 
@@ -89,9 +90,17 @@ def set_adjustment(db: Session, adjustment: SeasonAdjustment, **values) -> None:
     if not name:
         raise PlanError("Le nom est obligatoire")
     mode, unit, amount = values["mode"], values["unit"], values["amount"]
-    if mode not in ("check", "code") or unit not in ("eur", "pct"):
+    if mode not in ("check", "code", "rule") or unit not in ("eur", "pct"):
         raise PlanError("Réglage inconnu")
-    if amount == 0:
+    calculation = None
+    if mode == "rule":
+        # Le montant vient du calcul.
+        amount, unit = 0, "eur"
+        try:
+            calculation = rules.check(values.get("calculation") or "")
+        except rules.RuleError:
+            raise PlanError("Faites d'abord comprendre la règle") from None
+    elif amount == 0:
         raise PlanError("Le montant est obligatoire")
     if unit == "pct" and abs(amount) > 10000:
         raise PlanError("Un pourcentage ne dépasse pas 100 %")
@@ -119,6 +128,9 @@ def set_adjustment(db: Session, adjustment: SeasonAdjustment, **values) -> None:
     adjustment.max_uses = values.get("max_uses") if mode == "code" else None
     adjustment.until = values.get("until") if mode == "code" else None
     adjustment.quantity = values.get("quantity") if mode == "check" else None
+    adjustment.rule = (values.get("rule") or "").strip() if mode == "rule" else None
+    adjustment.understood = (values.get("understood") or "").strip() or None if mode == "rule" else None
+    adjustment.calculation = calculation
     adjustment.active = values.get("active", True)
     adjustment.plans = chosen
 
@@ -163,7 +175,8 @@ def copy_season(
     copied_adjustments = []
     for old in adjustments(db, org_id, old_season_id):
         new = SeasonAdjustment(org_id=org_id, season_id=new_season_id, position=old.position)
-        for key in ("name", "amount", "unit", "mode", "code", "shown", "max_uses", "quantity", "active"):
+        for key in ("name", "amount", "unit", "mode", "code", "shown", "max_uses", "quantity", "rule",
+                    "understood", "calculation", "active"):
             setattr(new, key, getattr(old, key))
         new.until = _next_year(old.until)
         new.plans = [same[plan.id] for plan in old.plans]

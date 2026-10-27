@@ -31,11 +31,12 @@ CATEGORIES_IA = {
     "assemblee_generale": "Financier : PowerPoint des assemblées générales",
     "previsionnel": "Financier : prévisionnels",
     "liste_presents": "Assemblée générale : lecture de la liste des présents",
+    "regle_tarif": "Tarifs : règles en français",
 }
 
 # Postes comptés dans le plafond mensuel de l'assistant (la lecture des
 # tickets aussi : spec/modules/notes-de-frais.md §12).
-POSTES_PLAFOND = ("chat_documents", "lecture_ticket")
+POSTES_PLAFOND = ("chat_documents", "lecture_ticket", "regle_tarif")
 
 
 def _taille(dossier: Path) -> int:

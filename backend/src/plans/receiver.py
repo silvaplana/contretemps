@@ -15,7 +15,8 @@ from db import get_db
 
 from . import plans as p
 from .models import SeasonAdjustment, SeasonPlan
-from .schemas import AdjustmentIn, AdjustmentOut, PlanIn, PlanOut, PlansOut, Previous, Taken
+from . import rules
+from .schemas import AdjustmentIn, AdjustmentOut, PlanIn, PlanOut, PlansOut, Previous, RuleIn, RuleOut, Taken
 
 
 def _installments(data: PlanIn) -> list:
@@ -23,7 +24,8 @@ def _installments(data: PlanIn) -> list:
 
 
 class PlansReceiver:
-    def __init__(self, app: FastAPI) -> None:
+    def __init__(self, app: FastAPI, reader: rules.RuleReader | None = None) -> None:
+        self.reader = reader or rules.RuleReader()
         admin = [Depends(self._admin_ecole)]
         app.get("/ecoles/{ecole_id}/tarifs", response_model=PlansOut, dependencies=admin)(self.lister)
         app.post("/ecoles/{ecole_id}/tarifs/formules", response_model=PlanOut, status_code=201, dependencies=admin)(
@@ -36,6 +38,7 @@ class PlansReceiver:
         app.post(
             "/ecoles/{ecole_id}/tarifs/options", response_model=AdjustmentOut, status_code=201, dependencies=admin
         )(self.creer_option)
+        app.post("/ecoles/{ecole_id}/tarifs/regle", response_model=RuleOut, dependencies=admin)(self.comprendre)
         app.put("/tarifs/options/{adjustment_id}", response_model=AdjustmentOut)(self.modifier_option)
         app.delete("/tarifs/options/{adjustment_id}", status_code=204)(self.retirer_option)
 
@@ -155,3 +158,18 @@ class PlansReceiver:
                        appelant: Compte = Depends(rbac.compte_appelant)):
         db.delete(self._option(db, adjustment_id, appelant))
         db.commit()
+
+    def comprendre(self, ecole_id: int, data: RuleIn, db: Session = Depends(get_db)):
+        """« Faire comprendre la règle » : l'assistant la redit et l'écrit en
+        calcul ; l'appli calcule l'exemple sur un membre de la saison."""
+        saison = self._courante(db, ecole_id)
+        try:
+            understood, calculation = self.reader.understand(db, ecole_id, data.rule)
+        except rules.RuleError as erreur:
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+        example = None
+        if calculation:
+            choisies = [plan for plan in p.plans(db, ecole_id, saison) if not data.plan_ids or plan.id in data.plan_ids]
+            plan = (choisies[0].name, choisies[0].price) if choisies else None
+            example = rules.example(db, ecole_id, saison, calculation, plan)
+        return RuleOut(understood=understood, calculation=calculation, example=example)

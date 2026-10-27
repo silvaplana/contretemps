@@ -84,7 +84,8 @@ def test_options_et_codes_promo(client, ecole):
     assert tshirt.status_code == 201
     assert tshirt.json() | {"id": 0} == {
         "id": 0, "name": "T-shirt", "amount": 1500, "unit": "eur", "mode": "check", "code": None, "shown": False,
-        "max_uses": None, "until": None, "quantity": 30, "active": True, "position": 1, "plan_ids": [],
+        "max_uses": None, "until": None, "quantity": 30, "rule": None, "understood": None, "calculation": None,
+        "active": True, "position": 1, "plan_ids": [],
     }
     code = {"name": "Rentrée", "amount": -1000, "unit": "pct", "mode": "code", "code": " rentree27 ",
             "max_uses": 50, "until": "2027-09-30", "quantity": 5, "plan_ids": [solo["id"]]}
@@ -163,3 +164,76 @@ def test_supprimer_la_saison_et_sauvegarde_technique(client, db_session, ecole, 
     assert db_session.scalar(select(func.count()).select_from(season_adjustment_plans)) == 1
     assert db_session.scalar(select(func.count()).select_from(SeasonPlan)) == 1
     assert db_session.scalar(select(func.count()).select_from(SeasonPlanInstallment)) == 3
+
+
+def test_le_calcul_d_une_regle_n_execute_que_de_l_arithmetique():
+    from plans import rules
+
+    variables = {"prix": 290.0, "age": 9, "annees_anciennete": 3, "nb_famille": 2}
+    assert rules.evaluate("-min(10 * annees_anciennete, 50)", variables) == -3000
+    assert rules.evaluate("-prix * 0.5 if age < 12 else 0", variables) == -14500
+    assert rules.evaluate("-15 if 2 <= nb_famille and not age >= 18 else 0", variables) == -1500
+    # Une information absente de la fiche : la règle ne se calcule pas.
+    assert rules.evaluate("-20 if age < 12 else 0", {**variables, "age": None}) is None
+    for refuse in ("__import__('os')", "prix.real", "open('x')", "[1][0]", "inconnu * 2", "lambda: 1", "1 if"):
+        with pytest.raises(rules.RuleError):
+            rules.check(refuse)
+
+
+class _Assistant:
+    """Le client Anthropic de RuleReader, sans réseau : rend les calculs donnés."""
+
+    def __init__(self, *calculs):
+        self.calculs = list(calculs)
+        self.beta = self
+        self.messages = self
+        self.appels = []
+
+    def parse(self, **params):
+        from types import SimpleNamespace
+
+        from plans.rules import RuleJson
+
+        self.appels.append(params["messages"])
+        return SimpleNamespace(
+            model="claude-opus-5-5", stop_reason="end_turn",
+            usage=SimpleNamespace(input_tokens=1000, output_tokens=100),
+            parsed_output=RuleJson(compris="−10 € par année d’ancienneté, 50 € au plus.", calcul=self.calculs.pop(0)),
+        )
+
+
+def test_faire_comprendre_une_regle(client, db_session, ecole, monkeypatch):
+    from app import main
+    from comptes.models import Compte
+    from plans.rules import RuleReader
+    from saisons.portee import toutes_saisons
+
+    # Léa, inscrite les deux saisons d'avant : 2 ans d'ancienneté.
+    lea = Comptes().create(db_session, ecole_id=ecole.id, role="eleve", nom="Martin", prenom="Léa")
+    with toutes_saisons(db_session):
+        for _ in range(2):
+            avant = Compte(ecole_id=ecole.id, saison_id=lea.saison_id, nom="Martin", prenom="Léa")
+            db_session.add(avant)
+            db_session.flush()
+            avant.saison_id, lea.compte_precedent_id, lea = None, avant.id, avant
+    db_session.commit()
+    assistant = _Assistant("import os", "-min(10 * annees_anciennete, 50)")
+    monkeypatch.setattr(main.plans_receiver, "reader", RuleReader(client=assistant))
+
+    regle = "Enlever 10 € par année d'ancienneté, 50 € maximum"
+    compris = client.post(f"/ecoles/{ecole.id}/tarifs/regle", json={"rule": regle}).json()
+    # Le premier calcul est refusé, l'assistant le corrige.
+    assert len(assistant.appels) == 2
+    assert compris == {
+        "understood": "−10 € par année d’ancienneté, 50 € au plus.",
+        "calculation": "-min(10 * annees_anciennete, 50)",
+        "example": "Léa Martin, 2 ans d’ancienneté → −20 €.",
+    }
+    option = client.post(f"/ecoles/{ecole.id}/tarifs/options", json={
+        "name": "Ancienneté", "amount": 0, "mode": "rule", "rule": regle,
+        "understood": compris["understood"], "calculation": compris["calculation"],
+    }).json()
+    assert (option["mode"], option["amount"], option["calculation"]) == ("rule", 0, compris["calculation"])
+    # Sans calcul vérifié, pas de règle.
+    faux = {"name": "X", "amount": 0, "mode": "rule", "rule": regle, "calculation": "open('x')"}
+    assert client.post(f"/ecoles/{ecole.id}/tarifs/options", json=faux).status_code == 422

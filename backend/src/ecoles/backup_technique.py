@@ -216,7 +216,7 @@ def _construire_tables() -> list[_Table]:
             "OptionsTarifs",
             SeasonAdjustment,
             ["id", "org_id", "season_id", "name", "amount", "unit", "mode", "code", "shown", "max_uses", "until",
-             "quantity", "active", "position", "created_at"],
+             "quantity", "rule", "understood", "calculation", "active", "position", "created_at"],
             lambda db, eid: list(db.scalars(select(SeasonAdjustment).where(SeasonAdjustment.org_id == eid))),
             colonne_ecole_id="org_id",
         ),
