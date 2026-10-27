@@ -25,7 +25,6 @@ class RefusFusion(Exception):
 # Tables où une ligne par (clé, personne) au plus : (table, colonne
 # personne, colonne clé). La ligne de la fiche gardée l'emporte.
 LIENS_PAR_COMPTE = (
-    ("eleves_cours", "eleve_id", "cours_id"),
     ("cours_professeurs", "professeur_id", "cours_id"),
     ("choregraphies_eleves", "eleve_id", "choregraphie_id"),
     ("presences_eleves", "eleve_id", "seance_id"),

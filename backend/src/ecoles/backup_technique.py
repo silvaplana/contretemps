@@ -31,15 +31,15 @@ from typing import Any, Callable
 from choregraphies.models import Choregraphie, choregraphies_eleves, choregraphies_videos
 from comptes import roles
 from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
-from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
+from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
-from groups import Group, GroupMember, rights, teachers
+from groups import Group, GroupMember, courses, rights, teachers
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
 from saisons import Saison, saison_courante_id
 from saisons.portee import toutes_saisons
-from sqlalchemy import Table, delete, select, text
+from sqlalchemy import Table, delete, select, text, update
 from sqlalchemy.orm import Session
 from ressources.models import ConsommationIA
 from videos.models import Video
@@ -191,7 +191,7 @@ def _construire_tables() -> list[_Table]:
         _Table(
             "Cours",
             Cours,
-            ["id", "ecole_id", "saison_id", "nom", "jour", "heure_debut", "heure_fin", "salle", "descriptif", "ordre"],
+            ["id", "ecole_id", "saison_id", "nom", "jour", "heure_debut", "heure_fin", "salle", "descriptif", "ordre", "group_id"],
             lambda db, eid: list(db.scalars(select(Cours).where(Cours.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
         ),
@@ -213,14 +213,6 @@ def _construire_tables() -> list[_Table]:
             ["cours_id", "professeur_id"],
             lambda db, eid: db.execute(
                 select(cours_professeurs).where(cours_professeurs.c.cours_id.in_(_sous_requete_cours_ecole(eid)))
-            ).all(),
-        ),
-        _Table(
-            "ElevesCours",
-            eleves_cours,
-            ["eleve_id", "cours_id"],
-            lambda db, eid: db.execute(
-                select(eleves_cours).where(eleves_cours.c.cours_id.in_(_sous_requete_cours_ecole(eid)))
             ).all(),
         ),
         _Table(
@@ -559,6 +551,33 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
                 db.add(EmailCompte(compte_id=compte_id, email=adresse))
         db.flush()
     _anciens_profs_en_groupe(db, ecole.id)
+    _anciens_eleves_des_cours(db, ecole.id, classeur)
+
+
+def _anciens_eleves_des_cours(db: Session, ecole_id: int, classeur) -> None:
+    """Sauvegarde d'avant le 27/10/2026 : les cours n'avaient pas de groupe et
+    leurs élèves étaient dans l'onglet ElevesCours. Chaque cours reçoit son
+    groupe (groups/courses.py), qui reprend ces élèves."""
+    with toutes_saisons(db):
+        sans_groupe = {}
+        for cours in db.scalars(select(Cours).where(Cours.ecole_id == ecole_id, Cours.group_id.is_(None))).all():
+            sans_groupe[cours.id] = courses.create(db, ecole_id, cours.saison_id, cours.nom).id
+            # Requête directe, comme une migration : les cours des saisons
+            # passées sont en lecture seule pour l'ORM (saisons/portee.py).
+            db.execute(update(Cours).where(Cours.id == cours.id).values(group_id=sans_groupe[cours.id]))
+            db.expire(cours, ["group_id"])
+        if "ElevesCours" not in classeur.sheetnames:
+            return
+        lignes = list(classeur["ElevesCours"].iter_rows(values_only=True))
+        if not lignes:
+            return
+        en_tetes, *donnees = lignes
+        for valeurs in donnees:
+            ligne = dict(zip(en_tetes, valeurs))
+            group_id = sans_groupe.get(ligne.get("cours_id"))
+            if group_id is not None and ligne.get("eleve_id") is not None:
+                courses.add(db, group_id, ligne["eleve_id"])
+        db.flush()
 
 
 def _anciens_profs_en_groupe(db: Session, ecole_id: int) -> None:

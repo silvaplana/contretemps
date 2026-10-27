@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from comptes import Compte
+from groups import courses
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 from saisons.portee import verifier_modifiable
@@ -53,6 +54,8 @@ class CoursService:
                 CoursHoraireSupplementaire(**h) for h in horaires_supplementaires
             ]
         db.add(cours)
+        db.flush()
+        cours.group_id = courses.create(db, ecole_id, cours.saison_id, nom).id
         db.commit()
         db.refresh(cours)
         return cours
@@ -72,6 +75,8 @@ class CoursService:
         # ici empêchait à tort de vider un champ nullable.
         for cle, valeur in champs.items():
             setattr(cours, cle, valeur)
+        if "nom" in champs and cours.group_id is not None:
+            courses.rename(db, cours.group_id, cours.nom)
         # None = pas touché (voir receiver.py) ; une liste (même vide)
         # remplace entièrement les créneaux en plus — SQLAlchemy
         # supprime les anciens (cascade="all, delete-orphan", voir
@@ -96,8 +101,11 @@ class CoursService:
         # de mot-clé AUTOINCREMENT) — repéré lors de tests manuels par
         # id réutilisé après suppression.
         db.execute(cours_professeurs.delete().where(cours_professeurs.c.cours_id == cours_id))
-        db.execute(eleves_cours.delete().where(eleves_cours.c.cours_id == cours_id))
+        group_id = cours.group_id
         db.delete(cours)
+        db.flush()
+        if group_id is not None:
+            courses.drop(db, group_id)
         db.commit()
         return True
 
@@ -135,24 +143,19 @@ class CoursService:
         )
 
     def inscrire_eleve(self, db: Session, cours_id: int, eleve_id: int) -> None:
+        """L'élève entre dans le groupe du cours (groups/courses.py)."""
         verifier_modifiable(db, "cours", cours_id)
-        exists = db.execute(
-            select(eleves_cours).where(
-                eleves_cours.c.cours_id == cours_id, eleves_cours.c.eleve_id == eleve_id
-            )
-        ).first()
-        if exists is None:
-            db.execute(eleves_cours.insert().values(cours_id=cours_id, eleve_id=eleve_id))
+        cours = self.get(db, cours_id)
+        if cours is not None:
+            courses.add(db, cours.group_id, eleve_id)
             db.commit()
 
     def desinscrire_eleve(self, db: Session, cours_id: int, eleve_id: int) -> None:
         verifier_modifiable(db, "cours", cours_id)
-        db.execute(
-            eleves_cours.delete().where(
-                eleves_cours.c.cours_id == cours_id, eleves_cours.c.eleve_id == eleve_id
-            )
-        )
-        db.commit()
+        cours = self.get(db, cours_id)
+        if cours is not None:
+            courses.remove(db, cours.group_id, eleve_id)
+            db.commit()
 
     def eleves_du_cours(self, db: Session, cours_id: int) -> list[Compte]:
         return list(

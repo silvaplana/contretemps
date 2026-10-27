@@ -259,6 +259,17 @@ migration y reprend les profs. `comptes/roles.py` le présente toujours comme un
 Le groupe est recopié à la nouvelle saison (case « profs »), suit la fusion et la sauvegarde ; une
 ancienne sauvegarde avec des lignes « professeur » est convertie à la restauration.
 
+**Fait (27 octobre 2026, étape 3)** : chaque **cours est un groupe**, sous-groupe de « Cours » (clés
+`courses` et `course`, `groups/courses.py`), un jeu par école et par saison. Ses membres sont les élèves
+du cours. La table `cours` joue le rôle de `course_details` (elle garde son nom) : jour, horaire, salle,
+profs (`cours_professeurs`), et `cours.group_id` vers son groupe. Créer, renommer, supprimer un cours
+fait de même avec son groupe ; inscrire un élève le met dans le groupe. La migration reprend
+`eleves_cours`, qui n'est plus lue ni écrite (table gardée en base, à supprimer plus tard).
+Messagerie, vidéos, présence, Docs et assistant lisent toujours les élèves d'un cours par le cours,
+donc maintenant par son groupe : rien ne change à l'écran. Les cours et leurs élèves sont recopiés à la
+nouvelle saison avec leur groupe ; une ancienne sauvegarde (onglet ElevesCours) est convertie à la
+restauration. Plus tard : viser n'importe quel groupe (pas seulement un cours) dans la messagerie et Docs.
+
 **Fait (27 octobre 2026, étape 1c)** : Admin > École > Administrateurs, colonne **Groupes** à la place des
 colonnes « Accès au Financier » et « Bureau » (les autres colonnes ne changent pas). Toucher la case ouvre
 la feuille : Bureau et ses fonctions, Profs, les groupes faits à la main, 🔒 Accès au Financier,
@@ -587,7 +598,8 @@ Déjà codés dans Contretemps :
    c. Admin > Administrateurs nouveau style (colonne Groupes, maquette) *(faite le 27 octobre 2026)*.
 2. **Droits** : `Right` dans `module.py`, groupe « Accès au Financier », `has_right`, reprise de
    `is_tresorier` *(faite le 27 octobre 2026)*.
-3. **Cours = groupes** : `course_details`, messagerie, vidéos et présence sur les groupes.
+3. **Cours = groupes** : `course_details`, messagerie, vidéos et présence sur les groupes *(faite le
+   27 octobre 2026 ; la table `cours` tient lieu de `course_details`)*.
 4. **Champs des membres** : `member_fields`, `member_values`, `member_columns`, écran Champs des
    membres, reprise des champs d'`eleves`.
 5. **Famille** par l'email du payeur, commande de reprise.

@@ -224,7 +224,8 @@ def test_pas_l_ecole_d_un_autre(client, db_session, monde, monkeypatch):
 
 def test_un_prof_ne_voit_que_ce_que_ses_ecrans_montrent(db_session, monde):
     from assistant.donnees import DonneesEcole
-    from cours.models import Cours, cours_professeurs, eleves_cours
+    from cours.models import Cours, cours_professeurs
+    from groups import courses
     from presence.models import PresenceProf, SeancePresence
 
     ecole_id = monde["ecole"].id
@@ -237,7 +238,8 @@ def test_un_prof_ne_voit_que_ce_que_ses_ecrans_montrent(db_session, monde):
     db_session.flush()
     db_session.execute(cours_professeurs.insert().values(cours_id=cours.id, professeur_id=prof.id))
     db_session.execute(cours_professeurs.insert().values(cours_id=cours.id, professeur_id=autre_prof.id))
-    db_session.execute(eleves_cours.insert().values(cours_id=cours.id, eleve_id=eleve.id))
+    cours.group_id = courses.create(db_session, ecole_id, cours.saison_id, "Jazz").id
+    courses.add(db_session, cours.group_id, eleve.id)
     seance = SeancePresence(cours_id=cours.id, date=__import__("datetime").date(2026, 10, 5))
     db_session.add(seance)
     db_session.flush()

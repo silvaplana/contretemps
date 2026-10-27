@@ -14,9 +14,9 @@ from dataclasses import dataclass
 
 from comptes import roles as r
 from comptes.models import Compte, Famille, RoleCompte
-from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs, eleves_cours
+from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
-from groups import board, custom, rights, teachers
+from groups import GroupMember, board, courses, custom, rights, teachers
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -276,19 +276,21 @@ class GestionSaisons:
             )
             db.add(nouveau)
             db.flush()
+            nouveau.group_id = courses.create(db, nouveau.ecole_id, saison.id, nouveau.nom).id
             nouveaux[ancien.id] = nouveau.id
+            # Élèves : le groupe du cours (groups/courses.py).
+            if avec_eleves and ancien.group_id is not None:
+                for (eleve_id,) in db.execute(select(GroupMember.member_id).where(GroupMember.group_id == ancien.group_id)):
+                    if eleve_id in fiches:
+                        courses.add(db, nouveau.group_id, fiches[eleve_id])
         if not nouveaux:
             return nouveaux
 
-        liaisons = [(cours_professeurs, "professeur_id")]
-        if avec_eleves:
-            liaisons.append((eleves_cours, "eleve_id"))
-        for table, colonne in liaisons:
-            lignes = db.execute(select(table).where(table.c.cours_id.in_(nouveaux.keys()))).all()
-            for ligne in lignes:
-                personne = fiches.get(getattr(ligne, colonne))
-                if personne is not None:
-                    db.execute(table.insert().values(cours_id=nouveaux[ligne.cours_id], **{colonne: personne}))
+        lignes = db.execute(select(cours_professeurs).where(cours_professeurs.c.cours_id.in_(nouveaux.keys()))).all()
+        for ligne in lignes:
+            personne = fiches.get(ligne.professeur_id)
+            if personne is not None:
+                db.execute(cours_professeurs.insert().values(cours_id=nouveaux[ligne.cours_id], professeur_id=personne))
         return nouveaux
 
 
@@ -317,7 +319,6 @@ _SUPPRESSIONS = [
     f"DELETE FROM videos WHERE {_VIDEOS}",
     f"DELETE FROM choregraphies WHERE cours_id IN ({_COURS})",
     f"DELETE FROM cours_professeurs WHERE cours_id IN ({_COURS}) OR professeur_id IN ({_COMPTES})",
-    f"DELETE FROM eleves_cours WHERE cours_id IN ({_COURS}) OR eleve_id IN ({_COMPTES})",
     f"DELETE FROM cours_horaires_supplementaires WHERE cours_id IN ({_COURS})",
     f"DELETE FROM mappings_colonnes_import WHERE saison_id = :s OR cours_id IN ({_COURS})",
     f"DELETE FROM inscriptions_cours WHERE inscription_id IN (SELECT id FROM inscriptions WHERE saison_id = :s) OR cours_id IN ({_COURS})",

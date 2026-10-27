@@ -216,3 +216,98 @@ def test_le_droit_suit_la_nouvelle_saison(client, db_session, ecole):
     with toutes_saisons(db_session):
         fiche = db_session.scalar(sa.select(Compte).where(Compte.compte_precedent_id == ecole["julia_admin"].id))
         assert fiche.saison_id == nouvelle and roles.has_right(fiche, "finances.access")
+
+
+def _cours_et_eleve(db_session, ecole):
+    from cours import CoursService
+
+    cours = CoursService().create(db_session, ecole["ecole"].id, "Jazz Moyen")
+    CoursService().inscrire_eleve(db_session, cours.id, ecole["julia_eleve"].id)
+    return cours
+
+
+def test_un_cours_est_un_groupe_de_ses_eleves(db_session, ecole):
+    from cours import CoursService
+
+    service = CoursService()
+    cours = _cours_et_eleve(db_session, ecole)
+    groupe = db_session.get(Group, cours.group_id)
+    parent = db_session.get(Group, groupe.parent_id)
+    assert (groupe.name, groupe.key, groupe.season_id) == ("Jazz Moyen", "course", cours.saison_id)
+    assert (parent.name, parent.key) == ("Cours", "courses")
+    assert db_session.scalars(sa.select(GroupMember.member_id).where(GroupMember.group_id == groupe.id)).all() == [
+        ecole["julia_eleve"].id
+    ]
+    assert [e.id for e in service.eleves_du_cours(db_session, cours.id)] == [ecole["julia_eleve"].id]
+    assert [c.id for c in service.cours_de_leleve(db_session, ecole["julia_eleve"].id)] == [cours.id]
+
+    service.update(db_session, cours.id, nom="Jazz Avancé")
+    assert db_session.get(Group, cours.group_id).name == "Jazz Avancé"
+
+    service.desinscrire_eleve(db_session, cours.id, ecole["julia_eleve"].id)
+    assert service.eleves_du_cours(db_session, cours.id) == []
+
+    group_id = cours.group_id
+    service.delete(db_session, cours.id)
+    assert db_session.get(Group, group_id) is None
+
+
+def test_supprimer_un_eleve_le_retire_de_ses_cours(db_session, ecole):
+    cours = _cours_et_eleve(db_session, ecole)
+
+    Eleves(Comptes()).delete(db_session, ecole["julia_eleve"].id)
+
+    assert db_session.scalars(sa.select(GroupMember).where(GroupMember.group_id == cours.group_id)).all() == []
+
+
+def test_une_nouvelle_saison_recopie_les_cours_et_leurs_eleves(client, db_session, ecole):
+    from cours import Cours, CoursService
+
+    cours = _cours_et_eleve(db_session, ecole)
+
+    reponse = client.post(
+        f"/ecoles/{ecole['ecole'].id}/saisons",
+        json={"nom": "2027-2028", "date_debut": "2027-09-01", "date_fin": "2028-08-31",
+              "dupliquer_profs": True, "dupliquer_cours": True, "dupliquer_eleves": True},
+    )
+
+    assert reponse.status_code == 201, reponse.text
+    nouvelle = reponse.json()["saison"]["id"]
+    with toutes_saisons(db_session):
+        copie = db_session.scalar(sa.select(Cours).where(Cours.saison_id == nouvelle))
+        assert copie.group_id not in (None, cours.group_id)
+        assert db_session.get(Group, copie.group_id).season_id == nouvelle
+        eleves = CoursService().eleves_du_cours(db_session, copie.id)
+        assert [e.compte_precedent_id for e in eleves] == [ecole["julia_eleve"].id]
+
+
+def test_une_ancienne_sauvegarde_remet_les_eleves_dans_le_cours(client, db_session, ecole):
+    """Sauvegarde d'avant le groupe : un onglet ElevesCours, pas de group_id."""
+    from openpyxl import load_workbook
+    import io
+
+    from cours import CoursService
+
+    ecole_id = ecole["ecole"].id
+    cours = _cours_et_eleve(db_session, ecole)
+    classeur = load_workbook(io.BytesIO(client.get(f"/ecoles/{ecole_id}/export-technique").content))
+    feuille = classeur["Cours"]
+    colonne = [c.value for c in feuille[1]].index("group_id")
+    for ligne in feuille.iter_rows(min_row=2):
+        ligne[colonne].value = None
+    eleves_cours = classeur.create_sheet("ElevesCours")
+    eleves_cours.append(["eleve_id", "cours_id"])
+    eleves_cours.append([ecole["julia_eleve"].id, cours.id])
+    for nom in ("Groupes", "MembresGroupes"):
+        del classeur[nom]
+    sortie = io.BytesIO()
+    classeur.save(sortie)
+
+    reponse = client.post(f"/ecoles/{ecole_id}/restaurer", files={"fichier": ("backup.xlsx", sortie.getvalue(), XLSX)})
+
+    assert reponse.status_code == 204, reponse.text
+    db_session.expire_all()
+    with toutes_saisons(db_session):
+        restaure = CoursService().get(db_session, cours.id)
+        assert restaure.group_id is not None
+        assert [e.id for e in CoursService().eleves_du_cours(db_session, cours.id)] == [ecole["julia_eleve"].id]
