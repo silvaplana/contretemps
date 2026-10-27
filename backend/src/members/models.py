@@ -48,6 +48,11 @@ class MemberField(Base):
     # d'inscription, exports, assistant) : voir `fields.KNOWN`. Vide pour un
     # champ ajouté par l'organisation.
     key: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    # Champ apporté par un module (ex. « helloasso » : une question de la
+    # campagne de la saison) et sa clé chez lui. Vide = ajouté par
+    # l'organisation. Verrouillé : seuls les réglages avancés changent.
+    source: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    source_key: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # « Retirer ce champ » : il disparaît de la fiche, ses réponses restent.
     removed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

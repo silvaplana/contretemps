@@ -16,6 +16,8 @@ from .models import FORMATS, MemberField, MemberValue
 
 SETTINGS = ("label", "required", "format", "choices", "group_id", "multiple",
             "member_sees", "member_edits", "others_see", "for_group_id")
+# Réglages avancés : les seuls qui changent sur un champ apporté par un module.
+ADVANCED = ("member_sees", "member_edits", "others_see", "for_group_id")
 
 
 # Les champs que l'appli sait lire, repris des anciennes colonnes de
@@ -150,6 +152,10 @@ def create(db: Session, org_id: int, season_id: int, **settings) -> MemberField:
 
 
 def update(db: Session, field: MemberField, **settings) -> MemberField:
+    if field.source and any(
+        key in SETTINGS and key not in ADVANCED and value != getattr(field, key) for key, value in settings.items()
+    ):
+        raise FieldError("Ce champ est rempli automatiquement : seuls les réglages avancés se modifient ici")
     # L'appli lit un champ marqué dans son format (l'âge, une date).
     if field.key and settings.get("format", field.format) != field.format:
         raise FieldError("Le format de ce champ ne change pas")
@@ -164,6 +170,8 @@ def update(db: Session, field: MemberField, **settings) -> MemberField:
 def remove(field: MemberField) -> None:
     """« Retirer ce champ » : il quitte la fiche, ses réponses sont gardées
     (Annuler le remet)."""
+    if field.source:
+        raise FieldError("Ce champ est rempli automatiquement : il ne se retire pas")
     field.removed_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
 
@@ -213,7 +221,8 @@ def copy_season(
         )
     )
     for old in [*fields(db, org_id, old_season_id), *removed_known]:
-        if base and old.key is None:
+        # Les champs d'un module (campagne HelloAsso) sont ceux de la saison.
+        if (base and old.key is None) or old.source:
             continue
         removed_at = old.removed_at or (now if old.id in hidden else None)
         new = MemberField(
@@ -231,6 +240,42 @@ def copy_season(
                 db.add(MemberValue(member_id=members[value.member_id], field_id=new.id, value=value.value))
     db.flush()
     columns.copy_season(db, org_id, old_season_id, new_season_id, copied)
+
+
+def set_external(db: Session, org_id: int, season_id: int, source: str, items: list[dict]) -> list[MemberField]:
+    """Les champs qu'un module impose à la fiche de la saison (ex. les
+    questions d’une campagne HelloAsso), en tête de la fiche, avant les champs
+    marqués :
+    `items` = [{source_key, label, required, format, choices}]. Un champ déjà
+    là (même clé) est mis à jour et remis ; ceux de `source` absents de
+    `items` sont retirés, leurs réponses gardées. Sans commit."""
+    existing = {
+        field.source_key: field
+        for field in db.scalars(
+            select(MemberField).where(
+                MemberField.org_id == org_id, MemberField.season_id == season_id, MemberField.source == source
+            )
+        )
+    }
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    kept = []
+    for position, item in enumerate(items, start=-1000):
+        field = existing.pop(item["source_key"], None) or MemberField(
+            org_id=org_id, season_id=season_id, source=source, source_key=item["source_key"]
+        )
+        field.label = item["label"][:100]
+        field.required, field.format = item["required"], item["format"]
+        field.choices, field.multiple = item.get("choices"), False
+        field.position, field.removed_at = position, None
+        if field.format == "list" and not field.choices:
+            field.format = "short_text"
+        _check(db, field)
+        db.add(field)
+        kept.append(field)
+    for field in existing.values():
+        field.removed_at = field.removed_at or now
+    db.flush()
+    return kept
 
 
 def member_group_ids(db: Session, field: MemberField, member_id: int) -> list[int]:

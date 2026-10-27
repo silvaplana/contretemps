@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
+import { MODULES } from '../../app/modules.js'
 import Modal from '../../components/Modal.jsx'
 import AffichageAdmin from './AffichageAdmin.jsx'
 
@@ -9,6 +10,9 @@ import AffichageAdmin from './AffichageAdmin.jsx'
 // là, verrouillés ; les autres s'ajoutent, se règlent et se retirent
 // (Annuler 10 s, les réponses sont gardées). « Affichage dans Admin › » mène
 // aux colonnes du tableau (AffichageAdmin.jsx).
+// En tête, les blocs des modules (`memberFields` du module.js : la campagne
+// HelloAsso) ; leurs champs (`source`) sont verrouillés, seuls les réglages
+// avancés changent, et cachent les nôtres du même intitulé.
 
 const ANNULER_MS = 10000
 
@@ -32,7 +36,9 @@ const NOUVEAU = {
   for_group_id: null,
 }
 
-function ligneDe(champ, choix) {
+const BLOCS = MODULES.filter((m) => m.memberFields)
+
+function ligneDe(champ, choix, sources = {}) {
   let format = champsApi.nomFormat(champ.format)
   if (champ.format === 'group') {
     const groupe = choix.parents.find((g) => g.id === champ.group_id)
@@ -40,7 +46,8 @@ function ligneDe(champ, choix) {
   } else if (champ.format === 'list' && champ.multiple) {
     format = 'Liste (plusieurs)'
   }
-  return `${champ.required ? 'Obligatoire' : 'Facultatif'} · ${format}`
+  const statut = sources[champ.source]?.ligne ?? (champ.required ? 'Obligatoire' : 'Facultatif')
+  return `${statut} · ${format}`
 }
 
 export default function ChampsMembres({ ecoleId, onClose }) {
@@ -52,6 +59,7 @@ export default function ChampsMembres({ ecoleId, onClose }) {
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
   const [toast, setToast] = useState(null)
+  const [sources, setSources] = useState({}) // module → { ligne, note } de ses champs
   const minuteur = useRef(null)
 
   async function relire() {
@@ -72,6 +80,11 @@ export default function ChampsMembres({ ecoleId, onClose }) {
     minuteur.current = setTimeout(() => setToast(null), ANNULER_MS)
   }
 
+  function blocChange(cle, info) {
+    setSources((s) => ({ ...s, [cle]: info }))
+    relire().catch((e) => setErreur(e.message))
+  }
+
   function ouvrir(champ, verrouille = false) {
     setCourant({ ...champ, verrouille, choicesTexte: (champ.choices ?? []).join('\n') })
     setAvance(false)
@@ -83,7 +96,7 @@ export default function ChampsMembres({ ecoleId, onClose }) {
   }
 
   async function valider() {
-    if (courant.verrouille) {
+    if (courant.verrouille && !courant.source) {
       setCourant(null)
       return
     }
@@ -91,10 +104,17 @@ export default function ChampsMembres({ ecoleId, onClose }) {
       setErreur('Donnez un intitulé.')
       return
     }
-    const { id, verrouille, choicesTexte, position, ...reglages } = courant
+    const { id, verrouille, choicesTexte, position, source, source_key, ...reglages } = courant
     void verrouille
     void position
+    void source_key
     reglages.choices = courant.format === 'list' ? choicesTexte.split('\n') : null
+    if (source) {
+      // Champ d'un module : seuls les réglages avancés partent.
+      for (const cle of Object.keys(reglages)) {
+        if (!['member_sees', 'member_edits', 'others_see', 'for_group_id'].includes(cle)) delete reglages[cle]
+      }
+    }
     if (courant.format === 'group' && !reglages.group_id) reglages.group_id = choix.parents[0]?.id ?? null
     setEnCours(true)
     setErreur('')
@@ -159,7 +179,8 @@ export default function ChampsMembres({ ecoleId, onClose }) {
   }
 
   if (courant) {
-    const bloque = courant.verrouille
+    const bloque = courant.verrouille || Boolean(courant.source)
+    const avancesOuverts = !courant.verrouille
     return (
       <Modal
         title={courant.label || 'Nouveau champ'}
@@ -182,6 +203,7 @@ export default function ChampsMembres({ ecoleId, onClose }) {
           <button type="button" className="champs__lien champs__retour" onClick={() => setCourant(null)}>
             ← La fiche d’un membre
           </button>
+          {courant.source && <p className="champs__note">{sources[courant.source]?.note}</p>}
           <label htmlFor="champ-intitule">Intitulé</label>
           <input
             id="champ-intitule"
@@ -232,6 +254,7 @@ export default function ChampsMembres({ ecoleId, onClose }) {
                 className="modal-textarea"
                 rows={5}
                 value={courant.choicesTexte}
+                disabled={bloque}
                 onChange={(e) => changer('choicesTexte', e.target.value)}
               />
             </>
@@ -243,6 +266,7 @@ export default function ChampsMembres({ ecoleId, onClose }) {
                 id="champ-groupe"
                 className="field-input"
                 value={courant.group_id ?? choix.parents[0]?.id ?? ''}
+                disabled={bloque}
                 onChange={(e) => changer('group_id', Number(e.target.value))}
               >
                 {choix.parents.map((g) => (
@@ -258,16 +282,21 @@ export default function ChampsMembres({ ecoleId, onClose }) {
           )}
           {(courant.format === 'list' || courant.format === 'group') && (
             <label className="champs__case">
-              <input type="checkbox" checked={courant.multiple} onChange={(e) => changer('multiple', e.target.checked)} />
+              <input
+                type="checkbox"
+                checked={courant.multiple}
+                disabled={bloque}
+                onChange={(e) => changer('multiple', e.target.checked)}
+              />
               Plusieurs choix possibles
             </label>
           )}
-          {!bloque && (
+          {avancesOuverts && (
             <button type="button" className="champs__lien" onClick={() => setAvance((a) => !a)}>
               {avance ? '▾' : '›'} Réglages avancés : côté membre
             </button>
           )}
-          {!bloque && avance && (
+          {avancesOuverts && avance && (
             <>
               <p className="champs__note">Les admins voient toujours tout. Ici, c’est ce que voient les membres.</p>
               <label className="champs__case">
@@ -324,10 +353,17 @@ export default function ChampsMembres({ ecoleId, onClose }) {
     )
   }
 
+  // Un champ d'un module cache le nôtre du même intitulé (maquette).
+  const imposes = new Set((champs ?? []).filter((c) => c.source).map((c) => c.label.toLowerCase()))
+  const visibles = (champs ?? []).filter((c) => c.source || !imposes.has(c.label.toLowerCase()))
+
   return (
     <Modal title="La fiche d’un membre" onClose={onClose}>
       <div className="champs">
         <p className="champs__note champs__note--haut">Ce qu’on demande à chaque membre.</p>
+        {BLOCS.map((m) => (
+          <m.memberFields key={m.key} ecoleId={ecoleId} onChange={(info) => blocChange(m.key, info)} />
+        ))}
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
         <div className="champs__entete">Champ · statut · format</div>
         {SOCLE.map((champ) => (
@@ -339,11 +375,11 @@ export default function ChampsMembres({ ecoleId, onClose }) {
             <span className="champs__chevron">›</span>
           </button>
         ))}
-        {(champs ?? []).map((champ) => (
+        {visibles.map((champ) => (
           <button key={champ.id} type="button" className="champs__ligne" onClick={() => ouvrir(champ)}>
             <span>
               {champ.label}
-              <small>{ligneDe(champ, choix)}</small>
+              <small>{ligneDe(champ, choix, sources)}</small>
             </span>
             <span className="champs__chevron">›</span>
           </button>

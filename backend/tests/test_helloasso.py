@@ -106,3 +106,115 @@ def test_connexion_par_l_api(monkeypatch):
     assert api.connect("id", "bon") == api.Organization("Alliance Sambo", "alliance-sambo", ["Adhésion 2026-2027"])
     with pytest.raises(api.HelloAssoError, match="refuse ces clés"):
         api.connect("id", "mauvais")
+
+
+# --- Étape 8b : la campagne de la saison et ses champs (spec §3) ---
+
+QUESTIONS = {
+    "adhesion": [
+        {"source_key": "11", "label": "Genre (H/F)", "required": True, "format": "list", "choices": ["H", "F"]},
+        {"source_key": "12", "label": "Date de naissance", "required": True, "format": "date", "choices": None},
+    ],
+    "stage": [
+        {"source_key": "12", "label": "Date de naissance", "required": False, "format": "date", "choices": None},
+    ],
+}
+
+
+@pytest.fixture()
+def campagnes(monkeypatch, helloasso):
+    from app import main
+    from helloasso.api import Form
+
+    campaigns = main.core.helloasso_campaigns
+    monkeypatch.setattr(campaigns, "forms", lambda client_id, secret, slug: [
+        Form("Membership", "adhesion", "Adhésion 2026-2027", "Public"),
+        Form("Event", "stage", "Stage d'été", "Private"),
+    ])
+    monkeypatch.setattr(
+        campaigns, "form_fields", lambda client_id, secret, slug, form_type, form_slug: QUESTIONS[form_slug]
+    )
+
+
+def _champs(client, ecole):
+    return {c["label"]: c for c in client.get(f"/ecoles/{ecole.id}/champs").json()}
+
+
+def test_campagne_impose_ses_champs(client, db_session, ecole, campagnes):
+    url = f"/ecoles/{ecole.id}/helloasso/campagne"
+    assert client.get(url).json()["connected"] is False
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+    etat = client.get(url).json()
+    assert etat["form"] is None and [f["name"] for f in etat["forms"]] == ["Adhésion 2026-2027", "Stage d'été"]
+    nos = client.post(f"/ecoles/{ecole.id}/champs", json={"label": "Taille de kimono", "format": "short_text"})
+
+    etat = client.put(url, json={"form_type": "Membership", "form_slug": "adhesion"}).json()
+    assert etat["form"]["name"] == "Adhésion 2026-2027"
+    champs = _champs(client, ecole)
+    genre = champs["Genre (H/F)"]
+    assert (genre["source"], genre["format"], genre["choices"], genre["required"]) == (
+        "helloasso", "list", ["H", "F"], True,
+    )
+    # En tête de la fiche ; les nôtres restent.
+    ordre = list(champs)
+    assert ordre.index("Genre (H/F)") < ordre.index("Taille de kimono")
+
+    # Verrouillé : seuls les réglages avancés changent ; ne se retire pas.
+    refus = client.patch(f"/champs/{genre['id']}", json={"label": "Sexe"})
+    assert refus.status_code == 422 and "réglages avancés" in refus.json()["detail"]
+    assert client.patch(f"/champs/{genre['id']}", json={"member_sees": False}).status_code == 200
+    assert client.delete(f"/champs/{genre['id']}").status_code == 422
+    assert client.patch(f"/champs/{nos.json()['id']}", json={"label": "Taille"}).status_code == 200
+
+    # Changer de campagne : la date de naissance (même question) reste, le
+    # genre quitte la fiche.
+    naissance = champs["Date de naissance"]["id"]
+    client.put(url, json={"form_type": "Event", "form_slug": "stage"})
+    champs = _champs(client, ecole)
+    assert "Genre (H/F)" not in champs and champs["Date de naissance"]["id"] == naissance
+    assert champs["Date de naissance"]["required"] is False
+
+    # « Nos champs » : plus de campagne, les nôtres restent.
+    assert client.delete(url).status_code == 204
+    champs = _champs(client, ecole)
+    assert not any(c["source"] for c in champs.values()) and "Taille" in champs
+    assert client.get(url).json()["form"] is None
+
+
+def test_campagne_inconnue_ou_helloasso_muet(client, db_session, ecole, campagnes, monkeypatch):
+    from app import main
+    from helloasso.api import HelloAssoError
+
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+    url = f"/ecoles/{ecole.id}/helloasso/campagne"
+    refus = client.put(url, json={"form_type": "Membership", "form_slug": "disparue"})
+    assert refus.status_code == 422 and "n’existe plus" in refus.json()["detail"]
+    client.put(url, json={"form_type": "Membership", "form_slug": "adhesion"})
+
+    def muet(*_):
+        raise HelloAssoError("HelloAsso ne répond pas : réessayez dans un moment.")
+
+    monkeypatch.setattr(main.core.helloasso_campaigns, "forms", muet)
+    etat = client.get(url).json()
+    assert etat["form"]["name"] == "Adhésion 2026-2027" and "ne répond pas" in etat["error"]
+
+
+def test_questions_du_formulaire(monkeypatch):
+    from helloasso import api
+
+    monkeypatch.setattr(api, "_token", lambda *_: "jeton")
+    question = {"id": 7, "label": "Genre", "type": "ChoiceList", "isRequired": True, "values": ["H", "F"]}
+    formulaire = {"tiers": [
+        {"customFields": [question, {"id": 8, "label": "Photo", "type": "File"}]},
+        {"customFields": [question, {"id": 9, "label": "Club précédent", "type": "Inconnu"}]},
+    ]}
+
+    def get(path, token, params=None):
+        assert path == "/v5/organizations/alliance-sambo/forms/Membership/adhesion/public"
+        return formulaire
+
+    monkeypatch.setattr(api, "_get", get)
+    champs = api.form_fields("id", "secret", "alliance-sambo", "Membership", "adhesion")
+    assert [(c["source_key"], c["format"], c["required"]) for c in champs] == [
+        ("7", "list", True), ("8", "file", False), ("9", "short_text", False),
+    ]

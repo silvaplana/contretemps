@@ -102,3 +102,17 @@ ses formulaires d'adhésion ; Enregistrer reteste puis garde les clés. Table `o
 Déconnecter éteint la connexion et le module, Annuler 10 s les rallume. La sauvegarde technique ne
 contient pas les clés : après une restauration sur un autre serveur, on les recolle. Sandbox :
 `HELLOASSO_SANDBOX=1`.
+
+**Fait (étape 2, 27 octobre 2026)** : en tête de « La fiche d'un membre » (Admin > Élèves > ⋯ >
+Champs), si HelloAsso est connecté : **Nos champs** / **Imposés par HelloAsso** et la liste des
+formulaires d'adhésion et d'événement de l'association (`memberFields` du module.js, `core.md`
+§11.1). Choisir une campagne lit ses questions (`/forms/{nature}/{formulaire}/public`, `customFields`
+de toutes les formules, sans doublon) et les met sur la fiche de la saison, en tête, marquées
+« Calculé par HelloAsso » (`member_fields.source = "helloasso"`, `source_key` = l'identifiant de la
+question) ; un champ à nous du même intitulé est caché. Changer de campagne garde les questions
+communes (même identifiant) et retire les autres, réponses gardées ; « Nos champs » retire la
+campagne (Annuler 10 s la remet). Choisir : Administrateur principal et Super User, saison en
+cours ; les autres admins voient la campagne sans la changer. Nom, prénom, emails et email du payeur
+sont les champs du socle. Table `season_helloasso` (saison, nature, identifiant et nom du formulaire,
+date du choix, dernière synchronisation). Reste pour plus tard : le choix à l'étape Membres de la
+création de saison (aujourd'hui, on crée la saison puis on choisit la campagne dans Champs).

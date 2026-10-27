@@ -633,7 +633,11 @@ MODULE = Module(
   les voit, écran). Montrer ou cacher seulement ; le vrai contrôle reste sur chaque route.
   Il peut aussi déclarer `settings` : un composant affiché sur la ligne du module dans
   Fonctionnalités, pour l'Administrateur principal et le Super User (ex. la connexion HelloAsso :
-  « Connecter » / « Voir »). Un module sans onglet a `tabs: []`.
+  « Connecter » / « Voir »), et `memberFields` : un bloc affiché en tête de « La fiche d'un
+  membre » (Admin > Élèves > ⋯ > Champs ; ex. « Nos champs » / « Imposés par HelloAsso » et la
+  campagne de la saison). Les champs qu'un module met sur la fiche portent sa clé
+  (`member_fields.source`) : verrouillés, seuls les réglages avancés changent, ils ne se retirent
+  pas et ne sont pas recopiés à la saison suivante. Un module sans onglet a `tabs: []`.
 
 ### 11.2 La liste des modules de l'appli
 
@@ -701,7 +705,7 @@ Déjà codés dans Contretemps :
    c. règles en français, comprises par l'assistant *(faite le 27 octobre 2026)*.
 8. **HelloAsso** (`modules/helloasso.md` §6), en quatre PR :
    a. connexion de l'organisation (écran, test, clés chiffrées) *(faite le 27 octobre 2026)* ;
-   b. campagne d'une saison et champs imposés ;
+   b. campagne d'une saison et champs imposés *(faite le 27 octobre 2026)* ;
    c. synchronisation des membres et des paiements ;
    d. tarifs HelloAsso en lecture seule dans l'écran Tarifs.
 9. Formulaire d'inscription de l'appli (à concevoir).
