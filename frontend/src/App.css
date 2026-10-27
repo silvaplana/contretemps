@@ -4929,3 +4929,20 @@ a.btn {
   color: var(--danger-text);
   font-size: 16px;
 }
+
+.tarifs__code {
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tarifs__aide {
+  display: block;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 400;
+}
+
+.tarifs__sous {
+  margin-left: 38px;
+  width: calc(100% - 38px);
+}

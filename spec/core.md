@@ -526,6 +526,15 @@ précédente> » quand la saison n'en a aucune. Créer une saison recopie les fo
 échéances décalées d'un an. Pas encore lues par l'inscription en ligne (`inscriptions/tarifs.py`
 reste).
 
+**Fait (étape 7b, 27 octobre 2026)** : les options et codes promo (tables `season_adjustments`,
+montant négatif = en moins, en centimes ou en centièmes de %, et `season_adjustment_plans`, aucune
+ligne = toutes les formules), dans le même écran Tarifs : liste « Options et codes promo », écran
+d'une option (Nom, Comment l'obtenir : La personne coche / Avec un code, Montant en plus ou en moins,
+€ ou %, code en majuscules et unique dans la saison, Montrer dans le formulaire, Utilisations,
+Jusqu'au, Quantité limitée, Sur quelles formules, Proposée cette saison), Retirer avec Annuler 10 s.
+Créer une saison et « Reprendre ceux de… » les recopient, reliés aux copies des formules, date
+limite décalée d'un an. La Règle vient avec l'étape 7c ; pas encore appliquées à un membre.
+
 ---
 
 ## 10. Installation, notifications et navigation
@@ -674,7 +683,7 @@ Déjà codés dans Contretemps :
    b. Créer une saison en un écran (maquette « Créer une saison ») *(faite le 27 octobre 2026)*.
 7. **Tarifs**, en trois PR :
    a. formules et échéances, Admin > École > Tarifs *(faite le 27 octobre 2026)* ;
-   b. options et codes promo (à cocher, avec un code) ;
+   b. options et codes promo (à cocher, avec un code) *(faite le 27 octobre 2026)* ;
    c. règles en français, comprises par l'assistant.
 8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
 9. Formulaire d'inscription de l'appli (à concevoir).

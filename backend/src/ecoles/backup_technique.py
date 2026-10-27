@@ -37,7 +37,7 @@ from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import Group, GroupMember, courses, rights, teachers
 from members import MemberColumn, MemberField, MemberValue
-from plans import SeasonPlan, SeasonPlanInstallment
+from plans import SeasonAdjustment, SeasonPlan, SeasonPlanInstallment, season_adjustment_plans
 from members.fields import known
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
@@ -211,6 +211,24 @@ def _construire_tables() -> list[_Table]:
                     )
                 )
             ),
+        ),
+        _Table(
+            "OptionsTarifs",
+            SeasonAdjustment,
+            ["id", "org_id", "season_id", "name", "amount", "unit", "mode", "code", "shown", "max_uses", "until",
+             "quantity", "active", "position", "created_at"],
+            lambda db, eid: list(db.scalars(select(SeasonAdjustment).where(SeasonAdjustment.org_id == eid))),
+            colonne_ecole_id="org_id",
+        ),
+        _Table(
+            "OptionsFormules",
+            season_adjustment_plans,
+            ["adjustment_id", "plan_id"],
+            lambda db, eid: db.execute(
+                select(season_adjustment_plans).where(
+                    season_adjustment_plans.c.plan_id.in_(select(SeasonPlan.id).where(SeasonPlan.org_id == eid))
+                )
+            ).all(),
         ),
         _Table(
             "ReponsesMembres",
