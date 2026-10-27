@@ -358,6 +358,7 @@ _SUPPRESSIONS = [
     "DELETE FROM season_adjustments WHERE season_id = :s",
     "DELETE FROM season_plan_installments WHERE plan_id IN (SELECT id FROM season_plans WHERE season_id = :s)",
     "DELETE FROM season_plans WHERE season_id = :s",
+    "DELETE FROM season_helloasso WHERE season_id = :s",
     f"DELETE FROM group_members WHERE member_id IN ({_COMPTES}) OR group_id IN (SELECT id FROM groups WHERE season_id = :s)",
     "DELETE FROM groups WHERE season_id = :s AND parent_id IS NOT NULL",
     "DELETE FROM groups WHERE season_id = :s",

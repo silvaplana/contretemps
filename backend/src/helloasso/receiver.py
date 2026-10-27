@@ -6,13 +6,16 @@ from __future__ import annotations
 from datetime import datetime
 
 from comptes import Compte, rbac
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Response
 from pydantic import BaseModel, Field
+from saisons import saison_courante_id
+from saisons.portee import saison_demandee
 from sqlalchemy.orm import Session
 
 from db import get_db
 
 from .api import HelloAssoError, Organization
+from .campaign import Campaigns
 from .connection import Connection
 
 
@@ -32,14 +35,42 @@ class StatusOut(BaseModel):
     connected_at: datetime | None = None
 
 
+class FormOut(BaseModel):
+    form_type: str
+    form_slug: str
+    name: str
+    state: str = ""
+
+
+class CampaignOut(BaseModel):
+    connected: bool
+    # Administrateur principal et Super User, saison courante.
+    can_change: bool = False
+    form: FormOut | None = None
+    forms: list[FormOut] = []
+    # HelloAsso n'a pas répondu : la campagne choisie reste affichée.
+    error: str | None = None
+
+
+class CampaignIn(BaseModel):
+    form_type: str = Field(min_length=1, max_length=30)
+    form_slug: str = Field(min_length=1, max_length=255)
+
+
 def _out(organisation: Organization) -> OrganizationOut:
     return OrganizationOut(name=organisation.name, forms=organisation.forms)
 
 
 class HelloAssoReceiver:
-    def __init__(self, client: Connection, app: FastAPI) -> None:
+    def __init__(self, client: Connection, app: FastAPI, campaigns: Campaigns | None = None) -> None:
         self.client = client
+        self.campaigns = campaigns or Campaigns()
         owner = [Depends(self._owner)]
+        app.get("/ecoles/{ecole_id}/helloasso/campagne", response_model=CampaignOut)(self.campagne)
+        app.put("/ecoles/{ecole_id}/helloasso/campagne", response_model=CampaignOut, dependencies=owner)(
+            self.choisir
+        )
+        app.delete("/ecoles/{ecole_id}/helloasso/campagne", status_code=204, dependencies=owner)(self.nos_champs)
         app.get("/ecoles/{ecole_id}/helloasso", response_model=StatusOut, dependencies=owner)(self.etat)
         app.post("/ecoles/{ecole_id}/helloasso/tester", response_model=OrganizationOut, dependencies=owner)(
             self.tester
@@ -91,3 +122,57 @@ class HelloAssoReceiver:
             self.client.set_active(db, ecole_id, True)
         except LookupError:
             raise HTTPException(status_code=404, detail="HelloAsso n’est pas connecté") from None
+
+    # --- La campagne de la saison (spec §3) ---
+
+    @staticmethod
+    def _courante(db: Session, ecole_id: int) -> int:
+        """Choisir une campagne : la saison courante seulement."""
+        courante = saison_courante_id(db, ecole_id)
+        demandee = saison_demandee()
+        if courante is None or (demandee is not None and demandee != courante):
+            raise HTTPException(status_code=403, detail="Seule la saison en cours se modifie")
+        return courante
+
+    def campagne(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
+        rbac.require_admin(appelant, ecole_id)
+        if self.client.current(db, ecole_id) is None:
+            return CampaignOut(connected=False)
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        try:
+            rbac.require_owner(appelant, ecole_id)
+            can_change = season_id == saison_courante_id(db, ecole_id)
+        except HTTPException:
+            can_change = False
+        current = self.campaigns.current(db, season_id)
+        out = CampaignOut(
+            connected=True,
+            can_change=can_change,
+            form=FormOut(form_type=current.form_type, form_slug=current.form_slug, name=current.form_name)
+            if current
+            else None,
+        )
+        if can_change:
+            try:
+                out.forms = [FormOut(**vars(f)) for f in self.campaigns.list_forms(db, ecole_id)]
+            except HelloAssoError as erreur:
+                out.error = str(erreur)
+        return out
+
+    def choisir(
+        self, ecole_id: int, data: CampaignIn, db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        season_id = self._courante(db, ecole_id)
+        try:
+            self.campaigns.choose(db, ecole_id, season_id, data.form_type, data.form_slug)
+        except (HelloAssoError, ValueError) as erreur:
+            db.rollback()
+            raise HTTPException(status_code=422, detail=str(erreur)) from None
+        db.commit()
+        return self.campagne(ecole_id, db, appelant)
+
+    def nos_champs(self, ecole_id: int, db: Session = Depends(get_db)):
+        self.campaigns.clear(db, ecole_id, self._courante(db, ecole_id))
+        db.commit()
+        return Response(status_code=204)

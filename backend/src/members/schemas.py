@@ -38,6 +38,8 @@ class FieldOut(FieldIn):
     position: int
     # Champ que l'appli sait lire (fields.KNOWN) : son format ne change pas.
     key: str | None = None
+    # Champ apporté par un module (« helloasso ») : verrouillé.
+    source: str | None = None
 
 
 class GroupChoice(BaseModel):

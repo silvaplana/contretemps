@@ -2,6 +2,6 @@
 encaisse ses adhésions sur HelloAsso branche l'appli dessus. Étape 8a : la
 connexion (clés, test, déconnexion)."""
 
-from .models import OrgHelloAsso
+from .models import OrgHelloAsso, SeasonHelloAsso
 
-__all__ = ["OrgHelloAsso"]
+__all__ = ["OrgHelloAsso", "SeasonHelloAsso"]

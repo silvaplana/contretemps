@@ -4,13 +4,15 @@ spec/modules/helloasso.md). Éteint dans les écoles existantes (migration du
 
 from registry import Module
 
+from .campaign import Campaigns
 from .connection import Connection
 from .receiver import HelloAssoReceiver
 
 
 def mount(app, core) -> None:
     core.helloasso_connection = Connection()
-    HelloAssoReceiver(client=core.helloasso_connection, app=app)
+    core.helloasso_campaigns = Campaigns()
+    HelloAssoReceiver(client=core.helloasso_connection, app=app, campaigns=core.helloasso_campaigns)
 
 
 MODULE = Module(key="helloasso", label="HelloAsso", mount=mount)
