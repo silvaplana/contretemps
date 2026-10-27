@@ -90,3 +90,15 @@ une PR sur le « vas-y » de Seb, après les groupes et les champs des membres (
 2. campagne d'une saison et champs imposés ;
 3. synchronisation des membres et des paiements ;
 4. tarifs HelloAsso en lecture seule dans l'écran Tarifs.
+
+**Fait (étape 1, 27 octobre 2026)** : module `helloasso` (`backend/src/helloasso/`,
+`frontend/src/modules/helloasso/`), éteint dans les écoles existantes. Sur sa ligne de
+Fonctionnalités (`settings` du module.js, `core.md` §11.1) : « Pas encore connecté » / « Connecté à
+<association> », lien « Connecter » ou « Voir » ; cocher la case sans connexion ouvre l'écran des
+clés. Tester demande un jeton, lit `/v5/users/me/organizations` (l'association reliée aux clés) et
+ses formulaires d'adhésion ; Enregistrer reteste puis garde les clés. Table `org_helloasso`
+(identifiant client, clé secrète chiffrée par Fernet avec une clé tirée du secret du serveur
+`SECRET_JETONS` / fichier `secret_jetons` du volume, association, slug, actif, dernier test).
+Déconnecter éteint la connexion et le module, Annuler 10 s les rallume. La sauvegarde technique ne
+contient pas les clés : après une restauration sur un autre serveur, on les recolle. Sandbox :
+`HELLOASSO_SANDBOX=1`.
