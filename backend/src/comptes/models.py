@@ -68,6 +68,9 @@ class Compte(Base):
     # Texte libre, sans validation de format (voir §6.4bis : le fichier
     # réel contient des cas qu'une validation stricte rejetterait).
     telephone: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    # Email du payeur (spec/core.md §4.4) : la famille = les fiches qui ont
+    # le même. Vide = le premier email de la fiche (`payeur`).
+    payer_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     # Fonctions au bureau : groupes du core depuis le 27/10 (groups/board.py).
     # La colonne `bureau_functions` reste en base, plus lue ni écrite.
     # Emails : table `emails_compte` (plusieurs par fiche, §2.1, décision
@@ -120,6 +123,12 @@ class Compte(Base):
         les adresses séparées par une virgule. Jamais pour reconnaître une
         personne : utiliser `emails`."""
         return ", ".join(self.emails) or None
+
+    @property
+    def payeur(self) -> str | None:
+        """L'email du payeur (spec/core.md §4.4) : celui saisi, sinon le
+        premier email de la fiche (un adulte paie pour lui)."""
+        return self.payer_email or next(iter(self.emails), None)
 
     def a_l_email(self, email: str | None) -> bool:
         from acces import normaliser_email

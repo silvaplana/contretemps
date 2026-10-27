@@ -29,6 +29,7 @@ function construireEleve(eleve, coursIds) {
     // `null` et React se plaint ("value prop should not be null").
     email: eleve.email ?? '',
     telephone: eleve.telephone ?? '',
+    payerEmail: eleve.payer_email ?? '',
     adresse: eleve.adresse ?? '',
     allergies: eleve.allergies ?? '',
     dateNaissance: eleve.date_naissance ?? '',
@@ -87,6 +88,7 @@ function versChampsBackend(patch) {
     traitementMedical: 'traitement_medical',
     informationsImportantes: 'informations_importantes',
     statutPaiement: 'statut_paiement',
+    payerEmail: 'payer_email',
   }
   const resultat = {}
   for (const [cle, valeur] of Object.entries(patch)) {

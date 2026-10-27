@@ -104,6 +104,7 @@ class Fusion:
                 garde.roles.append(RoleCompte(role=role))
         garde.definir_emails(garde.emails + absorbe.emails)
         garde.telephone = garde.telephone or absorbe.telephone
+        garde.payer_email = garde.payer_email or absorbe.payer_email
         if garde.compte_precedent_id is None and absorbe.compte_precedent_id != garde.id:
             garde.compte_precedent_id = absorbe.compte_precedent_id
         db.flush()

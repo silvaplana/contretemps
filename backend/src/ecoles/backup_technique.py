@@ -32,6 +32,7 @@ from typing import Any, Callable
 from choregraphies.models import Choregraphie, choregraphies_eleves, choregraphies_videos
 from comptes import roles
 from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
+from comptes.reprise_payeurs import reprendre_payeurs
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import Group, GroupMember, courses, rights, teachers
@@ -127,7 +128,7 @@ def _construire_tables() -> list[_Table]:
             Compte,
             [
                 "id", "ecole_id", "famille_id", "saison_id", "compte_precedent_id", "nom", "prenom",
-                "telephone", "created_at",
+                "telephone", "payer_email", "created_at",
             ],
             lambda db, eid: list(db.scalars(select(Compte).where(Compte.ecole_id == eid))),
             colonne_ecole_id="ecole_id",
@@ -586,6 +587,12 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
     _anciens_profs_en_groupe(db, ecole.id)
     _anciens_eleves_des_cours(db, ecole.id, classeur)
     _anciens_champs_des_eleves(db, ecole.id, classeur)
+    # Sauvegarde d'avant l'email du payeur (27/10/2026) : mêmes familles.
+    comptes = classeur["Comptes"] if "Comptes" in classeur.sheetnames else None
+    if comptes is not None and "payer_email" not in next(comptes.iter_rows(values_only=True), ()):
+        db.flush()
+        reprendre_payeurs(db.connection(), ecole.id)
+        db.expire_all()
 
 
 def _anciens_champs_des_eleves(db: Session, ecole_id: int, classeur) -> None:

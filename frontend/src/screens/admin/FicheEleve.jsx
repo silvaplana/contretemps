@@ -21,6 +21,7 @@ const CHAMPS_TEXTE = [
   'nom',
   'telephone',
   'email',
+  'payerEmail',
   'statutPaiement',
   'montantTotalAnnee',
   'montantPaye',
@@ -125,6 +126,7 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
         nom: brouillon.nom.trim(),
         telephone: brouillon.telephone,
         email: brouillon.email.trim(),
+        payerEmail: brouillon.payerEmail.trim() || null,
         statutPaiement: brouillon.statutPaiement,
         montantTotalAnnee: Number(brouillon.montantTotalAnnee) || 0,
         montantPaye: Number(brouillon.montantPaye) || 0,
@@ -212,6 +214,15 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
                 connecter, et relie la fiche aux autres qui l'ont. */}
             <label htmlFor="fiche-email">Emails</label>
             <ListeEmails id="fiche-email" valeur={brouillon.email} onChange={(v) => changer('email', v)} />
+            {/* La famille = les fiches qui ont le même (spec/core.md §4.4). */}
+            <Saisie
+              id="fiche-payeur"
+              libelle="Email du payeur"
+              type="email"
+              valeur={brouillon.payerEmail}
+              placeholder={premierEmail(brouillon.email)}
+              onChange={(v) => changer('payerEmail', v)}
+            />
           </Rubrique>
           <Rubrique titre="Cours suivis">
             <div className="checkbox-list">
@@ -343,6 +354,7 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
           <Rubrique titre="Coordonnées">
             <Ligne libelle="Téléphone" valeur={eleve.telephone} />
             <Ligne libelle={eleve.emails?.length > 1 ? 'Emails' : 'Email'} valeur={eleve.email} />
+            <Ligne libelle="Email du payeur" valeur={eleve.payerEmail || eleve.emails?.[0]} />
           </Rubrique>
           <Rubrique titre="Cours suivis">
             <Ligne valeur={eleve.coursIds.map(nomCours).filter(Boolean).join(', ')} />
@@ -414,13 +426,25 @@ function Ligne({ libelle, valeur }) {
   )
 }
 
-function Saisie({ id, libelle, valeur, onChange, type = 'text' }) {
+function Saisie({ id, libelle, valeur, onChange, type = 'text', placeholder }) {
   return (
     <>
       <label htmlFor={id}>{libelle}</label>
-      <input id={id} className="field-input" type={type} value={valeur} onChange={(e) => onChange(e.target.value)} />
+      <input
+        id={id}
+        className="field-input"
+        type={type}
+        value={valeur}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </>
   )
+}
+
+// Email du payeur laissé vide : c'est le premier email de la fiche.
+function premierEmail(emails) {
+  return emails.split(/[;,\s]+/).find(Boolean) ?? ''
 }
 
 function ZoneTexte({ id, libelle, valeur, onChange }) {

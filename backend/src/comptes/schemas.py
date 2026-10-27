@@ -11,6 +11,8 @@ class CompteModification(BaseModel):
     # Plusieurs emails (§2.1) : la liste remplace `email` si elle est donnée.
     emails: list[str] | None = None
     telephone: str | None = None
+    # Email du payeur (spec/core.md §4.4) ; vide = le premier email.
+    payer_email: str | None = None
 
 
 class CompteSortie(BaseModel):
@@ -30,5 +32,6 @@ class CompteSortie(BaseModel):
     email: str | None
     emails: list[str] = Field(default_factory=list)
     telephone: str | None
+    payer_email: str | None = None
 
     model_config = {"from_attributes": True}

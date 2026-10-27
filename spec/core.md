@@ -168,8 +168,8 @@ boutons sont déclarés par les modules dans leur `module.py` (§11.1), jamais �
 
 **Fait (27 octobre 2026, étape 4a)** : le niveau 1, la fiche (`backend/src/members/`, tables
 `member_fields` et `member_values`). Admin > Élèves > ⋮ > Champs ouvre « La fiche d'un membre »
-comme la maquette : les champs du socle verrouillés (Nom, prénom ; Email ; Téléphone ; l'Email du
-payeur arrive à l'étape 5), puis ceux de l'école, « + Ajouter un champ », le détail (intitulé,
+comme la maquette : les champs du socle verrouillés (Nom, prénom ; Email ; Email du payeur, depuis
+l'étape 5 ; Téléphone), puis ceux de l'école, « + Ajouter un champ », le détail (intitulé,
 statut, format de la réponse, choix, « Parmi les groupes de » avec Cours proposé d'office,
 « Plusieurs choix possibles », réglages avancés repliés), « Retirer ce champ » avec Annuler 10 s
 (les réponses sont gardées). La fiche de l'élève a une rubrique « Nos champs » où l'admin lit et
@@ -217,9 +217,17 @@ Contretemps le remplit depuis l'email du parent. La **famille** est l'ensemble d
 même email du payeur, **calculée**, jamais éditée à la main. Le payeur se connecte avec cet email et
 voit ses enfants (sélecteur de profil, §6). Une famille n'est pas un groupe.
 
-**Aujourd'hui** : famille = fiches reliées par un email commun de proche en proche
-(`recalculer_familles`, table `familles`). À remplacer par l'email du payeur, avec une commande de
-reprise.
+**Fait (27 octobre 2026, étape 5)** : colonne `comptes.payer_email` ; vide = le premier email de
+la fiche (`Compte.payeur`). `recalculer_familles` regroupe les fiches de la saison par email du
+payeur (table `familles` et `famille_id` gardées : l'assistant, la messagerie et le reste les lisent
+toujours). L'admin le voit et le change dans la fiche de l'élève (Coordonnées, une seule adresse ;
+vide, le premier email s'affiche en grisé) ; il figure, verrouillé, dans « La fiche d'un membre ». La
+reprise est faite par la migration (pas de commande à lancer) : chaque famille de plusieurs fiches
+reçoit l'adresse que portent le plus de ses fiches (celle du parent), donc les familles restent
+exactement les mêmes (vérifié sur la base de démo : 80 familles avant et après) ; une fiche seule
+reste vide. Recopié à la nouvelle saison, gardé à la fusion, dans la sauvegarde technique (une
+sauvegarde d'avant refait la reprise). Le sélecteur de profil ne change pas (§4.5). HelloAsso le
+remplira à l'étape 8.
 
 ### 4.5 Sélecteur de profil
 
@@ -650,7 +658,7 @@ Déjà codés dans Contretemps :
       27 octobre 2026)* ;
    c. reprise des champs d'`eleves` (date de naissance, adresse, santé…) dans la fiche *(faite le
       27 octobre 2026)*.
-5. **Famille** par l'email du payeur, commande de reprise.
+5. **Famille** par l'email du payeur, reprise des familles *(faite le 27 octobre 2026)*.
 6. **Création de saison** en un écran, étape par étape.
 7. **Tarifs** : formules, options, codes promo, règles par l'assistant.
 8. **HelloAsso** (`modules/helloasso.md`) : connexion, campagne imposée, synchronisation.
