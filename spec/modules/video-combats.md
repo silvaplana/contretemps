@@ -315,7 +315,9 @@ couleurs ne servent qu'à deux.
 - Dessous : les deux noms avec leur pastille rouge et bleue, puis « Mar. 21 oct. · Adultes · 19 h ·
   combat 1 ».
 - Puis « Autres combats de la séance » (coach) ou « Vos autres combats ce jour-là » (membre).
-- ⋯ : « Envoyer dans la messagerie… » pour tous ; pour un coach aussi « Inverser les noms » (Annuler
+- ⋯ pour tous (Seb, 27 octobre : chacun garde et diffuse ses combats) : « Télécharger » (le clip dans
+  le téléphone), « Partager… » (le menu Partager du téléphone avec le fichier : WhatsApp, mail…, par
+  le partage web de Chrome) et « Envoyer dans la messagerie… » ; pour un coach aussi « Inverser les noms » (Annuler
   10 s), « Changer un nom », « Supprimer ce clip » (Annuler 10 s).
 
 ### 6.6 Plus tard
@@ -323,8 +325,8 @@ couleurs ne servent qu'à deux.
 Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).
 
 - **Place disque** : un clip s'efface seul après quelques jours (7 proposé, réglable), sauf ceux qu'on
-  coche « Garder » ; chacun peut garder un nombre limité de clips ; « Télécharger sur mon téléphone »
-  dans ⋯.
+  coche « Garder » ; chacun peut garder un nombre limité de clips. Le téléchargement (§6.5), lui, est
+  là dès le début.
 - **Docs** (Seb, 27 octobre) : les mêmes vidéos se voient aussi dans Docs, dans l'espace de la saison :
   un dossier **Sparring**, avec un sous-dossier par séance (« Jeu. 23 oct. · Adultes ») et ses clips
   nommés comme dans Sparring. Ce sont les mêmes fichiers, sans copie : effacer un clip d'un côté
