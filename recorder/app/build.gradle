@@ -1,0 +1,32 @@
+plugins {
+    id "com.android.application"
+    id "org.jetbrains.kotlin.android"
+}
+
+android {
+    namespace "cloud.silvaplana.fights.camera"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "cloud.silvaplana.fights.camera"
+        // MediaRecorder.setNextOutputFile (morceaux sans trou) : Android 8.
+        minSdk 26
+        targetSdk 36
+        // Numéro de construction donné par l'action GitHub (recorder-apk.yml).
+        versionCode Integer.parseInt(System.getenv("VERSION_CODE") ?: "1")
+        versionName "1." + (System.getenv("VERSION_CODE") ?: "0")
+    }
+
+    buildTypes {
+        debug {
+            // Pas de suffixe : l'APK de debug est celui qu'on installe.
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = "17"
+    }
+}
