@@ -325,7 +325,10 @@ Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).
 - **Place disque** : un clip s'efface seul après quelques jours (7 proposé, réglable), sauf ceux qu'on
   coche « Garder » ; chacun peut garder un nombre limité de clips ; « Télécharger sur mon téléphone »
   dans ⋯.
-- **Docs** : un dossier Sparring dans Docs, avec les séances.
+- **Docs** (Seb, 27 octobre) : les mêmes vidéos se voient aussi dans Docs, dans l'espace de la saison :
+  un dossier **Sparring**, avec un sous-dossier par séance (« Jeu. 23 oct. · Adultes ») et ses clips
+  nommés comme dans Sparring. Ce sont les mêmes fichiers, sans copie : effacer un clip d'un côté
+  l'efface de l'autre. Le dossier suit les droits de l'espace de la saison (Privé : admins et profs).
 - **Diffuser** : envoyer une séance ou un clip à d'autres.
 - **La danse** : dans Contretemps, pas de bouton dans la barre du bas, mais un onglet **« Passages »**
   dans Chorégraphies (**Chorégraphies | Passages**), rangé par `session_clips_contretemps/`. Un
