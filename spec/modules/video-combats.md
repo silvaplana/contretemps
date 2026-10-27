@@ -172,7 +172,8 @@ maintenir un build Android de toute l'appli pour une seule fonction.
   depuis une appli qui n'était pas déjà active : ce lancement à la main est donc nécessaire, ensuite
   on l'oublie.
 - **Démarrage à distance** : n'importe quel admin ou prof appuie sur « Démarrer la séance » dans sa
-  PWA, iPhone compris. Le serveur prévient l'enregistreur (push ou connexion maintenue), qui allume
+  PWA, iPhone compris. L'enregistreur demande au serveur toutes les 5 s ce qu'il doit faire
+  (choix du 27/10 : le plus simple, sans service de notification ; il démarre donc en 5 s au plus), puis allume
   la caméra et active « Ne pas déranger » si l'autorisation est donnée. « Fin de séance » arrête et
   lance l'envoi dès qu'il y a du Wi-Fi. Pas de Bluetooth.
 - **Envoi au fil de la séance** (décision Seb du 27/10) : en mode connecté, l'enregistreur filme sans
@@ -326,6 +327,19 @@ Le toucher fait **descendre le panneau de commande** depuis le haut, par-dessus 
 Pendant le film, une **bande rouge** « ● Enregistrement en cours · 00:12:34 — Ouvrir » reste sous les
 onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît en tête de liste, en envoi.
 
+**Codé à l'étape 3a** (27/10), en plus de la maquette :
+
+- avant toute installation, la pastille est grise, « Installer » ; le panneau propose **« Afficher un
+  code »**, puis montre un code de 8 chiffres (« 0819 7168 », valable 10 minutes) à taper une fois dans
+  l'appli caméra. « Changer de téléphone » affiche un nouveau code ; le téléphone qui le tape remplace
+  l'ancien ;
+- « Prête » : un champ **Cours** (le premier cours proposé, modifiable) avant « Démarrer la séance » ;
+- « Prête » et « Filme » : le choix du signal « compris » **Bip | Lampe | Les deux** (§4) ;
+- « Hors service » : pas de nouvelles du téléphone depuis 30 s ;
+- la bande rouge dit « ● Enregistrement · 00:12:34 » (« en cours » ne tient pas sur un téléphone) ;
+- la carte d'une séance filmée par la caméra : « Filme… » pendant le cours, puis « Découpe en
+  cours » et « Derniers clips dans quelques minutes » ; elle s'ouvre dès son premier clip.
+
 ### 6.4 À vérifier *(coachs)*
 
 Les clips dont l'appli n'est pas sûre, **un par un**, en gros :
@@ -393,11 +407,12 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 | Table | Rôle | Colonnes principales |
 |---|---|---|
 | `sc_sessions` | une séance filmée | `id`, `org_id`, `title` (« Adultes · 19 h », le cours choisi ou tapé), `held_on` (date), `raw_video_id` (vidéo brute dans `videos`, vide une fois effacée), `status` (`processing` / `ready` ; « en cours d'envoi » se lit sur la vidéo brute), `created_by`, `created_at` |
-| `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`, unique), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte) |
+| `sc_clips` | un clip | `id`, `session_id`, `video_id` (le clip dans `videos`, unique), `position` (combat 1, 2…), `to_check` (booléen), `check_reason` (texte), `start_seconds` (début du combat dans une séance de la caméra : évite de le couper deux fois) |
 | `sc_participants` | qui est dans un clip | `clip_id`, `slot` (0 = Rouge, 1 = Bleu à deux ; ordre simple au-delà), `person_id` (la personne, vide = pas encore nommée) |
 | `sc_attendees` | présents reconnus à une séance | `session_id`, `person_id` |
 | `sc_favorites` | « ★ Favoris » de chacun | `person_id`, `clip_id` (effacé avec le clip) |
-| `sc_recorders` | le téléphone qui filme *(étape 3, pas encore créée)* | `id`, `org_id`, `state` (`ready` / `recording` / `offline`), `battery_percent`, `free_bytes`, `last_seen_at`, `last_upload_at` |
+| `sc_recorders` | le téléphone qui filme (étape 3) | `id`, `org_id`, `token_hash` (empreinte du jeton remis au jumelage), `pairing_code` et `pairing_expires_at` (code de 8 chiffres, 10 minutes), `state` (`ready` / `recording`, dit par le téléphone ; « hors service » se déduit de `last_seen_at`), `battery_percent`, `free_bytes`, `pending_pieces`, `last_seen_at`, `last_upload_at`, `session_id` (la séance à filmer, vide = rester prête), `started_at`, `signal` (`beep` / `light` / `both`) |
+| `sc_pieces` | un morceau de 2 minutes (étape 3) | `id`, `session_id`, `position` (0, 1, 2…), `upload_id` (envoi par blocs du module `videos`), `video_id`, `last` (morceau de « Fin de séance »), `duration_seconds` (rempli à la lecture des postures) |
 
 `person_id` est la personne, stable d'une saison à l'autre : dans Contretemps, c'est la première
 fiche `comptes` de la chaîne des saisons (comme les documents), fournie par l'adaptateur
@@ -482,8 +497,17 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
 2 bis. **Filmer un combat** (bouton +, §6.3) : un combat filmé à la main, gardé ou jeté, puis
    nommé ; route `POST /session-clips/fights` (`SessionClips.add_fight`). Remplace l'envoi à la main
    d'une séance entière.
-3. **Enregistreur Kotlin** (§11), avec l'envoi par morceaux de 2 minutes et la découpe au fil de la
-   séance (§4, §5), puis la pastille caméra.
+3. **Caméra de la salle** (« vas-y » de Seb le 27/10), en trois parties :
+   - **3a, serveur et écran (codée)** : jumelage par code, ordres « Démarrer la séance » / « Fin de
+     séance », état du téléphone (`session_clips/camera.py`) ; réception des morceaux de 2 minutes par
+     l'envoi par blocs du module `videos` ; découpe au fil des morceaux dans `sparring-worker`
+     (`cutting.cut_live`, toutes les 20 s, à toute heure) : chaque morceau est lu une fois par YOLO, ses
+     postures sont gardées dans un fichier, puis les combats de toute la séance sont recherchés ; un
+     combat est coupé dès que sa fin est connue, en recollant les morceaux qu'il chevauche ; le
+     dernier morceau termine la séance. Pastille, panneau et bande rouge dans Fights (§6.3).
+   - **3b, l'appli caméra Android** (Kotlin, CameraX), dossier `recorder/` ; l'APK est fabriqué par
+     une action GitHub à part (accord de Seb du 27/10 : `dl.google.com` est bloqué là où code Claude).
+   - **3c, les gestes reconnus par le téléphone**, avec le bip et la lampe.
 
 ## 9. Risques
 
@@ -520,8 +544,17 @@ But : pouvoir réinstaller le module sur un autre VPS sans rien deviner. Mis à 
 
 **Base.** Migration Alembic `ee886b89a201_session_clips` : crée `sc_sessions`, `sc_clips`,
 `sc_participants`, `sc_attendees`, et éteint le module dans chaque école existante (une ligne
-`org_modules` à `enabled = 0`). Une école créée ensuite l'a allumé (pas de ligne = allumé). Rien à
-faire à la main : `deploy.sh` lance `alembic upgrade head`.
+`org_modules` à `enabled = 0`). Une école créée ensuite l'a allumé (pas de ligne = allumé). Puis
+`f4a6b8c0d2e5_sparring_favorites` (`sc_favorites`) et `a5b7c9d1e3f6_sparring_camera` (`sc_recorders`,
+`sc_pieces`, colonne `sc_clips.start_seconds`). Rien à faire à la main : `deploy.sh` lance
+`alembic upgrade head`.
+
+**Caméra de la salle (étape 3).** Le téléphone n'a pas de compte : ses routes
+`/session-clips/recorder/...` (jumelage, battement toutes les 5 s, morceaux) sont dans la liste des
+routes publiques (`backend/src/comptes/rbac.py`, `ROUTES_PUBLIQUES`) et le reconnaissent par l'en-tête
+`X-Recorder-Token` (jeton remis au jumelage ; seule son empreinte sha256 est en base). Changer de VPS
+ne demande pas de rejumeler : le jeton est dans la base copiée. L'adresse du serveur est tapée dans
+l'appli caméra.
 
 **Allumer le module pour une école.** Admin > École > Personnalisation de l'application >
 Fonctionnalités > case « Sparring » (Administrateur principal ou Super User). Il faut aussi le
@@ -533,20 +566,26 @@ volume Docker `backend_data` monté sur `/app/data`, avec la base SQLite). Chang
 volume, comme pour le reste de l'appli. Leur place se lit dans Admin > École > Usage des ressources >
 Mémoire > Détail des vidéos, ligne « Sparring » (le module s'y inscrit par `Videos.rubrique`, comme
 Chorégraphies ; demande Seb du 27/10), et chaque vidéo y est nommée « Sparring · date · cours · combat N ». La vidéo brute n'est pas compressée par le conteneur
-`video-compression` (envoyée « déjà compressée ») : elle sera découpée puis effacée.
+`video-compression` (envoyée « déjà compressée ») : elle sera découpée puis effacée. Les morceaux de
+la caméra de la salle sont aussi des vidéos du module (« Fights · date · cours · morceau N »), non
+compressées ; leurs postures lues par YOLO sont gardées dans `VIDEOS_DIR/<id de
+l'école>/sparring-poses/<id du morceau>.json` (quelques centaines de Ko par morceau). Pour l'instant,
+morceaux et postures restent après la découpe (effacement automatique : §6.6, plus tard).
 
 **Conteneurs.** `sparring-worker` (étape 2) : image `backend/Dockerfile.sparring` (Python 3.12,
 PyTorch processeur seul, Ultralytics, OpenCV, environ 2 Go ; le modèle `yolo11n-pose.pt` est
 téléchargé dans l'image à la construction, sur `/app/models`), bloc `sparring-worker` de
 `docker-compose.yml`, même volume `backend_data` que `backend`. Commande :
-`nice -n 19 python -u -m app.sparring_worker`, qui regarde toutes les 5 minutes, pendant les heures
-de nuit, les séances dont la vidéo brute est arrivée. `deploy.sh` le construit et le relance comme
+`nice -n 19 python -u -m app.sparring_worker`, qui regarde toutes les 20 s les morceaux arrivés de
+la caméra de la salle (à toute heure) et, pendant les heures de nuit, les séances dont la vidéo brute
+envoyée à la main est arrivée. `deploy.sh` le construit et le relance comme
 les autres (`docker compose up -d --build`). Les clips sont des vidéos du module `videos` (même
 dossier), déjà compressées.
 
 **Variables.**
-- `SPARRING_HOURS` (`sparring-worker`, défaut `0-6`) : heures de découpe, heure de Paris ; `0-24`
-  pour découper tout de suite (essais).
+- `SPARRING_HOURS` (`sparring-worker`, défaut `0-6`) : heures de découpe des vidéos envoyées à la
+  main, heure de Paris ; `0-24` pour découper tout de suite (essais). Sans effet sur la caméra de la
+  salle, découpée au fil du cours.
 - `SPARRING_MODEL` (fixée par l'image) : chemin du modèle YOLO.
 - `YOLO_CONFIG_DIR` (fixée par l'image) : réglages d'Ultralytics, dans le volume.
 - `DATABASE_URL`, `VIDEOS_DIR` : comme le backend.
@@ -554,6 +593,7 @@ dossier), déjà compressées.
 **Commandes utiles.** Suivre la découpe : `docker compose logs -f sparring-worker`. Relancer une
 séance « Découpe impossible » : remettre son `status` à `processing` (commande à écrire au besoin).
 
-**Vérifier.** `cd backend && pytest tests/test_session_clips.py tests/test_session_clips_cutting.py`
-(sans poing levéOLO : un détecteur simulé). Sur le VPS : `docker compose logs sparring-worker` affiche
+**Vérifier.** `cd backend && pytest tests/test_session_clips.py tests/test_session_clips_cutting.py
+tests/test_session_clips_camera.py` (sans YOLO : un détecteur simulé ; le dernier simule le téléphone
+de la salle). Sur le VPS : `docker compose logs sparring-worker` affiche
 « Découpe Sparring démarrée ».

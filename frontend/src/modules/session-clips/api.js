@@ -53,6 +53,12 @@ export const nommer = async (id, people) => clip(await appel(`/clips/${id}/parti
 export const valider = async (id) => clip(await appel(`/clips/${id}/validate`, { method: 'POST' }))
 export const supprimer = (id) => appel(`/clips/${id}`, { method: 'DELETE' })
 export const membres = () => appel('/people')
+// La caméra de la salle (étape 3).
+export const camera = () => appel('/camera')
+export const codeCamera = () => appel('/camera/pairing-code', { method: 'POST' })
+export const demarrerCamera = (title) => appel('/camera/start', json('POST', { title }))
+export const arreterCamera = () => appel('/camera/stop', { method: 'POST' })
+export const signalCamera = (signal) => appel('/camera/signal', json('PUT', { signal }))
 export const favoris = async () => (await appel('/favorites')).map(clip)
 export const favori = async (id, oui) => clip(await appel(`/clips/${id}/favorite`, json('PUT', { favorite: oui })))
 

@@ -510,3 +510,157 @@
   min-height: 48px;
   color: inherit;
 }
+
+/* Caméra de la salle (étape 3), d'après la maquette : pastille, bande rouge,
+   panneau qui descend du haut. */
+
+.sc-cam {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 999px;
+  background: #2f8f4e;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.sc-cam svg {
+  width: 24px;
+  height: 24px;
+}
+
+.sc-cam--recording {
+  background: #d0332b;
+  animation: sc-pulse 1.6s infinite;
+}
+
+.sc-cam--offline,
+.sc-cam--none {
+  background: #7d8792;
+}
+
+@keyframes sc-pulse {
+  50% {
+    box-shadow: 0 0 0 6px rgb(208 51 43 / 25%);
+  }
+}
+
+.sc-led {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2f8f4e;
+}
+
+.sc-led--on {
+  background: #d0332b;
+  animation: sc-clignote 1.2s infinite;
+}
+
+.sc-led--off {
+  background: #9aa3ad;
+}
+
+@keyframes sc-clignote {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sc-cam--recording,
+  .sc-led--on {
+    animation: none;
+  }
+}
+
+.sc-bande {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin: 10px 14px 0;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, #d0332b 12%, var(--card-bg));
+  color: #b0261f;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.sc-bande__ouvrir {
+  margin-left: auto;
+  font-weight: 600;
+  text-decoration: underline;
+}
+
+.sc-panneau-fond {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: rgb(0 0 0 / 35%);
+}
+
+.sc-panneau {
+  display: flex;
+  flex-direction: column;
+  padding: 14px 14px 4px;
+  border-radius: 0 0 18px 18px;
+  background: var(--bg);
+  font-size: 17px;
+  animation: sc-descend 0.22s ease-out;
+}
+
+@keyframes sc-descend {
+  from {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+}
+
+.sc-panneau__carte {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+.sc-panneau__carte .btn {
+  min-height: 52px;
+}
+
+.sc-panneau__carte .field-input {
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.sc-rec {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.sc-code {
+  margin: 4px 0;
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
