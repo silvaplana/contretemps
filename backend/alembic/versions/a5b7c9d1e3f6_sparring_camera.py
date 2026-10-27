@@ -8,14 +8,14 @@ cutting piece by piece never cuts the same fight twice. New tables and a
 nullable column: nothing to carry over.
 
 Revision ID: a5b7c9d1e3f6
-Revises: c8e0a2b4d6f1
+Revises: d5f7b9a1c3e6
 """
 
 import sqlalchemy as sa
 from alembic import op
 
 revision = "a5b7c9d1e3f6"
-down_revision = "c8e0a2b4d6f1"
+down_revision = "d5f7b9a1c3e6"
 branch_labels = None
 depends_on = None
 
