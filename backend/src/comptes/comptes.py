@@ -386,7 +386,10 @@ class Comptes:
         ecole_id = compte.ecole_id
         from groups import GroupMember
 
+        from members import MemberValue
+
         db.execute(delete(GroupMember).where(GroupMember.member_id == compte.id))
+        db.execute(delete(MemberValue).where(MemberValue.member_id == compte.id))
         db.delete(compte)
         # Une fiche peut être le seul lien entre deux groupes (§6.2).
         self.recalculer_familles(db, ecole_id)

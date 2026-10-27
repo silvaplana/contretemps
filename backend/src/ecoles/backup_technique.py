@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import datetime as dt
 import io
+import json
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -34,12 +35,13 @@ from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_ema
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import Group, GroupMember, courses, rights, teachers
+from members import MemberField, MemberValue
 from messagerie.models import Conversation, ConversationMembre, Message, MessageDelivery
 from openpyxl import Workbook, load_workbook
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
 from saisons import Saison, saison_courante_id
 from saisons.portee import toutes_saisons
-from sqlalchemy import Table, delete, select, text, update
+from sqlalchemy import JSON, Table, delete, select, text, update
 from sqlalchemy.orm import Session
 from ressources.models import ConsommationIA
 from videos.models import Video
@@ -166,6 +168,25 @@ def _construire_tables() -> list[_Table]:
             ["group_id", "member_id", "created_at"],
             lambda db, eid: list(
                 db.scalars(select(GroupMember).where(GroupMember.member_id.in_(_sous_requete_comptes_ecole(eid))))
+            ),
+        ),
+        # Champs des membres (spec/core.md §4.3), depuis le 2026-10-27.
+        _Table(
+            "ChampsMembres",
+            MemberField,
+            [
+                "id", "org_id", "season_id", "label", "required", "format", "choices", "group_id", "multiple",
+                "position", "member_sees", "member_edits", "others_see", "for_group_id", "removed_at", "created_at",
+            ],
+            lambda db, eid: list(db.scalars(select(MemberField).where(MemberField.org_id == eid))),
+            colonne_ecole_id="org_id",
+        ),
+        _Table(
+            "ReponsesMembres",
+            MemberValue,
+            ["member_id", "field_id", "value", "updated_at"],
+            lambda db, eid: list(
+                db.scalars(select(MemberValue).where(MemberValue.member_id.in_(_sous_requete_comptes_ecole(eid))))
             ),
         ),
         _Table(
@@ -339,6 +360,9 @@ def _valeur_cellule(obj: Any, nom: str) -> Any:
     valeur = obj[nom] if isinstance(obj, dict) else getattr(obj, nom)
     if isinstance(valeur, (dt.date, dt.datetime)):
         return valeur.isoformat()
+    # Colonne JSON (champs des membres) : son texte JSON, relu à la restauration.
+    if valeur is not None and hasattr(obj, "__table__") and isinstance(obj.__table__.c[nom].type, JSON):
+        return json.dumps(valeur, ensure_ascii=False)
     return valeur
 
 
@@ -634,6 +658,8 @@ def _valeur_restauree(objet: type | Table, nom: str, valeur: Any) -> Any:
         if not colonne.nullable and colonne.type.python_type is str:
             return ""
         return None
+    if isinstance(colonne.type, JSON):
+        return json.loads(valeur) if isinstance(valeur, str) else valeur
     type_python = colonne.type.python_type if hasattr(colonne.type, "python_type") else None
     if type_python is dt.datetime and isinstance(valeur, str):
         return dt.datetime.fromisoformat(valeur)
