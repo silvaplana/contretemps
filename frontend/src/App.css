@@ -4478,3 +4478,142 @@ a.btn {
   text-decoration: underline;
   cursor: pointer;
 }
+
+/* La fiche d'un membre (ChampsMembres.jsx, spec/core.md §4.3, maquette
+   « Champs des membres ») : une ligne par champ, le détail en dessous. */
+.champs {
+  font-size: 17px;
+}
+
+.champs__note {
+  margin: 8px 0 0;
+  color: var(--text-muted);
+  font-size: 16px;
+}
+
+.champs__note--haut {
+  margin-top: 0;
+}
+
+.champs__entete {
+  margin-top: 12px;
+  padding: 8px 0 4px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.champs__ligne {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 58px;
+  padding: 6px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.champs__ligne > span:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.champs__ligne small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.champs__chevron {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.champs__ajouter {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 16px;
+  font-size: 17px;
+}
+
+.champs__principal {
+  width: 100%;
+  min-height: 52px;
+  font-size: 18px;
+}
+
+.champs__lien {
+  display: block;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  text-align: left;
+  cursor: pointer;
+}
+
+.champs__retour {
+  margin-bottom: 4px;
+}
+
+.champs__seg {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 14px;
+  background: var(--surface);
+}
+
+.champs__seg button {
+  flex: 1;
+  min-height: 48px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.champs__seg button[aria-pressed='true'] {
+  background: var(--card-bg);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.champs__case {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  font-weight: 600;
+}
+
+.champs__case input {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  accent-color: var(--accent);
+}
+
+.champs__fichier {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}

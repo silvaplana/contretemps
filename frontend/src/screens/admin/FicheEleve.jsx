@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import * as champsApi from '../../api/champs.js'
 import * as elevesApi from '../../api/eleves.js'
 import Icon from '../../components/Icon.jsx'
 import ListeEmails from '../../components/ListeEmails.jsx'
@@ -30,8 +31,12 @@ const CHAMPS_TEXTE = [
   'informationsImportantes',
 ]
 
-function brouillonDe(eleve) {
-  const brouillon = { coursIds: [...eleve.coursIds], contacts: eleve.contactsEleve.map((c) => ({ ...c })) }
+function brouillonDe(eleve, reponses) {
+  const brouillon = {
+    coursIds: [...eleve.coursIds],
+    contacts: eleve.contactsEleve.map((c) => ({ ...c })),
+    champs: Object.fromEntries(reponses.map((r) => [r.field.id, r.value])),
+  }
   for (const cle of CHAMPS_TEXTE) brouillon[cle] = eleve[cle] ?? ''
   return brouillon
 }
@@ -48,6 +53,21 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
   const [enCours, setEnCours] = useState(false)
   const [erreur, setErreur] = useState('')
   const enEdition = brouillon !== null
+  // Les champs de l'école (spec/core.md §4.3) et leurs réponses.
+  const [reponses, setReponses] = useState([])
+  const [sousGroupes, setSousGroupes] = useState({})
+
+  useEffect(() => {
+    champsApi.reponses(eleve.id).then(setReponses).catch(() => setReponses([]))
+    champsApi
+      .groupes(ecoleId)
+      .then((choix) => setSousGroupes(Object.fromEntries(choix.parents.map((g) => [g.id, g.children]))))
+      .catch(() => setSousGroupes({}))
+  }, [ecoleId, eleve.id])
+
+  function changerChamp(id, valeur) {
+    setBrouillon((b) => ({ ...b, champs: { ...b.champs, [id]: valeur } }))
+  }
 
   function changer(cle, valeur) {
     setBrouillon((b) => ({ ...b, [cle]: valeur }))
@@ -100,6 +120,16 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
         }
       }
 
+      for (const { field, value } of reponses) {
+        const nouvelle = brouillon.champs[field.id]
+        if (field.format === 'file') {
+          if (nouvelle instanceof File) await champsApi.envoyerFichier(eleve.id, field.id, nouvelle)
+        } else if (JSON.stringify(nouvelle ?? null) !== JSON.stringify(value ?? null)) {
+          await champsApi.repondre(eleve.id, field.id, nouvelle)
+        }
+      }
+      setReponses(await champsApi.reponses(eleve.id))
+
       const misAJour = await elevesApi.modifier(eleve.id, {
         prenom: brouillon.prenom.trim(),
         nom: brouillon.nom.trim(),
@@ -117,8 +147,8 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
       })
       onEnregistre(misAJour)
       setBrouillon(null)
-    } catch {
-      setErreur('L’enregistrement a échoué : vérifiez la connexion, puis réessayez.')
+    } catch (e) {
+      setErreur(e.message?.startsWith('«') ? e.message : 'L’enregistrement a échoué : vérifiez la connexion, puis réessayez.')
     } finally {
       setEnCours(false)
     }
@@ -133,7 +163,7 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
       <button type="button" className="btn btn--secondary" onClick={() => setFusionOuverte(true)}>
         Fusionner avec…
       </button>
-      <button type="button" className="btn btn--primary" onClick={() => setBrouillon(brouillonDe(eleve))}>
+      <button type="button" className="btn btn--primary" onClick={() => setBrouillon(brouillonDe(eleve, reponses))}>
         <Icon name="edit" size={16} /> Modifier
       </button>
     </div>
@@ -325,6 +355,19 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
               onChange={(v) => changer('informationsImportantes', v)}
             />
           </Rubrique>
+          {reponses.length > 0 && (
+            <Rubrique titre="Nos champs">
+              {reponses.map(({ field }) => (
+                <SaisieChamp
+                  key={field.id}
+                  champ={field}
+                  valeur={brouillon.champs[field.id]}
+                  sousGroupes={sousGroupes[field.group_id] ?? []}
+                  onChange={(v) => changerChamp(field.id, v)}
+                />
+              ))}
+            </Rubrique>
+          )}
           <Rubrique titre="Commentaire (réservé à l’admin)">
             <ZoneTexte
               id="fiche-commentaire"
@@ -372,6 +415,29 @@ export default function FicheEleve({ ecoleId, eleve, cours, onClose, onEnregistr
             <Ligne libelle="Traitement médical" valeur={eleve.traitementMedical} />
             <Ligne libelle="Informations importantes" valeur={eleve.informationsImportantes} />
           </Rubrique>
+          {reponses.length > 0 && (
+            <Rubrique titre="Nos champs">
+              {reponses.map(({ field, value }) => (
+                <Ligne
+                  key={field.id}
+                  libelle={field.label}
+                  valeur={
+                    field.format === 'file' && value ? (
+                      <button
+                        type="button"
+                        className="champs__lien"
+                        onClick={async () => window.open(await champsApi.urlFichier(eleve.id, field.id), '_blank')}
+                      >
+                        {value.name}
+                      </button>
+                    ) : (
+                      texteReponse(field, value, sousGroupes[field.group_id] ?? [])
+                    )
+                  }
+                />
+              ))}
+            </Rubrique>
+          )}
           <Rubrique titre="Commentaire (réservé à l’admin)">
             <Ligne valeur={eleve.commentaireAdmin} />
           </Rubrique>
@@ -415,4 +481,99 @@ function ZoneTexte({ id, libelle, valeur, onChange }) {
       <textarea id={id} className="modal-textarea" rows={2} value={valeur} onChange={(e) => onChange(e.target.value)} />
     </>
   )
+}
+
+// Une réponse en clair, pour la fiche en lecture.
+function texteReponse(champ, valeur, sousGroupes) {
+  if (valeur == null || valeur === '') return ''
+  if (champ.format === 'date') return dateFrancaise(valeur)
+  if (champ.format === 'yes_no') return valeur ? 'Oui' : 'Non'
+  if (champ.format === 'group') return sousGroupes.filter((g) => valeur.includes(g.id)).map((g) => g.name).join(', ')
+  if (Array.isArray(valeur)) return valeur.join(', ')
+  return String(valeur)
+}
+
+// La saisie d'un champ de l'école, selon son format.
+function SaisieChamp({ champ, valeur, sousGroupes, onChange }) {
+  const id = `fiche-champ-${champ.id}`
+  const libelle = champ.label
+  switch (champ.format) {
+    case 'long_text':
+      return <ZoneTexte id={id} libelle={libelle} valeur={valeur ?? ''} onChange={onChange} />
+    case 'number':
+      return <Saisie id={id} libelle={libelle} type="number" valeur={valeur ?? ''} onChange={onChange} />
+    case 'date':
+      return <Saisie id={id} libelle={libelle} type="date" valeur={valeur ?? ''} onChange={onChange} />
+    case 'phone':
+      return <Saisie id={id} libelle={libelle} type="tel" valeur={valeur ?? ''} onChange={onChange} />
+    case 'yes_no':
+      return (
+        <label className="champs__case">
+          <input type="checkbox" checked={valeur === true} onChange={(e) => onChange(e.target.checked)} />
+          {libelle}
+        </label>
+      )
+    case 'file':
+      return (
+        <>
+          <label htmlFor={id}>{libelle}</label>
+          <div className="champs__fichier">
+            {valeur && !(valeur instanceof File) && <span>{valeur.name}</span>}
+            <input id={id} type="file" onChange={(e) => onChange(e.target.files[0] ?? valeur)} />
+          </div>
+        </>
+      )
+    case 'list':
+    case 'group': {
+      const options =
+        champ.format === 'list' ? champ.choices.map((c) => ({ id: c, name: c })) : sousGroupes
+      if (champ.multiple) {
+        const coches = valeur ?? []
+        return (
+          <>
+            <label>{libelle}</label>
+            <div className="checkbox-list">
+              {options.map((o) => (
+                <label key={o.id} className="checkbox-list__item">
+                  <input
+                    type="checkbox"
+                    checked={coches.includes(o.id)}
+                    onChange={() =>
+                      onChange(coches.includes(o.id) ? coches.filter((x) => x !== o.id) : [...coches, o.id])
+                    }
+                  />
+                  {o.name}
+                </label>
+              ))}
+            </div>
+          </>
+        )
+      }
+      const choisi = champ.format === 'group' ? (valeur ?? [])[0] : valeur
+      return (
+        <>
+          <label htmlFor={id}>{libelle}</label>
+          <select
+            id={id}
+            className="field-input"
+            value={choisi ?? ''}
+            onChange={(e) => {
+              const brut = e.target.value
+              if (champ.format === 'group') onChange(brut ? [Number(brut)] : [])
+              else onChange(brut || null)
+            }}
+          >
+            <option value="">—</option>
+            {options.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.name}
+              </option>
+            ))}
+          </select>
+        </>
+      )
+    }
+    default:
+      return <Saisie id={id} libelle={libelle} valeur={valeur ?? ''} onChange={onChange} />
+  }
 }

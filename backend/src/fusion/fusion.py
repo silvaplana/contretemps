@@ -32,6 +32,7 @@ LIENS_PAR_COMPTE = (
     ("message_deliveries", "destinataire_id", "message_id"),
     ("contacts_eleves", "eleve_id", "id"),
     ("group_members", "member_id", "group_id"),
+    ("member_values", "member_id", "field_id"),
 )
 COLONNES_PAR_COMPTE = (
     ("videos", "uploaded_by"),

@@ -17,6 +17,7 @@ from comptes.models import Compte, Famille, RoleCompte
 from cours.models import Cours, CoursHoraireSupplementaire, cours_professeurs
 from eleves.models import ContactEleve, ProfilEleve
 from groups import GroupMember, board, courses, custom, rights, teachers
+from members import fields as member_fields
 from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
@@ -101,6 +102,8 @@ class GestionSaisons:
             cours: dict[int, int] = {}
             if duplication.cours:
                 cours = self._recopier_cours(db, ancienne_id, saison, fiches, duplication.eleves)
+            if ancienne_id is not None:
+                member_fields.copy_season(db, ecole_id, ancienne_id, saison.id, fiches)
             db.commit()
         if duplication.documents and ancienne_id is not None and self.recopier_documents is not None:
             self.recopier_documents(db, ecole_id, ancienne_id, saison.id, fiches.get(auteur_id, auteur_id), cours)
@@ -325,6 +328,8 @@ _SUPPRESSIONS = [
     "DELETE FROM inscriptions WHERE saison_id = :s",
     "DELETE FROM consommations_ia WHERE saison_id = :s",
     "DELETE FROM cours WHERE saison_id = :s",
+    f"DELETE FROM member_values WHERE member_id IN ({_COMPTES}) OR field_id IN (SELECT id FROM member_fields WHERE season_id = :s)",
+    "DELETE FROM member_fields WHERE season_id = :s",
     f"DELETE FROM group_members WHERE member_id IN ({_COMPTES}) OR group_id IN (SELECT id FROM groups WHERE season_id = :s)",
     "DELETE FROM groups WHERE season_id = :s AND parent_id IS NOT NULL",
     "DELETE FROM groups WHERE season_id = :s",

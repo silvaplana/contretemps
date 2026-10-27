@@ -166,6 +166,22 @@ boutons sont déclarés par les modules dans leur `module.py` (§11.1), jamais �
 **Aujourd'hui** : les champs des élèves sont en dur dans `comptes` et `eleves` (`SPEC.md` §6.3,
 §6.4), les colonnes d'Admin > Élèves dans `AdministrateursTableau.jsx` et `ElevesTableau.jsx`.
 
+**Fait (27 octobre 2026, étape 4a)** : le niveau 1, la fiche (`backend/src/members/`, tables
+`member_fields` et `member_values`). Admin > Élèves > ⋮ > Champs ouvre « La fiche d'un membre »
+comme la maquette : les champs du socle verrouillés (Nom, prénom ; Email ; Téléphone ; l'Email du
+payeur arrive à l'étape 5), puis ceux de l'école, « + Ajouter un champ », le détail (intitulé,
+statut, format de la réponse, choix, « Parmi les groupes de » avec Cours proposé d'office,
+« Plusieurs choix possibles », réglages avancés repliés), « Retirer ce champ » avec Annuler 10 s
+(les réponses sont gardées). La fiche de l'élève a une rubrique « Nos champs » où l'admin lit et
+saisit les réponses ; un champ Groupe y coche les sous-groupes (cocher un cours y inscrit l'élève).
+Un fichier est rangé comme les autres contenus protégés (`storage/`, dossier « membres », compté
+dans l'usage des ressources). La fiche et les réponses des fiches reprises sont recopiées à la
+nouvelle saison ; les réponses suivent la fusion, partent avec la fiche supprimée et sont dans la
+sauvegarde technique (onglets « ChampsMembres », « ReponsesMembres »). Pas encore : le choix
+Nos champs / Imposés par HelloAsso (avec le module HelloAsso), l'effet des réglages avancés (avec la
+fiche vue par la personne), l'affichage dans Admin (étape 4b), la reprise des champs actuels des
+élèves (étape 4c).
+
 ### 4.4 Famille = même email du payeur
 
 Chaque fiche a un champ du socle **Email du payeur** : pour un adulte, son propre email ; pour un
@@ -600,8 +616,11 @@ Déjà codés dans Contretemps :
    `is_tresorier` *(faite le 27 octobre 2026)*.
 3. **Cours = groupes** : `course_details`, messagerie, vidéos et présence sur les groupes *(faite le
    27 octobre 2026 ; la table `cours` tient lieu de `course_details`)*.
-4. **Champs des membres** : `member_fields`, `member_values`, `member_columns`, écran Champs des
-   membres, reprise des champs d'`eleves`.
+4. **Champs des membres**, en trois PR :
+   a. `member_fields`, `member_values`, écran « La fiche d'un membre », réponses dans la fiche de
+      l'élève *(faite le 27 octobre 2026)* ;
+   b. `member_columns`, écran « Affichage dans Admin », colonnes du tableau des élèves ;
+   c. reprise des champs d'`eleves` (date de naissance, adresse, santé…) dans la fiche.
 5. **Famille** par l'email du payeur, commande de reprise.
 6. **Création de saison** en un écran, étape par étape.
 7. **Tarifs** : formules, options, codes promo, règles par l'assistant.

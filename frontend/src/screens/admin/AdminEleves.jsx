@@ -9,6 +9,7 @@ import { calculerAge } from '../../utils/age.js'
 import { ouvrirInscriptionEleve } from '../../utils/inscriptionEleve.js'
 import { correspond } from '../../utils/recherche.js'
 import AjoutEleveOcr from './AjoutEleveOcr.jsx'
+import ChampsMembres from './ChampsMembres.jsx'
 import FicheEleve from './FicheEleve.jsx'
 import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
@@ -98,6 +99,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
   // Accès à l'appli (spec §2.2) : colonnes « Inviter » et « Statut ».
   const acces = useAcces(ecoleId)
   const [ocrOuvert, setOcrOuvert] = useState(false)
+  const [champsOuverts, setChampsOuverts] = useState(false)
 
   // Un élève peut être ajouté depuis un autre onglet (« Inscription élève
   // (OCR) » ouvre le formulaire à part) : la liste est relue dès qu'on
@@ -281,8 +283,11 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
             groupeAvecSuivante: true,
           },
           { label: 'Inscription élève (web)', icon: 'users', onClick: ouvrirInscriptionEleve },
+          // La fiche d'un membre (spec/core.md §4.3).
+          { label: 'Champs', icon: 'edit', onClick: () => setChampsOuverts(true) },
         ]}
       />
+      {champsOuverts && <ChampsMembres ecoleId={ecoleId} onClose={() => setChampsOuverts(false)} />}
       {ocrOuvert && (
         <AjoutEleveOcr ecoleId={ecoleId} onEleveAjoute={relireEleves} onClose={() => setOcrOuvert(false)} />
       )}

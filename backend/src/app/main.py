@@ -50,6 +50,7 @@ from saisons.portee import MiddlewareSaison, SaisonEnLectureSeule
 from saisons.receiver import SaisonsReceiver
 from profs import Profs, ProfsReceiver
 from fusion import Fusion, FusionReceiver
+from members.receiver import DOSSIER_MEMBRES, MembersReceiver
 from videos import DOSSIER_VIDEOS_LIVE
 
 load_dotenv()  # charge backend/.env si present
@@ -138,6 +139,8 @@ comptes_receiver = ComptesReceiver(client=comptes_client, app=app)
 # modifier, supprimer un admin — réservé aux Owners pour l'écriture.
 administrateurs_client = Administrateurs(comptes=comptes_client)
 administrateurs_receiver = AdministrateursReceiver(client=administrateurs_client, app=app)
+# Champs des membres (spec/core.md §4.3) : la fiche et ses réponses.
+members_receiver = MembersReceiver(app=app)
 
 # Saisons (Admin > École, spec §2.6) : lister, créer avec duplication,
 # éditer la saison courante.
@@ -199,6 +202,7 @@ ressources_client = Ressources(
         "documents_partages": ("Documents (onglet Docs)", DOSSIER_DOCUMENTS),
         "notes_frais": ("Notes de frais (justificatifs)", DOSSIER_NOTES_FRAIS),
         "messagerie": ("Messagerie (photos, vidéos et fichiers)", DOSSIER_MESSAGERIE),
+        "membres": ("Fichiers des membres (champs de la fiche)", DOSSIER_MEMBRES),
     }
 )
 ressources_receiver = RessourcesReceiver(client=ressources_client, app=app)

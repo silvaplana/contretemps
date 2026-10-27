@@ -52,6 +52,7 @@ PARENTS: dict[str, tuple[str, str]] = {
     "cours_horaires_supplementaires": ("cours_id", "cours"),
     "emails_compte": ("compte_id", "comptes"),
     "group_members": ("member_id", "comptes"),
+    "member_values": ("member_id", "comptes"),
     "message_deliveries": ("message_id", "messages"),
     "messages": ("conversation_id", "conversations"),
     "presences_eleves": ("seance_id", "seances_presence"),
