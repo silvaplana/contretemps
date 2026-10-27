@@ -331,3 +331,60 @@ def test_commandes_par_l_api(monkeypatch):
     assert inscrits[0]["payments"] == [
         {"amount": 9000, "date": "2026-09-02", "state": "Authorized", "means": "Card", "installment": 1},
     ]
+
+
+# --- Étape 8d : les tarifs HelloAsso en lecture seule (spec §3, core.md §9.3) ---
+
+
+def test_tarifs_de_la_campagne(client, db_session, ecole, campagnes, monkeypatch):
+    from app import main
+
+    url = f"/ecoles/{ecole.id}/helloasso/tarifs"
+    assert client.get(url).json()["campaign"] is False
+    client.put(f"/ecoles/{ecole.id}/helloasso", json=CLES)
+    client.put(f"/ecoles/{ecole.id}/helloasso/campagne", json={"form_type": "Membership", "form_slug": "adhesion"})
+    prix = {
+        "plans": [{"name": "Adulte", "price": 29000, "min_amount": None, "description": "", "frequency": ""}],
+        "options": [{"name": "Kimono", "price": 4500, "required": False}],
+    }
+    monkeypatch.setattr(main.core.helloasso_campaigns, "form_prices", lambda *_: prix)
+    inscrits = [
+        {**_inscrit("1", "Léa", "Martin", "p@test.fr"), "discount_code": "RENOUV"},
+        {**_inscrit("2", "Tom", "Martin", "p@test.fr"), "discount_code": "RENOUV"},
+        _inscrit("3", "Ana", "Noir", "a@test.fr"),
+    ]
+    monkeypatch.setattr(main.core.helloasso_sync, "orders", lambda *_: inscrits)
+    client.post(f"/ecoles/{ecole.id}/helloasso/synchroniser")
+
+    tarifs = client.get(url).json()
+    assert tarifs["campaign"] is True and tarifs["form_name"] == "Adhésion 2026-2027"
+    assert tarifs["plans"][0]["price"] == 29000 and tarifs["options"][0]["name"] == "Kimono"
+    assert tarifs["codes"] == [{"code": "RENOUV", "uses": 2}]
+
+    def muet(*_):
+        from helloasso.api import HelloAssoError
+
+        raise HelloAssoError("HelloAsso ne répond pas : réessayez dans un moment.")
+
+    monkeypatch.setattr(main.core.helloasso_campaigns, "form_prices", muet)
+    tarifs = client.get(url).json()
+    assert tarifs["form_name"] == "Adhésion 2026-2027" and "ne répond pas" in tarifs["error"]
+
+
+def test_formules_par_l_api(monkeypatch):
+    from helloasso import api
+
+    monkeypatch.setattr(api, "_token", lambda *_: "jeton")
+    kimono = {"label": "Kimono", "price": 4500, "isRequired": False}
+    formulaire = {"tiers": [
+        {"label": "Solo, en 3 fois", "price": 30000, "tierType": "Membership", "paymentFrequency": "Installment",
+         "extraOptions": [kimono]},
+        {"label": "Prix libre", "price": None, "minAmount": 1000, "tierType": "Membership", "extraOptions": [kimono]},
+        {"label": "Don", "tierType": "Donation"},
+    ]}
+    monkeypatch.setattr(api, "_get", lambda path, token, params=None: formulaire)
+    prix = api.form_prices("id", "secret", "alliance", "Membership", "adhesion")
+    assert [(p["name"], p["price"], p["min_amount"], p["frequency"]) for p in prix["plans"]] == [
+        ("Solo, en 3 fois", 30000, None, "En plusieurs fois"), ("Prix libre", None, 1000, ""),
+    ]
+    assert prix["options"] == [{"name": "Kimono", "price": 4500, "required": False}]

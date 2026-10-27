@@ -134,3 +134,13 @@ montant, code promo, état, date, paiements `[{montant, date, état, moyen, éch
 HelloAsso » quand la ligne disparaît : la fiche reste). Reste pour plus tard : les colonnes Montant
 payé / Reste à payer et « Plus sur HelloAsso » dans le tableau des membres, les fichiers (photo
 d'identité), « Modifiable sur HelloAsso » dans Profil.
+
+**Fait (étape 4, 27 octobre 2026)** : l'écran Tarifs de la saison (Admin > École > Tarifs) montre, si
+la saison a une campagne, « Tarifs de la campagne HelloAsso « X » : ils se modifient sur HelloAsso. »
+puis ses formules (`tiers` du formulaire public, sauf les dons : nom, prix ou « Dès … » pour un prix
+libre, « En plusieurs fois » / « Tous les mois », description) et ses options (`extraOptions`, à
+cocher ou obligatoires), à la place des nôtres, sans rien de modifiable (`seasonPrices` du
+module.js, `core.md` §11.1). HelloAsso ne donne pas ses codes promo par l'API : on montre ceux vus
+dans les commandes synchronisées, avec leur nombre d'utilisations. Rien n'est écrit vers HelloAsso :
+la maquette Tarifs (« publiés sur HelloAsso à la validation ») n'est pas suivie sur ce point,
+l'API HelloAsso ne permet pas d'écrire les formules.

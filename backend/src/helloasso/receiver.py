@@ -56,6 +56,35 @@ class CampaignOut(BaseModel):
     can_sync: bool = False
 
 
+class PlanOut(BaseModel):
+    name: str
+    price: int | None = None
+    min_amount: int | None = None
+    description: str = ""
+    frequency: str = ""
+
+
+class OptionOut(BaseModel):
+    name: str
+    price: int
+    required: bool
+
+
+class CodeOut(BaseModel):
+    code: str
+    uses: int
+
+
+class PricesOut(BaseModel):
+    # False : pas de campagne cette saison, l'écran Tarifs montre les nôtres.
+    campaign: bool
+    form_name: str | None = None
+    plans: list[PlanOut] = []
+    options: list[OptionOut] = []
+    codes: list[CodeOut] = []
+    error: str | None = None
+
+
 class SyncOut(BaseModel):
     created: int
     completed: int
@@ -80,6 +109,7 @@ class HelloAssoReceiver:
         self.campaigns = campaigns or Campaigns()
         self.sync = sync
         app.post("/ecoles/{ecole_id}/helloasso/synchroniser", response_model=SyncOut)(self.synchroniser)
+        app.get("/ecoles/{ecole_id}/helloasso/tarifs", response_model=PricesOut)(self.tarifs)
         owner = [Depends(self._owner)]
         app.get("/ecoles/{ecole_id}/helloasso/campagne", response_model=CampaignOut)(self.campagne)
         app.put("/ecoles/{ecole_id}/helloasso/campagne", response_model=CampaignOut, dependencies=owner)(
@@ -205,3 +235,15 @@ class HelloAssoReceiver:
         except HelloAssoError as erreur:
             db.rollback()
             raise HTTPException(status_code=422, detail=str(erreur)) from None
+
+    def tarifs(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
+        """Les tarifs HelloAsso de la saison affichée, en lecture seule (tout admin)."""
+        rbac.require_admin(appelant, ecole_id)
+        season_id = saison_demandee() or saison_courante_id(db, ecole_id)
+        current = self.campaigns.current(db, season_id)
+        if current is None:
+            return PricesOut(campaign=False)
+        try:
+            return PricesOut(campaign=True, **self.campaigns.prices(db, ecole_id, season_id))
+        except HelloAssoError as erreur:
+            return PricesOut(campaign=True, form_name=current.form_name, error=str(erreur))
