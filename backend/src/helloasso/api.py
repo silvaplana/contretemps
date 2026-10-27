@@ -148,3 +148,61 @@ def form_fields(client_id: str, client_secret: str, slug: str, form_type: str, f
                 "choices": question.get("values") or None,
             }
     return list(questions.values())
+
+
+# Les lignes d'une commande qui sont une personne inscrite (adhésion,
+# billet d'événement) ; les dons et options à part ne font pas de fiche.
+PERSON_ITEMS = ("Membership", "Registration")
+
+
+def orders(client_id: str, client_secret: str, slug: str, form_type: str, form_slug: str) -> list[dict]:
+    """Les inscrits de la campagne, un par ligne de commande (une commande
+    peut inscrire plusieurs personnes, ex. une fratrie payée par un parent),
+    repris de Sambo Admin (`get_members`, `get_member_payments`). Montants en
+    centimes."""
+    token = _token(client_id, client_secret)
+    path = f"/v5/organizations/{slug}/forms/{form_type}/{form_slug}/orders"
+    items, page = [], 1
+    while True:
+        reponse = _get(path, token, params={"pageIndex": page, "pageSize": 100, "withDetails": "true"})
+        for order in _data(reponse):
+            payer = order.get("payer") or {}
+            payments = {p.get("id"): p for p in order.get("payments") or []}
+            for item in order.get("items") or []:
+                if item.get("type") not in PERSON_ITEMS:
+                    continue
+                user = item.get("user") or {}
+                items.append(
+                    {
+                        "item_id": str(item.get("id")),
+                        "order_id": str(order.get("id")),
+                        "first_name": (user.get("firstName") or payer.get("firstName") or "").strip(),
+                        "last_name": (user.get("lastName") or payer.get("lastName") or "").strip(),
+                        "payer_email": (payer.get("email") or "").strip() or None,
+                        "tier_name": item.get("name") or "",
+                        "amount": item.get("amount") or 0,
+                        "discount_code": (item.get("discount") or {}).get("code"),
+                        "state": item.get("state") or "",
+                        "order_date": order.get("date"),
+                        "answers": [
+                            {"id": str(c.get("id")) if c.get("id") is not None else None, "name": c.get("name") or "",
+                             "answer": c.get("answer")}
+                            for c in item.get("customFields") or []
+                        ],
+                        "payments": [
+                            {
+                                "amount": ref.get("shareAmount") or 0,
+                                "date": payments[ref.get("id")].get("date"),
+                                "state": payments[ref.get("id")].get("state"),
+                                "means": payments[ref.get("id")].get("paymentMeans"),
+                                "installment": payments[ref.get("id")].get("installmentNumber"),
+                            }
+                            for ref in item.get("payments") or []
+                            if ref.get("id") in payments
+                        ],
+                    }
+                )
+        total = (reponse.get("pagination") or {}).get("totalPages", page) if isinstance(reponse, dict) else page
+        if page >= total:
+            return items
+        page += 1

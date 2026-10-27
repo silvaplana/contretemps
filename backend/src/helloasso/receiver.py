@@ -17,6 +17,7 @@ from db import get_db
 from .api import HelloAssoError, Organization
 from .campaign import Campaigns
 from .connection import Connection
+from .sync import Sync
 
 
 class KeysIn(BaseModel):
@@ -50,6 +51,16 @@ class CampaignOut(BaseModel):
     forms: list[FormOut] = []
     # HelloAsso n'a pas répondu : la campagne choisie reste affichée.
     error: str | None = None
+    synced_at: datetime | None = None
+    # Tout admin synchronise la saison en cours.
+    can_sync: bool = False
+
+
+class SyncOut(BaseModel):
+    created: int
+    completed: int
+    updated: int
+    gone: int
 
 
 class CampaignIn(BaseModel):
@@ -62,9 +73,13 @@ def _out(organisation: Organization) -> OrganizationOut:
 
 
 class HelloAssoReceiver:
-    def __init__(self, client: Connection, app: FastAPI, campaigns: Campaigns | None = None) -> None:
+    def __init__(
+        self, client: Connection, app: FastAPI, campaigns: Campaigns | None = None, sync: Sync | None = None
+    ) -> None:
         self.client = client
         self.campaigns = campaigns or Campaigns()
+        self.sync = sync
+        app.post("/ecoles/{ecole_id}/helloasso/synchroniser", response_model=SyncOut)(self.synchroniser)
         owner = [Depends(self._owner)]
         app.get("/ecoles/{ecole_id}/helloasso/campagne", response_model=CampaignOut)(self.campagne)
         app.put("/ecoles/{ecole_id}/helloasso/campagne", response_model=CampaignOut, dependencies=owner)(
@@ -151,6 +166,8 @@ class HelloAssoReceiver:
             form=FormOut(form_type=current.form_type, form_slug=current.form_slug, name=current.form_name)
             if current
             else None,
+            synced_at=current.synced_at if current else None,
+            can_sync=current is not None and season_id == saison_courante_id(db, ecole_id),
         )
         if can_change:
             try:
@@ -176,3 +193,15 @@ class HelloAssoReceiver:
         self.campaigns.clear(db, ecole_id, self._courante(db, ecole_id))
         db.commit()
         return Response(status_code=204)
+
+    def synchroniser(
+        self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)
+    ):
+        """« Synchroniser maintenant » : tout admin, saison en cours."""
+        rbac.require_admin(appelant, ecole_id)
+        self._courante(db, ecole_id)
+        try:
+            return SyncOut(**vars(self.sync.run(db, ecole_id)))
+        except HelloAssoError as erreur:
+            db.rollback()
+            raise HTTPException(status_code=422, detail=str(erreur)) from None

@@ -65,7 +65,7 @@ récupère ce que HelloAsso a fait.
   tard, s'il devient fiable.
 - **Comment** : une commande = une fiche de la saison (`core.md` §4.1 : complétée si la personne
   existe déjà par nom, prénom ou email, créée sinon) ; les champs HelloAsso sont écrits dans
-  `member_values`, la formule et les paiements dans `member_plan` ; l'identifiant HelloAsso de la
+  `member_values`, la formule et les paiements dans `helloasso_registrations` ; l'identifiant HelloAsso de la
   commande est gardé pour ne rien recopier deux fois. Une personne retirée côté HelloAsso n'est pas
   supprimée : marquée « Plus sur HelloAsso », l'admin décide.
 - Ce que l'appli calcule ensuite est à elle : famille (email du payeur), groupes (un champ
@@ -116,3 +116,21 @@ cours ; les autres admins voient la campagne sans la changer. Nom, prénom, emai
 sont les champs du socle. Table `season_helloasso` (saison, nature, identifiant et nom du formulaire,
 date du choix, dernière synchronisation). Reste pour plus tard : le choix à l'étape Membres de la
 création de saison (aujourd'hui, on crée la saison puis on choisit la campagne dans Champs).
+
+**Fait (étape 3, 27 octobre 2026)** : la synchronisation de la saison en cours, toutes les 5 minutes
+par le worker `messagerie-relance` (`app/relance_worker.py`, pas de nouveau conteneur) et par le
+bouton **Synchroniser maintenant** sous la campagne (Champs, tout admin), qui dit ce qui a changé
+(« Synchronisé : 2 nouvelles fiches, 1 fiche complétée »). Les commandes de la campagne
+(`/orders?withDetails=true`, toutes les pages) : chaque ligne d'adhésion ou de billet
+(`Membership`, `Registration`) est une personne ; annulée ou remboursée, elle est ignorée. Fiche
+retrouvée par nom et prénom (sans accents ni majuscules), sinon par email du payeur et prénom
+(jamais par le seul email, que partagent les enfants d'un même payeur) ; une fiche non élève du même
+nom (un prof) est complétée ; sinon une fiche d'élève est créée avec l'email du payeur. L'email du
+payeur est écrit sur la fiche (famille, `core.md` §4.4). Les réponses vont dans les champs de la
+campagne (date « 05/11/0017 » corrigée en 2017, comme Sambo Admin) et dans notre champ du même
+intitulé caché par elle (la date de naissance donne l'âge). Table `helloasso_registrations` (saison,
+identifiant HelloAsso de la ligne et de la commande, fiche, nom, prénom, email du payeur, formule,
+montant, code promo, état, date, paiements `[{montant, date, état, moyen, échéance}]`, « plus sur
+HelloAsso » quand la ligne disparaît : la fiche reste). Reste pour plus tard : les colonnes Montant
+payé / Reste à payer et « Plus sur HelloAsso » dans le tableau des membres, les fichiers (photo
+d'identité), « Modifiable sur HelloAsso » dans Profil.
