@@ -158,6 +158,26 @@ def test_creer_une_ecole_reserve_au_superuser(client, monde):
     assert client.post("/ecoles", json=corps, headers=_en_superuser(client, monde)).status_code == 201
 
 
+def test_creer_une_ecole_avec_son_premier_administrateur(client, monde, mails):
+    """Parcours de « Créer une école » (ChoixEcoleScreen.jsx) : l'école, puis
+    son premier administrateur, administrateur principal, puis son
+    invitation, le tout par le Super User qui n'est pas Owner de l'école."""
+    entetes = _en_superuser(client, monde)
+    ecole = client.post("/ecoles", json={"nom": "Neuve", "code_postal": "83000"}, headers=entetes).json()
+    admin = client.post(
+        f"/ecoles/{ecole['id']}/administrateurs",
+        json={"nom": "Benali", "prenom": "Karim", "email": "karim@exemple.fr", "owner": True},
+        headers=entetes,
+    )
+    assert admin.status_code == 201
+    assert admin.json()["est_owner"] is True
+    invitation = client.post(f"/ecoles/{ecole['id']}/invitations", json={"compte_ids": [admin.json()["id"]]}, headers=entetes)
+    assert invitation.status_code == 200
+    assert [d for d, *_ in mails] == ["karim@exemple.fr"]
+    tableau = client.get(f"/ecoles/{ecole['id']}/administrateurs", headers=entetes).json()
+    assert [(a["prenom"], a["est_owner"]) for a in tableau] == [("Karim", True)]
+
+
 def test_relancer_toutes_les_ecoles_reserve_au_superuser(client, monde):
     assert client.post("/messagerie/relancer", json={}, headers=entetes_session(monde["admin_b"])).status_code == 403
     reponse = client.post("/messagerie/relancer", json={}, headers=_en_superuser(client, monde))

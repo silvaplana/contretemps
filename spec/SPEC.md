@@ -282,8 +282,13 @@ disparaît de l'écran de connexion public, la création se fait depuis l'écran
 
 Plus de codes d'accès ni de code de récupération (décision du 2026-10-01, §2.2). La validation
 du formulaire crée l'école **et** le compte du premier administrateur en une seule opération,
-puis lui envoie une **invitation** par email pour créer son mot de passe (§2.2). *Ce
-formulaire n'est pas encore branché au serveur : à faire avec le chantier mot de passe.*
+puis lui envoie une **invitation** par email pour créer son mot de passe (§2.2). Branché le
+28 octobre 2026 (Seb) : le formulaire enchaîne la création de l'école, celle de l'administrateur
+principal et l'invitation, puis ouvre l'école sur **Admin › École**, avec un mot d'accueil qui
+dit où en est l'invitation et invite à renseigner les premières informations (coordonnées…),
+fermé par « Compris ». Si l'administrateur ou l'invitation échoue, l'école existe déjà et le mot
+d'accueil dit quoi refaire. Le Super User voit aussi « Ajouter un administrateur » dans
+Admin › École (avant, seul un Owner le voyait : personne ne pouvait compléter une école neuve).
 **Ce premier administrateur est aussi l'Owner de l'école** (voir §2.4).
 
 ### 2.4 Gestion multi-admin — Owners et professeurs-admins *(spécifié le 2026-09-21, pas encore implémenté)*
