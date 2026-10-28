@@ -5,6 +5,8 @@ module. Rayer ce qui est fait.
 
 ## Sur le « vas-y » de Seb
 
+- Financier : pièces et comptabilité pour les documents de l'AG (`modules/financier.md` §8),
+  quatre étapes ; AG de Contretemps en novembre 2026, la première étape suffit à la Synthèse.
 - Socle par saison (`core.md` §13) : groupes, droits, cours = groupes, champs des membres, famille
   par l'email du payeur, création de saison en un écran, tarifs, HelloAsso (`modules/helloasso.md`),
   formulaire d'inscription de l'appli (à concevoir).

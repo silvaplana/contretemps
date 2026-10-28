@@ -8,6 +8,8 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
+import Pieces, { requestPhotoPieces } from '../finances/exemple/Pieces.jsx'
+import { requestPlanComptable, requestSoldesDepart } from '../finances/exemple/PlanComptable.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeStatut } from './commun.jsx'
@@ -17,6 +19,7 @@ import './notes-frais.css'
 
 const SOUS_ONGLETS = [
   { value: 'comptes', label: 'Comptes' },
+  { value: 'pieces', label: 'Pièces' },
   { value: 'notes', label: 'Notes de frais' },
   { value: 'bilan', label: 'Bilan' },
   { value: 'ag', label: 'AG' },
@@ -64,7 +67,11 @@ export default function Financier() {
             ? [
                 { label: 'Se connecter aux comptes en banque', icon: 'calculator', onClick: requestBank },
                 { label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport },
+                { label: 'Plan comptable', icon: 'docs', onClick: requestPlanComptable },
+                { label: 'Soldes de départ', icon: 'calculator', onClick: requestSoldesDepart },
               ]
+            : sousOnglet === 'pieces'
+              ? [{ label: 'Photographier des pièces', icon: 'camera', onClick: requestPhotoPieces }]
             : sousOnglet === 'bilan'
               ? [{ label: 'Nouveau bilan', icon: 'plus', onClick: requestNewReport }]
               : sousOnglet === 'ag'
@@ -98,6 +105,8 @@ export default function Financier() {
       />
       {sousOnglet === 'comptes' ? (
         <Comptes />
+      ) : sousOnglet === 'pieces' ? (
+        <Pieces />
       ) : sousOnglet === 'bilan' ? (
         <Bilan />
       ) : sousOnglet === 'ag' ? (
