@@ -62,11 +62,12 @@ def saisons_de_l_ecole(db: Session, ecole_id: int) -> list[Season]:
     ]
 
 
-def adresse_ecole(db: Session, ecole_id: int) -> str:
+def adresse_ecole(db: Session, ecole_id: int | None) -> str:
     """L'adresse de l'appli de l'école (son sous-domaine), où revenir après
-    la banque (connexion bancaire, finances/bank.py)."""
+    la banque (connexion bancaire, finances/bank.py) ; l'adresse générale si
+    l'école est inconnue."""
     from auth.mails import MailsAcces
     from ecoles.models import Ecole
 
-    ecole = db.get(Ecole, ecole_id)
+    ecole = db.get(Ecole, ecole_id) if ecole_id is not None else None
     return MailsAcces().appli(ecole.sous_domaine if ecole is not None else None)
