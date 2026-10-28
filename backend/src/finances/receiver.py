@@ -10,13 +10,14 @@ from urllib.parse import quote
 
 from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from db import get_db
 
 from .assemblies import PPTX, AssemblyError, AssemblyNotFoundError, GeneralAssemblies
+from .bank import Bank, BankError
 from .exports import to_pdf, to_xlsx
 from .forecasts import ForecastError, ForecastNotFoundError, Forecasts
 from .ports import Member, Season
@@ -82,6 +83,26 @@ class ModelRequest(BaseModel):
     kind: str
 
 
+class ConnectRequest(BaseModel):
+    """Corps de POST /finances/bank/connect : la banque (nom exact de la
+    liste) et l'espace, "personal" (particuliers) ou "business" (pros)."""
+
+    bank: str
+    psuType: str = "personal"
+
+
+class FollowRequest(BaseModel):
+    """Corps de PUT /finances/bank/accounts : les comptes suivis (uid)."""
+
+    uids: list[str]
+
+
+class RenameRequest(BaseModel):
+    """Corps de PUT /finances/accounts/{id}."""
+
+    name: str
+
+
 def _http(error: Exception) -> HTTPException:
     if isinstance(error, ReportNotFoundError):
         return HTTPException(status_code=404, detail="Bilan inconnu")
@@ -104,6 +125,8 @@ class FinancesReceiver:
         reports: FinancialReports | None = None,
         assemblies: GeneralAssemblies | None = None,
         forecasts: Forecasts | None = None,
+        bank: Bank | None = None,
+        org_url: Callable[[Session, int], str] | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
@@ -115,7 +138,13 @@ class FinancesReceiver:
         self.reports = reports
         self.assemblies = assemblies
         self.forecasts = forecasts
+        self.bank = bank
+        # org_url(db, org_id) : l'adresse de l'appli de l'organisation, où
+        # revenir après la banque.
+        self.org_url = org_url
         self._register_routes()
+        if bank is not None:
+            self._register_bank_routes()
         if reports is not None:
             self._register_report_routes()
         if assemblies is not None:
@@ -163,6 +192,77 @@ class FinancesReceiver:
                 ],
                 "today": dt.date.today().isoformat(),
             }
+
+    def _register_bank_routes(self) -> None:
+        """Connexion bancaire (bank.py, spec financier.md §3.5)."""
+        app, bank = self.app, self.bank
+        db_dep = Depends(get_db)
+        member_dep = Depends(self.current_member)
+
+        def call(action, *args):
+            try:
+                return action(*args)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+            except BankError as exc:
+                raise HTTPException(status_code=409, detail=str(exc)) from exc
+
+        @app.get("/finances/bank")
+        def bank_status(db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(bank.status, db, member)
+
+        @app.get("/finances/bank/banks")
+        def bank_list(q: str = "", member: Member = member_dep) -> dict:
+            return {"banks": call(bank.banks, member, q)}
+
+        @app.post("/finances/bank/connect")
+        def bank_connect(data: ConnectRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return {"url": call(bank.connect, db, member, data.bank, data.psuType)}
+
+        @app.put("/finances/bank/accounts")
+        def bank_follow(data: FollowRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(bank.follow, db, member, data.uids)
+
+        @app.post("/finances/bank/sync")
+        def bank_sync(db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(bank.sync, db, member)
+
+        @app.get("/finances/bank/return")
+        def bank_return(state: str = "", code: str = "", error: str = "", db: Session = db_dep):
+            """Retour de la banque (route publique : `state`, aléatoire et
+            valable 30 minutes, dit quelle organisation revient). Le serveur
+            termine la connexion, puis renvoie vers l'adresse de l'école :
+            la session de connexion de la personne est liée à cette adresse."""
+            from sqlalchemy import select
+
+            from .models import FinBankConnection
+
+            connection = db.scalar(select(FinBankConnection).where(FinBankConnection.state == state)) if state else None
+            org_id = connection.org_id if connection is not None else None
+            if error or not code:
+                if connection is not None:
+                    connection.state, connection.state_at, connection.pending = None, None, None
+                    db.commit()
+                resultat = "annule"
+            else:
+                try:
+                    org_id = bank.complete(db, code, state)
+                    resultat = "ok"
+                except BankError:
+                    resultat = "erreur"
+            base = self.org_url(db, org_id) if self.org_url is not None and org_id is not None else ""
+            return RedirectResponse(f"{base.rstrip('/')}/?banque={resultat}", status_code=303)
+
+        @app.put("/finances/accounts/{account_id}")
+        def rename_account(account_id: int, data: RenameRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            try:
+                return self.client.rename_account(db, member, account_id, data.name)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+            except AccountNotFoundError as exc:
+                raise HTTPException(status_code=404, detail="Compte inconnu") from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     def _register_report_routes(self) -> None:
         app, reports = self.app, self.reports

@@ -13,7 +13,7 @@ from __future__ import annotations
 import datetime as dt
 from datetime import datetime, timezone
 
-from sqlalchemy import Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -23,8 +23,8 @@ def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-# Origine d'une opération : un relevé importé, ou (plus tard) la connexion
-# bancaire, dont les opérations sont provisoires jusqu'au relevé.
+# Origine d'une opération : un relevé importé, ou la connexion bancaire
+# (bank.py), dont les opérations sont provisoires jusqu'au relevé.
 SOURCE_STATEMENT = "releve"
 SOURCE_BANK = "banque"
 
@@ -39,6 +39,43 @@ class FinAccount(Base):
     name: Mapped[str] = mapped_column(String(80), nullable=False)
     # "checking" (compte courant) ou "savings" (livret).
     kind: Mapped[str] = mapped_column(String(20), nullable=False)
+    # Connexion bancaire (bank.py) : identifiant du compte chez Enable
+    # Banking, et dernier solde lu à la banque (centimes) avec sa date. Ce
+    # solde sert de point de départ tant que le compte n'a aucun relevé.
+    bank_uid: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    bank_balance: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bank_balance_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+
+
+class FinBankConnection(Base):
+    """La connexion bancaire d'une organisation (une seule par organisation) :
+    banque choisie, session Enable Banking (chiffrée), comptes que la banque
+    a autorisés et ceux qu'on suit, expiration du consentement (180 jours au
+    plus), dernière lecture. `state` : la connexion en cours, le temps que la
+    personne passe par sa banque."""
+
+    __tablename__ = "fin_bank_connections"
+    __table_args__ = (UniqueConstraint("org_id", name="uq_fin_bank_connections_org"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    bank: Mapped[str] = mapped_column(String(120), nullable=False)
+    country: Mapped[str] = mapped_column(String(2), nullable=False, default="FR")
+    # "personal" ou "business" (espace particuliers ou professionnels).
+    psu_type: Mapped[str] = mapped_column(String(20), nullable=False, default="personal")
+    session_encrypted: Mapped[str | None] = mapped_column(Text, nullable=True)
+    valid_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # [{"uid", "iban", "name", "product", "followed"}] : comptes autorisés.
+    accounts: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    state: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    state_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # La banque demandée pendant la connexion en cours : {"bank", "psu_type",
+    # "country"}, appliquée au retour (l'ancienne connexion vaut jusque-là).
+    pending: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    connected_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    connected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class FinStatement(Base):

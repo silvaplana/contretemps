@@ -35,6 +35,11 @@ services:
     # persistant par défaut).
     volumes:
       - backend_data:/app/data
+      # Clé privée de la connexion bancaire (Enable Banking, voir DEPLOY.md
+      # §4) : fichier du VPS, en lecture seule, hors de /app/data (donc hors
+      # des sauvegardes) et hors des variables d'environnement. Dossier
+      # absent ou vide : la connexion bancaire n'est simplement pas proposée.
+      - ./backend/secrets:/run/secrets:ro
     # "expose" (contrairement à "ports") ne rend PAS le port accessible
     # depuis l'extérieur de la machine : seul le conteneur "frontend"
     # peut y accéder, via le réseau interne que docker-compose crée

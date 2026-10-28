@@ -12,6 +12,15 @@ module. Rayer ce qui est fait.
 - Signature de documents : retours de Seb après ses tests (`modules/signature-documents.md`).
 - `SPEC.md` à réduire à ce qui est propre à Contretemps.
 
+## En cours
+
+- Connexion bancaire du Financier (`modules/financier.md` §3.5) : codée le 28 octobre, à essayer
+  avec BoursoBank (école de test) puis le CIC de l'école. Ensuite : lecture automatique, rappel
+  avant l'expiration, relevés PDF du CIC.
+- Création d'école avec son premier administrateur (prénom, nom, email ; administrateur principal
+  et invitation), puis ouverture d'Admin › École pour les premières informations (Seb, 28 octobre).
+  Aujourd'hui personne ne peut ajouter le premier administrateur d'une école neuve.
+
 ## En attente d'une décision de Seb
 
 - Mot pour « membre + compte de connexion ».

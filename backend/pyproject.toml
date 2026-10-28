@@ -63,6 +63,10 @@ dependencies = [
     # Clés d'API des organisations chiffrées en base (securite/chiffrement.py,
     # clé secrète HelloAsso) — déjà installé transitivement (via pywebpush).
     "cryptography",
+    # Connexion bancaire (finances/enablebanking.py, repris de Sambo Admin) :
+    # jeton signé RS256 par la clé de l'application, appels HTTP.
+    "PyJWT",
+    "httpx",
 ]
 
 [project.optional-dependencies]

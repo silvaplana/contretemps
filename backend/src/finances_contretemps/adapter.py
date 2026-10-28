@@ -60,3 +60,13 @@ def saisons_de_l_ecole(db: Session, ecole_id: int) -> list[Season]:
         )
         for i, s in enumerate(saisons)
     ]
+
+
+def adresse_ecole(db: Session, ecole_id: int) -> str:
+    """L'adresse de l'appli de l'école (son sous-domaine), où revenir après
+    la banque (connexion bancaire, finances/bank.py)."""
+    from auth.mails import MailsAcces
+    from ecoles.models import Ecole
+
+    ecole = db.get(Ecole, ecole_id)
+    return MailsAcces().appli(ecole.sous_domaine if ecole is not None else None)

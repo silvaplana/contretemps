@@ -7,7 +7,7 @@ import Modal from '../../components/Modal.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
-import Comptes, { requestStatementImport } from '../finances/Comptes.jsx'
+import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeStatut } from './commun.jsx'
@@ -61,7 +61,10 @@ export default function Financier() {
         label="Actions du Financier"
         actions={
           sousOnglet === 'comptes'
-            ? [{ label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport }]
+            ? [
+                { label: 'Banque et comptes…', icon: 'calculator', onClick: requestBank },
+                { label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport },
+              ]
             : sousOnglet === 'bilan'
               ? [{ label: 'Nouveau bilan', icon: 'plus', onClick: requestNewReport }]
               : sousOnglet === 'ag'

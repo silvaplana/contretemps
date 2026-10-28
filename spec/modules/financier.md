@@ -43,15 +43,17 @@ même période) est ignoré : on peut redéposer toute une archive. Le compte re
 (importés, déjà présents, refusés) s'affiche dans l'écran.
 
 Pas de saisie manuelle d'opérations. Pas d'import CSV pour l'instant (un CSV n'a pas de soldes à
-vérifier). La **connexion bancaire** (Enable Banking, opérations provisoires « en attente du
-relevé ») est prévue dans les tables (`source`) mais pas branchée : contrat à régler.
+vérifier). La **connexion bancaire** (§3.5) ajoute des opérations provisoires « en attente du
+relevé » ; le relevé qui les couvre les remplace.
 
 ### 3.2 L'écran
 
 Repris de Sambo Admin :
 
 - En-tête : **Total des comptes** (ou le compte choisi), solde par compte, « au jj/mm/aaaa ».
-- Puces : comptes affichés (CC + Bleu | CC | Bleu), **Graphique** | **Tableau**.
+- Puces : comptes affichés (**Tous**, puis une puce par compte, sous le nom que lui donne le
+  trésorier, autant de comptes qu'il en faut ; avant : CC + Bleu, deux comptes), **Graphique** |
+  **Tableau**.
 - Filtres : menu Catégories (toutes, les 5 plus fréquentes, les 5 plus grosses, une catégorie) et
   recherche (libellé, détail, catégorie, sans accents). Avec un filtre : nombre d'opérations,
   recettes, dépenses, net, détail par catégorie.
@@ -81,6 +83,51 @@ organisation ne voit que ses comptes (`org_id`).
 `POST /finances/import` (fichiers), `GET /finances/ledger[?account=id]`, `GET /finances/seasons`.
 L'appli hôte fournit le membre (`finances_contretemps/adapter.py` : trésorier, ou Super User avec
 l'école choisie par l'en-tête `X-Ecole-Id`) et les saisons de l'organisation.
+
+### 3.5 Connexion bancaire (28 octobre 2026)
+
+Seb : brancher le vrai compte de l'école (Contretemps : CIC Lyonnaise de Banque, **trois comptes**,
+401 compte courant, 403 compte courant des honoraires des professeurs, 402 Livret A). Repris de
+Sambo Admin (`test-python`, `bankaccounts/` et `bankstatements.sync_live`), par **Enable
+Banking** (agrégateur PSD2), pour plusieurs organisations :
+
+- **Menu ⋯ › Banque et comptes…** : un volet. Sans banque : choisir la banque dans la liste
+  d'Enable Banking (recherche), l'espace (**Professionnels et associations** ou **Particuliers**),
+  puis **Aller à ma banque** : on s'identifie chez la banque, on valide sur son téléphone, on
+  revient sur l'appli. Banque connectée : « CIC · accès jusqu'au … · lue le … », **Actualiser**,
+  **Reconnecter ou changer de banque**, les comptes lus à la banque (case à cocher : suivi ou non ;
+  une carte, sans IBAN, n'est jamais proposée) et le **nom de chaque compte** (modifiable, aussi
+  pour un compte venu des relevés).
+- **Une banque par organisation**, choisie au moment de connecter. Le serveur ne garde que ce qui
+  est commun : identifiant de l'application, clé privée (fichier monté en lecture seule, jamais
+  dans le dépôt ni dans une variable), adresse de retour (`DEPLOY.md` §4).
+- **Retour de la banque** : une seule adresse, `GET /finances/bank/return` (publique) ; `state`,
+  aléatoire et valable 30 minutes, dit quelle organisation revient. Le serveur termine la
+  connexion puis renvoie vers l'adresse de l'école (`?banque=ok|annule|erreur`), où l'écran
+  Comptes l'annonce et ouvre le volet.
+- **Lecture** : solde (comptable de clôture de préférence) et opérations des 90 derniers jours
+  des comptes suivis, à la connexion puis par **Actualiser** (les banques limitent les lectures
+  automatiques à environ quatre par jour). Seules les opérations **postérieures au dernier relevé**
+  du compte sont gardées, en provisoires (`source = banque`) ; elles sont remplacées à chaque
+  lecture (lire deux fois n'ajoute rien).
+- **Compte sans relevé** : créé depuis son IBAN (numéro = IBAN, nature courant ou livret selon la
+  banque, nom par défaut « <produit> <3 derniers chiffres du compte> », ex. « Compte courant
+  401 ») ; son solde lu à la banque sert de point de départ. Un relevé importé ensuite se rattache
+  au même compte (son numéro est dans l'IBAN) et efface les provisoires qu'il couvre : le relevé
+  fait foi.
+- **Expiration** : 180 jours au plus ; le volet le dit, « Reconnecter la banque ».
+- **Sans contrat Enable Banking**, l'application ne lit que les comptes que son propriétaire y a
+  d'abord liés (Control Panel) : l'école de Seb, pas d'autres écoles.
+
+Données : table `fin_bank_connections` (une ligne par organisation : banque, pays, espace,
+session chiffrée, expiration, comptes autorisés et suivis, `state` en attente, dernière lecture,
+dernière erreur) ; `fin_accounts` gagne `bank_uid`, `bank_balance` (centimes) et
+`bank_balance_date`. Migration `f1a3c5e7b9d0`. Routes : `GET /finances/bank`,
+`GET /finances/bank/banks?q=`, `POST /finances/bank/connect`, `GET /finances/bank/return`,
+`PUT /finances/bank/accounts`, `POST /finances/bank/sync`, `PUT /finances/accounts/{id}`.
+
+Pas encore fait : lecture automatique (deux fois par jour) et rappel avant l'expiration ;
+lecture des relevés PDF du CIC (écrite pour le Crédit Mutuel, à vérifier).
 
 ## 4. Bilan
 
@@ -240,6 +287,7 @@ décider avec Seb.
 
 ## 8. Reste à faire
 
-- Connexion bancaire (Enable Banking) quand le contrat est réglé.
+- Connexion bancaire (§3.5) : lecture automatique deux fois par jour, rappel avant l'expiration,
+  relevés PDF du CIC.
 - Améliorations notées : tableau plus lisible sur téléphone, catégories modifiables, « reste à
   recevoir » HelloAsso, textes ≥ 17 px (l'écran est repris tel quel).
