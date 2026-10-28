@@ -131,6 +131,13 @@ def parse_statement(pdf_bytes: bytes) -> ParsedStatement:
 
             if len(texts) >= 2 and _DATE.match(texts[0]) and _DATE.match(texts[1]):
                 amounts = [w for w in line[2:] if _AMOUNT.match(w[4]) and w[0] > label_left + 200]
+                # Ligne d'information datée, sans montant (CIC, livret :
+                # « NOUVEAU TAUX DU LOBNL TRIPLEX ») : pas une opération. Une
+                # opération oubliée ferait de toute façon échouer la
+                # vérification du solde plus bas.
+                if not amounts:
+                    current = None
+                    continue
                 if len(amounts) != 1:
                     raise StatementParseError(f"Montant introuvable : {text}")
                 amount_word = amounts[0]

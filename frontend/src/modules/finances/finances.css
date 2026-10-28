@@ -1577,3 +1577,10 @@
   color: var(--text-muted);
   font-size: 15px;
 }
+
+.fin-banque__nom {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+}

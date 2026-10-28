@@ -194,15 +194,18 @@ export default function BanquePanel({ accounts, onChanged, onClose }) {
         <>
           <h4>Noms des comptes</h4>
           {accounts.map((c) => (
-            <input
-              key={`${c.id}-${c.name}`}
-              className="fin-banque__input"
-              aria-label={`Nom du compte ${c.name}`}
-              defaultValue={c.name}
-              maxLength={80}
-              onBlur={(e) => renommer(c, e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-            />
+            <label key={`${c.id}-${c.name}`} className="fin-banque__nom">
+              {/* Fin du numéro : distingue deux comptes de même nature (401 / 403). */}
+              {c.number && <span className="account-iban">n° …{c.number.slice(-5)}</span>}
+              <input
+                className="fin-banque__input"
+                aria-label={`Nom du compte ${c.name}`}
+                defaultValue={c.name}
+                maxLength={80}
+                onBlur={(e) => renommer(c, e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+            </label>
           ))}
         </>
       )}

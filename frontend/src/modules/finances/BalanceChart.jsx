@@ -135,14 +135,6 @@ export function BalanceChart({ series, showPercent = true, fromZero = false, ext
     </div>
   )
 
-  useEffect(() => {
-    const el = wrapperRef.current
-    if (!el) return undefined
-    const observer = new ResizeObserver(([entry]) => setWidth(Math.max(280, entry.contentRect.width)))
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [])
-
   const visible = useMemo(() => {
     if (series.length < 2) return series
     const cutoff = series[series.length - 1].t - range.days * DAY_MS
@@ -153,6 +145,21 @@ export function BalanceChart({ series, showPercent = true, fromZero = false, ext
     const base = series[series.length - slice.length - 1]?.v ?? 0
     return slice.map((p) => ({ ...p, v: Math.round((p.v - base) * 100) / 100 }))
   }, [series, range, fromZero])
+
+  // Mesure de la largeur, a chaque fois que le graphique reapparait : il
+  // disparait sous "Saisons" (ou faute de donnees), et l'ancienne mesure
+  // restait figee a 280 px au retour (Seb, 28 octobre). Une largeur nulle
+  // (graphique retire de la page) est ignoree.
+  const plotShown = !extraChosen && visible.length >= 2
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!plotShown || !el) return undefined
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width > 0) setWidth(Math.max(280, entry.contentRect.width))
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [plotShown])
 
   if (extraChosen) {
     return (

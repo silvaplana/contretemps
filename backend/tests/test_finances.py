@@ -54,6 +54,8 @@ def make_statement(account_line, start, operations, end_date=None, error=0):
         page.insert_text((52, y), date, fontsize=8)
         page.insert_text((100, y), date, fontsize=8)
         page.insert_text((148, y), label, fontsize=8)
+        if amount is None:  # ligne d'information, sans montant
+            continue
         right(460 if amount < 0 else 534, y, fr(abs(amount)))
         for line in details:
             y += 11
@@ -91,6 +93,19 @@ def test_parse_rejects_statement_that_does_not_add_up():
     pdf = make_statement(COURANT, ("01/06/2026", 1000), [("02/06/2026", "CB", -500, [])], error=1)
     with pytest.raises(StatementParseError, match="ne tombe pas juste"):
         parse_statement(pdf)
+
+
+def test_parse_ignores_information_line_without_amount():
+    """Livret du CIC : « 01/01/2023 01/01/2023 NOUVEAU TAUX DU LOBNL TRIPLEX »,
+    deux dates sans montant. Ce n'est pas une opération : ignorée (le relevé
+    était refusé, « Montant introuvable »). Le solde reste vérifié."""
+    pdf = make_statement(
+        LIVRET,
+        ("31/12/2022", 500000),
+        [("01/01/2023", "NOUVEAU TAUX DU LOBNL TRIPLEX", None, []), ("15/01/2023", "VERSEMENT", 10000, [])],
+    )
+    statement = parse_statement(pdf)
+    assert [(op.label, op.amount) for op in statement.operations] == [("VERSEMENT", 10000)]
 
 
 def test_parse_rejects_other_pdf():

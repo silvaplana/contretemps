@@ -364,7 +364,9 @@ class Finances:
                 if a.id in visible
             ],
             # Tous les comptes (pour choisir la vue), même avec account_id.
-            "allAccounts": [{"id": a.id, "name": a.name, "kind": a.kind} for a in accounts],
+            # number : pour distinguer deux comptes de même nature au moment de
+            # les nommer (deux comptes courants, Seb 28 octobre).
+            "allAccounts": [{"id": a.id, "name": a.name, "kind": a.kind, "number": a.number} for a in accounts],
             "total": sum(b for b in balances.values() if b is not None) / 100,
             # Toutes les catégories possibles, dans l'ordre d'affichage.
             "categories": CATEGORY_NAMES,

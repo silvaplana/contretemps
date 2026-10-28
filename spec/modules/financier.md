@@ -97,7 +97,10 @@ Banking** (agrégateur PSD2), pour plusieurs organisations :
   revient sur l'appli. Banque connectée : « CIC · accès jusqu'au … · lue le … », **Actualiser**,
   **Reconnecter ou changer de banque**, les comptes lus à la banque (case à cocher : suivi ou non ;
   une carte, sans IBAN, n'est jamais proposée) et le **nom de chaque compte** (modifiable, aussi
-  pour un compte venu des relevés).
+  pour un compte venu des relevés ou sans banque connectée ; la fin du numéro, « n° …20401 », est
+  affichée à côté pour distinguer deux comptes de même nature).
+- Relevés : une ligne datée **sans montant** (CIC, livret : « NOUVEAU TAUX DU LOBNL TRIPLEX ») est
+  une information, ignorée ; le solde reste vérifié au centime (28 octobre 2026).
 - **Une banque par organisation**, choisie au moment de connecter. Le serveur ne garde que ce qui
   est commun : identifiant de l'application, clé privée (fichier monté en lecture seule, jamais
   dans le dépôt ni dans une variable), adresse de retour (`DEPLOY.md` §4).
