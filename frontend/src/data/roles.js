@@ -7,8 +7,10 @@ export const ROLE_LABEL = {
   owner: 'Administrateur principal',
   professeur: 'Professeur',
   eleve: 'Élève',
-  // Toujours un admin (module notes de frais §6) : un droit en plus.
-  tresorier: 'Trésorier',
+  // Toujours un admin (module notes de frais §6) : un droit en plus, celui
+  // du tableau des administrateurs (🔒 Accès au Financier). Pas « Trésorier » :
+  // Trésorier·e n'est qu'un titre du Bureau, sans droit (spec/core.md §5).
+  tresorier: 'Accès au Financier',
   superuser: 'Super User',
 }
 
