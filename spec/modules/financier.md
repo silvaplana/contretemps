@@ -352,6 +352,15 @@ Trois origines de pièces :
   par la présence des profs (module à part) ;
 - **caisse** (§8.5).
 
+Cas de la **remise de chèques** (dossier Cotisations ; vu chez la trésorière de Contretemps le
+28 octobre) : le ticket de dépôt de la banque (« 25 chèques, 3 795,00 € ») et la page du cahier
+qui liste chaque chèque (nom de la famille, banque, numéro, montant) forment une seule pièce,
+photographiée en deux fois et lue ensemble. Elle se rattache à la ligne « REM CHQ » du relevé,
+avec une **sous-ligne par chèque** : nom rapproché d'une fiche de l'appli (famille, par le
+payeur ; proposition à confirmer), montant, compte Cotisations ou Cours déduit de l'inscription
+de l'élève (ou choisi). La somme des sous-lignes doit faire le montant de la banque. Le paiement
+apparaît sur la fiche de l'élève ; le trésorier voit qui n'a pas payé.
+
 **Lecture et proposition** (modèle de langage, jamais nommé « IA » à l'écran, coût noté dans
 Ressources « Financier : lecture des pièces ») : la pièce est lue (fournisseur, date, montant,
 numéro, objet), rangée dans un dossier, et l'appli propose **la ligne de banque** (même montant,
