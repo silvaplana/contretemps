@@ -213,3 +213,19 @@ def test_retour_inconnu_renvoie_vers_l_appli(client, monkeypatch):
     retour = client.get("/finances/bank/return?state=inconnu&code=x", follow_redirects=False)
     assert retour.status_code == 303
     assert retour.headers["location"] == "https://silvaplana.cloud/contretemps/?banque=erreur"
+
+
+def test_fiche_du_compte(faux, db_session):
+    """Fiche d'un compte (Voir le compte) : numéro, nature, IBAN et banque
+    quand il est relié, rien de la banque sinon."""
+    finances = Finances()
+    finances.import_files(db_session, TRESORIER, [("c1.pdf", make_statement(COURANT, ("30/06/2024", 100000), [("03/07/2024", "CB DECATHLON", -20000, [])], "31/07/2024"))])
+    compte_seul = finances.get_ledger(db_session, TRESORIER)["accounts"][0]
+    assert (compte_seul["number"], compte_seul["kind"], compte_seul["iban"], compte_seul["bank"]) == ("00020461601", "checking", None, None)
+    iban = "FR761027800000000020461601" + "76"
+    faux.comptes = [compte("u1", iban, "Compte courant")]
+    faux.operations = {"u1": []}
+    faux.soldes = {"u1": 800.0}
+    connecter(Bank(client=faux, finances=finances, encrypt=str, decrypt=str), faux, db_session)
+    relie = finances.get_ledger(db_session, TRESORIER)["accounts"][0]
+    assert (relie["iban"], relie["bank"]) == (iban, "CIC")

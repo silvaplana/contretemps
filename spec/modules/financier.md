@@ -99,6 +99,10 @@ Banking** (agrégateur PSD2), pour plusieurs organisations :
   une carte, sans IBAN, n'est jamais proposée) et le **nom de chaque compte** (modifiable, aussi
   pour un compte venu des relevés ou sans banque connectée ; la fin du numéro, « n° …20401 », est
   affichée à côté pour distinguer deux comptes de même nature).
+- **Fiche d'un compte** (Seb, 28 octobre) : une pastille de compte choisie, le lien « Voir le
+  compte » sous son nom ouvre sa fiche : nom (modifiable), IBAN s'il est relié à la banque (sinon
+  le numéro lu sur les relevés), nature, banque reliée ou non, périodes couvertes par les relevés.
+  Le clic sur une pastille garde son rôle (choisir le compte affiché).
 - Relevés : une ligne datée **sans montant** (CIC, livret : « NOUVEAU TAUX DU LOBNL TRIPLEX ») est
   une information, ignorée ; le solde reste vérifié au centime (28 octobre 2026).
 - **Une banque par organisation**, choisie au moment de connecter. Le serveur ne garde que ce qui

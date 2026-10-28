@@ -32,7 +32,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .categories import CATEGORY_NAMES, categorize
-from .models import SOURCE_BANK, FinAccount, FinOperation, FinStatement
+from .models import SOURCE_BANK, FinAccount, FinBankConnection, FinOperation, FinStatement
 from .parser import ParsedStatement, StatementParseError, parse_statement
 from .ports import Member
 
@@ -232,8 +232,9 @@ class Finances:
         qu'une ligne (transfer: {"from", "to"}, montant positif).
         Avec account_id : les opérations de ce compte seul et son solde.
 
-        Retour : {"accounts": [{"id", "name", "kind", "balance", "asOf",
-        "coverage": [{"from", "to", "statements"}]}], "allAccounts",
+        Retour : {"accounts": [{"id", "name", "kind", "number", "iban",
+        "bank", "balance", "asOf", "coverage": [{"from", "to",
+        "statements"}]}], "allAccounts",
         "total", "categories", "rows": [...], "issues": [...]} (montants en
         euros, dates ISO ; chaque ligne porte sa "category", voir
         categories.py).
@@ -350,12 +351,18 @@ class Finances:
             dates += [account.bank_balance_date] if account.bank_balance_date and account.id not in last else []
             return max(dates).isoformat() if dates else None
 
+        # Fiche du compte (« Voir le compte ») : IBAN et banque, s'il est relié.
+        connection = db.scalar(select(FinBankConnection).where(FinBankConnection.org_id == org_id))
+        ibans = {b["uid"]: b.get("iban") for b in (connection.accounts or [])} if connection is not None else {}
         return {
             "accounts": [
                 {
                     "id": a.id,
                     "name": a.name,
                     "kind": a.kind,
+                    "number": a.number,
+                    "iban": ibans.get(a.bank_uid) if a.bank_uid else None,
+                    "bank": connection.bank if a.bank_uid and connection is not None else None,
                     "balance": balances[a.id] / 100 if balances.get(a.id) is not None else None,
                     "asOf": as_of(a),
                     "coverage": coverage.get(a.id, []),

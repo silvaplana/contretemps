@@ -1584,3 +1584,30 @@
   align-items: center;
   gap: 10px;
 }
+
+/* Fiche d'un compte (FicheCompte.jsx). */
+.fin-fiche {
+  display: grid;
+  gap: 8px;
+  margin: 8px 0 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  font-size: 17px;
+}
+
+.fin-fiche__ligne {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.fin-fiche__ligne span {
+  color: var(--text-muted);
+}
+
+.fin-fiche .btn {
+  justify-self: start;
+}

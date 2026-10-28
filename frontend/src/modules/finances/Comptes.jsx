@@ -8,6 +8,7 @@ import { normaliserRecherche } from '../../utils/recherche.js'
 import * as api from './api.js'
 import { BalanceChart } from './BalanceChart.jsx'
 import BanquePanel from './BanquePanel.jsx'
+import FicheCompte from './FicheCompte.jsx'
 import { CurveChart } from './CurveChart.jsx'
 import './finances.css'
 
@@ -266,6 +267,8 @@ export default function Comptes() {
   // Volet « Se connecter aux comptes en banque », et message du retour de la banque.
   const [retourBanque] = useState(lireRetourBanque)
   const [banqueOuverte, setBanqueOuverte] = useState(() => retourBanque === RETOURS.ok)
+  // Compte dont la fiche est ouverte (« Voir le compte »), par son id.
+  const [fiche, setFiche] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -453,10 +456,21 @@ export default function Comptes() {
             {single
               ? shown[0]?.asOf && `au ${dateFr(shown[0].asOf)}`
               : shown.map((a) => `${a.name} ${a.balance == null ? '—' : euros(a.balance)}`).join(' · ')}
+            {single && shown[0] && fiche !== shown[0].id && (
+              <>
+                {shown[0].asOf && ' · '}
+                <button type="button" className="btn btn--link" onClick={() => setFiche(shown[0].id)}>
+                  Voir le compte
+                </button>
+              </>
+            )}
           </span>
         </div>
         <span className="account-balance">{euros(ledger.total)}</span>
       </div>
+      {single && shown[0] && fiche === shown[0].id && (
+        <FicheCompte compte={shown[0]} onChanged={load} onClose={() => setFiche(null)} />
+      )}
 
       {importing && <p className="loading-label">Import des relevés…</p>}
       {importReport && <p className="history-report">{importReport}</p>}
