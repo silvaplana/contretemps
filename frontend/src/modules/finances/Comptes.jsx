@@ -464,7 +464,10 @@ export default function Comptes() {
         </p>
       ))}
 
-      {ledger.rows.length === 0 ? (
+      {/* Seulement quand AUCUN compte n'a d'opération : un compte vide
+          choisi (ex. un livret qui ne bouge pas) garde les puces, sinon on
+          ne pouvait plus revenir à « Tous » (Seb, 28 octobre). */}
+      {ledger.rows.length === 0 && !single ? (
         <p>
           Aucune opération pour l’instant : menu ⋯ en haut à droite › Se connecter aux comptes en banque, ou Importer
           des relevés (PDF ou archive).
@@ -623,7 +626,15 @@ export default function Comptes() {
                             </td>
                           ))}
                         <td className="amount-cell history-total">
-                          {single ? euros(row.balances[view]) : row.total == null ? '—' : euros(row.total)}
+                          {/* Solde absent : opérations de l'ancien compte, le temps que
+                              celles du compte choisi arrivent (page vide avant). */}
+                          {single
+                            ? row.balances[view] == null
+                              ? '—'
+                              : euros(row.balances[view])
+                            : row.total == null
+                              ? '—'
+                              : euros(row.total)}
                         </td>
                       </tr>
                     )
