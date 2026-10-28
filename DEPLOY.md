@@ -123,7 +123,7 @@ menu sauvegarde, sans erreur.
 
 ### Connexion bancaire du Financier (Enable Banking)
 
-Financier › Comptes › ⋯ › Banque et comptes (spec `modules/financier.md`
+Financier › Comptes › ⋯ › Se connecter aux comptes en banque (spec `modules/financier.md`
 §3.5). Il faut une application Enable Banking (Control Panel
 <https://enablebanking.com/cp>) : son **Application ID** et sa **clé privée
 `.pem`** (téléchargée à sa création). Celle de Sambo Admin peut servir.
