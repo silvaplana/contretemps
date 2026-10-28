@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.4, 28 octobre 2026 (§8 Pièces et comptabilité). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.5, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -303,8 +303,9 @@ par son logiciel comptable pour 2024-25 : **Balance**, **Grand livre**, **Rappor
 
 Objectif : les produire dans l'appli à partir des comptes en banque (§3) et des justificatifs, sans
 ressaisie, et sans que l'assistant écrive un chiffre. Ce que l'association a : des dossiers papier
-par nature de pièce (Honoraires, Achats, Notes de frais ; Cotisations, Gala), qui sont exactement
-les journaux de son grand livre.
+par nature de pièce, que la trésorière a fait créer dans Docs › Privé › Saison <saison> › Financier
+le 28 octobre 2026 : **Achats**, **Honoraires**, **Notes de frais**, **Ventes**. Ce sont exactement
+les journaux de son grand livre (AC, HO, NF, VE).
 
 ### 8.1 Deux niveaux, un réglage
 
@@ -337,12 +338,15 @@ même fournisseur → même compte). Pas de « type » à l'écran : on dit « c
 
 ### 8.3 Pièces (sous-onglet)
 
-Financier › **Pièces** : le classeur des justificatifs. Puces **À rattacher** (compteur) ·
-**Honoraires** · **Achats** · **Notes de frais** · **Cotisations** · **Gala** : les dossiers de
-l'association, qui donnent le journal (HO, AC, NF, VE). Bouton principal **Photographier des
-pièces** : l'appareil photo en rafale, une pièce par photo, sans saisie ; aussi « Choisir dans
-Docs » (PDF reçu par mail). Chaque photo est un fichier Docs › Financier › Pièces <saison>,
-nommé par l'appli (« 2025-02-09 Amazon 39,90.jpg ») une fois lue.
+Financier › **Pièces** : le classeur des justificatifs. Puces **Achats** · **Honoraires** ·
+**Notes de frais** · **Ventes** : les quatre dossiers de l'association dans Docs (ci-dessus), ni
+plus ni moins, qui donnent le journal (AC, HO, NF, VE) ; plus une puce **À rattacher** (compteur)
+qui est un filtre sur les pièces pas encore rattachées, pas un dossier. Bouton principal
+**Photographier des pièces** : l'appareil photo en rafale, une pièce par photo, sans saisie ;
+aussi « Choisir dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
+Docs › Privé › Saison <saison> › Financier › <dossier>, nommé par l'appli
+(« 2025-02-09 Amazon 39,90.jpg ») une fois lue ; une photo pas encore lue attend dans Ventes
+ou Achats selon le sens, et change de dossier si la lecture dit autrement.
 
 Trois origines de pièces :
 - **photographiées** (factures, tickets, notes d'honoraires, bordereaux de chèques) ;
@@ -352,7 +356,7 @@ Trois origines de pièces :
   par la présence des profs (module à part) ;
 - **caisse** (§8.5).
 
-Cas de la **remise de chèques** (dossier Cotisations ; vu chez la trésorière de Contretemps le
+Cas de la **remise de chèques** (dossier Ventes ; vu chez la trésorière de Contretemps le
 28 octobre) : le ticket de dépôt de la banque (« 25 chèques, 3 795,00 € ») et la page du cahier
 qui liste chaque chèque (nom de la famille, banque, numéro, montant) forment une seule pièce,
 photographiée en deux fois et lue ensemble. Elle se rattache à la ligne « REM CHQ » du relevé,
@@ -404,7 +408,7 @@ l'AG** :
 | Balance | PDF, forme du modèle : par compte, totaux débit / crédit de la période et soldes ; totaux bilan / résultat | Complet |
 | Honoraires par professeur | Excel : total par prof et par mois, pour la DAS-2 | Complet |
 
-Les fichiers vont dans Docs › Financier › AG <saison>, avec le badge Brouillon / Validé /
+Les fichiers vont dans Docs › Privé › Saison <saison> › Financier › AG, avec le badge Brouillon / Validé /
 Officiel du bilan ; l'AG (§5) les joint à la convocation.
 
 ### 8.7 Complet : écritures, soldes de départ, clôture

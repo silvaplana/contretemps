@@ -115,7 +115,7 @@ export const PIECES = [
   },
   {
     id: 'p4',
-    dossier: 'cotisations',
+    dossier: 'ventes',
     titre: 'Remise de chèques du 03/05/2025 · 3 795,00 €',
     detail: 'Ticket CIC (25 chèques) + page du cahier',
     photo: 'Ticket + cahier',
@@ -134,17 +134,18 @@ export const PIECES = [
   { id: 'p5', dossier: 'achats', titre: 'Amazon · 39,90 €', detail: 'Facture F23734340 du 09/02/2025 · « Tapis de danse enfants ×2 »', photo: 'Facture Amazon', compte: '6063', etat: 'rattachee', ligne: 'CB 0902 AMAZON −39,90 € le 10/02/2025' },
   { id: 'p6', dossier: 'honoraires', titre: 'Pesenti · 1 850,00 €', detail: "Note d'honoraires d'avril 2025", photo: 'Note Pesenti', compte: '6226', etat: 'rattachee', ligne: 'VIR FACT PESENTI −1 850,00 € le 02/05/2025' },
   { id: 'p7', dossier: 'notes_frais', titre: 'Patricia Hess · 227,00 €', detail: 'Note de frais « Travaux de couture », validée le 25/04/2025', photo: 'Note de frais', compte: '6228', etat: 'rattachee', ligne: 'VIR TRAVAUX COUTURE −227,00 € le 27/04/2025' },
-  { id: 'p8', dossier: 'gala', titre: 'Entrées Galli en espèces · 1 534,00 €', detail: 'Feuille de caisse du 29/06/2025', photo: 'Feuille de caisse', compte: '7563', etat: 'especes', ligne: 'Caisse, 29/06/2025' },
-  { id: 'p9', dossier: 'cotisations', titre: 'HelloAsso · 2 598,00 €', detail: 'Virement du 18/05/2025 · 300,00 € Cotisations + 2 298,00 € Cours (inscriptions)', photo: 'HelloAsso', compte: '7567', etat: 'rattachee', ligne: 'VIR HELLOASSO +2 598,00 € le 18/05/2025' },
+  { id: 'p8', dossier: 'ventes', titre: 'Entrées Galli en espèces · 1 534,00 €', detail: 'Feuille de caisse du 29/06/2025', photo: 'Feuille de caisse', compte: '7563', etat: 'especes', ligne: 'Caisse, 29/06/2025' },
+  { id: 'p9', dossier: 'ventes', titre: 'HelloAsso · 2 598,00 €', detail: 'Virement du 18/05/2025 · 300,00 € Cotisations + 2 298,00 € Cours (inscriptions)', photo: 'HelloAsso', compte: '7567', etat: 'rattachee', ligne: 'VIR HELLOASSO +2 598,00 € le 18/05/2025' },
 ]
 
+// Les quatre dossiers créés par la trésorière dans Docs › Privé › Saison ›
+// Financier (spec §8.3) ; « À rattacher » est un filtre, pas un dossier.
 export const DOSSIERS = [
   { id: 'a_rattacher', label: 'À rattacher' },
-  { id: 'honoraires', label: 'Honoraires' },
   { id: 'achats', label: 'Achats' },
+  { id: 'honoraires', label: 'Honoraires' },
   { id: 'notes_frais', label: 'Notes de frais' },
-  { id: 'cotisations', label: 'Cotisations' },
-  { id: 'gala', label: 'Gala' },
+  { id: 'ventes', label: 'Ventes' },
 ]
 
 // Pièce d'exemple affichée sur une ligne de banque (fiche d'une opération).
