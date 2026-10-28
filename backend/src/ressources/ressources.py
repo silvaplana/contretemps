@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ecoles.models import Ecole
-from saisons import Saison
+from saisons import Saison, saison_courante_id
 from saisons.portee import saison_demandee, toutes_saisons
 
 from .models import ConsommationIA
@@ -128,9 +128,7 @@ class Ressources:
                     ConsommationIA.ecole_id == ecole_id
                 )
             )
-            saison_id = saison_demandee() or db.scalar(
-                select(func.max(Saison.id)).where(Saison.ecole_id == ecole_id)
-            )
+            saison_id = saison_demandee() or saison_courante_id(db, ecole_id)
             saison = db.get(Saison, saison_id) if saison_id else None
         return {
             "saison": saison.nom if saison is not None and saison.ecole_id == ecole_id else None,

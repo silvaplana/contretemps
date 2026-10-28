@@ -1,7 +1,7 @@
 """Table `saisons` (voir spec/SPEC.md §2.6 et §6.1bis). Une saison est une
 année d'activité d'une école ; tout, sauf l'école elle-même, appartient à
-une saison. Aucun champ "saison courante" : c'est toujours la plus
-récemment créée de l'école (voir saisons.py : saison_courante_id).
+une saison. Aucun champ "saison courante" : c'est toujours celle de l'école
+qui commence le plus tard (voir saisons.py : saison_courante_id).
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from __future__ import annotations
 import datetime as dt
 from datetime import datetime, timezone
 
-from sqlalchemy import Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -30,4 +30,7 @@ class Saison(Base):
     nom: Mapped[str] = mapped_column(String(50), nullable=False)
     date_debut: Mapped[dt.date] = mapped_column(Date, nullable=False)
     date_fin: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    # Ancienne saison ouverte exceptionnellement aux modifications (bilan
+    # d'une année passée) : modifiable comme la courante, sans envoi de mails.
+    ouverte: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

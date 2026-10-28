@@ -519,13 +519,26 @@ est permanente : nom, code postal (et, hors école, les mots de passe : `acces_e
 - les **inscriptions** (formulaire d'inscription) et les correspondances de colonnes de
   l'import Excel (§6.4bis), qui pointent vers des cours.
 
-**Saison courante = la dernière créée.** Elle n'est **pas stockée** en base : c'est toujours
-la plus récente. Conséquences :
-- créer une nouvelle saison la rend **immédiatement courante** et fait passer la précédente
-  en lecture seule. On ne prépare pas une saison à l'avance ;
-- **seule la saison courante est modifiable**. Toutes les autres sont en **lecture seule,
-  partout** (aucun ajout, modification ou suppression, aucun message envoyé). **C'est le
-  serveur qui l'impose** sur chaque écriture, sans faire confiance au navigateur.
+**Saison courante = celle qui commence le plus tard** (décision du 2026-10-28 ; avant : la
+dernière créée, ce qui empêchait de créer une saison passée). Elle n'est **pas stockée** en
+base. Les dates de chaque saison sont obligatoires et **deux saisons ne se chevauchent pas**.
+Conséquences :
+- créer une saison qui commence après la courante la rend **immédiatement courante** et fait
+  passer la précédente en lecture seule. On ne prépare pas une saison à l'avance ;
+- créer une saison qui commence **avant** la courante crée une **saison passée** (ex. remplir
+  2025-2026 pour en faire le bilan) : la courante ne change pas, rien n'est recopié sauf la
+  structure (fiche des élèves, groupes, tarifs), et elle est créée **ouverte aux
+  modifications** ;
+- **seule la saison courante est modifiable**, plus une ancienne saison **ouverte aux
+  modifications** : l'**administrateur principal** ou le **Super User** l'ouvre et la referme
+  (Admin > École, « Ouvrir aux modifications » / « Refermer la saison »). Tant qu'elle est
+  ouverte, les admins y travaillent comme dans la courante (élèves, cours, notes de frais…),
+  son nom et ses dates se modifient, et **aucun mail ni notification ne part** (on saisit le
+  passé, personne n'est prévenu). Ses fiches ne se connectent toujours pas. Les tarifs d'une
+  ancienne saison restent en lecture seule ;
+- toutes les autres saisons sont en **lecture seule, partout** (aucun ajout, modification ou
+  suppression, aucun message envoyé). **C'est le serveur qui l'impose** sur chaque écriture,
+  sans faire confiance au navigateur.
 
 **Saison affichée**
 - C'est le **navigateur** qui sait quelle saison il affiche, et l'envoie au serveur avec ses
@@ -535,7 +548,8 @@ la plus récente. Conséquences :
 - **Une fois la saison affichée choisie, tous les affichages en tiennent compte, partout**
   (Admin, Présence, Chorégraphie, Vidéo, Messagerie, Profil) : on ne s'intéresse qu'à elle.
   Seule exception : le total toutes saisons de l'usage vidéo (§5.1.1). Une ancienne saison
-  est en lecture seule, avec un rappel visible de la saison consultée.
+  est en lecture seule, avec un rappel visible de la saison consultée (« ouverte aux
+  modifications, aucun mail n'est envoyé » si elle est ouverte).
 
 **Connexion** : seules les personnes **inscrites dans la saison courante** peuvent se
 connecter (§2.2). La fiche d'une ancienne saison ne permet plus d'entrer dans l'appli. Le

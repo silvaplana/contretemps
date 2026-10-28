@@ -28,7 +28,8 @@ Déclaration `saisons/module.py` : `Module(key="seasons", label="Saisons", mount
 `requires`, en tête de `app/modules.py`. Pas de `module.js` côté écran : il n'a pas d'onglet.
 
 - Les routes de `saisons/receiver.py` : créer une saison (§3), renommer et changer les dates de la
-  courante, supprimer une saison, lister les saisons.
+  courante ou d'une ancienne saison ouverte, ouvrir ou refermer une ancienne saison aux
+  modifications (administrateur principal, Super User), supprimer une saison, lister les saisons.
 - Le choix d'une ancienne saison (admins) : l'en-tête `X-Saison-Id`, le bandeau « lecture seule ».
 - La section Saisons d'Admin > École (`SaisonsSection.jsx`).
 - Le mot « saison » à l'écran (« Docs › Saison 2026-2027 », « cumul de la saison »…).
@@ -60,6 +61,10 @@ Comme la maquette « Créer une saison » (core.md §8), un écran prérempli, u
   5. **Les documents** (module Documents allumé) : « Le dossier de la saison · recopié ».
 - Bouton principal « Créer la saison 2027-2028 », sous lui : « 2026-2027 passe en lecture seule,
   telle qu'elle était. »
+- Dates avant la saison courante (saison passée, SPEC.md §2.6) : les lignes disparaissent, la
+  phrase devient « Saison passée : 2026-2027 reste la saison en cours. La nouvelle saison est
+  créée vide, ouverte aux modifications, et aucun mail n'est envoyé. » ; après la création,
+  l'appli affiche aussitôt la saison passée.
 - Après la création, l'appli bascule sur la nouvelle saison (comme aujourd'hui), avec « Annuler »
   pendant 10 s (supprime la saison qui vient d'être créée).
 

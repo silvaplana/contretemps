@@ -61,6 +61,9 @@ export default function CreerSaison({ ecoleId, courante, documents, onCreer, onC
   useEffect(() => () => clearTimeout(minuteur.current), [])
 
   const morceaux = MORCEAUX.filter((m) => m.cle !== 'documents' || documents)
+  // Une saison qui commence avant la courante : une saison passée, créée
+  // après coup pour la remplir (bilan d'une année). Rien n'est recopié.
+  const passee = Boolean(champs.dateDebut) && champs.dateDebut < courante.dateDebut
   const choisis = (contenu?.champs ?? []).filter((c) => c.key)
   const ajoutes = structure === 'last' ? (contenu?.champs ?? []).filter((c) => !c.key) : []
 
@@ -260,6 +263,7 @@ export default function CreerSaison({ ecoleId, courante, documents, onCreer, onC
             />
           </div>
         </div>
+        {!passee && (
         <div className="creer-saison__lignes">
           <div className="creer-saison__ligne">
             <span>
@@ -279,6 +283,7 @@ export default function CreerSaison({ ecoleId, courante, documents, onCreer, onC
             </div>
           ))}
         </div>
+        )}
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
         <button
           type="button"
@@ -288,7 +293,11 @@ export default function CreerSaison({ ecoleId, courante, documents, onCreer, onC
         >
           Créer la saison {champs.nom.trim()}
         </button>
-        <p className="creer-saison__note">{courante.nom} passe en lecture seule, telle qu’elle était.</p>
+        <p className="creer-saison__note">
+          {passee
+            ? `Saison passée : ${courante.nom} reste la saison en cours. La nouvelle saison est créée vide, ouverte aux modifications, et aucun mail n’est envoyé.`
+            : `${courante.nom} passe en lecture seule, telle qu’elle était.`}
+        </p>
       </>
     )
   }

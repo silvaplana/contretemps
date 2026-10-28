@@ -29,7 +29,7 @@ from cours.models import Cours, cours_professeurs, eleves_cours
 from db import get_db
 from documents.ports import BoardMember, Member, Period, Principal, Recipient
 from documents.service import normalize_search
-from saisons import Saison
+from saisons import Saison, saison_courante_id
 from saisons.portee import TOUTES_SAISONS, toutes_saisons
 
 DOSSIER_DOCUMENTS = Path(os.environ.get("DOCUMENTS_DIR", "./data/documents"))
@@ -67,7 +67,7 @@ def personne_id(db: Session, compte: Compte) -> int:
 
 def _saison_courante(db: Session, ecole_id: int) -> int | None:
     with toutes_saisons(db):
-        return db.scalar(select(Saison.id).where(Saison.ecole_id == ecole_id).order_by(Saison.id.desc()))
+        return saison_courante_id(db, ecole_id)
 
 
 def _groupes(db: Session, compte: Compte) -> frozenset[str]:
@@ -321,12 +321,14 @@ class AssociationContretemps:
 
 
 class SaisonsContretemps:
-    """Port `Periods` : les saisons de l'école ; la courante est la plus
-    récente (voir saisons/saisons.py)."""
+    """Port `Periods` : les saisons de l'école, dans l'ordre de leurs dates ;
+    la courante est celle qui commence le plus tard (voir saisons/saisons.py)."""
 
     def list(self, db: Session, org_id: int) -> list[Period]:
         with toutes_saisons(db):
-            saisons = list(db.scalars(select(Saison).where(Saison.ecole_id == org_id).order_by(Saison.id)))
+            saisons = list(db.scalars(
+                select(Saison).where(Saison.ecole_id == org_id).order_by(Saison.date_debut, Saison.id)
+            ))
         courante = saisons[-1].id if saisons else None
         return [Period(id=s.id, name=s.nom, is_current=s.id == courante) for s in saisons]
 

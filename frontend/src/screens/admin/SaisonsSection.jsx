@@ -5,10 +5,11 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import CreerSaison from './CreerSaison.jsx'
 
-// Panneau "Éditer saison courante" (spec §2.6 et §5.1.1) : nom et dates.
-// La création est un écran à part (CreerSaison.jsx).
-function PanneauSaison({ courante, onValider, onClose }) {
-  const [champs, setChamps] = useState({ nom: courante.nom, dateDebut: courante.dateDebut, dateFin: courante.dateFin })
+// Panneau "Éditer la saison" (spec §2.6 et §5.1.1) : nom et dates de la
+// saison affichée, courante ou ouverte aux modifications. La création est
+// un écran à part (CreerSaison.jsx).
+function PanneauSaison({ saison, onValider, onClose }) {
+  const [champs, setChamps] = useState({ nom: saison.nom, dateDebut: saison.dateDebut, dateFin: saison.dateFin })
   const [erreur, setErreur] = useState(null)
   const [enCours, setEnCours] = useState(false)
 
@@ -25,7 +26,7 @@ function PanneauSaison({ courante, onValider, onClose }) {
 
   return (
     <Modal
-      title="Éditer saison courante"
+      title={`Éditer la saison ${saison.nom}`}
       onClose={onClose}
       footer={
         <button
@@ -169,12 +170,16 @@ function PanneauSuppression({ saisons, onSupprimer, onClose }) {
 // libellé demandé par l'utilisateur le 2026-09-24), repliable comme
 // "Usage vidéo", entre les codes d'accès et les administrateurs. Chargée
 // dès l'affichage : son titre donne le nom de la saison affichée.
-export default function SaisonsSection({ ecoleId, documents, onSaisonCreee, onSaisonSupprimee }) {
+// `peutOuvrir` : administrateur principal ou Super User, qui ouvrent une
+// ancienne saison aux modifications (et la referment).
+export default function SaisonsSection({ ecoleId, documents, peutOuvrir, onSaisonCreee, onSaisonSupprimee }) {
   const [ouvert, setOuvert] = useState(false)
   const [saisons, setSaisons] = useState([])
   const [panneau, setPanneau] = useState(null) // 'creation' | 'edition' | 'suppression' | null
   const consultee = useSaisonConsultee()
   const courante = saisons.find((s) => s.courante) ?? null
+  const affichee = (consultee && saisons.find((s) => s.id === consultee.id)) || courante
+  const modifiable = Boolean(affichee && (affichee.courante || affichee.ouverte))
 
   function recharger() {
     return saisonsApi
@@ -193,14 +198,16 @@ export default function SaisonsSection({ ecoleId, documents, onSaisonCreee, onSa
     consulterSaison(saison && !saison.courante ? saison : null)
   }
 
-  // Pas de rechargement ici : la fiche de l'admin vient de passer dans
-  // l'ancienne saison, le serveur refuserait. L'appli bascule sur sa
+  // Pas de rechargement pour une nouvelle saison en cours : la fiche de
+  // l'admin vient de passer dans l'ancienne saison, le serveur refuserait. L'appli bascule sur sa
   // nouvelle fiche (voir App.jsx : surSaisonCreee), ce qui recrée cette
   // section (voir `key` dans AdminParametres.jsx) et la recharge.
   async function creer(donnees) {
     const resultat = await saisonsApi.creer(ecoleId, donnees)
     setPanneau(null)
     onSaisonCreee?.(resultat)
+    // Saison passée : l'admin garde sa fiche, la section reste là.
+    if (!resultat.compteId) await recharger()
   }
 
   // Rechargement ici seulement si l'admin garde sa fiche (ancienne saison
@@ -214,8 +221,15 @@ export default function SaisonsSection({ ecoleId, documents, onSaisonCreee, onSa
   }
 
   async function editer(donnees) {
-    await saisonsApi.modifierCourante(ecoleId, donnees)
+    const saison = await saisonsApi.modifier(ecoleId, affichee.id, donnees)
     setPanneau(null)
+    if (consultee) consulterSaison(saison)
+    await recharger()
+  }
+
+  async function ouvrir(ouverte) {
+    const saison = await saisonsApi.ouvrir(ecoleId, affichee.id, ouverte)
+    consulterSaison(saison)
     await recharger()
   }
 
@@ -244,7 +258,11 @@ export default function SaisonsSection({ ecoleId, documents, onSaisonCreee, onSa
             >
               {saisons.map((s) => (
                 <option key={s.id} value={s.id}>
-                  {s.courante ? `${s.nom} (courante)` : `${s.nom} (lecture seule)`}
+                  {s.courante
+                    ? `${s.nom} (courante)`
+                    : s.ouverte
+                      ? `${s.nom} (ouverte aux modifications)`
+                      : `${s.nom} (lecture seule)`}
                 </option>
               ))}
             </select>
@@ -253,9 +271,16 @@ export default function SaisonsSection({ ecoleId, documents, onSaisonCreee, onSa
             <button type="button" className="btn btn--secondary" onClick={() => setPanneau('creation')}>
               Créer une saison
             </button>
-            <button type="button" className="btn btn--secondary" onClick={() => setPanneau('edition')}>
-              Éditer saison courante
-            </button>
+            {modifiable && (
+              <button type="button" className="btn btn--secondary" onClick={() => setPanneau('edition')}>
+                Éditer la saison
+              </button>
+            )}
+            {peutOuvrir && affichee && !affichee.courante && (
+              <button type="button" className="btn btn--secondary" onClick={() => ouvrir(!affichee.ouverte)}>
+                {affichee.ouverte ? 'Refermer la saison' : 'Ouvrir aux modifications'}
+              </button>
+            )}
             {saisons.length > 1 && (
               <button type="button" className="btn btn--secondary" onClick={() => setPanneau('suppression')}>
                 Supprimer une saison
@@ -276,8 +301,8 @@ export default function SaisonsSection({ ecoleId, documents, onSaisonCreee, onSa
           onClose={() => setPanneau(null)}
         />
       )}
-      {panneau === 'edition' && courante && (
-        <PanneauSaison courante={courante} onValider={editer} onClose={() => setPanneau(null)} />
+      {panneau === 'edition' && modifiable && (
+        <PanneauSaison saison={affichee} onValider={editer} onClose={() => setPanneau(null)} />
       )}
     </section>
   )

@@ -13,14 +13,20 @@ class SaisonSortie(BaseModel):
     nom: str
     date_debut: dt.date
     date_fin: dt.date
-    # La plus récente de l'école (§2.6), seule modifiable.
+    # Celle qui commence le plus tard (§2.6), toujours modifiable.
     courante: bool = False
+    # Ancienne saison ouverte exceptionnellement aux modifications.
+    ouverte: bool = False
 
 
 class SaisonModification(BaseModel):
     nom: str
     date_debut: dt.date
     date_fin: dt.date
+
+
+class SaisonOuverture(BaseModel):
+    ouverte: bool
 
 
 class SaisonCreation(SaisonModification):

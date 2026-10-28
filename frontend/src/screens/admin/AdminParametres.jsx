@@ -208,6 +208,7 @@ export default function AdminParametres({
           key={activeUser.id}
           ecoleId={ecole.id}
           documents={!modules.some((m) => m.key === 'documents' && !m.enabled)}
+          peutOuvrir={isOwner(activeUser) || isSuperuser(activeUser)}
           onSaisonCreee={onSaisonCreee}
           onSaisonSupprimee={onSaisonSupprimee}
         />

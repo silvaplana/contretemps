@@ -1,5 +1,6 @@
-"""Créer une saison (avec duplication), éditer la saison courante, supprimer
-une saison (voir spec/SPEC.md §2.6 et §5.1.1).
+"""Créer une saison (avec duplication, ou passée et vide), éditer une saison
+modifiable, ouvrir une ancienne saison aux modifications, supprimer une
+saison (voir spec/SPEC.md §2.6 et §5.1.1).
 
 Séparé de saisons.py : ce module s'appuie sur les comptes, cours et élèves,
 qui dépendent eux-mêmes de saisons.py (import circulaire sinon). Il n'est
@@ -64,8 +65,10 @@ class GestionSaisons:
         self.recopier_documents = recopier_documents
 
     def lister(self, db: Session, ecole_id: int) -> list[Saison]:
-        """De la plus récente (la courante) à la plus ancienne."""
-        return list(db.scalars(select(Saison).where(Saison.ecole_id == ecole_id).order_by(Saison.id.desc())))
+        """De la plus récente (la courante) à la plus ancienne, par dates."""
+        return list(db.scalars(
+            select(Saison).where(Saison.ecole_id == ecole_id).order_by(Saison.date_debut.desc(), Saison.id.desc())
+        ))
 
     def contenu(self, db: Session, ecole_id: int) -> dict:
         """Ce que « Créer une saison » peut reprendre de la courante."""
@@ -85,10 +88,34 @@ class GestionSaisons:
         }
 
     def modifier_courante(self, db: Session, ecole_id: int, nom: str, date_debut: dt.date, date_fin: dt.date) -> Saison:
-        """Nom et dates seulement ; les anciennes saisons ne se modifient pas."""
-        saison = db.get(Saison, saison_courante_id(db, ecole_id))
+        return self.modifier(db, ecole_id, saison_courante_id(db, ecole_id), nom, date_debut, date_fin)
+
+    def modifier(
+        self, db: Session, ecole_id: int, saison_id: int, nom: str, date_debut: dt.date, date_fin: dt.date
+    ) -> Saison:
+        """Nom et dates de la courante, ou d'une ancienne saison ouverte. Les
+        nouvelles dates ne doivent pas changer la saison en cours."""
+        saison = self._saison(db, ecole_id, saison_id)
+        courante = saison_courante_id(db, ecole_id)
+        if saison.id != courante and not saison.ouverte:
+            raise ErreurSaison("Cette saison est en lecture seule : ouvrez-la d'abord aux modifications")
         nom = self._valider(db, ecole_id, nom, date_debut, date_fin, sauf_id=saison.id)
         saison.nom, saison.date_debut, saison.date_fin = nom, date_debut, date_fin
+        db.flush()
+        if saison_courante_id(db, ecole_id) != courante:
+            db.rollback()
+            raise ErreurSaison("Avec ces dates, la saison en cours changerait : choisissez d'autres dates")
+        db.commit()
+        db.refresh(saison)
+        return saison
+
+    def ouvrir(self, db: Session, ecole_id: int, saison_id: int, ouverte: bool) -> Saison:
+        """Ouvre (ou referme) une ancienne saison aux modifications : on y
+        travaille comme dans la courante, sans qu'aucun mail ne parte."""
+        saison = self._saison(db, ecole_id, saison_id)
+        if saison.id == saison_courante_id(db, ecole_id):
+            raise ErreurSaison("La saison en cours est toujours modifiable")
+        saison.ouverte = ouverte
         db.commit()
         db.refresh(saison)
         return saison
@@ -104,7 +131,13 @@ class GestionSaisons:
         auteur_id: int | None = None,
     ) -> tuple[Saison, dict[int, int]]:
         """Crée la saison, qui devient aussitôt la courante (la précédente
-        passe en lecture seule), et y recopie ce qui est demandé. Renvoie
+        passe en lecture seule), et y recopie ce qui est demandé.
+
+        Une saison qui commence avant la courante est une saison passée,
+        créée après coup (bilan d'une année) : la courante ne change pas,
+        aucune fiche n'est recopiée (seules la structure de la fiche des
+        élèves, les groupes et les tarifs le sont), et elle est créée ouverte
+        aux modifications. Renvoie
         aussi la correspondance ancienne fiche → nouvelle fiche, pour que
         l'admin qui crée la saison bascule sur sa nouvelle fiche.
         `auteur_id` : la fiche de l'admin, auteur des documents recopiés."""
@@ -116,10 +149,16 @@ class GestionSaisons:
 
         with toutes_saisons(db):
             ancienne_id = saison_courante_id(db, ecole_id)
-            saison = Saison(ecole_id=ecole_id, nom=nom, date_debut=date_debut, date_fin=date_fin)
+            ancienne = db.get(Saison, ancienne_id) if ancienne_id is not None else None
+            passee = ancienne is not None and date_debut < ancienne.date_debut
+            if passee:
+                duplication = Duplication(
+                    structure_eleves=duplication.structure_eleves, champs_masques=duplication.champs_masques
+                )
+            saison = Saison(ecole_id=ecole_id, nom=nom, date_debut=date_debut, date_fin=date_fin, ouverte=passee)
             db.add(saison)
             db.flush()
-            fiches = self._recopier_comptes(db, ecole_id, ancienne_id, saison.id, duplication)
+            fiches = {} if passee else self._recopier_comptes(db, ecole_id, ancienne_id, saison.id, duplication)
             if ancienne_id is not None:
                 custom.copy_season(db, ecole_id, ancienne_id, saison.id, fiches)
             cours: dict[int, int] = {}
@@ -145,8 +184,8 @@ class GestionSaisons:
         présences, chorégraphies, vidéos et leurs fichiers, conversations,
         messages, inscriptions). N'importe laquelle, sauf la dernière qui
         reste : supprimer la courante refait de la précédente la saison
-        courante, de nouveau modifiable (la courante est toujours la
-        dernière créée, spec §2.6).
+        courante, de nouveau modifiable (la courante est toujours celle
+        qui commence le plus tard, spec §2.6).
 
         Une sauvegarde technique complète de l'école est d'abord écrite sur
         le serveur (historique des sauvegardes, Admin > École) : seul moyen
@@ -204,7 +243,22 @@ class GestionSaisons:
         homonyme = db.scalar(select(Saison).where(Saison.ecole_id == ecole_id, Saison.nom == nom))
         if homonyme is not None and homonyme.id != sauf_id:
             raise ErreurSaison(f"Une saison « {nom} » existe déjà")
+        # Pas de chevauchement : la saison en cours se choisit par les dates.
+        voisines = select(Saison).where(
+            Saison.ecole_id == ecole_id, Saison.date_debut <= date_fin, Saison.date_fin >= date_debut
+        )
+        if sauf_id is not None:
+            voisines = voisines.where(Saison.id != sauf_id)
+        voisine = db.scalars(voisines).first()
+        if voisine is not None:
+            raise ErreurSaison(f"Ces dates chevauchent la saison « {voisine.nom} »")
         return nom
+
+    def _saison(self, db: Session, ecole_id: int, saison_id: int | None) -> Saison:
+        saison = db.get(Saison, saison_id) if saison_id is not None else None
+        if saison is None or saison.ecole_id != ecole_id:
+            raise ErreurSaison("Saison inconnue")
+        return saison
 
     def _recopier_comptes(
         self, db: Session, ecole_id: int, ancienne_id: int, nouvelle_id: int, duplication: Duplication
