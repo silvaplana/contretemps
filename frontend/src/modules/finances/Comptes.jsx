@@ -26,7 +26,7 @@ export function requestStatementImport() {
   window.dispatchEvent(new Event(IMPORT_EVENT))
 }
 
-// Entree "Banque et comptes…" du menu ⋯ : ouvre le volet de la banque.
+// Entree "Se connecter aux comptes en banque" du menu ⋯ : ouvre le volet de la banque.
 const BANK_EVENT = 'finances-banque'
 export function requestBank() {
   window.dispatchEvent(new Event(BANK_EVENT))
@@ -74,7 +74,7 @@ const { euros, dateFr } = api
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`
 
 // Nom d'un compte dans les filtres et les colonnes du tableau : celui que
-// lui a donné le trésorier (volet « Banque et comptes »), autant de comptes
+// lui a donné le trésorier (volet « Se connecter aux comptes en banque »), autant de comptes
 // qu'il en faut (avant : « CC » et « Bleu », deux comptes seulement).
 function shortName(account) {
   return account?.name ?? ''
@@ -226,7 +226,7 @@ export default function Comptes() {
   const [seasonsData, setSeasonsData] = useState(null)
   const fileInput = useRef(null)
   const sentinel = useRef(null)
-  // Volet « Banque et comptes », et message du retour de la banque.
+  // Volet « Se connecter aux comptes en banque », et message du retour de la banque.
   const [retourBanque] = useState(lireRetourBanque)
   const [banqueOuverte, setBanqueOuverte] = useState(() => retourBanque === RETOURS.ok)
 
@@ -255,7 +255,7 @@ export default function Comptes() {
       })
   }, [])
 
-  // Menu ⋯ > "Banque et comptes…".
+  // Menu ⋯ > "Se connecter aux comptes en banque".
   useEffect(() => {
     const open = () => setBanqueOuverte(true)
     window.addEventListener(BANK_EVENT, open)
@@ -431,7 +431,7 @@ export default function Comptes() {
 
       {ledger.rows.length === 0 ? (
         <p>
-          Aucune opération pour l’instant : menu ⋯ en haut à droite › Banque et comptes (connecter la banque), ou Importer
+          Aucune opération pour l’instant : menu ⋯ en haut à droite › Se connecter aux comptes en banque, ou Importer
           des relevés (PDF ou archive).
         </p>
       ) : (

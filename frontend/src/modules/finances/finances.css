@@ -1497,7 +1497,7 @@
   }
 }
 
-/* Volet « Banque et comptes » (BanquePanel.jsx). */
+/* Volet « Se connecter aux comptes en banque » (BanquePanel.jsx). */
 .fin-banque {
   display: grid;
   gap: 10px;

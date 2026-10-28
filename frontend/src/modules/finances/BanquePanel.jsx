@@ -1,4 +1,4 @@
-// Volet « Banque et comptes » de Comptes (spec/modules/financier.md §3.5) :
+// Volet « Se connecter aux comptes en banque » de Comptes (spec/modules/financier.md §3.5) :
 // connecter la banque de l'école (choix de la banque et de l'espace), lire
 // la banque, choisir les comptes suivis, nommer chaque compte. La connexion
 // passe par la banque elle-même ; on revient ensuite sur l'appli
@@ -145,9 +145,9 @@ export default function BanquePanel({ accounts, onChanged, onClose }) {
   }
 
   return (
-    <section className="fin-banque account-card" aria-label="Banque et comptes">
+    <section className="fin-banque account-card" aria-label="Se connecter aux comptes en banque">
       <div className="fin-banque__haut">
-        <h3>Banque et comptes</h3>
+        <h3>Se connecter aux comptes en banque</h3>
         <button type="button" className="btn btn--link" onClick={onClose}>
           Fermer
         </button>

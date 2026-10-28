@@ -62,7 +62,7 @@ export default function Financier() {
         actions={
           sousOnglet === 'comptes'
             ? [
-                { label: 'Banque et comptes…', icon: 'calculator', onClick: requestBank },
+                { label: 'Se connecter aux comptes en banque', icon: 'calculator', onClick: requestBank },
                 { label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport },
               ]
             : sousOnglet === 'bilan'

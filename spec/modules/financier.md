@@ -91,7 +91,7 @@ Seb : brancher le vrai compte de l'école (Contretemps : CIC Lyonnaise de Banque
 Sambo Admin (`test-python`, `bankaccounts/` et `bankstatements.sync_live`), par **Enable
 Banking** (agrégateur PSD2), pour plusieurs organisations :
 
-- **Menu ⋯ › Banque et comptes…** : un volet. Sans banque : choisir la banque dans la liste
+- **Menu ⋯ › Se connecter aux comptes en banque** (nom choisi par Seb le 28 octobre) : un volet du même nom. Sans banque : choisir la banque dans la liste
   d'Enable Banking (recherche), l'espace (**Professionnels et associations** ou **Particuliers**),
   puis **Aller à ma banque** : on s'identifie chez la banque, on valide sur son téléphone, on
   revient sur l'appli. Banque connectée : « CIC · accès jusqu'au … · lue le … », **Actualiser**,
