@@ -54,7 +54,7 @@ Repris de Sambo Admin :
 - Puces : comptes affichés (**Tous**, puis une puce par compte, sous le nom que lui donne le
   trésorier, autant de comptes qu'il en faut ; avant : CC + Bleu, deux comptes), **Graphique** |
   **Tableau**.
-- Filtres : menu Catégories (toutes, les 5 plus fréquentes, les 5 plus grosses, une catégorie) et
+- Filtres : menu Catégories (toutes, les 5 plus grosses opérations, les 5 opérations les plus fréquentes — même libellé, sans dates ni numéros, au moins deux fois —, une catégorie ; des opérations et non des catégories depuis le 28 octobre 2026, Seb) et
   recherche (libellé, détail, catégorie, sans accents). Avec un filtre : nombre d'opérations,
   recettes, dépenses, net, détail par catégorie.
 - **Graphique** : courbe du solde (ou du cumul des opérations retenues), périodes 3M / 6M / 1A / Max

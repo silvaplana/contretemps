@@ -111,17 +111,54 @@ function ledgerSeries(rows, value) {
   return series
 }
 
-// Choix du menu "Categories" (voir BankHistory) : tout, les 5 categories
+// Choix du menu "Categories" (voir BankHistory) : tout, les 5 operations
 // les plus frequentes, les 5 plus grosses, ou une categorie precise (son
 // nom). Les operations sont classees par le backend (finances/
-// categories.py).
+// categories.py). Les "5 plus..." visent des operations, pas des
+// categories (Seb, 28 octobre : sur un compte sans nos categories, tout
+// tombait dans "Autres" et il ne restait que DECATHLON).
 const ALL_CATEGORIES = 'all'
 const TOP_FREQUENT = 'top-frequent'
 const TOP_AMOUNT = 'top-amount'
 const TOP_COUNT = 5
-// Categories qui ne sont pas une vraie nature de recette ou de depense :
-// hors des "5 plus...".
-const NOT_RANKED = ['Autres', 'Virement interne']
+
+// Les 5 plus grosses operations (montant, recette ou depense), hors
+// virements entre nos comptes.
+function biggestRows(rows) {
+  return [...rows]
+    .filter((row) => !row.transfer)
+    .sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount))
+    .slice(0, TOP_COUNT)
+}
+
+// Les operations des 5 libelles qui reviennent le plus souvent (abonnement,
+// loyer...). Le libelle est compare sans ce qui change d'une fois a l'autre :
+// les mots avec des chiffres (date, numero de carte) ; "CARTE 26/09/26
+// DECATHLON 0010 CB*9481" -> "carte decathlon".
+function labelKey(row) {
+  return normaliserRecherche(row.label)
+    .split(/\s+/)
+    .filter((word) => word && !/\d/.test(word))
+    .join(' ')
+}
+
+function mostFrequentRows(rows) {
+  const counts = new Map()
+  for (const row of rows) {
+    if (row.transfer) continue
+    const key = labelKey(row)
+    if (key) counts.set(key, (counts.get(key) ?? 0) + 1)
+  }
+  const keys = new Set(
+    [...counts.entries()]
+      // Une operation unique n'est pas "frequente".
+      .filter(([, count]) => count > 1)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, TOP_COUNT)
+      .map(([key]) => key)
+  )
+  return rows.filter((row) => !row.transfer && keys.has(labelKey(row)))
+}
 
 // Par categorie : nombre d'operations, recettes, depenses et total. Un
 // virement interne ne compte pas (ni recette ni depense).
@@ -317,31 +354,29 @@ export default function Comptes() {
 
   const single = view !== 'all'
 
-  // Categories presentes, et celles retenues par le menu (null : toutes).
+  // Categories presentes, et operations retenues par le menu (null :
+  // toutes).
   const stats = useMemo(() => categoryStats(ledger?.rows ?? []), [ledger])
-  const selectedCategories = useMemo(() => {
-    if (category === ALL_CATEGORIES) return null
-    if (category !== TOP_FREQUENT && category !== TOP_AMOUNT) return [category]
-    const ranked = [...stats.values()].filter((stat) => !NOT_RANKED.includes(stat.name))
-    const byAmount = (a, b) => Math.abs(b.total) - Math.abs(a.total)
-    // A nombre d'operations egal : la plus grosse d'abord.
-    ranked.sort(category === TOP_FREQUENT ? (a, b) => b.count - a.count || byAmount(a, b) : byAmount)
-    return ranked.slice(0, TOP_COUNT).map((stat) => stat.name)
-  }, [category, stats])
+  const selectedRows = useMemo(() => {
+    if (!ledger || category === ALL_CATEGORIES) return null
+    if (category === TOP_AMOUNT) return new Set(biggestRows(ledger.rows))
+    if (category === TOP_FREQUENT) return new Set(mostFrequentRows(ledger.rows))
+    return new Set(ledger.rows.filter((row) => row.category === category))
+  }, [category, ledger])
 
   // Operations retenues par le menu et la recherche (libelle, details ou
   // categorie, sans tenir compte des majuscules ni des accents).
   const wanted = normaliserRecherche(search.trim())
-  const filtering = selectedCategories !== null || wanted !== ''
+  const filtering = selectedRows !== null || wanted !== ''
   const rows = useMemo(() => {
     if (!ledger) return []
     if (!filtering) return ledger.rows
     return ledger.rows.filter(
       (row) =>
-        (selectedCategories === null || selectedCategories.includes(row.category)) &&
+        (selectedRows === null || selectedRows.has(row)) &&
         (wanted === '' || normaliserRecherche(`${rowLabel(row)} ${row.details} ${row.category}`).includes(wanted))
     )
-  }, [ledger, filtering, selectedCategories, wanted])
+  }, [ledger, filtering, selectedRows, wanted])
   // Recettes, depenses et detail par categorie de la selection.
   const selection = useMemo(() => {
     const perCategory = [...categoryStats(rows).values()].sort((a, b) => Math.abs(b.total) - Math.abs(a.total))
@@ -476,8 +511,8 @@ export default function Comptes() {
               className={category === ALL_CATEGORIES ? undefined : 'history-filter-active'}
             >
               <option value={ALL_CATEGORIES}>Toutes les catégories</option>
-              <option value={TOP_FREQUENT}>Les {TOP_COUNT} plus fréquentes</option>
-              <option value={TOP_AMOUNT}>Les {TOP_COUNT} plus grosses</option>
+              <option value={TOP_AMOUNT}>Les {TOP_COUNT} plus grosses opérations</option>
+              <option value={TOP_FREQUENT}>Les {TOP_COUNT} opérations les plus fréquentes</option>
               <optgroup label="Une catégorie">
                 {ledger.categories
                   .filter((name) => stats.has(name))
