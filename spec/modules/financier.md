@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.3, 20 octobre 2026. Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.4, 28 octobre 2026 (§8 Pièces et comptabilité). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -22,10 +22,11 @@ d'une saisie ni d'une IA ; l'appli calcule, l'assistant commente.
 Onglet **Financier**, trésoriers et Super User seulement (`core.md` §4). Sous-onglets, dans l'ordre :
 
 1. **Comptes** (§3) — fait.
-2. **Notes de frais** (`notes-de-frais.md`) — fait.
-3. **Bilan** (§4) — fait.
-4. **Assemblée générale** (§5) — fait.
-5. **Prévisionnel** (§6) — fait.
+2. **Pièces** (§8) — à faire.
+3. **Notes de frais** (`notes-de-frais.md`) — fait.
+4. **Bilan** (§4) — fait ; documents de l'AG à faire (§8.6).
+5. **Assemblée générale** (§5) — fait.
+6. **Prévisionnel** (§6) — fait.
 
 Chaque sous-module expose ses actions à l'Assistant IA (`assistant-ia.md` §3, `actions.py`) : cible
 de Seb, « fais-moi le PPT de l'AG de cette année à partir de celui de l'année dernière et du bilan
@@ -292,7 +293,152 @@ Pas d'action pour Comptes : importer des relevés demande un fichier, que l'assi
 pas aux actions. L'assistant ne lit pas encore les chiffres du Financier (soldes, bilans) : à
 décider avec Seb.
 
-## 8. Reste à faire
+## 8. Pièces et comptabilité (28 octobre 2026)
+
+Étude « documents comptables de l'AG » (fil du 28 octobre, maquette validée par Seb :
+https://claude.ai/artifact/5nieoHKtypLrvyrgnsuPaM). Point de départ : les quatre documents que
+la trésorière de Contretemps (comptable de métier) produit pour l'AG, édités le 9 novembre 2025
+par son logiciel comptable pour 2024-25 : **Balance**, **Grand livre**, **Rapport financier**
+(Word) et **Synthèse Dépenses-Recettes** (Excel). Ce sont les modèles de forme à reproduire.
+
+Objectif : les produire dans l'appli à partir des comptes en banque (§3) et des justificatifs, sans
+ressaisie, et sans que l'assistant écrive un chiffre. Ce que l'association a : des dossiers papier
+par nature de pièce (Honoraires, Achats, Notes de frais ; Cotisations, Gala), qui sont exactement
+les journaux de son grand livre.
+
+### 8.1 Deux niveaux, un réglage
+
+Admin › École › Personnalisation › Fonctionnalités, ligne Financier : **Simple** ou **Complet**,
+par organisation. Pas de troisième cas.
+
+- **Simple** (comptabilité de trésorerie ; une association loi 1901 sous les seuils n'a rien
+  d'autre à tenir) : comptes en banque, caisse, pièces rattachées, plan comptable, Synthèse,
+  Rapport financier. Le Sambo reste en Simple.
+- **Complet** (partie double) : en plus, comptes de tiers (401 Fournisseurs, 411 Adhérents, un
+  467x par prof, 471 Attente), écritures à deux lignes générées par l'appli, lettrage, soldes de
+  départ, clôture, Grand livre et Balance au format de la comptable, relevé des honoraires par prof
+  (DAS-2). Contretemps passe en Complet.
+
+Passer de Simple à Complet est possible à tout moment : l'appli génère les écritures manquantes à
+partir des pièces déjà rattachées. L'inverse n'existe pas.
+
+### 8.2 Plan comptable
+
+Comptes ⋯ › **Plan comptable** : la liste des comptes de l'organisation, numéro du plan comptable
+associatif + libellé de l'organisation (« 613 Location Galli », « 6226 Honoraires des
+professeurs »), groupés Dépenses / Recettes / Tiers et attente (Complet). Repris au départ de la
+Balance 2024-25 de la comptable (pour une nouvelle organisation : liste par défaut courte,
+`finances/chart.py`). Un compte peut être marqué « gala » (ou autre événement) pour le bloc
+« Ressources / Coût » de la Synthèse. Ajout, renommage ; un compte utilisé ne se supprime pas.
+
+Les catégories par mots-clés de §3.2 (`categories.py`) restent pour l'écran Comptes ; chaque
+compte du plan porte ses mots-clés de proposition (repris et enrichis par l'historique confirmé :
+même fournisseur → même compte). Pas de « type » à l'écran : on dit « compte » et « nature ».
+
+### 8.3 Pièces (sous-onglet)
+
+Financier › **Pièces** : le classeur des justificatifs. Puces **À rattacher** (compteur) ·
+**Honoraires** · **Achats** · **Notes de frais** · **Cotisations** · **Gala** : les dossiers de
+l'association, qui donnent le journal (HO, AC, NF, VE). Bouton principal **Photographier des
+pièces** : l'appareil photo en rafale, une pièce par photo, sans saisie ; aussi « Choisir dans
+Docs » (PDF reçu par mail). Chaque photo est un fichier Docs › Financier › Pièces <saison>,
+nommé par l'appli (« 2025-02-09 Amazon 39,90.jpg ») une fois lue.
+
+Trois origines de pièces :
+- **photographiées** (factures, tickets, notes d'honoraires, bordereaux de chèques) ;
+- **produites par l'appli** : note de frais validée (`notes-de-frais.md`, journal NF, déjà
+  rattachée à son virement de remboursement), virement HelloAsso (`helloasso.md`, ventilé
+  Cotisations / Cours par les inscriptions de la saison) ; plus tard, notes d'honoraires calculées
+  par la présence des profs (module à part) ;
+- **caisse** (§8.5).
+
+**Lecture et proposition** (modèle de langage, jamais nommé « IA » à l'écran, coût noté dans
+Ressources « Financier : lecture des pièces ») : la pièce est lue (fournisseur, date, montant,
+numéro, objet), rangée dans un dossier, et l'appli propose **la ligne de banque** (même montant,
+date proche, nom) et **le compte** du plan. Le trésorier **Confirme**, choisit **Autre ligne**,
+ou dit **Pas encore payée** / **Payée en espèces**. Rien n'est rattaché sans confirmation ; la
+ligne garde « proposé par l'assistant, confirmé par X le … ». Le montant lu sert à chercher la
+ligne, jamais à écrire un chiffre dans les comptes : le montant comptable est celui de la banque
+(ou de la caisse). Une différence pièce / banque est signalée, pas corrigée.
+
+Une pièce « pas encore payée » reste dans son dossier et compte dans « Fournisseurs à payer » de
+la Synthèse (Simple) ou dans 401 (Complet).
+
+### 8.4 Comptes : compte et pièce sur chaque ligne
+
+Dans Comptes › Tableau, chaque opération porte son **compte** (ou « Compte à choisir ») et sa
+**pièce** (ou « sans pièce ») ; puces **Sans compte** et **Sans pièce** avec compteur. Un appui
+ouvre la **fiche de l'opération** : compte (proposé, à confirmer), pièce (changer, détacher,
+photographier, choisir dans Docs), et, en Complet, les **écritures** générées (achat du jour de la
+facture : 6xx contre 401 ; paiement : 401 contre 512x ; lettre de rapprochement). Une ligne
+HelloAsso ou une remise de chèques se ventile sur plusieurs comptes (montants qui doivent faire
+le total ; vérifié par l'appli).
+
+### 8.5 Caisse
+
+Une puce **Caisse** à côté des comptes en banque : le seul compte saisi à la main (une dizaine
+de lignes par an : fond de caisse, entrées du gala en espèces, défraiements). Une ligne = date,
+libellé, montant, compte, pièce. Un retrait d'espèces au distributeur = virement interne banque →
+caisse. Dérogation au §3.1 (« pas de saisie manuelle ») limitée à ce compte.
+
+### 8.6 Documents de l'AG (dans Bilan)
+
+Le Bilan (§4) additionne désormais **par compte du plan** (plus par mots-clés), virements
+internes exclus ; l'analyse en cinq lignes reste. Sous le bilan produit, le bloc **Documents de
+l'AG** :
+
+| Document | Forme | Niveau |
+|---|---|---|
+| Synthèse Dépenses-Recettes | Excel + à l'écran : charges et produits par compte groupés par classe (60, 61, 62…), total, résultat ; trésorerie par compte et caisse ; fournisseurs à payer ; un bloc par événement marqué (« Ressources du gala / Coût du gala / Bénéfice ») | Simple |
+| Rapport financier | Word + PDF, forme du modèle (A Recettes, B Dépenses, points à revoir, conclusion). Texte rédigé par le modèle d'après le bilan et les consignes ; **chaque montant et chaque pourcentage est placé par l'appli** (gabarit `{{…}}`) et vérifié comme dans l'AG (§5.1) | Simple |
+| Grand livre | PDF, forme du modèle : par compte, date, journal, pièce (lien vers la pièce), libellé, lettre, débit, crédit, solde ; totaux par compte et général | Complet |
+| Balance | PDF, forme du modèle : par compte, totaux débit / crédit de la période et soldes ; totaux bilan / résultat | Complet |
+| Honoraires par professeur | Excel : total par prof et par mois, pour la DAS-2 | Complet |
+
+Les fichiers vont dans Docs › Financier › AG <saison>, avec le badge Brouillon / Validé /
+Officiel du bilan ; l'AG (§5) les joint à la convocation.
+
+### 8.7 Complet : écritures, soldes de départ, clôture
+
+- **Écritures** : table `fin_entries` (organisation, saison, journal AN/OD/AC/HO/NF/VE/BQn/CA,
+  date, pièce, libellé, lettre) et `fin_entry_lines` (écriture, compte, débit, crédit en
+  centimes, opération bancaire ou ligne de caisse d'origine, pièce). Générées par l'appli à la
+  confirmation d'un rattachement ; jamais saisies à la main, sauf les écritures de régularisation
+  OD du trésorier (compte 471, défraiements), avec pièce ou motif.
+- **Soldes de départ** (Comptes ⋯ › Soldes de départ) : première saison dans l'appli, repris de
+  la Balance de l'an dernier déposée dans Docs (lecture du PDF, vérification à l'écran, « Reprendre
+  ces soldes ») ; l'appli vérifie que les soldes 512x égalent les relevés au 31/08. Saisons
+  suivantes : calculés par la clôture.
+- **Clôture** (Bilan, bilan Officiel) : résultat reporté (120 / 129 → 110), écritures d'à-nouveaux
+  de la saison suivante, saison verrouillée (plus de rattachement sans la rouvrir, trace gardée).
+- **Lettrage** : lettre de trois caractères par paire facture / paiement, comme le modèle ;
+  paiement en plusieurs fois accepté (somme).
+
+### 8.8 Données et routes
+
+Tables `fin_chart_accounts` (organisation, numéro, libellé, nature dépense / recette / tiers /
+banque / caisse / attente, événement, mots-clés, actif), `fin_documents` (organisation, saison,
+dossier HO/AC/NF/VE/CA, fichier Docs, lecture JSON, état à rattacher / rattachée / non payée /
+espèces, opération bancaire ou ligne de caisse, origine photo / docs / notes de frais / helloasso,
+proposé par, confirmé par et quand), `fin_operation_accounts` (opération, compte, montant :
+ventilation), `fin_cash_lines` (caisse), `fin_entries` / `fin_entry_lines` (§8.7),
+`fin_opening_balances`. Routes sous `/finances/chart`, `/finances/documents`
+(`POST …/upload`, `POST …/{id}/confirm`, `…/unpaid`, `…/cash`), `/finances/cash`,
+`/finances/entries`, `/finances/reports/{id}/documents?kind=synthese|rapport|grand-livre|balance|honoraires`.
+
+### 8.9 Étapes (une PR chacune, sur le « vas-y » de Seb)
+
+1. Plan comptable, Pièces (photo, lecture, proposition, confirmation), compte et pièce sur chaque
+   ligne de Comptes, caisse, réglage Simple / Complet. Suffit pour la Synthèse.
+2. Documents de l'AG : Synthèse, Grand livre, Balance, Honoraires par prof ; Bilan par compte.
+3. Rapport financier (gabarit Word du modèle, texte par le modèle, chiffres par l'appli).
+4. Complet : écritures, soldes de départ, lettrage, clôture.
+
+À demander à la trésorière (vendredi 31 octobre) : son logiciel et si elle veut un export vers
+lui ; si elle confirme elle-même dans l'appli (compte Trésorier) ; son plan comptable 2025-26 ;
+qui tient la caisse ; les 717,50 € du compte d'attente.
+
+## 9. Reste à faire
 
 - Connexion bancaire (§3.5) : lecture automatique deux fois par jour, rappel avant l'expiration,
   relevés PDF du CIC.
