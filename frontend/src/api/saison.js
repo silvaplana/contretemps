@@ -2,7 +2,7 @@
 // `null` = la saison courante (cas normal, et le seul possible pour un
 // non-admin). Un admin peut choisir une ancienne saison dans Admin > École
 // (voir screens/admin/SaisonsSection.jsx) : toute l'appli la montre alors,
-// en lecture seule.
+// en lecture seule, sauf si elle est ouverte aux modifications (`ouverte`).
 //
 // Gardée en mémoire seulement (pas en localStorage) : un rechargement ou
 // une reconnexion ramène toujours à la saison courante, pour qu'un admin ne
@@ -25,10 +25,10 @@ export function lireSaisonConsultee() {
   return saisonConsultee
 }
 
-// `saison` : { id, nom } d'une ancienne saison, ou null pour revenir à la
-// saison courante.
+// `saison` : { id, nom, ouverte } d'une ancienne saison, ou null pour
+// revenir à la saison courante.
 export function consulterSaison(saison) {
-  saisonConsultee = saison ? { id: saison.id, nom: saison.nom } : null
+  saisonConsultee = saison ? { id: saison.id, nom: saison.nom, ouverte: Boolean(saison.ouverte) } : null
   abonnes.forEach((f) => f())
 }
 

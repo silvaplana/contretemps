@@ -20,6 +20,8 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+from saisons.portee import envois_coupes
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,8 +62,10 @@ class EmailEnvoi:
         """`pieces_jointes` : liste de (nom_fichier, contenu_bytes).
         Lève une exception en cas d'échec (voir inscriptions.py qui
         l'attrape et journalise `email_erreur` sur la ligne, jamais
-        renvoyée en erreur HTTP à la famille qui vient de s'inscrire)."""
-        if not self.actif:
+        renvoyée en erreur HTTP à la famille qui vient de s'inscrire).
+        Rien ne part pendant une saisie dans une ancienne saison
+        (saisons/portee.py : envois_coupes)."""
+        if not self.actif or envois_coupes():
             return
 
         message = MIMEMultipart()

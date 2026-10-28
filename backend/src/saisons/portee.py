@@ -15,7 +15,8 @@ puisse l'oublier :
   conversation, donc déjà filtrées de fait.
 
 - **Verrou d'écriture** : avant chaque écriture en base, toute ligne créée,
-  modifiée ou supprimée dans une autre saison que la courante est refusée
+  modifiée ou supprimée dans une autre saison que la courante (ou qu'une
+  ancienne saison ouverte aux modifications, `Saison.ouverte`) est refusée
   (`SaisonEnLectureSeule`, renvoyée en 403 par app/main.py). Les tables
   sans `saison_id` sont rattachées à leur racine par leur clé étrangère
   (voir PARENTS). Les tables de liaison écrites directement en SQL (sans
@@ -32,7 +33,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from contextvars import ContextVar
 
-from sqlalchemy import event, func, inspect, or_, select, text
+from sqlalchemy import event, inspect, or_, text
 from sqlalchemy.orm import Session, with_loader_criteria
 
 ENTETE_SAISON = "X-Saison-Id"
@@ -82,6 +83,21 @@ class SaisonEnLectureSeule(Exception):
 def saison_demandee() -> int | None:
     boite = _saison_demandee.get()
     return boite["id"] if boite else None
+
+
+def marquer_ancienne_saison() -> None:
+    """La requête vise une autre saison que la courante (comptes/rbac.py) :
+    aucun mail ni notification ne part (`envois_coupes`)."""
+    boite = _saison_demandee.get()
+    if boite is not None:
+        boite["ancienne"] = True
+
+
+def envois_coupes() -> bool:
+    """Vrai pendant une requête faite dans une ancienne saison : on y saisit
+    le passé (bilan d'une année), personne ne doit en être prévenu."""
+    boite = _saison_demandee.get()
+    return bool(boite and boite.get("ancienne"))
 
 
 def ignorer_saison_demandee() -> None:
@@ -162,7 +178,7 @@ def _filtrer_par_saison(etat) -> None:
         return
     if _desactive(etat.session, etat.execution_options):
         return
-    from .models import Saison
+    from .saisons import requete_saison_courante_id
 
     demandee = saison_demandee()
     for classe in _classes_racines():
@@ -177,8 +193,7 @@ def _filtrer_par_saison(etat) -> None:
                 classe,
                 lambda cls: or_(
                     cls.ecole_id.is_(None),
-                    cls.saison_id
-                    == select(func.max(Saison.id)).where(Saison.ecole_id == cls.ecole_id).scalar_subquery(),
+                    cls.saison_id == requete_saison_courante_id(cls.ecole_id).scalar_subquery(),
                 ),
                 include_aliases=True,
             )
@@ -207,11 +222,18 @@ def _racine(connexion, table: str, valeurs: dict) -> tuple[int | None, int | Non
     return valeurs.get("saison_id"), valeurs.get("ecole_id")
 
 
-def _saison_courante(connexion, ecole_id: int, cache: dict) -> int | None:
+def _modifiables(connexion, ecole_id: int, cache: dict) -> set[int]:
+    """La saison courante de l'école (celle qui commence le plus tard) et
+    ses anciennes saisons ouvertes aux modifications."""
     if ecole_id not in cache:
-        cache[ecole_id] = connexion.execute(
-            text("SELECT MAX(id) FROM saisons WHERE ecole_id = :e"), {"e": ecole_id}
+        courante = connexion.execute(
+            text("SELECT id FROM saisons WHERE ecole_id = :e ORDER BY date_debut DESC, id DESC LIMIT 1"),
+            {"e": ecole_id},
         ).scalar()
+        ouvertes = connexion.execute(
+            text("SELECT id FROM saisons WHERE ecole_id = :e AND ouverte"), {"e": ecole_id}
+        ).scalars()
+        cache[ecole_id] = {courante, *ouvertes}
     return cache[ecole_id]
 
 
@@ -230,7 +252,7 @@ def verifier_modifiable(db: Session, table: str, identifiant: int) -> None:
     if ligne is None:
         return
     saison_id, ecole_id = _racine(connexion, table, dict(ligne))
-    if saison_id is not None and saison_id != _saison_courante(connexion, ecole_id, {}):
+    if saison_id is not None and saison_id not in _modifiables(connexion, ecole_id, {}):
         raise SaisonEnLectureSeule()
 
 
@@ -261,11 +283,12 @@ def _seulement_colonnes_libres(objet, table: str) -> bool:
 
 def verifier_flush(session: Session) -> None:
     """Appelé avant chaque écriture (voir automatique.py) : refuse toute
-    ligne créée, modifiée ou supprimée hors de la saison courante."""
+    ligne créée, modifiée ou supprimée hors de la saison courante et des
+    saisons ouvertes."""
     if _desactive(session):
         return
     connexion = session.connection()
-    courantes: dict[int, int | None] = {}
+    modifiables: dict[int, set[int]] = {}
     a_verifier = [(o, False) for o in session.new]
     a_verifier += [(o, True) for o in session.dirty if session.is_modified(o, include_collections=False)]
     a_verifier += [(o, True) for o in session.deleted]
@@ -279,5 +302,5 @@ def verifier_flush(session: Session) -> None:
             saison_id, ecole_id = _racine(connexion, table, _valeurs(objet, deja_en_base))
             if saison_id is None:
                 continue
-            if saison_id != _saison_courante(connexion, ecole_id, courantes):
+            if saison_id not in _modifiables(connexion, ecole_id, modifiables):
                 raise SaisonEnLectureSeule()

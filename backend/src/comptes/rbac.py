@@ -34,7 +34,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 from saisons import Saison, saison_courante_id
-from saisons.portee import TOUTES_SAISONS, ignorer_saison_demandee, saison_demandee
+from saisons.portee import TOUTES_SAISONS, ignorer_saison_demandee, marquer_ancienne_saison, saison_demandee
 from securite import jetons
 
 from . import roles
@@ -253,6 +253,7 @@ def _verifier_saison(db: Session, compte: Compte) -> None:
         raise HTTPException(status_code=403, detail="Saison inconnue")
     if not roles.is_admin(compte):
         raise HTTPException(status_code=403, detail="Seuls les administrateurs consultent les anciennes saisons")
+    marquer_ancienne_saison()
 
 
 def require_admin(appelant: Compte, ecole_id: int | None) -> None:

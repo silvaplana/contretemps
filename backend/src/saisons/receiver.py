@@ -1,10 +1,12 @@
 """Routes des saisons (Admin > École, voir spec/SPEC.md §2.6 et §5.1.1) :
-lister, créer (avec duplication), éditer la saison courante. Réservées aux
-admins de l'école."""
+lister, créer (avec duplication), éditer la saison courante ou une ancienne
+saison ouverte. Réservées aux admins de l'école ; ouvrir une ancienne saison
+aux modifications est réservé à l'administrateur principal et au Super
+User."""
 
 from __future__ import annotations
 
-from comptes import Compte, rbac
+from comptes import Compte, rbac, roles
 from ecoles.models import Ecole
 from fastapi import Depends, FastAPI, HTTPException
 from sqlalchemy.orm import Session
@@ -12,7 +14,15 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .gestion import Duplication, ErreurSaison, GestionSaisons
-from .schemas import SaisonContenu, SaisonCreation, SaisonCreee, SaisonModification, SaisonSortie, SaisonSupprimee
+from .schemas import (
+    SaisonContenu,
+    SaisonCreation,
+    SaisonCreee,
+    SaisonModification,
+    SaisonOuverture,
+    SaisonSortie,
+    SaisonSupprimee,
+)
 
 
 def _sortie(saison, courante_id: int) -> SaisonSortie:
@@ -38,6 +48,14 @@ class SaisonsReceiver:
         self.app.put("/ecoles/{ecole_id}/saisons/courante", response_model=SaisonSortie, dependencies=admin)(
             self.modifier_courante
         )
+        self.app.put("/ecoles/{ecole_id}/saisons/{saison_id}", response_model=SaisonSortie, dependencies=admin)(
+            self.modifier
+        )
+        self.app.put(
+            "/ecoles/{ecole_id}/saisons/{saison_id}/ouverture",
+            response_model=SaisonSortie,
+            dependencies=[Depends(self._owner_ecole)],
+        )(self.ouvrir)
         self.app.get(
             "/ecoles/{ecole_id}/saisons/courante/contenu", response_model=SaisonContenu, dependencies=admin
         )(self.contenu)
@@ -47,6 +65,11 @@ class SaisonsReceiver:
 
     def _admin_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
         rbac.require_admin(appelant, ecole_id)
+
+    def _owner_ecole(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)) -> None:
+        rbac.require_admin(appelant, ecole_id)
+        if appelant is not None and not (roles.is_owner(appelant) or roles.is_superuser(appelant)):
+            raise HTTPException(status_code=403, detail="Réservé à l'administrateur principal")
 
     def lister(self, ecole_id: int, db: Session = Depends(get_db)):
         saisons = self.client.lister(db, ecole_id)
@@ -80,7 +103,7 @@ class SaisonsReceiver:
         except ErreurSaison as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
         return SaisonCreee(
-            saison=_sortie(saison, saison.id),
+            saison=_sortie(saison, self.client.lister(db, ecole_id)[0].id),
             compte_id=fiches.get(appelant.id) if appelant is not None else None,
         )
 
@@ -93,6 +116,20 @@ class SaisonsReceiver:
         except ErreurSaison as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
         return _sortie(saison, saison.id)
+
+    def modifier(self, ecole_id: int, saison_id: int, donnees: SaisonModification, db: Session = Depends(get_db)):
+        try:
+            saison = self.client.modifier(db, ecole_id, saison_id, donnees.nom, donnees.date_debut, donnees.date_fin)
+        except ErreurSaison as erreur:
+            raise HTTPException(status_code=409, detail=str(erreur)) from erreur
+        return _sortie(saison, self.client.lister(db, ecole_id)[0].id)
+
+    def ouvrir(self, ecole_id: int, saison_id: int, donnees: SaisonOuverture, db: Session = Depends(get_db)):
+        try:
+            saison = self.client.ouvrir(db, ecole_id, saison_id, donnees.ouverte)
+        except ErreurSaison as erreur:
+            raise HTTPException(status_code=409, detail=str(erreur)) from erreur
+        return _sortie(saison, self.client.lister(db, ecole_id)[0].id)
 
     def supprimer(
         self,

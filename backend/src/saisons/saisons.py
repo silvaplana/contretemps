@@ -1,22 +1,28 @@
 """Règles de base des saisons (voir spec/SPEC.md §2.6).
 
-La saison courante d'une école n'est stockée nulle part : c'est la plus
-récemment créée (plus grand id). Seule elle est modifiable.
+La saison courante d'une école n'est stockée nulle part : c'est celle qui
+commence le plus tard (à égalité, la dernière créée). Une saison passée
+peut donc être créée après coup sans prendre sa place. Seule la courante
+est modifiable, plus une ancienne saison ouverte exceptionnellement
+(`Saison.ouverte`).
 """
 
 from __future__ import annotations
 
 import datetime as dt
 
-from sqlalchemy import func, select
+from sqlalchemy import select
 from sqlalchemy.engine import Connection
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 
 from .models import Saison
 
 
-def requete_saison_courante_id(ecole_id: int):
-    return select(func.max(Saison.id)).where(Saison.ecole_id == ecole_id)
+def requete_saison_courante_id(ecole_id):
+    """`ecole_id` : un entier, ou une colonne pour une sous-requête liée
+    (voir portee.py). Alias : la requête englobante peut viser `saisons`."""
+    s = aliased(Saison)
+    return select(s.id).where(s.ecole_id == ecole_id).order_by(s.date_debut.desc(), s.id.desc()).limit(1)
 
 
 def saison_courante_id(db: Session | Connection, ecole_id: int) -> int | None:

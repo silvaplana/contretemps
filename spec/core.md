@@ -451,7 +451,9 @@ garde la **période** (table `saisons`, `portee.py`, première période automati
 période) ; le module optionnel **Saisons** apporte la création, la suppression, les anciennes
 saisons et le mot à l'écran (`modules/saisons.md`). Ce qui suit décrit le module allumé.
 
-- Saison courante = la dernière créée ; elle seule est modifiable, les autres en lecture seule,
+- Saison courante = celle qui commence le plus tard (les saisons ne se chevauchent pas) ; elle
+  seule est modifiable, avec une ancienne saison que l'administrateur principal ou le Super User
+  ouvre exceptionnellement aux modifications (sans envoi de mails) ; les autres en lecture seule,
   imposé par le serveur (`saisons/portee.py` : un module ne filtre jamais la saison à la main).
   Seules les fiches de la saison courante se connectent ; le mot de passe traverse les saisons.
 - **Créer une saison** (maquette « Créer une saison ») : **un seul écran prérempli** — nom, dates,

@@ -22,6 +22,7 @@ import logging
 import os
 
 from pywebpush import WebPushException, webpush
+from saisons.portee import envois_coupes
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -96,7 +97,8 @@ class Notifications:
         est supprimé silencieusement ; les autres échecs sont juste
         journalisés — jamais remontés à l'appelant (voir docstring du
         module : ne doit jamais faire échouer l'envoi d'un message)."""
-        if not self.actif:
+        # Saisie dans une ancienne saison : personne n'est prévenu.
+        if not self.actif or envois_coupes():
             return
         for abonnement in self.abonnements_du_compte(db, compte_id):
             subscription_info = {

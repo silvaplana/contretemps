@@ -5,7 +5,14 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 function versEcran(s) {
-  return { id: s.id, nom: s.nom, dateDebut: s.date_debut, dateFin: s.date_fin, courante: s.courante }
+  return {
+    id: s.id,
+    nom: s.nom,
+    dateDebut: s.date_debut,
+    dateFin: s.date_fin,
+    courante: s.courante,
+    ouverte: s.ouverte,
+  }
 }
 
 // Le message du serveur (409 : nom déjà pris, dates incohérentes...) est
@@ -54,10 +61,21 @@ export async function creer(ecoleId, { nom, dateDebut, dateFin, cases, structure
   return { saison: versEcran(resultat.saison), compteId: resultat.compte_id }
 }
 
-export async function modifierCourante(ecoleId, { nom, dateDebut, dateFin }) {
-  const saison = await requete(`/ecoles/${ecoleId}/saisons/courante`, {
+// Nom et dates de la courante ou d'une ancienne saison ouverte.
+export async function modifier(ecoleId, saisonId, { nom, dateDebut, dateFin }) {
+  const saison = await requete(`/ecoles/${ecoleId}/saisons/${saisonId}`, {
     method: 'PUT',
     body: JSON.stringify({ nom, date_debut: dateDebut, date_fin: dateFin }),
+  })
+  return versEcran(saison)
+}
+
+// Ouvre ou referme une ancienne saison aux modifications (administrateur
+// principal et Super User).
+export async function ouvrir(ecoleId, saisonId, ouverte) {
+  const saison = await requete(`/ecoles/${ecoleId}/saisons/${saisonId}/ouverture`, {
+    method: 'PUT',
+    body: JSON.stringify({ ouverte }),
   })
   return versEcran(saison)
 }

@@ -346,9 +346,9 @@ function App() {
   // courante ; sinon un admin consulte une ancienne saison, en lecture
   // seule dans toute l'appli (bandeau, actions d'écriture masquées — voir
   // App.css : .app--lecture-seule —, et refus du serveur en dernier
-  // recours).
+  // recours), sauf si elle est ouverte aux modifications.
   const saisonConsultee = saisonApi.useSaisonConsultee()
-  const lectureSeule = Boolean(saisonConsultee)
+  const lectureSeule = Boolean(saisonConsultee) && !saisonConsultee.ouverte
   // Module Saisons éteint (spec/modules/saisons.md §2) : retour à la
   // saison courante, le bandeau disparaît.
   useEffect(() => {
@@ -468,7 +468,8 @@ function App() {
   }, [saisonCreee])
 
   function surSaisonCreee({ compteId, saison }) {
-    saisonApi.consulterSaison(null)
+    // Une saison passée (créée après coup) s'affiche aussitôt, pour la remplir.
+    saisonApi.consulterSaison(saison.courante ? null : saison)
     setSaisonCreee(saison)
     if (compteId && compteId !== compteReel?.id) basculerVersFiche(compteId)
     else setVersionDonnees((v) => v + 1)
@@ -1082,10 +1083,11 @@ function App() {
 
       {/* Consultation d'une ancienne saison (spec §2.6), rappel toujours
           visible, sur tous les écrans. */}
-      {lectureSeule && (
+      {saisonConsultee && (
         <div className="bandeau-saison" role="status">
           <span>
-            Saison <strong>{saisonConsultee.nom}</strong> : consultation, lecture seule
+            Saison <strong>{saisonConsultee.nom}</strong> :{' '}
+            {lectureSeule ? 'consultation, lecture seule' : 'ouverte aux modifications, aucun mail n’est envoyé'}
           </span>
           <button type="button" className="btn btn--secondary" onClick={() => saisonApi.consulterSaison(null)}>
             Revenir à la saison courante

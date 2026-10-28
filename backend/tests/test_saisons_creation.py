@@ -285,7 +285,8 @@ def test_la_chaine_des_fiches_saute_la_saison_supprimee(client, db_session, ecol
     e = ecole_en_cours
     ecole_id = e["ecole"].id
     milieu = _creer(client, ecole_id).json()["saison"]["id"]
-    client.post(f"/ecoles/{ecole_id}/saisons", json={**NOUVELLE, "nom": "2028-2029"})
+    suivante = {"nom": "2028-2029", "date_debut": "2028-09-01", "date_fin": "2029-08-31"}
+    assert client.post(f"/ecoles/{ecole_id}/saisons", json=suivante).status_code == 201
     assert client.delete(f"/ecoles/{ecole_id}/saisons/{milieu}").status_code == 200
     # L'ancienne fiche de l'owner (2026-2027) mène toujours à sa fiche 2028-2029.
     fiche = client.get(f"/comptes/{e['owner'].id}/fiche-courante").json()["compte_id"]
