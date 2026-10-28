@@ -5063,3 +5063,28 @@ a.btn {
   margin-left: 38px;
   width: calc(100% - 38px);
 }
+
+/* Création d'école (ChoixEcoleScreen.jsx) et mot d'accueil (AdminParametres.jsx). */
+.nouvelle-ecole__titre {
+  margin: 16px 0 0;
+  font-weight: 700;
+}
+
+.accueil-ecole {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 14px 16px;
+  border: 1.5px solid var(--accent);
+  border-radius: 14px;
+  background: var(--accent-bg);
+  font-size: 17px;
+}
+
+.accueil-ecole p {
+  margin: 0;
+}
+
+.accueil-ecole .btn {
+  justify-self: start;
+}

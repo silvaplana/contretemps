@@ -3,7 +3,8 @@ import * as ecolesApi from '../../api/ecoles.js'
 import Icon from '../../components/Icon.jsx'
 import { useSaisonConsultee } from '../../api/saison.js'
 import AdministrateursTableau from './AdministrateursTableau.jsx'
-import { isOwner } from '../../data/roles.js'
+import * as sessionApi from '../../api/session.js'
+import { isOwner, isSuperuser } from '../../data/roles.js'
 import SaisonsSection from './SaisonsSection.jsx'
 import Tarifs from './Tarifs.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
@@ -97,8 +98,11 @@ export default function AdminParametres({
         ecole={ecole}
         cours={cours}
         setEleves={setEleves}
-        onAjouterAdministrateur={isOwner(activeUser) ? () => setCreationAdminOuverte(true) : null}
+        // Le Super User aussi (le serveur l'accepte) : sinon personne ne
+        // pouvait ajouter le premier administrateur d'une école neuve.
+        onAjouterAdministrateur={isOwner(activeUser) || isSuperuser(activeUser) ? () => setCreationAdminOuverte(true) : null}
       />
+      <AccueilEcole ecole={ecole} />
 
       {/* Premier volet dépliable (demande du 2026-10-15) : nom, code
           postal et coordonnées imprimées sur les documents. */}
@@ -293,5 +297,53 @@ function ChampVerifie({ id, label, placeholder, valeur, afficher, enregistrer })
       />
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </>
+  )
+}
+
+
+// Mot d'accueil juste après la création de l'école (ChoixEcoleScreen.jsx) :
+// où en est le premier administrateur, et inviter à renseigner les
+// premières informations de l'école ci-dessous. Fermé par « Compris ».
+function AccueilEcole({ ecole }) {
+  const [accueil, setAccueil] = useState(() => {
+    try {
+      const a = JSON.parse(sessionApi.lireEcran('accueil-ecole') || 'null')
+      return a && a.ecoleId === ecole?.id ? a : null
+    } catch {
+      return null
+    }
+  })
+  if (!accueil) return null
+  const fermer = () => {
+    sessionApi.sauvegarderEcran('accueil-ecole', '')
+    setAccueil(null)
+  }
+  return (
+    <div className="accueil-ecole" role="status">
+      <p>
+        <strong>L’école {ecole.nom} est créée.</strong>
+      </p>
+      {accueil.admin && accueil.invite && (
+        <p>
+          {accueil.admin} en est l’administrateur principal : son invitation est partie à {accueil.email}.
+        </p>
+      )}
+      {accueil.admin && !accueil.invite && (
+        <p>
+          {accueil.admin} en est l’administrateur principal, mais l’invitation n’est pas partie ({accueil.erreur}) :
+          renvoyez-la depuis la liste des administrateurs ci-dessous (Inviter).
+        </p>
+      )}
+      {!accueil.admin && (
+        <p>
+          Le premier administrateur n’a pas pu être créé ({accueil.erreur}) : menu ⋮ en haut à droite › Ajouter un
+          administrateur.
+        </p>
+      )}
+      <p>Renseignez maintenant les premières informations de l’école ci-dessous : adresse, email de contact…</p>
+      <button type="button" className="btn btn--primary" onClick={fermer}>
+        Compris
+      </button>
+    </div>
   )
 }
