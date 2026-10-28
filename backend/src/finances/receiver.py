@@ -126,7 +126,7 @@ class FinancesReceiver:
         assemblies: GeneralAssemblies | None = None,
         forecasts: Forecasts | None = None,
         bank: Bank | None = None,
-        org_url: Callable[[Session, int], str] | None = None,
+        org_url: Callable[[Session, int | None], str] | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
@@ -250,7 +250,10 @@ class FinancesReceiver:
                     resultat = "ok"
                 except BankError:
                     resultat = "erreur"
-            base = self.org_url(db, org_id) if self.org_url is not None and org_id is not None else ""
+            # org_id inconnu (retour inconnu ou expiré) : l'adresse générale de
+            # l'appli, jamais une adresse relative (qui remonterait à la racine
+            # du site).
+            base = self.org_url(db, org_id) if self.org_url is not None else ""
             return RedirectResponse(f"{base.rstrip('/')}/?banque={resultat}", status_code=303)
 
         @app.put("/finances/accounts/{account_id}")

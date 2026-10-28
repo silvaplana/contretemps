@@ -202,3 +202,14 @@ def test_routes_et_retour_de_la_banque(client, db_session, monkeypatch):
     retour = client.get(f"/finances/bank/return?state={url.split('state=')[1]}&error=access_denied", follow_redirects=False)
     assert retour.headers["location"].endswith("/?banque=annule")
     assert client.post("/finances/bank/sync", headers=h).json() == {"added": 0}
+
+
+@pytest.mark.rbac_reel
+def test_retour_inconnu_renvoie_vers_l_appli(client, monkeypatch):
+    """Un retour de banque inconnu ou expiré renvoie vers l'adresse de l'appli
+    (URL_APPLI), pas vers la racine du site (adresse relative : le navigateur,
+    sur …/contretemps/api/…, remontait à https://silvaplana.cloud/)."""
+    monkeypatch.setenv("URL_APPLI", "https://silvaplana.cloud/contretemps")
+    retour = client.get("/finances/bank/return?state=inconnu&code=x", follow_redirects=False)
+    assert retour.status_code == 303
+    assert retour.headers["location"] == "https://silvaplana.cloud/contretemps/?banque=erreur"
