@@ -426,7 +426,9 @@ export default function Comptes() {
     </>
   )
 
-  if (!ledger) {
+  // Volet de la banque ouvert : lui seul, sans le total ni l'historique
+  // (Seb, 28 octobre).
+  if (!ledger || banqueOuverte) {
     return (
       <>
         {banque}
