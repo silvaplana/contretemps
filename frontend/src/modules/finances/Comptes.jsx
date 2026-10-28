@@ -9,6 +9,11 @@ import * as api from './api.js'
 import { BalanceChart } from './BalanceChart.jsx'
 import BanquePanel from './BanquePanel.jsx'
 import FicheCompte from './FicheCompte.jsx'
+import Caisse from './exemple/Caisse.jsx'
+import FicheOperation from './exemple/FicheOperation.jsx'
+import { PLAN_EVENTS, PlanComptable, SoldesDepart } from './exemple/PlanComptable.jsx'
+import { pieceDeLaLigne, proposerCompte } from './exemple/donnees.js'
+import './exemple/exemple.css'
 import { CurveChart } from './CurveChart.jsx'
 import './finances.css'
 
@@ -18,6 +23,8 @@ const VIEW_KEY = 'finances-view'
 const DISPLAY_KEY = 'finances-display'
 // Tableau : lignes affichees d'abord, puis par paquets en descendant.
 const ROWS_PAGE = 50
+// Puce « Caisse » (spec §8.5, EXEMPLE) : pas un compte du serveur.
+const CAISSE_VIEW = 'caisse'
 // Demande d'import de releves venue du menu ⋯ (voir requestStatementImport).
 const IMPORT_EVENT = 'finances-import'
 
@@ -269,10 +276,14 @@ export default function Comptes() {
   const [banqueOuverte, setBanqueOuverte] = useState(() => retourBanque === RETOURS.ok)
   // Compte dont la fiche est ouverte (« Voir le compte »), par son id.
   const [fiche, setFiche] = useState(null)
+  // EXEMPLE (spec §8) : fiche d'une opération (appui sur une ligne), volets
+  // ⋯ › Plan comptable / Soldes de départ.
+  const [ficheOp, setFicheOp] = useState(null)
+  const [volet, setVolet] = useState(null) // null | 'plan' | 'soldes'
 
   const load = useCallback(async () => {
     try {
-      setLedger(await api.historique(view === 'all' ? null : view))
+      setLedger(await api.historique(view === 'all' || view === CAISSE_VIEW ? null : view))
       setError(null)
     } catch (err) {
       // Compte memorise qui n'existe plus : retour a la vue d'ensemble.
@@ -300,6 +311,18 @@ export default function Comptes() {
     const open = () => setBanqueOuverte(true)
     window.addEventListener(BANK_EVENT, open)
     return () => window.removeEventListener(BANK_EVENT, open)
+  }, [])
+
+  // Menu ⋯ > « Plan comptable » / « Soldes de départ » (EXEMPLE).
+  useEffect(() => {
+    const plan = () => setVolet('plan')
+    const soldes = () => setVolet('soldes')
+    window.addEventListener(PLAN_EVENTS.plan, plan)
+    window.addEventListener(PLAN_EVENTS.soldes, soldes)
+    return () => {
+      window.removeEventListener(PLAN_EVENTS.plan, plan)
+      window.removeEventListener(PLAN_EVENTS.soldes, soldes)
+    }
   }, [])
 
   // Menu ⋯ > "Importer des relevés".
@@ -355,7 +378,8 @@ export default function Comptes() {
     setShownRows(ROWS_PAGE)
   }
 
-  const single = view !== 'all'
+  const caisse = view === CAISSE_VIEW
+  const single = view !== 'all' && !caisse
 
   // Categories presentes, et operations retenues par le menu (null :
   // toutes).
@@ -439,19 +463,27 @@ export default function Comptes() {
       </>
     )
   }
+  if (volet) {
+    return volet === 'plan' ? <PlanComptable onClose={() => setVolet(null)} /> : <SoldesDepart onClose={() => setVolet(null)} />
+  }
 
   const allAccounts = ledger.allAccounts
   const accounts = single ? ledger.accounts : allAccounts
   const shown = ledger.accounts
-  const filters = [{ id: 'all', label: 'Tous' }, ...allAccounts.map((a) => ({ id: String(a.id), label: shortName(a) }))]
+  const filters = [
+    { id: 'all', label: 'Tous' },
+    ...allAccounts.map((a) => ({ id: String(a.id), label: shortName(a) })),
+    { id: CAISSE_VIEW, label: 'Caisse' },
+  ]
 
   return (
     <div className="fin-comptes account-card">
       {banque}
       {input}
+      {ficheOp && <FicheOperation row={ficheOp} onClose={() => setFicheOp(null)} />}
       <div className="account-card-header">
         <div>
-          <h3>{single ? shown[0]?.name : 'Total des comptes'}</h3>
+          <h3>{caisse ? 'Caisse' : single ? shown[0]?.name : 'Total des comptes'}</h3>
           <span className="account-iban">
             {single
               ? shown[0]?.asOf && `au ${dateFr(shown[0].asOf)}`
@@ -491,7 +523,7 @@ export default function Comptes() {
       ) : (
         <>
           <div className="history-toolbar">
-            {allAccounts.length > 1 && (
+            {filters.length > 2 && (
               <div className="filter-chips" role="group" aria-label="Comptes affichés">
                 {filters.map((f) => (
                   <button
@@ -581,7 +613,9 @@ export default function Comptes() {
             </div>
           )}
 
-          {rows.length === 0 ? (
+          {caisse ? (
+            <Caisse />
+          ) : rows.length === 0 ? (
             <p className="empty-state">Aucune opération ne correspond</p>
           ) : display === 'chart' ? (
             <>
@@ -622,12 +656,25 @@ export default function Comptes() {
                       row.provisional && 'banque, en attente du relevé',
                       row.details.split('\n')[0],
                     ]
+                    // EXEMPLE (spec §8.4) : compte et pièce de la ligne.
+                    const compte = row.transfer ? null : proposerCompte(row.label, row.amount)
+                    const piece = row.transfer ? null : pieceDeLaLigne(row.label)
                     return (
-                      <tr key={row.id} className={row.transfer ? 'history-transfer' : undefined}>
+                      <tr
+                        key={row.id}
+                        className={row.transfer ? 'history-transfer' : 'fin-ex-cliquable'}
+                        onClick={row.transfer ? undefined : () => setFicheOp(row)}
+                      >
                         <td>{dateFr(row.date)}</td>
                         <td title={row.details || undefined}>
                           {rowLabel(row)}
                           <span className="history-details">{subline.filter(Boolean).join(' · ')}</span>
+                          {!row.transfer && (
+                            <span className="fin-ex-sous">
+                              {compte ? `${compte.num} ${compte.label}` : 'Compte à choisir'}
+                              {piece ? <span className="badge badge--success">pièce</span> : <span className="badge badge--warning">sans pièce</span>}
+                            </span>
+                          )}
                         </td>
                         <td
                           className={`amount-cell ${row.transfer ? '' : row.amount < 0 ? 'unpaid-amount' : 'success-state'}`}

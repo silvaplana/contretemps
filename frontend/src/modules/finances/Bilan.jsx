@@ -6,6 +6,7 @@
 // et l'analyse en arriere-plan : l'ecran relit le bilan jusqu'a la fin.
 import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
+import DocumentsAG from './exemple/DocumentsAG.jsx'
 import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import * as api from './api.js'
@@ -392,6 +393,7 @@ function ReportPanel({ reportId, season, options, onClose, onCreated }) {
           <ReportResult result={result} view={view} onView={setView} />
         )}
       </div>
+      <DocumentsAG />
     </section>
   )
 }
