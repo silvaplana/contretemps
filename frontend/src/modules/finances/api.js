@@ -33,6 +33,16 @@ export function importerReleves(fichiers) {
 // Saisons de l'école : { seasons: [{ id, name, startDate, endDate, current }], today }.
 export const saisons = () => appel('/seasons')
 
+// Connexion bancaire (backend/src/finances/bank.py) : { configured,
+// connected, bank, psuType, validUntil, lastSyncAt, lastError, accounts }.
+export const banque = () => appel('/bank')
+export const banques = (q) => appel(`/bank/banks?q=${encodeURIComponent(q)}`)
+// L'adresse de la banque où aller s'identifier : { url }.
+export const connecterBanque = (bank, psuType) => appel('/bank/connect', json('POST', { bank, psuType }))
+export const suivreComptes = (uids) => appel('/bank/accounts', json('PUT', { uids }))
+export const actualiserBanque = () => appel('/bank/sync', { method: 'POST' })
+export const renommerCompte = (id, name) => appel(`/accounts/${id}`, json('PUT', { name }))
+
 export function euros(montant) {
   return `${montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
 }

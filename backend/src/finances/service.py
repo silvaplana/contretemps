@@ -13,8 +13,8 @@ courant) : visibles sur les deux relevés. Les deux opérations sont reliées
 (transfer_id) pour n'afficher qu'une ligne dans la vue « tous les comptes »,
 où elles ne changent pas le total.
 
-Les opérations provisoires (source « banque », connexion bancaire) sont
-prévues dans la table mais pas encore alimentées.
+Les opérations provisoires (source « banque ») viennent de la connexion
+bancaire (bank.py) ; le relevé qui les couvre les efface en arrivant.
 """
 
 from __future__ import annotations
@@ -25,6 +25,7 @@ import tempfile
 import zipfile
 from datetime import date
 from pathlib import Path
+from types import SimpleNamespace
 
 import py7zr
 from sqlalchemy import select
@@ -117,6 +118,16 @@ class Finances:
     def _store(self, db: Session, org_id: int, file_name: str, statement: ParsedStatement) -> bool:
         """Enregistre le relevé et ses opérations. False s'il était déjà là."""
         account = db.scalar(select(FinAccount).where(FinAccount.org_id == org_id, FinAccount.number == statement.account_number))
+        # Compte créé par la connexion bancaire : son numéro est l'IBAN, qui
+        # contient le numéro lu sur le relevé.
+        account = account or next(
+            (
+                a
+                for a in db.scalars(select(FinAccount).where(FinAccount.org_id == org_id, FinAccount.bank_uid.is_not(None)))
+                if statement.account_number in a.number
+            ),
+            None,
+        )
         if account is None:
             name, kind = _account_name(statement.account_product)
             account = FinAccount(org_id=org_id, number=statement.account_number, name=name, kind=kind)
@@ -153,8 +164,35 @@ class Finances:
             )
             for i, op in enumerate(statement.operations)
         )
+        # Le relevé fait foi : les opérations lues à la banque qu'il couvre
+        # s'effacent (voir bank.py).
+        from .bank import delete_provisional
+
+        delete_provisional(
+            db,
+            list(
+                db.scalars(
+                    select(FinOperation).where(
+                        FinOperation.account_id == account.id, FinOperation.source == SOURCE_BANK, FinOperation.date <= end
+                    )
+                )
+            ),
+        )
         db.flush()
         return True
+
+    def rename_account(self, db: Session, member: Member, account_id: int, name: str) -> dict:
+        """Le trésorier nomme un compte (« Honoraires profs », « Livret A »)."""
+        _check(member)
+        account = db.get(FinAccount, account_id)
+        if account is None or account.org_id != member.org_id:
+            raise AccountNotFoundError(account_id)
+        name = name.strip()[:80]
+        if not name:
+            raise ValueError("Donnez un nom au compte.")
+        account.name = name
+        db.commit()
+        return {"id": account.id, "name": account.name}
 
     @staticmethod
     def _link_transfers(db: Session, org_id: int) -> None:
@@ -247,6 +285,14 @@ class Finances:
                     f"({s.start_balance / 100:.2f} €)"
                 )
             last[s.account_id] = s
+        # Compte connu seulement par la connexion bancaire : le solde lu à la
+        # banque sert de point de départ (solde au début = solde lu - les
+        # opérations lues).
+        for a in accounts:
+            if a.id not in first and a.bank_balance is not None:
+                ops = [op for op in operations if op.account_id == a.id]
+                # Connu sur toute la période lue : il entre dans le total dès le début.
+                first[a.id] = SimpleNamespace(start_date=date.min, start_balance=a.bank_balance - sum(op.amount for op in ops))
 
         visible = [a.id for a in accounts if account_id in (None, a.id)]
         balances: dict[int, int | None] = {a: None for a in visible}
@@ -301,6 +347,7 @@ class Finances:
             # relevé, ou dernière opération lue à la banque.
             dates = [last[account.id].end_date] if account.id in last else []
             dates += [op.date for op in operations if op.account_id == account.id and op.source == SOURCE_BANK]
+            dates += [account.bank_balance_date] if account.bank_balance_date and account.id not in last else []
             return max(dates).isoformat() if dates else None
 
         return {

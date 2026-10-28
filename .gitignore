@@ -5,6 +5,10 @@ env/
 
 # Secrets locaux
 .env
+# Clé privée de la connexion bancaire (Enable Banking), montée en lecture
+# seule sur le VPS : jamais dans le dépôt.
+backend/secrets/
+*.pem
 
 # Données réelles d'élèves (PII, jamais dans un repo public/déployé) et
 # scripts de référence backend fournis hors-code — voir /data/ et /scripts/

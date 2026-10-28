@@ -121,6 +121,37 @@ Sans ce fichier, `GOOGLE_CLIENT_ID` reste vide et le frontend se construit
 quand même — seule la destination "Cet appareil" est proposée dans le
 menu sauvegarde, sans erreur.
 
+### Connexion bancaire du Financier (Enable Banking)
+
+Financier › Comptes › ⋯ › Banque et comptes (spec `modules/financier.md`
+§3.5). Il faut une application Enable Banking (Control Panel
+<https://enablebanking.com/cp>) : son **Application ID** et sa **clé privée
+`.pem`** (téléchargée à sa création). Celle de Sambo Admin peut servir.
+
+1. Dans le Control Panel, ajouter l'adresse de retour de l'application :
+   `https://silvaplana.cloud/contretemps/api/finances/bank/return`.
+2. Sur le VPS, la clé en **fichier**, lisible par soi seul, jamais dans le
+   dépôt ni dans une variable (le conteneur la voit en lecture seule dans
+   `/run/secrets/`, hors de `/app/data`, donc hors des sauvegardes) :
+
+   ```bash
+   mkdir -p ~/contretemps/backend/secrets
+   # La clé de Sambo Admin est dans ~/test-python/backend/secrets/.
+   cp ~/test-python/backend/secrets/<nom de la clé>.pem ~/contretemps/backend/secrets/enable_banking.pem
+   chmod 700 ~/contretemps/backend/secrets
+   chmod 600 ~/contretemps/backend/secrets/enable_banking.pem
+   ```
+
+   (600 suffit : `appuser`, dans le conteneur, a le même numéro, 1000, que
+   l'utilisateur du VPS.)
+3. Dans `backend/.env` : `ENABLE_BANKING_APP_ID=...` et
+   `ENABLE_BANKING_REDIRECT_URL=https://silvaplana.cloud/contretemps/api/finances/bank/return`,
+   puis `docker compose up -d backend`.
+
+Sans contrat Enable Banking, l'application ne lit que les comptes que son
+propriétaire y a d'abord liés (Control Panel) : c'est le cas de l'école du
+propriétaire, pas d'autres écoles.
+
 ## 5. Mise en ligne automatique (GitHub Actions)
 
 À chaque fusion dans `main` (et à la demande, onglet **Actions** du dépôt >

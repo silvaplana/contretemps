@@ -7,6 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { normaliserRecherche } from '../../utils/recherche.js'
 import * as api from './api.js'
 import { BalanceChart } from './BalanceChart.jsx'
+import BanquePanel from './BanquePanel.jsx'
 import { CurveChart } from './CurveChart.jsx'
 import './finances.css'
 
@@ -23,6 +24,33 @@ const IMPORT_EVENT = 'finances-import'
 // choix de fichiers de Comptes.
 export function requestStatementImport() {
   window.dispatchEvent(new Event(IMPORT_EVENT))
+}
+
+// Entree "Banque et comptes…" du menu ⋯ : ouvre le volet de la banque.
+const BANK_EVENT = 'finances-banque'
+export function requestBank() {
+  window.dispatchEvent(new Event(BANK_EVENT))
+}
+
+// Retour de la banque (?banque=ok|annule|erreur, voir finances/bank.py) :
+// lu une fois, puis retiré de l'adresse.
+const RETOURS = {
+  ok: 'Banque connectée : choisissez les comptes suivis et leurs noms.',
+  annule: 'Connexion à la banque annulée.',
+  erreur: 'La connexion à la banque n’a pas abouti : recommencez.',
+}
+function lireRetourBanque() {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const retour = params.get('banque')
+    if (!retour) return null
+    params.delete('banque')
+    const reste = params.toString()
+    window.history.replaceState(null, '', window.location.pathname + (reste ? `?${reste}` : '') + window.location.hash)
+    return RETOURS[retour] ?? null
+  } catch {
+    return null
+  }
 }
 
 function readSetting(key, fallback) {
@@ -45,12 +73,11 @@ const { euros, dateFr } = api
 
 const plural = (n, word) => `${n} ${word}${n > 1 ? 's' : ''}`
 
-// Nom court d'un compte (filtres et colonnes du tableau).
+// Nom d'un compte dans les filtres et les colonnes du tableau : celui que
+// lui a donné le trésorier (volet « Banque et comptes »), autant de comptes
+// qu'il en faut (avant : « CC » et « Bleu », deux comptes seulement).
 function shortName(account) {
-  if (!account) return ''
-  if (account.kind === 'checking') return 'CC'
-  if (/bleu/i.test(account.name)) return 'Bleu'
-  return account.name
+  return account?.name ?? ''
 }
 
 function rowLabel(row) {
@@ -199,6 +226,9 @@ export default function Comptes() {
   const [seasonsData, setSeasonsData] = useState(null)
   const fileInput = useRef(null)
   const sentinel = useRef(null)
+  // Volet « Banque et comptes », et message du retour de la banque.
+  const [retourBanque] = useState(lireRetourBanque)
+  const [banqueOuverte, setBanqueOuverte] = useState(() => retourBanque === RETOURS.ok)
 
   const load = useCallback(async () => {
     try {
@@ -223,6 +253,13 @@ export default function Comptes() {
       .catch(() => {
         // Saisons indisponibles : les autres periodes restent utilisables.
       })
+  }, [])
+
+  // Menu ⋯ > "Banque et comptes…".
+  useEffect(() => {
+    const open = () => setBanqueOuverte(true)
+    window.addEventListener(BANK_EVENT, open)
+    return () => window.removeEventListener(BANK_EVENT, open)
   }, [])
 
   // Menu ⋯ > "Importer des relevés".
@@ -347,15 +384,30 @@ export default function Comptes() {
   )
 
   if (error) return <p className="login-screen__erreur">{error}</p>
-  if (!ledger) return input
+  const banque = (
+    <>
+      {retourBanque && <p className="history-report">{retourBanque}</p>}
+      {banqueOuverte && <BanquePanel accounts={ledger?.allAccounts ?? []} onChanged={load} onClose={() => setBanqueOuverte(false)} />}
+    </>
+  )
+
+  if (!ledger) {
+    return (
+      <>
+        {banque}
+        {input}
+      </>
+    )
+  }
 
   const allAccounts = ledger.allAccounts
   const accounts = single ? ledger.accounts : allAccounts
   const shown = ledger.accounts
-  const filters = [{ id: 'all', label: allAccounts.map(shortName).join(' + ') }, ...allAccounts.map((a) => ({ id: String(a.id), label: shortName(a) }))]
+  const filters = [{ id: 'all', label: 'Tous' }, ...allAccounts.map((a) => ({ id: String(a.id), label: shortName(a) }))]
 
   return (
     <div className="fin-comptes account-card">
+      {banque}
       {input}
       <div className="account-card-header">
         <div>
@@ -378,7 +430,10 @@ export default function Comptes() {
       ))}
 
       {ledger.rows.length === 0 ? (
-        <p>Aucun relevé importé pour l’instant : menu ⋯ en haut à droite › Importer des relevés (PDF ou archive).</p>
+        <p>
+          Aucune opération pour l’instant : menu ⋯ en haut à droite › Banque et comptes (connecter la banque), ou Importer
+          des relevés (PDF ou archive).
+        </p>
       ) : (
         <>
           <div className="history-toolbar">
