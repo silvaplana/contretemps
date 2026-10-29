@@ -462,7 +462,10 @@ pages, ticket de dépôt + page du cahier). On revient ensuite à la liste de la
 porte ce qui a été lu (fournisseur ou prof, date, montant, compte proposé) : on touche une ligne pour
 vérifier ou compléter, le reste est déjà rangé dans Docs. Pour les honoraires, la lecture reconnaît le
 nom du prof et le rapproche d'une fiche ; en cas de doute la ligne demande « Pour qui ? ». Même chose
-avec « Choisir un fichier » et « Choisir dans Docs » quand on sélectionne plusieurs fichiers.
+avec « Choisir un fichier » et « Choisir dans Docs » quand on sélectionne plusieurs fichiers, et, sur
+ordinateur, en **glissant des fichiers** depuis le bureau sur la liste de la puce (Achats, Honoraires
+ou Notes de frais) : chaque fichier déposé = une dépense de cette nature, comme un import. Pas sur
+téléphone.
 
 **Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
 `notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
