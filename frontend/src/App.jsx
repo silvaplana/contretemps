@@ -116,6 +116,16 @@ function App() {
   useEffect(() => {
     if (compteReel?.id) chargerTauxChange()
   }, [compteReel?.id])
+  // « Ouvrir dans Docs » depuis un autre onglet (Financier › Documents de
+  // l'AG) : même chemin que le lien d'une bulle de la messagerie.
+  useEffect(() => {
+    const ouvrir = (e) => {
+      setActiveTab('docs')
+      setTimeout(() => window.dispatchEvent(new CustomEvent('dx-ouvrir', { detail: { id: e.detail?.id } })), 0)
+    }
+    window.addEventListener('app-ouvrir-docs', ouvrir)
+    return () => window.removeEventListener('app-ouvrir-docs', ouvrir)
+  }, [])
 
   // Session persistante (voir spec §2.2, api/session.js) : au tout
   // premier rendu, on ne sait pas encore s'il y a un profil à restaurer

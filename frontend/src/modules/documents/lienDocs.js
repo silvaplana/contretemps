@@ -44,3 +44,9 @@ export function useOuvrirDocs(onId) {
 export function texteDuLien(item) {
   return `${item.name}\n${window.location.origin}${import.meta.env.BASE_URL}docs/${item.id}`
 }
+
+// Depuis un autre onglet de l'appli (Financier…) : l'appli passe sur Docs
+// et y ouvre le dossier ou le fichier (écouté dans App.jsx).
+export function ouvrirDansDocs(id) {
+  window.dispatchEvent(new CustomEvent('app-ouvrir-docs', { detail: { id } }))
+}

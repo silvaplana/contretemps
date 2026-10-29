@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 import Modal from '../../../components/Modal.jsx'
 import { enEuros } from '../../../utils/euros.js'
+import { ouvrirDansDocs } from '../../documents/lienDocs.js'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import * as api from '../api.js'
 import './compta.css'
@@ -60,6 +61,13 @@ export default function DocumentsAG({ reportId, seasonName }) {
             ))}
           </div>
           {voir && <Synthese s={data.synthese} />}
+          {data.folderId != null && (
+            <div className="fin-cp-boutons">
+              <button type="button" className="btn btn--secondary" onClick={() => ouvrirDansDocs(data.folderId)}>
+                <Icon name="docs" size={16} /> Ouvrir dans Docs
+              </button>
+            </div>
+          )}
           <RapportFinancier reportId={reportId} seasonName={seasonName} onErreur={setErreur} />
           {data.level === 'complet' && (
             <Cloture reportId={reportId} seasonName={seasonName} closing={data.closing} onChange={(closing) => setData((d) => ({ ...d, closing }))} onErreur={setErreur} />

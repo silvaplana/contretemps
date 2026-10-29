@@ -152,6 +152,24 @@ def nom_ecole(db: Session, ecole_id: int) -> str:
     return ecole.nom if ecole is not None else ""
 
 
+def dossier_ag(documents):
+    """Le dossier Docs › Privé › Saison en cours › Financier › AG (créé au
+    besoin), pour le bouton « Ouvrir dans Docs » des documents de l'AG."""
+    from notes_frais.ports import Membre
+    from notes_frais_contretemps.adapter import ClasseurContretemps
+
+    classeur = ClasseurContretemps(documents)
+
+    def trouver(db: Session, member: Member) -> int | None:
+        membre = Membre(person_id=member.person_id, org_id=member.org_id, nom=member.name, est_tresorier=True)
+        racine, qui = classeur._acces(db, membre)
+        if racine is None:
+            return None
+        return classeur._dossier(db, qui, racine.id, ["AG"])
+
+    return trouver
+
+
 def ranger_dans_docs(documents):
     """Range les documents de l'AG dans Docs › Privé › Saison en cours ›
     Financier › AG, par le classeur des notes de frais (même dossier Financier)."""
