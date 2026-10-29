@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.6, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.7, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -399,15 +399,39 @@ les autres repliés avec leur nombre ; une partie vide n'apparaît pas) :
 3. **Envoyés** : « J'ai fait le virement » touché, pas encore vu sur le compte ;
 4. **Payés** : l'opération est vue sur le compte, la pièce y est rattachée (= « rattachée »).
 
-Ce qui arrive dans À payer, tout seul : la **note de frais validée** (avec le RIB déjà donné,
-`nf_ribs`) et la **note d'honoraires** lue dans Honoraires (prof et montant ; plus tard calculée
-par la présence). Une **facture d'achat** n'y va que par le bouton **À payer par virement** de la
-pièce (ce que dit aussi « Pas encore payée ») : un achat par carte, prélevé, ou payé avant la
-facture (le camping) ne passe jamais par Virements, la pièce se rattache à l'opération du compte.
-On peut aussi **préparer un virement sans pièce** (demande ou devis) ; la facture s'y rattache
-quand elle arrive (« Ajouter la facture »).
+**Machine à états** (schéma de Seb, 29 octobre : `/mnt/project-files/appbase/captures/virements-schema-seb.jpg`),
+la même pour les trois natures de dépense :
 
-Dans Achats, Honoraires, Notes de frais, chaque dépense montre son état (badge À payer / Préparé /
+```
+Note de frais ──┐                                Achat (saisi par le trésorier)
+Honoraires ─────┴─▶ Validation trésorier ──non──▶ Refusé (motif)       │
+   (saisis par l'auteur,          │                             Déjà payé ? (vérifié sur les comptes)
+    ou le trésorier pour lui)     ok                               │ non          │ oui
+                                  ▼                                ▼              │
+                               À payer ◀───────────────────────────┘              │
+                                  ▼                                               │
+                           Virement préparé ──▶ (demande au trésorier qui a la carte)
+                                  ▼                                               │
+                               Envoyé                                             │
+                                  ▼                                               ▼
+                                Payé ◀────────────────────────────────────────────┘
+```
+
+- **Note de frais** et **note d'honoraires** sont saisies par leur auteur (le membre, le prof),
+  ou par le trésorier pour lui ; la validation du trésorier les fait passer à À payer, ou à
+  **Refusé** avec un motif (comme `notes-de-frais.md` §5). Quand c'est le trésorier qui saisit
+  pour la personne, la validation est faite en même temps : la pièce arrive directement À payer.
+  Le RIB vient de `nf_ribs` s'il est déjà donné. Plus tard, les honoraires seront calculés par la
+  présence des profs.
+- **Achat** : saisi (photographié) par le trésorier ; l'appli cherche le paiement sur les comptes.
+  Trouvé (carte du club, prélèvement, virement fait avant la facture, comme le camping) : la pièce
+  se rattache à l'opération et est **Payé** sans passer par Virements. Pas trouvé : **À payer**
+  (c'est ce que dit le bouton « Pas encore payée » de §8.3). Un achat réglé avec la carte
+  personnelle du trésorier n'est pas un achat mais une note de frais.
+- On peut aussi **préparer un virement sans pièce** (demande ou devis) ; la facture s'y rattache
+  quand elle arrive (« Ajouter la facture »).
+
+Dans Achats, Honoraires, Notes de frais, chaque dépense montre son état (badge Refusé / À payer / Préparé /
 Envoyé / Payé) ; payée par carte ou déjà vue sur le compte : directement Payé.
 
 **Aide au virement** : toucher une ligne ouvre « Virement à faire » : bénéficiaire, IBAN, montant,
