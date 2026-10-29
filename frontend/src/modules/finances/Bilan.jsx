@@ -227,6 +227,9 @@ function ReportPanel({ reportId, season, options, onClose, onCreated }) {
   const [error, setError] = useState(null)
   const [message, setMessage] = useState(null)
   const [view, setView] = useState('category')
+  // Bilan produit replié par défaut (Seb, 29 octobre) : les documents de l'AG
+  // restent visibles dessous ; déplié après « Produire le bilan ».
+  const [deplie, setDeplie] = useState(false)
 
   const load = useCallback(async () => {
     const data = await api.bilan(reportId)
@@ -272,6 +275,7 @@ function ReportPanel({ reportId, season, options, onClose, onCreated }) {
       const id = await save()
       if (run) {
         const started = await api.calculerBilan(id, { prompt: form.prompt, model: form.model })
+        setDeplie(true)
         if (reportId == null) {
           onCreated(id)
           return
@@ -364,7 +368,17 @@ function ReportPanel({ reportId, season, options, onClose, onCreated }) {
 
       <div className="reports-result">
         <div className="reports-result-header">
-          <h3>Résultat</h3>
+          <h3>
+            <button
+              type="button"
+              className="reports-result-toggle"
+              aria-expanded={deplie || running}
+              onClick={() => setDeplie((d) => !d)}
+              disabled={!result || running}
+            >
+              <Icon name={deplie || running ? 'chevronDown' : 'chevronRight'} size={20} /> Résultat
+            </button>
+          </h3>
           {result && (
             <span className="reports-result-meta">
               {result.modelLabel} · {enEuros(result.costUsd)} · {dateHeure(result.generatedAt)}
@@ -390,7 +404,7 @@ function ReportPanel({ reportId, season, options, onClose, onCreated }) {
         ) : !result ? (
           <p className="muted">Pas encore de résultat : appuyez sur « Produire le bilan ».</p>
         ) : (
-          <ReportResult result={result} view={view} onView={setView} />
+          deplie && <ReportResult result={result} view={view} onView={setView} />
         )}
       </div>
       {reportId != null && !running && <DocumentsAG reportId={reportId} seasonName={season.name} />}

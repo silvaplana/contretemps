@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 import Modal from '../../../components/Modal.jsx'
 import { enEuros } from '../../../utils/euros.js'
+import { documentsApi } from '../../../api/documents.js'
 import { ouvrirDansDocs } from '../../documents/lienDocs.js'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import * as api from '../api.js'
@@ -16,10 +17,34 @@ import './compta.css'
 
 const { euros, dateFr } = api
 
+// L'œil d'un document : le fichier est produit et rangé dans Docs, puis
+// ouvert comme dans Docs (Word, Excel : OnlyOffice ; PDF : la visionneuse
+// du téléphone, qui s'ouvre pendant le toucher sinon le navigateur bloque).
+async function ouvrirFichier(produire, pdf) {
+  const telephone = pdf && !navigator.pdfViewerEnabled
+  const onglet = telephone ? window.open('', '_blank') : null
+  try {
+    const { id, orgId } = await produire()
+    if (!telephone) return ouvrirDansDocs(id)
+    const url = await documentsApi(orgId).lienFichier(id)
+    if (onglet) onglet.location.href = url
+    else window.location.href = url
+  } catch (err) {
+    onglet?.close()
+    throw err
+  }
+}
+
+// L'icône Docs : le fichier est produit et rangé, puis Docs s'ouvre sur
+// son dossier (Financier › AG).
+async function allerDansDocs(produire, folderId) {
+  await produire()
+  ouvrirDansDocs(folderId)
+}
+
 export default function DocumentsAG({ reportId, seasonName }) {
   const [data, setData] = useState(null)
   const [erreur, setErreur] = useState('')
-  const [voir, setVoir] = useState(false)
 
   useEffect(() => {
     if (reportId == null) return
@@ -47,28 +72,33 @@ export default function DocumentsAG({ reportId, seasonName }) {
               <div key={d.id} className="fin-cp-doc">
                 <span className="fin-cp-t">{d.title}</span>
                 <span className="fin-cp-a">
-                  {d.id === 'synthese' && (
-                    <button type="button" className="btn btn--secondary" onClick={() => setVoir((v) => !v)}>
-                      <Icon name="eye" size={16} /> Voir
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    onClick={() => ouvrirFichier(() => api.documentAGDansDocs(reportId, d.id), d.format === 'pdf').catch((err) => setErreur(err.message))}
+                  >
+                    <Icon name="eye" size={16} /> Voir
+                  </button>
                   <button type="button" className="btn btn--secondary" onClick={() => telecharger(d)}>
                     <Icon name="download" size={16} /> {d.format === 'pdf' ? 'PDF' : 'Excel'}
                   </button>
+                  {data.folderId != null && (
+                    <button
+                      type="button"
+                      className="btn btn--secondary"
+                      aria-label="Voir dans Docs"
+                      title="Voir dans Docs"
+                      onClick={() => allerDansDocs(() => api.documentAGDansDocs(reportId, d.id), data.folderId).catch((err) => setErreur(err.message))}
+                    >
+                      <Icon name="folder" size={16} />
+                    </button>
+                  )}
                 </span>
                 <span className="fin-cp-s">{SOUS_TITRES[d.id]}</span>
               </div>
             ))}
           </div>
-          {voir && <Synthese s={data.synthese} />}
-          {data.folderId != null && (
-            <div className="fin-cp-boutons">
-              <button type="button" className="btn btn--secondary" onClick={() => ouvrirDansDocs(data.folderId)}>
-                <Icon name="docs" size={16} /> Ouvrir dans Docs
-              </button>
-            </div>
-          )}
-          <RapportFinancier reportId={reportId} seasonName={seasonName} onErreur={setErreur} />
+          <RapportFinancier reportId={reportId} seasonName={seasonName} folderId={data.folderId} onErreur={setErreur} />
           {data.level === 'complet' && (
             <Cloture reportId={reportId} seasonName={seasonName} closing={data.closing} onChange={(closing) => setData((d) => ({ ...d, closing }))} onErreur={setErreur} />
           )}
@@ -125,10 +155,9 @@ function Cloture({ reportId, seasonName, closing, onChange, onErreur }) {
   )
 }
 
-function RapportFinancier({ reportId, seasonName, onErreur }) {
+function RapportFinancier({ reportId, seasonName, folderId, onErreur }) {
   const [data, setData] = useState(null)
   const [rediger, setRediger] = useState(false)
-  const [voir, setVoir] = useState(false)
 
   useEffect(() => {
     api.rapportFinancier(reportId).then(setData).catch((err) => onErreur(err.message))
@@ -153,7 +182,11 @@ function RapportFinancier({ reportId, seasonName, onErreur }) {
             </button>
             {rapport && (
               <>
-                <button type="button" className="btn btn--secondary" onClick={() => setVoir((v) => !v)}>
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={() => ouvrirFichier(() => api.rapportDansDocs(reportId, 'docx'), false).catch((err) => onErreur(err.message))}
+                >
                   <Icon name="eye" size={16} /> Voir
                 </button>
                 <button type="button" className="btn btn--secondary" onClick={() => telecharger('docx')}>
@@ -162,6 +195,17 @@ function RapportFinancier({ reportId, seasonName, onErreur }) {
                 <button type="button" className="btn btn--secondary" onClick={() => telecharger('pdf')}>
                   <Icon name="download" size={16} /> PDF
                 </button>
+                {folderId != null && (
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    aria-label="Voir dans Docs"
+                    title="Voir dans Docs"
+                    onClick={() => allerDansDocs(() => api.rapportDansDocs(reportId, 'docx'), folderId).catch((err) => onErreur(err.message))}
+                  >
+                    <Icon name="folder" size={16} />
+                  </button>
+                )}
               </>
             )}
           </span>
@@ -174,7 +218,6 @@ function RapportFinancier({ reportId, seasonName, onErreur }) {
         {rapport?.warnings.length > 0 && (
           <p className="fin-cp-alerte">À vérifier avant l’AG : {rapport.warnings.join(' ')}</p>
         )}
-        {voir && rapport && <TexteRapport r={rapport} />}
       </div>
       {rediger && data && (
         <RedigerModal
@@ -184,41 +227,10 @@ function RapportFinancier({ reportId, seasonName, onErreur }) {
           onRedige={(r) => {
             setData((d) => ({ ...d, rapport: r }))
             setRediger(false)
-            setVoir(true)
           }}
         />
       )}
     </>
-  )
-}
-
-function TexteRapport({ r }) {
-  return (
-    <div className="fin-cp-rapport">
-      <p>
-        Saison {r.season}, du {dateFr(r.period.start)} au {dateFr(r.period.end)}. {r.introduction}
-      </p>
-      <h5>A - Recettes</h5>
-      {r.recettes.map((p, i) => (
-        <p key={i}>{p}</p>
-      ))}
-      <h5>B - Dépenses</h5>
-      {r.depenses.map((p, i) => (
-        <p key={i}>{p}</p>
-      ))}
-      {r.points.length > 0 && (
-        <>
-          <h5>Points à revoir</h5>
-          <ul>
-            {r.points.map((p, i) => (
-              <li key={i}>{p}</li>
-            ))}
-          </ul>
-        </>
-      )}
-      <h5>Conclusion</h5>
-      <p>{r.conclusion}</p>
-    </div>
   )
 }
 
@@ -277,98 +289,5 @@ function RedigerModal({ reportId, options, onClose, onRedige }) {
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
       </div>
     </Modal>
-  )
-}
-
-function Groupes({ groupes }) {
-  return groupes.map((g) => (
-    <tbody key={g.code}>
-      <tr className="grp">
-        <td colSpan={2}>
-          {g.code} · {g.label}
-        </td>
-      </tr>
-      {g.lines.map((l) => (
-        <tr key={l.number}>
-          <td>{l.label}</td>
-          <td className="r">{euros(l.amount)}</td>
-        </tr>
-      ))}
-    </tbody>
-  ))
-}
-
-function Synthese({ s }) {
-  return (
-    <>
-      <div className="fin-cp-carte">
-        <table className="fin-cp-table">
-          <Groupes groupes={s.charges} />
-          <tbody>
-            <tr className="tot">
-              <td>Total des charges</td>
-              <td className="r">{euros(s.totalCharges)}</td>
-            </tr>
-          </tbody>
-          <Groupes groupes={s.produits} />
-          <tbody>
-            <tr className="tot">
-              <td>Total des produits</td>
-              <td className="r">{euros(s.totalProduits)}</td>
-            </tr>
-            <tr className="tot">
-              <td>{s.result < 0 ? 'Déficit' : 'Excédent'}</td>
-              <td className={s.result < 0 ? 'r unpaid-amount' : 'r success-state'}>{euros(s.result)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <div className="fin-cp-carte">
-        <table className="fin-cp-table">
-          <tbody>
-            <tr className="grp">
-              <td colSpan={2}>Trésorerie au {dateFr(s.cutoff)}</td>
-            </tr>
-            {s.treasury.map((t) => (
-              <tr key={t.label}>
-                <td>{t.label}</td>
-                <td className="r">{euros(t.amount)}</td>
-              </tr>
-            ))}
-            <tr className="tot">
-              <td>Solde de trésorerie</td>
-              <td className="r">{euros(s.treasuryTotal)}</td>
-            </tr>
-            <tr>
-              <td>Fournisseurs à payer{s.unpaid.length > 0 && ` (${s.unpaid.map((u) => u.title).join(', ')})`}</td>
-              <td className="r">{euros(s.unpaidTotal)}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      {s.events.map((e) => (
-        <div key={e.event} className="fin-cp-carte">
-          <table className="fin-cp-table">
-            <tbody>
-              <tr className="grp">
-                <td colSpan={2}>{e.event}</td>
-              </tr>
-              <tr>
-                <td>Ressources</td>
-                <td className="r">{euros(e.resources)}</td>
-              </tr>
-              <tr>
-                <td>Coût</td>
-                <td className="r">{euros(e.cost)}</td>
-              </tr>
-              <tr className="tot">
-                <td>{e.profit < 0 ? 'Perte' : 'Bénéfice'}</td>
-                <td className="r">{euros(e.profit)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      ))}
-    </>
   )
 }

@@ -723,6 +723,23 @@
   font-size: 1.1rem;
 }
 
+.fin-bilan .reports-result-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+.fin-bilan .reports-result-toggle:disabled {
+  cursor: default;
+}
+
 .fin-bilan .reports-result-meta {
   font-size: 0.85rem;
   color: var(--text-muted);

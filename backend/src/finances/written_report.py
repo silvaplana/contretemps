@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .ai import DEFAULT_MODEL, MODELS, AnalysisError, cost_usd
+from .ag_documents import store_file
 from .exports import _CSS, _fr, html_to_pdf
 from .models import FinWrittenReport
 from .ports import Member, Season
@@ -295,7 +296,7 @@ class WrittenReports:
         parts.append(f"<h2>Conclusion</h2><p>{e(content['conclusion'])}</p>")
         return html_to_pdf("".join(parts), _CSS + " body { font-size: 11pt; } p { margin: 6pt 0; }", landscape=False)
 
-    def produce(self, db: Session, member: Member, report_id: int, season: Season, fmt: str) -> tuple[bytes, str, str]:
+    def _build(self, db: Session, member: Member, report_id: int, season: Season, fmt: str) -> tuple[bytes, str, str]:
         content = self.get(db, report_id)
         if content is None:
             raise LookupError("Pas encore de rapport : faites-le rédiger d'abord.")
@@ -306,13 +307,14 @@ class WrittenReports:
             data, media = self.pdf(content, org_name), "application/pdf"
         else:
             raise ValueError("Format inconnu (docx ou pdf)")
-        name = f"Rapport financier {season.name}.{fmt}"
-        if self.store is not None:
-            import tempfile
-            from pathlib import Path
+        return data, f"Rapport financier {season.name}.{fmt}", media
 
-            with tempfile.TemporaryDirectory() as tmp:
-                path = Path(tmp) / name
-                path.write_bytes(data)
-                self.store(db, member, ["AG"], [(name, path)])
+    def produce(self, db: Session, member: Member, report_id: int, season: Season, fmt: str) -> tuple[bytes, str, str]:
+        data, name, media = self._build(db, member, report_id, season, fmt)
+        store_file(self.store, db, member, name, data)
         return data, name, media
+
+    def in_docs(self, db: Session, member: Member, report_id: int, season: Season, fmt: str) -> int | None:
+        """Produit le rapport, le range dans Docs › Financier › AG, rend l'id du fichier."""
+        data, name, _ = self._build(db, member, report_id, season, fmt)
+        return store_file(self.store, db, member, name, data)

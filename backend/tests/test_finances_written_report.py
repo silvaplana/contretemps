@@ -113,3 +113,13 @@ def test_docx_and_pdf_are_produced_and_stored(writer, db_session):
         w.produce(db_session, TRESORIER, 2, SEASON, "pdf")
     with pytest.raises(ValueError):
         w.produce(db_session, TRESORIER, 1, SEASON, "odt")
+
+
+def test_in_docs_returns_the_stored_file_id(writer, db_session):
+    w, _, stored = writer
+    w.write(db_session, TRESORIER, 1, SEASON, "", "claude-sonnet-5-5", [])
+    w.store = lambda db, member, path, files: stored.append((path, [n for n, _ in files])) or [7]
+    assert w.in_docs(db_session, TRESORIER, 1, SEASON, "docx") == 7
+    assert stored[-1] == (["AG"], ["Rapport financier 2025-2026.docx"])
+    with pytest.raises(LookupError):
+        w.in_docs(db_session, TRESORIER, 2, SEASON, "docx")

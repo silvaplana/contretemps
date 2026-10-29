@@ -134,3 +134,13 @@ def test_report_adds_up_by_confirmed_account(world, db_session):
     assert "Autres" in expense
     unclassified = [op for op in report["operations"] if op["bankCategory"] == "Autres"]
     assert {op["label"] for op in unclassified} == {"PRLV MYSTERE", "RETRAIT DAB"}
+
+
+def test_in_docs_returns_the_stored_file_id(world, db_session):
+    _, _, documents = world
+    stored = []
+    documents.ports.store = lambda db, member, path, files: stored.append((path, [n for n, _ in files])) or [42]
+    assert documents.in_docs(db_session, TRESORIER, SEASON, "balance") == 42
+    assert stored == [(["AG"], ["Balance 2025-2026.pdf"])]
+    with pytest.raises(ValueError):
+        documents.in_docs(db_session, TRESORIER, SEASON, "autre")

@@ -141,3 +141,6 @@ export const enregistrerSoldesDepart = (seasonId, accounts) => appel(`/opening-b
 export const cloturer = (reportId) => appel(`/reports/${reportId}/close`, { method: 'POST' })
 export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { method: 'DELETE' })
 export const ecritures = (operationId) => appel(`/operations/${operationId}/entries`)
+// L'œil des documents de l'AG : produit le fichier, le range dans Docs › Financier › AG, rend { id, orgId }.
+export const documentAGDansDocs = (reportId, kind) => appel(`/reports/${reportId}/documents/${kind}/docs`, { method: 'POST' })
+export const rapportDansDocs = (reportId, format) => appel(`/reports/${reportId}/rapport/docs?format=${format}`, { method: 'POST' })

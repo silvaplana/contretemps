@@ -577,6 +577,11 @@ l'AG** :
 Les fichiers vont dans Docs › Privé › Saison <saison> › Financier › AG, avec le badge Brouillon / Validé /
 Officiel du bilan ; l'AG (§5) les joint à la convocation.
 
+À l'écran (Seb, 29/10) : le bilan produit est replié, il se déplie d'un toucher sur « Résultat ». Chaque
+document a un œil (le fichier est produit, rangé dans Docs et ouvert comme dans Docs : Word et Excel dans
+OnlyOffice, PDF dans la visionneuse du téléphone), un téléchargement et une icône Docs qui ouvre
+Financier › AG.
+
 ### 8.7 Complet : écritures, soldes de départ, clôture
 
 - **Écritures** : journaux AN/AC/HO/NF/BQn/CA (date, pièce, libellé, lettre ; compte, débit,
