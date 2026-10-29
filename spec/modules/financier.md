@@ -588,8 +588,8 @@ Officiel du bilan ; l'AG (§5) les joint à la convocation.
   la main ; les écritures de régularisation OD du trésorier (compte 471, défraiements) restent à
   faire.
 - **Soldes de départ** (Comptes ⋯ › Soldes de départ) : première saison dans l'appli, repris de
-  la Balance de l'an dernier déposée dans Docs (lecture du PDF, vérification à l'écran, « Reprendre
-  ces soldes ») ; l'appli vérifie que les soldes 512x égalent les relevés au 31/08. Saisons
+  la Balance de l'an dernier déposée dans Docs (lecture du PDF, vérification à l'écran, « Utiliser
+  ces soldes au 1er septembre ») ; l'appli vérifie que les soldes 512x égalent les relevés au 31/08. Saisons
   suivantes : calculés par la clôture.
 - **Clôture** (Bilan, bilan Officiel) : résultat reporté (120 / 129 → 110), écritures d'à-nouveaux
   de la saison suivante, saison verrouillée (plus de rattachement sans la rouvrir, trace gardée).
@@ -676,7 +676,7 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    nom de la personne, sinon le plus court), avec une lettre AAA, AAB… commune aux deux lignes ;
    colonne Lettre du Grand livre. Soldes de départ : Comptes › ⋯ › Soldes de départ, par saison,
    prérempli par la trésorerie des relevés (ou les soldes reportés par la clôture précédente), un
-   solde par compte du bilan, « Reprendre ces soldes », vérification des 512x contre les relevés,
+   solde par compte du bilan, « Utiliser ces soldes au <début de la saison> », vérification des 512x contre les relevés,
    différence dans 110. Clôture (Bilan › Documents de l'AG, Complet) : résultat dans 110, soldes des
    comptes de bilan reportés sur la saison suivante, saison verrouillée (rattachement et caisse
    refusés tant qu'elle n'est pas rouverte ; « Rouvrir » garde la trace). Reste : lecture de la
