@@ -496,12 +496,12 @@ function NoteModal({ note, nature, onClose, onFait }) {
     )
 
   return (
-    <Modal title={note ? note.titre || qui(note) : genre === 'achat' ? 'Nouvel achat' : 'Nouveaux honoraires'} onClose={onClose} footer={footer}>
+    <Modal title={note ? (note.nature === 'achat' ? 'Achat' : note.titre) : genre === 'achat' ? 'Nouvel achat' : 'Nouveaux honoraires'} onClose={onClose} footer={footer}>
       {note && (
         <div className="nf-entete-note">
           <span>
             {qui(note)}
-            {note.personne?.role ? <span className="muted"> ({note.personne.role})</span> : null}
+            {note.nature !== 'achat' && note.personne?.role ? <span className="muted"> ({note.personne.role})</span> : null}
           </span>
           <BadgeEtat note={note} />
         </div>

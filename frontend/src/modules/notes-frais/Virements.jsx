@@ -120,7 +120,7 @@ export default function Virements({ onCompteur }) {
                   <span className="nf-ligne__corps">
                     <span className="nf-ligne__titre">{qui(x)}</span>
                     <span className="muted">
-                      {x.titre}
+                      {x.nature === 'achat' ? x.depenses[0]?.description || 'Facture' : x.titre}
                       {x.statut === 'preparee' && x.payeur ? ` · chez ${x.payeur.nom}` : ''}
                       {x.statut !== 'remboursee' && !x.rib ? ' · RIB à demander' : ''}
                       {x.paiement_propose ? ' · vu sur le compte' : ''}
@@ -190,7 +190,7 @@ function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onPaye,
         <>
           <p>Dans l’appli de la banque, Virement, recopiez :</p>
           <Copier label="Bénéficiaire" valeur={v.beneficiaire} />
-          <Copier label="IBAN" valeur={v.rib.iban} />
+          <Copier label="IBAN" valeur={v.rib.iban} affiche={v.rib.iban.replace(/(.{4})/g, '$1 ').trim()} />
           <Copier label="Montant" valeur={api.versTexteMontant(v.total_centimes)} />
           <Copier label="Libellé" valeur={v.libelle_virement} />
           <button type="button" className="btn btn--link nf-retour" onClick={() => setChangerRib(true)}>
@@ -230,7 +230,7 @@ function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onPaye,
   )
 }
 
-function Copier({ label, valeur }) {
+function Copier({ label, valeur, affiche = valeur }) {
   const [copie, setCopie] = useState(false)
   async function copier() {
     try {
@@ -244,7 +244,7 @@ function Copier({ label, valeur }) {
     <div className="nf-ligne nf-vir-copier">
       <span className="nf-ligne__corps">
         <span className="muted">{label}</span>
-        <span className="nf-vir-valeur">{valeur}</span>
+        <span className="nf-vir-valeur">{affiche}</span>
       </span>
       <button type="button" className={copie ? 'btn btn--secondary nf-vir-copie' : 'btn btn--secondary'} onClick={copier}>
         {copie ? 'Copié' : 'Copier'}
