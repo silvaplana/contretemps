@@ -624,7 +624,8 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    banque) ; puces Sans compte / Sans pièce ; la pièce d'une ligne = la dépense payée par cette
    opération (`nf_notes.bank_operation_id`) ; puces À rattacher (lignes sans compte) et Ventes
    (recettes) de Pièces ; caisse avec retrait au distributeur = virement interne ; niveau Simple /
-   Complet dans Comptes › ⋯ › Plan comptable (pas encore dans Personnalisation). Reste : remise de
+   Complet dans Comptes › ⋯ › Plan comptable et, depuis le 29 octobre, sur la ligne Financier
+   d'Admin › École › Personnalisation › Fonctionnalités (« Passer en Complet »). Reste : remise de
    chèques avec une sous-ligne par chèque rapprochée d'une famille, pièce choisie dans Docs ou
    photographiée depuis la ligne de Comptes, pièce sur une ligne de caisse.
 1 bis. Virements (§8.3 bis) : puce, quatre états, aide au virement, RIB, Qui paie, notification.
@@ -680,8 +681,7 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    comptes de bilan reportés sur la saison suivante, saison verrouillée (rattachement et caisse
    refusés tant qu'elle n'est pas rouverte ; « Rouvrir » garde la trace). Reste : lecture de la
    Balance PDF de l'an dernier pour préremplir, pièces « pas encore payées » dans 401 (elles restent
-   dans « Fournisseurs à payer » de la Synthèse), écritures OD de régularisation, niveau dans
-   Personnalisation.
+   dans « Fournisseurs à payer » de la Synthèse), écritures OD de régularisation.
 
 À demander à la trésorière (vendredi 31 octobre) : son logiciel et si elle veut un export vers
 lui ; si elle confirme elle-même dans l'appli (compte Trésorier) ; son plan comptable 2025-26 ;
