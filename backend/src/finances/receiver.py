@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .accounting import Accounting, AccountingError
+from .ag_documents import AgDocuments
 from .assemblies import PPTX, AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .bank import Bank, BankError
 from .exports import to_pdf, to_xlsx
@@ -166,6 +167,7 @@ class FinancesReceiver:
         bank: Bank | None = None,
         org_url: Callable[[Session, int | None], str] | None = None,
         accounting: Accounting | None = None,
+        ag_documents: AgDocuments | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
@@ -182,6 +184,7 @@ class FinancesReceiver:
         # revenir après la banque.
         self.org_url = org_url
         self.accounting = accounting
+        self.ag_documents = ag_documents
         self._register_routes()
         if accounting is not None:
             self._register_accounting_routes()
@@ -189,6 +192,8 @@ class FinancesReceiver:
             self._register_bank_routes()
         if reports is not None:
             self._register_report_routes()
+        if reports is not None and ag_documents is not None:
+            self._register_ag_document_routes()
         if assemblies is not None:
             self._register_assembly_routes()
         if forecasts is not None:
@@ -431,6 +436,40 @@ class FinancesReceiver:
                 raise HTTPException(status_code=400, detail="Format inconnu (xlsx ou pdf)")
             name = f"bilan-{report['result']['seasonName']}-{report['id']}.{format}"
             return Response(content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    def _register_ag_document_routes(self) -> None:
+        """Documents de l'AG sous un bilan (ag_documents.py, spec §8.6)."""
+        app, reports, documents = self.app, self.reports, self.ag_documents
+        db_dep = Depends(get_db)
+        member_dep = Depends(self.current_member)
+
+        def season_of(db: Session, member: Member, report_id: int) -> Season:
+            try:
+                report = reports.get(db, member, report_id)
+            except (ReportNotFoundError, PermissionError) as error:
+                raise _http(error) from error
+            season = next((s for s in self.seasons(db, member.org_id) if s.id == report["seasonId"]), None)
+            if season is None:
+                raise HTTPException(status_code=404, detail="Saison inconnue")
+            return season
+
+        @app.get("/finances/reports/{report_id}/documents")
+        def list_documents(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les documents possibles au niveau de l'organisation, et la
+            Synthèse à l'écran."""
+            season = season_of(db, member, report_id)
+            level = documents.accounting.level(db, member.org_id)
+            return {"level": level, "documents": documents.kinds(level), "synthese": documents.synthese(db, member, season)}
+
+        @app.get("/finances/reports/{report_id}/documents/{kind}")
+        def download_document(report_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> Response:
+            """Un document produit (xlsx ou pdf), aussi rangé dans Docs › Financier › AG."""
+            season = season_of(db, member, report_id)
+            try:
+                content, name, media = documents.produce(db, member, season, kind)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
 
     def _register_assembly_routes(self) -> None:
         """Routes du sous-module Assemblée générale (/finances/assemblies)."""

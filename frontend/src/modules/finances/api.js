@@ -125,3 +125,9 @@ export const ventiler = (id, lines) => appel(`/operations/${id}/accounts`, json(
 export const caisse = () => appel('/cash')
 export const ajouterLigneCaisse = (donnees) => appel('/cash', json('POST', donnees))
 export const supprimerLigneCaisse = (id) => appel(`/cash/${id}`, { method: 'DELETE' })
+
+// --- Documents de l'AG (spec §8.6), sous un bilan ---
+
+// { level, documents: [{ id, title, format, level }], synthese: {...} }.
+export const documentsAG = (reportId) => appel(`/reports/${reportId}/documents`)
+export const urlDocumentAG = (reportId, kind) => `${BASE}/reports/${reportId}/documents/${kind}`

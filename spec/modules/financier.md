@@ -633,6 +633,17 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    cette note » pour un achat, virement sans pièce, la pièce visible sur la ligne de Comptes (§8.4),
    la clé d'accès pour le RIB.
 2. Documents de l'AG : Synthèse, Grand livre, Balance, Honoraires par prof ; Bilan par compte.
+   **Codée le 29 octobre 2026** (`finances/ag_documents.py`, bloc `compta/DocumentsAG.jsx` sous un
+   bilan, routes `GET /finances/reports/{id}/documents` et `…/documents/{synthese|balance|grand-livre|honoraires}`) :
+   grand livre en mémoire depuis les lignes de banque (compte confirmé contre 512x, une ligne sans
+   compte va dans « Dépenses / Recettes à classer ») et la caisse (530 ; un retrait = banque → caisse),
+   soldes de départ de la trésorerie repris dans 110 « Report à nouveau » pour que la Balance soit
+   équilibrée ; Synthèse par classe (60, 61…), trésorerie, fournisseurs à payer (dépenses validées pas
+   encore payées), un bloc par événement ; Balance et Grand livre en PDF ; Honoraires par prof et par
+   mois (notes d'honoraires payées) en Excel ; chaque fichier produit est rangé dans Docs › Financier ›
+   AG (saison en cours, remplacé à chaque production). Le Bilan additionne par compte confirmé, l'IA ne
+   classe plus que les lignes sans compte. Reste : badge Brouillon / Validé / Officiel sur les fichiers,
+   dossier de la saison du bilan plutôt que la saison en cours, écritures de tiers (étape 4).
 3. Rapport financier (gabarit Word du modèle, texte par le modèle, chiffres par l'appli).
 4. Complet : écritures, soldes de départ, lettrage, clôture.
 

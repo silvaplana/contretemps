@@ -8,6 +8,7 @@ Développé dans Contretemps pour devenir tel quel un module d'AppBase, comme
 """
 
 from .accounting import Accounting, AccountingError
+from .ag_documents import AgDocuments, AgPorts
 from .assemblies import AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .forecasts import ForecastError, ForecastNotFoundError, Forecasts
 from .models import FinAccount, FinAssembly, FinAssemblyFile, FinForecast, FinOperation, FinReport, FinStatement
@@ -20,6 +21,8 @@ from .service import AccountNotFoundError, Finances
 __all__ = [
     "Accounting",
     "AccountingError",
+    "AgDocuments",
+    "AgPorts",
     "AccountNotFoundError",
     "AssemblyError",
     "AssemblyNotFoundError",

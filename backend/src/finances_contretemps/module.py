@@ -6,14 +6,24 @@ import os
 from pathlib import Path
 
 from db import SessionLocal
-from finances import Accounting, Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
+from finances import Accounting, AgDocuments, AgPorts, Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
 from finances.bank import Bank
 from finances.enablebanking import EnableBankingClient
 from registry import Module, Right
 from securite.chiffrement import chiffrer, dechiffrer
 
 from .actions import actions
-from .adapter import FINANCES_ACCESS, adresse_ecole, membre_appelant, pieces_des_operations, saisons_de_l_ecole
+from .adapter import (
+    FINANCES_ACCESS,
+    adresse_ecole,
+    honoraires_payes,
+    membre_appelant,
+    nom_ecole,
+    pieces_des_operations,
+    pieces_a_payer,
+    ranger_dans_docs,
+    saisons_de_l_ecole,
+)
 
 
 def _client_bancaire() -> EnableBankingClient | None:
@@ -67,6 +77,19 @@ def mount(app, core) -> None:
         session_factory=SessionLocal,
         note_cost=note_cost("previsionnel"),
     )
+    # Documents de l'AG (spec §8.6) : calculés depuis les lignes, rangés dans
+    # Docs › Financier › AG par le module documents.
+    finances_ag_documents = AgDocuments(
+        ledger=finances_client.get_ledger,
+        accounting=finances_accounting,
+        seasons=saisons_de_l_ecole,
+        ports=AgPorts(
+            unpaid=pieces_a_payer,
+            fees=honoraires_payes,
+            store=ranger_dans_docs(core.documents_client),
+            org_name=nom_ecole,
+        ),
+    )
     finances_bank = Bank(client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer)
     FinancesReceiver(
         client=finances_client,
@@ -79,8 +102,10 @@ def mount(app, core) -> None:
         bank=finances_bank,
         org_url=adresse_ecole,
         accounting=finances_accounting,
+        ag_documents=finances_ag_documents,
     )
     core.finances_client = finances_client
+    core.finances_ag_documents = finances_ag_documents
     core.finances_accounting = finances_accounting
     core.finances_bank = finances_bank
     core.finances_reports = finances_reports
@@ -89,7 +114,7 @@ def mount(app, core) -> None:
 
 
 MODULE = Module(
-    key="finances", label="Financier", mount=mount, requires=("seasons",),
+    key="finances", label="Financier", mount=mount, requires=("seasons", "documents", "expense_notes"),
     rights=(Right(FINANCES_ACCESS, "Accès au Financier"),),
     actions=lambda core: actions(
         core.finances_reports, core.finances_assemblies, core.finances_forecasts,

@@ -2,8 +2,9 @@
 comptes (voir Finances.get_ledger).
 
 Calcul exact, au centime, sans IA : recettes et depenses nettes par
-categorie (categories de Comptes, voir categories.py, ou
-celles choisies par l'IA pour les operations "Autres"), detail par mois, et
+categorie (compte du plan confirme sur la ligne, sinon categorie de
+Comptes, voir categories.py, ou celle choisie par l'IA pour les operations
+"Autres"), detail par mois, et
 la verification demandee par le tresorier : solde au debut + recettes -
 depenses = solde reel a la fin. Les virements entre les comptes de l'organisation ne
 sont ni des recettes ni des depenses.
@@ -53,6 +54,9 @@ def compute_report(ledger: dict, start: str, end: str, classifications: dict[int
     """
     classifications = classifications or {}
     rows = list(reversed(ledger["rows"]))  # la plus ancienne en premier
+    # Compte du plan confirmé sur la ligne (spec §8.6) : il prime sur la
+    # catégorie par mots-clés ; l'IA ne classe que ce qui n'en a pas.
+    accounts = {r["id"]: r["account"]["label"] for r in rows if r.get("account")}
     as_of = max((a["asOf"] for a in ledger["accounts"] if a.get("asOf")), default=None)
     cutoff = min(end, as_of) if as_of else end
 
@@ -86,7 +90,8 @@ def compute_report(ledger: dict, start: str, end: str, classifications: dict[int
     by_month: dict[str, dict[str, int]] = {}
     detailed = []
     for r in operations:
-        category = classifications.get(r["id"], r["category"])
+        bank_category = accounts.get(r["id"], r["category"])
+        category = classifications.get(r["id"], bank_category)
         amount = _cents(r["amount"])
         net[category] = net.get(category, 0) + amount
         month = by_month.setdefault(r["date"][:7], {})
@@ -99,7 +104,7 @@ def compute_report(ledger: dict, start: str, end: str, classifications: dict[int
                 "details": r["details"],
                 "amount": r["amount"],
                 "category": category,
-                "bankCategory": r["category"],
+                "bankCategory": bank_category,
                 "provisional": r.get("provisional", False),
             }
         )
