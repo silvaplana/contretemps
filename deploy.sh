@@ -42,8 +42,24 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
       echo "==> Effacement des notes de frais de l'école $ecole"
       docker compose exec -T backend python -m app.vider_notes_frais --ecole "$ecole" --nom "$nom"
       ;;
+    plan-comptable-contretemps)
+      # Comptes de la Balance 24-25 de la trésorière (spec financier.md §8.2) ;
+      # « essai » en 3e mot : affiche sans écrire.
+      ecole="${demande[1]:-}"
+      if ! [[ "$ecole" =~ ^[0-9]+$ ]]; then
+        echo "Numéro d'école invalide : rien n'a été fait." >&2
+        exit 2
+      fi
+      if [ "${demande[2]:-}" = "essai" ]; then
+        echo "==> Plan comptable de Contretemps pour l'école $ecole (essai à blanc)"
+        docker compose exec -T backend python -m app.plan_comptable_contretemps --ecole "$ecole" --essai
+      else
+        echo "==> Plan comptable de Contretemps pour l'école $ecole"
+        docker compose exec -T backend python -m app.plan_comptable_contretemps --ecole "$ecole"
+      fi
+      ;;
     *)
-      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider." >&2
+      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps." >&2
       exit 2
       ;;
   esac
