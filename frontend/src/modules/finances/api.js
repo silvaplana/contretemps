@@ -135,3 +135,9 @@ export const urlDocumentAG = (reportId, kind) => `${BASE}/reports/${reportId}/do
 export const rapportFinancier = (reportId) => appel(`/reports/${reportId}/rapport`)
 export const redigerRapport = (reportId, donnees) => appel(`/reports/${reportId}/rapport`, json('POST', donnees))
 export const urlRapportFinancier = (reportId, format) => `${BASE}/reports/${reportId}/rapport/download?format=${format}`
+// Niveau Complet (financier.md §8.7) : soldes de départ, clôture, écritures d'une opération.
+export const soldesDepart = (seasonId) => appel(`/opening-balances/${seasonId}`)
+export const enregistrerSoldesDepart = (seasonId, accounts) => appel(`/opening-balances/${seasonId}`, json('PUT', { accounts }))
+export const cloturer = (reportId) => appel(`/reports/${reportId}/close`, { method: 'POST' })
+export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { method: 'DELETE' })
+export const ecritures = (operationId) => appel(`/operations/${operationId}/entries`)

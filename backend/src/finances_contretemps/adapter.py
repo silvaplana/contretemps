@@ -83,11 +83,23 @@ def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
     (`nf_notes.bank_operation_id`)."""
     from notes_frais.models import NoteFrais
 
-    notes = db.scalars(
-        select(NoteFrais).where(NoteFrais.org_id == ecole_id, NoteFrais.bank_operation_id.is_not(None))
+    notes = list(
+        db.scalars(select(NoteFrais).where(NoteFrais.org_id == ecole_id, NoteFrais.bank_operation_id.is_not(None)))
     )
+    noms = {}
+    with toutes_saisons(db):
+        for compte in db.scalars(select(Compte).where(Compte.id.in_({n.person_id for n in notes}))):
+            noms[compte.id] = nom_affiche(compte)
     return {
-        n.bank_operation_id: {"id": n.id, "title": n.supplier or n.titre, "kind": _NATURES.get(n.nature, n.nature)}
+        n.bank_operation_id: {
+            "id": n.id,
+            "title": n.supplier or n.titre,
+            "kind": _NATURES.get(n.nature, n.nature),
+            "nature": n.nature,
+            # Date de la facture (première dépense), sinon de l'envoi : l'achat du jour de la facture (§8.7).
+            "date": min((d.date for d in n.depenses), default=n.envoyee_le.date()).isoformat(),
+            "person": noms.get(n.person_id, ""),
+        }
         for n in notes
     }
 

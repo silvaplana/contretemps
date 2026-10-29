@@ -7,8 +7,16 @@ accounting.py) et la caisse, pour la saison d'un bilan. Jamais un chiffre
 Comptabilité de trésorerie : chaque ligne de banque est une écriture à deux
 lignes (compte du plan contre 512x la banque, 530 la caisse) ; les soldes de
 départ des comptes de trésorerie sont repris dans 110 « Report à nouveau »
-pour que la Balance soit équilibrée. Les écritures de la partie double
-(401, 411, lettrage, §8.7) viennent à l'étape 4.
+pour que la Balance soit équilibrée.
+
+Niveau Complet (partie double, §8.7) : une ligne de banque qui a une pièce
+passe par le tiers (achat du jour de la facture 6xx contre 401, honoraires et
+notes de frais contre 467x ; paiement 401 contre 512x, même lettre) ; les
+soldes de départ viennent de la saisie du trésorier (fin_opening_balances)
+ou de la clôture de la saison précédente (fin_closings), sinon de la
+trésorerie des relevés. Les écritures ne sont pas stockées : elles sont
+recalculées depuis les lignes de banque, de caisse et les pièces, donc
+toujours justes ; la clôture fige le résultat et les soldes reportés.
 
 Une ligne sans compte confirmé va dans « À classer » (dépense ou recette
 selon le sens) plutôt que d'être inventée.
@@ -21,7 +29,7 @@ import io
 from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime, timezone
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -31,13 +39,16 @@ from sqlalchemy.orm import Session
 
 from .accounting import Accounting
 from .exports import _CSS, _eur, _fr, html_to_pdf
-from .models import EXPENSE, INCOME, FinCashLine
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinCashLine, FinClosing, FinOpeningBalance
 from .ports import Member, Season
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
 BANK_BASE = "512"
 CASH = "530"
 CARRY_FORWARD = "110"
+# Compte de tiers par nature de pièce (préfixe du plan associatif).
+THIRD_PARTY_PREFIX = {"achat": "401", "honoraires": "467", "frais": "467"}
+THIRD_PARTY_JOURNAL = {"achat": "AC", "honoraires": "HO", "frais": "NF"}
 UNCLASSIFIED = {EXPENSE: ("65900", "Dépenses à classer"), INCOME: ("75900", "Recettes à classer")}
 
 CLASS_LABELS = {
@@ -89,6 +100,8 @@ class Line:
     piece: str
     debit: int = 0
     credit: int = 0
+    letter: str = ""
+    operation_id: int | None = None
 
 
 @dataclass
@@ -128,9 +141,10 @@ class AgDocuments:
 
     # ----- le grand livre en mémoire -----
 
-    def books(self, db: Session, member: Member, season: Season) -> dict[str, Account]:
+    def books(self, db: Session, member: Member, season: Season, full: bool | None = None) -> dict[str, Account]:
         """Tous les comptes mouvementés sur la saison, avec leurs lignes, les
-        soldes de départ de la trésorerie et le report à nouveau."""
+        soldes de départ et le report à nouveau. full : partie double (par
+        défaut selon le niveau de l'organisation)."""
         ledger = self.ledger(db, member)
         rows = [r for r in reversed(ledger["rows"]) if season.start_date <= r["date"] <= season.end_date]
         # Arrêté au dernier jour connu des comptes (jamais avant le début).
@@ -156,9 +170,20 @@ class AgDocuments:
                 return (-cents if r["accountId"] == aid else 0) + (cents if r["transfer"]["to"] == name else 0)
             return cents if r["accountId"] == aid else 0
 
+        if full is None:
+            full = self.accounting.level(db, member.org_id) == FULL
         opening_total = 0
         all_rows = list(reversed(ledger["rows"]))
-        for aid, (number, name) in bank_numbers.items():
+        entered = self._opening_lines(db, member.org_id, season) if full else None
+        if entered is not None:
+            for number, label, nature, balance in entered:
+                account(number, label, nature).lines.append(
+                    Line(season.start_date, "AN", "Solde au début de la saison", "", max(balance, 0), max(-balance, 0))
+                )
+            bank_numbers_for_opening = {}
+        else:
+            bank_numbers_for_opening = bank_numbers
+        for aid, (number, name) in bank_numbers_for_opening.items():
             known = [r for r in all_rows if r["balances"].get(str(aid)) is not None]
             before = [r for r in known if r["date"] < season.start_date]
             if before:
@@ -174,7 +199,7 @@ class AgDocuments:
             opening_total += opening_cents
         cash_before = sum(
             l.amount for l in db.scalars(select(FinCashLine).where(FinCashLine.org_id == member.org_id, FinCashLine.date < date.fromisoformat(season.start_date)))
-        )
+        ) if entered is None else 0
         if cash_before:
             account(CASH, "Caisse", "caisse").lines.append(Line(season.start_date, "AN", "Solde au début de la saison", "", max(cash_before, 0), max(-cash_before, 0)))
             opening_total += cash_before
@@ -196,8 +221,11 @@ class AgDocuments:
         )
         withdrawals = {l.transfer_operation_id for l in cash_lines if l.transfer_operation_id is not None}
 
-        # Lignes de banque : compte du plan (ou à classer) contre 512x.
+        # Lignes de banque : compte du plan (ou à classer) contre 512x ; en
+        # Complet, une ligne avec pièce passe par le tiers, avec une lettre.
         confirmed = self.accounting._lines(db, member.org_id)
+        third_parties = [a for a in chart.values() if a.nature == THIRD_PARTY and a.active] if full else []
+        letters: dict[str, int] = defaultdict(int)
         for r in rows:
             cents = round(r["amount"] * 100)
             if r.get("transfer"):
@@ -211,19 +239,35 @@ class AgDocuments:
             bank_number, bank_name = bank_numbers[r["accountId"]]
             journal = f"BQ{bank_number[-1]}"
             piece = r["piece"]["title"] if r.get("piece") else ""
-            account(bank_number, bank_name, "banque").lines.append(Line(r["date"], journal, r["label"], piece, max(cents, 0), max(-cents, 0)))
+            account(bank_number, bank_name, "banque").lines.append(
+                Line(r["date"], journal, r["label"], piece, max(cents, 0), max(-cents, 0), operation_id=r["id"])
+            )
             if r["id"] in withdrawals:
-                account(CASH, "Caisse", "caisse").lines.append(Line(r["date"], journal, r["label"], "", -cents, 0))
+                account(CASH, "Caisse", "caisse").lines.append(Line(r["date"], journal, r["label"], "", -cents, 0, operation_id=r["id"]))
                 continue
             splits = confirmed.get(r["id"])
             parts = [(chart[l.account_id], l.amount) for l in splits] if splits else [(None, cents)]
+            third = _third_party(third_parties, r.get("piece")) if cents < 0 and splits else None
+            if third is not None:
+                # Achat du jour de la facture : 6xx contre le tiers ; paiement : tiers contre 512x.
+                letters[third.number] += 1
+                letter = _letter(letters[third.number])
+                day = max(r["piece"]["date"], season.start_date) if r["piece"].get("date") else r["date"]
+                buy = THIRD_PARTY_JOURNAL[r["piece"]["nature"]]
+                tiers = account(third.number, third.label, THIRD_PARTY)
+                tiers.lines.append(Line(day, buy, r["piece"]["title"], piece, 0, -cents, letter, r["id"]))
+                tiers.lines.append(Line(r["date"], journal, r["label"], piece, -cents, 0, letter, r["id"]))
+                for acc_row, amount in parts:
+                    acc = account(acc_row.number, acc_row.label, acc_row.nature, acc_row.event)
+                    acc.lines.append(Line(day, buy, r["piece"]["title"], piece, -amount, 0, operation_id=r["id"]))
+                continue
             for acc_row, amount in parts:
                 if acc_row is None:
                     number, label = UNCLASSIFIED[EXPENSE if amount < 0 else INCOME]
                     acc = account(number, label, EXPENSE if amount < 0 else INCOME)
                 else:
                     acc = account(acc_row.number, acc_row.label, acc_row.nature, acc_row.event)
-                acc.lines.append(Line(r["date"], journal, r["label"], piece, max(-amount, 0), max(amount, 0)))
+                acc.lines.append(Line(r["date"], journal, r["label"], piece, max(-amount, 0), max(amount, 0), operation_id=r["id"]))
 
         # Caisse : compte du plan contre 530 (un retrait est déjà passé par
         # la banque ci-dessus).
@@ -243,6 +287,162 @@ class AgDocuments:
             acc.lines.sort(key=lambda l: l.date)
         books["_cutoff"] = cutoff  # type: ignore[assignment]
         return books
+
+    # ----- soldes de départ et clôture (Complet, §8.7) -----
+
+    def _previous(self, db: Session, org_id: int, season: Season) -> Season | None:
+        seasons = sorted(self.seasons(db, org_id), key=lambda s: s.start_date)
+        index = next((i for i, s in enumerate(seasons) if s.id == season.id), None)
+        return seasons[index - 1] if index else None
+
+    def closing(self, db: Session, org_id: int, season_id: int) -> FinClosing | None:
+        """La clôture en vigueur d'une saison (pas rouverte)."""
+        return db.scalar(
+            select(FinClosing).where(FinClosing.org_id == org_id, FinClosing.season_id == season_id, FinClosing.reopened_at.is_(None))
+        )
+
+    def _opening_lines(self, db: Session, org_id: int, season: Season) -> list[tuple[str, str, str, int]] | None:
+        """Les soldes de départ (numéro, libellé, nature, solde signé) :
+        saisis par le trésorier, sinon reportés de la clôture précédente,
+        sinon None (trésorerie des relevés). Toujours équilibrés par 110."""
+        entered = list(
+            db.scalars(select(FinOpeningBalance).where(FinOpeningBalance.org_id == org_id, FinOpeningBalance.season_id == season.id))
+        )
+        if entered:
+            lines = [(b.number, b.label, _nature_of(b.number, db, self.accounting, org_id), b.balance) for b in entered]
+        else:
+            previous = self._previous(db, org_id, season)
+            closing = self.closing(db, org_id, previous.id) if previous else None
+            if closing is None:
+                return None
+            lines = [(b["number"], b["label"], b["nature"], b["balance"]) for b in closing.balances]
+        lines = [l for l in lines if l[3]]
+        gap = sum(l[3] for l in lines)
+        if gap:
+            lines = [l for l in lines if l[0] != CARRY_FORWARD]
+            carried = next((l[3] for l in lines if l[0] == CARRY_FORWARD), 0)
+            lines.append((CARRY_FORWARD, "Report à nouveau", "report", carried - gap))
+        return lines
+
+    def opening(self, db: Session, member: Member, season: Season) -> dict:
+        """Les soldes de départ à l'écran : d'où ils viennent, un solde par
+        compte du bilan (en euros), et la vérification des 512x contre les
+        relevés."""
+        entered = self._opening_lines(db, member.org_id, season)
+        source = "saisie" if db.scalar(
+            select(FinOpeningBalance.id).where(FinOpeningBalance.org_id == member.org_id, FinOpeningBalance.season_id == season.id)
+        ) else ("cloture" if entered is not None else "releves")
+        # Trésorerie des relevés au début de la saison : sans soldes saisis,
+        # c'est ce que books() prend ; sinon la référence de la vérification.
+        statements = self._statement_opening(db, member, season)
+        if entered is None:
+            lines = [(n, label, nature, balance) for n, (label, nature, balance) in statements.items()]
+            total = sum(l[3] for l in lines)
+            if total:
+                lines.append((CARRY_FORWARD, "Report à nouveau", "report", -total))
+        else:
+            lines = entered
+        by_number = {l[0]: l for l in lines}
+        for a in self.accounting.accounts(db, member.org_id, active_only=True):
+            if a.nature == THIRD_PARTY or a.number.startswith("47"):
+                by_number.setdefault(a.number, (a.number, a.label, a.nature, 0))
+        for number, (label, nature, _) in statements.items():
+            by_number.setdefault(number, (number, label, nature, 0))
+        by_number.setdefault(CARRY_FORWARD, (CARRY_FORWARD, "Report à nouveau", "report", 0))
+        accounts = [
+            {"number": n, "label": label, "nature": nature, "balance": balance / 100}
+            for n, label, nature, balance in sorted(by_number.values(), key=lambda l: l[0])
+        ]
+        check = [
+            {"number": n, "label": label, "statements": balance / 100, "entered": by_number.get(n, (0, 0, 0, 0))[3] / 100}
+            for n, (label, _, balance) in statements.items()
+        ]
+        return {"season": season.name, "source": source, "accounts": accounts, "bankCheck": check, "closed": self.closing(db, member.org_id, season.id) is not None}
+
+    def _statement_opening(self, db: Session, member: Member, season: Season) -> dict[str, tuple[str, str, int]]:
+        """Trésorerie des relevés et de la caisse à la veille de la saison :
+        {numéro: (libellé, nature, centimes)}, comme books() sans saisie."""
+        books = self.books(db, member, season, full=False)
+        out = {}
+        for a in books.values():
+            if isinstance(a, Account) and a.nature in ("banque", "caisse"):
+                opening = sum(l.debit - l.credit for l in a.lines if l.journal == "AN")
+                out[a.number] = (a.label, a.nature, opening)
+        return out
+
+    def set_opening(self, db: Session, member: Member, season: Season, accounts: list[dict]) -> dict:
+        """« Reprendre ces soldes » : les soldes de départ saisis (euros,
+        positif = débiteur) ; la différence va dans 110."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        if self.closing(db, member.org_id, season.id) is not None:
+            raise ValueError("Saison clôturée : rouvrez-la d'abord.")
+        for old in db.scalars(select(FinOpeningBalance).where(FinOpeningBalance.org_id == member.org_id, FinOpeningBalance.season_id == season.id)):
+            db.delete(old)
+        for a in accounts:
+            number = str(a.get("number", "")).strip()
+            balance = round(float(a.get("balance", 0) or 0) * 100)
+            if not number or not balance:
+                continue
+            db.add(FinOpeningBalance(org_id=member.org_id, season_id=season.id, number=number[:10], label=str(a.get("label", ""))[:80], balance=balance, created_by=member.person_id))
+        db.commit()
+        return self.opening(db, member, season)
+
+    def close(self, db: Session, member: Member, season: Season) -> dict:
+        """Clôture (§8.7) : le résultat va dans 110, les soldes des comptes de
+        bilan sont reportés sur la saison suivante, la saison est verrouillée."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        if self.accounting.level(db, member.org_id) != FULL:
+            raise ValueError("La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).")
+        if self.closing(db, member.org_id, season.id) is not None:
+            raise ValueError("Saison déjà clôturée.")
+        books = self.books(db, member, season)
+        books.pop("_cutoff")
+        result = sum(a.balance for a in books.values() if a.nature in (EXPENSE, INCOME))
+        balances = {a.number: {"number": a.number, "label": a.label, "nature": a.nature, "balance": a.balance} for a in books.values() if a.nature not in (EXPENSE, INCOME)}
+        carry = balances.setdefault(CARRY_FORWARD, {"number": CARRY_FORWARD, "label": "Report à nouveau", "nature": "report", "balance": 0})
+        carry["balance"] += result
+        db.add(
+            FinClosing(
+                org_id=member.org_id, season_id=season.id, start_date=date.fromisoformat(season.start_date), end_date=date.fromisoformat(season.end_date),
+                result=result, balances=[b for b in sorted(balances.values(), key=lambda b: b["number"]) if b["balance"]], closed_by=member.person_id,
+            )
+        )
+        db.commit()
+        return self.closing_status(db, member.org_id, season)
+
+    def reopen(self, db: Session, member: Member, season: Season) -> dict:
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        closing = self.closing(db, member.org_id, season.id)
+        if closing is None:
+            raise ValueError("Saison pas clôturée.")
+        closing.reopened_by, closing.reopened_at = member.person_id, datetime.now(timezone.utc).replace(tzinfo=None)
+        db.commit()
+        return self.closing_status(db, member.org_id, season)
+
+    def closing_status(self, db: Session, org_id: int, season: Season) -> dict | None:
+        closing = self.closing(db, org_id, season.id)
+        if closing is None:
+            return None
+        return {"closedAt": closing.closed_at.isoformat(timespec="seconds"), "result": closing.result / 100}
+
+    def operation_entries(self, db: Session, member: Member, operation_id: int, day: str) -> list[dict]:
+        """Les écritures générées pour une opération (fiche, §8.4) : une
+        ligne par compte mouvementé."""
+        season = next((s for s in self.seasons(db, member.org_id) if s.start_date <= day <= s.end_date), None)
+        if season is None:
+            return []
+        books = self.books(db, member, season)
+        books.pop("_cutoff")
+        entries = []
+        for a in sorted(books.values(), key=lambda a: a.number):
+            for l in a.lines:
+                if l.operation_id == operation_id:
+                    entries.append({"date": l.date, "journal": l.journal, "account": f"{a.number} {a.label}", "label": l.label, "debit": l.debit / 100, "credit": l.credit / 100, "letter": l.letter})
+        entries.sort(key=lambda e: (e["date"], e["journal"]))
+        return entries
 
     # ----- Synthèse -----
 
@@ -374,8 +574,9 @@ class AgDocuments:
         result = sum(a.balance for a in books.values() if a.nature in (EXPENSE, INCOME))
         body = (
             f"<h1>{e(org_name)} — Balance {e(season.name)}</h1>"
-            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. Comptabilité de trésorerie : "
-            "chaque ligne de banque et de caisse contre son compte du plan.</p>"
+            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. "
+            + ("Partie double : achats et honoraires par les comptes de tiers, lettrés avec leur paiement." if self.accounting.level(db, member.org_id) == FULL else "Comptabilité de trésorerie : chaque ligne de banque et de caisse contre son compte du plan.")
+            + "</p>"
             "<table><tr><th>Compte</th><th class='l'>Libellé</th><th>Débit</th><th>Crédit</th><th>Solde débiteur</th><th>Solde créditeur</th></tr>"
             + "".join(rows)
             + f"<tr class='total'><td></td><td class='l'>Totaux</td><td>{_c(total_d)}</td><td>{_c(total_c)}</td><td></td><td></td></tr></table>"
@@ -389,7 +590,7 @@ class AgDocuments:
         e = html.escape
         parts = [
             f"<h1>{e(org_name)} — Grand livre {e(season.name)}</h1>",
-            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. Journaux : AN à-nouveaux, BQn banque, CA caisse.</p>",
+            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. Journaux : AN à-nouveaux, BQn banque, CA caisse, AC achats, HO honoraires, NF notes de frais.</p>",
         ]
         total_d = total_c = 0
         for a in sorted(books.values(), key=lambda a: a.number):
@@ -398,15 +599,15 @@ class AgDocuments:
             for l in a.lines:
                 running += l.debit - l.credit
                 lines.append(
-                    f"<tr><td>{_fr(l.date)}</td><td>{e(l.journal)}</td><td class='l'>{e(l.piece)}</td><td class='l'>{e(l.label)}</td>"
+                    f"<tr><td>{_fr(l.date)}</td><td>{e(l.journal)}</td><td class='l'>{e(l.piece)}</td><td class='l'>{e(l.label)}</td><td>{e(l.letter)}</td>"
                     f"<td>{_c(l.debit)}</td><td>{_c(l.credit)}</td><td>{_signed(running)}</td></tr>"
                 )
             total_d, total_c = total_d + a.debit, total_c + a.credit
             parts.append(
                 f"<h2>{e(a.number)} {e(a.label)}</h2><table class='small'>"
-                "<tr><th>Date</th><th>Journal</th><th class='l'>Pièce</th><th class='l'>Libellé</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>"
+                "<tr><th>Date</th><th>Journal</th><th class='l'>Pièce</th><th class='l'>Libellé</th><th>Lettre</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>"
                 + "".join(lines)
-                + f"<tr class='total'><td></td><td></td><td></td><td class='l'>Total du compte</td><td>{_c(a.debit)}</td><td>{_c(a.credit)}</td><td>{_signed(a.balance)}</td></tr></table>"
+                + f"<tr class='total'><td></td><td></td><td></td><td class='l'>Total du compte</td><td></td><td>{_c(a.debit)}</td><td>{_c(a.credit)}</td><td>{_signed(a.balance)}</td></tr></table>"
             )
         parts.append(f"<h2>Total général : débit {_c(total_d)}, crédit {_c(total_c)}</h2>")
         return html_to_pdf("".join(parts), _CSS + " th.l, td.l { text-align: left; }")
@@ -480,6 +681,37 @@ class AgDocuments:
             for key, (title, extension, needed) in KINDS.items()
             if level == "complet" or needed == "simple"
         ]
+
+
+def _third_party(accounts: list, piece: dict | None):
+    """Le compte de tiers d'une pièce (401 pour un achat, 467x pour des
+    honoraires ou une note de frais, celui qui porte le nom de la personne
+    s'il existe), ou None sans pièce ou sans compte de ce genre."""
+    if not piece or piece.get("nature") not in THIRD_PARTY_PREFIX:
+        return None
+    candidates = [a for a in accounts if a.number.startswith(THIRD_PARTY_PREFIX[piece["nature"]])]
+    if not candidates:
+        return None
+    words = [w.lower() for w in str(piece.get("person") or "").split() if len(w) > 2]
+    named = [a for a in candidates if any(w in a.label.lower() for w in words)]
+    return named[0] if named else min(candidates, key=lambda a: (len(a.number), a.number))
+
+
+def _letter(n: int) -> str:
+    """Lettre de lettrage : AAA, AAB, … (n à partir de 1)."""
+    n -= 1
+    return chr(65 + n // 676 % 26) + chr(65 + n // 26 % 26) + chr(65 + n % 26)
+
+
+def _nature_of(number: str, db: Session, accounting: Accounting, org_id: int) -> str:
+    if number.startswith(BANK_BASE):
+        return "banque"
+    if number == CASH:
+        return "caisse"
+    if number == CARRY_FORWARD:
+        return "report"
+    account = next((a for a in accounting.accounts(db, org_id) if a.number == number), None)
+    return account.nature if account is not None else THIRD_PARTY
 
 
 def _c(cents: int) -> str:

@@ -314,3 +314,41 @@ class FinWrittenReport(Base):
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinOpeningBalance(Base):
+    """Soldes de départ d'une saison (spec §8.7), saisis par le trésorier
+    pour la première saison dans l'appli : un solde signé (centimes, positif
+    = débiteur) par compte du bilan (512x, 530, 401, 467x, 471, 110)."""
+
+    __tablename__ = "fin_opening_balances"
+    __table_args__ = (UniqueConstraint("org_id", "season_id", "number"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    number: Mapped[str] = mapped_column(String(10), nullable=False)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    balance: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinClosing(Base):
+    """Clôture d'une saison (spec §8.7) : résultat, soldes reportés sur la
+    saison suivante (JSON [{number, label, balance}], résultat déjà dans
+    110), saison verrouillée tant que reopened_at est vide (trace gardée)."""
+
+    __tablename__ = "fin_closings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    end_date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    result: Mapped[int] = mapped_column(Integer, nullable=False)
+    balances: Mapped[list] = mapped_column(JSON, nullable=False)
+    closed_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    closed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    reopened_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reopened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

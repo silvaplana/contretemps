@@ -26,6 +26,7 @@ from .models import (
     FinAccount,
     FinCashLine,
     FinChartAccount,
+    FinClosing,
     FinOperation,
     FinOperationAccount,
     FinSettings,
@@ -194,6 +195,18 @@ class Accounting:
 
     # ----- compte sur chaque ligne -----
 
+    def check_open(self, db: Session, org_id: int, day: dt.date) -> None:
+        """Refuse un changement daté dans une saison clôturée (§8.7) tant
+        qu'elle n'est pas rouverte."""
+        closing = db.scalar(
+            select(FinClosing).where(
+                FinClosing.org_id == org_id, FinClosing.reopened_at.is_(None),
+                FinClosing.start_date <= day, FinClosing.end_date >= day,
+            )
+        )
+        if closing is not None:
+            raise AccountingError("Saison clôturée : rouvrez-la (Bilan › Documents de l'AG) pour changer cette ligne.")
+
     def _operation(self, db: Session, org_id: int, operation_id: int) -> FinOperation:
         row = db.execute(
             select(FinOperation).join(FinAccount).where(FinOperation.id == operation_id, FinAccount.org_id == org_id)
@@ -305,6 +318,7 @@ class Accounting:
         op = self._operation(db, member.org_id, operation_id)
         if op.transfer_id is not None:
             raise AccountingError("Un virement entre vos comptes n'a pas de compte du plan.")
+        self.check_open(db, member.org_id, op.date)
         by_id = {a.id: a for a in self.accounts(db, member.org_id, active_only=True)}
         cleaned = []
         for line in lines:
@@ -372,6 +386,7 @@ class Accounting:
             day = dt.date.fromisoformat(str(data.get("date", "")))
         except ValueError as exc:
             raise AccountingError("Date invalide.") from exc
+        self.check_open(db, member.org_id, day)
         label = str(data.get("label", "")).strip()[:120]
         if not label:
             raise AccountingError("Donnez un libellé à la ligne.")
@@ -411,6 +426,7 @@ class Accounting:
         line = db.get(FinCashLine, line_id)
         if line is None or line.org_id != member.org_id:
             raise LookupError("Ligne inconnue")
+        self.check_open(db, member.org_id, line.date)
         db.delete(line)
         db.commit()
         return self.cash(db, member)

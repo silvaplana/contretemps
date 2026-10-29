@@ -60,6 +60,9 @@ export default function DocumentsAG({ reportId, seasonName }) {
             ))}
           </div>
           <RapportFinancier reportId={reportId} seasonName={seasonName} onErreur={setErreur} />
+          {data.level === 'complet' && (
+            <Cloture reportId={reportId} seasonName={seasonName} closing={data.closing} onChange={(closing) => setData((d) => ({ ...d, closing }))} onErreur={setErreur} />
+          )}
           <p className="muted">
             Additionnés par l’appli depuis les lignes de banque (compte du plan confirmé) et la caisse, du{' '}
             {dateFr(data.synthese.start)} au {dateFr(data.synthese.cutoff)}. Les fichiers vont dans Docs › Financier › AG.
@@ -82,6 +85,36 @@ const SOUS_TITRES = {
   balance: 'totaux débit / crédit et soldes par compte',
   'grand-livre': 'toutes les lignes, par compte, avec la pièce',
   honoraires: 'par professeur et par mois, pour la DAS-2',
+}
+
+// Clôture de la saison (§8.7) : résultat dans 110, soldes reportés sur la
+// saison suivante, plus de rattachement tant qu'elle n'est pas rouverte.
+function Cloture({ reportId, seasonName, closing, onChange, onErreur }) {
+  async function basculer() {
+    if (!closing && !window.confirm(`Clôturer la saison ${seasonName} ? Plus aucune ligne ne pourra changer sans la rouvrir.`)) return
+    try {
+      onChange((closing ? await api.rouvrir(reportId) : await api.cloturer(reportId)).closing)
+    } catch (err) {
+      onErreur(err.message)
+    }
+  }
+  return (
+    <div className="fin-cp-carte">
+      <div className="fin-cp-doc">
+        <span className="fin-cp-t">{closing ? `Saison clôturée le ${dateFr(closing.closedAt.slice(0, 10))}` : 'Clôture de la saison'}</span>
+        <span className="fin-cp-a">
+          <button type="button" className="btn btn--secondary" onClick={basculer}>
+            {closing ? 'Rouvrir' : 'Clôturer'}
+          </button>
+        </span>
+        <span className="fin-cp-s">
+          {closing
+            ? `${closing.result > 0 ? 'Déficit' : 'Excédent'} de ${euros(Math.abs(closing.result))} reporté ; les soldes de départ de la saison suivante en découlent.`
+            : 'après le bilan officiel : le résultat va dans le report à nouveau, la saison est verrouillée'}
+        </span>
+      </div>
+    </div>
+  )
 }
 
 function RapportFinancier({ reportId, seasonName, onErreur }) {

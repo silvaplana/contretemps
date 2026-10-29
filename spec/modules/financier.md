@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.10, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états ; §8.9 : étapes 1, 1 bis, 2 et 3 codées). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.10, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états ; §8.9 : étapes 1 à 4 codées ; §8.7 : écritures recalculées, pas stockées). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -575,11 +575,14 @@ Officiel du bilan ; l'AG (§5) les joint à la convocation.
 
 ### 8.7 Complet : écritures, soldes de départ, clôture
 
-- **Écritures** : table `fin_entries` (organisation, saison, journal AN/OD/AC/HO/NF/VE/BQn/CA,
-  date, pièce, libellé, lettre) et `fin_entry_lines` (écriture, compte, débit, crédit en
-  centimes, opération bancaire ou ligne de caisse d'origine, pièce). Générées par l'appli à la
-  confirmation d'un rattachement ; jamais saisies à la main, sauf les écritures de régularisation
-  OD du trésorier (compte 471, défraiements), avec pièce ou motif.
+- **Écritures** : journaux AN/AC/HO/NF/BQn/CA (date, pièce, libellé, lettre ; compte, débit,
+  crédit en centimes, opération bancaire ou ligne de caisse d'origine). **Décision du 29 octobre
+  2026** : elles ne sont pas stockées (pas de `fin_entries`) mais recalculées à chaque fois depuis
+  les lignes de banque, de caisse, les comptes confirmés et les pièces (`ag_documents.books`) :
+  toujours justes, rien à régénérer en passant de Simple à Complet. Seules la clôture
+  (`fin_closings`) et les soldes de départ (`fin_opening_balances`) sont écrits. Jamais saisies à
+  la main ; les écritures de régularisation OD du trésorier (compte 471, défraiements) restent à
+  faire.
 - **Soldes de départ** (Comptes ⋯ › Soldes de départ) : première saison dans l'appli, repris de
   la Balance de l'an dernier déposée dans Docs (lecture du PDF, vérification à l'écran, « Reprendre
   ces soldes ») ; l'appli vérifie que les soldes 512x égalent les relevés au 31/08. Saisons
@@ -659,6 +662,22 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    gabarit Word de la trésorière tel quel (en-tête, police) plutôt qu'un Word simple, retouche du
    texte à l'écran avant le Word.
 4. Complet : écritures, soldes de départ, lettrage, clôture.
+   **Codée le 29 octobre 2026** (`ag_documents.py`, tables `fin_opening_balances` et `fin_closings`,
+   routes `GET/PUT /finances/opening-balances/{saison}`, `POST/DELETE /finances/reports/{id}/close`,
+   `GET /finances/operations/{id}/entries` ; écrans `compta/SoldesDepart.jsx`, bloc Clôture dans
+   Documents de l'AG, écritures dans la fiche de l'opération) : au niveau Complet, une ligne de banque
+   confirmée qui a une pièce passe par le tiers (achat : 6xx contre 401 le jour de la facture, puis
+   401 contre 512x au paiement ; honoraires et notes de frais : 467x, celui dont le libellé porte le
+   nom de la personne, sinon le plus court), avec une lettre AAA, AAB… commune aux deux lignes ;
+   colonne Lettre du Grand livre. Soldes de départ : Comptes › ⋯ › Soldes de départ, par saison,
+   prérempli par la trésorerie des relevés (ou les soldes reportés par la clôture précédente), un
+   solde par compte du bilan, « Reprendre ces soldes », vérification des 512x contre les relevés,
+   différence dans 110. Clôture (Bilan › Documents de l'AG, Complet) : résultat dans 110, soldes des
+   comptes de bilan reportés sur la saison suivante, saison verrouillée (rattachement et caisse
+   refusés tant qu'elle n'est pas rouverte ; « Rouvrir » garde la trace). Reste : lecture de la
+   Balance PDF de l'an dernier pour préremplir, pièces « pas encore payées » dans 401 (elles restent
+   dans « Fournisseurs à payer » de la Synthèse), écritures OD de régularisation, niveau dans
+   Personnalisation.
 
 À demander à la trésorière (vendredi 31 octobre) : son logiciel et si elle veut un export vers
 lui ; si elle confirme elle-même dans l'appli (compte Trésorier) ; son plan comptable 2025-26 ;

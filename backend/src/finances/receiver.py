@@ -132,6 +132,12 @@ class WriteRequest(BaseModel):
     model: str | None = None
 
 
+class OpeningRequest(BaseModel):
+    """Corps de PUT /finances/opening-balances/{season_id} : un solde par compte."""
+
+    accounts: list[dict]
+
+
 class LinesRequest(BaseModel):
     """Corps de PUT /finances/operations/{id}/accounts : la ventilation
     confirmée ({accountId, amount en euros}) ; une seule ligne = tout le
@@ -470,7 +476,52 @@ class FinancesReceiver:
             Synthèse à l'écran."""
             season = season_of(db, member, report_id)
             level = documents.accounting.level(db, member.org_id)
-            return {"level": level, "documents": documents.kinds(level), "synthese": documents.synthese(db, member, season)}
+            return {
+                "level": level,
+                "documents": documents.kinds(level),
+                "synthese": documents.synthese(db, member, season),
+                "closing": documents.closing_status(db, member.org_id, season),
+            }
+
+        def ag_call(action, *args):
+            try:
+                return action(*args)
+            except (ValueError, PermissionError) as error:
+                raise _http(error) from error
+
+        @app.post("/finances/reports/{report_id}/close")
+        def close_season(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Clôture de la saison du bilan (§8.7) : résultat dans 110, soldes
+            reportés, saison verrouillée."""
+            return {"closing": ag_call(documents.close, db, member, season_of(db, member, report_id))}
+
+        @app.delete("/finances/reports/{report_id}/close")
+        def reopen_season(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return {"closing": ag_call(documents.reopen, db, member, season_of(db, member, report_id))}
+
+        def season_by_id(db: Session, member: Member, season_id: int) -> Season:
+            season = next((s for s in self.seasons(db, member.org_id) if s.id == season_id), None)
+            if season is None:
+                raise HTTPException(status_code=404, detail="Saison inconnue")
+            return season
+
+        @app.get("/finances/opening-balances/{season_id}")
+        def get_opening(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Soldes de départ de la saison (§8.7) et vérification contre les relevés."""
+            return ag_call(documents.opening, db, member, season_by_id(db, member, season_id))
+
+        @app.put("/finances/opening-balances/{season_id}")
+        def set_opening(season_id: int, data: OpeningRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return ag_call(documents.set_opening, db, member, season_by_id(db, member, season_id), data.accounts)
+
+        @app.get("/finances/operations/{operation_id}/entries")
+        def operation_entries(operation_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les écritures générées pour une opération (fiche, §8.4)."""
+            try:
+                sheet = documents.accounting.operation(db, member, operation_id)
+            except (LookupError, PermissionError) as error:
+                raise _http(error) from error
+            return {"entries": documents.operation_entries(db, member, operation_id, sheet["date"])}
 
         written = self.written_reports
 

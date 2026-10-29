@@ -7,6 +7,7 @@ import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '.
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
 import { requestPlanComptable } from '../finances/compta/PlanComptable.jsx'
+import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
 import { Compte } from './commun.jsx'
@@ -73,6 +74,7 @@ export default function Financier() {
                 { label: 'Se connecter aux comptes en banque', icon: 'calculator', onClick: requestBank },
                 { label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport },
                 { label: 'Plan comptable', icon: 'docs', onClick: requestPlanComptable },
+                { label: 'Soldes de départ', icon: 'calculator', onClick: requestSoldesDepart },
               ]
             : sousOnglet === 'bilan'
               ? [{ label: 'Nouveau bilan', icon: 'plus', onClick: requestNewReport }]

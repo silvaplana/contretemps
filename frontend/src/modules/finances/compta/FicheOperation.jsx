@@ -12,6 +12,7 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
   const [fiche, setFiche] = useState(null)
   const [plan, setPlan] = useState(null)
   const [lignes, setLignes] = useState([]) // [{ accountId, amount }]
+  const [ecritures, setEcritures] = useState(null) // Complet : lignes générées (§8.7)
   const [erreur, setErreur] = useState('')
 
   useEffect(() => {
@@ -19,6 +20,7 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
       .then(([f, p]) => {
         setFiche(f)
         setPlan(p)
+        if (f.level === 'complet' && f.lines.length) api.ecritures(operationId).then((e) => setEcritures(e.entries)).catch(() => {})
         setLignes(
           f.lines.length
             ? f.lines.map((l) => ({ accountId: String(l.accountId), amount: l.amount }))
@@ -125,6 +127,26 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
                 </button>
               )}
             </div>
+            {ecritures?.length > 0 && (
+              <div className="fin-cp-champ">
+                <span>Écritures</span>
+                <table className="fin-cp-table">
+                  <tbody>
+                    {ecritures.map((e, i) => (
+                      <tr key={i}>
+                        <td>
+                          {dateFr(e.date)} {e.journal}
+                          {e.letter ? ` · ${e.letter}` : ''}
+                        </td>
+                        <td>{e.account}</td>
+                        <td className="r">{e.debit ? euros(e.debit) : ''}</td>
+                        <td className="r">{e.credit ? euros(e.credit) : ''}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             <div className="fin-cp-champ">
               <span>Pièce</span>
               {fiche.piece ? (

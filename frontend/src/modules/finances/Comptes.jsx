@@ -15,6 +15,7 @@ import PlanComptable, {
   PLAN_EVENTS,
   nomCompte,
 } from "./compta/PlanComptable.jsx";
+import SoldesDepart, { SOLDES_EVENTS } from "./compta/SoldesDepart.jsx";
 import "./compta/compta.css";
 import { CurveChart } from "./CurveChart.jsx";
 import "./finances.css";
@@ -318,7 +319,7 @@ export default function Comptes() {
   // Fiche d'une opération (appui sur une ligne, spec §8.4), volet
   // ⋯ › Plan comptable (§8.2), puces Sans compte / Sans pièce.
   const [ficheOp, setFicheOp] = useState(null);
-  const [volet, setVolet] = useState(null); // null | 'plan'
+  const [volet, setVolet] = useState(null); // null | 'plan' | 'soldes'
   const [manque, setManque] = useState(null); // null | 'account' | 'piece'
 
   const load = useCallback(async () => {
@@ -357,11 +358,16 @@ export default function Comptes() {
     return () => window.removeEventListener(BANK_EVENT, open);
   }, []);
 
-  // Menu ⋯ > « Plan comptable ».
+  // Menu ⋯ > « Plan comptable » et « Soldes de départ ».
   useEffect(() => {
     const plan = () => setVolet("plan");
+    const soldes = () => setVolet("soldes");
     window.addEventListener(PLAN_EVENTS.plan, plan);
-    return () => window.removeEventListener(PLAN_EVENTS.plan, plan);
+    window.addEventListener(SOLDES_EVENTS.soldes, soldes);
+    return () => {
+      window.removeEventListener(PLAN_EVENTS.plan, plan);
+      window.removeEventListener(SOLDES_EVENTS.soldes, soldes);
+    };
   }, []);
 
   // Menu ⋯ > "Importer des relevés".
@@ -530,6 +536,9 @@ export default function Comptes() {
         {input}
       </>
     );
+  }
+  if (volet === "soldes") {
+    return <SoldesDepart onClose={() => setVolet(null)} />;
   }
   if (volet) {
     return (
