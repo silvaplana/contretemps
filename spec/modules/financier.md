@@ -403,9 +403,9 @@ les autres repliés avec leur nombre ; une partie vide n'apparaît pas) :
 la même pour les trois natures de dépense :
 
 ```
-Note de frais ──┐                                Achat (saisi par le trésorier)
+Note de frais ──┐                                Achat (établi par le trésorier)
 Honoraires ─────┴─▶ Validation trésorier ──non──▶ Refusé (motif)       │
-   (saisis par l'auteur,          │                             Déjà payé ? (vérifié sur les comptes)
+   (établis par l'auteur,         │                             Déjà payé ? (vérifié sur les comptes)
     ou le trésorier pour lui)     ok                               │ non          │ oui
                                   ▼                                ▼              │
                                À payer ◀───────────────────────────┘              │
@@ -417,13 +417,13 @@ Honoraires ─────┴─▶ Validation trésorier ──non──▶ Ref
                                 Payé ◀────────────────────────────────────────────┘
 ```
 
-- **Note de frais** et **note d'honoraires** sont saisies par leur auteur (le membre, le prof),
-  ou par le trésorier pour lui ; la validation du trésorier les fait passer à À payer, ou à
+- **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
+  d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer à À payer, ou à
   **Refusé** avec un motif (comme `notes-de-frais.md` §5). Quand c'est le trésorier qui saisit
   pour la personne, la validation est faite en même temps : la pièce arrive directement À payer.
   Le RIB vient de `nf_ribs` s'il est déjà donné. Plus tard, les honoraires seront calculés par la
   présence des profs.
-- **Achat** : saisi (photographié) par le trésorier ; l'appli cherche le paiement sur les comptes.
+- **Achat** : établi (saisi, photographié ou importé) par le trésorier ; l'appli cherche le paiement sur les comptes.
   Trouvé (carte du club, prélèvement, virement fait avant la facture, comme le camping) : la pièce
   se rattache à l'opération et est **Payé** sans passer par Virements. Pas trouvé : **À payer**
   (c'est ce que dit le bouton « Pas encore payée » de §8.3). Un achat réglé avec la carte
