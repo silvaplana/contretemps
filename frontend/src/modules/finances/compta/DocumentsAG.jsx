@@ -59,6 +59,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
               </div>
             ))}
           </div>
+          {voir && <Synthese s={data.synthese} />}
           <RapportFinancier reportId={reportId} seasonName={seasonName} onErreur={setErreur} />
           {data.level === 'complet' && (
             <Cloture reportId={reportId} seasonName={seasonName} closing={data.closing} onChange={(closing) => setData((d) => ({ ...d, closing }))} onErreur={setErreur} />
@@ -73,7 +74,6 @@ export default function DocumentsAG({ reportId, seasonName }) {
               {euros(data.synthese.unclassified)} de lignes sans compte, sur « à classer » : Comptes › Sans compte.
             </p>
           )}
-          {voir && <Synthese s={data.synthese} />}
         </>
       )}
     </div>
