@@ -127,12 +127,31 @@ export function appliquer(apparence) {
   racine.setProperty('--titres', (titres ?? police ?? POLICES[0]).famille)
 }
 
-let actuelle = DEFAUT
+// La dernière apparence d'école reçue, gardée sur l'appareil : affichée dès
+// l'ouverture, avant la réponse du serveur, pour ne plus voir le logo de
+// l'application Contretemps une fraction de seconde (Seb, 29 octobre).
+const CLE_MEMOIRE = 'contretemps:apparence'
+
+function memorisee() {
+  try {
+    return JSON.parse(localStorage.getItem(CLE_MEMOIRE)) ?? null
+  } catch {
+    return null
+  }
+}
+
+let actuelle = { ...DEFAUT, ...memorisee() }
+if (actuelle.ecoleId) appliquer(actuelle)
 const abonnes = new Set()
 
 function definir(apparence) {
   actuelle = { ...DEFAUT, ...apparence }
   appliquer(actuelle)
+  try {
+    if (actuelle.ecoleId) localStorage.setItem(CLE_MEMOIRE, JSON.stringify(actuelle))
+  } catch {
+    // Pas grave : l'apparence sera seulement redemandée au serveur.
+  }
   for (const f of abonnes) f()
 }
 
