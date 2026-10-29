@@ -161,7 +161,7 @@ class Documents:
             raise DocError(404, "Espace inconnu")
 
     def _closed_periods(self, db: Session, org_id: int) -> set[int]:
-        return {p.id for p in self.periods.list(db, org_id) if not p.is_current}
+        return {p.id for p in self.periods.list(db, org_id) if not p.is_current and not p.is_open}
 
     def _acl(self, db: Session, node_ids: set[int]) -> dict[int, list[DocAcl]]:
         par_noeud: dict[int, list[DocAcl]] = {}
@@ -329,16 +329,19 @@ class Documents:
         if vieux:
             db.commit()
 
-    def reserved_folder(self, db: Session, org_id: int, name: str) -> DocNode | None:
-        """Le dossier réservé `name` de la période en cours (créé au besoin),
-        pour qu'un autre module y range ses fichiers."""
+    def reserved_folder(self, db: Session, org_id: int, name: str, period_id: int | None = None) -> DocNode | None:
+        """Le dossier réservé `name` de la période `period_id`, ou de la
+        période en cours (créé au besoin), pour qu'un autre module y range
+        ses fichiers."""
         self.ensure_system_folders(db, org_id)
-        courante = next((p for p in self.periods.list(db, org_id) if p.is_current), None)
-        if courante is None:
-            return None
+        if period_id is None:
+            courante = next((p for p in self.periods.list(db, org_id) if p.is_current), None)
+            if courante is None:
+                return None
+            period_id = courante.id
         periode = db.scalar(
             select(DocNode).where(
-                DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_PERIOD, DocNode.period_id == courante.id
+                DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_PERIOD, DocNode.period_id == period_id
             )
         )
         if periode is None:

@@ -95,7 +95,8 @@ class LecteurTicket(Protocol):
 class Classeur(Protocol):
     """Range les justificatifs dans les documents de l'organisation, dossier
     Financier de la saison (§7 bis, financier.md §8.3 bis) : un seul endroit,
-    rien n'y bouge ensuite, l'état ne se lit que dans l'appli."""
+    l'état ne se lit que dans l'appli. `le` = date de la pièce : la saison
+    qui la contient, sinon la saison en cours."""
 
     def classer(
         self,
@@ -105,6 +106,7 @@ class Classeur(Protocol):
         fichiers: list[tuple[str, Path]],
         remplacer: set[str] = frozenset(),
         reprendre: bool = False,
+        le: date | None = None,
     ) -> list[int]:
         """`chemin` = dossiers sous Financier (ex. [« Notes de frais »,
         personne, note] ou [« Achats »]). Crée ce qu'il manque et y copie les
@@ -113,10 +115,19 @@ class Classeur(Protocol):
         un fichier déjà là est gardé tel quel (reprise des anciennes
         enveloppes). Renvoie l'id de chaque fichier."""
 
+    def deplacer(
+        self, db: Session, membre: Membre, chemin: list[str], fichiers: list[tuple[int, str]], le: date | None = None
+    ) -> None:
+        """Remet ailleurs des justificatifs déjà rangés (id, nom), quand la
+        date, la personne ou le fournisseur est corrigé ; le dossier de note
+        resté vide part à la corbeille."""
+
     def contenu(self, db: Session, membre: Membre, node_id: int) -> Path:
         """Le fichier sur le disque d'un justificatif rangé (LookupError sinon)."""
 
-    def retirer(self, db: Session, membre: Membre, chemin: list[str], node_ids: list[int] = ()) -> None:
+    def retirer(
+        self, db: Session, membre: Membre, chemin: list[str], node_ids: list[int] = (), le: date | None = None
+    ) -> None:
         """Met à la corbeille le dossier `chemin` (note reprise par son
         auteur), ou seulement les fichiers `node_ids` quand ils sont rangés
         directement dans un dossier commun (Achats)."""

@@ -330,7 +330,7 @@ class SaisonsContretemps:
                 select(Saison).where(Saison.ecole_id == org_id).order_by(Saison.date_debut, Saison.id)
             ))
         courante = saisons[-1].id if saisons else None
-        return [Period(id=s.id, name=s.nom, is_current=s.id == courante) for s in saisons]
+        return [Period(id=s.id, name=s.nom, is_current=s.id == courante, is_open=s.ouverte) for s in saisons]
 
 
 def recopieur_de_saison(documents):

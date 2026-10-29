@@ -154,7 +154,7 @@ class NotifieurContretemps:
 
 
 class ClasseurContretemps:
-    """Range les justificatifs dans Docs › Privé › Saison en cours ›
+    """Range les justificatifs dans Docs › Privé › Saison de la pièce ›
     Financier › Notes de frais, Honoraires ou Achats (§7 bis, financier.md
     §8.3 bis), par le module documents. Le dossier Financier est réservé aux
     trésoriers (dossier système, voir documents.md §4.7 bis)."""
@@ -179,9 +179,27 @@ class ClasseurContretemps:
             groups=frozenset({"role:admin", "role:tresorier"}),
         )
 
-    def _acces(self, db: Session, qui: Membre):
-        """Le dossier Financier de la saison en cours, et le membre."""
-        racine = self.documents.reserved_folder(db, qui.org_id, self.financier)
+    @staticmethod
+    def _saison(db: Session, org_id: int, le):
+        """La saison qui contient la date de la pièce, si on peut y écrire
+        (la courante, ou une ancienne rouverte aux modifications) ; None :
+        la saison en cours."""
+        from saisons.models import Saison
+
+        if le is None:
+            return None
+        with toutes_saisons(db):
+            saison = db.scalar(
+                select(Saison).where(Saison.ecole_id == org_id, Saison.date_debut <= le, Saison.date_fin >= le)
+                .order_by(Saison.date_debut.desc())
+            )
+        if saison is None or (saison.id != _saison_courante(db, org_id) and not saison.ouverte):
+            return None
+        return saison.id
+
+    def _acces(self, db: Session, qui: Membre, le=None):
+        """Le dossier Financier de la saison de la pièce, et le membre."""
+        racine = self.documents.reserved_folder(db, qui.org_id, self.financier, self._saison(db, qui.org_id, le))
         if racine is None:
             logger.warning("Pas de dossier %s pour l'école %s : pièce non rangée", self.financier, qui.org_id)
         return racine, self._qui(qui)
@@ -195,22 +213,22 @@ class ClasseurContretemps:
             requete = requete.where(DocNode.kind == KIND_FOLDER)
         return db.scalars(requete).first()
 
+    def _dossier(self, db: Session, qui, parent_id: int, chemin: list[str]) -> int:
+        """Le dossier `chemin` sous `parent_id`, créé au besoin."""
+        for nom in chemin:
+            existant = self._enfant(db, parent_id, nom)
+            parent_id = existant.id if existant is not None else self.documents.create_folder(db, qui, "private", parent_id, nom)["id"]
+        return parent_id
+
     def classer(
-        self, db: Session, membre: Membre, chemin: list[str], fichiers: list, remplacer=frozenset(), reprendre=False
+        self, db: Session, membre: Membre, chemin: list[str], fichiers: list, remplacer=frozenset(), reprendre=False,
+        le=None,
     ) -> list[int]:
-        racine, qui = self._acces(db, membre)
+        racine, qui = self._acces(db, membre, le)
         if racine is None:
             return []
 
-        def dossier(parent_id: int, nom: str) -> int:
-            existant = self._enfant(db, parent_id, nom)
-            if existant is not None:
-                return existant.id
-            return self.documents.create_folder(db, qui, "private", parent_id, nom)["id"]
-
-        parent_id = racine.id
-        for nom in chemin:
-            parent_id = dossier(parent_id, nom)
+        parent_id = self._dossier(db, qui, racine.id, chemin)
         ids = []
         for nom, chemin_fichier in fichiers:
             existant = self._enfant(db, parent_id, nom, dossier=False) if reprendre or nom in remplacer else None
@@ -225,6 +243,36 @@ class ClasseurContretemps:
                     ids.append(self.documents.upload(db, qui, "private", parent_id, nom, source)["id"])
         return ids
 
+    def deplacer(self, db: Session, membre: Membre, chemin: list[str], fichiers: list, le=None) -> None:
+        from documents.models import DocNode
+
+        racine, qui = self._acces(db, membre, le)
+        if racine is None:
+            return
+        parent_id = self._dossier(db, qui, racine.id, chemin)
+        quittes = set()
+        for node_id, nom in fichiers:
+            noeud = db.get(DocNode, node_id)
+            if noeud is None or noeud.deleted_at is not None:
+                continue
+            # Un nom libre ici et là-bas : « nom (2) » comme au rangement.
+            base, extension = Path(nom).stem, Path(nom).suffix
+            libre, n = nom, 1
+            while libre != noeud.name and any(
+                (autre := self._enfant(db, dossier, libre, dossier=False)) is not None and autre.id != noeud.id
+                for dossier in {parent_id, noeud.parent_id}
+            ):
+                n += 1
+                libre = f"{base} ({n}){extension}"
+            if noeud.parent_id != parent_id:
+                quittes.add(noeud.parent_id)
+            self.documents.update(db, qui, node_id, name=libre, parent_id=parent_id, move=noeud.parent_id != parent_id)
+        for dossier_id in quittes:
+            dossier = db.get(DocNode, dossier_id)
+            vide = db.scalar(select(DocNode.id).where(DocNode.parent_id == dossier_id, DocNode.deleted_at.is_(None))) is None
+            if dossier is not None and dossier.name not in self.DOSSIERS and vide:
+                self.documents.delete(db, qui, dossier_id)
+
     def contenu(self, db: Session, membre: Membre, node_id: int) -> Path:
         from documents.service import DocError
 
@@ -234,8 +282,8 @@ class ClasseurContretemps:
             raise LookupError("Justificatif introuvable dans les documents.") from erreur
         return chemin
 
-    def retirer(self, db: Session, membre: Membre, chemin: list[str], node_ids=()) -> None:
-        racine, qui = self._acces(db, membre)
+    def retirer(self, db: Session, membre: Membre, chemin: list[str], node_ids=(), le=None) -> None:
+        racine, qui = self._acces(db, membre, le)
         if racine is None:
             return
         if node_ids:

@@ -507,6 +507,53 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
     assert valide.status_code == 200 and valide.json()["statut"] == "validee"
 
 
+def _achats_de_la_saison(client, org, qui, saison):
+    dossier = _enfant(client, org, qui, None, f"Saison {saison}")
+    financier = dossier and _enfant(client, org, qui, dossier["id"], "Financier")
+    achats = financier and _enfant(client, org, qui, financier["id"], "Achats")
+    return sorted(i["name"] for i in _parcourir(client, org, qui, achats["id"]).json()["items"]) if achats else []
+
+
+def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecole, monkeypatch):
+    """Une pièce de l'an dernier va dans le Financier de sa saison si on peut
+    y écrire, pas dans celui de la saison en cours ; si on corrige sa date,
+    elle suit."""
+    from saisons.models import Saison
+
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    passee = Saison(ecole_id=org, nom="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 8, 31))
+    db_session.add(passee)
+    db_session.commit()
+    lecteur = LecteurFacture(date="2026-03-10", montant_centimes=2500, commercant="Leroy Merlin", description="Peinture")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    # Saison terminée, en lecture seule : dans la saison en cours.
+    fermee = _etablir(client, tresorier, "achat")
+    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == []
+    client.delete(f"/notes-frais/notes/{fermee['id']}", headers=entetes_session(tresorier))
+
+    # Rouverte aux modifications (bilan de l'an dernier) : dans sa saison.
+    passee.ouverte = True
+    db_session.commit()
+    note = _etablir(client, tresorier, "achat")
+    courante = next(
+        i["name"].removeprefix("Saison ") for i in _parcourir(client, org, tresorier).json()["items"]
+        if i["system_kind"] == "period" and i["name"] != "Saison 2025-2026"
+    )
+    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == ["2026-03-10 Leroy Merlin 25,00.jpg"]
+    assert _achats_de_la_saison(client, org, tresorier, courante) == []
+
+    corrige = client.patch(
+        f"/notes-frais/notes/{note['id']}", json={"date": "2026-10-02"}, headers=entetes_session(tresorier)
+    )
+    assert corrige.status_code == 200
+    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == []
+    assert _achats_de_la_saison(client, org, tresorier, courante) == ["2026-10-02 Leroy Merlin 25,00.jpg"]
+    # Le justificatif s'ouvre toujours.
+    piece = corrige.json()["depenses"][0]["pieces"][0]
+    assert client.get(f"/notes-frais/pieces/{piece['id']}", headers=entetes_session(tresorier)).status_code == 200
+
+
 def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkeypatch):
     tresorier = ecole["tresorier"]
     prof = Comptes().create(
