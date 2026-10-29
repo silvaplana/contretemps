@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.8, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.9, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états ; §8.9 : étape 1 bis codée). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -604,6 +604,17 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
 1. Plan comptable, Pièces (photo, lecture, proposition, confirmation), compte et pièce sur chaque
    ligne de Comptes, caisse, réglage Simple / Complet. Suffit pour la Synthèse.
 1 bis. Virements (§8.3 bis) : puce, quatre états, aide au virement, RIB, Qui paie, notification.
+   **Codée le 29 octobre 2026**, dans le module Notes de frais (`nf_notes.nature`, `supplier`,
+   `prepared_*`, `payer_id`, `transfer_sent_*`, `bank_operation_id` ; `nf_pieces.doc_node_id` ; table
+   `nf_payers` pour Qui paie) : puces Virements, Notes de frais, Honoraires, Achats réelles (À rattacher
+   et Ventes restent des exemples) ; « + », rafale, « Encore une page », import de plusieurs fichiers,
+   glisser-déposer sur ordinateur (Honoraires, Achats) ; Docs seul rangement et commande
+   `python -m app.ranger_notes_frais` pour les anciennes enveloppes ; aide au virement, Qui paie,
+   notification ; « Vu sur le compte » et « C'est payé ». Pas de `fin_payees` : le RIB d'un fournisseur
+   est sur la pièce et repris du dernier achat chez lui. Reste : « Choisir dans Docs », lecture d'une
+   photo de RIB, glisser-déposer sur Notes de frais (il faut « Pour qui ? »), « Ajouter une dépense à
+   cette note » pour un achat, virement sans pièce, la pièce visible sur la ligne de Comptes (§8.4),
+   la clé d'accès pour le RIB.
 2. Documents de l'AG : Synthèse, Grand livre, Balance, Honoraires par prof ; Bilan par compte.
 3. Rapport financier (gabarit Word du modèle, texte par le modèle, chiffres par l'appli).
 4. Complet : écritures, soldes de départ, lettrage, clôture.
