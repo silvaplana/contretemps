@@ -7,7 +7,7 @@ import NewScreen from './NewScreen.jsx'
 import ConvoquerAG from './ConvoquerAG.jsx'
 import ProduirePV from './ProduirePV.jsx'
 import PourQui from './PourQui.jsx'
-import { texteDuLien, useOuvrirDocs } from './lienDocs.js'
+import { oublierRetour, revenirApresFichier, texteDuLien, useOuvrirDocs } from './lienDocs.js'
 import { envoyerDansLaMessagerie } from '../../utils/envoyerA.js'
 import Properties from './Properties.jsx'
 import Share from './Share.jsx'
@@ -319,7 +319,8 @@ export default function Explorer({ orgId, memoire }) {
       const x = await api.detail(id)
       const parent = x.path?.at(-1)?.id ?? null
       ouvrirDepuisArbre(x.space, x.kind === 'folder' ? x.id : parent)
-      if (x.kind !== 'folder') ouvrir(x)
+      if (x.kind === 'folder') oublierRetour()
+      else ouvrir(x)
     } catch {
       montrerToast('Vous n’avez pas accès à ce fichier, ou il n’existe plus.')
     }
@@ -1372,7 +1373,10 @@ export default function Explorer({ orgId, memoire }) {
         <Viewer
           api={api}
           item={vue}
-          onClose={() => setVue(null)}
+          onClose={() => {
+            setVue(null)
+            revenirApresFichier()
+          }}
           onMore={(x) => setFeuille(x)}
           onDownload={telecharger}
           onSaved={(x) => {

@@ -17,6 +17,26 @@ const STATE_LABELS = { brouillon: 'Brouillon', valide: 'Validé', officiel: 'Off
 const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
 // Saison choisie, retenue sur cet appareil.
 const SEASON_KEY = 'finances-bilan-saison'
+// Bilan ouvert, gardé le temps de la session : en revenant d'un document
+// ouvert dans Docs, on retrouve ce bilan.
+const OPEN_KEY = 'finances-bilan-ouvert'
+
+function readOpen() {
+  try {
+    return Number(sessionStorage.getItem(OPEN_KEY)) || null
+  } catch {
+    return null
+  }
+}
+
+function saveOpen(id) {
+  try {
+    if (typeof id === 'number') sessionStorage.setItem(OPEN_KEY, String(id))
+    else sessionStorage.removeItem(OPEN_KEY)
+  } catch {
+    // Stockage indisponible : on revient à la liste.
+  }
+}
 // Demande de nouveau bilan venue du menu ⋯ (voir requestNewReport).
 const NEW_EVENT = 'finances-new-report'
 
@@ -69,6 +89,10 @@ export default function Bilan() {
   const [editing, setEditing] = useState(null)
 
   useEffect(() => {
+    if (listing) saveOpen(editing)
+  }, [editing, listing])
+
+  useEffect(() => {
     api
       .saisons()
       .then((data) => {
@@ -81,8 +105,11 @@ export default function Bilan() {
   const loadReports = useCallback(async () => {
     if (seasonId == null) return
     try {
-      setListing(await api.bilans(seasonId))
+      const data = await api.bilans(seasonId)
+      setListing(data)
       setError(null)
+      const id = readOpen()
+      if (id && data.reports.some((r) => r.id === id)) setEditing((e) => e ?? id)
     } catch (err) {
       setError(err.message)
     }

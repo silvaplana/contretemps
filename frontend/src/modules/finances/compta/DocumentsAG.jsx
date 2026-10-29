@@ -5,7 +5,7 @@
 // est aussi rangé dans Docs › Financier › AG. Le Rapport financier est
 // rédigé par le modèle (le texte seulement : chaque montant est placé par
 // l'appli, un nombre écrit par le modèle est signalé « à vérifier »).
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 import Modal from '../../../components/Modal.jsx'
 import { enEuros } from '../../../utils/euros.js'
@@ -16,16 +16,26 @@ import * as api from '../api.js'
 import './compta.css'
 
 const { euros, dateFr } = api
+// Au retour de Docs, le bloc revient à l'écran (voir ouvrirFichier).
+const RETOUR_KEY = 'finances-documents-ag-retour'
 
 // L'œil d'un document : le fichier est produit et rangé dans Docs, puis
 // ouvert comme dans Docs (Word, Excel : OnlyOffice ; PDF : la visionneuse
 // du téléphone, qui s'ouvre pendant le toucher sinon le navigateur bloque).
+// Fermer l'aperçu ramène au Bilan.
 async function ouvrirFichier(produire, pdf) {
   const telephone = pdf && !navigator.pdfViewerEnabled
   const onglet = telephone ? window.open('', '_blank') : null
   try {
     const { id, orgId } = await produire()
-    if (!telephone) return ouvrirDansDocs(id)
+    if (!telephone) {
+      try {
+        sessionStorage.setItem(RETOUR_KEY, '1')
+      } catch {
+        // Stockage indisponible : le retour se fait en haut du bilan.
+      }
+      return ouvrirDansDocs(id, { retour: true })
+    }
     const url = await documentsApi(orgId).lienFichier(id)
     if (onglet) onglet.location.href = url
     else window.location.href = url
@@ -45,6 +55,18 @@ async function allerDansDocs(produire, folderId) {
 export default function DocumentsAG({ reportId, seasonName }) {
   const [data, setData] = useState(null)
   const [erreur, setErreur] = useState('')
+  const bloc = useRef(null)
+
+  useEffect(() => {
+    if (!data) return
+    try {
+      if (!sessionStorage.getItem(RETOUR_KEY)) return
+      sessionStorage.removeItem(RETOUR_KEY)
+    } catch {
+      return
+    }
+    bloc.current?.scrollIntoView({ block: 'start' })
+  }, [data])
 
   useEffect(() => {
     if (reportId == null) return
@@ -61,7 +83,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
   }
 
   return (
-    <div className="fin-cp">
+    <div className="fin-cp" ref={bloc}>
       <h4 className="reports-subtitle">Documents de l’AG</h4>
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       {!data && !erreur && <p className="muted">Chargement…</p>}
