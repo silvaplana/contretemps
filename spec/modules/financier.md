@@ -425,9 +425,19 @@ Financier disparaît : les notes sont dans la puce Notes de frais de Pièces (`n
 le côté membre ne change pas.
 
 **Une seule structure « dépense »** (décision de Seb, 29 octobre) : note de frais, note d'honoraires
-et achat sont la même chose, une **dépense** avec une **nature** (frais / honoraires / achat), portée
-par le module Notes de frais déjà codé (`nf_notes` + `nf_depenses`, qui gardent leur nom ; on ajoute
-la nature et, pour un achat, le fournisseur à la place de la personne). Les puces Notes de frais,
+et achat sont la même chose, avec une **nature** (frais / honoraires / achat), portée par le module
+Notes de frais déjà codé (`nf_notes` + `nf_depenses`, qui gardent leur nom ; on ajoute la nature et,
+pour un achat, le fournisseur à la place de la personne). **Deux niveaux pour les trois natures**
+(Seb, 29 octobre) : la **dépense** = un ticket ou une facture (photo, montant, compte) ; la **note** =
+ce qu'on paie en une fois, qui porte l'état et le RIB, et qui passe par Virements. Notes de frais :
+inchangé. Honoraires : la note d'un prof a le plus souvent une ligne (le mois), parfois deux. Achats :
+une photo crée une note avec une seule dépense ; plusieurs factures réglées d'un seul virement se
+regroupent avec **« Ajouter une dépense à cette note »** depuis la note.
+
+**Saisir le moins possible** (Seb, 29 octobre) : la photo fait le travail. La lecture remplit tout ce
+qu'elle peut (personne ou fournisseur, date, montant, période, compte, description) et l'écran ne
+demande que de **valider ou corriger**, jamais de ressaisir ; une dépense lue sans doute s'enregistre
+d'un seul toucher. Les puces Notes de frais,
 Honoraires et Achats de Pièces sont trois filtres sur cette nature ; Ventes reste à part (recettes).
 Partagé tel quel : la fiche (qui, titre, photos agrandissables, total, RIB), l'envoi, Valider et
 Refuser avec motif, « Saisir pour quelqu'un », les badges d'état, le rangement dans Docs, l'export
