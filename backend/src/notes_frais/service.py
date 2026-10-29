@@ -709,8 +709,26 @@ class NotesDeFrais:
             note.titre = self._titre(note, note.depenses[0].date)
         db.commit()
         db.refresh(note)
+        self._reranger(db, membre, note)
         self._ranger(db, membre, note)
         return note
+
+    def _reranger(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+        """Après une correction (date, personne, fournisseur, montant) : les
+        justificatifs déjà rangés vont dans le dossier et sous le nom qu'ils
+        auraient eus, saison comprise. Un échec n'annule pas la correction."""
+        chemin = self._chemin_docs(db, note)
+        rangees = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id]
+        if self.ports.classeur is None or chemin is None or not rangees:
+            return
+        try:
+            self.ports.classeur.deplacer(
+                db, membre, chemin, [(p.doc_node_id, self._nom_dans_docs(note, d, p)) for d, p in rangees],
+                le=self._date_docs(note),
+            )
+        except Exception:
+            db.rollback()
+            logger.exception("Note de frais %s : justificatifs non déplacés dans les documents", note.id)
 
     def supprimer_note(self, db: Session, membre: Membre, note_id: int) -> None:
         """Une pièce établie par erreur (photo ratée, doublon), pas encore
@@ -805,6 +823,13 @@ class NotesDeFrais:
             f"{note.envoyee_le.date().isoformat()} {nom_propre(note.titre)} ({note.id})",
         ]
 
+    @staticmethod
+    def _date_docs(note: NoteFrais) -> date:
+        """La date qui choisit la saison où ranger : celle de la pièce (la
+        première dépense), pas celle du paiement ; une charge appartient à
+        l'exercice de sa facture."""
+        return min((d.date for d in note.depenses), default=note.envoyee_le.date())
+
     def _nom_dans_docs(self, note: NoteFrais, depense: Depense, piece: PieceJustificative) -> str:
         """Achats : « 2025-02-09 Amazon 39,90.jpg » ; ailleurs, le nom du disque."""
         if note.nature != ACHAT:
@@ -823,7 +848,7 @@ class NotesDeFrais:
             return
         fichiers = [(self._nom_dans_docs(note, d, p), self.stockage.chemin(note.org_id, p.chemin)) for d, p in a_ranger]
         try:
-            ids = classeur.classer(db, membre, chemin, fichiers)
+            ids = classeur.classer(db, membre, chemin, fichiers, le=self._date_docs(note))
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : rangement dans les documents impossible", note.id)
@@ -845,7 +870,7 @@ class NotesDeFrais:
         if self.ports.classeur is None or chemin is None:
             return
         try:
-            self.ports.classeur.retirer(db, membre, chemin, node_ids if note.nature == ACHAT else ())
+            self.ports.classeur.retirer(db, membre, chemin, node_ids if note.nature == ACHAT else (), le=self._date_docs(note))
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : retrait des documents impossible", note.id)
@@ -884,7 +909,9 @@ class NotesDeFrais:
         dossier = self.stockage.dossier_depenses(note.org_id, note.person_id, "")
         relatif = self.stockage.ecrire(note.org_id, dossier, nom, contenu)
         try:
-            self.ports.classeur.classer(db, membre, chemin, [(nom, self.stockage.chemin(note.org_id, relatif))], remplacer={nom})
+            self.ports.classeur.classer(
+                db, membre, chemin, [(nom, self.stockage.chemin(note.org_id, relatif))], remplacer={nom}, le=self._date_docs(note)
+            )
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : PDF non rangé dans les documents", note.id)

@@ -58,6 +58,9 @@ class Period:
     id: int
     name: str
     is_current: bool
+    # Ancienne période rouverte aux modifications (bilan d'une année passée) :
+    # son dossier n'est plus en lecture seule.
+    is_open: bool = False
 
 
 class Directory(Protocol):
