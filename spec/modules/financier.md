@@ -342,8 +342,8 @@ Financier › **Pièces** : le classeur des justificatifs. Puces **Achats** · *
 **Notes de frais** · **Ventes** : les quatre dossiers de l'association dans Docs (ci-dessus), ni
 plus ni moins, qui donnent le journal (AC, HO, NF, VE) ; plus une puce **À rattacher** (compteur)
 qui est un filtre sur les pièces pas encore rattachées, pas un dossier. Bouton principal
-**Photographier des pièces** : l'appareil photo en rafale, une pièce par photo, sans saisie ;
-aussi « Choisir dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
+**+** (voir §8.3 bis « Établir une dépense ») : Photo du ticket, Choisir un fichier, ou « Choisir
+dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
 Docs › Privé › Saison <saison> › Financier › <dossier>, nommé par l'appli
 (« 2025-02-09 Amazon 39,90.jpg ») une fois lue ; une photo pas encore lue attend dans Ventes
 ou Achats selon le sens, et change de dossier si la lecture dit autrement.
@@ -437,9 +437,10 @@ honoraires = l'auteur est un prof, une seule ligne (période, montant), journal 
 le trésorier, « qui » est un fournisseur, RIB demandé seulement quand il y a à payer, journal AC.
 
 **Établir une dépense : le « + »** (Seb, 29 octobre). Un seul bouton principal sur Pièces, **+**,
-qui reprend l'écran « Nouvelle dépense » de `notes-de-frais.md` §4.2 : photo d'abord (appareil photo
-en rafale, image ou PDF existant, ou « Choisir dans Docs »), lecture par l'appli qui pré-remplit avec
-la mention « Rempli d'après le ticket, à vérifier », on corrige, **Enregistrer**. La nature est celle
+qui reprend l'écran « Nouvelle dépense » de `notes-de-frais.md` §4.2, tel qu'il est codé
+(`DepenseModal.jsx`) : deux boutons, **Photo du ticket** (appareil photo) et **Choisir un fichier**
+(image ou PDF), plus « Choisir dans Docs » ; lecture par l'appli qui pré-remplit avec la mention
+« Rempli d'après le ticket, à vérifier », on corrige, **Enregistrer**. La nature est celle
 de la puce où l'on est (Notes de frais, Honoraires, Achats) ; depuis Virements, À rattacher ou
 Ventes, le « + » demande d'abord la nature. Les champs changent avec la nature, le reste est commun :
 - **Note de frais** : d'abord « Pour qui ? » (§7 ter de `notes-de-frais.md`), puis date, montant,
@@ -448,8 +449,9 @@ Ventes, le « + » demande d'abord la nature. Les champs changent avec la nature
   catégorie (compte 6226) ;
 - **Achat** : fournisseur (lu sur la facture), date, montant, compte du plan proposé, description ;
   pas de « Pour qui ».
-Une dépense établie par le trésorier est validée en même temps. « Photographier des pièces » de §8.3
-est la première étape de ce « + », pas un bouton de plus.
+Une dépense établie par le trésorier est validée en même temps. Le bouton « Photographier des
+pièces » de §8.3 et des écrans d'exemple n'existe plus : c'est le « + », avec « Photo du ticket »
+dedans ; la rafale (plusieurs photos = plusieurs dépenses) reste à voir à l'étape 1.
 
 **Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
 `notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
