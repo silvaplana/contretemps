@@ -1,6 +1,6 @@
 # AppBase — Module `notes-de-frais`
 
-Version 0.2, 29 octobre 2026 (§5 et §7 : machine à états commune, notes dans Pièces). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
+Version 0.3, 29 octobre 2026 (§5 et §7 : machine à états commune, notes dans Pièces ; §7 bis et §10 : un seul rangement, dans Docs). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
 frais » du projet). Maquette visuelle : Artifact « Notes de frais Contretemps », lien dans ce fil.
 
 Écrit comme un module AppBase (rien de propre à la danse), comme `documents.md` : quand AppBase existera,
@@ -179,28 +179,18 @@ habituel (validée en même temps, puis à payer). Réservé aux trésoriers et 
 envoie l'id de la personne dans l'en-tête `X-Pour-Personne` ; le serveur vérifie le droit et que la
 personne est de l'organisation.
 
-### 7 bis Rangement dans Docs (Seb, 17 octobre)
+### 7 bis Rangement dans Docs (Seb, 17 octobre ; simplifié le 29 octobre)
 
-Dès l'**envoi**, l'appli range la note dans les documents, sans rien demander :
-**Privé › Saison en cours › Financier › Notes de frais › `<n° personne> <Nom>` ›
-`<date d'envoi> <titre> (<n°>)`** (mêmes noms que les enveloppes du disque), avec le PDF récapitulatif et
-les justificatifs. **Rien ne bouge ensuite**, ni dans Docs ni sur le disque, comme dans les logiciels
-pro : le statut est dans la base et dans le PDF, et se lit dans Docs au **badge** du dossier de la note,
-avec les statuts des documents (documents.md, État) (Seb, 17 octobre) :
-
-| Note | Badge du dossier |
-|---|---|
-| en attente | Brouillon |
-| refusée | Refusé (sens interdit, rouge) |
-| validée, à rembourser | Validé |
-| remboursée, ou don validé | Officiel (figé) |
-
-À chaque étape, le PDF reçoit une nouvelle version, puis le badge change. Une note **reprise** par son
-auteur (avant validation ou après un refus) part à la corbeille des documents. Le dossier Financier
-existe dans chaque saison et n'est visible que des trésoriers, même pas des autres admins (documents.md
-§4.7 bis) ; « Notes de frais » y est créé à la première note. La saison est celle du jour de l'envoi.
-Si le rangement échoue, l'action reste faite (les photos restent dans l'enveloppe et le bouton
-« Télécharger les justificatifs »).
+Décision de Seb, 29 octobre 2026 (`financier.md` §8.3 bis « Rangement dans Docs ») : **un seul
+endroit**, Docs › Privé › Saison en cours › Financier › Notes de frais › `<n° personne> <Nom>` ›
+`<date d'envoi> <titre> (<n°>)`, où les justificatifs sont rangés dès l'envoi et **ne bougent plus**.
+**L'état ne se lit que dans l'appli** : plus de badge sur le dossier, plus de nouvelle version du PDF à
+chaque étape. Le PDF récapitulatif est fait une fois, quand la note est payée (ou sur demande,
+« Télécharger les justificatifs »). Plus d'enveloppes à part sur le disque du serveur (§10) : Docs
+range déjà ses fichiers sur le disque. Une note **reprise** par son auteur (avant validation ou après
+un refus) part à la corbeille des documents. Le dossier Financier existe dans chaque saison et n'est
+visible que des trésoriers (documents.md §4.7 bis) ; « Notes de frais » y est créé à la première note.
+La saison est celle du jour de l'envoi. Si le rangement échoue, l'action reste faite.
 
 ## 8. Don à l'association
 
@@ -253,31 +243,15 @@ Montants en centimes entiers ; total d'une note = somme de ses dépenses, jamais
 changement de saison. *(Contretemps : la « personne » est le premier compte de la chaîne
 `compte_precedent_id`, comme pour les documents.)*
 
-### Rangement sur le disque (décision de Seb, 16 octobre)
+### Rangement sur le disque (décision de Seb, 16 octobre ; abandonné le 29 octobre)
 
-Les justificatifs sont rangés en **enveloppes**, un dossier par personne :
-
-```
-<NOTES_FRAIS_DIR>/<organisation>/<n° de la personne> <Nom Prénom>/
-    depenses/                                   tickets pas encore envoyés
-    notes/<AAAA-MM-JJ> <titre> (<n° de note>)/  une enveloppe par note envoyée
-        Note de frais.pdf                       récapitulatif + une page par photo
-        <date> <description> <n°>-<n°>.jpg      les justificatifs
-```
-
-**Le dossier du serveur suffit à tout retrouver**, même si la base de données était perdue (Seb,
-17 octobre) : chaque enveloppe contient « Note de frais.pdf », avec une page de récapitulatif (personne,
-titre, dépenses avec date, catégorie, description et montant, total, statut avec ses dates et qui l'a
-traitée, motif de refus, RIB ou don), puis une page par photo de ticket (les PDF joints restent à côté).
-Il est refait à chaque étape : envoi, validation, refus, remboursement ; il part avec les photos dans
-Docs › Financier à la validation, et y reçoit une nouvelle version au remboursement. Il est aussi dans le
-zip « Télécharger les justificatifs ».
-
-Fichier : `<date> <description> <n° de dépense>-<n° de pièce>.<ext>`. À l'envoi, les fichiers passent de
-`depenses/` à l'enveloppe de la note ; une note reprise les y renvoie et son enveloppe vide disparaît. Le
-numéro en tête du dossier de la personne (gardé, décision de Seb du 17 octobre) le retrouve même si son nom change ou si deux personnes ont le
-même nom. Jamais servis en accès direct : seulement par les routes du module, à l'auteur et aux
-trésoriers. *(Contretemps : `NOTES_FRAIS_DIR`, `/app/data/notes_frais` dans l'image Docker, dans le volume de données.)*
+Les enveloppes `<NOTES_FRAIS_DIR>/<organisation>/<n° personne> <Nom>/…` (un dossier par personne,
+`depenses/` puis une enveloppe par note avec « Note de frais.pdf » refait à chaque étape) sont
+**remplacées par Docs** (§7 bis, décision de Seb du 29 octobre) : un seul endroit, PDF fait une fois
+quand c'est payé. À coder à l'étape 1 de Pièces (`financier.md` §8.9), avec une commande
+`python -m app.<commande>` qui déplace les enveloppes existantes dans Docs ; les tickets pas encore
+envoyés (`depenses/`) restent sur le disque jusqu'à l'envoi. Les fichiers ne sont jamais servis en
+accès direct : seulement par les routes, à l'auteur et aux trésoriers.
 
 ## 11. Droits
 

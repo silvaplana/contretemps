@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.7, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.8, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -425,9 +425,19 @@ Financier disparaît : les notes sont dans la puce Notes de frais de Pièces (`n
 le côté membre ne change pas.
 
 **Une seule structure « dépense »** (décision de Seb, 29 octobre) : note de frais, note d'honoraires
-et achat sont la même chose, une **dépense** avec une **nature** (frais / honoraires / achat), portée
-par le module Notes de frais déjà codé (`nf_notes` + `nf_depenses`, qui gardent leur nom ; on ajoute
-la nature et, pour un achat, le fournisseur à la place de la personne). Les puces Notes de frais,
+et achat sont la même chose, avec une **nature** (frais / honoraires / achat), portée par le module
+Notes de frais déjà codé (`nf_notes` + `nf_depenses`, qui gardent leur nom ; on ajoute la nature et,
+pour un achat, le fournisseur à la place de la personne). **Deux niveaux pour les trois natures**
+(Seb, 29 octobre) : la **dépense** = un ticket ou une facture (photo, montant, compte) ; la **note** =
+ce qu'on paie en une fois, qui porte l'état et le RIB, et qui passe par Virements. Notes de frais :
+inchangé. Honoraires : la note d'un prof a le plus souvent une ligne (le mois), parfois deux. Achats :
+une photo crée une note avec une seule dépense ; plusieurs factures réglées d'un seul virement se
+regroupent avec **« Ajouter une dépense à cette note »** depuis la note.
+
+**Saisir le moins possible** (Seb, 29 octobre) : la photo fait le travail. La lecture remplit tout ce
+qu'elle peut (personne ou fournisseur, date, montant, période, compte, description) et l'écran ne
+demande que de **valider ou corriger**, jamais de ressaisir ; une dépense lue sans doute s'enregistre
+d'un seul toucher. Les puces Notes de frais,
 Honoraires et Achats de Pièces sont trois filtres sur cette nature ; Ventes reste à part (recettes).
 Partagé tel quel : la fiche (qui, titre, photos agrandissables, total, RIB), l'envoi, Valider et
 Refuser avec motif, « Saisir pour quelqu'un », les badges d'état, le rangement dans Docs, l'export
@@ -467,16 +477,17 @@ ordinateur, en **glissant des fichiers** depuis le bureau sur la liste de la puc
 ou Notes de frais) : chaque fichier déposé = une dépense de cette nature, comme un import. Pas sur
 téléphone.
 
-**Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
-`notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
-du dossier) :
+**Rangement dans Docs** (Seb, 29 octobre, revient sur `notes-de-frais.md` §7 bis et « Rangement sur le
+disque » du 16-17 octobre) : **un seul endroit**, Docs, dans les dossiers de la trésorière ; la
+photo y est rangée à l'établissement et **n'en bouge plus**. **L'état ne se voit que dans l'appli**,
+sur la ligne de la dépense : dans Docs le fichier n'a pas de badge et ne change pas. Le PDF
+récapitulatif est fait **une seule fois, quand c'est payé** (et sur demande avant, « Télécharger »),
+plus de version à chaque étape. Plus d'enveloppes à part sur le disque du serveur (`NOTES_FRAIS_DIR`)
+: Docs range déjà ses fichiers sur le disque. Chemins :
 - Notes de frais : `Notes de frais › <n° personne> <Nom> › <date> <titre> (<n°>)`, comme aujourd'hui ;
 - Honoraires : par personne aussi, `Honoraires › <n° personne> <Nom> › <date> <titre> (<n°>)` ;
 - Achats : pas par personne, `Achats › <date> <fournisseur> <montant>` (le fichier lui-même, comme
   « 2025-02-09 Amazon 39,90.jpg » de §8.3 ; un dossier seulement quand l'achat a plusieurs pièces).
-
-Badges des dossiers et fichiers : à valider = Brouillon, refusé = Refusé, à payer / préparé / envoyé =
-Validé, payé = Officiel (figé).
 
 - **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
   d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,
