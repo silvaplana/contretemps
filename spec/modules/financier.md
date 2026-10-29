@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.7, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.8, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -467,16 +467,17 @@ ordinateur, en **glissant des fichiers** depuis le bureau sur la liste de la puc
 ou Notes de frais) : chaque fichier déposé = une dépense de cette nature, comme un import. Pas sur
 téléphone.
 
-**Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
-`notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
-du dossier) :
+**Rangement dans Docs** (Seb, 29 octobre, revient sur `notes-de-frais.md` §7 bis et « Rangement sur le
+disque » du 16-17 octobre) : **un seul endroit**, Docs, dans les dossiers de la trésorière ; la
+photo y est rangée à l'établissement et **n'en bouge plus**. **L'état ne se voit que dans l'appli**,
+sur la ligne de la dépense : dans Docs le fichier n'a pas de badge et ne change pas. Le PDF
+récapitulatif est fait **une seule fois, quand c'est payé** (et sur demande avant, « Télécharger »),
+plus de version à chaque étape. Plus d'enveloppes à part sur le disque du serveur (`NOTES_FRAIS_DIR`)
+: Docs range déjà ses fichiers sur le disque. Chemins :
 - Notes de frais : `Notes de frais › <n° personne> <Nom> › <date> <titre> (<n°>)`, comme aujourd'hui ;
 - Honoraires : par personne aussi, `Honoraires › <n° personne> <Nom> › <date> <titre> (<n°>)` ;
 - Achats : pas par personne, `Achats › <date> <fournisseur> <montant>` (le fichier lui-même, comme
   « 2025-02-09 Amazon 39,90.jpg » de §8.3 ; un dossier seulement quand l'achat a plusieurs pièces).
-
-Badges des dossiers et fichiers : à valider = Brouillon, refusé = Refusé, à payer / préparé / envoyé =
-Validé, payé = Officiel (figé).
 
 - **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
   d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,
