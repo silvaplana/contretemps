@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.6, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.7, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -22,11 +22,11 @@ d'une saisie ni d'une IA ; l'appli calcule, l'assistant commente.
 Onglet **Financier**, trésoriers et Super User seulement (`core.md` §4). Sous-onglets, dans l'ordre :
 
 1. **Comptes** (§3) — fait.
-2. **Pièces** (§8) — à faire.
-3. **Notes de frais** (`notes-de-frais.md`) — fait.
-4. **Bilan** (§4) — fait ; documents de l'AG à faire (§8.6).
-5. **Assemblée générale** (§5) — fait.
-6. **Prévisionnel** (§6) — fait.
+2. **Pièces** (§8) — à faire ; reprend le sous-onglet **Notes de frais** (`notes-de-frais.md` §7,
+   décision de Seb, 29 octobre), qui disparaît.
+3. **Bilan** (§4) — fait ; documents de l'AG à faire (§8.6).
+4. **Assemblée générale** (§5) — fait.
+5. **Prévisionnel** (§6) — fait.
 
 Chaque sous-module expose ses actions à l'Assistant IA (`assistant-ia.md` §3, `actions.py`) : cible
 de Seb, « fais-moi le PPT de l'AG de cette année à partir de celui de l'année dernière et du bilan
@@ -342,8 +342,8 @@ Financier › **Pièces** : le classeur des justificatifs. Puces **Achats** · *
 **Notes de frais** · **Ventes** : les quatre dossiers de l'association dans Docs (ci-dessus), ni
 plus ni moins, qui donnent le journal (AC, HO, NF, VE) ; plus une puce **À rattacher** (compteur)
 qui est un filtre sur les pièces pas encore rattachées, pas un dossier. Bouton principal
-**Photographier des pièces** : l'appareil photo en rafale, une pièce par photo, sans saisie ;
-aussi « Choisir dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
+**+** (voir §8.3 bis « Établir une dépense ») : Photo du ticket, Choisir un fichier, ou « Choisir
+dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
 Docs › Privé › Saison <saison> › Financier › <dossier>, nommé par l'appli
 (« 2025-02-09 Amazon 39,90.jpg ») une fois lue ; une photo pas encore lue attend dans Ventes
 ou Achats selon le sens, et change de dossier si la lecture dit autrement.
@@ -399,15 +399,102 @@ les autres repliés avec leur nombre ; une partie vide n'apparaît pas) :
 3. **Envoyés** : « J'ai fait le virement » touché, pas encore vu sur le compte ;
 4. **Payés** : l'opération est vue sur le compte, la pièce y est rattachée (= « rattachée »).
 
-Ce qui arrive dans À payer, tout seul : la **note de frais validée** (avec le RIB déjà donné,
-`nf_ribs`) et la **note d'honoraires** lue dans Honoraires (prof et montant ; plus tard calculée
-par la présence). Une **facture d'achat** n'y va que par le bouton **À payer par virement** de la
-pièce (ce que dit aussi « Pas encore payée ») : un achat par carte, prélevé, ou payé avant la
-facture (le camping) ne passe jamais par Virements, la pièce se rattache à l'opération du compte.
-On peut aussi **préparer un virement sans pièce** (demande ou devis) ; la facture s'y rattache
-quand elle arrive (« Ajouter la facture »).
+**Machine à états** (schéma de Seb, 29 octobre : `/mnt/project-files/appbase/captures/virements-schema-seb.jpg`),
+la même pour les trois natures de dépense :
 
-Dans Achats, Honoraires, Notes de frais, chaque dépense montre son état (badge À payer / Préparé /
+```
+Note de frais ──┐                              Achat (établi par le trésorier)
+Honoraires ─────┴─▶ À valider                              │
+   (établis par l'auteur,  │                            À valider
+    ou le trésorier        ▼                               │
+    pour lui)       Validation trésorier       Déjà payé ? (vérifié sur les comptes)
+                     │ non         │ ok            │ non              │ oui
+                     ▼             ▼               ▼                  │
+              Refusé (motif)    À payer ◀──────────┘                  │
+                                   ▼                                  │
+                           Virement préparé ──▶ (demande au trésorier qui a la carte)
+                                   ▼                                  │
+                                Envoyé                                │
+                                   ▼                                  ▼
+                                 Payé ◀───────────────────────────────┘
+```
+
+Toute dépense commence **À valider**, dès qu'elle est établie. Les notes de frais suivent cette
+machine (plus de statuts à part, `notes-de-frais.md` §5) et le sous-onglet Notes de frais de
+Financier disparaît : les notes sont dans la puce Notes de frais de Pièces (`notes-de-frais.md` §7),
+le côté membre ne change pas.
+
+**Une seule structure « dépense »** (décision de Seb, 29 octobre) : note de frais, note d'honoraires
+et achat sont la même chose, une **dépense** avec une **nature** (frais / honoraires / achat), portée
+par le module Notes de frais déjà codé (`nf_notes` + `nf_depenses`, qui gardent leur nom ; on ajoute
+la nature et, pour un achat, le fournisseur à la place de la personne). Les puces Notes de frais,
+Honoraires et Achats de Pièces sont trois filtres sur cette nature ; Ventes reste à part (recettes).
+Partagé tel quel : la fiche (qui, titre, photos agrandissables, total, RIB), l'envoi, Valider et
+Refuser avec motif, « Saisir pour quelqu'un », les badges d'état, le rangement dans Docs, l'export
+Excel, et la **recherche du paiement sur les comptes** à l'établissement, pour les trois natures (une
+note de frais ou des honoraires déjà virés passent directement Payé, comme un achat). Ce qui diffère :
+honoraires = l'auteur est un prof, une seule ligne (période, montant), journal HO ; achat = établi par
+le trésorier, « qui » est un fournisseur, RIB demandé seulement quand il y a à payer, journal AC.
+
+**Établir une dépense : le « + »** (Seb, 29 octobre). Un seul bouton principal sur Pièces, **+**,
+qui reprend l'écran « Nouvelle dépense » de `notes-de-frais.md` §4.2, tel qu'il est codé
+(`DepenseModal.jsx`) : deux boutons, **Photo du ticket** (appareil photo) et **Choisir un fichier**
+(image ou PDF), plus « Choisir dans Docs » ; lecture par l'appli qui pré-remplit avec la mention
+« Rempli d'après le ticket, à vérifier », on corrige, **Enregistrer**. La nature est celle
+de la puce où l'on est (Notes de frais, Honoraires, Achats) ; depuis Virements, À rattacher ou
+Ventes, le « + » demande d'abord la nature. Les champs changent avec la nature, le reste est commun :
+- **Note de frais** : d'abord « Pour qui ? » (§7 ter de `notes-de-frais.md`), puis date, montant,
+  catégorie, description ; plusieurs dépenses forment une note (titre) ;
+- **Honoraires** : « Pour qui ? » (un prof), période (mois), montant ; une ligne = une note, pas de
+  catégorie (compte 6226) ;
+- **Achat** : fournisseur (lu sur la facture), date, montant, compte du plan proposé, description ;
+  pas de « Pour qui ».
+Une dépense établie par le trésorier est validée en même temps. Le bouton « Photographier des
+pièces » de §8.3 et des écrans d'exemple n'existe plus : c'est le « + », avec « Photo du ticket »
+dedans.
+
+**Rafale** (Seb, 29 octobre) : pour une note de frais, une photo = une dépense, avec le formulaire
+tout de suite (comme aujourd'hui). Pour **Achats** et **Honoraires**, le trésorier a souvent une pile
+de papiers : « Photo du ticket » enchaîne les photos sans formulaire entre deux, **une photo = une
+dépense**, chacune créée aussitôt (À valider, « Lecture en cours… ») et lue en arrière-plan ; après
+chaque photo, **Pièce suivante** (par défaut) ou **Encore une page de celle-ci** (facture de deux
+pages, ticket de dépôt + page du cahier). On revient ensuite à la liste de la puce, où chaque ligne
+porte ce qui a été lu (fournisseur ou prof, date, montant, compte proposé) : on touche une ligne pour
+vérifier ou compléter, le reste est déjà rangé dans Docs. Pour les honoraires, la lecture reconnaît le
+nom du prof et le rapproche d'une fiche ; en cas de doute la ligne demande « Pour qui ? ». Même chose
+avec « Choisir un fichier » et « Choisir dans Docs » quand on sélectionne plusieurs fichiers, et, sur
+ordinateur, en **glissant des fichiers** depuis le bureau sur la liste de la puce (Achats, Honoraires
+ou Notes de frais) : chaque fichier déposé = une dépense de cette nature, comme un import. Pas sur
+téléphone.
+
+**Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
+`notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
+du dossier) :
+- Notes de frais : `Notes de frais › <n° personne> <Nom> › <date> <titre> (<n°>)`, comme aujourd'hui ;
+- Honoraires : par personne aussi, `Honoraires › <n° personne> <Nom> › <date> <titre> (<n°>)` ;
+- Achats : pas par personne, `Achats › <date> <fournisseur> <montant>` (le fichier lui-même, comme
+  « 2025-02-09 Amazon 39,90.jpg » de §8.3 ; un dossier seulement quand l'achat a plusieurs pièces).
+
+Badges des dossiers et fichiers : à valider = Brouillon, refusé = Refusé, à payer / préparé / envoyé =
+Validé, payé = Officiel (figé).
+
+- **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
+  d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,
+  ou à **Refusé** avec un motif (comme `notes-de-frais.md` §5). Quand c'est le trésorier qui
+  établit pour la personne, la validation est faite en même temps : la pièce passe directement
+  À payer.
+  Le RIB vient de `nf_ribs` s'il est déjà donné. Plus tard, les honoraires seront calculés par la
+  présence des profs.
+- **Achat** : établi (saisi, photographié ou importé) par le trésorier, À valider le temps que
+  l'appli cherche le paiement sur les comptes.
+  Trouvé (carte du club, prélèvement, virement fait avant la facture, comme le camping) : la pièce
+  se rattache à l'opération et est **Payé** sans passer par Virements. Pas trouvé : **À payer**
+  (c'est ce que dit le bouton « Pas encore payée » de §8.3). Un achat réglé avec la carte
+  personnelle du trésorier n'est pas un achat mais une note de frais.
+- On peut aussi **préparer un virement sans pièce** (demande ou devis) ; la facture s'y rattache
+  quand elle arrive (« Ajouter la facture »).
+
+Dans Achats, Honoraires, Notes de frais, chaque dépense montre son état (badge À valider / Refusé / À payer / Préparé /
 Envoyé / Payé) ; payée par carte ou déjà vue sur le compte : directement Payé.
 
 **Aide au virement** : toucher une ligne ouvre « Virement à faire » : bénéficiaire, IBAN, montant,
