@@ -537,12 +537,27 @@ class NotesDeFrais:
         return resultat
 
     def compteurs_tresorerie(self, db: Session, membre: Membre) -> dict:
-        """Compteurs des puces : les notes à valider de chaque nature."""
+        """Badges des puces : ce qui attend une action de qui regarde. Par
+        nature, les notes à valider ; Virements, les à payer, les préparés
+        pour moi et les envoyés vus sur le compte (financier.md §8.3 bis)."""
         self._exiger_tresorier(membre)
         a_valider = db.scalars(
             select(NoteFrais.nature).where(NoteFrais.org_id == membre.org_id, NoteFrais.statut == ENVOYEE)
         ).all()
-        return {nature: a_valider.count(nature) for nature in NATURES}
+        compteurs = {nature: a_valider.count(nature) for nature in NATURES}
+        en_paiement = db.scalars(
+            select(NoteFrais).where(
+                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.statut.in_(EN_PAIEMENT)
+            )
+        ).all()
+        prises = self._operations_prises(db, membre.org_id)
+        compteurs["virements"] = sum(
+            note.statut == VALIDEE
+            or (note.statut == PREPAREE and note.payer_id == membre.person_id)
+            or (note.statut == VIREE and self.paiement_propose(db, note, prises) is not None)
+            for note in en_paiement
+        )
+        return compteurs
 
     def valider(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
         self._exiger_tresorier(membre)

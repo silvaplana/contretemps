@@ -23,7 +23,7 @@ function guideDejaVu() {
   }
 }
 
-export default function Virements({ onCompteur }) {
+export default function Virements({ onChange }) {
   const [donnees, setDonnees] = useState(null)
   const [ouverts, setOuverts] = useState({ validee: true })
   const [choisi, setChoisi] = useState(null)
@@ -35,11 +35,10 @@ export default function Virements({ onCompteur }) {
       .virements()
       .then((d) => {
         setDonnees(d)
-        onCompteur(d.virements.filter((v) => v.statut !== 'remboursee').length)
         setErreur('')
       })
       .catch((err) => setErreur(err.message))
-  }, [onCompteur])
+  }, [])
   useEffect(charger, [charger])
 
   async function agir(action, etat, texte) {
@@ -50,6 +49,7 @@ export default function Virements({ onCompteur }) {
       setChoisi(null)
       setMessage(texte)
       charger()
+      onChange()
     } catch (err) {
       setErreur(err.message)
     }

@@ -88,6 +88,17 @@ export function BadgeEtat({ note }) {
   return <span className={`badge ${classe}`}>{label}</span>
 }
 
+// Pastille ronde du nombre de choses à faire (sous-onglet Pièces et ses
+// puces) ; rien quand il n'y a rien à faire.
+export function Compte({ n }) {
+  if (!n) return null
+  return (
+    <span className="nf-compte" aria-label={`${n} à faire`}>
+      {n}
+    </span>
+  )
+}
+
 // Qui est derrière une pièce : la personne, ou le fournisseur d'un achat.
 export function qui(note) {
   if (note.nature === 'achat') return note.fournisseur || 'Fournisseur à lire'

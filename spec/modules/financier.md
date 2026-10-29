@@ -341,7 +341,12 @@ même fournisseur → même compte). Pas de « type » à l'écran : on dit « c
 Financier › **Pièces** : le classeur des justificatifs. Puces **Achats** · **Honoraires** ·
 **Notes de frais** · **Ventes** : les quatre dossiers de l'association dans Docs (ci-dessus), ni
 plus ni moins, qui donnent le journal (AC, HO, NF, VE) ; plus une puce **À rattacher** (compteur)
-qui est un filtre sur les pièces pas encore rattachées, pas un dossier. Bouton principal
+qui est un filtre sur les pièces pas encore rattachées, pas un dossier. Sur téléphone, les six
+puces tiennent en deux lignes de trois, sans défiler. **Badges (Seb, 29/10)** : une pastille ronde
+compte ce qui attend une action de la personne qui regarde, rien quand c'est zéro ; Achats,
+Honoraires et Notes de frais = À valider ; Virements = À payer, Préparés pour elle, Envoyés vus sur
+le compte ; le sous-onglet Pièces montre la somme. Pas comptés : Refusé et Brouillon (au membre),
+Envoyé pas encore vu (la banque), Payé. Bouton principal
 **+** (voir §8.3 bis « Établir une dépense ») : Photo du ticket, Choisir un fichier, ou « Choisir
 dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
 Docs › Privé › Saison <saison> › Financier › <dossier>, nommé par l'appli
@@ -390,8 +395,8 @@ paiement (Enable Banking la réserve aux sociétés agréées) ou un contrat ave
 valider chaque virement dans son appli. L'assistant ne remplit pas l'appli de la banque (Android
 et la banque l'interdisent ; l'assistant n'écrit jamais un chiffre).
 
-Financier › Pièces › puce **Virements** (première puce, avant À rattacher ; compteur = ce qui
-reste à faire). Quatre états, une partie chacun, qui se déroule et se replie (À payer ouvert,
+Financier › Pièces › puce **Virements** (première puce, avant À rattacher ; badge = ce qui
+reste à faire, voir ci-dessus). Quatre états, une partie chacun, qui se déroule et se replie (À payer ouvert,
 les autres repliés avec leur nombre ; une partie vide n'apparaît pas) :
 
 1. **À payer** : pièce de dépense reçue, rien de préparé ;

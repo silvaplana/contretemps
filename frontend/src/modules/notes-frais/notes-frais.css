@@ -417,20 +417,21 @@
   flex: none;
 }
 
+/* Six puces en deux lignes de trois, toutes visibles sur un téléphone. */
 .nf-pieces .filter-chips {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 8px;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  padding-bottom: 2px;
 }
 
 .nf-pieces .filter-chip {
-  flex-shrink: 0;
+  min-width: 0;
   min-height: 48px;
-  padding: 8px 16px;
+  padding: 6px 4px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: 16px;
+  text-align: center;
+  line-height: 1.2;
   background: none;
   color: var(--text);
   font: inherit;
@@ -442,4 +443,27 @@
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
+}
+
+.nf-compte {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: 2px;
+}
+
+/* Sur le sous-onglet actif (fond orange), la pastille s'inverse. */
+.segmented__option.is-active .nf-compte {
+  background: #fff;
+  color: var(--accent);
 }

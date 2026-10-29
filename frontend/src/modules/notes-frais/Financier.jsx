@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
 import MenuEntete from '../../components/MenuEntete.jsx'
@@ -9,6 +9,7 @@ import Comptes, { requestBank, requestStatementImport } from '../finances/Compte
 import { requestPlanComptable, requestSoldesDepart } from '../finances/exemple/PlanComptable.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
+import { Compte } from './commun.jsx'
 import Pieces, { ChoixPersonneModal } from './Pieces.jsx'
 import './notes-frais.css'
 
@@ -37,6 +38,16 @@ export default function Financier() {
   const [choix, setChoix] = useState(null) // null | 'depense' | 'note'
   const [pour, setPour] = useState(null) // { personne, action }
   useEffect(() => () => api.agirPour(null), [])
+  // Badges : ce qui attend une action de qui regarde (financier.md §8.3 bis).
+  const [aFaire, setAFaire] = useState({})
+  const rechargerAFaire = useCallback(() => {
+    api
+      .compteursTresorerie()
+      .then(setAFaire)
+      .catch(() => {})
+  }, [])
+  useEffect(rechargerAFaire, [rechargerAFaire])
+  const totalAFaire = Object.values(aFaire).reduce((a, b) => a + b, 0)
 
   if (pour) {
     return (
@@ -90,7 +101,9 @@ export default function Financier() {
         />
       )}
       <SegmentedTabs
-        options={SOUS_ONGLETS}
+        options={SOUS_ONGLETS.map((o) =>
+          o.value === 'pieces' ? { ...o, label: <>{o.label}<Compte n={totalAFaire} /></> } : o,
+        )}
         value={sousOnglet}
         onChange={setSousOnglet}
         className="admin-screen__tabs"
@@ -104,7 +117,7 @@ export default function Financier() {
       ) : sousOnglet === 'previsionnel' ? (
         <Previsionnel />
       ) : (
-        <Pieces onPour={(personne, action) => {
+        <Pieces aFaire={aFaire} onCompteurs={setAFaire} onChange={rechargerAFaire} onPour={(personne, action) => {
           api.agirPour(personne.person_id)
           setPour({ personne, action })
         }} />

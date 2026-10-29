@@ -493,7 +493,7 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
 
     puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
     assert [n["id"] for n in puce["notes"]] == [note["id"]]
-    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1}
+    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "virements": 0}
     # Rien des achats dans la puce Notes de frais.
     assert client.get("/notes-frais/tresorerie?filtre=frais", headers=entetes_session(tresorier)).json()["notes"] == []
 
@@ -603,6 +603,11 @@ def _honoraires_a_payer(client, db_session, ecole):
     return prof, note
 
 
+def _a_faire(client, qui):
+    """Badges des puces de Pièces : ce qui attend une action de qui regarde."""
+    return client.get("/notes-frais/tresorerie/compteurs", headers=entetes_session(qui)).json()
+
+
 def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole, espion):
     tresorier, admin = ecole["tresorier"], ecole["admin"]
     prof, note = _honoraires_a_payer(client, db_session, ecole)
@@ -619,6 +624,7 @@ def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole
     [ligne] = liste["virements"]
     assert ligne["beneficiaire"] == "L MARTIN" and ligne["libelle_virement"] == "Contretemps honoraires oct 2026"
     assert [p["nom"] for p in liste["payeurs"]] == ["Julia Dho"]
+    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "virements": 1}
 
     # « Qui paie » : Ana, qui a l'appli de la banque.
     reglage = client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
@@ -628,12 +634,16 @@ def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole
     assert prepare.status_code == 200 and prepare.json()["statut"] == "preparee"
     assert prepare.json()["payeur"]["nom"] == "Ana Roux" and prepare.json()["prepare_par"]["nom"] == "Julia Dho"
     assert (admin.id, "Virement à faire") in espion.notifications
+    # Préparé : à faire pour Ana (trésorière adjointe), plus pour Julia.
+    assert _a_faire(client, tresorier)["virements"] == 0
+    Comptes().ajouter_role(db_session, admin, roles.TRESORIER)
+    assert _a_faire(client, admin)["virements"] == 1
 
     fait = client.post(f"{url}/virement", headers=entetes_session(tresorier))
     assert fait.status_code == 200 and fait.json()["statut"] == "viree"
     assert client.post(f"{url}/virement", headers=entetes_session(tresorier)).status_code == 400
     # Réservé aux trésoriers.
-    assert client.get("/notes-frais/virements", headers=entetes_session(admin)).status_code == 403
+    assert client.get("/notes-frais/virements", headers=entetes_session(ecole["eleve"])).status_code == 403
 
 
 # --- Vu sur le compte (financier.md §8.3 bis, rapprochement) ---
@@ -664,6 +674,8 @@ def test_envoye_puis_vu_sur_le_compte_paye(client, db_session, ecole, espion):
     client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
     client.post(f"{url}/preparer", json={"payeur_id": admin.id}, headers=entetes_session(tresorier))
     client.post(f"{url}/virement", headers=entetes_session(tresorier))
+    # Envoyé, pas encore vu sur le compte : on attend la banque.
+    assert _a_faire(client, tresorier)["virements"] == 0
 
     org = ecole["ecole"].id
     _operation(db_session, org, -48000, "2026-09-01", "VIR SEPA AUTRE")  # trop tôt
@@ -671,6 +683,8 @@ def test_envoye_puis_vu_sur_le_compte_paye(client, db_session, ecole, espion):
     bonne = _operation(db_session, org, -48000, "2026-11-03", "VIR SEPA MARTIN LUCIE")
     [ligne] = client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"]
     assert ligne["paiement_propose"]["id"] == bonne.id
+    # Envoyé et vu sur le compte : reste « C'est payé ».
+    assert _a_faire(client, tresorier)["virements"] == 1
 
     # Mauvais montant ou opération d'une autre pièce : refusé.
     petite = _operation(db_session, org, -100, "2026-11-03", "VIR")
