@@ -407,3 +407,12 @@
   color: var(--text-muted);
   font-size: 15px;
 }
+
+.nf-paiement-vu {
+  border-color: var(--success-text);
+}
+
+.nf-paiement-vu .btn {
+  min-height: 48px;
+  flex: none;
+}

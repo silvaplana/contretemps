@@ -75,6 +75,10 @@ class PreparationEntree(BaseModel):
     payeur_id: int
 
 
+class PaiementEntree(BaseModel):
+    operation_id: int
+
+
 class PayeursEntree(BaseModel):
     person_ids: list[int]
 
@@ -300,6 +304,10 @@ class NotesDeFraisReceiver:
         @app.post("/notes-frais/notes/{note_id}/virement")
         def virement_fait(note_id: int, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.virement_fait, db, m, note_id)])[0]
+
+        @app.post("/notes-frais/notes/{note_id}/payee")
+        def payee(note_id: int, corps: PaiementEntree, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.payer, db, m, note_id, corps.operation_id)])[0]
 
         @app.post("/notes-frais/remboursements")
         def rembourser(corps: RemboursementEntree, db: Session = db_dep, m: Membre = membre):

@@ -42,7 +42,7 @@ from .models import (
     PieceJustificative,
     Rib,
 )
-from .ports import LectureImpossible, Membre, Personne, Ports, TicketLu
+from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, TicketLu
 from . import recapitulatif
 from .stockage import StockageEnveloppes, nom_propre
 
@@ -519,9 +519,22 @@ class NotesDeFrais:
         return self.notes_dicts(db, membre, list(db.scalars(requete)))
 
     def notes_dicts(self, db: Session, membre: Membre, notes: list[NoteFrais]) -> list[dict]:
+        """Vu du trésorier : avec les noms, et l'opération du compte qui
+        semble payer la pièce (`paiement_propose`)."""
         ids = {n.person_id for n in notes} | {i for n in notes for i in (n.traitee_par, n.prepared_by, n.payer_id) if i}
         personnes = self.ports.annuaire.personnes(db, membre.org_id, ids - {PERSONNE_A_CHOISIR})
-        return [self.note_dict(n, personnes=personnes) for n in notes]
+        prises = self._operations_prises(db, membre.org_id)
+        resultat = []
+        for note in notes:
+            ligne = self.note_dict(note, personnes=personnes)
+            operation = self.paiement_propose(db, note, prises)
+            ligne["paiement_propose"] = operation and {
+                "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
+                "montant_centimes": operation.montant_centimes, "compte": operation.compte,
+            }
+            ligne["operation_id"] = note.bank_operation_id
+            resultat.append(ligne)
+        return resultat
 
     def compteurs_tresorerie(self, db: Session, membre: Membre) -> dict:
         """Compteurs des puces : les notes à valider de chaque nature."""
@@ -902,6 +915,15 @@ class NotesDeFrais:
 
     def _apres_paiement(self, db: Session, membre: Membre, note: NoteFrais) -> None:
         self._ranger_recapitulatif(db, membre, note)
+        # Celle qui a préparé le virement est prévenue qu'il est passé.
+        if note.prepared_by and note.prepared_by != membre.person_id:
+            prepare = self.ports.annuaire.personnes(db, note.org_id, {note.prepared_by}).get(note.prepared_by)
+            if prepare is not None and prepare.notification_id is not None:
+                self._notifier(db, prepare.notification_id, "Payé", f"{self.beneficiaire(db, note)}, {euros(self.total(note))}")
+        if note.nature == HONORAIRES and note.person_id != PERSONNE_A_CHOISIR:
+            prof = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+            if prof is not None and prof.notification_id is not None:
+                self._notifier(db, prof.notification_id, "Honoraires payés", f"« {note.titre} » : {euros(self.total(note))} par virement.")
         if note.nature == FRAIS:
             self._prevenir_auteur(
                 db, membre, note, "remboursée",
@@ -1018,6 +1040,60 @@ class NotesDeFrais:
             ligne["beneficiaire"] = self.beneficiaire(db, note)
             ligne["libelle_virement"] = self.libelle_virement(db, note)
         return resultat
+
+    # --- Vu sur le compte (financier.md §8.3 bis, rapprochement) ---
+
+    def _operations_prises(self, db: Session, org_id: int) -> set[int]:
+        return set(db.scalars(
+            select(NoteFrais.bank_operation_id).where(NoteFrais.org_id == org_id, NoteFrais.bank_operation_id.is_not(None))
+        ))
+
+    def paiement_propose(self, db: Session, note: NoteFrais, prises: set[int]) -> OperationBancaire | None:
+        """Le débit du même montant, après l'envoi du virement (ou autour de la
+        date de la dépense : achat payé par carte, virement fait avant la
+        facture), de préférence au nom du bénéficiaire. Proposé, jamais
+        rattaché sans confirmation."""
+        banque, total = self.ports.banque, self.total(note)
+        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+            return None
+        if note.statut == VIREE and note.transfer_sent_at is not None:
+            reference = note.transfer_sent_at.date()
+            depuis = reference - timedelta(days=3)
+        else:
+            reference = min((d.date for d in note.depenses), default=note.envoyee_le.date())
+            depuis = reference - timedelta(days=45)
+        candidates = [o for o in banque.debits(db, note.org_id, total, depuis) if o.id not in prises]
+        if not candidates:
+            return None
+        noms = {m for m in re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}"))}
+        return min(
+            candidates,
+            key=lambda o: (not noms & set(re.findall(r"[a-z]{3,}", _sans_accents(o.libelle))), abs((o.date - reference).days)),
+        )
+
+    def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int) -> NoteFrais:
+        """Confirmer l'opération vue sur le compte : la pièce y est rattachée
+        et passe Payé (aussi tout droit depuis À valider : déjà payé)."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+            raise ValueError("Cette pièce n'est pas à payer.")
+        operation = self.ports.banque.operation(db, membre.org_id, operation_id) if self.ports.banque else None
+        if operation is None:
+            raise LookupError("Opération introuvable sur les comptes.")
+        if operation.montant_centimes != -self.total(note):
+            raise ValueError("Le montant de l'opération n'est pas celui de la pièce.")
+        if operation_id in self._operations_prises(db, membre.org_id):
+            raise ValueError("Cette opération est déjà rattachée à une autre pièce.")
+        if note.statut == ENVOYEE:
+            self._exiger_complete(note)
+            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
+        note.bank_operation_id = operation_id
+        db.commit()
+        db.refresh(note)
+        self._apres_paiement(db, membre, note)
+        return note
 
     def lignes_export(self, db: Session, membre: Membre, debut: date | None, fin: date | None, nature: str = FRAIS) -> list[dict]:
         """Une ligne par dépense des notes de cette nature (§7), pour Excel."""

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
-import { BadgeEtat, ChampsRib, qui, ribVide } from './commun.jsx'
+import { BadgeEtat, ChampsRib, PaiementVu, qui, ribVide } from './commun.jsx'
 
 // Puce Virements de Financier › Pièces (spec/modules/financier.md §8.3 bis) :
 // ce qui attend d'être payé, en quatre états, et l'aide au virement (copier
@@ -73,6 +73,7 @@ export default function Virements({ onCompteur }) {
             setErreur(err.message)
           }
         }}
+        onPaye={(op) => agir(() => api.payee(v.id, op.id), 'remboursee', 'Payé : la pièce est rattachée à l’opération du compte.')}
         onFait={() =>
           agir(() => api.virementFait(v.id), 'viree', 'Noté comme envoyé : il passera en Payés quand l’appli le verra sur le compte.')
         }
@@ -122,6 +123,7 @@ export default function Virements({ onCompteur }) {
                       {x.titre}
                       {x.statut === 'preparee' && x.payeur ? ` · chez ${x.payeur.nom}` : ''}
                       {x.statut !== 'remboursee' && !x.rib ? ' · RIB à demander' : ''}
+                      {x.paiement_propose ? ' · vu sur le compte' : ''}
                     </span>
                   </span>
                   <span className="nf-ligne__droite">
@@ -137,7 +139,7 @@ export default function Virements({ onCompteur }) {
   )
 }
 
-function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onFait, onFairePayer }) {
+function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onPaye, onFait, onFairePayer }) {
   const [rib, setRib] = useState(() => ribVide(v.rib))
   const [changerRib, setChangerRib] = useState(!v.rib)
   const [guide, setGuide] = useState(() => !guideDejaVu())
@@ -154,7 +156,14 @@ function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onFait,
       <button type="button" className="btn btn--link nf-retour" onClick={onRetour}>
         ← Virements
       </button>
-      <h3 className="nf-vir-h">Virement à faire</h3>
+      <h3 className="nf-vir-h">{v.statut === 'viree' ? 'Virement envoyé' : 'Virement à faire'}</h3>
+      {v.statut === 'viree' && (
+        <p className="muted">
+          Envoyé le {api.dateCourte(v.vire_le)} : il passe en Payés quand l’appli le voit sur le compte, après la
+          lecture de la banque ou l’import du relevé.
+        </p>
+      )}
+      <PaiementVu note={v} onConfirme={onPaye} />
       {v.statut === 'preparee' && v.prepare_par && (
         <p className="muted">
           Préparé par {v.prepare_par.nom} le {api.dateCourte(v.prepare_le)}
@@ -201,7 +210,7 @@ function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onFait,
         </ol>
       )}
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
-      <div className="nf-vir-boutons">
+      <div className="nf-vir-boutons" hidden={v.statut === 'viree'}>
         <button type="button" className="btn btn--primary" disabled={!v.rib || changerRib} onClick={onFait}>
           J’ai fait le virement
         </button>

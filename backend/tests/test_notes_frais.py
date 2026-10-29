@@ -634,3 +634,79 @@ def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole
     assert client.post(f"{url}/virement", headers=entetes_session(tresorier)).status_code == 400
     # Réservé aux trésoriers.
     assert client.get("/notes-frais/virements", headers=entetes_session(admin)).status_code == 403
+
+
+# --- Vu sur le compte (financier.md §8.3 bis, rapprochement) ---
+
+
+def _operation(db_session, org_id, montant, jour, libelle):
+    import datetime as dt
+
+    from finances.models import FinAccount, FinOperation
+
+    compte = db_session.query(FinAccount).filter_by(org_id=org_id).first()
+    if compte is None:
+        compte = FinAccount(org_id=org_id, number="401", name="Compte courant", kind="checking")
+        db_session.add(compte)
+        db_session.flush()
+    jour = dt.date.fromisoformat(jour)
+    operation = FinOperation(account_id=compte.id, position=0, date=jour, value_date=jour, label=libelle, amount=montant)
+    db_session.add(operation)
+    db_session.commit()
+    return operation
+
+
+def test_envoye_puis_vu_sur_le_compte_paye(client, db_session, ecole, espion):
+    tresorier, admin = ecole["tresorier"], ecole["admin"]
+    prof, note = _honoraires_a_payer(client, db_session, ecole)
+    url = f"/notes-frais/notes/{note['id']}"
+    client.put(f"{url}/rib", json={"iban": IBAN, "titulaire": "L MARTIN"}, headers=entetes_session(tresorier))
+    client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
+    client.post(f"{url}/preparer", json={"payeur_id": admin.id}, headers=entetes_session(tresorier))
+    client.post(f"{url}/virement", headers=entetes_session(tresorier))
+
+    org = ecole["ecole"].id
+    _operation(db_session, org, -48000, "2026-09-01", "VIR SEPA AUTRE")  # trop tôt
+    autre = _operation(db_session, org, -48000, "2026-11-02", "VIR SEPA DUPONT")
+    bonne = _operation(db_session, org, -48000, "2026-11-03", "VIR SEPA MARTIN LUCIE")
+    [ligne] = client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"]
+    assert ligne["paiement_propose"]["id"] == bonne.id
+
+    # Mauvais montant ou opération d'une autre pièce : refusé.
+    petite = _operation(db_session, org, -100, "2026-11-03", "VIR")
+    assert client.post(f"{url}/payee", json={"operation_id": petite.id}, headers=entetes_session(tresorier)).status_code == 400
+    paye = client.post(f"{url}/payee", json={"operation_id": bonne.id}, headers=entetes_session(tresorier))
+    assert paye.status_code == 200 and paye.json()["statut"] == "remboursee" and paye.json()["operation_id"] == bonne.id
+    # Prévenus : celle qui a préparé (ici Julia elle-même : non), et le prof.
+    assert (prof.id, "Honoraires payés") in espion.notifications
+    [ligne] = client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"]
+    assert ligne["statut"] == "remboursee" and ligne["paiement_propose"] is None
+
+    # L'opération prise n'est plus proposée à une autre pièce.
+    _, autre_note = _honoraires_a_payer_bis(client, db_session, ecole)
+    propose = client.get("/notes-frais/tresorerie?filtre=honoraires", headers=entetes_session(tresorier)).json()["notes"]
+    assert next(n for n in propose if n["id"] == autre_note["id"])["paiement_propose"]["id"] == autre.id
+
+
+def _honoraires_a_payer_bis(client, db_session, ecole):
+    prof = Comptes().create(
+        db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Pesenti", prenom="Anna", email="anna@test.fr"
+    )
+    return prof, _etablir(client, ecole["tresorier"], "honoraires", contenu=None, person_id=str(prof.id),
+                          date="2026-10-20", montant_centimes="48000", valider="true")
+
+
+def test_achat_deja_paye_par_carte(client, db_session, ecole, monkeypatch):
+    """« Déjà payé ? » : l'achat lu trouve son débit carte ; confirmé, il passe
+    Payé sans passer par Virements."""
+    tresorier = ecole["tresorier"]
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon"),
+    )
+    carte = _operation(db_session, ecole["ecole"].id, -3990, "2025-02-10", "CB 0902 AMAZON PAYMENTS")
+    note = _etablir(client, tresorier, "achat")
+    assert note["statut"] == "envoyee" and note["paiement_propose"]["id"] == carte.id
+    paye = client.post(f"/notes-frais/notes/{note['id']}/payee", json={"operation_id": carte.id}, headers=entetes_session(tresorier))
+    assert paye.json()["statut"] == "remboursee"
+    assert client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"][0]["id"] == note["id"]

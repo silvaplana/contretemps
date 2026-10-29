@@ -1,6 +1,6 @@
 """Expense natures, transfer states and payers (financier.md §8.3 bis)
 
-Revision ID: a3c5e7f9b1d2
+Revision ID: c7e2a94d1f38
 Revises: 9b40dd3662ca
 Create Date: 2026-10-29
 
@@ -11,7 +11,7 @@ from collections.abc import Sequence
 import sqlalchemy as sa
 from alembic import op
 
-revision: str = "a3c5e7f9b1d2"
+revision: str = "c7e2a94d1f38"
 down_revision: str | Sequence[str] | None = "9b40dd3662ca"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None

@@ -94,6 +94,27 @@ export function qui(note) {
   return note.personne?.nom ?? 'Pour qui ?'
 }
 
+// « Vu sur le compte » (financier.md §8.3 bis) : l'opération qui semble payer
+// la pièce, proposée par l'appli ; rien n'est rattaché sans « Confirmer ».
+export function PaiementVu({ note, onConfirme }) {
+  const op = note.paiement_propose
+  if (!op) return null
+  return (
+    <div className="nf-ligne nf-paiement-vu">
+      <span className="nf-ligne__corps">
+        <span className="nf-ligne__titre">Vu sur le compte</span>
+        <span className="muted">
+          {op.libelle} · {api.euros(op.montant_centimes)} le {api.dateCourte(op.date)}
+          {op.compte ? ` · ${op.compte}` : ''}
+        </span>
+      </span>
+      <button type="button" className="btn btn--primary" onClick={() => onConfirme(op)}>
+        C’est payé
+      </button>
+    </div>
+  )
+}
+
 // Champs du RIB (Profil > Mon RIB et fenêtre d'envoi, spec §4.4 et §4.5).
 export function ChampsRib({ rib, onChange }) {
   return (

@@ -5,7 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import PiecesExemple from '../finances/exemple/Pieces.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { BadgeEtat, Pieces as Vignettes, qui } from './commun.jsx'
+import { BadgeEtat, PaiementVu, Pieces as Vignettes, qui } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
@@ -241,6 +241,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
                 {n.nature === 'achat' ? '' : `${n.titre} · `}
                 {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
                 {n.depenses.length > 1 ? ` · ${n.depenses.length} dépenses` : ''}
+                {n.paiement_propose ? ' · vu sur le compte' : ''}
               </span>
             </span>
             <span className="nf-ligne__droite">
@@ -505,6 +506,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
           <BadgeEtat note={note} />
         </div>
       )}
+      {note && <PaiementVu note={note} onConfirme={(op) => agir(() => api.payee(note.id, op.id))} />}
       {note && depense?.lue_par_ia && corrigeable && (
         <p className="badge badge--warning nf-a-verifier">Rempli d’après le ticket, à vérifier</p>
       )}

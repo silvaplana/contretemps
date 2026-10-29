@@ -109,6 +109,8 @@ export const definirPayeurs = (personIds) => appel('/payeurs', json('PUT', { per
 export const ribNote = (noteId, rib) => appel(`/notes/${noteId}/rib`, json('PUT', rib))
 export const preparer = (noteId, payeurId) => appel(`/notes/${noteId}/preparer`, json('POST', { payeur_id: payeurId }))
 export const virementFait = (noteId) => appel(`/notes/${noteId}/virement`, { method: 'POST' })
+// Opération vue sur le compte, confirmée : la pièce est payée.
+export const payee = (noteId, operationId) => appel(`/notes/${noteId}/payee`, json('POST', { operation_id: operationId }))
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`
