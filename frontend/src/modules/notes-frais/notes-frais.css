@@ -444,3 +444,26 @@
   color: var(--accent);
   font-weight: 600;
 }
+
+.nf-compte {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 11px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  vertical-align: 2px;
+}
+
+/* Sur le sous-onglet actif (fond orange), la pastille s'inverse. */
+.segmented__option.is-active .nf-compte {
+  background: #fff;
+  color: var(--accent);
+}

@@ -5,7 +5,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import PiecesExemple from '../finances/exemple/Pieces.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { BadgeEtat, PaiementVu, Pieces as Vignettes, qui } from './commun.jsx'
+import { BadgeEtat, Compte, PaiementVu, Pieces as Vignettes, qui } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
@@ -25,7 +25,7 @@ const PUCES = [
 
 const SUR_ORDINATEUR = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches
 
-export default function Pieces({ onPour }) {
+export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   const [puce, setPuce] = useState(() => {
     const derniere = sessionApi.lireEcran('financier-pieces')
     return PUCES.some((p) => p.value === derniere) ? derniere : 'virements'
@@ -33,9 +33,6 @@ export default function Pieces({ onPour }) {
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier-pieces', puce)
   }, [puce])
-  const [compteurs, setCompteurs] = useState({})
-  const ajouterCompteurs = useCallback((c) => setCompteurs((x) => ({ ...x, ...c })), [])
-  const compteurVirements = useCallback((n) => setCompteurs((x) => ({ ...x, virements: n })), [])
   const [plus, setPlus] = useState(false)
   const [natureAChoisir, setNatureAChoisir] = useState(false)
 
@@ -53,19 +50,19 @@ export default function Pieces({ onPour }) {
             onClick={() => setPuce(p.value)}
           >
             {p.label}
-            {compteurs[p.value] ? ` (${compteurs[p.value]})` : ''}
+            <Compte n={aFaire[p.value]} />
           </button>
         ))}
       </div>
       {exemple ? (
         <PiecesExemple dossier={puce} />
       ) : puce === 'virements' ? (
-        <Virements onCompteur={compteurVirements} />
+        <Virements onChange={onChange} />
       ) : (
         <ListeNature
           key={puce}
           nature={puce}
-          onCompteurs={ajouterCompteurs}
+          onCompteurs={onCompteurs}
           plus={plus}
           onPlusFerme={() => setPlus(false)}
           onPour={onPour}
