@@ -118,14 +118,31 @@ function App() {
   }, [compteReel?.id])
   // « Ouvrir dans Docs » depuis un autre onglet (Financier › Documents de
   // l'AG) : même chemin que le lien d'une bulle de la messagerie.
+  // Avec retour, fermer l'aperçu ramène à l'onglet de départ (Bilan…).
+  const ongletRetour = useRef(null)
   useEffect(() => {
     const ouvrir = (e) => {
-      setActiveTab('docs')
-      setTimeout(() => window.dispatchEvent(new CustomEvent('dx-ouvrir', { detail: { id: e.detail?.id } })), 0)
+      const { id, retour } = e.detail ?? {}
+      setActiveTab((avant) => {
+        ongletRetour.current = retour ? avant : null
+        return 'docs'
+      })
+      setTimeout(() => window.dispatchEvent(new CustomEvent('dx-ouvrir', { detail: { id, retour } })), 0)
+    }
+    const revenir = () => {
+      if (ongletRetour.current) setActiveTab(ongletRetour.current)
+      ongletRetour.current = null
     }
     window.addEventListener('app-ouvrir-docs', ouvrir)
-    return () => window.removeEventListener('app-ouvrir-docs', ouvrir)
+    window.addEventListener('app-retour', revenir)
+    return () => {
+      window.removeEventListener('app-ouvrir-docs', ouvrir)
+      window.removeEventListener('app-retour', revenir)
+    }
   }, [])
+  useEffect(() => {
+    if (activeTab !== 'docs') ongletRetour.current = null
+  }, [activeTab])
 
   // Session persistante (voir spec §2.2, api/session.js) : au tout
   // premier rendu, on ne sait pas encore s'il y a un profil à restaurer

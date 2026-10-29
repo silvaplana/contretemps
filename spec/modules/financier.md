@@ -581,6 +581,7 @@ Officiel du bilan ; l'AG (§5) les joint à la convocation.
 document a un œil (le fichier est produit, rangé dans Docs et ouvert comme dans Docs : Word et Excel dans
 OnlyOffice, PDF dans la visionneuse du téléphone), un téléchargement et une icône Docs qui ouvre
 Financier › AG.
+Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'AG (Seb, 29/10).
 
 ### 8.7 Complet : écritures, soldes de départ, clôture
 

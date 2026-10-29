@@ -9,6 +9,9 @@ import { useEffect } from 'react'
 
 let enAttente = lireAdresse()
 const abonnes = new Set()
+// Fichier ouvert depuis un autre onglet avec retour : fermer l'aperçu
+// ramène à cet onglet (voir `revenirApresFichier`).
+let retour = false
 
 function lireAdresse() {
   const trouve = window.location.pathname.match(/\/docs\/(\d+)\/?$/)
@@ -24,6 +27,7 @@ export const DOCS_AU_CHARGEMENT = enAttente != null
 window.addEventListener('dx-ouvrir', (e) => {
   const id = Number(e.detail?.id)
   if (!id) return
+  retour = !!e.detail?.retour
   if (abonnes.size) abonnes.forEach((f) => f(id))
   else enAttente = id
 })
@@ -46,7 +50,20 @@ export function texteDuLien(item) {
 }
 
 // Depuis un autre onglet de l'appli (Financier…) : l'appli passe sur Docs
-// et y ouvre le dossier ou le fichier (écouté dans App.jsx).
-export function ouvrirDansDocs(id) {
-  window.dispatchEvent(new CustomEvent('app-ouvrir-docs', { detail: { id } }))
+// et y ouvre le dossier ou le fichier (écouté dans App.jsx). Avec `retour`,
+// fermer l'aperçu du fichier ramène à l'onglet de départ.
+export function ouvrirDansDocs(id, { retour: avecRetour = false } = {}) {
+  window.dispatchEvent(new CustomEvent('app-ouvrir-docs', { detail: { id, retour: avecRetour } }))
+}
+
+// Appelé par l'explorateur : un dossier ouvert ne revient pas ; un aperçu
+// fermé revient à l'onglet de départ s'il a été ouvert avec retour.
+export function oublierRetour() {
+  retour = false
+}
+
+export function revenirApresFichier() {
+  if (!retour) return
+  retour = false
+  window.dispatchEvent(new CustomEvent('app-retour'))
 }
