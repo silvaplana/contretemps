@@ -424,6 +424,18 @@ machine (plus de statuts à part, `notes-de-frais.md` §5) et le sous-onglet Not
 Financier disparaît : les notes sont dans la puce Notes de frais de Pièces (`notes-de-frais.md` §7),
 le côté membre ne change pas.
 
+**Une seule structure « dépense »** (décision de Seb, 29 octobre) : note de frais, note d'honoraires
+et achat sont la même chose, une **dépense** avec une **nature** (frais / honoraires / achat), portée
+par le module Notes de frais déjà codé (`nf_notes` + `nf_depenses`, qui gardent leur nom ; on ajoute
+la nature et, pour un achat, le fournisseur à la place de la personne). Les puces Notes de frais,
+Honoraires et Achats de Pièces sont trois filtres sur cette nature ; Ventes reste à part (recettes).
+Partagé tel quel : la fiche (qui, titre, photos agrandissables, total, RIB), l'envoi, Valider et
+Refuser avec motif, « Saisir pour quelqu'un », les badges d'état, le rangement dans Docs, l'export
+Excel, et la **recherche du paiement sur les comptes** à l'établissement, pour les trois natures (une
+note de frais ou des honoraires déjà virés passent directement Payé, comme un achat). Ce qui diffère :
+honoraires = l'auteur est un prof, une seule ligne (période, montant), journal HO ; achat = établi par
+le trésorier, « qui » est un fournisseur, RIB demandé seulement quand il y a à payer, journal AC.
+
 - **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
   d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,
   ou à **Refusé** avec un motif (comme `notes-de-frais.md` §5). Quand c'est le trésorier qui

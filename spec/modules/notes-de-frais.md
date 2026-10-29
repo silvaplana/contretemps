@@ -116,6 +116,11 @@ commune aux dépenses** de `financier.md` §8.3 bis, la même que pour les honor
    └──reprendre──▶ (note supprimée, dépenses « À envoyer »)
 ```
 
+Même décision : une note de frais, une note d'honoraires et un achat sont la **même structure
+« dépense »**, avec une nature, portée par ce module (`financier.md` §8.3 bis : ce qui est partagé et
+ce qui diffère). À l'établissement, l'appli cherche aussi pour une note de frais si le virement a déjà
+été fait sur les comptes : si oui, elle passe directement payé.
+
 Correspondance avec les statuts d'avant (gardés tels quels en base, `nf_notes.statut`) : envoyée =
 à valider, validée = à payer, remboursée = payé ; refusée ne change pas. Préparé et envoyé sont
 nouveaux. Quand c'est le trésorier qui établit la note pour la personne (§7 ter), la validation est
