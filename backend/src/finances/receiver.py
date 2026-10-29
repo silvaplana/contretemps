@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
+from .accounting import Accounting, AccountingError
 from .assemblies import PPTX, AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .bank import Bank, BankError
 from .exports import to_pdf, to_xlsx
@@ -103,6 +104,43 @@ class RenameRequest(BaseModel):
     name: str
 
 
+class ChartAccountRequest(BaseModel):
+    """Corps de POST /finances/chart et PUT /finances/chart/{id} : un compte
+    du plan (spec §8.2)."""
+
+    number: str
+    label: str
+    nature: str | None = None
+    event: str | None = None
+    keywords: list[str] = []
+    active: bool | None = None
+
+
+class LevelRequest(BaseModel):
+    """Corps de PUT /finances/chart/level : "simple" ou "complet"."""
+
+    level: str
+
+
+class LinesRequest(BaseModel):
+    """Corps de PUT /finances/operations/{id}/accounts : la ventilation
+    confirmée ({accountId, amount en euros}) ; une seule ligne = tout le
+    montant ; vide = compte retiré."""
+
+    lines: list[dict]
+
+
+class CashLineRequest(BaseModel):
+    """Corps de POST /finances/cash : une ligne de caisse (spec §8.5)."""
+
+    date: str
+    label: str
+    amount: float
+    accountId: int | None = None
+    transferOperationId: int | None = None
+    docNodeId: int | None = None
+
+
 def _http(error: Exception) -> HTTPException:
     if isinstance(error, ReportNotFoundError):
         return HTTPException(status_code=404, detail="Bilan inconnu")
@@ -127,6 +165,7 @@ class FinancesReceiver:
         forecasts: Forecasts | None = None,
         bank: Bank | None = None,
         org_url: Callable[[Session, int | None], str] | None = None,
+        accounting: Accounting | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
@@ -142,7 +181,10 @@ class FinancesReceiver:
         # org_url(db, org_id) : l'adresse de l'appli de l'organisation, où
         # revenir après la banque.
         self.org_url = org_url
+        self.accounting = accounting
         self._register_routes()
+        if accounting is not None:
+            self._register_accounting_routes()
         if bank is not None:
             self._register_bank_routes()
         if reports is not None:
@@ -266,6 +308,69 @@ class FinancesReceiver:
                 raise HTTPException(status_code=404, detail="Compte inconnu") from exc
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    def _register_accounting_routes(self) -> None:
+        """Comptabilité (accounting.py, spec §8) : plan comptable, niveau,
+        compte sur chaque ligne, caisse."""
+        app, accounting = self.app, self.accounting
+        db_dep = Depends(get_db)
+        member_dep = Depends(self.current_member)
+
+        def call(action, *args):
+            try:
+                return action(*args)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+            except LookupError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except (AccountingError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        @app.get("/finances/chart")
+        def get_chart(db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.chart, db, member)
+
+        @app.put("/finances/chart/level")
+        def set_level(data: LevelRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return {"level": call(accounting.set_level, db, member, data.level)}
+
+        @app.post("/finances/chart", status_code=201)
+        def create_chart_account(data: ChartAccountRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.create_account, db, member, data.model_dump())
+
+        @app.put("/finances/chart/{account_id}")
+        def update_chart_account(
+            account_id: int, data: ChartAccountRequest, db: Session = db_dep, member: Member = member_dep
+        ) -> dict:
+            return call(accounting.update_account, db, member, account_id, data.model_dump(exclude_none=True))
+
+        @app.delete("/finances/chart/{account_id}", status_code=204)
+        def delete_chart_account(account_id: int, db: Session = db_dep, member: Member = member_dep) -> Response:
+            call(accounting.delete_account, db, member, account_id)
+            return Response(status_code=204)
+
+        @app.get("/finances/operations/{operation_id}")
+        def get_operation(operation_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """La fiche d'une opération (spec §8.4)."""
+            return call(accounting.operation, db, member, operation_id)
+
+        @app.put("/finances/operations/{operation_id}/accounts")
+        def set_operation_accounts(
+            operation_id: int, data: LinesRequest, db: Session = db_dep, member: Member = member_dep
+        ) -> dict:
+            return call(accounting.set_lines, db, member, operation_id, data.lines)
+
+        @app.get("/finances/cash")
+        def get_cash(db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.cash, db, member)
+
+        @app.post("/finances/cash", status_code=201)
+        def add_cash_line(data: CashLineRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.add_cash_line, db, member, data.model_dump())
+
+        @app.delete("/finances/cash/{line_id}")
+        def delete_cash_line(line_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.delete_cash_line, db, member, line_id)
 
     def _register_report_routes(self) -> None:
         app, reports = self.app, self.reports

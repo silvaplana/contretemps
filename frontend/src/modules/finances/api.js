@@ -108,3 +108,20 @@ export const reglerPrevisionnel = (id, params) => appel(`/forecasts/${id}/params
 // Image (png) ou PDF, avec les saisons comparées à l'écran.
 export const urlTelechargementPrevisionnel = (id, format, seasonIds) =>
   `${BASE}/forecasts/${id}/download?format=${format}&seasons=${seasonIds.join(',')}`
+
+// --- Comptabilité (spec §8) : plan comptable, compte sur chaque ligne, caisse ---
+
+// { level, natures: [{ id, label }], accounts: [{ id, number, label, nature, event, keywords, active, used }] }.
+export const planComptable = () => appel('/chart')
+export const choisirNiveau = (level) => appel('/chart/level', json('PUT', { level }))
+export const creerCompte = (donnees) => appel('/chart', json('POST', donnees))
+export const modifierCompte = (id, donnees) => appel(`/chart/${id}`, json('PUT', donnees))
+export const supprimerCompte = (id) => appel(`/chart/${id}`, { method: 'DELETE' })
+// Fiche d'une opération : { id, date, label, details, amount, bankAccount, transfer, lines, proposal, piece, level }.
+export const operation = (id) => appel(`/operations/${id}`)
+// Ventilation confirmée : [{ accountId, amount }] ; une seule ligne = tout le montant ; vide = compte retiré.
+export const ventiler = (id, lines) => appel(`/operations/${id}/accounts`, json('PUT', { lines }))
+// Caisse : { balance, asOf, lines: [{ id, date, label, amount, account, transferOperationId }] }.
+export const caisse = () => appel('/cash')
+export const ajouterLigneCaisse = (donnees) => appel('/cash', json('POST', donnees))
+export const supprimerLigneCaisse = (id) => appel(`/cash/${id}`, { method: 'DELETE' })

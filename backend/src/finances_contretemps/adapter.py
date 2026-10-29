@@ -71,3 +71,22 @@ def adresse_ecole(db: Session, ecole_id: int | None) -> str:
 
     ecole = db.get(Ecole, ecole_id) if ecole_id is not None else None
     return MailsAcces().appli(ecole.sous_domaine if ecole is not None else None)
+
+
+# Libellés des natures de dépense (notes_frais/models.py) sur la ligne de Comptes.
+_NATURES = {"frais": "Note de frais", "honoraires": "Honoraires", "achat": "Achat"}
+
+
+def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
+    """La pièce rattachée à chaque opération bancaire (spec financier.md
+    §8.4) : les dépenses du module Notes de frais payées par cette opération
+    (`nf_notes.bank_operation_id`)."""
+    from notes_frais.models import NoteFrais
+
+    notes = db.scalars(
+        select(NoteFrais).where(NoteFrais.org_id == ecole_id, NoteFrais.bank_operation_id.is_not(None))
+    )
+    return {
+        n.bank_operation_id: {"id": n.id, "title": n.supplier or n.titre, "kind": _NATURES.get(n.nature, n.nature)}
+        for n in notes
+    }

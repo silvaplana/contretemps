@@ -13,7 +13,7 @@ from __future__ import annotations
 import datetime as dt
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import JSON, Boolean, Date, DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from db import Base
@@ -214,3 +214,84 @@ class FinForecast(Base):
     run_started_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+# ----- Comptabilité (spec §8) : plan comptable, compte sur chaque ligne,
+# caisse, réglage Simple / Complet -----
+
+# Natures d'un compte du plan.
+EXPENSE = "depense"
+INCOME = "recette"
+THIRD_PARTY = "tiers"
+SUSPENSE = "attente"
+NATURES = (EXPENSE, INCOME, THIRD_PARTY, SUSPENSE)
+
+# Niveaux du réglage (spec §8.1).
+SIMPLE = "simple"
+FULL = "complet"
+LEVELS = (SIMPLE, FULL)
+
+
+class FinSettings(Base):
+    """Réglage du Financier par organisation : niveau Simple (trésorerie) ou
+    Complet (partie double). Pas de ligne = Simple."""
+
+    __tablename__ = "fin_settings"
+
+    org_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    level: Mapped[str] = mapped_column(String(10), nullable=False, default=SIMPLE)
+
+
+class FinChartAccount(Base):
+    """Un compte du plan comptable de l'organisation (spec §8.2) : numéro du
+    plan associatif, libellé de l'organisation, nature, événement (« gala »)
+    pour le bloc de la Synthèse, mots-clés de proposition. Un compte utilisé
+    ne se supprime pas : il passe inactif."""
+
+    __tablename__ = "fin_chart_accounts"
+    __table_args__ = (UniqueConstraint("org_id", "number", name="uq_fin_chart_accounts_org_number"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    number: Mapped[str] = mapped_column(String(10), nullable=False)
+    label: Mapped[str] = mapped_column(String(80), nullable=False)
+    nature: Mapped[str] = mapped_column(String(10), nullable=False)
+    event: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    keywords: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+
+
+class FinOperationAccount(Base):
+    """Ventilation d'une opération bancaire sur les comptes du plan (spec
+    §8.4) : une ligne par compte, les montants (centimes, signés comme
+    l'opération) font le total de l'opération. Confirmée par le trésorier ;
+    une proposition de l'appli n'est jamais écrite ici."""
+
+    __tablename__ = "fin_operation_accounts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    operation_id: Mapped[int] = mapped_column(ForeignKey("fin_operations.id", ondelete="CASCADE"), nullable=False, index=True)
+    account_id: Mapped[int] = mapped_column(ForeignKey("fin_chart_accounts.id"), nullable=False, index=True)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    confirmed_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    confirmed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinCashLine(Base):
+    """Une ligne de la caisse (spec §8.5), le seul compte saisi à la main :
+    date, libellé, montant (centimes, négatif = sortie), compte du plan,
+    pièce dans Docs. Un retrait au distributeur entre ici comme virement
+    interne depuis l'opération bancaire `transfer_operation_id`."""
+
+    __tablename__ = "fin_cash_lines"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False, index=True)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    account_id: Mapped[int | None] = mapped_column(ForeignKey("fin_chart_accounts.id"), nullable=True)
+    transfer_operation_id: Mapped[int | None] = mapped_column(ForeignKey("fin_operations.id", ondelete="SET NULL"), nullable=True)
+    doc_node_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)

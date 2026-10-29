@@ -608,6 +608,18 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
 
 1. Plan comptable, Pièces (photo, lecture, proposition, confirmation), compte et pièce sur chaque
    ligne de Comptes, caisse, réglage Simple / Complet. Suffit pour la Synthèse.
+   **Codée le 29 octobre 2026** (`finances/chart.py`, `finances/accounting.py`, tables `fin_settings`,
+   `fin_chart_accounts`, `fin_operation_accounts`, `fin_cash_lines` ; écrans `finances/compta/`) :
+   plan par défaut d'une association (`DEFAULT_CHART`) et commande
+   `python -m app.plan_comptable_contretemps --ecole <id>` pour les comptes de la Balance 24-25 ;
+   compte proposé d'après l'historique confirmé (même libellé sans ses chiffres) puis les mots-clés,
+   jamais écrit sans confirmation ; fiche de l'opération avec ventilation (la somme doit faire la
+   banque) ; puces Sans compte / Sans pièce ; la pièce d'une ligne = la dépense payée par cette
+   opération (`nf_notes.bank_operation_id`) ; puces À rattacher (lignes sans compte) et Ventes
+   (recettes) de Pièces ; caisse avec retrait au distributeur = virement interne ; niveau Simple /
+   Complet dans Comptes › ⋯ › Plan comptable (pas encore dans Personnalisation). Reste : remise de
+   chèques avec une sous-ligne par chèque rapprochée d'une famille, pièce choisie dans Docs ou
+   photographiée depuis la ligne de Comptes, pièce sur une ligne de caisse.
 1 bis. Virements (§8.3 bis) : puce, quatre états, aide au virement, RIB, Qui paie, notification.
    **Codée le 29 octobre 2026**, dans le module Notes de frais (`nf_notes.nature`, `supplier`,
    `prepared_*`, `payer_id`, `transfer_sent_*`, `bank_operation_id` ; `nf_pieces.doc_node_id` ; table
