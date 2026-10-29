@@ -1,6 +1,6 @@
 # AppBase — Module `notes-de-frais`
 
-Version 0.1, 16 octobre 2026. Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
+Version 0.2, 29 octobre 2026 (§5 et §7 : machine à états commune, notes dans Pièces). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
 frais » du projet). Maquette visuelle : Artifact « Notes de frais Contretemps », lien dans ce fil.
 
 Écrit comme un module AppBase (rien de propre à la danse), comme `documents.md` : quand AppBase existera,
@@ -106,19 +106,29 @@ Déplacements en voiture : **au ticket** (essence, péage) pour l'instant, pas d
 
 ## 5. Statuts d'une note
 
+Depuis le 29 octobre 2026 (décision de Seb, fil « Virements »), une note suit la **machine à états
+commune aux dépenses** de `financier.md` §8.3 bis, la même que pour les honoraires et les achats :
+
 ```
-envoyée ──valider──▶ validée ──marquer remboursée──▶ remboursée
-   │                     (don : validée = terminée, voir §8)
-   ├──refuser (motif)──▶ refusée
+à valider ──valider──▶ à payer ──préparer──▶ préparé ──« j'ai fait le virement »──▶ envoyé ──vu sur le compte──▶ payé
+   │                     (don : à payer = terminée, voir §8)
+   ├──refuser (motif)──▶ refusé
    └──reprendre──▶ (note supprimée, dépenses « À envoyer »)
 ```
+
+Correspondance avec les statuts d'avant (gardés tels quels en base, `nf_notes.statut`) : envoyée =
+à valider, validée = à payer, remboursée = payé ; refusée ne change pas. Préparé et envoyé sont
+nouveaux. Quand c'est le trésorier qui établit la note pour la personne (§7 ter), la validation est
+faite en même temps : la note passe directement à payer.
 
 - Un **seul trésorier** suffit pour valider (décision de Seb, 16 octobre).
 - Le trésorier **refuse la note entière**, avec un **motif obligatoire** ; pas de refus ligne par ligne.
   La personne peut reprendre les dépenses d'une note refusée (elles repassent « À envoyer ») pour les
   corriger et renvoyer.
-- Validation et remboursement sont deux étapes : on valide souvent tout de suite, on fait les virements
-  plus tard, en une fois.
+- Validation et paiement sont deux étapes : on valide souvent tout de suite, on fait les virements
+  plus tard, en une fois, depuis Financier › Pièces › Virements (`financier.md` §8.3 bis : aide au
+  virement, faire payer par quelqu'un). Le passage à payé se fait quand l'appli voit le virement sur
+  le compte.
 
 ## 6. Rôle trésorier
 
@@ -133,16 +143,17 @@ envoyée ──valider──▶ validée ──marquer remboursée──▶ remb
   l'envoi prévient la personne que personne ne peut encore les traiter.
 - Un trésorier ne valide pas ses propres notes s'il y a un autre trésorier ; s'il est seul, il peut.
 
-## 7. Côté trésorier : Financier › Notes de frais
+## 7. Côté trésorier : Financier › Pièces › Notes de frais
 
-Trois filtres, avec un compteur chacun (Terminées compris, décision de Seb, 19 octobre) :
-1. **À valider** : notes envoyées. Ligne : titre, qui (et son rôle), date d'envoi, nombre de dépenses,
-   total. Total général en bas.
-2. **À rembourser** : notes validées sans don. Cases à cocher, RIB de chacun visible ; bouton
-   **« Marquer remboursées (n) »** une fois les virements faits à la banque.
-3. **Terminées** : remboursées, dons et refusées, pour l'historique et les comptes de fin d'année.
-   Filtre par période ; export Excel (une ligne par dépense : date, personne, catégorie, description,
-   montant, note, statut).
+Décision de Seb, 29 octobre 2026 : le sous-onglet **Notes de frais** de Financier disparaît, les notes
+sont des pièces comme les autres, dans la puce **Notes de frais** de Financier › Pièces
+(`financier.md` §8.3). Rien ne change côté membre (§4). Dans la puce : la liste des notes, de la plus
+récente à la plus ancienne, chacune avec son état (badge à valider / refusé / à payer / préparé /
+envoyé / payé), titre, qui (et son rôle), date, nombre de dépenses, total ; filtre par période ; export
+Excel (une ligne par dépense : date, personne, catégorie, description, montant, note, statut). Les
+notes **à valider** sont en tête. Ce qui est à payer, préparé ou envoyé se retrouve aussi dans la
+puce **Virements**, avec le RIB de la personne et l'aide au virement ; plus de bouton « Marquer
+remboursées » : c'est « J'ai fait le virement », puis le rapprochement avec le compte.
 
 Détail d'une note : chaque dépense avec sa photo (agrandissable), la mention « sans justificatif » le cas
 échéant, le total, le RIB ; boutons **Valider** et **Refuser…** (motif obligatoire), et **« Télécharger les
@@ -159,7 +170,7 @@ saisie.
 
 Tout est **au nom de la personne choisie** : ses dépenses, sa note, son RIB (celui qu'on saisit à
 l'envoi s'il manque). Elle les retrouve dans son « Mes notes de frais », et la note suit le chemin
-habituel (à valider, puis à rembourser). Réservé aux trésoriers et au Super User. Technique : l'appli
+habituel (validée en même temps, puis à payer). Réservé aux trésoriers et au Super User. Technique : l'appli
 envoie l'id de la personne dans l'en-tête `X-Pour-Personne` ; le serveur vérifie le droit et que la
 personne est de l'organisation.
 

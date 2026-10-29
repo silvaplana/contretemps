@@ -22,11 +22,11 @@ d'une saisie ni d'une IA ; l'appli calcule, l'assistant commente.
 Onglet **Financier**, trésoriers et Super User seulement (`core.md` §4). Sous-onglets, dans l'ordre :
 
 1. **Comptes** (§3) — fait.
-2. **Pièces** (§8) — à faire.
-3. **Notes de frais** (`notes-de-frais.md`) — fait.
-4. **Bilan** (§4) — fait ; documents de l'AG à faire (§8.6).
-5. **Assemblée générale** (§5) — fait.
-6. **Prévisionnel** (§6) — fait.
+2. **Pièces** (§8) — à faire ; reprend le sous-onglet **Notes de frais** (`notes-de-frais.md` §7,
+   décision de Seb, 29 octobre), qui disparaît.
+3. **Bilan** (§4) — fait ; documents de l'AG à faire (§8.6).
+4. **Assemblée générale** (§5) — fait.
+5. **Prévisionnel** (§6) — fait.
 
 Chaque sous-module expose ses actions à l'Assistant IA (`assistant-ia.md` §3, `actions.py`) : cible
 de Seb, « fais-moi le PPT de l'AG de cette année à partir de celui de l'année dernière et du bilan
@@ -419,7 +419,10 @@ Honoraires ─────┴─▶ À valider                              │
                                  Payé ◀───────────────────────────────┘
 ```
 
-Toute dépense commence **À valider**, dès qu'elle est établie.
+Toute dépense commence **À valider**, dès qu'elle est établie. Les notes de frais suivent cette
+machine (plus de statuts à part, `notes-de-frais.md` §5) et le sous-onglet Notes de frais de
+Financier disparaît : les notes sont dans la puce Notes de frais de Pièces (`notes-de-frais.md` §7),
+le côté membre ne change pas.
 
 - **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
   d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,
