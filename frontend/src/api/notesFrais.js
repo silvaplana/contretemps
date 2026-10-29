@@ -86,12 +86,27 @@ export const valider = (noteId) => appel(`/notes/${noteId}/valider`, { method: '
 export const refuser = (noteId, motif) => appel(`/notes/${noteId}/refuser`, json('POST', { motif }))
 export const rembourser = (noteIds) => appel('/remboursements', json('POST', { note_ids: noteIds }))
 export const categories = () => appel('/categories')
+
+// Financier › Pièces (spec/modules/financier.md §8.3 bis) : honoraires et
+// achats établis par un trésorier, une photo = une pièce, lue par le serveur.
+export function etablir(nature, f, champs = {}) {
+  const donnees = new FormData()
+  donnees.append('nature', nature)
+  if (f) donnees.append('fichier', f, f.name || 'photo.jpg')
+  for (const [cle, valeur] of Object.entries(champs)) {
+    if (valeur !== null && valeur !== undefined && valeur !== '') donnees.append(cle, String(valeur))
+  }
+  return appel('/etablir', { method: 'POST', body: donnees })
+}
+export const ajouterPage = (noteId, f) => appel(`/notes/${noteId}/pages`, fichier(f))
+export const corriger = (noteId, champs) => appel(`/notes/${noteId}`, json('PATCH', champs))
+export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DELETE' })
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`
 
-export function urlExport(debut, fin) {
-  const params = new URLSearchParams()
+export function urlExport(debut, fin, nature = 'frais') {
+  const params = new URLSearchParams({ nature })
   if (debut) params.set('debut', debut)
   if (fin) params.set('fin', fin)
   const requete = params.toString()

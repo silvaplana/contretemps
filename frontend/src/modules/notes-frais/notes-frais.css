@@ -275,3 +275,60 @@
 .nf-nowrap {
   white-space: nowrap;
 }
+
+/* Financier › Pièces (financier.md §8.3 bis) : puces, dépôt de fichiers
+   sur ordinateur, rafale de photos. */
+.nf-pieces {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nf-barre__vide {
+  flex: 1;
+}
+
+.nf-depot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 12px;
+}
+
+.nf-depot--survol {
+  outline: 2px dashed var(--accent);
+  outline-offset: 6px;
+}
+
+.nf-choix {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nf-choix .btn,
+.nf-rafale .btn {
+  min-height: 48px;
+  justify-content: center;
+}
+
+.nf-rafale {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--bottom-nav-height) + var(--chat-hauteur, 0px) + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  z-index: 11;
+}
+
+.nf-supprimer {
+  align-self: flex-start;
+  color: var(--danger-text, #b42318);
+}

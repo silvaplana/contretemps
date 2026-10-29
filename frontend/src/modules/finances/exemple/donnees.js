@@ -141,7 +141,6 @@ export const PIECES = [
 // Les quatre dossiers créés par la trésorière dans Docs › Privé › Saison ›
 // Financier (spec §8.3) ; « À rattacher » est un filtre, pas un dossier.
 export const DOSSIERS = [
-  { id: 'virements', label: 'Virements' },
   { id: 'a_rattacher', label: 'À rattacher' },
   { id: 'achats', label: 'Achats' },
   { id: 'honoraires', label: 'Honoraires' },
@@ -215,16 +214,4 @@ export const DOCUMENTS_AG = [
   { id: 'grand_livre', titre: 'Grand livre', sous: 'toutes les opérations, par compte, avec le lien vers la pièce', formats: ['PDF'], niveau: 'complet' },
   { id: 'balance', titre: 'Balance', sous: 'totaux par compte', formats: ['PDF'], niveau: 'complet' },
   { id: 'honoraires', titre: 'Honoraires par professeur', sous: 'pour la déclaration DAS-2', formats: ['Excel'], niveau: 'complet' },
-]
-
-// Virements d'exemple (spec §8.3 bis). etat : a_payer | prepare | envoye | paye.
-// rib : null quand il reste à photographier.
-export const VIREMENTS = [
-  { id: 'v1', etat: 'a_payer', nom: 'De Luca', objet: "Honoraires de mai 2025", montant: 720, compte: 'Compte courant 403 (honoraires)', piece: "Note d'honoraires de mai 2025", libelle: 'Contretemps honoraires mai 2025', rib: { titulaire: 'DE LUCA SARAH', iban: 'FR76 1027 8073 0000 0204 1450 176', par: 'la trésorière, le 12/09/2024' } },
-  { id: 'v2', etat: 'a_payer', nom: 'Théâtre Galli', objet: 'Location pour le gala, facture du 05/05/2025', montant: 3504.58, compte: 'Compte courant 401', piece: 'Facture Galli', libelle: 'Contretemps gala 2025', rib: null },
-  { id: 'v3', etat: 'a_payer', nom: 'Patricia Hess', objet: 'Note de frais « Fournitures », validée le 28/05/2025', montant: 45, compte: 'Compte courant 401', piece: 'Note de frais', libelle: 'Contretemps note de frais mai 2025', rib: { titulaire: 'HESS PATRICIA', iban: 'FR76 3000 4008 2800 0123 4567 890', par: 'Patricia Hess, le 25/04/2025' } },
-  { id: 'v4', etat: 'prepare', nom: 'Thomas', objet: "Honoraires de mai 2025 · préparé par la trésorière le 01/06/2025", montant: 540, compte: 'Compte courant 403 (honoraires)', piece: "Note d'honoraires de mai 2025", libelle: 'Contretemps honoraires mai 2025', rib: { titulaire: 'THOMAS JULIE', iban: 'FR76 1695 8000 0112 3456 7890 123', par: 'la trésorière, le 03/10/2024' } },
-  { id: 'v5', etat: 'envoye', nom: 'Pesenti', objet: 'Fait le 02/06/2025 · pas encore vu sur le compte', montant: 1790, compte: 'Compte courant 403 (honoraires)', piece: "Note d'honoraires de mai 2025", libelle: 'Contretemps honoraires mai 2025', rib: { titulaire: 'PESENTI MARC', iban: 'FR76 1820 6000 3065 4321 0987 654', par: 'la trésorière, le 12/09/2024' } },
-  { id: 'v6', etat: 'paye', nom: 'Pesenti', objet: 'VIR FACT PESENTI −1 850,00 € le 02/05/2025', montant: 1850 },
-  { id: 'v7', etat: 'paye', nom: 'Patricia Hess', objet: 'VIR TRAVAUX COUTURE −227,00 € le 27/04/2025', montant: 227 },
 ]

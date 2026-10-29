@@ -10,7 +10,7 @@ from urllib.parse import quote
 from collections.abc import Callable
 import datetime as dt
 
-from fastapi import Depends, FastAPI, File, HTTPException, Request, Response, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import FileResponse
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -23,6 +23,7 @@ from .ports import LectureImpossible, Membre
 from .service import NotesDeFrais
 
 TAILLE_MAX_LECTURE = 10 * 1024 * 1024
+TAILLE_MAX_PIECE = 20 * 1024 * 1024
 
 
 class DepenseEntree(BaseModel):
@@ -59,6 +60,15 @@ class RefusEntree(BaseModel):
 
 class RemboursementEntree(BaseModel):
     note_ids: list[int]
+
+
+class CorrectionEntree(BaseModel):
+    person_id: int | None = None
+    fournisseur: str | None = None
+    date: dt.date | None = None
+    montant_centimes: int | None = Field(default=None, gt=0)
+    description: str | None = None
+    titre: str | None = None
 
 
 class CategoriesEntree(BaseModel):
@@ -199,11 +209,55 @@ class NotesDeFraisReceiver:
 
         @app.post("/notes-frais/notes/{note_id}/valider")
         def valider(note_id: int, db: Session = db_dep, m: Membre = membre):
-            return nf.note_dict(appeler(nf.valider, db, m, note_id))
+            return nf.notes_dicts(db, m, [appeler(nf.valider, db, m, note_id)])[0]
 
         @app.post("/notes-frais/notes/{note_id}/refuser")
         def refuser(note_id: int, corps: RefusEntree, db: Session = db_dep, m: Membre = membre):
             return nf.note_dict(appeler(nf.refuser, db, m, note_id, corps.motif))
+
+        # --- Financier › Pièces : établir et vérifier (financier.md §8.3 bis) ---
+
+        @app.post("/notes-frais/etablir", status_code=201)
+        async def etablir(
+            nature: str = Form(...),
+            fichier: UploadFile | None = File(None),
+            person_id: int | None = Form(None),
+            fournisseur: str | None = Form(None),
+            date: dt.date | None = Form(None),
+            montant_centimes: int | None = Form(None),
+            description: str = Form(""),
+            valider: bool = Form(False),
+            db: Session = db_dep,
+            m: Membre = membre,
+        ):
+            contenu = None
+            if fichier is not None:
+                donnees = await fichier.read(TAILLE_MAX_PIECE + 1)
+                if len(donnees) > TAILLE_MAX_PIECE:
+                    raise HTTPException(status_code=400, detail="Fichier trop lourd (plus de 20 Mo).")
+                contenu = (donnees, fichier.filename or "", fichier.content_type or "")
+            note = appeler(
+                nf.etablir, db, m, nature=nature, fichier=contenu, person_id=person_id, fournisseur=fournisseur,
+                jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
+            )
+            return nf.notes_dicts(db, m, [note])[0]
+
+        @app.post("/notes-frais/notes/{note_id}/pages")
+        def ajouter_page(note_id: int, fichier: UploadFile = File(...), db: Session = db_dep, m: Membre = membre):
+            note = appeler(nf.ajouter_page, db, m, note_id, fichier.file, fichier.filename or "", fichier.content_type or "")
+            return nf.notes_dicts(db, m, [note])[0]
+
+        @app.patch("/notes-frais/notes/{note_id}")
+        def corriger(note_id: int, corps: CorrectionEntree, db: Session = db_dep, m: Membre = membre):
+            champs = corps.model_dump(exclude_unset=True)
+            if "date" in champs:
+                champs["jour"] = champs.pop("date")
+            return nf.notes_dicts(db, m, [appeler(nf.corriger, db, m, note_id, **champs)])[0]
+
+        @app.delete("/notes-frais/notes/{note_id}", status_code=204)
+        def supprimer_note(note_id: int, db: Session = db_dep, m: Membre = membre):
+            appeler(nf.supprimer_note, db, m, note_id)
+            return Response(status_code=204)
 
         @app.post("/notes-frais/remboursements")
         def rembourser(corps: RemboursementEntree, db: Session = db_dep, m: Membre = membre):
@@ -218,8 +272,11 @@ class NotesDeFraisReceiver:
             return [{"id": c.id, "libelle": c.libelle} for c in appeler(nf.definir_categories, db, m, corps.libelles)]
 
         @app.get("/notes-frais/export.xlsx")
-        def export(debut: dt.date | None = None, fin: dt.date | None = None, db: Session = db_dep, m: Membre = membre):
-            lignes = appeler(nf.lignes_export, db, m, debut, fin)
+        def export(
+            debut: dt.date | None = None, fin: dt.date | None = None, nature: str = "frais",
+            db: Session = db_dep, m: Membre = membre,
+        ):
+            lignes = appeler(nf.lignes_export, db, m, debut, fin, nature)
             return Response(
                 content=_classeur(lignes),
                 media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
