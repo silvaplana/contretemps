@@ -403,27 +403,33 @@ les autres repliés avec leur nombre ; une partie vide n'apparaît pas) :
 la même pour les trois natures de dépense :
 
 ```
-Note de frais ──┐                                Achat (établi par le trésorier)
-Honoraires ─────┴─▶ Validation trésorier ──non──▶ Refusé (motif)       │
-   (établis par l'auteur,         │                             Déjà payé ? (vérifié sur les comptes)
-    ou le trésorier pour lui)     ok                               │ non          │ oui
-                                  ▼                                ▼              │
-                               À payer ◀───────────────────────────┘              │
-                                  ▼                                               │
+Note de frais ──┐                              Achat (établi par le trésorier)
+Honoraires ─────┴─▶ À valider                              │
+   (établis par l'auteur,  │                            À valider
+    ou le trésorier        ▼                               │
+    pour lui)       Validation trésorier       Déjà payé ? (vérifié sur les comptes)
+                     │ non         │ ok            │ non              │ oui
+                     ▼             ▼               ▼                  │
+              Refusé (motif)    À payer ◀──────────┘                  │
+                                   ▼                                  │
                            Virement préparé ──▶ (demande au trésorier qui a la carte)
-                                  ▼                                               │
-                               Envoyé                                             │
-                                  ▼                                               ▼
-                                Payé ◀────────────────────────────────────────────┘
+                                   ▼                                  │
+                                Envoyé                                │
+                                   ▼                                  ▼
+                                 Payé ◀───────────────────────────────┘
 ```
 
+Toute dépense commence **À valider**, dès qu'elle est établie.
+
 - **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
-  d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer à À payer, ou à
-  **Refusé** avec un motif (comme `notes-de-frais.md` §5). Quand c'est le trésorier qui saisit
-  pour la personne, la validation est faite en même temps : la pièce arrive directement À payer.
+  d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,
+  ou à **Refusé** avec un motif (comme `notes-de-frais.md` §5). Quand c'est le trésorier qui
+  établit pour la personne, la validation est faite en même temps : la pièce passe directement
+  À payer.
   Le RIB vient de `nf_ribs` s'il est déjà donné. Plus tard, les honoraires seront calculés par la
   présence des profs.
-- **Achat** : établi (saisi, photographié ou importé) par le trésorier ; l'appli cherche le paiement sur les comptes.
+- **Achat** : établi (saisi, photographié ou importé) par le trésorier, À valider le temps que
+  l'appli cherche le paiement sur les comptes.
   Trouvé (carte du club, prélèvement, virement fait avant la facture, comme le camping) : la pièce
   se rattache à l'opération et est **Payé** sans passer par Virements. Pas trouvé : **À payer**
   (c'est ce que dit le bouton « Pas encore payée » de §8.3). Un achat réglé avec la carte
@@ -431,7 +437,7 @@ Honoraires ─────┴─▶ Validation trésorier ──non──▶ Ref
 - On peut aussi **préparer un virement sans pièce** (demande ou devis) ; la facture s'y rattache
   quand elle arrive (« Ajouter la facture »).
 
-Dans Achats, Honoraires, Notes de frais, chaque dépense montre son état (badge Refusé / À payer / Préparé /
+Dans Achats, Honoraires, Notes de frais, chaque dépense montre son état (badge À valider / Refusé / À payer / Préparé /
 Envoyé / Payé) ; payée par carte ou déjà vue sur le compte : directement Payé.
 
 **Aide au virement** : toucher une ligne ouvre « Virement à faire » : bénéficiaire, IBAN, montant,
