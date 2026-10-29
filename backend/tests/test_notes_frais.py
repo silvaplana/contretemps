@@ -277,30 +277,34 @@ def test_date_future_refusee(client, ecole):
     assert client.post("/notes-frais/depenses", json=corps, headers=entetes_session(ecole["eleve"])).status_code == 400
 
 
-def test_tickets_ranges_en_enveloppes(client, ecole, tmp_path):
-    """Seb, 16 octobre : un dossier par personne, « depenses » puis une
-    enveloppe par note ; une note reprise renvoie ses tickets dans « depenses »."""
+def _photo(client, qui, depense_id, contenu=b"jpeg", nom="IMG_001.jpg", mime="image/jpeg"):
+    fichiers = {"fichier": (nom, io.BytesIO(contenu), mime)}
+    reponse = client.post(f"/notes-frais/depenses/{depense_id}/pieces", files=fichiers, headers=entetes_session(qui))
+    assert reponse.status_code == 201, reponse.text
+    return reponse.json()
+
+
+def test_tickets_sur_le_disque_puis_dans_docs(client, ecole, tmp_path):
+    """Seb, 29 octobre : un seul endroit, Docs. Un ticket pas encore envoyé
+    attend sur le disque ; à l'envoi il passe dans Docs et quitte le disque ;
+    une note reprise le ramène avec ses dépenses."""
     eleve = ecole["eleve"]
     d = _depense(client, eleve)
-    fichiers = {"fichier": ("IMG_001.jpg", io.BytesIO(b"jpeg"), "image/jpeg")}
-    client.post(f"/notes-frais/depenses/{d['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
+    _photo(client, eleve, d["id"])
     org = tmp_path / "notes" / str(ecole["ecole"].id)
     (personne,) = org.iterdir()
     assert personne.name == f"{eleve.id} Margot Perrin"
     assert [f.name for f in (personne / "depenses").iterdir()] == [f"2026-10-12 Tissu costumes {d['id']}-1.jpg"]
 
     note = _envoyer(client, eleve, [d["id"]]).json()
-    (enveloppe,) = (personne / "notes").iterdir()
-    assert enveloppe.name.endswith(f"Costumes gala ({note['id']})")
-    assert sorted(f.name for f in enveloppe.iterdir()) == [f"2026-10-12 Tissu costumes {d['id']}-1.jpg", "Note de frais.pdf"]
     assert not list((personne / "depenses").iterdir())
-    # Le PDF récapitulatif suit chaque étape (Seb, 17 octobre).
-    assert (enveloppe / "Note de frais.pdf").read_bytes().startswith(b"%PDF")
+    assert not (personne / "notes").exists()
+    piece_id = note["depenses"][0]["pieces"][0]["id"]
+    assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(eleve)).content == b"jpeg"
+    assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(ecole["tresorier"])).content == b"jpeg"
 
-    client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve))
-    assert not list((personne / "notes").iterdir())
-    assert len(list((personne / "depenses").iterdir())) == 1
-    piece_id = client.get("/notes-frais/moi", headers=entetes_session(eleve)).json()["a_envoyer"][0]["pieces"][0]["id"]
+    assert client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve)).status_code == 204
+    assert [f.name for f in (personne / "depenses").iterdir()] == [f"2026-10-12 Tissu costumes {d['id']}-1.jpg"]
     assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(eleve)).content == b"jpeg"
 
 
@@ -324,57 +328,52 @@ def test_telecharger_les_justificatifs_d_une_note(client, ecole):
     assert client.get(url, headers=entetes_session(ecole["admin"])).status_code == 404
 
 
-def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, db_session, ecole):
+def _parcourir(client, org, qui, dossier=None):
+    url = f"/documents/orgs/{org}/spaces/private" + (f"?folder={dossier}" if dossier else "")
+    return client.get(url, headers=entetes_session(qui))
+
+
+def _enfant(client, org, qui, dossier, nom):
+    items = _parcourir(client, org, qui, dossier).json()["items"]
+    return next((i for i in items if i["name"].startswith(nom)), None)
+
+
+def test_note_rangee_dans_financier_reserve_aux_tresoriers(client, db_session, ecole):
     eleve, tresorier, admin = ecole["eleve"], ecole["tresorier"], ecole["admin"]
     org = ecole["ecole"].id
     d = _depense(client, eleve)
-    fichiers = {"fichier": ("ticket.png", io.BytesIO(b"\x89PNG faux"), "image/png")}
-    client.post(f"/notes-frais/depenses/{d['id']}/pieces", files=fichiers, headers=entetes_session(eleve))
+    _photo(client, eleve, d["id"], b"\x89PNG faux", "ticket.png", "image/png")
     note = _envoyer(client, eleve, [d["id"]]).json()
 
-    def parcourir(qui, dossier=None):
-        url = f"/documents/orgs/{org}/spaces/private" + (f"?folder={dossier}" if dossier else "")
-        return client.get(url, headers=entetes_session(qui))
-
-    def enfant(qui, dossier, nom):
-        items = parcourir(qui, dossier).json()["items"]
-        return next((i for i in items if i["name"].startswith(nom)), None)
-
-    saison = next(i for i in parcourir(tresorier).json()["items"] if i["system_kind"] == "period")
-    financier = enfant(tresorier, saison["id"], "Financier")
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
     assert financier["system_kind"] == "reserved"
-    notes = enfant(tresorier, financier["id"], "Notes de frais")
-    # Rangée dès l'envoi, en Brouillon (= en attente).
-    [personne] = parcourir(tresorier, notes["id"]).json()["items"]
-    assert enfant(tresorier, personne["id"], "2026")["status"] == "draft"
-    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
-    # Notes de frais › personne › note (§7 bis), badge Validé, sans doublon.
-    [personne] = parcourir(tresorier, notes["id"]).json()["items"]
+    notes = _enfant(client, org, tresorier, financier["id"], "Notes de frais")
+    # Rangée dès l'envoi, sans badge : l'état ne se lit que dans l'appli.
+    [personne] = _parcourir(client, org, tresorier, notes["id"]).json()["items"]
     assert "Perrin" in personne["name"] and personne["name"].split()[0].isdigit()
-    dossier_note = enfant(tresorier, personne["id"], "2026")
-    assert "Costumes gala" in dossier_note["name"] and dossier_note["status"] == "validated"
-    noms = sorted(i["name"] for i in parcourir(tresorier, dossier_note["id"]).json()["items"])
-    assert noms[1] == "Note de frais.pdf" and noms[0].endswith(".png")
-    # Remboursée : rien ne bouge, le PDF reçoit une nouvelle version (pas de
-    # doublon) et le dossier passe Officiel.
+    dossier_note = _enfant(client, org, tresorier, personne["id"], "2026")
+    assert "Costumes gala" in dossier_note["name"] and dossier_note["status"] is None
+    [ticket] = _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]
+    assert ticket["name"].endswith(".png")
+    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    # Payé : le PDF récapitulatif est fait une seule fois, à côté ; rien ne bouge.
     assert client.post("/notes-frais/remboursements", json={"note_ids": [note["id"]]}, headers=entetes_session(tresorier)).status_code == 200
-    # Chaque filtre affiche son nombre, Terminées compris.
-    compteurs = client.get("/notes-frais/tresorerie?filtre=terminees", headers=entetes_session(tresorier)).json()["compteurs"]
-    assert compteurs == {"a_valider": 0, "a_rembourser": 0, "terminees": 1}
-    [apres] = parcourir(tresorier, personne["id"]).json()["items"]
-    assert apres["id"] == dossier_note["id"] and apres["status"] == "official"
-    assert len(parcourir(tresorier, dossier_note["id"]).json()["items"]) == 2
+    [apres] = _parcourir(client, org, tresorier, personne["id"]).json()["items"]
+    assert apres["id"] == dossier_note["id"] and apres["status"] is None
+    noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"])
+    assert noms == [ticket["name"], "Note de frais.pdf"]
 
     # Le Super User, qui a tous les droits (spec/core.md §6.1), y entre.
     su = Comptes().enregistrer_superuser(
         db_session, nom="Richard", prenom="Sébastien", email="su@test.fr", mot_de_passe_hache=None
     )
-    assert enfant(su, saison["id"], "Financier")["id"] == financier["id"]
-    assert parcourir(su, financier["id"]).status_code == 200
+    assert _enfant(client, org, su, saison["id"], "Financier")["id"] == financier["id"]
+    assert _parcourir(client, org, su, financier["id"]).status_code == 200
 
     # Un autre admin ne voit ni n'ouvre le dossier Financier.
-    assert enfant(admin, saison["id"], "Financier") is None
-    assert parcourir(admin, financier["id"]).status_code == 404
+    assert _enfant(client, org, admin, saison["id"], "Financier") is None
+    assert _parcourir(client, org, admin, financier["id"]).status_code == 404
     assert client.get(f"/documents/orgs/{org}/spaces/private/search?q=Costumes", headers=entetes_session(admin)).json() == []
     # Ses accès suivent le rôle : on ne les change pas à la main.
     acces = client.put(
@@ -385,26 +384,23 @@ def test_note_validee_rangee_dans_financier_reserve_aux_tresoriers(client, db_se
     assert acces.status_code == 409
 
 
-def test_note_refusee_badge_refuse_puis_reprise_retiree_des_docs(client, ecole):
+def test_note_refusee_puis_reprise_retiree_des_docs(client, ecole):
     eleve, tresorier = ecole["eleve"], ecole["tresorier"]
     org = ecole["ecole"].id
-    note = _envoyer(client, eleve, [_depense(client, eleve)["id"]]).json()
+    d = _depense(client, eleve)
+    _photo(client, eleve, d["id"])
+    note = _envoyer(client, eleve, [d["id"]]).json()
     refus = client.post(f"/notes-frais/notes/{note['id']}/refuser", json={"motif": "Ticket illisible"}, headers=entetes_session(tresorier))
     assert refus.status_code == 200
 
-    def items(dossier=None):
-        url = f"/documents/orgs/{org}/spaces/private" + (f"?folder={dossier}" if dossier else "")
-        return client.get(url, headers=entetes_session(tresorier)).json()["items"]
-
-    saison = next(i for i in items() if i["system_kind"] == "period")
-    financier = next(i for i in items(saison["id"]) if i["name"] == "Financier")
-    notes = next(i for i in items(financier["id"]) if i["name"] == "Notes de frais")
-    [personne] = items(notes["id"])
-    [dossier_note] = items(personne["id"])
-    assert dossier_note["status"] == "refused"
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    notes = _enfant(client, org, tresorier, financier["id"], "Notes de frais")
+    [personne] = _parcourir(client, org, tresorier, notes["id"]).json()["items"]
+    [dossier_note] = _parcourir(client, org, tresorier, personne["id"]).json()["items"]
+    assert dossier_note["status"] is None
     assert client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve)).status_code == 204
-    assert items(personne["id"]) == []
-
+    assert _parcourir(client, org, tresorier, personne["id"]).json()["items"] == []
 
 
 def test_vider_les_notes_de_frais_d_une_ecole(client, db_session, ecole, tmp_path):
@@ -444,3 +440,273 @@ def test_vider_sans_clavier_exige_le_nom_exact(client, db_session, ecole):
     assert _compter(db_session, org.id)[1] == 1
     _effacer(db_session, [org], str(org.id), org.nom)
     assert _compter(db_session, org.id) == (0, 0, 0)
+
+
+# --- Financier › Pièces : une seule structure « dépense » (financier.md §8.3 bis) ---
+
+
+class LecteurFacture:
+    """Lecture simulée : ce que la photo dirait."""
+
+    actif = True
+
+    def __init__(self, **lu):
+        self.lu = lu
+
+    def lire(self, db, org_id, contenu, type_mime, categories):
+        return TicketLu(**self.lu)
+
+
+def _etablir(client, qui, nature, contenu=b"jpeg", **champs):
+    fichiers = {"fichier": ("IMG_100.jpg", io.BytesIO(contenu), "image/jpeg")} if contenu else None
+    reponse = client.post(
+        "/notes-frais/etablir", data={"nature": nature, **champs}, files=fichiers, headers=entetes_session(qui)
+    )
+    assert reponse.status_code == 201, reponse.text
+    return reponse.json()
+
+
+def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
+    """Une photo = une dépense créée À valider, lue, rangée dans Docs ›
+    Achats sous son nom ; « Encore une page » ajoute une page ; on valide."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon", description="Câbles"),
+    )
+    note = _etablir(client, tresorier, "achat")
+    assert note["nature"] == "achat" and note["statut"] == "envoyee"
+    assert note["fournisseur"] == "Amazon" and note["titre"] == "Amazon" and note["total_centimes"] == 3990
+    page = client.post(
+        f"/notes-frais/notes/{note['id']}/pages",
+        files={"fichier": ("IMG_101.jpg", io.BytesIO(b"page 2"), "image/jpeg")},
+        headers=entetes_session(tresorier),
+    )
+    assert page.status_code == 200 and len(page.json()["depenses"][0]["pieces"]) == 2
+
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    achats = _enfant(client, org, tresorier, financier["id"], "Achats")
+    noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, achats["id"]).json()["items"])
+    assert noms == ["2025-02-09 Amazon 39,90 (2).jpg", "2025-02-09 Amazon 39,90.jpg"]
+
+    puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
+    assert [n["id"] for n in puce["notes"]] == [note["id"]]
+    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1}
+    # Rien des achats dans la puce Notes de frais.
+    assert client.get("/notes-frais/tresorerie?filtre=frais", headers=entetes_session(tresorier)).json()["notes"] == []
+
+    corrige = client.patch(
+        f"/notes-frais/notes/{note['id']}", json={"montant_centimes": 3999, "fournisseur": "Amazon EU"},
+        headers=entetes_session(tresorier),
+    )
+    assert corrige.status_code == 200 and corrige.json()["total_centimes"] == 3999
+    assert corrige.json()["titre"] == "Amazon EU"
+    valide = client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier))
+    assert valide.status_code == 200 and valide.json()["statut"] == "validee"
+
+
+def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkeypatch):
+    tresorier = ecole["tresorier"]
+    prof = Comptes().create(
+        db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Revelles", prenom="Élodie", email="elodie@test.fr"
+    )
+    client.put("/notes-frais/rib", json={"iban": IBAN, "titulaire": "E REVELLES"}, headers=entetes_session(prof))
+    lecteur = LecteurFacture(date="2026-10-15", montant_centimes=48000, commercant="Elodie REVELLES", description="Cours d'octobre")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    note = _etablir(client, tresorier, "honoraires")
+    assert note["personne"]["nom"] == "Élodie Revelles"
+    assert note["titre"] == "Honoraires octobre 2026"
+    assert note["rib"]["iban"] == IBAN
+
+    # Nom illisible : « Pour qui ? », pas de validation avant d'avoir choisi.
+    lecteur.lu = {"montant_centimes": 30000}
+    inconnu = _etablir(client, tresorier, "honoraires")
+    assert inconnu["personne"] is None
+    assert client.post(f"/notes-frais/notes/{inconnu['id']}/valider", headers=entetes_session(tresorier)).status_code == 400
+    choisi = client.patch(
+        f"/notes-frais/notes/{inconnu['id']}", json={"person_id": prof.id}, headers=entetes_session(tresorier)
+    )
+    assert choisi.json()["personne"]["nom"] == "Élodie Revelles" and choisi.json()["rib"]["iban"] == IBAN
+    assert client.post(f"/notes-frais/notes/{inconnu['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    # La première attend toujours d'être validée (compteur du Profil).
+    assert client.get("/notes-frais/compteurs", headers=entetes_session(tresorier)).json()["a_valider"] == 1
+
+
+def test_etablir_reserve_aux_tresoriers_et_supprimer_une_photo_ratee(client, ecole):
+    tresorier = ecole["tresorier"]
+    reponse = client.post(
+        "/notes-frais/etablir", data={"nature": "achat"},
+        files={"fichier": ("x.jpg", io.BytesIO(b"x"), "image/jpeg")}, headers=entetes_session(ecole["admin"]),
+    )
+    assert reponse.status_code == 403
+    # Sans lecture : montant à compléter avant de valider.
+    note = _etablir(client, tresorier, "achat")
+    assert note["total_centimes"] == 0
+    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 400
+    assert client.delete(f"/notes-frais/notes/{note['id']}", headers=entetes_session(tresorier)).status_code == 204
+    assert client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()["notes"] == []
+    # Saisie complète sans photo : validée en même temps.
+    saisi = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Mondial Tissus", date="2026-10-20",
+                     montant_centimes="12000", valider="true")
+    assert saisi["statut"] == "validee" and saisi["total_centimes"] == 12000
+
+
+def test_note_etablie_par_le_tresorier_pour_quelqu_un_est_validee(client, ecole, espion):
+    tresorier, eleve = ecole["tresorier"], ecole["eleve"]
+    pour = {**entetes_session(tresorier), "X-Pour-Personne": str(eleve.id)}
+    d = client.post("/notes-frais/depenses", json={"date": "2026-10-12", "montant_centimes": 1500}, headers=pour).json()
+    nb_mails = len(espion.mails)
+    note = client.post("/notes-frais/notes", json={"depense_ids": [d["id"]], "rib": {"iban": IBAN}}, headers=pour).json()
+    assert note["statut"] == "validee"
+    # Pas de « Nouvelle note de frais » aux trésoriers : c'est déjà fait.
+    assert len(espion.mails) == nb_mails
+
+
+def test_commande_range_les_anciennes_enveloppes_dans_docs(client, db_session, ecole, tmp_path):
+    """python -m app.ranger_notes_frais : une note envoyée avant le 29 octobre
+    a ses photos sur le disque ; la commande les met dans Docs (ou reprend la
+    copie qui y est déjà) et vide le disque."""
+    from app.ranger_notes_frais import ranger
+    from notes_frais.models import Depense, NoteFrais
+
+    eleve = ecole["eleve"]
+    d = _depense(client, eleve)
+    _photo(client, eleve, d["id"])
+    ancienne = NoteFrais(org_id=ecole["ecole"].id, person_id=eleve.id, titre="Avant", statut="validee")
+    db_session.add(ancienne)
+    db_session.flush()
+    db_session.get(Depense, d["id"]).note_id = ancienne.id
+    db_session.commit()
+    disque = tmp_path / "notes" / str(ecole["ecole"].id) / f"{eleve.id} Margot Perrin" / "depenses"
+    assert len(list(disque.iterdir())) == 1
+
+    assert ranger(db_session, essai=True) == (1, 1)
+    assert len(list(disque.iterdir())) == 1
+    assert ranger(db_session) == (1, 1)
+    assert not list(disque.iterdir())
+    assert ranger(db_session) == (0, 0)
+    piece_id = client.get("/notes-frais/moi", headers=entetes_session(eleve)).json()["notes"][0]["depenses"][0]["pieces"][0]["id"]
+    assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(eleve)).content == b"jpeg"
+
+
+# --- Virements (financier.md §8.3 bis) ---
+
+
+def _honoraires_a_payer(client, db_session, ecole):
+    prof = Comptes().create(
+        db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Martin", prenom="Lucie", email="lucie@test.fr"
+    )
+    note = _etablir(client, ecole["tresorier"], "honoraires", contenu=None, person_id=str(prof.id), date="2026-10-15",
+                    montant_centimes="48000", valider="true")
+    return prof, note
+
+
+def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole, espion):
+    tresorier, admin = ecole["tresorier"], ecole["admin"]
+    prof, note = _honoraires_a_payer(client, db_session, ecole)
+    assert note["statut"] == "validee" and note["rib"] is None
+    url = f"/notes-frais/notes/{note['id']}"
+    # Pas de RIB : rien à préparer.
+    assert client.post(f"{url}/virement", headers=entetes_session(tresorier)).status_code == 400
+    rib = client.put(f"{url}/rib", json={"iban": IBAN, "titulaire": "L MARTIN"}, headers=entetes_session(tresorier))
+    assert rib.status_code == 200 and rib.json()["rib"]["iban"] == IBAN
+    # Gardé aussi sur la fiche du prof.
+    assert client.get("/notes-frais/moi", headers=entetes_session(prof)).json()["rib"]["iban"] == IBAN
+
+    liste = client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()
+    [ligne] = liste["virements"]
+    assert ligne["beneficiaire"] == "L MARTIN" and ligne["libelle_virement"] == "Contretemps honoraires oct 2026"
+    assert [p["nom"] for p in liste["payeurs"]] == ["Julia Dho"]
+
+    # « Qui paie » : Ana, qui a l'appli de la banque.
+    reglage = client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
+    assert [p["nom"] for p in reglage.json()] == ["Ana Roux"]
+    assert client.post(f"{url}/preparer", json={"payeur_id": tresorier.id}, headers=entetes_session(tresorier)).status_code == 400
+    prepare = client.post(f"{url}/preparer", json={"payeur_id": admin.id}, headers=entetes_session(tresorier))
+    assert prepare.status_code == 200 and prepare.json()["statut"] == "preparee"
+    assert prepare.json()["payeur"]["nom"] == "Ana Roux" and prepare.json()["prepare_par"]["nom"] == "Julia Dho"
+    assert (admin.id, "Virement à faire") in espion.notifications
+
+    fait = client.post(f"{url}/virement", headers=entetes_session(tresorier))
+    assert fait.status_code == 200 and fait.json()["statut"] == "viree"
+    assert client.post(f"{url}/virement", headers=entetes_session(tresorier)).status_code == 400
+    # Réservé aux trésoriers.
+    assert client.get("/notes-frais/virements", headers=entetes_session(admin)).status_code == 403
+
+
+# --- Vu sur le compte (financier.md §8.3 bis, rapprochement) ---
+
+
+def _operation(db_session, org_id, montant, jour, libelle):
+    import datetime as dt
+
+    from finances.models import FinAccount, FinOperation
+
+    compte = db_session.query(FinAccount).filter_by(org_id=org_id).first()
+    if compte is None:
+        compte = FinAccount(org_id=org_id, number="401", name="Compte courant", kind="checking")
+        db_session.add(compte)
+        db_session.flush()
+    jour = dt.date.fromisoformat(jour)
+    operation = FinOperation(account_id=compte.id, position=0, date=jour, value_date=jour, label=libelle, amount=montant)
+    db_session.add(operation)
+    db_session.commit()
+    return operation
+
+
+def test_envoye_puis_vu_sur_le_compte_paye(client, db_session, ecole, espion):
+    tresorier, admin = ecole["tresorier"], ecole["admin"]
+    prof, note = _honoraires_a_payer(client, db_session, ecole)
+    url = f"/notes-frais/notes/{note['id']}"
+    client.put(f"{url}/rib", json={"iban": IBAN, "titulaire": "L MARTIN"}, headers=entetes_session(tresorier))
+    client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
+    client.post(f"{url}/preparer", json={"payeur_id": admin.id}, headers=entetes_session(tresorier))
+    client.post(f"{url}/virement", headers=entetes_session(tresorier))
+
+    org = ecole["ecole"].id
+    _operation(db_session, org, -48000, "2026-09-01", "VIR SEPA AUTRE")  # trop tôt
+    autre = _operation(db_session, org, -48000, "2026-11-02", "VIR SEPA DUPONT")
+    bonne = _operation(db_session, org, -48000, "2026-11-03", "VIR SEPA MARTIN LUCIE")
+    [ligne] = client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"]
+    assert ligne["paiement_propose"]["id"] == bonne.id
+
+    # Mauvais montant ou opération d'une autre pièce : refusé.
+    petite = _operation(db_session, org, -100, "2026-11-03", "VIR")
+    assert client.post(f"{url}/payee", json={"operation_id": petite.id}, headers=entetes_session(tresorier)).status_code == 400
+    paye = client.post(f"{url}/payee", json={"operation_id": bonne.id}, headers=entetes_session(tresorier))
+    assert paye.status_code == 200 and paye.json()["statut"] == "remboursee" and paye.json()["operation_id"] == bonne.id
+    # Prévenus : celle qui a préparé (ici Julia elle-même : non), et le prof.
+    assert (prof.id, "Honoraires payés") in espion.notifications
+    [ligne] = client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"]
+    assert ligne["statut"] == "remboursee" and ligne["paiement_propose"] is None
+
+    # L'opération prise n'est plus proposée à une autre pièce.
+    _, autre_note = _honoraires_a_payer_bis(client, db_session, ecole)
+    propose = client.get("/notes-frais/tresorerie?filtre=honoraires", headers=entetes_session(tresorier)).json()["notes"]
+    assert next(n for n in propose if n["id"] == autre_note["id"])["paiement_propose"]["id"] == autre.id
+
+
+def _honoraires_a_payer_bis(client, db_session, ecole):
+    prof = Comptes().create(
+        db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Pesenti", prenom="Anna", email="anna@test.fr"
+    )
+    return prof, _etablir(client, ecole["tresorier"], "honoraires", contenu=None, person_id=str(prof.id),
+                          date="2026-10-20", montant_centimes="48000", valider="true")
+
+
+def test_achat_deja_paye_par_carte(client, db_session, ecole, monkeypatch):
+    """« Déjà payé ? » : l'achat lu trouve son débit carte ; confirmé, il passe
+    Payé sans passer par Virements."""
+    tresorier = ecole["tresorier"]
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon"),
+    )
+    carte = _operation(db_session, ecole["ecole"].id, -3990, "2025-02-10", "CB 0902 AMAZON PAYMENTS")
+    note = _etablir(client, tresorier, "achat")
+    assert note["statut"] == "envoyee" and note["paiement_propose"]["id"] == carte.id
+    paye = client.post(f"/notes-frais/notes/{note['id']}/payee", json={"operation_id": carte.id}, headers=entetes_session(tresorier))
+    assert paye.json()["statut"] == "remboursee"
+    assert client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"][0]["id"] == note["id"]

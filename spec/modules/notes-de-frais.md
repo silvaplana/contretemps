@@ -1,6 +1,6 @@
 # AppBase — Module `notes-de-frais`
 
-Version 0.3, 29 octobre 2026 (§5 et §7 : machine à états commune, notes dans Pièces ; §7 bis et §10 : un seul rangement, dans Docs). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
+Version 0.4, 29 octobre 2026 (§5 et §7 : machine à états commune, notes dans Pièces ; §7 bis et §10 : un seul rangement, dans Docs ; §10 : colonnes ajoutées, codé). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
 frais » du projet). Maquette visuelle : Artifact « Notes de frais Contretemps », lien dans ce fil.
 
 Écrit comme un module AppBase (rien de propre à la danse), comme `documents.md` : quand AppBase existera,
@@ -225,10 +225,15 @@ Tables préfixées `nf_` (module autonome) :
 
 - `nf_depenses` : id, organisation, personne (qui a payé), date, montant (centimes), catégorie,
   description, lue_par_ia, note_id (null = « À envoyer »), créée le. « Sans justificatif » = aucune pièce.
-- `nf_pieces` : id, depense_id, chemin du fichier (voir « Rangement sur le disque »), type, nom, taille,
-  ordre. 5 pièces au plus par dépense, 20 Mo par fichier.
-- `nf_notes` : id, organisation, personne, titre, statut (`envoyee`, `validee`, `refusee`, `remboursee`),
-  don, RIB (copie au moment de l'envoi), motif_refus, envoyée le, traitée le / par, remboursée le / par.
+- `nf_pieces` : id, depense_id, chemin du fichier (sur le disque avant l'envoi ; ensuite le nom dans Docs),
+  `doc_node_id` (le fichier dans Docs), type, nom, taille, ordre. 5 pièces au plus par dépense, 20 Mo par fichier.
+- `nf_notes` : id, organisation, personne, titre, statut (`envoyee`, `validee`, `refusee`, `preparee`,
+  `viree`, `remboursee`), don, RIB (copie au moment de l'envoi), motif_refus, envoyée le, traitée le / par,
+  remboursée le / par ; depuis le 29 octobre : `nature` (`frais`, `honoraires`, `achat`), `supplier`
+  (achat), `prepared_at` / `prepared_by` / `payer_id` (Faire payer par…), `transfer_sent_at` / `_by`
+  (J'ai fait le virement), `bank_operation_id` (opération du compte, payé). Honoraires dont le prof n'est
+  pas encore reconnu : personne 0.
+- `nf_payers` : réglage « Qui paie » (organisation, personne) ; vide = les trésoriers.
 - `nf_categories` : id, organisation, libellé, ordre, active.
 - `nf_ribs` : RIB du membre (titulaire, IBAN, BIC), facultatif, un par personne (Profil › Mon RIB),
   visible de lui et des trésoriers seulement.
@@ -248,8 +253,8 @@ changement de saison. *(Contretemps : la « personne » est le premier compte de
 Les enveloppes `<NOTES_FRAIS_DIR>/<organisation>/<n° personne> <Nom>/…` (un dossier par personne,
 `depenses/` puis une enveloppe par note avec « Note de frais.pdf » refait à chaque étape) sont
 **remplacées par Docs** (§7 bis, décision de Seb du 29 octobre) : un seul endroit, PDF fait une fois
-quand c'est payé. À coder à l'étape 1 de Pièces (`financier.md` §8.9), avec une commande
-`python -m app.<commande>` qui déplace les enveloppes existantes dans Docs ; les tickets pas encore
+quand c'est payé. Codé le 29 octobre, avec la commande
+`python -m app.ranger_notes_frais` (`--essai` pour voir sans rien changer) qui déplace les enveloppes existantes dans Docs ; les tickets pas encore
 envoyés (`depenses/`) restent sur le disque jusqu'à l'envoi. Les fichiers ne sont jamais servis en
 accès direct : seulement par les routes, à l'auteur et aux trésoriers.
 

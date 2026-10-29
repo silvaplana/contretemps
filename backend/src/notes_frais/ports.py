@@ -6,6 +6,7 @@ notes_frais_contretemps/adapter.py.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 from typing import Protocol
 
@@ -23,6 +24,8 @@ class Membre:
     emails: tuple[str, ...] = ()
     est_tresorier: bool = False
     est_superuser: bool = False
+    # Trésorier qui agit au nom de la personne (§7 ter) : son person_id.
+    agissant_id: int | None = None
 
 
 @dataclass(frozen=True)
@@ -90,9 +93,9 @@ class LecteurTicket(Protocol):
 
 
 class Classeur(Protocol):
-    """Range les notes envoyées dans les documents de l'organisation (§7 bis :
-    Docs › Privé › Saison › Financier › Notes de frais › personne › note).
-    Rien n'y bouge ensuite : le statut se lit au badge du dossier de la note."""
+    """Range les justificatifs dans les documents de l'organisation, dossier
+    Financier de la saison (§7 bis, financier.md §8.3 bis) : un seul endroit,
+    rien n'y bouge ensuite, l'état ne se lit que dans l'appli."""
 
     def classer(
         self,
@@ -100,16 +103,42 @@ class Classeur(Protocol):
         membre: Membre,
         chemin: list[str],
         fichiers: list[tuple[str, Path]],
-        statut: str,
         remplacer: set[str] = frozenset(),
-    ) -> None:
-        """`chemin` = [personne, note]. Crée ce qu'il manque et y copie les
-        fichiers (nom, chemin) absents ; ceux de `remplacer` déjà là
-        reçoivent une nouvelle version. Puis donne au dossier de la note le
-        statut des documents `statut` (draft, refused, validated, official)."""
+        reprendre: bool = False,
+    ) -> list[int]:
+        """`chemin` = dossiers sous Financier (ex. [« Notes de frais »,
+        personne, note] ou [« Achats »]). Crée ce qu'il manque et y copie les
+        fichiers (nom, chemin) ; un nom déjà pris devient « nom (2) ». Ceux de
+        `remplacer` déjà là reçoivent une nouvelle version ; avec `reprendre`,
+        un fichier déjà là est gardé tel quel (reprise des anciennes
+        enveloppes). Renvoie l'id de chaque fichier."""
 
-    def retirer(self, db: Session, membre: Membre, chemin: list[str]) -> None:
-        """Met à la corbeille le dossier de la note (reprise par son auteur)."""
+    def contenu(self, db: Session, membre: Membre, node_id: int) -> Path:
+        """Le fichier sur le disque d'un justificatif rangé (LookupError sinon)."""
+
+    def retirer(self, db: Session, membre: Membre, chemin: list[str], node_ids: list[int] = ()) -> None:
+        """Met à la corbeille le dossier `chemin` (note reprise par son
+        auteur), ou seulement les fichiers `node_ids` quand ils sont rangés
+        directement dans un dossier commun (Achats)."""
+
+
+@dataclass(frozen=True)
+class OperationBancaire:
+    """Une opération d'un compte en banque de l'organisation (centimes,
+    négatif = débit)."""
+
+    id: int
+    date: date
+    libelle: str
+    montant_centimes: int
+    compte: str = ""
+
+
+class Banque(Protocol):
+    def debits(self, db: Session, org_id: int, montant_centimes: int, depuis: date) -> list[OperationBancaire]:
+        """Les débits de ce montant (positif) depuis cette date, tous comptes."""
+
+    def operation(self, db: Session, org_id: int, operation_id: int) -> OperationBancaire | None: ...
 
 
 class LectureImpossible(Exception):
@@ -127,4 +156,5 @@ class Ports:
     notifieur: Notifieur
     lecteur: LecteurTicket | None = None
     classeur: Classeur | None = None
+    banque: Banque | None = None
     categories_par_defaut: tuple[str, ...] = field(default=CATEGORIES_PAR_DEFAUT)

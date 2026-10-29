@@ -1,62 +1,20 @@
-// Sous-onglet Pièces (spec/modules/financier.md §8.3), EXEMPLE : le
-// classeur des justificatifs, par dossier de l'association ; photo en
-// rafale ; proposition de la ligne de banque, confirmation du trésorier.
-// Tout vit en mémoire (exemple/donnees.js).
-import { useEffect, useRef, useState } from 'react'
-import Icon from '../../../components/Icon.jsx'
+// Puces À rattacher et Ventes de Financier › Pièces (spec/modules/
+// financier.md §8.3), EXEMPLE : proposition de la ligne de banque,
+// confirmation du trésorier. Tout vit en mémoire (exemple/donnees.js). Les
+// puces Notes de frais, Honoraires, Achats et Virements sont réelles
+// (notes-frais/Pieces.jsx).
+import { useState } from 'react'
 import BandeExemple from './BandeExemple.jsx'
-import Virements from './Virements.jsx'
-import { DOSSIERS, PIECES, PLAN, VIREMENTS, dateFr, eur } from './donnees.js'
-
-const PHOTO_EVENT = 'finances-photo-pieces'
-
-// Entrée « Photographier des pièces » du menu ⋯ (voir Financier.jsx).
-export function requestPhotoPieces() {
-  window.dispatchEvent(new Event(PHOTO_EVENT))
-}
+import { DOSSIERS, PIECES, PLAN, dateFr, eur } from './donnees.js'
 
 const compteLabel = (num) => {
   const c = PLAN.find((x) => x.num === num)
   return c ? `${c.num} ${c.label}` : 'Compte à choisir'
 }
 
-export default function Pieces() {
-  const [dossier, setDossier] = useState('a_rattacher')
+export default function PiecesExemple({ dossier }) {
   const [pieces, setPieces] = useState(PIECES)
   const [message, setMessage] = useState('')
-  const camera = useRef(null)
-
-  useEffect(() => {
-    const open = () => camera.current?.click()
-    window.addEventListener(PHOTO_EVENT, open)
-    return () => window.removeEventListener(PHOTO_EVENT, open)
-  }, [])
-
-  // Une photo = une pièce « à rattacher », lue en arrière-plan (simulé ici).
-  function photos(files) {
-    const nouvelles = [...files].map((f, i) => ({
-      id: `photo-${Date.now()}-${i}`,
-      dossier: null,
-      titre: 'Lecture de la pièce…',
-      detail: f.name,
-      url: URL.createObjectURL(f),
-      compte: null,
-      etat: 'a_rattacher',
-      lecture: true,
-      proposition: null,
-    }))
-    setPieces((p) => [...nouvelles, ...p])
-    setDossier('a_rattacher')
-    setTimeout(() => {
-      setPieces((p) =>
-        p.map((x) =>
-          nouvelles.some((n) => n.id === x.id)
-            ? { ...x, lecture: false, titre: 'Pièce lue (exemple)', detail: 'Fournisseur, date et montant seront lus ici ; dossier et compte proposés.' }
-            : x,
-        ),
-      )
-    }, 1500)
-  }
 
   function changer(id, etat, ligne) {
     setPieces((p) => p.map((x) => (x.id === id ? { ...x, etat, ligne: ligne ?? x.ligne } : x)))
@@ -69,61 +27,16 @@ export default function Pieces() {
     )
   }
 
-  const aRattacher = pieces.filter((p) => p.etat === 'a_rattacher')
-  const visibles = dossier === 'a_rattacher' ? aRattacher : pieces.filter((p) => p.dossier === dossier)
+  const visibles = dossier === 'a_rattacher' ? pieces.filter((p) => p.etat === 'a_rattacher') : pieces.filter((p) => p.dossier === dossier)
 
   return (
     <section className="fin-ex" aria-label="Pièces">
       <BandeExemple />
-      <div className="filter-chips" role="group" aria-label="Dossiers">
-        {DOSSIERS.map((d) => (
-          <button
-            key={d.id}
-            type="button"
-            className={d.id === dossier ? 'filter-chip filter-chip-active' : 'filter-chip'}
-            aria-pressed={d.id === dossier}
-            onClick={() => setDossier(d.id)}
-          >
-            {d.label}
-            {d.id === 'a_rattacher' && aRattacher.length > 0 && ` (${aRattacher.length})`}
-            {d.id === 'virements' && ` (${VIREMENTS.filter((v) => v.etat !== 'paye').length})`}
-          </button>
-        ))}
-      </div>
-      {dossier !== 'virements' && (
-        <button type="button" className="btn btn--primary" onClick={() => camera.current?.click()}>
-          <Icon name="camera" size={18} /> Photographier des pièces
-        </button>
-      )}
-      <input
-        ref={camera}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        multiple
-        hidden
-        onChange={(e) => {
-          photos(e.target.files)
-          e.target.value = ''
-        }}
-      />
-      {dossier !== 'virements' && (
-        <p className="muted">
-          Une pièce par photo, sans rien saisir. L’appli lit la pièce, la range dans son dossier et propose la ligne de
-          banque : vous confirmez. Les notes de frais validées et les virements HelloAsso arrivent déjà rattachés.
-        </p>
-      )}
-      {dossier === 'virements' ? (
-        <Virements />
-      ) : (
-        <>
-          {message && <p className="history-report">{message}</p>}
-          {visibles.length === 0 && <p className="muted">Rien dans ce dossier.</p>}
-          {visibles.map((p) => (
-            <Piece key={p.id} piece={p} onChanger={changer} />
-          ))}
-        </>
-      )}
+      {message && <p className="history-report">{message}</p>}
+      {visibles.length === 0 && <p className="muted">Rien dans ce dossier.</p>}
+      {visibles.map((p) => (
+        <Piece key={p.id} piece={p} onChanger={changer} />
+      ))}
     </section>
   )
 }

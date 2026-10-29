@@ -13,9 +13,10 @@ import html
 import io
 import logging
 import re
+import unicodedata
 import zipfile
 from dataclasses import replace
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO
 
@@ -23,17 +24,25 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .models import (
+    ACHAT,
     ENVOYEE,
+    FRAIS,
+    HONORAIRES,
+    NATURES,
+    PERSONNE_A_CHOISIR,
+    PREPAREE,
     REFUSEE,
     REMBOURSEE,
     VALIDEE,
+    VIREE,
     CategorieFrais,
     Depense,
     NoteFrais,
+    Payer,
     PieceJustificative,
     Rib,
 )
-from .ports import LectureImpossible, Membre, Personne, Ports, TicketLu
+from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, TicketLu
 from . import recapitulatif
 from .stockage import StockageEnveloppes, nom_propre
 
@@ -44,6 +53,13 @@ PIECES_MAX = 5
 MONTANT_MAX_CENTIMES = 10_000_000  # 100 000 €, garde-fou contre une virgule oubliée
 
 FILTRES = ("a_valider", "a_rembourser", "terminees")
+# À payer, pas encore vu sur le compte (financier.md §8.3 bis).
+EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
+# Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
+DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "Honoraires", ACHAT: "Achats"}
+MOIS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
+        "novembre", "décembre")
+MOIS_COURTS = ("janv", "fevr", "mars", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec")
 _EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif",
                "image/heic": ".heic", "image/heif": ".heif", "application/pdf": ".pdf"}
 
@@ -57,6 +73,15 @@ def euros(centimes: int) -> str:
     entier, reste = divmod(abs(centimes), 100)
     groupe = f"{entier:,}".replace(",", " ")
     return f"{'-' if centimes < 0 else ''}{groupe},{reste:02d} €"
+
+
+def montant_court(centimes: int) -> str:
+    """12345 -> « 123,45 » (nom de fichier, presse-papier)."""
+    return f"{centimes // 100},{centimes % 100:02d}"
+
+
+def _sans_accents(texte: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFD", texte or "") if not unicodedata.combining(c)).casefold()
 
 
 def normaliser_iban(iban: str | None) -> str | None:
@@ -252,6 +277,13 @@ class NotesDeFrais:
         db.commit()
         self.stockage.delete(membre.org_id, chemin)
 
+    def _chemin_piece(self, db: Session, membre: Membre, piece: PieceJustificative) -> Path:
+        """Le fichier d'un justificatif : dans Docs une fois la dépense
+        envoyée, sur le disque avant."""
+        if piece.doc_node_id is not None and self.ports.classeur is not None:
+            return self.ports.classeur.contenu(db, membre, piece.doc_node_id)
+        return self.stockage.chemin(membre.org_id, piece.chemin)
+
     def fichier_piece(self, db: Session, membre: Membre, piece_id: int) -> tuple[Path, str, str]:
         """(chemin, type, nom) : pour la personne elle-même ou un trésorier."""
         piece = db.get(PieceJustificative, piece_id)
@@ -260,27 +292,29 @@ class NotesDeFrais:
             raise LookupError("Justificatif introuvable.")
         if depense.person_id != membre.person_id and not (membre.est_tresorier or membre.est_superuser):
             raise LookupError("Justificatif introuvable.")
-        chemin = self.stockage.chemin(membre.org_id, piece.chemin)
+        chemin = self._chemin_piece(db, membre, piece)
         if not chemin.exists():
             raise LookupError("Fichier du justificatif introuvable.")
         return chemin, piece.type_mime, piece.nom
 
     def archive_justificatifs(self, db: Session, membre: Membre, note_id: int) -> tuple[bytes, str]:
         """Zip des justificatifs d'une note (§7), pour un trésorier ou
-        l'auteur : (contenu, nom du fichier). Noms tels que sur le disque."""
+        l'auteur : (contenu, nom du fichier), avec le PDF récapitulatif fait
+        à la demande (financier.md §8.3 bis)."""
         note = self._note(db, membre.org_id, note_id)
         if note.person_id != membre.person_id and not (membre.est_tresorier or membre.est_superuser):
             raise LookupError("Note de frais introuvable.")
         tampon = io.BytesIO()
         with zipfile.ZipFile(tampon, "w", zipfile.ZIP_STORED) as archive:
-            recap = self.stockage.chemin(membre.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
-            if recap.exists():
-                archive.write(recap, recap.name)
+            recap = self._recapitulatif(db, membre, note)
+            if recap is not None:
+                archive.writestr(recapitulatif.NOM_FICHIER, recap)
             for depense in note.depenses:
                 for piece in depense.pieces:
-                    chemin = self.stockage.chemin(membre.org_id, piece.chemin)
+                    chemin = self._chemin_piece(db, membre, piece)
                     if chemin.exists():
-                        archive.write(chemin, chemin.name)
+                        # Rangé dans Docs, `chemin` garde le nom du fichier.
+                        archive.write(chemin, Path(piece.chemin).name)
         nom = nom_propre(f"{note.envoyee_le.date().isoformat()} {note.titre} ({note.id})", 100)
         return tampon.getvalue(), f"{nom}.zip"
 
@@ -318,6 +352,7 @@ class NotesDeFrais:
             "montant_centimes": montant,
             "categorie_id": categorie.id if categorie else None,
             "description": description[:200],
+            "commercant": (lu.commercant or "")[:120] or None,
         }
 
     # --- Notes : côté membre (§4.4) ---
@@ -353,37 +388,45 @@ class NotesDeFrais:
         note = NoteFrais(org_id=membre.org_id, person_id=membre.person_id, titre=titre, statut=ENVOYEE, don=don)
         if actuel is not None and not don:
             note.rib_titulaire, note.rib_iban, note.rib_bic = actuel.titulaire, actuel.iban, actuel.bic
+        # Établie par un trésorier pour la personne (§7 ter) : validée en même
+        # temps (financier.md §8.3 bis).
+        if membre.agissant_id is not None:
+            note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.agissant_id
         db.add(note)
         db.flush()
-        enveloppe = self.stockage.dossier_note(
-            membre.org_id, membre.person_id, membre.nom, date.today().isoformat(), titre, note.id
-        )
         for depense in depenses:
             depense.note_id = note.id
-            for piece in depense.pieces:
-                piece.chemin = self.stockage.deplacer(membre.org_id, piece.chemin, enveloppe)
         db.commit()
         db.refresh(note)
-        self._ecrire_recapitulatif(db, note)
-        self._classer(db, membre, note)
-        self._prevenir_tresoriers(db, membre, note)
+        self._ranger(db, membre, note)
+        if membre.agissant_id is None:
+            self._prevenir_tresoriers(db, membre, note)
         return note
 
     def reprendre(self, db: Session, membre: Membre, note_id: int) -> None:
         """Tant qu'aucun trésorier n'a validé (ou après un refus) : la note
-        disparaît et ses dépenses repassent « À envoyer »."""
+        disparaît et ses dépenses repassent « À envoyer » ; ses justificatifs
+        quittent Docs (corbeille) pour revenir avec les dépenses."""
         note = self._note(db, membre.org_id, note_id)
         if note.person_id != membre.person_id:
             raise LookupError("Note de frais introuvable.")
         if note.statut not in (ENVOYEE, REFUSEE):
             raise ValueError("Cette note est déjà validée : elle ne peut plus être reprise.")
-        self.stockage.delete(membre.org_id, f"{self._enveloppe(note, membre.nom)}/{recapitulatif.NOM_FICHIER}")
-        self._declasser(db, membre, note)
         dossier = self.stockage.dossier_depenses(membre.org_id, membre.person_id, membre.nom)
+        rangees = []
+        for depense in note.depenses:
+            for piece in depense.pieces:
+                if piece.doc_node_id is None:
+                    continue
+                with open(self._chemin_piece(db, membre, piece), "rb") as source:
+                    piece.chemin, _ = self.stockage.put(membre.org_id, dossier, Path(piece.chemin).name, source)
+                rangees.append(piece.doc_node_id)
+                piece.doc_node_id = None
+        db.commit()
+        if rangees:
+            self._declasser(db, membre, note, rangees)
         for depense in list(note.depenses):
             depense.note_id = None
-            for piece in depense.pieces:
-                piece.chemin = self.stockage.deplacer(membre.org_id, piece.chemin, dossier)
         db.flush()
         db.delete(note)
         db.commit()
@@ -421,7 +464,7 @@ class NotesDeFrais:
             select(NoteFrais.id).where(
                 NoteFrais.org_id == membre.org_id,
                 NoteFrais.person_id == membre.person_id,
-                (NoteFrais.statut == ENVOYEE) | ((NoteFrais.statut == VALIDEE) & NoteFrais.don.is_(False)),
+                (NoteFrais.statut == ENVOYEE) | (NoteFrais.statut.in_(EN_PAIEMENT) & NoteFrais.don.is_(False)),
             )
         ).all()
         resultat = {"a_envoyer": len(a_envoyer), "en_attente": len(en_attente)}
@@ -449,43 +492,73 @@ class NotesDeFrais:
         personne = self.ports.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
         if personne is None:
             raise LookupError("Personne inconnue dans cette organisation.")
-        return replace(membre, person_id=personne.person_id, nom=personne.nom, emails=personne.emails)
+        return replace(
+            membre, person_id=personne.person_id, nom=personne.nom, emails=personne.emails, agissant_id=membre.person_id
+        )
 
     def tresorerie(self, db: Session, membre: Membre, filtre: str) -> list[dict]:
+        """Une puce de Financier › Pièces (une nature : les notes à valider
+        d'abord), ou un des filtres d'avant (a_valider, a_rembourser,
+        terminees)."""
         self._exiger_tresorier(membre)
-        if filtre not in FILTRES:
+        if filtre not in FILTRES + NATURES:
             raise ValueError("Filtre inconnu.")
         requete = select(NoteFrais).where(NoteFrais.org_id == membre.org_id)
-        if filtre == "a_valider":
+        if filtre in NATURES:
+            requete = requete.where(NoteFrais.nature == filtre).order_by(
+                (NoteFrais.statut != ENVOYEE), NoteFrais.envoyee_le.desc(), NoteFrais.id.desc()
+            )
+        elif filtre == "a_valider":
             requete = requete.where(NoteFrais.statut == ENVOYEE).order_by(NoteFrais.envoyee_le)
         elif filtre == "a_rembourser":
-            requete = requete.where(NoteFrais.statut == VALIDEE, NoteFrais.don.is_(False)).order_by(NoteFrais.traitee_le)
+            requete = requete.where(NoteFrais.statut.in_(EN_PAIEMENT), NoteFrais.don.is_(False)).order_by(NoteFrais.traitee_le)
         else:
             requete = requete.where(
                 (NoteFrais.statut.in_((REMBOURSEE, REFUSEE))) | ((NoteFrais.statut == VALIDEE) & NoteFrais.don.is_(True))
             ).order_by(NoteFrais.envoyee_le.desc())
-        notes = list(db.scalars(requete))
-        personnes = self.ports.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes} | {n.traitee_par for n in notes if n.traitee_par})
-        return [self.note_dict(n, personnes=personnes) for n in notes]
+        return self.notes_dicts(db, membre, list(db.scalars(requete)))
+
+    def notes_dicts(self, db: Session, membre: Membre, notes: list[NoteFrais]) -> list[dict]:
+        """Vu du trésorier : avec les noms, et l'opération du compte qui
+        semble payer la pièce (`paiement_propose`)."""
+        ids = {n.person_id for n in notes} | {i for n in notes for i in (n.traitee_par, n.prepared_by, n.payer_id) if i}
+        personnes = self.ports.annuaire.personnes(db, membre.org_id, ids - {PERSONNE_A_CHOISIR})
+        prises = self._operations_prises(db, membre.org_id)
+        resultat = []
+        for note in notes:
+            ligne = self.note_dict(note, personnes=personnes)
+            operation = self.paiement_propose(db, note, prises)
+            ligne["paiement_propose"] = operation and {
+                "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
+                "montant_centimes": operation.montant_centimes, "compte": operation.compte,
+            }
+            ligne["operation_id"] = note.bank_operation_id
+            resultat.append(ligne)
+        return resultat
 
     def compteurs_tresorerie(self, db: Session, membre: Membre) -> dict:
+        """Compteurs des puces : les notes à valider de chaque nature."""
         self._exiger_tresorier(membre)
-        return {filtre: len(self.tresorerie(db, membre, filtre)) for filtre in FILTRES}
+        a_valider = db.scalars(
+            select(NoteFrais.nature).where(NoteFrais.org_id == membre.org_id, NoteFrais.statut == ENVOYEE)
+        ).all()
+        return {nature: a_valider.count(nature) for nature in NATURES}
 
     def valider(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
         if note.statut != ENVOYEE:
             raise ValueError("Cette note n'est plus à valider.")
-        if note.person_id == membre.person_id and any(
+        if note.nature == FRAIS and note.person_id == membre.person_id and any(
             t.person_id != membre.person_id for t in self.ports.annuaire.tresoriers(db, membre.org_id)
         ):
             raise PermissionError("Un autre trésorier doit valider votre propre note.")
+        self._exiger_complete(note)
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
-        self._ecrire_recapitulatif(db, note)
-        self._classer(db, membre, note)
+        if note.nature != FRAIS:
+            return note
         if note.don:
             self._prevenir_auteur(db, membre, note, "validée (don à l'association)", "Merci pour votre don : votre note de frais a été validée.")
         else:
@@ -493,88 +566,315 @@ class NotesDeFrais:
         return note
 
     @staticmethod
-    def statut_docs(note: NoteFrais) -> str:
-        """Badge du dossier de la note dans Docs (Seb, 17 octobre) : rien n'y
-        bouge, le statut se lit au badge. Brouillon = en attente ; Refusé ;
-        Validé = à rembourser ; Officiel (figé) = remboursée ou don."""
-        if note.statut == VALIDEE:
-            return "official" if note.don else "validated"
-        return {ENVOYEE: "draft", REFUSEE: "refused", REMBOURSEE: "official"}[note.statut]
+    def _exiger_complete(note: NoteFrais) -> None:
+        """Une pièce photographiée en rafale se complète avant d'être validée."""
+        if note.nature == HONORAIRES and note.person_id == PERSONNE_A_CHOISIR:
+            raise ValueError("Choisissez d'abord pour qui sont ces honoraires.")
+        if any(d.montant_centimes <= 0 for d in note.depenses):
+            raise ValueError("Indiquez d'abord le montant.")
 
-    def _enveloppe(self, note: NoteFrais, nom_auteur: str) -> str:
-        return self.stockage.dossier_note(
-            note.org_id, note.person_id, nom_auteur, note.envoyee_le.date().isoformat(), note.titre, note.id
+    # --- Établir une dépense : le « + » de Financier › Pièces (financier.md §8.3 bis) ---
+
+    def etablir(
+        self,
+        db: Session,
+        membre: Membre,
+        *,
+        nature: str,
+        fichier: tuple[bytes, str, str] | None = None,
+        person_id: int | None = None,
+        fournisseur: str | None = None,
+        jour: date | None = None,
+        montant_centimes: int | None = None,
+        description: str = "",
+        valider: bool = False,
+    ) -> NoteFrais:
+        """Honoraires ou achat établi par un trésorier : une photo (ou un
+        fichier) = une note d'une dépense, créée aussitôt. La lecture remplit
+        ce qu'elle peut ; le trésorier vérifie, corrige et valide ensuite
+        (rafale). `valider` : tout est saisi, validé en même temps."""
+        self._exiger_tresorier(membre)
+        if nature not in (HONORAIRES, ACHAT):
+            raise ValueError("Une note de frais s'établit au nom de la personne (« Pour qui ? »).")
+        lu = {}
+        if fichier is not None:
+            contenu, nom, type_mime = fichier
+            if type_mime not in TYPES_ACCEPTES:
+                raise ValueError("Seules les photos (JPEG, PNG, WebP, HEIC) et les PDF sont acceptés.")
+            if len(contenu) <= 10 * 1024 * 1024 and self.lecture_disponible:
+                try:
+                    lu = self.lire_ticket(db, membre, contenu, type_mime)
+                except LectureImpossible:
+                    lu = {}
+        if jour is None and lu.get("date"):
+            jour = date.fromisoformat(lu["date"])
+        jour = jour or date.today()
+        montant = montant_centimes if montant_centimes is not None else (lu.get("montant_centimes") or 0)
+        if montant or valider:
+            self._valider_saisie(montant, jour)
+        description = " ".join((description or lu.get("description") or "").split())[:200]
+        note = NoteFrais(org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="")
+        if nature == ACHAT:
+            note.person_id = membre.person_id
+            note.supplier = " ".join((fournisseur or lu.get("commercant") or "").split())[:120] or None
+        else:
+            note.person_id = person_id if person_id is not None else self._reconnaitre_prof(db, membre, lu)
+            if note.person_id != PERSONNE_A_CHOISIR:
+                self._personne_de_l_org(db, membre, note.person_id)
+        note.titre = self._titre(note, jour)
+        self._recopier_rib(db, note)
+        if valider:
+            note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
+        db.add(note)
+        db.flush()
+        depense = Depense(
+            org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=montant,
+            description=description, lue_par_ia=bool(lu), note_id=note.id,
         )
+        db.add(depense)
+        db.flush()
+        if valider:
+            self._exiger_complete(note)
+        if fichier is not None:
+            self._poser_piece(membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2])
+        db.commit()
+        db.refresh(note)
+        self._ranger(db, membre, note)
+        return note
 
-    def _ecrire_recapitulatif(self, db: Session, note: NoteFrais) -> Path | None:
-        """(Re)fait « Note de frais.pdf » dans l'enveloppe de la note. Un
-        échec ne bloque pas l'action : il est journalisé."""
+    def ajouter_page(self, db: Session, membre: Membre, note_id: int, flux: BinaryIO, nom: str, type_mime: str) -> NoteFrais:
+        """« Encore une page de celle-ci » : une page de plus pour la dernière
+        dépense de la note (facture de deux pages, ticket de dépôt + cahier)."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.statut in (REFUSEE, REMBOURSEE) or not note.depenses:
+            raise ValueError("On n'ajoute plus de page à cette pièce.")
+        if type_mime not in TYPES_ACCEPTES:
+            raise ValueError("Seules les photos (JPEG, PNG, WebP, HEIC) et les PDF sont acceptés.")
+        depense = note.depenses[-1]
+        if len(depense.pieces) >= PIECES_MAX:
+            raise ValueError(f"Pas plus de {PIECES_MAX} justificatifs par dépense.")
+        self._poser_piece(membre, depense, flux, nom, type_mime)
+        db.commit()
+        db.refresh(note)
+        self._ranger(db, membre, note)
+        return note
+
+    def corriger(self, db: Session, membre: Membre, note_id: int, **champs) -> NoteFrais:
+        """Vérifier ou compléter ce que la lecture a rempli (honoraires,
+        achat), tant que ce n'est pas payé. Une note de frais, elle, se
+        corrige par son auteur (reprendre)."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.nature == FRAIS:
+            raise ValueError("Une note de frais se corrige par son auteur : refusez-la avec un motif.")
+        if note.statut not in (ENVOYEE, VALIDEE):
+            raise ValueError("Cette pièce n'est plus modifiable.")
+        if note.nature == HONORAIRES and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
+            self._personne_de_l_org(db, membre, champs["person_id"])
+            note.person_id = champs["person_id"]
+            for depense in note.depenses:
+                depense.person_id = note.person_id
+            note.rib_titulaire = note.rib_iban = note.rib_bic = None
+            self._recopier_rib(db, note)
+        if note.nature == ACHAT and champs.get("fournisseur") is not None:
+            note.supplier = " ".join(champs["fournisseur"].split())[:120] or None
+        if len(note.depenses) == 1:
+            depense = note.depenses[0]
+            if champs.get("jour") is not None:
+                depense.date = champs["jour"]
+            if champs.get("montant_centimes") is not None:
+                depense.montant_centimes = champs["montant_centimes"]
+            if champs.get("description") is not None:
+                depense.description = " ".join(champs["description"].split())[:200]
+            self._valider_saisie(depense.montant_centimes, depense.date)
+        if champs.get("titre"):
+            note.titre = " ".join(champs["titre"].split())[:120]
+        elif note.depenses:
+            note.titre = self._titre(note, note.depenses[0].date)
+        db.commit()
+        db.refresh(note)
+        self._ranger(db, membre, note)
+        return note
+
+    def supprimer_note(self, db: Session, membre: Membre, note_id: int) -> None:
+        """Une pièce établie par erreur (photo ratée, doublon), pas encore
+        validée : elle et ses justificatifs partent à la corbeille."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.nature == FRAIS or note.statut != ENVOYEE:
+            raise ValueError("Seule une pièce encore à valider se supprime.")
+        rangees = [p.doc_node_id for d in note.depenses for p in d.pieces if p.doc_node_id]
+        sur_disque = [p.chemin for d in note.depenses for p in d.pieces if p.doc_node_id is None]
+        if rangees:
+            self._declasser(db, membre, note, rangees)
+        for depense in list(note.depenses):
+            db.delete(depense)
+        db.delete(note)
+        db.commit()
+        for chemin in sur_disque:
+            self.stockage.delete(membre.org_id, chemin)
+
+    def _personne_de_l_org(self, db: Session, membre: Membre, person_id: int) -> Personne:
+        personne = self.ports.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
+        if personne is None:
+            raise LookupError("Personne inconnue dans cette organisation.")
+        return personne
+
+    def _reconnaitre_prof(self, db: Session, membre: Membre, lu: dict) -> int:
+        """Le nom lu sur une note d'honoraires rapproché d'une fiche ; en cas
+        de doute, « Pour qui ? » (PERSONNE_A_CHOISIR)."""
+        texte = _sans_accents(f"{lu.get('commercant') or ''} {lu.get('description') or ''}")
+        if not texte.strip():
+            return PERSONNE_A_CHOISIR
+        mots = set(re.findall(r"[a-z]+", texte))
+        trouvees = [
+            p for p in self.ports.annuaire.toutes(db, membre.org_id)
+            if (noms := [m for m in re.findall(r"[a-z]+", _sans_accents(p.nom)) if len(m) > 1]) and all(m in mots for m in noms)
+        ]
+        return trouvees[0].person_id if len(trouvees) == 1 else PERSONNE_A_CHOISIR
+
+    @staticmethod
+    def _titre(note: NoteFrais, jour: date) -> str:
+        if note.nature == HONORAIRES:
+            return f"Honoraires {MOIS[jour.month - 1]} {jour.year}"
+        if note.nature == ACHAT:
+            return note.supplier or "Achat"
+        return note.titre
+
+    def _recopier_rib(self, db: Session, note: NoteFrais) -> None:
+        """Le RIB à payer, s'il est connu : celui de la personne (honoraires),
+        ou celui du dernier achat chez ce fournisseur."""
+        if note.rib_iban or note.don:
+            return
+        if note.nature == ACHAT:
+            if not note.supplier:
+                return
+            precedent = db.scalars(
+                select(NoteFrais).where(
+                    NoteFrais.org_id == note.org_id, NoteFrais.nature == ACHAT, NoteFrais.supplier == note.supplier,
+                    NoteFrais.rib_iban.is_not(None),
+                ).order_by(NoteFrais.id.desc())
+            ).first()
+            if precedent is not None:
+                note.rib_titulaire, note.rib_iban, note.rib_bic = precedent.rib_titulaire, precedent.rib_iban, precedent.rib_bic
+            return
+        rib = self.rib(db, note.org_id, note.person_id)
+        if rib is not None:
+            note.rib_titulaire, note.rib_iban, note.rib_bic = rib.titulaire, rib.iban, rib.bic
+
+    def _poser_piece(self, membre: Membre, depense: Depense, flux: BinaryIO, nom: str, type_mime: str) -> None:
+        """Le fichier attend sur le disque d'être rangé dans Docs (_ranger)."""
+        extension = Path(nom or "").suffix.lower() or _EXTENSIONS.get(type_mime, "")
+        nom_fichier = f"{depense.date.isoformat()} {depense.description or 'ticket'} {depense.id}-{len(depense.pieces) + 1}{extension}"
+        dossier = self.stockage.dossier_depenses(membre.org_id, depense.person_id, "")
+        chemin, taille = self.stockage.put(membre.org_id, dossier, nom_fichier, flux)
+        depense.pieces.append(PieceJustificative(
+            chemin=chemin, type_mime=type_mime, nom=(nom or "")[:200], taille=taille, ordre=len(depense.pieces),
+        ))
+
+    # --- Rangement dans Docs (§7 bis, financier.md §8.3 bis) ---
+
+    def _chemin_docs(self, db: Session, note: NoteFrais) -> list[str] | None:
+        """Dossiers sous Financier : par personne puis par note (notes de
+        frais, honoraires), ou directement Achats. None : pas encore rangeable
+        (honoraires dont on ne sait pas encore pour qui)."""
+        if note.nature == ACHAT:
+            return [DOSSIERS[ACHAT]]
+        if note.person_id == PERSONNE_A_CHOISIR:
+            return None
+        personne = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        return [
+            DOSSIERS[note.nature],
+            self.stockage.dossier_personne(note.org_id, note.person_id, personne.nom if personne else "?"),
+            f"{note.envoyee_le.date().isoformat()} {nom_propre(note.titre)} ({note.id})",
+        ]
+
+    def _nom_dans_docs(self, note: NoteFrais, depense: Depense, piece: PieceJustificative) -> str:
+        """Achats : « 2025-02-09 Amazon 39,90.jpg » ; ailleurs, le nom du disque."""
+        if note.nature != ACHAT:
+            return Path(piece.chemin).name
+        extension = Path(piece.chemin).suffix
+        return nom_propre(f"{depense.date.isoformat()} {note.supplier or 'Achat'} {montant_court(depense.montant_centimes)}", 100) + extension
+
+    def _ranger(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+        """Range dans Docs les justificatifs de la note encore sur le disque,
+        puis les retire du disque : un seul endroit, qui ne bouge plus. Un
+        échec n'annule pas l'action : les fichiers restent sur le disque."""
+        classeur = self.ports.classeur
+        chemin = self._chemin_docs(db, note)
+        a_ranger = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id is None]
+        if classeur is None or chemin is None or not a_ranger:
+            return
+        fichiers = [(self._nom_dans_docs(note, d, p), self.stockage.chemin(note.org_id, p.chemin)) for d, p in a_ranger]
+        try:
+            ids = classeur.classer(db, membre, chemin, fichiers)
+        except Exception:
+            db.rollback()
+            logger.exception("Note de frais %s : rangement dans les documents impossible", note.id)
+            return
+        if len(ids) != len(a_ranger):
+            return
+        anciens = []
+        for (_, piece), (nom, _), node_id in zip(a_ranger, fichiers, ids):
+            anciens.append(piece.chemin)
+            piece.doc_node_id, piece.chemin = node_id, nom
+        db.commit()
+        for ancien in anciens:
+            self.stockage.delete(note.org_id, ancien)
+
+    def _declasser(self, db: Session, membre: Membre, note: NoteFrais, node_ids: list[int]) -> None:
+        """Note reprise ou supprimée : son dossier (ou, dans Achats, ses
+        fichiers) part à la corbeille des documents."""
+        chemin = self._chemin_docs(db, note)
+        if self.ports.classeur is None or chemin is None:
+            return
+        try:
+            self.ports.classeur.retirer(db, membre, chemin, node_ids if note.nature == ACHAT else ())
+        except Exception:
+            db.rollback()
+            logger.exception("Note de frais %s : retrait des documents impossible", note.id)
+
+    def _recapitulatif(self, db: Session, membre: Membre, note: NoteFrais) -> bytes | None:
+        """Le PDF récapitulatif de la note. Un échec ne bloque rien."""
         try:
             ids = {note.person_id} | {i for i in (note.traitee_par, note.remboursee_par) if i}
-            personnes = self.ports.annuaire.personnes(db, note.org_id, ids)
+            personnes = self.ports.annuaire.personnes(db, note.org_id, ids - {PERSONNE_A_CHOISIR})
             nom = lambda i: personnes[i].nom if i in personnes else None  # noqa: E731
             pieces = {
-                d.id: [
-                    recapitulatif.Piece(p.nom or Path(p.chemin).name, self.stockage.chemin(note.org_id, p.chemin), p.type_mime)
-                    for p in d.pieces
-                ]
+                d.id: [recapitulatif.Piece(p.nom or Path(p.chemin).name, self._chemin_piece(db, membre, p), p.type_mime) for p in d.pieces]
                 for d in note.depenses
             }
-            contenu = recapitulatif.generer(
+            return recapitulatif.generer(
                 organisation=self.ports.annuaire.organisation(db, note.org_id).nom,
                 note=note,
-                auteur=nom(note.person_id) or "?",
+                auteur=(note.supplier if note.nature == ACHAT else nom(note.person_id)) or "?",
                 traitee_par=nom(note.traitee_par) if note.traitee_par else None,
                 remboursee_par=nom(note.remboursee_par) if note.remboursee_par else None,
                 statut=self.libelle_statut(note),
                 pieces_par_depense=pieces,
             )
-            relatif = self.stockage.ecrire(
-                note.org_id, self._enveloppe(note, nom(note.person_id) or ""), recapitulatif.NOM_FICHIER, contenu
-            )
-            return self.stockage.chemin(note.org_id, relatif)
         except Exception:
             logger.exception("Note de frais %s : récapitulatif PDF impossible", note.id)
             return None
 
-    def _classer(self, db: Session, membre: Membre, note: NoteFrais) -> None:
-        """Range la note dans les documents, dès l'envoi, et met à jour son
-        PDF et son badge à chaque étape (§7 bis). Un échec n'annule pas
-        l'action : il est seulement journalisé (les fichiers restent dans
-        l'enveloppe, téléchargeables)."""
-        classeur = self.ports.classeur
-        if classeur is None:
+    def _ranger_recapitulatif(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+        """Le PDF est fait une seule fois, quand c'est payé (financier.md
+        §8.3 bis), et rangé à côté des justificatifs."""
+        chemin = self._chemin_docs(db, note)
+        contenu = self._recapitulatif(db, membre, note)
+        if self.ports.classeur is None or chemin is None or contenu is None:
             return
-        fichiers = []
-        recap = self.stockage.chemin(note.org_id, f"{self._enveloppe(note, '')}/{recapitulatif.NOM_FICHIER}")
-        if recap.exists():
-            fichiers.append((recap.name, recap))
-        for depense in note.depenses:
-            for piece in depense.pieces:
-                chemin = self.stockage.chemin(note.org_id, piece.chemin)
-                if chemin.exists():
-                    fichiers.append((chemin.name, chemin))
-        # Mêmes noms que sur le disque : dossier de la personne, enveloppe.
-        personne, _, enveloppe = self._enveloppe(note, "").split("/")
+        nom = recapitulatif.NOM_FICHIER if note.nature != ACHAT else f"{nom_propre(note.titre)} ({note.id}).pdf"
+        dossier = self.stockage.dossier_depenses(note.org_id, note.person_id, "")
+        relatif = self.stockage.ecrire(note.org_id, dossier, nom, contenu)
         try:
-            classeur.classer(
-                db, membre, [personne, enveloppe], fichiers, self.statut_docs(note),
-                remplacer={recapitulatif.NOM_FICHIER},
-            )
+            self.ports.classeur.classer(db, membre, chemin, [(nom, self.stockage.chemin(note.org_id, relatif))], remplacer={nom})
         except Exception:
             db.rollback()
-            logger.exception("Note de frais %s : rangement dans les documents impossible", note.id)
-
-    def _declasser(self, db: Session, membre: Membre, note: NoteFrais) -> None:
-        """Note reprise : son dossier part à la corbeille des documents."""
-        if self.ports.classeur is None:
-            return
-        personne, _, enveloppe = self._enveloppe(note, "").split("/")
-        try:
-            self.ports.classeur.retirer(db, membre, [personne, enveloppe])
-        except Exception:
-            db.rollback()
-            logger.exception("Note de frais %s : retrait des documents impossible", note.id)
+            logger.exception("Note de frais %s : PDF non rangé dans les documents", note.id)
+        finally:
+            self.stockage.delete(note.org_id, relatif)
 
     def refuser(self, db: Session, membre: Membre, note_id: int, motif: str) -> NoteFrais:
         self._exiger_tresorier(membre)
@@ -588,43 +888,220 @@ class NotesDeFrais:
         note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
-        self._ecrire_recapitulatif(db, note)
-        self._classer(db, membre, note)
-        self._prevenir_auteur(
-            db, membre, note, "refusée",
-            f"Votre note de frais a été refusée. Motif : {motif}\nVous pouvez la reprendre pour la corriger et la renvoyer.",
-        )
+        if note.nature == FRAIS:
+            self._prevenir_auteur(
+                db, membre, note, "refusée",
+                f"Votre note de frais a été refusée. Motif : {motif}\nVous pouvez la reprendre pour la corriger et la renvoyer.",
+            )
         return note
 
     def rembourser(self, db: Session, membre: Membre, note_ids: list[int]) -> list[NoteFrais]:
-        """Le trésorier a fait les virements depuis la banque (§1)."""
+        """Payé sans voir l'opération sur le compte (avant les Virements,
+        financier.md §8.3 bis ; gardé pour l'assistant et les anciens écrans)."""
         self._exiger_tresorier(membre)
         notes = [self._note(db, membre.org_id, i) for i in dict.fromkeys(note_ids)]
         if not notes:
             raise ValueError("Cochez au moins une note.")
         for note in notes:
-            if note.statut != VALIDEE or note.don:
+            if note.statut not in EN_PAIEMENT or note.don:
                 raise ValueError(f"« {note.titre} » n'est pas à rembourser.")
         for note in notes:
             note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
         db.commit()
         for note in notes:
             db.refresh(note)
-            self._ecrire_recapitulatif(db, note)
-            # Docs › Financier : le PDF reçoit une nouvelle version, puis le
-            # dossier de la note passe Officiel (figé).
-            self._classer(db, membre, note)
+            self._apres_paiement(db, membre, note)
+        return notes
+
+    def _apres_paiement(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+        self._ranger_recapitulatif(db, membre, note)
+        # Celle qui a préparé le virement est prévenue qu'il est passé.
+        if note.prepared_by and note.prepared_by != membre.person_id:
+            prepare = self.ports.annuaire.personnes(db, note.org_id, {note.prepared_by}).get(note.prepared_by)
+            if prepare is not None and prepare.notification_id is not None:
+                self._notifier(db, prepare.notification_id, "Payé", f"{self.beneficiaire(db, note)}, {euros(self.total(note))}")
+        if note.nature == HONORAIRES and note.person_id != PERSONNE_A_CHOISIR:
+            prof = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+            if prof is not None and prof.notification_id is not None:
+                self._notifier(db, prof.notification_id, "Honoraires payés", f"« {note.titre} » : {euros(self.total(note))} par virement.")
+        if note.nature == FRAIS:
             self._prevenir_auteur(
                 db, membre, note, "remboursée",
                 f"Votre note de frais a été remboursée : {euros(self.total(note))} par virement.",
             )
-        return notes
 
-    def lignes_export(self, db: Session, membre: Membre, debut: date | None, fin: date | None) -> list[dict]:
-        """Une ligne par dépense des notes envoyées (§7), pour Excel."""
+    # --- Virements (financier.md §8.3 bis) : l'appli ne paie pas, elle aide ---
+
+    def payeurs(self, db: Session, membre: Membre) -> list[Personne]:
+        """Réglage « Qui paie » ; personne de choisi : les trésoriers."""
         self._exiger_tresorier(membre)
-        notes = list(db.scalars(select(NoteFrais).where(NoteFrais.org_id == membre.org_id).order_by(NoteFrais.envoyee_le)))
-        personnes = self.ports.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes})
+        ids = set(db.scalars(select(Payer.person_id).where(Payer.org_id == membre.org_id)))
+        if not ids:
+            return self.ports.annuaire.tresoriers(db, membre.org_id)
+        return sorted(self.ports.annuaire.personnes(db, membre.org_id, ids).values(), key=lambda p: p.nom.casefold())
+
+    def definir_payeurs(self, db: Session, membre: Membre, person_ids: list[int]) -> list[Personne]:
+        self._exiger_tresorier(membre)
+        ids = set(person_ids)
+        connues = self.ports.annuaire.personnes(db, membre.org_id, ids)
+        if ids - connues.keys():
+            raise LookupError("Personne inconnue dans cette organisation.")
+        for ancien in db.scalars(select(Payer).where(Payer.org_id == membre.org_id)):
+            db.delete(ancien)
+        for person_id in ids:
+            db.add(Payer(org_id=membre.org_id, person_id=person_id))
+        db.commit()
+        return self.payeurs(db, membre)
+
+    def definir_rib_note(self, db: Session, membre: Membre, note_id: int, *, titulaire: str | None, iban: str | None, bic: str | None) -> NoteFrais:
+        """RIB à payer, saisi ou corrigé par un trésorier ; celui d'une personne
+        est aussi gardé sur sa fiche (Profil › Mon RIB)."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.don or note.statut not in (ENVOYEE, VALIDEE, PREPAREE):
+            raise ValueError("Ce virement n'est plus à préparer.")
+        iban = normaliser_iban(iban)
+        if iban is None:
+            raise ValueError("Indiquez l'IBAN.")
+        note.rib_iban, note.rib_bic = iban, normaliser_bic(bic)
+        note.rib_titulaire = " ".join((titulaire or "").split())[:120] or None
+        if note.nature != ACHAT and note.person_id != PERSONNE_A_CHOISIR:
+            personne = self._personne_de_l_org(db, membre, note.person_id)
+            self.definir_rib(
+                db, replace(membre, person_id=personne.person_id, nom=personne.nom),
+                titulaire=note.rib_titulaire, iban=iban, bic=note.rib_bic,
+            )
+        db.commit()
+        db.refresh(note)
+        return note
+
+    def _a_virer(self, db: Session, membre: Membre, note_id: int, etats: tuple[str, ...]) -> NoteFrais:
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.don or note.statut not in etats:
+            raise ValueError("Ce virement n'est pas à faire.")
+        if not note.rib_iban:
+            raise ValueError("Il manque le RIB.")
+        return note
+
+    def preparer(self, db: Session, membre: Membre, note_id: int, payeur_id: int) -> NoteFrais:
+        """« Faire payer par … » : prévenue par une notification qui ouvre
+        l'aide au virement."""
+        note = self._a_virer(db, membre, note_id, (VALIDEE, PREPAREE))
+        payeur = next((p for p in self.payeurs(db, membre) if p.person_id == payeur_id), None)
+        if payeur is None:
+            raise ValueError("Cette personne n'est pas dans « Qui paie ».")
+        note.statut, note.prepared_at, note.prepared_by, note.payer_id = PREPAREE, _maintenant(), membre.person_id, payeur_id
+        db.commit()
+        db.refresh(note)
+        if payeur_id != membre.person_id and payeur.notification_id is not None:
+            self._notifier(db, payeur.notification_id, "Virement à faire", f"{self.beneficiaire(db, note)}, {euros(self.total(note))}")
+        return note
+
+    def virement_fait(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« J'ai fait le virement » : Envoyé, jusqu'à ce qu'on le voie sur le compte."""
+        note = self._a_virer(db, membre, note_id, (VALIDEE, PREPAREE))
+        note.statut, note.transfer_sent_at, note.transfer_sent_by = VIREE, _maintenant(), membre.person_id
+        db.commit()
+        db.refresh(note)
+        return note
+
+    def beneficiaire(self, db: Session, note: NoteFrais) -> str:
+        if note.rib_titulaire:
+            return note.rib_titulaire
+        if note.nature == ACHAT:
+            return note.supplier or "Fournisseur"
+        personne = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        return personne.nom if personne else "?"
+
+    def libelle_virement(self, db: Session, note: NoteFrais) -> str:
+        """Libellé proposé dans l'aide au virement (« Contretemps honoraires oct 2026 »)."""
+        org = self.ports.annuaire.organisation(db, note.org_id).nom
+        jour = note.depenses[0].date if note.depenses else note.envoyee_le.date()
+        mois = f"{MOIS_COURTS[jour.month - 1]} {jour.year}"
+        quoi = {FRAIS: "note de frais", HONORAIRES: "honoraires", ACHAT: f"facture {note.supplier or ''}".strip()}[note.nature]
+        # Sans accents : le libellé d'un virement SEPA n'en prend pas partout.
+        texte = "".join(c for c in unicodedata.normalize("NFD", f"{org} {quoi} {mois}") if not unicodedata.combining(c))
+        return " ".join(texte.split())[:140]
+
+    def virements(self, db: Session, membre: Membre) -> list[dict]:
+        """Puce Virements : à payer, préparés, envoyés, et payés depuis moins
+        de 60 jours ; toutes natures."""
+        self._exiger_tresorier(membre)
+        depuis = _maintenant() - timedelta(days=60)
+        notes = list(db.scalars(
+            select(NoteFrais).where(
+                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False),
+                NoteFrais.statut.in_(EN_PAIEMENT) | ((NoteFrais.statut == REMBOURSEE) & (NoteFrais.remboursee_le >= depuis)),
+            ).order_by(NoteFrais.traitee_le, NoteFrais.id)
+        ))
+        resultat = self.notes_dicts(db, membre, notes)
+        for note, ligne in zip(notes, resultat):
+            ligne["beneficiaire"] = self.beneficiaire(db, note)
+            ligne["libelle_virement"] = self.libelle_virement(db, note)
+        return resultat
+
+    # --- Vu sur le compte (financier.md §8.3 bis, rapprochement) ---
+
+    def _operations_prises(self, db: Session, org_id: int) -> set[int]:
+        return set(db.scalars(
+            select(NoteFrais.bank_operation_id).where(NoteFrais.org_id == org_id, NoteFrais.bank_operation_id.is_not(None))
+        ))
+
+    def paiement_propose(self, db: Session, note: NoteFrais, prises: set[int]) -> OperationBancaire | None:
+        """Le débit du même montant, après l'envoi du virement (ou autour de la
+        date de la dépense : achat payé par carte, virement fait avant la
+        facture), de préférence au nom du bénéficiaire. Proposé, jamais
+        rattaché sans confirmation."""
+        banque, total = self.ports.banque, self.total(note)
+        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+            return None
+        if note.statut == VIREE and note.transfer_sent_at is not None:
+            reference = note.transfer_sent_at.date()
+            depuis = reference - timedelta(days=3)
+        else:
+            reference = min((d.date for d in note.depenses), default=note.envoyee_le.date())
+            depuis = reference - timedelta(days=45)
+        candidates = [o for o in banque.debits(db, note.org_id, total, depuis) if o.id not in prises]
+        if not candidates:
+            return None
+        noms = {m for m in re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}"))}
+        return min(
+            candidates,
+            key=lambda o: (not noms & set(re.findall(r"[a-z]{3,}", _sans_accents(o.libelle))), abs((o.date - reference).days)),
+        )
+
+    def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int) -> NoteFrais:
+        """Confirmer l'opération vue sur le compte : la pièce y est rattachée
+        et passe Payé (aussi tout droit depuis À valider : déjà payé)."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+            raise ValueError("Cette pièce n'est pas à payer.")
+        operation = self.ports.banque.operation(db, membre.org_id, operation_id) if self.ports.banque else None
+        if operation is None:
+            raise LookupError("Opération introuvable sur les comptes.")
+        if operation.montant_centimes != -self.total(note):
+            raise ValueError("Le montant de l'opération n'est pas celui de la pièce.")
+        if operation_id in self._operations_prises(db, membre.org_id):
+            raise ValueError("Cette opération est déjà rattachée à une autre pièce.")
+        if note.statut == ENVOYEE:
+            self._exiger_complete(note)
+            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
+        note.bank_operation_id = operation_id
+        db.commit()
+        db.refresh(note)
+        self._apres_paiement(db, membre, note)
+        return note
+
+    def lignes_export(self, db: Session, membre: Membre, debut: date | None, fin: date | None, nature: str = FRAIS) -> list[dict]:
+        """Une ligne par dépense des notes de cette nature (§7), pour Excel."""
+        self._exiger_tresorier(membre)
+        notes = list(db.scalars(
+            select(NoteFrais).where(NoteFrais.org_id == membre.org_id, NoteFrais.nature == nature).order_by(NoteFrais.envoyee_le)
+        ))
+        personnes = self.ports.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes} - {PERSONNE_A_CHOISIR})
         lignes = []
         for note in notes:
             for depense in note.depenses:
@@ -633,7 +1110,7 @@ class NotesDeFrais:
                 personne = personnes.get(note.person_id)
                 lignes.append({
                     "date": depense.date,
-                    "personne": personne.nom if personne else "",
+                    "personne": (note.supplier or "") if note.nature == ACHAT else (personne.nom if personne else ""),
                     "categorie": depense.categorie.libelle if depense.categorie else "",
                     "description": depense.description,
                     "montant": depense.montant_centimes / 100,
@@ -652,9 +1129,13 @@ class NotesDeFrais:
 
     @staticmethod
     def libelle_statut(note: NoteFrais) -> str:
+        """Côté membre (§5) ; Financier › Pièces a ses propres badges."""
         if note.statut == VALIDEE and note.don:
             return "Don validé"
-        return {ENVOYEE: "En attente", VALIDEE: "Validée", REFUSEE: "Refusée", REMBOURSEE: "Remboursée"}[note.statut]
+        return {
+            ENVOYEE: "En attente", VALIDEE: "Validée", REFUSEE: "Refusée", PREPAREE: "Validée",
+            VIREE: "Virement envoyé", REMBOURSEE: "Remboursée",
+        }[note.statut]
 
     @staticmethod
     def depense_dict(depense: Depense) -> dict:
@@ -679,6 +1160,8 @@ class NotesDeFrais:
         resultat = {
             "id": note.id,
             "titre": note.titre,
+            "nature": note.nature,
+            "fournisseur": note.supplier,
             "statut": note.statut,
             "libelle_statut": self.libelle_statut(note),
             "don": note.don,
@@ -695,8 +1178,16 @@ class NotesDeFrais:
         if personnes is not None:
             auteur = personnes.get(note.person_id)
             par = personnes.get(note.traitee_par) if note.traitee_par else None
-            resultat["personne"] = {"nom": auteur.nom if auteur else "?", "role": auteur.role if auteur else ""}
+            resultat["personne"] = (
+                None if note.person_id == PERSONNE_A_CHOISIR
+                else {"person_id": note.person_id, "nom": auteur.nom if auteur else "?", "role": auteur.role if auteur else ""}
+            )
             resultat["traitee_par"] = par.nom if par else None
+            for cle, person_id in (("prepare_par", note.prepared_by), ("payeur", note.payer_id)):
+                quelqu_un = personnes.get(person_id) if person_id else None
+                resultat[cle] = {"person_id": person_id, "nom": quelqu_un.nom} if quelqu_un else None
+            resultat["prepare_le"] = note.prepared_at.isoformat() if note.prepared_at else None
+            resultat["vire_le"] = note.transfer_sent_at.isoformat() if note.transfer_sent_at else None
         return resultat
 
     # --- Alertes (§9) ---

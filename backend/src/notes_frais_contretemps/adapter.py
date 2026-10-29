@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import os
 from copy import copy
+from pathlib import Path
 
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import select
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session
 from comptes import Compte, rbac, roles
 from db import get_db
 from documents_contretemps.adapter import _saison_courante, nom_affiche, personne_id
-from notes_frais.ports import Membre, Organisation, Personne
+from notes_frais.ports import Membre, OperationBancaire, Organisation, Personne
 from saisons.portee import TOUTES_SAISONS, toutes_saisons
 
 logger = logging.getLogger(__name__)
@@ -153,33 +154,37 @@ class NotifieurContretemps:
 
 
 class ClasseurContretemps:
-    """Range les notes validées dans Docs › Privé › Saison en cours ›
-    Financier › Notes de frais (§7 bis), par le module documents. Le dossier
-    Financier est réservé aux trésoriers (dossier système, voir
-    documents.md §4.7 bis)."""
+    """Range les justificatifs dans Docs › Privé › Saison en cours ›
+    Financier › Notes de frais, Honoraires ou Achats (§7 bis, financier.md
+    §8.3 bis), par le module documents. Le dossier Financier est réservé aux
+    trésoriers (dossier système, voir documents.md §4.7 bis)."""
 
     DOSSIER = "Notes de frais"
+    DOSSIERS = ("Notes de frais", "Honoraires", "Achats")
 
     def __init__(self, documents, financier: str = "Financier") -> None:
         self.documents = documents
         self.financier = financier
 
-    def _acces(self, db: Session, qui: Membre):
-        """Le dossier Financier de la saison en cours, et le membre (droits
-        des trésoriers) sous lequel l'appli y range les notes."""
+    @staticmethod
+    def _qui(qui: Membre):
+        """Le membre (droits des trésoriers) sous lequel l'appli range."""
         from documents.ports import Member
 
-        racine = self.documents.reserved_folder(db, qui.org_id, self.financier)
-        if racine is None:
-            logger.warning("Pas de dossier %s pour l'école %s : note non rangée", self.financier, qui.org_id)
-        membre = Member(
-            person_id=qui.person_id,
+        return Member(
+            person_id=qui.agissant_id or qui.person_id,
             org_id=qui.org_id,
             display_name=qui.nom,
             is_admin=True,
             groups=frozenset({"role:admin", "role:tresorier"}),
         )
-        return racine, membre
+
+    def _acces(self, db: Session, qui: Membre):
+        """Le dossier Financier de la saison en cours, et le membre."""
+        racine = self.documents.reserved_folder(db, qui.org_id, self.financier)
+        if racine is None:
+            logger.warning("Pas de dossier %s pour l'école %s : pièce non rangée", self.financier, qui.org_id)
+        return racine, self._qui(qui)
 
     @staticmethod
     def _enfant(db: Session, parent_id: int, nom: str, dossier: bool = True):
@@ -191,11 +196,11 @@ class ClasseurContretemps:
         return db.scalars(requete).first()
 
     def classer(
-        self, db: Session, membre: Membre, chemin: list[str], fichiers: list, statut: str, remplacer=frozenset()
-    ) -> None:
+        self, db: Session, membre: Membre, chemin: list[str], fichiers: list, remplacer=frozenset(), reprendre=False
+    ) -> list[int]:
         racine, qui = self._acces(db, membre)
         if racine is None:
-            return
+            return []
 
         def dossier(parent_id: int, nom: str) -> int:
             existant = self._enfant(db, parent_id, nom)
@@ -203,28 +208,73 @@ class ClasseurContretemps:
                 return existant.id
             return self.documents.create_folder(db, qui, "private", parent_id, nom)["id"]
 
-        personne, nom_note = chemin
-        note_id = dossier(dossier(dossier(racine.id, self.DOSSIER), personne), nom_note)
+        parent_id = racine.id
+        for nom in chemin:
+            parent_id = dossier(parent_id, nom)
+        ids = []
         for nom, chemin_fichier in fichiers:
-            existant = self._enfant(db, note_id, nom, dossier=False)
+            existant = self._enfant(db, parent_id, nom, dossier=False) if reprendre or nom in remplacer else None
             if existant is not None and nom not in remplacer:
+                ids.append(existant.id)
                 continue
             with open(chemin_fichier, "rb") as source:
                 if existant is not None:
                     self.documents.new_version(db, qui, existant.id, nom, source)
+                    ids.append(existant.id)
                 else:
-                    self.documents.upload(db, qui, "private", note_id, nom, source)
-        # Le dossier ne bouge plus : son badge dit où en est la note.
-        self.documents.update(db, qui, note_id, status=statut, change_status=True)
+                    ids.append(self.documents.upload(db, qui, "private", parent_id, nom, source)["id"])
+        return ids
 
-    def retirer(self, db: Session, membre: Membre, chemin: list[str]) -> None:
+    def contenu(self, db: Session, membre: Membre, node_id: int) -> Path:
+        from documents.service import DocError
+
+        try:
+            chemin, _, _ = self.documents.content(db, self._qui(membre), node_id)
+        except DocError as erreur:
+            raise LookupError("Justificatif introuvable dans les documents.") from erreur
+        return chemin
+
+    def retirer(self, db: Session, membre: Membre, chemin: list[str], node_ids=()) -> None:
         racine, qui = self._acces(db, membre)
         if racine is None:
             return
-        noeud = self._enfant(db, racine.id, self.DOSSIER)
+        if node_ids:
+            for node_id in node_ids:
+                self.documents.delete(db, qui, node_id)
+            return
+        noeud = racine
         for nom in chemin:
+            noeud = self._enfant(db, noeud.id, nom)
             if noeud is None:
                 return
-            noeud = self._enfant(db, noeud.id, nom)
-        if noeud is not None:
-            self.documents.delete(db, qui, noeud.id)
+        self.documents.delete(db, qui, noeud.id)
+
+
+class BanqueContretemps:
+    """Les opérations des comptes du module Financier (financier.md §3), pour
+    voir un virement passer sur le compte (§8.3 bis)."""
+
+    def _requete(self, org_id: int):
+        from finances.models import FinAccount, FinOperation
+
+        return (
+            select(FinOperation, FinAccount)
+            .join(FinAccount, FinOperation.account_id == FinAccount.id)
+            .where(FinAccount.org_id == org_id)
+        )
+
+    @staticmethod
+    def _operation(operation, compte) -> OperationBancaire:
+        return OperationBancaire(operation.id, operation.date, operation.label, operation.amount, compte.name)
+
+    def debits(self, db: Session, org_id: int, montant_centimes: int, depuis) -> list[OperationBancaire]:
+        from finances.models import FinOperation
+
+        requete = self._requete(org_id).where(FinOperation.amount == -montant_centimes, FinOperation.date >= depuis)
+        return [self._operation(o, c) for o, c in db.execute(requete.order_by(FinOperation.date))]
+
+    def operation(self, db: Session, org_id: int, operation_id: int) -> OperationBancaire | None:
+        from finances.models import FinOperation
+
+        ligne = db.execute(self._requete(org_id).where(FinOperation.id == operation_id)).first()
+        return self._operation(*ligne) if ligne else None

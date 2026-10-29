@@ -28,7 +28,19 @@ ENVOYEE = "envoyee"
 VALIDEE = "validee"
 REFUSEE = "refusee"
 REMBOURSEE = "remboursee"
-STATUTS = (ENVOYEE, VALIDEE, REFUSEE, REMBOURSEE)
+# Machine commune aux dépenses (financier.md §8.3 bis) : envoyée = à valider,
+# validée = à payer, préparée, virée (« j'ai fait le virement »), remboursée = payé.
+PREPAREE = "preparee"
+VIREE = "viree"
+STATUTS = (ENVOYEE, VALIDEE, REFUSEE, PREPAREE, VIREE, REMBOURSEE)
+
+# Nature d'une note (financier.md §8.3 bis : une seule structure « dépense »).
+FRAIS = "frais"
+HONORAIRES = "honoraires"
+ACHAT = "achat"
+NATURES = (FRAIS, HONORAIRES, ACHAT)
+# person_id d'une note d'honoraires dont le prof n'est pas encore reconnu.
+PERSONNE_A_CHOISIR = 0
 
 
 class CategorieFrais(Base):
@@ -63,6 +75,17 @@ class NoteFrais(Base):
     traitee_par: Mapped[int | None] = mapped_column(Integer, nullable=True)
     remboursee_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     remboursee_par: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    nature: Mapped[str] = mapped_column(String(20), nullable=False, default=FRAIS, server_default=FRAIS)
+    # Achat : le fournisseur (person_id = le trésorier qui l'a établi).
+    supplier: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # Virements (financier.md §8.3 bis) : préparé pour `payer_id`, envoyé,
+    # puis payé quand l'opération `bank_operation_id` est vue sur le compte.
+    prepared_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    prepared_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    payer_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    transfer_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    transfer_sent_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bank_operation_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     depenses: Mapped[list["Depense"]] = relationship(back_populates="note", order_by="Depense.date")
 
@@ -91,8 +114,8 @@ class Depense(Base):
 
 
 class PieceJustificative(Base):
-    """Photo ou PDF d'un ticket, rangé dans l'enveloppe de sa dépense ou de
-    sa note (voir stockage.py)."""
+    """Photo ou PDF d'un ticket : sur le disque (stockage.py) tant que la
+    dépense n'est pas envoyée, puis dans Docs (`doc_node_id`, chemin vide)."""
 
     __tablename__ = "nf_pieces"
 
@@ -104,6 +127,7 @@ class PieceJustificative(Base):
     nom: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     taille: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ordre: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    doc_node_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     depense: Mapped[Depense] = relationship(back_populates="pieces")
 
@@ -121,3 +145,15 @@ class Rib(Base):
     iban: Mapped[str] = mapped_column(String(34), nullable=False)
     bic: Mapped[str | None] = mapped_column(String(11), nullable=True)
     modifie_le: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant, onupdate=_maintenant)
+
+
+class Payer(Base):
+    """Réglage « Qui paie » (financier.md §8.3 bis) : les personnes à qui on
+    peut faire payer un virement. Aucune ligne : les trésoriers."""
+
+    __tablename__ = "nf_payers"
+    __table_args__ = (UniqueConstraint("org_id", "person_id", name="uq_nf_payer"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    person_id: Mapped[int] = mapped_column(Integer, nullable=False)

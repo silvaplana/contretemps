@@ -1,5 +1,6 @@
 """Efface toutes les notes de frais d'une école : notes, dépenses,
-justificatifs, et leur dossier « Notes de frais » dans Docs › Financier.
+justificatifs, et leurs dossiers « Notes de frais », « Honoraires » et
+« Achats » dans Docs › Financier.
 Garde les catégories et les RIB. Pour repartir de zéro après des essais
 (demande de Seb du 2026-10-18). Irréversible.
 
@@ -47,15 +48,15 @@ def _compter(db, org_id: int) -> tuple[int, int, int]:
 
 
 def _dossiers_docs(db, org_id: int) -> list[DocNode]:
-    """Les dossiers « Notes de frais » rangés dans un dossier réservé
-    (Financier de chaque saison), corbeille comprise."""
+    """Les dossiers « Notes de frais », « Honoraires » et « Achats » rangés
+    dans un dossier réservé (Financier de chaque saison), corbeille comprise."""
     reserves = select(DocNode.id).where(DocNode.org_id == org_id, DocNode.system_kind == SYSTEM_RESERVED)
     return list(
         db.scalars(
             select(DocNode).where(
                 DocNode.org_id == org_id,
                 DocNode.kind == KIND_FOLDER,
-                DocNode.name == appli.notes_frais_client.ports.classeur.DOSSIER,
+                DocNode.name.in_(appli.notes_frais_client.ports.classeur.DOSSIERS),
                 DocNode.parent_id.in_(reserves),
             )
         )

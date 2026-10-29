@@ -86,12 +86,37 @@ export const valider = (noteId) => appel(`/notes/${noteId}/valider`, { method: '
 export const refuser = (noteId, motif) => appel(`/notes/${noteId}/refuser`, json('POST', { motif }))
 export const rembourser = (noteIds) => appel('/remboursements', json('POST', { note_ids: noteIds }))
 export const categories = () => appel('/categories')
+
+// Financier › Pièces (spec/modules/financier.md §8.3 bis) : honoraires et
+// achats établis par un trésorier, une photo = une pièce, lue par le serveur.
+export function etablir(nature, f, champs = {}) {
+  const donnees = new FormData()
+  donnees.append('nature', nature)
+  if (f) donnees.append('fichier', f, f.name || 'photo.jpg')
+  for (const [cle, valeur] of Object.entries(champs)) {
+    if (valeur !== null && valeur !== undefined && valeur !== '') donnees.append(cle, String(valeur))
+  }
+  return appel('/etablir', { method: 'POST', body: donnees })
+}
+export const ajouterPage = (noteId, f) => appel(`/notes/${noteId}/pages`, fichier(f))
+export const corriger = (noteId, champs) => appel(`/notes/${noteId}`, json('PATCH', champs))
+export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DELETE' })
+
+// Virements (§8.3 bis) : l'appli ne paie pas, elle aide à faire le virement.
+export const virements = () => appel('/virements')
+export const payeurs = () => appel('/payeurs')
+export const definirPayeurs = (personIds) => appel('/payeurs', json('PUT', { person_ids: personIds }))
+export const ribNote = (noteId, rib) => appel(`/notes/${noteId}/rib`, json('PUT', rib))
+export const preparer = (noteId, payeurId) => appel(`/notes/${noteId}/preparer`, json('POST', { payeur_id: payeurId }))
+export const virementFait = (noteId) => appel(`/notes/${noteId}/virement`, { method: 'POST' })
+// Opération vue sur le compte, confirmée : la pièce est payée.
+export const payee = (noteId, operationId) => appel(`/notes/${noteId}/payee`, json('POST', { operation_id: operationId }))
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`
 
-export function urlExport(debut, fin) {
-  const params = new URLSearchParams()
+export function urlExport(debut, fin, nature = 'frais') {
+  const params = new URLSearchParams({ nature })
   if (debut) params.set('debut', debut)
   if (fin) params.set('fin', fin)
   const requete = params.toString()

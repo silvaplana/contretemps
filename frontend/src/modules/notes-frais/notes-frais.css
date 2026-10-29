@@ -275,3 +275,171 @@
 .nf-nowrap {
   white-space: nowrap;
 }
+
+/* Financier › Pièces (financier.md §8.3 bis) : puces, dépôt de fichiers
+   sur ordinateur, rafale de photos. */
+.nf-pieces {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.nf-barre__vide {
+  flex: 1;
+}
+
+.nf-depot {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-radius: 12px;
+}
+
+.nf-depot--survol {
+  outline: 2px dashed var(--accent);
+  outline-offset: 6px;
+}
+
+.nf-choix {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nf-choix .btn,
+.nf-rafale .btn {
+  min-height: 48px;
+  justify-content: center;
+}
+
+.nf-rafale {
+  position: fixed;
+  left: 16px;
+  right: 16px;
+  bottom: calc(var(--bottom-nav-height) + var(--chat-hauteur, 0px) + 12px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+  z-index: 11;
+}
+
+.nf-supprimer {
+  align-self: flex-start;
+  color: var(--danger-text, #b42318);
+}
+
+/* Puce Virements (Virements.jsx) : quatre parties qui se replient, aide au
+   virement avec une ligne « Copier » par champ de la banque. */
+.nf-vir-partie {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nf-vir-titre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 0 2px;
+  text-align: left;
+}
+
+.nf-vir-aide {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nf-vir-h {
+  margin: 0;
+  font-size: 19px;
+}
+
+.nf-vir-valeur {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.nf-vir-copier .btn {
+  min-height: 48px;
+  flex: none;
+}
+
+.nf-vir-copie {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.nf-vir-boutons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nf-vir-boutons .btn {
+  min-height: 48px;
+  justify-content: center;
+}
+
+.nf-vir-guide {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nf-qui-paie {
+  flex-basis: 100%;
+  order: 2;
+  color: var(--text-muted);
+  font-size: 15px;
+}
+
+.nf-paiement-vu {
+  border-color: var(--success-text);
+}
+
+.nf-paiement-vu .btn {
+  min-height: 48px;
+  flex: none;
+}
+
+.nf-pieces .filter-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.nf-pieces .filter-chip {
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 8px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+.nf-pieces .filter-chip-active {
+  background: var(--accent-bg);
+  border-color: var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+}

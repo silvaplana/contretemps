@@ -11,14 +11,15 @@ from registry import Module
 from .actions import actions
 from .adapter import (
     AnnuaireContretemps,
+    BanqueContretemps,
     ClasseurContretemps,
     MessagerContretemps,
     NotifieurContretemps,
     membre_appelant,
 )
 
-# Justificatifs : jamais servis en statique, seulement par les routes du
-# module, après contrôle des droits.
+# Justificatifs pas encore envoyés (ensuite, ils sont dans Docs) : jamais
+# servis en statique, seulement par les routes du module.
 DOSSIER_NOTES_FRAIS = Path(os.environ.get("NOTES_FRAIS_DIR", "./data/notes_frais"))
 
 
@@ -35,6 +36,8 @@ def mount(app, core) -> None:
             ),
             # Justificatifs rangés dans Docs › Financier › Notes de frais.
             classeur=ClasseurContretemps(core.documents_client),
+            # Virement vu sur le compte (financier.md §8.3 bis).
+            banque=BanqueContretemps(),
         ),
         stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
     )
