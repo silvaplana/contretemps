@@ -513,7 +513,7 @@ def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkey
         db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Revelles", prenom="Élodie", email="elodie@test.fr"
     )
     client.put("/notes-frais/rib", json={"iban": IBAN, "titulaire": "E REVELLES"}, headers=entetes_session(prof))
-    lecteur = LecteurFacture(date="2026-10-31", montant_centimes=48000, commercant="Elodie REVELLES", description="Cours d'octobre")
+    lecteur = LecteurFacture(date="2026-10-15", montant_centimes=48000, commercant="Elodie REVELLES", description="Cours d'octobre")
     monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
     note = _etablir(client, tresorier, "honoraires")
     assert note["personne"]["nom"] == "Élodie Revelles"
@@ -589,3 +589,48 @@ def test_commande_range_les_anciennes_enveloppes_dans_docs(client, db_session, e
     assert ranger(db_session) == (0, 0)
     piece_id = client.get("/notes-frais/moi", headers=entetes_session(eleve)).json()["notes"][0]["depenses"][0]["pieces"][0]["id"]
     assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(eleve)).content == b"jpeg"
+
+
+# --- Virements (financier.md §8.3 bis) ---
+
+
+def _honoraires_a_payer(client, db_session, ecole):
+    prof = Comptes().create(
+        db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Martin", prenom="Lucie", email="lucie@test.fr"
+    )
+    note = _etablir(client, ecole["tresorier"], "honoraires", contenu=None, person_id=str(prof.id), date="2026-10-15",
+                    montant_centimes="48000", valider="true")
+    return prof, note
+
+
+def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole, espion):
+    tresorier, admin = ecole["tresorier"], ecole["admin"]
+    prof, note = _honoraires_a_payer(client, db_session, ecole)
+    assert note["statut"] == "validee" and note["rib"] is None
+    url = f"/notes-frais/notes/{note['id']}"
+    # Pas de RIB : rien à préparer.
+    assert client.post(f"{url}/virement", headers=entetes_session(tresorier)).status_code == 400
+    rib = client.put(f"{url}/rib", json={"iban": IBAN, "titulaire": "L MARTIN"}, headers=entetes_session(tresorier))
+    assert rib.status_code == 200 and rib.json()["rib"]["iban"] == IBAN
+    # Gardé aussi sur la fiche du prof.
+    assert client.get("/notes-frais/moi", headers=entetes_session(prof)).json()["rib"]["iban"] == IBAN
+
+    liste = client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()
+    [ligne] = liste["virements"]
+    assert ligne["beneficiaire"] == "L MARTIN" and ligne["libelle_virement"] == "Contretemps honoraires oct 2026"
+    assert [p["nom"] for p in liste["payeurs"]] == ["Julia Dho"]
+
+    # « Qui paie » : Ana, qui a l'appli de la banque.
+    reglage = client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
+    assert [p["nom"] for p in reglage.json()] == ["Ana Roux"]
+    assert client.post(f"{url}/preparer", json={"payeur_id": tresorier.id}, headers=entetes_session(tresorier)).status_code == 400
+    prepare = client.post(f"{url}/preparer", json={"payeur_id": admin.id}, headers=entetes_session(tresorier))
+    assert prepare.status_code == 200 and prepare.json()["statut"] == "preparee"
+    assert prepare.json()["payeur"]["nom"] == "Ana Roux" and prepare.json()["prepare_par"]["nom"] == "Julia Dho"
+    assert (admin.id, "Virement à faire") in espion.notifications
+
+    fait = client.post(f"{url}/virement", headers=entetes_session(tresorier))
+    assert fait.status_code == 200 and fait.json()["statut"] == "viree"
+    assert client.post(f"{url}/virement", headers=entetes_session(tresorier)).status_code == 400
+    # Réservé aux trésoriers.
+    assert client.get("/notes-frais/virements", headers=entetes_session(admin)).status_code == 403

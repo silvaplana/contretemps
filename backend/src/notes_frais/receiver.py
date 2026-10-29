@@ -71,6 +71,14 @@ class CorrectionEntree(BaseModel):
     titre: str | None = None
 
 
+class PreparationEntree(BaseModel):
+    payeur_id: int
+
+
+class PayeursEntree(BaseModel):
+    person_ids: list[int]
+
+
 class CategoriesEntree(BaseModel):
     libelles: list[str]
 
@@ -258,6 +266,40 @@ class NotesDeFraisReceiver:
         def supprimer_note(note_id: int, db: Session = db_dep, m: Membre = membre):
             appeler(nf.supprimer_note, db, m, note_id)
             return Response(status_code=204)
+
+        # --- Virements (financier.md §8.3 bis) ---
+
+        def personnes_dicts(personnes):
+            return [{"person_id": p.person_id, "nom": p.nom} for p in personnes]
+
+        @app.get("/notes-frais/virements")
+        def virements(db: Session = db_dep, m: Membre = membre):
+            return {
+                "virements": appeler(nf.virements, db, m),
+                "payeurs": personnes_dicts(nf.payeurs(db, m)),
+                "moi": m.person_id,
+            }
+
+        @app.get("/notes-frais/payeurs")
+        def payeurs(db: Session = db_dep, m: Membre = membre):
+            return personnes_dicts(appeler(nf.payeurs, db, m))
+
+        @app.put("/notes-frais/payeurs")
+        def definir_payeurs(corps: PayeursEntree, db: Session = db_dep, m: Membre = membre):
+            return personnes_dicts(appeler(nf.definir_payeurs, db, m, corps.person_ids))
+
+        @app.put("/notes-frais/notes/{note_id}/rib")
+        def rib_note(note_id: int, corps: RibEntree, db: Session = db_dep, m: Membre = membre):
+            note = appeler(nf.definir_rib_note, db, m, note_id, titulaire=corps.titulaire, iban=corps.iban, bic=corps.bic)
+            return nf.notes_dicts(db, m, [note])[0]
+
+        @app.post("/notes-frais/notes/{note_id}/preparer")
+        def preparer(note_id: int, corps: PreparationEntree, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.preparer, db, m, note_id, corps.payeur_id)])[0]
+
+        @app.post("/notes-frais/notes/{note_id}/virement")
+        def virement_fait(note_id: int, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.virement_fait, db, m, note_id)])[0]
 
         @app.post("/notes-frais/remboursements")
         def rembourser(corps: RemboursementEntree, db: Session = db_dep, m: Membre = membre):

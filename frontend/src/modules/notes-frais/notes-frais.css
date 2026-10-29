@@ -332,3 +332,78 @@
   align-self: flex-start;
   color: var(--danger-text, #b42318);
 }
+
+/* Puce Virements (Virements.jsx) : quatre parties qui se replient, aide au
+   virement avec une ligne « Copier » par champ de la banque. */
+.nf-vir-partie {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nf-vir-titre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  color: var(--text-h);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 0 2px;
+  text-align: left;
+}
+
+.nf-vir-aide {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.nf-vir-h {
+  margin: 0;
+  font-size: 19px;
+}
+
+.nf-vir-valeur {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.nf-vir-copier .btn {
+  min-height: 48px;
+  flex: none;
+}
+
+.nf-vir-copie {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.nf-vir-boutons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.nf-vir-boutons .btn {
+  min-height: 48px;
+  justify-content: center;
+}
+
+.nf-vir-guide {
+  margin: 0;
+  padding-left: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.nf-qui-paie {
+  flex-basis: 100%;
+  order: 2;
+  color: var(--text-muted);
+  font-size: 15px;
+}

@@ -73,6 +73,27 @@ export function BadgeStatut({ note }) {
   return <span className={`badge ${classe}`}>{note.libelle_statut}</span>
 }
 
+// Machine commune (§8.3 bis) : les états d'une dépense, vus du trésorier.
+const ETATS = {
+  envoyee: ['À valider', 'badge--warning'],
+  refusee: ['Refusé', 'badge--danger'],
+  validee: ['À payer', ''],
+  preparee: ['Préparé', ''],
+  viree: ['Envoyé', ''],
+  remboursee: ['Payé', 'badge--success'],
+}
+
+export function BadgeEtat({ note }) {
+  const [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : ETATS[note.statut]
+  return <span className={`badge ${classe}`}>{label}</span>
+}
+
+// Qui est derrière une pièce : la personne, ou le fournisseur d'un achat.
+export function qui(note) {
+  if (note.nature === 'achat') return note.fournisseur || 'Fournisseur à lire'
+  return note.personne?.nom ?? 'Pour qui ?'
+}
+
 // Champs du RIB (Profil > Mon RIB et fenêtre d'envoi, spec §4.4 et §4.5).
 export function ChampsRib({ rib, onChange }) {
   return (

@@ -16,7 +16,7 @@ import re
 import unicodedata
 import zipfile
 from dataclasses import replace
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO
 
@@ -38,6 +38,7 @@ from .models import (
     CategorieFrais,
     Depense,
     NoteFrais,
+    Payer,
     PieceJustificative,
     Rib,
 )
@@ -58,6 +59,7 @@ EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
 DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "Honoraires", ACHAT: "Achats"}
 MOIS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
         "novembre", "décembre")
+MOIS_COURTS = ("janv", "fevr", "mars", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec")
 _EXTENSIONS = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp", "image/gif": ".gif",
                "image/heic": ".heic", "image/heif": ".heif", "application/pdf": ".pdf"}
 
@@ -906,6 +908,117 @@ class NotesDeFrais:
                 f"Votre note de frais a été remboursée : {euros(self.total(note))} par virement.",
             )
 
+    # --- Virements (financier.md §8.3 bis) : l'appli ne paie pas, elle aide ---
+
+    def payeurs(self, db: Session, membre: Membre) -> list[Personne]:
+        """Réglage « Qui paie » ; personne de choisi : les trésoriers."""
+        self._exiger_tresorier(membre)
+        ids = set(db.scalars(select(Payer.person_id).where(Payer.org_id == membre.org_id)))
+        if not ids:
+            return self.ports.annuaire.tresoriers(db, membre.org_id)
+        return sorted(self.ports.annuaire.personnes(db, membre.org_id, ids).values(), key=lambda p: p.nom.casefold())
+
+    def definir_payeurs(self, db: Session, membre: Membre, person_ids: list[int]) -> list[Personne]:
+        self._exiger_tresorier(membre)
+        ids = set(person_ids)
+        connues = self.ports.annuaire.personnes(db, membre.org_id, ids)
+        if ids - connues.keys():
+            raise LookupError("Personne inconnue dans cette organisation.")
+        for ancien in db.scalars(select(Payer).where(Payer.org_id == membre.org_id)):
+            db.delete(ancien)
+        for person_id in ids:
+            db.add(Payer(org_id=membre.org_id, person_id=person_id))
+        db.commit()
+        return self.payeurs(db, membre)
+
+    def definir_rib_note(self, db: Session, membre: Membre, note_id: int, *, titulaire: str | None, iban: str | None, bic: str | None) -> NoteFrais:
+        """RIB à payer, saisi ou corrigé par un trésorier ; celui d'une personne
+        est aussi gardé sur sa fiche (Profil › Mon RIB)."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.don or note.statut not in (ENVOYEE, VALIDEE, PREPAREE):
+            raise ValueError("Ce virement n'est plus à préparer.")
+        iban = normaliser_iban(iban)
+        if iban is None:
+            raise ValueError("Indiquez l'IBAN.")
+        note.rib_iban, note.rib_bic = iban, normaliser_bic(bic)
+        note.rib_titulaire = " ".join((titulaire or "").split())[:120] or None
+        if note.nature != ACHAT and note.person_id != PERSONNE_A_CHOISIR:
+            personne = self._personne_de_l_org(db, membre, note.person_id)
+            self.definir_rib(
+                db, replace(membre, person_id=personne.person_id, nom=personne.nom),
+                titulaire=note.rib_titulaire, iban=iban, bic=note.rib_bic,
+            )
+        db.commit()
+        db.refresh(note)
+        return note
+
+    def _a_virer(self, db: Session, membre: Membre, note_id: int, etats: tuple[str, ...]) -> NoteFrais:
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.don or note.statut not in etats:
+            raise ValueError("Ce virement n'est pas à faire.")
+        if not note.rib_iban:
+            raise ValueError("Il manque le RIB.")
+        return note
+
+    def preparer(self, db: Session, membre: Membre, note_id: int, payeur_id: int) -> NoteFrais:
+        """« Faire payer par … » : prévenue par une notification qui ouvre
+        l'aide au virement."""
+        note = self._a_virer(db, membre, note_id, (VALIDEE, PREPAREE))
+        payeur = next((p for p in self.payeurs(db, membre) if p.person_id == payeur_id), None)
+        if payeur is None:
+            raise ValueError("Cette personne n'est pas dans « Qui paie ».")
+        note.statut, note.prepared_at, note.prepared_by, note.payer_id = PREPAREE, _maintenant(), membre.person_id, payeur_id
+        db.commit()
+        db.refresh(note)
+        if payeur_id != membre.person_id and payeur.notification_id is not None:
+            self._notifier(db, payeur.notification_id, "Virement à faire", f"{self.beneficiaire(db, note)}, {euros(self.total(note))}")
+        return note
+
+    def virement_fait(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« J'ai fait le virement » : Envoyé, jusqu'à ce qu'on le voie sur le compte."""
+        note = self._a_virer(db, membre, note_id, (VALIDEE, PREPAREE))
+        note.statut, note.transfer_sent_at, note.transfer_sent_by = VIREE, _maintenant(), membre.person_id
+        db.commit()
+        db.refresh(note)
+        return note
+
+    def beneficiaire(self, db: Session, note: NoteFrais) -> str:
+        if note.rib_titulaire:
+            return note.rib_titulaire
+        if note.nature == ACHAT:
+            return note.supplier or "Fournisseur"
+        personne = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        return personne.nom if personne else "?"
+
+    def libelle_virement(self, db: Session, note: NoteFrais) -> str:
+        """Libellé proposé dans l'aide au virement (« Contretemps honoraires oct 2026 »)."""
+        org = self.ports.annuaire.organisation(db, note.org_id).nom
+        jour = note.depenses[0].date if note.depenses else note.envoyee_le.date()
+        mois = f"{MOIS_COURTS[jour.month - 1]} {jour.year}"
+        quoi = {FRAIS: "note de frais", HONORAIRES: "honoraires", ACHAT: f"facture {note.supplier or ''}".strip()}[note.nature]
+        # Sans accents : le libellé d'un virement SEPA n'en prend pas partout.
+        texte = "".join(c for c in unicodedata.normalize("NFD", f"{org} {quoi} {mois}") if not unicodedata.combining(c))
+        return " ".join(texte.split())[:140]
+
+    def virements(self, db: Session, membre: Membre) -> list[dict]:
+        """Puce Virements : à payer, préparés, envoyés, et payés depuis moins
+        de 60 jours ; toutes natures."""
+        self._exiger_tresorier(membre)
+        depuis = _maintenant() - timedelta(days=60)
+        notes = list(db.scalars(
+            select(NoteFrais).where(
+                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False),
+                NoteFrais.statut.in_(EN_PAIEMENT) | ((NoteFrais.statut == REMBOURSEE) & (NoteFrais.remboursee_le >= depuis)),
+            ).order_by(NoteFrais.traitee_le, NoteFrais.id)
+        ))
+        resultat = self.notes_dicts(db, membre, notes)
+        for note, ligne in zip(notes, resultat):
+            ligne["beneficiaire"] = self.beneficiaire(db, note)
+            ligne["libelle_virement"] = self.libelle_virement(db, note)
+        return resultat
+
     def lignes_export(self, db: Session, membre: Membre, debut: date | None, fin: date | None, nature: str = FRAIS) -> list[dict]:
         """Une ligne par dépense des notes de cette nature (§7), pour Excel."""
         self._exiger_tresorier(membre)
@@ -994,6 +1107,11 @@ class NotesDeFrais:
                 else {"person_id": note.person_id, "nom": auteur.nom if auteur else "?", "role": auteur.role if auteur else ""}
             )
             resultat["traitee_par"] = par.nom if par else None
+            for cle, person_id in (("prepare_par", note.prepared_by), ("payeur", note.payer_id)):
+                quelqu_un = personnes.get(person_id) if person_id else None
+                resultat[cle] = {"person_id": person_id, "nom": quelqu_un.nom} if quelqu_un else None
+            resultat["prepare_le"] = note.prepared_at.isoformat() if note.prepared_at else None
+            resultat["vire_le"] = note.transfer_sent_at.isoformat() if note.transfer_sent_at else None
         return resultat
 
     # --- Alertes (§9) ---

@@ -5,15 +5,17 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import PiecesExemple from '../finances/exemple/Pieces.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { Pieces as Vignettes } from './commun.jsx'
+import { BadgeEtat, Pieces as Vignettes, qui } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
+import Virements from './Virements.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
 // frais, honoraires et achats sont une seule structure « dépense », avec une
 // nature ; chaque puce en est un filtre. À rattacher et Ventes sont encore
 // des écrans d'exemple. Un seul bouton principal, « + ».
 const PUCES = [
+  { value: 'virements', label: 'Virements' },
   { value: 'frais', label: 'Notes de frais' },
   { value: 'honoraires', label: 'Honoraires' },
   { value: 'achat', label: 'Achats' },
@@ -21,39 +23,21 @@ const PUCES = [
   { value: 'ventes', label: 'Ventes', exemple: true },
 ]
 
-// Machine commune (§8.3 bis) : les états d'une dépense, vus du trésorier.
-const ETATS = {
-  envoyee: ['À valider', 'badge--warning'],
-  refusee: ['Refusé', 'badge--danger'],
-  validee: ['À payer', ''],
-  preparee: ['Préparé', ''],
-  viree: ['Envoyé', ''],
-  remboursee: ['Payé', 'badge--success'],
-}
-
-export function BadgeEtat({ note }) {
-  const [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : ETATS[note.statut]
-  return <span className={`badge ${classe}`}>{label}</span>
-}
-
-// Qui est derrière une pièce : la personne, ou le fournisseur d'un achat.
-export function qui(note) {
-  if (note.nature === 'achat') return note.fournisseur || 'Fournisseur à lire'
-  return note.personne?.nom ?? 'Pour qui ?'
-}
-
 const SUR_ORDINATEUR = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches
 
 export default function Pieces({ onPour }) {
   const [puce, setPuce] = useState(() => {
     const derniere = sessionApi.lireEcran('financier-pieces')
-    return PUCES.some((p) => p.value === derniere) ? derniere : 'frais'
+    return PUCES.some((p) => p.value === derniere) ? derniere : 'virements'
   })
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier-pieces', puce)
   }, [puce])
   const [compteurs, setCompteurs] = useState({})
+  const ajouterCompteurs = useCallback((c) => setCompteurs((x) => ({ ...x, ...c })), [])
+  const compteurVirements = useCallback((n) => setCompteurs((x) => ({ ...x, virements: n })), [])
   const [plus, setPlus] = useState(false)
+  const [natureAChoisir, setNatureAChoisir] = useState(false)
 
   const exemple = PUCES.find((p) => p.value === puce)?.exemple
 
@@ -75,16 +59,50 @@ export default function Pieces({ onPour }) {
       </div>
       {exemple ? (
         <PiecesExemple dossier={puce} />
+      ) : puce === 'virements' ? (
+        <Virements onCompteur={compteurVirements} />
       ) : (
-        <ListeNature key={puce} nature={puce} onCompteurs={setCompteurs} plus={plus} onPlusFerme={() => setPlus(false)} onPour={onPour} />
+        <ListeNature
+          key={puce}
+          nature={puce}
+          onCompteurs={ajouterCompteurs}
+          plus={plus}
+          onPlusFerme={() => setPlus(false)}
+          onPour={onPour}
+        />
       )}
       {!exemple && (
         <div className="nf-barre">
           <span className="nf-barre__vide" />
-          <button type="button" className="nf-barre__plus" aria-label="Ajouter une pièce" onClick={() => setPlus(true)}>
+          <button
+            type="button"
+            className="nf-barre__plus"
+            aria-label="Ajouter une pièce"
+            onClick={() => (puce === 'virements' ? setNatureAChoisir(true) : setPlus(true))}
+          >
             <Icon name="plus" size={26} />
           </button>
         </div>
+      )}
+      {natureAChoisir && (
+        <Modal title="Quelle pièce ?" onClose={() => setNatureAChoisir(false)}>
+          <div className="nf-choix">
+            {PUCES.filter((p) => !p.exemple && p.value !== 'virements').map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  setNatureAChoisir(false)
+                  setPuce(p.value)
+                  setPlus(true)
+                }}
+              >
+                {p.label === 'Achats' ? 'Achat' : p.label === 'Notes de frais' ? 'Note de frais' : p.label}
+              </button>
+            ))}
+          </div>
+        </Modal>
       )}
     </section>
   )

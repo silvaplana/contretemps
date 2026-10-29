@@ -101,6 +101,14 @@ export function etablir(nature, f, champs = {}) {
 export const ajouterPage = (noteId, f) => appel(`/notes/${noteId}/pages`, fichier(f))
 export const corriger = (noteId, champs) => appel(`/notes/${noteId}`, json('PATCH', champs))
 export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DELETE' })
+
+// Virements (§8.3 bis) : l'appli ne paie pas, elle aide à faire le virement.
+export const virements = () => appel('/virements')
+export const payeurs = () => appel('/payeurs')
+export const definirPayeurs = (personIds) => appel('/payeurs', json('PUT', { person_ids: personIds }))
+export const ribNote = (noteId, rib) => appel(`/notes/${noteId}/rib`, json('PUT', rib))
+export const preparer = (noteId, payeurId) => appel(`/notes/${noteId}/preparer`, json('POST', { payeur_id: payeurId }))
+export const virementFait = (noteId) => appel(`/notes/${noteId}/virement`, { method: 'POST' })
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`
