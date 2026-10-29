@@ -436,6 +436,17 @@ note de frais ou des honoraires déjà virés passent directement Payé, comme u
 honoraires = l'auteur est un prof, une seule ligne (période, montant), journal HO ; achat = établi par
 le trésorier, « qui » est un fournisseur, RIB demandé seulement quand il y a à payer, journal AC.
 
+**Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
+`notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
+du dossier) :
+- Notes de frais : `Notes de frais › <n° personne> <Nom> › <date> <titre> (<n°>)`, comme aujourd'hui ;
+- Honoraires : par personne aussi, `Honoraires › <n° personne> <Nom> › <date> <titre> (<n°>)` ;
+- Achats : pas par personne, `Achats › <date> <fournisseur> <montant>` (le fichier lui-même, comme
+  « 2025-02-09 Amazon 39,90.jpg » de §8.3 ; un dossier seulement quand l'achat a plusieurs pièces).
+
+Badges des dossiers et fichiers : à valider = Brouillon, refusé = Refusé, à payer / préparé / envoyé =
+Validé, payé = Officiel (figé).
+
 - **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
   d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,
   ou à **Refusé** avec un motif (comme `notes-de-frais.md` §5). Quand c'est le trésorier qui
