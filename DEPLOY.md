@@ -248,6 +248,8 @@ déploiement (§5).
 |---|---|
 | Lister les écoles et leurs notes de frais | Affiche chaque école, son numéro, et combien de notes, dépenses et justificatifs elle a. N'efface rien. |
 | Effacer les notes de frais d'une école | Demande le numéro de l'école et son nom exact (confirmation). Efface notes, dépenses, justificatifs et le dossier « Notes de frais » de Docs › Financier ; garde catégories et RIB. Irréversible. |
+| Installer le plan comptable de Contretemps (essai à blanc) | Demande le numéro de l'école. Affiche les comptes de la Balance 24-25 de la trésorière qui seraient ajoutés ou renommés (`app.plan_comptable_contretemps --essai`), sans rien écrire. |
+| Installer le plan comptable de Contretemps | Même chose, pour de vrai : ajoute les comptes manquants, renomme ceux qui existent déjà, garde le reste (spec financier.md §8.2). Relançable. |
 
 - Fichiers : `.github/workflows/maintenance.yml` (le formulaire) et le début
   de `deploy.sh` (la liste fermée des tâches). La clé ne peut toujours lancer

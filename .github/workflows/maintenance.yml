@@ -16,8 +16,10 @@ on:
         options:
           - Lister les écoles et leurs notes de frais
           - Effacer les notes de frais d'une école
+          - Installer le plan comptable de Contretemps (essai à blanc)
+          - Installer le plan comptable de Contretemps
       ecole:
-        description: Numéro de l'école (pour effacer ; donné par « Lister »)
+        description: Numéro de l'école (pour effacer ou installer ; donné par « Lister »)
         required: false
         default: ""
       nom:
@@ -59,6 +61,14 @@ jobs:
                 exit 1
               fi
               echo "commande=notes-frais-vider $ECOLE $(printf '%s' "$NOM" | base64 -w0)" >> "$GITHUB_OUTPUT" ;;
+            "Installer le plan comptable de Contretemps (essai à blanc)"|"Installer le plan comptable de Contretemps")
+              if ! [[ "$ECOLE" =~ ^[0-9]+$ ]]; then
+                echo "::error::Donnez le numéro de l'école."
+                exit 1
+              fi
+              essai=""
+              case "$TACHE" in *"essai à blanc"*) essai=" essai" ;; esac
+              echo "commande=plan-comptable-contretemps $ECOLE$essai" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::Tâche inconnue."
               exit 1 ;;
