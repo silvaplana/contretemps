@@ -13,7 +13,7 @@ export default function DocumentsAG() {
   return (
     <div className="fin-ex">
       <h4 className="reports-subtitle">Documents de l’AG</h4>
-      <BandeExemple>Avec les chiffres de 2024-25. Rien n’est enregistré.</BandeExemple>
+      <BandeExemple />
       <div className="fin-ex-carte">
         {documents.map((d) => (
           <div key={d.id} className="fin-ex-doc">

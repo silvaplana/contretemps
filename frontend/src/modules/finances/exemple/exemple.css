@@ -2,14 +2,16 @@
    .fin-ex, à retirer avec eux. */
 
 .fin-ex-bande {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  border-radius: 8px;
-  background: var(--warning-bg);
-  color: var(--warning-text);
-  font-size: 15px;
+  margin: 0;
+  padding: 12px 16px;
+  border-radius: 12px;
+  background: var(--rouge-surlignage);
+  color: #fff;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-align: center;
+  text-transform: uppercase;
 }
 
 .fin-ex {
