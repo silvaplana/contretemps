@@ -131,3 +131,7 @@ export const supprimerLigneCaisse = (id) => appel(`/cash/${id}`, { method: 'DELE
 // { level, documents: [{ id, title, format, level }], synthese: {...} }.
 export const documentsAG = (reportId) => appel(`/reports/${reportId}/documents`)
 export const urlDocumentAG = (reportId, kind) => `${BASE}/reports/${reportId}/documents/${kind}`
+// Rapport financier rédigé (financier.md §8.6) : le modèle écrit, l'appli place les chiffres.
+export const rapportFinancier = (reportId) => appel(`/reports/${reportId}/rapport`)
+export const redigerRapport = (reportId, donnees) => appel(`/reports/${reportId}/rapport`, json('POST', donnees))
+export const urlRapportFinancier = (reportId, format) => `${BASE}/reports/${reportId}/rapport/download?format=${format}`

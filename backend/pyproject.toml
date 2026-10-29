@@ -25,6 +25,8 @@ dependencies = [
     "pymupdf",
     # PowerPoint des assemblées générales (finances/slides.py).
     "python-pptx",
+    # Rapport financier en Word (finances/written_report.py).
+    "python-docx",
     "py7zr",
     # Binaire ffmpeg embarqué (pas de dépendance système) — sert à lire la
     # durée d'un fichier vidéo (voir videos/duree.py, utilisé par le seed

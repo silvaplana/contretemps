@@ -17,6 +17,7 @@ from .ports import Member, Season
 from .receiver import FinancesReceiver
 from .reports import FinancialReports, ReportError, ReportNotFoundError
 from .service import AccountNotFoundError, Finances
+from .written_report import WrittenReports
 
 __all__ = [
     "Accounting",
@@ -45,5 +46,6 @@ __all__ = [
     "ReportNotFoundError",
     "Season",
     "StatementParseError",
+    "WrittenReports",
     "parse_statement",
 ]

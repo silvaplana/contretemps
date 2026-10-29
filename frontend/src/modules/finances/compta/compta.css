@@ -323,3 +323,32 @@ button.fin-cp-compte {
 button.fin-cp-compte:last-child {
   border-bottom: 0;
 }
+
+/* Rapport financier rédigé : texte à l'écran et alertes. */
+.fin-cp-rapport h5 {
+  margin: 14px 0 4px;
+  font-size: 17px;
+  color: var(--text-h);
+}
+
+.fin-cp-rapport p,
+.fin-cp-rapport li {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+
+.fin-cp-alerte {
+  color: var(--unpaid, #b45309);
+  font-size: 15px;
+}
+
+/* Ligne à plusieurs boutons : titre et sous-titre d'abord, boutons dessous. */
+.fin-cp-doc--large {
+  grid-template-columns: 1fr;
+}
+
+.fin-cp-doc--large .fin-cp-a {
+  grid-row: 3;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}

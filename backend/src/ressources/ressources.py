@@ -28,6 +28,7 @@ CATEGORIES_IA = {
     "chat_documents": "Chat documents",
     "lecture_ticket": "Notes de frais : lecture des tickets",
     "bilan_financier": "Financier : analyse des bilans",
+    "rapport_financier": "Financier : rapport financier de l’AG",
     "assemblee_generale": "Financier : PowerPoint des assemblées générales",
     "previsionnel": "Financier : prévisionnels",
     "liste_presents": "Assemblée générale : lecture de la liste des présents",

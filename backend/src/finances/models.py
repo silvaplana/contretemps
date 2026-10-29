@@ -295,3 +295,22 @@ class FinCashLine(Base):
     doc_node_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinWrittenReport(Base):
+    """Rapport financier rédigé pour un bilan (spec §8.6, written_report.py) :
+    le texte final (JSON : introduction, recettes, dépenses, points,
+    conclusion, alertes), les consignes et le modèle, le coût. Une ligne par
+    rédaction ; la dernière fait foi."""
+
+    __tablename__ = "fin_written_reports"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    report_id: Mapped[int] = mapped_column(ForeignKey("fin_reports.id", ondelete="CASCADE"), nullable=False, index=True)
+    prompt: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    model: Mapped[str] = mapped_column(String(40), nullable=False)
+    served_by: Mapped[str] = mapped_column(String(60), nullable=False, default="")
+    cost_usd: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)

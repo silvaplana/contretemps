@@ -2,9 +2,13 @@
 // Synthèse Dépenses-Recettes (Excel et à l'écran), et au niveau Complet
 // Balance, Grand livre, Honoraires par professeur. Tout est additionné par
 // l'appli depuis les lignes de banque et de caisse ; chaque fichier produit
-// est aussi rangé dans Docs › Financier › AG.
+// est aussi rangé dans Docs › Financier › AG. Le Rapport financier est
+// rédigé par le modèle (le texte seulement : chaque montant est placé par
+// l'appli, un nombre écrit par le modèle est signalé « à vérifier »).
 import { useEffect, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
+import Modal from '../../../components/Modal.jsx'
+import { enEuros } from '../../../utils/euros.js'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import * as api from '../api.js'
 import './compta.css'
@@ -55,6 +59,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
               </div>
             ))}
           </div>
+          <RapportFinancier reportId={reportId} seasonName={seasonName} onErreur={setErreur} />
           <p className="muted">
             Additionnés par l’appli depuis les lignes de banque (compte du plan confirmé) et la caisse, du{' '}
             {dateFr(data.synthese.start)} au {dateFr(data.synthese.cutoff)}. Les fichiers vont dans Docs › Financier › AG.
@@ -77,6 +82,161 @@ const SOUS_TITRES = {
   balance: 'totaux débit / crédit et soldes par compte',
   'grand-livre': 'toutes les lignes, par compte, avec la pièce',
   honoraires: 'par professeur et par mois, pour la DAS-2',
+}
+
+function RapportFinancier({ reportId, seasonName, onErreur }) {
+  const [data, setData] = useState(null)
+  const [rediger, setRediger] = useState(false)
+  const [voir, setVoir] = useState(false)
+
+  useEffect(() => {
+    api.rapportFinancier(reportId).then(setData).catch((err) => onErreur(err.message))
+  }, [reportId, onErreur])
+
+  const rapport = data?.rapport
+
+  function telecharger(format) {
+    telechargerFichier(api.urlRapportFinancier(reportId, format), `Rapport financier ${seasonName}.${format}`).catch((err) =>
+      onErreur(err.message),
+    )
+  }
+
+  return (
+    <>
+      <div className="fin-cp-carte">
+        <div className="fin-cp-doc fin-cp-doc--large">
+          <span className="fin-cp-t">Rapport financier</span>
+          <span className="fin-cp-a">
+            <button type="button" className="btn btn--secondary" onClick={() => setRediger(true)} disabled={!data}>
+              <Icon name="edit" size={16} /> {rapport ? 'Rédiger à nouveau' : 'Rédiger'}
+            </button>
+            {rapport && (
+              <>
+                <button type="button" className="btn btn--secondary" onClick={() => setVoir((v) => !v)}>
+                  <Icon name="eye" size={16} /> Voir
+                </button>
+                <button type="button" className="btn btn--secondary" onClick={() => telecharger('docx')}>
+                  <Icon name="download" size={16} /> Word
+                </button>
+                <button type="button" className="btn btn--secondary" onClick={() => telecharger('pdf')}>
+                  <Icon name="download" size={16} /> PDF
+                </button>
+              </>
+            )}
+          </span>
+          <span className="fin-cp-s">
+            {rapport
+              ? `rédigé le ${dateFr(rapport.createdAt.slice(0, 10))} (${rapport.modelLabel}, ${enEuros(rapport.costUsd)})`
+              : 'recettes, dépenses, points à revoir, conclusion : le texte est rédigé, les chiffres placés par l’appli'}
+          </span>
+        </div>
+        {rapport?.warnings.length > 0 && (
+          <p className="fin-cp-alerte">À vérifier avant l’AG : {rapport.warnings.join(' ')}</p>
+        )}
+        {voir && rapport && <TexteRapport r={rapport} />}
+      </div>
+      {rediger && data && (
+        <RedigerModal
+          reportId={reportId}
+          options={data}
+          onClose={() => setRediger(false)}
+          onRedige={(r) => {
+            setData((d) => ({ ...d, rapport: r }))
+            setRediger(false)
+            setVoir(true)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+function TexteRapport({ r }) {
+  return (
+    <div className="fin-cp-rapport">
+      <p>
+        Saison {r.season}, du {dateFr(r.period.start)} au {dateFr(r.period.end)}. {r.introduction}
+      </p>
+      <h5>A - Recettes</h5>
+      {r.recettes.map((p, i) => (
+        <p key={i}>{p}</p>
+      ))}
+      <h5>B - Dépenses</h5>
+      {r.depenses.map((p, i) => (
+        <p key={i}>{p}</p>
+      ))}
+      {r.points.length > 0 && (
+        <>
+          <h5>Points à revoir</h5>
+          <ul>
+            {r.points.map((p, i) => (
+              <li key={i}>{p}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      <h5>Conclusion</h5>
+      <p>{r.conclusion}</p>
+    </div>
+  )
+}
+
+function RedigerModal({ reportId, options, onClose, onRedige }) {
+  const [form, setForm] = useState({ prompt: options.rapport?.prompt ?? '', model: options.rapport?.model ?? options.defaultModel })
+  const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState('')
+  const champ = (nom) => (e) => setForm((f) => ({ ...f, [nom]: e.target.value }))
+
+  async function lancer() {
+    setEnCours(true)
+    setErreur('')
+    try {
+      onRedige(await api.redigerRapport(reportId, form))
+    } catch (err) {
+      setErreur(err.message)
+      setEnCours(false)
+    }
+  }
+
+  return (
+    <Modal
+      title="Rédiger le rapport financier"
+      onClose={onClose}
+      footer={
+        <button type="button" className="btn btn--primary" onClick={lancer} disabled={enCours}>
+          {enCours ? 'Rédaction en cours…' : 'Rédiger'}
+        </button>
+      }
+    >
+      <div className="fin-cp">
+        <label className="fin-cp-champ">
+          <span>Consignes du trésorier (ce qui explique les hausses et les baisses, les points à revoir)</span>
+          <textarea
+            className="field-input"
+            rows={4}
+            value={form.prompt}
+            onChange={champ('prompt')}
+            placeholder="Ex : la location a baissé car le gala a eu lieu à la salle des fêtes ; point à revoir : l’assurance."
+          />
+        </label>
+        <label className="fin-cp-champ">
+          <span>Modèle</span>
+          <select className="field-input" value={form.model} onChange={champ('model')}>
+            {options.models.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="muted">
+          Le texte est rédigé d’après la Synthèse de la saison, celle de la saison précédente et l’analyse du bilan. Chaque
+          montant est placé par l’appli ; le Word et le PDF vont dans Docs › Financier › AG.
+        </p>
+        {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      </div>
+    </Modal>
+  )
 }
 
 function Groupes({ groupes }) {

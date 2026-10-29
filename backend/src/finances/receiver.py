@@ -18,6 +18,8 @@ from db import get_db
 
 from .accounting import Accounting, AccountingError
 from .ag_documents import AgDocuments
+from .ai import AnalysisError
+from .written_report import WrittenReports
 from .assemblies import PPTX, AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .bank import Bank, BankError
 from .exports import to_pdf, to_xlsx
@@ -123,6 +125,13 @@ class LevelRequest(BaseModel):
     level: str
 
 
+class WriteRequest(BaseModel):
+    """Corps de POST /finances/reports/{id}/rapport : consignes et modèle."""
+
+    prompt: str = ""
+    model: str | None = None
+
+
 class LinesRequest(BaseModel):
     """Corps de PUT /finances/operations/{id}/accounts : la ventilation
     confirmée ({accountId, amount en euros}) ; une seule ligne = tout le
@@ -168,6 +177,7 @@ class FinancesReceiver:
         org_url: Callable[[Session, int | None], str] | None = None,
         accounting: Accounting | None = None,
         ag_documents: AgDocuments | None = None,
+        written_reports: WrittenReports | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
@@ -185,6 +195,7 @@ class FinancesReceiver:
         self.org_url = org_url
         self.accounting = accounting
         self.ag_documents = ag_documents
+        self.written_reports = written_reports
         self._register_routes()
         if accounting is not None:
             self._register_accounting_routes()
@@ -460,6 +471,41 @@ class FinancesReceiver:
             season = season_of(db, member, report_id)
             level = documents.accounting.level(db, member.org_id)
             return {"level": level, "documents": documents.kinds(level), "synthese": documents.synthese(db, member, season)}
+
+        written = self.written_reports
+
+        if written is not None:
+
+            @app.get("/finances/reports/{report_id}/rapport")
+            def get_written(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """Le dernier rapport financier rédigé pour ce bilan (ou vide)."""
+                season_of(db, member, report_id)
+                return {"rapport": written.get(db, report_id), "models": reports.models()["models"], "defaultModel": reports.models()["defaultModel"]}
+
+            @app.post("/finances/reports/{report_id}/rapport")
+            async def write_report(report_id: int, data: WriteRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """Fait rédiger le rapport (le modèle écrit le texte, l'appli
+                place les chiffres)."""
+                season = season_of(db, member, report_id)
+                report = reports.get(db, member, report_id)
+                analysis = (report.get("result") or {}).get("analysis", [])
+                try:
+                    return await run_in_threadpool(
+                        written.write, db, member, report_id, season, data.prompt, data.model or reports.models()["defaultModel"], analysis
+                    )
+                except AnalysisError as exc:
+                    raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+            @app.get("/finances/reports/{report_id}/rapport/download")
+            def download_written(report_id: int, format: str = "docx", db: Session = db_dep, member: Member = member_dep) -> Response:
+                season = season_of(db, member, report_id)
+                try:
+                    content, name, media = written.produce(db, member, report_id, season, format)
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+                return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
 
         @app.get("/finances/reports/{report_id}/documents/{kind}")
         def download_document(report_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> Response:

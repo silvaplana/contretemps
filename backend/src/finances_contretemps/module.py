@@ -6,7 +6,17 @@ import os
 from pathlib import Path
 
 from db import SessionLocal
-from finances import Accounting, AgDocuments, AgPorts, Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
+from finances import (
+    Accounting,
+    AgDocuments,
+    AgPorts,
+    Finances,
+    FinancesReceiver,
+    FinancialReports,
+    Forecasts,
+    GeneralAssemblies,
+    WrittenReports,
+)
 from finances.bank import Bank
 from finances.enablebanking import EnableBankingClient
 from registry import Module, Right
@@ -90,6 +100,14 @@ def mount(app, core) -> None:
             org_name=nom_ecole,
         ),
     )
+    # Rapport financier (spec §8.6) : le modèle rédige, l'appli place les chiffres.
+    finances_written = WrittenReports(
+        synthese=finances_ag_documents.synthese,
+        seasons=saisons_de_l_ecole,
+        note_cost=note_cost("rapport_financier"),
+        org_name=nom_ecole,
+        store=ranger_dans_docs(core.documents_client),
+    )
     finances_bank = Bank(client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer)
     FinancesReceiver(
         client=finances_client,
@@ -103,6 +121,7 @@ def mount(app, core) -> None:
         org_url=adresse_ecole,
         accounting=finances_accounting,
         ag_documents=finances_ag_documents,
+        written_reports=finances_written,
     )
     core.finances_client = finances_client
     core.finances_ag_documents = finances_ag_documents

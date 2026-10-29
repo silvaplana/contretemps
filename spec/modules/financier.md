@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.9, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états ; §8.9 : étape 1 bis codée). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.10, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états ; §8.9 : étapes 1, 1 bis, 2 et 3 codées). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -645,6 +645,19 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    classe plus que les lignes sans compte. Reste : badge Brouillon / Validé / Officiel sur les fichiers,
    dossier de la saison du bilan plutôt que la saison en cours, écritures de tiers (étape 4).
 3. Rapport financier (gabarit Word du modèle, texte par le modèle, chiffres par l'appli).
+   **Codée le 29 octobre 2026** (`finances/written_report.py`, table `fin_written_reports`, routes
+   `GET/POST /finances/reports/{id}/rapport` et `…/rapport/download?format=docx|pdf`, ligne
+   « Rapport financier » du bloc Documents de l'AG avec « Rédiger », Voir, Word, PDF) : le modèle
+   reçoit les chiffres de la saison et de la précédente (chaque poste de la Synthèse, écart et %,
+   totaux, résultat, trésorerie, événements), l'analyse du bilan et les consignes du trésorier ; il
+   rédige dans la forme du rapport 2024-25 (introduction, A - Recettes, B - Dépenses, Points à revoir,
+   conclusion) en citant les chiffres par des repères `{{clé}}` que l'appli remplace par ses propres
+   montants ; un montant ou un pourcentage qu'il aurait écrit lui-même est signalé « à vérifier »
+   (comme les diapos de l'AG, §5.1), un repère inconnu est effacé. Le texte est gardé (la dernière
+   rédaction fait foi), relu à l'écran, produit en Word (python-docx) et PDF, rangé dans Docs ›
+   Financier › AG ; coût noté dans Usage ressources (« rapport financier »). Reste : reprendre le
+   gabarit Word de la trésorière tel quel (en-tête, police) plutôt qu'un Word simple, retouche du
+   texte à l'écran avant le Word.
 4. Complet : écritures, soldes de départ, lettrage, clôture.
 
 À demander à la trésorière (vendredi 31 octobre) : son logiciel et si elle veut un export vers
