@@ -31,11 +31,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # plutôt que dans le conteneur (sinon re-téléchargé à chaque déploiement).
 ENV U2NET_HOME=/app/data/u2net
 
-# On copie d'abord uniquement ce qui decrit les dependances puis le code
-# source. Docker met en cache chaque etape : si tu ne changes que le
-# code, la reinstallation des dependances n'est rejouee que si
-# pyproject.toml a change.
+# On copie d'abord uniquement ce qui decrit les dependances et on les
+# installe, puis le code source. Docker met en cache chaque etape : si tu
+# ne changes que le code, la reinstallation des dependances n'est rejouee
+# que si pyproject.toml a change.
 COPY pyproject.toml ./
+RUN python -c "import tomllib; print('\n'.join(tomllib.load(open('pyproject.toml', 'rb'))['project']['dependencies']))" > /tmp/requirements.txt \
+    && pip install --no-cache-dir -r /tmp/requirements.txt \
+    && rm /tmp/requirements.txt
 COPY src ./src
 # Fixtures de démo (voir app/seed.py et videos/stockage.py) — aucune
 # vraie donnée, committables (voir backend/README.md) : figées dans
@@ -55,7 +58,8 @@ COPY videos_reference ./videos_reference
 COPY alembic.ini ./
 COPY alembic ./alembic
 
-RUN pip install --no-cache-dir .
+# Dependances deja installees ci-dessus : seul le code est installe ici.
+RUN pip install --no-cache-dir --no-deps .
 
 # Bonne pratique : ne pas executer l'application en tant que root
 # a l'interieur du conteneur.
