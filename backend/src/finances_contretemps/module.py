@@ -31,6 +31,7 @@ from .adapter import (
     nom_ecole,
     pieces_des_operations,
     pieces_a_payer,
+    dossier_ag,
     ranger_dans_docs,
     saisons_de_l_ecole,
 )
@@ -97,6 +98,7 @@ def mount(app, core) -> None:
             unpaid=pieces_a_payer,
             fees=honoraires_payes,
             store=ranger_dans_docs(core.documents_client),
+            folder=dossier_ag(core.documents_client),
             org_name=nom_ecole,
         ),
     )

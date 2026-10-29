@@ -86,6 +86,7 @@ class AgPorts:
     unpaid: Callable[[Session, int], list[dict]] | None = None
     fees: Callable[[Session, int, str, str], list[dict]] | None = None
     store: Callable[[Session, Member, list[str], list[tuple[str, Path]]], list[int]] | None = None
+    folder: Callable[[Session, Member], int | None] | None = None  # le dossier AG de Docs, pour l'ouvrir
     org_name: Callable[[Session, int], str] | None = None
 
 
