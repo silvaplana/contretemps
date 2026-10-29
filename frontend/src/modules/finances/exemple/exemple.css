@@ -316,3 +316,89 @@
 .fin-comptes .fin-ex-sous .badge {
   margin-left: 4px;
 }
+
+/* Puce Virements (Virements.jsx) */
+.fin-ex-vir-partie {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fin-ex-vir-titre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 48px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  padding: 0 2px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.fin-ex-vir-ligne {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fin-ex-vir-ligne > span:first-child,
+.fin-ex-vir-copier > span:first-child {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.fin-ex-vir-droite {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.fin-ex-vir-copier {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.fin-ex-vir-copier .btn {
+  min-height: 48px;
+  flex-shrink: 0;
+}
+
+.fin-ex-vir-copie {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.fin-ex-vir-retour {
+  align-self: flex-start;
+  min-height: 48px;
+}
+
+.fin-ex-vir-h {
+  margin: 0;
+  font-size: 19px;
+}
+
+.fin-ex-vir-boutons {
+  flex-direction: column;
+}

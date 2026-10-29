@@ -4,6 +4,7 @@
 2024-25 (`donnees.js`), avant de coder l'étape 1. Rien n'est enregistré sur le serveur.
 
 - `Pieces.jsx` : sous-onglet Pièces (dossiers, photo en rafale, rattachement).
+- `Virements.jsx` : puce Virements de Pièces (§8.3 bis : quatre états, aide au virement).
 - `FicheOperation.jsx` : fiche d'une ligne de Comptes (compte, pièce, écritures).
 - `PlanComptable.jsx` : Comptes ⋯ › Plan comptable (et réglage Simple / Complet), Soldes de départ.
 - `Caisse.jsx` : puce Caisse de Comptes.

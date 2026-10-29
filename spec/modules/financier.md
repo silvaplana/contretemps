@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.5, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.6, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -377,6 +377,65 @@ ligne, jamais à écrire un chiffre dans les comptes : le montant comptable est 
 Une pièce « pas encore payée » reste dans son dossier et compte dans « Fournisseurs à payer » de
 la Synthèse (Simple) ou dans 401 (Complet).
 
+### 8.3 bis Virements (puce de Pièces, 29 octobre 2026)
+
+Étude et maquette retenues par Seb le 29 octobre 2026 (fil « Module : Virements depuis l'appli »,
+https://claude.ai/artifact/B9Udrp2K2KGb92vgQ69yHh). Besoin : savoir ce qui attend d'être payé et
+où en est chaque paiement ; aider à faire le virement ; le faire faire par quelqu'un d'autre (chez
+Contretemps, la trésorière prépare et la trésorière adjointe, qui a l'appli CIC, paie).
+
+**L'appli ne paie pas.** Lancer un virement par API demande une licence d'établissement de
+paiement (Enable Banking la réserve aux sociétés agréées) ou un contrat avec un prestataire agréé
+(Bridge : sur devis, CIC à confirmer). Écarté pour l'instant ; la banque fait de toute façon
+valider chaque virement dans son appli. L'assistant ne remplit pas l'appli de la banque (Android
+et la banque l'interdisent ; l'assistant n'écrit jamais un chiffre).
+
+Financier › Pièces › puce **Virements** (première puce, avant À rattacher ; compteur = ce qui
+reste à faire). Quatre états, une partie chacun, qui se déroule et se replie (À payer ouvert,
+les autres repliés avec leur nombre ; une partie vide n'apparaît pas) :
+
+1. **À payer** : pièce de dépense reçue, rien de préparé ;
+2. **Préparés, en attente d'envoi** : préparé, la personne qui paie ne l'a pas encore fait ;
+3. **Envoyés** : « J'ai fait le virement » touché, pas encore vu sur le compte ;
+4. **Payés** : l'opération est vue sur le compte, la pièce y est rattachée (= « rattachée »).
+
+Ce qui arrive dans À payer, tout seul : la **note de frais validée** (avec le RIB déjà donné,
+`nf_ribs`) et la **note d'honoraires** lue dans Honoraires (prof et montant ; plus tard calculée
+par la présence). Une **facture d'achat** n'y va que par le bouton **À payer par virement** de la
+pièce (ce que dit aussi « Pas encore payée ») : un achat par carte, prélevé, ou payé avant la
+facture (le camping) ne passe jamais par Virements, la pièce se rattache à l'opération du compte.
+On peut aussi **préparer un virement sans pièce** (demande ou devis) ; la facture s'y rattache
+quand elle arrive (« Ajouter la facture »).
+
+Dans Achats, Honoraires, Notes de frais, chaque dépense montre son état (badge À payer / Préparé /
+Envoyé / Payé) ; payée par carte ou déjà vue sur le compte : directement Payé.
+
+**Aide au virement** : toucher une ligne ouvre « Virement à faire » : bénéficiaire, IBAN, montant,
+libellé (« Contretemps honoraires oct 2026 »), chacun avec **Copier**, dans l'ordre de l'écran de
+la banque ; le compte à utiliser (403 pour les honoraires) et la pièce. Bouton principal
+**J'ai fait le virement** (→ Envoyés) ; **Faire payer par <nom>** (→ Préparés). Pas de RIB :
+**Photographier** le RIB (ou le choisir dans Docs), IBAN, BIC et titulaire lus et vérifiés à
+l'écran. Guide « Faire un virement dans l'appli CIC » (4 étapes) montré au premier virement, puis
+derrière « Comment faire » ; écrit pour le CIC seulement au départ. À tester sur le téléphone de
+Seb : « Tout copier » via l'historique du presse-papier du clavier.
+
+**Faire payer par quelqu'un** : réglage **Qui paie** sur la ligne Financier d'Admin › École ›
+Personnalisation › Fonctionnalités (une ou plusieurs personnes ; par défaut les trésoriers).
+« Faire payer par Anne » lui envoie une notification « Virement à faire : Lucie Martin, 480,00 € »
+qui ouvre l'aide au virement, avec « Préparé par Claire Petit le … · RIB enregistré par … le … ».
+Si celle qui prépare paie elle-même, pas de notification. Quand le virement est vu sur le compte,
+celle qui l'a préparé est prévenue (« Payé »).
+
+**Vu sur le compte** : à chaque lecture de la banque (§3.5) ou import de relevé, une opération de
+débit du même montant, au nom du bénéficiaire, après la date d'envoi, est proposée ; rattachée sur
+confirmation, comme toute pièce (§8.3). Sans connexion bancaire, Envoyés attend le relevé.
+
+**Sécurité** : le risque est le RIB changé. Enregistrer ou changer un RIB, et préparer un
+virement, demandent la clé d'accès (empreinte) de la personne quand l'étude double
+authentification sera codée (en attendant : trésoriers et Super User seulement) ; qui et quand
+sont gardés et montrés à celle qui paie. Seuls nom, IBAN, BIC sont gardés ; aucun mot de passe
+de banque.
+
 ### 8.4 Comptes : compte et pièce sur chaque ligne
 
 Dans Comptes › Tableau, chaque opération porte son **compte** (ou « Compte à choisir ») et sa
@@ -435,7 +494,10 @@ dossier HO/AC/NF/VE/CA, fichier Docs, lecture JSON, état à rattacher / rattach
 espèces, opération bancaire ou ligne de caisse, origine photo / docs / notes de frais / helloasso,
 proposé par, confirmé par et quand), `fin_operation_accounts` (opération, compte, montant :
 ventilation), `fin_cash_lines` (caisse), `fin_entries` / `fin_entry_lines` (§8.7),
-`fin_opening_balances`. Routes sous `/finances/chart`, `/finances/documents`
+`fin_opening_balances`, `fin_payees` (§8.3 bis : organisation, nom, IBAN, BIC, fichier Docs du
+RIB, enregistré par et quand ; le RIB d'un membre reste dans `nf_ribs`) ; dans `fin_documents`,
+l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, préparé par, payé par, dates
+(payé = rattachée). Routes sous `/finances/chart`, `/finances/documents`
 (`POST …/upload`, `POST …/{id}/confirm`, `…/unpaid`, `…/cash`), `/finances/cash`,
 `/finances/entries`, `/finances/reports/{id}/documents?kind=synthese|rapport|grand-livre|balance|honoraires`.
 
@@ -443,6 +505,7 @@ ventilation), `fin_cash_lines` (caisse), `fin_entries` / `fin_entry_lines` (§8.
 
 1. Plan comptable, Pièces (photo, lecture, proposition, confirmation), compte et pièce sur chaque
    ligne de Comptes, caisse, réglage Simple / Complet. Suffit pour la Synthèse.
+1 bis. Virements (§8.3 bis) : puce, quatre états, aide au virement, RIB, Qui paie, notification.
 2. Documents de l'AG : Synthèse, Grand livre, Balance, Honoraires par prof ; Bilan par compte.
 3. Rapport financier (gabarit Word du modèle, texte par le modèle, chiffres par l'appli).
 4. Complet : écritures, soldes de départ, lettrage, clôture.
