@@ -451,7 +451,18 @@ Ventes, le « + » demande d'abord la nature. Les champs changent avec la nature
   pas de « Pour qui ».
 Une dépense établie par le trésorier est validée en même temps. Le bouton « Photographier des
 pièces » de §8.3 et des écrans d'exemple n'existe plus : c'est le « + », avec « Photo du ticket »
-dedans ; la rafale (plusieurs photos = plusieurs dépenses) reste à voir à l'étape 1.
+dedans.
+
+**Rafale** (Seb, 29 octobre) : pour une note de frais, une photo = une dépense, avec le formulaire
+tout de suite (comme aujourd'hui). Pour **Achats** et **Honoraires**, le trésorier a souvent une pile
+de papiers : « Photo du ticket » enchaîne les photos sans formulaire entre deux, **une photo = une
+dépense**, chacune créée aussitôt (À valider, « Lecture en cours… ») et lue en arrière-plan ; après
+chaque photo, **Pièce suivante** (par défaut) ou **Encore une page de celle-ci** (facture de deux
+pages, ticket de dépôt + page du cahier). On revient ensuite à la liste de la puce, où chaque ligne
+porte ce qui a été lu (fournisseur ou prof, date, montant, compte proposé) : on touche une ligne pour
+vérifier ou compléter, le reste est déjà rangé dans Docs. Pour les honoraires, la lecture reconnaît le
+nom du prof et le rapproche d'une fiche ; en cas de doute la ligne demande « Pour qui ? ». Même chose
+avec « Choisir un fichier » et « Choisir dans Docs » quand on sélectionne plusieurs fichiers.
 
 **Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
 `notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
