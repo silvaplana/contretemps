@@ -548,6 +548,16 @@ class FinancesReceiver:
                 except AnalysisError as exc:
                     raise HTTPException(status_code=502, detail=str(exc)) from exc
 
+            @app.post("/finances/reports/{report_id}/rapport/docs")
+            def written_in_docs(report_id: int, format: str = "docx", db: Session = db_dep, member: Member = member_dep) -> dict:
+                season = season_of(db, member, report_id)
+                try:
+                    return {"id": written.in_docs(db, member, report_id, season, format), "orgId": member.org_id}
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+
             @app.get("/finances/reports/{report_id}/rapport/download")
             def download_written(report_id: int, format: str = "docx", db: Session = db_dep, member: Member = member_dep) -> Response:
                 season = season_of(db, member, report_id)
@@ -558,6 +568,16 @@ class FinancesReceiver:
                 except ValueError as exc:
                     raise HTTPException(status_code=400, detail=str(exc)) from exc
                 return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
+
+        @app.post("/finances/reports/{report_id}/documents/{kind}/docs")
+        def document_in_docs(report_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Produit le document, le range dans Docs › Financier › AG et rend
+            l'id du fichier (l'œil l'ouvre dans Docs)."""
+            season = season_of(db, member, report_id)
+            try:
+                return {"id": documents.in_docs(db, member, season, kind), "orgId": member.org_id}
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         @app.get("/finances/reports/{report_id}/documents/{kind}")
         def download_document(report_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> Response:

@@ -648,9 +648,7 @@ class AgDocuments:
 
     # ----- production et rangement -----
 
-    def produce(self, db: Session, member: Member, season: Season, kind: str) -> tuple[bytes, str, str]:
-        """(contenu, nom de fichier, type) d'un document ; rangé dans Docs ›
-        Financier › AG si l'appli le permet."""
+    def _build(self, db: Session, member: Member, season: Season, kind: str) -> tuple[bytes, str, str]:
         if kind not in KINDS:
             raise ValueError("Document inconnu")
         title, extension, _ = KINDS[kind]
@@ -665,14 +663,20 @@ class AgDocuments:
             content = self.fees_xlsx(db, member, season, org_name)
         name = f"{title} {season.name}.{extension}"
         media = "application/pdf" if extension == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        if self.ports.store is not None:
-            import tempfile
-
-            with tempfile.TemporaryDirectory() as tmp:
-                path = Path(tmp) / name
-                path.write_bytes(content)
-                self.ports.store(db, member, ["AG"], [(name, path)])
         return content, name, media
+
+    def produce(self, db: Session, member: Member, season: Season, kind: str) -> tuple[bytes, str, str]:
+        """(contenu, nom de fichier, type) d'un document ; rangé dans Docs ›
+        Financier › AG si l'appli le permet."""
+        content, name, media = self._build(db, member, season, kind)
+        store_file(self.ports.store, db, member, name, content)
+        return content, name, media
+
+    def in_docs(self, db: Session, member: Member, season: Season, kind: str) -> int | None:
+        """Produit le document, le range dans Docs › Financier › AG et rend
+        l'id du fichier (pour l'ouvrir depuis Docs)."""
+        content, name, _ = self._build(db, member, season, kind)
+        return store_file(self.ports.store, db, member, name, content)
 
     @staticmethod
     def kinds(level: str) -> list[dict]:
@@ -713,6 +717,19 @@ def _nature_of(number: str, db: Session, accounting: Accounting, org_id: int) ->
         return "report"
     account = next((a for a in accounting.accounts(db, org_id) if a.number == number), None)
     return account.nature if account is not None else THIRD_PARTY
+
+
+def store_file(store, db: Session, member: Member, name: str, content: bytes) -> int | None:
+    """Range un fichier produit dans Docs › Financier › AG ; rend son id."""
+    if store is None:
+        return None
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        path = Path(tmp) / name
+        path.write_bytes(content)
+        ids = store(db, member, ["AG"], [(name, path)])
+    return ids[0] if ids else None
 
 
 def _c(cents: int) -> str:
