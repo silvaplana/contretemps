@@ -5,7 +5,8 @@
 import { useEffect, useRef, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 import BandeExemple from './BandeExemple.jsx'
-import { DOSSIERS, PIECES, PLAN, dateFr, eur } from './donnees.js'
+import Virements from './Virements.jsx'
+import { DOSSIERS, PIECES, PLAN, VIREMENTS, dateFr, eur } from './donnees.js'
 
 const PHOTO_EVENT = 'finances-photo-pieces'
 
@@ -63,7 +64,7 @@ export default function Pieces() {
       etat === 'rattachee'
         ? 'Pièce rattachée à la ligne de banque (exemple : rien n’est enregistré).'
         : etat === 'non_payee'
-          ? 'Pièce gardée dans son dossier : elle comptera dans « Fournisseurs à payer ».'
+          ? 'Pièce gardée dans son dossier : elle passe dans Virements, À payer, et compte dans « Fournisseurs à payer ».'
           : 'Pièce rattachée à une ligne de caisse.',
     )
   }
@@ -85,12 +86,15 @@ export default function Pieces() {
           >
             {d.label}
             {d.id === 'a_rattacher' && aRattacher.length > 0 && ` (${aRattacher.length})`}
+            {d.id === 'virements' && ` (${VIREMENTS.filter((v) => v.etat !== 'paye').length})`}
           </button>
         ))}
       </div>
-      <button type="button" className="btn btn--primary" onClick={() => camera.current?.click()}>
-        <Icon name="camera" size={18} /> Photographier des pièces
-      </button>
+      {dossier !== 'virements' && (
+        <button type="button" className="btn btn--primary" onClick={() => camera.current?.click()}>
+          <Icon name="camera" size={18} /> Photographier des pièces
+        </button>
+      )}
       <input
         ref={camera}
         type="file"
@@ -103,15 +107,23 @@ export default function Pieces() {
           e.target.value = ''
         }}
       />
-      <p className="muted">
-        Une pièce par photo, sans rien saisir. L’appli lit la pièce, la range dans son dossier et propose la ligne de
-        banque : vous confirmez. Les notes de frais validées et les virements HelloAsso arrivent déjà rattachés.
-      </p>
-      {message && <p className="history-report">{message}</p>}
-      {visibles.length === 0 && <p className="muted">Rien dans ce dossier.</p>}
-      {visibles.map((p) => (
-        <Piece key={p.id} piece={p} onChanger={changer} />
-      ))}
+      {dossier !== 'virements' && (
+        <p className="muted">
+          Une pièce par photo, sans rien saisir. L’appli lit la pièce, la range dans son dossier et propose la ligne de
+          banque : vous confirmez. Les notes de frais validées et les virements HelloAsso arrivent déjà rattachés.
+        </p>
+      )}
+      {dossier === 'virements' ? (
+        <Virements />
+      ) : (
+        <>
+          {message && <p className="history-report">{message}</p>}
+          {visibles.length === 0 && <p className="muted">Rien dans ce dossier.</p>}
+          {visibles.map((p) => (
+            <Piece key={p.id} piece={p} onChanger={changer} />
+          ))}
+        </>
+      )}
     </section>
   )
 }
@@ -150,7 +162,7 @@ function Piece({ piece, onChanger }) {
             </div>
           )}
           {piece.etat === 'rattachee' && <span className="badge badge--success">Rattachée : {piece.ligne}</span>}
-          {piece.etat === 'non_payee' && <span className="badge badge--warning">Pas encore payée</span>}
+          {piece.etat === 'non_payee' && <span className="badge badge--warning">À payer</span>}
           {piece.etat === 'especes' && <span className="badge badge--success">{piece.ligne}</span>}
         </div>
       </div>
