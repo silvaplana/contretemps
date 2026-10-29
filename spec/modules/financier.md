@@ -350,7 +350,11 @@ Envoyé pas encore vu (la banque), Payé. Bouton principal
 **+** (voir §8.3 bis « Établir une dépense ») : Photo du ticket, Choisir un fichier, ou « Choisir
 dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
 Docs › Privé › Saison <saison> › Financier › <dossier>, nommé par l'appli
-(« 2025-02-09 Amazon 39,90.jpg ») une fois lue ; une photo pas encore lue attend dans Ventes
+(« 2025-02-09 Amazon 39,90.jpg ») une fois lue. **La saison est celle de la date de la pièce**
+(date de la facture, pas du paiement : une charge appartient à l'exercice de sa facture, Seb
+29/10), si on peut y écrire : la saison en cours, ou une ancienne saison rouverte aux
+modifications (Admin › Saisons ; son dossier Docs n'est alors plus en lecture seule) ; sinon la
+saison en cours. Date, personne ou fournisseur corrigé : le fichier suit (dossier et nom) ; une photo pas encore lue attend dans Ventes
 ou Achats selon le sens, et change de dossier si la lecture dit autrement.
 
 Trois origines de pièces :
@@ -626,7 +630,8 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
 
 À demander à la trésorière (vendredi 31 octobre) : son logiciel et si elle veut un export vers
 lui ; si elle confirme elle-même dans l'appli (compte Trésorier) ; son plan comptable 2025-26 ;
-qui tient la caisse ; les 717,50 € du compte d'attente.
+qui tient la caisse ; les 717,50 € du compte d'attente ; qu'une pièce va dans la saison de sa
+facture et non de son paiement (comptabilité d'engagement).
 
 ## 9. Reste à faire
 
