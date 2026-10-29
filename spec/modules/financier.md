@@ -436,6 +436,21 @@ note de frais ou des honoraires déjà virés passent directement Payé, comme u
 honoraires = l'auteur est un prof, une seule ligne (période, montant), journal HO ; achat = établi par
 le trésorier, « qui » est un fournisseur, RIB demandé seulement quand il y a à payer, journal AC.
 
+**Établir une dépense : le « + »** (Seb, 29 octobre). Un seul bouton principal sur Pièces, **+**,
+qui reprend l'écran « Nouvelle dépense » de `notes-de-frais.md` §4.2 : photo d'abord (appareil photo
+en rafale, image ou PDF existant, ou « Choisir dans Docs »), lecture par l'appli qui pré-remplit avec
+la mention « Rempli d'après le ticket, à vérifier », on corrige, **Enregistrer**. La nature est celle
+de la puce où l'on est (Notes de frais, Honoraires, Achats) ; depuis Virements, À rattacher ou
+Ventes, le « + » demande d'abord la nature. Les champs changent avec la nature, le reste est commun :
+- **Note de frais** : d'abord « Pour qui ? » (§7 ter de `notes-de-frais.md`), puis date, montant,
+  catégorie, description ; plusieurs dépenses forment une note (titre) ;
+- **Honoraires** : « Pour qui ? » (un prof), période (mois), montant ; une ligne = une note, pas de
+  catégorie (compte 6226) ;
+- **Achat** : fournisseur (lu sur la facture), date, montant, compte du plan proposé, description ;
+  pas de « Pour qui ».
+Une dépense établie par le trésorier est validée en même temps. « Photographier des pièces » de §8.3
+est la première étape de ce « + », pas un bouton de plus.
+
 **Rangement dans Docs** (Seb, 29 octobre), dans les dossiers de la trésorière, avec la règle de
 `notes-de-frais.md` §7 bis (rangé à l'établissement, rien ne bouge ensuite, l'état se lit au badge
 du dossier) :
