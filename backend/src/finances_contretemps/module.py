@@ -6,14 +6,34 @@ import os
 from pathlib import Path
 
 from db import SessionLocal
-from finances import Finances, FinancesReceiver, FinancialReports, Forecasts, GeneralAssemblies
+from finances import (
+    Accounting,
+    AgDocuments,
+    AgPorts,
+    Finances,
+    FinancesReceiver,
+    FinancialReports,
+    Forecasts,
+    GeneralAssemblies,
+    WrittenReports,
+)
 from finances.bank import Bank
 from finances.enablebanking import EnableBankingClient
 from registry import Module, Right
 from securite.chiffrement import chiffrer, dechiffrer
 
 from .actions import actions
-from .adapter import FINANCES_ACCESS, adresse_ecole, membre_appelant, saisons_de_l_ecole
+from .adapter import (
+    FINANCES_ACCESS,
+    adresse_ecole,
+    honoraires_payes,
+    membre_appelant,
+    nom_ecole,
+    pieces_des_operations,
+    pieces_a_payer,
+    ranger_dans_docs,
+    saisons_de_l_ecole,
+)
 
 
 def _client_bancaire() -> EnableBankingClient | None:
@@ -35,7 +55,10 @@ def mount(app, core) -> None:
     def note_cost(poste):
         return lambda db, ecole_id, cout, detail: ressources.noter_ia(db, ecole_id, poste, cout, detail)
 
-    finances_client = Finances()
+    # Comptabilité (spec §8) : plan comptable, compte sur chaque ligne,
+    # caisse ; la pièce d'une ligne vient des dépenses du module Notes de frais.
+    finances_accounting = Accounting(pieces=pieces_des_operations)
+    finances_client = Finances(accounting=finances_accounting)
     # Bilan : tableau calculé depuis l'historique des comptes, analyse par
     # l'API Claude (ANTHROPIC_API_KEY), coût noté à l'école comme celui de
     # l'assistant.
@@ -64,6 +87,27 @@ def mount(app, core) -> None:
         session_factory=SessionLocal,
         note_cost=note_cost("previsionnel"),
     )
+    # Documents de l'AG (spec §8.6) : calculés depuis les lignes, rangés dans
+    # Docs › Financier › AG par le module documents.
+    finances_ag_documents = AgDocuments(
+        ledger=finances_client.get_ledger,
+        accounting=finances_accounting,
+        seasons=saisons_de_l_ecole,
+        ports=AgPorts(
+            unpaid=pieces_a_payer,
+            fees=honoraires_payes,
+            store=ranger_dans_docs(core.documents_client),
+            org_name=nom_ecole,
+        ),
+    )
+    # Rapport financier (spec §8.6) : le modèle rédige, l'appli place les chiffres.
+    finances_written = WrittenReports(
+        synthese=finances_ag_documents.synthese,
+        seasons=saisons_de_l_ecole,
+        note_cost=note_cost("rapport_financier"),
+        org_name=nom_ecole,
+        store=ranger_dans_docs(core.documents_client),
+    )
     finances_bank = Bank(client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer)
     FinancesReceiver(
         client=finances_client,
@@ -75,8 +119,13 @@ def mount(app, core) -> None:
         forecasts=finances_forecasts,
         bank=finances_bank,
         org_url=adresse_ecole,
+        accounting=finances_accounting,
+        ag_documents=finances_ag_documents,
+        written_reports=finances_written,
     )
     core.finances_client = finances_client
+    core.finances_ag_documents = finances_ag_documents
+    core.finances_accounting = finances_accounting
     core.finances_bank = finances_bank
     core.finances_reports = finances_reports
     core.finances_assemblies = finances_assemblies
@@ -84,7 +133,7 @@ def mount(app, core) -> None:
 
 
 MODULE = Module(
-    key="finances", label="Financier", mount=mount, requires=("seasons",),
+    key="finances", label="Financier", mount=mount, requires=("seasons", "documents", "expense_notes"),
     rights=(Right(FINANCES_ACCESS, "Accès au Financier"),),
     actions=lambda core: actions(
         core.finances_reports, core.finances_assemblies, core.finances_forecasts,

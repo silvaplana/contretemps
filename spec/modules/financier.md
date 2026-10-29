@@ -1,6 +1,6 @@
 # AppBase — Module `finances` (onglet Financier)
 
-Version 0.9, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états ; §8.9 : étape 1 bis codée). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
+Version 0.10, 29 octobre 2026 (§8 : dossiers de la trésorière Achats / Honoraires / Notes de frais / Ventes ; §8.3 bis : Virements, machine à états ; §8.9 : étapes 1 à 4 codées ; §8.7 : écritures recalculées, pas stockées). Statut : **décision de Seb, 20 octobre** : reprendre tel quel le
 Financier de Sambo Admin (dépôt `test-python`) dans Contretemps, sous-module par sous-module, et
 améliorer ensuite ; AppBase sera tiré de Contretemps.
 
@@ -579,11 +579,14 @@ Officiel du bilan ; l'AG (§5) les joint à la convocation.
 
 ### 8.7 Complet : écritures, soldes de départ, clôture
 
-- **Écritures** : table `fin_entries` (organisation, saison, journal AN/OD/AC/HO/NF/VE/BQn/CA,
-  date, pièce, libellé, lettre) et `fin_entry_lines` (écriture, compte, débit, crédit en
-  centimes, opération bancaire ou ligne de caisse d'origine, pièce). Générées par l'appli à la
-  confirmation d'un rattachement ; jamais saisies à la main, sauf les écritures de régularisation
-  OD du trésorier (compte 471, défraiements), avec pièce ou motif.
+- **Écritures** : journaux AN/AC/HO/NF/BQn/CA (date, pièce, libellé, lettre ; compte, débit,
+  crédit en centimes, opération bancaire ou ligne de caisse d'origine). **Décision du 29 octobre
+  2026** : elles ne sont pas stockées (pas de `fin_entries`) mais recalculées à chaque fois depuis
+  les lignes de banque, de caisse, les comptes confirmés et les pièces (`ag_documents.books`) :
+  toujours justes, rien à régénérer en passant de Simple à Complet. Seules la clôture
+  (`fin_closings`) et les soldes de départ (`fin_opening_balances`) sont écrits. Jamais saisies à
+  la main ; les écritures de régularisation OD du trésorier (compte 471, défraiements) restent à
+  faire.
 - **Soldes de départ** (Comptes ⋯ › Soldes de départ) : première saison dans l'appli, repris de
   la Balance de l'an dernier déposée dans Docs (lecture du PDF, vérification à l'écran, « Reprendre
   ces soldes ») ; l'appli vérifie que les soldes 512x égalent les relevés au 31/08. Saisons
@@ -612,6 +615,18 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
 
 1. Plan comptable, Pièces (photo, lecture, proposition, confirmation), compte et pièce sur chaque
    ligne de Comptes, caisse, réglage Simple / Complet. Suffit pour la Synthèse.
+   **Codée le 29 octobre 2026** (`finances/chart.py`, `finances/accounting.py`, tables `fin_settings`,
+   `fin_chart_accounts`, `fin_operation_accounts`, `fin_cash_lines` ; écrans `finances/compta/`) :
+   plan par défaut d'une association (`DEFAULT_CHART`) et commande
+   `python -m app.plan_comptable_contretemps --ecole <id>` pour les comptes de la Balance 24-25 ;
+   compte proposé d'après l'historique confirmé (même libellé sans ses chiffres) puis les mots-clés,
+   jamais écrit sans confirmation ; fiche de l'opération avec ventilation (la somme doit faire la
+   banque) ; puces Sans compte / Sans pièce ; la pièce d'une ligne = la dépense payée par cette
+   opération (`nf_notes.bank_operation_id`) ; puces À rattacher (lignes sans compte) et Ventes
+   (recettes) de Pièces ; caisse avec retrait au distributeur = virement interne ; niveau Simple /
+   Complet dans Comptes › ⋯ › Plan comptable (pas encore dans Personnalisation). Reste : remise de
+   chèques avec une sous-ligne par chèque rapprochée d'une famille, pièce choisie dans Docs ou
+   photographiée depuis la ligne de Comptes, pièce sur une ligne de caisse.
 1 bis. Virements (§8.3 bis) : puce, quatre états, aide au virement, RIB, Qui paie, notification.
    **Codée le 29 octobre 2026**, dans le module Notes de frais (`nf_notes.nature`, `supplier`,
    `prepared_*`, `payer_id`, `transfer_sent_*`, `bank_operation_id` ; `nf_pieces.doc_node_id` ; table
@@ -625,8 +640,48 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    cette note » pour un achat, virement sans pièce, la pièce visible sur la ligne de Comptes (§8.4),
    la clé d'accès pour le RIB.
 2. Documents de l'AG : Synthèse, Grand livre, Balance, Honoraires par prof ; Bilan par compte.
+   **Codée le 29 octobre 2026** (`finances/ag_documents.py`, bloc `compta/DocumentsAG.jsx` sous un
+   bilan, routes `GET /finances/reports/{id}/documents` et `…/documents/{synthese|balance|grand-livre|honoraires}`) :
+   grand livre en mémoire depuis les lignes de banque (compte confirmé contre 512x, une ligne sans
+   compte va dans « Dépenses / Recettes à classer ») et la caisse (530 ; un retrait = banque → caisse),
+   soldes de départ de la trésorerie repris dans 110 « Report à nouveau » pour que la Balance soit
+   équilibrée ; Synthèse par classe (60, 61…), trésorerie, fournisseurs à payer (dépenses validées pas
+   encore payées), un bloc par événement ; Balance et Grand livre en PDF ; Honoraires par prof et par
+   mois (notes d'honoraires payées) en Excel ; chaque fichier produit est rangé dans Docs › Financier ›
+   AG (saison en cours, remplacé à chaque production). Le Bilan additionne par compte confirmé, l'IA ne
+   classe plus que les lignes sans compte. Reste : badge Brouillon / Validé / Officiel sur les fichiers,
+   dossier de la saison du bilan plutôt que la saison en cours, écritures de tiers (étape 4).
 3. Rapport financier (gabarit Word du modèle, texte par le modèle, chiffres par l'appli).
+   **Codée le 29 octobre 2026** (`finances/written_report.py`, table `fin_written_reports`, routes
+   `GET/POST /finances/reports/{id}/rapport` et `…/rapport/download?format=docx|pdf`, ligne
+   « Rapport financier » du bloc Documents de l'AG avec « Rédiger », Voir, Word, PDF) : le modèle
+   reçoit les chiffres de la saison et de la précédente (chaque poste de la Synthèse, écart et %,
+   totaux, résultat, trésorerie, événements), l'analyse du bilan et les consignes du trésorier ; il
+   rédige dans la forme du rapport 2024-25 (introduction, A - Recettes, B - Dépenses, Points à revoir,
+   conclusion) en citant les chiffres par des repères `{{clé}}` que l'appli remplace par ses propres
+   montants ; un montant ou un pourcentage qu'il aurait écrit lui-même est signalé « à vérifier »
+   (comme les diapos de l'AG, §5.1), un repère inconnu est effacé. Le texte est gardé (la dernière
+   rédaction fait foi), relu à l'écran, produit en Word (python-docx) et PDF, rangé dans Docs ›
+   Financier › AG ; coût noté dans Usage ressources (« rapport financier »). Reste : reprendre le
+   gabarit Word de la trésorière tel quel (en-tête, police) plutôt qu'un Word simple, retouche du
+   texte à l'écran avant le Word.
 4. Complet : écritures, soldes de départ, lettrage, clôture.
+   **Codée le 29 octobre 2026** (`ag_documents.py`, tables `fin_opening_balances` et `fin_closings`,
+   routes `GET/PUT /finances/opening-balances/{saison}`, `POST/DELETE /finances/reports/{id}/close`,
+   `GET /finances/operations/{id}/entries` ; écrans `compta/SoldesDepart.jsx`, bloc Clôture dans
+   Documents de l'AG, écritures dans la fiche de l'opération) : au niveau Complet, une ligne de banque
+   confirmée qui a une pièce passe par le tiers (achat : 6xx contre 401 le jour de la facture, puis
+   401 contre 512x au paiement ; honoraires et notes de frais : 467x, celui dont le libellé porte le
+   nom de la personne, sinon le plus court), avec une lettre AAA, AAB… commune aux deux lignes ;
+   colonne Lettre du Grand livre. Soldes de départ : Comptes › ⋯ › Soldes de départ, par saison,
+   prérempli par la trésorerie des relevés (ou les soldes reportés par la clôture précédente), un
+   solde par compte du bilan, « Reprendre ces soldes », vérification des 512x contre les relevés,
+   différence dans 110. Clôture (Bilan › Documents de l'AG, Complet) : résultat dans 110, soldes des
+   comptes de bilan reportés sur la saison suivante, saison verrouillée (rattachement et caisse
+   refusés tant qu'elle n'est pas rouverte ; « Rouvrir » garde la trace). Reste : lecture de la
+   Balance PDF de l'an dernier pour préremplir, pièces « pas encore payées » dans 401 (elles restent
+   dans « Fournisseurs à payer » de la Synthèse), écritures OD de régularisation, niveau dans
+   Personnalisation.
 
 À demander à la trésorière (vendredi 31 octobre) : son logiciel et si elle veut un export vers
 lui ; si elle confirme elle-même dans l'appli (compte Trésorier) ; son plan comptable 2025-26 ;

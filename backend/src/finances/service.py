@@ -63,6 +63,11 @@ class Finances:
     """Import des relevés et lecture de l'historique (voir le docstring du
     module)."""
 
+    def __init__(self, accounting=None) -> None:
+        # Comptabilité (accounting.py) : compte du plan et pièce sur chaque
+        # ligne de l'historique, si le sous-module est monté.
+        self.accounting = accounting
+
     # ----- import -----
 
     def import_files(self, db: Session, member: Member, files: list[tuple[str, bytes]]) -> dict:
@@ -342,6 +347,8 @@ class Finances:
             if balances[aid] is None and aid in first:
                 balances[aid] = first[aid].start_balance
         rows.reverse()
+        if self.accounting is not None:
+            self.accounting.annotate(db, org_id, rows)
 
         def as_of(account: FinAccount) -> str | None:
             # Date jusqu'à laquelle le solde est connu : fin du dernier
@@ -379,6 +386,8 @@ class Finances:
             "categories": CATEGORY_NAMES,
             "rows": rows,
             "issues": issues,
+            # Puces « Sans compte » / « Sans pièce » (spec §8.4).
+            "counts": self.accounting.counts(db, org_id, rows) if self.accounting is not None else None,
         }
 
 

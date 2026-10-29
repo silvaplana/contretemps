@@ -210,10 +210,15 @@ def _html(report: dict) -> str:
 
 
 def to_pdf(report: dict) -> bytes:
+    return html_to_pdf(_html(report), _CSS)
+
+
+def html_to_pdf(body: str, css: str = _CSS, landscape: bool = True) -> bytes:
+    """Un PDF A4 (paysage par défaut) à partir d'un fragment HTML (pymupdf)."""
     buffer = io.BytesIO()
-    page = pymupdf.paper_rect("a4-l")
+    page = pymupdf.paper_rect("a4-l" if landscape else "a4")
     where = page + (36, 36, -36, -36)
-    story = pymupdf.Story(html=_html(report), user_css=_CSS)
+    story = pymupdf.Story(html=body, user_css=css)
     writer = pymupdf.DocumentWriter(buffer)
     more = True
     while more:

@@ -7,6 +7,8 @@ Développé dans Contretemps pour devenir tel quel un module d'AppBase, comme
 `ports.py`, branchés dans `finances_contretemps/adapter.py`.
 """
 
+from .accounting import Accounting, AccountingError
+from .ag_documents import AgDocuments, AgPorts
 from .assemblies import AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .forecasts import ForecastError, ForecastNotFoundError, Forecasts
 from .models import FinAccount, FinAssembly, FinAssemblyFile, FinForecast, FinOperation, FinReport, FinStatement
@@ -15,8 +17,13 @@ from .ports import Member, Season
 from .receiver import FinancesReceiver
 from .reports import FinancialReports, ReportError, ReportNotFoundError
 from .service import AccountNotFoundError, Finances
+from .written_report import WrittenReports
 
 __all__ = [
+    "Accounting",
+    "AccountingError",
+    "AgDocuments",
+    "AgPorts",
     "AccountNotFoundError",
     "AssemblyError",
     "AssemblyNotFoundError",
@@ -39,5 +46,6 @@ __all__ = [
     "ReportNotFoundError",
     "Season",
     "StatementParseError",
+    "WrittenReports",
     "parse_statement",
 ]

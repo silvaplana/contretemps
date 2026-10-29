@@ -3,7 +3,7 @@ import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
-import PiecesExemple from '../finances/exemple/Pieces.jsx'
+import LignesBanque from '../finances/compta/LignesBanque.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeEtat, Compte, PaiementVu, Pieces as Vignettes, qui } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
@@ -12,15 +12,16 @@ import Virements from './Virements.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
 // frais, honoraires et achats sont une seule structure « dépense », avec une
-// nature ; chaque puce en est un filtre. À rattacher et Ventes sont encore
-// des écrans d'exemple. Un seul bouton principal, « + ».
+// nature ; chaque puce en est un filtre. À rattacher et Ventes sont des
+// lignes de banque (compte du plan à confirmer, financier.md §8.3 et §8.4).
+// Un seul bouton principal, « + ».
 const PUCES = [
   { value: 'virements', label: 'Virements' },
   { value: 'frais', label: 'Notes de frais' },
   { value: 'honoraires', label: 'Honoraires' },
   { value: 'achat', label: 'Achats' },
-  { value: 'a_rattacher', label: 'À rattacher', exemple: true },
-  { value: 'ventes', label: 'Ventes', exemple: true },
+  { value: 'a_rattacher', label: 'À rattacher', banque: true },
+  { value: 'ventes', label: 'Ventes', banque: true },
 ]
 
 const SUR_ORDINATEUR = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches
@@ -36,7 +37,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   const [plus, setPlus] = useState(false)
   const [natureAChoisir, setNatureAChoisir] = useState(false)
 
-  const exemple = PUCES.find((p) => p.value === puce)?.exemple
+  const banque = PUCES.find((p) => p.value === puce)?.banque
 
   return (
     <section aria-label="Pièces" className="nf-pieces">
@@ -54,8 +55,8 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
           </button>
         ))}
       </div>
-      {exemple ? (
-        <PiecesExemple dossier={puce} />
+      {banque ? (
+        <LignesBanque key={puce} filtre={puce} />
       ) : puce === 'virements' ? (
         <Virements onChange={onChange} />
       ) : (
@@ -68,23 +69,21 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
           onPour={onPour}
         />
       )}
-      {!exemple && (
-        <div className="nf-barre">
-          <span className="nf-barre__vide" />
-          <button
-            type="button"
-            className="nf-barre__plus"
-            aria-label="Ajouter une pièce"
-            onClick={() => (puce === 'virements' ? setNatureAChoisir(true) : setPlus(true))}
-          >
-            <Icon name="plus" size={26} />
-          </button>
-        </div>
-      )}
+      <div className="nf-barre">
+        <span className="nf-barre__vide" />
+        <button
+          type="button"
+          className="nf-barre__plus"
+          aria-label="Ajouter une pièce"
+          onClick={() => (puce === 'virements' || banque ? setNatureAChoisir(true) : setPlus(true))}
+        >
+          <Icon name="plus" size={26} />
+        </button>
+      </div>
       {natureAChoisir && (
         <Modal title="Quelle pièce ?" onClose={() => setNatureAChoisir(false)}>
           <div className="nf-choix">
-            {PUCES.filter((p) => !p.exemple && p.value !== 'virements').map((p) => (
+            {PUCES.filter((p) => !p.banque && p.value !== 'virements').map((p) => (
               <button
                 key={p.value}
                 type="button"

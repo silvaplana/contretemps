@@ -1,27 +1,15 @@
-/* Écrans d'EXEMPLE « Pièces et comptabilité » (exemple/donnees.js) : tout sous
-   .fin-ex, à retirer avec eux. */
+/* Comptabilité du Financier (spec/modules/financier.md §8) : plan comptable,
+   fiche d'une opération, caisse, lignes à classer. Tout sous .fin-cp. */
 
-.fin-ex-bande {
-  margin: 0;
-  padding: 12px 16px;
-  border-radius: 12px;
-  background: var(--rouge-surlignage);
-  color: #fff;
-  font-size: 19px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  text-align: center;
-  text-transform: uppercase;
-}
 
-.fin-ex {
+.fin-cp {
   display: flex;
   flex-direction: column;
   gap: 12px;
   text-align: left;
 }
 
-.fin-ex .filter-chips {
+.fin-cp .filter-chips {
   display: flex;
   gap: 8px;
   flex-wrap: nowrap;
@@ -29,7 +17,7 @@
   padding-bottom: 2px;
 }
 
-.fin-ex .filter-chip {
+.fin-cp .filter-chip {
   flex-shrink: 0;
   min-height: 44px;
   padding: 8px 16px;
@@ -41,14 +29,14 @@
   cursor: pointer;
 }
 
-.fin-ex .filter-chip-active {
+.fin-cp .filter-chip-active {
   background: var(--accent-bg);
   border-color: var(--accent);
   color: var(--accent);
   font-weight: 600;
 }
 
-.fin-ex-carte {
+.fin-cp-carte {
   border: 1px solid var(--border);
   border-radius: 12px;
   padding: 12px 14px;
@@ -58,14 +46,14 @@
   gap: 8px;
 }
 
-.fin-ex-piece {
+.fin-cp-piece {
   display: grid;
   grid-template-columns: 64px 1fr;
   gap: 10px;
   align-items: start;
 }
 
-.fin-ex-photo {
+.fin-cp-photo {
   width: 64px;
   height: 64px;
   border-radius: 10px;
@@ -80,12 +68,12 @@
   object-fit: cover;
 }
 
-.fin-ex-piece b {
+.fin-cp-piece b {
   display: block;
   color: var(--text-h);
 }
 
-.fin-ex-proposition {
+.fin-cp-proposition {
   border-left: 3px solid var(--accent);
   background: var(--accent-bg);
   border-radius: 0 8px 8px 0;
@@ -94,22 +82,22 @@
   font-size: 15px;
 }
 
-.fin-ex-proposition--aucune {
+.fin-cp-proposition--aucune {
   border-color: var(--warning-text);
   background: var(--warning-bg);
 }
 
-.fin-ex-boutons {
+.fin-cp-boutons {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
 
-.fin-ex-boutons .btn {
+.fin-cp-boutons .btn {
   flex: 1;
 }
 
-.fin-ex-ligne {
+.fin-cp-ligne {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 2px 10px;
@@ -126,16 +114,16 @@
   min-height: 48px;
 }
 
-.fin-ex-ligne:last-child {
+.fin-cp-ligne:last-child {
   border-bottom: 0;
 }
 
-.fin-ex-ligne .fin-ex-l {
+.fin-cp-ligne .fin-cp-l {
   font-weight: 600;
   color: var(--text-h);
 }
 
-.fin-ex-ligne .fin-ex-m {
+.fin-cp-ligne .fin-cp-m {
   font-weight: 600;
   text-align: right;
   white-space: nowrap;
@@ -143,17 +131,17 @@
   color: var(--text-h);
 }
 
-.fin-ex-ligne .fin-ex-m.in {
+.fin-cp-ligne .fin-cp-m.in {
   color: var(--success-text);
 }
 
-.fin-ex-ligne .fin-ex-s {
+.fin-cp-ligne .fin-cp-s {
   grid-column: 1 / -1;
   font-size: 14px;
   color: var(--text-muted);
 }
 
-.fin-ex-compte {
+.fin-cp-compte {
   display: grid;
   grid-template-columns: 60px 1fr auto;
   gap: 8px;
@@ -163,23 +151,23 @@
   min-height: 44px;
 }
 
-.fin-ex-compte:last-child {
+.fin-cp-compte:last-child {
   border-bottom: 0;
 }
 
-.fin-ex-compte .fin-ex-num {
+.fin-cp-compte .fin-cp-num {
   color: var(--text-muted);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
-.fin-ex-compte .fin-ex-c {
+.fin-cp-compte .fin-cp-c {
   font-size: 13px;
   color: var(--text-muted);
   white-space: nowrap;
 }
 
-.fin-ex h3 {
+.fin-cp h3 {
   margin: 0;
   font-size: 15px;
   color: var(--text-muted);
@@ -187,25 +175,25 @@
   letter-spacing: 0.02em;
 }
 
-.fin-ex-table {
+.fin-cp-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 15px;
   font-variant-numeric: tabular-nums;
 }
 
-.fin-ex-table td {
+.fin-cp-table td {
   padding: 5px 4px;
   border-bottom: 1px solid var(--border);
   vertical-align: top;
 }
 
-.fin-ex-table td.r {
+.fin-cp-table td.r {
   text-align: right;
   white-space: nowrap;
 }
 
-.fin-ex-table tr.grp td {
+.fin-cp-table tr.grp td {
   font-weight: 600;
   color: var(--text-muted);
   font-size: 13px;
@@ -213,13 +201,13 @@
   padding-top: 10px;
 }
 
-.fin-ex-table tr.tot td {
+.fin-cp-table tr.tot td {
   font-weight: 700;
   color: var(--text-h);
   border-top: 2px solid var(--border);
 }
 
-.fin-ex-doc {
+.fin-cp-doc {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 2px 10px;
@@ -228,51 +216,51 @@
   border-bottom: 1px solid var(--border);
 }
 
-.fin-ex-doc:last-child {
+.fin-cp-doc:last-child {
   border-bottom: 0;
 }
 
-.fin-ex-doc .fin-ex-t {
+.fin-cp-doc .fin-cp-t {
   font-weight: 600;
   color: var(--text-h);
 }
 
-.fin-ex-doc .fin-ex-s {
+.fin-cp-doc .fin-cp-s {
   grid-column: 1;
   font-size: 14px;
   color: var(--text-muted);
 }
 
-.fin-ex-doc .fin-ex-a {
+.fin-cp-doc .fin-cp-a {
   grid-row: 1 / span 2;
   display: flex;
   gap: 6px;
 }
 
-.fin-ex-doc .fin-ex-a .btn {
+.fin-cp-doc .fin-cp-a .btn {
   min-height: 44px;
   padding: 6px 12px;
 }
 
-.fin-ex-champ {
+.fin-cp-champ {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.fin-ex-champ > span {
+.fin-cp-champ > span {
   font-size: 14px;
   color: var(--text-muted);
 }
 
-.fin-ex-niveau {
+.fin-cp-niveau {
   display: flex;
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
 }
 
-.fin-ex-niveau button {
+.fin-cp-niveau button {
   flex: 1;
   min-height: 48px;
   border: 0;
@@ -281,40 +269,99 @@
   font: inherit;
 }
 
-.fin-ex-niveau button.is-active {
+.fin-cp-niveau button.is-active {
   background: var(--accent-bg);
   color: var(--accent);
   font-weight: 600;
 }
 
-.fin-ex .badge {
+.fin-cp .badge {
   white-space: normal;
   line-height: 1.3;
 }
 
-.fin-ex .muted {
+.fin-cp .muted {
   color: var(--text-muted);
   font-size: 15px;
   margin: 0;
 }
 
-.fin-ex-compteur {
+.fin-cp-compteur {
   font-weight: 600;
   text-align: center;
   color: var(--text-h);
 }
 
 /* Ligne du tableau Comptes qui s'ouvre d'un appui (fiche de l'opération). */
-.fin-comptes .history-table tbody tr.fin-ex-cliquable {
+.fin-comptes .history-table tbody tr.fin-cp-cliquable {
   cursor: pointer;
 }
 
-.fin-comptes .fin-ex-sous {
+.fin-comptes .fin-cp-sous {
   display: block;
   font-size: 13px;
   color: var(--text-muted);
 }
 
-.fin-comptes .fin-ex-sous .badge {
+.fin-comptes .fin-cp-sous .badge {
   margin-left: 4px;
+}
+
+/* Une ligne de compte du plan est un bouton (fiche du compte). */
+button.fin-cp-compte {
+  width: 100%;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+button.fin-cp-compte:last-child {
+  border-bottom: 0;
+}
+
+/* Rapport financier rédigé : texte à l'écran et alertes. */
+.fin-cp-rapport h5 {
+  margin: 14px 0 4px;
+  font-size: 17px;
+  color: var(--text-h);
+}
+
+.fin-cp-rapport p,
+.fin-cp-rapport li {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+
+.fin-cp-alerte {
+  color: var(--unpaid, #b45309);
+  font-size: 15px;
+}
+
+/* Ligne à plusieurs boutons : titre et sous-titre d'abord, boutons dessous. */
+.fin-cp-doc--large {
+  grid-template-columns: 1fr;
+}
+
+.fin-cp-doc--large .fin-cp-a {
+  grid-row: 3;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+
+/* Soldes de départ : libellé et montant sur une ligne. */
+.fin-cp-solde {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fin-cp-solde .field-input {
+  width: 140px;
+  text-align: right;
 }

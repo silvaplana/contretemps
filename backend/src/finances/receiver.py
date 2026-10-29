@@ -16,6 +16,10 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
+from .accounting import Accounting, AccountingError
+from .ag_documents import AgDocuments
+from .ai import AnalysisError
+from .written_report import WrittenReports
 from .assemblies import PPTX, AssemblyError, AssemblyNotFoundError, GeneralAssemblies
 from .bank import Bank, BankError
 from .exports import to_pdf, to_xlsx
@@ -103,6 +107,56 @@ class RenameRequest(BaseModel):
     name: str
 
 
+class ChartAccountRequest(BaseModel):
+    """Corps de POST /finances/chart et PUT /finances/chart/{id} : un compte
+    du plan (spec §8.2)."""
+
+    number: str
+    label: str
+    nature: str | None = None
+    event: str | None = None
+    keywords: list[str] = []
+    active: bool | None = None
+
+
+class LevelRequest(BaseModel):
+    """Corps de PUT /finances/chart/level : "simple" ou "complet"."""
+
+    level: str
+
+
+class WriteRequest(BaseModel):
+    """Corps de POST /finances/reports/{id}/rapport : consignes et modèle."""
+
+    prompt: str = ""
+    model: str | None = None
+
+
+class OpeningRequest(BaseModel):
+    """Corps de PUT /finances/opening-balances/{season_id} : un solde par compte."""
+
+    accounts: list[dict]
+
+
+class LinesRequest(BaseModel):
+    """Corps de PUT /finances/operations/{id}/accounts : la ventilation
+    confirmée ({accountId, amount en euros}) ; une seule ligne = tout le
+    montant ; vide = compte retiré."""
+
+    lines: list[dict]
+
+
+class CashLineRequest(BaseModel):
+    """Corps de POST /finances/cash : une ligne de caisse (spec §8.5)."""
+
+    date: str
+    label: str
+    amount: float
+    accountId: int | None = None
+    transferOperationId: int | None = None
+    docNodeId: int | None = None
+
+
 def _http(error: Exception) -> HTTPException:
     if isinstance(error, ReportNotFoundError):
         return HTTPException(status_code=404, detail="Bilan inconnu")
@@ -127,6 +181,9 @@ class FinancesReceiver:
         forecasts: Forecasts | None = None,
         bank: Bank | None = None,
         org_url: Callable[[Session, int | None], str] | None = None,
+        accounting: Accounting | None = None,
+        ag_documents: AgDocuments | None = None,
+        written_reports: WrittenReports | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
@@ -142,11 +199,18 @@ class FinancesReceiver:
         # org_url(db, org_id) : l'adresse de l'appli de l'organisation, où
         # revenir après la banque.
         self.org_url = org_url
+        self.accounting = accounting
+        self.ag_documents = ag_documents
+        self.written_reports = written_reports
         self._register_routes()
+        if accounting is not None:
+            self._register_accounting_routes()
         if bank is not None:
             self._register_bank_routes()
         if reports is not None:
             self._register_report_routes()
+        if reports is not None and ag_documents is not None:
+            self._register_ag_document_routes()
         if assemblies is not None:
             self._register_assembly_routes()
         if forecasts is not None:
@@ -267,6 +331,69 @@ class FinancesReceiver:
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    def _register_accounting_routes(self) -> None:
+        """Comptabilité (accounting.py, spec §8) : plan comptable, niveau,
+        compte sur chaque ligne, caisse."""
+        app, accounting = self.app, self.accounting
+        db_dep = Depends(get_db)
+        member_dep = Depends(self.current_member)
+
+        def call(action, *args):
+            try:
+                return action(*args)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+            except LookupError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            except (AccountingError, ValueError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+        @app.get("/finances/chart")
+        def get_chart(db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.chart, db, member)
+
+        @app.put("/finances/chart/level")
+        def set_level(data: LevelRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return {"level": call(accounting.set_level, db, member, data.level)}
+
+        @app.post("/finances/chart", status_code=201)
+        def create_chart_account(data: ChartAccountRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.create_account, db, member, data.model_dump())
+
+        @app.put("/finances/chart/{account_id}")
+        def update_chart_account(
+            account_id: int, data: ChartAccountRequest, db: Session = db_dep, member: Member = member_dep
+        ) -> dict:
+            return call(accounting.update_account, db, member, account_id, data.model_dump(exclude_none=True))
+
+        @app.delete("/finances/chart/{account_id}", status_code=204)
+        def delete_chart_account(account_id: int, db: Session = db_dep, member: Member = member_dep) -> Response:
+            call(accounting.delete_account, db, member, account_id)
+            return Response(status_code=204)
+
+        @app.get("/finances/operations/{operation_id}")
+        def get_operation(operation_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """La fiche d'une opération (spec §8.4)."""
+            return call(accounting.operation, db, member, operation_id)
+
+        @app.put("/finances/operations/{operation_id}/accounts")
+        def set_operation_accounts(
+            operation_id: int, data: LinesRequest, db: Session = db_dep, member: Member = member_dep
+        ) -> dict:
+            return call(accounting.set_lines, db, member, operation_id, data.lines)
+
+        @app.get("/finances/cash")
+        def get_cash(db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.cash, db, member)
+
+        @app.post("/finances/cash", status_code=201)
+        def add_cash_line(data: CashLineRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.add_cash_line, db, member, data.model_dump())
+
+        @app.delete("/finances/cash/{line_id}")
+        def delete_cash_line(line_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return call(accounting.delete_cash_line, db, member, line_id)
+
     def _register_report_routes(self) -> None:
         app, reports = self.app, self.reports
         db_dep = Depends(get_db)
@@ -326,6 +453,120 @@ class FinancesReceiver:
                 raise HTTPException(status_code=400, detail="Format inconnu (xlsx ou pdf)")
             name = f"bilan-{report['result']['seasonName']}-{report['id']}.{format}"
             return Response(content, media_type=media_type, headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    def _register_ag_document_routes(self) -> None:
+        """Documents de l'AG sous un bilan (ag_documents.py, spec §8.6)."""
+        app, reports, documents = self.app, self.reports, self.ag_documents
+        db_dep = Depends(get_db)
+        member_dep = Depends(self.current_member)
+
+        def season_of(db: Session, member: Member, report_id: int) -> Season:
+            try:
+                report = reports.get(db, member, report_id)
+            except (ReportNotFoundError, PermissionError) as error:
+                raise _http(error) from error
+            season = next((s for s in self.seasons(db, member.org_id) if s.id == report["seasonId"]), None)
+            if season is None:
+                raise HTTPException(status_code=404, detail="Saison inconnue")
+            return season
+
+        @app.get("/finances/reports/{report_id}/documents")
+        def list_documents(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les documents possibles au niveau de l'organisation, et la
+            Synthèse à l'écran."""
+            season = season_of(db, member, report_id)
+            level = documents.accounting.level(db, member.org_id)
+            return {
+                "level": level,
+                "documents": documents.kinds(level),
+                "synthese": documents.synthese(db, member, season),
+                "closing": documents.closing_status(db, member.org_id, season),
+            }
+
+        def ag_call(action, *args):
+            try:
+                return action(*args)
+            except (ValueError, PermissionError) as error:
+                raise _http(error) from error
+
+        @app.post("/finances/reports/{report_id}/close")
+        def close_season(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Clôture de la saison du bilan (§8.7) : résultat dans 110, soldes
+            reportés, saison verrouillée."""
+            return {"closing": ag_call(documents.close, db, member, season_of(db, member, report_id))}
+
+        @app.delete("/finances/reports/{report_id}/close")
+        def reopen_season(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return {"closing": ag_call(documents.reopen, db, member, season_of(db, member, report_id))}
+
+        def season_by_id(db: Session, member: Member, season_id: int) -> Season:
+            season = next((s for s in self.seasons(db, member.org_id) if s.id == season_id), None)
+            if season is None:
+                raise HTTPException(status_code=404, detail="Saison inconnue")
+            return season
+
+        @app.get("/finances/opening-balances/{season_id}")
+        def get_opening(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Soldes de départ de la saison (§8.7) et vérification contre les relevés."""
+            return ag_call(documents.opening, db, member, season_by_id(db, member, season_id))
+
+        @app.put("/finances/opening-balances/{season_id}")
+        def set_opening(season_id: int, data: OpeningRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return ag_call(documents.set_opening, db, member, season_by_id(db, member, season_id), data.accounts)
+
+        @app.get("/finances/operations/{operation_id}/entries")
+        def operation_entries(operation_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les écritures générées pour une opération (fiche, §8.4)."""
+            try:
+                sheet = documents.accounting.operation(db, member, operation_id)
+            except (LookupError, PermissionError) as error:
+                raise _http(error) from error
+            return {"entries": documents.operation_entries(db, member, operation_id, sheet["date"])}
+
+        written = self.written_reports
+
+        if written is not None:
+
+            @app.get("/finances/reports/{report_id}/rapport")
+            def get_written(report_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """Le dernier rapport financier rédigé pour ce bilan (ou vide)."""
+                season_of(db, member, report_id)
+                return {"rapport": written.get(db, report_id), "models": reports.models()["models"], "defaultModel": reports.models()["defaultModel"]}
+
+            @app.post("/finances/reports/{report_id}/rapport")
+            async def write_report(report_id: int, data: WriteRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """Fait rédiger le rapport (le modèle écrit le texte, l'appli
+                place les chiffres)."""
+                season = season_of(db, member, report_id)
+                report = reports.get(db, member, report_id)
+                analysis = (report.get("result") or {}).get("analysis", [])
+                try:
+                    return await run_in_threadpool(
+                        written.write, db, member, report_id, season, data.prompt, data.model or reports.models()["defaultModel"], analysis
+                    )
+                except AnalysisError as exc:
+                    raise HTTPException(status_code=502, detail=str(exc)) from exc
+
+            @app.get("/finances/reports/{report_id}/rapport/download")
+            def download_written(report_id: int, format: str = "docx", db: Session = db_dep, member: Member = member_dep) -> Response:
+                season = season_of(db, member, report_id)
+                try:
+                    content, name, media = written.produce(db, member, report_id, season, format)
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+                return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
+
+        @app.get("/finances/reports/{report_id}/documents/{kind}")
+        def download_document(report_id: int, kind: str, db: Session = db_dep, member: Member = member_dep) -> Response:
+            """Un document produit (xlsx ou pdf), aussi rangé dans Docs › Financier › AG."""
+            season = season_of(db, member, report_id)
+            try:
+                content, name, media = documents.produce(db, member, season, kind)
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
 
     def _register_assembly_routes(self) -> None:
         """Routes du sous-module Assemblée générale (/finances/assemblies)."""
