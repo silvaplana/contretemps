@@ -4,7 +4,8 @@ Chaque module déclare les siennes dans son propre `actions.py` ; app/main.py
 les remet à l'assistant, qui n'importe aucun module. Une action devient un
 outil de l'assistant ; l'appeler ne change rien : la personne voit une carte
 Faire / Annuler (la même que les modifications de données), et la fonction
-du module ne tourne qu'au clic.
+du module ne tourne qu'au clic. Une lecture (`read`, Seb 30 octobre) répond
+tout de suite, sans carte : le module rend le texte que l'assistant lit.
 """
 
 from __future__ import annotations
@@ -35,8 +36,12 @@ class Action:
     # (db, compte, org_id, params) -> Ligne : vérifie droits et données, puis
     # rend le libellé de la carte et la fonction à lancer au clic. Un refus
     # se signale par Refus, PermissionError, LookupError ou HTTPException.
-    prepare: Callable[[Session, object, int, BaseModel], Ligne]
+    # None pour une lecture.
+    prepare: Callable[[Session, object, int, BaseModel], Ligne] | None
     admin_only: bool = True  # outil montré seulement aux administrateurs
+    # Lecture : (db, compte, org_id, params) -> texte rendu à l'assistant,
+    # sans carte. Mêmes refus que `prepare`.
+    read: Callable[[Session, object, int, BaseModel], str] | None = None
 
 
 class Actions:
@@ -62,6 +67,8 @@ class Actions:
         action = self.by_name[name]
         params = action.params.model_validate(args)  # ValueError : renvoyée telle quelle à l'assistant
         try:
+            if action.read is not None:
+                return action.read(db, compte, org_id, params), None
             ligne = action.prepare(db, compte, org_id, params)
         except HTTPException as erreur:
             return f"Refusé : {erreur.detail}", None

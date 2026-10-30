@@ -23,6 +23,7 @@ from registry import Module, Right
 from securite.chiffrement import chiffrer, dechiffrer
 
 from .actions import actions
+from .lectures import financier
 from .adapter import (
     FINANCES_ACCESS,
     adresse_ecole,
@@ -132,13 +133,20 @@ def mount(app, core) -> None:
     core.finances_reports = finances_reports
     core.finances_assemblies = finances_assemblies
     core.finances_forecasts = finances_forecasts
+    core.finances_written = finances_written
 
 
 MODULE = Module(
     key="finances", label="Financier", mount=mount, requires=("seasons", "documents", "expense_notes"),
     rights=(Right(FINANCES_ACCESS, "Accès au Financier"),),
-    actions=lambda core: actions(
-        core.finances_reports, core.finances_assemblies, core.finances_forecasts,
-        core.finances_client, saisons_de_l_ecole,
-    ),
+    actions=lambda core: [
+        *actions(
+            core.finances_reports, core.finances_assemblies, core.finances_forecasts,
+            core.finances_client, saisons_de_l_ecole,
+        ),
+        *financier(
+            core.finances_client, core.finances_accounting, core.finances_reports, core.finances_assemblies,
+            core.finances_forecasts, core.finances_ag_documents, core.finances_written, saisons_de_l_ecole,
+        ),
+    ],
 )

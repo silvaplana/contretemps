@@ -289,9 +289,36 @@ dans l'appli. Réservées aux trésoriers et au Super User (refus sinon) :
 | `produce_general_assembly` | Crée une AG et lance le PowerPoint : il faut un bilan calculé (sinon refus qui renvoie au bilan) et un PowerPoint modèle (par défaut l'AG officielle de la saison précédente, sinon le modèle général ; ou `template` : une AG désignée par son nom ou sa saison, « modèle général »). |
 | `produce_forecast` | Crée un prévisionnel (date de départ facultative, vérifiée dans la saison) et lance son calcul. |
 
-Pas d'action pour Comptes : importer des relevés demande un fichier, que l'assistant ne transmet
-pas aux actions. L'assistant ne lit pas encore les chiffres du Financier (soldes, bilans) : à
-décider avec Seb.
+Pas d'action pour importer des relevés : il faut un fichier, que l'assistant ne transmet pas
+aux actions.
+
+**Tout le Financier ouvert à l'assistant (Seb, 30 octobre 2026).** Le code est dans
+`finances_contretemps/lectures.py`, et Pièces dans `notes_frais_contretemps/actions.py`.
+
+- **Lectures** (réponse sans carte, en JSON calculé par l'appli) :
+  - `finance_guide` : plan des écrans et des boutons, et règles de l'appli (à classer,
+    Simple / Complet, lettrage) ;
+  - `finance_bank_accounts`, `finance_operations` (filtres saison, dates, libellé, compte du
+    plan, sans compte, sans pièce), `finance_operation` (fiche et écritures d'une ligne) ;
+  - `finance_chart` ;
+  - `finance_reports`, `finance_report` (contenu du bilan, analyse, rapport financier rédigé) ;
+  - `finance_ag_document` (synthèse, balance, grand livre, honoraires) ;
+  - `finance_assemblies`, `finance_assembly_slides` (texte de chaque diapo) ;
+  - `finance_forecasts` ;
+  - `expense_notes` (pièces à valider, à payer, terminées).
+- **Écritures** (carte Faire / Annuler) :
+  - `set_operation_accounts` : confirmer le compte de lignes choisies par numéro ou par
+    libellé ; sans compte donné, l'appli confirme ses propositions ;
+  - `recalculate_financial_report`, `write_financial_statement`, `store_ag_document` ;
+  - `edit_chart_account` (ajouter, renommer, mots-clés, activer), `delete_chart_account`
+    (supprime un compte jamais utilisé, désactive sinon), `set_accounting_level` (Complet,
+    sans retour) ;
+  - `review_expense_notes` : valider et refuser plusieurs pièces sur une seule carte. On
+    demande « propose-moi les validations » ; l'assistant lit les pièces à valider, explique
+    chaque proposition, puis présente la carte ;
+  - `mark_expense_notes_paid`.
+- **Laissés aux écrans** (gestes rares) : clôture, soldes de départ, import de relevés et
+  connexion à la banque.
 
 ## 8. Pièces et comptabilité (28 octobre 2026)
 

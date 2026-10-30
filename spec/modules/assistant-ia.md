@@ -51,9 +51,14 @@ class Action:
     module: str                  # titre de la carte, ex. "Messagerie"
     description: str             # ce que l'assistant lit pour choisir l'action
     params: type[BaseModel]      # paramètres (Pydantic), vérifiés avant tout
-    prepare: Callable            # (db, compte, org_id, params) -> Ligne
+    prepare: Callable | None     # (db, compte, org_id, params) -> Ligne ; None pour une lecture
     admin_only: bool = True      # outil montré seulement aux administrateurs
+    read: Callable | None = None # lecture : (db, compte, org_id, params) -> texte, sans carte
 ```
+
+- **Lecture** (Seb, 30 octobre 2026) : une action qui porte `read` répond tout de suite, sans
+  carte. Le module rend le texte que l'assistant lit, et les refus sont les mêmes que pour
+  `prepare`. Le Financier s'en sert pour toutes ses données (`financier.md` §7).
 
 - `prepare` vérifie les droits et les données, puis rend une `Ligne` : le libellé de la carte et la
   fonction à lancer au clic. Il ne change rien. Un refus (droits, donnée introuvable) revient à
