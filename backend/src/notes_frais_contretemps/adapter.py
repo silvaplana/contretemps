@@ -160,7 +160,9 @@ class ClasseurContretemps:
     trésoriers (dossier système, voir documents.md §4.7 bis)."""
 
     DOSSIER = "Notes de frais"
-    DOSSIERS = ("Notes de frais", "Honoraires", "Achats")
+    # Les racines de pièces sous Financier (les anciens noms gardés : des
+    # pièces y sont déjà rangées), jamais retirées quand elles se vident.
+    DOSSIERS = ("Notes de frais", "HONORAIRES", "ACHATS", "Honoraires", "Achats")
 
     def __init__(self, documents, financier: str = "Financier") -> None:
         self.documents = documents

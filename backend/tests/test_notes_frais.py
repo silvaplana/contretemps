@@ -487,8 +487,9 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
 
     saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
     financier = _enfant(client, org, tresorier, saison["id"], "Financier")
-    achats = _enfant(client, org, tresorier, financier["id"], "Achats")
-    noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, achats["id"]).json()["items"])
+    achats = _enfant(client, org, tresorier, financier["id"], "ACHATS")
+    mois = _enfant(client, org, tresorier, achats["id"], "02.2025")
+    noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"])
     assert noms == ["2025-02-09 Amazon 39,90 (2).jpg", "2025-02-09 Amazon 39,90.jpg"]
 
     puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
@@ -510,8 +511,13 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
 def _achats_de_la_saison(client, org, qui, saison):
     dossier = _enfant(client, org, qui, None, f"Saison {saison}")
     financier = dossier and _enfant(client, org, qui, dossier["id"], "Financier")
-    achats = financier and _enfant(client, org, qui, financier["id"], "Achats")
-    return sorted(i["name"] for i in _parcourir(client, org, qui, achats["id"]).json()["items"]) if achats else []
+    achats = financier and _enfant(client, org, qui, financier["id"], "ACHATS")
+    if not achats:
+        return []
+    # Un dossier par mois de la pièce (« 03.2026 », Seb 30/10).
+    mois = _parcourir(client, org, qui, achats["id"]).json()["items"]
+    assert all(m["name"][2] == "." and len(m["name"]) == 7 for m in mois), mois
+    return sorted(i["name"] for m in mois for i in _parcourir(client, org, qui, m["id"]).json()["items"])
 
 
 def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecole, monkeypatch):

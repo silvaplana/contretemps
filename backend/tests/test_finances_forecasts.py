@@ -322,7 +322,8 @@ def test_forecast_routes_and_downloads(client, db_session, ecole, monkeypatch): 
     tresorier = entetes_session(ecole["tresorier"])
     files = [("files", (name, data, "application/pdf")) for name, data in statements_for_reports()]
     assert client.post("/finances/import", files=files, headers=tresorier).status_code == 200
-    saison = client.get("/finances/seasons", headers=tresorier).json()["seasons"][0]
+    # L'import a pu créer la saison passée de ses relevés : la courante.
+    saison = next(s for s in client.get("/finances/seasons", headers=tresorier).json()["seasons"] if s["current"])
 
     listing = client.get("/finances/forecasts", params={"seasonId": saison["id"]}, headers=tresorier).json()
     assert listing["defaultModel"] == "claude-sonnet-5-5" and listing["forecasts"] == [] and listing["counts"] == {}

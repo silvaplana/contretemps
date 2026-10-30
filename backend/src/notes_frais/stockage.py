@@ -36,6 +36,15 @@ def nom_propre(texte: str, longueur: int = 60) -> str:
     return propre[:longueur].strip(" .") or "sans nom"
 
 
+def nom_dossier(texte: str, longueur: int = 60) -> str:
+    """Nom de dossier de Docs en majuscules sans accent (« Agnès Pesenti »
+    → « AGNES PESENTI », règle de Seb du 30 octobre 2026)."""
+    import unicodedata
+
+    sans_accent = "".join(c for c in unicodedata.normalize("NFD", texte or "") if unicodedata.category(c) != "Mn")
+    return nom_propre(sans_accent.upper(), longueur)
+
+
 class StockageEnveloppes:
     def __init__(self, root: Path, max_bytes: int) -> None:
         self.root = Path(root)

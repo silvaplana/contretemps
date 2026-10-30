@@ -328,6 +328,24 @@ la trésorière de Contretemps (comptable de métier) produit pour l'AG, édité
 par son logiciel comptable pour 2024-25 : **Balance**, **Grand livre**, **Rapport financier**
 (Word) et **Synthèse Dépenses-Recettes** (Excel). Ce sont les modèles de forme à reproduire.
 
+**Dossiers de Docs › Privé › Saison › Financier (Seb, 30 octobre 2026)**, noms en majuscules sans
+accent, créés vides par l'appli quand un trésorier ouvre le Financier (saison en cours et saisons
+ouvertes) :
+
+- **RELEVES BANCAIRES** › un dossier par compte en banque (le nom de sa puce dans Comptes) : le PDF de
+  chaque relevé importé y est rangé, dans la saison de sa date de fin ; une saison passée absente est
+  créée (septembre à août, comme dans Admin › Saisons) ; une saison terminée et fermée ne reçoit rien
+  (la rouvrir, puis réimporter). Réimporter un relevé déjà importé range son PDF sans recréer ses lignes :
+  c'est ainsi qu'on range les relevés importés avant le 30 octobre.
+- **ACHATS** › un dossier par mois de la pièce, « MM.AAAA » (« 08.2026 »), créé avec la première pièce
+  du mois : les achats payés avec les comptes de l'association.
+- **HONORAIRES** › un dossier par prof, « PRENOM NOM » › un dossier par note d'honoraires (une note
+  regroupe des dépenses, une par facture, comme une note de frais).
+- **Notes de frais** : inchangé (par personne, puis par note).
+- **VENTES** › **COTISATIONS**, **COURS**, **PARTICIPATION GALA** (vides : pas encore de pièces de vente).
+
+Les pièces rangées avant le 30 octobre restent dans les anciens dossiers « Achats » et « Honoraires ».
+
 Objectif : les produire dans l'appli à partir des comptes en banque (§3) et des justificatifs, sans
 ressaisie, et sans que l'assistant écrive un chiffre. Ce que l'association a : des dossiers papier
 par nature de pièce, que la trésorière a fait créer dans Docs › Privé › Saison <saison> › Financier

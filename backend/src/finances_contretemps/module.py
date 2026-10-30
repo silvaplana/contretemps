@@ -5,7 +5,10 @@ relié ici aux saisons et aux fiches de Contretemps."""
 import os
 from pathlib import Path
 
-from db import SessionLocal
+from fastapi import Depends
+from sqlalchemy.orm import Session
+
+from db import SessionLocal, get_db
 from finances import (
     Accounting,
     AgDocuments,
@@ -34,6 +37,8 @@ from .adapter import (
     pieces_a_payer,
     dossier_ag,
     ranger_dans_docs,
+    preparer_dossiers_financier,
+    ranger_releve,
     saisons_de_l_ecole,
 )
 
@@ -60,7 +65,11 @@ def mount(app, core) -> None:
     # Comptabilité (spec §8) : plan comptable, compte sur chaque ligne,
     # caisse ; la pièce d'une ligne vient des dépenses du module Notes de frais.
     finances_accounting = Accounting(pieces=pieces_des_operations)
-    finances_client = Finances(accounting=finances_accounting)
+    # Le PDF de chaque relevé importé va dans Docs › Saison › Financier ›
+    # RELEVES BANCAIRES › <compte> (Seb, 30/10).
+    finances_client = Finances(
+        accounting=finances_accounting, store_statement=ranger_releve(core.documents_client, core.gestion_saisons)
+    )
     # Bilan : tableau calculé depuis l'historique des comptes, analyse par
     # l'API Claude (ANTHROPIC_API_KEY), coût noté à l'école comme celui de
     # l'assistant.
@@ -112,10 +121,19 @@ def mount(app, core) -> None:
         store=ranger_dans_docs(core.documents_client),
     )
     finances_bank = Bank(client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer)
+    # Les dossiers vides de la trésorière sous Docs › Financier (Seb, 30/10)
+    # sont créés quand un trésorier ouvre le Financier.
+    preparer = preparer_dossiers_financier(core.documents_client)
+
+    def tresorier_et_dossiers(member=Depends(membre_appelant), db: Session = Depends(get_db)):
+        if member.is_treasurer:
+            preparer(db, member)
+        return member
+
     FinancesReceiver(
         client=finances_client,
         app=app,
-        current_member=membre_appelant,
+        current_member=tresorier_et_dossiers,
         seasons=saisons_de_l_ecole,
         reports=finances_reports,
         assemblies=finances_assemblies,

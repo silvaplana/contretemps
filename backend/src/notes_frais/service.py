@@ -44,7 +44,7 @@ from .models import (
 )
 from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, TicketLu
 from . import recapitulatif
-from .stockage import StockageEnveloppes, nom_propre
+from .stockage import StockageEnveloppes, nom_dossier, nom_propre
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ FILTRES = ("a_valider", "a_rembourser", "terminees")
 # À payer, pas encore vu sur le compte (financier.md §8.3 bis).
 EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
 # Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
-DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "Honoraires", ACHAT: "Achats"}
+DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS"}
 MOIS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
         "novembre", "décembre")
 MOIS_COURTS = ("janv", "fevr", "mars", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec")
@@ -809,14 +809,21 @@ class NotesDeFrais:
     # --- Rangement dans Docs (§7 bis, financier.md §8.3 bis) ---
 
     def _chemin_docs(self, db: Session, note: NoteFrais) -> list[str] | None:
-        """Dossiers sous Financier : par personne puis par note (notes de
-        frais, honoraires), ou directement Achats. None : pas encore rangeable
-        (honoraires dont on ne sait pas encore pour qui)."""
+        """Dossiers sous Financier (Seb, 30/10) : ACHATS › mois de la pièce
+        (« 08.2026 ») ; HONORAIRES › PRENOM NOM du prof › la note ; Notes de
+        frais › personne › la note. None : pas encore rangeable (honoraires
+        dont on ne sait pas encore pour qui)."""
         if note.nature == ACHAT:
-            return [DOSSIERS[ACHAT]]
+            return [DOSSIERS[ACHAT], f"{self._date_docs(note):%m.%Y}"]
         if note.person_id == PERSONNE_A_CHOISIR:
             return None
         personne = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        if note.nature == HONORAIRES:
+            return [
+                DOSSIERS[HONORAIRES],
+                nom_dossier(personne.nom if personne else "?"),
+                f"{note.envoyee_le.date().isoformat()} {nom_propre(note.titre)} ({note.id})",
+            ]
         return [
             DOSSIERS[note.nature],
             self.stockage.dossier_personne(note.org_id, note.person_id, personne.nom if personne else "?"),
