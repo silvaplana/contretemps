@@ -103,9 +103,17 @@ def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
             # Date de la facture (première dépense), sinon de l'envoi : l'achat du jour de la facture (§8.7).
             "date": min((d.date for d in n.depenses), default=n.envoyee_le.date()).isoformat(),
             "person": noms.get(n.person_id, ""),
+            # Le compte du plan de la catégorie de ses dépenses, s'il n'y en a
+            # qu'un : il fait proposer ce compte sur la ligne de banque.
+            "account": _compte_des_depenses(n),
         }
         for n in notes
     }
+
+
+def _compte_des_depenses(note) -> str | None:
+    codes = {d.categorie.code if d.categorie else None for d in note.depenses}
+    return codes.pop() if len(codes) == 1 else None
 
 
 def pieces_a_payer(db: Session, ecole_id: int) -> list[dict]:

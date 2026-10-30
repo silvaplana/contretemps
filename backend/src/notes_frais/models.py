@@ -49,6 +49,9 @@ class CategorieFrais(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     libelle: Mapped[str] = mapped_column(String(60), nullable=False)
+    # Numéro du compte de charges du plan comptable dont la catégorie est le
+    # reflet (Ports.plan), ou None pour une catégorie libre.
+    code: Mapped[str | None] = mapped_column(String(10), nullable=True)
     ordre: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     # Une catégorie retirée reste sur les anciennes dépenses.
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

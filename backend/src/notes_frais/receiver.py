@@ -69,6 +69,7 @@ class CorrectionEntree(BaseModel):
     montant_centimes: int | None = Field(default=None, gt=0)
     description: str | None = None
     titre: str | None = None
+    categorie_id: int | None = None
 
 
 class PreparationEntree(BaseModel):
@@ -243,6 +244,7 @@ class NotesDeFraisReceiver:
             montant_centimes: int | None = Form(None),
             description: str = Form(""),
             valider: bool = Form(False),
+            categorie_id: int | None = Form(None),
             db: Session = db_dep,
             m: Membre = membre,
         ):
@@ -255,6 +257,7 @@ class NotesDeFraisReceiver:
             note = appeler(
                 nf.etablir, db, m, nature=nature, fichier=contenu, person_id=person_id, fournisseur=fournisseur,
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
+                categorie_id=categorie_id,
             )
             return nf.notes_dicts(db, m, [note])[0]
 
@@ -319,11 +322,11 @@ class NotesDeFraisReceiver:
 
         @app.get("/notes-frais/categories")
         def categories(db: Session = db_dep, m: Membre = membre):
-            return [{"id": c.id, "libelle": c.libelle} for c in nf.categories(db, m.org_id)]
+            return [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in nf.categories(db, m.org_id)]
 
         @app.put("/notes-frais/categories")
         def definir_categories(corps: CategoriesEntree, db: Session = db_dep, m: Membre = membre):
-            return [{"id": c.id, "libelle": c.libelle} for c in appeler(nf.definir_categories, db, m, corps.libelles)]
+            return [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in appeler(nf.definir_categories, db, m, corps.libelles)]
 
         @app.get("/notes-frais/export.xlsx")
         def export(

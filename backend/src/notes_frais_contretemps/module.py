@@ -15,6 +15,7 @@ from .adapter import (
     ClasseurContretemps,
     MessagerContretemps,
     NotifieurContretemps,
+    comptes_de_charges,
     membre_appelant,
 )
 
@@ -38,6 +39,8 @@ def mount(app, core) -> None:
             classeur=ClasseurContretemps(core.documents_client),
             # Virement vu sur le compte (financier.md §8.3 bis).
             banque=BanqueContretemps(),
+            # Catégories des dépenses = comptes de charges du plan comptable.
+            plan=comptes_de_charges,
         ),
         stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
     )

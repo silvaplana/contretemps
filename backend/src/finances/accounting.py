@@ -261,7 +261,9 @@ class Accounting:
                 first = by_id[confirmed[0].account_id]
                 row["account"] = {"id": first.id, "number": first.number, "label": first.label, "split": len(confirmed) > 1}
             else:
-                proposal = propose(accounts, row["label"], row.get("details", ""), round(row["amount"] * 100), history)
+                proposal = _from_piece(accounts, pieces.get(row["id"]), row["amount"]) or propose(
+                    accounts, row["label"], row.get("details", ""), round(row["amount"] * 100), history
+                )
                 row["proposal"] = self._proposal(by_id, proposal)
             row["piece"] = pieces.get(row["id"])
         return rows
@@ -282,11 +284,12 @@ class Accounting:
         by_id = {a.id: a for a in self.accounts(db, member.org_id)}
         confirmed = self._lines(db, member.org_id).get(op.id, [])
         proposal = None
-        if not confirmed and op.transfer_id is None:
-            proposal = propose(
-                self.accounts(db, member.org_id, active_only=True), op.label, op.details, op.amount, self._history(db, member.org_id)
-            )
         pieces = self.pieces(db, member.org_id) if self.pieces is not None else {}
+        if not confirmed and op.transfer_id is None:
+            active = self.accounts(db, member.org_id, active_only=True)
+            proposal = _from_piece(active, pieces.get(op.id), op.amount) or propose(
+                active, op.label, op.details, op.amount, self._history(db, member.org_id)
+            )
         return {
             "id": op.id,
             "date": op.date.isoformat(),
@@ -430,3 +433,15 @@ class Accounting:
         db.delete(line)
         db.commit()
         return self.cash(db, member)
+
+
+def _from_piece(accounts: list, piece: dict | None, amount) -> Proposal | None:
+    """Le compte de la catégorie de la pièce rattachée (une dépense classée
+    « 6063 Autres fournitures » dans sa note), pour une sortie d'argent."""
+    number = (piece or {}).get("account")
+    if not number or amount >= 0:
+        return None
+    account = next((a for a in accounts if a.number == number), None)
+    if account is None:
+        return None
+    return Proposal(account.id, f"la pièce « {piece['title']} » est classée dans ce compte")

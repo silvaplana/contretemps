@@ -588,6 +588,20 @@ authentification sera codée (en attendant : trésoriers et Super User seulement
 sont gardés et montrés à celle qui paie. Seuls nom, IBAN, BIC sont gardés ; aucun mot de passe
 de banque.
 
+### 8.3 ter Catégories des pièces = plan comptable (Seb, 30 octobre 2026)
+
+Les catégories des dépenses (notes de frais, honoraires, achats) sont les **comptes de charges
+actifs du plan comptable** (classe 6, chez Contretemps de 6063 Autres fournitures à 658 Charges
+diverses de gestion), dans l'ordre des numéros (`nf_categories.code` = numéro du compte, port
+`Ports.plan` du module Notes de frais). Ajouter, renommer ou retirer un compte de charges change la
+liste ; les anciennes catégories libres sont désactivées et restent sur les anciennes dépenses. Dans
+Pièces, la fiche d'un achat ou d'honoraires a un champ Catégorie et un **crayon** qui ouvre le plan
+comptable. Une pièce dont toutes les dépenses ont la même catégorie fait **proposer ce compte** sur
+la ligne de banque qui la paie (« la pièce « Castorama » est classée dans ce compte »), avant
+l'historique et les mots-clés. Ventes : leurs catégories seront les comptes de produits (classe 7,
+756 Cotisations à 768 Intérêts du livret) quand les pièces de vente existeront ; aujourd'hui une
+vente est une ligne de banque dont on confirme le compte de produits.
+
 ### 8.4 Comptes : compte et pièce sur chaque ligne
 
 Dans Comptes › Tableau, chaque opération porte son **compte** (ou « Compte à choisir ») et sa

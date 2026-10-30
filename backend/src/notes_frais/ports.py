@@ -5,6 +5,7 @@ notes_frais_contretemps/adapter.py.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -169,3 +170,6 @@ class Ports:
     classeur: Classeur | None = None
     banque: Banque | None = None
     categories_par_defaut: tuple[str, ...] = field(default=CATEGORIES_PAR_DEFAUT)
+    # Le plan comptable de l'hôte : (numéro, libellé) des comptes de charges
+    # actifs. Quand il est là, les catégories en sont le reflet (§4.6).
+    plan: Callable[[Session, int], list[tuple[str, str]]] | None = None
