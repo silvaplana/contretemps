@@ -21,8 +21,9 @@ Pièces
 Bilan
 - Choisir la saison, puis un bilan de la liste (ou ⋯ › Nouveau bilan). Puces d'état : Brouillon, Validé, Officiel.
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
-- En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), et au niveau Complet Balance, Grand livre (PDF),
-  Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
+- En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
+  comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et au niveau Complet
+  Balance, Grand livre (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
   Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
 
 AG
