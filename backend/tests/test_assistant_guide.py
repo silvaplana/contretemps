@@ -32,3 +32,23 @@ def test_guide_selon_l_ecole_et_les_droits(db_session):
     assert "Financier" not in liste  # pas le droit d'accès au Financier
     assert lire("admin").startswith("Guide du module Admin et Profil")
     assert "Présent" in lire("Présence")
+
+
+def test_outils_d_un_module_eteint_refuses(db_session, monkeypatch):
+    """Les lectures écrites dans l'assistant mais propres à un module
+    (présences, Docs…) suivent l'interrupteur du module, comme ses actions."""
+    from types import SimpleNamespace
+
+    from app.main import assistant_client
+    from assistant.assistant import MODULE_DES_OUTILS, OUTILS
+
+    noms = {o.get("name") for o in OUTILS}
+    assert set(MODULE_DES_OUTILS) <= noms
+    assert set(MODULE_DES_OUTILS.values()) <= {m.key for m in MODULES}
+
+    ecole = Ecoles().create(db_session, nom="Contretemps", code_postal="83330")
+    admin = Comptes().create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia")
+    monkeypatch.setattr(assistant_client, "modules_eteints", lambda db, org_id: {"presence"})
+    membre = SimpleNamespace(org_id=ecole.id, person_id=admin.id)
+    texte, carte = assistant_client._executer(db_session, membre, "presences", {}, admin)
+    assert carte is None and "n'est pas utilisé" in texte

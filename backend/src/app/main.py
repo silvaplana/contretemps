@@ -274,6 +274,8 @@ modules_receiver = ModulesReceiver(modules=MODULES, app=app)
 # module.py (spec/core.md §9 bis), dans l'ordre de app/modules.py. Celles
 # d'un module éteint dans l'école sont cachées.
 actions_des_modules = registry.actions(MODULES, core)
+# Ses outils de lecture qui appartiennent à un module éteint sont cachés aussi.
+assistant_client.modules_eteints = modules_eteints
 # Plan des écrans du socle (barre du bas, Admin, Profil, Supervision) pour le
 # guide de l'assistant, à côté de celui de chaque module.
 core_guide = guide_file(__file__)

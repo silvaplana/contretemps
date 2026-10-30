@@ -121,8 +121,8 @@ def test_documents_are_produced(world, db_session):
     assert [c.value for c in sheet[3]] == ["Pesenti", 1850.0, 1850.0, 3700.0]
     with pytest.raises(ValueError):
         documents.produce(db_session, TRESORIER, SEASON, "autre")
-    assert [d["id"] for d in documents.kinds("simple")] == ["synthese"]
-    assert len(documents.kinds("complet")) == 4
+    assert [d["id"] for d in documents.kinds("simple")] == ["synthese", "fec"]
+    assert len(documents.kinds("complet")) == 5
 
 
 def test_report_adds_up_by_confirmed_account(world, db_session):
@@ -144,3 +144,31 @@ def test_in_docs_returns_the_stored_file_id(world, db_session):
     assert stored == [(["AG"], ["Balance 2025-2026.pdf"])]
     with pytest.raises(ValueError):
         documents.in_docs(db_session, TRESORIER, SEASON, "autre")
+
+
+def test_fec_has_the_18_columns_and_balanced_entries(world, db_session):
+    _, accounting, documents = world
+    content, name, media = documents.produce(db_session, TRESORIER, SEASON, "fec")
+    assert name == "FEC 2025-2026.txt" and media.startswith("text/plain")
+    rows = [r.split("\t") for r in content.decode("iso8859_15").removesuffix("\r\n").split("\r\n")]
+    assert rows[0][:5] == ["JournalCode", "JournalLib", "EcritureNum", "EcritureDate", "CompteNum"] and len(rows[0]) == 18
+    assert all(len(r) == 18 for r in rows)
+    # À-nouveaux en premier, au premier jour ; montants à virgule.
+    assert rows[1][0] == "AN" and rows[1][3] == "20250901" and rows[1][2] == "1"
+    galli = [r for r in rows if r[10] == "VIR GALLI"]
+    assert {(r[4], r[11], r[12]) for r in galli} == {("613", "1600,00", "0,00"), ("5121", "0,00", "1600,00")}
+    assert len({r[2] for r in galli}) == 1  # une seule écriture
+    for number in {r[2] for r in rows[1:]}:
+        lines = [r for r in rows[1:] if r[2] == number]
+        cents = lambda v: int(v.replace(",", ""))  # noqa: E731
+        assert sum(cents(r[11]) - cents(r[12]) for r in lines) == 0, number
+
+    # Contrôle : le prélèvement sans compte empêche le FEC d'être juste.
+    check = documents.fec_check(db_session, TRESORIER, SEASON)
+    assert not check["ok"] and check["problems"] == ["1 ligne(s) à classer (12,00 €) : Comptes › Sans compte."]
+    assert any("Niveau Simple" in n for n in check["notes"])
+    accounts = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    finances = world[0]
+    mystere = next(r for r in finances.get_ledger(db_session, TRESORIER)["rows"] if r["label"] == "PRLV MYSTERE")
+    accounting.set_lines(db_session, TRESORIER, mystere["id"], [{"accountId": accounts["627"]["id"]}])
+    assert documents.fec_check(db_session, TRESORIER, SEASON)["ok"]

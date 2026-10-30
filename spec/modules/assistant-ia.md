@@ -149,5 +149,10 @@ les écrans et les règles par un guide.
   toujours montré sous le nom « Admin et Profil ». Saisons, Vidéos et Notes de frais n'ont pas de
   guide à eux : leurs écrans sont dans celui du socle, des Chorégraphies ou du Financier. Un test
   refuse tout autre module sans guide.
-- Étapes : (1) le mécanisme et (2) les guides du socle et de chaque module, faits le 30 octobre ;
-  (3) les lectures du socle (`assistant/donnees.py`) rangées dans leurs modules (§3.4).
+- Les lectures écrites dans l'assistant mais propres à un module (Docs, présences, heures des
+  professeurs, chorégraphies, inscriptions en ligne, saisons, groupes de la messagerie) suivent
+  l'interrupteur du module, comme ses actions : cachées et refusées quand l'école l'a éteint
+  (`MODULE_DES_OUTILS`, `assistant/assistant.py`). Les déplacer dans les modules reste à faire
+  (§3.4) : rien ne change pour la personne, on le fera avec le code de chaque module.
+- Fait le 30 octobre : le mécanisme, les guides du socle et de chaque module, et les lectures
+  rattachées à leur module.

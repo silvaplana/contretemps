@@ -1,5 +1,5 @@
 // Bloc « Documents de l'AG » sous un bilan (spec/modules/financier.md §8.6) :
-// Synthèse Dépenses-Recettes (Excel et à l'écran), et au niveau Complet
+// Synthèse Dépenses-Recettes (Excel et à l'écran), FEC avec son contrôle, et au niveau Complet
 // Balance, Grand livre, Honoraires par professeur. Tout est additionné par
 // l'appli depuis les lignes de banque et de caisse ; chaque fichier produit
 // est aussi rangé dans Docs › Financier › AG. Le Rapport financier est
@@ -94,15 +94,17 @@ export default function DocumentsAG({ reportId, seasonName }) {
               <div key={d.id} className="fin-cp-doc">
                 <span className="fin-cp-t">{d.title}</span>
                 <span className="fin-cp-a">
-                  <button
-                    type="button"
-                    className="btn btn--secondary"
-                    onClick={() => ouvrirFichier(() => api.documentAGDansDocs(reportId, d.id), d.format === 'pdf').catch((err) => setErreur(err.message))}
-                  >
-                    <Icon name="eye" size={16} /> Voir
-                  </button>
+                  {d.format !== 'txt' && (
+                    <button
+                      type="button"
+                      className="btn btn--secondary"
+                      onClick={() => ouvrirFichier(() => api.documentAGDansDocs(reportId, d.id), d.format === 'pdf').catch((err) => setErreur(err.message))}
+                    >
+                      <Icon name="eye" size={16} /> Voir
+                    </button>
+                  )}
                   <button type="button" className="btn btn--secondary" onClick={() => telecharger(d)}>
-                    <Icon name="download" size={16} /> {d.format === 'pdf' ? 'PDF' : 'Excel'}
+                    <Icon name="download" size={16} /> {FORMATS[d.format]}
                   </button>
                   {data.folderId != null && (
                     <button
@@ -117,6 +119,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
                   )}
                 </span>
                 <span className="fin-cp-s">{SOUS_TITRES[d.id]}</span>
+                {d.id === 'fec' && data.fecCheck && <ControleFEC check={data.fecCheck} />}
               </div>
             ))}
           </div>
@@ -145,6 +148,30 @@ const SOUS_TITRES = {
   balance: 'totaux débit / crédit et soldes par compte',
   'grand-livre': 'toutes les lignes, par compte, avec la pièce',
   honoraires: 'par professeur et par mois, pour la DAS-2',
+  fec: 'fichier des écritures, pour le comptable ou l’administration fiscale',
+}
+
+const FORMATS = { pdf: 'PDF', xlsx: 'Excel', txt: 'Fichier' }
+
+// Contrôle du FEC (spec §8.6) : juste, ou ce qu'il faut corriger avant de le donner.
+function ControleFEC({ check }) {
+  return (
+    <div className={`fin-cp-fec ${check.ok ? 'fin-cp-proposition' : 'fin-cp-alerte'}`}>
+      {check.ok ? `FEC juste : ${check.entries} écriture${check.entries > 1 ? 's' : ''} équilibrée${check.entries > 1 ? 's' : ''}.` : 'FEC à corriger :'}
+      {check.problems.length > 0 && (
+        <ul>
+          {check.problems.map((p) => (
+            <li key={p}>{p}</li>
+          ))}
+        </ul>
+      )}
+      {check.notes.map((n) => (
+        <p key={n} className="muted">
+          {n}
+        </p>
+      ))}
+    </div>
+  )
 }
 
 // Clôture de la saison (§8.7) : résultat dans 110, soldes reportés sur la

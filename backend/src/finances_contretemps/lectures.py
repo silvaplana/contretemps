@@ -42,9 +42,64 @@ from finances.slides import texts
 from .actions import SEASON, _member, _season
 
 LIMIT_MAX = 300
-DOCUMENTS = {"synthese": "synthese", "balance": "balance", "grand_livre": "grand-livre", "honoraires": "honoraires"}
+DOCUMENTS = {"synthese": "synthese", "balance": "balance", "grand_livre": "grand-livre", "honoraires": "honoraires", "fec": "fec"}
 
 
+<<<<<<< HEAD
+=======
+# Plan des écrans du Financier (Financier.jsx, Comptes.jsx, Pieces.jsx,
+# Bilan.jsx) : à tenir à jour quand un bouton change de place.
+GUIDE = """Financier : onglet de la barre du bas (sous « Plus » sur téléphone). Cinq sous-onglets en haut :
+Comptes, Pièces, Bilan, AG, Prévisionnel. Le menu ⋯ en haut à droite change selon le sous-onglet.
+
+Comptes
+- Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « Sans compte (n) » et « Sans pièce (n) » : les lignes à compléter.
+- Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, recherche d'une opération.
+- Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
+- Un seul compte choisi : « Voir le compte » sous son nom (nom, IBAN, relevés).
+- Menu ⋯ : Se connecter aux comptes en banque ; Importer des relevés ; Plan comptable ; Soldes de départ.
+- ⋯ › Plan comptable : le niveau Simple / Complet en haut (Complet sans retour), puis les comptes par classe : ajouter,
+  renommer, mots-clés (qui font proposer le compte), événement (« gala »), désactiver.
+- ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet), à reprendre de la clôture ou de la Balance.
+
+Pièces
+- Puces : Virements, Notes de frais, Honoraires, Achats, À rattacher, Ventes. Un badge compte ce qui attend.
+- « + » : nouvelle dépense (photo du ticket, fichier, ou choisir dans Docs). Une pièce : Valider ou Refuser (motif).
+- Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
+- Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un.
+- Réglage « Qui paie » : Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
+
+Bilan
+- Choisir la saison, puis un bilan de la liste (ou ⋯ › Nouveau bilan). Puces d'état : Brouillon, Validé, Officiel.
+- Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
+- En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
+  comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et au niveau Complet
+  Balance, Grand livre (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
+  Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
+
+AG
+- La liste des AG de la saison ; ⋯ › Nouvelle AG ; ⋯ › Modèle général de PowerPoint…
+- Une AG : PowerPoint modèle, produit, modifié ; aperçu des diapos, téléchargement, envoi d'une version modifiée.
+
+Prévisionnel
+- ⋯ › Nouveau prévisionnel ; curseurs pour rejouer la prévision du solde jusqu'à la fin de la saison.
+
+Docs : chaque document produit est rangé dans Docs › Privé › Saison <saison> › Financier › AG.
+Niveau aussi réglable dans Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
+
+Règles de l'appli
+- Chaque ligne de banque ou de caisse va sur un compte du plan. L'appli propose un compte (mots-clés du compte, puis
+  historique des libellés) ; rien n'est compté sur un compte tant que le trésorier ne l'a pas confirmé. Une ligne sans
+  compte confirmé va dans « Dépenses à classer » (659) ou « Recettes à classer » (759) des documents de l'AG.
+- Les virements entre les comptes de l'association n'ont pas de compte du plan (ni recette ni dépense).
+- Une pièce (facture, ticket, note) se rattache à la ligne qui la paie ; elle ne change pas les montants.
+- Simple : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.
+- Complet : partie double. Achats et honoraires passent par les comptes de tiers (401 fournisseurs, 467x honoraires
+  par professeur), lettrés (AAA, AAB…) avec leur paiement ; soldes de départ ; clôture qui verrouille la saison et reporte
+  le résultat ; Balance, Grand livre, Honoraires par professeur (DAS-2).
+- Le bilan additionne par compte du plan confirmé, sinon par catégorie de Comptes. Les montants sont calculés par
+  l'appli, jamais écrits par l'assistant."""
+>>>>>>> origin/main
 
 
 def _json(data) -> str:
@@ -87,7 +142,7 @@ class ReportId(BaseModel):
 
 class AgDocument(BaseModel):
     season: str | None = SEASON
-    document: str = Field(description="synthese, balance, grand_livre ou honoraires.")
+    document: str = Field(description="synthese, balance, grand_livre, honoraires ou fec.")
     account_number: str | None = Field(default=None, description="Grand livre : numéro d'un compte pour n'avoir que ses lignes, ou null pour tous.")
 
 
@@ -115,7 +170,7 @@ class WriteStatement(BaseModel):
 
 class StoreDocument(BaseModel):
     season: str | None = SEASON
-    document: str = Field(description="synthese, balance, grand_livre ou honoraires.")
+    document: str = Field(description="synthese, balance, grand_livre, honoraires ou fec.")
 
 
 class ChartAccount(BaseModel):
@@ -261,11 +316,13 @@ def financier(
         season = season_of(db, org_id, p.season)
         kind = DOCUMENTS.get(p.document)
         if kind is None:
-            raise Refus("document inconnu : synthese, balance, grand_livre ou honoraires")
+            raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
             raise Refus(f"{AG_KINDS[kind][0]} : niveau Complet seulement (Comptes › ⋯ › Plan comptable)")
         if kind == "synthese":
             return _json(documents.synthese(db, member, season))
+        if kind == "fec":
+            return _json({"season": season.name, **documents.fec_check(db, member, season)})
         if kind == "honoraires":
             fees = documents.ports.fees(db, org_id, season.start_date, season.end_date) if documents.ports.fees else []
             by_person: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
@@ -411,7 +468,7 @@ def financier(
         season = season_of(db, org_id, p.season)
         kind = DOCUMENTS.get(p.document)
         if kind is None:
-            raise Refus("document inconnu : synthese, balance, grand_livre ou honoraires")
+            raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
             raise Refus(f"{AG_KINDS[kind][0]} : niveau Complet seulement")
         title, extension, _ = AG_KINDS[kind]
@@ -508,8 +565,9 @@ def financier(
              "saison précédente, et le rapport financier rédigé s'il existe.", ReportId, read_report),
         read("finance_ag_document", "Financier",
              "Le contenu d'un document de l'AG d'une saison (Financier › Bilan › Documents de l'AG) : synthese (charges et produits "
-             "par compte, trésorerie, fournisseurs à payer, événements, à classer), balance, grand_livre ou honoraires (par "
-             "professeur et par mois). Balance, grand livre et honoraires : niveau Complet.", AgDocument, read_ag_document),
+             "par compte, trésorerie, fournisseurs à payer, événements, à classer), balance, grand_livre, honoraires (par "
+             "professeur et par mois) ou fec (le contrôle du FEC : ce qui l'empêche d'être juste). Balance, grand livre et "
+             "honoraires : niveau Complet.", AgDocument, read_ag_document),
         read("finance_assemblies", "Financier", "Financier › AG : les assemblées générales d'une saison et leur PowerPoint.",
              SeasonOnly, read_assemblies),
         read("finance_assembly_slides", "Financier", "Le texte de chaque diapo du PowerPoint d'une AG (final, produit, modifié ou modèle).",

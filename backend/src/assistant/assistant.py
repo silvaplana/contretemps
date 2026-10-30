@@ -206,6 +206,21 @@ OUTILS_RESTREINTS = [
 ]
 
 
+# Outils écrits ici mais qui lisent ou rangent les données d'un module : cachés
+# quand l'école a éteint ce module (spec/core.md §9 bis.3), comme les actions
+# des modules. Les autres (élèves, cours, profs, école) sont au socle.
+MODULE_DES_OUTILS = {
+    **dict.fromkeys(
+        ["lister_dossier", "chercher", "fichiers_recents", "lire_fichier", "copier_fichier_dans_l_ordinateur",
+         "proposer_creer_dossier", "proposer_creer_fichier_texte", "proposer_creer_fichier_appli",
+         "proposer_deplacer", "proposer_renommer"],
+        "documents",
+    ),
+    "presences": "presence", "heures_professeurs": "presence", "lister_choregraphies": "choregraphies",
+    "lister_inscriptions_en_ligne": "registration", "lister_saisons": "seasons", "lister_groupes": "messaging",
+}
+
+
 def outils_pour(admin: bool) -> list[dict]:
     return OUTILS if admin else OUTILS_RESTREINTS
 
@@ -281,6 +296,8 @@ class Assistant:
         # Actions déclarées par les modules (actions.py de chacun), remises
         # par app/main.py.
         self.actions = Actions([])
+        # (db, org_id) -> modules éteints dans l'école (registry/activation.py).
+        self.modules_eteints = lambda db, org_id: set()
         # Fichiers glissés dans l'assistant, en attente de la question :
         # jeton -> (org_id, person_id, nom, contenu).
         self.pieces: dict[str, tuple[int, int, str, bytes]] = {}
@@ -369,6 +386,8 @@ class Assistant:
 
     def _executer(self, db, member: Member, nom: str, args: dict, compte=None) -> tuple[list[dict] | str, dict | None]:
         """(résultat pour Claude, éventuelle carte d'action pour l'écran)."""
+        if MODULE_DES_OUTILS.get(nom) in self.modules_eteints(db, member.org_id):
+            return "Refusé : ce module n'est pas utilisé par l'école.", None
         if nom == "proposer_modifications":
             if compte is None or self.modifications is None:
                 raise ValueError("modifications indisponibles")
@@ -584,7 +603,9 @@ class Assistant:
             })
             modele = modele if modele in MODELES else MODELE
             admin = compte is not None and self.donnees.perimetre(db, compte, member.org_id).tout
-            outils = outils_pour(admin) + self.actions.tools(db, member.org_id, admin)
+            eteints = self.modules_eteints(db, member.org_id)
+            outils = [o for o in outils_pour(admin) if MODULE_DES_OUTILS.get(o.get("name")) not in eteints]
+            outils += self.actions.tools(db, member.org_id, admin)
             cout = 0.0
             nb_appels, entree, sortie = 0, 0, 0
             deja_ecrit = False

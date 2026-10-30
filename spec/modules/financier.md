@@ -600,6 +600,21 @@ l'AG** :
 | Grand livre | PDF, forme du modèle : par compte, date, journal, pièce (lien vers la pièce), libellé, lettre, débit, crédit, solde ; totaux par compte et général | Complet |
 | Balance | PDF, forme du modèle : par compte, totaux débit / crédit de la période et soldes ; totaux bilan / résultat | Complet |
 | Honoraires par professeur | Excel : total par prof et par mois, pour la DAS-2 | Complet |
+| FEC | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
+
+**Contrôle du FEC** (Seb, 30/10) : sous la ligne FEC, « FEC juste : n écritures équilibrées » ou
+« FEC à corriger » avec la liste : écritures déséquilibrées, débit ≠ crédit, lignes à classer
+(65900 / 75900 : Comptes › Sans compte), écritures hors saison, numéros hors plan (classe 1 à 7,
+3 chiffres au moins), comptes sans libellé, lettrage qui ne s'équilibre pas. À savoir sans être
+faux : niveau Simple (trésorerie, sans tiers ni lettrage), pas d'à-nouveaux. L'assistant le lit
+(`finance_ag_document`, document `fec`). Pas d'œil pour le FEC (fichier texte) : téléchargement
+et Docs. À venir : import du FEC d'EBP (plan, tiers, à-nouveaux, rapprochement des lignes) quand la
+trésorière aura donné le sien.
+
+**Cap (Seb, 30/10)** : un logiciel de comptabilité aux normes françaises des associations (plan
+comptable associatif, règlement ANC 2018-06, partie double, FEC), comme EBP ; pas d'IFRS. Reste à
+faire pour y arriver : validation des écritures (irréversible, numérotation continue), écritures
+saisies à la main (OD), lettrage à la main, bilan actif / passif, amortissements.
 
 Les fichiers vont dans Docs › Privé › Saison <saison> › Financier › AG, avec le badge Brouillon / Validé /
 Officiel du bilan ; l'AG (§5) les joint à la convocation.
