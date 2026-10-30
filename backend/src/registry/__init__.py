@@ -8,6 +8,7 @@ le relie à Contretemps). L'appli liste ses modules dans `app/modules.py` ;
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from types import SimpleNamespace
 
 from fastapi import FastAPI
@@ -47,6 +48,15 @@ class Module:
     # actions(core) : les actions que le module ouvre à l'assistant (son
     # actions.py, spec/modules/assistant-ia.md §3), une fois monté.
     actions: Callable[[SimpleNamespace], list] | None = None
+    # Plan de ses écrans pour l'assistant (spec/modules/assistant-ia.md §6) :
+    # où est chaque bouton, et les règles du module. À tenir à jour à chaque
+    # changement d'écran (CLAUDE.md). Voir `guide_file`.
+    guide: str = ""
+
+
+def guide_file(module_file: str) -> str:
+    """Le `guide.md` rangé à côté du `module.py` qui appelle."""
+    return (Path(module_file).parent / "guide.md").read_text(encoding="utf-8").strip()
 
 
 def check(modules: list[Module]) -> None:

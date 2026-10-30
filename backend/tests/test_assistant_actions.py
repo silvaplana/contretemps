@@ -56,7 +56,7 @@ def test_outils_montres_selon_le_role(db_session, ecole):
     assert {t["name"] for t in actions.tools(db_session, ecole["id"], admin=False)} == {
         "expense_notes", "review_expense_notes", "mark_expense_notes_paid", "submit_expense_report",
         "produce_financial_report", "produce_general_assembly", "produce_forecast",
-        "finance_guide", "finance_bank_accounts", "finance_operations", "finance_chart", "finance_operation",
+        "app_guide", "finance_bank_accounts", "finance_operations", "finance_chart", "finance_operation",
         "finance_reports", "finance_report", "finance_ag_document", "finance_assemblies", "finance_assembly_slides",
         "finance_forecasts", "set_operation_accounts", "recalculate_financial_report", "write_financial_statement",
         "store_ag_document", "edit_chart_account", "delete_chart_account", "set_accounting_level",

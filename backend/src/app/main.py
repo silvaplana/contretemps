@@ -19,6 +19,7 @@ from administrateurs import Administrateurs, AdministrateursReceiver
 from acces import Acces
 from auth import Auth, AuthReceiver, Invitations, MailsAcces
 from assistant.actions import Actions
+from assistant.guide import guide_action
 from change import TauxChange, TauxChangeReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
@@ -280,6 +281,7 @@ assistant_client.actions = Actions(
         *actions_profs(profs_client),
         *actions_cours(cours_receiver),
         *(action for liste in actions_des_modules.values() for action in liste),
+        guide_action(MODULES, modules_eteints),
     ],
     hidden=lambda db, org_id: {
         action.name for cle in modules_eteints(db, org_id) for action in actions_des_modules.get(cle, [])

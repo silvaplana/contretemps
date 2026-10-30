@@ -129,3 +129,22 @@ leurs membres. Le reste d'Admin (élèves, profs, cours, chorégraphies, saisons
   « où en est l'école » (« 0 cours, HelloAsso pas branché »), pour que l'assistant ou Claude propose
   l'étape suivante. Le même texte sert à l'assistant, au serveur MCP et au site public.
 - Conversations gardées en base (aujourd'hui en mémoire du serveur, voir `spec/a-faire.md`).
+
+## 6. Le guide de l'appli (Seb, 30 octobre)
+
+Seb : l'assistant doit « tout savoir de l'application » : où est chaque bouton, les règles métier
+(comptabilité comprise) et les données. Les données passent par les lectures des modules (§3) ;
+les écrans et les règles par un guide.
+
+- **Chaque module écrit son guide** : un `guide.md` à côté de son `module.py`, déclaré par
+  `Module(guide=guide_file(__file__))` (`registry`). Il donne le chemin de chaque écran et bouton
+  (« Financier › Comptes › ⋯ › Plan comptable »), puis les règles du module, en mots du métier.
+- **Un seul outil**, `app_guide` (`assistant/guide.py`), lecture sans carte : sans module, la liste
+  des modules qui ont un guide ; avec un module, son guide. Seulement les modules allumés dans
+  l'école et dont la personne a les droits (ex. le Financier pour le trésorier). La consigne dit
+  de le lire avant de dire où cliquer.
+- **Règle (Seb, 30 octobre, CLAUDE.md)** : une PR qui ajoute, déplace ou renomme un écran ou un
+  bouton met à jour le `guide.md` du module dans la même PR.
+- Étapes : (1) le mécanisme, avec le guide du Financier ; (2) les guides du socle (barre du bas,
+  Admin, Profil) et des autres modules, et un test qui refuse un module sans guide ; (3) les
+  lectures du socle (`assistant/donnees.py`) rangées dans leurs modules (§3.4).

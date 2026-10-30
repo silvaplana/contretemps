@@ -296,8 +296,8 @@ aux actions.
 `finances_contretemps/lectures.py`, et Pièces dans `notes_frais_contretemps/actions.py`.
 
 - **Lectures** (réponse sans carte, en JSON calculé par l'appli) :
-  - `finance_guide` : plan des écrans et des boutons, et règles de l'appli (à classer,
-    Simple / Complet, lettrage) ;
+  - le plan des écrans et des boutons, et les règles de l'appli (à classer, Simple / Complet,
+    lettrage) : `finances_contretemps/guide.md`, lu par l'outil `app_guide` de l'assistant ;
   - `finance_bank_accounts`, `finance_operations` (filtres saison, dates, libellé, compte du
     plan, sans compte, sans pièce), `finance_operation` (fiche et écritures d'une ligne) ;
   - `finance_chart` ;

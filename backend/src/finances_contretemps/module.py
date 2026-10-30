@@ -19,7 +19,7 @@ from finances import (
 )
 from finances.bank import Bank
 from finances.enablebanking import EnableBankingClient
-from registry import Module, Right
+from registry import Module, Right, guide_file
 from securite.chiffrement import chiffrer, dechiffrer
 
 from .actions import actions
@@ -139,6 +139,7 @@ def mount(app, core) -> None:
 MODULE = Module(
     key="finances", label="Financier", mount=mount, requires=("seasons", "documents", "expense_notes"),
     rights=(Right(FINANCES_ACCESS, "Accès au Financier"),),
+    guide=guide_file(__file__),
     actions=lambda core: [
         *actions(
             core.finances_reports, core.finances_assemblies, core.finances_forecasts,

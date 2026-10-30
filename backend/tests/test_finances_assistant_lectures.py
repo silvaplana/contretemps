@@ -134,5 +134,13 @@ def test_detail_d_une_ligne_desactiver_supprimer_et_niveau(db_session, ecole):
     assert balance["accounts"]
     texte, carte = _proposer(db_session, t, ecole, "set_accounting_level", {"level": "complet"})
     assert carte is None and "déjà" in texte
-    guide, carte = _proposer(db_session, t, ecole, "finance_guide", {})
+    guide, carte = _proposer(db_session, t, ecole, "app_guide", {"module": "Financier"})
     assert carte is None and "⋯ › Plan comptable" in guide
+
+
+def test_guide_du_financier_seulement_pour_qui_y_a_acces(db_session, ecole):
+    """Le guide de l'appli (assistant/guide.py) : un module dont la personne
+    n'a pas le droit, ou éteint dans l'école, n'apparaît pas."""
+    assert "Financier" in _proposer(db_session, ecole["tresorier"], ecole, "app_guide", {})[0]
+    texte, carte = _proposer(db_session, ecole["admin"], ecole, "app_guide", {"module": "finances"})
+    assert carte is None and texte.startswith("Refusé") and "Financier" not in texte.split(":", 1)[1]
