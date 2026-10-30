@@ -9,7 +9,7 @@ from bureautique import Bureautique, BureautiqueReceiver
 from comptes.models import Compte
 from documents import Documents, DocumentsReceiver, LocalStorage
 from documents.attendance_photo import AttendanceReader
-from registry import Module
+from registry import Module, guide_file
 from saisons.portee import TOUTES_SAISONS
 
 from .actions import actions
@@ -72,4 +72,5 @@ def mount(app, core) -> None:
 MODULE = Module(
     key="documents", label="Documents", mount=mount,
     actions=lambda core: actions(core.documents_client),
+    guide=guide_file(__file__),
 )

@@ -145,6 +145,9 @@ les écrans et les règles par un guide.
   de le lire avant de dire où cliquer.
 - **Règle (Seb, 30 octobre, CLAUDE.md)** : une PR qui ajoute, déplace ou renomme un écran ou un
   bouton met à jour le `guide.md` du module dans la même PR.
-- Étapes : (1) le mécanisme, avec le guide du Financier ; (2) les guides du socle (barre du bas,
-  Admin, Profil) et des autres modules, et un test qui refuse un module sans guide ; (3) les
-  lectures du socle (`assistant/donnees.py`) rangées dans leurs modules (§3.4).
+- Le socle a le sien (`app/guide.md` : barre du bas, en-tête, Admin, Profil, Supervision),
+  toujours montré sous le nom « Admin et Profil ». Saisons, Vidéos et Notes de frais n'ont pas de
+  guide à eux : leurs écrans sont dans celui du socle, des Chorégraphies ou du Financier. Un test
+  refuse tout autre module sans guide.
+- Étapes : (1) le mécanisme et (2) les guides du socle et de chaque module, faits le 30 octobre ;
+  (3) les lectures du socle (`assistant/donnees.py`) rangées dans leurs modules (§3.4).

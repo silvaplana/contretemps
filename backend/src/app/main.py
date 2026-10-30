@@ -20,6 +20,7 @@ from acces import Acces
 from auth import Auth, AuthReceiver, Invitations, MailsAcces
 from assistant.actions import Actions
 from assistant.guide import guide_action
+from registry import guide_file
 from change import TauxChange, TauxChangeReceiver
 from comptes import Comptes, ComptesReceiver, rbac
 from cours import CoursReceiver, CoursService
@@ -273,6 +274,9 @@ modules_receiver = ModulesReceiver(modules=MODULES, app=app)
 # module.py (spec/core.md §9 bis), dans l'ordre de app/modules.py. Celles
 # d'un module éteint dans l'école sont cachées.
 actions_des_modules = registry.actions(MODULES, core)
+# Plan des écrans du socle (barre du bas, Admin, Profil, Supervision) pour le
+# guide de l'assistant, à côté de celui de chaque module.
+core_guide = guide_file(__file__)
 assistant_client.actions = Actions(
     [
         *actions_ecoles(ecoles_client),
@@ -281,7 +285,7 @@ assistant_client.actions = Actions(
         *actions_profs(profs_client),
         *actions_cours(cours_receiver),
         *(action for liste in actions_des_modules.values() for action in liste),
-        guide_action(MODULES, modules_eteints),
+        guide_action(MODULES, modules_eteints, core_guide),
     ],
     hidden=lambda db, org_id: {
         action.name for cle in modules_eteints(db, org_id) for action in actions_des_modules.get(cle, [])

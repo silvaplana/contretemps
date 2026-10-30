@@ -1,7 +1,7 @@
 """Déclaration du module Inscription en ligne (spec/core.md §9 bis,
 spec/SPEC-inscription.md) : routes PUBLIQUES, atteignables sans compte."""
 
-from registry import Module
+from registry import Module, guide_file
 
 from .fiches import FichesPapier
 from .helloasso import HelloAsso
@@ -24,4 +24,4 @@ def mount(app, core) -> None:
 
 
 # Tarifs et formulaire par saison (spec/modules/saisons.md §2).
-MODULE = Module(key="registration", label="Inscription en ligne", mount=mount, requires=("seasons",))
+MODULE = Module(key="registration", label="Inscription en ligne", mount=mount, requires=("seasons",), guide=guide_file(__file__))

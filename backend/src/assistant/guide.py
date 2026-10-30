@@ -7,6 +7,7 @@ Seulement les modules allumés dans l'école, et dont la personne a les droits.
 from __future__ import annotations
 
 from collections.abc import Callable
+from types import SimpleNamespace
 
 from comptes import roles
 from pydantic import BaseModel, Field
@@ -17,15 +18,21 @@ from .modifications import Refus
 
 
 class Guide(BaseModel):
-    module: str | None = Field(default=None, description="Nom du module (ex. « Financier »), ou null pour la liste des modules.")
+    module: str | None = Field(default=None, description="Nom du module (ex. « Financier », « Admin »), ou null pour la liste des modules.")
 
 
-def guide_action(modules: list, disabled: Callable[[Session, int], set[str]]) -> Action:
+SOCLE = "Admin et Profil"
+
+
+def guide_action(modules: list, disabled: Callable[[Session, int], set[str]], core_guide: str) -> Action:
+    """`core_guide` : le plan des écrans du socle (barre du bas, en-tête,
+    Admin, Profil, Supervision), toujours montré."""
     avec_guide = [m for m in modules if m.guide]
 
     def visibles(db: Session, compte, org_id: int) -> list:
         off = disabled(db, org_id)
-        return [m for m in avec_guide if m.key not in off and all(roles.has_right(compte, r.key) for r in m.rights)]
+        mods = [m for m in avec_guide if m.key not in off and all(roles.has_right(compte, r.key) for r in m.rights)]
+        return [SimpleNamespace(key="core", label=SOCLE, guide=core_guide), *mods]
 
     def read(db: Session, compte, org_id: int, p: Guide) -> str:
         mods = visibles(db, compte, org_id)
@@ -34,13 +41,13 @@ def guide_action(modules: list, disabled: Callable[[Session, int], set[str]]) ->
             return f"Modules avec un guide : {noms}."
         cherche = p.module.strip().casefold()
         for m in mods:
-            if cherche in (m.key.casefold(), m.label.casefold()):
+            if cherche == m.key.casefold() or cherche in m.label.casefold():
                 return f"Guide du module {m.label}\n\n{m.guide}"
         raise Refus(f"pas de guide pour « {p.module} ». Modules avec un guide : {noms}")
 
     description = (
         "Le plan des écrans d'un module : où est chaque onglet, puce, bouton et menu ⋯, et ses règles. Lis-le avant de dire "
         "à la personne où cliquer ; ne décris jamais un écran de mémoire. Modules : "
-        + ", ".join(m.label for m in avec_guide) + "."
+        + ", ".join([SOCLE, *(m.label for m in avec_guide)]) + "."
     )
     return Action("app_guide", "Guide", description, Guide, None, admin_only=False, read=read)
