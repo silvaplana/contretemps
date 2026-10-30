@@ -74,7 +74,17 @@ KINDS = {
     "balance": ("Balance", "pdf", "complet"),
     "grand-livre": ("Grand livre", "pdf", "complet"),
     "honoraires": ("Honoraires par professeur", "xlsx", "complet"),
+    "fec": ("FEC", "txt", "simple"),
 }
+
+# Fichier des écritures comptables (article A47 A-1 du livre des procédures
+# fiscales) : 18 colonnes séparées par une tabulation, dates AAAAMMJJ,
+# montants à virgule.
+FEC_COLUMNS = [
+    "JournalCode", "JournalLib", "EcritureNum", "EcritureDate", "CompteNum", "CompteLib", "CompAuxNum", "CompAuxLib",
+    "PieceRef", "PieceDate", "EcritureLib", "Debit", "Credit", "EcritureLet", "DateLet", "ValidDate", "Montantdevise", "Idevise",
+]
+JOURNALS = {"AN": "A-nouveaux", "BQ": "Banque", "CA": "Caisse", "AC": "Achats", "HO": "Honoraires", "NF": "Notes de frais"}
 
 
 @dataclass
@@ -646,6 +656,95 @@ class AgDocuments:
         wb.save(buffer)
         return buffer.getvalue()
 
+    # ----- FEC et son contrôle -----
+
+    def fec_entries(self, db: Session, member: Member, season: Season) -> list[dict]:
+        """Les écritures de la saison (celles du Grand livre), regroupées :
+        une écriture = les lignes d'un même journal, d'un même jour, d'une
+        même opération de banque (ou du même libellé ; les à-nouveaux en une
+        seule), numérotées par date."""
+        books = self.books(db, member, season)
+        books.pop("_cutoff")
+        groups: dict[tuple, list[tuple[Account, Line]]] = defaultdict(list)
+        for a in books.values():
+            for l in a.lines:
+                same = "" if l.journal == "AN" else l.operation_id if l.operation_id is not None else l.label
+                groups[(l.date, l.journal, same)].append((a, l))
+        lettered: dict[tuple[str, str], str] = {}
+        for a in books.values():
+            for l in a.lines:
+                if l.letter:
+                    key = (a.number, l.letter)
+                    lettered[key] = max(lettered.get(key, ""), l.date)
+        entries = []
+        for n, key in enumerate(sorted(groups, key=lambda k: (k[0], k[1] != "AN", k[1], str(k[2]))), start=1):
+            day, journal, _ = key
+            entries.append({"number": n, "date": day, "journal": journal, "lines": [
+                {"account": a.number, "accountLabel": a.label, "label": l.label, "piece": l.piece, "debit": l.debit,
+                 "credit": l.credit, "letter": l.letter, "letterDate": lettered.get((a.number, l.letter), "") if l.letter else ""}
+                for a, l in groups[key]
+            ]})
+        return entries
+
+    def fec(self, db: Session, member: Member, season: Season) -> bytes:
+        def d(day: str) -> str:
+            return day.replace("-", "")
+
+        def amount(cents: int) -> str:
+            return f"{cents // 100},{cents % 100:02d}"
+
+        def clean(text: str) -> str:
+            return " ".join(str(text or "").replace("\t", " ").split())
+
+        rows = ["\t".join(FEC_COLUMNS)]
+        for e in self.fec_entries(db, member, season):
+            journal = e["journal"]
+            for l in e["lines"]:
+                rows.append("\t".join([
+                    journal, JOURNALS.get(journal[:2], journal), str(e["number"]), d(e["date"]), l["account"], clean(l["accountLabel"]),
+                    "", "", clean(l["piece"]) or str(e["number"]), d(e["date"]), clean(l["label"]) or JOURNALS.get(journal[:2], journal),
+                    amount(l["debit"]), amount(l["credit"]), l["letter"], d(l["letterDate"]), d(e["date"]), "", "",
+                ]))
+        return ("\r\n".join(rows) + "\r\n").encode("iso8859_15", errors="replace")
+
+    def fec_check(self, db: Session, member: Member, season: Season) -> dict:
+        """Ce qui empêche le FEC d'être juste (spec §8.6) : rien à corriger
+        quand problems est vide ; notes = ce qu'il faut savoir sans être faux."""
+        entries = self.fec_entries(db, member, season)
+        lines = [(e, l) for e in entries for l in e["lines"]]
+        problems, notes = [], []
+        unbalanced = [e["number"] for e in entries if sum(l["debit"] - l["credit"] for l in e["lines"])]
+        if unbalanced:
+            problems.append(f"{len(unbalanced)} écriture(s) déséquilibrée(s) : n° {', '.join(map(str, unbalanced[:10]))}.")
+        total = sum(l["debit"] - l["credit"] for _, l in lines)
+        if total:
+            problems.append(f"Débit et crédit diffèrent de {_eur(abs(total) / 100)}.")
+        unclassified = [l for _, l in lines if l["account"] in {n for n, _ in UNCLASSIFIED.values()}]
+        if unclassified:
+            amount = sum(l["debit"] + l["credit"] for l in unclassified)
+            problems.append(f"{len(unclassified)} ligne(s) à classer ({_eur(amount / 100)}) : Comptes › Sans compte.")
+        outside = [e["number"] for e in entries if not season.start_date <= e["date"] <= season.end_date]
+        if outside:
+            problems.append(f"{len(outside)} écriture(s) hors de la saison.")
+        bad = sorted({l["account"] for _, l in lines if len(l["account"]) < 3 or l["account"][0] not in "1234567"})
+        if bad:
+            problems.append(f"Numéros de compte hors plan : {', '.join(bad)}.")
+        nameless = sorted({l["account"] for _, l in lines if not l["accountLabel"].strip()})
+        if nameless:
+            problems.append(f"Comptes sans libellé : {', '.join(nameless)}.")
+        open_letters: dict[tuple[str, str], int] = defaultdict(int)
+        for _, l in lines:
+            if l["letter"]:
+                open_letters[(l["account"], l["letter"])] += l["debit"] - l["credit"]
+        wrong = sorted(f"{a} {letter}" for (a, letter), rest in open_letters.items() if rest)
+        if wrong:
+            problems.append(f"Lettrage qui ne s'équilibre pas : {', '.join(wrong[:10])}.")
+        if self.accounting.level(db, member.org_id) != FULL:
+            notes.append("Niveau Simple : comptabilité de trésorerie, sans fournisseurs ni lettrage.")
+        if not any(e["journal"] == "AN" for e in entries):
+            notes.append("Pas d'à-nouveaux : aucun solde de départ connu pour la saison.")
+        return {"ok": not problems, "entries": len(entries), "lines": len(lines), "problems": problems, "notes": notes}
+
     # ----- production et rangement -----
 
     def _build(self, db: Session, member: Member, season: Season, kind: str) -> tuple[bytes, str, str]:
@@ -659,10 +758,14 @@ class AgDocuments:
             content = self.balance_pdf(db, member, season, org_name)
         elif kind == "grand-livre":
             content = self.grand_livre_pdf(db, member, season, org_name)
+        elif kind == "fec":
+            content = self.fec(db, member, season)
         else:
             content = self.fees_xlsx(db, member, season, org_name)
         name = f"{title} {season.name}.{extension}"
-        media = "application/pdf" if extension == "pdf" else "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        media = {"pdf": "application/pdf", "txt": "text/plain; charset=iso-8859-15"}.get(
+            extension, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         return content, name, media
 
     def produce(self, db: Session, member: Member, season: Season, kind: str) -> tuple[bytes, str, str]:
