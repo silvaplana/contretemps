@@ -365,3 +365,17 @@ button.fin-cp-compte:last-child {
   width: 140px;
   text-align: right;
 }
+
+/* Contrôle du FEC, sous sa ligne, sur toute la largeur. */
+.fin-cp-doc .fin-cp-fec {
+  grid-column: 1 / -1;
+}
+
+.fin-cp-fec ul {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.fin-cp-fec p {
+  margin: 4px 0 0;
+}

@@ -481,6 +481,7 @@ class FinancesReceiver:
                 "documents": documents.kinds(level),
                 "synthese": documents.synthese(db, member, season),
                 "closing": documents.closing_status(db, member.org_id, season),
+                "fecCheck": documents.fec_check(db, member, season),
                 "folderId": documents.ports.folder(db, member) if documents.ports.folder else None,
             }
 

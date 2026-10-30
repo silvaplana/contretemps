@@ -42,7 +42,7 @@ from finances.slides import texts
 from .actions import SEASON, _member, _season
 
 LIMIT_MAX = 300
-DOCUMENTS = {"synthese": "synthese", "balance": "balance", "grand_livre": "grand-livre", "honoraires": "honoraires"}
+DOCUMENTS = {"synthese": "synthese", "balance": "balance", "grand_livre": "grand-livre", "honoraires": "honoraires", "fec": "fec"}
 
 
 # Plan des écrans du Financier (Financier.jsx, Comptes.jsx, Pieces.jsx,
@@ -70,8 +70,9 @@ Pièces
 Bilan
 - Choisir la saison, puis un bilan de la liste (ou ⋯ › Nouveau bilan). Puces d'état : Brouillon, Validé, Officiel.
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
-- En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), et au niveau Complet Balance, Grand livre (PDF),
-  Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
+- En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
+  comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et au niveau Complet
+  Balance, Grand livre (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
   Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
 
 AG
@@ -138,7 +139,7 @@ class ReportId(BaseModel):
 
 class AgDocument(BaseModel):
     season: str | None = SEASON
-    document: str = Field(description="synthese, balance, grand_livre ou honoraires.")
+    document: str = Field(description="synthese, balance, grand_livre, honoraires ou fec.")
     account_number: str | None = Field(default=None, description="Grand livre : numéro d'un compte pour n'avoir que ses lignes, ou null pour tous.")
 
 
@@ -166,7 +167,7 @@ class WriteStatement(BaseModel):
 
 class StoreDocument(BaseModel):
     season: str | None = SEASON
-    document: str = Field(description="synthese, balance, grand_livre ou honoraires.")
+    document: str = Field(description="synthese, balance, grand_livre, honoraires ou fec.")
 
 
 class ChartAccount(BaseModel):
@@ -316,11 +317,13 @@ def financier(
         season = season_of(db, org_id, p.season)
         kind = DOCUMENTS.get(p.document)
         if kind is None:
-            raise Refus("document inconnu : synthese, balance, grand_livre ou honoraires")
+            raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
             raise Refus(f"{AG_KINDS[kind][0]} : niveau Complet seulement (Comptes › ⋯ › Plan comptable)")
         if kind == "synthese":
             return _json(documents.synthese(db, member, season))
+        if kind == "fec":
+            return _json({"season": season.name, **documents.fec_check(db, member, season)})
         if kind == "honoraires":
             fees = documents.ports.fees(db, org_id, season.start_date, season.end_date) if documents.ports.fees else []
             by_person: dict[str, dict[str, float]] = defaultdict(lambda: defaultdict(float))
@@ -466,7 +469,7 @@ def financier(
         season = season_of(db, org_id, p.season)
         kind = DOCUMENTS.get(p.document)
         if kind is None:
-            raise Refus("document inconnu : synthese, balance, grand_livre ou honoraires")
+            raise Refus("document inconnu : synthese, balance, grand_livre, honoraires ou fec")
         if AG_KINDS[kind][2] == "complet" and accounting.level(db, org_id) != "complet":
             raise Refus(f"{AG_KINDS[kind][0]} : niveau Complet seulement")
         title, extension, _ = AG_KINDS[kind]
@@ -566,8 +569,9 @@ def financier(
              "saison précédente, et le rapport financier rédigé s'il existe.", ReportId, read_report),
         read("finance_ag_document", "Financier",
              "Le contenu d'un document de l'AG d'une saison (Financier › Bilan › Documents de l'AG) : synthese (charges et produits "
-             "par compte, trésorerie, fournisseurs à payer, événements, à classer), balance, grand_livre ou honoraires (par "
-             "professeur et par mois). Balance, grand livre et honoraires : niveau Complet.", AgDocument, read_ag_document),
+             "par compte, trésorerie, fournisseurs à payer, événements, à classer), balance, grand_livre, honoraires (par "
+             "professeur et par mois) ou fec (le contrôle du FEC : ce qui l'empêche d'être juste). Balance, grand livre et "
+             "honoraires : niveau Complet.", AgDocument, read_ag_document),
         read("finance_assemblies", "Financier", "Financier › AG : les assemblées générales d'une saison et leur PowerPoint.",
              SeasonOnly, read_assemblies),
         read("finance_assembly_slides", "Financier", "Le texte de chaque diapo du PowerPoint d'une AG (final, produit, modifié ou modèle).",

@@ -66,6 +66,11 @@ def test_full_books_go_through_third_parties_with_letters(full, db_session):
     assert books["4671"].balance == 0 and books["613"].balance == 160000
     # Une recette ne passe pas par un tiers.
     assert all(l.journal.startswith("BQ") for l in books["706"].lines)
+    # FEC : lettrage équilibré, date de lettrage = le paiement.
+    fec = documents.fec_entries(db_session, TRESORIER, SEASON)
+    lettered = [l for e in fec for l in e["lines"] if l["account"] == "401"]
+    assert {(l["letter"], l["letterDate"]) for l in lettered} == {("AAA", "2025-09-03")}
+    assert not any("Lettrage" in p for p in documents.fec_check(db_session, TRESORIER, SEASON)["problems"])
     entries = documents.operation_entries(db_session, TRESORIER, rows["CB AMAZON"]["id"], "2025-09-03")
     assert [(e["journal"], e["account"][:3], e["debit"], e["credit"]) for e in entries] == [
         ("AC", "401", 0, 39.9), ("AC", "606", 39.9, 0), ("BQ1", "401", 39.9, 0), ("BQ1", "512", 0, 39.9),
