@@ -645,10 +645,12 @@ class NotesDeFrais:
         resultat = []
         for note in notes:
             ligne = self.note_dict(note, personnes=personnes)
-            operation = self.paiement_propose(db, note, prises)
+            rattachee = self.ports.banque.operation(db, note.org_id, note.bank_operation_id) if note.bank_operation_id and self.ports.banque else None
+            operation = None if rattachee else self.paiement_propose(db, note, prises)
             ligne["paiement_propose"] = operation and self._operation_dict(operation)
+            ligne["operation"] = rattachee and self._operation_dict(rattachee)
             ligne["operation_id"] = note.bank_operation_id
-            ligne["detachable"] = note.bank_operation_id is not None and self._detachable(db, note)
+            ligne["detachable"] = rattachee is not None and self._detachable(db, note)
             resultat.append(ligne)
         return resultat
 
@@ -692,6 +694,10 @@ class NotesDeFrais:
         ):
             raise PermissionError("Un autre trésorier doit valider votre propre note.")
         self._exiger_complete(note)
+        if note.bank_operation_id is not None:
+            # Payée selon la banque (§7 quinquies) : la validation du trésorier la passe Payé, sans rien annoncer.
+            self._rattacher(db, membre, note, note.bank_operation_id, prevenir=False)
+            return note
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
@@ -1404,16 +1410,23 @@ class NotesDeFrais:
     def _payee_par_la_banque(self, db: Session, membre: Membre, note: NoteFrais, *, nom_sur: bool = False) -> bool:
         """« La banque décide » (Seb, 31/10) : une ligne du compte du même
         montant **et** au même nom (ou une preuve de virement qui le porte,
-        `nom_sur`) rattache la pièce et la passe Payé sans rien demander ;
-        le montant seul reste une proposition (« C'est payé »)."""
-        if note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.don:
+        `nom_sur`) est rattachée à la pièce sans rien demander ; le montant
+        seul reste une proposition (« C'est payé »). Chaque pièce garde la
+        validation d'un trésorier (Seb, 31/10 soir) : une pièce À valider
+        reste À valider, ligne rattachée, et passe Payé quand il la valide ;
+        une pièce déjà validée (envoyée par un membre, virement fait) passe Payé."""
+        if note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.don or note.bank_operation_id is not None:
             return False
-        if (note.nature != ACHAT and note.person_id == PERSONNE_A_CHOISIR) or any(d.montant_centimes <= 0 for d in note.depenses):
+        if any(d.montant_centimes <= 0 for d in note.depenses):
             return False
         operation = self.paiement_propose(db, note, self._operations_prises(db, membre.org_id))
         if operation is None or not (nom_sur or self._au_nom_de(db, note, operation)):
             return False
-        self._rattacher(db, membre, note, operation.id, prevenir=False)
+        if note.statut == ENVOYEE:
+            note.bank_operation_id = operation.id
+            db.commit()
+            return True
+        self._rattacher(db, membre, note, operation.id, prevenir=True)
         return True
 
     def _rattacher(self, db: Session, membre: Membre, note: NoteFrais, operation_id: int, *, prevenir: bool) -> None:
@@ -1447,25 +1460,29 @@ class NotesDeFrais:
         return note
 
     def _detachable(self, db: Session, note: NoteFrais) -> bool:
-        """Tant que la saison de la ligne du compte n'est pas clôturée."""
+        """Tant que la pièce n'est pas validée, ou que la saison de la ligne n'est pas clôturée."""
         banque = self.ports.banque
         if banque is None or note.bank_operation_id is None:
             return False
+        if note.statut == ENVOYEE:
+            return True
         operation = banque.operation(db, note.org_id, note.bank_operation_id)
         return operation is not None and not banque.cloturee(db, note.org_id, operation.date)
 
     def detacher(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
-        """Rattachée à tort à une ligne du compte (§7 quinquies) : la pièce
-        la rend et revient là où elle était : Envoyé si le virement avait été
-        fait, sinon À valider (pièce établie) ou À payer. Impossible une fois
-        la saison clôturée : la banque a décidé."""
+        """« Pas cette ligne » (§7 quinquies) : la pièce rend la ligne du
+        compte et revient là où elle était : À valider si elle y est encore,
+        Envoyé si le virement avait été fait, sinon À valider (pièce établie)
+        ou À payer. Impossible une fois la saison clôturée : la banque a décidé."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
-        if note.statut != REMBOURSEE or note.bank_operation_id is None:
+        if note.statut not in (ENVOYEE, REMBOURSEE) or note.bank_operation_id is None:
             raise ValueError("Cette pièce n'est pas rattachée à une ligne du compte.")
         if not self._detachable(db, note):
             raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
-        if note.transfer_sent_at is not None:
+        if note.statut == ENVOYEE:
+            pass
+        elif note.transfer_sent_at is not None:
             note.statut = VIREE
         elif note.established_by is not None:
             note.statut, note.traitee_le, note.traitee_par = ENVOYEE, None, None

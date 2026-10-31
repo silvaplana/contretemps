@@ -9,7 +9,7 @@ import './compta.css'
 
 const { euros, dateFr } = api
 
-export default function LignesBanque({ filtre }) {
+export default function LignesBanque({ filtre, onChange }) {
   const [ledger, setLedger] = useState(null)
   const [erreur, setErreur] = useState('')
   const [fiche, setFiche] = useState(null)
@@ -61,7 +61,16 @@ export default function LignesBanque({ filtre }) {
           ))}
         </div>
       )}
-      {fiche && <FicheOperation operationId={fiche} onClose={() => setFiche(null)} onChange={charger} />}
+      {fiche && (
+        <FicheOperation
+          operationId={fiche}
+          onClose={() => setFiche(null)}
+          onChange={() => {
+            charger()
+            onChange?.()
+          }}
+        />
+      )}
     </section>
   )
 }

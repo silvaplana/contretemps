@@ -471,6 +471,11 @@
   vertical-align: 2px;
 }
 
+/* Virements et À rattacher : la banque, pas une pièce à valider. */
+.nf-compte--banque {
+  background: #2a6fd8;
+}
+
 /* Sur le sous-onglet actif (fond orange), la pastille s'inverse. */
 .segmented__option.is-active .nf-compte {
   background: #fff;

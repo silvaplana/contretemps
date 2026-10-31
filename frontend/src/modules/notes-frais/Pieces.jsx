@@ -88,7 +88,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
             onClick={() => setPuce(p.value)}
           >
             {p.label}
-            <Compte n={aFaire[p.value]} />
+            <Compte n={aFaire[p.value]} banque={p.value === 'virements' || p.value === 'a_rattacher'} />
           </button>
         ))}
       </div>
@@ -96,7 +96,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
         <p className="muted">Glissez ici des factures depuis l’ordinateur : une par fichier.</p>
       )}
       {banque ? (
-        <LignesBanque key={puce} filtre={puce} />
+        <LignesBanque key={puce} filtre={puce} onChange={onChange} />
       ) : puce === 'virements' ? (
         <Virements key={version} onChange={onChange} />
       ) : (
@@ -399,7 +399,7 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
             agir(() => (corrigeable ? enregistrer(aValider) : api.valider(note.id)))
           }
         >
-          {aValider ? 'Valider' : 'Enregistrer'}
+          {aValider ? (note?.operation ? 'Valider : Payé' : 'Valider : À payer') : 'Enregistrer'}
         </button>
       </div>
     )
@@ -547,10 +547,20 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
           <Icon name="download" size={18} /> Télécharger les justificatifs
         </button>
       )}
-      {note?.detachable && (
-        <button type="button" className="btn btn--link nf-supprimer" disabled={enCours} onClick={() => agir(() => api.detacher(note.id))}>
-          Payée par une ligne du compte · Rattachée à tort ? Détacher
-        </button>
+      {note?.operation && (
+        <div className="nf-ligne nf-paiement-vu">
+          <span className="nf-ligne__corps">
+            <span className="nf-ligne__titre">{note.statut === 'envoyee' ? 'Payée selon la banque' : 'Payée'}</span>
+            <span className="muted">
+              {note.operation.libelle} · {api.euros(note.operation.montant_centimes)} le {api.dateCourte(note.operation.date)}
+            </span>
+          </span>
+          {note.detachable && (
+            <button type="button" className="btn btn--secondary" disabled={enCours} onClick={() => agir(() => api.detacher(note.id))}>
+              {note.statut === 'envoyee' ? 'Pas cette ligne' : 'Détacher'}
+            </button>
+          )}
+        </div>
       )}
       {note && (note.nature !== 'frais' || note.etablie) && note.statut === 'envoyee' && refus === null && (
         <button

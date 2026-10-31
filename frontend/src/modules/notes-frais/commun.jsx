@@ -90,10 +90,12 @@ export function BadgeEtat({ note }) {
 
 // Pastille ronde du nombre de choses à faire (sous-onglet Pièces et ses
 // puces) ; rien quand il n'y a rien à faire.
-export function Compte({ n }) {
+// `banque` : Virements et À rattacher, l'autre couleur (Seb, 31/10 : ce n'est
+// pas une pièce à valider, c'est la banque à traiter).
+export function Compte({ n, banque = false }) {
   if (!n) return null
   return (
-    <span className="nf-compte" aria-label={`${n} à faire`}>
+    <span className={banque ? 'nf-compte nf-compte--banque' : 'nf-compte'} aria-label={`${n} à faire`}>
       {n}
     </span>
   )

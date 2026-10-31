@@ -31,9 +31,9 @@ function sousTitre(note) {
       const op = note.preuve.operation
       return `Aucune pièce de ${api.euros(montant)} · ${op ? `sur le compte le ${api.dateCourte(op.date)} : ${op.libelle}` : 'pas encore sur le compte'}`
     }
-    return `${note.statut === 'remboursee' ? 'Payé' : 'Paiement de'} : ${note.titre} · ${api.euros(montant)}`
+    return `Paiement de : ${note.titre} · ${api.euros(montant)}${note.operation_id ? ' · payée selon la banque' : ''}`
   }
-  return `${NATURES[note.nature]} · ${note.total_centimes ? api.euros(note.total_centimes) : 'Montant ?'}`
+  return `${NATURES[note.nature]} · ${note.total_centimes ? api.euros(note.total_centimes) : 'Montant ?'}${note.operation_id ? ' · payée selon la banque' : ''}`
 }
 
 // Financier › Pièces › « + » : Saisir une dépense (§7 quinquies). On prend

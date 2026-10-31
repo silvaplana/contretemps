@@ -229,21 +229,33 @@ dit qui a **émis** la pièce (une personne, auto-entrepreneur, ou une société
 tranche). Pour chaque pièce créée, l'appli cherche la ligne du compte (même montant, autour de la
 date de la pièce, `financier.md` §8.3 bis) :
 - ligne **sûre** (même montant **et** nom du bénéficiaire ou du fournisseur dans le libellé) : la
-  pièce y est **rattachée et passe Payé toute seule**, sans mail ni notification (c'était déjà
-  réglé) ; il faut que la pièce soit complète (personne connue, montant) ;
+  ligne est **rattachée toute seule** ; la pièce reste **À valider**, avec « Payée selon la
+  banque : libellé, montant, date » dessous et un bouton « Pas cette ligne » ;
 - **montant seul** : proposée (« Vu sur le compte »), un toucher **C'est payé** ;
 - rien : la pièce reste À valider, puis suit le circuit des virements.
+**Chaque pièce garde la validation d'un trésorier** (ou du Super User ; Seb, 31 octobre soir) : rien
+ne passe Payé sans son toucher. Le bouton principal dit ce qui va se passer : **« Valider : Payé »**
+quand une ligne est rattachée (sans mail ni notification, c'était déjà réglé), **« Valider : À
+payer »** sinon. Pas de nouvel onglet : tout de suite dans la revue après les photos, ou plus tard
+depuis la pastille de sa nature (badge « à valider »). Une pièce déjà validée (note envoyée par un
+membre, virement fait) dont la ligne arrive passe Payé directement.
 Deux pièces du même nom et du même montant (Boyer 948 € en novembre et en janvier) : la ligne va à
-la pièce dont la date est la plus proche. Rattachée à tort : **Détacher** (dans la pièce) rend la
-ligne et remet la pièce là où elle était (Envoyé si le virement avait été fait, sinon À valider
-pour une pièce établie, À payer pour une note envoyée), tant que la **saison** de la ligne n'est
-pas clôturée ; après, la banque a décidé.
+la pièce dont la date est la plus proche. Rattachée à tort une fois payée : **Détacher** (dans la
+pièce) rend la ligne et remet la pièce là où elle était (Envoyé si le virement avait été fait,
+sinon À valider pour une pièce établie, À payer pour une note envoyée), tant que la **saison** de
+la ligne n'est pas clôturée ; après, la banque a décidé.
+
+**Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de choses à
+traiter par un trésorier : Notes de frais, Honoraires, Achats = à valider ; Virements = à payer,
+préparés pour moi, envoyés vus sur le compte ; **À rattacher** = lignes de banque de dépense sans
+compte du plan ; **Ventes** = recettes sans compte. Deux couleurs : orange pour les pièces (natures,
+Ventes), **bleu** pour la banque à traiter (Virements, À rattacher).
 
 **Preuve de virement** : la capture du mail de la banque (« ordre de virement », « virement
 instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve
 la pièce qu'elle paie (même montant, nom du bénéficiaire ou motif), la range comme page de cette
-pièce ; si la ligne du compte est là, la pièce passe **Payé** (la preuve porte le nom) ; sinon
-**C'est payé** la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
+pièce ; si la ligne du compte est là, elle est rattachée (la preuve porte le nom) et la pièce
+attend « Valider : Payé » ; sinon **C'est payé** la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
 manque. Virement vers un compte de l'association : « virement interne, rien à faire » ; sans pièce
 qui corresponde : « aucune pièce », avec la ligne du compte si elle y est déjà (« pas encore sur le
 compte » sinon) ; rien n'est créé dans les deux cas. Étude sur les 40 pièces de la saison 2025-2026 :

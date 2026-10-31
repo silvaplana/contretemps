@@ -709,10 +709,12 @@ def test_saisir_une_depense_factures_et_preuves_de_virement(client, db_session, 
 
 
 def test_la_banque_decide(client, db_session, ecole, espion):
-    """Seb, 31/10 : une ligne du compte du même montant et au même nom paie
-    la pièce toute seule (photo ou preuve de virement) ; le montant seul
+    """Seb, 31/10 : une ligne du compte du même montant et au même nom est
+    rattachée toute seule (photo ou preuve de virement), la pièce reste À
+    valider et passe Payé quand un trésorier la valide ; le montant seul
     reste proposé ; une preuve sans pièce montre la ligne ; rattachée à
-    tort, la pièce se détache tant que la saison n'est pas clôturée."""
+    tort, « Pas cette ligne » tant que ce n'est pas validé, puis Détacher
+    tant que la saison n'est pas clôturée."""
     tresorier = ecole["tresorier"]
     org = ecole["ecole"].id
     boyer = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Boyer", prenom="Sophie", email="sb@test.fr")
@@ -720,39 +722,45 @@ def test_la_banque_decide(client, db_session, ecole, espion):
     janvier = _operation(db_session, org, -94800, "2026-02-09", "VIR INST FACT0226BOYER/CONTRETE")
     _operation(db_session, org, -41760, "2026-02-11", "VIR INST MAIF")
     _operation(db_session, org, -36400, "2026-08-12", "PRLV CARTE 364")  # montant seul, pas de nom
+    entetes = entetes_session(tresorier)
 
     lecteur = LecteurFacture(date="2025-11-30", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
                              client="Contretemps", description="Cours de danse Novembre 2025")
     main.notes_frais_client.ports.lecteur = lecteur
     try:
-        # Montant + nom : Payé tout seul, sur la ligne la plus proche de la facture ; personne prévenue.
+        # Montant + nom : la ligne la plus proche de la facture est rattachée, la pièce reste À valider.
         boyer_11 = _etablir(client, tresorier, None)
-        assert boyer_11["statut"] == "remboursee" and boyer_11["operation_id"] == novembre.id and boyer_11["detachable"]
+        assert boyer_11["statut"] == "envoyee" and boyer_11["operation_id"] == novembre.id and boyer_11["detachable"]
+        assert boyer_11["operation"]["libelle"] == "VIR INST FACT1125-SOPHIE BOYER" and boyer_11["paiement_propose"] is None
+        # La validation du trésorier la passe Payé, sans prévenir la prof (c'était déjà réglé).
+        validee = client.post(f"/notes-frais/notes/{boyer_11['id']}/valider", headers=entetes).json()
+        assert validee["statut"] == "remboursee" and validee["operation_id"] == novembre.id
         assert not [n for n in espion.notifications if n[0] == boyer.id]
         lecteur.lu = dict(date="2026-01-31", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
                           client="Contretemps", description="Cours de danse Janvier 2026")
         boyer_01 = _etablir(client, tresorier, None)
-        assert boyer_01["statut"] == "remboursee" and boyer_01["operation_id"] == janvier.id
+        assert boyer_01["statut"] == "envoyee" and boyer_01["operation_id"] == janvier.id
         # Société : le nom du fournisseur suffit.
         lecteur.lu = dict(date="2026-01-01", montant_centimes=41760, commercant="MAIF", emetteur_personne=False, client="CONTRETEMPS")
-        assert _etablir(client, tresorier, None)["statut"] == "remboursee"
+        assert _etablir(client, tresorier, None)["operation_id"] is not None
         # Montant seul : proposé, pas rattaché.
         lecteur.lu = dict(date="2026-07-22", montant_centimes=36400, commercant="Picture Impact Production", emetteur_personne=False,
                           client="Contretemps")
         dvd = _etablir(client, tresorier, None)
-        assert dvd["statut"] == "envoyee" and dvd["paiement_propose"]["libelle"] == "PRLV CARTE 364"
-        # Personne à choisir : même au bon montant et au bon nom, rien d'automatique.
+        assert dvd["operation_id"] is None and dvd["paiement_propose"]["libelle"] == "PRLV CARTE 364"
+        # Personne inconnue : la ligne est rattachée quand même, Valider demandera « Pour qui ? ».
         _operation(db_session, org, -5600, "2025-11-10", "VIR TANIOU THIBAULT")
         lecteur.lu = dict(date="2025-10-31", montant_centimes=5600, commercant="Thibault Taniou", emetteur_personne=True, client="Contretemps")
         taniou = _etablir(client, tresorier, None)
-        assert taniou["statut"] == "envoyee" and taniou["personne"] is None
+        assert taniou["statut"] == "envoyee" and taniou["personne"] is None and taniou["operation_id"] is not None
+        assert client.post(f"/notes-frais/notes/{taniou['id']}/valider", headers=entetes).status_code == 400
 
-        # Preuve de virement : sa pièce est là, la ligne du compte aussi → Payé.
+        # Preuve de virement : sa pièce est là, la ligne du compte aussi → rattachée, à valider.
         ligne_dvd = _operation(db_session, org, -36400, "2026-08-12", "VIR INST FACT2026014 PICTURE IMPACT")
         lecteur.lu = dict(sorte="virement", date="2026-08-12", montant_centimes=36400, beneficiaire="PICTURE IMPACT PRODUCTION",
                           motif="VIR INST FACT2026014 CONTRETEMP")
         preuve = _etablir(client, tresorier, None)
-        assert preuve["id"] == dvd["id"] and preuve["statut"] == "remboursee" and preuve["operation_id"] == ligne_dvd.id
+        assert preuve["id"] == dvd["id"] and preuve["statut"] == "envoyee" and preuve["operation_id"] == ligne_dvd.id
         # Preuve sans pièce : la ligne du compte est montrée, rien n'est créé.
         revelles = _operation(db_session, org, -72575, "2025-12-05", "VIR INST FACT1125-STELLINA REVELLES")
         lecteur.lu = dict(sorte="virement", date="2025-12-05", montant_centimes=72575, beneficiaire="REVELLES STELLINA", motif="FACT1125-STELLINA")
@@ -761,15 +769,16 @@ def test_la_banque_decide(client, db_session, ecole, espion):
     finally:
         main.notes_frais_client.ports.lecteur = None
 
-    # Rattachée à tort : Détacher rend la ligne, la pièce revient À valider.
+    # « Pas cette ligne » avant validation : la pièce reste À valider, la ligne est libre et proposée à nouveau.
     url = f"/notes-frais/notes/{boyer_01['id']}"
-    detachee = client.post(f"{url}/detacher", headers=entetes_session(tresorier))
+    detachee = client.post(f"{url}/detacher", headers=entetes)
     assert detachee.status_code == 200 and detachee.json()["statut"] == "envoyee" and detachee.json()["operation_id"] is None
-    assert client.post(f"{url}/detacher", headers=entetes_session(tresorier)).status_code == 400
-    # La ligne est libre : proposée à nouveau, « C'est payé » la reprend.
     assert detachee.json()["paiement_propose"]["id"] == janvier.id
-    repris = client.post(f"{url}/payee", json={"operation_id": janvier.id}, headers=entetes_session(tresorier)).json()
-    assert repris["statut"] == "remboursee"
+    assert client.post(f"{url}/detacher", headers=entetes).status_code == 400
+    # « C'est payé » la reprend ; rattachée à tort une fois payée : Détacher la remet À valider.
+    assert client.post(f"{url}/payee", json={"operation_id": janvier.id}, headers=entetes).json()["statut"] == "remboursee"
+    assert client.post(f"{url}/detacher", headers=entetes).json()["statut"] == "envoyee"
+    assert client.post(f"{url}/payee", json={"operation_id": janvier.id}, headers=entetes).json()["statut"] == "remboursee"
     # Saison clôturée : la banque a décidé, on ne détache plus.
     import datetime as dt
 
@@ -777,8 +786,9 @@ def test_la_banque_decide(client, db_session, ecole, espion):
 
     db_session.add(FinClosing(org_id=org, season_id=1, start_date=dt.date(2025, 9, 1), end_date=dt.date(2026, 8, 31), result=0, balances=[]))
     db_session.commit()
-    assert client.post(f"{url}/detacher", headers=entetes_session(tresorier)).status_code == 400
-    assert client.get("/notes-frais/tresorerie?filtre=honoraires", headers=entetes_session(tresorier)).json()["notes"][0]["detachable"] is False
+    assert client.post(f"{url}/detacher", headers=entetes).status_code == 400
+    payees = client.get("/notes-frais/tresorerie?filtre=honoraires", headers=entetes).json()["notes"]
+    assert all(n["detachable"] is False for n in payees if n["statut"] == "remboursee")
     assert client.post(f"{url}/detacher", headers=entetes_session(ecole["eleve"])).status_code == 403
 
 

@@ -425,8 +425,8 @@ numéro, objet), rangée dans un dossier, et l'appli propose **la ligne de banqu
 date proche, nom) et **le compte** du plan. Le trésorier **Confirme**, choisit **Autre ligne**,
 ou dit **Pas encore payée** / **Payée en espèces**. Rien n'est rattaché sans confirmation, **sauf**
 quand la ligne est sûre (même montant et même nom, Seb 31 octobre : « la banque décide »,
-`notes-de-frais.md` §7 quinquies) : rattachée toute seule, détachable tant que la saison n'est pas
-clôturée ; la ligne garde « proposé par l'assistant, confirmé par X le … ». Le montant lu sert à chercher la
+`notes-de-frais.md` §7 quinquies) : rattachée toute seule, la pièce attend « Valider : Payé » d'un
+trésorier, détachable tant que la saison n'est pas clôturée ; la ligne garde « proposé par l'assistant, confirmé par X le … ». Le montant lu sert à chercher la
 ligne, jamais à écrire un chiffre dans les comptes : le montant comptable est celui de la banque
 (ou de la caisse). Une différence pièce / banque est signalée, pas corrigée.
 
