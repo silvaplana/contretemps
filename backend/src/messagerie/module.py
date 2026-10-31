@@ -1,6 +1,6 @@
 """Déclaration du module Messagerie instantanée (spec/core.md §9 bis)."""
 
-from registry import Module
+from registry import Module, guide_file
 
 from .actions import actions
 from .connexions import Connexions
@@ -32,4 +32,5 @@ def mount(app, core) -> None:
 MODULE = Module(
     key="messaging", label="Messagerie", mount=mount,
     actions=lambda core: actions(core.messagerie_receiver),
+    guide=guide_file(__file__),
 )

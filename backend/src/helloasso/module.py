@@ -2,7 +2,7 @@
 spec/modules/helloasso.md). Éteint dans les écoles existantes (migration du
 27 octobre 2026) : une école le coche quand elle encaisse sur HelloAsso."""
 
-from registry import Module
+from registry import Module, guide_file
 
 from .campaign import Campaigns
 from .connection import Connection
@@ -24,4 +24,4 @@ def mount(app, core) -> None:
     )
 
 
-MODULE = Module(key="helloasso", label="HelloAsso", mount=mount)
+MODULE = Module(key="helloasso", label="HelloAsso", mount=mount, guide=guide_file(__file__))

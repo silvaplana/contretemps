@@ -103,3 +103,5 @@ where = ["src"]
 [tool.setuptools.package-data]
 inscriptions = ["facture_template/*", "dossier_template/*"]
 personnalisation = ["defaut/*"]
+# Guide des écrans de chaque module pour l'assistant (registry.guide_file).
+"*" = ["guide.md"]
