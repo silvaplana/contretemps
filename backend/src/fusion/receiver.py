@@ -13,6 +13,8 @@ from .fusion import Fusion, RefusFusion
 
 class FusionDemande(BaseModel):
     autre_id: int
+    # Les mails à garder ; absent : ceux des deux fiches.
+    emails: list[str] | None = None
 
 
 class FusionReceiver:
@@ -39,4 +41,7 @@ class FusionReceiver:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur
         if roles.is_admin(garde) or roles.is_admin(absorbe):
             rbac.require_owner(appelant, garde.ecole_id)
-        return self.client.fusionner(db, garde, absorbe)
+        try:
+            return self.client.fusionner(db, garde, absorbe, demande.emails)
+        except RefusFusion as erreur:
+            raise HTTPException(status_code=409, detail=str(erreur)) from erreur

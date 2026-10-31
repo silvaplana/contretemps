@@ -64,11 +64,11 @@ export async function ficheCourante(compteId) {
 // Une personne = une fiche (spec/core.md §4) : `gardeId` garde tout ce
 // qu'avait `autreId`, qui disparaît. Refus lisible (409 : mauvaise fiche,
 // 403 : réservé à l'Administrateur principal dès qu'une fiche est admin).
-export async function fusionner(gardeId, autreId) {
+export async function fusionner(gardeId, autreId, emails = null) {
   const reponse = await fetch(`${BASE_URL}/comptes/${gardeId}/fusion`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ autre_id: autreId }),
+    body: JSON.stringify({ autre_id: autreId, emails }),
   })
   if (reponse.status === 403) throw new Error('Une fiche admin ne se fusionne que par un administrateur principal.')
   if (!reponse.ok) {

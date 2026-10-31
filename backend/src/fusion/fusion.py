@@ -12,7 +12,7 @@ from __future__ import annotations
 from sqlalchemy import Table, and_, select
 from sqlalchemy.orm import Session
 
-from comptes import Compte, Comptes, roles
+from comptes import Compte, Comptes, roles, separer_emails
 from comptes.models import RoleCompte
 from db import Base
 from documents_contretemps.adapter import personne_id
@@ -93,8 +93,14 @@ class Fusion:
         if garde.ecole_id != absorbe.ecole_id or garde.saison_id != absorbe.saison_id:
             raise RefusFusion("Les deux fiches doivent être de la même école et de la même saison")
 
-    def fusionner(self, db: Session, garde: Compte, absorbe: Compte) -> Compte:
+    def fusionner(self, db: Session, garde: Compte, absorbe: Compte, emails: list[str] | None = None) -> Compte:
+        """`emails` : ceux à garder, choisis parmi ceux des deux fiches
+        (un mail peut être faux, Seb 31/10) ; None garde tout."""
         self.verifier(garde, absorbe)
+        if emails is not None:
+            emails = separer_emails(emails)
+            if not emails or not set(emails) <= set(garde.emails + absorbe.emails):
+                raise RefusFusion("Choisissez un mail des deux fiches")
         pg, pa = personne_id(db, garde), personne_id(db, absorbe)
 
         # Professeur et Trésorier : des groupes, déplacés avec les autres
@@ -102,7 +108,7 @@ class Fusion:
         for role in roles.noms_roles(absorbe):
             if role not in roles.ROLES_EN_GROUPE and not roles.a_le_role(garde, role):
                 garde.roles.append(RoleCompte(role=role))
-        garde.definir_emails(garde.emails + absorbe.emails)
+        garde.definir_emails(emails if emails is not None else garde.emails + absorbe.emails)
         garde.telephone = garde.telephone or absorbe.telephone
         garde.payer_email = garde.payer_email or absorbe.payer_email
         if garde.compte_precedent_id is None and absorbe.compte_precedent_id != garde.id:
