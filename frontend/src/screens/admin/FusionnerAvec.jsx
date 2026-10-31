@@ -35,9 +35,14 @@ export default function FusionnerAvec({ ecoleId, fiche, onClose, onFait }) {
         }
         parId.delete(fiche.id)
         setFiches([...parId.values()])
+        // Une seule autre fiche au même nom : elle est déjà choisie.
+        const memes = [...parId.values()].filter(
+          (c) => normaliserRecherche(`${c.prenom} ${c.nom}`) === normaliserRecherche(`${fiche.prenom} ${fiche.nom}`),
+        )
+        if (memes.length === 1) setChoix(memes[0])
       })
       .catch(() => setErreur('Impossible de charger les fiches.'))
-  }, [ecoleId, fiche.id])
+  }, [ecoleId, fiche.id, fiche.prenom, fiche.nom])
 
   const memeNom = (c) => normaliserRecherche(`${c.prenom} ${c.nom}`) === normaliserRecherche(`${fiche.prenom} ${fiche.nom}`)
   const requete = normaliserRecherche(recherche.trim())
