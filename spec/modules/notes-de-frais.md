@@ -101,6 +101,10 @@ Liste par organisation. Plus de bouton « Catégories » dans Financier (décisi
 liste par défaut s'applique. Par défaut : Costumes, Déplacement, Matériel,
 Location de salle, Alimentation, Autre. *(Contretemps : la liste par défaut ci-dessus.)*
 
+**30 octobre 2026 (Seb)** : quand l'appli hôte donne un plan comptable (`Ports.plan`), les
+catégories sont ses comptes de charges actifs (`nf_categories.code`) ; la liste libre ci-dessus ne
+sert plus et se modifie dans le plan comptable (crayon de la fiche d'une pièce, financier.md §8.3 ter).
+
 Déplacements en voiture : **au ticket** (essence, péage) pour l'instant, pas de barème kilométrique
 (décision de Seb, 16 octobre).
 

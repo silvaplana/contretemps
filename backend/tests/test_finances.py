@@ -255,7 +255,8 @@ def ecole(db_session):
 
 
 @pytest.mark.rbac_reel
-def test_routes(client, ecole):
+def test_routes(client, db_session, ecole):
+    Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Pesenti", prenom="Agnès", email="ap@test.fr")
     tresorier = entetes_session(ecole["tresorier"])
     files = [("files", (name, data, "application/pdf")) for name, data in history()]
     reponse = client.post("/finances/import", files=files, headers=tresorier)
@@ -263,8 +264,37 @@ def test_routes(client, ecole):
     assert len(reponse.json()["imported"]) == 3
     assert client.get("/finances/ledger", headers=tresorier).json()["total"] == 4422.61
     assert client.get("/finances/ledger?account=99", headers=tresorier).status_code == 404
-    saisons = client.get("/finances/seasons", headers=tresorier).json()
-    assert len(saisons["seasons"]) == 1 and saisons["seasons"][0]["current"]
+    # Le PDF de chaque relevé est rangé dans Docs › Saison du relevé ›
+    # Financier › RELEVES BANCAIRES › <compte> ; la saison passée qui manquait
+    # est créée (Seb, 30/10).
+    details = [i["detail"] for i in reponse.json()["imported"]]
+    assert {d.rsplit(" › ", 1)[1] for d in details} == {"COMPTE COURANT", "LIVRET BLEU"}, details
+    assert all("Financier › RELEVES BANCAIRES ›" in d for d in details), details
+    saisons = client.get("/finances/seasons", headers=tresorier).json()["seasons"]
+    assert [(s["name"], s["current"]) for s in saisons] == [("2023-2024", False), ("2026-2027", True)]
+    assert all("Docs › 2023-2024 ›" in d for d in details), details
+    # Dossiers vides de la trésorière sous Financier de la saison en cours.
+    from app import main
+    from documents.models import DocNode
+    from sqlalchemy import select
+
+    def enfants(parent_id):
+        return {n.name: n.id for n in db_session.scalars(select(DocNode).where(DocNode.parent_id == parent_id, DocNode.deleted_at.is_(None)))}
+
+    financier = main.documents_client.reserved_folder(db_session, ecole["ecole"].id, "Financier", None)
+    racines = enfants(financier.id)
+    assert {"RELEVES BANCAIRES", "ACHATS", "HONORAIRES", "VENTES"} <= racines.keys()
+    assert set(enfants(racines["VENTES"])) == {"COTISATIONS", "COURS", "PARTICIPATION GALA"}
+    assert set(enfants(racines["RELEVES BANCAIRES"])) == {"COMPTE COURANT", "LIVRET BLEU"}
+    assert set(enfants(racines["HONORAIRES"])) == {"AGNES PESENTI"}
+    # Réimporter range les PDF déjà importés (relevés d'avant le rangement),
+    # sans doublon dans Docs ni dans les lignes.
+    again = client.post("/finances/import", files=files, headers=tresorier).json()
+    assert again["imported"] == [] and all("rangé dans Docs" in i["detail"] for i in again["skipped"])
+    courant = enfants(enfants(enfants(main.documents_client.reserved_folder(
+        db_session, ecole["ecole"].id, "Financier", saisons[0]["id"]).id)["RELEVES BANCAIRES"])["COMPTE COURANT"])
+    assert len(courant) == 2
+    assert client.get("/finances/ledger", headers=tresorier).json()["total"] == 4422.61
     # Un admin qui n'est pas trésorier n'a pas les comptes.
     admin = entetes_session(ecole["admin"])
     assert client.get("/finances/ledger", headers=admin).status_code == 403

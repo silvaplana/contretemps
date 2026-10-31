@@ -199,3 +199,19 @@ def test_routes(client, db_session, monkeypatch):
         assert client.get("/finances/operations/999").status_code == 404
     finally:
         app.dependency_overrides.pop(membre_appelant, None)
+
+
+def test_piece_category_proposes_its_account(db_session):
+    """Seb, 30/10 : la catégorie d'une pièce est un compte de charges du plan ;
+    rattachée à une sortie d'argent, elle fait proposer ce compte."""
+    pieces = {}
+    accounting = Accounting(pieces=lambda db, org_id: pieces)
+    finances = Finances(accounting=accounting)
+    finances.import_files(db_session, TRESORIER, statements())
+    rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
+    mystere = rows["PRLV MYSTERE"]
+    assert mystere["proposal"] is None
+    pieces[mystere["id"]] = {"id": 3, "title": "Castorama", "account": "606"}
+    rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
+    assert rows["PRLV MYSTERE"]["proposal"]["number"] == "606" and "Castorama" in rows["PRLV MYSTERE"]["proposal"]["reason"]
+    assert accounting.operation(db_session, TRESORIER, mystere["id"])["proposal"]["number"] == "606"

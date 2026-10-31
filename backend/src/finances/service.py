@@ -15,11 +15,16 @@ où elles ne changent pas le total.
 
 Les opérations provisoires (source « banque ») viennent de la connexion
 bancaire (bank.py) ; le relevé qui les couvre les efface en arrivant.
+
+Le PDF d'un relevé importé est rangé par l'appli hôte (store_statement),
+dans Contretemps : Docs › Saison du relevé › Financier › RELEVES BANCAIRES ›
+<nom du compte>.
 """
 
 from __future__ import annotations
 
 import io
+from collections.abc import Callable
 import tarfile
 import tempfile
 import zipfile
@@ -63,10 +68,15 @@ class Finances:
     """Import des relevés et lecture de l'historique (voir le docstring du
     module)."""
 
-    def __init__(self, accounting=None) -> None:
+    def __init__(
+        self, accounting=None, store_statement: Callable[[Session, Member, str, str, str, bytes], str | None] | None = None
+    ) -> None:
         # Comptabilité (accounting.py) : compte du plan et pièce sur chaque
         # ligne de l'historique, si le sous-module est monté.
         self.accounting = accounting
+        # Rangement du PDF (db, membre, nom du compte, date de fin, nom du
+        # fichier, contenu) : rend où il est rangé, ou pourquoi il ne l'est pas.
+        self.store_statement = store_statement
 
     # ----- import -----
 
@@ -83,10 +93,15 @@ class Finances:
                 report["errors"].append({"file": name, "detail": str(exc)})
                 continue
             period = f"{statement.start_date} → {statement.end_date}"
-            if self._store(db, member.org_id, name, statement):
-                report["imported"].append({"file": name, "detail": f"{period}, {len(statement.operations)} opérations"})
+            account, created = self._store(db, member.org_id, name, statement)
+            # Le PDF est rangé même s'il était déjà importé : réimporter
+            # range les relevés d'avant le rangement dans Docs.
+            filed = self.store_statement(db, member, account.name, statement.end_date, name, data) if self.store_statement else None
+            if created:
+                detail = f"{period}, {len(statement.operations)} opérations" + (f" ; {filed}" if filed else "")
+                report["imported"].append({"file": name, "detail": detail})
             else:
-                report["skipped"].append({"file": name, "detail": f"{period} déjà importé"})
+                report["skipped"].append({"file": name, "detail": f"{period} déjà importé" + (f" ; {filed}" if filed else "")})
         if report["imported"]:
             self._link_transfers(db, member.org_id)
         db.commit()
@@ -120,8 +135,9 @@ class Finances:
             )
         return expanded
 
-    def _store(self, db: Session, org_id: int, file_name: str, statement: ParsedStatement) -> bool:
-        """Enregistre le relevé et ses opérations. False s'il était déjà là."""
+    def _store(self, db: Session, org_id: int, file_name: str, statement: ParsedStatement) -> tuple[FinAccount, bool]:
+        """Enregistre le relevé et ses opérations ; rend son compte, et False
+        s'il était déjà là."""
         account = db.scalar(select(FinAccount).where(FinAccount.org_id == org_id, FinAccount.number == statement.account_number))
         # Compte créé par la connexion bancaire : son numéro est l'IBAN, qui
         # contient le numéro lu sur le relevé.
@@ -145,7 +161,7 @@ class Finances:
             )
         )
         if already is not None:
-            return False
+            return account, False
         stored = FinStatement(
             account_id=account.id,
             start_date=start,
@@ -184,7 +200,7 @@ class Finances:
             ),
         )
         db.flush()
-        return True
+        return account, True
 
     def rename_account(self, db: Session, member: Member, account_id: int, name: str) -> dict:
         """Le trésorier nomme un compte (« Honoraires profs », « Livret A »)."""

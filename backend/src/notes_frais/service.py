@@ -44,7 +44,7 @@ from .models import (
 )
 from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, TicketLu
 from . import recapitulatif
-from .stockage import StockageEnveloppes, nom_propre
+from .stockage import StockageEnveloppes, nom_dossier, nom_propre
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ FILTRES = ("a_valider", "a_rembourser", "terminees")
 # À payer, pas encore vu sur le compte (financier.md §8.3 bis).
 EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
 # Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
-DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "Honoraires", ACHAT: "Achats"}
+DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS"}
 MOIS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
         "novembre", "décembre")
 MOIS_COURTS = ("janv", "fevr", "mars", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec")
@@ -113,6 +113,8 @@ class NotesDeFrais:
     # --- Catégories (§4.6) ---
 
     def categories(self, db: Session, org_id: int, *, toutes: bool = False) -> list[CategorieFrais]:
+        if self.ports.plan is not None:
+            self._suivre_le_plan(db, org_id)
         existantes = list(
             db.scalars(select(CategorieFrais).where(CategorieFrais.org_id == org_id).order_by(CategorieFrais.ordre, CategorieFrais.id))
         )
@@ -123,11 +125,42 @@ class NotesDeFrais:
             return self.categories(db, org_id, toutes=toutes)
         return existantes if toutes else [c for c in existantes if c.active]
 
+    def _suivre_le_plan(self, db: Session, org_id: int) -> None:
+        """Les catégories = les comptes de charges du plan comptable (Seb,
+        30/10) : une par compte, dans l'ordre des numéros ; les autres
+        (catégories libres d'avant, comptes retirés) sont désactivées et
+        restent sur les anciennes dépenses."""
+        plan = sorted(self.ports.plan(db, org_id))
+        if not plan:  # pas encore de plan : les catégories libres restent
+            return
+        existantes = list(db.scalars(select(CategorieFrais).where(CategorieFrais.org_id == org_id)))
+        par_code = {c.code: c for c in existantes if c.code}
+        voulues = set()
+        change = False
+        for ordre, (code, libelle) in enumerate(plan):
+            libelle = " ".join(libelle.split())[:60]
+            voulues.add(code)
+            categorie = par_code.get(code)
+            if categorie is None:
+                db.add(CategorieFrais(org_id=org_id, code=code, libelle=libelle, ordre=ordre))
+                change = True
+            elif (categorie.libelle, categorie.ordre, categorie.active) != (libelle, ordre, True):
+                categorie.libelle, categorie.ordre, categorie.active = libelle, ordre, True
+                change = True
+        for categorie in existantes:
+            if categorie.code not in voulues and categorie.active:
+                categorie.active = False
+                change = True
+        if change:
+            db.commit()
+
     def definir_categories(self, db: Session, membre: Membre, libelles: list[str]) -> list[CategorieFrais]:
         """Trésoriers : la liste voulue, dans l'ordre. Une catégorie qui
         disparaît est seulement désactivée (elle reste sur les anciennes
         dépenses) ; un libellé déjà connu est réactivé."""
         self._exiger_tresorier(membre)
+        if self.ports.plan is not None and self.ports.plan(db, membre.org_id):
+            raise ValueError("Les catégories sont les comptes de charges du plan comptable : Financier › Comptes › ⋯ › Plan comptable.")
         propres = []
         for libelle in libelles:
             libelle = " ".join(libelle.split())[:60]
@@ -448,7 +481,8 @@ class NotesDeFrais:
             "a_envoyer": [self.depense_dict(d) for d in a_envoyer],
             "notes": [self.note_dict(n) for n in notes],
             "rib": self.rib_dict(rib),
-            "categories": [{"id": c.id, "libelle": c.libelle} for c in self.categories(db, membre.org_id)],
+            "categories": [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in self.categories(db, membre.org_id)],
+            "planComptable": self.ports.plan is not None,
             "tresoriers": len(self.ports.annuaire.tresoriers(db, membre.org_id)),
             "lecture_disponible": self.lecture_disponible,
         }
@@ -603,6 +637,7 @@ class NotesDeFrais:
         montant_centimes: int | None = None,
         description: str = "",
         valider: bool = False,
+        categorie_id: int | None = None,
     ) -> NoteFrais:
         """Honoraires ou achat établi par un trésorier : une photo (ou un
         fichier) = une note d'une dépense, créée aussitôt. La lecture remplit
@@ -645,6 +680,7 @@ class NotesDeFrais:
         depense = Depense(
             org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=montant,
             description=description, lue_par_ia=bool(lu), note_id=note.id,
+            categorie_id=self._categorie(db, membre.org_id, categorie_id if categorie_id is not None else lu.get("categorie_id")),
         )
         db.add(depense)
         db.flush()
@@ -702,6 +738,8 @@ class NotesDeFrais:
                 depense.montant_centimes = champs["montant_centimes"]
             if champs.get("description") is not None:
                 depense.description = " ".join(champs["description"].split())[:200]
+            if champs.get("categorie_id") is not None:
+                depense.categorie_id = self._categorie(db, note.org_id, champs["categorie_id"])
             self._valider_saisie(depense.montant_centimes, depense.date)
         if champs.get("titre"):
             note.titre = " ".join(champs["titre"].split())[:120]
@@ -809,14 +847,21 @@ class NotesDeFrais:
     # --- Rangement dans Docs (§7 bis, financier.md §8.3 bis) ---
 
     def _chemin_docs(self, db: Session, note: NoteFrais) -> list[str] | None:
-        """Dossiers sous Financier : par personne puis par note (notes de
-        frais, honoraires), ou directement Achats. None : pas encore rangeable
-        (honoraires dont on ne sait pas encore pour qui)."""
+        """Dossiers sous Financier (Seb, 30/10) : ACHATS › mois de la pièce
+        (« 08.2026 ») ; HONORAIRES › PRENOM NOM du prof › la note ; Notes de
+        frais › personne › la note. None : pas encore rangeable (honoraires
+        dont on ne sait pas encore pour qui)."""
         if note.nature == ACHAT:
-            return [DOSSIERS[ACHAT]]
+            return [DOSSIERS[ACHAT], f"{self._date_docs(note):%m.%Y}"]
         if note.person_id == PERSONNE_A_CHOISIR:
             return None
         personne = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        if note.nature == HONORAIRES:
+            return [
+                DOSSIERS[HONORAIRES],
+                nom_dossier(personne.nom if personne else "?"),
+                f"{note.envoyee_le.date().isoformat()} {nom_propre(note.titre)} ({note.id})",
+            ]
         return [
             DOSSIERS[note.nature],
             self.stockage.dossier_personne(note.org_id, note.person_id, personne.nom if personne else "?"),

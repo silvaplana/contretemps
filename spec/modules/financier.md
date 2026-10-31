@@ -328,6 +328,24 @@ la trésorière de Contretemps (comptable de métier) produit pour l'AG, édité
 par son logiciel comptable pour 2024-25 : **Balance**, **Grand livre**, **Rapport financier**
 (Word) et **Synthèse Dépenses-Recettes** (Excel). Ce sont les modèles de forme à reproduire.
 
+**Dossiers de Docs › Privé › Saison › Financier (Seb, 30 octobre 2026)**, noms en majuscules sans
+accent, créés vides par l'appli quand un trésorier ouvre le Financier (saison en cours et saisons
+ouvertes) :
+
+- **RELEVES BANCAIRES** › un dossier par compte en banque (le nom de sa puce dans Comptes) : le PDF de
+  chaque relevé importé y est rangé, dans la saison de sa date de fin ; une saison passée absente est
+  créée (septembre à août, comme dans Admin › Saisons) ; une saison terminée et fermée ne reçoit rien
+  (la rouvrir, puis réimporter). Réimporter un relevé déjà importé range son PDF sans recréer ses lignes :
+  c'est ainsi qu'on range les relevés importés avant le 30 octobre.
+- **ACHATS** › un dossier par mois de la pièce, « MM.AAAA » (« 08.2026 »), créé avec la première pièce
+  du mois : les achats payés avec les comptes de l'association.
+- **HONORAIRES** › un dossier par prof, « PRENOM NOM » › un dossier par note d'honoraires (une note
+  regroupe des dépenses, une par facture, comme une note de frais).
+- **Notes de frais** : inchangé (par personne, puis par note).
+- **VENTES** › **COTISATIONS**, **COURS**, **PARTICIPATION GALA** (vides : pas encore de pièces de vente).
+
+Les pièces rangées avant le 30 octobre restent dans les anciens dossiers « Achats » et « Honoraires ».
+
 Objectif : les produire dans l'appli à partir des comptes en banque (§3) et des justificatifs, sans
 ressaisie, et sans que l'assistant écrive un chiffre. Ce que l'association a : des dossiers papier
 par nature de pièce, que la trésorière a fait créer dans Docs › Privé › Saison <saison> › Financier
@@ -569,6 +587,20 @@ virement, demandent la clé d'accès (empreinte) de la personne quand l'étude d
 authentification sera codée (en attendant : trésoriers et Super User seulement) ; qui et quand
 sont gardés et montrés à celle qui paie. Seuls nom, IBAN, BIC sont gardés ; aucun mot de passe
 de banque.
+
+### 8.3 ter Catégories des pièces = plan comptable (Seb, 30 octobre 2026)
+
+Les catégories des dépenses (notes de frais, honoraires, achats) sont les **comptes de charges
+actifs du plan comptable** (classe 6, chez Contretemps de 6063 Autres fournitures à 658 Charges
+diverses de gestion), dans l'ordre des numéros (`nf_categories.code` = numéro du compte, port
+`Ports.plan` du module Notes de frais). Ajouter, renommer ou retirer un compte de charges change la
+liste ; les anciennes catégories libres sont désactivées et restent sur les anciennes dépenses. Dans
+Pièces, la fiche d'un achat ou d'honoraires a un champ Catégorie et un **crayon** qui ouvre le plan
+comptable. Une pièce dont toutes les dépenses ont la même catégorie fait **proposer ce compte** sur
+la ligne de banque qui la paie (« la pièce « Castorama » est classée dans ce compte »), avant
+l'historique et les mots-clés. Ventes : leurs catégories seront les comptes de produits (classe 7,
+756 Cotisations à 768 Intérêts du livret) quand les pièces de vente existeront ; aujourd'hui une
+vente est une ligne de banque dont on confirme le compte de produits.
 
 ### 8.4 Comptes : compte et pièce sur chaque ligne
 

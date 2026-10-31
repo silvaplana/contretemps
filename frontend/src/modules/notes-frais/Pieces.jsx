@@ -4,6 +4,7 @@ import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import LignesBanque from '../finances/compta/LignesBanque.jsx'
+import PlanComptable from '../finances/compta/PlanComptable.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeEtat, Compte, PaiementVu, Pieces as Vignettes, qui } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
@@ -408,10 +409,26 @@ function NoteModal({ note, nature, onClose, onFait }) {
   const [jour, setJour] = useState(depense?.date ?? api.aujourdhui())
   const [montant, setMontant] = useState(api.versTexteMontant(depense?.montant_centimes || null))
   const [description, setDescription] = useState(depense?.description ?? '')
+  const [categorieId, setCategorieId] = useState(depense?.categorie?.id ?? '')
+  const [categories, setCategories] = useState([])
+  const [plan, setPlan] = useState(false)
   const [refus, setRefus] = useState(null)
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
   const genre = note?.nature ?? nature
+
+  // Catégories = comptes de charges du plan comptable (financier.md §8.3
+  // ter) ; le crayon ouvre le plan, la liste est relue en le fermant.
+  const chargerCategories = useCallback(() => {
+    api
+      .categories()
+      .then(setCategories)
+      .catch((err) => setErreur(err.message))
+  }, [])
+
+  useEffect(() => {
+    if (corrigeable) chargerCategories()
+  }, [corrigeable, chargerCategories])
 
   useEffect(() => {
     if (genre !== 'honoraires' || !corrigeable) return
@@ -441,6 +458,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
       date: jour,
       montant_centimes: centimes,
       description: description.trim(),
+      ...(categorieId ? { categorie_id: Number(categorieId) } : {}),
       ...(genre === 'honoraires' ? { person_id: Number(personId) } : { fournisseur: fournisseur.trim() }),
     }
   }
@@ -453,6 +471,20 @@ function NoteModal({ note, nature, onClose, onFait }) {
     }
     await api.corriger(note.id, corps)
     if (valider) await api.valider(note.id)
+  }
+
+  // Le plan comptable prend la place de la fiche le temps de le modifier
+  // (la saisie en cours est gardée).
+  if (plan) {
+    const fermer = () => {
+      setPlan(false)
+      chargerCategories()
+    }
+    return (
+      <Modal title="Plan comptable" onClose={fermer}>
+        <PlanComptable onClose={fermer} />
+      </Modal>
+    )
   }
 
   const aValider = note === null || note.statut === 'envoyee'
@@ -531,6 +563,20 @@ function NoteModal({ note, nature, onClose, onFait }) {
           <input id="nf-date" type="date" value={jour} max={api.aujourdhui()} onChange={(e) => setJour(e.target.value)} />
           <label htmlFor="nf-montant">Montant (€)</label>
           <input id="nf-montant" inputMode="decimal" value={montant} onChange={(e) => setMontant(e.target.value)} placeholder="0,00" />
+          <div className="nf-label-crayon">
+            <label htmlFor="nf-categorie">Catégorie</label>
+            <button type="button" className="btn btn--secondary" aria-label="Modifier les catégories" title="Modifier les catégories" onClick={() => setPlan(true)}>
+              <Icon name="edit" size={18} />
+            </button>
+          </div>
+          <select id="nf-categorie" value={categorieId} onChange={(e) => setCategorieId(e.target.value)}>
+            <option value="">—</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.code ? `${c.code} ${c.libelle}` : c.libelle}
+              </option>
+            ))}
+          </select>
           <label htmlFor="nf-description">Description</label>
           <input id="nf-description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} />
         </>

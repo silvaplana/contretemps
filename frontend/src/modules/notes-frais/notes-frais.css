@@ -467,3 +467,15 @@
   background: #fff;
   color: var(--accent);
 }
+
+/* « Catégorie » et son crayon (le plan comptable), sur une ligne. */
+.nf-label-crayon {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nf-label-crayon .btn {
+  min-width: 48px;
+  min-height: 48px;
+}

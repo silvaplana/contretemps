@@ -160,7 +160,9 @@ class ClasseurContretemps:
     trésoriers (dossier système, voir documents.md §4.7 bis)."""
 
     DOSSIER = "Notes de frais"
-    DOSSIERS = ("Notes de frais", "Honoraires", "Achats")
+    # Les racines de pièces sous Financier (les anciens noms gardés : des
+    # pièces y sont déjà rangées), jamais retirées quand elles se vident.
+    DOSSIERS = ("Notes de frais", "HONORAIRES", "ACHATS", "Honoraires", "Achats")
 
     def __init__(self, documents, financier: str = "Financier") -> None:
         self.documents = documents
@@ -326,3 +328,16 @@ class BanqueContretemps:
 
         ligne = db.execute(self._requete(org_id).where(FinOperation.id == operation_id)).first()
         return self._operation(*ligne) if ligne else None
+
+
+def comptes_de_charges(db: Session, org_id: int) -> list[tuple[str, str]]:
+    """Les catégories des dépenses = les comptes de charges actifs du plan
+    comptable du Financier (Seb, 30/10 ; financier.md §8.2)."""
+    from finances.models import EXPENSE, FinChartAccount
+
+    return [
+        (a.number, a.label)
+        for a in db.scalars(
+            select(FinChartAccount).where(FinChartAccount.org_id == org_id, FinChartAccount.nature == EXPENSE, FinChartAccount.active.is_(True))
+        )
+    ]
