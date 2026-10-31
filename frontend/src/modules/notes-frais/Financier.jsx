@@ -44,17 +44,23 @@ export default function Financier() {
   useEffect(() => () => api.agirPour(null), [])
   // Badges : ce qui attend une action de qui regarde (financier.md §8.3 bis).
   const [aFaire, setAFaire] = useState({})
-  // Pièces : par nature et Virements (module notes de frais) ; À rattacher et
-  // Ventes : les lignes de banque sans compte du plan (Seb, 31/10).
+  // Pièces : des pièces (à valider par nature, virements à faire). Comptes :
+  // les lignes de banque de la saison en cours sans compte du plan (Seb,
+  // 31/10 : une pièce n'est pas une ligne, chaque sous-onglet compte les siennes).
+  const [aClasser, setAClasser] = useState(0)
   const rechargerAFaire = useCallback(() => {
-    Promise.all([api.compteursTresorerie(), finApi.historique().catch(() => null)])
-      .then(([compteurs, ledger]) => {
-        const lignes = (ledger?.rows ?? []).filter((r) => !r.transfer && !r.account)
-        setAFaire({
-          ...compteurs,
-          a_rattacher: lignes.filter((r) => r.amount < 0).length,
-          ventes: lignes.filter((r) => r.amount > 0).length,
-        })
+    api
+      .compteursTresorerie()
+      .then(setAFaire)
+      .catch(() => {})
+    Promise.all([finApi.historique(), finApi.saisons()])
+      .then(([ledger, saisons]) => {
+        const courante = saisons.seasons.find((s) => s.current)
+        setAClasser(
+          ledger.rows.filter(
+            (r) => !r.transfer && !r.account && (!courante || (r.date >= courante.startDate && r.date <= courante.endDate))
+          ).length
+        )
       })
       .catch(() => {})
   }, [])
@@ -116,14 +122,18 @@ export default function Financier() {
       )}
       <SegmentedTabs
         options={SOUS_ONGLETS.map((o) =>
-          o.value === 'pieces' ? { ...o, label: <>{o.label}<Compte n={totalAFaire} /></> } : o,
+          o.value === 'pieces'
+            ? { ...o, label: <>{o.label}<Compte n={totalAFaire} /></> }
+            : o.value === 'comptes'
+              ? { ...o, label: <>{o.label}<Compte n={aClasser} banque /></> }
+              : o,
         )}
         value={sousOnglet}
         onChange={setSousOnglet}
         className="admin-screen__tabs"
       />
       {sousOnglet === 'comptes' ? (
-        <Comptes />
+        <Comptes onChange={rechargerAFaire} />
       ) : sousOnglet === 'bilan' ? (
         <Bilan />
       ) : sousOnglet === 'ag' ? (

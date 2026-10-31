@@ -482,6 +482,10 @@
   color: var(--accent);
 }
 
+.segmented__option.is-active .nf-compte--banque {
+  color: #2a6fd8;
+}
+
 /* « Catégorie » et son crayon (le plan comptable), sur une ligne. */
 .nf-label-crayon {
   display: flex;

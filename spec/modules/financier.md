@@ -385,9 +385,10 @@ même fournisseur → même compte). Pas de « type » à l'écran : on dit « c
 
 Financier › **Pièces** : le classeur des justificatifs. Puces **Achats** · **Honoraires** ·
 **Notes de frais** · **Ventes** : les quatre dossiers de l'association dans Docs (ci-dessus), ni
-plus ni moins, qui donnent le journal (AC, HO, NF, VE) ; plus une puce **À rattacher** (compteur)
-qui est un filtre sur les pièces pas encore rattachées, pas un dossier. Sur téléphone, les six
-puces tiennent en deux lignes de trois, sans défiler. **Badges (Seb, 29/10)** : une pastille ronde
+plus ni moins, qui donnent le journal (AC, HO, NF, VE) ; plus **Virements**. La puce À rattacher
+a quitté Pièces le 31 octobre (Seb : une pièce n'est pas une ligne de banque) : les lignes sans
+compte se traitent dans Comptes (« Sans compte »), avec le badge sur le sous-onglet Comptes, saison
+en cours. Sur téléphone, les cinq puces tiennent en deux lignes de trois, sans défiler. **Badges (Seb, 29/10)** : une pastille ronde
 compte ce qui attend une action de la personne qui regarde, rien quand c'est zéro ; Achats,
 Honoraires et Notes de frais = À valider ; Virements = À payer, Préparés pour elle, Envoyés vus sur
 le compte ; le sous-onglet Pièces montre la somme. Pas comptés : Refusé et Brouillon (au membre),
@@ -711,8 +712,8 @@ l'état de paiement à payer / préparé / envoyé, bénéficiaire, libellé, pr
    compte proposé d'après l'historique confirmé (même libellé sans ses chiffres) puis les mots-clés,
    jamais écrit sans confirmation ; fiche de l'opération avec ventilation (la somme doit faire la
    banque) ; puces Sans compte / Sans pièce ; la pièce d'une ligne = la dépense payée par cette
-   opération (`nf_notes.bank_operation_id`) ; puces À rattacher (lignes sans compte) et Ventes
-   (recettes) de Pièces ; caisse avec retrait au distributeur = virement interne ; niveau Simple /
+   opération (`nf_notes.bank_operation_id`) ; badge « Sans compte » sur le sous-onglet Comptes
+   (saison en cours) ; caisse avec retrait au distributeur = virement interne ; niveau Simple /
    Complet dans Comptes › ⋯ › Plan comptable et, depuis le 29 octobre, sur la ligne Financier
    d'Admin › École › Personnalisation › Fonctionnalités (« Passer en Complet »). Reste : remise de
    chèques avec une sous-ligne par chèque rapprochée d'une famille, pièce choisie dans Docs ou

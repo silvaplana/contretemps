@@ -862,7 +862,7 @@ class NotesDeFrais:
         indices = mots_benef | set(re.findall(r"[a-z]{3,}", _sans_accents(preuve.motif or "")))
         candidates = list(db.scalars(
             select(NoteFrais).where(
-                NoteFrais.org_id == membre.org_id, NoteFrais.statut.not_in((REFUSEE, REMBOURSEE)), NoteFrais.don.is_(False)
+                NoteFrais.org_id == membre.org_id, NoteFrais.statut != REFUSEE, NoteFrais.don.is_(False)
             ).order_by(NoteFrais.envoyee_le)
         ))
         candidates = [n for n in candidates if self.total(n) == preuve.montant_centimes]
@@ -871,7 +871,22 @@ class NotesDeFrais:
             noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, n)} {n.supplier or ''}")))
             return bool(noms & indices)
 
-        note = next((n for n in candidates if nommee(n)), candidates[0] if len(candidates) == 1 else None)
+        # Deux pièces du même nom et du même montant (Boyer 948 € en novembre
+        # et en janvier) : celle déjà rattachée à la ligne de ce virement,
+        # sinon une pièce sans ligne, la plus proche de la date de la preuve.
+        jour = date.fromisoformat(preuve.date) if preuve.date else None
+
+        def meme_ligne(n: NoteFrais) -> bool:
+            ligne = self.ports.banque.operation(db, membre.org_id, n.bank_operation_id) if n.bank_operation_id and self.ports.banque else None
+            return ligne is not None and jour is not None and abs((ligne.date - jour).days) <= 3
+
+        def rang(n: NoteFrais) -> tuple:
+            ecart = abs((min(d.date for d in n.depenses) - jour).days) if jour and n.depenses else 0
+            return (not nommee(n), ecart)
+
+        # Une pièce déjà rattachée à une autre ligne n'est pas celle de ce virement.
+        candidates = sorted((n for n in candidates if not n.bank_operation_id or meme_ligne(n)), key=rang)
+        note = candidates[0] if candidates and (nommee(candidates[0]) or len(candidates) == 1) else None
         if note is None:
             # Aucune pièce : on montre la ligne du compte, s'il l'a déjà.
             preuve.operation = self._ligne_du_compte(db, membre.org_id, preuve, indices)

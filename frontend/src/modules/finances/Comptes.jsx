@@ -290,7 +290,7 @@ function SeasonsOverlay({ series, rows, filtering, seasonsData }) {
   );
 }
 
-export default function Comptes() {
+export default function Comptes({ onChange }) {
   const [view, setView] = useState(() => readSetting(VIEW_KEY, "all"));
   const [display, setDisplay] = useState(() =>
     readSetting(DISPLAY_KEY, "chart"),
@@ -568,7 +568,10 @@ export default function Comptes() {
         <FicheOperation
           operationId={ficheOp}
           onClose={() => setFicheOp(null)}
-          onChange={load}
+          onChange={() => {
+            load();
+            onChange?.();
+          }}
         />
       )}
       <div className="account-card-header">
