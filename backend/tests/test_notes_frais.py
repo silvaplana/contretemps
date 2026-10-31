@@ -792,6 +792,48 @@ def test_la_banque_decide(client, db_session, ecole, espion):
     assert client.post(f"{url}/detacher", headers=entetes_session(ecole["eleve"])).status_code == 403
 
 
+def test_revenir_en_arriere_et_annuler_une_piece(client, db_session, ecole, espion):
+    """Seb, 31/10 : le trésorier (ou Super User) ramène une pièce une étape
+    en arrière (Envoyé / Préparé → À payer, À payer → À valider), jamais
+    une pièce payée rattachée à la banque sans la détacher ; « Annuler »
+    défait tout, quel que soit l'état : une note envoyée par un membre lui
+    revient à envoyer, une pièce établie part à la corbeille."""
+    tresorier, admin, eleve = ecole["tresorier"], ecole["admin"], ecole["eleve"]
+    entetes = entetes_session(tresorier)
+    prof, note = _honoraires_a_payer(client, db_session, ecole)
+    url = f"/notes-frais/notes/{note['id']}"
+    client.put(f"{url}/rib", json={"iban": IBAN, "titulaire": "L MARTIN"}, headers=entetes)
+    client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes)
+    assert client.post(f"{url}/preparer", json={"payeur_id": admin.id}, headers=entetes).json()["statut"] == "preparee"
+    # Préparé → À payer (plus de payeur), puis À payer → À valider, puis rien à défaire.
+    retour = client.post(f"{url}/revenir", headers=entetes).json()
+    assert retour["statut"] == "validee" and retour["payeur"] is None and retour["prepare_le"] is None
+    assert client.post(f"{url}/virement", headers=entetes).json()["statut"] == "viree"
+    retour = client.post(f"{url}/revenir", headers=entetes).json()
+    assert retour["statut"] == "validee" and retour["vire_le"] is None
+    assert client.post(f"{url}/revenir", headers=entetes).json()["statut"] == "envoyee"
+    assert client.post(f"{url}/revenir", headers=entetes).status_code == 400
+    assert client.post(f"{url}/revenir", headers=entetes_session(eleve)).status_code == 403
+    # Payée et rattachée à la banque : ni revenir ni annuler sans détacher.
+    ligne = _operation(db_session, ecole["ecole"].id, -48000, "2026-10-20", "VIR MARTIN LUCIE")
+    assert client.post(f"{url}/payee", json={"operation_id": ligne.id}, headers=entetes).json()["statut"] == "remboursee"
+    assert client.post(f"{url}/revenir", headers=entetes).status_code == 400
+    assert client.delete(url, headers=entetes).status_code == 400
+    assert client.post(f"{url}/detacher", headers=entetes).json()["statut"] == "envoyee"
+    # Annuler une pièce établie : partie.
+    assert client.delete(url, headers=entetes).status_code == 204
+    assert client.post(f"{url}/revenir", headers=entetes).status_code == 404
+
+    # Annuler la note envoyée (et validée) par un membre : ses dépenses lui reviennent, il est prévenu.
+    d = _depense(client, eleve)
+    envoyee = _envoyer(client, eleve, [d["id"]]).json()
+    assert client.post(f"/notes-frais/notes/{envoyee['id']}/valider", headers=entetes).json()["statut"] == "validee"
+    assert client.delete(f"/notes-frais/notes/{envoyee['id']}", headers=entetes).status_code == 204
+    espace = client.get("/notes-frais/moi", headers=entetes_session(eleve)).json()
+    assert [x["id"] for x in espace["a_envoyer"]] == [d["id"]] and espace["notes"] == []
+    assert (eleve.id, "Note de frais annulée") in espion.notifications
+
+
 def test_etablir_reserve_aux_tresoriers_et_supprimer_une_photo_ratee(client, ecole):
     tresorier = ecole["tresorier"]
     reponse = client.post(

@@ -286,6 +286,10 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
 // Refuser (elle corrige elle-même). Pièce établie depuis « + » (photo lue,
 // nature proposée) : nature, personne et montant à vérifier ou corriger, puis
 // Valider ; `note` null = saisie sans photo ; `revue` = rang dans le lot.
+// « Revenir en arrière » (Seb, 31/10) : une étape, trésorier seul ; jamais
+// une pièce payée rattachée à la banque (Détacher d'abord).
+const ETAPE_AVANT = { viree: 'À payer', preparee: 'À payer', validee: 'À valider' }
+
 function NoteModal({ note, nature, onClose, onFait, revue }) {
   const corrigeable =
     note === null || ((note.nature !== 'frais' || note.etablie) && ['envoyee', 'validee'].includes(note.statut))
@@ -562,14 +566,19 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
           )}
         </div>
       )}
-      {note && (note.nature !== 'frais' || note.etablie) && note.statut === 'envoyee' && refus === null && (
+      {note && ETAPE_AVANT[note.statut] && refus === null && (
+        <button type="button" className="btn btn--link" disabled={enCours} onClick={() => agir(() => api.revenir(note.id))}>
+          Revenir en arrière : {ETAPE_AVANT[note.statut]}
+        </button>
+      )}
+      {note && !(note.statut === 'remboursee' && note.operation_id) && refus === null && (
         <button
           type="button"
           className="btn btn--link nf-supprimer"
           disabled={enCours}
           onClick={() => agir(() => api.supprimerNote(note.id))}
         >
-          Supprimer cette pièce
+          {note.nature === 'frais' && !note.etablie ? 'Annuler cette note : elle revient à la personne' : 'Annuler cette pièce : tout défaire'}
         </button>
       )}
       {refus !== null && (
