@@ -113,6 +113,10 @@ Saisir une personne qui a déjà une fiche (fiche papier, import, assistant, Hel
 fiche existante au lieu d'en créer une autre, sauf si cette fiche est admin : on n'y ajoute jamais
 une adresse nouvelle (elle obtiendrait ses droits), on crée une fiche à part et l'Administrateur
 principal fusionne.
+Pour qu'il le sache, Admin › Élèves affiche en haut un bandeau « X a deux fiches » dès qu'un
+élève a le même prénom et le même nom qu'une autre fiche (élève, prof ou admin), avec un bouton
+Fusionner : l'autre fiche est déjà choisie, la fiche d'élève est gardée (son email passe en
+premier). Décision de Seb du 31/10, après le doublon de Julia Dho.
 
 ### 4.2 Les champs du socle
 
