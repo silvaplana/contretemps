@@ -5105,3 +5105,10 @@ a.btn {
 .deux-fiches .btn {
   min-height: 48px;
 }
+
+/* « Quel mail garder ? » dans « Fusionner avec… » (FusionnerAvec.jsx). */
+.fusion__question {
+  margin: 16px 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}

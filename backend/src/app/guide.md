@@ -42,7 +42,7 @@ Admin › École
 Admin › Élèves
 - Recherche par nom. Toucher un nom, une cellule ou le paiement : la fiche de l'élève.
 - Bandeau « X a deux fiches » (même prénom et nom qu'une autre fiche, élève, prof ou admin) :
-  bouton Fusionner, l'autre fiche est déjà choisie.
+  bouton Fusionner, l'autre fiche est déjà choisie, puis « Quel mail garder ? » (cocher le bon).
 - Appui long sur une cellule : la voir en entier, « Copier dans le presse-papier », marquer la
   cellule ou toute la ligne en rouge.
 - Colonne Inviter : « Inviter » / « Réinviter », en tête « Inviter tous les non-invités ».

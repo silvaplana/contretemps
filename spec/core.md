@@ -115,8 +115,9 @@ une adresse nouvelle (elle obtiendrait ses droits), on crée une fiche à part e
 principal fusionne.
 Pour qu'il le sache, Admin › Élèves affiche en haut un bandeau « X a deux fiches » dès qu'un
 élève a le même prénom et le même nom qu'une autre fiche (élève, prof ou admin), avec un bouton
-Fusionner : l'autre fiche est déjà choisie, la fiche d'élève est gardée (son email passe en
-premier). Décision de Seb du 31/10, après le doublon de Julia Dho.
+Fusionner : l'autre fiche est déjà choisie, la fiche d'élève est gardée. La fenêtre demande
+« Quel mail garder ? » (rien de coché d'avance, un des deux peut être faux) ; les mails non
+cochés sont enlevés. Décision de Seb du 31/10, après le doublon de Julia Dho.
 
 ### 4.2 Les champs du socle
 

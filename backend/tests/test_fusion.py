@@ -60,6 +60,30 @@ def test_fusionner_julia_admin_et_eleve(client, db_session, ecole):
     assert membres == {ecole["owner"].id, garde.id}
 
 
+def test_la_fusion_ne_garde_que_les_emails_choisis(client, db_session, ecole):
+    """Seb, 31/10 : le mail de la fiche admin de Julia était faux ; on choisit
+    à la fusion les mails à garder, les autres sont enlevés."""
+    garde, autre = ecole["julia_eleve"], ecole["julia_admin"]
+    reponse = client.post(
+        f"/comptes/{garde.id}/fusion", json={"autre_id": autre.id, "emails": ["julia@test.fr"]},
+        headers=entetes_session(ecole["owner"]),
+    )
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["emails"] == ["julia@test.fr"]
+
+
+def test_la_fusion_refuse_un_email_qui_n_est_sur_aucune_fiche(client, db_session, ecole):
+    garde, autre = ecole["julia_eleve"], ecole["julia_admin"]
+    for emails in (["pirate@test.fr"], []):
+        reponse = client.post(
+            f"/comptes/{garde.id}/fusion", json={"autre_id": autre.id, "emails": emails},
+            headers=entetes_session(ecole["owner"]),
+        )
+        assert reponse.status_code == 409, reponse.text
+    db_session.expire_all()
+    assert Comptes().get(db_session, autre.id) is not None
+
+
 def test_fusion_d_une_fiche_admin_reservee_a_l_administrateur_principal(client, ecole):
     assert _fusionner(client, ecole["admin"], ecole["julia_eleve"], ecole["julia_admin"]).status_code == 403
     assert _fusionner(client, ecole["julia_eleve"], ecole["julia_eleve"], ecole["julia_admin"]).status_code == 403
