@@ -47,6 +47,13 @@ class RibEntree(BaseModel):
     bic: str | None = None
 
 
+class ExterieurEntree(BaseModel):
+    nom: str
+    email: str | None = None
+    telephone: str | None = None
+    rib: RibEntree | None = None
+
+
 class EnvoiEntree(BaseModel):
     depense_ids: list[int]
     titre: str = ""
@@ -214,6 +221,35 @@ class NotesDeFraisReceiver:
         @app.get("/notes-frais/personnes")
         def personnes(db: Session = db_dep, m: Membre = membre):
             return [{"person_id": p.person_id, "nom": p.nom, "role": p.role} for p in appeler(nf.personnes, db, m)]
+
+        # --- Personnes extérieures (§7 quater) ---
+
+        @app.get("/notes-frais/exterieurs")
+        def exterieurs(db: Session = db_dep, m: Membre = membre):
+            return [
+                {"id": e.id, "person_id": -e.id, "nom": e.name, "email": e.email, "telephone": e.phone, "rib": nf.rib_dict(nf.rib(db, m.org_id, -e.id))}
+                for e in appeler(nf.exterieurs, db, m)
+            ]
+
+        @app.post("/notes-frais/exterieurs", status_code=201)
+        def ajouter_exterieur(corps: ExterieurEntree, db: Session = db_dep, m: Membre = membre):
+            p = appeler(nf.enregistrer_exterieur, db, m, None, nom=corps.nom, email=corps.email, telephone=corps.telephone,
+                        rib=corps.rib.model_dump() if corps.rib else None)
+            return {"person_id": p.person_id, "nom": p.nom, "role": p.role}
+
+        @app.put("/notes-frais/exterieurs/{external_id}")
+        def modifier_exterieur(external_id: int, corps: ExterieurEntree, db: Session = db_dep, m: Membre = membre):
+            p = appeler(nf.enregistrer_exterieur, db, m, external_id, nom=corps.nom, email=corps.email, telephone=corps.telephone,
+                        rib=corps.rib.model_dump() if corps.rib else None)
+            return {"person_id": p.person_id, "nom": p.nom, "role": p.role}
+
+        @app.post("/notes-frais/exterieurs/{external_id}/demander-rib", status_code=204)
+        def demander_rib(external_id: int, db: Session = db_dep, m: Membre = membre):
+            appeler(nf.demander_rib, db, m, external_id)
+
+        @app.delete("/notes-frais/exterieurs/{external_id}", status_code=204)
+        def retirer_exterieur(external_id: int, db: Session = db_dep, m: Membre = membre):
+            appeler(nf.retirer_exterieur, db, m, external_id)
 
         @app.get("/notes-frais/tresorerie")
         def tresorerie(filtre: str = "a_valider", db: Session = db_dep, m: Membre = membre):

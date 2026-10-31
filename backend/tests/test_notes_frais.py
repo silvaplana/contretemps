@@ -794,3 +794,70 @@ def test_categories_sont_les_comptes_de_charges_du_plan(client, db_session, ecol
                                                     "montant_centimes": "4500", "categorie_id": str(fournitures["id"])}, headers=tresorier)
     assert achat.status_code == 201, achat.text
     assert achat.json()["depenses"][0]["categorie"]["id"] == fournitures["id"]
+
+
+# --- Personnes extérieures (§7 quater) ---
+
+
+def test_personne_exterieure_payee_comme_un_membre(client, db_session, ecole, espion, monkeypatch):
+    """Un prof invité, pas membre : ajouté depuis « Pour qui ? » avec son mail
+    et son IBAN, reconnu sur la photo de sa facture, payé, prévenu par mail."""
+    tresorier = ecole["tresorier"]
+    t = entetes_session(tresorier)
+    corps = {"nom": "Jacques  Pesanti", "email": "jacques@test.fr", "rib": {"iban": IBAN, "titulaire": "J PESANTI"}}
+    assert client.post("/notes-frais/exterieurs", json=corps, headers=entetes_session(ecole["eleve"])).status_code == 403
+    ajoute = client.post("/notes-frais/exterieurs", json=corps, headers=t)
+    assert ajoute.status_code == 201
+    jacques = ajoute.json()
+    assert jacques["nom"] == "Jacques Pesanti" and jacques["role"] == "extérieur"
+
+    # « Pour qui ? » : les membres d'abord, puis les extérieurs.
+    personnes = client.get("/notes-frais/personnes", headers=t).json()
+    assert [p["nom"] for p in personnes][-1] == "Jacques Pesanti" and len(personnes) == 4
+
+    # La photo de sa facture le reconnaît, son RIB est recopié.
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2026-10-15", montant_centimes=15000, commercant="Jacques PESANTI", description="Stage de tango"),
+    )
+    note = _etablir(client, tresorier, "honoraires")
+    assert note["personne"]["nom"] == "Jacques Pesanti" and note["rib"]["iban"] == IBAN
+    url = f"/notes-frais/notes/{note['id']}"
+    assert client.post(f"{url}/valider", headers=t).status_code == 200
+    assert client.post(f"{url}/virement", headers=t).status_code == 200
+    operation = _operation(db_session, ecole["ecole"].id, -15000, date.today().isoformat(), "VIR SEPA PESANTI")
+    assert client.post(f"{url}/payee", json={"operation_id": operation.id}, headers=t).status_code == 200
+    [mail] = [m for m in espion.mails if m["a"] == ["jacques@test.fr"]]
+    assert mail["sujet"] == "Honoraires payés : Honoraires octobre 2026"
+
+    # Corrigé puis retiré de la liste : plus proposé, la note garde son nom.
+    [ligne] = client.get("/notes-frais/exterieurs", headers=t).json()
+    assert ligne["email"] == "jacques@test.fr" and ligne["rib"]["iban"] == IBAN
+    corps["email"] = "jp@test.fr"
+    assert client.put(f"/notes-frais/exterieurs/{ligne['id']}", json=corps, headers=t).status_code == 200
+    assert client.get("/notes-frais/exterieurs", headers=t).json()[0]["email"] == "jp@test.fr"
+    assert client.delete(f"/notes-frais/exterieurs/{ligne['id']}", headers=t).status_code == 204
+    assert "Jacques Pesanti" not in [p["nom"] for p in client.get("/notes-frais/personnes", headers=t).json()]
+    [paye] = client.get("/notes-frais/virements", headers=t).json()["virements"]
+    assert paye["personne"]["nom"] == "Jacques Pesanti" and paye["statut"] == "remboursee"
+
+
+def test_demander_son_rib_a_un_exterieur(client, ecole, espion):
+    """Mail ou téléphone facultatifs ; sans RIB, un mail le lui demande, la
+    réponse va au trésorier."""
+    t = entetes_session(ecole["tresorier"])
+    sans_mail = client.post("/notes-frais/exterieurs", json={"nom": "Ana Lopez", "telephone": "06 12 34 56 78"}, headers=t)
+    assert sans_mail.status_code == 201
+    [ana] = client.get("/notes-frais/exterieurs", headers=t).json()
+    assert ana["telephone"] == "06 12 34 56 78" and ana["rib"] is None
+    assert client.post(f"/notes-frais/exterieurs/{ana['id']}/demander-rib", headers=t).status_code == 400
+
+    corps = {"nom": "Ana Lopez", "email": "ana.lopez@test.fr", "telephone": "06 12 34 56 78"}
+    client.put(f"/notes-frais/exterieurs/{ana['id']}", json=corps, headers=t)
+    assert client.post(f"/notes-frais/exterieurs/{ana['id']}/demander-rib", headers=t).status_code == 204
+    [mail] = espion.mails
+    assert mail["a"] == ["ana.lopez@test.fr"] and "RIB" in mail["sujet"]
+    assert mail["repondre_a"] == "julia@test.fr" and "Bonjour Ana Lopez" in mail["texte"]
+    assert client.post(
+        f"/notes-frais/exterieurs/{ana['id']}/demander-rib", headers=entetes_session(ecole["eleve"])
+    ).status_code == 403
