@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
@@ -6,7 +6,7 @@ import Modal from '../../components/Modal.jsx'
 import LignesBanque from '../finances/compta/LignesBanque.jsx'
 import PlanComptable from '../finances/compta/PlanComptable.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { BadgeEtat, Compte, PaiementVu, Pieces as Vignettes, qui } from './commun.jsx'
+import { BadgeEtat, ChampsRib, Compte, PaiementVu, Pieces as Vignettes, qui, ribVide } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
@@ -403,8 +403,8 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
 function NoteModal({ note, nature, onClose, onFait }) {
   const corrigeable = note === null || (note.nature !== 'frais' && ['envoyee', 'validee'].includes(note.statut))
   const depense = note?.depenses[0]
-  const [personnes, setPersonnes] = useState(null)
-  const [personId, setPersonId] = useState(note?.personne?.person_id ?? '')
+  const [pour, setPour] = useState(note?.personne ?? null)
+  const [choixPour, setChoixPour] = useState(false)
   const [fournisseur, setFournisseur] = useState(note?.fournisseur ?? '')
   const [jour, setJour] = useState(depense?.date ?? api.aujourdhui())
   const [montant, setMontant] = useState(api.versTexteMontant(depense?.montant_centimes || null))
@@ -430,14 +430,6 @@ function NoteModal({ note, nature, onClose, onFait }) {
     if (corrigeable) chargerCategories()
   }, [corrigeable, chargerCategories])
 
-  useEffect(() => {
-    if (genre !== 'honoraires' || !corrigeable) return
-    api
-      .personnes()
-      .then(setPersonnes)
-      .catch((err) => setErreur(err.message))
-  }, [genre, corrigeable])
-
   async function agir(action) {
     setErreur('')
     setEnCours(true)
@@ -453,13 +445,13 @@ function NoteModal({ note, nature, onClose, onFait }) {
   function champs() {
     const centimes = api.versCentimes(montant)
     if (!centimes) throw new Error('Indiquez le montant, par exemple 480,00.')
-    if (genre === 'honoraires' && !personId) throw new Error('Choisissez pour qui sont ces honoraires.')
+    if (genre === 'honoraires' && !pour) throw new Error('Choisissez pour qui sont ces honoraires.')
     return {
       date: jour,
       montant_centimes: centimes,
       description: description.trim(),
       ...(categorieId ? { categorie_id: Number(categorieId) } : {}),
-      ...(genre === 'honoraires' ? { person_id: Number(personId) } : { fournisseur: fournisseur.trim() }),
+      ...(genre === 'honoraires' ? { person_id: pour.person_id } : { fournisseur: fournisseur.trim() }),
     }
   }
 
@@ -544,14 +536,19 @@ function NoteModal({ note, nature, onClose, onFait }) {
           {genre === 'honoraires' ? (
             <>
               <label htmlFor="nf-pour">Pour qui ?</label>
-              <select id="nf-pour" value={personId} onChange={(e) => setPersonId(e.target.value)}>
-                <option value="">—</option>
-                {(personnes ?? []).map((p) => (
-                  <option key={p.person_id} value={p.person_id}>
-                    {p.nom}
-                  </option>
-                ))}
-              </select>
+              <button id="nf-pour" type="button" className="btn btn--secondary nf-pour" onClick={() => setChoixPour(true)}>
+                <Icon name="search" size={18} />
+                {pour ? pour.nom : 'Choisir'}
+              </button>
+              {choixPour && (
+                <ChoixPersonneModal
+                  onClose={() => setChoixPour(false)}
+                  onChoisie={(p) => {
+                    setPour(p)
+                    setChoixPour(false)
+                  }}
+                />
+              )}
             </>
           ) : (
             <>
@@ -634,11 +631,13 @@ function NoteModal({ note, nature, onClose, onFait }) {
   )
 }
 
-// Choix de la personne pour qui le trésorier saisit : toutes les personnes
-// de l'école, avec une recherche par nom.
+// Choix de la personne pour qui le trésorier saisit : les membres de
+// l'école, puis les personnes extérieures (notes-de-frais.md §7 quater), avec une
+// recherche par nom ; en bas, « + Quelqu'un d'extérieur ».
 export function ChoixPersonneModal({ onClose, onChoisie }) {
   const [personnes, setPersonnes] = useState(null)
   const [recherche, setRecherche] = useState('')
+  const [nouvel, setNouvel] = useState(null) // { nom, email, rib }
   const [erreur, setErreur] = useState('')
 
   useEffect(() => {
@@ -650,6 +649,41 @@ export function ChoixPersonneModal({ onClose, onChoisie }) {
 
   const cle = recherche.trim().toLocaleLowerCase('fr')
   const trouvees = (personnes ?? []).filter((p) => p.nom.toLocaleLowerCase('fr').includes(cle))
+  const premierExterieur = trouvees.find((p) => p.role === 'extérieur')
+
+  if (nouvel) {
+    return (
+      <Modal
+        title="Quelqu’un d’extérieur"
+        onClose={onClose}
+        footer={
+          <div className="nf-boutons">
+            <button type="button" className="btn btn--secondary" onClick={() => setNouvel(null)}>
+              Annuler
+            </button>
+            <button
+              type="button"
+              className="btn btn--primary"
+              disabled={!nouvel.nom.trim()}
+              onClick={async () => {
+                setErreur('')
+                try {
+                  onChoisie(await api.ajouterExterieur({ ...nouvel, rib: nouvel.rib.iban.trim() ? nouvel.rib : null }))
+                } catch (err) {
+                  setErreur(err.message)
+                }
+              }}
+            >
+              Ajouter
+            </button>
+          </div>
+        }
+      >
+        <FicheExterieur fiche={nouvel} onChange={setNouvel} />
+        {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      </Modal>
+    )
+  }
 
   return (
     <Modal title="Pour qui ?" onClose={onClose}>
@@ -663,15 +697,47 @@ export function ChoixPersonneModal({ onClose, onChoisie }) {
       {!personnes && !erreur && <p className="muted">Chargement…</p>}
       <div className="nf-liste">
         {trouvees.map((p) => (
-          <button key={p.person_id} type="button" className="nf-ligne nf-ligne--note" onClick={() => onChoisie(p)}>
-            <span className="nf-ligne__corps">
-              <span className="nf-ligne__titre">{p.nom}</span>
-              {p.role && <span className="muted">{p.role}</span>}
-            </span>
-          </button>
+          <Fragment key={p.person_id}>
+            {p === premierExterieur && <p className="nf-vir-h">Extérieurs</p>}
+            <button type="button" className="nf-ligne nf-ligne--note" onClick={() => onChoisie(p)}>
+              <span className="nf-ligne__corps">
+                <span className="nf-ligne__titre">{p.nom}</span>
+                {p.role && p.role !== 'extérieur' && <span className="muted">{p.role}</span>}
+              </span>
+            </button>
+          </Fragment>
         ))}
       </div>
+      {personnes && (
+        <button
+          type="button"
+          className="btn btn--secondary nf-ajout-exterieur"
+          onClick={() => setNouvel({ nom: recherche.trim(), email: '', rib: ribVide(null) })}
+        >
+          + Quelqu’un d’extérieur
+        </button>
+      )}
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
+  )
+}
+
+// Nom, mail et RIB d'une personne extérieure : ajout depuis « Pour qui ? »,
+// correction depuis Financier › ⋯ › Extérieurs.
+export function FicheExterieur({ fiche, onChange }) {
+  return (
+    <>
+      <label htmlFor="nf-ext-nom">Nom</label>
+      <input id="nf-ext-nom" value={fiche.nom} onChange={(e) => onChange({ ...fiche, nom: e.target.value })} autoComplete="off" />
+      <label htmlFor="nf-ext-email">Mail (pour le prévenir quand c’est payé)</label>
+      <input
+        id="nf-ext-email"
+        type="email"
+        value={fiche.email}
+        onChange={(e) => onChange({ ...fiche, email: e.target.value })}
+        autoComplete="off"
+      />
+      <ChampsRib rib={fiche.rib} onChange={(rib) => onChange({ ...fiche, rib })} />
+    </>
   )
 }

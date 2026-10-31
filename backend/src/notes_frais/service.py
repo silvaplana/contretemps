@@ -37,13 +37,14 @@ from .models import (
     VIREE,
     CategorieFrais,
     Depense,
+    External,
     NoteFrais,
     Payer,
     PieceJustificative,
     Rib,
 )
 from .ports import LectureImpossible, Membre, OperationBancaire, Personne, Ports, TicketLu
-from . import recapitulatif
+from . import externals, recapitulatif
 from .stockage import StockageEnveloppes, nom_dossier, nom_propre
 
 logger = logging.getLogger(__name__)
@@ -109,6 +110,11 @@ class NotesDeFrais:
     def __init__(self, ports: Ports, stockage: StockageEnveloppes) -> None:
         self.ports = ports
         self.stockage = stockage
+
+    @property
+    def annuaire(self) -> externals.WithExternals:
+        """Les membres de l'hôte, puis les personnes extérieures (§7 quater)."""
+        return externals.WithExternals(self.ports.annuaire)
 
     # --- Catégories (§4.6) ---
 
@@ -483,7 +489,7 @@ class NotesDeFrais:
             "rib": self.rib_dict(rib),
             "categories": [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in self.categories(db, membre.org_id)],
             "planComptable": self.ports.plan is not None,
-            "tresoriers": len(self.ports.annuaire.tresoriers(db, membre.org_id)),
+            "tresoriers": len(self.annuaire.tresoriers(db, membre.org_id)),
             "lecture_disponible": self.lecture_disponible,
         }
 
@@ -517,13 +523,52 @@ class NotesDeFrais:
     def personnes(self, db: Session, membre: Membre) -> list[Personne]:
         """Pour qui un trésorier peut saisir (Financier › ⋯ « pour quelqu'un »)."""
         self._exiger_tresorier(membre)
-        return self.ports.annuaire.toutes(db, membre.org_id)
+        return self.annuaire.toutes(db, membre.org_id)
+
+    # --- Personnes extérieures (§7 quater) ---
+
+    def exterieurs(self, db: Session, membre: Membre) -> list[External]:
+        self._exiger_tresorier(membre)
+        return list(db.scalars(
+            select(External).where(External.org_id == membre.org_id, External.removed_at.is_(None)).order_by(External.name)
+        ))
+
+    def _exterieur(self, db: Session, membre: Membre, external_id: int) -> External:
+        self._exiger_tresorier(membre)
+        external = db.get(External, external_id)
+        if external is None or external.org_id != membre.org_id or external.removed_at is not None:
+            raise LookupError("Personne extérieure inconnue.")
+        return external
+
+    def enregistrer_exterieur(
+        self, db: Session, membre: Membre, external_id: int | None, *, nom: str, email: str | None, rib: dict | None
+    ) -> Personne:
+        """Ajoute (external_id None) ou corrige une personne extérieure : nom,
+        mail pour la prévenir, et son RIB pour la payer."""
+        nom = " ".join((nom or "").split())[:120]
+        if not nom:
+            raise ValueError("Indiquez son nom.")
+        external = self._exterieur(db, membre, external_id) if external_id else External(org_id=membre.org_id)
+        if external_id is None:
+            self._exiger_tresorier(membre)
+            db.add(external)
+        external.name, external.email = nom, (email or "").strip()[:254] or None
+        db.flush()
+        if rib is not None:
+            self.definir_rib(db, replace(membre, person_id=externals.person_id(external.id)), **rib)
+        db.commit()
+        return externals.personne(external)
+
+    def retirer_exterieur(self, db: Session, membre: Membre, external_id: int) -> None:
+        """Plus proposée dans « Pour qui ? » ; ses notes gardent son nom."""
+        self._exterieur(db, membre, external_id).removed_at = _maintenant()
+        db.commit()
 
     def agir_pour(self, db: Session, membre: Membre, person_id: int) -> Membre:
         """Le trésorier saisit et envoie pour une personne de l'organisation :
         dépenses, RIB et notes sont alors à son nom à elle."""
         self._exiger_tresorier(membre)
-        personne = self.ports.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
+        personne = self.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
         if personne is None:
             raise LookupError("Personne inconnue dans cette organisation.")
         return replace(
@@ -556,7 +601,7 @@ class NotesDeFrais:
         """Vu du trésorier : avec les noms, et l'opération du compte qui
         semble payer la pièce (`paiement_propose`)."""
         ids = {n.person_id for n in notes} | {i for n in notes for i in (n.traitee_par, n.prepared_by, n.payer_id) if i}
-        personnes = self.ports.annuaire.personnes(db, membre.org_id, ids - {PERSONNE_A_CHOISIR})
+        personnes = self.annuaire.personnes(db, membre.org_id, ids - {PERSONNE_A_CHOISIR})
         prises = self._operations_prises(db, membre.org_id)
         resultat = []
         for note in notes:
@@ -599,7 +644,7 @@ class NotesDeFrais:
         if note.statut != ENVOYEE:
             raise ValueError("Cette note n'est plus à valider.")
         if note.nature == FRAIS and note.person_id == membre.person_id and any(
-            t.person_id != membre.person_id for t in self.ports.annuaire.tresoriers(db, membre.org_id)
+            t.person_id != membre.person_id for t in self.annuaire.tresoriers(db, membre.org_id)
         ):
             raise PermissionError("Un autre trésorier doit valider votre propre note.")
         self._exiger_complete(note)
@@ -787,7 +832,7 @@ class NotesDeFrais:
             self.stockage.delete(membre.org_id, chemin)
 
     def _personne_de_l_org(self, db: Session, membre: Membre, person_id: int) -> Personne:
-        personne = self.ports.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
+        personne = self.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
         if personne is None:
             raise LookupError("Personne inconnue dans cette organisation.")
         return personne
@@ -800,7 +845,7 @@ class NotesDeFrais:
             return PERSONNE_A_CHOISIR
         mots = set(re.findall(r"[a-z]+", texte))
         trouvees = [
-            p for p in self.ports.annuaire.toutes(db, membre.org_id)
+            p for p in self.annuaire.toutes(db, membre.org_id)
             if (noms := [m for m in re.findall(r"[a-z]+", _sans_accents(p.nom)) if len(m) > 1]) and all(m in mots for m in noms)
         ]
         return trouvees[0].person_id if len(trouvees) == 1 else PERSONNE_A_CHOISIR
@@ -855,7 +900,7 @@ class NotesDeFrais:
             return [DOSSIERS[ACHAT], f"{self._date_docs(note):%m.%Y}"]
         if note.person_id == PERSONNE_A_CHOISIR:
             return None
-        personne = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
         if note.nature == HONORAIRES:
             return [
                 DOSSIERS[HONORAIRES],
@@ -924,14 +969,14 @@ class NotesDeFrais:
         """Le PDF récapitulatif de la note. Un échec ne bloque rien."""
         try:
             ids = {note.person_id} | {i for i in (note.traitee_par, note.remboursee_par) if i}
-            personnes = self.ports.annuaire.personnes(db, note.org_id, ids - {PERSONNE_A_CHOISIR})
+            personnes = self.annuaire.personnes(db, note.org_id, ids - {PERSONNE_A_CHOISIR})
             nom = lambda i: personnes[i].nom if i in personnes else None  # noqa: E731
             pieces = {
                 d.id: [recapitulatif.Piece(p.nom or Path(p.chemin).name, self._chemin_piece(db, membre, p), p.type_mime) for p in d.pieces]
                 for d in note.depenses
             }
             return recapitulatif.generer(
-                organisation=self.ports.annuaire.organisation(db, note.org_id).nom,
+                organisation=self.annuaire.organisation(db, note.org_id).nom,
                 note=note,
                 auteur=(note.supplier if note.nature == ACHAT else nom(note.person_id)) or "?",
                 traitee_par=nom(note.traitee_par) if note.traitee_par else None,
@@ -1004,13 +1049,21 @@ class NotesDeFrais:
         self._ranger_recapitulatif(db, membre, note)
         # Celle qui a préparé le virement est prévenue qu'il est passé.
         if note.prepared_by and note.prepared_by != membre.person_id:
-            prepare = self.ports.annuaire.personnes(db, note.org_id, {note.prepared_by}).get(note.prepared_by)
+            prepare = self.annuaire.personnes(db, note.org_id, {note.prepared_by}).get(note.prepared_by)
             if prepare is not None and prepare.notification_id is not None:
                 self._notifier(db, prepare.notification_id, "Payé", f"{self.beneficiaire(db, note)}, {euros(self.total(note))}")
         if note.nature == HONORAIRES and note.person_id != PERSONNE_A_CHOISIR:
-            prof = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+            prof = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
             if prof is not None and prof.notification_id is not None:
                 self._notifier(db, prof.notification_id, "Honoraires payés", f"« {note.titre} » : {euros(self.total(note))} par virement.")
+            elif prof is not None and externals.is_external(prof.person_id) and prof.emails:
+                # Un extérieur n'a pas l'appli : un mail.
+                org = self.annuaire.organisation(db, note.org_id)
+                self._mail(
+                    db, note.org_id, list(prof.emails), f"Honoraires payés : {note.titre}",
+                    f"Bonjour {prof.nom},\n\n« {note.titre} » : {euros(self.total(note))} par virement.\n\n{org.nom}",
+                    org.email_tresorier or org.email_contact,
+                )
         if note.nature == FRAIS:
             self._prevenir_auteur(
                 db, membre, note, "remboursée",
@@ -1024,13 +1077,13 @@ class NotesDeFrais:
         self._exiger_tresorier(membre)
         ids = set(db.scalars(select(Payer.person_id).where(Payer.org_id == membre.org_id)))
         if not ids:
-            return self.ports.annuaire.tresoriers(db, membre.org_id)
-        return sorted(self.ports.annuaire.personnes(db, membre.org_id, ids).values(), key=lambda p: p.nom.casefold())
+            return self.annuaire.tresoriers(db, membre.org_id)
+        return sorted(self.annuaire.personnes(db, membre.org_id, ids).values(), key=lambda p: p.nom.casefold())
 
     def definir_payeurs(self, db: Session, membre: Membre, person_ids: list[int]) -> list[Personne]:
         self._exiger_tresorier(membre)
         ids = set(person_ids)
-        connues = self.ports.annuaire.personnes(db, membre.org_id, ids)
+        connues = self.annuaire.personnes(db, membre.org_id, ids)
         if ids - connues.keys():
             raise LookupError("Personne inconnue dans cette organisation.")
         for ancien in db.scalars(select(Payer).where(Payer.org_id == membre.org_id)):
@@ -1098,12 +1151,12 @@ class NotesDeFrais:
             return note.rib_titulaire
         if note.nature == ACHAT:
             return note.supplier or "Fournisseur"
-        personne = self.ports.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
         return personne.nom if personne else "?"
 
     def libelle_virement(self, db: Session, note: NoteFrais) -> str:
         """Libellé proposé dans l'aide au virement (« Contretemps honoraires oct 2026 »)."""
-        org = self.ports.annuaire.organisation(db, note.org_id).nom
+        org = self.annuaire.organisation(db, note.org_id).nom
         jour = note.depenses[0].date if note.depenses else note.envoyee_le.date()
         mois = f"{MOIS_COURTS[jour.month - 1]} {jour.year}"
         quoi = {FRAIS: "note de frais", HONORAIRES: "honoraires", ACHAT: f"facture {note.supplier or ''}".strip()}[note.nature]
@@ -1188,7 +1241,7 @@ class NotesDeFrais:
         notes = list(db.scalars(
             select(NoteFrais).where(NoteFrais.org_id == membre.org_id, NoteFrais.nature == nature).order_by(NoteFrais.envoyee_le)
         ))
-        personnes = self.ports.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes} - {PERSONNE_A_CHOISIR})
+        personnes = self.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes} - {PERSONNE_A_CHOISIR})
         lignes = []
         for note in notes:
             for depense in note.depenses:
@@ -1283,7 +1336,7 @@ class NotesDeFrais:
         """Mail à l'adresse de trésorerie (sinon à chaque trésorier), sauf
         si l'auteur a lui-même cette adresse : alors aux autres trésoriers.
         Notification dans l'appli : chaque trésorier sauf l'auteur."""
-        annuaire = self.ports.annuaire
+        annuaire = self.annuaire
         org = annuaire.organisation(db, membre.org_id)
         autres = [t for t in annuaire.tresoriers(db, membre.org_id) if t.person_id != membre.person_id]
         siennes = {e.lower() for e in membre.emails}
@@ -1311,7 +1364,7 @@ class NotesDeFrais:
             self._mail(db, membre.org_id, destinataires, f"Note de frais de {membre.nom} : {total}", texte, membre.emails[0] if membre.emails else None)
 
     def _prevenir_auteur(self, db: Session, tresorier: Membre, note: NoteFrais, etat: str, message: str) -> None:
-        annuaire = self.ports.annuaire
+        annuaire = self.annuaire
         org = annuaire.organisation(db, note.org_id)
         auteur = annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
         if auteur is None:
@@ -1321,11 +1374,9 @@ class NotesDeFrais:
             self._notifier(db, auteur.notification_id, titre, f"« {note.titre} » : {message.splitlines()[0]}")
         if auteur.emails and auteur.person_id != tresorier.person_id:
             repondre_a = org.email_tresorier or (tresorier.emails[0] if tresorier.emails else None) or org.email_contact
-            texte = (
-                f"Bonjour {auteur.nom},\n\n{message}\n\n"
-                f"Note : {note.titre} ({euros(self.total(note))})\n"
-                f"Détail dans l'application {org.nom}, Profil, Mes notes de frais.\n{org.adresse_web}/\n"
-            )
+            texte = f"Bonjour {auteur.nom},\n\n{message}\n\nNote : {note.titre} ({euros(self.total(note))})\n"
+            if not externals.is_external(auteur.person_id):  # un extérieur n'a pas l'appli
+                texte += f"Détail dans l'application {org.nom}, Profil, Mes notes de frais.\n{org.adresse_web}/\n"
             self._mail(db, note.org_id, list(auteur.emails), f"{titre} : {note.titre}", texte, repondre_a)
 
     def _notifier(self, db: Session, notification_id: int, titre: str, corps: str) -> None:

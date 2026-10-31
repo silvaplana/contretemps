@@ -479,3 +479,18 @@
   min-width: 48px;
   min-height: 48px;
 }
+
+/* « Pour qui ? » d'honoraires : la loupe ouvre la recherche. */
+.nf-pour {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  justify-content: flex-start;
+}
+
+.nf-ajout-exterieur {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 12px;
+}

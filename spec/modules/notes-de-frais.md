@@ -183,6 +183,24 @@ habituel (validée en même temps, puis à payer). Réservé aux trésoriers et 
 envoie l'id de la personne dans l'en-tête `X-Pour-Personne` ; le serveur vérifie le droit et que la
 personne est de l'organisation.
 
+### 7 quater Personnes extérieures (Seb, 31 octobre)
+
+Un prof invité ou un intervenant se paie sans être membre (exemple : Jacques Pesanti). Il n'a pas
+de fiche dans l'école : il n'est ni dans la liste des membres, ni dans les envois à tous, ni à l'AG.
+Le module garde à part une liste **Extérieurs** (nom, mail, RIB).
+
+- **« Pour qui ? »** (⋯ « pour quelqu'un », « + » des notes de frais, Pour qui des honoraires, qui
+  s'ouvre par la loupe) : les membres d'abord, puis les extérieurs sous le titre « Extérieurs », la
+  recherche les trouve tous ; en bas **« + Quelqu'un d'extérieur »** : nom (repris de la
+  recherche), mail, RIB ; il est ajouté et choisi.
+- La photo d'une facture d'honoraires le reconnaît comme un membre (son nom lu sur la facture).
+- Ensuite tout est pareil : RIB recopié, Virements, Docs (dossier à son nom). Il n'a pas l'appli :
+  il est prévenu par mail (note de frais validée ou refusée, remboursée ; honoraires payés).
+- **Financier › ⋯ › Extérieurs** : la liste ; toucher une ligne pour corriger le nom, le mail ou le
+  RIB, ou **Retirer de la liste** (plus proposé dans « Pour qui ? », ses notes gardent son nom).
+- Technique : table `nf_externals` ; dans le module, son `person_id` est négatif (−id), son RIB est
+  dans `nf_ribs` sous ce numéro ; l'annuaire de l'hôte n'en sait rien.
+
 ### 7 bis Rangement dans Docs (Seb, 17 octobre ; simplifié le 29 octobre)
 
 Décision de Seb, 29 octobre 2026 (`financier.md` §8.3 bis « Rangement dans Docs ») : **un seul
@@ -238,6 +256,7 @@ Tables préfixées `nf_` (module autonome) :
   (J'ai fait le virement), `bank_operation_id` (opération du compte, payé). Honoraires dont le prof n'est
   pas encore reconnu : personne 0.
 - `nf_payers` : réglage « Qui paie » (organisation, personne) ; vide = les trésoriers.
+- `nf_externals` : personnes extérieures (organisation, nom, mail, retirée le) ; §7 quater.
 - `nf_categories` : id, organisation, libellé, ordre, active.
 - `nf_ribs` : RIB du membre (titulaire, IBAN, BIC), facultatif, un par personne (Profil › Mon RIB),
   visible de lui et des trésoriers seulement.

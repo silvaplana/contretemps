@@ -11,6 +11,7 @@ import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
 import { Compte } from './commun.jsx'
+import Exterieurs from './Exterieurs.jsx'
 import Pieces, { ChoixPersonneModal } from './Pieces.jsx'
 import './notes-frais.css'
 
@@ -37,6 +38,7 @@ export default function Financier() {
   // Saisie pour quelqu'un (menu ⋯) : d'abord choisir la personne, puis les
   // mêmes écrans que Profil › « Mes notes de frais », à son nom.
   const [choix, setChoix] = useState(null) // null | 'depense' | 'note'
+  const [exterieurs, setExterieurs] = useState(false)
   const [pour, setPour] = useState(null) // { personne, action }
   useEffect(() => () => api.agirPour(null), [])
   // Badges : ce qui attend une action de qui regarde (financier.md §8.3 bis).
@@ -88,9 +90,11 @@ export default function Financier() {
                   : [
                 { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
                 { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
+                { label: 'Extérieurs', icon: 'users', onClick: () => setExterieurs(true) },
               ]
         }
       />
+      {exterieurs && <Exterieurs onClose={() => setExterieurs(false)} />}
       {choix && (
         <ChoixPersonneModal
           onClose={() => setChoix(null)}

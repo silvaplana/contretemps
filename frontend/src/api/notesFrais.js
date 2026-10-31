@@ -81,6 +81,11 @@ export async function urlPiece(id) {
 // --- Trésoriers ---
 
 export const personnes = () => appel('/personnes')
+// Personnes extérieures (spec notes-de-frais.md §7 quater) : { nom, email, rib }.
+export const exterieurs = () => appel('/exterieurs')
+export const ajouterExterieur = (e) => appel('/exterieurs', json('POST', e))
+export const modifierExterieur = (id, e) => appel(`/exterieurs/${id}`, json('PUT', e))
+export const retirerExterieur = (id) => appel(`/exterieurs/${id}`, { method: 'DELETE' })
 export const tresorerie = (filtre) => appel(`/tresorerie?filtre=${filtre}`)
 // Badges de Pièces et de ses puces : ce qui attend une action de qui regarde.
 export const compteursTresorerie = () => appel('/tresorerie/compteurs')

@@ -160,3 +160,21 @@ class Payer(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     person_id: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class External(Base):
+    """Personne extérieure à l'organisation (prof invité, intervenant) pour
+    qui on fait une note de frais ou des honoraires : pas un membre, donc ni
+    dans la liste des membres, ni dans les envois à tous, ni à l'AG. Dans le
+    module, son person_id est -id (voir externals.py) ; son RIB est dans
+    nf_ribs sous ce person_id."""
+
+    __tablename__ = "nf_externals"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)
+    # Retiré de la liste ; ses notes gardent son nom.
+    removed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
