@@ -329,6 +329,15 @@ class BanqueContretemps:
         ligne = db.execute(self._requete(org_id).where(FinOperation.id == operation_id)).first()
         return self._operation(*ligne) if ligne else None
 
+    def cloturee(self, db: Session, org_id: int, jour) -> bool:
+        from finances.models import FinClosing
+
+        return db.scalar(
+            select(FinClosing.id).where(
+                FinClosing.org_id == org_id, FinClosing.start_date <= jour, FinClosing.end_date >= jour, FinClosing.reopened_at.is_(None)
+            )
+        ) is not None
+
 
 def comptes_de_charges(db: Session, org_id: int) -> list[tuple[str, str]]:
     """Les catégories des dépenses = les comptes de charges actifs du plan

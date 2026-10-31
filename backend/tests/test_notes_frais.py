@@ -252,7 +252,7 @@ def test_lecture_du_ticket(client, ecole, monkeypatch):
     class Lecteur:
         actif = True
 
-        def lire(self, db, org_id, contenu, type_mime, categories):
+        def lire(self, db, org_id, contenu, type_mime, categories, nom=""):
             assert "Costumes" in categories
             return TicketLu(date="2026-10-12", montant_centimes=4890, commercant="Mondial Tissus",
                             categorie="costumes", description="Tissu pour costumes")
@@ -453,14 +453,15 @@ class LecteurFacture:
     def __init__(self, **lu):
         self.lu = lu
 
-    def lire(self, db, org_id, contenu, type_mime, categories):
+    def lire(self, db, org_id, contenu, type_mime, categories, nom=""):
         return TicketLu(**self.lu)
 
 
 def _etablir(client, qui, nature, contenu=b"jpeg", **champs):
     fichiers = {"fichier": ("IMG_100.jpg", io.BytesIO(contenu), "image/jpeg")} if contenu else None
     reponse = client.post(
-        "/notes-frais/etablir", data={"nature": nature, **champs}, files=fichiers, headers=entetes_session(qui)
+        "/notes-frais/etablir", data={**({"nature": nature} if nature else {}), **champs}, files=fichiers,
+        headers=entetes_session(qui),
     )
     assert reponse.status_code == 201, reponse.text
     return reponse.json()
@@ -585,6 +586,200 @@ def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkey
     assert client.post(f"/notes-frais/notes/{inconnu['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
     # La première attend toujours d'être validée (compteur du Profil).
     assert client.get("/notes-frais/compteurs", headers=entetes_session(tresorier)).json()["a_valider"] == 1
+
+
+def test_saisir_une_depense_propose_la_nature(client, db_session, ecole, espion, monkeypatch):
+    """« + » sans nature (§7 quinquies) : un prof lu sur la pièce = honoraires,
+    une autre personne = note de frais (établie, corrigeable par le
+    trésorier), personne = achat ; la nature proposée se change tant que
+    c'est à valider, et le fichier suit dans Docs ; déjà payée = Payé sans
+    bruit."""
+    tresorier, membre = ecole["tresorier"], ecole["eleve"]
+    org = ecole["ecole"].id
+    prof = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Revelles", prenom="Élodie", email="elodie@test.fr")
+    lecteur = LecteurFacture(date="2026-10-15", montant_centimes=48000, commercant="Elodie REVELLES", description="Cours")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+
+    honoraires = _etablir(client, tresorier, None)
+    assert honoraires["nature"] == "honoraires" and honoraires["personne"]["person_id"] == prof.id and honoraires["etablie"]
+
+    lecteur.lu = {"date": "2026-10-14", "montant_centimes": 740, "commercant": "Vinci Autoroutes", "description": "Péage Margot Perrin"}
+    frais = _etablir(client, tresorier, None)
+    assert frais["nature"] == "frais" and frais["personne"]["nom"] == "Margot Perrin" and frais["titre"] == "Frais octobre 2026"
+    # Établie par le trésorier : il la valide lui-même, et elle est à son nom pour elle.
+    assert client.post(f"/notes-frais/notes/{frais['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    assert [n["id"] for n in client.get("/notes-frais/moi", headers=entetes_session(membre)).json()["notes"]] == [frais["id"]]
+
+    lecteur.lu = {"date": "2026-10-12", "montant_centimes": 3990, "commercant": "Amazon", "description": "Câbles"}
+    achat = _etablir(client, tresorier, None)
+    assert achat["nature"] == "achat" and achat["fournisseur"] == "Amazon"
+    assert _achats_de_la_saison(client, org, tresorier, "2026-2027") == ["2026-10-12 Amazon 39,90.jpg"]
+
+    # La proposition était fausse : c'est un ticket de Margot ; le fichier va dans son dossier.
+    corrige = client.patch(
+        f"/notes-frais/notes/{achat['id']}", json={"nature": "frais", "person_id": membre.id}, headers=entetes_session(tresorier)
+    )
+    assert corrige.status_code == 200, corrige.text
+    assert corrige.json()["nature"] == "frais" and corrige.json()["personne"]["nom"] == "Margot Perrin"
+    assert corrige.json()["titre"] == "Frais octobre 2026" and corrige.json()["fournisseur"] is None
+    assert _achats_de_la_saison(client, org, tresorier, "2026-2027") == []
+    saison = _enfant(client, org, tresorier, None, "Saison 2026-2027")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    notes = _enfant(client, org, tresorier, financier["id"], "Notes de frais")
+    personne = next(i for i in _parcourir(client, org, tresorier, notes["id"]).json()["items"] if "Perrin" in i["name"])
+    dossiers = _parcourir(client, org, tresorier, personne["id"]).json()["items"]
+    dossier_note = next(d for d in dossiers if d["name"].endswith(f"({achat['id']})"))
+    assert "Frais octobre 2026" in dossier_note["name"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]] == ["2026-10-12 Amazon 39,90.jpg"]
+    # Pas de nature sans personne : « Pour qui ? » avant de valider.
+    sans = client.patch(f"/notes-frais/notes/{achat['id']}", json={"nature": "honoraires"}, headers=entetes_session(tresorier))
+    assert sans.json()["personne"] is None
+    assert client.post(f"/notes-frais/notes/{achat['id']}/valider", headers=entetes_session(tresorier)).status_code == 400
+    # Déjà payée avant d'être dans l'appli : « C'est payé » depuis À valider, sans mail au prof.
+    client.patch(f"/notes-frais/notes/{achat['id']}", json={"person_id": prof.id}, headers=entetes_session(tresorier))
+    virement = _operation(db_session, org, -3990, "2026-10-20", "VIR SEPA REVELLES")
+    avant = len(espion.mails)
+    paye = client.post(f"/notes-frais/notes/{achat['id']}/payee", json={"operation_id": virement.id}, headers=entetes_session(tresorier))
+    assert paye.status_code == 200 and paye.json()["statut"] == "remboursee"
+    assert len(espion.mails) == avant
+
+    # Une note envoyée par la personne elle-même ne change pas de nature.
+    envoyee = _envoyer(client, membre, [_depense(client, membre)["id"]]).json()
+    refuse = client.patch(f"/notes-frais/notes/{envoyee['id']}", json={"nature": "achat"}, headers=entetes_session(tresorier))
+    assert refuse.status_code == 400 and not envoyee["etablie"]
+    # Validée : la nature ne bouge plus.
+    assert client.patch(
+        f"/notes-frais/notes/{frais['id']}", json={"nature": "achat"}, headers=entetes_session(tresorier)
+    ).status_code == 400
+
+
+def test_saisir_une_depense_factures_et_preuves_de_virement(client, db_session, ecole, monkeypatch):
+    """Dossier de factures 2025-2026 de Seb (étude du 31/10) : une facture
+    faite par une personne = honoraires (membre ou extérieur) ; une facture
+    de société adressée à un membre = sa note de frais, à l'association =
+    achat ; la preuve d'un virement n'est pas une dépense : elle paie une
+    pièce, et son IBAN remplit le RIB qui manquait."""
+    tresorier, membre = ecole["tresorier"], ecole["eleve"]
+    org = ecole["ecole"].id
+    boyer = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Boyer", prenom="Sophie", email="sb@test.fr")
+    lecteur = LecteurFacture(date="2025-11-30", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
+                             client="Ecole de danse contretemps", description="Cours de danse Novembre 2025")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    honoraires = _etablir(client, tresorier, None)
+    assert honoraires["nature"] == "honoraires" and honoraires["personne"]["person_id"] == boyer.id
+    assert honoraires["rib"] is None
+
+    # Intervenant extérieur (Seb : note de frais, pas honoraires), inconnu : son nom prêt pour « Pour qui ? ».
+    lecteur.lu = dict(date="2025-10-31", montant_centimes=5600, commercant="Thibault Taniou", emetteur_personne=True,
+                      client="Contre Temps Danse", description="Prestation de danse classique")
+    taniou = _etablir(client, tresorier, None)
+    assert taniou["nature"] == "frais" and taniou["personne"] is None and taniou["fournisseur"] == "Thibault Taniou"
+
+    # Société, facturée à un membre : c'est lui qui a payé.
+    lecteur.lu = dict(date="2026-08-10", montant_centimes=14090, commercant="Onlineprinters", emetteur_personne=False,
+                      client="Ecole de danse Contretemps, Madame Margot PERRIN", description="Flyers et affiches")
+    flyers = _etablir(client, tresorier, None)
+    assert flyers["nature"] == "frais" and flyers["personne"]["nom"] == "Margot Perrin"
+    # Société, facturée à l'association : achat.
+    lecteur.lu = dict(date="2026-01-01", montant_centimes=41760, commercant="MAIF", emetteur_personne=False,
+                      client="CONTRETEMPS", description="Assurance 2026")
+    assert _etablir(client, tresorier, None)["nature"] == "achat"
+
+    # Preuve du virement à Sophie : page de plus sur sa facture, RIB rempli.
+    lecteur.lu = dict(sorte="virement", date="2025-12-05", montant_centimes=94800, beneficiaire="BOYER SOPHIE",
+                      iban=IBAN, motif="FACT1125-SOPHIE/CONTRETEMPS")
+    preuve = _etablir(client, tresorier, None)
+    assert preuve["id"] == honoraires["id"] and preuve["sorte"] == "virement"
+    assert preuve["preuve"]["beneficiaire"] == "BOYER SOPHIE" and preuve["preuve"]["interne"] is False
+    assert len(preuve["depenses"][0]["pieces"]) == 2 and preuve["rib"]["iban"] == IBAN
+    assert client.get("/notes-frais/moi", headers=entetes_session(boyer)).json()["rib"]["iban"] == IBAN
+    # Payée avant l'appli : on valide et « J'ai fait le virement » date de la preuve, pas de RIB à demander.
+    assert client.post(f"/notes-frais/notes/{honoraires['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    assert client.post(f"/notes-frais/notes/{honoraires['id']}/virement", headers=entetes_session(tresorier)).json()["statut"] == "viree"
+
+    # Virement vers un compte de l'association, ou sans pièce : rien n'est créé.
+    lecteur.lu = dict(sorte="virement", date="2026-08-05", montant_centimes=500000, beneficiaire="ASSOCIATION CONTRETEMPS DU BEAUSSET")
+    interne = _etablir(client, tresorier, None)
+    assert interne["id"] is None and interne["preuve"]["interne"] is True
+    lecteur.lu = dict(sorte="virement", date="2026-02-11", montant_centimes=41765, beneficiaire="AMIF")
+    seule = _etablir(client, tresorier, None)
+    assert seule["id"] is None and seule["preuve"]["interne"] is False
+    puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
+    assert [n["fournisseur"] for n in puce["notes"]] == ["MAIF"]
+
+
+def test_la_banque_decide(client, db_session, ecole, espion):
+    """Seb, 31/10 : une ligne du compte du même montant et au même nom paie
+    la pièce toute seule (photo ou preuve de virement) ; le montant seul
+    reste proposé ; une preuve sans pièce montre la ligne ; rattachée à
+    tort, la pièce se détache tant que la saison n'est pas clôturée."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    boyer = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Boyer", prenom="Sophie", email="sb@test.fr")
+    novembre = _operation(db_session, org, -94800, "2025-12-05", "VIR INST FACT1125-SOPHIE BOYER")
+    janvier = _operation(db_session, org, -94800, "2026-02-09", "VIR INST FACT0226BOYER/CONTRETE")
+    _operation(db_session, org, -41760, "2026-02-11", "VIR INST MAIF")
+    _operation(db_session, org, -36400, "2026-08-12", "PRLV CARTE 364")  # montant seul, pas de nom
+
+    lecteur = LecteurFacture(date="2025-11-30", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
+                             client="Contretemps", description="Cours de danse Novembre 2025")
+    main.notes_frais_client.ports.lecteur = lecteur
+    try:
+        # Montant + nom : Payé tout seul, sur la ligne la plus proche de la facture ; personne prévenue.
+        boyer_11 = _etablir(client, tresorier, None)
+        assert boyer_11["statut"] == "remboursee" and boyer_11["operation_id"] == novembre.id and boyer_11["detachable"]
+        assert not [n for n in espion.notifications if n[0] == boyer.id]
+        lecteur.lu = dict(date="2026-01-31", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
+                          client="Contretemps", description="Cours de danse Janvier 2026")
+        boyer_01 = _etablir(client, tresorier, None)
+        assert boyer_01["statut"] == "remboursee" and boyer_01["operation_id"] == janvier.id
+        # Société : le nom du fournisseur suffit.
+        lecteur.lu = dict(date="2026-01-01", montant_centimes=41760, commercant="MAIF", emetteur_personne=False, client="CONTRETEMPS")
+        assert _etablir(client, tresorier, None)["statut"] == "remboursee"
+        # Montant seul : proposé, pas rattaché.
+        lecteur.lu = dict(date="2026-07-22", montant_centimes=36400, commercant="Picture Impact Production", emetteur_personne=False,
+                          client="Contretemps")
+        dvd = _etablir(client, tresorier, None)
+        assert dvd["statut"] == "envoyee" and dvd["paiement_propose"]["libelle"] == "PRLV CARTE 364"
+        # Personne à choisir : même au bon montant et au bon nom, rien d'automatique.
+        _operation(db_session, org, -5600, "2025-11-10", "VIR TANIOU THIBAULT")
+        lecteur.lu = dict(date="2025-10-31", montant_centimes=5600, commercant="Thibault Taniou", emetteur_personne=True, client="Contretemps")
+        taniou = _etablir(client, tresorier, None)
+        assert taniou["statut"] == "envoyee" and taniou["personne"] is None
+
+        # Preuve de virement : sa pièce est là, la ligne du compte aussi → Payé.
+        ligne_dvd = _operation(db_session, org, -36400, "2026-08-12", "VIR INST FACT2026014 PICTURE IMPACT")
+        lecteur.lu = dict(sorte="virement", date="2026-08-12", montant_centimes=36400, beneficiaire="PICTURE IMPACT PRODUCTION",
+                          motif="VIR INST FACT2026014 CONTRETEMP")
+        preuve = _etablir(client, tresorier, None)
+        assert preuve["id"] == dvd["id"] and preuve["statut"] == "remboursee" and preuve["operation_id"] == ligne_dvd.id
+        # Preuve sans pièce : la ligne du compte est montrée, rien n'est créé.
+        revelles = _operation(db_session, org, -72575, "2025-12-05", "VIR INST FACT1125-STELLINA REVELLES")
+        lecteur.lu = dict(sorte="virement", date="2025-12-05", montant_centimes=72575, beneficiaire="REVELLES STELLINA", motif="FACT1125-STELLINA")
+        seule = _etablir(client, tresorier, None)
+        assert seule["id"] is None and seule["preuve"]["operation"]["id"] == revelles.id
+    finally:
+        main.notes_frais_client.ports.lecteur = None
+
+    # Rattachée à tort : Détacher rend la ligne, la pièce revient À valider.
+    url = f"/notes-frais/notes/{boyer_01['id']}"
+    detachee = client.post(f"{url}/detacher", headers=entetes_session(tresorier))
+    assert detachee.status_code == 200 and detachee.json()["statut"] == "envoyee" and detachee.json()["operation_id"] is None
+    assert client.post(f"{url}/detacher", headers=entetes_session(tresorier)).status_code == 400
+    # La ligne est libre : proposée à nouveau, « C'est payé » la reprend.
+    assert detachee.json()["paiement_propose"]["id"] == janvier.id
+    repris = client.post(f"{url}/payee", json={"operation_id": janvier.id}, headers=entetes_session(tresorier)).json()
+    assert repris["statut"] == "remboursee"
+    # Saison clôturée : la banque a décidé, on ne détache plus.
+    import datetime as dt
+
+    from finances.models import FinClosing
+
+    db_session.add(FinClosing(org_id=org, season_id=1, start_date=dt.date(2025, 9, 1), end_date=dt.date(2026, 8, 31), result=0, balances=[]))
+    db_session.commit()
+    assert client.post(f"{url}/detacher", headers=entetes_session(tresorier)).status_code == 400
+    assert client.get("/notes-frais/tresorerie?filtre=honoraires", headers=entetes_session(tresorier)).json()["notes"][0]["detachable"] is False
+    assert client.post(f"{url}/detacher", headers=entetes_session(ecole["eleve"])).status_code == 403
 
 
 def test_etablir_reserve_aux_tresoriers_et_supprimer_une_photo_ratee(client, ecole):
@@ -764,14 +959,14 @@ def _honoraires_a_payer_bis(client, db_session, ecole):
 
 
 def test_achat_deja_paye_par_carte(client, db_session, ecole, monkeypatch):
-    """« Déjà payé ? » : l'achat lu trouve son débit carte ; confirmé, il passe
-    Payé sans passer par Virements."""
+    """« Déjà payé ? » : l'achat lu trouve son débit carte (même montant, sans
+    le nom : proposé) ; confirmé, il passe Payé sans passer par Virements."""
     tresorier = ecole["tresorier"]
     monkeypatch.setattr(
         main.notes_frais_client.ports, "lecteur",
         LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon"),
     )
-    carte = _operation(db_session, ecole["ecole"].id, -3990, "2025-02-10", "CB 0902 AMAZON PAYMENTS")
+    carte = _operation(db_session, ecole["ecole"].id, -3990, "2025-02-10", "CB 0902 PAIEMENT INTERNET")
     note = _etablir(client, tresorier, "achat")
     assert note["statut"] == "envoyee" and note["paiement_propose"]["id"] == carte.id
     paye = client.post(f"/notes-frais/notes/{note['id']}/payee", json={"operation_id": carte.id}, headers=entetes_session(tresorier))

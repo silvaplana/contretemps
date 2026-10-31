@@ -423,8 +423,10 @@ apparaît sur la fiche de l'élève ; le trésorier voit qui n'a pas payé.
 Ressources « Financier : lecture des pièces ») : la pièce est lue (fournisseur, date, montant,
 numéro, objet), rangée dans un dossier, et l'appli propose **la ligne de banque** (même montant,
 date proche, nom) et **le compte** du plan. Le trésorier **Confirme**, choisit **Autre ligne**,
-ou dit **Pas encore payée** / **Payée en espèces**. Rien n'est rattaché sans confirmation ; la
-ligne garde « proposé par l'assistant, confirmé par X le … ». Le montant lu sert à chercher la
+ou dit **Pas encore payée** / **Payée en espèces**. Rien n'est rattaché sans confirmation, **sauf**
+quand la ligne est sûre (même montant et même nom, Seb 31 octobre : « la banque décide »,
+`notes-de-frais.md` §7 quinquies) : rattachée toute seule, détachable tant que la saison n'est pas
+clôturée ; la ligne garde « proposé par l'assistant, confirmé par X le … ». Le montant lu sert à chercher la
 ligne, jamais à écrire un chiffre dans les comptes : le montant comptable est celui de la banque
 (ou de la caisse). Une différence pièce / banque est signalée, pas corrigée.
 
@@ -516,6 +518,11 @@ Ventes, le « + » demande d'abord la nature. Les champs changent avec la nature
 Une dépense établie par le trésorier est validée en même temps. Le bouton « Photographier des
 pièces » de §8.3 et des écrans d'exemple n'existe plus : c'est le « + », avec « Photo du ticket »
 dedans.
+
+**Depuis le 31 octobre** (`notes-de-frais.md` §7 quinquies) : le « + » ne demande plus la nature,
+on photographie d'abord (rafale ou paquet de fichiers), l'appli lit et **propose** la nature (prof →
+Honoraires, autre personne → Note de frais, personne → Achat) et la ligne du compte qui la paie ;
+puis revue pièce par pièce. Ce qui suit décrit l'étape d'avant.
 
 **Rafale** (Seb, 29 octobre) : pour une note de frais, une photo = une dépense, avec le formulaire
 tout de suite (comme aujourd'hui). Pour **Achats** et **Honoraires**, le trésorier a souvent une pile

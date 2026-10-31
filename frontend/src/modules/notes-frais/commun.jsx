@@ -99,10 +99,48 @@ export function Compte({ n }) {
   )
 }
 
+export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat' }
+
+// Pourquoi l'appli propose cette nature (notes-de-frais.md §7 quinquies) :
+// un prof lu sur la pièce = honoraires, une autre personne = note de frais,
+// personne = achat de l'association.
+export function raisonProposee(note) {
+  if (!note.depenses[0]?.lue_par_ia) return null
+  if (note.nature === 'achat') return 'une société, facturée à l’association.'
+  if (!note.personne) return note.fournisseur ? `${note.fournisseur} n’est pas dans l’école : choisissez pour qui, ou ajoutez-le.` : 'nom illisible ou inconnu, choisissez pour qui.'
+  if (note.nature === 'honoraires') return `${note.personne.nom} est prof de l’école.`
+  return `${note.personne.nom} a payé ou facturé (${note.personne.role || 'membre'}).`
+}
+
 // Qui est derrière une pièce : la personne, ou le fournisseur d'un achat.
 export function qui(note) {
   if (note.nature === 'achat') return note.fournisseur || 'Fournisseur à lire'
-  return note.personne?.nom ?? 'Pour qui ?'
+  // Sans fiche reconnue, le nom lu sur la pièce, à confirmer.
+  return note.personne?.nom ?? (note.fournisseur ? `${note.fournisseur} ?` : 'Pour qui ?')
+}
+
+// La preuve d'un virement lue avec la pièce (§7 quinquies) : « C'est payé »
+// la rattache à la ligne vue sur le compte, ou la passe Envoyé en attendant.
+export function PreuveVirement({ note, onPaye }) {
+  const p = note.preuve
+  if (!p || note.statut === 'remboursee') return null
+  return (
+    <div className="nf-ligne nf-paiement-vu">
+      <span className="nf-ligne__corps">
+        <span className="nf-ligne__titre">Preuve de virement{p.date ? ` du ${api.dateCourte(p.date)}` : ''}</span>
+        <span className="muted">
+          {api.euros(p.montant_centimes)}
+          {p.beneficiaire ? ` à ${p.beneficiaire}` : ''}
+          {p.motif ? ` · ${p.motif}` : ''}
+        </span>
+      </span>
+      {note.statut !== 'viree' && (
+        <button type="button" className="btn btn--primary" onClick={onPaye}>
+          C’est payé
+        </button>
+      )}
+    </div>
+  )
 }
 
 // « Vu sur le compte » (financier.md §8.3 bis) : l'opération qui semble payer

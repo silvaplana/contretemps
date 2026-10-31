@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .ports import LectureImpossible, Membre
-from .service import NotesDeFrais
+from .service import NotesDeFrais, Preuve
 
 TAILLE_MAX_LECTURE = 10 * 1024 * 1024
 TAILLE_MAX_PIECE = 20 * 1024 * 1024
@@ -70,6 +70,7 @@ class RemboursementEntree(BaseModel):
 
 
 class CorrectionEntree(BaseModel):
+    nature: str | None = None
     person_id: int | None = None
     fournisseur: str | None = None
     date: dt.date | None = None
@@ -272,7 +273,7 @@ class NotesDeFraisReceiver:
 
         @app.post("/notes-frais/etablir", status_code=201)
         async def etablir(
-            nature: str = Form(...),
+            nature: str | None = Form(None),
             fichier: UploadFile | None = File(None),
             person_id: int | None = Form(None),
             fournisseur: str | None = Form(None),
@@ -295,6 +296,8 @@ class NotesDeFraisReceiver:
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
                 categorie_id=categorie_id,
             )
+            if isinstance(note, Preuve):
+                return nf.preuve_dict(db, m, note)
             return nf.notes_dicts(db, m, [note])[0]
 
         @app.post("/notes-frais/notes/{note_id}/pages")
@@ -351,6 +354,10 @@ class NotesDeFraisReceiver:
         @app.post("/notes-frais/notes/{note_id}/payee")
         def payee(note_id: int, corps: PaiementEntree, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.payer, db, m, note_id, corps.operation_id)])[0]
+
+        @app.post("/notes-frais/notes/{note_id}/detacher")
+        def detacher(note_id: int, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.detacher, db, m, note_id)])[0]
 
         @app.post("/notes-frais/remboursements")
         def rembourser(corps: RemboursementEntree, db: Session = db_dep, m: Membre = membre):

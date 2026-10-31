@@ -445,6 +445,15 @@
   font-weight: 600;
 }
 
+/* Nature d'une pièce établie (Saisie), à vérifier ou changer. */
+.nf-natures {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.nf-raison {
+  margin: 0;
+}
+
 .nf-compte {
   display: inline-flex;
   align-items: center;

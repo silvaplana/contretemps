@@ -89,6 +89,10 @@ class NoteFrais(Base):
     transfer_sent_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     transfer_sent_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bank_operation_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Établie depuis Financier › Pièces (photo, fichier, saisie) par ce
+    # trésorier : lui corrige la nature et la personne, même d'une note de
+    # frais ; None = envoyée par la personne elle-même (§4).
+    established_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     depenses: Mapped[list["Depense"]] = relationship(back_populates="note", order_by="Depense.date")
 
