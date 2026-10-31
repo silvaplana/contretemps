@@ -472,14 +472,20 @@ class NotesDeFrais:
             raise LookupError("Note de frais introuvable.")
         if note.statut not in (ENVOYEE, REFUSEE):
             raise ValueError("Cette note est déjà validée : elle ne peut plus être reprise.")
-        dossier = self.stockage.dossier_depenses(membre.org_id, membre.person_id, membre.nom)
+        self._rendre_depenses(db, membre, membre, note)
+
+    def _rendre_depenses(self, db: Session, membre: Membre, auteur: Membre, note: NoteFrais) -> None:
+        """La note disparaît, ses dépenses repassent « À envoyer » chez
+        l'auteur ; ses justificatifs quittent Docs (corbeille) pour revenir
+        avec les dépenses."""
+        dossier = self.stockage.dossier_depenses(auteur.org_id, auteur.person_id, auteur.nom)
         rangees = []
         for depense in note.depenses:
             for piece in depense.pieces:
                 if piece.doc_node_id is None:
                     continue
                 with open(self._chemin_piece(db, membre, piece), "rb") as source:
-                    piece.chemin, _ = self.stockage.put(membre.org_id, dossier, Path(piece.chemin).name, source)
+                    piece.chemin, _ = self.stockage.put(auteur.org_id, dossier, Path(piece.chemin).name, source)
                 rangees.append(piece.doc_node_id)
                 piece.doc_node_id = None
         db.commit()
@@ -1001,12 +1007,22 @@ class NotesDeFrais:
             logger.exception("Note de frais %s : justificatifs non déplacés dans les documents", note.id)
 
     def supprimer_note(self, db: Session, membre: Membre, note_id: int) -> None:
-        """Une pièce établie par erreur (photo ratée, doublon), pas encore
-        validée : elle et ses justificatifs partent à la corbeille."""
+        """« Annuler cette pièce », tout défaire (Seb, 31/10) : une pièce
+        établie par erreur, quel que soit son état, part à la corbeille avec
+        ses justificatifs. Une note envoyée par un membre lui revient (ses
+        dépenses repassent « À envoyer », il est prévenu). Payée et rattachée
+        à une ligne du compte : la détacher d'abord (la banque a décidé)."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
-        if (note.nature == FRAIS and note.established_by is None) or note.statut != ENVOYEE:
-            raise ValueError("Seule une pièce encore à valider se supprime.")
+        if note.statut == REMBOURSEE and note.bank_operation_id is not None:
+            raise ValueError("Cette pièce est payée : détachez-la d'abord de la ligne du compte.")
+        if note.nature == FRAIS and note.established_by is None:
+            auteur = self._personne_de_l_org(db, membre, note.person_id)
+            titre, total = note.titre, self.total(note)
+            self._rendre_depenses(db, membre, replace(membre, person_id=auteur.person_id, nom=auteur.nom), note)
+            if auteur.notification_id is not None:
+                self._notifier(db, auteur.notification_id, "Note de frais annulée", f"« {titre} » ({euros(total)}) : vos dépenses sont de nouveau à envoyer.")
+            return
         rangees = [p.doc_node_id for d in note.depenses for p in d.pieces if p.doc_node_id]
         sur_disque = [p.chemin for d in note.depenses for p in d.pieces if p.doc_node_id is None]
         if rangees:
@@ -1457,6 +1473,26 @@ class NotesDeFrais:
             self._exiger_complete(note)
         # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
         self._rattacher(db, membre, note, operation_id, prevenir=not deja_payee)
+        return note
+
+    def revenir(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« Revenir en arrière » (Seb, 31/10), une étape, trésorier seul :
+        Envoyé → À payer, Préparé → À payer, À payer → À valider. Payée et
+        rattachée à la ligne du compte : Détacher d'abord ; la banque a décidé."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.statut == VIREE:
+            note.statut, note.transfer_sent_at, note.transfer_sent_by = VALIDEE, None, None
+        elif note.statut == PREPAREE:
+            note.statut, note.prepared_at, note.prepared_by, note.payer_id = VALIDEE, None, None, None
+        elif note.statut == VALIDEE:
+            note.statut, note.traitee_le, note.traitee_par = ENVOYEE, None, None
+        elif note.statut == REMBOURSEE:
+            raise ValueError("Cette pièce est payée : détachez-la d'abord de la ligne du compte.")
+        else:
+            raise ValueError("Rien à défaire sur cette pièce.")
+        db.commit()
+        db.refresh(note)
         return note
 
     def _detachable(self, db: Session, note: NoteFrais) -> bool:

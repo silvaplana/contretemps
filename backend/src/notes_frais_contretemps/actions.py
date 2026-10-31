@@ -61,6 +61,14 @@ class Paid(BaseModel):
     note_ids: list[int] = Field(min_length=1, max_length=50, description="Numéros des pièces payées (virement fait).")
 
 
+class Undo(BaseModel):
+    note_ids: list[int] = Field(min_length=1, max_length=50, description="Numéros des pièces à ramener une étape en arrière.")
+
+
+class Cancel(BaseModel):
+    note_ids: list[int] = Field(min_length=1, max_length=50, description="Numéros des pièces à annuler (tout défaire).")
+
+
 def _euros(centimes: int) -> str:
     return f"{centimes / 100:.2f}".replace(".", ",") + " €"
 
@@ -193,6 +201,47 @@ def actions(service: NotesDeFrais) -> list[Action]:
             faire,
         )
 
+    ETAPE_AVANT = {"viree": "À payer", "preparee": "À payer", "validee": "À valider"}
+
+    def preparer_retour(db: Session, compte, org_id: int, p: Undo) -> Ligne:
+        membre = tresorier(db, compte, org_id)
+        par_id = notes(db, membre, p.note_ids)
+        for i in p.note_ids:
+            if par_id[i]["statut"] not in ETAPE_AVANT:
+                raise Refus(f"« {par_id[i]['titre']} » : rien à défaire" + (" (payée : la détacher d'abord de la ligne du compte)" if par_id[i]["statut"] == "remboursee" else ""))
+
+        def faire(db: Session) -> None:
+            for i in p.note_ids:
+                try:
+                    service.revenir(db, membre, i)
+                except (ValueError, PermissionError) as erreur:
+                    raise Refus(f"« {par_id[i]['titre']} » : {erreur}") from erreur
+
+        return Ligne(
+            "Revenir en arrière : " + " ; ".join(f"« {par_id[i]['titre']} » → {ETAPE_AVANT[par_id[i]['statut']]}" for i in p.note_ids),
+            faire,
+        )
+
+    def preparer_annulation(db: Session, compte, org_id: int, p: Cancel) -> Ligne:
+        membre = tresorier(db, compte, org_id)
+        par_id = notes(db, membre, p.note_ids)
+        for i in p.note_ids:
+            if par_id[i]["statut"] == "remboursee" and par_id[i].get("operation_id"):
+                raise Refus(f"« {par_id[i]['titre']} » est payée : la détacher d'abord de la ligne du compte")
+
+        def faire(db: Session) -> None:
+            for i in p.note_ids:
+                try:
+                    service.supprimer_note(db, membre, i)
+                except (ValueError, PermissionError) as erreur:
+                    raise Refus(f"« {par_id[i]['titre']} » : {erreur}") from erreur
+
+        return Ligne(
+            "Annuler (tout défaire) : " + " ; ".join(f"« {par_id[i]['titre']} » {_euros(par_id[i]['total_centimes'])}" for i in p.note_ids)
+            + ". Les justificatifs vont à la corbeille ; une note envoyée par un membre lui revient.",
+            faire,
+        )
+
     return [
         Action("expense_notes", "Pièces",
                "Financier › Pièces (trésorier) : notes de frais, honoraires et achats, à valider, à payer ou terminés, avec "
@@ -205,6 +254,14 @@ def actions(service: NotesDeFrais) -> list[Action]:
         Action("mark_expense_notes_paid", "Pièces",
                "Marque payées des pièces validées dont le virement est fait (sans attendre de le voir sur le compte).",
                Paid, preparer_payees, admin_only=False),
+        Action("undo_expense_notes", "Pièces",
+               "Ramène des pièces une étape en arrière (Envoyé ou Préparé → À payer, À payer → À valider). Jamais une pièce "
+               "payée rattachée à la ligne du compte.",
+               Undo, preparer_retour, admin_only=False),
+        Action("cancel_expense_notes", "Pièces",
+               "Annule des pièces faites par erreur, quel que soit leur état (tout défaire : justificatifs à la corbeille, une "
+               "note envoyée par un membre lui revient). Jamais une pièce payée rattachée à la ligne du compte.",
+               Cancel, preparer_annulation, admin_only=False),
         Action("submit_expense_report", "Notes de frais",
                "Fait une note de frais et l'envoie aux trésoriers : une ou plusieurs dépenses, pour la personne elle-même "
                "ou, si elle est trésorière, pour quelqu'un d'autre. Les justificatifs s'ajoutent ensuite dans l'appli.",

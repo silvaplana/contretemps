@@ -1,6 +1,6 @@
 # AppBase — Module `notes-de-frais`
 
-Version 0.5, 31 octobre 2026 (§7 quinquies : « + » = photos d'abord, nature proposée, revue pièce par pièce, « la banque décide », Détacher ; §10 : `established_by`). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
+Version 0.5, 31 octobre 2026 (§7 quinquies : « + » = photos d'abord, nature proposée, revue pièce par pièce, « la banque décide », Détacher, Revenir en arrière, Annuler ; §10 : `established_by`). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
 frais » du projet). Maquette visuelle : Artifact « Notes de frais Contretemps », lien dans ce fil.
 
 Écrit comme un module AppBase (rien de propre à la danse), comme `documents.md` : quand AppBase existera,
@@ -244,6 +244,16 @@ la pièce dont la date est la plus proche. Rattachée à tort une fois payée : 
 pièce) rend la ligne et remet la pièce là où elle était (Envoyé si le virement avait été fait,
 sinon À valider pour une pièce établie, À payer pour une note envoyée), tant que la **saison** de
 la ligne n'est pas clôturée ; après, la banque a décidé.
+
+**Revenir en arrière, annuler** (Seb, 31 octobre soir ; trésorier ou Super User, par l'écran et par
+l'assistant). Dans la pièce (et dans l'aide au virement) : **« Revenir en arrière : À payer »**
+(Envoyé ou Préparé → À payer, le payeur et la date d'envoi s'effacent) ou **« … : À valider »**
+(À payer → À valider), une étape à la fois. **« Annuler cette pièce : tout défaire »** quel que soit
+l'état : la pièce et ses justificatifs partent à la corbeille ; une note **envoyée par un membre**
+lui revient (« Annuler cette note : elle revient à la personne » : ses dépenses repassent À
+envoyer, il est prévenu). Une pièce **payée et rattachée** à la ligne du compte : ni l'un ni l'autre
+sans la **détacher** d'abord (la banque a décidé). Assistant : `undo_expense_notes`,
+`cancel_expense_notes`.
 
 **Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de choses à
 traiter par un trésorier : Notes de frais, Honoraires, Achats = à valider ; Virements = à payer,

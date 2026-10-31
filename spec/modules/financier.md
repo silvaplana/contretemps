@@ -475,7 +475,9 @@ Honoraires ─────┴─▶ À valider                              │
                                  Payé ◀───────────────────────────────┘
 ```
 
-Toute dépense commence **À valider**, dès qu'elle est établie. Les notes de frais suivent cette
+Marche arrière (Seb, 31 octobre) : un trésorier ramène une pièce une étape en arrière ou l'annule
+(`notes-de-frais.md` §7 quinquies) ; jamais une pièce Payé rattachée à la ligne du compte sans la
+détacher d'abord. Toute dépense commence **À valider**, dès qu'elle est établie. Les notes de frais suivent cette
 machine (plus de statuts à part, `notes-de-frais.md` §5) et le sous-onglet Notes de frais de
 Financier disparaît : les notes sont dans la puce Notes de frais de Pièces (`notes-de-frais.md` §7),
 le côté membre ne change pas.

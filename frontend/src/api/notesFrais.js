@@ -111,6 +111,8 @@ export function etablir(nature, f, champs = {}) {
 export const ajouterPage = (noteId, f) => appel(`/notes/${noteId}/pages`, fichier(f))
 export const corriger = (noteId, champs) => appel(`/notes/${noteId}`, json('PATCH', champs))
 export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DELETE' })
+// Revenir en arrière d'une étape (Envoyé / Préparé → À payer, À payer → À valider).
+export const revenir = (noteId) => appel(`/notes/${noteId}/revenir`, { method: 'POST' })
 
 // Virements (§8.3 bis) : l'appli ne paie pas, elle aide à faire le virement.
 export const virements = () => appel('/virements')

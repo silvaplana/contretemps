@@ -82,6 +82,7 @@ export default function Virements({ onChange }) {
         onFairePayer={(p) =>
           agir(() => api.preparer(v.id, p.person_id), 'preparee', `Notification « Virement à faire » envoyée à ${p.nom}.`)
         }
+        onRevenir={() => agir(() => api.revenir(v.id), 'validee', 'De retour en À payer.')}
       />
     )
   }
@@ -141,7 +142,7 @@ export default function Virements({ onChange }) {
   )
 }
 
-function AideAuVirement({ virement: v, payeurs, erreur, onErreur, onRetour, onRib, onPaye, onFait, onFairePayer }) {
+function AideAuVirement({ virement: v, payeurs, erreur, onErreur, onRetour, onRib, onPaye, onFait, onFairePayer, onRevenir }) {
   const [rib, setRib] = useState(() => ribVide(v.rib))
   const [changerRib, setChangerRib] = useState(!v.rib)
   const [guide, setGuide] = useState(() => !guideDejaVu())
@@ -166,6 +167,11 @@ function AideAuVirement({ virement: v, payeurs, erreur, onErreur, onRetour, onRi
         </p>
       )}
       <PaiementVu note={v} onConfirme={onPaye} />
+      {(v.statut === 'viree' || v.statut === 'preparee') && (
+        <button type="button" className="btn btn--link" onClick={onRevenir}>
+          Revenir en arrière : À payer
+        </button>
+      )}
       {v.statut === 'preparee' && v.prepare_par && (
         <p className="muted">
           Préparé par {v.prepare_par.nom} le {api.dateCourte(v.prepare_le)}
