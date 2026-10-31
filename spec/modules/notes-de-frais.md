@@ -1,6 +1,6 @@
 # AppBase — Module `notes-de-frais`
 
-Version 0.4, 29 octobre 2026 (§5 et §7 : machine à états commune, notes dans Pièces ; §7 bis et §10 : un seul rangement, dans Docs ; §10 : colonnes ajoutées, codé). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
+Version 0.5, 31 octobre 2026 (§7 quinquies : « + » = photos d'abord, nature proposée, revue pièce par pièce ; §10 : `established_by`). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
 frais » du projet). Maquette visuelle : Artifact « Notes de frais Contretemps », lien dans ce fil.
 
 Écrit comme un module AppBase (rien de propre à la danse), comme `documents.md` : quand AppBase existera,
@@ -204,6 +204,39 @@ Le module garde à part une liste **Extérieurs** (nom, mail, RIB).
 - Technique : table `nf_externals` ; dans le module, son `person_id` est négatif (−id), son RIB est
   dans `nf_ribs` sous ce numéro ; l'annuaire de l'hôte n'en sait rien.
 
+### 7 quinquies Saisir une dépense : le « + » de Pièces (Seb, 31 octobre)
+
+Le trésorier a une pile de papiers et ne sait pas, en les photographiant, si c'est une note de
+frais, des honoraires ou un achat ; souvent la pièce est déjà payée. Le **« + »** de Financier ›
+Pièces ne demande donc plus rien avant : **Prendre en photo** (on enchaîne les photos : **Pièce
+suivante**, **Encore une page de celle-ci**), **Choisir des fichiers** (un paquet d'un coup ; sur
+ordinateur, glisser les fichiers sur Pièces), ou **Saisir sans photo** (qui demande la nature).
+Chaque pièce est créée aussitôt (À valider) et lue en arrière-plan ; la fenêtre liste le lot
+(« Lecture en cours… », puis qui, nature proposée, montant).
+
+**L'appli propose la nature** d'après la pièce, et dit pourquoi :
+- un **prof** lu sur la pièce (nom rapproché d'une fiche) → **Honoraires** ;
+- une **autre personne** connue (membre, extérieur) → **Note de frais**, à son nom ;
+- **personne** → **Achat** (payée par l'association), fournisseur lu.
+
+Trouvée dans les comptes ne dit **pas** la nature : avant l'appli, le trésorier payait tout « à
+l'arrache », un débit peut être un achat, une note de frais ou des honoraires. Deux questions à
+part : **déjà payé ?** (« Vu sur le compte », §8.3 bis de `financier.md` : la ligne est montrée,
+« C'est payé » la rattache, directement depuis À valider, sans mail ni notification à la
+personne puisque c'était déjà réglé) et **où la ranger** (la nature).
+
+**Terminé** ouvre la **revue, pièce par pièce** (« Pièce 2 sur 5 ») : la nature proposée en trois
+puces (Note de frais / Honoraires / Achat) avec la raison (« Marie Dupont est prof »), Pour qui ou
+Fournisseur, date, montant, catégorie, « Vu sur le compte » ; **Valider** d'un toucher passe à la
+suivante. Fermer la revue laisse les pièces À valider dans leur puce. La nature se change tant
+que la pièce est à valider ; le fichier suit dans Docs (§7 bis). Une note de frais ainsi établie
+par le trésorier est à lui de corriger (nature, personne, montant), de valider ou de supprimer ;
+la personne la retrouve dans « Mes notes de frais ». Une note envoyée par la personne elle-même ne
+change pas de nature : on la refuse avec un motif.
+
+Pas encore : un virement plus gros qui regroupe plusieurs tickets remboursés d'un coup (proposé
+comme paiement d'une pièce) ; « Choisir dans Docs ».
+
 ### 7 bis Rangement dans Docs (Seb, 17 octobre ; simplifié le 29 octobre)
 
 Décision de Seb, 29 octobre 2026 (`financier.md` §8.3 bis « Rangement dans Docs ») : **un seul
@@ -256,8 +289,9 @@ Tables préfixées `nf_` (module autonome) :
   `viree`, `remboursee`), don, RIB (copie au moment de l'envoi), motif_refus, envoyée le, traitée le / par,
   remboursée le / par ; depuis le 29 octobre : `nature` (`frais`, `honoraires`, `achat`), `supplier`
   (achat), `prepared_at` / `prepared_by` / `payer_id` (Faire payer par…), `transfer_sent_at` / `_by`
-  (J'ai fait le virement), `bank_operation_id` (opération du compte, payé). Honoraires dont le prof n'est
-  pas encore reconnu : personne 0.
+  (J'ai fait le virement), `bank_operation_id` (opération du compte, payé). Pièce dont la personne n'est
+  pas encore reconnue : personne 0. Depuis le 31 octobre : `established_by` (le trésorier qui l'a
+  établie depuis Pièces, §7 quinquies ; null = envoyée par la personne).
 - `nf_payers` : réglage « Qui paie » (organisation, personne) ; vide = les trésoriers.
 - `nf_externals` : personnes extérieures (organisation, nom, mail, téléphone, retirée le) ; §7 quater.
 - `nf_categories` : id, organisation, libellé, ordre, active.

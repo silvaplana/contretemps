@@ -517,6 +517,11 @@ Une dépense établie par le trésorier est validée en même temps. Le bouton �
 pièces » de §8.3 et des écrans d'exemple n'existe plus : c'est le « + », avec « Photo du ticket »
 dedans.
 
+**Depuis le 31 octobre** (`notes-de-frais.md` §7 quinquies) : le « + » ne demande plus la nature,
+on photographie d'abord (rafale ou paquet de fichiers), l'appli lit et **propose** la nature (prof →
+Honoraires, autre personne → Note de frais, personne → Achat) et la ligne du compte qui la paie ;
+puis revue pièce par pièce. Ce qui suit décrit l'étape d'avant.
+
 **Rafale** (Seb, 29 octobre) : pour une note de frais, une photo = une dépense, avec le formulaire
 tout de suite (comme aujourd'hui). Pour **Achats** et **Honoraires**, le trésorier a souvent une pile
 de papiers : « Photo du ticket » enchaîne les photos sans formulaire entre deux, **une photo = une

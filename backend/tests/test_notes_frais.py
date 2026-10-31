@@ -460,7 +460,8 @@ class LecteurFacture:
 def _etablir(client, qui, nature, contenu=b"jpeg", **champs):
     fichiers = {"fichier": ("IMG_100.jpg", io.BytesIO(contenu), "image/jpeg")} if contenu else None
     reponse = client.post(
-        "/notes-frais/etablir", data={"nature": nature, **champs}, files=fichiers, headers=entetes_session(qui)
+        "/notes-frais/etablir", data={**({"nature": nature} if nature else {}), **champs}, files=fichiers,
+        headers=entetes_session(qui),
     )
     assert reponse.status_code == 201, reponse.text
     return reponse.json()
@@ -585,6 +586,71 @@ def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkey
     assert client.post(f"/notes-frais/notes/{inconnu['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
     # La première attend toujours d'être validée (compteur du Profil).
     assert client.get("/notes-frais/compteurs", headers=entetes_session(tresorier)).json()["a_valider"] == 1
+
+
+def test_saisir_une_depense_propose_la_nature(client, db_session, ecole, espion, monkeypatch):
+    """« + » sans nature (§7 quinquies) : un prof lu sur la pièce = honoraires,
+    une autre personne = note de frais (établie, corrigeable par le
+    trésorier), personne = achat ; la nature proposée se change tant que
+    c'est à valider, et le fichier suit dans Docs ; déjà payée = Payé sans
+    bruit."""
+    tresorier, membre = ecole["tresorier"], ecole["eleve"]
+    org = ecole["ecole"].id
+    prof = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Revelles", prenom="Élodie", email="elodie@test.fr")
+    lecteur = LecteurFacture(date="2026-10-15", montant_centimes=48000, commercant="Elodie REVELLES", description="Cours")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+
+    honoraires = _etablir(client, tresorier, None)
+    assert honoraires["nature"] == "honoraires" and honoraires["personne"]["person_id"] == prof.id and honoraires["etablie"]
+
+    lecteur.lu = {"date": "2026-10-14", "montant_centimes": 740, "commercant": "Vinci Autoroutes", "description": "Péage Margot Perrin"}
+    frais = _etablir(client, tresorier, None)
+    assert frais["nature"] == "frais" and frais["personne"]["nom"] == "Margot Perrin" and frais["titre"] == "Frais octobre 2026"
+    # Établie par le trésorier : il la valide lui-même, et elle est à son nom pour elle.
+    assert client.post(f"/notes-frais/notes/{frais['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    assert [n["id"] for n in client.get("/notes-frais/moi", headers=entetes_session(membre)).json()["notes"]] == [frais["id"]]
+
+    lecteur.lu = {"date": "2026-10-12", "montant_centimes": 3990, "commercant": "Amazon", "description": "Câbles"}
+    achat = _etablir(client, tresorier, None)
+    assert achat["nature"] == "achat" and achat["fournisseur"] == "Amazon"
+    assert _achats_de_la_saison(client, org, tresorier, "2026-2027") == ["2026-10-12 Amazon 39,90.jpg"]
+
+    # La proposition était fausse : c'est un ticket de Margot ; le fichier va dans son dossier.
+    corrige = client.patch(
+        f"/notes-frais/notes/{achat['id']}", json={"nature": "frais", "person_id": membre.id}, headers=entetes_session(tresorier)
+    )
+    assert corrige.status_code == 200, corrige.text
+    assert corrige.json()["nature"] == "frais" and corrige.json()["personne"]["nom"] == "Margot Perrin"
+    assert corrige.json()["titre"] == "Frais octobre 2026" and corrige.json()["fournisseur"] is None
+    assert _achats_de_la_saison(client, org, tresorier, "2026-2027") == []
+    saison = _enfant(client, org, tresorier, None, "Saison 2026-2027")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    notes = _enfant(client, org, tresorier, financier["id"], "Notes de frais")
+    personne = next(i for i in _parcourir(client, org, tresorier, notes["id"]).json()["items"] if "Perrin" in i["name"])
+    dossiers = _parcourir(client, org, tresorier, personne["id"]).json()["items"]
+    dossier_note = next(d for d in dossiers if d["name"].endswith(f"({achat['id']})"))
+    assert "Frais octobre 2026" in dossier_note["name"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]] == ["2026-10-12 Amazon 39,90.jpg"]
+    # Pas de nature sans personne : « Pour qui ? » avant de valider.
+    sans = client.patch(f"/notes-frais/notes/{achat['id']}", json={"nature": "honoraires"}, headers=entetes_session(tresorier))
+    assert sans.json()["personne"] is None
+    assert client.post(f"/notes-frais/notes/{achat['id']}/valider", headers=entetes_session(tresorier)).status_code == 400
+    # Déjà payée avant d'être dans l'appli : « C'est payé » depuis À valider, sans mail au prof.
+    client.patch(f"/notes-frais/notes/{achat['id']}", json={"person_id": prof.id}, headers=entetes_session(tresorier))
+    virement = _operation(db_session, org, -3990, "2026-10-20", "VIR SEPA REVELLES")
+    avant = len(espion.mails)
+    paye = client.post(f"/notes-frais/notes/{achat['id']}/payee", json={"operation_id": virement.id}, headers=entetes_session(tresorier))
+    assert paye.status_code == 200 and paye.json()["statut"] == "remboursee"
+    assert len(espion.mails) == avant
+
+    # Une note envoyée par la personne elle-même ne change pas de nature.
+    envoyee = _envoyer(client, membre, [_depense(client, membre)["id"]]).json()
+    refuse = client.patch(f"/notes-frais/notes/{envoyee['id']}", json={"nature": "achat"}, headers=entetes_session(tresorier))
+    assert refuse.status_code == 400 and not envoyee["etablie"]
+    # Validée : la nature ne bouge plus.
+    assert client.patch(
+        f"/notes-frais/notes/{frais['id']}", json={"nature": "achat"}, headers=entetes_session(tresorier)
+    ).status_code == 400
 
 
 def test_etablir_reserve_aux_tresoriers_et_supprimer_une_photo_ratee(client, ecole):

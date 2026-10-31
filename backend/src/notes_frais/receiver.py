@@ -70,6 +70,7 @@ class RemboursementEntree(BaseModel):
 
 
 class CorrectionEntree(BaseModel):
+    nature: str | None = None
     person_id: int | None = None
     fournisseur: str | None = None
     date: dt.date | None = None
@@ -272,7 +273,7 @@ class NotesDeFraisReceiver:
 
         @app.post("/notes-frais/etablir", status_code=201)
         async def etablir(
-            nature: str = Form(...),
+            nature: str | None = Form(None),
             fichier: UploadFile | None = File(None),
             person_id: int | None = Form(None),
             fournisseur: str | None = Form(None),

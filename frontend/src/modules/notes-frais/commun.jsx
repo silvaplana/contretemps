@@ -99,6 +99,19 @@ export function Compte({ n }) {
   )
 }
 
+export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat: 'Achat' }
+
+// Pourquoi l'appli propose cette nature (notes-de-frais.md §7 quinquies) :
+// un prof lu sur la pièce = honoraires, une autre personne = note de frais,
+// personne = achat de l'association.
+export function raisonProposee(note) {
+  if (!note.depenses[0]?.lue_par_ia) return null
+  if (note.nature === 'achat') return 'aucun nom connu sur la pièce, payée par l’association.'
+  if (!note.personne) return 'nom illisible ou inconnu, choisissez pour qui.'
+  if (note.nature === 'honoraires') return `${note.personne.nom} est prof.`
+  return `${note.personne.nom} est ${note.personne.role || 'membre'}.`
+}
+
 // Qui est derrière une pièce : la personne, ou le fournisseur d'un achat.
 export function qui(note) {
   if (note.nature === 'achat') return note.fournisseur || 'Fournisseur à lire'

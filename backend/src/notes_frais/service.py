@@ -680,8 +680,8 @@ class NotesDeFrais:
     @staticmethod
     def _exiger_complete(note: NoteFrais) -> None:
         """Une pièce photographiée en rafale se complète avant d'être validée."""
-        if note.nature == HONORAIRES and note.person_id == PERSONNE_A_CHOISIR:
-            raise ValueError("Choisissez d'abord pour qui sont ces honoraires.")
+        if note.nature != ACHAT and note.person_id == PERSONNE_A_CHOISIR:
+            raise ValueError("Choisissez d'abord pour qui est cette pièce.")
         if any(d.montant_centimes <= 0 for d in note.depenses):
             raise ValueError("Indiquez d'abord le montant.")
 
@@ -692,7 +692,7 @@ class NotesDeFrais:
         db: Session,
         membre: Membre,
         *,
-        nature: str,
+        nature: str | None = None,
         fichier: tuple[bytes, str, str] | None = None,
         person_id: int | None = None,
         fournisseur: str | None = None,
@@ -702,13 +702,15 @@ class NotesDeFrais:
         valider: bool = False,
         categorie_id: int | None = None,
     ) -> NoteFrais:
-        """Honoraires ou achat établi par un trésorier : une photo (ou un
-        fichier) = une note d'une dépense, créée aussitôt. La lecture remplit
-        ce qu'elle peut ; le trésorier vérifie, corrige et valide ensuite
-        (rafale). `valider` : tout est saisi, validé en même temps."""
+        """Une pièce établie par un trésorier : une photo (ou un fichier) =
+        une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
+        peut ; le trésorier vérifie, corrige et valide ensuite (rafale).
+        Sans `nature`, l'appli la propose d'après la pièce (§7 quinquies) :
+        un prof lu dessus = honoraires, une autre personne = note de frais,
+        personne = achat. `valider` : tout est saisi, validé en même temps."""
         self._exiger_tresorier(membre)
-        if nature not in (HONORAIRES, ACHAT):
-            raise ValueError("Une note de frais s'établit au nom de la personne (« Pour qui ? »).")
+        if nature is not None and nature not in NATURES:
+            raise ValueError("Nature inconnue.")
         lu = {}
         if fichier is not None:
             contenu, nom, type_mime = fichier
@@ -726,14 +728,15 @@ class NotesDeFrais:
         if montant or valider:
             self._valider_saisie(montant, jour)
         description = " ".join((description or lu.get("description") or "").split())[:200]
-        note = NoteFrais(org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="")
+        personne = self._personne_de_l_org(db, membre, person_id) if person_id is not None else self._reconnaitre_personne(db, membre, lu)
+        if nature is None:
+            nature = ACHAT if personne is None else HONORAIRES if personne.role == "prof" else FRAIS
+        note = NoteFrais(org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="", established_by=membre.person_id)
         if nature == ACHAT:
             note.person_id = membre.person_id
             note.supplier = " ".join((fournisseur or lu.get("commercant") or "").split())[:120] or None
         else:
-            note.person_id = person_id if person_id is not None else self._reconnaitre_prof(db, membre, lu)
-            if note.person_id != PERSONNE_A_CHOISIR:
-                self._personne_de_l_org(db, membre, note.person_id)
+            note.person_id = personne.person_id if personne is not None else PERSONNE_A_CHOISIR
         note.titre = self._titre(note, jour)
         self._recopier_rib(db, note)
         if valider:
@@ -750,7 +753,10 @@ class NotesDeFrais:
         if valider:
             self._exiger_complete(note)
         if fichier is not None:
-            self._poser_piece(membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2])
+            self._poser_piece(
+                membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2],
+                nom_personne=personne.nom if personne is not None and nature != ACHAT else "",
+            )
         db.commit()
         db.refresh(note)
         self._ranger(db, membre, note)
@@ -775,21 +781,37 @@ class NotesDeFrais:
         return note
 
     def corriger(self, db: Session, membre: Membre, note_id: int, **champs) -> NoteFrais:
-        """Vérifier ou compléter ce que la lecture a rempli (honoraires,
-        achat), tant que ce n'est pas payé. Une note de frais, elle, se
-        corrige par son auteur (reprendre)."""
+        """Vérifier ou compléter ce que la lecture a rempli, tant que ce n'est
+        pas payé : la nature proposée (§7 quinquies, tant que c'est à
+        valider), la personne, le fournisseur, la dépense. Une note de frais
+        envoyée par la personne, elle, se corrige par son auteur (reprendre)."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
-        if note.nature == FRAIS:
+        if note.nature == FRAIS and note.established_by is None:
             raise ValueError("Une note de frais se corrige par son auteur : refusez-la avec un motif.")
         if note.statut not in (ENVOYEE, VALIDEE):
             raise ValueError("Cette pièce n'est plus modifiable.")
-        if note.nature == HONORAIRES and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
+        if champs.get("nature") is not None and champs["nature"] != note.nature:
+            if champs["nature"] not in NATURES:
+                raise ValueError("Nature inconnue.")
+            if note.statut != ENVOYEE:
+                raise ValueError("La nature ne change plus une fois la pièce validée.")
+            note.nature = champs["nature"]
+            if note.nature == ACHAT:
+                note.person_id = membre.person_id
+            elif champs.get("person_id") is None:
+                note.person_id = PERSONNE_A_CHOISIR
+            else:
+                note.person_id = champs["person_id"]
+            note.supplier, note.titre = None, ""
+            note.rib_titulaire = note.rib_iban = note.rib_bic = None
+        if note.nature != ACHAT and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
             self._personne_de_l_org(db, membre, champs["person_id"])
             note.person_id = champs["person_id"]
-            for depense in note.depenses:
-                depense.person_id = note.person_id
             note.rib_titulaire = note.rib_iban = note.rib_bic = None
+        for depense in note.depenses:
+            depense.person_id = note.person_id
+        if not note.rib_iban:
             self._recopier_rib(db, note)
         if note.nature == ACHAT and champs.get("fournisseur") is not None:
             note.supplier = " ".join(champs["fournisseur"].split())[:120] or None
@@ -836,7 +858,7 @@ class NotesDeFrais:
         validée : elle et ses justificatifs partent à la corbeille."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
-        if note.nature == FRAIS or note.statut != ENVOYEE:
+        if (note.nature == FRAIS and note.established_by is None) or note.statut != ENVOYEE:
             raise ValueError("Seule une pièce encore à valider se supprime.")
         rangees = [p.doc_node_id for d in note.depenses for p in d.pieces if p.doc_node_id]
         sur_disque = [p.chemin for d in note.depenses for p in d.pieces if p.doc_node_id is None]
@@ -855,18 +877,18 @@ class NotesDeFrais:
             raise LookupError("Personne inconnue dans cette organisation.")
         return personne
 
-    def _reconnaitre_prof(self, db: Session, membre: Membre, lu: dict) -> int:
-        """Le nom lu sur une note d'honoraires rapproché d'une fiche ; en cas
-        de doute, « Pour qui ? » (PERSONNE_A_CHOISIR)."""
+    def _reconnaitre_personne(self, db: Session, membre: Membre, lu: dict) -> Personne | None:
+        """Le nom lu sur la pièce (note d'honoraires, facture au nom d'un
+        membre) rapproché d'une fiche ; en cas de doute, None."""
         texte = _sans_accents(f"{lu.get('commercant') or ''} {lu.get('description') or ''}")
         if not texte.strip():
-            return PERSONNE_A_CHOISIR
+            return None
         mots = set(re.findall(r"[a-z]+", texte))
         trouvees = [
             p for p in self.annuaire.toutes(db, membre.org_id)
             if (noms := [m for m in re.findall(r"[a-z]+", _sans_accents(p.nom)) if len(m) > 1]) and all(m in mots for m in noms)
         ]
-        return trouvees[0].person_id if len(trouvees) == 1 else PERSONNE_A_CHOISIR
+        return trouvees[0] if len(trouvees) == 1 else None
 
     @staticmethod
     def _titre(note: NoteFrais, jour: date) -> str:
@@ -874,6 +896,8 @@ class NotesDeFrais:
             return f"Honoraires {MOIS[jour.month - 1]} {jour.year}"
         if note.nature == ACHAT:
             return note.supplier or "Achat"
+        if note.established_by is not None:
+            return f"Frais {MOIS[jour.month - 1]} {jour.year}"
         return note.titre
 
     def _recopier_rib(self, db: Session, note: NoteFrais) -> None:
@@ -897,11 +921,14 @@ class NotesDeFrais:
         if rib is not None:
             note.rib_titulaire, note.rib_iban, note.rib_bic = rib.titulaire, rib.iban, rib.bic
 
-    def _poser_piece(self, membre: Membre, depense: Depense, flux: BinaryIO, nom: str, type_mime: str) -> None:
-        """Le fichier attend sur le disque d'être rangé dans Docs (_ranger)."""
+    def _poser_piece(
+        self, membre: Membre, depense: Depense, flux: BinaryIO, nom: str, type_mime: str, nom_personne: str = ""
+    ) -> None:
+        """Le fichier attend sur le disque d'être rangé dans Docs (_ranger).
+        `nom_personne` nomme le dossier de la personne s'il n'existe pas encore."""
         extension = Path(nom or "").suffix.lower() or _EXTENSIONS.get(type_mime, "")
         nom_fichier = f"{depense.date.isoformat()} {depense.description or 'ticket'} {depense.id}-{len(depense.pieces) + 1}{extension}"
-        dossier = self.stockage.dossier_depenses(membre.org_id, depense.person_id, "")
+        dossier = self.stockage.dossier_depenses(membre.org_id, depense.person_id, nom_personne)
         chemin, taille = self.stockage.put(membre.org_id, dossier, nom_fichier, flux)
         depense.pieces.append(PieceJustificative(
             chemin=chemin, type_mime=type_mime, nom=(nom or "")[:200], taille=taille, ordre=len(depense.pieces),
@@ -1063,8 +1090,10 @@ class NotesDeFrais:
             self._apres_paiement(db, membre, note)
         return notes
 
-    def _apres_paiement(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+    def _apres_paiement(self, db: Session, membre: Membre, note: NoteFrais, *, prevenir: bool = True) -> None:
         self._ranger_recapitulatif(db, membre, note)
+        if not prevenir:
+            return
         # Celle qui a préparé le virement est prévenue qu'il est passé.
         if note.prepared_by and note.prepared_by != membre.person_id:
             prepare = self.annuaire.personnes(db, note.org_id, {note.prepared_by}).get(note.prepared_by)
@@ -1243,14 +1272,16 @@ class NotesDeFrais:
             raise ValueError("Le montant de l'opération n'est pas celui de la pièce.")
         if operation_id in self._operations_prises(db, membre.org_id):
             raise ValueError("Cette opération est déjà rattachée à une autre pièce.")
-        if note.statut == ENVOYEE:
+        deja_payee = note.statut == ENVOYEE
+        if deja_payee:
             self._exiger_complete(note)
             note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
         note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
         note.bank_operation_id = operation_id
         db.commit()
         db.refresh(note)
-        self._apres_paiement(db, membre, note)
+        # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
+        self._apres_paiement(db, membre, note, prevenir=not deja_payee)
         return note
 
     def lignes_export(self, db: Session, membre: Membre, debut: date | None, fin: date | None, nature: str = FRAIS) -> list[dict]:
@@ -1319,6 +1350,7 @@ class NotesDeFrais:
             "id": note.id,
             "titre": note.titre,
             "nature": note.nature,
+            "etablie": note.established_by is not None,
             "fournisseur": note.supplier,
             "statut": note.statut,
             "libelle_statut": self.libelle_statut(note),

@@ -13,7 +13,10 @@ Comptes
 
 Pièces
 - Puces : Virements, Notes de frais, Honoraires, Achats, À rattacher, Ventes. Un badge compte ce qui attend.
-- « + » : nouvelle dépense (photo du ticket, fichier, ou choisir dans Docs). Une pièce : Valider ou Refuser (motif).
+- « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
+  fichiers, ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (prof = Honoraires, autre personne =
+  Note de frais, personne = Achat) et la ligne du compte qui la paie. Terminé : revue pièce par pièce (nature, Pour qui ou
+  Fournisseur, montant, « C'est payé »), Valider passe à la suivante. Une pièce : Valider, Refuser (motif) ou Supprimer.
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs.
 - « Pour qui ? » : les membres, puis les extérieurs (payés sans être membres) ; « + Quelqu'un d'extérieur » (nom, mail et téléphone facultatifs, RIB). ⋯ › Extérieurs : corriger, « Demander le RIB par mail », retirer de la liste.
