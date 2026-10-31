@@ -3,7 +3,6 @@ import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
-import LignesBanque from '../finances/compta/LignesBanque.jsx'
 import PlanComptable from '../finances/compta/PlanComptable.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import { BadgeEtat, ChampsRib, Compte, NATURES, PaiementVu, Pieces as Vignettes, PreuveVirement, qui, raisonProposee, ribVide } from './commun.jsx'
@@ -14,16 +13,16 @@ import Saisie from './Saisie.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
 // frais, honoraires et achats sont une seule structure « dépense », avec une
-// nature ; chaque puce en est un filtre. À rattacher et Ventes sont des
-// lignes de banque (compte du plan à confirmer, financier.md §8.3 et §8.4).
+// nature ; chaque puce en est un filtre. Ventes = les pièces de recette
+// (pas encore saisies dans l'appli). Les lignes de banque, elles, se
+// traitent dans Comptes (Seb, 31/10 : une pièce n'est pas une ligne).
 // Un seul bouton principal, « + ».
 const PUCES = [
   { value: 'virements', label: 'Virements' },
   { value: 'frais', label: 'Notes de frais' },
   { value: 'honoraires', label: 'Honoraires' },
   { value: 'achat', label: 'Achats' },
-  { value: 'a_rattacher', label: 'À rattacher', banque: true },
-  { value: 'ventes', label: 'Ventes', banque: true },
+  { value: 'ventes', label: 'Ventes' },
 ]
 
 const SUR_ORDINATEUR = typeof window !== 'undefined' && window.matchMedia?.('(pointer: fine)').matches
@@ -46,7 +45,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   const [version, setVersion] = useState(0) // relire la puce après une saisie
   const [survol, setSurvol] = useState(false)
 
-  const banque = PUCES.find((p) => p.value === puce)?.banque
+  const ventes = puce === 'ventes'
   const glisser = SUR_ORDINATEUR
 
   function finDeRevue() {
@@ -88,15 +87,18 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
             onClick={() => setPuce(p.value)}
           >
             {p.label}
-            <Compte n={aFaire[p.value]} banque={p.value === 'virements' || p.value === 'a_rattacher'} />
+            <Compte n={aFaire[p.value]} banque={p.value === 'virements'} />
           </button>
         ))}
       </div>
-      {glisser && !banque && puce !== 'virements' && (
+      {glisser && !ventes && puce !== 'virements' && (
         <p className="muted">Glissez ici des factures depuis l’ordinateur : une par fichier.</p>
       )}
-      {banque ? (
-        <LignesBanque key={puce} filtre={puce} onChange={onChange} />
+      {ventes ? (
+        <p className="muted">
+          Les pièces de recette (remise de chèques, facture émise, reçu HelloAsso) ne se saisissent pas encore ici. Les
+          recettes vues sur le compte se classent dans Comptes, filtre « Sans compte ».
+        </p>
       ) : puce === 'virements' ? (
         <Virements key={version} onChange={onChange} />
       ) : (

@@ -255,13 +255,14 @@ envoyer, il est prévenu). Une pièce **payée et rattachée** à la ligne du co
 sans la **détacher** d'abord (la banque a décidé). Assistant : `undo_expense_notes`,
 `cancel_expense_notes`.
 
-**Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de choses à
-traiter par un trésorier : Notes de frais, Honoraires, Achats = à valider ; Virements = à payer,
-préparés pour moi, envoyés vus sur le compte ; **À rattacher** = lignes de banque de dépense sans
-compte du plan ; **Ventes** = recettes sans compte ; ces deux-là **de la saison en cours seulement**
-(les relevés des saisons passées sont importés mais ne se classent pas, Seb 31 octobre), et la liste
-de la pastille suit la même règle. Deux couleurs : orange pour les pièces (natures,
-Ventes), **bleu** pour la banque à traiter (Virements, À rattacher).
+**Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de **pièces** à
+traiter par un trésorier : Notes de frais, Honoraires, Achats, Ventes = à valider ; Virements = à
+payer, préparés pour moi, envoyés vus sur le compte. Deux couleurs : orange pour les pièces, **bleu**
+pour la banque à traiter (Virements). **Une pièce n'est pas une ligne de banque** (Seb, 31 octobre,
+23 h) : les lignes de la saison en cours sans compte du plan se traitent dans **Comptes** (filtre
+« Sans compte »), et c'est le sous-onglet Comptes qui porte leur badge (bleu) ; la pastille À
+rattacher a quitté Pièces. **Ventes** = les pièces de recette (bordereau de remise de chèques,
+facture émise, reçu HelloAsso) : pas encore saisissables, la pastille le dit et renvoie vers Comptes.
 
 **Preuve de virement** : la capture du mail de la banque (« ordre de virement », « virement
 instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve

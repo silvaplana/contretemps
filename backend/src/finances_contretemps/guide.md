@@ -12,7 +12,9 @@ Comptes
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet), à reprendre de la clôture ou de la Balance.
 
 Pièces
-- Puces : Virements, Notes de frais, Honoraires, Achats, À rattacher, Ventes. Un badge compte ce qui attend.
+- Puces : Virements, Notes de frais, Honoraires, Achats, Ventes. Un badge compte les pièces qui attendent. Ventes (pièces de
+  recette) ne se saisit pas encore. Les lignes de banque sans compte se classent dans Comptes (filtre « Sans compte »), badge
+  bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
   fichiers (ou un zip), ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
   l'école = Honoraires, d'une ou pour une autre personne = sa Note de frais, société = Achat) et la ligne du compte qui la
@@ -22,9 +24,8 @@ Pièces
   « Valider : À payer » et passe à la suivante. Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
   Préparé → À payer, À payer → À valider), « Annuler cette pièce : tout défaire » (une note envoyée par un membre lui
   revient) ; payée à tort : « Détacher » d'abord (tant que la saison n'est pas clôturée).
-- Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature, recettes sans compte
-  dans Ventes), bleu pour la banque (Virements : à payer, préparés pour moi, envoyés vus sur le compte ; À rattacher : lignes
-  sans compte du plan).
+- Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature), bleu pour la banque
+  (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs.
 - « Pour qui ? » : les membres, puis les extérieurs (payés sans être membres) ; « + Quelqu'un d'extérieur » (nom, mail et téléphone facultatifs, RIB). ⋯ › Extérieurs : corriger, « Demander le RIB par mail », retirer de la liste.
