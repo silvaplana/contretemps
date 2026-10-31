@@ -5088,3 +5088,27 @@ a.btn {
 .accueil-ecole .btn {
   justify-self: start;
 }
+
+/* Bandeau « X a deux fiches » d'Admin › Élèves (DeuxFiches.jsx). */
+.deux-fiches {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: 17px;
+}
+.deux-fiches .btn {
+  min-height: 48px;
+}
+
+/* « Quel mail garder ? » dans « Fusionner avec… » (FusionnerAvec.jsx). */
+.fusion__question {
+  margin: 16px 0 4px;
+  font-size: 17px;
+  font-weight: 600;
+}

@@ -13,6 +13,7 @@ import { correspond } from '../../utils/recherche.js'
 import { texteReponse } from '../../utils/reponses.js'
 import AjoutEleveOcr from './AjoutEleveOcr.jsx'
 import ChampsMembres from './ChampsMembres.jsx'
+import DeuxFiches from './DeuxFiches.jsx'
 import FicheEleve from './FicheEleve.jsx'
 import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
@@ -325,6 +326,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         />
       </div>
       <MessageAcces acces={acces} />
+      <DeuxFiches ecoleId={ecoleId} eleves={eleves} onFusionnee={relireEleves} />
 
       <div className="table-scroll table-scroll--eleves" ref={boiteTableauRef}>
         <table className="data-table data-table--eleves">
