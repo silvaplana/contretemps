@@ -455,20 +455,24 @@
 }
 
 .nf-compte {
+  /* Petite et en haut, comme la pastille de la barre du bas (Seb, 31/10 :
+     pas « en caractère normal » à côté du mot). */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  margin-left: 6px;
-  padding: 0 6px;
-  border-radius: 11px;
+  min-width: 16px;
+  height: 16px;
+  margin-left: 3px;
+  padding: 0 4px;
+  border-radius: 8px;
   background: var(--accent);
   color: #fff;
-  font-size: 14px;
+  font-size: 10px;
   font-weight: 700;
   line-height: 1;
-  vertical-align: 2px;
+  vertical-align: top;
+  position: relative;
+  top: -6px;
 }
 
 /* Virements et À rattacher : la banque, pas une pièce à valider. */
