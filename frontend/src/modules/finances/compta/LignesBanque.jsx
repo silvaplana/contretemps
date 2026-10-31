@@ -9,15 +9,29 @@ import './compta.css'
 
 const { euros, dateFr } = api
 
+// Les lignes de banque sans compte du plan, de la saison en cours seulement
+// (Seb, 31/10 : les relevés des saisons passées sont importés mais ne se
+// classent pas) : dépenses (À rattacher) ou recettes (Ventes).
+export function lignesSansCompte(ledger, saisons) {
+  const courante = saisons?.seasons?.find((s) => s.current)
+  return ledger.rows.filter(
+    (r) =>
+      !r.transfer && !r.account && (!courante || (r.date >= courante.startDate && r.date <= courante.endDate))
+  )
+}
+
 export default function LignesBanque({ filtre, onChange }) {
   const [ledger, setLedger] = useState(null)
+  const [saisons, setSaisons] = useState(null)
   const [erreur, setErreur] = useState('')
   const [fiche, setFiche] = useState(null)
 
   const charger = useCallback(() => {
-    api
-      .historique()
-      .then(setLedger)
+    Promise.all([api.historique(), api.saisons()])
+      .then(([l, s]) => {
+        setLedger(l)
+        setSaisons(s)
+      })
       .catch((err) => setErreur(err.message))
   }, [])
   useEffect(charger, [charger])
@@ -25,13 +39,13 @@ export default function LignesBanque({ filtre, onChange }) {
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
   if (!ledger) return <p className="muted">Chargement…</p>
 
-  const lignes = ledger.rows.filter((r) => !r.transfer && (filtre === 'ventes' ? r.amount > 0 : !r.account))
+  const lignes = lignesSansCompte(ledger, saisons).filter((r) => (filtre === 'ventes' ? r.amount > 0 : r.amount < 0))
   return (
     <section className="fin-cp" aria-label={filtre === 'ventes' ? 'Ventes' : 'À rattacher'}>
       <p className="muted">
         {filtre === 'ventes'
-          ? 'Les recettes vues sur les comptes, avec leur compte du plan. Un virement HelloAsso ou une remise de chèques se ventile sur plusieurs comptes.'
-          : 'Les lignes de banque sans compte du plan : un appui, le compte proposé, Confirmer.'}
+          ? 'Les recettes de la saison sans compte du plan. Un virement HelloAsso ou une remise de chèques se ventile sur plusieurs comptes.'
+          : 'Les lignes de banque de la saison sans compte du plan : un appui, le compte proposé, Confirmer.'}
       </p>
       {lignes.length === 0 ? (
         <p className="empty-state">{filtre === 'ventes' ? 'Aucune recette' : 'Tout est classé'}</p>

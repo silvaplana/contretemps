@@ -258,7 +258,9 @@ sans la **détacher** d'abord (la banque a décidé). Assistant : `undo_expense_
 **Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de choses à
 traiter par un trésorier : Notes de frais, Honoraires, Achats = à valider ; Virements = à payer,
 préparés pour moi, envoyés vus sur le compte ; **À rattacher** = lignes de banque de dépense sans
-compte du plan ; **Ventes** = recettes sans compte. Deux couleurs : orange pour les pièces (natures,
+compte du plan ; **Ventes** = recettes sans compte ; ces deux-là **de la saison en cours seulement**
+(les relevés des saisons passées sont importés mais ne se classent pas, Seb 31 octobre), et la liste
+de la pastille suit la même règle. Deux couleurs : orange pour les pièces (natures,
 Ventes), **bleu** pour la banque à traiter (Virements, À rattacher).
 
 **Preuve de virement** : la capture du mail de la banque (« ordre de virement », « virement
