@@ -39,6 +39,9 @@ SaaS vite. Chaque module se code ici de façon isolée pour être extrait tel qu
 - Je viens de Java : écris du Python idiomatique (fonctions simples, dataclasses/Pydantic), pas de
   hiérarchies de classes à la Java. Composition plutôt qu'héritage.
 - Explique brièvement tes choix quand tu touches à la base de données.
+- Une PR qui ajoute, déplace ou renomme un écran ou un bouton met à jour, dans la même PR, le
+  `guide.md` du module touché : c'est le plan des écrans que lit l'assistant pour guider les gens
+  (Seb, 30 octobre ; `spec/modules/assistant-ia.md` §6).
 
 ## Stack
 - Backend : Python 3.11+, FastAPI, SQLAlchemy 2, migrations Alembic.

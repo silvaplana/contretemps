@@ -1,7 +1,7 @@
 """Déclaration du module Chorégraphies (spec/core.md §9 bis), propre à
 Contretemps : il s'appuie sur les cours et sur le module Vidéos."""
 
-from registry import Module
+from registry import Module, guide_file
 
 from .actions import actions
 from .choregraphies import Choregraphies
@@ -16,4 +16,5 @@ def mount(app, core) -> None:
 MODULE = Module(
     key="choregraphies", label="Chorégraphies", mount=mount, requires=("videos",),
     actions=lambda core: actions(core.choregraphies_client),
+    guide=guide_file(__file__),
 )
