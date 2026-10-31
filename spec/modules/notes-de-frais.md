@@ -214,10 +214,28 @@ ordinateur, glisser les fichiers sur Pièces), ou **Saisir sans photo** (qui dem
 Chaque pièce est créée aussitôt (À valider) et lue en arrière-plan ; la fenêtre liste le lot
 (« Lecture en cours… », puis qui, nature proposée, montant).
 
-**L'appli propose la nature** d'après la pièce, et dit pourquoi :
-- un **prof** lu sur la pièce (nom rapproché d'une fiche) → **Honoraires** ;
-- une **autre personne** connue (membre, extérieur) → **Note de frais**, à son nom ;
-- **personne** → **Achat** (payée par l'association), fournisseur lu.
+**L'appli propose la nature** d'après la pièce, et dit pourquoi (règles revues le 31 octobre sur
+le dossier des factures 2025-2026 de Seb, étude `appbase/etudes/factures-2025-2026.md`). La lecture
+dit qui a **émis** la pièce (une personne, auto-entrepreneur, ou une société) et à qui elle est
+**adressée** :
+- émise par un **prof de l'école** (nom rapproché d'une fiche) → **Honoraires** ;
+- émise par ou adressée à une **autre personne** (membre, extérieur ; ex. facture Onlineprinters au
+  nom de Julia, facture de l'intervenant Thibault Taniou) → **Note de frais**, à son nom ; seul un
+  prof de l'école donne des honoraires (Seb) ; personne inconnue → « Pour qui ? » avec le nom lu
+  déjà tapé, pour la retrouver ou l'ajouter en extérieur ;
+- une **société**, adressée à l'association → **Achat**, fournisseur lu.
+
+**Preuve de virement** : la capture du mail de la banque (« ordre de virement », « virement
+instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve
+la pièce qu'elle paie (même montant, nom du bénéficiaire ou motif), la range comme page de cette
+pièce et l'affiche dans la revue : **C'est payé** rattache la ligne vue sur le compte, ou passe la
+pièce Envoyé si la banque ne l'a pas encore. L'IBAN lu remplit le RIB de la personne s'il manque.
+Virement vers un compte de l'association : « virement interne, rien à faire » ; sans pièce qui
+corresponde : « aucune pièce, à garder de côté » ; rien n'est créé dans les deux cas.
+
+**Un zip** dans « Choisir des fichiers » : un fichier dedans = une pièce (fichiers vides et
+dossiers cachés laissés de côté). Le nom du fichier est donné à la lecture comme indice (date,
+nom), jamais comme vérité.
 
 Trouvée dans les comptes ne dit **pas** la nature : avant l'appli, le trésorier payait tout « à
 l'arrache », un débit peut être un achat, une note de frais ou des honoraires. Deux questions à

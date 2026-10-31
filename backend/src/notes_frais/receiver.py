@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .ports import LectureImpossible, Membre
-from .service import NotesDeFrais
+from .service import NotesDeFrais, Preuve
 
 TAILLE_MAX_LECTURE = 10 * 1024 * 1024
 TAILLE_MAX_PIECE = 20 * 1024 * 1024
@@ -296,6 +296,8 @@ class NotesDeFraisReceiver:
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
                 categorie_id=categorie_id,
             )
+            if isinstance(note, Preuve):
+                return nf.preuve_dict(db, m, note)
             return nf.notes_dicts(db, m, [note])[0]
 
         @app.post("/notes-frais/notes/{note_id}/pages")

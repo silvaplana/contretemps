@@ -51,13 +51,24 @@ class Organisation:
 
 @dataclass(frozen=True)
 class TicketLu:
-    """Ce que la lecture d'un justificatif renvoie (§12) ; tout peut manquer."""
+    """Ce que la lecture d'un justificatif renvoie (§12) ; tout peut manquer.
+    `sorte` : « facture » (facture, reçu, ticket, avis d'échéance),
+    « virement » (preuve d'un virement fait : ordre, avis d'opération) ou
+    « autre ». `commercant` = qui a émis la pièce ; `emetteur_personne` :
+    c'est une personne (auto-entrepreneur), pas une société ; `client` : à qui
+    elle est adressée. Pour un virement : `beneficiaire`, `iban`, `motif`."""
 
     date: str | None = None
     montant_centimes: int | None = None
     commercant: str | None = None
     categorie: str | None = None
     description: str | None = None
+    sorte: str = "facture"
+    emetteur_personne: bool | None = None
+    client: str | None = None
+    beneficiaire: str | None = None
+    iban: str | None = None
+    motif: str | None = None
 
 
 class Annuaire(Protocol):
@@ -89,7 +100,7 @@ class LecteurTicket(Protocol):
     @property
     def actif(self) -> bool: ...
 
-    def lire(self, db: Session, org_id: int, contenu: bytes, type_mime: str, categories: list[str]) -> TicketLu:
+    def lire(self, db: Session, org_id: int, contenu: bytes, type_mime: str, categories: list[str], nom: str = "") -> TicketLu:
         """Lit un justificatif. Lève LectureImpossible (message montrable)."""
 
 

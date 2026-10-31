@@ -31,27 +31,46 @@ PRIX_PAR_MODELE = {
 TYPE_PDF = "application/pdf"
 TYPES_IMAGE_API = {"image/jpeg", "image/png", "image/webp", "image/gif"}
 
-CONSIGNE = """Tu lis un justificatif de dépense (ticket de caisse, facture, reçu, ticket de \
-péage ou de parking) photographié par un membre d'une association, pour pré-remplir sa note \
-de frais. Il relira et corrigera.
+CONSIGNE = """Tu lis une pièce comptable d'une association (ticket de caisse, facture, reçu, \
+avis d'échéance, note d'honoraires, ou la preuve d'un virement : ordre de virement, avis \
+d'opération, mail de la banque « virement exécuté »), photographiée ou fournie par le \
+trésorier, pour pré-remplir l'application. Il relira et corrigera.
 
 Règles :
 - Recopie ce qui est écrit, sans rien inventer. Ce qui est illisible ou absent vaut null.
-- `date` : date de l'achat, au format AAAA-MM-JJ. Les dates sont écrites à la française \
-(jour/mois/année).
-- `montant_ttc` : le total payé, TTC, en euros (nombre décimal, ex. 48.9). Jamais un \
+- `sorte` : « facture » pour tout ce qui réclame ou prouve une dépense (facture, reçu, ticket, \
+avis d'échéance, justificatif de paiement d'un commerçant) ; « virement » pour la preuve d'un \
+virement bancaire fait par l'association ; « autre » sinon.
+- `date` : date de la pièce (achat, facture, ou exécution du virement), au format AAAA-MM-JJ. \
+Les dates sont écrites à la française (jour/mois/année). Si le nom du fichier donne une date \
+plus plausible que celle lue (année incohérente), prends celle du fichier.
+- `montant_ttc` : le total payé ou viré, TTC, en euros (nombre décimal, ex. 48.9). Jamais un \
 sous-total, une TVA ou un montant rendu.
-- `commercant` : le nom de l'enseigne ou du fournisseur, court.
+- `commercant` : qui a émis la pièce : l'enseigne, la société, ou le nom de la personne \
+(prénom et nom) pour une facture d'auto-entrepreneur ; pour un virement, la banque ou null.
+- `emetteur_personne` : true si l'émetteur est une personne physique (auto-entrepreneur : \
+« dispensé d'immatriculation », SIRET personnel, « TVA non applicable, art. 293 B »), false si \
+c'est une société ou une enseigne, null si on ne sait pas.
+- `client` : à qui la pièce est adressée (nom de la personne ou de l'association facturée, \
+« Mme Julia Dho », « Association Contretemps ») ; null si absent.
+- `beneficiaire`, `iban`, `motif` : pour un virement seulement, le nom du bénéficiaire, son \
+IBAN (sans espaces) et le motif ou libellé ; null sinon.
 - `categorie` : exactement un des libellés de la liste donnée, celui qui convient le mieux ; \
 null si aucun ne convient.
-- `description` : quelques mots en français qui disent ce qui a été acheté \
-(ex. « Tissu pour costumes », « Péage A8 »), sans le montant."""
+- `description` : quelques mots en français qui disent ce qui a été acheté ou payé \
+(ex. « Tissu pour costumes », « Cours de danse octobre 2025 »), sans le montant."""
 
 
 class TicketJson(BaseModel):
+    sorte: str | None
     date: str | None
     montant_ttc: float | None
     commercant: str | None
+    emetteur_personne: bool | None
+    client: str | None
+    beneficiaire: str | None
+    iban: str | None
+    motif: str | None
     categorie: str | None
     description: str | None
 
@@ -81,7 +100,7 @@ class LecteurClaude:
             self._client = anthropic.Anthropic()
         return self._client
 
-    def lire(self, db: Session, org_id: int, contenu: bytes, type_mime: str, categories: list[str]) -> TicketLu:
+    def lire(self, db: Session, org_id: int, contenu: bytes, type_mime: str, categories: list[str], nom: str = "") -> TicketLu:
         if type_mime != TYPE_PDF and type_mime not in TYPES_IMAGE_API:
             raise LectureImpossible("Ce format de photo ne peut pas être lu : remplissez à la main.")
         if self.plafond_atteint is not None and self.plafond_atteint(db, org_id):
@@ -89,12 +108,13 @@ class LecteurClaude:
         source = {"type": "base64", "media_type": type_mime, "data": base64.standard_b64encode(contenu).decode("ascii")}
         bloc = {"type": "document" if type_mime == TYPE_PDF else "image", "source": source}
         liste = "\n".join(f"- {c}" for c in categories)
+        texte = f"Catégories :\n{liste}" + (f"\n\nNom du fichier (indice, pas une vérité) : {nom}" if nom else "")
         try:
             reponse = self._obtenir_client().beta.messages.parse(
                 model=MODELE,
                 max_tokens=4000,
                 system=CONSIGNE,
-                messages=[{"role": "user", "content": [bloc, {"type": "text", "text": f"Catégories :\n{liste}"}]}],
+                messages=[{"role": "user", "content": [bloc, {"type": "text", "text": texte}]}],
                 output_config={"effort": "low"},
                 output_format=TicketJson,
                 betas=["server-side-fallback-2026-07-01"],
@@ -117,5 +137,8 @@ class LecteurClaude:
             raise LectureImpossible("Le ticket n'a pas pu être lu : reprenez la photo bien à plat, ou remplissez à la main.")
         montant = round(lu.montant_ttc * 100) if lu.montant_ttc is not None else None
         return TicketLu(
-            date=lu.date, montant_centimes=montant, commercant=lu.commercant, categorie=lu.categorie, description=lu.description
+            date=lu.date, montant_centimes=montant, commercant=lu.commercant, categorie=lu.categorie, description=lu.description,
+            sorte=lu.sorte if lu.sorte in ("facture", "virement", "autre") else "facture",
+            emetteur_personne=lu.emetteur_personne, client=lu.client,
+            beneficiaire=lu.beneficiaire, iban=lu.iban, motif=lu.motif,
         )

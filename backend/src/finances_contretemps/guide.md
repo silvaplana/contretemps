@@ -14,8 +14,9 @@ Comptes
 Pièces
 - Puces : Virements, Notes de frais, Honoraires, Achats, À rattacher, Ventes. Un badge compte ce qui attend.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
-  fichiers, ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (prof = Honoraires, autre personne =
-  Note de frais, personne = Achat) et la ligne du compte qui la paie. Terminé : revue pièce par pièce (nature, Pour qui ou
+  fichiers (ou un zip), ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
+  l'école = Honoraires, d'une ou pour une autre personne = sa Note de frais, société = Achat) et la ligne du compte qui la
+  paie ; une preuve de virement est rattachée à la pièce qu'elle paie (« C'est payé »). Terminé : revue pièce par pièce (nature, Pour qui ou
   Fournisseur, montant, « C'est payé »), Valider passe à la suivante. Une pièce : Valider, Refuser (motif) ou Supprimer.
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs.

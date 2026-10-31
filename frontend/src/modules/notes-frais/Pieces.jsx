@@ -6,7 +6,7 @@ import Modal from '../../components/Modal.jsx'
 import LignesBanque from '../finances/compta/LignesBanque.jsx'
 import PlanComptable from '../finances/compta/PlanComptable.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { BadgeEtat, ChampsRib, Compte, NATURES, PaiementVu, Pieces as Vignettes, qui, raisonProposee, ribVide } from './commun.jsx'
+import { BadgeEtat, ChampsRib, Compte, NATURES, PaiementVu, Pieces as Vignettes, PreuveVirement, qui, raisonProposee, ribVide } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
@@ -450,6 +450,19 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
         <p className="muted nf-raison">Proposé d’après la pièce : {raisonProposee(note)}</p>
       )}
       {note && <PaiementVu note={note} onConfirme={(op) => agir(() => api.payee(note.id, op.id))} />}
+      {note && (
+        <PreuveVirement
+          note={note}
+          onPaye={() =>
+            agir(async () => {
+              if (note.paiement_propose) return api.payee(note.id, note.paiement_propose.id)
+              // La banque n'a pas encore la ligne : Envoyé, elle la verra.
+              if (note.statut === 'envoyee') await enregistrer(true)
+              await api.virementFait(note.id)
+            })
+          }
+        />
+      )}
       {note && depense?.lue_par_ia && corrigeable && (
         <p className="badge badge--warning nf-a-verifier">Rempli d’après le ticket, à vérifier</p>
       )}
@@ -461,10 +474,11 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
               <label htmlFor="nf-pour">Pour qui ?</label>
               <button id="nf-pour" type="button" className="btn btn--secondary nf-pour" onClick={() => setChoixPour(true)}>
                 <Icon name="search" size={18} />
-                {pour ? pour.nom : 'Choisir'}
+                {pour ? pour.nom : note?.fournisseur ? `${note.fournisseur} ?` : 'Choisir'}
               </button>
               {choixPour && (
                 <ChoixPersonneModal
+                  initial={!pour && note?.fournisseur ? note.fournisseur : ''}
                   onClose={() => setChoixPour(false)}
                   onChoisie={(p) => {
                     setPour(p)
@@ -557,9 +571,9 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
 // Choix de la personne pour qui le trésorier saisit : les membres de
 // l'école, puis les personnes extérieures (notes-de-frais.md §7 quater), avec une
 // recherche par nom ; en bas, « + Quelqu'un d'extérieur ».
-export function ChoixPersonneModal({ onClose, onChoisie }) {
+export function ChoixPersonneModal({ onClose, onChoisie, initial = '' }) {
   const [personnes, setPersonnes] = useState(null)
-  const [recherche, setRecherche] = useState('')
+  const [recherche, setRecherche] = useState(initial)
   const [nouvel, setNouvel] = useState(null) // { nom, email, rib }
   const [erreur, setErreur] = useState('')
 

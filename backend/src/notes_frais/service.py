@@ -15,7 +15,7 @@ import logging
 import re
 import unicodedata
 import zipfile
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO
@@ -104,6 +104,19 @@ def normaliser_bic(bic: str | None) -> str | None:
     if not re.fullmatch(r"[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?", texte):
         raise ValueError("Ce BIC n'a pas la bonne forme (8 ou 11 caractères, ex. AGRIFRPP).")
     return texte
+
+
+@dataclass
+class Preuve:
+    """Une preuve de virement lue (§7 quinquies) et la pièce qu'elle paie."""
+
+    date: str | None
+    montant_centimes: int
+    beneficiaire: str | None
+    motif: str | None
+    iban: str | None
+    interne: bool = False
+    note: NoteFrais | None = None
 
 
 class NotesDeFrais:
@@ -363,15 +376,16 @@ class NotesDeFrais:
     def lecture_disponible(self) -> bool:
         return self.ports.lecteur is not None and self.ports.lecteur.actif
 
-    def lire_ticket(self, db: Session, membre: Membre, contenu: bytes, type_mime: str) -> dict:
+    def lire_ticket(self, db: Session, membre: Membre, contenu: bytes, type_mime: str, nom: str = "") -> dict:
         """Champs pré-remplis ; la catégorie est ramenée à une de celles de
-        l'organisation. Lève LectureImpossible."""
+        l'organisation. `nom` : le nom du fichier, indice pour la lecture.
+        Lève LectureImpossible."""
         if type_mime not in TYPES_ACCEPTES:
             raise LectureImpossible("Seules les photos et les PDF peuvent être lus.")
         if not self.lecture_disponible:
             raise LectureImpossible("La lecture automatique des tickets n'est pas disponible.")
         categories = self.categories(db, membre.org_id)
-        lu: TicketLu = self.ports.lecteur.lire(db, membre.org_id, contenu, type_mime, [c.libelle for c in categories])
+        lu: TicketLu = self.ports.lecteur.lire(db, membre.org_id, contenu, type_mime, [c.libelle for c in categories], nom=nom)
         par_libelle = {c.libelle.lower(): c for c in categories}
         categorie = par_libelle.get((lu.categorie or "").strip().lower())
         jour = None
@@ -392,6 +406,12 @@ class NotesDeFrais:
             "categorie_id": categorie.id if categorie else None,
             "description": description[:200],
             "commercant": (lu.commercant or "")[:120] or None,
+            "sorte": lu.sorte,
+            "emetteur_personne": lu.emetteur_personne,
+            "client": (lu.client or "")[:120] or None,
+            "beneficiaire": (lu.beneficiaire or "")[:120] or None,
+            "iban": lu.iban,
+            "motif": (lu.motif or "")[:140] or None,
         }
 
     # --- Notes : côté membre (§4.4) ---
@@ -701,13 +721,15 @@ class NotesDeFrais:
         description: str = "",
         valider: bool = False,
         categorie_id: int | None = None,
-    ) -> NoteFrais:
+    ) -> NoteFrais | Preuve:
         """Une pièce établie par un trésorier : une photo (ou un fichier) =
         une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
         peut ; le trésorier vérifie, corrige et valide ensuite (rafale).
         Sans `nature`, l'appli la propose d'après la pièce (§7 quinquies) :
-        un prof lu dessus = honoraires, une autre personne = note de frais,
-        personne = achat. `valider` : tout est saisi, validé en même temps."""
+        une facture d'un prof de l'école = honoraires, une facture faite par
+        ou adressée à une autre personne = sa note de frais, sinon achat. La preuve d'un virement
+        n'est pas une dépense : elle est rapprochée de la pièce qu'elle paie
+        (`Preuve`). `valider` : tout est saisi, validé en même temps."""
         self._exiger_tresorier(membre)
         if nature is not None and nature not in NATURES:
             raise ValueError("Nature inconnue.")
@@ -718,9 +740,11 @@ class NotesDeFrais:
                 raise ValueError("Seules les photos (JPEG, PNG, WebP, HEIC) et les PDF sont acceptés.")
             if len(contenu) <= 10 * 1024 * 1024 and self.lecture_disponible:
                 try:
-                    lu = self.lire_ticket(db, membre, contenu, type_mime)
+                    lu = self.lire_ticket(db, membre, contenu, type_mime, nom)
                 except LectureImpossible:
                     lu = {}
+        if nature is None and lu.get("sorte") == "virement":
+            return self._preuve_de_virement(db, membre, lu, fichier)
         if jour is None and lu.get("date"):
             jour = date.fromisoformat(lu["date"])
         jour = jour or date.today()
@@ -728,15 +752,31 @@ class NotesDeFrais:
         if montant or valider:
             self._valider_saisie(montant, jour)
         description = " ".join((description or lu.get("description") or "").split())[:200]
-        personne = self._personne_de_l_org(db, membre, person_id) if person_id is not None else self._reconnaitre_personne(db, membre, lu)
+        emetteur = " ".join((lu.get("commercant") or "").split())[:120] or None
+        if person_id is not None:
+            personne = self._personne_de_l_org(db, membre, person_id)
+        elif lu.get("emetteur_personne") is False:
+            # Une société facture : la pièce est à celui à qui elle est adressée.
+            personne = self._reconnaitre_personne(db, membre, lu.get("client") or "")
+        else:
+            personne = self._reconnaitre_personne(db, membre, f"{emetteur or ''} {lu.get('description') or ''}")
         if nature is None:
-            nature = ACHAT if personne is None else HONORAIRES if personne.role == "prof" else FRAIS
+            # Seb, 31/10 : seul un prof de l'école donne des honoraires ; un
+            # extérieur qui facture, c'est une note de frais à son nom.
+            if personne is not None and personne.role == "prof" and lu.get("emetteur_personne") is not False:
+                nature = HONORAIRES
+            elif personne is not None or lu.get("emetteur_personne"):
+                nature = FRAIS  # une personne a payé ou facturé : on la rembourse
+            else:
+                nature = ACHAT
         note = NoteFrais(org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="", established_by=membre.person_id)
         if nature == ACHAT:
             note.person_id = membre.person_id
-            note.supplier = " ".join((fournisseur or lu.get("commercant") or "").split())[:120] or None
+            note.supplier = " ".join((fournisseur or emetteur or "").split())[:120] or None
         else:
             note.person_id = personne.person_id if personne is not None else PERSONNE_A_CHOISIR
+            if personne is None and lu.get("emetteur_personne"):
+                note.supplier = emetteur  # le nom lu, pour « Pour qui ? » (ou « + Quelqu'un d'extérieur »)
         note.titre = self._titre(note, jour)
         self._recopier_rib(db, note)
         if valider:
@@ -780,6 +820,79 @@ class NotesDeFrais:
         self._ranger(db, membre, note)
         return note
 
+    # --- Preuve d'un virement (§7 quinquies) : pas une dépense, un paiement ---
+
+    def _preuve_de_virement(self, db: Session, membre: Membre, lu: dict, fichier: tuple[bytes, str, str]) -> Preuve:
+        """La capture du mail de la banque (« ordre de virement », « virement
+        exécuté ») est rapprochée de la pièce qu'elle paie : même montant,
+        de préférence le nom du bénéficiaire ou le motif ; la preuve devient
+        une page de cette pièce, et l'IBAN lu complète le RIB de la personne
+        s'il manque. Vers un compte de l'association : virement interne."""
+        org = self.annuaire.organisation(db, membre.org_id)
+        preuve = Preuve(
+            date=lu.get("date"), montant_centimes=lu.get("montant_centimes") or 0,
+            beneficiaire=lu.get("beneficiaire"), motif=lu.get("motif"), iban=lu.get("iban"),
+        )
+        mots_org = set(re.findall(r"[a-z]{3,}", _sans_accents(org.nom)))
+        mots_benef = set(re.findall(r"[a-z]{3,}", _sans_accents(preuve.beneficiaire or "")))
+        if mots_org and mots_org <= mots_benef:
+            preuve.interne = True
+            return preuve
+        if not preuve.montant_centimes:
+            return preuve
+        candidates = list(db.scalars(
+            select(NoteFrais).where(
+                NoteFrais.org_id == membre.org_id, NoteFrais.statut.not_in((REFUSEE, REMBOURSEE)), NoteFrais.don.is_(False)
+            ).order_by(NoteFrais.envoyee_le)
+        ))
+        candidates = [n for n in candidates if self.total(n) == preuve.montant_centimes]
+        if not candidates:
+            return preuve
+        indices = mots_benef | set(re.findall(r"[a-z]{3,}", _sans_accents(preuve.motif or "")))
+        def nommee(n: NoteFrais) -> bool:
+            noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, n)} {n.supplier or ''}")))
+            return bool(noms & indices)
+        note = next((n for n in candidates if nommee(n)), candidates[0] if len(candidates) == 1 else None)
+        if note is None:
+            return preuve
+        preuve.note = note
+        if note.depenses:
+            depense = note.depenses[-1]
+            if len(depense.pieces) < PIECES_MAX:
+                self._poser_piece(membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2])
+        self._rib_depuis_preuve(db, membre, note, preuve)
+        db.commit()
+        db.refresh(note)
+        self._ranger(db, membre, note)
+        return preuve
+
+    def _rib_depuis_preuve(self, db: Session, membre: Membre, note: NoteFrais, preuve: Preuve) -> None:
+        """L'IBAN du bénéficiaire, lu sur la preuve, remplit le RIB de la
+        personne (et de la note) s'il manque. Un IBAN mal lu ne bloque rien."""
+        if not preuve.iban or note.nature == ACHAT or note.person_id == PERSONNE_A_CHOISIR:
+            return
+        try:
+            iban = normaliser_iban(preuve.iban)
+        except ValueError:
+            return
+        if iban is None:
+            return
+        if self.rib(db, note.org_id, note.person_id) is None:
+            self.definir_rib(db, replace(membre, person_id=note.person_id), titulaire=preuve.beneficiaire, iban=iban, bic=None)
+        if not note.rib_iban:
+            note.rib_titulaire, note.rib_iban = (preuve.beneficiaire or "")[:120] or None, iban
+
+    def preuve_dict(self, db: Session, membre: Membre, preuve: Preuve) -> dict:
+        """Pour l'écran : la pièce payée avec sa `preuve`, ou la preuve seule
+        (`id` null : rien trouvé, ou virement interne)."""
+        detail = {
+            "date": preuve.date, "montant_centimes": preuve.montant_centimes, "beneficiaire": preuve.beneficiaire,
+            "motif": preuve.motif, "interne": preuve.interne,
+        }
+        if preuve.note is None:
+            return {"id": None, "sorte": "virement", "preuve": detail}
+        return {**self.notes_dicts(db, membre, [preuve.note])[0], "sorte": "virement", "preuve": detail}
+
     def corriger(self, db: Session, membre: Membre, note_id: int, **champs) -> NoteFrais:
         """Vérifier ou compléter ce que la lecture a rempli, tant que ce n'est
         pas payé : la nature proposée (§7 quinquies, tant que c'est à
@@ -808,6 +921,7 @@ class NotesDeFrais:
         if note.nature != ACHAT and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
             self._personne_de_l_org(db, membre, champs["person_id"])
             note.person_id = champs["person_id"]
+            note.supplier = None  # le nom lu a servi
             note.rib_titulaire = note.rib_iban = note.rib_bic = None
         for depense in note.depenses:
             depense.person_id = note.person_id
@@ -877,10 +991,11 @@ class NotesDeFrais:
             raise LookupError("Personne inconnue dans cette organisation.")
         return personne
 
-    def _reconnaitre_personne(self, db: Session, membre: Membre, lu: dict) -> Personne | None:
-        """Le nom lu sur la pièce (note d'honoraires, facture au nom d'un
-        membre) rapproché d'une fiche ; en cas de doute, None."""
-        texte = _sans_accents(f"{lu.get('commercant') or ''} {lu.get('description') or ''}")
+    def _reconnaitre_personne(self, db: Session, membre: Membre, texte: str) -> Personne | None:
+        """Un nom lu sur la pièce (émetteur d'une note d'honoraires, client
+        d'une facture, bénéficiaire d'un virement) rapproché d'une fiche ; en
+        cas de doute, None."""
+        texte = _sans_accents(texte or "")
         if not texte.strip():
             return None
         mots = set(re.findall(r"[a-z]+", texte))

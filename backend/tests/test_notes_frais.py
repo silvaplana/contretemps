@@ -252,7 +252,7 @@ def test_lecture_du_ticket(client, ecole, monkeypatch):
     class Lecteur:
         actif = True
 
-        def lire(self, db, org_id, contenu, type_mime, categories):
+        def lire(self, db, org_id, contenu, type_mime, categories, nom=""):
             assert "Costumes" in categories
             return TicketLu(date="2026-10-12", montant_centimes=4890, commercant="Mondial Tissus",
                             categorie="costumes", description="Tissu pour costumes")
@@ -453,7 +453,7 @@ class LecteurFacture:
     def __init__(self, **lu):
         self.lu = lu
 
-    def lire(self, db, org_id, contenu, type_mime, categories):
+    def lire(self, db, org_id, contenu, type_mime, categories, nom=""):
         return TicketLu(**self.lu)
 
 
@@ -651,6 +651,61 @@ def test_saisir_une_depense_propose_la_nature(client, db_session, ecole, espion,
     assert client.patch(
         f"/notes-frais/notes/{frais['id']}", json={"nature": "achat"}, headers=entetes_session(tresorier)
     ).status_code == 400
+
+
+def test_saisir_une_depense_factures_et_preuves_de_virement(client, db_session, ecole, monkeypatch):
+    """Dossier de factures 2025-2026 de Seb (étude du 31/10) : une facture
+    faite par une personne = honoraires (membre ou extérieur) ; une facture
+    de société adressée à un membre = sa note de frais, à l'association =
+    achat ; la preuve d'un virement n'est pas une dépense : elle paie une
+    pièce, et son IBAN remplit le RIB qui manquait."""
+    tresorier, membre = ecole["tresorier"], ecole["eleve"]
+    org = ecole["ecole"].id
+    boyer = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Boyer", prenom="Sophie", email="sb@test.fr")
+    lecteur = LecteurFacture(date="2025-11-30", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
+                             client="Ecole de danse contretemps", description="Cours de danse Novembre 2025")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    honoraires = _etablir(client, tresorier, None)
+    assert honoraires["nature"] == "honoraires" and honoraires["personne"]["person_id"] == boyer.id
+    assert honoraires["rib"] is None
+
+    # Intervenant extérieur (Seb : note de frais, pas honoraires), inconnu : son nom prêt pour « Pour qui ? ».
+    lecteur.lu = dict(date="2025-10-31", montant_centimes=5600, commercant="Thibault Taniou", emetteur_personne=True,
+                      client="Contre Temps Danse", description="Prestation de danse classique")
+    taniou = _etablir(client, tresorier, None)
+    assert taniou["nature"] == "frais" and taniou["personne"] is None and taniou["fournisseur"] == "Thibault Taniou"
+
+    # Société, facturée à un membre : c'est lui qui a payé.
+    lecteur.lu = dict(date="2026-08-10", montant_centimes=14090, commercant="Onlineprinters", emetteur_personne=False,
+                      client="Ecole de danse Contretemps, Madame Margot PERRIN", description="Flyers et affiches")
+    flyers = _etablir(client, tresorier, None)
+    assert flyers["nature"] == "frais" and flyers["personne"]["nom"] == "Margot Perrin"
+    # Société, facturée à l'association : achat.
+    lecteur.lu = dict(date="2026-01-01", montant_centimes=41760, commercant="MAIF", emetteur_personne=False,
+                      client="CONTRETEMPS", description="Assurance 2026")
+    assert _etablir(client, tresorier, None)["nature"] == "achat"
+
+    # Preuve du virement à Sophie : page de plus sur sa facture, RIB rempli.
+    lecteur.lu = dict(sorte="virement", date="2025-12-05", montant_centimes=94800, beneficiaire="BOYER SOPHIE",
+                      iban=IBAN, motif="FACT1125-SOPHIE/CONTRETEMPS")
+    preuve = _etablir(client, tresorier, None)
+    assert preuve["id"] == honoraires["id"] and preuve["sorte"] == "virement"
+    assert preuve["preuve"]["beneficiaire"] == "BOYER SOPHIE" and preuve["preuve"]["interne"] is False
+    assert len(preuve["depenses"][0]["pieces"]) == 2 and preuve["rib"]["iban"] == IBAN
+    assert client.get("/notes-frais/moi", headers=entetes_session(boyer)).json()["rib"]["iban"] == IBAN
+    # Payée avant l'appli : on valide et « J'ai fait le virement » date de la preuve, pas de RIB à demander.
+    assert client.post(f"/notes-frais/notes/{honoraires['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    assert client.post(f"/notes-frais/notes/{honoraires['id']}/virement", headers=entetes_session(tresorier)).json()["statut"] == "viree"
+
+    # Virement vers un compte de l'association, ou sans pièce : rien n'est créé.
+    lecteur.lu = dict(sorte="virement", date="2026-08-05", montant_centimes=500000, beneficiaire="ASSOCIATION CONTRETEMPS DU BEAUSSET")
+    interne = _etablir(client, tresorier, None)
+    assert interne["id"] is None and interne["preuve"]["interne"] is True
+    lecteur.lu = dict(sorte="virement", date="2026-02-11", montant_centimes=41765, beneficiaire="AMIF")
+    seule = _etablir(client, tresorier, None)
+    assert seule["id"] is None and seule["preuve"]["interne"] is False
+    puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
+    assert [n["fournisseur"] for n in puce["notes"]] == ["MAIF"]
 
 
 def test_etablir_reserve_aux_tresoriers_et_supprimer_une_photo_ratee(client, ecole):
