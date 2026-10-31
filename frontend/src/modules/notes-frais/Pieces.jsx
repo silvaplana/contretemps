@@ -712,7 +712,7 @@ export function ChoixPersonneModal({ onClose, onChoisie }) {
         <button
           type="button"
           className="btn btn--secondary nf-ajout-exterieur"
-          onClick={() => setNouvel({ nom: recherche.trim(), email: '', rib: ribVide(null) })}
+          onClick={() => setNouvel({ nom: recherche.trim(), email: '', telephone: '', rib: ribVide(null) })}
         >
           + Quelqu’un d’extérieur
         </button>
@@ -729,12 +729,20 @@ export function FicheExterieur({ fiche, onChange }) {
     <>
       <label htmlFor="nf-ext-nom">Nom</label>
       <input id="nf-ext-nom" value={fiche.nom} onChange={(e) => onChange({ ...fiche, nom: e.target.value })} autoComplete="off" />
-      <label htmlFor="nf-ext-email">Mail (pour le prévenir quand c’est payé)</label>
+      <label htmlFor="nf-ext-email">Mail (facultatif, pour le prévenir)</label>
       <input
         id="nf-ext-email"
         type="email"
         value={fiche.email}
         onChange={(e) => onChange({ ...fiche, email: e.target.value })}
+        autoComplete="off"
+      />
+      <label htmlFor="nf-ext-telephone">Téléphone (facultatif)</label>
+      <input
+        id="nf-ext-telephone"
+        type="tel"
+        value={fiche.telephone}
+        onChange={(e) => onChange({ ...fiche, telephone: e.target.value })}
         autoComplete="off"
       />
       <ChampsRib rib={fiche.rib} onChange={(rib) => onChange({ ...fiche, rib })} />

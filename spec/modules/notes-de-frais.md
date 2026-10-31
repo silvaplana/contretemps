@@ -192,7 +192,10 @@ Le module garde à part une liste **Extérieurs** (nom, mail, RIB).
 - **« Pour qui ? »** (⋯ « pour quelqu'un », « + » des notes de frais, Pour qui des honoraires, qui
   s'ouvre par la loupe) : les membres d'abord, puis les extérieurs sous le titre « Extérieurs », la
   recherche les trouve tous ; en bas **« + Quelqu'un d'extérieur »** : nom (repris de la
-  recherche), mail, RIB ; il est ajouté et choisi.
+  recherche), mail et téléphone facultatifs, RIB ; il est ajouté et choisi.
+- **Demander le RIB par mail** (sa fiche dans Extérieurs, ou l'aide au virement quand le RIB
+  manque) : un mail lui demande son RIB, sa réponse va au trésorier (adresse de trésorerie), qui
+  recopie l'IBAN. Sans mail, le bouton est grisé.
 - La photo d'une facture d'honoraires le reconnaît comme un membre (son nom lu sur la facture).
 - Ensuite tout est pareil : RIB recopié, Virements, Docs (dossier à son nom). Il n'a pas l'appli :
   il est prévenu par mail (note de frais validée ou refusée, remboursée ; honoraires payés).
@@ -256,7 +259,7 @@ Tables préfixées `nf_` (module autonome) :
   (J'ai fait le virement), `bank_operation_id` (opération du compte, payé). Honoraires dont le prof n'est
   pas encore reconnu : personne 0.
 - `nf_payers` : réglage « Qui paie » (organisation, personne) ; vide = les trésoriers.
-- `nf_externals` : personnes extérieures (organisation, nom, mail, retirée le) ; §7 quater.
+- `nf_externals` : personnes extérieures (organisation, nom, mail, téléphone, retirée le) ; §7 quater.
 - `nf_categories` : id, organisation, libellé, ordre, active.
 - `nf_ribs` : RIB du membre (titulaire, IBAN, BIC), facultatif, un par personne (Profil › Mon RIB),
   visible de lui et des trésoriers seulement.

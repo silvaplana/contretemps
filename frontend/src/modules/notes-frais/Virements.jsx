@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import { BadgeEtat, ChampsRib, PaiementVu, qui, ribVide } from './commun.jsx'
+import { DemanderRib } from './Exterieurs.jsx'
 
 // Puce Virements de Financier › Pièces (spec/modules/financier.md §8.3 bis) :
 // ce qui attend d'être payé, en quatre états, et l'aide au virement (copier
@@ -63,6 +64,7 @@ export default function Virements({ onChange }) {
         virement={v}
         payeurs={autres}
         erreur={erreur}
+        onErreur={setErreur}
         onRetour={() => setChoisi(null)}
         onRib={async (rib) => {
           setErreur('')
@@ -139,7 +141,7 @@ export default function Virements({ onChange }) {
   )
 }
 
-function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onPaye, onFait, onFairePayer }) {
+function AideAuVirement({ virement: v, payeurs, erreur, onErreur, onRetour, onRib, onPaye, onFait, onFairePayer }) {
   const [rib, setRib] = useState(() => ribVide(v.rib))
   const [changerRib, setChangerRib] = useState(!v.rib)
   const [guide, setGuide] = useState(() => !guideDejaVu())
@@ -174,6 +176,9 @@ function AideAuVirement({ virement: v, payeurs, erreur, onRetour, onRib, onPaye,
         <>
           <p>RIB de {qui(v)} :</p>
           <ChampsRib rib={rib} onChange={setRib} />
+          {v.personne?.role === 'extérieur' && !v.rib && (
+            <DemanderRib onDemander={() => api.demanderRib(-v.personne.person_id)} onErreur={onErreur} />
+          )}
           <button
             type="button"
             className="btn btn--primary"

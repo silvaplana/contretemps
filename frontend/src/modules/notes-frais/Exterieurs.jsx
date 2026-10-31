@@ -31,6 +31,14 @@ export default function Exterieurs({ onClose }) {
     }
   }
 
+  const enregistrer = (f) =>
+    api.modifierExterieur(f.id, {
+      nom: f.nom,
+      email: f.email,
+      telephone: f.telephone,
+      rib: f.rib.iban.trim() ? f.rib : { iban: null },
+    })
+
   if (fiche) {
     return (
       <Modal
@@ -46,13 +54,7 @@ export default function Exterieurs({ onClose }) {
               className="btn btn--primary"
               disabled={!fiche.nom.trim()}
               onClick={() =>
-                agir(() =>
-                  api.modifierExterieur(fiche.id, {
-                    nom: fiche.nom,
-                    email: fiche.email,
-                    rib: fiche.rib.iban.trim() ? fiche.rib : { iban: null },
-                  }),
-                )
+                agir(() => enregistrer(fiche))
               }
             >
               Enregistrer
@@ -61,6 +63,16 @@ export default function Exterieurs({ onClose }) {
         }
       >
         <FicheExterieur fiche={fiche} onChange={setFiche} />
+        {!fiche.rib.iban.trim() && (
+          <DemanderRib
+            email={fiche.email.trim()}
+            onDemander={async () => {
+              await enregistrer(fiche) // le mail tapé à l'instant compte
+              await api.demanderRib(fiche.id)
+            }}
+            onErreur={setErreur}
+          />
+        )}
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
       </Modal>
     )
@@ -77,12 +89,13 @@ export default function Exterieurs({ onClose }) {
             key={e.id}
             type="button"
             className="nf-ligne nf-ligne--note"
-            onClick={() => setFiche({ id: e.id, nom: e.nom, email: e.email ?? '', rib: ribVide(e.rib) })}
+            onClick={() => setFiche({ id: e.id, nom: e.nom, email: e.email ?? '', telephone: e.telephone ?? '', rib: ribVide(e.rib) })}
           >
             <span className="nf-ligne__corps">
               <span className="nf-ligne__titre">{e.nom}</span>
               <span className="muted">
-                {e.email || 'Pas de mail'} · {e.rib ? 'IBAN connu' : 'IBAN à demander'}
+                {[e.email, e.telephone].filter(Boolean).join(' · ') || 'Ni mail ni téléphone'} ·{' '}
+                {e.rib ? 'IBAN connu' : 'IBAN à demander'}
               </span>
             </span>
           </button>
@@ -90,5 +103,32 @@ export default function Exterieurs({ onClose }) {
       </div>
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
     </Modal>
+  )
+}
+
+// « Demander le RIB par mail » : un mail part à la personne, qui répond au
+// trésorier ; on recopie ensuite l'IBAN. `email` vide : bouton grisé ;
+// inconnu (undefined) : le serveur dit s'il manque.
+export function DemanderRib({ email, onDemander, onErreur }) {
+  const [envoye, setEnvoye] = useState(false)
+  if (envoye) return <p className="history-report">Mail envoyé : sa réponse vous arrivera par mail.</p>
+  return (
+    <button
+      type="button"
+      className="btn btn--secondary nf-ajout-exterieur"
+      disabled={email === ''}
+      title={email === '' ? 'Ajoutez d’abord son mail' : undefined}
+      onClick={async () => {
+        onErreur('')
+        try {
+          await onDemander()
+          setEnvoye(true)
+        } catch (err) {
+          onErreur(err.message)
+        }
+      }}
+    >
+      Demander le RIB par mail
+    </button>
   )
 }

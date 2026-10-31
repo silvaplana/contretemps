@@ -840,3 +840,24 @@ def test_personne_exterieure_payee_comme_un_membre(client, db_session, ecole, es
     assert "Jacques Pesanti" not in [p["nom"] for p in client.get("/notes-frais/personnes", headers=t).json()]
     [paye] = client.get("/notes-frais/virements", headers=t).json()["virements"]
     assert paye["personne"]["nom"] == "Jacques Pesanti" and paye["statut"] == "remboursee"
+
+
+def test_demander_son_rib_a_un_exterieur(client, ecole, espion):
+    """Mail ou téléphone facultatifs ; sans RIB, un mail le lui demande, la
+    réponse va au trésorier."""
+    t = entetes_session(ecole["tresorier"])
+    sans_mail = client.post("/notes-frais/exterieurs", json={"nom": "Ana Lopez", "telephone": "06 12 34 56 78"}, headers=t)
+    assert sans_mail.status_code == 201
+    [ana] = client.get("/notes-frais/exterieurs", headers=t).json()
+    assert ana["telephone"] == "06 12 34 56 78" and ana["rib"] is None
+    assert client.post(f"/notes-frais/exterieurs/{ana['id']}/demander-rib", headers=t).status_code == 400
+
+    corps = {"nom": "Ana Lopez", "email": "ana.lopez@test.fr", "telephone": "06 12 34 56 78"}
+    client.put(f"/notes-frais/exterieurs/{ana['id']}", json=corps, headers=t)
+    assert client.post(f"/notes-frais/exterieurs/{ana['id']}/demander-rib", headers=t).status_code == 204
+    [mail] = espion.mails
+    assert mail["a"] == ["ana.lopez@test.fr"] and "RIB" in mail["sujet"]
+    assert mail["repondre_a"] == "julia@test.fr" and "Bonjour Ana Lopez" in mail["texte"]
+    assert client.post(
+        f"/notes-frais/exterieurs/{ana['id']}/demander-rib", headers=entetes_session(ecole["eleve"])
+    ).status_code == 403

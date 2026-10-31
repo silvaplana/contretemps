@@ -175,6 +175,7 @@ class External(Base):
     org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(120), nullable=False)
     email: Mapped[str | None] = mapped_column(String(254), nullable=True)
+    phone: Mapped[str | None] = mapped_column(String(30), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)
     # Retiré de la liste ; ses notes gardent son nom.
     removed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

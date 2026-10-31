@@ -541,10 +541,11 @@ class NotesDeFrais:
         return external
 
     def enregistrer_exterieur(
-        self, db: Session, membre: Membre, external_id: int | None, *, nom: str, email: str | None, rib: dict | None
+        self, db: Session, membre: Membre, external_id: int | None, *, nom: str, email: str | None,
+        telephone: str | None = None, rib: dict | None = None,
     ) -> Personne:
         """Ajoute (external_id None) ou corrige une personne extérieure : nom,
-        mail pour la prévenir, et son RIB pour la payer."""
+        mail et téléphone facultatifs, et son RIB pour la payer."""
         nom = " ".join((nom or "").split())[:120]
         if not nom:
             raise ValueError("Indiquez son nom.")
@@ -553,11 +554,28 @@ class NotesDeFrais:
             self._exiger_tresorier(membre)
             db.add(external)
         external.name, external.email = nom, (email or "").strip()[:254] or None
+        external.phone = " ".join((telephone or "").split())[:30] or None
         db.flush()
         if rib is not None:
             self.definir_rib(db, replace(membre, person_id=externals.person_id(external.id)), **rib)
         db.commit()
         return externals.personne(external)
+
+    def demander_rib(self, db: Session, membre: Membre, external_id: int) -> None:
+        """Mail à la personne extérieure pour qu'elle envoie son RIB ; elle
+        répond au trésorier, qui le recopie dans sa fiche."""
+        external = self._exterieur(db, membre, external_id)
+        if not external.email:
+            raise ValueError("Ajoutez d'abord son mail.")
+        org = self.annuaire.organisation(db, membre.org_id)
+        repondre_a = org.email_tresorier or (membre.emails[0] if membre.emails else None) or org.email_contact
+        texte = (
+            f"Bonjour {external.name},\n\n"
+            f"Pour vous payer par virement, {org.nom} a besoin de votre RIB. "
+            "Répondez à ce mail en le joignant (photo ou PDF), ou en recopiant votre IBAN.\n\n"
+            f"Merci,\n{membre.nom}, {org.nom}"
+        )
+        self._mail(db, membre.org_id, [external.email], f"{org.nom} : votre RIB pour vous payer", texte, repondre_a)
 
     def retirer_exterieur(self, db: Session, membre: Membre, external_id: int) -> None:
         """Plus proposée dans « Pour qui ? » ; ses notes gardent son nom."""
