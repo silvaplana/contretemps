@@ -163,6 +163,9 @@ class Banque(Protocol):
 
     def operation(self, db: Session, org_id: int, operation_id: int) -> OperationBancaire | None: ...
 
+    def cloturee(self, db: Session, org_id: int, jour: date) -> bool:
+        """La saison qui contient ce jour est clôturée : ses lignes ne bougent plus."""
+
 
 class LectureImpossible(Exception):
     """La lecture n'a pas eu lieu ; le formulaire se remplit à la main."""

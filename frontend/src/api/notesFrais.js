@@ -121,6 +121,8 @@ export const preparer = (noteId, payeurId) => appel(`/notes/${noteId}/preparer`,
 export const virementFait = (noteId) => appel(`/notes/${noteId}/virement`, { method: 'POST' })
 // Opération vue sur le compte, confirmée : la pièce est payée.
 export const payee = (noteId, operationId) => appel(`/notes/${noteId}/payee`, json('POST', { operation_id: operationId }))
+// Rattachée à tort : la pièce rend la ligne du compte (tant que la saison n'est pas clôturée).
+export const detacher = (noteId) => appel(`/notes/${noteId}/detacher`, { method: 'POST' })
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`

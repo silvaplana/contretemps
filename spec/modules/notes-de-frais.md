@@ -1,6 +1,6 @@
 # AppBase — Module `notes-de-frais`
 
-Version 0.5, 31 octobre 2026 (§7 quinquies : « + » = photos d'abord, nature proposée, revue pièce par pièce ; §10 : `established_by`). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
+Version 0.5, 31 octobre 2026 (§7 quinquies : « + » = photos d'abord, nature proposée, revue pièce par pièce, « la banque décide », Détacher ; §10 : `established_by`). Statut : **brouillon, en cours de validation avec Seb** (fil « Notes de
 frais » du projet). Maquette visuelle : Artifact « Notes de frais Contretemps », lien dans ce fil.
 
 Écrit comme un module AppBase (rien de propre à la danse), comme `documents.md` : quand AppBase existera,
@@ -225,13 +225,29 @@ dit qui a **émis** la pièce (une personne, auto-entrepreneur, ou une société
   déjà tapé, pour la retrouver ou l'ajouter en extérieur ;
 - une **société**, adressée à l'association → **Achat**, fournisseur lu.
 
+**La banque décide** (Seb, 31 octobre : ce qui est sur le compte ne se change plus, c'est lui qui
+tranche). Pour chaque pièce créée, l'appli cherche la ligne du compte (même montant, autour de la
+date de la pièce, `financier.md` §8.3 bis) :
+- ligne **sûre** (même montant **et** nom du bénéficiaire ou du fournisseur dans le libellé) : la
+  pièce y est **rattachée et passe Payé toute seule**, sans mail ni notification (c'était déjà
+  réglé) ; il faut que la pièce soit complète (personne connue, montant) ;
+- **montant seul** : proposée (« Vu sur le compte »), un toucher **C'est payé** ;
+- rien : la pièce reste À valider, puis suit le circuit des virements.
+Deux pièces du même nom et du même montant (Boyer 948 € en novembre et en janvier) : la ligne va à
+la pièce dont la date est la plus proche. Rattachée à tort : **Détacher** (dans la pièce) rend la
+ligne et remet la pièce là où elle était (Envoyé si le virement avait été fait, sinon À valider
+pour une pièce établie, À payer pour une note envoyée), tant que la **saison** de la ligne n'est
+pas clôturée ; après, la banque a décidé.
+
 **Preuve de virement** : la capture du mail de la banque (« ordre de virement », « virement
 instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve
 la pièce qu'elle paie (même montant, nom du bénéficiaire ou motif), la range comme page de cette
-pièce et l'affiche dans la revue : **C'est payé** rattache la ligne vue sur le compte, ou passe la
-pièce Envoyé si la banque ne l'a pas encore. L'IBAN lu remplit le RIB de la personne s'il manque.
-Virement vers un compte de l'association : « virement interne, rien à faire » ; sans pièce qui
-corresponde : « aucune pièce, à garder de côté » ; rien n'est créé dans les deux cas.
+pièce ; si la ligne du compte est là, la pièce passe **Payé** (la preuve porte le nom) ; sinon
+**C'est payé** la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
+manque. Virement vers un compte de l'association : « virement interne, rien à faire » ; sans pièce
+qui corresponde : « aucune pièce », avec la ligne du compte si elle y est déjà (« pas encore sur le
+compte » sinon) ; rien n'est créé dans les deux cas. Étude sur les 40 pièces de la saison 2025-2026 :
+`appbase/etudes/factures-2025-2026.md`.
 
 **Un zip** dans « Choisir des fichiers » : un fichier dedans = une pièce (fichiers vides et
 dossiers cachés laissés de côté). Le nom du fichier est donné à la lecture comme indice (date,

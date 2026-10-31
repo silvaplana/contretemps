@@ -708,6 +708,80 @@ def test_saisir_une_depense_factures_et_preuves_de_virement(client, db_session, 
     assert [n["fournisseur"] for n in puce["notes"]] == ["MAIF"]
 
 
+def test_la_banque_decide(client, db_session, ecole, espion):
+    """Seb, 31/10 : une ligne du compte du même montant et au même nom paie
+    la pièce toute seule (photo ou preuve de virement) ; le montant seul
+    reste proposé ; une preuve sans pièce montre la ligne ; rattachée à
+    tort, la pièce se détache tant que la saison n'est pas clôturée."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    boyer = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Boyer", prenom="Sophie", email="sb@test.fr")
+    novembre = _operation(db_session, org, -94800, "2025-12-05", "VIR INST FACT1125-SOPHIE BOYER")
+    janvier = _operation(db_session, org, -94800, "2026-02-09", "VIR INST FACT0226BOYER/CONTRETE")
+    _operation(db_session, org, -41760, "2026-02-11", "VIR INST MAIF")
+    _operation(db_session, org, -36400, "2026-08-12", "PRLV CARTE 364")  # montant seul, pas de nom
+
+    lecteur = LecteurFacture(date="2025-11-30", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
+                             client="Contretemps", description="Cours de danse Novembre 2025")
+    main.notes_frais_client.ports.lecteur = lecteur
+    try:
+        # Montant + nom : Payé tout seul, sur la ligne la plus proche de la facture ; personne prévenue.
+        boyer_11 = _etablir(client, tresorier, None)
+        assert boyer_11["statut"] == "remboursee" and boyer_11["operation_id"] == novembre.id and boyer_11["detachable"]
+        assert not [n for n in espion.notifications if n[0] == boyer.id]
+        lecteur.lu = dict(date="2026-01-31", montant_centimes=94800, commercant="SOPHIE BOYER", emetteur_personne=True,
+                          client="Contretemps", description="Cours de danse Janvier 2026")
+        boyer_01 = _etablir(client, tresorier, None)
+        assert boyer_01["statut"] == "remboursee" and boyer_01["operation_id"] == janvier.id
+        # Société : le nom du fournisseur suffit.
+        lecteur.lu = dict(date="2026-01-01", montant_centimes=41760, commercant="MAIF", emetteur_personne=False, client="CONTRETEMPS")
+        assert _etablir(client, tresorier, None)["statut"] == "remboursee"
+        # Montant seul : proposé, pas rattaché.
+        lecteur.lu = dict(date="2026-07-22", montant_centimes=36400, commercant="Picture Impact Production", emetteur_personne=False,
+                          client="Contretemps")
+        dvd = _etablir(client, tresorier, None)
+        assert dvd["statut"] == "envoyee" and dvd["paiement_propose"]["libelle"] == "PRLV CARTE 364"
+        # Personne à choisir : même au bon montant et au bon nom, rien d'automatique.
+        _operation(db_session, org, -5600, "2025-11-10", "VIR TANIOU THIBAULT")
+        lecteur.lu = dict(date="2025-10-31", montant_centimes=5600, commercant="Thibault Taniou", emetteur_personne=True, client="Contretemps")
+        taniou = _etablir(client, tresorier, None)
+        assert taniou["statut"] == "envoyee" and taniou["personne"] is None
+
+        # Preuve de virement : sa pièce est là, la ligne du compte aussi → Payé.
+        ligne_dvd = _operation(db_session, org, -36400, "2026-08-12", "VIR INST FACT2026014 PICTURE IMPACT")
+        lecteur.lu = dict(sorte="virement", date="2026-08-12", montant_centimes=36400, beneficiaire="PICTURE IMPACT PRODUCTION",
+                          motif="VIR INST FACT2026014 CONTRETEMP")
+        preuve = _etablir(client, tresorier, None)
+        assert preuve["id"] == dvd["id"] and preuve["statut"] == "remboursee" and preuve["operation_id"] == ligne_dvd.id
+        # Preuve sans pièce : la ligne du compte est montrée, rien n'est créé.
+        revelles = _operation(db_session, org, -72575, "2025-12-05", "VIR INST FACT1125-STELLINA REVELLES")
+        lecteur.lu = dict(sorte="virement", date="2025-12-05", montant_centimes=72575, beneficiaire="REVELLES STELLINA", motif="FACT1125-STELLINA")
+        seule = _etablir(client, tresorier, None)
+        assert seule["id"] is None and seule["preuve"]["operation"]["id"] == revelles.id
+    finally:
+        main.notes_frais_client.ports.lecteur = None
+
+    # Rattachée à tort : Détacher rend la ligne, la pièce revient À valider.
+    url = f"/notes-frais/notes/{boyer_01['id']}"
+    detachee = client.post(f"{url}/detacher", headers=entetes_session(tresorier))
+    assert detachee.status_code == 200 and detachee.json()["statut"] == "envoyee" and detachee.json()["operation_id"] is None
+    assert client.post(f"{url}/detacher", headers=entetes_session(tresorier)).status_code == 400
+    # La ligne est libre : proposée à nouveau, « C'est payé » la reprend.
+    assert detachee.json()["paiement_propose"]["id"] == janvier.id
+    repris = client.post(f"{url}/payee", json={"operation_id": janvier.id}, headers=entetes_session(tresorier)).json()
+    assert repris["statut"] == "remboursee"
+    # Saison clôturée : la banque a décidé, on ne détache plus.
+    import datetime as dt
+
+    from finances.models import FinClosing
+
+    db_session.add(FinClosing(org_id=org, season_id=1, start_date=dt.date(2025, 9, 1), end_date=dt.date(2026, 8, 31), result=0, balances=[]))
+    db_session.commit()
+    assert client.post(f"{url}/detacher", headers=entetes_session(tresorier)).status_code == 400
+    assert client.get("/notes-frais/tresorerie?filtre=honoraires", headers=entetes_session(tresorier)).json()["notes"][0]["detachable"] is False
+    assert client.post(f"{url}/detacher", headers=entetes_session(ecole["eleve"])).status_code == 403
+
+
 def test_etablir_reserve_aux_tresoriers_et_supprimer_une_photo_ratee(client, ecole):
     tresorier = ecole["tresorier"]
     reponse = client.post(
@@ -885,14 +959,14 @@ def _honoraires_a_payer_bis(client, db_session, ecole):
 
 
 def test_achat_deja_paye_par_carte(client, db_session, ecole, monkeypatch):
-    """« Déjà payé ? » : l'achat lu trouve son débit carte ; confirmé, il passe
-    Payé sans passer par Virements."""
+    """« Déjà payé ? » : l'achat lu trouve son débit carte (même montant, sans
+    le nom : proposé) ; confirmé, il passe Payé sans passer par Virements."""
     tresorier = ecole["tresorier"]
     monkeypatch.setattr(
         main.notes_frais_client.ports, "lecteur",
         LecteurFacture(date="2025-02-09", montant_centimes=3990, commercant="Amazon"),
     )
-    carte = _operation(db_session, ecole["ecole"].id, -3990, "2025-02-10", "CB 0902 AMAZON PAYMENTS")
+    carte = _operation(db_session, ecole["ecole"].id, -3990, "2025-02-10", "CB 0902 PAIEMENT INTERNET")
     note = _etablir(client, tresorier, "achat")
     assert note["statut"] == "envoyee" and note["paiement_propose"]["id"] == carte.id
     paye = client.post(f"/notes-frais/notes/{note['id']}/payee", json={"operation_id": carte.id}, headers=entetes_session(tresorier))

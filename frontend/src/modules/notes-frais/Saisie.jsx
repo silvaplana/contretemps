@@ -26,8 +26,12 @@ async function depaqueter(zip) {
 function sousTitre(note) {
   const montant = note.preuve?.montant_centimes ?? note.total_centimes
   if (note.sorte === 'virement') {
-    if (note.id === null) return note.preuve.interne ? 'Virement entre les comptes de l’association : rien à faire' : `Aucune pièce de ${api.euros(montant)} : à garder de côté`
-    return `Paiement de : ${note.titre} · ${api.euros(montant)}`
+    if (note.id === null) {
+      if (note.preuve.interne) return 'Virement entre les comptes de l’association : rien à faire'
+      const op = note.preuve.operation
+      return `Aucune pièce de ${api.euros(montant)} · ${op ? `sur le compte le ${api.dateCourte(op.date)} : ${op.libelle}` : 'pas encore sur le compte'}`
+    }
+    return `${note.statut === 'remboursee' ? 'Payé' : 'Paiement de'} : ${note.titre} · ${api.euros(montant)}`
   }
   return `${NATURES[note.nature]} · ${note.total_centimes ? api.euros(note.total_centimes) : 'Montant ?'}`
 }

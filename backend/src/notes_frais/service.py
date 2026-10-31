@@ -117,6 +117,7 @@ class Preuve:
     iban: str | None
     interne: bool = False
     note: NoteFrais | None = None
+    operation: OperationBancaire | None = None  # la ligne du compte, quand aucune pièce ne va avec
 
 
 class NotesDeFrais:
@@ -645,13 +646,18 @@ class NotesDeFrais:
         for note in notes:
             ligne = self.note_dict(note, personnes=personnes)
             operation = self.paiement_propose(db, note, prises)
-            ligne["paiement_propose"] = operation and {
-                "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
-                "montant_centimes": operation.montant_centimes, "compte": operation.compte,
-            }
+            ligne["paiement_propose"] = operation and self._operation_dict(operation)
             ligne["operation_id"] = note.bank_operation_id
+            ligne["detachable"] = note.bank_operation_id is not None and self._detachable(db, note)
             resultat.append(ligne)
         return resultat
+
+    @staticmethod
+    def _operation_dict(operation: OperationBancaire) -> dict:
+        return {
+            "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
+            "montant_centimes": operation.montant_centimes, "compte": operation.compte,
+        }
 
     def compteurs_tresorerie(self, db: Session, membre: Membre) -> dict:
         """Badges des puces : ce qui attend une action de qui regarde. Par
@@ -800,6 +806,7 @@ class NotesDeFrais:
         db.commit()
         db.refresh(note)
         self._ranger(db, membre, note)
+        self._payee_par_la_banque(db, membre, note)
         return note
 
     def ajouter_page(self, db: Session, membre: Membre, note_id: int, flux: BinaryIO, nom: str, type_mime: str) -> NoteFrais:
@@ -840,20 +847,22 @@ class NotesDeFrais:
             return preuve
         if not preuve.montant_centimes:
             return preuve
+        indices = mots_benef | set(re.findall(r"[a-z]{3,}", _sans_accents(preuve.motif or "")))
         candidates = list(db.scalars(
             select(NoteFrais).where(
                 NoteFrais.org_id == membre.org_id, NoteFrais.statut.not_in((REFUSEE, REMBOURSEE)), NoteFrais.don.is_(False)
             ).order_by(NoteFrais.envoyee_le)
         ))
         candidates = [n for n in candidates if self.total(n) == preuve.montant_centimes]
-        if not candidates:
-            return preuve
-        indices = mots_benef | set(re.findall(r"[a-z]{3,}", _sans_accents(preuve.motif or "")))
+
         def nommee(n: NoteFrais) -> bool:
             noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, n)} {n.supplier or ''}")))
             return bool(noms & indices)
+
         note = next((n for n in candidates if nommee(n)), candidates[0] if len(candidates) == 1 else None)
         if note is None:
+            # Aucune pièce : on montre la ligne du compte, s'il l'a déjà.
+            preuve.operation = self._ligne_du_compte(db, membre.org_id, preuve, indices)
             return preuve
         preuve.note = note
         if note.depenses:
@@ -864,7 +873,24 @@ class NotesDeFrais:
         db.commit()
         db.refresh(note)
         self._ranger(db, membre, note)
+        # La banque décide (Seb, 31/10) : la ligne du compte est là, la pièce est payée.
+        self._payee_par_la_banque(db, membre, note, nom_sur=nommee(note))
         return preuve
+
+    def _ligne_du_compte(self, db: Session, org_id: int, preuve: Preuve, indices: set[str]) -> OperationBancaire | None:
+        """Le débit du montant de la preuve autour de sa date, de préférence
+        au nom du bénéficiaire, pas déjà rattaché à une pièce."""
+        if self.ports.banque is None:
+            return None
+        reference = date.fromisoformat(preuve.date) if preuve.date else date.today()
+        prises = self._operations_prises(db, org_id)
+        candidates = [o for o in self.ports.banque.debits(db, org_id, preuve.montant_centimes, reference - timedelta(days=3)) if o.id not in prises]
+        if not candidates:
+            return None
+        return min(
+            candidates,
+            key=lambda o: (not indices & set(re.findall(r"[a-z]{3,}", _sans_accents(o.libelle))), abs((o.date - reference).days)),
+        )
 
     def _rib_depuis_preuve(self, db: Session, membre: Membre, note: NoteFrais, preuve: Preuve) -> None:
         """L'IBAN du bénéficiaire, lu sur la preuve, remplit le RIB de la
@@ -888,6 +914,7 @@ class NotesDeFrais:
         detail = {
             "date": preuve.date, "montant_centimes": preuve.montant_centimes, "beneficiaire": preuve.beneficiaire,
             "motif": preuve.motif, "interne": preuve.interne,
+            "operation": preuve.operation and self._operation_dict(preuve.operation),
         }
         if preuve.note is None:
             return {"id": None, "sorte": "virement", "preuve": detail}
@@ -1367,11 +1394,36 @@ class NotesDeFrais:
         candidates = [o for o in banque.debits(db, note.org_id, total, depuis) if o.id not in prises]
         if not candidates:
             return None
-        noms = {m for m in re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}"))}
-        return min(
-            candidates,
-            key=lambda o: (not noms & set(re.findall(r"[a-z]{3,}", _sans_accents(o.libelle))), abs((o.date - reference).days)),
-        )
+        return min(candidates, key=lambda o: (not self._au_nom_de(db, note, o), abs((o.date - reference).days)))
+
+    def _au_nom_de(self, db: Session, note: NoteFrais, operation: OperationBancaire) -> bool:
+        """Le libellé de la ligne du compte porte le nom du bénéficiaire (ou du fournisseur)."""
+        noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}")))
+        return bool(noms & set(re.findall(r"[a-z]{3,}", _sans_accents(operation.libelle))))
+
+    def _payee_par_la_banque(self, db: Session, membre: Membre, note: NoteFrais, *, nom_sur: bool = False) -> bool:
+        """« La banque décide » (Seb, 31/10) : une ligne du compte du même
+        montant **et** au même nom (ou une preuve de virement qui le porte,
+        `nom_sur`) rattache la pièce et la passe Payé sans rien demander ;
+        le montant seul reste une proposition (« C'est payé »)."""
+        if note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.don:
+            return False
+        if (note.nature != ACHAT and note.person_id == PERSONNE_A_CHOISIR) or any(d.montant_centimes <= 0 for d in note.depenses):
+            return False
+        operation = self.paiement_propose(db, note, self._operations_prises(db, membre.org_id))
+        if operation is None or not (nom_sur or self._au_nom_de(db, note, operation)):
+            return False
+        self._rattacher(db, membre, note, operation.id, prevenir=False)
+        return True
+
+    def _rattacher(self, db: Session, membre: Membre, note: NoteFrais, operation_id: int, *, prevenir: bool) -> None:
+        if note.statut == ENVOYEE:
+            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
+        note.bank_operation_id = operation_id
+        db.commit()
+        db.refresh(note)
+        self._apres_paiement(db, membre, note, prevenir=prevenir)
 
     def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int) -> NoteFrais:
         """Confirmer l'opération vue sur le compte : la pièce y est rattachée
@@ -1390,13 +1442,38 @@ class NotesDeFrais:
         deja_payee = note.statut == ENVOYEE
         if deja_payee:
             self._exiger_complete(note)
-            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
-        note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
-        note.bank_operation_id = operation_id
+        # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
+        self._rattacher(db, membre, note, operation_id, prevenir=not deja_payee)
+        return note
+
+    def _detachable(self, db: Session, note: NoteFrais) -> bool:
+        """Tant que la saison de la ligne du compte n'est pas clôturée."""
+        banque = self.ports.banque
+        if banque is None or note.bank_operation_id is None:
+            return False
+        operation = banque.operation(db, note.org_id, note.bank_operation_id)
+        return operation is not None and not banque.cloturee(db, note.org_id, operation.date)
+
+    def detacher(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """Rattachée à tort à une ligne du compte (§7 quinquies) : la pièce
+        la rend et revient là où elle était : Envoyé si le virement avait été
+        fait, sinon À valider (pièce établie) ou À payer. Impossible une fois
+        la saison clôturée : la banque a décidé."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.statut != REMBOURSEE or note.bank_operation_id is None:
+            raise ValueError("Cette pièce n'est pas rattachée à une ligne du compte.")
+        if not self._detachable(db, note):
+            raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
+        if note.transfer_sent_at is not None:
+            note.statut = VIREE
+        elif note.established_by is not None:
+            note.statut, note.traitee_le, note.traitee_par = ENVOYEE, None, None
+        else:
+            note.statut = VALIDEE
+        note.remboursee_le, note.remboursee_par, note.bank_operation_id = None, None, None
         db.commit()
         db.refresh(note)
-        # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
-        self._apres_paiement(db, membre, note, prevenir=not deja_payee)
         return note
 
     def lignes_export(self, db: Session, membre: Membre, debut: date | None, fin: date | None, nature: str = FRAIS) -> list[dict]:

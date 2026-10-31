@@ -355,6 +355,10 @@ class NotesDeFraisReceiver:
         def payee(note_id: int, corps: PaiementEntree, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.payer, db, m, note_id, corps.operation_id)])[0]
 
+        @app.post("/notes-frais/notes/{note_id}/detacher")
+        def detacher(note_id: int, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.detacher, db, m, note_id)])[0]
+
         @app.post("/notes-frais/remboursements")
         def rembourser(corps: RemboursementEntree, db: Session = db_dep, m: Membre = membre):
             return [nf.note_dict(n) for n in appeler(nf.rembourser, db, m, corps.note_ids)]

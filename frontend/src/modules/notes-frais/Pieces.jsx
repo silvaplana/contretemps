@@ -547,6 +547,11 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
           <Icon name="download" size={18} /> Télécharger les justificatifs
         </button>
       )}
+      {note?.detachable && (
+        <button type="button" className="btn btn--link nf-supprimer" disabled={enCours} onClick={() => agir(() => api.detacher(note.id))}>
+          Payée par une ligne du compte · Rattachée à tort ? Détacher
+        </button>
+      )}
       {note && (note.nature !== 'frais' || note.etablie) && note.statut === 'envoyee' && refus === null && (
         <button
           type="button"
