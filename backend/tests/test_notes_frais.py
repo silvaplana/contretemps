@@ -755,6 +755,11 @@ def test_la_banque_decide(client, db_session, ecole, espion):
         assert taniou["statut"] == "envoyee" and taniou["personne"] is None and taniou["operation_id"] is not None
         assert client.post(f"/notes-frais/notes/{taniou['id']}/valider", headers=entetes).status_code == 400
 
+        # Deux fois 948 € Boyer : la preuve du 09/02 va à la facture de janvier, pas à celle de novembre.
+        lecteur.lu = dict(sorte="virement", date="2026-02-09", montant_centimes=94800, beneficiaire="BOYER SOPHIE", motif="FACT0226BOYER")
+        assert _etablir(client, tresorier, None)["id"] == boyer_01["id"]
+        lecteur.lu = dict(sorte="virement", date="2025-12-05", montant_centimes=94800, beneficiaire="BOYER SOPHIE", motif="FACT1125-SOPHIE")
+        assert _etablir(client, tresorier, None)["id"] == boyer_11["id"]
         # Preuve de virement : sa pièce est là, la ligne du compte aussi → rattachée, à valider.
         ligne_dvd = _operation(db_session, org, -36400, "2026-08-12", "VIR INST FACT2026014 PICTURE IMPACT")
         lecteur.lu = dict(sorte="virement", date="2026-08-12", montant_centimes=36400, beneficiaire="PICTURE IMPACT PRODUCTION",
