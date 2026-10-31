@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
+import * as finApi from '../finances/api.js'
 import * as sessionApi from '../../api/session.js'
 import MenuEntete from '../../components/MenuEntete.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
@@ -43,10 +44,18 @@ export default function Financier() {
   useEffect(() => () => api.agirPour(null), [])
   // Badges : ce qui attend une action de qui regarde (financier.md §8.3 bis).
   const [aFaire, setAFaire] = useState({})
+  // Pièces : par nature et Virements (module notes de frais) ; À rattacher et
+  // Ventes : les lignes de banque sans compte du plan (Seb, 31/10).
   const rechargerAFaire = useCallback(() => {
-    api
-      .compteursTresorerie()
-      .then(setAFaire)
+    Promise.all([api.compteursTresorerie(), finApi.historique().catch(() => null)])
+      .then(([compteurs, ledger]) => {
+        const lignes = (ledger?.rows ?? []).filter((r) => !r.transfer && !r.account)
+        setAFaire({
+          ...compteurs,
+          a_rattacher: lignes.filter((r) => r.amount < 0).length,
+          ventes: lignes.filter((r) => r.amount > 0).length,
+        })
+      })
       .catch(() => {})
   }, [])
   useEffect(rechargerAFaire, [rechargerAFaire])

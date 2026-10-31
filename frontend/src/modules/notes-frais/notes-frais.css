@@ -445,6 +445,15 @@
   font-weight: 600;
 }
 
+/* Nature d'une pièce établie (Saisie), à vérifier ou changer. */
+.nf-natures {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.nf-raison {
+  margin: 0;
+}
+
 .nf-compte {
   display: inline-flex;
   align-items: center;
@@ -460,6 +469,11 @@
   font-weight: 700;
   line-height: 1;
   vertical-align: 2px;
+}
+
+/* Virements et À rattacher : la banque, pas une pièce à valider. */
+.nf-compte--banque {
+  background: #2a6fd8;
 }
 
 /* Sur le sous-onglet actif (fond orange), la pastille s'inverse. */

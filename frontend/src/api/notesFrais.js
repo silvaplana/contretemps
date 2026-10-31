@@ -98,9 +98,10 @@ export const categories = () => appel('/categories')
 
 // Financier › Pièces (spec/modules/financier.md §8.3 bis) : honoraires et
 // achats établis par un trésorier, une photo = une pièce, lue par le serveur.
+// `nature` null : l'appli la propose d'après la pièce (§7 quinquies).
 export function etablir(nature, f, champs = {}) {
   const donnees = new FormData()
-  donnees.append('nature', nature)
+  if (nature) donnees.append('nature', nature)
   if (f) donnees.append('fichier', f, f.name || 'photo.jpg')
   for (const [cle, valeur] of Object.entries(champs)) {
     if (valeur !== null && valeur !== undefined && valeur !== '') donnees.append(cle, String(valeur))
@@ -120,6 +121,8 @@ export const preparer = (noteId, payeurId) => appel(`/notes/${noteId}/preparer`,
 export const virementFait = (noteId) => appel(`/notes/${noteId}/virement`, { method: 'POST' })
 // Opération vue sur le compte, confirmée : la pièce est payée.
 export const payee = (noteId, operationId) => appel(`/notes/${noteId}/payee`, json('POST', { operation_id: operationId }))
+// Rattachée à tort : la pièce rend la ligne du compte (tant que la saison n'est pas clôturée).
+export const detacher = (noteId) => appel(`/notes/${noteId}/detacher`, { method: 'POST' })
 export const definirCategories = (libelles) => appel('/categories', json('PUT', { libelles }))
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`

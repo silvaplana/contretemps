@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
@@ -6,10 +6,11 @@ import Modal from '../../components/Modal.jsx'
 import LignesBanque from '../finances/compta/LignesBanque.jsx'
 import PlanComptable from '../finances/compta/PlanComptable.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
-import { BadgeEtat, ChampsRib, Compte, PaiementVu, Pieces as Vignettes, qui, ribVide } from './commun.jsx'
+import { BadgeEtat, ChampsRib, Compte, NATURES, PaiementVu, Pieces as Vignettes, PreuveVirement, qui, raisonProposee, ribVide } from './commun.jsx'
 import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
+import Saisie from './Saisie.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
 // frais, honoraires et achats sont une seule structure « dépense », avec une
@@ -35,168 +36,29 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier-pieces', puce)
   }, [puce])
-  const [plus, setPlus] = useState(false)
+  // « + » = Saisir une dépense (Saisie.jsx) ; « Saisir sans photo » demande
+  // d'abord la nature, puis ouvre la saisie de cette puce (`plus`).
+  const [saisie, setSaisie] = useState(false)
+  const [deposes, setDeposes] = useState(null)
   const [natureAChoisir, setNatureAChoisir] = useState(false)
+  const [plus, setPlus] = useState(false)
+  const [revue, setRevue] = useState(null) // { notes, rang }
+  const [version, setVersion] = useState(0) // relire la puce après une saisie
+  const [survol, setSurvol] = useState(false)
 
   const banque = PUCES.find((p) => p.value === puce)?.banque
+  const glisser = SUR_ORDINATEUR
+
+  function finDeRevue() {
+    setRevue(null)
+    setVersion((v) => v + 1)
+    onChange()
+  }
 
   return (
-    <section aria-label="Pièces" className="nf-pieces">
-      <div className="filter-chips" role="group" aria-label="Pièces">
-        {PUCES.map((p) => (
-          <button
-            key={p.value}
-            type="button"
-            className={p.value === puce ? 'filter-chip filter-chip-active' : 'filter-chip'}
-            aria-pressed={p.value === puce}
-            onClick={() => setPuce(p.value)}
-          >
-            {p.label}
-            <Compte n={aFaire[p.value]} />
-          </button>
-        ))}
-      </div>
-      {banque ? (
-        <LignesBanque key={puce} filtre={puce} />
-      ) : puce === 'virements' ? (
-        <Virements onChange={onChange} />
-      ) : (
-        <ListeNature
-          key={puce}
-          nature={puce}
-          onCompteurs={onCompteurs}
-          plus={plus}
-          onPlusFerme={() => setPlus(false)}
-          onPour={onPour}
-        />
-      )}
-      <div className="nf-barre">
-        <span className="nf-barre__vide" />
-        <button
-          type="button"
-          className="nf-barre__plus"
-          aria-label="Ajouter une pièce"
-          onClick={() => (puce === 'virements' || banque ? setNatureAChoisir(true) : setPlus(true))}
-        >
-          <Icon name="plus" size={26} />
-        </button>
-      </div>
-      {natureAChoisir && (
-        <Modal title="Quelle pièce ?" onClose={() => setNatureAChoisir(false)}>
-          <div className="nf-choix">
-            {PUCES.filter((p) => !p.banque && p.value !== 'virements').map((p) => (
-              <button
-                key={p.value}
-                type="button"
-                className="btn btn--secondary"
-                onClick={() => {
-                  setNatureAChoisir(false)
-                  setPuce(p.value)
-                  setPlus(true)
-                }}
-              >
-                {p.label === 'Achats' ? 'Achat' : p.label === 'Notes de frais' ? 'Note de frais' : p.label}
-              </button>
-            ))}
-          </div>
-        </Modal>
-      )}
-    </section>
-  )
-}
-
-// Une puce Notes de frais, Honoraires ou Achats : à valider en tête, puis le
-// reste ; rafale, import de fichiers, glisser-déposer sur ordinateur.
-function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
-  const [notes, setNotes] = useState(null)
-  const [enLecture, setEnLecture] = useState([]) // { cle, nom }
-  const [ouverte, setOuverte] = useState(null) // note | 'nouvelle'
-  const [rafale, setRafale] = useState(false)
-  const [periode, setPeriode] = useState({ debut: '', fin: '' })
-  const [survol, setSurvol] = useState(false)
-  const [erreur, setErreur] = useState('')
-  const camera = useRef(null)
-  const galerie = useRef(null)
-  const derniere = useRef(null) // promesse de la dernière pièce de la rafale
-  const page = useRef(false)
-
-  const charger = useCallback(() => {
-    api
-      .tresorerie(nature)
-      .then((d) => {
-        setNotes(d.notes)
-        onCompteurs(d.compteurs)
-        setErreur('')
-      })
-      .catch((err) => setErreur(err.message))
-  }, [nature, onCompteurs])
-  useEffect(charger, [charger])
-
-  // « + » : une note de frais se fait au nom de la personne (« Pour qui ? ») ;
-  // honoraires et achats : photo, fichier, ou saisie.
-  const choix = plus
-  const setChoix = () => onPlusFerme()
-
-  // Une photo ou un fichier = une pièce, créée tout de suite et lue par le
-  // serveur ; la liste montre « Lecture en cours… » en attendant.
-  function etablir(fichier) {
-    const cle = `${Date.now()}-${Math.random()}`
-    setEnLecture((l) => [...l, { cle, nom: fichier.name }])
-    const promesse = api
-      .etablir(nature, fichier)
-      .then((note) => {
-        setNotes((l) => [note, ...(l ?? [])])
-        return note
-      })
-      .catch((err) => {
-        setErreur(err.message)
-        return null
-      })
-      .finally(() => {
-        setEnLecture((l) => l.filter((x) => x.cle !== cle))
-        charger()
-      })
-    return promesse
-  }
-
-  function photo(fichier) {
-    if (!fichier) return
-    if (page.current && derniere.current) {
-      // Encore une page de la même pièce : attend qu'elle existe.
-      page.current = false
-      derniere.current = derniere.current.then(async (note) => {
-        if (!note) return null
-        try {
-          await api.ajouterPage(note.id, fichier)
-        } catch (err) {
-          setErreur(err.message)
-        }
-        charger()
-        return note
-      })
-      return
-    }
-    derniere.current = etablir(fichier)
-  }
-
-  function importer(liste) {
-    const fichiers = [...liste].filter((f) => f.type.startsWith('image/') || f.type === 'application/pdf')
-    // Une à une : la lecture de chaque pièce a son coût, pas de rafale au serveur.
-    fichiers.reduce((suite, f) => suite.then(() => etablir(f)), Promise.resolve())
-  }
-
-  let visibles = notes ?? []
-  if (periode.debut || periode.fin) {
-    visibles = visibles.filter((n) => {
-      const jour = n.depenses[0]?.date ?? n.envoyee_le.slice(0, 10)
-      return (!periode.debut || jour >= periode.debut) && (!periode.fin || jour <= periode.fin)
-    })
-  }
-  const glisser = SUR_ORDINATEUR && nature !== 'frais'
-
-  return (
-    <div
-      className={survol ? 'nf-depot nf-depot--survol' : 'nf-depot'}
+    <section
+      aria-label="Pièces"
+      className={survol ? 'nf-pieces nf-depot nf-depot--survol' : 'nf-pieces nf-depot'}
       onDragOver={
         glisser
           ? (e) => {
@@ -211,25 +73,135 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
           ? (e) => {
               e.preventDefault()
               setSurvol(false)
-              importer(e.dataTransfer.files)
+              setDeposes([...e.dataTransfer.files])
             }
           : undefined
       }
     >
-      {glisser && <p className="muted">Glissez ici des factures depuis l’ordinateur : une par fichier.</p>}
+      <div className="filter-chips" role="group" aria-label="Pièces">
+        {PUCES.map((p) => (
+          <button
+            key={p.value}
+            type="button"
+            className={p.value === puce ? 'filter-chip filter-chip-active' : 'filter-chip'}
+            aria-pressed={p.value === puce}
+            onClick={() => setPuce(p.value)}
+          >
+            {p.label}
+            <Compte n={aFaire[p.value]} banque={p.value === 'virements' || p.value === 'a_rattacher'} />
+          </button>
+        ))}
+      </div>
+      {glisser && !banque && puce !== 'virements' && (
+        <p className="muted">Glissez ici des factures depuis l’ordinateur : une par fichier.</p>
+      )}
+      {banque ? (
+        <LignesBanque key={puce} filtre={puce} onChange={onChange} />
+      ) : puce === 'virements' ? (
+        <Virements key={version} onChange={onChange} />
+      ) : (
+        <ListeNature
+          key={`${puce}-${version}`}
+          nature={puce}
+          onCompteurs={onCompteurs}
+          plus={plus}
+          onPlusFerme={() => setPlus(false)}
+          onPour={onPour}
+        />
+      )}
+      <div className="nf-barre">
+        <span className="nf-barre__vide" />
+        <button type="button" className="nf-barre__plus" aria-label="Saisir une dépense" onClick={() => setSaisie(true)}>
+          <Icon name="plus" size={26} />
+        </button>
+      </div>
+      <Saisie
+        ouverte={saisie}
+        deposes={deposes}
+        onFermer={() => setSaisie(false)}
+        onALaMain={() => {
+          setSaisie(false)
+          setNatureAChoisir(true)
+        }}
+        onRevue={(notes) => {
+          setSaisie(false)
+          setRevue({ notes, rang: 0 })
+        }}
+        onChange={onChange}
+      />
+      {revue && (
+        <NoteModal
+          key={revue.notes[revue.rang].id}
+          note={revue.notes[revue.rang]}
+          nature={revue.notes[revue.rang].nature}
+          revue={{ rang: revue.rang + 1, total: revue.notes.length }}
+          onClose={finDeRevue}
+          onFait={() => (revue.rang + 1 < revue.notes.length ? setRevue({ ...revue, rang: revue.rang + 1 }) : finDeRevue())}
+        />
+      )}
+      {natureAChoisir && (
+        <Modal title="Quelle pièce ?" onClose={() => setNatureAChoisir(false)}>
+          <div className="nf-choix">
+            {Object.entries(NATURES).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                className="btn btn--secondary"
+                onClick={() => {
+                  setNatureAChoisir(false)
+                  setPuce(value)
+                  setPlus(true)
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+    </section>
+  )
+}
+
+// Une puce Notes de frais, Honoraires ou Achats : à valider en tête, puis le
+// reste. Les photos et fichiers passent par « + » (Saisie.jsx) ; ici,
+// `plus` = saisir sans photo dans cette nature.
+function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
+  const [notes, setNotes] = useState(null)
+  const [ouverte, setOuverte] = useState(null) // note | 'nouvelle'
+  const [periode, setPeriode] = useState({ debut: '', fin: '' })
+  const [erreur, setErreur] = useState('')
+
+  const charger = useCallback(() => {
+    api
+      .tresorerie(nature)
+      .then((d) => {
+        setNotes(d.notes)
+        onCompteurs(d.compteurs)
+        setErreur('')
+      })
+      .catch((err) => setErreur(err.message))
+  }, [nature, onCompteurs])
+  useEffect(charger, [charger])
+
+  // « Saisir sans photo » dans cette nature : la fiche vide.
+  const modale = ouverte ?? (plus && nature !== 'frais' ? 'nouvelle' : null)
+
+  let visibles = notes ?? []
+  if (periode.debut || periode.fin) {
+    visibles = visibles.filter((n) => {
+      const jour = n.depenses[0]?.date ?? n.envoyee_le.slice(0, 10)
+      return (!periode.debut || jour >= periode.debut) && (!periode.fin || jour <= periode.fin)
+    })
+  }
+
+  return (
+    <div className="nf-depot">
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       {!notes && !erreur && <p className="muted">Chargement…</p>}
-      {notes && visibles.length === 0 && enLecture.length === 0 && <p className="muted">Rien pour l’instant.</p>}
+      {notes && visibles.length === 0 && <p className="muted">Rien pour l’instant.</p>}
 
       <div className="nf-liste">
-        {enLecture.map((x) => (
-          <div key={x.cle} className="nf-ligne">
-            <span className="nf-ligne__corps">
-              <span className="nf-ligne__titre">Lecture en cours…</span>
-              <span className="muted">{x.nom}</span>
-            </span>
-          </div>
-        ))}
         {visibles.map((n) => (
           <button key={n.id} type="button" className="nf-ligne" onClick={() => setOuverte(n)}>
             <span className="nf-ligne__corps">
@@ -281,114 +253,27 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
         </button>
       </div>
 
-      <input
-        ref={camera}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        hidden
-        onChange={(e) => {
-          photo(e.target.files[0])
-          e.target.value = ''
-          setRafale(true)
-        }}
-      />
-      <input
-        ref={galerie}
-        type="file"
-        accept="image/*,application/pdf"
-        multiple
-        hidden
-        onChange={(e) => {
-          importer(e.target.files)
-          e.target.value = ''
-        }}
-      />
-
-      {choix && nature === 'frais' && (
+      {plus && nature === 'frais' && (
         <ChoixPersonneModal
-          onClose={() => setChoix(false)}
+          onClose={onPlusFerme}
           onChoisie={(personne) => {
-            setChoix(false)
+            onPlusFerme()
             onPour(personne, 'depense')
           }}
         />
       )}
-      {choix && nature !== 'frais' && (
-        <Modal title={nature === 'achat' ? 'Nouvel achat' : 'Nouveaux honoraires'} onClose={() => setChoix(false)}>
-          <div className="nf-choix">
-            <button
-              type="button"
-              className="btn btn--primary"
-              onClick={() => {
-                setChoix(false)
-                camera.current?.click()
-              }}
-            >
-              <Icon name="camera" size={18} /> Photo du ticket
-            </button>
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => {
-                setChoix(false)
-                galerie.current?.click()
-              }}
-            >
-              <Icon name="image" size={18} /> Choisir un fichier
-            </button>
-            <button
-              type="button"
-              className="btn btn--secondary"
-              onClick={() => {
-                setChoix(false)
-                setOuverte('nouvelle')
-              }}
-            >
-              <Icon name="edit" size={18} /> Saisir sans photo
-            </button>
-          </div>
-          <p className="muted">
-            Avec l’appareil photo, enchaînez les pièces : chacune est lue et rangée, vous vérifiez ensuite dans la liste.
-          </p>
-        </Modal>
-      )}
 
-      {rafale && (
-        <div className="nf-rafale" role="group" aria-label="Rafale de photos">
-          <button
-            type="button"
-            className="btn btn--primary"
-            onClick={() => {
-              page.current = false
-              camera.current?.click()
-            }}
-          >
-            <Icon name="camera" size={18} /> Pièce suivante
-          </button>
-          <button
-            type="button"
-            className="btn btn--secondary"
-            onClick={() => {
-              page.current = true
-              camera.current?.click()
-            }}
-          >
-            Encore une page de celle-ci
-          </button>
-          <button type="button" className="btn btn--link" onClick={() => setRafale(false)}>
-            Terminé
-          </button>
-        </div>
-      )}
-
-      {ouverte && (
+      {modale && (
         <NoteModal
-          note={ouverte === 'nouvelle' ? null : ouverte}
+          note={modale === 'nouvelle' ? null : modale}
           nature={nature}
-          onClose={() => setOuverte(null)}
+          onClose={() => {
+            setOuverte(null)
+            onPlusFerme()
+          }}
           onFait={() => {
             setOuverte(null)
+            onPlusFerme()
             charger()
           }}
         />
@@ -397,11 +282,14 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
   )
 }
 
-// Détail d'une pièce. Note de frais : Valider / Refuser (la personne corrige
-// elle-même). Honoraires et achat : ce que la lecture a rempli, à vérifier ou
-// corriger, puis Valider ; `note` null = saisie sans photo.
-function NoteModal({ note, nature, onClose, onFait }) {
-  const corrigeable = note === null || (note.nature !== 'frais' && ['envoyee', 'validee'].includes(note.statut))
+// Détail d'une pièce. Note de frais envoyée par la personne : Valider /
+// Refuser (elle corrige elle-même). Pièce établie depuis « + » (photo lue,
+// nature proposée) : nature, personne et montant à vérifier ou corriger, puis
+// Valider ; `note` null = saisie sans photo ; `revue` = rang dans le lot.
+function NoteModal({ note, nature, onClose, onFait, revue }) {
+  const corrigeable =
+    note === null || ((note.nature !== 'frais' || note.etablie) && ['envoyee', 'validee'].includes(note.statut))
+  const natureModifiable = note !== null && corrigeable && note.statut === 'envoyee'
   const depense = note?.depenses[0]
   const [pour, setPour] = useState(note?.personne ?? null)
   const [choixPour, setChoixPour] = useState(false)
@@ -415,7 +303,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
   const [refus, setRefus] = useState(null)
   const [erreur, setErreur] = useState('')
   const [enCours, setEnCours] = useState(false)
-  const genre = note?.nature ?? nature
+  const [genre, setGenre] = useState(note?.nature ?? nature)
 
   // Catégories = comptes de charges du plan comptable (financier.md §8.3
   // ter) ; le crayon ouvre le plan, la liste est relue en le fermant.
@@ -445,13 +333,14 @@ function NoteModal({ note, nature, onClose, onFait }) {
   function champs() {
     const centimes = api.versCentimes(montant)
     if (!centimes) throw new Error('Indiquez le montant, par exemple 480,00.')
-    if (genre === 'honoraires' && !pour) throw new Error('Choisissez pour qui sont ces honoraires.')
+    if (genre !== 'achat' && !pour) throw new Error('Choisissez pour qui est cette pièce.')
     return {
+      ...(note && genre !== note.nature ? { nature: genre } : {}),
       date: jour,
       montant_centimes: centimes,
       description: description.trim(),
       ...(categorieId ? { categorie_id: Number(categorieId) } : {}),
-      ...(genre === 'honoraires' ? { person_id: pour.person_id } : { fournisseur: fournisseur.trim() }),
+      ...(genre !== 'achat' ? { person_id: pour.person_id } : { fournisseur: fournisseur.trim() }),
     }
   }
 
@@ -510,13 +399,29 @@ function NoteModal({ note, nature, onClose, onFait }) {
             agir(() => (corrigeable ? enregistrer(aValider) : api.valider(note.id)))
           }
         >
-          {aValider ? 'Valider' : 'Enregistrer'}
+          {aValider ? (note?.operation ? 'Valider : Payé' : 'Valider : À payer') : 'Enregistrer'}
         </button>
       </div>
     )
 
   return (
-    <Modal title={note ? (note.nature === 'achat' ? 'Achat' : note.titre) : genre === 'achat' ? 'Nouvel achat' : 'Nouveaux honoraires'} onClose={onClose} footer={footer}>
+    <Modal
+      title={
+        revue
+          ? `Pièce ${revue.rang} sur ${revue.total}`
+          : note
+            ? note.nature === 'achat'
+              ? 'Achat'
+              : note.titre
+            : genre === 'achat'
+              ? 'Nouvel achat'
+              : genre === 'frais'
+                ? 'Nouvelle note de frais'
+                : 'Nouveaux honoraires'
+      }
+      onClose={onClose}
+      footer={footer}
+    >
       {note && (
         <div className="nf-entete-note">
           <span>
@@ -526,22 +431,54 @@ function NoteModal({ note, nature, onClose, onFait }) {
           <BadgeEtat note={note} />
         </div>
       )}
+      {natureModifiable && (
+        <div className="filter-chips nf-natures" role="group" aria-label="Nature de la pièce">
+          {Object.entries(NATURES).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={value === genre ? 'filter-chip filter-chip-active' : 'filter-chip'}
+              aria-pressed={value === genre}
+              onClick={() => setGenre(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+      {natureModifiable && genre === note.nature && raisonProposee(note) && (
+        <p className="muted nf-raison">Proposé d’après la pièce : {raisonProposee(note)}</p>
+      )}
       {note && <PaiementVu note={note} onConfirme={(op) => agir(() => api.payee(note.id, op.id))} />}
+      {note && (
+        <PreuveVirement
+          note={note}
+          onPaye={() =>
+            agir(async () => {
+              if (note.paiement_propose) return api.payee(note.id, note.paiement_propose.id)
+              // La banque n'a pas encore la ligne : Envoyé, elle la verra.
+              if (note.statut === 'envoyee') await enregistrer(true)
+              await api.virementFait(note.id)
+            })
+          }
+        />
+      )}
       {note && depense?.lue_par_ia && corrigeable && (
         <p className="badge badge--warning nf-a-verifier">Rempli d’après le ticket, à vérifier</p>
       )}
       {corrigeable ? (
         <>
           {note && <Vignettes pieces={note.depenses.flatMap((d) => d.pieces)} />}
-          {genre === 'honoraires' ? (
+          {genre !== 'achat' ? (
             <>
               <label htmlFor="nf-pour">Pour qui ?</label>
               <button id="nf-pour" type="button" className="btn btn--secondary nf-pour" onClick={() => setChoixPour(true)}>
                 <Icon name="search" size={18} />
-                {pour ? pour.nom : 'Choisir'}
+                {pour ? pour.nom : note?.fournisseur ? `${note.fournisseur} ?` : 'Choisir'}
               </button>
               {choixPour && (
                 <ChoixPersonneModal
+                  initial={!pour && note?.fournisseur ? note.fournisseur : ''}
                   onClose={() => setChoixPour(false)}
                   onChoisie={(p) => {
                     setPour(p)
@@ -610,7 +547,22 @@ function NoteModal({ note, nature, onClose, onFait }) {
           <Icon name="download" size={18} /> Télécharger les justificatifs
         </button>
       )}
-      {note && note.nature !== 'frais' && note.statut === 'envoyee' && refus === null && (
+      {note?.operation && (
+        <div className="nf-ligne nf-paiement-vu">
+          <span className="nf-ligne__corps">
+            <span className="nf-ligne__titre">{note.statut === 'envoyee' ? 'Payée selon la banque' : 'Payée'}</span>
+            <span className="muted">
+              {note.operation.libelle} · {api.euros(note.operation.montant_centimes)} le {api.dateCourte(note.operation.date)}
+            </span>
+          </span>
+          {note.detachable && (
+            <button type="button" className="btn btn--secondary" disabled={enCours} onClick={() => agir(() => api.detacher(note.id))}>
+              {note.statut === 'envoyee' ? 'Pas cette ligne' : 'Détacher'}
+            </button>
+          )}
+        </div>
+      )}
+      {note && (note.nature !== 'frais' || note.etablie) && note.statut === 'envoyee' && refus === null && (
         <button
           type="button"
           className="btn btn--link nf-supprimer"
@@ -634,9 +586,9 @@ function NoteModal({ note, nature, onClose, onFait }) {
 // Choix de la personne pour qui le trésorier saisit : les membres de
 // l'école, puis les personnes extérieures (notes-de-frais.md §7 quater), avec une
 // recherche par nom ; en bas, « + Quelqu'un d'extérieur ».
-export function ChoixPersonneModal({ onClose, onChoisie }) {
+export function ChoixPersonneModal({ onClose, onChoisie, initial = '' }) {
   const [personnes, setPersonnes] = useState(null)
-  const [recherche, setRecherche] = useState('')
+  const [recherche, setRecherche] = useState(initial)
   const [nouvel, setNouvel] = useState(null) // { nom, email, rib }
   const [erreur, setErreur] = useState('')
 

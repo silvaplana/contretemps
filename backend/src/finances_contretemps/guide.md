@@ -13,7 +13,17 @@ Comptes
 
 Pièces
 - Puces : Virements, Notes de frais, Honoraires, Achats, À rattacher, Ventes. Un badge compte ce qui attend.
-- « + » : nouvelle dépense (photo du ticket, fichier, ou choisir dans Docs). Une pièce : Valider ou Refuser (motif).
+- « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
+  fichiers (ou un zip), ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
+  l'école = Honoraires, d'une ou pour une autre personne = sa Note de frais, société = Achat) et la ligne du compte qui la
+  paie : même montant et même nom → ligne rattachée, « Payée selon la banque » (« Pas cette ligne » sinon) ; même montant
+  seulement → « C'est payé » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
+  Terminé ouvre la revue pièce par pièce (nature, Pour qui ou Fournisseur, montant), le bouton dit « Valider : Payé » ou
+  « Valider : À payer » et passe à la suivante. Une pièce : Valider, Refuser (motif), Supprimer ; payée à tort : « Détacher »
+  (tant que la saison n'est pas clôturée).
+- Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature, recettes sans compte
+  dans Ventes), bleu pour la banque (Virements : à payer, préparés pour moi, envoyés vus sur le compte ; À rattacher : lignes
+  sans compte du plan).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs.
 - « Pour qui ? » : les membres, puis les extérieurs (payés sans être membres) ; « + Quelqu'un d'extérieur » (nom, mail et téléphone facultatifs, RIB). ⋯ › Extérieurs : corriger, « Demander le RIB par mail », retirer de la liste.

@@ -15,7 +15,7 @@ import logging
 import re
 import unicodedata
 import zipfile
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO
@@ -104,6 +104,20 @@ def normaliser_bic(bic: str | None) -> str | None:
     if not re.fullmatch(r"[A-Z]{6}[A-Z0-9]{2}([A-Z0-9]{3})?", texte):
         raise ValueError("Ce BIC n'a pas la bonne forme (8 ou 11 caractères, ex. AGRIFRPP).")
     return texte
+
+
+@dataclass
+class Preuve:
+    """Une preuve de virement lue (§7 quinquies) et la pièce qu'elle paie."""
+
+    date: str | None
+    montant_centimes: int
+    beneficiaire: str | None
+    motif: str | None
+    iban: str | None
+    interne: bool = False
+    note: NoteFrais | None = None
+    operation: OperationBancaire | None = None  # la ligne du compte, quand aucune pièce ne va avec
 
 
 class NotesDeFrais:
@@ -363,15 +377,16 @@ class NotesDeFrais:
     def lecture_disponible(self) -> bool:
         return self.ports.lecteur is not None and self.ports.lecteur.actif
 
-    def lire_ticket(self, db: Session, membre: Membre, contenu: bytes, type_mime: str) -> dict:
+    def lire_ticket(self, db: Session, membre: Membre, contenu: bytes, type_mime: str, nom: str = "") -> dict:
         """Champs pré-remplis ; la catégorie est ramenée à une de celles de
-        l'organisation. Lève LectureImpossible."""
+        l'organisation. `nom` : le nom du fichier, indice pour la lecture.
+        Lève LectureImpossible."""
         if type_mime not in TYPES_ACCEPTES:
             raise LectureImpossible("Seules les photos et les PDF peuvent être lus.")
         if not self.lecture_disponible:
             raise LectureImpossible("La lecture automatique des tickets n'est pas disponible.")
         categories = self.categories(db, membre.org_id)
-        lu: TicketLu = self.ports.lecteur.lire(db, membre.org_id, contenu, type_mime, [c.libelle for c in categories])
+        lu: TicketLu = self.ports.lecteur.lire(db, membre.org_id, contenu, type_mime, [c.libelle for c in categories], nom=nom)
         par_libelle = {c.libelle.lower(): c for c in categories}
         categorie = par_libelle.get((lu.categorie or "").strip().lower())
         jour = None
@@ -392,6 +407,12 @@ class NotesDeFrais:
             "categorie_id": categorie.id if categorie else None,
             "description": description[:200],
             "commercant": (lu.commercant or "")[:120] or None,
+            "sorte": lu.sorte,
+            "emetteur_personne": lu.emetteur_personne,
+            "client": (lu.client or "")[:120] or None,
+            "beneficiaire": (lu.beneficiaire or "")[:120] or None,
+            "iban": lu.iban,
+            "motif": (lu.motif or "")[:140] or None,
         }
 
     # --- Notes : côté membre (§4.4) ---
@@ -624,14 +645,21 @@ class NotesDeFrais:
         resultat = []
         for note in notes:
             ligne = self.note_dict(note, personnes=personnes)
-            operation = self.paiement_propose(db, note, prises)
-            ligne["paiement_propose"] = operation and {
-                "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
-                "montant_centimes": operation.montant_centimes, "compte": operation.compte,
-            }
+            rattachee = self.ports.banque.operation(db, note.org_id, note.bank_operation_id) if note.bank_operation_id and self.ports.banque else None
+            operation = None if rattachee else self.paiement_propose(db, note, prises)
+            ligne["paiement_propose"] = operation and self._operation_dict(operation)
+            ligne["operation"] = rattachee and self._operation_dict(rattachee)
             ligne["operation_id"] = note.bank_operation_id
+            ligne["detachable"] = rattachee is not None and self._detachable(db, note)
             resultat.append(ligne)
         return resultat
+
+    @staticmethod
+    def _operation_dict(operation: OperationBancaire) -> dict:
+        return {
+            "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
+            "montant_centimes": operation.montant_centimes, "compte": operation.compte,
+        }
 
     def compteurs_tresorerie(self, db: Session, membre: Membre) -> dict:
         """Badges des puces : ce qui attend une action de qui regarde. Par
@@ -666,6 +694,10 @@ class NotesDeFrais:
         ):
             raise PermissionError("Un autre trésorier doit valider votre propre note.")
         self._exiger_complete(note)
+        if note.bank_operation_id is not None:
+            # Payée selon la banque (§7 quinquies) : la validation du trésorier la passe Payé, sans rien annoncer.
+            self._rattacher(db, membre, note, note.bank_operation_id, prevenir=False)
+            return note
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
@@ -680,8 +712,8 @@ class NotesDeFrais:
     @staticmethod
     def _exiger_complete(note: NoteFrais) -> None:
         """Une pièce photographiée en rafale se complète avant d'être validée."""
-        if note.nature == HONORAIRES and note.person_id == PERSONNE_A_CHOISIR:
-            raise ValueError("Choisissez d'abord pour qui sont ces honoraires.")
+        if note.nature != ACHAT and note.person_id == PERSONNE_A_CHOISIR:
+            raise ValueError("Choisissez d'abord pour qui est cette pièce.")
         if any(d.montant_centimes <= 0 for d in note.depenses):
             raise ValueError("Indiquez d'abord le montant.")
 
@@ -692,7 +724,7 @@ class NotesDeFrais:
         db: Session,
         membre: Membre,
         *,
-        nature: str,
+        nature: str | None = None,
         fichier: tuple[bytes, str, str] | None = None,
         person_id: int | None = None,
         fournisseur: str | None = None,
@@ -701,14 +733,18 @@ class NotesDeFrais:
         description: str = "",
         valider: bool = False,
         categorie_id: int | None = None,
-    ) -> NoteFrais:
-        """Honoraires ou achat établi par un trésorier : une photo (ou un
-        fichier) = une note d'une dépense, créée aussitôt. La lecture remplit
-        ce qu'elle peut ; le trésorier vérifie, corrige et valide ensuite
-        (rafale). `valider` : tout est saisi, validé en même temps."""
+    ) -> NoteFrais | Preuve:
+        """Une pièce établie par un trésorier : une photo (ou un fichier) =
+        une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
+        peut ; le trésorier vérifie, corrige et valide ensuite (rafale).
+        Sans `nature`, l'appli la propose d'après la pièce (§7 quinquies) :
+        une facture d'un prof de l'école = honoraires, une facture faite par
+        ou adressée à une autre personne = sa note de frais, sinon achat. La preuve d'un virement
+        n'est pas une dépense : elle est rapprochée de la pièce qu'elle paie
+        (`Preuve`). `valider` : tout est saisi, validé en même temps."""
         self._exiger_tresorier(membre)
-        if nature not in (HONORAIRES, ACHAT):
-            raise ValueError("Une note de frais s'établit au nom de la personne (« Pour qui ? »).")
+        if nature is not None and nature not in NATURES:
+            raise ValueError("Nature inconnue.")
         lu = {}
         if fichier is not None:
             contenu, nom, type_mime = fichier
@@ -716,9 +752,11 @@ class NotesDeFrais:
                 raise ValueError("Seules les photos (JPEG, PNG, WebP, HEIC) et les PDF sont acceptés.")
             if len(contenu) <= 10 * 1024 * 1024 and self.lecture_disponible:
                 try:
-                    lu = self.lire_ticket(db, membre, contenu, type_mime)
+                    lu = self.lire_ticket(db, membre, contenu, type_mime, nom)
                 except LectureImpossible:
                     lu = {}
+        if nature is None and lu.get("sorte") == "virement":
+            return self._preuve_de_virement(db, membre, lu, fichier)
         if jour is None and lu.get("date"):
             jour = date.fromisoformat(lu["date"])
         jour = jour or date.today()
@@ -726,14 +764,31 @@ class NotesDeFrais:
         if montant or valider:
             self._valider_saisie(montant, jour)
         description = " ".join((description or lu.get("description") or "").split())[:200]
-        note = NoteFrais(org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="")
+        emetteur = " ".join((lu.get("commercant") or "").split())[:120] or None
+        if person_id is not None:
+            personne = self._personne_de_l_org(db, membre, person_id)
+        elif lu.get("emetteur_personne") is False:
+            # Une société facture : la pièce est à celui à qui elle est adressée.
+            personne = self._reconnaitre_personne(db, membre, lu.get("client") or "")
+        else:
+            personne = self._reconnaitre_personne(db, membre, f"{emetteur or ''} {lu.get('description') or ''}")
+        if nature is None:
+            # Seb, 31/10 : seul un prof de l'école donne des honoraires ; un
+            # extérieur qui facture, c'est une note de frais à son nom.
+            if personne is not None and personne.role == "prof" and lu.get("emetteur_personne") is not False:
+                nature = HONORAIRES
+            elif personne is not None or lu.get("emetteur_personne"):
+                nature = FRAIS  # une personne a payé ou facturé : on la rembourse
+            else:
+                nature = ACHAT
+        note = NoteFrais(org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="", established_by=membre.person_id)
         if nature == ACHAT:
             note.person_id = membre.person_id
-            note.supplier = " ".join((fournisseur or lu.get("commercant") or "").split())[:120] or None
+            note.supplier = " ".join((fournisseur or emetteur or "").split())[:120] or None
         else:
-            note.person_id = person_id if person_id is not None else self._reconnaitre_prof(db, membre, lu)
-            if note.person_id != PERSONNE_A_CHOISIR:
-                self._personne_de_l_org(db, membre, note.person_id)
+            note.person_id = personne.person_id if personne is not None else PERSONNE_A_CHOISIR
+            if personne is None and lu.get("emetteur_personne"):
+                note.supplier = emetteur  # le nom lu, pour « Pour qui ? » (ou « + Quelqu'un d'extérieur »)
         note.titre = self._titre(note, jour)
         self._recopier_rib(db, note)
         if valider:
@@ -750,10 +805,14 @@ class NotesDeFrais:
         if valider:
             self._exiger_complete(note)
         if fichier is not None:
-            self._poser_piece(membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2])
+            self._poser_piece(
+                membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2],
+                nom_personne=personne.nom if personne is not None and nature != ACHAT else "",
+            )
         db.commit()
         db.refresh(note)
         self._ranger(db, membre, note)
+        self._payee_par_la_banque(db, membre, note)
         return note
 
     def ajouter_page(self, db: Session, membre: Membre, note_id: int, flux: BinaryIO, nom: str, type_mime: str) -> NoteFrais:
@@ -774,22 +833,132 @@ class NotesDeFrais:
         self._ranger(db, membre, note)
         return note
 
+    # --- Preuve d'un virement (§7 quinquies) : pas une dépense, un paiement ---
+
+    def _preuve_de_virement(self, db: Session, membre: Membre, lu: dict, fichier: tuple[bytes, str, str]) -> Preuve:
+        """La capture du mail de la banque (« ordre de virement », « virement
+        exécuté ») est rapprochée de la pièce qu'elle paie : même montant,
+        de préférence le nom du bénéficiaire ou le motif ; la preuve devient
+        une page de cette pièce, et l'IBAN lu complète le RIB de la personne
+        s'il manque. Vers un compte de l'association : virement interne."""
+        org = self.annuaire.organisation(db, membre.org_id)
+        preuve = Preuve(
+            date=lu.get("date"), montant_centimes=lu.get("montant_centimes") or 0,
+            beneficiaire=lu.get("beneficiaire"), motif=lu.get("motif"), iban=lu.get("iban"),
+        )
+        mots_org = set(re.findall(r"[a-z]{3,}", _sans_accents(org.nom)))
+        mots_benef = set(re.findall(r"[a-z]{3,}", _sans_accents(preuve.beneficiaire or "")))
+        if mots_org and mots_org <= mots_benef:
+            preuve.interne = True
+            return preuve
+        if not preuve.montant_centimes:
+            return preuve
+        indices = mots_benef | set(re.findall(r"[a-z]{3,}", _sans_accents(preuve.motif or "")))
+        candidates = list(db.scalars(
+            select(NoteFrais).where(
+                NoteFrais.org_id == membre.org_id, NoteFrais.statut.not_in((REFUSEE, REMBOURSEE)), NoteFrais.don.is_(False)
+            ).order_by(NoteFrais.envoyee_le)
+        ))
+        candidates = [n for n in candidates if self.total(n) == preuve.montant_centimes]
+
+        def nommee(n: NoteFrais) -> bool:
+            noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, n)} {n.supplier or ''}")))
+            return bool(noms & indices)
+
+        note = next((n for n in candidates if nommee(n)), candidates[0] if len(candidates) == 1 else None)
+        if note is None:
+            # Aucune pièce : on montre la ligne du compte, s'il l'a déjà.
+            preuve.operation = self._ligne_du_compte(db, membre.org_id, preuve, indices)
+            return preuve
+        preuve.note = note
+        if note.depenses:
+            depense = note.depenses[-1]
+            if len(depense.pieces) < PIECES_MAX:
+                self._poser_piece(membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2])
+        self._rib_depuis_preuve(db, membre, note, preuve)
+        db.commit()
+        db.refresh(note)
+        self._ranger(db, membre, note)
+        # La banque décide (Seb, 31/10) : la ligne du compte est là, la pièce est payée.
+        self._payee_par_la_banque(db, membre, note, nom_sur=nommee(note))
+        return preuve
+
+    def _ligne_du_compte(self, db: Session, org_id: int, preuve: Preuve, indices: set[str]) -> OperationBancaire | None:
+        """Le débit du montant de la preuve autour de sa date, de préférence
+        au nom du bénéficiaire, pas déjà rattaché à une pièce."""
+        if self.ports.banque is None:
+            return None
+        reference = date.fromisoformat(preuve.date) if preuve.date else date.today()
+        prises = self._operations_prises(db, org_id)
+        candidates = [o for o in self.ports.banque.debits(db, org_id, preuve.montant_centimes, reference - timedelta(days=3)) if o.id not in prises]
+        if not candidates:
+            return None
+        return min(
+            candidates,
+            key=lambda o: (not indices & set(re.findall(r"[a-z]{3,}", _sans_accents(o.libelle))), abs((o.date - reference).days)),
+        )
+
+    def _rib_depuis_preuve(self, db: Session, membre: Membre, note: NoteFrais, preuve: Preuve) -> None:
+        """L'IBAN du bénéficiaire, lu sur la preuve, remplit le RIB de la
+        personne (et de la note) s'il manque. Un IBAN mal lu ne bloque rien."""
+        if not preuve.iban or note.nature == ACHAT or note.person_id == PERSONNE_A_CHOISIR:
+            return
+        try:
+            iban = normaliser_iban(preuve.iban)
+        except ValueError:
+            return
+        if iban is None:
+            return
+        if self.rib(db, note.org_id, note.person_id) is None:
+            self.definir_rib(db, replace(membre, person_id=note.person_id), titulaire=preuve.beneficiaire, iban=iban, bic=None)
+        if not note.rib_iban:
+            note.rib_titulaire, note.rib_iban = (preuve.beneficiaire or "")[:120] or None, iban
+
+    def preuve_dict(self, db: Session, membre: Membre, preuve: Preuve) -> dict:
+        """Pour l'écran : la pièce payée avec sa `preuve`, ou la preuve seule
+        (`id` null : rien trouvé, ou virement interne)."""
+        detail = {
+            "date": preuve.date, "montant_centimes": preuve.montant_centimes, "beneficiaire": preuve.beneficiaire,
+            "motif": preuve.motif, "interne": preuve.interne,
+            "operation": preuve.operation and self._operation_dict(preuve.operation),
+        }
+        if preuve.note is None:
+            return {"id": None, "sorte": "virement", "preuve": detail}
+        return {**self.notes_dicts(db, membre, [preuve.note])[0], "sorte": "virement", "preuve": detail}
+
     def corriger(self, db: Session, membre: Membre, note_id: int, **champs) -> NoteFrais:
-        """Vérifier ou compléter ce que la lecture a rempli (honoraires,
-        achat), tant que ce n'est pas payé. Une note de frais, elle, se
-        corrige par son auteur (reprendre)."""
+        """Vérifier ou compléter ce que la lecture a rempli, tant que ce n'est
+        pas payé : la nature proposée (§7 quinquies, tant que c'est à
+        valider), la personne, le fournisseur, la dépense. Une note de frais
+        envoyée par la personne, elle, se corrige par son auteur (reprendre)."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
-        if note.nature == FRAIS:
+        if note.nature == FRAIS and note.established_by is None:
             raise ValueError("Une note de frais se corrige par son auteur : refusez-la avec un motif.")
         if note.statut not in (ENVOYEE, VALIDEE):
             raise ValueError("Cette pièce n'est plus modifiable.")
-        if note.nature == HONORAIRES and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
+        if champs.get("nature") is not None and champs["nature"] != note.nature:
+            if champs["nature"] not in NATURES:
+                raise ValueError("Nature inconnue.")
+            if note.statut != ENVOYEE:
+                raise ValueError("La nature ne change plus une fois la pièce validée.")
+            note.nature = champs["nature"]
+            if note.nature == ACHAT:
+                note.person_id = membre.person_id
+            elif champs.get("person_id") is None:
+                note.person_id = PERSONNE_A_CHOISIR
+            else:
+                note.person_id = champs["person_id"]
+            note.supplier, note.titre = None, ""
+            note.rib_titulaire = note.rib_iban = note.rib_bic = None
+        if note.nature != ACHAT and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
             self._personne_de_l_org(db, membre, champs["person_id"])
             note.person_id = champs["person_id"]
-            for depense in note.depenses:
-                depense.person_id = note.person_id
+            note.supplier = None  # le nom lu a servi
             note.rib_titulaire = note.rib_iban = note.rib_bic = None
+        for depense in note.depenses:
+            depense.person_id = note.person_id
+        if not note.rib_iban:
             self._recopier_rib(db, note)
         if note.nature == ACHAT and champs.get("fournisseur") is not None:
             note.supplier = " ".join(champs["fournisseur"].split())[:120] or None
@@ -836,7 +1005,7 @@ class NotesDeFrais:
         validée : elle et ses justificatifs partent à la corbeille."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
-        if note.nature == FRAIS or note.statut != ENVOYEE:
+        if (note.nature == FRAIS and note.established_by is None) or note.statut != ENVOYEE:
             raise ValueError("Seule une pièce encore à valider se supprime.")
         rangees = [p.doc_node_id for d in note.depenses for p in d.pieces if p.doc_node_id]
         sur_disque = [p.chemin for d in note.depenses for p in d.pieces if p.doc_node_id is None]
@@ -855,18 +1024,19 @@ class NotesDeFrais:
             raise LookupError("Personne inconnue dans cette organisation.")
         return personne
 
-    def _reconnaitre_prof(self, db: Session, membre: Membre, lu: dict) -> int:
-        """Le nom lu sur une note d'honoraires rapproché d'une fiche ; en cas
-        de doute, « Pour qui ? » (PERSONNE_A_CHOISIR)."""
-        texte = _sans_accents(f"{lu.get('commercant') or ''} {lu.get('description') or ''}")
+    def _reconnaitre_personne(self, db: Session, membre: Membre, texte: str) -> Personne | None:
+        """Un nom lu sur la pièce (émetteur d'une note d'honoraires, client
+        d'une facture, bénéficiaire d'un virement) rapproché d'une fiche ; en
+        cas de doute, None."""
+        texte = _sans_accents(texte or "")
         if not texte.strip():
-            return PERSONNE_A_CHOISIR
+            return None
         mots = set(re.findall(r"[a-z]+", texte))
         trouvees = [
             p for p in self.annuaire.toutes(db, membre.org_id)
             if (noms := [m for m in re.findall(r"[a-z]+", _sans_accents(p.nom)) if len(m) > 1]) and all(m in mots for m in noms)
         ]
-        return trouvees[0].person_id if len(trouvees) == 1 else PERSONNE_A_CHOISIR
+        return trouvees[0] if len(trouvees) == 1 else None
 
     @staticmethod
     def _titre(note: NoteFrais, jour: date) -> str:
@@ -874,6 +1044,8 @@ class NotesDeFrais:
             return f"Honoraires {MOIS[jour.month - 1]} {jour.year}"
         if note.nature == ACHAT:
             return note.supplier or "Achat"
+        if note.established_by is not None:
+            return f"Frais {MOIS[jour.month - 1]} {jour.year}"
         return note.titre
 
     def _recopier_rib(self, db: Session, note: NoteFrais) -> None:
@@ -897,11 +1069,14 @@ class NotesDeFrais:
         if rib is not None:
             note.rib_titulaire, note.rib_iban, note.rib_bic = rib.titulaire, rib.iban, rib.bic
 
-    def _poser_piece(self, membre: Membre, depense: Depense, flux: BinaryIO, nom: str, type_mime: str) -> None:
-        """Le fichier attend sur le disque d'être rangé dans Docs (_ranger)."""
+    def _poser_piece(
+        self, membre: Membre, depense: Depense, flux: BinaryIO, nom: str, type_mime: str, nom_personne: str = ""
+    ) -> None:
+        """Le fichier attend sur le disque d'être rangé dans Docs (_ranger).
+        `nom_personne` nomme le dossier de la personne s'il n'existe pas encore."""
         extension = Path(nom or "").suffix.lower() or _EXTENSIONS.get(type_mime, "")
         nom_fichier = f"{depense.date.isoformat()} {depense.description or 'ticket'} {depense.id}-{len(depense.pieces) + 1}{extension}"
-        dossier = self.stockage.dossier_depenses(membre.org_id, depense.person_id, "")
+        dossier = self.stockage.dossier_depenses(membre.org_id, depense.person_id, nom_personne)
         chemin, taille = self.stockage.put(membre.org_id, dossier, nom_fichier, flux)
         depense.pieces.append(PieceJustificative(
             chemin=chemin, type_mime=type_mime, nom=(nom or "")[:200], taille=taille, ordre=len(depense.pieces),
@@ -1063,8 +1238,10 @@ class NotesDeFrais:
             self._apres_paiement(db, membre, note)
         return notes
 
-    def _apres_paiement(self, db: Session, membre: Membre, note: NoteFrais) -> None:
+    def _apres_paiement(self, db: Session, membre: Membre, note: NoteFrais, *, prevenir: bool = True) -> None:
         self._ranger_recapitulatif(db, membre, note)
+        if not prevenir:
+            return
         # Celle qui a préparé le virement est prévenue qu'il est passé.
         if note.prepared_by and note.prepared_by != membre.person_id:
             prepare = self.annuaire.personnes(db, note.org_id, {note.prepared_by}).get(note.prepared_by)
@@ -1223,11 +1400,43 @@ class NotesDeFrais:
         candidates = [o for o in banque.debits(db, note.org_id, total, depuis) if o.id not in prises]
         if not candidates:
             return None
-        noms = {m for m in re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}"))}
-        return min(
-            candidates,
-            key=lambda o: (not noms & set(re.findall(r"[a-z]{3,}", _sans_accents(o.libelle))), abs((o.date - reference).days)),
-        )
+        return min(candidates, key=lambda o: (not self._au_nom_de(db, note, o), abs((o.date - reference).days)))
+
+    def _au_nom_de(self, db: Session, note: NoteFrais, operation: OperationBancaire) -> bool:
+        """Le libellé de la ligne du compte porte le nom du bénéficiaire (ou du fournisseur)."""
+        noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}")))
+        return bool(noms & set(re.findall(r"[a-z]{3,}", _sans_accents(operation.libelle))))
+
+    def _payee_par_la_banque(self, db: Session, membre: Membre, note: NoteFrais, *, nom_sur: bool = False) -> bool:
+        """« La banque décide » (Seb, 31/10) : une ligne du compte du même
+        montant **et** au même nom (ou une preuve de virement qui le porte,
+        `nom_sur`) est rattachée à la pièce sans rien demander ; le montant
+        seul reste une proposition (« C'est payé »). Chaque pièce garde la
+        validation d'un trésorier (Seb, 31/10 soir) : une pièce À valider
+        reste À valider, ligne rattachée, et passe Payé quand il la valide ;
+        une pièce déjà validée (envoyée par un membre, virement fait) passe Payé."""
+        if note.statut not in (ENVOYEE,) + EN_PAIEMENT or note.don or note.bank_operation_id is not None:
+            return False
+        if any(d.montant_centimes <= 0 for d in note.depenses):
+            return False
+        operation = self.paiement_propose(db, note, self._operations_prises(db, membre.org_id))
+        if operation is None or not (nom_sur or self._au_nom_de(db, note, operation)):
+            return False
+        if note.statut == ENVOYEE:
+            note.bank_operation_id = operation.id
+            db.commit()
+            return True
+        self._rattacher(db, membre, note, operation.id, prevenir=True)
+        return True
+
+    def _rattacher(self, db: Session, membre: Membre, note: NoteFrais, operation_id: int, *, prevenir: bool) -> None:
+        if note.statut == ENVOYEE:
+            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
+        note.bank_operation_id = operation_id
+        db.commit()
+        db.refresh(note)
+        self._apres_paiement(db, membre, note, prevenir=prevenir)
 
     def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int) -> NoteFrais:
         """Confirmer l'opération vue sur le compte : la pièce y est rattachée
@@ -1243,14 +1452,45 @@ class NotesDeFrais:
             raise ValueError("Le montant de l'opération n'est pas celui de la pièce.")
         if operation_id in self._operations_prises(db, membre.org_id):
             raise ValueError("Cette opération est déjà rattachée à une autre pièce.")
-        if note.statut == ENVOYEE:
+        deja_payee = note.statut == ENVOYEE
+        if deja_payee:
             self._exiger_complete(note)
-            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
-        note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
-        note.bank_operation_id = operation_id
+        # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
+        self._rattacher(db, membre, note, operation_id, prevenir=not deja_payee)
+        return note
+
+    def _detachable(self, db: Session, note: NoteFrais) -> bool:
+        """Tant que la pièce n'est pas validée, ou que la saison de la ligne n'est pas clôturée."""
+        banque = self.ports.banque
+        if banque is None or note.bank_operation_id is None:
+            return False
+        if note.statut == ENVOYEE:
+            return True
+        operation = banque.operation(db, note.org_id, note.bank_operation_id)
+        return operation is not None and not banque.cloturee(db, note.org_id, operation.date)
+
+    def detacher(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« Pas cette ligne » (§7 quinquies) : la pièce rend la ligne du
+        compte et revient là où elle était : À valider si elle y est encore,
+        Envoyé si le virement avait été fait, sinon À valider (pièce établie)
+        ou À payer. Impossible une fois la saison clôturée : la banque a décidé."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.statut not in (ENVOYEE, REMBOURSEE) or note.bank_operation_id is None:
+            raise ValueError("Cette pièce n'est pas rattachée à une ligne du compte.")
+        if not self._detachable(db, note):
+            raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
+        if note.statut == ENVOYEE:
+            pass
+        elif note.transfer_sent_at is not None:
+            note.statut = VIREE
+        elif note.established_by is not None:
+            note.statut, note.traitee_le, note.traitee_par = ENVOYEE, None, None
+        else:
+            note.statut = VALIDEE
+        note.remboursee_le, note.remboursee_par, note.bank_operation_id = None, None, None
         db.commit()
         db.refresh(note)
-        self._apres_paiement(db, membre, note)
         return note
 
     def lignes_export(self, db: Session, membre: Membre, debut: date | None, fin: date | None, nature: str = FRAIS) -> list[dict]:
@@ -1319,6 +1559,7 @@ class NotesDeFrais:
             "id": note.id,
             "titre": note.titre,
             "nature": note.nature,
+            "etablie": note.established_by is not None,
             "fournisseur": note.supplier,
             "statut": note.statut,
             "libelle_statut": self.libelle_statut(note),
