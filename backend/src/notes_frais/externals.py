@@ -10,6 +10,7 @@ de l'hôte, les extérieurs s'y ajoutent après.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -49,12 +50,12 @@ class WithExternals:
     def tresoriers(self, db: Session, org_id: int) -> list[Personne]:
         return self.members.tresoriers(db, org_id)
 
-    def toutes(self, db: Session, org_id: int) -> list[Personne]:
+    def toutes(self, db: Session, org_id: int, le: date | None = None) -> list[Personne]:
         """Les membres d'abord, puis les extérieurs encore dans la liste."""
         externals = db.scalars(
             select(External).where(External.org_id == org_id, External.removed_at.is_(None)).order_by(External.name)
         )
-        return self.members.toutes(db, org_id) + [personne(e) for e in externals]
+        return self.members.toutes(db, org_id, le) + [personne(e) for e in externals]
 
     def organisation(self, db: Session, org_id: int) -> Organisation:
         return self.members.organisation(db, org_id)
