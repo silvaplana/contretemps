@@ -74,7 +74,7 @@ def test_creer_avec_son_cours_puis_lister_toute_l_ecole(client, e):
     )
     assert creee.status_code == 201
     assert creee.json() == {
-        "id": creee.json()["id"], "cours_id": e["jazz"].id, "nom": "Spectacle",
+        "id": creee.json()["id"], "cours_id": e["jazz"].id, "cours_ids": [e["jazz"].id], "nom": "Spectacle",
         "horaire_repetition": None, "costume": "Noir", "eleve_ids": [e["zoe"].id], "videos": [],
     }
     client.post(f"/cours/{e['classique'].id}/choregraphies", json={"nom": "Gala"})
@@ -110,11 +110,49 @@ def test_eleves_de_toute_l_ecole(client, db_session, e):
 
 def test_changer_de_cours(client, db_session, e):
     ch = client.post(f"/cours/{e['jazz'].id}/choregraphies", json={"nom": "Spectacle"}).json()
-    assert client.put(f"/choregraphies/{ch['id']}", json={"cours_id": e["classique"].id}).json()["cours_id"] == e["classique"].id
-    assert client.put(f"/choregraphies/{ch['id']}", json={"cours_id": 999}).status_code == 404
+    modifiee = client.put(f"/choregraphies/{ch['id']}", json={"cours_ids": [e["classique"].id]}).json()
+    assert (modifiee["cours_id"], modifiee["cours_ids"]) == (e["classique"].id, [e["classique"].id])
+    assert client.put(f"/choregraphies/{ch['id']}", json={"cours_ids": [999]}).status_code == 404
     autre = Ecoles().create(db_session, nom="Autre", code_postal="11111")
     ailleurs = cours_client.create(db_session, ecole_id=autre.id, nom="Jazz")
-    assert client.put(f"/choregraphies/{ch['id']}", json={"cours_id": ailleurs.id}).status_code == 400
+    assert client.put(f"/choregraphies/{ch['id']}", json={"cours_ids": [ailleurs.id]}).status_code == 400
+
+
+def test_une_choregraphie_sur_plusieurs_cours(client, db_session, e):
+    """Seb, 1er novembre : une même chorégraphie peut être dansée par
+    plusieurs cours (avant, il fallait la créer une fois par cours)."""
+    jazz, classique = e["jazz"].id, e["classique"].id
+    ch = client.post(
+        f"/cours/{jazz}/choregraphies", json={"nom": "Begging you", "autres_cours_ids": [classique, jazz]}
+    ).json()
+    assert (ch["cours_id"], ch["cours_ids"]) == (jazz, [jazz, classique])
+    # Chaque cours la retrouve ; l'école ne la liste qu'une fois.
+    assert [c.id for c in choregraphies_client.list(db_session, classique)] == [ch["id"]]
+    assert [c.id for c in choregraphies_client.list(db_session, jazz)] == [ch["id"]]
+    assert [c["id"] for c in client.get(f"/ecoles/{e['ecole'].id}/choregraphies").json()] == [ch["id"]]
+
+    # Retirer le premier cours : le suivant prend sa place.
+    modifiee = client.put(f"/choregraphies/{ch['id']}", json={"cours_ids": [classique]}).json()
+    assert (modifiee["cours_id"], modifiee["cours_ids"]) == (classique, [classique])
+    assert choregraphies_client.list(db_session, jazz) == []
+    # Une liste vide ne change rien : une chorégraphie a toujours un cours.
+    assert client.put(f"/choregraphies/{ch['id']}", json={"cours_ids": []}).json()["cours_ids"] == [classique]
+
+    # Un cours d'une autre saison est refusé.
+    from saisons.models import Saison
+    import datetime as dt
+
+    ancienne = Saison(ecole_id=e["ecole"].id, nom="2020-2021", date_debut=dt.date(2020, 9, 1), date_fin=dt.date(2021, 6, 30))
+    db_session.add(ancienne)
+    db_session.flush()
+    vieux = cours_client.create(db_session, ecole_id=e["ecole"].id, nom="Jazz Ini")
+    vieux.saison_id = ancienne.id
+    db_session.commit()
+    assert client.put(f"/choregraphies/{ch['id']}", json={"cours_ids": [classique, vieux.id]}).status_code in (400, 404)
+
+    # Supprimer la chorégraphie la retire de tous ses cours.
+    assert client.delete(f"/choregraphies/{ch['id']}").status_code == 204
+    assert choregraphies_client.list(db_session, classique) == []
 
 
 def test_videos_d_une_choregraphie(client, e, en_tant_que):
@@ -220,8 +258,17 @@ def test_droits_sur_les_choregraphies(client, db_session, e):
         assert client.put(f"/choregraphies/{ch}", json={"nom": "X"}, headers=s[qui]).status_code == 403
         assert client.delete(f"/choregraphies/{ch}", headers=s[qui]).status_code == 403
     assert client.put(f"/choregraphies/{ch}", json={"costume": "Noir"}, headers=s["prof_jazz"]).status_code == 200
-    # Changer de cours : il faut pouvoir gérer le nouveau aussi.
-    assert client.put(f"/choregraphies/{ch}", json={"cours_id": classique}, headers=s["prof_jazz"]).status_code == 403
+    # Ajouter un cours : il faut pouvoir le gérer aussi.
+    assert client.put(f"/choregraphies/{ch}", json={"cours_ids": [jazz, classique]}, headers=s["prof_jazz"]).status_code == 403
+    assert client.post(
+        f"/cours/{jazz}/choregraphies", json={"nom": "X", "autres_cours_ids": [classique]}, headers=s["prof_jazz"]
+    ).status_code == 403
+    # Une fois le cours ajouté (par un admin), ses profs la gèrent aussi...
+    assert client.put(f"/choregraphies/{ch}", json={"cours_ids": [jazz, classique]}, headers=s["admin"]).status_code == 200
+    assert client.put(f"/choregraphies/{ch}", json={"costume": "Blanc"}, headers=s["prof_classique"]).status_code == 200
+    # ... mais chacun ne retire que son propre cours.
+    assert client.put(f"/choregraphies/{ch}", json={"cours_ids": [classique]}, headers=s["prof_classique"]).status_code == 403
+    assert client.put(f"/choregraphies/{ch}", json={"cours_ids": [jazz]}, headers=s["prof_classique"]).status_code == 200
     assert client.delete(f"/choregraphies/{ch}", headers=s["admin"]).status_code == 204
 
 

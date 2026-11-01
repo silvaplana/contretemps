@@ -23,7 +23,8 @@ export default function ChoregraphieListScreen({ filtres, list, coursParId, onSe
               <strong>{ch.nom}</strong>
               <span className="muted">
                 {' '}
-                {coursParId.get(ch.coursId)?.nom ?? ''} · {ch.eleveIds.length} élève
+                {ch.coursIds.map((id) => coursParId.get(id)?.nom).filter(Boolean).join(', ')} ·{' '}
+                {ch.eleveIds.length} élève
                 {ch.eleveIds.length > 1 ? 's' : ''} · {ch.videos.length} vidéo
                 {ch.videos.length > 1 ? 's' : ''}
               </span>

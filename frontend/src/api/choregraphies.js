@@ -23,7 +23,9 @@ async function requete(chemin, options) {
 function versEcran(ch) {
   return {
     id: ch.id,
-    coursId: ch.cours_id,
+    // Tous ses cours, le premier en tête (une chorégraphie peut être
+    // dansée par plusieurs cours, Seb 1er novembre).
+    coursIds: ch.cours_ids,
     nom: ch.nom,
     costume: ch.costume ?? '',
     horaireRepetition: ch.horaire_repetition ?? '',
@@ -32,12 +34,13 @@ function versEcran(ch) {
   }
 }
 
-function versChampsBackend({ horaireRepetition, eleveIds, coursId, ...reste }) {
+function versChampsBackend({ horaireRepetition, eleveIds, coursIds, autresCoursIds, ...reste }) {
   return {
     ...reste,
     ...(horaireRepetition !== undefined && { horaire_repetition: horaireRepetition }),
     ...(eleveIds !== undefined && { eleve_ids: eleveIds }),
-    ...(coursId !== undefined && { cours_id: coursId }),
+    ...(coursIds !== undefined && { cours_ids: coursIds }),
+    ...(autresCoursIds !== undefined && { autres_cours_ids: autresCoursIds }),
   }
 }
 
@@ -46,7 +49,8 @@ export async function lister(ecoleId) {
   return (await requete(`/ecoles/${ecoleId}/choregraphies`)).map(versEcran)
 }
 
-// Une chorégraphie est associée à son cours dès la création.
+// Une chorégraphie est associée à son premier cours dès la création ;
+// `donnees.autresCoursIds` : les autres cours qui la dansent.
 export async function creer(coursId, donnees) {
   return versEcran(
     await requete(`/cours/${coursId}/choregraphies`, {

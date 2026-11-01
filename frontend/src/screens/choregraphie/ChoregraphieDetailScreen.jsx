@@ -5,13 +5,14 @@ import Icon from '../../components/Icon.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
 import AjouterVideo from '../video/AjouterVideo.jsx'
 import EditVideoModal from '../video/EditVideoModal.jsx'
+import CasesCours from './CasesCours.jsx'
 import ChoixElevesPanel from './ChoixElevesPanel.jsx'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
 // avec une flèche de retour vers ChoregraphieListScreen — même principe que
 // la Messagerie. Consultation par défaut ; le bouton stylo (à côté de la
 // poubelle) bascule en mode édition pour qui peut gérer la chorégraphie
-// (admin, ou professeur de son cours — spec §5.3).
+// (admin, ou professeur de l'un de ses cours — spec §5.3).
 //
 // Vidéos (plus d'onglet Vidéo, refonte du 2026-10-03) : tout le monde peut
 // en ajouter une ; la modifier est réservé à qui gère la chorégraphie ; la
@@ -33,7 +34,7 @@ function lireDescriptionOuverte() {
 
 export default function ChoregraphieDetailScreen({
   choregraphie,
-  cours,
+  coursDeLaChoregraphie,
   coursGerables,
   tousLesCours,
   eleves,
@@ -134,23 +135,22 @@ export default function ChoregraphieDetailScreen({
               {editing ? (
                 <>
                   <h3>Cours</h3>
-                  <select
-                    className="field-input"
-                    aria-label="Cours de la chorégraphie"
-                    value={choregraphie.coursId}
-                    onChange={(e) => onUpdate({ coursId: Number(e.target.value) })}
-                  >
-                    {/* Le cours actuel d'abord, puis ceux que l'on peut gérer. */}
-                    {[cours, ...coursGerables.filter((c) => c.id !== cours?.id)].filter(Boolean).map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.nom}
-                      </option>
-                    ))}
-                  </select>
+                  {/* Ses cours, puis ceux que l'on peut gérer ; on ne coche
+                      ou décoche qu'un cours que l'on gère. */}
+                  <CasesCours
+                    cours={[
+                      ...coursDeLaChoregraphie,
+                      ...coursGerables.filter((c) => !choregraphie.coursIds.includes(c.id)),
+                    ]}
+                    coches={choregraphie.coursIds}
+                    modifiable={(c) => coursGerables.some((g) => g.id === c.id)}
+                    onChange={(coursIds) => onUpdate({ coursIds })}
+                  />
                 </>
               ) : (
                 <p className="choregraphie-detail__cours">
-                  <strong>Cours :</strong> {cours?.nom || <span className="muted">—</span>}
+                  <strong>Cours :</strong>{' '}
+                  {coursDeLaChoregraphie.map((c) => c.nom).join(', ') || <span className="muted">—</span>}
                 </p>
               )}
             </section>
@@ -284,7 +284,7 @@ export default function ChoregraphieDetailScreen({
         <ChoixElevesPanel
           eleves={eleves}
           cours={tousLesCours}
-          coursInitial={choregraphie.coursId}
+          coursInitial={choregraphie.coursIds[0] ?? null}
           choisis={choregraphie.eleveIds}
           onValider={(ids) => {
             onUpdate({ eleveIds: ids })

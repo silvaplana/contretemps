@@ -5,8 +5,9 @@ Droits (spec §5.3, décision du 2026-10-03) :
 - lire : toute personne de l'école, toutes les chorégraphies ;
 - ajouter une vidéo à une chorégraphie : toute personne de l'école ;
 - créer, modifier, supprimer une chorégraphie, modifier, réordonner ou
-  supprimer une vidéo : un admin, ou un professeur du cours de la
-  chorégraphie (« gérer ») ;
+  supprimer une vidéo : un admin, ou un professeur de l'un des cours de la
+  chorégraphie (« gérer ») ; ajouter ou retirer un cours : il faut aussi
+  pouvoir gérer ce cours-là (Seb, 1er novembre : plusieurs cours) ;
 - supprimer SA vidéo : celui qui l'a ajoutée.
 """
 
@@ -71,10 +72,12 @@ class ChoregraphiesReceiver:
         ids = [c.id for c in choregraphies]
         eleves = self.client.eleves_par_choregraphie(db, ids)
         videos = self.client.videos_par_choregraphie(db, ids)
+        cours = self.client.cours_par_choregraphie(db, choregraphies)
         return [
             ChoregraphieSortie(
                 id=c.id,
                 cours_id=c.cours_id,
+                cours_ids=cours[c.id],
                 nom=c.nom,
                 horaire_repetition=c.horaire_repetition,
                 costume=c.costume,
@@ -91,18 +94,33 @@ class ChoregraphiesReceiver:
         return cours
 
     def _choregraphie(self, db: Session, choregraphie_id: int):
-        """(chorégraphie, son cours), ou 404."""
+        """(chorégraphie, ses cours, le premier en tête), ou 404."""
         choregraphie = self.client.get(db, choregraphie_id)
         if choregraphie is None:
             raise HTTPException(status_code=404, detail="Chorégraphie introuvable")
-        return choregraphie, self._cours(db, choregraphie.cours_id)
+        ids = self.client.cours_par_choregraphie(db, [choregraphie])[choregraphie.id]
+        cours = [self._cours(db, ids[0])]
+        cours += [c for c in (self.client.cours.get(db, i) for i in ids[1:]) if c is not None]
+        return choregraphie, cours
 
-    def _exiger_gestion(self, db: Session, appelant: Compte | None, cours) -> None:
+    def _exiger_gestion(self, db: Session, appelant: Compte | None, *cours) -> None:
+        """Passe si l'appelant peut gérer l'un de ces cours."""
         # `appelant=None` : droits neutralisés (tests, voir tests/conftest.py).
-        if appelant is not None and not self.client.peut_gerer(db, appelant, cours):
+        if appelant is not None and not any(self.client.peut_gerer(db, appelant, c) for c in cours):
             raise HTTPException(
                 status_code=403, detail="Réservé aux administrateurs et aux professeurs de ce cours"
             )
+
+    def _autres_cours(self, db: Session, appelant: Compte | None, premier, ids: list[int]) -> None:
+        """Vérifie des cours ajoutés à une chorégraphie : même école et même
+        saison que son premier cours, et gérables par l'appelant."""
+        for cours_id in ids:
+            cours = self._cours(db, cours_id)
+            if cours.ecole_id != premier.ecole_id:
+                raise HTTPException(status_code=400, detail="Ce cours appartient à une autre école")
+            if cours.saison_id != premier.saison_id:
+                raise HTTPException(status_code=400, detail="Ce cours appartient à une autre saison")
+            self._exiger_gestion(db, appelant, cours)
 
     def _video_de(self, db: Session, choregraphie_id: int, video_id: int):
         video = self.client.videos.get(db, video_id)
@@ -128,7 +146,7 @@ class ChoregraphiesReceiver:
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
         choregraphie, cours = self._choregraphie(db, choregraphie_id)
-        rbac.require_membre(appelant, cours.ecole_id)
+        rbac.require_membre(appelant, cours[0].ecole_id)
         return self._sorties(db, [choregraphie])[0]
 
     def creer(
@@ -138,8 +156,11 @@ class ChoregraphiesReceiver:
         db: Session = Depends(get_db),
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        self._exiger_gestion(db, appelant, self._cours(db, cours_id))
-        choregraphie = self.client.create(db, cours_id, **donnees.model_dump())
+        cours = self._cours(db, cours_id)
+        self._exiger_gestion(db, appelant, cours)
+        champs = donnees.model_dump()
+        self._autres_cours(db, appelant, cours, champs["autres_cours_ids"])
+        choregraphie = self.client.create(db, cours_id, **champs)
         return self._sorties(db, [choregraphie])[0]
 
     def modifier(
@@ -150,15 +171,18 @@ class ChoregraphiesReceiver:
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
         _, cours = self._choregraphie(db, choregraphie_id)
-        self._exiger_gestion(db, appelant, cours)
+        self._exiger_gestion(db, appelant, *cours)
         champs = donnees.model_dump(exclude_unset=True)
-        if champs.get("cours_id") is None:
-            champs.pop("cours_id", None)
-        elif champs["cours_id"] != cours.id:
-            nouveau = self._cours(db, champs["cours_id"])
-            if nouveau.ecole_id != cours.ecole_id:
-                raise HTTPException(status_code=400, detail="Ce cours appartient à une autre école")
-            self._exiger_gestion(db, appelant, nouveau)
+        if not champs.get("cours_ids"):
+            champs.pop("cours_ids", None)
+        else:
+            # Chaque cours ajouté ou retiré doit être gérable par l'appelant.
+            avant = {c.id for c in cours}
+            apres = list(dict.fromkeys(champs["cours_ids"]))
+            self._autres_cours(db, appelant, cours[0], [i for i in apres if i not in avant])
+            for retire in (c for c in cours if c.id not in apres):
+                self._exiger_gestion(db, appelant, retire)
+            champs["cours_ids"] = apres
         choregraphie = self.client.update(db, choregraphie_id, **champs)
         return self._sorties(db, [choregraphie])[0]
 
@@ -169,7 +193,7 @@ class ChoregraphiesReceiver:
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
         _, cours = self._choregraphie(db, choregraphie_id)
-        self._exiger_gestion(db, appelant, cours)
+        self._exiger_gestion(db, appelant, *cours)
         self.client.delete(db, choregraphie_id)
 
     # --- Vidéos d'une chorégraphie ---
@@ -181,7 +205,7 @@ class ChoregraphiesReceiver:
         db: Session = Depends(get_db),
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
-        _, cours = self._choregraphie(db, choregraphie_id)
+        _, (cours, *_) = self._choregraphie(db, choregraphie_id)
         rbac.require_membre(appelant, cours.ecole_id)
         televersement = self.client.videos.obtenir_televersement(db, donnees.upload_id)
         if televersement is None or televersement.ecole_id != cours.ecole_id:
@@ -206,7 +230,7 @@ class ChoregraphiesReceiver:
     ):
         _, cours = self._choregraphie(db, choregraphie_id)
         self._video_de(db, choregraphie_id, video_id)
-        self._exiger_gestion(db, appelant, cours)
+        self._exiger_gestion(db, appelant, *cours)
         return self.client.videos.update(db, video_id, **donnees.model_dump(exclude_unset=True))
 
     def supprimer_video(
@@ -220,7 +244,7 @@ class ChoregraphiesReceiver:
         video = self._video_de(db, choregraphie_id, video_id)
         # Celui qui a ajouté la vidéo peut toujours la retirer.
         if appelant is None or video.uploaded_by != appelant.id:
-            self._exiger_gestion(db, appelant, cours)
+            self._exiger_gestion(db, appelant, *cours)
         self.client.videos.delete(db, video_id)
 
     def reordonner_videos(
@@ -231,5 +255,5 @@ class ChoregraphiesReceiver:
         appelant: Compte = Depends(rbac.compte_appelant),
     ):
         _, cours = self._choregraphie(db, choregraphie_id)
-        self._exiger_gestion(db, appelant, cours)
+        self._exiger_gestion(db, appelant, *cours)
         self.client.reordonner_videos(db, choregraphie_id, donnees.ordre_video_ids)

@@ -1,6 +1,7 @@
 """Logique métier des chorégraphies (voir spec/SPEC.md §5.3 et §6.7).
 
-Une chorégraphie est associée à un cours dès sa création ; ses élèves sont
+Une chorégraphie est associée à un ou plusieurs cours dès sa création ; le
+premier est `cours_id`, tous sont dans `choregraphies_courses`. Ses élèves sont
 choisis dans toute l'école ; ses vidéos sont celles du module générique
 `videos`, qu'elle référence par `choregraphies_videos` (ce module-là ne
 connaît pas les chorégraphies).
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Session
 from saisons.portee import verifier_modifiable
 from videos import Video, Videos
 
-from .models import Choregraphie, choregraphies_eleves, choregraphies_videos
+from .models import Choregraphie, choregraphies_courses, choregraphies_eleves, choregraphies_videos
 
 
 class Choregraphies:
@@ -41,9 +42,28 @@ class Choregraphies:
         )
 
     def list(self, db: Session, cours_id: int) -> list[Choregraphie]:
+        """Les chorégraphies dansées par ce cours, qu'il soit le premier ou non."""
         return list(
-            db.scalars(select(Choregraphie).where(Choregraphie.cours_id == cours_id))
+            db.scalars(
+                select(Choregraphie)
+                .join(choregraphies_courses, choregraphies_courses.c.choregraphie_id == Choregraphie.id)
+                .where(choregraphies_courses.c.cours_id == cours_id)
+                .order_by(Choregraphie.id)
+            )
         )
+
+    def cours_par_choregraphie(self, db: Session, choregraphies: list[Choregraphie]) -> dict[int, list[int]]:
+        """Les cours de chaque chorégraphie, le premier (`cours_id`) en tête."""
+        resultat = {c.id: [c.cours_id] for c in choregraphies}
+        if resultat:
+            for choregraphie_id, cours_id in db.execute(
+                select(choregraphies_courses.c.choregraphie_id, choregraphies_courses.c.cours_id)
+                .where(choregraphies_courses.c.choregraphie_id.in_(resultat))
+                .order_by(choregraphies_courses.c.cours_id)
+            ):
+                if cours_id not in resultat[choregraphie_id]:
+                    resultat[choregraphie_id].append(cours_id)
+        return resultat
 
     def get(self, db: Session, choregraphie_id: int) -> Choregraphie | None:
         return db.get(Choregraphie, choregraphie_id)
@@ -97,10 +117,21 @@ class Choregraphies:
     # --- Écriture ---
 
     def create(
-        self, db: Session, cours_id: int, nom: str, eleve_ids: list[int] | None = None, **champs
+        self,
+        db: Session,
+        cours_id: int,
+        nom: str,
+        eleve_ids: list[int] | None = None,
+        autres_cours_ids: list[int] | None = None,
+        **champs,
     ) -> Choregraphie:
+        """`autres_cours_ids` : les cours qui dansent aussi la chorégraphie,
+        en plus de `cours_id` (vérifiés par l'appelant : même école, même
+        saison, gérables)."""
         choregraphie = Choregraphie(cours_id=cours_id, nom=nom, **champs)
         db.add(choregraphie)
+        db.flush()
+        self._ecrire_cours(db, choregraphie, [cours_id, *(autres_cours_ids or [])])
         db.commit()
         db.refresh(choregraphie)
         if eleve_ids:
@@ -108,11 +139,21 @@ class Choregraphies:
         return choregraphie
 
     def update(
-        self, db: Session, choregraphie_id: int, eleve_ids: list[int] | None = None, **champs
+        self,
+        db: Session,
+        choregraphie_id: int,
+        eleve_ids: list[int] | None = None,
+        cours_ids: list[int] | None = None,
+        **champs,
     ) -> Choregraphie | None:
+        """`cours_ids` fourni : remplace la liste des cours, le premier
+        devient `cours_id` (vérifiés par l'appelant)."""
         choregraphie = self.get(db, choregraphie_id)
         if choregraphie is None:
             return None
+        if cours_ids:
+            verifier_modifiable(db, "choregraphies", choregraphie_id)
+            self._ecrire_cours(db, choregraphie, cours_ids)
         # `champs` ne contient déjà que les champs explicitement fournis
         # (exclude_unset=True côté receiver) — un `if valeur is not None`
         # ici empêchait à tort de vider un champ nullable.
@@ -138,9 +179,27 @@ class Choregraphies:
                 choregraphies_eleves.c.choregraphie_id == choregraphie_id
             )
         )
+        db.execute(
+            choregraphies_courses.delete().where(
+                choregraphies_courses.c.choregraphie_id == choregraphie_id
+            )
+        )
         db.delete(choregraphie)
         db.commit()
         return True
+
+    def _ecrire_cours(self, db: Session, choregraphie: Choregraphie, cours_ids: list[int]) -> None:
+        cours_ids = list(dict.fromkeys(cours_ids))
+        choregraphie.cours_id = cours_ids[0]
+        db.execute(
+            choregraphies_courses.delete().where(
+                choregraphies_courses.c.choregraphie_id == choregraphie.id
+            )
+        )
+        for cours_id in cours_ids:
+            db.execute(
+                choregraphies_courses.insert().values(choregraphie_id=choregraphie.id, cours_id=cours_id)
+            )
 
     # --- Élèves participants ---
 

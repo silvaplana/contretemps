@@ -29,7 +29,7 @@ import json
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from choregraphies.models import Choregraphie, choregraphies_eleves, choregraphies_videos
+from choregraphies.models import Choregraphie, choregraphies_courses, choregraphies_eleves, choregraphies_videos
 from comptes import roles
 from comptes.models import Compte, EmailCompte, Famille, RoleCompte, separer_emails
 from comptes.reprise_payeurs import reprendre_payeurs
@@ -360,6 +360,16 @@ def _construire_tables() -> list[_Table]:
             ),
         ),
         _Table(
+            "ChoregraphiesCours",
+            choregraphies_courses,
+            ["choregraphie_id", "cours_id"],
+            lambda db, eid: db.execute(
+                select(choregraphies_courses).where(
+                    choregraphies_courses.c.choregraphie_id.in_(_sous_requete_choregraphies_ecole(eid))
+                )
+            ).all(),
+        ),
+        _Table(
             "ChoregraphiesEleves",
             choregraphies_eleves,
             ["choregraphie_id", "eleve_id"],
@@ -615,6 +625,18 @@ def _restaurer(db: Session, ecole: Ecole, classeur) -> None:
 
     if anciens_liens_videos and "ChoregraphiesVideos" not in classeur.sheetnames:
         db.execute(choregraphies_videos.insert(), anciens_liens_videos)
+        db.flush()
+    # Sauvegarde d'avant les chorégraphies sur plusieurs cours (2026-11-01) :
+    # chacune garde son seul cours.
+    if "Choregraphies" in classeur.sheetnames and "ChoregraphiesCours" not in classeur.sheetnames:
+        db.execute(
+            choregraphies_courses.insert().from_select(
+                ["choregraphie_id", "cours_id"],
+                select(Choregraphie.id, Choregraphie.cours_id).where(
+                    Choregraphie.cours_id.in_(_sous_requete_cours_ecole(ecole.id))
+                ),
+            )
+        )
         db.flush()
     if ancien_role_par_compte and "RolesComptes" not in classeur.sheetnames:
         _convertir_anciens_roles(db, ancien_role_par_compte)
