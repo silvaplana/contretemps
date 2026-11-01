@@ -83,8 +83,11 @@ const ETATS = {
   remboursee: ['Payé', 'badge--success'],
 }
 
-export function BadgeEtat({ note }) {
-  const [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : ETATS[note.statut]
+// `proposition` (vu du trésorier, Seb 1er/11) : une pièce à valider dit
+// l'état qu'un toucher lui donnera — Payé si la banque a déjà payé, sinon À payer.
+export function BadgeEtat({ note, proposition = false }) {
+  let [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : ETATS[note.statut]
+  if (proposition && note.statut === 'envoyee') label = `À valider → ${note.operation ? 'Payé' : 'À payer'}`
   return <span className={`badge ${classe}`}>{label}</span>
 }
 
