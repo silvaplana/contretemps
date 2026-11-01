@@ -12,7 +12,7 @@ from copy import copy
 from pathlib import Path
 
 from fastapi import Depends, HTTPException, Request
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from comptes import Compte, rbac, roles
@@ -221,9 +221,13 @@ class ClasseurContretemps:
     def _enfant(db: Session, parent_id: int, nom: str, dossier: bool = True):
         from documents.models import KIND_FOLDER, DocNode
 
-        requete = select(DocNode).where(DocNode.parent_id == parent_id, DocNode.name == nom, DocNode.deleted_at.is_(None))
+        requete = select(DocNode).where(DocNode.parent_id == parent_id, DocNode.deleted_at.is_(None))
         if dossier:
-            requete = requete.where(DocNode.kind == KIND_FOLDER)
+            # « Achats » déjà là (ancien nom, ou créé à la main) : on y écrit,
+            # au lieu de créer « ACHATS (2) » à côté (Seb, 1er/11).
+            requete = requete.where(DocNode.kind == KIND_FOLDER, func.lower(DocNode.name) == nom.lower())
+        else:
+            requete = requete.where(DocNode.name == nom)
         return db.scalars(requete).first()
 
     def _dossier(self, db: Session, qui, parent_id: int, chemin: list[str]) -> int:
