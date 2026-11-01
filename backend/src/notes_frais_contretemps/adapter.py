@@ -371,6 +371,12 @@ class BanqueContretemps:
         requete = self._requete(org_id).where(FinOperation.amount == -montant_centimes, FinOperation.date >= depuis)
         return [self._operation(o, c) for o, c in db.execute(requete.order_by(FinOperation.date))]
 
+    def tous_debits(self, db: Session, org_id: int, depuis) -> list[OperationBancaire]:
+        from finances.models import FinOperation
+
+        requete = self._requete(org_id).where(FinOperation.amount < 0, FinOperation.date >= depuis)
+        return [self._operation(o, c) for o, c in db.execute(requete.order_by(FinOperation.date))]
+
     def operation(self, db: Session, org_id: int, operation_id: int) -> OperationBancaire | None:
         from finances.models import FinOperation
 
