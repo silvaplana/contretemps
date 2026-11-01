@@ -631,6 +631,11 @@ def test_le_prof_est_reconnu_dans_la_saison_de_la_facture(client, db_session, ec
     note = _etablir(client, tresorier, None)
     assert note["nature"] == "honoraires" and note["personne"]["nom"] == "Sophie Boyer"
 
+    # Un mois seul lu (« Février 2026 » sur la facture) : son dernier jour.
+    lecteur.lu = {"date": "2026-02", "montant_centimes": 31025, "commercant": "Sophie BOYER", "description": "Cours de février"}
+    note = _etablir(client, tresorier, None)
+    assert note["depenses"][0]["date"] == "2026-02-28" and note["titre"] == "Honoraires février 2026"
+
     # Le nom du fichier porte la date (« 2026.02.28 Boyer 02.pdf ») : elle vaut quand la lecture n'en donne pas.
     reponse = client.post(
         "/notes-frais/etablir", files={"fichier": ("2026.02.28 Boyer 02.pdf", io.BytesIO(b"pdf"), "application/pdf")},

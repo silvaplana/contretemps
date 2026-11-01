@@ -81,6 +81,10 @@ def montant_court(centimes: int) -> str:
     return f"{centimes // 100},{centimes % 100:02d}"
 
 
+def _fin_de_mois(jour: date) -> date:
+    return (jour.replace(day=28) + timedelta(days=4)).replace(day=1) - timedelta(days=1)
+
+
 def _date_du_nom(nom: str) -> date | None:
     """La date écrite dans un nom de fichier (« 2026.02.28 Boyer 02.pdf »,
     « facture_28-02-2026.pdf ») ; None sinon ou si elle est dans le futur."""
@@ -410,7 +414,8 @@ class NotesDeFrais:
         jour = None
         if lu.date:
             try:
-                jour = date.fromisoformat(lu.date)
+                # Un mois seul (« 2026-02 », facture « Février 2026 ») : son dernier jour (Seb, 1er/11).
+                jour = date.fromisoformat(lu.date) if len(lu.date) > 7 else _fin_de_mois(date.fromisoformat(f"{lu.date}-01"))
                 if jour > date.today():
                     jour = None
             except ValueError:
