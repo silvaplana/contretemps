@@ -625,6 +625,12 @@ def test_le_prof_est_reconnu_dans_la_saison_de_la_facture(client, db_session, ec
     note = _etablir(client, tresorier, None)
     assert note["nature"] == "honoraires" and note["personne"]["person_id"] == thomas.id
 
+    # Date illisible (Seb, 1er/11 : Boyer importée « Frais novembre 2026 · ? ») :
+    # on cherche dans les fiches de toutes les saisons, pas seulement la courante.
+    lecteur.lu = {"montant_centimes": 31025, "commercant": "Sophie BOYER", "description": "Cours de février"}
+    note = _etablir(client, tresorier, None)
+    assert note["nature"] == "honoraires" and note["personne"]["nom"] == "Sophie Boyer"
+
 
 def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkeypatch):
     tresorier = ecole["tresorier"]
