@@ -19,7 +19,8 @@ Pièces
   fichiers (ou un zip), ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
   l'école = Honoraires, d'une ou pour une autre personne = sa Note de frais, société = Achat) et la ligne du compte qui la
   paie : même montant et même nom → ligne rattachée, « Payée selon la banque » (« Pas cette ligne » sinon) ; même montant
-  seulement → « C'est payé » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
+  seulement → « C'est payé » ; aucune ligne du montant exact → « Paiement possible » (lignes au même nom, écart affiché, ou
+  un virement qui paie aussi d'autres pièces de la personne) et « C'est ce paiement » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
   Terminé ouvre la revue pièce par pièce (nature, Pour qui ou Fournisseur, montant), le bouton dit « Valider : Payé » ou
   « Valider : À payer » et passe à la suivante. Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
   proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou

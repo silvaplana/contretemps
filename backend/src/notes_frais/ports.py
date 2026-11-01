@@ -163,6 +163,10 @@ class Banque(Protocol):
     def debits(self, db: Session, org_id: int, montant_centimes: int, depuis: date) -> list[OperationBancaire]:
         """Les débits de ce montant (positif) depuis cette date, tous comptes."""
 
+    def tous_debits(self, db: Session, org_id: int, depuis: date) -> list[OperationBancaire]:
+        """Tous les débits depuis cette date, tous comptes (paiement possible
+        à un autre montant, virement groupé)."""
+
     def operation(self, db: Session, org_id: int, operation_id: int) -> OperationBancaire | None: ...
 
     def cloturee(self, db: Session, org_id: int, jour: date) -> bool:

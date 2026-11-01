@@ -212,7 +212,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
                 {n.nature === 'achat' ? '' : `${n.titre} · `}
                 {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
                 {n.depenses.length > 1 ? ` · ${n.depenses.length} dépenses` : ''}
-                {n.paiement_propose ? ' · vu sur le compte' : ''}
+                {n.paiement_propose ? ' · vu sur le compte' : n.paiements_possibles?.length ? ' · paiement possible' : ''}
               </span>
             </span>
             <span className="nf-ligne__droite">
@@ -455,7 +455,7 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
       {natureModifiable && genre === note.nature && raisonProposee(note) && (
         <p className="muted nf-raison">Proposé d’après la pièce : {raisonProposee(note)}</p>
       )}
-      {note && <PaiementVu note={note} onConfirme={(op) => agir(() => api.payee(note.id, op.id))} />}
+      {note && <PaiementVu note={note} onConfirme={(op, aussi) => agir(() => api.payee(note.id, op.id, aussi))} />}
       {note && (
         <PreuveVirement
           note={note}
@@ -562,6 +562,9 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
             <span className="nf-ligne__titre">{note.statut === 'envoyee' ? 'Payée selon la banque' : 'Payée'}</span>
             <span className="muted">
               {note.operation.libelle} · {api.euros(note.operation.montant_centimes)} le {api.dateCourte(note.operation.date)}
+              {-note.operation.montant_centimes !== note.total_centimes
+                ? ` · écart ${-note.operation.montant_centimes - note.total_centimes > 0 ? '+' : ''}${api.euros(-note.operation.montant_centimes - note.total_centimes)}`
+                : ''}
             </span>
           </span>
           {note.detachable && (

@@ -1115,6 +1115,54 @@ def test_achat_deja_paye_par_carte(client, db_session, ecole, monkeypatch):
     assert client.get("/notes-frais/virements", headers=entetes_session(tresorier)).json()["virements"][0]["id"] == note["id"]
 
 
+def _vue_tresorier(client, qui, note):
+    """La pièce telle que la liste du trésorier la montre (propositions comprises)."""
+    notes = client.get(f"/notes-frais/tresorerie?filtre={note['nature']}", headers=entetes_session(qui)).json()["notes"]
+    return next(n for n in notes if n["id"] == note["id"])
+
+
+def test_paiement_possible_meme_nom_autre_montant_ou_virement_groupe(client, db_session, ecole):
+    """Seb, 1er/11 : aucune ligne du montant exact → l'appli cherche quand
+    même. Même nom, autre montant : « paiement possible » avec l'écart, à
+    confirmer. Un virement pour deux factures : la ligne fait la somme des
+    deux pièces de la personne, un toucher rattache les deux."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    entetes = entetes_session(tresorier)
+    thomas = Comptes().create(db_session, ecole_id=org, role="professeur", nom="Thomas", prenom="Marie", email="mt@test.fr")
+    une = _etablir(client, tresorier, "honoraires", contenu=None, person_id=str(thomas.id), date="2025-11-30", montant_centimes="19800")
+    deux = _etablir(client, tresorier, "honoraires", contenu=None, person_id=str(thomas.id), date="2025-12-31", montant_centimes="19800")
+    assert une["paiement_propose"] is None and une["paiements_possibles"] == []
+
+    groupe = _operation(db_session, org, -39600, "2026-01-08", "VIR SEPA MARIE THOMAS")
+    une = _vue_tresorier(client, tresorier, une)
+    assert une["paiement_propose"] is None
+    [possible] = une["paiements_possibles"]
+    assert possible["operation"]["id"] == groupe.id and possible["ecart_centimes"] == 19800
+    assert [a["id"] for a in possible["aussi"]] == [deux["id"]] and possible["aussi"][0]["titre"] == "Honoraires décembre 2025"
+
+    # Un toucher rattache les deux pièces à la même ligne : Payé toutes les deux.
+    paye = client.post(f"/notes-frais/notes/{une['id']}/payee", json={"operation_id": groupe.id, "aussi": [deux["id"]]}, headers=entetes)
+    assert paye.status_code == 200, paye.text
+    assert paye.json()["statut"] == "remboursee" and paye.json()["operation"]["id"] == groupe.id
+    deux = _vue_tresorier(client, tresorier, deux)
+    assert deux["statut"] == "remboursee" and deux["operation"]["id"] == groupe.id
+
+    # Même nom, autre montant, rien à grouper : l'écart est dit, le trésorier décide.
+    achat = _etablir(client, tresorier, "achat", contenu=None, fournisseur="L'Occitane", date="2026-07-01", montant_centimes="27171")
+    ligne = _operation(db_session, org, -76600, "2026-07-03", "CB 0107 L'OCCITANE")
+    _operation(db_session, org, -76600, "2026-07-03", "CB 0107 AMAZON")  # pas son nom : pas proposée
+    achat = _vue_tresorier(client, tresorier, achat)
+    [possible] = achat["paiements_possibles"]
+    assert possible["operation"]["id"] == ligne.id and possible["ecart_centimes"] == 49429 and possible["aussi"] == []
+    paye = client.post(f"/notes-frais/notes/{achat['id']}/payee", json={"operation_id": ligne.id}, headers=entetes)
+    assert paye.status_code == 200 and paye.json()["statut"] == "remboursee"
+    # Une ligne qui n'a ni le montant ni le nom reste refusée.
+    autre = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Castorama", date="2026-07-01", montant_centimes="1000")
+    refus = client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": groupe.id}, headers=entetes)
+    assert refus.status_code == 400
+
+
 def test_categories_sont_les_comptes_de_charges_du_plan(client, db_session, ecole):
     """Seb, 30/10 : une fois le plan comptable là, les catégories en sont les
     comptes de charges ; une pièce garde sa catégorie (son compte)."""

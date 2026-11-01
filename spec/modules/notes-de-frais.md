@@ -234,6 +234,14 @@ date de la pièce, `financier.md` §8.3 bis) :
   ligne est **rattachée toute seule** ; la pièce reste **À valider**, avec « Payée selon la
   banque : libellé, montant, date » dessous et un bouton « Pas cette ligne » ;
 - **montant seul** : proposée (« Vu sur le compte »), un toucher **C'est payé** ;
+- **aucune ligne du montant exact** (Seb, 1er novembre : Thomas, deux factures de 198 € payées par
+  un virement de 396 €) : l'appli montre les débits **au nom** de la personne ou du fournisseur pas
+  encore rattachés, trois au plus, « Paiement possible : libellé, montant, date · écart +100,00 € »
+  et un bouton **C'est ce paiement** ; si la ligne fait la somme de cette pièce et d'une ou deux
+  autres pièces de la même personne encore à payer, elle dit « paie aussi : Honoraires décembre 2025 »
+  et le toucher rattache toutes ces pièces à la ligne. Une ligne à un autre montant n'est acceptée
+  que si elle porte le nom ; l'écart reste visible sur la fiche (« Payée … · écart +494,29 € »).
+  Le trésorier décide, l'appli ne rattache jamais seule à un autre montant ;
 - rien : la pièce reste À valider, puis suit le circuit des virements.
 **Chaque pièce garde la validation d'un trésorier** (ou du Super User ; Seb, 31 octobre soir) : rien
 ne passe Payé sans son toucher. Le bouton principal dit ce qui va se passer : **« Valider : Payé »**

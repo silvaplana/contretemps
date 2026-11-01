@@ -150,23 +150,44 @@ export function PreuveVirement({ note, onPaye }) {
 
 // « Vu sur le compte » (financier.md §8.3 bis) : l'opération qui semble payer
 // la pièce, proposée par l'appli ; rien n'est rattaché sans « Confirmer ».
+// Aucune ligne du montant exact (Seb, 1er/11) : `paiements_possibles`, les
+// lignes au même nom avec l'écart, et les autres pièces qu'un même virement
+// paierait (« paie aussi ») ; « C'est ce paiement » rattache tout d'un coup.
 export function PaiementVu({ note, onConfirme }) {
   const op = note.paiement_propose
-  if (!op) return null
-  return (
-    <div className="nf-ligne nf-paiement-vu">
+  if (op) {
+    return (
+      <div className="nf-ligne nf-paiement-vu">
+        <span className="nf-ligne__corps">
+          <span className="nf-ligne__titre">Vu sur le compte</span>
+          <span className="muted">
+            {op.libelle} · {api.euros(op.montant_centimes)} le {api.dateCourte(op.date)}
+            {op.compte ? ` · ${op.compte}` : ''}
+          </span>
+        </span>
+        <button type="button" className="btn btn--primary" onClick={() => onConfirme(op, [])}>
+          C’est payé
+        </button>
+      </div>
+    )
+  }
+  if (!note.paiements_possibles?.length) return null
+  return note.paiements_possibles.map((p) => (
+    <div key={p.operation.id} className="nf-ligne nf-paiement-vu">
       <span className="nf-ligne__corps">
-        <span className="nf-ligne__titre">Vu sur le compte</span>
+        <span className="nf-ligne__titre">Paiement possible</span>
         <span className="muted">
-          {op.libelle} · {api.euros(op.montant_centimes)} le {api.dateCourte(op.date)}
-          {op.compte ? ` · ${op.compte}` : ''}
+          {p.operation.libelle} · {api.euros(p.operation.montant_centimes)} le {api.dateCourte(p.operation.date)}
+          {p.aussi.length
+            ? ` · paie aussi : ${p.aussi.map((a) => a.titre).join(', ')}`
+            : ` · écart ${p.ecart_centimes > 0 ? '+' : ''}${api.euros(p.ecart_centimes)}`}
         </span>
       </span>
-      <button type="button" className="btn btn--primary" onClick={() => onConfirme(op)}>
-        C’est payé
+      <button type="button" className="btn btn--secondary" onClick={() => onConfirme(p.operation, p.aussi.map((a) => a.id))}>
+        C’est ce paiement
       </button>
     </div>
-  )
+  ))
 }
 
 // Champs du RIB (Profil > Mon RIB et fenêtre d'envoi, spec §4.4 et §4.5).

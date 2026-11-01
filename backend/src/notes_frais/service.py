@@ -15,6 +15,7 @@ import logging
 import re
 import unicodedata
 import zipfile
+from collections.abc import Sequence
 from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -683,6 +684,7 @@ class NotesDeFrais:
             ligne["paiement_propose"] = operation and self._operation_dict(operation)
             ligne["operation"] = rattachee and self._operation_dict(rattachee)
             ligne["operation_id"] = note.bank_operation_id
+            ligne["paiements_possibles"] = [] if rattachee or operation else self.paiements_possibles(db, note, prises)
             ligne["detachable"] = rattachee is not None and self._detachable(db, note)
             # Saison de la pièce clôturée au Financier : rangée dans la saison en cours.
             ligne["saison_cloturee"] = bool(self.ports.banque) and self.ports.banque.cloturee(db, note.org_id, self._date_docs(note))
@@ -1462,6 +1464,53 @@ class NotesDeFrais:
             return None
         return min(candidates, key=lambda o: (not self._au_nom_de(db, note, o), abs((o.date - reference).days)))
 
+    def paiements_possibles(self, db: Session, note: NoteFrais, prises: set[int]) -> list[dict]:
+        """Aucune ligne du montant exact (Seb, 1er/11) : les débits au nom de
+        la personne (ou du fournisseur) pas encore rattachés, avec l'écart ;
+        et si la ligne fait la somme de cette pièce et d'autres pièces de la
+        même personne encore à payer, ces pièces (« paie aussi »). Jamais
+        rattaché sans « C'est ce paiement »."""
+        banque, total = self.ports.banque, self.total(note)
+        if banque is None or total <= 0 or note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+            return []
+        reference = min((d.date for d in note.depenses), default=note.envoyee_le.date())
+        candidates = [
+            o for o in banque.tous_debits(db, note.org_id, reference - timedelta(days=45))
+            if o.id not in prises and -o.montant_centimes != total and self._au_nom_de(db, note, o)
+        ]
+        if not candidates:
+            return []
+        autres = [
+            n for n in db.scalars(
+                select(NoteFrais).where(
+                    NoteFrais.org_id == note.org_id, NoteFrais.id != note.id, NoteFrais.bank_operation_id.is_(None),
+                    NoteFrais.statut.in_((ENVOYEE,) + EN_PAIEMENT), NoteFrais.don.is_(False),
+                )
+            )
+            if n.nature == note.nature and (n.person_id == note.person_id if note.nature != ACHAT else n.supplier == note.supplier)
+        ]
+        resultat = []
+        for operation in sorted(candidates, key=lambda o: (abs(-o.montant_centimes - total), abs((o.date - reference).days)))[:3]:
+            ecart = -operation.montant_centimes - total
+            aussi = self._completent(autres, ecart) if ecart > 0 else []
+            resultat.append({
+                "operation": self._operation_dict(operation), "ecart_centimes": ecart,
+                "aussi": [{"id": n.id, "titre": n.titre, "total_centimes": self.total(n)} for n in aussi],
+            })
+        return resultat
+
+    def _completent(self, notes: list[NoteFrais], ecart: int) -> list[NoteFrais]:
+        """Les pièces (une, sinon deux) dont le total fait exactement l'écart."""
+        totaux = [(n, self.total(n)) for n in notes if self.total(n) > 0]
+        for n, t in totaux:
+            if t == ecart:
+                return [n]
+        for i, (a, ta) in enumerate(totaux):
+            for b, tb in totaux[i + 1:]:
+                if ta + tb == ecart:
+                    return [a, b]
+        return []
+
     def _au_nom_de(self, db: Session, note: NoteFrais, operation: OperationBancaire) -> bool:
         """Le libellé de la ligne du compte porte le nom du bénéficiaire (ou du fournisseur)."""
         noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, note)} {note.supplier or ''}")))
@@ -1498,25 +1547,30 @@ class NotesDeFrais:
         db.refresh(note)
         self._apres_paiement(db, membre, note, prevenir=prevenir)
 
-    def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int) -> NoteFrais:
+    def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int, aussi: Sequence[int] = ()) -> NoteFrais:
         """Confirmer l'opération vue sur le compte : la pièce y est rattachée
-        et passe Payé (aussi tout droit depuis À valider : déjà payé)."""
+        et passe Payé (aussi tout droit depuis À valider : déjà payé). Autre
+        montant (Seb, 1er/11) : accepté si la ligne porte le nom de la
+        personne, l'écart reste visible ; `aussi` : les autres pièces payées
+        par le même virement, rattachées en même temps."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
-        if note.don or note.statut not in (ENVOYEE,) + EN_PAIEMENT:
+        notes = [note] + [self._note(db, membre.org_id, i) for i in aussi]
+        if any(n.don or n.statut not in (ENVOYEE,) + EN_PAIEMENT for n in notes):
             raise ValueError("Cette pièce n'est pas à payer.")
         operation = self.ports.banque.operation(db, membre.org_id, operation_id) if self.ports.banque else None
         if operation is None:
             raise LookupError("Opération introuvable sur les comptes.")
-        if operation.montant_centimes != -self.total(note):
+        if operation.montant_centimes != -sum(self.total(n) for n in notes) and not self._au_nom_de(db, note, operation):
             raise ValueError("Le montant de l'opération n'est pas celui de la pièce.")
         if operation_id in self._operations_prises(db, membre.org_id):
             raise ValueError("Cette opération est déjà rattachée à une autre pièce.")
-        deja_payee = note.statut == ENVOYEE
-        if deja_payee:
-            self._exiger_complete(note)
-        # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
-        self._rattacher(db, membre, note, operation_id, prevenir=not deja_payee)
+        for n in notes:
+            deja_payee = n.statut == ENVOYEE
+            if deja_payee:
+                self._exiger_complete(n)
+            # Payée avant d'être dans l'appli (§7 quinquies) : rien à annoncer.
+            self._rattacher(db, membre, n, operation_id, prevenir=not deja_payee)
         return note
 
     def revenir(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
