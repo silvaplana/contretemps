@@ -124,3 +124,26 @@ def test_commentaire_et_rouge_par_le_super_user(db_session, monde):
     # Le professeur ne voit ni le commentaire ni le rouge.
     fiche_prof = DonneesEcole().executer(db_session, monde["prof"], e, "fiche_eleve", {"eleve_id": leon.id})
     assert "Rappeler" not in fiche_prof and "rouge" not in fiche_prof
+
+
+def test_choregraphie_sur_plusieurs_cours(db_session, monde):
+    """Seb, 1er novembre : une chorégraphie peut être dansée par plusieurs cours."""
+    from assistant.donnees import DonneesEcole
+
+    m, e, eveil = monde["m"], monde["ecole"], monde["eveil"]
+    adultes = CoursService().create(db_session, ecole_id=e, nom="Contempo Adulte")
+    _, carte = m.proposer(db_session, monde["admin"], e, 1, {"titre": "x", "changements": [
+        {"type": "creer_choregraphie", "cours_id": eveil.id, "champs": {"nom": "Begging you"}, "cours_ids": [adultes.id]},
+    ]})
+    assert carte["lignes"] == ["Nouvelle chorégraphie « Begging you » (Éveil, Contempo Adulte)"]
+    m.executer(db_session, monde["admin"], e, 1, carte["jeton"], [0])
+    texte = DonneesEcole().executer(db_session, monde["admin"], e, "lister_choregraphies", {"cours_id": adultes.id})
+    assert texte.startswith("- Begging you (Éveil, Contempo Adulte)")
+
+    ch_id = m.choregraphies.list(db_session, adultes.id)[0].id
+    _, carte = m.proposer(db_session, monde["admin"], e, 1, {"titre": "x", "changements": [
+        {"type": "modifier_choregraphie", "choregraphie_id": ch_id, "cours_ids": [adultes.id]},
+    ]})
+    assert carte["lignes"] == ["Chorégraphie « Begging you » (Éveil, Contempo Adulte) : cours : Contempo Adulte"]
+    m.executer(db_session, monde["admin"], e, 1, carte["jeton"], [0])
+    assert m.choregraphies.list(db_session, eveil.id) == []

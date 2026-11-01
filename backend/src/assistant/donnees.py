@@ -20,7 +20,7 @@ import datetime as dt
 from collections import defaultdict
 from dataclasses import dataclass
 
-from choregraphies.models import Choregraphie, choregraphies_eleves, choregraphies_videos
+from choregraphies.models import Choregraphie, choregraphies_courses, choregraphies_eleves, choregraphies_videos
 from comptes import roles
 from comptes.models import Compte
 from cours.models import Cours, cours_professeurs, eleves_cours
@@ -408,18 +408,24 @@ class DonneesEcole:
 
     def _lister_choregraphies(self, db: Session, p: Perimetre, cours_id=None) -> str:
         cours = {c.id: c for c in self._cours(db, p)}
-        requete = select(Choregraphie).where(Choregraphie.cours_id.in_(cours or {-1}))
+        # Une chorégraphie peut être dansée par plusieurs cours.
+        cours_de: dict[int, list[int]] = defaultdict(list)
+        for ch_id, c_id in db.execute(
+            select(choregraphies_courses.c.choregraphie_id, choregraphies_courses.c.cours_id)
+            .where(choregraphies_courses.c.cours_id.in_(cours or {-1}))
+        ):
+            cours_de[ch_id].append(c_id)
         if cours_id is not None:
-            requete = requete.where(Choregraphie.cours_id == cours_id)
+            cours_de = {ch_id: ids for ch_id, ids in cours_de.items() if cours_id in ids}
         lignes = []
-        for ch in db.scalars(requete):
+        for ch in db.scalars(select(Choregraphie).where(Choregraphie.id.in_(cours_de or {-1})).order_by(Choregraphie.id)):
             eleves = list(db.scalars(
                 select(Compte).join(choregraphies_eleves, choregraphies_eleves.c.eleve_id == Compte.id)
                 .where(choregraphies_eleves.c.choregraphie_id == ch.id)
             ))
             videos = db.scalar(select(func.count()).select_from(choregraphies_videos).where(choregraphies_videos.c.choregraphie_id == ch.id))
             lignes.append(
-                f"- {ch.nom} ({cours[ch.cours_id].nom}) : {len(eleves)} élèves ({', '.join(_nom(e) for e in eleves)}) ; "
+                f"- {ch.nom} ({', '.join(cours[i].nom for i in cours_de[ch.id])}) : {len(eleves)} élèves ({', '.join(_nom(e) for e in eleves)}) ; "
                 f"costume : {ch.costume or '?'} ; répétition : {ch.horaire_repetition or '?'} ; {videos} vidéos"
             )
         return "\n".join(lignes) or "Aucune chorégraphie."

@@ -104,7 +104,11 @@ export default function UsageVideoSection({ ecoleId, choregraphies = [], cours =
     const choregraphie = choregraphies.find((ch) => ch.videos.some((v) => v.id === videoId))
     return {
       choregraphie: choregraphie?.nom ?? null,
-      cours: cours.find((c) => c.id === choregraphie?.coursId)?.nom ?? null,
+      cours:
+        (choregraphie?.coursIds ?? [])
+          .map((id) => cours.find((c) => c.id === id)?.nom)
+          .filter(Boolean)
+          .join(', ') || null,
     }
   }
 

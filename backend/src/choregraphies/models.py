@@ -16,6 +16,17 @@ choregraphies_eleves = Table(
     Column("eleve_id", ForeignKey("comptes.id"), primary_key=True),
 )
 
+# Tous les cours d'une chorégraphie (Seb, 1er novembre : une chorégraphie
+# peut être dansée par plusieurs cours). `choregraphies.cours_id` reste le
+# premier d'entre eux : il range la chorégraphie dans sa saison
+# (saisons/portee.py) et dans les sauvegardes.
+choregraphies_courses = Table(
+    "choregraphies_courses",
+    Base.metadata,
+    Column("choregraphie_id", ForeignKey("choregraphies.id"), primary_key=True),
+    Column("cours_id", ForeignKey("cours.id"), primary_key=True, index=True),
+)
+
 # Vidéos d'une chorégraphie, dans l'ordre choisi. C'est la chorégraphie qui
 # référence ses vidéos : le module `videos`, générique, ne sait rien d'elle
 # (voir videos/models.py). Une vidéo n'appartient qu'à une chorégraphie.
@@ -32,8 +43,9 @@ class Choregraphie(Base):
     __tablename__ = "choregraphies"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    # Le cours auquel la chorégraphie est associée dès sa création : il
-    # désigne les professeurs qui peuvent la gérer (spec §5.3).
+    # Le premier cours de la chorégraphie, choisi dès sa création ; tous
+    # ses cours (celui-ci compris) sont dans `choregraphies_courses` et
+    # désignent les professeurs qui peuvent la gérer (spec §5.3).
     cours_id: Mapped[int] = mapped_column(ForeignKey("cours.id"), nullable=False, index=True)
     nom: Mapped[str] = mapped_column(String(150), nullable=False)
     horaire_repetition: Mapped[str | None] = mapped_column(String(100), nullable=True)

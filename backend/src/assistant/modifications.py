@@ -68,8 +68,8 @@ TYPES = {
     "modifier_cours": "cours_id, champs",
     "ajouter_professeur_cours": "cours_id, professeur_id",
     "retirer_professeur_cours": "cours_id, professeur_id",
-    "creer_choregraphie": "cours_id, champs (nom, horaire_repetition, costume), eleve_ids",
-    "modifier_choregraphie": "choregraphie_id, champs, eleve_ids (facultatif : remplace la liste)",
+    "creer_choregraphie": "cours_id, champs (nom, horaire_repetition, costume), eleve_ids, cours_ids (facultatif : autres cours qui la dansent)",
+    "modifier_choregraphie": "choregraphie_id, champs, eleve_ids (facultatif : remplace la liste), cours_ids (facultatif : remplace la liste des cours)",
 }
 
 _ENTIER = {"type": "integer"}
@@ -540,20 +540,37 @@ class Modifications:
         if not nom:
             raise Refus("nom de la chorégraphie obligatoire")
         eleves = self._eleves_choregraphie(db, ecole_id, ch.get("eleve_ids") or [])
+        autres = self._cours_choregraphie(db, ecole_id, cours, ch.get("cours_ids") or [])
+        autres = [c for c in autres if c.id != cours.id]
         details = [f"{CHAMPS_CHOREGRAPHIE[c]} {_valeur(v)}" for c, v in champs.items()]
         if eleves:
             details.append(f"{len(eleves)} élèves : " + ", ".join(_nom(e) for e in eleves))
-        cours_id, eleve_ids = cours.id, [e.id for e in eleves]
+        cours_id, eleve_ids, autres_ids = cours.id, [e.id for e in eleves], [c.id for c in autres]
+        noms_cours = ", ".join(c.nom for c in [cours, *autres])
         return Ligne(
-            f"Nouvelle chorégraphie « {nom} » ({cours.nom})" + (f" : {' ; '.join(details)}" if details else ""),
-            lambda db: self.choregraphies.create(db, cours_id, nom, eleve_ids=eleve_ids, **champs),
+            f"Nouvelle chorégraphie « {nom} » ({noms_cours})" + (f" : {' ; '.join(details)}" if details else ""),
+            lambda db: self.choregraphies.create(
+                db, cours_id, nom, eleve_ids=eleve_ids, autres_cours_ids=autres_ids, **champs
+            ),
         )
+
+    def _cours_choregraphie(self, db: Session, ecole_id: int, premier: Cours, ids) -> list[Cours]:
+        """Les cours d'une chorégraphie : de l'école, et de la saison de son premier cours."""
+        if not isinstance(ids, list):
+            raise Refus("cours_ids : une liste de numéros")
+        cours = [self._un_cours(db, ecole_id, i) for i in dict.fromkeys(ids)]
+        for c in cours:
+            if c.saison_id != premier.saison_id:
+                raise Refus(f"{c.nom} est d'une autre saison")
+        return cours
 
     def _modifier_choregraphie(self, db: Session, ecole_id: int, ch: dict) -> Ligne:
         chore, cours = self._choregraphie(db, ecole_id, ch.get("choregraphie_id"))
         champs = {
             c: (None if v is None else str(v).strip())
-            for c, v in self._champs(ch, CHAMPS_CHOREGRAPHIE, obligatoire="eleve_ids" not in ch).items()
+            for c, v in self._champs(
+                ch, CHAMPS_CHOREGRAPHIE, obligatoire="eleve_ids" not in ch and "cours_ids" not in ch
+            ).items()
         }
         if "nom" in champs and not champs["nom"]:
             raise Refus("nom de la chorégraphie vide")
@@ -569,10 +586,18 @@ class Modifications:
                 details.append("ajouter " + ", ".join(ajoutes))
             if retires:
                 details.append("retirer " + ", ".join(retires))
+        avant_cours = self.choregraphies.cours_par_choregraphie(db, [chore])[chore.id]
+        cours_ids = None
+        if ch.get("cours_ids"):
+            nouveaux = self._cours_choregraphie(db, ecole_id, cours, ch.get("cours_ids"))
+            if [c.id for c in nouveaux] != avant_cours:
+                cours_ids = [c.id for c in nouveaux]
+                details.append("cours : " + ", ".join(c.nom for c in nouveaux))
         if not details:
             raise Refus("rien ne change")
         chore_id = chore.id
+        noms_avant = ", ".join(c.nom for c in (db.get(Cours, i) for i in avant_cours) if c)
         return Ligne(
-            f"Chorégraphie « {chore.nom} » ({cours.nom}) : " + " ; ".join(details),
-            lambda db: self.choregraphies.update(db, chore_id, eleve_ids=eleve_ids, **champs),
+            f"Chorégraphie « {chore.nom} » ({noms_avant}) : " + " ; ".join(details),
+            lambda db: self.choregraphies.update(db, chore_id, eleve_ids=eleve_ids, cours_ids=cours_ids, **champs),
         )

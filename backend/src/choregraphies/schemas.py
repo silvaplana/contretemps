@@ -11,14 +11,17 @@ class ChoregraphieCreation(BaseModel):
     horaire_repetition: str | None = None
     costume: str | None = None
     eleve_ids: list[int] = []
+    # Les autres cours qui dansent la chorégraphie, en plus de celui de l'URL.
+    autres_cours_ids: list[int] = []
 
 
 class ChoregraphieModification(BaseModel):
     nom: str | None = None
     horaire_repetition: str | None = None
     costume: str | None = None
-    # Changer de cours : il faut pouvoir gérer l'ancien ET le nouveau.
-    cours_id: int | None = None
+    # Fourni : remplace la liste des cours, le premier en tête. Il faut
+    # pouvoir gérer chaque cours ajouté ou retiré.
+    cours_ids: list[int] | None = None
     # Fourni : remplace la liste des élèves participants.
     eleve_ids: list[int] | None = None
 
@@ -27,7 +30,9 @@ class ChoregraphieSortie(BaseModel):
     """Une chorégraphie complète : ses élèves et ses vidéos, dans l'ordre."""
 
     id: int
+    # Le premier cours ; `cours_ids` : tous ses cours, celui-ci en tête.
     cours_id: int
+    cours_ids: list[int] = []
     nom: str
     horaire_repetition: str | None = None
     costume: str | None = None

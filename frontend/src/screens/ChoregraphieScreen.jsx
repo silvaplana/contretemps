@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import * as choregraphiesApi from '../api/choregraphies.js'
 import Modal from '../components/Modal.jsx'
 import { isAdmin } from '../data/roles.js'
+import CasesCours from './choregraphie/CasesCours.jsx'
 import ChoixElevesPanel from './choregraphie/ChoixElevesPanel.jsx'
 import ChoregraphieDetailScreen from './choregraphie/ChoregraphieDetailScreen.jsx'
 import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
@@ -15,7 +16,8 @@ import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
 // - Les vidéos se gèrent ici (plus d'onglet Vidéo) : chacun peut en ajouter
 //   une dans une chorégraphie.
 // - Créer, modifier, supprimer une chorégraphie, modifier ou supprimer une
-//   vidéo : un admin, ou un professeur du cours de la chorégraphie. Le
+//   vidéo : un admin, ou un professeur de l'un de ses cours (une
+//   chorégraphie peut être dansée par plusieurs cours, Seb 1er novembre). Le
 //   serveur revérifie tout (backend/src/choregraphies/receiver.py).
 //
 // `list`/`setList` (toutes les chorégraphies de l'école) viennent de App.jsx.
@@ -38,7 +40,8 @@ export default function ChoregraphieScreen({ ecoleId, cours, list, setList, elev
   ]
   const correspond = (c) =>
     Boolean(c) && (!discipline || c.discipline === discipline) && (!niveau || c.niveau === niveau)
-  const filtrees = list.filter((ch) => correspond(coursParId.get(ch.coursId)))
+  const filtrees = list.filter((ch) => ch.coursIds.some((id) => correspond(coursParId.get(id))))
+  const peutGererChoregraphie = (ch) => ch.coursIds.some((id) => peutGerer(coursParId.get(id)))
 
   const selected = list.find((ch) => ch.id === selectedId) ?? null
 
@@ -68,13 +71,13 @@ export default function ChoregraphieScreen({ ecoleId, cours, list, setList, elev
     return (
       <ChoregraphieDetailScreen
         choregraphie={selected}
-        cours={coursParId.get(selected.coursId) ?? null}
+        coursDeLaChoregraphie={selected.coursIds.map((id) => coursParId.get(id)).filter(Boolean)}
         coursGerables={coursGerables}
         tousLesCours={cours}
         eleves={eleves}
         ecoleId={ecoleId}
         utilisateurId={activeUser.id}
-        peutModifier={peutGerer(coursParId.get(selected.coursId))}
+        peutModifier={peutGererChoregraphie(selected)}
         erreur={erreur}
         onBack={() => {
           setErreur('')
@@ -172,11 +175,14 @@ export default function ChoregraphieScreen({ ecoleId, cours, list, setList, elev
           <NewChoregraphieForm
             coursGerables={coursGerables}
             // Le filtre en cours propose déjà son cours, s'il n'y en a qu'un.
-            coursPropose={coursGerables.filter(correspond).length === 1 ? coursGerables.filter(correspond)[0].id : ''}
+            coursPropose={coursGerables.filter(correspond).length === 1 ? [coursGerables.filter(correspond)[0].id] : []}
             eleves={eleves}
             tousLesCours={cours}
-            onCreate={async ({ coursId, ...donnees }) => {
-              const nouvelle = await choregraphiesApi.creer(coursId, donnees)
+            onCreate={async ({ coursIds, ...donnees }) => {
+              const nouvelle = await choregraphiesApi.creer(coursIds[0], {
+                ...donnees,
+                autresCoursIds: coursIds.slice(1),
+              })
               // Idempotent : StrictMode (dev) peut l'appliquer 2 fois.
               setList((liste) => (liste.some((ch) => ch.id === nouvelle.id) ? liste : [...liste, nouvelle]))
               setSelectedId(nouvelle.id)
@@ -191,8 +197,9 @@ export default function ChoregraphieScreen({ ecoleId, cours, list, setList, elev
 
 function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours, onCreate }) {
   const [nom, setNom] = useState('')
-  // Une chorégraphie est associée à un cours dès sa création (spec §5.3).
-  const [coursId, setCoursId] = useState(coursPropose)
+  // Une chorégraphie est associée à un ou plusieurs cours dès sa création
+  // (spec §5.3), cochés dans l'ordre des cours.
+  const [coursIds, setCoursIds] = useState(coursPropose)
   const [eleveIds, setEleveIds] = useState([])
   const [choixEleves, setChoixEleves] = useState(false)
   const [costume, setCostume] = useState('')
@@ -206,7 +213,8 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
     setEnCours(true)
     setErreur('')
     try {
-      await onCreate({ coursId: Number(coursId), nom, eleveIds, costume, horaireRepetition })
+      const ordonnes = coursGerables.map((c) => c.id).filter((id) => coursIds.includes(id))
+      await onCreate({ coursIds: ordonnes, nom, eleveIds, costume, horaireRepetition })
     } catch (err) {
       setErreur(err.message)
       setEnCours(false)
@@ -218,15 +226,12 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
       <label htmlFor="new-choregraphie-nom">Nom</label>
       <input id="new-choregraphie-nom" value={nom} onChange={(e) => setNom(e.target.value)} />
 
-      <label htmlFor="new-choregraphie-cours">Cours</label>
-      <select id="new-choregraphie-cours" value={coursId} onChange={(e) => setCoursId(e.target.value)}>
-        <option value="">Choisir un cours…</option>
-        {coursGerables.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.nom}
-          </option>
-        ))}
-      </select>
+      <label>Cours</label>
+      <CasesCours
+        cours={coursGerables}
+        coches={coursIds}
+        onChange={setCoursIds}
+      />
 
       <label>Élèves</label>
       <button type="button" className="btn btn--secondary" onClick={() => setChoixEleves(true)}>
@@ -255,7 +260,7 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
       <button
         type="button"
         className="btn btn--primary btn--block"
-        disabled={!nom || !coursId || enCours}
+        disabled={!nom || coursIds.length === 0 || enCours}
         onClick={valider}
       >
         Créer
@@ -265,7 +270,7 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
         <ChoixElevesPanel
           eleves={eleves}
           cours={tousLesCours}
-          coursInitial={coursId ? Number(coursId) : null}
+          coursInitial={coursIds[0] ?? null}
           choisis={eleveIds}
           onValider={(ids) => {
             setEleveIds(ids)

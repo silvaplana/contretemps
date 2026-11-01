@@ -394,6 +394,7 @@ _SUPPRESSIONS = [
     f"DELETE FROM presences_profs WHERE seance_id IN (SELECT id FROM seances_presence WHERE cours_id IN ({_COURS})) OR professeur_id IN ({_COMPTES})",
     f"DELETE FROM seances_presence WHERE cours_id IN ({_COURS})",
     f"DELETE FROM choregraphies_eleves WHERE choregraphie_id IN (SELECT id FROM choregraphies WHERE cours_id IN ({_COURS})) OR eleve_id IN ({_COMPTES})",
+    f"DELETE FROM choregraphies_courses WHERE choregraphie_id IN (SELECT id FROM choregraphies WHERE cours_id IN ({_COURS})) OR cours_id IN ({_COURS})",
     f"DELETE FROM choregraphies_videos WHERE choregraphie_id IN (SELECT id FROM choregraphies WHERE cours_id IN ({_COURS})) OR video_id IN (SELECT id FROM videos WHERE {_VIDEOS})",
     f"DELETE FROM televersements_video WHERE video_id IN (SELECT id FROM videos WHERE {_VIDEOS})",
     f"DELETE FROM videos WHERE {_VIDEOS}",
