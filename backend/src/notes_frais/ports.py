@@ -78,8 +78,10 @@ class Annuaire(Protocol):
     def tresoriers(self, db: Session, org_id: int) -> list[Personne]:
         """Les trésoriers actuels de l'organisation."""
 
-    def toutes(self, db: Session, org_id: int) -> list[Personne]:
-        """Toutes les personnes actuelles de l'organisation, par nom."""
+    def toutes(self, db: Session, org_id: int, le: date | None = None) -> list[Personne]:
+        """Toutes les personnes actuelles de l'organisation, par nom ; `le` :
+        celles de la période qui contient ce jour (le prof d'une facture de
+        l'an dernier), à défaut les actuelles."""
 
     def organisation(self, db: Session, org_id: int) -> Organisation: ...
 

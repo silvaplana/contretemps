@@ -68,7 +68,9 @@ def membre_appelant(
 
 
 def _personne(db: Session, compte: Compte) -> Personne:
-    role = compte.role_principal if roles.noms_roles(compte) else ""
+    # Un prof qui est aussi admin reste un prof : c'est lui qu'on paie en
+    # honoraires (Seb, 31/10).
+    role = roles.PROFESSEUR if roles.is_prof(compte) else compte.role_principal if roles.noms_roles(compte) else ""
     return Personne(
         person_id=personne_id(db, compte),
         nom=nom_affiche(compte),
@@ -78,9 +80,26 @@ def _personne(db: Session, compte: Compte) -> Personne:
     )
 
 
+def _saison_contenant(db: Session, org_id: int, le):
+    """La saison de l'école qui contient ce jour ; None sans jour ou hors de
+    toute saison."""
+    from saisons.models import Saison
+
+    if le is None:
+        return None
+    with toutes_saisons(db):
+        return db.scalar(
+            select(Saison).where(Saison.ecole_id == org_id, Saison.date_debut <= le, Saison.date_fin >= le)
+            .order_by(Saison.date_debut.desc())
+        )
+
+
 class AnnuaireContretemps:
-    def _comptes_courants(self, db: Session, ecole_id: int) -> list[Compte]:
-        saison = _saison_courante(db, ecole_id)
+    def _comptes_courants(self, db: Session, ecole_id: int, le=None) -> list[Compte]:
+        """Les fiches de la saison courante ; `le` : celles de la saison qui
+        contient ce jour, si elle existe."""
+        contenant = _saison_contenant(db, ecole_id, le)
+        saison = contenant.id if contenant is not None else _saison_courante(db, ecole_id)
         with toutes_saisons(db):
             return list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id, Compte.saison_id == saison)))
 
@@ -104,8 +123,8 @@ class AnnuaireContretemps:
     def tresoriers(self, db: Session, org_id: int) -> list[Personne]:
         return [_personne(db, c) for c in self._comptes_courants(db, org_id) if roles.is_tresorier(c)]
 
-    def toutes(self, db: Session, org_id: int) -> list[Personne]:
-        return sorted((_personne(db, c) for c in self._comptes_courants(db, org_id)), key=lambda p: p.nom.casefold())
+    def toutes(self, db: Session, org_id: int, le=None) -> list[Personne]:
+        return sorted((_personne(db, c) for c in self._comptes_courants(db, org_id, le)), key=lambda p: p.nom.casefold())
 
     def organisation(self, db: Session, org_id: int) -> Organisation:
         from ecoles.models import Ecole
@@ -186,15 +205,7 @@ class ClasseurContretemps:
         """La saison qui contient la date de la pièce, si on peut y écrire
         (la courante, ou une ancienne rouverte aux modifications) ; None :
         la saison en cours."""
-        from saisons.models import Saison
-
-        if le is None:
-            return None
-        with toutes_saisons(db):
-            saison = db.scalar(
-                select(Saison).where(Saison.ecole_id == org_id, Saison.date_debut <= le, Saison.date_fin >= le)
-                .order_by(Saison.date_debut.desc())
-            )
+        saison = _saison_contenant(db, org_id, le)
         if saison is None or (saison.id != _saison_courante(db, org_id) and not saison.ouverte):
             return None
         return saison.id

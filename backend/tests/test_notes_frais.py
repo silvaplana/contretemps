@@ -561,6 +561,35 @@ def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecol
     assert client.get(f"/notes-frais/pieces/{piece['id']}", headers=entetes_session(tresorier)).status_code == 200
 
 
+def test_le_prof_est_reconnu_dans_la_saison_de_la_facture(client, db_session, ecole, monkeypatch):
+    """Seb, 31/10 : des factures de 2025-2026 importées alors que 2026-2027 est
+    la saison en cours partaient en notes de frais. Le prof se cherche dans
+    les fiches de la saison de la facture (sa date), pas seulement dans la
+    saison en cours ; et un prof qui est aussi admin reste un prof."""
+    from saisons.models import Saison
+
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    passee = Saison(ecole_id=org, nom="2025-2026", date_debut=date(2025, 9, 1), date_fin=date(2026, 8, 31))
+    db_session.add(passee)
+    db_session.commit()
+    comptes = Comptes()
+    boyer = comptes.create(db_session, ecole_id=org, role="professeur", nom="Boyer", prenom="Sophie", email="sb@test.fr")
+    boyer.saison_id = passee.id  # prof l'an dernier seulement
+    thomas = comptes.create(db_session, ecole_id=org, role="admin", nom="Thomas", prenom="Marie", email="mt@test.fr")
+    comptes.ajouter_role(db_session, thomas, roles.PROFESSEUR)
+    db_session.commit()
+    lecteur = LecteurFacture(date="2026-03-10", montant_centimes=94800, commercant="Sophie BOYER", description="Cours de février")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+
+    note = _etablir(client, tresorier, None)
+    assert note["nature"] == "honoraires" and note["personne"]["nom"] == "Sophie Boyer"
+
+    lecteur.lu = {"date": "2026-10-15", "montant_centimes": 39600, "commercant": "Marie THOMAS", "description": "Cours"}
+    note = _etablir(client, tresorier, None)
+    assert note["nature"] == "honoraires" and note["personne"]["person_id"] == thomas.id
+
+
 def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkeypatch):
     tresorier = ecole["tresorier"]
     prof = Comptes().create(

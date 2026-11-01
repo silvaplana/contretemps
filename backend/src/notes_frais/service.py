@@ -775,9 +775,9 @@ class NotesDeFrais:
             personne = self._personne_de_l_org(db, membre, person_id)
         elif lu.get("emetteur_personne") is False:
             # Une société facture : la pièce est à celui à qui elle est adressée.
-            personne = self._reconnaitre_personne(db, membre, lu.get("client") or "")
+            personne = self._reconnaitre_personne(db, membre, lu.get("client") or "", jour)
         else:
-            personne = self._reconnaitre_personne(db, membre, f"{emetteur or ''} {lu.get('description') or ''}")
+            personne = self._reconnaitre_personne(db, membre, f"{emetteur or ''} {lu.get('description') or ''}", jour)
         if nature is None:
             # Seb, 31/10 : seul un prof de l'école donne des honoraires ; un
             # extérieur qui facture, c'est une note de frais à son nom.
@@ -1055,16 +1055,16 @@ class NotesDeFrais:
             raise LookupError("Personne inconnue dans cette organisation.")
         return personne
 
-    def _reconnaitre_personne(self, db: Session, membre: Membre, texte: str) -> Personne | None:
+    def _reconnaitre_personne(self, db: Session, membre: Membre, texte: str, le: date | None = None) -> Personne | None:
         """Un nom lu sur la pièce (émetteur d'une note d'honoraires, client
-        d'une facture, bénéficiaire d'un virement) rapproché d'une fiche ; en
-        cas de doute, None."""
+        d'une facture, bénéficiaire d'un virement) rapproché d'une fiche, de
+        la saison de la pièce (`le`) ou d'aujourd'hui ; en cas de doute, None."""
         texte = _sans_accents(texte or "")
         if not texte.strip():
             return None
         mots = set(re.findall(r"[a-z]+", texte))
         trouvees = [
-            p for p in self.annuaire.toutes(db, membre.org_id)
+            p for p in self.annuaire.toutes(db, membre.org_id, le)
             if (noms := [m for m in re.findall(r"[a-z]+", _sans_accents(p.nom)) if len(m) > 1]) and all(m in mots for m in noms)
         ]
         return trouvees[0] if len(trouvees) == 1 else None
