@@ -218,8 +218,9 @@ Chaque pièce est créée aussitôt (À valider) et lue en arrière-plan ; la fe
 le dossier des factures 2025-2026 de Seb, étude `appbase/etudes/factures-2025-2026.md`). La lecture
 dit qui a **émis** la pièce (une personne, auto-entrepreneur, ou une société) et à qui elle est
 **adressée** :
-- émise par un **prof de l'école** (nom rapproché d'une fiche de la saison de la facture, à défaut de
-  la saison en cours ; un prof qui est aussi admin reste un prof) → **Honoraires** ;
+- émise par un **prof de l'école** (nom rapproché d'une fiche de n'importe quelle saison, celle de la
+  date de la facture d'abord, puis la courante, puis la plus récente : une prof de l'an dernier est
+  reconnue même si la date n'a pas été lue ; un prof qui est aussi admin reste un prof) → **Honoraires** ;
 - émise par ou adressée à une **autre personne** (membre, extérieur ; ex. facture Onlineprinters au
   nom de Julia, facture de l'intervenant Thibault Taniou) → **Note de frais**, à son nom ; seul un
   prof de l'école donne des honoraires (Seb) ; personne inconnue → « Pour qui ? » avec le nom lu

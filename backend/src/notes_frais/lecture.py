@@ -42,8 +42,9 @@ Règles :
 avis d'échéance, justificatif de paiement d'un commerçant) ; « virement » pour la preuve d'un \
 virement bancaire fait par l'association ; « autre » sinon.
 - `date` : date de la pièce (achat, facture, ou exécution du virement), au format AAAA-MM-JJ. \
-Les dates sont écrites à la française (jour/mois/année). Si le nom du fichier donne une date \
-plus plausible que celle lue (année incohérente), prends celle du fichier.
+Les dates sont écrites à la française (jour/mois/année). Il faut toujours trouver une date : si la \
+pièce ne porte qu'un mois (« Janvier 2025 »), prends le dernier jour de ce mois ; si le nom du \
+fichier donne une date plus plausible que celle lue (année incohérente), prends celle du fichier.
 - `montant_ttc` : le total payé ou viré, TTC, en euros (nombre décimal, ex. 48.9). Jamais un \
 sous-total, une TVA ou un montant rendu.
 - `commercant` : qui a émis la pièce : l'enseigne, la société, ou le nom de la personne \

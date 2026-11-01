@@ -135,7 +135,27 @@ class AnnuaireContretemps:
         return [_personne(db, c) for c in self._comptes_courants(db, org_id) if roles.is_tresorier(c)]
 
     def toutes(self, db: Session, org_id: int, le=None) -> list[Personne]:
-        return sorted((_personne(db, c) for c in self._comptes_courants(db, org_id, le)), key=lambda p: p.nom.casefold())
+        """Les personnes de toutes les saisons, une fois chacune : la fiche
+        de la saison de `le` d'abord, sinon celle de la saison courante,
+        sinon la plus récente (Seb, 1er/11 : une prof de l'an dernier doit
+        être reconnue même quand la date de la facture n'a pas été lue)."""
+        from saisons.models import Saison
+
+        contenant = _saison_contenant(db, org_id, le)
+        preferees = [s for s in ((contenant.id if contenant else None), _saison_courante(db, org_id)) if s is not None]
+        with toutes_saisons(db):
+            comptes = list(
+                db.scalars(
+                    select(Compte).join(Saison, Saison.id == Compte.saison_id)
+                    .where(Compte.ecole_id == org_id).order_by(Saison.date_debut.desc())
+                )
+            )
+        comptes.sort(key=lambda c: preferees.index(c.saison_id) if c.saison_id in preferees else len(preferees))
+        personnes: dict[int, Personne] = {}
+        for compte in comptes:
+            personne = _personne(db, compte)
+            personnes.setdefault(personne.person_id, personne)
+        return sorted(personnes.values(), key=lambda p: p.nom.casefold())
 
     def organisation(self, db: Session, org_id: int) -> Organisation:
         from ecoles.models import Ecole
