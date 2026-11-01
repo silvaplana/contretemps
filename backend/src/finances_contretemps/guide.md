@@ -21,7 +21,8 @@ Pièces
   paie : même montant et même nom → ligne rattachée, « Payée selon la banque » (« Pas cette ligne » sinon) ; même montant
   seulement → « C'est payé » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
   Terminé ouvre la revue pièce par pièce (nature, Pour qui ou Fournisseur, montant), le bouton dit « Valider : Payé » ou
-  « Valider : À payer » et passe à la suivante. Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
+  « Valider : À payer » et passe à la suivante. Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
+  proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
   Préparé → À payer, À payer → À valider), « Annuler cette pièce : tout défaire » (une note envoyée par un membre lui
   revient) ; payée à tort : « Détacher » d'abord (tant que la saison n'est pas clôturée).
 - Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature), bleu pour la banque

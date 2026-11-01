@@ -237,7 +237,8 @@ date de la pièce, `financier.md` §8.3 bis) :
 **Chaque pièce garde la validation d'un trésorier** (ou du Super User ; Seb, 31 octobre soir) : rien
 ne passe Payé sans son toucher. Le bouton principal dit ce qui va se passer : **« Valider : Payé »**
 quand une ligne est rattachée (sans mail ni notification, c'était déjà réglé), **« Valider : À
-payer »** sinon. Pas de nouvel onglet : tout de suite dans la revue après les photos, ou plus tard
+payer »** sinon. Le badge de la pièce, dans la liste comme sur la fiche, dit la même chose :
+**« À valider → Payé »** ou **« À valider → À payer »** (Seb, 1er novembre : voir l'état proposé sans ouvrir). Pas de nouvel onglet : tout de suite dans la revue après les photos, ou plus tard
 depuis la pastille de sa nature (badge « à valider »). Une pièce déjà validée (note envoyée par un
 membre, virement fait) dont la ligne arrive passe Payé directement.
 Deux pièces du même nom et du même montant (Boyer 948 € en novembre et en janvier) : la ligne va à

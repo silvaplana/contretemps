@@ -217,7 +217,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
             </span>
             <span className="nf-ligne__droite">
               <span className="nf-ligne__montant">{n.total_centimes ? api.euros(n.total_centimes) : 'Montant ?'}</span>
-              <BadgeEtat note={n} />
+              <BadgeEtat note={n} proposition />
             </span>
           </button>
         ))}
@@ -434,7 +434,7 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
             {qui(note)}
             {note.nature !== 'achat' && note.personne?.role ? <span className="muted"> ({note.personne.role})</span> : null}
           </span>
-          <BadgeEtat note={note} />
+          <BadgeEtat note={note} proposition />
         </div>
       )}
       {natureModifiable && (
