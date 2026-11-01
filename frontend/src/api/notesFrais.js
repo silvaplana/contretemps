@@ -108,6 +108,10 @@ export function etablir(nature, f, champs = {}) {
   }
   return appel('/etablir', { method: 'POST', body: donnees })
 }
+// Un import (lot de fichiers d'une même saisie) peut être défait tant que ses
+// pièces sont À valider (§7 quinquies).
+export const dernierImport = () => appel('/imports/dernier')
+export const annulerImport = (batchId) => appel(`/imports/${batchId}/annuler`, { method: 'POST' })
 export const ajouterPage = (noteId, f) => appel(`/notes/${noteId}/pages`, fichier(f))
 export const corriger = (noteId, champs) => appel(`/notes/${noteId}`, json('PATCH', champs))
 export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DELETE' })

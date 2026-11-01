@@ -47,12 +47,14 @@ export default function Saisie({ ouverte, deposes, onFermer, onALaMain, onRevue,
   const galerie = useRef(null)
   const derniere = useRef(null) // promesse de la dernière pièce, pour « Encore une page »
   const page = useRef(false)
+  const lotId = useRef(null) // l'import en cours, pour « Annuler cet import »
 
   function etablir(fichier) {
     const cle = `${Date.now()}-${Math.random()}`
     setLot((l) => [...l, { cle, nom: fichier.name, note: null }])
+    lotId.current ??= crypto.randomUUID()
     const promesse = api
-      .etablir(null, fichier)
+      .etablir(null, fichier, { batch_id: lotId.current })
       .then((note) => {
         setLot((l) => l.map((x) => (x.cle === cle ? { ...x, note } : x)))
         if (note.id !== null) onChange()
@@ -114,9 +116,11 @@ export default function Saisie({ ouverte, deposes, onFermer, onALaMain, onRevue,
 
   function terminer() {
     const notes = aRevoir
+    const batchId = lotId.current
     setLot([])
     setErreur('')
-    if (notes.length) onRevue(notes)
+    lotId.current = null
+    if (notes.length) onRevue(notes, batchId)
     else onFermer()
   }
 

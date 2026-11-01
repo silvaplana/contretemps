@@ -412,17 +412,23 @@ class NotesDeFrais:
         lu: TicketLu = self.ports.lecteur.lire(db, membre.org_id, contenu, type_mime, [c.libelle for c in categories], nom=nom)
         par_libelle = {c.libelle.lower(): c for c in categories}
         categorie = par_libelle.get((lu.categorie or "").strip().lower())
-        jour = None
-        if lu.date:
+        jour, approximative = None, False
+        if lu.date and len(lu.date) > 7:
             try:
-                # Un mois seul (« 2026-02 », facture « Février 2026 ») : son dernier jour (Seb, 1er/11).
-                jour = date.fromisoformat(lu.date) if len(lu.date) > 7 else _fin_de_mois(date.fromisoformat(f"{lu.date}-01"))
-                if jour > date.today():
-                    jour = None
+                jour = date.fromisoformat(lu.date)
             except ValueError:
                 jour = None
         if jour is None:
             jour = _date_du_nom(nom)  # « 2026.02.28 Boyer 02.pdf » : la date que la lecture n'a pas donnée
+        if jour is None and lu.date:
+            try:
+                # Un mois seul (« 2026-02 », facture « Février 2026 ») sans date dans le nom du fichier :
+                # son dernier jour, et la pièce le signale (Seb, 1er/11).
+                jour, approximative = _fin_de_mois(date.fromisoformat(f"{lu.date[:7]}-01")), True
+            except ValueError:
+                jour = None
+        if jour is not None and jour > date.today():
+            jour, approximative = None, False
         # Pour comprendre une lecture qui déçoit (Seb, 1er/11 : deux factures sans date), sans garder l'image.
         logger.info("Lecture de « %s » : date lue %r, retenue %s, montant %s, émetteur %r", nom, lu.date, jour, lu.montant_centimes, lu.commercant)
         description = lu.description or lu.commercant or ""
@@ -431,6 +437,7 @@ class NotesDeFrais:
         montant = lu.montant_centimes if lu.montant_centimes and 0 < lu.montant_centimes <= MONTANT_MAX_CENTIMES else None
         return {
             "date": jour.isoformat() if jour else None,
+            "date_approximative": approximative,
             "montant_centimes": montant,
             "categorie_id": categorie.id if categorie else None,
             "description": description[:200],
@@ -770,6 +777,7 @@ class NotesDeFrais:
         description: str = "",
         valider: bool = False,
         categorie_id: int | None = None,
+        batch_id: str | None = None,
     ) -> NoteFrais | Preuve:
         """Une pièce établie par un trésorier : une photo (ou un fichier) =
         une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
@@ -794,8 +802,9 @@ class NotesDeFrais:
                     lu = {}
         if nature is None and lu.get("sorte") == "virement":
             return self._preuve_de_virement(db, membre, lu, fichier)
+        date_approximative = False
         if jour is None and lu.get("date"):
-            jour = date.fromisoformat(lu["date"])
+            jour, date_approximative = date.fromisoformat(lu["date"]), bool(lu.get("date_approximative"))
         jour = jour or date.today()
         montant = montant_centimes if montant_centimes is not None else (lu.get("montant_centimes") or 0)
         if montant or valider:
@@ -818,7 +827,10 @@ class NotesDeFrais:
                 nature = FRAIS  # une personne a payé ou facturé : on la rembourse
             else:
                 nature = ACHAT
-        note = NoteFrais(org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="", established_by=membre.person_id)
+        note = NoteFrais(
+            org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="", established_by=membre.person_id,
+            batch_id=(batch_id or "")[:36] or None,
+        )
         if nature == ACHAT:
             note.person_id = membre.person_id
             note.supplier = " ".join((fournisseur or emetteur or "").split())[:120] or None
@@ -834,7 +846,7 @@ class NotesDeFrais:
         db.flush()
         depense = Depense(
             org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=montant,
-            description=description, lue_par_ia=bool(lu), note_id=note.id,
+            description=description, lue_par_ia=bool(lu), date_approximative=date_approximative, note_id=note.id,
             categorie_id=self._categorie(db, membre.org_id, categorie_id if categorie_id is not None else lu.get("categorie_id")),
         )
         db.add(depense)
@@ -1017,7 +1029,7 @@ class NotesDeFrais:
         if len(note.depenses) == 1:
             depense = note.depenses[0]
             if champs.get("jour") is not None:
-                depense.date = champs["jour"]
+                depense.date, depense.date_approximative = champs["jour"], False
             if champs.get("montant_centimes") is not None:
                 depense.montant_centimes = champs["montant_centimes"]
             if champs.get("description") is not None:
@@ -1051,6 +1063,34 @@ class NotesDeFrais:
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : justificatifs non déplacés dans les documents", note.id)
+
+    def dernier_import(self, db: Session, membre: Membre) -> dict | None:
+        """Le dernier lot de fichiers importés d'un coup (Seb, 1er/11) : son
+        numéro, sa date, ses pièces encore À valider ; None s'il n'y en a pas
+        ou s'il ne reste rien à annuler."""
+        self._exiger_tresorier(membre)
+        derniere = db.scalar(
+            select(NoteFrais).where(NoteFrais.org_id == membre.org_id, NoteFrais.batch_id.is_not(None))
+            .order_by(NoteFrais.envoyee_le.desc(), NoteFrais.id.desc())
+        )
+        if derniere is None:
+            return None
+        notes = list(db.scalars(select(NoteFrais).where(NoteFrais.org_id == membre.org_id, NoteFrais.batch_id == derniere.batch_id)))
+        a_valider = [n for n in notes if n.statut == ENVOYEE]
+        if not a_valider:
+            return None
+        return {"batch_id": derniere.batch_id, "le": derniere.envoyee_le.date().isoformat(), "a_valider": len(a_valider), "total": len(notes)}
+
+    def annuler_import(self, db: Session, membre: Membre, batch_id: str) -> int:
+        """« Annuler cet import » : tout défaire pour les pièces du lot encore
+        À valider ; une pièce déjà validée ne bouge pas. Renvoie le nombre."""
+        self._exiger_tresorier(membre)
+        ids = list(db.scalars(
+            select(NoteFrais.id).where(NoteFrais.org_id == membre.org_id, NoteFrais.batch_id == batch_id, NoteFrais.statut == ENVOYEE)
+        ))
+        for note_id in ids:
+            self.supprimer_note(db, membre, note_id)
+        return len(ids)
 
     def supprimer_note(self, db: Session, membre: Membre, note_id: int) -> None:
         """« Annuler cette pièce », tout défaire (Seb, 31/10) : une pièce
@@ -1679,6 +1719,7 @@ class NotesDeFrais:
             "description": depense.description,
             "sans_justificatif": not depense.pieces,
             "lue_par_ia": depense.lue_par_ia,
+            "date_approximative": depense.date_approximative,
             "pieces": [{"id": p.id, "type_mime": p.type_mime, "nom": p.nom} for p in depense.pieces],
         }
 

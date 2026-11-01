@@ -631,18 +631,28 @@ def test_le_prof_est_reconnu_dans_la_saison_de_la_facture(client, db_session, ec
     note = _etablir(client, tresorier, None)
     assert note["nature"] == "honoraires" and note["personne"]["nom"] == "Sophie Boyer"
 
-    # Un mois seul lu (« Février 2026 » sur la facture) : son dernier jour.
+    # Un mois seul lu (« Février 2026 » sur la facture), rien dans le nom du fichier :
+    # son dernier jour, et la pièce signale que la date est approximative (Seb, 1er/11).
     lecteur.lu = {"date": "2026-02", "montant_centimes": 31025, "commercant": "Sophie BOYER", "description": "Cours de février"}
     note = _etablir(client, tresorier, None)
     assert note["depenses"][0]["date"] == "2026-02-28" and note["titre"] == "Honoraires février 2026"
+    assert note["depenses"][0]["date_approximative"] is True
+    # Le trésorier corrige la date : le signal tombe.
+    reponse = client.patch(f"/notes-frais/notes/{note['id']}", json={"date": "2026-02-27"}, headers=entetes_session(tresorier))
+    assert reponse.status_code == 200, reponse.text
+    assert reponse.json()["depenses"][0]["date"] == "2026-02-27" and reponse.json()["depenses"][0]["date_approximative"] is False
 
-    # Le nom du fichier porte la date (« 2026.02.28 Boyer 02.pdf ») : elle vaut quand la lecture n'en donne pas.
-    reponse = client.post(
-        "/notes-frais/etablir", files={"fichier": ("2026.02.28 Boyer 02.pdf", io.BytesIO(b"pdf"), "application/pdf")},
-        headers=entetes_session(tresorier),
-    )
-    assert reponse.status_code == 201, reponse.text
-    assert reponse.json()["depenses"][0]["date"] == "2026-02-28" and reponse.json()["titre"] == "Honoraires février 2026"
+    # Le nom du fichier porte la date (« 2026.02.28 Boyer 02.pdf ») : elle vaut quand la lecture n'en donne pas
+    # ou n'en donne qu'un mois, sans signal.
+    for lu in ({"montant_centimes": 31025}, {"date": "2026-02", "montant_centimes": 31025}):
+        lecteur.lu = {**lu, "commercant": "Sophie BOYER", "description": "Cours de février"}
+        reponse = client.post(
+            "/notes-frais/etablir", files={"fichier": ("2026.02.28 Boyer 02.pdf", io.BytesIO(b"pdf"), "application/pdf")},
+            headers=entetes_session(tresorier),
+        )
+        assert reponse.status_code == 201, reponse.text
+        assert reponse.json()["depenses"][0]["date"] == "2026-02-28" and reponse.json()["titre"] == "Honoraires février 2026"
+        assert reponse.json()["depenses"][0]["date_approximative"] is False
 
 
 def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkeypatch):
@@ -1161,6 +1171,36 @@ def test_paiement_possible_meme_nom_autre_montant_ou_virement_groupe(client, db_
     autre = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Castorama", date="2026-07-01", montant_centimes="1000")
     refus = client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": groupe.id}, headers=entetes)
     assert refus.status_code == 400
+
+
+def test_annuler_un_import(client, db_session, ecole, monkeypatch):
+    """Seb, 1er/11 : un import (lot de fichiers déposés d'un coup) s'annule
+    dans l'appli : ses pièces encore À valider sont défaites, une pièce
+    déjà validée ne bouge pas ; « dernier import » dit ce qu'il reste."""
+    tresorier = ecole["tresorier"]
+    entetes = entetes_session(tresorier)
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2026-10-09", montant_centimes=3990, commercant="Amazon", description="Câbles"),
+    )
+    assert client.get("/notes-frais/imports/dernier", headers=entetes).json() is None
+    lot = "lot-2026-11-01-a"
+    premiere = _etablir(client, tresorier, "achat", batch_id=lot)
+    deuxieme = _etablir(client, tresorier, "achat", batch_id=lot)
+    validee = _etablir(client, tresorier, "achat", batch_id=lot)
+    assert client.post(f"/notes-frais/notes/{validee['id']}/valider", headers=entetes).status_code == 200
+    seule = _etablir(client, tresorier, "achat")  # saisie une par une : pas dans le lot
+
+    dernier = client.get("/notes-frais/imports/dernier", headers=entetes).json()
+    assert dernier["batch_id"] == lot and dernier["a_valider"] == 2 and dernier["total"] == 3
+
+    annule = client.post(f"/notes-frais/imports/{lot}/annuler", headers=entetes)
+    assert annule.status_code == 200 and annule.json() == {"annulees": 2}
+    restantes = {n["id"] for n in client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes).json()["notes"]}
+    assert premiere["id"] not in restantes and deuxieme["id"] not in restantes
+    assert validee["id"] in restantes and seule["id"] in restantes
+    assert client.get("/notes-frais/imports/dernier", headers=entetes).json() is None
+    assert client.get("/notes-frais/imports/dernier", headers=entetes_session(ecole["eleve"])).status_code == 403
 
 
 def test_categories_sont_les_comptes_de_charges_du_plan(client, db_session, ecole):
