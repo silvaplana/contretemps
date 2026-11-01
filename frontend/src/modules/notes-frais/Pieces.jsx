@@ -542,6 +542,9 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
         </p>
       ) : null}
       {note?.motif_refus && <p className="login-screen__erreur">Motif du refus : {note.motif_refus}</p>}
+      {note?.saison_cloturee && (
+        <p className="muted">Saison de la pièce clôturée au Financier : rangée dans la saison en cours.</p>
+      )}
       {note && note.depenses.some((d) => d.pieces.length) && (
         <button
           type="button"

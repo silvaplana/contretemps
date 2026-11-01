@@ -547,9 +547,11 @@ def test_un_dossier_deja_la_est_reutilise_quelle_que_soit_sa_casse(client, ecole
 
 
 def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecole, monkeypatch):
-    """Une pièce de l'an dernier va dans le Financier de sa saison si on peut
-    y écrire, pas dans celui de la saison en cours ; si on corrige sa date,
-    elle suit."""
+    """Une pièce de l'an dernier va dans le Financier de sa saison tant que
+    cette saison n'est pas clôturée au Financier, sans rien rouvrir dans
+    Admin › Saisons (Seb, 1er/11) ; clôturée : dans la saison en cours, et
+    la fiche le dit ; si on corrige sa date, elle suit."""
+    from finances.models import FinClosing
     from saisons.models import Saison
 
     tresorier = ecole["tresorier"]
@@ -559,14 +561,7 @@ def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecol
     db_session.commit()
     lecteur = LecteurFacture(date="2026-03-10", montant_centimes=2500, commercant="Leroy Merlin", description="Peinture")
     monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
-    # Saison terminée, en lecture seule : dans la saison en cours.
-    fermee = _etablir(client, tresorier, "achat")
-    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == []
-    client.delete(f"/notes-frais/notes/{fermee['id']}", headers=entetes_session(tresorier))
-
-    # Rouverte aux modifications (bilan de l'an dernier) : dans sa saison.
-    passee.ouverte = True
-    db_session.commit()
+    # Saison terminée mais pas clôturée : dans sa saison, sans la rouvrir.
     note = _etablir(client, tresorier, "achat")
     courante = next(
         i["name"].removeprefix("Saison ") for i in _parcourir(client, org, tresorier).json()["items"]
@@ -574,7 +569,23 @@ def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecol
     )
     assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == ["2026-03-10 Leroy Merlin 25,00.jpg"]
     assert _achats_de_la_saison(client, org, tresorier, courante) == []
+    assert note["saison_cloturee"] is False
+    client.delete(f"/notes-frais/notes/{note['id']}", headers=entetes_session(tresorier))
 
+    # Clôturée au Financier : dans la saison en cours, et la fiche le dit.
+    cloture = FinClosing(org_id=org, season_id=passee.id, start_date=date(2025, 9, 1), end_date=date(2026, 8, 31), result=0, balances=[])
+    db_session.add(cloture)
+    db_session.commit()
+    fermee = _etablir(client, tresorier, "achat")
+    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == []
+    assert _achats_de_la_saison(client, org, tresorier, courante) == ["2026-03-10 Leroy Merlin 25,00.jpg"]
+    assert fermee["saison_cloturee"] is True
+    client.delete(f"/notes-frais/notes/{fermee['id']}", headers=entetes_session(tresorier))
+    db_session.delete(cloture)
+    db_session.commit()
+
+    note = _etablir(client, tresorier, "achat")
+    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == ["2026-03-10 Leroy Merlin 25,00.jpg"]
     corrige = client.patch(
         f"/notes-frais/notes/{note['id']}", json={"date": "2026-10-02"}, headers=entetes_session(tresorier)
     )

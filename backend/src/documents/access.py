@@ -90,7 +90,7 @@ def effective_level(
     """Niveau de `member` sur le dernier nœud de `path` (chemin depuis la
     racine de l'espace ; vide = la racine elle-même)."""
     level = _level_without_lock(member, space, owner_person_id, path, acl_by_node, private_editors)
-    if level is not None and closed_period(path, closed_period_ids):
+    if level is not None and not member.writes_closed_periods and closed_period(path, closed_period_ids):
         return LEVEL_VIEW
     return level
 

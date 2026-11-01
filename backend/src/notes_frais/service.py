@@ -657,6 +657,8 @@ class NotesDeFrais:
             ligne["operation"] = rattachee and self._operation_dict(rattachee)
             ligne["operation_id"] = note.bank_operation_id
             ligne["detachable"] = rattachee is not None and self._detachable(db, note)
+            # Saison de la pièce clôturée au Financier : rangée dans la saison en cours.
+            ligne["saison_cloturee"] = bool(self.ports.banque) and self.ports.banque.cloturee(db, note.org_id, self._date_docs(note))
             resultat.append(ligne)
         return resultat
 

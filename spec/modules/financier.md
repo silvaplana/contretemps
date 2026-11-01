@@ -398,9 +398,12 @@ dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
 Docs › Privé › Saison <saison> › Financier › <dossier>, nommé par l'appli
 (« 2025-02-09 Amazon 39,90.jpg ») une fois lue. **La saison est celle de la date de la pièce**
 (date de la facture, pas du paiement : une charge appartient à l'exercice de sa facture, Seb
-29/10), si on peut y écrire : la saison en cours, ou une ancienne saison rouverte aux
-modifications (Admin › Saisons ; son dossier Docs n'est alors plus en lecture seule) ; sinon la
-saison en cours. Date, personne ou fournisseur corrigé : le fichier suit (dossier et nom) ; une photo pas encore lue attend dans Ventes
+29/10), **tant que cette saison n'est pas clôturée au Financier** (§8.7) : les trésoriers
+travaillent sur l'ancienne saison pendant la nouvelle, sans rien rouvrir dans Admin › Saisons
+(Seb, 1er/11 ; l'appli range dans le Financier d'une saison terminée même si son dossier Docs est en
+lecture seule pour les gens). Saison clôturée : la pièce va dans la saison en cours et sa fiche le
+dit (« Saison de la pièce clôturée au Financier : rangée dans la saison en cours ») ; rouvrir la
+clôture si on y tient. Date, personne ou fournisseur corrigé : le fichier suit (dossier et nom) ; une photo pas encore lue attend dans Ventes
 ou Achats selon le sens, et change de dossier si la lecture dit autrement.
 
 Trois origines de pièces :

@@ -80,6 +80,17 @@ def _personne(db: Session, compte: Compte) -> Personne:
     )
 
 
+def _cloturee(db: Session, org_id: int, jour) -> bool:
+    """La saison qui contient ce jour est clôturée au Financier (financier.md §8.7)."""
+    from finances.models import FinClosing
+
+    return db.scalar(
+        select(FinClosing.id).where(
+            FinClosing.org_id == org_id, FinClosing.start_date <= jour, FinClosing.end_date >= jour, FinClosing.reopened_at.is_(None)
+        )
+    ) is not None
+
+
 def _saison_contenant(db: Session, org_id: int, le):
     """La saison de l'école qui contient ce jour ; None sans jour ou hors de
     toute saison."""
@@ -198,15 +209,17 @@ class ClasseurContretemps:
             display_name=qui.nom,
             is_admin=True,
             groups=frozenset({"role:admin", "role:tresorier"}),
+            writes_closed_periods=True,
         )
 
     @staticmethod
     def _saison(db: Session, org_id: int, le):
-        """La saison qui contient la date de la pièce, si on peut y écrire
-        (la courante, ou une ancienne rouverte aux modifications) ; None :
-        la saison en cours."""
+        """La saison qui contient la date de la pièce, tant qu'elle n'est pas
+        clôturée au Financier (Seb, 1er/11 : les trésoriers travaillent sur
+        l'ancienne saison pendant la nouvelle, sans rien rouvrir dans Admin ›
+        Saisons) ; None : la saison en cours."""
         saison = _saison_contenant(db, org_id, le)
-        if saison is None or (saison.id != _saison_courante(db, org_id) and not saison.ouverte):
+        if saison is None or _cloturee(db, org_id, le):
             return None
         return saison.id
 
@@ -345,13 +358,7 @@ class BanqueContretemps:
         return self._operation(*ligne) if ligne else None
 
     def cloturee(self, db: Session, org_id: int, jour) -> bool:
-        from finances.models import FinClosing
-
-        return db.scalar(
-            select(FinClosing.id).where(
-                FinClosing.org_id == org_id, FinClosing.start_date <= jour, FinClosing.end_date >= jour, FinClosing.reopened_at.is_(None)
-            )
-        ) is not None
+        return _cloturee(db, org_id, jour)
 
 
 def comptes_de_charges(db: Session, org_id: int) -> list[tuple[str, str]]:
