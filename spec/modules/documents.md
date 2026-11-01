@@ -388,6 +388,10 @@ Son accès suit le rôle (un trésorier nommé ou retiré y gagne ou perd l'acc�
 « Qui a accès ? » ; ses sous-dossiers, eux, se partagent normalement. « Copier la saison précédente »
 ne le recopie pas : chaque saison a déjà le sien, vide.
 
+Un module qui range ses fichiers dans un dossier réservé peut écrire dans une **saison terminée**
+(`Member.writes_closed_periods`) : la lecture seule d'une ancienne saison vaut pour les gens, pas pour
+une pièce de l'an dernier que le Financier range à sa date (Seb, 1er/11 ; financier.md §8.3 bis).
+
 *(Contretemps : « Financier », rôle trésorier. Les notes de frais validées y sont rangées, voir
 notes-de-frais.md §7 bis.)*
 

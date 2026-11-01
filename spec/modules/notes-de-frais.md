@@ -308,7 +308,7 @@ chaque étape. Le PDF récapitulatif est fait une fois, quand la note est payée
 range déjà ses fichiers sur le disque. Une note **reprise** par son auteur (avant validation ou après
 un refus) part à la corbeille des documents. Le dossier Financier existe dans chaque saison et n'est
 visible que des trésoriers (documents.md §4.7 bis) ; « Notes de frais » y est créé à la première note.
-La saison est celle du jour de l'envoi. Si le rangement échoue, l'action reste faite.
+La saison est celle de la date de la pièce, tant qu'elle n'est pas clôturée au Financier (financier.md §8.3 bis) ; sinon la saison en cours. Si le rangement échoue, l'action reste faite.
 
 ## 8. Don à l'association
 
