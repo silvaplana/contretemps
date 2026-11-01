@@ -521,6 +521,31 @@ def _achats_de_la_saison(client, org, qui, saison):
     return sorted(i["name"] for m in mois for i in _parcourir(client, org, qui, m["id"]).json()["items"])
 
 
+def test_un_dossier_deja_la_est_reutilise_quelle_que_soit_sa_casse(client, ecole, monkeypatch):
+    """Seb, 1er/11 : « Achats » existe déjà dans Financier (ancien nom, ou
+    créé à la main) et l'appli créait « ACHATS (2) » à côté. On écrit dans
+    le dossier existant, sans en créer un autre."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    monkeypatch.setattr(
+        main.notes_frais_client.ports, "lecteur",
+        LecteurFacture(date="2026-10-09", montant_centimes=3990, commercant="Amazon", description="Câbles"),
+    )
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    cree = client.post(
+        f"/documents/orgs/{org}/folders", json={"space": "private", "parent_id": financier["id"], "name": "Achats"},
+        headers=entetes_session(tresorier),
+    )
+    assert cree.status_code in (200, 201), cree.text
+
+    _etablir(client, tresorier, "achat")
+    dossiers = sorted(i["name"] for i in _parcourir(client, org, tresorier, financier["id"]).json()["items"] if not i["system_kind"])
+    assert dossiers == ["Achats"]
+    mois = _enfant(client, org, tresorier, cree.json()["id"], "10.2026")
+    assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2026-10-09 Amazon 39,90.jpg"]
+
+
 def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecole, monkeypatch):
     """Une pièce de l'an dernier va dans le Financier de sa saison si on peut
     y écrire, pas dans celui de la saison en cours ; si on corrige sa date,
