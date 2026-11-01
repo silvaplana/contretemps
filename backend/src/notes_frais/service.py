@@ -81,6 +81,24 @@ def montant_court(centimes: int) -> str:
     return f"{centimes // 100},{centimes % 100:02d}"
 
 
+def _date_du_nom(nom: str) -> date | None:
+    """La date écrite dans un nom de fichier (« 2026.02.28 Boyer 02.pdf »,
+    « facture_28-02-2026.pdf ») ; None sinon ou si elle est dans le futur."""
+    if not nom:
+        return None
+    m = re.search(r"(\d{4})[.\-_/](\d{2})[.\-_/](\d{2})", nom)
+    champs = (m.group(1), m.group(2), m.group(3)) if m else None
+    if champs is None and (m := re.search(r"(\d{2})[.\-_/](\d{2})[.\-_/](\d{4})", nom)):
+        champs = (m.group(3), m.group(2), m.group(1))
+    if champs is None:
+        return None
+    try:
+        jour = date(int(champs[0]), int(champs[1]), int(champs[2]))
+    except ValueError:
+        return None
+    return jour if jour <= date.today() else None
+
+
 def _sans_accents(texte: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", texte or "") if not unicodedata.combining(c)).casefold()
 
@@ -397,6 +415,10 @@ class NotesDeFrais:
                     jour = None
             except ValueError:
                 jour = None
+        if jour is None:
+            jour = _date_du_nom(nom)  # « 2026.02.28 Boyer 02.pdf » : la date que la lecture n'a pas donnée
+        # Pour comprendre une lecture qui déçoit (Seb, 1er/11 : deux factures sans date), sans garder l'image.
+        logger.info("Lecture de « %s » : date lue %r, retenue %s, montant %s, émetteur %r", nom, lu.date, jour, lu.montant_centimes, lu.commercant)
         description = lu.description or lu.commercant or ""
         if lu.commercant and lu.description and lu.commercant.lower() not in lu.description.lower():
             description = f"{lu.description} ({lu.commercant})"
