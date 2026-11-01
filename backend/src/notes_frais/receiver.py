@@ -283,6 +283,7 @@ class NotesDeFraisReceiver:
             description: str = Form(""),
             valider: bool = Form(False),
             categorie_id: int | None = Form(None),
+            batch_id: str | None = Form(None),
             db: Session = db_dep,
             m: Membre = membre,
         ):
@@ -295,7 +296,7 @@ class NotesDeFraisReceiver:
             note = appeler(
                 nf.etablir, db, m, nature=nature, fichier=contenu, person_id=person_id, fournisseur=fournisseur,
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
-                categorie_id=categorie_id,
+                categorie_id=categorie_id, batch_id=batch_id,
             )
             if isinstance(note, Preuve):
                 return nf.preuve_dict(db, m, note)
@@ -351,6 +352,14 @@ class NotesDeFraisReceiver:
         @app.post("/notes-frais/notes/{note_id}/virement")
         def virement_fait(note_id: int, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.virement_fait, db, m, note_id)])[0]
+
+        @app.get("/notes-frais/imports/dernier")
+        def dernier_import(db: Session = db_dep, m: Membre = membre):
+            return appeler(nf.dernier_import, db, m)
+
+        @app.post("/notes-frais/imports/{batch_id}/annuler")
+        def annuler_import(batch_id: str, db: Session = db_dep, m: Membre = membre):
+            return {"annulees": appeler(nf.annuler_import, db, m, batch_id)}
 
         @app.post("/notes-frais/notes/{note_id}/payee")
         def payee(note_id: int, corps: PaiementEntree, db: Session = db_dep, m: Membre = membre):

@@ -93,6 +93,9 @@ class NoteFrais(Base):
     # trésorier : lui corrige la nature et la personne, même d'une note de
     # frais ; None = envoyée par la personne elle-même (§4).
     established_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Le lot de fichiers déposés d'un coup (import), pour « Annuler cet
+    # import » (Seb, 1er/11) ; None = saisie une par une.
+    batch_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
 
     depenses: Mapped[list["Depense"]] = relationship(back_populates="note", order_by="Depense.date")
 
@@ -109,6 +112,8 @@ class Depense(Base):
     description: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     # Pré-remplie par la lecture du ticket (§4.2).
     lue_par_ia: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # La pièce ne portait qu'un mois : dernier jour retenu, à vérifier (§7 quinquies).
+    date_approximative: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
     # Null : « À envoyer » (§4.1).
     note_id: Mapped[int | None] = mapped_column(ForeignKey("nf_notes.id"), nullable=True, index=True)
     creee_le: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)

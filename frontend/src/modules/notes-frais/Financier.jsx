@@ -13,7 +13,7 @@ import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
 import { Compte } from './commun.jsx'
 import Exterieurs from './Exterieurs.jsx'
-import Pieces, { ChoixPersonneModal } from './Pieces.jsx'
+import Pieces, { AnnulerImportModal, ChoixPersonneModal } from './Pieces.jsx'
 import './notes-frais.css'
 
 const SOUS_ONGLETS = [
@@ -40,6 +40,8 @@ export default function Financier() {
   // mêmes écrans que Profil › « Mes notes de frais », à son nom.
   const [choix, setChoix] = useState(null) // null | 'depense' | 'note'
   const [exterieurs, setExterieurs] = useState(false)
+  const [annulerImport, setAnnulerImport] = useState(false)
+  const [piecesVersion, setPiecesVersion] = useState(0) // relire les pièces après un import annulé
   const [pour, setPour] = useState(null) // { personne, action }
   useEffect(() => () => api.agirPour(null), [])
   // Badges : ce qui attend une action de qui regarde (financier.md §8.3 bis).
@@ -106,10 +108,21 @@ export default function Financier() {
                 { label: 'Créer une dépense pour quelqu’un', icon: 'plus', onClick: () => setChoix('depense') },
                 { label: 'Envoyer une note pour quelqu’un', icon: 'send', onClick: () => setChoix('note') },
                 { label: 'Extérieurs', icon: 'users', onClick: () => setExterieurs(true) },
+                { label: 'Annuler le dernier import', icon: 'trash', onClick: () => setAnnulerImport(true) },
               ]
         }
       />
       {exterieurs && <Exterieurs onClose={() => setExterieurs(false)} />}
+      {annulerImport && (
+        <AnnulerImportModal
+          onClose={() => setAnnulerImport(false)}
+          onFait={() => {
+            setAnnulerImport(false)
+            rechargerAFaire()
+            setPiecesVersion((v) => v + 1)
+          }}
+        />
+      )}
       {choix && (
         <ChoixPersonneModal
           onClose={() => setChoix(null)}
@@ -141,7 +154,7 @@ export default function Financier() {
       ) : sousOnglet === 'previsionnel' ? (
         <Previsionnel />
       ) : (
-        <Pieces aFaire={aFaire} onCompteurs={setAFaire} onChange={rechargerAFaire} onPour={(personne, action) => {
+        <Pieces key={piecesVersion} aFaire={aFaire} onCompteurs={setAFaire} onChange={rechargerAFaire} onPour={(personne, action) => {
           api.agirPour(personne.person_id)
           setPour({ personne, action })
         }} />

@@ -25,11 +25,14 @@ Pièces
   « Valider : À payer » et passe à la suivante. Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
   proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
   Préparé → À payer, À payer → À valider), « Annuler cette pièce : tout défaire » (une note envoyée par un membre lui
-  revient) ; payée à tort : « Détacher » d'abord (tant que la saison n'est pas clôturée).
+  revient) ; payée à tort : « Détacher » d'abord (tant que la saison n'est pas clôturée). Dans la revue, « Annuler cet
+  import » défait d'un coup les pièces encore à valider du lot qu'on vient d'importer ; plus tard, ⋯ › « Annuler le dernier
+  import ». Une pièce qui ne porte qu'un mois (et rien dans le nom du fichier) prend le dernier jour du mois et le dit :
+  « date à vérifier » dans la liste, le message sur la fiche ; corriger la date l'efface.
 - Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature), bleu pour la banque
   (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
-- Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs.
+- Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import.
 - « Pour qui ? » : les membres, puis les extérieurs (payés sans être membres) ; « + Quelqu'un d'extérieur » (nom, mail et téléphone facultatifs, RIB). ⋯ › Extérieurs : corriger, « Demander le RIB par mail », retirer de la liste.
 - Réglage « Qui paie » : Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
 

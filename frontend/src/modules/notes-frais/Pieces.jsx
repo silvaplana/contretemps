@@ -125,9 +125,9 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
           setSaisie(false)
           setNatureAChoisir(true)
         }}
-        onRevue={(notes) => {
+        onRevue={(notes, batchId) => {
           setSaisie(false)
-          setRevue({ notes, rang: 0 })
+          setRevue({ notes, rang: 0, batchId })
         }}
         onChange={onChange}
       />
@@ -136,7 +136,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
           key={revue.notes[revue.rang].id}
           note={revue.notes[revue.rang]}
           nature={revue.notes[revue.rang].nature}
-          revue={{ rang: revue.rang + 1, total: revue.notes.length }}
+          revue={{ rang: revue.rang + 1, total: revue.notes.length, batchId: revue.batchId }}
           onClose={finDeRevue}
           onFait={() => (revue.rang + 1 < revue.notes.length ? setRevue({ ...revue, rang: revue.rang + 1 }) : finDeRevue())}
         />
@@ -212,6 +212,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
                 {n.nature === 'achat' ? '' : `${n.titre} · `}
                 {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
                 {n.depenses.length > 1 ? ` · ${n.depenses.length} dépenses` : ''}
+                {n.depenses[0]?.date_approximative ? ' · date à vérifier' : ''}
                 {n.paiement_propose ? ' · vu sur le compte' : n.paiements_possibles?.length ? ' · paiement possible' : ''}
               </span>
             </span>
@@ -392,6 +393,21 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
       </div>
     ) : (
       <div className="nf-boutons">
+        {revue?.batchId && (
+          <button
+            type="button"
+            className="btn btn--link"
+            disabled={enCours}
+            onClick={() =>
+              agir(async () => {
+                await api.annulerImport(revue.batchId)
+                onClose()
+              })
+            }
+          >
+            Annuler cet import
+          </button>
+        )}
         {note !== null && aValider && (
           <button type="button" className="btn btn--danger" disabled={enCours} onClick={() => setRefus('')}>
             Refuser…
@@ -471,6 +487,11 @@ function NoteModal({ note, nature, onClose, onFait, revue }) {
       )}
       {note && depense?.lue_par_ia && corrigeable && (
         <p className="badge badge--warning nf-a-verifier">Rempli d’après le ticket, à vérifier</p>
+      )}
+      {note && depense?.date_approximative && (
+        <p className="badge badge--warning nf-a-verifier">
+          Date à vérifier : la pièce ne porte qu’un mois, son dernier jour a été retenu
+        </p>
       )}
       {corrigeable ? (
         <>
@@ -716,5 +737,64 @@ export function FicheExterieur({ fiche, onChange }) {
       />
       <ChampsRib rib={fiche.rib} onChange={(rib) => onChange({ ...fiche, rib })} />
     </>
+  )
+}
+
+// Menu ⋯ › « Annuler le dernier import » : défait les pièces encore À valider
+// du dernier lot importé (§7 quinquies) ; celles déjà validées restent.
+export function AnnulerImportModal({ onClose, onFait }) {
+  const [dernier, setDernier] = useState(undefined) // undefined : en lecture ; null : rien
+  const [enCours, setEnCours] = useState(false)
+  const [erreur, setErreur] = useState('')
+  useEffect(() => {
+    api
+      .dernierImport()
+      .then(setDernier)
+      .catch((e) => setErreur(e.message))
+  }, [])
+  const n = dernier?.a_valider ?? 0
+  return (
+    <Modal
+      title="Annuler le dernier import"
+      onClose={onClose}
+      footer={
+        n > 0 ? (
+          <div className="nf-boutons">
+            <button type="button" className="btn btn--secondary" onClick={onClose}>
+              Garder
+            </button>
+            <button
+              type="button"
+              className="btn btn--danger"
+              disabled={enCours}
+              onClick={async () => {
+                setEnCours(true)
+                try {
+                  await api.annulerImport(dernier.batch_id)
+                  onFait()
+                } catch (e) {
+                  setErreur(e.message)
+                  setEnCours(false)
+                }
+              }}
+            >
+              Annuler {n > 1 ? `ces ${n} pièces` : 'cette pièce'}
+            </button>
+          </div>
+        ) : null
+      }
+    >
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+      {dernier === undefined && !erreur && <p className="muted">Lecture…</p>}
+      {dernier === null && <p>Aucun import à annuler.</p>}
+      {dernier && n === 0 && <p>Les {dernier.total} pièces de l’import du {api.dateCourte(dernier.le)} sont déjà validées : rien à annuler.</p>}
+      {dernier && n > 0 && (
+        <p>
+          Import du {api.dateCourte(dernier.le)} : {n > 1 ? `${n} pièces encore à valider` : 'une pièce encore à valider'}
+          {n < dernier.total ? ` sur ${dernier.total} (les autres sont déjà validées et restent)` : ''}. Les annuler les retire de l’appli
+          avec leurs fichiers.
+        </p>
+      )}
+    </Modal>
   )
 }

@@ -227,6 +227,13 @@ dit qui a **émis** la pièce (une personne, auto-entrepreneur, ou une société
   déjà tapé, pour la retrouver ou l'ajouter en extérieur ;
 - une **société**, adressée à l'association → **Achat**, fournisseur lu.
 
+**La date** (Seb, 1er novembre) : il en faut toujours une. La date lue sur la pièce ; sinon celle écrite
+dans le nom du fichier (« 2026.02.28 Boyer 02.pdf ») ; une pièce qui ne porte qu'un **mois**
+(« Janvier 2025 ») et dont le nom du fichier ne dit rien de plus prend le **dernier jour du mois**, et
+la pièce **le signale** (liste : « date à vérifier » ; fiche : « Date à vérifier : la pièce ne porte
+qu'un mois, son dernier jour a été retenu », `date_approximative`) jusqu'à ce qu'un trésorier corrige
+la date.
+
 **La banque décide** (Seb, 31 octobre : ce qui est sur le compte ne se change plus, c'est lui qui
 tranche). Pour chaque pièce créée, l'appli cherche la ligne du compte (même montant, autour de la
 date de la pièce, `financier.md` §8.3 bis) :
@@ -265,6 +272,13 @@ lui revient (« Annuler cette note : elle revient à la personne » : ses dépen
 envoyer, il est prévenu). Une pièce **payée et rattachée** à la ligne du compte : ni l'un ni l'autre
 sans la **détacher** d'abord (la banque a décidé). Assistant : `undo_expense_notes`,
 `cancel_expense_notes`.
+
+**Annuler un import** (Seb, 1er novembre : un lot de factures importé avec des erreurs se défait en une
+fois, dans l'appli). Les pièces d'une même saisie (photos enchaînées ou fichiers choisis ensemble)
+portent un même `batch_id`. Dans la revue, **« Annuler cet import »** ; plus tard, menu ⋯ › **« Annuler
+le dernier import »** (« Import du JJ/MM : N pièces encore à valider », « Annuler ces N pièces » / « Garder »).
+Seules les pièces **encore À valider** du lot sont défaites (pièce et fichiers à la corbeille, comme
+« Annuler cette pièce ») ; celles déjà validées restent et se traitent une par une.
 
 **Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de **pièces** à
 traiter par un trésorier : Notes de frais, Honoraires, Achats, Ventes = à valider ; Virements = à
