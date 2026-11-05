@@ -150,6 +150,17 @@ function biggestRows(rows) {
     .slice(0, TOP_COUNT);
 }
 
+// Le montant tel qu'on le tape dans la recherche : "276", "276,00",
+// "276.00" ou "5 500,00" trouvent l'operation, debit ou credit.
+function amountText(amount) {
+  const fixed = Math.abs(amount).toFixed(2);
+  const grouped = Math.abs(amount).toLocaleString("fr-FR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${fixed} ${fixed.replace(".", ",")} ${grouped}`;
+}
+
 // Les operations des 5 libelles qui reviennent le plus souvent (abonnement,
 // loyer...). Le libelle est compare sans ce qui change d'une fois a l'autre :
 // les mots avec des chiffres (date, numero de carte) ; "CARTE 26/09/26
@@ -449,8 +460,8 @@ export default function Comptes({ onChange }) {
     return new Set(ledger.rows.filter((row) => row.category === category));
   }, [category, ledger]);
 
-  // Operations retenues par le menu et la recherche (libelle, details ou
-  // categorie, sans tenir compte des majuscules ni des accents).
+  // Operations retenues par le menu et la recherche (libelle, details,
+  // categorie ou montant, sans tenir compte des majuscules ni des accents).
   const wanted = normaliserRecherche(search.trim());
   const filtering = selectedRows !== null || wanted !== "" || manque !== null;
   const rows = useMemo(() => {
@@ -462,7 +473,7 @@ export default function Comptes({ onChange }) {
         (manque === null || (!row.transfer && row[manque] == null)) &&
         (wanted === "" ||
           normaliserRecherche(
-            `${rowLabel(row)} ${row.details} ${row.category}`,
+            `${rowLabel(row)} ${row.details} ${row.category} ${amountText(row.amount)}`,
           ).includes(wanted)),
     );
   }, [ledger, filtering, selectedRows, wanted, manque]);
