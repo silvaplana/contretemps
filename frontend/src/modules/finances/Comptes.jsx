@@ -161,6 +161,28 @@ function amountText(amount) {
   return `${fixed} ${fixed.replace(".", ",")} ${grouped}`;
 }
 
+// Tout ce que montre une ligne de releve, pour la recherche : dates
+// (operation et valeur), libelle d'origine (meme pour un virement entre les
+// comptes), details, categorie, montant, compte bancaire, compte du plan
+// comptable et piece rattachee.
+function searchText(row, allAccounts) {
+  const bank = allAccounts?.find((a) => a.id === row.accountId);
+  return [
+    dateFr(row.date),
+    row.valueDate && dateFr(row.valueDate),
+    rowLabel(row),
+    row.label,
+    row.details,
+    row.category,
+    amountText(row.amount),
+    shortName(bank),
+    row.account && nomCompte(row.account),
+    row.piece?.kind,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
 // Les operations des 5 libelles qui reviennent le plus souvent (abonnement,
 // loyer...). Le libelle est compare sans ce qui change d'une fois a l'autre :
 // les mots avec des chiffres (date, numero de carte) ; "CARTE 26/09/26
@@ -460,8 +482,8 @@ export default function Comptes({ onChange }) {
     return new Set(ledger.rows.filter((row) => row.category === category));
   }, [category, ledger]);
 
-  // Operations retenues par le menu et la recherche (libelle, details,
-  // categorie ou montant, sans tenir compte des majuscules ni des accents).
+  // Operations retenues par le menu et la recherche (tout ce que montre la
+  // ligne, voir searchText, sans tenir compte des majuscules ni des accents).
   const wanted = normaliserRecherche(search.trim());
   const filtering = selectedRows !== null || wanted !== "" || manque !== null;
   const rows = useMemo(() => {
@@ -472,9 +494,9 @@ export default function Comptes({ onChange }) {
         (selectedRows === null || selectedRows.has(row)) &&
         (manque === null || (!row.transfer && row[manque] == null)) &&
         (wanted === "" ||
-          normaliserRecherche(
-            `${rowLabel(row)} ${row.details} ${row.category} ${amountText(row.amount)}`,
-          ).includes(wanted)),
+          normaliserRecherche(searchText(row, ledger.allAccounts)).includes(
+            wanted,
+          )),
     );
   }, [ledger, filtering, selectedRows, wanted, manque]);
   // Recettes, depenses et detail par categorie de la selection.

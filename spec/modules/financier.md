@@ -56,7 +56,7 @@ Repris de Sambo Admin :
   trésorier, autant de comptes qu'il en faut ; avant : CC + Bleu, deux comptes), **Graphique** |
   **Tableau**.
 - Filtres : menu Catégories (toutes, les 5 plus grosses opérations, les 5 opérations les plus fréquentes — même libellé, sans dates ni numéros, au moins deux fois —, une catégorie ; des opérations et non des catégories depuis le 28 octobre 2026, Seb) et
-  recherche (libellé, détail, catégorie ou montant — « 276 » trouve −276,00 € —, sans accents). Avec un filtre : nombre d'opérations,
+  recherche dans tout ce que montre la ligne (dates d'opération et de valeur, libellé, détail, catégorie, montant — « 276 » trouve −276,00 € —, compte, compte du plan comptable, pièce), sans accents. Avec un filtre : nombre d'opérations,
   recettes, dépenses, net, détail par catégorie.
 - **Graphique** : courbe du solde (ou du cumul des opérations retenues), périodes 3M / 6M / 1A / Max
   / **Saisons** (une courbe par saison de l'organisation, superposées du début à la fin de saison,
