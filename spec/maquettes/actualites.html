@@ -1,6 +1,6 @@
 <title>Maquette Actualités</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<!-- Maquette du module Actualités (fil « Module : Actualités », 2026-11-06), à valider par Seb avant la spec. Ouvrir dans un navigateur : tout est cliquable. -->
+<!-- Maquette du module Actualités (fil « Module : Actualités »), v2 du 2026-11-06 d'après le message de Seb : onglet Actus après Admin, Atelier | Aperçu, niveaux, vidéos, option d'ouverture. À valider avant la spec. -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Archivo+Narrow:wght@500;700&display=swap">
 <style>
 /* Layout : à gauche le téléphone (cliquable, aux couleurs de Contretemps), à droite les notes de l'écran affiché. */
@@ -39,84 +39,122 @@ h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-heig
 .phone {
   --bg: #fdecd8; --card: #fffaf1; --border: #e8c08c; --text: #3a2410; --muted: #8a6a4a;
   --accent: #d8722a; --accent-bg: rgba(216,114,42,.14); --contrast: #fffaf1; --dark: #2b1a0c;
-  width: 100%; max-width: 390px; height: 780px; margin: 0 auto; border-radius: 34px; border: 10px solid #1a120a;
+  --imp: #b3261e; --imp-bg: #fbe3dc; --ok: #2f6b2f; --ok-bg: #d7ecd7; --draft: #8a6a1f; --draft-bg: #f3e2ab;
+  width: 100%; max-width: 390px; height: 800px; margin: 0 auto; border-radius: 34px; border: 10px solid #1a120a;
   background: var(--bg); color: var(--text); position: relative; overflow: hidden;
   display: flex; flex-direction: column; font-size: 17px; line-height: 1.45; box-shadow: 0 18px 40px rgba(0,0,0,.18);
 }
 .phone button { font: inherit; color: inherit; }
 .phone :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.top { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 0 8px 0 14px; border-bottom: 1px solid var(--border); background: var(--bg); }
+.top { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 0 8px 0 14px; background: var(--bg); flex: none; }
+.top.line { border-bottom: 1px solid var(--border); }
 .top .logo { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--contrast); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 15px; flex: none; }
 .top strong { font-family: var(--display); font-size: 19px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .icon-btn { width: 48px; height: 48px; border: 0; background: none; border-radius: 50%; cursor: pointer; display: grid; place-items: center; flex: none; }
 .icon-btn svg { width: 24px; height: 24px; }
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex: none; }
+.tabs button { flex: 1; min-height: 48px; border: 0; background: none; cursor: pointer; font-size: 17px; color: var(--muted); border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
 .body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
 .body > * { flex-shrink: 0; }
 
-.news { padding: 16px 16px 18px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
-.news .head { display: flex; align-items: center; gap: 6px; }
-.news .who { color: var(--muted); font-size: 15px; flex: 1; }
-.news .who b { color: var(--text); font-weight: 600; }
-.news .head .icon-btn { margin: -10px -10px -10px 0; }
-.news p { margin: 0; white-space: pre-line; }
-.news .photo { border-radius: 12px; overflow: hidden; aspect-ratio: 4/3; max-width: 100%; }
-.news .photo svg { display: block; width: 100%; height: 100%; }
-.news .file { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--card); text-align: left; cursor: pointer; }
-.news .file svg { width: 26px; height: 26px; color: #c0392b; flex: none; }
-.news.new { animation: flash 1.6s ease-out; }
-@keyframes flash { from { background: var(--accent-bg); } }
-.empty { padding: 60px 24px; text-align: center; color: var(--muted); }
+/* Fil des actus */
+.feed { padding: 14px 14px 24px; display: flex; flex-direction: column; gap: 14px; }
+.daylabel { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--muted); margin: 6px 2px -4px; }
+.imp { background: var(--imp-bg); color: var(--text); border-radius: 18px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.imp .flag { display: flex; align-items: center; gap: 8px; font-family: var(--narrow); font-weight: 700; text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--imp); }
+.imp .flag svg { width: 20px; height: 20px; }
+.imp p { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.35; }
+.story { background: var(--card); border-radius: 18px; overflow: hidden; box-shadow: 0 1px 3px rgba(80,40,10,.12); }
+.story .media { position: relative; aspect-ratio: 4/3; max-width: 100%; background: #3b1f10; }
+.story .media svg.pic { display: block; width: 100%; height: 100%; }
+.story .txt { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 6px; }
+.story p { margin: 0; }
+.meta { color: var(--muted); font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.meta b { color: var(--text); font-weight: 600; }
+.new { background: var(--accent); color: var(--contrast); font-size: 13px; font-weight: 700; border-radius: 999px; padding: 1px 9px; }
+.play { position: absolute; inset: 0; display: grid; place-items: center; border: 0; background: none; cursor: pointer; }
+.play span { width: 68px; height: 68px; border-radius: 50%; background: rgba(0,0,0,.55); display: grid; place-items: center; }
+.play svg { width: 30px; height: 30px; color: #fff; margin-left: 4px; }
+.dur { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.7); color: #fff; font-size: 13px; padding: 2px 7px; border-radius: 5px; font-variant-numeric: tabular-nums; }
+.vbar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.25); }
+.vbar i { display: block; height: 100%; background: var(--accent); width: 0; animation: vplay 20s linear forwards; }
+@keyframes vplay { to { width: 100%; } }
+.brief { display: flex; gap: 12px; align-items: baseline; padding: 4px 4px; }
+.brief .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-2px); }
+.brief div { flex: 1; min-width: 0; }
+.brief p { margin: 0; }
+.file { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); text-align: left; cursor: pointer; width: 100%; }
+.file svg { width: 26px; height: 26px; color: #c0392b; flex: none; }
+.end { text-align: center; color: var(--muted); font-size: 15px; padding: 8px; }
 
-.mainbar { padding: 10px 16px; border-top: 1px solid var(--border); background: var(--bg); }
-.btn { min-height: 52px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 700; font-size: 17px; padding: 0 18px; width: 100%; }
+/* Atelier */
+.ws { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 10px 12px; min-height: 64px; border: 0; width: 100%; text-align: left; cursor: pointer; }
+.row .lvl { width: 6px; align-self: stretch; border-radius: 3px; flex: none; }
+.lvl.important { background: var(--imp); } .lvl.normal { background: var(--accent); } .lvl.breve { background: var(--border); }
+.row div { flex: 1; min-width: 0; }
+.row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.row .meta { margin-top: 2px; }
+.chip { font-size: 14px; padding: 1px 9px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+.chip.pub { background: var(--ok-bg); color: var(--ok); } .chip.draft { background: var(--draft-bg); color: var(--draft); }
+.sect { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--muted); margin: 10px 2px 0; }
+.opt { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 12px 14px; min-height: 64px; }
+.opt span { flex: 1; }
+.switch { width: 56px; height: 32px; border-radius: 16px; border: 0; background: #cdb69a; position: relative; cursor: pointer; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: left .15s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { left: 27px; }
+
+/* Éditeur */
+.ed { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.levels button { min-height: 52px; border-radius: 12px; border: 2px solid var(--border); background: var(--card); cursor: pointer; font-weight: 600; font-size: 16px; }
+.levels button[aria-pressed="true"].important { border-color: var(--imp); background: var(--imp-bg); color: var(--imp); }
+.levels button[aria-pressed="true"].normal { border-color: var(--accent); background: var(--accent-bg); }
+.levels button[aria-pressed="true"].breve { border-color: var(--muted); background: var(--bg); }
+.hint { color: var(--muted); font-size: 15px; margin: -4px 2px 0; }
+.ed textarea { font: inherit; font-size: 17px; min-height: 120px; resize: none; border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--card); color: var(--text); }
+.adds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.adds button { min-height: 52px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 16px; }
+.adds button svg { width: 20px; height: 20px; }
+.adds button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg); font-weight: 700; }
+.until { display: flex; align-items: center; gap: 10px; }
+.until span { flex: 1; }
+.until select { font: inherit; min-height: 48px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 0 10px; }
+.preview-label { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--muted); margin: 6px 2px -4px; }
+.preview { border: 2px dashed var(--border); border-radius: 20px; padding: 10px; }
+.linkbtn { border: 0; background: none; color: var(--muted); text-decoration: underline; min-height: 48px; cursor: pointer; }
+
+.mainbar { padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg); display: flex; gap: 10px; flex: none; }
+.btn { min-height: 52px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 700; font-size: 17px; padding: 0 18px; flex: 1; }
 .btn.main { background: var(--accent); color: var(--contrast); }
 .btn.main:disabled { opacity: .4; cursor: default; }
-.btn.second { background: var(--card); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; gap: 8px; }
-.btn.second svg { width: 22px; height: 22px; }
+.btn.second { background: var(--card); border: 1px solid var(--border); flex: 0 0 auto; font-weight: 600; }
 
-.compose { padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; }
-.compose textarea { font: inherit; font-size: 17px; min-height: 170px; resize: none; border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--card); color: var(--text); }
-.compose .row { display: flex; gap: 10px; } .compose .row > * { flex: 1; }
-.attached { display: flex; align-items: center; gap: 10px; }
-.attached .thumb { width: 84px; aspect-ratio: 4/3; border-radius: 8px; overflow: hidden; flex: none; }
-.attached .thumb svg { width: 100%; height: 100%; display: block; }
-.attached span { flex: 1; color: var(--muted); font-size: 15px; }
-
-.nav { display: flex; border-top: 1px solid var(--border); background: var(--bg); padding: 4px 4px 8px; }
+.nav { display: flex; border-top: 1px solid var(--border); background: var(--bg); padding: 4px 4px 8px; flex: none; }
 .nav button { flex: 1; min-height: 52px; border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--muted); cursor: pointer; }
 .nav button svg { width: 22px; height: 22px; }
 .nav button[aria-current="page"] { color: var(--accent); font-weight: 700; }
 
-.menu-back { position: absolute; inset: 0; background: rgba(0,0,0,.3); z-index: 5; display: flex; align-items: flex-end; }
-.sheet { width: 100%; background: var(--card); border-radius: 18px 18px 0 0; padding: 8px 0 14px; }
-.sheet button { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; padding: 0 20px; border: 0; background: none; text-align: left; cursor: pointer; font-size: 17px; }
-.sheet button svg { width: 22px; height: 22px; }
-.sheet .danger { color: #8f2f2f; }
-
-.toast { position: absolute; left: 12px; right: 12px; bottom: 76px; background: var(--dark); color: var(--contrast); border-radius: 12px; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 16px; z-index: 6; min-height: 52px; }
+.toast { position: absolute; left: 12px; right: 12px; bottom: 80px; background: var(--dark); color: var(--contrast); border-radius: 12px; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 16px; z-index: 6; min-height: 52px; }
 .toast span { flex: 1; }
 .toast button { border: 0; background: none; color: #ffb27a; font-weight: 700; min-height: 44px; padding: 0 12px; cursor: pointer; }
 .toast i { position: absolute; left: 12px; right: 12px; bottom: 4px; height: 3px; border-radius: 2px; background: #ffb27a; transform-origin: left; animation: count 10s linear forwards; }
 @keyframes count { to { transform: scaleX(0); } }
-@media (prefers-reduced-motion: reduce) { .toast i, .news.new { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .toast i, .vbar i { animation: none; } .switch::after { transition: none; } }
 </style>
 
 <div class="wrap">
   <h1>Actualités</h1>
-  <p class="intro">Maquette cliquable du module Actualités de Contretemps. Barre du bas › <b>Actualités</b>, le premier onglet, ouvert à chaque lancement de l'appli. Les textes sont des exemples.</p>
+  <p class="intro">Maquette cliquable, v2. Barre du bas › <b>Actus</b>, juste après Admin. Qui a le droit 🔒 « Publier les actualités » voit deux onglets, <b>Atelier</b> et <b>Aperçu</b> ; les autres voient directement les actus. Les textes sont des exemples.</p>
   <div class="controls">
     <span>Vu par</span>
     <div class="seg" role="group" aria-label="Qui regarde">
       <button id="who-eleve" aria-pressed="false">Un élève</button>
       <button id="who-pub" aria-pressed="true">Quelqu'un qui publie</button>
     </div>
-    <span>Liste</span>
-    <div class="seg" role="group" aria-label="Contenu de la liste">
-      <button id="list-full" aria-pressed="true">Remplie</button>
-      <button id="list-empty" aria-pressed="false">Vide</button>
-    </div>
   </div>
-
   <div class="grid">
     <div class="phone" id="phone" aria-label="Téléphone"></div>
     <div class="notes" id="notes" aria-live="polite"></div>
@@ -126,11 +164,11 @@ h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-heig
 <script>
 const I = {
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
-  dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>',
   photo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>',
+  video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>',
   file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></svg>',
-  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
-  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  playI: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>',
   news: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>',
   admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
   chore: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>',
@@ -139,144 +177,189 @@ const I = {
   user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
   more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
 }
-// Photo d'exemple dessinée : une scène, des projecteurs.
-const SCENE = '<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><rect width="400" height="300" fill="#3b1f10"/><path d="M80 0 L20 300 H180 Z" fill="#f6c27a" opacity=".35"/><path d="M320 0 L220 300 H380 Z" fill="#f6c27a" opacity=".3"/><rect y="230" width="400" height="70" fill="#7a3d18"/><g fill="#1d0f06"><circle cx="150" cy="150" r="14"/><path d="M150 164 l-18 50 h10 l8-24 8 24 h10z M136 175 l-30-20 M164 175 l30-25" stroke="#1d0f06" stroke-width="8" stroke-linecap="round"/><circle cx="250" cy="146" r="14"/><path d="M250 160 l-16 54 h10 l6-22 8 22 h10z M236 172 l-26 18 M264 170 l28-26" stroke="#1d0f06" stroke-width="8" stroke-linecap="round"/></g></svg>'
+// Images d'exemple dessinées : une scène sous les projecteurs, une répétition.
+const SCENE = '<svg class="pic" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><rect width="400" height="300" fill="#3b1f10"/><path d="M80 0 L20 300 H180 Z" fill="#f6c27a" opacity=".35"/><path d="M320 0 L220 300 H380 Z" fill="#f6c27a" opacity=".3"/><rect y="230" width="400" height="70" fill="#7a3d18"/><g fill="#1d0f06" stroke="#1d0f06" stroke-width="8" stroke-linecap="round"><circle cx="150" cy="150" r="14"/><path d="M150 164 l-18 50 h10 l8-24 8 24 h10z M136 175 l-30-20 M164 175 l30-25"/><circle cx="250" cy="146" r="14"/><path d="M250 160 l-16 54 h10 l6-22 8 22 h10z M236 172 l-26 18 M264 170 l28-26"/></g></svg>'
+const STUDIO = '<svg class="pic" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><rect width="400" height="300" fill="#d8b48a"/><rect width="400" height="190" fill="#efd9bd"/><g fill="#bfa07c"><rect x="30" y="40" width="70" height="120"/><rect x="300" y="40" width="70" height="120"/></g><rect y="110" width="400" height="6" fill="#8a6a4a"/><g fill="#5a3418" stroke="#5a3418" stroke-width="7" stroke-linecap="round"><circle cx="120" cy="170" r="12"/><path d="M120 182 v40 l-14 40 M120 222 l14 40 M120 194 l-26 -18 M120 194 l26 -22"/><circle cx="200" cy="166" r="12"/><path d="M200 178 v40 l-14 44 M200 218 l14 44 M200 190 l-28 -24 M200 190 l28 -24"/><circle cx="280" cy="170" r="12"/><path d="M280 182 v40 l-14 40 M280 222 l14 40 M280 194 l-26 -22 M280 194 l26 -18"/></g></svg>'
 
-const EXEMPLES = [
-  { id: 3, who: 'Seb', date: '6 novembre', text: "Pas de cours mardi 11 novembre (jour férié). Les cours reprennent normalement mercredi.", photo: false },
-  { id: 2, who: 'Claire', date: '2 novembre', text: "Gala de fin d'année le samedi 13 juin. Les costumes seront présentés en cours la semaine prochaine.", photo: true },
-  { id: 1, who: 'Seb', date: '28 octobre', text: "Stage de salsa le dimanche 23 novembre, de 14 h à 17 h. Tout est dans le document ci-dessous.", file: 'Stage salsa novembre.pdf' },
-]
-
-const S = { role: 'pub', screen: 'liste', items: EXEMPLES.slice(), menuFor: null, toast: null, draft: '', draftPhoto: false, editing: null, justAdded: null }
+const LEVELS = { important: 'Important', normal: 'Normal', breve: 'Brève' }
+const HINTS = {
+  important: "En haut des actus, en rouge, jusqu'à la date choisie. Pour ce qui ne doit pas être manqué.",
+  normal: 'Une grande carte, avec sa photo ou sa vidéo.',
+  breve: 'Une ligne, sans image. Pour les petites infos.',
+}
+let nextId = 10
+const S = {
+  role: 'pub', tab: 'atelier', screen: 'list', openOnNews: true, playing: null, toast: null,
+  items: [
+    { id: 1, level: 'important', status: 'pub', who: 'Seb', date: '6 novembre', day: "Aujourd'hui", isNew: true, until: '11 novembre',
+      text: "Pas de cours mardi 11 novembre (jour férié). Les cours reprennent mercredi 12." },
+    { id: 2, level: 'normal', status: 'pub', who: 'Claire', date: '5 novembre', day: 'Cette semaine', isNew: true, media: 'video', dur: '0:48',
+      text: "Le teaser du gala est là ! Rendez-vous le samedi 13 juin. Les costumes seront présentés en cours la semaine prochaine." },
+    { id: 3, level: 'breve', status: 'pub', who: 'Seb', date: '4 novembre', day: 'Cette semaine',
+      text: "Le cours ado du jeudi passe en salle 2 jusqu'aux vacances." },
+    { id: 4, level: 'normal', status: 'pub', who: 'Seb', date: '28 octobre', day: 'Plus tôt', media: 'photo', file: 'Stage salsa novembre.pdf',
+      text: "Stage de salsa le dimanche 23 novembre, de 14 h à 17 h. Le programme et l'inscription sont dans le document." },
+    { id: 5, level: 'normal', status: 'draft', who: 'Seb', date: '6 novembre', day: '',
+      text: "Photos de la soirée d'Halloween : merci à tous !" , media: 'photo' },
+  ],
+  draft: null,
+}
 const phone = document.getElementById('phone'), notes = document.getElementById('notes')
 const esc = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
 function nav() {
   const tabs = S.role === 'pub'
-    ? [['news', 'Actualités'], ['admin', 'Admin'], ['chore', 'Chorés'], ['msg', 'Messages'], ['docs', 'Docs'], ['more', 'Plus']]
-    : [['news', 'Actualités'], ['chore', 'Chorés'], ['msg', 'Messages'], ['docs', 'Docs'], ['user', 'Profil']]
-  return '<nav class="nav">' + tabs.map(([k, l], i) => `<button ${i === 0 ? 'aria-current="page"' : ''} data-act="noop">${I[k]}${l}</button>`).join('') + '</nav>'
+    ? [['admin', 'Admin'], ['news', 'Actus'], ['chore', 'Chorés'], ['msg', 'Messages'], ['docs', 'Docs'], ['more', 'Plus']]
+    : [['news', 'Actus'], ['chore', 'Chorés'], ['msg', 'Messages'], ['docs', 'Docs'], ['user', 'Profil']]
+  return '<nav class="nav">' + tabs.map(([k, l]) => `<button ${k === 'news' ? 'aria-current="page"' : ''} data-act="noop">${I[k]}${l}</button>`).join('') + '</nav>'
 }
 
-function liste() {
-  const pub = S.role === 'pub'
-  const items = S.items.length ? S.items.map((n) => `
-    <article class="news ${S.justAdded === n.id ? 'new' : ''}">
-      <div class="head"><span class="who"><b>${esc(n.who)}</b> · ${n.date}</span>
-        ${pub ? `<button class="icon-btn" aria-label="Plus d'actions" data-act="menu" data-id="${n.id}">${I.dots}</button>` : ''}</div>
-      <p>${esc(n.text)}</p>
-      ${n.photo ? `<div class="photo">${SCENE}</div>` : ''}
-      ${n.file ? `<button class="file" data-act="noop">${I.file}<span>${esc(n.file)}</span></button>` : ''}
-    </article>`).join('') : `<div class="empty">Pas encore d'actualité.</div>`
-  return `<header class="top"><span class="logo">CT</span><strong>Contretemps</strong></header>
-    <div class="body">${items}</div>
-    ${pub ? `<div class="mainbar"><button class="btn main" data-act="new">Publier une actualité</button></div>` : ''}
-    ${nav()}
-    ${S.menuFor ? `<div class="menu-back" data-act="close"><div class="sheet" role="menu">
-      <button role="menuitem" data-act="edit">${I.edit}Modifier</button>
-      <button role="menuitem" class="danger" data-act="del">${I.trash}Supprimer</button></div></div>` : ''}
-    ${toast()}`
+function media(n, key) {
+  if (n.media === 'photo') return `<div class="media">${n.id % 2 ? STUDIO : SCENE}</div>`
+  if (n.media === 'video') {
+    const on = S.playing === key
+    return `<div class="media">${SCENE}${on ? '<div class="vbar"><i></i></div>' : `<button class="play" aria-label="Lire la vidéo" data-act="play" data-key="${key}"><span>${I.playI}</span></button><span class="dur">${n.dur || '0:30'}</span>`}</div>`
+  }
+  return ''
+}
+function card(n, key) {
+  const meta = `<div class="meta"><span><b>${esc(n.who)}</b> · ${n.date}</span>${n.isNew ? '<span class="new">Nouveau</span>' : ''}</div>`
+  const file = n.file ? `<button class="file" data-act="noop">${I.file}<span>${esc(n.file)}</span></button>` : ''
+  if (n.level === 'important') return `<article class="imp"><div class="flag">${I.alert}Important</div><p>${esc(n.text) || '…'}</p>${media(n, key) ? `<div class="story">${media(n, key)}</div>` : ''}${file}${meta}</article>`
+  if (n.level === 'breve') return `<article class="brief"><span class="dot"></span><div><p>${esc(n.text) || '…'}</p>${meta}</div></article>`
+  return `<article class="story">${media(n, key)}<div class="txt"><p>${esc(n.text) || '…'}</p>${file}${meta}</div></article>`
 }
 
-function compose() {
-  const title = S.editing ? "Modifier l'actualité" : 'Nouvelle actualité'
-  return `<header class="top"><button class="icon-btn" aria-label="Retour" data-act="cancel">${I.back}</button><strong>${title}</strong></header>
-    <div class="body"><div class="compose">
-      <textarea id="draft" aria-label="Texte de l'actualité" placeholder="Écrivez l'actualité…">${esc(S.draft)}</textarea>
-      ${S.draftPhoto
-        ? `<div class="attached"><div class="thumb">${SCENE}</div><span>Photo ajoutée</span><button class="icon-btn" aria-label="Retirer la photo" data-act="unphoto">${I.trash}</button></div>`
-        : `<div class="row"><button class="btn second" data-act="photo">${I.photo}Photo</button><button class="btn second" data-act="noop">${I.file}Document</button></div>`}
-    </div></div>
-    <div class="mainbar"><button class="btn main" id="publish" data-act="publish" ${S.draft.trim() ? '' : 'disabled'}>${S.editing ? 'Enregistrer' : 'Publier'}</button></div>
-    ${nav()}`
+function feed() {
+  const pub = S.items.filter((n) => n.status === 'pub')
+  const imp = pub.filter((n) => n.level === 'important'), rest = pub.filter((n) => n.level !== 'important')
+  let html = imp.map((n) => card(n, 'f' + n.id)).join(''), day = null
+  for (const n of rest) {
+    if (n.day && n.day !== day) { day = n.day; html += `<div class="daylabel">${day}</div>` }
+    html += card(n, 'f' + n.id)
+  }
+  return `<div class="feed">${html || '<div class="end">Pas encore d\'actu.</div>'}${pub.length ? '<div class="end">C\'est tout pour le moment.</div>' : ''}</div>`
 }
 
-function toast() {
-  if (!S.toast) return ''
-  return `<div class="toast" role="status"><span>${S.toast}</span><button data-act="undo">Annuler</button><i></i></div>`
+function atelier() {
+  const rows = S.items.map((n) => `
+    <button class="row" data-act="open" data-id="${n.id}"><span class="lvl ${n.level}"></span>
+      <div><div class="t">${esc(n.text)}</div><div class="meta"><span class="chip ${n.status === 'pub' ? 'pub' : 'draft'}">${n.status === 'pub' ? 'Publiée' : 'Brouillon'}</span><span>${LEVELS[n.level]} · ${n.date}</span></div></div></button>`).join('')
+  return `<div class="ws">${rows}
+    <div class="sect">Options</div>
+    <div class="opt"><span>Ouvrir l'appli sur les actus</span><button class="switch" role="switch" aria-checked="${S.openOnNews}" aria-label="Ouvrir l'appli sur les actus" data-act="toggle"></button></div>
+  </div>`
 }
 
-const NOTES = {
-  liste: () => S.role === 'pub' ? `
-    <p class="eyebrow">Actualités</p><h2>La liste, pour quelqu'un qui publie</h2>
-    <ul>
-      <li>Le droit 🔒 « Publier les actualités » (Admin › École › Administrateurs) fait apparaître le bouton <b>Publier une actualité</b> en bas, et un <b>⋯</b> sur chaque actualité (Modifier, Supprimer).</li>
-      <li>Tout le monde voit les mêmes actualités, de la plus récente à la plus ancienne. Pas de titre, pas d'encadré : un texte, et au besoin une photo ou un document de Docs.</li>
-      <li>Sous chaque actualité : qui l'a publiée et le jour, sans heure.</li>
-      <li>Supprimer : l'actualité disparaît tout de suite, « Annuler » pendant 10 s.</li>
-    </ul>${ASK}` : `
-    <p class="eyebrow">Actualités</p><h2>La liste, pour un élève</h2>
-    <ul>
-      <li>L'appli s'ouvre toujours ici, pour tout le monde (élèves, profs, bureau). Avant, elle s'ouvrait sur le dernier onglet utilisé.</li>
-      <li>Lecture seule : pas de bouton, pas de ⋯. Un document s'ouvre comme dans Docs (PDF dans la visionneuse du téléphone).</li>
-      <li>Les anciennes actualités restent en dessous ; on fait défiler.</li>
-    </ul>${ASK}`,
-  compose: () => `
-    <p class="eyebrow">Actualités › Publier une actualité</p><h2>${S.editing ? "Modifier l'actualité" : 'Nouvelle actualité'}</h2>
-    <ul>
-      <li>Un seul champ de texte, puis au choix une <b>Photo</b> (galerie ou appareil photo) ou un <b>Document</b> pris dans Docs.</li>
-      <li>Un seul bouton principal : <b>${S.editing ? 'Enregistrer' : 'Publier'}</b>, grisé tant que le texte est vide. ← revient à la liste sans rien publier.</li>
-      <li>Essayez : écrivez quelques mots, ajoutez la photo, publiez.</li>
-    </ul>${ASK}`,
+function editor() {
+  const d = S.draft
+  return `<header class="top line"><button class="icon-btn" aria-label="Retour" data-act="back">${I.back}</button><strong>${d.id ? "Modifier l'actu" : 'Nouvelle actu'}</strong></header>
+  <div class="body"><div class="ed">
+    <div class="levels" role="group" aria-label="Niveau">${Object.entries(LEVELS).map(([k, l]) => `<button class="${k}" aria-pressed="${d.level === k}" data-act="level" data-level="${k}">${l}</button>`).join('')}</div>
+    <p class="hint">${HINTS[d.level]}</p>
+    <textarea id="draft" aria-label="Texte de l'actu" placeholder="Écrivez l'actu…">${esc(d.text)}</textarea>
+    ${d.level === 'breve' ? '' : `<div class="adds">
+      <button aria-pressed="${d.media === 'photo'}" data-act="media" data-media="photo">${I.photo}Photo</button>
+      <button aria-pressed="${d.media === 'video'}" data-act="media" data-media="video">${I.video}Vidéo</button>
+      <button aria-pressed="${!!d.file}" data-act="file">${I.file}Document</button></div>`}
+    ${d.level === 'important' ? `<div class="until"><span>En haut jusqu'au</span><select id="until" aria-label="En haut jusqu'au">${['8 novembre', '11 novembre', '15 novembre', '30 novembre'].map((x) => `<option ${x === d.until ? 'selected' : ''}>${x}</option>`).join('')}</select></div>` : ''}
+    <div class="preview-label">Ce que verront les autres</div>
+    <div class="preview" id="preview">${card({ ...d, who: 'Seb', date: '6 novembre', isNew: true }, 'p')}</div>
+    ${d.id ? '<button class="linkbtn" data-act="delete">Supprimer cette actu</button>' : ''}
+  </div></div>
+  <div class="mainbar"><button class="btn second" data-act="keep">Brouillon</button><button class="btn main" id="publish" data-act="publish" ${d.text.trim() ? '' : 'disabled'}>${d.id && d.status === 'pub' ? 'Enregistrer' : 'Publier'}</button></div>`
 }
-const ASK = `<p class="ask"><b>Une question :</b> une nouvelle actualité envoie-t-elle une notification sur le téléphone de tout le monde ? Recommandation : oui, c'est ce qui fait qu'on la voit.</p>`
 
 function render() {
-  phone.innerHTML = S.screen === 'liste' ? liste() : compose()
-  notes.innerHTML = NOTES[S.screen]()
+  const pub = S.role === 'pub'
+  let html
+  if (pub && S.screen === 'edit') html = editor() + nav()
+  else {
+    const tab = pub ? S.tab : 'apercu'
+    html = `<header class="top"><span class="logo">CT</span><strong>Contretemps</strong></header>
+      ${pub ? `<div class="tabs" role="tablist">${[['atelier', 'Atelier'], ['apercu', 'Aperçu']].map(([k, l]) => `<button role="tab" aria-selected="${tab === k}" data-act="tab" data-tab="${k}">${l}</button>`).join('')}</div>` : '<div class="tabs" style="border:0"></div>'}
+      <div class="body">${tab === 'atelier' ? atelier() : feed()}</div>
+      ${pub && tab === 'atelier' ? '<div class="mainbar"><button class="btn main" data-act="new">Nouvelle actu</button></div>' : ''}
+      ${nav()}`
+  }
+  if (S.toast) html += `<div class="toast" role="status"><span>${S.toast.text}</span>${S.toast.undo ? '<button data-act="undo">Annuler</button><i></i>' : ''}</div>`
+  phone.innerHTML = html
+  notes.innerHTML = NOTES()
   const ta = document.getElementById('draft')
-  if (ta) ta.addEventListener('input', () => { S.draft = ta.value; document.getElementById('publish').disabled = !S.draft.trim() })
-  document.getElementById('who-eleve').setAttribute('aria-pressed', S.role === 'eleve')
-  document.getElementById('who-pub').setAttribute('aria-pressed', S.role === 'pub')
-  document.getElementById('list-full').setAttribute('aria-pressed', S.items.length > 0)
-  document.getElementById('list-empty').setAttribute('aria-pressed', S.items.length === 0)
+  if (ta) ta.addEventListener('input', () => {
+    S.draft.text = ta.value
+    document.getElementById('publish').disabled = !ta.value.trim()
+    document.getElementById('preview').innerHTML = card({ ...S.draft, who: 'Seb', date: '6 novembre', isNew: true }, 'p')
+  })
+  const un = document.getElementById('until')
+  if (un) un.addEventListener('change', () => { S.draft.until = un.value })
+  document.getElementById('who-eleve').setAttribute('aria-pressed', !pub)
+  document.getElementById('who-pub').setAttribute('aria-pressed', pub)
 }
 
-let timer = null, undoFn = null
-function showToast(text, undo) {
-  clearTimeout(timer); S.toast = text; undoFn = undo
-  timer = setTimeout(() => { S.toast = null; undoFn = null; S.justAdded = null; render() }, 10000)
+const ASK = `<p class="ask"><b>Une question :</b> une actu publiée envoie-t-elle une notification sur le téléphone de tout le monde ? Recommandation : seulement les actus <b>Important</b>, pour que la notification garde de la valeur.</p>`
+function NOTES() {
+  if (S.role === 'pub' && S.screen === 'edit') return `
+    <p class="eyebrow">Actus › Atelier › ${S.draft.id ? "Modifier l'actu" : 'Nouvelle actu'}</p><h2>Écrire une actu</h2>
+    <ul>
+      <li><b>Trois niveaux</b>. <b>Important</b> : en haut des actus, en rouge, jusqu'à la date choisie, puis l'actu rejoint les autres. <b>Normal</b> : grande carte avec photo ou vidéo. <b>Brève</b> : une ligne, sans image.</li>
+      <li>On ajoute une <b>photo</b>, une <b>vidéo</b> (jusqu'à 100 Mo, comme dans les Messages) ou un <b>document</b> pris dans Docs.</li>
+      <li>En dessous, l'actu telle que les autres la verront, mise à jour à chaque lettre. Essayez : changez de niveau, ajoutez la vidéo.</li>
+      <li><b>Publier</b> est le bouton principal. <b>Brouillon</b> la garde dans l'Atelier sans la montrer. « Supprimer cette actu » : Annuler pendant 10 s.</li>
+    </ul>${ASK}`
+  if (S.role === 'pub' && S.tab === 'atelier') return `
+    <p class="eyebrow">Actus › Atelier</p><h2>L'Atelier</h2>
+    <ul>
+      <li>Visible seulement avec le droit 🔒 « Publier les actualités ».</li>
+      <li>Toutes les actus, brouillons compris, de la plus récente à la plus ancienne. La barre de couleur à gauche donne le niveau : rouge Important, orange Normal, beige Brève.</li>
+      <li>Toucher une actu l'ouvre pour la modifier. <b>Nouvelle actu</b> en crée une.</li>
+      <li><b>Options</b> : « Ouvrir l'appli sur les actus ». Allumée, l'appli s'ouvre toujours sur Actus, pour tout le monde. Éteinte, elle s'ouvre comme aujourd'hui, sur le dernier onglet utilisé.</li>
+    </ul>${ASK}`
+  return `
+    <p class="eyebrow">Actus${S.role === 'pub' ? ' › Aperçu' : ''}</p><h2>${S.role === 'pub' ? "L'Aperçu, ce que voient les autres" : 'Les actus, pour un élève'}</h2>
+    <ul>
+      <li>${S.role === 'pub' ? "Exactement l'écran des élèves, profs et bureau." : "Pas d'onglets : l'élève voit directement les actus. Actus est son premier onglet, puisqu'il n'a pas Admin."}</li>
+      <li>En haut, les actus <b>Important</b> en cours, sur fond rouge clair. Puis les autres, groupées « Aujourd'hui », « Cette semaine », « Plus tôt ».</li>
+      <li>Une actu <b>Normal</b> est une grande carte, sa photo ou sa vidéo en premier. La vidéo se lit sur place (essayez ▶). Une <b>Brève</b> tient en une ligne.</li>
+      <li>« Nouveau » marque ce que la personne n'a pas encore vu ; la pastille s'efface une fois les actus ouvertes.</li>
+    </ul>${ASK}`
+}
+
+let timer = null
+function toast(text, undo) {
+  clearTimeout(timer); S.toast = { text, undo }
+  timer = setTimeout(() => { S.toast = null; render() }, undo ? 10000 : 2500)
 }
 
 phone.addEventListener('click', (e) => {
   const b = e.target.closest('[data-act]'); if (!b) return
-  const act = b.dataset.act
-  if (act === 'close' && e.target !== b) return
-  if (act === 'menu') S.menuFor = +b.dataset.id
-  if (act === 'close') S.menuFor = null
-  if (act === 'new') { S.screen = 'compose'; S.draft = ''; S.draftPhoto = false; S.editing = null; S.toast = null }
-  if (act === 'cancel') S.screen = 'liste'
-  if (act === 'photo') S.draftPhoto = true
-  if (act === 'unphoto') S.draftPhoto = false
-  if (act === 'edit') {
-    const n = S.items.find((x) => x.id === S.menuFor)
-    Object.assign(S, { screen: 'compose', editing: n.id, draft: n.text, draftPhoto: !!n.photo, menuFor: null })
+  const a = b.dataset.act
+  if (a === 'tab') { S.tab = b.dataset.tab; S.playing = null }
+  if (a === 'play') S.playing = b.dataset.key
+  if (a === 'toggle') { S.openOnNews = !S.openOnNews; toast(S.openOnNews ? "L'appli s'ouvrira sur les actus" : "L'appli s'ouvrira sur le dernier onglet") }
+  if (a === 'new') { S.draft = { id: null, level: 'normal', text: '', media: null, file: null, until: '11 novembre', status: 'draft' }; S.screen = 'edit'; S.playing = null }
+  if (a === 'open') { S.draft = { ...S.items.find((n) => n.id === +b.dataset.id) }; S.screen = 'edit'; S.playing = null }
+  if (a === 'back') S.screen = 'list'
+  if (a === 'level') { S.draft.level = b.dataset.level; if (S.draft.level === 'breve') { S.draft.media = null; S.draft.file = null } }
+  if (a === 'media') { S.draft.media = S.draft.media === b.dataset.media ? null : b.dataset.media; S.draft.dur = '0:30' }
+  if (a === 'file') S.draft.file = S.draft.file ? null : 'Programme du gala.pdf'
+  if (a === 'publish' || a === 'keep') {
+    const status = a === 'publish' ? 'pub' : 'draft'
+    const n = { ...S.draft, status, who: 'Seb', date: '6 novembre', day: "Aujourd'hui", isNew: status === 'pub' }
+    if (n.id) S.items = S.items.map((x) => (x.id === n.id ? n : x))
+    else { n.id = nextId++; S.items.unshift(n) }
+    S.screen = 'list'
+    if (status === 'pub') { S.tab = 'apercu'; toast('Actu publiée', () => { S.items = S.items.map((x) => (x.id === n.id ? { ...x, status: 'draft' } : x)) }) }
+    else toast('Gardée en brouillon')
   }
-  if (act === 'del') {
-    const idx = S.items.findIndex((x) => x.id === S.menuFor), [gone] = S.items.splice(idx, 1)
-    S.menuFor = null
-    showToast('Actualité supprimée', () => S.items.splice(idx, 0, gone))
+  if (a === 'delete') {
+    const idx = S.items.findIndex((x) => x.id === S.draft.id), [gone] = S.items.splice(idx, 1)
+    S.screen = 'list'; toast('Actu supprimée', () => S.items.splice(idx, 0, gone))
   }
-  if (act === 'publish') {
-    if (S.editing) {
-      Object.assign(S.items.find((x) => x.id === S.editing), { text: S.draft, photo: S.draftPhoto })
-      S.justAdded = S.editing; S.toast = null
-    } else {
-      const id = Date.now()
-      S.items.unshift({ id, who: 'Seb', date: '6 novembre', text: S.draft, photo: S.draftPhoto })
-      S.justAdded = id
-      showToast('Actualité publiée', () => { S.items = S.items.filter((x) => x.id !== id) })
-    }
-    S.screen = 'liste'; S.editing = null
-  }
-  if (act === 'undo') { clearTimeout(timer); undoFn && undoFn(); S.toast = null; undoFn = null }
+  if (a === 'undo') { clearTimeout(timer); S.toast.undo(); S.toast = null }
   render()
 })
-
-document.getElementById('who-eleve').onclick = () => { Object.assign(S, { role: 'eleve', screen: 'liste', menuFor: null }); render() }
+document.getElementById('who-eleve').onclick = () => { Object.assign(S, { role: 'eleve', screen: 'list', playing: null }); render() }
 document.getElementById('who-pub').onclick = () => { S.role = 'pub'; render() }
-document.getElementById('list-full').onclick = () => { S.items = EXEMPLES.slice(); S.screen = 'liste'; render() }
-document.getElementById('list-empty').onclick = () => { S.items = []; S.screen = 'liste'; render() }
 render()
 </script>
