@@ -2,7 +2,7 @@
 models.py).
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from videos.schemas import VideoSortie
 
 
@@ -10,6 +10,9 @@ class ChoregraphieCreation(BaseModel):
     nom: str
     horaire_repetition: str | None = None
     costume: str | None = None
+    music_author: str | None = None
+    music_title: str | None = None
+    music_duration_seconds: int | None = Field(default=None, ge=0)
     eleve_ids: list[int] = []
     # Les autres cours qui dansent la chorégraphie, en plus de celui de l'URL.
     autres_cours_ids: list[int] = []
@@ -19,6 +22,9 @@ class ChoregraphieModification(BaseModel):
     nom: str | None = None
     horaire_repetition: str | None = None
     costume: str | None = None
+    music_author: str | None = None
+    music_title: str | None = None
+    music_duration_seconds: int | None = Field(default=None, ge=0)
     # Fourni : remplace la liste des cours, le premier en tête. Il faut
     # pouvoir gérer chaque cours ajouté ou retiré.
     cours_ids: list[int] | None = None
@@ -36,6 +42,9 @@ class ChoregraphieSortie(BaseModel):
     nom: str
     horaire_repetition: str | None = None
     costume: str | None = None
+    music_author: str | None = None
+    music_title: str | None = None
+    music_duration_seconds: int | None = Field(default=None, ge=0)
     eleve_ids: list[int] = []
     videos: list[VideoSortie] = []
 

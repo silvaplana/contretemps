@@ -51,3 +51,8 @@ class Choregraphie(Base):
     horaire_repetition: Mapped[str | None] = mapped_column(String(100), nullable=True)
     # Un seul costume pour toute la chorégraphie (voir §6.7).
     costume: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # La musique (Seb, 6 novembre) : auteur, titre et durée en secondes,
+    # tous facultatifs.
+    music_author: Mapped[str | None] = mapped_column(String(150), nullable=True)
+    music_title: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    music_duration_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
