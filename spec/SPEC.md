@@ -986,7 +986,7 @@ Une **séance de présence** par cours et par date. Tableau avec les dates en co
 - Bouton **+** pour qui peut gérer au moins un cours. À la création, la chorégraphie est **associée à un ou plusieurs cours**, cochés parmi ceux que l'on peut gérer (Seb, 1er novembre 2026 : certaines chorégraphies sont dansées par plusieurs cours ; avant, il fallait la créer une fois par cours). On peut ensuite cocher ou décocher des cours, seulement ceux que l'on gère ; il en reste toujours au moins un.
 - La liste affiche tous les cours d'une chorégraphie (« Contempo Inter avancé, Contempo Adulte ») ; le sélecteur la retient dès que l'un de ses cours correspond.
 
-**Écran détail** (au clic) : cours (un ou plusieurs), **élèves participants**, **costume** (un seul texte), **horaire de répétition**, **vidéos** (dans l'ordre choisi).
+**Écran détail** (au clic) : cours (un ou plusieurs), **élèves participants**, **musique** (auteur, titre, durée « 3:45 », tous facultatifs — Seb, 6 novembre 2026), **costume** (un seul texte), **horaire de répétition**, **vidéos** (dans l'ordre choisi).
 - **Choix des élèves** : parmi **tous les élèves de l'école**, dans un panneau qui s'ouvre, filtrable par cours (ouvert sur le premier cours de la chorégraphie) et par nom.
 - **Vidéos** : ajout par « Filmer » ou « Choisir une vidéo » (envoi par blocs, §8) ; modification du titre et de la description ; suppression ; ordre modifiable en mode édition.
 - Supprimer une chorégraphie supprime ses vidéos et leurs fichiers.
@@ -1509,6 +1509,9 @@ statut à cocher comme pour un élève) est donc remplacée par **3 lignes** : "
 | nom | texte | Obl. |
 | horaire_repetition | texte/datetime | Opt. |
 | costume | texte (un seul, pour toute la chorégraphie) | Opt. |
+| music_author | texte : auteur de la musique (2026-11-06) | Opt. |
+| music_title | texte : titre de la musique (2026-11-06) | Opt. |
+| music_duration_seconds | entier : durée de la musique en secondes, saisie et affichée « M:SS » (2026-11-06) | Opt. |
 
 ```
 choregraphies_courses : choregraphie_id (FK), cours_id (FK -> cours)

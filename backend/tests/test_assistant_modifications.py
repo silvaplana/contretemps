@@ -147,3 +147,29 @@ def test_choregraphie_sur_plusieurs_cours(db_session, monde):
     assert carte["lignes"] == ["Chorégraphie « Begging you » (Éveil, Contempo Adulte) : cours : Contempo Adulte"]
     m.executer(db_session, monde["admin"], e, 1, carte["jeton"], [0])
     assert m.choregraphies.list(db_session, eveil.id) == []
+
+
+def test_musique_d_une_choregraphie(db_session, monde):
+    """Seb, 6 novembre : la musique (auteur, titre, durée en M:SS)."""
+    from assistant.donnees import DonneesEcole
+
+    m, e, eveil = monde["m"], monde["ecole"], monde["eveil"]
+    texte, carte = m.proposer(db_session, monde["admin"], e, 1, {"titre": "x", "changements": [
+        {"type": "creer_choregraphie", "cours_id": eveil.id,
+         "champs": {"nom": "Gala", "music_author": "Måneskin", "music_title": "Beggin'", "music_duration": "3:31"}},
+        {"type": "creer_choregraphie", "cours_id": eveil.id, "champs": {"nom": "X", "music_duration": "trois minutes"}},
+    ]})
+    assert len(carte["lignes"]) == 1 and "durée de la musique 3:31" in carte["lignes"][0]
+    assert "minutes:secondes" in texte
+    m.executer(db_session, monde["admin"], e, 1, carte["jeton"], [0])
+    ch = m.choregraphies.list(db_session, eveil.id)[0]
+    assert (ch.music_author, ch.music_title, ch.music_duration_seconds) == ("Måneskin", "Beggin'", 211)
+    assert "musique : Måneskin, Beggin' (3:31)" in DonneesEcole().executer(db_session, monde["admin"], e, "lister_choregraphies", {})
+
+    _, carte = m.proposer(db_session, monde["admin"], e, 1, {"titre": "x", "changements": [
+        {"type": "modifier_choregraphie", "choregraphie_id": ch.id, "champs": {"music_duration": "3:45"}},
+    ]})
+    assert carte["lignes"] == ["Chorégraphie « Gala » (Éveil) : durée de la musique 3:31 → 3:45"]
+    m.executer(db_session, monde["admin"], e, 1, carte["jeton"], [0])
+    db_session.refresh(ch)
+    assert ch.music_duration_seconds == 225

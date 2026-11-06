@@ -50,7 +50,30 @@ CHAMPS_COURS = {
     "nom": "nom", "discipline": "discipline", "niveau": "niveau", "jour": "jour", "heure_debut": "début",
     "heure_fin": "fin", "salle": "salle", "descriptif": "descriptif",
 }
-CHAMPS_CHOREGRAPHIE = {"nom": "nom", "horaire_repetition": "répétition", "costume": "costume"}
+CHAMPS_CHOREGRAPHIE = {
+    "nom": "nom", "horaire_repetition": "répétition", "costume": "costume",
+    "music_author": "auteur de la musique", "music_title": "titre de la musique",
+    "music_duration": "durée de la musique",
+}
+DUREE = re.compile(r"^(\d{1,3}):([0-5]\d)$")
+
+
+def duree_texte(secondes: int | None) -> str | None:
+    """225 → "3:45"."""
+    return None if secondes is None else f"{secondes // 60}:{secondes % 60:02d}"
+
+
+def _musique(champs: dict) -> dict:
+    """La durée de la musique arrive en « M:SS » ; la table la garde en secondes."""
+    if "music_duration" not in champs:
+        return champs
+    texte = champs.pop("music_duration")
+    if not texte:
+        return {**champs, "music_duration_seconds": None}
+    m = DUREE.match(texte)
+    if not m:
+        raise Refus("durée de la musique : minutes:secondes, ex. 3:45")
+    return {**champs, "music_duration_seconds": int(m[1]) * 60 + int(m[2])}
 STATUTS_PRESENCE = {"present": "présent", "absent": "absent", "retard": "en retard"}
 STATUTS_PAIEMENT = {"en_cours": "en cours", "paye": "payé"}
 HEURE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
@@ -68,7 +91,7 @@ TYPES = {
     "modifier_cours": "cours_id, champs",
     "ajouter_professeur_cours": "cours_id, professeur_id",
     "retirer_professeur_cours": "cours_id, professeur_id",
-    "creer_choregraphie": "cours_id, champs (nom, horaire_repetition, costume), eleve_ids, cours_ids (facultatif : autres cours qui la dansent)",
+    "creer_choregraphie": "cours_id, champs (nom, horaire_repetition, costume, music_author, music_title, music_duration en M:SS), eleve_ids, cours_ids (facultatif : autres cours qui la dansent)",
     "modifier_choregraphie": "choregraphie_id, champs, eleve_ids (facultatif : remplace la liste), cours_ids (facultatif : remplace la liste des cours)",
 }
 
@@ -543,6 +566,7 @@ class Modifications:
         autres = self._cours_choregraphie(db, ecole_id, cours, ch.get("cours_ids") or [])
         autres = [c for c in autres if c.id != cours.id]
         details = [f"{CHAMPS_CHOREGRAPHIE[c]} {_valeur(v)}" for c, v in champs.items()]
+        champs = _musique(champs)
         if eleves:
             details.append(f"{len(eleves)} élèves : " + ", ".join(_nom(e) for e in eleves))
         cours_id, eleve_ids, autres_ids = cours.id, [e.id for e in eleves], [c.id for c in autres]
@@ -574,7 +598,10 @@ class Modifications:
         }
         if "nom" in champs and not champs["nom"]:
             raise Refus("nom de la chorégraphie vide")
-        details = [f"{CHAMPS_CHOREGRAPHIE[c]} {_valeur(getattr(chore, c))} → {_valeur(v)}" for c, v in champs.items()]
+        avant = {**{c: getattr(chore, c, None) for c in CHAMPS_CHOREGRAPHIE},
+                 "music_duration": duree_texte(chore.music_duration_seconds)}
+        details = [f"{CHAMPS_CHOREGRAPHIE[c]} {_valeur(avant[c])} → {_valeur(v)}" for c, v in champs.items()]
+        champs = _musique(champs)
         eleve_ids = None
         if "eleve_ids" in ch:
             eleves = self._eleves_choregraphie(db, ecole_id, ch.get("eleve_ids"))

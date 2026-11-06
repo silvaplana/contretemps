@@ -10,16 +10,18 @@ Liste
   correspond aux listes du haut.
 - « + » en bas à droite : nouvelle chorégraphie (seulement pour qui peut gérer au moins un cours).
 - Fenêtre « Nouvelle chorégraphie » : Nom, Cours (une case à cocher par cours, en cocher un ou
-  plusieurs), Élèves (« Choisir des élèves »), Costume (optionnel), Horaire de répétition (optionnel), puis Créer. La
+  plusieurs), Élèves (« Choisir des élèves »), Auteur de la musique, Titre de la musique, Durée de
+  la musique (« 3:45 »), tous trois optionnels, Costume (optionnel), Horaire de répétition (optionnel), puis Créer. La
   chorégraphie créée s'ouvre aussitôt.
 
 Une chorégraphie
 - En haut : flèche de retour, nom ; pour qui la gère, le stylo (modifier) et la poubelle
   (supprimer la chorégraphie et ses vidéos, après confirmation).
-- « Description » à déplier : Cours, Élèves, Costume, Horaire de répétition. Fermée par défaut,
+- « Description » à déplier : Cours, Élèves, Musique (« Auteur, Titre (3:45) »), Costume, Horaire
+  de répétition. Fermée par défaut,
   elle reste comme on l'a laissée sur l'appareil.
-- Avec le stylo : on change le nom, les cours (cocher ou décocher ; au moins un reste coché), le
-  costume, l'horaire ; une croix retire un élève ;
+- Avec le stylo : on change le nom, les cours (cocher ou décocher ; au moins un reste coché), la
+  musique (Auteur, Titre, Durée « 3:45 », enregistrée en quittant le champ), le costume, l'horaire ; une croix retire un élève ;
   le bouton « Élèves » ouvre le choix des élèves. Toucher la coche termine la modification.
 - Choisir des élèves : tous les élèves de l'école, filtre par cours (ouvert sur le premier cours de
   la chorégraphie, ou « Tous les cours »), Rechercher, « Tout cocher », puis « Valider (n) ».

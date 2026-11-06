@@ -75,7 +75,8 @@ def test_creer_avec_son_cours_puis_lister_toute_l_ecole(client, e):
     assert creee.status_code == 201
     assert creee.json() == {
         "id": creee.json()["id"], "cours_id": e["jazz"].id, "cours_ids": [e["jazz"].id], "nom": "Spectacle",
-        "horaire_repetition": None, "costume": "Noir", "eleve_ids": [e["zoe"].id], "videos": [],
+        "horaire_repetition": None, "costume": "Noir", "music_author": None, "music_title": None,
+        "music_duration_seconds": None, "eleve_ids": [e["zoe"].id], "videos": [],
     }
     client.post(f"/cours/{e['classique'].id}/choregraphies", json={"nom": "Gala"})
 
@@ -85,6 +86,20 @@ def test_creer_avec_son_cours_puis_lister_toute_l_ecole(client, e):
         ("Gala", e["classique"].id), ("Spectacle", e["jazz"].id),
     ]
     assert client.post("/cours/999/choregraphies", json={"nom": "X"}).status_code == 404
+
+
+def test_musique_de_la_choregraphie(client, e):
+    """Seb, 6 novembre : auteur, titre et durée de la musique, tous facultatifs."""
+    ch = client.post(
+        f"/cours/{e['jazz'].id}/choregraphies",
+        json={"nom": "Begging you", "music_author": "Måneskin", "music_title": "Beggin'"},
+    ).json()
+    assert (ch["music_author"], ch["music_title"], ch["music_duration_seconds"]) == ("Måneskin", "Beggin'", None)
+    ch = client.put(f"/choregraphies/{ch['id']}", json={"music_duration_seconds": 211}).json()
+    assert (ch["music_title"], ch["music_duration_seconds"]) == ("Beggin'", 211)
+    assert client.put(f"/choregraphies/{ch['id']}", json={"music_duration_seconds": -1}).status_code == 422
+    # Vider un champ.
+    assert client.put(f"/choregraphies/{ch['id']}", json={"music_duration_seconds": None}).json()["music_duration_seconds"] is None
 
 
 def test_choregraphie_introuvable(client):

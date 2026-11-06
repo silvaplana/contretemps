@@ -6,6 +6,7 @@ import CasesCours from './choregraphie/CasesCours.jsx'
 import ChoixElevesPanel from './choregraphie/ChoixElevesPanel.jsx'
 import ChoregraphieDetailScreen from './choregraphie/ChoregraphieDetailScreen.jsx'
 import ChoregraphieListScreen from './choregraphie/ChoregraphieListScreen.jsx'
+import { lireDuree } from './choregraphie/musique.js'
 
 // Écran Chorégraphie (voir spec/SPEC.md §5.3, refonte du 2026-10-03).
 // Deux écrans distincts, comme la Messagerie : la liste, puis (au clic) le
@@ -202,6 +203,9 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
   const [coursIds, setCoursIds] = useState(coursPropose)
   const [eleveIds, setEleveIds] = useState([])
   const [choixEleves, setChoixEleves] = useState(false)
+  const [musicAuthor, setMusicAuthor] = useState('')
+  const [musicTitle, setMusicTitle] = useState('')
+  const [duree, setDuree] = useState('')
   const [costume, setCostume] = useState('')
   const [horaireRepetition, setHoraireRepetition] = useState('')
   const [erreur, setErreur] = useState('')
@@ -214,7 +218,16 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
     setErreur('')
     try {
       const ordonnes = coursGerables.map((c) => c.id).filter((id) => coursIds.includes(id))
-      await onCreate({ coursIds: ordonnes, nom, eleveIds, costume, horaireRepetition })
+      await onCreate({
+        coursIds: ordonnes,
+        nom,
+        eleveIds,
+        musicAuthor,
+        musicTitle,
+        musicDurationSeconds: lireDuree(duree),
+        costume,
+        horaireRepetition,
+      })
     } catch (err) {
       setErreur(err.message)
       setEnCours(false)
@@ -240,6 +253,22 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
           : `${eleveIds.length} élève${eleveIds.length > 1 ? 's' : ''} choisi${eleveIds.length > 1 ? 's' : ''}`}
       </button>
 
+      <label htmlFor="new-choregraphie-auteur">Auteur de la musique (optionnel)</label>
+      <input id="new-choregraphie-auteur" value={musicAuthor} onChange={(e) => setMusicAuthor(e.target.value)} />
+
+      <label htmlFor="new-choregraphie-titre">Titre de la musique (optionnel)</label>
+      <input id="new-choregraphie-titre" value={musicTitle} onChange={(e) => setMusicTitle(e.target.value)} />
+
+      <label htmlFor="new-choregraphie-duree">Durée de la musique (optionnel)</label>
+      <input
+        id="new-choregraphie-duree"
+        inputMode="numeric"
+        placeholder="3:45"
+        value={duree}
+        onChange={(e) => setDuree(e.target.value)}
+      />
+      {lireDuree(duree) === undefined && <p className="login-screen__erreur">Écrire minutes:secondes, par exemple 3:45.</p>}
+
       <label htmlFor="new-choregraphie-costume">Costume (optionnel)</label>
       <textarea
         id="new-choregraphie-costume"
@@ -260,7 +289,7 @@ function NewChoregraphieForm({ coursGerables, coursPropose, eleves, tousLesCours
       <button
         type="button"
         className="btn btn--primary btn--block"
-        disabled={!nom || coursIds.length === 0 || enCours}
+        disabled={!nom || coursIds.length === 0 || lireDuree(duree) === undefined || enCours}
         onClick={valider}
       >
         Créer

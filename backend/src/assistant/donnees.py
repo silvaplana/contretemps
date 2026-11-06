@@ -83,7 +83,7 @@ OUTILS_DONNEES = [
            "Heures réellement faites par les professeurs (séances, horaires réels, dépassements), par mois.",
            {"professeur_id": _prop(["integer", "null"], "Numéro du professeur, ou null pour tous."),
             "mois": _prop(["string", "null"], "AAAA-MM, ou null pour toute la saison.")}),
-    _outil("lister_choregraphies", "Les chorégraphies : cours, élèves, costume, horaire de répétition, nombre de vidéos.",
+    _outil("lister_choregraphies", "Les chorégraphies : cours, élèves, musique, costume, horaire de répétition, nombre de vidéos.",
            {"cours_id": COURS}),
     _outil("lister_inscriptions_en_ligne",
            "Les fiches d'inscription reçues par la page publique : élève, date, moyen et statut de paiement, montants.", {}),
@@ -104,6 +104,14 @@ REQUIS = {"eleve_id"}
 # cours), leurs présences, ses propres heures, leurs chorégraphies. Pas de
 # fiche élève, de contacts, d'âge, de paiements, ni des autres profs.
 POUR_TOUS = {"resume_ecole", "lister_cours", "lister_eleves", "presences", "heures_professeurs", "lister_choregraphies"}
+
+
+def _musique(ch: Choregraphie) -> str:
+    """« Auteur, Titre (3:45) », ou « ? »."""
+    texte = ", ".join(x for x in (ch.music_author, ch.music_title) if x)
+    if ch.music_duration_seconds is not None:
+        texte += f" ({ch.music_duration_seconds // 60}:{ch.music_duration_seconds % 60:02d})"
+    return texte.strip() or "?"
 
 
 @dataclass
@@ -426,7 +434,7 @@ class DonneesEcole:
             videos = db.scalar(select(func.count()).select_from(choregraphies_videos).where(choregraphies_videos.c.choregraphie_id == ch.id))
             lignes.append(
                 f"- {ch.nom} ({', '.join(cours[i].nom for i in cours_de[ch.id])}) : {len(eleves)} élèves ({', '.join(_nom(e) for e in eleves)}) ; "
-                f"costume : {ch.costume or '?'} ; répétition : {ch.horaire_repetition or '?'} ; {videos} vidéos"
+                f"musique : {_musique(ch)} ; costume : {ch.costume or '?'} ; répétition : {ch.horaire_repetition or '?'} ; {videos} vidéos"
             )
         return "\n".join(lignes) or "Aucune chorégraphie."
 

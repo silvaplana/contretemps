@@ -354,7 +354,8 @@ def _construire_tables() -> list[_Table]:
         _Table(
             "Choregraphies",
             Choregraphie,
-            ["id", "cours_id", "nom", "horaire_repetition", "costume"],
+            ["id", "cours_id", "nom", "horaire_repetition", "costume", "music_author", "music_title",
+             "music_duration_seconds"],
             lambda db, eid: list(
                 db.scalars(select(Choregraphie).where(Choregraphie.cours_id.in_(_sous_requete_cours_ecole(eid))))
             ),

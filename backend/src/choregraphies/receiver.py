@@ -81,6 +81,9 @@ class ChoregraphiesReceiver:
                 nom=c.nom,
                 horaire_repetition=c.horaire_repetition,
                 costume=c.costume,
+                music_author=c.music_author,
+                music_title=c.music_title,
+                music_duration_seconds=c.music_duration_seconds,
                 eleve_ids=eleves[c.id],
                 videos=[VideoSortie.model_validate(v) for v in videos[c.id]],
             )

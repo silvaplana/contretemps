@@ -7,6 +7,7 @@ import AjouterVideo from '../video/AjouterVideo.jsx'
 import EditVideoModal from '../video/EditVideoModal.jsx'
 import CasesCours from './CasesCours.jsx'
 import ChoixElevesPanel from './ChoixElevesPanel.jsx'
+import { formatDuree, lireDuree, texteMusique } from './musique.js'
 
 // Écran 2/2 de Chorégraphie : le détail d'UNE chorégraphie, plein écran,
 // avec une flèche de retour vers ChoregraphieListScreen — même principe que
@@ -18,7 +19,7 @@ import ChoixElevesPanel from './ChoixElevesPanel.jsx'
 // en ajouter une ; la modifier est réservé à qui gère la chorégraphie ; la
 // supprimer aussi, plus celui qui l'a ajoutée.
 //
-// Cours, élèves, costume et horaire sont rangés dans le volet
+// Cours, élèves, musique, costume et horaire sont rangés dans le volet
 // « Description » (Seb, 15 octobre), fermé par défaut ; ouvert ou fermé,
 // il reste comme on l'a laissé (gardé sur l'appareil). Ouvert d'office
 // pendant une modification.
@@ -192,6 +193,37 @@ export default function ChoregraphieDetailScreen({
             </section>
 
             <section>
+              <h3>
+                <Icon name="music" size={16} /> Musique
+              </h3>
+              {editing ? (
+                <>
+                  <label htmlFor="choregraphie-auteur">Auteur</label>
+                  <input
+                    id="choregraphie-auteur"
+                    className="field-input"
+                    value={choregraphie.musicAuthor}
+                    onChange={(e) => onUpdate({ musicAuthor: e.target.value })}
+                  />
+                  <label htmlFor="choregraphie-titre">Titre</label>
+                  <input
+                    id="choregraphie-titre"
+                    className="field-input"
+                    value={choregraphie.musicTitle}
+                    onChange={(e) => onUpdate({ musicTitle: e.target.value })}
+                  />
+                  <label htmlFor="choregraphie-duree">Durée</label>
+                  <DureeMusique
+                    secondes={choregraphie.musicDurationSeconds}
+                    onChange={(musicDurationSeconds) => onUpdate({ musicDurationSeconds })}
+                  />
+                </>
+              ) : (
+                <p>{texteMusique(choregraphie) || <span className="muted">—</span>}</p>
+              )}
+            </section>
+
+            <section>
               <h3>Costume</h3>
               {editing ? (
                 <textarea
@@ -305,5 +337,26 @@ export default function ChoregraphieDetailScreen({
         />
       )}
     </div>
+  )
+}
+
+// La durée s'enregistre en quittant le champ, une fois lisible (« 3:45 ») :
+// pas à chaque chiffre tapé.
+function DureeMusique({ secondes, onChange }) {
+  const [texte, setTexte] = useState(formatDuree(secondes))
+  const lue = lireDuree(texte)
+  return (
+    <>
+      <input
+        id="choregraphie-duree"
+        className="field-input"
+        inputMode="numeric"
+        placeholder="3:45"
+        value={texte}
+        onChange={(e) => setTexte(e.target.value)}
+        onBlur={() => lue !== undefined && lue !== secondes && onChange(lue)}
+      />
+      {lue === undefined && <p className="login-screen__erreur">Écrire minutes:secondes, par exemple 3:45.</p>}
+    </>
   )
 }

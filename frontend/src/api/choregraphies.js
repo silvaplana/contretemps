@@ -29,14 +29,29 @@ function versEcran(ch) {
     nom: ch.nom,
     costume: ch.costume ?? '',
     horaireRepetition: ch.horaire_repetition ?? '',
+    musicAuthor: ch.music_author ?? '',
+    musicTitle: ch.music_title ?? '',
+    musicDurationSeconds: ch.music_duration_seconds ?? null,
     eleveIds: ch.eleve_ids,
     videos: ch.videos.map(videoVersEcran),
   }
 }
 
-function versChampsBackend({ horaireRepetition, eleveIds, coursIds, autresCoursIds, ...reste }) {
+function versChampsBackend({
+  horaireRepetition,
+  eleveIds,
+  coursIds,
+  autresCoursIds,
+  musicAuthor,
+  musicTitle,
+  musicDurationSeconds,
+  ...reste
+}) {
   return {
     ...reste,
+    ...(musicAuthor !== undefined && { music_author: musicAuthor }),
+    ...(musicTitle !== undefined && { music_title: musicTitle }),
+    ...(musicDurationSeconds !== undefined && { music_duration_seconds: musicDurationSeconds }),
     ...(horaireRepetition !== undefined && { horaire_repetition: horaireRepetition }),
     ...(eleveIds !== undefined && { eleve_ids: eleveIds }),
     ...(coursIds !== undefined && { cours_ids: coursIds }),
