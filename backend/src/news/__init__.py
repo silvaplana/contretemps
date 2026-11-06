@@ -1,2 +1,7 @@
-"""Module Actualités : la page d'actualités montrée à tous à l'ouverture de
-l'appli (à concevoir, fil « Module : Actualités »)."""
+"""Module Actualités : la page d'actualités de l'organisation
+(spec/modules/actualites.md)."""
+
+from .models import NewsItem, NewsSeen, NewsSettings
+from .news import News
+
+__all__ = ["News", "NewsItem", "NewsSeen", "NewsSettings"]

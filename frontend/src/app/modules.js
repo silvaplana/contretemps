@@ -10,7 +10,9 @@ import documents from '../modules/documents/module.js'
 import finances from '../modules/finances/module.js'
 import helloasso from '../modules/helloasso/module.js'
 import messagerie from '../modules/messagerie/module.js'
+import news from '../modules/news/module.js'
 import presence from '../modules/presence/module.js'
 import sessionClips from '../modules/session-clips/module.js'
 
-export const MODULES = [presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso]
+// Actualités en premier : son onglet Actus vient juste après Admin (Seb, 6 novembre).
+export const MODULES = [news, presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso]

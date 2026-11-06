@@ -53,6 +53,8 @@ const paths = {
   image: 'M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1Z M8.5 11a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3Z M3.5 17l5-4.5 3.5 3 3.5-4 5 5.5',
   // Document (onglet Docs) : page au coin plié, avec des lignes de texte.
   docs: 'M6 3h8l4 4v14H6z M14 3v4h4 M9 12h6 M9 16h6',
+  // Journal (onglet Actus, spec/modules/actualites.md §2).
+  news: 'M4 5h13v14H6a2 2 0 0 1-2-2Z M17 9h3v8a2 2 0 0 1-2 2 M8 9h5 M8 13h5',
   // Calculatrice (comptage d'heures, voir AdminProfesseurs.jsx) : boîtier +
   // écran + 6 touches (touches en "h.01" pour dessiner de simples points,
   // le bout de trait rond fait le reste).

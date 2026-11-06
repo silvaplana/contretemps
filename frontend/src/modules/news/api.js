@@ -1,0 +1,76 @@
+// Actualités (module serveur `news`, voir spec/modules/actualites.md §8 et
+// backend/src/news/receiver.py). Session et école choisie ajoutées par
+// api/identite.js.
+const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
+
+async function appel(chemin, options = {}) {
+  const reponse = await fetch(`${BASE_URL}${chemin}`, options)
+  if (!reponse.ok) {
+    let message = `Requête échouée (${reponse.status})`
+    try {
+      const { detail } = await reponse.json()
+      if (typeof detail === 'string') message = detail
+    } catch {
+      // réponse sans JSON : message par défaut
+    }
+    throw new Error(message)
+  }
+  return reponse.status === 204 ? null : reponse.json()
+}
+
+const json = (method, corps) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) })
+
+export function versEcran(n) {
+  return {
+    id: n.id,
+    niveau: n.level, // important | normal | brief
+    texte: n.body,
+    enHautJusquau: n.on_top_until, // 'AAAA-MM-JJ' ou null
+    enHaut: n.on_top,
+    notifier: n.notify,
+    auteur: n.author_name,
+    publieeLe: n.published_at ? new Date(`${n.published_at}Z`) : null,
+    modifieeLe: new Date(`${n.updated_at}Z`),
+    nouveau: n.is_new,
+  }
+}
+
+const versServeur = (a) => ({
+  level: a.niveau,
+  body: a.texte,
+  on_top_until: a.niveau === 'important' ? a.enHautJusquau : null,
+  notify: a.notifier,
+  publish: a.publier,
+})
+
+export async function lireActus(ecoleId) {
+  const r = await appel(`/ecoles/${ecoleId}/news`)
+  return { peutPublier: r.can_publish, actus: r.items.map(versEcran) }
+}
+
+export async function lireAtelier(ecoleId) {
+  return (await appel(`/ecoles/${ecoleId}/news/atelier`)).map(versEcran)
+}
+
+export async function enregistrer(ecoleId, actu) {
+  const r = actu.id
+    ? await appel(`/ecoles/${ecoleId}/news/${actu.id}`, json('PUT', versServeur(actu)))
+    : await appel(`/ecoles/${ecoleId}/news`, json('POST', versServeur(actu)))
+  return versEcran(r)
+}
+
+export const depublier = (ecoleId, id) => appel(`/ecoles/${ecoleId}/news/${id}/unpublish`, { method: 'POST' })
+export const supprimer = (ecoleId, id) => appel(`/ecoles/${ecoleId}/news/${id}`, { method: 'DELETE' })
+
+// Option « Ouvrir l'appli sur les actus » (§6). Module éteint ou erreur :
+// on garde l'ouverture habituelle.
+export async function ouvrirSurLesActus(ecoleId) {
+  try {
+    return (await appel(`/ecoles/${ecoleId}/news/settings`)).open_on_news
+  } catch {
+    return false
+  }
+}
+
+export const changerOuverture = (ecoleId, valeur) =>
+  appel(`/ecoles/${ecoleId}/news/settings`, json('PUT', { open_on_news: valeur }))

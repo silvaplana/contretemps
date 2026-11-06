@@ -45,6 +45,8 @@ import MessagerieScreen from './screens/MessagerieScreen.jsx'
 import PresenceScreen from './screens/PresenceScreen.jsx'
 import ProfilScreen from './screens/ProfilScreen.jsx'
 import Financier from './modules/notes-frais/Financier.jsx'
+import Actus from './modules/news/Actus.jsx'
+import * as newsApi from './modules/news/api.js'
 import Sparring from './modules/session-clips/Sparring.jsx'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
@@ -241,6 +243,7 @@ function App() {
           // Onglet retenu mais plus permis à ce profil (rôle retiré...) :
           // retour aux messages.
           setActiveTab(ongletDeDepart(compte))
+          ouvrirSurLesActus(ecoleRestauree?.id)
           setLoggedIn(true)
           const proposerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
           if (compteIdHandoff != null) {
@@ -935,6 +938,16 @@ function App() {
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
+  // Option « Ouvrir l'appli sur les actus » de l'école (module Actualités,
+  // spec/modules/actualites.md §6) : à chaque arrivée dans l'appli, pas au
+  // retour d'arrière-plan. Module éteint : rien ne change.
+  function ouvrirSurLesActus(ecoleId) {
+    if (!ecoleId || DOCS_AU_CHARGEMENT) return
+    newsApi.ouvrirSurLesActus(ecoleId).then((oui) => {
+      if (oui) setActiveTab('actus')
+    })
+  }
+
   // Entrée dans l'appli après une connexion réussie : par l'écran de
   // connexion, ou directement après avoir créé son mot de passe par un
   // lien reçu par mail. `resultat` ({ compte, ecole }) vient de api/auth.js.
@@ -949,6 +962,7 @@ function App() {
     // Même après une reconnexion (session expirée, déconnexion), on repart
     // du dernier onglet affiché sur cet appareil.
     setActiveTab(ongletDeDepart(resultat.compte))
+    ouvrirSurLesActus(resultat.ecole?.id)
     setLoggedIn(true)
     // Si l'appli tourne déjà en standalone à cet instant (rare pour
     // une connexion EXPLICITE, mais possible après une déconnexion
@@ -1042,6 +1056,7 @@ function App() {
 
   const headerMode =
     activeTab === 'admin' ||
+    activeTab === 'actus' ||
     activeTab === 'profil' ||
     activeTab === 'heures' ||
     activeTab === 'notes-frais' ||
@@ -1060,6 +1075,8 @@ function App() {
   const headerTitle =
     activeTab === 'admin'
       ? 'Administration'
+      : activeTab === 'actus'
+      ? 'Actualités'
       : activeTab === 'profil'
         ? 'Profil'
         : activeTab === 'heures'
@@ -1253,6 +1270,8 @@ function App() {
         {activeTab === 'financier' && isTresorier(activeUser) && <Financier key={activeUser.id} />}
 
         {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} />}
+
+        {activeTab === 'actus' && <Actus key={activeUser.id} ecoleId={ecole.id} prenom={activeUser.prenom} />}
 
         {activeTab === 'sparring' && <Sparring key={activeUser.id} ecoleId={ecole.id} cours={cours} />}
 
