@@ -13,6 +13,7 @@ module. Rayer ce qui est fait.
 - Saisons en module optionnel (fil du 24 octobre).
 - Signature de documents : retours de Seb après ses tests (`modules/signature-documents.md`).
 - `SPEC.md` à réduire à ce qui est propre à Contretemps.
+- Actualités (`modules/actualites.md` §10) : deux étapes, actus en texte puis médias (Seb, 6 novembre).
 
 ## En cours
 
