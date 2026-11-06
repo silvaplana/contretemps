@@ -12,7 +12,7 @@ Comptes
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet), à reprendre de la clôture ou de la Balance.
 
 Pièces
-- Puces : Virements, Notes de frais, Honoraires, Achats, Ventes. Un badge compte les pièces qui attendent. Ventes (pièces de
+- Puces : Virements, Notes de frais, Honoraires, Achats, Ventes, À trancher (les pièces mises « plus tard » et les pièces refusées, fichiers dans Docs › Financier › A TRAITER). Un badge compte les pièces qui attendent. Ventes (pièces de
   recette) ne se saisit pas encore. Les lignes de banque sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
@@ -21,8 +21,11 @@ Pièces
   paie : même montant et même nom → ligne rattachée, « Payée selon la banque » (« Pas cette ligne » sinon) ; même montant
   seulement → « C'est payé » ; aucune ligne du montant exact → « Paiement possible » (lignes au même nom, écart affiché, ou
   un virement qui paie aussi d'autres pièces de la personne) et « C'est ce paiement » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
-  Terminé ouvre la revue pièce par pièce (nature, Pour qui ou Fournisseur, montant), le bouton dit « Valider : Payé » ou
-  « Valider : À payer » et passe à la suivante. Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
+  Terminé ouvre la revue de l'import : une ligne par pièce (fichier, date, montant ; nature, qui et rangement proposés ;
+  ligne du compte trouvée ou proposée avec l'écart ; ce que la pièce deviendrait) et trois boutons : Valider (« Valider :
+  Payé », « C'est ce paiement », « Valider : À payer »), Autre… (la fiche), Plus tard. En haut « Valider les pièces sûres
+  (N) », en bas « Annuler cet import ». Sur une pièce payée avec écart : « Régler l'écart… » (Il nous rembourse / On lui
+  doit encore, qui crée une pièce À payer du reste / On laisse tomber). Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
   proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
   Préparé → À payer, À payer → À valider), « Annuler cette pièce : tout défaire » (une note envoyée par un membre lui
   revient) ; payée à tort : « Détacher » d'abord (tant que la saison n'est pas clôturée). Dans la revue, « Annuler cet

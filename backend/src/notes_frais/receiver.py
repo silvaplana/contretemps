@@ -85,6 +85,10 @@ class PreparationEntree(BaseModel):
     payeur_id: int
 
 
+class EcartEntree(BaseModel):
+    choix: str  # refund | pay_rest | write_off
+
+
 class PaiementEntree(BaseModel):
     operation_id: int
     aussi: list[int] = []  # les autres pièces payées par le même virement
@@ -365,6 +369,14 @@ class NotesDeFraisReceiver:
         @app.post("/notes-frais/notes/{note_id}/payee")
         def payee(note_id: int, corps: PaiementEntree, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.payer, db, m, note_id, corps.operation_id, corps.aussi)])[0]
+
+        @app.post("/notes-frais/notes/{note_id}/plus-tard")
+        def plus_tard(note_id: int, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.plus_tard, db, m, note_id)])[0]
+
+        @app.post("/notes-frais/notes/{note_id}/ecart")
+        def regler_ecart(note_id: int, corps: EcartEntree, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.regler_ecart, db, m, note_id, corps.choix)])[0]
 
         @app.post("/notes-frais/notes/{note_id}/revenir")
         def revenir(note_id: int, db: Session = db_dep, m: Membre = membre):

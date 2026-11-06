@@ -287,8 +287,9 @@ se fait au fil de l'eau, quand on donne les pièces). Dans Pièces, à côté de
 période, le bouton **Rapprochement** produit un PDF (`GET /notes-frais/rapprochement.pdf?debut&fin`,
 trésoriers) en trois parties : **pièces payées et la ligne du compte qui les paie** (date, nature,
 qui, montant, ligne, montant payé, écart quand la ligne ne fait pas le montant de ses pièces) ;
-**pièces sans paiement rattaché** (avec leur état : À valider, À payer, Préparé, Envoyé, Don,
-Payée hors banque) ; **lignes de débit du compte sans pièce**. Une pièce est de la période par sa
+**pièces sans paiement rattaché** (avec leur état : À valider, À trancher, À payer, Préparé, Envoyé,
+Don, Payée hors banque) ; **lignes de débit du compte sans pièce**. Un écart réglé le dit
+(« remboursement attendu », « reste dû à payer », « abandonné »). Une pièce est de la période par sa
 date, sinon par celle de son paiement.
 
 **Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de **pièces** à
@@ -320,10 +321,36 @@ part : **déjà payé ?** (« Vu sur le compte », §8.3 bis de `financier.md` :
 « C'est payé » la rattache, directement depuis À valider, sans mail ni notification à la
 personne puisque c'était déjà réglé) et **où la ranger** (la nature).
 
-**Terminé** ouvre la **revue, pièce par pièce** (« Pièce 2 sur 5 ») : la nature proposée en trois
-puces (Note de frais / Honoraires / Achat) avec la raison (« Marie Dupont est prof »), Pour qui ou
-Fournisseur, date, montant, catégorie, « Vu sur le compte » ; **Valider** d'un toucher passe à la
-suivante. Fermer la revue laisse les pièces À valider dans leur puce. La nature se change tant
+**Terminé** ouvre la **revue de l'import** (Seb, 6 novembre : en tableau, maquette
+https://claude.ai/artifact/TH7twT6JdXsDr6tc2zq3E2), à la place des puces : **une ligne par pièce**
+(cartes sur téléphone, tableau sur ordinateur) avec le fichier, la date, le montant, et ce que
+l'appli propose : **nature**, **qui** (ou fournisseur), **rangement** dans Docs (« Financier ›
+HONORAIRES › Sophie Boyer »), **ligne du compte** (rattachée « même nom, même montant » ; proposée
+avec l'écart ou « paie aussi » ; « même montant, autre nom » ; ou aucune) et ce que la pièce
+**deviendrait** (Payé ; Payé si c'est bien cette ligne ; À payer, rattachée plus tard quand la
+ligne arrivera). Trois choix par ligne : **Valider** (« Valider : Payé », « C'est ce paiement »,
+« Valider : À payer »), **Autre…** (la fiche : nature, qui, date, montant, lignes possibles,
+Refuser), **Plus tard**. En haut, **« Valider les pièces sûres (N) »** (ligne rattachée, personne
+connue) ; en bas, « Annuler cet import ». Fermer la revue laisse le reste À valider dans sa puce.
+
+**Plus tard** : la pièce reste À valider, sort du badge de sa nature et passe dans la puce
+**À trancher** (avec les pièces établies puis **refusées**) ; son fichier va dans Docs › Financier
+› la saison › **A TRAITER** (`deferred_at`), le temps de décider ; la fiche garde la question de
+l'appli (ligne proposée, écart) et ses boutons (C'est ce paiement, Valider, Refuser). Valider,
+payer ou refuser la sort de « plus tard » et le fichier part dans son dossier définitif ; une pièce
+refusée reste dans A TRAITER jusqu'à « Annuler cette pièce ». Rien n'est rendu à la personne : seule
+une note de frais envoyée par un membre lui revient.
+
+**Régler l'écart** (Seb, 6 novembre) : une pièce payée par une ligne qui ne fait pas son montant
+porte l'écart sur sa fiche et dans le rapprochement. Bouton **« Régler l'écart… »**, trois choix
+(`gap_settlement`) : **« Il nous rembourse X »** (`refund`, payé de trop : le remboursement est
+attendu sur le compte), **« On lui doit encore X »** (`pay_rest`, payé pas assez : une pièce
+« Reste dû : … » À payer du reste est créée, même nature, même personne ou fournisseur, et passe
+par Virements), **« On laisse tomber »** (`write_off`). L'écart cesse d'être signalé ; la décision
+reste écrite sur la pièce et dans le PDF de rapprochement. En compta, l'achat est enregistré au
+montant payé (§8.7 de `financier.md`).
+
+La nature se change tant
 que la pièce est à valider ; le fichier suit dans Docs (§7 bis). Une note de frais ainsi établie
 par le trésorier est à lui de corriger (nature, personne, montant), de valider ou de supprimer ;
 la personne la retrouve dans « Mes notes de frais ». Une note envoyée par la personne elle-même ne

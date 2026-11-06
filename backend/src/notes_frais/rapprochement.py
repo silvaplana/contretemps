@@ -36,6 +36,16 @@ def _eur(centimes: int) -> str:
     return f"{signe}{centimes // 100:,}".replace(",", " ") + f",{centimes % 100:02d} €"
 
 
+_REGLE = {"refund": "remboursement attendu", "pay_rest": "reste dû à payer", "write_off": "abandonné"}
+
+
+def _ecart(p: dict) -> str:
+    if not p["ecart_centimes"]:
+        return ""
+    regle = _REGLE.get(p.get("ecart_regle") or "")
+    return _eur(p["ecart_centimes"]) + (f" · {regle}" if regle else "")
+
+
 def pdf(donnees: dict) -> bytes:
     """Le PDF (A4 portrait) du dict rendu par `NotesDeFrais.rapprochement`."""
     e = html.escape
@@ -52,7 +62,7 @@ def pdf(donnees: dict) -> bytes:
         lignes = "".join(
             f"<tr><td>{_fr(p['date'])}</td><td>{e(p['nature'])}</td><td>{e(p['qui'])}</td><td class='n'>{_eur(p['montant_centimes'])}</td>"
             f"<td>{_fr(p['ligne']['date'])} · {e(p['ligne']['libelle'])}{' · ' + e(p['ligne']['compte']) if p['ligne']['compte'] else ''}</td>"
-            f"<td class='n'>{_eur(-p['ligne']['montant_centimes'])}</td><td class='n'>{_eur(p['ecart_centimes']) if p['ecart_centimes'] else ''}</td></tr>"
+            f"<td class='n'>{_eur(-p['ligne']['montant_centimes'])}</td><td class='n'>{_ecart(p)}</td></tr>"
             for p in rattachees
         )
         parts.append(

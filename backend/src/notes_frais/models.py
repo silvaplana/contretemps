@@ -96,6 +96,10 @@ class NoteFrais(Base):
     # Le lot de fichiers déposés d'un coup (import), pour « Annuler cet
     # import » (Seb, 1er/11) ; None = saisie une par une.
     batch_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
+    # « Plus tard » (§7 quinquies, Seb 6/11) : la pièce reste À valider, dans À trancher et Docs › A TRAITER.
+    deferred_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Écart entre la ligne du compte et la pièce, réglé : refund / pay_rest / write_off.
+    gap_settlement: Mapped[str | None] = mapped_column(String(20), nullable=True)
 
     depenses: Mapped[list["Depense"]] = relationship(back_populates="note", order_by="Depense.date")
 

@@ -21,7 +21,7 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import BinaryIO
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .models import (
@@ -54,11 +54,13 @@ TYPES_ACCEPTES = {"image/jpeg", "image/png", "image/webp", "image/gif", "image/h
 PIECES_MAX = 5
 MONTANT_MAX_CENTIMES = 10_000_000  # 100 000 €, garde-fou contre une virgule oubliée
 
-FILTRES = ("a_valider", "a_rembourser", "terminees")
+FILTRES = ("a_valider", "a_rembourser", "terminees", "a_trancher")
 # À payer, pas encore vu sur le compte (financier.md §8.3 bis).
 EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
 # Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
 DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS"}
+A_TRAITER = "A TRAITER"  # « plus tard » et refusées, le temps de décider (Seb, 6/11)
+ECARTS = ("refund", "pay_rest", "write_off")
 MOIS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
         "novembre", "décembre")
 MOIS_COURTS = ("janv", "fevr", "mars", "avr", "mai", "juin", "juil", "aout", "sept", "oct", "nov", "dec")
@@ -671,11 +673,81 @@ class NotesDeFrais:
             requete = requete.where(NoteFrais.statut == ENVOYEE).order_by(NoteFrais.envoyee_le)
         elif filtre == "a_rembourser":
             requete = requete.where(NoteFrais.statut.in_(EN_PAIEMENT), NoteFrais.don.is_(False)).order_by(NoteFrais.traitee_le)
+        elif filtre == "a_trancher":
+            requete = requete.where(self._a_trancher()).order_by(NoteFrais.envoyee_le.desc(), NoteFrais.id.desc())
         else:
             requete = requete.where(
                 (NoteFrais.statut.in_((REMBOURSEE, REFUSEE))) | ((NoteFrais.statut == VALIDEE) & NoteFrais.don.is_(True))
             ).order_by(NoteFrais.envoyee_le.desc())
         return self.notes_dicts(db, membre, list(db.scalars(requete)))
+
+    @staticmethod
+    def _a_trancher():
+        """Puce À trancher (Seb, 6/11) : les pièces mises « plus tard » et les
+        pièces établies par un trésorier qu'il a refusées."""
+        return ((NoteFrais.statut == ENVOYEE) & NoteFrais.deferred_at.is_not(None)) | (
+            (NoteFrais.statut == REFUSEE) & NoteFrais.established_by.is_not(None)
+        )
+
+    def plus_tard(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« Plus tard » dans la revue : la pièce reste À valider, passe dans
+        À trancher et son fichier dans Docs › Financier › A TRAITER ; la
+        question de l'appli (ligne proposée, écart) reste posée sur la fiche."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.statut != ENVOYEE:
+            raise ValueError("Cette pièce n'est plus à valider.")
+        note.deferred_at = _maintenant()
+        db.commit()
+        db.refresh(note)
+        self._reranger(db, membre, note)
+        return note
+
+    def regler_ecart(self, db: Session, membre: Membre, note_id: int, choix: str) -> NoteFrais:
+        """Une pièce payée par une ligne qui ne fait pas son montant (Seb, 6/11) :
+        « il nous rembourse » (refund, on attend la ligne en sens inverse),
+        « on lui doit encore » (pay_rest : une pièce À payer du reste, dans
+        Virements), « on laisse tomber » (write_off). L'écart cesse d'être
+        signalé ; la décision reste écrite sur la pièce et dans le rapprochement."""
+        self._exiger_tresorier(membre)
+        if choix not in ECARTS:
+            raise ValueError("Choix inconnu.")
+        note = self._note(db, membre.org_id, note_id)
+        ecart = self._ecart(db, note)
+        if not ecart:
+            raise ValueError("Cette pièce n'a pas d'écart avec la ligne du compte.")
+        if choix == "refund" and ecart < 0 or choix == "pay_rest" and ecart > 0:
+            raise ValueError("Ce choix ne va pas avec le sens de l'écart.")
+        if choix == "pay_rest":
+            reste = NoteFrais(
+                org_id=note.org_id, nature=note.nature, statut=VALIDEE, person_id=note.person_id, supplier=note.supplier,
+                titre=f"Reste dû : {note.titre}"[:120], established_by=membre.person_id,
+                traitee_le=_maintenant(), traitee_par=membre.person_id,
+            )
+            self._recopier_rib(db, reste)
+            db.add(reste)
+            db.flush()
+            premiere = note.depenses[0] if note.depenses else None
+            db.add(Depense(
+                org_id=note.org_id, person_id=note.person_id, date=premiere.date if premiere else date.today(),
+                montant_centimes=-ecart, description=f"Reste dû sur {note.titre}"[:200], note_id=reste.id,
+                categorie_id=premiere.categorie_id if premiere else None,
+            ))
+        note.gap_settlement = choix
+        db.commit()
+        db.refresh(note)
+        return note
+
+    def _ecart(self, db: Session, note: NoteFrais) -> int:
+        """Ce que la ligne du compte a payé en plus (> 0) ou en moins (< 0) que
+        les pièces qu'elle paie ; 0 sans ligne ou si tout tombe juste."""
+        if note.statut != REMBOURSEE or not note.bank_operation_id or not self.ports.banque:
+            return 0
+        operation = self.ports.banque.operation(db, note.org_id, note.bank_operation_id)
+        if operation is None:
+            return 0
+        payees = db.scalars(select(NoteFrais).where(NoteFrais.org_id == note.org_id, NoteFrais.bank_operation_id == operation.id))
+        return -operation.montant_centimes - sum(self.total(n) for n in payees)
 
     def notes_dicts(self, db: Session, membre: Membre, notes: list[NoteFrais]) -> list[dict]:
         """Vu du trésorier : avec les noms, et l'opération du compte qui
@@ -695,6 +767,11 @@ class NotesDeFrais:
             ligne["detachable"] = rattachee is not None and self._detachable(db, note)
             # Saison de la pièce clôturée au Financier : rangée dans la saison en cours.
             ligne["saison_cloturee"] = bool(self.ports.banque) and self.ports.banque.cloturee(db, note.org_id, self._date_docs(note))
+            ligne["plus_tard"] = note.deferred_at is not None
+            ligne["ecart_centimes"] = self._ecart(db, note)
+            ligne["ecart_regle"] = note.gap_settlement
+            chemin = self._chemin_docs(db, note)
+            ligne["rangement"] = " › ".join(["Financier", *chemin]) if chemin else None
             resultat.append(ligne)
         return resultat
 
@@ -711,9 +788,10 @@ class NotesDeFrais:
         pour moi et les envoyés vus sur le compte (financier.md §8.3 bis)."""
         self._exiger_tresorier(membre)
         a_valider = db.scalars(
-            select(NoteFrais.nature).where(NoteFrais.org_id == membre.org_id, NoteFrais.statut == ENVOYEE)
+            select(NoteFrais.nature).where(NoteFrais.org_id == membre.org_id, NoteFrais.statut == ENVOYEE, NoteFrais.deferred_at.is_(None))
         ).all()
         compteurs = {nature: a_valider.count(nature) for nature in NATURES}
+        compteurs["a_trancher"] = db.scalar(select(func.count()).select_from(NoteFrais).where(NoteFrais.org_id == membre.org_id, self._a_trancher())) or 0
         en_paiement = db.scalars(
             select(NoteFrais).where(
                 NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.statut.in_(EN_PAIEMENT)
@@ -738,6 +816,7 @@ class NotesDeFrais:
         ):
             raise PermissionError("Un autre trésorier doit valider votre propre note.")
         self._exiger_complete(note)
+        note.deferred_at = None
         if note.bank_operation_id is not None:
             # Payée selon la banque (§7 quinquies) : la validation du trésorier la passe Payé, sans rien annoncer.
             self._rattacher(db, membre, note, note.bank_operation_id, prevenir=False)
@@ -745,6 +824,7 @@ class NotesDeFrais:
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
         db.commit()
         db.refresh(note)
+        self._reranger(db, membre, note)
         if note.nature != FRAIS:
             return note
         if note.don:
@@ -1191,6 +1271,8 @@ class NotesDeFrais:
         (« 08.2026 ») ; HONORAIRES › PRENOM NOM du prof › la note ; Notes de
         frais › personne › la note. None : pas encore rangeable (honoraires
         dont on ne sait pas encore pour qui)."""
+        if note.deferred_at is not None or (note.statut == REFUSEE and note.established_by is not None):
+            return [A_TRAITER]
         if note.nature == ACHAT:
             return [DOSSIERS[ACHAT], f"{self._date_docs(note):%m.%Y}"]
         if note.person_id == PERSONNE_A_CHOISIR:
@@ -1255,7 +1337,8 @@ class NotesDeFrais:
         if self.ports.classeur is None or chemin is None:
             return
         try:
-            self.ports.classeur.retirer(db, membre, chemin, node_ids if note.nature == ACHAT else (), le=self._date_docs(note))
+            par_fichier = note.nature == ACHAT or chemin == [A_TRAITER]
+            self.ports.classeur.retirer(db, membre, chemin, node_ids if par_fichier else (), le=self._date_docs(note))
         except Exception:
             db.rollback()
             logger.exception("Note de frais %s : retrait des documents impossible", note.id)
@@ -1312,9 +1395,10 @@ class NotesDeFrais:
         if note.statut != ENVOYEE:
             raise ValueError("Cette note n'est plus à valider.")
         note.statut, note.motif_refus = REFUSEE, motif[:2000]
-        note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        note.traitee_le, note.traitee_par, note.deferred_at = _maintenant(), membre.person_id, None
         db.commit()
         db.refresh(note)
+        self._reranger(db, membre, note)  # pièce établie refusée : Docs › A TRAITER (Seb, 6/11)
         if note.nature == FRAIS:
             self._prevenir_auteur(
                 db, membre, note, "refusée",
@@ -1582,9 +1666,10 @@ class NotesDeFrais:
         if note.statut == ENVOYEE:
             note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
         note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
-        note.bank_operation_id = operation_id
+        note.bank_operation_id, note.deferred_at = operation_id, None
         db.commit()
         db.refresh(note)
+        self._reranger(db, membre, note)
         self._apres_paiement(db, membre, note, prevenir=prevenir)
 
     def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int, aussi: Sequence[int] = ()) -> NoteFrais:
@@ -1730,11 +1815,11 @@ class NotesDeFrais:
             piece = {"id": note.id, "date": jour(note), "nature": natures.get(note.nature, note.nature), "qui": qui(note), "montant_centimes": self.total(note)}
             if ligne is not None:
                 piece["ligne"] = {"id": ligne.id, "date": ligne.date, "libelle": ligne.libelle, "montant_centimes": ligne.montant_centimes, "compte": ligne.compte}
-                piece["ecart_centimes"] = 0
+                piece["ecart_centimes"], piece["ecart_regle"] = 0, note.gap_settlement
                 par_ligne.setdefault(ligne.id, []).append(piece)
                 rattachees.append(piece)
             else:
-                piece["etat"] = "Don" if note.don else etats.get(note.statut, note.statut)
+                piece["etat"] = "Don" if note.don else "À trancher" if note.deferred_at else etats.get(note.statut, note.statut)
                 sans_paiement.append(piece)
         # Une ligne qui ne fait pas le montant de ses pièces : l'écart, sur la première.
         for pieces in par_ligne.values():

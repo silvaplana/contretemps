@@ -116,6 +116,9 @@ export const ajouterPage = (noteId, f) => appel(`/notes/${noteId}/pages`, fichie
 export const corriger = (noteId, champs) => appel(`/notes/${noteId}`, json('PATCH', champs))
 export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DELETE' })
 // Revenir en arrière d'une étape (Envoyé / Préparé → À payer, À payer → À valider).
+// « Plus tard » (revue) et « Régler l'écart » d'une pièce payée (§7 quinquies, Seb 6/11).
+export const plusTard = (noteId) => appel(`/notes/${noteId}/plus-tard`, { method: 'POST' })
+export const reglerEcart = (noteId, choix) => appel(`/notes/${noteId}/ecart`, json('POST', { choix }))
 export const revenir = (noteId) => appel(`/notes/${noteId}/revenir`, { method: 'POST' })
 
 // Virements (§8.3 bis) : l'appli ne paie pas, elle aide à faire le virement.
