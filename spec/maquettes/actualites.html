@@ -263,6 +263,7 @@ function editor() {
       <button aria-pressed="${d.media === 'video'}" data-act="media" data-media="video">${I.video}Vidéo</button>
       <button aria-pressed="${!!d.file}" data-act="file">${I.file}Document</button></div>`}
     ${d.level === 'important' ? `<div class="until"><span>En haut jusqu'au</span><select id="until" aria-label="En haut jusqu'au">${['8 novembre', '11 novembre', '15 novembre', '30 novembre'].map((x) => `<option ${x === d.until ? 'selected' : ''}>${x}</option>`).join('')}</select></div>` : ''}
+    <div class="opt"><span>Envoyer une notification</span><button class="switch" role="switch" aria-checked="${!!d.notify}" aria-label="Envoyer une notification" data-act="notify"></button></div>
     <div class="preview-label">Ce que verront les autres</div>
     <div class="preview" id="preview">${card({ ...d, who: 'Seb', date: '6 novembre', isNew: true }, 'p')}</div>
     ${d.id ? '<button class="linkbtn" data-act="delete">Supprimer cette actu</button>' : ''}
@@ -297,7 +298,7 @@ function render() {
   document.getElementById('who-pub').setAttribute('aria-pressed', pub)
 }
 
-const ASK = `<p class="ask"><b>Une question :</b> une actu publiée envoie-t-elle une notification sur le téléphone de tout le monde ? Recommandation : seulement les actus <b>Important</b>, pour que la notification garde de la valeur.</p>`
+const ASK = ''
 function NOTES() {
   if (S.role === 'pub' && S.screen === 'edit') return `
     <p class="eyebrow">Actus › Atelier › ${S.draft.id ? "Modifier l'actu" : 'Nouvelle actu'}</p><h2>Écrire une actu</h2>
@@ -305,6 +306,7 @@ function NOTES() {
       <li><b>Trois niveaux</b>. <b>Important</b> : en haut des actus, en rouge, jusqu'à la date choisie, puis l'actu rejoint les autres. <b>Normal</b> : grande carte avec photo ou vidéo. <b>Brève</b> : une ligne, sans image.</li>
       <li>On ajoute une <b>photo</b>, une <b>vidéo</b> (jusqu'à 100 Mo, comme dans les Messages) ou un <b>document</b> pris dans Docs.</li>
       <li>En dessous, l'actu telle que les autres la verront, mise à jour à chaque lettre. Essayez : changez de niveau, ajoutez la vidéo.</li>
+      <li><b>Envoyer une notification</b> : au choix à chaque actu. Allumé d'office pour une actu Important, éteint pour les autres. La notification apparaît sur le téléphone comme celle d'un message : « Contretemps · Pas de cours mardi 11 novembre… » ; la toucher ouvre les actus.</li>
       <li><b>Publier</b> est le bouton principal. <b>Brouillon</b> la garde dans l'Atelier sans la montrer. « Supprimer cette actu » : Annuler pendant 10 s.</li>
     </ul>${ASK}`
   if (S.role === 'pub' && S.tab === 'atelier') return `
@@ -340,7 +342,8 @@ phone.addEventListener('click', (e) => {
   if (a === 'new') { S.draft = { id: null, level: 'normal', text: '', media: null, file: null, until: '11 novembre', status: 'draft' }; S.screen = 'edit'; S.playing = null }
   if (a === 'open') { S.draft = { ...S.items.find((n) => n.id === +b.dataset.id) }; S.screen = 'edit'; S.playing = null }
   if (a === 'back') S.screen = 'list'
-  if (a === 'level') { S.draft.level = b.dataset.level; if (S.draft.level === 'breve') { S.draft.media = null; S.draft.file = null } }
+  if (a === 'notify') S.draft.notify = !S.draft.notify
+  if (a === 'level') { if (!S.draft.id) S.draft.notify = b.dataset.level === 'important'; S.draft.level = b.dataset.level; if (S.draft.level === 'breve') { S.draft.media = null; S.draft.file = null } }
   if (a === 'media') { S.draft.media = S.draft.media === b.dataset.media ? null : b.dataset.media; S.draft.dur = '0:30' }
   if (a === 'file') S.draft.file = S.draft.file ? null : 'Programme du gala.pdf'
   if (a === 'publish' || a === 'keep') {
