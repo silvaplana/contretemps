@@ -183,7 +183,7 @@ const STUDIO = '<svg class="pic" viewBox="0 0 400 300" preserveAspectRatio="xMid
 
 const LEVELS = { important: 'Important', normal: 'Normal', breve: 'Brève' }
 const HINTS = {
-  important: 'En haut des actus, en rouge. Pour ce qui ne doit pas être manqué.',
+  important: "En haut des actus, en rouge, jusqu'à la date choisie. Pour ce qui ne doit pas être manqué.",
   normal: 'Une grande carte, avec sa photo ou sa vidéo.',
   breve: 'Une ligne, sans image. Pour les petites infos.',
 }
@@ -194,15 +194,13 @@ const S = {
     { id: 1, level: 'important', status: 'pub', who: 'Seb', date: '6 novembre', day: "Aujourd'hui", isNew: true, until: '11 novembre',
       text: "Pas de cours mardi 11 novembre (jour férié). Les cours reprennent mercredi 12." },
     { id: 2, level: 'normal', status: 'pub', who: 'Claire', date: '5 novembre', day: 'Cette semaine', isNew: true, media: 'video', dur: '0:48',
-      until: 'Toujours', text: "Le teaser du gala est là ! Rendez-vous le samedi 13 juin. Les costumes seront présentés en cours la semaine prochaine." },
+      text: "Le teaser du gala est là ! Rendez-vous le samedi 13 juin. Les costumes seront présentés en cours la semaine prochaine." },
     { id: 3, level: 'breve', status: 'pub', who: 'Seb', date: '4 novembre', day: 'Cette semaine',
       text: "Le cours ado du jeudi passe en salle 2 jusqu'aux vacances." },
     { id: 4, level: 'normal', status: 'pub', who: 'Seb', date: '28 octobre', day: 'Plus tôt', media: 'photo', file: 'Stage salsa novembre.pdf',
       text: "Stage de salsa le dimanche 23 novembre, de 14 h à 17 h. Le programme et l'inscription sont dans le document." },
     { id: 5, level: 'normal', status: 'draft', who: 'Seb', date: '6 novembre', day: '',
       text: "Photos de la soirée d'Halloween : merci à tous !" , media: 'photo' },
-    { id: 6, level: 'important', status: 'over', who: 'Seb', date: '20 octobre', day: '', until: '31 octobre',
-      text: "Dernier jour pour rendre les autorisations de sortie : vendredi 31 octobre." },
   ],
   draft: null,
 }
@@ -246,7 +244,7 @@ function feed() {
 function atelier() {
   const rows = S.items.map((n) => `
     <button class="row" data-act="open" data-id="${n.id}"><span class="lvl ${n.level}"></span>
-      <div><div class="t">${esc(n.text)}</div><div class="meta"><span class="chip ${n.status === 'pub' ? 'pub' : 'draft'}">${n.status === 'pub' ? 'Publiée' : n.status === 'over' ? 'Terminée' : 'Brouillon'}</span><span>${LEVELS[n.level]} · ${n.date}</span></div></div></button>`).join('')
+      <div><div class="t">${esc(n.text)}</div><div class="meta"><span class="chip ${n.status === 'pub' ? 'pub' : 'draft'}">${n.status === 'pub' ? 'Publiée' : 'Brouillon'}</span><span>${LEVELS[n.level]} · ${n.date}</span></div></div></button>`).join('')
   return `<div class="ws">${rows}
     <div class="sect">Options</div>
     <div class="opt"><span>Ouvrir l'appli sur les actus</span><button class="switch" role="switch" aria-checked="${S.openOnNews}" aria-label="Ouvrir l'appli sur les actus" data-act="toggle"></button></div>
@@ -264,7 +262,7 @@ function editor() {
       <button aria-pressed="${d.media === 'photo'}" data-act="media" data-media="photo">${I.photo}Photo</button>
       <button aria-pressed="${d.media === 'video'}" data-act="media" data-media="video">${I.video}Vidéo</button>
       <button aria-pressed="${!!d.file}" data-act="file">${I.file}Document</button></div>`}
-    <div class="until"><span>Afficher jusqu'au</span><select id="until" aria-label="Afficher jusqu'au">${['Toujours', '8 novembre', '11 novembre', '15 novembre', '30 novembre'].map((x) => `<option ${x === d.until ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    ${d.level === 'important' ? `<div class="until"><span>En haut jusqu'au</span><select id="until" aria-label="En haut jusqu'au">${['8 novembre', '11 novembre', '15 novembre', '30 novembre'].map((x) => `<option ${x === d.until ? 'selected' : ''}>${x}</option>`).join('')}</select></div>` : ''}
     <div class="preview-label">Ce que verront les autres</div>
     <div class="preview" id="preview">${card({ ...d, who: 'Seb', date: '6 novembre', isNew: true }, 'p')}</div>
     ${d.id ? '<button class="linkbtn" data-act="delete">Supprimer cette actu</button>' : ''}
@@ -304,8 +302,7 @@ function NOTES() {
   if (S.role === 'pub' && S.screen === 'edit') return `
     <p class="eyebrow">Actus › Atelier › ${S.draft.id ? "Modifier l'actu" : 'Nouvelle actu'}</p><h2>Écrire une actu</h2>
     <ul>
-      <li><b>Trois niveaux</b>. <b>Important</b> : en haut des actus, en rouge. <b>Normal</b> : grande carte avec photo ou vidéo. <b>Brève</b> : une ligne, sans image.</li>
-      <li><b>Afficher jusqu'au</b> : « Toujours » ou une date. Le lendemain, l'actu disparaît des actus et reste dans l'Atelier, marquée « Terminée ».</li>
+      <li><b>Trois niveaux</b>. <b>Important</b> : en haut des actus, en rouge, jusqu'à la date choisie, puis l'actu rejoint les autres. <b>Normal</b> : grande carte avec photo ou vidéo. <b>Brève</b> : une ligne, sans image.</li>
       <li>On ajoute une <b>photo</b>, une <b>vidéo</b> (jusqu'à 100 Mo, comme dans les Messages) ou un <b>document</b> pris dans Docs.</li>
       <li>En dessous, l'actu telle que les autres la verront, mise à jour à chaque lettre. Essayez : changez de niveau, ajoutez la vidéo.</li>
       <li><b>Publier</b> est le bouton principal. <b>Brouillon</b> la garde dans l'Atelier sans la montrer. « Supprimer cette actu » : Annuler pendant 10 s.</li>
@@ -322,7 +319,7 @@ function NOTES() {
     <p class="eyebrow">Actus${S.role === 'pub' ? ' › Aperçu' : ''}</p><h2>${S.role === 'pub' ? "L'Aperçu, ce que voient les autres" : 'Les actus, pour un élève'}</h2>
     <ul>
       <li>${S.role === 'pub' ? "Exactement l'écran des élèves, profs et bureau." : "Pas d'onglets : l'élève voit directement les actus. Actus est son premier onglet, puisqu'il n'a pas Admin."}</li>
-      <li>En haut, les actus <b>Important</b>, sur fond rouge clair. Puis les autres, groupées « Aujourd'hui », « Cette semaine », « Plus tôt ».</li>
+      <li>En haut, les actus <b>Important</b> en cours, sur fond rouge clair. Puis les autres, groupées « Aujourd'hui », « Cette semaine », « Plus tôt ».</li>
       <li>Une actu <b>Normal</b> est une grande carte, sa photo ou sa vidéo en premier. La vidéo se lit sur place (essayez ▶). Une <b>Brève</b> tient en une ligne.</li>
       <li>« Nouveau » marque ce que la personne n'a pas encore vu ; la pastille s'efface une fois les actus ouvertes.</li>
     </ul>${ASK}`
@@ -340,7 +337,7 @@ phone.addEventListener('click', (e) => {
   if (a === 'tab') { S.tab = b.dataset.tab; S.playing = null }
   if (a === 'play') S.playing = b.dataset.key
   if (a === 'toggle') { S.openOnNews = !S.openOnNews; toast(S.openOnNews ? "L'appli s'ouvrira sur les actus" : "L'appli s'ouvrira sur le dernier onglet") }
-  if (a === 'new') { S.draft = { id: null, level: 'normal', text: '', media: null, file: null, until: 'Toujours', status: 'draft' }; S.screen = 'edit'; S.playing = null }
+  if (a === 'new') { S.draft = { id: null, level: 'normal', text: '', media: null, file: null, until: '11 novembre', status: 'draft' }; S.screen = 'edit'; S.playing = null }
   if (a === 'open') { S.draft = { ...S.items.find((n) => n.id === +b.dataset.id) }; S.screen = 'edit'; S.playing = null }
   if (a === 'back') S.screen = 'list'
   if (a === 'level') { S.draft.level = b.dataset.level; if (S.draft.level === 'breve') { S.draft.media = null; S.draft.file = null } }
