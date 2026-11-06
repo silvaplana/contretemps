@@ -56,3 +56,13 @@ def remove(db: Session, member: Compte, right: str) -> None:
     db.execute(delete(GroupMember).where(GroupMember.member_id == member.id, GroupMember.group_id.in_(ids)))
     db.flush()
     db.expire(member, ["groups"])
+
+
+def declared() -> set[str]:
+    return set(_DECLARED)
+
+
+def of(member: Compte) -> list[str]:
+    """Les droits déclarés dont la fiche est dans le groupe (sans le Super User)."""
+    keys = {g.key for g in member.groups}
+    return [right for right in _DECLARED if group_key(right) in keys]

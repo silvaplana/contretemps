@@ -31,7 +31,7 @@ Admin › École
   Saison neuve : « Reprendre ceux de <saison précédente> ».
 - Administrateurs : tableau Nom, Prénom, Email, Administrateur principal, Groupes, Inviter, Statut.
   Toucher la case Groupes : Bureau (Président·e, Vice-président·e, Secrétaire, Trésorier·e), Profs,
-  groupes de l'école, 🔒 Accès au Financier, « + Nouveau groupe… ». Crayon et poubelle :
+  groupes de l'école, 🔒 Accès au Financier, 🔒 Publier les actualités, « + Nouveau groupe… ». Crayon et poubelle :
   administrateur principal, jamais sur sa propre ligne.
 - Personnalisation de l'application : Apparence visuelle (aperçus, adresse web de l'appli, nom sous
   l'icône, logo, nom de l'école en texte ou image, slogan, polices, couleurs ; Enregistrer ;
