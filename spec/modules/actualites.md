@@ -29,7 +29,8 @@ journal. Visible par tous les rôles (Membre, Admin, Admin principal, Super User
 | A le droit 🔒 Publier les actualités | Deux onglets en haut : **Atelier** \| **Aperçu** |
 | Tous les autres | Directement les actus (l'écran Aperçu, sans onglets) |
 
-Admin principal et Super User ont le droit d'office (spec/core.md §5.3).
+Le Super User passe toujours ; l'Administrateur principal se coche lui-même s'il veut publier
+(spec/core.md §5.3).
 
 ## 3. Les actus (Aperçu)
 
@@ -54,7 +55,7 @@ rouge ; ensuite elle redescend à sa place parmi les autres, rendue comme une ac
    « Aujourd'hui », « Cette semaine », « Plus tôt ».
 3. En bas : « C'est tout pour le moment. » Liste vide : « Pas encore d'actu. »
 
-Pas de pagination au début : les 50 dernières actus, puis le reste en faisant défiler.
+Pas de pagination au début : toutes les actus publiées, en faisant défiler.
 
 ### 3.3 Une actu
 
@@ -89,7 +90,7 @@ De haut en bas :
 1. **Niveau** : trois grands boutons Important / Normal / Brève (Normal par défaut), avec une ligne
    d'explication sous le choix.
 2. **Texte** (obligatoire).
-3. **Photo**, **Vidéo**, **Document** (cachés pour une Brève). Photo : galerie ou appareil photo.
+3. *(étape 2)* **Photo**, **Vidéo**, **Document** (cachés pour une Brève). Photo : galerie ou appareil photo.
    Vidéo : jusqu'à 100 Mo avant compression, comme dans la Messagerie. Document : choisi dans Docs.
 4. **En haut jusqu'au** (Important seulement) : une date, proposée à J+7.
 5. **Envoyer une notification** : interrupteur, allumé d'office pour Important, éteint pour Normal et
@@ -109,10 +110,10 @@ Si l'interrupteur est allumé, la publication envoie une notification push à to
 l'organisation, sauf l'auteur, avec le système existant (`notifications`, comme la Messagerie) :
 
 - titre : le nom de l'organisation ; corps : le début du texte (100 caractères) ;
-- la toucher ouvre l'appli sur Actus.
+- la toucher ouvre l'appli (sur Actus si l'option du §6 est allumée).
 
-La notification part **à la fin des 10 s d'Annuler**, pas avant. Modifier une actu publiée ne renvoie
-pas de notification.
+La notification part **à la fin des 10 s d'Annuler**, pas avant (minuteur du serveur, `news/news.py`),
+et une seule fois. Modifier une actu publiée ne renvoie pas de notification.
 
 ## 6. Option « Ouvrir l'appli sur les actus »
 
@@ -135,15 +136,21 @@ Tables préfixées `news_`, avec `org_id` (= `ecoles.id`) et filtre par organisa
 | `body` | text | |
 | `on_top_until` | date, nul | Important seulement |
 | `notify` | bool | |
-| `photo_path` | str, nul | dans le stockage partagé (`storage/`), dossier de l'organisation |
-| `video_id` | int, FK `videos.id`, nul | module Vidéos (compression, image d'attente, lien signé) |
-| `document_id` | int, FK `doc_nodes.id`, nul | fichier de Docs |
-| `author_id` | int, FK `comptes.id` | la fiche de la personne qui a publié |
+| `notified_at` | datetime, nul | la notification est partie (une seule fois) |
+| `author_id` | int, FK `comptes.id`, nul | la fiche de la personne qui a publié |
+| `author_name` | str | son prénom, gardé pour les saisons suivantes |
 | `published_at` | datetime, nul | nul = brouillon |
 | `created_at`, `updated_at` | datetime | |
-| `deleted_at` | datetime, nul | suppression douce, pour Annuler ; purge après 30 jours |
 
-**`news_seen`** : `org_id`, `compte_id` (clé), `seen_at`. Sert à la pastille « Nouveau ».
+Étape 2 (médias) : `photo_path` (stockage partagé `storage/`, dossier de l'organisation), `video_id`
+(FK `videos.id`, module Vidéos : compression, image d'attente, lien signé), `document_id`
+(FK `doc_nodes.id`, fichier de Docs).
+
+Supprimer est définitif : l'écran attend la fin des 10 s d'Annuler avant d'appeler le serveur, comme
+Sparring.
+
+**`news_seen`** : `compte_id` (clé), `seen_at`. Sert à la pastille « Nouveau ». La fiche change à
+chaque saison : « Nouveau » repart de zéro à la rentrée.
 
 **`news_settings`** : `org_id` (clé), `open_on_news` (bool, vrai par défaut ; pas de ligne = vrai).
 
@@ -152,25 +159,29 @@ Pourquoi des colonnes et pas une table de pièces jointes : une actu a au plus u
 
 ## 8. API
 
-Toutes sous `/news`, organisation du compte connecté.
+Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 
 | Route | Qui | Rôle |
 |---|---|---|
-| `GET /news` | tous | Actus publiées, dans l'ordre du §3.2, avec `is_new` ; met à jour `news_seen` |
-| `GET /news/workshop` | droit | Toutes, brouillons compris |
-| `POST /news` · `PATCH /news/{id}` | droit | Créer, modifier, publier (`publish: true`) |
-| `DELETE /news/{id}` · `POST /news/{id}/restore` | droit | Supprimer, Annuler |
-| `POST /news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
-| `POST /news/photo` · vidéo par blocs comme la Messagerie | droit | Envoyer un média |
-| `GET /news/settings` · `PUT /news/settings` | tous · droit | Option d'ouverture |
+| `GET …/news` | tous | `can_publish` et les actus publiées, dans l'ordre du §3.2, avec `is_new` ; met à jour `news_seen` |
+| `GET …/news/atelier` | droit | Toutes, brouillons compris |
+| `POST …/news` · `PUT …/news/{id}` | droit | Créer, modifier ; `publish` : publier ou garder en brouillon |
+| `POST …/news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
+| `DELETE …/news/{id}` | droit | Supprimer |
+| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture |
+
+Étape 2 : envoi d'une photo, d'une vidéo par blocs comme la Messagerie.
 
 Module éteint dans l'organisation : onglet caché, routes en 404 (spec/core.md §9 bis.3).
 
 ## 9. Assistant
 
 Un bouton de l'écran = un outil de l'assistant : actions « Publier une actu » (niveau, texte,
-notification) et « Retirer une actu » dans `news/actions.py`, réservées au droit, carte Faire/Annuler
-comme les autres.
+notification ; `publish_news`) et « Supprimer une actu » (`delete_news`) dans `news/actions.py`,
+réservées au droit, carte Faire/Annuler comme les autres.
+
+Le guide de l'assistant (`news/guide.md`) ne se lit, comme pour tout module à droit, que par qui a le
+droit (`assistant/guide.py`).
 
 ## 10. Étapes
 
@@ -178,6 +189,7 @@ Chaque étape part sur le « vas-y » de Seb, une PR chacune, avec le `guide.md`
 
 1. **Actus en texte** : tables, API, onglet Actus, Atelier | Aperçu, trois niveaux, En haut jusqu'au,
    brouillon, supprimer/Annuler, « Nouveau », notification, option d'ouverture, actions de l'assistant.
+   **Fait** (6 novembre 2026, PR de l'étape 1). L'onglet s'ouvre sur Aperçu, même pour qui publie.
 2. **Médias** : photo, vidéo (lecture sur place), document de Docs.
 
 ## 11. Questions ouvertes
