@@ -516,3 +516,123 @@
   min-height: 48px;
   margin-top: 12px;
 }
+
+/* Revue de l'import (Seb, 6/11) : une carte par pièce sur téléphone, une
+   ligne de tableau sur ordinateur : pièce | proposition | ligne du compte | choix. */
+.nf-revue {
+  display: grid;
+  gap: 10px;
+}
+
+.nf-revue__titre {
+  margin: 0;
+}
+
+.nf-revue__barre,
+.nf-revue__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.nf-revue__actions .btn {
+  flex: 1 1 auto;
+  min-height: 48px;
+}
+
+.nf-revue__liste {
+  display: grid;
+  gap: 10px;
+}
+
+.nf-revue__piece {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+
+.nf-revue__piece--faite {
+  opacity: 0.85;
+}
+
+.nf-revue__entete {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  align-items: baseline;
+}
+
+.nf-revue__fichier {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.nf-revue__montant {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.nf-revue__bloc {
+  display: grid;
+  grid-template-columns: 8.5em minmax(0, 1fr);
+  gap: 2px 10px;
+  margin: 0;
+}
+
+.nf-revue__bloc dt {
+  color: var(--text-muted);
+}
+
+.nf-revue__bloc dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.nf-revue__decision {
+  font-weight: 600;
+}
+
+.nf-revue__decision--ok {
+  color: var(--success-text);
+}
+
+.nf-revue__decision--non {
+  color: var(--danger-text, #a83232);
+}
+
+@media (min-width: 900px) {
+  .nf-revue__piece {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 1.6fr) auto;
+    align-items: start;
+  }
+
+  .nf-revue__entete {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nf-revue__actions {
+    flex-direction: column;
+  }
+
+  .nf-revue__piece > .login-screen__erreur {
+    grid-column: 1 / -1;
+  }
+}
+
+.nf-ecart {
+  display: grid;
+  gap: 8px;
+}
+
+.nf-ecart p {
+  margin: 0;
+}
+
+.nf-rangement {
+  margin: 0;
+}

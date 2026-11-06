@@ -88,6 +88,7 @@ const ETATS = {
 export function BadgeEtat({ note, proposition = false }) {
   let [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : ETATS[note.statut]
   if (proposition && note.statut === 'envoyee') label = `À valider → ${note.operation ? 'Payé' : 'À payer'}`
+  if (note.plus_tard && note.statut === 'envoyee') label = 'À trancher'
   return <span className={`badge ${classe}`}>{label}</span>
 }
 

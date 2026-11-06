@@ -495,7 +495,7 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
 
     puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
     assert [n["id"] for n in puce["notes"]] == [note["id"]]
-    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "virements": 0}
+    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "virements": 0, "a_trancher": 0}
     # Rien des achats dans la puce Notes de frais.
     assert client.get("/notes-frais/tresorerie?filtre=frais", headers=entetes_session(tresorier)).json()["notes"] == []
 
@@ -1023,7 +1023,7 @@ def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole
     [ligne] = liste["virements"]
     assert ligne["beneficiaire"] == "L MARTIN" and ligne["libelle_virement"] == "Contretemps honoraires oct 2026"
     assert [p["nom"] for p in liste["payeurs"]] == ["Julia Dho"]
-    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "virements": 1}
+    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "virements": 1, "a_trancher": 0}
 
     # « Qui paie » : Ana, qui a l'appli de la banque.
     reglage = client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
@@ -1312,3 +1312,84 @@ def test_rapprochement_des_pieces_en_pdf(client, db_session, ecole):
     assert "PRLV MYSTERE" in texte and "CB HORS PERIODE" not in texte and "CB ONLINEPRINTERS" in texte
     # Un membre n'y a pas droit.
     assert client.get("/notes-frais/rapprochement.pdf", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes_session(ecole["eleve"])).status_code == 403
+
+
+def test_plus_tard_puis_a_trancher_et_dossier_a_traiter(client, db_session, ecole):
+    """Seb, 6/11 : « Plus tard » dans la revue : la pièce reste À valider,
+    passe dans À trancher et son fichier dans Docs › Financier › A TRAITER ;
+    la décision la range à sa place. Une pièce établie refusée attend aussi
+    dans A TRAITER."""
+    tresorier = ecole["tresorier"]
+    org = tresorier.ecole_id
+    entetes = entetes_session(tresorier)
+    achat = _etablir(client, tresorier, "achat", fournisseur="Castorama", date="2026-03-10", montant_centimes="4500")
+    autre = _etablir(client, tresorier, "achat", fournisseur="Leroy Merlin", date="2026-03-11", montant_centimes="1000")
+
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    assert _enfant(client, org, tresorier, financier["id"], "A TRAITER") is None
+
+    tard = client.post(f"/notes-frais/notes/{achat['id']}/plus-tard", headers=entetes)
+    assert tard.status_code == 200 and tard.json()["statut"] == "envoyee" and tard.json()["plus_tard"] is True
+    assert tard.json()["rangement"] == "Financier › A TRAITER"
+    a_traiter = _enfant(client, org, tresorier, financier["id"], "A TRAITER")
+    assert [i["name"] for i in _parcourir(client, org, tresorier, a_traiter["id"]).json()["items"]] == ["2026-03-10 Castorama 45,00.jpg"]
+
+    puce = client.get("/notes-frais/tresorerie?filtre=a_trancher", headers=entetes).json()
+    assert [n["id"] for n in puce["notes"]] == [achat["id"]]
+    assert puce["compteurs"]["a_trancher"] == 1 and puce["compteurs"]["achat"] == 1  # l'autre reste à valider
+
+    # Refusée (pièce établie) : rejoint A TRAITER.
+    refus = client.post(f"/notes-frais/notes/{autre['id']}/refuser", json={"motif": "Doublon"}, headers=entetes)
+    assert refus.status_code == 200
+    a_trancher = client.get("/notes-frais/tresorerie?filtre=a_trancher", headers=entetes).json()["notes"]
+    assert sorted(n["id"] for n in a_trancher) == sorted([achat["id"], autre["id"]])
+    assert all(n["rangement"] == "Financier › A TRAITER" for n in a_trancher)
+
+    # Décision : validée → le fichier part dans ACHATS › 03.2026, plus rien dans A TRAITER pour elle.
+    valide = client.post(f"/notes-frais/notes/{achat['id']}/valider", headers=entetes)
+    assert valide.status_code == 200 and valide.json()["plus_tard"] is False and valide.json()["rangement"] == "Financier › ACHATS › 03.2026"
+    achats = _enfant(client, org, tresorier, financier["id"], "ACHATS")
+    mois = _enfant(client, org, tresorier, achats["id"], "03.2026")
+    assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2026-03-10 Castorama 45,00.jpg"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, a_traiter["id"]).json()["items"]] == ["2026-03-11 Leroy Merlin 10,00.jpg"]
+    assert client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes).json()["compteurs"]["a_trancher"] == 1
+
+
+def test_regler_l_ecart_d_une_piece_payee(client, db_session, ecole):
+    """Seb, 6/11 : une ligne de 122 € pour une pièce de 120 € : « il nous
+    rembourse » ou « on laisse tomber » ; une ligne de 118 € : « on lui doit
+    encore » crée une pièce À payer du reste. La décision se lit sur la pièce
+    et dans le rapprochement."""
+    tresorier = ecole["tresorier"]
+    org = tresorier.ecole_id
+    entetes = entetes_session(tresorier)
+    trop = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Onlineprinters", date="2026-03-02", montant_centimes="12000")
+    ligne = _operation(db_session, org, -12200, "2026-03-04", "CB ONLINEPRINTERS")
+    paye = client.post(f"/notes-frais/notes/{trop['id']}/payee", json={"operation_id": ligne.id}, headers=entetes).json()
+    assert paye["ecart_centimes"] == 200 and paye["ecart_regle"] is None
+    # Le sens de l'écart commande les choix.
+    assert client.post(f"/notes-frais/notes/{trop['id']}/ecart", json={"choix": "pay_rest"}, headers=entetes).status_code == 400
+    regle = client.post(f"/notes-frais/notes/{trop['id']}/ecart", json={"choix": "refund"}, headers=entetes)
+    assert regle.status_code == 200 and regle.json()["ecart_regle"] == "refund"
+
+    pas_assez = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Castorama", date="2026-03-10", montant_centimes="12000")
+    ligne = _operation(db_session, org, -11800, "2026-03-12", "CB CASTORAMA")
+    paye = client.post(f"/notes-frais/notes/{pas_assez['id']}/payee", json={"operation_id": ligne.id}, headers=entetes).json()
+    assert paye["ecart_centimes"] == -200
+    regle = client.post(f"/notes-frais/notes/{pas_assez['id']}/ecart", json={"choix": "pay_rest"}, headers=entetes)
+    assert regle.status_code == 200 and regle.json()["ecart_regle"] == "pay_rest"
+    virements = client.get("/notes-frais/virements", headers=entetes).json()["virements"]
+    [reste] = [v for v in virements if v["titre"] == "Reste dû : Castorama"]
+    assert reste["statut"] == "validee" and reste["total_centimes"] == 200 and reste["fournisseur"] == "Castorama"
+
+    sans_ecart = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Amazon", date="2026-03-15", montant_centimes="3990")
+    ligne = _operation(db_session, org, -3990, "2026-03-16", "CB AMAZON")
+    client.post(f"/notes-frais/notes/{sans_ecart['id']}/payee", json={"operation_id": ligne.id}, headers=entetes)
+    assert client.post(f"/notes-frais/notes/{sans_ecart['id']}/ecart", json={"choix": "write_off"}, headers=entetes).status_code == 400
+
+    import pymupdf
+
+    reponse = client.get("/notes-frais/rapprochement.pdf", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes)
+    texte = "".join(p.get_text() for p in pymupdf.open(stream=reponse.content, filetype="pdf"))
+    assert "remboursement attendu" in texte and "reste dû à payer" in texte
