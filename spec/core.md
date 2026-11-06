@@ -574,6 +574,10 @@ qui n'en ont pas, à la première ouverture depuis l'icône (mode standalone) ; 
 première ouverture. Le premier signal fixe la date. Changer de logo ou d'adresse demande de
 réinstaller sur iPhone ; un avertissement le dit avant d'enregistrer ; Android se met à jour seul.
 
+**Nouvelle version** (Seb, 6 novembre 2026) : une appli restée ouverte pendant une mise en ligne
+garde l'ancien code. Quand elle revient au premier plan, elle relit `index.html` ; s'il annonce un
+autre bundle, elle se recharge toute seule, sans rien demander (`frontend/src/utils/nouvelleVersion.js`).
+
 ### 10.2 Notifications push
 
 Web Push (norme W3C, `backend/src/notifications/`, clés VAPID, `pywebpush`, `public/sw.js`

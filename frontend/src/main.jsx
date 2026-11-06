@@ -6,6 +6,7 @@ import { installerIdentiteAppelant } from './api/identite.js'
 import { chargerParAdresse } from './api/apparence.js'
 import { ecouterInstallation } from './api/installation.js'
 import { pageDuHost } from './pagePublique/hote.js'
+import { rechargerSiNouvelleVersion } from './utils/nouvelleVersion.js'
 
 // <page>.<école>.contretemps.silvaplana.cloud : la page en ligne d'un
 // fichier de l'appli (documents.md §5.5), sans le reste de l'appli.
@@ -23,6 +24,8 @@ if (!pagePublique) ecouterInstallation()
 // L'apparence de l'école de l'adresse visitée (spec §2.7), avant même la
 // page de connexion ; rien à faire sur l'adresse générique.
 if (!pagePublique) chargerParAdresse()
+// Nouvelle version mise en ligne : rechargée au retour au premier plan.
+if (!pagePublique) rechargerSiNouvelleVersion()
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
