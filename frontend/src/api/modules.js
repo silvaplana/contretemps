@@ -21,6 +21,11 @@ export function lister(ecoleId) {
   return requete(`/ecoles/${ecoleId}/modules`)
 }
 
+// 🔒 Droits des modules allumés [{ key, label }] (spec/core.md §5.3).
+export function droits(ecoleId) {
+  return requete(`/ecoles/${ecoleId}/droits`)
+}
+
 // Renvoie la liste à jour (allumer un module allume aussi ceux dont il a besoin).
 export function changer(ecoleId, key, enabled) {
   return requete(`/ecoles/${ecoleId}/modules/${key}`, { method: 'PUT', body: JSON.stringify({ enabled }) })

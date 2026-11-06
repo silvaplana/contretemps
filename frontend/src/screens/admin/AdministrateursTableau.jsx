@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import * as administrateursApi from '../../api/administrateurs.js'
+import * as modulesApi from '../../api/modules.js'
 import Badge from '../../components/Badge.jsx'
 import Icon from '../../components/Icon.jsx'
 import ListeEmails from '../../components/ListeEmails.jsx'
@@ -16,18 +17,21 @@ const BUREAU = [
   ['treasurer', 'Trésorier·e'],
 ]
 const FINANCIER = '🔒 Accès au Financier'
+// Le Financier garde sa case `tresorier` ; les autres 🔒 droits viennent des modules.
+const autresDroits = (droits) => droits.filter((d) => d.key !== 'finances.access')
 const ANNULER_MS = 10000
 
 // Les groupes d'un admin, en pastilles toutes du même gris (maquette
 // « Admins nouveau style ») : « Bureau » avant ses fonctions, puis Profs, les
 // groupes faits à la main, et les 🔒 droits.
-function pastilles(admin, groupesEcole) {
+function pastilles(admin, groupesEcole, droits) {
   const fonctions = BUREAU.filter(([cle]) => admin.bureauFunctions.includes(cle)).map(([, libelle]) => libelle)
   return [
     ...(fonctions.length ? ['Bureau', ...fonctions] : []),
     ...(admin.estProf ? ['Profs'] : []),
     ...groupesEcole.filter((g) => admin.groups.includes(g.id)).map((g) => g.name),
     ...(admin.estTresorier ? [FINANCIER] : []),
+    ...autresDroits(droits).filter((d) => admin.rights.includes(d.key)).map((d) => `🔒 ${d.label}`),
   ]
 }
 
@@ -63,6 +67,7 @@ export default function AdministrateursTableau({
   const [enEdition, setEnEdition] = useState(null)
   const [groupesDe, setGroupesDe] = useState(null)
   const [groupesEcole, setGroupesEcole] = useState([])
+  const [droits, setDroits] = useState([])
   const [toast, setToast] = useState(null)
   const minuteurToast = useRef(null)
   const [erreur, setErreur] = useState(null)
@@ -84,6 +89,12 @@ export default function AdministrateursTableau({
         if (!annule) setGroupesEcole(liste)
       })
       .catch((err) => setErreur(err.message))
+    modulesApi
+      .droits(ecoleId)
+      .then((liste) => {
+        if (!annule) setDroits(liste)
+      })
+      .catch(() => {})
     return () => {
       annule = true
     }
@@ -117,6 +128,7 @@ export default function AdministrateursTableau({
     setErreur(null)
     const avant = {
       tresorier: { tresorier: admin.estTresorier },
+      rights: { rights: Object.fromEntries(Object.keys(patch.rights ?? {}).map((k) => [k, admin.rights.includes(k)])) },
       bureauFunctions: { bureauFunctions: admin.bureauFunctions },
       prof: { prof: admin.estProf },
       groups: { groups: admin.groups },
@@ -217,12 +229,12 @@ export default function AdministrateursTableau({
                         onClick={() => setGroupesDe(a)}
                         aria-label={`Groupes de ${a.prenom} ${a.nom}`}
                       >
-                        {pastilles(a, groupesEcole).map((nom) => (
+                        {pastilles(a, groupesEcole, droits).map((nom) => (
                           <span key={nom} className="admin-groupes__pastille">
                             {nom}
                           </span>
                         ))}
-                        {pastilles(a, groupesEcole).length === 0 && (
+                        {pastilles(a, groupesEcole, droits).length === 0 && (
                           <span className="admin-groupes__choisir">Choisir…</span>
                         )}
                       </button>
@@ -284,6 +296,7 @@ export default function AdministrateursTableau({
             <GroupesModal
               admin={groupesDe}
               groupesEcole={groupesEcole}
+              droits={droits}
               peutDonnerDesDroits={peutDonnerDesDroits}
               onChanger={(patch, nom, ajoute) => changerGroupe(groupesDe, patch, nom, ajoute)}
               onNouveau={() => nouveauGroupe(groupesDe)}
@@ -462,7 +475,7 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
 // case s'enregistre tout de suite. Bureau et ses fonctions, Profs, les
 // groupes faits à la main, « + Nouveau groupe… », puis les 🔒 droits (grisés
 // sauf pour l'administrateur principal et le Super User).
-function GroupesModal({ admin, groupesEcole, peutDonnerDesDroits, onChanger, onNouveau, erreur, onClose }) {
+function GroupesModal({ admin, groupesEcole, droits, peutDonnerDesDroits, onChanger, onNouveau, erreur, onClose }) {
   function basculerFonction(cle, coche) {
     const fonctions = coche ? [...admin.bureauFunctions, cle] : admin.bureauFunctions.filter((f) => f !== cle)
     onChanger({ bureauFunctions: BUREAU.map(([c]) => c).filter((c) => fonctions.includes(c)) }, BUREAU.find(([c]) => c === cle)[1], coche)
@@ -514,6 +527,17 @@ function GroupesModal({ admin, groupesEcole, peutDonnerDesDroits, onChanger, onN
           />
           <span>{FINANCIER}</span>
         </label>
+        {autresDroits(droits).map((d) => (
+          <label key={d.key} className={`admin-groupes__ligne${peutDonnerDesDroits ? '' : ' admin-groupes__ligne--grise'}`}>
+            <input
+              type="checkbox"
+              checked={admin.rights.includes(d.key)}
+              disabled={!peutDonnerDesDroits}
+              onChange={(e) => onChanger({ rights: { [d.key]: e.target.checked } }, `🔒 ${d.label}`, e.target.checked)}
+            />
+            <span>🔒 {d.label}</span>
+          </label>
+        ))}
         {!peutDonnerDesDroits && (
           <p className="muted">🔒 : seuls l’administrateur principal et le Super User changent ces groupes.</p>
         )}

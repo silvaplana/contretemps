@@ -302,6 +302,11 @@ les groupes que le code connaît — `board`, `board.president`… —, vide pou
 Une fiche fusionnée garde ses groupes, une fiche supprimée les quitte ; les groupes d'une saison
 partent avec elle et sont dans la sauvegarde technique (onglets « Groupes », « MembresGroupes »).
 
+**Fait (6 novembre 2026)** : deuxième droit, **« 🔒 Publier les actualités »** (`news.publish`), déclaré
+par le module Actualités (`backend/src/news/`, encore sans page ; décision de Seb : même niveau que
+l'Accès au Financier). Les droits des modules allumés se lisent par `GET /ecoles/{id}/droits` et se
+cochent dans la même feuille (Admin > École > Administrateurs), `rights` dans `PUT /administrateurs/{id}`.
+
 **Fait (27 octobre 2026, étape 1a)** : les tables, et le **bureau** en groupes (`groups/board.py`) : un
 groupe « Bureau » et ses sous-groupes par école et par saison, créés à la première demande ; recopiés
 à la création d'une saison. La migration reprend `comptes.bureau_functions`, qui n'est plus lue ni
@@ -568,6 +573,10 @@ Chrome et sur ordinateur, à l'événement `appinstalled` ; sur iPhone, Safari M
 qui n'en ont pas, à la première ouverture depuis l'icône (mode standalone) ; appli native, à la
 première ouverture. Le premier signal fixe la date. Changer de logo ou d'adresse demande de
 réinstaller sur iPhone ; un avertissement le dit avant d'enregistrer ; Android se met à jour seul.
+
+**Nouvelle version** (Seb, 6 novembre 2026) : une appli restée ouverte pendant une mise en ligne
+garde l'ancien code. Quand elle revient au premier plan, elle relit `index.html` ; s'il annonce un
+autre bundle, elle se recharge toute seule, sans rien demander (`frontend/src/utils/nouvelleVersion.js`).
 
 ### 10.2 Notifications push
 

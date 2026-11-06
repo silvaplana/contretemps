@@ -21,6 +21,8 @@ class AdministrateurSortie(BaseModel):
     est_owner: bool
     # Trésorier (module notes de frais §6) : coché dans ce tableau seulement.
     est_tresorier: bool = False
+    # Les 🔒 droits des modules qu'elle a (clés, ex. « news.publish »).
+    rights: list[str] = []
     bureau_functions: list[str] = []
     # Groupes faits à la main (groups/custom.py), par id.
     groups: list[int] = []
@@ -64,6 +66,8 @@ class AdministrateurModification(BaseModel):
     owner: bool | None = None
     # Donner (True) ou retirer (False) le rôle trésorier ; absent : inchangé.
     tresorier: bool | None = None
+    # 🔒 Droits à donner (True) ou retirer (False), par clé ; absents : inchangés.
+    rights: dict[str, bool] | None = None
     # Remplace les fonctions au bureau ; absent : inchangées.
     bureau_functions: list[BureauFunction] | None = None
     # Mettre dans le groupe Profs (True) ou l'en retirer (False) ; absent : inchangé.
