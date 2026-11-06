@@ -14,7 +14,7 @@ le receiver via comptes/rbac.py, pas dans ce service.
 from __future__ import annotations
 
 from comptes import Compte, Comptes, RegleRoles, roles
-from groups import board, custom
+from groups import board, custom, rights
 from messagerie.models import ConversationMembre, MessageDelivery
 from notifications.models import PushSubscription
 from sqlalchemy import delete
@@ -94,6 +94,7 @@ class Administrateurs:
         bureau_functions: list[str] | None = None,
         prof: bool | None = None,
         groups: list[int] | None = None,
+        droits: dict[str, bool] | None = None,
         par_superuser: bool = False,
     ) -> Compte:
         """`champs` : nom, prénom, email, code de récupération (seulement
@@ -101,7 +102,8 @@ class Administrateurs:
         None pour ne pas y toucher. `tresorier` : pareil pour le rôle trésorier.
         `bureau_functions` : remplace ses fonctions au bureau (déjà
         validées et ordonnées), None pour ne pas y toucher. `prof` : le groupe
-        Profs, comme `owner`. `groups` : remplace ses groupes faits à la main."""
+        Profs, comme `owner`. `groups` : remplace ses groupes faits à la main.
+        `droits` : les 🔒 droits des modules à donner (True) ou retirer (False)."""
         if _promu(admin) and CHAMPS_IDENTITE & champs.keys():
             ecran = "Admin > Profs" if roles.is_prof(admin) else "Admin > Élèves"
             raise RegleRoles(f"Son nom, son prénom et son email se modifient depuis {ecran}")
@@ -128,6 +130,13 @@ class Administrateurs:
             except custom.GroupError as erreur:
                 db.rollback()
                 raise RegleRoles(str(erreur)) from erreur
+            db.commit()
+        if droits:
+            inconnus = set(droits) - rights.declared()
+            if inconnus:
+                raise RegleRoles(f"Droit inconnu : {', '.join(sorted(inconnus))}")
+            for droit, donne in droits.items():
+                (rights.add if donne else rights.remove)(db, admin, droit)
             db.commit()
         db.refresh(admin)
         return admin

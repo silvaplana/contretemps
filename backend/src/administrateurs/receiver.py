@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from comptes import Compte, RegleRoles, rbac, roles
 from fastapi import Depends, FastAPI, HTTPException
-from groups import board, custom
+from groups import board, custom, rights
 from saisons import saison_courante_id
 from saisons.portee import saison_demandee
 from sqlalchemy.orm import Session
@@ -40,6 +40,7 @@ def _sortie(db: Session, compte: Compte) -> dict:
         "emails": compte.emails,
         "est_owner": roles.is_owner(compte),
         "est_tresorier": roles.is_tresorier(compte),
+        "rights": rights.of(compte),
         "bureau_functions": board.functions_of(db, compte),
         "groups": custom.ids_of(db, compte),
         "est_prof": roles.is_prof(compte),
@@ -172,17 +173,18 @@ class AdministrateursReceiver:
                 raise HTTPException(status_code=404, detail="Administrateur introuvable")
         else:
             # Sur sa propre ligne : la case Accès au Financier et les groupes.
-            soi_meme_permis = bool(champs) and set(champs) <= CHAMPS_GROUPES | {"tresorier"}
+            soi_meme_permis = bool(champs) and set(champs) <= CHAMPS_GROUPES | {"tresorier", "rights"}
             cible = self._cible_pour_owner(db, compte_id, appelant, soi_meme_permis=soi_meme_permis)
         owner = champs.pop("owner", None)
         tresorier = champs.pop("tresorier", None)
         bureau = champs.pop("bureau_functions", None)
         prof = champs.pop("prof", None)
         groupes = champs.pop("groups", None)
+        droits = champs.pop("rights", None)
         try:
             cible = self.client.modifier(
                 db, cible, champs=champs, owner=owner, tresorier=tresorier, bureau_functions=bureau,
-                prof=prof, groups=groupes, par_superuser=_est_superuser(appelant),
+                prof=prof, groups=groupes, droits=droits, par_superuser=_est_superuser(appelant),
             )
         except RegleRoles as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from erreur

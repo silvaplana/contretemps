@@ -22,6 +22,7 @@ class ModulesReceiver:
         self.modules = modules
         app.get("/ecoles/{ecole_id}/modules")(self.list)
         app.put("/ecoles/{ecole_id}/modules/{key}")(self.update)
+        app.get("/ecoles/{ecole_id}/droits")(self.rights)
 
     def list(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
         rbac.require_membre(appelant, ecole_id)
@@ -43,3 +44,10 @@ class ModulesReceiver:
         except ValueError as erreur:
             raise HTTPException(status_code=409, detail=str(erreur)) from None
         return activation.listing(db, ecole_id, self.modules)
+
+    def rights(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
+        """Les 🔒 droits des modules allumés (spec/core.md §5.3), à cocher
+        dans Admin > École > Administrateurs."""
+        rbac.require_membre(appelant, ecole_id)
+        off = activation.disabled(db, ecole_id)
+        return [{"key": r.key, "label": r.label} for m in self.modules if m.key not in off for r in m.rights]

@@ -371,3 +371,41 @@ def test_groupes_faits_a_la_main(client, ecole):
     autre = client.post(f"/ecoles/{ecole['owner_voisin'].ecole_id}/groupes", json={"name": "Z"}, headers=_en_tant_que(ecole["owner_voisin"])).json()
     assert client.put(f"/administrateurs/{ecole['admin'].id}", json={"groups": [autre["id"]]}, headers=entetes).status_code == 409
     assert client.put(f"/administrateurs/{ecole['admin'].id}", json={"groups": []}, headers=entetes).json()["groups"] == []
+
+
+# --- 🔒 Droits des modules (spec/core.md §5.3) ---
+
+
+def test_owner_donne_puis_retire_publier_les_actualites(client, db_session, ecole):
+    from comptes import roles as r
+
+    url = f"/administrateurs/{ecole['admin'].id}"
+    entetes = _en_tant_que(ecole["owner"])
+    droits = client.get(f"/ecoles/{ecole['ecole'].id}/droits", headers=entetes).json()
+    assert {"key": "news.publish", "label": "Publier les actualités"} in droits
+    assert client.put(url, json={"rights": {"news.publish": True}}, headers=entetes).json()["rights"] == ["news.publish"]
+    db_session.expire_all()
+    assert r.has_right(Comptes().get(db_session, ecole["admin"].id), "news.publish")
+    assert client.put(url, json={"rights": {"news.publish": False}}, headers=entetes).json()["rights"] == []
+
+
+def test_un_admin_non_owner_ne_donne_pas_de_droit(client, ecole):
+    reponse = client.put(
+        f"/administrateurs/{ecole['owner'].id}", json={"rights": {"news.publish": True}}, headers=_en_tant_que(ecole["admin"])
+    )
+    assert reponse.status_code == 403
+
+
+def test_owner_se_donne_un_droit_sur_sa_propre_ligne(client, ecole):
+    reponse = client.put(
+        f"/administrateurs/{ecole['owner'].id}", json={"rights": {"news.publish": True}}, headers=_en_tant_que(ecole["owner"])
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["rights"] == ["news.publish"]
+
+
+def test_droit_inconnu_refuse(client, ecole):
+    reponse = client.put(
+        f"/administrateurs/{ecole['admin'].id}", json={"rights": {"pirate": True}}, headers=_en_tant_que(ecole["owner"])
+    )
+    assert reponse.status_code == 409

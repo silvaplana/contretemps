@@ -28,6 +28,8 @@ function versEcran(a) {
     estOwner: a.est_owner,
     // Module notes de frais §6 : coché dans ce tableau seulement.
     estTresorier: a.est_tresorier ?? false,
+    // 🔒 Droits des modules (clés), hors Financier.
+    rights: a.rights ?? [],
     // Fonctions au bureau (spec/core.md §6.4) : des titres, aucun droit.
     bureauFunctions: a.bureau_functions ?? [],
     // Groupes faits à la main (Bénévoles...), par id.
@@ -53,13 +55,14 @@ export async function creer(ecoleId, { compteId, nom, prenom, email, owner }) {
 }
 
 // Seuls les champs présents dans `patch` sont envoyés (et modifiés).
-export async function modifier(id, { nom, prenom, email, owner, tresorier, bureauFunctions, prof, groups }) {
+export async function modifier(id, { nom, prenom, email, owner, tresorier, rights, bureauFunctions, prof, groups }) {
   const corps = {
     ...(nom !== undefined && { nom }),
     ...(prenom !== undefined && { prenom }),
     ...(email !== undefined && { email: email || null }),
     ...(owner !== undefined && { owner }),
     ...(tresorier !== undefined && { tresorier }),
+    ...(rights !== undefined && { rights }),
     ...(bureauFunctions !== undefined && { bureau_functions: bureauFunctions }),
     ...(prof !== undefined && { prof }),
     ...(groups !== undefined && { groups }),
