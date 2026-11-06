@@ -33,6 +33,9 @@ Pièces
   (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import.
+- Sous la liste, « Du … au … » puis Excel (une ligne par dépense) et Rapprochement : le PDF pour le validateur comptable,
+  à tout moment : pièces payées avec la ligne du compte qui les paie (et l'écart), pièces sans paiement rattaché avec leur
+  état, lignes de débit sans pièce.
 - « Pour qui ? » : les membres, puis les extérieurs (payés sans être membres) ; « + Quelqu'un d'extérieur » (nom, mail et téléphone facultatifs, RIB). ⋯ › Extérieurs : corriger, « Demander le RIB par mail », retirer de la liste.
 - Réglage « Qui paie » : Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
 

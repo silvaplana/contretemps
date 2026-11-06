@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 
 from .ports import LectureImpossible, Membre
+from . import rapprochement
 from .service import NotesDeFrais, Preuve
 
 TAILLE_MAX_LECTURE = 10 * 1024 * 1024
@@ -384,6 +385,17 @@ class NotesDeFraisReceiver:
         @app.put("/notes-frais/categories")
         def definir_categories(corps: CategoriesEntree, db: Session = db_dep, m: Membre = membre):
             return [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in appeler(nf.definir_categories, db, m, corps.libelles)]
+
+        @app.get("/notes-frais/rapprochement.pdf")
+        def rapprochement_pdf(debut: dt.date | None = None, fin: dt.date | None = None, db: Session = db_dep, m: Membre = membre):
+            # Sans période : tout, jusqu'à aujourd'hui.
+            debut, fin = debut or dt.date(2000, 1, 1), fin or dt.date.today()
+            donnees = appeler(nf.rapprochement, db, m, debut, fin)
+            return Response(
+                content=rapprochement.pdf(donnees),
+                media_type="application/pdf",
+                headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(f'Rapprochement des pièces du {debut:%d-%m-%Y} au {fin:%d-%m-%Y}.pdf')}"},
+            )
 
         @app.get("/notes-frais/export.xlsx")
         def export(

@@ -254,6 +254,17 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
         >
           <Icon name="download" size={18} /> Excel
         </button>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          onClick={() =>
+            telechargerFichier(api.urlRapprochement(periode.debut, periode.fin), 'Rapprochement des pièces.pdf').catch((err) =>
+              setErreur(err.message),
+            )
+          }
+        >
+          <Icon name="fileCheck" size={18} /> Rapprochement
+        </button>
       </div>
 
       {plus && nature === 'frais' && (

@@ -1693,6 +1693,61 @@ class NotesDeFrais:
                 })
         return lignes
 
+    def rapprochement(self, db: Session, membre: Membre, debut: date, fin: date) -> dict:
+        """L'état des pièces de la période face aux lignes du compte (§7
+        sexies, Seb 6/11 : la preuve pour le validateur, à tout moment) :
+        `rattachees` (payées, avec la ligne qui les paie et l'écart quand la
+        ligne ne fait pas le même montant), `sans_paiement` (ce qui attend,
+        avec son état), `lignes_sans_piece` (les débits de la période sans
+        pièce). Une pièce est de la période par sa date, sinon par celle de
+        son paiement."""
+        self._exiger_tresorier(membre)
+        notes = list(db.scalars(select(NoteFrais).where(NoteFrais.org_id == membre.org_id, NoteFrais.statut != REFUSEE)))
+        personnes = self.annuaire.personnes(db, membre.org_id, {n.person_id for n in notes} - {PERSONNE_A_CHOISIR})
+        banque = self.ports.banque
+        lignes = {}
+        for note in notes:
+            if note.bank_operation_id and banque and note.bank_operation_id not in lignes:
+                lignes[note.bank_operation_id] = banque.operation(db, membre.org_id, note.bank_operation_id)
+        natures = {FRAIS: "Note de frais", HONORAIRES: "Honoraires", ACHAT: "Achat"}
+        etats = {ENVOYEE: "À valider", VALIDEE: "À payer", PREPAREE: "Préparé", VIREE: "Envoyé", REMBOURSEE: "Payée hors banque"}
+
+        def jour(note: NoteFrais) -> date:
+            return min((d.date for d in note.depenses), default=note.envoyee_le.date())
+
+        def qui(note: NoteFrais) -> str:
+            if note.nature == ACHAT:
+                return note.supplier or ""
+            personne = personnes.get(note.person_id)
+            return personne.nom if personne else (f"{note.supplier} ?" if note.supplier else "Pour qui ?")
+
+        rattachees, sans_paiement, par_ligne = [], [], {}
+        for note in sorted(notes, key=jour):
+            ligne = lignes.get(note.bank_operation_id) if note.statut == REMBOURSEE else None
+            dans_periode = debut <= jour(note) <= fin or (ligne is not None and debut <= ligne.date <= fin)
+            if not dans_periode:
+                continue
+            piece = {"id": note.id, "date": jour(note), "nature": natures.get(note.nature, note.nature), "qui": qui(note), "montant_centimes": self.total(note)}
+            if ligne is not None:
+                piece["ligne"] = {"id": ligne.id, "date": ligne.date, "libelle": ligne.libelle, "montant_centimes": ligne.montant_centimes, "compte": ligne.compte}
+                piece["ecart_centimes"] = 0
+                par_ligne.setdefault(ligne.id, []).append(piece)
+                rattachees.append(piece)
+            else:
+                piece["etat"] = "Don" if note.don else etats.get(note.statut, note.statut)
+                sans_paiement.append(piece)
+        # Une ligne qui ne fait pas le montant de ses pièces : l'écart, sur la première.
+        for pieces in par_ligne.values():
+            ecart = -pieces[0]["ligne"]["montant_centimes"] - sum(p["montant_centimes"] for p in pieces)
+            pieces[0]["ecart_centimes"] = ecart
+        rattachees_ids = {n.bank_operation_id for n in notes if n.bank_operation_id}
+        sans_piece = [
+            {"id": o.id, "date": o.date, "libelle": o.libelle, "montant_centimes": o.montant_centimes, "compte": o.compte}
+            for o in (banque.tous_debits(db, membre.org_id, debut) if banque else [])
+            if o.date <= fin and o.id not in rattachees_ids
+        ]
+        return {"debut": debut, "fin": fin, "rattachees": rattachees, "sans_paiement": sans_paiement, "lignes_sans_piece": sans_piece}
+
     # --- Présentation ---
 
     @staticmethod
