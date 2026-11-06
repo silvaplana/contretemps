@@ -1285,3 +1285,30 @@ def test_demander_son_rib_a_un_exterieur(client, ecole, espion):
     assert client.post(
         f"/notes-frais/exterieurs/{ana['id']}/demander-rib", headers=entetes_session(ecole["eleve"])
     ).status_code == 403
+
+
+def test_rapprochement_des_pieces_en_pdf(client, db_session, ecole):
+    """Seb, 6/11 : la preuve pour le validateur, à tout moment : chaque pièce
+    payée avec la ligne du compte qui la paie (et l'écart), ce qui attend,
+    les débits sans pièce."""
+    import pymupdf
+
+    tresorier = ecole["tresorier"]
+    org = tresorier.ecole_id
+    entetes = entetes_session(tresorier)
+    payee = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Onlineprinters", date="2026-03-02", montant_centimes="12000")
+    ligne = _operation(db_session, org, -12500, "2026-03-04", "CB ONLINEPRINTERS")
+    assert client.post(f"/notes-frais/notes/{payee['id']}/payee", json={"operation_id": ligne.id}, headers=entetes).status_code == 200
+    _etablir(client, tresorier, "achat", contenu=None, fournisseur="Castorama", date="2026-03-10", montant_centimes="4500")
+    _operation(db_session, org, -3000, "2026-03-12", "PRLV MYSTERE")
+    _operation(db_session, org, -9900, "2026-05-01", "CB HORS PERIODE")
+
+    reponse = client.get("/notes-frais/rapprochement.pdf", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes)
+    assert reponse.status_code == 200 and reponse.headers["content-type"] == "application/pdf"
+    texte = "".join(p.get_text() for p in pymupdf.open(stream=reponse.content, filetype="pdf"))
+    assert "Rapprochement des pièces" in texte and "1 pièce(s) rattachée(s)" in texte
+    assert "Onlineprinters" in texte and "CB ONLINEPRINTERS" in texte and "5,00 €" in texte  # l'écart
+    assert "Castorama" in texte and "À valider" in texte
+    assert "PRLV MYSTERE" in texte and "CB HORS PERIODE" not in texte and "CB ONLINEPRINTERS" in texte
+    # Un membre n'y a pas droit.
+    assert client.get("/notes-frais/rapprochement.pdf", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes_session(ecole["eleve"])).status_code == 403

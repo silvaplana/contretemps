@@ -280,6 +280,17 @@ le dernier import »** (« Import du JJ/MM : N pièces encore à valider », « 
 Seules les pièces **encore À valider** du lot sont défaites (pièce et fichiers à la corbeille, comme
 « Annuler cette pièce ») ; celles déjà validées restent et se traitent une par une.
 
+### 7 sexies Rapprochement des pièces (Seb, 6 novembre)
+
+La preuve pour le validateur comptable, **à tout moment** (pas un document d'AG : le traitement
+se fait au fil de l'eau, quand on donne les pièces). Dans Pièces, à côté de l'export Excel de la
+période, le bouton **Rapprochement** produit un PDF (`GET /notes-frais/rapprochement.pdf?debut&fin`,
+trésoriers) en trois parties : **pièces payées et la ligne du compte qui les paie** (date, nature,
+qui, montant, ligne, montant payé, écart quand la ligne ne fait pas le montant de ses pièces) ;
+**pièces sans paiement rattaché** (avec leur état : À valider, À payer, Préparé, Envoyé, Don,
+Payée hors banque) ; **lignes de débit du compte sans pièce**. Une pièce est de la période par sa
+date, sinon par celle de son paiement.
+
 **Badges des pastilles** (Seb, 31 octobre) : chaque pastille de Pièces porte le nombre de **pièces** à
 traiter par un trésorier : Notes de frais, Honoraires, Achats, Ventes = à valider ; Virements = à
 payer, préparés pour moi, envoyés vus sur le compte. Deux couleurs : orange pour les pièces, **bleu**

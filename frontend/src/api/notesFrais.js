@@ -134,6 +134,14 @@ export const definirCategories = (libelles) => appel('/categories', json('PUT', 
 
 export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificatifs.zip`
 
+// Rapprochement des pièces (§7 sexies) : le PDF de l'état des pièces de la
+// période face aux lignes du compte, pour le validateur.
+export function urlRapprochement(debut, fin) {
+  const params = new URLSearchParams()
+  if (debut) params.set('debut', debut)
+  if (fin) params.set('fin', fin)
+  return `${BASE}/rapprochement.pdf?${params}`
+}
 export function urlExport(debut, fin, nature = 'frais') {
   const params = new URLSearchParams({ nature })
   if (debut) params.set('debut', debut)
