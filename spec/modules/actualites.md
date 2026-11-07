@@ -90,8 +90,11 @@ De haut en bas :
 1. **Niveau** : trois grands boutons Important / Normal / Brève (Normal par défaut), avec une ligne
    d'explication sous le choix.
 2. **Texte** (obligatoire).
-3. *(étape 2)* **Photo**, **Vidéo**, **Document** (cachés pour une Brève). Photo : galerie ou appareil photo.
-   Vidéo : jusqu'à 100 Mo avant compression, comme dans la Messagerie. Document : choisi dans Docs.
+3. **Photo**, **Vidéo**, **Document** (cachés pour une Brève). Photo : galerie ou appareil photo.
+   Vidéo : jusqu'à 100 Mo avant compression, comme dans la Messagerie. Document : choisi dans Docs
+   (on descend dans les dossiers, on touche le fichier). Choisir une photo remplace la vidéo et
+   inversement ; toucher à nouveau un bouton allumé retire ce qu'il a ajouté. Passer en Brève retire
+   tout.
 4. **En haut jusqu'au** (Important seulement) : une date, proposée à J+7.
 5. **Envoyer une notification** : interrupteur, allumé d'office pour Important, éteint pour Normal et
    Brève ; on peut le changer à chaque actu (Seb, 6 novembre).
@@ -142,9 +145,18 @@ Tables préfixées `news_`, avec `org_id` (= `ecoles.id`) et filtre par organisa
 | `published_at` | datetime, nul | nul = brouillon |
 | `created_at`, `updated_at` | datetime | |
 
-Étape 2 (médias) : `photo_path` (stockage partagé `storage/`, dossier de l'organisation), `video_id`
-(FK `videos.id`, module Vidéos : compression, image d'attente, lien signé), `document_id`
-(FK `doc_nodes.id`, fichier de Docs).
+Étape 2 (médias, migration `a7d3e91c4b20`) :
+
+| Colonne | Type | Note |
+|---|---|---|
+| `photo_sha` | str, nul | empreinte de la photo, rangée par `storage/` dans `NEWS_DIR` (par défaut `actualites/` à côté des vidéos), dossier de l'organisation ; on garde l'original et une copie JPEG de 1600 px au plus, la seule montrée |
+| `video_id` | int, FK `videos.id`, nul | module Vidéos : compression, image d'attente, lien signé ; rangée dans « Actualités » du panneau Usage |
+| `document_id` | int, FK `doc_nodes.id`, nul | fichier de Docs (pas un dossier) de la même organisation |
+
+Remplacer ou retirer la photo ou la vidéo d'une actu, ou supprimer l'actu, les efface. Une vidéo
+supprimée ailleurs (panneau Usage) laisse l'actu sans vidéo. Le document n'est qu'un lien : le
+supprimer de Docs fait disparaître le bouton. Le dossier des photos est compté dans « Usage
+ressources » (Admin › École).
 
 Supprimer est définitif : l'écran attend la fin des 10 s d'Annuler avant d'appeler le serveur, comme
 Sparring.
@@ -170,7 +182,11 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `DELETE …/news/{id}` | droit | Supprimer |
 | `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture |
 
-Étape 2 : envoi d'une photo, d'une vidéo par blocs comme la Messagerie.
+| `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `photo` |
+| `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `video_id` |
+| `GET …/news/{id}/photo` | tous | La photo (JPEG) ; brouillon : droit seulement |
+
+Les actus rendues portent `photo`, `video` (avec ses liens signés) et `document` (`id`, `name`).
 
 Module éteint dans l'organisation : onglet caché, routes en 404 (spec/core.md §9 bis.3).
 
@@ -190,7 +206,8 @@ Chaque étape part sur le « vas-y » de Seb, une PR chacune, avec le `guide.md`
 1. **Actus en texte** : tables, API, onglet Actus, Atelier | Aperçu, trois niveaux, En haut jusqu'au,
    brouillon, supprimer/Annuler, « Nouveau », notification, option d'ouverture, actions de l'assistant.
    **Fait** (6 novembre 2026, PR de l'étape 1). L'onglet s'ouvre sur Aperçu, même pour qui publie.
-2. **Médias** : photo, vidéo (lecture sur place), document de Docs.
+2. **Médias** : photo, vidéo (lecture sur place), document de Docs. **Fait** (7 novembre 2026, PR de
+   l'étape 2).
 
 ## 11. Questions ouvertes
 

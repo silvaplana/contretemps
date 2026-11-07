@@ -187,3 +187,98 @@ def test_actions_de_l_assistant(db_session, e):
         supprimer.prepare(db_session, e["seb"], e["autre"].id, supprimer.params(news_id=actu.id))
     supprimer.prepare(db_session, e["seb"], e["ecole"].id, supprimer.params(news_id=actu.id)).faire(db_session)
     assert db_session.query(NewsItem).count() == 0
+
+
+# --- Étape 2 : photo, vidéo, document ---
+
+
+@pytest.fixture()
+def photos(tmp_path, monkeypatch):
+    from app.main import core
+    from news.storage import PHOTO_MAX_BYTES
+    from storage import LocalStorage
+
+    monkeypatch.setattr(core.news_client, "storage", LocalStorage(tmp_path, PHOTO_MAX_BYTES))
+    return core.news_client.storage
+
+
+def _image():
+    import io
+
+    from PIL import Image
+
+    tampon = io.BytesIO()
+    Image.new("RGB", (2400, 1200), (200, 40, 40)).save(tampon, "PNG")
+    return tampon.getvalue()
+
+
+def _envoyer_photo(client, ecole_id):
+    reponse = client.post(f"/ecoles/{ecole_id}/news/photos", files={"fichier": ("gala.png", _image(), "image/png")})
+    assert reponse.status_code == 201, reponse.text
+    return reponse.json()["photo"]
+
+
+def test_photo_envoyee_montree_puis_effacee(client, db_session, e, photos):
+    eid = e["ecole"].id
+    assert client.post(f"/ecoles/{eid}/news/photos", files={"fichier": ("x.txt", b"pas une image", "text/plain")}).status_code == 400
+    sha = _envoyer_photo(client, eid)
+    actu = _publier(client, eid, "Le gala", photo=sha)
+    assert actu["photo"] == sha
+
+    image = client.get(f"/ecoles/{eid}/news/{actu['id']}/photo")
+    assert image.status_code == 200 and image.headers["content-type"] == "image/jpeg"
+    from PIL import Image
+    import io
+
+    assert max(Image.open(io.BytesIO(image.content)).size) == 1600
+    # La photo d'une autre école ne se montre pas.
+    assert client.get(f"/ecoles/{e['autre'].id}/news/{actu['id']}/photo").status_code == 404
+    # Une photo inconnue est refusée.
+    assert client.post(f"/ecoles/{eid}/news", json={"body": "x", "photo": "0" * 64}).status_code == 400
+
+    # Retirée : elle est effacée du disque.
+    client.put(f"/ecoles/{eid}/news/{actu['id']}", json={"body": "Le gala", "photo": None})
+    assert not photos.path(eid, sha).exists()
+
+    sha = _envoyer_photo(client, eid)
+    actu = _publier(client, eid, "Encore", photo=sha)
+    assert client.delete(f"/ecoles/{eid}/news/{actu['id']}").status_code == 204
+    assert not photos.path(eid, sha).exists()
+
+
+def test_video_et_document(client, db_session, e, photos):
+    from app.main import core
+    from documents.models import DocNode
+    from videos.models import Video
+
+    eid = e["ecole"].id
+    video = core.videos_client.create(db_session, eid, "Actualité", "x.mp4", e["seb"].id)
+    autre_video = core.videos_client.create(db_session, e["autre"].id, "Voisins", "y.mp4", e["voisin"].id)
+    fichier = DocNode(org_id=eid, space="public", kind="file", name="Planning.pdf")
+    dossier = DocNode(org_id=eid, space="public", kind="folder", name="AG")
+    chez_voisin = DocNode(org_id=e["autre"].id, space="public", kind="file", name="Leur.pdf")
+    db_session.add_all([fichier, dossier, chez_voisin])
+    db_session.commit()
+
+    actu = _publier(client, eid, "Le stage en vidéo", video_id=video.id, document_id=fichier.id)
+    assert actu["video"]["id"] == video.id
+    assert actu["document"] == {"id": fichier.id, "name": "Planning.pdf"}
+    assert client.get(f"/ecoles/{eid}/news").json()["items"][0]["video"]["id"] == video.id
+
+    for mauvais in ({"video_id": autre_video.id}, {"document_id": dossier.id}, {"document_id": chez_voisin.id},
+                    {"video_id": video.id, "photo": _envoyer_photo(client, eid)}):
+        assert client.post(f"/ecoles/{eid}/news", json={"body": "x", **mauvais}).status_code == 400, mauvais
+
+    # Une brève n'a pas de média : passer en brève efface la vidéo.
+    video_id = video.id
+    breve = client.put(f"/ecoles/{eid}/news/{actu['id']}", json={"body": "Court", "level": "brief", "video_id": video_id}).json()
+    assert breve["video"] is None and breve["document"] is None
+    db_session.expire_all()
+    assert db_session.get(Video, video_id) is None
+
+    # Une vidéo supprimée ailleurs (panneau Usage) laisse l'actu.
+    video = core.videos_client.create(db_session, eid, "Actualité", "z.mp4", e["seb"].id)
+    actu = _publier(client, eid, "Avec vidéo", video_id=video.id)
+    core.videos_client.delete(db_session, actu["video"]["id"])
+    db_session.expire_all()
+    assert db_session.get(NewsItem, actu["id"]).video_id is None
