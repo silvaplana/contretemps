@@ -1,6 +1,8 @@
 // Actualités (module serveur `news`, voir spec/modules/actualites.md §8 et
 // backend/src/news/receiver.py). Session et école choisie ajoutées par
 // api/identite.js.
+import { versEcran as videoVersEcran } from '../../api/videos.js'
+
 const BASE_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 async function appel(chemin, options = {}) {
@@ -32,6 +34,9 @@ export function versEcran(n) {
     publieeLe: n.published_at ? new Date(`${n.published_at}Z`) : null,
     modifieeLe: new Date(`${n.updated_at}Z`),
     nouveau: n.is_new,
+    photo: n.photo, // empreinte de la photo, ou null
+    video: n.video ? videoVersEcran(n.video) : null,
+    document: n.document, // { id, name } ou null
   }
 }
 
@@ -41,6 +46,9 @@ const versServeur = (a) => ({
   on_top_until: a.niveau === 'important' ? a.enHautJusquau : null,
   notify: a.notifier,
   publish: a.publier,
+  photo: a.photo ?? null,
+  video_id: a.video?.id ?? null,
+  document_id: a.document?.id ?? null,
 })
 
 export async function lireActus(ecoleId) {
@@ -74,3 +82,33 @@ export async function ouvrirSurLesActus(ecoleId) {
 
 export const changerOuverture = (ecoleId, valeur) =>
   appel(`/ecoles/${ecoleId}/news/settings`, json('PUT', { open_on_news: valeur }))
+
+// --- Médias (étape 2) ---
+
+export async function envoyerPhoto(ecoleId, fichier) {
+  const corps = new FormData()
+  corps.append('fichier', fichier)
+  return (await appel(`/ecoles/${ecoleId}/news/photos`, { method: 'POST', body: corps })).photo
+}
+
+// « Publier » avec une vidéo : l'envoi par blocs (utils/videoUploads.js)
+// devient une vidéo (voir finaliserTeleversement).
+export async function attacherVideo(ecoleId, uploadId) {
+  return videoVersEcran(await appel(`/ecoles/${ecoleId}/news/videos`, json('POST', { upload_id: uploadId })))
+}
+
+// La photo d'une actu, lue avec la session (comme les pièces jointes de la
+// messagerie) ; gardée tant que l'appli est ouverte.
+const photos = new Map()
+export function lirePhoto(ecoleId, actu) {
+  const chemin = `/ecoles/${ecoleId}/news/${actu.id}/photo?v=${actu.photo}`
+  if (!photos.has(chemin)) {
+    const promesse = fetch(`${BASE_URL}${chemin}`).then(async (reponse) => {
+      if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+      return URL.createObjectURL(await reponse.blob())
+    })
+    promesse.catch(() => photos.delete(chemin))
+    photos.set(chemin, promesse)
+  }
+  return photos.get(chemin)
+}

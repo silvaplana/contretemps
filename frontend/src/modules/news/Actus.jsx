@@ -1,4 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { documentsApi } from '../../api/documents.js'
+import VideoThumb from '../../components/VideoThumb.jsx'
+import {
+  annulerTeleversement,
+  demarrerTeleversement,
+  finaliserTeleversement,
+  useProgressionTeleversement,
+} from '../../utils/videoUploads.js'
 import * as api from './api.js'
 import './news.css'
 
@@ -8,6 +16,7 @@ import './news.css'
 // Un éditeur ouvert remplace l'écran, avec la flèche de retour.
 
 const ANNULER_MS = 10000
+const VIDEO_MAX = 100 * 1024 * 1024 // avant compression, comme la Messagerie (§4.2)
 const NIVEAUX = [
   { cle: 'important', libelle: 'Important', aide: 'En haut des actus, en rouge, jusqu’à la date choisie. Pour ce qui ne doit pas être manqué.' },
   { cle: 'normal', libelle: 'Normal', aide: 'Une grande carte.' },
@@ -41,7 +50,84 @@ function Alerte() {
   )
 }
 
-export function CarteActu({ actu }) {
+const IconePhoto = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="5" width="18" height="14" rx="2" />
+    <circle cx="9" cy="10" r="2" />
+    <path d="M21 16l-5-5-8 8" />
+  </svg>
+)
+const IconeVideo = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <rect x="3" y="6" width="13" height="12" rx="2" />
+    <path d="M16 10l5-3v10l-5-3" />
+  </svg>
+)
+const IconeFichier = ({ taille = 20 }) => (
+  <svg viewBox="0 0 24 24" width={taille} height={taille} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+    <path d="M14 3v5h5" />
+  </svg>
+)
+
+// La photo d'une actu : lue avec la session, ou la copie locale juste
+// choisie dans l'éditeur.
+function Photo({ ecoleId, actu }) {
+  const [url, setUrl] = useState(null)
+  const { id, photo, photoLocale } = actu
+  useEffect(() => {
+    if (photoLocale || !id || !photo) return undefined
+    let annule = false
+    api.lirePhoto(ecoleId, { id, photo }).then((u) => !annule && setUrl(u), () => {})
+    return () => {
+      annule = true
+    }
+  }, [ecoleId, id, photo, photoLocale])
+  const src = photoLocale || url
+  return <div className="actu__media">{src && <img src={src} alt="" />}</div>
+}
+
+// La vidéo pas encore envoyée, lue sur ce téléphone pendant l'envoi.
+function VideoLocale({ uploadId }) {
+  const etat = useProgressionTeleversement(uploadId)
+  if (!etat) return null
+  const pourcentage = etat.octetsTotal ? Math.round((etat.octetsEnvoyes / etat.octetsTotal) * 100) : 0
+  return (
+    <div className="actu__media">
+      <video src={etat.previewUrl} controls playsInline />
+      {!etat.complet && <div className="actu__envoi" style={{ width: `${pourcentage}%` }} />}
+    </div>
+  )
+}
+
+function Media({ ecoleId, actu }) {
+  if (actu.photo || actu.photoLocale) return <Photo ecoleId={ecoleId} actu={actu} />
+  if (actu.uploadId) return <VideoLocale uploadId={actu.uploadId} />
+  if (actu.video)
+    return (
+      <div className="actu__media actu__media--video">
+        <VideoThumb video={actu.video} />
+      </div>
+    )
+  return null
+}
+
+// Le document : un bouton qui l'ouvre comme dans Docs, et ← revient ici.
+function Document({ document }) {
+  if (!document) return null
+  return (
+    <button
+      type="button"
+      className="actu__fichier"
+      onClick={() => window.dispatchEvent(new CustomEvent('app-ouvrir-docs', { detail: { id: document.id, retour: true } }))}
+    >
+      <IconeFichier taille={26} />
+      <span>{document.name}</span>
+    </button>
+  )
+}
+
+export function CarteActu({ actu, ecoleId }) {
   const signature = (
     <div className="actu__meta">
       <span>
@@ -71,19 +157,25 @@ export function CarteActu({ actu }) {
           Important
         </div>
         <p className="actu__texte">{actu.texte || '…'}</p>
+        <Media ecoleId={ecoleId} actu={actu} />
+        <Document document={actu.document} />
         {signature}
       </article>
     )
   }
   return (
     <article className="actu actu--normale">
-      <p className="actu__texte">{actu.texte || '…'}</p>
-      {signature}
+      <Media ecoleId={ecoleId} actu={actu} />
+      <div className="actu__corps">
+        <p className="actu__texte">{actu.texte || '…'}</p>
+        <Document document={actu.document} />
+        {signature}
+      </div>
     </article>
   )
 }
 
-function Fil({ actus }) {
+function Fil({ actus, ecoleId }) {
   if (!actus.length) return <p className="actus__vide">Pas encore d’actu.</p>
   const enHaut = actus.filter((a) => a.enHaut)
   const autres = actus.filter((a) => !a.enHaut)
@@ -91,14 +183,14 @@ function Fil({ actus }) {
   return (
     <div className="actus__fil">
       {enHaut.map((a) => (
-        <CarteActu key={a.id} actu={a} />
+        <CarteActu key={a.id} actu={a} ecoleId={ecoleId} />
       ))}
       {autres.map((a, i) => {
         const titre = periodes[i] !== periodes[i - 1] ? periodes[i] : null
         return (
           <div key={a.id} className="actus__groupe">
             {titre && <div className="actus__periode">{titre}</div>}
-            <CarteActu actu={a} />
+            <CarteActu actu={a} ecoleId={ecoleId} />
           </div>
         )
       })}
@@ -140,34 +232,192 @@ function Atelier({ actus, ouvrir, ouverture, changerOuverture }) {
   )
 }
 
-function Editeur({ actu, auteur, onRetour, onEnregistrer, onSupprimer }) {
+// Choisir un document dans Docs : on descend dans les dossiers et on touche
+// le fichier.
+function ChoixDocument({ ecoleId, onChoisir, onFermer }) {
+  const docs = useState(() => documentsApi(ecoleId))[0]
+  const [espaces, setEspaces] = useState([])
+  const [espace, setEspace] = useState(null)
+  const [dossier, setDossier] = useState(null)
+  const [contenu, setContenu] = useState(null)
+  const [erreur, setErreur] = useState('')
+
+  useEffect(() => {
+    docs.spaces().then(
+      (liste) => {
+        setEspaces(liste)
+        setEspace(liste[0]?.key ?? null)
+      },
+      (e) => setErreur(e.message),
+    )
+  }, [docs])
+  useEffect(() => {
+    if (!espace) return undefined
+    let annule = false
+    docs.browse(espace, dossier).then(
+      (x) => !annule && (setContenu(x), setErreur('')),
+      (e) => !annule && setErreur(e.message),
+    )
+    return () => {
+      annule = true
+    }
+  }, [docs, espace, dossier])
+
+  const fil = contenu?.breadcrumb ?? []
+  const remonter = () => (dossier ? setDossier(fil.length > 1 ? fil[fil.length - 2].id : null) : onFermer())
+  const elements = contenu?.items ?? []
+  return (
+    <div className="actus actus--choix" role="dialog" aria-label="Choisir un document">
+      <div className="actus__entete">
+        <button type="button" className="actus__retour" aria-label="Retour" onClick={remonter}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5M11 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <strong>{contenu?.folder?.name ?? 'Choisir un document'}</strong>
+      </div>
+      {!dossier && espaces.length > 1 && (
+        <div className="actus__onglets" role="tablist">
+          {espaces.map((x) => (
+            <button key={x.key} type="button" role="tab" aria-selected={x.key === espace} onClick={() => setEspace(x.key)}>
+              {x.label}
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="choix">
+        {erreur && <p className="actus__vide">{erreur}</p>}
+        {contenu && !elements.length && <p className="actus__vide">Ce dossier est vide.</p>}
+        {elements.map((x) => (
+          <button
+            key={x.id}
+            type="button"
+            className="choix__ligne"
+            onClick={() => (x.kind === 'folder' ? setDossier(x.id) : onChoisir({ id: x.id, name: x.name }))}
+          >
+            {x.kind === 'folder' ? (
+              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              </svg>
+            ) : (
+              <IconeFichier taille={26} />
+            )}
+            <span>{x.name}</span>
+            {x.kind === 'folder' && <span className="choix__chevron">›</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }) {
   const [brouillon, setBrouillon] = useState(actu)
   const [envoi, setEnvoi] = useState(false)
+  const [photoEnvoi, setPhotoEnvoi] = useState(false)
+  const [choixDocument, setChoixDocument] = useState(false)
+  const champPhoto = useRef(null)
+  const champVideo = useRef(null)
   const changer = (champs) => setBrouillon((b) => ({ ...b, ...champs }))
-  const choisirNiveau = (niveau) =>
+  // Une vidéo choisie mais pas encore publiée : son envoi s'arrête.
+  const oublierEnvoi = () => brouillon.uploadId && annulerTeleversement(brouillon.uploadId)
+  const sansMedia = { photo: null, photoLocale: null, video: null, uploadId: null }
+  const choisirNiveau = (niveau) => {
+    if (niveau === 'brief') oublierEnvoi()
     changer({
       niveau,
       // Nouvelle actu : la notification suit le niveau (§4.2).
       ...(actu.id ? {} : { notifier: niveau === 'important' }),
       enHautJusquau: brouillon.enHautJusquau ?? dansJours(7),
+      // Une brève n'a ni photo, ni vidéo, ni document (§4.2).
+      ...(niveau === 'brief' ? { ...sansMedia, document: null } : {}),
     })
+  }
   const vide = !brouillon.texte.trim()
   const publiee = Boolean(actu.publieeLe)
   const aide = NIVEAUX.find((n) => n.cle === brouillon.niveau).aide
+  const aPhoto = Boolean(brouillon.photo || brouillon.photoLocale)
+  const aVideo = Boolean(brouillon.video || brouillon.uploadId)
+
+  async function choisirPhoto(fichier) {
+    if (!fichier) return
+    oublierEnvoi()
+    changer({ ...sansMedia, photoLocale: URL.createObjectURL(fichier) })
+    setPhotoEnvoi(true)
+    try {
+      changer({ photo: await api.envoyerPhoto(ecoleId, fichier) })
+    } catch (e) {
+      changer({ photoLocale: null })
+      window.alert(e.message)
+    } finally {
+      setPhotoEnvoi(false)
+    }
+  }
+
+  async function choisirVideo(fichier) {
+    if (!fichier) return
+    if (fichier.size > VIDEO_MAX) {
+      window.alert(`« ${fichier.name} » est trop grosse : 100 Mo au maximum.`)
+      return
+    }
+    oublierEnvoi()
+    try {
+      changer({ ...sansMedia, uploadId: await demarrerTeleversement(ecoleId, fichier) })
+    } catch (e) {
+      window.alert(e.message)
+    }
+  }
+
+  function basculer(media) {
+    if (media === 'photo' && aPhoto) return changer(sansMedia)
+    if (media === 'video' && aVideo) {
+      oublierEnvoi()
+      return changer(sansMedia)
+    }
+    if (media === 'document') return brouillon.document ? changer({ document: null }) : setChoixDocument(true)
+    ;(media === 'photo' ? champPhoto : champVideo).current?.click()
+  }
 
   async function envoyer(publier) {
     setEnvoi(true)
     try {
-      await onEnregistrer({ ...brouillon, publier })
+      let pret = brouillon
+      if (brouillon.uploadId) {
+        // La vidéo existe dès maintenant ; son envoi finit derrière.
+        const video = await finaliserTeleversement(brouillon.uploadId, (id) => api.attacherVideo(ecoleId, id))
+        pret = { ...brouillon, video, uploadId: null }
+        setBrouillon(pret)
+      }
+      await onEnregistrer({ ...pret, publier })
+    } catch (e) {
+      window.alert(e.message)
     } finally {
       setEnvoi(false)
     }
   }
 
+  function retour() {
+    oublierEnvoi()
+    onRetour()
+  }
+
+  if (choixDocument) {
+    return (
+      <ChoixDocument
+        ecoleId={ecoleId}
+        onFermer={() => setChoixDocument(false)}
+        onChoisir={(document) => {
+          changer({ document })
+          setChoixDocument(false)
+        }}
+      />
+    )
+  }
+
   return (
     <div className="actus actus--editeur">
       <div className="actus__entete">
-        <button type="button" className="actus__retour" aria-label="Retour" onClick={onRetour}>
+        <button type="button" className="actus__retour" aria-label="Retour" onClick={retour}>
           <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M19 12H5M11 18l-6-6 6-6" />
           </svg>
@@ -197,6 +447,24 @@ function Editeur({ actu, auteur, onRetour, onEnregistrer, onSupprimer }) {
           value={brouillon.texte}
           onChange={(e) => changer({ texte: e.target.value })}
         />
+        {brouillon.niveau !== 'brief' && (
+          <div className="editeur__ajouts">
+            <button type="button" aria-pressed={aPhoto} onClick={() => basculer('photo')}>
+              <IconePhoto />
+              Photo
+            </button>
+            <button type="button" aria-pressed={aVideo} onClick={() => basculer('video')}>
+              <IconeVideo />
+              Vidéo
+            </button>
+            <button type="button" aria-pressed={Boolean(brouillon.document)} onClick={() => basculer('document')}>
+              <IconeFichier />
+              Document
+            </button>
+            <input ref={champPhoto} type="file" accept="image/*" hidden onChange={(e) => (choisirPhoto(e.target.files[0]), (e.target.value = ''))} />
+            <input ref={champVideo} type="file" accept="video/*" hidden onChange={(e) => (choisirVideo(e.target.files[0]), (e.target.value = ''))} />
+          </div>
+        )}
         {brouillon.niveau === 'important' && (
           <label className="editeur__ligne" htmlFor="actu-en-haut">
             <span>En haut jusqu’au</span>
@@ -223,6 +491,7 @@ function Editeur({ actu, auteur, onRetour, onEnregistrer, onSupprimer }) {
         <div className="actus__periode">Ce que verront les autres</div>
         <div className="editeur__apercu">
           <CarteActu
+            ecoleId={ecoleId}
             actu={{
               ...brouillon,
               enHaut: brouillon.niveau === 'important',
@@ -239,10 +508,10 @@ function Editeur({ actu, auteur, onRetour, onEnregistrer, onSupprimer }) {
         )}
       </div>
       <div className="actus__barre">
-        <button type="button" className="btn btn--secondary actus__brouillon" disabled={vide || envoi} onClick={() => envoyer(false)}>
+        <button type="button" className="btn btn--secondary actus__brouillon" disabled={vide || envoi || photoEnvoi} onClick={() => envoyer(false)}>
           Brouillon
         </button>
-        <button type="button" className="btn btn--primary actus__principal" disabled={vide || envoi} onClick={() => envoyer(true)}>
+        <button type="button" className="btn btn--primary actus__principal" disabled={vide || envoi || photoEnvoi} onClick={() => envoyer(true)}>
           {publiee ? 'Enregistrer' : 'Publier'}
         </button>
       </div>
@@ -357,7 +626,7 @@ export default function Actus({ ecoleId, prenom }) {
   if (edite) {
     return (
       <>
-        <Editeur actu={edite} auteur={prenom} onRetour={() => setEdite(null)} onEnregistrer={enregistrer} onSupprimer={supprimer} />
+        <Editeur actu={edite} auteur={prenom} ecoleId={ecoleId} onRetour={() => setEdite(null)} onEnregistrer={enregistrer} onSupprimer={supprimer} />
         {toastEl}
       </>
     )
@@ -384,14 +653,14 @@ export default function Actus({ ecoleId, prenom }) {
       {vueAtelier ? (
         <Atelier actus={visibles(atelier)} ouvrir={setEdite} ouverture={ouverture} changerOuverture={changerOuverture} />
       ) : (
-        <Fil actus={visibles(fil.actus)} />
+        <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} />
       )}
       {vueAtelier && (
         <div className="actus__barre">
           <button
             type="button"
             className="btn btn--primary actus__principal"
-            onClick={() => setEdite({ id: null, niveau: 'normal', texte: '', enHautJusquau: dansJours(7), notifier: false, publieeLe: null })}
+            onClick={() => setEdite({ id: null, niveau: 'normal', texte: '', enHautJusquau: dansJours(7), notifier: false, publieeLe: null, photo: null, video: null, document: null })}
           >
             Nouvelle actu
           </button>

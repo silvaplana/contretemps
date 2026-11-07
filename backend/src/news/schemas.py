@@ -6,6 +6,7 @@ from datetime import date, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field
+from videos.schemas import VideoSortie
 
 
 class NewsIn(BaseModel):
@@ -14,6 +15,14 @@ class NewsIn(BaseModel):
     on_top_until: date | None = None
     notify: bool = False
     publish: bool = True
+    photo: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")  # from POST …/news/photos
+    video_id: int | None = None  # from POST …/news/videos
+    document_id: int | None = None  # a file of Docs
+
+
+class DocumentOut(BaseModel):
+    id: int
+    name: str
 
 
 class NewsOut(BaseModel):
@@ -27,6 +36,17 @@ class NewsOut(BaseModel):
     published_at: datetime | None
     updated_at: datetime
     is_new: bool = False
+    photo: str | None = None
+    video: VideoSortie | None = None
+    document: DocumentOut | None = None
+
+
+class PhotoOut(BaseModel):
+    photo: str
+
+
+class VideoIn(BaseModel):
+    upload_id: str
 
 
 class FeedOut(BaseModel):

@@ -9,14 +9,21 @@ import logging
 import threading
 from datetime import date, datetime, timezone
 
+from typing import BinaryIO
+
 from comptes import Compte
+from documents.models import DocNode
 from ecoles.models import Ecole
 from saisons.portee import toutes_saisons
 from saisons.saisons import saison_courante_id
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from storage import LocalStorage, make_thumbnail
+from videos import Videos
+from videos.models import Video
 
-from .models import IMPORTANT, NewsItem, NewsSeen, NewsSettings
+from .models import BRIEF, IMPORTANT, NewsItem, NewsSeen, NewsSettings
+from .storage import DISPLAY_SIZE
 
 logger = logging.getLogger(__name__)
 
@@ -32,9 +39,19 @@ def on_top(item: NewsItem, today: date) -> bool:
     return item.level == IMPORTANT and item.on_top_until is not None and item.on_top_until >= today
 
 
+class InvalidMedia(ValueError):
+    """A photo, video or document that cannot go in this item."""
+
+
 class News:
-    def __init__(self, notifications, session_factory=None, delay_seconds: float | None = UNDO_SECONDS) -> None:
+    def __init__(self, notifications, storage: LocalStorage, videos: Videos, session_factory=None,
+                 delay_seconds: float | None = UNDO_SECONDS) -> None:
         self.notifications = notifications
+        self.storage = storage
+        self.videos = videos
+        # A video deleted elsewhere (Usage panel) leaves its news item.
+        videos.quand_supprimee(self._video_deleted)
+        videos.rubrique("Actualités", lambda db: set(db.scalars(select(NewsItem.video_id).where(NewsItem.video_id.is_not(None)))))
         # Where the delayed notification opens its own session; None (tests):
         # nothing is scheduled, `send_notification` is called by hand.
         self.session_factory = session_factory
@@ -87,12 +104,70 @@ class News:
             settings.open_on_news = value
         db.commit()
 
+    # --- Media (§3.3) ---
+
+    def store_photo(self, org_id: int, source: BinaryIO) -> str:
+        """Keeps a photo sent from the editor; returns its sha256, which
+        the item then names. Raises InvalidMedia if it is not an image."""
+        sha, _ = self.storage.put(org_id, source)
+        if not make_thumbnail(self.storage.path(org_id, sha), self.storage.thumbnail_path(org_id, sha), DISPLAY_SIZE):
+            self.storage.delete(org_id, sha)
+            raise InvalidMedia("Ce fichier n'est pas une photo")
+        return sha
+
+    def photo_path(self, item: NewsItem):
+        """The JPEG shown in the news (at most 1600 px)."""
+        return self.storage.thumbnail_path(item.org_id, item.photo_sha) if item.photo_sha else None
+
+    def video(self, db: Session, item: NewsItem) -> Video | None:
+        # A video belongs to a season; the item outlives it.
+        if item.video_id is None:
+            return None
+        with toutes_saisons(db):
+            return db.get(Video, item.video_id)
+
+    def document(self, db: Session, item: NewsItem) -> DocNode | None:
+        if item.document_id is None:
+            return None
+        node = db.get(DocNode, item.document_id)
+        return node if node is not None and node.deleted_at is None else None
+
+    def _check_media(self, db: Session, org_id: int, photo_sha, video_id, document_id) -> None:
+        if photo_sha and video_id:
+            raise InvalidMedia("Une photo ou une vidéo, pas les deux")
+        if photo_sha and not self.storage.thumbnail_path(org_id, photo_sha).exists():
+            raise InvalidMedia("Photo introuvable")
+        if video_id:
+            with toutes_saisons(db):
+                video = db.get(Video, video_id)
+            if video is None or video.ecole_id != org_id:
+                raise InvalidMedia("Vidéo introuvable")
+        if document_id:
+            node = db.get(DocNode, document_id)
+            if node is None or node.org_id != org_id or node.kind == "folder" or node.deleted_at is not None:
+                raise InvalidMedia("Document introuvable")
+
+    def _forget_photo(self, db: Session, org_id: int, sha: str | None) -> None:
+        """Deletes a photo no item names any more."""
+        if sha and db.scalar(select(NewsItem.id).where(NewsItem.org_id == org_id, NewsItem.photo_sha == sha)) is None:
+            self.storage.delete(org_id, sha)
+
+    def _video_deleted(self, db: Session, video_id: int) -> None:
+        for item in db.scalars(select(NewsItem).where(NewsItem.video_id == video_id)):
+            item.video_id = None
+
     # --- Writing ---
 
     def save(self, db: Session, org_id: int, author: Compte | None, item: NewsItem | None, *,
-             level: str, body: str, on_top_until: date | None, notify: bool, publish: bool) -> NewsItem:
+             level: str, body: str, on_top_until: date | None, notify: bool, publish: bool,
+             photo: str | None = None, video_id: int | None = None, document_id: int | None = None) -> NewsItem:
         """Creates (`item=None`) or changes an item. `publish` puts it in the
-        feed, or back in the drafts."""
+        feed, or back in the drafts. A brief has no media. Raises InvalidMedia."""
+        if level == BRIEF:
+            photo = video_id = document_id = None
+        self._check_media(db, org_id, photo, video_id, document_id)
+        old_photo = item.photo_sha if item else None
+        old_video = item.video_id if item else None
         if item is None:
             item = NewsItem(org_id=org_id, author_id=author.id if author else None,
                             author_name=author.prenom if author else "")
@@ -101,12 +176,18 @@ class News:
         item.body = body.strip()
         item.on_top_until = on_top_until if level == IMPORTANT else None
         item.notify = notify
+        item.photo_sha, item.video_id, item.document_id = photo, video_id, document_id
         newly_published = publish and item.published_at is None
         if publish and item.published_at is None:
             item.published_at = _now()
         if not publish:
             item.published_at = None
         db.commit()
+        if old_photo != photo:
+            self._forget_photo(db, org_id, old_photo)
+        if old_video and old_video != video_id:
+            with toutes_saisons(db):
+                self.videos.delete(db, old_video)
         db.refresh(item)
         if newly_published and notify and item.notified_at is None:
             self._schedule(item.id)
@@ -121,8 +202,13 @@ class News:
         return item
 
     def delete(self, db: Session, item: NewsItem) -> None:
+        org_id, photo, video_id = item.org_id, item.photo_sha, item.video_id
         db.delete(item)
         db.commit()
+        self._forget_photo(db, org_id, photo)
+        if video_id:
+            with toutes_saisons(db):
+                self.videos.delete(db, video_id)
 
     # --- Notification (§5) ---
 
