@@ -1,4 +1,5 @@
-Actualités : onglet « Actus » de la barre du bas, juste après Admin, pour tout le monde. Qui a le
+Actualités : onglet « Actus » de la barre du bas, juste après Admin. Pendant le test, seuls le
+voient les membres qui ont le droit 🔒 « Voir les actualités » et ceux qui publient. Qui a le
 droit 🔒 « Publier les actualités » (Admin › École › Administrateurs) voit en haut deux onglets,
 Édition et Visualisation ; les autres voient directement les actus.
 
@@ -22,6 +23,8 @@ Les actus (et l'onglet Visualisation)
   - Instagram : coller la clé d'accès d'un compte Instagram professionnel, puis « Relier ». Ses
     nouveaux posts arrivent dans les actus en 5 minutes au plus (texte puis photos et vidéos, carrousels compris).
     « Délier » arrête le relais.
+  - Pendant le test, pour l'administrateur principal : « Qui voit les actus (pendant le test) » ouvre
+    la liste des membres, un interrupteur chacun pour leur montrer l'onglet Actus.
 
 Nouvelle actu / Modifier l'actu
 - Niveau : Important, Normal ou Brève. Texte.

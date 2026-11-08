@@ -229,7 +229,57 @@ function Fil({ actus, ecoleId }) {
   )
 }
 
-function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture }) {
+// Pendant le test (§2 bis) : l'administrateur principal coche qui voit les
+// actus. Qui publie les voit toujours.
+function Lecteurs({ ecoleId, onRetour }) {
+  const [liste, setListe] = useState(null)
+  const [erreur, setErreur] = useState('')
+  useEffect(() => {
+    api.lireLecteurs(ecoleId).then(setListe, (e) => setErreur(e.message))
+  }, [ecoleId])
+  async function basculer(lecteur) {
+    const voit = !lecteur.voit
+    setListe((l) => l.map((x) => (x.id === lecteur.id ? { ...x, voit } : x)))
+    try {
+      await api.changerLecteur(ecoleId, lecteur.id, voit)
+    } catch (e) {
+      setListe((l) => l.map((x) => (x.id === lecteur.id ? { ...x, voit: !voit } : x)))
+      setErreur(e.message)
+    }
+  }
+  return (
+    <div className="actus actus--choix">
+      <div className="actus__entete">
+        <button type="button" className="actus__retour" aria-label="Retour" onClick={onRetour}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5M11 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <strong>Qui voit les actus</strong>
+      </div>
+      <div className="choix">
+        <p className="editeur__aide">Pendant le test, seuls les membres cochés voient l’onglet Actus. Ceux qui publient le voient toujours.</p>
+        {erreur && <p className="actus__vide">{erreur}</p>}
+        {(liste ?? []).map((x) => (
+          <div key={x.id} className="atelier__option">
+            <span>{x.nom}</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={x.voit || x.publie}
+              aria-label={x.nom}
+              disabled={x.publie}
+              className="actus__interrupteur"
+              onClick={() => basculer(x)}
+            />
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, choisir, ouvrirLecteurs }) {
   return (
     <div className="atelier">
       {actus.map((a) => (
@@ -246,14 +296,20 @@ function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture }) {
           </span>
         </button>
       ))}
-      <ParametresEdition ecoleId={ecoleId} ouverture={ouverture} changerOuverture={changerOuverture} />
+      <ParametresEdition
+        ecoleId={ecoleId}
+        ouverture={ouverture}
+        changerOuverture={changerOuverture}
+        choisir={choisir}
+        ouvrirLecteurs={ouvrirLecteurs}
+      />
     </div>
   )
 }
 
 // « Paramètres d'édition » : repliés par défaut, on les déroule au besoin
 // (Seb, 8 novembre).
-function ParametresEdition({ ecoleId, ouverture, changerOuverture }) {
+function ParametresEdition({ ecoleId, ouverture, changerOuverture, choisir, ouvrirLecteurs }) {
   const [ouvert, setOuvert] = useState(false)
   return (
     <div className="parametres">
@@ -274,6 +330,12 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture }) {
               onClick={() => changerOuverture(!ouverture)}
             />
           </div>
+          {choisir && (
+            <button type="button" className="atelier__option atelier__lien" onClick={ouvrirLecteurs}>
+              <span>Qui voit les actus (pendant le test)</span>
+              <span className="choix__chevron" aria-hidden="true">›</span>
+            </button>
+          )}
           <Instagram ecoleId={ecoleId} />
         </>
       )}
@@ -663,6 +725,8 @@ export default function Actus({ ecoleId, prenom }) {
   const [atelier, setAtelier] = useState([])
   const [onglet, setOnglet] = useState('apercu')
   const [ouverture, setOuverture] = useState(true)
+  const [choisir, setChoisir] = useState(false) // peut choisir qui voit les actus
+  const [lecteurs, setLecteurs] = useState(false) // l'écran « Qui voit les actus » est ouvert
   const [edite, setEdite] = useState(null) // l'actu ouverte dans l'éditeur
   const [caches, setCaches] = useState(new Set()) // supprimées, Annuler possible
   const [toast, setToast] = useState(null) // { texte, annuler }
@@ -674,9 +738,10 @@ export default function Actus({ ecoleId, prenom }) {
       const f = await api.lireActus(ecoleId)
       setFil(f)
       if (f.peutPublier) {
-        const [a, o] = await Promise.all([api.lireAtelier(ecoleId), api.ouvrirSurLesActus(ecoleId)])
+        const [a, r] = await Promise.all([api.lireAtelier(ecoleId), api.lireReglages(ecoleId)])
         setAtelier(a)
-        setOuverture(o)
+        setOuverture(r.ouvrir)
+        setChoisir(r.choisir)
       }
       setErreur('')
     } catch (e) {
@@ -762,6 +827,8 @@ export default function Actus({ ecoleId, prenom }) {
     </div>
   )
 
+  if (lecteurs) return <Lecteurs ecoleId={ecoleId} onRetour={() => setLecteurs(false)} />
+
   if (edite) {
     return (
       <>
@@ -791,7 +858,15 @@ export default function Actus({ ecoleId, prenom }) {
         </div>
       )}
       {vueAtelier ? (
-        <Atelier ecoleId={ecoleId} actus={visibles(atelier)} ouvrir={setEdite} ouverture={ouverture} changerOuverture={changerOuverture} />
+        <Atelier
+          ecoleId={ecoleId}
+          actus={visibles(atelier)}
+          ouvrir={setEdite}
+          ouverture={ouverture}
+          changerOuverture={changerOuverture}
+          choisir={choisir}
+          ouvrirLecteurs={() => setLecteurs(true)}
+        />
       ) : (
         <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} />
       )}

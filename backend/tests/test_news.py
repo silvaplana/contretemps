@@ -30,13 +30,16 @@ def e(db_session):
     autre = Ecoles().create(db_session, nom="Fight Lab", code_postal="13600")
     seb = comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Richard", prenom="Seb")
     rights.add(db_session, seb, "news.publish")
+    # Pendant le test, Zoé fait partie des élèves qui voient les actus.
+    zoe = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Martin", prenom="Zoé")
+    rights.add(db_session, zoe, "news.read")
     db_session.commit()
     return {
         "ecole": ecole,
         "autre": autre,
         "seb": seb,
         "admin": comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Dho", prenom="Julia"),
-        "zoe": comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Martin", prenom="Zoé"),
+        "zoe": zoe,
         "voisin": comptes.create(db_session, ecole_id=autre.id, role="eleve", nom="Roux", prenom="Ana"),
     }
 
@@ -113,7 +116,7 @@ class FauxNotifications:
         self.envois.append((compte_id, titre, corps))
 
 
-def test_notification_a_tous_sauf_l_auteur_et_pas_apres_annuler(client, db_session, e, en_tant_que, monkeypatch):
+def test_notification_a_qui_voit_les_actus_sauf_l_auteur_et_pas_apres_annuler(client, db_session, e, en_tant_que, monkeypatch):
     from app.main import core
 
     faux = FauxNotifications()
@@ -122,8 +125,9 @@ def test_notification_a_tous_sauf_l_auteur_et_pas_apres_annuler(client, db_sessi
     en_tant_que(e["seb"])
     long = "Pas de cours mardi 11 novembre. " * 10
     actu = _publier(client, eid, long, level="important", notify=True)
-    assert core.news_client.send_notification(db_session, actu["id"]) == 2
-    assert {c for c, _, _ in faux.envois} == {e["admin"].id, e["zoe"].id}
+    # Julia (admin sans le droit « Voir les actualités ») ne la reçoit pas.
+    assert core.news_client.send_notification(db_session, actu["id"]) == 1
+    assert {c for c, _, _ in faux.envois} == {e["zoe"].id}
     _, titre, corps = faux.envois[0]
     assert titre == "Contretemps" and len(corps) == 100 and corps.endswith("…")
     # Une seule fois.
@@ -141,10 +145,10 @@ def test_notification_a_tous_sauf_l_auteur_et_pas_apres_annuler(client, db_sessi
 
 def test_option_ouvrir_sur_les_actus(client, e):
     url = f"/ecoles/{e['ecole'].id}/news/settings"
-    assert client.get(url).json() == {"open_on_news": True}
-    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False}
-    assert client.get(url).json() == {"open_on_news": False}
-    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True}
+    assert client.get(url).json() == {"open_on_news": True, "can_read": True, "can_choose_readers": True}
+    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False, "can_read": True, "can_choose_readers": True}
+    assert client.get(url).json() == {"open_on_news": False, "can_read": True, "can_choose_readers": True}
+    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True, "can_read": True, "can_choose_readers": True}
 
 
 @pytest.mark.rbac_reel
@@ -154,7 +158,8 @@ def test_droits(client, db_session, e):
     actu = client.post(f"/ecoles/{eid}/news", json={"body": "Gala"}, headers=seb)
     assert actu.status_code == 201, actu.text
     assert actu.json()["author_name"] == "Seb"
-    # Tout membre lit ; seul qui a le droit écrit (un admin sans la coche non plus).
+    # Pendant le test, lit qui a « Voir les actualités » ou « Publier les
+    # actualités » ; seul le second écrit (un admin sans la coche non plus).
     fil = client.get(f"/ecoles/{eid}/news", headers=zoe).json()
     assert len(fil["items"]) == 1 and fil["can_publish"] is False
     assert client.get(f"/ecoles/{eid}/news", headers=seb).json()["can_publish"] is True
@@ -162,7 +167,10 @@ def test_droits(client, db_session, e):
         assert client.post(f"/ecoles/{eid}/news", json={"body": "x"}, headers=entetes).status_code == 403
         assert client.get(f"/ecoles/{eid}/news/atelier", headers=entetes).status_code == 403
         assert client.put(f"/ecoles/{eid}/news/settings", json={"open_on_news": False}, headers=entetes).status_code == 403
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).status_code == 200
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).json() == {"open_on_news": True, "can_read": True, "can_choose_readers": False}
+    # Sans le droit : pas d'onglet, pas d'actus, l'appli ne s'ouvre pas dessus.
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=admin).json() == {"open_on_news": False, "can_read": False, "can_choose_readers": False}
+    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
     # Une autre école ne lit rien.
     assert client.get(f"/ecoles/{eid}/news", headers=voisin).status_code == 403
     assert db_session.query(NewsItem).count() == 1
@@ -390,3 +398,33 @@ def test_instagram_reserve_a_qui_publie(client, e):
     url = f"/ecoles/{e['ecole'].id}/news/instagram"
     assert client.get(url, headers=entetes_session(e["zoe"])).status_code == 403
     assert client.put(url, json={"token": "x" * 30}, headers=entetes_session(e["admin"])).status_code == 403
+
+
+
+@pytest.mark.rbac_reel
+def test_qui_voit_les_actus_pendant_le_test(client, db_session, e):
+    """L'administrateur principal coche, dans l'Atelier, qui voit les actus."""
+    eid = e["ecole"].id
+    patron = Comptes().create(db_session, ecole_id=eid, role="admin", nom="Chef", prenom="Anne")
+    Comptes().ajouter_role(db_session, patron, "owner")
+    rights.add(db_session, patron, "news.publish")
+    db_session.commit()
+    chef, admin = (entetes_session(c) for c in (patron, e["admin"]))
+    url = f"/ecoles/{eid}/news/readers"
+
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=chef).json()["can_choose_readers"] is True
+    # Julia est admin, pas administratrice principale.
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=admin).json()["can_choose_readers"] is False
+    assert client.get(url, headers=admin).status_code == 403
+
+    lecteurs = {r["name"]: r for r in client.get(url, headers=chef).json()}
+    assert "Ana Roux" not in lecteurs  # une autre école
+    assert lecteurs["Zoé Martin"]["reads"] is True and lecteurs["Julia Dho"]["reads"] is False
+    assert lecteurs["Seb Richard"]["publishes"] is True
+
+    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
+    assert client.put(f"{url}/{e['admin'].id}", json={"reads": True}, headers=chef).json()["reads"] is True
+    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 200
+    assert client.put(f"{url}/{e['admin'].id}", json={"reads": False}, headers=chef).json()["reads"] is False
+    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
+    assert client.put(f"{url}/{e['voisin'].id}", json={"reads": True}, headers=chef).status_code == 404

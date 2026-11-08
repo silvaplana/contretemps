@@ -80,6 +80,22 @@ export async function ouvrirSurLesActus(ecoleId) {
   }
 }
 
+// Pendant le test (§2 bis) : voit-on les actus, et peut-on choisir qui les
+// voit (administrateur principal, Super User). Module éteint ou erreur : non.
+export async function lireReglages(ecoleId) {
+  try {
+    const r = await appel(`/ecoles/${ecoleId}/news/settings`)
+    return { ouvrir: r.open_on_news, voir: r.can_read, choisir: r.can_choose_readers }
+  } catch {
+    return { ouvrir: false, voir: false, choisir: false }
+  }
+}
+
+const versLecteur = (r) => ({ id: r.id, nom: r.name, voit: r.reads, publie: r.publishes })
+export const lireLecteurs = async (ecoleId) => (await appel(`/ecoles/${ecoleId}/news/readers`)).map(versLecteur)
+export const changerLecteur = async (ecoleId, id, voit) =>
+  versLecteur(await appel(`/ecoles/${ecoleId}/news/readers/${id}`, json('PUT', { reads: voit })))
+
 export const changerOuverture = (ecoleId, valeur) =>
   appel(`/ecoles/${ecoleId}/news/settings`, json('PUT', { open_on_news: valeur }))
 
