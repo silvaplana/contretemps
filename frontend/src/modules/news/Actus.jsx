@@ -702,8 +702,9 @@ export default function Actus({ ecoleId, prenom }) {
       {fil.peutPublier && (
         <div className="actus__onglets" role="tablist">
           {[
-            ['atelier', 'Atelier'],
-            ['apercu', 'Aperçu'],
+            // Libellés de Seb (8 novembre) : Édition | Visualisation.
+            ['atelier', 'Édition'],
+            ['apercu', 'Visualisation'],
           ].map(([cle, libelle]) => (
             <button key={cle} type="button" role="tab" aria-selected={onglet === cle} onClick={() => setOnglet(cle)}>
               {libelle}

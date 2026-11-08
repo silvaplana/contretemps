@@ -26,8 +26,8 @@ journal. Visible par tous les rôles (Membre, Admin, Admin principal, Super User
 
 | Qui | Ce qu'il voit en touchant Actus |
 |---|---|
-| A le droit 🔒 Publier les actualités | Deux onglets en haut : **Atelier** \| **Aperçu** |
-| Tous les autres | Directement les actus (l'écran Aperçu, sans onglets) |
+| A le droit 🔒 Publier les actualités | Deux onglets en haut : **Édition** \| **Visualisation** (d'abord nommés Atelier et Aperçu sur la maquette ; renommés par Seb le 8 novembre) |
+| Tous les autres | Directement les actus (l'écran Visualisation, sans onglets) |
 
 Le Super User passe toujours ; l'Administrateur principal se coche lui-même s'il veut publier
 (spec/core.md §5.3).
@@ -39,17 +39,17 @@ Tant que le module est en test, l'onglet Actus ne se montre qu'aux personnes qui
 Les autres ne voient pas l'onglet, l'appli ne s'ouvre pas sur les actus pour eux, et ils ne
 reçoivent pas les notifications.
 
-Comme les droits ne se cochent aujourd'hui que pour les administrateurs, l'Atelier a, pour
+Comme les droits ne se cochent aujourd'hui que pour les administrateurs, l'onglet Édition a, pour
 l'administrateur principal et le Super User, une ligne **« Qui voit les actus (pendant le test) »**
 sous les Options : la liste des membres de la saison, un interrupteur chacun (grisé et allumé pour
 qui publie). L'interrupteur met la personne dans le groupe 🔒 du droit, ou l'en retire.
 
-Fin du test : on enlève ce filtre (droit, ligne de l'Atelier, `can_read`) et tout le monde voit les
+Fin du test : on enlève ce filtre (droit, ligne de l'onglet Édition, `can_read`) et tout le monde voit les
 actus, comme au §2.
 
-## 3. Les actus (Aperçu)
+## 3. Les actus (Visualisation)
 
-Ce que voient tous les membres ; l'onglet Aperçu des personnes qui publient montre exactement le même
+Ce que voient tous les membres ; l'onglet Visualisation des personnes qui publient montre exactement le même
 écran.
 
 ### 3.1 Trois niveaux
@@ -84,7 +84,7 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
   Elle s'efface à la visite suivante. Pas de badge sur l'onglet (les badges sont réservés à ce que la
   personne a à faire).
 
-## 4. L'Atelier *(droit 🔒 Publier les actualités)*
+## 4. L'onglet Édition *(droit 🔒 Publier les actualités)*
 
 ### 4.1 Liste
 
@@ -118,7 +118,7 @@ De haut en bas :
    actu déjà publiée), grisé tant que le texte est vide. ← revient sans rien enregistrer.
 8. Pour une actu existante : lien « Supprimer cette actu ».
 
-Après Publier : retour sur l'onglet Aperçu, l'actu en haut, et « Actu publiée · Annuler » pendant
+Après Publier : retour sur l'onglet Visualisation, l'actu en haut, et « Actu publiée · Annuler » pendant
 10 s (Annuler la remet en brouillon et n'envoie pas la notification). Supprimer : « Actu supprimée ·
 Annuler » pendant 10 s.
 
@@ -219,9 +219,9 @@ droit (`assistant/guide.py`).
 
 Chaque étape part sur le « vas-y » de Seb, une PR chacune, avec le `guide.md` du module.
 
-1. **Actus en texte** : tables, API, onglet Actus, Atelier | Aperçu, trois niveaux, En haut jusqu'au,
+1. **Actus en texte** : tables, API, onglet Actus, Édition | Visualisation, trois niveaux, En haut jusqu'au,
    brouillon, supprimer/Annuler, « Nouveau », notification, option d'ouverture, actions de l'assistant.
-   **Fait** (6 novembre 2026, PR de l'étape 1). L'onglet s'ouvre sur Aperçu, même pour qui publie.
+   **Fait** (6 novembre 2026, PR de l'étape 1). L'onglet s'ouvre sur Visualisation, même pour qui publie.
 2. **Médias** : photo, vidéo (lecture sur place), document de Docs. **Fait** (7 novembre 2026, PR de
    l'étape 2).
 

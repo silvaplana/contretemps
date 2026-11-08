@@ -1,9 +1,9 @@
 Actualités : onglet « Actus » de la barre du bas, juste après Admin. Pendant le test, seuls le
 voient les membres qui ont le droit 🔒 « Voir les actualités » et ceux qui publient. Qui a le
 droit 🔒 « Publier les actualités » (Admin › École › Administrateurs) voit en haut deux onglets,
-Atelier et Aperçu ; les autres voient directement les actus.
+Édition et Visualisation ; les autres voient directement les actus.
 
-Les actus (et l'onglet Aperçu)
+Les actus (et l'onglet Visualisation)
 - En haut, les actus Important encore « en haut », sur fond rouge clair, marquées « IMPORTANT ».
 - Puis les autres, de la plus récente à la plus ancienne, sous « Aujourd'hui », « Cette semaine »,
   « Plus tôt ». Une actu Normal est une carte, sa photo ou sa vidéo en premier ; une Brève tient en
@@ -12,7 +12,7 @@ Les actus (et l'onglet Aperçu)
 - Sous chaque actu : prénom de qui l'a publiée et le jour. « Nouveau » marque ce que la personne
   n'avait pas encore vu.
 
-Atelier (droit 🔒 Publier les actualités)
+Édition (droit 🔒 Publier les actualités)
 - Toutes les actus, brouillons compris : barre de couleur du niveau, début du texte, « Publiée » ou
   « Brouillon ». Toucher une actu l'ouvre pour la modifier.
 - Bouton « Nouvelle actu » en bas.
