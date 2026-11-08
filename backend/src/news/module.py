@@ -7,7 +7,7 @@ from db import SessionLocal
 from registry import Module, Right, guide_file
 
 from .actions import actions
-from .instagram import InstagramRelay
+from .instagram import InstagramApp, InstagramRelay
 from .news import News
 from .receiver import PUBLISH, READ, NewsReceiver
 from .storage import news_storage
@@ -18,8 +18,17 @@ def mount(app, core) -> None:
         notifications=core.notifications_client, storage=news_storage(), videos=core.videos_client,
         session_factory=SessionLocal,
     )
-    core.news_instagram = InstagramRelay(core.news_client)
-    NewsReceiver(client=core.news_client, instagram=core.news_instagram, app=app)
+    core.news_instagram = InstagramRelay(core.news_client, app=InstagramApp.from_env())
+    NewsReceiver(client=core.news_client, instagram=core.news_instagram, app=app, org_url=_org_url)
+
+
+def _org_url(db, org_id):
+    """The address of the school's app (its subdomain), or the general one."""
+    from auth.mails import MailsAcces
+    from ecoles.models import Ecole
+
+    ecole = db.get(Ecole, org_id) if org_id is not None else None
+    return MailsAcces().appli(ecole.sous_domaine if ecole is not None else None)
 
 
 MODULE = Module(

@@ -91,8 +91,13 @@ class InstagramIn(BaseModel):
     token: str = Field(min_length=20, max_length=1000)
 
 
+class LoginOut(BaseModel):
+    url: str
+
+
 class InstagramOut(BaseModel):
     linked: bool
     username: str | None = None
     last_sync_at: datetime | None = None
     last_error: str | None = None
+    can_sign_in: bool = False  # « Se connecter avec Instagram » (Meta app on the server)

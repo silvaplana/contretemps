@@ -20,8 +20,10 @@ Les actus (et l'onglet Visualisation)
 - « Paramètres d'édition » en bas, repliés : les toucher pour les dérouler.
   - « Ouvrir l'appli sur les actus » (allumé : l'appli s'ouvre toujours sur Actus, pour tout le
     monde ; éteint : sur le dernier onglet utilisé).
-  - Instagram : coller la clé d'accès d'un compte Instagram professionnel, puis « Relier ». Ses
-    nouveaux posts arrivent dans les actus en 5 minutes au plus (texte puis photos et vidéos, carrousels compris).
+  - Instagram : « Se connecter avec Instagram » (compte Instagram professionnel), puis accepter
+    dans Instagram ; on revient ici, « Relié à @compte ». Ses nouveaux posts arrivent dans les actus en
+    5 minutes au plus (texte puis photos et vidéos, carrousels compris). Si le bouton n'y est pas :
+    coller la clé d'accès du compte, puis « Relier ».
     « Délier » arrête le relais.
   - Pendant le test, pour l'administrateur principal : « Qui voit les actus (pendant le test) » ouvre
     la liste des membres, un interrupteur chacun pour leur montrer l'onglet Actus.

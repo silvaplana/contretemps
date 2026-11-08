@@ -152,6 +152,24 @@ Sans contrat Enable Banking, l'application ne lit que les comptes que son
 propriétaire y a d'abord liés (Control Panel) : c'est le cas de l'école du
 propriétaire, pas d'autres écoles.
 
+### Instagram (« Se connecter avec Instagram », Actualités)
+
+Spec : `spec/modules/actualites.md` §6 bis.
+
+1. Sur developers.facebook.com, créer l'appli Meta (Mes applis › Créer une
+   appli › « Autre » › « Entreprise »), ajouter le produit **Instagram**, puis
+   « Configuration de l'API avec connexion Instagram » › « Configurer la
+   connexion professionnelle Instagram ». Adresse de redirection :
+   `https://silvaplana.cloud/contretemps/api/news/instagram/return`.
+2. Dans Rôles de l'appli, ajouter chaque compte Instagram qui se connectera
+   comme **Testeur Instagram** (il accepte l'invitation dans Instagram), tant
+   que l'appli n'est pas validée par Meta.
+3. Dans `backend/.env` : `INSTAGRAM_APP_ID=...`, `INSTAGRAM_APP_SECRET=...`
+   (l'identifiant et la clé secrète **de l'appli Instagram**, sur la page de
+   l'étape 1) et
+   `INSTAGRAM_REDIRECT_URL=https://silvaplana.cloud/contretemps/api/news/instagram/return`,
+   puis `docker compose up -d backend`.
+
 ## 5. Mise en ligne automatique (GitHub Actions)
 
 À chaque fusion dans `main` (et à la demande, onglet **Actions** du dépôt >

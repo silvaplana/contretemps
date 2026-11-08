@@ -4,11 +4,12 @@ out, or the right to write, « 🔒 Publier les actualités » (`news.publish`).
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import date
 
 from comptes import Compte, Comptes, rbac, roles
 from fastapi import Depends, FastAPI, HTTPException, UploadFile
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
 from storage import FileTooLarge
 from videos.schemas import VideoSortie
@@ -19,7 +20,7 @@ from .models import NewsItem
 from .instagram import InstagramError, InstagramRelay
 from .news import PUBLISH, READ, InvalidMedia, News, can_publish, can_read, on_top
 from .schemas import (
-    DocumentOut, FeedOut, InstagramIn, InstagramOut, MediaOut, NewsIn, NewsOut, PhotoOut, ReaderIn, ReaderOut,
+    DocumentOut, FeedOut, InstagramIn, InstagramOut, LoginOut, MediaOut, NewsIn, NewsOut, PhotoOut, ReaderIn, ReaderOut,
     SettingsIn, SettingsOut, VideoIn,
 )
 
@@ -47,9 +48,13 @@ def _out(client: News, db: Session, item: NewsItem, seen=None, me: int | None = 
 
 
 class NewsReceiver:
-    def __init__(self, client: News, instagram: InstagramRelay, app: FastAPI) -> None:
+    def __init__(self, client: News, instagram: InstagramRelay, app: FastAPI,
+                 org_url: Callable[[Session, int | None], str] | None = None) -> None:
         self.client = client
         self.instagram = instagram
+        # org_url(db, org_id): the address of the organization's app, where
+        # « Se connecter avec Instagram » comes back.
+        self.org_url = org_url
         app.get("/ecoles/{ecole_id}/news", response_model=FeedOut)(self.feed)
         app.get("/ecoles/{ecole_id}/news/atelier", response_model=list[NewsOut])(self.workshop)
         app.post("/ecoles/{ecole_id}/news", response_model=NewsOut, status_code=201)(self.create)
@@ -60,6 +65,8 @@ class NewsReceiver:
         app.get("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_status)
         app.put("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_link)
         app.delete("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_unlink)
+        app.post("/ecoles/{ecole_id}/news/instagram/login", response_model=LoginOut)(self.instagram_login)
+        app.get("/news/instagram/return")(self.instagram_return)
         app.get("/ecoles/{ecole_id}/news/readers", response_model=list[ReaderOut])(self.readers)
         app.put("/ecoles/{ecole_id}/news/readers/{compte_id}", response_model=ReaderOut)(self.set_reader)
         app.put("/ecoles/{ecole_id}/news/{item_id}", response_model=NewsOut)(self.update)
@@ -67,11 +74,12 @@ class NewsReceiver:
         app.delete("/ecoles/{ecole_id}/news/{item_id}", status_code=204)(self.delete)
         app.get("/ecoles/{ecole_id}/news/{item_id}/photos/{sha}")(self.photo)
 
-    @staticmethod
-    def _instagram_out(link) -> InstagramOut:
+    def _instagram_out(self, link) -> InstagramOut:
+        can_sign_in = self.instagram.app is not None
         if link is None:
-            return InstagramOut(linked=False)
-        return InstagramOut(linked=True, username=link.username, last_sync_at=link.last_sync_at, last_error=link.last_error)
+            return InstagramOut(linked=False, can_sign_in=can_sign_in)
+        return InstagramOut(linked=True, username=link.username, last_sync_at=link.last_sync_at,
+                            last_error=link.last_error, can_sign_in=can_sign_in)
 
     def instagram_status(self, ecole_id: int, db: Session = Depends(get_db),
                          appelant: Compte = Depends(rbac.compte_appelant)):
@@ -91,7 +99,31 @@ class NewsReceiver:
                          appelant: Compte = Depends(rbac.compte_appelant)):
         self._publisher(appelant, ecole_id)
         self.instagram.unlink(db, ecole_id)
-        return InstagramOut(linked=False)
+        return self._instagram_out(None)
+
+    def instagram_login(self, ecole_id: int, appelant: Compte = Depends(rbac.compte_appelant)):
+        """« Se connecter avec Instagram »: the address of Instagram's page."""
+        self._publisher(appelant, ecole_id)
+        try:
+            return LoginOut(url=self.instagram.login_url(ecole_id, appelant))
+        except InstagramError as erreur:
+            raise HTTPException(status_code=409, detail=str(erreur)) from erreur
+
+    def instagram_return(self, state: str = "", code: str = "", error: str = "", db: Session = Depends(get_db)):
+        """Back from Instagram (public route: `state`, signed by the server
+        and valid 30 minutes, says which organization and who). Then back to
+        the organization's address, where the person's session lives."""
+        org_id = self.instagram.org_of(state)
+        if error or not code:
+            result = "annule"
+        else:
+            try:
+                self.instagram.complete(db, code, state)
+                result = "ok"
+            except InstagramError:
+                result = "erreur"
+        base = self.org_url(db, org_id) if self.org_url is not None else ""
+        return RedirectResponse(f"{base.rstrip('/')}/?instagram={result}", status_code=303)
 
     def _reader(self, appelant: Compte | None, ecole_id: int) -> None:
         rbac.require_membre(appelant, ecole_id)
