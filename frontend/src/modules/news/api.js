@@ -34,8 +34,9 @@ export function versEcran(n) {
     publieeLe: n.published_at ? new Date(`${n.published_at}Z`) : null,
     modifieeLe: new Date(`${n.updated_at}Z`),
     nouveau: n.is_new,
-    photo: n.photo, // empreinte de la photo, ou null
-    video: n.video ? videoVersEcran(n.video) : null,
+    // Le carrousel, dans l'ordre : chaque élément est une photo (son
+    // empreinte) ou une vidéo.
+    media: n.media.map((m) => ({ photo: m.photo, video: m.video ? videoVersEcran(m.video) : null })),
     document: n.document, // { id, name } ou null
   }
 }
@@ -46,8 +47,7 @@ const versServeur = (a) => ({
   on_top_until: a.niveau === 'important' ? a.enHautJusquau : null,
   notify: a.notifier,
   publish: a.publier,
-  photo: a.photo ?? null,
-  video_id: a.video?.id ?? null,
+  media: a.media.map((m) => (m.photo ? { photo: m.photo } : { video_id: m.video.id })),
   document_id: a.document?.id ?? null,
 })
 
@@ -100,8 +100,8 @@ export async function attacherVideo(ecoleId, uploadId) {
 // La photo d'une actu, lue avec la session (comme les pièces jointes de la
 // messagerie) ; gardée tant que l'appli est ouverte.
 const photos = new Map()
-export function lirePhoto(ecoleId, actu) {
-  const chemin = `/ecoles/${ecoleId}/news/${actu.id}/photo?v=${actu.photo}`
+export function lirePhoto(ecoleId, actuId, photo) {
+  const chemin = `/ecoles/${ecoleId}/news/${actuId}/photos/${photo}`
   if (!photos.has(chemin)) {
     const promesse = fetch(`${BASE_URL}${chemin}`).then(async (reponse) => {
       if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)

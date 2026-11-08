@@ -28,7 +28,7 @@ from presence.models import PresenceEleve, PresenceProf, SeancePresence  # noqa:
 from registry.models import OrgModule  # noqa: F401
 from saisons.models import Saison  # noqa: F401
 from videos.models import Video  # noqa: F401
-from news.models import NewsInstagram, NewsItem, NewsSeen, NewsSettings  # noqa: F401
+from news.models import NewsInstagram, NewsItem, NewsMedia, NewsSeen, NewsSettings  # noqa: F401
 from documents.models import DocAcl, DocActivity, DocNode, DocVersion, StoredFile  # noqa: F401
 from members.models import MemberColumn, MemberField, MemberValue  # noqa: F401
 from helloasso.models import OrgHelloAsso  # noqa: F401

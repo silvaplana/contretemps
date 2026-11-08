@@ -19,7 +19,7 @@ from .models import NewsItem
 from .instagram import InstagramError, InstagramRelay
 from .news import InvalidMedia, News, on_top
 from .schemas import (
-    DocumentOut, FeedOut, InstagramIn, InstagramOut, NewsIn, NewsOut, PhotoOut, SettingsIn, SettingsOut, VideoIn,
+    DocumentOut, FeedOut, InstagramIn, MediaOut, InstagramOut, NewsIn, NewsOut, PhotoOut, SettingsIn, SettingsOut, VideoIn,
 )
 
 PUBLISH = "news.publish"
@@ -32,14 +32,15 @@ def can_publish(appelant: Compte | None) -> bool:
 
 def _out(client: News, db: Session, item: NewsItem, seen=None, me: int | None = None) -> NewsOut:
     is_new = bool(seen is not None and item.published_at and item.published_at > seen and item.author_id != me)
-    video = client.video(db, item)
     document = client.document(db, item)
     return NewsOut(
         id=item.id, level=item.level, body=item.body, on_top_until=item.on_top_until,
         on_top=on_top(item, date.today()), notify=item.notify, author_name=item.author_name,
         published_at=item.published_at, updated_at=item.updated_at, is_new=is_new,
-        photo=item.photo_sha,
-        video=VideoSortie.model_validate(video) if video else None,
+        media=[
+            MediaOut(photo=photo, video=VideoSortie.model_validate(video) if video else None)
+            for photo, video in client.media(db, item) if photo or video
+        ],
         document=DocumentOut(id=document.id, name=document.name) if document else None,
     )
 
@@ -61,7 +62,7 @@ class NewsReceiver:
         app.put("/ecoles/{ecole_id}/news/{item_id}", response_model=NewsOut)(self.update)
         app.post("/ecoles/{ecole_id}/news/{item_id}/unpublish", response_model=NewsOut)(self.unpublish)
         app.delete("/ecoles/{ecole_id}/news/{item_id}", status_code=204)(self.delete)
-        app.get("/ecoles/{ecole_id}/news/{item_id}/photo")(self.photo)
+        app.get("/ecoles/{ecole_id}/news/{item_id}/photos/{sha}")(self.photo)
 
     @staticmethod
     def _instagram_out(link) -> InstagramOut:
@@ -162,13 +163,13 @@ class NewsReceiver:
             raise HTTPException(status_code=404, detail="Envoi introuvable")
         return self.client.videos.finaliser(db, data.upload_id, nom="Actualité", uploaded_by=appelant.id)
 
-    def photo(self, ecole_id: int, item_id: int, db: Session = Depends(get_db),
+    def photo(self, ecole_id: int, item_id: int, sha: str, db: Session = Depends(get_db),
               appelant: Compte = Depends(rbac.compte_appelant)):
         rbac.require_membre(appelant, ecole_id)
         item = self._item(db, ecole_id, item_id)
         if item.published_at is None and not can_publish(appelant):
             raise HTTPException(status_code=404, detail="Actu introuvable")
-        chemin = self.client.photo_path(item)
+        chemin = self.client.photo_path(item, sha)
         if chemin is None or not chemin.exists():
             raise HTTPException(status_code=404, detail="Pas de photo")
         return FileResponse(chemin, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"})

@@ -592,3 +592,94 @@
   margin: 0;
   color: var(--actus-rouge);
 }
+
+/* Carrousel : plusieurs photos et vidéos, glissées du doigt (§3.3). */
+.carrousel {
+  background: #3b1f10;
+}
+.actu--important .carrousel {
+  border-radius: 14px;
+  overflow: hidden;
+}
+.carrousel__piste {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+}
+.carrousel__piste::-webkit-scrollbar {
+  display: none;
+}
+.carrousel__case {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  display: flex;
+  align-items: center;
+}
+.carrousel__case > .actu__media {
+  width: 100%;
+  border-radius: 0;
+}
+.carrousel__points {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 0;
+  background: var(--card-bg);
+}
+.carrousel__point {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+}
+.carrousel__point--actif {
+  background: var(--accent);
+}
+.editeur__medias {
+  display: flex;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+}
+.editeur__medias li {
+  position: relative;
+  flex: 0 0 96px;
+  height: 96px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.editeur__medias .actu__media {
+  height: 100%;
+}
+.editeur__medias img,
+.editeur__medias video,
+.editeur__medias .video-card__thumb {
+  width: 100%;
+  height: 100%;
+  max-height: none;
+  object-fit: cover;
+  aspect-ratio: auto;
+}
+.editeur__medias button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 0;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.8));
+}
+.editeur__medias .actu__media {
+  pointer-events: none;
+}
+.editeur__medias video::-webkit-media-controls {
+  display: none;
+}

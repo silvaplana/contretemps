@@ -3,7 +3,7 @@
 lets no app read a personal account. The publisher pastes an access key
 made in Meta's developer site; every 5 minutes the worker
 (app/relance_worker.py) turns each new post into a Normal news item: its
-text, then its photo or video. Only posts published after the link come in.
+text, then its photos and videos. Only posts published after the link come in.
 
 Calls the « Instagram API with Instagram Login » (graph.instagram.com)."""
 
@@ -20,7 +20,7 @@ from securite.chiffrement import chiffrer, dechiffrer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import NORMAL, NewsInstagram, NewsItem
+from .models import NORMAL, NewsInstagram, NewsItem, NewsMedia
 from .news import InvalidMedia, News
 
 logger = logging.getLogger(__name__)
@@ -161,20 +161,21 @@ class InstagramRelay:
         return db.scalar(select(NewsItem.id).where(NewsItem.org_id == org_id, NewsItem.instagram_id == post_id)) is not None
 
     def _bring_in(self, db: Session, link: NewsInstagram, post: dict) -> None:
-        media = post
-        if post.get("media_type") == "CAROUSEL_ALBUM":
-            # An album: its first photo or video.
-            media = (post.get("children", {}).get("data") or [{}])[0]
-        photo = video_id = None
-        if media.get("media_type") == "IMAGE" and media.get("media_url"):
-            photo = self.news.store_photo(link.org_id, io.BytesIO(download(media["media_url"], 25 * 1024 * 1024)))
-        elif media.get("media_type") == "VIDEO" and media.get("media_url"):
-            video_id = self._store_video(db, link, download(media["media_url"], VIDEO_MAX_BYTES))
-        now = _now()
+        # An album (carousel) brings all its photos and videos, in order.
+        elements = (post.get("children", {}).get("data") or []) if post.get("media_type") == "CAROUSEL_ALBUM" else [post]
+        media = []
+        for element in elements:
+            url = element.get("media_url")
+            if element.get("media_type") == "IMAGE" and url:
+                photo = self.news.store_photo(link.org_id, io.BytesIO(download(url, 25 * 1024 * 1024)))
+                media.append(NewsMedia(position=len(media), photo_sha=photo))
+            elif element.get("media_type") == "VIDEO" and url:
+                video_id = self._store_video(db, link, download(url, VIDEO_MAX_BYTES))
+                media.append(NewsMedia(position=len(media), video_id=video_id))
         db.add(NewsItem(
             org_id=link.org_id, level=NORMAL, body=(post.get("caption") or "").strip(), notify=False,
-            author_id=link.linked_by, author_name=link.linked_by_name, published_at=now,
-            photo_sha=photo, video_id=video_id, instagram_id=post["id"],
+            author_id=link.linked_by, author_name=link.linked_by_name, published_at=_now(),
+            media=media, instagram_id=post["id"],
         ))
         db.commit()
 
