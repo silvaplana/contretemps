@@ -1,4 +1,5 @@
-Actualités : onglet « Actus » de la barre du bas, juste après Admin, pour tout le monde. Qui a le
+Actualités : onglet « Actus » de la barre du bas, juste après Admin. Pendant le test, seuls le
+voient les membres qui ont le droit 🔒 « Voir les actualités » et ceux qui publient. Qui a le
 droit 🔒 « Publier les actualités » (Admin › École › Administrateurs) voit en haut deux onglets,
 Atelier et Aperçu ; les autres voient directement les actus.
 
@@ -17,6 +18,8 @@ Atelier (droit 🔒 Publier les actualités)
 - Bouton « Nouvelle actu » en bas.
 - Options : « Ouvrir l'appli sur les actus » (allumé : l'appli s'ouvre toujours sur Actus, pour
   tout le monde ; éteint : sur le dernier onglet utilisé).
+- Pendant le test, pour l'administrateur principal : « Qui voit les actus (pendant le test) » ouvre la
+  liste des membres, un interrupteur chacun pour leur montrer l'onglet Actus.
 
 Nouvelle actu / Modifier l'actu
 - Niveau : Important, Normal ou Brève. Texte.

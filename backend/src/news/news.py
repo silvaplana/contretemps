@@ -11,9 +11,10 @@ from datetime import date, datetime, timezone
 
 from typing import BinaryIO
 
-from comptes import Compte
+from comptes import Compte, roles
 from documents.models import DocNode
 from ecoles.models import Ecole
+from groups import rights
 from saisons.portee import toutes_saisons
 from saisons.saisons import saison_courante_id
 from sqlalchemy import select
@@ -28,11 +29,24 @@ from .storage import DISPLAY_SIZE
 logger = logging.getLogger(__name__)
 
 UNDO_SECONDS = 10
+PUBLISH = "news.publish"
+# While the module is being tried out (Seb, 8 November): only the members of
+# the 🔒 group « Voir les actualités », and those who publish, see the news.
+READ = "news.read"
 PREVIEW_CHARS = 100
 
 
 def _now() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
+def can_publish(compte: Compte | None) -> bool:
+    # `None`: rights switched off (tests, see tests/conftest.py).
+    return compte is None or roles.has_right(compte, PUBLISH)
+
+
+def can_read(compte: Compte | None) -> bool:
+    return can_publish(compte) or roles.has_right(compte, READ)
 
 
 def on_top(item: NewsItem, today: date) -> bool:
@@ -102,6 +116,21 @@ class News:
             db.add(NewsSettings(org_id=org_id, open_on_news=value))
         else:
             settings.open_on_news = value
+        db.commit()
+
+    # --- Who sees the news while in test (§2 bis) ---
+
+    def members(self, db: Session, org_id: int) -> list[Compte]:
+        """The members of the current season, by first name."""
+        season = saison_courante_id(db, org_id)
+        with toutes_saisons(db):
+            return list(db.scalars(
+                select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == season)
+                .order_by(Compte.prenom, Compte.nom)
+            ))
+
+    def set_reader(self, db: Session, compte: Compte, reads: bool) -> None:
+        (rights.add if reads else rights.remove)(db, compte, READ)
         db.commit()
 
     # --- Media (§3.3) ---
@@ -245,7 +274,7 @@ class News:
             members = list(db.scalars(select(Compte).where(Compte.ecole_id == item.org_id, Compte.saison_id == season)))
         count = 0
         for member in members:
-            if member.id == item.author_id:
+            if member.id == item.author_id or not can_read(member):
                 continue
             try:
                 self.notifications.envoyer_a_compte(db, member.id, title, body)
