@@ -30,6 +30,11 @@ class NewsItem(Base):
     # Important only: stays on top, in red, until this day included.
     on_top_until: Mapped[date | None] = mapped_column(Date, nullable=True)
     notify: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # At most one media (a photo or a video) and one document (§3.3).
+    # Photo: its sha256 in the news storage (news/storage.py).
+    photo_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    video_id: Mapped[int | None] = mapped_column(ForeignKey("videos.id"), nullable=True)
+    document_id: Mapped[int | None] = mapped_column(ForeignKey("doc_nodes.id"), nullable=True)
     # Set once the push notification has gone (10 s after publishing).
     notified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # The member's record of the season it was written in; the first name is

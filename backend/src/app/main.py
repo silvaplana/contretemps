@@ -55,6 +55,7 @@ from members.receiver import DOSSIER_MEMBRES, MembersReceiver
 from plans.receiver import PlansReceiver
 from plans.rules import RuleReader
 from videos import DOSSIER_VIDEOS_LIVE
+from news.storage import DOSSIER_ACTUALITES
 
 load_dotenv()  # charge backend/.env si present
 
@@ -214,6 +215,7 @@ ressources_client = Ressources(
         "notes_frais": ("Notes de frais (justificatifs)", DOSSIER_NOTES_FRAIS),
         "messagerie": ("Messagerie (photos, vidéos et fichiers)", DOSSIER_MESSAGERIE),
         "membres": ("Fichiers des membres (champs de la fiche)", DOSSIER_MEMBRES),
+        "actualites": ("Actualités (photos)", DOSSIER_ACTUALITES),
     }
 )
 ressources_receiver = RessourcesReceiver(client=ressources_client, app=app)
