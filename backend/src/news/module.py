@@ -8,7 +8,7 @@ from registry import Module, Right, guide_file
 
 from .actions import actions
 from .news import News
-from .receiver import PUBLISH, READ, NewsReceiver
+from .receiver import PUBLISH, NewsReceiver
 from .storage import news_storage
 
 
@@ -22,7 +22,7 @@ def mount(app, core) -> None:
 
 MODULE = Module(
     key="news", label="Actualités", mount=mount, requires=("videos",),
-    rights=(Right(PUBLISH, "Publier les actualités"), Right(READ, "Voir les actualités")),
+    rights=(Right(PUBLISH, "Publier les actualités"),),
     actions=lambda core: actions(core.news_client),
     guide=guide_file(__file__),
 )
