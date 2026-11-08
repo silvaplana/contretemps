@@ -12,7 +12,7 @@ import './news.css'
 
 // Actualités (spec/modules/actualites.md, maquette validée
 // spec/maquettes/actualites.html). Tout le monde lit les actus ; qui a le
-// droit 🔒 « Publier les actualités » a deux onglets, Atelier et Aperçu.
+// droit 🔒 « Publier les actualités » a deux onglets, Édition et Visualisation.
 // Un éditeur ouvert remplace l'écran, avec la flèche de retour.
 
 const ANNULER_MS = 10000
@@ -164,10 +164,13 @@ export function CarteActu({ actu, ecoleId }) {
     )
   }
   return (
+    // Le texte d'abord, puis la photo ou la vidéo (Seb et les testeurs, 8 novembre).
     <article className="actu actu--normale">
-      <Media ecoleId={ecoleId} actu={actu} />
       <div className="actu__corps">
         <p className="actu__texte">{actu.texte || '…'}</p>
+      </div>
+      <Media ecoleId={ecoleId} actu={actu} />
+      <div className="actu__corps">
         <Document document={actu.document} />
         {signature}
       </div>
@@ -199,57 +202,7 @@ function Fil({ actus, ecoleId }) {
   )
 }
 
-// Pendant le test (§2 bis) : l'administrateur principal coche qui voit les
-// actus. Qui publie les voit toujours.
-function Lecteurs({ ecoleId, onRetour }) {
-  const [liste, setListe] = useState(null)
-  const [erreur, setErreur] = useState('')
-  useEffect(() => {
-    api.lireLecteurs(ecoleId).then(setListe, (e) => setErreur(e.message))
-  }, [ecoleId])
-  async function basculer(lecteur) {
-    const voit = !lecteur.voit
-    setListe((l) => l.map((x) => (x.id === lecteur.id ? { ...x, voit } : x)))
-    try {
-      await api.changerLecteur(ecoleId, lecteur.id, voit)
-    } catch (e) {
-      setListe((l) => l.map((x) => (x.id === lecteur.id ? { ...x, voit: !voit } : x)))
-      setErreur(e.message)
-    }
-  }
-  return (
-    <div className="actus actus--choix">
-      <div className="actus__entete">
-        <button type="button" className="actus__retour" aria-label="Retour" onClick={onRetour}>
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M19 12H5M11 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <strong>Qui voit les actus</strong>
-      </div>
-      <div className="choix">
-        <p className="editeur__aide">Pendant le test, seuls les membres cochés voient l’onglet Actus. Ceux qui publient le voient toujours.</p>
-        {erreur && <p className="actus__vide">{erreur}</p>}
-        {(liste ?? []).map((x) => (
-          <div key={x.id} className="atelier__option">
-            <span>{x.nom}</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={x.voit || x.publie}
-              aria-label={x.nom}
-              disabled={x.publie}
-              className="actus__interrupteur"
-              onClick={() => basculer(x)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Atelier({ actus, ouvrir, ouverture, changerOuverture, choisir, ouvrirLecteurs }) {
+function Atelier({ actus, ouvrir, ouverture, changerOuverture }) {
   return (
     <div className="atelier">
       {actus.map((a) => (
@@ -278,12 +231,6 @@ function Atelier({ actus, ouvrir, ouverture, changerOuverture, choisir, ouvrirLe
           onClick={() => changerOuverture(!ouverture)}
         />
       </div>
-      {choisir && (
-        <button type="button" className="atelier__option atelier__lien" onClick={ouvrirLecteurs}>
-          <span>Qui voit les actus (pendant le test)</span>
-          <span className="choix__chevron" aria-hidden="true">›</span>
-        </button>
-      )}
     </div>
   )
 }
@@ -580,8 +527,6 @@ export default function Actus({ ecoleId, prenom }) {
   const [atelier, setAtelier] = useState([])
   const [onglet, setOnglet] = useState('apercu')
   const [ouverture, setOuverture] = useState(true)
-  const [choisir, setChoisir] = useState(false) // peut choisir qui voit les actus
-  const [lecteurs, setLecteurs] = useState(false) // l'écran « Qui voit les actus » est ouvert
   const [edite, setEdite] = useState(null) // l'actu ouverte dans l'éditeur
   const [caches, setCaches] = useState(new Set()) // supprimées, Annuler possible
   const [toast, setToast] = useState(null) // { texte, annuler }
@@ -593,10 +538,9 @@ export default function Actus({ ecoleId, prenom }) {
       const f = await api.lireActus(ecoleId)
       setFil(f)
       if (f.peutPublier) {
-        const [a, r] = await Promise.all([api.lireAtelier(ecoleId), api.lireReglages(ecoleId)])
+        const [a, o] = await Promise.all([api.lireAtelier(ecoleId), api.ouvrirSurLesActus(ecoleId)])
         setAtelier(a)
-        setOuverture(r.ouvrir)
-        setChoisir(r.choisir)
+        setOuverture(o)
       }
       setErreur('')
     } catch (e) {
@@ -682,8 +626,6 @@ export default function Actus({ ecoleId, prenom }) {
     </div>
   )
 
-  if (lecteurs) return <Lecteurs ecoleId={ecoleId} onRetour={() => setLecteurs(false)} />
-
   if (edite) {
     return (
       <>
@@ -713,14 +655,7 @@ export default function Actus({ ecoleId, prenom }) {
         </div>
       )}
       {vueAtelier ? (
-        <Atelier
-          actus={visibles(atelier)}
-          ouvrir={setEdite}
-          ouverture={ouverture}
-          changerOuverture={changerOuverture}
-          choisir={choisir}
-          ouvrirLecteurs={() => setLecteurs(true)}
-        />
+        <Atelier actus={visibles(atelier)} ouvrir={setEdite} ouverture={ouverture} changerOuverture={changerOuverture} />
       ) : (
         <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} />
       )}

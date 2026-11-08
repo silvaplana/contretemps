@@ -1,12 +1,11 @@
-Actualités : onglet « Actus » de la barre du bas, juste après Admin. Pendant le test, seuls le
-voient les membres qui ont le droit 🔒 « Voir les actualités » et ceux qui publient. Qui a le
+Actualités : onglet « Actus » de la barre du bas, juste après Admin, pour tout le monde. Qui a le
 droit 🔒 « Publier les actualités » (Admin › École › Administrateurs) voit en haut deux onglets,
 Édition et Visualisation ; les autres voient directement les actus.
 
 Les actus (et l'onglet Visualisation)
 - En haut, les actus Important encore « en haut », sur fond rouge clair, marquées « IMPORTANT ».
 - Puis les autres, de la plus récente à la plus ancienne, sous « Aujourd'hui », « Cette semaine »,
-  « Plus tôt ». Une actu Normal est une carte, sa photo ou sa vidéo en premier ; une Brève tient en
+  « Plus tôt ». Une actu Normal est une carte : le texte, puis la photo ou la vidéo ; une Brève tient en
   une ligne. La vidéo se lit sur place (▶). Un document joint s'ouvre en le touchant, comme dans
   Docs ; la flèche ← ramène aux actus.
 - Sous chaque actu : prénom de qui l'a publiée et le jour. « Nouveau » marque ce que la personne
@@ -18,8 +17,6 @@ Les actus (et l'onglet Visualisation)
 - Bouton « Nouvelle actu » en bas.
 - Options : « Ouvrir l'appli sur les actus » (allumé : l'appli s'ouvre toujours sur Actus, pour
   tout le monde ; éteint : sur le dernier onglet utilisé).
-- Pendant le test, pour l'administrateur principal : « Qui voit les actus (pendant le test) » ouvre la
-  liste des membres, un interrupteur chacun pour leur montrer l'onglet Actus.
 
 Nouvelle actu / Modifier l'actu
 - Niveau : Important, Normal ou Brève. Texte.

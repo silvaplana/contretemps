@@ -32,20 +32,8 @@ journal. Visible par tous les rôles (Membre, Admin, Admin principal, Super User
 Le Super User passe toujours ; l'Administrateur principal se coche lui-même s'il veut publier
 (spec/core.md §5.3).
 
-### 2 bis. Pendant le test (Seb, 8 novembre 2026)
-
-Tant que le module est en test, l'onglet Actus ne se montre qu'aux personnes qui ont le droit
-**🔒 Voir les actualités** (`news.read`, déclaré par le module) ou **🔒 Publier les actualités**.
-Les autres ne voient pas l'onglet, l'appli ne s'ouvre pas sur les actus pour eux, et ils ne
-reçoivent pas les notifications.
-
-Comme les droits ne se cochent aujourd'hui que pour les administrateurs, l'onglet Édition a, pour
-l'administrateur principal et le Super User, une ligne **« Qui voit les actus (pendant le test) »**
-sous les Options : la liste des membres de la saison, un interrupteur chacun (grisé et allumé pour
-qui publie). L'interrupteur met la personne dans le groupe 🔒 du droit, ou l'en retire.
-
-Fin du test : on enlève ce filtre (droit, ligne de l'onglet Édition, `can_read`) et tout le monde voit les
-actus, comme au §2.
+Pas de filtre de testeurs : un droit « Voir les actualités » et une liste « Qui voit les actus » ont
+été en ligne le 8 novembre 2026 (PR #153), puis retirés le même jour à la demande de Seb.
 
 ## 3. Les actus (Visualisation)
 
@@ -57,7 +45,7 @@ Ce que voient tous les membres ; l'onglet Visualisation des personnes qui publie
 | Niveau | Rendu | Usage |
 |---|---|---|
 | **Important** | Tout en haut, fond rouge clair, mention « ⚠ IMPORTANT », texte plus gros | Ce qui ne doit pas être manqué |
-| **Normal** | Grande carte, la photo ou la vidéo en premier, le texte dessous | Le cas courant |
+| **Normal** | Grande carte, le texte puis la photo ou la vidéo dessous (Seb et les testeurs, 8 novembre) | Le cas courant |
 | **Brève** | Une ligne précédée d'une pastille, sans image | Les petites infos |
 
 Une actu Important a une date **« En haut jusqu'au »** : jusqu'à ce jour inclus elle reste en haut en
@@ -190,13 +178,12 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 
 | Route | Qui | Rôle |
 |---|---|---|
-| `GET …/news` | qui voit les actus (§2 bis) | `can_publish` et les actus publiées, dans l'ordre du §3.2, avec `is_new` ; met à jour `news_seen` |
+| `GET …/news` | tous | `can_publish` et les actus publiées, dans l'ordre du §3.2, avec `is_new` ; met à jour `news_seen` |
 | `GET …/news/atelier` | droit | Toutes, brouillons compris |
 | `POST …/news` · `PUT …/news/{id}` | droit | Créer, modifier ; `publish` : publier ou garder en brouillon |
 | `POST …/news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
 | `DELETE …/news/{id}` | droit | Supprimer |
-| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture ; `can_read` (voit l'onglet) et `can_choose_readers` pendant le test (§2 bis) |
-| `GET …/news/readers` · `PUT …/news/readers/{id}` | admin principal | Pendant le test : qui voit les actus (§2 bis) |
+| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture |
 
 | `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `photo` |
 | `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `video_id` |

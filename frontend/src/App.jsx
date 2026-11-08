@@ -363,18 +363,7 @@ function App() {
     if (!ecole.id) return
     modulesApi.lister(ecole.id).then(setModules).catch(() => setModules([]))
   }, [ecole.id])
-  // Actualités en test (spec/modules/actualites.md §2 bis) : l'onglet Actus
-  // ne se montre qu'à qui a le droit « Voir les actualités » ou les publie.
-  const [voitActus, setVoitActus] = useState(null)
-  useEffect(() => {
-    if (!ecole.id) return
-    newsApi.lireReglages(ecole.id).then((r) => setVoitActus(r.voir))
-  }, [ecole.id, activeUser.id])
   const modulesEteints = new Set(modules.filter((m) => !m.enabled).map((m) => m.key))
-  if (!voitActus) modulesEteints.add('news')
-  useEffect(() => {
-    if (voitActus === false && activeTab === 'actus') setActiveTab('profil')
-  }, [voitActus, activeTab])
   useEffect(() => {
     const eteint = (t) => modules.some((m) => m.key === t.module && !m.enabled)
     if (TABS.some((t) => t.key === activeTab && eteint(t))) setActiveTab('profil')
