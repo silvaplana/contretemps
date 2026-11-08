@@ -81,7 +81,9 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
   pastille **Publiée** (vert) ou **Brouillon** (jaune), puis « Niveau · date ».
 - Toucher une ligne ouvre l'actu dans l'éditeur.
 - Bouton principal en bas : **Nouvelle actu**.
-- Section **Options** sous la liste : interrupteur **« Ouvrir l'appli sur les actus »** (§6).
+- Sous la liste, **« Paramètres d'édition »**, repliés par défaut (on touche le titre pour les
+  dérouler ; Seb, 8 novembre) : interrupteur **« Ouvrir l'appli sur les actus »** (§6) et le compte
+  **Instagram** relié (§6 bis).
 
 Toute personne qui a le droit peut modifier ou supprimer toutes les actus, pas seulement les siennes
 (le bureau se relaie).
@@ -128,6 +130,31 @@ retour d'arrière-plan), tout le monde arrive sur Actus. Éteinte : l'appli s'ou
 le dernier onglet utilisé (`ongletDeDepart` dans App.jsx). Une notification d'un autre module garde
 son propre écran.
 
+## 6 bis. Relayer un compte Instagram (Seb, 8 novembre 2026)
+
+Les testeurs publient déjà sur Instagram : les nouveaux posts d'un compte Instagram arrivent tout
+seuls dans les actus, sans rien ressaisir.
+
+- **Condition d'Instagram** : un compte professionnel (Créateur conseillé, ou Entreprise), donc public.
+  Instagram ne laisse aucune appli lire un compte personnel.
+- **Relier** (Paramètres d'édition › Instagram, droit 🔒 Publier les actualités) : on colle une **clé
+  d'accès** du compte, puis « Relier ». L'appli la vérifie auprès d'Instagram, affiche « Relié à
+  @compte » et la garde chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). « Délier »
+  l'oublie ; les actus déjà relayées restent.
+- **Obtenir la clé** (une fois, sur un ordinateur) : developers.facebook.com › créer une appli
+  (« Autre » › « Entreprise ») › ajouter le produit **Instagram** › « Configuration de l'API avec
+  connexion Instagram » › « Générer des jetons d'accès » › ajouter le compte Instagram (s'y connecter)
+  › copier le jeton. L'appli Meta peut rester en mode Développement : elle ne lit que ce compte. La clé
+  dure 60 jours ; l'appli la renouvelle seule chaque semaine.
+- **Relais** : toutes les 5 minutes (`app/relance_worker.py`), chaque post publié **après** la liaison
+  devient une actu **Normal**, publiée, sans notification, signée du prénom de qui a relié le compte :
+  le texte du post, puis sa photo ou sa vidéo (un carrousel : son premier élément). Une seule fois par
+  post (`instagram_id`). Elle se modifie ou se supprime ensuite comme les autres.
+- Instagram ne prévient pas d'un nouveau post (pas de webhook pour les posts) : d'où les 5 minutes.
+- Une erreur (clé refusée, compte devenu personnel…) s'affiche sous « Relié à @compte ».
+
+Code : `news/instagram.py` (« Instagram API with Instagram Login », graph.instagram.com).
+
 ## 7. Données
 
 Tables préfixées `news_`, avec `org_id` (= `ecoles.id`) et filtre par organisation sur chaque requête.
@@ -167,6 +194,11 @@ Sparring.
 **`news_seen`** : `compte_id` (clé), `seen_at`. Sert à la pastille « Nouveau ». La fiche change à
 chaque saison : « Nouveau » repart de zéro à la rentrée.
 
+**`news_instagram`** (§6 bis) : `org_id` (clé), `token_encrypted`, `username`, `linked_by`,
+`linked_by_name`, `linked_at` (seuls les posts d'après comptent), `token_refreshed_at`,
+`last_sync_at`, `last_error`. Et sur `news_items` : `instagram_id` (le post relayé). Migration
+`b81f2c6d9e47`.
+
 **`news_settings`** : `org_id` (clé), `open_on_news` (bool, vrai par défaut ; pas de ligne = vrai).
 
 Pourquoi des colonnes et pas une table de pièces jointes : une actu a au plus un média et un document
@@ -184,10 +216,10 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `POST …/news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
 | `DELETE …/news/{id}` | droit | Supprimer |
 | `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture |
-
 | `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `photo` |
 | `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `video_id` |
 | `GET …/news/{id}/photo` | tous | La photo (JPEG) ; brouillon : droit seulement |
+| `GET · PUT · DELETE …/news/instagram` | droit | Compte Instagram relié (§6 bis) : état, relier avec `token`, délier |
 
 Les actus rendues portent `photo`, `video` (avec ses liens signés) et `document` (`id`, `name`).
 

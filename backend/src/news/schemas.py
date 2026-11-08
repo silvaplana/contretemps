@@ -60,3 +60,14 @@ class SettingsOut(BaseModel):
 
 class SettingsIn(BaseModel):
     open_on_news: bool
+
+
+class InstagramIn(BaseModel):
+    token: str = Field(min_length=20, max_length=1000)
+
+
+class InstagramOut(BaseModel):
+    linked: bool
+    username: str | None = None
+    last_sync_at: datetime | None = None
+    last_error: str | None = None

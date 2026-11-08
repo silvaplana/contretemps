@@ -282,3 +282,103 @@ def test_video_et_document(client, db_session, e, photos):
     core.videos_client.delete(db_session, actu["video"]["id"])
     db_session.expire_all()
     assert db_session.get(NewsItem, actu["id"]).video_id is None
+
+
+# --- Instagram (§6 bis) ---
+
+
+@pytest.fixture()
+def faux_instagram(monkeypatch):
+    """Instagram remplacé : un compte, des posts, des fichiers."""
+    from news import instagram
+
+    etat = {"posts": [], "refus": None, "rafraichi": 0}
+
+    def compte(jeton):
+        if etat["refus"]:
+            raise instagram.InstagramError(etat["refus"])
+        return {"user_id": "17841", "username": "contretemps_danse"}
+
+    def posts(jeton):
+        if etat["refus"]:
+            raise instagram.InstagramError(etat["refus"])
+        return etat["posts"]
+
+    def rafraichir(jeton):
+        etat["rafraichi"] += 1
+        return jeton + "-neuf"
+
+    def telecharger(url, max_bytes):
+        return _image() if url.endswith(".jpg") else b"\x00" * 100
+
+    monkeypatch.setattr(instagram, "fetch_account", compte)
+    monkeypatch.setattr(instagram, "fetch_recent_media", posts)
+    monkeypatch.setattr(instagram, "refresh_token", rafraichir)
+    monkeypatch.setattr(instagram, "download", telecharger)
+    return etat
+
+
+def _post(ident, quand, **kw):
+    return {"id": ident, "timestamp": quand.strftime("%Y-%m-%dT%H:%M:%S+0000"), "caption": f"Post {ident}", **kw}
+
+
+def test_instagram_relie_puis_relaie_les_nouveaux_posts(client, db_session, e, en_tant_que, photos, faux_instagram):
+    import shutil
+    from datetime import datetime, timezone
+
+    from app.main import core
+    from news.models import NewsInstagram
+    from videos import dossier_ecole
+
+    eid = e["ecole"].id
+    url = f"/ecoles/{eid}/news/instagram"
+    en_tant_que(e["seb"])
+    assert client.get(url).json()["linked"] is False
+    faux_instagram["refus"] = "Invalid OAuth access token"
+    assert client.put(url, json={"token": "IGAA" + "x" * 40}).status_code == 400
+    faux_instagram["refus"] = None
+    relie = client.put(url, json={"token": "IGAA" + "x" * 40}).json()
+    assert relie["linked"] is True and relie["username"] == "contretemps_danse"
+
+    lien = db_session.get(NewsInstagram, eid)
+    assert "IGAA" not in lien.token_encrypted  # la clé est chiffrée
+    apres = datetime.now(timezone.utc) + timedelta(minutes=1)
+    avant = datetime.now(timezone.utc) - timedelta(days=3)
+    faux_instagram["posts"] = [  # du plus récent au plus ancien, comme Instagram
+        _post("4", apres + timedelta(minutes=3), media_type="CAROUSEL_ALBUM",
+              children={"data": [{"media_type": "IMAGE", "media_url": "https://cdn/a.jpg"}]}),
+        _post("3", apres + timedelta(minutes=2), media_type="VIDEO", media_url="https://cdn/v.mp4"),
+        _post("2", apres + timedelta(minutes=1), media_type="IMAGE", media_url="https://cdn/p.jpg"),
+        _post("1", avant, media_type="IMAGE", media_url="https://cdn/old.jpg"),  # avant la liaison
+    ]
+    try:
+        assert core.news_instagram.sync_all(db_session) == {eid: 3}
+        # Une seule fois.
+        assert core.news_instagram.sync(db_session, lien) == 0
+        fil = client.get(f"/ecoles/{eid}/news").json()["items"]
+        assert [i["body"] for i in fil] == ["Post 4", "Post 3", "Post 2"]
+        assert fil[0]["photo"] and fil[1]["video"] and fil[2]["photo"]
+        assert {i["author_name"] for i in fil} == {"Seb"} and not any(i["notify"] for i in fil)
+        # Une clé refusée plus tard : l'erreur se voit dans les paramètres.
+        faux_instagram["refus"] = "Error validating access token"
+        core.news_instagram.sync(db_session, lien)
+        assert "access token" in client.get(url).json()["last_error"]
+    finally:
+        shutil.rmtree(dossier_ecole(eid), ignore_errors=True)
+
+    # La clé se renouvelle d'elle-même avant ses 60 jours.
+    faux_instagram["refus"] = None
+    lien.token_refreshed_at -= timedelta(days=8)
+    db_session.commit()
+    core.news_instagram.sync(db_session, lien)
+    assert faux_instagram["rafraichi"] == 1
+
+    assert client.delete(url).json()["linked"] is False
+    assert db_session.get(NewsInstagram, eid) is None
+
+
+@pytest.mark.rbac_reel
+def test_instagram_reserve_a_qui_publie(client, e):
+    url = f"/ecoles/{e['ecole'].id}/news/instagram"
+    assert client.get(url, headers=entetes_session(e["zoe"])).status_code == 403
+    assert client.put(url, json={"token": "x" * 30}, headers=entetes_session(e["admin"])).status_code == 403

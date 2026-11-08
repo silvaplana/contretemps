@@ -15,8 +15,12 @@ Les actus (et l'onglet Visualisation)
 - Toutes les actus, brouillons compris : barre de couleur du niveau, début du texte, « Publiée » ou
   « Brouillon ». Toucher une actu l'ouvre pour la modifier.
 - Bouton « Nouvelle actu » en bas.
-- Options : « Ouvrir l'appli sur les actus » (allumé : l'appli s'ouvre toujours sur Actus, pour
-  tout le monde ; éteint : sur le dernier onglet utilisé).
+- « Paramètres d'édition » en bas, repliés : les toucher pour les dérouler.
+  - « Ouvrir l'appli sur les actus » (allumé : l'appli s'ouvre toujours sur Actus, pour tout le
+    monde ; éteint : sur le dernier onglet utilisé).
+  - Instagram : coller la clé d'accès d'un compte Instagram professionnel, puis « Relier ». Ses
+    nouveaux posts arrivent dans les actus en 5 minutes au plus (texte puis photo ou vidéo).
+    « Délier » arrête le relais.
 
 Nouvelle actu / Modifier l'actu
 - Niveau : Important, Normal ou Brève. Texte.

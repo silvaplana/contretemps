@@ -16,8 +16,11 @@ from videos.schemas import VideoSortie
 from db import get_db
 
 from .models import NewsItem
+from .instagram import InstagramError, InstagramRelay
 from .news import InvalidMedia, News, on_top
-from .schemas import DocumentOut, FeedOut, NewsIn, NewsOut, PhotoOut, SettingsIn, SettingsOut, VideoIn
+from .schemas import (
+    DocumentOut, FeedOut, InstagramIn, InstagramOut, NewsIn, NewsOut, PhotoOut, SettingsIn, SettingsOut, VideoIn,
+)
 
 PUBLISH = "news.publish"
 
@@ -42,8 +45,9 @@ def _out(client: News, db: Session, item: NewsItem, seen=None, me: int | None = 
 
 
 class NewsReceiver:
-    def __init__(self, client: News, app: FastAPI) -> None:
+    def __init__(self, client: News, instagram: InstagramRelay, app: FastAPI) -> None:
         self.client = client
+        self.instagram = instagram
         app.get("/ecoles/{ecole_id}/news", response_model=FeedOut)(self.feed)
         app.get("/ecoles/{ecole_id}/news/atelier", response_model=list[NewsOut])(self.workshop)
         app.post("/ecoles/{ecole_id}/news", response_model=NewsOut, status_code=201)(self.create)
@@ -51,10 +55,39 @@ class NewsReceiver:
         app.post("/ecoles/{ecole_id}/news/videos", response_model=VideoSortie, status_code=201)(self.add_video)
         app.get("/ecoles/{ecole_id}/news/settings", response_model=SettingsOut)(self.settings)
         app.put("/ecoles/{ecole_id}/news/settings", response_model=SettingsOut)(self.change_settings)
+        app.get("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_status)
+        app.put("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_link)
+        app.delete("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_unlink)
         app.put("/ecoles/{ecole_id}/news/{item_id}", response_model=NewsOut)(self.update)
         app.post("/ecoles/{ecole_id}/news/{item_id}/unpublish", response_model=NewsOut)(self.unpublish)
         app.delete("/ecoles/{ecole_id}/news/{item_id}", status_code=204)(self.delete)
         app.get("/ecoles/{ecole_id}/news/{item_id}/photo")(self.photo)
+
+    @staticmethod
+    def _instagram_out(link) -> InstagramOut:
+        if link is None:
+            return InstagramOut(linked=False)
+        return InstagramOut(linked=True, username=link.username, last_sync_at=link.last_sync_at, last_error=link.last_error)
+
+    def instagram_status(self, ecole_id: int, db: Session = Depends(get_db),
+                         appelant: Compte = Depends(rbac.compte_appelant)):
+        """The Instagram account relayed into the news (§6 bis)."""
+        self._publisher(appelant, ecole_id)
+        return self._instagram_out(self.instagram.get(db, ecole_id))
+
+    def instagram_link(self, ecole_id: int, data: InstagramIn, db: Session = Depends(get_db),
+                       appelant: Compte = Depends(rbac.compte_appelant)):
+        self._publisher(appelant, ecole_id)
+        try:
+            return self._instagram_out(self.instagram.link(db, ecole_id, appelant, data.token))
+        except InstagramError as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+
+    def instagram_unlink(self, ecole_id: int, db: Session = Depends(get_db),
+                         appelant: Compte = Depends(rbac.compte_appelant)):
+        self._publisher(appelant, ecole_id)
+        self.instagram.unlink(db, ecole_id)
+        return InstagramOut(linked=False)
 
     def _publisher(self, appelant: Compte | None, ecole_id: int) -> None:
         rbac.require_membre(appelant, ecole_id)

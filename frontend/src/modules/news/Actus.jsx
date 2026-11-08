@@ -202,7 +202,7 @@ function Fil({ actus, ecoleId }) {
   )
 }
 
-function Atelier({ actus, ouvrir, ouverture, changerOuverture }) {
+function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture }) {
   return (
     <div className="atelier">
       {actus.map((a) => (
@@ -219,18 +219,100 @@ function Atelier({ actus, ouvrir, ouverture, changerOuverture }) {
           </span>
         </button>
       ))}
-      <div className="atelier__section">Options</div>
-      <div className="atelier__option">
-        <span>Ouvrir l’appli sur les actus</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={ouverture}
-          aria-label="Ouvrir l’appli sur les actus"
-          className="actus__interrupteur"
-          onClick={() => changerOuverture(!ouverture)}
-        />
-      </div>
+      <ParametresEdition ecoleId={ecoleId} ouverture={ouverture} changerOuverture={changerOuverture} />
+    </div>
+  )
+}
+
+// « Paramètres d'édition » : repliés par défaut, on les déroule au besoin
+// (Seb, 8 novembre).
+function ParametresEdition({ ecoleId, ouverture, changerOuverture }) {
+  const [ouvert, setOuvert] = useState(false)
+  return (
+    <div className="parametres">
+      <button type="button" className="parametres__titre" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
+        <span>Paramètres d’édition</span>
+        <span className="parametres__chevron" aria-hidden="true">›</span>
+      </button>
+      {ouvert && (
+        <>
+          <div className="atelier__option">
+            <span>Ouvrir l’appli sur les actus</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ouverture}
+              aria-label="Ouvrir l’appli sur les actus"
+              className="actus__interrupteur"
+              onClick={() => changerOuverture(!ouverture)}
+            />
+          </div>
+          <Instagram ecoleId={ecoleId} />
+        </>
+      )}
+    </div>
+  )
+}
+
+// Relier un compte Instagram (§6 bis) : ses nouveaux posts arrivent dans
+// les actus, toutes les 5 minutes.
+function Instagram({ ecoleId }) {
+  const [etat, setEtat] = useState(null)
+  const [cle, setCle] = useState('')
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState('')
+  useEffect(() => {
+    api.lireInstagram(ecoleId).then(setEtat, (e) => setErreur(e.message))
+  }, [ecoleId])
+
+  async function agir(action) {
+    setEnvoi(true)
+    setErreur('')
+    try {
+      setEtat(await action())
+      setCle('')
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setEnvoi(false)
+    }
+  }
+
+  if (!etat) return erreur ? <p className="parametres__erreur">{erreur}</p> : null
+  return (
+    <div className="atelier__option parametres__instagram">
+      <strong>Instagram</strong>
+      {etat.relie ? (
+        <>
+          <p>
+            Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans les actus en 5 minutes au plus.
+          </p>
+          {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
+          <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(ecoleId))}>
+            Délier
+          </button>
+        </>
+      ) : (
+        <>
+          <p>Collez la clé d’accès du compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans les actus.</p>
+          <input
+            className="editeur__texte parametres__cle"
+            aria-label="Clé d’accès Instagram"
+            placeholder="Clé d’accès"
+            value={cle}
+            onChange={(e) => setCle(e.target.value)}
+          />
+          {erreur && <p className="parametres__erreur">{erreur}</p>}
+          <button
+            type="button"
+            className="btn btn--secondary"
+            disabled={envoi || cle.trim().length < 20}
+            onClick={() => agir(() => api.relierInstagram(ecoleId, cle.trim()))}
+          >
+            Relier
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -655,7 +737,7 @@ export default function Actus({ ecoleId, prenom }) {
         </div>
       )}
       {vueAtelier ? (
-        <Atelier actus={visibles(atelier)} ouvrir={setEdite} ouverture={ouverture} changerOuverture={changerOuverture} />
+        <Atelier ecoleId={ecoleId} actus={visibles(atelier)} ouvrir={setEdite} ouverture={ouverture} changerOuverture={changerOuverture} />
       ) : (
         <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} />
       )}
