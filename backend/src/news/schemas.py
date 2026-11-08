@@ -66,6 +66,21 @@ class FeedOut(BaseModel):
 
 class SettingsOut(BaseModel):
     open_on_news: bool
+    # Sees the Actus tab (right « Voir les actualités » while in test).
+    can_read: bool = True
+    # Ticks who sees the news (administrateur principal, Super User).
+    can_choose_readers: bool = False
+
+
+class ReaderOut(BaseModel):
+    id: int
+    name: str
+    reads: bool
+    publishes: bool
+
+
+class ReaderIn(BaseModel):
+    reads: bool
 
 
 class SettingsIn(BaseModel):
