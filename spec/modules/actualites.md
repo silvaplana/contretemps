@@ -153,15 +153,28 @@ seuls dans les actus, sans rien ressaisir.
 
 - **Condition d'Instagram** : un compte professionnel (Créateur conseillé, ou Entreprise), donc public.
   Instagram ne laisse aucune appli lire un compte personnel.
-- **Relier** (Paramètres d'édition › Instagram, droit 🔒 Publier les actualités) : on colle une **clé
-  d'accès** du compte, puis « Relier ». L'appli la vérifie auprès d'Instagram, affiche « Relié à
-  @compte » et la garde chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). « Délier »
+- **Relier** (Paramètres d'édition › Instagram, droit 🔒 Publier les actualités) : bouton **« Se
+  connecter avec Instagram »** (Seb, 8 novembre au soir : coller une clé était trop pénible). Instagram
+  demande de se connecter au compte et d'accepter, puis revient dans l'appli, Paramètres d'édition
+  ouverts : « Relié à @compte », ou la raison de l'échec. La clé obtenue (60 jours, renouvelée seule
+  chaque semaine) est gardée chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). « Délier »
   l'oublie ; les actus déjà relayées restent.
-- **Obtenir la clé** (une fois, sur un ordinateur) : developers.facebook.com › créer une appli
-  (« Autre » › « Entreprise ») › ajouter le produit **Instagram** › « Configuration de l'API avec
-  connexion Instagram » › « Générer des jetons d'accès » › ajouter le compte Instagram (s'y connecter)
-  › copier le jeton. L'appli Meta peut rester en mode Développement : elle ne lit que ce compte. La clé
-  dure 60 jours ; l'appli la renouvelle seule chaque semaine.
+- **L'appli Meta** (une fois, par Seb, sur un ordinateur, avec un compte Facebook quelconque) :
+  developers.facebook.com › Mes applis › Créer une appli (« Autre » › « Entreprise ») › ajouter le
+  produit **Instagram** › « Configuration de l'API avec connexion Instagram » › « Configurer la
+  connexion professionnelle Instagram » : adresse de redirection
+  `https://silvaplana.cloud/contretemps/api/news/instagram/return`. Y relever l'**identifiant** et la
+  **clé secrète de l'appli Instagram**, à mettre dans `backend/.env` du VPS (DEPLOY.md §4 :
+  `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_REDIRECT_URL`). Tant que l'appli Meta est
+  en mode Développement, seuls les comptes Instagram ajoutés dans Rôles de l'appli › **Testeurs
+  Instagram** (et qui ont accepté l'invitation dans Instagram) peuvent se connecter ; pour tout le
+  monde, il faut la faire valider par Meta (permission `instagram_business_basic`).
+- **Sans l'appli Meta sur le serveur** (variables absentes) : à la place du bouton, on colle une clé
+  d'accès générée dans l'appli Meta (« Générer des jetons d'accès »), puis « Relier ».
+- **Le retour** arrive sur une seule adresse (`GET /news/instagram/return`, publique) ; `state`, signé
+  par le serveur et valable 30 minutes, dit quelle école et qui. Le serveur échange le code contre la
+  clé, relie le compte, puis renvoie vers l'adresse de l'école (`?instagram=ok|annule|erreur`), comme
+  la connexion bancaire du Financier.
 - **Relais** : toutes les 5 minutes (`app/relance_worker.py`), chaque post publié **après** la liaison
   devient une actu **Normal**, publiée, sans notification, signée du prénom de qui a relié le compte :
   le texte du post, puis sa photo ou sa vidéo ; un carrousel Instagram arrive entier, en carrousel. Une seule fois par
@@ -245,7 +258,9 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `media` (`{photo}`) |
 | `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `media` (`{video_id}`) |
 | `GET …/news/{id}/photos/{empreinte}` | tous | Une photo de l'actu (JPEG) ; brouillon : droit seulement |
-| `GET · PUT · DELETE …/news/instagram` | droit | Compte Instagram relié (§6 bis) : état, relier avec `token`, délier |
+| `GET · PUT · DELETE …/news/instagram` | droit | Compte Instagram relié (§6 bis) : état (`can_sign_in` : bouton possible), relier avec `token`, délier |
+| `POST …/news/instagram/login` | droit | « Se connecter avec Instagram » : l'adresse de la page d'Instagram |
+| `GET /news/instagram/return` | public | Retour d'Instagram (`code`, `state`) : relie, puis renvoie vers l'appli de l'école |
 | `GET …/news/readers` · `PUT …/news/readers/{id}` | admin principal | Pendant le test : qui voit les actus (§2 bis) |
 
 Les actus s'envoient et se rendent avec `media`, liste ordonnée (10 au plus) d'éléments `photo` ou

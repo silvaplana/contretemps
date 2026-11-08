@@ -310,7 +310,8 @@ function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, choisir,
 // « Paramètres d'édition » : repliés par défaut, on les déroule au besoin
 // (Seb, 8 novembre).
 function ParametresEdition({ ecoleId, ouverture, changerOuverture, choisir, ouvrirLecteurs }) {
-  const [ouvert, setOuvert] = useState(false)
+  // Au retour d'Instagram, ils s'ouvrent sur le résultat.
+  const [ouvert, setOuvert] = useState(Boolean(retourInstagram))
   return (
     <div className="parametres">
       <button type="button" className="parametres__titre" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
@@ -349,7 +350,11 @@ function Instagram({ ecoleId }) {
   const [etat, setEtat] = useState(null)
   const [cle, setCle] = useState('')
   const [envoi, setEnvoi] = useState(false)
-  const [erreur, setErreur] = useState('')
+  const [erreur, setErreur] = useState(() => {
+    const message = RETOURS_INSTAGRAM[retourInstagram] ?? ''
+    oublierRetourInstagram() // montré une fois
+    return message
+  })
   useEffect(() => {
     api.lireInstagram(ecoleId).then(setEtat, (e) => setErreur(e.message))
   }, [ecoleId])
@@ -367,6 +372,17 @@ function Instagram({ ecoleId }) {
     }
   }
 
+  // Instagram, puis retour ici (?instagram=ok).
+  async function seConnecter() {
+    setEnvoi(true)
+    try {
+      window.location.assign(await api.connexionInstagram(ecoleId))
+    } catch (e) {
+      setErreur(e.message)
+      setEnvoi(false)
+    }
+  }
+
   if (!etat) return erreur ? <p className="parametres__erreur">{erreur}</p> : null
   return (
     <div className="atelier__option parametres__instagram">
@@ -379,6 +395,14 @@ function Instagram({ ecoleId }) {
           {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(ecoleId))}>
             Délier
+          </button>
+        </>
+      ) : etat.peutSeConnecter ? (
+        <>
+          <p>Reliez le compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans les actus.</p>
+          {erreur && <p className="parametres__erreur">{erreur}</p>}
+          <button type="button" className="btn btn--secondary" disabled={envoi} onClick={seConnecter}>
+            Se connecter avec Instagram
           </button>
         </>
       ) : (
@@ -720,10 +744,41 @@ function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }
   )
 }
 
+// Retour de « Se connecter avec Instagram » (?instagram=ok|annule|erreur,
+// voir news/instagram.py) : retiré de l'adresse et gardé pour la session,
+// au cas où l'appli se recharge aussitôt (nouvelle version), montré une fois.
+const RETOURS_INSTAGRAM = {
+  annule: 'Connexion à Instagram annulée.',
+  erreur: 'La connexion à Instagram n’a pas abouti : le compte est-il bien professionnel et ajouté comme testeur ? Recommencez.',
+}
+let retourInstagram = (() => {
+  try {
+    const params = new URLSearchParams(window.location.search)
+    const retour = params.get('instagram')
+    if (retour) {
+      params.delete('instagram')
+      const reste = params.toString()
+      window.history.replaceState(null, '', window.location.pathname + (reste ? `?${reste}` : '') + window.location.hash)
+      sessionStorage.setItem('retour-instagram', retour)
+    }
+    return sessionStorage.getItem('retour-instagram')
+  } catch {
+    return null
+  }
+})()
+function oublierRetourInstagram() {
+  retourInstagram = null
+  try {
+    sessionStorage.removeItem('retour-instagram')
+  } catch {
+    // rien à oublier
+  }
+}
+
 export default function Actus({ ecoleId, prenom }) {
   const [fil, setFil] = useState(null) // { peutPublier, actus }
   const [atelier, setAtelier] = useState([])
-  const [onglet, setOnglet] = useState('apercu')
+  const [onglet, setOnglet] = useState(retourInstagram ? 'atelier' : 'apercu')
   const [ouverture, setOuverture] = useState(true)
   const [choisir, setChoisir] = useState(false) // peut choisir qui voit les actus
   const [lecteurs, setLecteurs] = useState(false) // l'écran « Qui voit les actus » est ouvert

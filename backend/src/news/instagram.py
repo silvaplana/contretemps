@@ -1,7 +1,9 @@
 """Relaying an Instagram account into the news (spec/modules/actualites.md
 §6 bis). The account must be professional (creator or business): Instagram
-lets no app read a personal account. The publisher pastes an access key
-made in Meta's developer site; every 5 minutes the worker
+lets no app read a personal account. The publisher links it with « Se
+connecter avec Instagram » when the server has the Meta app (INSTAGRAM_APP_ID,
+INSTAGRAM_APP_SECRET, INSTAGRAM_REDIRECT_URL in backend/.env), or else pastes
+an access key made in Meta's developer site. Every 5 minutes the worker
 (app/relance_worker.py) turns each new post into a Normal news item: its
 text, then its photos and videos. Only posts published after the link come in.
 
@@ -9,14 +11,21 @@ Calls the « Instagram API with Instagram Login » (graph.instagram.com)."""
 
 from __future__ import annotations
 
+import base64
 import io
+import json
 import logging
+import os
+import time
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from urllib.parse import urlencode
 
 import requests
 from comptes import Compte
 from registry import activation
 from securite.chiffrement import chiffrer, dechiffrer
+from securite.jetons import signatures_egales, signer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -31,6 +40,11 @@ TIMEOUT = 30
 VIDEO_MAX_BYTES = 100 * 1024 * 1024
 # A key lasts 60 days; renewed well before.
 REFRESH_AFTER = timedelta(days=7)
+# « Se connecter avec Instagram » (Instagram Business Login).
+AUTHORIZE_URL = "https://www.instagram.com/oauth/authorize"
+CODE_URL = "https://api.instagram.com/oauth/access_token"
+SCOPE = "instagram_business_basic"
+STATE_SECONDS = 30 * 60
 MEDIA_FIELDS = "id,caption,media_type,media_url,timestamp,children{media_type,media_url}"
 
 
@@ -85,6 +99,62 @@ def download(url: str, max_bytes: int) -> bytes:
         raise InstagramError("Téléchargement impossible") from erreur
 
 
+@dataclass(frozen=True)
+class InstagramApp:
+    """The Meta app that « Se connecter avec Instagram » goes through, made
+    once by Seb on developers.facebook.com (spec §6 bis)."""
+
+    app_id: str
+    secret: str
+    redirect_url: str  # …/api/news/instagram/return, declared in the Meta app
+
+    @classmethod
+    def from_env(cls) -> InstagramApp | None:
+        values = [os.environ.get(k, "").strip() for k in ("INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET", "INSTAGRAM_REDIRECT_URL")]
+        return cls(*values) if all(values) else None
+
+
+def exchange_code(app: InstagramApp, code: str) -> str:
+    """The code Instagram sends back becomes a key of 60 days."""
+    try:
+        reponse = requests.post(CODE_URL, timeout=TIMEOUT, data={
+            "client_id": app.app_id, "client_secret": app.secret, "grant_type": "authorization_code",
+            "redirect_uri": app.redirect_url, "code": code,
+        })
+    except requests.RequestException as erreur:
+        raise InstagramError("Instagram ne répond pas") from erreur
+    if reponse.status_code != 200:
+        raise InstagramError(f"Instagram a refusé la connexion (erreur {reponse.status_code})")
+    data = reponse.json()
+    short = (data.get("data") or [data])[0].get("access_token")
+    if not short:
+        raise InstagramError("Instagram n'a pas donné de clé")
+    return _get("access_token", grant_type="ig_exchange_token", client_secret=app.secret, access_token=short)["access_token"]
+
+
+def _b64(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
+
+
+def _make_state(org_id: int, author_id: int | None) -> str:
+    """Says who comes back from Instagram: signed by the server, 30 minutes."""
+    charge = _b64(json.dumps({"o": org_id, "a": author_id, "e": int(time.time()) + STATE_SECONDS}).encode())
+    return f"{charge}.{signer(charge)}"
+
+
+def _read_state(state: str) -> tuple[int, int | None] | None:
+    charge, _, signature = state.partition(".")
+    if not charge or not signatures_egales(signer(charge), signature):
+        return None
+    try:
+        data = json.loads(base64.urlsafe_b64decode(charge + "=" * (-len(charge) % 4)))
+    except ValueError:
+        return None
+    if data.get("e", 0) < time.time():
+        return None
+    return data["o"], data.get("a")
+
+
 def _posted_at(post: dict) -> datetime | None:
     try:
         return datetime.strptime(post["timestamp"], "%Y-%m-%dT%H:%M:%S%z").astimezone(timezone.utc).replace(tzinfo=None)
@@ -93,8 +163,33 @@ def _posted_at(post: dict) -> datetime | None:
 
 
 class InstagramRelay:
-    def __init__(self, news: News) -> None:
+    def __init__(self, news: News, app: InstagramApp | None = None) -> None:
         self.news = news
+        self.app = app
+
+    def login_url(self, org_id: int, author: Compte | None) -> str:
+        """Where « Se connecter avec Instagram » leads. Raises InstagramError
+        if the server has no Meta app."""
+        if self.app is None:
+            raise InstagramError("La connexion à Instagram n'est pas installée sur le serveur")
+        query = urlencode({
+            "client_id": self.app.app_id, "redirect_uri": self.app.redirect_url, "response_type": "code",
+            "scope": SCOPE, "state": _make_state(org_id, author.id if author else None),
+        })
+        return f"{AUTHORIZE_URL}?{query}"
+
+    def org_of(self, state: str) -> int | None:
+        read = _read_state(state)
+        return read[0] if read else None
+
+    def complete(self, db: Session, code: str, state: str) -> NewsInstagram:
+        """Back from Instagram: the code becomes a key, and the account is
+        linked as if the key had been pasted. Raises InstagramError."""
+        read = _read_state(state)
+        if read is None or self.app is None:
+            raise InstagramError("Connexion expirée : recommencez")
+        org_id, author_id = read
+        return self.link(db, org_id, db.get(Compte, author_id) if author_id else None, exchange_code(self.app, code))
 
     def get(self, db: Session, org_id: int) -> NewsInstagram | None:
         return db.get(NewsInstagram, org_id)

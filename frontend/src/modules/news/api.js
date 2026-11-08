@@ -130,9 +130,12 @@ export function lirePhoto(ecoleId, actuId, photo) {
 }
 
 // Compte Instagram relayé dans les actus (§6 bis).
-const versInstagram = (r) => ({ relie: r.linked, compte: r.username, erreur: r.last_error })
+const versInstagram = (r) => ({ relie: r.linked, compte: r.username, erreur: r.last_error, peutSeConnecter: r.can_sign_in })
 export const lireInstagram = async (ecoleId) => versInstagram(await appel(`/ecoles/${ecoleId}/news/instagram`))
 export const relierInstagram = async (ecoleId, cle) =>
   versInstagram(await appel(`/ecoles/${ecoleId}/news/instagram`, json('PUT', { token: cle })))
+// « Se connecter avec Instagram » : l'adresse de la page d'Instagram.
+export const connexionInstagram = async (ecoleId) =>
+  (await appel(`/ecoles/${ecoleId}/news/instagram/login`, { method: 'POST' })).url
 export const delierInstagram = async (ecoleId) =>
   versInstagram(await appel(`/ecoles/${ecoleId}/news/instagram`, { method: 'DELETE' }))

@@ -428,3 +428,44 @@ def test_qui_voit_les_actus_pendant_le_test(client, db_session, e):
     assert client.put(f"{url}/{e['admin'].id}", json={"reads": False}, headers=chef).json()["reads"] is False
     assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
     assert client.put(f"{url}/{e['voisin'].id}", json={"reads": True}, headers=chef).status_code == 404
+
+
+def test_instagram_se_connecter_avec_instagram(client, db_session, e, en_tant_que, faux_instagram, monkeypatch):
+    """Le bouton « Se connecter avec Instagram » : Instagram renvoie un code
+    sur l'adresse de retour, le serveur l'échange contre une clé et relie."""
+    from urllib.parse import parse_qs, urlparse
+
+    from app.main import core
+    from news import instagram
+    from news.models import NewsInstagram
+
+    eid = e["ecole"].id
+    url = f"/ecoles/{eid}/news/instagram"
+    en_tant_que(e["seb"])
+    # Sans l'appli Meta sur le serveur : pas de bouton, la clé se colle.
+    monkeypatch.setattr(core.news_instagram, "app", None)
+    assert client.get(url).json()["can_sign_in"] is False
+    assert client.post(f"{url}/login").status_code == 409
+
+    monkeypatch.setattr(core.news_instagram, "app", instagram.InstagramApp("123", "secret", "https://x/api/news/instagram/return"))
+    echanges = []
+    monkeypatch.setattr(instagram, "exchange_code", lambda app, code: echanges.append(code) or "IGAA" + "y" * 40)
+    assert client.get(url).json()["can_sign_in"] is True
+    adresse = client.post(f"{url}/login").json()["url"]
+    assert adresse.startswith("https://www.instagram.com/oauth/authorize?")
+    params = parse_qs(urlparse(adresse).query)
+    assert params["client_id"] == ["123"] and params["scope"] == ["instagram_business_basic"]
+    state = params["state"][0]
+
+    # Retour d'Instagram : relié, puis retour sur l'appli de l'école.
+    retour = client.get("/news/instagram/return", params={"code": "abc", "state": state}, follow_redirects=False)
+    assert retour.status_code == 303 and retour.headers["location"].endswith("/?instagram=ok")
+    assert echanges == ["abc"]
+    lien = db_session.get(NewsInstagram, eid)
+    assert lien is not None and lien.username == "contretemps_danse" and lien.linked_by == e["seb"].id
+
+    # Annulé, ou state fabriqué : rien ne change.
+    retour = client.get("/news/instagram/return", params={"error": "access_denied", "state": state}, follow_redirects=False)
+    assert retour.headers["location"].endswith("/?instagram=annule")
+    retour = client.get("/news/instagram/return", params={"code": "abc", "state": state[:-2] + "xx"}, follow_redirects=False)
+    assert retour.headers["location"].endswith("/?instagram=erreur") and echanges == ["abc"]
