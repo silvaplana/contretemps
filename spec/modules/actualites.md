@@ -63,7 +63,9 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
 ### 3.3 Une actu
 
 - Le texte (retours à la ligne gardés, liens cliquables).
-- Au plus **un média** : une photo ou une vidéo (pas les deux). Plus, au besoin, **un document** de
+- Jusqu'à **10 photos et vidéos**, mêlées, dans l'ordre choisi. À partir de deux, un **carrousel**
+  comme sur Instagram : on fait glisser du doigt, des points dessous disent où l'on est (Seb,
+  8 novembre). Plus, au besoin, **un document** de
   Docs, montré comme un bouton fichier qui l'ouvre comme dans Docs (PDF dans la visionneuse, Word/Excel
   dans OnlyOffice).
 - La vidéo se lit sur place : image d'attente, ▶ au centre, durée en bas à droite.
@@ -81,7 +83,9 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
   pastille **Publiée** (vert) ou **Brouillon** (jaune), puis « Niveau · date ».
 - Toucher une ligne ouvre l'actu dans l'éditeur.
 - Bouton principal en bas : **Nouvelle actu**.
-- Section **Options** sous la liste : interrupteur **« Ouvrir l'appli sur les actus »** (§6).
+- Sous la liste, **« Paramètres d'édition »**, repliés par défaut (on touche le titre pour les
+  dérouler ; Seb, 8 novembre) : interrupteur **« Ouvrir l'appli sur les actus »** (§6) et le compte
+  **Instagram** relié (§6 bis).
 
 Toute personne qui a le droit peut modifier ou supprimer toutes les actus, pas seulement les siennes
 (le bureau se relaie).
@@ -95,9 +99,9 @@ De haut en bas :
 2. **Texte** (obligatoire).
 3. **Photo**, **Vidéo**, **Document** (cachés pour une Brève). Photo : galerie ou appareil photo.
    Vidéo : jusqu'à 100 Mo avant compression, comme dans la Messagerie. Document : choisi dans Docs
-   (on descend dans les dossiers, on touche le fichier). Choisir une photo remplace la vidéo et
-   inversement ; toucher à nouveau un bouton allumé retire ce qu'il a ajouté. Passer en Brève retire
-   tout.
+   (on descend dans les dossiers, on touche le fichier). Photo et Vidéo **ajoutent** (plusieurs photos
+   d'un coup), 10 au plus ; les vignettes s'alignent sous les boutons, chacune avec ✕ pour la
+   retirer. Toucher à nouveau Document le retire. Passer en Brève retire tout.
 4. **En haut jusqu'au** (Important seulement) : une date, proposée à J+7.
 5. **Envoyer une notification** : interrupteur, allumé d'office pour Important, éteint pour Normal et
    Brève ; on peut le changer à chaque actu (Seb, 6 novembre).
@@ -128,6 +132,31 @@ retour d'arrière-plan), tout le monde arrive sur Actus. Éteinte : l'appli s'ou
 le dernier onglet utilisé (`ongletDeDepart` dans App.jsx). Une notification d'un autre module garde
 son propre écran.
 
+## 6 bis. Relayer un compte Instagram (Seb, 8 novembre 2026)
+
+Les testeurs publient déjà sur Instagram : les nouveaux posts d'un compte Instagram arrivent tout
+seuls dans les actus, sans rien ressaisir.
+
+- **Condition d'Instagram** : un compte professionnel (Créateur conseillé, ou Entreprise), donc public.
+  Instagram ne laisse aucune appli lire un compte personnel.
+- **Relier** (Paramètres d'édition › Instagram, droit 🔒 Publier les actualités) : on colle une **clé
+  d'accès** du compte, puis « Relier ». L'appli la vérifie auprès d'Instagram, affiche « Relié à
+  @compte » et la garde chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). « Délier »
+  l'oublie ; les actus déjà relayées restent.
+- **Obtenir la clé** (une fois, sur un ordinateur) : developers.facebook.com › créer une appli
+  (« Autre » › « Entreprise ») › ajouter le produit **Instagram** › « Configuration de l'API avec
+  connexion Instagram » › « Générer des jetons d'accès » › ajouter le compte Instagram (s'y connecter)
+  › copier le jeton. L'appli Meta peut rester en mode Développement : elle ne lit que ce compte. La clé
+  dure 60 jours ; l'appli la renouvelle seule chaque semaine.
+- **Relais** : toutes les 5 minutes (`app/relance_worker.py`), chaque post publié **après** la liaison
+  devient une actu **Normal**, publiée, sans notification, signée du prénom de qui a relié le compte :
+  le texte du post, puis sa photo ou sa vidéo ; un carrousel Instagram arrive entier, en carrousel. Une seule fois par
+  post (`instagram_id`). Elle se modifie ou se supprime ensuite comme les autres.
+- Instagram ne prévient pas d'un nouveau post (pas de webhook pour les posts) : d'où les 5 minutes.
+- Une erreur (clé refusée, compte devenu personnel…) s'affiche sous « Relié à @compte ».
+
+Code : `news/instagram.py` (« Instagram API with Instagram Login », graph.instagram.com).
+
 ## 7. Données
 
 Tables préfixées `news_`, avec `org_id` (= `ecoles.id`) et filtre par organisation sur chaque requête.
@@ -152,11 +181,22 @@ Tables préfixées `news_`, avec `org_id` (= `ecoles.id`) et filtre par organisa
 
 | Colonne | Type | Note |
 |---|---|---|
-| `photo_sha` | str, nul | empreinte de la photo, rangée par `storage/` dans `NEWS_DIR` (par défaut `actualites/` à côté des vidéos), dossier de l'organisation ; on garde l'original et une copie JPEG de 1600 px au plus, la seule montrée |
-| `video_id` | int, FK `videos.id`, nul | module Vidéos : compression, image d'attente, lien signé ; rangée dans « Actualités » du panneau Usage |
 | `document_id` | int, FK `doc_nodes.id`, nul | fichier de Docs (pas un dossier) de la même organisation |
 
-Remplacer ou retirer la photo ou la vidéo d'une actu, ou supprimer l'actu, les efface. Une vidéo
+Carrousel (migration `c4e8a1f7b352`, qui y recopie la photo ou la vidéo de chaque actu existante) :
+table **`news_media`**, une ligne par photo ou vidéo. Une table plutôt qu'une liste dans une colonne :
+la clé étrangère vers `videos` reste, et une vidéo supprimée ailleurs ne laisse rien derrière.
+
+| Colonne | Type | Note |
+|---|---|---|
+| `id` | int, PK | |
+| `item_id` | int, FK `news_items.id` (cascade) | l'actu |
+| `position` | int | l'ordre dans le carrousel, à partir de 0 |
+| `photo_sha` | str, nul | empreinte de la photo, rangée par `storage/` dans `NEWS_DIR` (par défaut `actualites/` à côté des vidéos), dossier de l'organisation ; on garde l'original et une copie JPEG de 1600 px au plus, la seule montrée |
+| `video_id` | int, FK `videos.id`, nul | module Vidéos : compression, image d'attente, lien signé ; rangée dans « Actualités » du panneau Usage |
+
+Une ligne a soit une photo, soit une vidéo. Retirer une photo ou une vidéo d'une actu, ou supprimer
+l'actu, les efface. Une vidéo
 supprimée ailleurs (panneau Usage) laisse l'actu sans vidéo. Le document n'est qu'un lien : le
 supprimer de Docs fait disparaître le bouton. Le dossier des photos est compté dans « Usage
 ressources » (Admin › École).
@@ -167,10 +207,14 @@ Sparring.
 **`news_seen`** : `compte_id` (clé), `seen_at`. Sert à la pastille « Nouveau ». La fiche change à
 chaque saison : « Nouveau » repart de zéro à la rentrée.
 
+**`news_instagram`** (§6 bis) : `org_id` (clé), `token_encrypted`, `username`, `linked_by`,
+`linked_by_name`, `linked_at` (seuls les posts d'après comptent), `token_refreshed_at`,
+`last_sync_at`, `last_error`. Et sur `news_items` : `instagram_id` (le post relayé). Migration
+`b81f2c6d9e47`.
+
 **`news_settings`** : `org_id` (clé), `open_on_news` (bool, vrai par défaut ; pas de ligne = vrai).
 
-Pourquoi des colonnes et pas une table de pièces jointes : une actu a au plus un média et un document
-(§3.3), c'est plus simple. Pas de lien avec les saisons : une actu appartient à l'organisation.
+Le document reste une colonne : une actu en a au plus un (§3.3). Pas de lien avec les saisons : une actu appartient à l'organisation.
 
 ## 8. API
 
@@ -184,12 +228,13 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `POST …/news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
 | `DELETE …/news/{id}` | droit | Supprimer |
 | `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture |
+| `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `media` (`{photo}`) |
+| `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `media` (`{video_id}`) |
+| `GET …/news/{id}/photos/{empreinte}` | tous | Une photo de l'actu (JPEG) ; brouillon : droit seulement |
+| `GET · PUT · DELETE …/news/instagram` | droit | Compte Instagram relié (§6 bis) : état, relier avec `token`, délier |
 
-| `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `photo` |
-| `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `video_id` |
-| `GET …/news/{id}/photo` | tous | La photo (JPEG) ; brouillon : droit seulement |
-
-Les actus rendues portent `photo`, `video` (avec ses liens signés) et `document` (`id`, `name`).
+Les actus s'envoient et se rendent avec `media`, liste ordonnée (10 au plus) d'éléments `photo` ou
+`video` (rendue avec ses liens signés), et `document` (`id`, `name`).
 
 Module éteint dans l'organisation : onglet caché, routes en 404 (spec/core.md §9 bis.3).
 
@@ -210,7 +255,7 @@ Chaque étape part sur le « vas-y » de Seb, une PR chacune, avec le `guide.md`
    brouillon, supprimer/Annuler, « Nouveau », notification, option d'ouverture, actions de l'assistant.
    **Fait** (6 novembre 2026, PR de l'étape 1). L'onglet s'ouvre sur Visualisation, même pour qui publie.
 2. **Médias** : photo, vidéo (lecture sur place), document de Docs. **Fait** (7 novembre 2026, PR de
-   l'étape 2).
+   l'étape 2). Carrousel de 10 photos et vidéos, et carrousels d'Instagram (8 novembre 2026).
 
 ## 11. Questions ouvertes
 

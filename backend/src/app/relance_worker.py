@@ -17,6 +17,9 @@ vrai email, celui de Diffuser.
 Synchronise aussi, toutes les 5 minutes, les inscrits HelloAsso des écoles
 qui ont choisi une campagne (spec/modules/helloasso.md §4).
 
+Relaie aussi, toutes les 5 minutes, les nouveaux posts du compte Instagram
+relié aux actualités (spec/modules/actualites.md §6 bis).
+
 Usage :
     python -m app.relance_worker
 """
@@ -32,10 +35,15 @@ from eleves import Eleves
 from helloasso.module import add_member
 from helloasso.sync import Sync, sync_all
 from messagerie import Conversations, Messages
+from news.instagram import InstagramRelay
+from news.news import News
+from news.storage import news_storage
+from videos import Videos
 
 INTERVALLE_SECONDES = 60
 DELAI_MINUTES = 15
 HELLOASSO_TOURS = 5  # une synchronisation HelloAsso tous les 5 tours (5 min)
+INSTAGRAM_TOURS = 5  # les posts Instagram tous les 5 tours (5 min)
 
 
 def run() -> None:
@@ -44,6 +52,8 @@ def run() -> None:
     # La copie des rappels pour l'adresse de contact de l'association.
     association = AssociationContretemps()
     helloasso = Sync(add_member=add_member(Eleves(comptes=Comptes())))
+    # Pas de notification pour un post relayé : `notifications` inutile ici.
+    instagram = InstagramRelay(News(notifications=None, storage=news_storage(), videos=Videos()))
     tour = 0
     print(
         f"Relance auto démarrée (vérifie toutes les {INTERVALLE_SECONDES}s, "
@@ -71,6 +81,14 @@ def run() -> None:
                 except Exception as erreur:  # noqa: BLE001 (la boucle continue)
                     db.rollback()
                     print(f"Synchronisation HelloAsso en échec : {erreur}")
+            if tour % INSTAGRAM_TOURS == 0:
+                try:
+                    for ecole_id, relayes in instagram.sync_all(db).items():
+                        if relayes:
+                            print(f"Instagram, école {ecole_id} : {relayes} post(s) relayé(s).")
+                except Exception as erreur:  # noqa: BLE001 (la boucle continue)
+                    db.rollback()
+                    print(f"Relais Instagram en échec : {erreur}")
         finally:
             db.close()
 

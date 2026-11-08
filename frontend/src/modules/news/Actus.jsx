@@ -17,6 +17,7 @@ import './news.css'
 
 const ANNULER_MS = 10000
 const VIDEO_MAX = 100 * 1024 * 1024 // avant compression, comme la Messagerie (§4.2)
+const MEDIA_MAX = 10 // photos et vidéos par actu, comme Instagram (§3.3)
 const NIVEAUX = [
   { cle: 'important', libelle: 'Important', aide: 'En haut des actus, en rouge, jusqu’à la date choisie. Pour ce qui ne doit pas être manqué.' },
   { cle: 'normal', libelle: 'Normal', aide: 'Une grande carte.' },
@@ -70,19 +71,19 @@ const IconeFichier = ({ taille = 20 }) => (
   </svg>
 )
 
-// La photo d'une actu : lue avec la session, ou la copie locale juste
+// Une photo de l'actu : lue avec la session, ou la copie locale juste
 // choisie dans l'éditeur.
-function Photo({ ecoleId, actu }) {
+function Photo({ ecoleId, actuId, element }) {
   const [url, setUrl] = useState(null)
-  const { id, photo, photoLocale } = actu
+  const { photo, photoLocale } = element
   useEffect(() => {
-    if (photoLocale || !id || !photo) return undefined
+    if (photoLocale || !actuId || !photo) return undefined
     let annule = false
-    api.lirePhoto(ecoleId, { id, photo }).then((u) => !annule && setUrl(u), () => {})
+    api.lirePhoto(ecoleId, actuId, photo).then((u) => !annule && setUrl(u), () => {})
     return () => {
       annule = true
     }
-  }, [ecoleId, id, photo, photoLocale])
+  }, [ecoleId, actuId, photo, photoLocale])
   const src = photoLocale || url
   return <div className="actu__media">{src && <img src={src} alt="" />}</div>
 }
@@ -90,7 +91,7 @@ function Photo({ ecoleId, actu }) {
 // La vidéo pas encore envoyée, lue sur ce téléphone pendant l'envoi.
 function VideoLocale({ uploadId }) {
   const etat = useProgressionTeleversement(uploadId)
-  if (!etat) return null
+  if (!etat) return <div className="actu__media" />
   const pourcentage = etat.octetsTotal ? Math.round((etat.octetsEnvoyes / etat.octetsTotal) * 100) : 0
   return (
     <div className="actu__media">
@@ -100,16 +101,42 @@ function VideoLocale({ uploadId }) {
   )
 }
 
+function Element({ ecoleId, actuId, element }) {
+  if (element.photo || element.photoLocale) return <Photo ecoleId={ecoleId} actuId={actuId} element={element} />
+  if (element.uploadId) return <VideoLocale uploadId={element.uploadId} />
+  return (
+    <div className="actu__media actu__media--video">
+      <VideoThumb video={element.video} />
+    </div>
+  )
+}
+
+// Les photos et vidéos de l'actu ; à plusieurs, un carrousel qu'on fait
+// glisser du doigt, avec des points dessous, comme sur Instagram (§3.3).
 function Media({ ecoleId, actu }) {
-  if (actu.photo || actu.photoLocale) return <Photo ecoleId={ecoleId} actu={actu} />
-  if (actu.uploadId) return <VideoLocale uploadId={actu.uploadId} />
-  if (actu.video)
-    return (
-      <div className="actu__media actu__media--video">
-        <VideoThumb video={actu.video} />
+  const [rang, setRang] = useState(0)
+  const media = actu.media ?? []
+  if (!media.length) return null
+  if (media.length === 1) return <Element ecoleId={ecoleId} actuId={actu.id} element={media[0]} />
+  return (
+    <div className="carrousel">
+      <div
+        className="carrousel__piste"
+        onScroll={(e) => setRang(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+      >
+        {media.map((element, i) => (
+          <div key={element.cle ?? element.photo ?? element.video?.id ?? i} className="carrousel__case">
+            <Element ecoleId={ecoleId} actuId={actu.id} element={element} />
+          </div>
+        ))}
       </div>
-    )
-  return null
+      <div className="carrousel__points" aria-label={`${Math.min(rang, media.length - 1) + 1} sur ${media.length}`}>
+        {media.map((element, i) => (
+          <span key={i} className={i === rang ? 'carrousel__point carrousel__point--actif' : 'carrousel__point'} />
+        ))}
+      </div>
+    </div>
+  )
 }
 
 // Le document : un bouton qui l'ouvre comme dans Docs, et ← revient ici.
@@ -202,7 +229,7 @@ function Fil({ actus, ecoleId }) {
   )
 }
 
-function Atelier({ actus, ouvrir, ouverture, changerOuverture }) {
+function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture }) {
   return (
     <div className="atelier">
       {actus.map((a) => (
@@ -219,18 +246,100 @@ function Atelier({ actus, ouvrir, ouverture, changerOuverture }) {
           </span>
         </button>
       ))}
-      <div className="atelier__section">Options</div>
-      <div className="atelier__option">
-        <span>Ouvrir l’appli sur les actus</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={ouverture}
-          aria-label="Ouvrir l’appli sur les actus"
-          className="actus__interrupteur"
-          onClick={() => changerOuverture(!ouverture)}
-        />
-      </div>
+      <ParametresEdition ecoleId={ecoleId} ouverture={ouverture} changerOuverture={changerOuverture} />
+    </div>
+  )
+}
+
+// « Paramètres d'édition » : repliés par défaut, on les déroule au besoin
+// (Seb, 8 novembre).
+function ParametresEdition({ ecoleId, ouverture, changerOuverture }) {
+  const [ouvert, setOuvert] = useState(false)
+  return (
+    <div className="parametres">
+      <button type="button" className="parametres__titre" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
+        <span>Paramètres d’édition</span>
+        <span className="parametres__chevron" aria-hidden="true">›</span>
+      </button>
+      {ouvert && (
+        <>
+          <div className="atelier__option">
+            <span>Ouvrir l’appli sur les actus</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={ouverture}
+              aria-label="Ouvrir l’appli sur les actus"
+              className="actus__interrupteur"
+              onClick={() => changerOuverture(!ouverture)}
+            />
+          </div>
+          <Instagram ecoleId={ecoleId} />
+        </>
+      )}
+    </div>
+  )
+}
+
+// Relier un compte Instagram (§6 bis) : ses nouveaux posts arrivent dans
+// les actus, toutes les 5 minutes.
+function Instagram({ ecoleId }) {
+  const [etat, setEtat] = useState(null)
+  const [cle, setCle] = useState('')
+  const [envoi, setEnvoi] = useState(false)
+  const [erreur, setErreur] = useState('')
+  useEffect(() => {
+    api.lireInstagram(ecoleId).then(setEtat, (e) => setErreur(e.message))
+  }, [ecoleId])
+
+  async function agir(action) {
+    setEnvoi(true)
+    setErreur('')
+    try {
+      setEtat(await action())
+      setCle('')
+    } catch (e) {
+      setErreur(e.message)
+    } finally {
+      setEnvoi(false)
+    }
+  }
+
+  if (!etat) return erreur ? <p className="parametres__erreur">{erreur}</p> : null
+  return (
+    <div className="atelier__option parametres__instagram">
+      <strong>Instagram</strong>
+      {etat.relie ? (
+        <>
+          <p>
+            Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans les actus en 5 minutes au plus.
+          </p>
+          {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
+          <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(ecoleId))}>
+            Délier
+          </button>
+        </>
+      ) : (
+        <>
+          <p>Collez la clé d’accès du compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans les actus.</p>
+          <input
+            className="editeur__texte parametres__cle"
+            aria-label="Clé d’accès Instagram"
+            placeholder="Clé d’accès"
+            value={cle}
+            onChange={(e) => setCle(e.target.value)}
+          />
+          {erreur && <p className="parametres__erreur">{erreur}</p>}
+          <button
+            type="button"
+            className="btn btn--secondary"
+            disabled={envoi || cle.trim().length < 20}
+            onClick={() => agir(() => api.relierInstagram(ecoleId, cle.trim()))}
+          >
+            Relier
+          </button>
+        </>
+      )}
     </div>
   )
 }
@@ -315,46 +424,56 @@ function ChoixDocument({ ecoleId, onChoisir, onFermer }) {
 }
 
 function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }) {
-  const [brouillon, setBrouillon] = useState(actu)
+  // Chaque photo ou vidéo a une clé, pour la retirer.
+  const [brouillon, setBrouillon] = useState(() => ({ ...actu, media: actu.media.map((m, i) => ({ ...m, cle: `e${i}` })) }))
   const [envoi, setEnvoi] = useState(false)
-  const [photoEnvoi, setPhotoEnvoi] = useState(false)
+  const [photoEnvoi, setPhotoEnvoi] = useState(0) // photos en cours d'envoi
+  const numero = useRef(0)
   const [choixDocument, setChoixDocument] = useState(false)
   const champPhoto = useRef(null)
   const champVideo = useRef(null)
   const changer = (champs) => setBrouillon((b) => ({ ...b, ...champs }))
+  const ajouter = (element) => setBrouillon((b) => ({ ...b, media: [...b.media, element] }))
+  const remplacer = (cle, champs) =>
+    setBrouillon((b) => ({ ...b, media: b.media.map((m) => (m.cle === cle ? { ...m, ...champs } : m)) }))
+  const enlever = (cle) => setBrouillon((b) => ({ ...b, media: b.media.filter((m) => m.cle !== cle) }))
   // Une vidéo choisie mais pas encore publiée : son envoi s'arrête.
-  const oublierEnvoi = () => brouillon.uploadId && annulerTeleversement(brouillon.uploadId)
-  const sansMedia = { photo: null, photoLocale: null, video: null, uploadId: null }
+  const oublierEnvois = (media = brouillon.media) => media.forEach((m) => m.uploadId && annulerTeleversement(m.uploadId))
   const choisirNiveau = (niveau) => {
-    if (niveau === 'brief') oublierEnvoi()
+    if (niveau === 'brief') oublierEnvois()
     changer({
       niveau,
       // Nouvelle actu : la notification suit le niveau (§4.2).
       ...(actu.id ? {} : { notifier: niveau === 'important' }),
       enHautJusquau: brouillon.enHautJusquau ?? dansJours(7),
       // Une brève n'a ni photo, ni vidéo, ni document (§4.2).
-      ...(niveau === 'brief' ? { ...sansMedia, document: null } : {}),
+      ...(niveau === 'brief' ? { media: [], document: null } : {}),
     })
   }
   const vide = !brouillon.texte.trim()
   const publiee = Boolean(actu.publieeLe)
   const aide = NIVEAUX.find((n) => n.cle === brouillon.niveau).aide
-  const aPhoto = Boolean(brouillon.photo || brouillon.photoLocale)
-  const aVideo = Boolean(brouillon.video || brouillon.uploadId)
+  const place = MEDIA_MAX - brouillon.media.length
 
-  async function choisirPhoto(fichier) {
-    if (!fichier) return
-    oublierEnvoi()
-    changer({ ...sansMedia, photoLocale: URL.createObjectURL(fichier) })
-    setPhotoEnvoi(true)
-    try {
-      changer({ photo: await api.envoyerPhoto(ecoleId, fichier) })
-    } catch (e) {
-      changer({ photoLocale: null })
-      window.alert(e.message)
-    } finally {
-      setPhotoEnvoi(false)
-    }
+  async function choisirPhotos(fichiers) {
+    const choisies = [...fichiers].slice(0, place)
+    if (fichiers.length > place) window.alert(`${MEDIA_MAX} photos ou vidéos au plus par actu.`)
+    if (!choisies.length) return
+    setPhotoEnvoi((n) => n + choisies.length)
+    await Promise.all(
+      choisies.map(async (fichier) => {
+        const cle = `p${++numero.current}`
+        ajouter({ cle, photoLocale: URL.createObjectURL(fichier) })
+        try {
+          remplacer(cle, { photo: await api.envoyerPhoto(ecoleId, fichier) })
+        } catch (e) {
+          enlever(cle)
+          window.alert(e.message)
+        } finally {
+          setPhotoEnvoi((n) => n - 1)
+        }
+      }),
+    )
   }
 
   async function choisirVideo(fichier) {
@@ -363,34 +482,37 @@ function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }
       window.alert(`« ${fichier.name} » est trop grosse : 100 Mo au maximum.`)
       return
     }
-    oublierEnvoi()
     try {
-      changer({ ...sansMedia, uploadId: await demarrerTeleversement(ecoleId, fichier) })
+      ajouter({ cle: `v${++numero.current}`, uploadId: await demarrerTeleversement(ecoleId, fichier) })
     } catch (e) {
       window.alert(e.message)
     }
   }
 
-  function basculer(media) {
-    if (media === 'photo' && aPhoto) return changer(sansMedia)
-    if (media === 'video' && aVideo) {
-      oublierEnvoi()
-      return changer(sansMedia)
-    }
-    if (media === 'document') return brouillon.document ? changer({ document: null }) : setChoixDocument(true)
-    ;(media === 'photo' ? champPhoto : champVideo).current?.click()
+  function retirer(element) {
+    oublierEnvois([element])
+    enlever(element.cle)
+  }
+
+  function basculer(ajout) {
+    if (ajout === 'document') return brouillon.document ? changer({ document: null }) : setChoixDocument(true)
+    if (place <= 0) return window.alert(`${MEDIA_MAX} photos ou vidéos au plus par actu.`)
+    ;(ajout === 'photo' ? champPhoto : champVideo).current?.click()
   }
 
   async function envoyer(publier) {
     setEnvoi(true)
     try {
-      let pret = brouillon
-      if (brouillon.uploadId) {
-        // La vidéo existe dès maintenant ; son envoi finit derrière.
-        const video = await finaliserTeleversement(brouillon.uploadId, (id) => api.attacherVideo(ecoleId, id))
-        pret = { ...brouillon, video, uploadId: null }
-        setBrouillon(pret)
-      }
+      // Les vidéos existent dès maintenant ; leur envoi finit derrière.
+      const media = await Promise.all(
+        brouillon.media.map(async (m) =>
+          m.uploadId
+            ? { cle: m.cle, video: await finaliserTeleversement(m.uploadId, (id) => api.attacherVideo(ecoleId, id)) }
+            : m,
+        ),
+      )
+      const pret = { ...brouillon, media }
+      setBrouillon(pret)
       await onEnregistrer({ ...pret, publier })
     } catch (e) {
       window.alert(e.message)
@@ -400,7 +522,7 @@ function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }
   }
 
   function retour() {
-    oublierEnvoi()
+    oublierEnvois()
     onRetour()
   }
 
@@ -452,11 +574,11 @@ function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }
         />
         {brouillon.niveau !== 'brief' && (
           <div className="editeur__ajouts">
-            <button type="button" aria-pressed={aPhoto} onClick={() => basculer('photo')}>
+            <button type="button" onClick={() => basculer('photo')}>
               <IconePhoto />
               Photo
             </button>
-            <button type="button" aria-pressed={aVideo} onClick={() => basculer('video')}>
+            <button type="button" onClick={() => basculer('video')}>
               <IconeVideo />
               Vidéo
             </button>
@@ -464,9 +586,23 @@ function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }
               <IconeFichier />
               Document
             </button>
-            <input ref={champPhoto} type="file" accept="image/*" hidden onChange={(e) => (choisirPhoto(e.target.files[0]), (e.target.value = ''))} />
+            <input ref={champPhoto} type="file" accept="image/*" multiple hidden onChange={(e) => (choisirPhotos(e.target.files), (e.target.value = ''))} />
             <input ref={champVideo} type="file" accept="video/*" hidden onChange={(e) => (choisirVideo(e.target.files[0]), (e.target.value = ''))} />
           </div>
+        )}
+        {brouillon.media.length > 0 && (
+          <ul className="editeur__medias" aria-label="Photos et vidéos">
+            {brouillon.media.map((element) => (
+              <li key={element.cle}>
+                <Element ecoleId={ecoleId} actuId={actu.id} element={element} />
+                <button type="button" aria-label="Retirer" onClick={() => retirer(element)}>
+                  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </li>
+            ))}
+          </ul>
         )}
         {brouillon.niveau === 'important' && (
           <label className="editeur__ligne" htmlFor="actu-en-haut">
@@ -511,10 +647,10 @@ function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }
         )}
       </div>
       <div className="actus__barre">
-        <button type="button" className="btn btn--secondary actus__brouillon" disabled={vide || envoi || photoEnvoi} onClick={() => envoyer(false)}>
+        <button type="button" className="btn btn--secondary actus__brouillon" disabled={vide || envoi || photoEnvoi > 0} onClick={() => envoyer(false)}>
           Brouillon
         </button>
-        <button type="button" className="btn btn--primary actus__principal" disabled={vide || envoi || photoEnvoi} onClick={() => envoyer(true)}>
+        <button type="button" className="btn btn--primary actus__principal" disabled={vide || envoi || photoEnvoi > 0} onClick={() => envoyer(true)}>
           {publiee ? 'Enregistrer' : 'Publier'}
         </button>
       </div>
@@ -655,7 +791,7 @@ export default function Actus({ ecoleId, prenom }) {
         </div>
       )}
       {vueAtelier ? (
-        <Atelier actus={visibles(atelier)} ouvrir={setEdite} ouverture={ouverture} changerOuverture={changerOuverture} />
+        <Atelier ecoleId={ecoleId} actus={visibles(atelier)} ouvrir={setEdite} ouverture={ouverture} changerOuverture={changerOuverture} />
       ) : (
         <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} />
       )}
@@ -664,7 +800,7 @@ export default function Actus({ ecoleId, prenom }) {
           <button
             type="button"
             className="btn btn--primary actus__principal"
-            onClick={() => setEdite({ id: null, niveau: 'normal', texte: '', enHautJusquau: dansJours(7), notifier: false, publieeLe: null, photo: null, video: null, document: null })}
+            onClick={() => setEdite({ id: null, niveau: 'normal', texte: '', enHautJusquau: dansJours(7), notifier: false, publieeLe: null, media: [], document: null })}
           >
             Nouvelle actu
           </button>

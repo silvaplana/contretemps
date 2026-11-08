@@ -202,48 +202,50 @@ def photos(tmp_path, monkeypatch):
     return core.news_client.storage
 
 
-def _image():
+def _image(couleur=(200, 40, 40)):
     import io
 
     from PIL import Image
 
     tampon = io.BytesIO()
-    Image.new("RGB", (2400, 1200), (200, 40, 40)).save(tampon, "PNG")
+    Image.new("RGB", (2400, 1200), couleur).save(tampon, "PNG")
     return tampon.getvalue()
 
 
-def _envoyer_photo(client, ecole_id):
-    reponse = client.post(f"/ecoles/{ecole_id}/news/photos", files={"fichier": ("gala.png", _image(), "image/png")})
+def _envoyer_photo(client, ecole_id, couleur=(200, 40, 40)):
+    reponse = client.post(f"/ecoles/{ecole_id}/news/photos", files={"fichier": ("gala.png", _image(couleur), "image/png")})
     assert reponse.status_code == 201, reponse.text
     return reponse.json()["photo"]
 
 
-def test_photo_envoyee_montree_puis_effacee(client, db_session, e, photos):
+def test_carrousel_de_photos_montrees_puis_effacees(client, db_session, e, photos):
     eid = e["ecole"].id
     assert client.post(f"/ecoles/{eid}/news/photos", files={"fichier": ("x.txt", b"pas une image", "text/plain")}).status_code == 400
-    sha = _envoyer_photo(client, eid)
-    actu = _publier(client, eid, "Le gala", photo=sha)
-    assert actu["photo"] == sha
+    rouge, bleue = _envoyer_photo(client, eid), _envoyer_photo(client, eid, (20, 40, 200))
+    actu = _publier(client, eid, "Le gala", media=[{"photo": rouge}, {"photo": bleue}])
+    assert actu["media"] == [{"photo": rouge, "video": None}, {"photo": bleue, "video": None}]
 
-    image = client.get(f"/ecoles/{eid}/news/{actu['id']}/photo")
+    image = client.get(f"/ecoles/{eid}/news/{actu['id']}/photos/{bleue}")
     assert image.status_code == 200 and image.headers["content-type"] == "image/jpeg"
     from PIL import Image
     import io
 
     assert max(Image.open(io.BytesIO(image.content)).size) == 1600
-    # La photo d'une autre école ne se montre pas.
-    assert client.get(f"/ecoles/{e['autre'].id}/news/{actu['id']}/photo").status_code == 404
-    # Une photo inconnue est refusée.
-    assert client.post(f"/ecoles/{eid}/news", json={"body": "x", "photo": "0" * 64}).status_code == 400
+    # La photo d'une autre école, ou d'une autre actu, ne se montre pas.
+    assert client.get(f"/ecoles/{e['autre'].id}/news/{actu['id']}/photos/{bleue}").status_code == 404
+    autre = _publier(client, eid, "Autre")
+    assert client.get(f"/ecoles/{eid}/news/{autre['id']}/photos/{bleue}").status_code == 404
+    # Une photo inconnue est refusée ; 10 éléments au plus.
+    assert client.post(f"/ecoles/{eid}/news", json={"body": "x", "media": [{"photo": "0" * 64}]}).status_code == 400
+    assert client.post(f"/ecoles/{eid}/news", json={"body": "x", "media": [{"photo": rouge}] * 11}).status_code == 422
 
-    # Retirée : elle est effacée du disque.
-    client.put(f"/ecoles/{eid}/news/{actu['id']}", json={"body": "Le gala", "photo": None})
-    assert not photos.path(eid, sha).exists()
+    # L'ordre change ; la photo retirée est effacée du disque, l'autre reste.
+    remise = client.put(f"/ecoles/{eid}/news/{actu['id']}", json={"body": "Le gala", "media": [{"photo": bleue}]}).json()
+    assert [m["photo"] for m in remise["media"]] == [bleue]
+    assert not photos.path(eid, rouge).exists() and photos.path(eid, bleue).exists()
 
-    sha = _envoyer_photo(client, eid)
-    actu = _publier(client, eid, "Encore", photo=sha)
     assert client.delete(f"/ecoles/{eid}/news/{actu['id']}").status_code == 204
-    assert not photos.path(eid, sha).exists()
+    assert not photos.path(eid, bleue).exists()
 
 
 def test_video_et_document(client, db_session, e, photos):
@@ -260,25 +262,131 @@ def test_video_et_document(client, db_session, e, photos):
     db_session.add_all([fichier, dossier, chez_voisin])
     db_session.commit()
 
-    actu = _publier(client, eid, "Le stage en vidéo", video_id=video.id, document_id=fichier.id)
-    assert actu["video"]["id"] == video.id
+    photo = _envoyer_photo(client, eid)
+    actu = _publier(client, eid, "Le stage", media=[{"video_id": video.id}, {"photo": photo}], document_id=fichier.id)
+    assert actu["media"][0]["video"]["id"] == video.id and actu["media"][1]["photo"] == photo
     assert actu["document"] == {"id": fichier.id, "name": "Planning.pdf"}
-    assert client.get(f"/ecoles/{eid}/news").json()["items"][0]["video"]["id"] == video.id
+    assert client.get(f"/ecoles/{eid}/news").json()["items"][0]["media"][0]["video"]["id"] == video.id
 
-    for mauvais in ({"video_id": autre_video.id}, {"document_id": dossier.id}, {"document_id": chez_voisin.id},
-                    {"video_id": video.id, "photo": _envoyer_photo(client, eid)}):
+    for mauvais in ({"media": [{"video_id": autre_video.id}]}, {"document_id": dossier.id}, {"document_id": chez_voisin.id},
+                    {"media": [{"video_id": video.id, "photo": photo}]}, {"media": [{}]}):
         assert client.post(f"/ecoles/{eid}/news", json={"body": "x", **mauvais}).status_code == 400, mauvais
 
     # Une brève n'a pas de média : passer en brève efface la vidéo.
     video_id = video.id
-    breve = client.put(f"/ecoles/{eid}/news/{actu['id']}", json={"body": "Court", "level": "brief", "video_id": video_id}).json()
-    assert breve["video"] is None and breve["document"] is None
+    breve = client.put(f"/ecoles/{eid}/news/{actu['id']}", json={"body": "Court", "level": "brief", "media": [{"video_id": video_id}]}).json()
+    assert breve["media"] == [] and breve["document"] is None
     db_session.expire_all()
     assert db_session.get(Video, video_id) is None
 
-    # Une vidéo supprimée ailleurs (panneau Usage) laisse l'actu.
+    # Une vidéo supprimée ailleurs (panneau Usage) laisse l'actu et ses photos.
     video = core.videos_client.create(db_session, eid, "Actualité", "z.mp4", e["seb"].id)
-    actu = _publier(client, eid, "Avec vidéo", video_id=video.id)
-    core.videos_client.delete(db_session, actu["video"]["id"])
+    photo = _envoyer_photo(client, eid)  # l'autre est partie avec la brève
+    actu = _publier(client, eid, "Avec vidéo", media=[{"photo": photo}, {"video_id": video.id}])
+    core.videos_client.delete(db_session, video.id)
     db_session.expire_all()
-    assert db_session.get(NewsItem, actu["id"]).video_id is None
+    assert [m["photo"] for m in client.get(f"/ecoles/{eid}/news").json()["items"][0]["media"]] == [photo]
+
+
+# --- Instagram (§6 bis) ---
+
+
+@pytest.fixture()
+def faux_instagram(monkeypatch):
+    """Instagram remplacé : un compte, des posts, des fichiers."""
+    from news import instagram
+
+    etat = {"posts": [], "refus": None, "rafraichi": 0}
+
+    def compte(jeton):
+        if etat["refus"]:
+            raise instagram.InstagramError(etat["refus"])
+        return {"user_id": "17841", "username": "contretemps_danse"}
+
+    def posts(jeton):
+        if etat["refus"]:
+            raise instagram.InstagramError(etat["refus"])
+        return etat["posts"]
+
+    def rafraichir(jeton):
+        etat["rafraichi"] += 1
+        return jeton + "-neuf"
+
+    def telecharger(url, max_bytes):
+        return _image() if url.endswith(".jpg") else b"\x00" * 100
+
+    monkeypatch.setattr(instagram, "fetch_account", compte)
+    monkeypatch.setattr(instagram, "fetch_recent_media", posts)
+    monkeypatch.setattr(instagram, "refresh_token", rafraichir)
+    monkeypatch.setattr(instagram, "download", telecharger)
+    return etat
+
+
+def _post(ident, quand, **kw):
+    return {"id": ident, "timestamp": quand.strftime("%Y-%m-%dT%H:%M:%S+0000"), "caption": f"Post {ident}", **kw}
+
+
+def test_instagram_relie_puis_relaie_les_nouveaux_posts(client, db_session, e, en_tant_que, photos, faux_instagram):
+    import shutil
+    from datetime import datetime, timezone
+
+    from app.main import core
+    from news.models import NewsInstagram
+    from videos import dossier_ecole
+
+    eid = e["ecole"].id
+    url = f"/ecoles/{eid}/news/instagram"
+    en_tant_que(e["seb"])
+    assert client.get(url).json()["linked"] is False
+    faux_instagram["refus"] = "Invalid OAuth access token"
+    assert client.put(url, json={"token": "IGAA" + "x" * 40}).status_code == 400
+    faux_instagram["refus"] = None
+    relie = client.put(url, json={"token": "IGAA" + "x" * 40}).json()
+    assert relie["linked"] is True and relie["username"] == "contretemps_danse"
+
+    lien = db_session.get(NewsInstagram, eid)
+    assert "IGAA" not in lien.token_encrypted  # la clé est chiffrée
+    apres = datetime.now(timezone.utc) + timedelta(minutes=1)
+    avant = datetime.now(timezone.utc) - timedelta(days=3)
+    faux_instagram["posts"] = [  # du plus récent au plus ancien, comme Instagram
+        _post("4", apres + timedelta(minutes=3), media_type="CAROUSEL_ALBUM", children={"data": [
+            {"media_type": "IMAGE", "media_url": "https://cdn/a.jpg"},
+            {"media_type": "VIDEO", "media_url": "https://cdn/b.mp4"},
+        ]}),
+        _post("3", apres + timedelta(minutes=2), media_type="VIDEO", media_url="https://cdn/v.mp4"),
+        _post("2", apres + timedelta(minutes=1), media_type="IMAGE", media_url="https://cdn/p.jpg"),
+        _post("1", avant, media_type="IMAGE", media_url="https://cdn/old.jpg"),  # avant la liaison
+    ]
+    try:
+        assert core.news_instagram.sync_all(db_session) == {eid: 3}
+        # Une seule fois.
+        assert core.news_instagram.sync(db_session, lien) == 0
+        fil = client.get(f"/ecoles/{eid}/news").json()["items"]
+        assert [i["body"] for i in fil] == ["Post 4", "Post 3", "Post 2"]
+        # Un album arrive entier, dans l'ordre.
+        assert [(bool(m["photo"]), bool(m["video"])) for m in fil[0]["media"]] == [(True, False), (False, True)]
+        assert fil[1]["media"][0]["video"] and fil[2]["media"][0]["photo"]
+        assert {i["author_name"] for i in fil} == {"Seb"} and not any(i["notify"] for i in fil)
+        # Une clé refusée plus tard : l'erreur se voit dans les paramètres.
+        faux_instagram["refus"] = "Error validating access token"
+        core.news_instagram.sync(db_session, lien)
+        assert "access token" in client.get(url).json()["last_error"]
+    finally:
+        shutil.rmtree(dossier_ecole(eid), ignore_errors=True)
+
+    # La clé se renouvelle d'elle-même avant ses 60 jours.
+    faux_instagram["refus"] = None
+    lien.token_refreshed_at -= timedelta(days=8)
+    db_session.commit()
+    core.news_instagram.sync(db_session, lien)
+    assert faux_instagram["rafraichi"] == 1
+
+    assert client.delete(url).json()["linked"] is False
+    assert db_session.get(NewsInstagram, eid) is None
+
+
+@pytest.mark.rbac_reel
+def test_instagram_reserve_a_qui_publie(client, e):
+    url = f"/ecoles/{e['ecole'].id}/news/instagram"
+    assert client.get(url, headers=entetes_session(e["zoe"])).status_code == 403
+    assert client.put(url, json={"token": "x" * 30}, headers=entetes_session(e["admin"])).status_code == 403

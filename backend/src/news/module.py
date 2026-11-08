@@ -7,6 +7,7 @@ from db import SessionLocal
 from registry import Module, Right, guide_file
 
 from .actions import actions
+from .instagram import InstagramRelay
 from .news import News
 from .receiver import PUBLISH, NewsReceiver
 from .storage import news_storage
@@ -17,7 +18,8 @@ def mount(app, core) -> None:
         notifications=core.notifications_client, storage=news_storage(), videos=core.videos_client,
         session_factory=SessionLocal,
     )
-    NewsReceiver(client=core.news_client, app=app)
+    core.news_instagram = InstagramRelay(core.news_client)
+    NewsReceiver(client=core.news_client, instagram=core.news_instagram, app=app)
 
 
 MODULE = Module(
