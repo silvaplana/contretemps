@@ -207,41 +207,89 @@ def _dossier_majuscules(nom: str) -> str:
     return nom_dossier(nom)
 
 
+def _saison_qui_contient(le):
+    """(nom, début, fin) de la saison de septembre à août qui contient `le`
+    (saison_par_defaut bascule au 1er août : un relevé du 31/08 créait la
+    saison d'après, qui ne le contient pas)."""
+    import datetime as dt
+
+    annee = le.year if le.month >= 9 else le.year - 1
+    return f"{annee}-{annee + 1}", dt.date(annee, 9, 1), dt.date(annee + 1, 8, 31)
+
+
+def _saison_du_releve(db: Session, org_id: int, fin: str):
+    """(saison, nom, à créer) où va le relevé qui finit le `fin` : la saison
+    de sa date de fin ; une saison passée absente est à créer (septembre à
+    août, comme dans Admin › Saisons) ; sinon la saison en cours."""
+    import datetime as dt
+
+    from saisons.saisons import saison_courante_id
+
+    le = dt.date.fromisoformat(fin)
+    with toutes_saisons(db):
+        saison = db.scalar(select(Saison).where(Saison.ecole_id == org_id, Saison.date_debut <= le, Saison.date_fin >= le))
+        courante = db.get(Saison, saison_courante_id(db, org_id))
+    if saison is None and courante is not None and le < courante.date_debut:
+        return None, _saison_qui_contient(le)[0], True
+    saison = saison or courante
+    return saison, saison.nom if saison else None, False
+
+
+def saison_releve():
+    """Pour la revue de l'import : la saison où le PDF sera rangé, et si
+    l'import la crée."""
+
+    def saison(db: Session, member: Member, fin: str) -> dict | None:
+        _, nom, a_creer = _saison_du_releve(db, member.org_id, fin)
+        return {"season": nom, "created": a_creer} if nom else None
+
+    return saison
+
+
+def doc_releve(documents):
+    """Pour la grille des relevés : l'id dans Docs du PDF rangé d'un relevé
+    (voir ranger_releve), sans rien créer ; None s'il n'y est pas."""
+    from notes_frais_contretemps.adapter import ClasseurContretemps
+
+    def trouver(db: Session, member: Member, compte: str, fin: str, nom: str) -> int | None:
+        saison, _, _ = _saison_du_releve(db, member.org_id, fin)
+        racine = documents.reserved_folder(db, member.org_id, "Financier", saison.id) if saison else None
+        noeud = racine
+        for nom_dossier in (RELEVES, _dossier_majuscules(compte)):
+            noeud = ClasseurContretemps._enfant(db, noeud.id, nom_dossier) if noeud else None
+        fichier = ClasseurContretemps._enfant(db, noeud.id, nom, dossier=False) if noeud else None
+        return fichier.id if fichier else None
+
+    return trouver
+
+
 def ranger_releve(documents, gestion_saisons):
     """Range le PDF d'un relevé importé dans Docs › Privé › Saison du relevé
-    (celle de sa date de fin) › Financier › RELEVES BANCAIRES › <nom du
-    compte>. Une saison passée absente est créée (septembre à août, comme une
-    saison créée après coup dans Admin › Saisons) ; une saison terminée et
-    fermée ne reçoit rien : à rouvrir dans Admin › Saisons."""
-    import datetime as dt
+    (voir _saison_du_releve, créée au besoin) › Financier › RELEVES
+    BANCAIRES › <nom du compte>. Une saison terminée et fermée le reçoit
+    aussi (Seb, 9/11) : on archive le document de la banque, les comptes de
+    la saison ne changent pas."""
     import tempfile
     from pathlib import Path
 
     from notes_frais.ports import Membre
     from notes_frais_contretemps.adapter import ClasseurContretemps
     from saisons.gestion import Duplication, ErreurSaison
-    from saisons.saisons import saison_courante_id, saison_par_defaut
 
     classeur = ClasseurContretemps(documents)
 
     def ranger(db: Session, member: Member, compte: str, fin: str, nom: str, contenu: bytes) -> str | None:
-        le = dt.date.fromisoformat(fin)
-        with toutes_saisons(db):
-            saison = db.scalar(
-                select(Saison).where(Saison.ecole_id == member.org_id, Saison.date_debut <= le, Saison.date_fin >= le)
-            )
-            courante = db.get(Saison, saison_courante_id(db, member.org_id))
-        if saison is None and courante is not None and le < courante.date_debut:
-            nom_saison, debut, fin_saison = saison_par_defaut(le)
+        saison, _, a_creer = _saison_du_releve(db, member.org_id, fin)
+        if a_creer:
+            import datetime as dt
+
+            nom_saison, debut, fin_saison = _saison_qui_contient(dt.date.fromisoformat(fin))
             try:
                 saison, _ = gestion_saisons.creer(db, member.org_id, nom_saison, debut, fin_saison, Duplication())
             except ErreurSaison as erreur:
                 return f"PDF non rangé dans Docs ({erreur})"
-        saison = saison or courante
         if saison is None:
             return None
-        if saison.id != (courante.id if courante else None) and not saison.ouverte:
-            return f"PDF non rangé : la saison {saison.nom} est fermée (Admin › Saisons › rouvrir, puis réimporter)"
         racine = documents.reserved_folder(db, member.org_id, "Financier", saison.id)
         if racine is None:
             return None

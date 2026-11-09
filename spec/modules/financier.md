@@ -46,14 +46,26 @@ même période) est ignoré : on peut redéposer toute une archive. Le compte re
 **Revue avant l'import (Seb, 9 novembre 2026 ; maquette
 https://claude.ai/artifact/Cfxf9LG6GKEmYC19vd3dv2)** : l'appli lit d'abord les fichiers **sans rien
 écrire** (ni lignes dans Comptes, ni PDF dans Docs) et montre sa proposition dans un tableau façon
-Excel, une ligne par relevé : **Fichier | À quoi il correspond | Compte** (« Compte courant …20401,
-oct. 2025 » ; étiquettes « déjà importé », « ignoré » pour un fichier qui n'est pas un relevé). Le
+Excel, une ligne par relevé : **Fichier | À quoi il correspond | Compte | Rangé dans** (« Compte
+courant …20401, oct. 2025 » ; étiquettes « déjà importé », « ignoré » pour un fichier qui n'est pas un
+relevé ; « Rangé dans » = « 2023-2024 › 401 », étiquette « saison créée » quand l'import la crée). Le
 compte est deviné par le numéro lu sur le relevé (ou contenu dans l'IBAN d'un compte relié à la
 banque) ; un compte inconnu est proposé comme « Nouveau : <nom> » ; il se change dans sa case
 (autre compte, « Ne pas importer ») ; « À choisir » bloque Valider. **Valider** importe avec les
 comptes choisis et range les PDF (§8, dossiers RELEVES BANCAIRES) ; **Annuler** ne change rien. Sur
 téléphone, le tableau glisse vers la gauche. Routes : `POST /finances/import/preview` (lecture),
 `POST /finances/import` avec `choices` (un choix par relevé, dans l'ordre).
+
+**Grille des relevés (Seb, 9 novembre 2026 ; maquette https://claude.ai/artifact/5T8GbmNkh9UsnXKYC1krep)** :
+Comptes › ⋯ › **Relevés**, plein écran avec « ← Comptes ». Une puce par saison (pastille rouge si un
+relevé y manque), puis un tableau une ligne par compte, une case par mois de la saison :
+✓ vert = couvert par un relevé (toucher ouvre son PDF dans Docs) ; – vert clair = **aucun mouvement**,
+le relevé suivant repart du même solde (un livret n'a pas de relevé les mois sans opération) ;
+! rouge = **il manque un relevé**, les soldes de deux relevés ne se suivent pas ; ↓ orange = après le
+dernier relevé, la banque reliée montre des opérations ce mois-là (relevé à importer) ; ? gris = après
+le dernier relevé, **en attente du prochain** (on ne peut pas savoir avant lui s'il y a eu du
+mouvement) ; vide = avant le premier relevé importé ou mois à venir. Dessous : « Il manque N relevés
+en <saison> : … » et le bouton Importer des relevés. Route : `GET /finances/statements/calendar`.
 
 Pas de saisie manuelle d'opérations. Pas d'import CSV pour l'instant (un CSV n'a pas de soldes à
 vérifier). La **connexion bancaire** (§3.5) ajoute des opérations provisoires « en attente du
@@ -346,8 +358,10 @@ ouvertes) :
 
 - **RELEVES BANCAIRES** › un dossier par compte en banque (le nom de sa puce dans Comptes) : le PDF de
   chaque relevé importé y est rangé, dans la saison de sa date de fin ; une saison passée absente est
-  créée (septembre à août, comme dans Admin › Saisons) ; une saison terminée et fermée ne reçoit rien
-  (la rouvrir, puis réimporter). Le dossier est celui du compte validé dans la revue de l'import (§3.1).
+  créée (septembre à août : la saison qui contient la date de fin, un relevé du 31 août va dans la
+  saison qui se termine) ; une saison terminée et fermée le reçoit aussi (Seb, 9/11 : on archive le
+  document de la banque, les comptes de la saison ne changent pas). Le dossier est celui du compte
+  validé dans la revue de l'import (§3.1).
   Réimporter un relevé déjà importé range son PDF sans recréer ses lignes : c'est ainsi qu'on range les
   relevés importés avant le 30 octobre (leur PDF n'avait pas été gardé).
 - **ACHATS** › un dossier par mois de la pièce, « MM.AAAA » (« 08.2026 »), créé avec la première pièce

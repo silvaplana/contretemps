@@ -40,6 +40,10 @@ export function apercuReleves(fichiers) {
   return appel('/import/preview', { method: 'POST', body })
 }
 
+// Grille des relevés, saison par saison (backend statement_calendar) :
+// { seasons: [{ id, name, current, accounts: [{ id, name, months: [{ month, state, file, docId }] }] }] }.
+export const grilleReleves = () => appel('/statements/calendar')
+
 // Saisons de l'école : { seasons: [{ id, name, startDate, endDate, current }], today }.
 export const saisons = () => appel('/seasons')
 

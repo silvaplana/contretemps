@@ -7,6 +7,7 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
+import { requestStatements } from '../finances/RelevesGrille.jsx'
 import { requestPlanComptable } from '../finances/compta/PlanComptable.jsx'
 import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
@@ -92,6 +93,7 @@ export default function Financier() {
             ? [
                 { label: 'Se connecter aux comptes en banque', icon: 'calculator', onClick: requestBank },
                 { label: 'Importer des relevés', icon: 'paperclip', onClick: requestStatementImport },
+                { label: 'Relevés', icon: 'check', onClick: requestStatements },
                 { label: 'Plan comptable', icon: 'docs', onClick: requestPlanComptable },
                 { label: 'Soldes de départ', icon: 'calculator', onClick: requestSoldesDepart },
               ]

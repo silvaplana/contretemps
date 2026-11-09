@@ -10,6 +10,7 @@ import { BalanceChart } from "./BalanceChart.jsx";
 import BanquePanel from "./BanquePanel.jsx";
 import FicheCompte from "./FicheCompte.jsx";
 import RevueReleves from "./RevueReleves.jsx";
+import RelevesGrille, { RELEVES_EVENT } from "./RelevesGrille.jsx";
 import Caisse from "./compta/Caisse.jsx";
 import FicheOperation from "./compta/FicheOperation.jsx";
 import PlanComptable, {
@@ -398,11 +399,14 @@ export default function Comptes({ onChange }) {
   useEffect(() => {
     const plan = () => setVolet("plan");
     const soldes = () => setVolet("soldes");
+    const releves = () => setVolet("releves");
     window.addEventListener(PLAN_EVENTS.plan, plan);
     window.addEventListener(SOLDES_EVENTS.soldes, soldes);
+    window.addEventListener(RELEVES_EVENT, releves);
     return () => {
       window.removeEventListener(PLAN_EVENTS.plan, plan);
       window.removeEventListener(SOLDES_EVENTS.soldes, soldes);
+      window.removeEventListener(RELEVES_EVENT, releves);
     };
   }, []);
 
@@ -602,6 +606,18 @@ export default function Comptes({ onChange }) {
         {banque}
         {input}
       </>
+    );
+  }
+  if (volet === "releves") {
+    return (
+      <div className="fin-comptes account-card">
+        {input}
+        {importReport && <p className="history-report">{importReport}</p>}
+        <RelevesGrille
+          onClose={() => setVolet(null)}
+          onImport={() => fileInput.current?.click()}
+        />
+      </div>
     );
   }
   if (volet === "soldes") {

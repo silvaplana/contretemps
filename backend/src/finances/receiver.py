@@ -249,6 +249,27 @@ class FinancesReceiver:
             except ValueError as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+        @app.get("/finances/statements/calendar")
+        def get_statement_calendar(db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Grille des relevés, saison par saison (la plus récente en
+            premier) : {"seasons": [{"id", "name", "current", "accounts":
+            [{"id", "name", "months": [{"month", "state", ...}]}]}]}."""
+            try:
+                seasons = sorted(self.seasons(db, member.org_id), key=lambda s: s.start_date, reverse=True)
+                return {
+                    "seasons": [
+                        {
+                            "id": s.id,
+                            "name": s.name,
+                            "current": s.current,
+                            **client.statement_calendar(db, member, s.start_date, s.end_date),
+                        }
+                        for s in seasons
+                    ]
+                }
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+
         @app.get("/finances/ledger")
         def get_ledger(account: int | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
             """Historique de tous les comptes ensemble (défaut) ou d'un seul."""

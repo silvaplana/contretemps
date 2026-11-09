@@ -201,6 +201,27 @@ def test_import_follows_the_validated_choices(finances, db_session):
         finances.import_files(db_session, AUTRE_ECOLE, [second], choices=[courant_id])
 
 
+def test_statement_calendar(finances, db_session):
+    """Grille des relevés (Seb, 9/11) : un état par compte et par mois."""
+    first, second, livret = history()
+    # Livret : relevé suivant qui repart du même solde, deux mois plus tard
+    # (aucun mouvement entre les deux) ; courant : un trou (soldes qui ne se
+    # suivent pas) en octobre.
+    livret2 = ("l2.pdf", make_statement(LIVRET, ("30/09/2024", 350000), [("15/10/2024", "INTERETS", 1000, [])], "31/10/2024"))
+    courant3 = ("c3.pdf", make_statement(COURANT, ("31/10/2024", 99999), [("05/11/2024", "CB", -1000, [])], "30/11/2024"))
+    finances.import_files(db_session, TRESORIER, [first, second, livret, livret2, courant3])
+    calendar = finances.statement_calendar(db_session, TRESORIER, "2024-06-01", "2025-01-31", today="2025-01-15")
+    states = {a["name"]: [m["state"] for m in a["months"]] for a in calendar["accounts"]}
+    #                          juin      juil  août  sept       oct        nov   déc        janv
+    assert states["Compte courant"] == ["before", "ok", "ok", "missing", "missing", "ok", "waiting", "waiting"]
+    assert states["Livret Bleu"] == ["ok", "ok", "quiet", "quiet", "ok", "waiting", "waiting", "waiting"]
+    months = calendar["accounts"][0]["months"]
+    assert months[1] == {"month": "2024-07", "state": "ok", "file": "c1.pdf", "docId": None}
+    # Mois à venir.
+    later = finances.statement_calendar(db_session, TRESORIER, "2025-01-01", "2025-02-28", today="2025-01-15")
+    assert [m["state"] for m in later["accounts"][0]["months"]] == ["waiting", "future"]
+
+
 def test_missing_statement_is_reported(finances, db_session):
     first, _, livret = history()
     later = ("c3.pdf", make_statement(COURANT, ("30/09/2024", 50000), [("05/10/2024", "CB", -1000, [])], "31/10/2024"))
@@ -300,6 +321,8 @@ def test_routes(client, db_session, ecole):
     revue = client.post("/finances/import/preview", files=files, headers=tresorier)
     assert revue.status_code == 200, revue.text
     assert [r["account"] for r in revue.json()["rows"]] == ["new", "new", "new"]
+    # Saison d'arrivée du PDF : 2023-2024, créée par l'import (Seb, 9/11).
+    assert {(r["season"], r["seasonCreated"]) for r in revue.json()["rows"]} == {("2023-2024", True)}
     assert client.get("/finances/ledger", headers=tresorier).json()["rows"] == []
     reponse = client.post("/finances/import", files=files, data={"choices": '["new", "new", "new"]'}, headers=tresorier)
     assert reponse.status_code == 200, reponse.text
@@ -337,11 +360,25 @@ def test_routes(client, db_session, ecole):
         db_session, ecole["ecole"].id, "Financier", saisons[0]["id"]).id)["RELEVES BANCAIRES"])["COMPTE COURANT"])
     assert len(courant) == 2
     assert client.get("/finances/ledger", headers=tresorier).json()["total"] == 4422.61
+    # Grille des relevés : la case d'un relevé ouvre son PDF dans Docs.
+    grille = client.get("/finances/statements/calendar", headers=tresorier).json()["seasons"]
+    passee = next(g for g in grille if g["name"] == "2023-2024")
+    juillet = next(m for m in passee["accounts"][0]["months"] if m["month"] == "2024-07")
+    assert juillet["state"] == "ok" and juillet["docId"] in courant.values()
+    # Une saison terminée et fermée reçoit quand même le PDF (Seb, 9/11).
+    from saisons.models import Saison
+
+    db_session.get(Saison, saisons[0]["id"]).ouverte = False
+    db_session.commit()
+    juin = ("c0.pdf", make_statement(COURANT, ("31/05/2024", 100000), [("03/06/2024", "CB", -1000, [])], "30/06/2024"))
+    ferme = client.post("/finances/import", files=[("files", (juin[0], juin[1], "application/pdf"))], headers=tresorier).json()
+    assert "rangé dans Docs › 2023-2024" in ferme["imported"][0]["detail"], ferme
     # Un admin qui n'est pas trésorier n'a pas les comptes.
     admin = entetes_session(ecole["admin"])
     assert client.get("/finances/ledger", headers=admin).status_code == 403
     assert client.post("/finances/import", files=files, headers=admin).status_code == 403
     assert client.post("/finances/import/preview", files=files, headers=admin).status_code == 403
+    assert client.get("/finances/statements/calendar", headers=admin).status_code == 403
 
 
 @pytest.mark.rbac_reel
