@@ -535,6 +535,9 @@ class Documents:
 
     @staticmethod
     def _sort_key(periodes):
+        # `periodes` suit les dates des saisons (Periods.list), pas leur création.
+        rang = {pid: i for i, pid in enumerate(periodes)}
+
         def cle(e):
             if e["system_kind"] == SYSTEM_EXCHANGE:
                 return (-1, 0, "")
@@ -542,7 +545,7 @@ class Documents:
                 return (0, 0, "")
             if e["system_kind"] == SYSTEM_PERIOD:
                 # Saison la plus récente d'abord.
-                return (1, -(e["period_id"] or 0), "")
+                return (1, -rang.get(e["period_id"], -1), "")
             if e["system_kind"] == SYSTEM_RESERVED:
                 return (1, 0, e["name"].lower())
             return (2 if e["kind"] == KIND_FOLDER else 3, 0 if e["pinned"] else 1, e["name"].lower())

@@ -377,6 +377,9 @@ Privé
 - **Public et Personnel** restent libres : pas de dossiers obligatoires, pas de verrou.
 - Sur ordinateur et téléphone, les saisons passées sont regroupées sous un dossier repliable
   « Saisons précédentes » dès qu'il y en a plus de trois, avec le cadenas sur leurs tuiles.
+- **Ordre** : les dossiers de saison suivent les dates des saisons, la plus récente d'abord (pas leur
+  ordre de création : une saison ancienne créée après coup pour ranger ses relevés se place à sa date,
+  Seb 9/11) ; les autres dossiers et fichiers sont par ordre alphabétique.
 
 ### 4.7 bis Dossiers réservés à un rôle (Seb, 17 octobre)
 

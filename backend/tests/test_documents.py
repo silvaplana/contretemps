@@ -468,3 +468,19 @@ def test_renommer_la_saison_renomme_son_dossier(client, ecole):
     # Renommer le dossier lui-même : refusé, en disant où changer le nom.
     refus = admin.modifier(dossier["id"], name="Autre")
     assert refus.status_code == 409 and "Admin › Saisons" in refus.json()["detail"]
+
+
+def test_dossiers_de_saison_par_date(client, ecole):
+    """Seb, 9/11 : les saisons créées après coup (relevés d'anciennes années)
+    s'affichaient dans l'ordre de création ; elles suivent leurs dates, la
+    plus récente d'abord."""
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    reponse = client.post(f"/ecoles/{ecole['id']}/saisons", json=NOUVELLE, headers=admin.h)
+    assert reponse.status_code == 201
+    admin.h = {**admin.h, "X-Compte-Id": str(reponse.json()["compte_id"])}
+    for annee in (2022, 2020, 2021):
+        ancienne = {"nom": f"{annee}-{annee + 1}", "date_debut": f"{annee}-09-01", "date_fin": f"{annee + 1}-08-31"}
+        assert client.post(f"/ecoles/{ecole['id']}/saisons", json=ancienne, headers=admin.h).status_code == 201
+    saisons = [e["name"] for e in admin.racine().json()["items"] if e["system_kind"] == "period"]
+    assert saisons[0] == "Saison 2027-2028"
+    assert saisons[-3:] == ["Saison 2022-2023", "Saison 2021-2022", "Saison 2020-2021"]
