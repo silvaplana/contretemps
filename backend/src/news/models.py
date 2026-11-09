@@ -50,8 +50,9 @@ class NewsItem(Base):
 
 
 class NewsMedia(Base):
-    """One photo or one video of an item, at its place in the carousel
-    (§3.3, Seb 8 November). A table rather than columns: an item has several."""
+    """One photo, one video or one link of an item, at its place in the
+    carousel (§3.3, Seb 8 and 9 November). A table rather than columns: an
+    item has several."""
 
     __tablename__ = "news_media"
 
@@ -61,6 +62,10 @@ class NewsMedia(Base):
     # Photo: its sha256 in the news storage (news/storage.py).
     photo_sha: Mapped[str | None] = mapped_column(String(64), nullable=True)
     video_id: Mapped[int | None] = mapped_column(ForeignKey("videos.id"), nullable=True, index=True)
+    # Link (YouTube or any site): its address and title; its picture, if
+    # any, is kept as a photo (photo_sha).
+    link_url: Mapped[str | None] = mapped_column(String(2000), nullable=True)
+    link_title: Mapped[str | None] = mapped_column(String(300), nullable=True)
 
 
 class NewsSeen(Base):

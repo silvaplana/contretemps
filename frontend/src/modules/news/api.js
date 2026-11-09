@@ -35,8 +35,14 @@ export function versEcran(n) {
     modifieeLe: new Date(`${n.updated_at}Z`),
     nouveau: n.is_new,
     // Le carrousel, dans l'ordre : chaque élément est une photo (son
-    // empreinte) ou une vidéo.
-    media: n.media.map((m) => ({ photo: m.photo, video: m.video ? videoVersEcran(m.video) : null })),
+    // empreinte), une vidéo ou un lien (avec son titre et l'image du site
+    // en photo).
+    media: n.media.map((m) => ({
+      photo: m.photo,
+      video: m.video ? videoVersEcran(m.video) : null,
+      lien: m.link,
+      titre: m.title,
+    })),
     document: n.document, // { id, name } ou null
   }
 }
@@ -47,7 +53,10 @@ const versServeur = (a) => ({
   on_top_until: a.niveau === 'important' ? a.enHautJusquau : null,
   notify: a.notifier,
   publish: a.publier,
-  media: a.media.map((m) => (m.photo ? { photo: m.photo } : { video_id: m.video.id })),
+  media: a.media.map((m) => {
+    if (m.lien) return { link: m.lien, title: m.titre, photo: m.photo ?? null }
+    return m.photo ? { photo: m.photo } : { video_id: m.video.id }
+  }),
   document_id: a.document?.id ?? null,
 })
 
@@ -108,6 +117,12 @@ export async function envoyerPhoto(ecoleId, fichier) {
   const corps = new FormData()
   corps.append('fichier', fichier)
   return (await appel(`/ecoles/${ecoleId}/news/photos`, { method: 'POST', body: corps })).photo
+}
+
+// Un lien (YouTube ou autre site) : le serveur lit son titre et son image.
+export async function ajouterLien(ecoleId, url) {
+  const r = await appel(`/ecoles/${ecoleId}/news/links`, json('POST', { url }))
+  return { lien: r.link, titre: r.title, photo: r.photo, photoLocale: r.preview }
 }
 
 // « Publier » avec une vidéo : l'envoi par blocs (utils/videoUploads.js)

@@ -4,6 +4,7 @@ out, or the right to write, « 🔒 Publier les actualités » (`news.publish`).
 
 from __future__ import annotations
 
+import base64
 from collections.abc import Callable
 from datetime import date
 
@@ -18,9 +19,10 @@ from db import get_db
 
 from .models import NewsItem
 from .instagram import InstagramError, InstagramRelay
+from .links import LinkError
 from .news import PUBLISH, READ, InvalidMedia, News, can_publish, can_read, on_top
 from .schemas import (
-    DocumentOut, FeedOut, InstagramIn, InstagramOut, LoginOut, MediaOut, NewsIn, NewsOut, PhotoOut, ReaderIn, ReaderOut,
+    DocumentOut, FeedOut, InstagramIn, InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, NewsIn, NewsOut, PhotoOut, ReaderIn, ReaderOut,
     SettingsIn, SettingsOut, VideoIn,
 )
 
@@ -40,8 +42,9 @@ def _out(client: News, db: Session, item: NewsItem, seen=None, me: int | None = 
         on_top=on_top(item, date.today()), notify=item.notify, author_name=item.author_name,
         published_at=item.published_at, updated_at=item.updated_at, is_new=is_new,
         media=[
-            MediaOut(photo=photo, video=VideoSortie.model_validate(video) if video else None)
-            for photo, video in client.media(db, item) if photo or video
+            MediaOut(photo=m.photo_sha, video=VideoSortie.model_validate(video) if video else None,
+                     link=m.link_url, title=m.link_title)
+            for m, video in client.media(db, item) if m.photo_sha or video or m.link_url
         ],
         document=DocumentOut(id=document.id, name=document.name) if document else None,
     )
@@ -60,6 +63,7 @@ class NewsReceiver:
         app.post("/ecoles/{ecole_id}/news", response_model=NewsOut, status_code=201)(self.create)
         app.post("/ecoles/{ecole_id}/news/photos", response_model=PhotoOut, status_code=201)(self.upload_photo)
         app.post("/ecoles/{ecole_id}/news/videos", response_model=VideoSortie, status_code=201)(self.add_video)
+        app.post("/ecoles/{ecole_id}/news/links", response_model=LinkOut, status_code=201)(self.add_link)
         app.get("/ecoles/{ecole_id}/news/settings", response_model=SettingsOut)(self.settings)
         app.put("/ecoles/{ecole_id}/news/settings", response_model=SettingsOut)(self.change_settings)
         app.get("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_status)
@@ -190,6 +194,18 @@ class NewsReceiver:
             raise HTTPException(status_code=413, detail="Photo trop lourde (25 Mo au plus)") from erreur
         except InvalidMedia as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+
+    def add_link(self, ecole_id: int, data: LinkIn, appelant: Compte = Depends(rbac.compte_appelant)):
+        """A link for the carousel: its title and picture, read now (§3.3)."""
+        self._publisher(appelant, ecole_id)
+        try:
+            title, photo = self.client.read_link(ecole_id, data.url)
+        except LinkError as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        preview = None
+        if photo:
+            preview = "data:image/jpeg;base64," + base64.b64encode(self.client.thumbnail(ecole_id, photo).read_bytes()).decode()
+        return LinkOut(link=data.url.strip(), title=title, photo=photo, preview=preview)
 
     def add_video(self, ecole_id: int, data: VideoIn, db: Session = Depends(get_db),
                   appelant: Compte = Depends(rbac.compte_appelant)):

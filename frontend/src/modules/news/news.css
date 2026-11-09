@@ -490,7 +490,7 @@
 }
 .editeur__ajouts {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
 .editeur__ajouts button {
@@ -680,6 +680,120 @@
   display: none;
 }
 
+/* Liens du carrousel (Seb, 9 novembre) : YouTube se lit dans la case,
+   un autre site montre son image, son titre et « Ouvrir le lien ». */
+.actu__youtube {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.actu__youtube-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: auto;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 28px;
+}
+.actu__media--youtube iframe {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+.actu__lien {
+  width: 100%;
+  background: var(--card-bg);
+}
+.actu__lien-texte {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px 16px;
+}
+.actu__lien-texte strong {
+  font-size: 17px;
+}
+.actu__lien-texte span {
+  color: var(--text-muted);
+  font-size: 15px;
+}
+.actu__lien-ouvrir {
+  display: grid;
+  place-items: center;
+  min-height: 48px;
+  margin-top: 8px;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 17px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.editeur__lien {
+  display: flex;
+  gap: 8px;
+}
+.editeur__lien input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+}
+.editeur__lien button {
+  min-width: 96px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+}
+.editeur__lien button:disabled {
+  opacity: 0.5;
+}
+/* Dans les vignettes de l'éditeur : juste l'image, ou le nom du site. */
+.editeur__medias .actu__youtube,
+.editeur__medias .actu__lien {
+  position: static;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.editeur__medias .actu__youtube-play {
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+}
+.editeur__medias .actu__lien:has(.actu__media) .actu__lien-texte,
+.editeur__medias .actu__lien-texte strong,
+.editeur__medias .actu__lien-ouvrir {
+  display: none;
+}
+.editeur__medias .actu__lien-texte {
+  height: 100%;
+  justify-content: center;
+  padding: 8px;
+  word-break: break-all;
+}
+
 /* Pendant le test : « Qui voit les actus » */
 .atelier__lien {
   width: 100%;
@@ -698,4 +812,8 @@
 /* « En haut de chaque actu : Texte | Photo, vidéo » */
 .parametres__choix {
   grid-template-columns: repeat(2, 1fr);
+}
+/* Les points du carrousel ne cachent pas « Ouvrir le lien ». */
+.carrousel .actu__lien-texte {
+  padding-bottom: 48px;
 }

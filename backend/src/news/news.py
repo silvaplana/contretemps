@@ -5,6 +5,7 @@ after publishing, so that « Annuler » can still stop it (§5)."""
 
 from __future__ import annotations
 
+import io
 import logging
 import threading
 from datetime import date, datetime, timezone
@@ -19,10 +20,11 @@ from saisons.portee import toutes_saisons
 from saisons.saisons import saison_courante_id
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from storage import LocalStorage, make_thumbnail
+from storage import FileTooLarge, LocalStorage, make_thumbnail
 from videos import Videos
 from videos.models import Video
 
+from . import links
 from .models import BRIEF, IMPORTANT, NewsItem, NewsMedia, NewsSeen, NewsSettings
 from .storage import DISPLAY_SIZE
 
@@ -156,18 +158,34 @@ class News:
             raise InvalidMedia("Ce fichier n'est pas une photo")
         return sha
 
+    def read_link(self, org_id: int, url: str) -> tuple[str, str | None]:
+        """A link added to the carousel: its title and the sha of its
+        picture, kept like a photo (None if the site has none). Raises
+        LinkError."""
+        preview = links.read(url)
+        photo = None
+        if preview.image:
+            try:
+                photo = self.store_photo(org_id, io.BytesIO(preview.image))
+            except (InvalidMedia, FileTooLarge):
+                photo = None
+        return preview.title, photo
+
+    def thumbnail(self, org_id: int, sha: str):
+        return self.storage.thumbnail_path(org_id, sha)
+
     def photo_path(self, item: NewsItem, sha: str):
         """The JPEG shown in the news (at most 1600 px), if this item has it."""
         if not any(m.photo_sha == sha for m in item.media):
             return None
         return self.storage.thumbnail_path(item.org_id, sha)
 
-    def media(self, db: Session, item: NewsItem) -> list[tuple[str | None, Video | None]]:
-        """(photo, video) for each media of the item, in order. A video
+    def media(self, db: Session, item: NewsItem) -> list[tuple[NewsMedia, Video | None]]:
+        """Each media of the item, in order, with its video. A video
         belongs to a season; the item outlives it."""
         with toutes_saisons(db):
             videos = {m.video_id: db.get(Video, m.video_id) for m in item.media if m.video_id}
-        return [(m.photo_sha, videos.get(m.video_id)) for m in item.media]
+        return [(m, videos.get(m.video_id)) for m in item.media]
 
     def document(self, db: Session, item: NewsItem) -> DocNode | None:
         if item.document_id is None:
@@ -179,9 +197,11 @@ class News:
         if len(media) > MAX_MEDIA:
             raise InvalidMedia(f"{MAX_MEDIA} photos ou vidéos au plus")
         for entry in media:
-            photo, video_id = entry.get("photo"), entry.get("video_id")
-            if bool(photo) == bool(video_id):
-                raise InvalidMedia("Chaque élément est une photo ou une vidéo")
+            photo, video_id, link = entry.get("photo"), entry.get("video_id"), entry.get("link")
+            if link and (video_id or not link.startswith(("http://", "https://"))):
+                raise InvalidMedia("Lien invalide")
+            if not link and bool(photo) == bool(video_id):
+                raise InvalidMedia("Chaque élément est une photo, une vidéo ou un lien")
             if photo and not self.storage.thumbnail_path(org_id, photo).exists():
                 raise InvalidMedia("Photo introuvable")
             if video_id:
@@ -218,7 +238,8 @@ class News:
              level: str, body: str, on_top_until: date | None, notify: bool, publish: bool,
              media: list[dict] | None = None, document_id: int | None = None) -> NewsItem:
         """Creates (`item=None`) or changes an item. `media`: its photos and
-        videos in order, each {"photo": sha} or {"video_id": id}. `publish`
+        videos in order, each {"photo": sha}, {"video_id": id} or
+        {"link": url, "title": …, "photo": sha of its picture}. `publish`
         puts it in the feed, or back in the drafts. A brief has no media.
         Raises InvalidMedia."""
         media = [] if level == BRIEF or media is None else media
@@ -236,7 +257,9 @@ class News:
         item.on_top_until = on_top_until if level == IMPORTANT else None
         item.notify = notify
         item.media = [
-            NewsMedia(position=i, photo_sha=m.get("photo"), video_id=m.get("video_id")) for i, m in enumerate(media)
+            NewsMedia(position=i, photo_sha=m.get("photo"), video_id=m.get("video_id"),
+                      link_url=m.get("link"), link_title=(m.get("title") or "")[:300] if m.get("link") else None)
+            for i, m in enumerate(media)
         ]
         item.document_id = document_id
         newly_published = publish and item.published_at is None

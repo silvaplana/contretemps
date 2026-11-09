@@ -10,15 +10,30 @@ from videos.schemas import VideoSortie
 
 
 class MediaIn(BaseModel):
-    """One element of the carousel: a photo or a video."""
+    """One element of the carousel: a photo, a video or a link."""
 
-    photo: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")  # from POST …/news/photos
+    photo: str | None = Field(None, pattern=r"^[0-9a-f]{64}$")  # from POST …/news/photos or …/links
     video_id: int | None = None  # from POST …/news/videos
+    link: str | None = Field(None, max_length=2000)  # from POST …/news/links; `photo` is its picture
+    title: str | None = Field(None, max_length=300)
 
 
 class MediaOut(BaseModel):
     photo: str | None = None
     video: VideoSortie | None = None
+    link: str | None = None
+    title: str | None = None
+
+
+class LinkIn(BaseModel):
+    url: str = Field(min_length=1, max_length=2000)
+
+
+class LinkOut(BaseModel):
+    link: str
+    title: str
+    photo: str | None = None  # the site's picture, kept like a photo
+    preview: str | None = None  # the same picture as a data: URL, for the editor
 
 
 class NewsIn(BaseModel):

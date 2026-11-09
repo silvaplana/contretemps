@@ -84,6 +84,14 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
   Docs, montré comme un bouton fichier qui l'ouvre comme dans Docs (PDF dans la visionneuse, Word/Excel
   dans OnlyOffice).
 - La vidéo se lit sur place : image d'attente, ▶ au centre, durée en bas à droite.
+- **Un lien** peut aussi être une case du carrousel (Seb, 9 novembre ; compte dans les 10). Un lien
+  **YouTube** (watch, youtu.be, shorts) se lit dans la case : l'image de la vidéo avec ▶, et la vidéo
+  YouTube (youtube-nocookie) ne se charge qu'au toucher, pour que le carrousel glisse encore du
+  doigt. Un **autre site** : son image, son titre, son nom (ex. contretemps.fr) et un bouton
+  « Ouvrir le lien » (nouvel onglet). Titre et image sont lus **une fois**, quand on ajoute le lien
+  (YouTube : oEmbed ; autre site : balises `og:title` / `og:image`, sinon `<title>`) ; l'image est
+  gardée comme une photo de l'actu, rien n'est relu ensuite. Le serveur ne lit que des adresses
+  publiques (pas le VPS lui-même ni un réseau privé).
 - Sous le texte : « **Prénom** · 6 novembre », jamais d'heure.
 - Pastille **« Nouveau »** sur les actus publiées depuis la dernière visite de la personne sur Actus.
   Elle s'efface à la visite suivante. Pas de badge sur l'onglet (les badges sont réservés à ce que la
@@ -117,7 +125,9 @@ De haut en bas :
 1. **Niveau** : trois grands boutons Important / Normal / Brève (Normal par défaut), avec une ligne
    d'explication sous le choix.
 2. **Texte** (obligatoire).
-3. **Photo**, **Vidéo**, **Document** (cachés pour une Brève). Photo : galerie ou appareil photo.
+3. **Photo**, **Vidéo**, **Lien**, **Document** (cachés pour une Brève), sur deux lignes. Lien : un
+   champ « Collez le lien (YouTube ou autre site) » et **Ajouter** (sans `https://`, on l'ajoute) ;
+   le lien rejoint les vignettes comme une photo. Photo : galerie ou appareil photo.
    Vidéo : jusqu'à 100 Mo avant compression, comme dans la Messagerie. Document : choisi dans Docs
    (on descend dans les dossiers, on touche le fichier). Photo et Vidéo **ajoutent** (plusieurs photos
    d'un coup), 10 au plus ; les vignettes s'alignent sous les boutons, chacune avec ✕ pour la
@@ -231,8 +241,12 @@ la clé étrangère vers `videos` reste, et une vidéo supprimée ailleurs ne la
 | `position` | int | l'ordre dans le carrousel, à partir de 0 |
 | `photo_sha` | str, nul | empreinte de la photo, rangée par `storage/` dans `NEWS_DIR` (par défaut `actualites/` à côté des vidéos), dossier de l'organisation ; on garde l'original et une copie JPEG de 1600 px au plus, la seule montrée |
 | `video_id` | int, FK `videos.id`, nul | module Vidéos : compression, image d'attente, lien signé ; rangée dans « Actualités » du panneau Usage |
+| `link_url` | str(2000), nul | lien de la case (http ou https), migration `e7a4c2d9b815` (Seb, 9 novembre) ; son image, s'il y en a une, est dans `photo_sha` |
+| `link_title` | str(300), nul | titre du lien, lu quand on l'ajoute |
 
-Une ligne a soit une photo, soit une vidéo. Retirer une photo ou une vidéo d'une actu, ou supprimer
+Une ligne a soit une photo, soit une vidéo, soit un lien (avec ou sans photo, son image). Deux
+colonnes nulles plutôt qu'une table : un lien est une case du carrousel comme les autres, et son
+image, rangée comme une photo, est effacée par le même chemin. Retirer une photo ou une vidéo d'une actu, ou supprimer
 l'actu, les efface. Une vidéo
 supprimée ailleurs (panneau Usage) laisse l'actu sans vidéo. Le document n'est qu'un lien : le
 supprimer de Docs fait disparaître le bouton. Le dossier des photos est compté dans « Usage
@@ -269,6 +283,7 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture, `media_first` (le `PUT` ne change que ce qu'on lui donne) ; `can_read` (voit l'onglet) et `can_choose_readers` pendant le test (§2 bis) |
 | `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `media` (`{photo}`) |
 | `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `media` (`{video_id}`) |
+| `POST …/news/links` | droit | `url` : lit le titre et l'image du lien ; rend `link`, `title`, `photo` (l'image gardée, ou nul) et `preview` (la même en `data:` pour l'éditeur), à donner ensuite dans `media` (`{link, title, photo}`) ; 400 si le lien ne répond pas |
 | `GET …/news/{id}/photos/{empreinte}` | tous | Une photo de l'actu (JPEG) ; brouillon : droit seulement |
 | `GET · PUT · DELETE …/news/instagram` | droit | Compte Instagram relié (§6 bis) : état (`can_sign_in` : bouton possible), relier avec `token`, délier |
 | `POST …/news/instagram/login` | droit | « Se connecter avec Instagram » : l'adresse de la page d'Instagram |
