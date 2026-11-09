@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { documentsApi } from '../../api/documents.js'
+import Icon from '../../components/Icon.jsx'
+import MenuEntete from '../../components/MenuEntete.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
 import {
   annulerTeleversement,
@@ -154,7 +156,8 @@ function Document({ document }) {
   )
 }
 
-export function CarteActu({ actu, ecoleId }) {
+// mediaEnHaut : réglage « En haut de chaque actu : Photo, vidéo » (Seb, 9 novembre).
+export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
   const signature = (
     <div className="actu__meta">
       <span>
@@ -183,20 +186,22 @@ export function CarteActu({ actu, ecoleId }) {
           <Alerte />
           Important
         </div>
+        {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
         <p className="actu__texte">{actu.texte || '…'}</p>
-        <Media ecoleId={ecoleId} actu={actu} />
+        {!mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
         <Document document={actu.document} />
         {signature}
       </article>
     )
   }
   return (
-    // Le texte d'abord, puis la photo ou la vidéo (Seb et les testeurs, 8 novembre).
+    // Par défaut le texte d'abord, puis la photo ou la vidéo (Seb et les testeurs, 8 novembre).
     <article className="actu actu--normale">
+      {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
       <div className="actu__corps">
         <p className="actu__texte">{actu.texte || '…'}</p>
       </div>
-      <Media ecoleId={ecoleId} actu={actu} />
+      {!mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
       <div className="actu__corps">
         <Document document={actu.document} />
         {signature}
@@ -205,7 +210,7 @@ export function CarteActu({ actu, ecoleId }) {
   )
 }
 
-function Fil({ actus, ecoleId }) {
+function Fil({ actus, ecoleId, mediaEnHaut }) {
   if (!actus.length) return <p className="actus__vide">Pas encore d’actu.</p>
   const enHaut = actus.filter((a) => a.enHaut)
   const autres = actus.filter((a) => !a.enHaut)
@@ -213,14 +218,14 @@ function Fil({ actus, ecoleId }) {
   return (
     <div className="actus__fil">
       {enHaut.map((a) => (
-        <CarteActu key={a.id} actu={a} ecoleId={ecoleId} />
+        <CarteActu key={a.id} actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} />
       ))}
       {autres.map((a, i) => {
         const titre = periodes[i] !== periodes[i - 1] ? periodes[i] : null
         return (
           <div key={a.id} className="actus__groupe">
             {titre && <div className="actus__periode">{titre}</div>}
-            <CarteActu actu={a} ecoleId={ecoleId} />
+            <CarteActu actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} />
           </div>
         )
       })}
@@ -279,7 +284,7 @@ function Lecteurs({ ecoleId, onRetour }) {
   )
 }
 
-function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, choisir, ouvrirLecteurs }) {
+function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, choisir, ouvrirLecteurs, parametres, changerParametres }) {
   return (
     <div className="atelier">
       {actus.map((a) => (
@@ -300,26 +305,49 @@ function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, choisir,
         ecoleId={ecoleId}
         ouverture={ouverture}
         changerOuverture={changerOuverture}
+        mediaEnHaut={mediaEnHaut}
+        changerMediaEnHaut={changerMediaEnHaut}
         choisir={choisir}
         ouvrirLecteurs={ouvrirLecteurs}
+        ouvert={parametres}
+        setOuvert={changerParametres}
       />
     </div>
   )
 }
 
 // « Paramètres d'édition » : repliés par défaut, on les déroule au besoin
-// (Seb, 8 novembre).
-function ParametresEdition({ ecoleId, ouverture, changerOuverture, choisir, ouvrirLecteurs }) {
-  // Au retour d'Instagram, ils s'ouvrent sur le résultat.
-  const [ouvert, setOuvert] = useState(Boolean(retourInstagram))
+// (Seb, 8 novembre) ; aussi depuis le menu ⋯ (Seb, 9 novembre).
+function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, choisir, ouvrirLecteurs, ouvert, setOuvert }) {
   return (
-    <div className="parametres">
-      <button type="button" className="parametres__titre" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
-        <span>Paramètres d’édition</span>
-        <span className="parametres__chevron" aria-hidden="true">›</span>
-      </button>
+    <div className="parametres" id="actus-parametres">
+      {/* Même présentation que les volets d'Admin › École (Seb, 9 novembre). */}
+      <h3 className="section-label parametres__titre">
+        <button type="button" className="section-label__depliant" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
+          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
+          Paramètres d’édition des actus
+        </button>
+      </h3>
       {ouvert && (
         <>
+          <h4 className="section-label perso__sous-partie">En haut de chaque actu</h4>
+          <div className="editeur__niveaux parametres__choix" role="group" aria-label="En haut de chaque actu">
+            {[
+              [false, 'Texte'],
+              [true, 'Photo, vidéo'],
+            ].map(([valeur, libelle]) => (
+              <button
+                key={libelle}
+                type="button"
+                className="editeur__niveau editeur__niveau--normal"
+                aria-pressed={mediaEnHaut === valeur}
+                onClick={() => mediaEnHaut !== valeur && changerMediaEnHaut(valeur)}
+              >
+                {libelle}
+              </button>
+            ))}
+          </div>
+          <h4 className="section-label perso__sous-partie">Ouverture de l’appli</h4>
           <div className="atelier__option">
             <span>Ouvrir l’appli sur les actus</span>
             <button
@@ -332,11 +360,15 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture, choisir, ouvr
             />
           </div>
           {choisir && (
-            <button type="button" className="atelier__option atelier__lien" onClick={ouvrirLecteurs}>
-              <span>Qui voit les actus (pendant le test)</span>
-              <span className="choix__chevron" aria-hidden="true">›</span>
-            </button>
+            <>
+              <h4 className="section-label perso__sous-partie">Pendant le test</h4>
+              <button type="button" className="atelier__option atelier__lien" onClick={ouvrirLecteurs}>
+                <span>Qui voit les actus (pendant le test)</span>
+                <span className="choix__chevron" aria-hidden="true">›</span>
+              </button>
+            </>
           )}
+          <h4 className="section-label perso__sous-partie">Instagram</h4>
           <Instagram ecoleId={ecoleId} />
         </>
       )}
@@ -386,7 +418,6 @@ function Instagram({ ecoleId }) {
   if (!etat) return erreur ? <p className="parametres__erreur">{erreur}</p> : null
   return (
     <div className="atelier__option parametres__instagram">
-      <strong>Instagram</strong>
       {etat.relie ? (
         <>
           <p>
@@ -509,7 +540,7 @@ function ChoixDocument({ ecoleId, onChoisir, onFermer }) {
   )
 }
 
-function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }) {
+function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, onSupprimer }) {
   // Chaque photo ou vidéo a une clé, pour la retirer.
   const [brouillon, setBrouillon] = useState(() => ({ ...actu, media: actu.media.map((m, i) => ({ ...m, cle: `e${i}` })) }))
   const [envoi, setEnvoi] = useState(false)
@@ -717,6 +748,7 @@ function Editeur({ actu, auteur, ecoleId, onRetour, onEnregistrer, onSupprimer }
         <div className="editeur__apercu">
           <CarteActu
             ecoleId={ecoleId}
+            mediaEnHaut={mediaEnHaut}
             actu={{
               ...brouillon,
               enHaut: brouillon.niveau === 'important',
@@ -782,6 +814,8 @@ export default function Actus({ ecoleId, prenom }) {
   const [ouverture, setOuverture] = useState(true)
   const [choisir, setChoisir] = useState(false) // peut choisir qui voit les actus
   const [lecteurs, setLecteurs] = useState(false) // l'écran « Qui voit les actus » est ouvert
+  // Paramètres d'édition dépliés ; au retour d'Instagram, ils s'ouvrent sur le résultat.
+  const [parametres, setParametres] = useState(Boolean(retourInstagram))
   const [edite, setEdite] = useState(null) // l'actu ouverte dans l'éditeur
   const [caches, setCaches] = useState(new Set()) // supprimées, Annuler possible
   const [toast, setToast] = useState(null) // { texte, annuler }
@@ -853,6 +887,17 @@ export default function Actus({ ecoleId, prenom }) {
     })
   }
 
+  async function changerMediaEnHaut(valeur) {
+    setFil((f) => ({ ...f, mediaEnHaut: valeur }))
+    try {
+      await api.changerMediaEnHaut(ecoleId, valeur)
+      montrer(valeur ? 'Photos et vidéos en haut de chaque actu' : 'Texte en haut de chaque actu')
+    } catch (e) {
+      setFil((f) => ({ ...f, mediaEnHaut: !valeur }))
+      montrer(e.message)
+    }
+  }
+
   async function changerOuverture(valeur) {
     setOuverture(valeur)
     try {
@@ -882,12 +927,19 @@ export default function Actus({ ecoleId, prenom }) {
     </div>
   )
 
+  function montrerParametres() {
+    setOnglet('atelier')
+    setParametres(true)
+    // Une fois affichés, on descend jusqu'à eux.
+    setTimeout(() => document.getElementById('actus-parametres')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
+  }
+
   if (lecteurs) return <Lecteurs ecoleId={ecoleId} onRetour={() => setLecteurs(false)} />
 
   if (edite) {
     return (
       <>
-        <Editeur actu={edite} auteur={prenom} ecoleId={ecoleId} onRetour={() => setEdite(null)} onEnregistrer={enregistrer} onSupprimer={supprimer} />
+        <Editeur actu={edite} auteur={prenom} ecoleId={ecoleId} mediaEnHaut={fil?.mediaEnHaut} onRetour={() => setEdite(null)} onEnregistrer={enregistrer} onSupprimer={supprimer} />
         {toastEl}
       </>
     )
@@ -899,6 +951,10 @@ export default function Actus({ ecoleId, prenom }) {
 
   return (
     <div className={`actus ${vueAtelier ? 'actus--avec-barre' : ''}`}>
+      {fil.peutPublier && (
+        // Menu ⋯ : les mêmes Paramètres d'édition qu'en bas de l'onglet Édition.
+        <MenuEntete label="Actions des actus" actions={[{ label: 'Paramètres d’édition des actus', icon: 'edit', onClick: montrerParametres }]} />
+      )}
       {fil.peutPublier && (
         <div className="actus__onglets" role="tablist">
           {[
@@ -919,11 +975,15 @@ export default function Actus({ ecoleId, prenom }) {
           ouvrir={setEdite}
           ouverture={ouverture}
           changerOuverture={changerOuverture}
+          mediaEnHaut={fil.mediaEnHaut}
+          changerMediaEnHaut={changerMediaEnHaut}
           choisir={choisir}
           ouvrirLecteurs={() => setLecteurs(true)}
+          parametres={parametres}
+          changerParametres={setParametres}
         />
       ) : (
-        <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} />
+        <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} mediaEnHaut={fil.mediaEnHaut} />
       )}
       {vueAtelier && (
         <div className="actus__barre">

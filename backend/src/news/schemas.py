@@ -61,11 +61,13 @@ class VideoIn(BaseModel):
 
 class FeedOut(BaseModel):
     can_publish: bool
+    media_first: bool = False  # photos and videos on top of each item
     items: list[NewsOut]
 
 
 class SettingsOut(BaseModel):
     open_on_news: bool
+    media_first: bool = False
     # Sees the Actus tab (right « Voir les actualités » while in test).
     can_read: bool = True
     # Ticks who sees the news (administrateur principal, Super User).
@@ -84,7 +86,9 @@ class ReaderIn(BaseModel):
 
 
 class SettingsIn(BaseModel):
-    open_on_news: bool
+    # Only what is given changes.
+    open_on_news: bool | None = None
+    media_first: bool | None = None
 
 
 class InstagramIn(BaseModel):

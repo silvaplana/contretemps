@@ -556,27 +556,14 @@
   margin-top: 10px;
 }
 .parametres__titre {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  margin: 0;
+  font-size: 14px;
+}
+.parametres__titre .section-label__depliant {
   min-height: 48px;
-  padding: 0 4px;
-  border: 0;
-  background: none;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  cursor: pointer;
 }
-.parametres__chevron {
-  font-size: 22px;
-  transition: transform 0.15s;
-}
-.parametres__titre[aria-expanded='true'] .parametres__chevron {
-  transform: rotate(90deg);
+.parametres .perso__sous-partie {
+  margin: 6px 0 0 16px;
 }
 .parametres__instagram {
   flex-direction: column;
@@ -697,4 +684,9 @@
 .actus__interrupteur:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+/* « En haut de chaque actu : Texte | Photo, vidéo » */
+.parametres__choix {
+  grid-template-columns: repeat(2, 1fr);
 }

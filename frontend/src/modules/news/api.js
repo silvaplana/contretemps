@@ -53,7 +53,7 @@ const versServeur = (a) => ({
 
 export async function lireActus(ecoleId) {
   const r = await appel(`/ecoles/${ecoleId}/news`)
-  return { peutPublier: r.can_publish, actus: r.items.map(versEcran) }
+  return { peutPublier: r.can_publish, mediaEnHaut: r.media_first, actus: r.items.map(versEcran) }
 }
 
 export async function lireAtelier(ecoleId) {
@@ -98,6 +98,9 @@ export const changerLecteur = async (ecoleId, id, voit) =>
 
 export const changerOuverture = (ecoleId, valeur) =>
   appel(`/ecoles/${ecoleId}/news/settings`, json('PUT', { open_on_news: valeur }))
+// « En haut de chaque actu : Texte | Photo, vidéo » (§4.1).
+export const changerMediaEnHaut = (ecoleId, valeur) =>
+  appel(`/ecoles/${ecoleId}/news/settings`, json('PUT', { media_first: valeur }))
 
 // --- Médias (étape 2) ---
 

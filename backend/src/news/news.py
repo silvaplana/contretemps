@@ -112,12 +112,23 @@ class News:
         return True if settings is None else settings.open_on_news
 
     def set_open_on_news(self, db: Session, org_id: int, value: bool) -> None:
+        self._settings(db, org_id).open_on_news = value
+        db.commit()
+
+    def media_first(self, db: Session, org_id: int) -> bool:
+        settings = db.get(NewsSettings, org_id)
+        return False if settings is None else settings.media_first
+
+    def set_media_first(self, db: Session, org_id: int, value: bool) -> None:
+        self._settings(db, org_id).media_first = value
+        db.commit()
+
+    def _settings(self, db: Session, org_id: int) -> NewsSettings:
         settings = db.get(NewsSettings, org_id)
         if settings is None:
-            db.add(NewsSettings(org_id=org_id, open_on_news=value))
-        else:
-            settings.open_on_news = value
-        db.commit()
+            settings = NewsSettings(org_id=org_id, open_on_news=True, media_first=False)
+            db.add(settings)
+        return settings
 
     # --- Who sees the news while in test (§2 bis) ---
 
