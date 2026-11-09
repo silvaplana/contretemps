@@ -233,17 +233,23 @@ class FinancesReceiver:
 
         @app.post("/finances/import")
         async def import_statements(
-            files: list[UploadFile], choices: str | None = Form(None), db: Session = db_dep, member: Member = member_dep
+            files: list[UploadFile],
+            choices: str | None = Form(None),
+            seasons: str | None = Form(None),
+            db: Session = db_dep,
+            member: Member = member_dep,
         ) -> dict:
             """Relevés PDF ou archives (multipart, champ "files" répété), et
             les choix validés dans la revue (champ "choices", liste JSON, un
-            par relevé) : compte rendu importés / déjà présents / erreurs."""
+            par relevé ; champ "seasons", saisons passées à créer) : compte
+            rendu importés / déjà présents / erreurs."""
             uploaded = [(f.filename or "releve.pdf", await f.read()) for f in files]
             try:
                 chosen = json.loads(choices) if choices else None
+                new_seasons = json.loads(seasons) if seasons else None
                 # Lecture des PDF dans un thread : plusieurs secondes pour une
                 # archive de relevés.
-                return await run_in_threadpool(client.import_files, db, member, uploaded, chosen)
+                return await run_in_threadpool(client.import_files, db, member, uploaded, chosen, new_seasons)
             except PermissionError as exc:
                 raise HTTPException(status_code=403, detail=str(exc)) from exc
             except ValueError as exc:

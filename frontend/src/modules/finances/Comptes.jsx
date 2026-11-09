@@ -435,10 +435,10 @@ export default function Comptes({ onChange }) {
   }
 
   // Valider dans la revue : l'import se fait, avec les comptes choisis.
-  async function validateImport(choices) {
+  async function validateImport(choices, seasons) {
     const { files } = review;
     try {
-      const report = await api.importerReleves(files, choices);
+      const report = await api.importerReleves(files, choices, seasons);
       setReview(null);
       const operations = report.imported.reduce(
         (n, i) => n + Number.parseInt(i.detail.split(", ")[1]),
@@ -464,8 +464,8 @@ export default function Comptes({ onChange }) {
       setImportErrors(report.errors);
       await load();
     } catch (err) {
-      setReview(null);
-      setImportReport(`Import impossible : ${err.message}`);
+      // La revue reste ouverte, avec le message (ex. dates de saison refusées).
+      throw new Error(`Import impossible : ${err.message}`, { cause: err });
     }
   }
 

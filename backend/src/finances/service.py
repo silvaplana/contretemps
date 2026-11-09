@@ -88,6 +88,7 @@ class Finances:
         store_statement: Callable[[Session, Member, str, str, str, bytes], str | None] | None = None,
         statement_season: Callable[[Session, Member, str], dict | None] | None = None,
         statement_doc: Callable[[Session, Member, str, str, str], int | None] | None = None,
+        create_season: Callable[[Session, Member, str, str, str], None] | None = None,
     ) -> None:
         # Comptabilité (accounting.py) : compte du plan et pièce sur chaque
         # ligne de l'historique, si le sous-module est monté.
@@ -101,6 +102,9 @@ class Finances:
         # Le PDF rangé d'un relevé (db, membre, nom du compte, date de fin,
         # nom du fichier) : son id dans Docs, pour la grille des relevés.
         self.statement_doc = statement_doc
+        # Saison passée validée dans la revue (db, membre, nom, début, fin) :
+        # créée avant l'import ; ValueError si elle est refusée.
+        self.create_season = create_season
 
     # ----- import -----
 
@@ -132,11 +136,22 @@ class Finances:
                 "error": None,
                 **self._season_of(db, member, statement.end_date),
             })
-        return {"accounts": [{"id": a.id, "name": a.name} for a in accounts], "rows": rows}
+        # Saisons passées à créer, dates proposées, à valider (Seb, 9/11).
+        new_seasons = {r["season"]: r.pop("_new") for r in rows if r.get("_new")}
+        for r in rows:
+            r.pop("_new", None)
+        return {
+            "accounts": [{"id": a.id, "name": a.name} for a in accounts],
+            "rows": rows,
+            "newSeasons": sorted(new_seasons.values(), key=lambda n: n["start"]),
+        }
 
     def _season_of(self, db: Session, member: Member, end_date: str) -> dict:
         season = self.statement_season(db, member, end_date) if self.statement_season else None
-        return {"season": season["season"], "seasonCreated": season["created"]} if season else {"season": None, "seasonCreated": False}
+        if not season:
+            return {"season": None, "seasonCreated": False}
+        new = {"name": season["season"], "start": season["start"], "end": season["end"]} if season["created"] else None
+        return {"season": season["season"], "seasonCreated": season["created"], "_new": new}
 
     def statement_calendar(self, db: Session, member: Member, start: str, end: str, today: str | None = None) -> dict:
         """Grille des relevés (Seb, 9/11) : par compte, un état par mois de
@@ -198,7 +213,12 @@ class Finances:
         return {**cell, "state": "quiet" if following.start_balance == previous.end_balance else "missing"}
 
     def import_files(
-        self, db: Session, member: Member, files: list[tuple[str, bytes]], choices: list | None = None
+        self,
+        db: Session,
+        member: Member,
+        files: list[tuple[str, bytes]],
+        choices: list | None = None,
+        seasons: list[dict] | None = None,
     ) -> dict:
         """Importe des relevés PDF (ou des archives de PDF). Retourne le
         compte rendu : {"imported": [...], "skipped": [...], "errors": [...]},
@@ -206,8 +226,14 @@ class Finances:
 
         choices (validés dans la revue, voir preview_files) : un par relevé,
         dans le même ordre ; l'id d'un compte de l'organisation y met le
-        relevé, "skip" le laisse de côté, "new" ou None garde le compte lu."""
+        relevé, "skip" le laisse de côté, "new" ou None garde le compte lu.
+        seasons : les saisons passées validées ({"name", "start", "end"}),
+        créées d'abord."""
         _check(member)
+        for season in seasons or []:
+            if self.create_season is None:
+                break
+            self.create_season(db, member, season["name"], season["start"], season["end"])
         report: dict[str, list[dict]] = {"imported": [], "skipped": [], "errors": []}
         chosen = {
             a.id: a for a in db.scalars(select(FinAccount).where(FinAccount.org_id == member.org_id))

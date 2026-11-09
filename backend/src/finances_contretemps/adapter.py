@@ -209,20 +209,36 @@ def _dossier_majuscules(nom: str) -> str:
     return nom_dossier(nom)
 
 
-def _saison_qui_contient(le):
-    """(nom, début, fin) de la saison de septembre à août qui contient `le`
-    (saison_par_defaut bascule au 1er août : un relevé du 31/08 créait la
-    saison d'après, qui ne le contient pas)."""
+def _saison_proposee(db: Session, org_id: int, le):
+    """(nom, début, fin) proposés pour la saison passée qui contient `le`
+    (Seb, 9/11 : à valider dans la revue de l'import) : mêmes jour et mois
+    de début que les saisons de l'école (1er septembre à défaut), un an,
+    raccourcie si elle chevaucherait la saison suivante."""
     import datetime as dt
 
-    annee = le.year if le.month >= 9 else le.year - 1
-    return f"{annee}-{annee + 1}", dt.date(annee, 9, 1), dt.date(annee + 1, 8, 31)
+    with toutes_saisons(db):
+        saisons = list(db.scalars(select(Saison).where(Saison.ecole_id == org_id).order_by(Saison.date_debut)))
+    mois, jour = (saisons[0].date_debut.month, saisons[0].date_debut.day) if saisons else (9, 1)
+    annee = le.year if (le.month, le.day) >= (mois, jour) else le.year - 1
+
+    def le_(an):
+        try:
+            return dt.date(an, mois, jour)
+        except ValueError:  # 29 février
+            return dt.date(an, mois, 28)
+
+    debut, fin = le_(annee), le_(annee + 1) - dt.timedelta(days=1)
+    suivante = next((s.date_debut for s in saisons if s.date_debut > le), None)
+    if suivante is not None and fin >= suivante:
+        fin = suivante - dt.timedelta(days=1)
+    return f"{annee}-{annee + 1}", debut, fin
 
 
 def _saison_du_releve(db: Session, org_id: int, fin: str):
-    """(saison, nom, à créer) où va le relevé qui finit le `fin` : la saison
-    de sa date de fin ; une saison passée absente est à créer (septembre à
-    août, comme dans Admin › Saisons) ; sinon la saison en cours."""
+    """(saison, (nom, début, fin), à créer) où va le relevé qui finit le
+    `fin` : la saison de sa date de fin ; une saison passée absente est à
+    créer (dates proposées, voir _saison_proposee) ; sinon la saison en
+    cours."""
     import datetime as dt
 
     from saisons.saisons import saison_courante_id
@@ -232,9 +248,9 @@ def _saison_du_releve(db: Session, org_id: int, fin: str):
         saison = db.scalar(select(Saison).where(Saison.ecole_id == org_id, Saison.date_debut <= le, Saison.date_fin >= le))
         courante = db.get(Saison, saison_courante_id(db, org_id))
     if saison is None and courante is not None and le < courante.date_debut:
-        return None, _saison_qui_contient(le)[0], True
+        return None, _saison_proposee(db, org_id, le), True
     saison = saison or courante
-    return saison, saison.nom if saison else None, False
+    return saison, (saison.nom, saison.date_debut, saison.date_fin) if saison else None, False
 
 
 def saison_releve():
@@ -242,8 +258,11 @@ def saison_releve():
     l'import la crée."""
 
     def saison(db: Session, member: Member, fin: str) -> dict | None:
-        _, nom, a_creer = _saison_du_releve(db, member.org_id, fin)
-        return {"season": nom, "created": a_creer} if nom else None
+        _, proposee, a_creer = _saison_du_releve(db, member.org_id, fin)
+        if proposee is None:
+            return None
+        nom, debut, fin_saison = proposee
+        return {"season": nom, "created": a_creer, "start": debut.isoformat(), "end": fin_saison.isoformat()}
 
     return saison
 
@@ -265,6 +284,24 @@ def doc_releve(documents):
     return trouver
 
 
+def creer_saison(gestion_saisons):
+    """Crée une saison validée dans la revue de l'import, comme « Créer une
+    saison » d'Admin › Saisons, sans rien recopier."""
+    import datetime as dt
+
+    from saisons.gestion import Duplication, ErreurSaison
+
+    def creer(db: Session, member: Member, nom: str, debut: str, fin: str) -> None:
+        try:
+            gestion_saisons.creer(
+                db, member.org_id, nom, dt.date.fromisoformat(debut), dt.date.fromisoformat(fin), Duplication()
+            )
+        except ErreurSaison as erreur:
+            raise ValueError(f"Saison {nom} : {erreur}") from erreur
+
+    return creer
+
+
 def ranger_releve(documents, gestion_saisons):
     """Range le PDF d'un relevé importé dans Docs › Privé › Saison du relevé
     (voir _saison_du_releve, créée au besoin) › Financier › RELEVES
@@ -281,11 +318,11 @@ def ranger_releve(documents, gestion_saisons):
     classeur = ClasseurContretemps(documents)
 
     def ranger(db: Session, member: Member, compte: str, fin: str, nom: str, contenu: bytes) -> str | None:
-        saison, _, a_creer = _saison_du_releve(db, member.org_id, fin)
+        saison, proposee, a_creer = _saison_du_releve(db, member.org_id, fin)
         if a_creer:
-            import datetime as dt
-
-            nom_saison, debut, fin_saison = _saison_qui_contient(dt.date.fromisoformat(fin))
+            # Sans saison validée dans la revue (ancienne version de
+            # l'écran) : les dates proposées.
+            nom_saison, debut, fin_saison = proposee
             try:
                 saison, _ = gestion_saisons.creer(db, member.org_id, nom_saison, debut, fin_saison, Duplication())
             except ErreurSaison as erreur:

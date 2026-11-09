@@ -19,7 +19,11 @@ function rangeDans(row, choix, comptes) {
 
 export default function RevueReleves({ revue, onValider, onAnnuler }) {
   const [choix, setChoix] = useState(() => revue.rows.map((r) => r.account));
+  // Saisons passées à créer : dates proposées, modifiables (Seb, 9/11).
+  const [saisons, setSaisons] = useState(() => revue.newSeasons ?? []);
+  const datesInvalides = saisons.some((s) => !s.start || !s.end || s.start > s.end);
   const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState(null);
   const aChoisir = revue.rows.filter((r, i) => !r.error && choix[i] === null).length;
 
   function choisir(i, valeur) {
@@ -29,8 +33,11 @@ export default function RevueReleves({ revue, onValider, onAnnuler }) {
 
   async function valider() {
     setEnCours(true);
+    setErreur(null);
     try {
-      await onValider(choix);
+      await onValider(choix, saisons);
+    } catch (err) {
+      setErreur(err.message);
     } finally {
       setEnCours(false);
     }
@@ -42,6 +49,30 @@ export default function RevueReleves({ revue, onValider, onAnnuler }) {
         <strong>Voici ce que je propose.</strong> Rien n’est encore importé :
         vérifiez, changez le compte si besoin, puis validez.
       </p>
+      {saisons.map((s, i) => (
+        <div key={s.name} className="fin-revue__saison">
+          <p>
+            <strong>Saison {s.name} à créer</strong> (comme dans Admin › Saisons,
+            sans rien recopier) :
+          </p>
+          <label>
+            du{" "}
+            <input
+              type="date"
+              value={s.start}
+              onChange={(e) => setSaisons((l) => l.map((x, j) => (j === i ? { ...x, start: e.target.value } : x)))}
+            />
+          </label>
+          <label>
+            au{" "}
+            <input
+              type="date"
+              value={s.end}
+              onChange={(e) => setSaisons((l) => l.map((x, j) => (j === i ? { ...x, end: e.target.value } : x)))}
+            />
+          </label>
+        </div>
+      ))}
       <div className="fin-revue__tableau">
         <table>
           <thead>
@@ -90,7 +121,7 @@ export default function RevueReleves({ revue, onValider, onAnnuler }) {
       </div>
       <p className="muted">
         « Rangé dans » : Docs › saison du relevé › Financier › RELEVES
-        BANCAIRES › compte. Une saison passée qui manque est créée ; une saison
+        BANCAIRES › compte. Une saison passée qui manque est créée avec les dates ci-dessus ; une saison
         terminée reçoit quand même le PDF. Un relevé déjà importé est seulement
         rangé.
       </p>
@@ -100,11 +131,12 @@ export default function RevueReleves({ revue, onValider, onAnnuler }) {
           pour pouvoir valider.
         </p>
       )}
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
       <div className="fin-revue__barre">
         <button type="button" className="btn btn--link" disabled={enCours} onClick={onAnnuler}>
           Annuler
         </button>
-        <button type="button" className="btn btn--primary" disabled={aChoisir > 0 || enCours} onClick={valider}>
+        <button type="button" className="btn btn--primary" disabled={aChoisir > 0 || datesInvalides || enCours} onClick={valider}>
           {enCours ? "Import…" : "Valider"}
         </button>
       </div>

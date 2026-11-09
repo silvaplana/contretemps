@@ -324,7 +324,13 @@ def test_routes(client, db_session, ecole):
     # Saison d'arrivée du PDF : 2023-2024, créée par l'import (Seb, 9/11).
     assert {(r["season"], r["seasonCreated"]) for r in revue.json()["rows"]} == {("2023-2024", True)}
     assert client.get("/finances/ledger", headers=tresorier).json()["rows"] == []
-    reponse = client.post("/finances/import", files=files, data={"choices": '["new", "new", "new"]'}, headers=tresorier)
+    # Saison passée à créer : dates proposées comme les saisons de l'école,
+    # validées (ici modifiées) dans la revue (Seb, 9/11).
+    assert revue.json()["newSeasons"] == [{"name": "2023-2024", "start": "2023-09-01", "end": "2024-08-31"}]
+    validee = '[{"name": "2023-2024", "start": "2023-09-02", "end": "2024-08-31"}]'
+    reponse = client.post(
+        "/finances/import", files=files, data={"choices": '["new", "new", "new"]', "seasons": validee}, headers=tresorier
+    )
     assert reponse.status_code == 200, reponse.text
     assert len(reponse.json()["imported"]) == 3
     assert client.get("/finances/ledger", headers=tresorier).json()["total"] == 4422.61
@@ -337,6 +343,10 @@ def test_routes(client, db_session, ecole):
     assert all("Financier › RELEVES BANCAIRES ›" in d for d in details), details
     saisons = client.get("/finances/seasons", headers=tresorier).json()["seasons"]
     assert [(s["name"], s["current"]) for s in saisons] == [("2023-2024", False), ("2026-2027", True)]
+    assert saisons[0]["startDate"] == "2023-09-02"
+    # Saison refusée (elle existe déjà) : message, rien d'importé.
+    refus = client.post("/finances/import", files=files, data={"seasons": validee}, headers=tresorier)
+    assert refus.status_code == 400 and "2023-2024" in refus.json()["detail"], refus.text
     assert all("Docs › 2023-2024 ›" in d for d in details), details
     # Dossiers vides de la trésorière sous Financier de la saison en cours.
     from app import main
