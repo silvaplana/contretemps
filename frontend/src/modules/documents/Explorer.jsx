@@ -889,6 +889,14 @@ export default function Explorer({ orgId, memoire }) {
     )
   }
 
+  // Pourquoi un dossier de l'appli ne se renomme ni ne se supprime, et où
+  // changer son nom quand c'est possible (Seb, 9/11).
+  function raisonSysteme(item) {
+    if (item.system_kind === 'period') return 'Il porte le nom de la saison : renommez-la dans Admin › Saisons'
+    if (item.system_kind === 'exchange') return 'Bac Échanges : nom fixé par l’appli'
+    return 'Dossier créé par l’appli : nom fixé'
+  }
+
   // Actions du menu (≤ 6 + « Plus… », §6.2) ; grisées avec la raison.
   function actions(item) {
     const systeme = item.system_kind != null
@@ -897,7 +905,7 @@ export default function Explorer({ orgId, memoire }) {
     // Un admin met à la corbeille un fichier Officiel (Seb, 21 octobre).
     const supprimable = restructurer || (!systeme && item.status === 'official' && Boolean(data?.can_delete_official))
     const raison = systeme
-      ? 'Dossier de l’appli : ni renommé, ni déplacé, ni supprimé'
+      ? raisonSysteme(item)
       : item.closed_period
         ? 'Saison terminée : lecture seule'
         : item.frozen

@@ -63,6 +63,7 @@ def mount(app, core) -> None:
     core.personnalisation_client.page_existe = documents_client.apps.page_exists
     # Création de saison : « recopier le dossier de la saison précédente ».
     core.gestion_saisons.recopier_documents = recopieur_de_saison(documents_client)
+    core.gestion_saisons.renommer_documents = documents_client.ensure_system_folders
 
     # Édition Word / Excel / PowerPoint avec OnlyOffice (essai, réservé au
     # Super User) : serveur de documents partagé du VPS (voir bureautique/).

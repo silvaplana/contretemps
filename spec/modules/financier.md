@@ -354,7 +354,8 @@ par son logiciel comptable pour 2024-25 : **Balance**, **Grand livre**, **Rappor
 
 **Dossiers de Docs › Privé › Saison › Financier (Seb, 30 octobre 2026)**, noms en majuscules sans
 accent, créés vides par l'appli quand un trésorier ouvre le Financier (saison en cours et saisons
-ouvertes) :
+ouvertes ; une demande à la fois, sinon les demandes simultanées de l'écran créaient « ACHATS (2) »,
+« ACHATS (3) », Seb 9/11) :
 
 - **RELEVES BANCAIRES** › un dossier par compte en banque (le nom de sa puce dans Comptes) : le PDF de
   chaque relevé importé y est rangé, dans la saison de sa date de fin ; une saison passée absente est
