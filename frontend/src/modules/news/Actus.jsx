@@ -349,16 +349,17 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, 
           </div>
           <h4 className="section-label perso__sous-partie">Ouverture de l’appli</h4>
           <div className="atelier__option">
-            <span>Ouvrir l’appli sur les actus</span>
+            <span>L’appli affiche toujours les actus à son ouverture</span>
             <button
               type="button"
               role="switch"
               aria-checked={ouverture}
-              aria-label="Ouvrir l’appli sur les actus"
+              aria-label="L’appli affiche toujours les actus à son ouverture"
               className="actus__interrupteur"
               onClick={() => changerOuverture(!ouverture)}
             />
           </div>
+          <p className="editeur__aide">Sinon, elle affiche le dernier onglet ouvert.</p>
           {choisir && (
             <>
               <h4 className="section-label perso__sous-partie">Pendant le test</h4>
@@ -902,7 +903,7 @@ export default function Actus({ ecoleId, prenom }) {
     setOuverture(valeur)
     try {
       await api.changerOuverture(ecoleId, valeur)
-      montrer(valeur ? 'L’appli s’ouvrira sur les actus' : 'L’appli s’ouvrira sur le dernier onglet')
+      montrer(valeur ? 'L’appli affichera toujours les actus à son ouverture' : 'L’appli affichera le dernier onglet ouvert')
     } catch (e) {
       setOuverture(!valeur)
       montrer(e.message)
