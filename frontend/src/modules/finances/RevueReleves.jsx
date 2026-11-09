@@ -4,6 +4,19 @@ import { useState } from "react";
 // écrit avant Valider. Un tableau façon Excel, une ligne par relevé :
 // Fichier | À quoi il correspond | Compte (modifiable dans sa case).
 // Maquette : https://claude.ai/artifact/Cfxf9LG6GKEmYC19vd3dv2
+// Dossier d'arrivée du PDF : « 2023-2024 › 401 » (+ « saison créée »).
+function rangeDans(row, choix, comptes) {
+  if (row.error || choix === null || choix === "skip" || !row.season) return "—";
+  const nom = choix === "new" ? row.newAccount : comptes.find((a) => a.id === choix)?.name;
+  const dossier = (nom ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  return (
+    <>
+      {row.season} › {dossier}
+      {row.seasonCreated && <span className="fin-revue__tag fin-revue__tag--cree">saison créée</span>}
+    </>
+  );
+}
+
 export default function RevueReleves({ revue, onValider, onAnnuler }) {
   const [choix, setChoix] = useState(() => revue.rows.map((r) => r.account));
   const [enCours, setEnCours] = useState(false);
@@ -36,6 +49,7 @@ export default function RevueReleves({ revue, onValider, onAnnuler }) {
               <th>Fichier</th>
               <th>À quoi il correspond</th>
               <th>Compte</th>
+              <th>Rangé dans</th>
             </tr>
           </thead>
           <tbody>
@@ -68,14 +82,17 @@ export default function RevueReleves({ revue, onValider, onAnnuler }) {
                     </select>
                   )}
                 </td>
+                <td>{rangeDans(r, choix[i], revue.accounts)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
       <p className="muted">
-        Chaque PDF va dans Docs › saison du relevé › Financier › RELEVES
-        BANCAIRES › compte choisi. Un relevé déjà importé est seulement rangé.
+        « Rangé dans » : Docs › saison du relevé › Financier › RELEVES
+        BANCAIRES › compte. Une saison passée qui manque est créée ; une saison
+        terminée reçoit quand même le PDF. Un relevé déjà importé est seulement
+        rangé.
       </p>
       {aChoisir > 0 && (
         <p className="fin-revue__aide">

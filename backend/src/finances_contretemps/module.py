@@ -38,7 +38,9 @@ from .adapter import (
     dossier_ag,
     ranger_dans_docs,
     preparer_dossiers_financier,
+    doc_releve,
     ranger_releve,
+    saison_releve,
     saisons_de_l_ecole,
 )
 
@@ -68,7 +70,10 @@ def mount(app, core) -> None:
     # Le PDF de chaque relevé importé va dans Docs › Saison › Financier ›
     # RELEVES BANCAIRES › <compte> (Seb, 30/10).
     finances_client = Finances(
-        accounting=finances_accounting, store_statement=ranger_releve(core.documents_client, core.gestion_saisons)
+        accounting=finances_accounting,
+        store_statement=ranger_releve(core.documents_client, core.gestion_saisons),
+        statement_season=saison_releve(),
+        statement_doc=doc_releve(core.documents_client),
     )
     # Bilan : tableau calculé depuis l'historique des comptes, analyse par
     # l'API Claude (ANTHROPIC_API_KEY), coût noté à l'école comme celui de

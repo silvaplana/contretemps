@@ -1700,3 +1700,127 @@
   align-items: center;
   gap: 12px;
 }
+.fin-revue__tag--cree {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+/* Grille des relevés (RelevesGrille.jsx) : compte × mois de la saison. */
+.fin-releves {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 17px;
+}
+.fin-releves__retour {
+  align-self: flex-start;
+  min-height: 48px;
+}
+.fin-releves h3 {
+  margin: 0;
+}
+.fin-releves__grille {
+  overflow-x: auto;
+}
+.fin-releves table {
+  border-collapse: collapse;
+  background: var(--card-bg);
+  font-size: 15px;
+}
+.fin-releves th {
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 4px 6px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+}
+.fin-releves td {
+  padding: 0;
+  border: 1px solid var(--border);
+}
+.fin-releves .fin-releves__compte {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: var(--card-bg);
+  padding: 0 10px;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: left;
+}
+.fin-releves th.fin-releves__compte {
+  background: var(--surface);
+}
+button.fin-releves__case {
+  width: 52px;
+  height: 52px;
+  border: 0;
+  font: inherit;
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fin-releves__case--ok {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+.fin-releves__case--calme {
+  background: color-mix(in srgb, var(--success-bg) 45%, var(--card-bg));
+  color: var(--success-text);
+}
+.fin-releves__case--manque {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+.fin-releves__case--banque {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+.fin-releves__case--attente,
+.fin-releves__case--vide {
+  background: var(--surface);
+  color: var(--text-muted);
+}
+.fin-releves__legende {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.fin-releves__legende span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.fin-releves__legende i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-style: normal;
+  font-weight: 700;
+}
+.fin-releves__pastille {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-left: 6px;
+  border-radius: 5px;
+  background: var(--danger-text);
+}
+.fin-releves__manquants {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+  border-radius: 12px;
+  padding: 12px 14px;
+}
+.fin-releves__complet {
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-radius: 12px;
+  padding: 12px 14px;
+}

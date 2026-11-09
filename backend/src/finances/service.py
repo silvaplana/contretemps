@@ -83,7 +83,11 @@ class Finances:
     module)."""
 
     def __init__(
-        self, accounting=None, store_statement: Callable[[Session, Member, str, str, str, bytes], str | None] | None = None
+        self,
+        accounting=None,
+        store_statement: Callable[[Session, Member, str, str, str, bytes], str | None] | None = None,
+        statement_season: Callable[[Session, Member, str], dict | None] | None = None,
+        statement_doc: Callable[[Session, Member, str, str, str], int | None] | None = None,
     ) -> None:
         # Comptabilité (accounting.py) : compte du plan et pièce sur chaque
         # ligne de l'historique, si le sous-module est monté.
@@ -91,6 +95,12 @@ class Finances:
         # Rangement du PDF (db, membre, nom du compte, date de fin, nom du
         # fichier, contenu) : rend où il est rangé, ou pourquoi il ne l'est pas.
         self.store_statement = store_statement
+        # Saison où le PDF sera rangé (db, membre, date de fin) :
+        # {"season", "created"}, pour la revue de l'import.
+        self.statement_season = statement_season
+        # Le PDF rangé d'un relevé (db, membre, nom du compte, date de fin,
+        # nom du fichier) : son id dans Docs, pour la grille des relevés.
+        self.statement_doc = statement_doc
 
     # ----- import -----
 
@@ -120,8 +130,72 @@ class Finances:
                 "newAccount": None if account else _account_name(statement.account_product)[0],
                 "already": account is not None and self._already(db, account, start, end),
                 "error": None,
+                **self._season_of(db, member, statement.end_date),
             })
         return {"accounts": [{"id": a.id, "name": a.name} for a in accounts], "rows": rows}
+
+    def _season_of(self, db: Session, member: Member, end_date: str) -> dict:
+        season = self.statement_season(db, member, end_date) if self.statement_season else None
+        return {"season": season["season"], "seasonCreated": season["created"]} if season else {"season": None, "seasonCreated": False}
+
+    def statement_calendar(self, db: Session, member: Member, start: str, end: str, today: str | None = None) -> dict:
+        """Grille des relevés (Seb, 9/11) : par compte, un état par mois de
+        start à end (dates ISO) :
+        - "ok" : couvert par un relevé ("file", "docId" : son PDF dans Docs) ;
+        - "quiet" : entre deux relevés dont les soldes se suivent, aucun
+          mouvement (un livret n'a pas de relevé les mois sans opération) ;
+        - "missing" : entre deux relevés dont les soldes ne se suivent pas ;
+        - "before" : avant le premier relevé importé du compte ;
+        - "bank" : après le dernier relevé, la banque montre des opérations ;
+        - "waiting" : après le dernier relevé, en attente du suivant ;
+        - "future" : mois pas encore commencé."""
+        _check(member)
+        today_d = date.fromisoformat(today) if today else date.today()
+        months = []
+        current = date.fromisoformat(start).replace(day=1)
+        last = date.fromisoformat(end)
+        while current <= last:
+            following = (current.replace(day=28) + timedelta(days=4)).replace(day=1)
+            months.append((current, following - timedelta(days=1)))
+            current = following
+        accounts = list(db.scalars(select(FinAccount).where(FinAccount.org_id == member.org_id).order_by(FinAccount.kind, FinAccount.id)))
+        result = []
+        for account in accounts:
+            statements = list(
+                db.scalars(select(FinStatement).where(FinStatement.account_id == account.id).order_by(FinStatement.start_date))
+            )
+            bank_days = {
+                d for d in db.scalars(
+                    select(FinOperation.date).where(FinOperation.account_id == account.id, FinOperation.source == SOURCE_BANK)
+                )
+            }
+            cells = []
+            for first, last_day in months:
+                cells.append(self._month_state(db, member, account, statements, bank_days, first, last_day, today_d))
+            result.append({"id": account.id, "name": account.name, "months": cells})
+        return {"accounts": result}
+
+    def _month_state(self, db, member, account, statements, bank_days, first, last_day, today) -> dict:
+        cell = {"month": f"{first:%Y-%m}"}
+        if first > today:
+            return {**cell, "state": "future"}
+        # Un relevé couvre du lendemain de sa date de début (le solde de
+        # départ) à sa date de fin.
+        covering = next((s for s in statements if s.start_date + timedelta(days=1) <= last_day and s.end_date >= first), None)
+        if covering is not None:
+            doc = (
+                self.statement_doc(db, member, account.name, covering.end_date.isoformat(), covering.file_name)
+                if self.statement_doc else None
+            )
+            return {**cell, "state": "ok", "file": covering.file_name, "docId": doc}
+        if not statements or last_day <= statements[0].start_date:
+            return {**cell, "state": "before"}
+        if first > statements[-1].end_date:
+            busy = any(first <= d <= last_day for d in bank_days)
+            return {**cell, "state": "bank" if busy else "waiting"}
+        following = next(s for s in statements if s.start_date >= last_day)
+        previous = statements[statements.index(following) - 1]
+        return {**cell, "state": "quiet" if following.start_balance == previous.end_balance else "missing"}
 
     def import_files(
         self, db: Session, member: Member, files: list[tuple[str, bytes]], choices: list | None = None

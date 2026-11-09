@@ -6,8 +6,9 @@ Comptes
 - Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, recherche d'une opération.
 - Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
 - Un seul compte choisi : « Voir le compte » sous son nom (nom, IBAN, relevés).
-- Menu ⋯ : Se connecter aux comptes en banque ; Importer des relevés ; Plan comptable ; Soldes de départ.
-- Importer des relevés : un tableau (Fichier | À quoi il correspond | Compte) montre ce que l'appli propose ; on change le compte dans sa case si besoin, puis Valider (Annuler ne change rien). Les PDF vont dans Docs › saison › Financier › RELEVES BANCAIRES › compte.
+- Menu ⋯ : Se connecter aux comptes en banque ; Importer des relevés ; Relevés ; Plan comptable ; Soldes de départ.
+- Importer des relevés : un tableau (Fichier | À quoi il correspond | Compte | Rangé dans) montre ce que l'appli propose ; on change le compte dans sa case si besoin, puis Valider (Annuler ne change rien). Les PDF vont dans Docs › saison › Financier › RELEVES BANCAIRES › compte.
+- Relevés : par saison, une case par compte et par mois ; ✓ relevé importé (toucher l'ouvre), – aucun mouvement, ! relevé manquant, ↓ relevé à importer, ? en attente du prochain relevé ; bouton Importer des relevés.
 - ⋯ › Plan comptable : le niveau Simple / Complet en haut (Complet sans retour), puis les comptes par classe : ajouter,
   renommer, mots-clés (qui font proposer le compte), événement (« gala »), désactiver.
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet), à reprendre de la clôture ou de la Balance.
