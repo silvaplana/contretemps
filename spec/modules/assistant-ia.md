@@ -97,6 +97,11 @@ toutes les personnes avec leurs rôles, Super Users compris, filtrables par rôl
 l'école (de l'IBAN, l'assistant ne voit que les 4 derniers chiffres) ; les groupes de la messagerie et
 leurs membres. Le reste d'Admin (élèves, profs, cours, chorégraphies, saisons) se lisait déjà.
 
+Saisons (Seb, 9 novembre) : chaque message dit à l'assistant la saison affichée, et si c'est une
+ancienne saison, laquelle est en cours ; `lister_saisons` marque « (affichée) ». Ses lectures voient
+la saison affichée, ou une autre saison nommée dans le paramètre `saison` (« pouvoir interroger
+toutes les saisons ») ; une autre saison est réservée aux administrateurs, comme à l'écran.
+
 ### 3.4 Plus tard
 
 - Ajouter une vidéo à une chorégraphie : le fichier passe aujourd'hui par l'écran de la chorégraphie

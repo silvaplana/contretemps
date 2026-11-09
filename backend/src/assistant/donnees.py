@@ -33,7 +33,7 @@ from inscriptions.models import Inscription
 from messagerie.models import Conversation, ConversationMembre
 from presence.models import PresenceEleve, PresenceProf, SeancePresence
 from saisons.models import Saison
-from saisons.portee import toutes_saisons
+from saisons.portee import dans_saison, saison_demandee, toutes_saisons
 from saisons.saisons import saison_courante_id
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -41,14 +41,42 @@ from sqlalchemy.orm import Session
 LIGNES_MAX = 300
 
 
+def saison_affichee(db: Session, ecole_id: int) -> str:
+    """Ligne du contexte de chaque message : la saison que voient les outils
+    de lecture, pour que l'assistant ne prête pas ses chiffres à la saison
+    en cours quand la personne regarde une ancienne saison."""
+    with toutes_saisons(db):
+        saisons = {s.id: s for s in db.scalars(select(Saison).where(Saison.ecole_id == ecole_id))}
+        courante = saison_courante_id(db, ecole_id)
+    affichee = saisons.get(saison_demandee()) or saisons.get(courante)
+    if affichee is None:
+        return ""
+    if affichee.id == courante:
+        ligne = f"Saison affichée : {affichee.nom}, la saison en cours."
+    else:
+        ligne = f"Saison affichée : {affichee.nom}, une ancienne saison (la saison en cours est {saisons[courante].nom})."
+    return ligne + " Tes outils de lecture lisent la saison affichée, sauf si tu nommes une autre saison dans « saison »."
+
+
 def _prop(type_, description, **autres):
     return {"type": type_, "description": description, **autres}
+
+
+# Chaque outil lit la saison affichée, ou une autre saison nommée (Seb,
+# 9 novembre : « pouvoir interroger toutes les saisons »).
+SAISON = _prop(
+    ["string", "null"],
+    "Nom d'une autre saison à lire (ex. « 2025-2026 », lu avec lister_saisons ; administrateurs seulement), "
+    "ou null pour la saison affichée.",
+)
 
 
 def _outil(nom: str, description: str, proprietes: dict) -> dict:
     # Pas "strict" : l'API en refuse plus de 20 par requête, et les outils des
     # documents le sont déjà (assistant.py). Un paramètre manquant ou en trop
     # est renvoyé à l'assistant par `executer`.
+    if nom != "lister_saisons":
+        proprietes = {**proprietes, "saison": SAISON}
     return {
         "name": nom,
         "description": description,
@@ -190,7 +218,19 @@ class DonneesEcole:
         inconnus = set(args) - set(attendus)
         if inconnus or any(args.get(k) is None for k in attendus if k in REQUIS):
             return f"Paramètres invalides. Paramètres attendus : {', '.join(attendus) or 'aucun'}."
-        return getattr(self, f"_{nom}")(db, p, **{k: args.get(k) for k in attendus})
+        lire = getattr(self, f"_{nom}")
+        valeurs = {k: args.get(k) for k in attendus if k != "saison"}
+        if args.get("saison") is None:
+            return lire(db, p, **valeurs)
+        if not p.tout:
+            return "Seuls les administrateurs consultent les autres saisons."
+        with toutes_saisons(db):
+            saisons = list(db.scalars(select(Saison).where(Saison.ecole_id == ecole_id).order_by(Saison.date_debut)))
+        saison = next((s for s in saisons if s.nom.strip().casefold() == str(args["saison"]).strip().casefold()), None)
+        if saison is None:
+            return f"Saison inconnue. Saisons de l'école : {', '.join(s.nom for s in saisons) or 'aucune'}."
+        with dans_saison(saison.id):
+            return f"Saison {saison.nom}\n" + lire(db, p, **valeurs)
 
     # --- Aides ---------------------------------------------------------
 
@@ -454,8 +494,11 @@ class DonneesEcole:
         with toutes_saisons(db):
             saisons = list(db.scalars(select(Saison).where(Saison.ecole_id == p.ecole_id).order_by(Saison.id)))
             courante = saison_courante_id(db, p.ecole_id)
+        affichee = saison_demandee() or courante
         return "\n".join(
-            f"- {s.nom} : du {s.date_debut} au {s.date_fin}{' (en cours)' if s.id == courante else ''}" for s in saisons
+            f"- {s.nom} : du {s.date_debut} au {s.date_fin}"
+            + "".join(f" ({mot})" for mot, sid in (("en cours", courante), ("affichée", affichee)) if s.id == sid)
+            for s in saisons
         ) or "Aucune saison."
 
     def _lister_personnes(self, db: Session, p: Perimetre, role=None) -> str:
