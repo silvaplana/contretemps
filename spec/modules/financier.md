@@ -48,7 +48,11 @@ https://claude.ai/artifact/Cfxf9LG6GKEmYC19vd3dv2)** : l'appli lit d'abord les f
 écrire** (ni lignes dans Comptes, ni PDF dans Docs) et montre sa proposition dans un tableau façon
 Excel, une ligne par relevé : **Fichier | À quoi il correspond | Compte | Rangé dans** (« Compte
 courant …20401, oct. 2025 » ; étiquettes « déjà importé », « ignoré » pour un fichier qui n'est pas un
-relevé ; « Rangé dans » = « 2023-2024 › 401 », étiquette « saison créée » quand l'import la crée). Le
+relevé ; « Rangé dans » = « 2023-2024 › 401 », étiquette « saison créée » quand l'import la crée).
+**Saison passée à créer** (Seb, 9/11) : au-dessus du tableau, « Saison 2023-2024 à créer, comme dans Admin ›
+Saisons (sans rien recopier) : du … au … », dates proposées avec les mêmes jour et mois de début que les
+saisons de l'école (1er septembre à défaut), sur un an, raccourcie si elle chevaucherait la suivante,
+modifiables ; créée à Valider seulement (refusée : message, la revue reste ouverte). Le
 compte est deviné par le numéro lu sur le relevé (ou contenu dans l'IBAN d'un compte relié à la
 banque) ; un compte inconnu est proposé comme « Nouveau : <nom> » ; il se change dans sa case
 (autre compte, « Ne pas importer ») ; « À choisir » bloque Valider. **Valider** importe avec les
@@ -359,8 +363,8 @@ ouvertes ; une demande à la fois, sinon les demandes simultanées de l'écran c
 
 - **RELEVES BANCAIRES** › un dossier par compte en banque (le nom de sa puce dans Comptes) : le PDF de
   chaque relevé importé y est rangé, dans la saison de sa date de fin ; une saison passée absente est
-  créée (septembre à août : la saison qui contient la date de fin, un relevé du 31 août va dans la
-  saison qui se termine) ; une saison terminée et fermée le reçoit aussi (Seb, 9/11 : on archive le
+  créée avec les dates validées dans la revue de l'import (§3.1 ; la saison qui contient la date de fin,
+  un relevé du 31 août va dans la saison qui se termine) ; une saison terminée et fermée le reçoit aussi (Seb, 9/11 : on archive le
   document de la banque, les comptes de la saison ne changent pas). Le dossier est celui du compte
   validé dans la revue de l'import (§3.1).
   Réimporter un relevé déjà importé range son PDF sans recréer ses lignes : c'est ainsi qu'on range les

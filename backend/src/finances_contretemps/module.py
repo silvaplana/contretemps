@@ -38,6 +38,7 @@ from .adapter import (
     dossier_ag,
     ranger_dans_docs,
     preparer_dossiers_financier,
+    creer_saison,
     doc_releve,
     ranger_releve,
     saison_releve,
@@ -74,6 +75,7 @@ def mount(app, core) -> None:
         store_statement=ranger_releve(core.documents_client, core.gestion_saisons),
         statement_season=saison_releve(),
         statement_doc=doc_releve(core.documents_client),
+        create_season=creer_saison(core.gestion_saisons),
     )
     # Bilan : tableau calculé depuis l'historique des comptes, analyse par
     # l'API Claude (ANTHROPIC_API_KEY), coût noté à l'école comme celui de

@@ -25,10 +25,12 @@ export const historique = (accountId) => appel(accountId ? `/ledger?account=${ac
 
 // Relevés PDF ou archives : compte rendu { imported, skipped, errors }.
 // choix : un par relevé, validés dans la revue (id du compte, "new", "skip").
-export function importerReleves(fichiers, choix) {
+// saisons : saisons passées à créer, validées dans la revue ({ name, start, end }).
+export function importerReleves(fichiers, choix, saisons) {
   const body = new FormData()
   for (const fichier of fichiers) body.append('files', fichier)
   if (choix) body.append('choices', JSON.stringify(choix))
+  if (saisons?.length) body.append('seasons', JSON.stringify(saisons))
   return appel('/import', { method: 'POST', body })
 }
 
