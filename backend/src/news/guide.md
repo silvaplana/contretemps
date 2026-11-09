@@ -20,8 +20,8 @@ Les actus (et l'onglet Visualisation)
 - « Paramètres d'édition des actus » en bas, repliés : les toucher pour les dérouler. On y arrive aussi par
   le menu ⋯ en haut à droite › « Paramètres d'édition des actus ».
   - « En haut de chaque actu » : Texte ou Photo, vidéo (pour toutes les actus de l'école).
-  - « Ouvrir l'appli sur les actus » (allumé : l'appli s'ouvre toujours sur Actus, pour tout le
-    monde ; éteint : sur le dernier onglet utilisé).
+  - « L'appli affiche toujours les actus à son ouverture » (allumé : pour tout le monde ; éteint :
+    « Sinon, elle affiche le dernier onglet ouvert »).
   - Instagram : « Se connecter avec Instagram » (compte Instagram professionnel), puis accepter
     dans Instagram ; on revient ici, « Relié à @compte ». Ses nouveaux posts arrivent dans les actus en
     5 minutes au plus (texte puis photos et vidéos, carrousels compris). Si le bouton n'y est pas :

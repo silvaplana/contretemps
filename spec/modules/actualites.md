@@ -98,7 +98,7 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
 - Toucher une ligne ouvre l'actu dans l'éditeur.
 - Bouton principal en bas : **Nouvelle actu**.
 - Sous la liste, **« Paramètres d'édition des actus »**, repliés par défaut (on touche le titre pour les
-  dérouler ; Seb, 8 novembre) : interrupteur **« Ouvrir l'appli sur les actus »** (§6) et le compte
+  dérouler ; Seb, 8 novembre) : interrupteur **« L'appli affiche toujours les actus à son ouverture »** (§6) et le compte
   **Instagram** relié (§6 bis). Même présentation que les volets d'Admin › École (titre en capitales,
   flèche ›/⌄ à gauche, sous-parties « Ouverture de l'appli », « Pendant le test », « Instagram » ;
   Seb, 9 novembre). En tête, **« En haut de chaque actu : Texte | Photo, vidéo »** (Seb, 9 novembre ;
@@ -144,7 +144,11 @@ l'organisation, sauf l'auteur, avec le système existant (`notifications`, comme
 La notification part **à la fin des 10 s d'Annuler**, pas avant (minuteur du serveur, `news/news.py`),
 et une seule fois. Modifier une actu publiée ne renvoie pas de notification.
 
-## 6. Option « Ouvrir l'appli sur les actus »
+## 6. Option « L'appli affiche toujours les actus à son ouverture »
+
+Libellé à l'écran (Seb, 9 novembre 2026, à la place d'« Ouvrir l'appli sur les actus », pas clair) :
+interrupteur « L'appli affiche toujours les actus à son ouverture », et dessous en petit « Sinon, elle
+affiche le dernier onglet ouvert. »
 
 Par organisation, **allumée par défaut**. Allumée : à chaque ouverture de l'appli (lancement, pas
 retour d'arrière-plan), tout le monde arrive sur Actus. Éteinte : l'appli s'ouvre comme aujourd'hui sur
