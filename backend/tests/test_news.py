@@ -244,7 +244,8 @@ def test_carrousel_de_photos_montrees_puis_effacees(client, db_session, e, photo
     assert client.post(f"/ecoles/{eid}/news/photos", files={"fichier": ("x.txt", b"pas une image", "text/plain")}).status_code == 400
     rouge, bleue = _envoyer_photo(client, eid), _envoyer_photo(client, eid, (20, 40, 200))
     actu = _publier(client, eid, "Le gala", media=[{"photo": rouge}, {"photo": bleue}])
-    assert actu["media"] == [{"photo": rouge, "video": None}, {"photo": bleue, "video": None}]
+    assert actu["media"] == [{"photo": rouge, "video": None, "link": None, "title": None},
+                             {"photo": bleue, "video": None, "link": None, "title": None}]
 
     image = client.get(f"/ecoles/{eid}/news/{actu['id']}/photos/{bleue}")
     assert image.status_code == 200 and image.headers["content-type"] == "image/jpeg"
@@ -267,6 +268,67 @@ def test_carrousel_de_photos_montrees_puis_effacees(client, db_session, e, photo
 
     assert client.delete(f"/ecoles/{eid}/news/{actu['id']}").status_code == 204
     assert not photos.path(eid, bleue).exists()
+
+
+def test_liens_youtube_et_site_dans_le_carrousel(client, db_session, e, photos, monkeypatch):
+    from news import links
+
+    lus = []
+
+    def lire(url):
+        lus.append(url)
+        if url.startswith("https://ferme"):
+            raise links.LinkError("Ce lien ne répond pas")
+        return links.Preview(title="Le gala 2026", image=_image((20, 160, 60)) if "youtu" in url else None)
+
+    monkeypatch.setattr(links, "read", lire)
+    eid = e["ecole"].id
+    youtube = client.post(f"/ecoles/{eid}/news/links", json={"url": " https://youtu.be/dQw4w9WgXcQ "})
+    assert youtube.status_code == 201, youtube.text
+    youtube = youtube.json()
+    assert youtube["link"] == "https://youtu.be/dQw4w9WgXcQ" and youtube["title"] == "Le gala 2026"
+    assert youtube["photo"] and youtube["preview"].startswith("data:image/jpeg;base64,")
+    site = client.post(f"/ecoles/{eid}/news/links", json={"url": "https://contretemps.fr/gala"}).json()
+    assert site["photo"] is None and site["preview"] is None
+    assert client.post(f"/ecoles/{eid}/news/links", json={"url": "https://ferme.fr"}).json()["detail"] == "Ce lien ne répond pas"
+
+    photo = _envoyer_photo(client, eid)
+    actu = _publier(client, eid, "Le gala", media=[
+        {"photo": photo},
+        {"link": youtube["link"], "title": youtube["title"], "photo": youtube["photo"]},
+        {"link": site["link"], "title": site["title"]},
+    ])
+    assert actu["media"][1:] == [
+        {"photo": youtube["photo"], "video": None, "link": "https://youtu.be/dQw4w9WgXcQ", "title": "Le gala 2026"},
+        {"photo": None, "video": None, "link": "https://contretemps.fr/gala", "title": "Le gala 2026"},
+    ]
+    # L'image du site se lit comme une photo de l'actu.
+    assert client.get(f"/ecoles/{eid}/news/{actu['id']}/photos/{youtube['photo']}").status_code == 200
+    # Pas de lien qui ne soit pas web, ni de lien avec une vidéo.
+    for faux in ({"link": "javascript:alert(1)"}, {"link": "https://x.fr", "video_id": 1}):
+        assert client.post(f"/ecoles/{eid}/news", json={"body": "x", "media": [faux]}).status_code == 400
+    # Le lien retiré, son image est effacée.
+    client.put(f"/ecoles/{eid}/news/{actu['id']}", json={"body": "Le gala", "media": [{"photo": photo}]})
+    assert not photos.path(eid, youtube["photo"]).exists() and photos.path(eid, photo).exists()
+
+
+def test_lecture_d_un_lien(monkeypatch):
+    from news import links
+
+    for url in ("https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com/watch?feature=x&v=dQw4w9WgXcQ",
+                "https://youtu.be/dQw4w9WgXcQ?si=abc", "https://m.youtube.com/shorts/dQw4w9WgXcQ"):
+        assert links.youtube_id(url) == "dQw4w9WgXcQ", url
+    assert links.youtube_id("https://vimeo.com/123") is None
+    # Le serveur ne va lire que des adresses publiques.
+    for url in ("http://127.0.0.1:8000/docs", "http://localhost/", "http://10.0.0.5/", "file:///etc/passwd"):
+        with pytest.raises(links.LinkError):
+            links.read(url)
+    page = b"""<html><head><title>Ignored</title>
+      <meta property="og:title" content="Stage d&#39;hiver" />
+      <meta content="/images/stage.jpg" property="og:image"></head></html>"""
+    monkeypatch.setattr(links, "_fetch", lambda url, max_bytes: (page, "https://site.fr/stage") if max_bytes == links.PAGE_MAX_BYTES else (b"jpeg", url))
+    lu = links.read("https://site.fr/stage")
+    assert lu == links.Preview(title="Stage d'hiver", image=b"jpeg")
 
 
 def test_video_et_document(client, db_session, e, photos):

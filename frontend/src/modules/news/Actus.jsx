@@ -66,6 +66,12 @@ const IconeVideo = () => (
     <path d="M16 10l5-3v10l-5-3" />
   </svg>
 )
+const IconeLien = () => (
+  <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M10 14a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1" />
+    <path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
+  </svg>
+)
 const IconeFichier = ({ taille = 20 }) => (
   <svg viewBox="0 0 24 24" width={taille} height={taille} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
@@ -103,7 +109,65 @@ function VideoLocale({ uploadId }) {
   )
 }
 
+// Un lien YouTube se lit dans la case (§3.3, Seb 9 novembre) : d'abord son
+// image avec ▶, la vidéo ne se charge qu'au toucher (le carrousel glisse
+// encore du doigt tant qu'elle ne joue pas).
+const YOUTUBE = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/
+
+function YouTube({ ecoleId, actuId, element, id }) {
+  const [lecture, setLecture] = useState(false)
+  if (lecture) {
+    return (
+      <div className="actu__media actu__media--youtube">
+        <iframe
+          src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&playsinline=1`}
+          title={element.titre || 'YouTube'}
+          allow="autoplay; encrypted-media; picture-in-picture; fullscreen"
+          allowFullScreen
+        />
+      </div>
+    )
+  }
+  return (
+    <button type="button" className="actu__youtube" aria-label={`Lire « ${element.titre || 'la vidéo'} »`} onClick={() => setLecture(true)}>
+      {element.photo || element.photoLocale ? (
+        <Photo ecoleId={ecoleId} actuId={actuId} element={element} />
+      ) : (
+        <div className="actu__media">
+          <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" />
+        </div>
+      )}
+      <span className="actu__youtube-play" aria-hidden="true">▶</span>
+    </button>
+  )
+}
+
+// Un autre lien : l'image du site, son titre, et « Ouvrir le lien ».
+function Lien({ ecoleId, actuId, element }) {
+  const id = element.lien.match(YOUTUBE)?.[1]
+  if (id) return <YouTube ecoleId={ecoleId} actuId={actuId} element={element} id={id} />
+  let site = element.lien
+  try {
+    site = new URL(element.lien).hostname.replace(/^www\./, '')
+  } catch {
+    // on garde le lien tel quel
+  }
+  return (
+    <div className="actu__lien">
+      {(element.photo || element.photoLocale) && <Photo ecoleId={ecoleId} actuId={actuId} element={element} />}
+      <div className="actu__lien-texte">
+        {element.titre && <strong>{element.titre}</strong>}
+        <span>{site}</span>
+        <a className="actu__lien-ouvrir" href={element.lien} target="_blank" rel="noopener noreferrer">
+          Ouvrir le lien
+        </a>
+      </div>
+    </div>
+  )
+}
+
 function Element({ ecoleId, actuId, element }) {
+  if (element.lien) return <Lien ecoleId={ecoleId} actuId={actuId} element={element} />
   if (element.photo || element.photoLocale) return <Photo ecoleId={ecoleId} actuId={actuId} element={element} />
   if (element.uploadId) return <VideoLocale uploadId={element.uploadId} />
   return (
@@ -550,6 +614,8 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
   const [choixDocument, setChoixDocument] = useState(false)
   const champPhoto = useRef(null)
   const champVideo = useRef(null)
+  const [lien, setLien] = useState(null) // le lien en train d'être collé, ou null
+  const [lienEnvoi, setLienEnvoi] = useState(false)
   const changer = (champs) => setBrouillon((b) => ({ ...b, ...champs }))
   const ajouter = (element) => setBrouillon((b) => ({ ...b, media: [...b.media, element] }))
   const remplacer = (cle, champs) =>
@@ -612,9 +678,24 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
     enlever(element.cle)
   }
 
+  async function ajouterLien() {
+    const url = lien.trim()
+    if (!url) return
+    setLienEnvoi(true)
+    try {
+      ajouter({ cle: `l${++numero.current}`, ...(await api.ajouterLien(ecoleId, /^https?:\/\//i.test(url) ? url : `https://${url}`)) })
+      setLien(null)
+    } catch (e) {
+      window.alert(e.message)
+    } finally {
+      setLienEnvoi(false)
+    }
+  }
+
   function basculer(ajout) {
     if (ajout === 'document') return brouillon.document ? changer({ document: null }) : setChoixDocument(true)
     if (place <= 0) return window.alert(`${MEDIA_MAX} photos ou vidéos au plus par actu.`)
+    if (ajout === 'lien') return setLien((l) => (l === null ? '' : null))
     ;(ajout === 'photo' ? champPhoto : champVideo).current?.click()
   }
 
@@ -700,6 +781,10 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
               <IconeVideo />
               Vidéo
             </button>
+            <button type="button" aria-pressed={lien !== null} onClick={() => basculer('lien')}>
+              <IconeLien />
+              Lien
+            </button>
             <button type="button" aria-pressed={Boolean(brouillon.document)} onClick={() => basculer('document')}>
               <IconeFichier />
               Document
@@ -707,6 +792,30 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
             <input ref={champPhoto} type="file" accept="image/*" multiple hidden onChange={(e) => (choisirPhotos(e.target.files), (e.target.value = ''))} />
             <input ref={champVideo} type="file" accept="video/*" hidden onChange={(e) => (choisirVideo(e.target.files[0]), (e.target.value = ''))} />
           </div>
+        )}
+        {brouillon.niveau !== 'brief' && lien !== null && (
+          <form
+            className="editeur__lien"
+            onSubmit={(e) => {
+              e.preventDefault()
+              ajouterLien()
+            }}
+          >
+            <input
+              type="text"
+              inputMode="url"
+              autoCapitalize="off"
+              autoCorrect="off"
+              aria-label="Lien"
+              placeholder="Collez le lien (YouTube ou autre site)"
+              value={lien}
+              autoFocus
+              onChange={(e) => setLien(e.target.value)}
+            />
+            <button type="submit" disabled={lienEnvoi || !lien.trim()}>
+              {lienEnvoi ? '…' : 'Ajouter'}
+            </button>
+          </form>
         )}
         {brouillon.media.length > 0 && (
           <ul className="editeur__medias" aria-label="Photos et vidéos">

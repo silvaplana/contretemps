@@ -32,9 +32,11 @@ Les actus (et l'onglet Visualisation)
 
 Nouvelle actu / Modifier l'actu
 - Niveau : Important, Normal ou Brève. Texte.
-- Boutons « Photo », « Vidéo » (100 Mo au plus) et « Document » (pris dans Docs) sous le texte, sauf
-  pour une Brève. Photo et Vidéo ajoutent (10 au plus, plusieurs photos d'un coup) ; les vignettes
-  s'alignent dessous, ✕ en retire une. Toucher à nouveau Document le retire.
+- Boutons « Photo », « Vidéo » (100 Mo au plus), « Lien » et « Document » (pris dans Docs) sous le
+  texte, sauf pour une Brève. Photo, Vidéo et Lien ajoutent (10 au plus, plusieurs photos d'un coup) ;
+  les vignettes s'alignent dessous, ✕ en retire une. Toucher à nouveau Document le retire.
+- « Lien » : coller le lien (YouTube ou autre site), puis « Ajouter ». Un lien YouTube se lit dans le
+  carrousel ; un autre site montre son image, son titre et « Ouvrir le lien ».
 - « En haut jusqu'au » (Important seulement).
 - « Envoyer une notification » : allumé d'office pour Important, éteint sinon.
 - Dessous, l'actu telle que les autres la verront.
