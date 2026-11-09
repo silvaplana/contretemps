@@ -8,6 +8,8 @@ from cours import CoursService
 from ecoles import Ecoles
 from eleves import Eleves
 from eleves.models import ProfilEleve
+from saisons import portee
+from saisons.models import Saison
 
 
 @pytest.fixture()
@@ -89,3 +91,47 @@ def test_infos_ecole_sans_l_iban_entier(db_session, ecole):
     Ecoles().update(db_session, ecole["id"], iban="FR76 3000 6000 0112 3456 7890 189", ville="Toulon")
     texte = DonneesEcole().executer(db_session, ecole["admin"], ecole["id"], "infos_ecole", {})
     assert "Toulon" in texte and "se termine par 0189" in texte and "FR76" not in texte
+
+
+def test_la_saison_affichee_est_dite_a_l_assistant(db_session, ecole):
+    """Seb, 9 novembre : en regardant 2025-2026 (82 élèves), l'assistant
+    attribuait ces 82 élèves à 2026-2027, marquée « en cours »."""
+    from assistant.donnees import saison_affichee
+
+    courante = db_session.query(Saison).filter_by(ecole_id=ecole["id"]).one()
+    ancienne = _ancienne_saison(db_session, ecole["id"])
+
+    assert saison_affichee(db_session, ecole["id"]).startswith(f"Saison affichée : {courante.nom}, la saison en cours.")
+    with portee.dans_saison(ancienne.id):
+        ligne = saison_affichee(db_session, ecole["id"])
+        saisons = DonneesEcole().executer(db_session, ecole["admin"], ecole["id"], "lister_saisons", {})
+    assert ligne.startswith(f"Saison affichée : 2010-2011, une ancienne saison (la saison en cours est {courante.nom}).")
+    assert "- 2010-2011 : du 2010-09-01 au 2011-08-31 (affichée)" in saisons
+
+
+def test_l_assistant_lit_une_autre_saison(db_session, ecole):
+    """Seb, 9 novembre : « pouvoir interroger toutes les saisons, pas
+    seulement la sélectionnée »."""
+    ancienne = _ancienne_saison(db_session, ecole["id"])
+    with portee.dans_saison(ancienne.id):
+        Eleves(comptes=Comptes()).create(db_session, ecole_id=ecole["id"], nom="Vieux", prenom="Paul")
+        db_session.commit()
+    d = DonneesEcole()
+
+    assert d.executer(db_session, ecole["admin"], ecole["id"], "resume_ecole", {}).startswith("2 élèves")
+    autre = d.executer(db_session, ecole["admin"], ecole["id"], "lister_eleves", {"saison": "2010-2011"})
+    assert "Vieux" in autre and "Perrin" not in autre
+    assert d.executer(db_session, ecole["admin"], ecole["id"], "resume_ecole", {"saison": "1990"}).startswith("Saison inconnue")
+    refus = d.executer(db_session, ecole["prof"], ecole["id"], "lister_eleves", {"saison": "2010-2011"})
+    assert refus == "Seuls les administrateurs consultent les autres saisons."
+
+
+def _ancienne_saison(db_session, ecole_id):
+    import datetime as dt
+
+    ancienne = Saison(
+        ecole_id=ecole_id, nom="2010-2011", date_debut=dt.date(2010, 9, 1), date_fin=dt.date(2011, 8, 31), ouverte=True
+    )
+    db_session.add(ancienne)
+    db_session.commit()
+    return ancienne

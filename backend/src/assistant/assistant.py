@@ -35,7 +35,7 @@ from documents.storage import guess_mime
 from .actions import Actions
 from .donnees import NOMS as OUTILS_ECOLE
 from .fichier_appli import CONSIGNE_FICHIER, OUTIL_FICHIER, FichierAppli
-from .donnees import OUTILS_DONNEES, POUR_TOUS, DonneesEcole
+from .donnees import OUTILS_DONNEES, POUR_TOUS, DonneesEcole, saison_affichee
 from .lecture import contenu_pour_claude
 from .modifications import OUTIL_MODIFICATIONS
 
@@ -366,6 +366,8 @@ class Assistant:
                 lignes.append(self.fichier_appli.contexte(db, member, int(contexte["app_id"]), contexte.get("form")))
             except (DocError, ValueError):
                 pass
+        if saison := saison_affichee(db, member.org_id):
+            lignes.append(saison)
         for issue in contexte.get("actions") or []:
             lignes.append(f"Suite à ta proposition : {str(issue)[:300]}")
         return "\n".join(lignes)

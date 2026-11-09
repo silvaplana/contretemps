@@ -108,6 +108,17 @@ def ignorer_saison_demandee() -> None:
         boite["id"] = None
 
 
+@contextmanager
+def dans_saison(saison_id: int):
+    """Le bloc voit la saison `saison_id`, comme si le navigateur l'avait
+    demandée (l'assistant qui lit une autre saison que celle affichée)."""
+    jeton = _saison_demandee.set({"id": saison_id})
+    try:
+        yield
+    finally:
+        _saison_demandee.reset(jeton)
+
+
 class MiddlewareSaison:
     """Lit l'en-tête `X-Saison-Id` de chaque requête. Middleware ASGI (pas
     une dépendance FastAPI) : une dépendance synchrone tourne dans un
