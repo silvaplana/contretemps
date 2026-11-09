@@ -493,3 +493,30 @@ def test_mapping_colonne_introuvable_avant_memorisation(client, db_session):
     apercu = reponse.json()
     assert apercu["colonnes_non_reconnues_globales"] == ["Colonne Mystere"]
     assert apercu["lignes"][0]["cours_ids"] == []
+
+
+def test_titre_au_dessus_et_colonne_vide_a_gauche(client, db_session):
+    """Le vrai fichier d'adhérents 2025-2026 (Seb, 9 novembre 2026) : un
+    titre en 1re ligne, une ligne vide, les en-têtes en 3e ligne à partir
+    de la colonne B, et des lignes sans nom (2e téléphone d'un parent)."""
+    ecole = _creer_ecole_avec_cours(db_session)
+    wb = Workbook()
+    ws = wb.active
+    ws.append([None, "INSCRIPTIONS 2025 2026 "])
+    ws.append([])
+    ws.append([None, "Nom adhérent", "Prénom adhérent", "Nom - Prénom parent", "E-Mail", "Téléphone", "Eveil"])
+    ws.append([None, "ALLARD", "ANDREA", "ALLARD Paul", "a@test.fr", "0600000000", "X"])
+    ws.append([None, None, None, None, None, "0611111111"])
+    ws.append([None, "ANDRE", "CHLOE", None, "c@test.fr", None, None])
+    tampon = io.BytesIO()
+    wb.save(tampon)
+    tampon.seek(0)
+
+    reponse = _previsualiser(client, ecole.id, "adherents.xlsx", tampon)
+    assert reponse.status_code == 200, reponse.text
+    lignes = reponse.json()["lignes"]
+    assert [(l["nom"], l["prenom"]) for l in lignes] == [("ALLARD", "ANDREA"), ("ANDRE", "CHLOE")]
+    assert lignes[0]["email"] == "a@test.fr"
+    assert len(lignes[0]["cours_ids"]) == 1
+    # Numéro de la ligne tel qu'Excel l'affiche.
+    assert lignes[0]["numero_ligne"] == 4

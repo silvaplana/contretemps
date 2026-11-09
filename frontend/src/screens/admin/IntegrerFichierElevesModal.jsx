@@ -111,8 +111,9 @@ export default function IntegrerFichierElevesModal({ ecoleId, cours, setEleves, 
       <Modal title="Intégrer fichier élèves officiel" onClose={onClose}>
         <p className="muted">
           Sélectionnez un fichier <strong>.csv</strong>, ou un classeur <strong>Excel (.xlsx)</strong> — seul
-          le 1er onglet est lu. Les 2 premières colonnes doivent être le nom et le prénom de l'élève (ex.
-          "Nom adhérent", "Prénom adhérent", ou équivalent).
+          le 1er onglet est lu. Il faut une colonne du nom de l'élève suivie de celle de son prénom (ex.
+          "Nom adhérent", "Prénom adhérent", ou équivalent) ; un titre au-dessus ou une colonne vide à
+          gauche ne gênent pas.
         </p>
         <input
           type="file"

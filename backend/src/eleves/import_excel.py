@@ -196,6 +196,24 @@ def _lire_lignes_brutes(nom_fichier: str, fichier) -> list[list]:
     raise ValueError("Le fichier doit être un .csv, ou un .xlsx (Excel, 1er onglet).")
 
 
+def _position_des_entetes(lignes_brutes: list[list]) -> tuple[int, int]:
+    """(ligne, colonne) de l'en-tête « Nom » suivi de « Prénom » : un
+    fichier fait à la main a souvent un titre au-dessus et une colonne vide
+    à gauche (vrai fichier d'adhérents 2025-2026, Seb, 9 novembre 2026).
+    Cherché dans les 20 premières lignes ; à défaut (0, 0), et les messages
+    d'erreur sur les 2 premières colonnes s'appliquent."""
+    for i, ligne in enumerate(lignes_brutes[:20]):
+        cellules = [str(c).strip() if c is not None else "" for c in ligne]
+        for j in range(len(cellules) - 1):
+            if (
+                _ressemble(cellules[j], "nom")
+                and not _ressemble(cellules[j], "prenom")
+                and _ressemble(cellules[j + 1], "prenom")
+            ):
+                return i, j
+    return 0, 0
+
+
 class ImportExcel:
     def __init__(self, eleves: Eleves, cours: CoursService) -> None:
         self.eleves = eleves
@@ -266,6 +284,8 @@ class ImportExcel:
         lignes_brutes = _lire_lignes_brutes(nom_fichier, fichier)
         if not lignes_brutes:
             raise ValueError("Fichier vide.")
+        debut, gauche = _position_des_entetes(lignes_brutes)
+        lignes_brutes = [ligne[gauche:] for ligne in lignes_brutes[debut:]]
         entetes = [str(c).strip() if c is not None else "" for c in lignes_brutes[0]]
         if len(entetes) < 2:
             raise ValueError(
@@ -335,7 +355,7 @@ class ImportExcel:
         # la relecture au lieu d'être créé 2 fois).
         index_existants: dict[int, int] = {}
 
-        for numero, ligne in enumerate(lignes_brutes[1:], start=2):
+        for numero, ligne in enumerate(lignes_brutes[1:], start=debut + 2):
             nom = str(valeur(ligne, 0) or "").strip()
             prenom = str(valeur(ligne, 1) or "").strip()
             if not nom and not prenom:

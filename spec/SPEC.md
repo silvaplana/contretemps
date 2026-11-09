@@ -1346,6 +1346,10 @@ majeur), Email, Adresse, Téléphone, une colonne combinant date de naissance et
 (l'école calcule actuellement cet âge à la main ; à l'import, **extraire uniquement la date de
 naissance** — la partie avant le " = " — dans `date_naissance`, et ignorer l'âge écrit dans le
 fichier), puis **une colonne par cours** (format "large", "X" si l'élève y est inscrit).
+Les en-têtes sont cherchés dans les 20 premières lignes : la ligne où « Nom » est suivi de
+« Prénom » ; ce qui est au-dessus (titre) et à gauche (colonne vide) est ignoré (fichier
+2025-2026, Seb, 9 novembre 2026). Une ligne sans nom ni prénom (2e téléphone d'un parent) est
+sautée.
 
 **Mapping des colonnes de cours** : le code compare chaque en-tête de colonne à une **table de
 correspondance** (mapping) entre le libellé du fichier Excel et le `cours` correspondant en
