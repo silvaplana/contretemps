@@ -28,7 +28,7 @@ from collections.abc import Callable
 import tarfile
 import tempfile
 import zipfile
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -59,6 +59,20 @@ def _account_name(product: str) -> tuple[str, str]:
     return "Compte courant", "checking"
 
 
+_MONTHS = ("janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc.")
+
+
+def _period(start: date, end: date) -> str:
+    """Période courte d'un relevé : « juil. 2024 », « janv.-juil. 2024 ».
+    Le relevé part du dernier jour du mois d'avant (solde de départ)."""
+    first = start + timedelta(days=1)
+    if (first.year, first.month) == (end.year, end.month):
+        return f"{_MONTHS[end.month - 1]} {end.year}"
+    if first.year == end.year:
+        return f"{_MONTHS[first.month - 1]}-{_MONTHS[end.month - 1]} {end.year}"
+    return f"{_MONTHS[first.month - 1]} {first.year}-{_MONTHS[end.month - 1]} {end.year}"
+
+
 def _check(member: Member) -> None:
     if not member.keeps_accounts:
         raise PermissionError("Réservé aux trésoriers")
@@ -80,20 +94,66 @@ class Finances:
 
     # ----- import -----
 
-    def import_files(self, db: Session, member: Member, files: list[tuple[str, bytes]]) -> dict:
+    def preview_files(self, db: Session, member: Member, files: list[tuple[str, bytes]]) -> dict:
+        """Revue de l'import (Seb, 9/11) : lit les relevés sans rien écrire.
+        Une ligne par fichier, dans l'ordre de import_files : {"file",
+        "what" (à quoi il correspond), "operations", "account" (id du compte
+        proposé, "new" pour un compte à créer, None si illisible),
+        "newAccount" (nom du compte à créer), "already" (déjà importé),
+        "error"}. Plus "accounts" : les comptes au choix [{"id", "name"}]."""
+        _check(member)
+        accounts = db.scalars(select(FinAccount).where(FinAccount.org_id == member.org_id).order_by(FinAccount.kind, FinAccount.id))
+        rows = []
+        for name, data in self._expand(files):
+            try:
+                statement = parse_statement(data)
+            except StatementParseError as exc:
+                rows.append({"file": name, "error": str(exc), "account": None})
+                continue
+            account = self._find_account(db, member.org_id, statement)
+            start, end = date.fromisoformat(statement.start_date), date.fromisoformat(statement.end_date)
+            rows.append({
+                "file": name,
+                "what": f"{_account_name(statement.account_product)[0]} …{statement.account_number[-5:]}, {_period(start, end)}",
+                "operations": len(statement.operations),
+                "account": account.id if account else "new",
+                "newAccount": None if account else _account_name(statement.account_product)[0],
+                "already": account is not None and self._already(db, account, start, end),
+                "error": None,
+            })
+        return {"accounts": [{"id": a.id, "name": a.name} for a in accounts], "rows": rows}
+
+    def import_files(
+        self, db: Session, member: Member, files: list[tuple[str, bytes]], choices: list | None = None
+    ) -> dict:
         """Importe des relevés PDF (ou des archives de PDF). Retourne le
         compte rendu : {"imported": [...], "skipped": [...], "errors": [...]},
-        une entrée {"file", "detail"} par relevé."""
+        une entrée {"file", "detail"} par relevé.
+
+        choices (validés dans la revue, voir preview_files) : un par relevé,
+        dans le même ordre ; l'id d'un compte de l'organisation y met le
+        relevé, "skip" le laisse de côté, "new" ou None garde le compte lu."""
         _check(member)
         report: dict[str, list[dict]] = {"imported": [], "skipped": [], "errors": []}
-        for name, data in self._expand(files):
+        chosen = {
+            a.id: a for a in db.scalars(select(FinAccount).where(FinAccount.org_id == member.org_id))
+        }
+        for index, (name, data) in enumerate(self._expand(files)):
+            choice = choices[index] if choices is not None and index < len(choices) else None
+            if choice == "skip":
+                report["skipped"].append({"file": name, "detail": "non importé"})
+                continue
+            if isinstance(choice, int) and choice not in chosen:
+                raise ValueError("Compte inconnu.")
             try:
                 statement = parse_statement(data)
             except StatementParseError as exc:
                 report["errors"].append({"file": name, "detail": str(exc)})
                 continue
             period = f"{statement.start_date} → {statement.end_date}"
-            account, created = self._store(db, member.org_id, name, statement)
+            account, created = self._store(
+                db, member.org_id, name, statement, chosen[choice] if isinstance(choice, int) else None
+            )
             # Le PDF est rangé même s'il était déjà importé : réimporter
             # range les relevés d'avant le rangement dans Docs.
             filed = self.store_statement(db, member, account.name, statement.end_date, name, data) if self.store_statement else None
@@ -135,13 +195,13 @@ class Finances:
             )
         return expanded
 
-    def _store(self, db: Session, org_id: int, file_name: str, statement: ParsedStatement) -> tuple[FinAccount, bool]:
-        """Enregistre le relevé et ses opérations ; rend son compte, et False
-        s'il était déjà là."""
+    @staticmethod
+    def _find_account(db: Session, org_id: int, statement: ParsedStatement) -> FinAccount | None:
+        """Le compte du relevé, d'après le numéro lu dessus."""
         account = db.scalar(select(FinAccount).where(FinAccount.org_id == org_id, FinAccount.number == statement.account_number))
         # Compte créé par la connexion bancaire : son numéro est l'IBAN, qui
         # contient le numéro lu sur le relevé.
-        account = account or next(
+        return account or next(
             (
                 a
                 for a in db.scalars(select(FinAccount).where(FinAccount.org_id == org_id, FinAccount.bank_uid.is_not(None)))
@@ -149,18 +209,28 @@ class Finances:
             ),
             None,
         )
+
+    @staticmethod
+    def _already(db: Session, account: FinAccount, start: date, end: date) -> bool:
+        return db.scalar(
+            select(FinStatement.id).where(
+                FinStatement.account_id == account.id, FinStatement.start_date == start, FinStatement.end_date == end
+            )
+        ) is not None
+
+    def _store(
+        self, db: Session, org_id: int, file_name: str, statement: ParsedStatement, account: FinAccount | None = None
+    ) -> tuple[FinAccount, bool]:
+        """Enregistre le relevé et ses opérations, dans le compte choisi ou
+        celui du numéro lu ; rend son compte, et False s'il était déjà là."""
+        account = account or self._find_account(db, org_id, statement)
         if account is None:
             name, kind = _account_name(statement.account_product)
             account = FinAccount(org_id=org_id, number=statement.account_number, name=name, kind=kind)
             db.add(account)
             db.flush()
         start, end = date.fromisoformat(statement.start_date), date.fromisoformat(statement.end_date)
-        already = db.scalar(
-            select(FinStatement.id).where(
-                FinStatement.account_id == account.id, FinStatement.start_date == start, FinStatement.end_date == end
-            )
-        )
-        if already is not None:
+        if self._already(db, account, start, end):
             return account, False
         stored = FinStatement(
             account_id=account.id,

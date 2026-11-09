@@ -164,6 +164,43 @@ def test_import_twice_and_zip(finances, db_session):
     assert len(finances.get_ledger(db_session, TRESORIER)["rows"]) == 3  # virement interne : 1 ligne
 
 
+def test_preview_writes_nothing_and_proposes_an_account(finances, db_session):
+    """Revue de l'import (Seb, 9/11) : lire sans rien écrire, une ligne par
+    fichier avec à quoi il correspond et le compte proposé."""
+    first, second, livret = history()
+    finances.import_files(db_session, TRESORIER, [first])
+    courant_id = finances.get_ledger(db_session, TRESORIER)["accounts"][0]["id"]
+    preview = finances.preview_files(db_session, TRESORIER, [first, second, livret, ("facture.pdf", b"pas un pdf")])
+    assert preview["accounts"] == [{"id": courant_id, "name": "Compte courant"}]
+    rows = preview["rows"]
+    assert [r["file"] for r in rows] == ["c1.pdf", "c2.pdf", "l1.pdf", "facture.pdf"]
+    assert rows[0]["what"] == "Compte courant …61601, juil. 2024"
+    assert rows[2]["what"] == "Livret Bleu …61602, janv.-juil. 2024"
+    assert (rows[0]["account"], rows[0]["already"], rows[0]["operations"]) == (courant_id, True, 2)
+    assert (rows[1]["account"], rows[1]["already"]) == (courant_id, False)
+    # Compte inconnu : l'appli propose d'en créer un, nommé d'après le relevé.
+    assert (rows[2]["account"], rows[2]["newAccount"]) == ("new", "Livret Bleu")
+    assert rows[3]["error"] and rows[3]["account"] is None
+    # Rien n'a été écrit.
+    assert len(finances.get_ledger(db_session, TRESORIER)["rows"]) == 2
+
+
+def test_import_follows_the_validated_choices(finances, db_session):
+    first, second, livret = history()
+    finances.import_files(db_session, TRESORIER, [first])
+    courant_id = finances.get_ledger(db_session, TRESORIER)["accounts"][0]["id"]
+    # Le livret est mis, par choix, dans le compte courant ; c2 n'est pas importé.
+    report = finances.import_files(db_session, TRESORIER, [second, livret], choices=["skip", courant_id])
+    assert [i["file"] for i in report["imported"]] == ["l1.pdf"]
+    assert [s["file"] for s in report["skipped"]] == ["c2.pdf"]
+    ledger = finances.get_ledger(db_session, TRESORIER)
+    assert [a["name"] for a in ledger["accounts"]] == ["Compte courant"]
+    assert len(ledger["rows"]) == 3
+    # Un compte d'une autre école n'est pas accepté.
+    with pytest.raises(ValueError):
+        finances.import_files(db_session, AUTRE_ECOLE, [second], choices=[courant_id])
+
+
 def test_missing_statement_is_reported(finances, db_session):
     first, _, livret = history()
     later = ("c3.pdf", make_statement(COURANT, ("30/09/2024", 50000), [("05/10/2024", "CB", -1000, [])], "31/10/2024"))
@@ -259,7 +296,12 @@ def test_routes(client, db_session, ecole):
     Comptes().create(db_session, ecole_id=ecole["ecole"].id, role="professeur", nom="Pesenti", prenom="Agnès", email="ap@test.fr")
     tresorier = entetes_session(ecole["tresorier"])
     files = [("files", (name, data, "application/pdf")) for name, data in history()]
-    reponse = client.post("/finances/import", files=files, headers=tresorier)
+    # Revue de l'import : rien n'est écrit avant Valider.
+    revue = client.post("/finances/import/preview", files=files, headers=tresorier)
+    assert revue.status_code == 200, revue.text
+    assert [r["account"] for r in revue.json()["rows"]] == ["new", "new", "new"]
+    assert client.get("/finances/ledger", headers=tresorier).json()["rows"] == []
+    reponse = client.post("/finances/import", files=files, data={"choices": '["new", "new", "new"]'}, headers=tresorier)
     assert reponse.status_code == 200, reponse.text
     assert len(reponse.json()["imported"]) == 3
     assert client.get("/finances/ledger", headers=tresorier).json()["total"] == 4422.61
@@ -299,6 +341,7 @@ def test_routes(client, db_session, ecole):
     admin = entetes_session(ecole["admin"])
     assert client.get("/finances/ledger", headers=admin).status_code == 403
     assert client.post("/finances/import", files=files, headers=admin).status_code == 403
+    assert client.post("/finances/import/preview", files=files, headers=admin).status_code == 403
 
 
 @pytest.mark.rbac_reel

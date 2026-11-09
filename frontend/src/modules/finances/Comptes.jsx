@@ -9,6 +9,7 @@ import * as api from "./api.js";
 import { BalanceChart } from "./BalanceChart.jsx";
 import BanquePanel from "./BanquePanel.jsx";
 import FicheCompte from "./FicheCompte.jsx";
+import RevueReleves from "./RevueReleves.jsx";
 import Caisse from "./compta/Caisse.jsx";
 import FicheOperation from "./compta/FicheOperation.jsx";
 import PlanComptable, {
@@ -334,6 +335,8 @@ export default function Comptes({ onChange }) {
   // Compte rendu du dernier import : une phrase, puis les releves refuses.
   const [importReport, setImportReport] = useState(null);
   const [importErrors, setImportErrors] = useState([]);
+  // Revue de l'import en cours : { files, rows, accounts } (rien d'écrit).
+  const [review, setReview] = useState(null);
   const [shownRows, setShownRows] = useState(ROWS_PAGE);
   // Filtres sur la nature des operations : menu "Categories" + recherche.
   const [category, setCategory] = useState(ALL_CATEGORIES);
@@ -418,7 +421,21 @@ export default function Comptes({ onChange }) {
     setImportReport(null);
     setImportErrors([]);
     try {
-      const report = await api.importerReleves(files);
+      const preview = await api.apercuReleves(files);
+      setReview({ files, ...preview });
+    } catch (err) {
+      setImportReport(`Import impossible : ${err.message}`);
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  // Valider dans la revue : l'import se fait, avec les comptes choisis.
+  async function validateImport(choices) {
+    const { files } = review;
+    try {
+      const report = await api.importerReleves(files, choices);
+      setReview(null);
       const operations = report.imported.reduce(
         (n, i) => n + Number.parseInt(i.detail.split(", ")[1]),
         0,
@@ -428,10 +445,13 @@ export default function Comptes({ onChange }) {
       ];
       if (report.imported.length)
         parts[0] += ` (${plural(operations, "opération")})`;
-      if (report.skipped.length)
-        parts.push(
-          `${report.skipped.length} déjà présent${report.skipped.length > 1 ? "s" : ""}`,
-        );
+      // « non importé » : laissé de côté dans la revue.
+      const left = report.skipped.filter((s) => s.detail === "non importé").length;
+      const present = report.skipped.length - left;
+      if (present)
+        parts.push(`${present} déjà présent${present > 1 ? "s" : ""}`);
+      if (left)
+        parts.push(`${left} laissé${left > 1 ? "s" : ""} de côté`);
       if (report.errors.length)
         parts.push(
           `${report.errors.length} refusé${report.errors.length > 1 ? "s" : ""}`,
@@ -440,9 +460,8 @@ export default function Comptes({ onChange }) {
       setImportErrors(report.errors);
       await load();
     } catch (err) {
+      setReview(null);
       setImportReport(`Import impossible : ${err.message}`);
-    } finally {
-      setImporting(false);
     }
   }
 
@@ -547,6 +566,21 @@ export default function Comptes({ onChange }) {
   );
 
   if (error) return <p className="login-screen__erreur">{error}</p>;
+  // Revue de l'import : elle seule à l'écran, jusqu'à Valider ou Annuler.
+  if (review) {
+    return (
+      <div className="fin-comptes account-card">
+        <RevueReleves
+          revue={review}
+          onValider={validateImport}
+          onAnnuler={() => {
+            setReview(null);
+            setImportReport("Import annulé : rien n’a été changé.");
+          }}
+        />
+      </div>
+    );
+  }
   const banque = (
     <>
       {retourBanque && <p className="history-report">{retourBanque}</p>}
