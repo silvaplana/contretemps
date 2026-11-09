@@ -78,8 +78,9 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
 
 - Le texte (retours à la ligne gardés, liens cliquables).
 - Jusqu'à **10 photos et vidéos**, mêlées, dans l'ordre choisi. À partir de deux, un **carrousel**
-  comme sur Instagram : on fait glisser du doigt, des points dessous disent où l'on est (Seb,
-  8 novembre). Plus, au besoin, **un document** de
+  comme sur Instagram : on fait glisser du doigt, des points disent où l'on est (Seb,
+  8 novembre). Les points sont posés sur le bas de la photo ou de la vidéo et restent collés en bas de
+  l'écran tant qu'on voit le carrousel : toujours visibles, même avec une photo haute (Seb, 9 novembre). Plus, au besoin, **un document** de
   Docs, montré comme un bouton fichier qui l'ouvre comme dans Docs (PDF dans la visionneuse, Word/Excel
   dans OnlyOffice).
 - La vidéo se lit sur place : image d'attente, ▶ au centre, durée en bas à droite.
