@@ -732,6 +732,15 @@
   border-radius: 10px;
   border: 1px solid var(--border);
   background: var(--card-bg);
+  color: var(--text);
+}
+
+/* Liste ouverte d'un menu déroulant : couleurs posées explicitement, sinon
+   Chrome sous Windows peut afficher des choix vides (texte de la couleur du
+   fond), vu par Seb le 9 novembre 2026 dans l'import des élèves. */
+.field-input option {
+  color: var(--text);
+  background: var(--card-bg);
 }
 
 .modal-textarea {
