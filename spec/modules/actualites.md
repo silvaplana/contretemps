@@ -41,7 +41,7 @@ reçoivent pas les notifications.
 
 Comme les droits ne se cochent aujourd'hui que pour les administrateurs, l'onglet Édition a, pour
 l'administrateur principal et le Super User, une ligne **« Qui voit les actus (pendant le test) »**
-dans les Paramètres d'édition : la liste des membres de la saison, un interrupteur chacun (grisé et allumé pour
+dans les Paramètres d'édition des actus : la liste des membres de la saison, un interrupteur chacun (grisé et allumé pour
 qui publie). L'interrupteur met la personne dans le groupe 🔒 du droit, ou l'en retire.
 
 Retiré le 8 novembre sur un malentendu (PR #155), remis le soir
@@ -59,7 +59,7 @@ Ce que voient tous les membres ; l'onglet Visualisation des personnes qui publie
 | Niveau | Rendu | Usage |
 |---|---|---|
 | **Important** | Tout en haut, fond rouge clair, mention « ⚠ IMPORTANT », texte plus gros | Ce qui ne doit pas être manqué |
-| **Normal** | Grande carte, le texte puis la photo ou la vidéo dessous (Seb et les testeurs, 8 novembre) | Le cas courant |
+| **Normal** | Grande carte, le texte puis la photo ou la vidéo dessous (Seb et les testeurs, 8 novembre) ; l'inverse si le réglage « En haut de chaque actu » est sur Photo, vidéo (§4.1) | Le cas courant |
 | **Brève** | Une ligne précédée d'une pastille, sans image | Les petites infos |
 
 Une actu Important a une date **« En haut jusqu'au »** : jusqu'à ce jour inclus elle reste en haut en
@@ -97,9 +97,14 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
   pastille **Publiée** (vert) ou **Brouillon** (jaune), puis « Niveau · date ».
 - Toucher une ligne ouvre l'actu dans l'éditeur.
 - Bouton principal en bas : **Nouvelle actu**.
-- Sous la liste, **« Paramètres d'édition »**, repliés par défaut (on touche le titre pour les
+- Sous la liste, **« Paramètres d'édition des actus »**, repliés par défaut (on touche le titre pour les
   dérouler ; Seb, 8 novembre) : interrupteur **« Ouvrir l'appli sur les actus »** (§6) et le compte
-  **Instagram** relié (§6 bis).
+  **Instagram** relié (§6 bis). Même présentation que les volets d'Admin › École (titre en capitales,
+  flèche ›/⌄ à gauche, sous-parties « Ouverture de l'appli », « Pendant le test », « Instagram » ;
+  Seb, 9 novembre). En tête, **« En haut de chaque actu : Texte | Photo, vidéo »** (Seb, 9 novembre ;
+  Texte par défaut) : un seul réglage pour toute l'école, que suivent toutes les cartes Normal et
+  Important, l'aperçu de l'éditeur compris. Le menu ⋯ du bandeau (qui publie, onglets Édition et Visualisation) a l'entrée
+  **« Paramètres d'édition des actus »** : elle passe sur Édition, déplie les paramètres et y descend.
 
 Toute personne qui a le droit peut modifier ou supprimer toutes les actus, pas seulement les siennes
 (le bureau se relaie).
@@ -153,9 +158,9 @@ seuls dans les actus, sans rien ressaisir.
 
 - **Condition d'Instagram** : un compte professionnel (Créateur conseillé, ou Entreprise), donc public.
   Instagram ne laisse aucune appli lire un compte personnel.
-- **Relier** (Paramètres d'édition › Instagram, droit 🔒 Publier les actualités) : bouton **« Se
+- **Relier** (Paramètres d'édition des actus › Instagram, droit 🔒 Publier les actualités) : bouton **« Se
   connecter avec Instagram »** (Seb, 8 novembre au soir : coller une clé était trop pénible). Instagram
-  demande de se connecter au compte et d'accepter, puis revient dans l'appli, Paramètres d'édition
+  demande de se connecter au compte et d'accepter, puis revient dans l'appli, Paramètres d'édition des actus
   ouverts : « Relié à @compte », ou la raison de l'échec. La clé obtenue (60 jours, renouvelée seule
   chaque semaine) est gardée chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). « Délier »
   l'oublie ; les actus déjà relayées restent.
@@ -239,7 +244,9 @@ chaque saison : « Nouveau » repart de zéro à la rentrée.
 `last_sync_at`, `last_error`. Et sur `news_items` : `instagram_id` (le post relayé). Migration
 `b81f2c6d9e47`.
 
-**`news_settings`** : `org_id` (clé), `open_on_news` (bool, vrai par défaut ; pas de ligne = vrai).
+**`news_settings`** : `org_id` (clé), `open_on_news` (bool, vrai par défaut ; pas de ligne = vrai),
+`media_first` (bool, faux par défaut : texte en haut ; migration `d5f2b8c1e604`, colonne ajoutée à la
+table existante plutôt qu'une nouvelle table : c'est un réglage de plus de l'école).
 
 Le document reste une colonne : une actu en a au plus un (§3.3). Pas de lien avec les saisons : une actu appartient à l'organisation.
 
@@ -249,12 +256,12 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 
 | Route | Qui | Rôle |
 |---|---|---|
-| `GET …/news` | qui voit les actus (§2 bis) | `can_publish` et les actus publiées, dans l'ordre du §3.2, avec `is_new` ; met à jour `news_seen` |
+| `GET …/news` | qui voit les actus (§2 bis) | `can_publish`, `media_first` et les actus publiées, dans l'ordre du §3.2, avec `is_new` ; met à jour `news_seen` |
 | `GET …/news/atelier` | droit | Toutes, brouillons compris |
 | `POST …/news` · `PUT …/news/{id}` | droit | Créer, modifier ; `publish` : publier ou garder en brouillon |
 | `POST …/news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
 | `DELETE …/news/{id}` | droit | Supprimer |
-| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture ; `can_read` (voit l'onglet) et `can_choose_readers` pendant le test (§2 bis) |
+| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture, `media_first` (le `PUT` ne change que ce qu'on lui donne) ; `can_read` (voit l'onglet) et `can_choose_readers` pendant le test (§2 bis) |
 | `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `media` (`{photo}`) |
 | `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `media` (`{video_id}`) |
 | `GET …/news/{id}/photos/{empreinte}` | tous | Une photo de l'actu (JPEG) ; brouillon : droit seulement |

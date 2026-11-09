@@ -17,7 +17,9 @@ Les actus (et l'onglet Visualisation)
 - Toutes les actus, brouillons compris : barre de couleur du niveau, début du texte, « Publiée » ou
   « Brouillon ». Toucher une actu l'ouvre pour la modifier.
 - Bouton « Nouvelle actu » en bas.
-- « Paramètres d'édition » en bas, repliés : les toucher pour les dérouler.
+- « Paramètres d'édition des actus » en bas, repliés : les toucher pour les dérouler. On y arrive aussi par
+  le menu ⋯ en haut à droite › « Paramètres d'édition des actus ».
+  - « En haut de chaque actu » : Texte ou Photo, vidéo (pour toutes les actus de l'école).
   - « Ouvrir l'appli sur les actus » (allumé : l'appli s'ouvre toujours sur Actus, pour tout le
     monde ; éteint : sur le dernier onglet utilisé).
   - Instagram : « Se connecter avec Instagram » (compte Instagram professionnel), puis accepter

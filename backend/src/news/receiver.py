@@ -149,7 +149,7 @@ class NewsReceiver:
         items = [_out(self.client, db, i, seen, me) for i in self.client.published(db, ecole_id)]
         if me is not None:
             self.client.mark_seen(db, me)
-        return FeedOut(can_publish=can_publish(appelant), items=items)
+        return FeedOut(can_publish=can_publish(appelant), media_first=self.client.media_first(db, ecole_id), items=items)
 
     def workshop(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
         self._publisher(appelant, ecole_id)
@@ -219,14 +219,20 @@ class NewsReceiver:
         reader = can_read(appelant)
         return SettingsOut(
             open_on_news=reader and self.client.open_on_news(db, ecole_id), can_read=reader,
-            can_choose_readers=can_choose_readers(appelant),
+            can_choose_readers=can_choose_readers(appelant), media_first=self.client.media_first(db, ecole_id),
         )
 
     def change_settings(self, ecole_id: int, data: SettingsIn, db: Session = Depends(get_db),
                         appelant: Compte = Depends(rbac.compte_appelant)):
         self._publisher(appelant, ecole_id)
-        self.client.set_open_on_news(db, ecole_id, data.open_on_news)
-        return SettingsOut(open_on_news=data.open_on_news, can_read=True, can_choose_readers=can_choose_readers(appelant))
+        if data.open_on_news is not None:
+            self.client.set_open_on_news(db, ecole_id, data.open_on_news)
+        if data.media_first is not None:
+            self.client.set_media_first(db, ecole_id, data.media_first)
+        return SettingsOut(
+            open_on_news=self.client.open_on_news(db, ecole_id), media_first=self.client.media_first(db, ecole_id),
+            can_read=True, can_choose_readers=can_choose_readers(appelant),
+        )
 
     def _chooser(self, appelant: Compte | None, ecole_id: int) -> None:
         rbac.require_membre(appelant, ecole_id)
