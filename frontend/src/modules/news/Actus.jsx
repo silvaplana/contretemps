@@ -114,7 +114,7 @@ function Element({ ecoleId, actuId, element }) {
 }
 
 // Les photos et vidéos de l'actu ; à plusieurs, un carrousel qu'on fait
-// glisser du doigt, avec des points dessous, comme sur Instagram (§3.3).
+// glisser du doigt, avec des points toujours visibles, comme sur Instagram (§3.3).
 function Media({ ecoleId, actu }) {
   const [rang, setRang] = useState(0)
   const media = actu.media ?? []

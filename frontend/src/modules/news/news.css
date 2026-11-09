@@ -586,7 +586,7 @@
 }
 .actu--important .carrousel {
   border-radius: 14px;
-  overflow: hidden;
+  overflow: clip; /* pas hidden : les points restent collés en bas de l'écran (sticky) */
 }
 .carrousel__piste {
   display: flex;
@@ -607,18 +607,27 @@
   width: 100%;
   border-radius: 0;
 }
+/* Points posés sur le bas de la photo ou de la vidéo, et collés en bas de
+   l'écran tant qu'on voit le carrousel : toujours visibles (Seb, 9 novembre). */
 .carrousel__points {
+  position: sticky;
+  bottom: 10px;
+  z-index: 1;
   display: flex;
   justify-content: center;
   gap: 6px;
-  padding: 10px 0;
-  background: var(--card-bg);
+  width: fit-content;
+  margin: -34px auto 10px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
 .carrousel__point {
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--border);
+  background: rgba(255, 255, 255, 0.6);
 }
 .carrousel__point--actif {
   background: var(--accent);
