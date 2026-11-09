@@ -598,3 +598,53 @@ def test_report_routes_and_downloads(client, db_session, ecole, monkeypatch):
     assert client.get(f"/finances/reports/{report_id}", headers=entetes_session(ecole["admin"])).status_code == 403
     assert client.delete(f"/finances/reports/{report_id}", headers=tresorier).status_code == 204
     assert client.get(f"/finances/reports/{report_id}", headers=tresorier).status_code == 404
+
+
+def test_treasurer_folders_are_not_doubled_by_parallel_requests(tmp_path, monkeypatch):
+    """Seb, 9/11 : « ACHATS (2) », « ACHATS (3) » dans Docs › Financier.
+    Les demandes envoyées ensemble à l'ouverture du Financier préparaient
+    chacune les dossiers de la trésorière : chacune créait ACHATS."""
+    import threading
+    import time
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import sessionmaker
+
+    from app import main
+    from db import Base
+    from documents.models import DocNode
+    from finances_contretemps.adapter import preparer_dossiers_financier
+    from saisons.portee import toutes_saisons
+
+    engine = create_engine(f"sqlite:///{tmp_path / 'db.sqlite'}", connect_args={"check_same_thread": False})
+    Base.metadata.create_all(engine)
+    Session = sessionmaker(bind=engine)
+    with Session() as db:
+        ecole = Ecoles().create(db, nom="Contretemps", code_postal="83330")
+        org_id = ecole.id
+    documents = main.documents_client
+    tresoriere = Member(person_id=1, org_id=org_id, name="Julia Dho", is_treasurer=True)
+    with Session() as db:
+        documents.reserved_folder(db, org_id, "Financier", None)  # dossiers système prêts
+        db.commit()
+    creer = documents.create_folder
+
+    def creer_lentement(*args, **kwargs):
+        time.sleep(0.05)  # laisse l'autre demande passer devant
+        return creer(*args, **kwargs)
+
+    monkeypatch.setattr(documents, "create_folder", creer_lentement)
+    preparer = preparer_dossiers_financier(documents)
+
+    def demande():
+        with Session() as db:
+            preparer(db, tresoriere)
+
+    demandes = [threading.Thread(target=demande) for _ in range(3)]
+    for t in demandes:
+        t.start()
+    for t in demandes:
+        t.join()
+    with Session() as db, toutes_saisons(db):
+        noms = [n.name for n in db.scalars(select(DocNode).where(DocNode.org_id == org_id, DocNode.deleted_at.is_(None)))]
+    assert noms.count("ACHATS") == 1 and not [n for n in noms if n.startswith("ACHATS (")], noms

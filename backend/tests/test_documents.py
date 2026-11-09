@@ -448,3 +448,23 @@ def test_destinataires_tout_le_monde_et_tresoriers(client, ecole, db_session):
     noms = lambda cle: [r.name for r in annuaire.recipients(db_session, ecole["id"], [("group", cle)])]  # noqa: E731
     assert noms("role:tresorier") == ["Julia Dho"]
     assert noms("role:tous") == ["Ana Roux", "Ima Blanc", "Julia Dho", "Léon Perrin"]
+
+
+def test_renommer_la_saison_renomme_son_dossier(client, ecole):
+    """Seb, 9/11 : « 25-26 test » renommée en « 25-26 » dans Admin › Saisons,
+    son dossier de Docs gardait l'ancien nom tant qu'on n'ouvrait pas Privé."""
+    admin = Docs(client, ecole["id"], ecole["admin"])
+    dossier = _saison(admin)
+    saisons = client.get(f"/ecoles/{ecole['id']}/saisons", headers=admin.h).json()
+    s = saisons[0]
+    reponse = client.put(
+        f"/ecoles/{ecole['id']}/saisons/{s['id']}",
+        json={"nom": "25-26", "date_debut": s["date_debut"], "date_fin": s["date_fin"]},
+        headers=admin.h,
+    )
+    assert reponse.status_code == 200, reponse.text
+    # Ouvert directement (dernier endroit, lien) : déjà le nouveau nom.
+    assert admin.get(f"/nodes/{dossier['id']}").json()["name"] == "Saison 25-26"
+    # Renommer le dossier lui-même : refusé, en disant où changer le nom.
+    refus = admin.modifier(dossier["id"], name="Autre")
+    assert refus.status_code == 409 and "Admin › Saisons" in refus.json()["detail"]

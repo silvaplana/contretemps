@@ -63,6 +63,9 @@ RecopieDocuments = Callable[[Session, int, int, int, "int | None", dict[int, int
 class GestionSaisons:
     def __init__(self, recopier_documents: RecopieDocuments | None = None) -> None:
         self.recopier_documents = recopier_documents
+        # Après un changement de nom : le dossier de la saison dans Docs suit
+        # tout de suite (Seb, 9/11), branché par app/main.py comme la recopie.
+        self.renommer_documents: Callable[[Session, int], None] | None = None
 
     def lister(self, db: Session, ecole_id: int) -> list[Saison]:
         """De la plus récente (la courante) à la plus ancienne, par dates."""
@@ -106,6 +109,8 @@ class GestionSaisons:
             db.rollback()
             raise ErreurSaison("Avec ces dates, la saison en cours changerait : choisissez d'autres dates")
         db.commit()
+        if self.renommer_documents is not None:
+            self.renommer_documents(db, ecole_id)
         db.refresh(saison)
         return saison
 

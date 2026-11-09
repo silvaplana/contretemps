@@ -4,6 +4,8 @@ X-Ecole-Id, comme pour les notes de frais), saisons = celles de l'école."""
 
 from __future__ import annotations
 
+import threading
+
 from fastapi import Depends, HTTPException, Request
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -329,8 +331,16 @@ def preparer_dossiers_financier(documents):
 
     classeur = ClasseurContretemps(documents)
     faits: set[tuple[int, int, tuple]] = set()
+    # Les demandes envoyées ensemble à l'ouverture du Financier préparaient
+    # chacune les dossiers : chacune créait ACHATS, d'où « ACHATS (2) »,
+    # « ACHATS (3) » (Seb, 9/11). Une seule à la fois.
+    verrou = threading.Lock()
 
     def preparer(db: Session, member: Member) -> None:
+        with verrou:
+            _preparer(db, member)
+
+    def _preparer(db: Session, member: Member) -> None:
         with toutes_saisons(db):
             courante = saison_courante_id(db, member.org_id)
             saisons = [

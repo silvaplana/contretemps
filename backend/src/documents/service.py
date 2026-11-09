@@ -856,8 +856,10 @@ class Documents:
         return {"id": node.id, "name": node.name}
 
     def _check_restructure(self, db, member, node, loc, deleting: bool = False) -> None:
+        if node.system_kind == SYSTEM_PERIOD:
+            raise DocError(409, "Ce dossier porte le nom de la saison : renommez-la dans Admin › Saisons ; il ne se déplace ni ne se supprime.")
         if node.system_kind is not None:
-            raise DocError(409, "Ce dossier fait partie de l'organisation de l'appli : il ne se renomme, ne se déplace ni ne se supprime.")
+            raise DocError(409, "Ce dossier est créé par l'appli, son nom est fixé : il ne se renomme, ne se déplace ni ne se supprime.")
         # An admin may put an official item itself in the trash (Seb, 21 October);
         # what lies inside an official folder stays frozen.
         admin_deletes_official = deleting and (member.is_admin or member.is_superuser) and self._official_lock(loc.path) is node

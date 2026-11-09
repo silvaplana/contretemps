@@ -340,7 +340,8 @@ aux récents.
 créé automatiquement avec la saison. Public et Personnel restent libres. Dans **Privé**, la racine contient
 donc des **dossiers système** (Permanent créé avec l'organisation, confirmé par Seb le 15 octobre, et un
 dossier par saison), impossibles à renommer, déplacer ou supprimer (`doc_nodes.system_kind` :
-`permanent` ou `period`, et `period_id`) :
+`permanent` ou `period`, et `period_id`). Le dossier d'une saison porte son nom (« Saison 2025-2026 ») et
+suit tout de suite quand la saison est renommée dans Admin › Saisons (Seb, 9 novembre 2026) :
 
 ```
 Privé
