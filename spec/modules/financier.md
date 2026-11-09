@@ -41,7 +41,19 @@ un par un ou en archive (zip, 7z, tar), depuis le menu **⋯ › Importer des re
 est lu mot à mot (position sur la page) et **vérifié au centime** : solde de début + opérations =
 solde de fin, sinon il est refusé avec le message de la banque. Un relevé déjà importé (même compte,
 même période) est ignoré : on peut redéposer toute une archive. Le compte rendu de l'import
-(importés, déjà présents, refusés) s'affiche dans l'écran.
+(importés, déjà présents, laissés de côté, refusés) s'affiche dans l'écran.
+
+**Revue avant l'import (Seb, 9 novembre 2026 ; maquette
+https://claude.ai/artifact/Cfxf9LG6GKEmYC19vd3dv2)** : l'appli lit d'abord les fichiers **sans rien
+écrire** (ni lignes dans Comptes, ni PDF dans Docs) et montre sa proposition dans un tableau façon
+Excel, une ligne par relevé : **Fichier | À quoi il correspond | Compte** (« Compte courant …20401,
+oct. 2025 » ; étiquettes « déjà importé », « ignoré » pour un fichier qui n'est pas un relevé). Le
+compte est deviné par le numéro lu sur le relevé (ou contenu dans l'IBAN d'un compte relié à la
+banque) ; un compte inconnu est proposé comme « Nouveau : <nom> » ; il se change dans sa case
+(autre compte, « Ne pas importer ») ; « À choisir » bloque Valider. **Valider** importe avec les
+comptes choisis et range les PDF (§8, dossiers RELEVES BANCAIRES) ; **Annuler** ne change rien. Sur
+téléphone, le tableau glisse vers la gauche. Routes : `POST /finances/import/preview` (lecture),
+`POST /finances/import` avec `choices` (un choix par relevé, dans l'ordre).
 
 Pas de saisie manuelle d'opérations. Pas d'import CSV pour l'instant (un CSV n'a pas de soldes à
 vérifier). La **connexion bancaire** (§3.5) ajoute des opérations provisoires « en attente du
@@ -335,8 +347,9 @@ ouvertes) :
 - **RELEVES BANCAIRES** › un dossier par compte en banque (le nom de sa puce dans Comptes) : le PDF de
   chaque relevé importé y est rangé, dans la saison de sa date de fin ; une saison passée absente est
   créée (septembre à août, comme dans Admin › Saisons) ; une saison terminée et fermée ne reçoit rien
-  (la rouvrir, puis réimporter). Réimporter un relevé déjà importé range son PDF sans recréer ses lignes :
-  c'est ainsi qu'on range les relevés importés avant le 30 octobre.
+  (la rouvrir, puis réimporter). Le dossier est celui du compte validé dans la revue de l'import (§3.1).
+  Réimporter un relevé déjà importé range son PDF sans recréer ses lignes : c'est ainsi qu'on range les
+  relevés importés avant le 30 octobre (leur PDF n'avait pas été gardé).
 - **ACHATS** › un dossier par mois de la pièce, « MM.AAAA » (« 08.2026 »), créé avec la première pièce
   du mois : les achats payés avec les comptes de l'association.
 - **HONORAIRES** › un dossier par prof, « PRENOM NOM » › un dossier par note d'honoraires (une note

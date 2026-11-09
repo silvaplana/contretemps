@@ -5,10 +5,11 @@ renvoie un `Member`) ; les droits sont vérifiés par le service."""
 from __future__ import annotations
 
 import datetime as dt
+import json
 from collections.abc import Callable
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, Form, HTTPException, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
@@ -221,17 +222,32 @@ class FinancesReceiver:
         db_dep = Depends(get_db)
         member_dep = Depends(self.current_member)
 
-        @app.post("/finances/import")
-        async def import_statements(files: list[UploadFile], db: Session = db_dep, member: Member = member_dep) -> dict:
-            """Relevés PDF ou archives (multipart, champ "files" répété) :
-            compte rendu importés / déjà présents / erreurs."""
+        @app.post("/finances/import/preview")
+        async def preview_statements(files: list[UploadFile], db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Revue de l'import : ce que l'appli propose, sans rien écrire."""
             uploaded = [(f.filename or "releve.pdf", await f.read()) for f in files]
             try:
-                # Lecture des PDF dans un thread : plusieurs secondes pour une
-                # archive de relevés.
-                return await run_in_threadpool(client.import_files, db, member, uploaded)
+                return await run_in_threadpool(client.preview_files, db, member, uploaded)
             except PermissionError as exc:
                 raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+        @app.post("/finances/import")
+        async def import_statements(
+            files: list[UploadFile], choices: str | None = Form(None), db: Session = db_dep, member: Member = member_dep
+        ) -> dict:
+            """Relevés PDF ou archives (multipart, champ "files" répété), et
+            les choix validés dans la revue (champ "choices", liste JSON, un
+            par relevé) : compte rendu importés / déjà présents / erreurs."""
+            uploaded = [(f.filename or "releve.pdf", await f.read()) for f in files]
+            try:
+                chosen = json.loads(choices) if choices else None
+                # Lecture des PDF dans un thread : plusieurs secondes pour une
+                # archive de relevés.
+                return await run_in_threadpool(client.import_files, db, member, uploaded, chosen)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+            except ValueError as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
 
         @app.get("/finances/ledger")
         def get_ledger(account: int | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:

@@ -1628,3 +1628,75 @@
 .fin-fiche .btn {
   justify-self: start;
 }
+
+/* Revue de l'import des relevés (RevueReleves.jsx) : tableau façon Excel. */
+.fin-revue {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 17px;
+}
+.fin-revue__tableau {
+  overflow-x: auto;
+}
+.fin-revue table {
+  border-collapse: collapse;
+  white-space: nowrap;
+  background: var(--card-bg);
+}
+.fin-revue th {
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--surface);
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+}
+.fin-revue td {
+  height: 48px;
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  vertical-align: middle;
+}
+.fin-revue td.fin-revue__compte {
+  padding: 0;
+}
+.fin-revue select {
+  font: inherit;
+  font-weight: 600;
+  height: 48px;
+  width: 100%;
+  min-width: 140px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0 8px;
+}
+.fin-revue select.fin-revue__a-choisir {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
+.fin-revue__ignore td {
+  opacity: 0.55;
+}
+.fin-revue__tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  font-size: 15px;
+  background: var(--accent-bg);
+}
+.fin-revue__tag--non {
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+.fin-revue__aide {
+  color: var(--warning-text);
+  font-weight: 600;
+}
+.fin-revue__barre {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}

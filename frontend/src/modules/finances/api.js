@@ -24,10 +24,20 @@ async function appel(chemin, options = {}) {
 export const historique = (accountId) => appel(accountId ? `/ledger?account=${accountId}` : '/ledger')
 
 // Relevés PDF ou archives : compte rendu { imported, skipped, errors }.
-export function importerReleves(fichiers) {
+// choix : un par relevé, validés dans la revue (id du compte, "new", "skip").
+export function importerReleves(fichiers, choix) {
   const body = new FormData()
   for (const fichier of fichiers) body.append('files', fichier)
+  if (choix) body.append('choices', JSON.stringify(choix))
   return appel('/import', { method: 'POST', body })
+}
+
+// Revue de l'import, sans rien écrire : { accounts: [{ id, name }], rows:
+// [{ file, what, operations, account, newAccount, already, error }] }.
+export function apercuReleves(fichiers) {
+  const body = new FormData()
+  for (const fichier of fichiers) body.append('files', fichier)
+  return appel('/import/preview', { method: 'POST', body })
 }
 
 // Saisons de l'école : { seasons: [{ id, name, startDate, endDate, current }], today }.
