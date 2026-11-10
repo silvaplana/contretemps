@@ -1562,3 +1562,38 @@ def test_repartir_a_zero_sur_la_saison(client, db_session, ecole, espion):
     remis = client.post(url, json={"confirm": saison.name}, headers=entetes).json()
     assert remis["pieces"] == 0 and remis["lines"] == 0 and remis["chart"]["id"] == copie.json()["id"]
     assert client.get(f"/finances/operations/{bonne.id}", headers=entetes).status_code == 200
+
+
+def test_une_longue_description_garde_son_extension(client, ecole, monkeypatch, tmp_path):
+    """Rejeu 2024-25 : « Mise à disposition du Théâtre Galli… (Mairie de
+    Sanary-sur-Mer Théâtre Galli) » perdait son « .pdf » au raccourcissement
+    du nom sur le disque, et Docs héritait d'un fichier sans extension."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    lecteur = LecteurFacture(
+        date="2026-10-12", montant_centimes=350458, commercant="Mairie de Sanary-sur-Mer Théâtre Galli",
+        description="Mise à disposition du Théâtre Galli pour le spectacle de fin d'année du dimanche 29 juin",
+    )
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    note = _etablir(client, tresorier, None, contenu=b"%PDF faux")
+    assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
+    assert _achats_de_la_saison(client, org, tresorier, "2026-2027") == ["2026-10-12 Facture Mairie de Sanary-sur-Mer Théâtre Galli 3504,58.jpg"]
+
+
+def test_le_dossier_du_tresorier_porte_son_nom_meme_apres_un_achat(client, ecole, monkeypatch):
+    """Rejeu 2024-25 : un achat établi par la trésorière créait son dossier
+    de personne « 1 sans nom » sur le disque, repris ensuite pour ses propres
+    notes de frais dans Docs."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    lecteur = LecteurFacture(date="2026-10-12", montant_centimes=3990, commercant="Amazon", description="Câbles")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    _etablir(client, tresorier, "achat")
+    lecteur.lu = {"date": "2026-10-13", "montant_centimes": 3056, "commercant": "Onlineprinters", "emetteur_personne": False, "client": "Julia Dho", "description": "Flyers"}
+    frais = _etablir(client, tresorier, None)
+    assert frais["nature"] == "frais" and frais["personne"]["nom"] == "Julia Dho"
+    saison = _enfant(client, org, tresorier, None, "Saison 2026-2027")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+    notes = _enfant(client, org, tresorier, financier["id"], "Notes de frais")
+    noms = [i["name"] for i in _parcourir(client, org, tresorier, notes["id"]).json()["items"]]
+    assert noms == [f"{tresorier.id} Julia Dho"]

@@ -97,7 +97,9 @@ class StockageEnveloppes:
                     if taille > self.max_bytes:
                         raise FichierTropLourd(f"Fichier trop lourd (plus de {self.max_bytes // (1024 * 1024)} Mo).")
                     sortie.write(bloc)
-            cible = self._libre(cible_dossier, nom_propre(nom_fichier, 100))
+            # L'extension survit toujours au raccourcissement (une facture au long libellé restait « .p »).
+            racine, extension = os.path.splitext(nom_fichier)
+            cible = self._libre(cible_dossier, nom_propre(racine, 100 - len(extension)) + extension)
             shutil.move(temporaire, cible)
             return cible.relative_to(self._org(org_id).resolve()).as_posix(), taille
         except BaseException:

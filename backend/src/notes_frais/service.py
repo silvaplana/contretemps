@@ -986,7 +986,7 @@ class NotesDeFrais:
         if fichier is not None:
             self._poser_piece(
                 membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2],
-                nom_personne=personne.nom if personne is not None and nature != ACHAT else "",
+                nom_personne=personne.nom if personne is not None and nature != ACHAT else membre.nom,
             )
         db.commit()
         db.refresh(note)
