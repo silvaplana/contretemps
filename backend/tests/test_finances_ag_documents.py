@@ -298,3 +298,56 @@ def test_a_cheque_deposit_is_never_sure_and_is_split_like_the_previous_ones(worl
     fiche = accounting.operation(db_session, TRESORIER, rows["REM CHQ 0012346"]["id"])
     assert [a["number"] for a in fiche["splitSuggestion"]] == ["706", "756"]
     assert documents.preparation(db_session, TRESORIER, SEASON, None)["classify"]["withoutAccount"] == 3
+
+
+def test_last_year_documents_are_recognized_by_content_then_name(tmp_path):
+    """§8.10 étape 6 (Seb 10/11) : le contenu d'abord, le nom ensuite ; le nom
+    de cette saison suit celui de l'an dernier."""
+    from finances.season_documents import next_name, recognize
+
+    truc = tmp_path / "truc.pdf"
+    doc = pymupdf.open()
+    doc.new_page().insert_text((72, 72), "Contretemps   Balance 2024-2025   Du 01/09/2024 au 31/08/2025")
+    doc.save(truc)
+    assert recognize("truc.pdf", truc) == "balance"
+    assert recognize("Grand-Livre 2024-2025.pdf", None) == "grand-livre"
+    assert recognize("Recettes-Depenses-2024-2025.xls", None) == "synthese"
+    assert recognize("Rapport financier AG2025.doc", None) == "rapport"
+    assert recognize("notes trésorière.docx", None) == "autre"
+    assert next_name("Balance 2024-2025.pdf", "balance") == "Balance 2025-2026.pdf"
+    assert next_name("Rapport financier AG2025.doc", "rapport") == "Rapport financier AG2026.docx"
+    assert next_name("Recettes-Depenses-2024-2025.xls", "synthese") == "Recettes-Depenses-2025-2026.xlsx"
+
+
+def test_season_documents_follow_last_year_and_are_never_stored_in_docs(world, db_session, tmp_path):
+    _, _, documents = world
+    previous = Season(id=0, name="2024-2025", start_date="2024-09-01", end_date="2025-08-31")
+    documents.seasons = lambda db, org: [previous, SEASON]
+    files = [(11, "Balance 2024-2025.pdf", None), (12, "Rapport financier AG2025.doc", None), (13, "notes trésorière.docx", None)]
+    documents.ports.previous_documents = lambda db, member, season: files if season.id == previous.id else []
+    stored = []
+    documents.ports.store = lambda *args: stored.append(args) or [1]
+
+    data = documents.season_documents(db_session, TRESORIER, SEASON)
+    assert data["previousSeason"] == "2024-2025"
+    assert [(m["kind"], m["selected"]) for m in data["models"]] == [("balance", True), ("rapport", True), ("autre", False)]
+    assert [d["name"] for d in data["documents"]] == ["Balance 2025-2026.pdf", "Rapport financier AG2026.docx"]
+
+    # La trésorière corrige : la note est refaite à la main, la Synthèse ajoutée.
+    items = [{"nodeId": m["nodeId"], "name": m["name"], "kind": m["kind"], "selected": True} for m in data["models"]]
+    items.append({"nodeId": None, "kind": "synthese", "selected": True})
+    data = documents.set_document_choices(db_session, TRESORIER, SEASON, items)
+    assert [(d["kind"], d["name"]) for d in data["documents"]] == [
+        ("balance", "Balance 2025-2026.pdf"), ("rapport", "Rapport financier AG2026.docx"),
+        ("autre", "notes trésorière.docx"), ("synthese", "Synthèse Dépenses-Recettes 2025-2026.xlsx"),
+    ]
+
+    content, name, media = documents.season_file(db_session, TRESORIER, SEASON, "synthese", "Recettes-Depenses-2025-2026.xlsx")
+    assert name == "Recettes-Depenses-2025-2026.xlsx" and "spreadsheet" in media and content
+    assert stored == []
+
+
+def test_season_documents_without_last_year_offer_the_base_list(world, db_session):
+    _, _, documents = world
+    data = documents.season_documents(db_session, TRESORIER, SEASON)
+    assert [d["kind"] for d in data["documents"]] == ["synthese", "balance", "rapport"]

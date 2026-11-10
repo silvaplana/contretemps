@@ -1,5 +1,5 @@
-// Bilan › Préparer (spec/modules/financier.md §8.10, Seb 9/11) : les six
-// étapes du bilan d'une saison, dans l'ordre, chacune avec ce qui reste à
+// Bilan › Préparer (spec/modules/financier.md §8.10, Seb 9/11) : les sept
+// étapes du bilan d'une saison (documents et clôture compris, Seb 10/11), dans l'ordre, chacune avec ce qui reste à
 // faire. Rien ne se calcule sans que la trésorière l'ait vu. Un numéro de
 // compte ne s'affiche jamais seul : toujours avec son libellé.
 import { useCallback, useEffect, useState } from 'react'
@@ -12,18 +12,20 @@ import SoldesDepart from './SoldesDepart.jsx'
 import FicheOperation from './FicheOperation.jsx'
 import Modal from '../../../components/Modal.jsx'
 import { nomCompte } from './PlanComptable.jsx'
+import { Etape6Documents, Etape7Cloture, useDocumentsSaison } from './DocumentsSaison.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
 const { euros, dateFr } = api
 
-export default function Preparer({ season, onDocuments }) {
+export default function Preparer({ season }) {
   const [etat, setEtat] = useState(null)
   const [rapprocher, setRapprocher] = useState(null) // compteurs de Pièces › Rapprocher sur la saison
   const [erreur, setErreur] = useState('')
-  const [ouverte, setOuverte] = useState(null) // étape dépliée : 1 à 6
+  const [ouverte, setOuverte] = useState(null) // étape dépliée : 1 à 7
   const [ficheOp, setFicheOp] = useState(null)
   const [enCours, setEnCours] = useState(null)
+  const docs = useDocumentsSaison(season.id)
 
   const charger = useCallback(() => {
     api
@@ -91,10 +93,18 @@ export default function Preparer({ season, onDocuments }) {
         : 'Première saison : pas de comparaison',
     },
   ]
+  const pret = etapes.every((e) => e.reste === 0)
+  const closing = docs.data?.closing
+  etapes.push({
+    n: 7,
+    titre: 'Clôturer la saison',
+    reste: closing ? 0 : 1,
+    detail: closing ? `Clôturée le ${dateFr(closing.closedAt.slice(0, 10))}` : docs.data && docs.data.level !== 'complet' ? 'Au niveau Complet seulement' : pret ? 'Tout est prêt : la saison peut être clôturée' : 'Possible quand les étapes 1 à 6 sont vertes',
+  })
 
   return (
     <div className="fin-cp fin-preparer">
-      {etat.closed && <p className="muted">Saison clôturée : rouvrez-la (Clôture) pour changer quelque chose.</p>}
+      {etat.closed && <p className="muted">Saison clôturée : rouvrez-la (étape 7) pour changer quelque chose.</p>}
       <h3 className="fin-cp-t">Étapes du bilan {season.name}</h3>
       <div className="fin-cp-carte">
         {etapes.map((e) => (
@@ -114,8 +124,9 @@ export default function Preparer({ season, onDocuments }) {
             )}
             {ouverte === 4 && e.n === 4 && <Etape4 season={season} offBank={offBank} level={etat.level} onChange={charger} onErreur={setErreur} />}
             {ouverte === 6 && e.n === 6 && (
-              <Etape6 season={season} comparison={comparison} onDocuments={onDocuments} onChange={charger} onErreur={setErreur} />
+              <Etape6 season={season} comparison={comparison} docs={docs} onChange={charger} onErreur={setErreur} />
             )}
+            {ouverte === 7 && e.n === 7 && <Etape7Cloture season={season} docs={docs} pret={pret} onChange={charger} />}
             {ouverte === 5 && e.n === 5 && (
               <ul className="fin-preparer__controles">
                 {controls.map((c) => (
@@ -372,7 +383,7 @@ function AjoutEcriture({ season, onClose, onAjoutee }) {
 // Étape 6 : la comparaison avec la saison précédente, compte par compte. Un
 // écart de plus de 30 % est marqué « ? » : la trésorière l'explique en une
 // ligne (reprise dans le Rapport financier) ou retourne pointer.
-function Etape6({ season, comparison, onDocuments, onChange, onErreur }) {
+function Etape6({ season, comparison, docs, onChange, onErreur }) {
   const [brouillons, setBrouillons] = useState({})
 
   async function enregistrer(l) {
@@ -448,9 +459,7 @@ function Etape6({ season, comparison, onDocuments, onChange, onErreur }) {
           </div>
         </>
       )}
-      <button type="button" className="btn btn--primary" onClick={onDocuments}>
-        Aller aux documents
-      </button>
+      <Etape6Documents season={season} docs={docs} />
     </div>
   )
 }

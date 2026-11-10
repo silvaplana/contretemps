@@ -8,7 +8,7 @@ Comptes
   Le crayon à côté de « Compte » ouvre le Plan comptable à la place de la fiche pour ajouter le compte qui manque ;
   fermer revient à la ligne, choix en cours gardés (comme le crayon « Modifier les catégories » d'une pièce).
   Un cadenas devant une ligne = sa saison est clôturée : la ligne est validée, sa fiche ne s'enregistre plus
-  (rouvrir dans Bilan › Clôture), aucune pièce ne s'y rattache, aucun relevé de cette saison ne s'importe.
+  (rouvrir dans Bilan › Préparer, étape 7), aucune pièce ne s'y rattache, aucun relevé de cette saison ne s'importe.
 - Un seul compte choisi : « Voir le compte » sous son nom (nom et compte au Grand livre modifiables, IBAN, relevés).
 - Menu ⋯ : Se connecter aux comptes en banque (une fois connectée, la banque est relue toute seule deux fois par jour ;
   Actualiser force une lecture ; une notification prévient une semaine avant la fin de l'accès, « Reconnecter la banque ») ;
@@ -21,7 +21,7 @@ Comptes
   compte d'honoraires : l'appli crée « 467n Honoraires Nom » toute seule à sa première facture (niveau Complet).
   « Copies du plan » : le journal des copies mémorisées (date, commentaire) ; « Mémoriser le plan comptable » en ajoute
   une, le commentaire pré-rempli dit ce qui a changé depuis la précédente. « Repartir à zéro sur cette saison »
-  (Bilan › Clôture) remet la copie choisie.
+  (en bas de Bilan › Préparer) remet la copie choisie.
 - ⋯ › Balance, ou le bouton « Voir la Balance » sous « Total des comptes » (aussi dans le volet Comptes à côté du bilan) : la Balance recalculée à l'ouverture de l'écran, avec la période écrite sous le titre (« Période : du … au … ») ;
   s'ouvre sur la dernière saison terminée si elle n'est pas clôturée, sinon sur la saison en cours. Saison, Du, Au, Télécharger le PDF ; puces Tous les comptes /
   Bilan (classes 1 à 5) / Résultat (classes 6 et 7) ; toucher un compte montre ses écritures ; toucher un numéro de pièce ouvre sa fiche. « ← Comptes » revient.
@@ -89,11 +89,11 @@ Pièces
 - Réglage « Qui paie » : Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
 
 Bilan
-- Trois onglets en haut : Préparer | Documents | Clôture, et le choix de la saison.
+- En haut, le choix de la saison, puis les étapes du bilan (Préparer). Plus d'onglets Documents ni Clôture.
 - En tête du Bilan, la rangée « Bilan · Comptes · Pièces · Docs » (Bilan à gauche, toujours allumé) ; toucher Comptes, Pièces ou Docs :
   sur ordinateur, un volet « À côté du bilan » s'ouvre à droite (barre orange à glisser, ou ⅓ ½ ⅔ ; ← le referme) ;
   sur téléphone, l'écran s'ouvre en entier avec « ← Revenir au bilan ».
-- Préparer : sous le titre « Étapes du bilan 2025-2026 », les six étapes, dans l'ordre, chacune nommée par un verbe
+- Préparer : sous le titre « Étapes du bilan 2025-2026 », les sept étapes, dans l'ordre, chacune nommée par un verbe
   (ce qu'on fait) avec ce qui reste (un ✓ quand il ne reste rien) ; toucher une étape la déplie. 1. Obtenir les relevés
   (la grille des relevés) ; 2. Reprendre les soldes de départ (orange tant que l'an dernier
   n'est pas repris au niveau Complet : « Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) ») ; 3. Rapprocher les factures et classer les transactions bancaires :
@@ -108,18 +108,23 @@ Bilan
   d'attente (471), la poubelle supprime ; 5. Passer les contrôles, en clair (relevés complets, soldes de départ égaux aux
   relevés, un compte sur chaque transaction bancaire, FEC juste, écarts expliqués) ; 6. Produire les documents et comparer à l'an dernier : chaque
   compte face à la saison précédente (montant, écart, %), « ? » au-delà de 30 % ou compte nouveau / disparu, une ligne
-  d'explication à écrire (reprise dans le Rapport financier), puis « Aller aux documents ». Un numéro de compte s'affiche
+  d'explication à écrire (reprise dans le Rapport financier), puis les documents : « Documents à produire, d'après Docs ›
+  Financier › Bilan financier <saison précédente> » (chaque fichier de l'an dernier avec une case à cocher et « reconnu comme »
+  pour corriger sa nature), puis « Documents 2025-2026 », nommés comme ceux de l'an dernier : Voir (PDF), Télécharger ;
+  Rapport financier : Rédiger, puis Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
+  Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (niveau Complet), quand les étapes 1
+  à 6 sont vertes : Clôturer / Rouvrir, avec la trace des clôtures rouvertes. Un numéro de compte s'affiche
   toujours avec son libellé.
-- Documents : choisir un bilan de la liste (ou ⋯ › Nouveau bilan). Puces d'état : Brouillon, Validé, Officiel.
+- En bas de Préparer, « Repartir à zéro sur cette saison » (voir plus bas).
+- ⋯ › Nouveau bilan : la liste des bilans (pour l'AG), « ← Étapes du bilan » revient ; choisir un bilan de la liste. Puces d'état : Brouillon, Validé, Officiel.
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
 - En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
   comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et au niveau Complet
   Balance, Grand livre, Bilan actif-passif (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
   Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
-- Clôture : la clôture de la saison (niveau Complet), portée par le bilan le plus avancé (Officiel, Validé, dernier) :
-  Clôturer / Rouvrir. Clôturer valide toutes les écritures de la saison (cadenas dans Comptes et dans la colonne Type
+- Clôturer (étape 7) : Clôturer valide toutes les écritures de la saison (cadenas dans Comptes et dans la colonne Type
   du Grand livre, « Écritures validées par la clôture du … ») ; la carte garde la trace des clôtures rouvertes.
-- Clôture, carte « Repartir à zéro sur cette saison » (pour s'exercer) : la fenêtre liste ce qui part et ce qui reste, le nom de la saison retapé puis « Tout effacer ».
+- « Repartir à zéro sur cette saison » (pour s'exercer) : la fenêtre liste ce qui part et ce qui reste, le nom de la saison retapé puis « Tout effacer ».
   Part : les pièces de la saison et leurs rapprochements (fichiers à la corbeille de Docs), les comptes confirmés sur ses
   transactions bancaires et les justifications « sans facture », les écritures à la main, les soldes de départ, la clôture ;
   le plan comptable revient à la copie choisie (la dernière par défaut). Reste : relevés et transactions bancaires, comptes en banque (nom, numéro au Grand livre), caisse, bilans, autres saisons.

@@ -42,8 +42,9 @@ from .accounting import Accounting
 from .balance_reader import read_balance
 from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
-from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote, FinDocumentChoice
 from .ports import Member, Season
+from .season_documents import BASE, LABELS, OTHER, RAPPORT, default_name, next_name, recognize
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
 BANK_BASE = "512"
@@ -135,6 +136,9 @@ class AgPorts:
     balance_file: Callable[[Session, Member, Season], tuple[str, Path] | None] | None = None
     # Lecture de secours de cette Balance par le modèle quand ses colonnes ne se lisent pas.
     balance_model: Callable[[Session, int, Path, str], list[tuple[str, str, int]]] | None = None
+    # Les fichiers du Bilan financier d'une saison dans Docs (id, nom, fichier) :
+    # les documents de l'an dernier servent de modèle (§8.10, étape 6).
+    previous_documents: Callable[[Session, Member, Season], list[tuple[int, str, Path]]] | None = None
 
 
 @dataclass
@@ -903,6 +907,76 @@ class AgDocuments:
             row.note, row.created_by = note, member.person_id
         db.commit()
         return self.comparison(db, member, season)
+
+    # ----- les documents de la saison, d'après ceux de l'an dernier (§8.10, étape 6) -----
+
+    def season_documents(self, db: Session, member: Member, season: Season) -> dict:
+        """Les fichiers du Bilan financier de la saison précédente, chacun avec
+        sa nature (reconnue ou corrigée) et s'il est refait, puis les documents
+        de cette saison, nommés comme ceux de l'an dernier. Sans modèle :
+        Synthèse, Balance, Rapport. Rien n'est rangé dans Docs."""
+        level = self.accounting.level(db, member.org_id)
+        available = {k for k, (_, _, needed) in KINDS.items() if level == FULL or needed == "simple"} | {RAPPORT}
+        previous = self._previous(db, member.org_id, season)
+        files = self.ports.previous_documents(db, member, previous) if previous is not None and self.ports.previous_documents else []
+        choices = list(db.scalars(select(FinDocumentChoice).where(FinDocumentChoice.org_id == member.org_id, FinDocumentChoice.season_id == season.id)))
+        by_node = {c.node_id: c for c in choices if c.node_id is not None}
+        models = []
+        for node_id, name, path in files:
+            guess = recognize(name, path)
+            choice = by_node.get(node_id)
+            kind = choice.kind if choice else guess
+            models.append({"nodeId": node_id, "name": name, "kind": kind, "guess": guess, "selected": choice.selected if choice else kind != OTHER})
+        documents = [
+            {"kind": m["kind"], "name": m["name"] if m["kind"] == OTHER else next_name(m["name"], m["kind"]), "model": m["name"], "nodeId": m["nodeId"]}
+            for m in models
+            if m["selected"]
+        ]
+        added = [c.kind for c in choices if c.node_id is None and c.selected]
+        if not files and not any(c.node_id is None for c in choices):
+            added = list(BASE)
+        documents += [{"kind": k, "name": default_name(k, season.name), "model": None, "nodeId": None} for k in added]
+        for d in documents:
+            d["label"] = LABELS.get(d["kind"], d["kind"])
+            d["available"] = d["kind"] == OTHER or d["kind"] in available
+        produced = {d["kind"] for d in documents}
+        return {
+            "level": level,
+            "previousSeason": previous.name if previous is not None else None,
+            "models": models,
+            "documents": documents,
+            "addable": [k for k in LABELS if k != OTHER and k in available and k not in produced],
+            "labels": LABELS,
+            "fecCheck": self.fec_check(db, member, season) if "fec" in produced else None,
+            "closing": self.closing_status(db, member.org_id, season),
+            "closingHistory": self.closing_history(db, member.org_id, season),
+        }
+
+    def set_document_choices(self, db: Session, member: Member, season: Season, items: list[dict]) -> dict:
+        """Les cases et natures choisies (fichiers de l'an dernier, documents ajoutés)."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        for old in db.scalars(select(FinDocumentChoice).where(FinDocumentChoice.org_id == member.org_id, FinDocumentChoice.season_id == season.id)):
+            db.delete(old)
+        for item in items:
+            kind = str(item.get("kind") or "")
+            if kind not in LABELS:
+                raise ValueError(f"Nature de document inconnue : {kind}")
+            node_id = item.get("nodeId")
+            db.add(FinDocumentChoice(
+                org_id=member.org_id, season_id=season.id, node_id=int(node_id) if node_id is not None else None,
+                name=str(item.get("name") or "")[:255], kind=kind, selected=bool(item.get("selected", True)),
+            ))
+        db.commit()
+        return self.season_documents(db, member, season)
+
+    def season_file(self, db: Session, member: Member, season: Season, kind: str, name: str | None = None) -> tuple[bytes, str, str]:
+        """Un document de la saison, produit sans le ranger dans Docs (Seb 10/11)."""
+        if kind not in KINDS:
+            raise ValueError("Document inconnu")
+        content, default, media = self._build(db, member, season, kind)
+        name = (name or "").strip().replace("/", "-")[:200]
+        return content, name if name.lower().endswith("." + default.rsplit(".", 1)[-1]) else default, media
 
     def notes(self, db: Session, org_id: int, season: Season) -> dict[str, str]:
         """Les explications de la trésorière sur la saison : {numéro: note}."""

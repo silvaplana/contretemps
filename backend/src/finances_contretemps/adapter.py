@@ -283,6 +283,47 @@ def balance_dans_docs(documents):
     return trouver
 
 
+def bilan_financier_dans_docs(documents):
+    """Les fichiers du Bilan financier d'une saison dans Docs : sous Docs ›
+    <saison> › Financier, ceux d'un dossier dont le nom contient « bilan »
+    (BILAN FINANCIER…), à toute profondeur ; si la saison n'en a pas, ceux du
+    Financier de la saison en cours (le dossier d'une saison terminée est en
+    lecture seule à l'écran). §8.10, étape 6 : les modèles de l'an dernier."""
+    from documents.models import KIND_FILE, KIND_FOLDER, DocNode
+    from notes_frais.ports import Membre
+    from notes_frais_contretemps.adapter import ClasseurContretemps
+
+    classeur = ClasseurContretemps(documents)
+
+    def fichiers(db: Session, racine) -> list:
+        trouves, dossiers = [], [(racine.id, False)]
+        while dossiers:
+            sous_bilan = {i: b for i, b in dossiers}
+            enfants = list(db.scalars(select(DocNode).where(DocNode.parent_id.in_(list(sous_bilan)), DocNode.deleted_at.is_(None))))
+            dossiers = [(n.id, sous_bilan[n.parent_id] or "bilan" in n.name.lower()) for n in enfants if n.kind == KIND_FOLDER]
+            trouves += [n for n in enfants if n.kind == KIND_FILE and sous_bilan[n.parent_id]]
+        return sorted(trouves, key=lambda n: n.name.lower())
+
+    def trouver(db: Session, member: Member, saison: Season) -> list[tuple[int, str, Path]]:
+        noeuds = []
+        for period_id in (saison.id, None):
+            racine = documents.reserved_folder(db, member.org_id, "Financier", period_id)
+            noeuds = fichiers(db, racine) if racine is not None else []
+            if noeuds:
+                break
+        qui = classeur._qui(Membre(person_id=member.person_id, org_id=member.org_id, nom=member.name, est_tresorier=True))
+        sortie = []
+        for n in noeuds:
+            try:
+                chemin, _, _ = documents.content(db, qui, n.id)
+            except (LookupError, PermissionError, OSError):
+                chemin = None
+            sortie.append((n.id, n.name, chemin))
+        return sortie
+
+    return trouver
+
+
 def ranger_dans_docs(documents):
     """Range les documents de l'AG dans Docs › Privé › Saison en cours ›
     Financier › AG, par le classeur des notes de frais (même dossier Financier)."""

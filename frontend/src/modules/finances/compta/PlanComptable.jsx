@@ -102,7 +102,7 @@ export default function PlanComptable({ onClose }) {
       <div className="fin-cp-champ">
         <span>Copies du plan</span>
         <p className="muted">
-          Chaque copie garde le plan tel qu’il est à ce moment-là ; « Repartir à zéro sur cette saison » (Bilan › Clôture) en remet une.
+          Chaque copie garde le plan tel qu’il est à ce moment-là ; « Repartir à zéro sur cette saison » (en bas de Bilan › Préparer) en remet une.
         </p>
         {plan.snapshots.length === 0 ? (
           <p className="muted">Aucune copie pour l’instant.</p>

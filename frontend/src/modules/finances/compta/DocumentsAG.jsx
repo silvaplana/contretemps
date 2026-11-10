@@ -210,9 +210,11 @@ export function Cloture({ reportId, seasonName, closing, history = [], onChange,
   )
 }
 
-function RapportFinancier({ reportId, seasonName, folderId, onErreur }) {
+// `sansDocs` (Bilan › Préparer, Seb 10/11) : rien n'est rangé dans Docs, on télécharge ;
+// `rediger` : ouvre tout de suite la rédaction.
+export function RapportFinancier({ reportId, seasonName, folderId, onErreur, sansDocs = false, rediger: redigerDabord = false, titre = 'Rapport financier' }) {
   const [data, setData] = useState(null)
-  const [rediger, setRediger] = useState(false)
+  const [rediger, setRediger] = useState(redigerDabord)
 
   useEffect(() => {
     api.rapportFinancier(reportId).then(setData).catch((err) => onErreur(err.message))
@@ -221,7 +223,7 @@ function RapportFinancier({ reportId, seasonName, folderId, onErreur }) {
   const rapport = data?.rapport
 
   function telecharger(format) {
-    telechargerFichier(api.urlRapportFinancier(reportId, format), `Rapport financier ${seasonName}.${format}`).catch((err) =>
+    telechargerFichier(api.urlRapportFinancier(reportId, format, sansDocs ? titre.replace(/\.docx$/, '') : null), `Rapport financier ${seasonName}.${format}`).catch((err) =>
       onErreur(err.message),
     )
   }
@@ -230,27 +232,29 @@ function RapportFinancier({ reportId, seasonName, folderId, onErreur }) {
     <>
       <div className="fin-cp-carte">
         <div className="fin-cp-doc fin-cp-doc--large">
-          <span className="fin-cp-t">Rapport financier</span>
+          <span className="fin-cp-t">{titre}</span>
           <span className="fin-cp-a">
             <button type="button" className="btn btn--secondary" onClick={() => setRediger(true)} disabled={!data}>
               <Icon name="edit" size={16} /> {rapport ? 'Rédiger à nouveau' : 'Rédiger'}
             </button>
             {rapport && (
               <>
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  onClick={() => ouvrirFichier(() => api.rapportDansDocs(reportId, 'docx'), false).catch((err) => onErreur(err.message))}
-                >
-                  <Icon name="eye" size={16} /> Voir
-                </button>
+                {!sansDocs && (
+                  <button
+                    type="button"
+                    className="btn btn--secondary"
+                    onClick={() => ouvrirFichier(() => api.rapportDansDocs(reportId, 'docx'), false).catch((err) => onErreur(err.message))}
+                  >
+                    <Icon name="eye" size={16} /> Voir
+                  </button>
+                )}
                 <button type="button" className="btn btn--secondary" onClick={() => telecharger('docx')}>
                   <Icon name="download" size={16} /> Word
                 </button>
                 <button type="button" className="btn btn--secondary" onClick={() => telecharger('pdf')}>
                   <Icon name="download" size={16} /> PDF
                 </button>
-                {folderId != null && (
+                {!sansDocs && folderId != null && (
                   <button
                     type="button"
                     className="btn btn--secondary"

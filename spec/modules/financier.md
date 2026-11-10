@@ -963,7 +963,7 @@ Contre-calcul indépendant de la saison 2025-26 depuis les relevés PDF du CIC (
 questions) : `appbase/bilan/contre-calcul/` dans les fichiers du projet ; il servira de comparaison
 avec ce que l'appli calcule (trésorière avec EBP, appli, contre-calcul : à trois).
 
-**Financier › Bilan** devient trois onglets : **Préparer | Documents | Clôture**. Préparer = six
+**Financier › Bilan** = **Préparer** (sept étapes depuis l'étape de code 6 ci-dessous ; avant : trois onglets Préparer | Documents | Clôture). Préparer = six
 étapes sous le titre « Étapes du bilan <saison> », chacune nommée par un verbe à l'infinitif sur la chose
 (Seb 10/11), avec son compteur, dans l'ordre ; une étape montre ce qui reste, rien ne se calcule
 sans que la trésorière l'ait vu :
@@ -1044,7 +1044,28 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    `splitSuggestion`), le montant total sur le premier, à répartir ; une part à zéro est ignorée à
    l'enregistrement ; le total doit faire le montant de la banque (règle de §8.4). Pas de
    catégorie « Cours / Cotisations / Gala » codée en dur : ce sont les comptes de l'association.
-6. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
+6. **Codée le 10 novembre 2026** (maquette https://claude.ai/artifact/AQ4jHpBWkybxqEXuXXeN3s) :
+   **Préparer en sept étapes, plus d'onglets Documents ni Clôture**. Étape 6 = les documents de la
+   saison **d'après ceux de l'an dernier** (Seb : chaque association a les siens) : les fichiers de
+   Docs › Financier (saison précédente) rangés dans un dossier dont le nom contient « bilan », à
+   toute profondeur (`AgPorts.previous_documents`, `finances/season_documents.py`). Chaque fichier
+   est **reconnu d'après son contenu** (haut de la première page d'un PDF, premières lignes d'un
+   Excel, d'un Word, d'un texte), puis tout le contenu, puis son nom (quelqu'un a pu prendre des
+   libertés avec les noms) : Synthèse, Balance, Grand livre, Bilan actif-passif, Honoraires, FEC,
+   Rapport financier, sinon « Autre : à faire à la main ». La trésorière coche ce qu'on refait et
+   corrige la nature (« reconnu comme », table `fin_document_choices`, `GET/PUT
+   /finances/seasons/{id}/documents`) ; « Ajouter un document que l'appli sait faire » complète.
+   Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**
+   (« Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »), au format que l'appli produit ; sans
+   fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir (PDF) et Télécharger
+   (`GET /finances/seasons/{id}/documents/{nature}/file?name=`) ; **rien n'est rangé dans Docs**
+   (Seb 10/11) : on dépose soi-même ce qu'on garde. Le Rapport financier se rédige dans le bilan le
+   plus avancé de la saison, créé « Officiel » s'il n'y en a pas (`POST
+   /finances/seasons/{id}/rapport-report`). Étape 7 = **Clôturer** (§8.7), possible quand les
+   étapes 1 à 6 sont vertes (`POST/DELETE /finances/seasons/{id}/close`), avec ce que fait la
+   clôture en trois lignes et la trace des clôtures rouvertes. « Repartir à zéro » passe en bas de
+   Préparer. La liste des bilans (pour l'AG) reste par ⋯ › Nouveau bilan, avec « ← Étapes du bilan ».
+7. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 
 ## 9. Reste à faire
 

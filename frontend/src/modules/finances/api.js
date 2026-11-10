@@ -164,7 +164,8 @@ export const urlDocumentAG = (reportId, kind) => `${BASE}/reports/${reportId}/do
 // Rapport financier rédigé (financier.md §8.6) : le modèle écrit, l'appli place les chiffres.
 export const rapportFinancier = (reportId) => appel(`/reports/${reportId}/rapport`)
 export const redigerRapport = (reportId, donnees) => appel(`/reports/${reportId}/rapport`, json('POST', donnees))
-export const urlRapportFinancier = (reportId, format) => `${BASE}/reports/${reportId}/rapport/download?format=${format}`
+export const urlRapportFinancier = (reportId, format, nom) =>
+  `${BASE}/reports/${reportId}/rapport/download?format=${format}${nom ? `&name=${encodeURIComponent(nom)}` : ''}`
 // Niveau Complet (financier.md §8.7) : soldes de départ, clôture, écritures d'une opération.
 export const soldesDepart = (seasonId) => appel(`/opening-balances/${seasonId}`)
 export const enregistrerSoldesDepart = (seasonId, accounts) => appel(`/opening-balances/${seasonId}`, json('PUT', { accounts }))
@@ -172,6 +173,14 @@ export const enregistrerSoldesDepart = (seasonId, accounts) => appel(`/opening-b
 export const soldesPrecedents = (seasonId) => appel(`/opening-balances/${seasonId}/previous`)
 export const cloturer = (reportId) => appel(`/reports/${reportId}/close`, { method: 'POST' })
 export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { method: 'DELETE' })
+// Bilan › Préparer, étapes 6 et 7 (§8.10, Seb 10/11) : les documents de la saison d'après
+// ceux de l'an dernier (rien n'est rangé dans Docs), la clôture.
+export const documentsSaison = (seasonId) => appel(`/seasons/${seasonId}/documents`)
+export const choisirDocuments = (seasonId, items) => appel(`/seasons/${seasonId}/documents`, json('PUT', { items }))
+export const urlDocumentSaison = (seasonId, kind, nom) => `${BASE}/seasons/${seasonId}/documents/${kind}/file?name=${encodeURIComponent(nom)}`
+export const bilanDuRapport = (seasonId) => appel(`/seasons/${seasonId}/rapport-report`, { method: 'POST' })
+export const cloturerSaison = (seasonId) => appel(`/seasons/${seasonId}/close`, { method: 'POST' })
+export const rouvrirSaison = (seasonId) => appel(`/seasons/${seasonId}/close`, { method: 'DELETE' })
 // « Repartir à zéro sur cette saison » (§8.7) : le nom de la saison retapé confirme.
 export const repartirAZero = (seasonId, confirm, snapshotId) => appel(`/seasons/${seasonId}/reset`, json('POST', { confirm, snapshotId }))
 export const ecritures = (operationId) => appel(`/operations/${operationId}/entries`)

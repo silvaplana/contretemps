@@ -159,6 +159,12 @@ class NoteRequest(BaseModel):
     note: str
 
 
+class DocumentChoicesRequest(BaseModel):
+    """Corps de PUT /finances/seasons/{id}/documents : cases et natures (§8.10, étape 6)."""
+
+    items: list[dict]
+
+
 class ConfirmAccountsRequest(BaseModel):
     operationIds: list[int]
     accountId: int
@@ -660,6 +666,51 @@ class FinancesReceiver:
             name = f"Balance {season.name}.pdf"
             return Response(content, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
 
+        @app.get("/finances/seasons/{season_id}/documents")
+        def season_documents(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Préparer, étape 6 (§8.10) : les documents de la saison d'après ceux de
+            l'an dernier, et l'étape 7 (clôture)."""
+            season = season_by_id(db, member, season_id)
+            data = ag_call(documents.season_documents, db, member, season)
+            # Le Rapport financier se rédige sur le bilan le plus avancé de la saison.
+            rang = {"officiel": 0, "valide": 1, "brouillon": 2}
+            existing = sorted(reports.list(db, member, season_id), key=lambda r: (rang.get(r["state"], 3), -r["id"]))
+            return {**data, "reportId": existing[0]["id"] if existing else None}
+
+        @app.put("/finances/seasons/{season_id}/documents")
+        def set_season_documents(season_id: int, data: DocumentChoicesRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return ag_call(documents.set_document_choices, db, member, season_by_id(db, member, season_id), data.items)
+
+        @app.post("/finances/seasons/{season_id}/rapport-report")
+        def season_rapport_report(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Le bilan qui porte le Rapport financier de la saison : le plus avancé,
+            sinon un bilan « Officiel » créé pour lui (sans calcul)."""
+            season = season_by_id(db, member, season_id)
+            rang = {"officiel": 0, "valide": 1, "brouillon": 2}
+            existing = sorted(reports.list(db, member, season_id), key=lambda r: (rang.get(r["state"], 3), -r["id"]))
+            if existing:
+                return {"reportId": existing[0]["id"]}
+            try:
+                created = reports.create(db, member, {"seasonId": season_id, "name": f"Bilan {season.name}", "state": "officiel", "prompt": "", "model": reports.models()["defaultModel"]})
+            except (ReportError, PermissionError) as error:
+                raise _http(error) from error
+            return {"reportId": created["id"]}
+
+        @app.get("/finances/seasons/{season_id}/documents/{kind}/file")
+        def season_file(season_id: int, kind: str, name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> Response:
+            """Un document de la saison, téléchargé : rien n'est rangé dans Docs (Seb 10/11)."""
+            content, filename, media = ag_call(documents.season_file, db, member, season_by_id(db, member, season_id), kind, name)
+            return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"})
+
+        @app.post("/finances/seasons/{season_id}/close")
+        def close_season_by_id(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Préparer, étape 7 : clôturer la saison (§8.7)."""
+            return {"closing": ag_call(documents.close, db, member, season_by_id(db, member, season_id))}
+
+        @app.delete("/finances/seasons/{season_id}/close")
+        def reopen_season_by_id(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return {"closing": ag_call(documents.reopen, db, member, season_by_id(db, member, season_id))}
+
         @app.get("/finances/opening-balances/{season_id}")
         def get_opening(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
             """Soldes de départ de la saison (§8.7) et vérification contre les relevés."""
@@ -718,10 +769,16 @@ class FinancesReceiver:
                     raise HTTPException(status_code=400, detail=str(exc)) from exc
 
             @app.get("/finances/reports/{report_id}/rapport/download")
-            def download_written(report_id: int, format: str = "docx", db: Session = db_dep, member: Member = member_dep) -> Response:
+            def download_written(report_id: int, format: str = "docx", name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> Response:
+                """`name` (Bilan › Préparer, §8.10 étape 6) : le nom suivi de l'an dernier,
+                et rien n'est rangé dans Docs."""
                 season = season_of(db, member, report_id)
                 try:
-                    content, name, media = written.produce(db, member, report_id, season, format)
+                    if name:
+                        content, _, media = written._build(db, member, report_id, season, format)
+                        name = f"{name.strip().replace('/', '-')[:200]}.{format}"
+                    else:
+                        content, name, media = written.produce(db, member, report_id, season, format)
                 except LookupError as exc:
                     raise HTTPException(status_code=404, detail=str(exc)) from exc
                 except ValueError as exc:

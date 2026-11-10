@@ -261,7 +261,7 @@ class Finances:
             period = f"{statement.start_date} → {statement.end_date}"
             closed = self._closed_season(db, member.org_id, date.fromisoformat(statement.start_date), date.fromisoformat(statement.end_date))
             if closed is not None:
-                report["errors"].append({"file": name, "detail": f"Saison clôturée le {closed.closed_at:%d/%m/%Y} : rouvrez-la (Bilan › Clôture) pour y ajouter ce relevé ({period})."})
+                report["errors"].append({"file": name, "detail": f"Saison clôturée le {closed.closed_at:%d/%m/%Y} : rouvrez-la (Bilan › Préparer, étape 7) pour y ajouter ce relevé ({period})."})
                 continue
             account, created = self._store(
                 db, member.org_id, name, statement, chosen[choice] if isinstance(choice, int) else None

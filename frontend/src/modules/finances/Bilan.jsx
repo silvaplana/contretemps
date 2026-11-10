@@ -7,9 +7,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
-import DocumentsAG, { Cloture } from './compta/DocumentsAG.jsx'
+import DocumentsAG from './compta/DocumentsAG.jsx'
 import Preparer from './compta/Preparer.jsx'
-import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import * as sessionApi from '../../api/session.js'
 import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
@@ -24,12 +23,10 @@ const SEASON_KEY = 'finances-bilan-saison'
 // Bilan ouvert, gardé le temps de la session : en revenant d'un document
 // ouvert dans Docs, on retrouve ce bilan.
 const OPEN_KEY = 'finances-bilan-ouvert'
-// Le bilan en parcours (financier.md §8.10) : trois onglets.
-const ONGLETS = [
-  { value: 'preparer', label: 'Préparer' },
-  { value: 'documents', label: 'Documents' },
-  { value: 'cloture', label: 'Clôture' },
-]
+// Le bilan en parcours (financier.md §8.10) : Préparer, sept étapes avec les
+// documents et la clôture (Seb 10/11). La liste des bilans (pour l'AG) ne
+// s'ouvre plus que par ⋯ › Nouveau bilan.
+const ONGLETS = ['preparer', 'documents']
 
 function readOpen() {
   try {
@@ -99,7 +96,7 @@ export default function Bilan() {
   const [editing, setEditing] = useState(null)
   const [onglet, setOnglet] = useState(() => {
     const dernier = sessionApi.lireEcran('financier-bilan')
-    return ONGLETS.some((o) => o.value === dernier) ? dernier : 'preparer'
+    return ONGLETS.includes(dernier) ? dernier : 'preparer'
   })
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier-bilan', onglet)
@@ -191,13 +188,11 @@ export default function Bilan() {
   if (onglet !== 'documents' && season)
     return (
       <section className="fin-bilan reports">
-        <SegmentedTabs options={ONGLETS} value={onglet} onChange={setOnglet} className="admin-screen__tabs" />
         <div className="seasons-toolbar">{selecteur}</div>
-        {onglet === 'preparer' ? (
-          <Preparer key={season.id} season={season} onDocuments={() => setOnglet('documents')} />
-        ) : (
-          <ClotureSaison season={season} reports={reports} onDocuments={() => setOnglet('documents')} onReset={loadReports} />
-        )}
+        <Preparer key={season.id} season={season} />
+        <div className="fin-cp">
+          <RepartirAZero season={season} onDone={loadReports} />
+        </div>
       </section>
     )
 
@@ -218,7 +213,9 @@ export default function Bilan() {
 
   return (
     <section className="fin-bilan reports">
-      <SegmentedTabs options={ONGLETS} value={onglet} onChange={setOnglet} className="admin-screen__tabs" />
+      <button type="button" className="btn btn--link fin-releves__retour" onClick={() => setOnglet('preparer')}>
+        ← Étapes du bilan
+      </button>
       <div className="seasons-toolbar">
         {selecteur}
         <button type="button" className="btn btn--primary" onClick={() => setEditing('new')} disabled={!listing}>
@@ -277,61 +274,6 @@ export default function Bilan() {
         </ul>
       )}
     </section>
-  )
-}
-
-// Onglet Clôture (§8.7) : la clôture de la saison, portée par son bilan le
-// plus avancé (Officiel, sinon Validé, sinon le dernier), et « Repartir à
-// zéro sur cette saison » pour refaire le travail de la saison.
-function ClotureSaison({ season, reports, onDocuments, onReset }) {
-  const [data, setData] = useState(null)
-  const [erreur, setErreur] = useState('')
-  const rang = { officiel: 0, valide: 1, brouillon: 2 }
-  const report = [...reports].sort((a, b) => rang[a.state] - rang[b.state] || (a.updatedAt < b.updatedAt ? 1 : -1))[0]
-
-  useEffect(() => {
-    if (!report) return
-    api
-      .documentsAG(report.id)
-      .then(setData)
-      .catch((err) => setErreur(err.message))
-  }, [report])
-
-  let cloture
-  if (!report)
-    cloture = (
-      <p className="muted">
-        Pas encore de bilan pour {season.name} : la clôture se fait depuis le bilan Officiel.{' '}
-        <button type="button" className="btn btn--link" onClick={onDocuments}>
-          Aller aux documents
-        </button>
-      </p>
-    )
-  else if (erreur) cloture = <p className="login-screen__erreur">{erreur}</p>
-  else if (!data) cloture = <p className="muted">Chargement…</p>
-  else if (data.level !== 'complet') cloture = <p className="muted">La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).</p>
-  else
-    cloture = (
-      <>
-        <p className="muted">
-          Bilan « {report.name} » ({STATE_LABELS[report.state]}). La clôture reporte le résultat et les soldes sur la saison suivante et verrouille
-          la saison.
-        </p>
-        <Cloture
-          reportId={report.id}
-          seasonName={season.name}
-          closing={data.closing}
-          history={data.closingHistory}
-          onChange={(closing) => api.documentsAG(report.id).then(setData).catch(() => setData((d) => ({ ...d, closing })))}
-          onErreur={setErreur}
-        />
-      </>
-    )
-  return (
-    <div className="fin-cp">
-      {cloture}
-      <RepartirAZero season={season} onDone={onReset} />
-    </div>
   )
 }
 
