@@ -1854,3 +1854,10 @@ button.fin-releves__case {
   flex-basis: 100%;
   margin: 0;
 }
+
+/* Bouton « Voir la Balance » sous le total des comptes. */
+.fin-comptes__balance {
+  align-self: flex-start;
+  min-height: 48px;
+  margin-bottom: 12px;
+}
