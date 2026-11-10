@@ -89,6 +89,22 @@ FEC_COLUMNS = [
     "PieceRef", "PieceDate", "EcritureLib", "Debit", "Credit", "EcritureLet", "DateLet", "ValidDate", "Montantdevise", "Idevise",
 ]
 JOURNALS = {"AN": "A-nouveaux", "BQ": "Banque", "CA": "Caisse", "AC": "Achats", "HO": "Honoraires", "NF": "Notes de frais", "OD": "Opérations diverses"}
+# Mise en page des états comptables (Grand livre, Balance) : bandeau, titre
+# centré, bloc par compte, totaux en gras ; sobre, le nom de l'association seul.
+_REPORT_CSS = """
+th.l, td.l { text-align: left; } th.c { text-align: center; }
+table.bandeau { border: 1px solid #8a6; background: #eef7ee; }
+table.bandeau td { border: 0; padding: 4pt 6pt; text-align: left; }
+table.bandeau .org { font-size: 13pt; font-weight: bold; color: #264; }
+td.edition { text-align: right !important; color: #666; }
+h1.titre { text-align: center; font-size: 14pt; margin: 8pt 0 4pt; }
+h1.titre .periode { font-size: 12pt; font-weight: bold; }
+table.ligne td { border: 0; font-weight: bold; padding: 2pt 0 8pt; text-align: left; }
+table.ligne td.edition { color: #222; }
+table.compte { margin-top: 6pt; table-layout: fixed; }
+tr.compte th { background: #f3e2cf; font-size: 8pt; padding: 2pt 3pt; }
+tr.total.grand td { font-size: 10pt; border-top: 2px solid #333; border-bottom: 2px solid #333; padding: 4pt 3pt; }
+"""
 # Le cadenas de la colonne Type du Grand livre (écriture validée), en SVG : pas d'emoji dans le PDF.
 _PADLOCK = (
     "<svg width='9' height='11' viewBox='0 0 24 28' aria-label='validée'><rect x='3' y='12' width='18' height='14' rx='2' fill='#333'/>"
@@ -865,29 +881,54 @@ class AgDocuments:
     # ----- Balance et Grand livre -----
 
     def balance_pdf(self, db: Session, member: Member, season: Season, org_name: str) -> bytes:
+        """La Balance au format comptable standard (celui des logiciels de
+        la trésorière, §8.6) : Total Période débit / crédit, Solde Période
+        débit / crédit, totaux des comptes de Bilan (classes 1 à 5), de
+        Résultat (6 et 7) et de la Balance."""
         books = self.books(db, member, season)
         cutoff = books.pop("_cutoff")
         e = html.escape
-        rows, total_d, total_c = [], 0, 0
-        for a in sorted(books.values(), key=lambda a: a.number):
-            d, c = a.debit, a.credit
-            total_d, total_c = total_d + d, total_c + c
+        accounts = sorted(books.values(), key=lambda a: a.number)
+        rows = []
+        for a in accounts:
             sd, sc = max(a.balance, 0), max(-a.balance, 0)
-            rows.append(
-                f"<tr><td>{e(a.number)}</td><td class='l'>{e(a.label)}</td><td>{_c(d)}</td><td>{_c(c)}</td><td>{_c(sd)}</td><td>{_c(sc)}</td></tr>"
-            )
-        result = sum(a.balance for a in books.values() if a.nature in (EXPENSE, INCOME))
-        body = (
-            f"<h1>{e(org_name)} — Balance {e(season.name)}</h1>"
-            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. "
-            + ("Partie double : achats et honoraires par les comptes de tiers, lettrés avec leur paiement." if self.accounting.level(db, member.org_id) == FULL else "Comptabilité de trésorerie : chaque ligne de banque et de caisse contre son compte du plan.")
-            + "</p>"
-            "<table><tr><th>Compte</th><th class='l'>Libellé</th><th>Débit</th><th>Crédit</th><th>Solde débiteur</th><th>Solde créditeur</th></tr>"
-            + "".join(rows)
-            + f"<tr class='total'><td></td><td class='l'>Totaux</td><td>{_c(total_d)}</td><td>{_c(total_c)}</td><td></td><td></td></tr></table>"
-            f"<h2>{'Déficit' if result > 0 else 'Excédent'} de la saison : {_c(abs(result))}</h2>"
+            rows.append(f"<tr><td>{e(a.number)}</td><td class='l'>{e(a.label)}</td><td>{_c(a.debit)}</td><td>{_c(a.credit)}</td><td>{_c(sd)}</td><td>{_c(sc)}</td></tr>")
+
+        def total(label: str, group: list) -> str:
+            d, c = sum(a.debit for a in group), sum(a.credit for a in group)
+            net = d - c
+            return f"<tr class='total'><td></td><td class='l'>{label}</td><td>{_c(d)}</td><td>{_c(c)}</td><td>{_c(max(net, 0))}</td><td>{_c(max(-net, 0))}</td></tr>"
+
+        bilan = [a for a in accounts if a.number[:1] in "12345"]
+        resultat = [a for a in accounts if a.number[:1] in "67"]
+        grand = (
+            f"<tr class='total grand'><td></td><td class='l'>Total de la Balance</td><td>{_c(sum(a.debit for a in accounts))}</td><td>{_c(sum(a.credit for a in accounts))}</td>"
+            f"<td>{_c(sum(max(a.balance, 0) for a in accounts))}</td><td>{_c(sum(max(-a.balance, 0) for a in accounts))}</td></tr>"
         )
-        return html_to_pdf(body, _CSS + " th.l, td.l { text-align: left; }")
+        body = (
+            self._report_header(org_name, f"Balance {season.name}", season.start_date, cutoff, accounts)
+            + "<table><tr><th rowspan='2'>N° Compte</th><th rowspan='2' class='l'>Intitulé</th><th colspan='2' class='c'>Total Période</th><th colspan='2' class='c'>Solde Période</th></tr>"
+            "<tr><th>Débit</th><th>Crédit</th><th>Débit</th><th>Crédit</th></tr>"
+            + "".join(rows)
+            + total("Total des comptes de Bilan", bilan)
+            + total("Total des comptes de Résultat", resultat)
+            + grand
+            + "</table>"
+        )
+        return html_to_pdf(body, _CSS + _REPORT_CSS)
+
+    @staticmethod
+    def _report_header(org_name: str, title: str, start: str, end: str, accounts: list) -> str:
+        """En-tête des états comptables (Grand livre, Balance) : nom de
+        l'association, édition du, titre, période, devise, comptes de … à …"""
+        e = html.escape
+        numbers = [a.number for a in accounts]
+        span = f"Comptes {e(min(numbers))} à {e(max(numbers))}" if numbers else "Aucun compte"
+        return (
+            f"<table class='bandeau'><tr><td class='org'>{e(org_name)}</td><td class='edition'>Édition du {datetime.now():%d/%m/%Y à %H:%M}</td></tr></table>"
+            f"<h1 class='titre'>{e(title)}<br><span class='periode'>Du {_fr(start)} au {_fr(end)}</span></h1>"
+            f"<table class='ligne'><tr><td>{span}</td><td class='edition'>Devise : EUR</td></tr></table>"
+        )
 
     # ----- Bilan actif / passif -----
 
@@ -943,38 +984,45 @@ class AgDocuments:
         return html_to_pdf(body, _CSS + " th.l, td.l { text-align: left; } .cols { display: flex; gap: 24px; align-items: flex-start; } .cols table { flex: 1; } tr.sous td { font-weight: bold; padding-top: 10px; }")
 
     def grand_livre_pdf(self, db: Session, member: Member, season: Season, org_name: str) -> bytes:
+        """Le Grand livre au format comptable standard (§8.6) : un bloc par
+        compte, Type / Date / Journal / Pièce / Libellé / Lettre / Débit /
+        Crédit / Solde, « Total pour le compte », « Total du Grand-Livre »."""
         books = self.books(db, member, season)
         cutoff = books.pop("_cutoff")
         e = html.escape
-        # Colonne Type comme le modèle EBP : le cadenas = écriture validée,
-        # ce que la clôture de la saison fait de toutes ses écritures (§8.7).
+        accounts = sorted(books.values(), key=lambda a: a.number)
+        # Colonne Type : le cadenas = écriture validée, ce que la clôture de
+        # la saison fait de toutes ses écritures (§8.7).
         closing = self.closing(db, member.org_id, season.id)
         kind = _PADLOCK if closing is not None else ""
-        parts = [
-            f"<h1>{e(org_name)} — Grand livre {e(season.name)}</h1>",
-            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. Journaux : AN à-nouveaux, BQn banque, CA caisse, AC achats, HO honoraires, NF notes de frais, OD écritures à la main.</p>",
-        ]
+        parts = [self._report_header(org_name, f"Grand livre {season.name}", season.start_date, cutoff, accounts)]
+        parts.append("<p class='muted'>Journaux : AN à-nouveaux, BQn banque, CA caisse, AC achats, HO honoraires, NF notes de frais, OD écritures à la main.</p>")
         if closing is not None:
             parts.append(f"<p class='muted'>{_PADLOCK} Écritures validées par la clôture du {closing.closed_at:%d/%m/%Y} : elles ne changent plus.</p>")
+        # Mêmes largeurs de colonnes d'un compte à l'autre.
+        cols = "<colgroup><col style='width:4%'><col style='width:9%'><col style='width:7%'><col style='width:12%'><col style='width:35%'><col style='width:6%'><col style='width:9%'><col style='width:9%'><col style='width:9%'></colgroup>"
+        head = "<tr><th>Type</th><th>Date</th><th>Journal</th><th class='l'>Pièce</th><th class='l'>Libellé</th><th>Lettre</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>"
         total_d = total_c = 0
-        for a in sorted(books.values(), key=lambda a: a.number):
+        for a in accounts:
             running = 0
             lines = []
             for l in a.lines:
                 running += l.debit - l.credit
                 lines.append(
-                    f"<tr><td>{_fr(l.date)}</td><td>{e(l.journal)}</td><td>{kind}</td><td class='l'>{e(l.piece)}</td><td class='l'>{e(l.label)}</td><td>{e(l.letter)}</td>"
+                    f"<tr><td>{kind}</td><td>{_fr(l.date)}</td><td>{e(l.journal)}</td><td class='l'>{e(l.piece)}</td><td class='l'>{e(l.label)}</td><td>{e(l.letter)}</td>"
                     f"<td>{_c(l.debit)}</td><td>{_c(l.credit)}</td><td>{_signed(running)}</td></tr>"
                 )
             total_d, total_c = total_d + a.debit, total_c + a.credit
             parts.append(
-                f"<h2>{e(a.number)} {e(a.label)}</h2><table class='small'>"
-                "<tr><th>Date</th><th>Journal</th><th>Type</th><th class='l'>Pièce</th><th class='l'>Libellé</th><th>Lettre</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>"
+                f"<table class='small compte'>{cols}<tr class='compte'><th colspan='9' class='l'>{e(a.number)}&nbsp;&nbsp;&nbsp;{e(a.label)}</th></tr>"
+                + head
                 + "".join(lines)
-                + f"<tr class='total'><td></td><td></td><td></td><td></td><td class='l'>Total du compte</td><td></td><td>{_c(a.debit)}</td><td>{_c(a.credit)}</td><td>{_signed(a.balance)}</td></tr></table>"
+                + f"<tr class='total'><td></td><td></td><td></td><td></td><td class='l'>Total pour le compte {e(a.number)}</td><td></td><td>{_c(a.debit)}</td><td>{_c(a.credit)}</td><td>{_signed(a.balance)}</td></tr></table>"
             )
-        parts.append(f"<h2>Total général : débit {_c(total_d)}, crédit {_c(total_c)}</h2>")
-        return html_to_pdf("".join(parts), _CSS + " th.l, td.l { text-align: left; }")
+        parts.append(
+            f"<table class='small compte'>{cols}<tr class='total grand'><td colspan='6' class='l'>Total du Grand-Livre</td><td>{_c(total_d)}</td><td>{_c(total_c)}</td><td>{_signed(total_d - total_c)}</td></tr></table>"
+        )
+        return html_to_pdf("".join(parts), _CSS + _REPORT_CSS)
 
     # ----- Honoraires par professeur -----
 
