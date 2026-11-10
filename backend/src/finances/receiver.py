@@ -133,6 +133,11 @@ class WriteRequest(BaseModel):
     model: str | None = None
 
 
+class ConfirmAccountsRequest(BaseModel):
+    operationIds: list[int]
+    accountId: int
+
+
 class OpeningRequest(BaseModel):
     """Corps de PUT /finances/opening-balances/{season_id} : un solde par compte."""
 
@@ -549,6 +554,25 @@ class FinancesReceiver:
             if season is None:
                 raise HTTPException(status_code=404, detail="Saison inconnue")
             return season
+
+        @app.get("/finances/seasons/{season_id}/preparation")
+        def get_preparation(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Bilan › Préparer (§8.10) : l'état des six étapes de la saison."""
+            season = season_by_id(db, member, season_id)
+            try:
+                calendar = self.client.statement_calendar(db, member, season.start_date, season.end_date)
+            except PermissionError as exc:
+                raise HTTPException(status_code=403, detail=str(exc)) from exc
+            return ag_call(documents.preparation, db, member, season, calendar)
+
+        @app.post("/finances/seasons/{season_id}/confirm-accounts")
+        def confirm_accounts(season_id: int, data: ConfirmAccountsRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Valider le compte » : le même compte sur plusieurs transactions sans compte."""
+            season_by_id(db, member, season_id)
+            try:
+                return {"confirmed": documents.accounting.confirm_many(db, member, data.operationIds, data.accountId)}
+            except (LookupError, ValueError, PermissionError) as error:
+                raise _http(error) from error
 
         @app.get("/finances/opening-balances/{season_id}")
         def get_opening(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:

@@ -157,6 +157,10 @@ export const enregistrerSoldesDepart = (seasonId, accounts) => appel(`/opening-b
 export const cloturer = (reportId) => appel(`/reports/${reportId}/close`, { method: 'POST' })
 export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { method: 'DELETE' })
 export const ecritures = (operationId) => appel(`/operations/${operationId}/entries`)
+// Bilan › Préparer (financier.md §8.10) : l'état des six étapes d'une saison, et « Valider le compte ».
+export const preparation = (seasonId) => appel(`/seasons/${seasonId}/preparation`)
+export const validerCompte = (seasonId, operationIds, accountId) =>
+  appel(`/seasons/${seasonId}/confirm-accounts`, json('POST', { operationIds, accountId }))
 // L'œil des documents de l'AG : produit le fichier, le range dans Docs › Financier › AG, rend { id, orgId }.
 export const documentAGDansDocs = (reportId, kind) => appel(`/reports/${reportId}/documents/${kind}/docs`, { method: 'POST' })
 export const rapportDansDocs = (reportId, format) => appel(`/reports/${reportId}/rapport/docs?format=${format}`, { method: 'POST' })

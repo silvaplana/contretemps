@@ -455,6 +455,60 @@ class AgDocuments:
         entries.sort(key=lambda e: (e["date"], e["journal"]))
         return entries
 
+    # ----- Le bilan en parcours (financier.md §8.10) -----
+
+    def preparation(self, db: Session, member: Member, season: Season, calendar: dict | None = None) -> dict:
+        """L'état des six étapes de Préparer pour une saison : relevés complets
+        (`calendar` : la grille statement_calendar de la saison), soldes de
+        départ, un compte sur chaque transaction bancaire (à confirmer une par
+        une quand l'appli ne propose rien, sinon regroupées par compte proposé
+        pour « Valider le compte »), hors banque (pas encore), contrôles,
+        documents. Rien n'est écrit."""
+        if not member.keeps_accounts:
+            raise PermissionError("Réservé aux trésoriers")
+        # 1. Relevés.
+        cells = [m for a in (calendar or {}).get("accounts", []) for m in a["months"]]
+        missing = sum(m["state"] in ("missing", "before", "bank") for m in cells)
+        waiting = sum(m["state"] == "waiting" for m in cells)
+        statements = {"missing": missing, "waiting": waiting, "accounts": len((calendar or {}).get("accounts", [])), "ok": missing == 0}
+        # 2. Soldes de départ.
+        opening = self.opening(db, member, season)
+        mismatches = [c for c in opening["bankCheck"] if round(c["statements"] - c["entered"], 2) != 0]
+        opening_step = {"source": opening["source"], "mismatches": len(mismatches), "ok": not mismatches}
+        # 3. Un compte sur chaque transaction bancaire.
+        rows = [r for r in self.ledger(db, member)["rows"] if season.start_date <= r["date"] <= season.end_date and not r.get("transfer")]
+        self.accounting.annotate(db, member.org_id, rows)
+        unsure, by_account = [], {}
+        for r in rows:
+            if r["account"] is not None:
+                continue
+            line = {"id": r["id"], "date": r["date"], "label": r["label"], "amount": r["amount"], "piece": r.get("piece")}
+            if r["proposal"] is None:
+                unsure.append(line)
+            else:
+                group = by_account.setdefault(r["proposal"]["id"], {"account": {k: r["proposal"][k] for k in ("id", "number", "label")}, "operations": []})
+                group["operations"].append({**line, "reason": r["proposal"]["reason"]})
+        sure = sorted(by_account.values(), key=lambda g: g["account"]["number"])
+        classify = {"withoutAccount": len(unsure) + sum(len(g["operations"]) for g in sure), "unsure": unsure, "sure": sure, "ok": not unsure and not sure}
+        # 5. Contrôles, en clair.
+        fec = self.fec_check(db, member, season)
+        controls = [
+            {"label": "Relevés complets sur la saison", "ok": statements["ok"], "detail": "" if statements["ok"] else f"{missing} mois à importer"},
+            {"label": "Soldes de départ égaux aux relevés", "ok": opening_step["ok"], "detail": "" if opening_step["ok"] else f"{len(mismatches)} compte(s) en écart"},
+            {"label": "Un compte du plan sur chaque transaction bancaire", "ok": classify["ok"], "detail": "" if classify["ok"] else f"{classify['withoutAccount']} transaction(s) sans compte"},
+            {"label": "FEC juste", "ok": fec["ok"], "detail": "" if fec["ok"] else " ".join(fec["problems"])},
+        ]
+        return {
+            "season": {"id": season.id, "name": season.name, "startDate": season.start_date, "endDate": season.end_date},
+            "level": self.accounting.level(db, member.org_id),
+            "statements": statements,
+            "opening": opening_step,
+            "classify": classify,
+            "offBank": {"available": False},
+            "controls": controls,
+            "closed": opening["closed"],
+        }
+
     # ----- Synthèse -----
 
     def synthese(self, db: Session, member: Member, season: Season) -> dict:

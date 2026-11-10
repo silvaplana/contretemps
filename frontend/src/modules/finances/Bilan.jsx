@@ -6,7 +6,10 @@
 // et l'analyse en arriere-plan : l'ecran relit le bilan jusqu'a la fin.
 import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
-import DocumentsAG from './compta/DocumentsAG.jsx'
+import DocumentsAG, { Cloture } from './compta/DocumentsAG.jsx'
+import Preparer from './compta/Preparer.jsx'
+import SegmentedTabs from '../../components/SegmentedTabs.jsx'
+import * as sessionApi from '../../api/session.js'
 import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import * as api from './api.js'
@@ -20,6 +23,12 @@ const SEASON_KEY = 'finances-bilan-saison'
 // Bilan ouvert, gardé le temps de la session : en revenant d'un document
 // ouvert dans Docs, on retrouve ce bilan.
 const OPEN_KEY = 'finances-bilan-ouvert'
+// Le bilan en parcours (financier.md §8.10) : trois onglets.
+const ONGLETS = [
+  { value: 'preparer', label: 'Préparer' },
+  { value: 'documents', label: 'Documents' },
+  { value: 'cloture', label: 'Clôture' },
+]
 
 function readOpen() {
   try {
@@ -87,6 +96,13 @@ export default function Bilan() {
   const [error, setError] = useState(null)
   // Bilan ouvert : null, 'new' ou l'id du bilan.
   const [editing, setEditing] = useState(null)
+  const [onglet, setOnglet] = useState(() => {
+    const dernier = sessionApi.lireEcran('financier-bilan')
+    return ONGLETS.some((o) => o.value === dernier) ? dernier : 'preparer'
+  })
+  useEffect(() => {
+    sessionApi.sauvegarderEcran('financier-bilan', onglet)
+  }, [onglet])
 
   useEffect(() => {
     if (listing) saveOpen(editing)
@@ -121,7 +137,10 @@ export default function Bilan() {
 
   // Menu ⋯ > « Nouveau bilan ».
   useEffect(() => {
-    const open = () => setEditing('new')
+    const open = () => {
+      setOnglet('documents')
+      setEditing('new')
+    }
     window.addEventListener(NEW_EVENT, open)
     return () => window.removeEventListener(NEW_EVENT, open)
   }, [])
@@ -144,6 +163,43 @@ export default function Bilan() {
     }
   }
 
+  const selecteur = (
+    <select
+      aria-label="Saison"
+      value={seasonId ?? ''}
+      onChange={(e) => {
+        const id = Number(e.target.value)
+        setSeasonId(id)
+        try {
+          localStorage.setItem(SEASON_KEY, String(id))
+        } catch {
+          // Stockage indisponible : le choix ne sera juste pas retenu.
+        }
+      }}
+    >
+      {[...seasons].reverse().map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.name}
+          {s.current ? ' (en cours)' : ''}
+          {onglet === 'documents' && listing?.counts && ` : ${listing.counts[s.id] ?? 0}`}
+        </option>
+      ))}
+    </select>
+  )
+
+  if (onglet !== 'documents' && season)
+    return (
+      <section className="fin-bilan reports">
+        <SegmentedTabs options={ONGLETS} value={onglet} onChange={setOnglet} className="admin-screen__tabs" />
+        <div className="seasons-toolbar">{selecteur}</div>
+        {onglet === 'preparer' ? (
+          <Preparer key={season.id} season={season} onDocuments={() => setOnglet('documents')} />
+        ) : (
+          <ClotureSaison season={season} reports={reports} onDocuments={() => setOnglet('documents')} />
+        )}
+      </section>
+    )
+
   if (editing !== null && listing && season)
     return (
       <ReportPanel
@@ -161,28 +217,9 @@ export default function Bilan() {
 
   return (
     <section className="fin-bilan reports">
+      <SegmentedTabs options={ONGLETS} value={onglet} onChange={setOnglet} className="admin-screen__tabs" />
       <div className="seasons-toolbar">
-        <select
-          aria-label="Saison"
-          value={seasonId ?? ''}
-          onChange={(e) => {
-            const id = Number(e.target.value)
-            setSeasonId(id)
-            try {
-              localStorage.setItem(SEASON_KEY, String(id))
-            } catch {
-              // Stockage indisponible : le choix ne sera juste pas retenu.
-            }
-          }}
-        >
-          {[...seasons].reverse().map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-              {s.current ? ' (en cours)' : ''}
-              {listing?.counts && ` : ${listing.counts[s.id] ?? 0}`}
-            </option>
-          ))}
-        </select>
+        {selecteur}
         <button type="button" className="btn btn--primary" onClick={() => setEditing('new')} disabled={!listing}>
           <Icon name="plus" size={18} /> Nouveau bilan
         </button>
@@ -239,6 +276,45 @@ export default function Bilan() {
         </ul>
       )}
     </section>
+  )
+}
+
+// Onglet Clôture (§8.7) : la clôture de la saison, portée par son bilan le
+// plus avancé (Officiel, sinon Validé, sinon le dernier).
+function ClotureSaison({ season, reports, onDocuments }) {
+  const [data, setData] = useState(null)
+  const [erreur, setErreur] = useState('')
+  const rang = { officiel: 0, valide: 1, brouillon: 2 }
+  const report = [...reports].sort((a, b) => rang[a.state] - rang[b.state] || (a.updatedAt < b.updatedAt ? 1 : -1))[0]
+
+  useEffect(() => {
+    if (!report) return
+    api
+      .documentsAG(report.id)
+      .then(setData)
+      .catch((err) => setErreur(err.message))
+  }, [report])
+
+  if (!report)
+    return (
+      <p className="muted">
+        Pas encore de bilan pour {season.name} : la clôture se fait depuis le bilan Officiel.{' '}
+        <button type="button" className="btn btn--link" onClick={onDocuments}>
+          Aller aux documents
+        </button>
+      </p>
+    )
+  if (erreur) return <p className="login-screen__erreur">{erreur}</p>
+  if (!data) return <p className="muted">Chargement…</p>
+  if (data.level !== 'complet') return <p className="muted">La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).</p>
+  return (
+    <div className="fin-cp">
+      <p className="muted">
+        Bilan « {report.name} » ({STATE_LABELS[report.state]}). La clôture reporte le résultat et les soldes sur la saison suivante et verrouille
+        la saison.
+      </p>
+      <Cloture reportId={report.id} seasonName={season.name} closing={data.closing} onChange={(closing) => setData((d) => ({ ...d, closing }))} onErreur={setErreur} />
+    </div>
   )
 }
 
