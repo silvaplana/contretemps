@@ -276,6 +276,9 @@ class FinChartAccount(Base):
     number: Mapped[str] = mapped_column(String(10), nullable=False)
     label: Mapped[str] = mapped_column(String(80), nullable=False)
     nature: Mapped[str] = mapped_column(String(10), nullable=False)
+    # Nature libre (Seb, 10/11) : le nom affiché (« Immobilisations »…) ; le
+    # calcul suit `nature` (dépense, recette, ou attente = hors résultat).
+    nature_label: Mapped[str | None] = mapped_column(String(40), nullable=True)
     event: Mapped[str | None] = mapped_column(String(40), nullable=True)
     keywords: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)

@@ -117,6 +117,7 @@ class ChartAccountRequest(BaseModel):
     number: str
     label: str
     nature: str | None = None
+    natureLabel: str | None = None  # nature libre (Seb, 10/11), "" pour l'enlever
     event: str | None = None
     keywords: list[str] = []
     active: bool | None = None

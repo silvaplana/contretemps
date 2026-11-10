@@ -423,6 +423,11 @@ professeurs »), groupés Dépenses / Recettes / Tiers et attente (Complet). Rep
 Balance 2024-25 de la comptable (pour une nouvelle organisation : liste par défaut courte,
 `finances/chart.py`). Un compte peut être marqué « gala » (ou autre événement) pour le bloc
 « Ressources / Coût » de la Synthèse. Ajout, renommage ; un compte utilisé ne se supprime pas.
+**Nature libre** (Seb, 10 novembre 2026) : dans la fiche d'un compte, Nature › « Autre nature… », un
+nom au choix (« Immobilisations »), puis « Pour le résultat, ce compte est » : une dépense, une recette,
+ou hors résultat (Balance et Grand livre seulement, nature de base « attente »). Le calcul suit la nature
+de base ; le nom (`fin_chart_accounts.nature_label`) groupe les comptes dans le Plan comptable et se
+propose ensuite dans le menu Nature. Gardé par la copie mémorisée du plan.
 
 Les catégories par mots-clés de §3.2 (`categories.py`) restent pour l'écran Comptes ; chaque
 compte du plan porte ses mots-clés de proposition (repris et enrichis par l'historique confirmé :
