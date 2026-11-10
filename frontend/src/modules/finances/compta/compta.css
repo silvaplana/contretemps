@@ -354,11 +354,15 @@ button.fin-cp-compte:last-child {
 }
 
 /* Soldes de départ : libellé et montant sur une ligne. */
+/* Le montant juste après le nom du compte, pas collé au bord droit (Seb, 10/11). */
 .fin-cp-solde {
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 16px;
+}
+
+.fin-cp-solde > span {
+  flex: 0 0 min(300px, 55%);
 }
 
 .fin-cp-solde .field-input {

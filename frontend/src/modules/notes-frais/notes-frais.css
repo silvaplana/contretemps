@@ -718,3 +718,12 @@
   border-radius: 0 0 10px 10px;
   pointer-events: none;
 }
+
+/* Grand écran : le Financier garde une largeur de lecture de tablette, calée à
+   gauche, pour que montants et boutons restent près des libellés (Seb, 10/11).
+   Le téléphone ne change pas. */
+.nf-screen > *,
+.nf-screen .modal-panel {
+  width: 100%;
+  max-width: 720px;
+}

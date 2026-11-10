@@ -739,7 +739,8 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   467x, créances 411, fonds et report) ; les relevés ne servent qu'à **vérifier** les 512x. Tant que
   rien n'est repris, l'appli ne connaît que la trésorerie des relevés : l'écran le dit en orange
   (« les soldes de l'an dernier ne sont pas encore repris ») et l'étape 2 de Préparer reste à faire au
-  niveau Complet (`toCarry`). **« Reprendre les soldes de l'an dernier »** (`GET
+  niveau Complet (`toCarry`). **« Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) »** (le
+  bouton nomme sa source, Seb 10/11 ; `GET
   /finances/opening-balances/{saison}/previous`) : l'appli cherche dans Docs › saison précédente ›
   Financier (tous sous-dossiers), sinon dans le Financier de la saison en cours (le dossier d'une
   saison terminée est en lecture seule à l'écran), le PDF le plus récent dont le nom contient « balance », lit ses
@@ -920,7 +921,8 @@ sans que la trésorière l'ait vu :
 1. **Relevés complets** : la grille des relevés (§3) toute verte pour la saison.
 2. **Soldes de départ** au premier jour de la saison (§8.7) : repris de l'an dernier (ou reportés par
    la clôture) et 512x = relevés ; au Complet, « trésorerie des relevés seulement » reste orange.
-3. **Rapprocher et classer** : l'écran Rapprocher de Pièces (`notes-de-frais.md` §7 septies),
+3. **Rapprocher les factures et classer les transactions bancaires** (le titre dit quoi, Seb 10/11) :
+   l'écran Rapprocher de Pièces (`notes-de-frais.md` §7 septies),
    filtré sur la saison, puis **un compte sur chaque ligne de banque** : d'abord les lignes où
    l'appli n'est pas sûre (proposition en bleu avec « ? », une par une : choisir le compte,
    rattacher la facture qui tranche, ou ventiler une remise de chèques entre Cours / Cotisations /
@@ -955,7 +957,7 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    (`compta/Preparer.jsx`, `GET /finances/seasons/{id}/preparation`,
    `POST /finances/seasons/{id}/confirm-accounts`) : les six étapes avec leur compteur et un ✓ quand
    il ne reste rien ; 1 ouvre la grille des relevés, 2 les soldes de départ, 3 montre les compteurs
-   de Rapprocher sur la saison (bouton « Ouvrir Rapprocher ») puis les transactions bancaires sans
+   de Rapprocher sur la saison (bouton « Ouvrir Rapprocher les factures ») puis les transactions bancaires sans
    compte : « À confirmer une par une » (aucune proposition : la fiche de l'opération) et « Comptes
    proposés par l'appli » regroupées par compte proposé avec **« Valider le compte 6226 Honoraires :
    48 lignes »** (`Accounting.confirm_many`, une opération déjà classée ou un virement interne est

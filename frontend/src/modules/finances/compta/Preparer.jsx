@@ -72,7 +72,7 @@ export default function Preparer({ season, onDocuments }) {
       reste: opening.toCarry ? 1 : opening.mismatches,
       detail: opening.ok ? SOURCES[opening.source] : opening.toCarry ? 'Les soldes de l’an dernier ne sont pas repris : seule la trésorerie des relevés est connue' : `${opening.mismatches} compte(s) en écart avec les relevés`,
     },
-    { n: 3, titre: 'Rapprocher et classer', reste: resteEtape3, detail: resteEtape3 === 0 ? 'Chaque transaction bancaire a sa pièce ou son compte' : `${aRapprocher} à rapprocher, ${classify.withoutAccount} sans compte` },
+    { n: 3, titre: 'Rapprocher les factures et classer les transactions bancaires', reste: resteEtape3, detail: resteEtape3 === 0 ? 'Chaque transaction bancaire a sa pièce ou son compte' : `${aRapprocher} facture(s) à rapprocher, ${classify.withoutAccount} transaction(s) bancaire(s) sans compte` },
     {
       n: 4,
       titre: 'Hors banque',
@@ -106,8 +106,8 @@ export default function Preparer({ season, onDocuments }) {
               </span>
               <span className="fin-cp-s">{e.detail}</span>
             </button>
-            {ouverte === 1 && e.n === 1 && <RelevesGrille onClose={() => setOuverte(null)} onImport={charger} />}
-            {ouverte === 2 && e.n === 2 && <SoldesDepart onClose={() => setOuverte(null)} />}
+            {ouverte === 1 && e.n === 1 && <RelevesGrille seasonId={season.id} onClose={() => setOuverte(null)} onImport={charger} />}
+            {ouverte === 2 && e.n === 2 && <SoldesDepart initialSeasonId={season.id} onClose={() => setOuverte(null)} />}
             {ouverte === 3 && e.n === 3 && (
               <Etape3 rapprocher={rapprocher} aRapprocher={aRapprocher} classify={classify} enCours={enCours} onRapprocher={ouvrirRapprocher} onValider={validerCompte} onFiche={setFicheOp} />
             )}
@@ -152,14 +152,14 @@ function Etape3({ rapprocher, aRapprocher, classify, enCours, onRapprocher, onVa
   return (
     <div className="fin-preparer__corps">
       <div className="fin-preparer__bloc">
-        <span className="fin-cp-t">Rapprocher</span>
+        <span className="fin-cp-t">Rapprocher les factures</span>
         <span className="fin-cp-s">
           {rapprocher
             ? `${rapprocher.paires.length} suggestion(s) de rattachement, ${rapprocher.sans_paiement.filter((p) => p.a_rapprocher).length} facture(s) à rapprocher, ${rapprocher.lignes_sans_piece.length} transaction(s) bancaire(s) sans facture`
             : 'Le rapprochement des pièces n’est pas disponible.'}
         </span>
         <button type="button" className={`btn ${aRapprocher > 0 ? 'btn--primary' : 'btn--secondary'}`} onClick={onRapprocher}>
-          Ouvrir Rapprocher
+          Ouvrir Rapprocher les factures
         </button>
       </div>
 
