@@ -15,6 +15,7 @@ from .adapter import (
     ClasseurContretemps,
     MessagerContretemps,
     NotifieurContretemps,
+    compte_de_tiers,
     comptes_de_charges,
     membre_appelant,
 )
@@ -41,6 +42,8 @@ def mount(app, core) -> None:
             banque=BanqueContretemps(),
             # Catégories des dépenses = comptes de charges du plan comptable.
             plan=comptes_de_charges,
+            # Compte de tiers des écritures montrées à la revue de l'import.
+            tiers=compte_de_tiers,
         ),
         stockage=StockageEnveloppes(DOSSIER_NOTES_FRAIS, 20 * 1024 * 1024),
     )

@@ -38,7 +38,9 @@ Pièces
   seulement → « Rattacher à la transaction bancaire » ; aucune ligne du montant exact → « Paiement possible » (lignes au même nom, écart affiché, ou
   un virement qui paie aussi d'autres pièces de la personne) et « C'est ce paiement » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
   Terminé ouvre la revue de l'import : une ligne par pièce (fichier, date, montant ; nature, qui et rangement proposés ;
-  transaction bancaire trouvée ou proposée avec l'écart ; ce que la pièce deviendrait) et trois boutons : Valider (« Valider :
+  transaction bancaire trouvée ou proposée avec l'écart ; ce que la pièce deviendrait ; sous la ligne, les écritures Débit / Crédit :
+  facture au compte de charge, menu « Compte de charge » pour le changer, contre le compte de tiers 401 ou 467n, puis paiement
+  du tiers contre la banque 512x) et trois boutons : Valider (« Valider :
   Payé », « C'est ce paiement », « Valider : À payer »), Déjà payée (aucune ligne trouvée : la facture est validée, réglée hors de
   l'appli, elle attend dans Rapprocher et pas dans Virements), Autre… (la fiche), Plus tard. En haut « Valider les pièces sûres
   (N) », en bas « Annuler cet import ». Sur une pièce payée avec écart : « Régler l'écart… » (Il nous rembourse / On lui
