@@ -489,8 +489,9 @@ endroit**, Docs › Privé › Saison en cours › Financier › Notes de frais 
 note est établie : Seb, 10 novembre 2026, comme le classeur de la trésorière), où les justificatifs
 sont rangés dès l'envoi et **ne bougent plus**.
 **L'état ne se lit que dans l'appli** : plus de badge sur le dossier, plus de nouvelle version du PDF à
-chaque étape. Le PDF récapitulatif est fait une fois, quand la note est payée (ou sur demande,
-« Télécharger les justificatifs »). Plus d'enveloppes à part sur le disque du serveur (§10) : Docs
+chaque étape. **L'appli ne crée aucun fichier dans Docs** (Seb, 10 novembre : « Note de frais.pdf »
+et « JULIEN BRINON (1).pdf » étaient de trop) : on n'y range que les fichiers qu'on donne ; le PDF
+récapitulatif ne se fait que sur demande (« Télécharger les justificatifs »). Plus d'enveloppes à part sur le disque du serveur (§10) : Docs
 range déjà ses fichiers sur le disque. Une note **reprise** par son auteur (avant validation ou après
 un refus) part à la corbeille des documents. Le dossier Financier existe dans chaque saison et n'est
 visible que des trésoriers (documents.md §4.7 bis) ; « Notes de frais » y est créé à la première note.

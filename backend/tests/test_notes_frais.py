@@ -357,12 +357,12 @@ def test_note_rangee_dans_financier_reserve_aux_tresoriers(client, db_session, e
     [ticket] = _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]
     assert ticket["name"] == "2026-10-12 Ticket Margot Perrin 48,90.png"
     assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
-    # Payé : le PDF récapitulatif est fait une seule fois, à côté ; rien ne bouge.
+    # Payé : rien ne bouge, et l'appli n'invente aucun fichier (Seb, 10/11 : pas de « Note de frais.pdf »).
     assert client.post("/notes-frais/remboursements", json={"note_ids": [note["id"]]}, headers=entetes_session(tresorier)).status_code == 200
     [apres] = _parcourir(client, org, tresorier, personne["id"]).json()["items"]
     assert apres["id"] == dossier_note["id"] and apres["status"] is None
     noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"])
-    assert noms == [ticket["name"], "Note de frais.pdf"]
+    assert noms == [ticket["name"]]
 
     # Le Super User, qui a tous les droits (spec/core.md §6.1), y entre.
     su = Comptes().enregistrer_superuser(

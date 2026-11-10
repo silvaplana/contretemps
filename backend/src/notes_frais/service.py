@@ -1697,26 +1697,6 @@ class NotesDeFrais:
             logger.exception("Note de frais %s : récapitulatif PDF impossible", note.id)
             return None
 
-    def _ranger_recapitulatif(self, db: Session, membre: Membre, note: NoteFrais) -> None:
-        """Le PDF est fait une seule fois, quand c'est payé (financier.md
-        §8.3 bis), et rangé à côté des justificatifs."""
-        chemin = self._chemin_docs(db, note)
-        contenu = self._recapitulatif(db, membre, note)
-        if self.ports.classeur is None or chemin is None or contenu is None:
-            return
-        nom = recapitulatif.NOM_FICHIER if note.nature != ACHAT else f"{nom_propre(note.titre)} ({note.id}).pdf"
-        dossier = self.stockage.dossier_depenses(note.org_id, note.person_id, "")
-        relatif = self.stockage.ecrire(note.org_id, dossier, nom, contenu)
-        try:
-            self.ports.classeur.classer(
-                db, membre, chemin, [(nom, self.stockage.chemin(note.org_id, relatif))], remplacer={nom}, le=self._date_docs(note)
-            )
-        except Exception:
-            db.rollback()
-            logger.exception("Note de frais %s : PDF non rangé dans les documents", note.id)
-        finally:
-            self.stockage.delete(note.org_id, relatif)
-
     def refuser(self, db: Session, membre: Membre, note_id: int, motif: str) -> NoteFrais:
         self._exiger_tresorier(membre)
         motif = (motif or "").strip()
@@ -1756,7 +1736,7 @@ class NotesDeFrais:
         return notes
 
     def _apres_paiement(self, db: Session, membre: Membre, note: NoteFrais, *, prevenir: bool = True) -> None:
-        self._ranger_recapitulatif(db, membre, note)
+        # Pas de PDF récapitulatif rangé dans Docs : on n'y met que les fichiers qu'on nous donne (Seb, 10/11).
         if not prevenir:
             return
         # Celle qui a préparé le virement est prévenue qu'il est passé.
