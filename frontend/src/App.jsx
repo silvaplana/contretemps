@@ -1284,7 +1284,7 @@ function App() {
         {activeTab === 'notes-frais' && (
           <MesNotesDeFrais key={activeUser.id} onBack={() => setActiveTab('profil')} />
         )}
-        {activeTab === 'financier' && isTresorier(activeUser) && <Financier key={activeUser.id} />}
+        {activeTab === 'financier' && isTresorier(activeUser) && <Financier key={activeUser.id} docs={<DocsScreen ecoleId={ecole.id} />} />}
 
         {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} />}
 
