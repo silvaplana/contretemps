@@ -32,22 +32,14 @@ journal. Visible par tous les rôles (Membre, Admin, Admin principal, Super User
 Le Super User passe toujours ; l'Administrateur principal se coche lui-même s'il veut publier
 (spec/core.md §5.3).
 
-### 2 bis. Pendant le test (Seb, 8 novembre 2026)
+### 2 bis. Visibles par tout le monde (fin du test, Seb, 10 novembre 2026)
 
-Tant que le module est en test, l'onglet Actus ne se montre qu'aux personnes qui ont le droit
-**🔒 Voir les actualités** (`news.read`, déclaré par le module) ou **🔒 Publier les actualités**.
-Les autres ne voient pas l'onglet, l'appli ne s'ouvre pas sur les actus pour eux, et ils ne
-reçoivent pas les notifications.
-
-Comme les droits ne se cochent aujourd'hui que pour les administrateurs, l'onglet Édition a, pour
-l'administrateur principal et le Super User, une ligne **« Qui voit les actus (pendant le test) »**
-dans les Paramètres d'édition des actus : la liste des membres de la saison, un interrupteur chacun (grisé et allumé pour
-qui publie). L'interrupteur met la personne dans le groupe 🔒 du droit, ou l'en retire.
-
-Retiré le 8 novembre sur un malentendu (PR #155), remis le soir
-même à sa demande. Fin du test : on enlève ce filtre (droit, ligne de l'onglet Édition, `can_read`) et tout le monde voit les
-actus, comme au §2.
-
+Le test est fini : le droit 🔒 « Voir les actualités » (`news.read`) et la liste « Qui voit les actus
+(pendant le test) » sont retirés, avec leurs groupes 🔒 (migration `b6e2d9f4a1c7`). À la place, un
+interrupteur dans les Paramètres d'édition des actus (§4.1), sous-partie « Visibilité » :
+**« Les actus sont visibles par tout le monde »**, allumé par défaut. Éteint, seuls ceux qui ont
+🔒 Publier les actualités voient l'onglet Actus ; les autres ne le voient pas, l'appli ne s'ouvre pas
+sur les actus pour eux, et ils ne reçoivent pas les notifications. Qui publie peut le changer.
 
 ## 3. Les actus (Visualisation)
 
@@ -109,7 +101,7 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
 - Sous la liste, **« Paramètres d'édition des actus »**, repliés par défaut (on touche le titre pour les
   dérouler ; Seb, 8 novembre) : interrupteur **« L'appli affiche toujours les actus à son ouverture »** (§6) et le compte
   **Instagram** relié (§6 bis). Même présentation que les volets d'Admin › École (titre en capitales,
-  flèche ›/⌄ à gauche, sous-parties « Ouverture de l'appli », « Pendant le test », « Instagram » ;
+  flèche ›/⌄ à gauche, sous-parties « Ouverture de l'appli », « Visibilité » (§2 bis), « Instagram » ;
   Seb, 9 novembre). En tête, **« En haut de chaque actu : Texte | Photo, vidéo »** (Seb, 9 novembre ;
   Texte par défaut) : un seul réglage pour toute l'école, que suivent toutes les cartes Normal et
   Important, l'aperçu de l'éditeur compris. Le menu ⋯ du bandeau (qui publie, onglets Édition et Visualisation) a l'entrée
@@ -269,7 +261,9 @@ chaque saison : « Nouveau » repart de zéro à la rentrée.
 
 **`news_settings`** : `org_id` (clé), `open_on_news` (bool, vrai par défaut ; pas de ligne = vrai),
 `media_first` (bool, faux par défaut : texte en haut ; migration `d5f2b8c1e604`, colonne ajoutée à la
-table existante plutôt qu'une nouvelle table : c'est un réglage de plus de l'école).
+table existante plutôt qu'une nouvelle table : c'est un réglage de plus de l'école), `visible_to_all`
+(bool, vrai par défaut et pour les lignes existantes ; §2 bis ; migration `b6e2d9f4a1c7`, qui supprime
+aussi les groupes 🔒 `right.news.read` et leurs membres).
 
 Le document reste une colonne : une actu en a au plus un (§3.3). Pas de lien avec les saisons : une actu appartient à l'organisation.
 
@@ -284,7 +278,7 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `POST …/news` · `PUT …/news/{id}` | droit | Créer, modifier ; `publish` : publier ou garder en brouillon |
 | `POST …/news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
 | `DELETE …/news/{id}` | droit | Supprimer |
-| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture, `has_news` (au moins une actu publiée), `media_first` (le `PUT` ne change que ce qu'on lui donne) ; `can_read` (voit l'onglet) et `can_choose_readers` pendant le test (§2 bis) |
+| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture, `has_news` (au moins une actu publiée), `media_first` (le `PUT` ne change que ce qu'on lui donne) ; `visible_to_all` et `can_read` (voit l'onglet ; §2 bis) |
 | `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `media` (`{photo}`) |
 | `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `media` (`{video_id}`) |
 | `POST …/news/links` | droit | `url` : lit le titre et l'image du lien ; rend `link`, `title`, `photo` (l'image gardée, ou nul) et `preview` (la même en `data:` pour l'éditeur), à donner ensuite dans `media` (`{link, title, photo}`) ; 400 si le lien ne répond pas |
@@ -292,7 +286,6 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `GET · PUT · DELETE …/news/instagram` | droit | Compte Instagram relié (§6 bis) : état (`can_sign_in` : bouton possible), relier avec `token`, délier |
 | `POST …/news/instagram/login` | droit | « Se connecter avec Instagram » : l'adresse de la page d'Instagram |
 | `GET /news/instagram/return` | public | Retour d'Instagram (`code`, `state`) : relie, puis renvoie vers l'appli de l'école |
-| `GET …/news/readers` · `PUT …/news/readers/{id}` | admin principal | Pendant le test : qui voit les actus (§2 bis) |
 
 Les actus s'envoient et se rendent avec `media`, liste ordonnée (10 au plus) d'éléments `photo` ou
 `video` (rendue avec ses liens signés), et `document` (`id`, `name`).

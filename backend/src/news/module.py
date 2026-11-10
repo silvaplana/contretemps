@@ -9,7 +9,7 @@ from registry import Module, Right, guide_file
 from .actions import actions
 from .instagram import InstagramApp, InstagramRelay
 from .news import News
-from .receiver import PUBLISH, READ, NewsReceiver
+from .receiver import PUBLISH, NewsReceiver
 from .storage import news_storage
 
 
@@ -33,7 +33,7 @@ def _org_url(db, org_id):
 
 MODULE = Module(
     key="news", label="Actualités", mount=mount, requires=("videos",),
-    rights=(Right(PUBLISH, "Publier les actualités"), Right(READ, "Voir les actualités")),
+    rights=(Right(PUBLISH, "Publier les actualités"),),
     actions=lambda core: actions(core.news_client),
     guide=guide_file(__file__),
 )

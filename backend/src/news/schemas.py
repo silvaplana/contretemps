@@ -83,30 +83,20 @@ class FeedOut(BaseModel):
 class SettingsOut(BaseModel):
     open_on_news: bool
     media_first: bool = False
-    # Sees the Actus tab (right « Voir les actualités » while in test).
+    # Sees the Actus tab.
     can_read: bool = True
-    # Ticks who sees the news (administrateur principal, Super User).
-    can_choose_readers: bool = False
+    # « Les actus sont visibles par tout le monde »; off, only those who publish.
+    visible_to_all: bool = True
     # At least one published item: with none, the app does not open on
     # Actus (Seb, 10 November).
     has_news: bool = False
-
-
-class ReaderOut(BaseModel):
-    id: int
-    name: str
-    reads: bool
-    publishes: bool
-
-
-class ReaderIn(BaseModel):
-    reads: bool
 
 
 class SettingsIn(BaseModel):
     # Only what is given changes.
     open_on_news: bool | None = None
     media_first: bool | None = None
+    visible_to_all: bool | None = None
 
 
 class InstagramIn(BaseModel):

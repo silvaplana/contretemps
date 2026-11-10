@@ -15,7 +15,6 @@ from typing import BinaryIO
 from comptes import Compte, roles
 from documents.models import DocNode
 from ecoles.models import Ecole
-from groups import rights
 from saisons.portee import toutes_saisons
 from saisons.saisons import saison_courante_id
 from sqlalchemy import select
@@ -33,9 +32,6 @@ logger = logging.getLogger(__name__)
 UNDO_SECONDS = 10
 MAX_MEDIA = 10  # like an Instagram carousel
 PUBLISH = "news.publish"
-# While the module is being tried out (Seb, 8 November): only the members of
-# the 🔒 group « Voir les actualités », and those who publish, see the news.
-READ = "news.read"
 PREVIEW_CHARS = 100
 
 
@@ -46,10 +42,6 @@ def _now() -> datetime:
 def can_publish(compte: Compte | None) -> bool:
     # `None`: rights switched off (tests, see tests/conftest.py).
     return compte is None or roles.has_right(compte, PUBLISH)
-
-
-def can_read(compte: Compte | None) -> bool:
-    return can_publish(compte) or roles.has_right(compte, READ)
 
 
 def on_top(item: NewsItem, today: date) -> bool:
@@ -130,27 +122,25 @@ class News:
         self._settings(db, org_id).media_first = value
         db.commit()
 
+    def visible_to_all(self, db: Session, org_id: int) -> bool:
+        settings = db.get(NewsSettings, org_id)
+        return True if settings is None else settings.visible_to_all
+
+    def set_visible_to_all(self, db: Session, org_id: int, value: bool) -> None:
+        self._settings(db, org_id).visible_to_all = value
+        db.commit()
+
+    def can_read(self, db: Session, compte: Compte | None, org_id: int) -> bool:
+        """Everybody, or only those who publish when the news are not
+        « visibles par tout le monde » (§2 bis)."""
+        return can_publish(compte) or self.visible_to_all(db, org_id)
+
     def _settings(self, db: Session, org_id: int) -> NewsSettings:
         settings = db.get(NewsSettings, org_id)
         if settings is None:
-            settings = NewsSettings(org_id=org_id, open_on_news=True, media_first=False)
+            settings = NewsSettings(org_id=org_id, open_on_news=True, media_first=False, visible_to_all=True)
             db.add(settings)
         return settings
-
-    # --- Who sees the news while in test (§2 bis) ---
-
-    def members(self, db: Session, org_id: int) -> list[Compte]:
-        """The members of the current season, by first name."""
-        season = saison_courante_id(db, org_id)
-        with toutes_saisons(db):
-            return list(db.scalars(
-                select(Compte).where(Compte.ecole_id == org_id, Compte.saison_id == season)
-                .order_by(Compte.prenom, Compte.nom)
-            ))
-
-    def set_reader(self, db: Session, compte: Compte, reads: bool) -> None:
-        (rights.add if reads else rights.remove)(db, compte, READ)
-        db.commit()
 
     # --- Media (§3.3) ---
 
@@ -334,8 +324,9 @@ class News:
         with toutes_saisons(db):
             members = list(db.scalars(select(Compte).where(Compte.ecole_id == item.org_id, Compte.saison_id == season)))
         count = 0
+        everyone = self.visible_to_all(db, item.org_id)
         for member in members:
-            if member.id == item.author_id or not can_read(member):
+            if member.id == item.author_id or not (everyone or can_publish(member)):
                 continue
             try:
                 self.notifications.envoyer_a_compte(db, member.id, title, body)

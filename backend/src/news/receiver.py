@@ -1,6 +1,6 @@
 """HTTP routes of the news module (spec/modules/actualites.md §8). Reading:
-the right « 🔒 Voir les actualités » (`news.read`) while the module is tried
-out, or the right to write, « 🔒 Publier les actualités » (`news.publish`)."""
+every member, or only those with « 🔒 Publier les actualités »
+(`news.publish`) when the news are not « visibles par tout le monde »."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import base64
 from collections.abc import Callable
 from datetime import date
 
-from comptes import Compte, Comptes, rbac, roles
+from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
 from sqlalchemy.orm import Session
@@ -20,18 +20,13 @@ from db import get_db
 from .models import NewsItem
 from .instagram import InstagramError, InstagramRelay
 from .links import LinkError
-from .news import PUBLISH, READ, InvalidMedia, News, can_publish, can_read, on_top
+from .news import PUBLISH, InvalidMedia, News, can_publish, on_top
 from .schemas import (
-    DocumentOut, FeedOut, InstagramIn, InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, NewsIn, NewsOut, PhotoOut, ReaderIn, ReaderOut,
+    DocumentOut, FeedOut, InstagramIn, InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, NewsIn, NewsOut, PhotoOut,
     SettingsIn, SettingsOut, VideoIn,
 )
 
-__all__ = ["PUBLISH", "READ", "NewsReceiver"]
-
-
-def can_choose_readers(appelant: Compte | None) -> bool:
-    # Like every 🔒 group: the administrateur principal and the Super User.
-    return appelant is None or roles.is_owner(appelant) or roles.is_superuser(appelant)
+__all__ = ["PUBLISH", "NewsReceiver"]
 
 
 def _out(client: News, db: Session, item: NewsItem, seen=None, me: int | None = None) -> NewsOut:
@@ -71,8 +66,6 @@ class NewsReceiver:
         app.delete("/ecoles/{ecole_id}/news/instagram", response_model=InstagramOut)(self.instagram_unlink)
         app.post("/ecoles/{ecole_id}/news/instagram/login", response_model=LoginOut)(self.instagram_login)
         app.get("/news/instagram/return")(self.instagram_return)
-        app.get("/ecoles/{ecole_id}/news/readers", response_model=list[ReaderOut])(self.readers)
-        app.put("/ecoles/{ecole_id}/news/readers/{compte_id}", response_model=ReaderOut)(self.set_reader)
         app.put("/ecoles/{ecole_id}/news/{item_id}", response_model=NewsOut)(self.update)
         app.post("/ecoles/{ecole_id}/news/{item_id}/unpublish", response_model=NewsOut)(self.unpublish)
         app.delete("/ecoles/{ecole_id}/news/{item_id}", status_code=204)(self.delete)
@@ -129,10 +122,10 @@ class NewsReceiver:
         base = self.org_url(db, org_id) if self.org_url is not None else ""
         return RedirectResponse(f"{base.rstrip('/')}/?instagram={result}", status_code=303)
 
-    def _reader(self, appelant: Compte | None, ecole_id: int) -> None:
+    def _reader(self, db: Session, appelant: Compte | None, ecole_id: int) -> None:
         rbac.require_membre(appelant, ecole_id)
-        if not can_read(appelant):
-            raise HTTPException(status_code=403, detail="Les actualités sont en test")
+        if not self.client.can_read(db, appelant, ecole_id):
+            raise HTTPException(status_code=403, detail="Les actualités ne sont pas visibles")
 
     def _publisher(self, appelant: Compte | None, ecole_id: int) -> None:
         rbac.require_membre(appelant, ecole_id)
@@ -147,7 +140,7 @@ class NewsReceiver:
 
     def feed(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
         """The news everybody sees; opening them clears « Nouveau »."""
-        self._reader(appelant, ecole_id)
+        self._reader(db, appelant, ecole_id)
         me = appelant.id if appelant is not None else None
         seen = self.client.last_seen(db, me) if me is not None else None
         items = [_out(self.client, db, i, seen, me) for i in self.client.published(db, ecole_id)]
@@ -221,7 +214,7 @@ class NewsReceiver:
 
     def photo(self, ecole_id: int, item_id: int, sha: str, db: Session = Depends(get_db),
               appelant: Compte = Depends(rbac.compte_appelant)):
-        self._reader(appelant, ecole_id)
+        self._reader(db, appelant, ecole_id)
         item = self._item(db, ecole_id, item_id)
         if item.published_at is None and not can_publish(appelant):
             raise HTTPException(status_code=404, detail="Actu introuvable")
@@ -230,14 +223,17 @@ class NewsReceiver:
             raise HTTPException(status_code=404, detail="Pas de photo")
         return FileResponse(chemin, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=31536000, immutable"})
 
-    def settings(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
-        rbac.require_membre(appelant, ecole_id)
-        reader = can_read(appelant)
+    def _settings_out(self, db: Session, ecole_id: int, reader: bool) -> SettingsOut:
         return SettingsOut(
             open_on_news=reader and self.client.open_on_news(db, ecole_id), can_read=reader,
-            can_choose_readers=can_choose_readers(appelant), media_first=self.client.media_first(db, ecole_id),
+            media_first=self.client.media_first(db, ecole_id),
+            visible_to_all=self.client.visible_to_all(db, ecole_id),
             has_news=reader and self.client.has_published(db, ecole_id),
         )
+
+    def settings(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
+        rbac.require_membre(appelant, ecole_id)
+        return self._settings_out(db, ecole_id, self.client.can_read(db, appelant, ecole_id))
 
     def change_settings(self, ecole_id: int, data: SettingsIn, db: Session = Depends(get_db),
                         appelant: Compte = Depends(rbac.compte_appelant)):
@@ -246,34 +242,6 @@ class NewsReceiver:
             self.client.set_open_on_news(db, ecole_id, data.open_on_news)
         if data.media_first is not None:
             self.client.set_media_first(db, ecole_id, data.media_first)
-        return SettingsOut(
-            open_on_news=self.client.open_on_news(db, ecole_id), media_first=self.client.media_first(db, ecole_id),
-            can_read=True, can_choose_readers=can_choose_readers(appelant),
-            has_news=self.client.has_published(db, ecole_id),
-        )
-
-    def _chooser(self, appelant: Compte | None, ecole_id: int) -> None:
-        rbac.require_membre(appelant, ecole_id)
-        if not can_choose_readers(appelant):
-            raise HTTPException(status_code=403, detail="Réservé à l'administrateur principal")
-
-    @staticmethod
-    def _reader_out(compte: Compte) -> ReaderOut:
-        return ReaderOut(
-            id=compte.id, name=f"{compte.prenom} {compte.nom}".strip(),
-            reads=roles.has_right(compte, READ), publishes=roles.has_right(compte, PUBLISH),
-        )
-
-    def readers(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):
-        """Who sees the news while the module is tried out (§2 bis)."""
-        self._chooser(appelant, ecole_id)
-        return [self._reader_out(c) for c in self.client.members(db, ecole_id)]
-
-    def set_reader(self, ecole_id: int, compte_id: int, data: ReaderIn, db: Session = Depends(get_db),
-                   appelant: Compte = Depends(rbac.compte_appelant)):
-        self._chooser(appelant, ecole_id)
-        compte = Comptes().get(db, compte_id)
-        if compte is None or compte.ecole_id != ecole_id:
-            raise HTTPException(status_code=404, detail="Membre introuvable")
-        self.client.set_reader(db, compte, data.reads)
-        return self._reader_out(compte)
+        if data.visible_to_all is not None:
+            self.client.set_visible_to_all(db, ecole_id, data.visible_to_all)
+        return self._settings_out(db, ecole_id, True)

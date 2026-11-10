@@ -1,5 +1,5 @@
-Actualités : onglet « Actus » de la barre du bas, juste après Admin. Pendant le test, seuls le
-voient les membres qui ont le droit 🔒 « Voir les actualités » et ceux qui publient. Qui a le
+Actualités : onglet « Actus » de la barre du bas, juste après Admin. Tout le monde le voit, sauf
+si « Les actus sont visibles par tout le monde » est éteint : alors seuls ceux qui publient. Qui a le
 droit 🔒 « Publier les actualités » (Admin › École › Administrateurs) voit en haut deux onglets,
 Édition et Visualisation ; les autres voient directement les actus.
 
@@ -27,8 +27,8 @@ Les actus (et l'onglet Visualisation)
     5 minutes au plus (texte puis photos et vidéos, carrousels compris). Si le bouton n'y est pas :
     coller la clé d'accès du compte, puis « Relier ».
     « Délier » arrête le relais.
-  - Pendant le test, pour l'administrateur principal : « Qui voit les actus (pendant le test) » ouvre
-    la liste des membres, un interrupteur chacun pour leur montrer l'onglet Actus.
+  - « Visibilité » : « Les actus sont visibles par tout le monde » (allumé ; éteint : seuls ceux qui
+    publient les voient).
 
 Nouvelle actu / Modifier l'actu
 - Niveau : Important, Normal ou Brève. Texte (facultatif s'il y a une photo, une vidéo, un lien ou un

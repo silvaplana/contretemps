@@ -30,9 +30,7 @@ def e(db_session):
     autre = Ecoles().create(db_session, nom="Fight Lab", code_postal="13600")
     seb = comptes.create(db_session, ecole_id=ecole.id, role="admin", nom="Richard", prenom="Seb")
     rights.add(db_session, seb, "news.publish")
-    # Pendant le test, Zoé fait partie des élèves qui voient les actus.
     zoe = comptes.create(db_session, ecole_id=ecole.id, role="eleve", nom="Martin", prenom="Zoé")
-    rights.add(db_session, zoe, "news.read")
     db_session.commit()
     return {
         "ecole": ecole,
@@ -125,9 +123,9 @@ def test_notification_a_qui_voit_les_actus_sauf_l_auteur_et_pas_apres_annuler(cl
     en_tant_que(e["seb"])
     long = "Pas de cours mardi 11 novembre. " * 10
     actu = _publier(client, eid, long, level="important", notify=True)
-    # Julia (admin sans le droit « Voir les actualités ») ne la reçoit pas.
-    assert core.news_client.send_notification(db_session, actu["id"]) == 1
-    assert {c for c, _, _ in faux.envois} == {e["zoe"].id}
+    # Tout le monde la reçoit, sauf Seb qui l'a écrite.
+    assert core.news_client.send_notification(db_session, actu["id"]) == 2
+    assert {c for c, _, _ in faux.envois} == {e["zoe"].id, e["admin"].id}
     _, titre, corps = faux.envois[0]
     assert titre == "Contretemps" and len(corps) == 100 and corps.endswith("…")
     # Une seule fois.
@@ -145,10 +143,10 @@ def test_notification_a_qui_voit_les_actus_sauf_l_auteur_et_pas_apres_annuler(cl
 
 def test_option_ouvrir_sur_les_actus(client, e):
     url = f"/ecoles/{e['ecole'].id}/news/settings"
-    assert client.get(url).json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
-    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
-    assert client.get(url).json() == {"open_on_news": False, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
-    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
+    assert client.get(url).json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
+    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
+    assert client.get(url).json() == {"open_on_news": False, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
+    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
 
 
 def test_pas_d_ouverture_sur_les_actus_tant_qu_il_n_y_en_a_aucune(client, e):
@@ -183,8 +181,8 @@ def test_droits(client, db_session, e):
     actu = client.post(f"/ecoles/{eid}/news", json={"body": "Gala"}, headers=seb)
     assert actu.status_code == 201, actu.text
     assert actu.json()["author_name"] == "Seb"
-    # Pendant le test, lit qui a « Voir les actualités » ou « Publier les
-    # actualités » ; seul le second écrit (un admin sans la coche non plus).
+    # Tout le monde lit ; seul « Publier les actualités » écrit (un admin
+    # sans la coche non plus).
     fil = client.get(f"/ecoles/{eid}/news", headers=zoe).json()
     assert len(fil["items"]) == 1 and fil["can_publish"] is False
     assert client.get(f"/ecoles/{eid}/news", headers=seb).json()["can_publish"] is True
@@ -192,10 +190,9 @@ def test_droits(client, db_session, e):
         assert client.post(f"/ecoles/{eid}/news", json={"body": "x"}, headers=entetes).status_code == 403
         assert client.get(f"/ecoles/{eid}/news/atelier", headers=entetes).status_code == 403
         assert client.put(f"/ecoles/{eid}/news/settings", json={"open_on_news": False}, headers=entetes).status_code == 403
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": False, "has_news": True}
-    # Sans le droit : pas d'onglet, pas d'actus, l'appli ne s'ouvre pas dessus.
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=admin).json() == {"open_on_news": False, "media_first": False, "can_read": False, "can_choose_readers": False, "has_news": False}
-    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
+        assert client.put(f"/ecoles/{eid}/news/settings", json={"visible_to_all": False}, headers=entetes).status_code == 403
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": True}
+    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 200
     # Une autre école ne lit rien.
     assert client.get(f"/ecoles/{eid}/news", headers=voisin).status_code == 403
     assert db_session.query(NewsItem).count() == 1
@@ -505,32 +502,42 @@ def test_instagram_reserve_a_qui_publie(client, e):
 
 
 @pytest.mark.rbac_reel
-def test_qui_voit_les_actus_pendant_le_test(client, db_session, e):
-    """L'administrateur principal coche, dans l'Atelier, qui voit les actus."""
+def test_actus_visibles_par_tout_le_monde(client, db_session, e, monkeypatch):
+    """Fin du test (Seb, 10 novembre) : un interrupteur, dans les Paramètres
+    d'édition, remplace le groupe « Voir les actualités ». Éteint, seuls
+    ceux qui publient voient les actus."""
+    from app.main import core
+
     eid = e["ecole"].id
-    patron = Comptes().create(db_session, ecole_id=eid, role="admin", nom="Chef", prenom="Anne")
-    Comptes().ajouter_role(db_session, patron, "owner")
-    rights.add(db_session, patron, "news.publish")
+    seb, zoe = (entetes_session(e[k]) for k in ("seb", "zoe"))
+    url = f"/ecoles/{eid}/news/settings"
+    client.post(f"/ecoles/{eid}/news", json={"body": "Gala"}, headers=seb)
+
+    eteint = client.put(url, json={"visible_to_all": False}, headers=seb).json()
+    assert eteint["visible_to_all"] is False and eteint["can_read"] is True
+    assert client.get(f"/ecoles/{eid}/news", headers=seb).status_code == 200
+    assert client.get(f"/ecoles/{eid}/news", headers=zoe).status_code == 403
+    assert client.get(url, headers=zoe).json() == {"open_on_news": False, "media_first": False, "can_read": False, "visible_to_all": False, "has_news": False}
+    # L'autre école garde le sien.
+    assert client.get(f"/ecoles/{e['autre'].id}/news/settings", headers=entetes_session(e["voisin"])).json()["visible_to_all"] is True
+
+    # Pas de notification à qui ne voit pas les actus.
+    faux = FauxNotifications()
+    monkeypatch.setattr(core.news_client, "notifications", faux)
+    rights.add(db_session, e["admin"], "news.publish")
     db_session.commit()
-    chef, admin = (entetes_session(c) for c in (patron, e["admin"]))
-    url = f"/ecoles/{eid}/news/readers"
+    actu = client.post(f"/ecoles/{eid}/news", json={"body": "Réunion", "notify": True}, headers=entetes_session(e["admin"])).json()
+    assert core.news_client.send_notification(db_session, actu["id"]) == 1
+    assert {c for c, _, _ in faux.envois} == {e["seb"].id}
 
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=chef).json()["can_choose_readers"] is True
-    # Julia est admin, pas administratrice principale.
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=admin).json()["can_choose_readers"] is False
-    assert client.get(url, headers=admin).status_code == 403
+    client.put(url, json={"visible_to_all": True}, headers=seb)
+    assert client.get(f"/ecoles/{eid}/news", headers=zoe).status_code == 200
 
-    lecteurs = {r["name"]: r for r in client.get(url, headers=chef).json()}
-    assert "Ana Roux" not in lecteurs  # une autre école
-    assert lecteurs["Zoé Martin"]["reads"] is True and lecteurs["Julia Dho"]["reads"] is False
-    assert lecteurs["Seb Richard"]["publishes"] is True
 
-    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
-    assert client.put(f"{url}/{e['admin'].id}", json={"reads": True}, headers=chef).json()["reads"] is True
-    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 200
-    assert client.put(f"{url}/{e['admin'].id}", json={"reads": False}, headers=chef).json()["reads"] is False
-    assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
-    assert client.put(f"{url}/{e['voisin'].id}", json={"reads": True}, headers=chef).status_code == 404
+def test_plus_de_droit_voir_les_actualites():
+    from news.module import MODULE
+
+    assert [r.key for r in MODULE.rights] == ["news.publish"]
 
 
 def test_instagram_se_connecter_avec_instagram(client, db_session, e, en_tant_que, faux_instagram, monkeypatch):
