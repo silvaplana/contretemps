@@ -215,6 +215,34 @@ function mostFrequentRows(rows) {
   return rows.filter((row) => !row.transfer && keys.has(labelKey(row)));
 }
 
+// Les mois ("AAAA-MM") de la premiere operation au dernier mois connu, sans
+// trou, du plus recent au plus ancien, avec leur libelle ("novembre 2026").
+function monthsSince(rows) {
+  if (rows.length === 0) return [];
+  const dates = rows.map((row) => row.date);
+  const first = dates.reduce((a, b) => (a < b ? a : b)).slice(0, 7);
+  const last = dates.reduce((a, b) => (a > b ? a : b)).slice(0, 7);
+  const out = [];
+  let [year, monthNumber] = last.split("-").map(Number);
+  for (;;) {
+    const key = `${year}-${String(monthNumber).padStart(2, "0")}`;
+    out.push({
+      key,
+      label: new Date(Date.UTC(year, monthNumber - 1, 1)).toLocaleDateString(
+        "fr-FR",
+        { month: "long", year: "numeric", timeZone: "UTC" },
+      ),
+    });
+    if (key <= first) break;
+    monthNumber -= 1;
+    if (monthNumber === 0) {
+      monthNumber = 12;
+      year -= 1;
+    }
+  }
+  return out;
+}
+
 // Par categorie : nombre d'operations, recettes, depenses et total. Un
 // virement interne ne compte pas (ni recette ni depense).
 function categoryStats(rows) {
@@ -343,6 +371,8 @@ export default function Comptes({ onChange }) {
   // Filtres sur la nature des operations : menu "Categories" + recherche.
   const [category, setCategory] = useState(ALL_CATEGORIES);
   const [search, setSearch] = useState("");
+  // Mois affiche ("AAAA-MM", "" = tous ; Seb 10/11 : un mois precis).
+  const [month, setMonth] = useState("");
   // Saisons de l’ecole (periode "Saisons" du graphique, voir SeasonsOverlay).
   const [seasonsData, setSeasonsData] = useState(null);
   const fileInput = useRef(null);
@@ -492,6 +522,11 @@ export default function Comptes({ onChange }) {
     setShownRows(ROWS_PAGE);
   }
 
+  function chooseMonth(next) {
+    setMonth(next);
+    setShownRows(ROWS_PAGE);
+  }
+
   const caisse = view === CAISSE_VIEW;
   const single = view !== "all" && !caisse;
 
@@ -509,7 +544,8 @@ export default function Comptes({ onChange }) {
   // Operations retenues par le menu et la recherche (tout ce que montre la
   // ligne, voir searchText, sans tenir compte des majuscules ni des accents).
   const wanted = normaliserRecherche(search.trim());
-  const filtering = selectedRows !== null || wanted !== "" || manque !== null;
+  const filtering =
+    selectedRows !== null || wanted !== "" || manque !== null || month !== "";
   const rows = useMemo(() => {
     if (!ledger) return [];
     if (!filtering) return ledger.rows;
@@ -517,12 +553,15 @@ export default function Comptes({ onChange }) {
       (row) =>
         (selectedRows === null || selectedRows.has(row)) &&
         (manque === null || (!row.transfer && row[manque] == null)) &&
+        (month === "" || row.date.startsWith(month)) &&
         (wanted === "" ||
           normaliserRecherche(searchText(row, ledger.allAccounts)).includes(
             wanted,
           )),
     );
-  }, [ledger, filtering, selectedRows, wanted, manque]);
+  }, [ledger, filtering, selectedRows, wanted, manque, month]);
+  // Tous les mois depuis la premiere operation, le plus recent d'abord.
+  const months = useMemo(() => monthsSince(ledger?.rows ?? []), [ledger]);
   // Recettes, depenses et detail par categorie de la selection.
   const selection = useMemo(() => {
     const perCategory = [...categoryStats(rows).values()].sort(
@@ -825,6 +864,19 @@ export default function Comptes({ onChange }) {
                       </option>
                     ))}
                 </optgroup>
+              </select>
+              <select
+                value={month}
+                onChange={(e) => chooseMonth(e.target.value)}
+                aria-label="Mois affiché"
+                className={month === "" ? undefined : "history-filter-active"}
+              >
+                <option value="">Tous les mois</option>
+                {months.map((m) => (
+                  <option key={m.key} value={m.key}>
+                    {m.label}
+                  </option>
+                ))}
               </select>
               <label className="member-search">
                 <span aria-hidden="true">🔍</span>
