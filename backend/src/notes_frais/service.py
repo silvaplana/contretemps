@@ -249,6 +249,23 @@ class NotesDeFrais:
             raise ValueError("Catégorie inconnue.")
         return categorie.id
 
+    def _categorie_habituelle(self, db: Session, note: NoteFrais) -> int | None:
+        """Le compte de la dernière pièce du même fournisseur (achat) ou de la
+        même personne : un choix déjà fait passe avant la lecture (Seb, 10/11)."""
+        meme = (
+            func.lower(NoteFrais.supplier) == note.supplier.lower() if note.nature == ACHAT and note.supplier
+            else NoteFrais.person_id == note.person_id if note.nature != ACHAT and note.person_id != PERSONNE_A_CHOISIR
+            else None
+        )
+        if meme is None:
+            return None
+        return db.scalar(
+            select(Depense.categorie_id).join(NoteFrais, Depense.note_id == NoteFrais.id).where(
+                NoteFrais.org_id == note.org_id, NoteFrais.nature == note.nature, NoteFrais.statut != REFUSEE,
+                Depense.categorie_id.is_not(None), meme,
+            ).order_by(Depense.date.desc(), Depense.id.desc()).limit(1)
+        )
+
     # --- RIB (§4.5) ---
 
     def rib(self, db: Session, org_id: int, person_id: int) -> Rib | None:
@@ -809,14 +826,24 @@ class NotesDeFrais:
             ligne["ecart_regle"] = note.gap_settlement
             chemin = self._chemin_docs(db, note)
             ligne["rangement"] = " › ".join(["Financier", *chemin]) if chemin else None
+            # Le compte de tiers des écritures de la pièce (revue de l'import, Seb 10/11).
+            tiers = self.ports.tiers and note.statut == ENVOYEE and self.ports.tiers(db, note.org_id, note.nature, self._nom_tiers(note, personnes))
+            ligne["tiers"] = {"numero": tiers[0], "libelle": tiers[1]} if tiers else None
             resultat.append(ligne)
         return resultat
+
+    @staticmethod
+    def _nom_tiers(note: NoteFrais, personnes: dict) -> str:
+        if note.nature == ACHAT:
+            return note.supplier or ""
+        personne = personnes.get(note.person_id)
+        return personne.nom if personne else (note.supplier or "")
 
     @staticmethod
     def _operation_dict(operation: OperationBancaire) -> dict:
         return {
             "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
-            "montant_centimes": operation.montant_centimes, "compte": operation.compte,
+            "montant_centimes": operation.montant_centimes, "compte": operation.compte, "compte_plan": operation.compte_plan,
         }
 
     def _sans_facture(self, db: Session, org_id: int, operation_id: int) -> OperationReceipt | None:
@@ -1012,7 +1039,10 @@ class NotesDeFrais:
         depense = Depense(
             org_id=membre.org_id, person_id=note.person_id, date=jour, montant_centimes=montant,
             description=description, lue_par_ia=bool(lu), date_approximative=date_approximative, note_id=note.id,
-            categorie_id=self._categorie(db, membre.org_id, categorie_id if categorie_id is not None else lu.get("categorie_id")),
+            categorie_id=self._categorie(
+                db, membre.org_id,
+                categorie_id if categorie_id is not None else self._categorie_habituelle(db, note) or lu.get("categorie_id"),
+            ),
         )
         db.add(depense)
         db.flush()
@@ -2270,7 +2300,7 @@ class NotesDeFrais:
             "id": depense.id,
             "date": depense.date.isoformat(),
             "montant_centimes": depense.montant_centimes,
-            "categorie": {"id": depense.categorie.id, "libelle": depense.categorie.libelle} if depense.categorie else None,
+            "categorie": {"id": depense.categorie.id, "libelle": depense.categorie.libelle, "code": depense.categorie.code} if depense.categorie else None,
             "description": depense.description,
             "sans_justificatif": not depense.pieces,
             "lue_par_ia": depense.lue_par_ia,

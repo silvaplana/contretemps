@@ -339,6 +339,15 @@ ligne arrivera). Trois choix par ligne : **Valider** (« Valider : Payé », « 
 « Valider : À payer »), **Autre…** (la fiche : nature, qui, date, montant, lignes possibles,
 Refuser), **Plus tard**. En haut, **« Valider les pièces sûres (N) »** (ligne rattachée, personne
 connue) ; en bas, « Annuler cet import ». Fermer la revue laisse le reste À valider dans sa puce.
+**Écritures** (Seb et la trésorière, 10 novembre : « quand on associe une facture, un compte de charge
+et un compte de tiers ») : sous chaque ligne, les écritures comme au Grand livre, Débit / Crédit :
+la facture au **compte de charge** (menu sur place, `PATCH /notes/{id}` `categorie_id`) contre le
+**compte de tiers** (port `tiers` : 401 pour un achat, 467n au nom du prof, « nouveau compte » s'il
+sera créé à la validation), puis le paiement du tiers contre la banque (512x du compte en banque,
+`OperationBancaire.compte_plan`) ; au niveau Simple, la charge contre la banque. Le compte de
+charge proposé est celui de la dernière pièce du même fournisseur (achat) ou de la même personne,
+sinon celui lu sur la pièce : un choix déjà fait passe avant la lecture. Sur ordinateur, la revue
+prend toute la largeur de l'écran (pas la largeur de lecture de 720 px).
 **Doublon** (Seb, 10 novembre ; onze fichiers en double dans le classeur 2024-25) : une pièce dont le
 fichier a exactement le même contenu qu'une pièce déjà enregistrée (pas refusée) le dit dans la revue et
 dans la liste, « même fichier que la pièce n° N » (`nf_pieces.sha256`, `nf_notes.duplicate_of_id`) ;

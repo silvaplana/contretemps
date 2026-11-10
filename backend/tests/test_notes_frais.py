@@ -1838,3 +1838,30 @@ def test_rapprocher_montre_ce_qui_attend_d_avant_la_periode(client, db_session, 
     # Une pièce d'après la fin de la période n'y est pas.
     etat = client.get("/notes-frais/rapprochement", params={"debut": "2026-07-01", "fin": "2026-07-31"}, headers=entetes).json()
     assert etat["paires"] == [] and etat["sans_paiement"] == []
+
+
+def test_import_propose_le_compte_de_la_derniere_piece_du_meme_fournisseur(client, db_session, ecole):
+    """Seb, 10/11 : la facture MAIF importée trouve sa transaction bancaire,
+    mais pas son compte du plan. Sans compte lu sur la pièce, l'appli
+    propose celui de la dernière pièce du même fournisseur (ou de la même
+    personne) ; la revue le montre avec son numéro et il se change sur place."""
+    tresorier = ecole["tresorier"]
+    entetes = entetes_session(tresorier)
+    assurance, autre = client.get("/notes-frais/categories", headers=entetes).json()[:2]
+    _etablir(client, tresorier, "achat", contenu=None, fournisseur="MAIF", date="2025-01-01", montant_centimes="41000", categorie_id=str(assurance["id"]))
+    _etablir(client, tresorier, "achat", contenu=None, fournisseur="Castorama", date="2025-03-01", montant_centimes="1000", categorie_id=str(autre["id"]))
+
+    maif = _etablir(client, tresorier, "achat", contenu=None, fournisseur="maif", date="2026-01-01", montant_centimes="41760")
+    [depense] = maif["depenses"]
+    assert depense["categorie"]["id"] == assurance["id"] and "code" in depense["categorie"]
+    inconnu = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Leroy Merlin", date="2026-01-02", montant_centimes="500")
+    assert inconnu["depenses"][0]["categorie"] is None
+    # Les écritures : au niveau Complet, le compte de tiers (401 pour un achat).
+    assert maif.get("tiers") is None or maif["tiers"]["numero"].startswith("401")
+    assert client.get("/finances/chart", headers=entetes).status_code == 200  # le plan de base, avec 401
+    assert client.put("/finances/chart/level", json={"level": "complet"}, headers=entetes).status_code == 200
+    [revue] = [n for n in client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes).json()["notes"] if n["id"] == maif["id"]]
+    assert revue["tiers"]["numero"].startswith("401"), revue["tiers"]
+    # La revue change le compte sur place.
+    change = client.patch(f"/notes-frais/notes/{inconnu['id']}", json={"categorie_id": autre["id"]}, headers=entetes)
+    assert change.status_code == 200 and change.json()["depenses"][0]["categorie"]["id"] == autre["id"]

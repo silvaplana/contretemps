@@ -363,7 +363,7 @@ class BanqueContretemps:
 
     @staticmethod
     def _operation(operation, compte) -> OperationBancaire:
-        return OperationBancaire(operation.id, operation.date, operation.label, operation.amount, compte.name)
+        return OperationBancaire(operation.id, operation.date, operation.label, operation.amount, compte.name, compte.ledger_number or "")
 
     def debits(self, db: Session, org_id: int, montant_centimes: int, depuis) -> list[OperationBancaire]:
         from finances.models import FinOperation
@@ -398,3 +398,23 @@ def comptes_de_charges(db: Session, org_id: int) -> list[tuple[str, str]]:
             select(FinChartAccount).where(FinChartAccount.org_id == org_id, FinChartAccount.nature == EXPENSE, FinChartAccount.active.is_(True))
         )
     ]
+
+
+def compte_de_tiers(db: Session, org_id: int, nature: str, nom: str) -> tuple[str, str] | None:
+    """Le compte de tiers d'une pièce au niveau Complet, comme le Grand livre
+    le prendra (financier.md §8.7) : 401 pour un achat, le 467n au nom de la
+    personne pour des honoraires ou une note de frais. Un prof sans compte
+    d'honoraires en aura un à la validation (numéro vide)."""
+    from finances.ag_documents import THIRD_PARTY_PREFIX, _named, _third_party
+    from finances.models import FinChartAccount, FinSettings
+
+    reglage = db.get(FinSettings, org_id)
+    if reglage is None or reglage.level != "complet" or nature not in THIRD_PARTY_PREFIX:
+        return None
+    comptes = list(db.scalars(
+        select(FinChartAccount).where(FinChartAccount.org_id == org_id, FinChartAccount.active.is_(True))
+    ))
+    compte = _third_party(comptes, {"nature": nature, "person": nom})
+    if nature == "honoraires" and nom and (compte is None or not _named(compte, nom)):
+        return "", f"Honoraires {nom} (nouveau compte)"
+    return (compte.number, compte.label) if compte is not None else None

@@ -604,8 +604,46 @@
   color: var(--danger-text, #a83232);
 }
 
+/* Les écritures de la pièce (Seb, 10/11), sur toute la largeur de la carte. */
+.nf-revue__ecritures {
+  overflow-x: auto;
+}
+
+.nf-revue__ecritures table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nf-revue__ecritures th,
+.nf-revue__ecritures td {
+  padding: 6px 8px;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.nf-revue__ecritures th {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.nf-revue__ecritures td:nth-last-child(-n + 2) {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.nf-revue__compte {
+  min-height: 48px;
+  max-width: 100%;
+}
+
+.nf-revue__ligne {
+  display: grid;
+  gap: 8px;
+}
+
 @media (min-width: 900px) {
-  .nf-revue__piece {
+  .nf-revue__ligne {
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) minmax(0, 1.6fr) auto;
     align-items: start;
   }
@@ -619,9 +657,6 @@
     flex-direction: column;
   }
 
-  .nf-revue__piece > .login-screen__erreur {
-    grid-column: 1 / -1;
-  }
 }
 
 .nf-ecart {
@@ -726,6 +761,11 @@
 .nf-screen .modal-panel {
   width: 100%;
   max-width: 720px;
+}
+
+/* La revue de l'import est un tableau : elle prend toute la largeur (Seb, 10/11). */
+.nf-screen > *:has(.nf-revue) {
+  max-width: none;
 }
 
 /* Comptes ou Pièces à côté du bilan, sur ordinateur (Seb, 10/11 ; financier.md

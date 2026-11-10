@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import { NATURES, qui } from './commun.jsx'
 import { texteSansFacture } from './Rapprocher.jsx'
@@ -14,6 +14,11 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
   const [faites, setFaites] = useState({}) // id -> { genre: 'ok' | 'tard' | 'non', texte }
   const [enCours, setEnCours] = useState(null) // id ou 'toutes'
   const [erreurs, setErreurs] = useState({})
+
+  const [categories, setCategories] = useState([]) // comptes de charges du plan, pour les écritures
+  useEffect(() => {
+    api.categories().then(setCategories).catch(() => {})
+  }, [])
 
   const restantes = notes.filter((n) => !faites[n.id])
   const sures = restantes.filter(sure)
@@ -54,6 +59,20 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
     try {
       remplacer(await api.accepterPersonne(note.id))
       onChange()
+    } catch (err) {
+      setErreurs((e) => ({ ...e, [note.id]: err.message }))
+    } finally {
+      setEnCours(null)
+    }
+  }
+
+  // Le compte de charge des écritures, changé sur place (Seb, 10/11).
+  async function changerCompte(note, categorieId) {
+    setEnCours(note.id)
+    setErreurs((e) => ({ ...e, [note.id]: '' }))
+    try {
+      const apres = await api.corriger(note.id, { categorie_id: Number(categorieId) })
+      remplacer({ ...note, depenses: apres.depenses })
     } catch (err) {
       setErreurs((e) => ({ ...e, [note.id]: err.message }))
     } finally {
@@ -110,14 +129,6 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
           const possible = proposee(n)
           return (
             <article key={n.id} className={faite ? 'nf-revue__piece nf-revue__piece--faite' : 'nf-revue__piece'}>
-              <header className="nf-revue__entete">
-                <span className="nf-revue__fichier">{n.depenses[0]?.pieces[0]?.nom || n.titre}</span>
-                <span className="nf-revue__montant">{n.total_centimes ? api.euros(n.total_centimes) : 'Montant ?'}</span>
-                <span className="muted">
-                  {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
-                  {n.depenses[0]?.date_approximative ? ' · date à vérifier' : ''}
-                </span>
-              </header>
               {n.doublon_de ? (
                 <p className="nf-revue__doublon">Même fichier que la pièce n° {n.doublon_de}, déjà enregistrée : refusez celle-ci si c’est un doublon.</p>
               ) : null}
@@ -129,76 +140,87 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                   </button>
                 </p>
               ) : null}
-              <dl className="nf-revue__bloc">
-                <dt>Nature</dt>
-                <dd>{NATURES[n.nature]}</dd>
-                <dt>Qui</dt>
-                <dd>{qui(n)}{n.nature !== 'achat' && n.personne?.role ? <span className="muted"> ({n.personne.role})</span> : null}</dd>
-                <dt>Rangement</dt>
-                <dd className="muted">{n.rangement ? `Docs › ${n.rangement}` : 'Choisissez pour qui d’abord'}</dd>
-              </dl>
-              <dl className="nf-revue__bloc">
-                <dt>Transaction bancaire</dt>
-                <dd>
-                  {n.operation ? (
+              <div className="nf-revue__ligne">
+                <header className="nf-revue__entete">
+                  <span className="nf-revue__fichier">{n.depenses[0]?.pieces[0]?.nom || n.titre}</span>
+                  <span className="nf-revue__montant">{n.total_centimes ? api.euros(n.total_centimes) : 'Montant ?'}</span>
+                  <span className="muted">
+                    {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
+                    {n.depenses[0]?.date_approximative ? ' · date à vérifier' : ''}
+                  </span>
+                </header>
+                <dl className="nf-revue__bloc">
+                  <dt>Nature</dt>
+                  <dd>{NATURES[n.nature]}</dd>
+                  <dt>Qui</dt>
+                  <dd>{qui(n)}{n.nature !== 'achat' && n.personne?.role ? <span className="muted"> ({n.personne.role})</span> : null}</dd>
+                  <dt>Rangement</dt>
+                  <dd className="muted">{n.rangement ? `Docs › ${n.rangement}` : 'Choisissez pour qui d’abord'}</dd>
+                </dl>
+                <dl className="nf-revue__bloc">
+                  <dt>Transaction bancaire</dt>
+                  <dd>
+                    {n.operation ? (
+                      <>
+                        {api.dateCourte(n.operation.date)} · {n.operation.libelle} · {api.euros(-n.operation.montant_centimes)}{' '}
+                        <span className="badge badge--success">même nom, même montant</span>
+                      </>
+                    ) : possible ? (
+                      <>
+                        {api.dateCourte(possible.operation.date)} · {possible.operation.libelle} · {api.euros(-possible.operation.montant_centimes)}{' '}
+                        <span className="badge badge--warning">
+                          {possible.meme_montant
+                            ? 'même montant, autre nom'
+                            : possible.aussi?.length
+                              ? `paie aussi : ${possible.aussi.map((a) => a.titre).join(', ')}`
+                              : `écart ${ecart(possible.ecart_centimes)}`}
+                        </span>
+                        {possible.operation.sans_facture && <span className="badge badge--warning">{texteSansFacture(possible.operation.sans_facture)}</span>}
+                      </>
+                    ) : (
+                      <span className="badge">aucune ligne trouvée</span>
+                    )}
+                  </dd>
+                  <dt>Deviendrait</dt>
+                  <dd>
+                    {n.operation
+                      ? 'Payé'
+                      : possible
+                        ? 'Payé, si c’est bien cette ligne'
+                        : 'À payer, et passera par Virements ; ou « Déjà payée » : enregistrée, son paiement se retrouvera dans Rapprocher'}
+                  </dd>
+                  {faite && (
                     <>
-                      {api.dateCourte(n.operation.date)} · {n.operation.libelle} · {api.euros(-n.operation.montant_centimes)}{' '}
-                      <span className="badge badge--success">même nom, même montant</span>
+                      <dt>Décision</dt>
+                      <dd className={`nf-revue__decision nf-revue__decision--${faite.genre}`}>{faite.texte}</dd>
                     </>
-                  ) : possible ? (
-                    <>
-                      {api.dateCourte(possible.operation.date)} · {possible.operation.libelle} · {api.euros(-possible.operation.montant_centimes)}{' '}
-                      <span className="badge badge--warning">
-                        {possible.meme_montant
-                          ? 'même montant, autre nom'
-                          : possible.aussi?.length
-                            ? `paie aussi : ${possible.aussi.map((a) => a.titre).join(', ')}`
-                            : `écart ${ecart(possible.ecart_centimes)}`}
-                      </span>
-                      {possible.operation.sans_facture && <span className="badge badge--warning">{texteSansFacture(possible.operation.sans_facture)}</span>}
-                    </>
-                  ) : (
-                    <span className="badge">aucune ligne trouvée</span>
                   )}
-                </dd>
-                <dt>Deviendrait</dt>
-                <dd>
-                  {n.operation
-                    ? 'Payé'
-                    : possible
-                      ? 'Payé, si c’est bien cette ligne'
-                      : 'À payer, et passera par Virements ; ou « Déjà payée » : enregistrée, son paiement se retrouvera dans Rapprocher'}
-                </dd>
-                {faite && (
-                  <>
-                    <dt>Décision</dt>
-                    <dd className={`nf-revue__decision nf-revue__decision--${faite.genre}`}>{faite.texte}</dd>
-                  </>
-                )}
-              </dl>
-              {!faite && (
-                <div className="nf-revue__actions">
-                  <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => valider(n)}>
-                    {n.operation ? 'Valider : Payé' : possible ? 'Rattacher à la transaction bancaire' : 'Valider : À payer'}
-                  </button>
-                  {!n.operation && !possible && (
-                    <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => dejaPayee(n)}>
-                      Déjà payée
+                </dl>
+                {!faite && (
+                  <div className="nf-revue__actions">
+                    <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => valider(n)}>
+                      {n.operation ? 'Valider : Payé' : possible ? 'Rattacher à la transaction bancaire' : 'Valider : À payer'}
                     </button>
-                  )}
-                  <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => onOuvrir(n, () => relire(n))}>
-                    Autre…
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn--secondary"
-                    disabled={enCours !== null}
-                    onClick={() => agir(n, () => api.plusTard(n.id), 'tard', 'Plus tard · gardée dans À trancher avec la question de l’appli')}
-                  >
-                    Plus tard
-                  </button>
-                </div>
-              )}
+                    {!n.operation && !possible && (
+                      <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => dejaPayee(n)}>
+                        Déjà payée
+                      </button>
+                    )}
+                    <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => onOuvrir(n, () => relire(n))}>
+                      Autre…
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn--secondary"
+                      disabled={enCours !== null}
+                      onClick={() => agir(n, () => api.plusTard(n.id), 'tard', 'Plus tard · gardée dans À trancher avec la question de l’appli')}
+                    >
+                      Plus tard
+                    </button>
+                  </div>
+                )}
+              </div>
+              <Ecritures note={n} paiement={n.operation ?? possible?.operation} categories={categories} modifiable={!faite && enCours === null} onCompte={(id) => changerCompte(n, id)} />
               {erreurs[n.id] && <p className="login-screen__erreur">{erreurs[n.id]}</p>}
             </article>
           )
@@ -248,4 +270,76 @@ function decision(n) {
   if (n.statut === 'remboursee') return `Validée : Payé${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`
   if (n.a_rapprocher) return `Validée : déjà payée, à rapprocher${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`
   return `Validée : À payer${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`
+}
+
+// Les écritures de la pièce, comme au Grand livre (Seb, 10/11 : « quand on
+// associe une facture, un compte de charge et un compte de tiers ») : la
+// facture au compte de charge contre le tiers, puis le paiement du tiers
+// contre la banque. Sans tiers (niveau Simple), la charge contre la banque.
+function Ecritures({ note, paiement, categories, modifiable, onCompte }) {
+  const categorie = note.depenses.length === 1 ? note.depenses[0].categorie : null
+  const montant = api.euros(note.total_centimes || 0)
+  const tiers = note.tiers ? `${note.tiers.numero || '467…'} ${note.tiers.libelle}` : null
+  const banque = paiement ? `${paiement.compte_plan || '512'} ${paiement.compte || 'Banque'}` : null
+  const charge =
+    note.depenses.length === 1 ? (
+      <select
+        className="field-input nf-revue__compte"
+        aria-label="Compte de charge"
+        value={categorie?.id ?? ''}
+        disabled={!modifiable}
+        onChange={(e) => e.target.value && onCompte(e.target.value)}
+      >
+        {!categorie && <option value="">Compte de charge à choisir</option>}
+        {categories.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.code ? `${c.code} ${c.libelle}` : c.libelle}
+          </option>
+        ))}
+      </select>
+    ) : (
+      'Comptes de charge des dépenses'
+    )
+  return (
+    <div className="nf-revue__ecritures">
+      <table>
+        <thead>
+          <tr>
+            <th>Écritures</th>
+            <th>Compte</th>
+            <th>Débit</th>
+            <th>Crédit</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td rowSpan={2}>Facture du {api.dateCourte(note.depenses[0]?.date ?? note.envoyee_le)}</td>
+            <td>{charge}</td>
+            <td>{montant}</td>
+            <td />
+          </tr>
+          <tr>
+            <td>{tiers ?? banque ?? 'Banque, au paiement'}</td>
+            <td />
+            <td>{montant}</td>
+          </tr>
+          {tiers && (
+            <>
+              <tr>
+                <td rowSpan={2}>{paiement ? `Paiement du ${api.dateCourte(paiement.date)}` : 'Paiement, quand il sera trouvé'}</td>
+                <td>{tiers}</td>
+                <td>{montant}</td>
+                <td />
+              </tr>
+              <tr>
+                <td>{banque ?? 'Banque'}</td>
+                <td />
+                <td>{montant}</td>
+              </tr>
+            </>
+          )}
+        </tbody>
+      </table>
+    </div>
+  )
 }

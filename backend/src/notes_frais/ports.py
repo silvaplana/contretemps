@@ -157,6 +157,8 @@ class OperationBancaire:
     libelle: str
     montant_centimes: int
     compte: str = ""
+    # Le numéro du compte de banque au plan comptable (512x), s'il est connu.
+    compte_plan: str = ""
 
 
 class Banque(Protocol):
@@ -193,3 +195,8 @@ class Ports:
     # Le plan comptable de l'hôte : (numéro, libellé) des comptes de charges
     # actifs. Quand il est là, les catégories en sont le reflet (§4.6).
     plan: Callable[[Session, int], list[tuple[str, str]]] | None = None
+    # Le compte de tiers (numéro, libellé) d'une pièce de cette nature pour ce
+    # nom (401 Fournisseurs, 467n Honoraires Nom ; numéro vide = créé à la
+    # validation), None si l'hôte ne passe pas par les tiers. Il fait montrer
+    # les écritures de la pièce à la revue de l'import (Seb, 10/11).
+    tiers: Callable[[Session, int, str, str], tuple[str, str] | None] | None = None
