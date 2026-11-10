@@ -134,6 +134,13 @@ def test_chart_edits_and_deletion(accounting, finances, db_session):
     accounting.delete_account(db_session, TRESORIER, accounts["627"]["id"])
     chart = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
     assert "658" not in chart and chart["627"]["active"] is False
+    # Un compte de tiers sert par les pièces, pas par les lignes : jamais supprimé, son numéro reste pris (Seb, 10/11).
+    galli = accounting.create_account(db_session, TRESORIER, {"number": "4671", "label": "Honoraires Galli", "nature": "tiers"})
+    accounting.delete_account(db_session, TRESORIER, galli["id"])
+    chart = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    assert chart["4671"]["active"] is False
+    with pytest.raises(AccountingError, match="existe déjà"):
+        accounting.create_account(db_session, TRESORIER, {"number": "4671", "label": "Honoraires Boyer", "nature": "tiers"})
 
 
 def test_level_simple_to_full_only(accounting, db_session):

@@ -23,6 +23,7 @@ from .models import (
     LEVELS,
     NATURES,
     SIMPLE,
+    THIRD_PARTY,
     FinAccount,
     FinCashLine,
     FinChartAccount,
@@ -182,12 +183,14 @@ class Accounting:
         return self._account(account)
 
     def delete_account(self, db: Session, member: Member, account_id: int) -> None:
-        """Supprime un compte jamais utilisé ; sinon le passe inactif."""
+        """Supprime un compte jamais utilisé ; sinon le passe inactif. Un
+        compte de tiers (401, 467x) sert par les pièces, pas par les lignes :
+        il devient inactif, son numéro ne se libère jamais (Seb, 10/11)."""
         _check(member)
         account = self._chart_account(db, member.org_id, account_id)
         used = db.scalar(select(func.count()).select_from(FinOperationAccount).where(FinOperationAccount.account_id == account.id))
         used += db.scalar(select(func.count()).select_from(FinCashLine).where(FinCashLine.account_id == account.id))
-        if used:
+        if used or account.nature == THIRD_PARTY:
             account.active = False
         else:
             db.delete(account)
