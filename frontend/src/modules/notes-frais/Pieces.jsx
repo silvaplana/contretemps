@@ -620,7 +620,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
           </span>
           {note.detachable && (
             <button type="button" className="btn btn--secondary" disabled={enCours} onClick={() => agir(() => api.detacher(note.id))}>
-              {note.statut === 'envoyee' ? 'Pas cette ligne' : 'Détacher'}
+              {note.statut === 'envoyee' ? 'Pas cette transaction' : 'Détacher de la transaction'}
             </button>
           )}
         </div>

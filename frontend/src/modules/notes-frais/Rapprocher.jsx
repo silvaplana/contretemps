@@ -5,8 +5,8 @@ import { telechargerFichier } from '../../utils/telechargement.js'
 
 // Puce Rapprocher de Financier › Pièces (notes-de-frais.md §7 septies, Seb
 // 9/11) : le rapprochement par lots, comme un comptable. Les paires que
-// l'appli propose entre une facture et une transaction bancaire (« Valider la
-// suggestion » lettre les deux), puis les factures sans paiement, puis les
+// l'appli propose entre une facture et une transaction bancaire (« Rattacher à
+// cette transaction » lettre les deux), puis les factures sans paiement, puis les
 // transactions de débit sans facture. Rien n'est lettré sans un toucher.
 export default function Rapprocher({ onChange, onOuvrir }) {
   const [periode, setPeriode] = useState(() => ({ debut: debutDeSaison(), fin: '' }))
@@ -52,15 +52,16 @@ export default function Rapprocher({ onChange, onOuvrir }) {
   return (
     <div className="nf-depot nf-rapprocher">
       <p className="muted">
-        La banque d’un côté, les factures de l’autre. L’appli suggère les paires (même montant, même nom) ; vous validez, et la facture est lettrée
-        avec sa transaction. Le compte d’une transaction vient de la facture.
+        Le rapprochement se fait par lots : toutes les factures et toutes les transactions bancaires de la période, d’un coup.
+        L’appli suggère les paires (même montant, même nom) ; pour chacune, vous rattachez la facture à sa transaction d’un
+        toucher, ce qui les lettre. Le compte d’une transaction vient de la facture.
       </p>
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       {!etat && !erreur && <p className="muted">Chargement…</p>}
       {etat && (
         <>
           <h3 className="nf-rapprocher__titre">
-            Suggestions <span className="muted">· {etat.paires.length}</span>
+            Suggestions de rattachement <span className="muted">· {etat.paires.length}</span>
           </h3>
           {etat.paires.length === 0 && <p className="muted">Aucune : aucune transaction ne ressemble à une facture en attente.</p>}
           <div className="nf-liste">
@@ -74,7 +75,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
                     {p.nature} du {api.dateCourte(p.date)}
                   </span>
                   <span className="nf-rapprocher__banque">
-                    → {api.dateCourte(p.paire.operation.date)} · {p.paire.operation.libelle} ·{' '}
+                    Transaction du {api.dateCourte(p.paire.operation.date)} · {p.paire.operation.libelle} ·{' '}
                     {api.euros(-p.paire.operation.montant_centimes)}
                     {p.paire.operation.compte ? ` · ${p.paire.operation.compte}` : ''}
                   </span>
@@ -92,7 +93,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
                 </span>
                 <span className="nf-ligne__droite nf-rapprocher__actions">
                   <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => rattacher(p)}>
-                    Valider la suggestion
+                    Rattacher à cette transaction
                   </button>
                   <button type="button" className="btn btn--link" disabled={enCours !== null} onClick={() => ouvrir(p)}>
                     Autre…
@@ -148,7 +149,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
           </div>
 
           <p className="muted">
-            {etat.rattachees.length} pièce{etat.rattachees.length > 1 ? 's' : ''} lettrée{etat.rattachees.length > 1 ? 's' : ''} avec leur transaction
+            {etat.rattachees.length} pièce{etat.rattachees.length > 1 ? 's' : ''} rattachée{etat.rattachees.length > 1 ? 's' : ''} à leur transaction
             bancaire sur la période.
           </p>
         </>

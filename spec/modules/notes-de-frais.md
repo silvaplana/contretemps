@@ -240,7 +240,7 @@ date de la pièce, `financier.md` §8.3 bis) :
 - ligne **sûre** (même montant **et** nom du bénéficiaire ou du fournisseur dans le libellé) : la
   ligne est **rattachée toute seule** ; la pièce reste **À valider**, avec « Payée selon la
   banque : libellé, montant, date » dessous et un bouton « Pas cette ligne » ;
-- **montant seul** : proposée (« Vu sur le compte »), un toucher **Valider la suggestion** (« C'est payé » jusqu'au 10 novembre) ;
+- **montant seul** : proposée (« Vu sur le compte »), un toucher **Rattacher à cette transaction** (« C'est payé » jusqu'au 10 novembre) ;
 - **aucune ligne du montant exact** (Seb, 1er novembre : Thomas, deux factures de 198 € payées par
   un virement de 396 €) : l'appli montre les débits **au nom** de la personne ou du fournisseur pas
   encore rattachés, trois au plus, « Paiement possible : libellé, montant, date · écart +100,00 € »
@@ -305,7 +305,7 @@ facture émise, reçu HelloAsso) : pas encore saisissables, la pastille le dit e
 instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve
 la pièce qu'elle paie (même montant, nom du bénéficiaire ou motif), la range comme page de cette
 pièce ; si la ligne du compte est là, elle est rattachée (la preuve porte le nom) et la pièce
-attend « Valider : Payé » ; sinon **C'est payé** la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
+attend « Valider : Payé » ; sinon **Rattacher à cette transaction** (« C'est payé » avant le 10 novembre) la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
 manque. Virement vers un compte de l'association : « virement interne, rien à faire » ; sans pièce
 qui corresponde : « aucune pièce », avec la ligne du compte si elle y est déjà (« pas encore sur le
 compte » sinon) ; rien n'est créé dans les deux cas. Étude sur les 40 pièces de la saison 2025-2026 :
@@ -318,7 +318,7 @@ nom), jamais comme vérité.
 Trouvée dans les comptes ne dit **pas** la nature : avant l'appli, le trésorier payait tout « à
 l'arrache », un débit peut être un achat, une note de frais ou des honoraires. Deux questions à
 part : **déjà payé ?** (« Vu sur le compte », §8.3 bis de `financier.md` : la ligne est montrée,
-« C'est payé » la rattache, directement depuis À valider, sans mail ni notification à la
+« Rattacher à cette transaction » la rattache, directement depuis À valider, sans mail ni notification à la
 personne puisque c'était déjà réglé) et **où la ranger** (la nature).
 
 **Terminé** ouvre la **revue de l'import** (Seb, 6 novembre : en tableau, maquette
@@ -375,10 +375,10 @@ Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
 2. **Rapprocher par lots**, quand on veut : la puce **Rapprocher** de Financier › Pièces
    (`GET /notes-frais/rapprochement?debut&fin`, trésoriers ; période libre, du 1er septembre de la
    saison en cours par défaut), en trois parties, la banque d'un côté et les factures de l'autre :
-   - **Suggestions** : chaque facture sans paiement pour laquelle l'appli voit une transaction, avec
+   - **Suggestions de rattachement** : chaque facture sans paiement pour laquelle l'appli voit une transaction, avec
      la raison (« même nom, même montant » = sûre ; « même montant, autre nom » ; « écart … » ;
-     « paie aussi … ») et **« Valider la suggestion »** (`POST …/payee`, la règle de §7 quinquies),
-     qui lettre la facture avec sa transaction ; « Autre… » ouvre la fiche. Rien n'est lettré sans
+     « paie aussi … ») et **« Rattacher à cette transaction »** (`POST …/payee`, la règle de
+     §7 quinquies), qui lettre la facture avec sa transaction ; « Autre… » ouvre la fiche. Rien n'est lettré sans
      un toucher ;
    - **Factures sans paiement** : À rapprocher, À valider, À payer, Préparé, Envoyé, Don, avec leur
      état ; un toucher ouvre la fiche (Régler l'écart, Détacher, Revenir en arrière…) ;
@@ -389,10 +389,11 @@ Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
    Badge bleu (banque) sur la puce = suggestions + pièces « déjà payées » sans transaction.
 
 **Vocabulaire (Seb, 10 novembre)** : à l'écran on dit **transaction bancaire** (ou transaction),
-jamais « ligne de banque » ni « ligne du compte » ; une suggestion de l'appli se **valide**
-(« Valider la suggestion », comme Pennylane) ; valider **lettre** la facture avec sa transaction
-(une lettre dans le Grand livre Complet, financier.md §8.7) ; « rattacher » reste le mot du code et
-des fiches (Détacher, À rattacher).
+jamais « ligne de banque » ni « ligne du compte » ; logiciel associatif, on dit **quoi à quoi** :
+le geste unitaire est « Rattacher à cette transaction » (la facture à sa transaction ; l'inverse
+« Détacher de la transaction »), et le **rapprochement** est le travail **par lots** sur la période,
+annoncé tel quel en tête de l'écran. Rattacher **lettre** la facture avec sa transaction (une lettre
+dans le Grand livre Complet, financier.md §8.7).
 
 Le **Bilan** (financier.md §8.10) rouvre ce même écran, filtré sur la saison, comme étape 3 de sa
 préparation : si le rapprochement a été fait au fil de l'année, l'étape est vide.

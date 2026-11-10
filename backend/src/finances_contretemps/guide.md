@@ -21,7 +21,7 @@ Pièces
   fichiers (ou un zip), ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
   l'école = Honoraires, d'une ou pour une autre personne = sa Note de frais, société = Achat) et la transaction bancaire qui la
   paie : même montant et même nom → ligne rattachée, « Payée selon la banque » (« Pas cette ligne » sinon) ; même montant
-  seulement → « Valider la suggestion » ; aucune ligne du montant exact → « Paiement possible » (lignes au même nom, écart affiché, ou
+  seulement → « Rattacher à la transaction » ; aucune ligne du montant exact → « Paiement possible » (lignes au même nom, écart affiché, ou
   un virement qui paie aussi d'autres pièces de la personne) et « C'est ce paiement » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
   Terminé ouvre la revue de l'import : une ligne par pièce (fichier, date, montant ; nature, qui et rangement proposés ;
   transaction bancaire trouvée ou proposée avec l'écart ; ce que la pièce deviendrait) et trois boutons : Valider (« Valider :
@@ -39,8 +39,8 @@ Pièces
   (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
 - Rapprocher : le rapprochement par lots, la banque d'un côté et les factures de l'autre, sur une période (du 1er septembre
-  de la saison par défaut). Suggestions (facture ↔ transaction bancaire : « même nom, même montant », « même montant, autre
-  nom », « écart », « paie aussi ») avec « Valider la suggestion » qui lettre les deux et « Autre… » qui ouvre la fiche ; Factures sans
+  de la saison par défaut). Suggestions de rattachement (facture ↔ transaction bancaire : « même nom, même montant », « même montant, autre
+  nom », « écart », « paie aussi ») avec « Rattacher à cette transaction » (geste unitaire : la facture à sa transaction ; le rapprochement, lui, est le travail par lots sur la période) et « Autre… » qui ouvre la fiche ; Factures sans
   paiement (À rapprocher, À valider, À payer, Préparé, Envoyé ; toucher ouvre la fiche) ; Transactions bancaires sans facture (leur
   compte se choisit dans Comptes, filtre « Sans compte ») ; en bas le PDF de rapprochement. Badge bleu = suggestions +
   pièces « déjà payées » sans ligne.
