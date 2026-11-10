@@ -736,6 +736,10 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   validées par la clôture du … » en tête ; FEC : `ValidDate` = la date de la clôture (sinon la date
   de l'écriture). Bilan › Clôture garde la trace des clôtures rouvertes (« Clôturée le …, rouverte
   le … »). Pas de validation écriture par écriture : la saison se valide d'un bloc.
+- **Un compte manque au plan (10 novembre 2026)** : depuis la fiche d'une pièce (« Modifier les
+  catégories ») comme depuis la fiche d'une transaction bancaire (crayon à côté de « Compte »), le
+  Plan comptable s'ouvre à la place de la fiche ; fermer revient à la saisie en cours, le nouveau
+  compte dans la liste. Le plan s'enrichit au fil du classement, sans interrompre la tâche.
 - **Numéro de pièce (10 novembre 2026, modèle EBP : colonne Pièce)** : chaque pièce reçoit à sa
   validation un numéro par saison et par journal, « AC-2025-001 » (AC achats, HO honoraires, NF
   notes de frais ; saison = septembre → août, l'année du début), donné une fois, jamais repris ni

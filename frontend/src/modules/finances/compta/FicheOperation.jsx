@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import Modal from '../../../components/Modal.jsx'
 import * as api from '../api.js'
-import { nomCompte } from './PlanComptable.jsx'
+import PlanComptable, { nomCompte } from './PlanComptable.jsx'
+import Icon from '../../../components/Icon.jsx'
 import './compta.css'
 
 const { euros, dateFr } = api
@@ -14,6 +15,7 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
   const [lignes, setLignes] = useState([]) // [{ accountId, amount }]
   const [ecritures, setEcritures] = useState(null) // Complet : lignes générées (§8.7)
   const [erreur, setErreur] = useState('')
+  const [planOuvert, setPlanOuvert] = useState(false) // le Plan comptable à la place de la fiche, la saisie gardée (Seb, 10/11)
 
   useEffect(() => {
     Promise.all([api.operation(operationId), api.planComptable()])
@@ -43,6 +45,18 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
 
   if (erreur && !fiche) return <Modal title="Opération" onClose={onClose}><p className="login-screen__erreur">{erreur}</p></Modal>
   if (!fiche || !plan) return <Modal title="Opération" onClose={onClose}><p className="muted">Chargement…</p></Modal>
+  if (planOuvert) {
+    // Un compte manque au plan : on l'ajoute ici, puis on revient à la ligne, choix en cours gardés.
+    const fermer = () => {
+      setPlanOuvert(false)
+      api.planComptable().then(setPlan).catch((err) => setErreur(err.message))
+    }
+    return (
+      <Modal title="Plan comptable" onClose={fermer}>
+        <PlanComptable onClose={fermer} />
+      </Modal>
+    )
+  }
 
   const comptes = plan.accounts.filter((c) => c.active)
   const natures = plan.natures.filter((n) => (fiche.level === 'complet' ? true : n.id === 'depense' || n.id === 'recette'))
@@ -76,7 +90,14 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
           <>
             {lignes.map((ligne, i) => (
               <div key={i} className="fin-cp-champ">
-                <span>{lignes.length > 1 ? `Compte ${i + 1}` : 'Compte'}</span>
+                <span className="fin-cp-champ__titre">
+                  {lignes.length > 1 ? `Compte ${i + 1}` : 'Compte'}
+                  {i === 0 && !fiche.closed && (
+                    <button type="button" className="btn btn--secondary" aria-label="Modifier le plan comptable" title="Modifier le plan comptable" onClick={() => setPlanOuvert(true)}>
+                      <Icon name="edit" size={18} />
+                    </button>
+                  )}
+                </span>
                 <select className="field-input" value={ligne.accountId} onChange={(e) => changerLigne(i, 'accountId', e.target.value)}>
                   <option value="">Compte à choisir</option>
                   {natures.map((n) => (
