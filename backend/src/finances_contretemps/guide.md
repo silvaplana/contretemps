@@ -55,12 +55,22 @@ Pièces
 - Réglage « Qui paie » : Admin › École › Personnalisation › Fonctionnalités, ligne Financier.
 
 Bilan
-- Choisir la saison, puis un bilan de la liste (ou ⋯ › Nouveau bilan). Puces d'état : Brouillon, Validé, Officiel.
+- Trois onglets en haut : Préparer | Documents | Clôture, et le choix de la saison.
+- Préparer : les six étapes du bilan, dans l'ordre, chacune avec ce qui reste (un ✓ quand il ne reste rien) ; toucher
+  une étape la déplie. 1. Relevés complets (la grille des relevés) ; 2. Soldes de départ ; 3. Rapprocher et classer :
+  les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher », puis les transactions bancaires sans
+  compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération) et « Comptes proposés par l'appli »
+  regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; 4. Hors banque (bientôt) ;
+  5. Contrôles en clair (relevés complets, soldes de départ égaux aux relevés, un compte sur chaque transaction
+  bancaire, FEC juste) ; 6. Documents (renvoie à l'onglet Documents). Un numéro de compte s'affiche toujours avec son libellé.
+- Documents : choisir un bilan de la liste (ou ⋯ › Nouveau bilan). Puces d'état : Brouillon, Validé, Officiel.
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
 - En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
   comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et au niveau Complet
   Balance, Grand livre (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
   Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
+- Clôture : la clôture de la saison (niveau Complet), portée par le bilan le plus avancé (Officiel, Validé, dernier) :
+  Clôturer / Rouvrir.
 
 AG
 - La liste des AG de la saison ; ⋯ › Nouvelle AG ; ⋯ › Modèle général de PowerPoint…

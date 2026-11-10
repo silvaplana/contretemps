@@ -172,3 +172,35 @@ def test_fec_has_the_18_columns_and_balanced_entries(world, db_session):
     mystere = next(r for r in finances.get_ledger(db_session, TRESORIER)["rows"] if r["label"] == "PRLV MYSTERE")
     accounting.set_lines(db_session, TRESORIER, mystere["id"], [{"accountId": accounts["627"]["id"]}])
     assert documents.fec_check(db_session, TRESORIER, SEASON)["ok"]
+
+
+def test_preparation_counts_the_steps_and_confirms_accounts_in_bulk(world, db_session):
+    """Bilan › Préparer (financier.md §8.10, Seb 9/11) : relevés, soldes de
+    départ, un compte sur chaque transaction bancaire (à confirmer une par une
+    ou « Valider le compte » par compte proposé), contrôles en clair."""
+    finances, accounting, documents = world
+    calendar = finances.statement_calendar(db_session, TRESORIER, SEASON.start_date, SEASON.end_date, today="2025-10-15")
+    etat = documents.preparation(db_session, TRESORIER, SEASON, calendar)
+    assert etat["season"]["name"] == "2025-2026" and etat["level"] == "simple"
+    assert etat["statements"]["accounts"] == 2 and etat["statements"]["ok"] is True
+    assert etat["opening"] == {"source": "releves", "mismatches": 0, "ok": True}
+    classify = etat["classify"]
+    # Amazon, Galli et HelloAsso sont classés ; les virements internes n'ont pas de compte.
+    sans = [l["label"] for l in classify["unsure"]] + [o["label"] for g in classify["sure"] for o in g["operations"]]
+    assert sorted(sans) == ["PRLV MYSTERE", "RETRAIT DAB"] and classify["withoutAccount"] == 2 and classify["ok"] is False
+    assert [c["ok"] for c in etat["controls"]] == [True, True, False, False]
+    assert "2 transaction(s) sans compte" in etat["controls"][2]["detail"]
+
+    # « Valider le compte » : les deux d'un coup sur 627 ; un virement interne ou une ligne déjà classée est ignoré.
+    accounts = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
+    ids = [rows["PRLV MYSTERE"]["id"], rows["RETRAIT DAB"]["id"], rows["CB AMAZON"]["id"], rows["VIR LIVRET"]["id"]]
+    assert accounting.confirm_many(db_session, TRESORIER, ids, accounts["627"]["id"]) == 2
+    etat = documents.preparation(db_session, TRESORIER, SEASON, calendar)
+    assert etat["classify"] == {"withoutAccount": 0, "unsure": [], "sure": [], "ok": True}
+    assert etat["controls"][2]["ok"] is True
+    # Un membre n'y a pas droit.
+    from finances import Member
+
+    with pytest.raises(PermissionError):
+        documents.preparation(db_session, Member(person_id=2, org_id=1, name="Margot", is_treasurer=False), SEASON, calendar)

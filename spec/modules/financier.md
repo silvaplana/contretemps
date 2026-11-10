@@ -860,8 +860,19 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
 Étapes de code (une PR chacune) :
 1. **Codée le 10 novembre 2026** : « Déjà payée » et la puce Rapprocher (`notes-de-frais.md`
    §7 septies), puis « Justifier sans facture » et « Demander le justificatif » (§7 octies).
-2. Bilan en trois onglets, étapes 1 à 3 (Rapprocher filtré sur la saison, pointage par compte avec
-   « Valider le compte », ventilation d'une remise de chèques).
+2. **Codée le 10 novembre 2026** : Bilan en trois onglets **Préparer | Documents | Clôture**
+   (`compta/Preparer.jsx`, `GET /finances/seasons/{id}/preparation`,
+   `POST /finances/seasons/{id}/confirm-accounts`) : les six étapes avec leur compteur et un ✓ quand
+   il ne reste rien ; 1 ouvre la grille des relevés, 2 les soldes de départ, 3 montre les compteurs
+   de Rapprocher sur la saison (bouton « Ouvrir Rapprocher ») puis les transactions bancaires sans
+   compte : « À confirmer une par une » (aucune proposition : la fiche de l'opération) et « Comptes
+   proposés par l'appli » regroupées par compte proposé avec **« Valider le compte 6226 Honoraires :
+   48 lignes »** (`Accounting.confirm_many`, une opération déjà classée ou un virement interne est
+   ignoré) ; 4 hors banque : texte d'attente ; 5 les contrôles en clair (relevés complets, soldes de
+   départ = relevés, un compte sur chaque transaction, FEC juste) ; 6 renvoie à Documents. Documents =
+   l'écran des bilans d'avant ; Clôture = la clôture portée par le bilan le plus avancé de la saison
+   (Officiel, Validé, dernier), niveau Complet. Reste pour cette étape : la ventilation d'une remise
+   de chèques Cours / Cotisations / Gala.
 3. Hors banque (factures non payées dans 401, 411, 471), contrôles, comparaison N-1 avec « ? ».
 4. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 

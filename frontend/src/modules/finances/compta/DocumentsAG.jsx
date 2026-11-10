@@ -176,7 +176,7 @@ function ControleFEC({ check }) {
 
 // Clôture de la saison (§8.7) : résultat dans 110, soldes reportés sur la
 // saison suivante, plus de rattachement tant qu'elle n'est pas rouverte.
-function Cloture({ reportId, seasonName, closing, onChange, onErreur }) {
+export function Cloture({ reportId, seasonName, closing, onChange, onErreur }) {
   async function basculer() {
     if (!closing && !window.confirm(`Clôturer la saison ${seasonName} ? Plus aucune ligne ne pourra changer sans la rouvrir.`)) return
     try {

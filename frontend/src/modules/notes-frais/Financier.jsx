@@ -7,6 +7,7 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
+import { SOUS_ONGLET_EVENT } from '../finances/navigation.js'
 import { requestStatements } from '../finances/RelevesGrille.jsx'
 import { requestPlanComptable } from '../finances/compta/PlanComptable.jsx'
 import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
@@ -37,6 +38,14 @@ export default function Financier() {
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier', sousOnglet)
   }, [sousOnglet])
+  // Un autre écran demande un sous-onglet (Bilan › Préparer → Pièces › Rapprocher).
+  useEffect(() => {
+    const aller = (e) => {
+      if (SOUS_ONGLETS.some((o) => o.value === e.detail)) setSousOnglet(e.detail)
+    }
+    window.addEventListener(SOUS_ONGLET_EVENT, aller)
+    return () => window.removeEventListener(SOUS_ONGLET_EVENT, aller)
+  }, [])
   // Saisie pour quelqu'un (menu ⋯) : d'abord choisir la personne, puis les
   // mêmes écrans que Profil › « Mes notes de frais », à son nom.
   const [choix, setChoix] = useState(null) // null | 'depense' | 'note'

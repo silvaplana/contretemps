@@ -343,6 +343,22 @@ class Accounting:
         db.commit()
         return self.operation(db, member, op.id)
 
+    def confirm_many(self, db: Session, member: Member, operation_ids: list[int], account_id: int) -> int:
+        """« Valider le compte » (financier.md §8.10, étape 3) : le même compte
+        confirmé d'un coup sur plusieurs opérations encore sans compte. Une
+        opération déjà classée ou un virement interne est laissé tel quel.
+        Renvoie le nombre d'opérations confirmées."""
+        _check(member)
+        done = 0
+        lines = self._lines(db, member.org_id)
+        for operation_id in operation_ids:
+            op = self._operation(db, member.org_id, operation_id)
+            if op.transfer_id is not None or lines.get(op.id):
+                continue
+            self.set_lines(db, member, op.id, [{"accountId": account_id}])
+            done += 1
+        return done
+
     def counts(self, db: Session, org_id: int, rows: list[dict]) -> dict:
         """Compteurs des puces « Sans compte » et « Sans pièce » (§8.4)."""
         real = [r for r in rows if not r.get("transfer")]
