@@ -180,6 +180,23 @@ def nom_ecole(db: Session, ecole_id: int) -> str:
     return ecole.nom if ecole is not None else ""
 
 
+def prevenir_tresoriers(notifications):
+    """Le port `warn` de la connexion bancaire (financier.md §3.5) : une
+    notification à chaque personne qui a le droit Financier dans l'école,
+    sur sa fiche de la saison courante."""
+    from documents_contretemps.adapter import _saison_courante
+
+    def prevenir(db: Session, ecole_id: int, titre: str, corps: str) -> None:
+        saison = _saison_courante(db, ecole_id)
+        with toutes_saisons(db):
+            comptes = list(db.scalars(select(Compte).where(Compte.ecole_id == ecole_id, Compte.saison_id == saison)))
+        for compte in comptes:
+            if roles.has_right(compte, FINANCES_ACCESS):
+                notifications.envoyer_a_compte(db, compte.id, titre, corps)
+
+    return prevenir
+
+
 def dossier_ag(documents):
     """Le dossier Docs › Privé › Saison en cours › Financier › AG (créé au
     besoin), pour le bouton « Ouvrir dans Docs » des documents de l'AG."""

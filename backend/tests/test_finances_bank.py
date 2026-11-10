@@ -229,3 +229,33 @@ def test_fiche_du_compte(faux, db_session):
     connecter(Bank(client=faux, finances=finances, encrypt=str, decrypt=str), faux, db_session)
     relie = finances.get_ledger(db_session, TRESORIER)["accounts"][0]
     assert (relie["iban"], relie["bank"]) == (iban, "CIC")
+
+
+def test_lecture_automatique_et_rappel_avant_expiration(faux, db_session):
+    """financier.md §3.5 : le programme de fond relit une organisation dont la
+    dernière lecture a plus de 12 h, et prévient les trésoriers une semaine
+    avant la fin de l'accès, une seule fois par accès."""
+    from datetime import datetime, timedelta
+
+    from finances.bank import FinBankConnection
+    from sqlalchemy import select
+
+    avertis = []
+    banque = Bank(
+        client=faux, finances=Finances(), encrypt=lambda s: f"chiffre:{s}", decrypt=lambda s: s.removeprefix("chiffre:"),
+        warn=lambda db, org_id, titre, corps: avertis.append((org_id, titre, corps)),
+    )
+    connecter(banque, faux, db_session)
+    connexion = db_session.scalar(select(FinBankConnection))
+    maintenant = connexion.last_sync_at
+    # Lue à la connexion : rien à relire tout de suite.
+    assert banque.automatic(db_session, now=maintenant + timedelta(hours=1)) == {"synced": 0, "added": 0, "warned": 0}
+    faux.operations["u401"].append(("CB DECATHLON", -129.90, 0))
+    assert banque.automatic(db_session, now=maintenant + timedelta(hours=13)) == {"synced": 1, "added": 1, "warned": 0}
+    # Une semaine avant la fin de l'accès : un rappel, puis plus rien.
+    veille = connexion.valid_until - timedelta(days=6)
+    assert banque.automatic(db_session, now=veille)["warned"] == 1
+    assert avertis[-1][0] == TRESORIER.org_id and "Accès à la banque bientôt expiré" in avertis[-1][1] and "Reconnecter" in avertis[-1][2]
+    assert banque.automatic(db_session, now=veille + timedelta(days=1))["warned"] == 0 and len(avertis) == 1
+    # Accès expiré : plus rien n'est lu.
+    assert banque.automatic(db_session, now=connexion.valid_until + timedelta(days=1)) == {"synced": 0, "added": 0, "warned": 0}
