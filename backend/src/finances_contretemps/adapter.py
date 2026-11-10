@@ -96,6 +96,11 @@ def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
     with toutes_saisons(db):
         for compte in db.scalars(select(Compte).where(Compte.id.in_({n.person_id for n in notes}))):
             noms[compte.id] = nom_affiche(compte)
+    # Plusieurs pièces payées par le même virement : la pièce de l'opération
+    # porte leur total (le lettrage compare ce total au montant de la banque).
+    totaux: dict[int, int] = {}
+    for n in notes:
+        totaux[n.bank_operation_id] = totaux.get(n.bank_operation_id, 0) + sum(d.montant_centimes for d in n.depenses)
     return {
         n.bank_operation_id: {
             "id": n.id,
@@ -108,6 +113,7 @@ def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
             # Le compte du plan de la catégorie de ses dépenses, s'il n'y en a
             # qu'un : il fait proposer ce compte sur la ligne de banque.
             "account": _compte_des_depenses(n),
+            "amount": totaux[n.bank_operation_id] / 100,
         }
         for n in notes
     }

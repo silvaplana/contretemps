@@ -381,7 +381,12 @@ Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
      de §7 quinquies), qui lettre la facture avec sa transaction bancaire ; « Autre… » ouvre la fiche. Rien n'est lettré sans
      un toucher ;
    - **Factures sans paiement** : À rapprocher, À valider, À payer, Préparé, Envoyé, Don, avec leur
-     état ; un toucher ouvre la fiche (Régler l'écart, Détacher, Revenir en arrière…) ;
+     état ; un toucher ouvre la fiche (Régler l'écart, Détacher, Revenir en arrière…) ; **« Rattacher
+     à une transaction bancaire… »** (10 novembre, lettrage à la main) ouvre la liste des transactions
+     bancaires sans facture de la période, les montants les plus proches en premier, avec l'écart ;
+     un toucher rattache (`POST …/payee`, `manuel: true` : tout débit libre, même d'un autre montant
+     ou d'un autre nom ; un crédit ou une transaction déjà prise sont refusés), l'écart reste à régler
+     dans la fiche ;
    - **Transactions bancaires sans facture** : les débits de la période sans pièce rattachée, avec
      leur compte bancaire et, s'il y a lieu, « justificatif demandé à … le … » (§7 octies) ; leur compte du plan se choisit dans Comptes (filtre « Sans compte »), le
      libellé suffit souvent (frais bancaires, honoraires, SACEM).

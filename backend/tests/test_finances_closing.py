@@ -31,7 +31,7 @@ def full(db_session):
     accounting.create_account(db_session, TRESORIER, {"number": "4671", "label": "Galli (location)", "nature": "tiers"})
     accounting.create_account(db_session, TRESORIER, {"number": "4672", "label": "Pesenti", "nature": "tiers"})
     rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
-    pieces[rows["CB AMAZON"]["id"]] = {"id": 1, "title": "Facture Amazon", "kind": "Achat", "nature": "achat", "date": "2025-09-01", "person": ""}
+    pieces[rows["CB AMAZON"]["id"]] = {"id": 1, "title": "Facture Amazon", "kind": "Achat", "nature": "achat", "date": "2025-09-01", "person": "", "amount": 39.9}
     pieces[rows["VIR GALLI"]["id"]] = {"id": 2, "title": "Honoraires Galli", "kind": "Honoraires", "nature": "honoraires", "date": "2025-08-20", "person": "Marco Galli"}
     accounting.set_lines(db_session, TRESORIER, rows["CB AMAZON"]["id"], [{"accountId": accounts["606"]["id"]}])
     accounting.set_lines(db_session, TRESORIER, rows["VIR GALLI"]["id"], [{"accountId": accounts["613"]["id"]}])
@@ -217,3 +217,19 @@ def test_bilan_actif_passif_balances_with_the_season_result(full, db_session):
     text = "".join(p.get_text() for p in pymupdf.open(stream=content, filetype="pdf"))
     assert "Total actif" in text and "Total passif" in text and "Fonds associatifs" in text
     assert "Écart actif" not in text
+
+
+def test_a_payment_that_does_not_match_the_invoice_stays_open_on_the_third_party(full, db_session):
+    """financier.md §8.7 (Seb, 10/11, lettrage à la main) : la facture entre au
+    tiers à son montant, le paiement au montant de la banque ; différents, les
+    deux lignes restent sans lettre (écart à régler), et la charge est au
+    montant de la facture."""
+    _, accounting, documents, rows, accounts = full
+    pieces = accounting.pieces(db_session, TRESORIER.org_id)
+    pieces[rows["CB AMAZON"]["id"]]["amount"] = 50.0  # facture de 50 €, payée 39,90
+    books = documents.books(db_session, TRESORIER, SEASON)
+    books.pop("_cutoff")
+    assert [(l.journal, l.debit, l.credit, l.letter) for l in books["401"].lines] == [("AC", 0, 5000, ""), ("BQ1", 3990, 0, "")]
+    assert books["401"].balance == -1010 and books["606"].lines[0].debit == 5000
+    assert sum(a.debit for a in books.values()) == sum(a.credit for a in books.values())
+    assert not any("Lettrage" in p for p in documents.fec_check(db_session, TRESORIER, SEASON)["problems"])

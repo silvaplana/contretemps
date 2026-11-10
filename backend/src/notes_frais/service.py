@@ -1706,12 +1706,14 @@ class NotesDeFrais:
         self._reranger(db, membre, note)
         self._apres_paiement(db, membre, note, prevenir=prevenir)
 
-    def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int, aussi: Sequence[int] = ()) -> NoteFrais:
+    def payer(self, db: Session, membre: Membre, note_id: int, operation_id: int, aussi: Sequence[int] = (), *, manuel: bool = False) -> NoteFrais:
         """Confirmer l'opération vue sur le compte : la pièce y est rattachée
         et passe Payé (aussi tout droit depuis À valider : déjà payé). Autre
         montant (Seb, 1er/11) : accepté si la ligne porte le nom de la
         personne, l'écart reste visible ; `aussi` : les autres pièces payées
-        par le même virement, rattachées en même temps."""
+        par le même virement, rattachées en même temps. `manuel` (lettrage à
+        la main, Seb 10/11) : le trésorier a choisi lui-même la transaction,
+        n'importe quel débit libre est accepté, l'écart reste à régler."""
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
         notes = [note] + [self._note(db, membre.org_id, i) for i in aussi]
@@ -1720,7 +1722,9 @@ class NotesDeFrais:
         operation = self.ports.banque.operation(db, membre.org_id, operation_id) if self.ports.banque else None
         if operation is None:
             raise LookupError("Opération introuvable sur les comptes.")
-        if operation.montant_centimes != -sum(self.total(n) for n in notes) and not self._au_nom_de(db, note, operation):
+        if operation.montant_centimes >= 0:
+            raise ValueError("Cette transaction bancaire est un crédit : elle ne paie pas une pièce.")
+        if not manuel and operation.montant_centimes != -sum(self.total(n) for n in notes) and not self._au_nom_de(db, note, operation):
             raise ValueError("Le montant de l'opération n'est pas celui de la pièce.")
         if operation_id in self._operations_prises(db, membre.org_id):
             raise ValueError("Cette opération est déjà rattachée à une autre pièce.")
