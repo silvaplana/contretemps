@@ -940,6 +940,21 @@ class NotesDeFrais:
         last = max((int(n[len(prefix):]) for n in existing if n[len(prefix):].isdigit()), default=0)
         note.piece_number = f"{prefix}{last + 1:03d}"
 
+    def _poser_numero(self, db: Session, note: NoteFrais, numero: str | None) -> None:
+        """Le numéro de pièce saisi à la main (Seb, 10/11), facultatif : il
+        remplace celui que l'appli donnerait à la validation ; unique dans
+        l'école, sans tenir compte des majuscules."""
+        numero = " ".join((numero or "").split())[:20]
+        if not numero or numero == note.piece_number:
+            return
+        autre = db.scalar(select(NoteFrais.id).where(
+            NoteFrais.org_id == note.org_id, func.lower(NoteFrais.piece_number) == numero.lower(),
+            NoteFrais.id != note.id if note.id is not None else True,
+        ))
+        if autre is not None:
+            raise ValueError(f"Le numéro de pièce {numero} est déjà pris.")
+        note.piece_number = numero
+
     @staticmethod
     def _exiger_complete(note: NoteFrais) -> None:
         """Une pièce photographiée en rafale se complète avant d'être validée."""
@@ -965,6 +980,7 @@ class NotesDeFrais:
         valider: bool = False,
         categorie_id: int | None = None,
         batch_id: str | None = None,
+        numero_piece: str | None = None,
     ) -> NoteFrais | Preuve:
         """Une pièce établie par un trésorier : une photo (ou un fichier) =
         une note d'une dépense, créée aussitôt. La lecture remplit ce qu'elle
@@ -1031,6 +1047,7 @@ class NotesDeFrais:
             if personne is None and lu.get("emetteur_personne"):
                 note.supplier = emetteur  # le nom lu, pour « Pour qui ? » (ou « + Quelqu'un d'extérieur »)
         note.titre = self._titre(note, jour)
+        self._poser_numero(db, note, numero_piece)
         self._recopier_rib(db, note)
         if valider:
             note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
@@ -1048,6 +1065,7 @@ class NotesDeFrais:
         db.flush()
         if valider:
             self._exiger_complete(note)
+            self._numeroter(db, note)  # saisie à la main validée d'un coup : elle aussi a son numéro (Seb, 10/11)
         if fichier is not None:
             self._poser_piece(
                 membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2],
@@ -1350,6 +1368,8 @@ class NotesDeFrais:
             if champs.get("categorie_id") is not None:
                 depense.categorie_id = self._categorie(db, note.org_id, champs["categorie_id"])
             self._valider_saisie(depense.montant_centimes, depense.date)
+        if champs.get("numero_piece"):
+            self._poser_numero(db, note, champs["numero_piece"])
         if champs.get("titre"):
             note.titre = " ".join(champs["titre"].split())[:120]
         elif note.depenses:
