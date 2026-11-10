@@ -163,6 +163,7 @@ export default function PlanComptable({ onClose }) {
           compte={edition === 'nouveau' ? null : edition}
           natures={plan.natures}
           libres={libres.map((l) => ({ label: l, nature: plan.accounts.find((c) => c.natureLabel === l).nature }))}
+          officielles={(plan.officialNatures ?? []).filter((o) => !libres.includes(o.label))}
           onClose={() => setEdition(null)}
           onChange={() => {
             setEdition(null)
@@ -174,6 +175,11 @@ export default function PlanComptable({ onClose }) {
   )
 }
 
+// Une nature libre qui porte le nom d'une rubrique officielle (« 21 … ») garde son numéro de rubrique.
+function rubriquesDejaLibres(libres) {
+  return libres.map((l) => ({ ...l, prefix: /^\d+ /.test(l.label) ? l.label.split(' ')[0] : null }))
+}
+
 // Nature libre : ce qu'elle compte dans le résultat (le calcul suit la nature de base).
 const COMPTE_COMME = [
   { id: 'depense', label: 'Une dépense' },
@@ -181,7 +187,7 @@ const COMPTE_COMME = [
   { id: 'attente', label: 'Hors résultat (Balance et Grand livre seulement)' },
 ]
 
-function FicheCompte({ compte, natures, libres, onClose, onChange }) {
+function FicheCompte({ compte, natures, libres, officielles, onClose, onChange }) {
   const [form, setForm] = useState({
     number: compte?.number ?? '',
     label: compte?.label ?? '',
@@ -194,14 +200,31 @@ function FicheCompte({ compte, natures, libres, onClose, onChange }) {
   const [erreur, setErreur] = useState('')
   // Le choix du menu Nature : une nature de base, une nature libre existante (« libre:Nom »), ou « nouvelle ».
   const [choixNature, setChoixNature] = useState(compte?.natureLabel ? `libre:${compte.natureLabel}` : (compte?.nature ?? 'depense'))
-  const libre = choixNature === 'nouvelle' || choixNature.startsWith('libre:')
+  const libre = choixNature === 'nouvelle' || choixNature.startsWith('libre:') || choixNature.startsWith('officiel:')
+  const [natureTouchee, setNatureTouchee] = useState(Boolean(compte))
   function choisirNature(valeur) {
     setChoixNature(valeur)
-    if (valeur === 'nouvelle') setForm((f) => ({ ...f, natureLabel: '', nature: f.nature === 'tiers' ? 'depense' : f.nature }))
+    if (valeur.startsWith('officiel:')) {
+      const o = officielles.find((x) => `officiel:${x.prefix}` === valeur)
+      setForm((f) => ({ ...f, natureLabel: o.label, nature: o.nature }))
+    } else if (valeur === 'nouvelle') setForm((f) => ({ ...f, natureLabel: '', nature: f.nature === 'tiers' ? 'depense' : f.nature }))
     else if (valeur.startsWith('libre:')) {
       const l = libres.find((x) => `libre:${x.label}` === valeur)
       setForm((f) => ({ ...f, natureLabel: l.label, nature: l.nature }))
     } else setForm((f) => ({ ...f, natureLabel: '', nature: valeur }))
+  }
+  // Nouveau compte hors 6 et 7 : la rubrique officielle se propose d'après le
+  // numéro tapé (2154 → 21 Immobilisations corporelles) ; 6 et 7 restent Dépenses / Recettes.
+  function changerNumero(e) {
+    const number = e.target.value
+    setForm((f) => ({ ...f, number }))
+    if (natureTouchee) return
+    const o = [...officielles, ...rubriquesDejaLibres(libres)]
+      .filter((x) => x.nature === 'attente' && x.prefix && number.startsWith(x.prefix))
+      .sort((a, b) => b.prefix.length - a.prefix.length)[0]
+    const l = o && libres.find((x) => x.label === o.label)
+    if (l) choisirNature(`libre:${l.label}`)
+    else if (o) choisirNature(`officiel:${o.prefix}`)
   }
   const champ = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
@@ -255,7 +278,7 @@ function FicheCompte({ compte, natures, libres, onClose, onChange }) {
       <div className="fin-cp">
         <label className="fin-cp-champ">
           <span>Numéro (plan comptable associatif)</span>
-          <input className="field-input" inputMode="numeric" value={form.number} onChange={champ('number')} />
+          <input className="field-input" inputMode="numeric" value={form.number} onChange={changerNumero} />
         </label>
         <label className="fin-cp-champ">
           <span>Libellé</span>
@@ -263,7 +286,14 @@ function FicheCompte({ compte, natures, libres, onClose, onChange }) {
         </label>
         <label className="fin-cp-champ">
           <span>Nature</span>
-          <select className="field-input" value={choixNature} onChange={(e) => choisirNature(e.target.value)}>
+          <select
+            className="field-input"
+            value={choixNature}
+            onChange={(e) => {
+              setNatureTouchee(true)
+              choisirNature(e.target.value)
+            }}
+          >
             {natures.map((n) => (
               <option key={n.id} value={n.id}>
                 {n.label}
@@ -274,6 +304,15 @@ function FicheCompte({ compte, natures, libres, onClose, onChange }) {
                 {l.label}
               </option>
             ))}
+            {officielles.length > 0 && (
+              <optgroup label="Plan comptable des associations">
+                {officielles.map((o) => (
+                  <option key={o.prefix} value={`officiel:${o.prefix}`}>
+                    {o.label}
+                  </option>
+                ))}
+              </optgroup>
+            )}
             <option value="nouvelle">Autre nature…</option>
           </select>
         </label>
