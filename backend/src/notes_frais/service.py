@@ -40,6 +40,7 @@ from .models import (
     Depense,
     External,
     NoteFrais,
+    OperationReceipt,
     Payer,
     PieceJustificative,
     Rib,
@@ -1878,17 +1879,88 @@ class NotesDeFrais:
             ecart = -pieces[0]["ligne"]["montant_centimes"] - sum(p["montant_centimes"] for p in pieces)
             pieces[0]["ecart_centimes"] = ecart
         rattachees_ids = {n.bank_operation_id for n in notes if n.bank_operation_id}
-        sans_piece = [
-            {"id": o.id, "date": o.date, "libelle": o.libelle, "montant_centimes": o.montant_centimes, "compte": o.compte}
-            for o in (banque.tous_debits(db, membre.org_id, debut) if banque else [])
-            if o.date <= fin and o.id not in rattachees_ids
-        ]
+        # Ce qu'on sait des transactions sans pièce (§7 octies) : justifiée sans facture, justificatif demandé.
+        sues = {r.bank_operation_id: r for r in db.scalars(select(OperationReceipt).where(OperationReceipt.org_id == membre.org_id))}
+        demandees = self.annuaire.personnes(db, membre.org_id, {r.requested_person_id for r in sues.values() if r.requested_person_id})
+        sans_piece, justifiees = [], []
+        for o in (banque.tous_debits(db, membre.org_id, debut) if banque else []):
+            if o.date > fin or o.id in rattachees_ids:
+                continue
+            ligne = {"id": o.id, "date": o.date, "libelle": o.libelle, "montant_centimes": o.montant_centimes, "compte": o.compte}
+            su = sues.get(o.id)
+            if su is not None and su.no_receipt_reason:
+                justifiees.append({**ligne, "raison": su.no_receipt_reason})
+                continue
+            if su is not None and su.requested_person_id:
+                personne = demandees.get(su.requested_person_id)
+                ligne["demande"] = {"personne": personne.nom if personne else "?", "le": su.requested_at.date()}
+            sans_piece.append(ligne)
         paires = [p for p in sans_paiement if p.get("paire")]
         sans_paiement = [p for p in sans_paiement if not p.get("paire")]
         return {
             "debut": debut, "fin": fin, "rattachees": rattachees, "paires": paires,
-            "sans_paiement": sans_paiement, "lignes_sans_piece": sans_piece,
+            "sans_paiement": sans_paiement, "lignes_sans_piece": sans_piece, "justifiees": justifiees,
         }
+
+    # --- Transactions bancaires sans pièce (§7 octies, Seb 10/11) ---
+
+    def _transaction_sans_piece(self, db: Session, membre: Membre, operation_id: int) -> tuple[OperationBancaire, OperationReceipt]:
+        self._exiger_tresorier(membre)
+        operation = self.ports.banque.operation(db, membre.org_id, operation_id) if self.ports.banque else None
+        if operation is None:
+            raise LookupError("Transaction bancaire inconnue.")
+        if operation_id in self._operations_prises(db, membre.org_id):
+            raise ValueError("Cette transaction bancaire a déjà sa pièce.")
+        su = db.scalar(select(OperationReceipt).where(
+            OperationReceipt.org_id == membre.org_id, OperationReceipt.bank_operation_id == operation_id
+        ))
+        if su is None:
+            su = OperationReceipt(org_id=membre.org_id, bank_operation_id=operation_id)
+            db.add(su)
+        return operation, su
+
+    def justifier_sans_facture(self, db: Session, membre: Membre, operation_id: int, raison: str) -> None:
+        """« Justifier sans facture » : la transaction sort des transactions sans
+        pièce avec sa raison (frais bancaires, prélèvement SACEM…) ; elle
+        n'aura pas de pièce."""
+        raison = " ".join(raison.split())
+        if not raison:
+            raise ValueError("Dites en quelques mots pourquoi il n'y a pas de facture.")
+        _, su = self._transaction_sans_piece(db, membre, operation_id)
+        su.no_receipt_reason = raison[:200]
+        db.commit()
+
+    def retirer_justification(self, db: Session, membre: Membre, operation_id: int) -> None:
+        """Annule « Justifier sans facture » : la transaction revient dans les sans pièce."""
+        _, su = self._transaction_sans_piece(db, membre, operation_id)
+        su.no_receipt_reason = None
+        if su.requested_person_id is None:
+            db.delete(su)
+        db.commit()
+
+    def demander_justificatif(self, db: Session, membre: Membre, operation_id: int, person_id: int) -> None:
+        """« Demander le justificatif » : la personne reçoit une notification et
+        un mail avec la transaction (date, libellé, montant) et où envoyer la
+        facture ; la transaction affiche « demandé à … le … » jusqu'à ce
+        qu'une pièce lui soit rattachée."""
+        operation, su = self._transaction_sans_piece(db, membre, operation_id)
+        personne = self.annuaire.personnes(db, membre.org_id, {person_id}).get(person_id)
+        if personne is None:
+            raise LookupError("Personne inconnue.")
+        su.requested_person_id, su.requested_at, su.requested_by = person_id, _maintenant(), membre.person_id
+        db.commit()
+        org = self.annuaire.organisation(db, membre.org_id)
+        montant = euros(-operation.montant_centimes)
+        resume = f"{operation.date:%d/%m/%Y}, {operation.libelle}, {montant}"
+        if personne.notification_id is not None:
+            self._notifier(db, personne.notification_id, "Facture à envoyer", resume)
+        if personne.emails:
+            texte = (
+                f"Bonjour {personne.nom},\n\n{membre.nom} cherche la facture d'une transaction bancaire de {org.nom} :\n"
+                f"{resume}.\n\nSi c'est vous qui avez payé, envoyez la facture (photo ou PDF) depuis l'application "
+                f"{org.nom}, Profil, Mes notes de frais, « Saisir une dépense ».\n{org.adresse_web}/\n"
+            )
+            self._mail(db, membre.org_id, list(personne.emails), f"Facture à envoyer : {montant} du {operation.date:%d/%m/%Y}", texte, membre.emails[0] if membre.emails else None)
 
     # --- Présentation ---
 

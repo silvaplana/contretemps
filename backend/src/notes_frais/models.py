@@ -195,3 +195,23 @@ class External(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)
     # Retiré de la liste ; ses notes gardent son nom.
     removed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class OperationReceipt(Base):
+    """Ce qu'on sait d'une transaction bancaire sans pièce (§7 octies, Seb
+    10/11) : justifiée sans facture (`no_receipt_reason`, ex. frais
+    bancaires) et/ou justificatif demandé à une personne. `bank_operation_id`
+    vient du port Banque, sans clé étrangère (le module ne connaît pas la
+    table des opérations)."""
+
+    __tablename__ = "nf_operation_receipts"
+    __table_args__ = (UniqueConstraint("org_id", "bank_operation_id"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    bank_operation_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    no_receipt_reason: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    requested_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    requested_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)

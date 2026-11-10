@@ -859,7 +859,7 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
 
 Étapes de code (une PR chacune) :
 1. **Codée le 10 novembre 2026** : « Déjà payée » et la puce Rapprocher (`notes-de-frais.md`
-   §7 septies).
+   §7 septies), puis « Justifier sans facture » et « Demander le justificatif » (§7 octies).
 2. Bilan en trois onglets, étapes 1 à 3 (Rapprocher filtré sur la saison, pointage par compte avec
    « Valider le compte », ventilation d'une remise de chèques).
 3. Hors banque (factures non payées dans 401, 411, 471), contrôles, comparaison N-1 avec « ? ».

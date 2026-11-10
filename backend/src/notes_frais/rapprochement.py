@@ -89,15 +89,27 @@ def pdf(donnees: dict) -> bytes:
     parts.append("<h2>Transactions bancaires de débit sans pièce</h2>")
     if sans_piece:
         parts.append(
-            "<table><tr><th>Date</th><th>Libellé</th><th>Compte</th><th class='n'>Montant</th></tr>"
+            "<table><tr><th>Date</th><th>Libellé</th><th>Compte</th><th class='n'>Montant</th><th>Justificatif demandé</th></tr>"
             + "".join(
-                f"<tr><td>{_fr(l['date'])}</td><td>{e(l['libelle'])}</td><td>{e(l['compte'])}</td><td class='n'>{_eur(-l['montant_centimes'])}</td></tr>"
+                f"<tr><td>{_fr(l['date'])}</td><td>{e(l['libelle'])}</td><td>{e(l['compte'])}</td><td class='n'>{_eur(-l['montant_centimes'])}</td>"
+                f"<td>{e(f"à {l['demande']['personne']} le {_fr(l['demande']['le'])}") if l.get('demande') else ''}</td></tr>"
                 for l in sans_piece
             )
             + "</table>"
         )
     else:
         parts.append("<p class='muted'>Aucune.</p>")
+    justifiees = donnees.get("justifiees", [])
+    if justifiees:
+        parts.append("<h2>Transactions bancaires justifiées sans facture</h2>")
+        parts.append(
+            "<table><tr><th>Date</th><th>Libellé</th><th>Compte</th><th class='n'>Montant</th><th>Raison</th></tr>"
+            + "".join(
+                f"<tr><td>{_fr(l['date'])}</td><td>{e(l['libelle'])}</td><td>{e(l['compte'])}</td><td class='n'>{_eur(-l['montant_centimes'])}</td><td>{e(l['raison'])}</td></tr>"
+                for l in justifiees
+            )
+            + "</table>"
+        )
     return _html_to_pdf("".join(parts))
 
 

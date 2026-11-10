@@ -1440,3 +1440,49 @@ def test_deja_payee_attend_dans_rapprocher_pas_dans_virements(client, db_session
     # Une pièce qui a déjà sa ligne ne se marque pas « déjà payée » ; un membre n'a pas accès au rapprochement.
     assert client.post(f"/notes-frais/notes/{temu['id']}/deja-payee", headers=entetes).status_code == 400
     assert client.get("/notes-frais/rapprochement", headers=entetes_session(ecole["eleve"])).status_code == 403
+
+
+def test_transaction_sans_piece_justifiee_ou_justificatif_demande(client, db_session, ecole, espion):
+    """Seb, 10/11 (§7 octies) : comme Qonto et Pennylane, une transaction
+    bancaire sans pièce se justifie sans facture (une raison) ou son
+    justificatif se demande à une personne, qui est prévenue."""
+    tresorier, eleve = ecole["tresorier"], ecole["eleve"]
+    org = tresorier.ecole_id
+    entetes = entetes_session(tresorier)
+    frais = _operation(db_session, org, -1200, "2026-03-05", "FRAIS TENUE DE COMPTE")
+    amazon = _operation(db_session, org, -4599, "2026-03-09", "CB AMAZON PAIEMENT")
+    periode = {"debut": "2026-03-01", "fin": "2026-03-31"}
+
+    # Justifier sans facture : la transaction sort des sans pièce, avec sa raison.
+    assert client.post(f"/notes-frais/rapprochement/transactions/{frais.id}/justifier", json={"raison": "  "}, headers=entetes).status_code == 400
+    assert client.post(f"/notes-frais/rapprochement/transactions/{frais.id}/justifier", json={"raison": "Frais bancaires du CIC"}, headers=entetes).status_code == 204
+    etat = client.get("/notes-frais/rapprochement", params=periode, headers=entetes).json()
+    assert [l["id"] for l in etat["lignes_sans_piece"]] == [amazon.id]
+    assert etat["justifiees"] == [{"id": frais.id, "date": "2026-03-05", "libelle": "FRAIS TENUE DE COMPTE", "montant_centimes": -1200, "compte": "Compte courant", "raison": "Frais bancaires du CIC"}]
+
+    # Demander le justificatif : notification + mail à la personne, « demandé à … le … » sur la transaction.
+    margot = next(p for p in client.get("/notes-frais/personnes", headers=entetes).json() if "Margot" in p["nom"])
+    assert client.post(f"/notes-frais/rapprochement/transactions/{amazon.id}/demander", json={"person_id": 999999}, headers=entetes).status_code == 404
+    assert client.post(f"/notes-frais/rapprochement/transactions/{amazon.id}/demander", json={"person_id": margot["person_id"]}, headers=entetes).status_code == 204
+    assert espion.notifications[-1][1] == "Facture à envoyer"
+    assert espion.mails[-1]["a"] == ["margot@test.fr"] and "CB AMAZON PAIEMENT" in espion.mails[-1]["texte"] and "45,99" in espion.mails[-1]["texte"]
+    assert espion.mails[-1]["repondre_a"] == "julia@test.fr"
+    etat = client.get("/notes-frais/rapprochement", params=periode, headers=entetes).json()
+    assert etat["lignes_sans_piece"][0]["demande"]["personne"] == margot["nom"]
+    import pymupdf
+
+    texte = "".join(p.get_text() for p in pymupdf.open(stream=client.get("/notes-frais/rapprochement.pdf", params=periode, headers=entetes).content, filetype="pdf"))
+    assert "Raison" in texte and "Frais bancaires du CIC" in texte and f"à {margot['nom']}" in texte
+
+    # Retirer la justification : la transaction revient dans les sans pièce.
+    assert client.delete(f"/notes-frais/rapprochement/transactions/{frais.id}/justifier", headers=entetes).status_code == 204
+    etat = client.get("/notes-frais/rapprochement", params=periode, headers=entetes).json()
+    assert len(etat["lignes_sans_piece"]) == 2 and etat["justifiees"] == []
+
+    # Une transaction qui a déjà sa pièce ne se justifie pas ; inconnue : 404 ; un membre n'y a pas droit.
+    # Même montant, même nom : la banque décide, la facture Amazon est rattachée d'elle-même.
+    payee = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Amazon", date="2026-03-09", montant_centimes="4599")
+    assert payee["operation"]["id"] == amazon.id
+    assert client.post(f"/notes-frais/rapprochement/transactions/{amazon.id}/justifier", json={"raison": "x"}, headers=entetes).status_code == 400
+    assert client.post(f"/notes-frais/rapprochement/transactions/999999/justifier", json={"raison": "x"}, headers=entetes).status_code == 404
+    assert client.post(f"/notes-frais/rapprochement/transactions/{frais.id}/justifier", json={"raison": "x"}, headers=entetes_session(eleve)).status_code == 403

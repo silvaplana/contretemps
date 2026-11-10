@@ -144,7 +144,7 @@ export function PreuveVirement({ note, onPaye }) {
       </span>
       {note.statut !== 'viree' && (
         <button type="button" className="btn btn--primary" onClick={onPaye}>
-          Rattacher à cette transaction
+          Rattacher à cette transaction bancaire
         </button>
       )}
     </div>
@@ -169,7 +169,7 @@ export function PaiementVu({ note, onConfirme }) {
           </span>
         </span>
         <button type="button" className="btn btn--primary" onClick={() => onConfirme(op, [])}>
-          Rattacher à cette transaction
+          Rattacher à cette transaction bancaire
         </button>
       </div>
     )

@@ -42,6 +42,14 @@ class DepenseModification(BaseModel):
     description: str | None = None
 
 
+class JustificationEntree(BaseModel):
+    raison: str
+
+
+class DemandeEntree(BaseModel):
+    person_id: int
+
+
 class RibEntree(BaseModel):
     titulaire: str | None = None
     iban: str | None = None
@@ -405,7 +413,8 @@ class NotesDeFraisReceiver:
         @app.get("/notes-frais/rapprochement")
         def rapprochement_json(debut: dt.date | None = None, fin: dt.date | None = None, db: Session = db_dep, m: Membre = membre):
             """Puce Rapprocher (§7 septies) : les paires proposées, les pièces sans paiement, les
-            lignes de débit sans pièce et les pièces rattachées de la période."""
+            transactions bancaires de débit sans pièce (et celles justifiées sans facture, §7 octies)
+            et les pièces rattachées de la période."""
             debut, fin = debut or dt.date(2000, 1, 1), fin or dt.date.today()
             donnees = appeler(nf.rapprochement, db, m, debut, fin)
 
@@ -417,6 +426,18 @@ class NotesDeFraisReceiver:
                 return valeur.isoformat() if isinstance(valeur, dt.date) else valeur
 
             return iso(donnees)
+
+        @app.post("/notes-frais/rapprochement/transactions/{operation_id}/justifier", status_code=204)
+        def justifier_sans_facture(operation_id: int, corps: JustificationEntree, db: Session = db_dep, m: Membre = membre):
+            appeler(nf.justifier_sans_facture, db, m, operation_id, corps.raison)
+
+        @app.delete("/notes-frais/rapprochement/transactions/{operation_id}/justifier", status_code=204)
+        def retirer_justification(operation_id: int, db: Session = db_dep, m: Membre = membre):
+            appeler(nf.retirer_justification, db, m, operation_id)
+
+        @app.post("/notes-frais/rapprochement/transactions/{operation_id}/demander", status_code=204)
+        def demander_justificatif(operation_id: int, corps: DemandeEntree, db: Session = db_dep, m: Membre = membre):
+            appeler(nf.demander_justificatif, db, m, operation_id, corps.person_id)
 
         @app.get("/notes-frais/rapprochement.pdf")
         def rapprochement_pdf(debut: dt.date | None = None, fin: dt.date | None = None, db: Session = db_dep, m: Membre = membre):
