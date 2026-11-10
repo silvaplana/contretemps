@@ -1491,7 +1491,7 @@ def test_transaction_sans_piece_justifiee_ou_justificatif_demande(client, db_ses
     assert client.post(f"/notes-frais/rapprochement/transactions/{frais.id}/justifier", json={"raison": "Frais bancaires du CIC"}, headers=entetes).status_code == 204
     etat = client.get("/notes-frais/rapprochement", params=periode, headers=entetes).json()
     assert [l["id"] for l in etat["lignes_sans_piece"]] == [amazon.id]
-    assert etat["justifiees"] == [{"id": frais.id, "date": "2026-03-05", "libelle": "FRAIS TENUE DE COMPTE", "montant_centimes": -1200, "compte": "Compte courant", "raison": "Frais bancaires du CIC"}]
+    assert etat["justifiees"] == [{"id": frais.id, "date": "2026-03-05", "libelle": "FRAIS TENUE DE COMPTE", "montant_centimes": -1200, "compte": "Compte courant", "avis": None, "raison": "Frais bancaires du CIC"}]
 
     # Demander le justificatif : notification + mail à la personne, « demandé à … le … » sur la transaction.
     margot = next(p for p in client.get("/notes-frais/personnes", headers=entetes).json() if "Margot" in p["nom"])
@@ -1658,6 +1658,77 @@ def test_l_avis_de_virement_devient_la_page_virement_de_la_facture(client, db_se
     assert dossier_note["name"] == f"2026-11-05 Honoraires novembre 2026 ({novembre['id']})"  # datée de la facture, pas du jour
     noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"])
     assert noms == ["2026-11-05 Facture Hono Delphine De Luca - Virement.jpg", "2026-11-05 Facture Hono Delphine De Luca.jpg"]
+
+
+def test_l_avis_sans_facture_reste_sur_la_transaction_puis_rejoint_la_facture(client, db_session, ecole, monkeypatch):
+    """Seb, 10 novembre (§7 octies) : un avis de virement sans facture connue
+    n'est pas perdu, il reste sur sa transaction bancaire (Docs › Financier ›
+    VIREMENTS SANS FACTURE, vignette dans Rapprocher). « Justifier sans
+    facture » l'emmène dans ACHATS (il tient lieu de pièce). Quand la facture
+    arrive, l'appli la propose sans rattacher seule ; au « oui », l'avis devient
+    sa page « - Virement » et la justification s'efface."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    t = entetes_session(tresorier)
+    Comptes().create(db_session, ecole_id=org, role="professeur", nom="De Luca", prenom="Delphine", email="dl@test.fr")
+    virement = _operation(db_session, org, -15600, "2026-11-05", "VIR SEPA DE LUCA DELPHINE")
+    lecteur = LecteurFacture(sorte="virement", date="2026-11-05", montant_centimes=15600, beneficiaire="DE LUCA DELPHINE", motif="FACT1126")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    periode = {"debut": "2026-10-01", "fin": "2026-11-30"}
+    route_avis = f"/notes-frais/rapprochement/transactions/{virement.id}/avis"
+
+    avis = _etablir(client, tresorier, None, contenu=b"%PDF avis")
+    assert avis["id"] is None and avis["preuve"]["operation"]["id"] == virement.id and avis["preuve"]["gardee"] is True
+    etat = client.get("/notes-frais/rapprochement", params=periode, headers=t).json()
+    ligne = next(l for l in etat["lignes_sans_piece"] if l["id"] == virement.id)
+    nom_avis = "2026-11-05 Virement DE LUCA DELPHINE 156,00.jpg"
+    assert ligne["avis"] == {"nom": nom_avis, "type_mime": "image/jpeg"}
+    fichier = client.get(route_avis, headers=t)
+    assert fichier.status_code == 200 and fichier.content == b"%PDF avis"
+    # Un second avis pour la même transaction n'est pas gardé.
+    assert _etablir(client, tresorier, None, contenu=b"%PDF avis bis")["preuve"]["gardee"] is False
+
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    financier = _enfant(client, org, tresorier, saison["id"], "Financier")
+
+    def noms(dossier):
+        return sorted(i["name"] for i in _parcourir(client, org, tresorier, dossier["id"]).json()["items"]) if dossier else []
+
+    assert noms(_enfant(client, org, tresorier, financier["id"], "VIREMENTS SANS FACTURE")) == [nom_avis]
+
+    # Justifier sans facture : l'avis tient lieu de pièce, dans ACHATS › 11.2026, « - Sans facture ».
+    raison = "Honoraires, facture jamais reçue"
+    assert client.post(f"/notes-frais/rapprochement/transactions/{virement.id}/justifier", json={"raison": raison}, headers=t).status_code == 204
+    achats = _enfant(client, org, tresorier, financier["id"], "ACHATS")
+    assert noms(_enfant(client, org, tresorier, achats["id"], "11.2026")) == ["2026-11-05 Virement DE LUCA DELPHINE 156,00 - Sans facture.jpg"]
+    assert noms(_enfant(client, org, tresorier, financier["id"], "VIREMENTS SANS FACTURE")) == []
+    etat = client.get("/notes-frais/rapprochement", params=periode, headers=t).json()
+    assert etat["justifiees"][0]["avis"]["nom"] == nom_avis
+    # Retirer : l'avis revient dans VIREMENTS SANS FACTURE.
+    assert client.delete(f"/notes-frais/rapprochement/transactions/{virement.id}/justifier", headers=t).status_code == 204
+    assert noms(_enfant(client, org, tresorier, financier["id"], "VIREMENTS SANS FACTURE")) == [nom_avis]
+    assert client.post(f"/notes-frais/rapprochement/transactions/{virement.id}/justifier", json={"raison": raison}, headers=t).status_code == 204
+
+    # La facture arrive : même montant, même nom, mais l'appli propose au lieu de rattacher seule.
+    lecteur.lu = dict(date="2026-10-29", montant_centimes=15600, commercant="Delphine De Luca", emetteur_personne=True,
+                      client="École de Danse Contretemps", description="Cours classique novembre")
+    facture = _etablir(client, tresorier, None, contenu=b"%PDF facture")
+    assert facture["nature"] == "honoraires" and facture["operation_id"] is None
+    assert facture["paiement_propose"]["id"] == virement.id
+    assert facture["paiement_propose"]["sans_facture"] == {"raison": raison, "avis": True}
+
+    # « Rattacher à la transaction bancaire » : l'avis devient la page « - Virement », la justification s'efface.
+    payee = client.post(f"/notes-frais/notes/{facture['id']}/payee", json={"operation_id": virement.id}, headers=t)
+    assert payee.status_code == 200, payee.text
+    assert [p["preuve"] for p in payee.json()["depenses"][0]["pieces"]] == [False, True]
+    etat = client.get("/notes-frais/rapprochement", params=periode, headers=t).json()
+    assert etat["justifiees"] == [] and virement.id not in [l["id"] for l in etat["lignes_sans_piece"]]
+    assert client.get(route_avis, headers=t).status_code == 404
+    assert noms(_enfant(client, org, tresorier, achats["id"], "11.2026")) == []
+    honoraires = _enfant(client, org, tresorier, financier["id"], "HONORAIRES")
+    dossier_prof = _enfant(client, org, tresorier, honoraires["id"], "DELPHINE DE LUCA")
+    dossier_note = next(d for d in _parcourir(client, org, tresorier, dossier_prof["id"]).json()["items"] if d["name"].endswith(f"({facture['id']})"))
+    assert [n for n in noms(dossier_note) if n.endswith(".jpg")] == ["2026-10-29 Facture Hono Delphine De Luca - Virement.jpg", "2026-10-29 Facture Hono Delphine De Luca.jpg"]
 
 
 def test_un_nom_a_une_lettre_pres_est_propose_jamais_decide(client, db_session, ecole, monkeypatch):

@@ -122,6 +122,12 @@ export const plusTard = (noteId) => appel(`/notes/${noteId}/plus-tard`, { method
 export const dejaPayee = (noteId) => appel(`/notes/${noteId}/deja-payee`, { method: 'POST' })
 export const accepterPersonne = (noteId) => appel(`/notes/${noteId}/personne-proposee`, { method: 'POST' })
 // Transactions bancaires sans pièce (§7 octies, Seb 10/11) : justifiée sans facture, ou justificatif demandé.
+// L'avis de virement gardé sur une transaction bancaire sans facture (§7 octies).
+export async function urlAvis(operationId) {
+  const reponse = await fetch(`${BASE}/rapprochement/transactions/${operationId}/avis`, avecPersonne())
+  if (!reponse.ok) throw new ErreurNotesFrais(reponse.status, 'Avis de virement introuvable')
+  return URL.createObjectURL(await reponse.blob())
+}
 export const justifierSansFacture = (operationId, raison) => appel(`/rapprochement/transactions/${operationId}/justifier`, json('POST', { raison }))
 export const retirerJustification = (operationId) => appel(`/rapprochement/transactions/${operationId}/justifier`, { method: 'DELETE' })
 export const demanderJustificatif = (operationId, personId) => appel(`/rapprochement/transactions/${operationId}/demander`, json('POST', { person_id: personId }))

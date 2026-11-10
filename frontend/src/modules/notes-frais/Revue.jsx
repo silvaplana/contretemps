@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import { NATURES, qui } from './commun.jsx'
+import { texteSansFacture } from './Rapprocher.jsx'
 
 // Revue d'un import (notes-de-frais.md §7 quinquies, Seb 6/11) : une ligne
 // par pièce avec ce que l'appli propose (nature, qui, rangement dans Docs,
@@ -154,6 +155,12 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                             ? `paie aussi : ${possible.aussi.map((a) => a.titre).join(', ')}`
                             : `écart ${ecart(possible.ecart_centimes)}`}
                       </span>
+                      {possible.operation.sans_facture && (
+                        <span className="nf-revue__proposition">
+                          {texteSansFacture(possible.operation.sans_facture)}
+                          {possible.operation.sans_facture.avis ? ' Au « Rattacher », l’avis devient sa page Virement' : ' Au « Rattacher », la justification s’efface'}.
+                        </span>
+                      )}
                     </>
                   ) : (
                     <span className="badge">aucune ligne trouvée</span>

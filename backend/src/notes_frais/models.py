@@ -230,4 +230,8 @@ class OperationReceipt(Base):
     requested_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     requested_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     requested_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # L'avis de virement reçu sans facture, gardé sur la transaction (fichier dans Docs).
+    proof_doc_node_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    proof_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    proof_mime: Mapped[str | None] = mapped_column(String(100), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_maintenant)

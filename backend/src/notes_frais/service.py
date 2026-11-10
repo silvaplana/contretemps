@@ -64,6 +64,7 @@ JOURNAUX = {ACHAT: "AC", HONORAIRES: "HO", FRAIS: "NF"}
 # Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
 DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS"}
 A_TRAITER = "A TRAITER"  # « plus tard » et refusées, le temps de décider (Seb, 6/11)
+VIREMENTS_SANS_FACTURE = "VIREMENTS SANS FACTURE"  # l'avis de virement reçu sans facture, gardé sur la transaction (§7 octies)
 ECARTS = ("refund", "pay_rest", "write_off")
 MOIS = ("janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
         "novembre", "décembre")
@@ -157,6 +158,7 @@ class Preuve:
     interne: bool = False
     note: NoteFrais | None = None
     operation: OperationBancaire | None = None  # la ligne du compte, quand aucune pièce ne va avec
+    gardee: bool = False  # sans pièce : l'avis est gardé sur la transaction (§7 octies)
 
 
 class NotesDeFrais:
@@ -794,7 +796,7 @@ class NotesDeFrais:
             ligne = self.note_dict(note, personnes=personnes)
             rattachee = self.ports.banque.operation(db, note.org_id, note.bank_operation_id) if note.bank_operation_id and self.ports.banque else None
             operation = None if rattachee else self.paiement_propose(db, note, prises)
-            ligne["paiement_propose"] = operation and self._operation_dict(operation)
+            ligne["paiement_propose"] = operation and self._operation_sans_facture_dict(db, note.org_id, operation)
             ligne["operation"] = rattachee and self._operation_dict(rattachee)
             ligne["operation_id"] = note.bank_operation_id
             ligne["paiements_possibles"] = [] if rattachee or operation else self.paiements_possibles(db, note, prises)
@@ -816,6 +818,23 @@ class NotesDeFrais:
             "id": operation.id, "date": operation.date.isoformat(), "libelle": operation.libelle,
             "montant_centimes": operation.montant_centimes, "compte": operation.compte,
         }
+
+    def _sans_facture(self, db: Session, org_id: int, operation_id: int) -> OperationReceipt | None:
+        """Ce qu'on sait d'une transaction sans pièce (§7 octies), s'il y a quelque chose."""
+        return db.scalar(select(OperationReceipt).where(
+            OperationReceipt.org_id == org_id, OperationReceipt.bank_operation_id == operation_id
+        ))
+
+    def _operation_sans_facture_dict(self, db: Session, org_id: int, operation: OperationBancaire) -> dict:
+        """L'opération proposée pour une pièce, avec `sans_facture` quand la
+        trésorière l'a justifiée sans facture ou qu'elle porte un avis de
+        virement : la revue le dit, et demande (« c'est elle ? ») au lieu de
+        rattacher toute seule (Seb, 10/11)."""
+        su = self._sans_facture(db, org_id, operation.id)
+        sans_facture = None
+        if su is not None and (su.no_receipt_reason or su.proof_doc_node_id):
+            sans_facture = {"raison": su.no_receipt_reason, "avis": su.proof_doc_node_id is not None}
+        return {**self._operation_dict(operation), "sans_facture": sans_facture}
 
     def compteurs_tresorerie(self, db: Session, membre: Membre) -> dict:
         """Badges des puces : ce qui attend une action de qui regarde. Par
@@ -1084,8 +1103,10 @@ class NotesDeFrais:
         candidates = sorted((n for n in candidates if not n.bank_operation_id or meme_ligne(n)), key=rang)
         note = candidates[0] if candidates and (nommee(candidates[0]) or len(candidates) == 1) else None
         if note is None:
-            # Aucune pièce : on montre la ligne du compte, s'il l'a déjà.
+            # Aucune pièce : on montre la ligne du compte, s'il l'a déjà, et l'avis y reste (§7 octies).
             preuve.operation = self._ligne_du_compte(db, membre.org_id, preuve, indices)
+            if preuve.operation is not None:
+                preuve.gardee = self._garder_avis(db, membre, preuve, fichier)
             return preuve
         preuve.note = note
         if note.depenses:
@@ -1099,6 +1120,113 @@ class NotesDeFrais:
         # La banque décide (Seb, 31/10) : la ligne du compte est là, la pièce est payée.
         self._payee_par_la_banque(db, membre, note, nom_sur=nommee(note))
         return preuve
+
+    # --- L'avis de virement sans facture, gardé sur la transaction (§7 octies, Seb 10/11) ---
+
+    def _garder_avis(self, db: Session, membre: Membre, preuve: Preuve, fichier: tuple[bytes, str, str]) -> bool:
+        """Sans facture connue, l'avis ne se perd pas : il reste sur sa
+        transaction bancaire (fichier dans Docs › Financier › VIREMENTS SANS
+        FACTURE, vignette dans Rapprocher), adopté par la facture quand elle
+        arrive (`_adopter_avis`). Une transaction qui porte déjà un avis n'en
+        reçoit pas un second ; déjà justifiée sans facture, l'avis va dans
+        ACHATS. Un échec de rangement ne bloque rien."""
+        operation = preuve.operation
+        if self.ports.classeur is None or operation is None:
+            return False
+        _, su = self._transaction_sans_piece(db, membre, operation.id)
+        if su.proof_doc_node_id is not None:
+            db.rollback()
+            return False
+        contenu, nom, type_mime = fichier
+        extension = Path(nom or "").suffix.lower() or _EXTENSIONS.get(type_mime, "")
+        su.proof_name = nom_propre(
+            f"{operation.date.isoformat()} Virement {preuve.beneficiaire or operation.libelle} {montant_court(-operation.montant_centimes)}", 100
+        ) + extension
+        su.proof_mime = type_mime
+        temporaire = self.stockage.ecrire(membre.org_id, "avis", su.proof_name, contenu)
+        try:
+            ids = self.ports.classeur.classer(
+                db, membre, self._chemin_avis(su, operation), [(self._nom_avis(su), self.stockage.chemin(membre.org_id, temporaire))],
+                le=operation.date,
+            )
+        except Exception:
+            db.rollback()
+            logger.exception("Transaction bancaire %s : avis de virement non rangé", operation.id)
+            return False
+        finally:
+            self.stockage.delete(membre.org_id, temporaire)
+        if not ids:
+            db.rollback()
+            return False
+        su.proof_doc_node_id = ids[0]
+        db.commit()
+        return True
+
+    @staticmethod
+    def _chemin_avis(su: OperationReceipt, operation: OperationBancaire) -> list[str]:
+        """Où vit l'avis gardé : VIREMENTS SANS FACTURE, ou ACHATS › mois une
+        fois la transaction justifiée sans facture (l'avis tient lieu de pièce)."""
+        if su.no_receipt_reason:
+            return [DOSSIERS[ACHAT], f"{operation.date:%m.%Y}"]
+        return [VIREMENTS_SANS_FACTURE]
+
+    @staticmethod
+    def _nom_avis(su: OperationReceipt) -> str:
+        nom = su.proof_name or "avis"
+        if su.no_receipt_reason:
+            return f"{Path(nom).stem} - Sans facture{Path(nom).suffix}"
+        return nom
+
+    def _deplacer_avis(self, db: Session, membre: Membre, su: OperationReceipt, operation: OperationBancaire) -> None:
+        """Justification posée ou retirée : l'avis suit (ACHATS ⇄ VIREMENTS SANS FACTURE)."""
+        if su.proof_doc_node_id is None or self.ports.classeur is None:
+            return
+        try:
+            self.ports.classeur.deplacer(db, membre, self._chemin_avis(su, operation), [(su.proof_doc_node_id, self._nom_avis(su))], le=operation.date)
+        except Exception:
+            db.rollback()
+            logger.exception("Transaction bancaire %s : avis de virement non déplacé", operation.id)
+
+    @staticmethod
+    def _avis_dict(su: OperationReceipt | None) -> dict | None:
+        if su is None or su.proof_doc_node_id is None:
+            return None
+        return {"nom": su.proof_name, "type_mime": su.proof_mime}
+
+    def fichier_avis(self, db: Session, membre: Membre, operation_id: int) -> tuple[Path, str, str]:
+        """(chemin, type, nom) de l'avis gardé sur une transaction bancaire, pour un trésorier."""
+        self._exiger_tresorier(membre)
+        su = self._sans_facture(db, membre.org_id, operation_id)
+        if su is None or su.proof_doc_node_id is None or self.ports.classeur is None:
+            raise LookupError("Pas d'avis de virement sur cette transaction bancaire.")
+        return self.ports.classeur.contenu(db, membre, su.proof_doc_node_id), su.proof_mime or "application/octet-stream", su.proof_name or ""
+
+    def _adopter_avis(self, db: Session, membre: Membre, note: NoteFrais, operation_id: int) -> None:
+        """La facture arrive après l'avis (Seb, 10/11) : rattachée à la
+        transaction, elle adopte l'avis gardé, qui devient sa page
+        « - Virement » ; la justification « sans facture » s'efface."""
+        su = self._sans_facture(db, note.org_id, operation_id)
+        if su is None:
+            return
+        if su.proof_doc_node_id is not None and self.ports.classeur is not None and note.depenses:
+            depense = note.depenses[-1]
+            if len(depense.pieces) < PIECES_MAX and not any(p.is_proof for d in note.depenses for p in d.pieces):
+                try:
+                    chemin = self.ports.classeur.contenu(db, membre, su.proof_doc_node_id)
+                    with open(chemin, "rb") as flux:
+                        self._poser_piece(membre, depense, flux, su.proof_name or "", su.proof_mime or "application/pdf", preuve=True)
+                    self.ports.classeur.retirer(db, membre, [], [su.proof_doc_node_id])
+                except Exception:
+                    db.rollback()
+                    logger.exception("Note de frais %s : avis de virement non adopté", note.id)
+                    return
+                su.proof_doc_node_id = su.proof_name = su.proof_mime = None
+        su.no_receipt_reason = None
+        if su.requested_person_id is None and su.proof_doc_node_id is None:
+            db.delete(su)
+        db.commit()
+        db.refresh(note)
+        self._ranger(db, membre, note)
 
     def _ligne_du_compte(self, db: Session, org_id: int, preuve: Preuve, indices: set[str]) -> OperationBancaire | None:
         """Le débit du montant de la preuve autour de sa date, de préférence
@@ -1137,7 +1265,7 @@ class NotesDeFrais:
         detail = {
             "date": preuve.date, "montant_centimes": preuve.montant_centimes, "beneficiaire": preuve.beneficiaire,
             "motif": preuve.motif, "interne": preuve.interne,
-            "operation": preuve.operation and self._operation_dict(preuve.operation),
+            "operation": preuve.operation and self._operation_dict(preuve.operation), "gardee": preuve.gardee,
         }
         if preuve.note is None:
             return {"id": None, "sorte": "virement", "preuve": detail}
@@ -1268,6 +1396,8 @@ class NotesDeFrais:
             for receipt in db.scalars(
                 select(OperationReceipt).where(OperationReceipt.org_id == membre.org_id, OperationReceipt.bank_operation_id.in_(list(operation_ids)))
             ):
+                if receipt.proof_doc_node_id is not None and self.ports.classeur is not None:
+                    self.ports.classeur.retirer(db, membre, [], [receipt.proof_doc_node_id])
                 db.delete(receipt)
             db.commit()
         return len(notes)
@@ -1830,6 +1960,9 @@ class NotesDeFrais:
             return False
         if self.ports.banque.cloturee(db, note.org_id, operation.date):
             return False
+        # Transaction déjà justifiée sans facture, ou qui porte un avis : l'appli propose, la trésorière dit « c'est elle » (Seb, 10/11).
+        if self._operation_sans_facture_dict(db, note.org_id, operation)["sans_facture"] is not None:
+            return False
         if note.statut == ENVOYEE:
             note.bank_operation_id = operation.id
             db.commit()
@@ -1845,6 +1978,7 @@ class NotesDeFrais:
         note.bank_operation_id, note.deferred_at, note.paid_unmatched_at = operation_id, None, None
         db.commit()
         db.refresh(note)
+        self._adopter_avis(db, membre, note, operation_id)
         self._reranger(db, membre, note)
         self._apres_paiement(db, membre, note, prevenir=prevenir)
 
@@ -2014,7 +2148,7 @@ class NotesDeFrais:
                 proposee = None if note.don else self.paiement_propose(db, note, prises)
                 if proposee is not None:
                     piece["paire"] = {
-                        "operation": self._operation_dict(proposee), "ecart_centimes": 0, "aussi": [],
+                        "operation": self._operation_sans_facture_dict(db, membre.org_id, proposee), "ecart_centimes": 0, "aussi": [],
                         "sure": self._au_nom_de(db, note, proposee),
                     }
                 elif not note.don:
@@ -2036,6 +2170,7 @@ class NotesDeFrais:
                 continue
             ligne = {"id": o.id, "date": o.date, "libelle": o.libelle, "montant_centimes": o.montant_centimes, "compte": o.compte}
             su = sues.get(o.id)
+            ligne["avis"] = self._avis_dict(su)
             if su is not None and su.no_receipt_reason:
                 justifiees.append({**ligne, "raison": su.no_receipt_reason})
                 continue
@@ -2074,17 +2209,19 @@ class NotesDeFrais:
         raison = " ".join(raison.split())
         if not raison:
             raise ValueError("Dites en quelques mots pourquoi il n'y a pas de facture.")
-        _, su = self._transaction_sans_piece(db, membre, operation_id)
+        operation, su = self._transaction_sans_piece(db, membre, operation_id)
         su.no_receipt_reason = raison[:200]
         db.commit()
+        self._deplacer_avis(db, membre, su, operation)
 
     def retirer_justification(self, db: Session, membre: Membre, operation_id: int) -> None:
         """Annule « Justifier sans facture » : la transaction revient dans les sans pièce."""
-        _, su = self._transaction_sans_piece(db, membre, operation_id)
+        operation, su = self._transaction_sans_piece(db, membre, operation_id)
         su.no_receipt_reason = None
-        if su.requested_person_id is None:
+        if su.requested_person_id is None and su.proof_doc_node_id is None:
             db.delete(su)
         db.commit()
+        self._deplacer_avis(db, membre, su, operation)
 
     def demander_justificatif(self, db: Session, membre: Membre, operation_id: int, person_id: int) -> None:
         """« Demander le justificatif » : la personne reçoit une notification et

@@ -3,7 +3,8 @@ import * as api from '../../api/notesFrais.js'
 import Icon from '../../components/Icon.jsx'
 
 // Vignette d'un justificatif : lu avec la session puis affiché par une URL
-// locale (jamais d'URL publique). Un clic l'ouvre en grand.
+// locale (jamais d'URL publique). Un clic l'ouvre en grand. `piece.charger` :
+// autre façon d'obtenir le fichier (l'avis gardé sur une transaction bancaire).
 export function Vignette({ piece, onSupprimer }) {
   const [url, setUrl] = useState(null)
   const [grand, setGrand] = useState(false)
@@ -12,8 +13,7 @@ export function Vignette({ piece, onSupprimer }) {
   useEffect(() => {
     let annule = false
     let local = null
-    api
-      .urlPiece(piece.id)
+    (piece.charger ? piece.charger() : api.urlPiece(piece.id))
       .then((u) => {
         local = u
         if (annule) URL.revokeObjectURL(u)
@@ -24,6 +24,7 @@ export function Vignette({ piece, onSupprimer }) {
       annule = true
       if (local) URL.revokeObjectURL(local)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `charger` change à chaque rendu, le fichier non
   }, [piece.id])
 
   return (
@@ -36,7 +37,7 @@ export function Vignette({ piece, onSupprimer }) {
       >
         {estImage && url ? <img src={url} alt="" /> : <Icon name="fileCheck" size={26} />}
       </button>
-      {piece.preuve ? <span className="nf-vignette__legende">Virement</span> : null}
+      {piece.preuve ? <span className="nf-vignette__legende">{piece.legende || 'Virement'}</span> : null}
       {onSupprimer && (
         <button type="button" className="nf-vignette__retirer" onClick={onSupprimer} aria-label="Retirer la photo">
           <Icon name="x" size={14} />

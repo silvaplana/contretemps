@@ -4,6 +4,24 @@ import Icon from '../../components/Icon.jsx'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import Modal from '../../components/Modal.jsx'
 import { ChoixPersonneModal } from './Pieces.jsx'
+import { Vignette } from './commun.jsx'
+
+// L'avis de virement gardé sur une transaction bancaire sans facture (§7 octies) : sa vignette.
+function VignetteAvis({ transaction }) {
+  return (
+    <Vignette
+      piece={{ id: `avis-${transaction.id}`, nom: transaction.avis.nom, type_mime: transaction.avis.type_mime, preuve: true, legende: 'Avis', charger: () => api.urlAvis(transaction.id) }}
+    />
+  )
+}
+
+// Ce que dit la transaction proposée quand elle a été justifiée sans facture ou porte un avis (Seb, 10/11 : l'appli demande, ne rattache pas seule).
+export function texteSansFacture(sansFacture) {
+  if (!sansFacture) return null
+  const justifiee = sansFacture.raison ? `justifiée sans facture (« ${sansFacture.raison} »)` : ''
+  const avis = sansFacture.avis ? 'porte un avis de virement' : ''
+  return `Transaction bancaire ${[justifiee, avis].filter(Boolean).join(' et ')} : c’est elle ?`
+}
 
 // Puce Rapprocher de Financier › Pièces (notes-de-frais.md §7 septies, Seb
 // 9/11) : le rapprochement par lots, comme un comptable. Les paires que
@@ -100,6 +118,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
                     {api.euros(-p.paire.operation.montant_centimes)}
                     {p.paire.operation.compte ? ` · ${p.paire.operation.compte}` : ''}
                   </span>
+                  {p.paire.operation.sans_facture && <span className="badge badge--warning">{texteSansFacture(p.paire.operation.sans_facture)}</span>}
                   <span>
                     {p.paire.sure ? (
                       <span className="badge badge--success">même nom, même montant</span>
@@ -155,16 +174,18 @@ export default function Rapprocher({ onChange, onOuvrir }) {
           </h3>
           {etat.lignes_sans_piece.length === 0 && <p className="muted">Aucune : chaque transaction bancaire de débit de la période a sa pièce.</p>}
           {etat.lignes_sans_piece.length > 0 && (
-            <p className="muted">Frais bancaires, honoraires, SACEM… : le libellé suffit souvent : « Justifier sans facture » le dit. Sinon, « Demander le justificatif » prévient la personne qui a payé. Leur compte se choisit dans Comptes, filtre « Sans compte ».</p>
+            <p className="muted">Frais bancaires, honoraires, SACEM… : le libellé suffit souvent : « Justifier sans facture » le dit. Sinon, « Demander le justificatif » prévient la personne qui a payé. Un avis de virement reçu sans facture reste ici, sur sa transaction (Docs › Financier › VIREMENTS SANS FACTURE), jusqu’à la facture. Leur compte se choisit dans Comptes, filtre « Sans compte ».</p>
           )}
           <div className="nf-liste">
             {etat.lignes_sans_piece.map((l) => (
               <div key={l.id} className="nf-ligne">
+                {l.avis && <VignetteAvis transaction={l} />}
                 <span className="nf-ligne__corps">
                   <span className="nf-ligne__titre">{l.libelle}</span>
                   <span className="muted">
                     {api.dateCourte(l.date)}
                     {l.compte ? ` · ${l.compte}` : ''}
+                    {l.avis ? ' · avis de virement reçu, facture attendue' : ''}
                   </span>
                   {l.demande && (
                     <span className="badge badge--warning">
@@ -193,6 +214,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
               <div className="nf-liste">
                 {etat.justifiees.map((l) => (
                   <div key={l.id} className="nf-ligne">
+                    {l.avis && <VignetteAvis transaction={l} />}
                     <span className="nf-ligne__corps">
                       <span className="nf-ligne__titre">{l.libelle}</span>
                       <span className="muted">
