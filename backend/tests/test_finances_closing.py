@@ -78,6 +78,20 @@ def test_full_books_go_through_third_parties_with_letters(full, db_session):
     ]
 
 
+def test_internal_transfers_go_through_580_at_full_level(full, db_session):
+    finances, _, documents, _, _ = full
+    transfer = next(r for r in finances.get_ledger(db_session, TRESORIER)["rows"] if r["transfer"])
+    books = documents.books(db_session, TRESORIER, SEASON)
+    # 512 (compte courant) → 580 → 512 (livret) : deux écritures, 580 soldé.
+    lines = [(l.debit, l.credit) for l in books["580"].lines]
+    assert books["580"].label == "Virements internes" and lines == [(10000, 0), (0, 10000)]
+    assert books["580"].balance == 0
+    assert any(l.credit == 10000 and l.label == transfer["label"] for l in books["5121"].lines)
+    assert any(l.debit == 10000 and l.label == transfer["label"] for l in books["5122"].lines)
+    # En Simple (trésorerie), le virement reste direct 512 → 512.
+    assert "580" not in documents.books(db_session, TRESORIER, SEASON, full=False)
+
+
 def test_the_treasurer_can_number_a_bank_account_like_the_previous_software(full, db_session):
     finances, _, documents, _, _ = full
     account = finances.get_ledger(db_session, TRESORIER)["allAccounts"][0]
