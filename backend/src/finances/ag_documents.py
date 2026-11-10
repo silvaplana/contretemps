@@ -272,6 +272,29 @@ class AgDocuments:
                 chart = {a.id: a for a in self.accounting.accounts(db, member.org_id)}
         third_parties = [a for a in chart.values() if a.nature == THIRD_PARTY and a.active] if full else []
         letters: dict[str, int] = defaultdict(int)
+        # Une facture payée en plusieurs fois (acompte puis « Reste dû », qui la `settles`) : une
+        # seule lettre pour la facture et tous ses paiements, posée quand leur somme fait la facture.
+        paid_by_group: dict[int, int] = defaultdict(int)
+        invoice_by_group: dict[int, int] = {}
+        for r in rows:
+            p = r.get("piece")
+            cents = round(r["amount"] * 100)
+            if not p or r.get("transfer") or cents >= 0:
+                continue
+            group = p.get("settles") or p["id"]
+            paid_by_group[group] += -cents
+            if not p.get("settles"):
+                invoice_by_group[group] = round(float(p.get("amount") or 0) * 100) or -cents
+        group_letters: dict[int, str] = {}
+
+        def group_letter(third_number: str, group: int) -> str:
+            if paid_by_group[group] != invoice_by_group.get(group):
+                return ""
+            if group not in group_letters:
+                letters[third_number] += 1
+                group_letters[group] = _letter(letters[third_number])
+            return group_letters[group]
+
         for r in rows:
             cents = round(r["amount"] * 100)
             if r.get("transfer"):
@@ -298,19 +321,24 @@ class AgDocuments:
             if r["id"] in withdrawals:
                 account(CASH, "Caisse", "caisse").lines.append(Line(r["date"], journal, r["label"], "", -cents, 0, operation_id=r["id"]))
                 continue
+            if cents < 0 and r.get("piece") and r["piece"].get("settles"):
+                # « Reste dû » : le solde d'une facture déjà passée en charge ; au
+                # Complet, un paiement de plus sur le tiers, rien d'autre (§8.7).
+                third = _third_party(third_parties, r["piece"])
+                if third is not None:
+                    tiers = account(third.number, third.label, THIRD_PARTY)
+                    tiers.lines.append(Line(r["date"], journal, r["label"], piece, -cents, 0, group_letter(third.number, r["piece"]["settles"]), r["id"]))
+                    continue
             splits = confirmed.get(r["id"])
             parts = [(chart[l.account_id], l.amount) for l in splits] if splits else [(None, cents)]
             third = _third_party(third_parties, r.get("piece")) if cents < 0 and splits else None
             if third is not None:
                 # Achat du jour de la facture : 6xx contre le tiers, au montant de
                 # la facture ; paiement : tiers contre 512x, au montant de la
-                # banque. Même montant : lettrés ; sinon (acompte, écart à
-                # régler) les deux lignes restent ouvertes sur le tiers (§8.7).
+                # banque. Même montant (en une ou plusieurs fois) : lettrés ; sinon
+                # (acompte, écart à régler) les lignes restent ouvertes sur le tiers (§8.7).
                 invoice = round(float(r["piece"].get("amount") or 0) * 100) or -cents
-                letter = ""
-                if invoice == -cents:
-                    letters[third.number] += 1
-                    letter = _letter(letters[third.number])
+                letter = group_letter(third.number, r["piece"]["id"])
                 day = max(r["piece"]["date"], season.start_date) if r["piece"].get("date") else r["date"]
                 buy = THIRD_PARTY_JOURNAL[r["piece"]["nature"]]
                 tiers = account(third.number, third.label, THIRD_PARTY)
@@ -337,8 +365,8 @@ class AgDocuments:
             by_number = {a.number: a for a in chart.values() if a.active}
             for u in unpaid:
                 day = u.get("date")
-                if not day or not (season.start_date <= day <= season.end_date):
-                    continue
+                if not day or not (season.start_date <= day <= season.end_date) or u.get("settles"):
+                    continue  # un « Reste dû » n'est pas une facture : la sienne est déjà passée
                 third = _third_party(third_parties, u)
                 if third is None:
                     continue

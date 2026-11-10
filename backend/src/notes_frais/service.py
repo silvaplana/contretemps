@@ -746,7 +746,7 @@ class NotesDeFrais:
             reste = NoteFrais(
                 org_id=note.org_id, nature=note.nature, statut=VALIDEE, person_id=note.person_id, supplier=note.supplier,
                 titre=f"Reste dû : {note.titre}"[:120], established_by=membre.person_id,
-                traitee_le=_maintenant(), traitee_par=membre.person_id,
+                traitee_le=_maintenant(), traitee_par=membre.person_id, parent_note_id=note.id,
             )
             self._recopier_rib(db, reste)
             db.add(reste)
@@ -2118,6 +2118,7 @@ class NotesDeFrais:
             "remboursee_le": note.remboursee_le.isoformat() if note.remboursee_le else None,
             "motif_refus": note.motif_refus,
             "doublon_de": note.duplicate_of_id,
+            "solde_de": note.parent_note_id,
             "depenses": [self.depense_dict(d) for d in note.depenses],
             "rib": None if note.don or not note.rib_iban else {
                 "titulaire": note.rib_titulaire, "iban": note.rib_iban, "bic": note.rib_bic,

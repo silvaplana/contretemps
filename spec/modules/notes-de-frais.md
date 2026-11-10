@@ -411,7 +411,12 @@ préparation : si le rapprochement a été fait au fil de l'année, l'étape est
 « Rapprocher » est le travail par lots ; valider une suggestion lettre les deux écritures du compte
 de tiers (401 / 467x) dans le Grand livre Complet (financier.md §8.7).
 
-Pas encore : un paiement en plusieurs fois d'une même facture ; le virement groupé à l'émission.
+**Paiement en plusieurs fois** (Seb, 10 novembre ; De Luca 296 € = 140 + 156) : la facture est
+rattachée à l'acompte (écart « on lui doit encore », §7 septies) ; le **« Reste dû »** créé solde la
+facture (`nf_notes.parent_note_id`) et se rattache à la seconde transaction comme toute pièce. Au Grand
+livre Complet il n'est qu'un paiement de plus sur le tiers, jamais une seconde facture ni une seconde
+charge ; la lettre se pose sur la facture et tous ses paiements quand leur somme tombe juste
+(financier.md §8.7). Pas encore : le virement groupé à l'émission.
 
 ### 7 octies Transaction bancaire sans facture : justifier, ou demander le justificatif (Seb, 10 novembre)
 

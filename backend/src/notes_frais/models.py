@@ -103,6 +103,9 @@ class NoteFrais(Base):
     duplicate_of_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Écart entre la ligne du compte et la pièce, réglé : refund / pay_rest / write_off.
     gap_settlement: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # « Reste dû » (pay_rest) : cette pièce solde celle-là ; au Grand livre Complet elle n'est qu'un
+    # paiement de plus sur le tiers, jamais une seconde facture (financier.md §8.7, Seb 10/11).
+    parent_note_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Numéro de pièce donné à la validation (financier.md §8.7, Seb 10/11) :
     # « AC-2025-001 », par saison et par journal (AC achats, HO honoraires, NF notes de frais).
     piece_number: Mapped[str | None] = mapped_column(String(20), nullable=True)

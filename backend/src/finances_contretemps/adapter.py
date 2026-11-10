@@ -116,6 +116,8 @@ def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
             "amount": totaux[n.bank_operation_id] / 100,
             # Numéro de pièce donné à la validation (colonne Pièce du Grand livre, PieceRef du FEC).
             "number": n.piece_number,
+            # « Reste dû » : solde de cette pièce-là, un paiement de plus sur le tiers (§8.7).
+            "settles": n.parent_note_id,
         }
         for n in notes
     }
@@ -151,6 +153,7 @@ def pieces_a_payer(db: Session, ecole_id: int) -> list[dict]:
             # Pour retrouver le compte 467x qui porte le nom de la personne (ag_documents._third_party).
             "person": n.supplier or n.titre,
             "number": n.piece_number,
+            "settles": n.parent_note_id,
         })
     return out
 
