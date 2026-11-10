@@ -80,19 +80,20 @@ Pièces
 
 Bilan
 - Trois onglets en haut : Préparer | Documents | Clôture, et le choix de la saison.
-- Préparer : les six étapes du bilan, dans l'ordre, chacune avec ce qui reste (un ✓ quand il ne reste rien) ; toucher
-  une étape la déplie. 1. Relevés complets (la grille des relevés) ; 2. Soldes de départ (orange tant que l'an dernier
+- Préparer : sous le titre « Étapes du bilan 2025-2026 », les six étapes, dans l'ordre, chacune nommée par un verbe
+  (ce qu'on fait) avec ce qui reste (un ✓ quand il ne reste rien) ; toucher une étape la déplie. 1. Compléter les relevés
+  (la grille des relevés) ; 2. Reprendre les soldes de départ (orange tant que l'an dernier
   n'est pas repris au niveau Complet : « Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) ») ; 3. Rapprocher les factures et classer les transactions bancaires :
   les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher les factures », puis les transactions bancaires sans
   compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération ; une remise de chèques y est toujours,
   « à ventiler entre ses comptes » : dans sa fiche, « Ventiler comme les remises précédentes » puis répartir les
   montants) et « Comptes proposés par l'appli »
-  regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; 4. Hors banque : la caisse et les
+  regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; 4. Compter la caisse et les factures non payées : la caisse et les
   factures validées pas encore payées (au niveau Complet, dues au jour de la facture contre 401 / 467 ; au niveau Simple,
   dans « Fournisseurs à payer » de la Synthèse), puis les écritures à la main (niveau Complet) : « Ajouter une écriture »
   ouvre une fenêtre date / libellé / compte débité / compte crédité / montant, pour une cotisation due (411) ou le compte
-  d'attente (471), la poubelle supprime ; 5. Contrôles en clair (relevés complets, soldes de départ égaux aux
-  relevés, un compte sur chaque transaction bancaire, FEC juste, écarts expliqués) ; 6. Documents et comparaison : chaque
+  d'attente (471), la poubelle supprime ; 5. Passer les contrôles, en clair (relevés complets, soldes de départ égaux aux
+  relevés, un compte sur chaque transaction bancaire, FEC juste, écarts expliqués) ; 6. Produire les documents et comparer à l'an dernier : chaque
   compte face à la saison précédente (montant, écart, %), « ? » au-delà de 30 % ou compte nouveau / disparu, une ligne
   d'explication à écrire (reprise dans le Rapport financier), puis « Aller aux documents ». Un numéro de compte s'affiche
   toujours avec son libellé.

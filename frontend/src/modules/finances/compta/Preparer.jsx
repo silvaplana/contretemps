@@ -65,24 +65,24 @@ export default function Preparer({ season, onDocuments }) {
   const resteEtape3 = aRapprocher + classify.withoutAccount
   const controlesKo = controls.filter((c) => !c.ok).length
   const etapes = [
-    { n: 1, titre: 'Relevés complets', reste: statements.missing, detail: statements.ok ? `${statements.accounts} compte(s), tous les mois sont là` : `${statements.missing} mois à importer` },
+    { n: 1, titre: 'Compléter les relevés', reste: statements.missing, detail: statements.ok ? `${statements.accounts} compte(s), tous les mois sont là` : `${statements.missing} mois à importer` },
     {
       n: 2,
-      titre: 'Soldes de départ',
+      titre: 'Reprendre les soldes de départ',
       reste: opening.toCarry ? 1 : opening.mismatches,
       detail: opening.ok ? SOURCES[opening.source] : opening.toCarry ? 'Les soldes de l’an dernier ne sont pas repris : seule la trésorerie des relevés est connue' : `${opening.mismatches} compte(s) en écart avec les relevés`,
     },
     { n: 3, titre: 'Rapprocher les factures et classer les transactions bancaires', reste: resteEtape3, detail: resteEtape3 === 0 ? 'Chaque transaction bancaire a sa pièce ou son compte' : `${aRapprocher} facture(s) à rapprocher, ${classify.withoutAccount} transaction(s) bancaire(s) sans compte` },
     {
       n: 4,
-      titre: 'Hors banque',
+      titre: 'Compter la caisse et les factures non payées',
       reste: 0,
       detail: `Caisse ${euros(offBank.cash)} · ${offBank.unpaid.length} facture${offBank.unpaid.length > 1 ? 's' : ''} non payée${offBank.unpaid.length > 1 ? 's' : ''} (${euros(offBank.unpaidTotal)})`,
     },
-    { n: 5, titre: 'Contrôles', reste: controlesKo, detail: controlesKo === 0 ? 'Tout est vert' : `${controlesKo} contrôle(s) en rouge` },
+    { n: 5, titre: 'Passer les contrôles', reste: controlesKo, detail: controlesKo === 0 ? 'Tout est vert' : `${controlesKo} contrôle(s) en rouge` },
     {
       n: 6,
-      titre: 'Documents et comparaison',
+      titre: 'Produire les documents et comparer à l’an dernier',
       reste: comparison.unexplained,
       detail: comparison.previousSeason
         ? comparison.unexplained === 0
@@ -95,6 +95,7 @@ export default function Preparer({ season, onDocuments }) {
   return (
     <div className="fin-cp fin-preparer">
       {etat.closed && <p className="muted">Saison clôturée : rouvrez-la (Clôture) pour changer quelque chose.</p>}
+      <h3 className="fin-cp-t">Étapes du bilan {season.name}</h3>
       <div className="fin-cp-carte">
         {etapes.map((e) => (
           <div key={e.n} className={`fin-cp-doc fin-cp-doc--large fin-preparer__etape${ouverte === e.n ? ' fin-preparer__etape--ouverte' : ''}`}>
