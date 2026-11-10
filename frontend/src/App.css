@@ -5121,3 +5121,20 @@ a.btn {
   font-size: 17px;
   font-weight: 600;
 }
+
+/* La flèche de retour, partout : grosse, pour qu'on voie tout de suite que
+   c'est là qu'on revient en arrière (Seb, 10/11 ; spec/core.md, « Gros et simple »).
+   Vaut pour tout bouton « Retour » (aria-label), flèche en texte ou en icône. */
+button[aria-label="Retour"] {
+  min-width: 48px;
+  min-height: 48px;
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+button[aria-label="Retour"] svg {
+  width: 32px;
+  height: 32px;
+  stroke-width: 2.6;
+}
