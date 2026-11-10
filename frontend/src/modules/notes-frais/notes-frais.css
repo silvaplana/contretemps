@@ -768,6 +768,11 @@
   max-width: none;
 }
 
+/* La Balance : un tableau à six colonnes, un peu plus large que la lecture. */
+.nf-screen > .fin-balance {
+  max-width: 1000px;
+}
+
 /* Comptes ou Pièces à côté du bilan, sur ordinateur (Seb, 10/11 ; financier.md
    §8.10) : chaque moitié défile seule, le volet a son propre fond et son
    titre « À côté du bilan », la puce Bilan reste choisie. */

@@ -154,6 +154,7 @@ def pieces_a_payer(db: Session, ecole_id: int) -> list[dict]:
             "person": n.supplier or n.titre,
             "number": n.piece_number,
             "settles": n.parent_note_id,
+            "id": n.id,
         })
     return out
 

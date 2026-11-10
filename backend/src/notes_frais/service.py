@@ -690,6 +690,11 @@ class NotesDeFrais:
             membre, person_id=personne.person_id, nom=personne.nom, emails=personne.emails, agissant_id=membre.person_id
         )
 
+    def note_tresorerie(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """Une pièce de l'école, pour le trésorier (fiche ouverte depuis la Balance)."""
+        self._exiger_tresorier(membre)
+        return self._note(db, membre.org_id, note_id)
+
     def tresorerie(self, db: Session, membre: Membre, filtre: str) -> list[dict]:
         """Une puce de Financier › Pièces (une nature : les notes à valider
         d'abord), ou un des filtres d'avant (a_valider, a_rembourser,

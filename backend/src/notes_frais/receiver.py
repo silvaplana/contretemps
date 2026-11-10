@@ -273,6 +273,11 @@ class NotesDeFraisReceiver:
             notes = appeler(nf.tresorerie, db, m, filtre)
             return {"notes": notes, "compteurs": nf.compteurs_tresorerie(db, m)}
 
+        @app.get("/notes-frais/tresorerie/notes/{note_id}")
+        def note_tresorerie(note_id: int, db: Session = db_dep, m: Membre = membre):
+            """Une pièce, pour ouvrir sa fiche depuis ailleurs (Comptes › Balance)."""
+            return nf.notes_dicts(db, m, [appeler(nf.note_tresorerie, db, m, note_id)])[0]
+
         @app.get("/notes-frais/tresorerie/compteurs")
         def compteurs_tresorerie(db: Session = db_dep, m: Membre = membre):
             return appeler(nf.compteurs_tresorerie, db, m)

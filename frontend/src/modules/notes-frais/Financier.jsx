@@ -7,15 +7,16 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
-import { SOUS_ONGLET_EVENT } from '../finances/navigation.js'
+import { FICHE_PIECE_EVENT, SOUS_ONGLET_EVENT } from '../finances/navigation.js'
 import { requestStatements } from '../finances/RelevesGrille.jsx'
 import { requestPlanComptable } from '../finances/compta/PlanComptable.jsx'
 import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
+import { requestBalance } from '../finances/compta/Balance.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
 import { Compte } from './commun.jsx'
 import Exterieurs from './Exterieurs.jsx'
-import Pieces, { AnnulerImportModal, ChoixPersonneModal } from './Pieces.jsx'
+import Pieces, { AnnulerImportModal, ChoixPersonneModal, NoteModal } from './Pieces.jsx'
 import './notes-frais.css'
 
 const ECRAN_LARGE = '(min-width: 900px)'
@@ -55,6 +56,16 @@ export default function Financier({ docs = null }) {
     }
     window.addEventListener(SOUS_ONGLET_EVENT, aller)
     return () => window.removeEventListener(SOUS_ONGLET_EVENT, aller)
+  }, [])
+  // La fiche d'une pièce demandée par un autre écran (Comptes › Balance), par-dessus
+  // cet écran : la fermer revient là où on était.
+  const [fichePiece, setFichePiece] = useState(null)
+  useEffect(() => {
+    const ouvrir = (e) => {
+      api.notePourTresorier(e.detail).then(setFichePiece).catch(() => {})
+    }
+    window.addEventListener(FICHE_PIECE_EVENT, ouvrir)
+    return () => window.removeEventListener(FICHE_PIECE_EVENT, ouvrir)
   }, [])
   // Comptes ou Pièces à côté du bilan (Seb, 10/11 ; financier.md §8.10) : sur
   // ordinateur un volet à droite, sa largeur réglée par la barre du milieu ou
@@ -164,6 +175,7 @@ export default function Financier({ docs = null }) {
                 { label: 'Relevés', icon: 'check', onClick: requestStatements },
                 { label: 'Plan comptable', icon: 'docs', onClick: requestPlanComptable },
                 { label: 'Soldes de départ', icon: 'calculator', onClick: requestSoldesDepart },
+                { label: 'Balance', icon: 'docs', onClick: requestBalance },
               ]
             : sousOnglet === 'bilan'
               ? [{ label: 'Nouveau bilan', icon: 'plus', onClick: requestNewReport }]
@@ -183,6 +195,18 @@ export default function Financier({ docs = null }) {
         }
       />
       {exterieurs && <Exterieurs onClose={() => setExterieurs(false)} />}
+      {fichePiece && (
+        <NoteModal
+          key={fichePiece.id}
+          note={fichePiece}
+          nature={fichePiece.nature}
+          onClose={() => setFichePiece(null)}
+          onFait={() => {
+            setFichePiece(null)
+            rechargerAFaire()
+          }}
+        />
+      )}
       {annulerImport && (
         <AnnulerImportModal
           onClose={() => setAnnulerImport(false)}

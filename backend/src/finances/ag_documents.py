@@ -150,6 +150,7 @@ class Line:
     credit: int = 0
     letter: str = ""
     operation_id: int | None = None
+    piece_id: int | None = None  # la pièce (Financier › Pièces) dont vient la ligne
 
 
 @dataclass
@@ -385,8 +386,8 @@ class AgDocuments:
                     acc = account(charge.number, charge.label, charge.nature, charge.event)
                 journal = THIRD_PARTY_JOURNAL[u["nature"]]
                 ref = u.get("number") or u["title"]
-                acc.lines.append(Line(day, journal, u["title"], ref, cents, 0))
-                account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], ref, 0, cents))
+                acc.lines.append(Line(day, journal, u["title"], ref, cents, 0, piece_id=u.get("id")))
+                account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], ref, 0, cents, piece_id=u.get("id")))
 
         # Complet : les écritures saisies à la main (journal OD, §8.10 étape 4).
         if full:
@@ -412,7 +413,12 @@ class AgDocuments:
             else:
                 acc = account(acc_row.number, acc_row.label, acc_row.nature, acc_row.event)
             acc.lines.append(Line(day, "CA", l.label, "", max(-l.amount, 0), max(l.amount, 0)))
+        # La pièce de chaque ligne de banque (Balance : toucher la pièce ouvre sa fiche).
+        piece_of = {r["id"]: r["piece"]["id"] for r in rows if r.get("piece")}
         for acc in books.values():
+            for l in acc.lines:
+                if l.piece_id is None and l.piece and l.operation_id in piece_of:
+                    l.piece_id = piece_of[l.operation_id]
             acc.lines.sort(key=lambda l: l.date)
         books["_cutoff"] = cutoff  # type: ignore[assignment]
         return books
@@ -1017,15 +1023,62 @@ class AgDocuments:
 
     # ----- Balance et Grand livre -----
 
-    def balance_pdf(self, db: Session, member: Member, season: Season, org_name: str) -> bytes:
+    def _period(self, db: Session, member: Member, season: Season, start: str | None, end: str | None) -> tuple[list[Account], str, str, str]:
+        """Les comptes de la saison réduits aux lignes de la période (bornée à
+        la saison), la période, et le dernier jour connu des comptes en banque."""
+        books = self.books(db, member, season)
+        cutoff = books.pop("_cutoff")
+        start = max(start or season.start_date, season.start_date)
+        end = min(end or season.end_date, season.end_date)
+        accounts = []
+        for a in sorted(books.values(), key=lambda a: a.number):
+            lines = [l for l in a.lines if start <= l.date <= end]
+            if lines:
+                accounts.append(Account(a.number, a.label, a.nature, a.event, lines))
+        return accounts, start, end, cutoff
+
+    def balance(self, db: Session, member: Member, season: Season, start: str | None = None, end: str | None = None) -> dict:
+        """La Balance à l'écran (Comptes › ⋯ › Balance, §8.6) : recalculée à
+        chaque ouverture, compte par compte avec ses écritures. Montants en euros."""
+        accounts, start, end, cutoff = self._period(db, member, season, start, end)
+        return {
+            "seasonId": season.id,
+            "seasonName": season.name,
+            "start": start,
+            "end": end,
+            "knownUntil": cutoff,
+            "closed": self.closing(db, member.org_id, season.id) is not None,
+            "accounts": [
+                {
+                    "number": a.number,
+                    "label": a.label,
+                    "debit": a.debit / 100,
+                    "credit": a.credit / 100,
+                    "lines": [
+                        {"date": l.date, "journal": l.journal, "label": l.label, "piece": l.piece, "debit": l.debit / 100, "credit": l.credit / 100, "letter": l.letter, "pieceId": l.piece_id}
+                        for l in a.lines
+                    ],
+                }
+                for a in accounts
+            ],
+        }
+
+    def balance_season(self, db: Session, org_id: int) -> Season | None:
+        """La saison sur laquelle s'ouvre la Balance : la plus ancienne saison
+        commencée et pas encore clôturée, sinon la saison en cours."""
+        today = date.today().isoformat()
+        seasons = sorted(self.seasons(db, org_id), key=lambda s: s.start_date)
+        open_ = [s for s in seasons if s.start_date <= today and self.closing(db, org_id, s.id) is None]
+        return open_[0] if open_ else next((s for s in seasons if s.current), seasons[-1] if seasons else None)
+
+    def balance_pdf(self, db: Session, member: Member, season: Season, org_name: str, start: str | None = None, end: str | None = None) -> bytes:
         """La Balance au format comptable standard (celui des logiciels de
         la trésorière, §8.6) : Total Période débit / crédit, Solde Période
         débit / crédit, totaux des comptes de Bilan (classes 1 à 5), de
         Résultat (6 et 7) et de la Balance."""
-        books = self.books(db, member, season)
-        cutoff = books.pop("_cutoff")
+        accounts, start, end, cutoff = self._period(db, member, season, start, end)
+        cutoff = min(end, cutoff)
         e = html.escape
-        accounts = sorted(books.values(), key=lambda a: a.number)
         rows = []
         for a in accounts:
             sd, sc = max(a.balance, 0), max(-a.balance, 0)
@@ -1043,7 +1096,7 @@ class AgDocuments:
             f"<td>{_c(sum(max(a.balance, 0) for a in accounts))}</td><td>{_c(sum(max(-a.balance, 0) for a in accounts))}</td></tr>"
         )
         body = (
-            self._report_header(org_name, f"Balance {season.name}", season.start_date, cutoff, accounts)
+            self._report_header(org_name, f"Balance {season.name}", start, cutoff, accounts)
             + "<table><tr><th rowspan='2'>N° Compte</th><th rowspan='2' class='l'>Intitulé</th><th colspan='2' class='c'>Total Période</th><th colspan='2' class='c'>Solde Période</th></tr>"
             "<tr><th>Débit</th><th>Crédit</th><th>Débit</th><th>Crédit</th></tr>"
             + "".join(rows)
