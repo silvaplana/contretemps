@@ -162,7 +162,8 @@ interrupteur « L'appli affiche toujours les actus à son ouverture », et desso
 affiche le dernier onglet ouvert. »
 
 Par organisation, **allumée par défaut**. Allumée : à chaque ouverture de l'appli (lancement, pas
-retour d'arrière-plan), tout le monde arrive sur Actus. Éteinte : l'appli s'ouvre comme aujourd'hui sur
+retour d'arrière-plan, ni page rechargée par F5 ou par la mise en ligne d'une nouvelle version : Seb,
+10 novembre), tout le monde arrive sur Actus. Éteinte : l'appli s'ouvre comme aujourd'hui sur
 le dernier onglet utilisé (`ongletDeDepart` dans App.jsx). Une notification d'un autre module garde
 son propre écran.
 

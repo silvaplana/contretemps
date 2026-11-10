@@ -62,6 +62,12 @@ const ECOLE_VIDE = {
   codePostal: '',
 }
 
+// Page rechargée (F5, ou rechargement auto après une mise en ligne) : ce
+// n'est pas une ouverture de l'appli, on reste sur l'onglet affiché
+// (option « L'appli affiche toujours les actus à son ouverture », Seb
+// 10 novembre).
+const RECHARGEMENT = performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload'
+
 // Onglet sur lequel ouvrir l'appli : le dernier affiché sur cet appareil
 // (voir api/session.js), s'il est permis à ce profil ; sinon les messages.
 function ongletDeDepart(compte) {
@@ -243,7 +249,7 @@ function App() {
           // Onglet retenu mais plus permis à ce profil (rôle retiré...) :
           // retour aux messages.
           setActiveTab(ongletDeDepart(compte))
-          ouvrirSurLesActus(ecoleRestauree?.id)
+          if (!RECHARGEMENT) ouvrirSurLesActus(ecoleRestauree?.id)
           setLoggedIn(true)
           const proposerInstallation = !installationApi.estInstallee() && !installationApi.neJamaisDemander()
           if (compteIdHandoff != null) {
