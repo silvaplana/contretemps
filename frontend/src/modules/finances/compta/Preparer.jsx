@@ -10,6 +10,8 @@ import { requestSousOnglet } from '../navigation.js'
 import RelevesGrille from '../RelevesGrille.jsx'
 import SoldesDepart from './SoldesDepart.jsx'
 import FicheOperation from './FicheOperation.jsx'
+import Modal from '../../../components/Modal.jsx'
+import { nomCompte } from './PlanComptable.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
@@ -104,7 +106,7 @@ export default function Preparer({ season, onDocuments }) {
             {ouverte === 3 && e.n === 3 && (
               <Etape3 rapprocher={rapprocher} aRapprocher={aRapprocher} classify={classify} enCours={enCours} onRapprocher={ouvrirRapprocher} onValider={validerCompte} onFiche={setFicheOp} />
             )}
-            {ouverte === 4 && e.n === 4 && <Etape4 offBank={offBank} level={etat.level} />}
+            {ouverte === 4 && e.n === 4 && <Etape4 season={season} offBank={offBank} level={etat.level} onChange={charger} onErreur={setErreur} />}
             {ouverte === 6 && e.n === 6 && (
               <Etape6 season={season} comparison={comparison} onDocuments={onDocuments} onChange={charger} onErreur={setErreur} />
             )}
@@ -205,7 +207,18 @@ function Etape3({ rapprocher, aRapprocher, classify, enCours, onRapprocher, onVa
 // les factures validées pas encore payées : au niveau Complet elles sont dues
 // (401 / 467x) au jour de la facture ; au niveau Simple elles restent dans
 // « Fournisseurs à payer » de la Synthèse.
-function Etape4({ offBank, level }) {
+function Etape4({ season, offBank, level, onChange, onErreur }) {
+  const [ajout, setAjout] = useState(false)
+
+  async function supprimer(e) {
+    try {
+      await api.supprimerEcriture(e.id)
+      onChange()
+    } catch (err) {
+      onErreur(err.message)
+    }
+  }
+
   return (
     <div className="fin-preparer__corps">
       <div className="fin-preparer__bloc">
@@ -232,8 +245,119 @@ function Etape4({ offBank, level }) {
         ))}
         {offBank.unpaid.length > 0 && <span className="fin-cp-s">Total : {euros(offBank.unpaidTotal)}. Elles se paient dans Pièces › Virements.</span>}
       </div>
-      <p className="muted">Cotisations dues (411) et compte d’attente (471) : écritures à la main, dans une prochaine étape.</p>
+      <div className="fin-preparer__bloc">
+        <span className="fin-cp-t">Écritures à la main · {offBank.entries.length}</span>
+        <span className="fin-cp-s">
+          {level === 'complet'
+            ? 'Ce qui n’est ni sur les relevés ni dans la caisse : une cotisation due (411), la régularisation du compte d’attente (471)… Une ligne par question : date, libellé, compte débité, compte crédité, montant.'
+            : 'Au niveau Complet (Comptes › ⋯ › Plan comptable).'}
+        </span>
+        {offBank.entries.map((e) => (
+          <div key={e.id} className="fin-preparer__ligne fin-preparer__ligne--texte fin-preparer__ecriture">
+            <span className="fin-preparer__libelle">
+              {e.label}
+              <span className="muted"> · {dateFr(e.date)}</span>
+            </span>
+            <span className="fin-preparer__montant">{euros(e.amount)}</span>
+            <span className="fin-cp-s">
+              Débit {nomCompte(e.debit)} · Crédit {nomCompte(e.credit)}
+            </span>
+            <button type="button" className="icon-btn icon-btn--danger" aria-label="Supprimer" title="Supprimer" onClick={() => supprimer(e)}>
+              <Icon name="trash" size={18} />
+            </button>
+          </div>
+        ))}
+        {level === 'complet' && (
+          <button type="button" className="btn btn--secondary" onClick={() => setAjout(true)}>
+            Ajouter une écriture
+          </button>
+        )}
+      </div>
+      {ajout && <AjoutEcriture season={season} onClose={() => setAjout(false)} onAjoutee={() => { setAjout(false); onChange() }} />}
     </div>
+  )
+}
+
+// Une écriture à la main : date (dans la saison), libellé, compte débité,
+// compte crédité (jamais la banque ni la caisse), montant positif.
+function AjoutEcriture({ season, onClose, onAjoutee }) {
+  const [plan, setPlan] = useState(null)
+  const [form, setForm] = useState({ date: season.endDate, label: '', debitAccountId: '', creditAccountId: '', amount: '' })
+  const [erreur, setErreur] = useState('')
+  useEffect(() => {
+    api
+      .planComptable()
+      .then(setPlan)
+      .catch((err) => setErreur(err.message))
+  }, [])
+  const champ = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const comptes = (plan?.accounts ?? []).filter((c) => c.active && c.nature !== 'banque' && c.nature !== 'caisse')
+  const pret = form.label.trim() && form.debitAccountId && form.creditAccountId && Number(form.amount) > 0
+
+  async function enregistrer() {
+    setErreur('')
+    try {
+      await api.ajouterEcriture(season.id, {
+        date: form.date,
+        label: form.label,
+        debitAccountId: Number(form.debitAccountId),
+        creditAccountId: Number(form.creditAccountId),
+        amount: Number(form.amount),
+      })
+      onAjoutee()
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
+  const selectCompte = (k) => (
+    <select className="field-input" value={form[k]} onChange={champ(k)}>
+      <option value="">Choisir un compte</option>
+      {comptes.map((c) => (
+        <option key={c.id} value={c.id}>
+          {nomCompte(c)}
+        </option>
+      ))}
+    </select>
+  )
+
+  return (
+    <Modal
+      title="Ajouter une écriture"
+      onClose={onClose}
+      footer={
+        <div className="nf-boutons">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Annuler
+          </button>
+          <button type="button" className="btn btn--primary" disabled={!pret} onClick={enregistrer}>
+            Ajouter
+          </button>
+        </div>
+      }
+    >
+      <label className="field">
+        <span className="field-label">Date</span>
+        <input className="field-input" type="date" min={season.startDate} max={season.endDate} value={form.date} onChange={champ('date')} />
+      </label>
+      <label className="field">
+        <span className="field-label">Libellé</span>
+        <input className="field-input" value={form.label} onChange={champ('label')} placeholder="Cotisations 2025-2026 dues au 31 août" />
+      </label>
+      <label className="field">
+        <span className="field-label">Compte débité</span>
+        {selectCompte('debitAccountId')}
+      </label>
+      <label className="field">
+        <span className="field-label">Compte crédité</span>
+        {selectCompte('creditAccountId')}
+      </label>
+      <label className="field">
+        <span className="field-label">Montant</span>
+        <input className="field-input" type="number" step="0.01" min="0" inputMode="decimal" value={form.amount} onChange={champ('amount')} />
+      </label>
+      {erreur && <p className="login-screen__erreur">{erreur}</p>}
+    </Modal>
   )
 }
 

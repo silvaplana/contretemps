@@ -511,3 +511,15 @@ button.fin-cp-compte:last-child {
 .fin-preparer__comparaison .field-input {
   grid-column: 1 / -1;
 }
+
+.fin-preparer__ecriture {
+  grid-template-columns: 1fr auto auto;
+}
+
+.fin-preparer__ecriture .fin-cp-s {
+  grid-column: 1 / span 2;
+}
+
+.fin-preparer__ecriture .icon-btn {
+  grid-row: 1 / span 2;
+}

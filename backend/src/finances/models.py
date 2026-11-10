@@ -370,3 +370,24 @@ class FinSeasonNote(Base):
     note: Mapped[str] = mapped_column(String(300), nullable=False)
     created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+
+
+class FinManualEntry(Base):
+    """Écriture saisie à la main (spec §8.10, étape 4 « Hors banque » ; journal
+    OD, niveau Complet) : ce qui n'est ni sur les relevés ni dans la caisse ni
+    porté par une pièce, comme une cotisation due (411) ou la régularisation
+    du compte d'attente (471). Une date, un libellé, un compte débité, un
+    compte crédité, un montant (centimes, positif) ; la saison qui la porte."""
+
+    __tablename__ = "fin_manual_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    date: Mapped[dt.date] = mapped_column(Date, nullable=False)
+    label: Mapped[str] = mapped_column(String(120), nullable=False)
+    debit_account_id: Mapped[int] = mapped_column(ForeignKey("fin_chart_accounts.id"), nullable=False)
+    credit_account_id: Mapped[int] = mapped_column(ForeignKey("fin_chart_accounts.id"), nullable=False)
+    amount: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
