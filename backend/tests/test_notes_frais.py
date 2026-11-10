@@ -1511,3 +1511,44 @@ def test_transaction_sans_piece_justifiee_ou_justificatif_demande(client, db_ses
     assert client.post(f"/notes-frais/rapprochement/transactions/{amazon.id}/justifier", json={"raison": "x"}, headers=entetes).status_code == 400
     assert client.post(f"/notes-frais/rapprochement/transactions/999999/justifier", json={"raison": "x"}, headers=entetes).status_code == 404
     assert client.post(f"/notes-frais/rapprochement/transactions/{frais.id}/justifier", json={"raison": "x"}, headers=entetes_session(eleve)).status_code == 403
+
+
+def test_repartir_a_zero_sur_la_saison(client, db_session, ecole, espion):
+    """financier.md §8.7 « Repartir à zéro sur cette saison » (Seb, 10/11) :
+    les pièces de la saison (payées ou non), les comptes confirmés sur ses
+    transactions et les justifications « sans facture » sont défaits d'un
+    coup ; les transactions bancaires restent. Trésorier seulement, le nom
+    de la saison retapé confirme."""
+    from finances_contretemps import saisons_de_l_ecole
+
+    tresorier, admin = ecole["tresorier"], ecole["admin"]
+    org = ecole["ecole"].id
+    entetes = entetes_session(tresorier)
+    prof, note = _honoraires_a_payer(client, db_session, ecole)
+    achat = _etablir(client, tresorier, "achat")
+    bonne = _operation(db_session, org, -48000, "2026-11-03", "VIR SEPA MARTIN LUCIE")
+    sans = _operation(db_session, org, -1500, "2026-11-04", "CB TIMBRES")
+    classee = _operation(db_session, org, -2000, "2026-11-05", "CB AMAZON")
+    assert client.post(f"/notes-frais/notes/{note['id']}/payee", json={"operation_id": bonne.id}, headers=entetes).status_code == 200
+    client.post(f"/notes-frais/rapprochement/transactions/{sans.id}/justifier", json={"raison": "Timbres"}, headers=entetes)
+    compte = next(a for a in client.get("/finances/chart", headers=entetes).json()["accounts"] if a["number"] == "606")
+    assert client.put(f"/finances/operations/{classee.id}/accounts", json={"lines": [{"accountId": compte["id"]}]}, headers=entetes).status_code == 200
+    saison = next(s for s in saisons_de_l_ecole(db_session, org) if s.start_date <= "2026-11-03" <= s.end_date)
+
+    url = f"/finances/seasons/{saison.id}/reset"
+    assert client.post(url, json={"confirm": saison.name}, headers=entetes_session(admin)).status_code == 403
+    assert client.post(url, json={"confirm": "2020-2021"}, headers=entetes).status_code == 400
+    fait = client.post(url, json={"confirm": saison.name}, headers=entetes)
+    assert fait.status_code == 200 and fait.json() == {"pieces": 2, "lines": 1, "chart": False}
+
+    for filtre in ("honoraires", "achat"):
+        assert client.get(f"/notes-frais/tresorerie?filtre={filtre}", headers=entetes).json()["notes"] == []
+    assert client.get(f"/finances/operations/{classee.id}", headers=entetes).json()["lines"] == []
+    sans_piece = client.get("/notes-frais/rapprochement", headers=entetes).json()
+    assert {bonne.id, sans.id, classee.id} <= {t["id"] for t in sans_piece["lignes_sans_piece"]} and sans_piece["justifiees"] == []
+    # Rien à zéro une seconde fois, et la banque est toujours là.
+    # Plan comptable mémorisé : la seconde fois, il est remis aussi.
+    assert client.post("/finances/chart/snapshot", headers=entetes).status_code == 200
+    assert client.get("/finances/chart", headers=entetes).json()["snapshot"]["takenAt"]
+    assert client.post(url, json={"confirm": saison.name}, headers=entetes).json() == {"pieces": 0, "lines": 0, "chart": True}
+    assert client.get(f"/finances/operations/{bonne.id}", headers=entetes).status_code == 200

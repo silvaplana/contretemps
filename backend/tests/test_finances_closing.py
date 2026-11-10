@@ -7,7 +7,7 @@ import pytest
 from test_finances import TRESORIER, make_statement, COURANT
 from test_finances_ag_documents import SEASON, statements
 
-from finances import Accounting, AgDocuments, AgPorts, Finances, Season
+from finances import Accounting, AgDocuments, AgPorts, Finances, Member, Season
 from finances.accounting import AccountingError
 from finances.ag_documents import _letter, _third_party
 
@@ -277,3 +277,55 @@ def test_a_payment_that_does_not_match_the_invoice_stays_open_on_the_third_party
     assert books["401"].balance == -1010 and books["606"].lines[0].debit == 5000
     assert sum(a.debit for a in books.values()) == sum(a.credit for a in books.values())
     assert not any("Lettrage" in p for p in documents.fec_check(db_session, TRESORIER, SEASON)["problems"])
+
+
+def test_reset_season_wipes_the_treasurer_work_and_keeps_the_bank(full, db_session):
+    """§8.7 « Repartir à zéro sur cette saison » (Seb, 10/11) : pour s'exercer
+    sans la trésorière. Comptes confirmés, écritures à la main, soldes de
+    départ et clôture de la saison partent, le port défait les pièces ; les
+    transactions, le plan comptable et l'autre saison restent. Le nom de la
+    saison retapé confirme, trésorier seulement."""
+    finances, accounting, documents, rows, accounts = full
+    accounts = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    documents.add_manual_entry(
+        db_session, TRESORIER, SEASON,
+        {"date": "2026-08-31", "label": "Cotisations dues", "debitAccountId": accounts["411"]["id"], "creditAccountId": accounts["756"]["id"], "amount": "120"},
+    )
+    documents.set_opening(db_session, TRESORIER, SEASON, [{"number": "5121", "label": "Courant", "balance": 950}, {"number": "5122", "label": "Livret", "balance": 500}])
+    documents.close(db_session, TRESORIER, SEASON)
+    # Une ligne de l'autre saison, qui doit rester.
+    accounting.set_lines(db_session, TRESORIER, rows["CB BRICO"]["id"], [{"accountId": accounts["606"]["id"]}])
+    appels = []
+    documents.ports.reset_pieces = lambda db, member, start, end, operation_ids: appels.append((start, end, sorted(operation_ids))) or 3
+
+    with pytest.raises(ValueError, match="nom de la saison"):
+        documents.reset_season(db_session, TRESORIER, SEASON, "2025-26")
+    with pytest.raises(PermissionError):
+        documents.reset_season(db_session, Member(person_id=9, org_id=TRESORIER.org_id, name="Ana", is_treasurer=False), SEASON, SEASON.name)
+    assert appels == [] and documents.closing_status(db_session, TRESORIER.org_id, SEASON) is not None
+
+    # Le plan mémorisé avant les bêtises revient : le 4672 de Pesenti et le
+    # libellé du 606 ; le compte ajouté ensuite part, celui qui a servi
+    # ailleurs (sur CB BRICO, l'autre saison) reste inactif.
+    assert accounting.chart(db_session, TRESORIER)["snapshot"] is None
+    assert accounting.memorize_chart(db_session, TRESORIER)["takenAt"]
+    extra = accounting.create_account(db_session, TRESORIER, {"number": "6061", "label": "Eau", "nature": "depense"})
+    accounting.set_lines(db_session, TRESORIER, rows["CB BRICO"]["id"], [{"accountId": extra["id"]}])
+    accounting.create_account(db_session, TRESORIER, {"number": "6062", "label": "Gaz", "nature": "depense"})
+    accounting.update_account(db_session, TRESORIER, accounts["606"]["id"], {"number": "606", "label": "Achats divers", "nature": "depense"})
+    accounting.delete_account(db_session, TRESORIER, accounts["4672"]["id"])
+    done = documents.reset_season(db_session, TRESORIER, SEASON, " 2025-2026 ")
+    assert done == {"pieces": 3, "lines": 3, "chart": True}
+    chart = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    assert chart["606"]["label"] == accounts["606"]["label"] and chart["4672"]["active"] is True
+    assert "6062" not in chart and chart["6061"]["active"] is False
+    [(start, end, operation_ids)] = appels
+    assert (start, end) == ("2025-09-01", "2026-08-31")
+    assert rows["CB AMAZON"]["id"] in operation_ids and rows["CB BRICO"]["id"] not in operation_ids
+    assert documents.closing_status(db_session, TRESORIER.org_id, SEASON) is None
+    assert documents.manual_entries(db_session, TRESORIER, SEASON) == []
+    assert documents.opening(db_session, TRESORIER, SEASON)["source"] == "releves"
+    ledger = finances.get_ledger(db_session, TRESORIER)
+    assert ledger["closings"] == [] and len(ledger["rows"]) == len(rows)
+    assert accounting.operation(db_session, TRESORIER, rows["CB AMAZON"]["id"])["lines"] == []
+    assert [l["number"] for l in accounting.operation(db_session, TRESORIER, rows["CB BRICO"]["id"])["lines"]] == ["6061"]

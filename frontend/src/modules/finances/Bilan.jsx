@@ -6,6 +6,7 @@
 // et l'analyse en arriere-plan : l'ecran relit le bilan jusqu'a la fin.
 import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
+import Modal from '../../components/Modal.jsx'
 import DocumentsAG, { Cloture } from './compta/DocumentsAG.jsx'
 import Preparer from './compta/Preparer.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
@@ -195,7 +196,7 @@ export default function Bilan() {
         {onglet === 'preparer' ? (
           <Preparer key={season.id} season={season} onDocuments={() => setOnglet('documents')} />
         ) : (
-          <ClotureSaison season={season} reports={reports} onDocuments={() => setOnglet('documents')} />
+          <ClotureSaison season={season} reports={reports} onDocuments={() => setOnglet('documents')} onReset={loadReports} />
         )}
       </section>
     )
@@ -280,8 +281,9 @@ export default function Bilan() {
 }
 
 // Onglet Clôture (§8.7) : la clôture de la saison, portée par son bilan le
-// plus avancé (Officiel, sinon Validé, sinon le dernier).
-function ClotureSaison({ season, reports, onDocuments }) {
+// plus avancé (Officiel, sinon Validé, sinon le dernier), et « Repartir à
+// zéro sur cette saison » pour refaire le travail de la saison.
+function ClotureSaison({ season, reports, onDocuments, onReset }) {
   const [data, setData] = useState(null)
   const [erreur, setErreur] = useState('')
   const rang = { officiel: 0, valide: 1, brouillon: 2 }
@@ -295,8 +297,9 @@ function ClotureSaison({ season, reports, onDocuments }) {
       .catch((err) => setErreur(err.message))
   }, [report])
 
+  let cloture
   if (!report)
-    return (
+    cloture = (
       <p className="muted">
         Pas encore de bilan pour {season.name} : la clôture se fait depuis le bilan Officiel.{' '}
         <button type="button" className="btn btn--link" onClick={onDocuments}>
@@ -304,23 +307,111 @@ function ClotureSaison({ season, reports, onDocuments }) {
         </button>
       </p>
     )
-  if (erreur) return <p className="login-screen__erreur">{erreur}</p>
-  if (!data) return <p className="muted">Chargement…</p>
-  if (data.level !== 'complet') return <p className="muted">La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).</p>
+  else if (erreur) cloture = <p className="login-screen__erreur">{erreur}</p>
+  else if (!data) cloture = <p className="muted">Chargement…</p>
+  else if (data.level !== 'complet') cloture = <p className="muted">La clôture est au niveau Complet (Comptes › ⋯ › Plan comptable).</p>
+  else
+    cloture = (
+      <>
+        <p className="muted">
+          Bilan « {report.name} » ({STATE_LABELS[report.state]}). La clôture reporte le résultat et les soldes sur la saison suivante et verrouille
+          la saison.
+        </p>
+        <Cloture
+          reportId={report.id}
+          seasonName={season.name}
+          closing={data.closing}
+          history={data.closingHistory}
+          onChange={(closing) => api.documentsAG(report.id).then(setData).catch(() => setData((d) => ({ ...d, closing })))}
+          onErreur={setErreur}
+        />
+      </>
+    )
   return (
     <div className="fin-cp">
-      <p className="muted">
-        Bilan « {report.name} » ({STATE_LABELS[report.state]}). La clôture reporte le résultat et les soldes sur la saison suivante et verrouille
-        la saison.
-      </p>
-      <Cloture
-        reportId={report.id}
-        seasonName={season.name}
-        closing={data.closing}
-        history={data.closingHistory}
-        onChange={(closing) => api.documentsAG(report.id).then(setData).catch(() => setData((d) => ({ ...d, closing })))}
-        onErreur={setErreur}
-      />
+      {cloture}
+      <RepartirAZero season={season} onDone={onReset} />
+    </div>
+  )
+}
+
+// « Repartir à zéro sur cette saison » (§8.7, Seb 10/11) : le trésorier
+// s'exerce, se trompe, recommence. Les relevés et transactions bancaires, le
+// plan comptable, la caisse et les autres saisons restent ; le nom de la
+// saison retapé confirme.
+function RepartirAZero({ season, onDone }) {
+  const [ouvert, setOuvert] = useState(false)
+  const [nom, setNom] = useState('')
+  const [erreur, setErreur] = useState('')
+  const [fait, setFait] = useState(null)
+  const [enCours, setEnCours] = useState(false)
+
+  async function confirmer() {
+    setEnCours(true)
+    setErreur('')
+    try {
+      const resultat = await api.repartirAZero(season.id, nom)
+      setFait(resultat)
+      setOuvert(false)
+      setNom('')
+      onDone?.()
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  return (
+    <div className="fin-cp-carte">
+      <div className="fin-cp-doc">
+        <span className="fin-cp-t">Repartir à zéro sur cette saison</span>
+        <span className="fin-cp-a">
+          <button type="button" className="btn btn--danger" onClick={() => setOuvert(true)}>
+            Repartir à zéro
+          </button>
+        </span>
+        <span className="fin-cp-s">
+          {fait
+            ? `C'est fait : ${fait.pieces} pièce${fait.pieces > 1 ? 's' : ''} et ${fait.lines} compte${fait.lines > 1 ? 's' : ''} confirmé${fait.lines > 1 ? 's' : ''} effacés${fait.chart ? ', plan comptable remis comme mémorisé' : ''}. Les relevés sont toujours là.`
+            : 'pour s\'exercer : efface les pièces, les comptes confirmés, les justifications, les écritures à la main, les soldes de départ et la clôture de la saison, remet le plan comptable mémorisé (Comptes › ⋯ › Plan comptable) ; garde les relevés, la caisse et les bilans'}
+        </span>
+      </div>
+      {ouvert && (
+        <Modal
+          title={`Repartir à zéro sur ${season.name}`}
+          onClose={() => setOuvert(false)}
+          footer={
+            <>
+              <button type="button" className="btn btn--secondary" onClick={() => setOuvert(false)}>
+                Annuler
+              </button>
+              <button type="button" className="btn btn--danger" disabled={enCours || nom.trim() !== season.name} onClick={confirmer}>
+                Tout effacer
+              </button>
+            </>
+          }
+        >
+          <p>
+            <b>Ce qui part</b>, pour la saison {season.name} seulement :
+          </p>
+          <ul>
+            <li>les pièces ajoutées (factures, honoraires, notes de frais) et leurs rapprochements avec la banque ; les fichiers vont à la corbeille de Docs</li>
+            <li>les comptes confirmés sur les transactions bancaires et les justifications « sans facture »</li>
+            <li>les écritures à la main, les soldes de départ, la clôture</li>
+            <li>le plan comptable revient à sa copie mémorisée, s'il y en a une</li>
+          </ul>
+          <p>
+            <b>Ce qui reste</b> : les relevés et transactions bancaires, la caisse, les bilans calculés, les autres saisons. On ne peut pas revenir en
+            arrière.
+          </p>
+          <label className="field">
+            Tapez le nom de la saison ({season.name}) pour confirmer
+            <input type="text" value={nom} onChange={(e) => setNom(e.target.value)} autoFocus />
+          </label>
+          {erreur && <p className="login-screen__erreur">{erreur}</p>}
+        </Modal>
+      )}
     </div>
   )
 }

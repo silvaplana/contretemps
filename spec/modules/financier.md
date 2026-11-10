@@ -752,6 +752,21 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   Un prof parti : on **désactive** son compte (case « Compte actif » du Plan comptable) ; Retirer
   sur un compte de tiers fait la même chose, un numéro de tiers ne se libère jamais, l'histoire du
   prof reste dans les Grands livres passés et dans la comparaison N-1.
+- **Repartir à zéro sur cette saison (10 novembre 2026)** : Seb s'exerce sans la trésorière, se
+  trompe, recommence. Bilan › Clôture, bouton « Repartir à zéro », le nom de la saison retapé
+  confirme (trésorier seulement, `POST /finances/seasons/{id}/reset`). Pour la saison choisie
+  seulement, **part** : les pièces datées de la saison quel que soit leur état (défaites comme
+  « Annuler cette pièce » : fichiers à la corbeille de Docs, une note envoyée par un membre lui
+  revient, numéros de pièce libres) et leurs rapprochements ; les comptes confirmés sur ses
+  transactions bancaires et les justifications « sans facture » ; les écritures à la main, les soldes
+  de départ, les explications, la clôture ; le plan comptable revient à sa copie mémorisée s'il y en a
+  une. **Reste** : relevés et transactions bancaires, caisse, bilans calculés, autres saisons.
+  **Mémoriser le plan comptable** (Comptes › ⋯ › Plan comptable) : une copie du plan
+  (`fin_settings.chart_snapshot`, remplacée à chaque fois) ; la remise reprend libellés, natures,
+  mots-clés et actif par numéro, recrée les comptes retirés, supprime les comptes ajoutés depuis
+  (inactifs s'ils ont servi ailleurs). Sans copie, le plan ne bouge pas. Pas de « tag » plus fin :
+  revenir à un instant précis rejouerait aussi Docs et ce que d'autres ont fait entre-temps ; la
+  version honnête est une copie de la base sur le VPS.
 - **Lettrage** : lettre de trois caractères par paire facture / paiement, comme le modèle ;
   paiement en plusieurs fois accepté (somme). **Depuis le 10 novembre 2026** : la facture entre au
   tiers à son montant (le total des pièces rattachées à la transaction), le paiement au montant de la

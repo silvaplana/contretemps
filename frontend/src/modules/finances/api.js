@@ -130,6 +130,7 @@ export const urlTelechargementPrevisionnel = (id, format, seasonIds) =>
 // { level, natures: [{ id, label }], accounts: [{ id, number, label, nature, event, keywords, active, used }] }.
 export const planComptable = () => appel('/chart')
 export const choisirNiveau = (level) => appel('/chart/level', json('PUT', { level }))
+export const memoriserPlan = () => appel('/chart/snapshot', { method: 'POST' })
 export const creerCompte = (donnees) => appel('/chart', json('POST', donnees))
 export const modifierCompte = (id, donnees) => appel(`/chart/${id}`, json('PUT', donnees))
 export const supprimerCompte = (id) => appel(`/chart/${id}`, { method: 'DELETE' })
@@ -156,6 +157,8 @@ export const soldesDepart = (seasonId) => appel(`/opening-balances/${seasonId}`)
 export const enregistrerSoldesDepart = (seasonId, accounts) => appel(`/opening-balances/${seasonId}`, json('PUT', { accounts }))
 export const cloturer = (reportId) => appel(`/reports/${reportId}/close`, { method: 'POST' })
 export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { method: 'DELETE' })
+// « Repartir à zéro sur cette saison » (§8.7) : le nom de la saison retapé confirme.
+export const repartirAZero = (seasonId, confirm) => appel(`/seasons/${seasonId}/reset`, json('POST', { confirm }))
 export const ecritures = (operationId) => appel(`/operations/${operationId}/entries`)
 // Bilan › Préparer (financier.md §8.10) : l'état des six étapes d'une saison, et « Valider le compte ».
 export const preparation = (seasonId) => appel(`/seasons/${seasonId}/preparation`)

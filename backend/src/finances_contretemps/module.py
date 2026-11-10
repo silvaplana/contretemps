@@ -31,6 +31,7 @@ from .adapter import (
     FINANCES_ACCESS,
     adresse_ecole,
     honoraires_payes,
+    repartir_a_zero,
     membre_appelant,
     nom_ecole,
     pieces_des_operations,
@@ -118,6 +119,7 @@ def mount(app, core) -> None:
             store=ranger_dans_docs(core.documents_client),
             folder=dossier_ag(core.documents_client),
             org_name=nom_ecole,
+            reset_pieces=repartir_a_zero(core.notes_frais_client),
         ),
     )
     # Rapport financier (spec §8.6) : le modèle rédige, l'appli place les chiffres.

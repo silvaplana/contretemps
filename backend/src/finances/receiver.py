@@ -133,6 +133,10 @@ class WriteRequest(BaseModel):
     model: str | None = None
 
 
+class ResetSeasonRequest(BaseModel):
+    confirm: str  # le nom de la saison, retapé
+
+
 class ManualEntryRequest(BaseModel):
     date: str
     label: str
@@ -416,6 +420,11 @@ class FinancesReceiver:
         def set_level(data: LevelRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             return {"level": call(accounting.set_level, db, member, data.level)}
 
+        @app.post("/finances/chart/snapshot")
+        def memorize_chart(db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Mémoriser le plan comptable » (§8.7) : la copie que Repartir à zéro remet en place."""
+            return call(accounting.memorize_chart, db, member)
+
         @app.post("/finances/chart", status_code=201)
         def create_chart_account(data: ChartAccountRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             return call(accounting.create_account, db, member, data.model_dump())
@@ -586,6 +595,11 @@ class FinancesReceiver:
                 return {"confirmed": documents.accounting.confirm_many(db, member, data.operationIds, data.accountId)}
             except (LookupError, ValueError, PermissionError) as error:
                 raise _http(error) from error
+
+        @app.post("/finances/seasons/{season_id}/reset")
+        def reset_season(season_id: int, data: ResetSeasonRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Repartir à zéro sur cette saison » (§8.7) : le nom de la saison retapé confirme."""
+            return ag_call(documents.reset_season, db, member, season_by_id(db, member, season_id), data.confirm)
 
         @app.get("/finances/seasons/{season_id}/manual-entries")
         def list_manual_entries(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:

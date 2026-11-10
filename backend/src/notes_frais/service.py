@@ -1222,6 +1222,30 @@ class NotesDeFrais:
             self.supprimer_note(db, membre, note_id)
         return len(ids)
 
+    def repartir_a_zero(self, db: Session, membre: Membre, debut: date, fin: date, operation_ids: Sequence[int] = ()) -> int:
+        """« Repartir à zéro sur cette saison » (financier.md §8.7, Seb 10/11) :
+        toutes les pièces datées de la période (quel que soit leur état) sont
+        défaites comme « Annuler cette pièce » (fichiers à la corbeille, une
+        note envoyée par un membre lui revient), les justifications « sans
+        facture » des transactions données sont retirées. Rend le nombre de
+        pièces défaites. Les numéros de pièce repartent d'eux-mêmes."""
+        self._exiger_tresorier(membre)
+        notes = [
+            n for n in db.scalars(select(NoteFrais).where(NoteFrais.org_id == membre.org_id))
+            if debut <= self._date_docs(n) <= fin
+        ]
+        for note in notes:
+            note.bank_operation_id = None  # la banque garde sa transaction, la pièce part
+            db.commit()
+            self.supprimer_note(db, membre, note.id)
+        if operation_ids:
+            for receipt in db.scalars(
+                select(OperationReceipt).where(OperationReceipt.org_id == membre.org_id, OperationReceipt.bank_operation_id.in_(list(operation_ids)))
+            ):
+                db.delete(receipt)
+            db.commit()
+        return len(notes)
+
     def supprimer_note(self, db: Session, membre: Membre, note_id: int) -> None:
         """« Annuler cette pièce », tout défaire (Seb, 31/10) : une pièce
         établie par erreur, quel que soit son état, part à la corbeille avec

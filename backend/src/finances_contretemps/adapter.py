@@ -155,6 +155,24 @@ def pieces_a_payer(db: Session, ecole_id: int) -> list[dict]:
     return out
 
 
+def repartir_a_zero(notes_frais):
+    """Port AgPorts.reset_pieces : les pièces de la période et les
+    justifications des transactions données, défaites par le module Notes de
+    frais (financier.md §8.7, « Repartir à zéro sur cette saison »)."""
+    from datetime import date as _date
+
+    from notes_frais.ports import Membre
+
+    def port(db: Session, member: Member, start: str, end: str, operation_ids: list[int]) -> int:
+        membre = Membre(
+            person_id=member.person_id, org_id=member.org_id, nom=member.name,
+            est_tresorier=member.is_treasurer, est_superuser=member.is_superuser,
+        )
+        return notes_frais.repartir_a_zero(db, membre, _date.fromisoformat(start), _date.fromisoformat(end), operation_ids)
+
+    return port
+
+
 def honoraires_payes(db: Session, ecole_id: int, debut: str, fin: str) -> list[dict]:
     """Les notes d'honoraires payées sur la période (date du paiement vu sur
     le compte, sinon date du remboursement) : prof, mois (AAAA-MM), montant
