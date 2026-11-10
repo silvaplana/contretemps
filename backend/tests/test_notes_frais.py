@@ -1655,5 +1655,6 @@ def test_l_avis_de_virement_devient_la_page_virement_de_la_facture(client, db_se
     honoraires = _enfant(client, org, tresorier, _enfant(client, org, tresorier, saison["id"], "Financier")["id"], "HONORAIRES")
     dossier_prof = _enfant(client, org, tresorier, honoraires["id"], "DELPHINE DE LUCA")
     dossier_note = next(d for d in _parcourir(client, org, tresorier, dossier_prof["id"]).json()["items"] if d["name"].endswith(f"({novembre['id']})"))
+    assert dossier_note["name"] == f"2026-11-05 Honoraires novembre 2026 ({novembre['id']})"  # datée de la facture, pas du jour
     noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"])
     assert noms == ["2026-11-05 Facture Hono Delphine De Luca - Virement.jpg", "2026-11-05 Facture Hono Delphine De Luca.jpg"]

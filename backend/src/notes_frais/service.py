@@ -1375,8 +1375,10 @@ class NotesDeFrais:
     def _chemin_docs(self, db: Session, note: NoteFrais) -> list[str] | None:
         """Dossiers sous Financier (Seb, 30/10) : ACHATS › mois de la pièce
         (« 08.2026 ») ; HONORAIRES › PRENOM NOM du prof › la note ; Notes de
-        frais › personne › la note. None : pas encore rangeable (honoraires
-        dont on ne sait pas encore pour qui)."""
+        frais › personne › la note, datée de la pièce, pas du jour où on l'a
+        établie (Seb, 10/11 : c'est l'usage comptable, et c'est le classeur de la
+        trésorière). None : pas encore rangeable (honoraires dont on ne sait pas
+        encore pour qui)."""
         if note.deferred_at is not None or (note.statut == REFUSEE and note.established_by is not None):
             return [A_TRAITER]
         if note.nature == ACHAT:
@@ -1388,12 +1390,12 @@ class NotesDeFrais:
             return [
                 DOSSIERS[HONORAIRES],
                 nom_dossier(personne.nom if personne else "?"),
-                f"{note.envoyee_le.date().isoformat()} {nom_propre(note.titre)} ({note.id})",
+                f"{self._date_docs(note).isoformat()} {nom_propre(note.titre)} ({note.id})",
             ]
         return [
             DOSSIERS[note.nature],
             self.stockage.dossier_personne(note.org_id, note.person_id, personne.nom if personne else "?"),
-            f"{note.envoyee_le.date().isoformat()} {nom_propre(note.titre)} ({note.id})",
+            f"{self._date_docs(note).isoformat()} {nom_propre(note.titre)} ({note.id})",
         ]
 
     @staticmethod

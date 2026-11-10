@@ -445,7 +445,9 @@ Une transaction qui a déjà sa pièce ne se justifie pas (400). Table `nf_opera
 
 Décision de Seb, 29 octobre 2026 (`financier.md` §8.3 bis « Rangement dans Docs ») : **un seul
 endroit**, Docs › Privé › Saison en cours › Financier › Notes de frais › `<n° personne> <Nom>` ›
-`<date d'envoi> <titre> (<n°>)`, où les justificatifs sont rangés dès l'envoi et **ne bougent plus**.
+`<date de la pièce> <titre> (<n°>)` (la date de la facture ou du ticket, pas celle du jour où la
+note est établie : Seb, 10 novembre 2026, comme le classeur de la trésorière), où les justificatifs
+sont rangés dès l'envoi et **ne bougent plus**.
 **L'état ne se lit que dans l'appli** : plus de badge sur le dossier, plus de nouvelle version du PDF à
 chaque étape. Le PDF récapitulatif est fait une fois, quand la note est payée (ou sur demande,
 « Télécharger les justificatifs »). Plus d'enveloppes à part sur le disque du serveur (§10) : Docs
