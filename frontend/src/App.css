@@ -678,6 +678,31 @@
   gap: 12px;
 }
 
+/* Le bas du panneau reste visible pendant le défilement : la bande
+   « ↓ Suite plus bas » et le bouton principal (Seb, 10/11). */
+.modal-bas {
+  position: sticky;
+  bottom: calc(-16px - env(safe-area-inset-bottom));
+  margin: auto -16px calc(-16px - env(safe-area-inset-bottom));
+  padding: 8px 16px calc(16px + env(safe-area-inset-bottom));
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.modal-suite {
+  min-height: 48px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
 .modal-header {
   display: flex;
   align-items: center;

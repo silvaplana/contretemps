@@ -120,6 +120,16 @@ export default function SoldesDepart({ onClose, initialSeasonId }) {
             ))}
           </select>
         </label>
+        {/* Les écarts avec les relevés d'abord : c'est ce qu'il faut lire avant la liste (Seb, 10/11). */}
+        {verification.map((c) =>
+          Math.round((c.statements - c.entered) * 100) === 0 ? null : (
+            <p key={c.number} className="fin-cp-alerte">
+              {c.number} {c.label} : les relevés donnent {api.euros(c.statements)} au début de la saison, {lecture ? 'la Balance donne' : 'vous avez'}{' '}
+              {api.euros(c.entered)}
+              {lecture ? ' : un chèque pas encore débité, ou une erreur à expliquer avant de valider.' : '.'}
+            </p>
+          ),
+        )}
         {data && (
           <>
             <p className={data.source === 'releves' && !lecture ? 'fin-cp-alerte' : 'muted'}>{SOURCES[data.source]}</p>
@@ -160,15 +170,6 @@ export default function SoldesDepart({ onClose, initialSeasonId }) {
             />
           </label>
         ))}
-        {verification.map((c) =>
-          Math.round((c.statements - c.entered) * 100) === 0 ? null : (
-            <p key={c.number} className="fin-cp-alerte">
-              {c.number} {c.label} : les relevés donnent {api.euros(c.statements)} au début de la saison, {lecture ? 'la Balance donne' : 'vous avez'}{' '}
-              {api.euros(c.entered)}
-              {lecture ? ' : un chèque pas encore débité, ou une erreur à expliquer avant de valider.' : '.'}
-            </p>
-          ),
-        )}
         <p className="muted">
           {Math.round(total * 100) === 0
             ? 'Les soldes s’équilibrent.'

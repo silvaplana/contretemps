@@ -24,7 +24,7 @@ Comptes
   (Bilan › Clôture) remet la copie choisie.
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de la Balance
   2024-2025 (Docs › Financier) » (la saison précédente est nommée) : l'appli lit la Balance de la saison précédente déposée dans Docs › Financier (saison précédente ou en cours, n'importe quel sous-dossier, « Balance » dans le nom),
-  remplit les cases, montre l'écart éventuel avec les relevés ; « Utiliser ces soldes » enregistre. Sans Balance dans Docs,
+  remplit les cases, montre en haut l'écart éventuel avec les relevés ; « Utiliser ces soldes » enregistre. Sans Balance dans Docs,
   on remplit les cases à la main. Saisons suivantes : reportés par la clôture, rien à faire.
 
 Pièces
