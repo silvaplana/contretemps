@@ -2126,7 +2126,8 @@ class NotesDeFrais:
         rattachees, sans_paiement, par_ligne = [], [], {}
         for note in sorted(notes, key=jour):
             ligne = lignes.get(note.bank_operation_id) if note.statut == REMBOURSEE else None
-            dans_periode = debut <= jour(note) <= fin or (ligne is not None and debut <= ligne.date <= fin)
+            # Ce qui attend son paiement reste à rapprocher, même d'avant la période (Seb, 10/11).
+            dans_periode = jour(note) <= fin if ligne is None else debut <= jour(note) <= fin or debut <= ligne.date <= fin
             if not dans_periode:
                 continue
             piece = {

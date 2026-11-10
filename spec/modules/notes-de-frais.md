@@ -385,7 +385,9 @@ Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
    en faire » (À trancher) ; « Déjà payée » veut dire « je sais, le paiement se retrouvera ».
 2. **Rapprocher par lots**, quand on veut : la puce **Rapprocher** de Financier › Pièces
    (`GET /notes-frais/rapprochement?debut&fin`, trésoriers ; période libre, du 1er septembre de la
-   saison en cours par défaut), en trois parties, la banque d'un côté et les factures de l'autre :
+   saison en cours par défaut ; une facture qui attend son paiement s'y affiche même si elle est
+   d'avant la période, tant qu'elle n'est pas d'après sa fin : Seb, 10 novembre, la pièce d'août
+   que Virements proposait n'apparaissait pas), en trois parties, la banque d'un côté et les factures de l'autre :
    - **Suggestions de rattachement** : chaque facture sans paiement pour laquelle l'appli voit une transaction, avec
      la raison (« même nom, même montant » = sûre ; « même montant, autre nom » ; « écart … » ;
      « paie aussi … ») et **« Rattacher à cette transaction bancaire »** (`POST …/payee`, la règle
