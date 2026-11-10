@@ -145,10 +145,22 @@ def test_notification_a_qui_voit_les_actus_sauf_l_auteur_et_pas_apres_annuler(cl
 
 def test_option_ouvrir_sur_les_actus(client, e):
     url = f"/ecoles/{e['ecole'].id}/news/settings"
-    assert client.get(url).json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": True}
-    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False, "media_first": False, "can_read": True, "can_choose_readers": True}
-    assert client.get(url).json() == {"open_on_news": False, "media_first": False, "can_read": True, "can_choose_readers": True}
-    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": True}
+    assert client.get(url).json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
+    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
+    assert client.get(url).json() == {"open_on_news": False, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
+    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": True, "has_news": False}
+
+
+def test_pas_d_ouverture_sur_les_actus_tant_qu_il_n_y_en_a_aucune(client, e):
+    # Seb, 10 novembre : zéro actu, l'appli s'ouvre comme d'habitude.
+    eid = e["ecole"].id
+    url = f"/ecoles/{eid}/news/settings"
+    assert client.get(url).json()["has_news"] is False
+    client.post(f"/ecoles/{eid}/news", json={"body": "Brouillon", "publish": False})
+    assert client.get(url).json()["has_news"] is False
+    _publier(client, eid, "Reprise des cours")
+    assert client.get(url).json()["has_news"] is True
+    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json()["has_news"] is False
 
 
 def test_en_haut_de_chaque_actu(client, e):
@@ -180,9 +192,9 @@ def test_droits(client, db_session, e):
         assert client.post(f"/ecoles/{eid}/news", json={"body": "x"}, headers=entetes).status_code == 403
         assert client.get(f"/ecoles/{eid}/news/atelier", headers=entetes).status_code == 403
         assert client.put(f"/ecoles/{eid}/news/settings", json={"open_on_news": False}, headers=entetes).status_code == 403
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": False}
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).json() == {"open_on_news": True, "media_first": False, "can_read": True, "can_choose_readers": False, "has_news": True}
     # Sans le droit : pas d'onglet, pas d'actus, l'appli ne s'ouvre pas dessus.
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=admin).json() == {"open_on_news": False, "media_first": False, "can_read": False, "can_choose_readers": False}
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=admin).json() == {"open_on_news": False, "media_first": False, "can_read": False, "can_choose_readers": False, "has_news": False}
     assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 403
     # Une autre école ne lit rien.
     assert client.get(f"/ecoles/{eid}/news", headers=voisin).status_code == 403

@@ -236,6 +236,7 @@ class NewsReceiver:
         return SettingsOut(
             open_on_news=reader and self.client.open_on_news(db, ecole_id), can_read=reader,
             can_choose_readers=can_choose_readers(appelant), media_first=self.client.media_first(db, ecole_id),
+            has_news=reader and self.client.has_published(db, ecole_id),
         )
 
     def change_settings(self, ecole_id: int, data: SettingsIn, db: Session = Depends(get_db),
@@ -248,6 +249,7 @@ class NewsReceiver:
         return SettingsOut(
             open_on_news=self.client.open_on_news(db, ecole_id), media_first=self.client.media_first(db, ecole_id),
             can_read=True, can_choose_readers=can_choose_readers(appelant),
+            has_news=self.client.has_published(db, ecole_id),
         )
 
     def _chooser(self, appelant: Compte | None, ecole_id: int) -> None:

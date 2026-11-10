@@ -91,6 +91,11 @@ class News:
         ))
         return [i for i in items if on_top(i, today)] + [i for i in items if not on_top(i, today)]
 
+    def has_published(self, db: Session, org_id: int) -> bool:
+        return db.scalar(
+            select(NewsItem.id).where(NewsItem.org_id == org_id, NewsItem.published_at.is_not(None)).limit(1)
+        ) is not None
+
     def workshop(self, db: Session, org_id: int) -> list[NewsItem]:
         """Everything, drafts included, newest first (§4.1)."""
         return list(db.scalars(
