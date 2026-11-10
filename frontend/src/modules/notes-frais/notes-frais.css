@@ -886,3 +886,20 @@
   min-height: 48px;
   padding: 0 20px;
 }
+
+/* Justificatif joint à une saisie à la main (Seb, 10/11). */
+.nf-joindre {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+.nf-joindre .btn {
+  min-height: 48px;
+}
+
+.nf-joindre__nom {
+  overflow-wrap: anywhere;
+}

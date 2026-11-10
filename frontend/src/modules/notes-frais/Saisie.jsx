@@ -161,7 +161,7 @@ export default function Saisie({ ouverte, deposes, onFermer, onALaMain, onRevue,
           </button>
           {lot.length === 0 && (
             <button type="button" className="btn btn--secondary" onClick={onALaMain}>
-              <Icon name="edit" size={18} /> Saisir sans photo
+              <Icon name="edit" size={18} /> Saisir à la main
             </button>
           )}
           {lot.length > 0 && (
