@@ -18,6 +18,7 @@ import PlanComptable, {
   nomCompte,
 } from "./compta/PlanComptable.jsx";
 import SoldesDepart, { SOLDES_EVENTS } from "./compta/SoldesDepart.jsx";
+import Balance, { BALANCE_EVENTS } from "./compta/Balance.jsx";
 import "./compta/compta.css";
 import { CurveChart } from "./CurveChart.jsx";
 import Icon from "../../components/Icon.jsx";
@@ -387,7 +388,7 @@ export default function Comptes({ onChange }) {
   // Fiche d'une opération (appui sur une ligne, spec §8.4), volet
   // ⋯ › Plan comptable (§8.2), puces Sans compte / Sans pièce.
   const [ficheOp, setFicheOp] = useState(null);
-  const [volet, setVolet] = useState(null); // null | 'plan' | 'soldes'
+  const [volet, setVolet] = useState(null); // null | 'plan' | 'soldes' | 'releves' | 'balance'
   const [manque, setManque] = useState(null); // null | 'account' | 'piece'
 
   const load = useCallback(async () => {
@@ -426,18 +427,21 @@ export default function Comptes({ onChange }) {
     return () => window.removeEventListener(BANK_EVENT, open);
   }, []);
 
-  // Menu ⋯ > « Plan comptable » et « Soldes de départ ».
+  // Menu ⋯ > « Plan comptable », « Soldes de départ » et « Balance ».
   useEffect(() => {
     const plan = () => setVolet("plan");
     const soldes = () => setVolet("soldes");
     const releves = () => setVolet("releves");
+    const balance = () => setVolet("balance");
     window.addEventListener(PLAN_EVENTS.plan, plan);
     window.addEventListener(SOLDES_EVENTS.soldes, soldes);
     window.addEventListener(RELEVES_EVENT, releves);
+    window.addEventListener(BALANCE_EVENTS.balance, balance);
     return () => {
       window.removeEventListener(PLAN_EVENTS.plan, plan);
       window.removeEventListener(SOLDES_EVENTS.soldes, soldes);
       window.removeEventListener(RELEVES_EVENT, releves);
+      window.removeEventListener(BALANCE_EVENTS.balance, balance);
     };
   }, []);
 
@@ -662,6 +666,9 @@ export default function Comptes({ onChange }) {
   }
   if (volet === "soldes") {
     return <SoldesDepart onClose={() => setVolet(null)} />;
+  }
+  if (volet === "balance") {
+    return <Balance onClose={() => setVolet(null)} />;
   }
   if (volet) {
     return (

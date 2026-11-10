@@ -11,6 +11,7 @@ import { SOUS_ONGLET_EVENT } from '../finances/navigation.js'
 import { requestStatements } from '../finances/RelevesGrille.jsx'
 import { requestPlanComptable } from '../finances/compta/PlanComptable.jsx'
 import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
+import { requestBalance } from '../finances/compta/Balance.jsx'
 import Previsionnel, { requestNewForecast } from '../finances/Previsionnel.jsx'
 import MesNotesDeFrais from './MesNotesDeFrais.jsx'
 import { Compte } from './commun.jsx'
@@ -164,6 +165,7 @@ export default function Financier({ docs = null }) {
                 { label: 'Relevés', icon: 'check', onClick: requestStatements },
                 { label: 'Plan comptable', icon: 'docs', onClick: requestPlanComptable },
                 { label: 'Soldes de départ', icon: 'calculator', onClick: requestSoldesDepart },
+                { label: 'Balance', icon: 'docs', onClick: requestBalance },
               ]
             : sousOnglet === 'bilan'
               ? [{ label: 'Nouveau bilan', icon: 'plus', onClick: requestNewReport }]

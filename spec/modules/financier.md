@@ -715,6 +715,21 @@ l'AG** :
 | Honoraires par professeur | Excel : total par prof et par mois, pour la DAS-2 | Complet |
 | FEC | Fichier des écritures comptables (art. A47 A-1 du LPF) : texte, 18 colonnes séparées par une tabulation, dates AAAAMMJJ, montants à virgule, ISO-8859-15. Les écritures du Grand livre (§8.7), regroupées en écritures numérotées par date (même journal, même jour, même opération ; les à-nouveaux en une seule). Pièce vide : le numéro d'écriture. Comptes de tiers dans CompteNum (pas de CompAux pour l'instant) | Simple |
 
+**Écran Balance** (Seb et la trésorière, 10 novembre 2026 ; maquette
+https://claude.ai/artifact/N1EtPWMPcDvo381hcZyB3M) : Comptes › ⋯ › **Balance**, à tout moment, pas
+seulement à l'AG. Recalculée **chaque fois qu'on ouvre l'écran** avec tout ce qui est enregistré
+(rien n'est figé ni rangé dans Docs). La **période est dite en clair** sous le titre (« Période : du
+1er septembre 2025 au 31 août 2026 »), avec la date des dernières transactions bancaires connues si
+elle est plus tôt. Saison par défaut : **la plus ancienne saison commencée et pas encore clôturée**
+(celle dont on prépare le bilan), sinon la saison en cours ; menu Saison, dates Du / Au pour
+regarder une partie de la saison (bornées à la saison). Puces Tous les comptes / Bilan (classes 1 à
+5) / Résultat (classes 6 et 7) ; tableau par classe, colonnes Compte, Libellé, Total période (débit,
+crédit), Solde (débit, crédit), total par classe, totaux de Bilan, de Résultat et de la Balance ; un
+compte touché montre ses écritures (date, pièce, libellé, débit, crédit, lettre) comme au Grand
+livre ; « ✓ Équilibrée » ou l'écart. « Télécharger le PDF » : la Balance ci-dessus pour la même
+période (téléchargée, pas rangée dans Docs). Les deux niveaux (Simple : trésorerie contre charges
+et produits). API : `GET /finances/balance?season_id&start&end`, `GET /finances/balance/pdf`.
+
 **Contrôle du FEC** (Seb, 30/10) : sous la ligne FEC, « FEC juste : n écritures équilibrées » ou
 « FEC à corriger » avec la liste : écritures déséquilibrées, débit ≠ crédit, lignes à classer
 (65900 / 75900 : Comptes › Sans compte), écritures hors saison, numéros hors plan (classe 1 à 7,

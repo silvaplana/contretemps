@@ -69,6 +69,17 @@ export function dateFr(isoDate) {
   return `${day}/${month}/${year}`
 }
 
+// Comptes ⋯ › Balance (§8.6) : { seasonId, seasonName, start, end, knownUntil, seasons, accounts }.
+export function balance({ seasonId, start, end } = {}) {
+  const q = new URLSearchParams()
+  if (seasonId) q.set('season_id', seasonId)
+  if (start) q.set('start', start)
+  if (end) q.set('end', end)
+  const qs = q.toString()
+  return appel(`/balance${qs ? `?${qs}` : ''}`)
+}
+export const urlBalancePdf = (seasonId, start, end) => `${BASE}/balance/pdf?season_id=${seasonId}&start=${start}&end=${end}`
+
 // --- Bilan (sous-module, spec §4) ---
 
 const json = (method, corps) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) })

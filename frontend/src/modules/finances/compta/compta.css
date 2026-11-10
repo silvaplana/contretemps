@@ -570,3 +570,29 @@ button.fin-cp-compte:last-child {
   font-size: 15px;
   color: var(--text-muted);
 }
+
+/* Comptes ⋯ › Balance (§8.6) : la période en clair, un tableau par classe,
+   un compte touché montre ses écritures. */
+.fin-balance { font-size: 17px; }
+.fin-balance__titre h3 { margin: 0; font-size: 24px; text-transform: none; letter-spacing: 0; color: inherit; }
+.fin-balance__titre p { margin: 2px 0 0; }
+.fin-balance__periode { font-size: 18px; font-weight: 600; }
+.fin-balance__filtres { display: flex; flex-wrap: wrap; gap: 10px; align-items: end; }
+.fin-balance__filtres label { display: grid; gap: 4px; font-size: 15px; color: var(--text-muted, inherit); }
+.fin-balance__filtres .field-input { min-height: 48px; }
+.fin-balance__filtres .btn { min-height: 48px; }
+.fin-balance__table { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+.fin-balance table { width: 100%; border-collapse: collapse; min-width: 640px; font-variant-numeric: tabular-nums; }
+.fin-balance th, .fin-balance td { padding: 8px 10px; text-align: left; border-top: 1px solid var(--border); }
+.fin-balance thead th { border-top: 0; font-weight: 500; font-size: 15px; }
+.fin-balance .fin-balance__n { text-align: right; white-space: nowrap; }
+.fin-balance__classe td { font-weight: 600; font-size: 15px; background: var(--accent-bg); }
+.fin-balance__compte { cursor: pointer; }
+.fin-balance__compte td:first-child { font-weight: 600; white-space: nowrap; }
+.fin-balance__chev { display: inline-block; width: 1em; color: var(--accent); }
+.fin-balance__compte--ouvert .fin-balance__chev { transform: rotate(90deg); }
+.fin-balance__st td { font-weight: 600; font-size: 15px; }
+.fin-balance__total td { font-weight: 700; border-top: 2px solid currentColor; }
+.fin-balance__detail > td { padding: 0 10px 12px 30px; }
+.fin-balance__detail table { min-width: 560px; font-size: 15px; border-left: 3px solid var(--accent); }
+.fin-balance__equilibre { color: var(--success, #2f6b3f); font-weight: 600; }

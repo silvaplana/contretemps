@@ -129,6 +129,23 @@ def test_documents_are_produced(world, db_session):
     assert len(documents.kinds("complet")) == 6
 
 
+def test_balance_on_screen_shows_its_period_and_can_be_narrowed(world, db_session):
+    """Comptes › ⋯ › Balance : la période est dite, la Balance s'équilibre, et
+    une période plus courte ne garde que ses écritures."""
+    _, _, documents = world
+    b = documents.balance(db_session, TRESORIER, SEASON)
+    assert (b["seasonName"], b["start"], b["end"], b["knownUntil"], b["closed"]) == ("2025-2026", "2025-09-01", "2026-08-31", "2025-09-30", False)
+    by_number = {a["number"]: a for a in b["accounts"]}
+    assert round(sum(a["debit"] for a in b["accounts"]), 2) == round(sum(a["credit"] for a in b["accounts"]), 2)
+    assert by_number["606"]["debit"] == 39.9 and by_number["606"]["lines"][0]["label"] == "CB AMAZON"
+    narrow = documents.balance(db_session, TRESORIER, SEASON, start="2025-09-10", end="2025-09-21")
+    assert narrow["start"] == "2025-09-10" and narrow["end"] == "2025-09-21"
+    assert "606" not in {a["number"] for a in narrow["accounts"]} and "706" in {a["number"] for a in narrow["accounts"]}
+    # Hors saison : bornée à la saison.
+    assert documents.balance(db_session, TRESORIER, SEASON, start="2020-01-01")["start"] == "2025-09-01"
+    assert documents.balance_season(db_session, TRESORIER.org_id).id == SEASON.id
+
+
 def test_report_adds_up_by_confirmed_account(world, db_session):
     finances, _, _ = world
     report = compute_report(finances.get_ledger(db_session, TRESORIER), SEASON.start_date, SEASON.end_date)

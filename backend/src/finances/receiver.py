@@ -638,6 +638,28 @@ class FinancesReceiver:
             """L'explication de la trésorière sur un compte (§8.10, étape 6) ; vide = effacée."""
             return ag_call(documents.set_note, db, member, season_by_id(db, member, season_id), number, data.note)
 
+        @app.get("/finances/balance")
+        def get_balance(season_id: int | None = None, start: str | None = None, end: str | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Comptes › ⋯ › Balance (§8.6) : par défaut la plus ancienne saison
+            commencée et pas encore clôturée ; start / end resserrent la période."""
+            season = season_by_id(db, member, season_id) if season_id else documents.balance_season(db, member.org_id)
+            if season is None:
+                raise HTTPException(status_code=404, detail="Aucune saison")
+            seasons = sorted(self.seasons(db, member.org_id), key=lambda s: s.start_date, reverse=True)
+            return {
+                **ag_call(documents.balance, db, member, season, start, end),
+                "seasons": [{"id": s.id, "name": s.name, "start": s.start_date, "end": s.end_date} for s in seasons],
+            }
+
+        @app.get("/finances/balance/pdf")
+        def balance_pdf(season_id: int, start: str | None = None, end: str | None = None, db: Session = db_dep, member: Member = member_dep) -> Response:
+            """La Balance de l'écran en PDF, téléchargée (rien n'est rangé dans Docs)."""
+            season = season_by_id(db, member, season_id)
+            org_name = documents.ports.org_name(db, member.org_id) if documents.ports.org_name else ""
+            content = ag_call(documents.balance_pdf, db, member, season, org_name, start, end)
+            name = f"Balance {season.name}.pdf"
+            return Response(content, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(name)}"})
+
         @app.get("/finances/opening-balances/{season_id}")
         def get_opening(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
             """Soldes de départ de la saison (§8.7) et vérification contre les relevés."""
