@@ -31,7 +31,7 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
   }, [operationId])
 
   async function enregistrer() {
-    const retenues = lignes.filter((l) => l.accountId)
+    const retenues = lignes.filter((l) => l.accountId && (lignes.length === 1 || Number(l.amount) !== 0))
     try {
       await api.ventiler(operationId, retenues.map((l) => ({ accountId: Number(l.accountId), amount: Number(l.amount) })))
       onChange()
@@ -117,7 +117,21 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
                 {ecart === 0 ? 'La ventilation fait le montant de la banque.' : `Écart avec la banque : ${euros(ecart)}`}
               </p>
             )}
+            {fiche.chequeDeposit && !fiche.lines.length && (
+              <p className="fin-cp-proposition fin-cp-proposition--aucune">
+                Remise de chèques : la banque ne dit pas ce que payent les chèques. Ventilez-la entre ses comptes, le total doit faire le montant de la banque.
+              </p>
+            )}
             <div className="fin-cp-boutons">
+              {fiche.chequeDeposit && fiche.splitSuggestion.length > 1 && lignes.length === 1 && (
+                <button
+                  type="button"
+                  className="btn btn--secondary"
+                  onClick={() => setLignes(fiche.splitSuggestion.map((a, i) => ({ accountId: String(a.id), amount: i === 0 ? fiche.amount : 0 })))}
+                >
+                  Ventiler comme les remises précédentes
+                </button>
+              )}
               <button type="button" className="btn btn--secondary" onClick={() => setLignes((ls) => [...ls, { accountId: '', amount: 0 }])}>
                 Ventiler sur un autre compte
               </button>

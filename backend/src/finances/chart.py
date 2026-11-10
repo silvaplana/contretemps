@@ -75,6 +75,16 @@ def label_key(label: str) -> str:
     return " ".join(words)
 
 
+# Une remise de chèques (« REM CHQ 0012345 », « REMISE DE CHEQUES ») : la banque
+# ne dit pas ce que payent les chèques, l'appli ne propose donc jamais un seul
+# compte ; le trésorier la ventile (§8.10, étape 3).
+_CHEQUE_DEPOSIT = re.compile(r"\bREM(ISE)?S?\b\s*(DE\s*)?CH(Q|EQ|EQUE|EQUES)\b")
+
+
+def is_cheque_deposit(label: str, details: str = "") -> bool:
+    return bool(_CHEQUE_DEPOSIT.search(normalize(f"{label} {details or ''}")))
+
+
 @dataclass
 class Proposal:
     """Un compte proposé pour une ligne, et pourquoi (phrase à l'écran)."""

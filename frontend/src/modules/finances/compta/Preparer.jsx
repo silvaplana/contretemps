@@ -168,7 +168,9 @@ function Etape3({ rapprocher, aRapprocher, classify, enCours, onRapprocher, onVa
               <span className="muted"> · {dateFr(o.date)}</span>
             </span>
             <span className="fin-preparer__montant">{euros(o.amount)}</span>
-            <span className="fin-cp-proposition fin-cp-proposition--aucune">Compte ? {o.piece ? 'la pièce aide' : 'pas de pièce'}</span>
+            <span className="fin-cp-proposition fin-cp-proposition--aucune">
+              {o.chequeDeposit ? 'Remise de chèques : à ventiler entre ses comptes' : `Compte ? ${o.piece ? 'la pièce aide' : 'pas de pièce'}`}
+            </span>
           </button>
         ))}
       </div>

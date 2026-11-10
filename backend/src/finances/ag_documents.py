@@ -39,6 +39,7 @@ from sqlalchemy.orm import Session
 
 from .accounting import Accounting
 from .exports import _CSS, _eur, _fr, html_to_pdf
+from .chart import is_cheque_deposit
 from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinSeasonNote
 from .ports import Member, Season
 
@@ -515,8 +516,11 @@ class AgDocuments:
         for r in rows:
             if r["account"] is not None:
                 continue
-            line = {"id": r["id"], "date": r["date"], "label": r["label"], "amount": r["amount"], "piece": r.get("piece")}
-            if r["proposal"] is None:
+            cheque = is_cheque_deposit(r["label"], r.get("details", ""))
+            line = {"id": r["id"], "date": r["date"], "label": r["label"], "amount": r["amount"], "piece": r.get("piece"), "chequeDeposit": cheque}
+            if r["proposal"] is None or cheque:
+                # Une remise de chèques n'est jamais « sûre » : la banque ne dit
+                # pas ce que payent les chèques, le trésorier la ventile.
                 unsure.append(line)
             else:
                 group = by_account.setdefault(r["proposal"]["id"], {"account": {k: r["proposal"][k] for k in ("id", "number", "label")}, "operations": []})

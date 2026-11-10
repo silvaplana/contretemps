@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .chart import DEFAULT_CHART, Proposal, label_key, propose
+from .chart import DEFAULT_CHART, Proposal, is_cheque_deposit, label_key, propose
 from .models import (
     FULL,
     LEVELS,
@@ -242,6 +242,18 @@ class Accounting:
                 history.setdefault(key, Counter())[lines[0].account_id] += 1
         return history
 
+    def _split_habit(self, db: Session, org_id: int) -> list[int]:
+        """Les comptes entre lesquels les remises de chèques déjà ventilées ont
+        été partagées, du plus fréquent au plus rare : la proposition de
+        ventilation de la prochaine remise."""
+        operations = {o.id: o for o in db.scalars(select(FinOperation).join(FinAccount).where(FinAccount.org_id == org_id))}
+        counter: Counter = Counter()
+        for operation_id, lines in self._lines(db, org_id).items():
+            op = operations.get(operation_id)
+            if op is not None and len(lines) > 1 and is_cheque_deposit(op.label, op.details):
+                counter.update(line.account_id for line in lines)
+        return [account_id for account_id, _ in counter.most_common()]
+
     def annotate(self, db: Session, org_id: int, rows: list[dict]) -> list[dict]:
         """Ajoute à chaque ligne de l'historique (Finances.get_ledger) son
         compte confirmé (`account` : {"id", "number", "label", "split"}),
@@ -290,6 +302,11 @@ class Accounting:
             proposal = _from_piece(active, pieces.get(op.id), op.amount) or propose(
                 active, op.label, op.details, op.amount, self._history(db, member.org_id)
             )
+        cheque = op.transfer_id is None and is_cheque_deposit(op.label, op.details)
+        suggestion = []
+        if cheque and not confirmed:
+            habit = [by_id[i] for i in self._split_habit(db, member.org_id) if i in by_id and by_id[i].active]
+            suggestion = [{"id": a.id, "number": a.number, "label": a.label} for a in habit]
         return {
             "id": op.id,
             "date": op.date.isoformat(),
@@ -311,6 +328,8 @@ class Accounting:
             "proposal": self._proposal(by_id, proposal),
             "piece": pieces.get(op.id),
             "level": self.level(db, member.org_id),
+            "chequeDeposit": cheque,
+            "splitSuggestion": suggestion,
         }
 
     def set_lines(self, db: Session, member: Member, operation_id: int, lines: list[dict]) -> dict:
