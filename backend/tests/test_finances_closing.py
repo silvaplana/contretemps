@@ -391,3 +391,77 @@ def test_an_invoice_paid_in_two_transactions_is_one_charge_and_one_letter(full, 
     del pieces[rows["PRLV MYSTERE"]["id"]]
     books = documents.books(db_session, TRESORIER, SEASON)
     assert [l.letter for l in books["401"].lines] == ["", ""]
+
+
+def _balance_pdf(path, rows):
+    """Une Balance comme celle du logiciel de la trésorière : quatre colonnes
+    Débit / Crédit (Total Période, Solde Période), montants à droite."""
+    doc = pymupdf.open()
+    page = doc.new_page()
+    for x, text in ((283, "Débit"), (359, "Crédit"), (439, "Débit"), (515, "Crédit")):
+        page.insert_text((x, 120), text, fontsize=9)
+    y = 140
+    for number, label, td, tc, sd, sc in rows:
+        page.insert_text((31, y), number, fontsize=9)
+        page.insert_text((97, y), label, fontsize=9)
+        for x_end, amount in ((330, td), (409, tc), (484, sd), (564, sc)):
+            if amount:
+                texte = f"{amount // 100:,}".replace(",", " ") + f",{amount % 100:02d}"
+                page.insert_text((x_end - pymupdf.get_text_length(texte, fontsize=9), y), texte, fontsize=9)
+        y += 10.4
+    doc.save(path)
+    return path
+
+
+def test_previous_opening_reads_last_season_balance_from_docs(full, db_session, tmp_path):
+    """financier.md §8.7 (Seb, 10 novembre) : « Reprendre les soldes de l'an
+    dernier » lit la Balance de la saison précédente déposée dans Docs (format
+    des logiciels : colonnes Solde Débit / Crédit), propose les soldes de
+    bilan et la vérification des banques ; rien n'est écrit avant « Utiliser
+    ces soldes ». Sans Balance : on dit où la déposer."""
+    _, accounting, documents, _, _ = full
+    previous = Season(id=0, name="2024-2025", start_date="2024-09-01", end_date="2025-08-31")
+    documents.seasons = lambda db, org: [previous, SEASON, NEXT]
+    with pytest.raises(ValueError, match="Aucune Balance"):
+        documents.previous_opening(db_session, TRESORIER, SEASON)
+    pdf = _balance_pdf(tmp_path / "Balance 01.09.24-31.08.25.pdf", [
+        ("110", "A-Nouveaux", 408926, 1001550, 0, 592624),
+        ("129", "Résultat de l'exercice (perte)", 408926, 0, 408926, 0),
+        ("401", "Fournisseurs", 855554, 890061, 0, 34507),
+        ("411", "Adhérents", 3382700, 3372700, 10000, 0),
+        ("5121", "CIC CPTE 401", 1391655, 1058094, 95000, 0),
+        ("5122", "CIC LIVRET", 365084, 300000, 50000, 0),
+        ("580", "Virement Interne", 300000, 300000, 0, 0),
+        ("6063", "Autres Fournitures", 140710, 0, 140710, 0),
+    ])
+    documents.ports.balance_file = lambda db, member, season: (pdf.name, pdf) if season.id == previous.id else None
+    lu = documents.previous_opening(db_session, TRESORIER, SEASON)
+    assert lu["previousSeason"] == "2024-2025" and lu["file"] == pdf.name and lu["readBy"] == "colonnes"
+    # Comptes de bilan à solde non nul, hors 110 / 129 (recalculés) et 580 (nul) ; 6xx ignorés.
+    assert lu["accounts"] == [
+        {"number": "401", "label": "Fournisseurs", "balance": -345.07},
+        {"number": "411", "label": "Adhérents", "balance": 100.0},
+        {"number": "5121", "label": "CIC CPTE 401", "balance": 950.0},
+        {"number": "5122", "label": "CIC LIVRET", "balance": 500.0},
+    ]
+    assert lu["bankCheck"] == [
+        {"number": "5121", "label": "Compte courant", "statements": 950.0, "entered": 950.0},
+        {"number": "5122", "label": "Livret Bleu", "statements": 500.0, "entered": 500.0},
+    ]
+    # Rien d'écrit : la saison part toujours des relevés, et Préparer le dit (niveau Complet).
+    assert documents.opening(db_session, TRESORIER, SEASON)["source"] == "releves"
+    step = documents.preparation(db_session, TRESORIER, SEASON, None)["opening"]
+    assert step == {"source": "releves", "mismatches": 0, "toCarry": True, "ok": False}
+    # Le trésorier confirme : repris, l'étape passe au vert.
+    documents.set_opening(db_session, TRESORIER, SEASON, lu["accounts"])
+    step = documents.preparation(db_session, TRESORIER, SEASON, None)["opening"]
+    assert step == {"source": "saisie", "mismatches": 0, "toCarry": False, "ok": True}
+    # Colonnes illisibles : le lecteur de secours (le modèle) prend le relais, et l'écran le dit.
+    documents.ports.balance_file = lambda db, member, season: ("balance.jpg", tmp_path / "balance.jpg")
+    (tmp_path / "balance.jpg").write_bytes(b"jpeg")
+    documents.ports.balance_model = lambda db, org, path, name: [("401", "Fournisseurs", -20000)]
+    lu = documents.previous_opening(db_session, TRESORIER, SEASON)
+    assert lu["readBy"] == "lecture" and lu["accounts"] == [{"number": "401", "label": "Fournisseurs", "balance": -200.0}]
+    # Saison précédente clôturée dans l'appli : rien à reprendre, c'est reporté.
+    with pytest.raises(ValueError, match="Première saison"):
+        documents.previous_opening(db_session, TRESORIER, previous)

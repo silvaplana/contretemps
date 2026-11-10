@@ -187,7 +187,7 @@ def test_preparation_counts_the_steps_and_confirms_accounts_in_bulk(world, db_se
     etat = documents.preparation(db_session, TRESORIER, SEASON, calendar)
     assert etat["season"]["name"] == "2025-2026" and etat["level"] == "simple"
     assert etat["statements"]["accounts"] == 2 and etat["statements"]["ok"] is True
-    assert etat["opening"] == {"source": "releves", "mismatches": 0, "ok": True}
+    assert etat["opening"] == {"source": "releves", "mismatches": 0, "toCarry": False, "ok": True}  # niveau Simple : la trésorerie suffit
     classify = etat["classify"]
     # Amazon, Galli et HelloAsso sont classés ; les virements internes n'ont pas de compte.
     sans = [l["label"] for l in classify["unsure"]] + [o["label"] for g in classify["sure"] for o in g["operations"]]

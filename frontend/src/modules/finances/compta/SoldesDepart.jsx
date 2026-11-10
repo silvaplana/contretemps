@@ -19,7 +19,7 @@ export const SOLDES_EVENTS = { soldes: SOLDES_EVENT }
 const SOURCES = {
   saisie: 'Soldes repris par le trésorier.',
   cloture: 'Soldes reportés par la clôture de la saison précédente.',
-  releves: 'Trésorerie des relevés au début de la saison ; les comptes de tiers partent de zéro.',
+  releves: 'Les soldes de l’an dernier ne sont pas encore repris : seule la trésorerie des relevés est connue, les dettes, créances et fonds partent de zéro.',
 }
 
 export default function SoldesDepart({ onClose }) {
@@ -28,6 +28,8 @@ export default function SoldesDepart({ onClose }) {
   const [data, setData] = useState(null)
   const [lignes, setLignes] = useState([])
   const [erreur, setErreur] = useState('')
+  const [lecture, setLecture] = useState(null) // la Balance de l'an dernier lue, pas encore enregistrée
+  const [enCours, setEnCours] = useState(false)
 
   useEffect(() => {
     api
@@ -45,10 +47,33 @@ export default function SoldesDepart({ onClose }) {
       .soldesDepart(seasonId)
       .then((d) => {
         setData(d)
+        setLecture(null)
         setLignes(d.accounts.map((a) => ({ ...a, balance: a.balance === 0 ? '' : String(a.balance) })))
       })
       .catch((err) => setErreur(err.message))
   }, [seasonId])
+
+  // « Reprendre les soldes de l'an dernier » : l'appli lit la Balance de la
+  // saison précédente dans Docs et remplit les cases ; rien n'est enregistré
+  // avant « Utiliser ces soldes » (financier.md §8.7, Seb 10/11).
+  async function reprendreAnDernier() {
+    setEnCours(true)
+    setErreur('')
+    try {
+      const lu = await api.soldesPrecedents(seasonId)
+      const lus = new Map(lu.accounts.map((a) => [a.number, a]))
+      const connus = new Set(lignes.map((l) => l.number))
+      setLignes([
+        ...lignes.map((l) => ({ ...l, balance: lus.has(l.number) ? String(lus.get(l.number).balance) : '' })),
+        ...lu.accounts.filter((a) => !connus.has(a.number)).map((a) => ({ ...a, balance: String(a.balance) })),
+      ].sort((a, b) => a.number.localeCompare(b.number)))
+      setLecture(lu)
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
 
   async function reprendre() {
     try {
@@ -57,6 +82,7 @@ export default function SoldesDepart({ onClose }) {
         lignes.map((l) => ({ number: l.number, label: l.label, balance: Number(l.balance) || 0 })),
       )
       setData(d)
+      setLecture(null)
       setLignes(d.accounts.map((a) => ({ ...a, balance: a.balance === 0 ? '' : String(a.balance) })))
       setErreur('')
     } catch (err) {
@@ -66,6 +92,8 @@ export default function SoldesDepart({ onClose }) {
 
   const debut = saisons.find((s) => s.id === seasonId)?.startDate
   const total = lignes.reduce((s, l) => s + (Number(l.balance) || 0), 0)
+  // La vérification des banques : sur la lecture tant qu'elle n'est pas enregistrée, sinon sur l'enregistré.
+  const verification = (lecture ?? data)?.bankCheck ?? []
 
   return (
     <Modal
@@ -90,7 +118,20 @@ export default function SoldesDepart({ onClose }) {
         </label>
         {data && (
           <>
-            <p className="muted">{SOURCES[data.source]} Solde positif = débiteur (banque, caisse), négatif = dû (fournisseurs, report).</p>
+            <p className={data.source === 'releves' && !lecture ? 'fin-cp-alerte' : 'muted'}>{SOURCES[data.source]}</p>
+            {data.source !== 'cloture' && !data.closed && (
+              <div className="fin-preparer__bloc">
+                <span className="fin-cp-s">
+                  {lecture
+                    ? `Soldes lus dans « ${lecture.file} » (saison ${lecture.previousSeason})${lecture.readBy === 'lecture' ? ', lus par l’appli : à vérifier ligne par ligne' : ''}. Vérifiez, corrigez au besoin, puis « Utiliser ces soldes ».`
+                    : 'Déposez la Balance de l’an dernier dans Docs › Financier (saison précédente ou en cours, « Balance » dans le nom), appuyez sur Reprendre, vérifiez, puis « Utiliser ces soldes ». Sans Balance, remplissez les cases à la main.'}
+                </span>
+                <button type="button" className="btn btn--secondary" onClick={reprendreAnDernier} disabled={enCours}>
+                  {enCours ? 'Lecture…' : 'Reprendre les soldes de l’an dernier'}
+                </button>
+              </div>
+            )}
+            <p className="muted">Solde positif = débiteur (banque, caisse), négatif = dû (fournisseurs, report).</p>
             <p className="muted">
               Ces soldes sont la première ligne de chaque compte au début de la saison. Ils servent pour le Grand livre et la Balance,
               la trésorerie de la Synthèse et du Rapport financier, et ce que la clôture reporte sur la saison suivante. Ils ne changent
@@ -110,15 +151,17 @@ export default function SoldesDepart({ onClose }) {
               step="0.01"
               inputMode="decimal"
               value={l.balance}
-              placeholder="0"
+              placeholder="0,00"
               onChange={(e) => setLignes((ls) => ls.map((x, j) => (j === i ? { ...x, balance: e.target.value } : x)))}
             />
           </label>
         ))}
-        {data?.bankCheck.map((c) =>
+        {verification.map((c) =>
           Math.round((c.statements - c.entered) * 100) === 0 ? null : (
             <p key={c.number} className="fin-cp-alerte">
-              {c.number} {c.label} : les relevés donnent {api.euros(c.statements)} au début de la saison, vous avez {api.euros(c.entered)}.
+              {c.number} {c.label} : les relevés donnent {api.euros(c.statements)} au début de la saison, {lecture ? 'la Balance donne' : 'vous avez'}{' '}
+              {api.euros(c.entered)}
+              {lecture ? ' : un chèque pas encore débité, ou une erreur à expliquer avant de valider.' : '.'}
             </p>
           ),
         )}

@@ -642,6 +642,11 @@ class FinancesReceiver:
             """Soldes de départ de la saison (§8.7) et vérification contre les relevés."""
             return ag_call(documents.opening, db, member, season_by_id(db, member, season_id))
 
+        @app.get("/finances/opening-balances/{season_id}/previous")
+        def previous_opening(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les soldes de clôture lus dans la Balance de l'an dernier (Docs), à confirmer (§8.7)."""
+            return ag_call(documents.previous_opening, db, member, season_by_id(db, member, season_id))
+
         @app.put("/finances/opening-balances/{season_id}")
         def set_opening(season_id: int, data: OpeningRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             return ag_call(documents.set_opening, db, member, season_by_id(db, member, season_id), data.accounts)

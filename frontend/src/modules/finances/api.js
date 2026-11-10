@@ -157,6 +157,8 @@ export const urlRapportFinancier = (reportId, format) => `${BASE}/reports/${repo
 // Niveau Complet (financier.md §8.7) : soldes de départ, clôture, écritures d'une opération.
 export const soldesDepart = (seasonId) => appel(`/opening-balances/${seasonId}`)
 export const enregistrerSoldesDepart = (seasonId, accounts) => appel(`/opening-balances/${seasonId}`, json('PUT', { accounts }))
+// Les soldes de clôture lus dans la Balance de l'an dernier (Docs), à vérifier puis « Utiliser ces soldes » (§8.7).
+export const soldesPrecedents = (seasonId) => appel(`/opening-balances/${seasonId}/previous`)
 export const cloturer = (reportId) => appel(`/reports/${reportId}/close`, { method: 'POST' })
 export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { method: 'DELETE' })
 // « Repartir à zéro sur cette saison » (§8.7) : le nom de la saison retapé confirme.

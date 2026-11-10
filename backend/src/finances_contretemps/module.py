@@ -20,6 +20,7 @@ from finances import (
     GeneralAssemblies,
     WrittenReports,
 )
+from finances.balance_reader import BalanceModelReader
 from finances.bank import Bank
 from finances.enablebanking import EnableBankingClient
 from registry import Module, Right, guide_file
@@ -28,6 +29,7 @@ from securite.chiffrement import chiffrer, dechiffrer
 from .actions import actions
 from .lectures import financier
 from .adapter import (
+    balance_dans_docs,
     FINANCES_ACCESS,
     adresse_ecole,
     honoraires_payes,
@@ -120,6 +122,8 @@ def mount(app, core) -> None:
             folder=dossier_ag(core.documents_client),
             org_name=nom_ecole,
             reset_pieces=repartir_a_zero(core.notes_frais_client),
+            balance_file=balance_dans_docs(core.documents_client),
+            balance_model=BalanceModelReader(noter_cout=note_cost("lecture_balance"), plafond_atteint=ressources.plafond_assistant_atteint).read,
         ),
     )
     # Rapport financier (spec §8.6) : le modèle rédige, l'appli place les chiffres.

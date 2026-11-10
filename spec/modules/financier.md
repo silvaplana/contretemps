@@ -732,10 +732,24 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   toujours justes, rien à régénérer en passant de Simple à Complet. Seules la clôture
   (`fin_closings`), les soldes de départ (`fin_opening_balances`) et les écritures à la main du
   trésorier (`fin_manual_entries`, journal OD, §8.10 étape 4 : 411, 471) sont écrites.
-- **Soldes de départ** (Comptes ⋯ › Soldes de départ) : première saison dans l'appli, repris de
-  la Balance de l'an dernier déposée dans Docs (lecture du PDF, vérification à l'écran, « Utiliser
-  ces soldes au 1er septembre ») ; l'appli vérifie que les soldes 512x égalent les relevés au 31/08. Saisons
-  suivantes : calculés par la clôture.
+- **Soldes de départ** (Comptes ⋯ › Soldes de départ, et Bilan › Préparer étape 2) : première saison
+  dans l'appli, repris de la Balance de l'an dernier déposée dans Docs ; saisons suivantes : reportés
+  par la clôture. **Règle (Seb, 10 novembre 2026, « que ferait un pro »)** : les soldes de départ sont
+  les soldes de clôture de l'an dernier pour tous les comptes de bilan (banques, caisse, dettes 401 /
+  467x, créances 411, fonds et report) ; les relevés ne servent qu'à **vérifier** les 512x. Tant que
+  rien n'est repris, l'appli ne connaît que la trésorerie des relevés : l'écran le dit en orange
+  (« les soldes de l'an dernier ne sont pas encore repris ») et l'étape 2 de Préparer reste à faire au
+  niveau Complet (`toCarry`). **« Reprendre les soldes de l'an dernier »** (`GET
+  /finances/opening-balances/{saison}/previous`) : l'appli cherche dans Docs › saison précédente ›
+  Financier (tous sous-dossiers), sinon dans le Financier de la saison en cours (le dossier d'une
+  saison terminée est en lecture seule à l'écran), le PDF le plus récent dont le nom contient « balance », lit ses
+  colonnes Solde Débit / Crédit (`finances/balance_reader.py`, format d'EBP et le nôtre) ; si les
+  colonnes ne se lisent pas (autre logiciel, scan, photo), le même lecteur que les factures lit le
+  document et l'écran dit « lus par l'appli : à vérifier ligne par ligne ». Ne sont proposés que les
+  comptes de bilan à solde non nul, hors 110 / 120 / 129 que l'équilibre recalcule. Les cases se
+  remplissent, la vérification des 512x contre les relevés s'affiche (écart = chèque pas encore
+  débité ou erreur, à expliquer), et **rien n'est écrit avant « Utiliser ces soldes »**. Sans Balance
+  dans Docs : le message dit où la déposer, et les cases se remplissent à la main.
 - **Clôture** (Bilan, bilan Officiel) : résultat reporté (120 / 129 → 110), écritures d'à-nouveaux
   de la saison suivante, saison verrouillée (plus de rattachement sans la rouvrir, trace gardée).
   **Le cadenas (10 novembre 2026, modèle EBP)** : la clôture **valide** toutes les écritures de la
@@ -904,7 +918,8 @@ avec ce que l'appli calcule (trésorière avec EBP, appli, contre-calcul : à tr
 sans que la trésorière l'ait vu :
 
 1. **Relevés complets** : la grille des relevés (§3) toute verte pour la saison.
-2. **Soldes de départ** au premier jour de la saison (§8.7), 512x = relevés.
+2. **Soldes de départ** au premier jour de la saison (§8.7) : repris de l'an dernier (ou reportés par
+   la clôture) et 512x = relevés ; au Complet, « trésorerie des relevés seulement » reste orange.
 3. **Rapprocher et classer** : l'écran Rapprocher de Pièces (`notes-de-frais.md` §7 septies),
    filtré sur la saison, puis **un compte sur chaque ligne de banque** : d'abord les lignes où
    l'appli n'est pas sûre (proposition en bleu avec « ? », une par une : choisir le compte,
