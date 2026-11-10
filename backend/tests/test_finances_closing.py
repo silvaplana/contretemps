@@ -465,3 +465,20 @@ def test_previous_opening_reads_last_season_balance_from_docs(full, db_session, 
     # Saison précédente clôturée dans l'appli : rien à reprendre, c'est reporté.
     with pytest.raises(ValueError, match="Première saison"):
         documents.previous_opening(db_session, TRESORIER, previous)
+
+
+def test_opening_gives_what_explains_a_balance(full, db_session):
+    """Soldes de départ (Seb, 10/11) : les transactions bancaires des trois
+    premiers mois et les pièces non payées d'avant la saison, pour expliquer
+    un solde qui n'est pas à zéro."""
+    _, _, documents, _, _ = full
+    documents.ports.unpaid = lambda db, org: [
+        {"title": "Brico", "date": "2025-08-20", "amount": 200.0, "number": "AC-2024-009"},
+        {"title": "Tissus", "date": "2025-10-02", "amount": 50.0, "number": None},
+    ]
+    opening = documents.opening(db_session, TRESORIER, SEASON)
+    assert opening["unpaidBefore"] == [{"title": "Brico", "date": "2025-08-20", "amount": 200.0, "number": "AC-2024-009"}]
+    early = opening["earlyTransactions"]
+    assert early and all("2025-09-01" <= t["date"] < "2025-12-01" for t in early)
+    assert early == sorted(early, key=lambda t: t["date"])
+    assert any(t["amount"] < 0 for t in early) and all(set(t) == {"date", "label", "amount"} for t in early)

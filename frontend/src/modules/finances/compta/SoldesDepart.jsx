@@ -22,6 +22,48 @@ const SOURCES = {
   releves: 'Les soldes de l’an dernier ne sont pas encore repris : seule la trésorerie des relevés est connue, les dettes, créances et fonds partent de zéro.',
 }
 
+// Ce que veut dire un solde qui n'est pas à zéro, et ce qui l'explique
+// peut-être (Seb, 10/11) : règles fixes du plan comptable, rien d'inventé.
+// Rend { texte, alerte, pistes: [phrases] } ou null.
+function explication(ligne, data, verification, veille) {
+  const montant = Number(ligne.balance) || 0
+  if (!data || Math.round(montant * 100) === 0) return null
+  const n = ligne.number
+  const centimes = Math.round(montant * 100)
+  // Une transaction bancaire du début de saison du même montant règle sans doute ce solde.
+  const memeMontant = (data.earlyTransactions ?? [])
+    .filter((t) => Math.round(t.amount * 100) === centimes)
+    .slice(0, 2)
+    .map((t) => `Transaction bancaire du même montant : ${api.dateFr(t.date)}, « ${t.label} ».`)
+  if (n.startsWith('51') || n.startsWith('53')) {
+    const c = verification.find((v) => v.number === n)
+    const accord = c && Math.round((c.statements - c.entered) * 100) === 0
+    return { texte: `L’argent ${n.startsWith('53') ? 'dans la caisse' : 'sur ce compte'} au ${veille}${accord ? ' : ✓ égal aux relevés.' : '.'}` }
+  }
+  if (n === '110') return { texte: 'Les fonds de l’association : ce qu’elle possède moins ce qu’elle doit, accumulé d’année en année.' }
+  if (n.startsWith('471')) {
+    return {
+      alerte: true,
+      texte: 'Argent pas encore classé : un compte d’attente doit être vide. Demandez à la trésorière ce que c’est, puis mettez la somme dans le bon compte.',
+      pistes: memeMontant,
+    }
+  }
+  if (n.startsWith('401')) {
+    const pieces = data.unpaidBefore ?? []
+    const total = Math.round(pieces.reduce((s, p) => s + p.amount, 0) * 100)
+    const pistes = pieces.map((p) => `${p.number ? `${p.number} ` : ''}${p.title}, ${api.dateFr(p.date)} : ${api.euros(p.amount)}.`)
+    if (pieces.length) pistes.unshift(total === -centimes ? 'Les factures non payées dans Pièces donnent exactement ce total :' : 'Factures non payées dans Pièces avant la saison :')
+    return { texte: montant < 0 ? `Factures reçues, pas encore payées au ${veille}.` : `Fournisseurs payés d’avance au ${veille}.`, pistes: [...pistes, ...memeMontant] }
+  }
+  if (n.startsWith('467')) {
+    return { texte: montant < 0 ? `Ce que l’association devait encore à ${ligne.label} au ${veille}.` : `Ce que ${ligne.label} devait encore à l’association au ${veille}.`, pistes: memeMontant }
+  }
+  if (n.startsWith('411')) {
+    return { texte: montant > 0 ? `Ce que des adhérents devaient encore au ${veille}.` : `Ce que des adhérents avaient payé d’avance au ${veille}.`, pistes: memeMontant }
+  }
+  return memeMontant.length ? { texte: '', pistes: memeMontant } : null
+}
+
 // `initialSeasonId` : la saison ouverte au départ (depuis Préparer, celle du bilan) ; sinon la saison en cours.
 export default function SoldesDepart({ onClose, initialSeasonId }) {
   const [saisons, setSaisons] = useState([])
@@ -98,6 +140,8 @@ export default function SoldesDepart({ onClose, initialSeasonId }) {
   const total = lignes.reduce((s, l) => s + (Number(l.balance) || 0), 0)
   // La vérification des banques : sur la lecture tant qu'elle n'est pas enregistrée, sinon sur l'enregistré.
   const verification = (lecture ?? data)?.bankCheck ?? []
+  // La veille de la saison : la date des soldes de départ.
+  const veille = debut ? api.dateFr(new Date(new Date(`${debut}T12:00:00`).getTime() - 86400000).toISOString().slice(0, 10)) : 'début de la saison'
 
   return (
     <Modal
@@ -154,22 +198,37 @@ export default function SoldesDepart({ onClose, initialSeasonId }) {
           </>
         )}
         {data?.closed && <p className="fin-cp-alerte">Saison clôturée : rouvrez-la (Bilan › Documents de l’AG) pour changer ses soldes.</p>}
-        {lignes.map((l, i) => (
-          <label key={l.number} className="fin-cp-champ fin-cp-solde">
-            <span>
-              {l.number} {l.label}
-            </span>
-            <input
-              className="field-input"
-              type="number"
-              step="0.01"
-              inputMode="decimal"
-              value={l.balance}
-              placeholder="0,00"
-              onChange={(e) => setLignes((ls) => ls.map((x, j) => (j === i ? { ...x, balance: e.target.value } : x)))}
-            />
-          </label>
-        ))}
+        {lignes.map((l, i) => {
+          const ex = explication(l, data, verification, veille)
+          return (
+            <div key={l.number} className="fin-cp-solde-bloc">
+              <label className="fin-cp-champ fin-cp-solde">
+                <span>
+                  {l.number} {l.label}
+                </span>
+                <input
+                  className="field-input"
+                  type="number"
+                  step="0.01"
+                  inputMode="decimal"
+                  value={l.balance}
+                  placeholder="0,00"
+                  onChange={(e) => setLignes((ls) => ls.map((x, j) => (j === i ? { ...x, balance: e.target.value } : x)))}
+                />
+              </label>
+              {ex && (
+                <div className="fin-cp-solde-pourquoi">
+                  {ex.texte && <p className={ex.alerte ? 'fin-cp-alerte' : 'muted'}>{ex.texte}</p>}
+                  {(ex.pistes ?? []).map((p) => (
+                    <p key={p} className="muted">
+                      {p}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
         <p className="muted">
           {Math.round(total * 100) === 0
             ? 'Les soldes s’équilibrent.'
