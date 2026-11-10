@@ -38,6 +38,7 @@ from .adapter import (
     dossier_ag,
     ranger_dans_docs,
     preparer_dossiers_financier,
+    prevenir_tresoriers,
     creer_saison,
     doc_releve,
     ranger_releve,
@@ -128,7 +129,10 @@ def mount(app, core) -> None:
         org_name=nom_ecole,
         store=ranger_dans_docs(core.documents_client),
     )
-    finances_bank = Bank(client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer)
+    finances_bank = Bank(
+        client=_client_bancaire(), finances=finances_client, encrypt=chiffrer, decrypt=dechiffrer,
+        warn=prevenir_tresoriers(core.notifications_client),
+    )
     # Les dossiers vides de la trésorière sous Docs › Financier (Seb, 30/10)
     # sont créés quand un trésorier ouvre le Financier.
     preparer = preparer_dossiers_financier(core.documents_client)

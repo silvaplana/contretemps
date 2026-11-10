@@ -37,6 +37,11 @@ STATE_TTL = timedelta(minutes=30)
 # Profondeur d'historique : 90 jours, le maximum que les banques acceptent en
 # lecture ordinaire (constaté dans Sambo Admin).
 HISTORY_DAYS = 90
+# Lecture automatique : au plus toutes les 12 h (les banques limitent les
+# lectures sans la personne à quatre par jour) ; rappel 7 jours avant la fin
+# de l'accès (180 jours au plus).
+AUTO_SYNC_HOURS = 12
+EXPIRY_WARNING_DAYS = 7
 # Types de solde (ISO 20022) par ordre de préférence : comptable de clôture,
 # provisoire, disponible.
 BALANCE_TYPES = ("CLBD", "ITBD", "XPCD", "CLAV", "ITAV")
@@ -82,14 +87,18 @@ class Bank:
         finances: Finances,
         encrypt: Callable[[str], str],
         decrypt: Callable[[str], str | None],
+        warn: Callable[[Session, int, str, str], None] | None = None,
     ) -> None:
         """client : None si la connexion bancaire n'est pas configurée sur le
         serveur (pas de clé) ; encrypt/decrypt : chiffrement de la session,
-        fourni par l'appli hôte."""
+        fourni par l'appli hôte ; warn(db, org_id, titre, corps) : prévenir
+        les trésoriers de l'organisation (notification), pour le rappel
+        avant l'expiration."""
         self.client = client
         self.finances = finances
         self.encrypt = encrypt
         self.decrypt = decrypt
+        self.warn = warn
         self._banks: tuple[float, list[dict]] | None = None
 
     # ----- lecture -----
@@ -98,12 +107,12 @@ class Bank:
         return db.scalar(select(FinBankConnection).where(FinBankConnection.org_id == org_id))
 
     @staticmethod
-    def _active(connection: FinBankConnection | None) -> bool:
+    def _active(connection: FinBankConnection | None, now: datetime | None = None) -> bool:
         return bool(
             connection is not None
             and connection.session_encrypted
             and connection.valid_until is not None
-            and connection.valid_until > _now()
+            and connection.valid_until > (now or _now())
         )
 
     def status(self, db: Session, member: Member) -> dict:
@@ -250,6 +259,37 @@ class Bank:
                 except BankError:
                     continue
         return total
+
+    def automatic(self, db: Session, now: datetime | None = None) -> dict:
+        """Le tour du programme de fond (§3.5) : relit les comptes des
+        organisations connectées dont la dernière lecture a plus de
+        AUTO_SYNC_HOURS, et prévient les trésoriers EXPIRY_WARNING_DAYS avant la
+        fin de l'accès (une fois par accès : reconnecter remet le rappel).
+        Retourne {"synced": n organisations lues, "added": opérations
+        nouvelles, "warned": n organisations prévenues}."""
+        now = now or _now()
+        synced = added = warned = 0
+        for connection in list(db.scalars(select(FinBankConnection))):
+            if not self._active(connection, now):
+                continue
+            if connection.last_sync_at is None or connection.last_sync_at <= now - timedelta(hours=AUTO_SYNC_HOURS):
+                try:
+                    added += self._sync(db, connection)["added"]
+                    synced += 1
+                except BankError:
+                    pass  # noté dans last_error, le volet le montre
+            threshold = connection.valid_until - timedelta(days=EXPIRY_WARNING_DAYS)
+            if now >= threshold and (connection.expiry_reminded_at is None or connection.expiry_reminded_at < threshold):
+                if self.warn is not None:
+                    self.warn(
+                        db, connection.org_id, "Accès à la banque bientôt expiré",
+                        f"{connection.bank} : l'accès se termine le {connection.valid_until:%d/%m/%Y}. "
+                        "Financier › Comptes › ⋯ › Se connecter aux comptes en banque › Reconnecter la banque.",
+                    )
+                connection.expiry_reminded_at = now
+                db.commit()
+                warned += 1
+        return {"synced": synced, "added": added, "warned": warned}
 
     @staticmethod
     def _pick_balance(balances: list[dict]) -> float | None:

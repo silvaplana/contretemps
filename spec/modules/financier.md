@@ -162,8 +162,15 @@ dernière erreur) ; `fin_accounts` gagne `bank_uid`, `bank_balance` (centimes) e
 `GET /finances/bank/banks?q=`, `POST /finances/bank/connect`, `GET /finances/bank/return`,
 `PUT /finances/bank/accounts`, `POST /finances/bank/sync`, `PUT /finances/accounts/{id}`.
 
-Pas encore fait : lecture automatique (deux fois par jour) et rappel avant l'expiration ;
-lecture des relevés PDF du CIC (écrite pour le Crédit Mutuel, à vérifier).
+**Lecture automatique et rappel (codés le 10 novembre 2026)** : le programme de fond
+(`app.relance_worker`) regarde toutes les 15 minutes et relit une organisation dont la dernière
+lecture a plus de 12 heures (deux lectures par jour, les banques en tolèrent quatre) ; une erreur
+reste dans le volet (« dernière erreur »), le tour suivant réessaie. Une semaine avant la fin de
+l'accès, les personnes qui ont le droit Financier reçoivent une notification « Accès à la banque
+bientôt expiré » (une fois par accès : `expiry_reminded_at`, remis par une reconnexion). Le
+conteneur du programme de fond doit voir la clé (volume `/run/secrets`, comme `backend`).
+
+Pas encore fait : lecture des relevés PDF du CIC (écrite pour le Crédit Mutuel, à vérifier).
 
 ## 4. Bilan
 
@@ -905,7 +912,6 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
 
 ## 9. Reste à faire
 
-- Connexion bancaire (§3.5) : lecture automatique deux fois par jour, rappel avant l'expiration,
-  relevés PDF du CIC.
+- Connexion bancaire (§3.5) : relevés PDF du CIC.
 - Améliorations notées : tableau plus lisible sur téléphone, catégories modifiables, « reste à
   recevoir » HelloAsso, textes ≥ 17 px (l'écran est repris tel quel).

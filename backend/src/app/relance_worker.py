@@ -20,6 +20,12 @@ qui ont choisi une campagne (spec/modules/helloasso.md §4).
 Relaie aussi, toutes les 5 minutes, les nouveaux posts du compte Instagram
 relié aux actualités (spec/modules/actualites.md §6 bis).
 
+Lit aussi les comptes en banque des écoles connectées (financier.md §3.5) :
+toutes les 15 minutes il regarde, et relit une école dont la dernière lecture
+a plus de 12 h ; prévient les trésoriers une semaine avant la fin de l'accès.
+Sans clé Enable Banking sur ce conteneur (voir docker-compose.yml, volume
+/run/secrets), rien n'est lu.
+
 Usage :
     python -m app.relance_worker
 """
@@ -32,18 +38,25 @@ from db import SessionLocal
 from documents import assembly
 from documents_contretemps import AnnuaireContretemps, AssociationContretemps, MessagerieContretemps
 from eleves import Eleves
+from finances import Finances
+from finances.bank import Bank
+from finances_contretemps.adapter import prevenir_tresoriers
+from finances_contretemps.module import _client_bancaire
 from helloasso.module import add_member
 from helloasso.sync import Sync, sync_all
 from messagerie import Conversations, Messages
 from news.instagram import InstagramRelay
 from news.news import News
 from news.storage import news_storage
+from notifications import Notifications
+from securite.chiffrement import chiffrer, dechiffrer
 from videos import Videos
 
 INTERVALLE_SECONDES = 60
 DELAI_MINUTES = 15
 HELLOASSO_TOURS = 5  # une synchronisation HelloAsso tous les 5 tours (5 min)
 INSTAGRAM_TOURS = 5  # les posts Instagram tous les 5 tours (5 min)
+BANQUE_TOURS = 15  # la banque tous les 15 tours (15 min) ; relue si > 12 h
 
 
 def run() -> None:
@@ -54,6 +67,9 @@ def run() -> None:
     helloasso = Sync(add_member=add_member(Eleves(comptes=Comptes())))
     # Pas de notification pour un post relayé : `notifications` inutile ici.
     instagram = InstagramRelay(News(notifications=None, storage=news_storage(), videos=Videos()))
+    banque = Bank(client=_client_bancaire(), finances=Finances(), encrypt=chiffrer, decrypt=dechiffrer, warn=prevenir_tresoriers(Notifications()))
+    if banque.client is None:
+        print("Connexion bancaire non configurée sur ce conteneur : pas de lecture automatique.")
     tour = 0
     print(
         f"Relance auto démarrée (vérifie toutes les {INTERVALLE_SECONDES}s, "
@@ -89,6 +105,14 @@ def run() -> None:
                 except Exception as erreur:  # noqa: BLE001 (la boucle continue)
                     db.rollback()
                     print(f"Relais Instagram en échec : {erreur}")
+            if tour % BANQUE_TOURS == 0 and banque.client is not None:
+                try:
+                    bilan = banque.automatic(db)
+                    if bilan["synced"] or bilan["warned"]:
+                        print(f"Banque : {bilan['synced']} école(s) relue(s), {bilan['added']} opération(s), {bilan['warned']} rappel(s) d'expiration.")
+                except Exception as erreur:  # noqa: BLE001 (la boucle continue)
+                    db.rollback()
+                    print(f"Lecture bancaire en échec : {erreur}")
         finally:
             db.close()
 

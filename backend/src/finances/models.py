@@ -76,6 +76,8 @@ class FinBankConnection(Base):
     connected_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Le rappel « l'accès expire bientôt » envoyé pour l'accès en cours (§3.5).
+    expiry_reminded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class FinStatement(Base):
