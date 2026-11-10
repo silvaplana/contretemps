@@ -443,9 +443,30 @@ Rapprocher, chacune porte deux liens :
 
 Une transaction qui a déjà sa pièce ne se justifie pas (400). Table `nf_operation_receipts`
 (une ligne par transaction concernée : `bank_operation_id` du port Banque, sans clé étrangère,
-`no_receipt_reason`, `requested_person_id`, `requested_at`, `requested_by`). Routes trésoriers :
+`no_receipt_reason`, `requested_person_id`, `requested_at`, `requested_by`, et l'avis gardé :
+`proof_doc_node_id`, `proof_name`, `proof_mime`). Routes trésoriers :
 `POST` / `DELETE /notes-frais/rapprochement/transactions/{id}/justifier`,
-`POST …/transactions/{id}/demander`.
+`POST …/transactions/{id}/demander`, `GET …/transactions/{id}/avis` (le fichier de l'avis).
+
+**L'avis de virement sans facture (Seb, 10 novembre, « ça peut arriver souvent »).** Ce que fait un
+pro : la transaction se comptabilise quand même, l'avis tient lieu de pièce faute de mieux, et la
+liste des dépenses sans justificatif reste visible. Dans l'appli :
+
+- Un avis déposé par « + » qui ne paie aucune facture connue **reste sur sa transaction bancaire**
+  (`_garder_avis`) : le fichier va dans Docs › Financier › **VIREMENTS SANS FACTURE** sous
+  « 2026-11-05 Virement DE LUCA DELPHINE 156,00.jpg », la transaction le montre en vignette « Avis »
+  dans Rapprocher (« avis de virement reçu, facture attendue »), le lot de saisie dit « avis gardé sur
+  la transaction, dans Rapprocher ». Une transaction qui porte déjà un avis n'en reçoit pas un second.
+- **« Justifier sans facture »** sur une transaction qui porte un avis : l'avis devient la pièce faute
+  de mieux, il part dans **ACHATS › MM.YYYY** sous « … - Sans facture.jpg » ; « Retirer » le ramène
+  dans VIREMENTS SANS FACTURE.
+- **La facture arrive plus tard** (on dépose seulement la facture) : l'appli détecte que la transaction
+  du même montant est justifiée sans facture ou porte un avis et **ne rattache jamais seule**, même au
+  même nom : la revue et la suggestion de Rapprocher disent « Transaction bancaire justifiée sans
+  facture (« raison ») et porte un avis de virement : c'est elle ? » (`paiement_propose.sans_facture`,
+  `paire.operation.sans_facture`). Au « Rattacher », l'avis devient la page **« - Virement »** de la
+  facture (dans son dossier), le fichier quitte ACHATS / VIREMENTS SANS FACTURE, et la justification
+  s'efface (`_adopter_avis`). « Repartir à zéro » sur la saison retire aussi les avis gardés.
 
 
 ### 7 bis Rangement dans Docs (Seb, 17 octobre ; simplifié le 29 octobre)
@@ -475,8 +496,8 @@ CIC, mail de la banque) est une preuve de paiement, jamais une pièce comptable 
 facture qu'il paie (§7 quinquies), il devient sa page de plus, dans son dossier, sous le même nom +
 « - Virement » (« 2025-01-31 Facture Hono Marysa Thomas - Virement.pdf », `nf_pieces.is_proof`, légende
 « Virement » sur la vignette). Une facture qui a déjà sa preuve n'en reçoit pas une seconde : l'avis
-cherche une autre facture du même montant, sinon il montre la transaction bancaire. Sans facture, rien
-n'est créé (l'avis n'est pas gardé).
+cherche une autre facture du même montant, sinon il montre la transaction bancaire et **reste dessus**
+(§7 octies « L'avis de virement sans facture »).
 
 ## 8. Don à l'association
 

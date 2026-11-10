@@ -56,7 +56,8 @@ Pièces
   Le fichier est nommé par l'appli en entrant dans Docs, date en tête (« 2025-02-09 Facture Amazon 39,90.jpg »,
   « 2025-01-31 Facture Hono Marysa Thomas.pdf », « 2025-06-12 Ticket Jacques Pesenti 54,17.jpg ») ; corriger la pièce le renomme.
   Un avis de virement déposé par « + » n'est pas une pièce : il devient la page « Virement » de la facture qu'il paie
-  (« … - Virement.pdf » dans son dossier) ; sans facture, l'appli montre la transaction bancaire et ne crée rien.
+  (« … - Virement.pdf » dans son dossier) ; sans facture, l'appli montre la transaction bancaire et garde l'avis dessus
+  (vignette « Avis » dans Rapprocher, fichier Docs › Financier › VIREMENTS SANS FACTURE) jusqu'à la facture.
 - Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature), bleu pour la banque
   (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
@@ -69,7 +70,11 @@ Pièces
   compte se choisit dans Comptes, filtre « Sans compte » ; sur chacune, « Justifier sans facture » = une raison, la
   transaction passe dans « Transactions bancaires justifiées sans facture » avec « Retirer », ou « Demander le
   justificatif » = choisir une personne, prévenue par notification et mail, la transaction affiche « justificatif
-  demandé à … le … ») ; en bas le PDF de rapprochement. Badge bleu = suggestions +
+  demandé à … le … » ; une transaction qui porte un avis de virement le montre en vignette ; justifiée sans facture, l'avis
+  part dans ACHATS › mois sous « … - Sans facture ») ; en bas le PDF de rapprochement. Quand la facture d'une transaction
+  justifiée ou porteuse d'un avis arrive, la revue et Rapprocher disent « Transaction bancaire justifiée sans facture… /
+  porte un avis de virement : c'est elle ? » et ne rattachent pas seuls ; au « Rattacher », l'avis devient la page
+  « - Virement » de la facture et la justification s'efface. Badge bleu = suggestions +
   pièces « déjà payées » sans ligne.
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import.
 - Sous la liste, « Du … au … » puis Excel (une ligne par dépense) et Rapprochement : le PDF pour le validateur comptable,

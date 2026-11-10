@@ -440,6 +440,12 @@ class NotesDeFraisReceiver:
         def retirer_justification(operation_id: int, db: Session = db_dep, m: Membre = membre):
             appeler(nf.retirer_justification, db, m, operation_id)
 
+        @app.get("/notes-frais/rapprochement/transactions/{operation_id}/avis")
+        def avis_de_virement(operation_id: int, db: Session = db_dep, m: Membre = membre):
+            chemin, type_mime, nom = appeler(nf.fichier_avis, db, m, operation_id)
+            return FileResponse(chemin, media_type=type_mime, filename=nom or None,
+                                content_disposition_type="inline", headers={"Cache-Control": "private, max-age=3600"})
+
         @app.post("/notes-frais/rapprochement/transactions/{operation_id}/demander", status_code=204)
         def demander_justificatif(operation_id: int, corps: DemandeEntree, db: Session = db_dep, m: Membre = membre):
             appeler(nf.demander_justificatif, db, m, operation_id, corps.person_id)

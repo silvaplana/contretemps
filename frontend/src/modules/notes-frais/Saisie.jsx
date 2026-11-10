@@ -29,7 +29,7 @@ function sousTitre(note) {
     if (note.id === null) {
       if (note.preuve.interne) return 'Virement entre les comptes de l’association : rien à faire'
       const op = note.preuve.operation
-      return `Aucune pièce de ${api.euros(montant)} · ${op ? `sur le compte le ${api.dateCourte(op.date)} : ${op.libelle}` : 'pas encore sur le compte'}`
+      return `Aucune pièce de ${api.euros(montant)} · ${op ? `sur le compte le ${api.dateCourte(op.date)} : ${op.libelle}` : 'pas encore sur le compte'}${note.preuve.gardee ? ' · avis gardé sur la transaction, dans Rapprocher' : ''}`
     }
     return `Paiement de : ${note.titre} · ${api.euros(montant)}${note.operation_id ? ' · payée selon la banque' : ''}`
   }
