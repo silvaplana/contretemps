@@ -332,6 +332,10 @@ ligne arrivera). Trois choix par ligne : **Valider** (« Valider : Payé », « 
 « Valider : À payer »), **Autre…** (la fiche : nature, qui, date, montant, lignes possibles,
 Refuser), **Plus tard**. En haut, **« Valider les pièces sûres (N) »** (ligne rattachée, personne
 connue) ; en bas, « Annuler cet import ». Fermer la revue laisse le reste À valider dans sa puce.
+**Doublon** (Seb, 10 novembre ; onze fichiers en double dans le classeur 2024-25) : une pièce dont le
+fichier a exactement le même contenu qu'une pièce déjà enregistrée (pas refusée) le dit dans la revue et
+dans la liste, « même fichier que la pièce n° N » (`nf_pieces.sha256`, `nf_notes.duplicate_of_id`) ;
+l'appli ne refuse rien toute seule, la trésorière refuse le doublon ou garde les deux.
 
 **Plus tard** : la pièce reste À valider, sort du badge de sa nature et passe dans la puce
 **À trancher** (avec les pièces établies puis **refusées**) ; son fichier va dans Docs › Financier

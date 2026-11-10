@@ -9,6 +9,7 @@ toutes celles de l'organisation (§11).
 
 from __future__ import annotations
 
+import hashlib
 import html
 import io
 import logging
@@ -988,6 +989,8 @@ class NotesDeFrais:
                 membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2],
                 nom_personne=personne.nom if personne is not None and nature != ACHAT else membre.nom,
             )
+            db.flush()
+            note.duplicate_of_id = self._meme_fichier(db, note)
         db.commit()
         db.refresh(note)
         self._ranger(db, membre, note)
@@ -1334,10 +1337,31 @@ class NotesDeFrais:
         extension = Path(nom or "").suffix.lower() or _EXTENSIONS.get(type_mime, "")
         nom_fichier = f"{depense.date.isoformat()} {depense.description or 'ticket'} {depense.id}-{len(depense.pieces) + 1}{extension}"
         dossier = self.stockage.dossier_depenses(membre.org_id, depense.person_id, nom_personne)
-        chemin, taille = self.stockage.put(membre.org_id, dossier, nom_fichier, flux)
+        contenu = flux.read()
+        chemin, taille = self.stockage.put(membre.org_id, dossier, nom_fichier, io.BytesIO(contenu))
         depense.pieces.append(PieceJustificative(
             chemin=chemin, type_mime=type_mime, nom=(nom or "")[:200], taille=taille, ordre=len(depense.pieces),
+            sha256=hashlib.sha256(contenu).hexdigest(),
         ))
+
+    def _meme_fichier(self, db: Session, note: NoteFrais) -> int | None:
+        """La première autre pièce (pas refusée) qui porte un fichier au même
+        contenu : la revue le dit, la trésorière tranche (Seb, 10/11 : onze
+        doublons dans le classeur 2024-25 de la trésorière)."""
+        empreintes = {p.sha256 for d in note.depenses for p in d.pieces if p.sha256}
+        if not empreintes:
+            return None
+        return db.scalar(
+            select(NoteFrais.id)
+            .join(Depense, Depense.note_id == NoteFrais.id)
+            .join(PieceJustificative, PieceJustificative.depense_id == Depense.id)
+            .where(
+                NoteFrais.org_id == note.org_id, NoteFrais.id != note.id, NoteFrais.statut != REFUSEE,
+                PieceJustificative.sha256.in_(empreintes),
+            )
+            .order_by(NoteFrais.id)
+            .limit(1)
+        )
 
     # --- Rangement dans Docs (§7 bis, financier.md §8.3 bis) ---
 
@@ -2083,6 +2107,7 @@ class NotesDeFrais:
             "traitee_le": note.traitee_le.isoformat() if note.traitee_le else None,
             "remboursee_le": note.remboursee_le.isoformat() if note.remboursee_le else None,
             "motif_refus": note.motif_refus,
+            "doublon_de": note.duplicate_of_id,
             "depenses": [self.depense_dict(d) for d in note.depenses],
             "rib": None if note.don or not note.rib_iban else {
                 "titulaire": note.rib_titulaire, "iban": note.rib_iban, "bic": note.rib_bic,

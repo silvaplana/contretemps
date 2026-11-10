@@ -1597,3 +1597,24 @@ def test_le_dossier_du_tresorier_porte_son_nom_meme_apres_un_achat(client, ecole
     notes = _enfant(client, org, tresorier, financier["id"], "Notes de frais")
     noms = [i["name"] for i in _parcourir(client, org, tresorier, notes["id"]).json()["items"]]
     assert noms == [f"{tresorier.id} Julia Dho"]
+
+
+def test_un_fichier_depose_deux_fois_est_signale_a_la_revue(client, ecole, monkeypatch):
+    """Seb, 10 novembre : onze doublons dans le classeur 2024-25. Le même
+    contenu déposé deux fois crée bien deux pièces, mais la seconde dit
+    « même fichier que la pièce n° N » ; un autre contenu ne dit rien ; une
+    pièce refusée ne compte plus."""
+    tresorier = ecole["tresorier"]
+    lecteur = LecteurFacture(date="2024-10-17", montant_centimes=16567, commercant="SACEM", description="Droits d'auteur")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    premiere = _etablir(client, tresorier, None, contenu=b"%PDF sacem")
+    assert premiere["doublon_de"] is None
+    doublon = _etablir(client, tresorier, None, contenu=b"%PDF sacem")
+    assert doublon["doublon_de"] == premiere["id"]
+    autre = _etablir(client, tresorier, None, contenu=b"%PDF spre")
+    assert autre["doublon_de"] is None
+    entetes = entetes_session(tresorier)
+    refus = client.post(f"/notes-frais/notes/{doublon['id']}/refuser", json={"motif": "Doublon"}, headers=entetes)
+    assert refus.status_code == 200, refus.text
+    troisieme = _etablir(client, tresorier, None, contenu=b"%PDF sacem")
+    assert troisieme["doublon_de"] == premiere["id"]

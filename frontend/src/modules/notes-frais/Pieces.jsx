@@ -239,6 +239,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
                 {api.dateCourte(n.depenses[0]?.date ?? n.envoyee_le)}
                 {n.depenses.length > 1 ? ` · ${n.depenses.length} dépenses` : ''}
                 {n.depenses[0]?.date_approximative ? ' · date à vérifier' : ''}
+                {n.doublon_de ? ` · même fichier que la pièce n° ${n.doublon_de}` : ''}
                 {n.paiement_propose ? ' · vu sur le compte' : n.paiements_possibles?.length ? ' · paiement possible' : ''}
               </span>
             </span>
