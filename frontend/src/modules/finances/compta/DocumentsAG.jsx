@@ -147,6 +147,7 @@ const SOUS_TITRES = {
   synthese: 'charges et produits par poste, trésorerie, fournisseurs à payer',
   balance: 'totaux débit / crédit et soldes par compte',
   'grand-livre': 'toutes les lignes, par compte, avec la pièce',
+  bilan: 'au 31 août : ce que l’association possède et ce qu’elle doit, fonds associatifs',
   honoraires: 'par professeur et par mois, pour la DAS-2',
   fec: 'fichier des écritures, pour le comptable ou l’administration fiscale',
 }

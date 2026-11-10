@@ -74,6 +74,7 @@ KINDS = {
     "synthese": ("Synthèse Dépenses-Recettes", "xlsx", "simple"),
     "balance": ("Balance", "pdf", "complet"),
     "grand-livre": ("Grand livre", "pdf", "complet"),
+    "bilan": ("Bilan actif-passif", "pdf", "complet"),
     "honoraires": ("Honoraires par professeur", "xlsx", "complet"),
     "fec": ("FEC", "txt", "simple"),
 }
@@ -837,6 +838,59 @@ class AgDocuments:
         )
         return html_to_pdf(body, _CSS + " th.l, td.l { text-align: left; }")
 
+    # ----- Bilan actif / passif -----
+
+    def bilan(self, db: Session, member: Member, season: Season) -> dict:
+        """Le bilan au dernier jour de la saison (PCA 2018, forme simplifiée des
+        petites associations) : à l'actif ce qu'on a (créances, banque, caisse),
+        au passif ce qu'on doit et les fonds propres (report à nouveau, résultat
+        de la saison). Depuis les soldes des comptes de bilan de `books()` : un
+        solde débiteur va à l'actif, un solde créditeur au passif ; le résultat
+        de la saison (comptes 6 et 7) est porté aux fonds associatifs, ce qui
+        équilibre les deux colonnes. Montants en centimes."""
+        books = self.books(db, member, season)
+        cutoff = books.pop("_cutoff")
+        actif = {"creances": [], "tresorerie": []}
+        passif = {"fonds": [], "dettes": []}
+        result = -sum(a.balance for a in books.values() if a.nature in (EXPENSE, INCOME))  # excédent positif
+        for a in sorted(books.values(), key=lambda a: a.number):
+            if a.nature in (EXPENSE, INCOME) or not a.balance:
+                continue
+            line = {"number": a.number, "label": a.label, "amount": abs(a.balance)}
+            if a.number.startswith("1"):
+                passif["fonds"].append({**line, "amount": -a.balance})  # créditeur = positif ; un report débiteur se lit en négatif
+            elif a.balance > 0:
+                actif["tresorerie" if a.number.startswith("5") else "creances"].append(line)
+            else:
+                passif["dettes"].append(line)
+        passif["fonds"].append({"number": "", "label": "Résultat de la saison" + (" (déficit)" if result < 0 else ""), "amount": result})
+        total_actif = sum(l["amount"] for g in actif.values() for l in g)
+        total_passif = sum(l["amount"] for g in passif.values() for l in g)
+        return {"cutoff": cutoff, "actif": actif, "passif": passif, "result": result, "totalActif": total_actif, "totalPassif": total_passif}
+
+    def bilan_pdf(self, db: Session, member: Member, season: Season, org_name: str) -> bytes:
+        b = self.bilan(db, member, season)
+        e = html.escape
+
+        def bloc(title: str, lines: list[dict]) -> str:
+            rows = "".join(f"<tr><td class='l'>{e(l['number'])} {e(l['label'])}</td><td>{_signed(l['amount'])}</td></tr>" for l in lines)
+            total = sum(l["amount"] for l in lines)
+            return f"<tr class='sous'><td class='l'>{e(title)}</td><td>{_signed(total)}</td></tr>{rows}"
+
+        actif = bloc("Créances", b["actif"]["creances"]) + bloc("Trésorerie", b["actif"]["tresorerie"])
+        passif = bloc("Fonds associatifs", b["passif"]["fonds"]) + bloc("Dettes", b["passif"]["dettes"])
+        ecart = b["totalActif"] - b["totalPassif"]
+        body = (
+            f"<h1>{e(org_name)} — Bilan {e(season.name)}</h1>"
+            f"<p class='muted'>Au {_fr(b['cutoff'])}. Ce que l'association possède (actif) et ce qu'elle doit, y compris à elle-même (passif).</p>"
+            "<div class='cols'>"
+            f"<table><tr><th class='l'>Actif</th><th></th></tr>{actif}<tr class='total'><td class='l'>Total actif</td><td>{_signed(b['totalActif'])}</td></tr></table>"
+            f"<table><tr><th class='l'>Passif</th><th></th></tr>{passif}<tr class='total'><td class='l'>Total passif</td><td>{_signed(b['totalPassif'])}</td></tr></table>"
+            "</div>"
+            + (f"<p class='muted'>Écart actif − passif : {_signed(ecart)} (une ligne de banque sans compte, ou des soldes de départ incomplets).</p>" if ecart else "")
+        )
+        return html_to_pdf(body, _CSS + " th.l, td.l { text-align: left; } .cols { display: flex; gap: 24px; align-items: flex-start; } .cols table { flex: 1; } tr.sous td { font-weight: bold; padding-top: 10px; }")
+
     def grand_livre_pdf(self, db: Session, member: Member, season: Season, org_name: str) -> bytes:
         books = self.books(db, member, season)
         cutoff = books.pop("_cutoff")
@@ -1000,6 +1054,8 @@ class AgDocuments:
             content = self.balance_pdf(db, member, season, org_name)
         elif kind == "grand-livre":
             content = self.grand_livre_pdf(db, member, season, org_name)
+        elif kind == "bilan":
+            content = self.bilan_pdf(db, member, season, org_name)
         elif kind == "fec":
             content = self.fec(db, member, season)
         else:
