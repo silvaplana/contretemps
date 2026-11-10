@@ -59,7 +59,9 @@ Bilan
 - Préparer : les six étapes du bilan, dans l'ordre, chacune avec ce qui reste (un ✓ quand il ne reste rien) ; toucher
   une étape la déplie. 1. Relevés complets (la grille des relevés) ; 2. Soldes de départ ; 3. Rapprocher et classer :
   les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher », puis les transactions bancaires sans
-  compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération) et « Comptes proposés par l'appli »
+  compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération ; une remise de chèques y est toujours,
+  « à ventiler entre ses comptes » : dans sa fiche, « Ventiler comme les remises précédentes » puis répartir les
+  montants) et « Comptes proposés par l'appli »
   regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; 4. Hors banque : la caisse et les
   factures validées pas encore payées (au niveau Complet, dues au jour de la facture contre 401 / 467 ; au niveau Simple,
   dans « Fournisseurs à payer » de la Synthèse), puis les écritures à la main (niveau Complet) : « Ajouter une écriture »

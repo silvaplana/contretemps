@@ -8,8 +8,7 @@ module. Rayer ce qui est fait.
 - Financier : pièces et comptabilité pour les documents de l'AG (`modules/financier.md` §8),
   quatre étapes ; AG de Contretemps en novembre 2026, la première étape suffit à la Synthèse.
 - Financier : le bilan en parcours Préparer | Documents | Clôture (`modules/financier.md` §8.10),
-  étape 5 (comparaison appli / contre-calcul / EBP) ; les étapes 1 à 4 sont codées le 10 novembre.
-  Reste des étapes : ventilation d'une remise de chèques.
+  étape 6 (comparaison appli / contre-calcul / EBP) ; les étapes 1 à 5 sont codées le 10 novembre.
 - Socle par saison (`core.md` §13) : groupes, droits, cours = groupes, champs des membres, famille
   par l'email du payeur, création de saison en un écran, tarifs, HelloAsso (`modules/helloasso.md`),
   formulaire d'inscription de l'appli (à concevoir).

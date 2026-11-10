@@ -234,3 +234,35 @@ def test_comparison_flags_big_gaps_until_the_treasurer_explains(world, db_sessio
     # Première saison : pas de comparaison, rien à expliquer.
     documents.seasons = lambda db, org: [SEASON]
     assert documents.comparison(db_session, TRESORIER, SEASON) == {**documents.comparison(db_session, TRESORIER, SEASON), "previousSeason": None, "unexplained": 0}
+
+
+def test_a_cheque_deposit_is_never_sure_and_is_split_like_the_previous_ones(world, db_session):
+    """financier.md §8.10 étape 3 : une remise de chèques n'est jamais classée
+    « sûre » (la banque ne dit pas ce que payent les chèques) ; la fiche
+    propose de la ventiler comme les remises précédentes."""
+    from finances.chart import is_cheque_deposit
+
+    assert is_cheque_deposit("REM CHQ 0012345") and is_cheque_deposit("Remise de chèques N°12") and is_cheque_deposit("REMISE CHEQUE")
+    assert not is_cheque_deposit("CB REMORQUES CHAMPAGNE") and not is_cheque_deposit("VIR HELLOASSO")
+    finances, accounting, documents = world
+    finances.import_files(
+        db_session, TRESORIER,
+        [("c2.pdf", make_statement(COURANT, ("30/09/2025", 159610), [("02/10/2025", "REM CHQ 0012345", 42000, []), ("09/10/2025", "REM CHQ 0012346", 15000, [])], "31/10/2025"))],
+    )
+    etat = documents.preparation(db_session, TRESORIER, SEASON, None)
+    remises = [l for l in etat["classify"]["unsure"] if l["chequeDeposit"]]
+    assert sorted(l["label"] for l in remises) == ["REM CHQ 0012345", "REM CHQ 0012346"]
+    assert not any(o["label"].startswith("REM CHQ") for g in etat["classify"]["sure"] for o in g["operations"])
+    # Première remise : pas d'habitude, le trésorier ventile à la main Cours / Cotisations.
+    accounts = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
+    fiche = accounting.operation(db_session, TRESORIER, rows["REM CHQ 0012345"]["id"])
+    assert fiche["chequeDeposit"] is True and fiche["splitSuggestion"] == []
+    accounting.set_lines(
+        db_session, TRESORIER, rows["REM CHQ 0012345"]["id"],
+        [{"accountId": accounts["706"]["id"], "amount": 300}, {"accountId": accounts["756"]["id"], "amount": 120}],
+    )
+    # Deuxième remise : la fiche propose les mêmes comptes.
+    fiche = accounting.operation(db_session, TRESORIER, rows["REM CHQ 0012346"]["id"])
+    assert [a["number"] for a in fiche["splitSuggestion"]] == ["706", "756"]
+    assert documents.preparation(db_session, TRESORIER, SEASON, None)["classify"]["withoutAccount"] == 3

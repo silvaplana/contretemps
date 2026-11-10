@@ -870,8 +870,7 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    ignoré) ; 4 hors banque : texte d'attente ; 5 les contrôles en clair (relevés complets, soldes de
    départ = relevés, un compte sur chaque transaction, FEC juste) ; 6 renvoie à Documents. Documents =
    l'écran des bilans d'avant ; Clôture = la clôture portée par le bilan le plus avancé de la saison
-   (Officiel, Validé, dernier), niveau Complet. Reste pour cette étape : la ventilation d'une remise
-   de chèques Cours / Cotisations / Gala.
+   (Officiel, Validé, dernier), niveau Complet.
 3. **Codée le 10 novembre 2026** : étape 4 **Hors banque** = la caisse (solde, renvoi à Comptes ›
    Caisse) et les **factures validées pas encore payées** (`AgPorts.unpaid`, désormais avec date,
    nature, compte de charge et nom) : au niveau Complet, une facture datée de la saison entre en
@@ -891,9 +890,17 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    `fin_manual_entries` (la seule écriture stockée, avec la clôture et les soldes de départ ;
    `books()` les prend telles quelles au journal OD, le FEC aussi) ; `GET/POST
    /finances/seasons/{id}/manual-entries`, `DELETE /finances/manual-entries/{id}` ; trésorier
-   seulement. Pas de modification : supprimer et refaire. Reste : ventilation d'une remise de
-   chèques.
-5. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
+   seulement. Pas de modification : supprimer et refaire.
+5. **Codée le 10 novembre 2026** : **remise de chèques** (libellé « REM CHQ », « REMISE DE
+   CHEQUES »… : `chart.is_cheque_deposit`). La banque ne dit pas ce que payent les chèques :
+   une remise n'est jamais « sûre », l'étape 3 la met dans « À confirmer une par une » avec la
+   mention « Remise de chèques : à ventiler entre ses comptes », jamais dans un compte à valider en
+   bloc. Sa fiche le rappelle et, dès qu'une remise a déjà été ventilée, propose **« Ventiler comme
+   les remises précédentes »** : les comptes des remises passées (du plus fréquent au plus rare,
+   `splitSuggestion`), le montant total sur le premier, à répartir ; une part à zéro est ignorée à
+   l'enregistrement ; le total doit faire le montant de la banque (règle de §8.4). Pas de
+   catégorie « Cours / Cotisations / Gala » codée en dur : ce sont les comptes de l'association.
+6. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 
 ## 9. Reste à faire
 
