@@ -6,7 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 import * as sessionApi from '../../../api/session.js'
 import * as nfApi from '../../../api/notesFrais.js'
-import { requestACote, requestSousOnglet } from '../navigation.js'
+import { requestSousOnglet } from '../navigation.js'
 import RelevesGrille from '../RelevesGrille.jsx'
 import SoldesDepart from './SoldesDepart.jsx'
 import FicheOperation from './FicheOperation.jsx'
@@ -96,15 +96,6 @@ export default function Preparer({ season, onDocuments }) {
     <div className="fin-cp fin-preparer">
       {etat.closed && <p className="muted">Saison clôturée : rouvrez-la (Clôture) pour changer quelque chose.</p>}
       <h3 className="fin-cp-t">Étapes du bilan {season.name}</h3>
-      {/* Consulter sans quitter le bilan (Seb, 10/11 ; financier.md §8.10). */}
-      <div className="fin-preparer__a-cote">
-        <button type="button" className="btn btn--secondary" onClick={() => requestACote('comptes')}>
-          Voir les Comptes
-        </button>
-        <button type="button" className="btn btn--secondary" onClick={() => requestACote('pieces')}>
-          Voir les Pièces
-        </button>
-      </div>
       <div className="fin-cp-carte">
         {etapes.map((e) => (
           <div key={e.n} className={`fin-cp-doc fin-cp-doc--large fin-preparer__etape${ouverte === e.n ? ' fin-preparer__etape--ouverte' : ''}`}>
