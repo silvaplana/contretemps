@@ -44,6 +44,8 @@ export default function Rapprocher({ onChange, onOuvrir }) {
     }
   }
 
+  const [choisir, setChoisir] = useState(null) // facture pour laquelle on choisit la transaction à la main
+
   async function rattacher(piece) {
     setEnCours(piece.id)
     try {
@@ -128,18 +130,23 @@ export default function Rapprocher({ onChange, onOuvrir }) {
           {etat.sans_paiement.length === 0 && <p className="muted">Aucune.</p>}
           <div className="nf-liste">
             {etat.sans_paiement.map((p) => (
-              <button key={p.id} type="button" className="nf-ligne" onClick={() => ouvrir(p)}>
-                <span className="nf-ligne__corps">
+              <div key={p.id} className="nf-ligne nf-ligne--actions">
+                <button type="button" className="nf-ligne__corps nf-ligne__ouvrir" onClick={() => ouvrir(p)}>
                   <span className="nf-ligne__titre">{p.qui}</span>
                   <span className="muted">
                     {p.nature} du {api.dateCourte(p.date)}
                   </span>
-                </span>
+                </button>
                 <span className="nf-ligne__droite">
                   <span className="nf-ligne__montant">{api.euros(p.montant_centimes)}</span>
                   <span className={`badge ${p.etat === 'À rapprocher' || p.etat === 'À valider' ? 'badge--warning' : ''}`}>{p.etat}</span>
+                  {p.etat !== 'Don' && etat.lignes_sans_piece.length > 0 && (
+                    <button type="button" className="btn btn--link" disabled={enCours !== null} onClick={() => setChoisir(p)}>
+                      Rattacher à une transaction bancaire…
+                    </button>
+                  )}
                 </span>
-              </button>
+              </div>
             ))}
           </div>
 
@@ -212,6 +219,26 @@ export default function Rapprocher({ onChange, onOuvrir }) {
         </>
       )}
 
+      {choisir && (
+        <ChoixTransactionModal
+          piece={choisir}
+          transactions={etat.lignes_sans_piece}
+          onClose={() => setChoisir(null)}
+          onChoisie={(transaction) => {
+            const piece = choisir
+            setChoisir(null)
+            setEnCours(piece.id)
+            api
+              .payee(piece.id, transaction.id, [], true)
+              .then(() => {
+                charger()
+                onChange?.()
+              })
+              .catch((err) => setErreur(err.message))
+              .finally(() => setEnCours(null))
+          }}
+        />
+      )}
       {justifier && (
         <Modal
           title="Justifier sans facture"
@@ -290,6 +317,50 @@ export default function Rapprocher({ onChange, onOuvrir }) {
 }
 
 // Le 1er septembre de la saison en cours (les saisons de l'école vont de septembre à août).
+// Lettrage à la main (Seb, 10/11) : la facture et la liste des transactions
+// bancaires sans facture de la période, les montants les plus proches en
+// premier ; un toucher rattache, l'écart éventuel reste à régler dans la fiche.
+function ChoixTransactionModal({ piece, transactions, onClose, onChoisie }) {
+  const [filtre, setFiltre] = useState('')
+  const mot = filtre.trim().toLowerCase()
+  const liste = transactions
+    .filter((t) => !mot || t.libelle.toLowerCase().includes(mot))
+    .slice()
+    .sort((a, b) => Math.abs(-a.montant_centimes - piece.montant_centimes) - Math.abs(-b.montant_centimes - piece.montant_centimes))
+  return (
+    <Modal title="Rattacher à une transaction bancaire" onClose={onClose}>
+      <p>
+        {piece.qui} · {piece.nature} du {api.dateCourte(piece.date)} · {api.euros(piece.montant_centimes)}
+      </p>
+      <input
+        type="search"
+        className="field-input"
+        placeholder="Chercher dans les libellés"
+        value={filtre}
+        onChange={(e) => setFiltre(e.target.value)}
+      />
+      <div className="nf-liste">
+        {liste.map((t) => {
+          const diff = -t.montant_centimes - piece.montant_centimes
+          return (
+            <button key={t.id} type="button" className="nf-ligne" onClick={() => onChoisie(t)}>
+              <span className="nf-ligne__corps">
+                <span className="nf-ligne__titre">{t.libelle}</span>
+                <span className="muted">
+                  {api.dateCourte(t.date)} · {t.compte}
+                  {diff !== 0 && ` · écart ${ecart(diff)}`}
+                </span>
+              </span>
+              <span className="nf-ligne__montant">{api.euros(-t.montant_centimes)}</span>
+            </button>
+          )
+        })}
+        {liste.length === 0 && <p className="muted">Aucune transaction bancaire sans facture ne correspond.</p>}
+      </div>
+    </Modal>
+  )
+}
+
 function debutDeSaison() {
   const jour = new Date()
   const annee = jour.getMonth() >= 8 ? jour.getFullYear() : jour.getFullYear() - 1

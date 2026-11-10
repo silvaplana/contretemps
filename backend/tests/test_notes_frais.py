@@ -1167,10 +1167,18 @@ def test_paiement_possible_meme_nom_autre_montant_ou_virement_groupe(client, db_
     assert possible["operation"]["id"] == ligne.id and possible["ecart_centimes"] == 49429 and possible["aussi"] == []
     paye = client.post(f"/notes-frais/notes/{achat['id']}/payee", json={"operation_id": ligne.id}, headers=entetes)
     assert paye.status_code == 200 and paye.json()["statut"] == "remboursee"
-    # Une ligne qui n'a ni le montant ni le nom reste refusée.
+    # Une ligne qui n'a ni le montant ni le nom reste refusée…
     autre = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Castorama", date="2026-07-01", montant_centimes="1000")
     refus = client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": groupe.id}, headers=entetes)
     assert refus.status_code == 400
+    # … sauf quand le trésorier la choisit lui-même (lettrage à la main, Seb 10/11) : tout débit libre, l'écart reste.
+    libre = _operation(db_session, org, -2500, "2026-07-05", "CB 0507 BRICO DEPOT")
+    credit = _operation(db_session, org, 2500, "2026-07-05", "REM CHQ 12")
+    assert client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": credit.id, "manuel": True}, headers=entetes).status_code == 400
+    assert client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": ligne.id, "manuel": True}, headers=entetes).status_code == 400  # déjà prise
+    main = client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": libre.id, "manuel": True}, headers=entetes)
+    assert main.status_code == 200, main.text
+    assert main.json()["statut"] == "remboursee" and main.json()["operation"]["id"] == libre.id and main.json()["ecart_centimes"] == 1500
 
 
 def test_annuler_un_import(client, db_session, ecole, monkeypatch):

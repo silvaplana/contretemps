@@ -262,17 +262,25 @@ class AgDocuments:
             parts = [(chart[l.account_id], l.amount) for l in splits] if splits else [(None, cents)]
             third = _third_party(third_parties, r.get("piece")) if cents < 0 and splits else None
             if third is not None:
-                # Achat du jour de la facture : 6xx contre le tiers ; paiement : tiers contre 512x.
-                letters[third.number] += 1
-                letter = _letter(letters[third.number])
+                # Achat du jour de la facture : 6xx contre le tiers, au montant de
+                # la facture ; paiement : tiers contre 512x, au montant de la
+                # banque. Même montant : lettrés ; sinon (acompte, écart à
+                # régler) les deux lignes restent ouvertes sur le tiers (§8.7).
+                invoice = round(float(r["piece"].get("amount") or 0) * 100) or -cents
+                letter = ""
+                if invoice == -cents:
+                    letters[third.number] += 1
+                    letter = _letter(letters[third.number])
                 day = max(r["piece"]["date"], season.start_date) if r["piece"].get("date") else r["date"]
                 buy = THIRD_PARTY_JOURNAL[r["piece"]["nature"]]
                 tiers = account(third.number, third.label, THIRD_PARTY)
-                tiers.lines.append(Line(day, buy, r["piece"]["title"], piece, 0, -cents, letter, r["id"]))
+                tiers.lines.append(Line(day, buy, r["piece"]["title"], piece, 0, invoice, letter, r["id"]))
                 tiers.lines.append(Line(r["date"], journal, r["label"], piece, -cents, 0, letter, r["id"]))
+                # La charge au montant de la facture, répartie comme la banque l'a été.
                 for acc_row, amount in parts:
+                    share = round(amount * invoice / -cents) if cents else -invoice
                     acc = account(acc_row.number, acc_row.label, acc_row.nature, acc_row.event)
-                    acc.lines.append(Line(day, buy, r["piece"]["title"], piece, -amount, 0, operation_id=r["id"]))
+                    acc.lines.append(Line(day, buy, r["piece"]["title"], piece, -share, 0, operation_id=r["id"]))
                 continue
             for acc_row, amount in parts:
                 if acc_row is None:

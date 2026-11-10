@@ -100,6 +100,7 @@ class EcartEntree(BaseModel):
 class PaiementEntree(BaseModel):
     operation_id: int
     aussi: list[int] = []  # les autres pièces payées par le même virement
+    manuel: bool = False  # transaction choisie à la main : tout débit libre, l'écart reste à régler
 
 
 class PayeursEntree(BaseModel):
@@ -376,7 +377,7 @@ class NotesDeFraisReceiver:
 
         @app.post("/notes-frais/notes/{note_id}/payee")
         def payee(note_id: int, corps: PaiementEntree, db: Session = db_dep, m: Membre = membre):
-            return nf.notes_dicts(db, m, [appeler(nf.payer, db, m, note_id, corps.operation_id, corps.aussi)])[0]
+            return nf.notes_dicts(db, m, [appeler(nf.payer, db, m, note_id, corps.operation_id, corps.aussi, manuel=corps.manuel)])[0]
 
         @app.post("/notes-frais/notes/{note_id}/plus-tard")
         def plus_tard(note_id: int, db: Session = db_dep, m: Membre = membre):
