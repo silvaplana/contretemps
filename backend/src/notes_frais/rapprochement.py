@@ -50,7 +50,9 @@ def pdf(donnees: dict) -> bytes:
     """Le PDF (A4 portrait) du dict rendu par `NotesDeFrais.rapprochement`."""
     e = html.escape
     debut, fin = donnees["debut"], donnees["fin"]
-    rattachees, sans_paiement, sans_piece = donnees["rattachees"], donnees["sans_paiement"], donnees["lignes_sans_piece"]
+    rattachees, sans_piece = donnees["rattachees"], donnees["lignes_sans_piece"]
+    # Les paires proposées attendent aussi un paiement rattaché : dans la même partie du PDF.
+    sans_paiement = sorted(donnees.get("paires", []) + donnees["sans_paiement"], key=lambda p: p["date"])
     parts = [
         f"<h1>Rapprochement des pièces</h1>",
         f"<p class='muted'>Du {_fr(debut)} au {_fr(fin)}, fait le {_fr(date.today())}. "

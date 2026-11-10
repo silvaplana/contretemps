@@ -5,6 +5,8 @@ import { NATURES, qui } from './commun.jsx'
 // Revue d'un import (notes-de-frais.md §7 quinquies, Seb 6/11) : une ligne
 // par pièce avec ce que l'appli propose (nature, qui, rangement dans Docs,
 // ligne du compte) et trois choix : Valider, Autre… (la fiche), Plus tard.
+// Sans ligne trouvée, « Déjà payée » (§7 septies, Seb 9/11) : la facture
+// s'enregistre sans chercher, le paiement se retrouve dans Rapprocher.
 // Sur ordinateur, un tableau ; sur téléphone, les mêmes lignes en cartes.
 export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, onChange }) {
   const [notes, setNotes] = useState(initiales)
@@ -41,6 +43,10 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
     const action = () =>
       note.operation || !possible ? api.valider(note.id) : api.payee(note.id, possible.operation.id, possible.aussi?.map((a) => a.id) ?? [])
     return agir(note, action, 'ok', (n) => `${n.statut === 'remboursee' ? 'Validée : Payé' : 'Validée : À payer'}${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`)
+  }
+
+  function dejaPayee(note) {
+    return agir(note, () => api.dejaPayee(note.id), 'ok', (n) => `Validée : déjà payée, à rapprocher${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`)
   }
 
   async function validerSures() {
@@ -133,7 +139,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                     ? 'Payé'
                     : possible
                       ? 'Payé, si c’est bien cette ligne'
-                      : 'À payer : si elle est payée plus tard, l’appli la rattachera quand la ligne arrivera sur le compte'}
+                      : 'À payer, et passera par Virements ; ou « Déjà payée » : enregistrée, son paiement se retrouvera dans Rapprocher'}
                 </dd>
                 {faite && (
                   <>
@@ -147,6 +153,11 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                   <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => valider(n)}>
                     {n.operation ? 'Valider : Payé' : possible ? 'C’est payé' : 'Valider : À payer'}
                   </button>
+                  {!n.operation && !possible && (
+                    <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => dejaPayee(n)}>
+                      Déjà payée
+                    </button>
+                  )}
                   <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => onOuvrir(n, () => relire(n))}>
                     Autre…
                   </button>
@@ -207,5 +218,6 @@ function decision(n) {
   if (n.statut === 'refusee') return 'Refusée · dans A TRAITER'
   if (n.plus_tard) return 'Plus tard · gardée dans À trancher'
   if (n.statut === 'remboursee') return `Validée : Payé${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`
+  if (n.a_rapprocher) return `Validée : déjà payée, à rapprocher${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`
   return `Validée : À payer${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`
 }

@@ -14,7 +14,7 @@ Comptes
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet), à reprendre de la clôture ou de la Balance.
 
 Pièces
-- Puces : Virements, Notes de frais, Honoraires, Achats, Ventes, À trancher (les pièces mises « plus tard » et les pièces refusées, fichiers dans Docs › Financier › A TRAITER). Un badge compte les pièces qui attendent. Ventes (pièces de
+- Puces : Virements, Rapprocher, Notes de frais, Honoraires, Achats, Ventes, À trancher (les pièces mises « plus tard » et les pièces refusées, fichiers dans Docs › Financier › A TRAITER). Un badge compte les pièces qui attendent. Ventes (pièces de
   recette) ne se saisit pas encore. Les lignes de banque sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
@@ -25,7 +25,8 @@ Pièces
   un virement qui paie aussi d'autres pièces de la personne) et « C'est ce paiement » ; une preuve de virement rejoint la pièce qu'elle paie. Rien ne passe Payé sans un trésorier :
   Terminé ouvre la revue de l'import : une ligne par pièce (fichier, date, montant ; nature, qui et rangement proposés ;
   ligne du compte trouvée ou proposée avec l'écart ; ce que la pièce deviendrait) et trois boutons : Valider (« Valider :
-  Payé », « C'est ce paiement », « Valider : À payer »), Autre… (la fiche), Plus tard. En haut « Valider les pièces sûres
+  Payé », « C'est ce paiement », « Valider : À payer »), Déjà payée (aucune ligne trouvée : la facture est validée, réglée hors de
+  l'appli, elle attend dans Rapprocher et pas dans Virements), Autre… (la fiche), Plus tard. En haut « Valider les pièces sûres
   (N) », en bas « Annuler cet import ». Sur une pièce payée avec écart : « Régler l'écart… » (Il nous rembourse / On lui
   doit encore, qui crée une pièce À payer du reste / On laisse tomber). Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
   proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
@@ -37,6 +38,12 @@ Pièces
 - Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature), bleu pour la banque
   (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».
+- Rapprocher : le rapprochement par lots, la banque d'un côté et les factures de l'autre, sur une période (du 1er septembre
+  de la saison par défaut). Paires proposées (facture ↔ ligne du compte : « même nom, même montant », « même montant, autre
+  nom », « écart », « paie aussi ») avec « C'est elle » qui rattache et « Autre… » qui ouvre la fiche ; Factures sans
+  paiement (À rapprocher, À valider, À payer, Préparé, Envoyé ; toucher ouvre la fiche) ; Lignes de banque sans facture (leur
+  compte se choisit dans Comptes, filtre « Sans compte ») ; en bas le PDF de rapprochement. Badge bleu = paires proposées +
+  pièces « déjà payées » sans ligne.
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import.
 - Sous la liste, « Du … au … » puis Excel (une ligne par dépense) et Rapprochement : le PDF pour le validateur comptable,
   à tout moment : pièces payées avec la ligne du compte qui les paie (et l'écart), pièces sans paiement rattaché avec leur

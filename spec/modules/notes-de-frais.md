@@ -359,6 +359,43 @@ change pas de nature : on la refuse avec un motif.
 Pas encore : un virement plus gros qui regroupe plusieurs tickets remboursés d'un coup (proposé
 comme paiement d'une pièce) ; « Choisir dans Docs ».
 
+### 7 septies Rapprocher : enregistrer sans chercher, lettrer par lots (Seb, 9 novembre)
+
+Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
+
+1. **Enregistrer la facture tout de suite**, sans chercher son paiement : date, montant, qui,
+   compte de charge (la catégorie). Si une ligne du compte est évidente (même montant, même nom),
+   elle est rattachée sans rien demander (« la banque décide », §7 quinquies) ; si une ligne est
+   seulement possible, elle est proposée. **S'il n'y a rien**, la facture est validée quand même :
+   **« Valider : À payer »** si on va la payer par Virements, ou **« Déjà payée »** si elle a été
+   réglée hors de l'appli (carte, virement d'avant l'appli, ancienne facture) : elle passe
+   **À rapprocher** (`paid_unmatched_at`), rangée à sa place dans Docs, et **sort de Virements**.
+   Dans la revue de l'import comme sur la fiche. « Plus tard » reste pour « je ne sais pas quoi
+   en faire » (À trancher) ; « Déjà payée » veut dire « je sais, le paiement se retrouvera ».
+2. **Rapprocher par lots**, quand on veut : la puce **Rapprocher** de Financier › Pièces
+   (`GET /notes-frais/rapprochement?debut&fin`, trésoriers ; période libre, du 1er septembre de la
+   saison en cours par défaut), en trois parties, la banque d'un côté et les factures de l'autre :
+   - **Paires proposées** : chaque facture sans paiement pour laquelle l'appli voit une ligne, avec
+     la raison (« même nom, même montant » = sûre ; « même montant, autre nom » ; « écart … » ;
+     « paie aussi … ») et **« C'est elle »** (`POST …/payee`, la règle de §7 quinquies) ; « Autre… » ouvre la fiche. Rien n'est rattaché sans un toucher ;
+   - **Factures sans paiement** : À rapprocher, À valider, À payer, Préparé, Envoyé, Don, avec leur
+     état ; un toucher ouvre la fiche (Régler l'écart, Détacher, Revenir en arrière…) ;
+   - **Lignes de banque sans facture** : les débits de la période sans pièce rattachée, avec leur
+     compte bancaire ; leur compte du plan se choisit dans Comptes (filtre « Sans compte »), le
+     libellé suffit souvent (frais bancaires, honoraires, SACEM).
+   En bas, le nombre de pièces rattachées sur la période et le PDF de rapprochement (§7 sexies).
+   Badge bleu (banque) sur la puce = paires proposées + pièces « déjà payées » sans ligne.
+
+Le **Bilan** (financier.md §8.10) rouvre ce même écran, filtré sur la saison, comme étape 3 de sa
+préparation : si le rapprochement a été fait au fil de l'année, l'étape est vide.
+
+Lettrage : rattacher une facture à sa ligne lettre les deux écritures du compte de tiers
+(401 / 467x) dans le Grand livre Complet (financier.md §8.7) ; « rapprocher » est le travail par
+lots, « rattacher » et « lettrer » ses gestes unitaires.
+
+Pas encore : « Demander la facture » depuis une ligne sans pièce ; un paiement en plusieurs fois
+d'une même facture ; le virement groupé à l'émission.
+
 ### 7 bis Rangement dans Docs (Seb, 17 octobre ; simplifié le 29 octobre)
 
 Décision de Seb, 29 octobre 2026 (`financier.md` §8.3 bis « Rangement dans Docs ») : **un seul
@@ -413,7 +450,8 @@ Tables préfixées `nf_` (module autonome) :
   (achat), `prepared_at` / `prepared_by` / `payer_id` (Faire payer par…), `transfer_sent_at` / `_by`
   (J'ai fait le virement), `bank_operation_id` (opération du compte, payé). Pièce dont la personne n'est
   pas encore reconnue : personne 0. Depuis le 31 octobre : `established_by` (le trésorier qui l'a
-  établie depuis Pièces, §7 quinquies ; null = envoyée par la personne).
+  établie depuis Pièces, §7 quinquies ; null = envoyée par la personne). Depuis le 9 novembre :
+  `paid_unmatched_at` (« Déjà payée », §7 septies : validée, ligne du compte à trouver dans Rapprocher).
 - `nf_payers` : réglage « Qui paie » (organisation, personne) ; vide = les trésoriers.
 - `nf_externals` : personnes extérieures (organisation, nom, mail, téléphone, retirée le) ; §7 quater.
 - `nf_categories` : id, organisation, libellé, ordre, active.

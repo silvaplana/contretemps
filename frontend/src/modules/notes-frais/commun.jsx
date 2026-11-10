@@ -89,6 +89,8 @@ export function BadgeEtat({ note, proposition = false }) {
   let [label, classe] = note.don && note.statut === 'validee' ? ['Don', 'badge--success'] : ETATS[note.statut]
   if (proposition && note.statut === 'envoyee') label = `À valider → ${note.operation ? 'Payé' : 'À payer'}`
   if (note.plus_tard && note.statut === 'envoyee') label = 'À trancher'
+  // « Déjà payée » (§7 septies) : validée, la ligne du compte reste à trouver dans Rapprocher.
+  if (note.a_rapprocher && note.statut === 'validee') label = 'À rapprocher'
   return <span className={`badge ${classe}`}>{label}</span>
 }
 

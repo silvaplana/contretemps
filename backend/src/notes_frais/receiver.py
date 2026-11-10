@@ -374,6 +374,10 @@ class NotesDeFraisReceiver:
         def plus_tard(note_id: int, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.plus_tard, db, m, note_id)])[0]
 
+        @app.post("/notes-frais/notes/{note_id}/deja-payee")
+        def deja_payee(note_id: int, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.deja_payee, db, m, note_id)])[0]
+
         @app.post("/notes-frais/notes/{note_id}/ecart")
         def regler_ecart(note_id: int, corps: EcartEntree, db: Session = db_dep, m: Membre = membre):
             return nf.notes_dicts(db, m, [appeler(nf.regler_ecart, db, m, note_id, corps.choix)])[0]
@@ -397,6 +401,22 @@ class NotesDeFraisReceiver:
         @app.put("/notes-frais/categories")
         def definir_categories(corps: CategoriesEntree, db: Session = db_dep, m: Membre = membre):
             return [{"id": c.id, "libelle": c.libelle, "code": c.code} for c in appeler(nf.definir_categories, db, m, corps.libelles)]
+
+        @app.get("/notes-frais/rapprochement")
+        def rapprochement_json(debut: dt.date | None = None, fin: dt.date | None = None, db: Session = db_dep, m: Membre = membre):
+            """Puce Rapprocher (§7 septies) : les paires proposées, les pièces sans paiement, les
+            lignes de débit sans pièce et les pièces rattachées de la période."""
+            debut, fin = debut or dt.date(2000, 1, 1), fin or dt.date.today()
+            donnees = appeler(nf.rapprochement, db, m, debut, fin)
+
+            def iso(valeur):
+                if isinstance(valeur, dict):
+                    return {k: iso(v) for k, v in valeur.items()}
+                if isinstance(valeur, list):
+                    return [iso(v) for v in valeur]
+                return valeur.isoformat() if isinstance(valeur, dt.date) else valeur
+
+            return iso(donnees)
 
         @app.get("/notes-frais/rapprochement.pdf")
         def rapprochement_pdf(debut: dt.date | None = None, fin: dt.date | None = None, db: Session = db_dep, m: Membre = membre):
