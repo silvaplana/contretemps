@@ -433,6 +433,11 @@ Le menu Nature propose aussi les **rubriques du plan comptable des associations*
 « 86-87 Contributions volontaires en nature » ; `finances/chart.py`, `OFFICIAL_NATURES`), chacune déjà
 réglée d'après son numéro : 6 dépense, 7 recette, le reste hors résultat. Pour un nouveau compte hors
 classes 6 et 7, la rubrique se propose d'après le numéro tapé (2183 → 21 Immobilisations corporelles).
+**Classes** (Seb, 10/11) : le Plan comptable s'affiche par classe (premier chiffre du numéro : Classe 1
+Capitaux… Classe 7 Produits, 8 Contributions volontaires ; `CLASSES` dans `chart.py`), puis par nature dans
+la classe. Une nature appartient à la classe des comptes qui la portent : dans la fiche, le menu Nature
+ne montre que les rubriques et natures de la classe du numéro, et « Créer une nature dans la classe N… »
+en crée une (nom libre ; « pour le résultat » réglé d'après la classe, modifiable).
 
 Les catégories par mots-clés de §3.2 (`categories.py`) restent pour l'écran Comptes ; chaque
 compte du plan porte ses mots-clés de proposition (repris et enrichis par l'historique confirmé :
