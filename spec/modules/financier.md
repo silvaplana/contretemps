@@ -767,7 +767,9 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   revient, numéros de pièce libres) et leurs rapprochements ; les comptes confirmés sur ses
   transactions bancaires et les justifications « sans facture » ; les écritures à la main, les soldes
   de départ, les explications, la clôture ; le plan comptable revient à sa copie mémorisée s'il y en a
-  une. **Reste** : relevés et transactions bancaires, caisse, bilans calculés, autres saisons.
+  une. **Reste** : relevés et transactions bancaires, comptes en banque (nom, numéro au Grand
+  livre), caisse, bilans calculés, autres saisons. Seb (10/11 13h27) : la fenêtre dit tout cela en
+  clair, poste par poste, avant « Tout effacer ».
   **Mémoriser le plan comptable** (Comptes › ⋯ › Plan comptable, Seb 10/11 midi) : chaque copie
   entre dans un **journal** (`fin_chart_snapshots` : date, commentaire, comptes) affiché sous
   « Copies du plan » ; le commentaire est pré-rempli avec ce qui a changé depuis la copie précédente,

@@ -387,7 +387,7 @@ function RepartirAZero({ season, onDone }) {
         <span className="fin-cp-s">
           {fait
             ? `C'est fait : ${fait.pieces} pièce${fait.pieces > 1 ? 's' : ''} et ${fait.lines} compte${fait.lines > 1 ? 's' : ''} confirmé${fait.lines > 1 ? 's' : ''} effacés${fait.chart ? ` ; plan comptable remis à la copie du ${dateFr(fait.chart.takenAt.slice(0, 10))}` : ''}. Les relevés sont toujours là.`
-            : 'pour s\'exercer : efface les pièces, les comptes confirmés, les justifications, les écritures à la main, les soldes de départ et la clôture de la saison, remet une copie mémorisée du plan comptable (Comptes › ⋯ › Plan comptable) ; garde les relevés, la caisse et les bilans'}
+            : 'pour s\'exercer : efface tout le travail du trésorier sur cette saison (pièces rattachées, comptes donnés aux transactions bancaires, justifications, écritures à la main, soldes de départ, explications, clôture) et remet le plan comptable à une copie mémorisée ; garde les relevés, les transactions bancaires, les comptes en banque, la caisse et les autres saisons'}
         </span>
       </div>
       {ouvert && (
@@ -409,10 +409,15 @@ function RepartirAZero({ season, onDone }) {
             <b>Ce qui part</b>, pour la saison {season.name} seulement :
           </p>
           <ul>
-            <li>les pièces ajoutées (factures, honoraires, notes de frais) et leurs rapprochements avec la banque ; les fichiers vont à la corbeille de Docs</li>
-            <li>les comptes confirmés sur les transactions bancaires et les justifications « sans facture »</li>
-            <li>les écritures à la main, les soldes de départ, la clôture</li>
-            <li>le plan comptable revient à la copie choisie ci-dessous</li>
+            <li>
+              les pièces datées de la saison (factures, honoraires, notes de frais), leur numéro et leur rattachement à une transaction
+              bancaire ; leurs fichiers vont à la corbeille de Docs
+            </li>
+            <li>le compte du plan donné à chaque transaction bancaire, et ses ventilations</li>
+            <li>les « Justifier sans facture » et les demandes de justificatif sur les transactions bancaires</li>
+            <li>les écritures à la main (journal OD), les soldes de départ, les explications de la comparaison avec l'an dernier</li>
+            <li>la clôture de la saison, si elle était faite</li>
+            <li>le plan comptable revient à la copie choisie ci-dessous (comptes ajoutés depuis retirés, libellés et mots-clés remis)</li>
           </ul>
           <label className="field">
             Copie du plan comptable à remettre
@@ -429,8 +434,8 @@ function RepartirAZero({ season, onDone }) {
             )}
           </label>
           <p>
-            <b>Ce qui reste</b> : les relevés et transactions bancaires, la caisse, les bilans calculés, les autres saisons. On ne peut pas revenir en
-            arrière.
+            <b>Ce qui reste</b> : les relevés et les transactions bancaires telles qu'importées, les comptes en banque (nom, numéro au Grand livre),
+            la caisse, les autres saisons, les documents déjà rangés dans Docs › AG. On ne peut pas revenir en arrière.
           </p>
           <label className="field">
             Tapez le nom de la saison ({season.name}) pour confirmer
