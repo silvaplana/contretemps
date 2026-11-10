@@ -693,6 +693,18 @@
   color: #b4530a;
 }
 
+.nf-revue__proposition {
+  margin: 6px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.nf-revue__proposition .btn {
+  min-height: 48px;
+}
+
 .nf-vignette__legende {
   position: absolute;
   left: 0;

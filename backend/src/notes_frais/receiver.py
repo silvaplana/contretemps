@@ -321,6 +321,10 @@ class NotesDeFraisReceiver:
             note = appeler(nf.ajouter_page, db, m, note_id, fichier.file, fichier.filename or "", fichier.content_type or "")
             return nf.notes_dicts(db, m, [note])[0]
 
+        @app.post("/notes-frais/notes/{note_id}/personne-proposee")
+        def accepter_personne(note_id: int, db: Session = db_dep, m: Membre = membre):
+            return nf.notes_dicts(db, m, [appeler(nf.accepter_personne, db, m, note_id)])[0]
+
         @app.patch("/notes-frais/notes/{note_id}")
         def corriger(note_id: int, corps: CorrectionEntree, db: Session = db_dep, m: Membre = membre):
             champs = corps.model_dump(exclude_unset=True)

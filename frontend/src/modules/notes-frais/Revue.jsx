@@ -45,6 +45,21 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
     return agir(note, action, 'ok', (n) => `${n.statut === 'remboursee' ? 'Validée : Payé' : 'Validée : À payer'}${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`)
   }
 
+  // Nom lu à une lettre près d'une personne de l'école : l'appli propose, la
+  // trésorière confirme ; la pièce reste à décider (Valider, Autre…, Plus tard).
+  async function confirmerPersonne(note) {
+    setEnCours(note.id)
+    setErreurs((e) => ({ ...e, [note.id]: '' }))
+    try {
+      remplacer(await api.accepterPersonne(note.id))
+      onChange()
+    } catch (err) {
+      setErreurs((e) => ({ ...e, [note.id]: err.message }))
+    } finally {
+      setEnCours(null)
+    }
+  }
+
   function dejaPayee(note) {
     return agir(note, () => api.dejaPayee(note.id), 'ok', (n) => `Validée : déjà payée, à rapprocher${n.rangement ? ` · rangée dans ${n.rangement}` : ''}`)
   }
@@ -104,6 +119,14 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
               </header>
               {n.doublon_de ? (
                 <p className="nf-revue__doublon">Même fichier que la pièce n° {n.doublon_de}, déjà enregistrée : refusez celle-ci si c’est un doublon.</p>
+              ) : null}
+              {!faite && n.personne_proposee ? (
+                <p className="nf-revue__proposition">
+                  Le nom lu ressemble à <strong>{n.personne_proposee.nom}</strong>. Est-ce bien {n.personne_proposee.role === 'prof' ? 'elle qui a facturé' : 'elle qui a payé'} ?{' '}
+                  <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => confirmerPersonne(n)}>
+                    Oui, c’est {n.personne_proposee.nom}
+                  </button>
+                </p>
               ) : null}
               <dl className="nf-revue__bloc">
                 <dt>Nature</dt>

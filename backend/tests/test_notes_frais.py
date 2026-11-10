@@ -1658,3 +1658,53 @@ def test_l_avis_de_virement_devient_la_page_virement_de_la_facture(client, db_se
     assert dossier_note["name"] == f"2026-11-05 Honoraires novembre 2026 ({novembre['id']})"  # datée de la facture, pas du jour
     noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"])
     assert noms == ["2026-11-05 Facture Hono Delphine De Luca - Virement.jpg", "2026-11-05 Facture Hono Delphine De Luca.jpg"]
+
+
+def test_un_nom_a_une_lettre_pres_est_propose_jamais_decide(client, db_session, ecole, monkeypatch):
+    """Seb, 10 novembre (rejeu 2024-25 : « Guest SOPHIE_REICHARD » sur une
+    facture Aqualand, pour Sophie Reichardt) : l'appli propose la personne à
+    une lettre près, la trésorière confirme ; sans son oui, rien ne change."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    comptes = Comptes()
+    sophie = comptes.create(db_session, ecole_id=org, role="eleve", nom="Reichardt", prenom="Sophie", email="sr@test.fr")
+    comptes.create(db_session, ecole_id=org, role="professeur", nom="Thomas", prenom="Marysa", email="mt@test.fr")
+    db_session.commit()
+    lecteur = LecteurFacture(date="2025-07-10", montant_centimes=2400, commercant="Aqualand", emetteur_personne=False,
+                             client="Guest SOPHIE_REICHARD", description="Entrée")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    t = entetes_session(tresorier)
+
+    aqualand = _etablir(client, tresorier, None)
+    assert aqualand["nature"] == "achat" and aqualand["fournisseur"] == "Aqualand"
+    assert aqualand["personne_proposee"] == {"person_id": sophie.id, "nom": "Sophie Reichardt", "role": "élève"}
+
+    # « Oui, c'est elle » : la pièce devient sa note de frais (elle a payé) ; la proposition s'efface.
+    oui = client.post(f"/notes-frais/notes/{aqualand['id']}/personne-proposee", headers=t)
+    assert oui.status_code == 200, oui.text
+    assert oui.json()["nature"] == "frais" and oui.json()["personne"]["nom"] == "Sophie Reichardt"
+    assert oui.json()["personne_proposee"] is None
+    assert client.post(f"/notes-frais/notes/{aqualand['id']}/personne-proposee", headers=t).status_code == 400
+
+    # Une prof dont le nom est mal lu : proposée ; « oui » en fait des honoraires.
+    lecteur.lu = dict(date="2025-01-31", montant_centimes=15600, commercant="Marysa Thomass", emetteur_personne=True,
+                      client="École de Danse Contretemps", description="Cours janvier")
+    prof = _etablir(client, tresorier, None)
+    assert prof["nature"] == "frais" and prof["personne"] is None and prof["personne_proposee"]["nom"] == "Marysa Thomas"
+    oui = client.post(f"/notes-frais/notes/{prof['id']}/personne-proposee", headers=t).json()
+    assert oui["nature"] == "honoraires" and oui["personne"]["nom"] == "Marysa Thomas" and oui["titre"] == "Honoraires janvier 2025"
+
+    # Valider sans répondre : la pièce reste un achat et la proposition tombe.
+    lecteur.lu = dict(date="2025-07-11", montant_centimes=2400, commercant="Aqualand", emetteur_personne=False,
+                      client="Guest SOPHIE_REICHARD", description="Entrée")
+    autre = _etablir(client, tresorier, None)
+    assert autre["personne_proposee"]["nom"] == "Sophie Reichardt"
+    validee = client.post(f"/notes-frais/notes/{autre['id']}/valider", headers=t).json()
+    assert validee["nature"] == "achat" and validee["personne_proposee"] is None
+
+    # Deux personnes à une lettre près : l'appli ne propose rien.
+    comptes.create(db_session, ecole_id=org, role="eleve", nom="Reichard", prenom="Sophie", email="sr2@test.fr")
+    db_session.commit()
+    lecteur.lu = dict(date="2025-07-12", montant_centimes=2400, commercant="Aqualand", emetteur_personne=False,
+                      client="Guest SOPHIE_REICHARDS", description="Entrée")
+    assert _etablir(client, tresorier, None)["personne_proposee"] is None
