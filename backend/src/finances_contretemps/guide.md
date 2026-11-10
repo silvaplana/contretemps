@@ -72,8 +72,8 @@ Pièces
   justificatif » = choisir une personne, prévenue par notification et mail, la transaction affiche « justificatif
   demandé à … le … » ; une transaction qui porte un avis de virement le montre en vignette ; justifiée sans facture, l'avis
   part dans ACHATS › mois sous « … - Sans facture ») ; en bas le PDF de rapprochement. Quand la facture d'une transaction
-  justifiée ou porteuse d'un avis arrive, la revue et Rapprocher disent « Transaction bancaire justifiée sans facture… /
-  porte un avis de virement : c'est elle ? » et ne rattachent pas seuls ; au « Rattacher », l'avis devient la page
+  justifiée ou porteuse d'un avis arrive, la revue et Rapprocher la proposent avec l'étiquette « Justifiée sans facture ·
+  avec avis de virement » et ne rattachent pas seuls ; au « Rattacher », l'avis devient la page
   « - Virement » de la facture et la justification s'efface. Badge bleu = suggestions +
   pièces « déjà payées » sans ligne.
 - Menu ⋯ : Créer une dépense pour quelqu'un ; Envoyer une note pour quelqu'un ; Extérieurs ; Annuler le dernier import.

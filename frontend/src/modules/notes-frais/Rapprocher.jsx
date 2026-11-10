@@ -15,12 +15,12 @@ function VignetteAvis({ transaction }) {
   )
 }
 
-// Ce que dit la transaction proposée quand elle a été justifiée sans facture ou porte un avis (Seb, 10/11 : l'appli demande, ne rattache pas seule).
+// L'étiquette de la transaction proposée quand elle a été justifiée sans facture ou porte un avis :
+// un fait court, le bouton « Rattacher » pose la question (Seb, 10/11 ; l'appli ne rattache pas seule).
 export function texteSansFacture(sansFacture) {
   if (!sansFacture) return null
-  const justifiee = sansFacture.raison ? `justifiée sans facture (« ${sansFacture.raison} »)` : ''
-  const avis = sansFacture.avis ? 'porte un avis de virement' : ''
-  return `Transaction bancaire ${[justifiee, avis].filter(Boolean).join(' et ')} : c’est elle ?`
+  if (sansFacture.raison && sansFacture.avis) return 'Justifiée sans facture · avec avis de virement'
+  return sansFacture.raison ? 'Justifiée sans facture' : 'Avec avis de virement'
 }
 
 // Puce Rapprocher de Financier › Pièces (notes-de-frais.md §7 septies, Seb
