@@ -1064,12 +1064,16 @@ class AgDocuments:
         }
 
     def balance_season(self, db: Session, org_id: int) -> Season | None:
-        """La saison sur laquelle s'ouvre la Balance : la plus ancienne saison
-        commencée et pas encore clôturée, sinon la saison en cours."""
+        """La saison sur laquelle s'ouvre la Balance : la dernière saison
+        terminée si elle n'est pas clôturée (celle dont on prépare le bilan),
+        sinon la saison en cours. Les vieilles saisons jamais clôturées
+        (créées par l'import des relevés) ne comptent pas."""
         today = date.today().isoformat()
         seasons = sorted(self.seasons(db, org_id), key=lambda s: s.start_date)
-        open_ = [s for s in seasons if s.start_date <= today and self.closing(db, org_id, s.id) is None]
-        return open_[0] if open_ else next((s for s in seasons if s.current), seasons[-1] if seasons else None)
+        ended = [s for s in seasons if s.end_date < today]
+        if ended and self.closing(db, org_id, ended[-1].id) is None:
+            return ended[-1]
+        return next((s for s in seasons if s.current), seasons[-1] if seasons else None)
 
     def balance_pdf(self, db: Session, member: Member, season: Season, org_name: str, start: str | None = None, end: str | None = None) -> bytes:
         """La Balance au format comptable standard (celui des logiciels de

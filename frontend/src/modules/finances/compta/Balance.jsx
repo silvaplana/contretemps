@@ -1,7 +1,7 @@
 // Comptes ⋯ › « Balance » (spec/modules/financier.md §8.6) : la Balance
 // recalculée à chaque ouverture, avec la période dite en clair. Saison par
-// défaut : la plus ancienne commencée et pas encore clôturée (choix du
-// serveur) ; Du / Au resserrent la période. Un compte touché montre ses
+// défaut : la dernière terminée si elle n'est pas clôturée, sinon la
+// saison en cours (choix du serveur) ; Du / Au resserrent la période. Un compte touché montre ses
 // écritures, comme au Grand livre ; une pièce touchée ouvre sa fiche.
 import { useEffect, useState } from 'react'
 import { telechargerFichier } from '../../../utils/telechargement.js'

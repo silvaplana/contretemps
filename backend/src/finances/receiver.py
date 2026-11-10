@@ -640,8 +640,8 @@ class FinancesReceiver:
 
         @app.get("/finances/balance")
         def get_balance(season_id: int | None = None, start: str | None = None, end: str | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
-            """Comptes › ⋯ › Balance (§8.6) : par défaut la plus ancienne saison
-            commencée et pas encore clôturée ; start / end resserrent la période."""
+            """Comptes › ⋯ › Balance (§8.6) : par défaut la dernière saison
+            terminée si elle n'est pas clôturée, sinon la saison en cours ; start / end resserrent la période."""
             season = season_by_id(db, member, season_id) if season_id else documents.balance_season(db, member.org_id)
             if season is None:
                 raise HTTPException(status_code=404, detail="Aucune saison")

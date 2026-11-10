@@ -146,6 +146,17 @@ def test_balance_on_screen_shows_its_period_and_can_be_narrowed(world, db_sessio
     assert documents.balance_season(db_session, TRESORIER.org_id).id == SEASON.id
 
 
+def test_balance_opens_on_the_last_ended_season_not_on_old_unclosed_ones(world, db_session):
+    """Seb 10/11 : les vieilles saisons des relevés (2021-2022) ne sont jamais
+    clôturées ; la Balance s'ouvre sur la dernière saison terminée."""
+    _, _, documents = world
+    old = Season(id=7, name="2021-2022", start_date="2021-09-01", end_date="2022-08-31")
+    last = Season(id=8, name="2025-2026", start_date="2025-09-01", end_date="2026-08-31")
+    current = Season(id=9, name="2026-2027", start_date="2026-09-01", end_date="2099-08-31", current=True)
+    documents.seasons = lambda db, org: [old, last, current]
+    assert documents.balance_season(db_session, TRESORIER.org_id).id == last.id
+
+
 def test_report_adds_up_by_confirmed_account(world, db_session):
     finances, _, _ = world
     report = compute_report(finances.get_ledger(db_session, TRESORIER), SEASON.start_date, SEASON.end_date)

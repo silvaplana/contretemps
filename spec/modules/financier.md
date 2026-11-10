@@ -721,8 +721,8 @@ seulement à l'AG, et par le bouton **« Voir la Balance »** sous « Total des 
 dans le volet Comptes à côté du bilan, Seb 10/11). Recalculée **chaque fois qu'on ouvre l'écran** avec tout ce qui est enregistré
 (rien n'est figé ni rangé dans Docs). La **période est dite en clair** sous le titre (« Période : du
 1er septembre 2025 au 31 août 2026 »), avec la date des dernières transactions bancaires connues si
-elle est plus tôt. Saison par défaut : **la plus ancienne saison commencée et pas encore clôturée**
-(celle dont on prépare le bilan), sinon la saison en cours ; menu Saison, dates Du / Au pour
+elle est plus tôt. Saison par défaut : **la dernière saison terminée si elle n'est pas clôturée** (celle dont on
+prépare le bilan ; les vieilles saisons des relevés jamais clôturées ne comptent pas, Seb 10/11), sinon la saison en cours ; menu Saison, dates Du / Au pour
 regarder une partie de la saison (bornées à la saison). Puces Tous les comptes / Bilan (classes 1 à
 5) / Résultat (classes 6 et 7) ; tableau par classe, colonnes Compte, Libellé, Total période (débit,
 crédit), Solde (débit, crédit), total par classe, totaux de Bilan, de Résultat et de la Balance ; un
