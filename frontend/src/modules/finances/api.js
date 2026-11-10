@@ -159,6 +159,10 @@ export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { metho
 export const ecritures = (operationId) => appel(`/operations/${operationId}/entries`)
 // Bilan › Préparer (financier.md §8.10) : l'état des six étapes d'une saison, et « Valider le compte ».
 export const preparation = (seasonId) => appel(`/seasons/${seasonId}/preparation`)
+// Étape 4 : les écritures à la main de la saison (journal OD, niveau Complet).
+export const ecrituresManuelles = (seasonId) => appel(`/seasons/${seasonId}/manual-entries`)
+export const ajouterEcriture = (seasonId, donnees) => appel(`/seasons/${seasonId}/manual-entries`, json('POST', donnees))
+export const supprimerEcriture = (id) => appel(`/manual-entries/${id}`, { method: 'DELETE' })
 // Étape 6 : l'explication d'un compte en écart avec la saison précédente (vide = effacée).
 export const expliquerCompte = (seasonId, number, note) => appel(`/seasons/${seasonId}/notes/${encodeURIComponent(number)}`, json('PUT', { note }))
 export const validerCompte = (seasonId, operationIds, accountId) =>

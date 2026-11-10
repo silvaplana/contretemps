@@ -39,7 +39,7 @@ from sqlalchemy.orm import Session
 
 from .accounting import Accounting
 from .exports import _CSS, _eur, _fr, html_to_pdf
-from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinCashLine, FinClosing, FinOpeningBalance, FinSeasonNote
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinSeasonNote
 from .ports import Member, Season
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
@@ -303,6 +303,16 @@ class AgDocuments:
                 acc.lines.append(Line(day, journal, u["title"], u["title"], cents, 0))
                 account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], u["title"], 0, cents))
 
+        # Complet : les écritures saisies à la main (journal OD, §8.10 étape 4).
+        if full:
+            for e in self._manual_entries(db, member.org_id, season):
+                debit, credit = chart.get(e.debit_account_id), chart.get(e.credit_account_id)
+                if debit is None or credit is None:
+                    continue
+                day = e.date.isoformat()
+                account(debit.number, debit.label, debit.nature, debit.event).lines.append(Line(day, "OD", e.label, "", e.amount, 0))
+                account(credit.number, credit.label, credit.nature, credit.event).lines.append(Line(day, "OD", e.label, "", 0, e.amount))
+
         # Caisse : compte du plan contre 530 (un retrait est déjà passé par
         # la banque ci-dessus).
         for l in cash_lines:
@@ -530,6 +540,7 @@ class AgDocuments:
             "cash": cash["balance"], "cashLines": len(cash["lines"]),
             "unpaid": unpaid, "unpaidTotal": round(sum(u["amount"] for u in unpaid), 2),
             "unpaidInBooks": level == FULL,
+            "entries": self.manual_entries(db, member, season),
         }
         # 6. Comparaison avec la saison précédente, compte par compte.
         comparison = self.comparison(db, member, season)
@@ -548,6 +559,81 @@ class AgDocuments:
             "comparison": comparison,
             "closed": opening["closed"],
         }
+
+    # ----- Écritures à la main (journal OD, §8.10 étape 4) -----
+
+    def _manual_entries(self, db: Session, org_id: int, season: Season) -> list[FinManualEntry]:
+        return list(db.scalars(
+            select(FinManualEntry).where(FinManualEntry.org_id == org_id, FinManualEntry.season_id == season.id)
+            .order_by(FinManualEntry.date, FinManualEntry.id)
+        ))
+
+    def manual_entries(self, db: Session, member: Member, season: Season) -> list[dict]:
+        """Les écritures à la main de la saison, à l'écran (montants en euros)."""
+        if not member.keeps_accounts:
+            raise PermissionError("Réservé aux trésoriers")
+        chart = {a.id: a for a in self.accounting.accounts(db, member.org_id)}
+
+        def acc(account_id: int) -> dict:
+            a = chart.get(account_id)
+            return {"id": account_id, "number": a.number if a else "?", "label": a.label if a else ""}
+
+        return [
+            {"id": e.id, "date": e.date.isoformat(), "label": e.label, "debit": acc(e.debit_account_id), "credit": acc(e.credit_account_id), "amount": e.amount / 100}
+            for e in self._manual_entries(db, member.org_id, season)
+        ]
+
+    def add_manual_entry(self, db: Session, member: Member, season: Season, data: dict) -> list[dict]:
+        """Une écriture OD : date dans la saison, libellé, compte débité, compte
+        crédité (deux comptes actifs du plan, ni banque ni caisse : ceux-là
+        passent par les relevés et la caisse), montant positif. Niveau Complet."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        if self.accounting.level(db, member.org_id) != FULL:
+            raise ValueError("Les écritures à la main sont au niveau Complet (Comptes › ⋯ › Plan comptable).")
+        if self.closing(db, member.org_id, season.id) is not None:
+            raise ValueError("Saison clôturée : rouvrez-la d'abord.")
+        try:
+            day = date.fromisoformat(str(data.get("date", "")))
+        except ValueError as exc:
+            raise ValueError("Date invalide.") from exc
+        if not (season.start_date <= day.isoformat() <= season.end_date):
+            raise ValueError(f"La date doit être dans la saison {season.name}.")
+        label = " ".join(str(data.get("label", "")).split())[:120]
+        if not label:
+            raise ValueError("Donnez un libellé à l'écriture.")
+        amount = round(float(data.get("amount", 0) or 0) * 100)
+        if amount <= 0:
+            raise ValueError("Le montant doit être positif : le sens est donné par les comptes débité et crédité.")
+        active = {a.id: a for a in self.accounting.accounts(db, member.org_id, active_only=True)}
+        accounts = []
+        for key in ("debitAccountId", "creditAccountId"):
+            a = active.get(int(data.get(key) or 0))
+            if a is None:
+                raise ValueError("Compte inconnu ou inactif.")
+            if a.nature in ("banque", "caisse"):
+                raise ValueError("La banque et la caisse ne se saisissent pas à la main : relevés et Comptes › Caisse.")
+            accounts.append(a)
+        if accounts[0].id == accounts[1].id:
+            raise ValueError("Le compte débité et le compte crédité doivent être différents.")
+        db.add(FinManualEntry(
+            org_id=member.org_id, season_id=season.id, date=day, label=label,
+            debit_account_id=accounts[0].id, credit_account_id=accounts[1].id, amount=amount, created_by=member.person_id,
+        ))
+        db.commit()
+        return self.manual_entries(db, member, season)
+
+    def delete_manual_entry(self, db: Session, member: Member, entry_id: int) -> None:
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        entry = db.scalar(select(FinManualEntry).where(FinManualEntry.id == entry_id, FinManualEntry.org_id == member.org_id))
+        if entry is None:
+            raise LookupError("Écriture inconnue.")
+        season = next((s for s in self.seasons(db, member.org_id) if s.id == entry.season_id), None)
+        if season is not None and self.closing(db, member.org_id, season.id) is not None:
+            raise ValueError("Saison clôturée : rouvrez-la d'abord.")
+        db.delete(entry)
+        db.commit()
 
     # Au-delà de cet écart (en %), un compte est marqué « ? » jusqu'à son explication.
     FLAG_PCT = 30

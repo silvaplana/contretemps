@@ -164,3 +164,37 @@ def test_unpaid_invoices_of_the_season_are_due_to_third_parties_at_full_level(fu
     # Niveau Simple : comptabilité de trésorerie, rien.
     simple = documents.books(db_session, TRESORIER, SEASONS[0], full=False)
     assert not any(l.label == "Castorama" for a in simple.values() if hasattr(a, "lines") for l in a.lines)
+
+
+def test_manual_entries_go_through_the_od_journal_at_full_level(full, db_session):
+    """financier.md §8.10 étape 4 : une écriture saisie à la main (cotisation
+    due 411 contre 756, régularisation du 471) entre au journal OD au niveau
+    Complet ; refusée hors saison, sur la banque, à zéro ou au niveau Simple."""
+    finances, accounting, documents, rows, accounts = full
+    accounts = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    entries = documents.add_manual_entry(
+        db_session, TRESORIER, SEASONS[0],
+        {"date": "2026-08-31", "label": "Cotisations dues au 31 août", "debitAccountId": accounts["411"]["id"], "creditAccountId": accounts["756"]["id"], "amount": "120"},
+    )
+    assert [(e["label"], e["debit"]["number"], e["credit"]["number"], e["amount"]) for e in entries] == [("Cotisations dues au 31 août", "411", "756", 120.0)]
+    books = documents.books(db_session, TRESORIER, SEASONS[0])
+    books.pop("_cutoff")
+    assert [(l.journal, l.debit) for l in next(a for a in books.values() if a.number == "411").lines] == [("OD", 12000)]
+    assert any(l.journal == "OD" and l.credit == 12000 for l in next(a for a in books.values() if a.number == "756").lines)
+    assert sum(l.debit for a in books.values() for l in a.lines) == sum(l.credit for a in books.values() for l in a.lines)
+    # Préparer les montre dans Hors banque.
+    assert documents.preparation(db_session, TRESORIER, SEASONS[0], None)["offBank"]["entries"][0]["label"] == "Cotisations dues au 31 août"
+    # Refus : hors saison, banque, même compte, zéro.
+    base = {"label": "x", "debitAccountId": accounts["411"]["id"], "creditAccountId": accounts["756"]["id"], "amount": 1}
+    for mauvais in ({"date": "2026-09-01"}, {"date": "2026-01-01", "amount": 0}, {"date": "2026-01-01", "creditAccountId": accounts["411"]["id"]}):
+        with pytest.raises(ValueError):
+            documents.add_manual_entry(db_session, TRESORIER, SEASONS[0], {**base, **mauvais})
+    banque = next((a for a in accounting.chart(db_session, TRESORIER)["accounts"] if a["nature"] == "banque"), None)
+    if banque is not None:
+        with pytest.raises(ValueError):
+            documents.add_manual_entry(db_session, TRESORIER, SEASONS[0], {**base, "date": "2026-01-01", "debitAccountId": banque["id"]})
+    # Supprimer.
+    documents.delete_manual_entry(db_session, TRESORIER, entries[0]["id"])
+    assert documents.manual_entries(db_session, TRESORIER, SEASONS[0]) == []
+    with pytest.raises(LookupError):
+        documents.delete_manual_entry(db_session, TRESORIER, 999)

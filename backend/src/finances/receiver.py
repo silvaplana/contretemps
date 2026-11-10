@@ -133,6 +133,14 @@ class WriteRequest(BaseModel):
     model: str | None = None
 
 
+class ManualEntryRequest(BaseModel):
+    date: str
+    label: str
+    debitAccountId: int
+    creditAccountId: int
+    amount: float
+
+
 class NoteRequest(BaseModel):
     note: str
 
@@ -577,6 +585,23 @@ class FinancesReceiver:
                 return {"confirmed": documents.accounting.confirm_many(db, member, data.operationIds, data.accountId)}
             except (LookupError, ValueError, PermissionError) as error:
                 raise _http(error) from error
+
+        @app.get("/finances/seasons/{season_id}/manual-entries")
+        def list_manual_entries(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Les écritures à la main de la saison (§8.10, étape 4)."""
+            return {"entries": ag_call(documents.manual_entries, db, member, season_by_id(db, member, season_id))}
+
+        @app.post("/finances/seasons/{season_id}/manual-entries", status_code=201)
+        def add_manual_entry(season_id: int, data: ManualEntryRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            return {"entries": ag_call(documents.add_manual_entry, db, member, season_by_id(db, member, season_id), data.model_dump())}
+
+        @app.delete("/finances/manual-entries/{entry_id}", status_code=204)
+        def delete_manual_entry(entry_id: int, db: Session = db_dep, member: Member = member_dep) -> Response:
+            try:
+                documents.delete_manual_entry(db, member, entry_id)
+            except (LookupError, ValueError, PermissionError) as error:
+                raise _http(error) from error
+            return Response(status_code=204)
 
         @app.put("/finances/seasons/{season_id}/notes/{number}")
         def set_season_note(season_id: int, number: str, data: NoteRequest, db: Session = db_dep, member: Member = member_dep) -> dict:

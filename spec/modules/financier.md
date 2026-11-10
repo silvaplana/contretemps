@@ -709,9 +709,8 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   2026** : elles ne sont pas stockées (pas de `fin_entries`) mais recalculées à chaque fois depuis
   les lignes de banque, de caisse, les comptes confirmés et les pièces (`ag_documents.books`) :
   toujours justes, rien à régénérer en passant de Simple à Complet. Seules la clôture
-  (`fin_closings`) et les soldes de départ (`fin_opening_balances`) sont écrits. Jamais saisies à
-  la main ; les écritures de régularisation OD du trésorier (compte 471, défraiements) restent à
-  faire.
+  (`fin_closings`), les soldes de départ (`fin_opening_balances`) et les écritures à la main du
+  trésorier (`fin_manual_entries`, journal OD, §8.10 étape 4 : 411, 471) sont écrites.
 - **Soldes de départ** (Comptes ⋯ › Soldes de départ) : première saison dans l'appli, repris de
   la Balance de l'an dernier déposée dans Docs (lecture du PDF, vérification à l'écran, « Utiliser
   ces soldes au 1er septembre ») ; l'appli vérifie que les soldes 512x égalent les relevés au 31/08. Saisons
@@ -882,10 +881,19 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    l'écart dépasse 30 % ou que le compte apparaît ou disparaît, jusqu'à ce que la trésorière
    l'explique en une ligne (table `fin_season_notes`, `PUT /finances/seasons/{id}/notes/{numéro}` ;
    vide = effacée) ; le Rapport financier reçoit ces explications (`explicationsDuTresorier`).
-   Cinquième contrôle : « Écarts avec la saison précédente expliqués ». Reste : cotisations dues
-   (411) et compte d'attente (471) saisis à la main (écritures OD), ventilation d'une remise de
+   Cinquième contrôle : « Écarts avec la saison précédente expliqués ».
+4. **Codée le 10 novembre 2026** : étape 4, **écritures à la main** (journal OD, niveau Complet) :
+   ce qui n'est ni sur les relevés ni dans la caisse ni porté par une pièce, comme les cotisations
+   dues au 31 août (411 contre 756) ou la régularisation du compte d'attente (471). Une ligne par
+   question : date (dans la saison), libellé, compte débité, compte crédité, montant positif (le
+   sens est donné par les deux comptes) ; la banque et la caisse refusées (elles passent par les
+   relevés et Comptes › Caisse), les deux comptes différents, saison clôturée refusée. Table
+   `fin_manual_entries` (la seule écriture stockée, avec la clôture et les soldes de départ ;
+   `books()` les prend telles quelles au journal OD, le FEC aussi) ; `GET/POST
+   /finances/seasons/{id}/manual-entries`, `DELETE /finances/manual-entries/{id}` ; trésorier
+   seulement. Pas de modification : supprimer et refaire. Reste : ventilation d'une remise de
    chèques.
-4. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
+5. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 
 ## 9. Reste à faire
 
