@@ -606,7 +606,9 @@ Identité de la personne connectée, autres profils de la famille (bascule, §6.
   d'écriture masqués, écriture refusée par le serveur.
 - « Gros et simple » : texte ≥ 17 px, touches ≥ 48 px, un bouton principal par écran, 3 questions
   max, menu ≤ 6 actions + « Plus… », **Annuler 10 s** plutôt que confirmer, retour par ← (geste
-  Android), jamais de croix. Mobile d'abord ; les mêmes fonctions sur ordinateur.
+  Android), jamais de croix. La flèche ← est grosse (≈ 34 px, trait épais), pour qu'on voie au premier
+  coup d'œil que c'est là qu'on revient en arrière (Seb, 10 novembre 2026) : une règle pour tous les
+  boutons « Retour » de l'appli. Mobile d'abord ; les mêmes fonctions sur ordinateur.
 
 ---
 
