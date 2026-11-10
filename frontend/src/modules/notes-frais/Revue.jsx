@@ -151,7 +151,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
               {!faite && (
                 <div className="nf-revue__actions">
                   <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => valider(n)}>
-                    {n.operation ? 'Valider : Payé' : possible ? 'Rattacher à la transaction' : 'Valider : À payer'}
+                    {n.operation ? 'Valider : Payé' : possible ? 'Rattacher à la transaction bancaire' : 'Valider : À payer'}
                   </button>
                   {!n.operation && !possible && (
                     <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => dejaPayee(n)}>

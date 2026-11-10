@@ -377,21 +377,22 @@ Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
    saison en cours par défaut), en trois parties, la banque d'un côté et les factures de l'autre :
    - **Suggestions de rattachement** : chaque facture sans paiement pour laquelle l'appli voit une transaction, avec
      la raison (« même nom, même montant » = sûre ; « même montant, autre nom » ; « écart … » ;
-     « paie aussi … ») et **« Rattacher à cette transaction »** (`POST …/payee`, la règle de
-     §7 quinquies), qui lettre la facture avec sa transaction ; « Autre… » ouvre la fiche. Rien n'est lettré sans
+     « paie aussi … ») et **« Rattacher à cette transaction bancaire »** (`POST …/payee`, la règle
+     de §7 quinquies), qui lettre la facture avec sa transaction bancaire ; « Autre… » ouvre la fiche. Rien n'est lettré sans
      un toucher ;
    - **Factures sans paiement** : À rapprocher, À valider, À payer, Préparé, Envoyé, Don, avec leur
      état ; un toucher ouvre la fiche (Régler l'écart, Détacher, Revenir en arrière…) ;
    - **Transactions bancaires sans facture** : les débits de la période sans pièce rattachée, avec
-     leur compte bancaire ; leur compte du plan se choisit dans Comptes (filtre « Sans compte »), le
+     leur compte bancaire et, s'il y a lieu, « justificatif demandé à … le … » (§7 octies) ; leur compte du plan se choisit dans Comptes (filtre « Sans compte »), le
      libellé suffit souvent (frais bancaires, honoraires, SACEM).
    En bas, le nombre de pièces rattachées sur la période et le PDF de rapprochement (§7 sexies).
    Badge bleu (banque) sur la puce = suggestions + pièces « déjà payées » sans transaction.
 
 **Vocabulaire (Seb, 10 novembre)** : à l'écran on dit **transaction bancaire** (ou transaction),
 jamais « ligne de banque » ni « ligne du compte » ; logiciel associatif, on dit **quoi à quoi** :
-le geste unitaire est « Rattacher à cette transaction » (la facture à sa transaction ; l'inverse
-« Détacher de la transaction »), et le **rapprochement** est le travail **par lots** sur la période,
+le geste unitaire est « Rattacher à cette transaction bancaire » (la facture à sa transaction ;
+l'inverse « Détacher de la transaction bancaire »), et **« transaction bancaire » s'écrit toujours
+en entier** (Seb, 10 novembre), et le **rapprochement** est le travail **par lots** sur la période,
 annoncé tel quel en tête de l'écran. Rattacher **lettre** la facture avec sa transaction (une lettre
 dans le Grand livre Complet, financier.md §8.7).
 
@@ -401,8 +402,30 @@ préparation : si le rapprochement a été fait au fil de l'année, l'étape est
 « Rapprocher » est le travail par lots ; valider une suggestion lettre les deux écritures du compte
 de tiers (401 / 467x) dans le Grand livre Complet (financier.md §8.7).
 
-Pas encore : « Demander la facture » depuis une ligne sans pièce ; un paiement en plusieurs fois
-d'une même facture ; le virement groupé à l'émission.
+Pas encore : un paiement en plusieurs fois d'une même facture ; le virement groupé à l'émission.
+
+### 7 octies Transaction bancaire sans facture : justifier, ou demander le justificatif (Seb, 10 novembre)
+
+Comme Qonto et Pennylane, une transaction bancaire sans pièce ne reste pas sans réponse. Dans
+Rapprocher, chacune porte deux liens :
+
+- **« Justifier sans facture »** : une raison en une ligne (frais bancaires, prélèvement SACEM,
+  cotisation URSSAF…) ; la transaction sort de « Transactions bancaires sans facture » et passe dans
+  **« Transactions bancaires justifiées sans facture »**, avec sa raison, en bas de l'écran et dans
+  le PDF de rapprochement. « Retirer » la remet dans les sans facture. Elle n'aura jamais de pièce :
+  son compte du plan se choisit toujours dans Comptes.
+- **« Demander le justificatif »** : on choisit une personne de l'école (la liste « Pour qui ? ») ;
+  elle reçoit une notification « Facture à envoyer » et un mail (date, libellé, montant ; où
+  l'envoyer : Profil › Mes notes de frais › Saisir une dépense ; réponse au trésorier). La
+  transaction affiche **« justificatif demandé à … le … »** jusqu'à ce qu'une pièce lui soit
+  rattachée ; « Redemander » renvoie.
+
+Une transaction qui a déjà sa pièce ne se justifie pas (400). Table `nf_operation_receipts`
+(une ligne par transaction concernée : `bank_operation_id` du port Banque, sans clé étrangère,
+`no_receipt_reason`, `requested_person_id`, `requested_at`, `requested_by`). Routes trésoriers :
+`POST` / `DELETE /notes-frais/rapprochement/transactions/{id}/justifier`,
+`POST …/transactions/{id}/demander`.
+
 
 ### 7 bis Rangement dans Docs (Seb, 17 octobre ; simplifié le 29 octobre)
 
