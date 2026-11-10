@@ -1414,6 +1414,7 @@ def test_regler_l_ecart_d_une_piece_payee(client, db_session, ecole):
     virements = client.get("/notes-frais/virements", headers=entetes).json()["virements"]
     [reste] = [v for v in virements if v["titre"] == "Reste dû : Castorama"]
     assert reste["statut"] == "validee" and reste["total_centimes"] == 200 and reste["fournisseur"] == "Castorama"
+    assert reste["solde_de"] == pas_assez["id"]  # au Grand livre Complet : un paiement de plus, pas une seconde facture
 
     sans_ecart = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Amazon", date="2026-03-15", montant_centimes="3990")
     ligne = _operation(db_session, org, -3990, "2026-03-16", "CB AMAZON")

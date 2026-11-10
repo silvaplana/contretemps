@@ -366,3 +366,28 @@ def test_reset_season_wipes_the_treasurer_work_and_keeps_the_bank(full, db_sessi
     assert ledger["closings"] == [] and len(ledger["rows"]) == len(rows)
     assert accounting.operation(db_session, TRESORIER, rows["CB AMAZON"]["id"])["lines"] == []
     assert [l["number"] for l in accounting.operation(db_session, TRESORIER, rows["CB BRICO"]["id"])["lines"]] == ["6061"]
+
+
+def test_an_invoice_paid_in_two_transactions_is_one_charge_and_one_letter(full, db_session):
+    """Seb, 10 novembre (De Luca, 296 = 140 + 156) : l'acompte paie la facture,
+    le « Reste dû » (`settles`) solde le tiers ; une charge, une facture au
+    tiers, deux paiements, une seule lettre quand la somme tombe juste."""
+    _, accounting, documents, rows, accounts = full
+    pieces = accounting.pieces(db_session, TRESORIER.org_id)
+    pieces[rows["CB AMAZON"]["id"]]["amount"] = 51.9
+    pieces[rows["PRLV MYSTERE"]["id"]] = {
+        "id": 3, "title": "Reste dû : Facture Amazon", "kind": "Achat", "nature": "achat", "date": "2025-09-01",
+        "person": "", "amount": 12.0, "number": "AC-2025-001", "settles": 1,
+    }
+    accounting.set_lines(db_session, TRESORIER, rows["PRLV MYSTERE"]["id"], [{"accountId": accounts["606"]["id"]}])
+    books = documents.books(db_session, TRESORIER, SEASON)
+    books.pop("_cutoff")
+    assert sum(a.debit for a in books.values()) == sum(a.credit for a in books.values())
+    assert [(l.journal, l.date, l.debit, l.credit, l.letter) for l in books["401"].lines] == [
+        ("AC", "2025-09-01", 0, 5190, "AAA"), ("BQ1", "2025-09-03", 3990, 0, "AAA"), ("BQ1", "2025-09-20", 1200, 0, "AAA"),
+    ]
+    assert [(l.journal, l.debit) for l in books["606"].lines] == [("AC", 5190)]
+    # Le reste payé plus tard que la saison : la facture et l'acompte restent ouverts, sans lettre.
+    del pieces[rows["PRLV MYSTERE"]["id"]]
+    books = documents.books(db_session, TRESORIER, SEASON)
+    assert [l.letter for l in books["401"].lines] == ["", ""]

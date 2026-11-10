@@ -790,7 +790,9 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   tiers à son montant (le total des pièces rattachées à la transaction), le paiement au montant de la
   banque ; la lettre n'est posée que si les deux sont égaux, sinon les deux lignes restent ouvertes
   sur le tiers (acompte, écart « à régler » dans la fiche de la pièce : `notes-de-frais.md` §7
-  septies) et la charge est au montant de la facture. **Lettrage à la main** : dans Rapprocher,
+  septies) et la charge est au montant de la facture. Un **« Reste dû »** (`settles` dans le port des
+  pièces) n'est qu'un paiement de plus sur le tiers : la lettre se pose sur la facture et tous ses
+  paiements quand leur somme fait la facture, sinon tout reste ouvert (10 novembre 2026). **Lettrage à la main** : dans Rapprocher,
   « Rattacher à une transaction bancaire… » sur une facture sans paiement ouvre la liste des
   transactions bancaires sans facture de la période (montants les plus proches en premier) ; le
   trésorier choisit, tout débit libre est accepté (`POST …/payee` avec `manuel`), l'écart reste.
