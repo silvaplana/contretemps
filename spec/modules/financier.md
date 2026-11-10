@@ -915,11 +915,12 @@ questions) : `appbase/bilan/contre-calcul/` dans les fichiers du projet ; il ser
 avec ce que l'appli calcule (trésorière avec EBP, appli, contre-calcul : à trois).
 
 **Financier › Bilan** devient trois onglets : **Préparer | Documents | Clôture**. Préparer = six
-étapes, chacune avec son compteur, dans l'ordre ; une étape montre ce qui reste, rien ne se calcule
+étapes sous le titre « Étapes du bilan <saison> », chacune nommée par un verbe à l'infinitif sur la chose
+(Seb 10/11), avec son compteur, dans l'ordre ; une étape montre ce qui reste, rien ne se calcule
 sans que la trésorière l'ait vu :
 
-1. **Relevés complets** : la grille des relevés (§3) toute verte pour la saison.
-2. **Soldes de départ** au premier jour de la saison (§8.7) : repris de l'an dernier (ou reportés par
+1. **Compléter les relevés** : la grille des relevés (§3) toute verte pour la saison.
+2. **Reprendre les soldes de départ** au premier jour de la saison (§8.7) : repris de l'an dernier (ou reportés par
    la clôture) et 512x = relevés ; au Complet, « trésorerie des relevés seulement » reste orange.
 3. **Rapprocher les factures et classer les transactions bancaires** (le titre dit quoi, Seb 10/11) :
    l'écran Rapprocher de Pièces (`notes-de-frais.md` §7 septies),
@@ -929,12 +930,12 @@ sans que la trésorière l'ait vu :
    Gala), puis les comptes sûrs par le libellé, validés **par compte entier** (« Valider le compte
    6226 Honoraires : 48 lignes »). Un numéro de compte ne s'affiche jamais seul : toujours avec son
    libellé.
-4. **Hors banque** : caisse, factures non payées au 31/08 (401), cotisations dues (411), compte
+4. **Compter la caisse et les factures non payées** : caisse, factures non payées au 31/08 (401), cotisations dues (411), compte
    d'attente (471) ; saisi à la main, une ligne par question.
-5. **Contrôles**, affichés en clair : solde de début + mouvements = solde de fin pour chaque compte
+5. **Passer les contrôles**, affichés en clair : solde de début + mouvements = solde de fin pour chaque compte
    bancaire ; aucune ligne sans compte ; Balance équilibrée ; résultat de la Synthèse = résultat de
    la Balance ; FEC juste. Un contrôle rouge bloque les documents.
-6. **Documents** (§8.6) et **comparaison avec la saison précédente** compte par compte, écart de
+6. **Produire les documents** (§8.6) **et comparer à l'an dernier** compte par compte, écart de
    plus de 30 % marqué « ? » : la trésorière l'explique en une ligne (reprise dans le Rapport) ou
    retourne pointer.
 
