@@ -3,7 +3,7 @@ Comptes, Pièces, Bilan, AG, Prévisionnel. Le menu ⋯ en haut à droite change
 
 Comptes
 - Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « Sans compte (n) » et « Sans pièce (n) » : les lignes à compléter.
-- Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, recherche d'une opération.
+- Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, menu « Tous les mois » (un mois précis, tous les mois depuis la première opération), recherche d'une opération.
 - Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
   Le crayon à côté de « Compte » ouvre le Plan comptable à la place de la fiche pour ajouter le compte qui manque ;
   fermer revient à la ligne, choix en cours gardés (comme le crayon « Modifier les catégories » d'une pièce).

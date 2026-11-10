@@ -664,6 +664,9 @@ vente est une ligne de banque dont on confirme le compte de produits.
 
 ### 8.4 Comptes : compte et pièce sur chaque ligne
 
+Comptes se filtre par catégorie, par **mois** (menu « Tous les mois » : chaque mois depuis la
+première opération, le plus récent en tête ; Seb, 10 novembre 2026) et par recherche ; les
+filtres se cumulent et le graphique montre alors le cumul des opérations retenues.
 Dans Comptes › Tableau, chaque opération porte son **compte** (ou « Compte à choisir ») et sa
 **pièce** (ou « sans pièce ») ; puces **Sans compte** et **Sans pièce** avec compteur. Un appui
 ouvre la **fiche de l'opération** : compte (proposé, à confirmer), pièce (changer, détacher,
