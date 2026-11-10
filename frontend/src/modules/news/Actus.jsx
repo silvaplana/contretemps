@@ -232,6 +232,11 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
       {actu.nouveau && <span className="actu__nouveau">Nouveau</span>}
     </div>
   )
+  // Une actu peut n'être qu'une photo, une vidéo, un lien ou un document
+  // (Seb, 10 novembre) : pas de ligne de texte vide. « … » seulement pour
+  // une actu encore vide dans l'éditeur.
+  const sansTexte = !actu.texte && (actu.media?.length > 0 || Boolean(actu.document))
+  const texte = sansTexte ? null : <p className="actu__texte">{actu.texte || '…'}</p>
   if (actu.niveau === 'brief') {
     return (
       <article className="actu actu--breve">
@@ -251,7 +256,7 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
           Important
         </div>
         {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
-        <p className="actu__texte">{actu.texte || '…'}</p>
+        {texte}
         {!mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
         <Document document={actu.document} />
         {signature}
@@ -262,9 +267,7 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
     // Par défaut le texte d'abord, puis la photo ou la vidéo (Seb et les testeurs, 8 novembre).
     <article className="actu actu--normale">
       {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
-      <div className="actu__corps">
-        <p className="actu__texte">{actu.texte || '…'}</p>
-      </div>
+      {texte && <div className="actu__corps">{texte}</div>}
       {!mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
       <div className="actu__corps">
         <Document document={actu.document} />
@@ -355,7 +358,7 @@ function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, mediaEnH
         <button key={a.id} type="button" className="atelier__ligne" onClick={() => ouvrir(a)}>
           <span className={`atelier__niveau atelier__niveau--${a.niveau}`} aria-hidden="true" />
           <span className="atelier__corps">
-            <span className="atelier__texte">{a.texte}</span>
+            <span className="atelier__texte">{a.texte || 'Actu sans texte'}</span>
             <span className="actu__meta">
               <span className={`atelier__etat ${a.publieeLe ? 'is-publiee' : ''}`}>{a.publieeLe ? 'Publiée' : 'Brouillon'}</span>
               <span>
@@ -634,7 +637,10 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
       ...(niveau === 'brief' ? { media: [], document: null } : {}),
     })
   }
-  const vide = !brouillon.texte.trim()
+  // Le texte est facultatif dès qu'il y a une photo, une vidéo, un lien ou
+  // un document (Seb, 10 novembre) ; une Brève n'est que du texte.
+  const vide =
+    !brouillon.texte.trim() && (brouillon.niveau === 'brief' || (!brouillon.media.length && !brouillon.document))
   const publiee = Boolean(actu.publieeLe)
   const aide = NIVEAUX.find((n) => n.cle === brouillon.niveau).aide
   const place = MEDIA_MAX - brouillon.media.length
