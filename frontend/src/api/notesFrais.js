@@ -91,6 +91,7 @@ export const demanderRib = (id) => appel(`/exterieurs/${id}/demander-rib`, { met
 export const tresorerie = (filtre) => appel(`/tresorerie?filtre=${filtre}`)
 // Badges de Pièces et de ses puces : ce qui attend une action de qui regarde.
 export const compteursTresorerie = () => appel('/tresorerie/compteurs')
+export const notePourTresorier = (noteId) => appel(`/tresorerie/notes/${noteId}`)
 export const valider = (noteId) => appel(`/notes/${noteId}/valider`, { method: 'POST' })
 export const refuser = (noteId, motif) => appel(`/notes/${noteId}/refuser`, json('POST', { motif }))
 export const rembourser = (noteIds) => appel('/remboursements', json('POST', { note_ids: noteIds }))

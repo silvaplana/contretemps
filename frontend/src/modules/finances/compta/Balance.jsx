@@ -2,10 +2,11 @@
 // recalculée à chaque ouverture, avec la période dite en clair. Saison par
 // défaut : la plus ancienne commencée et pas encore clôturée (choix du
 // serveur) ; Du / Au resserrent la période. Un compte touché montre ses
-// écritures, comme au Grand livre.
+// écritures, comme au Grand livre ; une pièce touchée ouvre sa fiche.
 import { useEffect, useState } from 'react'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import * as api from '../api.js'
+import { requestFichePiece } from '../navigation.js'
 import './compta.css'
 
 const BALANCE_EVENT = 'finances-balance'
@@ -260,7 +261,15 @@ export default function Balance({ onClose }) {
                                     {c.lines.map((l, i) => (
                                       <tr key={i}>
                                         <td>{api.dateFr(l.date)}</td>
-                                        <td>{l.piece || l.journal}</td>
+                                        <td>
+                                          {l.pieceId ? (
+                                            <button type="button" className="btn btn--link fin-balance__piece" onClick={() => requestFichePiece(l.pieceId)}>
+                                              {l.piece}
+                                            </button>
+                                          ) : (
+                                            l.piece || l.journal
+                                          )}
+                                        </td>
                                         <td>{l.label}</td>
                                         <td className="fin-balance__n">{eur(cents(l.debit))}</td>
                                         <td className="fin-balance__n">{eur(cents(l.credit))}</td>

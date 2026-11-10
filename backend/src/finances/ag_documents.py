@@ -150,6 +150,7 @@ class Line:
     credit: int = 0
     letter: str = ""
     operation_id: int | None = None
+    piece_id: int | None = None  # la pièce (Financier › Pièces) dont vient la ligne
 
 
 @dataclass
@@ -385,8 +386,8 @@ class AgDocuments:
                     acc = account(charge.number, charge.label, charge.nature, charge.event)
                 journal = THIRD_PARTY_JOURNAL[u["nature"]]
                 ref = u.get("number") or u["title"]
-                acc.lines.append(Line(day, journal, u["title"], ref, cents, 0))
-                account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], ref, 0, cents))
+                acc.lines.append(Line(day, journal, u["title"], ref, cents, 0, piece_id=u.get("id")))
+                account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], ref, 0, cents, piece_id=u.get("id")))
 
         # Complet : les écritures saisies à la main (journal OD, §8.10 étape 4).
         if full:
@@ -412,7 +413,12 @@ class AgDocuments:
             else:
                 acc = account(acc_row.number, acc_row.label, acc_row.nature, acc_row.event)
             acc.lines.append(Line(day, "CA", l.label, "", max(-l.amount, 0), max(l.amount, 0)))
+        # La pièce de chaque ligne de banque (Balance : toucher la pièce ouvre sa fiche).
+        piece_of = {r["id"]: r["piece"]["id"] for r in rows if r.get("piece")}
         for acc in books.values():
+            for l in acc.lines:
+                if l.piece_id is None and l.piece and l.operation_id in piece_of:
+                    l.piece_id = piece_of[l.operation_id]
             acc.lines.sort(key=lambda l: l.date)
         books["_cutoff"] = cutoff  # type: ignore[assignment]
         return books
@@ -1049,7 +1055,7 @@ class AgDocuments:
                     "debit": a.debit / 100,
                     "credit": a.credit / 100,
                     "lines": [
-                        {"date": l.date, "journal": l.journal, "label": l.label, "piece": l.piece, "debit": l.debit / 100, "credit": l.credit / 100, "letter": l.letter}
+                        {"date": l.date, "journal": l.journal, "label": l.label, "piece": l.piece, "debit": l.debit / 100, "credit": l.credit / 100, "letter": l.letter, "pieceId": l.piece_id}
                         for l in a.lines
                     ],
                 }

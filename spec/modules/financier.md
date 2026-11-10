@@ -726,7 +726,7 @@ regarder une partie de la saison (bornées à la saison). Puces Tous les comptes
 5) / Résultat (classes 6 et 7) ; tableau par classe, colonnes Compte, Libellé, Total période (débit,
 crédit), Solde (débit, crédit), total par classe, totaux de Bilan, de Résultat et de la Balance ; un
 compte touché montre ses écritures (date, pièce, libellé, débit, crédit, lettre) comme au Grand
-livre ; « ✓ Équilibrée » ou l'écart. « Télécharger le PDF » : la Balance ci-dessus pour la même
+livre, et **une pièce touchée ouvre sa fiche** par-dessus la Balance (la fermer y revient) ; « ✓ Équilibrée » ou l'écart. « Télécharger le PDF » : la Balance ci-dessus pour la même
 période (téléchargée, pas rangée dans Docs). Les deux niveaux (Simple : trésorerie contre charges
 et produits). API : `GET /finances/balance?season_id&start&end`, `GET /finances/balance/pdf`.
 

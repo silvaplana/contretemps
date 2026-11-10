@@ -331,7 +331,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
 // une pièce payée rattachée à la banque (Détacher d'abord).
 const ETAPE_AVANT = { viree: 'À payer', preparee: 'À payer', validee: 'À valider' }
 
-function NoteModal({ note, nature, onClose, onFait }) {
+export function NoteModal({ note, nature, onClose, onFait }) {
   const corrigeable =
     note === null || ((note.nature !== 'frais' || note.etablie) && ['envoyee', 'validee'].includes(note.statut))
   const natureModifiable = note !== null && corrigeable && note.statut === 'envoyee'

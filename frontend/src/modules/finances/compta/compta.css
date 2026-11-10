@@ -596,3 +596,4 @@ button.fin-cp-compte:last-child {
 .fin-balance__detail > td { padding: 0 10px 12px 30px; }
 .fin-balance__detail table { min-width: 560px; font-size: 15px; border-left: 3px solid var(--accent); }
 .fin-balance__equilibre { color: var(--success, #2f6b3f); font-weight: 600; }
+.fin-balance__piece { padding: 0; min-height: 0; font: inherit; text-align: left; }

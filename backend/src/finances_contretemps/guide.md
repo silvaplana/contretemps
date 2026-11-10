@@ -24,7 +24,7 @@ Comptes
   (Bilan › Clôture) remet la copie choisie.
 - ⋯ › Balance : la Balance recalculée à l'ouverture de l'écran, avec la période écrite sous le titre (« Période : du … au … ») ;
   s'ouvre sur la plus ancienne saison pas encore clôturée. Saison, Du, Au, Télécharger le PDF ; puces Tous les comptes /
-  Bilan (classes 1 à 5) / Résultat (classes 6 et 7) ; toucher un compte montre ses écritures. « ← Comptes » revient.
+  Bilan (classes 1 à 5) / Résultat (classes 6 et 7) ; toucher un compte montre ses écritures ; toucher un numéro de pièce ouvre sa fiche. « ← Comptes » revient.
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de la Balance
   2024-2025 (Docs › Financier) » (la saison précédente est nommée) : l'appli lit la Balance de la saison précédente déposée dans Docs › Financier (saison précédente ou en cours, n'importe quel sous-dossier, « Balance » dans le nom),
   remplit les cases, montre en haut l'écart éventuel avec les relevés ; sous chaque solde qui n'est pas à zéro, une phrase dit ce que c'est (factures non payées, fonds, compte d'attente à vider…) et propose la facture ou la transaction bancaire du même montant ; « Utiliser ces soldes » enregistre. Sans Balance dans Docs,
