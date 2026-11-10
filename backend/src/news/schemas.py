@@ -87,6 +87,9 @@ class SettingsOut(BaseModel):
     can_read: bool = True
     # Ticks who sees the news (administrateur principal, Super User).
     can_choose_readers: bool = False
+    # At least one published item: with none, the app does not open on
+    # Actus (Seb, 10 November).
+    has_news: bool = False
 
 
 class ReaderOut(BaseModel):

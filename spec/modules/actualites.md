@@ -163,7 +163,8 @@ affiche le dernier onglet ouvert. »
 
 Par organisation, **allumée par défaut**. Allumée : à chaque ouverture de l'appli (lancement, pas
 retour d'arrière-plan, ni page rechargée par F5 ou par la mise en ligne d'une nouvelle version : Seb,
-10 novembre), tout le monde arrive sur Actus. Éteinte : l'appli s'ouvre comme aujourd'hui sur
+10 novembre), tout le monde arrive sur Actus. Tant qu'**aucune actu n'est publiée**, l'appli s'ouvre
+comme si l'option était éteinte : un onglet vide à l'ouverture, c'est déprimant (Seb, 10 novembre). Éteinte : l'appli s'ouvre comme aujourd'hui sur
 le dernier onglet utilisé (`ongletDeDepart` dans App.jsx). Une notification d'un autre module garde
 son propre écran.
 
@@ -281,7 +282,7 @@ Toutes sous `/ecoles/{ecole_id}/news` (code : `news/receiver.py`).
 | `POST …/news` · `PUT …/news/{id}` | droit | Créer, modifier ; `publish` : publier ou garder en brouillon |
 | `POST …/news/{id}/unpublish` | droit | Annuler d'une publication (repasse en brouillon) |
 | `DELETE …/news/{id}` | droit | Supprimer |
-| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture, `media_first` (le `PUT` ne change que ce qu'on lui donne) ; `can_read` (voit l'onglet) et `can_choose_readers` pendant le test (§2 bis) |
+| `GET …/news/settings` · `PUT …/news/settings` | tous · droit | Option d'ouverture, `has_news` (au moins une actu publiée), `media_first` (le `PUT` ne change que ce qu'on lui donne) ; `can_read` (voit l'onglet) et `can_choose_readers` pendant le test (§2 bis) |
 | `POST …/news/photos` | droit | Envoi d'une photo (25 Mo au plus) ; rend son empreinte, à donner ensuite dans `media` (`{photo}`) |
 | `POST …/news/videos` | droit | `upload_id` d'un envoi par blocs (module Vidéos, comme la Messagerie) : en fait une vidéo, à donner ensuite dans `media` (`{video_id}`) |
 | `POST …/news/links` | droit | `url` : lit le titre et l'image du lien ; rend `link`, `title`, `photo` (l'image gardée, ou nul) et `preview` (la même en `data:` pour l'éditeur), à donner ensuite dans `media` (`{link, title, photo}`) ; 400 si le lien ne répond pas |

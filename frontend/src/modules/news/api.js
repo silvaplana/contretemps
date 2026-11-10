@@ -79,11 +79,13 @@ export async function enregistrer(ecoleId, actu) {
 export const depublier = (ecoleId, id) => appel(`/ecoles/${ecoleId}/news/${id}/unpublish`, { method: 'POST' })
 export const supprimer = (ecoleId, id) => appel(`/ecoles/${ecoleId}/news/${id}`, { method: 'DELETE' })
 
-// Option « Ouvrir l'appli sur les actus » (§6). Module éteint ou erreur :
-// on garde l'ouverture habituelle.
+// Option « L'appli affiche toujours les actus à son ouverture » (§6). Module
+// éteint, erreur ou aucune actu publiée (Seb, 10 novembre) : on garde
+// l'ouverture habituelle.
 export async function ouvrirSurLesActus(ecoleId) {
   try {
-    return (await appel(`/ecoles/${ecoleId}/news/settings`)).open_on_news
+    const r = await appel(`/ecoles/${ecoleId}/news/settings`)
+    return r.open_on_news && r.has_news
   } catch {
     return false
   }
