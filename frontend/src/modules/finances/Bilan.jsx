@@ -342,15 +342,28 @@ function ClotureSaison({ season, reports, onDocuments, onReset }) {
 function RepartirAZero({ season, onDone }) {
   const [ouvert, setOuvert] = useState(false)
   const [nom, setNom] = useState('')
+  const [copies, setCopies] = useState([]) // le journal des copies du plan, la plus récente d'abord
+  const [copieId, setCopieId] = useState('')
   const [erreur, setErreur] = useState('')
   const [fait, setFait] = useState(null)
   const [enCours, setEnCours] = useState(false)
+
+  function ouvrir() {
+    setOuvert(true)
+    api
+      .planComptable()
+      .then((plan) => {
+        setCopies(plan.snapshots)
+        setCopieId(plan.snapshots[0]?.id ?? '')
+      })
+      .catch((err) => setErreur(err.message))
+  }
 
   async function confirmer() {
     setEnCours(true)
     setErreur('')
     try {
-      const resultat = await api.repartirAZero(season.id, nom)
+      const resultat = await api.repartirAZero(season.id, nom, copieId === '' ? null : Number(copieId))
       setFait(resultat)
       setOuvert(false)
       setNom('')
@@ -367,14 +380,14 @@ function RepartirAZero({ season, onDone }) {
       <div className="fin-cp-doc">
         <span className="fin-cp-t">Repartir à zéro sur cette saison</span>
         <span className="fin-cp-a">
-          <button type="button" className="btn btn--danger" onClick={() => setOuvert(true)}>
+          <button type="button" className="btn btn--danger" onClick={ouvrir}>
             Repartir à zéro
           </button>
         </span>
         <span className="fin-cp-s">
           {fait
-            ? `C'est fait : ${fait.pieces} pièce${fait.pieces > 1 ? 's' : ''} et ${fait.lines} compte${fait.lines > 1 ? 's' : ''} confirmé${fait.lines > 1 ? 's' : ''} effacés${fait.chart ? ', plan comptable remis comme mémorisé' : ''}. Les relevés sont toujours là.`
-            : 'pour s\'exercer : efface les pièces, les comptes confirmés, les justifications, les écritures à la main, les soldes de départ et la clôture de la saison, remet le plan comptable mémorisé (Comptes › ⋯ › Plan comptable) ; garde les relevés, la caisse et les bilans'}
+            ? `C'est fait : ${fait.pieces} pièce${fait.pieces > 1 ? 's' : ''} et ${fait.lines} compte${fait.lines > 1 ? 's' : ''} confirmé${fait.lines > 1 ? 's' : ''} effacés${fait.chart ? ` ; plan comptable remis à la copie du ${dateFr(fait.chart.takenAt.slice(0, 10))}` : ''}. Les relevés sont toujours là.`
+            : 'pour s\'exercer : efface les pièces, les comptes confirmés, les justifications, les écritures à la main, les soldes de départ et la clôture de la saison, remet une copie mémorisée du plan comptable (Comptes › ⋯ › Plan comptable) ; garde les relevés, la caisse et les bilans'}
         </span>
       </div>
       {ouvert && (
@@ -399,8 +412,22 @@ function RepartirAZero({ season, onDone }) {
             <li>les pièces ajoutées (factures, honoraires, notes de frais) et leurs rapprochements avec la banque ; les fichiers vont à la corbeille de Docs</li>
             <li>les comptes confirmés sur les transactions bancaires et les justifications « sans facture »</li>
             <li>les écritures à la main, les soldes de départ, la clôture</li>
-            <li>le plan comptable revient à sa copie mémorisée, s'il y en a une</li>
+            <li>le plan comptable revient à la copie choisie ci-dessous</li>
           </ul>
+          <label className="field">
+            Copie du plan comptable à remettre
+            {copies.length === 0 ? (
+              <span className="muted">Aucune copie mémorisée : le plan ne bouge pas.</span>
+            ) : (
+              <select value={copieId} onChange={(e) => setCopieId(e.target.value)}>
+                {copies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {dateFr(c.takenAt.slice(0, 10))} — {c.comment}
+                  </option>
+                ))}
+              </select>
+            )}
+          </label>
           <p>
             <b>Ce qui reste</b> : les relevés et transactions bancaires, la caisse, les bilans calculés, les autres saisons. On ne peut pas revenir en
             arrière.

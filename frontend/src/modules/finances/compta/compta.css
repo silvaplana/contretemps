@@ -530,3 +530,20 @@ button.fin-cp-compte:last-child {
   align-items: center;
   gap: 8px;
 }
+
+/* Journal des copies du plan comptable (§8.7) : date, commentaire. */
+.fin-cp-journal {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+.fin-cp-journal li {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.fin-cp-journal li:last-child {
+  border-bottom: 0;
+}

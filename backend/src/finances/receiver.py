@@ -135,6 +135,13 @@ class WriteRequest(BaseModel):
 
 class ResetSeasonRequest(BaseModel):
     confirm: str  # le nom de la saison, retapé
+    snapshotId: int | None = None  # la copie du plan à remettre (sinon la dernière)
+
+
+class SnapshotRequest(BaseModel):
+    """Corps de POST /finances/chart/snapshot : le commentaire du journal."""
+
+    comment: str = ""
 
 
 class ManualEntryRequest(BaseModel):
@@ -421,9 +428,9 @@ class FinancesReceiver:
             return {"level": call(accounting.set_level, db, member, data.level)}
 
         @app.post("/finances/chart/snapshot")
-        def memorize_chart(db: Session = db_dep, member: Member = member_dep) -> dict:
-            """« Mémoriser le plan comptable » (§8.7) : la copie que Repartir à zéro remet en place."""
-            return call(accounting.memorize_chart, db, member)
+        def memorize_chart(data: SnapshotRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Mémoriser le plan comptable » (§8.7) : une copie de plus dans le journal, que Repartir à zéro remet en place."""
+            return call(accounting.memorize_chart, db, member, data.comment)
 
         @app.post("/finances/chart", status_code=201)
         def create_chart_account(data: ChartAccountRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
@@ -599,7 +606,12 @@ class FinancesReceiver:
         @app.post("/finances/seasons/{season_id}/reset")
         def reset_season(season_id: int, data: ResetSeasonRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             """« Repartir à zéro sur cette saison » (§8.7) : le nom de la saison retapé confirme."""
-            return ag_call(documents.reset_season, db, member, season_by_id(db, member, season_id), data.confirm)
+            try:
+                return documents.reset_season(db, member, season_by_id(db, member, season_id), data.confirm, data.snapshotId)
+            except LookupError as error:
+                raise HTTPException(status_code=404, detail=str(error)) from error
+            except (ValueError, PermissionError) as error:
+                raise _http(error) from error
 
         @app.get("/finances/seasons/{season_id}/manual-entries")
         def list_manual_entries(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:

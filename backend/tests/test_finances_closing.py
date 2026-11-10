@@ -307,15 +307,24 @@ def test_reset_season_wipes_the_treasurer_work_and_keeps_the_bank(full, db_sessi
     # Le plan mémorisé avant les bêtises revient : le 4672 de Pesenti et le
     # libellé du 606 ; le compte ajouté ensuite part, celui qui a servi
     # ailleurs (sur CB BRICO, l'autre saison) reste inactif.
-    assert accounting.chart(db_session, TRESORIER)["snapshot"] is None
-    assert accounting.memorize_chart(db_session, TRESORIER)["takenAt"]
+    chart = accounting.chart(db_session, TRESORIER)
+    assert chart["snapshots"] == [] and chart["snapshotSuggestion"] == "Plan de départ"
+    first = accounting.memorize_chart(db_session, TRESORIER)
+    assert first["comment"] == "Plan de départ" and first["accounts"] == len(chart["accounts"])
     extra = accounting.create_account(db_session, TRESORIER, {"number": "6061", "label": "Eau", "nature": "depense"})
     accounting.set_lines(db_session, TRESORIER, rows["CB BRICO"]["id"], [{"accountId": extra["id"]}])
     accounting.create_account(db_session, TRESORIER, {"number": "6062", "label": "Gaz", "nature": "depense"})
     accounting.update_account(db_session, TRESORIER, accounts["606"]["id"], {"number": "606", "label": "Achats divers", "nature": "depense"})
     accounting.delete_account(db_session, TRESORIER, accounts["4672"]["id"])
-    done = documents.reset_season(db_session, TRESORIER, SEASON, " 2025-2026 ")
-    assert done == {"pieces": 3, "lines": 3, "chart": True}
+    # Le journal : la suggestion dit ce qui a changé, le commentaire est libre.
+    assert accounting.suggest_snapshot_comment(db_session, TRESORIER.org_id) == "2 comptes ajoutés (6061 Eau, 6062 Gaz), 1 libellé modifié (606), 1 compte activé ou désactivé (4672)"
+    second = accounting.memorize_chart(db_session, TRESORIER, "  Après les  factures d'octobre ")
+    assert second["comment"] == "Après les factures d'octobre"
+    assert [s["id"] for s in accounting.chart(db_session, TRESORIER)["snapshots"]] == [second["id"], first["id"]]
+    with pytest.raises(LookupError):
+        accounting.restore_chart(db_session, TRESORIER, 999)
+    done = documents.reset_season(db_session, TRESORIER, SEASON, " 2025-2026 ", first["id"])
+    assert done["pieces"] == 3 and done["lines"] == 3 and done["chart"]["id"] == first["id"]
     chart = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
     assert chart["606"]["label"] == accounts["606"]["label"] and chart["4672"]["active"] is True
     assert "6062" not in chart and chart["6061"]["active"] is False
