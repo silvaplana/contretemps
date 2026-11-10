@@ -563,3 +563,10 @@ button.fin-cp-compte:last-child {
 .fin-cp-journal li:last-child {
   border-bottom: 0;
 }
+
+/* Plan comptable : par classe, puis par nature dans la classe (Seb, 10/11). */
+.fin-cp-nature h4 {
+  margin: 10px 0 2px;
+  font-size: 15px;
+  color: var(--text-muted);
+}

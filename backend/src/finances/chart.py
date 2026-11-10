@@ -79,6 +79,20 @@ OFFICIAL_NATURES: tuple[tuple[str, str], ...] = (
 )
 
 
+# Les classes du plan comptable (premier chiffre du numéro) : le Plan comptable
+# s'affiche par classe, et une nature appartient à la classe de ses comptes (Seb, 10/11).
+CLASSES: tuple[tuple[str, str], ...] = (
+    ("1", "Capitaux (fonds propres, emprunts)"),
+    ("2", "Immobilisations"),
+    ("3", "Stocks"),
+    ("4", "Tiers"),
+    ("5", "Financiers (banques, caisse)"),
+    ("6", "Charges"),
+    ("7", "Produits"),
+    ("8", "Contributions volontaires en nature"),
+)
+
+
 def official_natures() -> list[dict]:
     """Les rubriques officielles pour le menu Nature : « 21 Immobilisations
     corporelles », avec leur nature de calcul."""

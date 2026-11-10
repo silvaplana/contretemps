@@ -248,3 +248,5 @@ def test_official_natures_are_offered_with_their_calculation(accounting, db_sess
     assert official["21"] == {"prefix": "21", "label": "21 Immobilisations corporelles", "nature": "attente"}
     assert official["61"]["nature"] == "depense" and official["75"]["nature"] == "recette"
     assert official["87"]["nature"] == "attente"
+    classes = {c["id"]: c["label"] for c in accounting.chart(db_session, TRESORIER)["classes"]}
+    assert classes["2"] == "Immobilisations" and classes["6"] == "Charges" and len(classes) == 8

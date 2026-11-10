@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from .chart import DEFAULT_CHART, Proposal, is_cheque_deposit, label_key, official_natures, propose
+from .chart import CLASSES, DEFAULT_CHART, Proposal, is_cheque_deposit, label_key, official_natures, propose
 from .models import (
     FULL,
     LEVELS,
@@ -125,6 +125,7 @@ class Accounting:
             "snapshotSuggestion": self.suggest_snapshot_comment(db, member.org_id),
             "natures": [{"id": n, "label": NATURE_LABELS[n]} for n in NATURES],
             "officialNatures": official_natures(),
+            "classes": [{"id": c, "label": label} for c, label in CLASSES],
             "accounts": [
                 {**self._account(a), "used": counts.get(a.id, 0) + cash_counts.get(a.id, 0)}
                 for a in self.accounts(db, member.org_id)
