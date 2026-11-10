@@ -61,6 +61,10 @@ services:
         required: false
     volumes:
       - backend_data:/app/data
+      # Lecture automatique de la banque (financier.md §3.5) : même clé
+      # privée Enable Banking que "backend", en lecture seule. Dossier
+      # absent ou vide : le worker ne lit simplement pas la banque.
+      - ./backend/secrets:/run/secrets:ro
     # "-u" (non bufferisé) : sinon les print() de relance_worker.py
     # n'apparaissent jamais dans `docker compose logs` (stdout mis en
     # tampon par défaut dès qu'il n'est pas un vrai terminal, comme ici).
