@@ -210,7 +210,7 @@ Le trésorier a une pile de papiers et ne sait pas, en les photographiant, si c'
 frais, des honoraires ou un achat ; souvent la pièce est déjà payée. Le **« + »** de Financier ›
 Pièces ne demande donc plus rien avant : **Prendre en photo** (on enchaîne les photos : **Pièce
 suivante**, **Encore une page de celle-ci**), **Choisir des fichiers** (un paquet d'un coup ; sur
-ordinateur, glisser les fichiers sur Pièces), ou **Saisir sans photo** (qui demande la nature).
+ordinateur, glisser les fichiers sur Pièces), ou **Saisir à la main** (qui demande la nature ; Seb, 10 novembre : la fiche garde « Prendre une photo » et « Joindre un fichier » pour le justificatif, rangé dans Docs comme une pièce importée).
 Chaque pièce est créée aussitôt (À valider) et lue en arrière-plan ; la fenêtre liste le lot
 (« Lecture en cours… », puis qui, nature proposée, montant).
 

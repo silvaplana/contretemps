@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import * as sessionApi from '../../api/session.js'
 import Icon from '../../components/Icon.jsx'
@@ -39,7 +39,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
   useEffect(() => {
     sessionApi.sauvegarderEcran('financier-pieces', puce)
   }, [puce])
-  // « + » = Saisir une dépense (Saisie.jsx) ; « Saisir sans photo » demande
+  // « + » = Saisir une dépense (Saisie.jsx) ; « Saisir à la main » demande
   // d'abord la nature, puis ouvre la saisie de cette puce (`plus`).
   const [saisie, setSaisie] = useState(false)
   const [deposes, setDeposes] = useState(null)
@@ -191,7 +191,7 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
 
 // Une puce Notes de frais, Honoraires ou Achats : à valider en tête, puis le
 // reste. Les photos et fichiers passent par « + » (Saisie.jsx) ; ici,
-// `plus` = saisir sans photo dans cette nature.
+// `plus` = saisir à la main dans cette nature.
 function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
   const [notes, setNotes] = useState(null)
   const [ouverte, setOuverte] = useState(null) // note | 'nouvelle'
@@ -210,7 +210,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
   }, [nature, onCompteurs])
   useEffect(charger, [charger])
 
-  // « Saisir sans photo » dans cette nature : la fiche vide.
+  // « Saisir à la main » dans cette nature : la fiche vide.
   const aTrancher = nature === 'a_trancher'
   const modale = ouverte ?? (plus && nature !== 'frais' && !aTrancher ? 'nouvelle' : null)
 
@@ -326,7 +326,7 @@ function ListeNature({ nature, onCompteurs, plus, onPlusFerme, onPour }) {
 // Détail d'une pièce. Note de frais envoyée par la personne : Valider /
 // Refuser (elle corrige elle-même). Pièce établie depuis « + » (photo lue,
 // nature proposée) : nature, personne et montant à vérifier ou corriger, puis
-// Valider ; `note` null = saisie sans photo ; `revue` = rang dans le lot.
+// Valider ; `note` null = saisie à la main ; `revue` = rang dans le lot.
 // « Revenir en arrière » (Seb, 31/10) : une étape, trésorier seul ; jamais
 // une pièce payée rattachée à la banque (Détacher d'abord).
 const ETAPE_AVANT = { viree: 'À payer', preparee: 'À payer', validee: 'À valider' }
@@ -342,6 +342,10 @@ function NoteModal({ note, nature, onClose, onFait }) {
   const [jour, setJour] = useState(depense?.date ?? api.aujourdhui())
   const [montant, setMontant] = useState(api.versTexteMontant(depense?.montant_centimes || null))
   const [description, setDescription] = useState(depense?.description ?? '')
+  // Saisie à la main : on peut quand même joindre une photo ou un fichier (Seb, 10/11).
+  const [joint, setJoint] = useState(null)
+  const camera = useRef(null)
+  const galerie = useRef(null)
   const [categorieId, setCategorieId] = useState(depense?.categorie?.id ?? '')
   const [categories, setCategories] = useState([])
   const [plan, setPlan] = useState(false)
@@ -392,9 +396,10 @@ function NoteModal({ note, nature, onClose, onFait }) {
   async function enregistrer(valider) {
     const corps = champs()
     if (note === null) {
-      await api.etablir(genre, null, { ...corps, valider: true })
+      await api.etablir(genre, joint, { ...corps, valider: true })
       return
     }
+    if (joint) await api.ajouterPage(note.id, joint)
     await api.corriger(note.id, corps)
     if (valider) await api.valider(note.id)
   }
@@ -572,6 +577,26 @@ function NoteModal({ note, nature, onClose, onFait }) {
           </select>
           <label htmlFor="nf-description">Description</label>
           <input id="nf-description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={200} />
+          <label>Justificatif</label>
+          {joint ? (
+            <p className="nf-joindre">
+              <span className="nf-joindre__nom">{joint.name}</span>
+              <button type="button" className="btn btn--secondary" onClick={() => setJoint(null)}>
+                Retirer
+              </button>
+            </p>
+          ) : (
+            <div className="nf-joindre">
+              <button type="button" className="btn btn--secondary" onClick={() => camera.current?.click()}>
+                <Icon name="camera" size={18} /> Prendre une photo
+              </button>
+              <button type="button" className="btn btn--secondary" onClick={() => galerie.current?.click()}>
+                <Icon name="image" size={18} /> Joindre un fichier
+              </button>
+            </div>
+          )}
+          <input ref={camera} type="file" accept="image/*" capture="environment" hidden onChange={(e) => setJoint(e.target.files?.[0] ?? null)} />
+          <input ref={galerie} type="file" accept="image/*,application/pdf" hidden onChange={(e) => setJoint(e.target.files?.[0] ?? null)} />
         </>
       ) : (
         <>

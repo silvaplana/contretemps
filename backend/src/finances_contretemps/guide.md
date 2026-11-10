@@ -32,7 +32,7 @@ Pièces
   recette) ne se saisit pas encore. Les transactions bancaires sans compte se classent dans Comptes (filtre « Sans compte »), badge
   bleu sur le sous-onglet Comptes.
 - « + » : Saisir une dépense. Prendre en photo (enchaîner : Pièce suivante, Encore une page de celle-ci), Choisir des
-  fichiers (ou un zip), ou Saisir sans photo. Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
+  fichiers (ou un zip), ou Saisir à la main (fiche vide ; « Prendre une photo » ou « Joindre un fichier » y ajoute quand même le justificatif). Chaque pièce est lue ; l'appli propose la nature (facture d'un prof de
   l'école = Honoraires, d'une ou pour une autre personne = sa Note de frais, société = Achat) et la transaction bancaire qui la
   paie : même montant et même nom → ligne rattachée, « Payée selon la banque » (« Pas cette ligne » sinon) ; même montant
   seulement → « Rattacher à la transaction bancaire » ; aucune ligne du montant exact → « Paiement possible » (lignes au même nom, écart affiché, ou
