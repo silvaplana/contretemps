@@ -115,6 +115,10 @@ def test_documents_are_produced(world, db_session):
         assert media == "application/pdf" and name.endswith(".pdf")
         page_text = "".join(p.get_text() for p in pymupdf.open(stream=content, filetype="pdf"))
         assert text in page_text and "Report à nouveau" in page_text
+        # Format comptable standard (§8.6) : en-tête, période, devise, totaux du modèle.
+        assert "Édition du" in page_text and "Devise : EUR" in page_text and "Comptes 110 à" in page_text
+        expected = ("Total pour le compte", "Total du Grand-Livre") if kind == "grand-livre" else ("Total des comptes de Bilan", "Total des comptes de Résultat", "Total de la Balance")
+        assert all(t in page_text for t in expected)
     content, name, _ = documents.produce(db_session, TRESORIER, SEASON, "honoraires")
     sheet = load_workbook(filename=__import__("io").BytesIO(content)).active
     assert [c.value for c in sheet[2]] == ["Professeur", "2025-10", "2025-11", "Total"]

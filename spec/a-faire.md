@@ -9,9 +9,9 @@ module. Rayer ce qui est fait.
   quatre étapes ; AG de Contretemps en novembre 2026, la première étape suffit à la Synthèse.
 - Financier : le bilan en parcours Préparer | Documents | Clôture (`modules/financier.md` §8.10),
   étape 6 (comparaison appli / contre-calcul / EBP) ; les étapes 1 à 5 sont codées le 10 novembre.
-- Financier : Grand livre et Balance **exactement** comme les documents EBP de la trésorière (but
-  fixé par Seb le 10 novembre) : cadenas de la clôture et numéro de pièce faits (§8.7) ; reste la
-  mise en page (en-têtes, totaux par compte, totaux Bilan / Résultat de la Balance).
+- Financier : Grand livre et Balance au format du logiciel de la trésorière (but fixé par Seb le
+  10 novembre) : cadenas, numéro de pièce et mise en page faits le 10 novembre (§8.6, §8.7) ; reste
+  la comparaison appli / contre-calcul / EBP sur les documents 2025-26 produits par l'appli.
 - Socle par saison (`core.md` §13) : groupes, droits, cours = groupes, champs des membres, famille
   par l'email du payeur, création de saison en un écran, tarifs, HelloAsso (`modules/helloasso.md`),
   formulaire d'inscription de l'appli (à concevoir).
