@@ -428,6 +428,11 @@ nom au choix (« Immobilisations »), puis « Pour le résultat, ce compte est �
 ou hors résultat (Balance et Grand livre seulement, nature de base « attente »). Le calcul suit la nature
 de base ; le nom (`fin_chart_accounts.nature_label`) groupe les comptes dans le Plan comptable et se
 propose ensuite dans le menu Nature. Gardé par la copie mémorisée du plan.
+Le menu Nature propose aussi les **rubriques du plan comptable des associations** (règlement ANC
+2018-06 : « 21 Immobilisations corporelles », « 61 Services extérieurs », « 75 Cotisations, dons… »,
+« 86-87 Contributions volontaires en nature » ; `finances/chart.py`, `OFFICIAL_NATURES`), chacune déjà
+réglée d'après son numéro : 6 dépense, 7 recette, le reste hors résultat. Pour un nouveau compte hors
+classes 6 et 7, la rubrique se propose d'après le numéro tapé (2183 → 21 Immobilisations corporelles).
 
 Les catégories par mots-clés de §3.2 (`categories.py`) restent pour l'écran Comptes ; chaque
 compte du plan porte ses mots-clés de proposition (repris et enrichis par l'historique confirmé :

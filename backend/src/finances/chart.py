@@ -28,6 +28,66 @@ class DefaultAccount:
     event: str | None = None
 
 
+# Rubriques du plan comptable des associations (règlement ANC 2018-06, sur le
+# PCG), proposées comme natures dans la fiche d'un compte (Seb, 10/11) : le
+# numéro donne la nature de calcul (6 dépense, 7 recette, sinon hors résultat).
+OFFICIAL_NATURES: tuple[tuple[str, str], ...] = (
+    ("10", "Fonds propres et réserves"),
+    ("11", "Report à nouveau"),
+    ("12", "Résultat de l'exercice"),
+    ("13", "Subventions d'investissement"),
+    ("15", "Provisions pour risques et charges"),
+    ("16", "Emprunts et dettes assimilées"),
+    ("19", "Fonds dédiés"),
+    ("20", "Immobilisations incorporelles"),
+    ("21", "Immobilisations corporelles"),
+    ("27", "Immobilisations financières (dépôts, cautions)"),
+    ("28", "Amortissements des immobilisations"),
+    ("3", "Stocks"),
+    ("40", "Fournisseurs"),
+    ("41", "Adhérents, usagers"),
+    ("42", "Personnel"),
+    ("43", "Sécurité sociale et organismes sociaux"),
+    ("44", "État et collectivités publiques"),
+    ("45", "Fédérations et associations affiliées"),
+    ("46", "Débiteurs et créditeurs divers"),
+    ("47", "Comptes d'attente"),
+    ("48", "Charges et produits constatés d'avance"),
+    ("50", "Placements"),
+    ("51", "Banques"),
+    ("53", "Caisse"),
+    ("58", "Virements internes"),
+    ("60", "Achats"),
+    ("61", "Services extérieurs"),
+    ("62", "Autres services extérieurs"),
+    ("63", "Impôts, taxes et versements assimilés"),
+    ("64", "Charges de personnel"),
+    ("65", "Autres charges de gestion courante"),
+    ("66", "Charges financières"),
+    ("67", "Charges exceptionnelles"),
+    ("68", "Dotations aux amortissements et provisions"),
+    ("69", "Impôts sur les bénéfices"),
+    ("70", "Ventes et prestations de services"),
+    ("74", "Subventions d'exploitation"),
+    ("75", "Cotisations, dons et autres produits de gestion"),
+    ("76", "Produits financiers"),
+    ("77", "Produits exceptionnels"),
+    ("78", "Reprises sur amortissements et provisions"),
+    ("79", "Transferts de charges"),
+    ("86", "Emplois des contributions volontaires en nature"),
+    ("87", "Contributions volontaires en nature"),
+)
+
+
+def official_natures() -> list[dict]:
+    """Les rubriques officielles pour le menu Nature : « 21 Immobilisations
+    corporelles », avec leur nature de calcul."""
+    def nature(prefix: str) -> str:
+        return EXPENSE if prefix.startswith("6") else INCOME if prefix.startswith("7") else SUSPENSE
+
+    return [{"prefix": p, "label": f"{p} {label}", "nature": nature(p)} for p, label in OFFICIAL_NATURES]
+
+
 # Liste par défaut d'une nouvelle organisation (courte : l'organisation
 # ajoute et renomme). Les comptes de tiers et d'attente ne servent qu'au
 # niveau Complet mais existent dès le départ.

@@ -16,7 +16,7 @@ Comptes
 - Importer des relevés : un tableau (Fichier | À quoi il correspond | Compte | Rangé dans) montre ce que l'appli propose ; on change le compte dans sa case si besoin, puis Valider (Annuler ne change rien). Les PDF vont dans Docs › saison › Financier › RELEVES BANCAIRES › compte.
 - Relevés : par saison, une case par compte et par mois ; ✓ relevé importé (toucher l'ouvre), – aucun mouvement, ! relevé manquant, ↓ relevé à importer, ? en attente du prochain relevé ; bouton Importer des relevés.
 - ⋯ › Plan comptable : le niveau Simple / Complet en haut (Complet sans retour), puis les comptes par classe : ajouter,
-  renommer, nature (« Autre nature… » : un nom libre, puis dépense, recette ou hors résultat), mots-clés (qui font proposer le compte), événement (« gala »), désactiver (case « Compte actif » ; Retirer
+  renommer, nature (une rubrique du plan des associations, ex. « 21 Immobilisations corporelles », proposée d'après le numéro, ou « Autre nature… » : un nom libre, puis dépense, recette ou hors résultat), mots-clés (qui font proposer le compte), événement (« gala »), désactiver (case « Compte actif » ; Retirer
   supprime un compte jamais utilisé, désactive sinon ; un compte de tiers 401 / 467x n'est jamais supprimé). Un prof sans
   compte d'honoraires : l'appli crée « 467n Honoraires Nom » toute seule à sa première facture (niveau Complet).
   « Copies du plan » : le journal des copies mémorisées (date, commentaire) ; « Mémoriser le plan comptable » en ajoute

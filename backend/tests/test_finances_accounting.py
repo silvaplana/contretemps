@@ -239,3 +239,12 @@ def test_free_nature_is_a_name_the_calculation_follows_nature(accounting, db_ses
     accounting.restore_chart(db_session, TRESORIER)
     restored = next(a for a in accounting.chart(db_session, TRESORIER)["accounts"] if a["number"] == "2154")
     assert restored["natureLabel"] == "Immobilisations"
+
+
+def test_official_natures_are_offered_with_their_calculation(accounting, db_session):
+    """Le menu Nature propose les rubriques du plan des associations (Seb, 10/11) :
+    6 dépense, 7 recette, le reste hors résultat."""
+    official = {n["prefix"]: n for n in accounting.chart(db_session, TRESORIER)["officialNatures"]}
+    assert official["21"] == {"prefix": "21", "label": "21 Immobilisations corporelles", "nature": "attente"}
+    assert official["61"]["nature"] == "depense" and official["75"]["nature"] == "recette"
+    assert official["87"]["nature"] == "attente"
