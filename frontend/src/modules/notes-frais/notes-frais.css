@@ -687,3 +687,8 @@
   align-items: flex-end;
   gap: 4px;
 }
+
+.nf-revue__doublon {
+  margin: 6px 0 0;
+  color: #b4530a;
+}

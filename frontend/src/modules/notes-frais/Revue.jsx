@@ -102,6 +102,9 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                   {n.depenses[0]?.date_approximative ? ' · date à vérifier' : ''}
                 </span>
               </header>
+              {n.doublon_de ? (
+                <p className="nf-revue__doublon">Même fichier que la pièce n° {n.doublon_de}, déjà enregistrée : refusez celle-ci si c’est un doublon.</p>
+              ) : null}
               <dl className="nf-revue__bloc">
                 <dt>Nature</dt>
                 <dd>{NATURES[n.nature]}</dd>

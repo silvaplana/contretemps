@@ -98,6 +98,9 @@ class NoteFrais(Base):
     batch_id: Mapped[str | None] = mapped_column(String(36), nullable=True, index=True)
     # « Plus tard » (§7 quinquies, Seb 6/11) : la pièce reste À valider, dans À trancher et Docs › A TRAITER.
     deferred_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Même fichier qu'une pièce déjà enregistrée (§7 quinquies, Seb 10/11) : signalé à la revue, la
+    # trésorière décide (refuser le doublon, ou garder les deux).
+    duplicate_of_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Écart entre la ligne du compte et la pièce, réglé : refund / pay_rest / write_off.
     gap_settlement: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # Numéro de pièce donné à la validation (financier.md §8.7, Seb 10/11) :
@@ -150,6 +153,8 @@ class PieceJustificative(Base):
     taille: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     ordre: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     doc_node_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Empreinte du contenu, pour reconnaître un même fichier déposé deux fois.
+    sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
 
     depense: Mapped[Depense] = relationship(back_populates="pieces")
 
