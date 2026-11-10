@@ -548,7 +548,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
             </>
           ) : (
             <>
-              <label htmlFor="nf-fournisseur">Fournisseur</label>
+              <label htmlFor="nf-fournisseur">Nom du fournisseur</label>
               <input id="nf-fournisseur" value={fournisseur} onChange={(e) => setFournisseur(e.target.value)} maxLength={120} />
             </>
           )}
