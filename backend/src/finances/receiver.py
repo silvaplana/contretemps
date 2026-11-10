@@ -133,6 +133,10 @@ class WriteRequest(BaseModel):
     model: str | None = None
 
 
+class NoteRequest(BaseModel):
+    note: str
+
+
 class ConfirmAccountsRequest(BaseModel):
     operationIds: list[int]
     accountId: int
@@ -573,6 +577,11 @@ class FinancesReceiver:
                 return {"confirmed": documents.accounting.confirm_many(db, member, data.operationIds, data.accountId)}
             except (LookupError, ValueError, PermissionError) as error:
                 raise _http(error) from error
+
+        @app.put("/finances/seasons/{season_id}/notes/{number}")
+        def set_season_note(season_id: int, number: str, data: NoteRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """L'explication de la trésorière sur un compte (§8.10, étape 6) ; vide = effacée."""
+            return ag_call(documents.set_note, db, member, season_by_id(db, member, season_id), number, data.note)
 
         @app.get("/finances/opening-balances/{season_id}")
         def get_opening(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:

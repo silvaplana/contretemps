@@ -60,9 +60,13 @@ Bilan
   une étape la déplie. 1. Relevés complets (la grille des relevés) ; 2. Soldes de départ ; 3. Rapprocher et classer :
   les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher », puis les transactions bancaires sans
   compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération) et « Comptes proposés par l'appli »
-  regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; 4. Hors banque (bientôt) ;
-  5. Contrôles en clair (relevés complets, soldes de départ égaux aux relevés, un compte sur chaque transaction
-  bancaire, FEC juste) ; 6. Documents (renvoie à l'onglet Documents). Un numéro de compte s'affiche toujours avec son libellé.
+  regroupées par compte avec « Valider le compte 6226 Honoraires : 48 lignes » ; 4. Hors banque : la caisse et les
+  factures validées pas encore payées (au niveau Complet, dues au jour de la facture contre 401 / 467 ; au niveau Simple,
+  dans « Fournisseurs à payer » de la Synthèse) ; 5. Contrôles en clair (relevés complets, soldes de départ égaux aux
+  relevés, un compte sur chaque transaction bancaire, FEC juste, écarts expliqués) ; 6. Documents et comparaison : chaque
+  compte face à la saison précédente (montant, écart, %), « ? » au-delà de 30 % ou compte nouveau / disparu, une ligne
+  d'explication à écrire (reprise dans le Rapport financier), puis « Aller aux documents ». Un numéro de compte s'affiche
+  toujours avec son libellé.
 - Documents : choisir un bilan de la liste (ou ⋯ › Nouveau bilan). Puces d'état : Brouillon, Validé, Officiel.
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
 - En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le

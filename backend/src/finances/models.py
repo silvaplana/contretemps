@@ -352,3 +352,21 @@ class FinClosing(Base):
     closed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
     reopened_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reopened_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class FinSeasonNote(Base):
+    """Explication de la trésorière sur un compte de la saison (spec §8.10,
+    étape 6) : un écart de plus de 30 % avec la saison précédente est marqué
+    « ? » jusqu'à ce qu'elle l'explique en une ligne ; le Rapport financier
+    reprend ces lignes. Une note vide efface la ligne."""
+
+    __tablename__ = "fin_season_notes"
+    __table_args__ = (UniqueConstraint("org_id", "season_id", "number"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    season_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    number: Mapped[str] = mapped_column(String(10), nullable=False)
+    note: Mapped[str] = mapped_column(String(300), nullable=False)
+    created_by: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)

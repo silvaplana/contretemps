@@ -873,7 +873,18 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    l'écran des bilans d'avant ; Clôture = la clôture portée par le bilan le plus avancé de la saison
    (Officiel, Validé, dernier), niveau Complet. Reste pour cette étape : la ventilation d'une remise
    de chèques Cours / Cotisations / Gala.
-3. Hors banque (factures non payées dans 401, 411, 471), contrôles, comparaison N-1 avec « ? ».
+3. **Codée le 10 novembre 2026** : étape 4 **Hors banque** = la caisse (solde, renvoi à Comptes ›
+   Caisse) et les **factures validées pas encore payées** (`AgPorts.unpaid`, désormais avec date,
+   nature, compte de charge et nom) : au niveau Complet, une facture datée de la saison entre en
+   charge le jour de la facture contre son tiers (401 / 467x), sans lettre, dans `books()` ; au
+   niveau Simple elles restent dans « Fournisseurs à payer » de la Synthèse. Étape 6 **Documents et
+   comparaison** : compte par compte, la saison et la précédente (montant, écart, %), **« ? »** quand
+   l'écart dépasse 30 % ou que le compte apparaît ou disparaît, jusqu'à ce que la trésorière
+   l'explique en une ligne (table `fin_season_notes`, `PUT /finances/seasons/{id}/notes/{numéro}` ;
+   vide = effacée) ; le Rapport financier reçoit ces explications (`explicationsDuTresorier`).
+   Cinquième contrôle : « Écarts avec la saison précédente expliqués ». Reste : cotisations dues
+   (411) et compte d'attente (471) saisis à la main (écritures OD), ventilation d'une remise de
+   chèques.
 4. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 
 ## 9. Reste à faire

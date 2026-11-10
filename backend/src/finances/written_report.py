@@ -137,13 +137,15 @@ def fill(text: str, available: dict[str, dict]) -> tuple[str, list[str]]:
 
 
 class WrittenReports:
-    def __init__(self, synthese, seasons, note_cost=None, client: anthropic.Anthropic | None = None, org_name=None, store=None) -> None:
+    def __init__(self, synthese, seasons, note_cost=None, client: anthropic.Anthropic | None = None, org_name=None, store=None, notes=None) -> None:
         """synthese(db, member, season) : la Synthèse (ag_documents) ;
         seasons(db, org_id) ; note_cost(db, org_id, dollars, détail) ;
         org_name(db, org_id) ; store(db, member, chemin, fichiers)."""
         self.synthese = synthese
         self.seasons = seasons
         self.note_cost = note_cost
+        # notes(db, org_id, season) : les explications de la trésorière compte par compte (§8.10, étape 6).
+        self.notes = notes
         self._client = client
         self.org_name = org_name
         self.store = store
@@ -192,6 +194,8 @@ class WrittenReports:
             "saisonPrecedente": previous.name if previous else None,
             "chiffres": {key: {"libelle": f["label"], "valeur": f["value"]} for key, f in available.items()},
             "analyseDuBilan": analysis,
+            # Ce que la trésorière a expliqué compte par compte (Bilan › Préparer, étape 6).
+            "explicationsDuTresorier": self.notes(db, member.org_id, season) if self.notes else {},
         }
         text = "Chiffres de la saison (JSON ; cite-les par leur clé entre doubles accolades) :\n" + json.dumps(data, ensure_ascii=False, indent=1)
         if prompt.strip():
