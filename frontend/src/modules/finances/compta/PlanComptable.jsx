@@ -60,6 +60,12 @@ export default function PlanComptable({ onClose }) {
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
   if (!plan) return <p className="muted">Chargement…</p>
   const natures = plan.level === 'complet' ? plan.natures : plan.natures.filter((n) => n.id === 'depense' || n.id === 'recette')
+  // Natures libres (Seb, 10/11) : un groupe par nom, après les natures de base.
+  const libres = [...new Set(plan.accounts.map((c) => c.natureLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b))
+  const groupes = [
+    ...natures.map((n) => ({ key: n.id, label: n.label, comptes: plan.accounts.filter((c) => c.nature === n.id && !c.natureLabel) })),
+    ...libres.map((l) => ({ key: `libre:${l}`, label: l, comptes: plan.accounts.filter((c) => c.natureLabel === l) })),
+  ]
 
   return (
     <section className="fin-cp" aria-label="Plan comptable">
@@ -106,11 +112,10 @@ export default function PlanComptable({ onClose }) {
           Mémoriser le plan comptable
         </button>
       </div>
-      {natures.map((nature) => (
-        <div key={nature.id} className="fin-cp-carte">
-          <h3>{nature.label}</h3>
-          {plan.accounts
-            .filter((c) => c.nature === nature.id)
+      {groupes.map((groupe) => (
+        <div key={groupe.key} className="fin-cp-carte">
+          <h3>{groupe.label}</h3>
+          {groupe.comptes
             .map((c) => (
               <button key={c.id} type="button" className="fin-cp-compte" onClick={() => setEdition(c)}>
                 <span className="fin-cp-num">{c.number}</span>
@@ -157,6 +162,7 @@ export default function PlanComptable({ onClose }) {
         <FicheCompte
           compte={edition === 'nouveau' ? null : edition}
           natures={plan.natures}
+          libres={libres.map((l) => ({ label: l, nature: plan.accounts.find((c) => c.natureLabel === l).nature }))}
           onClose={() => setEdition(null)}
           onChange={() => {
             setEdition(null)
@@ -168,23 +174,47 @@ export default function PlanComptable({ onClose }) {
   )
 }
 
-function FicheCompte({ compte, natures, onClose, onChange }) {
+// Nature libre : ce qu'elle compte dans le résultat (le calcul suit la nature de base).
+const COMPTE_COMME = [
+  { id: 'depense', label: 'Une dépense' },
+  { id: 'recette', label: 'Une recette' },
+  { id: 'attente', label: 'Hors résultat (Balance et Grand livre seulement)' },
+]
+
+function FicheCompte({ compte, natures, libres, onClose, onChange }) {
   const [form, setForm] = useState({
     number: compte?.number ?? '',
     label: compte?.label ?? '',
     nature: compte?.nature ?? 'depense',
+    natureLabel: compte?.natureLabel ?? '',
     event: compte?.event ?? '',
     keywords: (compte?.keywords ?? []).join(', '),
     active: compte?.active ?? true,
   })
   const [erreur, setErreur] = useState('')
+  // Le choix du menu Nature : une nature de base, une nature libre existante (« libre:Nom »), ou « nouvelle ».
+  const [choixNature, setChoixNature] = useState(compte?.natureLabel ? `libre:${compte.natureLabel}` : (compte?.nature ?? 'depense'))
+  const libre = choixNature === 'nouvelle' || choixNature.startsWith('libre:')
+  function choisirNature(valeur) {
+    setChoixNature(valeur)
+    if (valeur === 'nouvelle') setForm((f) => ({ ...f, natureLabel: '', nature: f.nature === 'tiers' ? 'depense' : f.nature }))
+    else if (valeur.startsWith('libre:')) {
+      const l = libres.find((x) => `libre:${x.label}` === valeur)
+      setForm((f) => ({ ...f, natureLabel: l.label, nature: l.nature }))
+    } else setForm((f) => ({ ...f, natureLabel: '', nature: valeur }))
+  }
   const champ = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value }))
 
   async function enregistrer() {
     const donnees = {
       ...form,
+      natureLabel: libre ? form.natureLabel.trim() : '',
       event: form.event.trim() || null,
       keywords: form.keywords.split(',').map((m) => m.trim()).filter(Boolean),
+    }
+    if (libre && !donnees.natureLabel) {
+      setErreur('Donnez un nom à la nature.')
+      return
     }
     try {
       if (compte) await api.modifierCompte(compte.id, donnees)
@@ -233,14 +263,38 @@ function FicheCompte({ compte, natures, onClose, onChange }) {
         </label>
         <label className="fin-cp-champ">
           <span>Nature</span>
-          <select className="field-input" value={form.nature} onChange={champ('nature')}>
+          <select className="field-input" value={choixNature} onChange={(e) => choisirNature(e.target.value)}>
             {natures.map((n) => (
               <option key={n.id} value={n.id}>
                 {n.label}
               </option>
             ))}
+            {libres.map((l) => (
+              <option key={l.label} value={`libre:${l.label}`}>
+                {l.label}
+              </option>
+            ))}
+            <option value="nouvelle">Autre nature…</option>
           </select>
         </label>
+        {choixNature === 'nouvelle' && (
+          <label className="fin-cp-champ">
+            <span>Nom de la nature</span>
+            <input className="field-input" value={form.natureLabel} onChange={champ('natureLabel')} placeholder="Immobilisations" autoFocus />
+          </label>
+        )}
+        {libre && (
+          <label className="fin-cp-champ">
+            <span>Pour le résultat, ce compte est</span>
+            <select className="field-input" value={form.nature} onChange={champ('nature')}>
+              {COMPTE_COMME.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="fin-cp-champ">
           <span>Mots-clés du libellé de banque, séparés par des virgules</span>
           <input className="field-input" value={form.keywords} onChange={champ('keywords')} placeholder="AMAZON, CASTORAMA" />

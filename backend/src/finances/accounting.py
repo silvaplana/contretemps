@@ -137,6 +137,7 @@ class Accounting:
             "number": a.number,
             "label": a.label,
             "nature": a.nature,
+            "natureLabel": a.nature_label,
             "event": a.event,
             "keywords": list(a.keywords or []),
             "active": a.active,
@@ -152,6 +153,11 @@ class Accounting:
             raise AccountingError("Donnez un libellé au compte.")
         if nature not in NATURES:
             raise AccountingError("Nature inconnue.")
+        # Nature libre : un nom au choix, le calcul suit `nature` (Seb, 10/11).
+        if "natureLabel" in data:
+            nature_label = " ".join(str(data.get("natureLabel") or "").split())[:40] or None
+        else:
+            nature_label = current.nature_label if current else None
         taken = db.scalar(
             select(FinChartAccount.id).where(FinChartAccount.org_id == org_id, FinChartAccount.number == number)
         )
@@ -159,7 +165,7 @@ class Accounting:
             raise AccountingError(f"Le compte {number} existe déjà.")
         keywords = [str(k).strip() for k in data.get("keywords") or [] if str(k).strip()]
         event = (data.get("event") or "").strip()[:40] or None
-        return {"number": number, "label": label, "nature": nature, "keywords": keywords, "event": event}
+        return {"number": number, "label": label, "nature": nature, "nature_label": nature_label, "keywords": keywords, "event": event}
 
     def create_account(self, db: Session, member: Member, data: dict) -> dict:
         _check(member)
@@ -208,7 +214,10 @@ class Accounting:
         return {"id": s.id, "takenAt": s.taken_at.isoformat(), "comment": s.comment, "accounts": len(s.accounts)}
 
     def _chart_as_saved(self, db: Session, org_id: int) -> list[dict]:
-        return [{k: v for k, v in self._account(a).items() if k != "id"} for a in self.accounts(db, org_id)]
+        return [
+            {("nature_label" if k == "natureLabel" else k): v for k, v in self._account(a).items() if k != "id"}
+            for a in self.accounts(db, org_id)
+        ]
 
     def suggest_snapshot_comment(self, db: Session, org_id: int) -> str:
         """Le commentaire pré-rempli de « Mémoriser » : ce qui a changé depuis

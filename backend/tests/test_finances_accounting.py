@@ -222,3 +222,20 @@ def test_piece_category_proposes_its_account(db_session):
     rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
     assert rows["PRLV MYSTERE"]["proposal"]["number"] == "606" and "Castorama" in rows["PRLV MYSTERE"]["proposal"]["reason"]
     assert accounting.operation(db_session, TRESORIER, mystere["id"])["proposal"]["number"] == "606"
+
+
+def test_free_nature_is_a_name_the_calculation_follows_nature(accounting, db_session):
+    """Nature libre (Seb, 10/11) : un nom au choix, gardé, remis à vide avec
+    "" ; le calcul suit `nature` ; la copie du plan la garde."""
+    created = accounting.create_account(
+        db_session, TRESORIER, {"number": "2154", "label": "Matériel de son", "nature": "attente", "natureLabel": "  Immobilisations "}
+    )
+    assert created["natureLabel"] == "Immobilisations" and created["nature"] == "attente"
+    renamed = accounting.update_account(db_session, TRESORIER, created["id"], {"number": "2154", "label": "Matériel de son"})
+    assert renamed["natureLabel"] == "Immobilisations"
+    accounting.memorize_chart(db_session, TRESORIER, "avec nature libre")
+    cleared = accounting.update_account(db_session, TRESORIER, created["id"], {"number": "2154", "label": "Matériel de son", "natureLabel": ""})
+    assert cleared["natureLabel"] is None
+    accounting.restore_chart(db_session, TRESORIER)
+    restored = next(a for a in accounting.chart(db_session, TRESORIER)["accounts"] if a["number"] == "2154")
+    assert restored["natureLabel"] == "Immobilisations"
