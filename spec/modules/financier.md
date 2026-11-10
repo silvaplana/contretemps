@@ -346,7 +346,8 @@ aux actions.
     libellé ; sans compte donné, l'appli confirme ses propositions ;
   - `recalculate_financial_report`, `write_financial_statement`, `store_ag_document` ;
   - `edit_chart_account` (ajouter, renommer, mots-clés, activer), `delete_chart_account`
-    (supprime un compte jamais utilisé, désactive sinon), `set_accounting_level` (Complet,
+    (supprime un compte jamais utilisé, désactive sinon ; un compte de tiers est toujours désactivé,
+    jamais supprimé : son numéro reste pris, Seb 10 novembre), `set_accounting_level` (Complet,
     sans retour) ;
   - `review_expense_notes` : valider et refuser plusieurs pièces sur une seule carte. On
     demande « propose-moi les validations » ; l'assistant lit les pièces à valider, explique
@@ -735,6 +736,12 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   validées par la clôture du … » en tête ; FEC : `ValidDate` = la date de la clôture (sinon la date
   de l'écriture). Bilan › Clôture garde la trace des clôtures rouvertes (« Clôturée le …, rouverte
   le … »). Pas de validation écriture par écriture : la saison se valide d'un bloc.
+- **Comptes de tiers des profs (10 novembre 2026)** : une facture d'honoraires va au compte 467x
+  dont le libellé porte le nom du prof. Un prof qui n'en a pas encore : à sa première facture, les
+  livres créent « 467n Honoraires Nom » au prochain numéro libre (jamais le compte d'un autre prof).
+  Un prof parti : on **désactive** son compte (case « Compte actif » du Plan comptable) ; Retirer
+  sur un compte de tiers fait la même chose, un numéro de tiers ne se libère jamais, l'histoire du
+  prof reste dans les Grands livres passés et dans la comparaison N-1.
 - **Lettrage** : lettre de trois caractères par paire facture / paiement, comme le modèle ;
   paiement en plusieurs fois accepté (somme). **Depuis le 10 novembre 2026** : la facture entre au
   tiers à son montant (le total des pièces rattachées à la transaction), le paiement au montant de la

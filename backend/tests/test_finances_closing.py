@@ -240,6 +240,25 @@ def test_bilan_actif_passif_balances_with_the_season_result(full, db_session):
     assert "Écart actif" not in text
 
 
+def test_a_new_professor_gets_a_fee_account_of_their_own(full, db_session):
+    """Seb, 10/11 : un prof sans compte 467x n'est pas rangé chez un autre
+    prof ; à sa première facture l'appli crée « 467n Honoraires Nom », au
+    prochain numéro libre, et le garde."""
+    _, accounting, documents, rows, accounts = full
+    pieces = accounting.pieces(db_session, TRESORIER.org_id)
+    accounting.set_lines(db_session, TRESORIER, rows["PRLV MYSTERE"]["id"], [{"accountId": accounts["613"]["id"]}])
+    pieces[rows["PRLV MYSTERE"]["id"]] = {"id": 3, "title": "Honoraires Boyer", "kind": "Honoraires", "nature": "honoraires", "date": "2025-10-05", "person": "Sophie Boyer"}
+    books = documents.books(db_session, TRESORIER, SEASON)
+    books.pop("_cutoff")
+    assert books["4673"].label == "Honoraires Sophie Boyer" and books["4673"].lines[0].letter
+    chart = {a["number"]: a for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    assert chart["4673"]["nature"] == "tiers" and "4674" not in chart
+    # Déjà là : rien de créé la fois suivante ; Galli garde son compte.
+    documents.books(db_session, TRESORIER, SEASON)
+    assert "4674" not in {a["number"] for a in accounting.chart(db_session, TRESORIER)["accounts"]}
+    assert books["4671"].lines[0].label == "Honoraires Galli"
+
+
 def test_a_payment_that_does_not_match_the_invoice_stays_open_on_the_third_party(full, db_session):
     """financier.md §8.7 (Seb, 10/11, lettrage à la main) : la facture entre au
     tiers à son montant, le paiement au montant de la banque ; différents, les

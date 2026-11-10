@@ -31,6 +31,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill
@@ -49,6 +50,7 @@ CASH = "530"
 CARRY_FORWARD = "110"
 # Compte de tiers par nature de pièce (préfixe du plan associatif).
 THIRD_PARTY_PREFIX = {"achat": "401", "honoraires": "467", "frais": "467"}
+FEE_PREFIX = "467"
 THIRD_PARTY_JOURNAL = {"achat": "AC", "honoraires": "HO", "frais": "NF"}
 UNCLASSIFIED = {EXPENSE: ("65900", "Dépenses à classer"), INCOME: ("75900", "Recettes à classer")}
 
@@ -242,6 +244,10 @@ class AgDocuments:
         # Lignes de banque : compte du plan (ou à classer) contre 512x ; en
         # Complet, une ligne avec pièce passe par le tiers, avec une lettre.
         confirmed = self.accounting._lines(db, member.org_id)
+        if full:
+            unpaid = list(self.ports.unpaid(db, member.org_id)) if self.ports.unpaid else []
+            if self._create_fee_accounts(db, member, [r["piece"] for r in rows if r.get("piece")] + unpaid, chart.values()):
+                chart = {a.id: a for a in self.accounting.accounts(db, member.org_id)}
         third_parties = [a for a in chart.values() if a.nature == THIRD_PARTY and a.active] if full else []
         letters: dict[str, int] = defaultdict(int)
         for r in rows:
@@ -300,7 +306,7 @@ class AgDocuments:
         # sans lettre : elles sont dues au dernier jour de la saison (§8.10, étape 4).
         if full and self.ports.unpaid:
             by_number = {a.number: a for a in chart.values() if a.active}
-            for u in self.ports.unpaid(db, member.org_id):
+            for u in unpaid:
                 day = u.get("date")
                 if not day or not (season.start_date <= day <= season.end_date):
                     continue
@@ -359,6 +365,29 @@ class AgDocuments:
         return db.scalar(
             select(FinClosing).where(FinClosing.org_id == org_id, FinClosing.season_id == season_id, FinClosing.reopened_at.is_(None))
         )
+
+    def _create_fee_accounts(self, db: Session, member: Member, pieces: list[dict], accounts) -> bool:
+        """Un prof sans compte d'honoraires (Seb, 10/11) : à sa première facture,
+        l'appli crée « 467n Honoraires Nom » (prochain numéro libre) plutôt que
+        de le ranger chez un autre prof. Rend True si un compte a été créé."""
+        fee_accounts = [a for a in accounts if a.number.startswith(FEE_PREFIX)]
+        taken = {a.number for a in accounts}
+        created = False
+        for piece in pieces:
+            person = str(piece.get("person") or "").strip()
+            if piece.get("nature") != "honoraires" or not person:
+                continue
+            if _third_party(fee_accounts, piece) is not None and any(_named(a, person) for a in fee_accounts):
+                continue
+            n = 1
+            while f"{FEE_PREFIX}{n}" in taken:
+                n += 1
+            number = f"{FEE_PREFIX}{n}"
+            new = self.accounting.create_account(db, member, {"number": number, "label": f"Honoraires {person}", "nature": THIRD_PARTY})
+            fee_accounts.append(SimpleNamespace(number=number, label=new["label"], nature=THIRD_PARTY, active=True))
+            taken.add(number)
+            created = True
+        return created
 
     def _opening_lines(self, db: Session, org_id: int, season: Season) -> list[tuple[str, str, str, int]] | None:
         """Les soldes de départ (numéro, libellé, nature, solde signé) :
@@ -1128,9 +1157,14 @@ def _third_party(accounts: list, piece: dict | None):
     candidates = [a for a in accounts if a.number.startswith(THIRD_PARTY_PREFIX[piece["nature"]])]
     if not candidates:
         return None
-    words = [w.lower() for w in str(piece.get("person") or "").split() if len(w) > 2]
-    named = [a for a in candidates if any(w in a.label.lower() for w in words)]
+    named = [a for a in candidates if _named(a, piece.get("person"))]
     return named[0] if named else min(candidates, key=lambda a: (len(a.number), a.number))
+
+
+def _named(account, person) -> bool:
+    """Le libellé du compte porte un mot du nom de la personne."""
+    words = [w.lower() for w in str(person or "").split() if len(w) > 2]
+    return any(w in account.label.lower() for w in words)
 
 
 def _letter(n: int) -> str:
