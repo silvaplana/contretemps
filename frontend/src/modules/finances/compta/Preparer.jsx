@@ -58,7 +58,7 @@ export default function Preparer({ season, onDocuments }) {
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
   if (!etat) return <p className="muted">Chargement…</p>
 
-  const { statements, opening, classify, controls } = etat
+  const { statements, opening, classify, controls, offBank, comparison } = etat
   const aRapprocher = rapprocher ? rapprocher.paires.length + rapprocher.sans_paiement.filter((p) => p.a_rapprocher).length : 0
   const resteEtape3 = aRapprocher + classify.withoutAccount
   const controlesKo = controls.filter((c) => !c.ok).length
@@ -66,9 +66,23 @@ export default function Preparer({ season, onDocuments }) {
     { n: 1, titre: 'Relevés complets', reste: statements.missing, detail: statements.ok ? `${statements.accounts} compte(s), tous les mois sont là` : `${statements.missing} mois à importer` },
     { n: 2, titre: 'Soldes de départ', reste: opening.mismatches, detail: opening.ok ? SOURCES[opening.source] : `${opening.mismatches} compte(s) en écart avec les relevés` },
     { n: 3, titre: 'Rapprocher et classer', reste: resteEtape3, detail: resteEtape3 === 0 ? 'Chaque transaction bancaire a sa pièce ou son compte' : `${aRapprocher} à rapprocher, ${classify.withoutAccount} sans compte` },
-    { n: 4, titre: 'Hors banque', reste: 0, detail: 'Caisse, factures non payées, cotisations dues : bientôt' },
+    {
+      n: 4,
+      titre: 'Hors banque',
+      reste: 0,
+      detail: `Caisse ${euros(offBank.cash)} · ${offBank.unpaid.length} facture${offBank.unpaid.length > 1 ? 's' : ''} non payée${offBank.unpaid.length > 1 ? 's' : ''} (${euros(offBank.unpaidTotal)})`,
+    },
     { n: 5, titre: 'Contrôles', reste: controlesKo, detail: controlesKo === 0 ? 'Tout est vert' : `${controlesKo} contrôle(s) en rouge` },
-    { n: 6, titre: 'Documents', reste: 0, detail: controlesKo === 0 ? 'Prêts à produire' : 'Après les contrôles' },
+    {
+      n: 6,
+      titre: 'Documents et comparaison',
+      reste: comparison.unexplained,
+      detail: comparison.previousSeason
+        ? comparison.unexplained === 0
+          ? `Comparée à ${comparison.previousSeason}, chaque écart est expliqué`
+          : `${comparison.unexplained} compte(s) à expliquer par rapport à ${comparison.previousSeason}`
+        : 'Première saison : pas de comparaison',
+    },
   ]
 
   return (
@@ -77,7 +91,7 @@ export default function Preparer({ season, onDocuments }) {
       <div className="fin-cp-carte">
         {etapes.map((e) => (
           <div key={e.n} className={`fin-cp-doc fin-cp-doc--large fin-preparer__etape${ouverte === e.n ? ' fin-preparer__etape--ouverte' : ''}`}>
-            <button type="button" className="fin-preparer__tete" onClick={() => (e.n === 6 ? onDocuments() : setOuverte(ouverte === e.n ? null : e.n))}>
+            <button type="button" className="fin-preparer__tete" onClick={() => setOuverte(ouverte === e.n ? null : e.n)}>
               <span className={`fin-preparer__num${e.reste === 0 ? ' fin-preparer__num--ok' : ''}`}>{e.reste === 0 ? <Icon name="check" size={16} /> : e.n}</span>
               <span className="fin-cp-t">
                 {e.n}. {e.titre}
@@ -90,11 +104,9 @@ export default function Preparer({ season, onDocuments }) {
             {ouverte === 3 && e.n === 3 && (
               <Etape3 rapprocher={rapprocher} aRapprocher={aRapprocher} classify={classify} enCours={enCours} onRapprocher={ouvrirRapprocher} onValider={validerCompte} onFiche={setFicheOp} />
             )}
-            {ouverte === 4 && e.n === 4 && (
-              <p className="muted">
-                La caisse se tient dans Comptes › Caisse. Les factures non payées au dernier jour de la saison, les cotisations dues et le compte
-                d’attente viendront ici dans une prochaine étape.
-              </p>
+            {ouverte === 4 && e.n === 4 && <Etape4 offBank={offBank} level={etat.level} />}
+            {ouverte === 6 && e.n === 6 && (
+              <Etape6 season={season} comparison={comparison} onDocuments={onDocuments} onChange={charger} onErreur={setErreur} />
             )}
             {ouverte === 5 && e.n === 5 && (
               <ul className="fin-preparer__controles">
@@ -185,6 +197,128 @@ function Etape3({ rapprocher, aRapprocher, classify, enCours, onRapprocher, onVa
           </div>
         ))}
       </div>
+    </div>
+  )
+}
+
+// Étape 4 : ce qui n'est pas sur les relevés. La caisse (Comptes › Caisse) et
+// les factures validées pas encore payées : au niveau Complet elles sont dues
+// (401 / 467x) au jour de la facture ; au niveau Simple elles restent dans
+// « Fournisseurs à payer » de la Synthèse.
+function Etape4({ offBank, level }) {
+  return (
+    <div className="fin-preparer__corps">
+      <div className="fin-preparer__bloc">
+        <span className="fin-cp-t">Caisse : {euros(offBank.cash)}</span>
+        <span className="fin-cp-s">
+          {offBank.cashLines} ligne{offBank.cashLines > 1 ? 's' : ''} ; la caisse se tient dans Comptes › Caisse.
+        </span>
+      </div>
+      <div className="fin-preparer__bloc">
+        <span className="fin-cp-t">Factures non payées · {offBank.unpaid.length}</span>
+        <span className="fin-cp-s">
+          {level === 'complet'
+            ? 'Dues au dernier jour de la saison : en charge au jour de la facture, contre 401 Fournisseurs ou 467 Autres comptes débiteurs ou créditeurs.'
+            : 'Niveau Simple (trésorerie) : elles restent dans « Fournisseurs à payer » de la Synthèse, sans écriture.'}
+        </span>
+        {offBank.unpaid.map((u, i) => (
+          <div key={i} className="fin-preparer__ligne fin-preparer__ligne--texte">
+            <span className="fin-preparer__libelle">
+              {u.title}
+              {u.date && <span className="muted"> · {dateFr(u.date)}</span>}
+            </span>
+            <span className="fin-preparer__montant">{euros(u.amount)}</span>
+          </div>
+        ))}
+        {offBank.unpaid.length > 0 && <span className="fin-cp-s">Total : {euros(offBank.unpaidTotal)}. Elles se paient dans Pièces › Virements.</span>}
+      </div>
+      <p className="muted">Cotisations dues (411) et compte d’attente (471) : écritures à la main, dans une prochaine étape.</p>
+    </div>
+  )
+}
+
+// Étape 6 : la comparaison avec la saison précédente, compte par compte. Un
+// écart de plus de 30 % est marqué « ? » : la trésorière l'explique en une
+// ligne (reprise dans le Rapport financier) ou retourne pointer.
+function Etape6({ season, comparison, onDocuments, onChange, onErreur }) {
+  const [brouillons, setBrouillons] = useState({})
+
+  async function enregistrer(l) {
+    const note = brouillons[l.number]
+    if (note === undefined || note === l.note) return
+    try {
+      await api.expliquerCompte(season.id, l.number, note)
+      setBrouillons((b) => {
+        const { [l.number]: _retire, ...reste } = b
+        return reste
+      })
+      onChange()
+    } catch (err) {
+      onErreur(err.message)
+    }
+  }
+
+  const pct = (l) => (l.pct === null ? (l.previous === 0 ? 'nouveau' : 'disparu') : `${l.pct > 0 ? '+' : ''}${String(l.pct).replace('.', ',')} %`)
+  const flagged = comparison.lines.filter((l) => l.flag)
+  const autres = comparison.lines.filter((l) => !l.flag && (l.current || l.previous))
+
+  return (
+    <div className="fin-preparer__corps">
+      {!comparison.previousSeason && <p className="muted">Première saison dans l’appli : rien à comparer.</p>}
+      {comparison.previousSeason && (
+        <>
+          <div className="fin-preparer__bloc">
+            <span className="fin-cp-t">À expliquer · {flagged.length}</span>
+            <span className="fin-cp-s">Écart de plus de 30 % avec {comparison.previousSeason}, ou compte nouveau ou disparu. Une ligne suffit ; elle est reprise dans le Rapport financier.</span>
+            {flagged.length === 0 && <span className="fin-cp-s">Aucun.</span>}
+            {flagged.map((l) => (
+              <div key={l.number} className="fin-preparer__comparaison">
+                <span className="fin-preparer__libelle">
+                  {l.number} {l.label}
+                  {!l.note && <span className="badge badge--warning fin-preparer__reste">?</span>}
+                </span>
+                <span className="fin-preparer__montant">
+                  {euros(l.current)} <span className="muted">({euros(l.previous)} · {pct(l)})</span>
+                </span>
+                <input
+                  type="text"
+                  className="field-input"
+                  placeholder="Pourquoi ? (une ligne)"
+                  value={brouillons[l.number] ?? l.note}
+                  maxLength={300}
+                  onChange={(e) => setBrouillons((b) => ({ ...b, [l.number]: e.target.value }))}
+                  onBlur={() => enregistrer(l)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') e.currentTarget.blur()
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="fin-preparer__bloc">
+            <span className="fin-cp-t">Les autres comptes · {autres.length}</span>
+            {autres.map((l) => (
+              <div key={l.number} className="fin-preparer__ligne fin-preparer__ligne--texte">
+                <span className="fin-preparer__libelle">
+                  {l.number} {l.label}
+                </span>
+                <span className="fin-preparer__montant">
+                  {euros(l.current)} <span className="muted">({euros(l.previous)} · {pct(l)})</span>
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="fin-preparer__bloc">
+            <span className="fin-cp-s">
+              Recettes {euros(comparison.totals.produits[0])} ({euros(comparison.totals.produits[1])}) · Dépenses {euros(comparison.totals.charges[0])} (
+              {euros(comparison.totals.charges[1])}) · Résultat {euros(comparison.totals.result[0])} ({euros(comparison.totals.result[1])}).
+            </span>
+          </div>
+        </>
+      )}
+      <button type="button" className="btn btn--primary" onClick={onDocuments}>
+        Aller aux documents
+      </button>
     </div>
   )
 }

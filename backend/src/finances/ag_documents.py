@@ -39,7 +39,7 @@ from sqlalchemy.orm import Session
 
 from .accounting import Accounting
 from .exports import _CSS, _eur, _fr, html_to_pdf
-from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinCashLine, FinClosing, FinOpeningBalance
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinCashLine, FinClosing, FinOpeningBalance, FinSeasonNote
 from .ports import Member, Season
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
@@ -280,6 +280,29 @@ class AgDocuments:
                     acc = account(acc_row.number, acc_row.label, acc_row.nature, acc_row.event)
                 acc.lines.append(Line(r["date"], journal, r["label"], piece, max(-amount, 0), max(amount, 0), operation_id=r["id"]))
 
+        # Complet : les factures validées pas encore payées, datées de la saison,
+        # entrent en charge le jour de la facture contre leur tiers (401 / 467x),
+        # sans lettre : elles sont dues au dernier jour de la saison (§8.10, étape 4).
+        if full and self.ports.unpaid:
+            by_number = {a.number: a for a in chart.values() if a.active}
+            for u in self.ports.unpaid(db, member.org_id):
+                day = u.get("date")
+                if not day or not (season.start_date <= day <= season.end_date):
+                    continue
+                third = _third_party(third_parties, u)
+                if third is None:
+                    continue
+                cents = round(u["amount"] * 100)
+                charge = by_number.get(u.get("account") or "")
+                if charge is None or charge.nature != EXPENSE:
+                    number, label = UNCLASSIFIED[EXPENSE]
+                    acc = account(number, label, EXPENSE)
+                else:
+                    acc = account(charge.number, charge.label, charge.nature, charge.event)
+                journal = THIRD_PARTY_JOURNAL[u["nature"]]
+                acc.lines.append(Line(day, journal, u["title"], u["title"], cents, 0))
+                account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], u["title"], 0, cents))
+
         # Caisse : compte du plan contre 530 (un retrait est déjà passé par
         # la banque ci-dessus).
         for l in cash_lines:
@@ -498,16 +521,91 @@ class AgDocuments:
             {"label": "Un compte du plan sur chaque transaction bancaire", "ok": classify["ok"], "detail": "" if classify["ok"] else f"{classify['withoutAccount']} transaction(s) sans compte"},
             {"label": "FEC juste", "ok": fec["ok"], "detail": "" if fec["ok"] else " ".join(fec["problems"])},
         ]
+        # 4. Hors banque : caisse, factures non payées (401 / 467x au niveau Complet).
+        level = self.accounting.level(db, member.org_id)
+        cash = self.accounting.cash(db, member)
+        unpaid = self.ports.unpaid(db, member.org_id) if self.ports.unpaid else []
+        unpaid = [u for u in unpaid if not u.get("date") or u["date"] <= season.end_date]
+        off_bank = {
+            "cash": cash["balance"], "cashLines": len(cash["lines"]),
+            "unpaid": unpaid, "unpaidTotal": round(sum(u["amount"] for u in unpaid), 2),
+            "unpaidInBooks": level == FULL,
+        }
+        # 6. Comparaison avec la saison précédente, compte par compte.
+        comparison = self.comparison(db, member, season)
+        controls.append({
+            "label": "Écarts avec la saison précédente expliqués", "ok": not comparison["unexplained"],
+            "detail": "" if not comparison["unexplained"] else f"{comparison['unexplained']} compte(s) marqué(s) « ? »",
+        })
         return {
             "season": {"id": season.id, "name": season.name, "startDate": season.start_date, "endDate": season.end_date},
-            "level": self.accounting.level(db, member.org_id),
+            "level": level,
             "statements": statements,
             "opening": opening_step,
             "classify": classify,
-            "offBank": {"available": False},
+            "offBank": off_bank,
             "controls": controls,
+            "comparison": comparison,
             "closed": opening["closed"],
         }
+
+    # Au-delà de cet écart (en %), un compte est marqué « ? » jusqu'à son explication.
+    FLAG_PCT = 30
+
+    def comparison(self, db: Session, member: Member, season: Season) -> dict:
+        """Compte par compte, la saison et la précédente (Synthèse) : montant,
+        écart, % ; « ? » (flag) quand l'écart dépasse FLAG_PCT ou que le compte
+        apparaît ou disparaît, tant que la trésorière ne l'a pas expliqué en
+        une ligne (fin_season_notes)."""
+        previous = self._previous(db, member.org_id, season)
+        current = self.synthese(db, member, season)
+        before = self.synthese(db, member, previous) if previous is not None else None
+        notes = {n.number: n.note for n in db.scalars(select(FinSeasonNote).where(FinSeasonNote.org_id == member.org_id, FinSeasonNote.season_id == season.id))}
+
+        def lines(synthese: dict | None, side: str) -> dict[str, dict]:
+            return {l["number"]: l for group in (synthese or {}).get(side, []) for l in group["lines"]}
+
+        out = []
+        for side in ("produits", "charges"):
+            now, old = lines(current, side), lines(before, side)
+            for number in sorted(set(now) | set(old)):
+                a, b = now.get(number, {}).get("amount", 0.0), old.get(number, {}).get("amount", 0.0)
+                label = (now.get(number) or old.get(number))["label"]
+                delta = round(a - b, 2)
+                pct = round(delta / abs(b) * 100, 1) if b else None
+                flag = before is not None and ((pct is None and abs(delta) > 0) or (pct is not None and abs(pct) > self.FLAG_PCT))
+                out.append({
+                    "side": side, "number": number, "label": label, "current": a, "previous": b, "delta": delta, "pct": pct,
+                    "flag": flag, "note": notes.get(number, ""),
+                })
+        return {
+            "previousSeason": previous.name if previous else None,
+            "lines": out,
+            "unexplained": sum(1 for l in out if l["flag"] and not l["note"]),
+            "totals": {"produits": (current["totalProduits"], before["totalProduits"] if before else None),
+                       "charges": (current["totalCharges"], before["totalCharges"] if before else None),
+                       "result": (current["result"], before["result"] if before else None)},
+        }
+
+    def set_note(self, db: Session, member: Member, season: Season, number: str, note: str) -> dict:
+        """L'explication d'un compte en une ligne ; vide = effacée."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        number, note = number.strip()[:10], " ".join(note.split())[:300]
+        row = db.scalar(select(FinSeasonNote).where(FinSeasonNote.org_id == member.org_id, FinSeasonNote.season_id == season.id, FinSeasonNote.number == number))
+        if not note:
+            if row is not None:
+                db.delete(row)
+        elif row is None:
+            db.add(FinSeasonNote(org_id=member.org_id, season_id=season.id, number=number, note=note, created_by=member.person_id))
+        else:
+            row.note, row.created_by = note, member.person_id
+        db.commit()
+        return self.comparison(db, member, season)
+
+    def notes(self, db: Session, org_id: int, season: Season) -> dict[str, str]:
+        """Les explications de la trésorière sur la saison : {numéro: note}."""
+        return {n.number: n.note for n in db.scalars(select(FinSeasonNote).where(FinSeasonNote.org_id == org_id, FinSeasonNote.season_id == season.id))}
 
     # ----- Synthèse -----
 

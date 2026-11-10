@@ -136,3 +136,31 @@ def test_closing_needs_full_level(db_session):
     documents = AgDocuments(ledger=finances.get_ledger, accounting=accounting, seasons=lambda db, org: SEASONS)
     with pytest.raises(ValueError, match="Complet"):
         documents.close(db_session, TRESORIER, SEASON)
+
+
+def test_unpaid_invoices_of_the_season_are_due_to_third_parties_at_full_level(full, db_session):
+    """financier.md §8.10 étape 4 (Seb, 9/11) : au niveau Complet, une facture
+    validée pas encore payée, datée de la saison, entre en charge le jour de la
+    facture contre son tiers (401 / 467x), sans lettre ; hors saison ou au
+    niveau Simple, rien."""
+    finances, accounting, documents, rows, accounts = full
+    documents.ports.unpaid = lambda db, org: [
+        {"title": "Pesenti novembre", "amount": 678.0, "date": "2025-11-30", "nature": "honoraires", "account": "622", "person": "Pesenti"},
+        {"title": "Castorama", "amount": 45.5, "date": "2026-03-10", "nature": "achat", "account": None},
+        {"title": "Trop tard", "amount": 10.0, "date": "2026-09-02", "nature": "achat", "account": "606"},
+    ]
+    books = documents.books(db_session, TRESORIER, SEASONS[0])
+    books.pop("_cutoff")
+    pesenti = next(a for a in books.values() if a.number == "4672")
+    assert [(l.date, l.journal, l.credit, l.letter) for l in pesenti.lines] == [("2025-11-30", "HO", 67800, "")]
+    assert next(a for a in books.values() if a.number == "622").balance == 67800
+    fournisseurs = next(a for a in books.values() if a.number.startswith("401"))
+    assert [(l.date, l.credit) for l in fournisseurs.lines if l.label == "Castorama"] == [("2026-03-10", 4550)]
+    a_classer = next(a for a in books.values() if a.number == "65900")  # sans compte de charge : à classer
+    assert [(l.date, l.debit) for l in a_classer.lines if l.label == "Castorama"] == [("2026-03-10", 4550)]
+    assert not any(l.label == "Trop tard" for a in books.values() for l in a.lines)
+    # Le total débit = total crédit tient toujours.
+    assert sum(l.debit for a in books.values() for l in a.lines) == sum(l.credit for a in books.values() for l in a.lines)
+    # Niveau Simple : comptabilité de trésorerie, rien.
+    simple = documents.books(db_session, TRESORIER, SEASONS[0], full=False)
+    assert not any(l.label == "Castorama" for a in simple.values() if hasattr(a, "lines") for l in a.lines)

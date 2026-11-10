@@ -120,16 +120,30 @@ def _compte_des_depenses(note) -> str | None:
 
 def pieces_a_payer(db: Session, ecole_id: int) -> list[dict]:
     """Les dépenses validées pas encore payées (fournisseurs à payer de la
-    Synthèse, spec §8.6) : titre et montant en euros."""
-    from notes_frais.models import PREPAREE, VALIDEE, VIREE, NoteFrais
+    Synthèse, spec §8.6 ; au niveau Complet, dans 401 / 467x au jour de la
+    facture, §8.10 étape 4) : titre, montant en euros, date de la pièce,
+    nature, numéro du compte de charge de sa première dépense (None sans
+    catégorie du plan) et nom porté par la pièce (fournisseur ou titre)."""
+    from notes_frais.models import PREPAREE, VALIDEE, VIREE, CategorieFrais, NoteFrais
     from notes_frais.service import NotesDeFrais
 
-    notes = db.scalars(
+    notes = list(db.scalars(
         select(NoteFrais).where(
             NoteFrais.org_id == ecole_id, NoteFrais.don.is_(False), NoteFrais.statut.in_((VALIDEE, PREPAREE, VIREE))
         )
-    )
-    return [{"title": n.supplier or n.titre, "amount": NotesDeFrais.total(n) / 100} for n in notes]
+    ))
+    codes = {c.id: c.code for c in db.scalars(select(CategorieFrais).where(CategorieFrais.org_id == ecole_id))}
+    out = []
+    for n in notes:
+        depenses = sorted(n.depenses, key=lambda d: d.date)
+        out.append({
+            "title": n.supplier or n.titre, "amount": NotesDeFrais.total(n) / 100,
+            "date": (depenses[0].date if depenses else n.envoyee_le.date()).isoformat(), "nature": n.nature,
+            "account": codes.get(depenses[0].categorie_id) if depenses else None,
+            # Pour retrouver le compte 467x qui porte le nom de la personne (ag_documents._third_party).
+            "person": n.supplier or n.titre,
+        })
+    return out
 
 
 def honoraires_payes(db: Session, ecole_id: int, debut: str, fin: str) -> list[dict]:

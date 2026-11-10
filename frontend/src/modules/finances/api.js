@@ -159,6 +159,8 @@ export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { metho
 export const ecritures = (operationId) => appel(`/operations/${operationId}/entries`)
 // Bilan › Préparer (financier.md §8.10) : l'état des six étapes d'une saison, et « Valider le compte ».
 export const preparation = (seasonId) => appel(`/seasons/${seasonId}/preparation`)
+// Étape 6 : l'explication d'un compte en écart avec la saison précédente (vide = effacée).
+export const expliquerCompte = (seasonId, number, note) => appel(`/seasons/${seasonId}/notes/${encodeURIComponent(number)}`, json('PUT', { note }))
 export const validerCompte = (seasonId, operationIds, accountId) =>
   appel(`/seasons/${seasonId}/confirm-accounts`, json('POST', { operationIds, accountId }))
 // L'œil des documents de l'AG : produit le fichier, le range dans Docs › Financier › AG, rend { id, orgId }.

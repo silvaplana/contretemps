@@ -123,6 +123,7 @@ def mount(app, core) -> None:
     finances_written = WrittenReports(
         synthese=finances_ag_documents.synthese,
         seasons=saisons_de_l_ecole,
+        notes=finances_ag_documents.notes,
         note_cost=note_cost("rapport_financier"),
         org_name=nom_ecole,
         store=ranger_dans_docs(core.documents_client),

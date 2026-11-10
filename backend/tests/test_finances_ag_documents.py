@@ -188,7 +188,7 @@ def test_preparation_counts_the_steps_and_confirms_accounts_in_bulk(world, db_se
     # Amazon, Galli et HelloAsso sont classés ; les virements internes n'ont pas de compte.
     sans = [l["label"] for l in classify["unsure"]] + [o["label"] for g in classify["sure"] for o in g["operations"]]
     assert sorted(sans) == ["PRLV MYSTERE", "RETRAIT DAB"] and classify["withoutAccount"] == 2 and classify["ok"] is False
-    assert [c["ok"] for c in etat["controls"]] == [True, True, False, False]
+    assert [c["ok"] for c in etat["controls"]] == [True, True, False, False, True]
     assert "2 transaction(s) sans compte" in etat["controls"][2]["detail"]
 
     # « Valider le compte » : les deux d'un coup sur 627 ; un virement interne ou une ligne déjà classée est ignoré.
@@ -204,3 +204,33 @@ def test_preparation_counts_the_steps_and_confirms_accounts_in_bulk(world, db_se
 
     with pytest.raises(PermissionError):
         documents.preparation(db_session, Member(person_id=2, org_id=1, name="Margot", is_treasurer=False), SEASON, calendar)
+
+
+def test_comparison_flags_big_gaps_until_the_treasurer_explains(world, db_session):
+    """financier.md §8.10 étape 6 : compte par compte, la saison et la
+    précédente ; un écart de plus de 30 % (ou un compte nouveau / disparu) est
+    marqué « ? » tant qu'il n'est pas expliqué en une ligne."""
+    finances, accounting, documents = world
+    previous = Season(id=0, name="2024-2025", start_date="2024-09-01", end_date="2025-08-31")
+    documents.seasons = lambda db, org: [previous, SEASON]
+    # Sans rien en 2024-25 : chaque compte de 2025-26 est nouveau, donc à expliquer.
+    comparison = documents.comparison(db_session, TRESORIER, SEASON)
+    assert comparison["previousSeason"] == "2024-2025"
+    flagged = {l["number"]: l for l in comparison["lines"] if l["flag"]}
+    assert "613" in flagged and flagged["613"]["pct"] is None and flagged["613"]["current"] == 1600.0
+    assert comparison["unexplained"] == len(flagged) > 0
+    # Une explication lève le « ? » ; vide, elle l'efface.
+    after = documents.set_note(db_session, TRESORIER, SEASON, "613", "  Gala déplacé à Galli, salle plus grande ")
+    assert next(l for l in after["lines"] if l["number"] == "613")["note"] == "Gala déplacé à Galli, salle plus grande"
+    assert after["unexplained"] == comparison["unexplained"] - 1
+    assert documents.notes(db_session, TRESORIER.org_id, SEASON) == {"613": "Gala déplacé à Galli, salle plus grande"}
+    assert documents.set_note(db_session, TRESORIER, SEASON, "613", "")["unexplained"] == comparison["unexplained"]
+    # Préparer porte la comparaison et son contrôle ; hors banque : caisse et factures non payées.
+    etat = documents.preparation(db_session, TRESORIER, SEASON, None)
+    assert etat["comparison"]["unexplained"] == comparison["unexplained"]
+    assert etat["controls"][-1]["ok"] is False and "marqué(s)" in etat["controls"][-1]["detail"]
+    assert etat["offBank"]["unpaid"] == [{"title": "Pesenti", "amount": 678.0}] and etat["offBank"]["unpaidInBooks"] is False
+    assert etat["offBank"]["cash"] == 350.0  # retrait 200 + entrées du gala 150
+    # Première saison : pas de comparaison, rien à expliquer.
+    documents.seasons = lambda db, org: [SEASON]
+    assert documents.comparison(db_session, TRESORIER, SEASON) == {**documents.comparison(db_session, TRESORIER, SEASON), "previousSeason": None, "unexplained": 0}
