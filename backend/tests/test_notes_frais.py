@@ -1179,6 +1179,18 @@ def test_paiement_possible_meme_nom_autre_montant_ou_virement_groupe(client, db_
     main = client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": libre.id, "manuel": True}, headers=entetes)
     assert main.status_code == 200, main.text
     assert main.json()["statut"] == "remboursee" and main.json()["operation"]["id"] == libre.id and main.json()["ecart_centimes"] == 1500
+    # Saison clôturée (financier.md §8.7, cadenas) : ses transactions bancaires sont validées, plus de rattachement.
+    import datetime as dt
+
+    from finances.models import FinClosing
+
+    tardive = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Brico Dépôt", date="2026-07-10", montant_centimes="500")
+    fermee = _operation(db_session, org, -500, "2026-07-12", "CB 1207 BRICO DEPOT")
+    db_session.add(FinClosing(org_id=org, season_id=1, start_date=dt.date(2025, 9, 1), end_date=dt.date(2026, 8, 31), result=0, balances=[]))
+    db_session.commit()
+    assert _vue_tresorier(client, tresorier, tardive)["operation_id"] is None
+    refus = client.post(f"/notes-frais/notes/{tardive['id']}/payee", json={"operation_id": fermee.id, "manuel": True}, headers=entetes)
+    assert refus.status_code == 400 and "clôturée" in refus.json()["detail"]
 
 
 def test_annuler_un_import(client, db_session, ecole, monkeypatch):

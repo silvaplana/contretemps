@@ -725,6 +725,16 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   suivantes : calculés par la clôture.
 - **Clôture** (Bilan, bilan Officiel) : résultat reporté (120 / 129 → 110), écritures d'à-nouveaux
   de la saison suivante, saison verrouillée (plus de rattachement sans la rouvrir, trace gardée).
+  **Le cadenas (10 novembre 2026, modèle EBP)** : la clôture **valide** toutes les écritures de la
+  saison. Tant qu'elle n'est pas rouverte : aucun compte ne change sur une transaction bancaire ou
+  une ligne de caisse de la saison (déjà), aucune pièce ne s'y rattache ni ne s'en détache (le
+  rattachement automatique à l'import d'une pièce s'abstient aussi), un relevé dont la période touche
+  la saison n'entre pas (compte rendu d'import : « Saison clôturée le … »). À l'écran : cadenas sur
+  les lignes de Comptes des saisons clôturées, bandeau et Enregistrer grisé dans la fiche de la
+  transaction ; Grand livre : colonne **Type** avec le cadenas sur chaque écriture et « Écritures
+  validées par la clôture du … » en tête ; FEC : `ValidDate` = la date de la clôture (sinon la date
+  de l'écriture). Bilan › Clôture garde la trace des clôtures rouvertes (« Clôturée le …, rouverte
+  le … »). Pas de validation écriture par écriture : la saison se valide d'un bloc.
 - **Lettrage** : lettre de trois caractères par paire facture / paiement, comme le modèle ;
   paiement en plusieurs fois accepté (somme). **Depuis le 10 novembre 2026** : la facture entre au
   tiers à son montant (le total des pièces rattachées à la transaction), le paiement au montant de la

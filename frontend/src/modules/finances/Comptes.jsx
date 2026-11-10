@@ -20,6 +20,7 @@ import PlanComptable, {
 import SoldesDepart, { SOLDES_EVENTS } from "./compta/SoldesDepart.jsx";
 import "./compta/compta.css";
 import { CurveChart } from "./CurveChart.jsx";
+import Icon from "../../components/Icon.jsx";
 import "./finances.css";
 
 const DAY_MS = 24 * 3600 * 1000;
@@ -636,6 +637,7 @@ export default function Comptes({ onChange }) {
 
   const allAccounts = ledger.allAccounts;
   const accounts = single ? ledger.accounts : allAccounts;
+  const closedRow = (row) => (ledger.closings || []).some((c) => c.start <= row.date && row.date <= c.end);
   const shown = ledger.accounts;
   const filters = [
     { id: "all", label: "Tous" },
@@ -954,6 +956,12 @@ export default function Comptes({ onChange }) {
                       >
                         <td>{dateFr(row.date)}</td>
                         <td title={row.details || undefined}>
+                          {/* Saison clôturée (§8.7) : la ligne est validée, le cadenas du Grand livre. */}
+                          {closedRow(row) && (
+                            <span className="history-lock" title="Saison clôturée : ligne validée">
+                              <Icon name="lock" size={14} />
+                            </span>
+                          )}
                           {rowLabel(row)}
                           <span className="history-details">
                             {subline.filter(Boolean).join(" · ")}

@@ -313,7 +313,14 @@ function ClotureSaison({ season, reports, onDocuments }) {
         Bilan « {report.name} » ({STATE_LABELS[report.state]}). La clôture reporte le résultat et les soldes sur la saison suivante et verrouille
         la saison.
       </p>
-      <Cloture reportId={report.id} seasonName={season.name} closing={data.closing} onChange={(closing) => setData((d) => ({ ...d, closing }))} onErreur={setErreur} />
+      <Cloture
+        reportId={report.id}
+        seasonName={season.name}
+        closing={data.closing}
+        history={data.closingHistory}
+        onChange={(closing) => api.documentsAG(report.id).then(setData).catch(() => setData((d) => ({ ...d, closing })))}
+        onErreur={setErreur}
+      />
     </div>
   )
 }

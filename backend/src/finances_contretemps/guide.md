@@ -5,6 +5,8 @@ Comptes
 - Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « Sans compte (n) » et « Sans pièce (n) » : les lignes à compléter.
 - Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, recherche d'une opération.
 - Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
+  Un cadenas devant une ligne = sa saison est clôturée : la ligne est validée, sa fiche ne s'enregistre plus
+  (rouvrir dans Bilan › Clôture), aucune pièce ne s'y rattache, aucun relevé de cette saison ne s'importe.
 - Un seul compte choisi : « Voir le compte » sous son nom (nom, IBAN, relevés).
 - Menu ⋯ : Se connecter aux comptes en banque (une fois connectée, la banque est relue toute seule deux fois par jour ;
   Actualiser force une lecture ; une notification prévient une semaine avant la fin de l'accès, « Reconnecter la banque ») ;
@@ -82,7 +84,8 @@ Bilan
   Balance, Grand livre, Bilan actif-passif (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
   Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
 - Clôture : la clôture de la saison (niveau Complet), portée par le bilan le plus avancé (Officiel, Validé, dernier) :
-  Clôturer / Rouvrir.
+  Clôturer / Rouvrir. Clôturer valide toutes les écritures de la saison (cadenas dans Comptes et dans la colonne Type
+  du Grand livre, « Écritures validées par la clôture du … ») ; la carte garde la trace des clôtures rouvertes.
 
 AG
 - La liste des AG de la saison ; ⋯ › Nouvelle AG ; ⋯ › Modèle général de PowerPoint…
