@@ -155,6 +155,8 @@ class PieceJustificative(Base):
     doc_node_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Empreinte du contenu, pour reconnaître un même fichier déposé deux fois.
     sha256: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
+    # Preuve du virement qui paie la pièce (avis d'opération CIC, mail de la banque) : pas une facture.
+    is_proof: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default="0")
 
     depense: Mapped[Depense] = relationship(back_populates="pieces")
 

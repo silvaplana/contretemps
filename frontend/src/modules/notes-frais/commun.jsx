@@ -36,6 +36,7 @@ export function Vignette({ piece, onSupprimer }) {
       >
         {estImage && url ? <img src={url} alt="" /> : <Icon name="fileCheck" size={26} />}
       </button>
+      {piece.preuve ? <span className="nf-vignette__legende">Virement</span> : null}
       {onSupprimer && (
         <button type="button" className="nf-vignette__retirer" onClick={onSupprimer} aria-label="Retirer la photo">
           <Icon name="x" size={14} />

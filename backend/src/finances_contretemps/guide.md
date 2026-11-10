@@ -50,6 +50,8 @@ Pièces
   Un fichier déposé deux fois : « même fichier que la pièce n° N » dans la revue et la liste ; refuser le doublon.
   Le fichier est nommé par l'appli en entrant dans Docs, date en tête (« 2025-02-09 Facture Amazon 39,90.jpg »,
   « 2025-01-31 Facture Hono Marysa Thomas.pdf », « 2025-06-12 Ticket Jacques Pesenti 54,17.jpg ») ; corriger la pièce le renomme.
+  Un avis de virement déposé par « + » n'est pas une pièce : il devient la page « Virement » de la facture qu'il paie
+  (« … - Virement.pdf » dans son dossier) ; sans facture, l'appli montre la transaction bancaire et ne crée rien.
 - Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature), bleu pour la banque
   (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».

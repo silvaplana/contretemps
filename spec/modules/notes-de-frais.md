@@ -456,7 +456,13 @@ ce qu'elle a lu, date en tête pour trier : achat « 2025-02-09 Facture Amazon 3
 « 2025-01-31 Facture Hono Marysa Thomas.pdf », note de frais « 2025-06-12 Ticket Jacques Pesenti 54,17.jpg »
 (un nom par ticket). Personne ne réfléchit au nom à l'enregistrement : **toute correction de la pièce**
 (date, fournisseur, personne, montant, nature) renomme et redéplace le fichier (§7 quinquies). Un
-fichier revenu sur le disque (note reprise) garde ce nom.
+fichier revenu sur le disque (note reprise) garde ce nom. **L'avis de virement** (avis d'opération
+CIC, mail de la banque) est une preuve de paiement, jamais une pièce comptable : rapproché de la
+facture qu'il paie (§7 quinquies), il devient sa page de plus, dans son dossier, sous le même nom +
+« - Virement » (« 2025-01-31 Facture Hono Marysa Thomas - Virement.pdf », `nf_pieces.is_proof`, légende
+« Virement » sur la vignette). Une facture qui a déjà sa preuve n'en reçoit pas une seconde : l'avis
+cherche une autre facture du même montant, sinon il montre la transaction bancaire. Sans facture, rien
+n'est créé (l'avis n'est pas gardé).
 
 ## 8. Don à l'association
 

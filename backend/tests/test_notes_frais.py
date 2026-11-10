@@ -1618,3 +1618,41 @@ def test_un_fichier_depose_deux_fois_est_signale_a_la_revue(client, ecole, monke
     assert refus.status_code == 200, refus.text
     troisieme = _etablir(client, tresorier, None, contenu=b"%PDF sacem")
     assert troisieme["doublon_de"] == premiere["id"]
+
+
+def test_l_avis_de_virement_devient_la_page_virement_de_la_facture(client, db_session, ecole, monkeypatch):
+    """Seb, 10 novembre (classeur 2024-25) : l'avis d'opération CIC n'est pas
+    une pièce comptable ; il rejoint la facture qu'il paie sous le même nom +
+    « - Virement ». Une facture qui a déjà sa preuve n'en reçoit pas une
+    seconde : trois avis de 156 € pour deux factures de 156 € (De Luca), le
+    troisième ne se colle nulle part."""
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    Comptes().create(db_session, ecole_id=org, role="professeur", nom="De Luca", prenom="Delphine", email="dl@test.fr")
+    lecteur = LecteurFacture(date="2026-11-05", montant_centimes=15600, commercant="Delphine Collerie de Borély épouse De Luca",
+                             emetteur_personne=True, client="École de Danse Contretemps", description="Cours classique novembre")
+    monkeypatch.setattr(main.notes_frais_client.ports, "lecteur", lecteur)
+    novembre = _etablir(client, tresorier, None, contenu=b"%PDF nov")
+    lecteur.lu = dict(date="2026-11-29", montant_centimes=15600, commercant="Delphine Collerie de Borély épouse De Luca",
+                      emetteur_personne=True, client="École de Danse Contretemps", description="Cours classique décembre")
+    decembre = _etablir(client, tresorier, None, contenu=b"%PDF dec")
+    assert novembre["nature"] == decembre["nature"] == "honoraires"
+
+    lecteur.lu = dict(sorte="virement", date="2026-12-05", montant_centimes=15600, beneficiaire="DE LUCA DELPHINE", motif="FACT1126-DELPHINE")
+    premier = _etablir(client, tresorier, None, contenu=b"%PDF avis 1")
+    assert premier["id"] == novembre["id"]  # la plus proche de la date de l'avis
+    assert [p["preuve"] for p in premier["depenses"][0]["pieces"]] == [False, True]
+    lecteur.lu = dict(sorte="virement", date="2027-01-04", montant_centimes=15600, beneficiaire="DE LUCA DELPHINE", motif="FA1226 DELPHINE")
+    second = _etablir(client, tresorier, None, contenu=b"%PDF avis 2")
+    assert second["id"] == decembre["id"]
+    lecteur.lu = dict(sorte="virement", date="2027-07-07", montant_centimes=15600, beneficiaire="DE LUCA DELPHINE", motif="SOLDE FACT MAI JUIN")
+    troisieme = _etablir(client, tresorier, None, contenu=b"%PDF avis 3")
+    assert troisieme["id"] is None  # les deux factures ont déjà leur preuve
+
+    # Dans Docs, la preuve porte le nom de la facture + « - Virement ».
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    honoraires = _enfant(client, org, tresorier, _enfant(client, org, tresorier, saison["id"], "Financier")["id"], "HONORAIRES")
+    dossier_prof = _enfant(client, org, tresorier, honoraires["id"], "DELPHINE DE LUCA")
+    dossier_note = next(d for d in _parcourir(client, org, tresorier, dossier_prof["id"]).json()["items"] if d["name"].endswith(f"({novembre['id']})"))
+    noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"])
+    assert noms == ["2026-11-05 Facture Hono Delphine De Luca - Virement.jpg", "2026-11-05 Facture Hono Delphine De Luca.jpg"]
