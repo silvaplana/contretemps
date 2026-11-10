@@ -36,7 +36,10 @@ const SOUS_ONGLETS = [
 // Onglet Financier, trésoriers et Super User seulement (spec/modules/
 // financier.md) : Comptes, Pièces (dont les notes de frais, notes-de-frais.md
 // §7), Bilan, Assemblée générale et Prévisionnel.
-export default function Financier() {
+// `docs` : l'écran Docs de l'appli hôte, à ouvrir à côté du bilan (Seb, 10/11).
+const NOMS_A_COTE = { comptes: 'Comptes', pieces: 'Pièces', docs: 'Docs' }
+
+export default function Financier({ docs = null }) {
   // Repart du dernier sous-onglet affiché sur cet appareil.
   const [sousOnglet, setSousOnglet] = useState(() => {
     const dernier = sessionApi.lireEcran('financier')
@@ -59,6 +62,7 @@ export default function Financier() {
   const [aCote, setACote] = useState(null) // null | 'comptes' | 'pieces'
   const [part, setPart] = useState(0.5)
   const [retourBilan, setRetourBilan] = useState(false)
+  const [docsPlein, setDocsPlein] = useState(false) // téléphone : Docs en entier depuis le Bilan
   const [large, setLarge] = useState(() => window.matchMedia?.(ECRAN_LARGE).matches ?? false)
   useEffect(() => {
     const mq = window.matchMedia?.(ECRAN_LARGE)
@@ -67,11 +71,12 @@ export default function Financier() {
     mq.addEventListener('change', suivre)
     return () => mq.removeEventListener('change', suivre)
   }, [])
-  // Dans le Bilan, la rangée « Bilan · Comptes · Pièces » (Seb, 10/11) :
-  // Bilan à gauche, toujours allumé ; Comptes ou Pièces s'ouvre à côté.
+  // Dans le Bilan, la rangée « Bilan · Comptes · Pièces · Docs » (Seb, 10/11) :
+  // Bilan à gauche, toujours allumé ; les autres s'ouvrent à côté.
   function voir(v) {
     if (v === 'bilan') setACote(null)
     else if (large) setACote((x) => (x === v ? null : v))
+    else if (v === 'docs') setDocsPlein(true)
     else {
       setSousOnglet(v)
       setRetourBilan(true)
@@ -213,24 +218,26 @@ export default function Financier() {
         }}
         className="admin-screen__tabs"
       />
-      {retourBilan && sousOnglet !== 'bilan' && (
+      {((retourBilan && sousOnglet !== 'bilan') || (docsPlein && sousOnglet === 'bilan')) && (
         <button
           type="button"
           className="btn btn--secondary nf-retour-bilan"
           onClick={() => {
             setSousOnglet('bilan')
             setRetourBilan(false)
+            setDocsPlein(false)
           }}
         >
           ← Revenir au bilan
         </button>
       )}
-      {sousOnglet === 'bilan' && (
+      {sousOnglet === 'bilan' && !docsPlein && (
         <div className="segmented nf-vue-bilan" aria-label="Voir avec le bilan">
           {[
             { value: 'bilan', label: 'Bilan', on: true },
             { value: 'comptes', label: 'Comptes', on: volet && aCote === 'comptes' },
             { value: 'pieces', label: 'Pièces', on: volet && aCote === 'pieces' },
+            ...(docs ? [{ value: 'docs', label: 'Docs', on: volet && aCote === 'docs' }] : []),
           ].map((o) => (
             <button
               key={o.value}
@@ -252,13 +259,13 @@ export default function Financier() {
           <div className="nf-a-cote__barre" role="separator" aria-label="Largeur du volet" onPointerDown={glisser}>
             <span />
           </div>
-          <section className="nf-a-cote__volet" style={{ width: `${part * 100}%` }} aria-label={`À côté du bilan : ${aCote === 'comptes' ? 'Comptes' : 'Pièces'}`}>
+          <section className="nf-a-cote__volet" style={{ width: `${part * 100}%` }} aria-label={`À côté du bilan : ${NOMS_A_COTE[aCote]}`}>
             <div className="nf-a-cote__tete">
               <button type="button" className="nf-a-cote__retour" onClick={() => setACote(null)} aria-label="Retour">
                 ←
               </button>
               <h2>
-                <span className="muted">À côté du bilan :</span> {aCote === 'comptes' ? 'Comptes' : 'Pièces'}
+                <span className="muted">À côté du bilan :</span> {NOMS_A_COTE[aCote]}
               </h2>
               <div className="nf-a-cote__tailles">
                 {TAILLES.map((t) => (
@@ -273,9 +280,13 @@ export default function Financier() {
                 ))}
               </div>
             </div>
-            <div className="nf-a-cote__corps">{aCote === 'comptes' ? <Comptes onChange={rechargerAFaire} /> : pieces}</div>
+            <div className={`nf-a-cote__corps nf-a-cote__corps--${aCote}`}>
+              {aCote === 'comptes' ? <Comptes onChange={rechargerAFaire} /> : aCote === 'docs' ? docs : pieces}
+            </div>
           </section>
         </div>
+      ) : docsPlein && sousOnglet === 'bilan' ? (
+        docs
       ) : sousOnglet === 'comptes' ? (
         <Comptes onChange={rechargerAFaire} />
       ) : sousOnglet === 'bilan' ? (

@@ -85,7 +85,7 @@ Pièces
 
 Bilan
 - Trois onglets en haut : Préparer | Documents | Clôture, et le choix de la saison.
-- En tête du Bilan, la rangée « Bilan · Comptes · Pièces » (Bilan à gauche, toujours allumé) ; toucher Comptes ou Pièces :
+- En tête du Bilan, la rangée « Bilan · Comptes · Pièces · Docs » (Bilan à gauche, toujours allumé) ; toucher Comptes, Pièces ou Docs :
   sur ordinateur, un volet « À côté du bilan » s'ouvre à droite (barre orange à glisser, ou ⅓ ½ ⅔ ; ← le referme) ;
   sur téléphone, l'écran s'ouvre en entier avec « ← Revenir au bilan ».
 - Préparer : sous le titre « Étapes du bilan 2025-2026 », les six étapes, dans l'ordre, chacune nommée par un verbe
