@@ -919,7 +919,7 @@ avec ce que l'appli calcule (trésorière avec EBP, appli, contre-calcul : à tr
 (Seb 10/11), avec son compteur, dans l'ordre ; une étape montre ce qui reste, rien ne se calcule
 sans que la trésorière l'ait vu :
 
-1. **Compléter les relevés** : la grille des relevés (§3) toute verte pour la saison.
+1. **Obtenir les relevés** : la grille des relevés (§3) toute verte pour la saison.
 2. **Reprendre les soldes de départ** au premier jour de la saison (§8.7) : repris de l'an dernier (ou reportés par
    la clôture) et 512x = relevés ; au Complet, « trésorerie des relevés seulement » reste orange.
 3. **Rapprocher les factures et classer les transactions bancaires** (le titre dit quoi, Seb 10/11) :
