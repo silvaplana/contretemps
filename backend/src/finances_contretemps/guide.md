@@ -75,7 +75,7 @@ Bilan
 - Dans un bilan : Calculer, puis « Résultat » (à déplier) : recettes et dépenses par compte, analyse, présentation du tableau.
 - En dessous, Documents de l'AG : Synthèse Dépenses-Recettes (Excel), FEC (fichier des écritures, pour le
   comptable ou l'administration fiscale, avec son contrôle juste / à corriger juste dessous), et au niveau Complet
-  Balance, Grand livre (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
+  Balance, Grand livre, Bilan actif-passif (PDF), Honoraires par professeur (Excel). Pour chacun : Voir (s'ouvre comme dans Docs), télécharger, icône dossier (Docs ›
   Financier › AG). Puis Rapport financier : Rédiger, Voir, Word, PDF. Au niveau Complet : clôture de la saison.
 - Clôture : la clôture de la saison (niveau Complet), portée par le bilan le plus avancé (Officiel, Validé, dernier) :
   Clôturer / Rouvrir.
@@ -99,6 +99,6 @@ Règles de l'appli
 - Simple : comptabilité de trésorerie, chaque ligne contre son compte ; Synthèse et Rapport financier.
 - Complet : partie double. Achats et honoraires passent par les comptes de tiers (401 fournisseurs, 467x honoraires
   par professeur), lettrés (AAA, AAB…) avec leur paiement ; soldes de départ ; clôture qui verrouille la saison et reporte
-  le résultat ; Balance, Grand livre, Honoraires par professeur (DAS-2).
+  le résultat ; Balance, Grand livre, Bilan actif-passif, Honoraires par professeur (DAS-2).
 - Le bilan additionne par compte du plan confirmé, sinon par catégorie de Comptes. Les montants sont calculés par
   l'appli, jamais écrits par l'assistant.

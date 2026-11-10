@@ -122,7 +122,7 @@ def test_documents_are_produced(world, db_session):
     with pytest.raises(ValueError):
         documents.produce(db_session, TRESORIER, SEASON, "autre")
     assert [d["id"] for d in documents.kinds("simple")] == ["synthese", "fec"]
-    assert len(documents.kinds("complet")) == 5
+    assert len(documents.kinds("complet")) == 6
 
 
 def test_report_adds_up_by_confirmed_account(world, db_session):

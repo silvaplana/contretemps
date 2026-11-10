@@ -2,6 +2,7 @@
 les pièces, soldes de départ saisis ou reportés de la clôture, clôture qui
 verrouille la saison, écritures d'une opération."""
 
+import pymupdf
 import pytest
 from test_finances import TRESORIER, make_statement, COURANT
 from test_finances_ag_documents import SEASON, statements
@@ -198,3 +199,21 @@ def test_manual_entries_go_through_the_od_journal_at_full_level(full, db_session
     assert documents.manual_entries(db_session, TRESORIER, SEASONS[0]) == []
     with pytest.raises(LookupError):
         documents.delete_manual_entry(db_session, TRESORIER, 999)
+
+
+def test_bilan_actif_passif_balances_with_the_season_result(full, db_session):
+    """financier.md §8.6 : le Bilan met à l'actif les soldes débiteurs des
+    comptes de bilan (créances, banque, caisse), au passif les soldes
+    créditeurs (dettes) et les fonds associatifs (report à nouveau, résultat
+    de la saison) ; les deux totaux sont égaux."""
+    finances, accounting, documents, rows, accounts = full
+    b = documents.bilan(db_session, TRESORIER, SEASONS[0])
+    assert b["totalActif"] == b["totalPassif"] > 0
+    assert b["passif"]["fonds"][-1]["label"].startswith("Résultat de la saison") and b["passif"]["fonds"][-1]["amount"] == b["result"]
+    assert any(l["number"].startswith("5") for l in b["actif"]["tresorerie"])
+    assert all(l["amount"] > 0 for g in b["actif"].values() for l in g) and all(l["amount"] > 0 for l in b["passif"]["dettes"])
+    content, name, media = documents.produce(db_session, TRESORIER, SEASONS[0], "bilan")
+    assert name == "Bilan actif-passif 2025-2026.pdf" and media == "application/pdf"
+    text = "".join(p.get_text() for p in pymupdf.open(stream=content, filetype="pdf"))
+    assert "Total actif" in text and "Total passif" in text and "Fonds associatifs" in text
+    assert "Écart actif" not in text
