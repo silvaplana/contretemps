@@ -70,7 +70,7 @@ class Operations(BaseModel):
 
 
 class OperationId(BaseModel):
-    operation_id: int = Field(description="Numéro de la ligne de banque (voir finance_operations).")
+    operation_id: int = Field(description="Numéro de la transaction bancaire (voir finance_operations).")
 
 
 class ChartNumber(BaseModel):
@@ -383,7 +383,7 @@ def financier(
             except ReportError as erreur:
                 raise Refus(str(erreur)) from erreur
 
-        return Ligne(f"Recalculer le bilan « {r['name']} » depuis les lignes de banque, puis refaire l'analyse. Résultat dans Financier › Bilan.", faire)
+        return Ligne(f"Recalculer le bilan « {r['name']} » depuis les transactions bancaires, puis refaire l'analyse. Résultat dans Financier › Bilan.", faire)
 
     def prepare_statement(db, compte, org_id, p: WriteStatement) -> Ligne:
         member = _member(db, compte, org_id)
@@ -493,7 +493,7 @@ def financier(
              "Financier › Comptes : solde de chaque compte en banque et de la caisse, total, nombre de lignes sans compte du plan "
              "et sans pièce, niveau comptable (simple ou complet).", NoParams, read_bank_accounts),
         read("finance_operations", "Financier",
-             "Financier › Comptes : lignes de banque (date, libellé, montant, compte du plan confirmé ou proposé, pièce), "
+             "Financier › Comptes : transactions bancaires (date, libellé, montant, compte du plan confirmé ou proposé, pièce), "
              "filtrées par saison ou dates, libellé, compte du plan, ou ce qui manque (sans compte, sans pièce).",
              Operations, read_operations),
         read("finance_chart", "Financier",
@@ -501,7 +501,7 @@ def financier(
              "nature, mots-clés qui le font proposer, actif ou non, nombre de lignes confirmées. Sert aussi à expliquer le plan.",
              NoParams, read_chart),
         read("finance_operation", "Financier",
-             "Le détail d'une ligne de banque : compte(s) du plan confirmé(s) ou proposé (avec la raison), pièce, et les écritures "
+             "Le détail d'une transaction bancaire : compte(s) du plan confirmé(s) ou proposé (avec la raison), pièce, et les écritures "
              "comptables qu'elle produit (journal, débit, crédit, lettrage).", OperationId, read_operation),
         read("finance_reports", "Financier", "Financier › Bilan : les bilans d'une saison (numéro, nom, état, calculé ou non).",
              SeasonOnly, read_reports),
@@ -520,7 +520,7 @@ def financier(
         read("finance_forecasts", "Financier", "Financier › Prévisionnel : les prévisionnels d'une saison, consignes et résultat.",
              SeasonOnly, read_forecasts),
         Action("set_operation_accounts", "Financier",
-               "Confirme le compte du plan de lignes de banque (Financier › Comptes) : des lignes choisies par numéro, ou toutes les "
+               "Confirme le compte du plan de transactions bancaires (Financier › Comptes) : des transactions choisies par numéro, ou toutes les "
                "lignes sans compte dont le libellé contient un texte (ex. GALLI → 613). Sans plan_account, la proposition de "
                "l'appli est confirmée ligne par ligne. Vide le « à classer » des documents de l'AG.",
                SetAccounts, prepare_accounts, admin_only=False),

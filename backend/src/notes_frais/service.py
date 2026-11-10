@@ -712,7 +712,7 @@ class NotesDeFrais:
         if note.statut not in (ENVOYEE, VALIDEE) or note.don:
             raise ValueError("Cette pièce n'est pas à valider ni à payer.")
         if note.bank_operation_id is not None:
-            raise ValueError("Cette pièce a déjà sa ligne du compte.")
+            raise ValueError("Cette pièce a déjà sa transaction bancaire.")
         if note.statut == ENVOYEE:
             self._exiger_complete(note)
             note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
@@ -734,7 +734,7 @@ class NotesDeFrais:
         note = self._note(db, membre.org_id, note_id)
         ecart = self._ecart(db, note)
         if not ecart:
-            raise ValueError("Cette pièce n'a pas d'écart avec la ligne du compte.")
+            raise ValueError("Cette pièce n'a pas d'écart avec la transaction bancaire.")
         if choix == "refund" and ecart < 0 or choix == "pay_rest" and ecart > 0:
             raise ValueError("Ce choix ne va pas avec le sens de l'écart.")
         if choix == "pay_rest":
@@ -1212,7 +1212,7 @@ class NotesDeFrais:
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
         if note.statut == REMBOURSEE and note.bank_operation_id is not None:
-            raise ValueError("Cette pièce est payée : détachez-la d'abord de la ligne du compte.")
+            raise ValueError("Cette pièce est payée : détachez-la d'abord de sa transaction bancaire.")
         if note.nature == FRAIS and note.established_by is None:
             auteur = self._personne_de_l_org(db, membre, note.person_id)
             titre, total = note.titre, self.total(note)
@@ -1744,7 +1744,7 @@ class NotesDeFrais:
         elif note.statut == VALIDEE:
             note.statut, note.traitee_le, note.traitee_par, note.paid_unmatched_at = ENVOYEE, None, None, None
         elif note.statut == REMBOURSEE:
-            raise ValueError("Cette pièce est payée : détachez-la d'abord de la ligne du compte.")
+            raise ValueError("Cette pièce est payée : détachez-la d'abord de sa transaction bancaire.")
         else:
             raise ValueError("Rien à défaire sur cette pièce.")
         db.commit()
@@ -1769,7 +1769,7 @@ class NotesDeFrais:
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
         if note.statut not in (ENVOYEE, REMBOURSEE) or note.bank_operation_id is None:
-            raise ValueError("Cette pièce n'est pas rattachée à une ligne du compte.")
+            raise ValueError("Cette pièce n'est pas rattachée à une transaction bancaire.")
         if not self._detachable(db, note):
             raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
         if note.statut == ENVOYEE:

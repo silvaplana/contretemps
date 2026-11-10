@@ -851,7 +851,7 @@ function Ecart({ note, enCours, onChoix }) {
   }
   return (
     <div className="nf-ecart">
-      <p>Écart avec la ligne du compte : {texte}.</p>
+      <p>Écart avec la transaction bancaire : {texte}.</p>
       {ouvert ? (
         <div className="nf-choix">
           {ecart > 0 && (

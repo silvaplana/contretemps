@@ -1306,7 +1306,7 @@ def test_rapprochement_des_pieces_en_pdf(client, db_session, ecole):
     reponse = client.get("/notes-frais/rapprochement.pdf", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes)
     assert reponse.status_code == 200 and reponse.headers["content-type"] == "application/pdf"
     texte = "".join(p.get_text() for p in pymupdf.open(stream=reponse.content, filetype="pdf"))
-    assert "Rapprochement des pièces" in texte and "1 pièce(s) rattachée(s)" in texte
+    assert "Rapprochement des pièces" in texte and "1 pièce(s) lettrée(s)" in texte
     assert "Onlineprinters" in texte and "CB ONLINEPRINTERS" in texte and "5,00 €" in texte  # l'écart
     assert "Castorama" in texte and "À valider" in texte
     assert "PRLV MYSTERE" in texte and "CB HORS PERIODE" not in texte and "CB ONLINEPRINTERS" in texte

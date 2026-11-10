@@ -127,7 +127,7 @@ export function qui(note) {
   return note.personne?.nom ?? (note.fournisseur ? `${note.fournisseur} ?` : 'Pour qui ?')
 }
 
-// La preuve d'un virement lue avec la pièce (§7 quinquies) : « C'est payé »
+// La preuve d'un virement lue avec la pièce (§7 quinquies) : « Valider la suggestion »
 // la rattache à la ligne vue sur le compte, ou la passe Envoyé en attendant.
 export function PreuveVirement({ note, onPaye }) {
   const p = note.preuve
@@ -144,7 +144,7 @@ export function PreuveVirement({ note, onPaye }) {
       </span>
       {note.statut !== 'viree' && (
         <button type="button" className="btn btn--primary" onClick={onPaye}>
-          C’est payé
+          Valider la suggestion
         </button>
       )}
     </div>
@@ -169,7 +169,7 @@ export function PaiementVu({ note, onConfirme }) {
           </span>
         </span>
         <button type="button" className="btn btn--primary" onClick={() => onConfirme(op, [])}>
-          C’est payé
+          Valider la suggestion
         </button>
       </div>
     )

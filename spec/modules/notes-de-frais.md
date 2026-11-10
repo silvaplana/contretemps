@@ -240,7 +240,7 @@ date de la pièce, `financier.md` §8.3 bis) :
 - ligne **sûre** (même montant **et** nom du bénéficiaire ou du fournisseur dans le libellé) : la
   ligne est **rattachée toute seule** ; la pièce reste **À valider**, avec « Payée selon la
   banque : libellé, montant, date » dessous et un bouton « Pas cette ligne » ;
-- **montant seul** : proposée (« Vu sur le compte »), un toucher **C'est payé** ;
+- **montant seul** : proposée (« Vu sur le compte »), un toucher **Valider la suggestion** (« C'est payé » jusqu'au 10 novembre) ;
 - **aucune ligne du montant exact** (Seb, 1er novembre : Thomas, deux factures de 198 € payées par
   un virement de 396 €) : l'appli montre les débits **au nom** de la personne ou du fournisseur pas
   encore rattachés, trois au plus, « Paiement possible : libellé, montant, date · écart +100,00 € »
@@ -288,7 +288,7 @@ période, le bouton **Rapprochement** produit un PDF (`GET /notes-frais/rapproch
 trésoriers) en trois parties : **pièces payées et la ligne du compte qui les paie** (date, nature,
 qui, montant, ligne, montant payé, écart quand la ligne ne fait pas le montant de ses pièces) ;
 **pièces sans paiement rattaché** (avec leur état : À valider, À trancher, À payer, Préparé, Envoyé,
-Don, Payée hors banque) ; **lignes de débit du compte sans pièce**. Un écart réglé le dit
+Don, Payée hors banque) ; **transactions bancaires de débit sans pièce**. Un écart réglé le dit
 (« remboursement attendu », « reste dû à payer », « abandonné »). Une pièce est de la période par sa
 date, sinon par celle de son paiement.
 
@@ -375,23 +375,30 @@ Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
 2. **Rapprocher par lots**, quand on veut : la puce **Rapprocher** de Financier › Pièces
    (`GET /notes-frais/rapprochement?debut&fin`, trésoriers ; période libre, du 1er septembre de la
    saison en cours par défaut), en trois parties, la banque d'un côté et les factures de l'autre :
-   - **Paires proposées** : chaque facture sans paiement pour laquelle l'appli voit une ligne, avec
+   - **Suggestions** : chaque facture sans paiement pour laquelle l'appli voit une transaction, avec
      la raison (« même nom, même montant » = sûre ; « même montant, autre nom » ; « écart … » ;
-     « paie aussi … ») et **« C'est elle »** (`POST …/payee`, la règle de §7 quinquies) ; « Autre… » ouvre la fiche. Rien n'est rattaché sans un toucher ;
+     « paie aussi … ») et **« Valider la suggestion »** (`POST …/payee`, la règle de §7 quinquies),
+     qui lettre la facture avec sa transaction ; « Autre… » ouvre la fiche. Rien n'est lettré sans
+     un toucher ;
    - **Factures sans paiement** : À rapprocher, À valider, À payer, Préparé, Envoyé, Don, avec leur
      état ; un toucher ouvre la fiche (Régler l'écart, Détacher, Revenir en arrière…) ;
-   - **Lignes de banque sans facture** : les débits de la période sans pièce rattachée, avec leur
-     compte bancaire ; leur compte du plan se choisit dans Comptes (filtre « Sans compte »), le
+   - **Transactions bancaires sans facture** : les débits de la période sans pièce rattachée, avec
+     leur compte bancaire ; leur compte du plan se choisit dans Comptes (filtre « Sans compte »), le
      libellé suffit souvent (frais bancaires, honoraires, SACEM).
    En bas, le nombre de pièces rattachées sur la période et le PDF de rapprochement (§7 sexies).
-   Badge bleu (banque) sur la puce = paires proposées + pièces « déjà payées » sans ligne.
+   Badge bleu (banque) sur la puce = suggestions + pièces « déjà payées » sans transaction.
+
+**Vocabulaire (Seb, 10 novembre)** : à l'écran on dit **transaction bancaire** (ou transaction),
+jamais « ligne de banque » ni « ligne du compte » ; une suggestion de l'appli se **valide**
+(« Valider la suggestion », comme Pennylane) ; valider **lettre** la facture avec sa transaction
+(une lettre dans le Grand livre Complet, financier.md §8.7) ; « rattacher » reste le mot du code et
+des fiches (Détacher, À rattacher).
 
 Le **Bilan** (financier.md §8.10) rouvre ce même écran, filtré sur la saison, comme étape 3 de sa
 préparation : si le rapprochement a été fait au fil de l'année, l'étape est vide.
 
-Lettrage : rattacher une facture à sa ligne lettre les deux écritures du compte de tiers
-(401 / 467x) dans le Grand livre Complet (financier.md §8.7) ; « rapprocher » est le travail par
-lots, « rattacher » et « lettrer » ses gestes unitaires.
+« Rapprocher » est le travail par lots ; valider une suggestion lettre les deux écritures du compte
+de tiers (401 / 467x) dans le Grand livre Complet (financier.md §8.7).
 
 Pas encore : « Demander la facture » depuis une ligne sans pièce ; un paiement en plusieurs fois
 d'une même facture ; le virement groupé à l'émission.

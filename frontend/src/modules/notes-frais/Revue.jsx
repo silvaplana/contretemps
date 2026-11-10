@@ -111,7 +111,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                 <dd className="muted">{n.rangement ? `Docs › ${n.rangement}` : 'Choisissez pour qui d’abord'}</dd>
               </dl>
               <dl className="nf-revue__bloc">
-                <dt>Ligne du compte</dt>
+                <dt>Transaction bancaire</dt>
                 <dd>
                   {n.operation ? (
                     <>
@@ -151,7 +151,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
               {!faite && (
                 <div className="nf-revue__actions">
                   <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => valider(n)}>
-                    {n.operation ? 'Valider : Payé' : possible ? 'C’est payé' : 'Valider : À payer'}
+                    {n.operation ? 'Valider : Payé' : possible ? 'Valider la suggestion' : 'Valider : À payer'}
                   </button>
                   {!n.operation && !possible && (
                     <button type="button" className="btn btn--secondary" disabled={enCours !== null} onClick={() => dejaPayee(n)}>

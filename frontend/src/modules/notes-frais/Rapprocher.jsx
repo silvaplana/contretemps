@@ -5,9 +5,9 @@ import { telechargerFichier } from '../../utils/telechargement.js'
 
 // Puce Rapprocher de Financier › Pièces (notes-de-frais.md §7 septies, Seb
 // 9/11) : le rapprochement par lots, comme un comptable. Les paires que
-// l'appli propose entre une facture et une ligne de banque (« C'est elle »
-// rattache), puis les factures sans paiement, puis les lignes de débit sans
-// facture. Rien n'est rattaché sans un toucher.
+// l'appli propose entre une facture et une transaction bancaire (« Valider la
+// suggestion » lettre les deux), puis les factures sans paiement, puis les
+// transactions de débit sans facture. Rien n'est lettré sans un toucher.
 export default function Rapprocher({ onChange, onOuvrir }) {
   const [periode, setPeriode] = useState(() => ({ debut: debutDeSaison(), fin: '' }))
   const [etat, setEtat] = useState(null)
@@ -52,17 +52,17 @@ export default function Rapprocher({ onChange, onOuvrir }) {
   return (
     <div className="nf-depot nf-rapprocher">
       <p className="muted">
-        La banque d’un côté, les factures de l’autre. L’appli propose les paires (même montant, même nom) ; vous confirmez.
-        Le compte d’une ligne vient de la facture qu’on lui rattache.
+        La banque d’un côté, les factures de l’autre. L’appli suggère les paires (même montant, même nom) ; vous validez, et la facture est lettrée
+        avec sa transaction. Le compte d’une transaction vient de la facture.
       </p>
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       {!etat && !erreur && <p className="muted">Chargement…</p>}
       {etat && (
         <>
           <h3 className="nf-rapprocher__titre">
-            Paires proposées <span className="muted">· {etat.paires.length}</span>
+            Suggestions <span className="muted">· {etat.paires.length}</span>
           </h3>
-          {etat.paires.length === 0 && <p className="muted">Aucune : rien sur le compte qui ressemble à une facture en attente.</p>}
+          {etat.paires.length === 0 && <p className="muted">Aucune : aucune transaction ne ressemble à une facture en attente.</p>}
           <div className="nf-liste">
             {etat.paires.map((p) => (
               <div key={p.id} className="nf-ligne nf-rapprocher__paire">
@@ -92,7 +92,7 @@ export default function Rapprocher({ onChange, onOuvrir }) {
                 </span>
                 <span className="nf-ligne__droite nf-rapprocher__actions">
                   <button type="button" className="btn btn--primary" disabled={enCours !== null} onClick={() => rattacher(p)}>
-                    C’est elle
+                    Valider la suggestion
                   </button>
                   <button type="button" className="btn btn--link" disabled={enCours !== null} onClick={() => ouvrir(p)}>
                     Autre…
@@ -124,9 +124,9 @@ export default function Rapprocher({ onChange, onOuvrir }) {
           </div>
 
           <h3 className="nf-rapprocher__titre">
-            Lignes de banque sans facture <span className="muted">· {etat.lignes_sans_piece.length}</span>
+            Transactions bancaires sans facture <span className="muted">· {etat.lignes_sans_piece.length}</span>
           </h3>
-          {etat.lignes_sans_piece.length === 0 && <p className="muted">Aucune : chaque débit de la période a sa pièce.</p>}
+          {etat.lignes_sans_piece.length === 0 && <p className="muted">Aucune : chaque transaction de débit de la période a sa pièce.</p>}
           {etat.lignes_sans_piece.length > 0 && (
             <p className="muted">Frais bancaires, honoraires, SACEM… : le libellé suffit souvent. Leur compte se choisit dans Comptes, filtre « Sans compte ».</p>
           )}
@@ -148,8 +148,8 @@ export default function Rapprocher({ onChange, onOuvrir }) {
           </div>
 
           <p className="muted">
-            {etat.rattachees.length} pièce{etat.rattachees.length > 1 ? 's' : ''} rattachée{etat.rattachees.length > 1 ? 's' : ''} à une ligne du
-            compte sur la période.
+            {etat.rattachees.length} pièce{etat.rattachees.length > 1 ? 's' : ''} lettrée{etat.rattachees.length > 1 ? 's' : ''} avec leur transaction
+            bancaire sur la période.
           </p>
         </>
       )}

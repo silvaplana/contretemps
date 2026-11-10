@@ -56,9 +56,9 @@ def pdf(donnees: dict) -> bytes:
     parts = [
         f"<h1>Rapprochement des pièces</h1>",
         f"<p class='muted'>Du {_fr(debut)} au {_fr(fin)}, fait le {_fr(date.today())}. "
-        f"{len(rattachees)} pièce(s) rattachée(s) à une ligne du compte, {len(sans_paiement)} sans paiement rattaché, "
+        f"{len(rattachees)} pièce(s) lettrée(s) avec leur transaction bancaire, {len(sans_paiement)} sans paiement rattaché, "
         f"{len(sans_piece)} ligne(s) de débit sans pièce.</p>",
-        "<h2>Pièces payées, et la ligne du compte qui les paie</h2>",
+        "<h2>Pièces payées, et la transaction bancaire qui les paie</h2>",
     ]
     if rattachees:
         lignes = "".join(
@@ -68,7 +68,7 @@ def pdf(donnees: dict) -> bytes:
             for p in rattachees
         )
         parts.append(
-            "<table><tr><th>Date</th><th>Nature</th><th>Qui</th><th class='n'>Montant</th><th>Ligne du compte</th><th class='n'>Payé</th><th class='n'>Écart</th></tr>"
+            "<table><tr><th>Date</th><th>Nature</th><th>Qui</th><th class='n'>Montant</th><th>Transaction bancaire</th><th class='n'>Payé</th><th class='n'>Écart</th></tr>"
             + lignes
             + f"<tr class='total'><td colspan='3'>Total</td><td class='n'>{_eur(sum(p['montant_centimes'] for p in rattachees))}</td><td></td><td></td><td></td></tr></table>"
         )
@@ -86,7 +86,7 @@ def pdf(donnees: dict) -> bytes:
         )
     else:
         parts.append("<p class='muted'>Aucune : toutes les pièces de la période sont payées et rattachées.</p>")
-    parts.append("<h2>Lignes de débit du compte sans pièce</h2>")
+    parts.append("<h2>Transactions bancaires de débit sans pièce</h2>")
     if sans_piece:
         parts.append(
             "<table><tr><th>Date</th><th>Libellé</th><th>Compte</th><th class='n'>Montant</th></tr>"
