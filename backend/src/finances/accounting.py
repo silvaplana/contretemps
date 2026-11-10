@@ -118,8 +118,10 @@ class Accounting:
                 .group_by(FinCashLine.account_id)
             ).all()
         )
+        settings = db.get(FinSettings, member.org_id)
         return {
             "level": self.level(db, member.org_id),
+            "snapshot": {"takenAt": settings.chart_snapshot_at.isoformat()} if settings is not None and settings.chart_snapshot else None,
             "natures": [{"id": n, "label": NATURE_LABELS[n]} for n in NATURES],
             "accounts": [
                 {**self._account(a), "used": counts.get(a.id, 0) + cash_counts.get(a.id, 0)}
@@ -188,13 +190,55 @@ class Accounting:
         il devient inactif, son numéro ne se libère jamais (Seb, 10/11)."""
         _check(member)
         account = self._chart_account(db, member.org_id, account_id)
-        used = db.scalar(select(func.count()).select_from(FinOperationAccount).where(FinOperationAccount.account_id == account.id))
-        used += db.scalar(select(func.count()).select_from(FinCashLine).where(FinCashLine.account_id == account.id))
-        if used or account.nature == THIRD_PARTY:
+        if self._used(db, account.id) or account.nature == THIRD_PARTY:
             account.active = False
         else:
             db.delete(account)
         db.commit()
+
+    def memorize_chart(self, db: Session, member: Member) -> dict:
+        """« Mémoriser le plan comptable » (§8.7, Seb 10/11) : une copie du
+        plan, remplacée à chaque fois ; « Repartir à zéro » la remet en place."""
+        _check(member)
+        settings = db.get(FinSettings, member.org_id)
+        if settings is None:
+            settings = FinSettings(org_id=member.org_id, level=self.level(db, member.org_id))
+            db.add(settings)
+        settings.chart_snapshot = [
+            {k: v for k, v in self._account(a).items() if k != "id"} for a in self.accounts(db, member.org_id)
+        ]
+        settings.chart_snapshot_at = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+        db.commit()
+        return {"takenAt": settings.chart_snapshot_at.isoformat()}
+
+    def restore_chart(self, db: Session, member: Member) -> bool:
+        """Remet le plan comme il était à « Mémoriser » : libellés, natures,
+        mots-clés et actif repris par numéro, comptes retirés depuis recréés,
+        comptes ajoutés depuis supprimés (inactifs s'ils ont servi). Rien à
+        remettre sans copie mémorisée : rend False."""
+        _check(member)
+        settings = db.get(FinSettings, member.org_id)
+        if settings is None or not settings.chart_snapshot:
+            return False
+        existing = {a.number: a for a in self.accounts(db, member.org_id)}
+        for saved in settings.chart_snapshot:
+            account = existing.pop(saved["number"], None)
+            if account is None:
+                db.add(FinChartAccount(org_id=member.org_id, **saved))
+            else:
+                for key, value in saved.items():
+                    setattr(account, key, value)
+        for account in existing.values():
+            if self._used(db, account.id):
+                account.active = False
+            else:
+                db.delete(account)
+        db.commit()
+        return True
+
+    def _used(self, db: Session, account_id: int) -> int:
+        used = db.scalar(select(func.count()).select_from(FinOperationAccount).where(FinOperationAccount.account_id == account_id))
+        return used + db.scalar(select(func.count()).select_from(FinCashLine).where(FinCashLine.account_id == account_id))
 
     # ----- compte sur chaque ligne -----
 

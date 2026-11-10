@@ -6,6 +6,8 @@ import Modal from '../../../components/Modal.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
+const { dateFr } = api
+
 const PLAN_EVENT = 'finances-plan-comptable'
 
 // Entrée « Plan comptable » du menu ⋯ (voir Financier.jsx).
@@ -43,6 +45,15 @@ export default function PlanComptable({ onClose }) {
     }
   }
 
+  async function memoriser() {
+    try {
+      const snapshot = await api.memoriserPlan()
+      setPlan((p) => ({ ...p, snapshot }))
+    } catch (err) {
+      setErreur(err.message)
+    }
+  }
+
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
   if (!plan) return <p className="muted">Chargement…</p>
   const natures = plan.level === 'complet' ? plan.natures : plan.natures.filter((n) => n.id === 'depense' || n.id === 'recette')
@@ -71,6 +82,18 @@ export default function PlanComptable({ onClose }) {
         Le libellé est le vôtre ; le numéro suit le plan comptable des associations. Les mots-clés font proposer le compte
         pour une transaction bancaire ; un compte marqué « gala » entre dans le bloc du gala de la Synthèse.
       </p>
+      <div className="fin-cp-champ">
+        <span>Plan mémorisé</span>
+        <p className="muted">
+          {plan.snapshot
+            ? `Copie du plan gardée le ${dateFr(plan.snapshot.takenAt.slice(0, 10))}. `
+            : 'Aucune copie du plan pour l’instant. '}
+          « Repartir à zéro sur cette saison » (Bilan › Clôture) remet le plan comme il était à ce moment-là.
+        </p>
+        <button type="button" className="btn btn--secondary" onClick={memoriser}>
+          Mémoriser le plan comptable
+        </button>
+      </div>
       {natures.map((nature) => (
         <div key={nature.id} className="fin-cp-carte">
           <h3>{nature.label}</h3>

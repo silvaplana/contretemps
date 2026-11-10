@@ -41,7 +41,7 @@ from sqlalchemy.orm import Session
 from .accounting import Accounting
 from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
-from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinSeasonNote
+from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote
 from .ports import Member, Season
 
 # Numéros des comptes de trésorerie et de report (plan associatif).
@@ -123,6 +123,9 @@ class AgPorts:
     store: Callable[[Session, Member, list[str], list[tuple[str, Path]]], list[int]] | None = None
     folder: Callable[[Session, Member], int | None] | None = None  # le dossier AG de Docs, pour l'ouvrir
     org_name: Callable[[Session, int], str] | None = None
+    # « Repartir à zéro » (§8.7) : défaire les pièces datées de la période et
+    # les justifications des transactions données ; rend le nombre de pièces.
+    reset_pieces: Callable[[Session, Member, str, str, list[int]], int] | None = None
 
 
 @dataclass
@@ -527,6 +530,37 @@ class AgDocuments:
         closing.reopened_by, closing.reopened_at = member.person_id, datetime.now(timezone.utc).replace(tzinfo=None)
         db.commit()
         return self.closing_status(db, member.org_id, season)
+
+    def reset_season(self, db: Session, member: Member, season: Season, confirm: str) -> dict:
+        """« Repartir à zéro sur cette saison » (§8.7, Seb 10/11) : efface le
+        travail du trésorier sur la saison pour la refaire (pièces, comptes
+        confirmés et ventilations, justifications, écritures à la main,
+        soldes de départ, explications, clôture), remet le plan comptable
+        mémorisé s'il y en a un ; garde les relevés et transactions
+        bancaires, la caisse. Irréversible : le nom de la saison doit être
+        retapé."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        if confirm.strip() != season.name:
+            raise ValueError("Tapez le nom de la saison tel quel pour confirmer.")
+        start, end = date.fromisoformat(season.start_date), date.fromisoformat(season.end_date)
+        operation_ids = list(
+            db.scalars(
+                select(FinOperation.id).join(FinAccount).where(FinAccount.org_id == member.org_id, FinOperation.date >= start, FinOperation.date <= end)
+            )
+        )
+        lines = 0
+        if operation_ids:
+            for line in db.scalars(select(FinOperationAccount).where(FinOperationAccount.operation_id.in_(operation_ids))):
+                db.delete(line)
+                lines += 1
+        for model in (FinClosing, FinOpeningBalance, FinSeasonNote, FinManualEntry):
+            for row in db.scalars(select(model).where(model.org_id == member.org_id, model.season_id == season.id)):
+                db.delete(row)
+        db.commit()
+        pieces = self.ports.reset_pieces(db, member, season.start_date, season.end_date, operation_ids) if self.ports.reset_pieces else 0
+        chart = self.accounting.restore_chart(db, member)
+        return {"pieces": pieces, "lines": lines, "chart": chart}
 
     def closing_status(self, db: Session, org_id: int, season: Season) -> dict | None:
         closing = self.closing(db, org_id, season.id)

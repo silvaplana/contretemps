@@ -19,6 +19,8 @@ Comptes
   renommer, mots-clés (qui font proposer le compte), événement (« gala »), désactiver (case « Compte actif » ; Retirer
   supprime un compte jamais utilisé, désactive sinon ; un compte de tiers 401 / 467x n'est jamais supprimé). Un prof sans
   compte d'honoraires : l'appli crée « 467n Honoraires Nom » toute seule à sa première facture (niveau Complet).
+  « Mémoriser le plan comptable » garde une copie du plan (date affichée) : « Repartir à zéro sur cette saison »
+  (Bilan › Clôture) remet le plan comme il était à ce moment-là.
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet), à reprendre de la clôture ou de la Balance.
 
 Pièces
@@ -91,6 +93,10 @@ Bilan
 - Clôture : la clôture de la saison (niveau Complet), portée par le bilan le plus avancé (Officiel, Validé, dernier) :
   Clôturer / Rouvrir. Clôturer valide toutes les écritures de la saison (cadenas dans Comptes et dans la colonne Type
   du Grand livre, « Écritures validées par la clôture du … ») ; la carte garde la trace des clôtures rouvertes.
+- Clôture, carte « Repartir à zéro sur cette saison » (pour s'exercer) : le nom de la saison retapé puis « Tout effacer ».
+  Part : les pièces de la saison et leurs rapprochements (fichiers à la corbeille de Docs), les comptes confirmés sur ses
+  transactions bancaires et les justifications « sans facture », les écritures à la main, les soldes de départ, la clôture ;
+  le plan comptable revient à sa copie mémorisée. Reste : relevés et transactions bancaires, caisse, bilans, autres saisons.
 
 AG
 - La liste des AG de la saison ; ⋯ › Nouvelle AG ; ⋯ › Modèle général de PowerPoint…
