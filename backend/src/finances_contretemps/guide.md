@@ -86,7 +86,7 @@ Pièces
 Bilan
 - Trois onglets en haut : Préparer | Documents | Clôture, et le choix de la saison.
 - Préparer : sous le titre « Étapes du bilan 2025-2026 », les six étapes, dans l'ordre, chacune nommée par un verbe
-  (ce qu'on fait) avec ce qui reste (un ✓ quand il ne reste rien) ; toucher une étape la déplie. 1. Compléter les relevés
+  (ce qu'on fait) avec ce qui reste (un ✓ quand il ne reste rien) ; toucher une étape la déplie. 1. Obtenir les relevés
   (la grille des relevés) ; 2. Reprendre les soldes de départ (orange tant que l'an dernier
   n'est pas repris au niveau Complet : « Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) ») ; 3. Rapprocher les factures et classer les transactions bancaires :
   les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher les factures », puis les transactions bancaires sans

@@ -65,7 +65,7 @@ export default function Preparer({ season, onDocuments }) {
   const resteEtape3 = aRapprocher + classify.withoutAccount
   const controlesKo = controls.filter((c) => !c.ok).length
   const etapes = [
-    { n: 1, titre: 'Compléter les relevés', reste: statements.missing, detail: statements.ok ? `${statements.accounts} compte(s), tous les mois sont là` : `${statements.missing} mois à importer` },
+    { n: 1, titre: 'Obtenir les relevés', reste: statements.missing, detail: statements.ok ? `${statements.accounts} compte(s), tous les mois sont là` : `${statements.missing} mois à importer` },
     {
       n: 2,
       titre: 'Reprendre les soldes de départ',
