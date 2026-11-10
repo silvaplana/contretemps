@@ -71,7 +71,7 @@ export default function Viewer({ api, item, onClose, onMore, onDownload, onSaved
   }
 
   return (
-    <div className="dx-panel dx-viewer" role="dialog" aria-label={item.name}>
+    <div className={`dx-panel dx-viewer${enPdf && !sansVisionneuse ? ' dx-viewer--pdf' : ''}`} role="dialog" aria-label={item.name}>
       <div className="dx-top">
         <button type="button" className="dx-ico" onClick={onClose} aria-label="Retour">←</button>
         <h2 className="dx-viewer__title">{item.name}</h2>
