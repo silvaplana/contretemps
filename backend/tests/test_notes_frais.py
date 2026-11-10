@@ -1817,3 +1817,24 @@ def test_les_soldes_de_l_an_dernier_se_lisent_dans_la_balance_deposee_dans_docs(
     assert lu["accounts"] == [{"number": "401", "label": "Fournisseurs", "balance": -345.07}, {"number": "530", "label": "CAISSE", "balance": 1069.29}]
     # Un membre n'y a pas droit.
     assert client.get(f"/finances/opening-balances/{courante['id']}/previous", headers=entetes_session(ecole["eleve"])).status_code == 403
+
+
+def test_rapprocher_montre_ce_qui_attend_d_avant_la_periode(client, db_session, ecole):
+    """Seb, 10/11 : la pièce de Brinon (août) payée en août, Virements propose
+    la transaction mais Rapprocher (période du 1er septembre) ne la montrait
+    pas alors que son badge la comptait. Une pièce qui attend son paiement
+    reste à rapprocher quelle que soit sa date : elle s'affiche tant qu'elle
+    est d'avant la fin de la période."""
+    tresorier = ecole["tresorier"]
+    org = tresorier.ecole_id
+    entetes = entetes_session(tresorier)
+    brinon = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Julien Brinon", date="2026-08-10", montant_centimes="36400")
+    assert client.post(f"/notes-frais/notes/{brinon['id']}/deja-payee", headers=entetes).status_code == 200
+    ligne = _operation(db_session, org, -36400, "2026-08-12", "VIR INST FACT2026014 CONTRETEMP")
+    assert client.get("/notes-frais/tresorerie/compteurs", headers=entetes).json()["rapprocher"] == 1
+
+    etat = client.get("/notes-frais/rapprochement", params={"debut": "2026-09-01"}, headers=entetes).json()
+    assert [(p["id"], p["paire"]["operation"]["id"]) for p in etat["paires"]] == [(brinon["id"], ligne.id)]
+    # Une pièce d'après la fin de la période n'y est pas.
+    etat = client.get("/notes-frais/rapprochement", params={"debut": "2026-07-01", "fin": "2026-07-31"}, headers=entetes).json()
+    assert etat["paires"] == [] and etat["sans_paiement"] == []
