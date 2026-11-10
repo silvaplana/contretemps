@@ -13,7 +13,9 @@ export function Vignette({ piece, onSupprimer }) {
   useEffect(() => {
     let annule = false
     let local = null
-    (piece.charger ? piece.charger() : api.urlPiece(piece.id))
+    // Sans point-virgule, une ligne qui commence par « ( » appelait `null(…)` : écran vide (Seb, 10/11).
+    const fichier = piece.charger ? piece.charger() : api.urlPiece(piece.id)
+    fichier
       .then((u) => {
         local = u
         if (annule) URL.revokeObjectURL(u)
