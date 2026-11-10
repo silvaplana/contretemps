@@ -48,6 +48,9 @@ from .ports import Member, Season
 BANK_BASE = "512"
 CASH = "530"
 CARRY_FORWARD = "110"
+# Virements entre comptes bancaires, en Complet : 512a → 580 → 512b (forme
+# des logiciels de comptabilité ; Seb, 10 novembre 2026).
+INTERNAL_TRANSFERS = "580"
 # Compte de tiers par nature de pièce (préfixe du plan associatif).
 THIRD_PARTY_PREFIX = {"achat": "401", "honoraires": "467", "frais": "467"}
 FEE_PREFIX = "467"
@@ -272,10 +275,16 @@ class AgDocuments:
         for r in rows:
             cents = round(r["amount"] * 100)
             if r.get("transfer"):
-                # Virement interne : 512a → 512b (le débit porte la ligne).
+                # Virement interne : 512a → 512b (le débit porte la ligne) ;
+                # en Complet, par 580 Virements internes, soldé aussitôt.
                 src = bank_numbers[r["accountId"]]
                 dst = next((n for aid, n in bank_numbers.items() if n[1] == r["transfer"]["to"]), None)
                 account(*src, "banque").lines.append(Line(r["date"], "BQ", r["label"], "", 0, cents))
+                if full:
+                    via = account(INTERNAL_TRANSFERS, "Virements internes", "virement").lines
+                    via.append(Line(r["date"], "BQ", r["label"], "", cents, 0))
+                    if dst:
+                        via.append(Line(r["date"], "BQ", r["label"], "", 0, cents))
                 if dst:
                     account(*dst, "banque").lines.append(Line(r["date"], "BQ", r["label"], "", cents, 0))
                 continue

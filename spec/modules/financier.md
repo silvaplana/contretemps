@@ -671,7 +671,9 @@ Dans Comptes › Tableau, chaque opération porte son **compte** (ou « Compte �
 **pièce** (ou « sans pièce ») ; puces **Sans compte** et **Sans pièce** avec compteur. Un appui
 ouvre la **fiche de l'opération** : compte (proposé, à confirmer), pièce (changer, détacher,
 photographier, choisir dans Docs), et, en Complet, les **écritures** générées (achat du jour de la
-facture : 6xx contre 401 ; paiement : 401 contre 512x ; lettre de rapprochement). Une ligne
+facture : 6xx contre 401 ; paiement : 401 contre 512x ; lettre de rapprochement ; virement entre
+deux comptes : 512a contre **580 Virements internes**, puis 580 contre 512b, forme des logiciels
+de comptabilité, Seb 10 novembre 2026 ; en Simple, 512a contre 512b). Une ligne
 HelloAsso ou une remise de chèques se ventile sur plusieurs comptes (montants qui doivent faire
 le total ; vérifié par l'appli).
 
