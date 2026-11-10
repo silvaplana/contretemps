@@ -22,8 +22,8 @@ Comptes
   « Copies du plan » : le journal des copies mémorisées (date, commentaire) ; « Mémoriser le plan comptable » en ajoute
   une, le commentaire pré-rempli dit ce qui a changé depuis la précédente. « Repartir à zéro sur cette saison »
   (Bilan › Clôture) remet la copie choisie.
-- ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de l'an
-  dernier » : l'appli lit la Balance de la saison précédente déposée dans Docs › Financier (saison précédente ou en cours, n'importe quel sous-dossier, « Balance » dans le nom),
+- ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de la Balance
+  2024-2025 (Docs › Financier) » (la saison précédente est nommée) : l'appli lit la Balance de la saison précédente déposée dans Docs › Financier (saison précédente ou en cours, n'importe quel sous-dossier, « Balance » dans le nom),
   remplit les cases, montre l'écart éventuel avec les relevés ; « Utiliser ces soldes » enregistre. Sans Balance dans Docs,
   on remplit les cases à la main. Saisons suivantes : reportés par la clôture, rien à faire.
 
@@ -82,8 +82,8 @@ Bilan
 - Trois onglets en haut : Préparer | Documents | Clôture, et le choix de la saison.
 - Préparer : les six étapes du bilan, dans l'ordre, chacune avec ce qui reste (un ✓ quand il ne reste rien) ; toucher
   une étape la déplie. 1. Relevés complets (la grille des relevés) ; 2. Soldes de départ (orange tant que l'an dernier
-  n'est pas repris au niveau Complet : « Reprendre les soldes de l'an dernier ») ; 3. Rapprocher et classer :
-  les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher », puis les transactions bancaires sans
+  n'est pas repris au niveau Complet : « Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) ») ; 3. Rapprocher les factures et classer les transactions bancaires :
+  les compteurs de Pièces › Rapprocher sur la saison et « Ouvrir Rapprocher les factures », puis les transactions bancaires sans
   compte : « À confirmer une par une » (toucher ouvre la fiche de l'opération ; une remise de chèques y est toujours,
   « à ventiler entre ses comptes » : dans sa fiche, « Ventiler comme les remises précédentes » puis répartir les
   montants) et « Comptes proposés par l'appli »

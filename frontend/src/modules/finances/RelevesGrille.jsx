@@ -32,7 +32,8 @@ function libelle(month) {
 
 const aDesTrous = (saison) => saison.accounts.some((a) => a.months.some((m) => m.state === "missing"));
 
-export default function RelevesGrille({ onClose, onImport }) {
+// `seasonId` : la saison à ouvrir (depuis Préparer, celle du bilan) ; sinon la saison en cours.
+export default function RelevesGrille({ onClose, onImport, seasonId }) {
   const [saisons, setSaisons] = useState(null);
   const [choisie, setChoisie] = useState(null);
   const [erreur, setErreur] = useState(null);
@@ -43,10 +44,10 @@ export default function RelevesGrille({ onClose, onImport }) {
       .grilleReleves()
       .then(({ seasons }) => {
         setSaisons(seasons);
-        setChoisie((seasons.find((s) => s.current) ?? seasons[0])?.id ?? null);
+        setChoisie((seasons.find((s) => s.id === seasonId) ?? seasons.find((s) => s.current) ?? seasons[0])?.id ?? null);
       })
       .catch((err) => setErreur(err.message));
-  }, []);
+  }, [seasonId]);
 
   const saison = saisons?.find((s) => s.id === choisie);
   const manquants = saison

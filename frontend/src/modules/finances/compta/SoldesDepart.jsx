@@ -22,7 +22,8 @@ const SOURCES = {
   releves: 'Les soldes de l’an dernier ne sont pas encore repris : seule la trésorerie des relevés est connue, les dettes, créances et fonds partent de zéro.',
 }
 
-export default function SoldesDepart({ onClose }) {
+// `initialSeasonId` : la saison ouverte au départ (depuis Préparer, celle du bilan) ; sinon la saison en cours.
+export default function SoldesDepart({ onClose, initialSeasonId }) {
   const [saisons, setSaisons] = useState([])
   const [seasonId, setSeasonId] = useState(null)
   const [data, setData] = useState(null)
@@ -36,10 +37,10 @@ export default function SoldesDepart({ onClose }) {
       .saisons()
       .then(({ seasons }) => {
         setSaisons(seasons)
-        setSeasonId((seasons.find((s) => s.current) ?? seasons[0])?.id ?? null)
+        setSeasonId((seasons.find((s) => s.id === initialSeasonId) ?? seasons.find((s) => s.current) ?? seasons[0])?.id ?? null)
       })
       .catch((err) => setErreur(err.message))
-  }, [])
+  }, [initialSeasonId])
 
   useEffect(() => {
     if (seasonId == null) return
@@ -91,6 +92,9 @@ export default function SoldesDepart({ onClose }) {
   }
 
   const debut = saisons.find((s) => s.id === seasonId)?.startDate
+  // La saison qui précède celle choisie : le bouton dit de quelle Balance viennent les soldes (Seb, 10/11).
+  const precedente = saisons.filter((s) => debut && s.startDate < debut).sort((a, b) => (a.startDate < b.startDate ? 1 : -1))[0]
+  const libelleReprise = `Reprendre les soldes de la Balance ${precedente ? precedente.name : 'de l’an dernier'} (Docs › Financier)`
   const total = lignes.reduce((s, l) => s + (Number(l.balance) || 0), 0)
   // La vérification des banques : sur la lecture tant qu'elle n'est pas enregistrée, sinon sur l'enregistré.
   const verification = (lecture ?? data)?.bankCheck ?? []
@@ -124,10 +128,10 @@ export default function SoldesDepart({ onClose }) {
                 <span className="fin-cp-s">
                   {lecture
                     ? `Soldes lus dans « ${lecture.file} » (saison ${lecture.previousSeason})${lecture.readBy === 'lecture' ? ', lus par l’appli : à vérifier ligne par ligne' : ''}. Vérifiez, corrigez au besoin, puis « Utiliser ces soldes ».`
-                    : 'Déposez la Balance de l’an dernier dans Docs › Financier (saison précédente ou en cours, « Balance » dans le nom), appuyez sur Reprendre, vérifiez, puis « Utiliser ces soldes ». Sans Balance, remplissez les cases à la main.'}
+                    : 'Déposez la Balance de l’an dernier dans Docs › Financier (saison précédente ou en cours, « Balance » dans le nom), appuyez sur le bouton, vérifiez, puis « Utiliser ces soldes ». Sans Balance, remplissez les cases à la main.'}
                 </span>
                 <button type="button" className="btn btn--secondary" onClick={reprendreAnDernier} disabled={enCours}>
-                  {enCours ? 'Lecture…' : 'Reprendre les soldes de l’an dernier'}
+                  {enCours ? 'Lecture…' : libelleReprise}
                 </button>
               </div>
             )}
