@@ -308,7 +308,7 @@ class Accounting:
         """Refuse un changement daté dans une saison clôturée (§8.7) tant
         qu'elle n'est pas rouverte."""
         if self.closing_of(db, org_id, day) is not None:
-            raise AccountingError("Saison clôturée : rouvrez-la (Bilan › Clôture) pour changer cette ligne.")
+            raise AccountingError("Saison clôturée : rouvrez-la (Bilan › Préparer, étape 7) pour changer cette ligne.")
 
     def _operation(self, db: Session, org_id: int, operation_id: int) -> FinOperation:
         row = db.execute(

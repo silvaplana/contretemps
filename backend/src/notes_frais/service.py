@@ -2034,7 +2034,7 @@ class NotesDeFrais:
         if operation is None:
             raise LookupError("Opération introuvable sur les comptes.")
         if self.ports.banque.cloturee(db, membre.org_id, operation.date):
-            raise ValueError("Saison clôturée : cette transaction bancaire est validée, rouvrez la saison (Financier › Bilan › Clôture) pour y rattacher une pièce.")
+            raise ValueError("Saison clôturée : cette transaction bancaire est validée, rouvrez la saison (Financier › Bilan › Préparer, étape 7) pour y rattacher une pièce.")
         if operation.montant_centimes >= 0:
             raise ValueError("Cette transaction bancaire est un crédit : elle ne paie pas une pièce.")
         if not manuel and operation.montant_centimes != -sum(self.total(n) for n in notes) and not self._au_nom_de(db, note, operation):

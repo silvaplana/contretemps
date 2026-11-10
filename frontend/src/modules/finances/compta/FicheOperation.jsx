@@ -82,7 +82,7 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
           {fiche.details ? ` · ${fiche.details.split('\n')[0]}` : ''}
         </p>
         {fiche.closed && (
-          <p className="muted">Saison clôturée : cette transaction bancaire est validée, elle ne change plus. Pour la corriger, rouvrez la saison (Bilan › Clôture).</p>
+          <p className="muted">Saison clôturée : cette transaction bancaire est validée, elle ne change plus. Pour la corriger, rouvrez la saison (Bilan › Préparer, étape 7).</p>
         )}
         {fiche.transfer ? (
           <p className="muted">Virement entre vos comptes : ni une recette ni une dépense, pas de compte du plan.</p>

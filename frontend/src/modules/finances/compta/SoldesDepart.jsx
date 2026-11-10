@@ -197,7 +197,7 @@ export default function SoldesDepart({ onClose, initialSeasonId }) {
             </p>
           </>
         )}
-        {data?.closed && <p className="fin-cp-alerte">Saison clôturée : rouvrez-la (Bilan › Documents de l’AG) pour changer ses soldes.</p>}
+        {data?.closed && <p className="fin-cp-alerte">Saison clôturée : rouvrez-la (Bilan › Préparer, étape 7) pour changer ses soldes.</p>}
         {lignes.map((l, i) => {
           const ex = explication(l, data, verification, veille)
           return (
