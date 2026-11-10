@@ -1419,7 +1419,9 @@ Détails :
   ←, autre onglet, ou appli laissée en arrière-plan plus de 2 minutes. L'enregistrement est
   automatique, rien à confirmer. Fichier ouvert (Word, Excel, PowerPoint, PDF) : en bas, Voir l'aperçu,
   Modifier, Télécharger côte à côte, chacun une fois, sur téléphone comme sur ordinateur ; sur téléphone
-  la fiche du fichier remplace l'aperçu dans la page. Formats .docx, .xlsx, .pptx (lus aussi par
+  la fiche du fichier remplace l'aperçu dans la page. Sur ordinateur, le PDF (ou l'aperçu d'un Word,
+  Excel, PowerPoint) prend toute la largeur de l'écran, avec la visionneuse du navigateur (vignettes
+  des pages, zoom) ; la grosse flèche ← en haut ramène au dossier (Seb, 10 novembre). Formats .docx, .xlsx, .pptx (lus aussi par
   LibreOffice), pas d'ODT pour les nouveaux fichiers.
   ⋯ > Plus… > **Enregistrer en PDF** (Seb, 23 octobre ; OnlyOffice ne le propose pas) : le PDF du
   fichier (son aperçu, fait par LibreOffice sur le serveur) est posé à côté, même nom en .pdf, « (2) »

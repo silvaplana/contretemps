@@ -1188,6 +1188,14 @@
   object-fit: contain;
 }
 
+/* PDF sur ordinateur : la visionneuse du navigateur prend toute la largeur
+   (vignettes des pages à gauche, zoom), la flèche ← reste en haut pour
+   revenir (Seb, 10 novembre). */
+.dx-viewer--pdf > .dx-top,
+.dx-viewer--pdf > .dx-viewer__body {
+  max-width: none;
+}
+
 .dx-viewer__pdf {
   width: 100%;
   height: 100%;
