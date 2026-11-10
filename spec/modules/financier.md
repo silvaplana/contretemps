@@ -919,7 +919,8 @@ But : produire depuis l'appli les documents de Docs › Privé › Saison › Fi
 FEC), **dans la même forme que ceux de la trésorière** (modèles 2024-25), sans rien de magique :
 la trésorière valide point par point. Maquette : https://claude.ai/artifact/SvQXof5zZJRt51t6MLjPrY.
 **Comptes ou Pièces à côté du bilan** (Seb, 10/11 ; maquette https://claude.ai/artifact/1LscgY7ak4mT7fKHU4bD4C) :
-sous le titre « Étapes du bilan », « Voir les Comptes » et « Voir les Pièces ». Sur ordinateur (≥ 900 px),
+en tête du Bilan, une rangée « Bilan · Comptes · Pièces », Bilan à gauche et toujours allumé ; toucher
+Comptes ou Pièces l'ouvre à côté (il s'allume aussi), toucher Bilan ou ← referme. Sur ordinateur (≥ 900 px),
 un volet s'ouvre à droite dans la même fenêtre, avec son propre fond, un cadre orange et le titre « À côté
 du bilan : Comptes » ; la puce Bilan reste choisie, chaque moitié défile seule. La barre orange du milieu se
 fait glisser (le volet prend de 25 à 75 % de la largeur), ou ⅓ ½ ⅔ en un geste ; ← referme le volet. Sur

@@ -7,7 +7,7 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
-import { A_COTE_EVENT, SOUS_ONGLET_EVENT } from '../finances/navigation.js'
+import { SOUS_ONGLET_EVENT } from '../finances/navigation.js'
 import { requestStatements } from '../finances/RelevesGrille.jsx'
 import { requestPlanComptable } from '../finances/compta/PlanComptable.jsx'
 import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
@@ -18,7 +18,6 @@ import Exterieurs from './Exterieurs.jsx'
 import Pieces, { AnnulerImportModal, ChoixPersonneModal } from './Pieces.jsx'
 import './notes-frais.css'
 
-// Bilan en premier, à gauche (Seb, 10/11).
 const ECRAN_LARGE = '(min-width: 900px)'
 const TAILLES = [
   { part: 0.33, label: '⅓' },
@@ -27,9 +26,9 @@ const TAILLES = [
 ]
 
 const SOUS_ONGLETS = [
-  { value: 'bilan', label: 'Bilan' },
   { value: 'comptes', label: 'Comptes' },
   { value: 'pieces', label: 'Pièces' },
+  { value: 'bilan', label: 'Bilan' },
   { value: 'ag', label: 'AG' },
   { value: 'previsionnel', label: 'Prévisionnel' },
 ]
@@ -68,18 +67,16 @@ export default function Financier() {
     mq.addEventListener('change', suivre)
     return () => mq.removeEventListener('change', suivre)
   }, [])
-  useEffect(() => {
-    const ouvrir = (e) => {
-      if (window.matchMedia?.(ECRAN_LARGE).matches) {
-        setACote((v) => (v === e.detail ? null : e.detail))
-      } else {
-        setSousOnglet(e.detail)
-        setRetourBilan(true)
-      }
+  // Dans le Bilan, la rangée « Bilan · Comptes · Pièces » (Seb, 10/11) :
+  // Bilan à gauche, toujours allumé ; Comptes ou Pièces s'ouvre à côté.
+  function voir(v) {
+    if (v === 'bilan') setACote(null)
+    else if (large) setACote((x) => (x === v ? null : v))
+    else {
+      setSousOnglet(v)
+      setRetourBilan(true)
     }
-    window.addEventListener(A_COTE_EVENT, ouvrir)
-    return () => window.removeEventListener(A_COTE_EVENT, ouvrir)
-  }, [])
+  }
   function glisser(e) {
     const barre = e.currentTarget
     const zone = barre.parentElement.getBoundingClientRect()
@@ -227,6 +224,25 @@ export default function Financier() {
         >
           ← Revenir au bilan
         </button>
+      )}
+      {sousOnglet === 'bilan' && (
+        <div className="segmented nf-vue-bilan" aria-label="Voir avec le bilan">
+          {[
+            { value: 'bilan', label: 'Bilan', on: true },
+            { value: 'comptes', label: 'Comptes', on: volet && aCote === 'comptes' },
+            { value: 'pieces', label: 'Pièces', on: volet && aCote === 'pieces' },
+          ].map((o) => (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={o.on}
+              className={`segmented__option ${o.on ? 'is-active' : ''}`}
+              onClick={() => voir(o.value)}
+            >
+              {o.label}
+            </button>
+          ))}
+        </div>
       )}
       {volet ? (
         <div className="nf-a-cote">
