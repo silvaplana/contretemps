@@ -1179,6 +1179,11 @@ def test_paiement_possible_meme_nom_autre_montant_ou_virement_groupe(client, db_
     main = client.post(f"/notes-frais/notes/{autre['id']}/payee", json={"operation_id": libre.id, "manuel": True}, headers=entetes)
     assert main.status_code == 200, main.text
     assert main.json()["statut"] == "remboursee" and main.json()["operation"]["id"] == libre.id and main.json()["ecart_centimes"] == 1500
+    # Numéro de pièce à la validation (financier.md §8.7) : par saison et par journal, jamais repris.
+    assert _vue_tresorier(client, tresorier, une)["numero_piece"] == "HO-2025-001"
+    assert _vue_tresorier(client, tresorier, deux)["numero_piece"] == "HO-2025-002"
+    assert _vue_tresorier(client, tresorier, achat)["numero_piece"] == "AC-2025-001"
+    assert _vue_tresorier(client, tresorier, autre)["numero_piece"] == "AC-2025-002"
     # Saison clôturée (financier.md §8.7, cadenas) : ses transactions bancaires sont validées, plus de rattachement.
     import datetime as dt
 

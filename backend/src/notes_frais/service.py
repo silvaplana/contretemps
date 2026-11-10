@@ -58,6 +58,8 @@ MONTANT_MAX_CENTIMES = 10_000_000  # 100 000 €, garde-fou contre une virgule o
 FILTRES = ("a_valider", "a_rembourser", "terminees", "a_trancher")
 # À payer, pas encore vu sur le compte (financier.md §8.3 bis).
 EN_PAIEMENT = (VALIDEE, PREPAREE, VIREE)
+# Journal du numéro de pièce (financier.md §8.7) : AC achats, HO honoraires, NF notes de frais.
+JOURNAUX = {ACHAT: "AC", HONORAIRES: "HO", FRAIS: "NF"}
 # Dossiers de Docs › Financier, par nature (financier.md §8.3 bis).
 DOSSIERS = {FRAIS: "Notes de frais", HONORAIRES: "HONORAIRES", ACHAT: "ACHATS"}
 A_TRAITER = "A TRAITER"  # « plus tard » et refusées, le temps de décider (Seb, 6/11)
@@ -718,6 +720,7 @@ class NotesDeFrais:
             self._exiger_complete(note)
             note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
         note.statut, note.deferred_at, note.paid_unmatched_at = VALIDEE, None, _maintenant()
+        self._numeroter(db, note)
         db.commit()
         db.refresh(note)
         self._reranger(db, membre, note)
@@ -854,6 +857,7 @@ class NotesDeFrais:
             self._rattacher(db, membre, note, note.bank_operation_id, prevenir=False)
             return note
         note.statut, note.traitee_le, note.traitee_par = VALIDEE, _maintenant(), membre.person_id
+        self._numeroter(db, note)
         db.commit()
         db.refresh(note)
         self._reranger(db, membre, note)
@@ -864,6 +868,20 @@ class NotesDeFrais:
         else:
             self._prevenir_auteur(db, membre, note, "validée", "Votre note de frais a été validée ; le remboursement suivra.")
         return note
+
+    def _numeroter(self, db: Session, note: NoteFrais) -> None:
+        """Numéro de pièce à la validation (financier.md §8.7, Seb 10/11) :
+        « AC-2025-001 », par saison (septembre → août, l'année du début) et
+        par journal ; donné une fois, jamais repris ni réattribué."""
+        if note.piece_number:
+            return
+        jour = self._date_docs(note)
+        prefix = f"{JOURNAUX[note.nature]}-{jour.year if jour.month >= 9 else jour.year - 1}-"
+        existing = db.scalars(
+            select(NoteFrais.piece_number).where(NoteFrais.org_id == note.org_id, NoteFrais.piece_number.like(prefix + "%"))
+        )
+        last = max((int(n[len(prefix):]) for n in existing if n[len(prefix):].isdigit()), default=0)
+        note.piece_number = f"{prefix}{last + 1:03d}"
 
     @staticmethod
     def _exiger_complete(note: NoteFrais) -> None:
@@ -1701,6 +1719,7 @@ class NotesDeFrais:
     def _rattacher(self, db: Session, membre: Membre, note: NoteFrais, operation_id: int, *, prevenir: bool) -> None:
         if note.statut == ENVOYEE:
             note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        self._numeroter(db, note)
         note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
         note.bank_operation_id, note.deferred_at, note.paid_unmatched_at = operation_id, None, None
         db.commit()
@@ -2013,6 +2032,7 @@ class NotesDeFrais:
             "nature": note.nature,
             "etablie": note.established_by is not None,
             "fournisseur": note.supplier,
+            "numero_piece": note.piece_number,
             "statut": note.statut,
             "libelle_statut": self.libelle_statut(note),
             "don": note.don,

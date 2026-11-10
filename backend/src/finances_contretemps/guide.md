@@ -35,7 +35,8 @@ Pièces
   l'appli, elle attend dans Rapprocher et pas dans Virements), Autre… (la fiche), Plus tard. En haut « Valider les pièces sûres
   (N) », en bas « Annuler cet import ». Sur une pièce payée avec écart : « Régler l'écart… » (Il nous rembourse / On lui
   doit encore, qui crée une pièce À payer du reste / On laisse tomber). Dans la liste et sur la fiche, le badge d'une pièce à valider dit l'état
-  proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
+  proposé : « À valider → Payé » ou « À valider → À payer ». Une pièce validée reçoit son numéro, « Pièce n° AC-2025-001 »
+  (par saison et par journal : AC achats, HO honoraires, NF notes de frais), repris dans le Grand livre et le FEC. Une pièce : Valider, Refuser (motif), « Revenir en arrière » (Envoyé ou
   Préparé → À payer, À payer → À valider), « Annuler cette pièce : tout défaire » (une note envoyée par un membre lui
   revient) ; payée à tort : « Détacher » d'abord (tant que la saison n'est pas clôturée). Dans la revue, « Annuler cet
   import » défait d'un coup les pièces encore à valider du lot qu'on vient d'importer ; plus tard, ⋯ › « Annuler le dernier

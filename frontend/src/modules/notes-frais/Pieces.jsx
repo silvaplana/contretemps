@@ -515,6 +515,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
           }
         />
       )}
+      {note?.numero_piece && <p className="muted">Pièce n° {note.numero_piece}</p>}
       {note && depense?.lue_par_ia && corrigeable && (
         <p className="badge badge--warning nf-a-verifier">Rempli d’après le ticket, à vérifier</p>
       )}

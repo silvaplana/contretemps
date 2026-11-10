@@ -31,7 +31,7 @@ def full(db_session):
     accounting.create_account(db_session, TRESORIER, {"number": "4671", "label": "Galli (location)", "nature": "tiers"})
     accounting.create_account(db_session, TRESORIER, {"number": "4672", "label": "Pesenti", "nature": "tiers"})
     rows = {r["label"]: r for r in finances.get_ledger(db_session, TRESORIER)["rows"]}
-    pieces[rows["CB AMAZON"]["id"]] = {"id": 1, "title": "Facture Amazon", "kind": "Achat", "nature": "achat", "date": "2025-09-01", "person": "", "amount": 39.9}
+    pieces[rows["CB AMAZON"]["id"]] = {"id": 1, "title": "Facture Amazon", "kind": "Achat", "nature": "achat", "date": "2025-09-01", "person": "", "amount": 39.9, "number": "AC-2025-001"}
     pieces[rows["VIR GALLI"]["id"]] = {"id": 2, "title": "Honoraires Galli", "kind": "Honoraires", "nature": "honoraires", "date": "2025-08-20", "person": "Marco Galli"}
     accounting.set_lines(db_session, TRESORIER, rows["CB AMAZON"]["id"], [{"accountId": accounts["606"]["id"]}])
     accounting.set_lines(db_session, TRESORIER, rows["VIR GALLI"]["id"], [{"accountId": accounts["613"]["id"]}])
@@ -270,6 +270,10 @@ def test_a_payment_that_does_not_match_the_invoice_stays_open_on_the_third_party
     books = documents.books(db_session, TRESORIER, SEASON)
     books.pop("_cutoff")
     assert [(l.journal, l.debit, l.credit, l.letter) for l in books["401"].lines] == [("AC", 0, 5000, ""), ("BQ1", 3990, 0, "")]
+    # Colonne Pièce : le numéro donné à la validation, repris dans le FEC (PieceRef).
+    assert {l.piece for l in books["401"].lines} == {"AC-2025-001"}
+    fec = documents.fec(db_session, TRESORIER, SEASON).decode("iso8859_15")
+    assert "\tAC-2025-001\t" in fec
     assert books["401"].balance == -1010 and books["606"].lines[0].debit == 5000
     assert sum(a.debit for a in books.values()) == sum(a.credit for a in books.values())
     assert not any("Lettrage" in p for p in documents.fec_check(db_session, TRESORIER, SEASON)["problems"])

@@ -736,6 +736,12 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   validées par la clôture du … » en tête ; FEC : `ValidDate` = la date de la clôture (sinon la date
   de l'écriture). Bilan › Clôture garde la trace des clôtures rouvertes (« Clôturée le …, rouverte
   le … »). Pas de validation écriture par écriture : la saison se valide d'un bloc.
+- **Numéro de pièce (10 novembre 2026, modèle EBP : colonne Pièce)** : chaque pièce reçoit à sa
+  validation un numéro par saison et par journal, « AC-2025-001 » (AC achats, HO honoraires, NF
+  notes de frais ; saison = septembre → août, l'année du début), donné une fois, jamais repris ni
+  réattribué (`nf_notes.piece_number`). Il s'affiche sur la fiche de la pièce (« Pièce n° … »), dans la
+  colonne Pièce du Grand livre et dans `PieceRef` du FEC ; sans numéro (pièce pas encore validée), le
+  titre de la pièce. Le nom du fichier dans Docs ne change pas.
 - **Comptes de tiers des profs (10 novembre 2026)** : une facture d'honoraires va au compte 467x
   dont le libellé porte le nom du prof. Un prof qui n'en a pas encore : à sa première facture, les
   livres créent « 467n Honoraires Nom » au prochain numéro libre (jamais le compte d'un autre prof).
