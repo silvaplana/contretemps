@@ -78,6 +78,20 @@ def test_full_books_go_through_third_parties_with_letters(full, db_session):
     ]
 
 
+def test_the_treasurer_can_number_a_bank_account_like_the_previous_software(full, db_session):
+    finances, _, documents, _, _ = full
+    account = finances.get_ledger(db_session, TRESORIER)["allAccounts"][0]
+    assert account["ledgerNumber"] == "5121"
+    finances.rename_account(db_session, TRESORIER, account["id"], None, ledger_number="5123")
+    books = documents.books(db_session, TRESORIER, SEASON)
+    assert "5121" not in books and books["5123"].label == account["name"]
+    assert any(l.journal == "BQ3" for l in books["5123"].lines)  # journal = BQ + dernier chiffre
+    # Le nom ne bouge pas, la vérification des soldes de départ suit le numéro.
+    assert finances.get_ledger(db_session, TRESORIER)["allAccounts"][0]["name"] == account["name"]
+    numbers = [c["number"] for c in documents.opening(db_session, TRESORIER, SEASON)["bankCheck"]]
+    assert "5123" in numbers and "5121" not in numbers
+
+
 def test_opening_balances_entered_then_closing_carries_them(full, db_session):
     _, accounting, documents, rows, accounts = full
     opening = documents.opening(db_session, TRESORIER, SEASON)

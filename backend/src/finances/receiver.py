@@ -103,9 +103,11 @@ class FollowRequest(BaseModel):
 
 
 class RenameRequest(BaseModel):
-    """Corps de PUT /finances/accounts/{id}."""
+    """Corps de PUT /finances/accounts/{id} : nom et/ou numéro au Grand livre
+    (absent = inchangé)."""
 
-    name: str
+    name: str | None = None
+    ledgerNumber: str | None = None
 
 
 class ChartAccountRequest(BaseModel):
@@ -394,7 +396,7 @@ class FinancesReceiver:
         @app.put("/finances/accounts/{account_id}")
         def rename_account(account_id: int, data: RenameRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             try:
-                return self.client.rename_account(db, member, account_id, data.name)
+                return self.client.rename_account(db, member, account_id, data.name, data.ledgerNumber)
             except PermissionError as exc:
                 raise HTTPException(status_code=403, detail=str(exc)) from exc
             except AccountNotFoundError as exc:

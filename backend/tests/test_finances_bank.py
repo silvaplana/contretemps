@@ -112,6 +112,13 @@ def test_connexion_et_n_comptes(banque, faux, db_session):
     noms = [a["name"] for a in Finances().get_ledger(db_session, TRESORIER)["accounts"]]
     assert "Honoraires profs" in noms
 
+    # Numéro au Grand livre : 512 + chiffres, jamais celui d'un autre compte.
+    with pytest.raises(ValueError):
+        Finances().rename_account(db_session, TRESORIER, ids["Compte courant 403"], None, ledger_number="401")
+    with pytest.raises(ValueError):
+        Finances().rename_account(db_session, TRESORIER, ids["Compte courant 403"], None, ledger_number="5121")
+    assert Finances().rename_account(db_session, TRESORIER, ids["Compte courant 403"], None, ledger_number="5125")["ledgerNumber"] == "5125"
+
 
 def test_actualiser_deux_fois_n_ajoute_rien(banque, faux, db_session):
     connecter(banque, faux, db_session)

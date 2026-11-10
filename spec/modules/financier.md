@@ -130,8 +130,15 @@ Banking** (agrégateur PSD2), pour plusieurs organisations :
   affichée à côté pour distinguer deux comptes de même nature).
 - **Fiche d'un compte** (Seb, 28 octobre) : une pastille de compte choisie, le lien « Voir le
   compte » sous son nom ouvre sa fiche : nom (modifiable), IBAN s'il est relié à la banque (sinon
-  le numéro lu sur les relevés), nature, banque reliée ou non, périodes couvertes par les relevés.
-  Le clic sur une pastille garde son rôle (choisir le compte affiché).
+  le numéro lu sur les relevés), **compte au Grand livre** (modifiable), nature, banque reliée ou
+  non, périodes couvertes par les relevés. Le clic sur une pastille garde son rôle (choisir le
+  compte affiché).
+- **Compte au Grand livre** (Seb, 10 novembre 2026, simulation 2024-25) : chaque compte bancaire
+  est 512 + son rang (5121, 5122…) ; la trésorière peut lui donner le numéro de son ancien
+  logiciel (5123, 5124, 5125 chez EBP) pour que la Balance et le Grand livre se lisent pareil
+  (`fin_accounts.ledger_number`). 512 suivi de chiffres, jamais le numéro d'un autre compte ; le
+  journal de banque suit (BQ + dernier chiffre). À faire avant de saisir les soldes de départ,
+  qui portent le numéro.
 - Relevés : une ligne datée **sans montant** (CIC, livret : « NOUVEAU TAUX DU LOBNL TRIPLEX ») est
   une information, ignorée ; le solde reste vérifié au centime (28 octobre 2026).
 - **Une banque par organisation**, choisie au moment de connecter. Le serveur ne garde que ce qui

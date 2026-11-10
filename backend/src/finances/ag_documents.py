@@ -195,9 +195,9 @@ class AgDocuments:
         def account(number: str, label: str, nature: str, event: str | None = None) -> Account:
             return books.setdefault(number, Account(number, label, nature, event))
 
-        bank_numbers = {}
-        for i, a in enumerate(sorted(ledger["allAccounts"], key=lambda a: a["id"])):
-            bank_numbers[a["id"]] = (f"{BANK_BASE}{i + 1}", a["name"])
+        # Numéro du compte au Grand livre : choisi par le trésorier dans la
+        # fiche du compte, sinon 512 + rang (service.ledger_numbers).
+        bank_numbers = {a["id"]: (a["ledgerNumber"], a["name"]) for a in ledger["allAccounts"]}
 
         # Soldes de départ de la trésorerie (banque : solde de la veille de la
         # saison, ou premier solde connu moins les opérations qui y mènent ;

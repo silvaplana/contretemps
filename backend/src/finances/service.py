@@ -24,6 +24,7 @@ dans Contretemps : Docs › Saison du relevé › Financier › RELEVES BANCAIRE
 from __future__ import annotations
 
 import io
+import re
 from collections.abc import Callable
 import tarfile
 import tempfile
@@ -71,6 +72,13 @@ def _period(start: date, end: date) -> str:
     if first.year == end.year:
         return f"{_MONTHS[first.month - 1]}-{_MONTHS[end.month - 1]} {end.year}"
     return f"{_MONTHS[first.month - 1]} {first.year}-{_MONTHS[end.month - 1]} {end.year}"
+
+
+def ledger_numbers(accounts: list[FinAccount]) -> dict[int, str]:
+    """Numéro de chaque compte bancaire au Grand livre : celui choisi par le
+    trésorier, sinon 512 + rang du compte (5121, 5122…)."""
+    ranked = sorted(accounts, key=lambda a: a.id)
+    return {a.id: a.ledger_number or f"512{i + 1}" for i, a in enumerate(ranked)}
 
 
 def _check(member: Member) -> None:
@@ -385,18 +393,30 @@ class Finances:
         db.flush()
         return account, True
 
-    def rename_account(self, db: Session, member: Member, account_id: int, name: str) -> dict:
-        """Le trésorier nomme un compte (« Honoraires profs », « Livret A »)."""
+    def rename_account(self, db: Session, member: Member, account_id: int, name: str | None, ledger_number: str | None = None) -> dict:
+        """Le trésorier nomme un compte (« Honoraires profs », « Livret A »)
+        et peut lui donner son numéro au Grand livre (5123 au lieu de 5121,
+        comme dans son ancien logiciel) ; None = inchangé."""
         _check(member)
         account = db.get(FinAccount, account_id)
         if account is None or account.org_id != member.org_id:
             raise AccountNotFoundError(account_id)
-        name = name.strip()[:80]
-        if not name:
-            raise ValueError("Donnez un nom au compte.")
-        account.name = name
+        if name is not None:
+            name = name.strip()[:80]
+            if not name:
+                raise ValueError("Donnez un nom au compte.")
+            account.name = name
+        if ledger_number is not None:
+            ledger_number = ledger_number.strip()
+            if not re.fullmatch(r"512\d{1,7}", ledger_number):
+                raise ValueError("Le numéro commence par 512, suivi de chiffres (5121, 51230…).")
+            account.ledger_number = ledger_number
+            all_accounts = list(db.scalars(select(FinAccount).where(FinAccount.org_id == member.org_id)))
+            if any(n == ledger_number for aid, n in ledger_numbers(all_accounts).items() if aid != account.id):
+                db.rollback()
+                raise ValueError(f"Le numéro {ledger_number} est déjà celui d'un autre compte.")
         db.commit()
-        return {"id": account.id, "name": account.name}
+        return {"id": account.id, "name": account.name, "ledgerNumber": ledger_numbers([account])[account.id]}
 
     @staticmethod
     def _link_transfers(db: Session, org_id: int) -> None:
@@ -557,6 +577,7 @@ class Finances:
             dates += [account.bank_balance_date] if account.bank_balance_date and account.id not in last else []
             return max(dates).isoformat() if dates else None
 
+        numbers = ledger_numbers(accounts)
         # Fiche du compte (« Voir le compte ») : IBAN et banque, s'il est relié.
         connection = db.scalar(select(FinBankConnection).where(FinBankConnection.org_id == org_id))
         ibans = {b["uid"]: b.get("iban") for b in (connection.accounts or [])} if connection is not None else {}
@@ -572,6 +593,7 @@ class Finances:
                     "balance": balances[a.id] / 100 if balances.get(a.id) is not None else None,
                     "asOf": as_of(a),
                     "coverage": coverage.get(a.id, []),
+                    "ledgerNumber": numbers[a.id],
                 }
                 for a in accounts
                 if a.id in visible
@@ -579,7 +601,9 @@ class Finances:
             # Tous les comptes (pour choisir la vue), même avec account_id.
             # number : pour distinguer deux comptes de même nature au moment de
             # les nommer (deux comptes courants, Seb 28 octobre).
-            "allAccounts": [{"id": a.id, "name": a.name, "kind": a.kind, "number": a.number} for a in accounts],
+            "allAccounts": [
+                {"id": a.id, "name": a.name, "kind": a.kind, "number": a.number, "ledgerNumber": numbers[a.id]} for a in accounts
+            ],
             "total": sum(b for b in balances.values() if b is not None) / 100,
             # Toutes les catégories possibles, dans l'ordre d'affichage.
             "categories": CATEGORY_NAMES,
