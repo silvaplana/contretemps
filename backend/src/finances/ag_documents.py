@@ -86,7 +86,12 @@ FEC_COLUMNS = [
     "JournalCode", "JournalLib", "EcritureNum", "EcritureDate", "CompteNum", "CompteLib", "CompAuxNum", "CompAuxLib",
     "PieceRef", "PieceDate", "EcritureLib", "Debit", "Credit", "EcritureLet", "DateLet", "ValidDate", "Montantdevise", "Idevise",
 ]
-JOURNALS = {"AN": "A-nouveaux", "BQ": "Banque", "CA": "Caisse", "AC": "Achats", "HO": "Honoraires", "NF": "Notes de frais"}
+JOURNALS = {"AN": "A-nouveaux", "BQ": "Banque", "CA": "Caisse", "AC": "Achats", "HO": "Honoraires", "NF": "Notes de frais", "OD": "Opérations diverses"}
+# Le cadenas de la colonne Type du Grand livre (écriture validée), en SVG : pas d'emoji dans le PDF.
+_PADLOCK = (
+    "<svg width='9' height='11' viewBox='0 0 24 28' aria-label='validée'><rect x='3' y='12' width='18' height='14' rx='2' fill='#333'/>"
+    "<path d='M7 12V8a5 5 0 0 1 10 0v4' fill='none' stroke='#333' stroke-width='3'/></svg>"
+)
 
 
 @dataclass
@@ -481,6 +486,13 @@ class AgDocuments:
         if closing is None:
             return None
         return {"closedAt": closing.closed_at.isoformat(timespec="seconds"), "result": closing.result / 100}
+
+    def closing_history(self, db: Session, org_id: int, season: Season) -> list[dict]:
+        """Les clôtures rouvertes de la saison (§8.7, trace gardée) : clôturée le…, rouverte le…"""
+        rows = db.scalars(
+            select(FinClosing).where(FinClosing.org_id == org_id, FinClosing.season_id == season.id, FinClosing.reopened_at.is_not(None)).order_by(FinClosing.closed_at)
+        )
+        return [{"closedAt": c.closed_at.isoformat(timespec="seconds"), "reopenedAt": c.reopened_at.isoformat(timespec="seconds")} for c in rows]
 
     def operation_entries(self, db: Session, member: Member, operation_id: int, day: str) -> list[dict]:
         """Les écritures générées pour une opération (fiche, §8.4) : une
@@ -903,10 +915,16 @@ class AgDocuments:
         books = self.books(db, member, season)
         cutoff = books.pop("_cutoff")
         e = html.escape
+        # Colonne Type comme le modèle EBP : le cadenas = écriture validée,
+        # ce que la clôture de la saison fait de toutes ses écritures (§8.7).
+        closing = self.closing(db, member.org_id, season.id)
+        kind = _PADLOCK if closing is not None else ""
         parts = [
             f"<h1>{e(org_name)} — Grand livre {e(season.name)}</h1>",
-            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. Journaux : AN à-nouveaux, BQn banque, CA caisse, AC achats, HO honoraires, NF notes de frais.</p>",
+            f"<p class='muted'>Du {_fr(season.start_date)} au {_fr(cutoff)}. Journaux : AN à-nouveaux, BQn banque, CA caisse, AC achats, HO honoraires, NF notes de frais, OD écritures à la main.</p>",
         ]
+        if closing is not None:
+            parts.append(f"<p class='muted'>{_PADLOCK} Écritures validées par la clôture du {closing.closed_at:%d/%m/%Y} : elles ne changent plus.</p>")
         total_d = total_c = 0
         for a in sorted(books.values(), key=lambda a: a.number):
             running = 0
@@ -914,15 +932,15 @@ class AgDocuments:
             for l in a.lines:
                 running += l.debit - l.credit
                 lines.append(
-                    f"<tr><td>{_fr(l.date)}</td><td>{e(l.journal)}</td><td class='l'>{e(l.piece)}</td><td class='l'>{e(l.label)}</td><td>{e(l.letter)}</td>"
+                    f"<tr><td>{_fr(l.date)}</td><td>{e(l.journal)}</td><td>{kind}</td><td class='l'>{e(l.piece)}</td><td class='l'>{e(l.label)}</td><td>{e(l.letter)}</td>"
                     f"<td>{_c(l.debit)}</td><td>{_c(l.credit)}</td><td>{_signed(running)}</td></tr>"
                 )
             total_d, total_c = total_d + a.debit, total_c + a.credit
             parts.append(
                 f"<h2>{e(a.number)} {e(a.label)}</h2><table class='small'>"
-                "<tr><th>Date</th><th>Journal</th><th class='l'>Pièce</th><th class='l'>Libellé</th><th>Lettre</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>"
+                "<tr><th>Date</th><th>Journal</th><th>Type</th><th class='l'>Pièce</th><th class='l'>Libellé</th><th>Lettre</th><th>Débit</th><th>Crédit</th><th>Solde</th></tr>"
                 + "".join(lines)
-                + f"<tr class='total'><td></td><td></td><td></td><td class='l'>Total du compte</td><td></td><td>{_c(a.debit)}</td><td>{_c(a.credit)}</td><td>{_signed(a.balance)}</td></tr></table>"
+                + f"<tr class='total'><td></td><td></td><td></td><td></td><td class='l'>Total du compte</td><td></td><td>{_c(a.debit)}</td><td>{_c(a.credit)}</td><td>{_signed(a.balance)}</td></tr></table>"
             )
         parts.append(f"<h2>Total général : débit {_c(total_d)}, crédit {_c(total_c)}</h2>")
         return html_to_pdf("".join(parts), _CSS + " th.l, td.l { text-align: left; }")
@@ -1000,6 +1018,10 @@ class AgDocuments:
         def clean(text: str) -> str:
             return " ".join(str(text or "").replace("\t", " ").split())
 
+        # ValidDate : la date de validation de l'écriture ; chez nous la
+        # clôture de la saison (§8.7), sinon la date de l'écriture.
+        closing = self.closing(db, member.org_id, season.id)
+        valid = closing.closed_at.strftime("%Y%m%d") if closing is not None else None
         rows = ["\t".join(FEC_COLUMNS)]
         for e in self.fec_entries(db, member, season):
             journal = e["journal"]
@@ -1007,7 +1029,7 @@ class AgDocuments:
                 rows.append("\t".join([
                     journal, JOURNALS.get(journal[:2], journal), str(e["number"]), d(e["date"]), l["account"], clean(l["accountLabel"]),
                     "", "", clean(l["piece"]) or str(e["number"]), d(e["date"]), clean(l["label"]) or JOURNALS.get(journal[:2], journal),
-                    amount(l["debit"]), amount(l["credit"]), l["letter"], d(l["letterDate"]), d(e["date"]), "", "",
+                    amount(l["debit"]), amount(l["credit"]), l["letter"], d(l["letterDate"]), valid or d(e["date"]), "", "",
                 ]))
         return ("\r\n".join(rows) + "\r\n").encode("iso8859_15", errors="replace")
 

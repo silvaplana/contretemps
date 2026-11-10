@@ -113,6 +113,24 @@ def test_opening_balances_entered_then_closing_carries_them(full, db_session):
         documents.close(db_session, TRESORIER, SEASON)
     with pytest.raises(ValueError, match="clôturée"):
         documents.set_opening(db_session, TRESORIER, SEASON, [])
+    # Le cadenas (§8.7) : les lignes de la saison sont validées à l'écran, dans
+    # le Grand livre (colonne Type) et dans le FEC (ValidDate = la clôture) ;
+    # un relevé de la saison n'entre plus.
+    finances, *_ = full
+    ledger = finances.get_ledger(db_session, TRESORIER)
+    assert [(c["start"], c["end"]) for c in ledger["closings"]] == [("2025-09-01", "2026-08-31")]
+    assert accounting.operation(db_session, TRESORIER, rows["PRLV MYSTERE"]["id"])["closed"] is True
+    assert accounting.operation(db_session, TRESORIER, rows["CB BRICO"]["id"])["closed"] is False
+    text = "".join(p.get_text() for p in pymupdf.open(stream=documents.grand_livre_pdf(db_session, TRESORIER, SEASON, "Contretemps"), filetype="pdf"))
+    assert "Écritures validées par la clôture du" in text and "Type" in text
+    closed_on = documents.closing(db_session, TRESORIER.org_id, SEASON.id).closed_at.strftime("%Y%m%d")
+    fec_lines = documents.fec(db_session, TRESORIER, SEASON).decode("iso8859_15").splitlines()[1:]
+    assert fec_lines and all(line.split("\t")[15] == closed_on for line in fec_lines)
+    refused = finances.import_files(
+        db_session, TRESORIER,
+        [("c3.pdf", make_statement(COURANT, ("30/09/2025", 100000), [("05/10/2025", "CB TARDIVE", -1000, [])], "31/10/2025"))],
+    )
+    assert refused["imported"] == [] and "clôturée" in refused["errors"][0]["detail"]
     # La saison suivante part des soldes reportés : 110 porte le résultat.
     following = documents.opening(db_session, TRESORIER, NEXT)
     assert following["source"] == "cloture"
@@ -124,6 +142,9 @@ def test_opening_balances_entered_then_closing_carries_them(full, db_session):
     assert "AN" in {l.journal for l in next_books["110"].lines} and next_books["5121"].lines[-1].label == "CB BRICO"
     # Rouvrir : plus de verrou, la saison suivante repart des relevés.
     assert documents.reopen(db_session, TRESORIER, SEASON) is None
+    assert [h["closedAt"][:10] for h in documents.closing_history(db_session, TRESORIER.org_id, SEASON)] == [closed_on[:4] + "-" + closed_on[4:6] + "-" + closed_on[6:]]
+    assert finances.get_ledger(db_session, TRESORIER)["closings"] == []
+    assert accounting.operation(db_session, TRESORIER, rows["PRLV MYSTERE"]["id"])["closed"] is False
     accounting.add_cash_line(db_session, TRESORIER, {"date": "2025-10-01", "label": "Vente", "amount": 5})
     assert documents.opening(db_session, TRESORIER, NEXT)["source"] == "releves"
     with pytest.raises(ValueError, match="pas clôturée"):

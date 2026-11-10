@@ -37,7 +37,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .categories import CATEGORY_NAMES, categorize
-from .models import SOURCE_BANK, FinAccount, FinBankConnection, FinOperation, FinStatement
+from .models import SOURCE_BANK, FinAccount, FinBankConnection, FinClosing, FinOperation, FinStatement
 from .parser import ParsedStatement, StatementParseError, parse_statement
 from .ports import Member
 
@@ -251,6 +251,10 @@ class Finances:
                 report["errors"].append({"file": name, "detail": str(exc)})
                 continue
             period = f"{statement.start_date} → {statement.end_date}"
+            closed = self._closed_season(db, member.org_id, date.fromisoformat(statement.start_date), date.fromisoformat(statement.end_date))
+            if closed is not None:
+                report["errors"].append({"file": name, "detail": f"Saison clôturée le {closed.closed_at:%d/%m/%Y} : rouvrez-la (Bilan › Clôture) pour y ajouter ce relevé ({period})."})
+                continue
             account, created = self._store(
                 db, member.org_id, name, statement, chosen[choice] if isinstance(choice, int) else None
             )
@@ -308,6 +312,15 @@ class Finances:
                 if statement.account_number in a.number
             ),
             None,
+        )
+
+    @staticmethod
+    def _closed_season(db: Session, org_id: int, start: date, end: date) -> FinClosing | None:
+        """La clôture en vigueur (§8.7) qui recouvre une partie de cette période : ses lignes ne bougent plus."""
+        return db.scalar(
+            select(FinClosing).where(
+                FinClosing.org_id == org_id, FinClosing.reopened_at.is_(None), FinClosing.start_date <= end, FinClosing.end_date >= start
+            )
         )
 
     @staticmethod
@@ -572,6 +585,11 @@ class Finances:
             "categories": CATEGORY_NAMES,
             "rows": rows,
             "issues": issues,
+            # Saisons clôturées (§8.7) : leurs lignes portent le cadenas à l'écran.
+            "closings": [
+                {"start": c.start_date.isoformat(), "end": c.end_date.isoformat(), "closedAt": c.closed_at.isoformat(timespec="seconds")}
+                for c in db.scalars(select(FinClosing).where(FinClosing.org_id == org_id, FinClosing.reopened_at.is_(None)).order_by(FinClosing.start_date))
+            ],
             # Puces « Sans compte » / « Sans pièce » (spec §8.4).
             "counts": self.accounting.counts(db, org_id, rows) if self.accounting is not None else None,
         }

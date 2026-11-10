@@ -56,7 +56,7 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
       title={fiche.label}
       onClose={onClose}
       footer={
-        <button type="button" className="btn btn--primary" onClick={enregistrer} disabled={fiche.transfer || (lignes.length > 1 && ecart !== 0)}>
+        <button type="button" className="btn btn--primary" onClick={enregistrer} disabled={fiche.transfer || fiche.closed || (lignes.length > 1 && ecart !== 0)}>
           {proposeChoisi ? 'Confirmer' : 'Enregistrer'}
         </button>
       }
@@ -67,6 +67,9 @@ export default function FicheOperation({ operationId, onClose, onChange }) {
           {euros(fiche.amount)} · {fiche.bankAccount.name}
           {fiche.details ? ` · ${fiche.details.split('\n')[0]}` : ''}
         </p>
+        {fiche.closed && (
+          <p className="muted">Saison clôturée : cette transaction bancaire est validée, elle ne change plus. Pour la corriger, rouvrez la saison (Bilan › Clôture).</p>
+        )}
         {fiche.transfer ? (
           <p className="muted">Virement entre vos comptes : ni une recette ni une dépense, pas de compte du plan.</p>
         ) : (

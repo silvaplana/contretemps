@@ -195,17 +195,22 @@ class Accounting:
 
     # ----- compte sur chaque ligne -----
 
-    def check_open(self, db: Session, org_id: int, day: dt.date) -> None:
-        """Refuse un changement daté dans une saison clôturée (§8.7) tant
-        qu'elle n'est pas rouverte."""
-        closing = db.scalar(
+    @staticmethod
+    def closing_of(db: Session, org_id: int, day: dt.date) -> FinClosing | None:
+        """La clôture en vigueur de la saison qui contient ce jour (§8.7) :
+        ses lignes sont validées, le cadenas du Grand livre."""
+        return db.scalar(
             select(FinClosing).where(
                 FinClosing.org_id == org_id, FinClosing.reopened_at.is_(None),
                 FinClosing.start_date <= day, FinClosing.end_date >= day,
             )
         )
-        if closing is not None:
-            raise AccountingError("Saison clôturée : rouvrez-la (Bilan › Documents de l'AG) pour changer cette ligne.")
+
+    def check_open(self, db: Session, org_id: int, day: dt.date) -> None:
+        """Refuse un changement daté dans une saison clôturée (§8.7) tant
+        qu'elle n'est pas rouverte."""
+        if self.closing_of(db, org_id, day) is not None:
+            raise AccountingError("Saison clôturée : rouvrez-la (Bilan › Clôture) pour changer cette ligne.")
 
     def _operation(self, db: Session, org_id: int, operation_id: int) -> FinOperation:
         row = db.execute(
@@ -327,6 +332,8 @@ class Accounting:
             ],
             "proposal": self._proposal(by_id, proposal),
             "piece": pieces.get(op.id),
+            # Saison clôturée (§8.7) : la ligne est validée, elle ne change plus.
+            "closed": self.closing_of(db, member.org_id, op.date) is not None,
             "level": self.level(db, member.org_id),
             "chequeDeposit": cheque,
             "splitSuggestion": suggestion,

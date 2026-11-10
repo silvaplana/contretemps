@@ -1689,6 +1689,8 @@ class NotesDeFrais:
         operation = self.paiement_propose(db, note, self._operations_prises(db, membre.org_id))
         if operation is None or not (nom_sur or self._au_nom_de(db, note, operation)):
             return False
+        if self.ports.banque.cloturee(db, note.org_id, operation.date):
+            return False
         if note.statut == ENVOYEE:
             note.bank_operation_id = operation.id
             db.commit()
@@ -1722,6 +1724,8 @@ class NotesDeFrais:
         operation = self.ports.banque.operation(db, membre.org_id, operation_id) if self.ports.banque else None
         if operation is None:
             raise LookupError("Opération introuvable sur les comptes.")
+        if self.ports.banque.cloturee(db, membre.org_id, operation.date):
+            raise ValueError("Saison clôturée : cette transaction bancaire est validée, rouvrez la saison (Financier › Bilan › Clôture) pour y rattacher une pièce.")
         if operation.montant_centimes >= 0:
             raise ValueError("Cette transaction bancaire est un crédit : elle ne paie pas une pièce.")
         if not manuel and operation.montant_centimes != -sum(self.total(n) for n in notes) and not self._au_nom_de(db, note, operation):

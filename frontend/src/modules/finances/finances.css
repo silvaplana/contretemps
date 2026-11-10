@@ -259,6 +259,13 @@
   color: var(--text-muted);
 }
 
+.fin-comptes .history-lock {
+  display: inline-block;
+  vertical-align: -2px;
+  margin-right: 4px;
+  color: var(--text-muted);
+}
+
 .fin-comptes .history-transfer td {
   color: var(--text-muted);
   font-style: italic;

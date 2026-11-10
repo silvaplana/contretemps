@@ -177,7 +177,7 @@ function ControleFEC({ check }) {
 
 // Clôture de la saison (§8.7) : résultat dans 110, soldes reportés sur la
 // saison suivante, plus de rattachement tant qu'elle n'est pas rouverte.
-export function Cloture({ reportId, seasonName, closing, onChange, onErreur }) {
+export function Cloture({ reportId, seasonName, closing, history = [], onChange, onErreur }) {
   async function basculer() {
     if (!closing && !window.confirm(`Clôturer la saison ${seasonName} ? Plus aucune ligne ne pourra changer sans la rouvrir.`)) return
     try {
@@ -200,6 +200,11 @@ export function Cloture({ reportId, seasonName, closing, onChange, onErreur }) {
             ? `${closing.result > 0 ? 'Déficit' : 'Excédent'} de ${euros(Math.abs(closing.result))} reporté ; les soldes de départ de la saison suivante en découlent.`
             : 'après le bilan officiel : le résultat va dans le report à nouveau, la saison est verrouillée'}
         </span>
+        {history.length > 0 && (
+          <span className="fin-cp-s">
+            {history.map((h) => `Clôturée le ${dateFr(h.closedAt.slice(0, 10))}, rouverte le ${dateFr(h.reopenedAt.slice(0, 10))}`).join(' · ')}
+          </span>
+        )}
       </div>
     </div>
   )
