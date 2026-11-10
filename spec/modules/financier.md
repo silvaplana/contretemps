@@ -736,7 +736,15 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   dans l'appli, repris de la Balance de l'an dernier déposée dans Docs ; saisons suivantes : reportés
   par la clôture. **Règle (Seb, 10 novembre 2026, « que ferait un pro »)** : les soldes de départ sont
   les soldes de clôture de l'an dernier pour tous les comptes de bilan (banques, caisse, dettes 401 /
-  467x, créances 411, fonds et report) ; les relevés ne servent qu'à **vérifier** les 512x. Tant que
+  467x, créances 411, fonds et report) ; les relevés ne servent qu'à **vérifier** les 512x. **Sous
+  chaque solde qui n'est pas à zéro, une phrase dit ce qu'il veut dire** (Seb, 10/11 ; règles fixes du
+  plan, jamais un chiffre inventé) : banque / caisse « l'argent au <veille> », ✓ si égal aux relevés ;
+  401 « factures reçues, pas encore payées », avec les pièces non payées datées d'avant la saison
+  (« donnent exactement ce total » quand c'est le cas) ; 467x ce que l'on devait à la personne ; 411 ce
+  que des adhérents devaient ; 471 en orange « argent pas encore classé : un compte d'attente doit être
+  vide, demandez à la trésorière » ; 110 « les fonds de l'association ». Piste en plus : une transaction
+  bancaire des trois premiers mois du même montant (« Transaction bancaire du même montant : date,
+  libellé ») ; `GET /finances/opening-balances/{saison}` rend `earlyTransactions` et `unpaidBefore`. Tant que
   rien n'est repris, l'appli ne connaît que la trésorerie des relevés : l'écran le dit en orange
   (« les soldes de l'an dernier ne sont pas encore repris ») et l'étape 2 de Préparer reste à faire au
   niveau Complet (`toCarry`). **« Reprendre les soldes de la Balance <saison précédente> (Docs › Financier) »** (le

@@ -370,6 +370,18 @@ button.fin-cp-compte:last-child {
   text-align: right;
 }
 
+/* Sous un solde qui n'est pas à zéro : ce qu'il veut dire, ce qui l'explique (Seb, 10/11). */
+.fin-cp-solde-pourquoi {
+  margin: 4px 0 6px;
+  padding-left: 12px;
+  border-left: 3px solid var(--border);
+}
+
+.fin-cp-solde-pourquoi p {
+  margin: 2px 0;
+  font-size: 15px;
+}
+
 /* Contrôle du FEC, sous sa ligne, sur toute la largeur. */
 .fin-cp-doc .fin-cp-fec {
   grid-column: 1 / -1;

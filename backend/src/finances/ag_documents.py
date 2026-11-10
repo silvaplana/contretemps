@@ -486,7 +486,8 @@ class AgDocuments:
         ) else ("cloture" if entered is not None else "releves")
         # Trésorerie des relevés au début de la saison : sans soldes saisis,
         # c'est ce que books() prend ; sinon la référence de la vérification.
-        statements = self._statement_opening(db, member, season)
+        books = self.books(db, member, season, full=False)
+        statements = self._statement_opening(db, member, season, books)
         if entered is None:
             lines = [(n, label, nature, balance) for n, (label, nature, balance) in statements.items()]
             total = sum(l[3] for l in lines)
@@ -509,7 +510,27 @@ class AgDocuments:
             {"number": n, "label": label, "statements": balance / 100, "entered": by_number.get(n, (0, 0, 0, 0))[3] / 100}
             for n, (label, _, balance) in statements.items()
         ]
-        return {"season": season.name, "source": source, "accounts": accounts, "bankCheck": check, "closed": self.closing(db, member.org_id, season.id) is not None}
+        # De quoi expliquer un solde qui n'est pas à zéro (Seb, 10/11) : les
+        # transactions bancaires des trois premiers mois (celle du même montant
+        # règle sans doute le solde) et les pièces non payées d'avant la saison.
+        limit = date.fromisoformat(season.start_date).replace(day=1)
+        limit = date(limit.year + (limit.month + 2) // 12, (limit.month + 2) % 12 + 1, 1).isoformat()
+        early = sorted(
+            ({"date": l.date, "label": l.label, "amount": (l.debit - l.credit) / 100}
+             for a in books.values() if isinstance(a, Account) and a.nature in ("banque", "caisse")
+             for l in a.lines if l.journal != "AN" and season.start_date <= l.date < limit),
+            key=lambda t: t["date"],
+        )
+        unpaid = self.ports.unpaid(db, member.org_id) if self.ports.unpaid else []
+        unpaid_before = [
+            {"title": u["title"], "date": u["date"], "amount": u["amount"], "number": u.get("number")}
+            for u in unpaid if u.get("date") and u["date"] < season.start_date
+        ]
+        return {
+            "season": season.name, "source": source, "accounts": accounts, "bankCheck": check,
+            "closed": self.closing(db, member.org_id, season.id) is not None,
+            "earlyTransactions": early, "unpaidBefore": unpaid_before,
+        }
 
     def previous_opening(self, db: Session, member: Member, season: Season) -> dict:
         """« Reprendre les soldes de l'an dernier » (§8.7, Seb 10/11) : les
@@ -547,10 +568,10 @@ class AgDocuments:
             "bankCheck": bank_check,
         }
 
-    def _statement_opening(self, db: Session, member: Member, season: Season) -> dict[str, tuple[str, str, int]]:
+    def _statement_opening(self, db: Session, member: Member, season: Season, books: dict | None = None) -> dict[str, tuple[str, str, int]]:
         """Trésorerie des relevés et de la caisse à la veille de la saison :
         {numéro: (libellé, nature, centimes)}, comme books() sans saisie."""
-        books = self.books(db, member, season, full=False)
+        books = books if books is not None else self.books(db, member, season, full=False)
         out = {}
         for a in books.values():
             if isinstance(a, Account) and a.nature in ("banque", "caisse"):
