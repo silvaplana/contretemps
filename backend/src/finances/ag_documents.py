@@ -39,6 +39,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from .accounting import Accounting
+from .balance_reader import read_balance
 from .exports import _CSS, _eur, _fr, html_to_pdf
 from .chart import is_cheque_deposit
 from .models import EXPENSE, FULL, INCOME, THIRD_PARTY, FinAccount, FinCashLine, FinClosing, FinManualEntry, FinOpeningBalance, FinOperation, FinOperationAccount, FinSeasonNote
@@ -129,6 +130,11 @@ class AgPorts:
     # « Repartir à zéro » (§8.7) : défaire les pièces datées de la période et
     # les justifications des transactions données ; rend le nombre de pièces.
     reset_pieces: Callable[[Session, Member, str, str, list[int]], int] | None = None
+    # La Balance de la saison précédente déposée dans Docs (nom, fichier), pour
+    # en reprendre les soldes de départ (§8.7, Seb 10/11) ; None : aucune.
+    balance_file: Callable[[Session, Member, Season], tuple[str, Path] | None] | None = None
+    # Lecture de secours de cette Balance par le modèle quand ses colonnes ne se lisent pas.
+    balance_model: Callable[[Session, int, Path, str], list[tuple[str, str, int]]] | None = None
 
 
 @dataclass
@@ -505,6 +511,42 @@ class AgDocuments:
         ]
         return {"season": season.name, "source": source, "accounts": accounts, "bankCheck": check, "closed": self.closing(db, member.org_id, season.id) is not None}
 
+    def previous_opening(self, db: Session, member: Member, season: Season) -> dict:
+        """« Reprendre les soldes de l'an dernier » (§8.7, Seb 10/11) : les
+        soldes de clôture lus dans la Balance de la saison précédente déposée
+        dans Docs, proposés à l'écran avec la vérification des 512x contre les
+        relevés ; rien n'est écrit tant que le trésorier n'a pas confirmé."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        previous = self._previous(db, member.org_id, season)
+        if previous is None:
+            raise ValueError("Première saison : il n'y a pas de saison précédente à reprendre.")
+        if self.closing(db, member.org_id, previous.id) is not None:
+            raise ValueError(f"La saison {previous.name} est clôturée dans l'appli : ses soldes sont déjà reportés.")
+        found = self.ports.balance_file(db, member, previous) if self.ports.balance_file else None
+        if found is None:
+            raise ValueError(
+                f"Aucune Balance en PDF dans Docs › Financier (saison {previous.name} ou en cours) : déposez-y celle de l'an dernier, "
+                "« Balance » dans son nom."
+            )
+        name, path = found
+        lines, read_by = read_balance(path), "colonnes"
+        if not lines and self.ports.balance_model is not None:
+            lines, read_by = self.ports.balance_model(db, member.org_id, path, name), "lecture"
+        if not lines:
+            raise ValueError(f"Rien de lisible dans « {name} » : saisissez les soldes à la main d'après votre Balance.")
+        statements = self._statement_opening(db, member, season)
+        by_number = {n: (n, label, balance) for n, label, balance in lines}
+        bank_check = [
+            {"number": n, "label": label, "statements": balance / 100, "entered": by_number.get(n, (0, 0, 0))[2] / 100}
+            for n, (label, _, balance) in statements.items()
+        ]
+        return {
+            "season": season.name, "previousSeason": previous.name, "file": name, "readBy": read_by,
+            "accounts": [{"number": n, "label": label, "balance": balance / 100} for n, label, balance in lines],
+            "bankCheck": bank_check,
+        }
+
     def _statement_opening(self, db: Session, member: Member, season: Season) -> dict[str, tuple[str, str, int]]:
         """Trésorerie des relevés et de la caisse à la veille de la saison :
         {numéro: (libellé, nature, centimes)}, comme books() sans saisie."""
@@ -647,7 +689,10 @@ class AgDocuments:
         # 2. Soldes de départ.
         opening = self.opening(db, member, season)
         mismatches = [c for c in opening["bankCheck"] if round(c["statements"] - c["entered"], 2) != 0]
-        opening_step = {"source": opening["source"], "mismatches": len(mismatches), "ok": not mismatches}
+        # Au Complet, la trésorerie des relevés ne suffit pas : les soldes de l'an dernier
+        # (dettes, créances, fonds) doivent être repris ou reportés (Seb, 10/11).
+        to_carry = opening["source"] == "releves" and self.accounting.level(db, member.org_id) == FULL
+        opening_step = {"source": opening["source"], "mismatches": len(mismatches), "toCarry": to_carry, "ok": not mismatches and not to_carry}
         # 3. Un compte sur chaque transaction bancaire.
         rows = [r for r in self.ledger(db, member)["rows"] if season.start_date <= r["date"] <= season.end_date and not r.get("transfer")]
         self.accounting.annotate(db, member.org_id, rows)
@@ -670,7 +715,7 @@ class AgDocuments:
         fec = self.fec_check(db, member, season)
         controls = [
             {"label": "Relevés complets sur la saison", "ok": statements["ok"], "detail": "" if statements["ok"] else f"{missing} mois à importer"},
-            {"label": "Soldes de départ égaux aux relevés", "ok": opening_step["ok"], "detail": "" if opening_step["ok"] else f"{len(mismatches)} compte(s) en écart"},
+            {"label": "Soldes de départ repris et égaux aux relevés", "ok": opening_step["ok"], "detail": "" if opening_step["ok"] else "l'an dernier n'est pas repris" if to_carry else f"{len(mismatches)} compte(s) en écart"},
             {"label": "Un compte du plan sur chaque transaction bancaire", "ok": classify["ok"], "detail": "" if classify["ok"] else f"{classify['withoutAccount']} transaction(s) sans compte"},
             {"label": "FEC juste", "ok": fec["ok"], "detail": "" if fec["ok"] else " ".join(fec["problems"])},
         ]

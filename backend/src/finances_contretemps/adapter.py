@@ -245,6 +245,43 @@ def dossier_ag(documents):
     return trouver
 
 
+def balance_dans_docs(documents):
+    """La Balance en PDF de la saison donnée, cherchée dans Docs › <saison> ›
+    Financier et ses sous-dossiers (Bilan, AG…) : le fichier le plus récent
+    dont le nom contient « balance » (§8.7, soldes de départ)."""
+    from documents.models import KIND_FILE, KIND_FOLDER, DocNode
+    from notes_frais.ports import Membre
+    from notes_frais_contretemps.adapter import ClasseurContretemps
+
+    classeur = ClasseurContretemps(documents)
+
+    def fichiers(db: Session, racine) -> list:
+        candidats, dossiers = [], [racine.id]
+        while dossiers:
+            enfants = list(db.scalars(select(DocNode).where(DocNode.parent_id.in_(dossiers), DocNode.deleted_at.is_(None))))
+            dossiers = [n.id for n in enfants if n.kind == KIND_FOLDER]
+            candidats += [n for n in enfants if n.kind == KIND_FILE and "balance" in n.name.lower() and n.name.lower().endswith(".pdf")]
+        return candidats
+
+    def trouver(db: Session, member: Member, saison: Season) -> tuple[str, Path] | None:
+        # Le dossier d'une saison terminée est en lecture seule à l'écran : la
+        # trésorière peut aussi déposer la Balance dans le Financier de la saison en cours.
+        candidats = []
+        for period_id in (saison.id, None):
+            racine = documents.reserved_folder(db, member.org_id, "Financier", period_id)
+            candidats = fichiers(db, racine) if racine is not None else []
+            if candidats:
+                break
+        if not candidats:
+            return None
+        meilleur = max(candidats, key=lambda n: (n.updated_at or n.created_at, n.id))
+        qui = classeur._qui(Membre(person_id=member.person_id, org_id=member.org_id, nom=member.name, est_tresorier=True))
+        chemin, _, _ = documents.content(db, qui, meilleur.id)
+        return meilleur.name, chemin
+
+    return trouver
+
+
 def ranger_dans_docs(documents):
     """Range les documents de l'AG dans Docs › Privé › Saison en cours ›
     Financier › AG, par le classeur des notes de frais (même dossier Financier)."""

@@ -3,7 +3,7 @@ reprise, traitement par les trésoriers, alertes, droits — avec les vraies
 vérifications de session (`rbac_reel`)."""
 
 import io
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from conftest import entetes_session
@@ -1708,3 +1708,41 @@ def test_un_nom_a_une_lettre_pres_est_propose_jamais_decide(client, db_session, 
     lecteur.lu = dict(date="2025-07-12", montant_centimes=2400, commercant="Aqualand", emetteur_personne=False,
                       client="Guest SOPHIE_REICHARDS", description="Entrée")
     assert _etablir(client, tresorier, None)["personne_proposee"] is None
+
+
+def test_les_soldes_de_l_an_dernier_se_lisent_dans_la_balance_deposee_dans_docs(client, db_session, ecole, tmp_path):
+    """financier.md §8.7 (Seb, 10 novembre) : « Reprendre les soldes de l'an
+    dernier » trouve la Balance en PDF dans Docs › saison précédente › Financier
+    (n'importe quel sous-dossier) et en propose les soldes ; sans Balance, le
+    message dit où la déposer."""
+    from saisons.models import Saison
+    from test_finances_closing import _balance_pdf
+
+    tresorier = ecole["tresorier"]
+    org = ecole["ecole"].id
+    t = entetes_session(tresorier)
+    saisons = client.get("/finances/seasons", headers=t).json()["seasons"]
+    courante = next(s for s in saisons if s["current"])
+    debut = date.fromisoformat(courante["startDate"])
+    passee = Saison(ecole_id=org, nom="Avant", date_debut=debut.replace(year=debut.year - 1), date_fin=debut - timedelta(days=1))
+    db_session.add(passee)
+    db_session.commit()
+    reponse = client.get(f"/finances/opening-balances/{courante['id']}/previous", headers=t)
+    assert reponse.status_code == 400 and "Aucune Balance" in reponse.json()["detail"], reponse.text
+
+    # Le dossier de la saison passée est en lecture seule à l'écran : la trésorière dépose la
+    # Balance d'EBP dans Docs › saison en cours › Financier › Bilan, l'appli la trouve aussi là.
+    periode = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period" and i["period_current"])
+    financier = _enfant(client, org, tresorier, periode["id"], "Financier")
+    bilan = client.post(f"/documents/orgs/{org}/folders", json={"space": "private", "parent_id": financier["id"], "name": "Bilan"}, headers=t).json()
+    pdf = _balance_pdf(tmp_path / "Balance 01.09.24-31.08.25.pdf", [("401", "Fournisseurs", 855554, 890061, 0, 34507), ("530", "CAISSE", 207929, 101000, 106929, 0)])
+    depot = client.post(
+        f"/documents/orgs/{org}/files", data={"space": "private", "parent_id": str(bilan["id"])},
+        files={"file": ("Balance 01.09.24-31.08.25.pdf", io.BytesIO(pdf.read_bytes()), "application/pdf")}, headers=t,
+    )
+    assert depot.status_code in (200, 201), depot.text
+    lu = client.get(f"/finances/opening-balances/{courante['id']}/previous", headers=t).json()
+    assert lu["file"] == "Balance 01.09.24-31.08.25.pdf" and lu["previousSeason"] == "Avant" and lu["readBy"] == "colonnes"
+    assert lu["accounts"] == [{"number": "401", "label": "Fournisseurs", "balance": -345.07}, {"number": "530", "label": "CAISSE", "balance": 1069.29}]
+    # Un membre n'y a pas droit.
+    assert client.get(f"/finances/opening-balances/{courante['id']}/previous", headers=entetes_session(ecole["eleve"])).status_code == 403

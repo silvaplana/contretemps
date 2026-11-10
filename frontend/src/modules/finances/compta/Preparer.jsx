@@ -66,7 +66,12 @@ export default function Preparer({ season, onDocuments }) {
   const controlesKo = controls.filter((c) => !c.ok).length
   const etapes = [
     { n: 1, titre: 'Relevés complets', reste: statements.missing, detail: statements.ok ? `${statements.accounts} compte(s), tous les mois sont là` : `${statements.missing} mois à importer` },
-    { n: 2, titre: 'Soldes de départ', reste: opening.mismatches, detail: opening.ok ? SOURCES[opening.source] : `${opening.mismatches} compte(s) en écart avec les relevés` },
+    {
+      n: 2,
+      titre: 'Soldes de départ',
+      reste: opening.toCarry ? 1 : opening.mismatches,
+      detail: opening.ok ? SOURCES[opening.source] : opening.toCarry ? 'Les soldes de l’an dernier ne sont pas repris : seule la trésorerie des relevés est connue' : `${opening.mismatches} compte(s) en écart avec les relevés`,
+    },
     { n: 3, titre: 'Rapprocher et classer', reste: resteEtape3, detail: resteEtape3 === 0 ? 'Chaque transaction bancaire a sa pièce ou son compte' : `${aRapprocher} à rapprocher, ${classify.withoutAccount} sans compte` },
     {
       n: 4,
