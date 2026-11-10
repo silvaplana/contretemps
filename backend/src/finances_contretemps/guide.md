@@ -94,10 +94,10 @@ Bilan
 - Clôture : la clôture de la saison (niveau Complet), portée par le bilan le plus avancé (Officiel, Validé, dernier) :
   Clôturer / Rouvrir. Clôturer valide toutes les écritures de la saison (cadenas dans Comptes et dans la colonne Type
   du Grand livre, « Écritures validées par la clôture du … ») ; la carte garde la trace des clôtures rouvertes.
-- Clôture, carte « Repartir à zéro sur cette saison » (pour s'exercer) : la fenêtre liste « Ce qui part » (pièces de la saison, comptes donnés aux transactions bancaires, justifications, écritures à la main, soldes de départ, explications, clôture, plan comptable remis à la copie choisie) et « Ce qui reste » (relevés, transactions bancaires, comptes en banque, caisse, autres saisons) ; le nom de la saison retapé puis « Tout effacer ».
+- Clôture, carte « Repartir à zéro sur cette saison » (pour s'exercer) : la fenêtre liste ce qui part et ce qui reste, le nom de la saison retapé puis « Tout effacer ».
   Part : les pièces de la saison et leurs rapprochements (fichiers à la corbeille de Docs), les comptes confirmés sur ses
   transactions bancaires et les justifications « sans facture », les écritures à la main, les soldes de départ, la clôture ;
-  le plan comptable revient à la copie choisie (la dernière par défaut). Reste : relevés et transactions bancaires, caisse, bilans, autres saisons.
+  le plan comptable revient à la copie choisie (la dernière par défaut). Reste : relevés et transactions bancaires, comptes en banque (nom, numéro au Grand livre), caisse, bilans, autres saisons.
 
 AG
 - La liste des AG de la saison ; ⋯ › Nouvelle AG ; ⋯ › Modèle général de PowerPoint…
