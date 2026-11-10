@@ -114,6 +114,8 @@ def pieces_des_operations(db: Session, ecole_id: int) -> dict[int, dict]:
             # qu'un : il fait proposer ce compte sur la ligne de banque.
             "account": _compte_des_depenses(n),
             "amount": totaux[n.bank_operation_id] / 100,
+            # Numéro de pièce donné à la validation (colonne Pièce du Grand livre, PieceRef du FEC).
+            "number": n.piece_number,
         }
         for n in notes
     }
@@ -148,6 +150,7 @@ def pieces_a_payer(db: Session, ecole_id: int) -> list[dict]:
             "account": codes.get(depenses[0].categorie_id) if depenses else None,
             # Pour retrouver le compte 467x qui porte le nom de la personne (ag_documents._third_party).
             "person": n.supplier or n.titre,
+            "number": n.piece_number,
         })
     return out
 

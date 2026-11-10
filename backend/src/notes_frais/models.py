@@ -100,6 +100,9 @@ class NoteFrais(Base):
     deferred_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     # Écart entre la ligne du compte et la pièce, réglé : refund / pay_rest / write_off.
     gap_settlement: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    # Numéro de pièce donné à la validation (financier.md §8.7, Seb 10/11) :
+    # « AC-2025-001 », par saison et par journal (AC achats, HO honoraires, NF notes de frais).
+    piece_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # « Déjà payée » (notes-de-frais.md §7 septies, Seb 9/11) : validée, payée hors de l'appli,
     # la ligne du compte reste à trouver dans Rapprocher ; pas dans Virements.
     paid_unmatched_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

@@ -262,7 +262,8 @@ class AgDocuments:
                 continue
             bank_number, bank_name = bank_numbers[r["accountId"]]
             journal = f"BQ{bank_number[-1]}"
-            piece = r["piece"]["title"] if r.get("piece") else ""
+            # Colonne Pièce : le numéro donné à la validation (AC-2025-001), sinon le titre de la pièce.
+            piece = (r["piece"].get("number") or r["piece"]["title"]) if r.get("piece") else ""
             account(bank_number, bank_name, "banque").lines.append(
                 Line(r["date"], journal, r["label"], piece, max(cents, 0), max(-cents, 0), operation_id=r["id"])
             )
@@ -321,8 +322,9 @@ class AgDocuments:
                 else:
                     acc = account(charge.number, charge.label, charge.nature, charge.event)
                 journal = THIRD_PARTY_JOURNAL[u["nature"]]
-                acc.lines.append(Line(day, journal, u["title"], u["title"], cents, 0))
-                account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], u["title"], 0, cents))
+                ref = u.get("number") or u["title"]
+                acc.lines.append(Line(day, journal, u["title"], ref, cents, 0))
+                account(third.number, third.label, THIRD_PARTY).lines.append(Line(day, journal, u["title"], ref, 0, cents))
 
         # Complet : les écritures saisies à la main (journal OD, §8.10 étape 4).
         if full:
