@@ -346,7 +346,9 @@ la facture au **compte de charge** (menu sur place, `PATCH /notes/{id}` `categor
 sera créé à la validation), puis le paiement du tiers contre la banque (512x du compte en banque,
 `OperationBancaire.compte_plan`) ; au niveau Simple, la charge contre la banque. Le compte de
 charge proposé est celui de la dernière pièce du même fournisseur (achat) ou de la même personne,
-sinon celui lu sur la pièce : un choix déjà fait passe avant la lecture. Sur ordinateur, la revue
+sinon celui lu sur la pièce : un choix déjà fait passe avant la lecture. Les mêmes écritures, en
+lecture, sont sur la **fiche** de chaque pièce (À payer, Payé…), sauf refusée ou don (la trésorière,
+10 novembre : « je ne vois pas le compte de tiers et le compte de charge »). Sur ordinateur, la revue
 prend toute la largeur de l'écran (pas la largeur de lecture de 720 px).
 **Doublon** (Seb, 10 novembre ; onze fichiers en double dans le classeur 2024-25) : une pièce dont le
 fichier a exactement le même contenu qu'une pièce déjà enregistrée (pas refusée) le dit dans la revue et

@@ -8,7 +8,9 @@ import Icon from '../../components/Icon.jsx'
 export function Vignette({ piece, onSupprimer }) {
   const [url, setUrl] = useState(null)
   const [grand, setGrand] = useState(false)
-  const estImage = piece.type_mime?.startsWith('image/')
+  // Une image que le navigateur ne sait pas montrer (HEIC…) : l'icône, et un clic l'ouvre à part (Seb, 10/11).
+  const [illisible, setIllisible] = useState(false)
+  const estImage = piece.type_mime?.startsWith('image/') && !illisible
 
   useEffect(() => {
     let annule = false
@@ -37,7 +39,7 @@ export function Vignette({ piece, onSupprimer }) {
         onClick={() => (estImage ? setGrand(true) : url && window.open(url, '_blank'))}
         aria-label={`Voir ${piece.nom || 'le justificatif'}`}
       >
-        {estImage && url ? <img src={url} alt="" /> : <Icon name="fileCheck" size={26} />}
+        {estImage && url ? <img src={url} alt="" onError={() => setIllisible(true)} /> : <Icon name="fileCheck" size={26} />}
       </button>
       {piece.preuve ? <span className="nf-vignette__legende">{piece.legende || 'Virement'}</span> : null}
       {onSupprimer && (

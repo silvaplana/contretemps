@@ -10,7 +10,7 @@ import { DetailDepenses } from './MesNotesDeFrais.jsx'
 import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
 import Saisie from './Saisie.jsx'
-import Revue from './Revue.jsx'
+import Revue, { Ecritures } from './Revue.jsx'
 import Rapprocher from './Rapprocher.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
@@ -612,6 +612,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
           <p className="nf-total">
             Total : <strong>{api.euros(note.total_centimes)}</strong>
           </p>
+          {note.statut !== 'refusee' && !note.don && <Ecritures note={note} paiement={note.operation ?? note.paiement_propose} />}
         </>
       )}
       {note?.don ? (
