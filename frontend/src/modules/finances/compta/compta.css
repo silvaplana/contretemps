@@ -523,3 +523,10 @@ button.fin-cp-compte:last-child {
 .fin-preparer__ecriture .icon-btn {
   grid-row: 1 / span 2;
 }
+
+/* Fiche d'une transaction : le crayon ouvre le Plan comptable sans perdre la saisie (Seb, 10/11). */
+.fin-cp-champ__titre {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

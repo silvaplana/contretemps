@@ -5,6 +5,8 @@ Comptes
 - Puces des comptes : Tous, chaque compte en banque, Caisse. Puces « Sans compte (n) » et « Sans pièce (n) » : les lignes à compléter.
 - Graphique / Tableau : la courbe du solde ou la liste des lignes. Liste des catégories, recherche d'une opération.
 - Toucher une ligne : sa fiche (compte du plan proposé à confirmer, ventilation sur plusieurs comptes, pièce, écritures).
+  Le crayon à côté de « Compte » ouvre le Plan comptable à la place de la fiche pour ajouter le compte qui manque ;
+  fermer revient à la ligne, choix en cours gardés (comme le crayon « Modifier les catégories » d'une pièce).
   Un cadenas devant une ligne = sa saison est clôturée : la ligne est validée, sa fiche ne s'enregistre plus
   (rouvrir dans Bilan › Clôture), aucune pièce ne s'y rattache, aucun relevé de cette saison ne s'importe.
 - Un seul compte choisi : « Voir le compte » sous son nom (nom, IBAN, relevés).
