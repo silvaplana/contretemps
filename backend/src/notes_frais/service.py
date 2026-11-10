@@ -1041,7 +1041,12 @@ class NotesDeFrais:
                 NoteFrais.org_id == membre.org_id, NoteFrais.statut != REFUSEE, NoteFrais.don.is_(False)
             ).order_by(NoteFrais.envoyee_le)
         ))
-        candidates = [n for n in candidates if self.total(n) == preuve.montant_centimes]
+        # Une pièce qui a déjà sa preuve n'est pas celle de ce virement (Delphine De Luca : trois avis de
+        # 156 € pour deux factures de 156 €, le troisième était le solde d'une autre facture).
+        candidates = [
+            n for n in candidates
+            if self.total(n) == preuve.montant_centimes and not any(p.is_proof for d in n.depenses for p in d.pieces)
+        ]
 
         def nommee(n: NoteFrais) -> bool:
             noms = set(re.findall(r"[a-z]{3,}", _sans_accents(f"{self.beneficiaire(db, n)} {n.supplier or ''}")))
@@ -1071,7 +1076,7 @@ class NotesDeFrais:
         if note.depenses:
             depense = note.depenses[-1]
             if len(depense.pieces) < PIECES_MAX:
-                self._poser_piece(membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2])
+                self._poser_piece(membre, depense, io.BytesIO(fichier[0]), fichier[1], fichier[2], preuve=True)
         self._rib_depuis_preuve(db, membre, note, preuve)
         db.commit()
         db.refresh(note)
@@ -1330,10 +1335,12 @@ class NotesDeFrais:
             note.rib_titulaire, note.rib_iban, note.rib_bic = rib.titulaire, rib.iban, rib.bic
 
     def _poser_piece(
-        self, membre: Membre, depense: Depense, flux: BinaryIO, nom: str, type_mime: str, nom_personne: str = ""
+        self, membre: Membre, depense: Depense, flux: BinaryIO, nom: str, type_mime: str, nom_personne: str = "",
+        preuve: bool = False,
     ) -> None:
         """Le fichier attend sur le disque d'être rangé dans Docs (_ranger).
-        `nom_personne` nomme le dossier de la personne s'il n'existe pas encore."""
+        `nom_personne` nomme le dossier de la personne s'il n'existe pas encore ;
+        `preuve` : l'avis du virement qui paie la pièce, pas une facture."""
         extension = Path(nom or "").suffix.lower() or _EXTENSIONS.get(type_mime, "")
         nom_fichier = f"{depense.date.isoformat()} {depense.description or 'ticket'} {depense.id}-{len(depense.pieces) + 1}{extension}"
         dossier = self.stockage.dossier_depenses(membre.org_id, depense.person_id, nom_personne)
@@ -1341,7 +1348,7 @@ class NotesDeFrais:
         chemin, taille = self.stockage.put(membre.org_id, dossier, nom_fichier, io.BytesIO(contenu))
         depense.pieces.append(PieceJustificative(
             chemin=chemin, type_mime=type_mime, nom=(nom or "")[:200], taille=taille, ordre=len(depense.pieces),
-            sha256=hashlib.sha256(contenu).hexdigest(),
+            sha256=hashlib.sha256(contenu).hexdigest(), is_proof=preuve,
         ))
 
     def _meme_fichier(self, db: Session, note: NoteFrais) -> int | None:
@@ -1401,7 +1408,8 @@ class NotesDeFrais:
         10 novembre 2026, d'après les dossiers de la trésorière) : achat
         « 2025-02-09 Facture Amazon 39,90.jpg », honoraires « 2025-01-31
         Facture Hono Marysa Thomas.pdf », note de frais « 2025-06-12 Ticket Jacques
-        Pesenti 54,17.jpg » (un nom par ticket)."""
+        Pesenti 54,17.jpg » (un nom par ticket) ; l'avis du virement qui la
+        paie : le même nom + « - Virement »."""
         extension = Path(piece.chemin).suffix
         jour = depense.date.isoformat()
         if note.nature == ACHAT:
@@ -1410,6 +1418,8 @@ class NotesDeFrais:
             base = f"{jour} Facture Hono {personne or note.titre}"
         else:
             base = f"{jour} Ticket {personne} {montant_court(depense.montant_centimes)}"
+        if piece.is_proof:
+            base += " - Virement"
         return nom_propre(base, 100) + extension
 
     def _nom_personne(self, db: Session, note: NoteFrais) -> str:
@@ -2082,7 +2092,7 @@ class NotesDeFrais:
             "sans_justificatif": not depense.pieces,
             "lue_par_ia": depense.lue_par_ia,
             "date_approximative": depense.date_approximative,
-            "pieces": [{"id": p.id, "type_mime": p.type_mime, "nom": p.nom} for p in depense.pieces],
+            "pieces": [{"id": p.id, "type_mime": p.type_mime, "nom": p.nom, "preuve": p.is_proof} for p in depense.pieces],
         }
 
     @staticmethod

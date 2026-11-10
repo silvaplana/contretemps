@@ -692,3 +692,17 @@
   margin: 6px 0 0;
   color: #b4530a;
 }
+
+.nf-vignette__legende {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 2px 0;
+  font-size: 12px;
+  text-align: center;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 0 0 10px 10px;
+  pointer-events: none;
+}
