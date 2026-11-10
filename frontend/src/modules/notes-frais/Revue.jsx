@@ -155,12 +155,7 @@ export default function Revue({ notes: initiales, batchId, onOuvrir, onFermer, o
                             ? `paie aussi : ${possible.aussi.map((a) => a.titre).join(', ')}`
                             : `écart ${ecart(possible.ecart_centimes)}`}
                       </span>
-                      {possible.operation.sans_facture && (
-                        <span className="nf-revue__proposition">
-                          {texteSansFacture(possible.operation.sans_facture)}
-                          {possible.operation.sans_facture.avis ? ' Au « Rattacher », l’avis devient sa page Virement' : ' Au « Rattacher », la justification s’efface'}.
-                        </span>
-                      )}
+                      {possible.operation.sans_facture && <span className="badge badge--warning">{texteSansFacture(possible.operation.sans_facture)}</span>}
                     </>
                   ) : (
                     <span className="badge">aucune ligne trouvée</span>

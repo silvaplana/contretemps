@@ -462,8 +462,9 @@ liste des dépenses sans justificatif reste visible. Dans l'appli :
   dans VIREMENTS SANS FACTURE.
 - **La facture arrive plus tard** (on dépose seulement la facture) : l'appli détecte que la transaction
   du même montant est justifiée sans facture ou porte un avis et **ne rattache jamais seule**, même au
-  même nom : la revue et la suggestion de Rapprocher disent « Transaction bancaire justifiée sans
-  facture (« raison ») et porte un avis de virement : c'est elle ? » (`paiement_propose.sans_facture`,
+  même nom : la revue et la suggestion de Rapprocher la proposent avec une étiquette courte,
+  « Justifiée sans facture · avec avis de virement » (un fait ; le bouton « Rattacher » pose la
+  question, Seb 10/11 : « c'est elle ? » faisait familier) (`paiement_propose.sans_facture`,
   `paire.operation.sans_facture`). Au « Rattacher », l'avis devient la page **« - Virement »** de la
   facture (dans son dossier), le fichier quitte ACHATS / VIREMENTS SANS FACTURE, et la justification
   s'efface (`_adopter_avis`). « Repartir à zéro » sur la saison retire aussi les avis gardés.
