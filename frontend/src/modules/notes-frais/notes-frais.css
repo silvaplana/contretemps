@@ -727,3 +727,112 @@
   width: 100%;
   max-width: 720px;
 }
+
+/* Comptes ou Pièces à côté du bilan, sur ordinateur (Seb, 10/11 ; financier.md
+   §8.10) : chaque moitié défile seule, le volet a son propre fond et son
+   titre « À côté du bilan », la puce Bilan reste choisie. */
+.nf-screen--a-cote {
+  overflow: hidden;
+  padding-bottom: 16px;
+}
+
+.nf-screen > .nf-a-cote {
+  max-width: none;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.nf-a-cote__bilan {
+  flex: 1 1 0;
+  min-width: 0;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.nf-a-cote__barre {
+  flex: 0 0 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  background: var(--accent-bg);
+  border-radius: 9px;
+}
+
+.nf-a-cote__barre span {
+  width: 6px;
+  height: 56px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.nf-a-cote__volet {
+  flex: 0 0 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  margin-left: 8px;
+  border: 2px solid var(--accent);
+  border-radius: 14px;
+  background: var(--card-bg);
+  overflow: hidden;
+}
+
+.nf-a-cote__tete {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.nf-a-cote__tete h2 {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 18px;
+}
+
+.nf-a-cote__retour {
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.nf-a-cote__tailles {
+  display: flex;
+  gap: 4px;
+}
+
+.nf-a-cote__taille {
+  min-width: 48px;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.nf-a-cote__taille--on {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  font-weight: 700;
+}
+
+.nf-a-cote__corps {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+}
+
+.nf-retour-bilan {
+  align-self: flex-start;
+}

@@ -7,7 +7,7 @@ import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import AssembleeGenerale, { requestGeneralTemplate, requestNewAssembly } from '../finances/AssembleeGenerale.jsx'
 import Bilan, { requestNewReport } from '../finances/Bilan.jsx'
 import Comptes, { requestBank, requestStatementImport } from '../finances/Comptes.jsx'
-import { SOUS_ONGLET_EVENT } from '../finances/navigation.js'
+import { A_COTE_EVENT, SOUS_ONGLET_EVENT } from '../finances/navigation.js'
 import { requestStatements } from '../finances/RelevesGrille.jsx'
 import { requestPlanComptable } from '../finances/compta/PlanComptable.jsx'
 import { requestSoldesDepart } from '../finances/compta/SoldesDepart.jsx'
@@ -18,10 +18,18 @@ import Exterieurs from './Exterieurs.jsx'
 import Pieces, { AnnulerImportModal, ChoixPersonneModal } from './Pieces.jsx'
 import './notes-frais.css'
 
+// Bilan en premier, à gauche (Seb, 10/11).
+const ECRAN_LARGE = '(min-width: 900px)'
+const TAILLES = [
+  { part: 0.33, label: '⅓' },
+  { part: 0.5, label: '½' },
+  { part: 0.67, label: '⅔' },
+]
+
 const SOUS_ONGLETS = [
+  { value: 'bilan', label: 'Bilan' },
   { value: 'comptes', label: 'Comptes' },
   { value: 'pieces', label: 'Pièces' },
-  { value: 'bilan', label: 'Bilan' },
   { value: 'ag', label: 'AG' },
   { value: 'previsionnel', label: 'Prévisionnel' },
 ]
@@ -46,6 +54,47 @@ export default function Financier() {
     window.addEventListener(SOUS_ONGLET_EVENT, aller)
     return () => window.removeEventListener(SOUS_ONGLET_EVENT, aller)
   }, [])
+  // Comptes ou Pièces à côté du bilan (Seb, 10/11 ; financier.md §8.10) : sur
+  // ordinateur un volet à droite, sa largeur réglée par la barre du milieu ou
+  // ⅓ ½ ⅔ ; sur téléphone l'écran en entier, « ← Revenir au bilan ».
+  const [aCote, setACote] = useState(null) // null | 'comptes' | 'pieces'
+  const [part, setPart] = useState(0.5)
+  const [retourBilan, setRetourBilan] = useState(false)
+  const [large, setLarge] = useState(() => window.matchMedia?.(ECRAN_LARGE).matches ?? false)
+  useEffect(() => {
+    const mq = window.matchMedia?.(ECRAN_LARGE)
+    if (!mq) return undefined
+    const suivre = () => setLarge(mq.matches)
+    mq.addEventListener('change', suivre)
+    return () => mq.removeEventListener('change', suivre)
+  }, [])
+  useEffect(() => {
+    const ouvrir = (e) => {
+      if (window.matchMedia?.(ECRAN_LARGE).matches) {
+        setACote((v) => (v === e.detail ? null : e.detail))
+      } else {
+        setSousOnglet(e.detail)
+        setRetourBilan(true)
+      }
+    }
+    window.addEventListener(A_COTE_EVENT, ouvrir)
+    return () => window.removeEventListener(A_COTE_EVENT, ouvrir)
+  }, [])
+  function glisser(e) {
+    const barre = e.currentTarget
+    const zone = barre.parentElement.getBoundingClientRect()
+    barre.setPointerCapture(e.pointerId)
+    const bouger = (ev) => setPart(Math.min(0.75, Math.max(0.25, (zone.right - ev.clientX) / zone.width)))
+    const lacher = () => {
+      barre.removeEventListener('pointermove', bouger)
+      barre.removeEventListener('pointerup', lacher)
+      barre.removeEventListener('pointercancel', lacher)
+    }
+    barre.addEventListener('pointermove', bouger)
+    barre.addEventListener('pointerup', lacher)
+    barre.addEventListener('pointercancel', lacher)
+  }
+
   // Saisie pour quelqu'un (menu ⋯) : d'abord choisir la personne, puis les
   // mêmes écrans que Profil › « Mes notes de frais », à son nom.
   const [choix, setChoix] = useState(null) // null | 'depense' | 'note'
@@ -93,8 +142,16 @@ export default function Financier() {
     )
   }
 
+  const pieces = (
+    <Pieces key={piecesVersion} aFaire={aFaire} onCompteurs={setAFaire} onChange={rechargerAFaire} onPour={(personne, action) => {
+      api.agirPour(personne.person_id)
+      setPour({ personne, action })
+    }} />
+  )
+  const volet = sousOnglet === 'bilan' && aCote && large
+
   return (
-    <div className="screen nf-screen">
+    <div className={`screen nf-screen${volet ? ' nf-screen--a-cote' : ''}`}>
       <MenuEntete
         label="Actions du Financier"
         actions={
@@ -153,10 +210,57 @@ export default function Financier() {
               : o,
         )}
         value={sousOnglet}
-        onChange={setSousOnglet}
+        onChange={(v) => {
+          setSousOnglet(v)
+          setRetourBilan(false)
+        }}
         className="admin-screen__tabs"
       />
-      {sousOnglet === 'comptes' ? (
+      {retourBilan && sousOnglet !== 'bilan' && (
+        <button
+          type="button"
+          className="btn btn--secondary nf-retour-bilan"
+          onClick={() => {
+            setSousOnglet('bilan')
+            setRetourBilan(false)
+          }}
+        >
+          ← Revenir au bilan
+        </button>
+      )}
+      {volet ? (
+        <div className="nf-a-cote">
+          <div className="nf-a-cote__bilan">
+            <Bilan />
+          </div>
+          <div className="nf-a-cote__barre" role="separator" aria-label="Largeur du volet" onPointerDown={glisser}>
+            <span />
+          </div>
+          <section className="nf-a-cote__volet" style={{ width: `${part * 100}%` }} aria-label={`À côté du bilan : ${aCote === 'comptes' ? 'Comptes' : 'Pièces'}`}>
+            <div className="nf-a-cote__tete">
+              <button type="button" className="nf-a-cote__retour" onClick={() => setACote(null)} aria-label="Retour">
+                ←
+              </button>
+              <h2>
+                <span className="muted">À côté du bilan :</span> {aCote === 'comptes' ? 'Comptes' : 'Pièces'}
+              </h2>
+              <div className="nf-a-cote__tailles">
+                {TAILLES.map((t) => (
+                  <button
+                    key={t.label}
+                    type="button"
+                    className={Math.abs(part - t.part) < 0.02 ? 'nf-a-cote__taille nf-a-cote__taille--on' : 'nf-a-cote__taille'}
+                    onClick={() => setPart(t.part)}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="nf-a-cote__corps">{aCote === 'comptes' ? <Comptes onChange={rechargerAFaire} /> : pieces}</div>
+          </section>
+        </div>
+      ) : sousOnglet === 'comptes' ? (
         <Comptes onChange={rechargerAFaire} />
       ) : sousOnglet === 'bilan' ? (
         <Bilan />
@@ -165,10 +269,7 @@ export default function Financier() {
       ) : sousOnglet === 'previsionnel' ? (
         <Previsionnel />
       ) : (
-        <Pieces key={piecesVersion} aFaire={aFaire} onCompteurs={setAFaire} onChange={rechargerAFaire} onPour={(personne, action) => {
-          api.agirPour(personne.person_id)
-          setPour({ personne, action })
-        }} />
+        pieces
       )}
     </div>
   )

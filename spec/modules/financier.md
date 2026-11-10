@@ -918,6 +918,12 @@ But : produire depuis l'appli les documents de Docs › Privé › Saison › Fi
 (Balance, Grand-Livre général, Recettes-Dépenses, Rapport financier, plus Honoraires par prof et
 FEC), **dans la même forme que ceux de la trésorière** (modèles 2024-25), sans rien de magique :
 la trésorière valide point par point. Maquette : https://claude.ai/artifact/SvQXof5zZJRt51t6MLjPrY.
+**Comptes ou Pièces à côté du bilan** (Seb, 10/11 ; maquette https://claude.ai/artifact/1LscgY7ak4mT7fKHU4bD4C) :
+sous le titre « Étapes du bilan », « Voir les Comptes » et « Voir les Pièces ». Sur ordinateur (≥ 900 px),
+un volet s'ouvre à droite dans la même fenêtre, avec son propre fond, un cadre orange et le titre « À côté
+du bilan : Comptes » ; la puce Bilan reste choisie, chaque moitié défile seule. La barre orange du milieu se
+fait glisser (le volet prend de 25 à 75 % de la largeur), ou ⅓ ½ ⅔ en un geste ; ← referme le volet. Sur
+téléphone, l'écran choisi s'ouvre en entier avec « ← Revenir au bilan ».
 Contre-calcul indépendant de la saison 2025-26 depuis les relevés PDF du CIC (Balance, Synthèse,
 questions) : `appbase/bilan/contre-calcul/` dans les fichiers du projet ; il servira de comparaison
 avec ce que l'appli calcule (trésorière avec EBP, appli, contre-calcul : à trois).
