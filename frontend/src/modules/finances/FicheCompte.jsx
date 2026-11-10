@@ -25,6 +25,19 @@ export default function FicheCompte({ compte, onChanged, onClose }) {
     }
   }
 
+  // Numéro du compte au Grand livre et à la Balance (5121 par défaut) :
+  // modifiable pour garder celui de l'ancien logiciel de la trésorière.
+  async function numeroter(numero) {
+    if (!numero.trim() || numero.trim() === compte.ledgerNumber) return
+    try {
+      await api.numeroterCompte(compte.id, numero.trim())
+      setMessage('')
+      onChanged()
+    } catch (e) {
+      setMessage(e.message)
+    }
+  }
+
   const releves = compte.coverage ?? []
   return (
     <section className="fin-fiche" aria-label={`Compte ${compte.name}`}>
@@ -43,6 +56,18 @@ export default function FicheCompte({ compte, onChanged, onClose }) {
         <span>{compte.iban ? 'IBAN' : 'Numéro'}</span>
         <strong>{compte.iban ? ibanLisible(compte.iban) : compte.number}</strong>
       </p>
+      <label className="fin-fiche__ligne">
+        <span>Compte au Grand livre</span>
+        <input
+          key={compte.ledgerNumber}
+          className="fin-banque__input"
+          defaultValue={compte.ledgerNumber}
+          maxLength={10}
+          inputMode="numeric"
+          onBlur={(e) => numeroter(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+        />
+      </label>
       <p className="fin-fiche__ligne">
         <span>Nature</span>
         <strong>{NATURES[compte.kind] ?? compte.kind}</strong>

@@ -9,7 +9,7 @@ Comptes
   fermer revient à la ligne, choix en cours gardés (comme le crayon « Modifier les catégories » d'une pièce).
   Un cadenas devant une ligne = sa saison est clôturée : la ligne est validée, sa fiche ne s'enregistre plus
   (rouvrir dans Bilan › Clôture), aucune pièce ne s'y rattache, aucun relevé de cette saison ne s'importe.
-- Un seul compte choisi : « Voir le compte » sous son nom (nom, IBAN, relevés).
+- Un seul compte choisi : « Voir le compte » sous son nom (nom et compte au Grand livre modifiables, IBAN, relevés).
 - Menu ⋯ : Se connecter aux comptes en banque (une fois connectée, la banque est relue toute seule deux fois par jour ;
   Actualiser force une lecture ; une notification prévient une semaine avant la fin de l'accès, « Reconnecter la banque ») ;
   Importer des relevés ; Relevés ; Plan comptable ; Soldes de départ.

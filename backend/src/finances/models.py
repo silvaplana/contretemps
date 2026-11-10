@@ -45,6 +45,9 @@ class FinAccount(Base):
     bank_uid: Mapped[str | None] = mapped_column(String(100), nullable=True)
     bank_balance: Mapped[int | None] = mapped_column(Integer, nullable=True)
     bank_balance_date: Mapped[dt.date | None] = mapped_column(Date, nullable=True)
+    # Numéro du compte au Grand livre (512x), choisi par le trésorier pour
+    # coller à son ancien logiciel ; None = 512 + rang du compte.
+    ledger_number: Mapped[str | None] = mapped_column(String(10), nullable=True)
 
 
 class FinBankConnection(Base):

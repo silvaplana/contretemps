@@ -58,6 +58,7 @@ export const connecterBanque = (bank, psuType) => appel('/bank/connect', json('P
 export const suivreComptes = (uids) => appel('/bank/accounts', json('PUT', { uids }))
 export const actualiserBanque = () => appel('/bank/sync', { method: 'POST' })
 export const renommerCompte = (id, name) => appel(`/accounts/${id}`, json('PUT', { name }))
+export const numeroterCompte = (id, ledgerNumber) => appel(`/accounts/${id}`, json('PUT', { ledgerNumber }))
 
 export function euros(montant) {
   return `${montant.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
