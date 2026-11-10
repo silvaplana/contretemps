@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timezone
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, false
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, false, true
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -86,6 +86,9 @@ class NewsSettings(Base):
     open_on_news: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     # « En haut de chaque actu » : photos and videos above the text (Seb, 9 November).
     media_first: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=false())
+    # « Les actus sont visibles par tout le monde » (Seb, 10 November, end of
+    # the test); off, only those who publish see them.
+    visible_to_all: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
 
 
 class NewsInstagram(Base):

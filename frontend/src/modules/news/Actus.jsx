@@ -301,57 +301,7 @@ function Fil({ actus, ecoleId, mediaEnHaut }) {
   )
 }
 
-// Pendant le test (§2 bis) : l'administrateur principal coche qui voit les
-// actus. Qui publie les voit toujours.
-function Lecteurs({ ecoleId, onRetour }) {
-  const [liste, setListe] = useState(null)
-  const [erreur, setErreur] = useState('')
-  useEffect(() => {
-    api.lireLecteurs(ecoleId).then(setListe, (e) => setErreur(e.message))
-  }, [ecoleId])
-  async function basculer(lecteur) {
-    const voit = !lecteur.voit
-    setListe((l) => l.map((x) => (x.id === lecteur.id ? { ...x, voit } : x)))
-    try {
-      await api.changerLecteur(ecoleId, lecteur.id, voit)
-    } catch (e) {
-      setListe((l) => l.map((x) => (x.id === lecteur.id ? { ...x, voit: !voit } : x)))
-      setErreur(e.message)
-    }
-  }
-  return (
-    <div className="actus actus--choix">
-      <div className="actus__entete">
-        <button type="button" className="actus__retour" aria-label="Retour" onClick={onRetour}>
-          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M19 12H5M11 18l-6-6 6-6" />
-          </svg>
-        </button>
-        <strong>Qui voit les actus</strong>
-      </div>
-      <div className="choix">
-        <p className="editeur__aide">Pendant le test, seuls les membres cochés voient l’onglet Actus. Ceux qui publient le voient toujours.</p>
-        {erreur && <p className="actus__vide">{erreur}</p>}
-        {(liste ?? []).map((x) => (
-          <div key={x.id} className="atelier__option">
-            <span>{x.nom}</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={x.voit || x.publie}
-              aria-label={x.nom}
-              disabled={x.publie}
-              className="actus__interrupteur"
-              onClick={() => basculer(x)}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, choisir, ouvrirLecteurs, parametres, changerParametres }) {
+function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, parametres, changerParametres }) {
   return (
     <div className="atelier">
       {actus.map((a) => (
@@ -374,8 +324,8 @@ function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, mediaEnH
         changerOuverture={changerOuverture}
         mediaEnHaut={mediaEnHaut}
         changerMediaEnHaut={changerMediaEnHaut}
-        choisir={choisir}
-        ouvrirLecteurs={ouvrirLecteurs}
+        pourTous={pourTous}
+        changerPourTous={changerPourTous}
         ouvert={parametres}
         setOuvert={changerParametres}
       />
@@ -385,7 +335,7 @@ function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, mediaEnH
 
 // « Paramètres d'édition » : repliés par défaut, on les déroule au besoin
 // (Seb, 8 novembre) ; aussi depuis le menu ⋯ (Seb, 9 novembre).
-function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, choisir, ouvrirLecteurs, ouvert, setOuvert }) {
+function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, ouvert, setOuvert }) {
   return (
     <div className="parametres" id="actus-parametres">
       {/* Même présentation que les volets d'Admin › École (Seb, 9 novembre). */}
@@ -427,15 +377,19 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, 
             />
           </div>
           <p className="editeur__aide">Sinon, elle affiche le dernier onglet ouvert.</p>
-          {choisir && (
-            <>
-              <h4 className="section-label perso__sous-partie">Pendant le test</h4>
-              <button type="button" className="atelier__option atelier__lien" onClick={ouvrirLecteurs}>
-                <span>Qui voit les actus (pendant le test)</span>
-                <span className="choix__chevron" aria-hidden="true">›</span>
-              </button>
-            </>
-          )}
+          <h4 className="section-label perso__sous-partie">Visibilité</h4>
+          <div className="atelier__option">
+            <span>Les actus sont visibles par tout le monde</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={pourTous}
+              aria-label="Les actus sont visibles par tout le monde"
+              className="actus__interrupteur"
+              onClick={() => changerPourTous(!pourTous)}
+            />
+          </div>
+          <p className="editeur__aide">Sinon, seuls ceux qui publient les voient.</p>
           <h4 className="section-label perso__sous-partie">Instagram</h4>
           <Instagram ecoleId={ecoleId} />
         </>
@@ -928,8 +882,7 @@ export default function Actus({ ecoleId, prenom }) {
   const [atelier, setAtelier] = useState([])
   const [onglet, setOnglet] = useState(retourInstagram ? 'atelier' : 'apercu')
   const [ouverture, setOuverture] = useState(true)
-  const [choisir, setChoisir] = useState(false) // peut choisir qui voit les actus
-  const [lecteurs, setLecteurs] = useState(false) // l'écran « Qui voit les actus » est ouvert
+  const [pourTous, setPourTous] = useState(true) // « visibles par tout le monde »
   // Paramètres d'édition dépliés ; au retour d'Instagram, ils s'ouvrent sur le résultat.
   const [parametres, setParametres] = useState(Boolean(retourInstagram))
   const [edite, setEdite] = useState(null) // l'actu ouverte dans l'éditeur
@@ -946,7 +899,7 @@ export default function Actus({ ecoleId, prenom }) {
         const [a, r] = await Promise.all([api.lireAtelier(ecoleId), api.lireReglages(ecoleId)])
         setAtelier(a)
         setOuverture(r.ouvrir)
-        setChoisir(r.choisir)
+        setPourTous(r.pourTous)
       }
       setErreur('')
     } catch (e) {
@@ -1025,6 +978,17 @@ export default function Actus({ ecoleId, prenom }) {
     }
   }
 
+  async function changerPourTous(valeur) {
+    setPourTous(valeur)
+    try {
+      await api.changerPourTous(ecoleId, valeur)
+      montrer(valeur ? 'Les actus sont visibles par tout le monde' : 'Seuls ceux qui publient voient les actus')
+    } catch (e) {
+      setPourTous(!valeur)
+      montrer(e.message)
+    }
+  }
+
   const toastEl = toast && (
     <div className={`actus__toast ${edite || onglet === 'atelier' ? 'actus__toast--haut' : ''}`} role="status">
       <span>{toast.texte}</span>
@@ -1049,8 +1013,6 @@ export default function Actus({ ecoleId, prenom }) {
     // Une fois affichés, on descend jusqu'à eux.
     setTimeout(() => document.getElementById('actus-parametres')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
   }
-
-  if (lecteurs) return <Lecteurs ecoleId={ecoleId} onRetour={() => setLecteurs(false)} />
 
   if (edite) {
     return (
@@ -1093,8 +1055,8 @@ export default function Actus({ ecoleId, prenom }) {
           changerOuverture={changerOuverture}
           mediaEnHaut={fil.mediaEnHaut}
           changerMediaEnHaut={changerMediaEnHaut}
-          choisir={choisir}
-          ouvrirLecteurs={() => setLecteurs(true)}
+          pourTous={pourTous}
+          changerPourTous={changerPourTous}
           parametres={parametres}
           changerParametres={setParametres}
         />
