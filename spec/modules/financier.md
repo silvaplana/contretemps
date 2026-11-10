@@ -761,10 +761,14 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   transactions bancaires et les justifications « sans facture » ; les écritures à la main, les soldes
   de départ, les explications, la clôture ; le plan comptable revient à sa copie mémorisée s'il y en a
   une. **Reste** : relevés et transactions bancaires, caisse, bilans calculés, autres saisons.
-  **Mémoriser le plan comptable** (Comptes › ⋯ › Plan comptable) : une copie du plan
-  (`fin_settings.chart_snapshot`, remplacée à chaque fois) ; la remise reprend libellés, natures,
-  mots-clés et actif par numéro, recrée les comptes retirés, supprime les comptes ajoutés depuis
-  (inactifs s'ils ont servi ailleurs). Sans copie, le plan ne bouge pas. Pas de « tag » plus fin :
+  **Mémoriser le plan comptable** (Comptes › ⋯ › Plan comptable, Seb 10/11 midi) : chaque copie
+  entre dans un **journal** (`fin_chart_snapshots` : date, commentaire, comptes) affiché sous
+  « Copies du plan » ; le commentaire est pré-rempli avec ce qui a changé depuis la copie précédente,
+  calculé par l'appli (« 2 comptes ajoutés (6061 Eau, 6062 Gaz), 1 libellé modifié (606) » ;
+  première copie : « Plan de départ »), le trésorier le garde ou le réécrit. Repartir à zéro propose
+  la copie à remettre (la plus récente par défaut) ; la remise reprend libellés, natures, mots-clés et
+  actif par numéro, recrée les comptes retirés, supprime les comptes ajoutés depuis (inactifs s'ils
+  ont servi ailleurs). Sans copie, le plan ne bouge pas. Pas de « tag » plus fin :
   revenir à un instant précis rejouerait aussi Docs et ce que d'autres ont fait entre-temps ; la
   version honnête est une copie de la base sur le VPS.
 - **Lettrage** : lettre de trois caractères par paire facture / paiement, comme le modèle ;

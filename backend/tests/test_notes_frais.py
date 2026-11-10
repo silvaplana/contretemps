@@ -1539,7 +1539,7 @@ def test_repartir_a_zero_sur_la_saison(client, db_session, ecole, espion):
     assert client.post(url, json={"confirm": saison.name}, headers=entetes_session(admin)).status_code == 403
     assert client.post(url, json={"confirm": "2020-2021"}, headers=entetes).status_code == 400
     fait = client.post(url, json={"confirm": saison.name}, headers=entetes)
-    assert fait.status_code == 200 and fait.json() == {"pieces": 2, "lines": 1, "chart": False}
+    assert fait.status_code == 200 and fait.json() == {"pieces": 2, "lines": 1, "chart": None}
 
     for filtre in ("honoraires", "achat"):
         assert client.get(f"/notes-frais/tresorerie?filtre={filtre}", headers=entetes).json()["notes"] == []
@@ -1548,7 +1548,10 @@ def test_repartir_a_zero_sur_la_saison(client, db_session, ecole, espion):
     assert {bonne.id, sans.id, classee.id} <= {t["id"] for t in sans_piece["lignes_sans_piece"]} and sans_piece["justifiees"] == []
     # Rien à zéro une seconde fois, et la banque est toujours là.
     # Plan comptable mémorisé : la seconde fois, il est remis aussi.
-    assert client.post("/finances/chart/snapshot", headers=entetes).status_code == 200
-    assert client.get("/finances/chart", headers=entetes).json()["snapshot"]["takenAt"]
-    assert client.post(url, json={"confirm": saison.name}, headers=entetes).json() == {"pieces": 0, "lines": 0, "chart": True}
+    copie = client.post("/finances/chart/snapshot", json={"comment": "Avant l'entraînement"}, headers=entetes)
+    assert copie.status_code == 200 and copie.json()["comment"] == "Avant l'entraînement"
+    assert [s["id"] for s in client.get("/finances/chart", headers=entetes).json()["snapshots"]] == [copie.json()["id"]]
+    assert client.post(url, json={"confirm": saison.name, "snapshotId": 999}, headers=entetes).status_code == 404
+    remis = client.post(url, json={"confirm": saison.name}, headers=entetes).json()
+    assert remis["pieces"] == 0 and remis["lines"] == 0 and remis["chart"]["id"] == copie.json()["id"]
     assert client.get(f"/finances/operations/{bonne.id}", headers=entetes).status_code == 200

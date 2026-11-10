@@ -242,10 +242,21 @@ class FinSettings(Base):
 
     org_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     level: Mapped[str] = mapped_column(String(10), nullable=False, default=SIMPLE)
-    # Copie mémorisée du plan comptable (§8.7, « Mémoriser le plan comptable ») :
-    # la liste des comptes, que « Repartir à zéro » remet en place.
-    chart_snapshot: Mapped[list | None] = mapped_column(JSON, nullable=True)
-    chart_snapshot_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class FinChartSnapshot(Base):
+    """Une copie mémorisée du plan comptable (§8.7, « Mémoriser le plan
+    comptable », Seb 10/11) : la liste des comptes, la date, un commentaire
+    (pré-rempli avec ce qui a changé depuis la copie précédente). Le journal
+    de ces copies se lit dans Plan comptable ; « Repartir à zéro » en remet une."""
+
+    __tablename__ = "fin_chart_snapshots"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    taken_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_now)
+    comment: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    accounts: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
 
 class FinChartAccount(Base):

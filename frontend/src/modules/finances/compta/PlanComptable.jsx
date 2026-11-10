@@ -45,10 +45,13 @@ export default function PlanComptable({ onClose }) {
     }
   }
 
+  const [memo, setMemo] = useState(null) // null | le commentaire en cours de saisie
+
   async function memoriser() {
     try {
-      const snapshot = await api.memoriserPlan()
-      setPlan((p) => ({ ...p, snapshot }))
+      await api.memoriserPlan(memo)
+      setMemo(null)
+      charger()
     } catch (err) {
       setErreur(err.message)
     }
@@ -83,14 +86,23 @@ export default function PlanComptable({ onClose }) {
         pour une transaction bancaire ; un compte marqué « gala » entre dans le bloc du gala de la Synthèse.
       </p>
       <div className="fin-cp-champ">
-        <span>Plan mémorisé</span>
+        <span>Copies du plan</span>
         <p className="muted">
-          {plan.snapshot
-            ? `Copie du plan gardée le ${dateFr(plan.snapshot.takenAt.slice(0, 10))}. `
-            : 'Aucune copie du plan pour l’instant. '}
-          « Repartir à zéro sur cette saison » (Bilan › Clôture) remet le plan comme il était à ce moment-là.
+          Chaque copie garde le plan tel qu’il est à ce moment-là ; « Repartir à zéro sur cette saison » (Bilan › Clôture) en remet une.
         </p>
-        <button type="button" className="btn btn--secondary" onClick={memoriser}>
+        {plan.snapshots.length === 0 ? (
+          <p className="muted">Aucune copie pour l’instant.</p>
+        ) : (
+          <ul className="fin-cp-journal">
+            {plan.snapshots.map((s) => (
+              <li key={s.id}>
+                <span className="fin-cp-num">{dateFr(s.takenAt.slice(0, 10))}</span>
+                <span>{s.comment}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+        <button type="button" className="btn btn--secondary" onClick={() => setMemo(plan.snapshotSuggestion)}>
           Mémoriser le plan comptable
         </button>
       </div>
@@ -120,6 +132,27 @@ export default function PlanComptable({ onClose }) {
           Fermer
         </button>
       </div>
+      {memo !== null && (
+        <Modal
+          title="Mémoriser le plan comptable"
+          onClose={() => setMemo(null)}
+          footer={
+            <>
+              <button type="button" className="btn btn--secondary" onClick={() => setMemo(null)}>
+                Annuler
+              </button>
+              <button type="button" className="btn btn--primary" onClick={memoriser}>
+                Mémoriser
+              </button>
+            </>
+          }
+        >
+          <label className="field">
+            Où en est-on ? (pré-rempli avec ce qui a changé depuis la copie précédente)
+            <input type="text" value={memo} onChange={(e) => setMemo(e.target.value)} maxLength={200} autoFocus />
+          </label>
+        </Modal>
+      )}
       {edition && (
         <FicheCompte
           compte={edition === 'nouveau' ? null : edition}

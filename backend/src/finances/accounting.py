@@ -30,6 +30,7 @@ from .models import (
     FinClosing,
     FinOperation,
     FinOperationAccount,
+    FinChartSnapshot,
     FinSettings,
 )
 from .ports import Member
@@ -118,10 +119,10 @@ class Accounting:
                 .group_by(FinCashLine.account_id)
             ).all()
         )
-        settings = db.get(FinSettings, member.org_id)
         return {
             "level": self.level(db, member.org_id),
-            "snapshot": {"takenAt": settings.chart_snapshot_at.isoformat()} if settings is not None and settings.chart_snapshot else None,
+            "snapshots": [self._snapshot(s) for s in self._snapshots(db, member.org_id)],
+            "snapshotSuggestion": self.suggest_snapshot_comment(db, member.org_id),
             "natures": [{"id": n, "label": NATURE_LABELS[n]} for n in NATURES],
             "accounts": [
                 {**self._account(a), "used": counts.get(a.id, 0) + cash_counts.get(a.id, 0)}
@@ -196,32 +197,71 @@ class Accounting:
             db.delete(account)
         db.commit()
 
-    def memorize_chart(self, db: Session, member: Member) -> dict:
-        """« Mémoriser le plan comptable » (§8.7, Seb 10/11) : une copie du
-        plan, remplacée à chaque fois ; « Repartir à zéro » la remet en place."""
-        _check(member)
-        settings = db.get(FinSettings, member.org_id)
-        if settings is None:
-            settings = FinSettings(org_id=member.org_id, level=self.level(db, member.org_id))
-            db.add(settings)
-        settings.chart_snapshot = [
-            {k: v for k, v in self._account(a).items() if k != "id"} for a in self.accounts(db, member.org_id)
-        ]
-        settings.chart_snapshot_at = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
-        db.commit()
-        return {"takenAt": settings.chart_snapshot_at.isoformat()}
+    # ----- copies mémorisées du plan (§8.7) -----
 
-    def restore_chart(self, db: Session, member: Member) -> bool:
-        """Remet le plan comme il était à « Mémoriser » : libellés, natures,
-        mots-clés et actif repris par numéro, comptes retirés depuis recréés,
-        comptes ajoutés depuis supprimés (inactifs s'ils ont servi). Rien à
-        remettre sans copie mémorisée : rend False."""
+    def _snapshots(self, db: Session, org_id: int) -> list[FinChartSnapshot]:
+        """Les copies, la plus récente d'abord."""
+        return list(db.scalars(select(FinChartSnapshot).where(FinChartSnapshot.org_id == org_id).order_by(FinChartSnapshot.taken_at.desc(), FinChartSnapshot.id.desc())))
+
+    @staticmethod
+    def _snapshot(s: FinChartSnapshot) -> dict:
+        return {"id": s.id, "takenAt": s.taken_at.isoformat(), "comment": s.comment, "accounts": len(s.accounts)}
+
+    def _chart_as_saved(self, db: Session, org_id: int) -> list[dict]:
+        return [{k: v for k, v in self._account(a).items() if k != "id"} for a in self.accounts(db, org_id)]
+
+    def suggest_snapshot_comment(self, db: Session, org_id: int) -> str:
+        """Le commentaire pré-rempli de « Mémoriser » : ce qui a changé depuis
+        la copie précédente (comptes ajoutés, retirés, renommés, désactivés),
+        calculé, jamais inventé. Première copie : « Plan de départ »."""
+        snapshots = self._snapshots(db, org_id)
+        if not snapshots:
+            return "Plan de départ"
+        before = {a["number"]: a for a in snapshots[0].accounts}
+        now = {a["number"]: a for a in self._chart_as_saved(db, org_id)}
+        parts = []
+        added = [f"{n} {now[n]['label']}" for n in sorted(now) if n not in before]
+        removed = [f"{n} {before[n]['label']}" for n in sorted(before) if n not in now]
+        relabelled = [n for n in sorted(now) if n in before and now[n]["label"] != before[n]["label"]]
+        toggled = [n for n in sorted(now) if n in before and now[n]["active"] != before[n]["active"]]
+        for items, singular, plural in (
+            (added, "compte ajouté", "comptes ajoutés"),
+            (removed, "compte retiré", "comptes retirés"),
+            (relabelled, "libellé modifié", "libellés modifiés"),
+            (toggled, "compte activé ou désactivé", "comptes activés ou désactivés"),
+        ):
+            if items:
+                parts.append(f"{len(items)} {plural if len(items) > 1 else singular} ({', '.join(items[:4])}{'…' if len(items) > 4 else ''})")
+        return ", ".join(parts) if parts else "Aucun changement depuis la copie précédente"
+
+    def memorize_chart(self, db: Session, member: Member, comment: str = "") -> dict:
+        """« Mémoriser le plan comptable » (§8.7, Seb 10/11) : une copie de
+        plus dans le journal, avec son commentaire (sinon la suggestion) ;
+        « Repartir à zéro » en remet une."""
         _check(member)
-        settings = db.get(FinSettings, member.org_id)
-        if settings is None or not settings.chart_snapshot:
-            return False
+        comment = " ".join(comment.split())[:200] or self.suggest_snapshot_comment(db, member.org_id)
+        snapshot = FinChartSnapshot(org_id=member.org_id, comment=comment, accounts=self._chart_as_saved(db, member.org_id))
+        db.add(snapshot)
+        db.commit()
+        return self._snapshot(snapshot)
+
+    def restore_chart(self, db: Session, member: Member, snapshot_id: int | None = None) -> dict | None:
+        """Remet le plan comme à une copie (la plus récente sans `snapshot_id`) :
+        libellés, natures, mots-clés et actif repris par numéro, comptes
+        retirés depuis recréés, comptes ajoutés depuis supprimés (inactifs
+        s'ils ont servi). Rend la copie remise, None sans copie."""
+        _check(member)
+        snapshots = self._snapshots(db, member.org_id)
+        if snapshot_id is None:
+            snapshot = snapshots[0] if snapshots else None
+        else:
+            snapshot = next((s for s in snapshots if s.id == snapshot_id), None)
+            if snapshot is None:
+                raise LookupError("Copie du plan inconnue")
+        if snapshot is None:
+            return None
         existing = {a.number: a for a in self.accounts(db, member.org_id)}
-        for saved in settings.chart_snapshot:
+        for saved in snapshot.accounts:
             account = existing.pop(saved["number"], None)
             if account is None:
                 db.add(FinChartAccount(org_id=member.org_id, **saved))
@@ -234,7 +274,7 @@ class Accounting:
             else:
                 db.delete(account)
         db.commit()
-        return True
+        return self._snapshot(snapshot)
 
     def _used(self, db: Session, account_id: int) -> int:
         used = db.scalar(select(func.count()).select_from(FinOperationAccount).where(FinOperationAccount.account_id == account_id))

@@ -531,12 +531,12 @@ class AgDocuments:
         db.commit()
         return self.closing_status(db, member.org_id, season)
 
-    def reset_season(self, db: Session, member: Member, season: Season, confirm: str) -> dict:
+    def reset_season(self, db: Session, member: Member, season: Season, confirm: str, snapshot_id: int | None = None) -> dict:
         """« Repartir à zéro sur cette saison » (§8.7, Seb 10/11) : efface le
         travail du trésorier sur la saison pour la refaire (pièces, comptes
         confirmés et ventilations, justifications, écritures à la main,
-        soldes de départ, explications, clôture), remet le plan comptable
-        mémorisé s'il y en a un ; garde les relevés et transactions
+        soldes de départ, explications, clôture), remet une copie mémorisée du
+        plan comptable (la dernière, ou celle choisie) s'il y en a ; garde les relevés et transactions
         bancaires, la caisse. Irréversible : le nom de la saison doit être
         retapé."""
         if not member.is_treasurer:
@@ -559,7 +559,7 @@ class AgDocuments:
                 db.delete(row)
         db.commit()
         pieces = self.ports.reset_pieces(db, member, season.start_date, season.end_date, operation_ids) if self.ports.reset_pieces else 0
-        chart = self.accounting.restore_chart(db, member)
+        chart = self.accounting.restore_chart(db, member, snapshot_id)
         return {"pieces": pieces, "lines": lines, "chart": chart}
 
     def closing_status(self, db: Session, org_id: int, season: Season) -> dict | None:
