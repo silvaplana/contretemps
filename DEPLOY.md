@@ -131,7 +131,8 @@ Financier › Comptes › ⋯ › Se connecter aux comptes en banque (spec `modu
 1. Dans le Control Panel, ajouter l'adresse de retour de l'application :
    `https://silvaplana.cloud/contretemps/api/finances/bank/return`.
 2. Sur le VPS, la clé en **fichier**, lisible par soi seul, jamais dans le
-   dépôt ni dans une variable (le conteneur la voit en lecture seule dans
+   dépôt ni dans une variable (les conteneurs `backend` et `messagerie-relance`,
+   qui lit la banque toute seule, la voient en lecture seule dans
    `/run/secrets/`, hors de `/app/data`, donc hors des sauvegardes) :
 
    ```bash
