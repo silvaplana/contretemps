@@ -826,8 +826,8 @@ class NotesDeFrais:
             ligne["ecart_regle"] = note.gap_settlement
             chemin = self._chemin_docs(db, note)
             ligne["rangement"] = " › ".join(["Financier", *chemin]) if chemin else None
-            # Le compte de tiers des écritures de la pièce (revue de l'import, Seb 10/11).
-            tiers = self.ports.tiers and note.statut == ENVOYEE and self.ports.tiers(db, note.org_id, note.nature, self._nom_tiers(note, personnes))
+            # Le compte de tiers des écritures de la pièce (revue de l'import et fiche, Seb 10/11).
+            tiers = self.ports.tiers and note.statut != REFUSEE and self.ports.tiers(db, note.org_id, note.nature, self._nom_tiers(note, personnes))
             ligne["tiers"] = {"numero": tiers[0], "libelle": tiers[1]} if tiers else None
             resultat.append(ligne)
         return resultat

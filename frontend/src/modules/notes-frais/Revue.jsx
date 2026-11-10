@@ -276,13 +276,17 @@ function decision(n) {
 // associe une facture, un compte de charge et un compte de tiers ») : la
 // facture au compte de charge contre le tiers, puis le paiement du tiers
 // contre la banque. Sans tiers (niveau Simple), la charge contre la banque.
-function Ecritures({ note, paiement, categories, modifiable, onCompte }) {
+export function Ecritures({ note, paiement, categories, modifiable, onCompte }) {
   const categorie = note.depenses.length === 1 ? note.depenses[0].categorie : null
   const montant = api.euros(note.total_centimes || 0)
   const tiers = note.tiers ? `${note.tiers.numero || '467…'} ${note.tiers.libelle}` : null
   const banque = paiement ? `${paiement.compte_plan || '512'} ${paiement.compte || 'Banque'}` : null
-  const charge =
-    note.depenses.length === 1 ? (
+  // Sur la fiche (sans `onCompte`) le compte se lit ; à la revue il se choisit sur place.
+  const charge = note.depenses.length !== 1 ? (
+    'Comptes de charge des dépenses'
+  ) : !onCompte ? (
+    categorie ? `${categorie.code ? `${categorie.code} ` : ''}${categorie.libelle}` : 'Compte de charge à choisir'
+  ) : (
       <select
         className="field-input nf-revue__compte"
         aria-label="Compte de charge"
@@ -297,8 +301,6 @@ function Ecritures({ note, paiement, categories, modifiable, onCompte }) {
           </option>
         ))}
       </select>
-    ) : (
-      'Comptes de charge des dépenses'
     )
   return (
     <div className="nf-revue__ecritures">
