@@ -31,7 +31,8 @@ Les actus (et l'onglet Visualisation)
     la liste des membres, un interrupteur chacun pour leur montrer l'onglet Actus.
 
 Nouvelle actu / Modifier l'actu
-- Niveau : Important, Normal ou Brève. Texte.
+- Niveau : Important, Normal ou Brève. Texte (facultatif s'il y a une photo, une vidéo, un lien ou un
+  document ; obligatoire pour une Brève).
 - Boutons « Photo », « Vidéo » (100 Mo au plus), « Lien » et « Document » (pris dans Docs) sous le
   texte, sauf pour une Brève. Photo, Vidéo et Lien ajoutent (10 au plus, plusieurs photos d'un coup) ;
   les vignettes s'alignent dessous, ✕ en retire une. Toucher à nouveau Document le retire.

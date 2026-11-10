@@ -55,7 +55,7 @@ def actions(client: News) -> list[Action]:
         if item is None:
             raise Refus("actu introuvable dans cette école")
         item_id = item.id
-        apercu = item.body if len(item.body) <= 60 else item.body[:59] + "…"
+        apercu = (item.body if len(item.body) <= 60 else item.body[:59] + "…") or "sans texte"
         return Ligne(f"Supprimer l'actu « {apercu} »", lambda db: client.delete(db, client.get(db, org_id, item_id)))
 
     return [

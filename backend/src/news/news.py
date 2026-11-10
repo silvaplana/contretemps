@@ -250,6 +250,9 @@ class News:
         media = [] if level == BRIEF or media is None else media
         if level == BRIEF:
             document_id = None
+        if not body.strip() and not media and not document_id:
+            # Seb, 10 November: a photo alone is an item; nothing at all is not.
+            raise InvalidMedia("Écrivez un texte ou ajoutez une photo, une vidéo, un lien ou un document")
         self._check_media(db, org_id, media, document_id)
         old_photos = {m.photo_sha for m in item.media if m.photo_sha} if item else set()
         old_videos = {m.video_id for m in item.media if m.video_id} if item else set()
@@ -326,6 +329,7 @@ class News:
         ecole = db.get(Ecole, item.org_id)
         title = ecole.nom if ecole else "Actualités"
         body = item.body if len(item.body) <= PREVIEW_CHARS else item.body[: PREVIEW_CHARS - 1].rstrip() + "…"
+        body = body or "Nouvelle actu"  # a photo without text
         season = saison_courante_id(db, item.org_id)
         with toutes_saisons(db):
             members = list(db.scalars(select(Compte).where(Compte.ecole_id == item.org_id, Compte.saison_id == season)))

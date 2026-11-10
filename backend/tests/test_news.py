@@ -343,6 +343,22 @@ def test_lecture_d_un_lien(monkeypatch):
     assert lu == links.Preview(title="Stage d'hiver", image=b"jpeg")
 
 
+def test_photo_sans_texte(client, db_session, e, photos, monkeypatch):
+    # Seb, 10 novembre : une actu peut n'être qu'une photo ; sans rien, non.
+    from app.main import core
+
+    faux = FauxNotifications()
+    monkeypatch.setattr(core.news_client, "notifications", faux)
+    eid = e["ecole"].id
+    photo = _envoyer_photo(client, eid)
+    actu = _publier(client, eid, "  ", media=[{"photo": photo}], notify=True)
+    assert actu["body"] == "" and len(actu["media"]) == 1
+    assert core.news_client.send_notification(db_session, actu["id"]) >= 1
+    assert {corps for _, _, corps in faux.envois} == {"Nouvelle actu"}
+    for vide in ({"body": ""}, {"body": " ", "level": "brief"}, {"body": "", "level": "brief", "media": [{"photo": photo}]}):
+        assert client.post(f"/ecoles/{eid}/news", json=vide).status_code == 400, vide
+
+
 def test_video_et_document(client, db_session, e, photos):
     from app.main import core
     from documents.models import DocNode

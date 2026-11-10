@@ -124,7 +124,9 @@ De haut en bas :
 
 1. **Niveau** : trois grands boutons Important / Normal / Brève (Normal par défaut), avec une ligne
    d'explication sous le choix.
-2. **Texte** (obligatoire).
+2. **Texte** : obligatoire pour une Brève ; facultatif dès qu'il y a une photo, une vidéo, un lien ou un
+   document (Seb, 10 novembre). Sans texte, la carte n'a pas de ligne vide et la notification dit
+   « Nouvelle actu ».
 3. **Photo**, **Vidéo**, **Lien**, **Document** (cachés pour une Brève), sur deux lignes. Lien : un
    champ « Collez le lien (YouTube ou autre site) » et **Ajouter** (sans `https://`, on l'ajoute) ;
    le lien rejoint les vignettes comme une photo. Photo : galerie ou appareil photo.

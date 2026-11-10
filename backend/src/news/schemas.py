@@ -38,7 +38,7 @@ class LinkOut(BaseModel):
 
 class NewsIn(BaseModel):
     level: Literal["important", "normal", "brief"] = "normal"
-    body: str = Field(min_length=1, max_length=5000)
+    body: str = Field("", max_length=5000)  # may be empty when there is a media or a document
     on_top_until: date | None = None
     notify: bool = False
     publish: bool = True
