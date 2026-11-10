@@ -120,6 +120,7 @@ export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DE
 export const plusTard = (noteId) => appel(`/notes/${noteId}/plus-tard`, { method: 'POST' })
 // « Déjà payée » (§7 septies, Seb 9/11) : validée sans chercher le paiement, attend dans Rapprocher.
 export const dejaPayee = (noteId) => appel(`/notes/${noteId}/deja-payee`, { method: 'POST' })
+export const accepterPersonne = (noteId) => appel(`/notes/${noteId}/personne-proposee`, { method: 'POST' })
 // Transactions bancaires sans pièce (§7 octies, Seb 10/11) : justifiée sans facture, ou justificatif demandé.
 export const justifierSansFacture = (operationId, raison) => appel(`/rapprochement/transactions/${operationId}/justifier`, json('POST', { raison }))
 export const retirerJustification = (operationId) => appel(`/rapprochement/transactions/${operationId}/justifier`, { method: 'DELETE' })

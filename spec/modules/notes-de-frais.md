@@ -224,7 +224,14 @@ dit qui a **émis** la pièce (une personne, auto-entrepreneur, ou une société
 - émise par ou adressée à une **autre personne** (membre, extérieur ; ex. facture Onlineprinters au
   nom de Julia, facture de l'intervenant Thibault Taniou) → **Note de frais**, à son nom ; seul un
   prof de l'école donne des honoraires (Seb) ; personne inconnue → « Pour qui ? » avec le nom lu
-  déjà tapé, pour la retrouver ou l'ajouter en extérieur ;
+  déjà tapé, pour la retrouver ou l'ajouter en extérieur. **Nom à une lettre près** (Seb, 10 novembre
+  2026 ; « Guest SOPHIE_REICHARD » pour Sophie Reichardt) : quand le nom lu est à une lettre près
+  (manquante, en trop, changée) d'une seule personne de l'école, l'appli la **propose** à la revue
+  (`nf_notes.suggested_person_id`, « Le nom lu ressemble à Sophie Reichardt. Est-ce bien elle qui a
+  payé ? », bouton « Oui, c'est … ») et ne décide rien : la pièce reste ce qu'elle était (Achat au
+  fournisseur, ou « Pour qui ? »). Le oui (`POST …/personne-proposee`) en fait les honoraires de la
+  personne si c'est un prof qui a émis la facture, sinon sa note de frais ; Valider, Autre… ou un
+  changement de personne effacent la proposition. Deux personnes possibles : rien n'est proposé ;
 - une **société**, adressée à l'association → **Achat**, fournisseur lu.
 
 **La date** (Seb, 1er novembre) : il en faut toujours une. La date lue sur la pièce ; sinon celle écrite

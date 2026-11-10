@@ -48,6 +48,8 @@ Pièces
   import ». Une pièce qui ne porte qu'un mois (et rien dans le nom du fichier) prend le dernier jour du mois et le dit :
   « date à vérifier » dans la liste, le message sur la fiche ; corriger la date l'efface.
   Un fichier déposé deux fois : « même fichier que la pièce n° N » dans la revue et la liste ; refuser le doublon.
+  Nom lu à une lettre près d'une seule personne de l'école : la revue dit « Le nom lu ressemble à … » avec « Oui, c'est … » ;
+  sans ce oui, la pièce reste telle que proposée (l'appli ne décide jamais la personne).
   Le fichier est nommé par l'appli en entrant dans Docs, date en tête (« 2025-02-09 Facture Amazon 39,90.jpg »,
   « 2025-01-31 Facture Hono Marysa Thomas.pdf », « 2025-06-12 Ticket Jacques Pesenti 54,17.jpg ») ; corriger la pièce le renomme.
   Un avis de virement déposé par « + » n'est pas une pièce : il devient la page « Virement » de la facture qu'il paie

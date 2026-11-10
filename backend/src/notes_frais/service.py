@@ -114,6 +114,16 @@ def _sans_accents(texte: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", texte or "") if not unicodedata.combining(c)).casefold()
 
 
+def _a_une_lettre_pres(a: str, b: str) -> bool:
+    """Même mot à une lettre près (manquante, en trop ou changée), mais pas le même mot."""
+    if a == b or abs(len(a) - len(b)) > 1:
+        return False
+    if len(a) == len(b):
+        return sum(x != y for x, y in zip(a, b)) == 1
+    long, court = (a, b) if len(a) > len(b) else (b, a)
+    return any(long[:i] + long[i + 1:] == court for i in range(len(long)))
+
+
 def normaliser_iban(iban: str | None) -> str | None:
     """Sans espaces, en majuscules, clé de contrôle vérifiée (ISO 13616)."""
     texte = "".join((iban or "").split()).upper()
@@ -776,7 +786,7 @@ class NotesDeFrais:
     def notes_dicts(self, db: Session, membre: Membre, notes: list[NoteFrais]) -> list[dict]:
         """Vu du trésorier : avec les noms, et l'opération du compte qui
         semble payer la pièce (`paiement_propose`)."""
-        ids = {n.person_id for n in notes} | {i for n in notes for i in (n.traitee_par, n.prepared_by, n.payer_id) if i}
+        ids = {n.person_id for n in notes} | {i for n in notes for i in (n.traitee_par, n.prepared_by, n.payer_id, n.suggested_person_id) if i}
         personnes = self.annuaire.personnes(db, membre.org_id, ids - {PERSONNE_A_CHOISIR})
         prises = self._operations_prises(db, membre.org_id)
         resultat = []
@@ -852,7 +862,7 @@ class NotesDeFrais:
         ):
             raise PermissionError("Un autre trésorier doit valider votre propre note.")
         self._exiger_complete(note)
-        note.deferred_at = None
+        note.deferred_at, note.suggested_person_id = None, None
         if note.bank_operation_id is not None:
             # Payée selon la banque (§7 quinquies) : la validation du trésorier la passe Payé, sans rien annoncer.
             self._rattacher(db, membre, note, note.bank_operation_id, prevenir=False)
@@ -949,6 +959,11 @@ class NotesDeFrais:
             personne = self._reconnaitre_personne(db, membre, lu.get("client") or "", jour)
         else:
             personne = self._reconnaitre_personne(db, membre, f"{emetteur or ''} {lu.get('description') or ''}", jour)
+        proche = None
+        if personne is None and person_id is None and lu:
+            # Personne reconnue à une lettre près : proposée à la revue, jamais décidée (Seb, 10/11).
+            lu_sur = (lu.get("client") or "") if lu.get("emetteur_personne") is False else f"{emetteur or ''} {lu.get('description') or ''}"
+            proche = self._personne_proche(db, membre, lu_sur, jour)
         if nature is None:
             # Seb, 31/10 : seul un prof de l'école donne des honoraires ; un
             # extérieur qui facture, c'est une note de frais à son nom.
@@ -960,7 +975,7 @@ class NotesDeFrais:
                 nature = ACHAT
         note = NoteFrais(
             org_id=membre.org_id, nature=nature, statut=ENVOYEE, titre="", established_by=membre.person_id,
-            batch_id=(batch_id or "")[:36] or None,
+            batch_id=(batch_id or "")[:36] or None, suggested_person_id=proche.person_id if proche is not None else None,
         )
         if nature == ACHAT:
             note.person_id = membre.person_id
@@ -1153,6 +1168,8 @@ class NotesDeFrais:
                 note.person_id = champs["person_id"]
             note.supplier, note.titre = None, ""
             note.rib_titulaire = note.rib_iban = note.rib_bic = None
+        if champs.get("nature") is not None or champs.get("person_id") is not None:
+            note.suggested_person_id = None  # la trésorière a tranché
         if note.nature != ACHAT and champs.get("person_id") is not None and champs["person_id"] != note.person_id:
             self._personne_de_l_org(db, membre, champs["person_id"])
             note.person_id = champs["person_id"]
@@ -1302,6 +1319,32 @@ class NotesDeFrais:
             if (noms := [m for m in re.findall(r"[a-z]+", _sans_accents(p.nom)) if len(m) > 1]) and all(m in mots for m in noms)
         ]
         return trouvees[0] if len(trouvees) == 1 else None
+
+    def _personne_proche(self, db: Session, membre: Membre, texte: str, le: date | None = None) -> Personne | None:
+        """Le nom lu à une lettre près (« Guest SOPHIE_REICHARD » pour Sophie
+        Reichardt) d'une seule personne de l'école : une proposition, que la
+        trésorière confirme ou non (Seb, 10/11) ; deux candidates, aucune."""
+        mots = [m for m in re.findall(r"[a-z]+", _sans_accents(texte or "")) if len(m) > 3]
+        if not mots:
+            return None
+        proches = [
+            p for p in self.annuaire.toutes(db, membre.org_id, le)
+            if (noms := [m for m in re.findall(r"[a-z]+", _sans_accents(p.nom)) if len(m) > 1])
+            and all(any(n == m or _a_une_lettre_pres(n, m) for m in mots) for n in noms)
+        ]
+        return proches[0] if len(proches) == 1 else None
+
+    def accepter_personne(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« Oui, c'est elle » à la revue : la personne proposée devient celle de
+        la pièce ; honoraires si c'est un prof qui a émis la facture (la pièce
+        attendait « Pour qui ? »), sinon sa note de frais (elle a payé)."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if not note.suggested_person_id:
+            raise ValueError("Aucune personne n'est proposée pour cette pièce.")
+        personne = self._personne_de_l_org(db, membre, note.suggested_person_id)
+        nature = HONORAIRES if note.person_id == PERSONNE_A_CHOISIR and personne.role == "prof" else FRAIS
+        return self.corriger(db, membre, note_id, nature=nature, person_id=personne.person_id)
 
     @staticmethod
     def _titre(note: NoteFrais, jour: date) -> str:
@@ -2134,6 +2177,8 @@ class NotesDeFrais:
                 else {"person_id": note.person_id, "nom": auteur.nom if auteur else "?", "role": auteur.role if auteur else ""}
             )
             resultat["traitee_par"] = par.nom if par else None
+            proposee = personnes.get(note.suggested_person_id) if note.suggested_person_id else None
+            resultat["personne_proposee"] = {"person_id": proposee.person_id, "nom": proposee.nom, "role": proposee.role} if proposee else None
             for cle, person_id in (("prepare_par", note.prepared_by), ("payeur", note.payer_id)):
                 quelqu_un = personnes.get(person_id) if person_id else None
                 resultat[cle] = {"person_id": person_id, "nom": quelqu_un.nom} if quelqu_un else None

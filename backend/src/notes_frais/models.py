@@ -101,6 +101,9 @@ class NoteFrais(Base):
     # Même fichier qu'une pièce déjà enregistrée (§7 quinquies, Seb 10/11) : signalé à la revue, la
     # trésorière décide (refuser le doublon, ou garder les deux).
     duplicate_of_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # Nom lu à une lettre près d'une seule personne de l'école (« Reichard » / Reichardt) : l'appli
+    # propose, la trésorière confirme à la revue ; rien n'est décidé tout seul (Seb, 10/11).
+    suggested_person_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # Écart entre la ligne du compte et la pièce, réglé : refund / pay_rest / write_off.
     gap_settlement: Mapped[str | None] = mapped_column(String(20), nullable=True)
     # « Reste dû » (pay_rest) : cette pièce solde celle-là ; au Grand livre Complet elle n'est qu'un
