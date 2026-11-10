@@ -85,6 +85,9 @@ Pièces
 
 Bilan
 - Trois onglets en haut : Préparer | Documents | Clôture, et le choix de la saison.
+- Bilan est la première puce du Financier. Sous « Étapes du bilan », « Voir les Comptes » et « Voir les Pièces » :
+  sur ordinateur, un volet « À côté du bilan » s'ouvre à droite (barre orange à glisser, ou ⅓ ½ ⅔ ; ← le referme) ;
+  sur téléphone, l'écran s'ouvre en entier avec « ← Revenir au bilan ».
 - Préparer : sous le titre « Étapes du bilan 2025-2026 », les six étapes, dans l'ordre, chacune nommée par un verbe
   (ce qu'on fait) avec ce qui reste (un ✓ quand il ne reste rien) ; toucher une étape la déplie. 1. Obtenir les relevés
   (la grille des relevés) ; 2. Reprendre les soldes de départ (orange tant que l'an dernier
