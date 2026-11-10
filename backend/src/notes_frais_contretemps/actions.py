@@ -208,7 +208,7 @@ def actions(service: NotesDeFrais) -> list[Action]:
         par_id = notes(db, membre, p.note_ids)
         for i in p.note_ids:
             if par_id[i]["statut"] not in ETAPE_AVANT:
-                raise Refus(f"« {par_id[i]['titre']} » : rien à défaire" + (" (payée : la détacher d'abord de la ligne du compte)" if par_id[i]["statut"] == "remboursee" else ""))
+                raise Refus(f"« {par_id[i]['titre']} » : rien à défaire" + (" (payée : la détacher d'abord de sa transaction bancaire)" if par_id[i]["statut"] == "remboursee" else ""))
 
         def faire(db: Session) -> None:
             for i in p.note_ids:
@@ -227,7 +227,7 @@ def actions(service: NotesDeFrais) -> list[Action]:
         par_id = notes(db, membre, p.note_ids)
         for i in p.note_ids:
             if par_id[i]["statut"] == "remboursee" and par_id[i].get("operation_id"):
-                raise Refus(f"« {par_id[i]['titre']} » est payée : la détacher d'abord de la ligne du compte")
+                raise Refus(f"« {par_id[i]['titre']} » est payée : la détacher d'abord de sa transaction bancaire")
 
         def faire(db: Session) -> None:
             for i in p.note_ids:
@@ -256,11 +256,11 @@ def actions(service: NotesDeFrais) -> list[Action]:
                Paid, preparer_payees, admin_only=False),
         Action("undo_expense_notes", "Pièces",
                "Ramène des pièces une étape en arrière (Envoyé ou Préparé → À payer, À payer → À valider). Jamais une pièce "
-               "payée rattachée à la ligne du compte.",
+               "payée rattachée à sa transaction bancaire.",
                Undo, preparer_retour, admin_only=False),
         Action("cancel_expense_notes", "Pièces",
                "Annule des pièces faites par erreur, quel que soit leur état (tout défaire : justificatifs à la corbeille, une "
-               "note envoyée par un membre lui revient). Jamais une pièce payée rattachée à la ligne du compte.",
+               "note envoyée par un membre lui revient). Jamais une pièce payée rattachée à sa transaction bancaire.",
                Cancel, preparer_annulation, admin_only=False),
         Action("submit_expense_report", "Notes de frais",
                "Fait une note de frais et l'envoie aux trésoriers : une ou plusieurs dépenses, pour la personne elle-même "

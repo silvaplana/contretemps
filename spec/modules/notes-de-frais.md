@@ -240,7 +240,7 @@ date de la pièce, `financier.md` §8.3 bis) :
 - ligne **sûre** (même montant **et** nom du bénéficiaire ou du fournisseur dans le libellé) : la
   ligne est **rattachée toute seule** ; la pièce reste **À valider**, avec « Payée selon la
   banque : libellé, montant, date » dessous et un bouton « Pas cette ligne » ;
-- **montant seul** : proposée (« Vu sur le compte »), un toucher **C'est payé** ;
+- **montant seul** : proposée (« Vu sur le compte »), un toucher **Rattacher à cette transaction** (« C'est payé » jusqu'au 10 novembre) ;
 - **aucune ligne du montant exact** (Seb, 1er novembre : Thomas, deux factures de 198 € payées par
   un virement de 396 €) : l'appli montre les débits **au nom** de la personne ou du fournisseur pas
   encore rattachés, trois au plus, « Paiement possible : libellé, montant, date · écart +100,00 € »
@@ -288,7 +288,7 @@ période, le bouton **Rapprochement** produit un PDF (`GET /notes-frais/rapproch
 trésoriers) en trois parties : **pièces payées et la ligne du compte qui les paie** (date, nature,
 qui, montant, ligne, montant payé, écart quand la ligne ne fait pas le montant de ses pièces) ;
 **pièces sans paiement rattaché** (avec leur état : À valider, À trancher, À payer, Préparé, Envoyé,
-Don, Payée hors banque) ; **lignes de débit du compte sans pièce**. Un écart réglé le dit
+Don, Payée hors banque) ; **transactions bancaires de débit sans pièce**. Un écart réglé le dit
 (« remboursement attendu », « reste dû à payer », « abandonné »). Une pièce est de la période par sa
 date, sinon par celle de son paiement.
 
@@ -305,7 +305,7 @@ facture émise, reçu HelloAsso) : pas encore saisissables, la pastille le dit e
 instantané exécuté », « avis d'opération ») n'est pas une dépense. L'appli la reconnaît, retrouve
 la pièce qu'elle paie (même montant, nom du bénéficiaire ou motif), la range comme page de cette
 pièce ; si la ligne du compte est là, elle est rattachée (la preuve porte le nom) et la pièce
-attend « Valider : Payé » ; sinon **C'est payé** la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
+attend « Valider : Payé » ; sinon **Rattacher à cette transaction** (« C'est payé » avant le 10 novembre) la passe Envoyé, la banque la verra. L'IBAN lu remplit le RIB de la personne s'il
 manque. Virement vers un compte de l'association : « virement interne, rien à faire » ; sans pièce
 qui corresponde : « aucune pièce », avec la ligne du compte si elle y est déjà (« pas encore sur le
 compte » sinon) ; rien n'est créé dans les deux cas. Étude sur les 40 pièces de la saison 2025-2026 :
@@ -318,7 +318,7 @@ nom), jamais comme vérité.
 Trouvée dans les comptes ne dit **pas** la nature : avant l'appli, le trésorier payait tout « à
 l'arrache », un débit peut être un achat, une note de frais ou des honoraires. Deux questions à
 part : **déjà payé ?** (« Vu sur le compte », §8.3 bis de `financier.md` : la ligne est montrée,
-« C'est payé » la rattache, directement depuis À valider, sans mail ni notification à la
+« Rattacher à cette transaction » la rattache, directement depuis À valider, sans mail ni notification à la
 personne puisque c'était déjà réglé) et **où la ranger** (la nature).
 
 **Terminé** ouvre la **revue de l'import** (Seb, 6 novembre : en tableau, maquette
@@ -358,6 +358,51 @@ change pas de nature : on la refuse avec un motif.
 
 Pas encore : un virement plus gros qui regroupe plusieurs tickets remboursés d'un coup (proposé
 comme paiement d'une pièce) ; « Choisir dans Docs ».
+
+### 7 septies Rapprocher : enregistrer sans chercher, lettrer par lots (Seb, 9 novembre)
+
+Comme les professionnels (EBP, Pennylane, Qonto), deux gestes séparés :
+
+1. **Enregistrer la facture tout de suite**, sans chercher son paiement : date, montant, qui,
+   compte de charge (la catégorie). Si une ligne du compte est évidente (même montant, même nom),
+   elle est rattachée sans rien demander (« la banque décide », §7 quinquies) ; si une ligne est
+   seulement possible, elle est proposée. **S'il n'y a rien**, la facture est validée quand même :
+   **« Valider : À payer »** si on va la payer par Virements, ou **« Déjà payée »** si elle a été
+   réglée hors de l'appli (carte, virement d'avant l'appli, ancienne facture) : elle passe
+   **À rapprocher** (`paid_unmatched_at`), rangée à sa place dans Docs, et **sort de Virements**.
+   Dans la revue de l'import comme sur la fiche. « Plus tard » reste pour « je ne sais pas quoi
+   en faire » (À trancher) ; « Déjà payée » veut dire « je sais, le paiement se retrouvera ».
+2. **Rapprocher par lots**, quand on veut : la puce **Rapprocher** de Financier › Pièces
+   (`GET /notes-frais/rapprochement?debut&fin`, trésoriers ; période libre, du 1er septembre de la
+   saison en cours par défaut), en trois parties, la banque d'un côté et les factures de l'autre :
+   - **Suggestions de rattachement** : chaque facture sans paiement pour laquelle l'appli voit une transaction, avec
+     la raison (« même nom, même montant » = sûre ; « même montant, autre nom » ; « écart … » ;
+     « paie aussi … ») et **« Rattacher à cette transaction »** (`POST …/payee`, la règle de
+     §7 quinquies), qui lettre la facture avec sa transaction ; « Autre… » ouvre la fiche. Rien n'est lettré sans
+     un toucher ;
+   - **Factures sans paiement** : À rapprocher, À valider, À payer, Préparé, Envoyé, Don, avec leur
+     état ; un toucher ouvre la fiche (Régler l'écart, Détacher, Revenir en arrière…) ;
+   - **Transactions bancaires sans facture** : les débits de la période sans pièce rattachée, avec
+     leur compte bancaire ; leur compte du plan se choisit dans Comptes (filtre « Sans compte »), le
+     libellé suffit souvent (frais bancaires, honoraires, SACEM).
+   En bas, le nombre de pièces rattachées sur la période et le PDF de rapprochement (§7 sexies).
+   Badge bleu (banque) sur la puce = suggestions + pièces « déjà payées » sans transaction.
+
+**Vocabulaire (Seb, 10 novembre)** : à l'écran on dit **transaction bancaire** (ou transaction),
+jamais « ligne de banque » ni « ligne du compte » ; logiciel associatif, on dit **quoi à quoi** :
+le geste unitaire est « Rattacher à cette transaction » (la facture à sa transaction ; l'inverse
+« Détacher de la transaction »), et le **rapprochement** est le travail **par lots** sur la période,
+annoncé tel quel en tête de l'écran. Rattacher **lettre** la facture avec sa transaction (une lettre
+dans le Grand livre Complet, financier.md §8.7).
+
+Le **Bilan** (financier.md §8.10) rouvre ce même écran, filtré sur la saison, comme étape 3 de sa
+préparation : si le rapprochement a été fait au fil de l'année, l'étape est vide.
+
+« Rapprocher » est le travail par lots ; valider une suggestion lettre les deux écritures du compte
+de tiers (401 / 467x) dans le Grand livre Complet (financier.md §8.7).
+
+Pas encore : « Demander la facture » depuis une ligne sans pièce ; un paiement en plusieurs fois
+d'une même facture ; le virement groupé à l'émission.
 
 ### 7 bis Rangement dans Docs (Seb, 17 octobre ; simplifié le 29 octobre)
 
@@ -413,7 +458,8 @@ Tables préfixées `nf_` (module autonome) :
   (achat), `prepared_at` / `prepared_by` / `payer_id` (Faire payer par…), `transfer_sent_at` / `_by`
   (J'ai fait le virement), `bank_operation_id` (opération du compte, payé). Pièce dont la personne n'est
   pas encore reconnue : personne 0. Depuis le 31 octobre : `established_by` (le trésorier qui l'a
-  établie depuis Pièces, §7 quinquies ; null = envoyée par la personne).
+  établie depuis Pièces, §7 quinquies ; null = envoyée par la personne). Depuis le 9 novembre :
+  `paid_unmatched_at` (« Déjà payée », §7 septies : validée, ligne du compte à trouver dans Rapprocher).
 - `nf_payers` : réglage « Qui paie » (organisation, personne) ; vide = les trésoriers.
 - `nf_externals` : personnes extérieures (organisation, nom, mail, téléphone, retirée le) ; §7 quater.
 - `nf_categories` : id, organisation, libellé, ordre, active.

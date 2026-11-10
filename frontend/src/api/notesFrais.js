@@ -118,6 +118,8 @@ export const supprimerNote = (noteId) => appel(`/notes/${noteId}`, { method: 'DE
 // Revenir en arrière d'une étape (Envoyé / Préparé → À payer, À payer → À valider).
 // « Plus tard » (revue) et « Régler l'écart » d'une pièce payée (§7 quinquies, Seb 6/11).
 export const plusTard = (noteId) => appel(`/notes/${noteId}/plus-tard`, { method: 'POST' })
+// « Déjà payée » (§7 septies, Seb 9/11) : validée sans chercher le paiement, attend dans Rapprocher.
+export const dejaPayee = (noteId) => appel(`/notes/${noteId}/deja-payee`, { method: 'POST' })
 export const reglerEcart = (noteId, choix) => appel(`/notes/${noteId}/ecart`, json('POST', { choix }))
 export const revenir = (noteId) => appel(`/notes/${noteId}/revenir`, { method: 'POST' })
 
@@ -139,6 +141,13 @@ export const urlJustificatifs = (noteId) => `${BASE}/notes/${noteId}/justificati
 
 // Rapprochement des pièces (§7 sexies) : le PDF de l'état des pièces de la
 // période face aux lignes du compte, pour le validateur.
+// Puce Rapprocher (§7 septies) : le même état en JSON { paires, sans_paiement, lignes_sans_piece, rattachees }.
+export function rapprochement(debut, fin) {
+  const params = new URLSearchParams()
+  if (debut) params.set('debut', debut)
+  if (fin) params.set('fin', fin)
+  return appel(`/rapprochement?${params}`)
+}
 export function urlRapprochement(debut, fin) {
   const params = new URLSearchParams()
   if (debut) params.set('debut', debut)

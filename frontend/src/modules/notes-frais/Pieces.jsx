@@ -11,6 +11,7 @@ import { masquerIban } from './EnvoiModal.jsx'
 import Virements from './Virements.jsx'
 import Saisie from './Saisie.jsx'
 import Revue from './Revue.jsx'
+import Rapprocher from './Rapprocher.jsx'
 
 // Financier › Pièces (spec/modules/financier.md §8.3 et §8.3 bis) : notes de
 // frais, honoraires et achats sont une seule structure « dépense », avec une
@@ -20,6 +21,7 @@ import Revue from './Revue.jsx'
 // Un seul bouton principal, « + ».
 const PUCES = [
   { value: 'virements', label: 'Virements' },
+  { value: 'rapprocher', label: 'Rapprocher' }, // banque ↔ factures, par lots (§7 septies, Seb 9/11)
   { value: 'frais', label: 'Notes de frais' },
   { value: 'honoraires', label: 'Honoraires' },
   { value: 'achat', label: 'Achats' },
@@ -100,11 +102,11 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
             onClick={() => setPuce(p.value)}
           >
             {p.label}
-            <Compte n={aFaire[p.value]} banque={p.value === 'virements'} />
+            <Compte n={aFaire[p.value]} banque={p.value === 'virements' || p.value === 'rapprocher'} />
           </button>
         ))}
       </div>
-      {glisser && !ventes && puce !== 'virements' && (
+      {glisser && !ventes && puce !== 'virements' && puce !== 'rapprocher' && (
         <p className="muted">Glissez ici des factures depuis l’ordinateur : une par fichier.</p>
       )}
       {ventes ? (
@@ -114,6 +116,8 @@ export default function Pieces({ aFaire, onCompteurs, onChange, onPour }) {
         </p>
       ) : puce === 'virements' ? (
         <Virements key={version} onChange={onChange} />
+      ) : puce === 'rapprocher' ? (
+        <Rapprocher key={version} onChange={onChange} onOuvrir={(note) => setFiche({ note, apres: () => setVersion((v) => v + 1) })} />
       ) : (
         <ListeNature
           key={`${puce}-${version}`}
@@ -436,6 +440,11 @@ function NoteModal({ note, nature, onClose, onFait }) {
             Plus tard
           </button>
         )}
+        {note !== null && aValider && !note.operation && !note.paiement_propose && (
+          <button type="button" className="btn btn--secondary" disabled={enCours} onClick={() => agir(() => api.dejaPayee(note.id))}>
+            Déjà payée
+          </button>
+        )}
         <button
           type="button"
           className="btn btn--primary"
@@ -611,7 +620,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
           </span>
           {note.detachable && (
             <button type="button" className="btn btn--secondary" disabled={enCours} onClick={() => agir(() => api.detacher(note.id))}>
-              {note.statut === 'envoyee' ? 'Pas cette ligne' : 'Détacher'}
+              {note.statut === 'envoyee' ? 'Pas cette transaction' : 'Détacher de la transaction'}
             </button>
           )}
         </div>
@@ -842,7 +851,7 @@ function Ecart({ note, enCours, onChoix }) {
   }
   return (
     <div className="nf-ecart">
-      <p>Écart avec la ligne du compte : {texte}.</p>
+      <p>Écart avec la transaction bancaire : {texte}.</p>
       {ouvert ? (
         <div className="nf-choix">
           {ecart > 0 && (

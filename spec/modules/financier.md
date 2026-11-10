@@ -813,6 +813,58 @@ lui ; si elle confirme elle-même dans l'appli (compte Trésorier) ; son plan co
 qui tient la caisse ; les 717,50 € du compte d'attente ; qu'une pièce va dans la saison de sa
 facture et non de son paiement (comptabilité d'engagement).
 
+### 8.10 Le bilan en parcours (Seb, 9 novembre 2026)
+
+But : produire depuis l'appli les documents de Docs › Privé › Saison › Financier › BILAN FINANCIER
+(Balance, Grand-Livre général, Recettes-Dépenses, Rapport financier, plus Honoraires par prof et
+FEC), **dans la même forme que ceux de la trésorière** (modèles 2024-25), sans rien de magique :
+la trésorière valide point par point. Maquette : https://claude.ai/artifact/SvQXof5zZJRt51t6MLjPrY.
+Contre-calcul indépendant de la saison 2025-26 depuis les relevés PDF du CIC (Balance, Synthèse,
+questions) : `appbase/bilan/contre-calcul/` dans les fichiers du projet ; il servira de comparaison
+avec ce que l'appli calcule (trésorière avec EBP, appli, contre-calcul : à trois).
+
+**Financier › Bilan** devient trois onglets : **Préparer | Documents | Clôture**. Préparer = six
+étapes, chacune avec son compteur, dans l'ordre ; une étape montre ce qui reste, rien ne se calcule
+sans que la trésorière l'ait vu :
+
+1. **Relevés complets** : la grille des relevés (§3) toute verte pour la saison.
+2. **Soldes de départ** au premier jour de la saison (§8.7), 512x = relevés.
+3. **Rapprocher et classer** : l'écran Rapprocher de Pièces (`notes-de-frais.md` §7 septies),
+   filtré sur la saison, puis **un compte sur chaque ligne de banque** : d'abord les lignes où
+   l'appli n'est pas sûre (proposition en bleu avec « ? », une par une : choisir le compte,
+   rattacher la facture qui tranche, ou ventiler une remise de chèques entre Cours / Cotisations /
+   Gala), puis les comptes sûrs par le libellé, validés **par compte entier** (« Valider le compte
+   6226 Honoraires : 48 lignes »). Un numéro de compte ne s'affiche jamais seul : toujours avec son
+   libellé.
+4. **Hors banque** : caisse, factures non payées au 31/08 (401), cotisations dues (411), compte
+   d'attente (471) ; saisi à la main, une ligne par question.
+5. **Contrôles**, affichés en clair : solde de début + mouvements = solde de fin pour chaque compte
+   bancaire ; aucune ligne sans compte ; Balance équilibrée ; résultat de la Synthèse = résultat de
+   la Balance ; FEC juste. Un contrôle rouge bloque les documents.
+6. **Documents** (§8.6) et **comparaison avec la saison précédente** compte par compte, écart de
+   plus de 30 % marqué « ? » : la trésorière l'explique en une ligne (reprise dans le Rapport) ou
+   retourne pointer.
+
+**Documents de référence** (question de Seb) : pas « voici un PDF, refais pareil ». Ceux de l'an
+dernier servent à trois choses : le plan comptable et les regroupements (déjà installés chez
+Contretemps ; pour une autre association, l'assistant les lit et propose un plan que la trésorière
+valide), les soldes de départ, et la comparaison N-1. Les documents de l'appli restent un catalogue
+fixe paramétré par le plan ; la mise en page suit le gabarit de la trésorière (Rapport : reste à
+faire, §8.9 étape 3).
+
+**Pièces** : pas nécessaires au compte d'exploitation (la banque donne tous les montants) ; elles
+tranchent le compte des lignes ambiguës (Amazon, Temu, Carrefour), portent les factures non payées
+au 31/08 et sont à conserver. Des scans médiocres suffisent (date, montant, fournisseur). Le bilan
+n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main, signalée.
+
+Étapes de code (une PR chacune) :
+1. **Codée le 10 novembre 2026** : « Déjà payée » et la puce Rapprocher (`notes-de-frais.md`
+   §7 septies).
+2. Bilan en trois onglets, étapes 1 à 3 (Rapprocher filtré sur la saison, pointage par compte avec
+   « Valider le compte », ventilation d'une remise de chèques).
+3. Hors banque (factures non payées dans 401, 411, 471), contrôles, comparaison N-1 avec « ? ».
+4. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
+
 ## 9. Reste à faire
 
 - Connexion bancaire (§3.5) : lecture automatique deux fois par jour, rappel avant l'expiration,

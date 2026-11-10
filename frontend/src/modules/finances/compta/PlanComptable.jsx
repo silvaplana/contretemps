@@ -69,7 +69,7 @@ export default function PlanComptable({ onClose }) {
       </div>
       <p className="muted">
         Le libellé est le vôtre ; le numéro suit le plan comptable des associations. Les mots-clés font proposer le compte
-        pour une ligne de banque ; un compte marqué « gala » entre dans le bloc du gala de la Synthèse.
+        pour une transaction bancaire ; un compte marqué « gala » entre dans le bloc du gala de la Synthèse.
       </p>
       {natures.map((nature) => (
         <div key={nature.id} className="fin-cp-carte">

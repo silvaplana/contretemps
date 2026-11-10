@@ -495,7 +495,7 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
 
     puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
     assert [n["id"] for n in puce["notes"]] == [note["id"]]
-    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "virements": 0, "a_trancher": 0}
+    assert puce["compteurs"] == {"frais": 0, "honoraires": 0, "achat": 1, "virements": 0, "a_trancher": 0, "rapprocher": 0}
     # Rien des achats dans la puce Notes de frais.
     assert client.get("/notes-frais/tresorerie?filtre=frais", headers=entetes_session(tresorier)).json()["notes"] == []
 
@@ -1023,7 +1023,7 @@ def test_aide_au_virement_et_faire_payer_par_quelqu_un(client, db_session, ecole
     [ligne] = liste["virements"]
     assert ligne["beneficiaire"] == "L MARTIN" and ligne["libelle_virement"] == "Contretemps honoraires oct 2026"
     assert [p["nom"] for p in liste["payeurs"]] == ["Julia Dho"]
-    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "virements": 1, "a_trancher": 0}
+    assert _a_faire(client, tresorier) == {"frais": 0, "honoraires": 0, "achat": 0, "virements": 1, "a_trancher": 0, "rapprocher": 0}
 
     # « Qui paie » : Ana, qui a l'appli de la banque.
     reglage = client.put("/notes-frais/payeurs", json={"person_ids": [admin.id]}, headers=entetes_session(tresorier))
@@ -1306,7 +1306,7 @@ def test_rapprochement_des_pieces_en_pdf(client, db_session, ecole):
     reponse = client.get("/notes-frais/rapprochement.pdf", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes)
     assert reponse.status_code == 200 and reponse.headers["content-type"] == "application/pdf"
     texte = "".join(p.get_text() for p in pymupdf.open(stream=reponse.content, filetype="pdf"))
-    assert "Rapprochement des pièces" in texte and "1 pièce(s) rattachée(s)" in texte
+    assert "Rapprochement des pièces" in texte and "1 pièce(s) lettrée(s)" in texte
     assert "Onlineprinters" in texte and "CB ONLINEPRINTERS" in texte and "5,00 €" in texte  # l'écart
     assert "Castorama" in texte and "À valider" in texte
     assert "PRLV MYSTERE" in texte and "CB HORS PERIODE" not in texte and "CB ONLINEPRINTERS" in texte
@@ -1393,3 +1393,50 @@ def test_regler_l_ecart_d_une_piece_payee(client, db_session, ecole):
     reponse = client.get("/notes-frais/rapprochement.pdf", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes)
     texte = "".join(p.get_text() for p in pymupdf.open(stream=reponse.content, filetype="pdf"))
     assert "remboursement attendu" in texte and "reste dû à payer" in texte
+
+
+def test_deja_payee_attend_dans_rapprocher_pas_dans_virements(client, db_session, ecole):
+    """Seb, 9/11 (§7 septies) : une facture s'enregistre sans chercher son
+    paiement. « Déjà payée » la valide et la met en attente dans Rapprocher,
+    pas dans Virements ; quand la ligne arrive, l'appli propose la paire et
+    « C'est elle » la rattache."""
+    tresorier = ecole["tresorier"]
+    org = tresorier.ecole_id
+    entetes = entetes_session(tresorier)
+    temu = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Temu", date="2026-03-26", montant_centimes="30503")
+    assert temu["a_rapprocher"] is False
+
+    deja = client.post(f"/notes-frais/notes/{temu['id']}/deja-payee", headers=entetes)
+    assert deja.status_code == 200, deja.text
+    assert deja.json()["statut"] == "validee" and deja.json()["a_rapprocher"] is True
+    assert deja.json()["rangement"] == "Financier › ACHATS › 03.2026"
+    assert client.get("/notes-frais/virements", headers=entetes).json()["virements"] == []
+    compteurs = client.get("/notes-frais/tresorerie/compteurs", headers=entetes).json()
+    assert compteurs["virements"] == 0 and compteurs["rapprocher"] == 1
+
+    # Rien sur le compte : la pièce attend, sans paire.
+    etat = client.get("/notes-frais/rapprochement", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes).json()
+    assert etat["paires"] == [] and [p["etat"] for p in etat["sans_paiement"]] == ["À rapprocher"]
+
+    # La ligne arrive : même montant, même nom → paire sûre, à confirmer d'un toucher.
+    ligne = _operation(db_session, org, -30503, "2026-03-26", "PAIEMENT CB 2503 IRELAND TEMU")
+    etat = client.get("/notes-frais/rapprochement", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes).json()
+    assert etat["sans_paiement"] == [] and len(etat["paires"]) == 1
+    paire = etat["paires"][0]
+    assert paire["id"] == temu["id"] and paire["paire"]["operation"]["id"] == ligne.id and paire["paire"]["sure"] is True
+    assert [l["id"] for l in etat["lignes_sans_piece"]] == [ligne.id]
+
+    payee = client.post(f"/notes-frais/notes/{temu['id']}/payee", json={"operation_id": ligne.id}, headers=entetes)
+    assert payee.status_code == 200 and payee.json()["statut"] == "remboursee" and payee.json()["a_rapprocher"] is False
+    etat = client.get("/notes-frais/rapprochement", params={"debut": "2026-03-01", "fin": "2026-03-31"}, headers=entetes).json()
+    assert etat["paires"] == [] and etat["lignes_sans_piece"] == [] and [p["id"] for p in etat["rattachees"]] == [temu["id"]]
+    assert client.get("/notes-frais/tresorerie/compteurs", headers=entetes).json()["rapprocher"] == 0
+
+    # Revenir en arrière sur une « déjà payée » la remet À valider, sans la marque.
+    autre = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Shein", date="2026-03-10", montant_centimes="14056")
+    assert client.post(f"/notes-frais/notes/{autre['id']}/deja-payee", headers=entetes).status_code == 200
+    retour = client.post(f"/notes-frais/notes/{autre['id']}/revenir", headers=entetes).json()
+    assert retour["statut"] == "envoyee" and retour["a_rapprocher"] is False
+    # Une pièce qui a déjà sa ligne ne se marque pas « déjà payée » ; un membre n'a pas accès au rapprochement.
+    assert client.post(f"/notes-frais/notes/{temu['id']}/deja-payee", headers=entetes).status_code == 400
+    assert client.get("/notes-frais/rapprochement", headers=entetes_session(ecole["eleve"])).status_code == 403

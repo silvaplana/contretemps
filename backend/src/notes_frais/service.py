@@ -703,6 +703,25 @@ class NotesDeFrais:
         self._reranger(db, membre, note)
         return note
 
+    def deja_payee(self, db: Session, membre: Membre, note_id: int) -> NoteFrais:
+        """« Déjà payée » (§7 septies, Seb 9/11) : la pièce est enregistrée et
+        validée sans chercher la ligne du compte ; elle attend dans Rapprocher
+        (pas dans Virements) jusqu'à ce qu'une ligne lui soit rattachée."""
+        self._exiger_tresorier(membre)
+        note = self._note(db, membre.org_id, note_id)
+        if note.statut not in (ENVOYEE, VALIDEE) or note.don:
+            raise ValueError("Cette pièce n'est pas à valider ni à payer.")
+        if note.bank_operation_id is not None:
+            raise ValueError("Cette pièce a déjà sa transaction bancaire.")
+        if note.statut == ENVOYEE:
+            self._exiger_complete(note)
+            note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
+        note.statut, note.deferred_at, note.paid_unmatched_at = VALIDEE, None, _maintenant()
+        db.commit()
+        db.refresh(note)
+        self._reranger(db, membre, note)
+        return note
+
     def regler_ecart(self, db: Session, membre: Membre, note_id: int, choix: str) -> NoteFrais:
         """Une pièce payée par une ligne qui ne fait pas son montant (Seb, 6/11) :
         « il nous rembourse » (refund, on attend la ligne en sens inverse),
@@ -715,7 +734,7 @@ class NotesDeFrais:
         note = self._note(db, membre.org_id, note_id)
         ecart = self._ecart(db, note)
         if not ecart:
-            raise ValueError("Cette pièce n'a pas d'écart avec la ligne du compte.")
+            raise ValueError("Cette pièce n'a pas d'écart avec la transaction bancaire.")
         if choix == "refund" and ecart < 0 or choix == "pay_rest" and ecart > 0:
             raise ValueError("Ce choix ne va pas avec le sens de l'écart.")
         if choix == "pay_rest":
@@ -768,6 +787,7 @@ class NotesDeFrais:
             # Saison de la pièce clôturée au Financier : rangée dans la saison en cours.
             ligne["saison_cloturee"] = bool(self.ports.banque) and self.ports.banque.cloturee(db, note.org_id, self._date_docs(note))
             ligne["plus_tard"] = note.deferred_at is not None
+            ligne["a_rapprocher"] = note.paid_unmatched_at is not None and note.statut == VALIDEE
             ligne["ecart_centimes"] = self._ecart(db, note)
             ligne["ecart_regle"] = note.gap_settlement
             chemin = self._chemin_docs(db, note)
@@ -799,10 +819,21 @@ class NotesDeFrais:
         ).all()
         prises = self._operations_prises(db, membre.org_id)
         compteurs["virements"] = sum(
-            note.statut == VALIDEE
+            (note.statut == VALIDEE and note.paid_unmatched_at is None)
             or (note.statut == PREPAREE and note.payer_id == membre.person_id)
             or (note.statut == VIREE and self.paiement_propose(db, note, prises) is not None)
             for note in en_paiement
+        )
+        # Rapprocher (§7 septies) : les paires que l'appli propose, et les pièces « déjà payées » sans ligne.
+        a_rapprocher = [n for n in db.scalars(
+            select(NoteFrais).where(
+                NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False), NoteFrais.bank_operation_id.is_(None),
+                NoteFrais.statut.in_((ENVOYEE,) + EN_PAIEMENT),
+            )
+        )]
+        compteurs["rapprocher"] = sum(
+            1 for n in a_rapprocher
+            if n.paid_unmatched_at is not None or self.paiement_propose(db, n, prises) is not None or self.paiements_possibles(db, n, prises)
         )
         return compteurs
 
@@ -1181,7 +1212,7 @@ class NotesDeFrais:
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
         if note.statut == REMBOURSEE and note.bank_operation_id is not None:
-            raise ValueError("Cette pièce est payée : détachez-la d'abord de la ligne du compte.")
+            raise ValueError("Cette pièce est payée : détachez-la d'abord de sa transaction bancaire.")
         if note.nature == FRAIS and note.established_by is None:
             auteur = self._personne_de_l_org(db, membre, note.person_id)
             titre, total = note.titre, self.total(note)
@@ -1553,7 +1584,9 @@ class NotesDeFrais:
         notes = list(db.scalars(
             select(NoteFrais).where(
                 NoteFrais.org_id == membre.org_id, NoteFrais.don.is_(False),
-                NoteFrais.statut.in_(EN_PAIEMENT) | ((NoteFrais.statut == REMBOURSEE) & (NoteFrais.remboursee_le >= depuis)),
+                # Une pièce « déjà payée » (§7 septies) n'est pas à payer : elle attend dans Rapprocher.
+                (NoteFrais.statut.in_(EN_PAIEMENT) & NoteFrais.paid_unmatched_at.is_(None))
+                | ((NoteFrais.statut == REMBOURSEE) & (NoteFrais.remboursee_le >= depuis)),
             ).order_by(NoteFrais.traitee_le, NoteFrais.id)
         ))
         resultat = self.notes_dicts(db, membre, notes)
@@ -1666,7 +1699,7 @@ class NotesDeFrais:
         if note.statut == ENVOYEE:
             note.traitee_le, note.traitee_par = _maintenant(), membre.person_id
         note.statut, note.remboursee_le, note.remboursee_par = REMBOURSEE, _maintenant(), membre.person_id
-        note.bank_operation_id, note.deferred_at = operation_id, None
+        note.bank_operation_id, note.deferred_at, note.paid_unmatched_at = operation_id, None, None
         db.commit()
         db.refresh(note)
         self._reranger(db, membre, note)
@@ -1709,9 +1742,9 @@ class NotesDeFrais:
         elif note.statut == PREPAREE:
             note.statut, note.prepared_at, note.prepared_by, note.payer_id = VALIDEE, None, None, None
         elif note.statut == VALIDEE:
-            note.statut, note.traitee_le, note.traitee_par = ENVOYEE, None, None
+            note.statut, note.traitee_le, note.traitee_par, note.paid_unmatched_at = ENVOYEE, None, None, None
         elif note.statut == REMBOURSEE:
-            raise ValueError("Cette pièce est payée : détachez-la d'abord de la ligne du compte.")
+            raise ValueError("Cette pièce est payée : détachez-la d'abord de sa transaction bancaire.")
         else:
             raise ValueError("Rien à défaire sur cette pièce.")
         db.commit()
@@ -1736,7 +1769,7 @@ class NotesDeFrais:
         self._exiger_tresorier(membre)
         note = self._note(db, membre.org_id, note_id)
         if note.statut not in (ENVOYEE, REMBOURSEE) or note.bank_operation_id is None:
-            raise ValueError("Cette pièce n'est pas rattachée à une ligne du compte.")
+            raise ValueError("Cette pièce n'est pas rattachée à une transaction bancaire.")
         if not self._detachable(db, note):
             raise ValueError("La saison de cette ligne est clôturée : on ne la détache plus.")
         if note.statut == ENVOYEE:
@@ -1796,6 +1829,7 @@ class NotesDeFrais:
                 lignes[note.bank_operation_id] = banque.operation(db, membre.org_id, note.bank_operation_id)
         natures = {FRAIS: "Note de frais", HONORAIRES: "Honoraires", ACHAT: "Achat"}
         etats = {ENVOYEE: "À valider", VALIDEE: "À payer", PREPAREE: "Préparé", VIREE: "Envoyé", REMBOURSEE: "Payée hors banque"}
+        prises = self._operations_prises(db, membre.org_id)
 
         def jour(note: NoteFrais) -> date:
             return min((d.date for d in note.depenses), default=note.envoyee_le.date())
@@ -1812,14 +1846,32 @@ class NotesDeFrais:
             dans_periode = debut <= jour(note) <= fin or (ligne is not None and debut <= ligne.date <= fin)
             if not dans_periode:
                 continue
-            piece = {"id": note.id, "date": jour(note), "nature": natures.get(note.nature, note.nature), "qui": qui(note), "montant_centimes": self.total(note)}
+            piece = {
+                "id": note.id, "date": jour(note), "nature": natures.get(note.nature, note.nature), "qui": qui(note),
+                "montant_centimes": self.total(note), "titre": note.titre, "statut": note.statut, "nature_code": note.nature,
+            }
             if ligne is not None:
                 piece["ligne"] = {"id": ligne.id, "date": ligne.date, "libelle": ligne.libelle, "montant_centimes": ligne.montant_centimes, "compte": ligne.compte}
                 piece["ecart_centimes"], piece["ecart_regle"] = 0, note.gap_settlement
                 par_ligne.setdefault(ligne.id, []).append(piece)
                 rattachees.append(piece)
             else:
-                piece["etat"] = "Don" if note.don else "À trancher" if note.deferred_at else etats.get(note.statut, note.statut)
+                piece["etat"] = (
+                    "Don" if note.don else "À trancher" if note.deferred_at
+                    else "À rapprocher" if note.paid_unmatched_at and note.statut == VALIDEE else etats.get(note.statut, note.statut)
+                )
+                piece["a_rapprocher"] = bool(note.paid_unmatched_at) and note.statut == VALIDEE
+                # La paire que l'appli propose (§7 septies) : même montant (sûre si même nom), sinon même nom avec l'écart.
+                proposee = None if note.don else self.paiement_propose(db, note, prises)
+                if proposee is not None:
+                    piece["paire"] = {
+                        "operation": self._operation_dict(proposee), "ecart_centimes": 0, "aussi": [],
+                        "sure": self._au_nom_de(db, note, proposee),
+                    }
+                elif not note.don:
+                    possibles = self.paiements_possibles(db, note, prises)
+                    if possibles:
+                        piece["paire"] = {**possibles[0], "sure": False}
                 sans_paiement.append(piece)
         # Une ligne qui ne fait pas le montant de ses pièces : l'écart, sur la première.
         for pieces in par_ligne.values():
@@ -1831,7 +1883,12 @@ class NotesDeFrais:
             for o in (banque.tous_debits(db, membre.org_id, debut) if banque else [])
             if o.date <= fin and o.id not in rattachees_ids
         ]
-        return {"debut": debut, "fin": fin, "rattachees": rattachees, "sans_paiement": sans_paiement, "lignes_sans_piece": sans_piece}
+        paires = [p for p in sans_paiement if p.get("paire")]
+        sans_paiement = [p for p in sans_paiement if not p.get("paire")]
+        return {
+            "debut": debut, "fin": fin, "rattachees": rattachees, "paires": paires,
+            "sans_paiement": sans_paiement, "lignes_sans_piece": sans_piece,
+        }
 
     # --- Présentation ---
 

@@ -636,3 +636,32 @@
 .nf-rangement {
   margin: 0;
 }
+
+/* Puce Rapprocher (§7 septies) : paires banque ↔ facture, par lots. */
+.nf-rapprocher {
+  display: grid;
+  gap: 10px;
+}
+
+.nf-rapprocher__titre {
+  margin: 8px 0 0;
+  font-size: 1.05rem;
+}
+
+.nf-rapprocher__paire .nf-ligne__corps {
+  display: grid;
+  gap: 4px;
+}
+
+.nf-rapprocher__banque {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  overflow-wrap: anywhere;
+}
+
+.nf-rapprocher__actions {
+  display: grid;
+  gap: 4px;
+  justify-items: stretch;
+}

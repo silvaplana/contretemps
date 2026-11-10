@@ -1,7 +1,7 @@
 // Bloc « Documents de l'AG » sous un bilan (spec/modules/financier.md §8.6) :
 // Synthèse Dépenses-Recettes (Excel et à l'écran), FEC avec son contrôle, et au niveau Complet
 // Balance, Grand livre, Honoraires par professeur. Tout est additionné par
-// l'appli depuis les lignes de banque et de caisse ; chaque fichier produit
+// l'appli depuis les transactions bancaires et de caisse ; chaque fichier produit
 // est aussi rangé dans Docs › Financier › AG. Le Rapport financier est
 // rédigé par le modèle (le texte seulement : chaque montant est placé par
 // l'appli, un nombre écrit par le modèle est signalé « à vérifier »).
@@ -128,7 +128,7 @@ export default function DocumentsAG({ reportId, seasonName }) {
             <Cloture reportId={reportId} seasonName={seasonName} closing={data.closing} onChange={(closing) => setData((d) => ({ ...d, closing }))} onErreur={setErreur} />
           )}
           <p className="muted">
-            Additionnés par l’appli depuis les lignes de banque (compte du plan confirmé) et la caisse, du{' '}
+            Additionnés par l’appli depuis les transactions bancaires (compte du plan confirmé) et la caisse, du{' '}
             {dateFr(data.synthese.start)} au {dateFr(data.synthese.cutoff)}. Les fichiers vont dans Docs › Financier › AG.
             {data.level === 'simple' && ' Grand livre, Balance et Honoraires par professeur : niveau Complet (Comptes › ⋯ › Plan comptable).'}
           </p>
