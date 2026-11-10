@@ -1185,9 +1185,10 @@ class NotesDeFrais:
         rangees = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id]
         if self.ports.classeur is None or chemin is None or not rangees:
             return
+        personne = self._nom_personne(db, note)
         try:
             self.ports.classeur.deplacer(
-                db, membre, chemin, [(p.doc_node_id, self._nom_dans_docs(note, d, p)) for d, p in rangees],
+                db, membre, chemin, [(p.doc_node_id, self._nom_dans_docs(note, d, p, personne)) for d, p in rangees],
                 le=self._date_docs(note),
             )
         except Exception:
@@ -1371,12 +1372,28 @@ class NotesDeFrais:
         l'exercice de sa facture."""
         return min((d.date for d in note.depenses), default=note.envoyee_le.date())
 
-    def _nom_dans_docs(self, note: NoteFrais, depense: Depense, piece: PieceJustificative) -> str:
-        """Achats : « 2025-02-09 Amazon 39,90.jpg » ; ailleurs, le nom du disque."""
-        if note.nature != ACHAT:
-            return Path(piece.chemin).name
+    def _nom_dans_docs(self, note: NoteFrais, depense: Depense, piece: PieceJustificative, personne: str = "") -> str:
+        """Le nom du fichier dans Docs, trié par la date de la pièce (Seb,
+        10 novembre 2026, d'après les dossiers de la trésorière) : achat
+        « 2025-02-09 Facture Amazon 39,90.jpg », honoraires « 2025-01-31
+        Facture Hono Marysa Thomas.pdf », note de frais « 2025-06-12 Ticket Jacques
+        Pesenti 54,17.jpg » (un nom par ticket)."""
         extension = Path(piece.chemin).suffix
-        return nom_propre(f"{depense.date.isoformat()} {note.supplier or 'Achat'} {montant_court(depense.montant_centimes)}", 100) + extension
+        jour = depense.date.isoformat()
+        if note.nature == ACHAT:
+            base = f"{jour} Facture {note.supplier or 'Achat'} {montant_court(depense.montant_centimes)}"
+        elif note.nature == HONORAIRES:
+            base = f"{jour} Facture Hono {personne or note.titre}"
+        else:
+            base = f"{jour} Ticket {personne} {montant_court(depense.montant_centimes)}"
+        return nom_propre(base, 100) + extension
+
+    def _nom_personne(self, db: Session, note: NoteFrais) -> str:
+        """Le nom de la personne de la note (prof, membre), pour le nom des fichiers."""
+        if note.nature == ACHAT or note.person_id == PERSONNE_A_CHOISIR:
+            return ""
+        personne = self.annuaire.personnes(db, note.org_id, {note.person_id}).get(note.person_id)
+        return personne.nom if personne else ""
 
     def _ranger(self, db: Session, membre: Membre, note: NoteFrais) -> None:
         """Range dans Docs les justificatifs de la note encore sur le disque,
@@ -1387,7 +1404,8 @@ class NotesDeFrais:
         a_ranger = [(d, p) for d in note.depenses for p in d.pieces if p.doc_node_id is None]
         if classeur is None or chemin is None or not a_ranger:
             return
-        fichiers = [(self._nom_dans_docs(note, d, p), self.stockage.chemin(note.org_id, p.chemin)) for d, p in a_ranger]
+        personne = self._nom_personne(db, note)
+        fichiers = [(self._nom_dans_docs(note, d, p, personne), self.stockage.chemin(note.org_id, p.chemin)) for d, p in a_ranger]
         try:
             ids = classeur.classer(db, membre, chemin, fichiers, le=self._date_docs(note))
         except Exception:
