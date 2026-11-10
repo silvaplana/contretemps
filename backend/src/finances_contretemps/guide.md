@@ -43,7 +43,9 @@ Pièces
 - Rapprocher : le rapprochement par lots, la banque d'un côté et les factures de l'autre, sur une période (du 1er septembre
   de la saison par défaut). Suggestions de rattachement (facture ↔ transaction bancaire : « même nom, même montant », « même montant, autre
   nom », « écart », « paie aussi ») avec « Rattacher à cette transaction bancaire » (geste unitaire : la facture à sa transaction bancaire ; le rapprochement, lui, est le travail par lots sur la période) et « Autre… » qui ouvre la fiche ; Factures sans
-  paiement (À rapprocher, À valider, À payer, Préparé, Envoyé ; toucher ouvre la fiche) ; Transactions bancaires sans facture (leur
+  paiement (À rapprocher, À valider, À payer, Préparé, Envoyé ; toucher ouvre la fiche ; « Rattacher à une transaction
+  bancaire… » = lettrage à la main : choisir la transaction dans la liste de celles sans facture, l'écart reste à régler
+  dans la fiche) ; Transactions bancaires sans facture (leur
   compte se choisit dans Comptes, filtre « Sans compte » ; sur chacune, « Justifier sans facture » = une raison, la
   transaction passe dans « Transactions bancaires justifiées sans facture » avec « Retirer », ou « Demander le
   justificatif » = choisir une personne, prévenue par notification et mail, la transaction affiche « justificatif

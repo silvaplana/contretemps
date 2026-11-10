@@ -726,7 +726,14 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
 - **Clôture** (Bilan, bilan Officiel) : résultat reporté (120 / 129 → 110), écritures d'à-nouveaux
   de la saison suivante, saison verrouillée (plus de rattachement sans la rouvrir, trace gardée).
 - **Lettrage** : lettre de trois caractères par paire facture / paiement, comme le modèle ;
-  paiement en plusieurs fois accepté (somme).
+  paiement en plusieurs fois accepté (somme). **Depuis le 10 novembre 2026** : la facture entre au
+  tiers à son montant (le total des pièces rattachées à la transaction), le paiement au montant de la
+  banque ; la lettre n'est posée que si les deux sont égaux, sinon les deux lignes restent ouvertes
+  sur le tiers (acompte, écart « à régler » dans la fiche de la pièce : `notes-de-frais.md` §7
+  septies) et la charge est au montant de la facture. **Lettrage à la main** : dans Rapprocher,
+  « Rattacher à une transaction bancaire… » sur une facture sans paiement ouvre la liste des
+  transactions bancaires sans facture de la période (montants les plus proches en premier) ; le
+  trésorier choisit, tout débit libre est accepté (`POST …/payee` avec `manuel`), l'écart reste.
 
 ### 8.8 Données et routes
 

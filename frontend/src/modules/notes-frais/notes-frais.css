@@ -665,3 +665,25 @@
   gap: 4px;
   justify-items: stretch;
 }
+
+/* Une facture sans paiement : la fiche au toucher, le rattachement à la main à droite. */
+.nf-ligne--actions {
+  align-items: flex-start;
+}
+
+.nf-ligne__ouvrir {
+  background: none;
+  border: 0;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  min-height: 48px;
+}
+
+.nf-ligne--actions .nf-ligne__droite {
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
