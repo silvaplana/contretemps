@@ -443,7 +443,7 @@ Envoyé pas encore vu (la banque), Payé. Bouton principal
 **+** (voir §8.3 bis « Établir une dépense ») : Photo du ticket, Choisir un fichier, ou « Choisir
 dans Docs » (PDF reçu par mail). Chaque photo est un fichier du dossier
 Docs › Privé › Saison <saison> › Financier › <dossier>, nommé par l'appli
-(« 2025-02-09 Amazon 39,90.jpg ») une fois lue. **La saison est celle de la date de la pièce**
+(« 2025-02-09 Facture Amazon 39,90.jpg », voir notes-de-frais.md §7 bis « Nom des fichiers ») une fois lue. **La saison est celle de la date de la pièce**
 (date de la facture, pas du paiement : une charge appartient à l'exercice de sa facture, Seb
 29/10), **tant que cette saison n'est pas clôturée au Financier** (§8.7) : les trésoriers
 travaillent sur l'ancienne saison pendant la nouvelle, sans rien rouvrir dans Admin › Saisons
@@ -601,7 +601,7 @@ plus de version à chaque étape. Plus d'enveloppes à part sur le disque du ser
 - Notes de frais : `Notes de frais › <n° personne> <Nom> › <date> <titre> (<n°>)`, comme aujourd'hui ;
 - Honoraires : par personne aussi, `Honoraires › <n° personne> <Nom> › <date> <titre> (<n°>)` ;
 - Achats : pas par personne, `Achats › <date> <fournisseur> <montant>` (le fichier lui-même, comme
-  « 2025-02-09 Amazon 39,90.jpg » de §8.3 ; un dossier seulement quand l'achat a plusieurs pièces).
+  « 2025-02-09 Facture Amazon 39,90.jpg » de §8.3 ; un dossier seulement quand l'achat a plusieurs pièces).
 
 - **Note de frais** et **note d'honoraires** sont établies (saisies, photographiées ou importées
   d'un fichier) par leur auteur (le membre, le prof), ou par le trésorier pour lui ; la validation du trésorier les fait passer d'À valider à À payer,

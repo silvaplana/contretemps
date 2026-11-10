@@ -304,7 +304,7 @@ def test_tickets_sur_le_disque_puis_dans_docs(client, ecole, tmp_path):
     assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(ecole["tresorier"])).content == b"jpeg"
 
     assert client.post(f"/notes-frais/notes/{note['id']}/reprendre", headers=entetes_session(eleve)).status_code == 204
-    assert [f.name for f in (personne / "depenses").iterdir()] == [f"2026-10-12 Tissu costumes {d['id']}-1.jpg"]
+    assert [f.name for f in (personne / "depenses").iterdir()] == ["2026-10-12 Ticket Margot Perrin 48,90.jpg"]  # revenu avec son nom de Docs
     assert client.get(f"/notes-frais/pieces/{piece_id}", headers=entetes_session(eleve)).content == b"jpeg"
 
 
@@ -355,7 +355,7 @@ def test_note_rangee_dans_financier_reserve_aux_tresoriers(client, db_session, e
     dossier_note = _enfant(client, org, tresorier, personne["id"], "2026")
     assert "Costumes gala" in dossier_note["name"] and dossier_note["status"] is None
     [ticket] = _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]
-    assert ticket["name"].endswith(".png")
+    assert ticket["name"] == "2026-10-12 Ticket Margot Perrin 48,90.png"
     assert client.post(f"/notes-frais/notes/{note['id']}/valider", headers=entetes_session(tresorier)).status_code == 200
     # Payé : le PDF récapitulatif est fait une seule fois, à côté ; rien ne bouge.
     assert client.post("/notes-frais/remboursements", json={"note_ids": [note["id"]]}, headers=entetes_session(tresorier)).status_code == 200
@@ -491,7 +491,7 @@ def test_rafale_d_achats_lue_rangee_dans_achats(client, ecole, monkeypatch):
     achats = _enfant(client, org, tresorier, financier["id"], "ACHATS")
     mois = _enfant(client, org, tresorier, achats["id"], "02.2025")
     noms = sorted(i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"])
-    assert noms == ["2025-02-09 Amazon 39,90 (2).jpg", "2025-02-09 Amazon 39,90.jpg"]
+    assert noms == ["2025-02-09 Facture Amazon 39,90 (2).jpg", "2025-02-09 Facture Amazon 39,90.jpg"]
 
     puce = client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes_session(tresorier)).json()
     assert [n["id"] for n in puce["notes"]] == [note["id"]]
@@ -543,7 +543,7 @@ def test_un_dossier_deja_la_est_reutilise_quelle_que_soit_sa_casse(client, ecole
     dossiers = sorted(i["name"] for i in _parcourir(client, org, tresorier, financier["id"]).json()["items"] if not i["system_kind"])
     assert dossiers == ["Achats"]
     mois = _enfant(client, org, tresorier, cree.json()["id"], "10.2026")
-    assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2026-10-09 Amazon 39,90.jpg"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2026-10-09 Facture Amazon 39,90.jpg"]
 
 
 def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecole, monkeypatch):
@@ -567,7 +567,7 @@ def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecol
         i["name"].removeprefix("Saison ") for i in _parcourir(client, org, tresorier).json()["items"]
         if i["system_kind"] == "period" and i["name"] != "Saison 2025-2026"
     )
-    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == ["2026-03-10 Leroy Merlin 25,00.jpg"]
+    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == ["2026-03-10 Facture Leroy Merlin 25,00.jpg"]
     assert _achats_de_la_saison(client, org, tresorier, courante) == []
     assert note["saison_cloturee"] is False
     client.delete(f"/notes-frais/notes/{note['id']}", headers=entetes_session(tresorier))
@@ -578,20 +578,20 @@ def test_vieille_piece_rangee_dans_la_saison_de_sa_date(client, db_session, ecol
     db_session.commit()
     fermee = _etablir(client, tresorier, "achat")
     assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == []
-    assert _achats_de_la_saison(client, org, tresorier, courante) == ["2026-03-10 Leroy Merlin 25,00.jpg"]
+    assert _achats_de_la_saison(client, org, tresorier, courante) == ["2026-03-10 Facture Leroy Merlin 25,00.jpg"]
     assert fermee["saison_cloturee"] is True
     client.delete(f"/notes-frais/notes/{fermee['id']}", headers=entetes_session(tresorier))
     db_session.delete(cloture)
     db_session.commit()
 
     note = _etablir(client, tresorier, "achat")
-    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == ["2026-03-10 Leroy Merlin 25,00.jpg"]
+    assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == ["2026-03-10 Facture Leroy Merlin 25,00.jpg"]
     corrige = client.patch(
         f"/notes-frais/notes/{note['id']}", json={"date": "2026-10-02"}, headers=entetes_session(tresorier)
     )
     assert corrige.status_code == 200
     assert _achats_de_la_saison(client, org, tresorier, "2025-2026") == []
-    assert _achats_de_la_saison(client, org, tresorier, courante) == ["2026-10-02 Leroy Merlin 25,00.jpg"]
+    assert _achats_de_la_saison(client, org, tresorier, courante) == ["2026-10-02 Facture Leroy Merlin 25,00.jpg"]
     # Le justificatif s'ouvre toujours.
     piece = corrige.json()["depenses"][0]["pieces"][0]
     assert client.get(f"/notes-frais/pieces/{piece['id']}", headers=entetes_session(tresorier)).status_code == 200
@@ -667,6 +667,13 @@ def test_rafale_d_honoraires_reconnait_le_prof(client, db_session, ecole, monkey
     assert note["personne"]["nom"] == "Élodie Revelles"
     assert note["titre"] == "Honoraires octobre 2026"
     assert note["rib"]["iban"] == IBAN
+    # Dans Docs › HONORAIRES › ELODIE REVELLES › la note : « date Facture Prénom Nom ».
+    org = ecole["ecole"].id
+    saison = next(i for i in _parcourir(client, org, tresorier).json()["items"] if i["system_kind"] == "period")
+    honoraires = _enfant(client, org, tresorier, _enfant(client, org, tresorier, saison["id"], "Financier")["id"], "HONORAIRES")
+    dossier_prof = _enfant(client, org, tresorier, honoraires["id"], "ELODIE REVELLES")
+    [dossier_note] = _parcourir(client, org, tresorier, dossier_prof["id"]).json()["items"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]] == ["2026-10-15 Facture Hono Élodie Revelles.jpg"]
 
     # Nom illisible : « Pour qui ? », pas de validation avant d'avoir choisi.
     lecteur.lu = {"montant_centimes": 30000}
@@ -707,7 +714,7 @@ def test_saisir_une_depense_propose_la_nature(client, db_session, ecole, espion,
     lecteur.lu = {"date": "2026-10-12", "montant_centimes": 3990, "commercant": "Amazon", "description": "Câbles"}
     achat = _etablir(client, tresorier, None)
     assert achat["nature"] == "achat" and achat["fournisseur"] == "Amazon"
-    assert _achats_de_la_saison(client, org, tresorier, "2026-2027") == ["2026-10-12 Amazon 39,90.jpg"]
+    assert _achats_de_la_saison(client, org, tresorier, "2026-2027") == ["2026-10-12 Facture Amazon 39,90.jpg"]
 
     # La proposition était fausse : c'est un ticket de Margot ; le fichier va dans son dossier.
     corrige = client.patch(
@@ -724,7 +731,7 @@ def test_saisir_une_depense_propose_la_nature(client, db_session, ecole, espion,
     dossiers = _parcourir(client, org, tresorier, personne["id"]).json()["items"]
     dossier_note = next(d for d in dossiers if d["name"].endswith(f"({achat['id']})"))
     assert "Frais octobre 2026" in dossier_note["name"]
-    assert [i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]] == ["2026-10-12 Amazon 39,90.jpg"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, dossier_note["id"]).json()["items"]] == ["2026-10-12 Ticket Margot Perrin 39,90.jpg"]
     # Pas de nature sans personne : « Pour qui ? » avant de valider.
     sans = client.patch(f"/notes-frais/notes/{achat['id']}", json={"nature": "honoraires"}, headers=entetes_session(tresorier))
     assert sans.json()["personne"] is None
@@ -1358,7 +1365,7 @@ def test_plus_tard_puis_a_trancher_et_dossier_a_traiter(client, db_session, ecol
     assert tard.status_code == 200 and tard.json()["statut"] == "envoyee" and tard.json()["plus_tard"] is True
     assert tard.json()["rangement"] == "Financier › A TRAITER"
     a_traiter = _enfant(client, org, tresorier, financier["id"], "A TRAITER")
-    assert [i["name"] for i in _parcourir(client, org, tresorier, a_traiter["id"]).json()["items"]] == ["2026-03-10 Castorama 45,00.jpg"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, a_traiter["id"]).json()["items"]] == ["2026-03-10 Facture Castorama 45,00.jpg"]
 
     puce = client.get("/notes-frais/tresorerie?filtre=a_trancher", headers=entetes).json()
     assert [n["id"] for n in puce["notes"]] == [achat["id"]]
@@ -1376,8 +1383,8 @@ def test_plus_tard_puis_a_trancher_et_dossier_a_traiter(client, db_session, ecol
     assert valide.status_code == 200 and valide.json()["plus_tard"] is False and valide.json()["rangement"] == "Financier › ACHATS › 03.2026"
     achats = _enfant(client, org, tresorier, financier["id"], "ACHATS")
     mois = _enfant(client, org, tresorier, achats["id"], "03.2026")
-    assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2026-03-10 Castorama 45,00.jpg"]
-    assert [i["name"] for i in _parcourir(client, org, tresorier, a_traiter["id"]).json()["items"]] == ["2026-03-11 Leroy Merlin 10,00.jpg"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, mois["id"]).json()["items"]] == ["2026-03-10 Facture Castorama 45,00.jpg"]
+    assert [i["name"] for i in _parcourir(client, org, tresorier, a_traiter["id"]).json()["items"]] == ["2026-03-11 Facture Leroy Merlin 10,00.jpg"]
     assert client.get("/notes-frais/tresorerie?filtre=achat", headers=entetes).json()["compteurs"]["a_trancher"] == 1
 
 

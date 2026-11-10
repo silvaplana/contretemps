@@ -47,6 +47,8 @@ Pièces
   import » défait d'un coup les pièces encore à valider du lot qu'on vient d'importer ; plus tard, ⋯ › « Annuler le dernier
   import ». Une pièce qui ne porte qu'un mois (et rien dans le nom du fichier) prend le dernier jour du mois et le dit :
   « date à vérifier » dans la liste, le message sur la fiche ; corriger la date l'efface.
+  Le fichier est nommé par l'appli en entrant dans Docs, date en tête (« 2025-02-09 Facture Amazon 39,90.jpg »,
+  « 2025-01-31 Facture Hono Marysa Thomas.pdf », « 2025-06-12 Ticket Jacques Pesenti 54,17.jpg ») ; corriger la pièce le renomme.
 - Badges des pastilles = ce qu'un trésorier a à traiter : orange pour les pièces (à valider par nature), bleu pour la banque
   (Virements : à payer, préparés pour moi, envoyés vus sur le compte).
 - Virements : À payer, Préparé, Envoyé, Payé ; aide au virement (copier IBAN, montant, libellé), « J'ai fait le virement ».

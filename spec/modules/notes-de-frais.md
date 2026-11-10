@@ -445,6 +445,15 @@ un refus) part à la corbeille des documents. Le dossier Financier existe dans c
 visible que des trésoriers (documents.md §4.7 bis) ; « Notes de frais » y est créé à la première note.
 La saison est celle de la date de la pièce, tant qu'elle n'est pas clôturée au Financier (financier.md §8.3 bis) ; sinon la saison en cours. Si le rangement échoue, l'action reste faite.
 
+**Nom des fichiers (Seb, 10 novembre 2026, d'après les dossiers de la trésorière 2024-25 « Facture
+Marysa 310125 », « Facture Hono Stellina 0125 »)** : l'appli nomme chaque fichier **à son rangement
+dans Docs** (à l'envoi d'une note de frais, à « Valider » pour un achat ou des honoraires) à partir de
+ce qu'elle a lu, date en tête pour trier : achat « 2025-02-09 Facture Amazon 39,90.jpg », honoraires
+« 2025-01-31 Facture Hono Marysa Thomas.pdf », note de frais « 2025-06-12 Ticket Jacques Pesenti 54,17.jpg »
+(un nom par ticket). Personne ne réfléchit au nom à l'enregistrement : **toute correction de la pièce**
+(date, fournisseur, personne, montant, nature) renomme et redéplace le fichier (§7 quinquies). Un
+fichier revenu sur le disque (note reprise) garde ce nom.
+
 ## 8. Don à l'association
 
 Cocher « Je renonce au remboursement » fait de la note un **don** : une fois validée, elle est terminée
