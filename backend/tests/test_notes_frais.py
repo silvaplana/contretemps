@@ -1865,3 +1865,21 @@ def test_import_propose_le_compte_de_la_derniere_piece_du_meme_fournisseur(clien
     # La revue change le compte sur place.
     change = client.patch(f"/notes-frais/notes/{inconnu['id']}", json={"categorie_id": autre["id"]}, headers=entetes)
     assert change.status_code == 200 and change.json()["depenses"][0]["categorie"]["id"] == autre["id"]
+
+
+def test_numero_de_piece_saisi_a_la_main(client, db_session, ecole):
+    """Seb, 10/11 : un champ facultatif « Numéro de pièce » à la saisie. Vide,
+    l'appli numérote à la validation (AC-2025-001) ; rempli, c'est ce numéro
+    qui sert, unique dans l'école, et il se corrige sur la fiche."""
+    tresorier = ecole["tresorier"]
+    entetes = entetes_session(tresorier)
+    brinon = _etablir(client, tresorier, "achat", contenu=None, fournisseur="Julien Brinon", date="2026-07-22",
+                      montant_centimes="36400", valider="true", numero_piece=" FACT2026014 ")
+    assert brinon["numero_piece"] == "FACT2026014"
+    auto = _etablir(client, tresorier, "achat", contenu=None, fournisseur="MAIF", date="2026-01-01", montant_centimes="41760", valider="true")
+    assert auto["numero_piece"] == "AC-2025-001"
+    deja = client.post("/notes-frais/etablir", data={"nature": "achat", "fournisseur": "X", "date": "2026-01-02",
+                       "montant_centimes": "100", "numero_piece": "fact2026014"}, headers=entetes)
+    assert deja.status_code == 400 and "déjà" in deja.json()["detail"]
+    change = client.patch(f"/notes-frais/notes/{auto['id']}", json={"numero_piece": "MAIF-2026"}, headers=entetes)
+    assert change.status_code == 200 and change.json()["numero_piece"] == "MAIF-2026"

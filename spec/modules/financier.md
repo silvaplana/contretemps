@@ -795,7 +795,10 @@ Fermer l'aperçu (←) ramène au Bilan, sur le même bilan, aux Documents de l'
   notes de frais ; saison = septembre → août, l'année du début), donné une fois, jamais repris ni
   réattribué (`nf_notes.piece_number`). Il s'affiche sur la fiche de la pièce (« Pièce n° … »), dans la
   colonne Pièce du Grand livre et dans `PieceRef` du FEC ; sans numéro (pièce pas encore validée), le
-  titre de la pièce. Le nom du fichier dans Docs ne change pas.
+  titre de la pièce. Le nom du fichier dans Docs ne change pas. **Numéro saisi** (Seb, 10 novembre) :
+  la fiche d'une pièce (saisie à la main ou à vérifier) a un champ facultatif « Numéro de pièce » ;
+  rempli, il remplace le numéro de l'appli (unique dans l'école, 20 caractères, majuscules
+  indifférentes) ; vide, l'appli numérote à la validation, saisie à la main validée d'un coup comprise.
 - **Comptes de tiers des profs (10 novembre 2026)** : une facture d'honoraires va au compte 467x
   dont le libellé porte le nom du prof. Un prof qui n'en a pas encore : à sa première facture, les
   livres créent « 467n Honoraires Nom » au prochain numéro libre (jamais le compte d'un autre prof).

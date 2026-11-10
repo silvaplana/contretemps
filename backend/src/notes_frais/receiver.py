@@ -87,6 +87,7 @@ class CorrectionEntree(BaseModel):
     description: str | None = None
     titre: str | None = None
     categorie_id: int | None = None
+    numero_piece: str | None = None
 
 
 class PreparationEntree(BaseModel):
@@ -298,6 +299,7 @@ class NotesDeFraisReceiver:
             valider: bool = Form(False),
             categorie_id: int | None = Form(None),
             batch_id: str | None = Form(None),
+            numero_piece: str | None = Form(None),
             db: Session = db_dep,
             m: Membre = membre,
         ):
@@ -310,7 +312,7 @@ class NotesDeFraisReceiver:
             note = appeler(
                 nf.etablir, db, m, nature=nature, fichier=contenu, person_id=person_id, fournisseur=fournisseur,
                 jour=date, montant_centimes=montant_centimes, description=description, valider=valider,
-                categorie_id=categorie_id, batch_id=batch_id,
+                categorie_id=categorie_id, batch_id=batch_id, numero_piece=numero_piece,
             )
             if isinstance(note, Preuve):
                 return nf.preuve_dict(db, m, note)

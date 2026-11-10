@@ -342,6 +342,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
   const [jour, setJour] = useState(depense?.date ?? api.aujourdhui())
   const [montant, setMontant] = useState(api.versTexteMontant(depense?.montant_centimes || null))
   const [description, setDescription] = useState(depense?.description ?? '')
+  const [numero, setNumero] = useState(note?.numero_piece ?? '') // facultatif (Seb, 10/11)
   // Saisie à la main : on peut quand même joindre une photo ou un fichier (Seb, 10/11).
   const [joint, setJoint] = useState(null)
   const camera = useRef(null)
@@ -389,6 +390,7 @@ function NoteModal({ note, nature, onClose, onFait }) {
       montant_centimes: centimes,
       description: description.trim(),
       ...(categorieId ? { categorie_id: Number(categorieId) } : {}),
+      ...(numero.trim() && numero.trim() !== note?.numero_piece ? { numero_piece: numero.trim() } : {}),
       ...(genre !== 'achat' ? { person_id: pour.person_id } : { fournisseur: fournisseur.trim() }),
     }
   }
@@ -557,6 +559,8 @@ function NoteModal({ note, nature, onClose, onFait }) {
               <input id="nf-fournisseur" value={fournisseur} onChange={(e) => setFournisseur(e.target.value)} maxLength={120} />
             </>
           )}
+          <label htmlFor="nf-numero">Numéro de pièce (facultatif)</label>
+          <input id="nf-numero" value={numero} onChange={(e) => setNumero(e.target.value)} maxLength={20} placeholder="Donné par l’appli à la validation si vide" />
           <label htmlFor="nf-date">Date</label>
           <input id="nf-date" type="date" value={jour} max={api.aujourdhui()} onChange={(e) => setJour(e.target.value)} />
           <label htmlFor="nf-montant">Montant (€)</label>
