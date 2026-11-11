@@ -87,6 +87,10 @@ class SettingsOut(BaseModel):
     can_read: bool = True
     # « Les actus sont visibles par tout le monde »; off, only those who publish.
     visible_to_all: bool = True
+    # Only the Instagram posts with #this (empty: all).
+    instagram_hashtag: str = ""
+    # The relayed posts are published at once (else: drafts).
+    instagram_publish: bool = True
     # At least one published item: with none, the app does not open on
     # Actus (Seb, 10 November).
     has_news: bool = False
@@ -97,6 +101,8 @@ class SettingsIn(BaseModel):
     open_on_news: bool | None = None
     media_first: bool | None = None
     visible_to_all: bool | None = None
+    instagram_hashtag: str | None = Field(None, max_length=100)
+    instagram_publish: bool | None = None
 
 
 class InstagramIn(BaseModel):

@@ -228,6 +228,8 @@ class NewsReceiver:
             open_on_news=reader and self.client.open_on_news(db, ecole_id), can_read=reader,
             media_first=self.client.media_first(db, ecole_id),
             visible_to_all=self.client.visible_to_all(db, ecole_id),
+            instagram_hashtag=self.client.instagram_hashtag(db, ecole_id),
+            instagram_publish=self.client.instagram_publish(db, ecole_id),
             has_news=reader and self.client.has_published(db, ecole_id),
         )
 
@@ -244,4 +246,8 @@ class NewsReceiver:
             self.client.set_media_first(db, ecole_id, data.media_first)
         if data.visible_to_all is not None:
             self.client.set_visible_to_all(db, ecole_id, data.visible_to_all)
+        if data.instagram_hashtag is not None:
+            self.client.set_instagram_hashtag(db, ecole_id, data.instagram_hashtag)
+        if data.instagram_publish is not None:
+            self.client.set_instagram_publish(db, ecole_id, data.instagram_publish)
         return self._settings_out(db, ecole_id, True)

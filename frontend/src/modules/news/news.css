@@ -807,3 +807,16 @@
 .carrousel .actu__lien-texte {
   padding-bottom: 48px;
 }
+
+/* « Seulement les posts avec # » (§6 bis) */
+.parametres__hashtag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 17px;
+}
+.parametres__hashtag input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+}

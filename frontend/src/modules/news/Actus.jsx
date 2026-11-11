@@ -409,9 +409,53 @@ function Instagram({ ecoleId }) {
     oublierRetourInstagram() // montré une fois
     return message
   })
+  const [hashtag, setHashtag] = useState('')
+  const [tri, setTri] = useState({ hashtag: '', publier: true }) // tel qu'enregistré
   useEffect(() => {
     api.lireInstagram(ecoleId).then(setEtat, (e) => setErreur(e.message))
+    api.lireTriInstagram(ecoleId).then((t) => (setTri(t), setHashtag(t.hashtag)), () => {})
   }, [ecoleId])
+
+  async function changerTri(changement) {
+    try {
+      const t = await api.changerTriInstagram(ecoleId, changement)
+      setTri(t)
+      setHashtag(t.hashtag)
+    } catch (e) {
+      setErreur(e.message)
+    }
+  }
+
+  // Seb, 11 novembre : qui relie choisit quels posts arrivent, et comment
+  // (réglable avant de relier).
+  const champHashtag = (
+    <>
+      <label className="parametres__hashtag">
+        <span>Seulement les posts avec #</span>
+        <input
+          className="editeur__texte"
+          aria-label="Seulement les posts avec ce hashtag"
+          placeholder="contretemps"
+          value={hashtag}
+          onChange={(e) => setHashtag(e.target.value)}
+          onBlur={() => hashtag.trim() !== tri.hashtag && changerTri({ instagram_hashtag: hashtag })}
+        />
+      </label>
+      <p className="editeur__aide">{tri.hashtag ? 'Les autres posts restent sur Instagram.' : 'Vide : tous les nouveaux posts arrivent.'}</p>
+      <div className="atelier__option">
+        <span>Les publier tout de suite</span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={tri.publier}
+          aria-label="Les publier tout de suite"
+          className="actus__interrupteur"
+          onClick={() => changerTri({ instagram_publish: !tri.publier })}
+        />
+      </div>
+      <p className="editeur__aide">{tri.publier ? 'Ils sont publiés dès leur arrivée.' : 'Ils arrivent en brouillon ici, à publier ou non.'}</p>
+    </>
+  )
 
   async function agir(action) {
     setEnvoi(true)
@@ -445,6 +489,7 @@ function Instagram({ ecoleId }) {
           <p>
             Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans les actus en 5 minutes au plus.
           </p>
+          {champHashtag}
           {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(ecoleId))}>
             Délier
@@ -453,6 +498,7 @@ function Instagram({ ecoleId }) {
       ) : etat.peutSeConnecter ? (
         <>
           <p>Reliez le compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans les actus.</p>
+          {champHashtag}
           {erreur && <p className="parametres__erreur">{erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={seConnecter}>
             Se connecter avec Instagram

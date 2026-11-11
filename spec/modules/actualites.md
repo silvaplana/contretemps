@@ -175,16 +175,29 @@ seuls dans les actus, sans rien ressaisir.
   ouverts : « Relié à @compte », ou la raison de l'échec. La clé obtenue (60 jours, renouvelée seule
   chaque semaine) est gardée chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). « Délier »
   l'oublie ; les actus déjà relayées restent.
-- **L'appli Meta** (une fois, par Seb, sur un ordinateur, avec un compte Facebook quelconque) :
-  developers.facebook.com › Mes applis › Créer une appli (« Autre » › « Entreprise ») › ajouter le
-  produit **Instagram** › « Configuration de l'API avec connexion Instagram » › « Configurer la
-  connexion professionnelle Instagram » : adresse de redirection
-  `https://silvaplana.cloud/contretemps/api/news/instagram/return`. Y relever l'**identifiant** et la
-  **clé secrète de l'appli Instagram**, à mettre dans `backend/.env` du VPS (DEPLOY.md §4 :
-  `INSTAGRAM_APP_ID`, `INSTAGRAM_APP_SECRET`, `INSTAGRAM_REDIRECT_URL`). Tant que l'appli Meta est
-  en mode Développement, seuls les comptes Instagram ajoutés dans Rôles de l'appli › **Testeurs
-  Instagram** (et qui ont accepté l'invitation dans Instagram) peuvent se connecter ; pour tout le
-  monde, il faut la faire valider par Meta (permission `instagram_business_basic`).
+- **L'appli Meta** (une fois, sur un ordinateur ; faite le 11 novembre 2026 avec le compte Meta de
+  Jacqueline, appli « Contretemps Actus », portefeuille business « Ecole de danse Contretemps », non
+  vérifié) : developers.facebook.com › Créer une application › cas d'utilisation « Gérer les messages et
+  le contenu sur Instagram » › Personnaliser › **API setup with Unified login** (les nouvelles applis
+  Meta n'ont plus la connexion Instagram seule) › portefeuille business › « Créer une nouvelle
+  configuration » (modèle : token utilisateur système, sans expiration) › URL de redirection
+  `https://silvaplana.cloud/contretemps/api/news/instagram/return`. Dans `backend/.env` du VPS
+  (DEPLOY.md §4) : `INSTAGRAM_APP_ID` (Paramètres › Général), `INSTAGRAM_APP_SECRET`,
+  `INSTAGRAM_REDIRECT_URL`, `INSTAGRAM_CONFIG_ID` (l'ID de configuration). Tant que l'appli n'a pas passé
+  le Contrôle app de Meta, seuls les comptes qui ont un rôle dans l'appli (Rôles › **Testeur(se)
+  Instagram**, invitation acceptée dans Instagram › Paramètres › Applications et sites web) peuvent se
+  connecter ; pour tout le monde (AppBase), Contrôle app et vérification du portefeuille.
+- **Connexion unifiée** : le bouton ouvre la fenêtre de connexion de Facebook avec la configuration
+  (`facebook.com/dialog/oauth`, `config_id`, `prompt=login` : on peut choisir Instagram) ; pas de Page
+  Facebook nécessaire. Le code s'échange sur graph.facebook.com contre une clé qui n'expire pas (jamais
+  renouvelée) ; le compte est celui que la personne a autorisé (`me/assigned_instagram_accounts`, sinon
+  par une Page), ses posts se lisent par son identifiant (`{id}/media`).
+- **Seulement les posts avec #…** (Seb, 11 novembre) : sous Instagram, un champ « Seulement les posts
+  avec # » (réglage de l'école, possible avant de relier) ; rempli, seuls les posts dont le texte porte ce
+  hashtag arrivent (#contretemps, pas #contretempsdanse ; majuscules indifférentes), les autres restent
+  sur Instagram. Vide : tous. Dessous, interrupteur **« Les publier tout de suite »** (allumé par
+  défaut) : éteint, les posts relayés arrivent en **Brouillon** dans Édition, à publier ou non. Les deux
+  se combinent ; c'est la personne qui relie (droit Publier) qui choisit (Seb, 11 novembre).
 - **Sans l'appli Meta sur le serveur** (variables absentes) : à la place du bouton, on colle une clé
   d'accès générée dans l'appli Meta (« Générer des jetons d'accès »), puis « Relier ».
 - **Le retour** arrive sur une seule adresse (`GET /news/instagram/return`, publique) ; `state`, signé
@@ -192,13 +205,15 @@ seuls dans les actus, sans rien ressaisir.
   clé, relie le compte, puis renvoie vers l'adresse de l'école (`?instagram=ok|annule|erreur`), comme
   la connexion bancaire du Financier.
 - **Relais** : toutes les 5 minutes (`app/relance_worker.py`), chaque post publié **après** la liaison
-  devient une actu **Normal**, publiée, sans notification, signée du prénom de qui a relié le compte :
+  (et portant le hashtag s'il y en a un) devient une actu **Normal**, publiée (ou en brouillon, voir
+  ci-dessus), sans notification, signée du prénom de qui a relié le compte :
   le texte du post, puis sa photo ou sa vidéo ; un carrousel Instagram arrive entier, en carrousel. Une seule fois par
   post (`instagram_id`). Elle se modifie ou se supprime ensuite comme les autres.
 - Instagram ne prévient pas d'un nouveau post (pas de webhook pour les posts) : d'où les 5 minutes.
 - Une erreur (clé refusée, compte devenu personnel…) s'affiche sous « Relié à @compte ».
 
-Code : `news/instagram.py` (« Instagram API with Instagram Login », graph.instagram.com).
+Code : `news/instagram.py` (bouton : « Instagram API with Unified Login », graph.facebook.com ; clé collée :
+« Instagram API with Instagram Login », graph.instagram.com).
 
 ## 7. Données
 
@@ -256,14 +271,19 @@ chaque saison : « Nouveau » repart de zéro à la rentrée.
 
 **`news_instagram`** (§6 bis) : `org_id` (clé), `token_encrypted`, `username`, `linked_by`,
 `linked_by_name`, `linked_at` (seuls les posts d'après comptent), `token_refreshed_at`,
-`last_sync_at`, `last_error`. Et sur `news_items` : `instagram_id` (le post relayé). Migration
-`b81f2c6d9e47`.
+`last_sync_at`, `last_error`, `ig_user_id` (compte relié par la connexion unifiée : ses posts se
+lisent par cet identifiant ; vide pour une clé collée), `refreshes` (faux pour la connexion unifiée :
+clé sans expiration). Et sur `news_items` : `instagram_id` (le post relayé). Migrations
+`b81f2c6d9e47`, puis `c8f1a3e5d7b2`.
 
 **`news_settings`** : `org_id` (clé), `open_on_news` (bool, vrai par défaut ; pas de ligne = vrai),
 `media_first` (bool, faux par défaut : texte en haut ; migration `d5f2b8c1e604`, colonne ajoutée à la
 table existante plutôt qu'une nouvelle table : c'est un réglage de plus de l'école), `visible_to_all`
 (bool, vrai par défaut et pour les lignes existantes ; §2 bis ; migration `b6e2d9f4a1c7`, qui supprime
-aussi les groupes 🔒 `right.news.read` et leurs membres).
+aussi les groupes 🔒 `right.news.read` et leurs membres), `instagram_hashtag` (texte, vide par défaut =
+tous les posts) et `instagram_publish` (bool, vrai par défaut ; faux : brouillons) ; §6 bis ; migration
+`c8f1a3e5d7b2` ; dans les réglages de l'école plutôt que sur
+`news_instagram`, pour se régler avant de relier et survivre à « Délier »).
 
 Le document reste une colonne : une actu en a au plus un (§3.3). Pas de lien avec les saisons : une actu appartient à l'organisation.
 
