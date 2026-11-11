@@ -26,9 +26,10 @@ Les actus (et l'onglet Visualisation)
     dans Instagram ; on revient ici, « Relié à @compte ». Ses nouveaux posts arrivent dans les actus en
     5 minutes au plus (texte puis photos et vidéos, carrousels compris). Si le bouton n'y est pas :
     coller la clé d'accès du compte, puis « Relier ».
-    « Seulement les posts avec # » : rempli (par exemple contretemps), seuls les posts avec ce hashtag
-    arrivent ; vide, tous. « Les publier tout de suite » : éteint, ils arrivent en brouillon dans
-    Édition. Se règlent avant ou après avoir relié le compte.
+    Au-dessus du bouton, « Quels posts Instagram mettre dans les actus ? », une réponse à cocher :
+    « Tous mes posts » ; « Seulement ceux avec un hashtag » (un champ # apparaît, par exemple
+    contretemps : les autres posts restent sur Instagram) ; « Je les choisis un par un » (ils arrivent
+    en brouillon dans Édition, à publier ou non). Se change avant ou après avoir relié le compte.
     « Délier » arrête le relais.
   - « Visibilité » : « Les actus sont visibles par tout le monde » (allumé ; éteint : seuls ceux qui
     publient les voient).

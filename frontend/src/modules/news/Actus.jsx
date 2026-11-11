@@ -410,51 +410,63 @@ function Instagram({ ecoleId }) {
     return message
   })
   const [hashtag, setHashtag] = useState('')
-  const [tri, setTri] = useState({ hashtag: '', publier: true }) // tel qu'enregistré
+  const [choix, setChoix] = useState('tous') // tous | hashtag | un_par_un
   useEffect(() => {
     api.lireInstagram(ecoleId).then(setEtat, (e) => setErreur(e.message))
-    api.lireTriInstagram(ecoleId).then((t) => (setTri(t), setHashtag(t.hashtag)), () => {})
+    api.lireTriInstagram(ecoleId).then((t) => {
+      setHashtag(t.hashtag)
+      setChoix(!t.publier ? 'un_par_un' : t.hashtag ? 'hashtag' : 'tous')
+    }, () => {})
   }, [ecoleId])
 
   async function changerTri(changement) {
     try {
-      const t = await api.changerTriInstagram(ecoleId, changement)
-      setTri(t)
-      setHashtag(t.hashtag)
+      setHashtag((await api.changerTriInstagram(ecoleId, changement)).hashtag)
     } catch (e) {
       setErreur(e.message)
     }
   }
 
-  // Seb, 11 novembre : qui relie choisit quels posts arrivent, et comment
-  // (réglable avant de relier).
+  // Seb, 11 novembre (maquette spec/maquettes/actualites-instagram.html) :
+  // qui relie choisit quels posts arrivent, une question à trois réponses
+  // (réglable avant de relier). Côté serveur : un hashtag et « publier ».
+  function choisir(c) {
+    setChoix(c)
+    if (c === 'tous') changerTri({ instagram_hashtag: '', instagram_publish: true })
+    if (c === 'hashtag') changerTri({ instagram_hashtag: hashtag, instagram_publish: true })
+    if (c === 'un_par_un') changerTri({ instagram_hashtag: '', instagram_publish: false })
+  }
+  const CHOIX = [
+    ['tous', 'Tous mes posts', 'Chaque nouveau post arrive dans les actus, tout de suite.'],
+    ['hashtag', 'Seulement ceux avec un hashtag', 'Seuls les posts où vous écrivez ce hashtag arrivent, tout de suite.'],
+    ['un_par_un', 'Je les choisis un par un', 'Chaque post arrive en brouillon ici. Vous touchez « Publier » pour ceux que vous voulez.'],
+  ]
   const champHashtag = (
-    <>
-      <label className="parametres__hashtag">
-        <span>Seulement les posts avec #</span>
-        <input
-          className="editeur__texte"
-          aria-label="Seulement les posts avec ce hashtag"
-          placeholder="contretemps"
-          value={hashtag}
-          onChange={(e) => setHashtag(e.target.value)}
-          onBlur={() => hashtag.trim() !== tri.hashtag && changerTri({ instagram_hashtag: hashtag })}
-        />
-      </label>
-      <p className="editeur__aide">{tri.hashtag ? 'Les autres posts restent sur Instagram.' : 'Vide : tous les nouveaux posts arrivent.'}</p>
-      <div className="atelier__option">
-        <span>Les publier tout de suite</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={tri.publier}
-          aria-label="Les publier tout de suite"
-          className="actus__interrupteur"
-          onClick={() => changerTri({ instagram_publish: !tri.publier })}
-        />
-      </div>
-      <p className="editeur__aide">{tri.publier ? 'Ils sont publiés dès leur arrivée.' : 'Ils arrivent en brouillon ici, à publier ou non.'}</p>
-    </>
+    <fieldset className="parametres__tri">
+      <legend>Quels posts Instagram mettre dans les actus ?</legend>
+      {CHOIX.map(([c, titre, aide]) => (
+        <label key={c} className="parametres__tri-choix" aria-checked={choix === c}>
+          <input type="radio" name="tri-instagram" checked={choix === c} onChange={() => choisir(c)} />
+          <span>
+            <b>{titre}</b>
+            <small>{aide}</small>
+            {c === 'hashtag' && choix === 'hashtag' && (
+              <span className="parametres__hashtag">
+                #
+                <input
+                  className="editeur__texte"
+                  aria-label="Hashtag"
+                  placeholder="contretemps"
+                  value={hashtag}
+                  onChange={(e) => setHashtag(e.target.value)}
+                  onBlur={() => changerTri({ instagram_hashtag: hashtag, instagram_publish: true })}
+                />
+              </span>
+            )}
+          </span>
+        </label>
+      ))}
+    </fieldset>
   )
 
   async function agir(action) {

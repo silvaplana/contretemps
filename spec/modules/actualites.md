@@ -192,12 +192,16 @@ seuls dans les actus, sans rien ressaisir.
   Facebook nécessaire. Le code s'échange sur graph.facebook.com contre une clé qui n'expire pas (jamais
   renouvelée) ; le compte est celui que la personne a autorisé (`me/assigned_instagram_accounts`, sinon
   par une Page), ses posts se lisent par son identifiant (`{id}/media`).
-- **Seulement les posts avec #…** (Seb, 11 novembre) : sous Instagram, un champ « Seulement les posts
-  avec # » (réglage de l'école, possible avant de relier) ; rempli, seuls les posts dont le texte porte ce
-  hashtag arrivent (#contretemps, pas #contretempsdanse ; majuscules indifférentes), les autres restent
-  sur Instagram. Vide : tous. Dessous, interrupteur **« Les publier tout de suite »** (allumé par
-  défaut) : éteint, les posts relayés arrivent en **Brouillon** dans Édition, à publier ou non. Les deux
-  se combinent ; c'est la personne qui relie (droit Publier) qui choisit (Seb, 11 novembre).
+- **Quels posts** (Seb, 11 novembre, maquette validée `spec/maquettes/actualites-instagram.html`) : sous
+  Instagram, une question « Quels posts Instagram mettre dans les actus ? » à trois réponses, une seule
+  cochée, réglable avant de relier (réglage de l'école) ; c'est la personne qui relie (droit Publier)
+  qui choisit :
+  - « Tous mes posts » : chaque nouveau post arrive, publié.
+  - « Seulement ceux avec un hashtag » : ouvre un champ « # » ; seuls les posts dont le texte porte ce
+    hashtag arrivent, publiés (#contretemps, pas #contretempsdanse ; majuscules indifférentes), les
+    autres restent sur Instagram. Champ vide : tous.
+  - « Je les choisis un par un » : chaque post arrive en **Brouillon** dans Édition, à publier ou non.
+  En base : `instagram_hashtag` (vide sauf pour la 2e réponse) et `instagram_publish` (faux pour la 3e).
 - **Sans l'appli Meta sur le serveur** (variables absentes) : à la place du bouton, on colle une clé
   d'accès générée dans l'appli Meta (« Générer des jetons d'accès »), puis « Relier ».
 - **Le retour** arrive sur une seule adresse (`GET /news/instagram/return`, publique) ; `state`, signé
