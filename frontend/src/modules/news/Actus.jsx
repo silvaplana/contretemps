@@ -409,9 +409,65 @@ function Instagram({ ecoleId }) {
     oublierRetourInstagram() // montré une fois
     return message
   })
+  const [hashtag, setHashtag] = useState('')
+  const [choix, setChoix] = useState('tous') // tous | hashtag | un_par_un
   useEffect(() => {
     api.lireInstagram(ecoleId).then(setEtat, (e) => setErreur(e.message))
+    api.lireTriInstagram(ecoleId).then((t) => {
+      setHashtag(t.hashtag)
+      setChoix(!t.publier ? 'un_par_un' : t.hashtag ? 'hashtag' : 'tous')
+    }, () => {})
   }, [ecoleId])
+
+  async function changerTri(changement) {
+    try {
+      setHashtag((await api.changerTriInstagram(ecoleId, changement)).hashtag)
+    } catch (e) {
+      setErreur(e.message)
+    }
+  }
+
+  // Seb, 11 novembre (maquette spec/maquettes/actualites-instagram.html) :
+  // qui relie choisit quels posts arrivent, une question à trois réponses
+  // (réglable avant de relier). Côté serveur : un hashtag et « publier ».
+  function choisir(c) {
+    setChoix(c)
+    if (c === 'tous') changerTri({ instagram_hashtag: '', instagram_publish: true })
+    if (c === 'hashtag') changerTri({ instagram_hashtag: hashtag, instagram_publish: true })
+    if (c === 'un_par_un') changerTri({ instagram_hashtag: '', instagram_publish: false })
+  }
+  const CHOIX = [
+    ['tous', 'Tous mes posts', 'Chaque nouveau post arrive dans les actus, tout de suite.'],
+    ['hashtag', 'Seulement ceux avec un hashtag', 'Seuls les posts où vous écrivez ce hashtag arrivent, tout de suite.'],
+    ['un_par_un', 'Je les choisis un par un', 'Chaque post arrive en brouillon ici. Vous touchez « Publier » pour ceux que vous voulez.'],
+  ]
+  const champHashtag = (
+    <fieldset className="parametres__tri">
+      <legend>Quels posts Instagram mettre dans les actus ?</legend>
+      {CHOIX.map(([c, titre, aide]) => (
+        <label key={c} className="parametres__tri-choix" aria-checked={choix === c}>
+          <input type="radio" name="tri-instagram" checked={choix === c} onChange={() => choisir(c)} />
+          <span>
+            <b>{titre}</b>
+            <small>{aide}</small>
+            {c === 'hashtag' && choix === 'hashtag' && (
+              <span className="parametres__hashtag">
+                #
+                <input
+                  className="editeur__texte"
+                  aria-label="Hashtag"
+                  placeholder="contretemps"
+                  value={hashtag}
+                  onChange={(e) => setHashtag(e.target.value)}
+                  onBlur={() => changerTri({ instagram_hashtag: hashtag, instagram_publish: true })}
+                />
+              </span>
+            )}
+          </span>
+        </label>
+      ))}
+    </fieldset>
+  )
 
   async function agir(action) {
     setEnvoi(true)
@@ -445,6 +501,7 @@ function Instagram({ ecoleId }) {
           <p>
             Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans les actus en 5 minutes au plus.
           </p>
+          {champHashtag}
           {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(ecoleId))}>
             Délier
@@ -453,6 +510,7 @@ function Instagram({ ecoleId }) {
       ) : etat.peutSeConnecter ? (
         <>
           <p>Reliez le compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans les actus.</p>
+          {champHashtag}
           {erreur && <p className="parametres__erreur">{erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={seConnecter}>
             Se connecter avec Instagram

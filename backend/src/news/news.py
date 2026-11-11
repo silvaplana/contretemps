@@ -130,6 +130,22 @@ class News:
         self._settings(db, org_id).visible_to_all = value
         db.commit()
 
+    def instagram_hashtag(self, db: Session, org_id: int) -> str:
+        settings = db.get(NewsSettings, org_id)
+        return "" if settings is None else settings.instagram_hashtag
+
+    def set_instagram_hashtag(self, db: Session, org_id: int, value: str) -> None:
+        self._settings(db, org_id).instagram_hashtag = value.strip().lstrip("#").strip()
+        db.commit()
+
+    def instagram_publish(self, db: Session, org_id: int) -> bool:
+        settings = db.get(NewsSettings, org_id)
+        return True if settings is None else settings.instagram_publish
+
+    def set_instagram_publish(self, db: Session, org_id: int, value: bool) -> None:
+        self._settings(db, org_id).instagram_publish = value
+        db.commit()
+
     def can_read(self, db: Session, compte: Compte | None, org_id: int) -> bool:
         """Everybody, or only those who publish when the news are not
         « visibles par tout le monde » (§2 bis)."""
@@ -138,7 +154,8 @@ class News:
     def _settings(self, db: Session, org_id: int) -> NewsSettings:
         settings = db.get(NewsSettings, org_id)
         if settings is None:
-            settings = NewsSettings(org_id=org_id, open_on_news=True, media_first=False, visible_to_all=True)
+            settings = NewsSettings(org_id=org_id, open_on_news=True, media_first=False, visible_to_all=True,
+                                    instagram_hashtag="", instagram_publish=True)
             db.add(settings)
         return settings
 

@@ -1,0 +1,221 @@
+<title>Relier Instagram aux actus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- Maquette « Relier Instagram » du module Actualités (fil « Module : Actualités », 11/11/2026), à valider par Seb. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Archivo+Narrow:wght@500;700&display=swap">
+<style>
+/* Layout : en haut les étapes (pas dans l'appli), à gauche le téléphone cliquable, à droite ce qu'on y voit. */
+:root {
+  --page: #f3eee8; --ink: #2a2118; --muted: #6e6152; --line: #ddd2c4; --panel: #fbf8f4; --note-accent: #b5521a;
+  --display: 'Archivo', system-ui, sans-serif;
+  --narrow: 'Archivo Narrow', 'Archivo', system-ui, sans-serif;
+  --body: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #191612; --ink: #efe8e0; --muted: #a99c8c; --line: #352e26; --panel: #221e19; --note-accent: #f0955a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #191612; --ink: #efe8e0; --muted: #a99c8c; --line: #352e26; --panel: #221e19; --note-accent: #f0955a; color-scheme: dark }
+
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; }
+.intro { color: var(--muted); max-width: 62ch; margin: 0 0 18px; line-height: 1.5; }
+.steps { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; align-items: center; font-size: 14px; }
+.steps > span { color: var(--muted); }
+.steps button { font: inherit; border: 1px solid var(--line); background: var(--panel); color: var(--ink); padding: 8px 14px; border-radius: 8px; cursor: pointer; }
+.steps button[aria-pressed="true"] { background: var(--ink); color: var(--page); border-color: var(--ink); }
+.steps button:focus-visible { outline: 2px solid var(--note-accent); outline-offset: 2px; }
+.grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.notes { min-width: 0; }
+.notes h2 { font-family: var(--display); font-size: 1.15rem; margin: 0 0 10px; }
+.notes p, .notes li { line-height: 1.55; max-width: 62ch; }
+.notes ul { padding-left: 1.1em; margin: 0 0 14px; }
+.notes .eyebrow { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--note-accent); margin: 0 0 4px; }
+.notes .ask { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+/* ---- Téléphone : charte Contretemps, un seul thème comme l'appli ---- */
+.phone {
+  --bg: #fdecd8; --card: #fffaf1; --border: #e8c08c; --text: #3a2410; --muted: #8a6a4a;
+  --accent: #d8722a; --accent-bg: rgba(216,114,42,.14); --contrast: #fffaf1;
+  --ok: #2f6b2f; --ok-bg: #d7ecd7; --draft: #8a6a1f; --draft-bg: #f3e2ab; --insta: #c13584;
+  width: 100%; max-width: 390px; height: 800px; margin: 0 auto; border-radius: 34px; border: 10px solid #1a120a;
+  background: var(--bg); color: var(--text); position: relative; overflow: hidden;
+  display: flex; flex-direction: column; font-size: 17px; line-height: 1.45; box-shadow: 0 18px 40px rgba(0,0,0,.18);
+}
+.phone button, .phone input { font: inherit; color: inherit; }
+.phone :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.top { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 0 8px 0 14px; flex: none; }
+.top .logo { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--contrast); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 15px; flex: none; }
+.top strong { font-family: var(--display); font-size: 19px; flex: 1; }
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex: none; }
+.tabs span { flex: 1; min-height: 48px; display: grid; place-items: center; font-size: 17px; color: var(--muted); border-bottom: 3px solid transparent; }
+.tabs span.on { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+.body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.body > * { flex-shrink: 0; }
+.sect { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--muted); margin: 4px 2px -4px; }
+.title { font-family: var(--display); font-size: 18px; margin: 0; }
+.q { font-weight: 700; margin: 2px 2px 0; }
+
+.choice { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 2px solid var(--border); border-radius: 14px; padding: 12px 14px; cursor: pointer; text-align: left; width: 100%; min-height: 64px; }
+.choice[aria-checked="true"] { border-color: var(--accent); background: var(--accent-bg); }
+.choice .dot { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--muted); flex: none; margin-top: 1px; display: grid; place-items: center; }
+.choice[aria-checked="true"] .dot { border-color: var(--accent); }
+.choice[aria-checked="true"] .dot::after { content: ""; width: 12px; height: 12px; border-radius: 50%; background: var(--accent); }
+.choice div { flex: 1; min-width: 0; }
+.choice b { display: block; }
+.choice small { display: block; color: var(--muted); font-size: 15px; line-height: 1.4; margin-top: 2px; }
+.tag { display: flex; align-items: center; gap: 4px; margin-top: 8px; border: 1px solid var(--border); border-radius: 10px; background: #fff; padding: 0 12px; min-height: 48px; }
+.tag span { color: var(--muted); font-weight: 700; }
+.tag input { border: 0; outline: 0; background: none; flex: 1; min-width: 0; font-size: 17px; }
+
+.btn { min-height: 52px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 700; font-size: 17px; padding: 0 18px; width: 100%; }
+.btn.main { background: var(--accent); color: var(--contrast); }
+.btn.second { background: var(--card); border: 1px solid var(--border); font-weight: 600; }
+.linked { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 12px 14px; }
+.linked .av { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(45deg, #f9a03f, var(--insta)); flex: none; }
+.linked div { flex: 1; min-width: 0; }
+.linked small { display: block; color: var(--muted); font-size: 15px; }
+.ok { background: var(--ok-bg); color: var(--ok); border-radius: 12px; padding: 10px 14px; font-weight: 600; }
+
+/* Écran Instagram (Meta) */
+.meta-screen { flex: 1; background: #fff; color: #1c1e21; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; padding: 24px; text-align: center; }
+.meta-screen .ig { width: 64px; height: 64px; border-radius: 18px; background: linear-gradient(45deg, #f9a03f, #c13584, #5851db); }
+.meta-screen p { margin: 0; max-width: 28ch; }
+.meta-screen .who { font-weight: 700; }
+.meta-screen .btn { background: #0866ff; color: #fff; max-width: 280px; }
+.meta-screen small { color: #65676b; }
+
+/* Édition */
+.row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 10px 12px; min-height: 64px; }
+.row .lvl { width: 6px; align-self: stretch; border-radius: 3px; flex: none; background: var(--accent); }
+.row div { flex: 1; min-width: 0; }
+.row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.row .m { color: var(--muted); font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 2px; }
+.chip { font-size: 14px; padding: 1px 9px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+.chip.pub { background: var(--ok-bg); color: var(--ok); } .chip.draft { background: var(--draft-bg); color: var(--draft); }
+.from { color: var(--insta); font-weight: 600; }
+.stay { color: var(--muted); font-size: 15px; text-align: center; border: 2px dashed var(--border); border-radius: 14px; padding: 10px 12px; }
+
+.nav { display: flex; border-top: 1px solid var(--border); padding: 4px 4px 8px; flex: none; }
+.nav span { flex: 1; min-height: 52px; display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+.nav span.on { color: var(--accent); font-weight: 700; }
+</style>
+
+<div class="wrap">
+  <h1>Relier Instagram aux actus</h1>
+  <p class="intro">Maquette cliquable. Barre du bas › <b>Actus</b> › onglet <b>Édition</b> › « Paramètres d'édition des actus » › <b>Instagram</b>. C'est Stélina qui le fait, avec son téléphone. Les boutons gris ci-dessous ne sont pas dans l'appli : ils servent à passer d'une étape à l'autre.</p>
+  <div class="steps" role="group" aria-label="Étapes de la maquette">
+    <span>Étape</span>
+    <button id="s1" data-s="1">1. Choisir</button>
+    <button id="s2" data-s="2">2. Instagram</button>
+    <button id="s3" data-s="3">3. Relié</button>
+    <button id="s4" data-s="4">4. Dans Édition</button>
+  </div>
+  <div class="grid">
+    <div class="phone" id="phone" aria-label="Téléphone"></div>
+    <div class="notes" id="notes" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+const S = { step: 1, choice: 'tag', tag: 'contretemps' }
+const CHOICES = {
+  all: { b: 'Tous mes posts', s: 'Chaque nouveau post arrive dans les actus, tout de suite.' },
+  tag: { b: 'Seulement ceux avec un hashtag', s: 'Seuls les posts où vous écrivez ce hashtag arrivent, tout de suite.' },
+  pick: { b: 'Je les choisis un par un', s: 'Chaque post arrive en brouillon dans Édition. Vous touchez « Publier » pour ceux que vous voulez.' },
+}
+const POSTS = [
+  { t: 'Répétition du gala, on avance ! #contretemps', tagged: true, when: "Aujourd'hui" },
+  { t: 'Mon chat en tutu 🐱', tagged: false, when: 'Hier' },
+  { t: 'Stage salsa samedi, venez nombreux #contretemps', tagged: true, when: 'Lundi' },
+]
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+
+function topBar(tabs = true) {
+  return `<div class="top"><span class="logo">CT</span><strong>Actus</strong></div>` +
+    (tabs ? `<div class="tabs"><span class="on">Édition</span><span>Visualisation</span></div>` : '')
+}
+const NAV = `<div class="nav"><span>Admin</span><span class="on">Actus</span><span>Cours</span><span>Messages</span><span>Docs</span></div>`
+
+function choices() {
+  return `<p class="q">Quels posts Instagram mettre dans les actus ?</p>` +
+    Object.entries(CHOICES).map(([k, c]) => `
+      <div class="choice" role="radio" tabindex="0" aria-checked="${S.choice === k}" data-c="${k}">
+        <span class="dot"></span>
+        <div><b>${c.b}</b><small>${c.s}</small>
+        ${k === 'tag' && S.choice === 'tag' ? `<label class="tag"><span>#</span><input id="tag" value="${esc(S.tag)}" aria-label="Hashtag"></label>` : ''}
+        </div>
+      </div>`).join('')
+}
+
+function screen() {
+  if (S.step === 2) return `<div class="meta-screen">
+      <div class="ig"></div>
+      <p class="who">Contretemps Actus</p>
+      <p>Se connecter avec Instagram en tant que <b>stellina_rvlls</b></p>
+      <button class="btn" id="allow">Continuer</button>
+      <small>Écran d'Instagram, pas de l'appli</small>
+    </div>`
+  if (S.step === 4) {
+    const shown = POSTS.filter((p) => S.choice !== 'tag' || p.tagged)
+    const draft = S.choice === 'pick'
+    return topBar() + `<div class="body">
+      <button class="btn main">Nouvelle actu</button>
+      ${shown.map((p) => `<div class="row"><span class="lvl"></span><div>
+        <div class="t">${esc(p.t)}</div>
+        <div class="m"><span class="from">Instagram</span> ${p.when} <span class="chip ${draft ? 'draft' : 'pub'}">${draft ? 'Brouillon' : 'Publiée'}</span></div>
+      </div></div>`).join('')}
+      ${S.choice === 'tag' ? `<div class="stay">« Mon chat en tutu » reste sur Instagram : pas de #${esc(S.tag || '…')}</div>` : ''}
+      <div class="sect">Paramètres d'édition des actus ›</div>
+    </div>` + NAV
+  }
+  const linked = S.step === 3
+  return topBar() + `<div class="body">
+    <div class="sect">Paramètres d'édition des actus</div>
+    <p class="title">Instagram</p>
+    ${linked ? `<div class="ok">Instagram est relié.</div>
+      <div class="linked"><span class="av"></span><div><b>@stellina_rvlls</b><small>Ses nouveaux posts arrivent en 5 minutes au plus.</small></div></div>` : ''}
+    ${choices()}
+    ${linked ? `<button class="btn second">Délier</button>` : `<button class="btn main" id="connect">Se connecter avec Instagram</button>`}
+  </div>` + NAV
+}
+
+const NOTES = {
+  1: () => `<p class="eyebrow">Étape 1 · avant de relier</p><h2>Elle choisit d'abord quels posts viennent</h2>
+    <ul><li>Une seule question, trois réponses, une seule cochée. Touchez-les pour voir.</li>
+    <li>« Seulement ceux avec un hashtag » ouvre la case du hashtag, déjà remplie avec <b>contretemps</b>.</li>
+    <li>Puis le seul bouton de l'écran : « Se connecter avec Instagram ».</li></ul>`,
+  2: () => `<p class="eyebrow">Étape 2 · chez Instagram</p><h2>Elle se connecte avec son compte Instagram</h2>
+    <ul><li>Instagram s'ouvre, elle entre son identifiant et son mot de passe Instagram si besoin, puis « Continuer ».</li>
+    <li>Pas de clé à copier. On revient tout seul dans l'appli.</li></ul>`,
+  3: () => `<p class="eyebrow">Étape 3 · de retour dans l'appli</p><h2>« Instagram est relié »</h2>
+    <ul><li>Son compte s'affiche. Le choix reste là : elle peut le changer quand elle veut, ça vaut pour les posts suivants.</li>
+    <li>« Délier » arrête tout.</li></ul>`,
+  4: () => `<p class="eyebrow">Étape 4 · ce que ça donne</p><h2>${CHOICES[S.choice].b}</h2>
+    <ul>${S.choice === 'all' ? '<li>Ses 3 posts arrivent, publiés : tout le monde les voit.</li>'
+      : S.choice === 'tag' ? `<li>Seuls les 2 posts avec #${esc(S.tag || '…')} arrivent, publiés. Le chat reste sur Instagram.</li>`
+      : '<li>Ses 3 posts arrivent en <b>Brouillon</b>, personne ne les voit. Elle en touche un, puis « Publier » ; les autres, elle peut les supprimer.</li>'}
+    <li>Revenez à l'étape 1 pour essayer un autre choix.</li></ul>`,
+}
+
+function render() {
+  document.getElementById('phone').innerHTML = screen()
+  document.getElementById('notes').innerHTML = NOTES[S.step]() +
+    `<p class="ask">Ce qui change par rapport à la version en cours : un seul choix à trois réponses au lieu d'une case hashtag et d'un interrupteur séparés.</p>`
+  document.querySelectorAll('.steps button').forEach((b) => b.setAttribute('aria-pressed', String(+b.dataset.s === S.step)))
+}
+function go(step) { S.step = step; render() }
+
+document.addEventListener('click', (e) => {
+  const st = e.target.closest('.steps button'); if (st) return go(+st.dataset.s)
+  const c = e.target.closest('.choice'); if (c && !e.target.closest('.tag')) { S.choice = c.dataset.c; render(); if (S.choice === 'tag') document.getElementById('tag')?.focus(); return }
+  if (e.target.id === 'connect') return go(2)
+  if (e.target.id === 'allow') return go(3)
+})
+document.addEventListener('keydown', (e) => {
+  const c = e.target.closest?.('.choice'); if (c && (e.key === ' ' || e.key === 'Enter') && e.target === c) { e.preventDefault(); S.choice = c.dataset.c; render() }
+})
+document.addEventListener('input', (e) => { if (e.target.id === 'tag') S.tag = e.target.value.replace(/^#/, '').trim() })
+render()
+</script>

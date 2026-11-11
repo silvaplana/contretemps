@@ -157,19 +157,23 @@ propriétaire, pas d'autres écoles.
 
 Spec : `spec/modules/actualites.md` §6 bis.
 
-1. Sur developers.facebook.com, créer l'appli Meta (Mes applis › Créer une
-   appli › « Autre » › « Entreprise »), ajouter le produit **Instagram**, puis
-   « Configuration de l'API avec connexion Instagram » › « Configurer la
-   connexion professionnelle Instagram ». Adresse de redirection :
+1. Sur developers.facebook.com, créer l'appli Meta (Créer une application ›
+   cas d'utilisation « Gérer les messages et le contenu sur Instagram »), puis
+   Cas d'utilisation › Personnaliser › **API setup with Unified login** :
+   associer un portefeuille business, « Créer une nouvelle configuration »
+   (modèle proposé : token utilisateur système, sans expiration), et
+   enregistrer l'URL de redirection
    `https://silvaplana.cloud/contretemps/api/news/instagram/return`.
 2. Dans Rôles de l'appli, ajouter chaque compte Instagram qui se connectera
-   comme **Testeur Instagram** (il accepte l'invitation dans Instagram), tant
-   que l'appli n'est pas validée par Meta.
-3. Dans `backend/.env` : `INSTAGRAM_APP_ID=...`, `INSTAGRAM_APP_SECRET=...`
-   (l'identifiant et la clé secrète **de l'appli Instagram**, sur la page de
-   l'étape 1) et
+   comme **Testeur(se) Instagram** (il accepte l'invitation dans Instagram ›
+   Paramètres › Applications et sites web), tant que l'appli n'a pas passé le
+   Contrôle app de Meta.
+3. Dans `backend/.env` : `INSTAGRAM_APP_ID=...` et `INSTAGRAM_APP_SECRET=...`
+   (ceux de l'appli, Paramètres › Général), `INSTAGRAM_CONFIG_ID=...` (l'ID de
+   configuration de l'étape 1) et
    `INSTAGRAM_REDIRECT_URL=https://silvaplana.cloud/contretemps/api/news/instagram/return`,
-   puis `docker compose up -d backend`.
+   puis `docker compose up -d backend messagerie-relance` (le relais toutes les 5 minutes
+   tourne dans le conteneur des relances et lit aussi ces variables).
 
 ## 5. Mise en ligne automatique (GitHub Actions)
 

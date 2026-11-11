@@ -155,5 +155,11 @@ export const relierInstagram = async (ecoleId, cle) =>
 // « Se connecter avec Instagram » : l'adresse de la page d'Instagram.
 export const connexionInstagram = async (ecoleId) =>
   (await appel(`/ecoles/${ecoleId}/news/instagram/login`, { method: 'POST' })).url
+// « Seulement les posts avec # » (§6 bis) : vide, tous les nouveaux posts.
+// « Les publier tout de suite » : sinon, ils arrivent en brouillon.
+const versTri = (r) => ({ hashtag: r.instagram_hashtag, publier: r.instagram_publish })
+export const lireTriInstagram = async (ecoleId) => versTri(await appel(`/ecoles/${ecoleId}/news/settings`))
+export const changerTriInstagram = async (ecoleId, changement) =>
+  versTri(await appel(`/ecoles/${ecoleId}/news/settings`, json('PUT', changement)))
 export const delierInstagram = async (ecoleId) =>
   versInstagram(await appel(`/ecoles/${ecoleId}/news/instagram`, { method: 'DELETE' }))

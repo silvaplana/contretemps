@@ -807,3 +807,64 @@
 .carrousel .actu__lien-texte {
   padding-bottom: 48px;
 }
+
+/* « Seulement les posts avec # » (§6 bis) */
+.parametres__tri {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.parametres__tri legend {
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.parametres__tri-choix {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 64px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+  cursor: pointer;
+}
+.parametres__tri-choix[aria-checked='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.parametres__tri-choix input[type='radio'] {
+  width: 24px;
+  height: 24px;
+  margin: 1px 0 0;
+  flex: none;
+  accent-color: var(--accent);
+}
+.parametres__tri-choix > span {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.parametres__tri-choix small {
+  color: var(--text-muted);
+  font-size: 17px;
+}
+.parametres__hashtag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 17px;
+  margin-top: 8px;
+}
+.parametres__hashtag input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+}

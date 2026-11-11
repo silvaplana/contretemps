@@ -143,10 +143,10 @@ def test_notification_a_qui_voit_les_actus_sauf_l_auteur_et_pas_apres_annuler(cl
 
 def test_option_ouvrir_sur_les_actus(client, e):
     url = f"/ecoles/{e['ecole'].id}/news/settings"
-    assert client.get(url).json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
-    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
-    assert client.get(url).json() == {"open_on_news": False, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
-    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": False}
+    assert client.get(url).json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "instagram_hashtag": "", "instagram_publish": True, "has_news": False}
+    assert client.put(url, json={"open_on_news": False}).json() == {"open_on_news": False, "media_first": False, "can_read": True, "visible_to_all": True, "instagram_hashtag": "", "instagram_publish": True, "has_news": False}
+    assert client.get(url).json() == {"open_on_news": False, "media_first": False, "can_read": True, "visible_to_all": True, "instagram_hashtag": "", "instagram_publish": True, "has_news": False}
+    assert client.get(f"/ecoles/{e['autre'].id}/news/settings").json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "instagram_hashtag": "", "instagram_publish": True, "has_news": False}
 
 
 def test_pas_d_ouverture_sur_les_actus_tant_qu_il_n_y_en_a_aucune(client, e):
@@ -191,7 +191,7 @@ def test_droits(client, db_session, e):
         assert client.get(f"/ecoles/{eid}/news/atelier", headers=entetes).status_code == 403
         assert client.put(f"/ecoles/{eid}/news/settings", json={"open_on_news": False}, headers=entetes).status_code == 403
         assert client.put(f"/ecoles/{eid}/news/settings", json={"visible_to_all": False}, headers=entetes).status_code == 403
-    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "has_news": True}
+    assert client.get(f"/ecoles/{eid}/news/settings", headers=zoe).json() == {"open_on_news": True, "media_first": False, "can_read": True, "visible_to_all": True, "instagram_hashtag": "", "instagram_publish": True, "has_news": True}
     assert client.get(f"/ecoles/{eid}/news", headers=admin).status_code == 200
     # Une autre école ne lit rien.
     assert client.get(f"/ecoles/{eid}/news", headers=voisin).status_code == 403
@@ -517,7 +517,7 @@ def test_actus_visibles_par_tout_le_monde(client, db_session, e, monkeypatch):
     assert eteint["visible_to_all"] is False and eteint["can_read"] is True
     assert client.get(f"/ecoles/{eid}/news", headers=seb).status_code == 200
     assert client.get(f"/ecoles/{eid}/news", headers=zoe).status_code == 403
-    assert client.get(url, headers=zoe).json() == {"open_on_news": False, "media_first": False, "can_read": False, "visible_to_all": False, "has_news": False}
+    assert client.get(url, headers=zoe).json() == {"open_on_news": False, "media_first": False, "can_read": False, "visible_to_all": False, "instagram_hashtag": "", "instagram_publish": True, "has_news": False}
     # L'autre école garde le sien.
     assert client.get(f"/ecoles/{e['autre'].id}/news/settings", headers=entetes_session(e["voisin"])).json()["visible_to_all"] is True
 
@@ -557,25 +557,114 @@ def test_instagram_se_connecter_avec_instagram(client, db_session, e, en_tant_qu
     assert client.get(url).json()["can_sign_in"] is False
     assert client.post(f"{url}/login").status_code == 409
 
-    monkeypatch.setattr(core.news_instagram, "app", instagram.InstagramApp("123", "secret", "https://x/api/news/instagram/return"))
+    monkeypatch.setattr(core.news_instagram, "app", instagram.InstagramApp("123", "secret", "https://x/api/news/instagram/return", "777"))
     echanges = []
-    monkeypatch.setattr(instagram, "exchange_code", lambda app, code: echanges.append(code) or "IGAA" + "y" * 40)
+    monkeypatch.setattr(instagram, "exchange_code", lambda app, code: echanges.append(code) or "EAA" + "y" * 40)
+    monkeypatch.setattr(instagram, "fetch_unified_account", lambda app, jeton: {"id": "1784", "username": "stellina_danse"})
     assert client.get(url).json()["can_sign_in"] is True
     adresse = client.post(f"{url}/login").json()["url"]
-    assert adresse.startswith("https://www.instagram.com/oauth/authorize?")
+    # Connexion unifiée de Meta (Seb, 11 novembre) : la fenêtre de connexion
+    # de Facebook, où l'on peut choisir Instagram.
+    assert adresse.startswith("https://www.facebook.com/")
+    assert "/dialog/oauth?" in adresse
     params = parse_qs(urlparse(adresse).query)
-    assert params["client_id"] == ["123"] and params["scope"] == ["instagram_business_basic"]
+    assert params["client_id"] == ["123"] and params["config_id"] == ["777"]
+    assert params["response_type"] == ["code"] and params["override_default_response_type"] == ["true"]
+    assert params["redirect_uri"] == ["https://x/api/news/instagram/return"] and "scope" not in params
     state = params["state"][0]
 
-    # Retour d'Instagram : relié, puis retour sur l'appli de l'école.
+    # Retour de Meta : relié, puis retour sur l'appli de l'école.
     retour = client.get("/news/instagram/return", params={"code": "abc", "state": state}, follow_redirects=False)
     assert retour.status_code == 303 and retour.headers["location"].endswith("/?instagram=ok")
     assert echanges == ["abc"]
     lien = db_session.get(NewsInstagram, eid)
-    assert lien is not None and lien.username == "contretemps_danse" and lien.linked_by == e["seb"].id
+    assert lien is not None and lien.username == "stellina_danse" and lien.linked_by == e["seb"].id
+    assert lien.ig_user_id == "1784" and lien.refreshes is False
 
     # Annulé, ou state fabriqué : rien ne change.
     retour = client.get("/news/instagram/return", params={"error": "access_denied", "state": state}, follow_redirects=False)
     assert retour.headers["location"].endswith("/?instagram=annule")
     retour = client.get("/news/instagram/return", params={"code": "abc", "state": state[:-2] + "xx"}, follow_redirects=False)
     assert retour.headers["location"].endswith("/?instagram=erreur") and echanges == ["abc"]
+
+
+def test_instagram_connexion_unifiee_relaie_sans_renouveler(client, db_session, e, en_tant_que, photos, faux_instagram, monkeypatch):
+    """Un compte relié par la connexion unifiée : ses posts se lisent par son
+    identifiant, et sa clé, sans date d'expiration, n'est jamais renouvelée."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.main import core
+    from news import instagram
+    from news.models import NewsInstagram
+    from securite.chiffrement import chiffrer
+
+    eid = e["ecole"].id
+    lus = []
+
+    def posts_du_compte(app, jeton, ig_user_id):
+        lus.append(ig_user_id)
+        return faux_instagram["posts"]
+
+    monkeypatch.setattr(instagram, "fetch_account_media", posts_du_compte)
+    monkeypatch.setattr(core.news_instagram, "app", instagram.InstagramApp("123", "secret", "https://x/return", "777"))
+    il_y_a_un_mois = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=30)
+    lien = NewsInstagram(org_id=eid, token_encrypted=chiffrer("EAA-suat"), username="stellina_danse",
+                         linked_by=e["seb"].id, linked_by_name="Seb", linked_at=il_y_a_un_mois,
+                         token_refreshed_at=il_y_a_un_mois, ig_user_id="1784", refreshes=False)
+    db_session.add(lien)
+    db_session.commit()
+    faux_instagram["posts"] = [_post("p1", datetime.now(timezone.utc), media_type="IMAGE", media_url="https://cdn/x.jpg")]
+    assert core.news_instagram.sync(db_session, lien) == 1
+    assert lus == ["1784"] and faux_instagram["rafraichi"] == 0 and lien.last_error is None
+
+
+def test_instagram_seulement_les_posts_avec_le_hashtag(client, db_session, e, en_tant_que, photos, faux_instagram):
+    """Seb, 11 novembre : seuls les posts avec #contretemps arrivent ; le
+    réglage se fait avant même de relier le compte."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.main import core
+    from news.models import NewsInstagram
+
+    eid = e["ecole"].id
+    en_tant_que(e["seb"])
+    url = f"/ecoles/{eid}/news/settings"
+    assert client.get(url).json()["instagram_hashtag"] == ""
+    # Le # et les espaces sont enlevés.
+    assert client.put(url, json={"instagram_hashtag": " #ContreTemps "}).json()["instagram_hashtag"] == "ContreTemps"
+    client.put(f"/ecoles/{eid}/news/instagram", json={"token": "IGAA" + "x" * 40})
+    lien = db_session.get(NewsInstagram, eid)
+    lien.linked_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    db_session.commit()
+    maintenant = datetime.now(timezone.utc)
+    faux_instagram["posts"] = [
+        _post("a", maintenant, caption="Gala samedi #contretemps", media_type="IMAGE", media_url="https://cdn/a.jpg"),
+        _post("b", maintenant, caption="Mes vacances #contretempsdanse", media_type="IMAGE", media_url="https://cdn/b.jpg"),
+        _post("c", maintenant, caption="Sans tag", media_type="IMAGE", media_url="https://cdn/c.jpg"),
+    ]
+    assert core.news_instagram.sync(db_session, lien) == 1
+    assert [i.instagram_id for i in db_session.query(NewsItem).filter_by(org_id=eid)] == ["a"]
+
+
+def test_instagram_posts_en_brouillon(client, db_session, e, en_tant_que, photos, faux_instagram):
+    """Seb, 11 novembre : qui relie choisit si les posts sont publiés tout de
+    suite ou arrivent en brouillon dans Édition."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.main import core
+    from news.models import NewsInstagram
+
+    eid = e["ecole"].id
+    en_tant_que(e["seb"])
+    url = f"/ecoles/{eid}/news/settings"
+    assert client.get(url).json()["instagram_publish"] is True
+    assert client.put(url, json={"instagram_publish": False}).json()["instagram_publish"] is False
+    client.put(f"/ecoles/{eid}/news/instagram", json={"token": "IGAA" + "x" * 40})
+    lien = db_session.get(NewsInstagram, eid)
+    lien.linked_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    db_session.commit()
+    faux_instagram["posts"] = [_post("d", datetime.now(timezone.utc), media_type="IMAGE", media_url="https://cdn/d.jpg")]
+    assert core.news_instagram.sync(db_session, lien) == 1
+    actu = db_session.query(NewsItem).filter_by(org_id=eid, instagram_id="d").one()
+    assert actu.published_at is None
+    assert client.get(f"/ecoles/{eid}/news").json()["items"] == []

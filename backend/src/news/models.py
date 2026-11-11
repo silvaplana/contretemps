@@ -89,6 +89,11 @@ class NewsSettings(Base):
     # « Les actus sont visibles par tout le monde » (Seb, 10 November, end of
     # the test); off, only those who publish see them.
     visible_to_all: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
+    # Only the Instagram posts with this hashtag come in (Seb, 11 November);
+    # empty: all of them. Kept here, so it can be set before linking.
+    instagram_hashtag: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
+    # Off: the relayed posts arrive as drafts in Édition (Seb, 11 November).
+    instagram_publish: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
 
 
 class NewsInstagram(Base):
@@ -106,5 +111,9 @@ class NewsInstagram(Base):
     # Only posts published after this come in, not the whole history.
     linked_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     token_refreshed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+    # Linked through Meta's Unified Login (Seb, 11 November): the account's id
+    # on graph.facebook.com, and a key that is never renewed.
+    ig_user_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    refreshes: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     last_sync_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
