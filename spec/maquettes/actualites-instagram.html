@@ -132,7 +132,7 @@ const POSTS = [
 ]
 const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
 
-function top(tabs = true) {
+function topBar(tabs = true) {
   return `<div class="top"><span class="logo">CT</span><strong>Actus</strong></div>` +
     (tabs ? `<div class="tabs"><span class="on">Édition</span><span>Visualisation</span></div>` : '')
 }
@@ -160,7 +160,7 @@ function screen() {
   if (S.step === 4) {
     const shown = POSTS.filter((p) => S.choice !== 'tag' || p.tagged)
     const draft = S.choice === 'pick'
-    return top() + `<div class="body">
+    return topBar() + `<div class="body">
       <button class="btn main">Nouvelle actu</button>
       ${shown.map((p) => `<div class="row"><span class="lvl"></span><div>
         <div class="t">${esc(p.t)}</div>
@@ -171,7 +171,7 @@ function screen() {
     </div>` + NAV
   }
   const linked = S.step === 3
-  return top() + `<div class="body">
+  return topBar() + `<div class="body">
     <div class="sect">Paramètres d'édition des actus</div>
     <p class="title">Instagram</p>
     ${linked ? `<div class="ok">Instagram est relié.</div>
