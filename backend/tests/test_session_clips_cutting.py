@@ -231,9 +231,29 @@ def test_ecoute_des_cris_brefs(monkeypatch, tmp_path, capsys):
 
     monkeypatch.setitem(sys.modules, "faster_whisper", types.SimpleNamespace(WhisperModel=Modele))
     monkeypatch.setattr(hearing, "_model", None)
+    monkeypatch.setattr(hearing, "_audio", lambda _path: [0.0])
     assert hearing.hear(tmp_path / "go-time.mp4") == [("go", 3.9), ("time", 7.3)]
     assert reglages["language"] == "en" and reglages["vad_parameters"]["min_speech_duration_ms"] <= 100
     assert "Go!@3.9 Time!@7.3" in capsys.readouterr().out
+
+
+def test_son_lu_par_ffmpeg(tmp_path):
+    """Le son est lu par ffmpeg (16 kHz mono) et non par PyAV, qui plantait
+    dans l'image sparring-worker (12/11) : aucun « Go » ni « Time » entendu."""
+    import subprocess
+
+    import imageio_ffmpeg
+
+    from session_clips import hearing
+
+    video = tmp_path / "son.mp4"
+    subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=s=320x240:d=2:r=25",
+         "-f", "lavfi", "-i", "sine=frequency=440:duration=2", "-shortest", "-pix_fmt", "yuv420p", str(video)],
+        check=True,
+    )
+    son = hearing._audio(video)
+    assert 1.8 * 16000 < len(son) < 2.2 * 16000 and son.dtype.name == "float32" and abs(son).max() > 0.05
 
 
 def test_go_crie_commence_le_combat():

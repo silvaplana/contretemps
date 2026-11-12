@@ -262,7 +262,9 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en
    anglais et cris brefs gardés (0,2 s ; seuil de voix 0,3, 600 ms de marge) depuis l'essai « Go time »
    de Seb (12/11), où rien n'avait été compris ; ce que Whisper comprend est écrit dans le journal de
-   `sparring-worker` (« Entendu dans … »), lisible avec l'action « Lire un essai du Labo ». Une écoute qui échoue
+   `sparring-worker` (« Entendu dans … »), lisible avec l'action « Lire un essai du Labo ». Le son est lu par ffmpeg (16 kHz mono) et passé à Whisper : le décodeur de faster-whisper
+   (PyAV) plantait dans l'image (« unexpected keyword argument 'metadata_errors' »), si bien qu'aucun
+   son n'avait jamais été entendu avant le 12/11 au soir. Une écoute qui échoue
    ne bloque pas la lecture : la vidéo est lue sans les sons. Les sons d'un morceau de la caméra
    sont gardés à côté de ses postures (`<id>.sounds.json`). Pas encore : les bras croisés sur la
    poitrine. Un combat repéré sans poing levé devient un « combat sans nom ».
