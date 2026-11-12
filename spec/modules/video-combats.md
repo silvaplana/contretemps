@@ -259,7 +259,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    time pour terminer » ; des poings touchés suivis d'un « Go ! » à moins de 2 s ne font qu'un début).
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
-   (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Une écoute qui échoue
+   (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en
+   anglais et cris brefs gardés (0,2 s ; seuil de voix 0,3, 600 ms de marge) depuis l'essai « Go time »
+   de Seb (12/11), où rien n'avait été compris ; ce que Whisper comprend est écrit dans le journal de
+   `sparring-worker` (« Entendu dans … »), lisible avec l'action « Lire un essai du Labo ». Une écoute qui échoue
    ne bloque pas la lecture : la vidéo est lue sans les sons. Les sons d'un morceau de la caméra
    sont gardés à côté de ses postures (`<id>.sounds.json`). Pas encore : les bras croisés sur la
    poitrine. Un combat repéré sans poing levé devient un « combat sans nom ».

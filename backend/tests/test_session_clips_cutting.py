@@ -210,6 +210,32 @@ def test_ecoute_impossible_ne_bloque_pas_la_lecture(monkeypatch, tmp_path):
     assert hearing.hear(tmp_path / "video.mp4") == []
 
 
+def test_ecoute_des_cris_brefs(monkeypatch, tmp_path, capsys):
+    """« Go ! » et « Time ! » criés seuls (Seb, 12/11, essai « Go time ») :
+    écoute en anglais, cris brefs gardés, et ce qui est compris va au journal."""
+    import sys
+    import types
+
+    from session_clips import hearing
+
+    reglages = {}
+
+    class Modele:
+        def __init__(self, *_a, **_k):
+            pass
+
+        def transcribe(self, _path, **kwargs):
+            reglages.update(kwargs)
+            mot = lambda w, t: types.SimpleNamespace(word=w, start=t)
+            return [types.SimpleNamespace(words=[mot(" Go!", 3.9), mot(" Time!", 7.3)])], None
+
+    monkeypatch.setitem(sys.modules, "faster_whisper", types.SimpleNamespace(WhisperModel=Modele))
+    monkeypatch.setattr(hearing, "_model", None)
+    assert hearing.hear(tmp_path / "go-time.mp4") == [("go", 3.9), ("time", 7.3)]
+    assert reglages["language"] == "en" and reglages["vad_parameters"]["min_speech_duration_ms"] <= 100
+    assert "Go!@3.9 Time!@7.3" in capsys.readouterr().out
+
+
 def test_go_crie_commence_le_combat():
     """« Go ! » pour commencer, « Time ! » pour finir (Seb, 12/11) ; les
     poings touchés juste avant le « Go ! » ne font qu'un début."""

@@ -58,9 +58,18 @@ def _hear(video_path: Path) -> list[tuple[str, float]]:
     segments, _ = _model.transcribe(
         str(video_path),
         word_timestamps=True,
-        vad_filter=True,  # ne transcrit que les passages où l'on parle
+        # En anglais : un « Go ! » seul, deviné dans une autre langue, sortait
+        # en d'autres lettres (Seb, 12/11 : rien entendu dans « Go time »).
+        language="en",
+        # Ne transcrit que les passages où l'on parle, mais garde les cris
+        # brefs (0,2 s) avec de la marge autour pour que Whisper les lise.
+        vad_filter=True,
+        vad_parameters={"threshold": 0.3, "min_speech_duration_ms": 50, "speech_pad_ms": 600},
         hotwords="Go, Time",
         condition_on_previous_text=False,
     )
     words = [w for s in segments for w in (s.words or [])]
+    # Dans le journal de sparring-worker (action « Lire un essai du Labo ») :
+    # ce que Whisper a compris, pour voir pourquoi un cri n'est pas compté.
+    print(f"Entendu dans {video_path.name} : {' '.join(f'{w.word.strip()}@{w.start:.1f}' for w in words) or 'rien'}")
     return [(word_kind(w.word), round(w.start, 1)) for w in words if word_kind(w.word)]
