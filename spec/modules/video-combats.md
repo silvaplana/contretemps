@@ -500,8 +500,10 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les
   cases **« Signes et sons du club »** (Début de combat, Fin de combat ; volet fermé au départ, comme « Paramètres de la vidéo » et les volets d'Admin, pour ne pas prendre trop de place : Seb, 12/11 ; la vidéo de l'essai est petite, un tiers de l'écran en hauteur au plus) ; **« Relancer la découpe »**
   (toujours actif, Seb 12/11) enregistre les réglages du club s'ils ont changé, relit les signes sur
-  les postures gardées avec les règles du jour (`POST /session-clips/lab/{id}/reread` ; les sons
-  entendus restent) et recalcule les combats, sans relire la vidéo ; pendant ce temps le bouton et la liste disent « Découpe en cours » avec trois points qui bougent, et les anciens combats disparaissent (Seb, 12/11). Un essai s'ouvre dès sa vidéo
+  les postures gardées avec les règles du jour (`POST /session-clips/lab/{id}/reread` : l'essai
+  repasse au lecteur de Fights, qui reprend les postures gardées et **réécoute le son**, depuis le
+  12/11 au soir ; avant, les sons gardés étaient repris tels quels) et recalcule les combats, sans
+  relire les images ; pendant ce temps le bouton et la liste disent « Découpe en cours » avec trois points qui bougent, et les anciens combats disparaissent (Seb, 12/11). Un essai s'ouvre dès sa vidéo
   envoyée : pendant la lecture des signes (automatique, la première fois), il montre la vidéo et
   « Lecture des signes… », puis se complète seul ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche
   ou un signe place la vidéo à ce moment (elle remonte à l'écran). Chaque combat coupé a sa
