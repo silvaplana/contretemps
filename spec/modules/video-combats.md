@@ -165,6 +165,28 @@ monde. L'enregistreur n'est installé que sur le téléphone qui filme. C'est un
 (Camera2 et MediaRecorder d'Android, sans bibliothèque ; dossier `recorder/`), indépendante du frontend, distribuée en APK (choix confirmé par Seb le 27 octobre). On n'utilise pas Capacitor, qui obligerait à
 maintenir un build Android de toute l'appli pour une seule fonction.
 
+**Décision Seb du 12/11 : une seule appli, « Tournage <école> », faite avec Capacitor** (elle remplace
+l'appli caméra à part et revient sur le choix du 27/10). Raison : deux applis, un code de jumelage
+et deux téléphones à manipuler, c'était trop compliqué
+(maquette https://claude.ai/artifact/AktTkAwZjXtrKKEFV285B2) :
+- L'appli Android (`frontend/android`) ouvre le site de l'école, donc chaque mise en ligne s'y voit
+  sans réinstaller. Une appli par école, nommée « Tournage » suivi du nom de l'école
+  (`frontend/android/ecoles.json`). Elle cohabite avec la PWA, qui reste l'appli de tout le monde ;
+  seul le téléphone qui filme a besoin de « Tournage ».
+- Elle propose elle-même ses nouvelles versions, comme l'appli Mountain de Seb : à l'ouverture et
+  deux fois par jour, « Nouvelle version disponible › Installer ». La clé de signature est fixe.
+- *(étape suivante)* Fights › **Tournage**, nouveau sous-onglet tout à gauche (coachs), réunit tout le
+  tournage. La pastille caméra du haut et son panneau disparaissent. Il contient un sélecteur à trois
+  positions, **Caméra | Éteint | Télécommande**, et un seul bouton **● Filmer / ■ Arrêter**. En Caméra,
+  le bouton lance ou arrête le film sur ce téléphone, et une petite image montre ce qu'il filme. En
+  Télécommande, il envoie l'ordre à la caméra de l'école. Plusieurs télécommandes sont possibles, et
+  la caméra obéit au dernier ordre. Pas de code ni de jumelage, l'appli est connectée au compte du
+  coach. Dans Chrome, la position Caméra propose « Installer l'appli Tournage ». La séance s'appelle
+  « Séance du JJ/MM » (plus de choix du cours).
+
+Ce qui suit décrit l'appli caméra à part (`recorder/`), qui reste en service jusqu'à ce que Tournage
+filme. Le film lui-même (service de premier plan, morceaux, envoi) passera tel quel dans Tournage.
+
 - **Téléphone dédié, fixé au mur et branché en permanence.** Une seule caméra pour l'instant ; s'il y
   en a plusieurs un jour, on choisira laquelle démarrer.
 - **Mise en attente, une fois** : on ouvre l'enregistreur à l'installation. Il lance un service de
@@ -584,6 +606,12 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
    main immobile, X plus souple), cases « Signes et sons du club », onglet Labo (§6.5 bis). Les
    postures d'un essai sont gardées dans `sparring-poses/lab-<id>.json`, à côté de celles des
    morceaux : les combats se recalculent à chaque ouverture avec les cases du club.
+5. **Appli « Tournage <école> »** (Seb, 12/11, §4) :
+   - **5a, l'appli Android (en cours)** : Capacitor, ouvre le site de l'école, une appli par école,
+     mises à jour proposées par l'appli, clé de signature fixe. Ne filme pas encore.
+   - **5b, Fights › Tournage** : sous-onglet, sélecteur Caméra | Éteint | Télécommande, bouton
+     Filmer / Arrêter, le film de `recorder/` passé dans l'appli Tournage ; l'appli caméra à part et
+     le jumelage disparaissent.
 
 ## 9. Risques
 
@@ -653,6 +681,20 @@ Installer sur le téléphone de la salle :
 Mise à jour : l'APK est signé par une clé de test qui change à chaque construction, donc Android
 refuse la mise à jour par-dessus : désinstaller l'ancienne, installer la nouvelle, refaire le code
 (30 s). Une clé fixe, gardée dans les secrets du dépôt GitHub, évitera cela le jour où ça gêne.
+
+**Appli Tournage (décision du 12/11, §4).** Code dans `frontend/android` (Capacitor) : l'appli ouvre
+l'adresse de l'école (`server.url`), avec la page `frontend/android-shell/hors-ligne.html` sans
+réseau. Les écoles sont dans `frontend/android/ecoles.json` (clé, nom affiché, adresse) : en
+ajouter une suffit pour fabriquer son appli. L'action `.github/workflows/tournage-apk.yml`
+(« Appli Tournage (APK) ») construit une appli par école à chaque PR qui touche ces fichiers, et, à
+chaque fusion dans `main`, la publie avec `version.json` dans la release « tournage-latest » :
+https://github.com/silvaplana/contretemps/releases/download/tournage-latest/tournage-<clé>.apk.
+`Updater.java` (repris de l'appli Mountain) lit ce `version.json` et propose la mise à jour.
+Signature : clé fixe créée par l'action au premier passage, chiffrée par le secret GitHub
+`SIGNING_PASSWORD` et rangée dans la release « tournage-cle ». Ne jamais supprimer cette release ni
+changer le mot de passe : les applis installées ne pourraient plus se mettre à jour sans être
+désinstallées. Sans le secret, l'appli est signée par une clé jetable. Rien ne dépend du VPS, sauf
+l'adresse de l'école dans `ecoles.json`.
 
 **Allumer le module pour une école.** Admin > École > Personnalisation de l'application >
 Fonctionnalités > case « Sparring » (Administrateur principal ou Super User). Il faut aussi le
