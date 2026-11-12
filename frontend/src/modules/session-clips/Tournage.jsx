@@ -222,7 +222,7 @@ export default function Tournage({ montrer, rafraichir }) {
 
   let corps
   if (role === 'off') {
-    corps = <p className="sc-meta">Ce téléphone ne filme pas et ne commande rien.</p>
+    corps = <p className="sc-meta">Ce téléphone ne filme ni ne commande rien.</p>
   } else if (role === 'cam' && !DANS_L_APPLI) {
     corps = (
       <>
