@@ -14,6 +14,7 @@ import { telechargerFichier } from '../../utils/telechargement.js'
 import * as api from './api.js'
 import { niceTicks } from './BalanceChart.jsx'
 import './finances.css'
+import { mots } from '../../api/mots.js'
 
 const POLL_MS = 2000
 // Délai après le dernier mouvement d'un curseur avant de recalculer.
@@ -145,7 +146,7 @@ export default function Previsionnel() {
   if (error) return <p className="login-screen__erreur">{error}</p>
   if (!seasonsData || !ledger) return <p className="muted">Chargement…</p>
   const seasons = seasonsData.seasons
-  if (seasons.length === 0) return <p className="muted">Aucune saison : créez-la d’abord dans Admin › École.</p>
+  if (seasons.length === 0) return <p className="muted">Aucune saison : créez-la d’abord dans Admin › {mots().Ecole}.</p>
 
   const season = seasons.find((s) => s.id === seasonId)
   const forecasts = listing?.forecasts ?? []

@@ -13,6 +13,7 @@ import { enEuros } from '../../utils/euros.js'
 import { telechargerFichier } from '../../utils/telechargement.js'
 import * as api from './api.js'
 import './finances.css'
+import { mots } from '../../api/mots.js'
 
 const POLL_MS = 2000
 const STATE_LABELS = { brouillon: 'Brouillon', valide: 'Validé', officiel: 'Officiel' }
@@ -132,7 +133,7 @@ export default function AssembleeGenerale() {
 
   if (error) return <p className="login-screen__erreur">{error}</p>
   if (!seasons) return <p className="muted">Chargement…</p>
-  if (seasons.length === 0) return <p className="muted">Aucune saison : créez-la d’abord dans Admin › École.</p>
+  if (seasons.length === 0) return <p className="muted">Aucune saison : créez-la d’abord dans Admin › {mots().Ecole}.</p>
 
   const season = seasons.find((s) => s.id === seasonId)
   const assemblies = listing?.assemblies ?? []

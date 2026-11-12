@@ -7,6 +7,7 @@ import Modal from '../../components/Modal.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 import { estConfigureDrive } from '../../utils/googleDrive.js'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
+import { mots } from '../../api/mots.js'
 
 const JOURS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche']
 const PERIODICITES = [
@@ -109,7 +110,7 @@ export default function SauvegardeEcoleMenu({ ecole, cours, setEleves, onAjouter
             type="button"
             className="icon-btn"
             onClick={() => setMenuOuvert((o) => !o)}
-            aria-label="Menu École"
+            aria-label={`Menu ${mots().Ecole}`}
           >
             <Icon name="moreVertical" />
           </button>
@@ -117,7 +118,7 @@ export default function SauvegardeEcoleMenu({ ecole, cours, setEleves, onAjouter
             <div className="dropdown-menu header-menu__panel">
               {estConfigureDrive() && (
                 <div className="header-menu__destination" onClick={(e) => e.stopPropagation()}>
-                  <span className="muted">Destination de "Sauvegarder École"</span>
+                  <span className="muted">Destination de "Sauvegarder {mots().Ecole}"</span>
                   <label>
                     <input
                       type="radio"
@@ -139,10 +140,10 @@ export default function SauvegardeEcoleMenu({ ecole, cours, setEleves, onAjouter
                 </div>
               )}
               <button type="button" onClick={sauvegarder}>
-                <Icon name="folder" size={18} /> Sauvegarder École
+                <Icon name="folder" size={18} /> Sauvegarder {mots().Ecole}
               </button>
               <button type="button" onClick={() => ouvrir('programmer')}>
-                <Icon name="clock" size={18} /> Programmer sauvegarde École
+                <Icon name="clock" size={18} /> Programmer sauvegarde {mots().Ecole}
               </button>
               <button type="button" onClick={telechargerInscriptions}>
                 <Icon name="fileCheck" size={18} /> Télécharger les nouveaux inscrits
@@ -165,7 +166,7 @@ export default function SauvegardeEcoleMenu({ ecole, cours, setEleves, onAjouter
                 </button>
               )}
               <button type="button" className="header-menu__danger" onClick={() => ouvrir('supprimer')}>
-                <Icon name="trash" size={18} /> Supprimer Données École
+                <Icon name="trash" size={18} /> Supprimer Données {mots().Ecole}
               </button>
             </div>
           )}
@@ -220,7 +221,7 @@ function ProgrammerSauvegardeModal({ ecole, onClose }) {
 
   return (
     <Modal
-      title="Programmer sauvegarde École"
+      title={`Programmer sauvegarde ${mots().Ecole}`}
       onClose={onClose}
       footer={
         <button
@@ -348,7 +349,7 @@ function SupprimerDonneesModal({ ecole, onClose }) {
 
   return (
     <ConfirmationNomModal
-      titre="Supprimer Données École"
+      titre={`Supprimer Données ${mots().Ecole}`}
       description={
         <>
           Supprime <strong>définitivement</strong> tous les élèves, professeurs, cours, conversations,

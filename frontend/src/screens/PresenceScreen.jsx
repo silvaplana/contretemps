@@ -2,6 +2,7 @@ import { Fragment, useState } from 'react'
 import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
 import { isAdmin } from '../data/roles.js'
+import { mots } from '../api/mots.js'
 
 const CYCLE = ['present', 'absent', 'retard']
 const ICONS = { present: 'check', absent: 'x', retard: 'clock' }
@@ -193,7 +194,7 @@ export default function PresenceScreen({
 
             {rosterEleves.length > 0 && (
               <tr className="presence-table__group-header">
-                <td colSpan={nbColonnesDate + 1}>Élèves :</td>
+                <td colSpan={nbColonnesDate + 1}>{mots().Eleves} :</td>
               </tr>
             )}
 

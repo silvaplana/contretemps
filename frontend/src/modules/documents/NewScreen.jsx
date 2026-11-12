@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FileIcon, FolderIcon } from './icons.jsx'
 import { FAMILIES } from './kinds.js'
 import FamilyCards from './app/FamilyCards.jsx'
+import { mots } from '../../api/mots.js'
 
 // Écran du + « Que voulez-vous faire ? » (spec documents.md §7.1 ter).
 // Ordre voulu par Seb (15 octobre) : Créer un fichier, Créer un dossier,
@@ -64,7 +65,7 @@ function TuileEcole({ t, admin, api, onUse, onChanged, onToast }) {
       <button type="button" className="dx-tpl__main" onClick={() => onUse(t)}>
         {t.name}
       </button>
-      <span className="dx-tpl__ecole">{t.hidden ? 'caché' : 'de l’école'}</span>
+      <span className="dx-tpl__ecole">{t.hidden ? 'caché' : mots().deLEcole}</span>
       {admin && (
         <button type="button" className="dx-tpl__plus" aria-label={`Régler le modèle ${t.name}`} onClick={() => setReglage(true)}>
           ⋯
@@ -174,7 +175,7 @@ export default function NewScreen({ api, canAdd, canAddFolder = true, onClose, o
                   <span className="dx-s">{m.hint}</span>
                 </span>
                 {ecole.items.some((t) => t.family === cle && !t.hidden) && (
-                  <span className="dx-acc__n">{ecole.items.filter((t) => t.family === cle && !t.hidden).length} de l’école</span>
+                  <span className="dx-acc__n">{ecole.items.filter((t) => t.family === cle && !t.hidden).length} {mots().deLEcole}</span>
                 )}
                 <span className="dx-acc__arr">›</span>
               </button>

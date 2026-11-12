@@ -7,6 +7,7 @@ import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
 import { ChampMotDePasse } from './LoginScreen.jsx'
 import { isAdmin, isProf, isSuperuser, libellesRoles, trierParRole } from '../data/roles.js'
+import { mots } from '../api/mots.js'
 
 // Champ "toujours affiché, éditable via un crayon" (Profil admin
 // uniquement, voir ProfilScreen.jsx : email et code de récupération) —
@@ -276,7 +277,7 @@ export default function ProfilScreen({
 
       {onChangerEcole && (
         <button type="button" className="btn btn--secondary btn--block" onClick={onChangerEcole}>
-          Changer d’école
+          Changer {mots().dEcole}
         </button>
       )}
       <button type="button" className="btn btn--danger btn--block" onClick={onLogout}>

@@ -4,6 +4,7 @@ import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
 import { formaterCout, urlInscriptionDepuisFiche } from '../../utils/inscriptionEleve.js'
 import { reduirePhoto } from '../../utils/reduirePhoto.js'
+import { mots } from '../../api/mots.js'
 
 // La fiche papier est en recto verso : une photo par face.
 const FACES = [
@@ -139,7 +140,7 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
       <div className="ocr__formulaire">
         <div className="ocr__formulaire-entete">
           <strong>
-            Inscription élève (OCR)
+            Inscription {mots().eleve} (OCR)
             {total > 1 && ` — fiche ${total - file.length + 1} sur ${total}`}
           </strong>
           <span className="muted">Lecture : {formaterCout(lue.coutUsd)}</span>
@@ -160,7 +161,7 @@ export default function AjoutEleveOcr({ ecoleId, onEleveAjoute, onClose }) {
   }
 
   return (
-    <Modal title="Inscription élève (OCR)" onClose={onClose}>
+    <Modal title={`Inscription ${mots().eleve} (OCR)`} onClose={onClose}>
       <p className="muted">
         La fiche d’inscription est en recto verso : il faut <strong>2 photos</strong>, une par face,
         bien à plat et nettes. La lecture démarre dès que les deux sont là.
