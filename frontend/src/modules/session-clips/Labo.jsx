@@ -51,6 +51,7 @@ export function useSuppressionEssai(montrer, rafraichir) {
 export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOpen }) {
   const [liste, setListe] = useState(null)
   const champ = useRef(null)
+  const camera = useRef(null)
   useEffect(() => {
     api.essais().then(setListe, (e) => montrer(e.message))
   }, [version, montrer])
@@ -77,20 +78,31 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
   const visibles = liste?.filter((e) => !essaisCaches.has(e.id))
   return (
     <>
-      <button type="button" className="btn btn--primary sc-bouton" onClick={() => champ.current?.click()}>
+      {/* Filmer tout de suite (essais entre amis, Seb 12/11) ou prendre une vidéo de la Galerie. */}
+      <button type="button" className="btn btn--primary sc-bouton" onClick={() => camera.current?.click()}>
+        Filmer une vidéo
+      </button>
+      <button type="button" className="btn btn--secondary sc-bouton" onClick={() => champ.current?.click()}>
         Importer une vidéo
       </button>
-      <input
-        ref={champ}
-        type="file"
-        accept="video/*"
-        hidden
-        onChange={(ev) => {
-          importer(ev.target.files?.[0])
-          ev.target.value = ''
-        }}
-      />
-      <p className="sc-meta">Une vidéo de la Galerie, lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
+      {[
+        [camera, 'environment'],
+        [champ, undefined],
+      ].map(([ref, capture]) => (
+        <input
+          key={capture ?? 'galerie'}
+          ref={ref}
+          type="file"
+          accept="video/*"
+          capture={capture}
+          hidden
+          onChange={(ev) => {
+            importer(ev.target.files?.[0])
+            ev.target.value = ''
+          }}
+        />
+      ))}
+      <p className="sc-meta">Filmée ou prise dans la Galerie, la vidéo est lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
       {visibles?.length === 0 && <p className="sc-vide">Aucun essai pour l’instant.</p>}
       {visibles?.map((e) => (
         <button

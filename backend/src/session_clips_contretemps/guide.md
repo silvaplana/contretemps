@@ -27,7 +27,8 @@ Séances (coachs)
 - « Supprimer ce clip » en bas.
 
 Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
-- « Importer une vidéo » (bouton principal) : choisir la vidéo dans la Galerie. L'essai apparaît
+- « Filmer une vidéo » (bouton principal) : l'appareil photo s'ouvre, la vidéo filmée devient un
+  essai. « Importer une vidéo » : choisir la vidéo dans la Galerie. L'essai apparaît
   dans la liste (« Envoi … % », puis « Lecture des signes… ») et s'ouvre quand il est lu.
 - Un essai ouvert : la vidéo, le graphe des signes repérés (une flèche par signe avec son image,
   vert = début, rouge = fin, gris = décoché), la liste des signes, les combats coupés. Toucher une

@@ -400,7 +400,8 @@ porte une petite étoile. Les favoris sont **propres à chacun** (un élève ne 
 Demande de Seb du 12/11 : essayer la découpe sur des vidéos déjà filmées, sans filmer à chaque fois.
 Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fights-labo.html)).
 
-- **Fights › Labo** : bouton principal **« Importer une vidéo »** (la Galerie du téléphone), puis la
+- **Fights › Labo** : bouton principal **« Filmer une vidéo »** (l'appareil photo, pour des essais en
+  direct ; Seb 12/11), puis **« Importer une vidéo »** (la Galerie du téléphone), puis la
   liste des essais (« Combat du 11/11 à 20:10 », tiré de la date du fichier) avec leur état : envoi
   en %, « Lecture des signes… », « Vidéo illisible ». La vidéo part par l'envoi par blocs du module
   `videos` ; le worker la lit dès qu'elle est arrivée, à toute heure.
