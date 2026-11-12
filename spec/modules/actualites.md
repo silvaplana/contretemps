@@ -703,3 +703,7 @@ Chaque étape part sur le « vas-y » de Seb, une PR chacune :
   aucun billet, depuis Fonctionnalités, avec Annuler 10 s ; son droit disparaît avec lui.
 - Changer l'ordre des onglets des blogs : pas prévu (ordre de création).
 - Recherche par mot dans un blog : pas prévue ; à voir quand un blog aura beaucoup de billets.
+- **Les chorégraphies restent un module à part**, pas un blog (étude du 12 novembre, Seb d'accord) :
+  rattachées à des cours, des élèves et une saison, gérées par les profs de leurs cours, et tout le
+  monde y ajoute ses vidéos au fil de la saison. Le Blog ne connaît ni cours ni élèves ; le partage se
+  fait par le module Vidéos.
