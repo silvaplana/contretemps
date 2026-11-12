@@ -52,8 +52,6 @@ export function useSuppressionEssai(montrer, rafraichir) {
 export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOpen, onSupprimer }) {
   const [liste, setListe] = useState(null)
   const [renomme, setRenomme] = useState(null) // l'essai au crayon
-  const champ = useRef(null)
-  const camera = useRef(null)
   useEffect(() => {
     api.essais().then(setListe, (e) => montrer(e.message))
   }, [version, montrer])
@@ -77,34 +75,26 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
     }
   }
 
+  function choisi(ev) {
+    importer(ev.target.files?.[0])
+    ev.target.value = ''
+  }
+
   const visibles = liste?.filter((e) => !essaisCaches.has(e.id))
   return (
     <>
-      {/* Filmer tout de suite (essais entre amis, Seb 12/11) ou prendre une vidéo de la Galerie. */}
-      <button type="button" className="btn btn--primary sc-bouton" onClick={() => camera.current?.click()}>
-        Filmer une vidéo
-      </button>
-      <button type="button" className="btn btn--secondary sc-bouton" onClick={() => champ.current?.click()}>
-        Importer une vidéo
-      </button>
-      {[
-        [camera, 'environment'],
-        [champ, undefined],
-      ].map(([ref, capture]) => (
-        <input
-          key={capture ?? 'galerie'}
-          ref={ref}
-          type="file"
-          accept="video/*"
-          capture={capture}
-          hidden
-          onChange={(ev) => {
-            importer(ev.target.files?.[0])
-            ev.target.value = ''
-          }}
-        />
-      ))}
-      <p className="sc-meta">Filmée ou prise dans la Galerie, la vidéo est lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
+      {/* Comme les vidéos d'une chorégraphie (AjouterVideo.jsx, Seb 12/11) : la
+          caméra filme tout de suite (essais entre amis), le dossier prend une
+          vidéo de la Galerie. */}
+      <label className="fab--secondary" aria-label="Filmer une vidéo">
+        <Icon name="camera" size={20} />
+        <input type="file" accept="video/*" capture="environment" hidden onChange={choisi} />
+      </label>
+      <label className="fab" aria-label="Importer une vidéo">
+        <Icon name="folder" size={24} />
+        <input type="file" accept="video/*" hidden onChange={choisi} />
+      </label>
+      <p className="sc-meta">Filmez (caméra) ou prenez une vidéo de la Galerie (dossier) : elle est lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
       {visibles?.length === 0 && <p className="sc-vide">Aucun essai pour l’instant.</p>}
       {visibles?.map((e) => (
         <div key={e.id} className="sc-essai">
