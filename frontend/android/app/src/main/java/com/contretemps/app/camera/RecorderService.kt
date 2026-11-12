@@ -118,16 +118,11 @@ class RecorderService : Service() {
 
     private fun startRecording(sessionId: Int) {
         val key = "position_$sessionId"
-        val first = prefs.int(key)
         lateinit var pieces: PieceRecorder
         pieces = PieceRecorder(
-            this, folder, sessionId, first, handler,
+            this, folder, sessionId, prefs.int(key), handler,
             onPosition = { prefs.setInt(key, it) },
-            onPiece = {
-                // Le morceau suivant commence (sauf à l'arrêt, où recording passe à false).
-                status = status.copy(piece = status.piece + 1, pieceSince = System.currentTimeMillis())
-                send()
-            },
+            onPiece = ::send,
             onError = { message ->
                 Log.w(TAG, message)
                 status = status.copy(error = message)
@@ -144,8 +139,7 @@ class RecorderService : Service() {
         }
         recorder = pieces
         recordingSession = sessionId
-        val now = System.currentTimeMillis()
-        status = status.copy(recording = true, since = now, piece = first, pieceSince = now)
+        status = status.copy(recording = true, since = System.currentTimeMillis())
         notify("Filme la séance")
     }
 
@@ -208,9 +202,6 @@ class RecorderService : Service() {
         val since: Long? = null,
         val pending: Int = 0,
         val error: String? = null,
-        /** Position du morceau en cours de film (0 = le premier) et heure de son début. */
-        val piece: Int = 0,
-        val pieceSince: Long? = null,
     )
 
     companion object {

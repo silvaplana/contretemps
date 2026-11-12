@@ -83,6 +83,12 @@ class SessionOut(BaseModel):
     previews: list[VideoSortie]
     # La vidéo brute, suivie par le téléphone qui l'envoie (progression).
     raw_video: VideoSortie | None = None
+    # Caméra de la salle (Seb, 12/11) : début du film, durée déjà lue, et où
+    # en est la découpe (morceaux lus sur morceaux arrivés ou en cours d'envoi).
+    started_at: datetime | None = None
+    filmed_seconds: float = 0
+    pieces_read: int = 0
+    pieces_total: int = 0
 
 
 class SessionDetail(SessionOut):

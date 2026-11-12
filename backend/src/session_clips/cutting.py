@@ -34,7 +34,7 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 from .fights import REASON_NO_END, Sound, as_sound
 from .framing import Box, ffmpeg_filter, video_size
 from .lab import club_fights
-from .models import Clip, ClipSession, Piece
+from .models import Clip, ClipSession, Piece, Recorder
 from .service import SessionClips, video_name
 from .signals import Frame, Pose
 
@@ -194,6 +194,10 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
         sources.append((source, offset, piece.duration_seconds))
         offset += piece.duration_seconds
         ended = piece.last
+    # Dernier morceau arrivé mais séance encore « Filme » sans caméra qui la
+    # filme (ancienne caméra remplacée en plein film) : elle est finie.
+    if ended and session.status == "recording" and db.scalar(select(Recorder.id).where(Recorder.session_id == session.id)) is None:
+        session.status = "processing"
     finished = ended and session.status == "processing"
     if not read and not finished:
         return 0

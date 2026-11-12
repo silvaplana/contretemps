@@ -1,7 +1,7 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a cinq onglets en haut : Tournage, Mes combats, Séances, À vérifier
+(admin ou professeur) a cinq onglets en haut : Mes combats, Tournage, Séances, À vérifier
 (pastille = nombre), Labo. Fights se rouvre sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -11,8 +11,10 @@ Mes combats
 
 Séances (coachs)
 - En tête « ★ Favoris », puis une carte par séance : nombre de combats, « 1 à vérifier » ou
-  « Vérifié ». Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne
-  s'ouvre pas.
+  « Vérifié », ou « Aucun combat trouvé ». Une séance filmée par la caméra montre l'heure et la durée
+  (« 21:40 → 21:46 · 6 min ») et, pendant la découpe, « Découpe : 67 % » avec une
+  barre. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
+  pas.
 - Une carte ouverte : « Présents reconnus : … », puis ses combats dans l'ordre.
 - Le « + » en bas à droite filme un combat avec le téléphone : « Garder ce combat ? » Garder ou
   Jeter, puis « Qui combattait ? » : Rouge et Bleu, par les premières lettres du nom ou le micro
@@ -62,8 +64,7 @@ Tournage (coachs) : tout pour filmer la séance.
   lance la caméra de l'école). Chaque téléphone garde sa position.
 - Caméra : seulement dans l'appli Android « Tournage <école> » ; dans Chrome, un bouton « Installer
   l'appli Tournage ». Une petite image montre ce que voit la caméra (Prête, Filme avec le chrono),
-  puis l'état des morceaux avec une barre (« Morceau 3 en cours de film », « Envoi du morceau 2 ·
-  45 % », « 1 morceau en attente d'envoi »), puis le bouton « ● Filmer » / « ■ Arrêter ». Le film
+  puis « Envoi de la vidéo : 45 % » avec une barre (ou « Vidéo en attente d'envoi »), puis le bouton « ● Filmer » / « ■ Arrêter ». Le film
   continue écran éteint. Remettre sur Éteint
   arrête la caméra.
 - Télécommande : « Caméra de la salle prête · 86 % », « La caméra filme · 00:12:34 » ou « Caméra

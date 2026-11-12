@@ -209,8 +209,8 @@ function Onglets({ onglet, onChange, version }) {
     api.aVerifier().then((l) => setN(l.length), () => {})
   }, [version])
   const onglets = [
-    ['tournage', 'Tournage'],
     ['mes', 'Mes combats'],
+    ['tournage', 'Tournage'],
     ['seances', 'Séances'],
     ['verifier', 'À vérifier'],
     ['labo', 'Labo'],
@@ -434,6 +434,16 @@ function BarreSelection({ me, choisis, vider, montrer, supprimer, rafraichir }) 
   )
 }
 
+// Caméra de la salle (Seb, 12/11) : « 21:40 → 21:46 · 6 min », ou
+// « Depuis 21:40 » pendant le film.
+function horaire(s) {
+  const debut = new Date(`${s.started_at}Z`)
+  const heure = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  if (s.status === 'recording' || !s.filmed_seconds) return `Depuis ${heure(debut)}`
+  const fin = new Date(debut.getTime() + s.filmed_seconds * 1000)
+  return `${heure(debut)} → ${heure(fin)} · ${Math.max(1, Math.round(s.filmed_seconds / 60))} min`
+}
+
 function EtatSeance({ s }) {
   const progression = useProgressionVideo(s.status === 'uploading' ? s.raw_video?.id : null)
   if (s.status === 'uploading') {
@@ -450,10 +460,22 @@ function EtatSeance({ s }) {
     )
   }
   if (s.status === 'recording') return <span className="sc-chip sc-chip--warn">Filme</span>
-  if (s.status === 'processing') {
-    return <span className="sc-chip sc-chip--info">{s.live ? 'Derniers clips dans quelques minutes' : 'Clips prêts demain matin'}</span>
+  if (s.status === 'processing' && s.live) {
+    // Où en est la découpe (Seb, 12/11) : la part de la vidéo arrivée déjà
+    // lue (morceaux de 2 minutes, sans le dire à l'écran).
+    const pct = s.pieces_total ? Math.round((s.pieces_read / s.pieces_total) * 100) : 0
+    return (
+      <>
+        <span className="sc-chip sc-chip--info">Découpe : {pct} %</span>
+        <span className="sc-barre">
+          <i style={{ width: `${pct}%` }} />
+        </span>
+      </>
+    )
   }
+  if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
   if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
+  if (s.clip_count === 0) return <span className="sc-chip sc-chip--info">Aucun combat trouvé</span>
   return (
     <>
       <span>
@@ -507,7 +529,9 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
                     ? 'Vidéo illisible'
                     : s.status === 'recording'
                       ? 'Filme…'
-                      : s.live
+                      : s.status === 'ready'
+                        ? 'Aucun combat trouvé'
+                        : s.live
                         ? 'Découpe en cours'
                         : 'Découpe cette nuit'}
               </span>
@@ -517,6 +541,7 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
                 {api.jour(s.held_on)}
                 {s.title ? ` · ${s.title}` : ''}
               </strong>
+              {s.started_at && <span className="sc-meta sc-carte__heure">{horaire(s)}</span>}
               <span className="sc-meta">
                 <EtatSeance s={s} />
               </span>
