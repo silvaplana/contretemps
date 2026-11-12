@@ -215,7 +215,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     return () => clearInterval(minuteur)
   }, [lecture, essaiId])
   useEffect(() => {
-    api.reglagesDuClub().then((r) => {
+    api.reglagesDuLabo().then((r) => {
       setClub(r)
       setReglages(r)
     }, (err) => montrer(err.message))
@@ -235,7 +235,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     setEnCours(true)
     try {
       if (change) {
-        const r = await api.reglerClub(reglages)
+        const r = await api.reglerLabo(reglages)
         setClub(r)
         setReglages(r)
       }
@@ -397,9 +397,9 @@ function Points() {
 
 // Volet fermé par défaut, comme dans Admin : sinon ça prend trop de place
 // (Seb, 12/11).
-// Les deux volets des réglages du club : dans un essai et dans
-// Fights › ⋮ › Paramètres de tournage (Seb, 12/11). Ce sont les mêmes
-// réglages, ceux qui découpent les séances filmées.
+// Les deux volets des réglages de la découpe : ceux du Labo dans un essai,
+// ceux du tournage dans Fights › ⋮ › Paramètres de tournage. Deux réglages
+// différents : le Labo expérimente, le tournage découpe les séances (Seb, 12/11).
 export function ReglagesDecoupe({ reglages, setReglages }) {
   const coches = reglages.signs
   function cocher(id) {

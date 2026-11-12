@@ -158,7 +158,8 @@ class LabTest(Base):
 
 
 class ClubSigns(Base):
-    """Réglages de la découpe du club (§5), faits dans le Labo. Pas de
+    """Réglages de la découpe du club (§5), faits dans Fights › ⋮ ›
+    Paramètres de tournage (le Labo a les siens, LabSettings). Pas de
     ligne = tous les signes, plan large, gestes en entier.
     `signs` : « Signes et sons du club », ceux que la découpe prend.
     `framing` : cadrage des clips ; `start_skip` / `end_skip` : secondes
@@ -169,5 +170,19 @@ class ClubSigns(Base):
     org_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     signs: Mapped[str] = mapped_column(String(200), nullable=False)  # séparés par des virgules
     framing: Mapped[str] = mapped_column(String(10), nullable=False, default="wide")  # 'medium' | 'tight'
+    start_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    end_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+
+
+class LabSettings(Base):
+    """Réglages du Labo, pour expérimenter sans toucher à ceux du tournage
+    (ClubSigns, Fights › ⋮ › Paramètres de tournage ; Seb, 12/11). Pas de
+    ligne = ceux du tournage. Mêmes colonnes que ClubSigns."""
+
+    __tablename__ = "sc_lab_settings"
+
+    org_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    signs: Mapped[str] = mapped_column(String(200), nullable=False)
+    framing: Mapped[str] = mapped_column(String(10), nullable=False, default="wide")
     start_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     end_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

@@ -31,7 +31,8 @@ export function permissionActuelle() {
 // à vérifier avant de proposer le bouton, plutôt que de le laisser planter
 // au clic.
 export function pushSupporte() {
-  return 'serviceWorker' in navigator && 'PushManager' in window
+  // Pas dans l'appli Tournage (WebView Android) : pas de service worker (main.jsx).
+  return 'serviceWorker' in navigator && 'PushManager' in window && !/; wv\)/.test(navigator.userAgent)
 }
 
 // 'https://B64Url...' -> Uint8Array, format attendu par

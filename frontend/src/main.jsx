@@ -43,7 +43,18 @@ createRoot(document.getElementById('root')).render(
 // Internet/Chrome ne proposent qu'un simple raccourci de page pour "Ajouter
 // à l'écran d'accueil" — avec le badge du navigateur collé sur l'icône —
 // plutôt qu'une vraie appli installée avec l'icône Contretemps seule.
-if (!pagePublique && 'serviceWorker' in navigator) {
+// Pas dans l'appli Tournage (une WebView Android, « ; wv) » dans le
+// navigateur) : une page servie par le service worker n'y reçoit pas le pont
+// de Capacitor, et Fights › Tournage proposait alors d'installer l'appli
+// qu'on avait déjà (Seb, 12/11). On l'y retire, et on recharge une fois.
+const dansUneWebView = /; wv\)/.test(navigator.userAgent)
+if (dansUneWebView && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(async (inscrits) => {
+    if (inscrits.length === 0) return
+    await Promise.all(inscrits.map((r) => r.unregister()))
+    if (!window.Capacitor?.isNativePlatform?.()) window.location.reload()
+  })
+} else if (!pagePublique && 'serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register(`${import.meta.env.BASE_URL}sw.js`)
   })

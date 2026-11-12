@@ -201,6 +201,17 @@ class SessionClipsReceiver:
             new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip)
             return settings_out(guard(lambda: lab.set_settings(s, m, new)))
 
+        # Les réglages du Labo, à part de ceux du tournage (Seb, 12/11).
+        @app.get(f"{PREFIX}/lab/signs", response_model=ClubSignsBody)
+        def lab_signs(m: Member = member, s: Session = db):
+            coach(m)
+            return settings_out(lab.settings(s, m.org_id, lab=True))
+
+        @app.put(f"{PREFIX}/lab/signs", response_model=ClubSignsBody)
+        def set_lab_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
+            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip)
+            return settings_out(guard(lambda: lab.set_settings(s, m, new, lab=True)))
+
         @app.get(f"{PREFIX}/lab", response_model=list[LabTestOut])
         def lab_tests(m: Member = member, s: Session = db):
             return [self._lab_out(s, t) for t in guard(lambda: lab.tests(s, m))]
