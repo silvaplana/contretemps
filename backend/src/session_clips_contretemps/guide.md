@@ -62,7 +62,9 @@ Tournage (coachs) : tout pour filmer la séance.
   lance la caméra de l'école). Chaque téléphone garde sa position.
 - Caméra : seulement dans l'appli Android « Tournage <école> » ; dans Chrome, un bouton « Installer
   l'appli Tournage ». Une petite image montre ce que voit la caméra (Prête, Filme avec le chrono),
-  puis le bouton « ● Filmer » / « ■ Arrêter ». Le film continue écran éteint. Remettre sur Éteint
+  puis l'état des morceaux avec une barre (« Morceau 3 en cours de film », « Envoi du morceau 2 ·
+  45 % », « 1 morceau en attente d'envoi »), puis le bouton « ● Filmer » / « ■ Arrêter ». Le film
+  continue écran éteint. Remettre sur Éteint
   arrête la caméra.
 - Télécommande : « Caméra de la salle prête · 86 % », « La caméra filme · 00:12:34 » ou « Caméra
   éteinte », et le même bouton « ● Filmer » / « ■ Arrêter », qui envoie l'ordre à la caméra.

@@ -19,6 +19,7 @@ import com.contretemps.app.R
 import java.io.File
 import java.io.IOException
 import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Tourne en continu tant que l'appli Tournage est sur « Caméra » (Fights ›
@@ -34,6 +35,7 @@ class RecorderService : Service() {
     private val thread = HandlerThread("camera").apply { start() }
     private val handler = Handler(thread.looper)
     private val sender = Executors.newSingleThreadExecutor()
+    private val sending = AtomicBoolean(false)
     private var wakeLock: PowerManager.WakeLock? = null
     private var recorder: PieceRecorder? = null
     private var recordingSession: Int? = null
@@ -43,6 +45,7 @@ class RecorderService : Service() {
         prefs = Prefs(this)
         folder = File(filesDir, "pieces").apply { mkdirs() }
         uploader = Uploader(folder)
+        upload = uploader
         wakeLock = getSystemService(PowerManager::class.java)
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "fights:camera").apply { acquire() }
     }
@@ -100,6 +103,8 @@ class RecorderService : Service() {
             status = status.copy(online = false, error = "Pas de réseau")
         }
         status = status.copy(pending = uploader.pending().size)
+        // Un envoi coupé (réseau, serveur) reprend ici, même une fois le film arrêté.
+        if (status.pending > 0) send()
         handler.postDelayed(::tick, TICK_MS)
     }
 
@@ -113,11 +118,16 @@ class RecorderService : Service() {
 
     private fun startRecording(sessionId: Int) {
         val key = "position_$sessionId"
+        val first = prefs.int(key)
         lateinit var pieces: PieceRecorder
         pieces = PieceRecorder(
-            this, folder, sessionId, prefs.int(key), handler,
+            this, folder, sessionId, first, handler,
             onPosition = { prefs.setInt(key, it) },
-            onPiece = ::send,
+            onPiece = {
+                // Le morceau suivant commence (sauf à l'arrêt, où recording passe à false).
+                status = status.copy(piece = status.piece + 1, pieceSince = System.currentTimeMillis())
+                send()
+            },
             onError = { message ->
                 Log.w(TAG, message)
                 status = status.copy(error = message)
@@ -134,7 +144,8 @@ class RecorderService : Service() {
         }
         recorder = pieces
         recordingSession = sessionId
-        status = status.copy(recording = true, since = System.currentTimeMillis())
+        val now = System.currentTimeMillis()
+        status = status.copy(recording = true, since = now, piece = first, pieceSince = now)
         notify("Filme la séance")
     }
 
@@ -147,11 +158,17 @@ class RecorderService : Service() {
         notify("Prête")
     }
 
+    /** Un seul envoi à la fois ; ce qui arrive pendant est repris au tour suivant. */
     private fun send() {
+        if (!sending.compareAndSet(false, true)) return
         sender.execute {
-            val token = prefs.token ?: return@execute
-            uploader.sendAll(Api(prefs.server, token))
-            status = status.copy(pending = uploader.pending().size)
+            try {
+                val token = prefs.token ?: return@execute
+                // Le compte des morceaux en attente est remis à jour par tick().
+                uploader.sendAll(Api(prefs.server, token))
+            } finally {
+                sending.set(false)
+            }
         }
     }
 
@@ -161,7 +178,12 @@ class RecorderService : Service() {
 
     private fun notification(text: String): Notification {
         val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Caméra", NotificationManager.IMPORTANCE_LOW))
+        // Pas de pastille « 1 » sur l'icône pour cette notification permanente (Seb, 12/11).
+        // Un canal ne change plus une fois créé : nouveau nom, l'ancien est effacé.
+        manager.deleteNotificationChannel("camera")
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL, "Caméra", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) },
+        )
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
@@ -186,15 +208,20 @@ class RecorderService : Service() {
         val since: Long? = null,
         val pending: Int = 0,
         val error: String? = null,
+        /** Position du morceau en cours de film (0 = le premier) et heure de son début. */
+        val piece: Int = 0,
+        val pieceSince: Long? = null,
     )
 
     companion object {
         private const val TAG = "RecorderService"
         private const val TICK_MS = 5_000L
-        private const val CHANNEL = "camera"
+        private const val CHANNEL = "tournage"
         private const val NOTIFICATION = 1
 
         @Volatile var status = Status()
+        /** L'envoi en cours, lu par TournagePlugin.status. */
+        @Volatile var upload: Uploader? = null
         @Volatile var running = false
         /** Tournage montre l'image de la caméra : on ne démarre pas tant qu'il la tient. */
         @Volatile var previewing = false
