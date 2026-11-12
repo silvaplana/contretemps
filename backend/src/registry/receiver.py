@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from db import get_db
 
-from . import activation
+from . import activation, rights_of
 
 
 class ModuleState(BaseModel):
@@ -50,4 +50,7 @@ class ModulesReceiver:
         dans Admin > École > Administrateurs."""
         rbac.require_membre(appelant, ecole_id)
         off = activation.disabled(db, ecole_id)
-        return [{"key": r.key, "label": r.label} for m in self.modules if m.key not in off for r in m.rights]
+        return [
+            {"key": r.key, "label": r.label}
+            for m in self.modules if m.key not in off for r in rights_of(m, db, ecole_id)
+        ]

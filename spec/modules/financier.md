@@ -717,8 +717,8 @@ l'AG** :
 
 **Écran Balance** (Seb et la trésorière, 10 novembre 2026 ; maquette
 https://claude.ai/artifact/N1EtPWMPcDvo381hcZyB3M) : Comptes › ⋯ › **Balance**, à tout moment, pas
-seulement à l'AG, et par le bouton **« Voir la Balance »** sous « Total des comptes » (visible aussi
-dans le volet Comptes à côté du bilan, Seb 10/11). Recalculée **chaque fois qu'on ouvre l'écran** avec tout ce qui est enregistré
+seulement à l'AG, et par la puce **« Balance »** à côté de Graphique et Tableau (Seb 12/11, à la place du
+bouton « Voir la Balance » ; visible aussi dans le volet Comptes à côté du bilan). Recalculée **chaque fois qu'on ouvre l'écran** avec tout ce qui est enregistré
 (rien n'est figé ni rangé dans Docs). La **période est dite en clair** sous le titre (« Période : du
 1er septembre 2025 au 31 août 2026 »), avec la date des dernières transactions bancaires connues si
 elle est plus tôt. Saison par défaut : **la dernière saison terminée si elle n'est pas clôturée** (celle dont on

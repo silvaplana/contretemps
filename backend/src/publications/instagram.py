@@ -1,10 +1,11 @@
-"""Relaying an Instagram account into the news (spec/modules/actualites.md
-§6 bis). The account must be professional (creator or business): Instagram
+"""Relaying an Instagram account into a blog (spec/modules/actualites.md
+§6 bis, §12.5): one account per organization, its posts arrive in the blog
+where it was linked. The account must be professional (creator or business): Instagram
 lets no app read a personal account. The publisher links it with « Se
 connecter avec Instagram » when the server has the Meta app (INSTAGRAM_APP_ID,
 INSTAGRAM_APP_SECRET, INSTAGRAM_REDIRECT_URL, INSTAGRAM_CONFIG_ID in
 backend/.env), or else pastes an access key made in Meta's developer site. Every 5 minutes the worker
-(app/relance_worker.py) turns each new post into a Normal news item: its
+(app/relance_worker.py) turns each new post into a Normal post: its
 text, then its photos and videos. Only posts published after the link come in.
 
 The button goes through Meta's « Instagram API with Unified Login » (Seb,
@@ -36,8 +37,8 @@ from securite.jetons import signatures_egales, signer
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from .models import NORMAL, NewsInstagram, NewsItem, NewsMedia
-from .news import InvalidMedia, News
+from .models import NORMAL, Blog, InstagramLink, InstagramSettings, Post, PostMedia
+from .publications import InvalidMedia, Publications
 
 logger = logging.getLogger(__name__)
 
@@ -158,13 +159,14 @@ def _b64(data: bytes) -> str:
     return base64.urlsafe_b64encode(data).decode("ascii").rstrip("=")
 
 
-def _make_state(org_id: int, author_id: int | None) -> str:
-    """Says who comes back from Instagram: signed by the server, 30 minutes."""
-    charge = _b64(json.dumps({"o": org_id, "a": author_id, "e": int(time.time()) + STATE_SECONDS}).encode())
+def _make_state(org_id: int, author_id: int | None, blog_id: int | None = None) -> str:
+    """Says who comes back from Instagram, and to which blog: signed by the
+    server, 30 minutes."""
+    charge = _b64(json.dumps({"o": org_id, "a": author_id, "b": blog_id, "e": int(time.time()) + STATE_SECONDS}).encode())
     return f"{charge}.{signer(charge)}"
 
 
-def _read_state(state: str) -> tuple[int, int | None] | None:
+def _read_state(state: str) -> tuple[int, int | None, int | None] | None:
     charge, _, signature = state.partition(".")
     if not charge or not signatures_egales(signer(charge), signature):
         return None
@@ -174,7 +176,7 @@ def _read_state(state: str) -> tuple[int, int | None] | None:
         return None
     if data.get("e", 0) < time.time():
         return None
-    return data["o"], data.get("a")
+    return data["o"], data.get("a"), data.get("b")
 
 
 def _has_hashtag(caption: str, hashtag: str) -> bool:
@@ -190,11 +192,40 @@ def _posted_at(post: dict) -> datetime | None:
 
 
 class InstagramRelay:
-    def __init__(self, news: News, app: InstagramApp | None = None) -> None:
-        self.news = news
+    def __init__(self, publications: Publications, app: InstagramApp | None = None) -> None:
+        self.publications = publications
         self.app = app
 
-    def login_url(self, org_id: int, author: Compte | None) -> str:
+    # --- Which posts come in (Seb, 11 November) ---
+
+    def hashtag(self, db: Session, org_id: int) -> str:
+        settings = db.get(InstagramSettings, org_id)
+        return "" if settings is None else settings.hashtag
+
+    def publishes(self, db: Session, org_id: int) -> bool:
+        settings = db.get(InstagramSettings, org_id)
+        return True if settings is None else settings.publish
+
+    def change_settings(self, db: Session, org_id: int, hashtag: str | None = None, publish: bool | None = None) -> None:
+        settings = db.get(InstagramSettings, org_id)
+        if settings is None:
+            settings = InstagramSettings(org_id=org_id, hashtag="", publish=True)
+            db.add(settings)
+        if hashtag is not None:
+            settings.hashtag = hashtag.strip().lstrip("#").strip()
+        if publish is not None:
+            settings.publish = publish
+        db.commit()
+
+    def blog_of(self, db: Session, link: InstagramLink) -> Blog:
+        """Where its posts arrive: the blog where it was linked, else the
+        first blog."""
+        blog = db.get(Blog, link.blog_id) if link.blog_id else None
+        return blog or self.publications.blogs(db, link.org_id)[0]
+
+    # --- Linking ---
+
+    def login_url(self, org_id: int, author: Compte | None, blog_id: int | None = None) -> str:
         """Where « Se connecter avec Instagram » leads. Raises InstagramError
         if the server has no Meta app."""
         if self.app is None:
@@ -202,37 +233,39 @@ class InstagramRelay:
         query = urlencode({
             "client_id": self.app.app_id, "config_id": self.app.config_id, "redirect_uri": self.app.redirect_url,
             "response_type": "code", "override_default_response_type": "true", "prompt": "login",
-            "state": _make_state(org_id, author.id if author else None),
+            "state": _make_state(org_id, author.id if author else None, blog_id),
         })
         return f"{AUTHORIZE_URL}?{query}"
 
-    def org_of(self, state: str) -> int | None:
+    def origin_of(self, state: str) -> tuple[int | None, int | None]:
+        """The organization and the blog that asked to link."""
         read = _read_state(state)
-        return read[0] if read else None
+        return (read[0], read[2]) if read else (None, None)
 
-    def complete(self, db: Session, code: str, state: str) -> NewsInstagram:
+    def complete(self, db: Session, code: str, state: str) -> InstagramLink:
         """Back from Instagram: the code becomes a key, and the account is
         linked as if the key had been pasted. Raises InstagramError."""
         read = _read_state(state)
         if read is None or self.app is None:
             raise InstagramError("Connexion expirée : recommencez")
-        org_id, author_id = read
+        org_id, author_id, blog_id = read
         token = exchange_code(self.app, code)
         account = fetch_unified_account(self.app, token)
         author = db.get(Compte, author_id) if author_id else None
-        return self._keep(db, org_id, author, token, account.get("username", ""), ig_user_id=str(account["id"]))
+        return self._keep(db, org_id, blog_id, author, token, account.get("username", ""), ig_user_id=str(account["id"]))
 
-    def get(self, db: Session, org_id: int) -> NewsInstagram | None:
-        return db.get(NewsInstagram, org_id)
+    def get(self, db: Session, org_id: int) -> InstagramLink | None:
+        return db.get(InstagramLink, org_id)
 
-    def link(self, db: Session, org_id: int, author: Compte | None, token: str) -> NewsInstagram:
+    def link(self, db: Session, org_id: int, author: Compte | None, token: str, blog_id: int | None = None) -> InstagramLink:
         """Checks the key with Instagram, then keeps it. Raises InstagramError."""
         token = token.strip()
-        return self._keep(db, org_id, author, token, fetch_account(token).get("username", ""))
+        return self._keep(db, org_id, blog_id, author, token, fetch_account(token).get("username", ""))
 
-    def _keep(self, db: Session, org_id: int, author: Compte | None, token: str, username: str,
-              ig_user_id: str | None = None) -> NewsInstagram:
-        link = db.get(NewsInstagram, org_id) or NewsInstagram(org_id=org_id)
+    def _keep(self, db: Session, org_id: int, blog_id: int | None, author: Compte | None, token: str, username: str,
+              ig_user_id: str | None = None) -> InstagramLink:
+        link = db.get(InstagramLink, org_id) or InstagramLink(org_id=org_id)
+        link.blog_id = blog_id
         link.token_encrypted = chiffrer(token)
         link.username = username
         # Unified Login: read by the account's id, the key never expires.
@@ -247,12 +280,12 @@ class InstagramRelay:
         return link
 
     def unlink(self, db: Session, org_id: int) -> None:
-        link = db.get(NewsInstagram, org_id)
+        link = db.get(InstagramLink, org_id)
         if link is not None:
             db.delete(link)
             db.commit()
 
-    def sync(self, db: Session, link: NewsInstagram) -> int:
+    def sync(self, db: Session, link: InstagramLink) -> int:
         """Brings in the new posts; returns how many. Never raises: the
         error is kept on the link and shown in Paramètres d'édition."""
         try:
@@ -269,8 +302,8 @@ class InstagramRelay:
             else:
                 posts = fetch_recent_media(token)
             count = 0
-            hashtag = self.news.instagram_hashtag(db, link.org_id)
-            # Oldest first, so the newest ends on top of the news.
+            hashtag = self.hashtag(db, link.org_id)
+            # Oldest first, so the newest ends on top of the blog.
             for post in reversed(posts):
                 posted_at = _posted_at(post)
                 if posted_at is None or posted_at <= link.linked_at or self._known(db, link.org_id, post["id"]):
@@ -290,40 +323,40 @@ class InstagramRelay:
             return 0
 
     def sync_all(self, db: Session) -> dict[int, int]:
-        """Every linked organization whose news module is on (the worker)."""
+        """Every linked organization whose Publications module is on (the worker)."""
         result = {}
-        for link in list(db.scalars(select(NewsInstagram))):
-            if "news" not in activation.disabled(db, link.org_id):
+        for link in list(db.scalars(select(InstagramLink))):
+            if "publications" not in activation.disabled(db, link.org_id):
                 result[link.org_id] = self.sync(db, link)
         return result
 
     def _known(self, db: Session, org_id: int, post_id: str) -> bool:
-        return db.scalar(select(NewsItem.id).where(NewsItem.org_id == org_id, NewsItem.instagram_id == post_id)) is not None
+        return db.scalar(select(Post.id).where(Post.org_id == org_id, Post.instagram_id == post_id)) is not None
 
-    def _bring_in(self, db: Session, link: NewsInstagram, post: dict) -> None:
+    def _bring_in(self, db: Session, link: InstagramLink, post: dict) -> None:
         # An album (carousel) brings all its photos and videos, in order.
         elements = (post.get("children", {}).get("data") or []) if post.get("media_type") == "CAROUSEL_ALBUM" else [post]
         media = []
         for element in elements:
             url = element.get("media_url")
             if element.get("media_type") == "IMAGE" and url:
-                photo = self.news.store_photo(link.org_id, io.BytesIO(download(url, 25 * 1024 * 1024)))
-                media.append(NewsMedia(position=len(media), photo_sha=photo))
+                photo = self.publications.store_photo(link.org_id, io.BytesIO(download(url, 25 * 1024 * 1024)))
+                media.append(PostMedia(position=len(media), photo_sha=photo))
             elif element.get("media_type") == "VIDEO" and url:
                 video_id = self._store_video(db, link, download(url, VIDEO_MAX_BYTES))
-                media.append(NewsMedia(position=len(media), video_id=video_id))
-        db.add(NewsItem(
-            org_id=link.org_id, level=NORMAL, body=(post.get("caption") or "").strip(), notify=False,
+                media.append(PostMedia(position=len(media), video_id=video_id))
+        db.add(Post(
+            org_id=link.org_id, blog_id=self.blog_of(db, link).id, level=NORMAL, body=(post.get("caption") or "").strip(), notify=False,
             author_id=link.linked_by, author_name=link.linked_by_name,
-            published_at=_now() if self.news.instagram_publish(db, link.org_id) else None,
+            published_at=_now() if self.publishes(db, link.org_id) else None,
             media=media, instagram_id=post["id"],
         ))
         db.commit()
 
-    def _store_video(self, db: Session, link: NewsInstagram, content: bytes) -> int:
+    def _store_video(self, db: Session, link: InstagramLink, content: bytes) -> int:
         """Through the Videos module, as if sent from a phone in one block;
         Instagram has already compressed it."""
-        videos = self.news.videos
+        videos = self.publications.videos
         upload = videos.creer_televersement(db, link.org_id, ".mp4", len(content))
         videos.ecrire_bloc(db, upload.id, 0, content)
         video = videos.finaliser(db, upload.id, nom="Actualité", uploaded_by=link.linked_by or 0, deja_compresse=True)

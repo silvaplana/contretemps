@@ -45,9 +45,9 @@ from finances_contretemps.module import _client_bancaire
 from helloasso.module import add_member
 from helloasso.sync import Sync, sync_all
 from messagerie import Conversations, Messages
-from news.instagram import InstagramApp, InstagramRelay
-from news.news import News
-from news.storage import news_storage
+from publications.instagram import InstagramApp, InstagramRelay
+from publications.publications import Publications
+from publications.storage import publications_storage
 from notifications import Notifications
 from securite.chiffrement import chiffrer, dechiffrer
 from videos import Videos
@@ -66,7 +66,9 @@ def run() -> None:
     association = AssociationContretemps()
     helloasso = Sync(add_member=add_member(Eleves(comptes=Comptes())))
     # Pas de notification pour un post relayé : `notifications` inutile ici.
-    instagram = InstagramRelay(News(notifications=None, storage=news_storage(), videos=Videos()), app=InstagramApp.from_env())
+    instagram = InstagramRelay(
+        Publications(notifications=None, storage=publications_storage(), videos=Videos()), app=InstagramApp.from_env()
+    )
     banque = Bank(client=_client_bancaire(), finances=Finances(), encrypt=chiffrer, decrypt=dechiffrer, warn=prevenir_tresoriers(Notifications()))
     if banque.client is None:
         print("Connexion bancaire non configurée sur ce conteneur : pas de lecture automatique.")

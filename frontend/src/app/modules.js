@@ -1,5 +1,7 @@
 // Les modules de l'appli Contretemps côté écran, dans l'ordre des onglets de
-// la barre du bas (spec/core.md §9 bis.2). Un module peut ne pas avoir
+// la barre du bas (spec/core.md §9 bis.2). `tabs` peut être une fonction
+// de ce que le module a lu pour l'école (ses blogs, pour Publications) ;
+// leurs clés commencent alors par `tabPrefix` (data/nav.js). Un module peut ne pas avoir
 // d'onglet (`tabs: []`) et porter des réglages (`settings` : composant
 // affiché sur sa ligne de Fonctionnalités) et un bloc en tête de la fiche
 // d'un membre (`memberFields`, voir ChampsMembres.jsx), et des tarifs
@@ -10,9 +12,9 @@ import documents from '../modules/documents/module.js'
 import finances from '../modules/finances/module.js'
 import helloasso from '../modules/helloasso/module.js'
 import messagerie from '../modules/messagerie/module.js'
-import news from '../modules/news/module.js'
 import presence from '../modules/presence/module.js'
+import publications from '../modules/publications/module.js'
 import sessionClips from '../modules/session-clips/module.js'
 
-// Actualités en premier : son onglet Actus vient juste après Admin (Seb, 6 novembre).
-export const MODULES = [news, presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso]
+// Publications en premier : ses onglets (Actus…) viennent juste après Admin (Seb, 6 novembre).
+export const MODULES = [publications, presence, choregraphies, messagerie, documents, finances, sessionClips, helloasso]

@@ -1,11 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { TABS } from '../data/nav.js'
-import { aUnDesRoles } from '../data/roles.js'
+import { LARGEUR_ONGLET, ongletsVisibles, TABS } from '../data/nav.js'
 import Icon from './Icon.jsx'
-
-// Largeur minimale d'un onglet lisible (icône + libellé à 10 px) : en
-// dessous, les libellés se chevauchent.
-const LARGEUR_ONGLET = 64
 
 // Barre de navigation basse fixe (voir spec/SPEC.md §3 et §4) : les onglets
 // visibles dépendent du rôle du profil actif (Admin est réservé à l'Admin,
@@ -22,10 +17,12 @@ const LARGEUR_ONGLET = 64
 // rester générique si un jour un autre onglet en a besoin.
 //
 // `eteints` : les modules éteints dans l'école (spec/core.md §9 bis.3), dont
-// les onglets sont cachés.
-export default function BottomNav({ active, onChange, profil, eteints = new Set(), alertes = {} }) {
-  // Un profil à plusieurs rôles voit l'union de leurs onglets (spec §3).
-  const visibles = TABS.filter((tab) => aUnDesRoles(profil, tab.roles) && !eteints.has(tab.module))
+// les onglets sont cachés. `tabs` : les onglets, avec ceux calculés pour
+// l'école (data/nav.js : ongletsAvec).
+export default function BottomNav({ active, onChange, profil, eteints = new Set(), alertes = {}, tabs = TABS }) {
+  // Un profil à plusieurs rôles voit l'union de leurs onglets (spec §3),
+  // dans l'ordre qu'il a choisi (Profil › Ma barre du bas).
+  const visibles = ongletsVisibles(profil, eteints, tabs)
   const navRef = useRef(null)
   const [place, setPlace] = useState(visibles.length)
   const [menuOuvert, setMenuOuvert] = useState(false)

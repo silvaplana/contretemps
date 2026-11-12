@@ -5,6 +5,7 @@ import * as notesFraisApi from '../api/notesFrais.js'
 import RibModal from '../modules/notes-frais/RibModal.jsx'
 import Icon from '../components/Icon.jsx'
 import Modal from '../components/Modal.jsx'
+import MaBarreDuBas from '../components/MaBarreDuBas.jsx'
 import { ChampMotDePasse } from './LoginScreen.jsx'
 import { isAdmin, isProf, isSuperuser, libellesRoles, trierParRole } from '../data/roles.js'
 import { mots } from '../api/mots.js'
@@ -99,9 +100,13 @@ export default function ProfilScreen({
   onOpenMesHeures,
   onOpenNotesFrais,
   onUpdateUser,
+  onglets,
+  ongletsEteints,
+  onRangerOnglets,
   onChangerEcole,
 }) {
   const [changementMotDePasse, setChangementMotDePasse] = useState(false)
+  const [barreOuverte, setBarreOuverte] = useState(false)
   const [ribOuvert, setRibOuvert] = useState(false)
   // Notes de frais (spec/modules/notes-de-frais.md §3) : pour tout le monde,
   // Super User compris, dans l'école où il intervient.
@@ -252,6 +257,11 @@ export default function ProfilScreen({
           </button>
         </div>
         {notifErreur && <p className="login-screen__erreur">{notifErreur}</p>}
+        {/* Chacun range ses onglets (spec/core.md §10.4). */}
+        <button type="button" className="settings-row settings-row--button" onClick={() => setBarreOuverte(true)}>
+          <span>Ma barre du bas</span>
+          <Icon name="chevronRight" size={18} />
+        </button>
         {/* Pas pour le Superuser (§2.5) : son mot de passe se change par la
             commande serveur. */}
         {!isSuperuser(user) && (
@@ -274,6 +284,15 @@ export default function ProfilScreen({
 
       {changementMotDePasse && <ChangerMotDePasseModal onClose={() => setChangementMotDePasse(false)} />}
       {ribOuvert && <RibModal onClose={() => setRibOuvert(false)} />}
+      {barreOuverte && (
+        <MaBarreDuBas
+          user={user}
+          tabs={onglets}
+          eteints={ongletsEteints}
+          onRanger={onRangerOnglets}
+          onClose={() => setBarreOuverte(false)}
+        />
+      )}
 
       {onChangerEcole && (
         <button type="button" className="btn btn--secondary btn--block" onClick={onChangerEcole}>

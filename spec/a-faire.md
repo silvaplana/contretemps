@@ -20,9 +20,9 @@ module. Rayer ce qui est fait.
 - Signature de documents : retours de Seb après ses tests (`modules/signature-documents.md`).
 - `SPEC.md` à réduire à ce qui est propre à Contretemps.
 - Actualités (`modules/actualites.md` §10) : deux étapes, actus en texte puis médias (Seb, 6 novembre).
-- Blog (`modules/actualites.md` §12) : Actualités devient Blog, trois étapes : un seul écran sans
-  Édition | Visualisation, plusieurs blogs (Actus, Techniques) réglés dans Fonctionnalités, puis
-  catégories (Seb, 12 novembre).
+- Publications (`modules/actualites.md` §12) : Actualités devient Publications, plusieurs blogs
+  (Actus, Techniques) et catégories, codé en une PR (#233), en attente de mise en ligne (Seb,
+  12 novembre). Reste : supprimer un blog avec Annuler 10 s, ordre des onglets, recherche.
 
 ## En cours
 

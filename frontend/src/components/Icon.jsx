@@ -56,6 +56,10 @@ const paths = {
   docs: 'M6 3h8l4 4v14H6z M14 3v4h4 M9 12h6 M9 16h6',
   // Journal (onglet Actus, spec/modules/actualites.md §2).
   news: 'M4 5h13v14H6a2 2 0 0 1-2-2Z M17 9h3v8a2 2 0 0 1-2 2 M8 9h5 M8 13h5',
+  // Logos au choix d'un blog (module Publications, §12.3).
+  books: 'M4 4h4v16H4z M10 4h4v16h-4z M16 5l3.5-1 3 15.5-3.5 1z',
+  cap: 'M2 9l10-5 10 5-10 5z M6 11.5V16c3 3 9 3 12 0v-4.5',
+  cup: 'M7 4h10v5a5 5 0 0 1-10 0z M7 6H4a3 3 0 0 0 3 4 M17 6h3a3 3 0 0 1-3 4 M12 14v4 M8 20h8',
   // Calculatrice (comptage d'heures, voir AdminProfesseurs.jsx) : boîtier +
   // écran + 6 touches (touches en "h.01" pour dessiner de simples points,
   // le bout de trait rond fait le reste).
