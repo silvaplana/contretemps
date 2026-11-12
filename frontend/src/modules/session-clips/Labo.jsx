@@ -251,6 +251,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     }
   }
 
+  const coches = reglages?.signs ?? [] // le graphe grise les signes décochés
   const fin = Math.max(duree || e?.video?.dureeSecondes || 0, ...(e?.signs ?? []).map((s) => s.end + 2), 1)
   const cle = (r) => r && JSON.stringify({ ...r, signs: [...r.signs].sort() })
   const change = reglages && club && cle(reglages) !== cle(club)
