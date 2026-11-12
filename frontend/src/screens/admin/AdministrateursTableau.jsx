@@ -7,6 +7,7 @@ import ListeEmails from '../../components/ListeEmails.jsx'
 import Modal from '../../components/Modal.jsx'
 import { isOwner, isSuperuser } from '../../data/roles.js'
 import { BoutonInviter, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
+import { mots } from '../../api/mots.js'
 
 // Fonctions au bureau de l'association (spec/core.md §5.1), dans l'ordre du
 // serveur (backend/src/groups/board.py) : des titres, aucun droit.
@@ -110,7 +111,7 @@ export default function AdministrateursTableau({
 
   async function supprimer(admin) {
     const message = admin.estProf || admin.estEleve
-      ? `Retirer les droits d’administrateur de ${admin.prenom} ${admin.nom} ? Son compte de ${admin.estProf ? 'professeur' : 'élève'} est conservé.`
+      ? `Retirer les droits d’administrateur de ${admin.prenom} ${admin.nom} ? Son compte de ${admin.estProf ? 'professeur' : mots().eleve} est conservé.`
       : `Supprimer définitivement l’administrateur ${admin.prenom} ${admin.nom} ? Ses messages restent visibles dans les conversations.`
     if (!window.confirm(message)) return
     setErreur(null)
@@ -215,7 +216,7 @@ export default function AdministrateursTableau({
                   <tr key={a.id}>
                     <td className="data-table__name">
                       {a.nom} {a.estProf && <Badge tone="neutral">Prof</Badge>}
-                      {a.estEleve && <Badge tone="neutral">Élève</Badge>}
+                      {a.estEleve && <Badge tone="neutral">{mots().Eleve}</Badge>}
                     </td>
                     <td>{a.prenom}</td>
                     <td>{a.email || <span className="muted">—</span>}</td>
@@ -402,8 +403,8 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
               Nouveau compte
             </label>
             {[
-              ['professeur', 'Un professeur de l’école', professeurs],
-              ['eleve', 'Un élève de l’école', eleves],
+              ['professeur', `Un professeur ${mots().deLEcole}`, professeurs],
+              ['eleve', `Un ${mots().eleve} ${mots().deLEcole}`, eleves],
             ].map(([valeur, libelle, liste]) => (
               <label key={valeur} className="checkbox-inline">
                 <input
@@ -425,7 +426,7 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
 
         {promotion && (
           <>
-            <label htmlFor="admin-compte">{facon === 'eleve' ? 'Élève' : 'Professeur'}</label>
+            <label htmlFor="admin-compte">{facon === 'eleve' ? mots().Eleve : 'Professeur'}</label>
             <select
               id="admin-compte"
               className="field-input"
@@ -456,7 +457,7 @@ function AdministrateurModal({ admin, professeurs = [], eleves = [], onValider, 
         )}
         {!enCreation && (admin.estProf || admin.estEleve) && (
           <p className="muted">
-            Son nom, son prénom et son email se modifient depuis Admin &gt; {admin.estProf ? 'Profs' : 'Élèves'}.
+            Son nom, son prénom et son email se modifient depuis Admin &gt; {admin.estProf ? 'Profs' : mots().Eleves}.
           </p>
         )}
 

@@ -10,6 +10,7 @@ import Tarifs from './Tarifs.jsx'
 import SauvegardeEcoleMenu from './SauvegardeEcoleMenu.jsx'
 import PersonnalisationSection from './PersonnalisationSection.jsx'
 import UsageVideoSection from './UsageVideoSection.jsx'
+import { mots } from '../../api/mots.js'
 
 // Onglet Admin > École (voir spec/SPEC.md §5.1.1 et §6.1) : nom de l'école
 // et code postal, modifiables par tout admin (plus de codes d'accès depuis
@@ -120,7 +121,7 @@ export default function AdminParametres({
         </h3>
         {coordonneesOuvertes && (
           <div className="form-fields">
-            <label htmlFor="ecole-param-nom">Nom de l’école</label>
+            <label htmlFor="ecole-param-nom">Nom {mots().deLEcole}</label>
             <input
               id="ecole-param-nom"
               className="field-input"
@@ -322,7 +323,9 @@ function AccueilEcole({ ecole }) {
   return (
     <div className="accueil-ecole" role="status">
       <p>
-        <strong>L’école {ecole.nom} est créée.</strong>
+        <strong>
+          {mots().LEcole} {ecole.nom} est créé{mots().eEcole}.
+        </strong>
       </p>
       {accueil.admin && accueil.invite && (
         <p>
@@ -341,7 +344,7 @@ function AccueilEcole({ ecole }) {
           administrateur.
         </p>
       )}
-      <p>Renseignez maintenant les premières informations de l’école ci-dessous : adresse, email de contact…</p>
+      <p>Renseignez maintenant les premières informations {mots().deLEcole} ci-dessous : adresse, email de contact…</p>
       <button type="button" className="btn btn--primary" onClick={fermer}>
         Compris
       </button>

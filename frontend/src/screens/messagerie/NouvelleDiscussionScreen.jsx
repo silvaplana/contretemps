@@ -2,6 +2,7 @@ import { useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import { normaliserRecherche } from '../../utils/recherche.js'
 import { estStaff, initiales, tousLesComptes, trierParNom } from './personnes.js'
+import { mots } from '../../api/mots.js'
 
 const ROLE_LIBELLE = { superuser: 'Super User', admin: 'Admin', professeur: 'Professeur' }
 
@@ -9,7 +10,7 @@ const ROLE_LIBELLE = { superuser: 'Super User', admin: 'Admin', professeur: 'Pro
 function sousTitre(compte, cours) {
   if (ROLE_LIBELLE[compte.role]) return ROLE_LIBELLE[compte.role]
   const noms = cours.filter((c) => compte.coursIds?.includes(c.id)).map((c) => c.nom)
-  return noms.length > 0 ? noms.join(', ') : 'Élève'
+  return noms.length > 0 ? noms.join(', ') : mots().Eleve
 }
 
 // Écran « Nouvelle discussion », ouvert par le bouton + de la liste des

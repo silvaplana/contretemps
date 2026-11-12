@@ -3,6 +3,7 @@ import qrcode from 'qrcode-generator'
 import { useApparence } from '../../../api/apparence.js'
 import { adresseDeLaPage } from '../../../pagePublique/hote.js'
 import DiffuserChoisis from './DiffuserChoisis.jsx'
+import { mots } from '../../../api/mots.js'
 
 // Onglet Diffuser (fichier-de-base.md §2.3). « Tout le monde » : la page en
 // ligne (documents.md §5.5), en Officiel seulement (en Validé, on diffuse aux
@@ -132,7 +133,7 @@ export default function Diffuser({ file, api, onToast, onChanged, onVoirReponses
                 <p className="af-hint">Le QR code se met sur l’affiche ou le flyer : on le vise avec le téléphone.</p>
               </>
             ) : (
-              <p className="af-hint">Nom de la page : {pub.slug} (l’adresse complète s’affiche sur l’adresse de l’école).</p>
+              <p className="af-hint">Nom de la page : {pub.slug} (l’adresse complète s’affiche sur l’adresse {mots().deLEcole}).</p>
             )}
             {file.can_manage && (
               <button type="button" className="ad-retirer" disabled={enCours} onClick={() => faire(() => api.unpublish(file.id), 'Page retirée d’internet')}>
@@ -145,7 +146,7 @@ export default function Diffuser({ file, api, onToast, onChanged, onVoirReponses
             <div className="ad-attention">
               <p><strong>Rendre « {file.name} » public ?</strong></p>
               <ul>
-                <li>N’importe qui ayant l’adresse ou le QR code pourra le voir sur internet, même hors de l’école, sans compte.</li>
+                <li>N’importe qui ayant l’adresse ou le QR code pourra le voir sur internet, même hors {mots().deLEcole}, sans compte.</li>
                 {file.family !== 'inform' && <li>Chacun pourra répondre ; les réponses arriveront dans Résultats.</li>}
                 <li>Personne n’est prévenu : rien n’est envoyé. C’est vous qui partagerez l’adresse ou le QR code.</li>
                 <li>Vous pourrez le retirer d’internet à tout moment.</li>

@@ -10,6 +10,7 @@ import { correspond } from '../../utils/recherche.js'
 import ConversationEditModal from './ConversationEditModal.jsx'
 import PlanningHebdoView from './PlanningHebdoView.jsx'
 import { useConversationEditor } from './useConversationEditor.js'
+import { mots } from '../../api/mots.js'
 
 const MAX_BADGES = 2
 
@@ -251,7 +252,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
               <th>Cours</th>
               <th>Horaire</th>
               <th>Prof</th>
-              <th>Élèves</th>
+              <th>{mots().Eleves}</th>
               <th aria-label="Actions" />
             </tr>
           </thead>
@@ -297,7 +298,7 @@ export default function AdminCours({ cours, setCours, professeurs, eleves, ecole
                         setElevesVusAncre(e.currentTarget.getBoundingClientRect())
                         setElevesVusId(c.id)
                       }}
-                      aria-label={`Voir les élèves de ${c.nom}`}
+                      aria-label={`Voir les ${mots().eleves} de ${c.nom}`}
                     >
                       {inscrits.slice(0, MAX_BADGES).map((el) => (
                         <Badge key={el.id}>{el.prenom}</Badge>
@@ -422,9 +423,9 @@ function ElevesDuCoursPopover({ cours, eleves, ancre, onClose }) {
   }
 
   return (
-    <div className="cours-eleves-popover" ref={ref} style={position} role="dialog" aria-label={`Élèves de ${cours.nom}`}>
+    <div className="cours-eleves-popover" ref={ref} style={position} role="dialog" aria-label={`${mots().Eleves} de ${cours.nom}`}>
       <strong>
-        {cours.nom} : {eleves.length} élève{eleves.length > 1 ? 's' : ''}
+        {cours.nom} : {mots().nEleves(eleves.length)}
       </strong>
       {lignes.map((ligne, i) => (
         <div key={i}>{ligne}</div>

@@ -4,8 +4,8 @@ import * as personnalisationApi from '../../api/personnalisation.js'
 
 // Où chaque mot s'affiche, sous son champ (Seb, 24 octobre).
 const MOTS = [
-  { cle: 'motEcole', defaut: 'École', ou: 'S’affiche dans Admin : le nom du premier sous-onglet.' },
-  { cle: 'motEleves', defaut: 'Élèves', ou: 'S’affiche dans Admin : le nom du sous-onglet de la liste des élèves.' },
+  { cle: 'motEcole', defaut: 'École', ou: 'S’affiche dans Admin (nom du premier sous-onglet) et dans les phrases de l’appli.' },
+  { cle: 'motEleves', defaut: 'Élèves', ou: 'S’affiche dans Admin (nom du sous-onglet de la liste) et dans les phrases de l’appli.' },
   { cle: 'motProfs', defaut: 'Profs', ou: 'S’affiche dans Admin : le nom du sous-onglet des professeurs.' },
   { cle: 'motCours', defaut: 'Cours', ou: 'S’affiche dans Admin : le nom du sous-onglet des cours.' },
 ]

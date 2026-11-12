@@ -17,6 +17,7 @@ import DeuxFiches from './DeuxFiches.jsx'
 import FicheEleve from './FicheEleve.jsx'
 import { BoutonInviter, InviterTous, MessageAcces, StatutAcces, useAcces } from './AccesInvitation.jsx'
 import IntegrerFichierElevesModal from './IntegrerFichierElevesModal.jsx'
+import { mots } from '../../api/mots.js'
 
 const PAIEMENT_TONE = { en_cours: 'warning', paye: 'success' }
 
@@ -27,7 +28,9 @@ const DUREE_APPUI_LONG = 500 // ms
 // cette même popover : utile quand une cellule est trop étroite pour tout
 // montrer (ex. beaucoup de cours, adresse longue...).
 const CHAMP_LABEL = {
-  nom: 'Élève',
+  get nom() {
+    return mots().Eleve
+  },
   cours: 'Cours suivis',
   paiement: 'Paiement',
   commentaire: 'Commentaire',
@@ -242,7 +245,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
 
 
   async function remove(id) {
-    if (!window.confirm('Supprimer cet élève ?')) return
+    if (!window.confirm(`Supprimer ${mots().cetEleve} ?`)) return
     await elevesApi.supprimer(id)
     // Le surlignage rouge est porté par l'élève : il part avec lui.
     setEleves((list) => list.filter((el) => el.id !== id))
@@ -290,15 +293,15 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
     <div className="admin-panel admin-panel--eleves">
       {/* Menu ⋮ dans l'en-tête (demande du 2026-09-25). */}
       <MenuEntete
-        label="Menu Élèves"
+        label={`Menu ${mots().Eleves}`}
         actions={[
           {
-            label: 'Inscription élève (OCR)',
+            label: `Inscription ${mots().eleve} (OCR)`,
             icon: 'camera',
             onClick: () => setOcrOuvert(true),
             groupeAvecSuivante: true,
           },
-          { label: 'Inscription élève (web)', icon: 'users', onClick: ouvrirInscriptionEleve },
+          { label: `Inscription ${mots().eleve} (web)`, icon: 'users', onClick: ouvrirInscriptionEleve },
           // La fiche d'un membre (spec/core.md §4.3).
           { label: 'Champs', icon: 'edit', onClick: () => setChampsOuverts(true) },
         ]}
@@ -322,7 +325,7 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Rechercher un élève par nom"
+          placeholder={`Rechercher ${mots().unEleve} par nom`}
         />
       </div>
       <MessageAcces acces={acces} />
@@ -486,11 +489,11 @@ export default function AdminEleves({ eleves, setEleves, cours, ecoleId }) {
         type="button"
         className="fab--secondary"
         onClick={() => setShowImport(true)}
-        aria-label="Importer des élèves"
+        aria-label={`Importer des ${mots().eleves}`}
       >
         <Icon name="folder" size={20} />
       </button>
-      <button type="button" className="fab" onClick={() => setShowAdd(true)} aria-label="Ajouter un élève">
+      <button type="button" className="fab" onClick={() => setShowAdd(true)} aria-label={`Ajouter ${mots().unEleve}`}>
         <Icon name="plus" size={24} />
       </button>
 
@@ -599,7 +602,7 @@ function AddEleveModal({ onClose, onAdd }) {
 
   return (
     <Modal
-      title="Ajouter un élève"
+      title={`Ajouter ${mots().unEleve}`}
       onClose={onClose}
       footer={
         <button

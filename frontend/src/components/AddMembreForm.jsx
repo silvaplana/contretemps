@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { mots } from '../api/mots.js'
 
 // Formulaire "Ajouter un membre" (type admin/professeur/élève/cours +
 // sélection) — partagé par Admin > Messagerie (AdminGroupes.jsx, ajout
@@ -26,7 +27,7 @@ export default function AddMembreForm({ admins, professeurs, eleves, cours, onAd
               setId(OPTIONS_PAR_TYPE[t][0]?.id ?? '')
             }}
           >
-            {t === 'admin' ? 'Admin' : t === 'professeur' ? 'Prof' : t === 'eleve' ? 'Élève' : 'Cours'}
+            {t === 'admin' ? 'Admin' : t === 'professeur' ? 'Prof' : t === 'eleve' ? mots().Eleve : 'Cours'}
           </button>
         ))}
       </div>

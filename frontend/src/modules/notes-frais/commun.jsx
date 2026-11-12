@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import * as api from '../../api/notesFrais.js'
 import Icon from '../../components/Icon.jsx'
+import { mots } from '../../api/mots.js'
 
 // Vignette d'un justificatif : lu avec la session puis affiché par une URL
 // locale (jamais d'URL publique). Un clic l'ouvre en grand. `piece.charger` :
@@ -121,8 +122,8 @@ export const NATURES = { frais: 'Note de frais', honoraires: 'Honoraires', achat
 export function raisonProposee(note) {
   if (!note.depenses[0]?.lue_par_ia) return null
   if (note.nature === 'achat') return 'une société, facturée à l’association.'
-  if (!note.personne) return note.fournisseur ? `${note.fournisseur} n’est pas dans l’école : choisissez pour qui, ou ajoutez-le.` : 'nom illisible ou inconnu, choisissez pour qui.'
-  if (note.nature === 'honoraires') return `${note.personne.nom} est prof de l’école.`
+  if (!note.personne) return note.fournisseur ? `${note.fournisseur} n’est pas dans ${mots().lEcole} : choisissez pour qui, ou ajoutez-le.` : 'nom illisible ou inconnu, choisissez pour qui.'
+  if (note.nature === 'honoraires') return `${note.personne.nom} est prof ${mots().deLEcole}.`
   return `${note.personne.nom} a payé ou facturé (${note.personne.role || 'membre'}).`
 }
 

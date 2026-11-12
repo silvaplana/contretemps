@@ -56,7 +56,11 @@ Maquettes validées par Seb (les écrans les suivent exactement) :
 
 Vocabulaire à l'écran : l'organisation choisit ses mots pour École, Élèves, Profs et Cours
 (Admin > École > Personnalisation de l'application > Vocabulaire, colonnes `mot_*` de `ecoles`,
-vide = mot par défaut du produit). Jamais de mot technique à l'écran (« rôle », « type », « owner »,
+vide = mot par défaut du produit). *(12/11/2026, Alliance Sambo)* Les mots École et Élèves
+s'appliquent aussi aux phrases de l'appli (`frontend/src/api/mots.js` : « l’école » → « le club »,
+« un élève » → « un adhérent » ; masculins connus : club, studio, dojo…, sinon féminin ; singulier =
+pluriel sans « s »). Restent en dur : écrans du Super User (choix et création d'école), Chorégraphies,
+import du fichier officiel, suppression de saison, assistant, textes du serveur (emails). Jamais de mot technique à l'écran (« rôle », « type », « owner »,
 « IA ») : on dit « nature », « module », « sous-module », « assistant ».
 
 Le code ancien de Contretemps garde ses noms français (`ecoles`, `comptes`, `cours`). Tout code
