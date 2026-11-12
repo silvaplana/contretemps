@@ -44,6 +44,7 @@ from .schemas import (
     SessionCreate,
     SessionDetail,
     SessionOut,
+    ThisPhone,
 )
 from .service import ForbiddenError, NotFoundError, SessionClips, clip_title
 
@@ -155,6 +156,10 @@ class SessionClipsReceiver:
         def pairing_code(m: Member = member, s: Session = db):
             guard(lambda: camera.new_pairing_code(s, m))
             return CameraOut(**vars(camera.status(s, m)))
+
+        @app.post(f"{PREFIX}/camera/this-phone", response_model=ThisPhone)
+        def camera_this_phone(m: Member = member, s: Session = db):
+            return ThisPhone(token=guard(lambda: camera.pair_this_phone(s, m)))
 
         @app.post(f"{PREFIX}/camera/start", response_model=CameraOut)
         def camera_start(body: CameraStart, m: Member = member, s: Session = db):

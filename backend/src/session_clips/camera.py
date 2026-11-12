@@ -82,6 +82,19 @@ def pair(db: Session, code: str) -> tuple[Recorder, str]:
     return recorder, token
 
 
+def pair_this_phone(db: Session, member: Member) -> str:
+    """Fights › Tournage, sélecteur sur « Caméra » dans l'appli Tournage
+    (§4, décision du 12/11) : le téléphone du coach devient la caméra de
+    l'école, sans code. L'ancienne caméra est oubliée, comme au jumelage."""
+    _require_coach(member)
+    for old in db.scalars(select(Recorder).where(Recorder.org_id == member.org_id)):
+        db.delete(old)
+    token = secrets.token_urlsafe(32)
+    db.add(Recorder(org_id=member.org_id, token_hash=_hash(token), last_seen_at=_now()))
+    db.commit()
+    return token
+
+
 def recorder_for_token(db: Session, token: str | None) -> Recorder:
     recorder = db.scalar(select(Recorder).where(Recorder.token_hash == _hash(token))) if token else None
     if recorder is None:

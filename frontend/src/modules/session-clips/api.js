@@ -55,10 +55,12 @@ export const supprimer = (id) => appel(`/clips/${id}`, { method: 'DELETE' })
 export const membres = () => appel('/people')
 // La caméra de la salle (étape 3).
 export const camera = () => appel('/camera')
-export const codeCamera = () => appel('/camera/pairing-code', { method: 'POST' })
+// Fights › Tournage sur « Caméra » : ce téléphone devient la caméra de l'école.
+export const ceTelephoneFilme = () => appel('/camera/this-phone', { method: 'POST' })
+// L'adresse complète de l'API, pour le film en tâche de fond de l'appli Tournage.
+export const adresseApi = () => new URL(BASE_URL, window.location.href).href.replace(/\/$/, '')
 export const demarrerCamera = (title) => appel('/camera/start', json('POST', { title }))
 export const arreterCamera = () => appel('/camera/stop', { method: 'POST' })
-export const signalCamera = (signal) => appel('/camera/signal', json('PUT', { signal }))
 export const favoris = async () => (await appel('/favorites')).map(clip)
 export const favori = async (id, oui) => clip(await appel(`/clips/${id}/favorite`, json('PUT', { favorite: oui })))
 

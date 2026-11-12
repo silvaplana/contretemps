@@ -111,6 +111,12 @@ class CameraOut(BaseModel):
     pairing_expires_at: datetime | None = None
 
 
+class ThisPhone(BaseModel):
+    """Le jeton remis à l'appli Tournage qui devient la caméra."""
+
+    token: str
+
+
 class CameraStart(BaseModel):
     title: str = ""
 

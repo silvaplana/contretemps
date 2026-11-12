@@ -1,8 +1,8 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a quatre onglets en haut : Mes combats, Séances, À vérifier (pastille =
-nombre), Labo. Fights se rouvre sur le dernier de ces onglets utilisé.
+(admin ou professeur) a cinq onglets en haut : Tournage, Mes combats, Séances, À vérifier
+(pastille = nombre), Labo. Fights se rouvre sur le dernier de ces onglets utilisé.
 
 Mes combats
 - En tête, la ligne « ★ Favoris ». Puis ses combats validés, par séance (date · cours) : « vs
@@ -57,12 +57,17 @@ Un combat ouvert
 Sélection : appui long sur un combat, puis un appui en ajoute ou en retire. Une barre en haut : ✕
 (annuler), ★ favoris, Partager, et Supprimer pour un coach.
 
-Caméra de la salle (coachs) : pastille en haut à droite (Installer, Prête, Filme, Hors service).
-- Installer : « Afficher un code », à taper dans l'appli caméra du téléphone de la salle (10
-  minutes).
-- Prête : choisir le Cours, le signal (Bip, Lampe, Les deux), « Démarrer la séance ».
-- Filme : bande rouge « Enregistrement » sous les onglets (« Ouvrir »), bouton « Fin de séance ».
-- « Changer de téléphone » donne un nouveau code ; « Fermer » remonte le panneau.
+Tournage (coachs) : tout pour filmer la séance.
+- Un sélecteur à trois positions : Caméra (ce téléphone filme), Éteint, Télécommande (ce téléphone
+  lance la caméra de l'école). Chaque téléphone garde sa position.
+- Caméra : seulement dans l'appli Android « Tournage <école> » ; dans Chrome, un bouton « Installer
+  l'appli Tournage ». Une petite image montre ce que voit la caméra (Prête, Filme avec le chrono),
+  puis le bouton « ● Filmer » / « ■ Arrêter ». Le film continue écran éteint. Remettre sur Éteint
+  arrête la caméra.
+- Télécommande : « Caméra de la salle prête · 86 % », « La caméra filme · 00:12:34 » ou « Caméra
+  éteinte », et le même bouton « ● Filmer » / « ■ Arrêter », qui envoie l'ordre à la caméra.
+- La séance s'appelle « Séance du 12/11 ». Plusieurs télécommandes possibles : la caméra obéit au
+  dernier ordre.
 
 Règles de l'appli
 - Un élève ne voit que les combats où il apparaît, et seulement une fois validés par un coach.

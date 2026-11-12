@@ -72,6 +72,20 @@ def test_jumelage_et_ordres(client, e):
     assert client.post("/session-clips/recorder/heartbeat", json={"state": "ready"}, headers=tel).status_code == 403
 
 
+def test_ce_telephone_est_la_camera(client, e):
+    """Fights › Tournage, « Caméra » dans l'appli Tournage : le téléphone du
+    coach devient la caméra sans code et remplace l'ancienne."""
+    ancien = _jumeler(client, e)
+    assert client.post("/session-clips/camera/this-phone", headers=e["eleve"]).status_code == 403
+    r = client.post("/session-clips/camera/this-phone", headers=e["coach"])
+    assert r.status_code == 200, r.text
+    tel = {"X-Recorder-Token": r.json()["token"]}
+    assert client.post("/session-clips/recorder/heartbeat", json={"state": "ready"}, headers=ancien).status_code == 403
+    assert _battre(client, tel)["session_id"] is None
+    cam = client.post("/session-clips/camera/start", json={"title": "Séance du 12/11"}, headers=e["coach"]).json()
+    assert cam["state"] == "recording" and _battre(client, tel, "recording")["session_id"] == cam["session_id"]
+
+
 def test_arreter_avant_le_premier_morceau(client, e):
     tel = _jumeler(client, e)
     _battre(client, tel)
