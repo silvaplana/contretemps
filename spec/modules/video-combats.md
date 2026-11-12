@@ -251,7 +251,9 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    buste, et jamais pendant des poings touchés (l'autre main baissée). Le
    combat va du signe de début au premier signe de fin coché venu au moins 1 s après ; sinon il se
    termine si la zone se vide 4 s, au signe de début suivant ou à la fin de la vidéo (« Fin non
-   repérée »). 1 s est gardée après le signe de fin ; un combat de moins de 5 s est ignoré.
+   repérée »). 1 s est gardée après le signe de fin ; un combat de moins de 5 s est ignoré, sauf
+   s'il va d'un « Go ! » crié à un « Time ! » crié : les deux cris disent le combat, même court
+   (Seb, 12/11 : essai « Go time » d'une seconde).
    **Signes et sons du club** (Seb, 12/11) : chaque organisation coche les signes que la découpe
    prend (tous par défaut), dans le Labo (§6.5 bis) ; le réglage vaut pour la caméra de la salle et
    les vidéos envoyées. **Son** (accord de Seb du 12/11) : le **« Time ! »** crié par l'entraîneur
@@ -316,7 +318,10 @@ flèche ←.
   à identifier est sur ce volet et sur l'onglet Tournage. Avant :
   Tournage contient deux volets dépliants, **Tournage** (sélecteur, image, Filmer) puis **Montage**
   (les séances, ancien onglet Séances) ; « À vérifier » est renommé « Identifier les combattants »), et
-  le menu **⋮** de l'en-tête : « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Fights
+  le menu **⋮** de l'en-tête : « Paramètres de tournage » (les volets « Signes et sons du club » et
+  « Paramètres de la vidéo » d'un essai, mêmes réglages du club, avec Enregistrer ; Seb 12/11) et
+  « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Une ligne de séance
+  ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
@@ -490,7 +495,9 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   vidéo de la Galerie du téléphone) ; puis la
   liste des essais (« Combat du 11/11 à 20:10 », tiré de la date du fichier ; petite vignette avec la durée, crayon pour renommer, poubelle pour
   supprimer avec Annuler 10 s) avec leur état : envoi
-  en %, « Lecture des signes… », « Vidéo illisible ». La vidéo part par l'envoi par blocs du module
+  en %, « Lecture des signes… », « Vidéo illisible ». La ligne s'affiche dès la vidéo choisie
+  (« Envoi… »), et la liste se relit au retour dans l'appli (Seb, 12/11 : sur le téléphone, la
+  carte n'apparaissait souvent qu'après avoir relancé l'appli). La vidéo part par l'envoi par blocs du module
   `videos` ; le worker la lit dès qu'elle est arrivée, à toute heure.
 - **Un essai ouvert** (← revient au Labo), en cinq volets dépliables dans cet ordre (Seb, 12/11) :
   **Vidéo entière**, **Vidéo découpée** (les combats coupés), **Signes repérés** (ouverts), puis

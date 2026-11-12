@@ -12,7 +12,7 @@ import {
   useTeleversementsTermines,
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
-import { Deroulant, EssaiLabo, Labo, useSuppressionEssai } from './Labo.jsx'
+import { Deroulant, EssaiLabo, Labo, ParametresTournage, useSuppressionEssai } from './Labo.jsx'
 import Tournage from './Tournage.jsx'
 import './sparring.css'
 
@@ -133,6 +133,8 @@ export default function Sparring({ ecoleId, cours }) {
         }}
       />
     )
+  } else if (ouvert?.parametres) {
+    ecran = <ParametresTournage montrer={montrer} onBack={() => setOuvert(null)} />
   } else if (ouvert?.labo) {
     // Fights › ⋮ › Tests de découpage vidéo (Seb, 12/11 : l'ancien
     // sous-onglet Labo, sorti des puces).
@@ -186,7 +188,10 @@ export default function Sparring({ ecoleId, cours }) {
         {me.is_coach && (
           <MenuEntete
             label="Actions de Fights"
-            actions={[{ label: 'Tests de découpage vidéo', icon: 'video', onClick: () => setOuvert({ labo: true }) }]}
+            actions={[
+              { label: 'Paramètres de tournage', icon: 'camera', onClick: () => setOuvert({ parametres: true }) },
+              { label: 'Tests de découpage vidéo', icon: 'video', onClick: () => setOuvert({ labo: true }) },
+            ]}
           />
         )}
         {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} aIdentifier={aIdentifier} />}
@@ -561,7 +566,11 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
         // Une ligne comme un essai du Labo (Seb, 12/11) : petite vignette,
         // crayon pour renommer, poubelle pour effacer.
         return (
-          <div key={s.id} className="sc-essai">
+          // Encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11).
+          <div
+            key={s.id}
+            className={`sc-essai${s.status !== 'ready' ? '' : s.clip_count > 0 ? ' sc-essai--trouve' : ' sc-essai--vide'}`}
+          >
             <button
               type="button"
               className="sc-essai__ouvrir"

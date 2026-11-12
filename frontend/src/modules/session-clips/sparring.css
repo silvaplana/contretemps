@@ -782,6 +782,12 @@
   border-radius: 14px;
   background: var(--card-bg);
 }
+.sc-essai--trouve {
+  border: 2px solid var(--success-text);
+}
+.sc-essai--vide {
+  border: 2px solid var(--danger-text);
+}
 
 .sc-essai__ouvrir {
   display: flex;

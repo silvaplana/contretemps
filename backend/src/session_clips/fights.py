@@ -30,7 +30,8 @@ MERGE = 2.0  # deux poings touchés à moins de 2 s : un seul début
 STILL = 0.3  # poignée de main : les hanches bougent de moins de 0,3 buste
 END_DELAY = 1.0  # bras qui redescendent juste après le début : pas une fin
 EMPTY_HOLD = 4.0  # secondes de zone vide pour finir un combat
-MIN_FIGHT = 5.0  # un combat plus court est ignoré (début puis fin aussitôt)
+MIN_FIGHT = 5.0  # un combat plus court est ignoré (début puis fin aussitôt),
+# sauf « Go ! » puis « Time ! » criés : les deux cris disent le combat (Seb, 12/11)
 MARGIN = 1.0  # au moins 1 s gardée après le début du signe de fin (le « Time ! »)
 
 # Motifs affichés dans « À vérifier » (vocabulaire de l'écran, pas technique).
@@ -149,16 +150,17 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
         before = lambda t: limit is None or t < limit  # noqa: E731
         end = next((e for e in ends if e.start >= start.end + END_DELAY and before(e.start)), None)
         empty = next((t for t in empties if t > start.end and before(t)), None)
-        reason = None
+        reason, shouted = None, False
         if end is not None and (empty is None or end.start <= empty):
             stop = max(end.end, end.start + MARGIN)  # le geste de fin en entier
+            shouted = start.kind == "go" and end.kind == "time"
         elif empty is not None:
             stop = empty
         elif limit is not None:
             stop = limit
         else:
             stop, reason = frames[-1].t, REASON_NO_END
-        if stop - start.start >= MIN_FIGHT:
+        if shouted or stop - start.start >= MIN_FIGHT:
             fights.append(Fight(start.start, stop, start.people if start.kind == "fist_up" else 2, reason))
     return fights
 

@@ -268,3 +268,10 @@ def test_go_crie_commence_le_combat():
     touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
     video = frames([(1, touch), (19, fight)])
     assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 1.5), ("time", 12.0)])] == [(0.0, 13.0)]
+
+
+def test_go_puis_time_meme_court():
+    """« Go ! » à 5,6 s puis « Time ! » à 6,9 s (essai « Go time » de Seb,
+    12/11) : les deux cris disent le combat, même court."""
+    video = frames([(9, [pose(100), pose(300)])])
+    assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 5.6), ("time", 6.9)])] == [(5.6, 7.9)]
