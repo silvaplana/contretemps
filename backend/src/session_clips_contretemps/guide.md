@@ -18,7 +18,9 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   (« 21:40 → 21:46 · 6 min ») et, pendant la découpe, « Découpe : 67 % » avec une
   barre. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.
-- Une carte ouverte : « Présents reconnus : … », puis ses combats dans l'ordre.
+- Une carte ouverte : « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
+  d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
+  Identifier combattants.
 - Le « + » en bas à droite filme un combat avec le téléphone : « Garder ce combat ? » Garder ou
   Jeter, puis « Qui combattait ? » : Rouge et Bleu, par les premières lettres du nom ou le micro
   (« Dire le nom »), toucher le bon membre, « C'est bon ». Le combat rejoint la séance du jour, déjà

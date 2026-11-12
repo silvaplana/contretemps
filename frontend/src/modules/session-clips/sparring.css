@@ -112,7 +112,8 @@
   color: #fff;
 }
 
-.sc-vignette img {
+.sc-vignette img,
+.sc-vignette video {
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -857,4 +858,15 @@
 .sc-secondes strong {
   min-width: 48px;
   text-align: center;
+}
+
+/* Un combat de la séance et son crayon (changer les combattants, Seb 12/11). */
+.sc-clip-ligne {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.sc-clip-ligne .sc-clip {
+  flex: 1;
+  min-width: 0;
 }

@@ -324,7 +324,10 @@ flèche ←.
   « Paramètres de la vidéo » d'un essai, avec Enregistrer ; ce sont ceux du tournage, le Labo a les
   siens ; Seb 12/11) et
   « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Une ligne de séance
-  ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Fights
+  ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Dans
+  une séance ouverte, un crayon à droite de chaque combat déplie Rouge / Bleu, Inverser et « C'est
+  bon » (comme Identifier combattants ; valide le combat s'il était à identifier ; Seb, 12/11). La
+  vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
