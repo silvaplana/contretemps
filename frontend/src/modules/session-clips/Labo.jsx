@@ -223,7 +223,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
   return (
     <div className="screen sc">
       <div className="thread-screen__header">
-        <button type="button" className="icon-btn" onClick={onBack} aria-label="Retour au Labo">
+        <button type="button" className="icon-btn" onClick={onBack} aria-label="Retour aux tests de découpage">
           <Icon name="chevronLeft" size={22} />
         </button>
         <strong className="sc__titre">{e?.title ?? ''}</strong>

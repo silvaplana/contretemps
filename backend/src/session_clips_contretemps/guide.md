@@ -1,8 +1,9 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a cinq onglets en haut : Mes combats, Tournage, Séances, À vérifier
-(pastille = nombre), Labo. Fights se rouvre sur le dernier de ces onglets utilisé.
+(admin ou professeur) a quatre onglets en haut : Mes combats, Tournage, Séances, À vérifier
+(pastille = nombre), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
+sur le dernier de ces onglets utilisé.
 
 Mes combats
 - En tête, la ligne « ★ Favoris ». Puis ses combats validés, par séance (date · cours) : « vs
@@ -29,7 +30,7 @@ Séances (coachs)
   deux.
 - « Supprimer ce clip » en bas.
 
-Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
+Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée
   devient un essai), le gros bouton dossier prend une vidéo dans la Galerie. Chaque essai de la liste a
   une petite vignette avec sa durée, un crayon (renommer) et une poubelle (supprimer, Annuler 10
