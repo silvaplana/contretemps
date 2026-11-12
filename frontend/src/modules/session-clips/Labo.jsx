@@ -205,7 +205,9 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
         setClub(r)
         setReglages(r)
       }
-      await api.relireEssai(essaiId)
+      // Au moins un instant : on voit que la découpe travaille (Seb, 12/11).
+      await Promise.all([api.relireEssai(essaiId), new Promise((ok) => setTimeout(ok, 1200))])
+      setE(await api.essaiLabo(essaiId))
       rafraichir()
       montrer('Découpe relancée')
     } catch (err) {
@@ -258,7 +260,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
             <>
               <h3 className="sc-section">Signes repérés</h3>
               <div className="sc-cadre">
-                <Graphe signes={e.signs} combats={e.fights} coches={coches} fin={fin} aller={aller} />
+                <Graphe signes={e.signs} combats={enCours ? [] : e.fights} coches={coches} fin={fin} aller={aller} />
                 {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
                 {e.signs.map((s, i) => {
                   const sg = signe(s.kind)
@@ -276,8 +278,15 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
                 })}
               </div>
               <h3 className="sc-section">Combats coupés</h3>
-              {e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
-              {e.fights.map((c, i) => (
+              {/* Relancer la découpe refait les combats : les anciens disparaissent. */}
+              {enCours && (
+                <p className="sc-meta">
+                  Découpe en cours
+                  <Points />
+                </p>
+              )}
+              {!enCours && e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
+              {!enCours && e.fights.map((c, i) => (
                 <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
                   <span className="sc-vignette">
                     {vignette(e.signs, c) ? <img src={vignette(e.signs, c)} alt="" /> : <Icon name="video" size={22} />}
@@ -330,7 +339,14 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
             />
           </Deroulant>
           <button type="button" className="btn btn--primary sc-bouton" disabled={lecture || enCours} onClick={relancer}>
-            Relancer la découpe
+            {enCours ? (
+              <>
+                Découpe en cours
+                <Points />
+              </>
+            ) : (
+              'Relancer la découpe'
+            )}
           </button>
           <button type="button" className="btn btn--secondary sc-bouton" onClick={() => onSupprimer(e.id)}>
             Supprimer l’essai
@@ -355,6 +371,18 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
         />
       )}
     </div>
+  )
+}
+
+// Trois points qui s'allument l'un après l'autre (comme la lecture d'un
+// justificatif, App.css .ocr__points).
+function Points() {
+  return (
+    <span className="ocr__points" aria-hidden="true">
+      <span>.</span>
+      <span>.</span>
+      <span>.</span>
+    </span>
   )
 }
 
