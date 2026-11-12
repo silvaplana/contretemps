@@ -58,8 +58,23 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
         docker compose exec -T backend python -m app.plan_comptable_contretemps --ecole "$ecole"
       fi
       ;;
+    labo-lire)
+      # Fights › Labo (Seb, 12/11/2026) : ce que le serveur a vu dans un
+      # essai, en lecture seule ; sans numéro, la liste des essais.
+      essai="${demande[1]:-}"
+      if [ -z "$essai" ]; then
+        echo "==> Essais du Labo (rien n'est écrit)"
+        docker compose exec -T backend python -m app.lire_essai_labo
+      elif [[ "$essai" =~ ^[0-9]+$ ]]; then
+        echo "==> Essai $essai du Labo (rien n'est écrit)"
+        docker compose exec -T backend python -m app.lire_essai_labo --essai "$essai"
+      else
+        echo "Numéro d'essai invalide." >&2
+        exit 2
+      fi
+      ;;
     *)
-      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps." >&2
+      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps, labo-lire." >&2
       exit 2
       ;;
   esac
