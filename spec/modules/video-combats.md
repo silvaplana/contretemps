@@ -309,7 +309,9 @@ flèche ←.
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
-- **Coach** (admin ou prof) : trois onglets, **Mes combats | Tournage | Identifier les combattants** (Seb, 12/11 au soir :
+- **Coach** (admin ou prof) : deux onglets, **Combats | Tournage** (Seb, 12/11 au soir ; « Combats » est l'ancien « Mes
+  combats » ; Identifier combattants est un troisième volet de Tournage, et la pastille du nombre
+  à identifier est sur ce volet et sur l'onglet Tournage. Avant :
   Tournage contient deux volets dépliants, **Tournage** (sélecteur, image, Filmer) puis **Montage**
   (les séances, ancien onglet Séances) ; « À vérifier » est renommé « Identifier les combattants »), et
   le menu **⋮** de l'en-tête : « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Fights
@@ -431,6 +433,10 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
   `pieces_total` de `SessionOut`, sans nouvelle colonne.
 
 ### 6.4 Identifier les combattants *(coachs ; « À vérifier » jusqu'au 12/11)*
+
+Badge (Seb, 12/11) : le nombre de combats à identifier est sur l'onglet et, pour les coachs, sur
+l'icône Fights de la barre du bas (`useAIdentifier.js`, relu à chaque changement d'onglet et toutes
+les minutes ; branché dans `App.jsx` à côté du badge de la messagerie, avec l'accord de Seb).
 
 Les clips dont l'appli n'est pas sûre, **un par un**, en gros :
 

@@ -1,8 +1,9 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a trois onglets en haut : Mes combats, Tournage, Identifier les
-combattants (pastille = nombre), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
+(admin ou professeur) a deux onglets en haut : Combats (ses combats) et Tournage, en trois
+volets dépliants : Tournage, Montage, Identifier combattants (pastille = nombre de combats à
+identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -23,7 +24,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   (« Dire le nom »), toucher le bon membre, « C'est bon ». Le combat rejoint la séance du jour, déjà
   validé.
 
-Identifier les combattants (coachs ; ancien « À vérifier »)
+Tournage › volet Identifier combattants (coachs ; ancien onglet « À vérifier »)
 - Les combats dont l'appli n'est pas sûre, un par un : « 1 sur 3 », la vidéo, la raison.
 - Toucher la ligne Rouge ou Bleu : les présents de la séance, ou « Un autre membre… ».
 - « Inverser », puis « C'est bon » (bouton principal) : le combat part dans « Mes combats » des
