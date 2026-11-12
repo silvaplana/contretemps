@@ -2,7 +2,7 @@ Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pou
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
 (admin ou professeur) a trois onglets en haut : Mes combats, Tournage, Identifier les
-combattants (pastille = nombre), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
+combattants (pastille = nombre, aussi sur l'icône Fights de la barre du bas), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats

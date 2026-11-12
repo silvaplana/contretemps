@@ -48,6 +48,7 @@ import Financier from './modules/notes-frais/Financier.jsx'
 import Blog, { blogDuRetourInstagram } from './modules/publications/Blog.jsx'
 import * as publicationsApi from './modules/publications/api.js'
 import Sparring from './modules/session-clips/Sparring.jsx'
+import useAIdentifier from './modules/session-clips/useAIdentifier.js'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
 
@@ -393,6 +394,8 @@ function App() {
   const tabs = ongletsAvec({ publications: blogs ?? [] })
   const blogActif = tabs.find((t) => t.key === activeTab)?.blog ?? null
   const modulesEteints = new Set(modules.filter((m) => !m.enabled).map((m) => m.key))
+  // Fights : combats dont les combattants restent à identifier (coachs).
+  const aIdentifier = useAIdentifier(Boolean(compteReel) && !modulesEteints.has('session_clips'), `${ecole.id}|${activeUser.id}|${activeTab}`)
   useEffect(() => {
     const onglets = ongletsAvec({ publications: blogs ?? [] })
     const eteint = (t) => modules.some((m) => m.key === t.module && !m.enabled)
@@ -1357,7 +1360,7 @@ function App() {
         onChange={setActiveTab}
         profil={activeUser}
         eteints={modulesEteints}
-        alertes={{ messagerie: totalNonLus }}
+        alertes={{ messagerie: totalNonLus, sparring: aIdentifier }}
         tabs={tabs}
       />
     </div>

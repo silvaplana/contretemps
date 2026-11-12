@@ -432,6 +432,10 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
 
 ### 6.4 Identifier les combattants *(coachs ; « À vérifier » jusqu'au 12/11)*
 
+Badge (Seb, 12/11) : le nombre de combats à identifier est sur l'onglet et, pour les coachs, sur
+l'icône Fights de la barre du bas (`useAIdentifier.js`, relu à chaque changement d'onglet et toutes
+les minutes ; branché dans `App.jsx` à côté du badge de la messagerie, avec l'accord de Seb).
+
 Les clips dont l'appli n'est pas sûre, **un par un**, en gros :
 
 - « 1 sur 3 · Jeu. 23 oct. · combat 2 » ;
