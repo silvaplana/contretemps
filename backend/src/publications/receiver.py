@@ -124,6 +124,7 @@ class PublicationsReceiver:
             id=blog.id, name=blog.name, icon=blog.icon, with_levels=blog.with_levels,
             with_categories=blog.with_categories, can_read=reader, can_publish=can_publish(appelant, blog),
             open_app_on=reader and blog.open_app_on, has_posts=reader and self.client.has_posts(db, blog),
+            latest_post=self.client.latest_post(db, blog) if reader else None,
         )
 
     def blogs(self, ecole_id: int, db: Session = Depends(get_db), appelant: Compte = Depends(rbac.compte_appelant)):

@@ -82,6 +82,7 @@ const versBlog = (b) => ({
   peutPublier: b.can_publish,
   // L'appli s'ouvre dessus (un blog au plus), s'il a une publication.
   ouvrirAppli: b.open_app_on && b.has_posts,
+  dernierePublication: b.latest_post,
 })
 
 // Module éteint ou erreur : aucun blog.
@@ -99,9 +100,35 @@ export const changerBlog = async (ecoleId, blogId, changement) =>
   versBlog(await appel(`${blogs(ecoleId)}/${blogId}`, json('PUT', changement)))
 export const supprimerBlog = (ecoleId, blogId) => appel(`${blogs(ecoleId)}/${blogId}`, { method: 'DELETE' })
 
-// Le blog sur lequel l'appli s'ouvre (§6), parmi ceux qu'on lit.
-export async function blogAOuvrir(ecoleId) {
-  return (await lireBlogs(ecoleId)).find((b) => b.peutLire && b.ouvrirAppli) ?? null
+// Le blog sur lequel l'appli s'ouvre (§6), parmi ceux qu'on lit. Ouverte
+// deux fois dessus avec la même dernière publication, elle a été vue : on
+// ne s'y rouvre plus avant la suivante (Seb, 12 novembre). Compté sur
+// l'appareil.
+// Une seule décision par lancement (l'effet peut être rejoué).
+const OUVERTURES = 2
+const decisions = new Map()
+export function blogAOuvrir(ecoleId) {
+  if (!decisions.has(ecoleId)) decisions.set(ecoleId, decider(ecoleId))
+  return decisions.get(ecoleId)
+}
+async function decider(ecoleId) {
+  const b = (await lireBlogs(ecoleId)).find((x) => x.peutLire && x.ouvrirAppli)
+  if (!b) return null
+  const cle = `publications.ouvertures.${ecoleId}.${b.id}`
+  let deja = null
+  try {
+    deja = JSON.parse(localStorage.getItem(cle))
+  } catch {
+    deja = null
+  }
+  const fois = deja?.publication === b.dernierePublication ? deja.fois : 0
+  if (fois >= OUVERTURES) return null
+  try {
+    localStorage.setItem(cle, JSON.stringify({ publication: b.dernierePublication, fois: fois + 1 }))
+  } catch {
+    // Stockage refusé : on s'ouvre sur le blog à chaque fois, comme avant.
+  }
+  return b
 }
 
 // --- Les publications d'un blog ---
