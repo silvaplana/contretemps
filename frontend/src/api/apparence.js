@@ -114,12 +114,46 @@ function rgba(hex, alpha) {
   return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${alpha})`
 }
 
+function clair(hex) {
+  const n = parseInt(hex.slice(1), 16)
+  return 0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) > 150
+}
+
+// Fond sombre (Alliance Sambo, 12 novembre) : les autres couleurs de la
+// charte (cartes, tableaux, bordures, titres) sont claires dans index.css ;
+// on les tire alors du fond et du texte choisis. Fond clair : celles
+// d'index.css, inchangées.
+const SOMBRE = {
+  '--surface': 'color-mix(in srgb, var(--bg) 85%, var(--text))',
+  '--surface-2': 'color-mix(in srgb, var(--bg) 78%, var(--text))',
+  '--card-bg': 'color-mix(in srgb, var(--bg) 92%, var(--text))',
+  '--border': 'color-mix(in srgb, var(--bg) 70%, var(--text))',
+  '--text-h': 'var(--text)',
+  '--text-muted': 'color-mix(in srgb, var(--text) 65%, var(--bg))',
+  '--success-bg': '#1f3a24',
+  '--success-text': '#8fd19e',
+  '--warning-bg': '#3d3417',
+  '--warning-text': '#e6c766',
+  '--danger-bg': '#3f1f1f',
+  '--danger-text': '#f08a8a',
+  'color-scheme': 'dark',
+}
+
 export function appliquer(apparence) {
   const racine = document.documentElement.style
   racine.setProperty('--bg', apparence.couleurFond)
   racine.setProperty('--text', apparence.couleurTexte)
   racine.setProperty('--accent', apparence.couleurAccent)
   racine.setProperty('--accent-bg', rgba(apparence.couleurAccent, 0.14))
+  const sombre = !clair(apparence.couleurFond)
+  for (const [nom, valeur] of Object.entries(SOMBRE)) {
+    if (sombre) racine.setProperty(nom, valeur)
+    else racine.removeProperty(nom)
+  }
+  // Texte des boutons pleins : foncé sur un accent clair (jaune), sinon
+  // celui d'index.css.
+  if (clair(apparence.couleurAccent)) racine.setProperty('--accent-contrast', '#16171d')
+  else racine.removeProperty('--accent-contrast')
   const police = POLICES.find((p) => p.cle === (apparence.police ?? ''))
   racine.setProperty('--sans', (police ?? POLICES[0]).famille)
   // Titres : leur police, sinon celle des textes (voir index.css : --titres).

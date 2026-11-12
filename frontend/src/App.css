@@ -3585,7 +3585,7 @@ a.btn {
   padding: 2px 4px;
   border-radius: 999px;
   background: var(--accent);
-  color: white;
+  color: var(--accent-contrast);
   font-weight: 700;
 }
 
@@ -3786,7 +3786,7 @@ a.btn {
   margin-top: 6px;
   padding: 6px 18px;
   border-radius: 999px;
-  color: #fff;
+  color: var(--accent-contrast);
   font-weight: 700;
   font-size: 13px;
 }
