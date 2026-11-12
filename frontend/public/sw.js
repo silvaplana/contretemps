@@ -22,7 +22,13 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
       const dejaVisible = clients.some((c) => c.visibilityState === 'visible' && c.focused)
-      if (dejaVisible) return
+      // Le flux en direct peut être coupé sans que la page le sache
+      // (téléphone) : elle n'a alors ni le message ni le badge de « Plus ».
+      // On la prévient pour qu'elle relise ses conversations (voir App.jsx).
+      if (dejaVisible) {
+        clients.forEach((c) => c.postMessage({ type: 'push' }))
+        return
+      }
       const { title, body } = event.data.json()
       await self.registration.showNotification(title, {
         body,
