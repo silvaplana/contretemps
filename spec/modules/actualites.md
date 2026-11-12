@@ -1,4 +1,9 @@
-# AppBase — Module `news` (Actualités)
+# AppBase — Module `news` (Blog ; d'abord « Actualités »)
+
+> **12 novembre 2026 : le module devient « Blog » (§12).** Une organisation a un ou plusieurs blogs ;
+> « Actus » est un blog, « Techniques » un autre. Le §12 fait foi là où il contredit les §2 à §10
+> (onglets Édition | Visualisation retirés, réglages par blog, catégories). Tant que les étapes du
+> §12.9 ne sont pas codées, l'appli en ligne suit les §2 à §10.
 
 Version 0.1, 6 novembre 2026. Statut : **spec à valider** (fil « Module : Actualités »). Écrans
 validés par Seb sur maquette le 6 novembre : [`spec/maquettes/actualites.html`](../maquettes/actualites.html)
@@ -26,7 +31,7 @@ journal. Visible par tous les rôles (Membre, Admin, Admin principal, Super User
 
 | Qui | Ce qu'il voit en touchant Actus |
 |---|---|
-| A le droit 🔒 Publier les actualités | Deux onglets en haut : **Édition** \| **Visualisation** (d'abord nommés Atelier et Aperçu sur la maquette ; renommés par Seb le 8 novembre) |
+| A le droit 🔒 Publier les actualités *(remplacé par le §12.5)* | Deux onglets en haut : **Édition** \| **Visualisation** (d'abord nommés Atelier et Aperçu sur la maquette ; renommés par Seb le 8 novembre) |
 | Tous les autres | Directement les actus (l'écran Visualisation, sans onglets) |
 
 Le Super User passe toujours ; l'Administrateur principal se coche lui-même s'il veut publier
@@ -337,4 +342,172 @@ Chaque étape part sur le « vas-y » de Seb, une PR chacune, avec le `guide.md`
 
 ## 11. Questions ouvertes
 
-Aucune pour l'instant.
+Voir §12.10.
+
+## 12. Le module devient « Blog » (Seb, 12 novembre 2026)
+
+Statut : **spec à valider**. Écrans validés par Seb sur maquette le 12 novembre :
+[`spec/maquettes/blog.html`](../maquettes/blog.html) (tout est cliquable ; le bouton « Écran » passe
+d'Actus à Techniques et à Admin › École › Fonctionnalités). Les écrans suivent la maquette exactement.
+
+### 12.1 Pourquoi
+
+Seb veut, pour le club de combat d'abord, des techniques (un texte et des vidéos) publiées comme les
+actus, rangées par catégorie. Plutôt qu'un module copié sur Actus, on généralise : c'est un **blog**,
+des billets qui arrivent au fil de l'eau et qu'on retrouve aussi par catégorie. Le code reste dans
+`backend/src/news/` et `frontend/src/modules/news/` (clé `news`, tables `news_` : pas de renommage) ;
+seul le nom affiché du module change : **Blog**.
+
+### 12.2 Plusieurs blogs par organisation
+
+- Une organisation a **un ou plusieurs blogs**. Chaque blog a son onglet dans la barre du bas, à la
+  suite, juste après Admin, dans l'ordre de création. Contretemps : un blog « Actus ». Club de combat :
+  « Actus » et « Techniques ».
+- À la mise en ligne, chaque organisation garde ce qu'elle a : un blog « Actus », logo journal, avec
+  niveaux, sans catégories, avec toutes ses actus et ses paramètres. Rien ne change à l'écran pour
+  Contretemps, sauf le §12.5.
+- Le mot « Cours » n'est pas proposé comme nom : il désigne déjà les groupes (spec/core.md §5).
+
+### 12.3 Où ça se règle : Admin › École › Personnalisation de l'application › Fonctionnalités
+
+Sous la case **Blog** (Administrateur principal et Super User, comme toute la partie Fonctionnalités),
+la liste des blogs de l'organisation. Pour chaque blog :
+
+| Réglage | Effet |
+|---|---|
+| **Nom** | Le nom de l'onglet et du droit de publier (§12.4). Obligatoire, unique dans l'organisation. |
+| **Logo** | L'icône de l'onglet, à choisir parmi six (journal, livres, caméra, toque, étoile, coupe). |
+| **Avec des catégories** | Éteint : un simple fil. Allumé : nom et catégorie sur chaque billet, onglets Fil \| Catégories (§12.6). |
+| **Avec les niveaux Important, Normal, Brève** | Allumé : §3.1 et §4.2 comme aujourd'hui. Éteint : pas de boutons de niveau dans l'éditeur, tous les billets sont des cartes Normal. |
+
+Dessous, **+ Ajouter un blog** : on tape son nom, il arrive sans catégories ni niveaux, logo journal.
+La case Blog décochée cache tous les blogs sans rien effacer (spec/core.md §11.3). Chaque réglage
+s'enregistre tout de suite. Éteindre les catégories ou les niveaux n'efface rien : les billets gardent
+leur nom, leur catégorie et leur niveau, qui reviennent si on rallume.
+
+Cet emplacement est le `settings` qu'un module déclare déjà dans son `module.js` (spec/core.md §11.1,
+comme la connexion HelloAsso).
+
+### 12.4 Qui lit, qui publie
+
+- **Lire** : tout le monde par défaut. Chaque blog garde l'interrupteur « visibles par tout le monde »
+  (§2 bis) dans ses paramètres.
+- **Publier** : un droit 🔒 **par blog**, dont le nom suit celui du blog : « Publier dans Actus »,
+  « Publier dans Techniques ». Il se coche dans Admin › École › Administrateurs, comme aujourd'hui.
+  Renommer le blog renomme le droit. Le droit actuel « Publier les actualités » devient celui du blog
+  Actus, avec les mêmes personnes.
+- Les profs peuvent ainsi publier des techniques sans toucher aux actus.
+
+### 12.5 Un seul écran : plus d'onglets Édition | Visualisation
+
+Dans tous les blogs, Actus compris (remplace le §2 et le §4.1) : qui publie voit **le même fil que
+tout le monde**, avec en plus :
+
+- le bouton principal **+ Ajouter** en bas ;
+- un **crayon** sur chaque billet, qui l'ouvre dans l'éditeur (§4.2, inchangé ; « Supprimer » y reste) ;
+- **« Mes brouillons · vous seul les voyez »** en haut du fil, dans un cadre en pointillés, chaque
+  brouillon avec la pastille Brouillon. Tous ceux qui ont le droit sur ce blog voient tous ses
+  brouillons. Publier un brouillon le fait descendre à sa place ;
+- le menu **⋯** du bandeau, entrée **« Paramètres d'édition des actus »** (le nom du blog à la place
+  d'« actus »), qui ouvre un écran avec ← : les mêmes parties qu'aujourd'hui (En haut de chaque actu,
+  Ouverture de l'appli, Visibilité, Instagram), **par blog**. L'appli ne s'ouvre que sur un blog à la
+  fois : allumer l'option dans un blog l'éteint dans les autres. Le relais Instagram (§6 bis) reste
+  celui de l'organisation et alimente le blog où on l'a relié ; les autres blogs ne le proposent pas
+  tant qu'il est relié ailleurs.
+
+Après Publier, on revient sur le fil, le billet à sa place, « Publiée · Annuler » 10 s.
+
+### 12.6 Blog avec catégories
+
+**Le billet** a en plus :
+
+- un **nom**, obligatoire (« Clé de bras en croix »), en titre de la carte ; il n'y a pas de réglage à
+  part : le nom va avec les catégories, il en faut un pour lister les billets d'une catégorie ;
+- une **catégorie**, obligatoire, et au besoin une **sous-catégorie** (un seul niveau, comme les
+  groupes : jamais de 4e niveau). La carte la montre en pastille « # Projections › Balayages » ; la
+  toucher ouvre cette catégorie.
+
+**Deux onglets en haut, pour tout le monde : Fil | Catégories** (mots fixes, pas de réglage ; Seb,
+12 novembre).
+
+- **Fil** : les billets du plus récent au plus ancien, comme le §3.
+- **Catégories** : les catégories par ordre alphabétique, sous des lettres A, B, C…, chacune avec son
+  nombre de billets. Toucher une catégorie montre ses sous-catégories (ordre alphabétique, avec leur
+  nombre), puis les billets rangés directement dedans, par ordre alphabétique de nom. Une ligne de
+  billet : son nom et « Vidéo · 0:42 », « Photo » ou « Texte ». La toucher ouvre le billet seul. ←
+  revient d'un cran. + Ajouter depuis une catégorie la propose déjà cochée.
+
+**Gérer les catégories**, sans écran à part :
+
+- Dans l'éditeur, sous le texte : **Catégorie**, les catégories existantes en gros boutons (ordre
+  alphabétique) et **+ Nouvelle**, qui ouvre un champ et OK. Une catégorie choisie, la même chose pour
+  **Sous-catégorie (facultatif)**. Pas de hashtag tapé à la main : pas de doublon par faute de frappe.
+- **Jamais de catégorie vide** : une catégorie ou sous-catégorie existe tant qu'un billet (brouillon
+  compris) y est rangé ; elle disparaît avec le dernier. C'est ainsi qu'on la supprime.
+- **Renommer** : qui publie entre dans la catégorie (onglet Catégories) et touche « Renommer « … » ».
+  Lui donner le nom d'une catégorie qui existe déjà au même niveau **réunit** les deux.
+- Majuscules et accents ne distinguent pas deux catégories (« Clés » = « cles »).
+
+### 12.7 Données
+
+Une table des blogs, plutôt que des colonnes de plus sur `news_settings` : il y en a plusieurs par
+organisation, et les billets, les catégories et le droit s'y rattachent par clé étrangère.
+
+**`news_blogs`** : `id`, `org_id` (FK `ecoles.id`), `name`, `icon`, `position`, `with_categories`
+(bool), `with_levels` (bool), et les paramètres aujourd'hui dans `news_settings` : `open_on_news`,
+`media_first`, `visible_to_all`. Unique (`org_id`, `name`). La migration crée le blog « Actus » de
+chaque organisation qui a déjà des actus, des réglages ou des membres dans le groupe du droit, et y
+recopie ses réglages ; les autres le reçoivent à la première demande, comme aujourd'hui « pas de ligne
+= vrai ». `news_settings` ne garde que ce qui touche Instagram (`instagram_hashtag`,
+`instagram_publish`) ; `news_instagram` gagne `blog_id`.
+
+**`news_categories`** : `id`, `blog_id` (FK, cascade), `parent_id` (FK sur elle-même, nul pour une
+catégorie), `name`. Unique (`blog_id`, `parent_id`, nom normalisé). Une table plutôt qu'un texte sur
+le billet : renommer ou réunir se fait en une ligne, et l'ordre alphabétique se lit sans parcourir
+les billets.
+
+**`news_items`** gagne `blog_id` (FK, rempli par la migration), `title` (str, nul) et `category_id`
+(FK `news_categories.id`, nul ; la sous-catégorie quand il y en a une, sinon la catégorie).
+**`news_seen`** : clé (`compte_id`, `blog_id`), « Nouveau » se compte blog par blog.
+
+Toutes les requêtes filtrent par organisation, puis par blog. Migrations ajoutées à la suite de la
+tête, aucune migration existante modifiée ; SQL portable (pas de fonction propre à SQLite).
+
+### 12.8 Deux ajouts au core, à valider par Seb (spec/core.md §11.1)
+
+Aujourd'hui un module déclare ses droits et ses onglets en dur. Un blog créé à l'écran demande que le
+module puisse en déclarer **par organisation** :
+
+1. **Droits** : en plus de `rights`, un module peut donner `org_rights(db, org_id)`, la liste des
+   droits propres à cette organisation (`Right("news.publish.<id du blog>", "Publier dans Techniques")`).
+   Le core crée leur groupe 🔒 et les contrôle par le même `has_right` ; `GET /ecoles/{id}/droits`
+   les liste avec les autres. Le libellé est recalculé à chaque lecture : renommer le blog suffit.
+   La migration donne au groupe `right.news.publish` la clé du blog Actus.
+2. **Onglets** : dans `module.js`, `tabs` peut être une fonction qui reçoit ce que le module a chargé
+   pour l'organisation (ici la liste des blogs) et rend ses onglets (clé, libellé, icône).
+
+Rien d'autre ne change dans le core ; les autres modules ne sont pas touchés.
+
+### 12.9 API, assistant, étapes
+
+Les routes du §8 passent sous `/ecoles/{ecole_id}/news/blogs/{blog_id}/…` ; s'ajoutent
+`GET · POST …/news/blogs`, `PUT · DELETE …/news/blogs/{blog_id}` (Administrateur principal, Super
+User), `GET …/blogs/{blog_id}/categories` et `PUT …/categories/{id}` (renommer, droit du blog).
+`GET …/news/atelier` disparaît : le fil rend aussi les brouillons à qui a le droit. Les actions de
+l'assistant (§9) prennent le blog, et pour un blog à catégories le nom et la catégorie. Le `guide.md`
+du module est mis à jour à chaque étape.
+
+Chaque étape part sur le « vas-y » de Seb, une PR chacune :
+
+1. **Un seul écran** (§12.5) dans Actus : + Ajouter, crayon, Mes brouillons, paramètres derrière ⋯.
+   Aucune donnée ne change.
+2. **Plusieurs blogs** (§12.2 à §12.4, §12.7, §12.8) : table des blogs, liste dans Fonctionnalités
+   (nom, logo, niveaux), un onglet et un droit par blog, les deux ajouts au core.
+3. **Catégories** (§12.6) : nom, catégorie, sous-catégorie, onglets Fil | Catégories, renommer.
+
+### 12.10 Questions ouvertes
+
+- **Supprimer un blog** : non montré sur la maquette. Proposé : possible seulement quand il n'a plus
+  aucun billet, depuis Fonctionnalités, avec Annuler 10 s ; son droit disparaît avec lui.
+- Changer l'ordre des onglets des blogs : pas prévu (ordre de création).
+- Recherche par mot dans un blog : pas prévue ; à voir quand un blog aura beaucoup de billets.

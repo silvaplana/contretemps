@@ -1,0 +1,575 @@
+<title>Maquette Blog et techniques</title>
+<!-- Maquette du module Blog (fil « Étude : module Cours et techniques »), validée par Seb le 2026-11-12 (voir spec/modules/actualites.md §12). -->
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Archivo+Narrow:wght@500;700&display=swap">
+<style>
+:root {
+  --page: #f3eee8; --ink: #2a2118; --muted: #6e6152; --line: #ddd2c4; --panel: #fbf8f4; --note-accent: #b5521a;
+  --display: 'Archivo', system-ui, sans-serif;
+  --narrow: 'Archivo Narrow', 'Archivo', system-ui, sans-serif;
+  --body: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #191612; --ink: #efe8e0; --muted: #a99c8c; --line: #352e26; --panel: #221e19; --note-accent: #f0955a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #191612; --ink: #efe8e0; --muted: #a99c8c; --line: #352e26; --panel: #221e19; --note-accent: #f0955a; color-scheme: dark }
+
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; }
+.intro { color: var(--muted); max-width: 62ch; margin: 0 0 18px; line-height: 1.5; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 22px; font-size: 14px; }
+.controls span { color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; border: 0; background: var(--panel); color: var(--ink); padding: 8px 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.seg button:focus-visible { outline: 2px solid var(--note-accent); outline-offset: -2px; }
+.grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.notes { min-width: 0; }
+.notes h2 { font-family: var(--display); font-size: 1.15rem; margin: 0 0 10px; }
+.notes p, .notes li { line-height: 1.55; max-width: 62ch; }
+.notes ul { padding-left: 1.1em; margin: 0 0 14px; }
+.notes .eyebrow { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--note-accent); margin: 0 0 4px; }
+.notes .ask { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+/* ---- Téléphone : charte Contretemps (frontend/src/index.css), un seul thème comme l'appli ---- */
+.phone {
+  --bg: #fdecd8; --card: #fffaf1; --border: #e8c08c; --text: #3a2410; --muted: #8a6a4a;
+  --accent: #d8722a; --accent-bg: rgba(216,114,42,.14); --contrast: #fffaf1; --dark: #2b1a0c;
+  --imp: #b3261e; --imp-bg: #fbe3dc; --ok: #2f6b2f; --ok-bg: #d7ecd7; --draft: #8a6a1f; --draft-bg: #f3e2ab;
+  width: 100%; max-width: 390px; height: 800px; margin: 0 auto; border-radius: 34px; border: 10px solid #1a120a;
+  background: var(--bg); color: var(--text); position: relative; overflow: hidden;
+  display: flex; flex-direction: column; font-size: 17px; line-height: 1.45; box-shadow: 0 18px 40px rgba(0,0,0,.18);
+}
+.phone button { font: inherit; color: inherit; }
+.phone :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.top { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 0 8px 0 14px; background: var(--bg); flex: none; }
+.top.line { border-bottom: 1px solid var(--border); }
+.top .logo { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--contrast); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 15px; flex: none; }
+.top strong { font-family: var(--display); font-size: 19px; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { width: 48px; height: 48px; border: 0; background: none; border-radius: 50%; cursor: pointer; display: grid; place-items: center; flex: none; }
+.icon-btn svg { width: 24px; height: 24px; }
+.tabs { display: flex; border-bottom: 1px solid var(--border); flex: none; }
+.tabs button { flex: 1; min-height: 48px; border: 0; background: none; cursor: pointer; font-size: 17px; color: var(--muted); border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+.body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+.body > * { flex-shrink: 0; }
+
+/* Fil des actus */
+.feed { padding: 14px 14px 24px; display: flex; flex-direction: column; gap: 14px; }
+.daylabel { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--muted); margin: 6px 2px -4px; }
+.imp { background: var(--imp-bg); color: var(--text); border-radius: 18px; padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.imp .flag { display: flex; align-items: center; gap: 8px; font-family: var(--narrow); font-weight: 700; text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--imp); }
+.imp .flag svg { width: 20px; height: 20px; }
+.imp p { margin: 0; font-size: 19px; font-weight: 600; line-height: 1.35; }
+.story { background: var(--card); border-radius: 18px; overflow: hidden; box-shadow: 0 1px 3px rgba(80,40,10,.12); }
+.story .media { position: relative; aspect-ratio: 4/3; max-width: 100%; background: #3b1f10; }
+.story .media svg.pic { display: block; width: 100%; height: 100%; }
+.story .txt { padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 6px; }
+.story p { margin: 0; }
+.meta { color: var(--muted); font-size: 15px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.meta b { color: var(--text); font-weight: 600; }
+.new { background: var(--accent); color: var(--contrast); font-size: 13px; font-weight: 700; border-radius: 999px; padding: 1px 9px; }
+.play { position: absolute; inset: 0; display: grid; place-items: center; border: 0; background: none; cursor: pointer; }
+.play span { width: 68px; height: 68px; border-radius: 50%; background: rgba(0,0,0,.55); display: grid; place-items: center; }
+.play svg { width: 30px; height: 30px; color: #fff; margin-left: 4px; }
+.dur { position: absolute; right: 10px; bottom: 10px; background: rgba(0,0,0,.7); color: #fff; font-size: 13px; padding: 2px 7px; border-radius: 5px; font-variant-numeric: tabular-nums; }
+.vbar { position: absolute; left: 0; right: 0; bottom: 0; height: 4px; background: rgba(255,255,255,.25); }
+.vbar i { display: block; height: 100%; background: var(--accent); width: 0; animation: vplay 20s linear forwards; }
+@keyframes vplay { to { width: 100%; } }
+.brief { display: flex; gap: 12px; align-items: baseline; padding: 4px 4px; }
+.brief .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); flex: none; transform: translateY(-2px); }
+.brief div { flex: 1; min-width: 0; }
+.brief p { margin: 0; }
+.file { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--bg); text-align: left; cursor: pointer; width: 100%; }
+.file svg { width: 26px; height: 26px; color: #c0392b; flex: none; }
+.end { text-align: center; color: var(--muted); font-size: 15px; padding: 8px; }
+
+/* Atelier */
+.ws { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.row { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 10px 12px; min-height: 64px; border: 0; width: 100%; text-align: left; cursor: pointer; }
+.row .lvl { width: 6px; align-self: stretch; border-radius: 3px; flex: none; }
+.lvl.important { background: var(--imp); } .lvl.normal { background: var(--accent); } .lvl.breve { background: var(--border); }
+.row div { flex: 1; min-width: 0; }
+.row .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.row .meta { margin-top: 2px; }
+.chip { font-size: 14px; padding: 1px 9px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+.chip.pub { background: var(--ok-bg); color: var(--ok); } .chip.draft { background: var(--draft-bg); color: var(--draft); }
+.sect { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--muted); margin: 10px 2px 0; }
+.opt { display: flex; align-items: center; gap: 12px; background: var(--card); border-radius: 14px; padding: 12px 14px; min-height: 64px; }
+.opt span { flex: 1; }
+.switch { width: 56px; height: 32px; border-radius: 16px; border: 0; background: #cdb69a; position: relative; cursor: pointer; flex: none; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; transition: left .15s; }
+.switch[aria-checked="true"] { background: var(--accent); }
+.switch[aria-checked="true"]::after { left: 27px; }
+
+/* Éditeur */
+.ed { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.levels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.levels button { min-height: 52px; border-radius: 12px; border: 2px solid var(--border); background: var(--card); cursor: pointer; font-weight: 600; font-size: 16px; }
+.levels button[aria-pressed="true"].important { border-color: var(--imp); background: var(--imp-bg); color: var(--imp); }
+.levels button[aria-pressed="true"].normal { border-color: var(--accent); background: var(--accent-bg); }
+.levels button[aria-pressed="true"].breve { border-color: var(--muted); background: var(--bg); }
+.hint { color: var(--muted); font-size: 15px; margin: -4px 2px 0; }
+.ed textarea { font: inherit; font-size: 17px; min-height: 120px; resize: none; border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--card); color: var(--text); }
+.adds { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.adds button { min-height: 52px; border-radius: 12px; border: 1px solid var(--border); background: var(--card); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 16px; }
+.adds button svg { width: 20px; height: 20px; }
+.adds button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-bg); font-weight: 700; }
+.until { display: flex; align-items: center; gap: 10px; }
+.until span { flex: 1; }
+.until select { font: inherit; min-height: 48px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 0 10px; }
+.preview-label { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .07em; font-size: 14px; color: var(--muted); margin: 6px 2px -4px; }
+.preview { border: 2px dashed var(--border); border-radius: 20px; padding: 10px; }
+.linkbtn { border: 0; background: none; color: var(--muted); text-decoration: underline; min-height: 48px; cursor: pointer; }
+
+.mainbar { padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg); display: flex; gap: 10px; flex: none; }
+.btn { min-height: 52px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 700; font-size: 17px; padding: 0 18px; flex: 1; }
+.btn.main { background: var(--accent); color: var(--contrast); }
+.btn.main:disabled { opacity: .4; cursor: default; }
+.btn.second { background: var(--card); border: 1px solid var(--border); flex: 0 0 auto; font-weight: 600; }
+
+.nav { display: flex; border-top: 1px solid var(--border); background: var(--bg); padding: 4px 4px 8px; flex: none; }
+.nav button { flex: 1; min-height: 52px; border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; color: var(--muted); cursor: pointer; }
+.nav button svg { width: 22px; height: 22px; }
+.nav button[aria-current="page"] { color: var(--accent); font-weight: 700; }
+
+.toast { position: absolute; left: 12px; right: 12px; bottom: 80px; background: var(--dark); color: var(--contrast); border-radius: 12px; display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 16px; z-index: 6; min-height: 52px; }
+/* Bibliothèque : ajouts */
+.cat { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; border: 0; background: var(--accent-bg); color: var(--text); font-size: 14px; font-weight: 600; border-radius: 999px; padding: 3px 11px; min-height: 30px; cursor: pointer; }
+.story h3 { font-family: var(--display); font-size: 20px; line-height: 1.2; margin: 0; }
+.story .head { display: flex; align-items: flex-start; gap: 6px; }
+.story .head h3 { flex: 1; min-width: 0; padding-top: 4px; }
+.story .head .icon-btn { margin: -8px -8px 0 0; color: var(--muted); }
+.crumb { color: var(--muted); font-size: 15px; padding: 12px 16px 0; }
+.list { padding: 10px 14px 24px; display: flex; flex-direction: column; gap: 8px; }
+.row .count { color: var(--muted); font-variant-numeric: tabular-nums; }
+.row .chev { color: var(--muted); font-size: 22px; line-height: 1; }
+.row.sub { background: var(--accent-bg); }
+.letter { font-family: var(--narrow); font-weight: 700; color: var(--accent); font-size: 15px; margin: 8px 4px -2px; }
+.ed label.f { font-weight: 600; margin: 4px 2px -4px; }
+.ed input.txt { font: inherit; font-size: 17px; min-height: 52px; border: 1px solid var(--border); border-radius: 12px; padding: 0 12px; background: var(--card); color: var(--text); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chips button { min-height: 48px; border-radius: 999px; border: 1px solid var(--border); background: var(--card); padding: 0 16px; cursor: pointer; font-size: 16px; }
+.chips button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--contrast); font-weight: 700; }
+.chips button.add { border-style: dashed; color: var(--muted); }
+.newcat { display: flex; gap: 8px; }
+.newcat input { flex: 1; min-width: 0; }
+.newcat .btn { flex: 0 0 auto; }
+.mod { display: flex; align-items: center; gap: 12px; min-height: 52px; padding: 0 4px; }
+.mod .box { width: 26px; height: 26px; border-radius: 6px; border: 2px solid var(--border); background: var(--card); display: grid; place-items: center; flex: none; color: var(--contrast); font-weight: 800; font-size: 16px; }
+.mod .box.on { background: var(--accent); border-color: var(--accent); }
+button.mod { border: 0; background: none; width: 100%; text-align: left; cursor: pointer; }
+.blogs { margin: 0 0 6px 0; display: flex; flex-direction: column; gap: 8px; }
+.blog { background: var(--card); border-radius: 14px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.blog .opt { padding: 0; min-height: 48px; background: none; }
+.blog input.txt { font: inherit; font-weight: 700; font-size: 17px; min-height: 48px; border: 1px solid var(--border); border-radius: 12px; padding: 0 12px; background: var(--bg); color: var(--text); min-width: 0; }
+.icons { display: flex; gap: 6px; flex-wrap: wrap; }
+.icons button { width: 48px; height: 48px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; display: grid; place-items: center; color: var(--muted); }
+.icons button svg { width: 24px; height: 24px; }
+.icons button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--contrast); }
+.pencil { margin: -8px -8px 0 0; color: var(--muted); }
+.imp .flag span { flex: 1; }
+.brief .pencil { margin: -10px -6px 0 0; }
+.draftbox { border: 2px dashed var(--border); border-radius: 20px; padding: 8px; display: flex; flex-direction: column; gap: 8px; }
+.menu { position: absolute; right: 8px; top: 56px; background: var(--card); border-radius: 14px; box-shadow: 0 6px 24px rgba(60,30,10,.28); z-index: 5; padding: 6px; }
+.menu button { display: block; min-height: 48px; padding: 0 14px; border: 0; background: none; cursor: pointer; text-align: left; }
+</style>
+
+<div class="wrap">
+  <h1>Blog : Actus et Techniques</h1>
+  <p class="intro">Maquette cliquable, à valider avant la spec. Le module Blog : une école a un ou plusieurs blogs (ici Actus et Techniques), chacun avec ou sans catégories, réglés dans Admin › École › Fonctionnalités (bouton « Écran » ci-dessous). Barre du bas › <b id="intro-tab">Techniques</b>, juste après Actus. Tout le monde lit ; qui a le droit de publier ajoute et modifie. Les techniques et les noms sont des exemples (Sambo Admin).</p>
+  <div class="controls">
+    <span>Vu par</span>
+    <div class="seg" role="group" aria-label="Qui regarde">
+      <button id="who-eleve" aria-pressed="false">Un élève</button>
+      <button id="who-pub" aria-pressed="true">Un prof qui publie</button>
+    </div>
+    <span>Écran</span>
+    <div class="seg" role="group" aria-label="Écran montré">
+      <button id="scr-news" aria-pressed="false">Actus</button>
+      <button id="scr-blog" aria-pressed="true">Techniques</button>
+      <button id="scr-admin" aria-pressed="false">Admin › École › Fonctionnalités</button>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="phone" id="phone" aria-label="Téléphone"></div>
+    <div class="notes" id="notes" aria-live="polite"></div>
+  </div>
+</div>
+
+<script>
+const I = {
+  back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M11 18l-6-6 6-6"/></svg>',
+  photo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/></svg>',
+  video: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>',
+  link: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 6 0l3-3a4 4 0 0 0-6-6l-1 1"/><path d="M14 10a4 4 0 0 0-6 0l-3 3a4 4 0 0 0 6 6l1-1"/></svg>',
+  playI: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 4l13 8-13 8z"/></svg>',
+  edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+  news: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13v14H6a2 2 0 0 1-2-2z"/><path d="M17 9h3v8a2 2 0 0 1-2 2"/><path d="M8 9h5M8 13h5"/></svg>',
+  admin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M5 19l2-2M17 7l2-2"/></svg>',
+  lib: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h4v16H4zM10 4h4v16h-4z"/><path d="M16 5l3.5-1 3 15.5-3.5 1z"/></svg>',
+  star: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.7 5.6 6.1.8-4.5 4.2 1.1 6-5.4-3-5.4 3 1.1-6L3.200 9.400l6.100-.8z"/></svg>',
+  cup: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4a3 3 0 0 0 3 4M17 6h3a3 3 0 0 1-3 4M12 14v4M8 20h8"/></svg>',
+  cap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9l10-5 10 5-10 5z"/><path d="M6 11.500v4.500c3 3 9 3 12 0v-4.500"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  msg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-12 7l-5 1 1-4a8 8 0 1 1 16-4z"/></svg>',
+  docs: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  user: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>',
+}
+// Image d'exemple dessinée : deux combattants sur le tapis.
+const MAT = '<svg class="pic" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice"><rect width="400" height="300" fill="#2c3e57"/><rect y="200" width="400" height="100" fill="#b3261e"/><rect y="196" width="400" height="6" fill="#e9d8a6"/><g fill="#14100c" stroke="#14100c" stroke-width="9" stroke-linecap="round"><circle cx="160" cy="112" r="15"/><path d="M160 127 l-6 44 l-22 32 M154 171 l22 32 M158 140 l38 6"/><circle cx="236" cy="104" r="15"/><path d="M236 119 l-10 50 l-18 34 M226 169 l26 34 M232 134 l-30 12"/></g></svg>'
+
+const S = {
+  role: 'pub', word: 'Techniques', withCats: true, blogOn: true, addingBlog: false, extra: [], icons: { Actus: 'news', lib: 'lib' }, tab: 'new', screen: 'list', path: [], open: null, playing: null, toast: null, draft: null,
+  // Une technique = une seule catégorie, avec au besoin une sous-catégorie (un seul niveau).
+  cats: { 'Clés de bras': [], 'Clés de jambes': [], 'Contrôles au sol': ['Immobilisations', 'Sorties'], 'Échauffement': [], 'Projections': ['Balayages', 'Hanche', 'Sacrifices'] },
+  items: [
+    { id: 1, title: 'Balayage du pied avant', cat: 'Projections', sub: 'Balayages', who: 'Flo', date: '10 novembre', isNew: true, media: 'video', dur: '0:42',
+      text: "Au moment où il pose le pied, on balaie sous la cheville en tirant la manche vers le bas. Le pied balayeur reste tendu, plante vers le haut." },
+    { id: 2, title: 'Clé de bras en croix', cat: 'Clés de bras', who: 'Karim', date: '8 novembre', isNew: true, media: 'video', dur: '1:15',
+      text: "Depuis le contrôle de côté : genou sur le ventre, on enjambe la tête, on serre les genoux et on monte les hanches. Lentement à l'entraînement." },
+    { id: 3, title: 'Projection de hanche', cat: 'Projections', sub: 'Hanche', who: 'Flo', date: '3 novembre', media: 'photo',
+      text: "Entrée en pivot, hanche plus basse que la sienne, on charge et on tourne la tête vers l'extérieur." },
+    { id: 4, title: 'Sortie de contrôle de côté', cat: 'Contrôles au sol', sub: 'Sorties', who: 'Karim', date: '27 octobre', media: 'video', dur: '0:58',
+      text: "Les avant-bras en cadre contre son cou et sa hanche, on crée l'espace, on remet le genou." },
+    { id: 5, title: 'Clé de cheville', cat: 'Clés de jambes', who: 'Karim', date: '20 octobre', media: 'video', dur: '0:51',
+      text: "Le pied sous l'aisselle, l'avant-bras sous le tendon, on cambre. On tape tôt." },
+    { id: 6, title: 'Échauffement articulaire', cat: 'Échauffement', who: 'Flo', date: '14 octobre',
+      text: "Nuque, épaules, poignets, hanches, genoux, chevilles : dix rotations dans chaque sens." },
+    { id: 7, title: 'Sacrifice en planchette', cat: 'Projections', sub: 'Sacrifices', who: 'Flo', date: '6 octobre', media: 'video', dur: '0:37',
+      text: "On tombe sur le dos en plaçant le pied dans son ventre, on tire les deux manches au-dessus de sa tête." },
+  ],
+}
+const LEVELS = { important: 'Important', normal: 'Normal', breve: 'Brève' }
+const HINTS = { important: "En haut des actus, en rouge, jusqu'à la date choisie.", normal: 'Une grande carte, avec sa photo ou sa vidéo.', breve: 'Une ligne, sans image. Pour les petites infos.' }
+S.menu = false
+S.levels = true
+S.params = { mediaFirst: false, open: true, all: true }
+S.news = [
+  { id: 101, level: 'normal', status: 'draft', who: 'Flo', date: '12 novembre', text: "Photos du stage de dimanche : merci à tous !", media: 'photo' },
+  { id: 102, level: 'important', status: 'pub', who: 'Seb', date: '11 novembre', isNew: true, text: "Pas d'entraînement jeudi 12 novembre : le gymnase est fermé. Reprise lundi." },
+  { id: 103, level: 'normal', status: 'pub', who: 'Karim', date: '9 novembre', isNew: true, media: 'video', dur: '0:48', text: "Les meilleurs moments de l'open de samedi. Bravo aux six engagés !" },
+  { id: 104, level: 'breve', status: 'pub', who: 'Seb', date: '7 novembre', text: "Le cours enfants du mercredi commence à 17 h 30 jusqu'aux vacances." },
+]
+let nextId = 20
+const phone = document.getElementById('phone'), notes = document.getElementById('notes')
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]))
+const az = (a, b) => a.localeCompare(b, 'fr')
+const pub = () => S.role === 'pub'
+
+function nav() {
+  const tabs = pub()
+    ? [['admin', 'Admin'], ...(S.blogOn ? [['news', 'Actus'], ['lib', S.word], ...S.extra.map((n) => ['xtra', n])] : []), ['msg', 'Messages'], ['docs', 'Docs']]
+    : [...(S.blogOn ? [['news', 'Actus'], ['lib', S.word], ...S.extra.map((n) => ['xtra', n])] : []), ['msg', 'Messages'], ['docs', 'Docs'], ['user', 'Profil']]
+  const cur = S.screen === 'admin' ? 'admin' : ['news', 'nedit', 'nparams'].includes(S.screen) ? 'news' : 'lib'
+  return '<nav class="nav">' + tabs.map(([k, l]) => `<button ${k === cur ? 'aria-current="page"' : ''} data-act="${k === 'admin' ? 'admin' : k === 'lib' ? 'home' : k === 'news' ? 'gonews' : 'noop'}">${I[k === 'lib' ? S.icons.lib : k === 'news' || k === 'xtra' ? S.icons[l] || 'news' : k]}${esc(l)}</button>`).join('') + '</nav>'
+}
+const topbar = (title, back) => `<header class="top ${back ? 'line' : ''}">${back ? `<button class="icon-btn" aria-label="Retour" data-act="${back}">${I.back}</button>` : '<span class="logo">SA</span>'}<strong>${esc(title)}</strong></header>`
+const catLabel = (n) => n.sub ? `${n.cat} › ${n.sub}` : n.cat
+
+function media(n) {
+  if (n.media === 'photo') return `<div class="media">${MAT}</div>`
+  if (n.media === 'video') {
+    const on = S.playing === n.id
+    return `<div class="media">${MAT}${on ? '<div class="vbar"><i></i></div>' : `<button class="play" aria-label="Lire la vidéo" data-act="play" data-id="${n.id}"><span>${I.playI}</span></button><span class="dur">${n.dur}</span>`}</div>`
+  }
+  return ''
+}
+function card(n) {
+  return `<article class="story"><div class="txt">
+      <div class="head"><h3>${esc(n.title)}</h3>${pub() ? `<button class="icon-btn" aria-label="Modifier" data-act="edit" data-id="${n.id}">${I.edit}</button>` : ''}</div>
+      ${S.withCats && n.cat ? `<button class="cat" data-act="gocat" data-cat="${esc(n.cat)}" data-sub="${esc(n.sub || '')}"># ${esc(catLabel(n))}</button>` : ''}
+      <p>${esc(n.text)}</p></div>${media(n)}
+      <div class="txt"><div class="meta"><span><b>${esc(n.who)}</b> · ${n.date}</span>${n.isNew ? '<span class="new">Nouveau</span>' : ''}</div></div></article>`
+}
+
+function feed() {
+  return `<div class="feed">${S.items.map(card).join('')}<div class="end">C'est tout pour le moment.</div></div>`
+}
+function row(n) {
+  return `<button class="row" data-act="item" data-id="${n.id}"><div><div class="t">${esc(n.title)}</div><div class="meta"><span>${n.media === 'video' ? 'Vidéo · ' + n.dur : n.media === 'photo' ? 'Photo' : 'Texte'}</span></div></div><span class="chev">›</span></button>`
+}
+function catRow(name, count, act, sub) {
+  return `<button class="row ${sub ? 'sub' : ''}" data-act="${act}" data-name="${esc(name)}"><div><div class="t">${esc(name)}</div></div><span class="count">${count}</span><span class="chev">›</span></button>`
+}
+function byCat() {
+  const [c, s] = S.path
+  if (!c) {
+    let html = '', letter = ''
+    for (const name of Object.keys(S.cats).filter((x) => S.items.some((n) => n.cat === x)).sort(az)) {
+      const L = name[0].normalize('NFD')[0].toUpperCase()
+      if (L !== letter) { letter = L; html += `<div class="letter">${L}</div>` }
+      html += catRow(name, S.items.filter((n) => n.cat === name).length, 'cat')
+    }
+    return `<div class="list">${html}</div>`
+  }
+  const inCat = S.items.filter((n) => n.cat === c)
+  if (!s) {
+    const subs = S.cats[c].filter((x) => inCat.some((n) => n.sub === x)).sort(az).map((x) => catRow(x, inCat.filter((n) => n.sub === x).length, 'sub', true)).join('')
+    const direct = inCat.filter((n) => !n.sub).sort((a, b) => az(a.title, b.title)).map(row).join('')
+    return `<div class="list">${subs}${direct}${!subs && !direct ? '<div class="end">Rien pour le moment.</div>' : ''}</div>`
+  }
+  return `<div class="list">${inCat.filter((n) => n.sub === s).sort((a, b) => az(a.title, b.title)).map(row).join('') || '<div class="end">Rien pour le moment.</div>'}</div>`
+}
+
+function editor() {
+  const d = S.draft
+  const subs = d.cat ? S.cats[d.cat] || [] : []
+  const chips = (list, sel, act) => list.slice().sort(az).map((x) => `<button aria-pressed="${sel === x}" data-act="${act}" data-name="${esc(x)}">${esc(x)}</button>`).join('')
+  const adder = (which) => d.adding === which
+    ? `<div class="newcat"><input class="txt" id="newcat" placeholder="${which === 'cat' ? 'Nouvelle catégorie' : 'Nouvelle sous-catégorie'}" aria-label="Nom"><button class="btn main" data-act="addcat" data-which="${which}">OK</button></div>`
+    : ''
+  return `${topbar(d.id ? 'Modifier' : 'Ajouter', 'cancel')}
+  <div class="body"><div class="ed">
+    <label class="f" for="title">Nom</label>
+    <input class="txt" id="title" value="${esc(d.title)}" placeholder="Ex. Clé de bras en croix">
+    <label class="f" for="draft">Explication</label>
+    <textarea id="draft" placeholder="Comment on fait, les points importants…">${esc(d.text)}</textarea>
+    <div class="adds"><button data-act="noop">${I.video}Vidéo</button><button data-act="noop">${I.photo}Photo</button><button data-act="noop">${I.link}Lien</button></div>
+    ${!S.withCats ? '' : `<label class="f">Catégorie</label>
+    <div class="chips">${chips(Object.keys(S.cats), d.cat, 'pickcat')}<button class="add" data-act="adding" data-which="cat">+ Nouvelle</button></div>
+    ${adder('cat')}
+    ${d.cat ? `<label class="f">Sous-catégorie <span style="font-weight:400;color:var(--muted)">(facultatif)</span></label>
+    <div class="chips">${chips(subs, d.sub, 'picksub')}<button class="add" data-act="adding" data-which="sub">+ Nouvelle</button></div>${adder('sub')}` : ''}`}
+    <div class="opt"><span>Prévenir les élèves</span><button class="switch" role="switch" aria-checked="${d.notify}" aria-label="Prévenir les élèves" data-act="notify"></button></div>
+    ${d.id ? '<button class="linkbtn" data-act="del">Supprimer</button>' : ''}
+  </div></div>
+  <div class="mainbar"><button class="btn second" data-act="cancel">Annuler</button><button class="btn main" data-act="save" ${d.title && (d.cat || !S.withCats) ? '' : 'disabled'}>${d.id ? 'Enregistrer' : 'Publier'}</button></div>`
+}
+
+function ncard(n) {
+  const pen = pub() ? `<button class="icon-btn pencil" aria-label="Modifier" data-act="nedit" data-id="${n.id}">${I.edit}</button>` : ''
+  const chip = n.status === 'draft' ? '<span class="chip draft">Brouillon</span>' : n.isNew ? '<span class="new">Nouveau</span>' : ''
+  const meta = `<div class="meta"><span><b>${esc(n.who)}</b> · ${n.date}</span>${chip}</div>`
+  const med = n.media ? media({ ...n, id: n.id }) : ''
+  if (n.level === 'important') return `<article class="imp"><div class="flag">${I.alert}<span>Important</span>${pen}</div><p>${esc(n.text)}</p>${meta}</article>`
+  if (n.level === 'breve') return `<article class="brief"><span class="dot"></span><div><p>${esc(n.text)}</p>${meta}</div>${pen}</article>`
+  return `<article class="story"><div class="txt"><div class="head"><p style="flex:1;min-width:0">${esc(n.text)}</p>${pen}</div></div>${med}<div class="txt">${meta}</div></article>`
+}
+function newsScreen() {
+  const drafts = pub() ? S.news.filter((n) => n.status === 'draft') : []
+  const pubd = S.news.filter((n) => n.status === 'pub')
+  const imp = pubd.filter((n) => n.level === 'important'), rest = pubd.filter((n) => n.level !== 'important')
+  return `<header class="top"><span class="logo">SA</span><strong>Actus</strong>${pub() ? `<button class="icon-btn" aria-label="Plus" data-act="menu">${I.more}</button>` : ''}</header>
+    ${S.menu ? '<div class="menu"><button data-act="params">Paramètres d\'édition des actus</button></div>' : ''}
+    <div class="body"><div class="feed">
+      ${drafts.length ? `<div class="daylabel">Mes brouillons · vous seul les voyez</div><div class="draftbox">${drafts.map(ncard).join('')}</div>` : ''}
+      ${imp.map(ncard).join('')}${rest.length ? '<div class="daylabel">Cette semaine</div>' : ''}${rest.map(ncard).join('')}
+      <div class="end">C'est tout pour le moment.</div></div></div>
+    ${pub() ? '<div class="mainbar"><button class="btn main" data-act="nnew">+ Ajouter</button></div>' : ''}${nav()}`
+}
+function newsParams() {
+  const sw = (label, key) => `<div class="opt"><span>${label}</span><button class="switch" role="switch" aria-checked="${S.params[key]}" aria-label="${label}" data-act="param" data-key="${key}"></button></div>`
+  return `${topbar("Paramètres d'édition des actus", 'ncancel')}
+  <div class="body"><div class="ws">
+    <div class="sect">En haut de chaque actu</div>
+    <div class="levels" style="grid-template-columns:1fr 1fr"><button class="normal" aria-pressed="${!S.params.mediaFirst}" data-act="param" data-key="mediaFirst">Texte</button><button class="normal" aria-pressed="${S.params.mediaFirst}" data-act="param" data-key="mediaFirst">Photo, vidéo</button></div>
+    <div class="sect">Ouverture de l'appli</div>${sw("L'appli affiche toujours les actus à son ouverture", 'open')}
+    <div class="sect">Visibilité</div>${sw('Les actus sont visibles par tout le monde', 'all')}
+    <div class="sect">Instagram</div><div class="opt"><span>Aucun compte relié</span><button class="btn second" data-act="noop">Relier</button></div>
+  </div></div>${nav()}`
+}
+function newsEditor() {
+  const d = S.draft
+  return `${topbar(d.id ? "Modifier l'actu" : 'Nouvelle actu', 'ncancel')}
+  <div class="body"><div class="ed">
+    ${!S.levels ? '' : `<div class="levels" role="group" aria-label="Niveau">${Object.entries(LEVELS).map(([k, l]) => `<button class="${k}" aria-pressed="${d.level === k}" data-act="level" data-level="${k}">${l}</button>`).join('')}</div>
+    <p class="hint">${HINTS[d.level]}</p>`}
+    <textarea id="ntext" aria-label="Texte de l'actu" placeholder="Écrivez l'actu…">${esc(d.text)}</textarea>
+    <div class="adds"><button data-act="noop">${I.video}Vidéo</button><button data-act="noop">${I.photo}Photo</button><button data-act="noop">${I.link}Lien</button></div>
+    <div class="opt"><span>Envoyer une notification</span><button class="switch" role="switch" aria-checked="${d.notify}" aria-label="Envoyer une notification" data-act="notify"></button></div>
+    ${d.id ? '<button class="linkbtn" data-act="ndel">Supprimer</button>' : ''}
+  </div></div>
+  <div class="mainbar"><button class="btn second" data-act="nsave" data-status="draft" ${d.text ? '' : 'disabled'}>Brouillon</button><button class="btn main" data-act="nsave" data-status="pub" ${d.text ? '' : 'disabled'}>Publier</button></div>`
+}
+function admin() {
+  const mod = (label, on, act) => act
+    ? `<button class="mod" data-act="${act}" role="checkbox" aria-checked="${on}"><span class="box ${on ? 'on' : ''}">${on ? '✓' : ''}</span><span>${label}</span></button>`
+    : `<div class="mod"><span class="box ${on ? 'on' : ''}">${on ? '✓' : ''}</span><span>${label}</span></div>`
+  const ICONS = ['news', 'lib', 'video', 'cap', 'star', 'cup']
+  const blog = (name, cats, act, key) => `<div class="blog"><input class="txt" ${key === 'lib' ? 'id="blogname"' : 'readonly'} value="${esc(name)}" aria-label="Nom du blog">
+    <div class="icons" role="group" aria-label="Logo de l'onglet">${ICONS.map((i) => `<button aria-pressed="${(S.icons[key] || 'news') === i}" aria-label="Logo ${i}" data-act="icon" data-key="${esc(key)}" data-icon="${i}">${I[i]}</button>`).join('')}</div>
+    <div class="opt"><span>Avec des catégories</span><button class="switch" role="switch" aria-checked="${cats}" aria-label="Avec des catégories, ${esc(name)}" data-act="${act}"></button></div>
+    <div class="opt"><span>Avec les niveaux Important, Normal, Brève</span><button class="switch" role="switch" aria-checked="${key === 'Actus' && S.levels}" aria-label="Avec les niveaux, ${esc(name)}" data-act="${key === 'Actus' ? 'levels' : 'noop'}"></button></div></div>`
+  const blogs = !S.blogOn ? '' : `<div class="blogs">${blog('Actus', false, 'noop', 'Actus')}${blog(S.word, S.withCats, 'withcats', 'lib')}${S.extra.map((n) => blog(n, false, 'noop', n)).join('')}
+    ${S.addingBlog ? `<div class="newcat"><input class="txt" id="newblog" placeholder="Nom du blog" aria-label="Nom du blog"><button class="btn main" data-act="addblog">OK</button></div>` : '<button class="linkbtn" style="text-align:left" data-act="addingblog">+ Ajouter un blog</button>'}</div>`
+  return `${topbar('Fonctionnalités', 'home')}<div class="crumb">Admin › École › Personnalisation de l'application</div>
+    <div class="body"><div class="list">${mod('Messagerie instantanée', true)}${mod('Documents', true)}${mod('Blog', S.blogOn, 'blogon')}${blogs}${mod('Fights', true)}${mod('Financier', true)}</div></div>${nav()}`
+}
+function render() {
+  let html
+  if (S.screen === 'admin') html = admin()
+  else if (S.screen === 'news') html = newsScreen()
+  else if (S.screen === 'nedit') html = newsEditor() + nav()
+  else if (S.screen === 'nparams') html = newsParams()
+  else if (S.screen === 'edit') html = editor() + nav()
+  else if (S.screen === 'item') {
+    const n = S.items.find((x) => x.id === S.open)
+    html = `${topbar(n.title, 'back')}<div class="body"><div class="feed">${card(n)}</div></div>${nav()}`
+  } else {
+    const [c, s] = S.path
+    if (!S.withCats) { S.tab = 'new'; S.path = [] }
+    const inside = S.tab === 'cat' && S.path[0]
+    html = `${inside ? topbar(s || c, 'up') : topbar(S.word)}
+      ${inside ? `<div class="crumb">${esc(S.word)} › ${esc(c)}${s ? ' › ' + esc(s) : ''}</div>${!pub() ? '' : S.renaming
+        ? `<div class="newcat" style="padding:8px 14px 0"><input class="txt" id="rename" value="${esc(s || c)}" aria-label="Nouveau nom" style="font:inherit;font-size:17px;min-height:52px;border:1px solid var(--border);border-radius:12px;padding:0 12px;background:var(--card);color:var(--text)"><button class="btn main" data-act="rename">OK</button></div>`
+        : `<button class="linkbtn" style="text-align:left;padding:0 16px" data-act="renaming">Renommer « ${esc(s || c)} »</button>`}` : !S.withCats ? '' : `<div class="tabs" role="tablist">
+        <button role="tab" aria-selected="${S.tab === 'new'}" data-act="tab" data-tab="new">Fil</button>
+        <button role="tab" aria-selected="${S.tab === 'cat'}" data-act="tab" data-tab="cat">Catégories</button></div>`}
+      <div class="body">${S.tab === 'new' ? feed() : byCat()}</div>
+      ${pub() ? '<div class="mainbar"><button class="btn main" data-act="new">+ Ajouter</button></div>' : ''}
+      ${nav()}`
+  }
+  if (S.toast) html += `<div class="toast" role="status"><span>${esc(S.toast)}</span><button data-act="undo">Annuler</button><i></i></div>`
+  phone.innerHTML = html
+  renderNotes()
+}
+
+const NOTES = {
+  news: `<p class="eyebrow">Actus</p><h2>Plus d'onglets Édition | Visualisation</h2>
+    <ul><li>Qui publie voit <b>le même fil que tout le monde</b>, avec trois choses en plus. Passez sur « Un élève » en haut pour comparer.</li>
+    <li><b>+ Ajouter</b> en bas : le seul bouton principal.</li>
+    <li>Un <b>crayon</b> sur chaque actu : on la modifie là où on la voit.</li>
+    <li><b>Mes brouillons</b> en haut, dans un cadre en pointillés : seuls ceux qui publient les voient. Publier un brouillon le fait descendre à sa place dans le fil.</li>
+    <li>Le menu <b>⋯</b> garde « Paramètres d'édition des actus » (ouverture de l'appli, visibilité, Instagram) : touchez ⋯ pour voir.</li>
+    <li>Le reste ne change pas : Important en rouge, Normal, Brève, « Nouveau ».</li></ul>`,
+  nparams: `<p class="eyebrow">Actus › ⋯ › Paramètres d'édition des actus</p><h2>Les mêmes paramètres, derrière le menu ⋯</h2>
+    <ul><li>Ils ne sont plus sous la liste de l'onglet Édition : on y arrive par le menu ⋯ du bandeau, entrée qui existe déjà aujourd'hui.</li>
+    <li>Rien ne change dedans : Texte ou Photo en haut, ouverture de l'appli, visibilité, Instagram.</li>
+    <li>Seuls ceux qui publient voient le menu ⋯. ← revient aux actus.</li>
+    <li>Chaque blog a les siens : Techniques aura le même menu, sans Instagram.</li></ul>`,
+  nedit: `<p class="eyebrow">Actus › + Ajouter</p><h2>Le même éditeur qu'aujourd'hui</h2>
+    <ul><li>Niveau, texte, vidéo, photo, lien, notification : rien ne change.</li>
+    <li>En bas : <b>Publier</b> (bouton principal) et <b>Brouillon</b> pour le garder de côté.</li></ul>`,
+  admin: `<p class="eyebrow">Admin › École › Personnalisation de l'application › Fonctionnalités</p><h2>Les blogs se règlent ici</h2>
+    <ul><li>Une case <b>Blog</b>, comme pour les autres modules. Décochée : plus aucun onglet de blog, rien n'est effacé.</li>
+    <li>Dessous, la liste des blogs de l'école. Chacun a <b>son nom</b> (c'est le nom de son onglet et de son droit de publier), <b>son logo</b> dans la barre du bas, et l'interrupteur <b>Avec des catégories</b>. Changez le nom ou le logo de Techniques : la barre du bas suit.</li>
+    <li>Éteint : un simple fil, comme Actus aujourd'hui. Allumé : la catégorie sur chaque billet et l'onglet « Catégories ». Essayez sur ${'{W}'}, puis revenez à l'onglet.</li>
+    <li><b>Avec les niveaux Important, Normal, Brève</b> : allumé pour Actus, éteint pour Techniques. Éteint, l'éditeur n'a plus les trois boutons et tous les billets sont de grandes cartes.</li>
+    <li><b>+ Ajouter un blog</b> crée un onglet de plus. Réservé à l'Administrateur principal et au Super User, comme le reste de Fonctionnalités.</li>
+    <li>Qui publie : un droit 🔒 par blog (« Publier dans Actus », « Publier dans ${'{W}'} »), coché dans Admin › École › Administrateurs.</li></ul>`,
+  new: `<p class="eyebrow">${'{W}'} › Fil</p><h2>Comme les actus, une technique par carte</h2>
+    <ul><li>La plus récente en haut, pastille <b>Nouveau</b> depuis la dernière visite, comme Actus.</li>
+    <li>Une carte : le <b>nom</b> de la technique (les actus n'ont pas de titre, ici il en faut un pour la retrouver), sa <b>catégorie</b>, l'explication, puis jusqu'à 10 vidéos, photos et liens YouTube en carrousel, comme Actus.</li>
+    <li>Toucher la catégorie (# Projections › Balayages) ouvre directement cette catégorie.</li>
+    <li>Pas de niveaux Important / Brève : ça reste dans Actus.</li></ul>`,
+  cat: `<p class="eyebrow">${'{W}'} › Catégories</p><h2>Les catégories par ordre alphabétique</h2>
+    <ul><li>Lettres A, B, C… et le nombre de techniques à droite.</li>
+    <li>Une catégorie montre d'abord ses sous-catégories (fond orangé), puis les techniques rangées directement dedans, toutes par ordre alphabétique.</li>
+    <li>Un seul niveau de sous-catégorie, comme les groupes : jamais de 4e niveau.</li>
+    <li><b>Jamais de catégorie vide</b> : une catégorie naît quand on y range un premier billet (+ Nouvelle, dans l'éditeur) et disparaît quand on en retire le dernier. Pas d'écran de gestion à part.</li>
+    <li>Qui publie peut la <b>renommer</b> en entrant dedans. Lui donner le nom d'une catégorie qui existe déjà les réunit.</li>
+    <li>Essayez : Projections › Balayages.</li></ul>`,
+  item: `<p class="eyebrow">${'{W}'} › Catégories › une technique</p><h2>La technique seule</h2><ul><li>La même carte que dans le Fil ; ← revient où l'on était.</li></ul>`,
+  edit: `<p class="eyebrow">${'{W}'} › + Ajouter</p><h2>Ajouter une technique</h2>
+    <ul><li>Nom et catégorie obligatoires ; le reste facultatif.</li>
+    <li>La catégorie se <b>choisit</b> parmi les existantes ou se <b>crée</b> en tapant son nom (+ Nouvelle) : pas de faute de frappe qui ferait deux catégories.</li>
+    <li>Les catégories vides disparaissent toutes seules.</li>
+    <li>« Prévenir les élèves » envoie une notification, éteint par défaut.</li>
+    <li>Publier, puis Annuler pendant 10 s.</li></ul>`,
+}
+function renderNotes() {
+  const isNews = ['news', 'nedit', 'nparams'].includes(S.screen)
+  document.getElementById('scr-blog').setAttribute('aria-pressed', S.screen !== 'admin' && !isNews)
+  document.getElementById('scr-news').setAttribute('aria-pressed', isNews)
+  document.getElementById('scr-admin').setAttribute('aria-pressed', S.screen === 'admin')
+  const key = S.screen === 'admin' ? 'admin' : S.screen === 'news' ? 'news' : S.screen === 'nparams' ? 'nparams' : S.screen === 'nedit' ? 'nedit' : S.screen === 'edit' ? 'edit' : S.screen === 'item' ? 'item' : S.tab
+  notes.innerHTML = NOTES[key].replaceAll('{W}', esc(S.word)) + `<div class="ask"><b>Le module Blog.</b> Actus et ${esc(S.word)} sont deux blogs du même module. Chaque blog a son nom et peut avoir des catégories ou non : le bouton « Admin › École › Fonctionnalités » en haut de la maquette montre où ça se règle.</div>`
+}
+
+let undo = null, timer = null
+function toast(msg, fn) { S.toast = msg; undo = fn; clearTimeout(timer); timer = setTimeout(() => { S.toast = null; render() }, 10000) }
+
+phone.addEventListener('change', (e) => { if (e.target.id === 'blogname' && e.target.value.trim()) { S.word = e.target.value.trim(); sync() } })
+phone.addEventListener('input', (e) => {
+  if (!S.draft) return
+  if (e.target.id === 'title') { S.draft.title = e.target.value; phone.querySelector('[data-act="save"]').disabled = !(S.draft.title && (S.draft.cat || !S.withCats)) }
+  if (e.target.id === 'draft') S.draft.text = e.target.value
+  if (e.target.id === 'ntext') { S.draft.text = e.target.value; phone.querySelectorAll('[data-act="nsave"]').forEach((x) => x.disabled = !S.draft.text) }
+})
+phone.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]'); if (!b) return
+  const a = b.dataset.act, id = +b.dataset.id
+  if (a === 'tab') { S.tab = b.dataset.tab; S.path = [] }
+  else if (a === 'admin') { S.screen = 'admin'; S.draft = null }
+  else if (a === 'home') S.screen = 'list'
+  else if (a === 'gonews') { S.screen = 'news'; S.draft = null }
+  else if (a === 'menu') S.menu = !S.menu
+  else if (a === 'params') { S.menu = false; S.screen = 'nparams' }
+  else if (a === 'param') S.params[b.dataset.key] = !S.params[b.dataset.key]
+  else if (a === 'nnew') { S.draft = { level: 'normal', text: '', notify: false }; S.screen = 'nedit' }
+  else if (a === 'nedit') { S.draft = { ...S.news.find((x) => x.id === id), notify: false }; S.screen = 'nedit' }
+  else if (a === 'ncancel') { S.draft = null; S.screen = 'news' }
+  else if (a === 'level') S.draft.level = b.dataset.level
+  else if (a === 'nsave') {
+    const d = S.draft, st = b.dataset.status
+    if (d.id) Object.assign(S.news.find((x) => x.id === d.id), { level: d.level, text: d.text, status: st })
+    else S.news.unshift({ id: nextId++, level: d.level, text: d.text, status: st, who: 'Flo', date: '12 novembre' })
+    S.news.sort((x, y) => (x.status === 'draft' ? 0 : 1) - (y.status === 'draft' ? 0 : 1))
+    S.draft = null; S.screen = 'news'; toast(st === 'pub' ? 'Publiée' : 'Gardée en brouillon', null)
+  }
+  else if (a === 'ndel') { const n = S.news.find((x) => x.id === S.draft.id), i = S.news.indexOf(n); S.news.splice(i, 1); S.draft = null; S.screen = 'news'; toast('Supprimée', () => S.news.splice(i, 0, n)) }
+  else if (a === 'blogon') S.blogOn = !S.blogOn
+  else if (a === 'withcats') S.withCats = !S.withCats
+  else if (a === 'levels') S.levels = !S.levels
+  else if (a === 'icon') S.icons[b.dataset.key] = b.dataset.icon
+  else if (a === 'addingblog') S.addingBlog = true
+  else if (a === 'addblog') { const v = phone.querySelector('#newblog').value.trim(); if (v) S.extra.push(v); S.addingBlog = false }
+  else if (a === 'play') S.playing = id
+  else if (a === 'gocat') { S.screen = 'list'; S.tab = 'cat'; S.path = b.dataset.sub ? [b.dataset.cat, b.dataset.sub] : [b.dataset.cat] }
+  else if (a === 'cat') S.path = [b.dataset.name]
+  else if (a === 'sub') S.path = [S.path[0], b.dataset.name]
+  else if (a === 'up') { S.path = S.path.slice(0, -1); S.renaming = false }
+  else if (a === 'renaming') S.renaming = true
+  else if (a === 'rename') {
+    const v = phone.querySelector('#rename').value.trim(), [c, sub] = S.path
+    if (v && sub) { for (const n of S.items) if (n.cat === c && n.sub === sub) n.sub = v; if (!S.cats[c].includes(v)) S.cats[c].push(v); S.path = [c, v] }
+    else if (v) { S.cats[v] = [...new Set([...(S.cats[v] || []), ...S.cats[c]])]; for (const n of S.items) if (n.cat === c) n.cat = v; if (v !== c) delete S.cats[c]; S.path = [v] }
+    S.renaming = false
+  }
+  else if (a === 'item') { S.screen = 'item'; S.open = id }
+  else if (a === 'back') S.screen = 'list'
+  else if (a === 'new') { S.draft = { title: '', text: '', cat: S.tab === 'cat' ? S.path[0] || null : null, sub: S.path[1] || null, notify: false }; S.screen = 'edit' }
+  else if (a === 'edit') { const n = S.items.find((x) => x.id === id); S.draft = { ...n, notify: false }; S.screen = 'edit' }
+  else if (a === 'cancel') { S.screen = S.open && S.items.some((x) => x.id === S.open) && S.tab === 'cat' ? 'item' : 'list'; S.draft = null }
+  else if (a === 'pickcat') { S.draft.cat = b.dataset.name; S.draft.sub = null; S.draft.adding = null }
+  else if (a === 'picksub') { S.draft.sub = S.draft.sub === b.dataset.name ? null : b.dataset.name; S.draft.adding = null }
+  else if (a === 'adding') S.draft.adding = b.dataset.which
+  else if (a === 'addcat') {
+    const v = phone.querySelector('#newcat').value.trim(); if (!v) return
+    if (b.dataset.which === 'cat') { S.cats[v] = S.cats[v] || []; S.draft.cat = v; S.draft.sub = null }
+    else { if (!S.cats[S.draft.cat].includes(v)) S.cats[S.draft.cat].push(v); S.draft.sub = v }
+    S.draft.adding = null
+  }
+  else if (a === 'notify') S.draft.notify = !S.draft.notify
+  else if (a === 'save') {
+    const d = S.draft
+    if (d.id) { Object.assign(S.items.find((x) => x.id === d.id), { title: d.title, text: d.text, cat: d.cat, sub: d.sub }); toast('Enregistré', null) }
+    else {
+      const n = { id: nextId++, title: d.title, text: d.text || '', cat: d.cat, sub: d.sub, who: 'Flo', date: '12 novembre', isNew: false }
+      S.items.unshift(n); toast('Publiée', () => { S.items = S.items.filter((x) => x !== n) })
+    }
+    S.draft = null; S.screen = 'list'; S.tab = 'new'; S.path = []
+  }
+  else if (a === 'del') { const n = S.items.find((x) => x.id === S.draft.id), i = S.items.indexOf(n); S.items.splice(i, 1); S.draft = null; S.screen = 'list'; toast('Supprimée', () => S.items.splice(i, 0, n)) }
+  else if (a === 'undo') { if (undo) undo(); S.toast = null; clearTimeout(timer) }
+  else return
+  render()
+})
+document.getElementById('who-eleve').onclick = () => { S.role = 'eleve'; S.screen = ['news', 'nedit', 'nparams'].includes(S.screen) ? 'news' : 'list'; S.draft = null; sync() }
+document.getElementById('who-pub').onclick = () => { S.role = 'pub'; sync() }
+document.getElementById('scr-blog').onclick = () => { S.screen = 'list'; sync() }
+document.getElementById('scr-news').onclick = () => { S.screen = 'news'; S.draft = null; sync() }
+document.getElementById('scr-admin').onclick = () => { S.role = 'pub'; S.screen = 'admin'; S.draft = null; sync() }
+function sync() {
+  document.getElementById('who-eleve').setAttribute('aria-pressed', S.role === 'eleve')
+  document.getElementById('who-pub').setAttribute('aria-pressed', S.role === 'pub')
+  document.getElementById('intro-tab').textContent = S.word
+  render()
+}
+render()
+</script>
