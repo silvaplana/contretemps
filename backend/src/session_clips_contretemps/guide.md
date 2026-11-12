@@ -33,7 +33,8 @@ Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ran
   secondes). L'essai apparaît
   dans la liste (« Envoi … % », puis « Lecture des signes… ») et s'ouvre dès que la vidéo est
   envoyée : la lecture des signes continue dedans, puis l'essai se complète seul.
-- Un essai ouvert : la vidéo, le graphe des signes repérés (une flèche par signe avec son image,
+- Un essai ouvert, en cinq volets dépliables : « Vidéo entière », « Vidéo découpée », « Signes repérés » (ouverts),
+  « Signes et sons du club » et « Paramètres de la vidéo » (fermés). La vidéo, le graphe des signes repérés (une flèche par signe avec son image,
   vert = début, rouge = fin, gris = décoché), la liste des signes, les combats coupés. Toucher une
   flèche ou un signe place la vidéo à ce moment. Chaque combat coupé a sa vignette (l'image du
   signe de début) : le toucher l'ouvre et le lit, du début à la fin. Le crayon en haut à droite
@@ -42,7 +43,7 @@ Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ran
   de fin (Poignée de main, X au-dessus de la tête, « Time ! » crié) que la découpe prend, pour tout le club (caméra
   de la salle comprise). « Relancer la découpe » (toujours actif) enregistre, relit les signes et
   recalcule les combats.
-- « Clips du club » (déroulant, fermé au départ) : Cadrage (Plan large, Moyen, Serré), « Démarrer après le signe de début » et
+- « Paramètres de la vidéo » (déroulant, fermé au départ) : Cadrage (Plan large, Moyen, Serré), « Démarrer après le signe de début » et
   « Couper avant la fin » (− et +, en secondes). « Relancer la découpe » enregistre ; le cadre se
   voit sur la vidéo pendant un combat.
 - « Supprimer l'essai » en bas (Annuler 10 secondes).

@@ -420,11 +420,13 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   supprimer avec Annuler 10 s) avec leur état : envoi
   en %, « Lecture des signes… », « Vidéo illisible ». La vidéo part par l'envoi par blocs du module
   `videos` ; le worker la lit dès qu'elle est arrivée, à toute heure.
-- **Un essai ouvert** (← revient au Labo) : la vidéo ; le **graphe** des signes repérés, le temps en
+- **Un essai ouvert** (← revient au Labo), en cinq volets dépliables dans cet ordre (Seb, 12/11) :
+  **Vidéo entière**, **Vidéo découpée** (les combats coupés), **Signes repérés** (ouverts), puis
+  **Signes et sons du club** et **Paramètres de la vidéo** (fermés). La vidéo ; le **graphe** des signes repérés, le temps en
   abscisse et une flèche verticale par signe, avec l'image de la vidéo à ce moment, son nom et son
   heure (vert = début, rouge = fin, gris pointillé = signe décoché ; la bande sur l'axe = un combat
   coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les
-  cases **« Signes et sons du club »** (Début de combat, Fin de combat ; volet fermé au départ, comme « Clips du club » et les volets d'Admin, pour ne pas prendre trop de place : Seb, 12/11 ; la vidéo de l'essai est petite, un tiers de l'écran en hauteur au plus) ; **« Relancer la découpe »**
+  cases **« Signes et sons du club »** (Début de combat, Fin de combat ; volet fermé au départ, comme « Paramètres de la vidéo » et les volets d'Admin, pour ne pas prendre trop de place : Seb, 12/11 ; la vidéo de l'essai est petite, un tiers de l'écran en hauteur au plus) ; **« Relancer la découpe »**
   (toujours actif, Seb 12/11) enregistre les réglages du club s'ils ont changé, relit les signes sur
   les postures gardées avec les règles du jour (`POST /session-clips/lab/{id}/reread` ; les sons
   entendus restent) et recalcule les combats, sans relire la vidéo ; pendant ce temps le bouton et la liste disent « Découpe en cours » avec trois points qui bougent, et les anciens combats disparaissent (Seb, 12/11). Un essai s'ouvre dès sa vidéo
@@ -433,7 +435,7 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   ou un signe place la vidéo à ce moment (elle remonte à l'écran). Chaque combat coupé a sa
   vignette (l'image de son signe de début) et s'ouvre dans une fenêtre qui le lit du début à la fin
   (Seb, 12/11). Un crayon à côté du nom renomme l'essai (`PATCH /session-clips/lab/{id}`).
-- **Clips du club** (Seb, 12/11), sous les cases : le **Cadrage** (Plan large, Moyen, Serré),
+- **Paramètres de la vidéo** (Seb, 12/11 ; d'abord appelé « Clips du club »), sous les cases : le **Cadrage** (Plan large, Moyen, Serré),
   **« Démarrer après le signe de début »** et **« Couper avant la fin »** (− et +, par demi-seconde,
   de 0 à 10 s ; à 0 les gestes restent en entier : le clip va du début du signe de début à la fin
   du geste de fin). Enregistrés par « Relancer la découpe » avec les cases, ils valent pour tous les
