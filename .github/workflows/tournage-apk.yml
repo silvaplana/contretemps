@@ -1,0 +1,127 @@
+# Construit l'appli Android « Tournage <école> » (frontend/android, Capacitor),
+# une par école de frontend/android/ecoles.json : elle ouvre le site de
+# l'école et filme la salle (spec/modules/video-combats.md §4, ANDROID.md).
+#
+# Sur une PR : vérifie que les applis se construisent (APK dans les
+# « Artifacts » de l'exécution). Sur main : les APK et version.json sont
+# publiés dans la release « tournage-latest » ; l'appli y voit qu'une
+# nouvelle version existe et propose de l'installer (Updater.java).
+name: Appli Tournage (APK)
+
+on:
+  push:
+    branches: [main]
+    paths: ["frontend/android/**", "frontend/android-shell/**", "frontend/capacitor.config.json", ".github/workflows/tournage-apk.yml"]
+  pull_request:
+    paths: ["frontend/android/**", "frontend/android-shell/**", "frontend/capacitor.config.json", ".github/workflows/tournage-apk.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tournage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  cle:
+    # Clé de signature fixe (sinon chaque APK a une clé différente et Android
+    # refuse la mise à jour). Créée au premier passage avec le mot de passe du
+    # secret SIGNING_PASSWORD, chiffrée par lui, et rangée dans la release
+    # « tournage-cle ». Sans secret : signature debug, il faudra désinstaller.
+    name: Clé de signature
+    runs-on: ubuntu-latest
+    outputs:
+      ok: ${{ steps.cle.outputs.ok }}
+      ecoles: ${{ steps.ecoles.outputs.liste }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: ecoles
+        run: echo "liste=$(jq -c . frontend/android/ecoles.json)" >> "$GITHUB_OUTPUT"
+      - id: cle
+        env:
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -z "$SIGNING_PASSWORD" ]; then
+            echo "::warning::Secret SIGNING_PASSWORD absent : APK signés avec une clé jetable, les mises à jour demanderont de désinstaller."
+            echo "ok=" >> "$GITHUB_OUTPUT"; exit 0
+          fi
+          mkdir -p signing
+          if ! gh release download tournage-cle -p tournage.p12 -D signing 2>/dev/null; then
+            if [ "${{ github.event_name }}" = "pull_request" ]; then
+              echo "::warning::Pas encore de clé : elle sera créée à la première mise en ligne."
+              echo "ok=" >> "$GITHUB_OUTPUT"; exit 0
+            fi
+            keytool -genkeypair -storetype pkcs12 -keystore signing/tournage.p12 -alias tournage \
+              -storepass "$SIGNING_PASSWORD" -keypass "$SIGNING_PASSWORD" \
+              -keyalg RSA -keysize 3072 -validity 10000 -dname "CN=Contretemps Tournage"
+            gh release create tournage-cle signing/tournage.p12 --title "Clé de signature de l'appli Tournage" \
+              --notes "Chiffrée par le secret SIGNING_PASSWORD. Ne jamais supprimer : les applis installées ne pourraient plus être mises à jour."
+          fi
+          echo "ok=1" >> "$GITHUB_OUTPUT"
+      - if: steps.cle.outputs.ok == '1'
+        uses: actions/upload-artifact@v4
+        with: { name: cle, path: signing/tournage.p12, retention-days: 1 }
+
+  apk:
+    name: APK ${{ matrix.ecole.nom }}
+    needs: cle
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        ecole: ${{ fromJson(needs.cle.outputs.ecoles) }}
+    env:
+      SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: needs.cle.outputs.ok
+        uses: actions/download-artifact@v4
+        with: { name: cle, path: signing }
+      - if: needs.cle.outputs.ok
+        run: echo "SIGNING_STORE=$GITHUB_WORKSPACE/signing/tournage.p12" >> "$GITHUB_ENV"
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm, cache-dependency-path: frontend/package-lock.json }
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 21 }
+      - name: Relier l'appli à l'école
+        working-directory: frontend
+        env:
+          ADRESSE: ${{ matrix.ecole.adresse }}
+        run: |
+          jq --arg u "$ADRESSE" '.server.url = $u' capacitor.config.json > c.json && mv c.json capacitor.config.json
+          sed -i "s|__ADRESSE__|$ADRESSE|g" android-shell/hors-ligne.html
+          npm ci
+          npx cap sync android
+      - name: Construire l'APK
+        working-directory: frontend/android
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleRelease -PversionCode=${{ github.run_number }} \
+            -Pecole="${{ matrix.ecole.cle }}" -PnomEcole="${{ matrix.ecole.nom }}"
+          cp app/build/outputs/apk/release/*.apk "$GITHUB_WORKSPACE/tournage-${{ matrix.ecole.cle }}.apk"
+      - uses: actions/upload-artifact@v4
+        with: { name: "apk-${{ matrix.ecole.cle }}", path: "tournage-${{ matrix.ecole.cle }}.apk" }
+
+  release:
+    name: Mettre les APK en téléchargement
+    needs: [cle, apk]
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with: { pattern: apk-*, merge-multiple: true }
+      - name: Publier (release tournage-latest)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ECOLES: ${{ needs.cle.outputs.ecoles }}
+        run: |
+          u=https://github.com/${{ github.repository }}/releases/download/tournage-latest
+          echo "$ECOLES" | jq --argjson b ${{ github.run_number }} --arg u "$u" \
+            '{build: $b, apk: (map({key: .cle, value: "\($u)/tournage-\(.cle).apk"}) | from_entries)}' > version.json
+          gh release view tournage-latest >/dev/null 2>&1 || \
+            gh release create tournage-latest --title "Appli Tournage" \
+              --notes "Appli Android « Tournage <école> ». Ouvrir le lien tournage-<école>.apk sur le téléphone pour l'installer ; ensuite l'appli propose elle-même les nouvelles versions."
+          gh release upload tournage-latest tournage-*.apk version.json --clobber
