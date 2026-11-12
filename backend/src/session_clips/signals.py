@@ -140,9 +140,20 @@ def _shoulders_top(pose: Pose) -> float | None:
 
 def are_touching_fists_up(a: Pose, b: Pose) -> bool:
     """Les poings qui se touchent, bras vers le haut : un poignet de chacun,
-    au-dessus de ses épaules, tout près de celui de l'autre."""
-    joined = _joined(a, b, 0.35)
-    return joined is not None and joined[0][1] < _shoulders_top(a) and joined[1][1] < _shoulders_top(b)
+    au-dessus de ses épaules, tout près de celui de l'autre. Bras bien levés
+    (poignets à un demi-buste au-dessus des épaules), les poignets peuvent
+    être un peu plus loin : les poings dépassent des poignets (vidéos de Seb
+    en plein cadre, 12/11/2026)."""
+    unit = min(torso(a) or 0, torso(b) or 0)
+    if not unit:
+        return False
+    for reach, lift in ((0.35, 0.0), (0.65, 0.4)):
+        for wa in _wrists(a):
+            for wb in _wrists(b):
+                close = ((wa[0] - wb[0]) ** 2 + (wa[1] - wb[1]) ** 2) ** 0.5 < reach * unit
+                if close and wa[1] < _shoulders_top(a) - lift * unit and wb[1] < _shoulders_top(b) - lift * unit:
+                    return True
+    return False
 
 
 def are_shaking_hands(a: Pose, b: Pose) -> bool:
@@ -151,7 +162,7 @@ def are_shaking_hands(a: Pose, b: Pose) -> bool:
     vérifié sur la durée (fights.py) : un accrochage en plein combat bouge."""
     if not (_upright(a) and _upright(b)):
         return False
-    joined = _joined(a, b, 0.5)
+    joined = _joined(a, b, 0.65)  # les mains dépassent des poignets
     return joined is not None and joined[0][1] > _shoulders_top(a) and joined[1][1] > _shoulders_top(b)
 
 

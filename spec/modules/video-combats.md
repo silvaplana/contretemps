@@ -221,7 +221,12 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    **poignée de main** (deux personnes debout, mains jointes sous les épaules, immobiles), tenue
    0,8 s ; ou le **X** au-dessus de la tête (avant-bras croisés ou mains jointes en l'air), tenu
    0,6 s. Les gestes sont mesurés en hauteur de buste (les combattants sont souvent de profil) et
-   seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Le
+   seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Les
+   poings et les mains dépassent des poignets que voit la détection : sur les vidéos de Seb en plein
+   cadre (12/11, lues sur le serveur par l'action « Lire un essai du Labo »), les poignets restaient
+   à un demi-buste l'un de l'autre. Poings touchés : poignets à moins de 0,35 buste, ou à moins de
+   0,65 buste s'ils sont un demi-buste au-dessus des épaules ; poignée de main : moins de 0,65
+   buste, et jamais pendant des poings touchés (l'autre main baissée). Le
    combat va du signe de début au premier signe de fin coché venu au moins 1 s après ; sinon il se
    termine si la zone se vide 4 s, au signe de début suivant ou à la fin de la vidéo (« Fin non
    repérée »). 1 s est gardée après le signe de fin ; un combat de moins de 5 s est ignoré.

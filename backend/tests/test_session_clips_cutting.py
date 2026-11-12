@@ -59,6 +59,10 @@ def test_gestes():
     # Les poings touchés en l'air : la même chose au-dessus des épaules.
     assert are_touching_fists_up(pose(x=100, arms="touch"), pose(x=140, arms="touch", wrist_dx=-40))
     assert not are_touching_fists_up(pose(x=100, arms="hand"), pose(x=145, arms="hand", wrist_dx=-50))
+    # Vidéos de Seb en plein cadre (12/11) : les poings dépassent des poignets,
+    # qui restent à un demi-buste l'un de l'autre.
+    assert are_touching_fists_up(pose(x=100, arms="touch"), pose(x=140, arms="touch"))
+    assert are_shaking_hands(pose(x=100, arms="hand"), pose(x=145, arms="hand"))
 
 
 def frames(spec, fps=5):
