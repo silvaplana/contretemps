@@ -224,7 +224,7 @@ function Document({ document }) {
 }
 
 // mediaEnHaut : réglage « En haut de chaque actu : Photo, vidéo » (Seb, 9 novembre).
-export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, onCategorie = null }) {
+export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, onCategorie = null, avecCategorie = true }) {
   const signature = (
     <div className="actu__meta">
       <span>
@@ -245,9 +245,10 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
   // (Seb, 10 novembre) : pas de ligne de texte vide. « … » seulement pour
   // une actu encore vide dans l'éditeur.
   const sansTexte = !actu.texte && (actu.media?.length > 0 || Boolean(actu.document))
-  // Blog avec catégories (§12.6) : le nom en titre, la catégorie en
-  // pastille, qui ouvre cette catégorie.
-  const categories = actu.categories ?? []
+  // Blog avec catégories (§12.6) : le nom en titre, la catégorie en petit
+  // dessous (pas de pastille : trop de place, Seb 12/11), qui ouvre cette
+  // catégorie. Pas répétée dans l'onglet Catégories : le chemin est en haut.
+  const categories = avecCategorie ? (actu.categories ?? []) : []
   const entete = (actu.titre || categories.length > 0) && (
     <>
       {actu.titre && <h3 className="actu__titre">{actu.titre}</h3>}
@@ -258,7 +259,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
           disabled={!onCategorie}
           onClick={() => onCategorie?.(categories[categories.length - 1].id)}
         >
-          # {categories.map((c) => c.nom).join(' › ')}
+          {categories.map((c) => c.nom).join(' › ')}
         </button>
       )}
     </>
@@ -676,10 +677,25 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
   }
   // Le texte est facultatif dès qu'il y a une photo, une vidéo, un lien ou
   // un document (Seb, 10 novembre) ; une Brève n'est que du texte.
-  const vide =
-    (!brouillon.texte.trim() && (brouillon.niveau === 'brief' || (!brouillon.media.length && !brouillon.document))) ||
-    // Blog avec catégories : un nom et une catégorie (§12.6).
-    (blog.avecCategories && (!brouillon.titre.trim() || !brouillon.categorie))
+  // Une catégorie tapée sans OK, un lien collé sans « Ajouter » : gardés
+  // quand on publie (Seb, 12 novembre : ils se perdaient sans prévenir).
+  const [saisie, setSaisie] = useState({ cat: '', sous: '' })
+  const categorie = brouillon.categorie || saisie.cat.trim()
+  const sousCategorie = brouillon.categorie ? brouillon.sousCategorie || saisie.sous.trim() : ''
+  const lienEnAttente = brouillon.niveau !== 'brief' && Boolean(lien?.trim())
+  // Ce qui manque pour publier, dit sous les boutons (Seb, 12 novembre :
+  // « Publier » grisé sans dire pourquoi).
+  const manque =
+    blog.avecCategories && !brouillon.titre.trim()
+      ? 'Donnez un nom'
+      : blog.avecCategories && !categorie
+        ? 'Choisissez une catégorie'
+        : !brouillon.texte.trim() && brouillon.niveau === 'brief'
+          ? 'Écrivez le texte de la brève'
+          : !brouillon.texte.trim() && !brouillon.media.length && !brouillon.document && !lienEnAttente
+            ? 'Écrivez un texte ou ajoutez une photo, une vidéo, un lien ou un document'
+            : ''
+  const vide = Boolean(manque)
   const publiee = Boolean(actu.publieeLe)
   const aide = NIVEAUX.find((n) => n.cle === brouillon.niveau).aide
   const place = MEDIA_MAX - brouillon.media.length
@@ -723,15 +739,19 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
     enlever(element.cle)
   }
 
+  // Rend l'élément ajouté (null si le lien est refusé).
   async function ajouterLien() {
     const url = lien.trim()
-    if (!url) return
+    if (!url) return null
     setLienEnvoi(true)
     try {
-      ajouter({ cle: `l${++numero.current}`, ...(await api.ajouterLien(lieu, /^https?:\/\//i.test(url) ? url : `https://${url}`)) })
+      const element = { cle: `l${++numero.current}`, ...(await api.ajouterLien(lieu, /^https?:\/\//i.test(url) ? url : `https://${url}`)) }
+      ajouter(element)
       setLien(null)
+      return element
     } catch (e) {
       window.alert(e.message)
+      return null
     } finally {
       setLienEnvoi(false)
     }
@@ -747,15 +767,22 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
   async function envoyer(publier) {
     setEnvoi(true)
     try {
+      // Le lien collé sans « Ajouter » : ajouté maintenant.
+      let medias = brouillon.media
+      if (lienEnAttente) {
+        const element = await ajouterLien()
+        if (!element) return
+        medias = [...medias, element]
+      }
       // Les vidéos existent dès maintenant ; leur envoi finit derrière.
       const media = await Promise.all(
-        brouillon.media.map(async (m) =>
+        medias.map(async (m) =>
           m.uploadId
             ? { cle: m.cle, video: await finaliserTeleversement(m.uploadId, (id) => api.attacherVideo(lieu, id)) }
             : m,
         ),
       )
-      const pret = { ...brouillon, media }
+      const pret = { ...brouillon, media, categorie, sousCategorie }
       setBrouillon(pret)
       await onEnregistrer({ ...pret, publier })
     } catch (e) {
@@ -833,6 +860,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
             categorie={brouillon.categorie}
             sousCategorie={brouillon.sousCategorie}
             onChanger={(categorie, sousCategorie) => changer({ categorie, sousCategorie })}
+            onSaisie={(quoi, texte) => setSaisie((s) => ({ ...s, [quoi]: texte }))}
           />
         )}
         {brouillon.niveau !== 'brief' && (
@@ -940,6 +968,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
         )}
       </div>
       <div className="actus__barre">
+        {manque && <p className="editeur__manque">{manque}</p>}
         <button type="button" className="btn btn--secondary actus__brouillon" disabled={vide || envoi || photoEnvoi > 0} onClick={() => envoyer(false)}>
           Brouillon
         </button>
@@ -1225,7 +1254,7 @@ export default function Blog({ ecoleId, blog, prenom }) {
           peutRenommer={fil.peutPublier}
           onRenomme={charger}
           rendreCarte={(a) => (
-            <CarteActu actu={a} lieu={lieu} mediaEnHaut={fil.mediaEnHaut} onModifier={modifier} onCategorie={ouvrirCategorie} />
+            <CarteActu actu={a} lieu={lieu} mediaEnHaut={fil.mediaEnHaut} onModifier={modifier} avecCategorie={false} />
           )}
         />
       ) : (

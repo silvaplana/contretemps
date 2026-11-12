@@ -26,12 +26,13 @@ Le fil
   n'avait pas encore vu.
 
 Blog avec catégories (ex. Techniques)
-- Deux onglets en haut : « Fil » et « Catégories ». Chaque carte a un nom en titre et sa catégorie en
-  pastille « # Clés › Bras » ; toucher la pastille ouvre cette catégorie.
+- Deux onglets en haut : « Fil » et « Catégories ». Dans le Fil, chaque carte a un nom en titre et sa
+  catégorie en petit dessous, « Clés › Bras » ; la toucher ouvre cette catégorie.
 - « Catégories » : les catégories par ordre alphabétique sous des lettres, avec leur nombre de
   publications. Toucher une catégorie montre ses sous-catégories puis les publications rangées
   dedans (leur nom, et Vidéo, Photo, Lien, Document ou Texte). Toucher une ligne ouvre la publication
-  seule. La flèche ← remonte d'un cran. « + Ajouter » depuis une catégorie la propose déjà choisie.
+  seule, avec son chemin en haut (« Clés › Bras › Clé de bras en croix »). La flèche ← remonte d'un
+  cran. « + Ajouter » depuis une catégorie la propose déjà choisie.
 - Qui publie : « Renommer « … » » en haut d'une catégorie ; lui donner le nom d'une autre catégorie
   du même niveau réunit les deux. Une catégorie disparaît avec sa dernière publication.
 

@@ -926,15 +926,15 @@
   display: inline-block;
   align-self: flex-start;
   width: auto;
-  margin: 0 0 8px;
-  padding: 4px 10px;
+  margin: 0 0 6px;
+  min-height: 0;
+  padding: 0;
   border: 0;
-  border-radius: 999px;
-  background: var(--accent-bg);
-  color: var(--accent);
+  background: none;
+  color: var(--text-muted);
   font: inherit;
   font-size: 15px;
-  font-weight: 600;
+  text-align: left;
   cursor: pointer;
 }
 .actu__categorie:disabled {
@@ -1106,4 +1106,16 @@
 }
 .checkbox-list__item .blogs .editeur__lien input {
   min-height: 52px;
+}
+
+/* Ce qui manque pour publier, au-dessus des boutons (Seb, 12 novembre). */
+.actus__barre:has(.editeur__manque) {
+  flex-wrap: wrap;
+}
+.editeur__manque {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 17px;
+  text-align: center;
 }
