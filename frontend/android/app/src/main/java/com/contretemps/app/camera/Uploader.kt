@@ -13,8 +13,8 @@ import java.io.RandomAccessFile
  */
 class Uploader(private val folder: File) {
 
-    /** Le morceau en cours d'envoi, pour la barre de Fights › Tournage. */
-    data class Progress(val position: Int, val sent: Long, val size: Long)
+    /** L'envoi en cours (tous les morceaux qui attendaient), pour la barre de Fights › Tournage. */
+    data class Progress(val sent: Long, val size: Long)
 
     @Volatile var progress: Progress? = null
     /** Pourquoi le dernier envoi s'est arrêté (null s'il a réussi). */
@@ -36,9 +36,13 @@ class Uploader(private val folder: File) {
     }
 
     private fun sendEach(api: Api) {
-        for (file in pending()) {
+        val files = pending()
+        val total = files.sumOf { it.length() }
+        var done = 0L
+        for (file in files) {
             try {
-                send(api, file)
+                send(api, file, done, total)
+                done += file.length()
                 forget(file)
                 failure = null
             } catch (e: Api.Error) {
@@ -59,14 +63,14 @@ class Uploader(private val folder: File) {
         }
     }
 
-    private fun send(api: Api, file: File) {
+    private fun send(api: Api, file: File, done: Long, total: Long) {
         val size = file.length()
         if (size == 0L) return
         val (sessionId, position) = ids(file)
         val last = File(folder, "${file.nameWithoutExtension}.last").exists()
         var piece = api.openPiece(sessionId, position, size, last)
         var offset = piece.received
-        progress = Progress(position, offset, size)
+        progress = Progress(done + offset, total)
         val buffer = ByteArray(BLOCK)
         var stuck = 0
         RandomAccessFile(file, "r").use { input ->
@@ -82,7 +86,7 @@ class Uploader(private val folder: File) {
                     piece = api.openPiece(sessionId, position, size, last)
                     piece.received
                 }
-                progress = Progress(position, offset, size)
+                progress = Progress(done + offset, total)
                 // Le serveur ne suit plus : on réessaiera au prochain tour.
                 if (offset <= before && ++stuck > 5) throw IOException("envoi bloqué à $offset")
             }

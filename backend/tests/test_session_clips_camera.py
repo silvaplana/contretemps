@@ -14,7 +14,7 @@ from comptes import Comptes
 from ecoles import Ecoles
 from session_clips.cutting import REASON_NAMES, cut_live, live_sessions
 from session_clips.fights import REASON_NO_END
-from session_clips.models import ClipSession
+from session_clips.models import ClipSession, Recorder
 
 pytestmark = pytest.mark.rbac_reel
 
@@ -185,3 +185,25 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     assert videos[clips[0].video_id].nom == "Fights · " + session.held_on.strftime("%d/%m/%Y") + " · Adultes · 19 h · combat 1"
     seance = client.get(f"/session-clips/sessions/{sid}", headers=e["coach"]).json()
     assert seance["live"] and seance["clip_count"] == 3
+
+
+def test_rejumeler_pendant_le_film(client, db_session, e, tmp_path, monkeypatch):
+    """Seb, 12/11 : remettre « Caméra » pendant le film ne doit pas laisser la
+    séance sur « Filme… » : le film continue, et une séance orpheline dont
+    le dernier morceau est arrivé finit quand même."""
+    videos_dir = tmp_path / "videos"
+    for cible in ("videos.stockage", "session_clips.cutting", "videos.videos"):
+        monkeypatch.setattr(f"{cible}.DOSSIER_VIDEOS_LIVE", videos_dir)
+    tel = {"X-Recorder-Token": client.post("/session-clips/camera/this-phone", headers=e["coach"]).json()["token"]}
+    _battre(client, tel)
+    sid = client.post("/session-clips/camera/start", json={"title": "Séance du 12/11"}, headers=e["coach"]).json()["session_id"]
+    tel = {"X-Recorder-Token": client.post("/session-clips/camera/this-phone", headers=e["coach"]).json()["token"]}
+    assert _battre(client, tel, "recording")["session_id"] == sid
+
+    # Séance déjà orpheline (avant ce correctif) : elle finit à son dernier morceau.
+    db_session.execute(Recorder.__table__.update().values(session_id=None))
+    db_session.commit()
+    _envoyer(client, tel, sid, 0, _morceau(tmp_path, 0, secondes=5), last=True)
+    session = db_session.get(ClipSession, sid)
+    cut_live(db_session, core.session_clips_client, session, lambda _path: [])
+    assert session.status == "ready"

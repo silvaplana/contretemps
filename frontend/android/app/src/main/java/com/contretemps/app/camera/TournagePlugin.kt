@@ -78,11 +78,8 @@ class TournagePlugin : Plugin() {
             put("wanted", s.wanted)
             put("pending", s.pending)
             put("error", s.error)
-            // Numéros affichés à partir de 1 : « Morceau 1 en cours de film ».
-            put("piece", s.piece + 1)
-            s.pieceSince?.let { put("pieceSeconds", (System.currentTimeMillis() - it) / 1000) }
             RecorderService.upload?.let { u ->
-                u.progress?.let { put("sendingPiece", it.position + 1); put("sent", it.sent); put("size", it.size) }
+                u.progress?.let { put("sent", it.sent); put("size", it.size) }
                 u.failure?.let { put("sendFailure", it) }
             }
         })

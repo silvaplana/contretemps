@@ -87,10 +87,18 @@ def pair_this_phone(db: Session, member: Member) -> str:
     (§4, décision du 12/11) : le téléphone du coach devient la caméra de
     l'école, sans code. L'ancienne caméra est oubliée, comme au jumelage."""
     _require_coach(member)
+    # Le film en cours continue sur la nouvelle caméra (Seb, 12/11 : sinon la
+    # séance restait sur « Filme… »).
+    session_id, started_at = None, None
     for old in db.scalars(select(Recorder).where(Recorder.org_id == member.org_id)):
+        session_id, started_at = session_id or old.session_id, started_at or old.started_at
         db.delete(old)
     token = secrets.token_urlsafe(32)
-    db.add(Recorder(org_id=member.org_id, token_hash=_hash(token), last_seen_at=_now()))
+    db.add(
+        Recorder(
+            org_id=member.org_id, token_hash=_hash(token), last_seen_at=_now(), session_id=session_id, started_at=started_at
+        )
+    )
     db.commit()
     return token
 

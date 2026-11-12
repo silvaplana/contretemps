@@ -209,8 +209,8 @@ function Onglets({ onglet, onChange, version }) {
     api.aVerifier().then((l) => setN(l.length), () => {})
   }, [version])
   const onglets = [
-    ['tournage', 'Tournage'],
     ['mes', 'Mes combats'],
+    ['tournage', 'Tournage'],
     ['seances', 'Séances'],
     ['verifier', 'À vérifier'],
     ['labo', 'Labo'],
@@ -461,15 +461,12 @@ function EtatSeance({ s }) {
   }
   if (s.status === 'recording') return <span className="sc-chip sc-chip--warn">Filme</span>
   if (s.status === 'processing' && s.live) {
-    // Où en est la découpe (Seb, 12/11) : morceaux de 2 minutes lus sur
-    // ceux arrivés de la caméra.
+    // Où en est la découpe (Seb, 12/11) : la part de la vidéo arrivée déjà
+    // lue (morceaux de 2 minutes, sans le dire à l'écran).
     const pct = s.pieces_total ? Math.round((s.pieces_read / s.pieces_total) * 100) : 0
     return (
       <>
-        <span className="sc-chip sc-chip--info">
-          Découpe : {s.pieces_read} morceau{s.pieces_read > 1 ? 'x' : ''} lu{s.pieces_read > 1 ? 's' : ''} sur{' '}
-          {s.pieces_total}
-        </span>
+        <span className="sc-chip sc-chip--info">Découpe : {pct} %</span>
         <span className="sc-barre">
           <i style={{ width: `${pct}%` }} />
         </span>

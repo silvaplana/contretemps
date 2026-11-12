@@ -175,7 +175,7 @@ et deux téléphones à manipuler, c'était trop compliqué
   seul le téléphone qui filme a besoin de « Tournage ».
 - Elle propose elle-même ses nouvelles versions, comme l'appli Mountain de Seb : à l'ouverture et
   deux fois par jour, « Nouvelle version disponible › Installer ». La clé de signature est fixe.
-- Fights › **Tournage** (§6.3), nouveau sous-onglet tout à gauche (coachs), réunit tout le
+- Fights › **Tournage** (§6.3), nouveau sous-onglet juste après « Mes combats » (coachs ; tout à gauche au début, déplacé le 12/11 au soir), réunit tout le
   tournage. La pastille caméra du haut et son panneau disparaissent. Il contient un sélecteur à trois
   positions, **Caméra | Éteint | Télécommande**, et un seul bouton **● Filmer / ■ Arrêter**. En Caméra,
   le bouton lance ou arrête le film sur ce téléphone, et une petite image montre ce qu'il filme. En
@@ -306,7 +306,7 @@ flèche ←.
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
-- **Coach** (admin ou prof) : quatre onglets, **Mes combats | Séances | À vérifier | Labo**. Fights
+- **Coach** (admin ou prof) : cinq onglets, **Mes combats | Tournage | Séances | À vérifier | Labo** (ordre de Seb, 12/11). Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
@@ -355,7 +355,7 @@ séance entière est retiré de l'écran (trop lourd, Seb 27/10) : la séance fi
 avec l'enregistreur (étape 3) ; la route `POST /session-clips/sessions` et la découpe restent.
 
 **Remplacé le 12/11 par Fights › Tournage** (§4, maquette
-https://claude.ai/artifact/AktTkAwZjXtrKKEFV285B2, codé à l'étape 5b) : sous-onglet tout à gauche,
+https://claude.ai/artifact/AktTkAwZjXtrKKEFV285B2, codé à l'étape 5b) : sous-onglet après Mes combats,
 coachs seulement. Le bouton caméra, son panneau, le code de jumelage et la bande rouge ci-dessous
 sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra à part (`recorder/`).
 - **Sélecteur Caméra | Éteint | Télécommande**, gardé sur chaque téléphone (stockage du navigateur).
@@ -363,10 +363,10 @@ sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra 
   téléphone la caméra de l'école (jeton remis à l'appli, l'ancienne caméra est oubliée), puis le
   service de premier plan de `recorder/` (repris tel quel dans `frontend/android/.../camera/`) filme
   et envoie. Une image 16:9 de la caméra (`getUserMedia`) sert à cadrer ; elle lâche la caméra dès
-  que le film démarre (Prête, Démarrage…, ● Filme 00:12:34). Sous l'image, l'état des morceaux (Seb,
-  12/11) : « Morceau 3 en cours de film » et « Envoi du morceau 2 · 45 % », chacun avec sa barre
-  (environ 2 minutes pour le film, les octets reçus par le serveur pour l'envoi), puis « 1 morceau en
-  attente d'envoi (pas de réseau) ». Un envoi coupé est repris toutes les 5 s, même après l'arrêt du
+  que le film démarre (Prête, Démarrage…, ● Filme 00:12:34). Sous l'image, « Envoi de la vidéo : 45 % »
+  avec une barre (octets reçus par le serveur sur tout ce qui attendait au début de l'envoi), ou
+  « Vidéo en attente d'envoi (pas de réseau) ». Jamais le mot « morceau » à l'écran (Seb, 12/11 :
+  ça n'intéresse pas l'utilisateur). Un envoi coupé est repris toutes les 5 s, même après l'arrêt du
   film (`RecorderService.tick`) ; avant, il attendait le morceau suivant. Dans Chrome : « Pour
   filmer, ce téléphone doit ouvrir Contretemps dans l'appli Tournage » et « Installer l'appli
   Tournage ». Éteint ou Télécommande arrête le service.
@@ -410,11 +410,13 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
 - « Hors service » : pas de nouvelles du téléphone depuis 30 s ;
 - la bande rouge dit « ● Enregistrement · 00:12:34 » (« en cours » ne tient pas sur un téléphone) ;
 - la carte d'une séance filmée par la caméra : « Filme… » pendant le cours, puis « Découpe en
-  cours » et « Découpe : 2 morceaux lus sur 3 » avec une barre (morceaux de 2 minutes lus sur ceux
-  arrivés de la caméra) ; elle s'ouvre dès son premier clip. Sous le titre, l'heure et la durée
+  cours » et « Découpe : 67 % » avec une barre (morceaux de 2 minutes lus sur ceux arrivés de la
+  caméra, sans dire « morceau ») ; elle s'ouvre dès son premier clip. Sous le titre, l'heure et la durée
   filmée : « 21:40 → 21:46 · 6 min » (« Depuis 21:40 » pendant le film ; début = l'ordre
   « Filmer », durée = morceaux lus). Finie sans combat : « Aucun combat trouvé » au lieu de
-  « 0 combat · Vérifié » (Seb, 12/11). Champs `started_at`, `filmed_seconds`, `pieces_read`,
+  « 0 combat · Vérifié » (Seb, 12/11). Une caméra remplacée en plein film (sélecteur remis
+  sur Caméra) reprend la séance en cours au lieu de la laisser sur « Filme… » ; une séance déjà
+  orpheline finit quand son dernier morceau est lu (`cut_live`). Champs `started_at`, `filmed_seconds`, `pieces_read`,
   `pieces_total` de `SessionOut`, sans nouvelle colonne.
 
 ### 6.4 À vérifier *(coachs)*
