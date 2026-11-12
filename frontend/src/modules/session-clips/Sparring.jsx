@@ -516,6 +516,9 @@ function EtatSeance({ s }) {
       </>
     )
   }
+  // Filmée par la caméra, mais aucune vidéo encore arrivée (moins de 2 minutes
+  // filmées, ou envoi en attente sur le téléphone) : pas « demain matin » (Seb, 12/11).
+  if (s.status === 'processing' && !s.raw_video) return <span className="sc-chip sc-chip--info">La vidéo arrive…</span>
   if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
   if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
   // En gros (Seb, 12/11) : rien n'a pu être découpé.
