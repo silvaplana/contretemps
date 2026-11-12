@@ -10,6 +10,14 @@ import Logo from './Logo.jsx'
 import Modal from './Modal.jsx'
 import { BubbleCloseIcon, BubbleIcon } from '../modules/documents/icons.jsx'
 
+// La version du site en ligne : le moment de sa mise en ligne (vite.config.js).
+const VERSION = new Date(import.meta.env.VITE_VERSION_SITE).toLocaleString('fr-FR', {
+  day: 'numeric',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+}).replace(' ', ' à ')
+
 // En-tête d'écran (voir spec/SPEC.md section 4).
 // - mode="simple" : logo + titre (écrans Admin et Profil, non "scopés cours").
 // - mode="course" : logo + sélecteur de cours + sélecteur de profil famille
@@ -181,6 +189,7 @@ export default function Header({
                 >
                   <Icon name="logout" size={18} /> Se déconnecter
                 </button>
+                <p className="header-version">Version du {VERSION}</p>
               </div>
             )}
           </div>

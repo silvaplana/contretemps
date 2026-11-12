@@ -516,6 +516,9 @@ function EtatSeance({ s }) {
       </>
     )
   }
+  // Filmée par la caméra, mais aucune vidéo encore arrivée (moins de 2 minutes
+  // filmées, ou envoi en attente sur le téléphone) : pas « demain matin » (Seb, 12/11).
+  if (s.status === 'processing' && !s.raw_video) return <span className="sc-chip sc-chip--info">La vidéo arrive…</span>
   if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
   if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
   // En gros (Seb, 12/11) : rien n'a pu être découpé.
@@ -856,11 +859,23 @@ function ChoixCombattant({ cote, index, choisi, autre, onChoisir }) {
   )
 }
 
-function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, onOpen, montrer }) {
+function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, onOpen, montrer, rafraichir }) {
   const [s, setS] = useState(null)
+  const [edite, setEdite] = useState(null) // le combat au crayon
   useEffect(() => {
     api.detailSeance(seanceId).then(setS, (e) => montrer(e.message))
   }, [seanceId, version, montrer])
+
+  // « C'est bon » sous le crayon : validé s'il était à identifier.
+  async function fini(c) {
+    try {
+      if (c.to_check) await api.valider(c.id)
+      setEdite(null)
+      rafraichir()
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
   return (
     <div className="screen sc">
       <div className="thread-screen__header">
@@ -876,7 +891,27 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
         {s?.clips
           .filter((c) => !caches.has(c.id))
           .map((c) => (
-            <LigneCoach key={c.id} c={c} choisis={choisis} basculer={basculer} onOpen={onOpen} />
+            <div key={c.id}>
+              <div className="sc-clip-ligne">
+                <LigneCoach c={c} choisis={choisis} basculer={basculer} onOpen={onOpen} />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  aria-label="Changer les combattants"
+                  onClick={() => setEdite(edite === c.id ? null : c.id)}
+                >
+                  <Icon name="edit" size={20} />
+                </button>
+              </div>
+              {edite === c.id && (
+                <Combattants
+                  c={c}
+                  montrer={montrer}
+                  onChange={(maj) => setS((x) => ({ ...x, clips: x.clips.map((y) => (y.id === maj.id ? maj : y)) }))}
+                  onValider={() => fini(c)}
+                />
+              )}
+            </div>
           ))}
       </div>
     </div>
@@ -938,7 +973,6 @@ function Noms({ c }) {
 
 function AVerifier({ version, caches, rafraichir, montrer, supprimer }) {
   const [file, setFile] = useState(null)
-  const [choix, setChoix] = useState(null) // place à nommer
   useEffect(() => {
     api.aVerifier().then(setFile, (e) => montrer(e.message))
   }, [version, montrer])
@@ -946,16 +980,6 @@ function AVerifier({ version, caches, rafraichir, montrer, supprimer }) {
   const visibles = file.filter((c) => !caches.has(c.id))
   if (!visibles.length) return <p className="sc-vide">Tout est vérifié. Les clips sont dans « Mes combats » de chaque membre.</p>
   const c = visibles[0]
-  const people = c.participants.map((p) => p.person_id)
-
-  async function nommer(nouveaux) {
-    try {
-      const maj = await api.nommer(c.id, nouveaux)
-      setFile((f) => f.map((x) => (x.id === maj.id ? maj : x)))
-    } catch (e) {
-      montrer(e.message)
-    }
-  }
 
   async function valider() {
     try {
@@ -974,6 +998,35 @@ function AVerifier({ version, caches, rafraichir, montrer, supprimer }) {
       </p>
       {c.video && <VideoThumb key={c.id} video={c.video} />}
       {c.check_reason && <p className="sc-raison">{c.check_reason}</p>}
+      <Combattants
+        c={c}
+        montrer={montrer}
+        onChange={(maj) => setFile((f) => f.map((x) => (x.id === maj.id ? maj : x)))}
+        onValider={valider}
+      />
+      <button type="button" className="sc-lien" onClick={() => supprimer(c.id)}>
+        Supprimer ce clip
+      </button>
+    </>
+  )
+}
+
+// Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon » : dans
+// Identifier combattants et sous le crayon d'un combat de la séance (Seb, 12/11).
+function Combattants({ c, montrer, onChange, onValider }) {
+  const [choix, setChoix] = useState(null) // place à nommer
+  const people = c.participants.map((p) => p.person_id)
+
+  async function nommer(nouveaux) {
+    try {
+      onChange(await api.nommer(c.id, nouveaux))
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
+  return (
+    <>
       {c.participants.map((p, i) => (
         <button key={i} type="button" className="sc-nom" onClick={() => setChoix(i)}>
           {c.participants.length === 2 && <span className={`sc-point sc-point--${i === 0 ? 'rouge' : 'bleu'}`} />}
@@ -988,13 +1041,10 @@ function AVerifier({ version, caches, rafraichir, montrer, supprimer }) {
             Inverser
           </button>
         )}
-        <button type="button" className="btn btn--primary" disabled={people.includes(null)} onClick={valider}>
+        <button type="button" className="btn btn--primary" disabled={people.includes(null)} onClick={onValider}>
           C’est bon
         </button>
       </div>
-      <button type="button" className="sc-lien" onClick={() => supprimer(c.id)}>
-        Supprimer ce clip
-      </button>
       {choix !== null && (
         <ChoixNom
           seanceId={c.session_id}

@@ -145,7 +145,7 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
             onClick={() => ouvrable(e) && onOpen(e.id)}
           >
             <span className="sc-vignette sc-vignette--petite">
-              {e.video?.poster ? <img src={e.video.poster} alt="" /> : <Icon name="video" size={20} />}
+              <Apercu video={e.video} />
               {e.video?.dureeSecondes > 0 && <span className="sc-vignette__duree">{mmss(e.video.dureeSecondes)}</span>}
             </span>
             <span>
@@ -180,6 +180,16 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
 
 // Encadré vert dès un combat trouvé, rouge si aucun (Seb, 12/11).
 const encadre = (e) => (e.status !== 'ready' ? '' : e.fights?.length ? ' sc-essai--trouve' : ' sc-essai--vide')
+
+// La vignette d'un essai : l'image faite par le serveur, sinon (ratée ou
+// pas encore là) la première image de la vidéo elle-même (Seb, 12/11 :
+// « des fois, on ne voit pas la vignette »).
+function Apercu({ video }) {
+  const [rate, setRate] = useState(false)
+  if (video?.poster && !rate) return <img src={video.poster} alt="" onError={() => setRate(true)} />
+  if (video?.url) return <video src={`${video.url}#t=0.5`} muted playsInline preload="metadata" />
+  return <Icon name="video" size={20} />
+}
 
 const ouvrable = (e) => e.status === 'ready' || e.status === 'processing'
 
@@ -251,6 +261,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     }
   }
 
+  const coches = reglages?.signs ?? [] // le graphe grise les signes décochés
   const fin = Math.max(duree || e?.video?.dureeSecondes || 0, ...(e?.signs ?? []).map((s) => s.end + 2), 1)
   const cle = (r) => r && JSON.stringify({ ...r, signs: [...r.signs].sort() })
   const change = reglages && club && cle(reglages) !== cle(club)

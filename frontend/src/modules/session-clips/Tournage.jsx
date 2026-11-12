@@ -129,7 +129,8 @@ export default function Tournage({ montrer, rafraichir }) {
   const [role, setRole] = useState(() => lire(ROLE) ?? 'off')
   const [camera, setCamera] = useCamera()
   const [enCours, setEnCours] = useState(false)
-  const natif = useEtatNatif(DANS_L_APPLI && role === 'cam')
+  // Lu aussi hors de « Caméra » : un envoi commencé continue et se voit (Seb, 12/11).
+  const natif = useEtatNatif(DANS_L_APPLI)
   const filme = camera?.state === 'recording'
   const chrono = useChrono(filme ? camera.started_at : null)
 
@@ -271,6 +272,7 @@ export default function Tournage({ montrer, rafraichir }) {
     <div className="sc-tournage">
       {selecteur}
       {corps}
+      {role !== 'cam' && <Envoi natif={natif} />}
     </div>
   )
 }
