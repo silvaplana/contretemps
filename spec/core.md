@@ -695,6 +695,9 @@ Supervision (Super User). Chaque produit a sa propre liste, avec le même core.
   requiert.
 - Écran : Admin > École > Personnalisation de l'application > Fonctionnalités, une case par module
   (Administrateur principal et Super User). À la création d'une organisation, les défauts du produit.
+- *(12/11/2026, Alliance Sambo)* Un **sous-module technique** (`technical=True`, aujourd'hui Vidéos :
+  sans onglet, il sert aux Publications, Fights et Chorégraphies) est toujours allumé et n'a pas de case.
+  L'Assistant ne requiert que Documents : il cache déjà les outils d'un module éteint.
 - Pas encore : routes publiques de Documents non bloquées ; choix des modules à la création d'une
   organisation.
 

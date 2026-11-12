@@ -26,5 +26,5 @@ def mount(app, core) -> None:
 
 
 MODULE = Module(
-    key="assistant", label="Assistant", mount=mount, requires=("documents", "presence", "choregraphies")
+    key="assistant", label="Assistant", mount=mount, requires=("documents",)
 )

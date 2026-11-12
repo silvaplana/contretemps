@@ -134,8 +134,10 @@ const SOMBRE = {
   '--success-text': '#8fd19e',
   '--warning-bg': '#3d3417',
   '--warning-text': '#e6c766',
-  '--danger-bg': '#3f1f1f',
-  '--danger-text': '#f08a8a',
+  // Rouge franc, comme la poubelle de Sambo Admin (Seb, 12 novembre) : le
+  // rouge brun d'avant rappelait la charte de Contretemps.
+  '--danger-bg': 'color-mix(in srgb, #ef4444 8%, var(--card-bg))',
+  '--danger-text': '#f87171',
   'color-scheme': 'dark',
 }
 

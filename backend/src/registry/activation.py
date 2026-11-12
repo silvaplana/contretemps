@@ -26,6 +26,7 @@ def listing(db: Session, org_id: int, modules: list) -> list[dict]:
     return [
         {"key": m.key, "label": m.label, "requires": list(m.requires), "enabled": m.key not in off}
         for m in modules
+        if not m.technical
     ]
 
 
@@ -33,7 +34,7 @@ def set_enabled(db: Session, org_id: int, modules: list, key: str, enabled: bool
     """Allumer un module allume aussi ceux dont il a besoin ; on n'éteint pas
     un module dont un module allumé a besoin (ValueError). Rien n'est effacé."""
     by_key = {m.key: m for m in modules}
-    if key not in by_key:
+    if key not in by_key or by_key[key].technical:
         raise LookupError(key)
     off = disabled(db, org_id)
     if enabled:

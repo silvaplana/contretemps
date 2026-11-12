@@ -57,6 +57,9 @@ class Module:
     # où est chaque bouton, et les règles du module. À tenir à jour à chaque
     # changement d'écran (CLAUDE.md). Voir `guide_file`.
     guide: str = ""
+    # Sous-module technique (Vidéos) : sans onglet, toujours allumé, absent
+    # de Fonctionnalités (Seb, 12 novembre).
+    technical: bool = False
 
 
 def guide_file(module_file: str) -> str:
