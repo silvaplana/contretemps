@@ -278,7 +278,7 @@ class AuthReceiver:
         # Adresses mal saisies : notées en échec dans le Statut, jamais envoyées.
         invalides = [e for e in emails if not _ADRESSE.match(e)]
         for email in invalides:
-            self.invitations.noter_adresse_invalide(db, email)
+            self.invitations.noter_adresse_invalide(db, ecole_id, email)
         emails = [e for e in emails if e not in invalides]
         if not emails:
             raise HTTPException(status_code=422, detail=f"Adresse email mal saisie : {', '.join(invalides)}")

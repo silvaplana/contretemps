@@ -64,12 +64,18 @@ class Invitations:
         demandes = [p for p in profils if compte_ids and p.id in compte_ids]
         a_qui = destinataire(demandes or profils)
         acces_email = self.acces.obtenir_ou_creer(db, email)
+        nouvelle_ecole = acces_email.id not in self.acces.adresses_connues_de(db, ecole.id)
+        self.acces.noter_ecole(db, acces_email, ecole.id)
         nom = f"{a_qui.prenom} {a_qui.nom}"
         try:
             if acces_email.mot_de_passe_hache:
                 # Accès déjà créé : un rappel pour se connecter, sans lien
-                # pour choisir un mot de passe.
-                self.mails.rappel(email, ecole.nom, nom, prenoms, sous_domaine=ecole.sous_domaine)
+                # pour choisir un mot de passe. Première fois pour cette
+                # école : « votre mot de passe habituel », sans nommer
+                # l'autre école (vécu le 2026-11-12, Sambo).
+                self.mails.rappel(
+                    email, ecole.nom, nom, prenoms, sous_domaine=ecole.sous_domaine, nouvelle_ecole=nouvelle_ecole
+                )
             else:
                 jeton = self.acces.creer_lien(db, acces_email, INVITATION, ecole.id)
                 self.mails.invitation(email, ecole.nom, nom, prenoms, jeton, sous_domaine=ecole.sous_domaine)
@@ -82,12 +88,15 @@ class Invitations:
             raise
         self.acces.noter_invite(db, acces_email)
 
-    def noter_adresse_invalide(self, db: Session, email: str) -> None:
-        self.acces.noter_echec_envoi(db, self.acces.obtenir_ou_creer(db, email), "Adresse email mal saisie")
+    def noter_adresse_invalide(self, db: Session, ecole_id: int, email: str) -> None:
+        acces_email = self.acces.obtenir_ou_creer(db, email)
+        self.acces.noter_ecole(db, acces_email, ecole_id)
+        self.acces.noter_echec_envoi(db, acces_email, "Adresse email mal saisie")
 
     def statuts(self, db: Session, ecole_id: int) -> dict[int, dict]:
         """{compte_id: {"statut", "date"}} pour toutes les fiches de
-        l'école (saison affichée). Le statut appartient à l'email : les
+        l'école (saison affichée), seulement pour les adresses que cette
+        école connaît (acces.AccessOrg). Le statut appartient à l'email : les
         profils qui partagent une adresse affichent le même pour elle. Une
         fiche à plusieurs emails (§2.1) a une ligne par adresse dans
         `adresses` ; le statut principal est celui de sa première adresse."""
@@ -98,6 +107,10 @@ class Invitations:
             if emails
             else {}
         )
+        # Une adresse connue d'une autre école seulement : « pas invitée »
+        # ici (étanchéité, Seb 12/11/2026).
+        connues = self.acces.adresses_connues_de(db, ecole_id)
+        acces_emails = {e: a for e, a in acces_emails.items() if a.id in connues}
         par_email: dict[str, list[Compte]] = {}
         for fiche in fiches:
             for email in fiche.emails:

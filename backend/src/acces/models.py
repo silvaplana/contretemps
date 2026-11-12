@@ -7,6 +7,10 @@ email, comparé en minuscules. Les profils d'une même famille (même email)
 partagent donc un seul mot de passe, qui survit à la recopie des fiches à
 chaque saison.
 
+`AccessOrg` : les écoles qui connaissent une adresse (invitée par elles, ou
+profil ouvert chez elles). Chaque école ne voit que ces adresses-là
+(étanchéité, Seb 12/11/2026).
+
 `LienInvitationReinit` : liens d'invitation et de réinitialisation, à usage unique.
 Seule l'empreinte du jeton est stockée : une copie de la base ne permet pas
 d'utiliser un lien.
@@ -68,3 +72,16 @@ class LienInvitationReinit(Base):
     # École qui invite (nom affiché dans le mail et sur l'écran d'activation).
     ecole_id: Mapped[int | None] = mapped_column(ForeignKey("ecoles.id"), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=maintenant)
+
+
+class AccessOrg(Base):
+    """Une école connaît cette adresse : elle l'a invitée, ou la personne a
+    ouvert un de ses profils de cette école. Le statut d'une adresse ne se
+    montre qu'à ces écoles : une autre école n'apprend pas qu'elle a été
+    invitée ailleurs (étanchéité, Seb 12/11/2026)."""
+
+    __tablename__ = "access_orgs"
+
+    access_email_id: Mapped[int] = mapped_column(ForeignKey("acces_emails.id"), primary_key=True)
+    org_id: Mapped[int] = mapped_column(ForeignKey("ecoles.id"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=maintenant)

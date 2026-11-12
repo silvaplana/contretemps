@@ -317,6 +317,28 @@ def test_inviter_plusieurs_adresses_un_mail_par_adresse(client, ecole, mails):
     assert aucune.status_code == 409
 
 
+def test_une_ecole_ne_voit_pas_les_invitations_d_une_autre(client, db_session, ecole, mails):
+    """Vécu le 2026-11-12 : une élève créée chez Sambo affichait « Réinviter »
+    parce que Contretemps avait déjà invité son adresse."""
+    sambo = Ecoles().create(db_session, nom="Sambo", code_postal="54000")
+    eleve = Comptes().create(db_session, ecole_id=sambo.id, role="eleve", nom="Pesenti", prenom="Marie", email="m.p@x.fr")
+    route = f"/ecoles/{sambo.id}/acces"
+    assert client.get(route).json()[str(eleve.id)]["statut"] == "pas_invite"
+    assert _statuts(client, ecole)[str(ecole["prof"].id)]["statut"] == "finalise"
+    client.post(f"/ecoles/{sambo.id}/invitations", json={"compte_ids": [eleve.id]})
+    assert client.get(route).json()[str(eleve.id)]["statut"] == "finalise"
+    assert "celui que vous utilisez habituellement" in mails[-1][2] and "Contretemps" not in mails[-1][2]
+    client.post(f"/ecoles/{sambo.id}/invitations", json={"compte_ids": [eleve.id]})
+    assert "vous rappelle que votre accès" in mails[-1][2]
+
+
+def test_ouvrir_un_profil_fait_connaitre_l_adresse_a_l_ecole(client, db_session, ecole):
+    sambo = Ecoles().create(db_session, nom="Sambo", code_postal="54000")
+    eleve = Comptes().create(db_session, ecole_id=sambo.id, role="eleve", nom="Pesenti", prenom="Marie", email="m.p@x.fr")
+    entetes_session(eleve)
+    assert client.get(f"/ecoles/{sambo.id}/acces").json()[str(eleve.id)]["statut"] == "finalise"
+
+
 def test_sans_smtp_l_invitation_est_refusee(client, ecole, monkeypatch):
     from app.main import invitations_client
 

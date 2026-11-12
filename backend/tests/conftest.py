@@ -13,7 +13,7 @@ os.environ.setdefault("TAUX_EUR_PAR_USD", "0.9")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import create_engine  # noqa: E402
+from sqlalchemy import create_engine, select  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 from sqlalchemy.pool import StaticPool  # noqa: E402
 
@@ -127,6 +127,15 @@ def donner_mot_de_passe(db, email: str) -> None:
     acces_email = Acces().obtenir_ou_creer(db, email)
     acces_email.mot_de_passe_hache = _HACHE
     acces_email.profil_finalise_le = maintenant()
+    # Comme la reprise de la migration access_orgs : les écoles qui ont une
+    # fiche avec cette adresse la connaissent.
+    from comptes.models import Compte, EmailCompte
+
+    for ecole_id in db.scalars(
+        select(Compte.ecole_id).join(EmailCompte, EmailCompte.compte_id == Compte.id).where(EmailCompte.email == email)
+    ):
+        if ecole_id is not None:
+            Acces().noter_ecole(db, acces_email, ecole_id)
     db.commit()
 
 

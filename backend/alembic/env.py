@@ -23,7 +23,7 @@ from messagerie.models import (  # noqa: F401
     Message,
     MessageDelivery,
 )
-from acces.models import LienInvitationReinit, AccesEmail  # noqa: F401
+from acces.models import AccessOrg, LienInvitationReinit, AccesEmail  # noqa: F401
 from presence.models import PresenceEleve, PresenceProf, SeancePresence  # noqa: F401
 from registry.models import OrgModule  # noqa: F401
 from saisons.models import Saison  # noqa: F401

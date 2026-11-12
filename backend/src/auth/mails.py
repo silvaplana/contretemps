@@ -90,14 +90,18 @@ class MailsAcces:
         )
 
     def rappel(
-        self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], sous_domaine: str | None = None
+        self, email: str, ecole_nom: str, destinataire: str, prenoms: list[str], sous_domaine: str | None = None,
+        nouvelle_ecole: bool = False,
     ) -> None:
         """Réinvitation d'une personne qui a DÉJÀ créé son mot de passe
         (demande utilisateur du 2026-10-02) : pas de lien pour en choisir
         un, juste l'adresse de l'appli et le rappel de « Mot de passe
         oublié ? »."""
         paragraphes = [
-            f"L'école {ecole_nom} vous rappelle que votre accès à son application est déjà actif.",
+            f"L'école {ecole_nom} vous a ouvert un accès à son application. Vous avez déjà un mot de passe : "
+            "c'est le même, celui que vous utilisez habituellement."
+            if nouvelle_ecole
+            else f"L'école {ecole_nom} vous rappelle que votre accès à son application est déjà actif.",
             f"Pour vous connecter, ouvrez l'application et saisissez votre adresse email ({email}) "
             "et votre mot de passe.",
             "Si vous ne vous souvenez plus de votre mot de passe, cliquez sur « Mot de passe oublié ? » "

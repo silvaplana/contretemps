@@ -14,7 +14,7 @@ from securite import mots_de_passe
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
-from .models import INVITATION, REINITIALISATION, LienInvitationReinit, AccesEmail, maintenant
+from .models import INVITATION, REINITIALISATION, AccessOrg, LienInvitationReinit, AccesEmail, maintenant
 
 LONGUEUR_MIN = 8  # au moins 8 caractères, sans autre règle (§2.2)
 DUREES = {INVITATION: timedelta(days=15), REINITIALISATION: timedelta(hours=1)}
@@ -121,6 +121,17 @@ class Acces:
         acces_email.echec_envoi_le = acces_email.echec_envoi_raison = None
         acces_email.mail_remis_le = None  # celui-ci n'est pas encore remis
         db.commit()
+
+    def noter_ecole(self, db: Session, acces_email: AccesEmail, ecole_id: int) -> None:
+        """Cette école connaît l'adresse : elle l'invite, ou la personne y
+        ouvre un profil (sans commit)."""
+        if db.get(AccessOrg, (acces_email.id, ecole_id)) is None:
+            db.add(AccessOrg(access_email_id=acces_email.id, org_id=ecole_id))
+            db.flush()
+
+    def adresses_connues_de(self, db: Session, ecole_id: int) -> set[int]:
+        """Les adresses (ids) que cette école connaît (voir AccessOrg)."""
+        return set(db.scalars(select(AccessOrg.access_email_id).where(AccessOrg.org_id == ecole_id)))
 
     def noter_mail_remis(self, db: Session, acces_email: AccesEmail) -> None:
         acces_email.mail_remis_le = maintenant()
