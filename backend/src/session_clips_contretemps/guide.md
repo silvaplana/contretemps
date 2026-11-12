@@ -3,7 +3,7 @@ professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
 (admin ou professeur) a deux onglets en haut : Combats (ses combats) et Tournage, en trois
 volets dépliants : Tournage, Montage, Identifier combattants (pastille = nombre de combats à
-identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
+identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas), et le menu ⋮ en haut à droite : « Paramètres de tournage » et « Tests de découpage vidéo ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -30,6 +30,13 @@ Tournage › volet Identifier combattants (coachs ; ancien onglet « À vérifie
 - « Inverser », puis « C'est bon » (bouton principal) : le combat part dans « Mes combats » des
   deux.
 - « Supprimer ce clip » en bas.
+
+Paramètres de tournage (coachs, Fights › ⋮ ; ← revient à Fights)
+- Les mêmes volets qu'en bas d'un essai : « Signes et sons du club » (cases à cocher) et
+  « Paramètres de la vidéo » (cadrage, secondes après le début, secondes avant la fin), puis
+  « Enregistrer ». Ils servent à découper les séances filmées, et aux essais.
+
+Une séance ou un essai découpé est encadré en vert s'il a au moins un combat, en rouge sinon.
 
 Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée

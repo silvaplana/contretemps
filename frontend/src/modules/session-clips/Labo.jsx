@@ -66,14 +66,35 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
     return () => clearInterval(minuteur)
   }, [attente, rafraichir])
 
+  // Sur le téléphone, la carte n'apparaissait souvent qu'après avoir relancé
+  // l'appli (Seb, 12/11) : elle s'affiche dès la vidéo choisie, l'essai
+  // créé prend sa place, et la liste se relit au retour dans l'appli.
+  const [arrivees, setArrivees] = useState([]) // titres des vidéos choisies, pas encore créées
+  useEffect(() => {
+    function auRetour() {
+      if (document.visibilityState === 'visible') rafraichir()
+    }
+    document.addEventListener('visibilitychange', auRetour)
+    return () => document.removeEventListener('visibilitychange', auRetour)
+  }, [rafraichir])
+
   async function importer(fichier) {
     if (!fichier) return
+    const titre = titreFichier(fichier)
+    setArrivees((a) => [titre, ...a])
     try {
       const uploadId = await demarrerTeleversement(ecoleId, fichier)
-      await finaliserTeleversement(uploadId, async (id) => (await api.creerEssai({ upload_id: id, title: titreFichier(fichier) })).video)
+      let cree = null
+      await finaliserTeleversement(uploadId, async (id) => {
+        cree = await api.creerEssai({ upload_id: id, title: titre })
+        return cree.video
+      })
+      setListe((l) => (l && cree && !l.some((x) => x.id === cree.id) ? [cree, ...l] : l))
       rafraichir()
     } catch (e) {
       montrer(e.message)
+    } finally {
+      setArrivees((a) => a.filter((t, i) => i !== a.indexOf(titre)))
     }
   }
 
@@ -97,9 +118,24 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
         <input type="file" accept="video/*" hidden onChange={choisi} />
       </label>
       <p className="sc-meta">Étudiez la détection des signes dans une vidéo : filmez-la avec la caméra ou prenez-la dans la Galerie avec le dossier. Rien ne va dans Mes combats.</p>
-      {visibles?.length === 0 && <p className="sc-vide">Aucun essai pour l’instant.</p>}
+      {visibles?.length === 0 && arrivees.length === 0 && <p className="sc-vide">Aucun essai pour l’instant.</p>}
+      {arrivees.map((titre, i) => (
+        <div key={`arrivee-${i}`} className="sc-essai">
+          <span className="sc-essai__ouvrir" aria-disabled>
+            <span className="sc-vignette sc-vignette--petite">
+              <Icon name="video" size={20} />
+            </span>
+            <span>
+              <strong>{titre}</strong>
+              <span className="sc-meta">
+                <span className="sc-chip sc-chip--info">Envoi…</span>
+              </span>
+            </span>
+          </span>
+        </div>
+      ))}
       {visibles?.map((e) => (
-        <div key={e.id} className="sc-essai">
+        <div key={e.id} className={`sc-essai${encadre(e)}`}>
           <button
             type="button"
             className="sc-essai__ouvrir"
@@ -141,6 +177,9 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
     </>
   )
 }
+
+// Encadré vert dès un combat trouvé, rouge si aucun (Seb, 12/11).
+const encadre = (e) => (e.status !== 'ready' ? '' : e.fights?.length ? ' sc-essai--trouve' : ' sc-essai--vide')
 
 const ouvrable = (e) => e.status === 'ready' || e.status === 'processing'
 
@@ -188,11 +227,6 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     v.currentTime = t
     v.scrollIntoView?.({ behavior: 'smooth', block: 'center' }) // la vidéo est en haut de l'écran
     v.play?.().catch(() => {})
-  }
-
-  const coches = reglages?.signs ?? []
-  function cocher(id) {
-    setReglages((r) => ({ ...r, signs: r.signs.includes(id) ? r.signs.filter((x) => x !== id) : [...r.signs, id] }))
   }
 
   // Enregistre les réglages s'ils ont changé, puis relit les signes avec les
@@ -269,7 +303,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
                 <Points />
               </p>
             )}
-            {!lecture && !enCours && e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
+            {!lecture && !enCours && e.fights.length === 0 && <p className="sc-vide">Aucun combat trouvé.</p>}
             {!lecture && !enCours && e.fights.map((c, i) => (
               <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
                 <span className="sc-vignette">
@@ -312,41 +346,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               </>
             )}
           </Deroulant>
-          <Deroulant titre="Signes et sons du club">
-            {['deb', 'fin'].map((g) => (
-              <div key={g}>
-                <p className="sc-meta">{g === 'deb' ? 'Début de combat' : 'Fin de combat'}</p>
-                {SIGNES.filter((s) => s.g === g).map((s) => (
-                  <label key={s.id} className="sc-coche">
-                    <input type="checkbox" checked={coches.includes(s.id)} onChange={() => cocher(s.id)} />
-                    <span>
-                      {s.l}
-                      <small>{s.d}</small>
-                    </span>
-                  </label>
-                ))}
-              </div>
-            ))}
-          </Deroulant>
-          <Deroulant titre="Paramètres de la vidéo">
-            <p className="sc-meta">Cadrage</p>
-            <SegmentedTabs
-              className="sc-onglets"
-              value={reglages.framing}
-              onChange={(framing) => setReglages((r) => ({ ...r, framing }))}
-              options={CADRAGES.map(([value, label]) => ({ value, label }))}
-            />
-            <Secondes
-              libelle="Démarrer après le signe de début"
-              valeur={reglages.start_skip}
-              onChange={(start_skip) => setReglages((r) => ({ ...r, start_skip }))}
-            />
-            <Secondes
-              libelle="Couper avant la fin"
-              valeur={reglages.end_skip}
-              onChange={(end_skip) => setReglages((r) => ({ ...r, end_skip }))}
-            />
-          </Deroulant>
+          <ReglagesDecoupe reglages={reglages} setReglages={setReglages} />
           <button type="button" className="btn btn--primary sc-bouton" disabled={lecture || enCours} onClick={relancer}>
             {enCours ? (
               <>
@@ -397,6 +397,104 @@ function Points() {
 
 // Volet fermé par défaut, comme dans Admin : sinon ça prend trop de place
 // (Seb, 12/11).
+// Les deux volets des réglages du club : dans un essai et dans
+// Fights › ⋮ › Paramètres de tournage (Seb, 12/11). Ce sont les mêmes
+// réglages, ceux qui découpent les séances filmées.
+export function ReglagesDecoupe({ reglages, setReglages }) {
+  const coches = reglages.signs
+  function cocher(id) {
+    setReglages((r) => ({ ...r, signs: r.signs.includes(id) ? r.signs.filter((x) => x !== id) : [...r.signs, id] }))
+  }
+  return (
+    <>
+      <Deroulant titre="Signes et sons du club">
+        {['deb', 'fin'].map((g) => (
+          <div key={g}>
+            <p className="sc-meta">{g === 'deb' ? 'Début de combat' : 'Fin de combat'}</p>
+            {SIGNES.filter((s) => s.g === g).map((s) => (
+              <label key={s.id} className="sc-coche">
+                <input type="checkbox" checked={coches.includes(s.id)} onChange={() => cocher(s.id)} />
+                <span>
+                  {s.l}
+                  <small>{s.d}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+        ))}
+      </Deroulant>
+      <Deroulant titre="Paramètres de la vidéo">
+        <p className="sc-meta">Cadrage</p>
+        <SegmentedTabs
+          className="sc-onglets"
+          value={reglages.framing}
+          onChange={(framing) => setReglages((r) => ({ ...r, framing }))}
+          options={CADRAGES.map(([value, label]) => ({ value, label }))}
+        />
+        <Secondes
+          libelle="Démarrer après le signe de début"
+          valeur={reglages.start_skip}
+          onChange={(start_skip) => setReglages((r) => ({ ...r, start_skip }))}
+        />
+        <Secondes
+          libelle="Couper avant la fin"
+          valeur={reglages.end_skip}
+          onChange={(end_skip) => setReglages((r) => ({ ...r, end_skip }))}
+        />
+      </Deroulant>
+    </>
+  )
+}
+
+// Fights › ⋮ › Paramètres de tournage (Seb, 12/11) : les réglages qui
+// découpent les séances filmées, sans passer par un essai.
+export function ParametresTournage({ montrer, onBack }) {
+  const [club, setClub] = useState(null)
+  const [reglages, setReglages] = useState(null)
+  const [enCours, setEnCours] = useState(false)
+  useEffect(() => {
+    api.reglagesDuClub().then((r) => {
+      setClub(r)
+      setReglages(r)
+    }, (err) => montrer(err.message))
+  }, [montrer])
+  const cle = (r) => r && JSON.stringify({ ...r, signs: [...r.signs].sort() })
+  const change = reglages && club && cle(reglages) !== cle(club)
+
+  async function enregistrer() {
+    setEnCours(true)
+    try {
+      const r = await api.reglerClub(reglages)
+      setClub(r)
+      setReglages(r)
+      montrer('Paramètres enregistrés')
+    } catch (err) {
+      montrer(err.message)
+    } finally {
+      setEnCours(false)
+    }
+  }
+
+  return (
+    <div className="screen sc">
+      <div className="thread-screen__header">
+        <button type="button" className="icon-btn" onClick={onBack} aria-label="Retour">
+          <Icon name="chevronLeft" size={22} />
+        </button>
+        <strong className="sc__titre">Paramètres de tournage</strong>
+      </div>
+      {reglages && (
+        <div className="sc__corps">
+          <ReglagesDecoupe reglages={reglages} setReglages={setReglages} />
+          <button type="button" className="btn btn--primary sc-bouton" disabled={!change || enCours} onClick={enregistrer}>
+            Enregistrer
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function Deroulant({ titre, ouvertAuDepart = false, children }) {
   const [ouvert, setOuvert] = useState(ouvertAuDepart)
   return (
