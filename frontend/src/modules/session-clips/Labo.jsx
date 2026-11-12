@@ -269,9 +269,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               </span>
             </button>
           ))}
-          {/* Fermé par défaut : sinon ça prend trop de place (Seb, 12/11). */}
-          <details className="sc-cadre sc-deroulant">
-            <summary>Signes et sons du club</summary>
+          <Deroulant titre="Signes et sons du club">
             {['deb', 'fin'].map((g) => (
               <div key={g}>
                 <p className="sc-meta">{g === 'deb' ? 'Début de combat' : 'Fin de combat'}</p>
@@ -286,10 +284,8 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
                 ))}
               </div>
             ))}
-          </details>
-          {/* Fermé par défaut : sinon ça prend trop de place (Seb, 12/11). */}
-          <details className="sc-cadre sc-deroulant">
-            <summary>Clips du club</summary>
+          </Deroulant>
+          <Deroulant titre="Clips du club">
             <p className="sc-meta">Cadrage</p>
             <SegmentedTabs
               className="sc-onglets"
@@ -307,7 +303,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               valeur={reglages.end_skip}
               onChange={(end_skip) => setReglages((r) => ({ ...r, end_skip }))}
             />
-          </details>
+          </Deroulant>
           <button type="button" className="btn btn--primary sc-bouton" disabled={!change || enCours} onClick={relancer}>
             Relancer la découpe
           </button>
@@ -334,6 +330,28 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
         />
       )}
     </div>
+  )
+}
+
+// Volet fermé par défaut, comme dans Admin : sinon ça prend trop de place
+// (Seb, 12/11).
+function Deroulant({ titre, children }) {
+  const [ouvert, setOuvert] = useState(false)
+  return (
+    <section>
+      <h3 className="section-label">
+        <button
+          type="button"
+          className="section-label__depliant sc-depliant"
+          aria-expanded={ouvert}
+          onClick={() => setOuvert((o) => !o)}
+        >
+          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
+          {titre}
+        </button>
+      </h3>
+      {ouvert && <div className="sc-cadre">{children}</div>}
+    </section>
   )
 }
 

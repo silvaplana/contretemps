@@ -104,6 +104,10 @@ def find_signs(frames: list[Frame], sounds: list[float] = ()) -> list[Sign]:
                 continue
             if kind == "handshake" and not _still([f for f in frames if sign.start <= f.t <= sign.end]):
                 continue
+            if kind == "handshake" and any(  # l'autre main, baissée, pendant les poings touchés
+                s.kind == "fists_touch" and s.start <= sign.end and sign.start <= s.end for s in signs
+            ):
+                continue
             signs.append(sign)
     signs += [Sign("time", t, t) for t in sounds]
     return sorted(signs, key=lambda s: s.start)

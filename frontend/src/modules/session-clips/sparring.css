@@ -686,13 +686,8 @@
   background: var(--card-bg);
 }
 
-.sc-deroulant summary {
+.sc-depliant {
   min-height: 48px;
-  display: flex;
-  align-items: center;
-  cursor: pointer;
-  font-size: 17px;
-  font-weight: 700;
 }
 
 .sc-graphe {
@@ -884,7 +879,12 @@
 
 /* Le cadre (Moyen, Serré) montré sur la vidéo d'origine */
 
+/* Petite (Seb, 12/11) : la boîte colle à l'image, sans bandes noires,
+   pour que le cadre du clip tombe juste. */
 .sc-cadreur {
+  width: fit-content;
+  max-width: 100%;
+  margin: 0 auto;
   overflow: hidden;
   border-radius: 10px;
   background: #000;
@@ -892,6 +892,9 @@
 
 .sc-cadreur .sc-apercu {
   display: block;
+  width: auto;
+  max-width: 100%;
+  max-height: 32vh;
   border-radius: 0;
   transform-origin: 0 0;
   transition: transform 0.2s linear;

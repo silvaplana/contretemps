@@ -221,7 +221,12 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    **poignée de main** (deux personnes debout, mains jointes sous les épaules, immobiles), tenue
    0,8 s ; ou le **X** au-dessus de la tête (avant-bras croisés ou mains jointes en l'air), tenu
    0,6 s. Les gestes sont mesurés en hauteur de buste (les combattants sont souvent de profil) et
-   seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Le
+   seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Les
+   poings et les mains dépassent des poignets que voit la détection : sur les vidéos de Seb en plein
+   cadre (12/11, lues sur le serveur par l'action « Lire un essai du Labo »), les poignets restaient
+   à un demi-buste l'un de l'autre. Poings touchés : poignets à moins de 0,35 buste, ou à moins de
+   0,65 buste s'ils sont un demi-buste au-dessus des épaules ; poignée de main : moins de 0,65
+   buste, et jamais pendant des poings touchés (l'autre main baissée). Le
    combat va du signe de début au premier signe de fin coché venu au moins 1 s après ; sinon il se
    termine si la zone se vide 4 s, au signe de début suivant ou à la fin de la vidéo (« Fin non
    repérée »). 1 s est gardée après le signe de fin ; un combat de moins de 5 s est ignoré.
@@ -416,7 +421,7 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   abscisse et une flèche verticale par signe, avec l'image de la vidéo à ce moment, son nom et son
   heure (vert = début, rouge = fin, gris pointillé = signe décoché ; la bande sur l'axe = un combat
   coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les
-  cases **« Signes et sons du club »** (Début de combat, Fin de combat ; déroulant fermé au départ, comme « Clips du club », pour ne pas prendre trop de place : Seb, 12/11) ; **« Relancer la découpe »**
+  cases **« Signes et sons du club »** (Début de combat, Fin de combat ; volet fermé au départ, comme « Clips du club » et les volets d'Admin, pour ne pas prendre trop de place : Seb, 12/11 ; la vidéo de l'essai est petite, un tiers de l'écran en hauteur au plus) ; **« Relancer la découpe »**
   (actif quand une case a changé) enregistre les cases du club et recalcule les combats sans relire
   la vidéo ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche
   ou un signe place la vidéo à ce moment (elle remonte à l'écran). Chaque combat coupé a sa
