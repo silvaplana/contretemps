@@ -411,8 +411,10 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les
   cases **« Signes et sons du club »** (Début de combat, Fin de combat) ; **« Relancer la découpe »**
   (actif quand une case a changé) enregistre les cases du club et recalcule les combats sans relire
-  la vidéo ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche,
-  un signe ou un combat place la vidéo à ce moment.
+  la vidéo ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche
+  ou un signe place la vidéo à ce moment (elle remonte à l'écran). Chaque combat coupé a sa
+  vignette (l'image de son signe de début) et s'ouvre dans une fenêtre qui le lit du début à la fin
+  (Seb, 12/11). Un crayon à côté du nom renomme l'essai (`PATCH /session-clips/lab/{id}`).
 - Rien de ce qui est fait au Labo ne va dans Mes combats ni dans À vérifier : les combats d'un essai
   ne sont pas coupés en clips.
 

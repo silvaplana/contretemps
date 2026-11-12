@@ -805,3 +805,29 @@
   height: 24px;
   flex: none;
 }
+
+.sc-vignette {
+  position: relative;
+}
+
+.sc-vignette__duree {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  padding: 0 5px;
+  border-radius: 5px;
+  background: rgb(0 0 0 / 0.65);
+  color: #fff;
+  font-size: 13px;
+}
+
+.sc-champ {
+  width: 100%;
+  min-height: 48px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--card-bg);
+  color: var(--text);
+  font-size: 17px;
+}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
+import Modal from '../../components/Modal.jsx'
 import { demarrerTeleversement, finaliserTeleversement, useProgressionVideo, useTeleversementsTermines } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 
@@ -141,6 +142,8 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
   const [club, setClub] = useState(null) // ceux enregistrés
   const [enCours, setEnCours] = useState(false)
   const [duree, setDuree] = useState(null)
+  const [regarde, setRegarde] = useState(null) // le combat ouvert
+  const [nom, setNom] = useState(null) // le nom en cours de modification
   const lecteur = useRef(null)
   useEffect(() => {
     api.essaiLabo(essaiId).then(setE, (err) => montrer(err.message))
@@ -156,7 +159,19 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     const v = lecteur.current
     if (!v) return
     v.currentTime = t
+    v.scrollIntoView?.({ behavior: 'smooth', block: 'center' }) // la vidéo est en haut de l'écran
     v.play?.().catch(() => {})
+  }
+
+  async function renommer() {
+    try {
+      const r = await api.renommerEssai(e.id, nom)
+      setE((x) => ({ ...x, title: r.title }))
+      setNom(null)
+      rafraichir()
+    } catch (err) {
+      montrer(err.message)
+    }
   }
 
   function cocher(id) {
@@ -187,6 +202,11 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           <Icon name="chevronLeft" size={22} />
         </button>
         <strong className="sc__titre">{e?.title ?? ''}</strong>
+        {e && (
+          <button type="button" className="icon-btn" onClick={() => setNom(e.title)} aria-label="Renommer l’essai">
+            <Icon name="edit" size={20} />
+          </button>
+        )}
       </div>
       {e && coches && (
         <div className="sc__corps">
@@ -222,8 +242,12 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           <h3 className="sc-section">Combats coupés</h3>
           {e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
           {e.fights.map((c, i) => (
-            <button key={i} type="button" className="sc-carte" onClick={() => aller(c.start)}>
-              <span className="sc-carte__info">
+            <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
+              <span className="sc-vignette">
+                {vignette(e.signs, c) ? <img src={vignette(e.signs, c)} alt="" /> : <Icon name="video" size={22} />}
+                <span className="sc-vignette__duree">{mmss(c.end - c.start)}</span>
+              </span>
+              <span>
                 <strong>Combat {i + 1}</strong>
                 <span className="sc-meta">
                   {mmss(c.start)} → {mmss(c.end)}
@@ -257,7 +281,54 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           </button>
         </div>
       )}
+      {regarde && (
+        <Modal title={`Combat ${regarde.numero}`} onClose={() => setRegarde(null)}>
+          <LecteurCombat url={e.video.url} combat={regarde} />
+        </Modal>
+      )}
+      {nom !== null && (
+        <Modal
+          title="Renommer l’essai"
+          onClose={() => setNom(null)}
+          footer={
+            <div className="video-upload-form__actions">
+              <button type="button" className="btn btn--secondary" onClick={() => setNom(null)}>
+                Annuler
+              </button>
+              <button type="button" className="btn btn--primary" disabled={!nom.trim()} onClick={renommer}>
+                Enregistrer
+              </button>
+            </div>
+          }
+        >
+          <input className="sc-champ" value={nom} autoFocus maxLength={150} onChange={(ev) => setNom(ev.target.value)} />
+        </Modal>
+      )}
     </div>
+  )
+}
+
+// La vignette d'un combat : l'image de son signe de début.
+function vignette(signes, combat) {
+  const debuts = signes.filter((s) => signe(s.kind).g === 'deb' && s.start <= combat.start + 0.05 && s.thumb)
+  return debuts.length ? debuts[debuts.length - 1].thumb : null
+}
+
+// Un combat regardé seul : la vidéo de l'essai, du début à la fin du combat.
+function LecteurCombat({ url, combat }) {
+  const lecteur = useRef(null)
+  return (
+    <video
+      ref={lecteur}
+      className="sc-apercu"
+      src={`${url}#t=${combat.start},${combat.end}`}
+      controls
+      autoPlay
+      playsInline
+      onTimeUpdate={(ev) => {
+        if (ev.currentTarget.currentTime >= combat.end) ev.currentTarget.pause()
+      }}
+    />
   )
 }
 

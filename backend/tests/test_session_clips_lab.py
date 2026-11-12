@@ -85,6 +85,12 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert client.get("/session-clips/signs", headers=e["coach"]).json() == {"signs": ["fists_touch", "x"]}
     assert client.put("/session-clips/signs", json={"signs": ["salto"]}, headers=e["coach"]).status_code == 400
 
+    # Le crayon : renommer l'essai.
+    r = client.patch(f"/session-clips/lab/{essai['id']}", json={"title": " Jo contre Jac "}, headers=e["coach"])
+    assert r.status_code == 200 and r.json()["title"] == "Jo contre Jac"
+    assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": " "}, headers=e["coach"]).status_code == 400
+    assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": "x"}, headers=e["ailleurs"]).status_code == 404
+
     # Réservé aux coachs de l'école.
     assert client.get("/session-clips/lab", headers=e["eleve"]).status_code == 403
     assert client.put("/session-clips/signs", json={"signs": []}, headers=e["eleve"]).status_code == 403

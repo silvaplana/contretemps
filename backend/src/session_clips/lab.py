@@ -89,6 +89,16 @@ def create_test(db: Session, clips: SessionClips, member: Member, upload_id: str
     return found
 
 
+def rename_test(db: Session, member: Member, test_id: int, title: str) -> LabTest:
+    """Le crayon à côté du nom de l'essai (Seb, 12/11)."""
+    found = test(db, member, test_id)
+    if not title:
+        raise ValueError("Donnez un nom à l'essai")
+    found.title = title[:150]
+    db.commit()
+    return found
+
+
 def delete_test(db: Session, clips: SessionClips, member: Member, test_id: int) -> None:
     found = test(db, member, test_id)
     _poses_path(found).unlink(missing_ok=True)
