@@ -73,6 +73,9 @@ export async function signalerInstallation() {
 }
 
 export function estInstallee() {
+  // L'appli Android « Tournage » (Capacitor, ANDROID.md) est déjà une appli
+  // installée : pas d'écran « Installez l'application » dedans (Seb, 12/11).
+  if (window.Capacitor?.isNativePlatform?.()) return true
   return window.matchMedia?.('(display-mode: standalone)').matches || navigator.standalone === true
 }
 

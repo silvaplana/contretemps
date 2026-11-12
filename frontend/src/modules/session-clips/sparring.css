@@ -511,44 +511,91 @@
   color: inherit;
 }
 
-/* Caméra de la salle (étape 3), d'après la maquette : pastille, bande rouge,
-   panneau qui descend du haut. */
+/* Fights › Tournage (§6.3, Seb 12/11) : sélecteur Caméra | Éteint |
+   Télécommande, image de la caméra, un seul bouton Filmer / Arrêter. */
 
-.sc-cam {
+.sc-tournage {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-size: 17px;
+}
+
+.sc-tournage p {
+  margin: 0;
+}
+
+.sc-tournage__role .segmented__option {
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.sc-tournage__bouton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 56px;
+  font-size: 20px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.sc-tournage__bouton--stop {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.sc-tournage__etat {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  min-height: 44px;
-  padding: 0 14px 0 12px;
-  border: 0;
+  align-self: flex-start;
+  padding: 8px 14px;
   border-radius: 999px;
-  background: #2f8f4e;
-  box-shadow: 0 2px 6px rgb(0 0 0 / 18%);
-  color: #fff;
-  font: inherit;
-  font-size: 16px;
+  background: color-mix(in srgb, #2f8f4e 14%, var(--card-bg));
+  color: #2f8f4e;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-.sc-cam svg {
-  width: 24px;
-  height: 24px;
+.sc-tournage__etat--rec {
+  background: color-mix(in srgb, #d0332b 12%, var(--card-bg));
+  color: #b0261f;
 }
 
-.sc-cam--recording {
-  background: #d0332b;
-  animation: sc-pulse 1.6s infinite;
+.sc-tournage__etat--off {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
 }
 
-.sc-cam--offline,
-.sc-cam--none {
-  background: #7d8792;
+.sc-image {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #0e1115;
 }
 
-@keyframes sc-pulse {
-  50% {
-    box-shadow: 0 0 0 6px rgb(208 51 43 / 25%);
-  }
+.sc-image__video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sc-image__etat {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: #f3f5f7;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 60%);
 }
 
 .sc-led {
@@ -576,93 +623,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .sc-cam--recording,
   .sc-led--on {
     animation: none;
   }
-}
-
-.sc-bande {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 48px;
-  margin: 10px 14px 0;
-  padding: 0 14px;
-  border: 0;
-  border-radius: 12px;
-  background: color-mix(in srgb, #d0332b 12%, var(--card-bg));
-  color: #b0261f;
-  font: inherit;
-  font-size: 16px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.sc-bande__ouvrir {
-  margin-left: auto;
-  font-weight: 600;
-  text-decoration: underline;
-}
-
-.sc-panneau-fond {
-  position: fixed;
-  inset: 0;
-  z-index: 70;
-  background: rgb(0 0 0 / 35%);
-}
-
-.sc-panneau {
-  display: flex;
-  flex-direction: column;
-  padding: 14px 14px 4px;
-  border-radius: 0 0 18px 18px;
-  background: var(--bg);
-  font-size: 17px;
-  animation: sc-descend 0.22s ease-out;
-}
-
-@keyframes sc-descend {
-  from {
-    opacity: 0;
-    transform: translateY(-30px);
-  }
-}
-
-.sc-panneau__carte {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 14px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card-bg);
-}
-
-.sc-panneau__carte .btn {
-  min-height: 52px;
-}
-
-.sc-panneau__carte .field-input {
-  min-height: 48px;
-  font-size: 17px;
-}
-
-.sc-rec {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-weight: 700;
-}
-
-.sc-code {
-  margin: 4px 0;
-  font-size: 34px;
-  font-weight: 800;
-  letter-spacing: 3px;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Labo (§6.5 bis) : essais sur des vidéos déjà filmées */

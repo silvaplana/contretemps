@@ -6,6 +6,8 @@ tout le monde garde la PWA pour le reste.
 
 - **Elle ouvre le site en ligne de l'école** (`server.url` de Capacitor) : chaque mise en ligne s'y
   voit sans réinstaller. Sans réseau, elle affiche `frontend/android-shell/hors-ligne.html`.
+- **Elle filme** quand Fights › Tournage est sur « Caméra » : plugin `camera/TournagePlugin.kt` et
+  service de premier plan `camera/RecorderService.kt` (repris de l'appli caméra `recorder/`).
 - **Une appli par école**, listée dans `frontend/android/ecoles.json` :
   `{"cle": "asc-la-ciotat", "nom": "ASC La Ciotat", "adresse": "https://…"}`. Le nom affiché est
   « Tournage » suivi de `nom` ; l'identifiant Android est `com.contretemps.tournage.<clé>`, donc

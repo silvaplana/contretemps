@@ -11,13 +11,13 @@ import {
   useTeleversementsTermines,
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
-import { BandeCamera, PanneauCamera, PastilleCamera, useCamera } from './Camera.jsx'
 import { EssaiLabo, Labo, useSuppressionEssai } from './Labo.jsx'
+import Tournage from './Tournage.jsx'
 import './sparring.css'
 
 // Sparring (spec/modules/video-combats.md §6, maquette validée
 // spec/maquettes/sparring.html). Un membre n'a que « Mes combats » ; un coach
-// a aussi Séances, À vérifier et Labo (Labo.jsx). Une séance ouverte et un clip lu s'affichent
+// a aussi Tournage (Tournage.jsx), Séances, À vérifier et Labo (Labo.jsx). Une séance ouverte et un clip lu s'affichent
 // en plein écran avec la flèche de retour, comme une chorégraphie.
 //
 // Le + filme un combat à la main (FilmerCombat) ; la séance entière filmée
@@ -48,7 +48,7 @@ export default function Sparring({ ecoleId, cours }) {
   useEffect(() => {
     api.moi().then((m) => {
       setMe(m)
-      if (m.is_coach) setOnglet(['mes', 'seances', 'verifier', 'labo'].includes(ongletGarde()) ? ongletGarde() : 'seances')
+      if (m.is_coach) setOnglet(['tournage', 'mes', 'seances', 'verifier', 'labo'].includes(ongletGarde()) ? ongletGarde() : 'seances')
     }, () => setMe({ person_id: null, is_coach: false }))
   }, [])
   useEffect(() => () => clearTimeout(minuteur.current), [])
@@ -110,9 +110,6 @@ export default function Sparring({ ecoleId, cours }) {
     }
   }
 
-  const [camera, setCamera] = useCamera(Boolean(me?.is_coach))
-  const [panneau, setPanneau] = useState(false)
-
   if (!me) return <div className="screen sc" aria-busy="true" />
 
   const contexte = { me, ecoleId, cours, version, rafraichir, montrer, supprimer, caches, choisis, basculer }
@@ -160,9 +157,9 @@ export default function Sparring({ ecoleId, cours }) {
     ecran = (
       <div className="screen sc">
         {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} version={version} />}
-        {me.is_coach && !panneau && <BandeCamera camera={camera} onOpen={() => setPanneau(true)} />}
         <div className="sc__corps">
-          {onglet !== 'verifier' && onglet !== 'labo' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
+          {onglet !== 'verifier' && onglet !== 'labo' && onglet !== 'tournage' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
+          {onglet === 'tournage' && <Tournage montrer={montrer} rafraichir={rafraichir} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
           {onglet === 'seances' && <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />}
           {onglet === 'verifier' && <AVerifier {...contexte} />}
@@ -182,17 +179,6 @@ export default function Sparring({ ecoleId, cours }) {
   return (
     <>
       {ecran}
-      {me.is_coach && !ouvert && choisis.size === 0 && <PastilleCamera camera={camera} onOpen={() => setPanneau(true)} />}
-      {panneau && camera && (
-        <PanneauCamera
-          camera={camera}
-          setCamera={setCamera}
-          cours={cours}
-          montrer={montrer}
-          rafraichir={rafraichir}
-          onClose={() => setPanneau(false)}
-        />
-      )}
       {choisis.size > 0 && (
         <BarreSelection me={me} choisis={choisis} vider={vider} montrer={montrer} supprimer={supprimer} rafraichir={rafraichir} />
       )}
@@ -223,6 +209,7 @@ function Onglets({ onglet, onChange, version }) {
     api.aVerifier().then((l) => setN(l.length), () => {})
   }, [version])
   const onglets = [
+    ['tournage', 'Tournage'],
     ['mes', 'Mes combats'],
     ['seances', 'Séances'],
     ['verifier', 'À vérifier'],

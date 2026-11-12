@@ -175,7 +175,7 @@ et deux téléphones à manipuler, c'était trop compliqué
   seul le téléphone qui filme a besoin de « Tournage ».
 - Elle propose elle-même ses nouvelles versions, comme l'appli Mountain de Seb : à l'ouverture et
   deux fois par jour, « Nouvelle version disponible › Installer ». La clé de signature est fixe.
-- *(étape suivante)* Fights › **Tournage**, nouveau sous-onglet tout à gauche (coachs), réunit tout le
+- Fights › **Tournage** (§6.3), nouveau sous-onglet tout à gauche (coachs), réunit tout le
   tournage. La pastille caméra du haut et son panneau disparaissent. Il contient un sélecteur à trois
   positions, **Caméra | Éteint | Télécommande**, et un seul bouton **● Filmer / ■ Arrêter**. En Caméra,
   le bouton lance ou arrête le film sur ce téléphone, et une petite image montre ce qu'il filme. En
@@ -354,7 +354,26 @@ part tout de suite dans « Mes combats » des deux combattants. L'envoi à la ma
 séance entière est retiré de l'écran (trop lourd, Seb 27/10) : la séance filmée en continu viendra
 avec l'enregistreur (étape 3) ; la route `POST /session-clips/sessions` et la découpe restent.
 
-**Le bouton caméra.** En haut à droite de Sparring, pour les coachs seulement (y compris sur
+**Remplacé le 12/11 par Fights › Tournage** (§4, maquette
+https://claude.ai/artifact/AktTkAwZjXtrKKEFV285B2, codé à l'étape 5b) : sous-onglet tout à gauche,
+coachs seulement. Le bouton caméra, son panneau, le code de jumelage et la bande rouge ci-dessous
+sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra à part (`recorder/`).
+- **Sélecteur Caméra | Éteint | Télécommande**, gardé sur chaque téléphone (stockage du navigateur).
+- **Caméra**, dans l'appli Tournage seulement : `POST /session-clips/camera/this-phone` fait de ce
+  téléphone la caméra de l'école (jeton remis à l'appli, l'ancienne caméra est oubliée), puis le
+  service de premier plan de `recorder/` (repris tel quel dans `frontend/android/.../camera/`) filme
+  et envoie. Une image 16:9 de la caméra (`getUserMedia`) sert à cadrer ; elle lâche la caméra dès
+  que le film démarre (Prête, Démarrage…, ● Filme 00:12:34, morceaux à envoyer). Dans Chrome : « Pour
+  filmer, ce téléphone doit ouvrir Contretemps dans l'appli Tournage » et « Installer l'appli
+  Tournage ». Éteint ou Télécommande arrête le service.
+- **Télécommande** : « ● Caméra de la salle prête · 86 % », « ● La caméra filme · 00:12:34 » ou
+  « Caméra éteinte » (pas de nouvelles depuis 30 s).
+- **Un seul bouton « ● Filmer » / « ■ Arrêter »**, dans les deux positions : `camera/start` avec le
+  titre « Séance du JJ/MM » (plus de choix du cours) ou `camera/stop`. Le serveur garde l'ordre ; la
+  caméra obéit au dernier, d'où qu'il vienne. Le choix du signal « compris » n'est plus à l'écran
+  (le téléphone ne reconnaît pas encore les gestes, 3c).
+
+**Le bouton caméra (retiré le 12/11).** En haut à droite de Sparring, pour les coachs seulement (y compris sur
 « Mes combats » et « À vérifier ») : une pastille en couleur avec une caméra et un mot.
 
 | État | Pastille |
@@ -607,9 +626,9 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
    postures d'un essai sont gardées dans `sparring-poses/lab-<id>.json`, à côté de celles des
    morceaux : les combats se recalculent à chaque ouverture avec les cases du club.
 5. **Appli « Tournage <école> »** (Seb, 12/11, §4) :
-   - **5a, l'appli Android (en cours)** : Capacitor, ouvre le site de l'école, une appli par école,
+   - **5a, l'appli Android (en ligne le 12/11)** : Capacitor, ouvre le site de l'école, une appli par école,
      mises à jour proposées par l'appli, clé de signature fixe. Ne filme pas encore.
-   - **5b, Fights › Tournage** : sous-onglet, sélecteur Caméra | Éteint | Télécommande, bouton
+   - **5b, Fights › Tournage (codé)** : sous-onglet, sélecteur Caméra | Éteint | Télécommande, bouton
      Filmer / Arrêter, le film de `recorder/` passé dans l'appli Tournage ; l'appli caméra à part et
      le jumelage disparaissent.
 
@@ -690,6 +709,10 @@ ajouter une suffit pour fabriquer son appli. L'action `.github/workflows/tournag
 chaque fusion dans `main`, la publie avec `version.json` dans la release « tournage-latest » :
 https://github.com/silvaplana/contretemps/releases/download/tournage-latest/tournage-<clé>.apk.
 `Updater.java` (repris de l'appli Mountain) lit ce `version.json` et propose la mise à jour.
+Depuis l'étape 5b, l'appli filme : `TournagePlugin.kt` (plugin Capacitor « Tournage » : `start`,
+`stop`, `status`, `preview`) lance le service de premier plan repris de `recorder/`, avec l'adresse de
+l'API et le jeton donnés par Fights › Tournage (route `POST /session-clips/camera/this-phone`, coachs).
+Android 8 minimum (`minSdkVersion` 26), code de la caméra en Kotlin.
 Signature : clé fixe créée par l'action au premier passage, chiffrée par le secret GitHub
 `SIGNING_PASSWORD` et rangée dans la release « tournage-cle ». Ne jamais supprimer cette release ni
 changer le mot de passe : les applis installées ne pourraient plus se mettre à jour sans être
