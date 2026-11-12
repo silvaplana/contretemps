@@ -27,7 +27,7 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 
 from .fights import SIGNS, SOUNDS, Fight, Sound, find_fights, find_signs, trim
 from .framing import FRAMINGS, Box, track, video_size
-from .models import ClubSigns, LabTest
+from .models import ClubSigns, LabSettings, LabTest
 from .ports import Member
 from .signals import Frame
 from .service import ForbiddenError, NotFoundError, SessionClips
@@ -47,8 +47,11 @@ class Settings:
     end_skip: float = 0.0
 
 
-def settings(db: Session, org_id: int) -> Settings:
-    row = db.get(ClubSigns, org_id)
+def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
+    """Ceux du tournage, ou avec `lab` ceux du Labo (Seb, 12/11 : le Labo
+    expérimente sans changer le tournage ; au départ, ceux du tournage)."""
+    row = db.get(LabSettings, org_id) if lab else None
+    row = row or db.get(ClubSigns, org_id)
     if row is None:
         return Settings()
     return Settings(
@@ -59,7 +62,7 @@ def settings(db: Session, org_id: int) -> Settings:
     )
 
 
-def set_settings(db: Session, member: Member, new: Settings) -> Settings:
+def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) -> Settings:
     _require_coach(member)
     unknown = set(new.signs) - set(SIGNS)
     if unknown:
@@ -68,22 +71,28 @@ def set_settings(db: Session, member: Member, new: Settings) -> Settings:
         raise ValueError("Cadrage inconnu")
     if not (0 <= new.start_skip <= MAX_SKIP and 0 <= new.end_skip <= MAX_SKIP):
         raise ValueError(f"Entre 0 et {MAX_SKIP:g} secondes")
-    row = db.get(ClubSigns, member.org_id) or ClubSigns(org_id=member.org_id)
+    model = LabSettings if lab else ClubSigns
+    row = db.get(model, member.org_id) or model(org_id=member.org_id)
     row.signs = ",".join(s for s in SIGNS if s in new.signs)
     row.framing = new.framing
     row.start_skip = new.start_skip
     row.end_skip = new.end_skip
     db.add(row)
     db.commit()
-    return settings(db, member.org_id)
+    return settings(db, member.org_id, lab)
 
 
 def club_fights(
-    db: Session, org_id: int, frames: list[Frame], sounds: list[Sound], size: tuple[int, int] | None
+    db: Session,
+    org_id: int,
+    frames: list[Frame],
+    sounds: list[Sound],
+    size: tuple[int, int] | None,
+    lab: bool = False,
 ) -> list[tuple[Fight, list[Box] | None]]:
-    """Les combats selon les réglages du club, chacun avec son cadre (None :
-    plan large)."""
-    s = settings(db, org_id)
+    """Les combats selon les réglages du club (ou du Labo), chacun avec son
+    cadre (None : plan large)."""
+    s = settings(db, org_id, lab)
     fights = trim(find_fights(frames, s.signs, sounds), s.start_skip, s.end_skip)
     return [(f, track(frames, f.start, f.end, s.framing, size) if size else None) for f in fights]
 
@@ -162,7 +171,7 @@ def fights_of(db: Session, found: LabTest) -> list[tuple[Fight, list[Box] | None
         video = db.get(Video, found.video_id) if found.video_id else None
     size = video_size(DOSSIER_VIDEOS_LIVE / video.lien_fichier) if video is not None else None
     sounds = [(s["kind"], s["start"]) for s in signs_of(found) if s["kind"] in SOUNDS]
-    return club_fights(db, found.org_id, _load_frames(path), sounds, size)
+    return club_fights(db, found.org_id, _load_frames(path), sounds, size, lab=True)
 
 
 # --- Lecture par le worker ---

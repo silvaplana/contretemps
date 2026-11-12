@@ -255,8 +255,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    s'il va d'un « Go ! » crié à un « Time ! » crié : les deux cris disent le combat, même court
    (Seb, 12/11 : essai « Go time » d'une seconde).
    **Signes et sons du club** (Seb, 12/11) : chaque organisation coche les signes que la découpe
-   prend (tous par défaut), dans le Labo (§6.5 bis) ; le réglage vaut pour la caméra de la salle et
-   les vidéos envoyées. **Son** (accord de Seb du 12/11) : le **« Time ! »** crié par l'entraîneur
+   prend (tous par défaut), dans Fights › ⋮ › Paramètres de tournage (`sc_club_signs`) ; le réglage
+   vaut pour la caméra de la salle et les vidéos envoyées. Le Labo (§6.5 bis) a ses propres réglages
+   (`sc_lab_settings`, au départ une copie de ceux du tournage) : on y expérimente sans changer le
+   tournage (Seb, 12/11 : « ce sont deux choses différentes »). **Son** (accord de Seb du 12/11) : le **« Time ! »** crié par l'entraîneur
    est aussi un signe de fin, et le **« Go ! »** un signe de début (Seb, 12/11 : « go pour commencer,
    time pour terminer » ; des poings touchés suivis d'un « Go ! » à moins de 2 s ne font qu'un début).
    Whisper (faster-whisper, modèle « base », processeur seul, dans
@@ -319,7 +321,8 @@ flèche ←.
   Tournage contient deux volets dépliants, **Tournage** (sélecteur, image, Filmer) puis **Montage**
   (les séances, ancien onglet Séances) ; « À vérifier » est renommé « Identifier les combattants »), et
   le menu **⋮** de l'en-tête : « Paramètres de tournage » (les volets « Signes et sons du club » et
-  « Paramètres de la vidéo » d'un essai, mêmes réglages du club, avec Enregistrer ; Seb 12/11) et
+  « Paramètres de la vidéo » d'un essai, avec Enregistrer ; ce sont ceux du tournage, le Labo a les
+  siens ; Seb 12/11) et
   « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Une ligne de séance
   ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »

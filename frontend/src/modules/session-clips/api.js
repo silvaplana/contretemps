@@ -124,3 +124,6 @@ export const relireEssai = (id) => appel(`/lab/${id}/reread`, { method: 'POST' }
 // Réglages de la découpe du club : { signs, framing, start_skip, end_skip }.
 export const reglagesDuClub = () => appel('/signs')
 export const reglerClub = (reglages) => appel('/signs', json('PUT', reglages))
+// Ceux du Labo, à part : on y expérimente sans changer le tournage (Seb, 12/11).
+export const reglagesDuLabo = () => appel('/lab/signs')
+export const reglerLabo = (reglages) => appel('/lab/signs', json('PUT', reglages))

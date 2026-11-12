@@ -34,7 +34,8 @@ Tournage › volet Identifier combattants (coachs ; ancien onglet « À vérifie
 Paramètres de tournage (coachs, Fights › ⋮ ; ← revient à Fights)
 - Les mêmes volets qu'en bas d'un essai : « Signes et sons du club » (cases à cocher) et
   « Paramètres de la vidéo » (cadrage, secondes après le début, secondes avant la fin), puis
-  « Enregistrer ». Ils servent à découper les séances filmées, et aux essais.
+  « Enregistrer ». Ils servent à découper les séances filmées. Les essais des tests de découpage
+  ont leurs propres réglages, en bas de chaque essai : les changer ne touche pas au tournage.
 
 Une séance ou un essai découpé est encadré en vert s'il a au moins un combat, en rouge sinon.
 
