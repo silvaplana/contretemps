@@ -33,7 +33,7 @@ Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ran
   secondes). L'essai apparaît
   dans la liste (« Envoi … % », puis « Lecture des signes… ») et s'ouvre dès que la vidéo est
   envoyée : la lecture des signes continue dedans, puis l'essai se complète seul.
-- Un essai ouvert, en quatre volets dépliables : « Vidéo entière » et « Vidéo découpée » (ouverts),
+- Un essai ouvert, en cinq volets dépliables : « Vidéo entière », « Vidéo découpée », « Signes repérés » (ouverts),
   « Signes et sons du club » et « Paramètres de la vidéo » (fermés). La vidéo, le graphe des signes repérés (une flèche par signe avec son image,
   vert = début, rouge = fin, gris = décoché), la liste des signes, les combats coupés. Toucher une
   flèche ou un signe place la vidéo à ce moment. Chaque combat coupé a sa vignette (l'image du

@@ -420,9 +420,9 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   supprimer avec Annuler 10 s) avec leur état : envoi
   en %, « Lecture des signes… », « Vidéo illisible ». La vidéo part par l'envoi par blocs du module
   `videos` ; le worker la lit dès qu'elle est arrivée, à toute heure.
-- **Un essai ouvert** (← revient au Labo), en quatre volets dépliables dans cet ordre (Seb, 12/11) :
-  **Vidéo entière** (ouvert : la vidéo et les signes repérés), **Vidéo découpée** (ouvert : les
-  combats coupés), **Signes et sons du club** et **Paramètres de la vidéo** (fermés). La vidéo ; le **graphe** des signes repérés, le temps en
+- **Un essai ouvert** (← revient au Labo), en cinq volets dépliables dans cet ordre (Seb, 12/11) :
+  **Vidéo entière**, **Vidéo découpée** (les combats coupés), **Signes repérés** (ouverts), puis
+  **Signes et sons du club** et **Paramètres de la vidéo** (fermés). La vidéo ; le **graphe** des signes repérés, le temps en
   abscisse et une flèche verticale par signe, avec l'image de la vidéo à ce moment, son nom et son
   heure (vert = début, rouge = fin, gris pointillé = signe décoché ; la bande sur l'axe = un combat
   coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les

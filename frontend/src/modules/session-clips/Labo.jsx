@@ -235,8 +235,8 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
       </div>
       {e && reglages && (
         <div className="sc__corps">
-          {/* Quatre volets, dans l'ordre (Seb, 12/11) : la vidéo entière et ses
-              signes, la vidéo découpée, puis les réglages du club. */}
+          {/* Cinq volets, dans l'ordre (Seb, 12/11) : la vidéo entière, la vidéo
+              découpée, les signes repérés, puis les réglages du club. */}
           <Deroulant titre="Vidéo entière" ouvertAuDepart>
             {e.video?.url && (
               // Le cadre du combat en cours (Moyen ou Serré) est montré sur la
@@ -254,33 +254,6 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
                   onLoadedMetadata={(ev) => setDuree(ev.currentTarget.duration)}
                 />
               </div>
-            )}
-            {lecture ? (
-              <p className="sc-meta">
-                <span className="sc-chip sc-chip--info">Lecture des signes…</span> Les signes et les combats s’afficheront ici.
-              </p>
-            ) : (
-              <>
-                <h3 className="sc-section">Signes repérés</h3>
-                <div>
-                  <Graphe signes={e.signs} combats={enCours ? [] : e.fights} coches={coches} fin={fin} aller={aller} />
-                  {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
-                  {e.signs.map((s, i) => {
-                    const sg = signe(s.kind)
-                    const on = coches.includes(s.kind)
-                    return (
-                      <button key={i} type="button" className="sc-geste" onClick={() => aller(s.start)}>
-                        <span className="sc-geste__t">{mmss(s.start)}</span>
-                        <span className={`sc-geste__pt sc-geste__pt--${on ? sg.g : 'off'}`} />
-                        <span>
-                          {sg.l}
-                          <small>{on ? (sg.g === 'deb' ? 'Début de combat' : 'Fin de combat') : 'Signe décoché : ignoré'}</small>
-                        </span>
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
             )}
           </Deroulant>
           <Deroulant titre="Vidéo découpée" ouvertAuDepart>
@@ -312,6 +285,32 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
                 </span>
               </button>
             ))}
+          </Deroulant>
+          <Deroulant titre="Signes repérés" ouvertAuDepart>
+            {lecture ? (
+              <p className="sc-meta">
+                <span className="sc-chip sc-chip--info">Lecture des signes…</span>
+              </p>
+            ) : (
+              <>
+                <Graphe signes={e.signs} combats={enCours ? [] : e.fights} coches={coches} fin={fin} aller={aller} />
+                {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
+                {e.signs.map((s, i) => {
+                  const sg = signe(s.kind)
+                  const on = coches.includes(s.kind)
+                  return (
+                    <button key={i} type="button" className="sc-geste" onClick={() => aller(s.start)}>
+                      <span className="sc-geste__t">{mmss(s.start)}</span>
+                      <span className={`sc-geste__pt sc-geste__pt--${on ? sg.g : 'off'}`} />
+                      <span>
+                        {sg.l}
+                        <small>{on ? (sg.g === 'deb' ? 'Début de combat' : 'Fin de combat') : 'Signe décoché : ignoré'}</small>
+                      </span>
+                    </button>
+                  )
+                })}
+              </>
+            )}
           </Deroulant>
           <Deroulant titre="Signes et sons du club">
             {['deb', 'fin'].map((g) => (
