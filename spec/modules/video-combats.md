@@ -227,8 +227,11 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    repérée »). 1 s est gardée après le signe de fin ; un combat de moins de 5 s est ignoré.
    **Signes et sons du club** (Seb, 12/11) : chaque organisation coche les signes que la découpe
    prend (tous par défaut), dans le Labo (§6.5 bis) ; le réglage vaut pour la caméra de la salle et
-   les vidéos envoyées. Pas encore : le **« Time ! »** crié par l'entraîneur (il faut un modèle de
-   reconnaissance de la parole dans l'image du worker, à valider par Seb) et les bras croisés sur la
+   les vidéos envoyées. **Son** (accord de Seb du 12/11) : le **« Time ! »** crié par l'entraîneur
+   est aussi un signe de fin. Whisper (faster-whisper, modèle « base », processeur seul, dans
+   l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
+   (`hearing.py`) ; les mots « time » ou « taïme » comptent. Les « Time ! » d'un morceau de la caméra
+   sont gardés à côté de ses postures (`<id>.sounds.json`). Pas encore : les bras croisés sur la
    poitrine. Un combat repéré sans poing levé devient un « combat sans nom ».
 3. **Identification** : il suit chaque personne image par image, et compare les deux combattants aux
    empreintes du jour. Si la confiance est faible, comme avec deux t-shirts noirs unis, le clip est
@@ -548,7 +551,7 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
      découpe saute le numéro manquant). Pas encore : les modes Connecté / Autonome, « Ne pas
      déranger », le redémarrage seul après une coupure de courant, les gestes (3c).
    - **3c, les gestes reconnus par le téléphone**, avec le bip et la lampe.
-4. **Labo et signes du club** (Seb, 12/11) : nouveaux signes (poings touchés en l'air, poignée de
+4. **Labo et signes du club** (Seb, 12/11 ; « Time ! » crié ajouté le même jour) : nouveaux signes (poings touchés en l'air, poignée de
    main immobile, X plus souple), cases « Signes et sons du club », onglet Labo (§6.5 bis). Les
    postures d'un essai sont gardées dans `sparring-poses/lab-<id>.json`, à côté de celles des
    morceaux : les combats se recalculent à chaque ouverture avec les cases du club.
@@ -639,8 +642,9 @@ l'école>/sparring-poses/<id du morceau>.json` (quelques centaines de Ko par mor
 morceaux et postures restent après la découpe (effacement automatique : §6.6, plus tard).
 
 **Conteneurs.** `sparring-worker` (étape 2) : image `backend/Dockerfile.sparring` (Python 3.12,
-PyTorch processeur seul, Ultralytics, OpenCV, environ 2 Go ; le modèle `yolo11n-pose.pt` est
-téléchargé dans l'image à la construction, sur `/app/models`), bloc `sparring-worker` de
+PyTorch processeur seul, Ultralytics, OpenCV, faster-whisper, environ 2,2 Go ; le modèle
+`yolo11n-pose.pt` et le modèle de parole Whisper « base » sont téléchargés dans l'image à la
+construction, sur `/app/models`, depuis GitHub et Hugging Face), bloc `sparring-worker` de
 `docker-compose.yml`, même volume `backend_data` que `backend`. Commande :
 `nice -n 19 python -u -m app.sparring_worker`, qui regarde toutes les 20 s les morceaux arrivés de
 la caméra de la salle (à toute heure) et, pendant les heures de nuit, les séances dont la vidéo brute
@@ -653,6 +657,7 @@ dossier), déjà compressées.
   main, heure de Paris ; `0-24` pour découper tout de suite (essais). Sans effet sur la caméra de la
   salle, découpée au fil du cours.
 - `SPARRING_MODEL` (fixée par l'image) : chemin du modèle YOLO.
+- `SPARRING_SPEECH_MODEL` (fixée par l'image) : dossier du modèle Whisper (« Time ! »).
 - `YOLO_CONFIG_DIR` (fixée par l'image) : réglages d'Ultralytics, dans le volume.
 - `DATABASE_URL`, `VIDEOS_DIR` : comme le backend.
 

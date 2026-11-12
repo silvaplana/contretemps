@@ -153,3 +153,18 @@ def test_decoupe_une_seance(db_session, tmp_path, monkeypatch):
     assert [r.libelle for r in usage.rubriques] == ["Fights"]
     assert usage.rubriques[0].octets == usage.total_octets > 0
     assert {v.rubrique for v in usage.top_videos} == {"Fights"}
+
+
+def test_time_crie_termine_le_combat():
+    """Le « Time ! » de l'entraîneur (hearing.py) finit le combat comme un
+    geste de fin, s'il est coché."""
+    from session_clips.hearing import is_time
+
+    assert is_time(" Time!") and is_time("taïme") and not is_time("temps") and not is_time("Tim")
+    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    fight = [pose(100), pose(300)]
+    video = frames([(1, touch), (19, fight)])
+    assert [f.end for f in find_fights(video, sounds=[12.0])] == [13.0]
+    assert find_fights(video, sounds=[12.0])[0].check_reason is None
+    # Décoché : le combat va jusqu'au bout de la vidéo.
+    assert find_fights(video, enabled=("fists_touch", "x"), sounds=[12.0])[0].check_reason == REASON_NO_END

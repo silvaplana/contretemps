@@ -33,7 +33,7 @@ Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ran
   vert = début, rouge = fin, gris = décoché), la liste des signes, les combats coupés. Toucher une
   flèche, un signe ou un combat place la vidéo à ce moment.
 - « Signes et sons du club » : cocher les signes de début (Poing levé, Poings touchés en l'air) et
-  de fin (Poignée de main, X au-dessus de la tête) que la découpe prend, pour tout le club (caméra
+  de fin (Poignée de main, X au-dessus de la tête, « Time ! » crié) que la découpe prend, pour tout le club (caméra
   de la salle comprise). « Relancer la découpe » enregistre et recalcule les combats.
 - « Supprimer l'essai » en bas (Annuler 10 secondes).
 

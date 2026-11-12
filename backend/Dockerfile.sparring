@@ -16,7 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # PyTorch en version processeur seul (pas de carte graphique sur le VPS),
 # installé avant Ultralytics pour qu'il ne tire pas la version CUDA (plusieurs Go).
 RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
-    && pip install --no-cache-dir ultralytics opencv-python-headless
+    && pip install --no-cache-dir ultralytics opencv-python-headless faster-whisper
 
 COPY pyproject.toml ./
 COPY src ./src
@@ -26,6 +26,10 @@ RUN pip install --no-cache-dir .
 RUN mkdir -p /app/models && cd /app/models \
     && python -c "from ultralytics import YOLO; YOLO('yolo11n-pose.pt')"
 ENV SPARRING_MODEL=/app/models/yolo11n-pose.pt
+# Le modèle de parole Whisper « base » (environ 150 Mo) pour entendre les
+# « Time ! » (session_clips/hearing.py, accord de Seb du 12/11/2026).
+RUN python -c "from faster_whisper import download_model; download_model('base', output_dir='/app/models/whisper-base')"
+ENV SPARRING_SPEECH_MODEL=/app/models/whisper-base
 
 RUN useradd --create-home appuser \
     && mkdir -p /app/data \

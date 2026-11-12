@@ -32,6 +32,7 @@ import saisons.models  # noqa: F401
 from db import SessionLocal
 from session_clips.cutting import cut_live, cut_session, live_sessions, sessions_to_cut
 from session_clips.detector import detect
+from session_clips.hearing import hear
 from session_clips.lab import read_test, tests_to_read
 from session_clips.service import SessionClips
 from session_clips_contretemps.adapter import AnnuaireSparring
@@ -54,12 +55,12 @@ def run() -> None:
         db = SessionLocal()
         try:
             for session in live_sessions(db):
-                _cut(db, session, lambda: cut_live(db, clips, session, detect))
+                _cut(db, session, lambda: cut_live(db, clips, session, detect, hear))
             for test in tests_to_read(db):
-                _cut(db, test, lambda: read_test(db, clips, test, detect))
+                _cut(db, test, lambda: read_test(db, clips, test, detect, hear))
             if debut <= datetime.now(ZoneInfo("Europe/Paris")).hour < fin:
                 for session in sessions_to_cut(db):
-                    _cut(db, session, lambda: cut_session(db, clips, session, detect))
+                    _cut(db, session, lambda: cut_session(db, clips, session, detect, hear))
         finally:
             db.close()
         time.sleep(INTERVALLE_SECONDES)

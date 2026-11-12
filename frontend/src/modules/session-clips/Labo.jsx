@@ -17,6 +17,7 @@ const SIGNES = [
   { id: 'fists_touch', g: 'deb', l: 'Poings touchés en l’air', court: 'Poings en l’air', d: 'Les deux se touchent les poings, bras vers le haut' },
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },
   { id: 'x', g: 'fin', l: 'X au-dessus de la tête', court: 'X', d: 'Avant-bras croisés en l’air' },
+  { id: 'time', g: 'fin', l: '« Time ! » crié', court: '« Time ! »', d: 'Son : l’entraîneur annonce la fin' },
 ]
 const signe = (id) => SIGNES.find((s) => s.id === id) ?? { id, g: 'fin', l: id, court: id, d: '' }
 
