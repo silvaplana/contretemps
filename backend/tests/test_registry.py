@@ -77,6 +77,16 @@ def test_on_n_eteint_pas_un_module_dont_un_autre_a_besoin(client, db_session):
     assert reponse.status_code == 409 and "Financier" in reponse.json()["detail"]
 
 
+def test_un_club_eteint_choregraphies_presence_et_videos_sans_eteindre_l_assistant(client, db_session):
+    # Alliance Sambo, 12/11/2026 : l'assistant cache déjà les outils d'un
+    # module éteint, il n'a pas besoin que Présence et Chorégraphies restent
+    # allumés.
+    ecole, _ = _ecoles(db_session)
+    for cle in ("choregraphies", "presence", "news", "session_clips", "videos"):
+        assert client.put(f"/ecoles/{ecole.id}/modules/{cle}", json={"enabled": False}).status_code == 200, cle
+    assert _etats(client, ecole.id)["assistant"] is True
+
+
 def test_l_assistant_ne_propose_pas_les_actions_d_un_module_eteint(db_session):
     from app import main
     from registry.activation import set_enabled
