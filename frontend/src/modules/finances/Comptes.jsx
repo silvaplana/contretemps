@@ -736,14 +736,6 @@ export default function Comptes({ onChange }) {
         </div>
         <span className="account-balance">{euros(ledger.total)}</span>
       </div>
-      {/* La Balance d'un geste, aussi dans le volet à côté du bilan (Seb, 10/11). */}
-      <button
-        type="button"
-        className="btn btn--secondary fin-comptes__balance"
-        onClick={() => setVolet("balance")}
-      >
-        Voir la Balance
-      </button>
       {single && shown[0] && fiche === shown[0].id && (
         <FicheCompte
           compte={shown[0]}
@@ -849,6 +841,10 @@ export default function Comptes({ onChange }) {
                   {d.label}
                 </button>
               ))}
+              {/* La Balance d'un geste, à côté de Graphique et Tableau (Seb, 12/11). */}
+              <button className="filter-chip" onClick={() => setVolet("balance")}>
+                Balance
+              </button>
             </div>
           </div>
 
