@@ -224,7 +224,7 @@ function Document({ document }) {
 }
 
 // mediaEnHaut : réglage « En haut de chaque actu : Photo, vidéo » (Seb, 9 novembre).
-export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, onCategorie = null }) {
+export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, onCategorie = null, avecCategorie = true }) {
   const signature = (
     <div className="actu__meta">
       <span>
@@ -245,9 +245,10 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
   // (Seb, 10 novembre) : pas de ligne de texte vide. « … » seulement pour
   // une actu encore vide dans l'éditeur.
   const sansTexte = !actu.texte && (actu.media?.length > 0 || Boolean(actu.document))
-  // Blog avec catégories (§12.6) : le nom en titre, la catégorie en
-  // pastille, qui ouvre cette catégorie.
-  const categories = actu.categories ?? []
+  // Blog avec catégories (§12.6) : le nom en titre, la catégorie en petit
+  // dessous (pas de pastille : trop de place, Seb 12/11), qui ouvre cette
+  // catégorie. Pas répétée dans l'onglet Catégories : le chemin est en haut.
+  const categories = avecCategorie ? (actu.categories ?? []) : []
   const entete = (actu.titre || categories.length > 0) && (
     <>
       {actu.titre && <h3 className="actu__titre">{actu.titre}</h3>}
@@ -258,7 +259,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
           disabled={!onCategorie}
           onClick={() => onCategorie?.(categories[categories.length - 1].id)}
         >
-          # {categories.map((c) => c.nom).join(' › ')}
+          {categories.map((c) => c.nom).join(' › ')}
         </button>
       )}
     </>
@@ -1253,7 +1254,7 @@ export default function Blog({ ecoleId, blog, prenom }) {
           peutRenommer={fil.peutPublier}
           onRenomme={charger}
           rendreCarte={(a) => (
-            <CarteActu actu={a} lieu={lieu} mediaEnHaut={fil.mediaEnHaut} onModifier={modifier} onCategorie={ouvrirCategorie} />
+            <CarteActu actu={a} lieu={lieu} mediaEnHaut={fil.mediaEnHaut} onModifier={modifier} avecCategorie={false} />
           )}
         />
       ) : (

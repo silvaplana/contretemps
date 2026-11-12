@@ -429,8 +429,10 @@ Après Publier, on revient sur le fil, le billet à sa place, « Publiée · Ann
 - un **nom**, obligatoire (« Clé de bras en croix »), en titre de la carte ; il n'y a pas de réglage à
   part : le nom va avec les catégories, il en faut un pour lister les billets d'une catégorie ;
 - une **catégorie**, obligatoire, et au besoin une **sous-catégorie** (un seul niveau, comme les
-  groupes : jamais de 4e niveau). La carte la montre en pastille « # Projections › Balayages » ; la
-  toucher ouvre cette catégorie.
+  groupes : jamais de 4e niveau). Dans le Fil, la carte la montre en petit sous le nom,
+  « Projections › Balayages », sans pastille ni « # » (trop de place, Seb 12 novembre) ; la toucher
+  ouvre cette catégorie. Dans l'onglet Catégories, la carte ne la répète pas : le chemin est en haut,
+  « Projections › Balayages › Harai goshi ».
 
 **Deux onglets en haut, pour tout le monde : Fil | Catégories** (mots fixes, pas de réglage ; Seb,
 12 novembre).

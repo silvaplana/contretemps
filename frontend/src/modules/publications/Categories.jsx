@@ -72,7 +72,7 @@ export default function Categories({ lieu, version, publications, ouverte, onOuv
       <div className="categories">
         <div className="actus__entete">
           <Retour onClick={() => setBillet(null)} />
-          <strong>{a?.titre}</strong>
+          <strong>{a ? [...a.categories.map((c) => c.nom), a.titre].join(' › ') : ''}</strong>
         </div>
         {a && rendreCarte(a)}
       </div>
