@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from db import Base
@@ -83,6 +83,10 @@ class Compte(Base):
     # jamais pendant qu'il est en ligne (l'état "en ligne maintenant",
     # lui, n'est jamais persisté ici : voir connexions.py pour pourquoi).
     derniere_activite_le: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Ordre des onglets de la barre du bas choisi par la personne (Profil ›
+    # Ma barre du bas, spec/core.md §10.4) : les clés des onglets, dans
+    # l'ordre. Vide = l'ordre de l'école. Recopié d'une saison à l'autre.
+    tab_order: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
 
     famille: Mapped[Famille | None] = relationship("Famille", back_populates="comptes")
     # Rôles cumulables (§6.3bis) — ne JAMAIS les lire directement, passer

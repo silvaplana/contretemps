@@ -32,6 +32,8 @@ function versActiveUserEcran(compte) {
     initiales: `${(compte.prenom[0] ?? '').toUpperCase()}${(compte.nom[0] ?? '').toUpperCase()}`,
     email: compte.email,
     telephone: compte.telephone,
+    // Profil › Ma barre du bas : ordre choisi des onglets, null = celui de l'école.
+    tabOrder: compte.tab_order ?? null,
   }
 }
 

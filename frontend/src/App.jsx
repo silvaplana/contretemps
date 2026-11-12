@@ -306,6 +306,13 @@ function App() {
     setCompteReel((u) => ({ ...u, ...patch }))
   }
 
+  // Profil › Ma barre du bas : la barre suit tout de suite, le serveur garde
+  // l'ordre sur la fiche ([] ou null = l'ordre de l'école).
+  async function rangerOnglets(tabOrder) {
+    setCompteReel((u) => ({ ...u, tabOrder: tabOrder?.length ? tabOrder : null }))
+    await comptesApi.rangerOnglets(activeUser.id, tabOrder ?? [])
+  }
+
   function logout() {
     saisonApi.consulterSaison(null)
     setCompteReel(null)
@@ -1328,6 +1335,9 @@ function App() {
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
             onOpenNotesFrais={() => setActiveTab('notes-frais')}
             onUpdateUser={mettreAJourActiveUser}
+            onglets={tabs}
+            ongletsEteints={modulesEteints}
+            onRangerOnglets={rangerOnglets}
             onChangerEcole={isSuperuser(activeUser) ? changerEcole : undefined}
           />
         )}

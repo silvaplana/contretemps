@@ -300,6 +300,7 @@ class GestionSaisons:
                 prenom=ancien.prenom,
                 telephone=ancien.telephone,
                 payer_email=ancien.payer_email,
+                tab_order=ancien.tab_order,
             )
             nouveau.definir_emails(ancien.emails)
             nouveau.roles = [RoleCompte(role=role) for role in roles if role not in r.ROLES_EN_GROUPE]

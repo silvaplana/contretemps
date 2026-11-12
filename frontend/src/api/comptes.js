@@ -50,6 +50,17 @@ export async function modifier(compteId, patch) {
   return reponse.json()
 }
 
+// Profil › Ma barre du bas (spec/core.md §10.4) : clés des onglets dans
+// l'ordre voulu ; [] remet l'ordre de l'école.
+export async function rangerOnglets(compteId, tabOrder) {
+  const reponse = await fetch(`${BASE_URL}/comptes/${compteId}/tab-order`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tab_order: tabOrder }),
+  })
+  if (!reponse.ok) throw new Error(`Requête échouée (${reponse.status})`)
+}
+
 // Saisons (spec §2.6) : la fiche de la même personne dans la saison
 // courante — la même si elle en fait déjà partie, sa nouvelle fiche si elle
 // a été recopiée dans une saison créée depuis, `null` si elle n'y a pas été

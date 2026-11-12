@@ -11,7 +11,7 @@ from db import get_db
 from . import rbac, roles
 from .comptes import Comptes
 from .models import Compte
-from .schemas import CompteModification, CompteSortie
+from .schemas import CompteModification, CompteSortie, TabOrder
 
 
 class ComptesReceiver:
@@ -38,6 +38,9 @@ class ComptesReceiver:
         # Reprise de session (saisons, §2.6) : la fiche de la même personne
         # dans la saison courante, pour basculer sans reconnexion.
         self.app.get("/comptes/{compte_id}/fiche-courante")(self.fiche_courante)
+        # Profil › Ma barre du bas (spec/core.md §10.4) : la personne range
+        # ses propres onglets.
+        self.app.put("/comptes/{compte_id}/tab-order", response_model=CompteSortie)(self.set_tab_order)
 
     def lister(self, ecole_id: int, role: str, db: Session = Depends(get_db)):
         """Utilisé par Admin > Conversations pour proposer les vrais
@@ -94,6 +97,24 @@ class ComptesReceiver:
             raise HTTPException(status_code=422, detail=str(erreur)) from erreur
         if compte is None:
             raise HTTPException(status_code=404, detail="Compte introuvable")
+        return compte
+
+    def set_tab_order(
+        self,
+        compte_id: int,
+        donnees: TabOrder,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """Seulement sa propre fiche (ou un autre profil de son email).
+        Les clés ne sont pas vérifiées : l'écran ignore celles qu'il ne
+        connaît pas et ajoute à la fin les onglets absents."""
+        rbac.meme_personne(appelant, compte_id, db)
+        compte = self.client.get(db, compte_id)
+        if compte is None:
+            raise HTTPException(status_code=404, detail="Compte introuvable")
+        compte.tab_order = donnees.tab_order or None
+        db.commit()
         return compte
 
     def fiche_courante(self, compte_id: int, db: Session = Depends(get_db)):
