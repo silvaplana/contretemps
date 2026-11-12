@@ -49,8 +49,9 @@ export function useSuppressionEssai(montrer, rafraichir) {
   return [caches, supprimer]
 }
 
-export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOpen }) {
+export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOpen, onSupprimer }) {
   const [liste, setListe] = useState(null)
+  const [renomme, setRenomme] = useState(null) // l'essai au crayon
   const champ = useRef(null)
   const camera = useRef(null)
   useEffect(() => {
@@ -106,21 +107,43 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
       <p className="sc-meta">Filmée ou prise dans la Galerie, la vidéo est lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
       {visibles?.length === 0 && <p className="sc-vide">Aucun essai pour l’instant.</p>}
       {visibles?.map((e) => (
-        <button
-          key={e.id}
-          type="button"
-          className="sc-carte"
-          aria-disabled={e.status !== 'ready'}
-          onClick={() => e.status === 'ready' && onOpen(e.id)}
-        >
-          <span className="sc-carte__info">
-            <strong>{e.title || 'Essai'}</strong>
-            <span className="sc-meta">
-              <EtatEssai e={e} />
+        <div key={e.id} className="sc-essai">
+          <button
+            type="button"
+            className="sc-essai__ouvrir"
+            aria-disabled={e.status !== 'ready'}
+            onClick={() => e.status === 'ready' && onOpen(e.id)}
+          >
+            <span className="sc-vignette sc-vignette--petite">
+              {e.video?.poster ? <img src={e.video.poster} alt="" /> : <Icon name="video" size={20} />}
+              {e.video?.dureeSecondes > 0 && <span className="sc-vignette__duree">{mmss(e.video.dureeSecondes)}</span>}
             </span>
-          </span>
-        </button>
+            <span>
+              <strong>{e.title || 'Essai'}</strong>
+              <span className="sc-meta">
+                <EtatEssai e={e} />
+              </span>
+            </span>
+          </button>
+          <button type="button" className="icon-btn" aria-label="Renommer l’essai" onClick={() => setRenomme(e)}>
+            <Icon name="edit" size={20} />
+          </button>
+          <button type="button" className="icon-btn" aria-label="Supprimer l’essai" onClick={() => onSupprimer(e.id)}>
+            <Icon name="trash" size={20} />
+          </button>
+        </div>
       ))}
+      {renomme && (
+        <RenommerEssai
+          essai={renomme}
+          montrer={montrer}
+          onClose={() => setRenomme(null)}
+          onRenomme={() => {
+            setRenomme(null)
+            rafraichir()
+          }}
+        />
+      )}
     </>
   )
 }
@@ -143,7 +166,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
   const [enCours, setEnCours] = useState(false)
   const [duree, setDuree] = useState(null)
   const [regarde, setRegarde] = useState(null) // le combat ouvert
-  const [nom, setNom] = useState(null) // le nom en cours de modification
+  const [renomme, setRenomme] = useState(false) // le crayon
   const lecteur = useRef(null)
   useEffect(() => {
     api.essaiLabo(essaiId).then(setE, (err) => montrer(err.message))
@@ -161,17 +184,6 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     v.currentTime = t
     v.scrollIntoView?.({ behavior: 'smooth', block: 'center' }) // la vidéo est en haut de l'écran
     v.play?.().catch(() => {})
-  }
-
-  async function renommer() {
-    try {
-      const r = await api.renommerEssai(e.id, nom)
-      setE((x) => ({ ...x, title: r.title }))
-      setNom(null)
-      rafraichir()
-    } catch (err) {
-      montrer(err.message)
-    }
   }
 
   function cocher(id) {
@@ -203,7 +215,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
         </button>
         <strong className="sc__titre">{e?.title ?? ''}</strong>
         {e && (
-          <button type="button" className="icon-btn" onClick={() => setNom(e.title)} aria-label="Renommer l’essai">
+          <button type="button" className="icon-btn" onClick={() => setRenomme(true)} aria-label="Renommer l’essai">
             <Icon name="edit" size={20} />
           </button>
         )}
@@ -286,25 +298,49 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           <LecteurCombat url={e.video.url} combat={regarde} />
         </Modal>
       )}
-      {nom !== null && (
-        <Modal
-          title="Renommer l’essai"
-          onClose={() => setNom(null)}
-          footer={
-            <div className="video-upload-form__actions">
-              <button type="button" className="btn btn--secondary" onClick={() => setNom(null)}>
-                Annuler
-              </button>
-              <button type="button" className="btn btn--primary" disabled={!nom.trim()} onClick={renommer}>
-                Enregistrer
-              </button>
-            </div>
-          }
-        >
-          <input className="sc-champ" value={nom} autoFocus maxLength={150} onChange={(ev) => setNom(ev.target.value)} />
-        </Modal>
+      {renomme && (
+        <RenommerEssai
+          essai={e}
+          montrer={montrer}
+          onClose={() => setRenomme(false)}
+          onRenomme={(r) => {
+            setRenomme(false)
+            setE((x) => ({ ...x, title: r.title }))
+            rafraichir()
+          }}
+        />
       )}
     </div>
+  )
+}
+
+// Le crayon : renommer un essai (Seb, 12/11).
+function RenommerEssai({ essai, montrer, onClose, onRenomme }) {
+  const [nom, setNom] = useState(essai.title)
+  async function enregistrer() {
+    try {
+      onRenomme(await api.renommerEssai(essai.id, nom))
+    } catch (err) {
+      montrer(err.message)
+    }
+  }
+  return (
+    <Modal
+      title="Renommer l’essai"
+      onClose={onClose}
+      footer={
+        <div className="video-upload-form__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Annuler
+          </button>
+          <button type="button" className="btn btn--primary" disabled={!nom.trim()} onClick={enregistrer}>
+            Enregistrer
+          </button>
+        </div>
+      }
+    >
+      <input className="sc-champ" value={nom} autoFocus maxLength={150} onChange={(ev) => setNom(ev.target.value)} />
+    </Modal>
   )
 }
 

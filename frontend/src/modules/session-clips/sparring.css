@@ -831,3 +831,44 @@
   color: var(--text);
   font-size: 17px;
 }
+
+/* Un essai de la liste du Labo : vignette, nom, état, crayon et poubelle */
+
+.sc-essai {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card-bg);
+}
+
+.sc-essai__ouvrir {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sc-essai__ouvrir strong {
+  display: block;
+  line-height: 1.25;
+}
+
+.sc-essai__ouvrir[aria-disabled='true'] {
+  cursor: default;
+}
+
+.sc-vignette--petite {
+  width: 80px;
+}

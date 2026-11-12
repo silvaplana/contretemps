@@ -402,7 +402,8 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
 
 - **Fights › Labo** : bouton principal **« Filmer une vidéo »** (l'appareil photo, pour des essais en
   direct ; Seb 12/11), puis **« Importer une vidéo »** (la Galerie du téléphone), puis la
-  liste des essais (« Combat du 11/11 à 20:10 », tiré de la date du fichier) avec leur état : envoi
+  liste des essais (« Combat du 11/11 à 20:10 », tiré de la date du fichier ; petite vignette avec la durée, crayon pour renommer, poubelle pour
+  supprimer avec Annuler 10 s) avec leur état : envoi
   en %, « Lecture des signes… », « Vidéo illisible ». La vidéo part par l'envoi par blocs du module
   `videos` ; le worker la lit dès qu'elle est arrivée, à toute heure.
 - **Un essai ouvert** (← revient au Labo) : la vidéo ; le **graphe** des signes repérés, le temps en
