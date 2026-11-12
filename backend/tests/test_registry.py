@@ -49,7 +49,7 @@ def _ecoles(db):
 
 def test_tous_les_modules_sont_allumes_par_defaut(client, db_session):
     ecole, _ = _ecoles(db_session)
-    assert _etats(client, ecole.id) == {m.key: True for m in MODULES}
+    assert _etats(client, ecole.id) == {m.key: True for m in MODULES if not m.technical}
 
 
 def test_eteindre_n_eteint_que_cette_ecole_et_rallumer_retrouve_tout(client, db_session):
@@ -82,9 +82,17 @@ def test_un_club_eteint_choregraphies_presence_et_videos_sans_eteindre_l_assista
     # module éteint, il n'a pas besoin que Présence et Chorégraphies restent
     # allumés.
     ecole, _ = _ecoles(db_session)
-    for cle in ("choregraphies", "presence", "news", "session_clips", "videos"):
+    for cle in ("choregraphies", "presence", "news", "session_clips"):
         assert client.put(f"/ecoles/{ecole.id}/modules/{cle}", json={"enabled": False}).status_code == 200, cle
     assert _etats(client, ecole.id)["assistant"] is True
+
+
+def test_videos_est_technique_toujours_allume_et_absent_de_fonctionnalites(client, db_session):
+    # Seb, 12/11/2026 : Vidéos n'a ni onglet ni bouton, il sert aux Actus,
+    # Fights et Chorégraphies ; on ne le montre pas et on ne l'éteint pas.
+    ecole, _ = _ecoles(db_session)
+    assert "videos" not in _etats(client, ecole.id)
+    assert client.put(f"/ecoles/{ecole.id}/modules/videos", json={"enabled": False}).status_code == 404
 
 
 def test_l_assistant_ne_propose_pas_les_actions_d_un_module_eteint(db_session):

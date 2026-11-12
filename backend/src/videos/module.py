@@ -17,4 +17,4 @@ def mount(app, core) -> None:
     DOSSIER_VIDEOS_LIVE.mkdir(parents=True, exist_ok=True)
 
 
-MODULE = Module(key="videos", label="Vidéos", mount=mount)
+MODULE = Module(key="videos", label="Vidéos", mount=mount, technical=True)
