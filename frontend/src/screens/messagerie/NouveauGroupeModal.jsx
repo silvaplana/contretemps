@@ -8,6 +8,7 @@ import { initialiserPresence } from '../../utils/presenceEnLigne.js'
 import ChoixMembresScreen from './ChoixMembresScreen.jsx'
 import { personnesDuGroupe } from './personnes.js'
 import QuiEstDansLeGroupeScreen from './QuiEstDansLeGroupeScreen.jsx'
+import { mots } from '../../api/mots.js'
 
 const TONE_PAR_TYPE = { admin: 'danger', professeur: 'success', eleve: 'neutral', cours: 'neutral' }
 
@@ -25,7 +26,9 @@ const SEGMENTS = [
 const CHOISIR = {
   admin: 'Choisir des admins',
   professeur: 'Choisir des profs',
-  eleve: 'Choisir des élèves',
+  get eleve() {
+    return `Choisir des ${mots().eleves}`
+  },
   cours: 'Choisir des cours',
 }
 

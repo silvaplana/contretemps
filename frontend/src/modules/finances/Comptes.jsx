@@ -23,6 +23,7 @@ import "./compta/compta.css";
 import { CurveChart } from "./CurveChart.jsx";
 import Icon from "../../components/Icon.jsx";
 import "./finances.css";
+import { mots } from '../../api/mots.js'
 
 const DAY_MS = 24 * 3600 * 1000;
 // Choix memorises sur cet appareil : comptes affiches, graphique ou tableau.
@@ -318,7 +319,7 @@ function SeasonsOverlay({ series, rows, filtering, seasonsData }) {
   if (seasons.length === 0)
     return (
       <p className="balance-chart-empty">
-        Aucune saison : créez-la d’abord dans Admin › École.
+        Aucune saison : créez-la d’abord dans Admin › {mots().Ecole}.
       </p>
     );
   // Sans filtre : le solde. Avec un filtre : le cumul des operations

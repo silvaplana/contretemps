@@ -1,12 +1,15 @@
 // Libellé affichable d'un rôle (voir spec/SPEC.md §2, §4) — partagé entre
 // Header (sélecteur famille) et ProfilScreen (liste des profils du foyer).
+import { mots } from '../api/mots.js'
 export const ROLE_LABEL = {
   admin: 'Admin',
   // Libellé affiché du rôle `owner` (décision utilisateur du 2026-09-21) :
   // le nom interne reste `owner` dans le code et la base.
   owner: 'Administrateur principal',
   professeur: 'Professeur',
-  eleve: 'Élève',
+  get eleve() {
+    return mots().Eleve
+  },
   // Toujours un admin (module notes de frais §6) : un droit en plus, celui
   // du tableau des administrateurs (🔒 Accès au Financier). Pas « Trésorier » :
   // Trésorier·e n'est qu'un titre du Bureau, sans droit (spec/core.md §5).

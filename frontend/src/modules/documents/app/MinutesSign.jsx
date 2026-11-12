@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { telecharger } from './blocks.js'
+import { mots } from '../../../api/mots.js'
 
 // Onglet Diffuser d'un procès-verbal d'AG (proces-verbal-ag.md §1, étapes 5
 // à 8). Validé : « Qui doit signer ? » (le bureau, présidence et secrétariat
@@ -80,7 +81,7 @@ export default function MinutesSign({ file, api, onToast, onChanger }) {
     return (
       <div className="ag-send">
         <p className="ag-pour">
-          Signatures : <strong>{etat.signed} sur {etat.signers.length}</strong>. Chaque signature est envoyée à l’adresse de contact de l’école, avec le PDF à jour.
+          Signatures : <strong>{etat.signed} sur {etat.signers.length}</strong>. Chaque signature est envoyée à l’adresse de contact {mots().deLEcole}, avec le PDF à jour.
         </p>
         <div className="em-liste">
           {etat.signers.map((s) => (
@@ -122,7 +123,7 @@ export default function MinutesSign({ file, api, onToast, onChanger }) {
     <div className="ag-send">
       <p className="dx-q">Qui doit signer ?</p>
       {etat.board.length === 0 && (
-        <p className="af-hint">Personne n’a de fonction au bureau : cochez-les dans École › Administrateurs, colonne Bureau, ou ajoutez une personne.</p>
+        <p className="af-hint">Personne n’a de fonction au bureau : cochez-les dans {mots().Ecole} › Administrateurs, colonne Bureau, ou ajoutez une personne.</p>
       )}
       <div className="em-liste">
         {gens.map((g) => (

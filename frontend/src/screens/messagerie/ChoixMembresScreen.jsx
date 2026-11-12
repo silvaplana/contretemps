@@ -2,11 +2,14 @@ import { useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import { normaliserRecherche } from '../../utils/recherche.js'
 import { trierParNom } from './personnes.js'
+import { mots } from '../../api/mots.js'
 
 const TITRES = {
   admin: 'Choisir des admins',
   professeur: 'Choisir des profs',
-  eleve: 'Choisir des élèves',
+  get eleve() {
+    return `Choisir des ${mots().eleves}`
+  },
   cours: 'Choisir des cours',
 }
 

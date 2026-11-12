@@ -3,8 +3,16 @@
 // pour chaque saison l'ordre et la case Afficher ; ici, ce qu'est chaque
 // colonne. « field:<id> » : un champ de la fiche (ChampsMembres.jsx).
 
+import { mots } from '../api/mots.js'
 export const COLONNES = [
-  { key: 'nom', label: 'Élève', nature: 'Saisi', verrouillee: true },
+  {
+    key: 'nom',
+    get label() {
+      return mots().Eleve
+    },
+    nature: 'Saisi',
+    verrouillee: true,
+  },
   { key: 'cours', label: 'Cours suivis', nature: 'Saisi' },
   { key: 'paiement', label: 'Paiement', nature: 'Calculé', detail: 'statut et montants' },
   { key: 'commentaire', label: 'Commentaire', nature: 'Saisi' },

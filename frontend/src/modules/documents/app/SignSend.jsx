@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { mots } from '../../../api/mots.js'
 
 // Document à signer, « 2. Diffuser » (signature-documents.md §2.3, maquette
 // v3) : « Faire signer à qui ? ». Une puce par fonction du bureau, les
@@ -117,7 +118,7 @@ export default function SignSend({ file, api, onToast, onSent }) {
                 key={b.function}
                 type="button"
                 className="ag-groupe sg-vide"
-                onClick={() => onToast(`Personne n’est ${b.function} : cochez-le dans École › Administrateurs, colonne Bureau.`)}
+                onClick={() => onToast(`Personne n’est ${b.function} : cochez-le dans ${mots().Ecole} › Administrateurs, colonne Bureau.`)}
               >
                 {b.function}
               </button>
@@ -237,7 +238,7 @@ export default function SignSend({ file, api, onToast, onSent }) {
               <button type="button" onClick={() => setAutre({ name: q, email: '' })}>
                 <span className="dx-meta">
                   <span className="dx-n">Ajouter « {q} »</span>
-                  <span className="dx-s">hors de l’école, avec son adresse email</span>
+                  <span className="dx-s">hors {mots().deLEcole}, avec son adresse email</span>
                 </span>
               </button>
             </div>

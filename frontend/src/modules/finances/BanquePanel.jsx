@@ -5,6 +5,7 @@
 // (?banque=ok, voir Comptes.jsx).
 import { useEffect, useState } from 'react'
 import * as api from './api.js'
+import { mots } from '../../api/mots.js'
 
 const { dateFr } = api
 
@@ -49,7 +50,7 @@ function ChoixBanque({ onAnnuler }) {
 
   return (
     <div className="fin-banque__choix">
-      <label className="fin-banque__label" htmlFor="fin-banque-recherche">Banque de l’école</label>
+      <label className="fin-banque__label" htmlFor="fin-banque-recherche">Banque {mots().deLEcole}</label>
       <input
         id="fin-banque-recherche"
         className="fin-banque__input"

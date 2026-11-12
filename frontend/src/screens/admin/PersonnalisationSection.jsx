@@ -8,6 +8,7 @@ import { isOwner, isSuperuser } from '../../data/roles.js'
 import { DOMAINE_ECOLES, normaliserAdresse } from '../../utils/adresseEcole.js'
 import FonctionnalitesSection from './FonctionnalitesSection.jsx'
 import VocabulaireSection from './VocabulaireSection.jsx'
+import { mots } from '../../api/mots.js'
 
 const NOM_CONSEILLE = 12
 const LIBELLE_DETOURAGE = { aucun: 'Aucun', simple: 'Simple', ia: 'Par IA' }
@@ -122,7 +123,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
     if (
       adresseChangee &&
       !window.confirm(
-        'Changer l’adresse oblige les élèves à réinstaller l’appli. L’ancienne adresse redirigera vers la nouvelle pendant 6 mois. Continuer ?',
+        `Changer l’adresse oblige les ${mots().eleves} à réinstaller l’appli. L’ancienne adresse redirigera vers la nouvelle pendant 6 mois. Continuer ?`,
       )
     ) {
       return
@@ -250,7 +251,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
 
           <p className="perso__legende">
             <strong>Aperçu de l’écran d’accueil du téléphone</strong> : une fois l’appli installée,
-            l’icône est le logo de l’école et le nom est celui de l’école.
+            l’icône est le logo {mots().deLEcole} et le nom est celui {mots().deLEcole}.
           </p>
           <div className="perso__accueil">
             {['Météo', null, 'Photos', 'Messages'].map((nom, i) =>
@@ -304,7 +305,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
           )}
           {adresseChangee && (
             <p className="perso__avertissement">
-              Changer l’adresse oblige les élèves à réinstaller l’appli. L’ancienne redirigera vers la
+              Changer l’adresse oblige les {mots().eleves} à réinstaller l’appli. L’ancienne redirigera vers la
               nouvelle pendant 6 mois.
             </p>
           )}
@@ -388,7 +389,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
               : 'Par défaut : le logo actuel de Contretemps. Il sert aussi d’icône de l’appli installée, posé sur la couleur de fond.'}
           </p>
 
-          <span className="perso__label">Nom de l’école</span>
+          <span className="perso__label">Nom {mots().deLEcole}</span>
           <div className="segmented perso__segmente">
             {['texte', 'image'].map((mode) => (
               <button
@@ -486,7 +487,7 @@ export default function PersonnalisationSection({ ecole, activeUser, modules, on
             libelle="Textes de l’appli"
             options={POLICES}
             valeur={champs.police}
-            texte="Les cours de la semaine et les messages de l’école."
+            texte={`Les cours de la semaine et les messages ${mots().deLEcole}.`}
             onChoisir={(cle) => changer('police', cle)}
           />
 
@@ -691,7 +692,7 @@ function ImageEnAttente({ ecoleId, brouillon, couleurFond, enCours, erreur, onDe
   const proposee = brouillon.couleurFondProposee
   return (
     <Modal
-      title={brouillon.type === 'logo' ? 'Nouveau logo' : 'Nom de l’école en image'}
+      title={brouillon.type === 'logo' ? 'Nouveau logo' : `Nom ${mots().deLEcole} en image`}
       onClose={onAnnuler}
       footer={
         <div className="perso__actions">

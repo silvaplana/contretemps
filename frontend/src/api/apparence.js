@@ -228,3 +228,8 @@ export async function chargerEcole(ecoleId) {
 export function mettreAJour(apparence) {
   definir(apparence)
 }
+
+// L'apparence en cours, hors d'un composant (textes calculés par une fonction).
+export function apparenceActuelle() {
+  return actuelle
+}

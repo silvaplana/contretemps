@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import * as saisonsApi from '../../api/saisons.js'
 import Icon from '../../components/Icon.jsx'
+import { mots } from '../../api/mots.js'
 
 // « Créer une saison » en un écran (spec/modules/saisons.md §3, maquette
 // « Créer une saison ») : tout est prérempli, un bouton. « Changer… » ouvre
@@ -20,7 +21,16 @@ const SOCLE = [
 // être cochée d'abord (on ne recopie pas des cours sans leurs profs, ni des
 // élèves sans leurs cours).
 const MORCEAUX = [
-  { cle: 'eleves', titre: 'Les élèves', le: 'les élèves', besoin: 'cours' },
+  {
+    cle: 'eleves',
+    get titre() {
+      return `Les ${mots().eleves}`
+    },
+    get le() {
+      return `les ${mots().eleves}`
+    },
+    besoin: 'cours',
+  },
   { cle: 'profs', titre: 'Les profs', le: 'les profs' },
   { cle: 'cours', titre: 'Les cours', le: 'les cours', besoin: 'profs' },
   { cle: 'documents', titre: 'Les documents' },
@@ -104,7 +114,7 @@ export default function CreerSaison({ ecoleId, courante, documents, onCreer, onC
 
   function libelleCase(cle) {
     const n = contenu?.[cle] ?? 0
-    if (cle === 'eleves') return `Recopier ${n > 1 ? 'les ' : 'l’'}${pluriel(n, 'élève')} de ${courante.nom}, sans leurs paiements`
+    if (cle === 'eleves') return `Recopier ${n > 1 ? 'les ' : mots().lEleve.slice(0, -mots().eleve.length)}${pluriel(n, mots().eleve)} de ${courante.nom}, sans leurs paiements`
     if (cle === 'profs') return `Recopier ${n > 1 ? 'les ' : 'le '}${pluriel(n, 'professeur')} de ${courante.nom}`
     if (cle === 'cours') return `Recopier ${n > 1 ? 'les ' : 'le '}${n} cours de ${courante.nom}, avec leurs horaires et leurs profs`
     return 'Recopier le dossier de la saison'
@@ -152,7 +162,7 @@ export default function CreerSaison({ ecoleId, courante, documents, onCreer, onC
   let retour = onClose
   let corps
   if (ecran === 'structure') {
-    titre = 'Structure : les élèves'
+    titre = `Structure : les ${mots().eleves}`
     retour = () => setEcran('eleves')
     corps = (
       <>
@@ -267,7 +277,7 @@ export default function CreerSaison({ ecoleId, courante, documents, onCreer, onC
         <div className="creer-saison__lignes">
           <div className="creer-saison__ligne">
             <span>
-              <strong>L’école</strong>
+              <strong>{mots().LEcole}</strong>
               <span>Comme {courante.nom} · recopiés</span>
             </span>
           </div>

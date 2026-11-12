@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import * as champsApi from '../../api/champs.js'
 import Modal from '../../components/Modal.jsx'
 import { ordonner } from '../../data/colonnesEleves.js'
+import { mots } from '../../api/mots.js'
 
 // L'affichage dans Admin (spec/core.md §4.3, niveau 2 ; maquette « Champs des
 // membres ») : les colonnes du tableau des élèves, dans l'ordre, chacune
@@ -94,7 +95,7 @@ export default function AffichageAdmin({ ecoleId, champs, onRetour, onClose }) {
           ← La fiche d’un membre
         </button>
         <p className="champs__note champs__note--haut">
-          Les colonnes du tableau des élèves, dans l’ordre. {affichees} affichées.
+          Les colonnes du tableau des {mots().eleves}, dans l’ordre. {affichees} affichées.
         </p>
         {erreur && <p className="login-screen__erreur">{erreur}</p>}
         <div className="champs__entete affichage__entete">

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Icon from '../../components/Icon.jsx'
 import * as api from './api.js'
+import { mots } from '../../api/mots.js'
 
 // La connexion HelloAsso de l'école (spec/modules/helloasso.md §2, maquette
 // « Connexion HelloAsso »), sur la ligne HelloAsso de Fonctionnalités : une
@@ -170,7 +171,7 @@ function Connecte({ ecoleId, etat, onChangerCles, onDeconnecter }) {
             ))}
           </ul>
           <p className="creer-saison__note">
-            Le formulaire de chaque saison se choisit en créant la saison, à l’étape des élèves.
+            Le formulaire de chaque saison se choisit en créant la saison, à l’étape des {mots().eleves}.
           </p>
         </>
       )}
