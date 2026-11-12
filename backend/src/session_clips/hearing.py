@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import re
+import subprocess
 import traceback
 import unicodedata
 from pathlib import Path
@@ -49,6 +50,22 @@ def hear(video_path: Path) -> list[tuple[str, float]]:
         return []
 
 
+def _audio(video_path: Path):
+    """Le son en 16 kHz mono, lu par ffmpeg : le décodeur de faster-whisper
+    (PyAV) ne marchait pas dans l'image (« open() got an unexpected keyword
+    argument 'metadata_errors' », 12/11), et aucun son n'était jamais entendu."""
+    import imageio_ffmpeg
+    import numpy as np
+
+    raw = subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-nostdin", "-loglevel", "error", "-i", str(video_path),
+         "-vn", "-ac", "1", "-ar", "16000", "-f", "s16le", "-"],
+        capture_output=True,
+        check=True,
+    ).stdout
+    return np.frombuffer(raw, np.int16).astype(np.float32) / 32768.0
+
+
 def _hear(video_path: Path) -> list[tuple[str, float]]:
     global _model
     from faster_whisper import WhisperModel
@@ -56,7 +73,7 @@ def _hear(video_path: Path) -> list[tuple[str, float]]:
     if _model is None:
         _model = WhisperModel(MODEL, device="cpu", compute_type="int8")
     segments, _ = _model.transcribe(
-        str(video_path),
+        _audio(video_path),
         word_timestamps=True,
         # En anglais : un « Go ! » seul, deviné dans une autre langue, sortait
         # en d'autres lettres (Seb, 12/11 : rien entendu dans « Go time »).
