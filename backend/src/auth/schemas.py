@@ -28,6 +28,8 @@ class CompteConnecte(BaseModel):
     email: str | None
     emails: list[str] = Field(default_factory=list)
     telephone: str | None = None
+    # Ordre choisi des onglets du bas (Profil › Ma barre du bas) ; vide = celui de l'école.
+    tab_order: list[str] | None = None
 
     model_config = {"from_attributes": True}
 

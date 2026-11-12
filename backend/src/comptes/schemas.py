@@ -15,6 +15,12 @@ class CompteModification(BaseModel):
     payer_email: str | None = None
 
 
+class TabOrder(BaseModel):
+    # Profil › Ma barre du bas (spec/core.md §10.4) : clés des onglets dans
+    # l'ordre voulu ; None ou [] = remettre l'ordre de l'école.
+    tab_order: list[str] | None = Field(default=None, max_length=30)
+
+
 class CompteSortie(BaseModel):
     id: int
     # Vides pour le Superuser seulement (compte hors école, §2.5).
@@ -33,5 +39,7 @@ class CompteSortie(BaseModel):
     emails: list[str] = Field(default_factory=list)
     telephone: str | None
     payer_email: str | None = None
+    # Ordre choisi des onglets du bas (Profil › Ma barre du bas) ; vide = celui de l'école.
+    tab_order: list[str] | None = None
 
     model_config = {"from_attributes": True}

@@ -1,6 +1,7 @@
 Barre du bas : Admin, puis les onglets des modules allumés (Présence, Chorégraphies, Messages, Docs,
 Financier, Fights), Supervision, Profil. Chacun ne voit que les onglets de ses rôles. Sur téléphone,
 les derniers passent sous « Plus » (⋯) en bas à droite ; le badge des messages non lus s'y ajoute.
+Chacun peut ranger ses onglets dans Profil › Ma barre du bas.
 
 En-tête
 - Bulle à gauche du badge : ouvre ou ferme l'assistant (absente si le module Assistant est éteint).
@@ -64,7 +65,8 @@ Admin › Cours
   « Créer aussi la conversation de groupe de ce cours ».
 
 Profil : identité (email et téléphone modifiables au crayon par un admin, sinon via Admin), Ma
-famille, Mes heures (profs), Mes notes de frais, Notifications, Changer mon mot de passe, Mon RIB,
+famille, Mes heures (profs), Mes notes de frais, Notifications, Ma barre du bas (flèches ↑ ↓ pour
+ranger ses onglets, « Remettre l'ordre de l'école »), Changer mon mot de passe, Mon RIB,
 Changer d'école (Super User), Se déconnecter.
 
 Supervision (Super User seulement) : vide pour l'instant.

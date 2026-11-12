@@ -83,6 +83,7 @@ def test_sans_duplication_seuls_les_admins_sont_recopies(client, db_session, eco
     e = ecole_en_cours
     Comptes().ajouter_role(db_session, e["owner"], roles.TRESORIER)
     board.set_functions(db_session, e["owner"], ["president"])
+    e["owner"].tab_order = ["financier", "admin"]
     db_session.commit()
     reponse = _creer(client, e["ecole"].id)
     assert reponse.status_code == 201
@@ -98,6 +99,8 @@ def test_sans_duplication_seuls_les_admins_sont_recopies(client, db_session, eco
     assert fiches[("Julia", ("admin", "owner", "tresorier"))].compte_precedent_id == e["owner"].id
     # Les fonctions du bureau suivent la fiche (spec/core.md §5.1).
     assert board.functions_of(db_session, fiches[("Julia", ("admin", "owner", "tresorier"))]) == ["president"]
+    # L'ordre des onglets du bas aussi (Profil › Ma barre du bas).
+    assert fiches[("Julia", ("admin", "owner", "tresorier"))].tab_order == ["financier", "admin"]
     assert client.get("/cours", params={"ecole_id": e["ecole"].id}).json() == []
     # L'ancienne saison est désormais en lecture seule.
     ancienne = {"X-Saison-Id": str(e["ancienne"])}

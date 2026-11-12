@@ -595,7 +595,7 @@ Appli Android native : Firebase Cloud Messaging viendra si elle est un jour dist
 ### 10.3 Profil
 
 Identité de la personne connectée, autres profils de la famille (bascule, §6.3), paramètres
-(notifications, changer mon mot de passe), lignes ajoutées par les modules (« Mes notes de frais »,
+(notifications, ma barre du bas, changer mon mot de passe), lignes ajoutées par les modules (« Mes notes de frais »,
 « Mes heures »), bouton **Se déconnecter**.
 
 ### 10.4 Navigation et style
@@ -604,6 +604,13 @@ Identité de la personne connectée, autres profils de la famille (bascule, §6.
   liste des modules, §11.2) ; les onglets d'un écran = ses sous-fonctions ; jamais de 4e niveau.
   Quand les onglets ne tiennent pas, les derniers passent sous « Plus » (⋯) en bas à droite, menu
   modal au-dessus de tout ; l'onglet actif caché allume « Plus », les pastilles s'y additionnent.
+  **Chacun range ses onglets** (Seb, 12 novembre 2026) : Profil › Ma barre du bas, une ligne par
+  onglet avec ↑ ↓ ; les premiers vont dans la barre, la suite sous « Plus » (la fenêtre montre où
+  la barre s'arrête sur cet appareil). Chaque flèche enregistre tout de suite, sur la fiche
+  (`comptes.tab_order`, recopié d'une saison à l'autre), donc l'ordre suit la personne sur tous ses
+  appareils. Sans choix, ou après « Remettre l'ordre de l'école », c'est l'ordre de l'école ; un
+  onglet nouveau (module allumé depuis) s'ajoute à la fin. Pas d'ordre par rôle fixé par l'admin :
+  les rôles se cumulent, un ordre par rôle ne dirait pas lequel l'emporte.
   Le bandeau du haut est épuré : ← et le nom quand un fichier est ouvert, une place par onglet
   pour ses boutons.
 - **Ancienne saison** : bandeau « lecture seule » avec « Revenir à la saison courante », boutons
