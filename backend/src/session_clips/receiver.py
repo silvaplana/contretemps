@@ -14,11 +14,17 @@ from db import get_db
 from videos.schemas import VideoSortie
 from videos.videos import DecalageInvalide
 
-from . import camera
-from .models import Clip, ClipSession, Piece
+from . import camera, lab
+from .models import Clip, ClipSession, LabTest, Piece
 from .ports import Member
 from .schemas import (
     CameraOut,
+    ClubSignsBody,
+    LabFightOut,
+    LabSignOut,
+    LabTestCreate,
+    LabTestDetail,
+    LabTestOut,
     CameraStart,
     PieceOpen,
     PieceOut,
@@ -164,6 +170,41 @@ class SessionClipsReceiver:
             guard(lambda: camera.set_signal(s, m, body.signal))
             return CameraOut(**vars(camera.status(s, m)))
 
+        # --- Labo (§6.5 bis) : essais sur des vidéos déjà filmées, coachs ---
+
+        @app.get(f"{PREFIX}/signs", response_model=ClubSignsBody)
+        def club_signs(m: Member = member, s: Session = db):
+            coach(m)
+            return ClubSignsBody(signs=list(lab.enabled_signs(s, m.org_id)))
+
+        @app.put(f"{PREFIX}/signs", response_model=ClubSignsBody)
+        def set_club_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
+            return ClubSignsBody(signs=list(guard(lambda: lab.set_signs(s, m, body.signs))))
+
+        @app.get(f"{PREFIX}/lab", response_model=list[LabTestOut])
+        def lab_tests(m: Member = member, s: Session = db):
+            return [self._lab_out(s, t) for t in guard(lambda: lab.tests(s, m))]
+
+        @app.post(f"{PREFIX}/lab", response_model=LabTestOut, status_code=201)
+        def create_lab_test(body: LabTestCreate, m: Member = member, s: Session = db):
+            return self._lab_out(s, guard(lambda: lab.create_test(s, client, m, body.upload_id, body.title.strip())))
+
+        @app.get(f"{PREFIX}/lab/{{test_id}}", response_model=LabTestDetail)
+        def get_lab_test(test_id: int, m: Member = member, s: Session = db):
+            found = guard(lambda: lab.test(s, m, test_id))
+            return LabTestDetail(
+                **self._lab_out(s, found).model_dump(),
+                signs=[LabSignOut(**x) for x in lab.signs_of(found)],
+                fights=[
+                    LabFightOut(start=f.start, end=f.end, fighters=f.fighters, check_reason=f.check_reason)
+                    for f in lab.fights_of(s, found)
+                ],
+            )
+
+        @app.delete(f"{PREFIX}/lab/{{test_id}}", status_code=204)
+        def delete_lab_test(test_id: int, m: Member = member, s: Session = db):
+            guard(lambda: lab.delete_test(s, client, m, test_id))
+
         # --- Caméra de la salle, côté téléphone : sans session, avec le
         # jeton du jumelage (routes publiques, voir comptes/rbac.py) ---
 
@@ -215,6 +256,17 @@ class SessionClipsReceiver:
     def _piece_out(self, s: Session, piece: Piece) -> PieceOut:
         upload = self.client.videos.obtenir_televersement(s, piece.upload_id)
         return PieceOut(upload_id=piece.upload_id, received=upload.octets_recus if upload else 0)
+
+    def _lab_out(self, s: Session, found: LabTest) -> LabTestOut:
+        video = self.client.video_map(s, [found.video_id]).get(found.video_id)
+        status = "uploading" if video is not None and video.statut == "en_cours" else found.status
+        return LabTestOut(
+            id=found.id,
+            title=found.title,
+            status=status,
+            created_at=found.created_at,
+            video=VideoSortie.model_validate(video) if video is not None else None,
+        )
 
     def _sessions_out(self, s: Session, m: Member, sessions: list[ClipSession]) -> list[SessionOut]:
         ids = [x.id for x in sessions]

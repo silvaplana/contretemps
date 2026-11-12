@@ -1,82 +1,144 @@
 """Repérer les combats dans une vidéo de séance (spec/modules/video-combats.md
-§5, étape 2) à partir des gestes de chaque image (signals.py).
+§5) à partir des gestes de chaque image (signals.py).
 
-Début : au moins deux personnes lèvent le poing. Fin : le salut, sinon le X,
-sinon la zone vide quelques secondes, sinon le poing levé suivant ou la fin de la
-vidéo. Les durées sont des premiers réglages, à revoir sur la vidéo de test.
+D'abord les signes, tenus un moment (`find_signs`) : au début, le poing levé
+par au moins deux personnes ou les poings touchés en l'air ; à la fin, la
+poignée de main (immobiles) ou le X. Puis les combats (`find_fights`), avec
+les seuls signes cochés par le club : du signe de début au premier signe de
+fin, sinon à la zone vide quelques secondes, sinon au début du combat
+suivant ou à la fin de la vidéo. Durées réglées le 12/11/2026 sur deux
+vidéos de Seb.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .signals import Frame, is_fist_up, is_x, salute_in
+from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_fist_up, is_x, main_pair, torso
 
-START_HOLD = 1.5  # secondes de poing levé pour lancer un combat
-END_HOLD = 0.6  # secondes de salut ou de X pour le finir
-EMPTSTART_HOLD = 4.0  # secondes de zone vide pour le finir
-MIN_FIGHT = 10.0  # un combat plus court est ignoré (poing levé puis X aussitôt)
-MARGIN = 1.0  # secondes gardées après la fin
+START_SIGNS = ("fist_up", "fists_touch")
+END_SIGNS = ("handshake", "x")
+SIGNS = START_SIGNS + END_SIGNS
+# Secondes pendant lesquelles un signe doit être tenu pour compter.
+HOLD = {"fist_up": 1.5, "fists_touch": 0.6, "handshake": 0.8, "x": 0.6}
+GAP = 0.45  # une image manquée (à 5 images/s) ne coupe pas un geste
+MERGE = 2.0  # deux poings touchés à moins de 2 s : un seul début
+STILL = 0.3  # poignée de main : les hanches bougent de moins de 0,3 buste
+END_DELAY = 1.0  # bras qui redescendent juste après le début : pas une fin
+EMPTY_HOLD = 4.0  # secondes de zone vide pour finir un combat
+MIN_FIGHT = 5.0  # un combat plus court est ignoré (début puis fin aussitôt)
+MARGIN = 1.0  # secondes gardées après le signe de fin
 
 # Motifs affichés dans « À vérifier » (vocabulaire de l'écran, pas technique).
 REASON_NO_END = "La fin du combat n'a pas été repérée : vérifiez la fin du clip."
 
 
 @dataclass
+class Sign:
+    kind: str  # une des SIGNS
+    start: float
+    end: float
+    people: int = 2  # combien ont levé le poing (fist_up) : 2 au combat, 1 à n en danse
+
+
+@dataclass
 class Fight:
     start: float
     end: float
-    fighters: int  # combien ont levé le poing : 2 au combat, 1 à n en danse
+    fighters: int
     check_reason: str | None = None
 
 
-def find_fights(frames: list[Frame]) -> list[Fight]:
-    fights: list[Fight] = []
-    current: Fight | None = None
-    start_since = end_since = emptstart_since = None
-    start_count = 0
+def _runs(frames: list[Frame], seen) -> list[tuple[int, int]]:
+    """Les suites d'images où `seen(frame)` est vrai, à une image manquée près."""
+    runs, first, last = [], None, None
+    for i, frame in enumerate(frames):
+        if seen(frame):
+            if first is not None and frame.t - frames[last].t > GAP:
+                runs.append((first, last))
+                first = None
+            first = i if first is None else first
+            last = i
+    if first is not None:
+        runs.append((first, last))
+    return runs
 
-    def close(end: float, reason: str | None = None) -> None:
-        nonlocal current
-        if current is not None and end - current.start >= MIN_FIGHT:
-            current.end = end
-            current.check_reason = reason
-            fights.append(current)
-        current = None
 
-    for frame in frames:
-        t = frame.t
-        raising = sum(1 for p in frame.people if is_fist_up(p))
-        if raising >= 2:
-            if start_since is None:
-                start_since, start_count = t, raising
-            start_count = max(start_count, raising)
-            if t - start_since >= START_HOLD and (current is None or current.start < start_since):
-                close(start_since)  # un nouveau poing levé termine le combat en cours
-                current = Fight(start=start_since, end=t, fighters=start_count)
-        else:
-            start_since = None
-        if current is None:
-            continue
+def _pair(frame: Frame, test) -> bool:
+    pair = main_pair(frame)
+    return len(pair) == 2 and test(*pair)
 
-        ending = salute_in(frame) or any(is_x(p) for p in frame.people)
-        if ending and t - current.start > START_HOLD:
-            end_since = t if end_since is None else end_since
-            if t - end_since >= END_HOLD:
-                close(t + MARGIN)
-                end_since = None
+
+def _still(frames: list[Frame]) -> bool:
+    """Les deux restent sur place (les hanches bougent peu)."""
+    spots = [sorted(hips_x(p) for p in main_pair(f)) for f in frames if len(main_pair(f)) == 2]
+    if len(spots) < 2:
+        return False
+    unit = min(torso(p) for p in main_pair(frames[0])) if len(main_pair(frames[0])) == 2 else 0
+    return all(max(s[k] for s in spots) - min(s[k] for s in spots) < STILL * unit for k in range(2))
+
+
+def find_signs(frames: list[Frame]) -> list[Sign]:
+    """Tous les signes repérés, cochés ou non : la frise du Labo les montre."""
+    tests = {
+        "fist_up": lambda f: sum(1 for p in f.people if is_fist_up(p)) >= 2,
+        "fists_touch": lambda f: _pair(f, are_touching_fists_up),
+        "handshake": lambda f: _pair(f, are_shaking_hands),
+        "x": lambda f: any(is_x(p) for p in main_pair(f)),
+    }
+    signs: list[Sign] = []
+    for kind, test in tests.items():
+        found: list[Sign] = []
+        for first, last in _runs(frames, test):
+            sign = Sign(kind, frames[first].t, frames[last].t)
+            if kind == "fist_up":
+                sign.people = max(sum(1 for p in f.people if is_fist_up(p)) for f in frames[first : last + 1])
+            if kind in START_SIGNS and found and sign.start - found[-1].end < MERGE:
+                found[-1].end = sign.end
+                found[-1].people = max(found[-1].people, sign.people)
                 continue
-        else:
-            end_since = None
+            found.append(sign)
+        for sign in found:
+            if sign.end - sign.start + 1e-6 < HOLD[kind]:
+                continue
+            if kind == "handshake" and not _still([f for f in frames if sign.start <= f.t <= sign.end]):
+                continue
+            signs.append(sign)
+    return sorted(signs, key=lambda s: s.start)
 
-        if not frame.people:
-            emptstart_since = t if emptstart_since is None else emptstart_since
-            if t - emptstart_since >= EMPTSTART_HOLD:
-                close(emptstart_since)
-                emptstart_since = None
-        else:
-            emptstart_since = None
 
-    if current is not None and frames:
-        close(frames[-1].t, REASON_NO_END)
+def _empty_since(frames: list[Frame]) -> list[float]:
+    """Les moments où la zone se vide pour au moins EMPTY_HOLD secondes."""
+    out, since = [], None
+    for frame in frames:
+        if frame.people:
+            since = None
+        elif since is None:
+            since = frame.t
+            out.append(since)
+    return [t for t in out if any(f.t - t >= EMPTY_HOLD and not f.people for f in frames if f.t >= t)]
+
+
+def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS) -> list[Fight]:
+    signs = [s for s in find_signs(frames) if s.kind in enabled]
+    starts = [s for s in signs if s.kind in START_SIGNS]
+    ends = [s for s in signs if s.kind in END_SIGNS]
+    empties = _empty_since(frames)
+    fights: list[Fight] = []
+    for i, start in enumerate(starts):
+        limit = starts[i + 1].start if i + 1 < len(starts) else None
+        before = lambda t: limit is None or t < limit  # noqa: E731
+        end = next((e for e in ends if e.start >= start.end + END_DELAY and before(e.start)), None)
+        empty = next((t for t in empties if t > start.end and before(t)), None)
+        reason = None
+        if end is not None and (empty is None or end.start <= empty):
+            stop = end.start + MARGIN
+        elif empty is not None:
+            stop = empty
+        elif limit is not None:
+            stop = limit
+        else:
+            stop, reason = frames[-1].t, REASON_NO_END
+        if stop - start.start >= MIN_FIGHT:
+            fights.append(Fight(start.start, stop, start.people if start.kind == "fist_up" else 2, reason))
     return fights

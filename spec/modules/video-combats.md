@@ -214,11 +214,22 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
 1. **Enregistrements** : il repère les passages sur le repère au sol, transcrit le prénom dit et le
    relie au bon membre. Il en tire une « empreinte » de tenue : couleurs du t-shirt et du short,
    silhouette.
-2. **Signaux** : la détection de posture repère les poings levés tenus 2 secondes par deux personnes dans la zone
-   (début), et pour la fin le salut (deux personnes debout, face à face, immobiles, mains jointes
-   environ 1 s ; décision Seb 27/10 : geste déjà habituel) ou, en secours, le X. Le combat se termine
-   aussi si la zone se vide quelques secondes ou au poing levé suivant. Un combat repéré sans poing levé
-   devient un « combat sans nom ».
+2. **Signaux** : la détection de posture repère les signes tenus un moment (réglés le 12/11 sur
+   deux vidéos de Seb, `fights.py`). **Début** : le poing levé (bras plié, au-dessus de la tête) par
+   au moins deux personnes, tenu 1,5 s ; ou les **poings touchés en l'air** (les deux se touchent
+   les poings, bras vers le haut ; c'est le signe du club de Seb), tenu 0,6 s. **Fin** : la
+   **poignée de main** (deux personnes debout, mains jointes sous les épaules, immobiles), tenue
+   0,8 s ; ou le **X** au-dessus de la tête (avant-bras croisés ou mains jointes en l'air), tenu
+   0,6 s. Les gestes sont mesurés en hauteur de buste (les combattants sont souvent de profil) et
+   seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Le
+   combat va du signe de début au premier signe de fin coché venu au moins 1 s après ; sinon il se
+   termine si la zone se vide 4 s, au signe de début suivant ou à la fin de la vidéo (« Fin non
+   repérée »). 1 s est gardée après le signe de fin ; un combat de moins de 5 s est ignoré.
+   **Signes et sons du club** (Seb, 12/11) : chaque organisation coche les signes que la découpe
+   prend (tous par défaut), dans le Labo (§6.5 bis) ; le réglage vaut pour la caméra de la salle et
+   les vidéos envoyées. Pas encore : le **« Time ! »** crié par l'entraîneur (il faut un modèle de
+   reconnaissance de la parole dans l'image du worker, à valider par Seb) et les bras croisés sur la
+   poitrine. Un combat repéré sans poing levé devient un « combat sans nom ».
 3. **Identification** : il suit chaque personne image par image, et compare les deux combattants aux
    empreintes du jour. Si la confiance est faible, comme avec deux t-shirts noirs unis, le clip est
    marqué « à vérifier ». Pas de reconnaissance faciale.
@@ -258,7 +269,7 @@ flèche ←.
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
-- **Coach** (admin ou prof) : trois onglets, **Mes combats | Séances | À vérifier**. « À vérifier »
+- **Coach** (admin ou prof) : quatre onglets, **Mes combats | Séances | À vérifier | Labo**. « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
   Fonctionnalités) : éteint = bouton caché, routes « introuvable » (spec/core.md §9 bis).
@@ -381,6 +392,26 @@ coach seulement, **Supprimer** (Annuler 10 s). Changer d'écran vide la sélecti
 combats » et de « Séances », la ligne **★ Favoris** ouvre la liste de ses favoris ; un combat favori
 porte une petite étoile. Les favoris sont **propres à chacun** (un élève ne voit que ses combats).
 
+### 6.5 bis Labo *(coachs)*
+
+Demande de Seb du 12/11 : essayer la découpe sur des vidéos déjà filmées, sans filmer à chaque fois.
+Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fights-labo.html)).
+
+- **Fights › Labo** : bouton principal **« Importer une vidéo »** (la Galerie du téléphone), puis la
+  liste des essais (« Combat du 11/11 à 20:10 », tiré de la date du fichier) avec leur état : envoi
+  en %, « Lecture des signes… », « Vidéo illisible ». La vidéo part par l'envoi par blocs du module
+  `videos` ; le worker la lit dès qu'elle est arrivée, à toute heure.
+- **Un essai ouvert** (← revient au Labo) : la vidéo ; le **graphe** des signes repérés, le temps en
+  abscisse et une flèche verticale par signe, avec l'image de la vidéo à ce moment, son nom et son
+  heure (vert = début, rouge = fin, gris pointillé = signe décoché ; la bande sur l'axe = un combat
+  coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les
+  cases **« Signes et sons du club »** (Début de combat, Fin de combat) ; **« Relancer la découpe »**
+  (actif quand une case a changé) enregistre les cases du club et recalcule les combats sans relire
+  la vidéo ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche,
+  un signe ou un combat place la vidéo à ce moment.
+- Rien de ce qui est fait au Labo ne va dans Mes combats ni dans À vérifier : les combats d'un essai
+  ne sont pas coupés en clips.
+
 ### 6.6 Plus tard
 
 Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).
@@ -412,6 +443,8 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 | `sc_attendees` | présents reconnus à une séance | `session_id`, `person_id` |
 | `sc_favorites` | « ★ Favoris » de chacun | `person_id`, `clip_id` (effacé avec le clip) |
 | `sc_recorders` | le téléphone qui filme (étape 3) | `id`, `org_id`, `token_hash` (empreinte du jeton remis au jumelage), `pairing_code` et `pairing_expires_at` (code de 8 chiffres, 10 minutes), `state` (`ready` / `recording`, dit par le téléphone ; « hors service » se déduit de `last_seen_at`), `battery_percent`, `free_bytes`, `pending_pieces`, `last_seen_at`, `last_upload_at`, `session_id` (la séance à filmer, vide = rester prête), `started_at`, `signal` (`beep` / `light` / `both`) |
+| `sc_lab_tests` | un essai du Labo (§6.5 bis) | `id`, `org_id`, `title`, `video_id` (la vidéo dans `videos` ; l'effacer efface l'essai), `status` (`processing` / `ready` / `failed`), `signs` (JSON : les signes repérés, cochés ou non, avec début, fin et une petite image jpeg de la vidéo à ce moment), `created_by`, `created_at` |
+| `sc_club_signs` | les signes cochés d'une organisation | `org_id`, `signs` (séparés par des virgules ; pas de ligne = tous) |
 | `sc_pieces` | un morceau de 2 minutes (étape 3) | `id`, `session_id`, `position` (0, 1, 2…), `upload_id` (envoi par blocs du module `videos`), `video_id`, `last` (morceau de « Fin de séance »), `duration_seconds` (rempli à la lecture des postures) |
 
 `person_id` est la personne, stable d'une saison à l'autre : dans Contretemps, c'est la première
@@ -515,6 +548,10 @@ Découpage du code en trois étapes (accord Seb du 27/10) :
      découpe saute le numéro manquant). Pas encore : les modes Connecté / Autonome, « Ne pas
      déranger », le redémarrage seul après une coupure de courant, les gestes (3c).
    - **3c, les gestes reconnus par le téléphone**, avec le bip et la lampe.
+4. **Labo et signes du club** (Seb, 12/11) : nouveaux signes (poings touchés en l'air, poignée de
+   main immobile, X plus souple), cases « Signes et sons du club », onglet Labo (§6.5 bis). Les
+   postures d'un essai sont gardées dans `sparring-poses/lab-<id>.json`, à côté de celles des
+   morceaux : les combats se recalculent à chaque ouverture avec les cases du club.
 
 ## 9. Risques
 

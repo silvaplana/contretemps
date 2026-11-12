@@ -1,0 +1,446 @@
+<title>Fights Labo</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Archivo+Narrow:wght@500;700&display=swap">
+<style>
+/* Layout : à gauche le téléphone (tout est cliquable), à droite les notes sur l'écran affiché. */
+:root {
+  --page: #eef0f2; --ink: #1d232b; --muted: #5d6874; --line: #d3d8de; --panel: #f8f9fa;
+  --note-accent: #b8322b;
+  --display: 'Archivo', system-ui, sans-serif;
+  --narrow: 'Archivo Narrow', 'Archivo', system-ui, sans-serif;
+  --body: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #15191e; --ink: #e8ecf0; --muted: #9aa5b1; --line: #2c333b; --panel: #1c2128; --note-accent: #ff7a70; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --page: #15191e; --ink: #e8ecf0; --muted: #9aa5b1; --line: #2c333b; --panel: #1c2128; --note-accent: #ff7a70; color-scheme: dark }
+
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-height: 1.1; margin: 0 0 6px; text-wrap: balance; letter-spacing: -.01em; }
+.intro { color: var(--muted); max-width: 62ch; margin: 0 0 18px; line-height: 1.5; }
+.controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; font-size: 14px; }
+.controls span { color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { font: inherit; border: 0; background: var(--panel); color: var(--ink); padding: 8px 14px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--page); }
+.seg button:focus-visible { outline: 2px solid var(--note-accent); outline-offset: -2px; }
+.grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.notes { min-width: 0; }
+.notes h2 { font-family: var(--display); font-size: 1.15rem; margin: 0 0 10px; }
+.notes p, .notes li { line-height: 1.55; max-width: 62ch; }
+.notes ul { padding-left: 1.1em; margin: 0 0 14px; }
+.notes .eyebrow { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .08em; font-size: 12px; color: var(--note-accent); margin: 0 0 4px; }
+.notes .ask { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+/* ---- Téléphone : charte d'un club de combat (un seul thème, comme l'appli) ---- */
+.phone {
+  --bg: #f3f4f6; --card: #ffffff; --text: #161b22; --muted: #5b6573; --border: #dde1e6;
+  --accent: #c62d26; --accent-bg: #fbe4e2; --rouge: #d0332b; --bleu: #2457b8;
+  --ok-bg: #dcefe0; --ok: #23683a; --warn-bg: #fbeccb; --warn: #8a5a00; --info-bg: #e2e9f6; --info: #23467f;
+  width: 100%; max-width: 390px; height: 780px; margin: 0 auto; border-radius: 34px; border: 10px solid #0e1116;
+  background: var(--bg); color: var(--text); position: relative; overflow: hidden;
+  display: flex; flex-direction: column; font-size: 17px; box-shadow: 0 18px 40px rgba(0,0,0,.18);
+}
+.phone button { font: inherit; color: inherit; }
+.phone :focus-visible { outline: 3px solid var(--bleu); outline-offset: 2px; }
+.topbar { display: flex; align-items: center; gap: 8px; min-height: 56px; padding: 0 10px; background: var(--card); border-bottom: 1px solid var(--border); }
+.topbar strong { font-family: var(--display); font-size: 19px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.icon-btn { width: 48px; height: 48px; border: 0; background: none; border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+.icon-btn svg { width: 24px; height: 24px; }
+.tabs { display: flex; background: var(--card); border-bottom: 1px solid var(--border); }
+.tabs button { flex: 1; min-height: 48px; border: 0; background: none; cursor: pointer; font-size: 16px; color: var(--muted); border-bottom: 3px solid transparent; }
+.tabs button[aria-selected="true"] { color: var(--text); font-weight: 700; border-bottom-color: var(--accent); }
+.count { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 4px; border-radius: 11px; background: var(--accent); color: #fff; font-size: 13px; line-height: 22px; font-weight: 700; }
+.body { flex: 1; overflow-y: auto; padding: 14px 14px 90px; display: flex; flex-direction: column; gap: 12px; }
+.daylabel { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .06em; font-size: 14px; color: var(--muted); margin: 6px 2px -4px; }
+.clip { display: flex; gap: 12px; align-items: center; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 8px; cursor: pointer; text-align: left; width: 100%; min-height: 72px; }
+.clip .thumb { width: 112px; flex: none; }
+.clip .who { font-weight: 700; line-height: 1.25; }
+.clip .meta { color: var(--muted); font-size: 15px; margin-top: 2px; }
+.thumb { position: relative; aspect-ratio: 16/9; border-radius: 9px; overflow: hidden; background: #2b5f8f; max-width: 100%; }
+.thumb svg { display: block; width: 100%; height: 100%; }
+.thumb .dur { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.72); color: #fff; font-size: 12px; padding: 1px 5px; border-radius: 4px; font-variant-numeric: tabular-nums; }
+.dot { display: inline-block; width: 11px; height: 11px; border-radius: 50%; vertical-align: 1px; margin-right: 6px; }
+.dot.r { background: var(--rouge); } .dot.b { background: var(--bleu); }
+.chip { display: inline-block; font-size: 14px; padding: 2px 9px; border-radius: 999px; font-weight: 600; white-space: nowrap; }
+.chip.ok { background: var(--ok-bg); color: var(--ok); } .chip.warn { background: var(--warn-bg); color: var(--warn); }
+.chip.info { background: var(--info-bg); color: var(--info); } .chip.rec { background: var(--accent-bg); color: var(--accent); }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
+.rec-card { display: flex; flex-direction: column; gap: 10px; }
+.rec-line { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.rec-line .led { width: 12px; height: 12px; border-radius: 50%; background: var(--ok); }
+.rec-line .led.on { background: var(--accent); animation: blink 1.2s infinite; }
+.rec-line .led.off { background: #9aa3ad; }
+@keyframes blink { 50% { opacity: .25; } }
+@media (prefers-reduced-motion: reduce) { .rec-line .led.on { animation: none; } }
+.rec-meta { color: var(--muted); font-size: 15px; font-variant-numeric: tabular-nums; }
+.btn { min-height: 52px; border-radius: 12px; border: 0; cursor: pointer; font-weight: 700; font-size: 17px; padding: 0 18px; }
+.btn.main { background: var(--accent); color: #fff; }
+.btn.main:disabled { opacity: .4; cursor: default; }
+.btn.second { background: var(--card); border: 1px solid var(--border); }
+.btn.link { background: none; color: var(--muted); font-weight: 500; text-decoration: underline; min-height: 48px; }
+.row { display: flex; gap: 10px; } .row > * { flex: 1; }
+.seance { display: flex; align-items: center; gap: 10px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 12px 10px 12px 14px; cursor: pointer; text-align: left; width: 100%; min-height: 72px; }
+.seance > div { flex: 1; min-width: 0; }
+.seance .folder { color: #e0a526; flex: none; } .seance .folder svg { width: 30px; height: 30px; display: block; }
+.seance .t { font-weight: 700; }
+.seance .meta { color: var(--muted); font-size: 15px; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.bar { height: 6px; border-radius: 3px; background: var(--border); overflow: hidden; margin-top: 6px; }
+.bar i { display: block; height: 100%; background: var(--info); }
+.body > * { flex-shrink: 0; }
+.scard { display: block; width: 100%; padding: 0; overflow: hidden; background: var(--card); border: 1px solid var(--border); border-radius: 16px; text-align: left; cursor: pointer; }
+.scard[aria-disabled="true"] { cursor: default; }
+.scard .info { padding: 12px 14px 14px; }
+.scard .t { font-weight: 700; font-size: 18px; }
+.scard .meta { color: var(--muted); font-size: 15px; margin-top: 4px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.cover { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; aspect-ratio: 16/6; max-width: 100%; background: var(--border); }
+.cover .cv { overflow: hidden; } .cover .cv svg { width: 100%; height: 100%; display: block; object-fit: cover; }
+.cover .cv--big { grid-row: span 2; }
+.cover--wait { aspect-ratio: 16/3; display: grid; place-items: center; grid-template-columns: 1fr; background: repeating-linear-gradient(135deg, #e6e9ed 0 12px, #eef0f3 12px 24px); color: var(--muted); font-weight: 600; }
+.cam-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px 0 12px; border-radius: 999px; border: 0; cursor: pointer; font-weight: 700; font-size: 16px; color: #fff; background: var(--ok); box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+.cam-pill svg { width: 24px; height: 24px; }
+.cam-pill.rec { background: var(--accent); animation: pulse 1.6s infinite; } .cam-pill.off { background: #7d8792; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 6px rgba(198,45,38,.25); } }
+@media (prefers-reduced-motion: reduce) { .cam-pill.rec { animation: none; } }
+.cam { position: relative; } .cam-dot { position: absolute; right: 9px; top: 10px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid var(--card); background: var(--ok); }
+.cam-dot.rec { background: var(--accent); } .cam-dot.off { background: #9aa3ad; }
+.strip { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 48px; border: 0; background: var(--accent-bg); color: var(--accent); font-weight: 700; padding: 0 14px; cursor: pointer; font-variant-numeric: tabular-nums; }
+.strip .led { width: 10px; height: 10px; border-radius: 50%; background: var(--accent); animation: blink 1.2s infinite; }
+.strip-open { margin-left: auto; text-decoration: underline; font-weight: 600; }
+.panel-back { position: absolute; inset: 56px 0 0 0; background: rgba(0,0,0,.35); z-index: 4; }
+.panel { background: var(--bg); padding: 14px 14px 4px; border-radius: 0 0 18px 18px; display: flex; flex-direction: column; animation: down .22s ease-out; }
+@keyframes down { from { transform: translateY(-30px); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .panel, .strip .led { animation: none; } }
+.fab { position: absolute; right: 18px; bottom: 84px; width: 56px; height: 56px; border-radius: 50%; border: 0; background: var(--card); box-shadow: 0 4px 12px rgba(0,0,0,.2); cursor: pointer; display: grid; place-items: center; }
+.fab svg { width: 26px; height: 26px; }
+.nav { position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; background: var(--card); border-top: 1px solid var(--border); }
+.nav span { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; color: var(--muted); }
+.nav span svg { width: 22px; height: 22px; }
+.nav span.on { color: var(--accent); font-weight: 700; }
+.player { position: relative; background: #000; aspect-ratio: 16/9; max-width: 100%; }
+.player svg.scene { width: 100%; height: 100%; display: block; }
+.player .ctrl { position: absolute; inset: 0; display: grid; place-items: center; background: none; border: 0; cursor: pointer; }
+.player .ctrl b { width: 64px; height: 64px; border-radius: 50%; background: rgba(0,0,0,.55); display: grid; place-items: center; }
+.player .ctrl svg { width: 30px; height: 30px; fill: #fff; }
+.player .prog { position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: rgba(255,255,255,.25); }
+.player .prog i { display: block; height: 100%; width: 0; background: var(--accent); }
+.player .time { position: absolute; right: 8px; bottom: 10px; color: #fff; font-size: 13px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px #000; }
+.names { display: flex; flex-direction: column; gap: 4px; font-size: 19px; font-weight: 700; }
+.muted { color: var(--muted); }
+.pick { display: flex; align-items: center; gap: 10px; min-height: 56px; width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 0 12px; cursor: pointer; text-align: left; }
+.pick .lbl { color: var(--muted); font-size: 15px; width: 54px; }
+.pick b { flex: 1; } .pick b.vide { color: var(--accent); }
+.why { font-size: 15px; color: var(--warn); background: var(--warn-bg); border-radius: 10px; padding: 8px 12px; }
+.empty { text-align: center; color: var(--muted); padding: 40px 10px; line-height: 1.5; }
+.sheet-back { position: absolute; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; z-index: 5; }
+.sheet { background: var(--card); width: 100%; border-radius: 18px 18px 0 0; padding: 8px 0 14px; max-height: 75%; overflow-y: auto; }
+.sheet h3 { font-size: 16px; color: var(--muted); font-weight: 600; margin: 8px 18px; }
+.sheet button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 52px; border: 0; background: none; text-align: left; padding: 0 18px; cursor: pointer; }
+.sheet button:hover { background: var(--bg); }
+.sheet button.danger { color: var(--accent); }
+.toast { position: absolute; left: 12px; right: 12px; bottom: 78px; background: #1d232b; color: #fff; border-radius: 12px; display: flex; align-items: center; padding: 6px 6px 6px 16px; z-index: 6; }
+.toast span { flex: 1; }
+.toast button { background: none; border: 0; color: #ffb4ae; font-weight: 700; min-height: 44px; padding: 0 14px; cursor: pointer; }
+.tabs button { font-size: 15px; }
+.lead { font-size: 16px; color: var(--muted); line-height: 1.45; margin: 0; }
+.test { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 10px; cursor: pointer; text-align: left; width: 100%; min-height: 72px; }
+.test > div { flex: 1; min-width: 0; }
+.test .t { font-weight: 700; }
+.test .meta { color: var(--muted); font-size: 15px; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.test .chev { width: 22px; height: 22px; color: var(--muted); flex: none; }
+.sec { font-family: var(--narrow); text-transform: uppercase; letter-spacing: .06em; font-size: 14px; color: var(--muted); margin: 6px 2px -4px; }
+.frise { position: relative; height: 44px; margin: 4px 6px 0; }
+.frise .rail { position: absolute; left: 0; right: 0; top: 20px; height: 4px; border-radius: 2px; background: var(--border); }
+.frise .span { position: absolute; top: 18px; height: 8px; border-radius: 4px; background: var(--accent-bg); border: 1px solid var(--accent); }
+.frise button { position: absolute; top: 6px; width: 32px; height: 32px; margin-left: -16px; border-radius: 50%; border: 3px solid var(--card); cursor: pointer; padding: 0; box-shadow: 0 1px 3px rgba(0,0,0,.25); }
+.frise button.deb { background: var(--ok); } .frise button.fin { background: var(--accent); } .frise button.off { background: #9aa3ad; }
+.graphe { width: 100%; height: auto; display: block; overflow: visible; }
+.g-axe { stroke: var(--muted); stroke-width: 1.5; }
+.g-tick { font-size: 11px; fill: var(--muted); text-anchor: middle; font-variant-numeric: tabular-nums; }
+.g-combat { fill: var(--accent-bg); stroke: var(--accent); stroke-width: 1; }
+.g-ev { cursor: pointer; }
+.g-fl { stroke-width: 2.5; } .g-nom { font-size: 12px; font-weight: 700; text-anchor: middle; } .g-t { font-size: 12px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.g-cadre { fill: none; stroke-width: 3; } .g-deb .g-cadre { stroke: var(--ok); } .g-fin .g-cadre { stroke: var(--accent); } .g-off .g-cadre { stroke: #9aa3ad; } .g-off image { opacity: .45; }
+.g-deb .g-fl { stroke: var(--ok); } .g-deb .g-pt, .g-deb text { fill: var(--ok); }
+.g-fin .g-fl { stroke: var(--accent); } .g-fin .g-pt, .g-fin text { fill: var(--accent); }
+.g-off .g-fl { stroke: #9aa3ad; stroke-dasharray: 3 3; } .g-off .g-pt, .g-off text { fill: #9aa3ad; }
+.frise-axis { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin: 0 6px; font-variant-numeric: tabular-nums; }
+.geste { display: flex; align-items: center; gap: 10px; min-height: 48px; width: 100%; background: none; border: 0; border-top: 1px solid var(--border); text-align: left; cursor: pointer; padding: 0 2px; }
+.geste:first-child { border-top: 0; }
+.geste .tm { font-variant-numeric: tabular-nums; color: var(--muted); width: 44px; flex: none; }
+.geste .pt { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+.geste .pt.deb { background: var(--ok); } .geste .pt.fin { background: var(--accent); } .geste .pt.off { background: #9aa3ad; }
+.geste .l { flex: 1; } .geste .l small { display: block; color: var(--muted); font-size: 14px; }
+.check { display: flex; align-items: center; gap: 12px; min-height: 52px; width: 100%; background: none; border: 0; text-align: left; cursor: pointer; padding: 0 2px; }
+.check .box { width: 26px; height: 26px; border-radius: 6px; border: 2px solid var(--muted); flex: none; display: grid; place-items: center; }
+.check[aria-checked="true"] .box { background: var(--accent); border-color: var(--accent); }
+.check .box svg { width: 18px; height: 18px; stroke: #fff; }
+.check .l { flex: 1; } .check .l small { display: block; color: var(--muted); font-size: 14px; }
+.check .new { font-size: 12px; font-weight: 700; color: var(--info); background: var(--info-bg); border-radius: 999px; padding: 1px 7px; margin-left: 6px; vertical-align: 2px; }
+.grp { font-weight: 700; margin: 4px 0 0; }
+.picker-item { display: flex; align-items: center; gap: 12px; }
+.picker-item .thumb { width: 96px; }
+.mini { width: 100%; height: 100%; }
+</style>
+</head><body>
+
+<div class="wrap">
+  <h1>Fights › Labo : maquette</h1>
+  <p class="intro">Le Labo, un 4e onglet de Fights pour les coachs : importer une vidéo de la Galerie, voir les signes et les sons repérés et les combats coupés, choisir ceux du club et relancer. Tout est cliquable. Les vidéos sont des dessins, mais les signes de la frise sont ceux réellement repérés par l'appli dans les deux vidéos de Seb du 11/11.</p>
+  <div class="grid">
+    <div class="phone" id="phone"></div>
+    <aside class="notes" id="notes" aria-live="polite"></aside>
+  </div>
+</div>
+
+<script>
+(function () {
+  const I = {
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6l-6 6 6 6"/></svg>',
+    chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg>',
+    play: '<svg viewBox="0 0 24 24"><path d="M8 5l12 7-12 7z"/></svg>',
+    cal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></svg>',
+    chat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5h16v11H9l-5 4z"/></svg>',
+    fight: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/></svg>',
+    dots: '<svg viewBox="0 0 24 24" fill="currentColor"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg>',
+    tick: '<svg viewBox="0 0 24 24" fill="none" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5 9-10"/></svg>',
+    trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></svg>'
+  };
+
+  // Les signes du club : un seul réglage, utilisé par le Labo, la caméra de la salle et les vidéos envoyées.
+  const SIGNES = [
+    { id: 'poing', g: 'deb', l: 'Poing levé', d: 'Chacun lève le poing au-dessus de la tête, bras plié' },
+    { id: 'touche', g: 'deb', l: 'Poings touchés en l’air', d: 'Les deux se touchent les poings, bras vers le haut', neuf: true },
+    { id: 'main', g: 'fin', l: 'Poignée de main', d: 'Mains serrées, bras vers le bas' },
+    { id: 'croise', g: 'fin', l: 'Bras croisés sur la poitrine', d: 'Les deux croisent les bras', neuf: true },
+    { id: 'x', g: 'fin', l: 'X au-dessus de la tête', d: 'Avant-bras croisés en l’air' },
+    { id: 'time', g: 'fin', l: '« Time ! » crié', d: 'Son : l’entraîneur annonce la fin', neuf: true, son: true }
+  ];
+  const nomSigne = (id) => SIGNES.find((s) => s.id === id).l;
+
+  // Ce que la lecture a vu dans chaque vidéo (temps en secondes) ; la découpe ne garde que les signes cochés.
+  // Vignettes : l'image de la vidéo au moment où le signe est repéré.
+  const V1_1 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const V1_2 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const V1_3 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const V1_4 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const V2_1 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const V2_2 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const V2_3 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const V2_4 = 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 62 66%22%3E%3Crect width=%2262%22 height=%2266%22 fill=%22%233a4049%22/%3E%3C/svg%3E';
+  const ESSAIS = [
+    { id: 1, nom: 'Combat du 11/11 à 20:10', jour: '11/11', duree: 31, tee: '#e9e6df', tee2: '#1d1f24',
+      vus: [{ t: 1.4, s: 'touche', img: V1_1 }, { t: 10.2, s: 'main', img: V1_2 }, { t: 15.6, s: 'touche', img: V1_3 }, { t: 27.6, s: 'x', img: V1_4 }] },
+    { id: 2, nom: 'Combat du 11/11 à 20:09', jour: '11/11', duree: 31, tee: '#e9e6df', tee2: '#1d1f24',
+      vus: [{ t: 0.4, s: 'touche', img: V2_1 }, { t: 9.8, s: 'main', img: V2_2 }, { t: 17.6, s: 'touche', img: V2_3 }, { t: 27.2, s: 'x', img: V2_4 }] }
+  ];
+
+  const S = { screen: 'liste', essai: null, coches: { poing: true, touche: true, main: true, croise: true, x: true, time: true }, avant: null, sheet: false, import: null, at: 0 };
+
+  const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s) % 60).padStart(2, '0')}`;
+  const duree = (s) => `${Math.floor(s / 60)} min ${String(Math.round(s) % 60).padStart(2, '0')}`;
+
+  // Combats : du premier signe de début coché au premier signe de fin coché qui suit.
+  function combats(e) {
+    const out = [];
+    let deb = null;
+    e.vus.forEach((v) => {
+      const sg = SIGNES.find((s) => s.id === v.s);
+      if (!S.coches[v.s]) return;
+      if (sg.g === 'deb' && deb === null) deb = v;
+      else if (sg.g === 'fin' && deb !== null) { out.push({ a: deb.t, b: v.t + 1, fin: v.s }); deb = null; }
+    });
+    if (deb !== null) out.push({ a: deb.t, b: e.duree, fin: null });
+    return out;
+  }
+
+  function scene(e, small) {
+    return `<svg class="${small ? 'mini' : 'scene'}" viewBox="0 0 160 90" aria-hidden="true">
+      <rect width="160" height="90" fill="#3a4049"/><rect y="62" width="160" height="28" fill="#8a6a4a"/>
+      <circle cx="62" cy="34" r="6" fill="#d9b08c"/><rect x="55" y="41" width="14" height="20" rx="3" fill="${e.tee}"/>
+      <circle cx="98" cy="34" r="6" fill="#c99a76"/><rect x="91" y="41" width="14" height="20" rx="3" fill="${e.tee2}"/>
+      <path d="M68 44 L80 26 M92 44 L80 26" stroke="#d9b08c" stroke-width="4" stroke-linecap="round"/></svg>`;
+  }
+
+  function topbar(title, back) {
+    return `<div class="topbar">${back ? `<button type="button" class="icon-btn" data-act="back" aria-label="Retour">${I.back}</button>` : ''}<strong>${title}</strong></div>`;
+  }
+  function tabs() {
+    const t = (l, on, c) => `<button type="button" role="tab" aria-selected="${on}" ${on ? '' : 'data-act="ailleurs"'}>${l}${c ? `<span class="count">${c}</span>` : ''}</button>`;
+    return `<div class="tabs" role="tablist">${t('Mes combats')}${t('Séances')}${t('À vérifier', false, 2)}${t('Labo', true)}</div>`;
+  }
+  function nav() {
+    const it = (ic, l, on) => `<span class="${on ? 'on' : ''}">${ic}${l}</span>`;
+    return `<div class="nav" aria-hidden="true">${it(I.cal, 'Planning')}${it(I.chat, 'Messagerie')}${it(I.fight, 'Fights', true)}${it(I.doc, 'Docs')}${it(I.dots, 'Plus')}</div>`;
+  }
+
+  function vListe() {
+    let h = `<button type="button" class="btn main" data-act="importer">Importer une vidéo</button>
+      <p class="lead">Une vidéo de la Galerie, découpée tout de suite. Pour essayer les signes et les sons : rien ne va dans Mes combats.</p>`;
+    if (S.import) {
+      const p = S.import;
+      h += `<div class="sec">En cours</div><div class="test" aria-disabled="true"><div class="thumb" style="width:96px">${scene(p.e, true)}</div><div><div class="t">${p.e.nom}</div>
+        <div class="meta">${p.etape === 'envoi' ? `Envoi ${p.pct} %` : `Lecture des signes et des sons ${p.pct} %`}</div><div class="bar"><i style="width:${p.pct}%"></i></div></div></div>`;
+    }
+    const faits = ESSAIS.filter((e) => e.fait);
+    if (faits.length) {
+      h += '<div class="sec">Essais</div>';
+      faits.forEach((e) => {
+        const n = combats(e).length;
+        h += `<button type="button" class="test" data-act="ouvrir" data-id="${e.id}"><div class="thumb" style="width:96px">${scene(e, true)}<span class="dur">${mmss(e.duree)}</span></div>
+          <div><div class="t">${e.nom}</div><div class="meta">${e.jour} · <span class="chip ${n ? 'ok' : 'warn'}">${n ? `${n} combat${n > 1 ? 's' : ''}` : 'Aucun combat'}</span></div></div><span class="chev">${I.chev}</span></button>`;
+      });
+    } else if (!S.import) {
+      h += '<div class="empty">Aucun essai pour l’instant.</div>';
+    }
+    return h;
+  }
+
+  // Le graphe : le temps en abscisse, une flèche verticale par signe repéré, avec son heure et son nom.
+  const COURT = { poing: 'Poing levé', touche: 'Poings en l’air', main: 'Poignée de main', croise: 'Bras croisés', x: 'X', time: '« Time ! »' };
+  function graphe(e, cs) {
+    const W = 320, H = 300, L = 14, R = 306, base = 262, VW = 62, VH = 66;
+    const X = (t) => L + (t / e.duree) * (R - L);
+    let g = `<svg class="graphe" viewBox="0 0 ${W} ${H}" role="img" aria-label="Signes repérés dans le temps">`;
+    cs.forEach((c) => { g += `<rect x="${X(c.a)}" y="${base - 10}" width="${X(c.b) - X(c.a)}" height="10" rx="3" class="g-combat"/>`; });
+    g += `<line x1="${L}" y1="${base}" x2="${R}" y2="${base}" class="g-axe"/>`;
+    const pas = e.duree > 120 ? 30 : 5;
+    for (let t = 0; t <= e.duree; t += pas) {
+      g += `<line x1="${X(t)}" y1="${base}" x2="${X(t)}" y2="${base + 5}" class="g-axe"/><text x="${X(t)}" y="${base + 18}" class="g-tick">${mmss(t)}</text>`;
+    }
+    g += `<text x="${R}" y="${base + 34}" class="g-tick" style="text-anchor:end">temps</text>`;
+    e.vus.forEach((v, i) => {
+      const sg = SIGNES.find((s) => s.id === v.s);
+      const cls = S.coches[v.s] ? sg.g : 'off';
+      const x = X(v.t), top = 4 + (i % 2) * 118;
+      const bx = Math.min(Math.max(x - VW / 2, 0), W - VW);
+      const tip = top + VH + 32;
+      const tx = Math.min(Math.max(bx + VW / 2, 50), W - 50);
+      g += `<g class="g-ev g-${cls}" data-act="aller" data-t="${v.t}" role="button" tabindex="0" aria-label="${mmss(v.t)} ${sg.l}">
+        <rect x="${bx - 2}" y="${top - 2}" width="${VW + 4}" height="${VH + 4}" rx="6" class="g-cadre"/>
+        <image href="${v.img}" x="${bx}" y="${top}" width="${VW}" height="${VH}" preserveAspectRatio="xMidYMid slice"/>
+        <text x="${tx}" y="${top + VH + 14}" class="g-nom">${COURT[v.s]}</text>
+        <text x="${tx}" y="${top + VH + 27}" class="g-t">${mmss(v.t)}</text>
+        <line x1="${x}" y1="${base - 1}" x2="${x}" y2="${tip + 4}" class="g-fl"/><path d="M${x - 5} ${tip + 10} L${x} ${tip} L${x + 5} ${tip + 10}Z" class="g-pt"/></g>`;
+    });
+    return g + '</svg>';
+  }
+
+  function vEssai() {
+    const e = ESSAIS.find((x) => x.id === S.essai);
+    const cs = combats(e);
+    const pos = (t) => `${(t / e.duree) * 100}%`;
+    let h = `<div class="player">${scene(e)}<button type="button" class="ctrl" aria-label="Lire"><b>${I.play}</b></button>
+      <div class="prog"><i style="width:${pos(S.at)}"></i></div><span class="time">${mmss(S.at)} / ${mmss(e.duree)}</span></div>
+      <div style="padding:0 14px;display:flex;flex-direction:column;gap:12px">`;
+    h += '<div class="sec">Signes et sons repérés</div><div class="card" style="padding:8px 12px 4px">';
+    h += graphe(e, cs) + '<div style="margin-top:6px">';
+    e.vus.forEach((v) => {
+      const sg = SIGNES.find((s) => s.id === v.s);
+      const on = S.coches[v.s];
+      h += `<button type="button" class="geste" data-act="aller" data-t="${v.t}"><span class="tm">${mmss(v.t)}</span><span class="pt ${on ? sg.g : 'off'}"></span>
+        <span class="l">${sg.l}<small>${on ? (sg.g === 'deb' ? 'Début de combat' : 'Fin de combat') : 'Signe décoché : ignoré'}</small></span></button>`;
+    });
+    h += '</div></div>';
+    h += `<div class="sec">Combats coupés</div>`;
+    if (cs.length) {
+      cs.forEach((c, i) => {
+        h += `<button type="button" class="clip" data-act="aller" data-t="${c.a}"><div class="thumb">${scene(e, true)}<span class="dur">${mmss(c.b - c.a)}</span></div>
+          <div><div class="who">Combat ${i + 1}</div><div class="meta">${mmss(c.a)} → ${mmss(c.b)}</div>${c.fin ? '' : '<div class="meta"><span class="chip warn">Fin non repérée</span></div>'}</div></button>`;
+      });
+    } else {
+      h += '<div class="card muted">Aucun combat : aucun signe de début coché n’a été vu.</div>';
+    }
+    h += '<div class="sec">Signes et sons du club</div><div class="card" style="padding:8px 12px">';
+    ['deb', 'fin'].forEach((g) => {
+      h += `<p class="grp">${g === 'deb' ? 'Début de combat' : 'Fin de combat'}</p>`;
+      SIGNES.filter((s) => s.g === g).forEach((s) => {
+        h += `<button type="button" class="check" role="checkbox" aria-checked="${S.coches[s.id]}" data-act="cocher" data-id="${s.id}"><span class="box">${S.coches[s.id] ? I.tick : ''}</span>
+          <span class="l">${s.l}${s.neuf ? '<span class="new">nouveau</span>' : ''}<small>${s.d}</small></span></button>`;
+      });
+    });
+    h += '</div>';
+    const change = S.avant && JSON.stringify(S.avant) !== JSON.stringify(S.coches);
+    h += `<button type="button" class="btn main" data-act="relancer" ${change ? '' : 'disabled'}>Relancer la découpe</button>
+      <button type="button" class="btn link" data-act="supprimer">Supprimer l’essai</button></div>`;
+    return h;
+  }
+
+  function sheet() {
+    if (!S.sheet) return '';
+    let h = '<div class="sheet-back" data-act="fermer"><div class="sheet" role="dialog" aria-label="Galerie" onclick="event.stopPropagation()"><h3>Galerie · Vidéos</h3>';
+    ESSAIS.forEach((e) => {
+      h += `<button type="button" data-act="choisir" data-id="${e.id}" ${e.fait || (S.import && S.import.e === e) ? 'disabled style="opacity:.45"' : ''}><span class="picker-item"><span class="thumb">${scene(e, true)}<span class="dur">${mmss(e.duree)}</span></span>${e.nom}</span></button>`;
+    });
+    return h + '<button type="button" data-act="fermer">Annuler</button></div></div>';
+  }
+
+  const NOTES = {
+    liste: `<p class="eyebrow">Fights › Labo</p><h2>La liste des essais</h2>
+      <ul><li>4e onglet de Fights, visible des coachs seulement (admins et profs).</li>
+      <li><b>Importer une vidéo</b> ouvre la Galerie du téléphone. L’envoi reprend après une coupure, comme pour les autres vidéos.</li>
+      <li>La vidéo est lue tout de suite, pas la nuit : quelques minutes pour une vidéo de 3 minutes.</li>
+      <li>Rien ne part dans Mes combats ni À vérifier : un essai sert à régler les signes.</li></ul>
+      <p class="ask">Essayez : Importer une vidéo, choisissez la vidéo de 20:09.</p>`,
+    essai: `<p class="eyebrow">Fights › Labo › un essai</p><h2>Ce que l’appli a vu</h2>
+      <ul><li><b>Le graphe</b> : le temps en abscisse ; une flèche verticale par signe repéré, avec l’image de la vidéo à ce moment, son nom et son heure. Vert = début de combat, rouge = fin, gris pointillé = signe décoché. La bande rouge clair sur l’axe = un combat coupé. Toucher une flèche ou une ligne place la vidéo à ce moment. Le premier signe de fin coché termine le combat. Ces deux vidéos n’ont pas de « Time ! » crié.</li>
+      <li><b>Combats coupés</b> : chaque clip, de son signe de début à son signe de fin.</li>
+      <li><b>Signes et sons du club</b> : les cases servent pour tout Fights (Labo, caméra de la salle). Ajoutés (« nouveau ») : les deux signes de tes vidéos et le « Time ! » de l’entraîneur, repéré au son.</li>
+      <li>Décocher une case puis <b>Relancer la découpe</b> : la vidéo n’est pas relue, seule la découpe est refaite, en quelques secondes.</li></ul>
+      <p class="ask">Essayez : décochez « X au-dessus de la tête », relancez : le 2e combat n’a plus de fin repérée.</p>`
+  };
+
+  const phone = document.getElementById('phone');
+  const notes = document.getElementById('notes');
+
+  function render() {
+    const essai = S.screen === 'essai';
+    const e = essai && ESSAIS.find((x) => x.id === S.essai);
+    phone.innerHTML = topbar(essai ? e.nom : 'Fights', essai) + (essai ? '' : tabs()) +
+      `<div class="body" ${essai ? 'style="padding:0 0 90px"' : ''}>${essai ? vEssai() : vListe()}</div>` + nav() + sheet() +
+      (S.toast ? `<div class="toast" role="status"><span>${S.toast}</span></div>` : '');
+    notes.innerHTML = NOTES[S.screen];
+  }
+
+  function toast(t) { S.toast = t; render(); clearTimeout(toast.h); toast.h = setTimeout(() => { S.toast = null; render(); }, 2600); }
+
+  function lancer(e) {
+    S.import = { e, etape: 'envoi', pct: 0 };
+    const tick = () => {
+      const p = S.import;
+      p.pct += p.etape === 'envoi' ? 20 : 25;
+      if (p.pct >= 100 && p.etape === 'envoi') { p.etape = 'lecture'; p.pct = 0; }
+      else if (p.pct >= 100) { e.fait = true; S.import = null; render(); toast(`${e.nom} : ${combats(e).length} combats repérés`); return; }
+      if (S.screen === 'liste') render();
+      setTimeout(tick, 450);
+    };
+    setTimeout(tick, 450);
+  }
+
+  phone.addEventListener('click', (ev) => {
+    const b = ev.target.closest('[data-act]');
+    if (!b || b.disabled) return;
+    const a = b.dataset.act;
+    if (a === 'importer') { S.sheet = true; }
+    else if (a === 'fermer') { S.sheet = false; }
+    else if (a === 'choisir') { S.sheet = false; lancer(ESSAIS.find((e) => e.id === +b.dataset.id)); }
+    else if (a === 'ouvrir') { S.screen = 'essai'; S.essai = +b.dataset.id; S.at = 0; S.avant = { ...S.coches }; phone.querySelector('.body')?.scrollTo(0, 0); }
+    else if (a === 'back') { S.screen = 'liste'; }
+    else if (a === 'aller') { S.at = +b.dataset.t; }
+    else if (a === 'cocher') { S.coches[b.dataset.id] = !S.coches[b.dataset.id]; }
+    else if (a === 'relancer') { S.avant = { ...S.coches }; const n = combats(ESSAIS.find((x) => x.id === S.essai)).length; toast(n ? `Découpe refaite : ${n} combat${n > 1 ? 's' : ''}` : 'Découpe refaite : aucun combat'); return; }
+    else if (a === 'supprimer') { ESSAIS.find((x) => x.id === S.essai).fait = false; S.screen = 'liste'; toast('Essai supprimé'); return; }
+    else if (a === 'ailleurs') { toast('Les autres onglets sont dans la maquette Fights'); return; }
+    const y = phone.querySelector('.body')?.scrollTop;
+    render();
+    if (a === 'cocher' || a === 'aller') phone.querySelector('.body').scrollTop = y;
+  });
+
+  ESSAIS[0].fait = true;  // un premier essai déjà fait, pour voir l'écran tout de suite
+  render();
+})();
+</script>
+</body></html>

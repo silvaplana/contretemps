@@ -32,6 +32,7 @@ from videos.poster import generer_poster
 from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
 from .fights import REASON_NO_END, find_fights
+from .lab import enabled_signs
 from .models import Clip, ClipSession, Piece
 from .service import SessionClips, video_name
 from .signals import Frame, Pose
@@ -91,7 +92,7 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
             clips.videos.delete(db, video_id)
         raw = clips.videos.get(db, session.raw_video_id)
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
-    fights = find_fights(list(detect(source)))
+    fights = find_fights(list(detect(source)), enabled_signs(db, session.org_id))
 
     folder = dossier_ecole(session.org_id)
     count = 0
@@ -176,7 +177,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     done = [x for x in db.scalars(select(Clip.start_seconds).where(Clip.session_id == session.id)) if x is not None]
     folder = dossier_ecole(session.org_id)
     count = 0
-    for fight in find_fights(frames):
+    for fight in find_fights(frames, enabled_signs(db, session.org_id)):
         if fight.check_reason == REASON_NO_END and not finished:
             continue  # combat encore en cours
         if any(abs(start - fight.start) < 2 for start in done):

@@ -664,3 +664,144 @@
   text-align: center;
   font-variant-numeric: tabular-nums;
 }
+
+/* Labo (§6.5 bis) : essais sur des vidéos déjà filmées */
+
+.sc-bouton {
+  width: 100%;
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.sc-section {
+  margin: 8px 0 0;
+  font-size: 15px;
+  color: var(--text-muted);
+}
+
+.sc-cadre {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+
+.sc-graphe {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.sc-graphe__axe {
+  stroke: var(--text-muted);
+  stroke-width: 1.5;
+}
+
+.sc-graphe__tick {
+  font-size: 11px;
+  fill: var(--text-muted);
+  text-anchor: middle;
+}
+
+.sc-graphe__combat {
+  fill: var(--accent-bg);
+  stroke: var(--sc-rouge);
+}
+
+.sc-graphe__ev {
+  cursor: pointer;
+  --sc-ev: var(--sc-rouge);
+}
+
+.sc-graphe__ev--deb {
+  --sc-ev: var(--success-text);
+}
+
+.sc-graphe__ev--off {
+  --sc-ev: #9aa3ad;
+}
+
+.sc-graphe__cadre {
+  fill: none;
+  stroke: var(--sc-ev);
+  stroke-width: 3;
+}
+
+.sc-graphe__fl {
+  stroke: var(--sc-ev);
+  stroke-width: 2.5;
+}
+
+.sc-graphe__ev--off .sc-graphe__fl {
+  stroke-dasharray: 3 3;
+}
+
+.sc-graphe__ev--off image {
+  opacity: 0.45;
+}
+
+.sc-graphe__pt,
+.sc-graphe__ev text {
+  fill: var(--sc-ev);
+}
+
+.sc-graphe__nom,
+.sc-graphe__t {
+  font-size: 12px;
+  text-anchor: middle;
+}
+
+.sc-graphe__nom {
+  font-weight: 700;
+}
+
+.sc-geste,
+.sc-coche {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  font-size: 17px;
+  text-align: left;
+}
+
+.sc-geste small,
+.sc-coche small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+.sc-geste__t {
+  min-width: 40px;
+  font-variant-numeric: tabular-nums;
+}
+
+.sc-geste__pt {
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--sc-rouge);
+}
+
+.sc-geste__pt--deb {
+  background: var(--success-text);
+}
+
+.sc-geste__pt--off {
+  background: #9aa3ad;
+}
+
+.sc-coche input {
+  width: 24px;
+  height: 24px;
+  flex: none;
+}

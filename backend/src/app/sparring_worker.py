@@ -8,7 +8,7 @@ l'écran), pour ne pas prendre le processeur du VPS en journée : heures dans
 SPARRING_HOURS (« 0-6 » par défaut, heure de Paris ; « 0-24 » = toute la
 journée). Les morceaux de 2 minutes de la caméra de la salle (étape 3), eux,
 sont lus dès leur arrivée, à toute heure, pour des clips prêts quelques
-minutes après chaque combat.
+minutes après chaque combat. Les essais du Labo (§6.5 bis) aussi.
 
 Usage :
     python -m app.sparring_worker
@@ -32,6 +32,7 @@ import saisons.models  # noqa: F401
 from db import SessionLocal
 from session_clips.cutting import cut_live, cut_session, live_sessions, sessions_to_cut
 from session_clips.detector import detect
+from session_clips.lab import read_test, tests_to_read
 from session_clips.service import SessionClips
 from session_clips_contretemps.adapter import AnnuaireSparring
 from videos import Videos
@@ -54,6 +55,8 @@ def run() -> None:
         try:
             for session in live_sessions(db):
                 _cut(db, session, lambda: cut_live(db, clips, session, detect))
+            for test in tests_to_read(db):
+                _cut(db, test, lambda: read_test(db, clips, test, detect))
             if debut <= datetime.now(ZoneInfo("Europe/Paris")).hour < fin:
                 for session in sessions_to_cut(db):
                     _cut(db, session, lambda: cut_session(db, clips, session, detect))

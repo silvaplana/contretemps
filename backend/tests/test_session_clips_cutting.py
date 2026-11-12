@@ -14,7 +14,7 @@ from ecoles import Ecoles
 from session_clips.cutting import REASON_NAMES, cut_session, sessions_to_cut
 from session_clips.fights import REASON_NO_END, find_fights
 from session_clips.models import ClipSession
-from session_clips.signals import Frame, Pose, are_saluting, is_fist_up, is_x
+from session_clips.signals import Frame, Pose, are_shaking_hands, are_touching_fists_up, is_fist_up, is_x
 from videos.stockage import chemin_relatif, dossier_ecole
 
 
@@ -36,6 +36,9 @@ def pose(x=100, arms="down", wrist_dx=0.0):
     elif arms == "x":
         k[7], k[8] = (x + 25, 60, 1), (x - 25, 60, 1)
         k[9], k[10] = (x - 10, 25, 1), (x + 10, 25, 1)  # croisés
+    elif arms == "touch":  # bras droit tendu vers le haut, vers l'autre
+        k[7], k[8] = (x + 25, 110, 1), (x + 30, 60, 1)
+        k[9], k[10] = (x + 25, 140, 1), (x + 20 + wrist_dx, 30, 1)
     elif arms == "hand":
         k[7], k[8] = (x + 25, 110, 1), (x - 25, 110, 1)
         k[9], k[10] = (x + 20 + wrist_dx, 120, 1), (x - 25, 140, 1)
@@ -50,9 +53,12 @@ def test_gestes():
     assert is_x(pose(arms="x")) and not is_fist_up(pose(arms="x"))
     # Ni la garde, ni les bras tendus en Y, ni les bras baissés.
     assert not is_fist_up(pose(arms="guard")) and not is_fist_up(pose(arms="y")) and not is_fist_up(pose())
-    # Le salut : deux personnes debout, mains jointes.
-    assert are_saluting(pose(x=100, arms="hand"), pose(x=145, arms="hand", wrist_dx=-50))
-    assert not are_saluting(pose(x=100, arms="hand"), pose(x=300))
+    # La poignée de main : deux personnes debout, mains jointes sous les épaules.
+    assert are_shaking_hands(pose(x=100, arms="hand"), pose(x=145, arms="hand", wrist_dx=-50))
+    assert not are_shaking_hands(pose(x=100, arms="hand"), pose(x=300))
+    # Les poings touchés en l'air : la même chose au-dessus des épaules.
+    assert are_touching_fists_up(pose(x=100, arms="touch"), pose(x=140, arms="touch", wrist_dx=-40))
+    assert not are_touching_fists_up(pose(x=100, arms="hand"), pose(x=145, arms="hand", wrist_dx=-50))
 
 
 def frames(spec, fps=5):
@@ -75,15 +81,15 @@ def test_combats_reperes():
         (2, y2), (30, fight), (1, salute),  # combat 1, fini par le salut
         (5, []),
         (2, y2), (20, fight), (1, x),  # combat 2, fini par le X
-        (2, y2), (3, fight), (1, x),  # trop court : ignoré
+        (2, y2), (1, fight), (1, x),  # trop court : ignoré
         (2, y2), (15, fight), (6, []),  # combat 3, fini par la zone vide
         (2, y2), (12, fight),  # combat 4, coupé par la fin de la vidéo
     ])
     fights = find_fights(video)
     assert len(fights) == 4
     assert [f.fighters for f in fights] == [2, 2, 2, 2]
-    assert fights[0].start == pytest.approx(3, abs=0.3) and fights[0].end == pytest.approx(36.6, abs=0.5)
-    assert fights[2].end == pytest.approx(87, abs=0.5)  # dès que la zone se vide (70 + 2 + 15)
+    assert fights[0].start == pytest.approx(3, abs=0.3) and fights[0].end == pytest.approx(36, abs=0.5)
+    assert fights[2].end == pytest.approx(85, abs=0.5)  # dès que la zone se vide (68 + 2 + 15)
     assert [f.check_reason for f in fights] == [None, None, None, REASON_NO_END]
 
 
