@@ -178,7 +178,12 @@ class RecorderService : Service() {
 
     private fun notification(text: String): Notification {
         val manager = getSystemService(NotificationManager::class.java)
-        manager.createNotificationChannel(NotificationChannel(CHANNEL, "Caméra", NotificationManager.IMPORTANCE_LOW))
+        // Pas de pastille « 1 » sur l'icône pour cette notification permanente (Seb, 12/11).
+        // Un canal ne change plus une fois créé : nouveau nom, l'ancien est effacé.
+        manager.deleteNotificationChannel("camera")
+        manager.createNotificationChannel(
+            NotificationChannel(CHANNEL, "Caméra", NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) },
+        )
         val open = PendingIntent.getActivity(
             this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE,
         )
@@ -211,7 +216,7 @@ class RecorderService : Service() {
     companion object {
         private const val TAG = "RecorderService"
         private const val TICK_MS = 5_000L
-        private const val CHANNEL = "camera"
+        private const val CHANNEL = "tournage"
         private const val NOTIFICATION = 1
 
         @Volatile var status = Status()
