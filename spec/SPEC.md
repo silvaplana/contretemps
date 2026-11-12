@@ -863,6 +863,10 @@ Elle contient, dans cet ordre :
 - **Couleurs** : *fond*, *texte* et *accent* (boutons, bandeaux, onglet actif : l'orange
   actuel). Un message prévient si le texte est peu lisible sur le fond (contraste trop
   faible), sans bloquer ;
+  **fond sombre** *(12/11/2026, Alliance Sambo)* : si le fond choisi est foncé, cartes, tableaux,
+  bordures, titres et textes discrets sont tirés du fond et du texte au lieu de la charte claire
+  de Contretemps ; un accent clair (jaune, violet pâle) écrit ses boutons en foncé. Rien à cocher ;
+  un fond clair garde la charte d'aujourd'hui à l'identique ;
 - **Polices** *(précisé le 2026-10-15)* : en **listes déroulantes**, chacune suivie d'un exemple écrit dans la police choisie : **textes de l'appli**, **titres de l'appli** (par défaut comme les textes), **nom de l'école** et **slogan** (ces deux derniers peuvent aussi prendre Great Vibes). Par défaut, la police système, celle de l'appli depuis sa création. Choix parmi une **courte liste de polices hébergées sur le serveur** (pas de
   fichier libre, pour garder licences et lisibilité sous contrôle), présentées chacune par le
   nom de l'école écrit dans la police : *Système* (celle d'aujourd'hui, par défaut),
