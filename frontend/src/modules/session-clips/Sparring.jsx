@@ -148,7 +148,12 @@ export default function Sparring({ ecoleId, cours }) {
           {onglet === 'seances' && <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />}
           {onglet === 'verifier' && <AVerifier {...contexte} />}
           {onglet === 'labo' && (
-            <Labo {...contexte} essaisCaches={essaisCaches} onOpen={(id) => setOuvert({ essaiId: id })} />
+            <Labo
+              {...contexte}
+              essaisCaches={essaisCaches}
+              onOpen={(id) => setOuvert({ essaiId: id })}
+              onSupprimer={supprimerEssai}
+            />
           )}
         </div>
       </div>

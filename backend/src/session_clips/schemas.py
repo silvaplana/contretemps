@@ -162,6 +162,10 @@ class LabTestCreate(BaseModel):
     title: str = ""
 
 
+class LabTestRename(BaseModel):
+    title: str
+
+
 class LabSignOut(BaseModel):
     kind: str
     start: float

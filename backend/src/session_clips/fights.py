@@ -3,7 +3,7 @@
 
 D'abord les signes, tenus un moment (`find_signs`) : au début, le poing levé
 par au moins deux personnes ou les poings touchés en l'air ; à la fin, la
-poignée de main (immobiles) ou le X. Puis les combats (`find_fights`), avec
+poignée de main (immobiles), le X ou le « Time ! » crié. Puis les combats (`find_fights`), avec
 les seuls signes cochés par le club : du signe de début au premier signe de
 fin, sinon à la zone vide quelques secondes, sinon au début du combat
 suivant ou à la fin de la vidéo. Durées réglées le 12/11/2026 sur deux
@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_fist_up, is_x, main_pair, torso
 
 START_SIGNS = ("fist_up", "fists_touch")
-END_SIGNS = ("handshake", "x")
+END_SIGNS = ("handshake", "x", "time")  # « time » : le « Time ! » crié (hearing.py)
 SIGNS = START_SIGNS + END_SIGNS
 # Secondes pendant lesquelles un signe doit être tenu pour compter.
 HOLD = {"fist_up": 1.5, "fists_touch": 0.6, "handshake": 0.8, "x": 0.6}
@@ -78,8 +78,9 @@ def _still(frames: list[Frame]) -> bool:
     return all(max(s[k] for s in spots) - min(s[k] for s in spots) < STILL * unit for k in range(2))
 
 
-def find_signs(frames: list[Frame]) -> list[Sign]:
-    """Tous les signes repérés, cochés ou non : la frise du Labo les montre."""
+def find_signs(frames: list[Frame], sounds: list[float] = ()) -> list[Sign]:
+    """Tous les signes repérés, cochés ou non : la frise du Labo les montre.
+    `sounds` : les moments où « Time ! » est dit (hearing.py)."""
     tests = {
         "fist_up": lambda f: sum(1 for p in f.people if is_fist_up(p)) >= 2,
         "fists_touch": lambda f: _pair(f, are_touching_fists_up),
@@ -104,6 +105,7 @@ def find_signs(frames: list[Frame]) -> list[Sign]:
             if kind == "handshake" and not _still([f for f in frames if sign.start <= f.t <= sign.end]):
                 continue
             signs.append(sign)
+    signs += [Sign("time", t, t) for t in sounds]
     return sorted(signs, key=lambda s: s.start)
 
 
@@ -119,8 +121,8 @@ def _empty_since(frames: list[Frame]) -> list[float]:
     return [t for t in out if any(f.t - t >= EMPTY_HOLD and not f.people for f in frames if f.t >= t)]
 
 
-def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS) -> list[Fight]:
-    signs = [s for s in find_signs(frames) if s.kind in enabled]
+def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: list[float] = ()) -> list[Fight]:
+    signs = [s for s in find_signs(frames, sounds) if s.kind in enabled]
     starts = [s for s in signs if s.kind in START_SIGNS]
     ends = [s for s in signs if s.kind in END_SIGNS]
     empties = _empty_since(frames)

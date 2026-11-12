@@ -89,6 +89,16 @@ def create_test(db: Session, clips: SessionClips, member: Member, upload_id: str
     return found
 
 
+def rename_test(db: Session, member: Member, test_id: int, title: str) -> LabTest:
+    """Le crayon à côté du nom de l'essai (Seb, 12/11)."""
+    found = test(db, member, test_id)
+    if not title:
+        raise ValueError("Donnez un nom à l'essai")
+    found.title = title[:150]
+    db.commit()
+    return found
+
+
 def delete_test(db: Session, clips: SessionClips, member: Member, test_id: int) -> None:
     found = test(db, member, test_id)
     _poses_path(found).unlink(missing_ok=True)
@@ -111,7 +121,8 @@ def fights_of(db: Session, found: LabTest) -> list[Fight]:
         return []
     from .cutting import _load_frames
 
-    return find_fights(_load_frames(path), enabled_signs(db, found.org_id))
+    sounds = [s["start"] for s in signs_of(found) if s["kind"] == "time"]
+    return find_fights(_load_frames(path), enabled_signs(db, found.org_id), sounds)
 
 
 # --- Lecture par le worker ---
@@ -129,9 +140,9 @@ def tests_to_read(db: Session) -> list[LabTest]:
         )
 
 
-def read_test(db: Session, clips: SessionClips, found: LabTest, detect) -> int:
-    """Lit les postures, repère les signes avec une image de chacun, et
-    passe l'essai à `ready`. Renvoie le nombre de signes."""
+def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lambda _path: []) -> int:
+    """Lit les postures et écoute les sons, repère les signes avec une image
+    de chacun, et passe l'essai à `ready`. Renvoie le nombre de signes."""
     from .cutting import _save_frames
 
     with toutes_saisons(db):
@@ -141,7 +152,7 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect) -> int:
     _save_frames(_poses_path(found), frames)
     signs = [
         {"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}
-        for s in find_signs(frames)
+        for s in find_signs(frames, hear(source))
     ]
     found.signs = json.dumps(signs)
     found.status = "ready"

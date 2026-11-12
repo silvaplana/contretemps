@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
+import Modal from '../../components/Modal.jsx'
 import { demarrerTeleversement, finaliserTeleversement, useProgressionVideo, useTeleversementsTermines } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 
@@ -17,6 +18,7 @@ const SIGNES = [
   { id: 'fists_touch', g: 'deb', l: 'Poings touchés en l’air', court: 'Poings en l’air', d: 'Les deux se touchent les poings, bras vers le haut' },
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },
   { id: 'x', g: 'fin', l: 'X au-dessus de la tête', court: 'X', d: 'Avant-bras croisés en l’air' },
+  { id: 'time', g: 'fin', l: '« Time ! » crié', court: '« Time ! »', d: 'Son : l’entraîneur annonce la fin' },
 ]
 const signe = (id) => SIGNES.find((s) => s.id === id) ?? { id, g: 'fin', l: id, court: id, d: '' }
 
@@ -47,9 +49,9 @@ export function useSuppressionEssai(montrer, rafraichir) {
   return [caches, supprimer]
 }
 
-export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOpen }) {
+export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOpen, onSupprimer }) {
   const [liste, setListe] = useState(null)
-  const champ = useRef(null)
+  const [renomme, setRenomme] = useState(null) // l'essai au crayon
   useEffect(() => {
     api.essais().then(setListe, (e) => montrer(e.message))
   }, [version, montrer])
@@ -73,40 +75,65 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
     }
   }
 
+  function choisi(ev) {
+    importer(ev.target.files?.[0])
+    ev.target.value = ''
+  }
+
   const visibles = liste?.filter((e) => !essaisCaches.has(e.id))
   return (
     <>
-      <button type="button" className="btn btn--primary sc-bouton" onClick={() => champ.current?.click()}>
-        Importer une vidéo
-      </button>
-      <input
-        ref={champ}
-        type="file"
-        accept="video/*"
-        hidden
-        onChange={(ev) => {
-          importer(ev.target.files?.[0])
-          ev.target.value = ''
-        }}
-      />
-      <p className="sc-meta">Une vidéo de la Galerie, lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
+      {/* Comme les vidéos d'une chorégraphie (AjouterVideo.jsx, Seb 12/11) : la
+          caméra filme tout de suite (essais entre amis), le dossier prend une
+          vidéo de la Galerie. */}
+      <label className="fab--secondary" aria-label="Filmer une vidéo">
+        <Icon name="camera" size={20} />
+        <input type="file" accept="video/*" capture="environment" hidden onChange={choisi} />
+      </label>
+      <label className="fab" aria-label="Importer une vidéo">
+        <Icon name="folder" size={24} />
+        <input type="file" accept="video/*" hidden onChange={choisi} />
+      </label>
+      <p className="sc-meta">Filmez (caméra) ou prenez une vidéo de la Galerie (dossier) : elle est lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
       {visibles?.length === 0 && <p className="sc-vide">Aucun essai pour l’instant.</p>}
       {visibles?.map((e) => (
-        <button
-          key={e.id}
-          type="button"
-          className="sc-carte"
-          aria-disabled={e.status !== 'ready'}
-          onClick={() => e.status === 'ready' && onOpen(e.id)}
-        >
-          <span className="sc-carte__info">
-            <strong>{e.title || 'Essai'}</strong>
-            <span className="sc-meta">
-              <EtatEssai e={e} />
+        <div key={e.id} className="sc-essai">
+          <button
+            type="button"
+            className="sc-essai__ouvrir"
+            aria-disabled={e.status !== 'ready'}
+            onClick={() => e.status === 'ready' && onOpen(e.id)}
+          >
+            <span className="sc-vignette sc-vignette--petite">
+              {e.video?.poster ? <img src={e.video.poster} alt="" /> : <Icon name="video" size={20} />}
+              {e.video?.dureeSecondes > 0 && <span className="sc-vignette__duree">{mmss(e.video.dureeSecondes)}</span>}
             </span>
-          </span>
-        </button>
+            <span>
+              <strong>{e.title || 'Essai'}</strong>
+              <span className="sc-meta">
+                <EtatEssai e={e} />
+              </span>
+            </span>
+          </button>
+          <button type="button" className="icon-btn" aria-label="Renommer l’essai" onClick={() => setRenomme(e)}>
+            <Icon name="edit" size={20} />
+          </button>
+          <button type="button" className="icon-btn" aria-label="Supprimer l’essai" onClick={() => onSupprimer(e.id)}>
+            <Icon name="trash" size={20} />
+          </button>
+        </div>
       ))}
+      {renomme && (
+        <RenommerEssai
+          essai={renomme}
+          montrer={montrer}
+          onClose={() => setRenomme(null)}
+          onRenomme={() => {
+            setRenomme(null)
+            rafraichir()
+          }}
+        />
+      )}
     </>
   )
 }
@@ -128,6 +155,8 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
   const [club, setClub] = useState(null) // ceux enregistrés
   const [enCours, setEnCours] = useState(false)
   const [duree, setDuree] = useState(null)
+  const [regarde, setRegarde] = useState(null) // le combat ouvert
+  const [renomme, setRenomme] = useState(false) // le crayon
   const lecteur = useRef(null)
   useEffect(() => {
     api.essaiLabo(essaiId).then(setE, (err) => montrer(err.message))
@@ -143,6 +172,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     const v = lecteur.current
     if (!v) return
     v.currentTime = t
+    v.scrollIntoView?.({ behavior: 'smooth', block: 'center' }) // la vidéo est en haut de l'écran
     v.play?.().catch(() => {})
   }
 
@@ -174,6 +204,11 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           <Icon name="chevronLeft" size={22} />
         </button>
         <strong className="sc__titre">{e?.title ?? ''}</strong>
+        {e && (
+          <button type="button" className="icon-btn" onClick={() => setRenomme(true)} aria-label="Renommer l’essai">
+            <Icon name="edit" size={20} />
+          </button>
+        )}
       </div>
       {e && coches && (
         <div className="sc__corps">
@@ -209,8 +244,12 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           <h3 className="sc-section">Combats coupés</h3>
           {e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
           {e.fights.map((c, i) => (
-            <button key={i} type="button" className="sc-carte" onClick={() => aller(c.start)}>
-              <span className="sc-carte__info">
+            <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
+              <span className="sc-vignette">
+                {vignette(e.signs, c) ? <img src={vignette(e.signs, c)} alt="" /> : <Icon name="video" size={22} />}
+                <span className="sc-vignette__duree">{mmss(c.end - c.start)}</span>
+              </span>
+              <span>
                 <strong>Combat {i + 1}</strong>
                 <span className="sc-meta">
                   {mmss(c.start)} → {mmss(c.end)}
@@ -244,7 +283,78 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           </button>
         </div>
       )}
+      {regarde && (
+        <Modal title={`Combat ${regarde.numero}`} onClose={() => setRegarde(null)}>
+          <LecteurCombat url={e.video.url} combat={regarde} />
+        </Modal>
+      )}
+      {renomme && (
+        <RenommerEssai
+          essai={e}
+          montrer={montrer}
+          onClose={() => setRenomme(false)}
+          onRenomme={(r) => {
+            setRenomme(false)
+            setE((x) => ({ ...x, title: r.title }))
+            rafraichir()
+          }}
+        />
+      )}
     </div>
+  )
+}
+
+// Le crayon : renommer un essai (Seb, 12/11).
+function RenommerEssai({ essai, montrer, onClose, onRenomme }) {
+  const [nom, setNom] = useState(essai.title)
+  async function enregistrer() {
+    try {
+      onRenomme(await api.renommerEssai(essai.id, nom))
+    } catch (err) {
+      montrer(err.message)
+    }
+  }
+  return (
+    <Modal
+      title="Renommer l’essai"
+      onClose={onClose}
+      footer={
+        <div className="video-upload-form__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Annuler
+          </button>
+          <button type="button" className="btn btn--primary" disabled={!nom.trim()} onClick={enregistrer}>
+            Enregistrer
+          </button>
+        </div>
+      }
+    >
+      <input className="sc-champ" value={nom} autoFocus maxLength={150} onChange={(ev) => setNom(ev.target.value)} />
+    </Modal>
+  )
+}
+
+// La vignette d'un combat : l'image de son signe de début.
+function vignette(signes, combat) {
+  const debuts = signes.filter((s) => signe(s.kind).g === 'deb' && s.start <= combat.start + 0.05 && s.thumb)
+  return debuts.length ? debuts[debuts.length - 1].thumb : null
+}
+
+// Un combat regardé seul : la vidéo de l'essai, du début à la fin du combat.
+function LecteurCombat({ url, combat }) {
+  const lecteur = useRef(null)
+  return (
+    <video
+      ref={lecteur}
+      className="sc-apercu"
+      src={`${url}#t=${combat.start},${combat.end}`}
+      controls
+      autoPlay
+      playsInline
+      onTimeUpdate={(ev) => {
+        if (ev.currentTarget.currentTime >= combat.end) ev.currentTarget.pause()
+      }}
+    />
   )
 }
 

@@ -41,6 +41,12 @@ CLIP_HEIGHT = 720
 REASON_NAMES = "Choisissez les noms des combattants."
 
 Detector = Callable[[Path], Iterable[Frame]]
+# Les « Time ! » dits dans une vidéo, en secondes (hearing.py).
+Listener = Callable[[Path], list[float]]
+
+
+def _deaf(_path: Path) -> list[float]:
+    return []
 
 
 def sessions_to_cut(db: Session) -> list[ClipSession]:
@@ -84,7 +90,7 @@ def _ffmpeg(inputs: list[str], length: float, dest: Path) -> bool:
     return result.returncode == 0 and dest.exists()
 
 
-def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: Detector) -> int:
+def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: Detector, hear: Listener = _deaf) -> int:
     """Découpe une séance et la passe à `ready` ; renvoie le nombre de clips.
     Rejouable : les clips d'un essai interrompu sont d'abord effacés."""
     with toutes_saisons(db):
@@ -92,7 +98,7 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
             clips.videos.delete(db, video_id)
         raw = clips.videos.get(db, session.raw_video_id)
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
-    fights = find_fights(list(detect(source)), enabled_signs(db, session.org_id))
+    fights = find_fights(list(detect(source)), enabled_signs(db, session.org_id), hear(source))
 
     folder = dossier_ecole(session.org_id)
     count = 0
@@ -138,7 +144,7 @@ def live_sessions(db: Session) -> list[ClipSession]:
         )
 
 
-def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Detector) -> int:
+def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Detector, hear: Listener = _deaf) -> int:
     """Lit les postures des morceaux arrivés (dans l'ordre), puis
     coupe chaque combat dont la fin est connue et qui ne l'a pas encore été.
     Quand le dernier morceau est lu, coupe aussi le combat resté ouvert et
@@ -147,6 +153,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     with toutes_saisons(db):
         videos = clips.videos.par_ids(db, [p.video_id for p in pieces if p.video_id is not None])
     frames: list[Frame] = []
+    sounds: list[float] = []
     sources: list[tuple[Path, float, float]] = []  # fichier, début dans la séance, durée
     offset, read, ended = 0.0, False, False
     for piece in pieces:
@@ -158,15 +165,19 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
             break
         source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
         poses = _poses_path(session.org_id, piece.id)
+        heard = poses.with_suffix(".sounds.json")
         if piece.duration_seconds is None or not poses.exists():
             piece_frames = list(detect(source))
             _save_frames(poses, piece_frames)
+            heard.write_text(json.dumps(hear(source)))
             piece.duration_seconds = _duration(source) or (piece_frames[-1].t if piece_frames else 0.0)
             db.commit()
             read = True
         else:
             piece_frames = _load_frames(poses)
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
+        # Un morceau lu avant l'écoute des sons (12/11) n'a pas de fichier.
+        sounds += [t + offset for t in (json.loads(heard.read_text()) if heard.exists() else [])]
         sources.append((source, offset, piece.duration_seconds))
         offset += piece.duration_seconds
         ended = piece.last
@@ -177,7 +188,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     done = [x for x in db.scalars(select(Clip.start_seconds).where(Clip.session_id == session.id)) if x is not None]
     folder = dossier_ecole(session.org_id)
     count = 0
-    for fight in find_fights(frames, enabled_signs(db, session.org_id)):
+    for fight in find_fights(frames, enabled_signs(db, session.org_id), sounds):
         if fight.check_reason == REASON_NO_END and not finished:
             continue  # combat encore en cours
         if any(abs(start - fight.start) < 2 for start in done):

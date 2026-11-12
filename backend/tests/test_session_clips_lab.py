@@ -66,23 +66,30 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     postures = frames([(1, touch), (9, fight), (2, hand), (8, fight), (2, x), (8, [])])
     test = db_session.get(LabTest, essai["id"])
     assert lab.tests_to_read(db_session) == [test]
-    assert lab.read_test(db_session, core.session_clips_client, test, lambda _p: postures) == 3
+    assert lab.read_test(db_session, core.session_clips_client, test, lambda _p: postures, lambda _p: [25.0]) == 4
     assert lab.tests_to_read(db_session) == []
 
     detail = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()
     assert detail["status"] == "ready"
-    assert [s["kind"] for s in detail["signs"]] == ["fists_touch", "handshake", "x"]
+    assert [s["kind"] for s in detail["signs"]] == ["fists_touch", "handshake", "x", "time"]
     assert all(s["thumb"].startswith("data:image/jpeg;base64,") for s in detail["signs"])
     # Tous les signes cochés : le combat finit à la poignée de main (10 s + 1).
     assert [round(f["end"]) for f in detail["fights"]] == [11]
 
     # Sans la poignée de main, il va jusqu'au X : sans relire la vidéo.
+    # (Le « Time ! » à 25 s vient après.)
     r = client.put("/session-clips/signs", json={"signs": ["fists_touch", "x"]}, headers=e["coach"])
     assert r.json() == {"signs": ["fists_touch", "x"]}
     detail = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()
-    assert len(detail["signs"]) == 3 and [round(f["end"]) for f in detail["fights"]] == [21]
+    assert len(detail["signs"]) == 4 and [round(f["end"]) for f in detail["fights"]] == [21]
     assert client.get("/session-clips/signs", headers=e["coach"]).json() == {"signs": ["fists_touch", "x"]}
     assert client.put("/session-clips/signs", json={"signs": ["salto"]}, headers=e["coach"]).status_code == 400
+
+    # Le crayon : renommer l'essai.
+    r = client.patch(f"/session-clips/lab/{essai['id']}", json={"title": " Jo contre Jac "}, headers=e["coach"])
+    assert r.status_code == 200 and r.json()["title"] == "Jo contre Jac"
+    assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": " "}, headers=e["coach"]).status_code == 400
+    assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": "x"}, headers=e["ailleurs"]).status_code == 404
 
     # Réservé aux coachs de l'école.
     assert client.get("/session-clips/lab", headers=e["eleve"]).status_code == 403
