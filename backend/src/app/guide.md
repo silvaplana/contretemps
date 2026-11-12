@@ -65,8 +65,8 @@ Admin › Cours
   « Créer aussi la conversation de groupe de ce cours ».
 
 Profil : identité (email et téléphone modifiables au crayon par un admin, sinon via Admin), Ma
-famille, Mes heures (profs), Mes notes de frais, Notifications, Ma barre du bas (flèches ↑ ↓ pour
-ranger ses onglets, « Remettre l'ordre de l'école »), Changer mon mot de passe, Mon RIB,
+famille, Mes heures (profs), Mes notes de frais, Notifications, Ma barre du bas (glisser la poignée ⠿
+pour ranger ses onglets, y compris ceux sous « Plus », « Remettre l'ordre de l'école »), Changer mon mot de passe, Mon RIB,
 Changer d'école (Super User), Se déconnecter.
 
 Supervision (Super User seulement) : vide pour l'instant.

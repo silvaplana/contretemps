@@ -1,72 +1,107 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { mots } from '../api/mots.js'
 import { LARGEUR_ONGLET, ongletsVisibles } from '../data/nav.js'
 import Icon from './Icon.jsx'
 import Modal from './Modal.jsx'
 
 // Profil › Ma barre du bas (spec/core.md §10.4, Seb, 12 novembre 2026) :
-// chacun range ses onglets avec ↑ ↓. Les premiers vont dans la barre, la
-// suite passe sous « Plus ». Chaque flèche enregistre tout de suite, et la
-// barre du bas suit sous la fenêtre.
+// une seule liste d'onglets, qu'on range en glissant la poignée ⠿ à gauche
+// (au doigt ou à la souris, flèches du clavier aussi), comme Admin › Affichage.
+// Les premiers vont dans la barre, la suite sous « Plus » : un trait le
+// montre, ce n'est pas un sous-dossier, on y glisse un onglet ou on l'en sort.
+// L'ordre est enregistré au lâcher.
 export default function MaBarreDuBas({ user, tabs, eteints, onRanger, onClose }) {
-  const onglets = ongletsVisibles(user, eteints, tabs)
+  const enregistres = ongletsVisibles(user, eteints, tabs)
   const [erreur, setErreur] = useState('')
+  // Pendant un glisser : l'ordre en cours, avant enregistrement.
+  const [glisse, setGlisse] = useState(null)
+  const lignes = useRef({})
+  const onglets = glisse ? glisse.ordre : enregistres
   // Même calcul que BottomNav.jsx : quand tout ne tient pas, « Plus » prend
   // la dernière place.
   const largeur = document.querySelector('.bottom-nav')?.clientWidth ?? window.innerWidth
   const places = Math.max(2, Math.floor(largeur / LARGEUR_ONGLET))
   const dansLaBarre = onglets.length > places ? places - 1 : onglets.length
 
-  function ranger(ordre) {
+  function ranger(liste) {
     setErreur('')
-    onRanger(ordre).catch(() => setErreur("L'ordre n'a pas pu être enregistré. Réessayez."))
+    onRanger(liste.map((tab) => tab.key)).catch(() => setErreur("L'ordre n'a pas pu être enregistré. Réessayez."))
   }
 
-  function bouger(index, sens) {
-    const cles = onglets.map((tab) => tab.key)
-    ;[cles[index], cles[index + sens]] = [cles[index + sens], cles[index]]
-    ranger(cles)
+  function deplacer(liste, de, vers) {
+    const copie = [...liste]
+    const [tab] = copie.splice(de, 1)
+    copie.splice(vers, 0, tab)
+    return copie
+  }
+
+  // Glisser : on suit le pointeur et on prend la place de la ligne survolée.
+  function commencer(e, index) {
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    setGlisse({ index, ordre: enregistres, bouge: false })
+  }
+
+  function suivre(e) {
+    if (!glisse) return
+    const survolee = glisse.ordre.findIndex((tab) => {
+      const boite = lignes.current[tab.key]?.getBoundingClientRect()
+      return boite && e.clientY >= boite.top && e.clientY <= boite.bottom
+    })
+    if (survolee < 0 || survolee === glisse.index) return
+    setGlisse({ index: survolee, ordre: deplacer(glisse.ordre, glisse.index, survolee), bouge: true })
+  }
+
+  function lacher() {
+    if (!glisse) return
+    setGlisse(null)
+    if (glisse.bouge) ranger(glisse.ordre)
+  }
+
+  function clavier(e, index) {
+    const vers = e.key === 'ArrowUp' ? index - 1 : e.key === 'ArrowDown' ? index + 1 : null
+    if (vers === null || vers < 0 || vers >= onglets.length) return
+    e.preventDefault()
+    const cle = onglets[index].key
+    ranger(deplacer(onglets, index, vers))
+    requestAnimationFrame(() => lignes.current[cle]?.querySelector('.ma-barre__poignee')?.focus())
   }
 
   return (
     <Modal title="Ma barre du bas" onClose={onClose}>
-      <p className="ma-barre__aide">
-        {dansLaBarre < onglets.length
-          ? `Les ${dansLaBarre} premiers sont dans la barre. Les autres sont sous « Plus ».`
-          : 'Montez ou descendez un onglet avec les flèches.'}
-      </p>
+      <p className="ma-barre__aide">Glissez la poignée ⠿ pour changer l’ordre.</p>
       <div className="ma-barre__liste">
         {onglets.map((tab, index) => (
           <div key={tab.key}>
-            {index === dansLaBarre && <p className="ma-barre__plus">Sous « Plus »</p>}
-            <div className="ma-barre__ligne">
+            {index === dansLaBarre && <p className="ma-barre__plus">Plus bas, sous « Plus » ⋯</p>}
+            <div
+              ref={(noeud) => {
+                lignes.current[tab.key] = noeud
+              }}
+              className={`ma-barre__ligne ${glisse?.index === index ? 'is-glissee' : ''}`}
+            >
+              <span
+                className="ma-barre__poignee"
+                role="button"
+                tabIndex={0}
+                aria-label={`Déplacer ${tab.label}`}
+                onPointerDown={(e) => commencer(e, index)}
+                onPointerMove={suivre}
+                onPointerUp={lacher}
+                onPointerCancel={lacher}
+                onKeyDown={(e) => clavier(e, index)}
+              >
+                ⠿
+              </span>
               <Icon name={tab.icon} size={22} />
               <span className="ma-barre__nom">{tab.label}</span>
-              <button
-                type="button"
-                className="ma-barre__fleche"
-                aria-label={`Monter ${tab.label}`}
-                disabled={index === 0}
-                onClick={() => bouger(index, -1)}
-              >
-                ↑
-              </button>
-              <button
-                type="button"
-                className="ma-barre__fleche"
-                aria-label={`Descendre ${tab.label}`}
-                disabled={index === onglets.length - 1}
-                onClick={() => bouger(index, 1)}
-              >
-                ↓
-              </button>
             </div>
           </div>
         ))}
       </div>
       {erreur && <p className="login-screen__erreur">{erreur}</p>}
       {user.tabOrder?.length > 0 && (
-        <button type="button" className="btn btn--secondary btn--block" onClick={() => ranger([])}>
+        <button type="button" className="btn btn--secondary btn--block" onClick={() => onRanger([]).catch(() => {})}>
           Remettre l'ordre {mots().deLEcole}
         </button>
       )}
