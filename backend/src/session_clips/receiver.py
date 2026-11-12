@@ -212,6 +212,10 @@ class SessionClipsReceiver:
                 ],
             )
 
+        @app.post(f"{PREFIX}/lab/{{test_id}}/reread", status_code=204)
+        def reread_lab_test(test_id: int, m: Member = member, s: Session = db):
+            guard(lambda: lab.reread_test(s, client, m, test_id))
+
         @app.patch(f"{PREFIX}/lab/{{test_id}}", response_model=LabTestOut)
         def rename_lab_test(test_id: int, body: LabTestRename, m: Member = member, s: Session = db):
             return self._lab_out(s, guard(lambda: lab.rename_test(s, m, test_id, body.title.strip())))

@@ -17,6 +17,7 @@ const ANNULER_MS = 10000
 const SIGNES = [
   { id: 'fist_up', g: 'deb', l: 'Poing levé', court: 'Poing levé', d: 'Chacun lève le poing au-dessus de la tête, bras plié' },
   { id: 'fists_touch', g: 'deb', l: 'Poings touchés en l’air', court: 'Poings en l’air', d: 'Les deux se touchent les poings, bras vers le haut' },
+  { id: 'go', g: 'deb', l: '« Go ! » crié', court: '« Go ! »', d: 'Son : l’entraîneur annonce le début' },
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },
   { id: 'x', g: 'fin', l: 'X au-dessus de la tête', court: 'X', d: 'Avant-bras croisés en l’air' },
   { id: 'time', g: 'fin', l: '« Time ! » crié', court: '« Time ! »', d: 'Son : l’entraîneur annonce la fin' },
@@ -102,8 +103,10 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
           <button
             type="button"
             className="sc-essai__ouvrir"
-            aria-disabled={e.status !== 'ready'}
-            onClick={() => e.status === 'ready' && onOpen(e.id)}
+            // Ouvrable dès la vidéo envoyée : la lecture des signes continue
+            // dans l'essai (Seb, 12/11).
+            aria-disabled={!ouvrable(e)}
+            onClick={() => ouvrable(e) && onOpen(e.id)}
           >
             <span className="sc-vignette sc-vignette--petite">
               {e.video?.poster ? <img src={e.video.poster} alt="" /> : <Icon name="video" size={20} />}
@@ -139,6 +142,8 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
   )
 }
 
+const ouvrable = (e) => e.status === 'ready' || e.status === 'processing'
+
 function EtatEssai({ e }) {
   const progression = useProgressionVideo(e.status === 'uploading' ? e.video?.id : null)
   if (e.status === 'uploading') {
@@ -163,6 +168,13 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
   useEffect(() => {
     api.essaiLabo(essaiId).then(setE, (err) => montrer(err.message))
   }, [essaiId, version, montrer])
+  // Pendant la lecture des signes, l'essai se met à jour seul.
+  const lecture = e?.status === 'processing'
+  useEffect(() => {
+    if (!lecture) return undefined
+    const minuteur = setInterval(() => api.essaiLabo(essaiId).then(setE, () => {}), 5000)
+    return () => clearInterval(minuteur)
+  }, [lecture, essaiId])
   useEffect(() => {
     api.reglagesDuClub().then((r) => {
       setClub(r)
@@ -183,12 +195,17 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     setReglages((r) => ({ ...r, signs: r.signs.includes(id) ? r.signs.filter((x) => x !== id) : [...r.signs, id] }))
   }
 
+  // Enregistre les réglages s'ils ont changé, puis relit les signes avec les
+  // règles du jour, sans relire la vidéo (Seb, 12/11).
   async function relancer() {
     setEnCours(true)
     try {
-      const r = await api.reglerClub(reglages)
-      setClub(r)
-      setReglages(r)
+      if (change) {
+        const r = await api.reglerClub(reglages)
+        setClub(r)
+        setReglages(r)
+      }
+      await api.relireEssai(essaiId)
       rafraichir()
       montrer('Découpe relancée')
     } catch (err) {
@@ -233,42 +250,50 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               />
             </div>
           )}
-          <h3 className="sc-section">Signes repérés</h3>
-          <div className="sc-cadre">
-            <Graphe signes={e.signs} combats={e.fights} coches={coches} fin={fin} aller={aller} />
-            {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
-            {e.signs.map((s, i) => {
-              const sg = signe(s.kind)
-              const on = coches.includes(s.kind)
-              return (
-                <button key={i} type="button" className="sc-geste" onClick={() => aller(s.start)}>
-                  <span className="sc-geste__t">{mmss(s.start)}</span>
-                  <span className={`sc-geste__pt sc-geste__pt--${on ? sg.g : 'off'}`} />
+          {lecture ? (
+            <p className="sc-meta">
+              <span className="sc-chip sc-chip--info">Lecture des signes…</span> Les signes et les combats s’afficheront ici.
+            </p>
+          ) : (
+            <>
+              <h3 className="sc-section">Signes repérés</h3>
+              <div className="sc-cadre">
+                <Graphe signes={e.signs} combats={e.fights} coches={coches} fin={fin} aller={aller} />
+                {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
+                {e.signs.map((s, i) => {
+                  const sg = signe(s.kind)
+                  const on = coches.includes(s.kind)
+                  return (
+                    <button key={i} type="button" className="sc-geste" onClick={() => aller(s.start)}>
+                      <span className="sc-geste__t">{mmss(s.start)}</span>
+                      <span className={`sc-geste__pt sc-geste__pt--${on ? sg.g : 'off'}`} />
+                      <span>
+                        {sg.l}
+                        <small>{on ? (sg.g === 'deb' ? 'Début de combat' : 'Fin de combat') : 'Signe décoché : ignoré'}</small>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <h3 className="sc-section">Combats coupés</h3>
+              {e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
+              {e.fights.map((c, i) => (
+                <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
+                  <span className="sc-vignette">
+                    {vignette(e.signs, c) ? <img src={vignette(e.signs, c)} alt="" /> : <Icon name="video" size={22} />}
+                    <span className="sc-vignette__duree">{mmss(c.end - c.start)}</span>
+                  </span>
                   <span>
-                    {sg.l}
-                    <small>{on ? (sg.g === 'deb' ? 'Début de combat' : 'Fin de combat') : 'Signe décoché : ignoré'}</small>
+                    <strong>Combat {i + 1}</strong>
+                    <span className="sc-meta">
+                      {mmss(c.start)} → {mmss(c.end)}
+                      {c.check_reason && <span className="sc-chip sc-chip--warn">Fin non repérée</span>}
+                    </span>
                   </span>
                 </button>
-              )
-            })}
-          </div>
-          <h3 className="sc-section">Combats coupés</h3>
-          {e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
-          {e.fights.map((c, i) => (
-            <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
-              <span className="sc-vignette">
-                {vignette(e.signs, c) ? <img src={vignette(e.signs, c)} alt="" /> : <Icon name="video" size={22} />}
-                <span className="sc-vignette__duree">{mmss(c.end - c.start)}</span>
-              </span>
-              <span>
-                <strong>Combat {i + 1}</strong>
-                <span className="sc-meta">
-                  {mmss(c.start)} → {mmss(c.end)}
-                  {c.check_reason && <span className="sc-chip sc-chip--warn">Fin non repérée</span>}
-                </span>
-              </span>
-            </button>
-          ))}
+              ))}
+            </>
+          )}
           <Deroulant titre="Signes et sons du club">
             {['deb', 'fin'].map((g) => (
               <div key={g}>
@@ -304,7 +329,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               onChange={(end_skip) => setReglages((r) => ({ ...r, end_skip }))}
             />
           </Deroulant>
-          <button type="button" className="btn btn--primary sc-bouton" disabled={!change || enCours} onClick={relancer}>
+          <button type="button" className="btn btn--primary sc-bouton" disabled={lecture || enCours} onClick={relancer}>
             Relancer la découpe
           </button>
           <button type="button" className="btn btn--secondary sc-bouton" onClick={() => onSupprimer(e.id)}>

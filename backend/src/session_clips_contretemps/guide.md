@@ -31,15 +31,17 @@ Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ran
   devient un essai), le gros bouton dossier prend une vidéo dans la Galerie. Chaque essai de la liste a
   une petite vignette avec sa durée, un crayon (renommer) et une poubelle (supprimer, Annuler 10
   secondes). L'essai apparaît
-  dans la liste (« Envoi … % », puis « Lecture des signes… ») et s'ouvre quand il est lu.
+  dans la liste (« Envoi … % », puis « Lecture des signes… ») et s'ouvre dès que la vidéo est
+  envoyée : la lecture des signes continue dedans, puis l'essai se complète seul.
 - Un essai ouvert : la vidéo, le graphe des signes repérés (une flèche par signe avec son image,
   vert = début, rouge = fin, gris = décoché), la liste des signes, les combats coupés. Toucher une
   flèche ou un signe place la vidéo à ce moment. Chaque combat coupé a sa vignette (l'image du
   signe de début) : le toucher l'ouvre et le lit, du début à la fin. Le crayon en haut à droite
   renomme l'essai.
-- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poing levé, Poings touchés en l'air) et
+- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poing levé, Poings touchés en l'air, « Go ! » crié) et
   de fin (Poignée de main, X au-dessus de la tête, « Time ! » crié) que la découpe prend, pour tout le club (caméra
-  de la salle comprise). « Relancer la découpe » enregistre et recalcule les combats.
+  de la salle comprise). « Relancer la découpe » (toujours actif) enregistre, relit les signes et
+  recalcule les combats.
 - « Clips du club » (déroulant, fermé au départ) : Cadrage (Plan large, Moyen, Serré), « Démarrer après le signe de début » et
   « Couper avant la fin » (− et +, en secondes). « Relancer la découpe » enregistre ; le cadre se
   voit sur la vidéo pendant un combat.

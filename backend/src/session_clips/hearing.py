@@ -1,9 +1,10 @@
-"""Écouter la bande son d'une vidéo : les « Time ! » criés par l'entraîneur
-à la fin d'un combat (spec/modules/video-combats.md §5, Seb 12/11/2026).
+"""Écouter la bande son d'une vidéo : les « Go ! » criés par l'entraîneur au
+début d'un combat et les « Time ! » à la fin (spec/modules/video-combats.md
+§5, Seb 12/11/2026).
 
 Whisper (faster-whisper, modèle « base », sur le processeur) transcrit les
 passages où quelqu'un parle, avec l'heure de chaque mot ; on garde les mots
-qui sonnent comme « time ». Installé seulement dans le conteneur
+qui sonnent comme « go » ou « time ». Installé seulement dans le conteneur
 `sparring-worker` (backend/Dockerfile.sparring), d'où l'import dans la
 fonction, comme detector.py.
 """
@@ -17,19 +18,28 @@ import unicodedata
 from pathlib import Path
 
 MODEL = os.environ.get("SPARRING_SPEECH_MODEL", "base")
-# « Time » dit en anglais, ou entendu comme un mot français.
-WORDS = {"time", "times", "taim", "taime", "thaim", "thaime"}
+# « Time » et « Go » dits en anglais, ou entendus comme des mots français.
+WORDS = {
+    "time": {"time", "times", "taim", "taime", "thaim", "thaime"},
+    "go": {"go", "gos", "goo", "gow", "gau", "gaux"},
+}
 
 _model = None
 
 
-def is_time(word: str) -> bool:
+def word_kind(word: str) -> str | None:
+    """« time », « go » ou None."""
     plain = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode().lower()
-    return re.sub(r"[^a-z]", "", plain) in WORDS
+    plain = re.sub(r"[^a-z]", "", plain)
+    return next((kind for kind, words in WORDS.items() if plain in words), None)
 
 
-def hear(video_path: Path) -> list[float]:
-    """Les moments (en secondes) où « Time ! » est dit. Si l'écoute échoue,
+def is_time(word: str) -> bool:
+    return word_kind(word) == "time"
+
+
+def hear(video_path: Path) -> list[tuple[str, float]]:
+    """Les « go » et « time » dits, avec leur moment en secondes. Si l'écoute échoue,
     aucun : les gestes suffisent, la vidéo est quand même lue (Seb, 12/11)."""
     try:
         return _hear(video_path)
@@ -39,7 +49,7 @@ def hear(video_path: Path) -> list[float]:
         return []
 
 
-def _hear(video_path: Path) -> list[float]:
+def _hear(video_path: Path) -> list[tuple[str, float]]:
     global _model
     from faster_whisper import WhisperModel
 
@@ -49,7 +59,8 @@ def _hear(video_path: Path) -> list[float]:
         str(video_path),
         word_timestamps=True,
         vad_filter=True,  # ne transcrit que les passages où l'on parle
-        hotwords="Time",
+        hotwords="Go, Time",
         condition_on_previous_text=False,
     )
-    return [round(w.start, 1) for s in segments for w in (s.words or []) if is_time(w.word)]
+    words = [w for s in segments for w in (s.words or [])]
+    return [(word_kind(w.word), round(w.start, 1)) for w in words if word_kind(w.word)]

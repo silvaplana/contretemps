@@ -31,7 +31,7 @@ from videos.duree import duree_secondes
 from videos.poster import generer_poster
 from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
-from .fights import REASON_NO_END
+from .fights import REASON_NO_END, Sound, as_sound
 from .framing import Box, ffmpeg_filter, video_size
 from .lab import club_fights
 from .models import Clip, ClipSession, Piece
@@ -42,11 +42,11 @@ CLIP_HEIGHT = 720
 REASON_NAMES = "Choisissez les noms des combattants."
 
 Detector = Callable[[Path], Iterable[Frame]]
-# Les « Time ! » dits dans une vidéo, en secondes (hearing.py).
-Listener = Callable[[Path], list[float]]
+# Les « Go ! » et « Time ! » dits dans une vidéo (hearing.py).
+Listener = Callable[[Path], list[Sound]]
 
 
-def _deaf(_path: Path) -> list[float]:
+def _deaf(_path: Path) -> list[Sound]:
     return []
 
 
@@ -165,7 +165,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     with toutes_saisons(db):
         videos = clips.videos.par_ids(db, [p.video_id for p in pieces if p.video_id is not None])
     frames: list[Frame] = []
-    sounds: list[float] = []
+    sounds: list[Sound] = []
     sources: list[tuple[Path, float, float]] = []  # fichier, début dans la séance, durée
     offset, read, ended = 0.0, False, False
     for piece in pieces:
@@ -189,7 +189,8 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
             piece_frames = _load_frames(poses)
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
         # Un morceau lu avant l'écoute des sons (12/11) n'a pas de fichier.
-        sounds += [t + offset for t in (json.loads(heard.read_text()) if heard.exists() else [])]
+        for kind, t in map(as_sound, json.loads(heard.read_text()) if heard.exists() else []):
+            sounds.append((kind, t + offset))
         sources.append((source, offset, piece.duration_seconds))
         offset += piece.duration_seconds
         ended = piece.last

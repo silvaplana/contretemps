@@ -233,9 +233,12 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    **Signes et sons du club** (Seb, 12/11) : chaque organisation coche les signes que la découpe
    prend (tous par défaut), dans le Labo (§6.5 bis) ; le réglage vaut pour la caméra de la salle et
    les vidéos envoyées. **Son** (accord de Seb du 12/11) : le **« Time ! »** crié par l'entraîneur
-   est aussi un signe de fin. Whisper (faster-whisper, modèle « base », processeur seul, dans
+   est aussi un signe de fin, et le **« Go ! »** un signe de début (Seb, 12/11 : « go pour commencer,
+   time pour terminer » ; des poings touchés suivis d'un « Go ! » à moins de 2 s ne font qu'un début).
+   Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
-   (`hearing.py`) ; les mots « time » ou « taïme » comptent. Les « Time ! » d'un morceau de la caméra
+   (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Une écoute qui échoue
+   ne bloque pas la lecture : la vidéo est lue sans les sons. Les sons d'un morceau de la caméra
    sont gardés à côté de ses postures (`<id>.sounds.json`). Pas encore : les bras croisés sur la
    poitrine. Un combat repéré sans poing levé devient un « combat sans nom ».
 3. **Identification** : il suit chaque personne image par image, et compare les deux combattants aux
@@ -422,8 +425,11 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   heure (vert = début, rouge = fin, gris pointillé = signe décoché ; la bande sur l'axe = un combat
   coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les
   cases **« Signes et sons du club »** (Début de combat, Fin de combat ; volet fermé au départ, comme « Clips du club » et les volets d'Admin, pour ne pas prendre trop de place : Seb, 12/11 ; la vidéo de l'essai est petite, un tiers de l'écran en hauteur au plus) ; **« Relancer la découpe »**
-  (actif quand une case a changé) enregistre les cases du club et recalcule les combats sans relire
-  la vidéo ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche
+  (toujours actif, Seb 12/11) enregistre les réglages du club s'ils ont changé, relit les signes sur
+  les postures gardées avec les règles du jour (`POST /session-clips/lab/{id}/reread` ; les sons
+  entendus restent) et recalcule les combats, sans relire la vidéo. Un essai s'ouvre dès sa vidéo
+  envoyée : pendant la lecture des signes (automatique, la première fois), il montre la vidéo et
+  « Lecture des signes… », puis se complète seul ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche
   ou un signe place la vidéo à ce moment (elle remonte à l'écran). Chaque combat coupé a sa
   vignette (l'image de son signe de début) et s'ouvre dans une fenêtre qui le lit du début à la fin
   (Seb, 12/11). Un crayon à côté du nom renomme l'essai (`PATCH /session-clips/lab/{id}`).
