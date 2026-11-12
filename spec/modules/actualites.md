@@ -408,9 +408,10 @@ tout le monde**, avec en plus :
 - **« Mes brouillons · vous seul les voyez »** en haut du fil, dans un cadre en pointillés, chaque
   brouillon avec la pastille Brouillon. Tous ceux qui ont le droit sur ce blog voient tous ses
   brouillons. Publier un brouillon le fait descendre à sa place ;
-- le menu **⋯** du bandeau, entrée **« Paramètres d'édition des actus »** (le nom du blog à la place
-  d'« actus »), qui ouvre un écran avec ← : les mêmes parties qu'aujourd'hui (En haut de chaque actu,
-  Ouverture de l'appli, Visibilité, Instagram), **par blog**. L'appli ne s'ouvre que sur un blog à la
+- le menu **⋯** du bandeau, entrée **« Paramètres de <nom du blog> »** (« Paramètres d'Actus »,
+  « Paramètres de Techniques »), qui ouvre un écran avec ← : les mêmes parties qu'aujourd'hui (En haut
+  de chaque billet, Ouverture de l'appli, Visibilité, Instagram). **Le même écran pour tous les
+  blogs** : il n'y a qu'une sorte de blog, aucun paramètre n'est propre aux actus (Seb, 12 novembre). L'appli ne s'ouvre que sur un blog à la
   fois : allumer l'option dans un blog l'éteint dans les autres. Le relais Instagram (§6 bis) reste
   celui de l'organisation et alimente le blog où on l'a relié ; les autres blogs ne le proposent pas
   tant qu'il est relié ailleurs.
