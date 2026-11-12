@@ -10,8 +10,9 @@ Mes combats
 - Vide : les combats filmés arrivent le lendemain de la séance.
 
 Séances (coachs)
-- En tête « ★ Favoris », puis une carte par séance : nombre de combats, « 1 à vérifier » ou
-  « Vérifié », ou « Aucun combat trouvé ». Une séance filmée par la caméra montre l'heure et la durée
+- En tête « ★ Favoris », puis une ligne par séance : petite vignette, nombre de combats, « 1 à
+  vérifier » ou « Vérifié », ou « Aucun combat trouvé » en gros ; à droite un crayon (renommer la
+  séance) et une poubelle (effacer la séance et ses combats, « Annuler » pendant 10 s). Une séance filmée par la caméra montre l'heure et la durée
   (« 21:40 → 21:46 · 6 min ») et, pendant la découpe, « Découpe : 67 % » avec une
   barre. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.

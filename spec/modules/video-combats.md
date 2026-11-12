@@ -325,13 +325,18 @@ flèche ←.
 
 ### 6.3 Séances et commande de la caméra *(coachs)*
 
-**Les séances, en cartes.** Une carte par séance, de la plus récente à la plus ancienne :
+**Les séances, en lignes** (Seb, 12/11 au soir ; avant : des cartes avec un aperçu de trois combats).
+Une ligne par séance, de la plus récente à la plus ancienne, comme un essai du Labo :
 
-- en haut, un aperçu des trois premiers combats (une grande vignette, deux petites) ;
-- dessous, « Jeu. 23 oct. · Adultes · 19 h », puis l'état : « 4 combats » et « 1 à vérifier » (jaune)
-  ou « Vérifié » (vert) ;
-- une séance pas encore découpée a une carte rayée grise : « La vidéo arrive… » avec « Envoi 64 % » et
-  une barre, ou « Découpe cette nuit » avec « Clips prêts demain matin ». Elle ne s'ouvre pas.
+- une petite vignette : la première image de la vidéo de la séance (premier morceau de la caméra,
+  sinon la vidéo envoyée à la main, sinon le premier combat) ;
+- « Jeu. 23 oct. · Adultes · 19 h », puis l'état : « 4 combats » et « 1 à vérifier » (jaune) ou
+  « Vérifié » (vert), ou **« Aucun combat trouvé »** en gros ;
+- un crayon (renommer, `PATCH /session-clips/sessions/{id}`) et une poubelle (la séance, ses combats
+  et sa vidéo sont effacés au bout de 10 s, « Annuler » dans le bandeau ; effacée pendant le film,
+  la caméra s'arrête ; `DELETE /session-clips/sessions/{id}`) ;
+- une séance pas encore découpée : « Envoi 64 % » et une barre, ou « Clips prêts demain matin ».
+  Elle ne s'ouvre pas, ni une séance sans combat.
 
 Une carte ouverte est le **dossier de la séance** : en tête, « Présents reconnus : Seb R., Karim B.… »
 (ceux passés sur le repère au sol), puis ses clips dans l'ordre. Chaque clip s'appelle

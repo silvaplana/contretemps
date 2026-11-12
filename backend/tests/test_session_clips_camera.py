@@ -207,3 +207,28 @@ def test_rejumeler_pendant_le_film(client, db_session, e, tmp_path, monkeypatch)
     session = db_session.get(ClipSession, sid)
     cut_live(db_session, core.session_clips_client, session, lambda _path: [])
     assert session.status == "ready"
+
+
+def test_renommer_et_effacer_une_seance(client, db_session, e, tmp_path, monkeypatch):
+    """Fights › Séances (Seb, 12/11) : petite vignette (première image de la
+    vidéo), crayon pour renommer, poubelle pour effacer la séance et ce
+    qu'elle contient."""
+    videos_dir = tmp_path / "videos"
+    for cible in ("videos.stockage", "session_clips.cutting", "videos.videos"):
+        monkeypatch.setattr(f"{cible}.DOSSIER_VIDEOS_LIVE", videos_dir)
+    tel = {"X-Recorder-Token": client.post("/session-clips/camera/this-phone", headers=e["coach"]).json()["token"]}
+    _battre(client, tel)
+    sid = client.post("/session-clips/camera/start", json={"title": "Séance du 12/11"}, headers=e["coach"]).json()["session_id"]
+    _envoyer(client, tel, sid, 0, _morceau(tmp_path, 0, secondes=3))
+    carte = client.get("/session-clips/sessions", headers=e["coach"]).json()[0]
+    assert carte["cover"]["poster"]
+
+    assert client.patch(f"/session-clips/sessions/{sid}", json={"title": "Sparring"}, headers=e["eleve"]).status_code == 403
+    r = client.patch(f"/session-clips/sessions/{sid}", json={"title": " Sparring "}, headers=e["coach"])
+    assert r.status_code == 200 and r.json()["title"] == "Sparring"
+
+    assert client.delete(f"/session-clips/sessions/{sid}", headers=e["eleve"]).status_code == 403
+    assert client.delete(f"/session-clips/sessions/{sid}", headers=e["coach"]).status_code == 204
+    assert client.get("/session-clips/sessions", headers=e["coach"]).json() == []
+    # Effacée pendant le film : la caméra s'arrête.
+    assert _battre(client, tel, "recording")["session_id"] is None

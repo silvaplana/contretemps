@@ -44,6 +44,7 @@ from .schemas import (
     SessionCreate,
     SessionDetail,
     SessionOut,
+    SessionRename,
     ThisPhone,
 )
 from .service import ForbiddenError, NotFoundError, SessionClips, clip_title
@@ -91,6 +92,15 @@ class SessionClipsReceiver:
         @app.post(f"{PREFIX}/fights", response_model=ClipOut, status_code=201)
         def create_fight(body: FightCreate, m: Member = member, s: Session = db):
             return self._clips_out(s, m, [guard(lambda: client.add_fight(s, m, body.upload_id, body.people))])[0]
+
+        @app.patch(f"{PREFIX}/sessions/{{session_id}}", response_model=SessionOut)
+        def rename_session(session_id: int, body: SessionRename, m: Member = member, s: Session = db):
+            session = guard(lambda: client.rename_session(s, m, session_id, body.title.strip()))
+            return self._sessions_out(s, m, [session])[0]
+
+        @app.delete(f"{PREFIX}/sessions/{{session_id}}", status_code=204)
+        def delete_session(session_id: int, m: Member = member, s: Session = db):
+            guard(lambda: client.delete_session(s, m, session_id))
 
         @app.get(f"{PREFIX}/sessions/{{session_id}}", response_model=SessionDetail)
         def get_session(session_id: int, m: Member = member, s: Session = db):
@@ -295,12 +305,16 @@ class SessionClipsReceiver:
     def _sessions_out(self, s: Session, m: Member, sessions: list[ClipSession]) -> list[SessionOut]:
         ids = [x.id for x in sessions]
         clips = self.client.clips_by_session(s, ids)
-        videos = self.client.video_map(
-            s, [c.video_id for x in ids for c in clips[x][:3]] + [x.raw_video_id for x in sessions]
-        )
         pieces: dict[int, list[Piece]] = {}
-        for p in s.scalars(select(Piece).where(Piece.session_id.in_(ids))):
+        for p in s.scalars(select(Piece).where(Piece.session_id.in_(ids)).order_by(Piece.position)):
             pieces.setdefault(p.session_id, []).append(p)
+        # La vignette : le premier morceau de la caméra, sinon la vidéo envoyée à la main.
+        covers = {
+            x.id: next((p.video_id for p in pieces.get(x.id, []) if p.video_id is not None), x.raw_video_id) for x in sessions
+        }
+        videos = self.client.video_map(
+            s, [c.video_id for x in ids for c in clips[x][:3]] + [x.raw_video_id for x in sessions] + list(covers.values())
+        )
         out = []
         for x in sessions:
             raw = videos.get(x.raw_video_id)
@@ -316,6 +330,7 @@ class SessionClipsReceiver:
                     to_check_count=sum(c.to_check for c in clips[x.id]),
                     previews=[VideoSortie.model_validate(videos[c.video_id]) for c in clips[x.id][:3] if c.video_id in videos],
                     raw_video=VideoSortie.model_validate(raw) if raw is not None else None,
+                    cover=VideoSortie.model_validate(videos[covers[x.id]]) if covers[x.id] in videos else None,
                     started_at=x.created_at if x.id in pieces else None,
                     filmed_seconds=sum(p.duration_seconds or 0 for p in pieces.get(x.id, [])),
                     pieces_read=sum(p.duration_seconds is not None for p in pieces.get(x.id, [])),
