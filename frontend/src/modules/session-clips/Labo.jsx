@@ -196,7 +196,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
   }
 
   // Enregistre les réglages s'ils ont changé, puis relit les signes avec les
-  // règles du jour, sans relire la vidéo (Seb, 12/11).
+  // règles du jour et réécoute le son, sans relire les images (Seb, 12/11).
   async function relancer() {
     setEnCours(true)
     try {

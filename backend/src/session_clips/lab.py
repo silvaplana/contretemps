@@ -188,8 +188,16 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
     with toutes_saisons(db):
         video = clips.videos.get(db, found.video_id)
     source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
-    frames = list(detect(source))
-    _save_frames(_poses_path(found), frames)
+    path = _poses_path(found)
+    # Relancée (« Relancer la découpe ») : les postures gardées servent, seul
+    # le son est réécouté.
+    if path.exists():
+        from .cutting import _load_frames
+
+        frames = _load_frames(path)
+    else:
+        frames = list(detect(source))
+        _save_frames(path, frames)
     signs = [
         {"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}
         for s in find_signs(frames, hear(source))
@@ -201,27 +209,15 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
 
 
 def reread_test(db: Session, clips: SessionClips, member: Member, test_id: int) -> None:
-    """« Relancer la découpe » (Seb, 12/11) : relit les signes sur les postures
-    gardées, avec les règles du jour, sans relire la vidéo. Les « Time ! »
-    entendus et les images des signes déjà vus sont gardés."""
-    from .cutting import _load_frames
-
+    """« Relancer la découpe » (Seb, 12/11) : l'essai repasse au lecteur de
+    Fights, qui relit les signes sur les postures gardées avec les règles du
+    jour et réécoute le son (« Go ! », « Time ! »), sans relire les images.
+    Avant le 12/11 au soir, les sons gardés étaient repris tels quels : une
+    écoute ratée ne se rattrapait qu'en réimportant la vidéo."""
     found = test(db, member, test_id)
-    path = _poses_path(found)
-    if found.status != "ready" or not path.exists():
+    if found.status != "ready" or not _poses_path(found).exists():
         return
-    before = signs_of(found)
-    thumbs = {(s["kind"], s["start"]): s["thumb"] for s in before}
-    sounds = [(s["kind"], s["start"]) for s in before if s["kind"] in SOUNDS]
-    with toutes_saisons(db):
-        video = clips.videos.get(db, found.video_id)
-    source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
-    signs = []
-    for s in find_signs(_load_frames(path), sounds):
-        start = round(s.start, 1)
-        thumb = thumbs.get((s.kind, start)) or thumbnail(source, s.start)
-        signs.append({"kind": s.kind, "start": start, "end": round(s.end, 1), "thumb": thumb})
-    found.signs = json.dumps(signs)
+    found.status = "processing"
     db.commit()
 
 

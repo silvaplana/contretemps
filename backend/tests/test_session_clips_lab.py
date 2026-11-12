@@ -106,12 +106,20 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": " "}, headers=e["coach"]).status_code == 400
     assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": "x"}, headers=e["ailleurs"]).status_code == 404
 
-    # « Relancer la découpe » relit les signes sur les postures gardées, avec
-    # les règles du jour ; le « Time ! » entendu reste (Seb, 12/11).
+    # « Relancer la découpe » : le lecteur relit les signes sur les postures
+    # gardées, avec les règles du jour, et réécoute le son (Seb, 12/11 : une
+    # écoute ratée se rattrape sans réimporter la vidéo).
     db_session.refresh(test)
-    test.signs = json.dumps([x for x in lab.signs_of(test) if x["kind"] == "time"])  # comme lu avec d'autres règles
+    test.signs = json.dumps([])  # comme lu avec d'autres règles et une écoute ratée
     db_session.commit()
     assert client.post(f"/session-clips/lab/{essai['id']}/reread", headers=e["coach"]).status_code == 204
+    db_session.refresh(test)
+    assert test.status == "processing" and lab.tests_to_read(db_session) == [test]
+
+    def sans_images(_p):
+        raise AssertionError("les images ne sont pas relues")
+
+    assert lab.read_test(db_session, core.session_clips_client, test, sans_images, lambda _p: [25.0]) == 4
     signes = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["signs"]
     assert [s["kind"] for s in signes] == ["fists_touch", "handshake", "x", "time"]
     assert client.post(f"/session-clips/lab/{essai['id']}/reread", headers=e["ailleurs"]).status_code == 404
