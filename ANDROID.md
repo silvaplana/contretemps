@@ -8,6 +8,9 @@ tout le monde garde la PWA pour le reste.
   voit sans réinstaller. Sans réseau, elle affiche `frontend/android-shell/hors-ligne.html`.
 - **Elle filme** quand Fights › Tournage est sur « Caméra » : plugin `camera/TournagePlugin.kt` et
   service de premier plan `camera/RecorderService.kt` (repris de l'appli caméra `recorder/`).
+- **L'icône est celle de l'école** : l'action prend `<adresse>/icons/icon-512-maskable.png` (la même
+  que la PWA) et en fabrique les icônes Android. Après un changement de logo, relancer l'action
+  « Appli Tournage (APK) » à la main (Actions › Run workflow).
 - **Une appli par école**, listée dans `frontend/android/ecoles.json` :
   `{"cle": "asc-la-ciotat", "nom": "ASC La Ciotat", "adresse": "https://…"}`. Le nom affiché est
   « Tournage » suivi de `nom` ; l'identifiant Android est `com.contretemps.tournage.<clé>`, donc
