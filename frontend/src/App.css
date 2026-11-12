@@ -5164,9 +5164,8 @@ button[aria-label="Retour"] svg {
   stroke-width: 2.6;
 }
 
-/* Profil › Ma barre du bas (spec/core.md §10.4) : une ligne par onglet,
-   flèches ↑ ↓ de 48 px ; la séparation « Sous « Plus » » montre où la barre
-   s'arrête. */
+/* Profil › Ma barre du bas (spec/core.md §10.4) : une seule liste, poignée ⠿
+   à gauche pour glisser ; un trait montre où la barre s'arrête (« Plus »). */
 .ma-barre__aide {
   font-size: 17px;
   margin: 0 0 12px;
@@ -5175,36 +5174,43 @@ button[aria-label="Retour"] svg {
 .ma-barre__ligne {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-height: 56px;
   border-bottom: 1px solid var(--border);
+  background: var(--card-bg);
   font-size: 17px;
   color: var(--text-h);
+}
+
+.ma-barre__ligne.is-glissee {
+  position: relative;
+  z-index: 2;
+  background: var(--accent-bg);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+}
+
+.ma-barre__poignee {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+  color: var(--text-muted);
+  font-size: 22px;
+  cursor: grab;
+  touch-action: none;
 }
 
 .ma-barre__nom {
   flex: 1;
 }
 
-.ma-barre__fleche {
-  width: 48px;
-  height: 48px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--card-bg);
-  color: var(--text-h);
-  font-size: 20px;
-}
-
-.ma-barre__fleche:disabled {
-  opacity: 0.3;
-}
-
 .ma-barre__plus {
-  margin: 14px 0 4px;
+  margin: 0;
+  padding: 10px 0 6px;
+  border-top: 2px dashed var(--border);
   font-size: 15px;
-  font-weight: 600;
-  color: var(--text);
+  color: var(--text-muted);
 }
 
 .ma-barre__liste {

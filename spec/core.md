@@ -604,9 +604,11 @@ Identité de la personne connectée, autres profils de la famille (bascule, §6.
   liste des modules, §11.2) ; les onglets d'un écran = ses sous-fonctions ; jamais de 4e niveau.
   Quand les onglets ne tiennent pas, les derniers passent sous « Plus » (⋯) en bas à droite, menu
   modal au-dessus de tout ; l'onglet actif caché allume « Plus », les pastilles s'y additionnent.
-  **Chacun range ses onglets** (Seb, 12 novembre 2026) : Profil › Ma barre du bas, une ligne par
-  onglet avec ↑ ↓ ; les premiers vont dans la barre, la suite sous « Plus » (la fenêtre montre où
-  la barre s'arrête sur cet appareil). Chaque flèche enregistre tout de suite, sur la fiche
+  **Chacun range ses onglets** (Seb, 12 novembre 2026) : Profil › Ma barre du bas, une seule liste
+  d'onglets qu'on range en glissant la poignée ⠿ à gauche (pas de flèches, comme Admin › Affichage).
+  Les premiers vont dans la barre, la suite sous « Plus » : un trait pointillé montre où la barre
+  s'arrête sur cet appareil, ce n'est pas un sous-dossier, on y glisse un onglet ou on l'en sort
+  (par exemple pour le mettre à côté d'Admin). L'ordre s'enregistre au lâcher, sur la fiche
   (`comptes.tab_order`, recopié d'une saison à l'autre), donc l'ordre suit la personne sur tous ses
   appareils. Sans choix, ou après « Remettre l'ordre de l'école », c'est l'ordre de l'école ; un
   onglet nouveau (module allumé depuis) s'ajoute à la fin. Pas d'ordre par rôle fixé par l'admin :
