@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import re
+import traceback
 import unicodedata
 from pathlib import Path
 
@@ -28,7 +29,17 @@ def is_time(word: str) -> bool:
 
 
 def hear(video_path: Path) -> list[float]:
-    """Les moments (en secondes) où « Time ! » est dit."""
+    """Les moments (en secondes) où « Time ! » est dit. Si l'écoute échoue,
+    aucun : les gestes suffisent, la vidéo est quand même lue (Seb, 12/11)."""
+    try:
+        return _hear(video_path)
+    except Exception:
+        print(f"Écoute impossible : {video_path.name}")
+        traceback.print_exc()
+        return []
+
+
+def _hear(video_path: Path) -> list[float]:
     global _model
     from faster_whisper import WhisperModel
 

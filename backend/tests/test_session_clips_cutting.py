@@ -197,3 +197,14 @@ def test_cadrage_serre(tmp_path):
     dest = tmp_path / "clip.mp4"
     assert cut_clip(source, 0, 5, dest, serre, (1280, 720))
     assert video_size(dest)[0] < 1280 and not dest.with_suffix(".cmd").exists()
+
+
+def test_ecoute_impossible_ne_bloque_pas_la_lecture(monkeypatch, tmp_path):
+    """Whisper en panne : pas de « Time ! », mais la vidéo est lue (Seb, 12/11)."""
+    from session_clips import hearing
+
+    def panne(_path):
+        raise RuntimeError("modèle introuvable")
+
+    monkeypatch.setattr(hearing, "_hear", panne)
+    assert hearing.hear(tmp_path / "video.mp4") == []
