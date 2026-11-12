@@ -273,7 +273,7 @@ déploiement (§5).
 | Effacer les notes de frais d'une école | Demande le numéro de l'école et son nom exact (confirmation). Efface notes, dépenses, justificatifs et le dossier « Notes de frais » de Docs › Financier ; garde catégories et RIB. Irréversible. |
 | Installer le plan comptable de Contretemps (essai à blanc) | Demande le numéro de l'école. Affiche les comptes de la Balance 24-25 de la trésorière qui seraient ajoutés ou renommés (`app.plan_comptable_contretemps --essai`), sans rien écrire. |
 | Installer le plan comptable de Contretemps | Même chose, pour de vrai : ajoute les comptes manquants, renomme ceux qui existent déjà, garde le reste (spec financier.md §8.2). Relançable. |
-| Lire un essai du Labo de Fights | Sans numéro : la liste des essais du Labo (école, nom, signes). Avec le numéro d'un essai : la vidéo telle que lue, les signes, les gestes image par image et les postures gardées (`app.lire_essai_labo`), pour qu'un fil Claude comprenne un signe manqué (accord de Seb du 12/11/2026). N'écrit rien. |
+| Lire un essai du Labo de Fights | Sans numéro : la liste des essais du Labo (école, nom, signes) et les 80 dernières lignes du journal de `sparring-worker` (l'erreur d'une lecture échouée). Avec le numéro d'un essai : la vidéo telle que lue, les signes, les gestes image par image et les postures gardées (`app.lire_essai_labo`), pour qu'un fil Claude comprenne un signe manqué (accord de Seb du 12/11/2026). N'écrit rien. |
 
 - Fichiers : `.github/workflows/maintenance.yml` (le formulaire) et le début
   de `deploy.sh` (la liste fermée des tâches). La clé ne peut toujours lancer

@@ -65,6 +65,10 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
       if [ -z "$essai" ]; then
         echo "==> Essais du Labo (rien n'est écrit)"
         docker compose exec -T backend python -m app.lire_essai_labo
+        # Les dernières lignes du lecteur de vidéos de Fights : l'erreur
+        # d'une lecture échouée (« Vidéo illisible »).
+        echo "==> Journal du lecteur de Fights"
+        docker compose logs --no-color --tail=80 sparring-worker
       elif [[ "$essai" =~ ^[0-9]+$ ]]; then
         echo "==> Essai $essai du Labo (rien n'est écrit)"
         docker compose exec -T backend python -m app.lire_essai_labo --essai "$essai"
