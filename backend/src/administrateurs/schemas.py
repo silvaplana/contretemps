@@ -21,7 +21,7 @@ class AdministrateurSortie(BaseModel):
     est_owner: bool
     # Trésorier (module notes de frais §6) : coché dans ce tableau seulement.
     est_tresorier: bool = False
-    # Les 🔒 droits des modules qu'elle a (clés, ex. « news.publish »).
+    # Les 🔒 droits des modules qu'elle a (clés, ex. « publications.publish.3 »).
     rights: list[str] = []
     bureau_functions: list[str] = []
     # Groupes faits à la main (groups/custom.py), par id.

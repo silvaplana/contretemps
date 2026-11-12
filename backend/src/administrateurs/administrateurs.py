@@ -132,11 +132,15 @@ class Administrateurs:
                 raise RegleRoles(str(erreur)) from erreur
             db.commit()
         if droits:
-            inconnus = set(droits) - rights.declared()
+            connus = rights.declared_for(db, admin.ecole_id)
+            inconnus = set(droits) - set(connus)
             if inconnus:
                 raise RegleRoles(f"Droit inconnu : {', '.join(sorted(inconnus))}")
             for droit, donne in droits.items():
-                (rights.add if donne else rights.remove)(db, admin, droit)
+                if donne:
+                    rights.add(db, admin, droit, connus[droit])
+                else:
+                    rights.remove(db, admin, droit)
             db.commit()
         db.refresh(admin)
         return admin

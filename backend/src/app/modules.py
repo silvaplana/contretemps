@@ -9,9 +9,9 @@ from helloasso.module import MODULE as helloasso
 from finances_contretemps.module import MODULE as finances
 from inscriptions.module import MODULE as registration
 from messagerie.module import MODULE as messaging
-from news.module import MODULE as news
 from notes_frais_contretemps.module import MODULE as expense_notes
 from presence.module import MODULE as presence
+from publications.module import MODULE as publications
 from saisons.module import MODULE as seasons
 from session_clips_contretemps.module import MODULE as session_clips
 from videos.module import MODULE as videos
@@ -29,5 +29,5 @@ MODULES = [
     finances,
     session_clips,
     helloasso,
-    news,
+    publications,
 ]
