@@ -276,7 +276,8 @@ flèche ←.
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
-- **Coach** (admin ou prof) : quatre onglets, **Mes combats | Séances | À vérifier | Labo**. « À vérifier »
+- **Coach** (admin ou prof) : quatre onglets, **Mes combats | Séances | À vérifier | Labo**. Fights
+  rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
   Fonctionnalités) : éteint = bouton caché, routes « introuvable » (spec/core.md §9 bis).

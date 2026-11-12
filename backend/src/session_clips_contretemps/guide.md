@@ -2,7 +2,7 @@ Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pou
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
 (admin ou professeur) a quatre onglets en haut : Mes combats, Séances, À vérifier (pastille =
-nombre), Labo.
+nombre), Labo. Fights se rouvre sur le dernier de ces onglets utilisé.
 
 Mes combats
 - En tête, la ligne « ★ Favoris ». Puis ses combats validés, par séance (date · cours) : « vs
