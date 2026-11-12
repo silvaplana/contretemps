@@ -178,6 +178,9 @@ class LabFightOut(BaseModel):
     end: float
     fighters: int
     check_reason: str | None = None
+    # Le cadre (framing.py) : [t depuis le début, x, y, largeur, hauteur],
+    # de 0 à 1 ; vide en plan large.
+    frame: list[list[float]] | None = None
 
 
 class LabTestOut(BaseModel):
@@ -195,6 +198,11 @@ class LabTestDetail(LabTestOut):
 
 
 class ClubSignsBody(BaseModel):
-    """« Signes et sons du club » cochés (voir fights.SIGNS)."""
+    """Réglages de la découpe du club : « Signes et sons du club » cochés
+    (voir fights.SIGNS), cadrage (`wide`, `medium`, `tight`) et secondes
+    retirées au début et à la fin de chaque combat."""
 
     signs: list[str]
+    framing: str = "wide"
+    start_skip: float = 0.0
+    end_skip: float = 0.0

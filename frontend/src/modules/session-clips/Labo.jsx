@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
 import Modal from '../../components/Modal.jsx'
+import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import { demarrerTeleversement, finaliserTeleversement, useProgressionVideo, useTeleversementsTermines } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 
@@ -94,7 +95,7 @@ export function Labo({ ecoleId, version, rafraichir, montrer, essaisCaches, onOp
         <Icon name="folder" size={24} />
         <input type="file" accept="video/*" hidden onChange={choisi} />
       </label>
-      <p className="sc-meta">Filmez (caméra) ou prenez une vidéo de la Galerie (dossier) : elle est lue tout de suite. Pour essayer les signes : rien ne va dans Mes combats.</p>
+      <p className="sc-meta">Étudiez la détection des signes dans une vidéo : filmez-la avec la caméra ou prenez-la dans la Galerie avec le dossier. Rien ne va dans Mes combats.</p>
       {visibles?.length === 0 && <p className="sc-vide">Aucun essai pour l’instant.</p>}
       {visibles?.map((e) => (
         <div key={e.id} className="sc-essai">
@@ -151,20 +152,21 @@ function EtatEssai({ e }) {
 
 export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSupprimer }) {
   const [e, setE] = useState(null)
-  const [coches, setCoches] = useState(null) // ceux de l'écran
+  const [reglages, setReglages] = useState(null) // ceux de l'écran
   const [club, setClub] = useState(null) // ceux enregistrés
   const [enCours, setEnCours] = useState(false)
   const [duree, setDuree] = useState(null)
   const [regarde, setRegarde] = useState(null) // le combat ouvert
   const [renomme, setRenomme] = useState(false) // le crayon
   const lecteur = useRef(null)
+  const cadre = useCadre(lecteur, e?.fights)
   useEffect(() => {
     api.essaiLabo(essaiId).then(setE, (err) => montrer(err.message))
   }, [essaiId, version, montrer])
   useEffect(() => {
-    api.signesDuClub().then((s) => {
-      setClub(s)
-      setCoches(s)
+    api.reglagesDuClub().then((r) => {
+      setClub(r)
+      setReglages(r)
     }, (err) => montrer(err.message))
   }, [montrer])
 
@@ -176,16 +178,17 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
     v.play?.().catch(() => {})
   }
 
+  const coches = reglages?.signs ?? []
   function cocher(id) {
-    setCoches((c) => (c.includes(id) ? c.filter((x) => x !== id) : [...c, id]))
+    setReglages((r) => ({ ...r, signs: r.signs.includes(id) ? r.signs.filter((x) => x !== id) : [...r.signs, id] }))
   }
 
   async function relancer() {
     setEnCours(true)
     try {
-      const s = await api.reglerSignes(coches)
-      setClub(s)
-      setCoches(s)
+      const r = await api.reglerClub(reglages)
+      setClub(r)
+      setReglages(r)
       rafraichir()
       montrer('Découpe relancée')
     } catch (err) {
@@ -196,7 +199,8 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
   }
 
   const fin = Math.max(duree || e?.video?.dureeSecondes || 0, ...(e?.signs ?? []).map((s) => s.end + 2), 1)
-  const change = coches && club && [...coches].sort().join() !== [...club].sort().join()
+  const cle = (r) => r && JSON.stringify({ ...r, signs: [...r.signs].sort() })
+  const change = reglages && club && cle(reglages) !== cle(club)
   return (
     <div className="screen sc">
       <div className="thread-screen__header">
@@ -210,17 +214,24 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
           </button>
         )}
       </div>
-      {e && coches && (
+      {e && reglages && (
         <div className="sc__corps">
           {e.video?.url && (
-            <video
-              ref={lecteur}
-              className="sc-apercu"
-              src={e.video.url}
-              controls
-              playsInline
-              onLoadedMetadata={(ev) => setDuree(ev.currentTarget.duration)}
-            />
+            // Le cadre du combat en cours (Moyen ou Serré) est montré sur la
+            // vidéo d'origine, comme le clip sera coupé.
+            <div className="sc-cadreur">
+              <video
+                ref={lecteur}
+                className="sc-apercu"
+                style={cadreStyle(cadre)}
+                src={e.video.url}
+                // Recadrée, la barre de lecture serait coupée : un appui lit ou arrête.
+                controls={!cadre}
+                onClick={(ev) => cadre && (ev.currentTarget.paused ? ev.currentTarget.play() : ev.currentTarget.pause())}
+                playsInline
+                onLoadedMetadata={(ev) => setDuree(ev.currentTarget.duration)}
+              />
+            </div>
           )}
           <h3 className="sc-section">Signes repérés</h3>
           <div className="sc-cadre">
@@ -274,6 +285,26 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
                 ))}
               </div>
             ))}
+          </div>
+          <h3 className="sc-section">Clips du club</h3>
+          <div className="sc-cadre">
+            <p className="sc-meta">Cadrage</p>
+            <SegmentedTabs
+              className="sc-onglets"
+              value={reglages.framing}
+              onChange={(framing) => setReglages((r) => ({ ...r, framing }))}
+              options={CADRAGES.map(([value, label]) => ({ value, label }))}
+            />
+            <Secondes
+              libelle="Démarrer après le signe de début"
+              valeur={reglages.start_skip}
+              onChange={(start_skip) => setReglages((r) => ({ ...r, start_skip }))}
+            />
+            <Secondes
+              libelle="Couper avant la fin"
+              valeur={reglages.end_skip}
+              onChange={(end_skip) => setReglages((r) => ({ ...r, end_skip }))}
+            />
           </div>
           <button type="button" className="btn btn--primary sc-bouton" disabled={!change || enCours} onClick={relancer}>
             Relancer la découpe
@@ -343,19 +374,75 @@ function vignette(signes, combat) {
 // Un combat regardé seul : la vidéo de l'essai, du début à la fin du combat.
 function LecteurCombat({ url, combat }) {
   const lecteur = useRef(null)
+  const combats = useMemo(() => [combat], [combat])
+  const cadre = useCadre(lecteur, combats)
   return (
-    <video
-      ref={lecteur}
-      className="sc-apercu"
-      src={`${url}#t=${combat.start},${combat.end}`}
-      controls
-      autoPlay
-      playsInline
-      onTimeUpdate={(ev) => {
-        if (ev.currentTarget.currentTime >= combat.end) ev.currentTarget.pause()
-      }}
-    />
+    <div className="sc-cadreur">
+      <video
+        ref={lecteur}
+        className="sc-apercu"
+        style={cadreStyle(cadre)}
+        src={`${url}#t=${combat.start},${combat.end}`}
+        controls={!cadre}
+        onClick={(ev) => cadre && (ev.currentTarget.paused ? ev.currentTarget.play() : ev.currentTarget.pause())}
+        autoPlay
+        playsInline
+        onTimeUpdate={(ev) => {
+          if (ev.currentTarget.currentTime >= combat.end) ev.currentTarget.pause()
+        }}
+      />
+    </div>
   )
+}
+
+// Le cadre [t, x, y, l, h] (de 0 à 1) appliqué à la vidéo d'origine.
+function cadreStyle(cadre) {
+  return cadre ? { transform: `scale(${1 / cadre[3]}) translate(${-cadre[1] * 100}%, ${-cadre[2] * 100}%)` } : undefined
+}
+
+const CADRAGES = [
+  ['wide', 'Plan large'],
+  ['medium', 'Moyen'],
+  ['tight', 'Serré'],
+]
+
+// Secondes retirées, de 0 à 10 par demi-seconde : − et + plutôt qu'un champ.
+function Secondes({ libelle, valeur, onChange }) {
+  const changer = (d) => onChange(Math.min(10, Math.max(0, valeur + d)))
+  return (
+    <div className="sc-secondes">
+      <span>{libelle}</span>
+      <button type="button" className="icon-btn" aria-label="Moins" disabled={valeur <= 0} onClick={() => changer(-0.5)}>
+        <Icon name="minus" size={22} />
+      </button>
+      <strong>{String(valeur).replace('.', ',')} s</strong>
+      <button type="button" className="icon-btn" aria-label="Plus" disabled={valeur >= 10} onClick={() => changer(0.5)}>
+        <Icon name="plus" size={22} />
+      </button>
+    </div>
+  )
+}
+
+// Pendant la lecture : le cadre du combat en cours ([t, x, y, l, h], de 0
+// à 1), ou null en plan large.
+function useCadre(lecteur, combats) {
+  const [cadre, setCadre] = useState(null)
+  useEffect(() => {
+    let id
+    function suivre() {
+      const v = lecteur.current
+      if (v) {
+        const t = v.currentTime
+        const c = combats?.find((f) => f.frame && t >= f.start && t <= f.end)
+        const suivant = c ? c.frame[Math.min(Math.round((t - c.start) / 0.2), c.frame.length - 1)] : null
+        setCadre((avant) => (avant === suivant ? avant : suivant))
+      }
+      id = requestAnimationFrame(suivre)
+    }
+    id = requestAnimationFrame(suivre)
+    return () => cancelAnimationFrame(id)
+  }, [lecteur, combats])
+  return cadre
 }
 
 // Le graphe : vert = début de combat, rouge = fin, gris pointillé = signe

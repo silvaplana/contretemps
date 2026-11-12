@@ -158,10 +158,16 @@ class LabTest(Base):
 
 
 class ClubSigns(Base):
-    """« Signes et sons du club » : ceux que la découpe prend (§5). Pas de
-    ligne = tous les signes."""
+    """Réglages de la découpe du club (§5), faits dans le Labo. Pas de
+    ligne = tous les signes, plan large, gestes en entier.
+    `signs` : « Signes et sons du club », ceux que la découpe prend.
+    `framing` : cadrage des clips ; `start_skip` / `end_skip` : secondes
+    retirées au début et à la fin de chaque combat (Seb, 12/11)."""
 
     __tablename__ = "sc_club_signs"
 
     org_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     signs: Mapped[str] = mapped_column(String(200), nullable=False)  # séparés par des virgules
+    framing: Mapped[str] = mapped_column(String(10), nullable=False, default="wide")  # 'medium' | 'tight'
+    start_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    end_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)

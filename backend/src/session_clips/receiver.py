@@ -173,14 +173,18 @@ class SessionClipsReceiver:
 
         # --- Labo (§6.5 bis) : essais sur des vidéos déjà filmées, coachs ---
 
+        def settings_out(x: lab.Settings) -> ClubSignsBody:
+            return ClubSignsBody(signs=list(x.signs), framing=x.framing, start_skip=x.start_skip, end_skip=x.end_skip)
+
         @app.get(f"{PREFIX}/signs", response_model=ClubSignsBody)
         def club_signs(m: Member = member, s: Session = db):
             coach(m)
-            return ClubSignsBody(signs=list(lab.enabled_signs(s, m.org_id)))
+            return settings_out(lab.settings(s, m.org_id))
 
         @app.put(f"{PREFIX}/signs", response_model=ClubSignsBody)
         def set_club_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
-            return ClubSignsBody(signs=list(guard(lambda: lab.set_signs(s, m, body.signs))))
+            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip)
+            return settings_out(guard(lambda: lab.set_settings(s, m, new)))
 
         @app.get(f"{PREFIX}/lab", response_model=list[LabTestOut])
         def lab_tests(m: Member = member, s: Session = db):
@@ -197,8 +201,14 @@ class SessionClipsReceiver:
                 **self._lab_out(s, found).model_dump(),
                 signs=[LabSignOut(**x) for x in lab.signs_of(found)],
                 fights=[
-                    LabFightOut(start=f.start, end=f.end, fighters=f.fighters, check_reason=f.check_reason)
-                    for f in lab.fights_of(s, found)
+                    LabFightOut(
+                        start=f.start,
+                        end=f.end,
+                        fighters=f.fighters,
+                        check_reason=f.check_reason,
+                        frame=[list(b) for b in frame] if frame else None,
+                    )
+                    for f, frame in lab.fights_of(s, found)
                 ],
             )
 

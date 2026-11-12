@@ -872,3 +872,36 @@
 .sc-vignette--petite {
   width: 80px;
 }
+
+/* Le cadre (Moyen, Serré) montré sur la vidéo d'origine */
+
+.sc-cadreur {
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+}
+
+.sc-cadreur .sc-apercu {
+  display: block;
+  border-radius: 0;
+  transform-origin: 0 0;
+  transition: transform 0.2s linear;
+}
+
+.sc-secondes {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  border-top: 1px solid var(--border);
+  font-size: 17px;
+}
+
+.sc-secondes span {
+  flex: 1;
+}
+
+.sc-secondes strong {
+  min-width: 48px;
+  text-align: center;
+}

@@ -236,7 +236,11 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
 3. **Identification** : il suit chaque personne image par image, et compare les deux combattants aux
    empreintes du jour. Si la confiance est faible, comme avec deux t-shirts noirs unis, le clip est
    marqué « à vérifier ». Pas de reconnaissance faciale.
-4. **Découpe et recadrage** : un cadre virtuel englobe les deux combattants avec une marge. Sa
+4. **Découpe et recadrage** (codé le 12/11 en version simple, `framing.py` : réglage du club
+   **Plan large** / **Moyen** / **Serré** ; le cadre garde une taille fixe pendant le combat, assez
+   grande 9 fois sur 10 pour les deux plus grands corps avec leur marge, et suit leur centre lissé
+   sur 2 s ; ffmpeg le suit par des commandes toutes les 0,2 s. Pas encore : l'anticipation, le
+   zoom au sol, les masquages) : un cadre virtuel englobe les deux combattants avec une marge. Sa
    trajectoire est calculée sur tout le combat d'un coup :
     - il bouge seulement quand les combattants sortent d'une zone centrale, avec accélérations et
       freinages doux ;
@@ -417,6 +421,12 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   ou un signe place la vidéo à ce moment (elle remonte à l'écran). Chaque combat coupé a sa
   vignette (l'image de son signe de début) et s'ouvre dans une fenêtre qui le lit du début à la fin
   (Seb, 12/11). Un crayon à côté du nom renomme l'essai (`PATCH /session-clips/lab/{id}`).
+- **Clips du club** (Seb, 12/11), sous les cases : le **Cadrage** (Plan large, Moyen, Serré),
+  **« Démarrer après le signe de début »** et **« Couper avant la fin »** (− et +, par demi-seconde,
+  de 0 à 10 s ; à 0 les gestes restent en entier : le clip va du début du signe de début à la fin
+  du geste de fin). Enregistrés par « Relancer la découpe » avec les cases, ils valent pour tous les
+  clips du club. Dans le Labo, le cadre est montré en direct sur la vidéo d'origine (zoom de
+  l'image), sans couper de clip.
 - Rien de ce qui est fait au Labo ne va dans Mes combats ni dans À vérifier : les combats d'un essai
   ne sont pas coupés en clips.
 
@@ -452,7 +462,7 @@ référence ses vidéos dans le module `videos`, jamais l'inverse. Tout est filt
 | `sc_favorites` | « ★ Favoris » de chacun | `person_id`, `clip_id` (effacé avec le clip) |
 | `sc_recorders` | le téléphone qui filme (étape 3) | `id`, `org_id`, `token_hash` (empreinte du jeton remis au jumelage), `pairing_code` et `pairing_expires_at` (code de 8 chiffres, 10 minutes), `state` (`ready` / `recording`, dit par le téléphone ; « hors service » se déduit de `last_seen_at`), `battery_percent`, `free_bytes`, `pending_pieces`, `last_seen_at`, `last_upload_at`, `session_id` (la séance à filmer, vide = rester prête), `started_at`, `signal` (`beep` / `light` / `both`) |
 | `sc_lab_tests` | un essai du Labo (§6.5 bis) | `id`, `org_id`, `title`, `video_id` (la vidéo dans `videos` ; l'effacer efface l'essai), `status` (`processing` / `ready` / `failed`), `signs` (JSON : les signes repérés, cochés ou non, avec début, fin et une petite image jpeg de la vidéo à ce moment), `created_by`, `created_at` |
-| `sc_club_signs` | les signes cochés d'une organisation | `org_id`, `signs` (séparés par des virgules ; pas de ligne = tous) |
+| `sc_club_signs` | les réglages de la découpe d'une organisation (Labo) | `org_id`, `signs` (séparés par des virgules ; pas de ligne = tous), `framing` (`wide` / `medium` / `tight`), `start_skip` et `end_skip` (secondes retirées au début et à la fin de chaque combat, 0 à 10) |
 | `sc_pieces` | un morceau de 2 minutes (étape 3) | `id`, `session_id`, `position` (0, 1, 2…), `upload_id` (envoi par blocs du module `videos`), `video_id`, `last` (morceau de « Fin de séance »), `duration_seconds` (rempli à la lecture des postures) |
 
 `person_id` est la personne, stable d'une saison à l'autre : dans Contretemps, c'est la première

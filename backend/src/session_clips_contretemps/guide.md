@@ -40,6 +40,9 @@ Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ran
 - « Signes et sons du club » : cocher les signes de début (Poing levé, Poings touchés en l'air) et
   de fin (Poignée de main, X au-dessus de la tête, « Time ! » crié) que la découpe prend, pour tout le club (caméra
   de la salle comprise). « Relancer la découpe » enregistre et recalcule les combats.
+- « Clips du club » : Cadrage (Plan large, Moyen, Serré), « Démarrer après le signe de début » et
+  « Couper avant la fin » (− et +, en secondes). « Relancer la découpe » enregistre ; le cadre se
+  voit sur la vidéo pendant un combat.
 - « Supprimer l'essai » en bas (Annuler 10 secondes).
 
 Un combat ouvert
