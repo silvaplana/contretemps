@@ -235,74 +235,84 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
       </div>
       {e && reglages && (
         <div className="sc__corps">
-          {e.video?.url && (
-            // Le cadre du combat en cours (Moyen ou Serré) est montré sur la
-            // vidéo d'origine, comme le clip sera coupé.
-            <div className="sc-cadreur">
-              <video
-                ref={lecteur}
-                className="sc-apercu"
-                style={cadreStyle(cadre)}
-                src={e.video.url}
-                // Recadrée, la barre de lecture serait coupée : un appui lit ou arrête.
-                controls={!cadre}
-                onClick={(ev) => cadre && (ev.currentTarget.paused ? ev.currentTarget.play() : ev.currentTarget.pause())}
-                playsInline
-                onLoadedMetadata={(ev) => setDuree(ev.currentTarget.duration)}
-              />
-            </div>
-          )}
-          {lecture ? (
-            <p className="sc-meta">
-              <span className="sc-chip sc-chip--info">Lecture des signes…</span> Les signes et les combats s’afficheront ici.
-            </p>
-          ) : (
-            <>
-              <h3 className="sc-section">Signes repérés</h3>
-              <div className="sc-cadre">
-                <Graphe signes={e.signs} combats={enCours ? [] : e.fights} coches={coches} fin={fin} aller={aller} />
-                {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
-                {e.signs.map((s, i) => {
-                  const sg = signe(s.kind)
-                  const on = coches.includes(s.kind)
-                  return (
-                    <button key={i} type="button" className="sc-geste" onClick={() => aller(s.start)}>
-                      <span className="sc-geste__t">{mmss(s.start)}</span>
-                      <span className={`sc-geste__pt sc-geste__pt--${on ? sg.g : 'off'}`} />
-                      <span>
-                        {sg.l}
-                        <small>{on ? (sg.g === 'deb' ? 'Début de combat' : 'Fin de combat') : 'Signe décoché : ignoré'}</small>
-                      </span>
-                    </button>
-                  )
-                })}
+          {/* Quatre volets, dans l'ordre (Seb, 12/11) : la vidéo entière et ses
+              signes, la vidéo découpée, puis les réglages du club. */}
+          <Deroulant titre="Vidéo entière" ouvertAuDepart>
+            {e.video?.url && (
+              // Le cadre du combat en cours (Moyen ou Serré) est montré sur la
+              // vidéo d'origine, comme le clip sera coupé.
+              <div className="sc-cadreur">
+                <video
+                  ref={lecteur}
+                  className="sc-apercu"
+                  style={cadreStyle(cadre)}
+                  src={e.video.url}
+                  // Recadrée, la barre de lecture serait coupée : un appui lit ou arrête.
+                  controls={!cadre}
+                  onClick={(ev) => cadre && (ev.currentTarget.paused ? ev.currentTarget.play() : ev.currentTarget.pause())}
+                  playsInline
+                  onLoadedMetadata={(ev) => setDuree(ev.currentTarget.duration)}
+                />
               </div>
-              <h3 className="sc-section">Combats coupés</h3>
-              {/* Relancer la découpe refait les combats : les anciens disparaissent. */}
-              {enCours && (
-                <p className="sc-meta">
-                  Découpe en cours
-                  <Points />
-                </p>
-              )}
-              {!enCours && e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
-              {!enCours && e.fights.map((c, i) => (
-                <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
-                  <span className="sc-vignette">
-                    {vignette(e.signs, c) ? <img src={vignette(e.signs, c)} alt="" /> : <Icon name="video" size={22} />}
-                    <span className="sc-vignette__duree">{mmss(c.end - c.start)}</span>
+            )}
+            {lecture ? (
+              <p className="sc-meta">
+                <span className="sc-chip sc-chip--info">Lecture des signes…</span> Les signes et les combats s’afficheront ici.
+              </p>
+            ) : (
+              <>
+                <h3 className="sc-section">Signes repérés</h3>
+                <div>
+                  <Graphe signes={e.signs} combats={enCours ? [] : e.fights} coches={coches} fin={fin} aller={aller} />
+                  {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
+                  {e.signs.map((s, i) => {
+                    const sg = signe(s.kind)
+                    const on = coches.includes(s.kind)
+                    return (
+                      <button key={i} type="button" className="sc-geste" onClick={() => aller(s.start)}>
+                        <span className="sc-geste__t">{mmss(s.start)}</span>
+                        <span className={`sc-geste__pt sc-geste__pt--${on ? sg.g : 'off'}`} />
+                        <span>
+                          {sg.l}
+                          <small>{on ? (sg.g === 'deb' ? 'Début de combat' : 'Fin de combat') : 'Signe décoché : ignoré'}</small>
+                        </span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </Deroulant>
+          <Deroulant titre="Vidéo découpée" ouvertAuDepart>
+            {lecture && (
+              <p className="sc-meta">
+                <span className="sc-chip sc-chip--info">Lecture des signes…</span>
+              </p>
+            )}
+            {/* Relancer la découpe refait les combats : les anciens disparaissent. */}
+            {enCours && (
+              <p className="sc-meta">
+                Découpe en cours
+                <Points />
+              </p>
+            )}
+            {!lecture && !enCours && e.fights.length === 0 && <p className="sc-vide">Aucun combat : aucun signe de début coché n’a été vu.</p>}
+            {!lecture && !enCours && e.fights.map((c, i) => (
+              <button key={i} type="button" className="sc-clip" onClick={() => setRegarde({ ...c, numero: i + 1 })}>
+                <span className="sc-vignette">
+                  {vignette(e.signs, c) ? <img src={vignette(e.signs, c)} alt="" /> : <Icon name="video" size={22} />}
+                  <span className="sc-vignette__duree">{mmss(c.end - c.start)}</span>
+                </span>
+                <span>
+                  <strong>Combat {i + 1}</strong>
+                  <span className="sc-meta">
+                    {mmss(c.start)} → {mmss(c.end)}
+                    {c.check_reason && <span className="sc-chip sc-chip--warn">Fin non repérée</span>}
                   </span>
-                  <span>
-                    <strong>Combat {i + 1}</strong>
-                    <span className="sc-meta">
-                      {mmss(c.start)} → {mmss(c.end)}
-                      {c.check_reason && <span className="sc-chip sc-chip--warn">Fin non repérée</span>}
-                    </span>
-                  </span>
-                </button>
-              ))}
-            </>
-          )}
+                </span>
+              </button>
+            ))}
+          </Deroulant>
           <Deroulant titre="Signes et sons du club">
             {['deb', 'fin'].map((g) => (
               <div key={g}>
@@ -319,7 +329,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               </div>
             ))}
           </Deroulant>
-          <Deroulant titre="Clips du club">
+          <Deroulant titre="Paramètres de la vidéo">
             <p className="sc-meta">Cadrage</p>
             <SegmentedTabs
               className="sc-onglets"
@@ -388,8 +398,8 @@ function Points() {
 
 // Volet fermé par défaut, comme dans Admin : sinon ça prend trop de place
 // (Seb, 12/11).
-function Deroulant({ titre, children }) {
-  const [ouvert, setOuvert] = useState(false)
+function Deroulant({ titre, ouvertAuDepart = false, children }) {
+  const [ouvert, setOuvert] = useState(ouvertAuDepart)
   return (
     <section>
       <h3 className="section-label">
