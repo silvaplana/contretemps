@@ -6,10 +6,15 @@ import { MODULES } from '../app/modules.js'
 // Le core n'a que Admin, Supervision et Profil ; les onglets des modules
 // viennent de leur déclaration (spec/core.md §9 bis), entre Admin et
 // Supervision, dans l'ordre de app/modules.js.
-export const TABS = [
+//
+// `charges` : ce que les modules aux onglets calculés ont lu pour l'école
+// (spec/core.md §11.1), par clé de module, ex. { publications: blogs }.
+export const ongletsAvec = (charges = {}) => [
   { key: 'admin', label: 'Admin', icon: 'admin', roles: ['admin'] },
   // `module` : pour cacher l'onglet quand l'école a éteint le module (§9 bis.3).
-  ...MODULES.flatMap((module) => module.tabs.map((tab) => ({ ...tab, module: module.key }))),
+  ...MODULES.flatMap((module) =>
+    (typeof module.tabs === 'function' ? module.tabs(charges[module.key]) : module.tabs).map((tab) => ({ ...tab, module: module.key })),
+  ),
   // Super User seulement (§2.5) : `superuser` n'est jamais ajouté aux autres
   // comptes, contrairement à admin/owner qu'IL reçoit en plus (voir
   // data/roles.js : rolesDe) — les autres ne voient donc jamais cet onglet.
@@ -17,3 +22,9 @@ export const TABS = [
   // Profil reste le dernier onglet (demande du 2026-10-01).
   { key: 'profil', label: 'Profil', icon: 'profil', roles: ['admin', 'professeur', 'eleve'] },
 ]
+
+// Les onglets fixes (sans ceux qui se calculent).
+export const TABS = ongletsAvec()
+
+// Un onglet calculé (ex. « blog-3 ») avant que son module ait lu l'école.
+export const ongletCalcule = (key) => MODULES.some((m) => m.tabPrefix && key?.startsWith(m.tabPrefix))

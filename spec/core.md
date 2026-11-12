@@ -661,11 +661,11 @@ MODULE = Module(
   quand il dit que la saison a des tarifs imposés (la campagne HelloAsso), il remplace nos formules,
   en lecture seule. Un module sans onglet a `tabs: []`.
 
-**À valider (Seb, 12 novembre 2026 ; spec/modules/actualites.md §12.8)** : pour le module Blog, où
+**Codé (Seb, 12 novembre 2026 ; spec/modules/actualites.md §12.8)** : pour le module Publications, où
 l'on crée des blogs à l'écran, un module pourra aussi déclarer des droits **par organisation**
 (`org_rights(db, org_id)`, un groupe 🔒 par blog : « Publier dans Techniques ») et des onglets
-calculés (`tabs` en fonction, un onglet par blog). Même contrôle `has_right`, même feuille
-Admin > École > Administrateurs.
+calculés (`tabs` en fonction, un onglet par blog, clés préfixées par `tabPrefix`). Même contrôle
+`has_right`, même feuille Admin > École > Administrateurs.
 
 ### 11.2 La liste des modules de l'appli
 

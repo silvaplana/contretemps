@@ -1,6 +1,8 @@
-"""Where the news module keeps its photos (spec/modules/actualites.md §3.3):
+"""Where the Publications module keeps its photos (spec/modules/actualites.md §3.3):
 a folder of its own next to the videos one, one sub-folder per organization.
-Each photo is kept as sent, plus a JPEG of at most 1600 px, the one shown."""
+Each photo is kept as sent, plus a JPEG of at most 1600 px, the one shown.
+The folder and its variable keep the module's first name (actualites,
+NEWS_DIR): the photos already there stay where they are."""
 
 import os
 from pathlib import Path
@@ -13,5 +15,5 @@ PHOTO_MAX_BYTES = 25 * 1024 * 1024
 DISPLAY_SIZE = 1600
 
 
-def news_storage() -> LocalStorage:
+def publications_storage() -> LocalStorage:
     return LocalStorage(DOSSIER_ACTUALITES, PHOTO_MAX_BYTES)

@@ -13,6 +13,7 @@ from types import SimpleNamespace
 
 from fastapi import FastAPI
 from groups import rights
+from sqlalchemy.orm import Session
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,10 @@ class Module:
     requires: tuple[str, ...] = ()  # modules à monter avant celui-ci
     roles: tuple[Role, ...] = ()
     rights: tuple[Right, ...] = ()
+    # org_rights(db, org_id) : des droits propres à une organisation, en plus
+    # de `rights` (spec/core.md §11.1, ex. « Publier dans Techniques », un
+    # par blog). Libellés lus à chaque demande.
+    org_rights: Callable[[Session, int], list[Right]] | None = None
     # actions(core) : les actions que le module ouvre à l'assistant (son
     # actions.py, spec/modules/assistant-ia.md §3), une fois monté.
     actions: Callable[[SimpleNamespace], list] | None = None
@@ -75,6 +80,12 @@ def check(modules: list[Module]) -> None:
         vus.add(module.key)
 
 
+def rights_of(module: Module, db: Session, org_id: int) -> list[Right]:
+    """Les droits d'un module dans une organisation : déclarés, puis propres
+    à l'organisation."""
+    return [*module.rights, *(module.org_rights(db, org_id) if module.org_rights else [])]
+
+
 def actions(modules: list[Module], core: SimpleNamespace) -> dict[str, list]:
     """Les actions de l'assistant de chaque module, dans l'ordre de la liste."""
     return {module.key: module.actions(core) for module in modules if module.actions}
@@ -89,6 +100,8 @@ def mount_all(app: FastAPI, modules: list[Module], core: SimpleNamespace) -> Non
     for module in modules:
         for right in module.rights:
             rights.declare(right.key, right.label)
+        if module.org_rights is not None:
+            rights.provide(lambda db, org_id, m=module: {r.key: r.label for r in m.org_rights(db, org_id)})
         avant = len(app.router.routes)
         module.mount(app, core)
         for route in app.router.routes[avant:]:

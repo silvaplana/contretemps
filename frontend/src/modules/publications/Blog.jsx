@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { documentsApi } from '../../api/documents.js'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
@@ -10,14 +10,16 @@ import {
   useProgressionTeleversement,
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
-import './news.css'
+import Categories, { ChoixCategorie } from './Categories.jsx'
+import './publications.css'
 
-// Actualités (spec/modules/actualites.md, maquette validée
-// spec/maquettes/actualites.html ; un seul écran depuis le 12 novembre,
-// §12.5 et spec/maquettes/blog.html). Tout le monde lit le même fil ; qui a
-// le droit 🔒 « Publier les actualités » a en plus « + Ajouter », un crayon
-// sur chaque actu, ses brouillons en haut et les paramètres derrière ⋯.
-// L'éditeur et les paramètres remplacent l'écran, avec la flèche de retour.
+// Un blog du module Publications : Actus, Techniques… (spec/modules/
+// actualites.md, maquettes spec/maquettes/actualites.html et blog.html).
+// Tout le monde lit le même fil ; qui a le droit 🔒 « Publier dans <blog> »
+// a en plus « + Ajouter », un crayon sur chaque publication, ses brouillons
+// en haut et les paramètres derrière ⋯ (§12.5). Un blog avec catégories a
+// deux onglets, Fil | Catégories (§12.6). L'éditeur et les paramètres
+// remplacent l'écran, avec la flèche de retour. `lieu` : { ecoleId, blogId }.
 
 const ANNULER_MS = 10000
 const VIDEO_MAX = 100 * 1024 * 1024 // avant compression, comme la Messagerie (§4.2)
@@ -82,17 +84,17 @@ const IconeFichier = ({ taille = 20 }) => (
 
 // Une photo de l'actu : lue avec la session, ou la copie locale juste
 // choisie dans l'éditeur.
-function Photo({ ecoleId, actuId, element }) {
+function Photo({ lieu, actuId, element }) {
   const [url, setUrl] = useState(null)
   const { photo, photoLocale } = element
   useEffect(() => {
     if (photoLocale || !actuId || !photo) return undefined
     let annule = false
-    api.lirePhoto(ecoleId, actuId, photo).then((u) => !annule && setUrl(u), () => {})
+    api.lirePhoto(lieu, actuId, photo).then((u) => !annule && setUrl(u), () => {})
     return () => {
       annule = true
     }
-  }, [ecoleId, actuId, photo, photoLocale])
+  }, [lieu, actuId, photo, photoLocale])
   const src = photoLocale || url
   return <div className="actu__media">{src && <img src={src} alt="" />}</div>
 }
@@ -115,7 +117,7 @@ function VideoLocale({ uploadId }) {
 // encore du doigt tant qu'elle ne joue pas).
 const YOUTUBE = /^https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/|live\/)|youtu\.be\/)([\w-]{11})/
 
-function YouTube({ ecoleId, actuId, element, id }) {
+function YouTube({ lieu, actuId, element, id }) {
   const [lecture, setLecture] = useState(false)
   if (lecture) {
     return (
@@ -132,7 +134,7 @@ function YouTube({ ecoleId, actuId, element, id }) {
   return (
     <button type="button" className="actu__youtube" aria-label={`Lire « ${element.titre || 'la vidéo'} »`} onClick={() => setLecture(true)}>
       {element.photo || element.photoLocale ? (
-        <Photo ecoleId={ecoleId} actuId={actuId} element={element} />
+        <Photo lieu={lieu} actuId={actuId} element={element} />
       ) : (
         <div className="actu__media">
           <img src={`https://i.ytimg.com/vi/${id}/hqdefault.jpg`} alt="" />
@@ -144,9 +146,9 @@ function YouTube({ ecoleId, actuId, element, id }) {
 }
 
 // Un autre lien : l'image du site, son titre, et « Ouvrir le lien ».
-function Lien({ ecoleId, actuId, element }) {
+function Lien({ lieu, actuId, element }) {
   const id = element.lien.match(YOUTUBE)?.[1]
-  if (id) return <YouTube ecoleId={ecoleId} actuId={actuId} element={element} id={id} />
+  if (id) return <YouTube lieu={lieu} actuId={actuId} element={element} id={id} />
   let site = element.lien
   try {
     site = new URL(element.lien).hostname.replace(/^www\./, '')
@@ -155,7 +157,7 @@ function Lien({ ecoleId, actuId, element }) {
   }
   return (
     <div className="actu__lien">
-      {(element.photo || element.photoLocale) && <Photo ecoleId={ecoleId} actuId={actuId} element={element} />}
+      {(element.photo || element.photoLocale) && <Photo lieu={lieu} actuId={actuId} element={element} />}
       <div className="actu__lien-texte">
         {element.titre && <strong>{element.titre}</strong>}
         <span>{site}</span>
@@ -167,9 +169,9 @@ function Lien({ ecoleId, actuId, element }) {
   )
 }
 
-function Element({ ecoleId, actuId, element }) {
-  if (element.lien) return <Lien ecoleId={ecoleId} actuId={actuId} element={element} />
-  if (element.photo || element.photoLocale) return <Photo ecoleId={ecoleId} actuId={actuId} element={element} />
+function Element({ lieu, actuId, element }) {
+  if (element.lien) return <Lien lieu={lieu} actuId={actuId} element={element} />
+  if (element.photo || element.photoLocale) return <Photo lieu={lieu} actuId={actuId} element={element} />
   if (element.uploadId) return <VideoLocale uploadId={element.uploadId} />
   return (
     <div className="actu__media actu__media--video">
@@ -180,11 +182,11 @@ function Element({ ecoleId, actuId, element }) {
 
 // Les photos et vidéos de l'actu ; à plusieurs, un carrousel qu'on fait
 // glisser du doigt, avec des points toujours visibles, comme sur Instagram (§3.3).
-function Media({ ecoleId, actu }) {
+function Media({ lieu, actu }) {
   const [rang, setRang] = useState(0)
   const media = actu.media ?? []
   if (!media.length) return null
-  if (media.length === 1) return <Element ecoleId={ecoleId} actuId={actu.id} element={media[0]} />
+  if (media.length === 1) return <Element lieu={lieu} actuId={actu.id} element={media[0]} />
   return (
     <div className="carrousel">
       <div
@@ -193,7 +195,7 @@ function Media({ ecoleId, actu }) {
       >
         {media.map((element, i) => (
           <div key={element.cle ?? element.photo ?? element.video?.id ?? i} className="carrousel__case">
-            <Element ecoleId={ecoleId} actuId={actu.id} element={element} />
+            <Element lieu={lieu} actuId={actu.id} element={element} />
           </div>
         ))}
       </div>
@@ -222,7 +224,7 @@ function Document({ document }) {
 }
 
 // mediaEnHaut : réglage « En haut de chaque actu : Photo, vidéo » (Seb, 9 novembre).
-export function CarteActu({ actu, ecoleId, mediaEnHaut = false, onModifier = null }) {
+export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, onCategorie = null }) {
   const signature = (
     <div className="actu__meta">
       <span>
@@ -243,7 +245,30 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false, onModifier = nul
   // (Seb, 10 novembre) : pas de ligne de texte vide. « … » seulement pour
   // une actu encore vide dans l'éditeur.
   const sansTexte = !actu.texte && (actu.media?.length > 0 || Boolean(actu.document))
-  const texte = sansTexte ? null : <p className="actu__texte">{actu.texte || '…'}</p>
+  // Blog avec catégories (§12.6) : le nom en titre, la catégorie en
+  // pastille, qui ouvre cette catégorie.
+  const categories = actu.categories ?? []
+  const entete = (actu.titre || categories.length > 0) && (
+    <>
+      {actu.titre && <h3 className="actu__titre">{actu.titre}</h3>}
+      {categories.length > 0 && (
+        <button
+          type="button"
+          className="actu__categorie"
+          disabled={!onCategorie}
+          onClick={() => onCategorie?.(categories[categories.length - 1].id)}
+        >
+          # {categories.map((c) => c.nom).join(' › ')}
+        </button>
+      )}
+    </>
+  )
+  const texte = sansTexte ? (entete || null) : (
+    <>
+      {entete}
+      <p className="actu__texte">{actu.texte || '…'}</p>
+    </>
+  )
   if (actu.niveau === 'brief') {
     return (
       <article className="actu actu--breve">
@@ -264,9 +289,9 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false, onModifier = nul
           <span className="actu__drapeau-texte">Important</span>
           {crayon}
         </div>
-        {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
+        {mediaEnHaut && <Media lieu={lieu} actu={actu} />}
         {texte}
-        {!mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
+        {!mediaEnHaut && <Media lieu={lieu} actu={actu} />}
         <Document document={actu.document} />
         {signature}
       </article>
@@ -276,9 +301,9 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false, onModifier = nul
     // Par défaut le texte d'abord, puis la photo ou la vidéo (Seb et les testeurs, 8 novembre).
     <article className={`actu actu--normale ${crayon ? 'actu--avec-crayon' : ''}`}>
       {crayon}
-      {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
+      {mediaEnHaut && <Media lieu={lieu} actu={actu} />}
       {texte && <div className="actu__corps">{texte}</div>}
-      {!mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
+      {!mediaEnHaut && <Media lieu={lieu} actu={actu} />}
       <div className="actu__corps">
         <Document document={actu.document} />
         {signature}
@@ -287,8 +312,8 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false, onModifier = nul
   )
 }
 
-function Fil({ actus, brouillons = [], ecoleId, mediaEnHaut, onModifier = null }) {
-  if (!actus.length && !brouillons.length) return <p className="actus__vide">Pas encore d’actu.</p>
+function Fil({ actus, brouillons = [], lieu, mediaEnHaut, onModifier = null, onCategorie = null }) {
+  if (!actus.length && !brouillons.length) return <p className="actus__vide">Pas encore de publication.</p>
   const enHaut = actus.filter((a) => a.enHaut)
   const autres = actus.filter((a) => !a.enHaut)
   const periodes = autres.map((a) => periode(a.publieeLe))
@@ -300,20 +325,20 @@ function Fil({ actus, brouillons = [], ecoleId, mediaEnHaut, onModifier = null }
           <div className="actus__periode">Mes brouillons · vous seul les voyez</div>
           <div className="actus__brouillons">
             {brouillons.map((a) => (
-              <CarteActu key={a.id} actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} onModifier={onModifier} />
+              <CarteActu key={a.id} actu={a} lieu={lieu} mediaEnHaut={mediaEnHaut} onModifier={onModifier} onCategorie={onCategorie} />
             ))}
           </div>
         </div>
       )}
       {enHaut.map((a) => (
-        <CarteActu key={a.id} actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} onModifier={onModifier} />
+        <CarteActu key={a.id} actu={a} lieu={lieu} mediaEnHaut={mediaEnHaut} onModifier={onModifier} onCategorie={onCategorie} />
       ))}
       {autres.map((a, i) => {
         const titre = periodes[i] !== periodes[i - 1] ? periodes[i] : null
         return (
           <div key={a.id} className="actus__groupe">
             {titre && <div className="actus__periode">{titre}</div>}
-            <CarteActu actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} onModifier={onModifier} />
+            <CarteActu actu={a} lieu={lieu} mediaEnHaut={mediaEnHaut} onModifier={onModifier} onCategorie={onCategorie} />
           </div>
         )
       })}
@@ -322,9 +347,9 @@ function Fil({ actus, brouillons = [], ecoleId, mediaEnHaut, onModifier = null }
   )
 }
 
-// « Paramètres d'Actus » : un écran à part, ouvert par le menu ⋯ du
-// bandeau, avec ← (§12.5 ; avant, repliés sous la liste d'Édition).
-function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, onRetour }) {
+// « Paramètres de <blog> » : un écran à part, ouvert par le menu ⋯ du
+// bandeau, avec ← ; le même pour tous les blogs (§12.5).
+function ParametresEdition({ lieu, nom, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, onRetour }) {
   return (
     <div className="actus actus--editeur">
       <div className="actus__entete">
@@ -333,12 +358,12 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, 
             <path d="M19 12H5M11 18l-6-6 6-6" />
           </svg>
         </button>
-        <strong>Paramètres d’Actus</strong>
+        <strong>{parametresDe(nom)}</strong>
       </div>
       <div className="parametres">
         <>
-          <h4 className="section-label perso__sous-partie">En haut de chaque actu</h4>
-          <div className="editeur__niveaux parametres__choix" role="group" aria-label="En haut de chaque actu">
+          <h4 className="section-label perso__sous-partie">En haut de chaque publication</h4>
+          <div className="editeur__niveaux parametres__choix" role="group" aria-label="En haut de chaque publication">
             {[
               [false, 'Texte'],
               [true, 'Photo, vidéo'],
@@ -356,32 +381,32 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, 
           </div>
           <h4 className="section-label perso__sous-partie">Ouverture de l’appli</h4>
           <div className="atelier__option">
-            <span>L’appli affiche toujours les actus à son ouverture</span>
+            <span>L’appli affiche toujours {nom} à son ouverture</span>
             <button
               type="button"
               role="switch"
               aria-checked={ouverture}
-              aria-label="L’appli affiche toujours les actus à son ouverture"
+              aria-label={`L’appli affiche toujours ${nom} à son ouverture`}
               className="actus__interrupteur"
               onClick={() => changerOuverture(!ouverture)}
             />
           </div>
-          <p className="editeur__aide">Sinon, elle affiche le dernier onglet ouvert.</p>
+          <p className="editeur__aide">Sinon, elle affiche le dernier onglet ouvert. Un seul onglet à la fois.</p>
           <h4 className="section-label perso__sous-partie">Visibilité</h4>
           <div className="atelier__option">
-            <span>Les actus sont visibles par tout le monde</span>
+            <span>{nom} est visible par tout le monde</span>
             <button
               type="button"
               role="switch"
               aria-checked={pourTous}
-              aria-label="Les actus sont visibles par tout le monde"
+              aria-label={`${nom} est visible par tout le monde`}
               className="actus__interrupteur"
               onClick={() => changerPourTous(!pourTous)}
             />
           </div>
           <p className="editeur__aide">Sinon, seuls ceux qui publient les voient.</p>
           <h4 className="section-label perso__sous-partie">Instagram</h4>
-          <Instagram ecoleId={ecoleId} />
+          <Instagram lieu={lieu} nom={nom} />
         </>
       </div>
     </div>
@@ -389,8 +414,9 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, 
 }
 
 // Relier un compte Instagram (§6 bis) : ses nouveaux posts arrivent dans
-// les actus, toutes les 5 minutes.
-function Instagram({ ecoleId }) {
+// ce blog, toutes les 5 minutes. Un seul compte par école : relié dans un
+// autre blog, il n'est pas proposé ici (§12.5).
+function Instagram({ lieu, nom }) {
   const [etat, setEtat] = useState(null)
   const [cle, setCle] = useState('')
   const [envoi, setEnvoi] = useState(false)
@@ -402,16 +428,16 @@ function Instagram({ ecoleId }) {
   const [hashtag, setHashtag] = useState('')
   const [choix, setChoix] = useState('tous') // tous | hashtag | un_par_un
   useEffect(() => {
-    api.lireInstagram(ecoleId).then(setEtat, (e) => setErreur(e.message))
-    api.lireTriInstagram(ecoleId).then((t) => {
+    api.lireInstagram(lieu).then(setEtat, (e) => setErreur(e.message))
+    api.lireTriInstagram(lieu).then((t) => {
       setHashtag(t.hashtag)
       setChoix(!t.publier ? 'un_par_un' : t.hashtag ? 'hashtag' : 'tous')
     }, () => {})
-  }, [ecoleId])
+  }, [lieu])
 
   async function changerTri(changement) {
     try {
-      setHashtag((await api.changerTriInstagram(ecoleId, changement)).hashtag)
+      setHashtag((await api.changerTriInstagram(lieu, changement)).hashtag)
     } catch (e) {
       setErreur(e.message)
     }
@@ -427,13 +453,13 @@ function Instagram({ ecoleId }) {
     if (c === 'un_par_un') changerTri({ instagram_hashtag: '', instagram_publish: false })
   }
   const CHOIX = [
-    ['tous', 'Tous mes posts', 'Chaque nouveau post arrive dans les actus, tout de suite.'],
+    ['tous', 'Tous mes posts', `Chaque nouveau post arrive dans ${nom}, tout de suite.`],
     ['hashtag', 'Seulement ceux avec un hashtag', 'Seuls les posts où vous écrivez ce hashtag arrivent, tout de suite.'],
     ['un_par_un', 'Je les choisis un par un', 'Chaque post arrive en brouillon ici. Vous touchez « Publier » pour ceux que vous voulez.'],
   ]
   const champHashtag = (
     <fieldset className="parametres__tri">
-      <legend>Quels posts Instagram mettre dans les actus ?</legend>
+      <legend>Quels posts Instagram mettre dans {nom} ?</legend>
       {CHOIX.map(([c, titre, aide]) => (
         <label key={c} className="parametres__tri-choix" aria-checked={choix === c}>
           <input type="radio" name="tri-instagram" checked={choix === c} onChange={() => choisir(c)} />
@@ -476,7 +502,7 @@ function Instagram({ ecoleId }) {
   async function seConnecter() {
     setEnvoi(true)
     try {
-      window.location.assign(await api.connexionInstagram(ecoleId))
+      window.location.assign(await api.connexionInstagram(lieu))
     } catch (e) {
       setErreur(e.message)
       setEnvoi(false)
@@ -484,22 +510,31 @@ function Instagram({ ecoleId }) {
   }
 
   if (!etat) return erreur ? <p className="parametres__erreur">{erreur}</p> : null
+  if (etat.relie && etat.ailleurs) {
+    return (
+      <div className="atelier__option parametres__instagram">
+        <p>
+          Le compte <b>@{etat.compte}</b> est relié à {etat.ailleurs}. Pour le relier ici, déliez-le d’abord dans les paramètres de {etat.ailleurs}.
+        </p>
+      </div>
+    )
+  }
   return (
     <div className="atelier__option parametres__instagram">
       {etat.relie ? (
         <>
           <p>
-            Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans les actus en 5 minutes au plus.
+            Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans {nom} en 5 minutes au plus.
           </p>
           {champHashtag}
           {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
-          <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(ecoleId))}>
+          <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(lieu))}>
             Délier
           </button>
         </>
       ) : etat.peutSeConnecter ? (
         <>
-          <p>Reliez le compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans les actus.</p>
+          <p>Reliez le compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans {nom}.</p>
           {champHashtag}
           {erreur && <p className="parametres__erreur">{erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={seConnecter}>
@@ -508,7 +543,7 @@ function Instagram({ ecoleId }) {
         </>
       ) : (
         <>
-          <p>Collez la clé d’accès du compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans les actus.</p>
+          <p>Collez la clé d’accès du compte Instagram (compte professionnel) : ses nouveaux posts arriveront dans {nom}.</p>
           <input
             className="editeur__texte parametres__cle"
             aria-label="Clé d’accès Instagram"
@@ -521,7 +556,7 @@ function Instagram({ ecoleId }) {
             type="button"
             className="btn btn--secondary"
             disabled={envoi || cle.trim().length < 20}
-            onClick={() => agir(() => api.relierInstagram(ecoleId, cle.trim()))}
+            onClick={() => agir(() => api.relierInstagram(lieu, cle.trim()))}
           >
             Relier
           </button>
@@ -610,7 +645,7 @@ function ChoixDocument({ ecoleId, onChoisir, onFermer }) {
   )
 }
 
-function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, onSupprimer }) {
+function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistrer, onSupprimer }) {
   // Chaque photo ou vidéo a une clé, pour la retirer.
   const [brouillon, setBrouillon] = useState(() => ({ ...actu, media: actu.media.map((m, i) => ({ ...m, cle: `e${i}` })) }))
   const [envoi, setEnvoi] = useState(false)
@@ -642,14 +677,16 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
   // Le texte est facultatif dès qu'il y a une photo, une vidéo, un lien ou
   // un document (Seb, 10 novembre) ; une Brève n'est que du texte.
   const vide =
-    !brouillon.texte.trim() && (brouillon.niveau === 'brief' || (!brouillon.media.length && !brouillon.document))
+    (!brouillon.texte.trim() && (brouillon.niveau === 'brief' || (!brouillon.media.length && !brouillon.document))) ||
+    // Blog avec catégories : un nom et une catégorie (§12.6).
+    (blog.avecCategories && (!brouillon.titre.trim() || !brouillon.categorie))
   const publiee = Boolean(actu.publieeLe)
   const aide = NIVEAUX.find((n) => n.cle === brouillon.niveau).aide
   const place = MEDIA_MAX - brouillon.media.length
 
   async function choisirPhotos(fichiers) {
     const choisies = [...fichiers].slice(0, place)
-    if (fichiers.length > place) window.alert(`${MEDIA_MAX} photos ou vidéos au plus par actu.`)
+    if (fichiers.length > place) window.alert(`${MEDIA_MAX} photos ou vidéos au plus.`)
     if (!choisies.length) return
     setPhotoEnvoi((n) => n + choisies.length)
     await Promise.all(
@@ -657,7 +694,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
         const cle = `p${++numero.current}`
         ajouter({ cle, photoLocale: URL.createObjectURL(fichier) })
         try {
-          remplacer(cle, { photo: await api.envoyerPhoto(ecoleId, fichier) })
+          remplacer(cle, { photo: await api.envoyerPhoto(lieu, fichier) })
         } catch (e) {
           enlever(cle)
           window.alert(e.message)
@@ -675,7 +712,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
       return
     }
     try {
-      ajouter({ cle: `v${++numero.current}`, uploadId: await demarrerTeleversement(ecoleId, fichier) })
+      ajouter({ cle: `v${++numero.current}`, uploadId: await demarrerTeleversement(lieu.ecoleId, fichier) })
     } catch (e) {
       window.alert(e.message)
     }
@@ -691,7 +728,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
     if (!url) return
     setLienEnvoi(true)
     try {
-      ajouter({ cle: `l${++numero.current}`, ...(await api.ajouterLien(ecoleId, /^https?:\/\//i.test(url) ? url : `https://${url}`)) })
+      ajouter({ cle: `l${++numero.current}`, ...(await api.ajouterLien(lieu, /^https?:\/\//i.test(url) ? url : `https://${url}`)) })
       setLien(null)
     } catch (e) {
       window.alert(e.message)
@@ -702,7 +739,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
 
   function basculer(ajout) {
     if (ajout === 'document') return brouillon.document ? changer({ document: null }) : setChoixDocument(true)
-    if (place <= 0) return window.alert(`${MEDIA_MAX} photos ou vidéos au plus par actu.`)
+    if (place <= 0) return window.alert(`${MEDIA_MAX} photos ou vidéos au plus.`)
     if (ajout === 'lien') return setLien((l) => (l === null ? '' : null))
     ;(ajout === 'photo' ? champPhoto : champVideo).current?.click()
   }
@@ -714,7 +751,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
       const media = await Promise.all(
         brouillon.media.map(async (m) =>
           m.uploadId
-            ? { cle: m.cle, video: await finaliserTeleversement(m.uploadId, (id) => api.attacherVideo(ecoleId, id)) }
+            ? { cle: m.cle, video: await finaliserTeleversement(m.uploadId, (id) => api.attacherVideo(lieu, id)) }
             : m,
         ),
       )
@@ -736,7 +773,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
   if (choixDocument) {
     return (
       <ChoixDocument
-        ecoleId={ecoleId}
+        ecoleId={lieu.ecoleId}
         onFermer={() => setChoixDocument(false)}
         onChoisir={(document) => {
           changer({ document })
@@ -754,9 +791,19 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
             <path d="M19 12H5M11 18l-6-6 6-6" />
           </svg>
         </button>
-        <strong>{actu.id ? 'Modifier l’actu' : 'Nouvelle actu'}</strong>
+        <strong>{actu.id ? 'Modifier' : 'Nouvelle publication'}</strong>
       </div>
       <div className="editeur">
+        {blog.avecCategories && (
+          <input
+            className="editeur__texte editeur__titre"
+            aria-label="Nom"
+            placeholder="Nom (ex. Clé de bras en croix)"
+            value={brouillon.titre}
+            onChange={(e) => changer({ titre: e.target.value })}
+          />
+        )}
+        {blog.avecNiveaux && (
         <div className="editeur__niveaux" role="group" aria-label="Niveau">
           {NIVEAUX.map((n) => (
             <button
@@ -770,15 +817,24 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
             </button>
           ))}
         </div>
-        <p className="editeur__aide">{aide}</p>
+        )}
+        {blog.avecNiveaux && <p className="editeur__aide">{aide}</p>}
         <textarea
           id="actu-texte"
           className="editeur__texte"
-          aria-label="Texte de l’actu"
-          placeholder="Écrivez l’actu…"
+          aria-label="Texte"
+          placeholder="Écrivez…"
           value={brouillon.texte}
           onChange={(e) => changer({ texte: e.target.value })}
         />
+        {blog.avecCategories && (
+          <ChoixCategorie
+            lieu={lieu}
+            categorie={brouillon.categorie}
+            sousCategorie={brouillon.sousCategorie}
+            onChanger={(categorie, sousCategorie) => changer({ categorie, sousCategorie })}
+          />
+        )}
         {brouillon.niveau !== 'brief' && (
           <div className="editeur__ajouts">
             <button type="button" onClick={() => basculer('photo')}>
@@ -829,7 +885,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
           <ul className="editeur__medias" aria-label="Photos et vidéos">
             {brouillon.media.map((element) => (
               <li key={element.cle}>
-                <Element ecoleId={ecoleId} actuId={actu.id} element={element} />
+                <Element lieu={lieu} actuId={actu.id} element={element} />
                 <button type="button" aria-label="Retirer" onClick={() => retirer(element)}>
                   <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" aria-hidden="true">
                     <path d="M6 6l12 12M18 6L6 18" />
@@ -865,10 +921,11 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
         <div className="actus__periode">Ce que verront les autres</div>
         <div className="editeur__apercu">
           <CarteActu
-            ecoleId={ecoleId}
+            lieu={lieu}
             mediaEnHaut={mediaEnHaut}
             actu={{
               ...brouillon,
+              categories: [brouillon.categorie, brouillon.sousCategorie].filter(Boolean).map((nom) => ({ id: nom, nom })),
               enHaut: brouillon.niveau === 'important',
               auteur: actu.auteur || auteur,
               publieeLe: actu.publieeLe,
@@ -878,7 +935,7 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
         </div>
         {actu.id && (
           <button type="button" className="editeur__supprimer" onClick={() => onSupprimer(actu)}>
-            Supprimer cette actu
+            Supprimer
           </button>
         )}
       </div>
@@ -894,9 +951,10 @@ function Editeur({ actu, auteur, ecoleId, mediaEnHaut, onRetour, onEnregistrer, 
   )
 }
 
-// Retour de « Se connecter avec Instagram » (?instagram=ok|annule|erreur,
-// voir news/instagram.py) : retiré de l'adresse et gardé pour la session,
-// au cas où l'appli se recharge aussitôt (nouvelle version), montré une fois.
+// Retour de « Se connecter avec Instagram » (?instagram=ok|annule|erreur
+// &blog=<id>, voir publications/receiver.py) : retiré de l'adresse et gardé
+// pour la session, au cas où l'appli se recharge aussitôt (nouvelle
+// version), montré une fois, dans les paramètres de ce blog.
 const RETOURS_INSTAGRAM = {
   annule: 'Connexion à Instagram annulée.',
   erreur: 'La connexion à Instagram n’a pas abouti : le compte est-il bien professionnel et ajouté comme testeur ? Recommencez.',
@@ -906,7 +964,9 @@ let retourInstagram = (() => {
     const params = new URLSearchParams(window.location.search)
     const retour = params.get('instagram')
     if (retour) {
+      sessionStorage.setItem('retour-instagram-blog', params.get('blog') ?? '')
       params.delete('instagram')
+      params.delete('blog')
       const reste = params.toString()
       window.history.replaceState(null, '', window.location.pathname + (reste ? `?${reste}` : '') + window.location.hash)
       sessionStorage.setItem('retour-instagram', retour)
@@ -916,35 +976,60 @@ let retourInstagram = (() => {
     return null
   }
 })()
+// Le blog où ouvrir l'appli au retour d'Instagram (App.jsx), ou null.
+export function blogDuRetourInstagram() {
+  try {
+    return retourInstagram ? Number(sessionStorage.getItem('retour-instagram-blog')) || null : null
+  } catch {
+    return null
+  }
+}
 function oublierRetourInstagram() {
   retourInstagram = null
   try {
     sessionStorage.removeItem('retour-instagram')
+    sessionStorage.removeItem('retour-instagram-blog')
   } catch {
     // rien à oublier
   }
 }
 
-export default function Actus({ ecoleId, prenom }) {
-  const [fil, setFil] = useState(null) // { peutPublier, actus }
-  const [atelier, setAtelier] = useState([])
+// « Paramètres d’Actus », « Paramètres de Techniques ».
+export const parametresDe = (nom) => `Paramètres ${/^[aeiouyéèêàâîôûh]/i.test(nom) ? 'd’' : 'de '}${nom}`
+
+const nouvelle = (extra = {}) => ({
+  id: null, niveau: 'normal', texte: '', enHautJusquau: dansJours(7), notifier: false, publieeLe: null, media: [],
+  document: null, titre: '', categorie: '', sousCategorie: '', ...extra,
+})
+
+// Ouvrir une publication dans l'éditeur : sa catégorie et sa sous-catégorie
+// par leur nom, comme les choisit l'éditeur.
+const aEditer = (actu) => ({ ...actu, categorie: actu.categories[0]?.nom ?? '', sousCategorie: actu.categories[1]?.nom ?? '' })
+
+export default function Blog({ ecoleId, blog, prenom }) {
+  const lieu = useMemo(() => ({ ecoleId, blogId: blog.id }), [ecoleId, blog.id])
+  const [fil, setFil] = useState(null) // { peutPublier, mediaEnHaut, actus, brouillons }
   // Au retour d'Instagram, les paramètres s'ouvrent sur le résultat.
-  const [parametres, setParametres] = useState(Boolean(retourInstagram))
+  const [parametres, setParametres] = useState(() => Boolean(retourInstagram) && [null, blog.id].includes(blogDuRetourInstagram()))
   const [ouverture, setOuverture] = useState(true)
-  const [pourTous, setPourTous] = useState(true) // « visibles par tout le monde »
-  const [edite, setEdite] = useState(null) // l'actu ouverte dans l'éditeur
+  const [pourTous, setPourTous] = useState(true) // « visible par tout le monde »
+  const [edite, setEdite] = useState(null) // la publication ouverte dans l'éditeur
   const [caches, setCaches] = useState(new Set()) // supprimées, Annuler possible
   const [toast, setToast] = useState(null) // { texte, annuler }
   const [erreur, setErreur] = useState('')
+  // Blog avec catégories : Fil | Catégories, et la catégorie ouverte.
+  const [vue, setVue] = useState('fil')
+  const [categorie, setCategorie] = useState(null)
+  const [version, setVersion] = useState(0) // recharge les catégories
   const minuteur = useRef(null)
 
   const charger = useCallback(async () => {
     try {
-      const f = await api.lireActus(ecoleId)
+      const f = await api.lireActus(lieu)
       setFil(f)
+      setVersion((v) => v + 1)
       if (f.peutPublier) {
-        const [a, r] = await Promise.all([api.lireAtelier(ecoleId), api.lireReglages(ecoleId)])
-        setAtelier(a)
+        const r = await api.lireReglages(lieu)
         setOuverture(r.ouvrir)
         setPourTous(r.pourTous)
       }
@@ -952,7 +1037,7 @@ export default function Actus({ ecoleId, prenom }) {
     } catch (e) {
       setErreur(e.message)
     }
-  }, [ecoleId])
+  }, [lieu])
 
   useEffect(() => {
     charger()
@@ -967,32 +1052,32 @@ export default function Actus({ ecoleId, prenom }) {
 
   async function enregistrer(brouillon) {
     try {
-      const actu = await api.enregistrer(ecoleId, brouillon)
+      const actu = await api.enregistrer(lieu, brouillon)
       const vientDePublier = brouillon.publier && !edite.publieeLe
       setEdite(null)
       await charger()
       if (vientDePublier) {
-        montrer('Actu publiée', async () => {
-          await api.depublier(ecoleId, actu.id)
+        montrer('Publiée', async () => {
+          await api.depublier(lieu, actu.id)
           charger()
         })
       } else {
-        montrer(brouillon.publier ? 'Actu enregistrée' : 'Gardée en brouillon')
+        montrer(brouillon.publier ? 'Enregistrée' : 'Gardée en brouillon')
       }
     } catch (e) {
       montrer(e.message)
     }
   }
 
-  // Supprimer : l'actu disparaît tout de suite et part vraiment au bout de
-  // 10 s, comme dans Sparring.
+  // Supprimer : la publication disparaît tout de suite et part vraiment au
+  // bout de 10 s, comme dans Sparring.
   function supprimer(actu) {
     setEdite(null)
     setCaches((c) => new Set([...c, actu.id]))
     const retard = setTimeout(() => {
-      api.supprimer(ecoleId, actu.id).then(charger, (e) => montrer(e.message))
+      api.supprimer(lieu, actu.id).then(charger, (e) => montrer(e.message))
     }, ANNULER_MS)
-    montrer('Actu supprimée', () => {
+    montrer('Supprimée', () => {
       clearTimeout(retard)
       setCaches((c) => {
         const n = new Set(c)
@@ -1005,8 +1090,8 @@ export default function Actus({ ecoleId, prenom }) {
   async function changerMediaEnHaut(valeur) {
     setFil((f) => ({ ...f, mediaEnHaut: valeur }))
     try {
-      await api.changerMediaEnHaut(ecoleId, valeur)
-      montrer(valeur ? 'Photos et vidéos en haut de chaque actu' : 'Texte en haut de chaque actu')
+      await api.changerMediaEnHaut(lieu, valeur)
+      montrer(valeur ? 'Photos et vidéos en haut de chaque publication' : 'Texte en haut de chaque publication')
     } catch (e) {
       setFil((f) => ({ ...f, mediaEnHaut: !valeur }))
       montrer(e.message)
@@ -1016,8 +1101,8 @@ export default function Actus({ ecoleId, prenom }) {
   async function changerOuverture(valeur) {
     setOuverture(valeur)
     try {
-      await api.changerOuverture(ecoleId, valeur)
-      montrer(valeur ? 'L’appli affichera toujours les actus à son ouverture' : 'L’appli affichera le dernier onglet ouvert')
+      await api.changerOuverture(lieu, valeur)
+      montrer(valeur ? `L’appli affichera toujours ${blog.nom} à son ouverture` : 'L’appli affichera le dernier onglet ouvert')
     } catch (e) {
       setOuverture(!valeur)
       montrer(e.message)
@@ -1027,8 +1112,8 @@ export default function Actus({ ecoleId, prenom }) {
   async function changerPourTous(valeur) {
     setPourTous(valeur)
     try {
-      await api.changerPourTous(ecoleId, valeur)
-      montrer(valeur ? 'Les actus sont visibles par tout le monde' : 'Seuls ceux qui publient voient les actus')
+      await api.changerPourTous(lieu, valeur)
+      montrer(valeur ? `${blog.nom} est visible par tout le monde` : `Seuls ceux qui publient voient ${blog.nom}`)
     } catch (e) {
       setPourTous(!valeur)
       montrer(e.message)
@@ -1056,7 +1141,16 @@ export default function Actus({ ecoleId, prenom }) {
   if (edite) {
     return (
       <>
-        <Editeur actu={edite} auteur={prenom} ecoleId={ecoleId} mediaEnHaut={fil?.mediaEnHaut} onRetour={() => setEdite(null)} onEnregistrer={enregistrer} onSupprimer={supprimer} />
+        <Editeur
+          actu={edite}
+          auteur={prenom}
+          lieu={lieu}
+          blog={blog}
+          mediaEnHaut={fil?.mediaEnHaut}
+          onRetour={() => setEdite(null)}
+          onEnregistrer={enregistrer}
+          onSupprimer={supprimer}
+        />
         {toastEl}
       </>
     )
@@ -1068,7 +1162,8 @@ export default function Actus({ ecoleId, prenom }) {
     return (
       <>
         <ParametresEdition
-          ecoleId={ecoleId}
+          lieu={lieu}
+          nom={blog.nom}
           ouverture={ouverture}
           changerOuverture={changerOuverture}
           mediaEnHaut={fil.mediaEnHaut}
@@ -1083,27 +1178,76 @@ export default function Actus({ ecoleId, prenom }) {
   }
 
   const visibles = (liste) => liste.filter((a) => !caches.has(a.id))
-  const brouillons = fil.peutPublier ? visibles(atelier).filter((a) => !a.publieeLe) : []
+  const modifier = fil.peutPublier ? (actu) => setEdite(aEditer(actu)) : null
+  // La pastille d'une catégorie ouvre cette catégorie (§12.6).
+  const ouvrirCategorie = blog.avecCategories
+    ? (id) => {
+        setCategorie(id)
+        setVue('categories')
+      }
+    : null
+  const toutes = [...visibles(fil.actus), ...(fil.peutPublier ? visibles(fil.brouillons) : [])]
 
   return (
     <div className={`actus ${fil.peutPublier ? 'actus--avec-barre' : ''}`}>
       {fil.peutPublier && (
-        // Menu ⋯ du bandeau : les paramètres d'Actus (§12.5).
-        <MenuEntete label="Actions des actus" actions={[{ label: 'Paramètres d’Actus', icon: 'edit', onClick: () => setParametres(true) }]} />
+        // Menu ⋯ du bandeau : les paramètres du blog (§12.5).
+        <MenuEntete label={`Actions de ${blog.nom}`} actions={[{ label: parametresDe(blog.nom), icon: 'edit', onClick: () => setParametres(true) }]} />
       )}
-      <Fil
-        actus={visibles(fil.actus)}
-        brouillons={brouillons}
-        ecoleId={ecoleId}
-        mediaEnHaut={fil.mediaEnHaut}
-        onModifier={fil.peutPublier ? setEdite : null}
-      />
+      {blog.avecCategories && (
+        <div className="actus__onglets" role="tablist">
+          {[
+            ['fil', 'Fil'],
+            ['categories', 'Catégories'],
+          ].map(([cle, libelle]) => (
+            <button
+              key={cle}
+              type="button"
+              role="tab"
+              aria-selected={vue === cle}
+              onClick={() => {
+                setVue(cle)
+                setCategorie(null)
+              }}
+            >
+              {libelle}
+            </button>
+          ))}
+        </div>
+      )}
+      {blog.avecCategories && vue === 'categories' ? (
+        <Categories
+          lieu={lieu}
+          version={version}
+          publications={toutes}
+          ouverte={categorie}
+          onOuvrir={setCategorie}
+          peutRenommer={fil.peutPublier}
+          onRenomme={charger}
+          rendreCarte={(a) => (
+            <CarteActu actu={a} lieu={lieu} mediaEnHaut={fil.mediaEnHaut} onModifier={modifier} onCategorie={ouvrirCategorie} />
+          )}
+        />
+      ) : (
+        <Fil
+          actus={visibles(fil.actus)}
+          brouillons={fil.peutPublier ? visibles(fil.brouillons) : []}
+          lieu={lieu}
+          mediaEnHaut={fil.mediaEnHaut}
+          onModifier={modifier}
+          onCategorie={ouvrirCategorie}
+        />
+      )}
       {fil.peutPublier && (
         <div className="actus__barre">
           <button
             type="button"
             className="btn btn--primary actus__principal"
-            onClick={() => setEdite({ id: null, niveau: 'normal', texte: '', enHautJusquau: dansJours(7), notifier: false, publieeLe: null, media: [], document: null })}
+            onClick={() => {
+              // Depuis une catégorie, elle est déjà choisie (§12.6).
+              const [cat, sous] = vue === 'categories' && categorie ? cheminCategorie(toutes, categorie) : ['', '']
+              setEdite(nouvelle({ categorie: cat, sousCategorie: sous }))
+            }}
           >
             + Ajouter
           </button>
@@ -1112,4 +1256,15 @@ export default function Actus({ ecoleId, prenom }) {
       {toastEl}
     </div>
   )
+}
+
+// Les noms de la catégorie `id` et de sa catégorie parente, lus sur les
+// publications qui y sont rangées : [catégorie, sous-catégorie].
+function cheminCategorie(publications, id) {
+  for (const a of publications) {
+    const i = a.categories.findIndex((c) => c.id === id)
+    if (i === 0) return [a.categories[0].nom, '']
+    if (i === 1) return [a.categories[0].nom, a.categories[1].nom]
+  }
+  return ['', '']
 }
