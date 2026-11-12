@@ -712,6 +712,19 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [compteReel?.id])
 
+  // Push reçu appli ouverte (voir public/sw.js) : le flux ci-dessus a pu
+  // se couper sans prévenir (téléphone) et rater le message. Bug signalé
+  // par Seb (12/11) : pas de badge sur « Plus » ni de notification.
+  useEffect(() => {
+    if (!compteReel || !('serviceWorker' in navigator)) return undefined
+    function surMessage(e) {
+      if (e.data?.type === 'push') resynchroniserConversations()
+    }
+    navigator.serviceWorker.addEventListener('message', surMessage)
+    return () => navigator.serviceWorker.removeEventListener('message', surMessage)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compteReel?.id, ecole.id, cours])
+
   // Un message envoyé via la file d'attente (voir utils/messageOutbox.js
   // et ConversationThreadScreen.jsx) vient de réussir — au tout premier
   // essai, ou après un ou plusieurs renvois automatiques. Câblé ici
