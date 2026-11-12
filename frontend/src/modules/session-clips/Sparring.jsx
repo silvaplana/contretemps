@@ -12,7 +12,7 @@ import {
   useTeleversementsTermines,
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
-import { EssaiLabo, Labo, useSuppressionEssai } from './Labo.jsx'
+import { Deroulant, EssaiLabo, Labo, useSuppressionEssai } from './Labo.jsx'
 import Tournage from './Tournage.jsx'
 import './sparring.css'
 
@@ -49,7 +49,7 @@ export default function Sparring({ ecoleId, cours }) {
   useEffect(() => {
     api.moi().then((m) => {
       setMe(m)
-      if (m.is_coach) setOnglet(['tournage', 'mes', 'seances', 'verifier'].includes(ongletGarde()) ? ongletGarde() : 'seances')
+      if (m.is_coach) setOnglet(['tournage', 'mes', 'verifier'].includes(ongletGarde()) ? ongletGarde() : 'tournage')
     }, () => setMe({ person_id: null, is_coach: false }))
   }, [])
   useEffect(() => () => clearTimeout(minuteur.current), [])
@@ -187,9 +187,18 @@ export default function Sparring({ ecoleId, cours }) {
         {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} version={version} />}
         <div className="sc__corps">
           {onglet !== 'verifier' && onglet !== 'tournage' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
-          {onglet === 'tournage' && <Tournage montrer={montrer} rafraichir={rafraichir} />}
+          {/* Tournage, puis Montage (les séances filmées) en volets (Seb, 12/11 au soir). */}
+          {onglet === 'tournage' && (
+            <>
+              <Deroulant titre="Tournage" ouvertAuDepart>
+                <Tournage montrer={montrer} rafraichir={rafraichir} />
+              </Deroulant>
+              <Deroulant titre="Montage" ouvertAuDepart>
+                <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />
+              </Deroulant>
+            </>
+          )}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
-          {onglet === 'seances' && <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />}
           {onglet === 'verifier' && <AVerifier {...contexte} />}
         </div>
       </div>
@@ -231,8 +240,7 @@ function Onglets({ onglet, onChange, version }) {
   const onglets = [
     ['mes', 'Mes combats'],
     ['tournage', 'Tournage'],
-    ['seances', 'Séances'],
-    ['verifier', 'À vérifier'],
+    ['verifier', 'Identifier les combattants'],
   ]
   // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (
