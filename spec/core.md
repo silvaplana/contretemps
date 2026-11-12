@@ -398,8 +398,10 @@ liste. Le flux temps réel reçoit le jeton dans son adresse ; les fichiers se l
 
 **Bascule de profil** (famille) sans reconnexion, parmi les profils rattachés à l'email connecté ;
 **une montée en privilège redemande le mot de passe** (Membre < Profs < Admin). **Dernier écran
-retenu** : à la réouverture, l'appli revient sur le dernier onglet, et dans Admin sur le dernier
-sous-onglet, conservé sur l'appareil même après déconnexion.
+retenu** : à la réouverture, l'appli revient sur le dernier onglet, et **chaque onglet sur son dernier
+sous-onglet** (Admin, Financier et ses Pièces et Bilan, Docs, chaque blog de Publications, Fights ;
+Seb, 12/11), conservé sur l'appareil même après déconnexion (`sessionApi.lireEcran` /
+`sauvegarderEcran`). Un nouveau sous-onglet doit faire de même.
 
 ### 6.4 Invitation
 

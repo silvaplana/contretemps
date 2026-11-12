@@ -9,6 +9,7 @@ import {
   finaliserTeleversement,
   useProgressionTeleversement,
 } from '../../utils/videoUploads.js'
+import * as sessionApi from '../../api/session.js'
 import * as api from './api.js'
 import Categories, { ChoixCategorie } from './Categories.jsx'
 import './publications.css'
@@ -1046,8 +1047,12 @@ export default function Blog({ ecoleId, blog, prenom }) {
   const [caches, setCaches] = useState(new Set()) // supprimées, Annuler possible
   const [toast, setToast] = useState(null) // { texte, annuler }
   const [erreur, setErreur] = useState('')
-  // Blog avec catégories : Fil | Catégories, et la catégorie ouverte.
-  const [vue, setVue] = useState('fil')
+  // Blog avec catégories : Fil | Catégories, et la catégorie ouverte. Le
+  // sous-onglet est retenu sur cet appareil, même appli fermée (Seb, 12/11).
+  const [vue, setVue] = useState(() => (sessionApi.lireEcran(`blog-${blog.id}`) === 'categories' ? 'categories' : 'fil'))
+  useEffect(() => {
+    sessionApi.sauvegarderEcran(`blog-${blog.id}`, vue)
+  }, [blog.id, vue])
   const [categorie, setCategorie] = useState(null)
   const [version, setVersion] = useState(0) // recharge les catégories
   const minuteur = useRef(null)
