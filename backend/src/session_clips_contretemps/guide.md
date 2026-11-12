@@ -1,8 +1,8 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a quatre onglets en haut : Mes combats, Tournage, Séances, À vérifier
-(pastille = nombre), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
+(admin ou professeur) a trois onglets en haut : Mes combats, Tournage, Identifier les
+combattants (pastille = nombre), et le menu ⋮ en haut à droite : « Tests de découpage vidéo ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -10,8 +10,8 @@ Mes combats
   Karim B. », « Combat 3 · 2 min 20 ». Toucher une ligne ouvre le combat.
 - Vide : les combats filmés arrivent le lendemain de la séance.
 
-Séances (coachs)
-- En tête « ★ Favoris », puis une ligne par séance : petite vignette, nombre de combats, « 1 à
+Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir)
+- Sous le volet Tournage, le volet dépliant « Montage » : une ligne par séance : petite vignette, nombre de combats, « 1 à
   vérifier » ou « Vérifié », ou « Aucun combat trouvé » en gros ; à droite un crayon (renommer la
   séance) et une poubelle (effacer la séance et ses combats, « Annuler » pendant 10 s). Une séance filmée par la caméra montre l'heure et la durée
   (« 21:40 → 21:46 · 6 min ») et, pendant la découpe, « Découpe : 67 % » avec une
@@ -23,7 +23,7 @@ Séances (coachs)
   (« Dire le nom »), toucher le bon membre, « C'est bon ». Le combat rejoint la séance du jour, déjà
   validé.
 
-À vérifier (coachs)
+Identifier les combattants (coachs ; ancien « À vérifier »)
 - Les combats dont l'appli n'est pas sûre, un par un : « 1 sur 3 », la vidéo, la raison.
 - Toucher la ligne Rouge ou Bleu : les présents de la séance, ou « Un autre membre… ».
 - « Inverser », puis « C'est bon » (bouton principal) : le combat part dans « Mes combats » des

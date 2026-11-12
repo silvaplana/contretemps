@@ -397,7 +397,7 @@ function Points() {
 
 // Volet fermé par défaut, comme dans Admin : sinon ça prend trop de place
 // (Seb, 12/11).
-function Deroulant({ titre, ouvertAuDepart = false, children }) {
+export function Deroulant({ titre, ouvertAuDepart = false, children }) {
   const [ouvert, setOuvert] = useState(ouvertAuDepart)
   return (
     <section>
