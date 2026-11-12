@@ -49,7 +49,7 @@ export default function Sparring({ ecoleId, cours }) {
   useEffect(() => {
     api.moi().then((m) => {
       setMe(m)
-      if (m.is_coach) setOnglet(['tournage', 'mes', 'verifier'].includes(ongletGarde()) ? ongletGarde() : 'tournage')
+      if (m.is_coach) setOnglet(['tournage', 'mes'].includes(ongletGarde()) ? ongletGarde() : 'tournage')
     }, () => setMe({ person_id: null, is_coach: false }))
   }, [])
   useEffect(() => () => clearTimeout(minuteur.current), [])
@@ -102,6 +102,11 @@ export default function Sparring({ ecoleId, cours }) {
   const vider = useCallback(() => setSelection({ cle: '', clips: AUCUN }), [])
 
   const [essaisCaches, supprimerEssai] = useSuppressionEssai(montrer, rafraichir)
+  // Combats à identifier : pastille de l'onglet Tournage et de son volet.
+  const [aIdentifier, setAIdentifier] = useState(0)
+  useEffect(() => {
+    if (me?.is_coach) api.aVerifier().then((l) => setAIdentifier(l.length), () => {})
+  }, [version, me])
   function choisirOnglet(o) {
     setOnglet(o)
     try {
@@ -184,10 +189,11 @@ export default function Sparring({ ecoleId, cours }) {
             actions={[{ label: 'Tests de découpage vidéo', icon: 'video', onClick: () => setOuvert({ labo: true }) }]}
           />
         )}
-        {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} version={version} />}
+        {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} aIdentifier={aIdentifier} />}
         <div className="sc__corps">
-          {onglet !== 'verifier' && onglet !== 'tournage' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
-          {/* Tournage, puis Montage (les séances filmées) en volets (Seb, 12/11 au soir). */}
+          {onglet !== 'tournage' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
+          {/* Tournage, Montage (les séances filmées), puis Identifier combattants
+              (l'ancien onglet À vérifier) en volets (Seb, 12/11 au soir). */}
           {onglet === 'tournage' && (
             <>
               <Deroulant titre="Tournage" ouvertAuDepart>
@@ -196,10 +202,20 @@ export default function Sparring({ ecoleId, cours }) {
               <Deroulant titre="Montage" ouvertAuDepart>
                 <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />
               </Deroulant>
+              <Deroulant
+                titre={
+                  <>
+                    Identifier combattants
+                    {aIdentifier > 0 && <span className="sc-pastille">{aIdentifier}</span>}
+                  </>
+                }
+                ouvertAuDepart
+              >
+                <AVerifier {...contexte} />
+              </Deroulant>
             </>
           )}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
-          {onglet === 'verifier' && <AVerifier {...contexte} />}
         </div>
       </div>
     )
@@ -232,15 +248,10 @@ export default function Sparring({ ecoleId, cours }) {
   )
 }
 
-function Onglets({ onglet, onChange, version }) {
-  const [n, setN] = useState(0)
-  useEffect(() => {
-    api.aVerifier().then((l) => setN(l.length), () => {})
-  }, [version])
+function Onglets({ onglet, onChange, aIdentifier }) {
   const onglets = [
     ['mes', 'Combats'],
     ['tournage', 'Tournage'],
-    ['verifier', 'Identifier combattants'],
   ]
   // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (
@@ -253,7 +264,7 @@ function Onglets({ onglet, onChange, version }) {
         label: (
           <>
             {libelle}
-            {cle === 'verifier' && n > 0 && <span className="sc-pastille">{n}</span>}
+            {cle === 'tournage' && aIdentifier > 0 && <span className="sc-pastille">{aIdentifier}</span>}
           </>
         ),
       }))}
