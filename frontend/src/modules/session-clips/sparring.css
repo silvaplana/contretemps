@@ -570,8 +570,12 @@
   color: var(--text-muted);
 }
 
+/* Petite, et entière même téléphone en paysage (Seb, 12/11) : au plus
+   360 px de large et 40 % de la hauteur de l'écran. */
 .sc-image {
   position: relative;
+  align-self: center;
+  width: min(100%, 360px, calc(40vh * 16 / 9));
   aspect-ratio: 16 / 9;
   max-width: 100%;
   overflow: hidden;
