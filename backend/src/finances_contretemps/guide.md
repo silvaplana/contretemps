@@ -22,7 +22,7 @@ Comptes
   « Copies du plan » : le journal des copies mémorisées (date, commentaire) ; « Mémoriser le plan comptable » en ajoute
   une, le commentaire pré-rempli dit ce qui a changé depuis la précédente. « Repartir à zéro sur cette saison »
   (en bas de Bilan › Préparer) remet la copie choisie.
-- ⋯ › Balance, ou le bouton « Voir la Balance » sous « Total des comptes » (aussi dans le volet Comptes à côté du bilan) : la Balance recalculée à l'ouverture de l'écran, avec la période écrite sous le titre (« Période : du … au … ») ;
+- ⋯ › Balance, ou la puce « Balance » à côté de Graphique et Tableau (aussi dans le volet Comptes à côté du bilan) : la Balance recalculée à l'ouverture de l'écran, avec la période écrite sous le titre (« Période : du … au … ») ;
   s'ouvre sur la dernière saison terminée si elle n'est pas clôturée, sinon sur la saison en cours. Saison, Du, Au, Télécharger le PDF ; puces Tous les comptes /
   Bilan (classes 1 à 5) / Résultat (classes 6 et 7) ; toucher un compte montre ses écritures ; toucher un numéro de pièce ouvre sa fiche. « ← Comptes » revient.
 - ⋯ › Soldes de départ : soldes au premier jour de la saison (niveau Complet). Bouton « Reprendre les soldes de la Balance
