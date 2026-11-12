@@ -85,6 +85,8 @@ class SessionOut(BaseModel):
     raw_video: VideoSortie | None = None
     # Caméra de la salle (Seb, 12/11) : début du film, durée déjà lue, et où
     # en est la découpe (morceaux lus sur morceaux arrivés ou en cours d'envoi).
+    # La petite vignette de la carte : la vidéo du début de la séance.
+    cover: VideoSortie | None = None
     started_at: datetime | None = None
     filmed_seconds: float = 0
     pieces_read: int = 0
@@ -111,6 +113,8 @@ class CameraOut(BaseModel):
     last_upload_at: datetime | None = None
     session_id: int | None = None
     session_title: str = ""
+    # La petite vignette de la carte : la vidéo du début de la séance.
+    cover: VideoSortie | None = None
     started_at: datetime | None = None
     signal: str
     pairing_code: str | None = None
@@ -172,6 +176,10 @@ class PieceOut(BaseModel):
 class LabTestCreate(BaseModel):
     upload_id: str
     title: str = ""
+
+
+class SessionRename(BaseModel):
+    title: str
 
 
 class LabTestRename(BaseModel):

@@ -156,73 +156,11 @@
   background: var(--accent);
 }
 
-/* Une carte par séance : l'aperçu de trois combats, puis la date et l'état. */
-.sc-carte {
-  display: block;
-  width: 100%;
-  padding: 0;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  background: var(--card-bg);
+/* Une ligne par séance (comme un essai du Labo) ; finie sans combat : en gros. */
+.sc-seance__vide {
+  font-size: 19px;
+  font-weight: 700;
   color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.sc-carte[aria-disabled='true'] {
-  cursor: default;
-}
-
-.sc-carte__info {
-  display: block;
-  padding: 12px 14px 14px;
-}
-
-.sc-carte__info strong {
-  font-size: 18px;
-}
-
-.sc-carte__heure {
-  display: block;
-  margin-top: 2px;
-  font-variant-numeric: tabular-nums;
-}
-
-.sc-couverture {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  grid-template-rows: 1fr 1fr;
-  gap: 2px;
-  max-width: 100%;
-  aspect-ratio: 16 / 6;
-  background: var(--border);
-}
-
-.sc-couverture > span {
-  overflow: hidden;
-  background: #2b3540;
-}
-
-.sc-couverture img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.sc-couverture__grande {
-  grid-row: span 2;
-}
-
-.sc-couverture--attente {
-  display: grid;
-  place-items: center;
-  grid-template-columns: 1fr;
-  aspect-ratio: 16 / 3;
-  background: repeating-linear-gradient(135deg, var(--surface) 0 12px, var(--bg) 12px 24px);
-  color: var(--text-muted);
-  font-weight: 600;
 }
 
 .sc-raison {

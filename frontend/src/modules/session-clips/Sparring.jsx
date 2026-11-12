@@ -475,7 +475,8 @@ function EtatSeance({ s }) {
   }
   if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
   if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
-  if (s.clip_count === 0) return <span className="sc-chip sc-chip--info">Aucun combat trouvé</span>
+  // En gros (Seb, 12/11) : rien n'a pu être découpé.
+  if (s.clip_count === 0) return <span className="sc-seance__vide">Aucun combat trouvé</span>
   return (
     <>
       <span>
@@ -496,61 +497,105 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
     api.seances().then(setListe, (e) => montrer(e.message))
   }, [version, montrer])
   useTeleversementsTermines(rafraichir)
+  const [renommee, setRenommee] = useState(null)
+  // La poubelle : la séance disparaît tout de suite, part vraiment au bout
+  // de 10 s, sauf Annuler.
+  const [cachees, setCachees] = useState(new Set())
+  function effacer(id) {
+    setCachees((c) => new Set([...c, id]))
+    const retard = setTimeout(() => api.supprimerSeance(id).then(rafraichir, (e) => montrer(e.message)), ANNULER_MS)
+    montrer('Séance supprimée', () => {
+      clearTimeout(retard)
+      setCachees((c) => new Set([...c].filter((x) => x !== id)))
+    })
+  }
+  const visibles = liste?.filter((s) => !cachees.has(s.id))
 
   return (
     <>
-      {liste?.length === 0 && (
+      {visibles?.length === 0 && (
         <p className="sc-vide">Aucune séance filmée. Le + filme un combat avec le téléphone.</p>
       )}
-      {liste?.map((s) => {
+      {visibles?.map((s) => {
         // Filmée par la caméra : ses clips s'ouvrent dès les premiers combats.
         const prete = s.status === 'ready' || (s.live && s.clip_count > 0)
+        const poster = s.cover?.poster ?? s.previews[0]?.poster
+        // Une ligne comme un essai du Labo (Seb, 12/11) : petite vignette,
+        // crayon pour renommer, poubelle pour effacer.
         return (
-          <button
-            key={s.id}
-            type="button"
-            className="sc-carte"
-            aria-disabled={!prete}
-            onClick={() => prete && onOpen(s.id)}
-          >
-            {prete && s.previews.length ? (
-              <span className="sc-couverture">
-                {s.previews.map((v, i) => (
-                  <span key={v.id} className={i === 0 ? 'sc-couverture__grande' : ''}>
-                    {v.poster && <img src={v.poster} alt="" />}
-                  </span>
-                ))}
+          <div key={s.id} className="sc-essai">
+            <button
+              type="button"
+              className="sc-essai__ouvrir"
+              aria-disabled={!prete}
+              onClick={() => prete && s.clip_count > 0 && onOpen(s.id)}
+            >
+              <span className="sc-vignette sc-vignette--petite">
+                {poster ? <img src={poster} alt="" /> : <Icon name="video" size={20} />}
               </span>
-            ) : (
-              <span className="sc-couverture sc-couverture--attente">
-                {s.status === 'uploading'
-                  ? 'La vidéo arrive…'
-                  : s.status === 'failed'
-                    ? 'Vidéo illisible'
-                    : s.status === 'recording'
-                      ? 'Filme…'
-                      : s.status === 'ready'
-                        ? 'Aucun combat trouvé'
-                        : s.live
-                        ? 'Découpe en cours'
-                        : 'Découpe cette nuit'}
+              <span>
+                <strong>
+                  {api.jour(s.held_on)}
+                  {s.title ? ` · ${s.title}` : ''}
+                </strong>
+                {s.started_at && <span className="sc-meta">{horaire(s)}</span>}
+                <span className="sc-meta">
+                  <EtatSeance s={s} />
+                </span>
               </span>
-            )}
-            <span className="sc-carte__info">
-              <strong>
-                {api.jour(s.held_on)}
-                {s.title ? ` · ${s.title}` : ''}
-              </strong>
-              {s.started_at && <span className="sc-meta sc-carte__heure">{horaire(s)}</span>}
-              <span className="sc-meta">
-                <EtatSeance s={s} />
-              </span>
-            </span>
-          </button>
+            </button>
+            <button type="button" className="icon-btn" aria-label="Renommer la séance" onClick={() => setRenommee(s)}>
+              <Icon name="edit" size={20} />
+            </button>
+            <button type="button" className="icon-btn" aria-label="Supprimer la séance" onClick={() => effacer(s.id)}>
+              <Icon name="trash" size={20} />
+            </button>
+          </div>
         )
       })}
+      {renommee && (
+        <RenommerSeance
+          seance={renommee}
+          montrer={montrer}
+          onClose={() => setRenommee(null)}
+          onRenommee={() => {
+            setRenommee(null)
+            rafraichir()
+          }}
+        />
+      )}
       <FilmerCombat ecoleId={ecoleId} onEnvoye={rafraichir} montrer={montrer} />
     </>
+  )
+}
+
+// Le crayon d'une séance (Seb, 12/11), comme celui d'un essai du Labo.
+function RenommerSeance({ seance, montrer, onClose, onRenommee }) {
+  const [nom, setNom] = useState(seance.title)
+  async function enregistrer() {
+    try {
+      onRenommee(await api.renommerSeance(seance.id, nom))
+    } catch (err) {
+      montrer(err.message)
+    }
+  }
+  return (
+    <Modal
+      title="Renommer la séance"
+      onClose={onClose}
+      footer={
+        <div className="video-upload-form__actions">
+          <button type="button" className="btn btn--secondary" onClick={onClose}>
+            Annuler
+          </button>
+          <button type="button" className="btn btn--primary" disabled={!nom.trim()} onClick={enregistrer}>
+            Enregistrer
+          </button>
+        </div>
+      }
+    >
+      <input className="sc-champ" value={nom} autoFocus maxLength={150} onChange={(ev) => setNom(ev.target.value)} />
+    </Modal>
   )
 }
 

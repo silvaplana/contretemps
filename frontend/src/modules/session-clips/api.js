@@ -37,12 +37,15 @@ function seance(s) {
     ...s,
     previews: s.previews.map(video),
     raw_video: video(s.raw_video),
+    cover: video(s.cover),
     ...(s.clips ? { clips: s.clips.map(clip) } : {}),
   }
 }
 
 export const moi = () => appel('/me')
 export const seances = async () => (await appel('/sessions')).map(seance)
+export const renommerSeance = async (id, title) => seance(await appel(`/sessions/${id}`, json('PATCH', { title })))
+export const supprimerSeance = (id) => appel(`/sessions/${id}`, { method: 'DELETE' })
 export const detailSeance = async (id) => seance(await appel(`/sessions/${id}`))
 export const creerSeance = async (corps) => seance(await appel('/sessions', json('POST', corps)))
 export const filmerCombat = async (corps) => clip(await appel('/fights', json('POST', corps)))

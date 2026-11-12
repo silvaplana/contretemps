@@ -15,7 +15,7 @@ from sqlalchemy.orm import Session
 from saisons.portee import toutes_saisons
 from videos import Video, Videos
 
-from .models import Clip, ClipParticipant, ClipSession, Favorite, LabTest, Piece, SessionAttendee
+from .models import Clip, ClipParticipant, ClipSession, Favorite, LabTest, Piece, Recorder, SessionAttendee
 from .ports import Directory, Member
 
 
@@ -285,6 +285,35 @@ class SessionClips:
         clip = self.clip(db, member, clip_id)
         with toutes_saisons(db):
             self.videos.delete(db, clip.video_id)
+
+    def rename_session(self, db: Session, member: Member, session_id: int, title: str) -> ClipSession:
+        """Le crayon de la carte (Seb, 12/11)."""
+        self._require_coach(member)
+        session = self.session(db, member, session_id)
+        if not title:
+            raise ValueError("Donnez un nom à la séance")
+        session.title = title[:150]
+        db.commit()
+        return session
+
+    def delete_session(self, db: Session, member: Member, session_id: int) -> None:
+        """La poubelle de la carte (Seb, 12/11) : la séance, ses combats et sa
+        vidéo. Effacée pendant le film, la caméra s'arrête."""
+        self._require_coach(member)
+        session = self.session(db, member, session_id)
+        clip_videos = list(db.scalars(select(Clip.video_id).where(Clip.session_id == session.id)))
+        piece_videos = list(db.scalars(select(Piece.video_id).where(Piece.session_id == session.id, Piece.video_id.is_not(None))))
+        with toutes_saisons(db):
+            for video_id in [*clip_videos, *piece_videos, session.raw_video_id]:
+                if video_id is not None:
+                    self.videos.delete(db, video_id)
+        db.execute(delete(Piece).where(Piece.session_id == session.id))
+        db.execute(delete(SessionAttendee).where(SessionAttendee.session_id == session.id))
+        for recorder in db.scalars(select(Recorder).where(Recorder.session_id == session.id)):
+            recorder.session_id = None
+            recorder.started_at = None
+        db.delete(session)
+        db.commit()
 
     # --- Aides ---
 
