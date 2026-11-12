@@ -1,8 +1,8 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a trois onglets en haut : Mes combats, Séances, À vérifier (pastille =
-nombre).
+(admin ou professeur) a quatre onglets en haut : Mes combats, Séances, À vérifier (pastille =
+nombre), Labo.
 
 Mes combats
 - En tête, la ligne « ★ Favoris ». Puis ses combats validés, par séance (date · cours) : « vs
@@ -25,6 +25,17 @@ Séances (coachs)
 - « Inverser », puis « C'est bon » (bouton principal) : le combat part dans « Mes combats » des
   deux.
 - « Supprimer ce clip » en bas.
+
+Labo (coachs) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
+- « Importer une vidéo » (bouton principal) : choisir la vidéo dans la Galerie. L'essai apparaît
+  dans la liste (« Envoi … % », puis « Lecture des signes… ») et s'ouvre quand il est lu.
+- Un essai ouvert : la vidéo, le graphe des signes repérés (une flèche par signe avec son image,
+  vert = début, rouge = fin, gris = décoché), la liste des signes, les combats coupés. Toucher une
+  flèche, un signe ou un combat place la vidéo à ce moment.
+- « Signes et sons du club » : cocher les signes de début (Poing levé, Poings touchés en l'air) et
+  de fin (Poignée de main, X au-dessus de la tête) que la découpe prend, pour tout le club (caméra
+  de la salle comprise). « Relancer la découpe » enregistre et recalcule les combats.
+- « Supprimer l'essai » en bas (Annuler 10 secondes).
 
 Un combat ouvert
 - La vidéo, les deux noms, la date, puis les autres combats de la séance (ou « Vos autres combats ce

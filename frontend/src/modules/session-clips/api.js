@@ -106,3 +106,13 @@ export async function partager(clips) {
   }
   return false
 }
+// Le Labo (§6.5 bis) : essais sur des vidéos déjà filmées, et les signes du club.
+function essai(e) {
+  return { ...e, video: video(e.video) }
+}
+export const essais = async () => (await appel('/lab')).map(essai)
+export const essaiLabo = async (id) => essai(await appel(`/lab/${id}`))
+export const creerEssai = async (corps) => essai(await appel('/lab', json('POST', corps)))
+export const supprimerEssai = (id) => appel(`/lab/${id}`, { method: 'DELETE' })
+export const signesDuClub = async () => (await appel('/signs')).signs
+export const reglerSignes = async (signs) => (await appel('/signs', json('PUT', { signs }))).signs

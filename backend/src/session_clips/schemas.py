@@ -152,3 +152,45 @@ class PieceOpen(BaseModel):
 class PieceOut(BaseModel):
     upload_id: str
     received: int
+
+
+# --- Labo (§6.5 bis) ---
+
+
+class LabTestCreate(BaseModel):
+    upload_id: str
+    title: str = ""
+
+
+class LabSignOut(BaseModel):
+    kind: str
+    start: float
+    end: float
+    thumb: str | None = None
+
+
+class LabFightOut(BaseModel):
+    start: float
+    end: float
+    fighters: int
+    check_reason: str | None = None
+
+
+class LabTestOut(BaseModel):
+    id: int
+    title: str
+    # 'uploading' (la vidéo arrive), 'processing' (lecture à venir), 'ready', 'failed'.
+    status: str
+    created_at: datetime
+    video: VideoSortie | None
+
+
+class LabTestDetail(LabTestOut):
+    signs: list[LabSignOut]
+    fights: list[LabFightOut]
+
+
+class ClubSignsBody(BaseModel):
+    """« Signes et sons du club » cochés (voir fights.SIGNS)."""
+
+    signs: list[str]

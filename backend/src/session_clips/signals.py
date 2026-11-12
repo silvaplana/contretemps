@@ -1,9 +1,11 @@
 """Gestes repérés sur une image (spec/modules/video-combats.md §5) : le poing
-levé avant un combat, le salut ou le X à la fin.
+levé ou les poings touchés en l'air avant un combat, la poignée de main ou
+le X à la fin.
 
 Une personne = ses 17 points du corps au format COCO (ceux que donne YOLO
-pose), chacun `(x, y, confiance)` en pixels, `y` vers le bas. Les seuils
-sont des premiers réglages, à revoir sur la vidéo de test.
+pose), chacun `(x, y, confiance)` en pixels, `y` vers le bas. Seuils réglés
+le 12/11/2026 sur deux vidéos de Seb (combattants de profil : la longueur du
+buste sert d'unité, la largeur d'épaules est trop petite de profil).
 """
 
 from __future__ import annotations
@@ -72,41 +74,89 @@ def is_fist_up(pose: Pose) -> bool:
 
 
 def is_x(pose: Pose) -> bool:
-    """Les avant-bras croisés au-dessus de la tête : poignets au-dessus du
-    nez, croisés (le gauche passé à droite) ou presque l'un sur l'autre."""
-    arms = _arms(pose)
-    if arms is None:
+    """Les avant-bras croisés au-dessus de la tête : poignets au-dessus des
+    épaules et des coudes, croisés ou rapprochés (moins de la moitié de
+    l'écart des coudes)."""
+    points = [pose.point(i) for i in (L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST)]
+    if None in points:
         return False
-    nose, l_sh, r_sh, _l_el, _r_el, l_wr, r_wr, width = arms
-    if not (l_wr[1] < nose[1] and r_wr[1] < nose[1]):
+    l_sh, r_sh, l_el, r_el, l_wr, r_wr = points
+    top = min(l_sh[1], r_sh[1])
+    if not (l_wr[1] < top and r_wr[1] < top and l_wr[1] < l_el[1] and r_wr[1] < r_el[1]):
         return False
-    crossed = (l_wr[0] - r_wr[0]) * (l_sh[0] - r_sh[0]) < 0
-    return crossed or abs(l_wr[0] - r_wr[0]) < 0.5 * width
+    crossed = (l_wr[0] - r_wr[0]) * (l_el[0] - r_el[0]) < 0
+    return crossed or abs(l_wr[0] - r_wr[0]) <= 0.5 * abs(l_el[0] - r_el[0])
 
 
-def _standing(pose: Pose) -> bool:
-    shoulders = [pose.point(i) for i in (L_SHOULDER, R_SHOULDER)]
-    hips = [pose.point(i) for i in (L_HIP, R_HIP)]
-    width = pose.shoulder_width()
-    if None in shoulders or None in hips or width is None:
+def _mean(points):
+    points = [p for p in points if p is not None]
+    if not points:
+        return None
+    return sum(p[0] for p in points) / len(points), sum(p[1] for p in points) / len(points)
+
+
+def torso(pose: Pose) -> float | None:
+    """Hauteur du buste (épaules → hanches) : l'unité des distances."""
+    shoulders = _mean([pose.point(L_SHOULDER), pose.point(R_SHOULDER)])
+    hips = _mean([pose.point(L_HIP), pose.point(R_HIP)])
+    if shoulders is None or hips is None or hips[1] <= shoulders[1]:
+        return None
+    return hips[1] - shoulders[1]
+
+
+def hips_x(pose: Pose) -> float | None:
+    hips = _mean([pose.point(L_HIP), pose.point(R_HIP)])
+    return hips[0] if hips else None
+
+
+def _upright(pose: Pose) -> bool:
+    """Debout et droit : les épaules au-dessus des hanches (pas penché dans
+    un corps-à-corps)."""
+    shoulders = _mean([pose.point(L_SHOULDER), pose.point(R_SHOULDER)])
+    unit = torso(pose)
+    return unit is not None and abs(shoulders[0] - hips_x(pose)) < 0.4 * unit
+
+
+def _wrists(pose: Pose):
+    return [w for w in (pose.point(L_WRIST), pose.point(R_WRIST)) if w is not None]
+
+
+def _joined(a: Pose, b: Pose, reach: float):
+    """Les poignets de l'une et de l'autre qui se touchent, ou None."""
+    unit = min(torso(a) or 0, torso(b) or 0)
+    if not unit:
+        return None
+    for wa in _wrists(a):
+        for wb in _wrists(b):
+            if ((wa[0] - wb[0]) ** 2 + (wa[1] - wb[1]) ** 2) ** 0.5 < reach * unit:
+                return wa, wb
+    return None
+
+
+def _shoulders_top(pose: Pose) -> float | None:
+    points = [p for p in (pose.point(L_SHOULDER), pose.point(R_SHOULDER)) if p]
+    return min(p[1] for p in points) if points else None
+
+
+def are_touching_fists_up(a: Pose, b: Pose) -> bool:
+    """Les poings qui se touchent, bras vers le haut : un poignet de chacun,
+    au-dessus de ses épaules, tout près de celui de l'autre."""
+    joined = _joined(a, b, 0.35)
+    return joined is not None and joined[0][1] < _shoulders_top(a) and joined[1][1] < _shoulders_top(b)
+
+
+def are_shaking_hands(a: Pose, b: Pose) -> bool:
+    """La poignée de main, bras vers le bas : deux personnes debout et
+    droites, mains jointes sous les épaules. Qu'elles restent immobiles est
+    vérifié sur la durée (fights.py) : un accrochage en plein combat bouge."""
+    if not (_upright(a) and _upright(b)):
         return False
-    torso = (hips[0][1] + hips[1][1]) / 2 - (shoulders[0][1] + shoulders[1][1]) / 2
-    return torso > 1.2 * width
+    joined = _joined(a, b, 0.5)
+    return joined is not None and joined[0][1] > _shoulders_top(a) and joined[1][1] > _shoulders_top(b)
 
 
-def are_saluting(a: Pose, b: Pose) -> bool:
-    """Deux personnes debout, les mains jointes : un poignet de l'une tout
-    près d'un poignet de l'autre."""
-    if not (_standing(a) and _standing(b)):
-        return False
-    width = min(a.shoulder_width(), b.shoulder_width())
-    wrists_a = [p for p in (a.point(L_WRIST), a.point(R_WRIST)) if p]
-    wrists_b = [p for p in (b.point(L_WRIST), b.point(R_WRIST)) if p]
-    return any(
-        ((pa[0] - pb[0]) ** 2 + (pa[1] - pb[1]) ** 2) ** 0.5 < 0.5 * width for pa in wrists_a for pb in wrists_b
-    )
-
-
-def salute_in(frame: Frame) -> bool:
-    people = frame.people
-    return any(are_saluting(a, b) for i, a in enumerate(people) for b in people[i + 1 :])
+def main_pair(frame: Frame) -> list[Pose]:
+    """Les deux plus grands corps de l'image : un reflet dans une vitre ou
+    quelqu'un au fond est plus petit."""
+    people = [p for p in frame.people if torso(p)]
+    return sorted(people, key=torso, reverse=True)[:2]

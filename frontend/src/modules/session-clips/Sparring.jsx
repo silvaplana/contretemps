@@ -12,11 +12,12 @@ import {
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
 import { BandeCamera, PanneauCamera, PastilleCamera, useCamera } from './Camera.jsx'
+import { EssaiLabo, Labo, useSuppressionEssai } from './Labo.jsx'
 import './sparring.css'
 
 // Sparring (spec/modules/video-combats.md §6, maquette validée
 // spec/maquettes/sparring.html). Un membre n'a que « Mes combats » ; un coach
-// a aussi Séances et À vérifier. Une séance ouverte et un clip lu s'affichent
+// a aussi Séances, À vérifier et Labo (Labo.jsx). Une séance ouverte et un clip lu s'affichent
 // en plein écran avec la flèche de retour, comme une chorégraphie.
 //
 // Le + filme un combat à la main (FilmerCombat) ; la séance entière filmée
@@ -89,6 +90,7 @@ export default function Sparring({ ecoleId, cours }) {
   )
   const vider = useCallback(() => setSelection({ cle: '', clips: AUCUN }), [])
 
+  const [essaisCaches, supprimerEssai] = useSuppressionEssai(montrer, rafraichir)
   const [camera, setCamera] = useCamera(Boolean(me?.is_coach))
   const [panneau, setPanneau] = useState(false)
 
@@ -97,7 +99,19 @@ export default function Sparring({ ecoleId, cours }) {
   const contexte = { me, ecoleId, cours, version, rafraichir, montrer, supprimer, caches, choisis, basculer }
 
   let ecran
-  if (ouvert?.clipId) {
+  if (ouvert?.essaiId) {
+    ecran = (
+      <EssaiLabo
+        {...contexte}
+        essaiId={ouvert.essaiId}
+        onBack={() => setOuvert(null)}
+        onSupprimer={(id) => {
+          setOuvert(null)
+          supprimerEssai(id)
+        }}
+      />
+    )
+  } else if (ouvert?.clipId) {
     ecran = (
       <Lecture
         {...contexte}
@@ -129,10 +143,13 @@ export default function Sparring({ ecoleId, cours }) {
         {me.is_coach && <Onglets onglet={onglet} onChange={setOnglet} version={version} />}
         {me.is_coach && !panneau && <BandeCamera camera={camera} onOpen={() => setPanneau(true)} />}
         <div className="sc__corps">
-          {onglet !== 'verifier' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
+          {onglet !== 'verifier' && onglet !== 'labo' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
           {onglet === 'seances' && <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />}
           {onglet === 'verifier' && <AVerifier {...contexte} />}
+          {onglet === 'labo' && (
+            <Labo {...contexte} essaisCaches={essaisCaches} onOpen={(id) => setOuvert({ essaiId: id })} />
+          )}
         </div>
       </div>
     )
@@ -185,6 +202,7 @@ function Onglets({ onglet, onChange, version }) {
     ['mes', 'Mes combats'],
     ['seances', 'Séances'],
     ['verifier', 'À vérifier'],
+    ['labo', 'Labo'],
   ]
   // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (

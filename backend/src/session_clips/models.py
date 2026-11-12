@@ -136,3 +136,32 @@ class Piece(Base):
     last: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     # Rempli par la découpe une fois les postures lues (voir cutting.py).
     duration_seconds: Mapped[float | None] = mapped_column(Float, nullable=True)
+
+
+class LabTest(Base):
+    """Un essai du Labo (§6.5 bis) : une vidéo déjà filmée, envoyée par un coach
+    pour voir ce que la découpe y repère. Rien ne part dans « Mes combats ».
+    `signs` : les signes repérés, cochés ou non (JSON, une petite image de
+    la vidéo pour chacun), rempli par le worker. Les combats ne sont pas
+    gardés : ils se recalculent avec les signes cochés du club."""
+
+    __tablename__ = "sc_lab_tests"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(150), nullable=False, default="")
+    video_id: Mapped[int | None] = mapped_column(ForeignKey("videos.id"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="processing")  # 'ready' | 'failed'
+    signs: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_by: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class ClubSigns(Base):
+    """« Signes et sons du club » : ceux que la découpe prend (§5). Pas de
+    ligne = tous les signes."""
+
+    __tablename__ = "sc_club_signs"
+
+    org_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    signs: Mapped[str] = mapped_column(String(200), nullable=False)  # séparés par des virgules
