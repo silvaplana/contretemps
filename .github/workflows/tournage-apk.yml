@@ -94,6 +94,25 @@ jobs:
           sed -i "s|__ADRESSE__|$ADRESSE|g" android-shell/hors-ligne.html
           npm ci
           npx cap sync android
+      - name: Prendre l'icône de l'école
+        # L'icône « maskable » du site (fond plein, logo au centre) : la même que
+        # la PWA. Couche avant de l'icône adaptative d'Android : 88 dp sur 108
+        # (Android en montre 72, le logo reste entier) ; fond = couleur du coin.
+        working-directory: frontend/android/app/src/main/res
+        env:
+          ADRESSE: ${{ matrix.ecole.adresse }}
+        run: |
+          command -v convert >/dev/null || (sudo apt-get update -q && sudo apt-get install -y -q imagemagick)
+          curl -fsSL "$ADRESSE/icons/icon-512-maskable.png" -o /tmp/icone.png
+          fond=$(convert /tmp/icone.png -format '#%[hex:p{0,0}]' info: | cut -c1-7)
+          sed -i "s|<color name=\"ic_launcher_background\">[^<]*<|<color name=\"ic_launcher_background\">$fond<|" values/ic_launcher_background.xml
+          for d in mdpi:1 hdpi:1.5 xhdpi:2 xxhdpi:3 xxxhdpi:4; do
+            dir=mipmap-${d%%:*}; f=${d##*:}
+            px() { python3 -c "print(round($1*$f))"; }
+            convert /tmp/icone.png -resize "$(px 48)x$(px 48)" "$dir/ic_launcher.png"
+            cp "$dir/ic_launcher.png" "$dir/ic_launcher_round.png"
+            convert /tmp/icone.png -resize "$(px 88)x$(px 88)" -background none -gravity center -extent "$(px 108)x$(px 108)" "$dir/ic_launcher_foreground.png"
+          done
       - name: Construire l'APK
         working-directory: frontend/android
         run: |
