@@ -45,5 +45,8 @@ export default defineConfig(({ command, mode }) => ({
     // embarqué dans l'appli Android) : voir capacitor.config.json.
     outDir: mode === 'capacitor' ? 'dist-android' : 'dist',
   },
+  // Le moment du build, affiché sous « Se déconnecter » (Seb, 12/11 : savoir
+  // quelle version du site on a).
+  define: { 'import.meta.env.VITE_VERSION_SITE': JSON.stringify(new Date().toISOString()) },
   plugins: [react(), enteteEcole()],
 }))
