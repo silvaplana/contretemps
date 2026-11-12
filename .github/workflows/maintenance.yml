@@ -18,12 +18,17 @@ on:
           - Effacer les notes de frais d'une école
           - Installer le plan comptable de Contretemps (essai à blanc)
           - Installer le plan comptable de Contretemps
+          - Lire un essai du Labo de Fights
       ecole:
         description: Numéro de l'école (pour effacer ou installer ; donné par « Lister »)
         required: false
         default: ""
       nom:
         description: Nom exact de l'école, en confirmation (pour effacer)
+        required: false
+        default: ""
+      essai:
+        description: Numéro de l'essai du Labo (vide = la liste des essais)
         required: false
         default: ""
 
@@ -48,6 +53,7 @@ jobs:
       TACHE: ${{ inputs.tache }}
       ECOLE: ${{ inputs.ecole }}
       NOM: ${{ inputs.nom }}
+      ESSAI: ${{ inputs.essai }}
     steps:
       - name: Préparer la demande
         id: demande
@@ -69,6 +75,12 @@ jobs:
               essai=""
               case "$TACHE" in *"essai à blanc"*) essai=" essai" ;; esac
               echo "commande=plan-comptable-contretemps $ECOLE$essai" >> "$GITHUB_OUTPUT" ;;
+            "Lire un essai du Labo de Fights")
+              if [ -n "$ESSAI" ] && ! [[ "$ESSAI" =~ ^[0-9]+$ ]]; then
+                echo "::error::Le numéro de l'essai est un nombre (ou vide pour la liste)."
+                exit 1
+              fi
+              echo "commande=labo-lire $ESSAI" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::Tâche inconnue."
               exit 1 ;;

@@ -686,6 +686,15 @@
   background: var(--card-bg);
 }
 
+.sc-deroulant summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-size: 17px;
+  font-weight: 700;
+}
+
 .sc-graphe {
   display: block;
   width: 100%;

@@ -269,8 +269,9 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               </span>
             </button>
           ))}
-          <h3 className="sc-section">Signes et sons du club</h3>
-          <div className="sc-cadre">
+          {/* Fermé par défaut : sinon ça prend trop de place (Seb, 12/11). */}
+          <details className="sc-cadre sc-deroulant">
+            <summary>Signes et sons du club</summary>
             {['deb', 'fin'].map((g) => (
               <div key={g}>
                 <p className="sc-meta">{g === 'deb' ? 'Début de combat' : 'Fin de combat'}</p>
@@ -285,9 +286,10 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
                 ))}
               </div>
             ))}
-          </div>
-          <h3 className="sc-section">Clips du club</h3>
-          <div className="sc-cadre">
+          </details>
+          {/* Fermé par défaut : sinon ça prend trop de place (Seb, 12/11). */}
+          <details className="sc-cadre sc-deroulant">
+            <summary>Clips du club</summary>
             <p className="sc-meta">Cadrage</p>
             <SegmentedTabs
               className="sc-onglets"
@@ -305,7 +307,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               valeur={reglages.end_skip}
               onChange={(end_skip) => setReglages((r) => ({ ...r, end_skip }))}
             />
-          </div>
+          </details>
           <button type="button" className="btn btn--primary sc-bouton" disabled={!change || enCours} onClick={relancer}>
             Relancer la découpe
           </button>

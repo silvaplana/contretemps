@@ -25,6 +25,16 @@ import './sparring.css'
 
 const ANNULER_MS = 10000
 const AUCUN = new Map()
+// Le dernier sous-onglet ouvert, retrouvé à la réouverture de l'appli (Seb, 12/11).
+const ONGLET_VU = 'sc-onglet'
+
+function ongletGarde() {
+  try {
+    return localStorage.getItem(ONGLET_VU)
+  } catch {
+    return null
+  }
+}
 
 export default function Sparring({ ecoleId, cours }) {
   const [me, setMe] = useState(null)
@@ -38,7 +48,7 @@ export default function Sparring({ ecoleId, cours }) {
   useEffect(() => {
     api.moi().then((m) => {
       setMe(m)
-      if (m.is_coach) setOnglet('seances')
+      if (m.is_coach) setOnglet(['mes', 'seances', 'verifier', 'labo'].includes(ongletGarde()) ? ongletGarde() : 'seances')
     }, () => setMe({ person_id: null, is_coach: false }))
   }, [])
   useEffect(() => () => clearTimeout(minuteur.current), [])
@@ -91,6 +101,15 @@ export default function Sparring({ ecoleId, cours }) {
   const vider = useCallback(() => setSelection({ cle: '', clips: AUCUN }), [])
 
   const [essaisCaches, supprimerEssai] = useSuppressionEssai(montrer, rafraichir)
+  function choisirOnglet(o) {
+    setOnglet(o)
+    try {
+      localStorage.setItem(ONGLET_VU, o)
+    } catch {
+      // stockage refusé : on garde l'onglet pour cette fois
+    }
+  }
+
   const [camera, setCamera] = useCamera(Boolean(me?.is_coach))
   const [panneau, setPanneau] = useState(false)
 
@@ -140,7 +159,7 @@ export default function Sparring({ ecoleId, cours }) {
   } else {
     ecran = (
       <div className="screen sc">
-        {me.is_coach && <Onglets onglet={onglet} onChange={setOnglet} version={version} />}
+        {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} version={version} />}
         {me.is_coach && !panneau && <BandeCamera camera={camera} onOpen={() => setPanneau(true)} />}
         <div className="sc__corps">
           {onglet !== 'verifier' && onglet !== 'labo' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
