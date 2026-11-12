@@ -298,7 +298,9 @@ class SessionClipsReceiver:
         videos = self.client.video_map(
             s, [c.video_id for x in ids for c in clips[x][:3]] + [x.raw_video_id for x in sessions]
         )
-        live = set(s.scalars(select(Piece.session_id).where(Piece.session_id.in_(ids))))
+        pieces: dict[int, list[Piece]] = {}
+        for p in s.scalars(select(Piece).where(Piece.session_id.in_(ids))):
+            pieces.setdefault(p.session_id, []).append(p)
         out = []
         for x in sessions:
             raw = videos.get(x.raw_video_id)
@@ -307,13 +309,17 @@ class SessionClipsReceiver:
                 SessionOut(
                     id=x.id,
                     title=x.title,
-                    live=x.id in live,
+                    live=x.id in pieces,
                     held_on=x.held_on,
                     status=status,
                     clip_count=len(clips[x.id]),
                     to_check_count=sum(c.to_check for c in clips[x.id]),
                     previews=[VideoSortie.model_validate(videos[c.video_id]) for c in clips[x.id][:3] if c.video_id in videos],
                     raw_video=VideoSortie.model_validate(raw) if raw is not None else None,
+                    started_at=x.created_at if x.id in pieces else None,
+                    filmed_seconds=sum(p.duration_seconds or 0 for p in pieces.get(x.id, [])),
+                    pieces_read=sum(p.duration_seconds is not None for p in pieces.get(x.id, [])),
+                    pieces_total=len(pieces.get(x.id, [])),
                 )
             )
         return out

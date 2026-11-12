@@ -11,8 +11,10 @@ Mes combats
 
 Séances (coachs)
 - En tête « ★ Favoris », puis une carte par séance : nombre de combats, « 1 à vérifier » ou
-  « Vérifié ». Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne
-  s'ouvre pas.
+  « Vérifié », ou « Aucun combat trouvé ». Une séance filmée par la caméra montre l'heure et la durée
+  (« 21:40 → 21:46 · 6 min ») et, pendant la découpe, « Découpe : 2 morceaux lus sur 3 » avec une
+  barre. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
+  pas.
 - Une carte ouverte : « Présents reconnus : … », puis ses combats dans l'ordre.
 - Le « + » en bas à droite filme un combat avec le téléphone : « Garder ce combat ? » Garder ou
   Jeter, puis « Qui combattait ? » : Rouge et Bleu, par les premières lettres du nom ou le micro

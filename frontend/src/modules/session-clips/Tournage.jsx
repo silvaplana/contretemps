@@ -67,7 +67,7 @@ function Barre({ texte, part }) {
   return (
     <div className="sc-morceau">
       <span>{texte}</span>
-      <span className="sc-barre" role="progressbar" aria-valuenow={pourcent} aria-valuemin={0} aria-valuemax={100}>
+      <span className="sc-morceau__barre" role="progressbar" aria-valuenow={pourcent} aria-valuemin={0} aria-valuemax={100}>
         <span style={{ width: `${pourcent}%` }} />
       </span>
     </div>

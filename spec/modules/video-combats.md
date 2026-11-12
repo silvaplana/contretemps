@@ -410,7 +410,12 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
 - « Hors service » : pas de nouvelles du téléphone depuis 30 s ;
 - la bande rouge dit « ● Enregistrement · 00:12:34 » (« en cours » ne tient pas sur un téléphone) ;
 - la carte d'une séance filmée par la caméra : « Filme… » pendant le cours, puis « Découpe en
-  cours » et « Derniers clips dans quelques minutes » ; elle s'ouvre dès son premier clip.
+  cours » et « Découpe : 2 morceaux lus sur 3 » avec une barre (morceaux de 2 minutes lus sur ceux
+  arrivés de la caméra) ; elle s'ouvre dès son premier clip. Sous le titre, l'heure et la durée
+  filmée : « 21:40 → 21:46 · 6 min » (« Depuis 21:40 » pendant le film ; début = l'ordre
+  « Filmer », durée = morceaux lus). Finie sans combat : « Aucun combat trouvé » au lieu de
+  « 0 combat · Vérifié » (Seb, 12/11). Champs `started_at`, `filmed_seconds`, `pieces_read`,
+  `pieces_total` de `SessionOut`, sans nouvelle colonne.
 
 ### 6.4 À vérifier *(coachs)*
 

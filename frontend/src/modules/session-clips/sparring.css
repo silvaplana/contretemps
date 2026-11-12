@@ -184,6 +184,12 @@
   font-size: 18px;
 }
 
+.sc-carte__heure {
+  display: block;
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+
 .sc-couverture {
   display: grid;
   grid-template-columns: 2fr 1fr;
@@ -610,7 +616,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-.sc-barre {
+.sc-morceau__barre {
   display: block;
   height: 10px;
   overflow: hidden;
@@ -618,7 +624,7 @@
   background: var(--border);
 }
 
-.sc-barre > span {
+.sc-morceau__barre > span {
   display: block;
   height: 100%;
   border-radius: inherit;
