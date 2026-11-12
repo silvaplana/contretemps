@@ -259,7 +259,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    time pour terminer » ; des poings touchés suivis d'un « Go ! » à moins de 2 s ne font qu'un début).
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
-   (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Une écoute qui échoue
+   (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en
+   anglais et cris brefs gardés (0,2 s ; seuil de voix 0,3, 600 ms de marge) depuis l'essai « Go time »
+   de Seb (12/11), où rien n'avait été compris ; ce que Whisper comprend est écrit dans le journal de
+   `sparring-worker` (« Entendu dans … »), lisible avec l'action « Lire un essai du Labo ». Une écoute qui échoue
    ne bloque pas la lecture : la vidéo est lue sans les sons. Les sons d'un morceau de la caméra
    sont gardés à côté de ses postures (`<id>.sounds.json`). Pas encore : les bras croisés sur la
    poitrine. Un combat repéré sans poing levé devient un « combat sans nom ».
@@ -306,7 +309,8 @@ flèche ←.
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
-- **Coach** (admin ou prof) : cinq onglets, **Mes combats | Tournage | Séances | À vérifier | Labo** (ordre de Seb, 12/11). Fights
+- **Coach** (admin ou prof) : quatre onglets, **Mes combats | Tournage | Séances | À vérifier** (ordre de Seb, 12/11), et
+  le menu **⋮** de l'en-tête : « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
 - Le module s'éteint par organisation (Admin > École > Personnalisation de l'application >
@@ -470,7 +474,8 @@ porte une petite étoile. Les favoris sont **propres à chacun** (un élève ne 
 Demande de Seb du 12/11 : essayer la découpe sur des vidéos déjà filmées, sans filmer à chaque fois.
 Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fights-labo.html)).
 
-- **Fights › Labo** : en bas à droite, comme les vidéos d'une chorégraphie (Seb 12/11), le bouton
+- **Fights › ⋮ › Tests de découpage vidéo** (Seb, 12/11 au soir : sorti des puces ; « Labo » reste
+  le nom dans le code et dans cette spec), écran avec ← vers Fights : en bas à droite, comme les vidéos d'une chorégraphie (Seb 12/11), le bouton
   rond **caméra** (filmer tout de suite, pour des essais en direct) et le bouton **dossier** (une
   vidéo de la Galerie du téléphone) ; puis la
   liste des essais (« Combat du 11/11 à 20:10 », tiré de la date du fichier ; petite vignette avec la durée, crayon pour renommer, poubelle pour

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Icon from '../../components/Icon.jsx'
+import MenuEntete from '../../components/MenuEntete.jsx'
 import Modal from '../../components/Modal.jsx'
 import SegmentedTabs from '../../components/SegmentedTabs.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
@@ -48,7 +49,7 @@ export default function Sparring({ ecoleId, cours }) {
   useEffect(() => {
     api.moi().then((m) => {
       setMe(m)
-      if (m.is_coach) setOnglet(['tournage', 'mes', 'seances', 'verifier', 'labo'].includes(ongletGarde()) ? ongletGarde() : 'seances')
+      if (m.is_coach) setOnglet(['tournage', 'mes', 'seances', 'verifier'].includes(ongletGarde()) ? ongletGarde() : 'seances')
     }, () => setMe({ person_id: null, is_coach: false }))
   }, [])
   useEffect(() => () => clearTimeout(minuteur.current), [])
@@ -120,12 +121,33 @@ export default function Sparring({ ecoleId, cours }) {
       <EssaiLabo
         {...contexte}
         essaiId={ouvert.essaiId}
-        onBack={() => setOuvert(null)}
+        onBack={() => setOuvert({ labo: true })}
         onSupprimer={(id) => {
-          setOuvert(null)
+          setOuvert({ labo: true })
           supprimerEssai(id)
         }}
       />
+    )
+  } else if (ouvert?.labo) {
+    // Fights › ⋮ › Tests de découpage vidéo (Seb, 12/11 : l'ancien
+    // sous-onglet Labo, sorti des puces).
+    ecran = (
+      <div className="screen sc">
+        <div className="thread-screen__header">
+          <button type="button" className="icon-btn" onClick={() => setOuvert(null)} aria-label="Retour">
+            <Icon name="chevronLeft" size={22} />
+          </button>
+          <strong className="sc__titre">Tests de découpage vidéo</strong>
+        </div>
+        <div className="sc__corps">
+          <Labo
+            {...contexte}
+            essaisCaches={essaisCaches}
+            onOpen={(id) => setOuvert({ essaiId: id })}
+            onSupprimer={supprimerEssai}
+          />
+        </div>
+      </div>
     )
   } else if (ouvert?.clipId) {
     ecran = (
@@ -156,21 +178,19 @@ export default function Sparring({ ecoleId, cours }) {
   } else {
     ecran = (
       <div className="screen sc">
+        {me.is_coach && (
+          <MenuEntete
+            label="Actions de Fights"
+            actions={[{ label: 'Tests de découpage vidéo', icon: 'video', onClick: () => setOuvert({ labo: true }) }]}
+          />
+        )}
         {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} version={version} />}
         <div className="sc__corps">
-          {onglet !== 'verifier' && onglet !== 'labo' && onglet !== 'tournage' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
+          {onglet !== 'verifier' && onglet !== 'tournage' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
           {onglet === 'tournage' && <Tournage montrer={montrer} rafraichir={rafraichir} />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
           {onglet === 'seances' && <Seances {...contexte} onOpen={(id) => setOuvert({ seanceId: id })} />}
           {onglet === 'verifier' && <AVerifier {...contexte} />}
-          {onglet === 'labo' && (
-            <Labo
-              {...contexte}
-              essaisCaches={essaisCaches}
-              onOpen={(id) => setOuvert({ essaiId: id })}
-              onSupprimer={supprimerEssai}
-            />
-          )}
         </div>
       </div>
     )
@@ -213,7 +233,6 @@ function Onglets({ onglet, onChange, version }) {
     ['tournage', 'Tournage'],
     ['seances', 'Séances'],
     ['verifier', 'À vérifier'],
-    ['labo', 'Labo'],
   ]
   // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (
