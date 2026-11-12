@@ -238,9 +238,9 @@ function Onglets({ onglet, onChange, version }) {
     api.aVerifier().then((l) => setN(l.length), () => {})
   }, [version])
   const onglets = [
-    ['mes', 'Mes combats'],
+    ['mes', 'Combats'],
     ['tournage', 'Tournage'],
-    ['verifier', 'Identifier les combattants'],
+    ['verifier', 'Identifier combattants'],
   ]
   // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (

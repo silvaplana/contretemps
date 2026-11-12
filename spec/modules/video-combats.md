@@ -309,7 +309,8 @@ flèche ←.
 - **Sparring est un espace de consultation.** La seule commande, celle de la caméra, se cache derrière
   un bouton (§6.3).
 - **Membre** : un seul écran, « Mes combats », sans onglets au-dessus.
-- **Coach** (admin ou prof) : trois onglets, **Mes combats | Tournage | Identifier les combattants** (Seb, 12/11 au soir :
+- **Coach** (admin ou prof) : trois onglets, **Combats | Tournage | Identifier combattants** (Seb, 12/11 au soir ; « Combats »
+  est l'ancien « Mes combats » :
   Tournage contient deux volets dépliants, **Tournage** (sélecteur, image, Filmer) puis **Montage**
   (les séances, ancien onglet Séances) ; « À vérifier » est renommé « Identifier les combattants »), et
   le menu **⋮** de l'en-tête : « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Fights
