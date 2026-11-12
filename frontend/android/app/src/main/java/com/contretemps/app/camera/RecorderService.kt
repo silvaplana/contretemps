@@ -56,6 +56,7 @@ class RecorderService : Service() {
             ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE,
         )
         running = true
+        finishing = false
         handler.removeCallbacksAndMessages(null)
         handler.post(::tick)
         return START_STICKY
@@ -84,6 +85,19 @@ class RecorderService : Service() {
             return
         }
         val api = Api(prefs.server, token)
+        // Plus sur « Caméra » : ne filme plus, finit d'envoyer, puis s'arrête (Seb, 12/11).
+        if (finishing) {
+            stopRecording()
+            status = status.copy(pending = uploader.pending().size, wanted = false)
+            if (status.pending == 0 && !sending.get()) {
+                prefs.token = null
+                stopSelf()
+                return
+            }
+            send()
+            handler.postDelayed(::tick, TICK_MS)
+            return
+        }
         try {
             val orders = api.heartbeat(recorder != null, battery(), folder.usableSpace, uploader.pending().size)
             follow(orders)
@@ -216,6 +230,8 @@ class RecorderService : Service() {
         @Volatile var running = false
         /** Tournage montre l'image de la caméra : on ne démarre pas tant qu'il la tient. */
         @Volatile var previewing = false
+        /** Quitté « Caméra » pendant un envoi : il continue, puis le service s'arrête. */
+        @Volatile var finishing = false
 
         fun start(context: Context) = context.startForegroundService(Intent(context, RecorderService::class.java))
     }

@@ -57,14 +57,20 @@ class TournagePlugin : Plugin() {
             activity.requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 2)
         }
         askBatteryExemption()
+        RecorderService.finishing = false
         if (!RecorderService.running) RecorderService.start(context)
         call.resolve()
     }
 
     @PluginMethod
     fun stop(call: PluginCall) {
-        Prefs(context).token = null
-        context.stopService(Intent(context, RecorderService::class.java))
+        // Une vidéo reste à envoyer : l'envoi continue, même hors de « Caméra » (Seb, 12/11).
+        if (RecorderService.running && (RecorderService.upload?.pending()?.isNotEmpty() == true)) {
+            RecorderService.finishing = true
+        } else {
+            Prefs(context).token = null
+            context.stopService(Intent(context, RecorderService::class.java))
+        }
         call.resolve()
     }
 
