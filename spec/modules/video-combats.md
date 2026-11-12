@@ -363,7 +363,11 @@ sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra 
   téléphone la caméra de l'école (jeton remis à l'appli, l'ancienne caméra est oubliée), puis le
   service de premier plan de `recorder/` (repris tel quel dans `frontend/android/.../camera/`) filme
   et envoie. Une image 16:9 de la caméra (`getUserMedia`) sert à cadrer ; elle lâche la caméra dès
-  que le film démarre (Prête, Démarrage…, ● Filme 00:12:34, morceaux à envoyer). Dans Chrome : « Pour
+  que le film démarre (Prête, Démarrage…, ● Filme 00:12:34). Sous l'image, l'état des morceaux (Seb,
+  12/11) : « Morceau 3 en cours de film » et « Envoi du morceau 2 · 45 % », chacun avec sa barre
+  (environ 2 minutes pour le film, les octets reçus par le serveur pour l'envoi), puis « 1 morceau en
+  attente d'envoi (pas de réseau) ». Un envoi coupé est repris toutes les 5 s, même après l'arrêt du
+  film (`RecorderService.tick`) ; avant, il attendait le morceau suivant. Dans Chrome : « Pour
   filmer, ce téléphone doit ouvrir Contretemps dans l'appli Tournage » et « Installer l'appli
   Tournage ». Éteint ou Télécommande arrête le service.
 - **Télécommande** : « ● Caméra de la salle prête · 86 % », « ● La caméra filme · 00:12:34 » ou

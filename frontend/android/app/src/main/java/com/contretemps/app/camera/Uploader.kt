@@ -13,6 +13,13 @@ import java.io.RandomAccessFile
  */
 class Uploader(private val folder: File) {
 
+    /** Le morceau en cours d'envoi, pour la barre de Fights › Tournage. */
+    data class Progress(val position: Int, val sent: Long, val size: Long)
+
+    @Volatile var progress: Progress? = null
+    /** Pourquoi le dernier envoi s'est arrêté (null s'il a réussi). */
+    @Volatile var failure: String? = null
+
     /** Les morceaux finis pas encore envoyés, dans l'ordre de la séance. */
     fun pending(): List<File> =
         (folder.listFiles() ?: emptyArray())
@@ -21,10 +28,19 @@ class Uploader(private val folder: File) {
 
     /** Envoie tout ce qui attend ; s'arrête à la première coupure. */
     fun sendAll(api: Api) {
+        try {
+            sendEach(api)
+        } finally {
+            progress = null
+        }
+    }
+
+    private fun sendEach(api: Api) {
         for (file in pending()) {
             try {
                 send(api, file)
                 forget(file)
+                failure = null
             } catch (e: Api.Error) {
                 if (e.status == 404) {
                     // Séance effacée dans Fights entre-temps : plus personne n'attend ce morceau.
@@ -32,10 +48,12 @@ class Uploader(private val folder: File) {
                     forget(file)
                 } else {
                     Log.w(TAG, "${file.name} : ${e.status} ${e.message}")
+                    failure = "erreur ${e.status} du serveur"
                     return
                 }
             } catch (e: IOException) {
                 Log.w(TAG, "${file.name} : ${e.message}")
+                failure = "pas de réseau"
                 return
             }
         }
@@ -48,6 +66,7 @@ class Uploader(private val folder: File) {
         val last = File(folder, "${file.nameWithoutExtension}.last").exists()
         var piece = api.openPiece(sessionId, position, size, last)
         var offset = piece.received
+        progress = Progress(position, offset, size)
         val buffer = ByteArray(BLOCK)
         var stuck = 0
         RandomAccessFile(file, "r").use { input ->
@@ -63,6 +82,7 @@ class Uploader(private val folder: File) {
                     piece = api.openPiece(sessionId, position, size, last)
                     piece.received
                 }
+                progress = Progress(position, offset, size)
                 // Le serveur ne suit plus : on réessaiera au prochain tour.
                 if (offset <= before && ++stuck > 5) throw IOException("envoi bloqué à $offset")
             }

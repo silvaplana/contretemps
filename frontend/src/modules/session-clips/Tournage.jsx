@@ -59,6 +59,48 @@ function useEtatNatif(actif) {
   return actif ? etat : null
 }
 
+// Un morceau dure environ 2 minutes (camera/PieceRecorder.kt, 62 Mo).
+const MORCEAU_S = 120
+
+function Barre({ texte, part }) {
+  const pourcent = Math.min(99, Math.max(0, Math.round(part * 100)))
+  return (
+    <div className="sc-morceau">
+      <span>{texte}</span>
+      <span className="sc-barre" role="progressbar" aria-valuenow={pourcent} aria-valuemin={0} aria-valuemax={100}>
+        <span style={{ width: `${pourcent}%` }} />
+      </span>
+    </div>
+  )
+}
+
+// Où en sont les morceaux de ce téléphone (Seb, 12/11) : celui qu'on filme,
+// celui qu'on envoie, et ceux qui attendent leur tour.
+function Morceaux({ natif }) {
+  if (!natif) return null
+  const envoi = natif.sendingPiece != null
+  const attente = (natif.pending ?? 0) - (envoi ? 1 : 0)
+  return (
+    <>
+      {natif.recording && (
+        <Barre texte={`Morceau ${natif.piece} en cours de film`} part={(natif.pieceSeconds ?? 0) / MORCEAU_S} />
+      )}
+      {envoi && (
+        <Barre
+          texte={`Envoi du morceau ${natif.sendingPiece} · ${Math.floor((natif.sent / natif.size) * 100)} %`}
+          part={natif.sent / natif.size}
+        />
+      )}
+      {attente > 0 && (
+        <p className="sc-meta">
+          {attente} morceau{attente > 1 ? 'x' : ''} en attente d’envoi
+          {natif.sendFailure ? ` (${natif.sendFailure})` : ''}
+        </p>
+      )}
+    </>
+  )
+}
+
 // « 00:12:34 » depuis le début du film, à la seconde.
 function useChrono(depuis) {
   const [maintenant, setMaintenant] = useState(() => Date.now())
@@ -192,7 +234,6 @@ export default function Tournage({ montrer, rafraichir }) {
     )
   } else if (role === 'cam') {
     const tient = !filme && !natif?.recording && !natif?.wanted
-    const pending = natif?.pending ? ` · ${natif.pending} morceau${natif.pending > 1 ? 'x' : ''} à envoyer` : ''
     corps = (
       <>
         <div className="sc-image">
@@ -211,8 +252,8 @@ export default function Tournage({ montrer, rafraichir }) {
         </div>
         <p className="sc-meta">
           {natif?.error ?? (natif?.online === false ? 'Connexion au serveur…' : 'Fixez le téléphone en paysage, toute la surface dans l’image.')}
-          {pending}
         </p>
+        <Morceaux natif={natif} />
         {bouton}
       </>
     )
