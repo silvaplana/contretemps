@@ -6,7 +6,7 @@ tab keys in order); null = the school's order, so nothing changes for anyone
 until they choose.
 
 Revision ID: d2f4a6b8c0e1
-Revises: c8f1a3e5d7b2
+Revises: f3b9d2a6c8e1
 Create Date: 2026-11-12 12:00:00
 
 """
@@ -18,7 +18,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = 'd2f4a6b8c0e1'
-down_revision: Union[str, Sequence[str], None] = 'c8f1a3e5d7b2'
+down_revision: Union[str, Sequence[str], None] = 'f3b9d2a6c8e1'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

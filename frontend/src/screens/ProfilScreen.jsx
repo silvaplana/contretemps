@@ -100,6 +100,7 @@ export default function ProfilScreen({
   onOpenMesHeures,
   onOpenNotesFrais,
   onUpdateUser,
+  onglets,
   ongletsEteints,
   onRangerOnglets,
   onChangerEcole,
@@ -286,6 +287,7 @@ export default function ProfilScreen({
       {barreOuverte && (
         <MaBarreDuBas
           user={user}
+          tabs={onglets}
           eteints={ongletsEteints}
           onRanger={onRangerOnglets}
           onClose={() => setBarreOuverte(false)}

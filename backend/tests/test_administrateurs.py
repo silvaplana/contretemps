@@ -376,32 +376,58 @@ def test_groupes_faits_a_la_main(client, ecole):
 # --- 🔒 Droits des modules (spec/core.md §5.3) ---
 
 
+def _publier_dans_actus(client, ecole) -> str:
+    droits = client.get(f"/ecoles/{ecole['ecole'].id}/droits", headers=_en_tant_que(ecole["owner"])).json()
+    return next(d["key"] for d in droits if d["label"] == "Publier dans Actus")
+
+
 def test_owner_donne_puis_retire_publier_les_actualites(client, db_session, ecole):
     from comptes import roles as r
 
     url = f"/administrateurs/{ecole['admin'].id}"
     entetes = _en_tant_que(ecole["owner"])
-    droits = client.get(f"/ecoles/{ecole['ecole'].id}/droits", headers=entetes).json()
-    assert {"key": "news.publish", "label": "Publier les actualités"} in droits
-    assert client.put(url, json={"rights": {"news.publish": True}}, headers=entetes).json()["rights"] == ["news.publish"]
+    droit = _publier_dans_actus(client, ecole)
+    assert droit.startswith("publications.publish.")
+    assert client.put(url, json={"rights": {droit: True}}, headers=entetes).json()["rights"] == [droit]
     db_session.expire_all()
-    assert r.has_right(Comptes().get(db_session, ecole["admin"].id), "news.publish")
-    assert client.put(url, json={"rights": {"news.publish": False}}, headers=entetes).json()["rights"] == []
+    assert r.has_right(Comptes().get(db_session, ecole["admin"].id), droit)
+    assert client.put(url, json={"rights": {droit: False}}, headers=entetes).json()["rights"] == []
+
+
+def test_un_droit_par_blog_dont_le_nom_suit_celui_du_blog(client, db_session, ecole):
+    """spec/modules/actualites.md §12.4 : « Publier dans Techniques »,
+    renommé avec son blog, son groupe aussi."""
+    from groups import Group
+
+    entetes = _en_tant_que(ecole["owner"])
+    base = f"/ecoles/{ecole['ecole'].id}/publications/blogs"
+    blog = client.post(base, json={"name": "Techniques"}, headers=entetes).json()
+    droit = f"publications.publish.{blog['id']}"
+    droits = client.get(f"/ecoles/{ecole['ecole'].id}/droits", headers=entetes).json()
+    assert {"key": droit, "label": "Publier dans Techniques"} in droits
+    client.put(f"/administrateurs/{ecole['admin'].id}", json={"rights": {droit: True}}, headers=entetes)
+    client.put(f"{base}/{blog['id']}", json={"name": "Clés et projections"}, headers=entetes)
+    droits = client.get(f"/ecoles/{ecole['ecole'].id}/droits", headers=entetes).json()
+    assert {"key": droit, "label": "Publier dans Clés et projections"} in droits
+    db_session.expire_all()
+    assert db_session.query(Group).filter_by(key=f"right.{droit}").one().name == "Publier dans Clés et projections"
 
 
 def test_un_admin_non_owner_ne_donne_pas_de_droit(client, ecole):
+    droit = _publier_dans_actus(client, ecole)
     reponse = client.put(
-        f"/administrateurs/{ecole['owner'].id}", json={"rights": {"news.publish": True}}, headers=_en_tant_que(ecole["admin"])
+        f"/administrateurs/{ecole['owner'].id}", json={"rights": {droit: True}}, headers=_en_tant_que(ecole["admin"])
     )
     assert reponse.status_code == 403
 
 
 def test_owner_se_donne_un_droit_sur_sa_propre_ligne(client, ecole):
+    droit = _publier_dans_actus(client, ecole)
     reponse = client.put(
-        f"/administrateurs/{ecole['owner'].id}", json={"rights": {"news.publish": True}}, headers=_en_tant_que(ecole["owner"])
+        f"/administrateurs/{ecole['owner'].id}", json={"rights": {droit: True}}, headers=_en_tant_que(ecole["owner"])
     )
     assert reponse.status_code == 200
-    assert reponse.json()["rights"] == ["news.publish"]
+    assert reponse.json()["rights"] == [droit]
 
 
 def test_droit_inconnu_refuse(client, ecole):

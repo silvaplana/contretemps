@@ -8,8 +8,8 @@ import Modal from './Modal.jsx'
 // chacun range ses onglets avec ↑ ↓. Les premiers vont dans la barre, la
 // suite passe sous « Plus ». Chaque flèche enregistre tout de suite, et la
 // barre du bas suit sous la fenêtre.
-export default function MaBarreDuBas({ user, eteints, onRanger, onClose }) {
-  const onglets = ongletsVisibles(user, eteints)
+export default function MaBarreDuBas({ user, tabs, eteints, onRanger, onClose }) {
+  const onglets = ongletsVisibles(user, eteints, tabs)
   const [erreur, setErreur] = useState('')
   // Même calcul que BottomNav.jsx : quand tout ne tient pas, « Plus » prend
   // la dernière place.

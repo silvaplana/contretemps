@@ -29,7 +29,7 @@ import BandeauNotifications from './components/BandeauNotifications.jsx'
 import BottomNav from './components/BottomNav.jsx'
 import Header from './components/Header.jsx'
 import Logo from './components/Logo.jsx'
-import { TABS } from './data/nav.js'
+import { ongletCalcule, ongletsAvec, TABS } from './data/nav.js'
 import { aUnDesRoles, isAdmin, isEleve, isProf, isSuperuser, isTresorier } from './data/roles.js'
 import AdminScreen from './screens/admin/AdminScreen.jsx'
 import ChoixEcoleScreen from './screens/ChoixEcoleScreen.jsx'
@@ -45,8 +45,8 @@ import MessagerieScreen from './screens/MessagerieScreen.jsx'
 import PresenceScreen from './screens/PresenceScreen.jsx'
 import ProfilScreen from './screens/ProfilScreen.jsx'
 import Financier from './modules/notes-frais/Financier.jsx'
-import Actus from './modules/news/Actus.jsx'
-import * as newsApi from './modules/news/api.js'
+import Blog, { blogDuRetourInstagram } from './modules/publications/Blog.jsx'
+import * as publicationsApi from './modules/publications/api.js'
 import Sparring from './modules/session-clips/Sparring.jsx'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
 import SupervisionScreen from './screens/SupervisionScreen.jsx'
@@ -64,14 +64,17 @@ const ECOLE_VIDE = {
 
 // Page rechargée (F5, ou rechargement auto après une mise en ligne) : ce
 // n'est pas une ouverture de l'appli, on reste sur l'onglet affiché
-// (option « L'appli affiche toujours les actus à son ouverture », Seb
+// (option « L'appli affiche toujours <blog> à son ouverture », Seb
 // 10 novembre).
 const RECHARGEMENT = performance.getEntriesByType?.('navigation')?.[0]?.type === 'reload'
 
 // Onglet sur lequel ouvrir l'appli : le dernier affiché sur cet appareil
 // (voir api/session.js), s'il est permis à ce profil ; sinon les messages.
 function ongletDeDepart(compte) {
-  const tab = TABS.find((t) => t.key === sessionApi.lireEcran('onglet'))
+  const dernier = sessionApi.lireEcran('onglet')
+  // Un blog : vérifié quand les blogs de l'école sont lus.
+  if (ongletCalcule(dernier)) return dernier
+  const tab = TABS.find((t) => t.key === dernier)
   return tab && aUnDesRoles(compte, tab.roles) ? tab.key : 'messagerie'
 }
 
@@ -99,11 +102,11 @@ function App() {
     // Arrivé par un lien vers un fichier des Docs (modules/documents/lienDocs.js).
     if (DOCS_AU_CHARGEMENT) return 'docs'
     const dernier = sessionApi.lireEcran('onglet')
-    return TABS.some((t) => t.key === dernier) ? dernier : 'messagerie'
+    return TABS.some((t) => t.key === dernier) || ongletCalcule(dernier) ? dernier : 'messagerie'
   })
   useEffect(() => {
     // Seuls les onglets de la barre du bas sont retenus (pas l'écran Heures).
-    if (TABS.some((t) => t.key === activeTab)) sessionApi.sauvegarderEcran('onglet', activeTab)
+    if (TABS.some((t) => t.key === activeTab) || ongletCalcule(activeTab)) sessionApi.sauvegarderEcran('onglet', activeTab)
   }, [activeTab])
   // Texte à envoyer avec « Envoyer à… » de la messagerie : partagé depuis
   // une autre appli ou envoyé par un autre module (voir utils/envoyerA.js).
@@ -376,22 +379,27 @@ function App() {
     if (!ecole.id) return
     modulesApi.lister(ecole.id).then(setModules).catch(() => setModules([]))
   }, [ecole.id])
-  // Actualités en test (spec/modules/actualites.md §2 bis) : l'onglet Actus
-  // ne se montre qu'à qui a le droit « Voir les actualités » ou les publie.
-  const [voitActus, setVoitActus] = useState(null)
+  // Les blogs du module Publications (spec/modules/actualites.md §12) : un
+  // onglet par blog que ce profil lit ; relus quand Fonctionnalités les
+  // change. null : pas encore lus.
+  const [blogs, setBlogs] = useState(null)
   useEffect(() => {
-    if (!ecole.id) return
-    newsApi.lireReglages(ecole.id).then((r) => setVoitActus(r.voir))
-  }, [ecole.id, activeUser.id])
+    if (!ecole.id) return undefined
+    const lire = () => publicationsApi.lireBlogs(ecole.id).then(setBlogs)
+    lire()
+    window.addEventListener('publications:blogs', lire)
+    return () => window.removeEventListener('publications:blogs', lire)
+  }, [ecole.id, activeUser.id, modules])
+  const tabs = ongletsAvec({ publications: blogs ?? [] })
+  const blogActif = tabs.find((t) => t.key === activeTab)?.blog ?? null
   const modulesEteints = new Set(modules.filter((m) => !m.enabled).map((m) => m.key))
-  if (!voitActus) modulesEteints.add('news')
   useEffect(() => {
-    if (voitActus === false && activeTab === 'actus') setActiveTab('profil')
-  }, [voitActus, activeTab])
-  useEffect(() => {
+    const onglets = ongletsAvec({ publications: blogs ?? [] })
     const eteint = (t) => modules.some((m) => m.key === t.module && !m.enabled)
-    if (TABS.some((t) => t.key === activeTab && eteint(t))) setActiveTab('profil')
-  }, [activeTab, modules])
+    if (onglets.some((t) => t.key === activeTab && eteint(t))) setActiveTab('profil')
+    // Un blog qui n'existe plus ou qu'on ne lit pas.
+    if (blogs && ongletCalcule(activeTab) && !onglets.some((t) => t.key === activeTab)) setActiveTab('profil')
+  }, [activeTab, modules, blogs])
   // L'assistant de toute l'appli : bouton dans l'en-tête, même conversation
   // dans tous les onglets (Seb, 16 octobre).
   const assistant = useAssistantGlobal(ecole.id, activeUser.id)
@@ -870,7 +878,7 @@ function App() {
     // doit rouvrir sur ce même enfant.
     sessionApi.sauvegarderCompte(nouveauCompte.id)
 
-    const tab = TABS.find((t) => t.key === activeTab)
+    const tab = tabs.find((t) => t.key === activeTab)
     if (tab && !aUnDesRoles(profil, tab.roles)) {
       setActiveTab('messagerie')
     }
@@ -962,13 +970,20 @@ function App() {
     setPresences((byC) => ({ ...byC, [coursId]: donnees }))
   }
 
-  // Option « Ouvrir l'appli sur les actus » de l'école (module Actualités,
-  // spec/modules/actualites.md §6) : à chaque arrivée dans l'appli, pas au
-  // retour d'arrière-plan. Module éteint : rien ne change.
+  // Option « L'appli affiche toujours <blog> à son ouverture » (module
+  // Publications, spec/modules/actualites.md §6 et §12.5) : à chaque arrivée
+  // dans l'appli, pas au retour d'arrière-plan. Module éteint : rien ne
+  // change. Retour de « Se connecter avec Instagram » : le blog qui l'a
+  // demandé, sur ses paramètres.
   function ouvrirSurLesActus(ecoleId) {
     if (!ecoleId || DOCS_AU_CHARGEMENT) return
-    newsApi.ouvrirSurLesActus(ecoleId).then((oui) => {
-      if (oui) setActiveTab('actus')
+    const retour = blogDuRetourInstagram()
+    if (retour) {
+      setActiveTab(`blog-${retour}`)
+      return
+    }
+    publicationsApi.blogAOuvrir(ecoleId).then((b) => {
+      if (b) setActiveTab(`blog-${b.id}`)
     })
   }
 
@@ -1080,7 +1095,7 @@ function App() {
 
   const headerMode =
     activeTab === 'admin' ||
-    activeTab === 'actus' ||
+    ongletCalcule(activeTab) ||
     activeTab === 'profil' ||
     activeTab === 'heures' ||
     activeTab === 'notes-frais' ||
@@ -1099,8 +1114,8 @@ function App() {
   const headerTitle =
     activeTab === 'admin'
       ? 'Administration'
-      : activeTab === 'actus'
-      ? 'Actualités'
+      : blogActif
+      ? blogActif.nom
       : activeTab === 'profil'
         ? 'Profil'
         : activeTab === 'heures'
@@ -1295,7 +1310,7 @@ function App() {
 
         {activeTab === 'docs' && <DocsScreen ecoleId={ecole.id} />}
 
-        {activeTab === 'actus' && <Actus key={activeUser.id} ecoleId={ecole.id} prenom={activeUser.prenom} />}
+        {blogActif && <Blog key={`${activeUser.id}-${blogActif.id}`} ecoleId={ecole.id} blog={blogActif} prenom={activeUser.prenom} />}
 
         {activeTab === 'sparring' && <Sparring key={activeUser.id} ecoleId={ecole.id} cours={cours} />}
 
@@ -1307,6 +1322,7 @@ function App() {
             onOpenMesHeures={() => openHeures(activeUser.id, 'profil')}
             onOpenNotesFrais={() => setActiveTab('notes-frais')}
             onUpdateUser={mettreAJourActiveUser}
+            onglets={tabs}
             ongletsEteints={modulesEteints}
             onRangerOnglets={rangerOnglets}
             onChangerEcole={isSuperuser(activeUser) ? changerEcole : undefined}
@@ -1329,6 +1345,7 @@ function App() {
         profil={activeUser}
         eteints={modulesEteints}
         alertes={{ messagerie: totalNonLus }}
+        tabs={tabs}
       />
     </div>
   )

@@ -548,12 +548,59 @@
   padding-top: 0;
 }
 
-/* Paramètres d'édition, repliés par défaut */
+/* Paramètres d'Actus : un écran à part, ouvert par le menu ⋯ (§12.5) */
 .parametres {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 10px;
+  padding: 4px 14px 24px;
+}
+
+/* Crayon sur chaque actu et brouillons en haut, pour qui publie (§12.5) */
+.actu__crayon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: -12px -10px -12px auto;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.actu__drapeau-texte {
+  flex: 1;
+}
+.actu--breve .actu__crayon {
+  align-self: flex-start;
+  margin-top: -10px;
+}
+.actu--breve > div {
+  flex: 1;
+}
+.actu--avec-crayon {
+  position: relative;
+}
+.actu--avec-crayon > .actu__crayon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  margin: 0;
+  background: var(--card-bg);
+}
+.actu--avec-crayon > .actu__corps:first-of-type {
+  padding-right: 52px;
+}
+.actus__brouillons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px;
+  border: 2px dashed var(--border);
+  border-radius: 20px;
 }
 .parametres__titre {
   margin: 0;
@@ -867,4 +914,196 @@
   flex: 1;
   min-width: 0;
   min-height: 48px;
+}
+
+/* Blog avec catégories (spec/modules/actualites.md §12.6). */
+.actu__titre {
+  margin: 0 0 4px;
+  font-size: 19px;
+  line-height: 1.3;
+}
+.actu__categorie {
+  display: inline-block;
+  align-self: flex-start;
+  width: auto;
+  margin: 0 0 8px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.actu__categorie:disabled {
+  cursor: default;
+}
+.editeur__titre {
+  min-height: 52px;
+  font-size: 18px;
+  font-weight: 600;
+}
+.editeur__categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.editeur__puces {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.editeur__puces button {
+  min-height: 48px;
+  padding: 0 16px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.editeur__puces button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+}
+.categories {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 16px;
+}
+.categories .actus__entete {
+  margin: -12px -16px 0;
+}
+.categories__ligne {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+  cursor: pointer;
+}
+.categories__ligne small {
+  color: var(--text-muted);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.categories__renommer {
+  align-self: flex-start;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* Les blogs dans Fonctionnalités (§12.3). */
+.blogs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 8px;
+  font-weight: 400;
+}
+.blogs__blog {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+}
+.blogs__nom {
+  min-height: 48px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+}
+.blogs__logos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.blogs__logos button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  background: var(--card-bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.blogs__logos button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+.blogs__option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+  font-size: 17px;
+}
+.blogs__ajouter,
+.blogs__supprimer {
+  align-self: flex-start;
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.blogs__supprimer {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+/* Dans la ligne de la case (Fonctionnalités) : la case reste en haut, les
+   champs gardent leur taille. */
+.fonctionnalites__module:has(.blogs) {
+  align-items: flex-start;
+}
+.blogs {
+  flex-basis: 100%;
+}
+.checkbox-list__item .blogs input {
+  width: auto;
+  height: auto;
+}
+.checkbox-list__item .blogs .blogs__nom {
+  min-height: 48px;
+}
+.checkbox-list__item .blogs .editeur__lien input {
+  min-height: 52px;
 }
