@@ -3,6 +3,8 @@ filmée envoyée par un coach, lue par le worker (détecteur simulé), ses
 signes avec une image de chacun, ses combats selon les « Signes et sons du
 club », droits et étanchéité."""
 
+import json
+
 import pytest
 from conftest import entetes_session
 from test_session_clips_camera import _morceau
@@ -103,6 +105,16 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert r.status_code == 200 and r.json()["title"] == "Jo contre Jac"
     assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": " "}, headers=e["coach"]).status_code == 400
     assert client.patch(f"/session-clips/lab/{essai['id']}", json={"title": "x"}, headers=e["ailleurs"]).status_code == 404
+
+    # « Relancer la découpe » relit les signes sur les postures gardées, avec
+    # les règles du jour ; le « Time ! » entendu reste (Seb, 12/11).
+    db_session.refresh(test)
+    test.signs = json.dumps([x for x in lab.signs_of(test) if x["kind"] == "time"])  # comme lu avec d'autres règles
+    db_session.commit()
+    assert client.post(f"/session-clips/lab/{essai['id']}/reread", headers=e["coach"]).status_code == 204
+    signes = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["signs"]
+    assert [s["kind"] for s in signes] == ["fists_touch", "handshake", "x", "time"]
+    assert client.post(f"/session-clips/lab/{essai['id']}/reread", headers=e["ailleurs"]).status_code == 404
 
     # Réservé aux coachs de l'école.
     assert client.get("/session-clips/lab", headers=e["eleve"]).status_code == 403

@@ -25,7 +25,7 @@ from saisons.portee import toutes_saisons
 from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 
-from .fights import SIGNS, Fight, find_fights, find_signs, trim
+from .fights import SIGNS, SOUNDS, Fight, Sound, find_fights, find_signs, trim
 from .framing import FRAMINGS, Box, track, video_size
 from .models import ClubSigns, LabTest
 from .ports import Member
@@ -79,7 +79,7 @@ def set_settings(db: Session, member: Member, new: Settings) -> Settings:
 
 
 def club_fights(
-    db: Session, org_id: int, frames: list[Frame], sounds: list[float], size: tuple[int, int] | None
+    db: Session, org_id: int, frames: list[Frame], sounds: list[Sound], size: tuple[int, int] | None
 ) -> list[tuple[Fight, list[Box] | None]]:
     """Les combats selon les réglages du club, chacun avec son cadre (None :
     plan large)."""
@@ -161,7 +161,7 @@ def fights_of(db: Session, found: LabTest) -> list[tuple[Fight, list[Box] | None
     with toutes_saisons(db):
         video = db.get(Video, found.video_id) if found.video_id else None
     size = video_size(DOSSIER_VIDEOS_LIVE / video.lien_fichier) if video is not None else None
-    sounds = [s["start"] for s in signs_of(found) if s["kind"] == "time"]
+    sounds = [(s["kind"], s["start"]) for s in signs_of(found) if s["kind"] in SOUNDS]
     return club_fights(db, found.org_id, _load_frames(path), sounds, size)
 
 
@@ -198,6 +198,31 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
     found.status = "ready"
     db.commit()
     return len(signs)
+
+
+def reread_test(db: Session, clips: SessionClips, member: Member, test_id: int) -> None:
+    """« Relancer la découpe » (Seb, 12/11) : relit les signes sur les postures
+    gardées, avec les règles du jour, sans relire la vidéo. Les « Time ! »
+    entendus et les images des signes déjà vus sont gardés."""
+    from .cutting import _load_frames
+
+    found = test(db, member, test_id)
+    path = _poses_path(found)
+    if found.status != "ready" or not path.exists():
+        return
+    before = signs_of(found)
+    thumbs = {(s["kind"], s["start"]): s["thumb"] for s in before}
+    sounds = [(s["kind"], s["start"]) for s in before if s["kind"] in SOUNDS]
+    with toutes_saisons(db):
+        video = clips.videos.get(db, found.video_id)
+    source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
+    signs = []
+    for s in find_signs(_load_frames(path), sounds):
+        start = round(s.start, 1)
+        thumb = thumbs.get((s.kind, start)) or thumbnail(source, s.start)
+        signs.append({"kind": s.kind, "start": start, "end": round(s.end, 1), "thumb": thumb})
+    found.signs = json.dumps(signs)
+    db.commit()
 
 
 def thumbnail(source: Path, t: float) -> str | None:

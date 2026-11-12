@@ -208,3 +208,17 @@ def test_ecoute_impossible_ne_bloque_pas_la_lecture(monkeypatch, tmp_path):
 
     monkeypatch.setattr(hearing, "_hear", panne)
     assert hearing.hear(tmp_path / "video.mp4") == []
+
+
+def test_go_crie_commence_le_combat():
+    """« Go ! » pour commencer, « Time ! » pour finir (Seb, 12/11) ; les
+    poings touchés juste avant le « Go ! » ne font qu'un début."""
+    from session_clips.hearing import word_kind
+
+    assert word_kind(" Go!") == "go" and word_kind("Time.") == "time" and word_kind("gauche") is None
+    fight = [pose(100), pose(300)]
+    video = frames([(20, fight)])
+    assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 2.0), ("time", 12.0)])] == [(2.0, 13.0)]
+    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    video = frames([(1, touch), (19, fight)])
+    assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 1.5), ("time", 12.0)])] == [(0.0, 13.0)]
