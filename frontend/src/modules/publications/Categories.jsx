@@ -153,7 +153,9 @@ export default function Categories({ lieu, version, publications, ouverte, onOuv
 // Dans l'éditeur : la catégorie en gros boutons (ordre alphabétique) et
 // « + Nouvelle » ; puis, de même, la sous-catégorie, facultative. Pas de
 // hashtag tapé à la main : pas de doublon par faute de frappe.
-export function ChoixCategorie({ lieu, categorie, sousCategorie, onChanger }) {
+// `onSaisie(quoi, texte)` : le nom tapé dans « + Nouvelle » avant OK, que
+// l'éditeur garde s'il publie sans OK.
+export function ChoixCategorie({ lieu, categorie, sousCategorie, onChanger, onSaisie = () => {} }) {
   const [arbre, setArbre] = useState([])
   const [nouvelle, setNouvelle] = useState(null) // 'cat' | 'sous' | null
   const [nom, setNom] = useState('')
@@ -174,6 +176,7 @@ export function ChoixCategorie({ lieu, categorie, sousCategorie, onChanger }) {
     if (!valeur) return
     if (nouvelle === 'cat') onChanger(valeur, '')
     else onChanger(categorie, valeur)
+    onSaisie(nouvelle, '')
     setNouvelle(null)
     setNom('')
   }
@@ -186,7 +189,15 @@ export function ChoixCategorie({ lieu, categorie, sousCategorie, onChanger }) {
             {n}
           </button>
         ))}
-        <button type="button" aria-pressed={nouvelle === quoi} onClick={() => setNouvelle(nouvelle === quoi ? null : quoi)}>
+        <button
+          type="button"
+          aria-pressed={nouvelle === quoi}
+          onClick={() => {
+            onSaisie(nouvelle ?? quoi, '')
+            setNom('')
+            setNouvelle(nouvelle === quoi ? null : quoi)
+          }}
+        >
           + Nouvelle
         </button>
       </div>
@@ -201,7 +212,10 @@ export function ChoixCategorie({ lieu, categorie, sousCategorie, onChanger }) {
           placeholder={quoi === 'cat' ? 'Nouvelle catégorie' : 'Nouvelle sous-catégorie'}
           value={nom}
           autoFocus
-          onChange={(e) => setNom(e.target.value)}
+          onChange={(e) => {
+            setNom(e.target.value)
+            onSaisie(quoi, e.target.value)
+          }}
         />
         <button type="submit" disabled={!nom.trim()}>
           OK

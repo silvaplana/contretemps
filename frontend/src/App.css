@@ -595,6 +595,10 @@
   color: var(--accent);
 }
 
+.btn--secondary:disabled {
+  opacity: 0.5;
+}
+
 .btn--danger {
   background: var(--danger-bg);
   color: var(--danger-text);

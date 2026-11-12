@@ -1107,3 +1107,15 @@
 .checkbox-list__item .blogs .editeur__lien input {
   min-height: 52px;
 }
+
+/* Ce qui manque pour publier, au-dessus des boutons (Seb, 12 novembre). */
+.actus__barre:has(.editeur__manque) {
+  flex-wrap: wrap;
+}
+.editeur__manque {
+  flex-basis: 100%;
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 17px;
+  text-align: center;
+}
