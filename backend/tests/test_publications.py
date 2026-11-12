@@ -175,11 +175,22 @@ def test_pas_d_ouverture_sur_les_actus_tant_qu_il_n_y_en_a_aucune(client, e):
     assert _actus(client, eid)["has_posts"] is False
     client.post(f"{_blog(eid)}/posts", json={"body": "Brouillon", "publish": False})
     assert _actus(client, eid)["has_posts"] is False
-    _publier(client, eid, "Reprise des cours")
+    premiere = _publier(client, eid, "Reprise des cours")
     assert _actus(client, eid) == {"id": ACTUS[eid], "name": "Actus", "icon": "news", "with_levels": True,
                                    "with_categories": False, "can_read": True, "can_publish": True,
-                                   "open_app_on": True, "has_posts": True}
+                                   "open_app_on": True, "has_posts": True, "latest_post": premiere["id"]}
     assert _actus(client, e["autre"].id)["has_posts"] is False
+    assert _actus(client, e["autre"].id)["latest_post"] is None
+
+
+def test_la_derniere_publication_pour_ne_pas_rouvrir_sur_des_actus_vues(client, e):
+    # Seb, 12 novembre : ouverte deux fois sur les mêmes actus, l'appli ne s'y
+    # rouvre plus ; une nouvelle publication relance le compte.
+    eid = e["ecole"].id
+    _publier(client, eid, "Reprise des cours")
+    nouvelle = _publier(client, eid, "Stage de Noël")
+    client.post(f"{_blog(eid)}/posts", json={"body": "Brouillon", "publish": False})
+    assert _actus(client, eid)["latest_post"] == nouvelle["id"]
 
 
 def test_en_haut_de_chaque_actu(client, e):

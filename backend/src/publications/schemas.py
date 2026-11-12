@@ -107,6 +107,8 @@ class BlogOut(BaseModel):
     # The app opens on it (one blog at most), when it has a post.
     open_app_on: bool
     has_posts: bool
+    # Newest published post (§6: opened twice on it, the app stops opening there).
+    latest_post: int | None = None
 
 
 class BlogIn(BaseModel):

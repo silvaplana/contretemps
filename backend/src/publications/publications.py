@@ -185,6 +185,16 @@ class Publications:
             query = query.where(Post.published_at.is_not(None))
         return db.scalar(query.limit(1)) is not None
 
+    def latest_post(self, db: Session, blog: Blog) -> int | None:
+        """The newest published post: the app stops opening on a blog it
+        already opened twice on with the same newest post (§6)."""
+        return db.scalar(
+            select(Post.id)
+            .where(Post.org_id == blog.org_id, Post.blog_id == blog.id, Post.published_at.is_not(None))
+            .order_by(Post.published_at.desc(), Post.id.desc())
+            .limit(1)
+        )
+
     def change_settings(self, db: Session, blog: Blog, *, open_app_on: bool | None = None,
                         media_first: bool | None = None, visible_to_all: bool | None = None) -> Blog:
         """« Paramètres de <blog> » (§12.5). The app opens on one blog at

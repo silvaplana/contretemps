@@ -163,7 +163,12 @@ affiche le dernier onglet ouvert. »
 Par organisation, **allumée par défaut**. Allumée : à chaque ouverture de l'appli (lancement, pas
 retour d'arrière-plan, ni page rechargée par F5 ou par la mise en ligne d'une nouvelle version : Seb,
 10 novembre), tout le monde arrive sur Actus. Tant qu'**aucune actu n'est publiée**, l'appli s'ouvre
-comme si l'option était éteinte : un onglet vide à l'ouverture, c'est déprimant (Seb, 10 novembre). Éteinte : l'appli s'ouvre comme aujourd'hui sur
+comme si l'option était éteinte : un onglet vide à l'ouverture, c'est déprimant (Seb, 10 novembre).
+**Deux fois suffisent** (Seb, 12 novembre) : quand l'appli s'est ouverte deux fois sur le blog avec la
+même dernière publication, elle a été vue ; l'appli s'ouvre alors comme si l'option était éteinte,
+jusqu'à la publication suivante. Compté sur l'appareil (`localStorage`, `blogAOuvrir` dans
+`modules/publications/api.js`) ; le serveur donne la dernière publication (`latest_post` du blog).
+Éteinte : l'appli s'ouvre comme aujourd'hui sur
 le dernier onglet utilisé (`ongletDeDepart` dans App.jsx). Une notification d'un autre module garde
 son propre écran.
 
@@ -498,7 +503,7 @@ Rien d'autre ne change dans le core ; les autres modules ne sont pas touchés.
 ### 12.9 API, assistant, étapes
 
 Routes sous `/ecoles/{ecole_id}/publications/blogs` : `GET` (les blogs, avec `can_read`,
-`can_publish`, `open_app_on`, `has_posts`), `POST`, `PUT · DELETE /{blog_id}` (Administrateur
+`can_publish`, `open_app_on`, `has_posts`, `latest_post`), `POST`, `PUT · DELETE /{blog_id}` (Administrateur
 principal, Super User). Puis sous `/{blog_id}` : `GET` (le fil, et `drafts` à qui publie ;
 `…/atelier` disparaît), `POST /posts`, `PUT · DELETE /posts/{id}`, `POST /posts/{id}/unpublish`,
 `GET /posts/{id}/photos/{sha}`, `POST /photos · /videos · /links`, `GET · PUT /settings`,
