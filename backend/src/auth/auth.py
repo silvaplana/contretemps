@@ -112,6 +112,10 @@ class Auth:
         des emails de la fiche, §2.1) : portée "superuser" (12 h) pour le
         Superuser, "standard" (30 jours glissants) sinon."""
         acces_email = self.acces.par_email(db, email)
+        if compte.ecole_id is not None:
+            # Un profil ouvert dans cette école : elle voit le statut de l'adresse.
+            self.acces.noter_ecole(db, acces_email, compte.ecole_id)
+            db.commit()
         return jetons.emettre(
             acces_email.id,
             portee=jetons.SUPERUSER if r.is_superuser(compte) else jetons.STANDARD,

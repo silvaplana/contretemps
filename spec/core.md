@@ -425,6 +425,13 @@ adresse) : *Pas d'email* (bouton grisé) → *Pas invité* → *Invité le …* 
 le …* (lien cliqué, jamais « mail ouvert », qui n'est pas fiable) → *Profil finalisé le …* (mot de
 passe créé) → *Appli installée le …* (§10).
 
+**Chaque organisation ne voit que ses adresses** (étanchéité, Seb 12/11/2026) : le suivi d'une
+adresse ne s'affiche qu'aux organisations qui la connaissent, parce qu'elles l'ont invitée ou que la
+personne y a ouvert un profil (table `access_orgs`). Une personne déjà inscrite ailleurs apparaît
+*Pas invité* chez une nouvelle organisation, sans rien révéler de l'autre. L'inviter lui envoie
+« <Organisation> vous a ouvert un accès… c'est le même mot de passe que d'habitude », sans lien
+ni nom de l'autre organisation, puis le statut suit le sien (*Profil finalisé*).
+
 ### 6.5 Mot de passe oublié
 
 Demande le nom prénom ou l'email, répond toujours « Si ce compte existe, un lien vient d'être
