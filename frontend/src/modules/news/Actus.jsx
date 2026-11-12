@@ -13,9 +13,11 @@ import * as api from './api.js'
 import './news.css'
 
 // Actualités (spec/modules/actualites.md, maquette validée
-// spec/maquettes/actualites.html). Tout le monde lit les actus ; qui a le
-// droit 🔒 « Publier les actualités » a deux onglets, Édition et Visualisation.
-// Un éditeur ouvert remplace l'écran, avec la flèche de retour.
+// spec/maquettes/actualites.html ; un seul écran depuis le 12 novembre,
+// §12.5 et spec/maquettes/blog.html). Tout le monde lit le même fil ; qui a
+// le droit 🔒 « Publier les actualités » a en plus « + Ajouter », un crayon
+// sur chaque actu, ses brouillons en haut et les paramètres derrière ⋯.
+// L'éditeur et les paramètres remplacent l'écran, avec la flèche de retour.
 
 const ANNULER_MS = 10000
 const VIDEO_MAX = 100 * 1024 * 1024 // avant compression, comme la Messagerie (§4.2)
@@ -25,7 +27,6 @@ const NIVEAUX = [
   { cle: 'normal', libelle: 'Normal', aide: 'Une grande carte.' },
   { cle: 'brief', libelle: 'Brève', aide: 'Une ligne. Pour les petites infos.' },
 ]
-const LIBELLE = Object.fromEntries(NIVEAUX.map((n) => [n.cle, n.libelle]))
 
 const jour = (d) => d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -221,16 +222,22 @@ function Document({ document }) {
 }
 
 // mediaEnHaut : réglage « En haut de chaque actu : Photo, vidéo » (Seb, 9 novembre).
-export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
+export function CarteActu({ actu, ecoleId, mediaEnHaut = false, onModifier = null }) {
   const signature = (
     <div className="actu__meta">
       <span>
         <b>{actu.auteur}</b>
         {actu.auteur ? ' · ' : ''}
-        {jour(actu.publieeLe ?? new Date())}
+        {jour(actu.publieeLe ?? actu.modifieeLe ?? new Date())}
       </span>
-      {actu.nouveau && <span className="actu__nouveau">Nouveau</span>}
+      {onModifier && !actu.publieeLe ? <span className="atelier__etat">Brouillon</span> : actu.nouveau && <span className="actu__nouveau">Nouveau</span>}
     </div>
+  )
+  // Le crayon, pour qui publie : on modifie l'actu là où on la voit (§12.5).
+  const crayon = onModifier && (
+    <button type="button" className="actu__crayon" aria-label="Modifier l’actu" onClick={() => onModifier(actu)}>
+      <Icon name="edit" size={22} />
+    </button>
   )
   // Une actu peut n'être qu'une photo, une vidéo, un lien ou un document
   // (Seb, 10 novembre) : pas de ligne de texte vide. « … » seulement pour
@@ -245,6 +252,7 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
           <p className="actu__texte">{actu.texte || '…'}</p>
           {signature}
         </div>
+        {crayon}
       </article>
     )
   }
@@ -253,7 +261,8 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
       <article className="actu actu--important">
         <div className="actu__drapeau">
           <Alerte />
-          Important
+          <span className="actu__drapeau-texte">Important</span>
+          {crayon}
         </div>
         {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
         {texte}
@@ -265,7 +274,8 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
   }
   return (
     // Par défaut le texte d'abord, puis la photo ou la vidéo (Seb et les testeurs, 8 novembre).
-    <article className="actu actu--normale">
+    <article className={`actu actu--normale ${crayon ? 'actu--avec-crayon' : ''}`}>
+      {crayon}
       {mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
       {texte && <div className="actu__corps">{texte}</div>}
       {!mediaEnHaut && <Media ecoleId={ecoleId} actu={actu} />}
@@ -277,75 +287,55 @@ export function CarteActu({ actu, ecoleId, mediaEnHaut = false }) {
   )
 }
 
-function Fil({ actus, ecoleId, mediaEnHaut }) {
-  if (!actus.length) return <p className="actus__vide">Pas encore d’actu.</p>
+function Fil({ actus, brouillons = [], ecoleId, mediaEnHaut, onModifier = null }) {
+  if (!actus.length && !brouillons.length) return <p className="actus__vide">Pas encore d’actu.</p>
   const enHaut = actus.filter((a) => a.enHaut)
   const autres = actus.filter((a) => !a.enHaut)
   const periodes = autres.map((a) => periode(a.publieeLe))
   return (
     <div className="actus__fil">
+      {brouillons.length > 0 && (
+        // Les brouillons, en haut, pour qui publie seulement (§12.5).
+        <div className="actus__groupe">
+          <div className="actus__periode">Mes brouillons · vous seul les voyez</div>
+          <div className="actus__brouillons">
+            {brouillons.map((a) => (
+              <CarteActu key={a.id} actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} onModifier={onModifier} />
+            ))}
+          </div>
+        </div>
+      )}
       {enHaut.map((a) => (
-        <CarteActu key={a.id} actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} />
+        <CarteActu key={a.id} actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} onModifier={onModifier} />
       ))}
       {autres.map((a, i) => {
         const titre = periodes[i] !== periodes[i - 1] ? periodes[i] : null
         return (
           <div key={a.id} className="actus__groupe">
             {titre && <div className="actus__periode">{titre}</div>}
-            <CarteActu actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} />
+            <CarteActu actu={a} ecoleId={ecoleId} mediaEnHaut={mediaEnHaut} onModifier={onModifier} />
           </div>
         )
       })}
-      <p className="actus__fin">C’est tout pour le moment.</p>
+      {actus.length > 0 && <p className="actus__fin">C’est tout pour le moment.</p>}
     </div>
   )
 }
 
-function Atelier({ ecoleId, actus, ouvrir, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, parametres, changerParametres }) {
+// « Paramètres d'Actus » : un écran à part, ouvert par le menu ⋯ du
+// bandeau, avec ← (§12.5 ; avant, repliés sous la liste d'Édition).
+function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, onRetour }) {
   return (
-    <div className="atelier">
-      {actus.map((a) => (
-        <button key={a.id} type="button" className="atelier__ligne" onClick={() => ouvrir(a)}>
-          <span className={`atelier__niveau atelier__niveau--${a.niveau}`} aria-hidden="true" />
-          <span className="atelier__corps">
-            <span className="atelier__texte">{a.texte || 'Actu sans texte'}</span>
-            <span className="actu__meta">
-              <span className={`atelier__etat ${a.publieeLe ? 'is-publiee' : ''}`}>{a.publieeLe ? 'Publiée' : 'Brouillon'}</span>
-              <span>
-                {LIBELLE[a.niveau]} · {jour(a.publieeLe ?? a.modifieeLe)}
-              </span>
-            </span>
-          </span>
+    <div className="actus actus--editeur">
+      <div className="actus__entete">
+        <button type="button" className="actus__retour" aria-label="Retour" onClick={onRetour}>
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M19 12H5M11 18l-6-6 6-6" />
+          </svg>
         </button>
-      ))}
-      <ParametresEdition
-        ecoleId={ecoleId}
-        ouverture={ouverture}
-        changerOuverture={changerOuverture}
-        mediaEnHaut={mediaEnHaut}
-        changerMediaEnHaut={changerMediaEnHaut}
-        pourTous={pourTous}
-        changerPourTous={changerPourTous}
-        ouvert={parametres}
-        setOuvert={changerParametres}
-      />
-    </div>
-  )
-}
-
-// « Paramètres d'édition » : repliés par défaut, on les déroule au besoin
-// (Seb, 8 novembre) ; aussi depuis le menu ⋯ (Seb, 9 novembre).
-function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, ouvert, setOuvert }) {
-  return (
-    <div className="parametres" id="actus-parametres">
-      {/* Même présentation que les volets d'Admin › École (Seb, 9 novembre). */}
-      <h3 className="section-label parametres__titre">
-        <button type="button" className="section-label__depliant" aria-expanded={ouvert} onClick={() => setOuvert(!ouvert)}>
-          <Icon name={ouvert ? 'chevronDown' : 'chevronRight'} size={14} />
-          Paramètres d’édition des actus
-        </button>
-      </h3>
-      {ouvert && (
+        <strong>Paramètres d’Actus</strong>
+      </div>
+      <div className="parametres">
         <>
           <h4 className="section-label perso__sous-partie">En haut de chaque actu</h4>
           <div className="editeur__niveaux parametres__choix" role="group" aria-label="En haut de chaque actu">
@@ -393,7 +383,7 @@ function ParametresEdition({ ecoleId, ouverture, changerOuverture, mediaEnHaut, 
           <h4 className="section-label perso__sous-partie">Instagram</h4>
           <Instagram ecoleId={ecoleId} />
         </>
-      )}
+      </div>
     </div>
   )
 }
@@ -938,11 +928,10 @@ function oublierRetourInstagram() {
 export default function Actus({ ecoleId, prenom }) {
   const [fil, setFil] = useState(null) // { peutPublier, actus }
   const [atelier, setAtelier] = useState([])
-  const [onglet, setOnglet] = useState(retourInstagram ? 'atelier' : 'apercu')
+  // Au retour d'Instagram, les paramètres s'ouvrent sur le résultat.
+  const [parametres, setParametres] = useState(Boolean(retourInstagram))
   const [ouverture, setOuverture] = useState(true)
   const [pourTous, setPourTous] = useState(true) // « visibles par tout le monde »
-  // Paramètres d'édition dépliés ; au retour d'Instagram, ils s'ouvrent sur le résultat.
-  const [parametres, setParametres] = useState(Boolean(retourInstagram))
   const [edite, setEdite] = useState(null) // l'actu ouverte dans l'éditeur
   const [caches, setCaches] = useState(new Set()) // supprimées, Annuler possible
   const [toast, setToast] = useState(null) // { texte, annuler }
@@ -983,7 +972,6 @@ export default function Actus({ ecoleId, prenom }) {
       setEdite(null)
       await charger()
       if (vientDePublier) {
-        setOnglet('apercu')
         montrer('Actu publiée', async () => {
           await api.depublier(ecoleId, actu.id)
           charger()
@@ -1048,7 +1036,7 @@ export default function Actus({ ecoleId, prenom }) {
   }
 
   const toastEl = toast && (
-    <div className={`actus__toast ${edite || onglet === 'atelier' ? 'actus__toast--haut' : ''}`} role="status">
+    <div className={`actus__toast ${edite || fil?.peutPublier ? 'actus__toast--haut' : ''}`} role="status">
       <span>{toast.texte}</span>
       {toast.annuler && (
         <button
@@ -1065,13 +1053,6 @@ export default function Actus({ ecoleId, prenom }) {
     </div>
   )
 
-  function montrerParametres() {
-    setOnglet('atelier')
-    setParametres(true)
-    // Une fois affichés, on descend jusqu'à eux.
-    setTimeout(() => document.getElementById('actus-parametres')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50)
-  }
-
   if (edite) {
     return (
       <>
@@ -1082,53 +1063,49 @@ export default function Actus({ ecoleId, prenom }) {
   }
 
   if (!fil) return <div className="actus">{erreur && <p className="actus__vide">{erreur}</p>}</div>
-  const visibles = (liste) => liste.filter((a) => !caches.has(a.id))
-  const vueAtelier = fil.peutPublier && onglet === 'atelier'
 
-  return (
-    <div className={`actus ${vueAtelier ? 'actus--avec-barre' : ''}`}>
-      {fil.peutPublier && (
-        // Menu ⋯ : les mêmes Paramètres d'édition qu'en bas de l'onglet Édition.
-        <MenuEntete label="Actions des actus" actions={[{ label: 'Paramètres d’édition des actus', icon: 'edit', onClick: montrerParametres }]} />
-      )}
-      {fil.peutPublier && (
-        <div className="actus__onglets" role="tablist">
-          {[
-            // Libellés de Seb (8 novembre) : Édition | Visualisation.
-            ['atelier', 'Édition'],
-            ['apercu', 'Visualisation'],
-          ].map(([cle, libelle]) => (
-            <button key={cle} type="button" role="tab" aria-selected={onglet === cle} onClick={() => setOnglet(cle)}>
-              {libelle}
-            </button>
-          ))}
-        </div>
-      )}
-      {vueAtelier ? (
-        <Atelier
+  if (parametres && fil.peutPublier) {
+    return (
+      <>
+        <ParametresEdition
           ecoleId={ecoleId}
-          actus={visibles(atelier)}
-          ouvrir={setEdite}
           ouverture={ouverture}
           changerOuverture={changerOuverture}
           mediaEnHaut={fil.mediaEnHaut}
           changerMediaEnHaut={changerMediaEnHaut}
           pourTous={pourTous}
           changerPourTous={changerPourTous}
-          parametres={parametres}
-          changerParametres={setParametres}
+          onRetour={() => setParametres(false)}
         />
-      ) : (
-        <Fil actus={visibles(fil.actus)} ecoleId={ecoleId} mediaEnHaut={fil.mediaEnHaut} />
+        {toastEl}
+      </>
+    )
+  }
+
+  const visibles = (liste) => liste.filter((a) => !caches.has(a.id))
+  const brouillons = fil.peutPublier ? visibles(atelier).filter((a) => !a.publieeLe) : []
+
+  return (
+    <div className={`actus ${fil.peutPublier ? 'actus--avec-barre' : ''}`}>
+      {fil.peutPublier && (
+        // Menu ⋯ du bandeau : les paramètres d'Actus (§12.5).
+        <MenuEntete label="Actions des actus" actions={[{ label: 'Paramètres d’Actus', icon: 'edit', onClick: () => setParametres(true) }]} />
       )}
-      {vueAtelier && (
+      <Fil
+        actus={visibles(fil.actus)}
+        brouillons={brouillons}
+        ecoleId={ecoleId}
+        mediaEnHaut={fil.mediaEnHaut}
+        onModifier={fil.peutPublier ? setEdite : null}
+      />
+      {fil.peutPublier && (
         <div className="actus__barre">
           <button
             type="button"
             className="btn btn--primary actus__principal"
             onClick={() => setEdite({ id: null, niveau: 'normal', texte: '', enHautJusquau: dansJours(7), notifier: false, publieeLe: null, media: [], document: null })}
           >
-            Nouvelle actu
+            + Ajouter
           </button>
         </div>
       )}

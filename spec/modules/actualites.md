@@ -502,6 +502,8 @@ Chaque étape part sur le « vas-y » de Seb, une PR chacune :
 
 1. **Un seul écran** (§12.5) dans Actus : + Ajouter, crayon, Mes brouillons, paramètres derrière ⋯.
    Aucune donnée ne change.
+   **Fait** (12 novembre 2026, écran seulement : le serveur ne change pas, les brouillons viennent
+   encore de `GET …/news/atelier`, retiré à l'étape 2). Le menu ⋯ dit « Paramètres d'Actus ».
 2. **Plusieurs blogs** (§12.2 à §12.4, §12.7, §12.8) : table des blogs, liste dans Fonctionnalités
    (nom, logo, niveaux), un onglet et un droit par blog, les deux ajouts au core.
 3. **Catégories** (§12.6) : nom, catégorie, sous-catégorie, onglets Fil | Catégories, renommer.

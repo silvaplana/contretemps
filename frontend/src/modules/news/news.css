@@ -548,12 +548,59 @@
   padding-top: 0;
 }
 
-/* Paramètres d'édition, repliés par défaut */
+/* Paramètres d'Actus : un écran à part, ouvert par le menu ⋯ (§12.5) */
 .parametres {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-top: 10px;
+  padding: 4px 14px 24px;
+}
+
+/* Crayon sur chaque actu et brouillons en haut, pour qui publie (§12.5) */
+.actu__crayon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin: -12px -10px -12px auto;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.actu__drapeau-texte {
+  flex: 1;
+}
+.actu--breve .actu__crayon {
+  align-self: flex-start;
+  margin-top: -10px;
+}
+.actu--breve > div {
+  flex: 1;
+}
+.actu--avec-crayon {
+  position: relative;
+}
+.actu--avec-crayon > .actu__crayon {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 1;
+  margin: 0;
+  background: var(--card-bg);
+}
+.actu--avec-crayon > .actu__corps:first-of-type {
+  padding-right: 52px;
+}
+.actus__brouillons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px;
+  border: 2px dashed var(--border);
+  border-radius: 20px;
 }
 .parametres__titre {
   margin: 0;

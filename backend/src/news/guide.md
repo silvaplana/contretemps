@@ -1,9 +1,12 @@
 Actualités : onglet « Actus » de la barre du bas, juste après Admin. Tout le monde le voit, sauf
-si « Les actus sont visibles par tout le monde » est éteint : alors seuls ceux qui publient. Qui a le
-droit 🔒 « Publier les actualités » (Admin › École › Administrateurs) voit en haut deux onglets,
-Édition et Visualisation ; les autres voient directement les actus.
+si « Les actus sont visibles par tout le monde » est éteint : alors seuls ceux qui publient. Tout le
+monde voit le même écran : les actus. Qui a le droit 🔒 « Publier les actualités » (Admin › École ›
+Administrateurs) a en plus le bouton « + Ajouter » en bas, un crayon sur chaque actu pour la modifier,
+ses brouillons en haut et le menu ⋯ en haut à droite › « Paramètres d'Actus ».
 
-Les actus (et l'onglet Visualisation)
+Les actus
+- Qui publie : en haut, « Mes brouillons · vous seul les voyez », dans un cadre en pointillés, chaque
+  brouillon marqué « Brouillon ». Le crayon d'un brouillon l'ouvre pour le finir et le publier.
 - En haut, les actus Important encore « en haut », sur fond rouge clair, marquées « IMPORTANT ».
 - Puis les autres, de la plus récente à la plus ancienne, sous « Aujourd'hui », « Cette semaine »,
   « Plus tôt ». Une actu Normal est une carte : le texte, puis la photo ou la vidéo (à plusieurs, un
@@ -12,27 +15,25 @@ Les actus (et l'onglet Visualisation)
   Docs ; la flèche ← ramène aux actus.
 - Sous chaque actu : prénom de qui l'a publiée et le jour. « Nouveau » marque ce que la personne
   n'avait pas encore vu.
+- Qui publie : le crayon en haut à droite de chaque actu l'ouvre pour la modifier ; « + Ajouter » en
+  bas écrit une nouvelle actu.
 
-Édition (droit 🔒 Publier les actualités)
-- Toutes les actus, brouillons compris : barre de couleur du niveau, début du texte, « Publiée » ou
-  « Brouillon ». Toucher une actu l'ouvre pour la modifier.
-- Bouton « Nouvelle actu » en bas.
-- « Paramètres d'édition des actus » en bas, repliés : les toucher pour les dérouler. On y arrive aussi par
-  le menu ⋯ en haut à droite › « Paramètres d'édition des actus ».
-  - « En haut de chaque actu » : Texte ou Photo, vidéo (pour toutes les actus de l'école).
-  - « L'appli affiche toujours les actus à son ouverture » (allumé : pour tout le monde, dès qu'il y a
-    au moins une actu publiée ; éteint : « Sinon, elle affiche le dernier onglet ouvert »).
-  - Instagram : « Se connecter avec Instagram » (compte Instagram professionnel), puis accepter
-    dans Instagram ; on revient ici, « Relié à @compte ». Ses nouveaux posts arrivent dans les actus en
-    5 minutes au plus (texte puis photos et vidéos, carrousels compris). Si le bouton n'y est pas :
-    coller la clé d'accès du compte, puis « Relier ».
-    Au-dessus du bouton, « Quels posts Instagram mettre dans les actus ? », une réponse à cocher :
-    « Tous mes posts » ; « Seulement ceux avec un hashtag » (un champ # apparaît, par exemple
-    contretemps : les autres posts restent sur Instagram) ; « Je les choisis un par un » (ils arrivent
-    en brouillon dans Édition, à publier ou non). Se change avant ou après avoir relié le compte.
-    « Délier » arrête le relais.
-  - « Visibilité » : « Les actus sont visibles par tout le monde » (allumé ; éteint : seuls ceux qui
-    publient les voient).
+Paramètres d'Actus (droit 🔒 Publier les actualités ; menu ⋯ en haut à droite › « Paramètres
+d'Actus » ; la flèche ← ramène aux actus)
+- « En haut de chaque actu » : Texte ou Photo, vidéo (pour toutes les actus de l'école).
+- « L'appli affiche toujours les actus à son ouverture » (allumé : pour tout le monde, dès qu'il y a
+  au moins une actu publiée ; éteint : « Sinon, elle affiche le dernier onglet ouvert »).
+- Visibilité : « Les actus sont visibles par tout le monde » (allumé ; éteint : seuls ceux qui
+  publient les voient).
+- Instagram : « Se connecter avec Instagram » (compte Instagram professionnel), puis accepter
+  dans Instagram ; on revient ici, « Relié à @compte ». Ses nouveaux posts arrivent dans les actus en
+  5 minutes au plus (texte puis photos et vidéos, carrousels compris). Si le bouton n'y est pas :
+  coller la clé d'accès du compte, puis « Relier ».
+  Au-dessus du bouton, « Quels posts Instagram mettre dans les actus ? », une réponse à cocher :
+  « Tous mes posts » ; « Seulement ceux avec un hashtag » (un champ # apparaît, par exemple
+  contretemps : les autres posts restent sur Instagram) ; « Je les choisis un par un » (ils arrivent
+  en brouillon en haut des actus, à publier ou non). Se change avant ou après avoir relié le compte.
+  « Délier » arrête le relais.
 
 Nouvelle actu / Modifier l'actu
 - Niveau : Important, Normal ou Brève. Texte (facultatif s'il y a une photo, une vidéo, un lien ou un
@@ -46,5 +47,5 @@ Nouvelle actu / Modifier l'actu
 - « Envoyer une notification » : allumé d'office pour Important, éteint sinon.
 - Dessous, l'actu telle que les autres la verront.
 - Boutons « Brouillon » et « Publier » (« Enregistrer » pour une actu déjà publiée). Après Publier,
-  « Annuler » pendant 10 s : l'actu repasse en brouillon et la notification ne part pas.
+  retour aux actus et « Annuler » pendant 10 s : l'actu repasse en brouillon et la notification ne part pas.
 - « Supprimer cette actu » en bas, avec « Annuler » pendant 10 s.
