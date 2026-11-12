@@ -115,5 +115,6 @@ export const essaiLabo = async (id) => essai(await appel(`/lab/${id}`))
 export const creerEssai = async (corps) => essai(await appel('/lab', json('POST', corps)))
 export const renommerEssai = async (id, title) => essai(await appel(`/lab/${id}`, json('PATCH', { title })))
 export const supprimerEssai = (id) => appel(`/lab/${id}`, { method: 'DELETE' })
-export const signesDuClub = async () => (await appel('/signs')).signs
-export const reglerSignes = async (signs) => (await appel('/signs', json('PUT', { signs }))).signs
+// Réglages de la découpe du club : { signs, framing, start_skip, end_skip }.
+export const reglagesDuClub = () => appel('/signs')
+export const reglerClub = (reglages) => appel('/signs', json('PUT', reglages))

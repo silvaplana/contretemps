@@ -31,8 +31,9 @@ from videos.duree import duree_secondes
 from videos.poster import generer_poster
 from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
-from .fights import REASON_NO_END, find_fights
-from .lab import enabled_signs
+from .fights import REASON_NO_END
+from .framing import Box, ffmpeg_filter, video_size
+from .lab import club_fights
 from .models import Clip, ClipSession, Piece
 from .service import SessionClips, video_name
 from .signals import Frame, Pose
@@ -62,11 +63,19 @@ def sessions_to_cut(db: Session) -> list[ClipSession]:
         )
 
 
-def cut_clip(source: Path, start: float, end: float, dest: Path) -> bool:
-    return _ffmpeg(["-ss", f"{start:.2f}", "-i", str(source)], end - start, dest)
+def cut_clip(
+    source: Path, start: float, end: float, dest: Path, frame: list[Box] | None = None, size: tuple[int, int] | None = None
+) -> bool:
+    return _ffmpeg(["-ss", f"{start:.2f}", "-i", str(source)], end - start, dest, frame, size)
 
 
-def _ffmpeg(inputs: list[str], length: float, dest: Path) -> bool:
+def _ffmpeg(
+    inputs: list[str], length: float, dest: Path, frame: list[Box] | None = None, size: tuple[int, int] | None = None
+) -> bool:
+    """`frame` : le cadre du clip (framing.py), absent en plan large."""
+    scale = f"scale=-2:'min({CLIP_HEIGHT},ih)'"
+    commands = dest.with_suffix(".cmd")
+    video_filter = f"{ffmpeg_filter(frame, size, commands)},{scale}" if frame and size else scale
     try:
         result = subprocess.run(
             [
@@ -74,7 +83,7 @@ def _ffmpeg(inputs: list[str], length: float, dest: Path) -> bool:
                 "-y",
                 *inputs,
                 "-t", f"{length:.2f}",
-                "-vf", f"scale=-2:'min({CLIP_HEIGHT},ih)'",
+                "-vf", video_filter,
                 "-c:v", "libx264",
                 "-crf", "26",
                 "-preset", "veryfast",
@@ -87,6 +96,8 @@ def _ffmpeg(inputs: list[str], length: float, dest: Path) -> bool:
         )
     except (OSError, subprocess.SubprocessError):
         return False
+    finally:
+        commands.unlink(missing_ok=True)
     return result.returncode == 0 and dest.exists()
 
 
@@ -98,14 +109,15 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
             clips.videos.delete(db, video_id)
         raw = clips.videos.get(db, session.raw_video_id)
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
-    fights = find_fights(list(detect(source)), enabled_signs(db, session.org_id), hear(source))
+    size = video_size(source)
+    fights = club_fights(db, session.org_id, list(detect(source)), hear(source), size)
 
     folder = dossier_ecole(session.org_id)
     count = 0
-    for fight in fights:
+    for fight, frame in fights:
         name = f"{uuid4().hex}.mp4"
         dest = folder / name
-        if not cut_clip(source, fight.start, fight.end, dest):
+        if not cut_clip(source, fight.start, fight.end, dest, frame, size):
             continue
         poster = folder / f"{dest.stem}.jpg"
         video = clips.videos.create(
@@ -188,13 +200,14 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     done = [x for x in db.scalars(select(Clip.start_seconds).where(Clip.session_id == session.id)) if x is not None]
     folder = dossier_ecole(session.org_id)
     count = 0
-    for fight in find_fights(frames, enabled_signs(db, session.org_id), sounds):
+    size = video_size(sources[0][0]) if sources else None
+    for fight, frame in club_fights(db, session.org_id, frames, sounds, size):
         if fight.check_reason == REASON_NO_END and not finished:
             continue  # combat encore en cours
         if any(abs(start - fight.start) < 2 for start in done):
             continue
         dest = folder / f"{uuid4().hex}.mp4"
-        if not _cut_span(sources, fight.start, fight.end, dest):
+        if not _cut_span(sources, fight.start, fight.end, dest, frame, size):
             continue
         poster = folder / f"{dest.stem}.jpg"
         number = len(done) + 1
@@ -224,7 +237,14 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     return count
 
 
-def _cut_span(sources: list[tuple[Path, float, float]], start: float, end: float, dest: Path) -> bool:
+def _cut_span(
+    sources: list[tuple[Path, float, float]],
+    start: float,
+    end: float,
+    dest: Path,
+    frame: list[Box] | None = None,
+    size: tuple[int, int] | None = None,
+) -> bool:
     """Un combat peut chevaucher deux morceaux ou plus : ils sont recollés
     (concat de ffmpeg) le temps de la coupe."""
     used = [s for s in sources if s[1] < end and s[1] + s[2] > start]
@@ -232,13 +252,17 @@ def _cut_span(sources: list[tuple[Path, float, float]], start: float, end: float
         return False
     if len(used) == 1:
         source, offset, _ = used[0]
-        return cut_clip(source, start - offset, end - offset, dest)
+        return cut_clip(source, start - offset, end - offset, dest, frame, size)
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as listing:
         for source, _, _ in used:
             listing.write(f"file '{source}'\n")
     try:
         return _ffmpeg(
-            ["-f", "concat", "-safe", "0", "-i", listing.name, "-ss", f"{start - used[0][1]:.2f}"], end - start, dest
+            ["-ss", f"{start - used[0][1]:.2f}", "-f", "concat", "-safe", "0", "-i", listing.name],
+            end - start,
+            dest,
+            frame,
+            size,
         )
     finally:
         Path(listing.name).unlink(missing_ok=True)

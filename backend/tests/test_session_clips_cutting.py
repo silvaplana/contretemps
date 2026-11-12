@@ -168,3 +168,28 @@ def test_time_crie_termine_le_combat():
     assert find_fights(video, sounds=[12.0])[0].check_reason is None
     # Décoché : le combat va jusqu'au bout de la vidéo.
     assert find_fights(video, enabled=("fists_touch", "x"), sounds=[12.0])[0].check_reason == REASON_NO_END
+
+
+def test_cadrage_serre(tmp_path):
+    """Cadrage « Serré » (framing.py) : le cadre suit les deux corps, plus
+    petit que l'image, et ffmpeg coupe le clip à sa taille."""
+    from session_clips.cutting import cut_clip
+    from session_clips.framing import track, video_size
+
+    source = tmp_path / "salle.mp4"
+    subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "lavfi",
+         "-i", "testsrc=s=1280x720:d=6:r=25", "-pix_fmt", "yuv420p", str(source)],
+        check=True,
+    )
+    assert video_size(source) == (1280, 720)
+    # Deux personnes à gauche de l'image, qui glissent vers la droite.
+    video = [Frame(t=i / 5, people=[pose(100 + 10 * i), pose(160 + 10 * i)]) for i in range(30)]
+    assert track(video, 0, 5, "wide", (1280, 720)) is None
+    serre = track(video, 0, 5, "tight", (1280, 720))
+    moyen = track(video, 0, 5, "medium", (1280, 720))
+    assert serre[0][3] < moyen[0][3] < 1  # serré, plus petit que moyen
+    assert serre[-1][1] > serre[0][1]  # le cadre suit vers la droite
+    dest = tmp_path / "clip.mp4"
+    assert cut_clip(source, 0, 5, dest, serre, (1280, 720))
+    assert video_size(dest)[0] < 1280 and not dest.with_suffix(".cmd").exists()

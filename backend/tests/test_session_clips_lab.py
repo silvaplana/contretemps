@@ -73,16 +73,29 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert detail["status"] == "ready"
     assert [s["kind"] for s in detail["signs"]] == ["fists_touch", "handshake", "x", "time"]
     assert all(s["thumb"].startswith("data:image/jpeg;base64,") for s in detail["signs"])
-    # Tous les signes cochés : le combat finit à la poignée de main (10 s + 1).
-    assert [round(f["end"]) for f in detail["fights"]] == [11]
+    # Tous les signes cochés : le combat finit avec la poignée de main (10 à 12 s).
+    assert [round(f["end"]) for f in detail["fights"]] == [12]
 
     # Sans la poignée de main, il va jusqu'au X : sans relire la vidéo.
     # (Le « Time ! » à 25 s vient après.)
     r = client.put("/session-clips/signs", json={"signs": ["fists_touch", "x"]}, headers=e["coach"])
-    assert r.json() == {"signs": ["fists_touch", "x"]}
+    assert r.json()["signs"] == ["fists_touch", "x"] and r.json()["framing"] == "wide"
     detail = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()
-    assert len(detail["signs"]) == 4 and [round(f["end"]) for f in detail["fights"]] == [21]
-    assert client.get("/session-clips/signs", headers=e["coach"]).json() == {"signs": ["fists_touch", "x"]}
+    assert len(detail["signs"]) == 4 and [round(f["end"]) for f in detail["fights"]] == [22]
+    assert client.get("/session-clips/signs", headers=e["coach"]).json()["signs"] == ["fists_touch", "x"]
+    [combat] = detail["fights"]
+    assert combat["frame"] is None  # plan large
+
+    # Cadrage serré, 1 s retirée au début et 2 s à la fin (Seb, 12/11).
+    reglages = {"signs": ["fists_touch", "x"], "framing": "tight", "start_skip": 1, "end_skip": 2}
+    assert client.put("/session-clips/signs", json=reglages, headers=e["coach"]).json() == reglages
+    [serre] = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["fights"]
+    assert serre["start"] == pytest.approx(combat["start"] + 1) and serre["end"] == pytest.approx(combat["end"] - 2)
+    t, x, y, w, h = serre["frame"][0]
+    assert t == 0 and 0 < w < 1 and h == pytest.approx(w)  # au format de la vidéo, plus petit qu'elle
+    assert 0 <= x <= 1 - w and 0 <= y <= 1 - h
+    assert client.put("/session-clips/signs", json={**reglages, "framing": "zoom"}, headers=e["coach"]).status_code == 400
+    assert client.put("/session-clips/signs", json={**reglages, "end_skip": 60}, headers=e["coach"]).status_code == 400
     assert client.put("/session-clips/signs", json={"signs": ["salto"]}, headers=e["coach"]).status_code == 400
 
     # Le crayon : renommer l'essai.

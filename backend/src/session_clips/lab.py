@@ -14,6 +14,7 @@ from __future__ import annotations
 import base64
 import json
 import subprocess
+from dataclasses import dataclass
 from pathlib import Path
 
 import imageio_ffmpeg
@@ -24,32 +25,67 @@ from saisons.portee import toutes_saisons
 from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 
-from .fights import SIGNS, Fight, find_fights, find_signs
+from .fights import SIGNS, Fight, find_fights, find_signs, trim
+from .framing import FRAMINGS, Box, track, video_size
 from .models import ClubSigns, LabTest
 from .ports import Member
+from .signals import Frame
 from .service import ForbiddenError, NotFoundError, SessionClips
 
 THUMB_WIDTH = 160
+MAX_SKIP = 10.0  # secondes
 
 
-# --- Signes et sons du club ---
+# --- Réglages de la découpe du club : signes, cadrage, début et fin ---
 
 
-def enabled_signs(db: Session, org_id: int) -> tuple[str, ...]:
+@dataclass
+class Settings:
+    signs: tuple[str, ...] = SIGNS
+    framing: str = "wide"
+    start_skip: float = 0.0
+    end_skip: float = 0.0
+
+
+def settings(db: Session, org_id: int) -> Settings:
     row = db.get(ClubSigns, org_id)
-    return SIGNS if row is None else tuple(s for s in row.signs.split(",") if s in SIGNS)
+    if row is None:
+        return Settings()
+    return Settings(
+        signs=tuple(s for s in row.signs.split(",") if s in SIGNS),
+        framing=row.framing or "wide",
+        start_skip=row.start_skip or 0.0,
+        end_skip=row.end_skip or 0.0,
+    )
 
 
-def set_signs(db: Session, member: Member, signs: list[str]) -> tuple[str, ...]:
+def set_settings(db: Session, member: Member, new: Settings) -> Settings:
     _require_coach(member)
-    unknown = set(signs) - set(SIGNS)
+    unknown = set(new.signs) - set(SIGNS)
     if unknown:
         raise ValueError(f"Signe inconnu : {', '.join(sorted(unknown))}")
+    if new.framing not in FRAMINGS:
+        raise ValueError("Cadrage inconnu")
+    if not (0 <= new.start_skip <= MAX_SKIP and 0 <= new.end_skip <= MAX_SKIP):
+        raise ValueError(f"Entre 0 et {MAX_SKIP:g} secondes")
     row = db.get(ClubSigns, member.org_id) or ClubSigns(org_id=member.org_id)
-    row.signs = ",".join(s for s in SIGNS if s in signs)
+    row.signs = ",".join(s for s in SIGNS if s in new.signs)
+    row.framing = new.framing
+    row.start_skip = new.start_skip
+    row.end_skip = new.end_skip
     db.add(row)
     db.commit()
-    return enabled_signs(db, member.org_id)
+    return settings(db, member.org_id)
+
+
+def club_fights(
+    db: Session, org_id: int, frames: list[Frame], sounds: list[float], size: tuple[int, int] | None
+) -> list[tuple[Fight, list[Box] | None]]:
+    """Les combats selon les réglages du club, chacun avec son cadre (None :
+    plan large)."""
+    s = settings(db, org_id)
+    fights = trim(find_fights(frames, s.signs, sounds), s.start_skip, s.end_skip)
+    return [(f, track(frames, f.start, f.end, s.framing, size) if size else None) for f in fights]
 
 
 # --- Essais ---
@@ -114,15 +150,19 @@ def signs_of(found: LabTest) -> list[dict]:
     return json.loads(found.signs) if found.signs else []
 
 
-def fights_of(db: Session, found: LabTest) -> list[Fight]:
-    """Les combats avec les signes cochés du club, recalculés à chaque fois."""
+def fights_of(db: Session, found: LabTest) -> list[tuple[Fight, list[Box] | None]]:
+    """Les combats et leur cadre selon les réglages du club, recalculés à
+    chaque fois (sans relire la vidéo)."""
     path = _poses_path(found)
     if found.status != "ready" or not path.exists():
         return []
     from .cutting import _load_frames
 
+    with toutes_saisons(db):
+        video = db.get(Video, found.video_id) if found.video_id else None
+    size = video_size(DOSSIER_VIDEOS_LIVE / video.lien_fichier) if video is not None else None
     sounds = [s["start"] for s in signs_of(found) if s["kind"] == "time"]
-    return find_fights(_load_frames(path), enabled_signs(db, found.org_id), sounds)
+    return club_fights(db, found.org_id, _load_frames(path), sounds, size)
 
 
 # --- Lecture par le worker ---
