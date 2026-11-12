@@ -421,7 +421,7 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
   abscisse et une flèche verticale par signe, avec l'image de la vidéo à ce moment, son nom et son
   heure (vert = début, rouge = fin, gris pointillé = signe décoché ; la bande sur l'axe = un combat
   coupé) ; la liste des signes ; les **combats coupés** (début → fin, « Fin non repérée ») ; les
-  cases **« Signes et sons du club »** (Début de combat, Fin de combat ; déroulant fermé au départ, comme « Clips du club », pour ne pas prendre trop de place : Seb, 12/11) ; **« Relancer la découpe »**
+  cases **« Signes et sons du club »** (Début de combat, Fin de combat ; volet fermé au départ, comme « Clips du club » et les volets d'Admin, pour ne pas prendre trop de place : Seb, 12/11 ; la vidéo de l'essai est petite, un tiers de l'écran en hauteur au plus) ; **« Relancer la découpe »**
   (actif quand une case a changé) enregistre les cases du club et recalcule les combats sans relire
   la vidéo ; **« Supprimer l'essai »** (Annuler 10 s) efface l'essai et sa vidéo. Toucher une flèche
   ou un signe place la vidéo à ce moment (elle remonte à l'écran). Chaque combat coupé a sa
