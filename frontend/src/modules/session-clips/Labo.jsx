@@ -658,20 +658,14 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
   const VW = 62
   const VH = 66
   const ROW = 118
-  // En escalier (Seb, 13/11) : un combat (son début puis sa fin) sur une
-  // même ligne, le suivant une ligne plus bas ; on remonte après 3 lignes.
-  let marche = -1
-  let finVue = true
-  const marches = signes.map((s) => {
-    const debut = ['fist_up', 'fists_touch', 'go'].includes(s.kind)
-    if (debut && finVue) marche += 1
-    finVue = !debut
-    return Math.max(marche, 0)
-  })
-  const lignes = Math.min(3, Math.max(1, marche + 1))
+  // Un signe par ligne (Seb, 13/11 au soir) : jamais deux images l'une sur
+  // l'autre ; le premier signe en bas, près de l'axe, les suivants au-dessus.
+  const ordre = signes.map((s, i) => i).sort((a, b) => signes[a].start - signes[b].start)
+  const rang = Array(signes.length)
+  ordre.forEach((i, r) => (rang[i] = r))
+  const lignes = Math.max(1, signes.length)
   const base = 4 + lignes * ROW + 22
   const H = base + 38
-  const droite = Array(lignes).fill(-Infinity) // bord droit de la dernière image de chaque ligne
   const X = (t) => L + (Math.min(t, fin) / fin) * (R - L)
   const pas = fin > 600 ? 120 : fin > 120 ? 30 : 5
   const ticks = []
@@ -693,15 +687,24 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
       <text x={R} y={base + 34} className="sc-graphe__tick" style={{ textAnchor: 'end' }}>
         temps
       </text>
+      {/* Les traits d'abord : une image n'est jamais cachée par le trait d'un autre signe. */}
+      {signes.map((s, i) => {
+        const cls = coches.includes(s.kind) ? signe(s.kind).g : 'off'
+        const x = X(s.start)
+        const cx = Math.min(Math.max(x - VW / 2, 0), W - VW) + VW / 2
+        const tip = 4 + (lignes - 1 - rang[i]) * ROW + VH + 32
+        return (
+          <g key={i} className={`sc-graphe__ev sc-graphe__ev--${cls}`}>
+            <line x1={x} y1={base - 1} x2={cx} y2={tip + 4} className="sc-graphe__fl" />
+          </g>
+        )
+      })}
       {signes.map((s, i) => {
         const sg = signe(s.kind)
         const cls = coches.includes(s.kind) ? sg.g : 'off'
         const x = X(s.start)
-        const ligne = marches[i] % lignes
-        const top = 4 + ligne * ROW
-        // Deux signes proches sur la même ligne : l'image se pousse à droite.
-        const bx = Math.min(Math.max(x - VW / 2, 0, droite[ligne] + 22), W - VW)
-        droite[ligne] = bx + VW
+        const top = 4 + (lignes - 1 - rang[i]) * ROW
+        const bx = Math.min(Math.max(x - VW / 2, 0), W - VW)
         const cx = bx + VW / 2
         const tip = top + VH + 32
         const tx = Math.min(Math.max(cx, 34), W - 34)
@@ -723,7 +726,6 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
             <text x={tx} y={top + VH + 27} className="sc-graphe__t">
               {mmss(s.start)}
             </text>
-            <line x1={x} y1={base - 1} x2={cx} y2={tip + 4} className="sc-graphe__fl" />
             <path d={`M${cx - 5} ${tip + 10} L${cx} ${tip} L${cx + 5} ${tip + 10}Z`} className="sc-graphe__pt" />
           </g>
         )

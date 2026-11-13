@@ -344,9 +344,9 @@ flèche ←.
   `SessionDetail.film`, ou la vidéo envoyée à la main ; « ↻ Tourner la vidéo » la tourne d'un quart de
   tour à l'écran, retenu sur ce téléphone pour cette séance), puis la frise (« Aucun signe repéré. » s'il
   n'y en a pas) ; toucher un signe y montre ce moment dans la vidéo (Seb, 13/11). La frise (séance
-  et Labo) est en escalier : un combat, son début puis sa fin, sur une même ligne, le suivant une
-  ligne plus bas, trois lignes au plus puis on remonte ; deux images proches sur une ligne se
-  poussent à droite, la flèche garde le bon moment. Sous les combats d'une séance de la caméra
+  et Labo) met chaque signe sur sa propre ligne, jamais deux images l'une sur l'autre (Seb, 13/11
+  au soir) : le premier signe en bas, près de l'axe, les suivants au-dessus dans l'ordre du temps ;
+  les traits passent sous les images, la flèche garde le bon moment. Sous les combats d'une séance de la caméra
   finie, « Relancer la découpe » (`POST /session-clips/sessions/{id}/recut`) : la séance repasse à la
   découpe, qui reprend postures et sons gardés avec les règles du jour, sans recouper les combats
   déjà coupés (Seb, 13/11). L'appli Tournage demande ses ordres

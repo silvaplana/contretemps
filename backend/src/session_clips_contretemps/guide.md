@@ -24,7 +24,8 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
   frise des signes »), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
   d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
-  Identifier combattants. La frise est en escalier : un combat par ligne. En bas d'une séance de la
+  Identifier combattants. La frise met chaque signe sur sa propre ligne, le premier en bas,
+  sans jamais d'image sur une autre. En bas d'une séance de la
   caméra, « Relancer la découpe » la refait avec les réglages du jour, sans refilmer.
 - Le « + » en bas à droite filme un combat avec le téléphone : « Garder ce combat ? » Garder ou
   Jeter, puis « Qui combattait ? » : Rouge et Bleu, par les premières lettres du nom ou le micro
