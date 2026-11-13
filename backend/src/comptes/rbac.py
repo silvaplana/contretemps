@@ -98,6 +98,7 @@ ROUTES_PUBLIQUES = {
     ("POST", "/session-clips/recorder/pieces"),
     ("GET", "/session-clips/recorder/pieces/{upload_id}"),
     ("PUT", "/session-clips/recorder/pieces/{upload_id}"),
+    ("PUT", "/session-clips/recorder/image"),
     ("GET", "/par-host/personnalisation"),
     ("GET", "/par-host/entete.html"),
     ("GET", "/par-host/site.webmanifest"),

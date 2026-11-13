@@ -9,6 +9,7 @@ import * as api from './api.js'
 // seulement), ce téléphone filme ; en Télécommande, le bouton envoie l'ordre à
 // la caméra de l'école. Le serveur garde l'ordre : la caméra obéit au dernier.
 
+const IMAGE_MS = 4000
 const RELIRE_MS = 2000 // l’état de la caméra se voit vite sur la télécommande (Seb, 13/11)
 // Le film en tâche de fond de l'appli Tournage (frontend/android, camera/TournagePlugin.kt).
 const Natif = registerPlugin('Tournage')
@@ -116,7 +117,19 @@ function Image({ allumee }) {
         Natif.preview({ on: true }).catch(() => {})
       })
       .catch(() => {})
+    // Une image toutes les 4 s pour la télécommande (Seb, 13/11), envoyée par l'appli.
+    const toile = document.createElement('canvas')
+    const minuteur = setInterval(() => {
+      const v = video.current
+      if (!v?.videoWidth) return
+      toile.width = 640
+      toile.height = Math.round((640 * v.videoHeight) / v.videoWidth)
+      toile.getContext('2d').drawImage(v, 0, 0, toile.width, toile.height)
+      const jpeg = toile.toDataURL('image/jpeg', 0.6).split(',')[1]
+      Natif.frame({ jpeg }).catch(() => {})
+    }, IMAGE_MS)
     return () => {
+      clearInterval(minuteur)
       fini = true
       flux?.getTracks().forEach((t) => t.stop())
       Natif.preview({ on: false }).catch(() => {})
@@ -264,6 +277,12 @@ export default function Tournage({ montrer, rafraichir }) {
     corps = (
       <>
         {etat}
+        {/* Ce que voit la caméra, une image toutes les 4 s (Seb, 13/11). */}
+        {camera?.image && (
+          <div className="sc-image">
+            <img className="sc-image__video" src={camera.image} alt="Ce que voit la caméra" />
+          </div>
+        )}
         {bouton}
         {(!camera || ['none', 'offline'].includes(camera.state)) && (
           <p className="sc-meta">Mettez le téléphone de la salle sur « Caméra », dans l’appli Tournage.</p>

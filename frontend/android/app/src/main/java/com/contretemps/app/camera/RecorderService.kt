@@ -15,6 +15,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.IBinder
 import android.os.PowerManager
+import android.os.SystemClock
 import android.util.Log
 import com.contretemps.app.MainActivity
 import com.contretemps.app.R
@@ -112,6 +113,7 @@ class RecorderService : Service() {
             val orders = api.heartbeat(recorder != null, battery(), folder.usableSpace, uploader.pending().size)
             follow(orders)
             status = status.copy(online = true, error = null)
+            sendImage(api)
         } catch (e: Api.Error) {
             if (e.status == 403) {
                 // Un autre téléphone a été jumelé à la place de celui-ci.
@@ -130,6 +132,23 @@ class RecorderService : Service() {
         // Un envoi coupé (réseau, serveur) reprend ici, même une fois le film arrêté.
         if (status.pending > 0) send()
         handler.postDelayed(tickTask, TICK_MS)
+    }
+
+    /** Ce que voit la caméra, pour la télécommande : une image toutes les 4 s (Seb, 13/11). */
+    private var sentImage: ByteArray? = null
+    private var sentAt = 0L
+
+    private fun sendImage(api: Api) {
+        val img = image ?: return
+        val now = SystemClock.elapsedRealtime()
+        if (img === sentImage || now - sentAt < IMAGE_MS) return
+        try {
+            api.putImage(img)
+            sentImage = img
+            sentAt = now
+        } catch (e: Exception) {
+            Log.w(TAG, "image", e)
+        }
     }
 
     private fun follow(orders: Api.Orders) {
@@ -246,6 +265,7 @@ class RecorderService : Service() {
         // Toutes les secondes (Seb, 13/11 : Filmer depuis une télécommande doit répondre vite ;
         // une petite requête par seconde, le serveur et la batterie suivent).
         private const val TICK_MS = 1_000L
+        private const val IMAGE_MS = 4_000L
         private const val CHANNEL = "tournage"
         private const val NOTIFICATION = 1
 
@@ -257,7 +277,8 @@ class RecorderService : Service() {
         @Volatile var previewing = false
         /** Quitté « Caméra » pendant un envoi : il continue, puis le service s'arrête. */
         @Volatile var finishing = false
-        /** La dernière petite image du film (jpeg), montrée dans Tournage pendant le film. */
+        /** La dernière petite image (jpeg) : du film, ou de l'image de Tournage quand elle
+         *  tient la caméra ; montrée dans Tournage pendant le film et envoyée à la télécommande. */
         @Volatile var image: ByteArray? = null
         /** Demande ses ordres au serveur sans attendre le prochain tour. */
         @Volatile var poke: () -> Unit = {}

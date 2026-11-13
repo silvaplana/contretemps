@@ -355,7 +355,13 @@ flèche ←.
   combattants voient que ça filme). Pendant le film, la caméra est prise par l'enregistrement :
   l'appli en tire une petite image (jpeg 640 px) chaque seconde, montrée dans Tournage à la place
   de l'image noire (`PieceRecorder.snap`, `status.image` ; si le téléphone refuse ce second flux,
-  il filme sans ; Seb, 13/11). La
+  il filme sans ; Seb, 13/11). La télécommande voit ce que voit la caméra : toutes les 4 s, l'appli
+  envoie la dernière petite image (du film, ou de l'aperçu de Tournage quand il tient la caméra :
+  `Tournage.frame`) par `PUT /session-clips/recorder/image` (jeton de la caméra, jpeg ≤ 200 ko,
+  gardée dans `<dossier de l'école>/sparring-camera.jpg`, remplacée à chaque envoi) ; `GET
+  /session-clips/camera` la rend (`image`, data URL) si elle a moins de 20 s (Seb, 13/11). Le volet
+  Montage se relit toutes les 5 s sur tous les téléphones, pour que la découpe se voie aussi sur la
+  caméra. La
   vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.

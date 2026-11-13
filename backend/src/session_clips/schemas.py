@@ -136,6 +136,8 @@ class CameraOut(BaseModel):
     started_at: datetime | None = None
     signal: str
     pairing_code: str | None = None
+    # Ce que voit la caméra, une image toutes les 4 s (Seb, 13/11).
+    image: str | None = None
     pairing_expires_at: datetime | None = None
 
 

@@ -88,7 +88,9 @@ Tournage (coachs) : tout pour filmer la séance.
   continue écran éteint. Remettre sur Éteint
   arrête la caméra.
 - Télécommande : « Caméra de la salle prête · 86 % », « La caméra filme · 00:12:34 » ou « Caméra
-  éteinte », et le même bouton « ● Filmer » / « ■ Arrêter », qui envoie l'ordre à la caméra.
+  éteinte », puis ce que voit la caméra (une image toutes les 4 s, prête ou en train de filmer), et
+  le même bouton « ● Filmer » / « ■ Arrêter », qui envoie l'ordre à la caméra. Le volet Montage se
+  met à jour seul sur tous les téléphones, la caméra comprise.
 - La séance s'appelle « Séance du 12/11 ». Plusieurs télécommandes possibles : la caméra obéit au
   dernier ordre.
 

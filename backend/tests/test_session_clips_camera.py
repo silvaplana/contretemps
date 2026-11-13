@@ -266,3 +266,21 @@ def test_carte_suit_l_envoi(client, e):
     assert (carte["sent_bytes"], carte["size_bytes"]) == (400, 1000)
     client.post("/session-clips/camera/stop", headers=e["coach"])
     assert client.get("/session-clips/sessions", headers=e["coach"]).json()[0]["ended_at"]
+
+
+def test_image_pour_la_telecommande(client, e, tmp_path, monkeypatch):
+    """Seb, 13/11 : la caméra envoie une petite image toutes les 4 s, la
+    télécommande la voit dans l'état de la caméra (récente seulement)."""
+    monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
+    tel = _jumeler(client, e)
+    _battre(client, tel)
+    assert client.get("/session-clips/camera", headers=e["coach"]).json()["image"] is None
+    jpeg = b"\xff\xd8\xff\xe0" + b"x" * 100
+    r = client.put("/session-clips/recorder/image", content=jpeg, headers={**tel, "Content-Type": "image/jpeg"})
+    assert r.status_code == 204, r.text
+    image = client.get("/session-clips/camera", headers=e["coach"]).json()["image"]
+    assert image.startswith("data:image/jpeg;base64,")
+    # Sans jeton, ou trop grosse : refusée.
+    assert client.put("/session-clips/recorder/image", content=jpeg).status_code in (401, 403, 404)
+    trop = b"\xff\xd8" + b"x" * 300_000
+    assert client.put("/session-clips/recorder/image", content=trop, headers=tel).status_code == 400

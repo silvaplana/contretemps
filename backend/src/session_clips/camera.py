@@ -10,6 +10,7 @@ lui envoyer.
 
 from __future__ import annotations
 
+import base64
 import hashlib
 import secrets
 from dataclasses import dataclass
@@ -18,6 +19,8 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from videos.stockage import dossier_ecole
+
 from .models import ClipSession, Piece, Recorder
 from .ports import Member
 from .service import ForbiddenError, NotFoundError, SessionClips, video_name
@@ -25,6 +28,9 @@ from .service import ForbiddenError, NotFoundError, SessionClips, video_name
 PAIRING_MINUTES = 10
 # Sans nouvelles du téléphone depuis 30 s : « Hors service ».
 OFFLINE_AFTER = timedelta(seconds=30)
+# La petite image envoyée par la caméra pour la télécommande (Seb, 13/11).
+IMAGE_MAX = 200_000  # octets
+IMAGE_FRESH = 20.0  # secondes : plus vieille, elle n'est plus montrée
 SIGNALS = ("beep", "light", "both")
 
 
@@ -186,6 +192,7 @@ class CameraStatus:
     signal: str
     pairing_code: str | None
     pairing_expires_at: datetime | None
+    image: str | None = None  # data URL jpeg, récente
 
 
 def status(db: Session, member: Member) -> CameraStatus:
@@ -214,7 +221,33 @@ def status(db: Session, member: Member) -> CameraStatus:
         signal=r.signal if r is not None else "beep",
         pairing_code=r.pairing_code if pending else None,
         pairing_expires_at=r.pairing_expires_at if pending else None,
+        image=_image(member.org_id) if state in ("ready", "recording") else None,
     )
+
+
+def save_image(r: Recorder, data: bytes) -> None:
+    """La petite image de la caméra (jpeg), gardée à part : une seule par
+    école, remplacée à chaque envoi."""
+    if not data.startswith(b"\xff\xd8") or len(data) > IMAGE_MAX:
+        raise ValueError("Image refusée")
+    path = _image_path(r.org_id)
+    tmp = path.with_suffix(".tmp")
+    tmp.write_bytes(data)
+    tmp.replace(path)
+
+
+def _image(org_id: int) -> str | None:
+    path = _image_path(org_id)
+    try:
+        if datetime.now().timestamp() - path.stat().st_mtime > IMAGE_FRESH:
+            return None
+        return "data:image/jpeg;base64," + base64.b64encode(path.read_bytes()).decode()
+    except OSError:
+        return None
+
+
+def _image_path(org_id: int):
+    return dossier_ecole(org_id) / "sparring-camera.jpg"
 
 
 def online(db: Session, org_id: int) -> bool:

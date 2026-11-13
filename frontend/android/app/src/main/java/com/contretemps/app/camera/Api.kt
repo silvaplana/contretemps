@@ -61,6 +61,17 @@ class Api(private val server: String, private val token: String?) {
         return piece(JSONObject(read(connection))).received
     }
 
+    /** La petite image de la caméra, pour la télécommande. */
+    fun putImage(jpeg: ByteArray) {
+        val connection = open("PUT", "/session-clips/recorder/image")
+        connection.setRequestProperty("Content-Type", "image/jpeg")
+        connection.setFixedLengthStreamingMode(jpeg.size)
+        connection.doOutput = true
+        connection.outputStream.use { it.write(jpeg) }
+        val status = connection.responseCode
+        if (status !in 200..299) throw Error(status, read(connection, error = true))
+    }
+
     private fun piece(json: JSONObject) = PieceState(json.getString("upload_id"), json.getLong("received"))
 
     private fun call(method: String, path: String, body: JSONObject): JSONObject {
