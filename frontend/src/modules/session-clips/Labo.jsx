@@ -497,6 +497,18 @@ export function ParametresTournage({ montrer, onBack }) {
       {reglages && (
         <div className="sc__corps">
           <ReglagesDecoupe reglages={reglages} setReglages={setReglages} />
+          {/* La frise dans une séance ouverte, cochée au départ (Seb, 13/11). */}
+          <label className="sc-coche">
+            <input
+              type="checkbox"
+              checked={reglages.show_timeline !== false}
+              onChange={(ev) => setReglages((r) => ({ ...r, show_timeline: ev.target.checked }))}
+            />
+            <span>
+              Montrer la frise des signes
+              <small>Dans une séance ouverte, les signes repérés dans le temps</small>
+            </span>
+          </label>
           <button type="button" className="btn btn--primary sc-bouton" disabled={!change || enCours} onClick={enregistrer}>
             Enregistrer
           </button>
@@ -639,7 +651,7 @@ function useCadre(lecteur, combats) {
 // Le graphe : vert = début de combat, rouge = fin, gris pointillé = signe
 // décoché ; la bande sur l'axe = un combat coupé. Toucher une flèche place
 // la vidéo à ce moment.
-function Graphe({ signes, combats, coches, fin, aller }) {
+export function Graphe({ signes, combats, coches, fin, aller }) {
   const W = 320
   const H = 300
   const L = 14

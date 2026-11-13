@@ -37,6 +37,7 @@ class RecorderService : Service() {
     private val sender = Executors.newSingleThreadExecutor()
     private val sending = AtomicBoolean(false)
     private var wakeLock: PowerManager.WakeLock? = null
+    private val tickTask = Runnable { tick() }
     private var recorder: PieceRecorder? = null
     private var recordingSession: Int? = null
 
@@ -58,12 +59,18 @@ class RecorderService : Service() {
         running = true
         finishing = false
         handler.removeCallbacksAndMessages(null)
-        handler.post(::tick)
+        handler.post(tickTask)
+        // Filmer / Arrêter sur ce téléphone : il demande ses ordres tout de suite (Seb, 13/11).
+        poke = {
+            handler.removeCallbacks(tickTask)
+            handler.post(tickTask)
+        }
         return START_STICKY
     }
 
     override fun onDestroy() {
         running = false
+        poke = {}
         handler.removeCallbacksAndMessages(null)
         handler.post {
             recorder?.stop(last = false)
@@ -79,6 +86,7 @@ class RecorderService : Service() {
 
     /** Toutes les 5 s, sur le fil de la caméra. */
     private fun tick() {
+        handler.removeCallbacks(tickTask) // un tour en double (poke) n'en fait pas deux chaînes
         val token = prefs.token
         if (token == null) {
             stopSelf()
@@ -95,7 +103,7 @@ class RecorderService : Service() {
                 return
             }
             send()
-            handler.postDelayed(::tick, TICK_MS)
+            handler.postDelayed(tickTask, TICK_MS)
             return
         }
         try {
@@ -119,7 +127,7 @@ class RecorderService : Service() {
         status = status.copy(pending = uploader.pending().size)
         // Un envoi coupé (réseau, serveur) reprend ici, même une fois le film arrêté.
         if (status.pending > 0) send()
-        handler.postDelayed(::tick, TICK_MS)
+        handler.postDelayed(tickTask, TICK_MS)
     }
 
     private fun follow(orders: Api.Orders) {
@@ -220,7 +228,8 @@ class RecorderService : Service() {
 
     companion object {
         private const val TAG = "RecorderService"
-        private const val TICK_MS = 5_000L
+        // Toutes les 2 s (Seb, 13/11 : Filmer depuis une télécommande doit répondre vite).
+        private const val TICK_MS = 2_000L
         private const val CHANNEL = "tournage"
         private const val NOTIFICATION = 1
 
@@ -232,6 +241,8 @@ class RecorderService : Service() {
         @Volatile var previewing = false
         /** Quitté « Caméra » pendant un envoi : il continue, puis le service s'arrête. */
         @Volatile var finishing = false
+        /** Demande ses ordres au serveur sans attendre le prochain tour. */
+        @Volatile var poke: () -> Unit = {}
 
         fun start(context: Context) = context.startForegroundService(Intent(context, RecorderService::class.java))
     }

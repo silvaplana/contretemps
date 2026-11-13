@@ -74,6 +74,13 @@ class TournagePlugin : Plugin() {
         call.resolve()
     }
 
+    /** Filmer / Arrêter vient d'être touché sur ce téléphone : pas d'attente. */
+    @PluginMethod
+    fun poke(call: PluginCall) {
+        RecorderService.poke()
+        call.resolve()
+    }
+
     @PluginMethod
     fun status(call: PluginCall) {
         val s = RecorderService.status

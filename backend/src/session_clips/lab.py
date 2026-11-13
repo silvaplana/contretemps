@@ -45,6 +45,7 @@ class Settings:
     framing: str = "wide"
     start_skip: float = 0.0
     end_skip: float = 0.0
+    show_timeline: bool = True  # tournage seulement : la frise dans une séance ouverte
 
 
 def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
@@ -59,6 +60,7 @@ def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
         framing=row.framing or "wide",
         start_skip=row.start_skip or 0.0,
         end_skip=row.end_skip or 0.0,
+        show_timeline=getattr(row, "show_timeline", True) is not False,
     )
 
 
@@ -77,6 +79,8 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
     row.framing = new.framing
     row.start_skip = new.start_skip
     row.end_skip = new.end_skip
+    if model is ClubSigns:
+        row.show_timeline = new.show_timeline
     db.add(row)
     db.commit()
     return settings(db, member.org_id, lab)

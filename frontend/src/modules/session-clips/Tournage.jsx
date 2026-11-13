@@ -167,6 +167,8 @@ export default function Tournage({ montrer, rafraichir }) {
     setEnCours(true)
     try {
       setCamera(await (filme ? api.arreterCamera() : api.demarrerCamera(titreDuJour())))
+      // Ce téléphone est la caméra : il prend l'ordre tout de suite (Seb, 13/11).
+      if (role === 'cam' && DANS_L_APPLI) Natif.poke().catch(() => {})
       rafraichir()
     } catch (e) {
       montrer(e.message)

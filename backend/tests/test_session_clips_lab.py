@@ -91,7 +91,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert combat["frame"] is None  # plan large
 
     # Cadrage serré, 1 s retirée au début et 2 s à la fin (Seb, 12/11).
-    reglages = {"signs": ["fists_touch", "x"], "framing": "tight", "start_skip": 1, "end_skip": 2}
+    reglages = {"signs": ["fists_touch", "x"], "framing": "tight", "start_skip": 1, "end_skip": 2, "show_timeline": True}
     assert client.put("/session-clips/lab/signs", json=reglages, headers=e["coach"]).json() == reglages
     [serre] = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["fights"]
     assert serre["start"] == pytest.approx(combat["start"] + 1) and serre["end"] == pytest.approx(combat["end"] - 2)
@@ -101,6 +101,10 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert client.put("/session-clips/lab/signs", json={**reglages, "framing": "zoom"}, headers=e["coach"]).status_code == 400
     assert client.put("/session-clips/lab/signs", json={**reglages, "end_skip": 60}, headers=e["coach"]).status_code == 400
     assert client.put("/session-clips/lab/signs", json={"signs": ["salto"]}, headers=e["coach"]).status_code == 400
+    # La frise des séances, cochée par défaut, se décoche dans Paramètres de tournage (Seb, 13/11).
+    assert client.get("/session-clips/signs", headers=e["coach"]).json()["show_timeline"] is True
+    r = client.put("/session-clips/signs", json={"signs": ["go"], "show_timeline": False}, headers=e["coach"])
+    assert r.json()["show_timeline"] is False
 
     # Le crayon : renommer l'essai.
     r = client.patch(f"/session-clips/lab/{essai['id']}", json={"title": " Jo contre Jac "}, headers=e["coach"])

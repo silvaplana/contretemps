@@ -331,7 +331,12 @@ flèche ←.
   en cours, « Découpe : X % », ou « Caméra éteinte : rouvrez Tournage » si rien n'est arrivé et que
   le téléphone ne répond plus depuis 30 s), puis toujours début → fin (`sc_sessions.ended_at`,
   posé par Arrêter) ; la liste se relit toutes les 5 s tant qu'une séance filme ou se traite
-  (Seb, 13/11). La
+  (Seb, 13/11). Une séance ouverte montre en tête la frise des signes repérés (comme un essai du
+  Labo : `sc_sessions.signs`, rempli par la découpe avec une image par signe, et `start_seconds` de
+  chaque combat), si la case « Montrer la frise des signes » des Paramètres de tournage est cochée
+  (`sc_club_signs.show_timeline`, vrai par défaut ; Seb, 13/11). L'appli Tournage demande ses ordres
+  toutes les 2 s (au lieu de 5), et tout de suite après Filmer / Arrêter touché sur elle-même
+  (`Tournage.poke`). La
   vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
