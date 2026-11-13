@@ -23,10 +23,10 @@ from db import get_db
 from .instagram import InstagramError, InstagramRelay
 from .links import LinkError
 from .models import Blog, Category, Post
-from .publications import InvalidBlog, InvalidMedia, Publications, can_publish, can_read, on_top
+from .publications import EMOJIS, InvalidBlog, InvalidMedia, Publications, can_publish, can_read, on_top
 from .schemas import (
     BlogChange, BlogIn, BlogOut, CategoryIn, CategoryOut, CategoryRef, DocumentOut, FeedOut, InstagramIn,
-    InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, PersonOut, PhotoOut, PostIn, PostOut, SettingsIn, SettingsOut, SignerIn, VideoIn,
+    InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, PersonOut, PhotoOut, PostIn, PostOut, ReactionIn, ReactionOut, SettingsIn, SettingsOut, SignerIn, VideoIn,
 )
 
 BASE = "/ecoles/{ecole_id}/publications/blogs"
@@ -53,6 +53,7 @@ def _out(client: Publications, db: Session, blog: Blog, post: Post, seen=None, m
         ],
         document=DocumentOut(id=document.id, name=document.name) if document else None,
         title=post.title if blog.with_categories else None, categories=categories,
+        reactions=[ReactionOut(name=r.name, emoji=r.emoji, mine=r.member_id == me) for r in post.reactions],
     )
 
 
@@ -88,6 +89,7 @@ class PublicationsReceiver:
         app.get("/news/instagram/return")(self.instagram_return)
         app.put(POST, response_model=PostOut)(self.update)
         app.post(POST + "/unpublish", response_model=PostOut)(self.unpublish)
+        app.put(POST + "/reaction", response_model=PostOut)(self.react)
         app.delete(POST, status_code=204)(self.delete)
         app.get(POST + "/photos/{sha}")(self.photo)
 
@@ -186,6 +188,17 @@ class PublicationsReceiver:
         blog = self._publisher(db, appelant, ecole_id, blog_id)
         post = self._post(db, blog, post_id)
         return _out(self.client, db, blog, self._save(db, blog, appelant, post, data))
+
+    def react(self, ecole_id: int, blog_id: int, post_id: int, data: ReactionIn, db: Session = Depends(get_db),
+              appelant: Compte = Depends(rbac.compte_appelant)):
+        """Everyone who reads the blog reacts to a published post."""
+        blog = self._reader(db, appelant, ecole_id, blog_id)
+        post = self._post(db, blog, post_id)
+        if appelant is None or post.published_at is None:
+            raise HTTPException(status_code=404, detail="Publication introuvable")
+        if data.emoji is not None and data.emoji not in EMOJIS:
+            raise HTTPException(status_code=400, detail="Emoji inconnu")
+        return _out(self.client, db, blog, self.client.react(db, post, appelant, data.emoji), me=appelant.id)
 
     def unpublish(self, ecole_id: int, blog_id: int, post_id: int, db: Session = Depends(get_db),
                   appelant: Compte = Depends(rbac.compte_appelant)):

@@ -741,3 +741,29 @@ def test_instagram_signe_par_un_membre_choisi(client, db_session, e, en_tant_que
     actu = db_session.query(Post).filter_by(org_id=eid, instagram_id="z").one()
     # Signé Zoé ; le brouillon reste à qui a relié le compte.
     assert actu.author_name == "Zoé" and actu.author_id == e["seb"].id
+
+
+def test_reactions_un_emoji_par_personne(client, db_session, e, en_tant_que):
+    """Seb, 13 novembre (maquette spec/maquettes/actualites-reactions.html) :
+    chacun réagit à une actu par un emoji, un seul par personne."""
+    eid = e["ecole"].id
+    en_tant_que(e["seb"])
+    actu = _publier(client, eid, "Gala")
+    url = f"{_blog(eid)}/posts/{actu['id']}/reaction"
+    assert actu["reactions"] == []
+    en_tant_que(e["zoe"])  # une élève, qui ne publie pas
+    assert client.put(url, json={"emoji": "🍕"}).status_code == 400  # hors des six
+    assert client.put(url, json={"emoji": "❤️"}).json()["reactions"] == [{"name": "Zoé", "emoji": "❤️", "mine": True}]
+    # Un autre emoji remplace le premier.
+    client.put(url, json={"emoji": "👏"})
+    en_tant_que(e["seb"])
+    client.put(url, json={"emoji": "🔥"})
+    fil = client.get(_blog(eid)).json()["items"]
+    assert fil[0]["reactions"] == [{"name": "Zoé", "emoji": "👏", "mine": False}, {"name": "Seb", "emoji": "🔥", "mine": True}]
+    # Retirer la sienne.
+    assert client.put(url, json={"emoji": None}).json()["reactions"] == [{"name": "Zoé", "emoji": "👏", "mine": False}]
+    # Une autre école n'y touche pas ; une actu supprimée emporte ses réactions.
+    en_tant_que(e["voisin"])
+    assert client.put(url, json={"emoji": "❤️"}).status_code in (403, 404)
+    en_tant_que(e["seb"])
+    assert client.delete(f"{_blog(eid)}/posts/{actu['id']}").status_code == 204

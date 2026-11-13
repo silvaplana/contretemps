@@ -29,7 +29,7 @@ from videos import Videos
 from videos.models import Video
 
 from . import links
-from .models import BRIEF, ICONS, IMPORTANT, NORMAL, Blog, Category, InstagramLink, Post, PostMedia, Seen
+from .models import BRIEF, ICONS, IMPORTANT, NORMAL, Blog, Category, InstagramLink, Post, PostMedia, Reaction, Seen
 from .storage import DISPLAY_SIZE
 
 logger = logging.getLogger(__name__)
@@ -92,6 +92,10 @@ def can_read(compte: Compte | None, blog: Blog) -> bool:
 def on_top(post: Post, blog: Blog, today: date) -> bool:
     return (blog.with_levels and post.level == IMPORTANT and post.on_top_until is not None
             and post.on_top_until >= today)
+
+
+# The six emojis one can react with (Seb, 13 November).
+EMOJIS = ("❤️", "👏", "😂", "😮", "😢", "🔥")
 
 
 class InvalidMedia(ValueError):
@@ -470,6 +474,18 @@ class Publications:
         db.refresh(post)
         if newly_published and notify and post.notified_at is None:
             self._schedule(post.id)
+        return post
+
+    def react(self, db: Session, post: Post, member: Compte, emoji: str | None) -> Post:
+        """One emoji per person: a new one replaces theirs, None removes it."""
+        mine = next((r for r in post.reactions if r.member_id == member.id), None)
+        if mine is not None:
+            post.reactions.remove(mine)
+            db.flush()
+        if emoji:
+            post.reactions.append(Reaction(member_id=member.id, name=member.prenom, emoji=emoji))
+        db.commit()
+        db.refresh(post)
         return post
 
     def unpublish(self, db: Session, post: Post) -> Post:

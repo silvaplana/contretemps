@@ -89,6 +89,22 @@ class Post(Base):
     media: Mapped[list[PostMedia]] = relationship(
         order_by="PostMedia.position", cascade="all, delete-orphan", lazy="selectin",
     )
+    reactions: Mapped[list[Reaction]] = relationship(
+        order_by="Reaction.created_at", cascade="all, delete-orphan", lazy="selectin",
+    )
+
+
+class Reaction(Base):
+    """One member's emoji on a post (Seb, 13 November): one per person; the
+    first name is kept, like the author's."""
+
+    __tablename__ = "pub_reactions"
+
+    post_id: Mapped[int] = mapped_column(ForeignKey("pub_posts.id"), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    emoji: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
 
 
 class PostMedia(Base):

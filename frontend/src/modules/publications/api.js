@@ -31,6 +31,7 @@ export function versEcran(n) {
     enHaut: n.on_top,
     notifier: n.notify,
     auteur: n.author_name,
+    reactions: n.reactions ?? [], // [{ name, emoji, mine }], une par personne
     publieeLe: n.published_at ? new Date(`${n.published_at}Z`) : null,
     modifieeLe: new Date(`${n.updated_at}Z`),
     nouveau: n.is_new,
@@ -150,6 +151,9 @@ export async function enregistrer(lieu, actu) {
   return versEcran(r)
 }
 
+// Réagir par un emoji (Seb, 13 novembre) ; null retire la sienne.
+export const reagir = async (lieu, id, emoji) =>
+  versEcran(await appel(`${blog(lieu)}/posts/${id}/reaction`, json('PUT', { emoji })))
 export const depublier = (lieu, id) => appel(`${blog(lieu)}/posts/${id}/unpublish`, { method: 'POST' })
 export const supprimer = (lieu, id) => appel(`${blog(lieu)}/posts/${id}`, { method: 'DELETE' })
 

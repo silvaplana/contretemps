@@ -61,6 +61,16 @@ class CategoryRef(BaseModel):
     name: str
 
 
+class ReactionOut(BaseModel):
+    name: str
+    emoji: str
+    mine: bool = False
+
+
+class ReactionIn(BaseModel):
+    emoji: str | None = None  # None: remove mine
+
+
 class PostOut(BaseModel):
     id: int
     level: str
@@ -77,6 +87,8 @@ class PostOut(BaseModel):
     # Blog with categories: its name, its category, then its sub-category.
     title: str | None = None
     categories: list[CategoryRef] = []
+    # One per person, the oldest first (Seb, 13 November).
+    reactions: list[ReactionOut] = []
 
 
 class PhotoOut(BaseModel):
