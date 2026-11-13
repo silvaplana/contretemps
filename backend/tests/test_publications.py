@@ -711,3 +711,33 @@ def test_instagram_retour_sans_session(client):
     « session expirée ») : la route est publique, protégée par le state."""
     retour = client.get("/news/instagram/return", params={"code": "abc", "state": "inconnu"}, follow_redirects=False)
     assert retour.status_code == 303 and retour.headers["location"].endswith("/?instagram=erreur")
+
+
+def test_instagram_signe_par_un_membre_choisi(client, db_session, e, en_tant_que, photos, faux_instagram):
+    """Seb, 13 novembre : les posts relayés étaient signés de qui a relié le
+    compte ; il choisit parmi les membres de l'école le nom qui les signe."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.main import core
+    from publications.models import InstagramLink
+
+    eid = e["ecole"].id
+    url = f"{_blog(eid)}/instagram"
+    en_tant_que(e["seb"])
+    client.put(url, json={"token": "IGAA" + "x" * 40})
+    assert client.get(url).json()["signer_id"] == e["seb"].id
+    # Les membres de l'école, pas ceux des voisins.
+    noms = [p["name"] for p in client.get(f"{url}/signers").json()]
+    assert "Zoé Martin" in noms and "Seb Richard" in noms and "Ana Roux" not in noms
+    assert client.put(f"{url}/signer", json={"member_id": e["voisin"].id}).status_code == 404
+    assert client.put(f"{url}/signer", json={"member_id": e["zoe"].id}).json()["signer_id"] == e["zoe"].id
+
+    lien = db_session.get(InstagramLink, eid)
+    db_session.refresh(lien)
+    lien.linked_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    db_session.commit()
+    faux_instagram["posts"] = [_post("z", datetime.now(timezone.utc), media_type="IMAGE", media_url="https://cdn/z.jpg")]
+    assert core.publications_instagram.sync(db_session, lien) == 1
+    actu = db_session.query(Post).filter_by(org_id=eid, instagram_id="z").one()
+    # Signé Zoé ; le brouillon reste à qui a relié le compte.
+    assert actu.author_name == "Zoé" and actu.author_id == e["seb"].id

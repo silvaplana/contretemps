@@ -429,8 +429,10 @@ function Instagram({ lieu, nom, montrer }) {
   })
   const [hashtag, setHashtag] = useState('')
   const [choix, setChoix] = useState('tous') // tous | hashtag | un_par_un
+  const [membres, setMembres] = useState([])
   useEffect(() => {
     api.lireInstagram(lieu).then(setEtat, (e) => setErreur(e.message))
+    api.lireSignatairesInstagram(lieu).then(setMembres, () => {})
     api.lireTriInstagram(lieu).then((t) => {
       setHashtag(t.hashtag)
       setChoix(!t.publier ? 'un_par_un' : t.hashtag ? 'hashtag' : 'tous')
@@ -535,6 +537,20 @@ function Instagram({ lieu, nom, montrer }) {
           <p>
             Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans {nom} en 5 minutes au plus.
           </p>
+          {/* Seb, 13 novembre : le prénom du membre choisi signe les posts reçus. */}
+          <label className="parametres__signe">
+            Signé par
+            <select
+              className="editeur__texte"
+              value={etat.signataire ?? ''}
+              disabled={envoi}
+              onChange={(e) => agir(() => api.changerSignataireInstagram(lieu, Number(e.target.value)))}
+            >
+              {membres.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </label>
           {champHashtag}
           {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={arreter}>

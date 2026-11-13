@@ -47,7 +47,8 @@ Paramètres de <blog> (menu ⋯ › « Paramètres de <blog> » ; la flèche ←
   nouveaux posts arrivent dans ce blog en 5 minutes au plus. Si le bouton n'y est pas : coller la clé
   d'accès du compte, puis « Relier ». Au-dessus du bouton, « Quels posts Instagram mettre dans
   <blog> ? » : « Tous mes posts » ; « Seulement ceux avec un hashtag » (un champ #) ; « Je les choisis
-  un par un » (ils arrivent en brouillon). « Ne plus recevoir les posts de @compte » arrête le relais, avec « Annuler »
+  un par un » (ils arrivent en brouillon). Sous « Relié à @compte », « Signé par » : le membre de
+  l'école dont le prénom signe les posts reçus. « Ne plus recevoir les posts de @compte » arrête le relais, avec « Annuler »
   pendant 10 s. Relié dans un autre blog : le texte dit lequel, l'arrêter là-bas d'abord.
 
 Nouvelle publication / Modifier

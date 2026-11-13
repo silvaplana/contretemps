@@ -146,6 +146,10 @@ class InstagramLink(Base):
     # Who linked it: the posts are signed with this first name.
     linked_by: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True)
     linked_by_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    # Seb, 13 November: the member chosen to sign the posts instead (none:
+    # whoever linked it).
+    signed_by: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True)
+    signed_by_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
     # Only posts published after this come in, not the whole history.
     linked_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     token_refreshed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

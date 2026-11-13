@@ -163,6 +163,15 @@ class InstagramIn(BaseModel):
     token: str = Field(min_length=20, max_length=1000)
 
 
+class SignerIn(BaseModel):
+    member_id: int
+
+
+class PersonOut(BaseModel):
+    id: int
+    name: str
+
+
 class LoginOut(BaseModel):
     url: str
 
@@ -174,4 +183,6 @@ class InstagramOut(BaseModel):
     elsewhere: str | None = None
     last_sync_at: datetime | None = None
     last_error: str | None = None
+    # The member whose first name signs the relayed posts.
+    signer_id: int | None = None
     can_sign_in: bool = False  # « Se connecter avec Instagram » (Meta app on the server)

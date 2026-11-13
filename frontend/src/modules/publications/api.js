@@ -223,6 +223,7 @@ const versInstagram = (r) => ({
   erreur: r.last_error,
   peutSeConnecter: r.can_sign_in,
   ailleurs: r.elsewhere,
+  signataire: r.signer_id,
 })
 export const lireInstagram = async (lieu) => versInstagram(await appel(`${blog(lieu)}/instagram`))
 export const relierInstagram = async (lieu, cle) => versInstagram(await appel(`${blog(lieu)}/instagram`, json('PUT', { token: cle })))
@@ -232,4 +233,9 @@ export const connexionInstagram = async (lieu) => (await appel(`${blog(lieu)}/in
 // « Les publier tout de suite » : sinon, ils arrivent en brouillon.
 export const lireTriInstagram = async (lieu) => versReglages(await appel(`${blog(lieu)}/settings`))
 export const changerTriInstagram = async (lieu, changement) => versReglages(await changerReglage(lieu, changement))
+// « Signé par » (Seb, 13 novembre) : un membre de l'école, dont le prénom
+// signe les posts reçus.
+export const lireSignatairesInstagram = (lieu) => appel(`${blog(lieu)}/instagram/signers`)
+export const changerSignataireInstagram = async (lieu, membreId) =>
+  versInstagram(await appel(`${blog(lieu)}/instagram/signer`, json('PUT', { member_id: membreId })))
 export const delierInstagram = async (lieu) => versInstagram(await appel(`${blog(lieu)}/instagram`, { method: 'DELETE' }))

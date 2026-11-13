@@ -186,6 +186,10 @@ seuls dans les actus, sans rien ressaisir.
   chaque semaine) est gardée chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). Le bouton
   « Ne plus recevoir les posts de @compte » (Seb, 13 novembre : « Délier » n'était pas clair) l'oublie
   au bout de 10 s, « Annuler » d'ici là ; les actus déjà relayées restent.
+- **Signé par** (Seb, 13 novembre) : sous « Relié à @compte », une liste des membres de l'école (saison
+  affichée) ; le prénom choisi signe les posts reçus ensuite (par défaut, qui a relié le compte). Les
+  brouillons restent visibles de qui a relié le compte. Colonnes `pub_instagram.signed_by`,
+  `signed_by_name`.
 - **L'appli Meta** (une fois, sur un ordinateur ; faite le 11 novembre 2026 avec le compte Meta de
   Jacqueline, appli « Contretemps Actus », portefeuille business « Ecole de danse Contretemps », non
   vérifié) : developers.facebook.com › Créer une application › cas d'utilisation « Gérer les messages et

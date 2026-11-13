@@ -622,6 +622,15 @@
 .parametres__cle {
   min-height: 48px;
 }
+.parametres__signe {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.parametres__signe select {
+  min-height: 48px;
+  font-size: 17px;
+}
 .parametres__erreur {
   margin: 0;
   color: var(--actus-rouge);
