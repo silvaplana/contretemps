@@ -29,7 +29,10 @@ from videos import Videos
 from videos.models import Video
 
 from . import links
-from .models import BRIEF, ICONS, IMPORTANT, NORMAL, Blog, Category, InstagramLink, Post, PostMedia, Reaction, Seen
+from .models import (
+    BRIEF, ICONS, IMPORTANT, NORMAL, Blog, Category, InstagramLink, Poll, PollOption, PollVote, Post, PostMedia,
+    Reaction, Seen,
+)
 from .storage import DISPLAY_SIZE
 
 logger = logging.getLogger(__name__)
@@ -105,6 +108,20 @@ class InvalidMedia(ValueError):
 class InvalidBlog(ValueError):
     """A blog name, category or change that is refused."""
 
+
+
+def _checked_poll(poll: dict | None) -> dict | None:
+    """A poll's question and 2 to 10 distinct answers, trimmed. Raises
+    InvalidMedia."""
+    if poll is None:
+        return None
+    question = " ".join(poll.get("question", "").split())
+    options = list(dict.fromkeys(" ".join(o.split())[:100] for o in poll.get("options", []) if o.strip()))
+    if not question:
+        raise InvalidMedia("Écrivez la question du sondage")
+    if not 2 <= len(options) <= 10:
+        raise InvalidMedia("Un sondage a de 2 à 10 réponses")
+    return {"question": question[:200], "multiple": bool(poll.get("multiple")), "options": options}
 
 class Publications:
     def __init__(self, notifications, storage: LocalStorage, videos: Videos, session_factory=None,
@@ -421,7 +438,7 @@ class Publications:
     def save(self, db: Session, blog: Blog, author: Compte | None, post: Post | None, *,
              level: str, body: str, on_top_until: date | None, notify: bool, publish: bool,
              media: list[dict] | None = None, document_id: int | None = None, title: str | None = None,
-             category: str | None = None, subcategory: str | None = None) -> Post:
+             category: str | None = None, subcategory: str | None = None, poll: dict | None = None) -> Post:
         """Creates (`post=None`) or changes a post. `media`: its photos and
         videos in order, each {"photo": sha}, {"video_id": id} or
         {"link": url, "title": …, "photo": sha of its picture}. `publish`
@@ -436,7 +453,10 @@ class Publications:
         media = [] if level == BRIEF or media is None else media
         if level == BRIEF:
             document_id = None
-        if not body.strip() and not media and not document_id:
+        if level == BRIEF:
+            poll = None
+        poll = _checked_poll(poll)
+        if not body.strip() and not media and not document_id and not poll:
             # Seb, 10 November: a photo alone is a post; nothing at all is not.
             raise InvalidMedia("Écrivez un texte ou ajoutez une photo, une vidéo, un lien ou un document")
         if blog.with_categories and not (title or "").strip():
@@ -462,6 +482,7 @@ class Publications:
             for i, m in enumerate(media)
         ]
         post.document_id = document_id
+        self._set_poll(post, poll)
         newly_published = publish and post.published_at is None
         if publish and post.published_at is None:
             post.published_at = _now()
@@ -484,6 +505,40 @@ class Publications:
             db.flush()
         if emoji:
             post.reactions.append(Reaction(member_id=member.id, name=member.prenom, emoji=emoji))
+        db.commit()
+        db.refresh(post)
+        return post
+
+    def _set_poll(self, post: Post, poll: dict | None) -> None:
+        """Answers kept by label keep their votes when a poll is changed."""
+        if poll is None:
+            post.poll = None
+            return
+        if post.poll is None:
+            post.poll = Poll()
+        post.poll.question = poll["question"]
+        post.poll.multiple = poll["multiple"]
+        kept = {o.label: o for o in post.poll.options}
+        options = []
+        for i, label in enumerate(poll["options"]):
+            option = kept.get(label) or PollOption(label=label)
+            option.position = i
+            options.append(option)
+        post.poll.options = options
+
+    def vote(self, db: Session, post: Post, member: Compte, option_ids: list[int]) -> Post:
+        """Replaces the member's answers (empty: none). Raises InvalidMedia
+        for an answer of another poll, or several on a one-answer poll."""
+        options = {o.id: o for o in post.poll.options} if post.poll else {}
+        if any(i not in options for i in option_ids):
+            raise InvalidMedia("Réponse inconnue")
+        if len(set(option_ids)) > 1 and not post.poll.multiple:
+            raise InvalidMedia("Une seule réponse")
+        for option in options.values():
+            option.votes = [v for v in option.votes if v.member_id != member.id]
+        db.flush()
+        for i in dict.fromkeys(option_ids):
+            options[i].votes.append(PollVote(member_id=member.id, name=member.prenom))
         db.commit()
         db.refresh(post)
         return post

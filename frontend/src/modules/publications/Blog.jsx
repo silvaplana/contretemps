@@ -14,6 +14,7 @@ import * as sessionApi from '../../api/session.js'
 import * as partage from './partage.js'
 import * as api from './api.js'
 import Categories, { ChoixCategorie } from './Categories.jsx'
+import { EditeurSondage, Sondage, manqueSondage, sondageEnApercu, sondageVide } from './Sondage.jsx'
 import './publications.css'
 
 // Un blog du module Publications : Actus, Techniques… (spec/modules/
@@ -78,6 +79,12 @@ const IconeLien = () => (
     <path d="M14 10a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1" />
   </svg>
 )
+const IconeSondage = ({ taille = 20 }) => (
+  <svg viewBox="0 0 24 24" width={taille} height={taille} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M4 6h10M4 12h16M4 18h7" />
+  </svg>
+)
+
 const IconeFichier = ({ taille = 20 }) => (
   <svg viewBox="0 0 24 24" width={taille} height={taille} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
@@ -294,6 +301,10 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
     </div>
   )
   const reactions = avecReactions && actu.publieeLe && actu.reactions && <Reactions actu={actu} lieu={lieu} />
+  // On vote sur une publication publiée, pas dans l'aperçu de l'éditeur.
+  const sondage = actu.sondage && (
+    <Sondage key={`${actu.id}-${actu.modifieeLe?.getTime?.() ?? ''}`} sondage={actu.sondage} lieu={avecReactions && actu.publieeLe ? lieu : null} actuId={actu.id} />
+  )
   // Le crayon, pour qui publie : on modifie l'actu là où on la voit (§12.5).
   const crayon = onModifier && (
     <button type="button" className="actu__crayon" aria-label="Modifier l’actu" onClick={() => onModifier(actu)}>
@@ -303,7 +314,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
   // Une actu peut n'être qu'une photo, une vidéo, un lien ou un document
   // (Seb, 10 novembre) : pas de ligne de texte vide. « … » seulement pour
   // une actu encore vide dans l'éditeur.
-  const sansTexte = !actu.texte && (actu.media?.length > 0 || Boolean(actu.document))
+  const sansTexte = !actu.texte && (actu.media?.length > 0 || Boolean(actu.document) || Boolean(actu.sondage))
   // Blog avec catégories (§12.6) : le nom en titre, la catégorie en petit
   // dessous (pas de pastille : trop de place, Seb 12/11), qui ouvre cette
   // catégorie. Pas répétée dans l'onglet Catégories : le chemin est en haut.
@@ -353,6 +364,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
         {mediaEnHaut && <Media lieu={lieu} actu={actu} />}
         {texte}
         {!mediaEnHaut && <Media lieu={lieu} actu={actu} />}
+        {sondage}
         <Document document={actu.document} />
         {signature}
         {reactions}
@@ -367,6 +379,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
       {texte && <div className="actu__corps">{texte}</div>}
       {!mediaEnHaut && <Media lieu={lieu} actu={actu} />}
       <div className="actu__corps">
+        {sondage}
         <Document document={actu.document} />
         {signature}
         {reactions}
@@ -733,7 +746,14 @@ function ChoixDocument({ ecoleId, onChoisir, onFermer }) {
 
 function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistrer, onSupprimer }) {
   // Chaque photo ou vidéo a une clé, pour la retirer.
-  const [brouillon, setBrouillon] = useState(() => ({ ...actu, media: actu.media.map((m, i) => ({ ...m, cle: `e${i}` })) }))
+  const [brouillon, setBrouillon] = useState(() => ({
+    ...actu,
+    media: actu.media.map((m, i) => ({ ...m, cle: `e${i}` })),
+    // Le sondage se modifie en texte : la question et ses réponses.
+    sondage: actu.sondage
+      ? { question: actu.sondage.question, plusieurs: actu.sondage.plusieurs, reponses: actu.sondage.options.map((o) => o.libelle) }
+      : null,
+  }))
   const [envoi, setEnvoi] = useState(false)
   const [photoEnvoi, setPhotoEnvoi] = useState(0) // photos en cours d'envoi
   const numero = useRef(0)
@@ -779,9 +799,11 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
         ? 'Choisissez une catégorie'
         : !brouillon.texte.trim() && brouillon.niveau === 'brief'
           ? 'Écrivez le texte de la brève'
-          : !brouillon.texte.trim() && !brouillon.media.length && !brouillon.document && !lienEnAttente
-            ? 'Écrivez un texte ou ajoutez une photo, une vidéo, un lien ou un document'
-            : ''
+          : brouillon.niveau !== 'brief' && manqueSondage(brouillon.sondage)
+            ? manqueSondage(brouillon.sondage)
+            : !brouillon.texte.trim() && !brouillon.media.length && !brouillon.document && !lienEnAttente && !brouillon.sondage
+              ? 'Écrivez un texte ou ajoutez une photo, une vidéo, un lien, un document ou un sondage'
+              : ''
   const vide = Boolean(manque)
   const publiee = Boolean(actu.publieeLe)
   const aide = NIVEAUX.find((n) => n.cle === brouillon.niveau).aide
@@ -994,6 +1016,15 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
               <IconeFichier />
               Document
             </button>
+            <button
+              type="button"
+              className="editeur__ajout-sondage"
+              aria-pressed={Boolean(brouillon.sondage)}
+              onClick={() => changer({ sondage: brouillon.sondage ? null : sondageVide() })}
+            >
+              <IconeSondage />
+              Sondage
+            </button>
             <input ref={champPhoto} type="file" accept="image/*" multiple hidden onChange={(e) => (choisirPhotos(e.target.files), (e.target.value = ''))} />
             <input ref={champVideo} type="file" accept="video/*" hidden onChange={(e) => (choisirVideo(e.target.files[0]), (e.target.value = ''))} />
           </div>
@@ -1053,6 +1084,9 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
             <small>Plus rapide, avec l'appli installée : Partager › Plus › l'appli de l'école.</small>
           </div>
         )}
+        {brouillon.niveau !== 'brief' && brouillon.sondage && (
+          <EditeurSondage sondage={brouillon.sondage} onChanger={(sondage) => changer({ sondage })} />
+        )}
         {brouillon.media.length > 0 && (
           <ul className="editeur__medias" aria-label="Photos et vidéos">
             {brouillon.media.map((element) => (
@@ -1098,6 +1132,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
             avecReactions={false}
             actu={{
               ...brouillon,
+              sondage: brouillon.niveau !== 'brief' && brouillon.sondage ? sondageEnApercu(brouillon.sondage) : null,
               categories: [brouillon.categorie, brouillon.sousCategorie].filter(Boolean).map((nom) => ({ id: nom, nom })),
               enHaut: brouillon.niveau === 'important',
               auteur: actu.auteur || auteur,

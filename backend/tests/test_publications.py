@@ -767,3 +767,64 @@ def test_reactions_un_emoji_par_personne(client, db_session, e, en_tant_que):
     assert client.put(url, json={"emoji": "❤️"}).status_code in (403, 404)
     en_tant_que(e["seb"])
     assert client.delete(f"{_blog(eid)}/posts/{actu['id']}").status_code == 204
+
+
+def test_sondage_comme_whatsapp(client, e, en_tant_que):
+    """Seb, 13 novembre (maquette « Sondage ») : une question, 2 à 10
+    réponses, une seule ou plusieurs ; on vote, on change d'avis, et chacun
+    voit qui a voté quoi."""
+    eid = e["ecole"].id
+    en_tant_que(e["seb"])
+    sondage = {"question": "Quel jour pour le stage ?", "multiple": False,
+               "options": ["Samedi", "Dimanche", "Je ne peux pas"]}
+    # Le texte est facultatif avec un sondage ; une seule réponse : refusé.
+    seul = client.post(f"{_blog(eid)}/posts", json={"body": "", "poll": {**sondage, "options": ["Samedi"]}})
+    assert seul.status_code == 400
+    actu = _publier(client, eid, "", poll=sondage)
+    poll = actu["poll"]
+    assert poll["question"] == "Quel jour pour le stage ?" and poll["multiple"] is False
+    assert [o["label"] for o in poll["options"]] == ["Samedi", "Dimanche", "Je ne peux pas"]
+    samedi, dimanche, _ = (o["id"] for o in poll["options"])
+    url = f"{_blog(eid)}/posts/{actu['id']}/vote"
+
+    en_tant_que(e["zoe"])  # une élève, qui ne publie pas
+    assert client.put(url, json={"options": [samedi, dimanche]}).status_code == 400  # une seule réponse
+    vote = client.put(url, json={"options": [samedi]}).json()["poll"]
+    assert vote["options"][0] == {"id": samedi, "label": "Samedi", "voters": ["Zoé"], "mine": True}
+    assert vote["voters"] == 1
+    # Changer d'avis.
+    vote = client.put(url, json={"options": [dimanche]}).json()["poll"]
+    assert vote["options"][0]["voters"] == [] and vote["options"][1]["voters"] == ["Zoé"]
+
+    en_tant_que(e["seb"])
+    client.put(url, json={"options": [dimanche]})
+    fil = client.get(_blog(eid)).json()["items"]
+    assert fil[0]["poll"]["options"][1] == {"id": dimanche, "label": "Dimanche", "voters": ["Zoé", "Seb"], "mine": True}
+    assert fil[0]["poll"]["voters"] == 2
+    # Retirer son vote.
+    assert client.put(url, json={"options": []}).json()["poll"]["voters"] == 1
+
+    # Modifier le sondage garde les votes des réponses gardées.
+    modifie = client.put(f"{_blog(eid)}/posts/{actu['id']}", json={
+        "body": "", "poll": {**sondage, "options": ["Samedi", "Dimanche", "Lundi"]}}).json()["poll"]
+    assert [o["label"] for o in modifie["options"]] == ["Samedi", "Dimanche", "Lundi"]
+    assert modifie["options"][1]["voters"] == ["Zoé"]
+
+    # Plusieurs réponses possibles.
+    multi = _publier(client, eid, "Quels créneaux ?", poll={"question": "Créneaux", "multiple": True,
+                                                            "options": ["Lundi", "Mardi"]})
+    ids = [o["id"] for o in multi["poll"]["options"]]
+    deux = client.put(f"{_blog(eid)}/posts/{multi['id']}/vote", json={"options": ids}).json()["poll"]
+    assert [o["voters"] for o in deux["options"]] == [["Seb"], ["Seb"]] and deux["voters"] == 1
+    # Une réponse d'un autre sondage : refusée.
+    assert client.put(url, json={"options": [ids[0]]}).status_code == 400
+
+    # Une autre école n'y touche pas ; un brouillon ne se vote pas.
+    en_tant_que(e["voisin"])
+    assert client.put(url, json={"options": [samedi]}).status_code in (403, 404)
+    en_tant_que(e["seb"])
+    brouillon = client.post(f"{_blog(eid)}/posts", json={"body": "", "publish": False, "poll": sondage}).json()
+    b_url = f"{_blog(eid)}/posts/{brouillon['id']}/vote"
+    assert client.put(b_url, json={"options": [brouillon["poll"]["options"][0]["id"]]}).status_code == 404
+    # Supprimer la publication emporte son sondage et ses votes.
+    assert client.delete(f"{_blog(eid)}/posts/{actu['id']}").status_code == 204

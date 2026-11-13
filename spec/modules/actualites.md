@@ -762,3 +762,22 @@ dessous, en petit et sans encadré : « Avoir le lien d'une vidéo YouTube » �
 vidéo, touchez Partager. 2. Touchez Copier le lien, tout en bas. 3. Revenez ici et touchez Coller. Puis
 « Plus rapide, avec l'appli installée : Partager › Plus › l'appli de l'école. » Le tout disparaît quand
 le lien est ajouté.
+
+### 12.12 Sondage (Seb, 13 novembre 2026)
+
+Comme dans WhatsApp (maquette « Sondage », https://claude.ai/artifact/DRaBaxfSGLorh1LJNNhef2) :
+
+- Dans l'éditeur, « Sondage » sous Photo, Vidéo, Lien, Document (pas pour une Brève) : une
+  question, de 2 à 10 réponses, « Plusieurs réponses possibles » en option. Avec un sondage, le texte
+  est facultatif.
+- Sur la carte : on touche une réponse pour voter, on la retouche pour retirer son vote, une autre
+  pour changer d'avis. Les barres et les nombres se voient tout de suite ; « Voir les votes » montre
+  les prénoms par réponse. **Votes nominatifs**, pas anonymes (Seb). On vote sur une publication
+  publiée, pas sur un brouillon.
+- Modifier un sondage garde les votes des réponses dont le texte n'a pas changé.
+- Données : `pub_polls` (une ligne par publication : question, `multiple`), `pub_poll_options`
+  (réponses dans l'ordre), `pub_poll_votes` (réponse, membre, prénom gardé comme pour les réactions).
+  Migration b7c3e9d1f2a4. API : le sondage part avec la publication (`poll` du `POST`/`PUT`), et
+  `PUT …/posts/{id}/vote` `{options: [ids]}` (vide : retirer son vote).
+- Ensuite (une autre PR) : le même sondage dans une discussion de la messagerie (+ › Sondage).
+

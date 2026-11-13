@@ -26,7 +26,7 @@ from .models import Blog, Category, Post
 from .publications import EMOJIS, InvalidBlog, InvalidMedia, Publications, can_publish, can_read, on_top
 from .schemas import (
     BlogChange, BlogIn, BlogOut, CategoryIn, CategoryOut, CategoryRef, DocumentOut, FeedOut, InstagramIn,
-    InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, PersonOut, PhotoOut, PostIn, PostOut, ReactionIn, ReactionOut, SettingsIn, SettingsOut, SignerIn, VideoIn,
+    InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, PersonOut, PhotoOut, PollOptionOut, PollOut, PostIn, PostOut, ReactionIn, ReactionOut, SettingsIn, SettingsOut, SignerIn, VideoIn, VoteIn,
 )
 
 BASE = "/ecoles/{ecole_id}/publications/blogs"
@@ -54,6 +54,19 @@ def _out(client: Publications, db: Session, blog: Blog, post: Post, seen=None, m
         document=DocumentOut(id=document.id, name=document.name) if document else None,
         title=post.title if blog.with_categories else None, categories=categories,
         reactions=[ReactionOut(name=r.name, emoji=r.emoji, mine=r.member_id == me) for r in post.reactions],
+        poll=_poll_out(post, me),
+    )
+
+
+def _poll_out(post: Post, me: int | None) -> PollOut | None:
+    if post.poll is None:
+        return None
+    options = post.poll.options
+    return PollOut(
+        question=post.poll.question, multiple=post.poll.multiple,
+        options=[PollOptionOut(id=o.id, label=o.label, voters=[v.name for v in o.votes],
+                               mine=any(v.member_id == me for v in o.votes)) for o in options],
+        voters=len({v.member_id for o in options for v in o.votes}),
     )
 
 
@@ -90,6 +103,7 @@ class PublicationsReceiver:
         app.put(POST, response_model=PostOut)(self.update)
         app.post(POST + "/unpublish", response_model=PostOut)(self.unpublish)
         app.put(POST + "/reaction", response_model=PostOut)(self.react)
+        app.put(POST + "/vote", response_model=PostOut)(self.vote)
         app.delete(POST, status_code=204)(self.delete)
         app.get(POST + "/photos/{sha}")(self.photo)
 
@@ -199,6 +213,19 @@ class PublicationsReceiver:
         if data.emoji is not None and data.emoji not in EMOJIS:
             raise HTTPException(status_code=400, detail="Emoji inconnu")
         return _out(self.client, db, blog, self.client.react(db, post, appelant, data.emoji), me=appelant.id)
+
+    def vote(self, ecole_id: int, blog_id: int, post_id: int, data: VoteIn, db: Session = Depends(get_db),
+             appelant: Compte = Depends(rbac.compte_appelant)):
+        """Everyone who reads the blog answers the poll of a published post."""
+        blog = self._reader(db, appelant, ecole_id, blog_id)
+        post = self._post(db, blog, post_id)
+        if appelant is None or post.published_at is None or post.poll is None:
+            raise HTTPException(status_code=404, detail="Publication introuvable")
+        try:
+            post = self.client.vote(db, post, appelant, data.options)
+        except InvalidMedia as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        return _out(self.client, db, blog, post, me=appelant.id)
 
     def unpublish(self, ecole_id: int, blog_id: int, post_id: int, db: Session = Depends(get_db),
                   appelant: Compte = Depends(rbac.compte_appelant)):

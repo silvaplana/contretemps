@@ -22,6 +22,15 @@ async function appel(chemin, options = {}) {
 
 const json = (method, corps) => ({ method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corps) })
 
+// Sondage (Seb, 13 novembre) : { question, plusieurs, votants, options:
+// [{ id, libelle, votants: [prénoms], moi }] }.
+const sondageVersEcran = (p) => ({
+  question: p.question,
+  plusieurs: p.multiple,
+  votants: p.voters,
+  options: p.options.map((o) => ({ id: o.id, libelle: o.label, votants: o.voters, moi: o.mine })),
+})
+
 export function versEcran(n) {
   return {
     id: n.id,
@@ -32,6 +41,7 @@ export function versEcran(n) {
     notifier: n.notify,
     auteur: n.author_name,
     reactions: n.reactions ?? [], // [{ name, emoji, mine }], une par personne
+    sondage: n.poll ? sondageVersEcran(n.poll) : null,
     publieeLe: n.published_at ? new Date(`${n.published_at}Z`) : null,
     modifieeLe: new Date(`${n.updated_at}Z`),
     nouveau: n.is_new,
@@ -66,6 +76,11 @@ const versServeur = (a) => ({
   title: a.titre || null,
   category: a.categorie || null,
   subcategory: a.sousCategorie || null,
+  // Dans l'éditeur : { question, plusieurs, reponses: [texte] } ou null.
+  poll:
+    a.sondage && a.niveau !== 'brief'
+      ? { question: a.sondage.question, multiple: a.sondage.plusieurs, options: a.sondage.reponses.filter((r) => r.trim()) }
+      : null,
 })
 
 const blogs = (ecoleId) => `/ecoles/${ecoleId}/publications/blogs`
@@ -152,6 +167,9 @@ export async function enregistrer(lieu, actu) {
 }
 
 // Réagir par un emoji (Seb, 13 novembre) ; null retire la sienne.
+export const voter = async (lieu, id, options) =>
+  versEcran(await appel(`${blog(lieu)}/posts/${id}/vote`, json('PUT', { options })))
+
 export const reagir = async (lieu, id, emoji) =>
   versEcran(await appel(`${blog(lieu)}/posts/${id}/reaction`, json('PUT', { emoji })))
 export const depublier = (lieu, id) => appel(`${blog(lieu)}/posts/${id}/unpublish`, { method: 'POST' })

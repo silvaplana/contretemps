@@ -36,6 +36,31 @@ class LinkOut(BaseModel):
     preview: str | None = None  # the same picture as a data: URL, for the editor
 
 
+class PollIn(BaseModel):
+    # Sondage (Seb, 13 November): 2 to 10 answers, checked by the service.
+    question: str = Field(max_length=200)
+    multiple: bool = False
+    options: list[str] = Field(max_length=10)
+
+
+class PollOptionOut(BaseModel):
+    id: int
+    label: str
+    voters: list[str]  # first names, in voting order
+    mine: bool = False
+
+
+class PollOut(BaseModel):
+    question: str
+    multiple: bool
+    options: list[PollOptionOut]
+    voters: int  # people who answered
+
+
+class VoteIn(BaseModel):
+    options: list[int] = Field(default_factory=list, max_length=10)  # empty: remove my vote
+
+
 class PostIn(BaseModel):
     level: Literal["important", "normal", "brief"] = "normal"
     body: str = Field("", max_length=5000)  # may be empty when there is a media or a document
@@ -49,6 +74,7 @@ class PostIn(BaseModel):
     title: str | None = Field(None, max_length=200)
     category: str | None = Field(None, max_length=60)
     subcategory: str | None = Field(None, max_length=60)
+    poll: PollIn | None = None
 
 
 class DocumentOut(BaseModel):
@@ -89,6 +115,7 @@ class PostOut(BaseModel):
     categories: list[CategoryRef] = []
     # One per person, the oldest first (Seb, 13 November).
     reactions: list[ReactionOut] = []
+    poll: PollOut | None = None
 
 
 class PhotoOut(BaseModel):
