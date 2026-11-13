@@ -232,3 +232,22 @@ def test_renommer_et_effacer_une_seance(client, db_session, e, tmp_path, monkeyp
     assert client.get("/session-clips/sessions", headers=e["coach"]).json() == []
     # Effacée pendant le film : la caméra s'arrête.
     assert _battre(client, tel, "recording")["session_id"] is None
+
+
+def test_carte_suit_l_envoi(client, e):
+    """La carte de la séance dit où en est l'envoi de la vidéo, et si le
+    téléphone caméra répond (Seb, 13/11 : « La vidéo arrive… » ne suffit pas)."""
+    tel = _jumeler(client, e)
+    _battre(client, tel)
+    sid = client.post("/session-clips/camera/start", json={"title": "Adultes"}, headers=e["coach"]).json()["session_id"]
+    _battre(client, tel, "recording")
+    carte = client.get("/session-clips/sessions", headers=e["coach"]).json()[0]
+    assert carte["camera_online"] and carte["size_bytes"] == 0
+    assert carte["started_at"] and carte["ended_at"] is None  # début, même sans vidéo arrivée
+    r = client.post("/session-clips/recorder/pieces", json={"session_id": sid, "position": 0, "size": 1000}, headers=tel)
+    upload = r.json()["upload_id"]
+    client.put(f"/session-clips/recorder/pieces/{upload}", content=b"x" * 400, headers={**tel, "X-Decalage": "0"})
+    carte = client.get("/session-clips/sessions", headers=e["coach"]).json()[0]
+    assert (carte["sent_bytes"], carte["size_bytes"]) == (400, 1000)
+    client.post("/session-clips/camera/stop", headers=e["coach"])
+    assert client.get("/session-clips/sessions", headers=e["coach"]).json()[0]["ended_at"]

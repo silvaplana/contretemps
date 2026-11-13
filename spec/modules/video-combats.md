@@ -326,7 +326,12 @@ flèche ←.
   « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Une ligne de séance
   ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Dans
   une séance ouverte, un crayon à droite de chaque combat déplie Rouge / Bleu, Inverser et « C'est
-  bon » (comme Identifier combattants ; valide le combat s'il était à identifier ; Seb, 12/11). La
+  bon » (comme Identifier combattants ; valide le combat s'il était à identifier ; Seb, 12/11). Une
+  séance de la caméra montre son état d'abord (« Envoi : X % » d'après les octets reçus des morceaux
+  en cours, « Découpe : X % », ou « Caméra éteinte : rouvrez Tournage » si rien n'est arrivé et que
+  le téléphone ne répond plus depuis 30 s), puis toujours début → fin (`sc_sessions.ended_at`,
+  posé par Arrêter) ; la liste se relit toutes les 5 s tant qu'une séance filme ou se traite
+  (Seb, 13/11). La
   vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.

@@ -326,6 +326,9 @@ class SessionClipsReceiver:
         videos = self.client.video_map(
             s, [c.video_id for x in ids for c in clips[x][:3]] + [x.raw_video_id for x in sessions] + list(covers.values())
         )
+        uploads = {p.upload_id: self.client.videos.obtenir_televersement(s, p.upload_id) for ps in pieces.values() for p in ps}
+        sending = {k: [u for p in ps if (u := uploads[p.upload_id]) is not None and not u.complet] for k, ps in pieces.items()}
+        online = camera.online(s, m.org_id)
         out = []
         for x in sessions:
             raw = videos.get(x.raw_video_id)
@@ -342,10 +345,15 @@ class SessionClipsReceiver:
                     previews=[VideoSortie.model_validate(videos[c.video_id]) for c in clips[x.id][:3] if c.video_id in videos],
                     raw_video=VideoSortie.model_validate(raw) if raw is not None else None,
                     cover=VideoSortie.model_validate(videos[covers[x.id]]) if covers[x.id] in videos else None,
-                    started_at=x.created_at if x.id in pieces else None,
+                    # Filmée par la caméra (pas de vidéo envoyée à la main) : début et fin, toujours.
+                    started_at=x.created_at if x.id in pieces or x.raw_video_id is None else None,
+                    ended_at=x.ended_at,
                     filmed_seconds=sum(p.duration_seconds or 0 for p in pieces.get(x.id, [])),
                     pieces_read=sum(p.duration_seconds is not None for p in pieces.get(x.id, [])),
                     pieces_total=len(pieces.get(x.id, [])),
+                    sent_bytes=sum(u.octets_recus for u in sending.get(x.id, [])),
+                    size_bytes=sum(u.octets_total for u in sending.get(x.id, [])),
+                    camera_online=online,
                 )
             )
         return out

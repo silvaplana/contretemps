@@ -217,6 +217,12 @@ def status(db: Session, member: Member) -> CameraStatus:
     )
 
 
+def online(db: Session, org_id: int) -> bool:
+    """Le téléphone caméra de l'école a répondu il y a moins de 30 s."""
+    r = recorder_of(db, org_id)
+    return r is not None and r.token_hash is not None and r.last_seen_at is not None and _now() - r.last_seen_at <= OFFLINE_AFTER
+
+
 def _paired(db: Session, member: Member) -> Recorder:
     _require_coach(member)
     r = recorder_of(db, member.org_id)
@@ -249,6 +255,7 @@ def stop(db: Session, member: Member) -> ClipSession | None:
     session = db.get(ClipSession, r.session_id) if r.session_id else None
     if session is not None and session.status == "recording":
         session.status = "processing"
+        session.ended_at = _now()
         # Arrêtée avant que le téléphone ait commencé : rien n'a été filmé.
         if r.state != "recording" and piece_count(db, session.id) == 0:
             db.delete(session)
