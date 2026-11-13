@@ -1,9 +1,9 @@
 Fights : onglet de la barre du bas (sous « Plus » si la barre est pleine), pour les élèves, les
 professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans Admin › École ›
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
-(admin ou professeur) a deux onglets en haut : Combats (ses combats) et Tournage, en trois
+(admin ou professeur) a trois onglets en haut : Combats (ses combats), Tournage (en trois
 volets dépliants : Tournage, Montage, Identifier combattants (pastille = nombre de combats à
-identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas), et le menu ⋮ en haut à droite : « Paramètres de tournage » et « Tests de découpage vidéo ». Fights se rouvre
+identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas)) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage » et « Tests de découpage vidéo ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -47,6 +47,13 @@ Paramètres de tournage (coachs, Fights › ⋮ ; ← revient à Fights)
   ont leurs propres réglages, en bas de chaque essai : les changer ne touche pas au tournage.
 
 Une séance ou un essai découpé est encadré en vert s'il a au moins un combat, en rouge sinon.
+
+Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
+- En haut, deux modes : « Un round » ou « Rounds et repos ».
+- Le chrono en gros, puis le bouton « Démarrer » (pendant le décompte : « Pause » / « Reprendre », et
+  « Arrêter » en dessous).
+- Sous le bouton, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
+  de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
 
 Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée

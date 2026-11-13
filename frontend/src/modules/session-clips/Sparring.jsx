@@ -14,6 +14,7 @@ import {
 import * as api from './api.js'
 import { Deroulant, EssaiLabo, Graphe, Labo, ParametresTournage, useSuppressionEssai } from './Labo.jsx'
 import Tournage from './Tournage.jsx'
+import Timer from './Timer.jsx'
 import './sparring.css'
 
 // Sparring (spec/modules/video-combats.md §6, maquette validée
@@ -49,7 +50,7 @@ export default function Sparring({ ecoleId, cours }) {
   useEffect(() => {
     api.moi().then((m) => {
       setMe(m)
-      if (m.is_coach) setOnglet(['tournage', 'mes'].includes(ongletGarde()) ? ongletGarde() : 'tournage')
+      if (m.is_coach) setOnglet(['tournage', 'mes', 'timer'].includes(ongletGarde()) ? ongletGarde() : 'tournage')
     }, () => setMe({ person_id: null, is_coach: false }))
   }, [])
   useEffect(() => () => clearTimeout(minuteur.current), [])
@@ -196,7 +197,7 @@ export default function Sparring({ ecoleId, cours }) {
         )}
         {me.is_coach && <Onglets onglet={onglet} onChange={choisirOnglet} aIdentifier={aIdentifier} />}
         <div className="sc__corps">
-          {onglet !== 'tournage' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
+          {onglet === 'mes' && <EntreeFavoris onOpen={() => setOuvert({ favoris: true })} />}
           {/* Tournage, Montage (les séances filmées), puis Identifier combattants
               (l'ancien onglet À vérifier) en volets (Seb, 12/11 au soir). */}
           {onglet === 'tournage' && (
@@ -220,6 +221,7 @@ export default function Sparring({ ecoleId, cours }) {
               </Deroulant>
             </>
           )}
+          {onglet === 'timer' && <Timer />}
           {onglet === 'mes' && <MesCombats {...contexte} onOpen={(id) => setOuvert({ clipId: id, retour: null })} />}
         </div>
       </div>
@@ -257,6 +259,7 @@ function Onglets({ onglet, onChange, aIdentifier }) {
   const onglets = [
     ['mes', 'Combats'],
     ['tournage', 'Tournage'],
+    ['timer', 'Timer'],
   ]
   // Mêmes onglets en pastilles qu'Admin (Seb, 27 octobre).
   return (
