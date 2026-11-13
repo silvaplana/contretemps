@@ -227,7 +227,7 @@ function Document({ document }) {
 
 // Réactions par emoji (Seb, 13 novembre, maquette spec/maquettes/actualites-reactions.html) :
 // une par personne ; toucher un emoji réagit pareil, toucher le sien le retire.
-const EMOJIS = ['😊', '👍', '❤️', '👏', '😂', '😮', '😢', '🔥', '💪', '🎉']
+const EMOJIS = ['😊', '😍', '🤩', '😎', '👍', '❤️', '👏', '🙏', '😂', '😮', '😢', '🔥', '💪', '💃', '🌟', '🎉']
 
 function Reactions({ actu, lieu }) {
   const [reactions, setReactions] = useState(actu.reactions)

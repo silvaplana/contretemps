@@ -95,7 +95,7 @@ def on_top(post: Post, blog: Blog, today: date) -> bool:
 
 
 # The emojis one can react with (Seb, 13 November: six, then 😊 and a few more).
-EMOJIS = ("😊", "👍", "❤️", "👏", "😂", "😮", "😢", "🔥", "💪", "🎉")
+EMOJIS = ("😊", "😍", "🤩", "😎", "👍", "❤️", "👏", "🙏", "😂", "😮", "😢", "🔥", "💪", "💃", "🌟", "🎉")
 
 
 class InvalidMedia(ValueError):
