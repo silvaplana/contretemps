@@ -754,3 +754,11 @@ La messagerie ne connaît pas les blogs : `EnvoyerAScreen` reçoit d'App.jsx une
 d'autres destinations (`autres`) ; le module Publications la fournit (`modules/publications/partage.js`)
 et garde le choix jusqu'à ce que le blog s'ouvre. Arrivée par un partage : l'appli ne s'ouvre pas sur
 les actus (§6).
+
+**Mode d'emploi du lien** (Seb, 13 novembre 2026 ; maquette « Lien YouTube sur le téléphone »,
+https://claude.ai/artifact/7nmv6hxL74J38tkFtDuXHg) : dans l'éditeur, « Lien » ouvre le champ avec un
+bouton **Coller** (lit le presse-papiers, ajoute le lien d'un toucher ; « Ajouter » dès qu'on tape) et,
+dessous, en petit et sans encadré : « Avoir le lien d'une vidéo YouTube » — 1. Dans YouTube, sous la
+vidéo, touchez Partager. 2. Touchez Copier le lien, tout en bas. 3. Revenez ici et touchez Coller. Puis
+« Plus rapide, avec l'appli installée : Partager › Plus › l'appli de l'école. » Le tout disparaît quand
+le lien est ajouté.

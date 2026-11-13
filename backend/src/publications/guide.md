@@ -63,7 +63,9 @@ Nouvelle publication / Modifier
   « Sous-catégorie (facultatif) » de même. Toucher la catégorie choisie la retire.
 - Boutons « Photo », « Vidéo » (100 Mo au plus), « Lien » et « Document » (pris dans Docs) sous le
   texte, sauf pour une Brève. 10 au plus ; les vignettes s'alignent dessous, ✕ en retire une.
-- « Lien » : coller le lien (YouTube ou autre site), puis « Ajouter ».
+- « Lien » : un champ et « Coller » (ajoute d'un toucher le lien copié) ; si on tape un lien, le
+  bouton devient « Ajouter ». Dessous, le mode d'emploi sur le téléphone : dans YouTube, Partager ›
+  Copier le lien, puis Coller.
 - Plus simple sur le téléphone : dans YouTube, Partager › Contretemps ; « Envoyer à… » propose
   « Nouvelle publication dans <blog> » ou « Ajouter à « <brouillon> » », et l'éditeur s'ouvre avec la
   vidéo ajoutée. Pour deux vidéos : garder en Brouillon, partager la deuxième vers ce brouillon.

@@ -827,8 +827,8 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
   }
 
   // Rend l'élément ajouté (null si le lien est refusé).
-  async function ajouterLien() {
-    const url = lien.trim()
+  async function ajouterLien(colle = lien) {
+    const url = colle.trim()
     if (!url) return null
     setLienEnvoi(true)
     try {
@@ -842,6 +842,25 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
     } finally {
       setLienEnvoi(false)
     }
+  }
+
+  // « Coller » : le lien copié dans YouTube (Partager › Copier le lien),
+  // ajouté d'un toucher (Seb, 13 novembre). Le téléphone demande la
+  // permission la première fois.
+  async function collerLien() {
+    let texte = ''
+    try {
+      texte = await navigator.clipboard.readText()
+    } catch {
+      texte = ''
+    }
+    const url = texte.match(/https?:\/\/\S+/i)?.[0]
+    if (!url) {
+      window.alert('Aucun lien copié. Dans YouTube : Partager › Copier le lien, puis Coller.')
+      return
+    }
+    setLien(url)
+    ajouterLien(url)
   }
 
   const partageAjoute = useRef(false)
@@ -998,10 +1017,41 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
               autoFocus
               onChange={(e) => setLien(e.target.value)}
             />
-            <button type="submit" disabled={lienEnvoi || !lien.trim()}>
-              {lienEnvoi ? '…' : 'Ajouter'}
-            </button>
+            {lien.trim() || lienEnvoi ? (
+              <button type="submit" disabled={lienEnvoi}>
+                {lienEnvoi ? '…' : 'Ajouter'}
+              </button>
+            ) : (
+              <button type="button" onClick={collerLien}>
+                Coller
+              </button>
+            )}
           </form>
+        )}
+        {brouillon.niveau !== 'brief' && lien !== null && (
+          // Le mode d'emploi sur le téléphone (maquette « Lien YouTube sur le
+          // téléphone », Seb 13 novembre) : en petit, sans encadré.
+          <div className="editeur__aide-lien">
+            <strong>Avoir le lien d'une vidéo YouTube</strong>
+            <ol>
+              <li>
+                <span>
+                  Dans YouTube, sous la vidéo, touchez <b>Partager</b>.
+                </span>
+              </li>
+              <li>
+                <span>
+                  Touchez <b>Copier le lien</b>, tout en bas.
+                </span>
+              </li>
+              <li>
+                <span>
+                  Revenez ici et touchez <b>Coller</b>.
+                </span>
+              </li>
+            </ol>
+            <small>Plus rapide, avec l'appli installée : Partager › Plus › l'appli de l'école.</small>
+          </div>
         )}
         {brouillon.media.length > 0 && (
           <ul className="editeur__medias" aria-label="Photos et vidéos">

@@ -817,13 +817,58 @@
   border: 0;
   border-radius: 12px;
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   font: inherit;
   font-size: 17px;
   font-weight: 700;
 }
 .editeur__lien button:disabled {
   opacity: 0.5;
+}
+/* Mode d'emploi sous le champ Lien : en petit, sans encadré. */
+.editeur__aide-lien {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 4px;
+  font-size: 17px;
+  color: var(--text-muted);
+}
+.editeur__aide-lien strong,
+.editeur__aide-lien b {
+  color: var(--text-h);
+}
+.editeur__aide-lien ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: etape;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.editeur__aide-lien li {
+  counter-increment: etape;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  line-height: 1.4;
+}
+.editeur__aide-lien li::before {
+  content: counter(etape);
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-contrast, #fff);
+  font-weight: 700;
+  font-size: 16px;
+}
+.editeur__aide-lien small {
+  font-size: 15px;
 }
 /* Dans les vignettes de l'éditeur : juste l'image, ou le nom du site. */
 .editeur__medias .actu__youtube,
