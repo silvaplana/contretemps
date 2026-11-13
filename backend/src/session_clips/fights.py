@@ -27,7 +27,7 @@ SOUNDS = (*SHOUTED_STARTS, "time")
 # « time » (morceaux lus avant le « Go ! », 12/11/2026).
 Sound = tuple[str, float] | float
 # Secondes pendant lesquelles un signe doit être tenu pour compter.
-HOLD = {"fists_touch": 0.5, "arms_up": 0.5, "handshake": 0.5, "x": 0.5}  # au moins 0,5 s (Seb, 13/11)
+HOLD = {"fists_touch": 0.8, "arms_up": 0.8, "handshake": 0.8, "x": 0.8}  # au moins 0,8 s (Seb, 13/11)
 GAP = 0.45  # une image manquée (à 5 images/s) ne coupe pas un geste
 MERGE = 2.0  # deux poings touchés à moins de 2 s : un seul début
 STILL = 0.3  # poignée de main : les hanches bougent de moins de 0,3 buste

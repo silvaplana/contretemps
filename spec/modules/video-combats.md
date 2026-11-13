@@ -237,7 +237,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    relie au bon membre. Il en tire une « empreinte » de tenue : couleurs du t-shirt et du short,
    silhouette.
 2. **Signaux** : la détection de posture repère les signes tenus un moment (réglés le 12/11 sur
-   deux vidéos de Seb, `fights.py`), tenus au moins 0,5 s (Seb, 13/11). **Début** : les **poings
+   deux vidéos de Seb, `fights.py`), tenus au moins 0,8 s (Seb, 13/11). **Début** : les **poings
    touchés en l'air** des deux combattants (bras levés, chacun touche les poings de l'autre ; c'est le signe du
    club de Seb) ; deux poings levés sans se toucher ne comptent pas (Seb, 13/11). Le « Poing
    levé » n'est plus un signe. Ou les **bras levés** des deux combattants (Seb, 13/11 : les deux bras
