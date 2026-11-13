@@ -183,8 +183,9 @@ seuls dans les actus, sans rien ressaisir.
   connecter avec Instagram »** (Seb, 8 novembre au soir : coller une clé était trop pénible). Instagram
   demande de se connecter au compte et d'accepter, puis revient dans l'appli, Paramètres d'édition des actus
   ouverts : « Relié à @compte », ou la raison de l'échec. La clé obtenue (60 jours, renouvelée seule
-  chaque semaine) est gardée chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). « Délier »
-  l'oublie ; les actus déjà relayées restent.
+  chaque semaine) est gardée chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). Le bouton
+  « Ne plus recevoir les posts de @compte » (Seb, 13 novembre : « Délier » n'était pas clair) l'oublie
+  au bout de 10 s, « Annuler » d'ici là ; les actus déjà relayées restent.
 - **L'appli Meta** (une fois, sur un ordinateur ; faite le 11 novembre 2026 avec le compte Meta de
   Jacqueline, appli « Contretemps Actus », portefeuille business « Ecole de danse Contretemps », non
   vérifié) : developers.facebook.com › Créer une application › cas d'utilisation « Gérer les messages et
