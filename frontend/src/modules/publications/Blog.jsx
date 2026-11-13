@@ -351,7 +351,7 @@ function Fil({ actus, brouillons = [], lieu, mediaEnHaut, onModifier = null, onC
 
 // « Paramètres de <blog> » : un écran à part, ouvert par le menu ⋯ du
 // bandeau, avec ← ; le même pour tous les blogs (§12.5).
-function ParametresEdition({ lieu, nom, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, onRetour }) {
+function ParametresEdition({ lieu, nom, ouverture, changerOuverture, mediaEnHaut, changerMediaEnHaut, pourTous, changerPourTous, montrer, onRetour }) {
   return (
     <div className="actus actus--editeur">
       <div className="actus__entete">
@@ -408,7 +408,7 @@ function ParametresEdition({ lieu, nom, ouverture, changerOuverture, mediaEnHaut
           </div>
           <p className="editeur__aide">Sinon, seuls ceux qui publient les voient.</p>
           <h4 className="section-label perso__sous-partie">Instagram</h4>
-          <Instagram lieu={lieu} nom={nom} />
+          <Instagram lieu={lieu} nom={nom} montrer={montrer} />
         </>
       </div>
     </div>
@@ -418,7 +418,7 @@ function ParametresEdition({ lieu, nom, ouverture, changerOuverture, mediaEnHaut
 // Relier un compte Instagram (§6 bis) : ses nouveaux posts arrivent dans
 // ce blog, toutes les 5 minutes. Un seul compte par école : relié dans un
 // autre blog, il n'est pas proposé ici (§12.5).
-function Instagram({ lieu, nom }) {
+function Instagram({ lieu, nom, montrer }) {
   const [etat, setEtat] = useState(null)
   const [cle, setCle] = useState('')
   const [envoi, setEnvoi] = useState(false)
@@ -500,6 +500,13 @@ function Instagram({ lieu, nom }) {
     }
   }
 
+  // Seb, 13 novembre : « Délier » n'était pas clair. Le relais s'arrête au
+  // bout de 10 s, « Annuler » d'ici là (un toucher par erreur).
+  function arreter() {
+    const retard = setTimeout(() => agir(() => api.delierInstagram(lieu)), ANNULER_MS)
+    montrer(`Les posts de @${etat.compte} ne seront plus reçus`, () => clearTimeout(retard))
+  }
+
   // Instagram, puis retour ici (?instagram=ok).
   async function seConnecter() {
     setEnvoi(true)
@@ -516,7 +523,7 @@ function Instagram({ lieu, nom }) {
     return (
       <div className="atelier__option parametres__instagram">
         <p>
-          Le compte <b>@{etat.compte}</b> est relié à {etat.ailleurs}. Pour le relier ici, déliez-le d’abord dans les paramètres de {etat.ailleurs}.
+          Le compte <b>@{etat.compte}</b> est relié à {etat.ailleurs}. Pour le relier ici, touchez d’abord « Ne plus recevoir les posts de @{etat.compte} » dans les paramètres de {etat.ailleurs}.
         </p>
       </div>
     )
@@ -530,8 +537,8 @@ function Instagram({ lieu, nom }) {
           </p>
           {champHashtag}
           {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
-          <button type="button" className="btn btn--secondary" disabled={envoi} onClick={() => agir(() => api.delierInstagram(lieu))}>
-            Délier
+          <button type="button" className="btn btn--secondary" disabled={envoi} onClick={arreter}>
+            Ne plus recevoir les posts de @{etat.compte}
           </button>
         </>
       ) : etat.peutSeConnecter ? (
@@ -1204,6 +1211,7 @@ export default function Blog({ ecoleId, blog, prenom }) {
           changerMediaEnHaut={changerMediaEnHaut}
           pourTous={pourTous}
           changerPourTous={changerPourTous}
+          montrer={montrer}
           onRetour={() => setParametres(false)}
         />
         {toastEl}
