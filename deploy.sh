@@ -77,8 +77,25 @@ if [ -n "${SSH_ORIGINAL_COMMAND:-}" ]; then
         exit 2
       fi
       ;;
+    seance-lire)
+      # Fights › Tournage (Seb, 13/11/2026) : ce que le serveur a vu dans une
+      # séance de la caméra, en lecture seule ; sans numéro, les 10 dernières.
+      seance="${demande[1]:-}"
+      if [ -z "$seance" ]; then
+        echo "==> Dernières séances de Fights (rien n'est écrit)"
+        docker compose exec -T backend python -m app.lire_seance_fights
+        echo "==> Journal du lecteur de Fights"
+        docker compose logs --no-color --tail=80 sparring-worker
+      elif [[ "$seance" =~ ^[0-9]+$ ]]; then
+        echo "==> Séance $seance de Fights (rien n'est écrit)"
+        docker compose exec -T backend python -m app.lire_seance_fights --seance "$seance"
+      else
+        echo "Numéro de séance invalide." >&2
+        exit 2
+      fi
+      ;;
     *)
-      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps, labo-lire." >&2
+      echo "Tâche inconnue : « $tache ». Tâches possibles : notes-frais-lister, notes-frais-vider, plan-comptable-contretemps, labo-lire, seance-lire." >&2
       exit 2
       ;;
   esac

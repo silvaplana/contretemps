@@ -19,6 +19,7 @@ on:
           - Installer le plan comptable de Contretemps (essai à blanc)
           - Installer le plan comptable de Contretemps
           - Lire un essai du Labo de Fights
+          - Lire une séance de Fights
       ecole:
         description: Numéro de l'école (pour effacer ou installer ; donné par « Lister »)
         required: false
@@ -28,7 +29,7 @@ on:
         required: false
         default: ""
       essai:
-        description: Numéro de l'essai du Labo (vide = la liste des essais)
+        description: Numéro de l'essai du Labo ou de la séance de Fights (vide = la liste)
         required: false
         default: ""
 
@@ -81,6 +82,12 @@ jobs:
                 exit 1
               fi
               echo "commande=labo-lire $ESSAI" >> "$GITHUB_OUTPUT" ;;
+            "Lire une séance de Fights")
+              if [ -n "$ESSAI" ] && ! [[ "$ESSAI" =~ ^[0-9]+$ ]]; then
+                echo "::error::Le numéro de la séance est un nombre (ou vide pour la liste)."
+                exit 1
+              fi
+              echo "commande=seance-lire $ESSAI" >> "$GITHUB_OUTPUT" ;;
             *)
               echo "::error::Tâche inconnue."
               exit 1 ;;

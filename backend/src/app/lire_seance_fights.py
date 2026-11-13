@@ -1,0 +1,107 @@
+"""Montre ce que le serveur a vu dans les séances filmées par la caméra de
+Fights, pour comprendre une découpe ratée (Seb, 13/11/2026 : action
+« Maintenance du VPS », DEPLOY.md §6). N'écrit rien.
+
+    python -m app.lire_seance_fights             # les 10 dernières séances
+    python -m app.lire_seance_fights --seance 12 # le détail d'une séance
+
+Le détail donne chaque morceau (fichier, durée, rotation), les sons
+entendus, le nombre de personnes vues seconde par seconde, les signes et
+les combats que la découpe trouve avec les réglages du jour.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+
+import imageio_ffmpeg
+from sqlalchemy import select
+
+from app import main  # noqa: F401  (toutes les tables connues de SQLAlchemy)
+from db import SessionLocal
+from saisons.portee import toutes_saisons
+from session_clips import lab
+from session_clips.cutting import _load_frames, _poses_path
+from session_clips.fights import as_sound, find_fights, find_signs, trim
+from session_clips.models import Clip, ClipSession, Piece
+from session_clips.signals import Frame
+from videos import Video
+from videos.stockage import DOSSIER_VIDEOS_LIVE
+
+
+def _pieces(db, session_id: int) -> list[Piece]:
+    return list(db.scalars(select(Piece).where(Piece.session_id == session_id).order_by(Piece.position)))
+
+
+def lister(db) -> None:
+    for x in db.scalars(select(ClipSession).order_by(ClipSession.id.desc()).limit(10)):
+        pieces = _pieces(db, x.id)
+        filmed = sum(p.duration_seconds or 0 for p in pieces)
+        clips = db.scalars(select(Clip).where(Clip.session_id == x.id)).all()
+        signs = json.loads(x.signs) if x.signs else []
+        fin = f"{x.ended_at:%H:%M:%S}" if x.ended_at else "…"
+        print(f"séance {x.id} · école {x.org_id} · {x.title} · {x.status} · {x.created_at:%d/%m %H:%M:%S} → {fin} (UTC)")
+        print(
+            f"   {len(pieces)} morceaux, {filmed:.1f} s lues · {len(clips)} combats · signes : "
+            + (", ".join(f"{s['kind']} {s['start']}" for s in signs) or "aucun")
+        )
+
+
+def detail(db, session_id: int) -> None:
+    x = db.get(ClipSession, session_id)
+    if x is None:
+        print("Séance introuvable.")
+        return
+    print(f"séance {x.id} · école {x.org_id} · {x.title} · {x.status} · début {x.created_at} · fin {x.ended_at}")
+    frames: list[Frame] = []
+    sounds = []
+    offset = 0.0
+    for p in _pieces(db, x.id):
+        video = db.get(Video, p.video_id) if p.video_id else None
+        print(f"morceau {p.position} · dernier={p.last} · durée lue {p.duration_seconds} · vidéo {video.statut if video else 'aucune'}")
+        if video is not None:
+            path = DOSSIER_VIDEOS_LIVE / video.lien_fichier
+            print(f"  fichier {video.lien_fichier} · {path.stat().st_size if path.exists() else 'absent'} octets")
+            info = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path)], capture_output=True, text=True)
+            for line in info.stderr.splitlines():
+                if any(k in line for k in ("Duration", "Stream", "rotat", "displaymatrix")):
+                    print("    " + line.strip())
+        poses = _poses_path(x.org_id, p.id)
+        heard = poses.with_suffix(".sounds.json")
+        if heard.exists():
+            print(f"  sons entendus : {heard.read_text()}")
+            sounds += [(k, t + offset) for k, t in map(as_sound, json.loads(heard.read_text()))]
+        if poses.exists():
+            piece_frames = _load_frames(poses)
+            per_second: dict[int, int] = {}
+            for f in piece_frames:
+                per_second[int(f.t)] = max(per_second.get(int(f.t), 0), len(f.people))
+            print("  personnes vues par seconde : " + " ".join(f"{t}:{n}" for t, n in sorted(per_second.items())))
+            frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
+        else:
+            print("  pas de postures gardées")
+        offset += p.duration_seconds or 0
+    s = lab.settings(db, x.org_id)
+    print(f"réglages du tournage : signes {list(s.signs)}, cadrage {s.framing}, début -{s.start_skip} s, fin -{s.end_skip} s")
+    print(f"signes recalculés : {[(g.kind, round(g.start, 1), round(g.end, 1)) for g in find_signs(frames, sounds)]}")
+    fights = trim(find_fights(frames, s.signs, sounds), s.start_skip, s.end_skip)
+    print(f"combats avec les règles du jour : {[(round(f.start, 1), round(f.end, 1), f.check_reason) for f in fights]}")
+    for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
+        print(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
+
+
+def run() -> None:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--seance", type=int, help="numéro de la séance")
+    args = parser.parse_args()
+    with SessionLocal() as db, toutes_saisons(db):
+        if args.seance is None:
+            lister(db)
+        else:
+            detail(db, args.seance)
+
+
+if __name__ == "__main__":
+    run()
