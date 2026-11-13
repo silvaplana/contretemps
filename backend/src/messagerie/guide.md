@@ -57,6 +57,8 @@ Pièces jointes, photos, vidéos
 
 Partager vers l'appli
 - Depuis une autre appli du téléphone (bouton Partager) : choisir l'appli, puis « Envoyer à… ».
+  Si c'est un lien et qu'on publie dans un blog, « Envoyer à… » propose en haut, sous « Publier »,
+  « Nouvelle publication dans <blog> » et « Ajouter à « <brouillon> » » (voir le module Publications).
   Seulement sur Android avec l'appli installée, pas sur iPhone.
 - Depuis Docs : ⋯ d'un fichier › Plus… › Envoyer le lien… ouvre le même écran.
 - Un seul destinataire : on arrive dans la discussion ; sinon dans la liste.

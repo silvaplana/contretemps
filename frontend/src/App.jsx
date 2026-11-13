@@ -47,6 +47,7 @@ import ProfilScreen from './screens/ProfilScreen.jsx'
 import Financier from './modules/notes-frais/Financier.jsx'
 import Blog, { blogDuRetourInstagram } from './modules/publications/Blog.jsx'
 import * as publicationsApi from './modules/publications/api.js'
+import * as publicationsPartage from './modules/publications/partage.js'
 import Sparring from './modules/session-clips/Sparring.jsx'
 import useAIdentifier from './modules/session-clips/useAIdentifier.js'
 import MesNotesDeFrais from './modules/notes-frais/MesNotesDeFrais.jsx'
@@ -392,6 +393,30 @@ function App() {
     return () => window.removeEventListener('publications:blogs', lire)
   }, [ecole.id, activeUser.id, modules])
   const tabs = ongletsAvec({ publications: blogs ?? [] })
+  // Un lien partagé depuis une autre appli (YouTube...) : « Envoyer à… »
+  // propose aussi de le publier dans un blog, nouveau ou brouillon
+  // (modules/publications/partage.js ; Seb, 13 novembre).
+  const [choixPublier, setChoixPublier] = useState([])
+  const lienPartage = publicationsPartage.lienDans(partage)
+  useEffect(() => {
+    if (!lienPartage || !ecole.id) return undefined
+    let actif = true
+    publicationsPartage.choixDePartage(ecole.id).then((c) => actif && setChoixPublier(c))
+    return () => {
+      actif = false
+    }
+  }, [lienPartage, ecole.id])
+  const destinationsDuPartage = lienPartage && {
+    titre: 'Publier',
+    choix: choixPublier.map((c) => ({
+      ...c,
+      onChoisir: () => {
+        publicationsPartage.deposer({ blogId: c.blogId, postId: c.postId, lien: lienPartage })
+        setPartage(null)
+        setActiveTab(`blog-${c.blogId}`)
+      },
+    })),
+  }
   const blogActif = tabs.find((t) => t.key === activeTab)?.blog ?? null
   const modulesEteints = new Set(modules.filter((m) => !m.enabled).map((m) => m.key))
   // Fights : combats dont les combattants restent à identifier (coachs).
@@ -992,7 +1017,8 @@ function App() {
   // change. Retour de « Se connecter avec Instagram » : le blog qui l'a
   // demandé, sur ses paramètres.
   function ouvrirSurLesActus(ecoleId) {
-    if (!ecoleId || DOCS_AU_CHARGEMENT) return
+    // Arrivée par un partage depuis une autre appli : « Envoyer à… » d'abord.
+    if (!ecoleId || DOCS_AU_CHARGEMENT || PARTAGE_ENTRANT) return
     const retour = blogDuRetourInstagram()
     if (retour) {
       setActiveTab(`blog-${retour}`)
@@ -1303,6 +1329,7 @@ function App() {
             lectureSeule={lectureSeule}
             partage={partage}
             onPartageTraite={() => setPartage(null)}
+            autresDestinations={destinationsDuPartage}
             // Lien vers les Docs dans une bulle : l'onglet Docs ouvre le
             // fichier ou le dossier (événement écouté par le module Documents).
             onOuvrirDocs={(id) => {

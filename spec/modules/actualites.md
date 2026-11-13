@@ -734,3 +734,23 @@ Chaque étape part sur le « vas-y » de Seb, une PR chacune :
   rattachées à des cours, des élèves et une saison, gérées par les profs de leurs cours, et tout le
   monde y ajoute ses vidéos au fil de la saison. Le Blog ne connaît ni cours ni élèves ; le partage se
   fait par le module Vidéos.
+
+### 12.11 Publier un lien partagé depuis une autre appli (Seb, 13 novembre 2026)
+
+Sur le téléphone, copier le lien d'une vidéo YouTube est pénible. Le bouton **Partager** de YouTube
+(ou d'une autre appli) propose déjà Contretemps et ouvre « Envoyer à… » de la messagerie
+(messagerie-instantanee.md §4.7). Quand le texte partagé contient un lien, cet écran montre en haut,
+sous « Publier », pour qui publie :
+
+- « Nouvelle publication dans <blog> », un par blog où l'on publie ;
+- sous chaque blog, ses brouillons : « Ajouter à « <nom> » », et en petit « Brouillon de <blog> ».
+
+Toucher une ligne ouvre l'onglet du blog et son éditeur (nouvelle publication ou ce brouillon), avec le
+lien déjà ajouté à la suite des autres. Deux vidéos pour une technique : on partage la première, on
+garde en Brouillon, on partage la deuxième vers ce brouillon, puis Publier. Pas de « réservoir » de
+vidéos à part : le brouillon en tient lieu (Seb d'accord).
+
+La messagerie ne connaît pas les blogs : `EnvoyerAScreen` reçoit d'App.jsx une liste générique
+d'autres destinations (`autres`) ; le module Publications la fournit (`modules/publications/partage.js`)
+et garde le choix jusqu'à ce que le blog s'ouvre. Arrivée par un partage : l'appli ne s'ouvre pas sur
+les actus (§6).

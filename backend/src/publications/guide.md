@@ -64,6 +64,9 @@ Nouvelle publication / Modifier
 - Boutons « Photo », « Vidéo » (100 Mo au plus), « Lien » et « Document » (pris dans Docs) sous le
   texte, sauf pour une Brève. 10 au plus ; les vignettes s'alignent dessous, ✕ en retire une.
 - « Lien » : coller le lien (YouTube ou autre site), puis « Ajouter ».
+- Plus simple sur le téléphone : dans YouTube, Partager › Contretemps ; « Envoyer à… » propose
+  « Nouvelle publication dans <blog> » ou « Ajouter à « <brouillon> » », et l'éditeur s'ouvre avec la
+  vidéo ajoutée. Pour deux vidéos : garder en Brouillon, partager la deuxième vers ce brouillon.
 - « En haut jusqu'au » (Important seulement). « Envoyer une notification ».
 - Dessous, la publication telle que les autres la verront.
 - Boutons « Brouillon » et « Publier » (« Enregistrer » si déjà publiée). Après Publier, retour au fil
