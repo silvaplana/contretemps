@@ -29,7 +29,6 @@ GAP = 0.45  # une image manquée (à 5 images/s) ne coupe pas un geste
 MERGE = 2.0  # deux poings touchés à moins de 2 s : un seul début
 STILL = 0.3  # poignée de main : les hanches bougent de moins de 0,3 buste
 END_DELAY = 1.0  # bras qui redescendent juste après le début : pas une fin
-EMPTY_HOLD = 4.0  # secondes de zone vide pour finir un combat
 MIN_FIGHT = 5.0  # un combat plus court est ignoré (début puis fin aussitôt),
 # sauf « Go ! » puis « Time ! » criés : les deux cris disent le combat (Seb, 12/11)
 MARGIN = 1.0  # au moins 1 s gardée après le début du signe de fin (le « Time ! »)
@@ -122,44 +121,42 @@ def as_sound(x: Sound) -> tuple[str, float]:
     return ("time", float(x)) if isinstance(x, (int, float)) else (x[0], float(x[1]))
 
 
-def _empty_since(frames: list[Frame]) -> list[float]:
-    """Les moments où la zone se vide pour au moins EMPTY_HOLD secondes."""
-    out, since = [], None
-    for frame in frames:
-        if frame.people:
-            since = None
-        elif since is None:
-            since = frame.t
-            out.append(since)
-    return [t for t in out if any(f.t - t >= EMPTY_HOLD and not f.people for f in frames if f.t >= t)]
-
-
 def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: list[Sound] = ()) -> list[Fight]:
     signs = [s for s in find_signs(frames, sounds) if s.kind in enabled]
+    ends = [s for s in signs if s.kind in END_SIGNS]
     starts: list[Sign] = []
     for s in (s for s in signs if s.kind in START_SIGNS):
-        if starts and s.start - starts[-1].end < MERGE:  # poings touchés puis « Go ! » : un seul début
+        # Poings touchés puis « Go ! » : un seul début ; mais pas par-dessus
+        # un « Time ! » ou un geste de fin (Seb, 13/11 : Go, Time, Go, Time).
+        if (
+            starts
+            and s.start - starts[-1].end < MERGE
+            and not any(starts[-1].start < e.start < s.start for e in ends)
+        ):
             starts[-1].end = max(starts[-1].end, s.end)
             continue
         starts.append(s)
-    ends = [s for s in signs if s.kind in END_SIGNS]
-    empties = _empty_since(frames)
     fights: list[Fight] = []
     for i, start in enumerate(starts):
         limit = starts[i + 1].start if i + 1 < len(starts) else None
         before = lambda t: limit is None or t < limit  # noqa: E731
-        end = next((e for e in ends if e.start >= start.end + END_DELAY and before(e.start)), None)
-        empty = next((t for t in empties if t > start.end and before(t)), None)
-        reason, shouted = None, False
-        if end is not None and (empty is None or end.start <= empty):
+        # END_DELAY : des bras qui redescendent ; un « Time ! » crié compte tout de suite.
+        end = next(
+            (e for e in ends if e.start >= start.end + (0 if e.kind == "time" else END_DELAY) and before(e.start)), None
+        )
+        reason = None
+        shouted = end is not None and start.kind == "go" and end.kind == "time"
+        # Une zone qui a l'air vide (pièce sombre) ne finit jamais un combat (Seb, 13/11).
+        if end is not None:
             stop = max(end.end, end.start + MARGIN)  # le geste de fin en entier
-            shouted = start.kind == "go" and end.kind == "time"
-        elif empty is not None:
-            stop = empty
+            if limit is not None:
+                stop = min(stop, limit)  # sans mordre sur le combat suivant
         elif limit is not None:
             stop = limit
+        elif start.kind == "go":
+            continue  # un « Go ! » sans fin ne fait pas de combat (Seb, 13/11 : Time, Go, Time, Go)
         else:
-            stop, reason = frames[-1].t, REASON_NO_END
+            stop, reason = (frames[-1].t if frames else start.end), REASON_NO_END
         if shouted or stop - start.start >= MIN_FIGHT:
             fights.append(Fight(start.start, stop, start.people if start.kind == "fist_up" else 2, reason))
     return fights

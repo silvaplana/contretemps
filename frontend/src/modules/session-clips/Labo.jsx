@@ -653,12 +653,25 @@ function useCadre(lecteur, combats) {
 // la vidéo à ce moment.
 export function Graphe({ signes, combats, coches, fin, aller }) {
   const W = 320
-  const H = 300
   const L = 14
   const R = 306
-  const base = 262
   const VW = 62
   const VH = 66
+  const ROW = 118
+  // En escalier (Seb, 13/11) : un combat (son début puis sa fin) sur une
+  // même ligne, le suivant une ligne plus bas ; on remonte après 3 lignes.
+  let marche = -1
+  let finVue = true
+  const marches = signes.map((s) => {
+    const debut = ['fist_up', 'fists_touch', 'go'].includes(s.kind)
+    if (debut && finVue) marche += 1
+    finVue = !debut
+    return Math.max(marche, 0)
+  })
+  const lignes = Math.min(3, Math.max(1, marche + 1))
+  const base = 4 + lignes * ROW + 22
+  const H = base + 38
+  const droite = Array(lignes).fill(-Infinity) // bord droit de la dernière image de chaque ligne
   const X = (t) => L + (Math.min(t, fin) / fin) * (R - L)
   const pas = fin > 600 ? 120 : fin > 120 ? 30 : 5
   const ticks = []
@@ -684,10 +697,14 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
         const sg = signe(s.kind)
         const cls = coches.includes(s.kind) ? sg.g : 'off'
         const x = X(s.start)
-        const top = 4 + (i % 2) * 118
-        const bx = Math.min(Math.max(x - VW / 2, 0), W - VW)
+        const ligne = marches[i] % lignes
+        const top = 4 + ligne * ROW
+        // Deux signes proches sur la même ligne : l'image se pousse à droite.
+        const bx = Math.min(Math.max(x - VW / 2, 0, droite[ligne] + 22), W - VW)
+        droite[ligne] = bx + VW
+        const cx = bx + VW / 2
         const tip = top + VH + 32
-        const tx = Math.min(Math.max(bx + VW / 2, 50), W - 50)
+        const tx = Math.min(Math.max(cx, 34), W - 34)
         return (
           <g
             key={i}
@@ -706,8 +723,8 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
             <text x={tx} y={top + VH + 27} className="sc-graphe__t">
               {mmss(s.start)}
             </text>
-            <line x1={x} y1={base - 1} x2={x} y2={tip + 4} className="sc-graphe__fl" />
-            <path d={`M${x - 5} ${tip + 10} L${x} ${tip} L${x + 5} ${tip + 10}Z`} className="sc-graphe__pt" />
+            <line x1={x} y1={base - 1} x2={cx} y2={tip + 4} className="sc-graphe__fl" />
+            <path d={`M${cx - 5} ${tip + 10} L${cx} ${tip} L${cx + 5} ${tip + 10}Z`} className="sc-graphe__pt" />
           </g>
         )
       })}

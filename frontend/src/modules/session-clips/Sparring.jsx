@@ -932,6 +932,17 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
     }
   }
 
+  async function relancer() {
+    try {
+      await api.relancerDecoupe(seanceId)
+      montrer('Découpe relancée')
+      rafraichir()
+      onBack()
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
   // « C'est bon » sous le crayon : validé s'il était à identifier.
   async function fini(c) {
     try {
@@ -1023,6 +1034,12 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
               )}
             </div>
           ))}
+        {/* Les règles de la découpe changent : la refaire sans refilmer (Seb, 13/11). */}
+        {s?.live && s.status === 'ready' && (
+          <button type="button" className="btn btn--secondary" onClick={relancer}>
+            Relancer la découpe
+          </button>
+        )}
       </div>
     </div>
   )

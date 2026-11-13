@@ -86,14 +86,16 @@ def test_combats_reperes():
         (5, []),
         (2, y2), (20, fight), (1, x),  # combat 2, fini par le X
         (2, y2), (1, fight), (1, x),  # trop court : ignoré
-        (2, y2), (15, fight), (6, []),  # combat 3, fini par la zone vide
+        (2, y2), (15, fight), (6, []),  # combat 3 : la zone vide ne le finit pas
         (2, y2), (12, fight),  # combat 4, coupé par la fin de la vidéo
     ])
     fights = find_fights(video)
     assert len(fights) == 4
     assert [f.fighters for f in fights] == [2, 2, 2, 2]
     assert fights[0].start == pytest.approx(3, abs=0.3) and fights[0].end == pytest.approx(36, abs=0.5)
-    assert fights[2].end == pytest.approx(85, abs=0.5)  # dès que la zone se vide (68 + 2 + 15)
+    # Seb, 13/11 : une zone qui a l'air vide (pièce sombre) ne finit jamais un
+    # combat ; il va jusqu'au poing levé suivant (68 + 2 + 15 + 6).
+    assert fights[2].end == pytest.approx(91, abs=0.5)
     assert [f.check_reason for f in fights] == [None, None, None, REASON_NO_END]
 
 
@@ -275,3 +277,22 @@ def test_go_puis_time_meme_court():
     12/11) : les deux cris disent le combat, même court."""
     video = frames([(9, [pose(100), pose(300)])])
     assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 5.6), ("time", 6.9)])] == [(5.6, 7.9)]
+
+
+def test_deux_go_time_a_la_suite():
+    """Séance de Seb, 13/11 : « Go ! » 11 s, « Time ! » 11,8 s, « Go ! » 13,4 s,
+    « Time ! » 23,2 s, pièce sombre (personne vu après 15 s). Deux combats :
+    les deux « Go ! » ne se fondent pas (un « Time ! » entre eux), un « Time ! »
+    crié tout de suite compte, et la zone vide ne passe pas avant le cri."""
+    sons = [("go", 11.0), ("time", 11.8), ("go", 13.4), ("time", 23.2)]
+    video = frames([(15, [pose(100), pose(300)]), (15, [])])
+    assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(11.0, 12.8), (13.4, 24.2)]
+
+
+def test_time_go_time_go():
+    """Seb, 13/11 : dans le désordre, « Time ! » 5 s, « Go ! » 10 s, « Time ! »
+    20 s, « Go ! » 25 s : un seul combat, du « Go ! » au « Time ! ». Le
+    premier « Time ! » ne ferme rien, le dernier « Go ! » n'a pas de fin."""
+    sons = [("time", 5.0), ("go", 10.0), ("time", 20.0), ("go", 25.0)]
+    video = frames([(40, [pose(100), pose(300)])])
+    assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(10.0, 21.0)]

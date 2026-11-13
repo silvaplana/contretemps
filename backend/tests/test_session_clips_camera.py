@@ -192,6 +192,14 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     seance = client.get(f"/session-clips/sessions/{sid}", headers=e["coach"]).json()
     assert seance["live"] and seance["clip_count"] == 3
     assert [round(x["start"]) for x in seance["film"]] == [0, 30, 60]
+    # « Relancer la découpe » d'une séance finie (Seb, 13/11) : les nouvelles
+    # règles, sans relire les images ; les combats déjà coupés restent.
+    assert client.post(f"/session-clips/sessions/{sid}/recut", headers=e["eleve"]).status_code == 403
+    assert client.post(f"/session-clips/sessions/{sid}/recut", headers=e["coach"]).status_code == 204
+    db_session.refresh(session)
+    assert session.status == "processing" and [s.id for s in live_sessions(db_session)] == [sid]
+    assert cut_live(db_session, sc, session, lambda _p: pytest.fail("images relues")) == 0
+    assert session.status == "ready"
 
 
 def test_rejumeler_pendant_le_film(client, db_session, e, tmp_path, monkeypatch):
