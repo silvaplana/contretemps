@@ -307,9 +307,10 @@ la liste des applis, comme WhatsApp.
     par école servi par `personnalisation/`, `public/sw.js`) : le manifeste se déclare « cible de partage »
     (`share_target`, méthode GET vers `/partage?title=…&text=…&url=…`, lue par `utils/envoyerA.js`). C'est ce qu'utilisent les membres
     aujourd'hui (le README, qui dit « pas de PWA », est en retard sur le code) ;
-  - **appli Android Capacitor** (`frontend/android/`, ANDROID.md) si elle est un jour distribuée : un filtre
-    d'intent `ACTION_SEND` dans `AndroidManifest.xml` et un greffon de partage entrant, qui ouvrent le même
-    écran.
+  - **appli Android « Tournage <école> »** (`frontend/android/`, ANDROID.md ; Seb, 13/11 : c'est elle
+    qui filme, elle doit aussi recevoir les partages) : un filtre d'intent `ACTION_SEND` `text/plain`
+    sur `MainActivity`, qui charge `<adresse de l'école>/partage?title=…&text=…` (EXTRA_SUBJECT,
+    EXTRA_TEXT) dans l'appli : le même écran « Envoyer à… ».
 - Partager ouvre l'écran **« Envoyer à… »** : le même que pour Transférer (§4.2), conversations et contacts
   avec cases à cocher et recherche, et en haut un aperçu de ce qui part (le lien, le texte, la photo).
   « Envoyer (N) » toujours visible en bas ; on arrive ensuite dans la conversation si un seul destinataire,

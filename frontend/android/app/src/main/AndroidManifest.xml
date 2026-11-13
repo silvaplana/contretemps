@@ -22,6 +22,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Dans la liste « Partager » d'Android : un lien (YouTube…) ouvre
+                 « Envoyer à… » de l'école, comme la PWA (Seb, 13/11). -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="text/plain" />
+            </intent-filter>
+
         </activity>
 
         <!-- Le film de Fights › Tournage, même écran éteint (camera/RecorderService.kt). -->

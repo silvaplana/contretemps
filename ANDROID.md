@@ -6,6 +6,9 @@ tout le monde garde la PWA pour le reste.
 
 - **Elle ouvre le site en ligne de l'école** (`server.url` de Capacitor) : chaque mise en ligne s'y
   voit sans réinstaller. Sans réseau, elle affiche `frontend/android-shell/hors-ligne.html`.
+- **Elle reçoit les partages** (Seb, 13/11) : dans la liste « Partager » d'Android, un lien ou un
+  texte ouvre `/partage?…` de l'école, l'écran « Envoyer à… » (`MainActivity.partage`, filtre
+  `ACTION_SEND` dans `AndroidManifest.xml`).
 - **Elle filme** quand Fights › Tournage est sur « Caméra » : plugin `camera/TournagePlugin.kt` et
   service de premier plan `camera/RecorderService.kt` (repris de l'appli caméra `recorder/`).
 - **L'icône est celle de l'école** : l'action prend `<adresse>/icons/icon-512-maskable.png` (la même
