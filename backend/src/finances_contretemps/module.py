@@ -31,6 +31,7 @@ from .lectures import financier
 from .adapter import (
     balance_dans_docs,
     bilan_financier_dans_docs,
+    deposer_bilan_financier,
     FINANCES_ACCESS,
     adresse_ecole,
     honoraires_payes,
@@ -125,6 +126,7 @@ def mount(app, core) -> None:
             reset_pieces=repartir_a_zero(core.notes_frais_client),
             balance_file=balance_dans_docs(core.documents_client),
             previous_documents=bilan_financier_dans_docs(core.documents_client),
+            deposit=deposer_bilan_financier(core.documents_client),
             balance_model=BalanceModelReader(noter_cout=note_cost("lecture_balance"), plafond_atteint=ressources.plafond_assistant_atteint).read,
         ),
     )

@@ -180,6 +180,8 @@ export const choisirDocuments = (seasonId, items) => appel(`/seasons/${seasonId}
 // « Voir » dans OnlyOffice, en lecture seule, sans ranger le fichier dans Docs (Seb 13/11).
 export const apercuDocumentSaison = (seasonId, kind, nom) => appel(`/seasons/${seasonId}/documents/${kind}/preview?name=${encodeURIComponent(nom)}`)
 export const apercuRapportFinancier = (reportId, nom) => appel(`/reports/${reportId}/rapport/preview?name=${encodeURIComponent(nom)}`)
+// Étape 7 : la trésorière dépose les documents de la saison clôturée dans Docs (Seb 13/11).
+export const deposerDocumentsSaison = (seasonId) => appel(`/seasons/${seasonId}/documents/deposit`, { method: 'POST' })
 export const urlDocumentSaison = (seasonId, kind, nom) => `${BASE}/seasons/${seasonId}/documents/${kind}/file?name=${encodeURIComponent(nom)}`
 export const bilanDuRapport = (seasonId) => appel(`/seasons/${seasonId}/rapport-report`, { method: 'POST' })
 export const cloturerSaison = (seasonId) => appel(`/seasons/${seasonId}/close`, { method: 'POST' })

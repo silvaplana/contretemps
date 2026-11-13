@@ -139,6 +139,10 @@ class AgPorts:
     # Les fichiers du Bilan financier d'une saison dans Docs (id, nom, fichier) :
     # les documents de l'an dernier servent de modèle (§8.10, étape 6).
     previous_documents: Callable[[Session, Member, Season], list[tuple[int, str, Path]]] | None = None
+    # Dépose les documents d'une saison clôturée dans son Bilan financier de
+    # Docs, à la demande de la trésorière (§8.10, étape 7, Seb 13/11) ; rend
+    # l'endroit (« Financier › BILAN FINANCIER »).
+    deposit: Callable[[Session, Member, Season, list[tuple[str, bytes]]], str] | None = None
 
 
 @dataclass
@@ -969,6 +973,28 @@ class AgDocuments:
             ))
         db.commit()
         return self.season_documents(db, member, season)
+
+    def deposit(self, db: Session, member: Member, season: Season, extra: list[tuple[str, bytes]] = ()) -> dict:
+        """« Déposer les documents dans Docs » (étape 7, Seb 13/11) : la trésorière
+        range elle-même, après la clôture, les documents cochés de la saison
+        (figés tels qu'au jour du dépôt) ; `extra` : le Rapport financier rédigé.
+        Un fichier du même nom devient une nouvelle version."""
+        if not member.is_treasurer:
+            raise PermissionError("Réservé au trésorier")
+        if self.closing_status(db, member.org_id, season) is None:
+            raise ValueError("Clôturez d'abord la saison.")
+        if self.ports.deposit is None:
+            raise LookupError("Le dépôt dans Docs n'est pas branché.")
+        files = [
+            self.season_file(db, member, season, d["kind"], d["name"])[:2][::-1]
+            for d in self.season_documents(db, member, season)["documents"]
+            if d["kind"] in KINDS and d["available"]
+        ]
+        files += list(extra)
+        if not files:
+            raise ValueError("Aucun document à déposer.")
+        place = self.ports.deposit(db, member, season, files)
+        return {"count": len(files), "place": place, "names": [name for name, _ in files]}
 
     def season_file(self, db: Session, member: Member, season: Season, kind: str, name: str | None = None) -> tuple[bytes, str, str]:
         """Un document de la saison, produit sans le ranger dans Docs (Seb 10/11)."""

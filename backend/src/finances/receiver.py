@@ -698,6 +698,22 @@ class FinancesReceiver:
         def set_season_documents(season_id: int, data: DocumentChoicesRequest, db: Session = db_dep, member: Member = member_dep) -> dict:
             return ag_call(documents.set_document_choices, db, member, season_by_id(db, member, season_id), data.items)
 
+        @app.post("/finances/seasons/{season_id}/documents/deposit")
+        def deposit_season_documents(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """Étape 7 (§8.10, Seb 13/11) : la trésorière dépose les documents de la saison
+            clôturée dans son Bilan financier de Docs, le Rapport financier compris s'il est rédigé."""
+            season = season_by_id(db, member, season_id)
+            extra = []
+            rapport = next((d for d in ag_call(documents.season_documents, db, member, season)["documents"] if d["kind"] == "rapport"), None)
+            written = self.written_reports
+            if rapport is not None and written is not None:
+                rang = {"officiel": 0, "valide": 1, "brouillon": 2}
+                existing = sorted(reports.list(db, member, season_id), key=lambda r: (rang.get(r["state"], 3), -r["id"]))
+                if existing and written.get(db, existing[0]["id"]):
+                    content, _, _ = written._build(db, member, existing[0]["id"], season, "docx")
+                    extra.append((rapport["name"], content))
+            return ag_call(documents.deposit, db, member, season, extra)
+
         @app.post("/finances/seasons/{season_id}/rapport-report")
         def season_rapport_report(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
             """Le bilan qui porte le Rapport financier de la saison : le plus avancé,

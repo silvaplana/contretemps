@@ -658,3 +658,35 @@ def test_treasurer_folders_are_not_doubled_by_parallel_requests(tmp_path, monkey
     with Session() as db, toutes_saisons(db):
         noms = [n.name for n in db.scalars(select(DocNode).where(DocNode.org_id == org_id, DocNode.deleted_at.is_(None)))]
     assert noms.count("ACHATS") == 1 and not [n for n in noms if n.startswith("ACHATS (")], noms
+
+
+@pytest.mark.rbac_reel
+def test_deposit_goes_to_the_season_bilan_financier_folder(db_session, ecole, tmp_path, monkeypatch):
+    """Étape 7 (Seb 13/11) : les documents déposés vont dans Docs › <saison> ›
+    Financier › BILAN FINANCIER (créé au besoin) ; même nom = nouvelle version."""
+    from app import main
+    from documents.models import DocNode
+    from finances.ports import Member, Season
+    from finances_contretemps.adapter import deposer_bilan_financier
+    from sqlalchemy import select
+
+    monkeypatch.setattr(main.documents_client.storage, "root", tmp_path)
+    org = ecole["ecole"].id
+    financier = main.documents_client.reserved_folder(db_session, org, "Financier", None)
+    assert financier is not None
+    saison = Season(id=financier.period_id or db_session.get(DocNode, financier.parent_id).period_id, name="2025-2026", start_date="2025-09-01", end_date="2026-08-31")
+    membre = Member(person_id=ecole["tresorier"].id, org_id=org, is_treasurer=True, name="Julia Dho")
+    deposer = deposer_bilan_financier(main.documents_client)
+
+    place = deposer(db_session, membre, saison, [("Balance 2025-2026.pdf", b"%PDF v1"), ("Synthese.xlsx", b"PK")])
+    assert place == "Docs › 2025-2026 › Financier › BILAN FINANCIER"
+    deposer(db_session, membre, saison, [("Balance 2025-2026.pdf", b"%PDF v2")])
+
+    dossier = db_session.scalars(select(DocNode).where(DocNode.parent_id == financier.id, DocNode.name == "BILAN FINANCIER")).one()
+    fichiers = {n.name: n for n in db_session.scalars(select(DocNode).where(DocNode.parent_id == dossier.id, DocNode.deleted_at.is_(None)))}
+    assert sorted(fichiers) == ["Balance 2025-2026.pdf", "Synthese.xlsx"]
+    from notes_frais_contretemps.adapter import ClasseurContretemps
+    from notes_frais.ports import Membre
+    lecteur = ClasseurContretemps._qui(Membre(person_id=membre.person_id, org_id=org, nom="Julia Dho", est_tresorier=True))
+    chemin, _, _ = main.documents_client.content(db_session, lecteur, fichiers["Balance 2025-2026.pdf"].id)
+    assert open(chemin, "rb").read() == b"%PDF v2"

@@ -351,3 +351,22 @@ def test_season_documents_without_last_year_offer_the_base_list(world, db_sessio
     _, _, documents = world
     data = documents.season_documents(db_session, TRESORIER, SEASON)
     assert [d["kind"] for d in data["documents"]] == ["synthese", "balance", "rapport"]
+
+
+def test_the_treasurer_deposits_the_documents_once_the_season_is_closed(world, db_session, monkeypatch):
+    """Étape 7 (Seb 13/11) : « Déposer les documents dans Docs » après la clôture,
+    à la demande de la trésorière ; le Rapport rédigé est passé à part."""
+    _, _, documents = world
+    deposited = []
+    documents.ports.deposit = lambda db, member, season, files: deposited.append((season.name, files)) or "Docs › 2025-2026 › Financier › BILAN FINANCIER"
+
+    with pytest.raises(ValueError):  # pas avant la clôture
+        documents.deposit(db_session, TRESORIER, SEASON)
+    monkeypatch.setattr(documents, "closing_status", lambda db, org, season: {"closedAt": "2026-09-30T10:00:00", "result": 0})
+
+    result = documents.deposit(db_session, TRESORIER, SEASON, [("Rapport financier 2025-2026.docx", b"PK rapport")])
+    assert result["place"] == "Docs › 2025-2026 › Financier › BILAN FINANCIER"
+    # Liste de base au niveau Simple : la Synthèse ; la Balance (niveau Complet) n'est pas faite ; le Rapport passé à part.
+    assert result["names"] == ["Synthèse Dépenses-Recettes 2025-2026.xlsx", "Rapport financier 2025-2026.docx"]
+    name, files = deposited[0]
+    assert name == "2025-2026" and files[0][1] and files[1] == ("Rapport financier 2025-2026.docx", b"PK rapport")
