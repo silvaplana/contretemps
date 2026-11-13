@@ -31,9 +31,9 @@ from videos.duree import duree_secondes
 from videos.poster import generer_poster
 from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
-from .fights import REASON_NO_END, Sound, as_sound
+from .fights import REASON_NO_END, Sound, as_sound, find_signs
 from .framing import Box, ffmpeg_filter, video_size
-from .lab import club_fights
+from .lab import club_fights, thumbnail
 from .models import Clip, ClipSession, Piece, Recorder
 from .service import SessionClips, video_name
 from .signals import Frame, Pose
@@ -110,7 +110,9 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
         raw = clips.videos.get(db, session.raw_video_id)
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
     size = video_size(source)
-    fights = club_fights(db, session.org_id, list(detect(source)), hear(source), size)
+    frames, sounds = list(detect(source)), hear(source)
+    session.signs = json.dumps(_signs(frames, sounds, [(source, 0.0, float("inf"))], None))
+    fights = club_fights(db, session.org_id, frames, sounds, size)
 
     folder = dossier_ecole(session.org_id)
     count = 0
@@ -137,6 +139,22 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
     session.status = "ready"
     db.commit()
     return count
+
+
+def _signs(frames: list[Frame], sounds: list[Sound], sources: list[tuple[Path, float, float]], old: str | None) -> list[dict]:
+    """Les signes repérés dans la séance, avec l'image de chacun, pour la
+    frise (Seb, 13/11). Les images déjà faites sont gardées : seules celles
+    des nouveaux signes sont tirées des morceaux."""
+    made = {(x["kind"], x["start"]): x.get("thumb") for x in json.loads(old)} if old else {}
+    out = []
+    for sign in find_signs(frames, sounds):
+        start = round(sign.start, 1)
+        thumb = made.get((sign.kind, start))
+        if thumb is None:
+            here = next(((src, off) for src, off, length in sources if off <= sign.start < off + length), None)
+            thumb = thumbnail(here[0], sign.start - here[1]) if here else None
+        out.append({"kind": sign.kind, "start": start, "end": round(sign.end, 1), "thumb": thumb})
+    return out
 
 
 # --- Caméra de la salle : morceaux de 2 minutes (étape 3) ---
@@ -201,6 +219,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     finished = ended and session.status == "processing"
     if not read and not finished:
         return 0
+    session.signs = json.dumps(_signs(frames, sounds, sources, session.signs))
 
     done = [x for x in db.scalars(select(Clip.start_seconds).where(Clip.session_id == session.id)) if x is not None]
     folder = dossier_ecole(session.org_id)

@@ -19,7 +19,9 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   « Découpe : 67 % » avec une barre, qui avancent seuls ; « Caméra éteinte : rouvrez Tournage » si
   la vidéo est encore sur un téléphone caméra éteint. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.
-- Une carte ouverte : « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
+- Une carte ouverte : d'abord le volet « Signes repérés » (la frise, comme dans un test ; toucher
+  un signe ouvre le combat où il tombe ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
+  frise des signes »), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
   d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
   Identifier combattants.
 - Le « + » en bas à droite filme un combat avec le téléphone : « Garder ce combat ? » Garder ou
@@ -37,7 +39,8 @@ Tournage › volet Identifier combattants (coachs ; ancien onglet « À vérifie
 Paramètres de tournage (coachs, Fights › ⋮ ; ← revient à Fights)
 - Les mêmes volets qu'en bas d'un essai : « Signes et sons du club » (cases à cocher) et
   « Paramètres de la vidéo » (cadrage, secondes après le début, secondes avant la fin), puis
-  « Enregistrer ». Ils servent à découper les séances filmées. Les essais des tests de découpage
+  la case « Montrer la frise des signes » (cochée au départ), puis « Enregistrer ». Ils servent à
+  découper les séances filmées. Les essais des tests de découpage
   ont leurs propres réglages, en bas de chaque essai : les changer ne touche pas au tournage.
 
 Une séance ou un essai découpé est encadré en vert s'il a au moins un combat, en rouge sinon.

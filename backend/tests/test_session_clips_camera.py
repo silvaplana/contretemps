@@ -165,6 +165,10 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     carte = client.get("/session-clips/sessions", headers=e["coach"]).json()[0]
     assert carte["pieces_read"] == 1 and carte["pieces_total"] == 1
     assert carte["filmed_seconds"] == pytest.approx(30, abs=1) and carte["started_at"]
+    # La frise : les signes repérés, et le début de chaque combat (Seb, 13/11).
+    detail = client.get(f"/session-clips/sessions/{sid}", headers=e["coach"]).json()
+    assert "fist_up" in [x["kind"] for x in detail["signs"]] and "x" in [x["kind"] for x in detail["signs"]]
+    assert detail["clips"][0]["start_seconds"] is not None
 
     _envoyer(client, tel, sid, 1, _morceau(tmp_path, 1))
     assert cut_live(db_session, sc, session, detecteur) == 1

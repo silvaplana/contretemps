@@ -67,6 +67,8 @@ class ClipOut(BaseModel):
     # Pour « Mes combats » et la lecture : la séance en clair.
     session_title: str
     held_on: date
+    # Début du combat dans la vidéo de la séance (la frise).
+    start_seconds: float | None = None
 
 
 class SessionOut(BaseModel):
@@ -102,6 +104,7 @@ class SessionOut(BaseModel):
 class SessionDetail(SessionOut):
     clips: list[ClipOut]
     attendees: list[PersonOut]
+    signs: list[LabSignOut] = []
 
 
 # --- Caméra de la salle (étape 3) ---
@@ -232,3 +235,4 @@ class ClubSignsBody(BaseModel):
     framing: str = "wide"
     start_skip: float = 0.0
     end_skip: float = 0.0
+    show_timeline: bool = True

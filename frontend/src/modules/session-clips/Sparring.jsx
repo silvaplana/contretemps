@@ -12,7 +12,7 @@ import {
   useTeleversementsTermines,
 } from '../../utils/videoUploads.js'
 import * as api from './api.js'
-import { Deroulant, EssaiLabo, Labo, ParametresTournage, useSuppressionEssai } from './Labo.jsx'
+import { Deroulant, EssaiLabo, Graphe, Labo, ParametresTournage, useSuppressionEssai } from './Labo.jsx'
 import Tournage from './Tournage.jsx'
 import './sparring.css'
 
@@ -894,6 +894,16 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
   useEffect(() => {
     api.detailSeance(seanceId).then(setS, (e) => montrer(e.message))
   }, [seanceId, version, montrer])
+  const [club, setClub] = useState(null) // Paramètres de tournage : signes cochés, frise
+  useEffect(() => {
+    api.reglagesDuClub().then(setClub, () => {})
+  }, [])
+  // La frise (Seb, 13/11) : chaque combat de son début à sa fin dans la séance.
+  const combats = (s?.clips ?? [])
+    .filter((c) => c.start_seconds != null)
+    .map((c) => ({ id: c.id, start: c.start_seconds, end: c.start_seconds + (c.video?.dureeSecondes || 0) }))
+  const fin = Math.max(1, ...(s?.signs ?? []).map((x) => x.end + 2), ...combats.map((c) => c.end))
+  const frise = club && club.show_timeline !== false && s?.signs?.length > 0
 
   // « C'est bon » sous le crayon : validé s'il était à identifier.
   async function fini(c) {
@@ -914,6 +924,21 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
         <strong className="sc__titre">{s ? `${api.jour(s.held_on)}${s.title ? ` · ${s.title}` : ''}` : ''}</strong>
       </div>
       <div className="sc__corps">
+        {frise && (
+          <Deroulant titre="Signes repérés" ouvertAuDepart>
+            <Graphe
+              signes={s.signs}
+              combats={combats}
+              coches={club.signs}
+              fin={fin}
+              // Toucher un signe ouvre le combat où il tombe.
+              aller={(t) => {
+                const c = combats.find((x) => x.start - 2 <= t && t <= x.end + 2)
+                if (c) onOpen(c.id)
+              }}
+            />
+          </Deroulant>
+        )}
         {s?.attendees.length > 0 && (
           <p className="sc-meta">Présents reconnus : {s.attendees.map((p) => p.name).join(', ')}</p>
         )}

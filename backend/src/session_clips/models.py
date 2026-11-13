@@ -44,6 +44,9 @@ class ClipSession(Base):
     # Fin du film de la caméra (« Arrêter ») : la carte montre toujours début
     # et fin (Seb, 13/11). Vide pour une vidéo envoyée à la main.
     ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Les signes repérés dans la vidéo de la séance, comme dans un essai du
+    # Labo (JSON : kind, start, end, thumb ; Seb, 13/11 : la frise du Tournage).
+    signs: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class Clip(Base):
@@ -175,6 +178,8 @@ class ClubSigns(Base):
     framing: Mapped[str] = mapped_column(String(10), nullable=False, default="wide")  # 'medium' | 'tight'
     start_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     end_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    # Montrer la frise des signes repérés dans une séance ouverte (Seb, 13/11).
+    show_timeline: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
 
 
 class LabSettings(Base):

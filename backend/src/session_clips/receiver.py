@@ -4,6 +4,7 @@ renvoie un `Member`) ; les droits sont vérifiés par le service."""
 
 from __future__ import annotations
 
+import json
 from collections.abc import Callable
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
@@ -114,6 +115,7 @@ class SessionClipsReceiver:
                 **base.model_dump(),
                 clips=self._clips_out(s, m, clips),
                 attendees=sorted((PersonOut(id=i, name=names.get(i, "?")) for i in attendees), key=lambda p: p.name),
+                signs=json.loads(session.signs) if session.signs else [],
             )
 
         @app.get(f"{PREFIX}/mine", response_model=list[ClipOut])
@@ -189,7 +191,9 @@ class SessionClipsReceiver:
         # --- Labo (§6.5 bis) : essais sur des vidéos déjà filmées, coachs ---
 
         def settings_out(x: lab.Settings) -> ClubSignsBody:
-            return ClubSignsBody(signs=list(x.signs), framing=x.framing, start_skip=x.start_skip, end_skip=x.end_skip)
+            return ClubSignsBody(
+                signs=list(x.signs), framing=x.framing, start_skip=x.start_skip, end_skip=x.end_skip, show_timeline=x.show_timeline
+            )
 
         @app.get(f"{PREFIX}/signs", response_model=ClubSignsBody)
         def club_signs(m: Member = member, s: Session = db):
@@ -198,7 +202,7 @@ class SessionClipsReceiver:
 
         @app.put(f"{PREFIX}/signs", response_model=ClubSignsBody)
         def set_club_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
-            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip)
+            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline)
             return settings_out(guard(lambda: lab.set_settings(s, m, new)))
 
         # Les réglages du Labo, à part de ceux du tournage (Seb, 12/11).
@@ -209,7 +213,7 @@ class SessionClipsReceiver:
 
         @app.put(f"{PREFIX}/lab/signs", response_model=ClubSignsBody)
         def set_lab_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
-            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip)
+            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline)
             return settings_out(guard(lambda: lab.set_settings(s, m, new, lab=True)))
 
         @app.get(f"{PREFIX}/lab", response_model=list[LabTestOut])
@@ -395,6 +399,7 @@ class SessionClipsReceiver:
                     video=VideoSortie.model_validate(video) if video is not None else None,
                     session_title=sessions[c.session_id].title,
                     held_on=sessions[c.session_id].held_on,
+                    start_seconds=c.start_seconds,
                 )
             )
         return out
