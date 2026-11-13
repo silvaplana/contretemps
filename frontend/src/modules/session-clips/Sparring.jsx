@@ -481,12 +481,15 @@ function BarreSelection({ me, choisis, vider, montrer, supprimer, rafraichir }) 
 // « Depuis 21:40 » pendant le film.
 function horaire(s) {
   const debut = new Date(`${s.started_at}Z`)
-  const heure = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  // À la seconde (Seb, 13/11 : « 1 min » partout ne disait rien).
+  const heure = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   // Toujours début et fin (Seb, 13/11) : la fin est l'appui sur Arrêter,
   // sinon la durée filmée arrivée.
   const fin = s.ended_at ? new Date(`${s.ended_at}Z`) : s.filmed_seconds ? new Date(debut.getTime() + s.filmed_seconds * 1000) : null
   if (s.status === 'recording' || !fin) return `${heure(debut)} → …`
-  return `${heure(debut)} → ${heure(fin)} · ${Math.max(1, Math.round((fin - debut) / 60000))} min`
+  const sec = Math.max(0, Math.round((fin - debut) / 1000))
+  const duree = sec < 60 ? `${sec} s` : `${Math.floor(sec / 60)} min ${String(sec % 60).padStart(2, '0')} s`
+  return `${heure(debut)} → ${heure(fin)} · ${duree}`
 }
 
 function EtatSeance({ s }) {
@@ -918,6 +921,26 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
   const lecteur = useRef(null)
   const [partie, setPartie] = useState(0)
   const saut = useRef(null) // où aller une fois le bon bout chargé
+  const cleTour = `contretemps:sc-tour:${seanceId}`
+  const [tour, setTour] = useState(() => {
+    try {
+      return Number(localStorage.getItem(cleTour)) || 0
+    } catch {
+      return 0
+    }
+  })
+  const [dims, setDims] = useState(null)
+  const couche = tour % 2 === 1 && dims?.[0] > 0 && dims?.[1] > 0
+  function tourner() {
+    const t = (tour + 1) % 4
+    setTour(t)
+    try {
+      localStorage.setItem(cleTour, String(t))
+    } catch {
+      // Pas retenu : tant pis.
+    }
+  }
+
   function voir(t) {
     let i = 0
     while (i + 1 < film.length && film[i + 1].start <= t) i += 1
@@ -965,25 +988,47 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
       <div className="sc__corps">
         {film.length > 0 && (
           <Deroulant titre="Vidéo de la séance" ouvertAuDepart>
-            <video
-              ref={lecteur}
-              className="sc-apercu"
-              src={film[partie]?.video?.url}
-              controls
-              playsInline
-              onLoadedMetadata={(ev) => {
-                if (saut.current == null) return
-                ev.currentTarget.currentTime = saut.current
-                saut.current = null
-                ev.currentTarget.play().catch(() => {})
-              }}
-              onEnded={() => {
-                if (partie + 1 < film.length) {
-                  saut.current = 0
-                  setPartie(partie + 1)
+            <div style={couche ? { position: 'relative', width: '100%', aspectRatio: `${dims[1]} / ${dims[0]}` } : undefined}>
+              <video
+                ref={lecteur}
+                className="sc-apercu"
+                style={
+                  couche
+                    ? {
+                        position: 'absolute',
+                        left: '50%',
+                        top: '50%',
+                        width: `${(dims[0] / dims[1]) * 100}%`,
+                        height: `${(dims[1] / dims[0]) * 100}%`,
+                        maxHeight: 'none',
+                        transform: `translate(-50%, -50%) rotate(${tour * 90}deg)`,
+                      }
+                    : tour
+                      ? { transform: 'rotate(180deg)' }
+                      : undefined
                 }
-              }}
-            />
+                src={film[partie]?.video?.url}
+                controls
+                playsInline
+                onLoadedMetadata={(ev) => {
+                  setDims([ev.currentTarget.videoWidth, ev.currentTarget.videoHeight])
+                  if (saut.current == null) return
+                  ev.currentTarget.currentTime = saut.current
+                  saut.current = null
+                  ev.currentTarget.play().catch(() => {})
+                }}
+                onEnded={() => {
+                  if (partie + 1 < film.length) {
+                    saut.current = 0
+                    setPartie(partie + 1)
+                  }
+                }}
+              />
+            </div>
+            {/* Filmée de travers : un quart de tour à chaque appui, retenu sur ce téléphone (Seb, 13/11). */}
+            <button type="button" className="btn btn--secondary" onClick={tourner}>
+              ↻ Tourner la vidéo
+            </button>
           </Deroulant>
         )}
         {frise && (

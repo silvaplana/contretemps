@@ -32,47 +32,47 @@ from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE
 
 
-def lister(db) -> None:
+def lister(db, out=print) -> None:
     for t in db.scalars(select(LabTest).order_by(LabTest.org_id, LabTest.id)):
         signs = ", ".join(f"{s['kind']} {s['start']}-{s['end']}" for s in lab.signs_of(t))
-        print(f"essai {t.id} · école {t.org_id} · {t.title} · {t.status} · {signs or 'aucun signe'}")
+        out(f"essai {t.id} · école {t.org_id} · {t.title} · {t.status} · {signs or 'aucun signe'}")
 
 
-def detail(db, test_id: int) -> None:
+def detail(db, test_id: int, out=print) -> None:
     t = db.get(LabTest, test_id)
     if t is None:
-        print("Essai introuvable.")
+        out("Essai introuvable.")
         return
-    print(f"essai {t.id} · école {t.org_id} · {t.title} · {t.status}")
+    out(f"essai {t.id} · école {t.org_id} · {t.title} · {t.status}")
     video = db.get(Video, t.video_id) if t.video_id else None
     if video is not None:
         path = DOSSIER_VIDEOS_LIVE / video.lien_fichier
-        print(f"fichier {video.lien_fichier} · {path.stat().st_size if path.exists() else 'absent'} octets")
+        out(f"fichier {video.lien_fichier} · {path.stat().st_size if path.exists() else 'absent'} octets")
         info = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path)], capture_output=True, text=True)
         for line in info.stderr.splitlines():
             if any(k in line for k in ("Duration", "Stream", "rotat", "displaymatrix")):
-                print("  " + line.strip())
-    print("signes gardés :")
+                out("  " + line.strip())
+    out("signes gardés :")
     for s in lab.signs_of(t):
-        print(f"  {s['kind']} {s['start']} → {s['end']}")
+        out(f"  {s['kind']} {s['start']} → {s['end']}")
     poses = lab._poses_path(t)
     if not poses.exists():
-        print("Pas de postures gardées.")
+        out("Pas de postures gardées.")
         return
     frames = _load_frames(poses)
-    print(f"signes recalculés : {[(s.kind, round(s.start, 1), round(s.end, 1)) for s in find_signs(frames)]}")
-    print("image par image (t, personnes, poings levés, poings touchés, poignée de main, X) :")
+    out(f"signes recalculés : {[(s.kind, round(s.start, 1), round(s.end, 1)) for s in find_signs(frames)]}")
+    out("image par image (t, personnes, poings levés, poings touchés, poignée de main, X) :")
     for f in frames:
         pair = main_pair(f)
         touch = len(pair) == 2 and are_touching_fists_up(*pair)
         shake = len(pair) == 2 and are_shaking_hands(*pair)
-        print(
+        out(
             f"  {f.t:6.2f} n={len(f.people)} poing={sum(is_fist_up(p) for p in f.people)}"
             f" touche={int(touch)} main={int(shake)} x={sum(is_x(p) for p in pair)}"
         )
-    print("--- postures (gzip base64) ---")
-    print(base64.b64encode(gzip.compress(poses.read_bytes())).decode())
-    print("--- fin des postures ---")
+    out("--- postures (gzip base64) ---")
+    out(base64.b64encode(gzip.compress(poses.read_bytes())).decode())
+    out("--- fin des postures ---")
 
 
 def run() -> None:

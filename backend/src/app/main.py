@@ -123,6 +123,12 @@ from ecoles.colonne_plafond import ajouter_colonne_plafond  # noqa: E402
 ajouter_colonne_plafond(engine)
 
 
+# Ce que Fights a vu, en lecture seule, pour un fil Claude (Seb, 13/11/2026).
+from app.diagnostic_fights import install as installer_diagnostic_fights  # noqa: E402
+
+installer_diagnostic_fights(app)
+
+
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}

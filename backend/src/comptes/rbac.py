@@ -103,6 +103,8 @@ ROUTES_PUBLIQUES = {
     ("GET", "/session-clips/recorder/pieces/{upload_id}"),
     ("PUT", "/session-clips/recorder/pieces/{upload_id}"),
     ("PUT", "/session-clips/recorder/image"),
+    # Fights, en lecture seule, pour un fil Claude : clé X-Diag-Key (app/diagnostic_fights.py).
+    ("GET", "/diagnostic/fights"),
     ("GET", "/par-host/personnalisation"),
     ("GET", "/par-host/entete.html"),
     ("GET", "/par-host/site.webmanifest"),

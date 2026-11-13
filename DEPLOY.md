@@ -274,6 +274,7 @@ déploiement (§5).
 | Installer le plan comptable de Contretemps (essai à blanc) | Demande le numéro de l'école. Affiche les comptes de la Balance 24-25 de la trésorière qui seraient ajoutés ou renommés (`app.plan_comptable_contretemps --essai`), sans rien écrire. |
 | Installer le plan comptable de Contretemps | Même chose, pour de vrai : ajoute les comptes manquants, renomme ceux qui existent déjà, garde le reste (spec financier.md §8.2). Relançable. |
 | Lire un essai du Labo de Fights | Sans numéro : la liste des essais du Labo (école, nom, signes) et les 80 dernières lignes du journal de `sparring-worker` (l'erreur d'une lecture échouée). Avec le numéro d'un essai : la vidéo telle que lue, les signes, les gestes image par image et les postures gardées (`app.lire_essai_labo`), pour qu'un fil Claude comprenne un signe manqué (accord de Seb du 12/11/2026). N'écrit rien. |
+| Lire une séance de Fights | Sans numéro : les 10 dernières séances (école, nom, heures, morceaux, durée lue, combats, signes) et le journal de `sparring-worker`. Avec le numéro d'une séance (dans « Numéro de l'essai ») : chaque morceau (fichier, durée, rotation), les sons entendus, les personnes vues seconde par seconde, les signes et les combats avec les réglages du jour (`app.lire_seance_fights`). N'écrit rien (accord de Seb du 13/11/2026). |
 
 - Fichiers : `.github/workflows/maintenance.yml` (le formulaire) et le début
   de `deploy.sh` (la liste fermée des tâches). La clé ne peut toujours lancer
@@ -281,6 +282,21 @@ déploiement (§5).
 - Ajouter une tâche = une PR qui l'ajoute aux deux fichiers, relue comme le
   reste.
 - Une tâche n'attend jamais un déploiement en cours : elle passe après.
+
+### Lecture directe pour un fil Claude : `/diagnostic/fights`
+
+Les mêmes lectures de Fights, sans passer par GitHub (Seb, 13/11/2026 : « un accès restreint au
+domaine Fights ») : `GET /diagnostic/fights` (les 10 dernières séances et les essais du Labo),
+`?seance=N`, `?essai=N`, en texte, avec l'en-tête `X-Diag-Key`. N'écrit rien
+(`app/diagnostic_fights.py`). Pour l'ouvrir :
+
+1. Sur le VPS, ajouter dans `backend/.env` une ligne `FIGHTS_DIAG_KEY=<au moins 32 caractères au
+   hasard>` (par exemple `openssl rand -hex 32`), puis relancer : `docker compose up -d backend`.
+2. Dans l'environnement Claude Code du projet : la même valeur en secret `FIGHTS_DIAG_KEY`, et
+   l'adresse de l'école autorisée dans le réseau.
+
+Sans `FIGHTS_DIAG_KEY` (ou plus courte que 32 caractères), l'adresse répond 404. Changer la clé
+la révoque.
 
 ## Adresses d'école (spec §2.7, mises en service le 2026-10-15)
 

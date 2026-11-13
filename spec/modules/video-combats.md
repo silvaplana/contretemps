@@ -341,7 +341,8 @@ flèche ←.
   chaque combat), si la case « Montrer la frise des signes » des Paramètres de tournage est cochée
   (`sc_club_signs.show_timeline`, vrai par défaut ; Seb, 13/11). Une séance finie s'ouvre même
   sans combat trouvé : en tête le volet « Vidéo de la séance » (les morceaux arrivés lus à la suite,
-  `SessionDetail.film`, ou la vidéo envoyée à la main), puis la frise (« Aucun signe repéré. » s'il
+  `SessionDetail.film`, ou la vidéo envoyée à la main ; « ↻ Tourner la vidéo » la tourne d'un quart de
+  tour à l'écran, retenu sur ce téléphone pour cette séance), puis la frise (« Aucun signe repéré. » s'il
   n'y en a pas) ; toucher un signe y montre ce moment dans la vidéo (Seb, 13/11). La frise (séance
   et Labo) est en escalier : un combat, son début puis sa fin, sur une même ligne, le suivant une
   ligne plus bas, trois lignes au plus puis on remonte ; deux images proches sur une ligne se
@@ -355,7 +356,9 @@ flèche ←.
   combattants voient que ça filme). Pendant le film, la caméra est prise par l'enregistrement :
   l'appli en tire une petite image (jpeg 640 px) chaque seconde, montrée dans Tournage à la place
   de l'image noire (`PieceRecorder.snap`, `status.image` ; si le téléphone refuse ce second flux,
-  il filme sans ; Seb, 13/11). La télécommande voit ce que voit la caméra : toutes les 4 s, l'appli
+  il filme sans ; Seb, 13/11). Le sens du film vient de la gravité
+  (`OrientationEventListener`), plus de la rotation de l'écran : rotation automatique coupée, un
+  téléphone en paysage filmait de travers (Seb, 13/11). La télécommande voit ce que voit la caméra : toutes les 4 s, l'appli
   envoie la dernière petite image (du film, ou de l'aperçu de Tournage quand il tient la caméra :
   `Tournage.frame`) par `PUT /session-clips/recorder/image` (jeton de la caméra, jpeg ≤ 200 ko,
   gardée dans `<dossier de l'école>/sparring-camera.jpg`, remplacée à chaque envoi) ; `GET
@@ -475,7 +478,7 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
 - la carte d'une séance filmée par la caméra : « Filme… » pendant le cours, puis « Découpe en
   cours » et « Découpe : 67 % » avec une barre (morceaux de 2 minutes lus sur ceux arrivés de la
   caméra, sans dire « morceau ») ; elle s'ouvre dès son premier clip. Sous le titre, l'heure et la durée
-  filmée : « 21:40 → 21:46 · 6 min » (« Depuis 21:40 » pendant le film ; début = l'ordre
+  filmée : « 21:40:05 → 21:46:17 · 6 min 12 s », à la seconde (Seb, 13/11) (« Depuis 21:40 » pendant le film ; début = l'ordre
   « Filmer », durée = morceaux lus). Finie sans combat : « Aucun combat trouvé » au lieu de
   « 0 combat · Vérifié » (Seb, 12/11). Une caméra remplacée en plein film (sélecteur remis
   sur Caméra) reprend la séance en cours au lieu de la laisser sur « Filme… » ; une séance déjà
