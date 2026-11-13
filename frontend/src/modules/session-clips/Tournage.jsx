@@ -9,7 +9,7 @@ import * as api from './api.js'
 // seulement), ce téléphone filme ; en Télécommande, le bouton envoie l'ordre à
 // la caméra de l'école. Le serveur garde l'ordre : la caméra obéit au dernier.
 
-const RELIRE_MS = 5000
+const RELIRE_MS = 2000 // l’état de la caméra se voit vite sur la télécommande (Seb, 13/11)
 // Le film en tâche de fond de l'appli Tournage (frontend/android, camera/TournagePlugin.kt).
 const Natif = registerPlugin('Tournage')
 const DANS_L_APPLI = Capacitor.isNativePlatform()

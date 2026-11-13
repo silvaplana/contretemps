@@ -228,8 +228,9 @@ class RecorderService : Service() {
 
     companion object {
         private const val TAG = "RecorderService"
-        // Toutes les 2 s (Seb, 13/11 : Filmer depuis une télécommande doit répondre vite).
-        private const val TICK_MS = 2_000L
+        // Toutes les secondes (Seb, 13/11 : Filmer depuis une télécommande doit répondre vite ;
+        // une petite requête par seconde, le serveur et la batterie suivent).
+        private const val TICK_MS = 1_000L
         private const val CHANNEL = "tournage"
         private const val NOTIFICATION = 1
 
