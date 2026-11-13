@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Icon from '../../../components/Icon.jsx'
 import { telechargerFichier } from '../../../utils/telechargement.js'
 import { RapportFinancier } from './DocumentsAG.jsx'
+import Apercu from './Apercu.jsx'
 import * as api from '../api.js'
 import './compta.css'
 
@@ -50,6 +51,7 @@ export function Etape6Documents({ season, docs }) {
   const { data, setData, erreur, setErreur } = docs
   const [rapportId, setRapportId] = useState(null)
   const [ajout, setAjout] = useState('')
+  const [apercu, setApercu] = useState(null) // { titre, charger } : un Excel, un Word, le FEC dans OnlyOffice
 
   if (erreur) return <p className="login-screen__erreur">{erreur}</p>
   if (!data) return <p className="muted">Chargement…</p>
@@ -83,8 +85,15 @@ export function Etape6Documents({ season, docs }) {
     }
   }
 
+  // « Voir » : un PDF dans un nouvel onglet, le reste dans OnlyOffice en lecture seule (Seb 13/11).
+  function voir(d) {
+    if (d.name.endsWith('.pdf')) voirPdf(api.urlDocumentSaison(season.id, d.kind, d.name)).catch((err) => setErreur(err.message))
+    else setApercu({ titre: d.name, charger: () => api.apercuDocumentSaison(season.id, d.kind, d.name) })
+  }
+
   return (
     <>
+      {apercu && <Apercu titre={apercu.titre} charger={apercu.charger} onClose={() => setApercu(null)} />}
       {data.models.length > 0 && (
         <div className="fin-preparer__bloc">
           <span className="fin-cp-t">Documents à produire, d’après Docs › Financier › Bilan financier {data.previousSeason}</span>
@@ -134,6 +143,7 @@ export function Etape6Documents({ season, docs }) {
                 sansDocs
                 rediger={rapportId != null}
                 onErreur={setErreur}
+                onApercu={() => setApercu({ titre: d.name, charger: () => api.apercuRapportFinancier(reportId, d.name.replace(/\.docx$/, '')) })}
               />
             ) : (
               <div key={`${d.kind}-${d.nodeId}`} className="fin-docs__doc">
@@ -156,15 +166,9 @@ export function Etape6Documents({ season, docs }) {
               </span>
               {d.kind !== AUTRE && d.available && (
                 <span className="fin-cp-a">
-                  {d.name.endsWith('.pdf') && (
-                    <button
-                      type="button"
-                      className="btn btn--secondary"
-                      onClick={() => voirPdf(api.urlDocumentSaison(season.id, d.kind, d.name)).catch((err) => setErreur(err.message))}
-                    >
-                      <Icon name="eye" size={16} /> Voir
-                    </button>
-                  )}
+                  <button type="button" className="btn btn--secondary" onClick={() => voir(d)}>
+                    <Icon name="eye" size={16} /> Voir
+                  </button>
                   <button type="button" className="btn btn--secondary" onClick={() => telecharger(d)}>
                     <Icon name="download" size={16} /> Télécharger
                   </button>

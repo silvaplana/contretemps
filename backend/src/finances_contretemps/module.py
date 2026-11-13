@@ -163,6 +163,8 @@ def mount(app, core) -> None:
         accounting=finances_accounting,
         ag_documents=finances_ag_documents,
         written_reports=finances_written,
+        # « Voir » un document du bilan dans OnlyOffice sans le ranger dans Docs (Seb 13/11).
+        preview=core.bureautique.apercu if getattr(core, "bureautique", None) else None,
     )
     core.finances_client = finances_client
     core.finances_ag_documents = finances_ag_documents

@@ -9,7 +9,7 @@ import json
 from collections.abc import Callable
 from urllib.parse import quote
 
-from fastapi import Depends, FastAPI, Form, HTTPException, Response, UploadFile
+from fastapi import Depends, FastAPI, Form, HTTPException, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, RedirectResponse
 from pydantic import BaseModel
@@ -222,6 +222,7 @@ class FinancesReceiver:
         accounting: Accounting | None = None,
         ag_documents: AgDocuments | None = None,
         written_reports: WrittenReports | None = None,
+        preview: Callable[[str, bytes, str, str], dict] | None = None,
     ) -> None:
         """seasons(db, org_id) : les saisons de l'organisation (période
         « Saisons » du graphique) ; reports : sous-module Bilan ; assemblies :
@@ -240,6 +241,10 @@ class FinancesReceiver:
         self.accounting = accounting
         self.ag_documents = ag_documents
         self.written_reports = written_reports
+        # preview(nom, contenu, adresse de l'API, utilisateur) : configuration
+        # de l'aperçu OnlyOffice en lecture seule, sans ranger le fichier dans
+        # Docs (Seb 13/11) ; None si l'hôte n'a pas d'éditeur.
+        self.preview = preview
         self._register_routes()
         if accounting is not None:
             self._register_accounting_routes()
@@ -253,6 +258,18 @@ class FinancesReceiver:
             self._register_assembly_routes()
         if forecasts is not None:
             self._register_forecast_routes()
+
+    def _preview(self, request: Request, member: Member, name: str, content: bytes) -> dict:
+        if self.preview is None:
+            raise HTTPException(status_code=503, detail="L'aperçu n'est pas configuré sur ce serveur.")
+        # Adresse publique de l'API telle que l'appli la voit : OnlyOffice y lit le fichier.
+        base_api = f"https://{request.headers.get('x-forwarded-host') or request.url.hostname}/api"
+        try:
+            return self.preview(name, content, base_api, getattr(member, "display_name", "") or "")
+        except LookupError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=415, detail=str(exc)) from exc
 
     def _register_routes(self) -> None:
         app, client = self.app, self.client
@@ -702,6 +719,12 @@ class FinancesReceiver:
             content, filename, media = ag_call(documents.season_file, db, member, season_by_id(db, member, season_id), kind, name)
             return Response(content, media_type=media, headers={"Content-Disposition": f"attachment; filename*=UTF-8''{quote(filename)}"})
 
+        @app.get("/finances/seasons/{season_id}/documents/{kind}/preview")
+        def season_file_preview(season_id: int, kind: str, request: Request, name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> dict:
+            """« Voir » un document Excel ou texte de la saison dans OnlyOffice, en lecture seule, hors de Docs (Seb 13/11)."""
+            content, filename, _ = ag_call(documents.season_file, db, member, season_by_id(db, member, season_id), kind, name)
+            return self._preview(request, member, filename, content)
+
         @app.post("/finances/seasons/{season_id}/close")
         def close_season_by_id(season_id: int, db: Session = db_dep, member: Member = member_dep) -> dict:
             """Préparer, étape 7 : clôturer la saison (§8.7)."""
@@ -767,6 +790,18 @@ class FinancesReceiver:
                     raise HTTPException(status_code=404, detail=str(exc)) from exc
                 except ValueError as exc:
                     raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+            @app.get("/finances/reports/{report_id}/rapport/preview")
+            def preview_written(report_id: int, request: Request, name: str, db: Session = db_dep, member: Member = member_dep) -> dict:
+                """« Voir » le Rapport financier (Word) dans OnlyOffice, en lecture seule, hors de Docs (Seb 13/11)."""
+                season = season_of(db, member, report_id)
+                try:
+                    content, _, _ = written._build(db, member, report_id, season, "docx")
+                except LookupError as exc:
+                    raise HTTPException(status_code=404, detail=str(exc)) from exc
+                except ValueError as exc:
+                    raise HTTPException(status_code=400, detail=str(exc)) from exc
+                return self._preview(request, member, f"{name.strip().replace('/', '-')[:200]}.docx", content)
 
             @app.get("/finances/reports/{report_id}/rapport/download")
             def download_written(report_id: int, format: str = "docx", name: str | None = None, db: Session = db_dep, member: Member = member_dep) -> Response:
