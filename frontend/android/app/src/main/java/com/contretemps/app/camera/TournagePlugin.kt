@@ -102,6 +102,15 @@ class TournagePlugin : Plugin() {
         })
     }
 
+    /** Une image de l'aperçu de Tournage (jpeg en base64), pour la télécommande. */
+    @PluginMethod
+    fun frame(call: PluginCall) {
+        val data = call.getString("jpeg") ?: return call.reject("jpeg")
+        if (RecorderService.status.recording) return call.resolve() // le film donne déjà les siennes
+        RecorderService.image = Base64.decode(data, Base64.DEFAULT)
+        call.resolve()
+    }
+
     @PluginMethod
     fun preview(call: PluginCall) {
         RecorderService.previewing = call.getBoolean("on", false) == true

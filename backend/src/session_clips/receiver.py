@@ -277,6 +277,12 @@ class SessionClipsReceiver:
             camera.heartbeat(s, r, body.state, body.battery_percent, body.free_bytes, body.pending_pieces)
             return RecorderOrders(session_id=r.session_id, signal=r.signal)
 
+        @app.put(f"{PREFIX}/recorder/image", status_code=204)
+        async def recorder_image(request: Request, s: Session = db, x_recorder_token: str | None = Header(None)):
+            r = recorder(s, x_recorder_token)
+            data = await request.body()
+            guard(lambda: camera.save_image(r, data))
+
         @app.post(f"{PREFIX}/recorder/pieces", response_model=PieceOut)
         def recorder_piece(body: PieceOpen, s: Session = db, x_recorder_token: str | None = Header(None)):
             r = recorder(s, x_recorder_token)

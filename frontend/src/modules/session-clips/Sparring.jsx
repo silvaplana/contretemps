@@ -563,14 +563,15 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
     api.seances().then(setListe, (e) => montrer(e.message))
   }, [version, montrer])
   useTeleversementsTermines(rafraichir)
-  // Tant qu'une séance filme, s'envoie ou se découpe, la liste se relit
-  // toutes les 5 s : les pourcentages avancent seuls (Seb, 13/11).
-  const enCours = liste?.some((x) => x.status === 'recording' || x.status === 'processing')
+  // La liste se relit toutes les 5 s : les pourcentages avancent seuls, et
+  // une séance lancée depuis un autre téléphone apparaît aussi sur la caméra
+  // (Seb, 13/11).
   useEffect(() => {
-    if (!enCours) return undefined
-    const minuteur = setInterval(() => api.seances().then(setListe, () => {}), 5000)
+    const minuteur = setInterval(() => {
+      if (document.visibilityState === 'visible') api.seances().then(setListe, () => {})
+    }, 5000)
     return () => clearInterval(minuteur)
-  }, [enCours])
+  }, [])
   const [renommee, setRenommee] = useState(null)
   // La poubelle : la séance disparaît tout de suite, part vraiment au bout
   // de 10 s, sauf Annuler.
