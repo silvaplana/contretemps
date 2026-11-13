@@ -8,7 +8,10 @@ import { tousLesComptes, trierParNom } from './personnes.js'
 // discussions existantes, puis les contacts sans discussion à deux ; une
 // case par ligne, « Envoyer (N) » toujours visible en bas.
 // `onEnvoyer({ conversationIds, contacts })` reçoit la sélection.
-export default function EnvoyerAScreen({ apercu, conversations, compteId, admins, professeurs, eleves, onBack, onEnvoyer }) {
+// `autres` ({ titre, choix: [{ cle, libelle, detail, onChoisir }] }) : d'autres
+// destinations proposées en haut par l'appli (ex. publier dans un blog), sans
+// que la messagerie les connaisse.
+export default function EnvoyerAScreen({ apercu, conversations, compteId, admins, professeurs, eleves, autres = null, onBack, onEnvoyer }) {
   const [choisies, setChoisies] = useState(() => new Set()) // clés 'c<id>' (discussion) ou 'p<id>' (contact)
   const [recherche, setRecherche] = useState('')
 
@@ -55,6 +58,17 @@ export default function EnvoyerAScreen({ apercu, conversations, compteId, admins
 
       <div className="ecran-dessus__liste">
         {apercu && <p className="envoyer-a__apercu">{apercu}</p>}
+        {autres?.choix.length > 0 && (
+          <>
+            <p className="conversation-list__section">{autres.titre}</p>
+            {autres.choix.map((c) => (
+              <button key={c.cle} type="button" className="choix-membres__ligne envoyer-a__autre" onClick={c.onChoisir}>
+                <span>{c.libelle}</span>
+                {c.detail && <small className="muted">{c.detail}</small>}
+              </button>
+            ))}
+          </>
+        )}
         <div className="search-bar choix-membres__recherche">
           <Icon name="search" size={18} />
           <input value={recherche} onChange={(e) => setRecherche(e.target.value)} placeholder="Rechercher" />

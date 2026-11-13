@@ -4348,6 +4348,27 @@ a.btn {
   cursor: pointer;
 }
 
+/* « Envoyer à… » : publier un lien partagé dans un blog (une ligne-bouton). */
+.envoyer-a__autre {
+  width: 100%;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 0;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: none;
+  font: inherit;
+  font-size: 17px;
+  text-align: left;
+}
+
+.envoyer-a__autre small {
+  font-size: 15px;
+}
+
 .choix-membres__ligne input {
   width: 24px;
   height: 24px;

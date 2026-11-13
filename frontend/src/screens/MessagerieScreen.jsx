@@ -50,6 +50,8 @@ export default function MessagerieScreen({
   // « Envoyer à… » ; `onPartageTraite` l'oublie une fois envoyé ou annulé.
   partage,
   onPartageTraite,
+  // Autres destinations d'un partage (ex. un blog), décidées par App.jsx.
+  autresDestinations = null,
   onOuvrirDocs,
 }) {
   const [selectedId, setSelectedId] = useState(null)
@@ -255,6 +257,7 @@ export default function MessagerieScreen({
           admins={admins}
           professeurs={professeurs}
           eleves={eleves}
+          autres={transfert ? null : autresDestinations}
           onBack={fermerEnvoiA}
           onEnvoyer={envoyerA}
         />

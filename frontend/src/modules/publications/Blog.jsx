@@ -10,6 +10,7 @@ import {
   useProgressionTeleversement,
 } from '../../utils/videoUploads.js'
 import * as sessionApi from '../../api/session.js'
+import * as partage from './partage.js'
 import * as api from './api.js'
 import Categories, { ChoixCategorie } from './Categories.jsx'
 import './publications.css'
@@ -656,7 +657,9 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
   const [choixDocument, setChoixDocument] = useState(false)
   const champPhoto = useRef(null)
   const champVideo = useRef(null)
-  const [lien, setLien] = useState(null) // le lien en train d'être collé, ou null
+  // Le lien en train d'être collé, ou null ; un lien partagé depuis une autre
+  // appli (partage.js) s'ajoute tout seul à l'ouverture.
+  const [lien, setLien] = useState(actu.lienPartage ?? null)
   const [lienEnvoi, setLienEnvoi] = useState(false)
   const changer = (champs) => setBrouillon((b) => ({ ...b, ...champs }))
   const ajouter = (element) => setBrouillon((b) => ({ ...b, media: [...b.media, element] }))
@@ -757,6 +760,13 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
       setLienEnvoi(false)
     }
   }
+
+  const partageAjoute = useRef(false)
+  useEffect(() => {
+    if (!actu.lienPartage || partageAjoute.current) return
+    partageAjoute.current = true
+    ajouterLien()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   function basculer(ajout) {
     if (ajout === 'document') return brouillon.document ? changer({ document: null }) : setChoixDocument(true)
@@ -1077,6 +1087,20 @@ export default function Blog({ ecoleId, blog, prenom }) {
     charger()
   }, [charger])
   useEffect(() => () => clearTimeout(minuteur.current), [])
+  // Un lien partagé depuis une autre appli vers ce blog (partage.js) : une
+  // nouvelle publication, ou le brouillon choisi, avec le lien ajouté.
+  useEffect(() => {
+    if (!fil?.peutPublier) return undefined
+    const ouvrir = () => {
+      const p = partage.prendre(blog.id)
+      if (!p) return
+      const choisi = p.postId ? fil.brouillons.find((b) => b.id === p.postId) : null
+      setParametres(false)
+      setEdite({ ...(choisi ? aEditer(choisi) : nouvelle()), lienPartage: p.lien })
+    }
+    ouvrir()
+    return partage.ecouter(ouvrir)
+  }, [fil, blog.id])
 
   const montrer = useCallback((texte, annuler) => {
     clearTimeout(minuteur.current)
