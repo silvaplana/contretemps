@@ -16,10 +16,13 @@ from dataclasses import dataclass
 
 from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_fist_up, is_x, main_pair, torso
 
-START_SIGNS = ("fists_touch", "go")  # « go » : le « Go ! » crié (hearing.py)
+# « go », « fight », « hajime » : crié par l'entraîneur (hearing.py ; « Fight ! » et
+# « Hajime ! » ajoutés le 13/11 : « go », trop court, se confond avec « allez »).
+SHOUTED_STARTS = ("go", "fight", "hajime")
+START_SIGNS = ("fists_touch", *SHOUTED_STARTS)
 END_SIGNS = ("handshake", "x", "time")  # « time » : le « Time ! » crié (hearing.py)
 SIGNS = START_SIGNS + END_SIGNS
-SOUNDS = ("go", "time")
+SOUNDS = (*SHOUTED_STARTS, "time")
 # Un son entendu : (« go » ou « time », secondes). Un nombre seul est un
 # « time » (morceaux lus avant le « Go ! », 12/11/2026).
 Sound = tuple[str, float] | float
@@ -128,7 +131,7 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
         # Un « go » entendu juste avant un « Time ! », en plein combat : un
         # écho du « Time ! », pas un nouveau combat (Seb, séance 9, 13/11).
         if (
-            s.kind == "go"
+            s.kind in SHOUTED_STARTS
             and starts
             and not any(e.start > starts[-1].start for e in ends if e.start < s.start)
             and any(0 <= e.start - s.start < ECHO for e in ends if e.kind == "time")
@@ -153,7 +156,7 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
             (e for e in ends if e.start >= start.end + (0 if e.kind == "time" else END_DELAY) and before(e.start)), None
         )
         reason = None
-        shouted = end is not None and start.kind == "go" and end.kind == "time"
+        shouted = end is not None and start.kind in SHOUTED_STARTS and end.kind == "time"
         # Une zone qui a l'air vide (pièce sombre) ne finit jamais un combat (Seb, 13/11).
         if end is not None:
             stop = max(end.end, end.start + MARGIN)  # le geste de fin en entier
@@ -161,7 +164,7 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
                 stop = min(stop, limit)  # sans mordre sur le combat suivant
         elif limit is not None:
             stop = limit
-        elif start.kind == "go":
+        elif start.kind in SHOUTED_STARTS:
             continue  # un « Go ! » sans fin ne fait pas de combat (Seb, 13/11 : Time, Go, Time, Go)
         else:
             stop, reason = (frames[-1].t if frames else start.end), REASON_NO_END

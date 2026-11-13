@@ -23,13 +23,16 @@ MODEL = os.environ.get("SPARRING_SPEECH_MODEL", "base")
 WORDS = {
     "time": {"time", "times", "taim", "taime", "thaim", "thaime"},
     "go": {"go", "gos", "goo", "gow", "gau", "gaux"},
+    "fight": {"fight", "fights"},
+    # « Hajime ! » (« ha-dji-mé ») : Whisper l'écrit de plusieurs façons, parfois en deux mots.
+    "hajime": {"hajime", "hajimeh", "hajimet", "hadjime", "hadjimeh", "ajime", "adjime", "hagime", "hajima"},
 }
 
 _model = None
 
 
 def word_kind(word: str) -> str | None:
-    """« time », « go » ou None."""
+    """« time », « go », « fight », « hajime » ou None."""
     plain = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode().lower()
     plain = re.sub(r"[^a-z]", "", plain)
     return next((kind for kind, words in WORDS.items() if plain in words), None)
@@ -82,11 +85,28 @@ def _hear(video_path: Path) -> list[tuple[str, float]]:
         # brefs (0,2 s) avec de la marge autour pour que Whisper les lise.
         vad_filter=True,
         vad_parameters={"threshold": 0.3, "min_speech_duration_ms": 50, "speech_pad_ms": 600},
-        hotwords="Go, Time",
+        hotwords="Go, Fight, Hajime, Time",
         condition_on_previous_text=False,
     )
     words = [w for s in segments for w in (s.words or [])]
     # Dans le journal de sparring-worker (action « Lire un essai du Labo ») :
     # ce que Whisper a compris, pour voir pourquoi un cri n'est pas compté.
     print(f"Entendu dans {video_path.name} : {' '.join(f'{w.word.strip()}@{w.start:.1f}' for w in words) or 'rien'}")
-    return [(word_kind(w.word), round(w.start, 1)) for w in words if word_kind(w.word)]
+    return heard_words([(w.word, w.start) for w in words])
+
+
+def heard_words(words: list[tuple[str, float]]) -> list[tuple[str, float]]:
+    """Les cris reconnus, mot par mot ; un mot coupé en deux (« Ha jime »)
+    est recollé avec le suivant."""
+    out, skip = [], False
+    for i, (word, start) in enumerate(words):
+        if skip:
+            skip = False
+            continue
+        kind = word_kind(word)
+        if kind is None and i + 1 < len(words):
+            kind = word_kind(word + words[i + 1][0])
+            skip = kind is not None
+        if kind:
+            out.append((kind, round(start, 1)))
+    return out
