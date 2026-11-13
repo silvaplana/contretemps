@@ -15,11 +15,12 @@ const ANNULER_MS = 10000
 
 // Mêmes noms que backend/src/session_clips/fights.py (SIGNS).
 const SIGNES = [
-  { id: 'fist_up', g: 'deb', l: 'Poing levé', court: 'Poing levé', d: 'Chacun lève le poing au-dessus de la tête, bras plié' },
-  { id: 'fists_touch', g: 'deb', l: 'Poings touchés en l’air', court: 'Poings en l’air', d: 'Les deux se touchent les poings, bras vers le haut' },
+  // Retiré le 13/11 (Seb) : seulement pour nommer les signes des anciennes séances.
+  { id: 'fist_up', g: 'deb', l: 'Poing levé', court: 'Poing levé', d: '', retire: true },
+  { id: 'fists_touch', g: 'deb', l: 'Poings touchés en l’air', court: 'Poings en l’air', d: 'Les deux combattants se touchent les poings, bras vers le haut' },
   { id: 'go', g: 'deb', l: '« Go ! » crié', court: '« Go ! »', d: 'Son : l’entraîneur annonce le début' },
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },
-  { id: 'x', g: 'fin', l: 'X au-dessus de la tête', court: 'X', d: 'Avant-bras croisés en l’air' },
+  { id: 'x', g: 'fin', l: 'Bras croisés', court: 'Bras croisés', d: 'Les deux combattants croisent les bras devant eux' },
   { id: 'time', g: 'fin', l: '« Time ! » crié', court: '« Time ! »', d: 'Son : l’entraîneur annonce la fin' },
 ]
 const signe = (id) => SIGNES.find((s) => s.id === id) ?? { id, g: 'fin', l: id, court: id, d: '' }
@@ -422,7 +423,7 @@ export function ReglagesDecoupe({ reglages, setReglages }) {
         {['deb', 'fin'].map((g) => (
           <div key={g}>
             <p className="sc-meta">{g === 'deb' ? 'Début de combat' : 'Fin de combat'}</p>
-            {SIGNES.filter((s) => s.g === g).map((s) => (
+            {SIGNES.filter((s) => s.g === g && !s.retire).map((s) => (
               <label key={s.id} className="sc-coche">
                 <input type="checkbox" checked={coches.includes(s.id)} onChange={() => cocher(s.id)} />
                 <span>

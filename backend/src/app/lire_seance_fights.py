@@ -23,8 +23,8 @@ from app import main  # noqa: F401  (toutes les tables connues de SQLAlchemy)
 from db import SessionLocal
 from saisons.portee import toutes_saisons
 from session_clips import lab
-from session_clips.cutting import _load_frames, _poses_path
-from session_clips.fights import as_sound, find_fights, find_signs, trim
+from session_clips.cutting import _heard, _load_frames, _poses_path
+from session_clips.fights import find_fights, find_signs, trim
 from session_clips.models import Clip, ClipSession, Piece
 from session_clips.signals import Frame
 from videos import Video
@@ -72,7 +72,7 @@ def detail(db, session_id: int, out=print) -> None:
         heard = poses.with_suffix(".sounds.json")
         if heard.exists():
             out(f"  sons entendus : {heard.read_text()}")
-            sounds += [(k, t + offset) for k, t in map(as_sound, json.loads(heard.read_text()))]
+            sounds += [(k, t + offset) for k, t in _heard(heard, p.duration_seconds or 0)]
         if poses.exists():
             piece_frames = _load_frames(poses)
             per_second: dict[int, int] = {}

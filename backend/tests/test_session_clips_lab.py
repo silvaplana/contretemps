@@ -64,7 +64,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
     fight = [pose(100), pose(300)]
     hand = [pose(100, "hand"), pose(145, "hand", wrist_dx=-50)]
-    x = [pose(100, "x"), pose(300)]
+    x = [pose(100, "x"), pose(300, "x")]
     postures = frames([(1, touch), (9, fight), (2, hand), (8, fight), (2, x), (8, [])])
     test = db_session.get(LabTest, essai["id"])
     assert lab.tests_to_read(db_session) == [test]
@@ -86,7 +86,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert len(detail["signs"]) == 4 and [round(f["end"]) for f in detail["fights"]] == [22]
     assert client.get("/session-clips/lab/signs", headers=e["coach"]).json()["signs"] == ["fists_touch", "x"]
     # Ceux du tournage ne bougent pas (Seb, 12/11 : le Labo expérimente).
-    assert len(client.get("/session-clips/signs", headers=e["coach"]).json()["signs"]) == 6
+    assert len(client.get("/session-clips/signs", headers=e["coach"]).json()["signs"]) == 5
     [combat] = detail["fights"]
     assert combat["frame"] is None  # plan large
 

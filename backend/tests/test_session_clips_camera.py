@@ -145,7 +145,7 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
 
     y2 = [pose(100, "fist"), pose(300, "fist")]
     fight = [pose(100), pose(300)]
-    x = [pose(100, "x"), pose(300)]
+    x = [pose(100, "x"), pose(300, "x")]
     # Morceaux de 30 s : combat 1 dans le morceau 0 ; combat 2 à cheval sur
     # 0 et 1 ; combat 3 commencé dans le dernier, sans fin repérée.
     postures = [
@@ -167,7 +167,7 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     assert carte["filmed_seconds"] == pytest.approx(30, abs=1) and carte["started_at"]
     # La frise : les signes repérés, et le début de chaque combat (Seb, 13/11).
     detail = client.get(f"/session-clips/sessions/{sid}", headers=e["coach"]).json()
-    assert "fist_up" in [x["kind"] for x in detail["signs"]] and "x" in [x["kind"] for x in detail["signs"]]
+    assert "fists_touch" in [x["kind"] for x in detail["signs"]] and "x" in [x["kind"] for x in detail["signs"]]
     assert detail["clips"][0]["start_seconds"] is not None
     # Le film de la séance, à voir même sans combat trouvé (Seb, 13/11).
     assert [round(x["start"]) for x in detail["film"]] == [0] and detail["film"][0]["video"]["id"]
