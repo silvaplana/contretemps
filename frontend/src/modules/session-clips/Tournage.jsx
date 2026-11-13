@@ -218,6 +218,8 @@ export default function Tournage({ montrer, rafraichir }) {
       <>
         <div className="sc-image">
           <Image allumee={tient} />
+          {/* Pendant le film, l'appli envoie une petite image par seconde (Seb, 13/11). */}
+          {!tient && natif?.image && <img className="sc-image__video" src={natif.image} alt="" />}
           <span className="sc-image__etat">
             {natif?.recording ? (
               <>

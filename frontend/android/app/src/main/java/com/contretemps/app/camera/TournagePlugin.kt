@@ -3,6 +3,7 @@ package com.contretemps.app.camera
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Intent
+import android.util.Base64
 import android.net.Uri
 import android.os.Build
 import android.os.PowerManager
@@ -91,6 +92,9 @@ class TournagePlugin : Plugin() {
             put("wanted", s.wanted)
             put("pending", s.pending)
             put("error", s.error)
+            RecorderService.image?.takeIf { s.recording }?.let {
+                put("image", "data:image/jpeg;base64," + Base64.encodeToString(it, Base64.NO_WRAP))
+            }
             RecorderService.upload?.let { u ->
                 u.progress?.let { put("sent", it.sent); put("size", it.size) }
                 u.failure?.let { put("sendFailure", it) }
