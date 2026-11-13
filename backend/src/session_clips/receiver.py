@@ -100,6 +100,10 @@ class SessionClipsReceiver:
             session = guard(lambda: client.rename_session(s, m, session_id, body.title.strip()))
             return self._sessions_out(s, m, [session])[0]
 
+        @app.post(f"{PREFIX}/sessions/{{session_id}}/recut", status_code=204)
+        def recut_session(session_id: int, m: Member = member, s: Session = db):
+            guard(lambda: client.recut_session(s, m, session_id))
+
         @app.delete(f"{PREFIX}/sessions/{{session_id}}", status_code=204)
         def delete_session(session_id: int, m: Member = member, s: Session = db):
             guard(lambda: client.delete_session(s, m, session_id))

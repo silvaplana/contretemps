@@ -105,8 +105,8 @@ Erreurs : prénom inconnu ou ambigu → ses combats sont « à vérifier ».
    épaules, ne déclenche rien).
 2. Ils combattent, puis se saluent (sinon font le X, ou quittent la zone).
 
-Variantes : un combat sans poing levé devient un « combat sans nom » ; un poing levé sans salut ni X se termine quand la
-zone se vide ou au poing levé suivant.
+Variantes : un combat sans poing levé devient un « combat sans nom » ; un poing levé sans salut ni X se termine au
+poing levé suivant (une zone qui a l'air vide ne termine jamais un combat : Seb, 13/11).
 
 **UC 6 — Traiter la séance** · Serveur
 
@@ -249,9 +249,11 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    à un demi-buste l'un de l'autre. Poings touchés : poignets à moins de 0,35 buste, ou à moins de
    0,65 buste s'ils sont un demi-buste au-dessus des épaules ; poignée de main : moins de 0,65
    buste, et jamais pendant des poings touchés (l'autre main baissée). Le
-   combat va du signe de début au premier signe de fin coché venu au moins 1 s après ; sinon il se
-   termine si la zone se vide 4 s, au signe de début suivant ou à la fin de la vidéo (« Fin non
-   repérée »). 1 s est gardée après le signe de fin ; un combat de moins de 5 s est ignoré, sauf
+   combat va du signe de début au premier signe de fin coché venu au moins 1 s après (un « Time ! »
+   crié compte tout de suite) ; sinon il se termine au signe de début suivant ou à la fin de la
+   vidéo (« Fin non repérée »). Une zone qui a l'air vide ne termine jamais un combat (Seb, 13/11 :
+   pièce sombre, personne n'était vu et les combats tombaient). 1 s est gardée après le signe de
+   fin, sans mordre sur le combat suivant ; un combat de moins de 5 s est ignoré, sauf
    s'il va d'un « Go ! » crié à un « Time ! » crié : les deux cris disent le combat, même court
    (Seb, 12/11 : essai « Go time » d'une seconde).
    **Signes et sons du club** (Seb, 12/11) : chaque organisation coche les signes que la découpe
@@ -260,7 +262,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    (`sc_lab_settings`, au départ une copie de ceux du tournage) : on y expérimente sans changer le
    tournage (Seb, 12/11 : « ce sont deux choses différentes »). **Son** (accord de Seb du 12/11) : le **« Time ! »** crié par l'entraîneur
    est aussi un signe de fin, et le **« Go ! »** un signe de début (Seb, 12/11 : « go pour commencer,
-   time pour terminer » ; des poings touchés suivis d'un « Go ! » à moins de 2 s ne font qu'un début).
+   time pour terminer » ; des poings touchés suivis d'un « Go ! » à moins de 2 s ne font qu'un début,
+   sauf avec un signe de fin entre eux : « Go, Time, Go, Time » fait deux combats, Seb, 13/11).
+   Dans le désordre, « Time, Go, Time, Go » ne fait qu'un combat : un « Time ! » sans début ne
+   ferme rien, et un « Go ! » sans fin (ni signe de fin, ni début suivant) ne fait pas de combat.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en
@@ -337,7 +342,13 @@ flèche ←.
   (`sc_club_signs.show_timeline`, vrai par défaut ; Seb, 13/11). Une séance finie s'ouvre même
   sans combat trouvé : en tête le volet « Vidéo de la séance » (les morceaux arrivés lus à la suite,
   `SessionDetail.film`, ou la vidéo envoyée à la main), puis la frise (« Aucun signe repéré. » s'il
-  n'y en a pas) ; toucher un signe y montre ce moment dans la vidéo (Seb, 13/11). L'appli Tournage demande ses ordres
+  n'y en a pas) ; toucher un signe y montre ce moment dans la vidéo (Seb, 13/11). La frise (séance
+  et Labo) est en escalier : un combat, son début puis sa fin, sur une même ligne, le suivant une
+  ligne plus bas, trois lignes au plus puis on remonte ; deux images proches sur une ligne se
+  poussent à droite, la flèche garde le bon moment. Sous les combats d'une séance de la caméra
+  finie, « Relancer la découpe » (`POST /session-clips/sessions/{id}/recut`) : la séance repasse à la
+  découpe, qui reprend postures et sons gardés avec les règles du jour, sans recouper les combats
+  déjà coupés (Seb, 13/11). L'appli Tournage demande ses ordres
   toutes les secondes (au lieu de 5 s), et tout de suite après Filmer / Arrêter touché sur elle-même
   (`Tournage.poke`). Au début du film, deux bips et la lampe allumée une seconde ; à
   l'arrêt, un bip long (son des alarmes, entendu même en silencieux ; Seb, 13/11 : que les

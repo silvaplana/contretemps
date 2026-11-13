@@ -296,6 +296,17 @@ class SessionClips:
         db.commit()
         return session
 
+    def recut_session(self, db: Session, member: Member, session_id: int) -> None:
+        """« Relancer la découpe » d'une séance de la caméra finie (Seb, 13/11) :
+        elle repasse à la découpe, qui reprend les postures et les sons gardés
+        avec les règles du jour ; les combats déjà coupés restent."""
+        self._require_coach(member)
+        session = self.session(db, member, session_id)
+        if session.status != "ready" or session.raw_video_id is not None:
+            return
+        session.status = "processing"
+        db.commit()
+
     def delete_session(self, db: Session, member: Member, session_id: int) -> None:
         """La poubelle de la carte (Seb, 12/11) : la séance, ses combats et sa
         vidéo. Effacée pendant le film, la caméra s'arrête."""

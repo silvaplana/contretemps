@@ -46,6 +46,7 @@ function seance(s) {
 export const moi = () => appel('/me')
 export const seances = async () => (await appel('/sessions')).map(seance)
 export const renommerSeance = async (id, title) => seance(await appel(`/sessions/${id}`, json('PATCH', { title })))
+export const relancerDecoupe = (id) => appel(`/sessions/${id}/recut`, { method: 'POST' })
 export const supprimerSeance = (id) => appel(`/sessions/${id}`, { method: 'DELETE' })
 export const detailSeance = async (id) => seance(await appel(`/sessions/${id}`))
 export const creerSeance = async (corps) => seance(await appel('/sessions', json('POST', corps)))
