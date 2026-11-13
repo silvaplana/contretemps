@@ -160,7 +160,7 @@ Maquette validée : `spec/maquettes/actualites-reactions.html`.
 
 - Sous chaque publication publiée (pas un brouillon, pas l'aperçu de l'éditeur) : les emojis donnés
   avec leur nombre ; le sien entouré en orange. Toucher un emoji réagit pareil, toucher le sien le retire.
-- « ☺+ » ouvre six emojis : ❤️ 👏 😂 😮 😢 🔥. **Une seule réaction par personne et par publication**
+- « ☺+ » ouvre dix emojis : 😊 👍 ❤️ 👏 😂 😮 😢 🔥 💪 🎉 (Seb : « il faudrait au moins le :-) »). **Une seule réaction par personne et par publication**
   (Seb) : en choisir une autre remplace la première.
 - « Qui a réagi » : la liste des prénoms avec leur emoji (« Vous » pour soi).
 - Toute personne qui lit le blog peut réagir. Pas de notification.

@@ -26,7 +26,7 @@ Le fil
   n'avait pas encore vu.
 - Réagir (toute personne qui voit le blog) : sous une publication, les emojis déjà donnés avec leur
   nombre, le sien entouré en orange. Toucher un emoji : réagir pareil ; toucher le sien : le retirer.
-  « ☺+ » : six emojis au choix (❤️ 👏 😂 😮 😢 🔥), un seul par personne (un autre remplace le premier).
+  « ☺+ » : dix emojis au choix (😊 👍 ❤️ 👏 😂 😮 😢 🔥 💪 🎉), un seul par personne (un autre remplace le premier).
   « Qui a réagi » : les prénoms avec leur emoji.
 
 Blog avec catégories (ex. Techniques)
