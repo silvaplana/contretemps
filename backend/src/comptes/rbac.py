@@ -60,6 +60,9 @@ ROUTES_PUBLIQUES = {
     # Retour de la banque (connexion bancaire du Financier) : protégé par le
     # `state` aléatoire, valable 30 minutes (finances/bank.py).
     ("GET", "/finances/bank/return"),
+    # Retour de Meta (« Se connecter avec Instagram ») : protégé de même par
+    # le `state` signé, valable 30 minutes (publications/instagram.py).
+    ("GET", "/news/instagram/return"),
     ("GET", "/ecoles"),
     # Fichier vidéo et aperçu, lus par la balise <video> : protégés par un
     # lien signé à durée limitée (securite/liens.py), pas par la session.
