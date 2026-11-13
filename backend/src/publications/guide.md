@@ -28,6 +28,9 @@ Le fil
   nombre, le sien entouré en orange. Toucher un emoji : réagir pareil ; toucher le sien : le retirer.
   « ☺+ » : seize emojis au choix (😊 😍 🤩 😎 👍 ❤️ 👏 🙏 😂 😮 😢 🔥 💪 💃 🌟 🎉), un seul par personne (un autre remplace le premier).
   « Qui a réagi » : les prénoms avec leur emoji.
+- Sondage (toute personne qui voit le blog) : toucher une réponse vote, la retoucher retire le vote ;
+  une autre réponse change d'avis (ou s'ajoute si « Plusieurs réponses possibles »). Barres et nombres
+  tout de suite ; « Voir les votes » : chaque réponse avec les prénoms.
 
 Blog avec catégories (ex. Techniques)
 - Deux onglets en haut : « Fil » et « Catégories ». Dans le Fil, chaque carte a un nom en titre et sa
@@ -69,6 +72,9 @@ Nouvelle publication / Modifier
 - Plus simple sur le téléphone : dans YouTube, Partager › Contretemps ; « Envoyer à… » propose
   « Nouvelle publication dans <blog> » ou « Ajouter à « <brouillon> » », et l'éditeur s'ouvre avec la
   vidéo ajoutée. Pour deux vidéos : garder en Brouillon, partager la deuxième vers ce brouillon.
+- « Sondage » (sous Photo, Vidéo, Lien, Document ; pas pour une Brève) : « Question », les
+  « Réponses » (2 à 10, ✕ en retire une, « + Ajouter une réponse »), « Plusieurs réponses possibles ».
+  Le texte devient facultatif.
 - « En haut jusqu'au » (Important seulement). « Envoyer une notification ».
 - Dessous, la publication telle que les autres la verront.
 - Boutons « Brouillon » et « Publier » (« Enregistrer » si déjà publiée). Après Publier, retour au fil

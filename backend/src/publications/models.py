@@ -92,6 +92,7 @@ class Post(Base):
     reactions: Mapped[list[Reaction]] = relationship(
         order_by="Reaction.created_at", cascade="all, delete-orphan", lazy="selectin",
     )
+    poll: Mapped[Poll | None] = relationship(cascade="all, delete-orphan", lazy="selectin", uselist=False)
 
 
 class Reaction(Base):
@@ -104,6 +105,45 @@ class Reaction(Base):
     member_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     emoji: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
+
+
+class Poll(Base):
+    """A post's poll, like WhatsApp's (Seb, 13 November): one question, 2 to
+    10 answers, one answer per person or several. Votes are named."""
+
+    __tablename__ = "pub_polls"
+
+    post_id: Mapped[int] = mapped_column(ForeignKey("pub_posts.id", ondelete="CASCADE"), primary_key=True)
+    question: Mapped[str] = mapped_column(String(200), nullable=False)
+    multiple: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+    options: Mapped[list[PollOption]] = relationship(
+        order_by="PollOption.position", cascade="all, delete-orphan", lazy="selectin",
+    )
+
+
+class PollOption(Base):
+    __tablename__ = "pub_poll_options"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    post_id: Mapped[int] = mapped_column(ForeignKey("pub_polls.post_id", ondelete="CASCADE"), nullable=False, index=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+
+    votes: Mapped[list[PollVote]] = relationship(
+        order_by="PollVote.created_at", cascade="all, delete-orphan", lazy="selectin",
+    )
+
+
+class PollVote(Base):
+    """One member's answer; the first name is kept, like a reaction's."""
+
+    __tablename__ = "pub_poll_votes"
+
+    option_id: Mapped[int] = mapped_column(ForeignKey("pub_poll_options.id", ondelete="CASCADE"), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
 
 
