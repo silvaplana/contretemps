@@ -14,7 +14,7 @@ import * as sessionApi from '../../api/session.js'
 import * as partage from './partage.js'
 import * as api from './api.js'
 import Categories, { ChoixCategorie } from './Categories.jsx'
-import { EditeurSondage, Sondage, manqueSondage, sondageEnApercu, sondageVide } from './Sondage.jsx'
+import { EditeurSondage, Sondage, manqueSondage, sondageEnApercu, sondageVide } from '../../components/Sondage.jsx'
 import './publications.css'
 
 // Un blog du module Publications : Actus, Techniques… (spec/modules/
@@ -303,7 +303,11 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
   const reactions = avecReactions && actu.publieeLe && actu.reactions && <Reactions actu={actu} lieu={lieu} />
   // On vote sur une publication publiée, pas dans l'aperçu de l'éditeur.
   const sondage = actu.sondage && (
-    <Sondage key={`${actu.id}-${actu.modifieeLe?.getTime?.() ?? ''}`} sondage={actu.sondage} lieu={avecReactions && actu.publieeLe ? lieu : null} actuId={actu.id} />
+    <Sondage
+      key={`${actu.id}-${actu.modifieeLe?.getTime?.() ?? ''}`}
+      sondage={actu.sondage}
+      onVoter={avecReactions && actu.publieeLe ? async (choix) => (await api.voter(lieu, actu.id, choix)).sondage : null}
+    />
   )
   // Le crayon, pour qui publie : on modifie l'actu là où on la voit (§12.5).
   const crayon = onModifier && (

@@ -89,6 +89,14 @@ function statutAgrege(deliveries) {
 // Exportée : réutilisée par ouvrirFluxEvenements ci-dessous pour adapter
 // un message reçu en direct par SSE, exactement comme un message chargé
 // via listerAvecMessages/envoyer.
+// « moi » se lit ici : le même message part à tous les membres (SSE).
+const sondageVersEcran = (p, compteId) => ({
+  question: p.question,
+  plusieurs: p.multiple,
+  votants: p.voters,
+  options: p.options.map((o) => ({ id: o.id, libelle: o.label, votants: o.voters, moi: o.voter_ids.includes(compteId) })),
+})
+
 export function versMessageEcran(message, compteId, membres) {
   const auteur = membres.find((m) => m.id === message.expediteur_id)
   const maDelivery = message.deliveries.find((d) => d.destinataire_id === compteId)
@@ -113,6 +121,8 @@ export function versMessageEcran(message, compteId, membres) {
     reponseA: message.reply_to_id ?? null,
     // Photos et fichiers (spec §4.3) : { id, filename, kind, size, width, height }.
     pieces: message.attachments ?? [],
+    // Sondage (spec §4.11) : même forme que la carte components/Sondage.jsx.
+    sondage: message.poll ? sondageVersEcran(message.poll, compteId) : null,
     heure: dateServeur(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     statut: statutAgrege(message.deliveries),
     envoyeParMail: message.deliveries.some((d) => d.canal === 'email'),
@@ -243,7 +253,7 @@ export async function envoyerBrut(
   contenu,
   canal,
   clientId,
-  { reponseA = null, transfere = false, pieces = [] } = {},
+  { reponseA = null, transfere = false, pieces = [], sondage = null } = {},
 ) {
   return requete(`/conversations/${conversationId}/messages`, {
     method: 'POST',
@@ -255,6 +265,7 @@ export async function envoyerBrut(
       reply_to_id: reponseA,
       forwarded: transfere,
       attachment_ids: pieces,
+      poll: sondage,
     }),
   })
 }
@@ -269,11 +280,17 @@ export async function supprimerMessage(messageId) {
   return requete(`/messages/${messageId}`, { method: 'DELETE' })
 }
 
+// Vote à un sondage (spec §4.11) : remplace mon vote, [] le retire.
+export async function voter(messageId, compteId, options) {
+  return requete(`/messages/${messageId}/vote`, { method: 'PUT', body: JSON.stringify({ compte_id: compteId, options }) })
+}
+
 // Ce qu'on montre d'un message en une ligne (liste des conversations).
 export function apercuMessage(m) {
   if (!m) return ''
   if (m.supprime) return 'Ce message a été supprimé'
   if (m.contenu) return m.contenu
+  if (m.sondage) return `📊 ${m.sondage.question}`
   if (m.pieces.length === 0) return ''
   if (m.pieces.every((p) => p.kind === 'photo')) return '📷 Photo'
   return m.pieces.every((p) => p.kind === 'video') ? '🎬 Vidéo' : '📎 Fichier'

@@ -69,6 +69,12 @@ class ConversationSortie(BaseModel):
     whatsapp_groupe_id: str | None = None
 
 
+class PollIn(BaseModel):
+    question: str
+    multiple: bool = False
+    options: list[str]
+
+
 class MessageCreation(BaseModel):
     expediteur_id: int
     contenu: str
@@ -85,6 +91,8 @@ class MessageCreation(BaseModel):
     # Photos and files uploaded first (POST /conversations/{id}/attachments),
     # or those of a forwarded message (§4.3).
     attachment_ids: list[int] = []
+    # A poll sent as a message (§4.11).
+    poll: PollIn | None = None
 
 
 class MessageEdit(BaseModel):
@@ -131,6 +139,25 @@ class VideoBlockOut(BaseModel):
     attachment: AttachmentOut | None = None  # once the last block is in
 
 
+class PollOptionOut(BaseModel):
+    id: int
+    label: str
+    voters: list[str] = []  # names, in voting order
+    voter_ids: list[int] = []
+
+
+class PollOut(BaseModel):
+    question: str
+    multiple: bool
+    voters: int  # people who voted
+    options: list[PollOptionOut]
+
+
+class VoteIn(BaseModel):
+    compte_id: int
+    options: list[int]
+
+
 class MessageSortie(BaseModel):
     id: int
     conversation_id: int
@@ -143,6 +170,7 @@ class MessageSortie(BaseModel):
     forwarded: bool = False
     reply_to_id: int | None = None
     attachments: list[AttachmentOut] = []
+    poll: PollOut | None = None
     deliveries: list[DeliverySortie] = []
 
 

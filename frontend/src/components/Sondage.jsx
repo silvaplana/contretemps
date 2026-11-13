@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import Modal from '../../components/Modal.jsx'
-import * as api from './api.js'
+import { createPortal } from 'react-dom'
+import Modal from './Modal.jsx'
+import './Sondage.css'
 
-// Sondage, comme dans WhatsApp (Seb, 13 novembre ; maquette « Sondage ») :
-// une question, de 2 à 10 réponses, une seule ou plusieurs. On touche une
+// Sondage, comme dans WhatsApp (Seb, 13 novembre ; maquette « Sondage »),
+// dans une publication et dans une discussion : une question, de 2 à 10 réponses, une seule ou plusieurs. On touche une
 // réponse pour voter, on la retouche pour changer d'avis ; les barres et les
 // nombres se voient tout de suite, « Voir les votes » montre qui a voté quoi.
 
@@ -18,15 +19,16 @@ export function manqueSondage(s) {
   return ''
 }
 
-// Dans la carte : `lieu` et `actuId` pour voter (null dans l'aperçu de
-// l'éditeur, où l'on ne vote pas).
-export function Sondage({ sondage, lieu = null, actuId = null }) {
+// La carte. `onVoter(ids)` enregistre le vote et rend le sondage à jour ;
+// absent là où l'on ne vote pas (aperçu de l'éditeur, brouillon).
+// `desactive` : pendant une sélection de messages.
+export function Sondage({ sondage, onVoter = null, desactive = false }) {
   // Après un vote, la réponse du serveur ; sinon ce que donne la carte.
   const [apresVote, setApresVote] = useState(null)
   const s = apresVote ?? sondage
   const [votes, setVotes] = useState(false)
   const [envoi, setEnvoi] = useState(false)
-  const peutVoter = Boolean(lieu && actuId)
+  const peutVoter = Boolean(onVoter) && !desactive
   const total = s.options.reduce((n, o) => n + o.votants.length, 0)
   const aVote = s.options.some((o) => o.moi)
 
@@ -38,7 +40,7 @@ export function Sondage({ sondage, lieu = null, actuId = null }) {
     else choix = s.plusieurs ? [...miens, option.id] : [option.id]
     setEnvoi(true)
     try {
-      setApresVote((await api.voter(lieu, actuId, choix)).sondage)
+      setApresVote(await onVoter(choix))
     } catch (e) {
       window.alert(e.message)
     } finally {
@@ -77,25 +79,30 @@ export function Sondage({ sondage, lieu = null, actuId = null }) {
           {s.votants} {s.votants > 1 ? 'votes' : 'vote'}
         </span>
         {s.votants > 0 && (
-          <button type="button" className="sondage__voir" onClick={() => setVotes(true)}>
+          <button type="button" className="sondage__voir" disabled={desactive} onClick={() => setVotes(true)}>
             Voir les votes
           </button>
         )}
       </div>
-      {votes && (
-        <Modal title={s.question} onClose={() => setVotes(false)}>
-          <ul className="sondage__votes">
-            {s.options.map((o) => (
-              <li key={o.id}>
-                <b>
-                  {o.libelle} · {o.votants.length}
-                </b>
-                <span>{o.votants.join(', ') || 'Personne'}</span>
-              </li>
-            ))}
-          </ul>
-        </Modal>
-      )}
+      {/* Hors de la bulle d'un message : ni sa couleur, ni son appui long. */}
+      {votes &&
+        createPortal(
+          <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+            <Modal title={s.question} onClose={() => setVotes(false)}>
+              <ul className="sondage__votes">
+                {s.options.map((o) => (
+                  <li key={o.id}>
+                    <b>
+                      {o.libelle} · {o.votants.length}
+                    </b>
+                    <span>{o.votants.join(', ') || 'Personne'}</span>
+                  </li>
+                ))}
+              </ul>
+            </Modal>
+          </div>,
+          document.body,
+        )}
     </div>
   )
 }

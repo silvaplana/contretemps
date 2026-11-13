@@ -1,6 +1,8 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import * as messagesApi from '../../api/messages.js'
 import Icon from '../../components/Icon.jsx'
+import Modal from '../../components/Modal.jsx'
+import { EditeurSondage, Sondage, manqueSondage, sondageVide } from '../../components/Sondage.jsx'
 import WhatsappBadge from '../../components/WhatsappBadge.jsx'
 import { useFermerAuClicExterieur } from '../../hooks/useFermerAuClicExterieur.js'
 import { useFrappeEnCours, useSignalerFrappe } from '../../utils/frappeIndicateur.js'
@@ -198,6 +200,11 @@ export default function ConversationThreadScreen({
   const fichierRef = useRef(null)
   const photoRef = useRef(null)
   const [photoOuverte, setPhotoOuverte] = useState(null)
+  // Le trombone ouvre Fichier | Sondage, comme dans WhatsApp (spec §4.11).
+  const [joindreOpen, setJoindreOpen] = useState(false)
+  const joindreRef = useRef(null)
+  useFermerAuClicExterieur(joindreRef, joindreOpen, () => setJoindreOpen(false))
+  const [sondage, setSondage] = useState(null) // le sondage en cours d'écriture
 
   const [canalOpen, setCanalOpen] = useState(false)
   const canalSelectorRef = useRef(null)
@@ -339,6 +346,21 @@ export default function ConversationThreadScreen({
     envoyerAvecReprise(conversation.id, compteId, contenu, 'app', options, fichiers)
   }
 
+  function envoyerSondage() {
+    if (manqueSondage(sondage)) return
+    const { question, plusieurs, reponses } = sondage
+    setSondage(null)
+    envoyerAvecReprise(conversation.id, compteId, '', 'app', {
+      sondage: { question, multiple: plusieurs, options: reponses },
+    })
+  }
+
+  async function voter(message, choix) {
+    const brut = await messagesApi.voter(message.id, compteId, choix)
+    remplacerMessage(brut)
+    return messagesApi.versMessageEcran(brut, compteId, conversation.membres).sondage
+  }
+
   function remplacerMessage(brut) {
     const maj = messagesApi.versMessageEcran(brut, compteId, conversation.membres)
     setConversations((liste) =>
@@ -395,7 +417,11 @@ export default function ConversationThreadScreen({
 
   const peutRepondre = !lectureSeule && selectionnes.length === 1
   const peutModifier =
-    !lectureSeule && selectionnes.length === 1 && selectionnes[0].estMoi && encoreModifiable(selectionnes[0])
+    !lectureSeule &&
+    selectionnes.length === 1 &&
+    selectionnes[0].estMoi &&
+    !selectionnes[0].sondage &&
+    encoreModifiable(selectionnes[0])
   const peutSupprimer =
     !lectureSeule &&
     selectionnes.length > 0 &&
@@ -522,7 +548,7 @@ export default function ConversationThreadScreen({
             <Icon name="copy" size={22} />
             <span>Copier</span>
           </button>
-          {!lectureSeule && (
+          {!lectureSeule && !selectionnes.some((m) => m.sondage) && (
             <button type="button" className="barre-actions__btn" onClick={transferer}>
               <Icon name="forward" size={22} />
               <span>Transférer</span>
@@ -628,6 +654,14 @@ export default function ConversationThreadScreen({
                   sur plusieurs lignes (voir la textarea ci-dessous) doit
                   aussi s'afficher sur plusieurs lignes, pas être aplati
                   en un seul paragraphe comme le ferait un <p> normal. */}
+              {!supprime && m.sondage && (
+                <Sondage
+                  key={m.sondage.options.map((o) => o.votants.join(',')).join('|')}
+                  sondage={m.sondage}
+                  onVoter={lectureSeule ? null : (choix) => voter(m, choix)}
+                  desactive={enSelection}
+                />
+              )}
               {!supprime && (
                 <PiecesDuMessage pieces={m.pieces} onOuvrirPhoto={setPhotoOuverte} desactivees={enSelection} />
               )}
@@ -697,6 +731,7 @@ export default function ConversationThreadScreen({
                 </span>
               )}
               {m.contenu && <p className="message-bubble__contenu">{m.contenu}</p>}
+              {m.options?.sondage && <p className="message-bubble__contenu">📊 {m.options.sondage.question}</p>}
               <span className="message-bubble__meta">
                 {m.etat === 'echec' ? (
                   <>
@@ -799,6 +834,19 @@ export default function ConversationThreadScreen({
       {photoOuverte && photoOuverte.kind !== 'video' && (
         <PhotoPleinEcran piece={photoOuverte} onFermer={() => setPhotoOuverte(null)} />
       )}
+      {sondage && (
+        <Modal
+          title="Sondage"
+          onClose={() => setSondage(null)}
+          footer={
+            <button type="button" className="btn btn--primary" disabled={Boolean(manqueSondage(sondage))} onClick={envoyerSondage}>
+              {manqueSondage(sondage) || 'Envoyer'}
+            </button>
+          }
+        >
+          <EditeurSondage sondage={sondage} onChanger={setSondage} />
+        </Modal>
+      )}
       <div className="conversation-thread__input">
         {emojiOpen && (
           <div className="emoji-picker" ref={emojiSelectorRef}>
@@ -849,9 +897,33 @@ export default function ConversationThreadScreen({
           />
           {!enModification && !lectureSeule && (
             <>
-              <button type="button" className="icon-btn" onClick={() => fichierRef.current?.click()} aria-label="Joindre un fichier">
-                <Icon name="paperclip" size={20} />
-              </button>
+              <div className="conversation-thread__joindre" ref={joindreRef}>
+                <button type="button" className="icon-btn" onClick={() => setJoindreOpen((o) => !o)} aria-label="Joindre">
+                  <Icon name="paperclip" size={20} />
+                </button>
+                {joindreOpen && (
+                  <div className="dropdown-menu joindre-picker">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setJoindreOpen(false)
+                        fichierRef.current?.click()
+                      }}
+                    >
+                      Fichier
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setJoindreOpen(false)
+                        setSondage(sondageVide())
+                      }}
+                    >
+                      Sondage
+                    </button>
+                  </div>
+                )}
+              </div>
               <button type="button" className="icon-btn" onClick={() => photoRef.current?.click()} aria-label="Joindre une photo ou une vidéo">
                 <Icon name="camera" size={20} />
               </button>

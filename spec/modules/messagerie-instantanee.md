@@ -353,6 +353,26 @@ Le choix « Par WhatsApp » du menu ⋯ de la zone de saisie est retiré : la me
   ou souris se disait « ordinateur » et Entrée y envoyait le message.
 - Le message garde ses lignes à l'affichage.
 
+### 4.11 Sondage, comme dans WhatsApp (Seb, 13 novembre)
+
+Le même sondage que dans les publications (spec `actualites.md` §12.12, maquette
+https://claude.ai/artifact/DRaBaxfSGLorh1LJNNhef2) :
+
+- Le **trombone** de la zone de saisie ouvre **Fichier | Sondage**, comme dans WhatsApp ; l'appareil
+  photo reste à côté. « Sondage » ouvre une fenêtre : la question, de 2 à 10 réponses (« + Ajouter une
+  réponse », ✕ pour en retirer une), « Plusieurs réponses possibles », puis **Envoyer** (le bouton dit
+  ce qui manque tant qu'il manque quelque chose).
+- Le sondage part comme un message : dans la bulle, la question, « Une seule réponse » ou « Plusieurs
+  réponses possibles », chaque réponse avec sa barre et son nombre.
+- Chaque membre touche une réponse pour voter, la retouche pour retirer son vote, en touche une autre
+  pour changer d'avis. Tout le monde voit les votes en direct.
+- **Votes nominatifs** : « Voir les votes » montre qui a voté quoi.
+- Un sondage ne se modifie pas et ne se transfère pas ; on peut le supprimer. Un sondage supprimé
+  n'accepte plus de vote. Dans la liste des discussions et la notification : « 📊 la question ».
+- Données : tables `msg_polls` (une ligne par message), `msg_poll_options`, `msg_poll_votes` (une
+  ligne par réponse cochée, avec le nom au moment du vote). La carte est partagée avec les
+  publications (`frontend/src/components/Sondage.jsx`) ; le serveur de chaque module garde ses tables.
+
 ## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
