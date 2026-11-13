@@ -26,7 +26,7 @@ from session_clips import lab
 from session_clips.cutting import _heard, _load_frames, _poses_path
 from session_clips.fights import find_fights, find_signs, trim
 from session_clips.models import Clip, ClipSession, Piece
-from session_clips.signals import Frame
+from session_clips.signals import Frame, _shoulders_top, _wrists, main_pair, torso
 from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE
 
@@ -83,6 +83,7 @@ def detail(db, session_id: int, out=print) -> None:
         else:
             out("  pas de postures gardées")
         offset += p.duration_seconds or 0
+    _raised(frames, out)
     s = lab.settings(db, x.org_id)
     out(f"réglages du tournage : signes {list(s.signs)}, cadrage {s.framing}, début -{s.start_skip} s, fin -{s.end_skip} s")
     out(f"signes recalculés : {[(g.kind, round(g.start, 1), round(g.end, 1)) for g in find_signs(frames, sounds)]}")
@@ -90,6 +91,30 @@ def detail(db, session_id: int, out=print) -> None:
     out(f"combats avec les règles du jour : {[(round(f.start, 1), round(f.end, 1), f.check_reason) for f in fights]}")
     for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
         out(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
+
+
+def _raised(frames: list[Frame], out, limit: int = 200) -> None:
+    """Les images où les deux combattants ont un poignet bien au-dessus des
+    épaules : l'écart entre leurs poignets les plus proches et leur hauteur,
+    en bustes, pour régler les poings touchés (Seb, 13/11, séance 9)."""
+    lines = []
+    for f in frames:
+        pair = main_pair(f)
+        if len(pair) != 2:
+            continue
+        unit = min(torso(p) or 0 for p in pair)
+        tops = [_shoulders_top(p) for p in pair]
+        if not unit or None in tops:
+            continue
+        ups = [[w for w in _wrists(p) if w[1] < top - 0.2 * unit] for p, top in zip(pair, tops, strict=True)]
+        if not all(ups):
+            continue
+        gap = min(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 for a in ups[0] for b in ups[1]) / unit
+        lift = [round((top - min(w[1] for w in u)) / unit, 2) for u, top in zip(ups, tops, strict=True)]
+        lines.append(f"  {f.t:6.1f} s · écart des poignets {gap:.2f} buste · hauteur au-dessus des épaules {lift}")
+    out(f"bras levés tous les deux : {len(lines)} images (poings touchés : écart < 0,35, ou < 0,65 si hauteur ≥ 0,4)")
+    for line in lines[:limit]:
+        out(line)
 
 
 def run() -> None:
