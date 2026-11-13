@@ -2,7 +2,7 @@
 §5) à partir des gestes de chaque image (signals.py).
 
 D'abord les signes, tenus un moment (`find_signs`) : au début, les poings
-touchés en l'air (ou deux poings levés ensemble) ou le « Go ! » crié ; à la fin, la
+touchés en l'air ou un cri (« Go ! », « Fight ! », « Hajime ! ») ; à la fin, la
 poignée de main (immobiles), les bras croisés ou le « Time ! » crié. Puis les combats (`find_fights`), avec
 les seuls signes cochés par le club : du signe de début au premier signe de
 fin, sinon à la zone vide quelques secondes, sinon au début du combat
@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_fist_up, is_x, main_pair, torso
+from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_x, main_pair, torso
 
 # « go », « fight », « hajime » : crié par l'entraîneur (hearing.py ; « Fight ! » et
 # « Hajime ! » ajoutés le 13/11 : « go », trop court, se confond avec « allez »).
@@ -89,9 +89,9 @@ def find_signs(frames: list[Frame], sounds: list[Sound] = ()) -> list[Sign]:
     """Tous les signes repérés, cochés ou non : la frise du Labo les montre.
     `sounds` : les « Go ! » et « Time ! » dits (hearing.py)."""
     tests = {
-        # Le « Poing levé » seul est retiré (Seb, 13/11) ; deux poings levés au
-        # même moment sont des poings touchés en l'air mal lus (séance 9).
-        "fists_touch": lambda f: _pair(f, are_touching_fists_up) or sum(1 for p in f.people if is_fist_up(p)) >= 2,
+        # Le « Poing levé » est retiré (Seb, 13/11) : seuls comptent les poings
+        # des deux combattants qui se touchent, bras levés.
+        "fists_touch": lambda f: _pair(f, are_touching_fists_up),
         "handshake": lambda f: _pair(f, are_shaking_hands),
         # Bras croisés : chacun des deux (Seb, 13/11).
         "x": lambda f: _pair(f, lambda a, b: is_x(a) and is_x(b)),

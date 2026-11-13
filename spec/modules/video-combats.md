@@ -238,9 +238,9 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    silhouette.
 2. **Signaux** : la détection de posture repère les signes tenus un moment (réglés le 12/11 sur
    deux vidéos de Seb, `fights.py`), tenus au moins 0,5 s (Seb, 13/11). **Début** : les **poings
-   touchés en l'air** des deux combattants (bras vers le haut ; c'est le signe du club de Seb) ;
-   deux poings levés au même moment comptent aussi (séance 9 du 13/11 : les poings touchés en
-   l'air y étaient lus ainsi). Le « Poing levé » seul n'est plus un signe (Seb, 13/11 : « c'est
+   touchés en l'air** des deux combattants (bras levés, chacun touche les poings de l'autre ; c'est le signe du
+   club de Seb) ; deux poings levés sans se toucher ne comptent pas (Seb, 13/11). Le « Poing
+   levé » n'est plus un signe (Seb, 13/11 : « c'est
    nul »). **Fin** : la **poignée de main** (deux personnes debout, mains jointes sous les épaules,
    immobiles) ; ou les **bras croisés** des deux combattants (Seb, 13/11 : chacun croise les
    avant-bras devant soi, au milieu ou plus haut, plus de X en l'air) : poignets au-dessus des

@@ -143,7 +143,7 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     sid = client.post("/session-clips/camera/start", json={"title": "Adultes · 19 h"}, headers=e["coach"]).json()["session_id"]
     _battre(client, tel, "recording")
 
-    y2 = [pose(100, "fist"), pose(300, "fist")]
+    y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
     x = [pose(100, "x"), pose(300, "x")]
     # Morceaux de 30 s : combat 1 dans le morceau 0 ; combat 2 à cheval sur
