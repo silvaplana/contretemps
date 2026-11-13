@@ -606,7 +606,8 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
               type="button"
               className="sc-essai__ouvrir"
               aria-disabled={!prete}
-              onClick={() => prete && s.clip_count > 0 && onOpen(s.id)}
+              // Même sans combat trouvé : on y voit le film et la frise (Seb, 13/11).
+              onClick={() => prete && onOpen(s.id)}
             >
               <span className="sc-vignette sc-vignette--petite">
                 {poster ? <img src={poster} alt="" /> : <Icon name="video" size={20} />}
@@ -902,8 +903,34 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
   const combats = (s?.clips ?? [])
     .filter((c) => c.start_seconds != null)
     .map((c) => ({ id: c.id, start: c.start_seconds, end: c.start_seconds + (c.video?.dureeSecondes || 0) }))
-  const fin = Math.max(1, ...(s?.signs ?? []).map((x) => x.end + 2), ...combats.map((c) => c.end))
-  const frise = club && club.show_timeline !== false && s?.signs?.length > 0
+  const film = s?.film ?? []
+  const bout = film.at(-1)
+  const fin = Math.max(
+    1,
+    ...(s?.signs ?? []).map((x) => x.end + 2),
+    ...combats.map((c) => c.end),
+    bout ? bout.start + (bout.video?.dureeSecondes || 0) : 0,
+  )
+  const frise = club && club.show_timeline !== false && s
+
+  // Le film de la séance, bout après bout (la caméra l'envoie par 2 minutes).
+  const lecteur = useRef(null)
+  const [partie, setPartie] = useState(0)
+  const saut = useRef(null) // où aller une fois le bon bout chargé
+  function voir(t) {
+    let i = 0
+    while (i + 1 < film.length && film[i + 1].start <= t) i += 1
+    const v = lecteur.current
+    if (!v) return
+    v.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+    if (i === partie) {
+      v.currentTime = t - film[i].start
+      v.play?.().catch(() => {})
+    } else {
+      saut.current = t - film[i].start
+      setPartie(i)
+    }
+  }
 
   // « C'est bon » sous le crayon : validé s'il était à identifier.
   async function fini(c) {
@@ -924,19 +951,48 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
         <strong className="sc__titre">{s ? `${api.jour(s.held_on)}${s.title ? ` · ${s.title}` : ''}` : ''}</strong>
       </div>
       <div className="sc__corps">
-        {frise && (
-          <Deroulant titre="Signes repérés" ouvertAuDepart>
-            <Graphe
-              signes={s.signs}
-              combats={combats}
-              coches={club.signs}
-              fin={fin}
-              // Toucher un signe ouvre le combat où il tombe.
-              aller={(t) => {
-                const c = combats.find((x) => x.start - 2 <= t && t <= x.end + 2)
-                if (c) onOpen(c.id)
+        {film.length > 0 && (
+          <Deroulant titre="Vidéo de la séance" ouvertAuDepart>
+            <video
+              ref={lecteur}
+              className="sc-apercu"
+              src={film[partie]?.video?.url}
+              controls
+              playsInline
+              onLoadedMetadata={(ev) => {
+                if (saut.current == null) return
+                ev.currentTarget.currentTime = saut.current
+                saut.current = null
+                ev.currentTarget.play().catch(() => {})
+              }}
+              onEnded={() => {
+                if (partie + 1 < film.length) {
+                  saut.current = 0
+                  setPartie(partie + 1)
+                }
               }}
             />
+          </Deroulant>
+        )}
+        {frise && (
+          <Deroulant titre="Signes repérés" ouvertAuDepart>
+            {s.signs.length === 0 ? (
+              <p className="sc-meta">Aucun signe repéré.</p>
+            ) : (
+              <Graphe
+                signes={s.signs}
+                combats={combats}
+                coches={club.signs}
+                fin={fin}
+                // Toucher un signe le montre dans la vidéo de la séance,
+                // sinon ouvre le combat où il tombe.
+                aller={(t) => {
+                  if (film.length > 0) return voir(t)
+                  const c = combats.find((x) => x.start - 2 <= t && t <= x.end + 2)
+                  if (c) onOpen(c.id)
+                }}
+              />
+            )}
           </Deroulant>
         )}
         {s?.attendees.length > 0 && (

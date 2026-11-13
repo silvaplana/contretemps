@@ -101,10 +101,19 @@ class SessionOut(BaseModel):
     camera_online: bool = False
 
 
+class FilmPart(BaseModel):
+    """Un bout du film de la séance et où il commence dans la séance."""
+
+    start: float
+    video: VideoSortie
+
+
 class SessionDetail(SessionOut):
     clips: list[ClipOut]
     attendees: list[PersonOut]
     signs: list[LabSignOut] = []
+    # Le film entier, à voir même sans combat trouvé (Seb, 13/11).
+    film: list[FilmPart] = []
 
 
 # --- Caméra de la salle (étape 3) ---

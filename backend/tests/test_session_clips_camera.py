@@ -169,6 +169,8 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     detail = client.get(f"/session-clips/sessions/{sid}", headers=e["coach"]).json()
     assert "fist_up" in [x["kind"] for x in detail["signs"]] and "x" in [x["kind"] for x in detail["signs"]]
     assert detail["clips"][0]["start_seconds"] is not None
+    # Le film de la séance, à voir même sans combat trouvé (Seb, 13/11).
+    assert [round(x["start"]) for x in detail["film"]] == [0] and detail["film"][0]["video"]["id"]
 
     _envoyer(client, tel, sid, 1, _morceau(tmp_path, 1))
     assert cut_live(db_session, sc, session, detecteur) == 1
@@ -189,6 +191,7 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     assert videos[clips[0].video_id].nom == "Fights · " + session.held_on.strftime("%d/%m/%Y") + " · Adultes · 19 h · combat 1"
     seance = client.get(f"/session-clips/sessions/{sid}", headers=e["coach"]).json()
     assert seance["live"] and seance["clip_count"] == 3
+    assert [round(x["start"]) for x in seance["film"]] == [0, 30, 60]
 
 
 def test_rejumeler_pendant_le_film(client, db_session, e, tmp_path, monkeypatch):
