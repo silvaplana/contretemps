@@ -77,6 +77,7 @@ ROUTES_PUBLIQUES = {
     # Édition OnlyOffice : appelées par le serveur OnlyOffice, protégées par
     # un jeton signé dans l'adresse (voir bureautique/).
     ("GET", "/bureautique/fichier/{jeton}"),
+    ("GET", "/bureautique/apercu/{jeton}"),
     ("POST", "/bureautique/retour/{jeton}"),
     # Personnalisation par école (spec §2.7) : lue avant toute connexion,
     # par Caddy (certificat), par le téléphone (installation de l'appli) et

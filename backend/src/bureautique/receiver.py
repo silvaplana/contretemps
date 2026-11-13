@@ -65,6 +65,15 @@ class BureautiqueReceiver:
             chemin, nom, mime = c.documents.content(db, membre, charge["n"])
             return FileResponse(chemin, media_type=mime, filename=nom)
 
+        @app.get("/bureautique/apercu/{jeton}")
+        def apercu(jeton: str):
+            """Le fichier d'un aperçu (lecture seule, hors de Docs), lu par OnlyOffice."""
+            trouve = c.fichier_apercu(jeton)
+            if trouve is None:
+                raise HTTPException(status_code=403, detail="Lien expiré")
+            chemin, nom = trouve
+            return FileResponse(chemin, filename=nom)
+
         @app.post("/bureautique/retour/{jeton}")
         async def retour(jeton: str, request: Request, db: Session = Depends(get_db)):
             charge = c.lire_jeton(jeton)

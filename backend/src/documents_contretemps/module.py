@@ -67,7 +67,10 @@ def mount(app, core) -> None:
 
     # Édition Word / Excel / PowerPoint avec OnlyOffice (essai, réservé au
     # Super User) : serveur de documents partagé du VPS (voir bureautique/).
-    BureautiqueReceiver(client=Bureautique(documents=documents_client, membre_de=membre_de), app=app, current_member=membre_appelant)
+    bureautique = Bureautique(documents=documents_client, membre_de=membre_de)
+    BureautiqueReceiver(client=bureautique, app=app, current_member=membre_appelant)
+    # L'aperçu en lecture seule d'un fichier hors de Docs (documents du bilan, Seb 13/11).
+    core.bureautique = bureautique
 
 
 MODULE = Module(

@@ -1057,7 +1057,7 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    /finances/seasons/{id}/documents`) ; « Ajouter un document que l'appli sait faire » complète.
    Chaque document prend **le nom de celui de l'an dernier, les années avancées d'un an**
    (« Balance 2024-2025.pdf » → « Balance 2025-2026.pdf »), au format que l'appli produit ; sans
-   fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir (PDF) et Télécharger
+   fichier l'an dernier : Synthèse, Balance, Rapport financier. Voir et Télécharger
    (`GET /finances/seasons/{id}/documents/{nature}/file?name=`) ; **rien n'est rangé dans Docs**
    (Seb 10/11) : on dépose soi-même ce qu'on garde. Le Rapport financier se rédige dans le bilan le
    plus avancé de la saison, créé « Officiel » s'il n'y en a pas (`POST
@@ -1065,6 +1065,14 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    étapes 1 à 6 sont vertes (`POST/DELETE /finances/seasons/{id}/close`), avec ce que fait la
    clôture en trois lignes et la trace des clôtures rouvertes. « Repartir à zéro » passe en bas de
    Préparer. La liste des bilans (pour l'AG) reste par ⋯ › Nouveau bilan, avec « ← Étapes du bilan ».
+   **Voir sur chaque document** (Seb 13/11) : un PDF dans un nouvel onglet ; un Excel, le Rapport
+   (Word) ou le FEC dans OnlyOffice, **en lecture seule et hors de Docs** : le serveur fabrique le
+   fichier, le garde une heure dans un dossier temporaire (`APERCUS_DIR`, sinon le dossier temporaire
+   du système), OnlyOffice le lit par un lien signé (`GET /bureautique/apercu/{jeton}`), rien ne
+   revient. `Bureautique.apercu` est branché sur Financier par `FinancesReceiver(preview=…)`
+   (`GET /finances/seasons/{id}/documents/{nature}/preview?name=`,
+   `GET /finances/reports/{id}/rapport/preview?name=`) ; sans OnlyOffice : « L'aperçu n'est pas
+   configuré sur ce serveur ».
 7. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 
 ## 9. Reste à faire

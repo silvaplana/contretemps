@@ -24,8 +24,11 @@ import json
 import io
 import logging
 import os
+import secrets
+import tempfile
 import time
 import urllib.request
+from pathlib import Path
 
 from documents.ports import Member
 from documents.preview import extension
@@ -40,6 +43,9 @@ TYPES = {
 }
 DUREE_JETON = 24 * 3600  # le retour peut arriver après la fermeture de l'éditeur
 TAILLE_MAX_RETOUR = 200 * 1024 * 1024
+# Aperçu d'un fichier fabriqué par un module, hors de Docs (Seb, 13/11) :
+# gardé une heure dans un dossier temporaire, puis effacé.
+DUREE_APERCU = 3600
 
 
 def _b64(octets: bytes) -> str:
@@ -138,6 +144,63 @@ class Bureautique:
         }
         config["token"] = jwt_signer(config, self.secret)
         return {"config": config, "api_js": f"{self.adresse}/web-apps/apps/api/documents/api.js", "modifiable": modifiable}
+
+    # ----- Aperçu d'un fichier hors de Docs (Seb, 13/11) -----
+
+    @property
+    def dossier_apercus(self) -> Path:
+        return Path(os.environ.get("APERCUS_DIR") or Path(tempfile.gettempdir()) / "contretemps-apercus")
+
+    def apercu(self, nom: str, contenu: bytes, base_api: str, utilisateur: str = "") -> dict:
+        """Configuration de l'éditeur, en lecture seule, pour un fichier qu'un
+        module vient de fabriquer (un document du bilan…) : le fichier est
+        gardé une heure hors de Docs, OnlyOffice le lit, rien ne revient."""
+        if not self.actif:
+            raise LookupError("L'aperçu n'est pas configuré sur ce serveur.")
+        genre = type_document(nom)
+        if genre is None:
+            raise ValueError("Ce fichier ne s'ouvre pas dans l'aperçu.")
+        dossier = self.dossier_apercus
+        dossier.mkdir(parents=True, exist_ok=True)
+        limite = time.time() - DUREE_APERCU
+        for vieux in dossier.iterdir():
+            if vieux.stat().st_mtime < limite:
+                vieux.unlink(missing_ok=True)
+        cle = secrets.token_hex(16)
+        (dossier / cle).write_bytes(contenu)
+        jeton = jwt_signer({"a": cle, "f": nom, "exp": int(time.time()) + DUREE_APERCU}, self.secret)
+        config = {
+            "document": {
+                "fileType": extension(nom).lstrip("."),
+                "key": cle,
+                "title": nom,
+                "url": f"{base_api}/bureautique/apercu/{jeton}",
+                "permissions": {"edit": False, "download": True, "print": True},
+            },
+            "documentType": genre,
+            "editorConfig": {
+                "lang": "fr",
+                "region": "fr-FR",
+                "mode": "view",
+                "user": {"id": "apercu", "name": utilisateur or "Contretemps"},
+                "customization": {"compactHeader": True},
+            },
+            "width": "100%",
+            "height": "100%",
+            "type": "desktop",
+        }
+        config["token"] = jwt_signer(config, self.secret)
+        return {"config": config, "api_js": f"{self.adresse}/web-apps/apps/api/documents/api.js", "modifiable": False}
+
+    def fichier_apercu(self, jeton: str) -> tuple[Path, str] | None:
+        """Le fichier d'un aperçu et son nom, tant que le jeton est valable."""
+        charge = self.lire_jeton(jeton)
+        if charge is None or "a" not in charge:
+            return None
+        chemin = self.dossier_apercus / str(charge["a"])
+        if not str(charge["a"]).isalnum() or not chemin.is_file():
+            return None
+        return chemin, str(charge["f"])
 
     def retour(self, db, charge_jeton: dict, corps: dict) -> None:
         """Appel d'OnlyOffice : statut 2 (document prêt après fermeture) ou

@@ -177,6 +177,9 @@ export const rouvrir = (reportId) => appel(`/reports/${reportId}/close`, { metho
 // ceux de l'an dernier (rien n'est rangé dans Docs), la clôture.
 export const documentsSaison = (seasonId) => appel(`/seasons/${seasonId}/documents`)
 export const choisirDocuments = (seasonId, items) => appel(`/seasons/${seasonId}/documents`, json('PUT', { items }))
+// « Voir » dans OnlyOffice, en lecture seule, sans ranger le fichier dans Docs (Seb 13/11).
+export const apercuDocumentSaison = (seasonId, kind, nom) => appel(`/seasons/${seasonId}/documents/${kind}/preview?name=${encodeURIComponent(nom)}`)
+export const apercuRapportFinancier = (reportId, nom) => appel(`/reports/${reportId}/rapport/preview?name=${encodeURIComponent(nom)}`)
 export const urlDocumentSaison = (seasonId, kind, nom) => `${BASE}/seasons/${seasonId}/documents/${kind}/file?name=${encodeURIComponent(nom)}`
 export const bilanDuRapport = (seasonId) => appel(`/seasons/${seasonId}/rapport-report`, { method: 'POST' })
 export const cloturerSaison = (seasonId) => appel(`/seasons/${seasonId}/close`, { method: 'POST' })

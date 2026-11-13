@@ -87,3 +87,33 @@ def test_ouvert_a_qui_peut_modifier(client, db_session, monde):
     adresse = f"/bureautique/orgs/{org}/nodes/{fichier['id']}/configuration"
     assert client.get(adresse, headers=admin).json()["config"]["editorConfig"]["mode"] == "edit"
     assert client.get(adresse, headers=eleve).status_code == 404
+
+
+def test_apercu_hors_de_docs(client, monde, tmp_path, monkeypatch):
+    """Seb, 13/11 : « Voir » un document du bilan dans OnlyOffice sans le
+    ranger dans Docs : fichier temporaire, lecture seule, effacé après une heure."""
+    monkeypatch.setenv("APERCUS_DIR", str(tmp_path / "apercus"))
+    bureautique = main.core.bureautique
+    vieux = tmp_path / "apercus" / "vieux"
+    vieux.parent.mkdir()
+    vieux.write_bytes(b"x")
+    import os
+    os.utime(vieux, (0, 0))
+
+    corps = bureautique.apercu("Synthèse 2025-2026.xlsx", b"PK synthese", "https://contretemps.test/api", "Julia")
+    config = corps["config"]
+    assert (corps["modifiable"], config["documentType"], config["editorConfig"]["mode"]) == (False, "cell", "view")
+    assert "callbackUrl" not in config["editorConfig"] and config["document"]["permissions"]["edit"] is False
+    signe = jwt_lire(config.pop("token"), SECRET)
+    assert signe == config
+    assert not vieux.exists()  # les aperçus de plus d'une heure sont effacés
+
+    # OnlyOffice lit le fichier sans session ; un jeton faux est refusé.
+    adresse = config["document"]["url"].split("/api", 1)[1]
+    assert client.get(adresse).content == b"PK synthese"
+    assert client.get(adresse[:-3] + "abc").status_code == 403
+    # Rien n'est rangé dans Docs.
+    assert list((tmp_path / "apercus").iterdir()) and not any(p.name.endswith(".xlsx") for p in tmp_path.rglob("*"))
+
+    with pytest.raises(ValueError):
+        bureautique.apercu("Balance.pdf", b"%PDF", "https://contretemps.test/api")

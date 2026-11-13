@@ -211,8 +211,8 @@ export function Cloture({ reportId, seasonName, closing, history = [], onChange,
 }
 
 // `sansDocs` (Bilan › Préparer, Seb 10/11) : rien n'est rangé dans Docs, on télécharge ;
-// `rediger` : ouvre tout de suite la rédaction.
-export function RapportFinancier({ reportId, seasonName, folderId, onErreur, sansDocs = false, rediger: redigerDabord = false, titre = 'Rapport financier' }) {
+// `rediger` : ouvre tout de suite la rédaction ; `onApercu` : « Voir » sans Docs (OnlyOffice, Seb 13/11).
+export function RapportFinancier({ reportId, seasonName, folderId, onErreur, sansDocs = false, rediger: redigerDabord = false, titre = 'Rapport financier', onApercu }) {
   const [data, setData] = useState(null)
   const [rediger, setRediger] = useState(redigerDabord)
 
@@ -239,11 +239,13 @@ export function RapportFinancier({ reportId, seasonName, folderId, onErreur, san
             </button>
             {rapport && (
               <>
-                {!sansDocs && (
+                {(!sansDocs || onApercu) && (
                   <button
                     type="button"
                     className="btn btn--secondary"
-                    onClick={() => ouvrirFichier(() => api.rapportDansDocs(reportId, 'docx'), false).catch((err) => onErreur(err.message))}
+                    onClick={() =>
+                      sansDocs ? onApercu() : ouvrirFichier(() => api.rapportDansDocs(reportId, 'docx'), false).catch((err) => onErreur(err.message))
+                    }
                   >
                     <Icon name="eye" size={16} /> Voir
                   </button>

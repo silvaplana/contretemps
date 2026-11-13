@@ -110,8 +110,9 @@ Bilan
   compte face à la saison précédente (montant, écart, %), « ? » au-delà de 30 % ou compte nouveau / disparu, une ligne
   d'explication à écrire (reprise dans le Rapport financier), puis les documents : « Documents à produire, d'après Docs ›
   Financier › Bilan financier <saison précédente> » (chaque fichier de l'an dernier avec une case à cocher et « reconnu comme »
-  pour corriger sa nature), puis « Documents 2025-2026 », nommés comme ceux de l'an dernier : Voir (PDF), Télécharger ;
-  Rapport financier : Rédiger, puis Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
+  pour corriger sa nature), puis « Documents 2025-2026 », nommés comme ceux de l'an dernier : Voir (un PDF s'ouvre dans un nouvel onglet ; Excel, Word et FEC
+  dans l'éditeur, en lecture seule, ← revient), Télécharger ;
+  Rapport financier : Rédiger, puis Voir, Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
   Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (niveau Complet), quand les étapes 1
   à 6 sont vertes : Clôturer / Rouvrir, avec la trace des clôtures rouvertes. Un numéro de compte s'affiche
   toujours avec son libellé.
