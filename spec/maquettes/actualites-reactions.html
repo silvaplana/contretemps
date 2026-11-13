@@ -1,0 +1,165 @@
+<title>Réactions aux actus</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<!-- Maquette « Réagir aux actus par un emoji » (fil « Module : Actualités », 13/11/2026), à valider par Seb. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Archivo+Narrow:wght@500;700&display=swap">
+<style>
+:root {
+  --page: #f3eee8; --ink: #2a2118; --muted: #6e6152; --line: #ddd2c4; --panel: #fbf8f4; --note-accent: #b5521a;
+  --display: 'Archivo', system-ui, sans-serif; --narrow: 'Archivo Narrow', 'Archivo', system-ui, sans-serif;
+  --body: system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #191612; --ink: #efe8e0; --muted: #a99c8c; --line: #352e26; --panel: #221e19; --note-accent: #f0955a; color-scheme: dark } }
+:root[data-theme="dark"] { --page: #191612; --ink: #efe8e0; --muted: #a99c8c; --line: #352e26; --panel: #221e19; --note-accent: #f0955a; color-scheme: dark }
+body { margin: 0; background: var(--page); color: var(--ink); font-family: var(--body); }
+.wrap { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-weight: 800; font-size: 1.9rem; line-height: 1.1; margin: 0 0 6px; }
+.intro { color: var(--muted); max-width: 62ch; margin: 0 0 22px; line-height: 1.5; }
+.grid { display: grid; grid-template-columns: 390px minmax(0, 1fr); gap: 36px; align-items: start; }
+@media (max-width: 860px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.notes { min-width: 0; }
+.notes h2 { font-family: var(--display); font-size: 1.15rem; margin: 0 0 10px; }
+.notes li { line-height: 1.55; max-width: 62ch; }
+.notes ul { padding-left: 1.1em; margin: 0 0 14px; }
+.notes .ask { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+.phone { --bg: #fdecd8; --card: #fffaf1; --border: #e8c08c; --text: #3a2410; --muted: #8a6a4a; --accent: #d8722a; --accent-bg: rgba(216,114,42,.14); --contrast: #fffaf1;
+  width: 100%; max-width: 390px; height: 800px; margin: 0 auto; border-radius: 34px; border: 10px solid #1a120a; box-sizing: border-box;
+  background: var(--bg); color: var(--text); position: relative; overflow: hidden; display: flex; flex-direction: column; font-size: 17px; line-height: 1.45; box-shadow: 0 18px 40px rgba(0,0,0,.18); }
+.phone * { box-sizing: border-box; }
+.phone button { font: inherit; color: inherit; cursor: pointer; }
+.phone :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.topBar { display: flex; align-items: center; gap: 10px; min-height: 60px; padding: 0 14px; flex: none; }
+.topBar .logo { width: 36px; height: 36px; border-radius: 50%; background: var(--accent); color: var(--contrast); display: grid; place-items: center; font-family: var(--display); font-weight: 800; font-size: 15px; }
+.topBar strong { font-family: var(--display); font-size: 19px; }
+.feed { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; flex-shrink: 0; }
+.photo { height: 170px; background: linear-gradient(135deg, #e3a76a, #b5521a); display: grid; place-items: center; color: #fff; font-family: var(--display); font-size: 20px; }
+.inner { padding: 12px 14px 10px; }
+.meta { color: var(--muted); font-size: 15px; margin-bottom: 4px; }
+.meta b { color: var(--text); }
+.txt { margin: 0 0 10px; }
+.reacts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.chip { min-height: 48px; min-width: 64px; padding: 0 12px; border-radius: 24px; border: 2px solid var(--border); background: transparent; display: inline-flex; align-items: center; gap: 6px; font-size: 17px; }
+.chip.mine { border-color: var(--accent); background: var(--accent-bg); font-weight: 700; }
+.chip .e { font-size: 22px; }
+.add { min-height: 48px; min-width: 48px; border-radius: 24px; border: 2px dashed var(--border); background: transparent; font-size: 22px; }
+.who { background: none; border: 0; color: var(--muted); text-decoration: underline; min-height: 48px; padding: 0 4px; font-size: 15px; }
+.picker { display: flex; gap: 4px; margin-top: 8px; padding: 6px; border-radius: 30px; background: #fff; border: 1px solid var(--border); box-shadow: 0 6px 18px rgba(0,0,0,.12); width: max-content; max-width: 100%; }
+.picker button { width: 48px; height: 48px; border-radius: 50%; border: 0; background: transparent; font-size: 26px; }
+.picker button:hover { background: var(--accent-bg); }
+.sheet { position: absolute; inset: auto 0 0 0; background: var(--card); border-top: 1px solid var(--border); border-radius: 20px 20px 0 0; padding: 14px 18px 22px; box-shadow: 0 -10px 30px rgba(0,0,0,.18); }
+.sheet h3 { font-family: var(--display); font-size: 18px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+.sheet h3 span { flex: 1; }
+.sheet .close { width: 48px; height: 48px; border: 0; background: transparent; font-size: 24px; }
+.sheet ul { list-style: none; margin: 0; padding: 0; }
+.sheet li { min-height: 44px; display: flex; align-items: center; gap: 12px; border-top: 1px solid var(--border); }
+.sheet li .e { font-size: 22px; width: 30px; text-align: center; }
+.shade { position: absolute; inset: 0; background: rgba(0,0,0,.25); }
+</style>
+
+<div class="wrap">
+  <h1>Réagir aux actus par un emoji</h1>
+  <p class="intro">Maquette cliquable. Touchez un emoji sous une actu pour réagir ou retirer votre réaction, « ☺+ » pour en choisir un autre, « Qui a réagi » pour voir les noms.</p>
+  <div class="grid">
+    <div class="phone" id="phone"></div>
+    <div class="notes">
+      <h2>Ce qui change</h2>
+      <ul>
+        <li>Sous chaque actu publiée, les emojis déjà donnés, avec leur nombre. Le vôtre est entouré en orange.</li>
+        <li>Toucher un emoji : vous réagissez pareil. Toucher le vôtre : vous le retirez.</li>
+        <li>« ☺+ » ouvre six emojis : ❤️ 👏 😂 😮 😢 🔥. Une seule réaction par personne et par actu : en choisir une autre remplace la première.</li>
+        <li>« Qui a réagi » : la liste des prénoms, avec leur emoji.</li>
+        <li>Tous ceux qui voient l'actu peuvent réagir, pas seulement ceux qui publient. Pas de notification.</li>
+      </ul>
+      <p class="ask">Une seule réaction par personne et par actu (comme ici), ou plusieurs emojis possibles par personne ?</p>
+    </div>
+  </div>
+</div>
+
+<script>
+const EMOJIS = ['❤️', '👏', '😂', '😮', '😢', '🔥']
+const ME = 'Seb'
+const posts = [
+  { author: 'Jacqueline', day: '13 nov.', text: 'Gala de fin d’année : les répétitions commencent lundi !', photo: 'Répétition', reacts: { 'Zoé': '❤️', 'Julia': '❤️', 'Léa': '👏', 'Ana': '🔥' } },
+  { author: 'Seb', day: '12 nov.', text: 'Pas de cours samedi 15, la salle est prise.', photo: null, reacts: { 'Zoé': '😢' } },
+]
+let pickerFor = null, sheetFor = null
+const phone = document.getElementById('phone')
+
+function counts(p) {
+  const c = {}
+  for (const e of Object.values(p.reacts)) c[e] = (c[e] || 0) + 1
+  return EMOJIS.filter((e) => c[e]).map((e) => [e, c[e]])
+}
+function toggle(i, e) {
+  const p = posts[i]
+  if (p.reacts[ME] === e) delete p.reacts[ME]
+  else p.reacts[ME] = e
+  pickerFor = null
+  render()
+}
+function render() {
+  phone.innerHTML = ''
+  const top = document.createElement('div')
+  top.className = 'topBar'
+  top.innerHTML = '<span class="logo">CT</span><strong>Actus</strong>'
+  phone.append(top)
+  const feed = document.createElement('div')
+  feed.className = 'feed'
+  posts.forEach((p, i) => {
+    const card = document.createElement('article')
+    card.className = 'card'
+    card.innerHTML = (p.photo ? `<div class="photo">${p.photo}</div>` : '') +
+      `<div class="inner"><div class="meta"><b>${p.author}</b> · ${p.day}</div><p class="txt">${p.text}</p><div class="reacts"></div></div>`
+    const row = card.querySelector('.reacts')
+    for (const [e, n] of counts(p)) {
+      const b = document.createElement('button')
+      b.className = 'chip' + (p.reacts[ME] === e ? ' mine' : '')
+      b.innerHTML = `<span class="e">${e}</span>${n}`
+      b.setAttribute('aria-label', `${e} ${n}`)
+      b.onclick = () => toggle(i, e)
+      row.append(b)
+    }
+    const add = document.createElement('button')
+    add.className = 'add'
+    add.textContent = '☺+'
+    add.setAttribute('aria-label', 'Réagir')
+    add.onclick = () => { pickerFor = pickerFor === i ? null : i; render() }
+    row.append(add)
+    if (Object.keys(p.reacts).length) {
+      const who = document.createElement('button')
+      who.className = 'who'
+      who.textContent = 'Qui a réagi'
+      who.onclick = () => { sheetFor = i; render() }
+      row.append(who)
+    }
+    if (pickerFor === i) {
+      const pick = document.createElement('div')
+      pick.className = 'picker'
+      for (const e of EMOJIS) {
+        const b = document.createElement('button')
+        b.textContent = e
+        b.onclick = () => toggle(i, e)
+        pick.append(b)
+      }
+      card.querySelector('.inner').append(pick)
+    }
+    feed.append(card)
+  })
+  phone.append(feed)
+  if (sheetFor !== null) {
+    const shade = document.createElement('div')
+    shade.className = 'shade'
+    shade.onclick = () => { sheetFor = null; render() }
+    const sheet = document.createElement('div')
+    sheet.className = 'sheet'
+    const list = Object.entries(posts[sheetFor].reacts).map(([n, e]) => `<li><span class="e">${e}</span>${n === ME ? 'Vous' : n}</li>`).join('')
+    sheet.innerHTML = `<h3><span>Qui a réagi</span><button class="close" aria-label="Fermer">✕</button></h3><ul>${list}</ul>`
+    sheet.querySelector('.close').onclick = () => { sheetFor = null; render() }
+    phone.append(shade, sheet)
+  }
+}
+render()
+</script>

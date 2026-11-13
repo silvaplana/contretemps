@@ -13,6 +13,7 @@ from datetime import date
 from comptes import Compte, rbac
 from fastapi import Depends, FastAPI, HTTPException, UploadFile
 from fastapi.responses import FileResponse, RedirectResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 from storage import FileTooLarge
 from videos.schemas import VideoSortie
@@ -22,10 +23,10 @@ from db import get_db
 from .instagram import InstagramError, InstagramRelay
 from .links import LinkError
 from .models import Blog, Category, Post
-from .publications import InvalidBlog, InvalidMedia, Publications, can_publish, can_read, on_top
+from .publications import EMOJIS, InvalidBlog, InvalidMedia, Publications, can_publish, can_read, on_top
 from .schemas import (
     BlogChange, BlogIn, BlogOut, CategoryIn, CategoryOut, CategoryRef, DocumentOut, FeedOut, InstagramIn,
-    InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, PhotoOut, PostIn, PostOut, SettingsIn, SettingsOut, VideoIn,
+    InstagramOut, LinkIn, LinkOut, LoginOut, MediaOut, PersonOut, PhotoOut, PostIn, PostOut, ReactionIn, ReactionOut, SettingsIn, SettingsOut, SignerIn, VideoIn,
 )
 
 BASE = "/ecoles/{ecole_id}/publications/blogs"
@@ -52,6 +53,7 @@ def _out(client: Publications, db: Session, blog: Blog, post: Post, seen=None, m
         ],
         document=DocumentOut(id=document.id, name=document.name) if document else None,
         title=post.title if blog.with_categories else None, categories=categories,
+        reactions=[ReactionOut(name=r.name, emoji=r.emoji, mine=r.member_id == me) for r in post.reactions],
     )
 
 
@@ -80,11 +82,14 @@ class PublicationsReceiver:
         app.put(BLOG + "/instagram", response_model=InstagramOut)(self.instagram_link)
         app.delete(BLOG + "/instagram", response_model=InstagramOut)(self.instagram_unlink)
         app.post(BLOG + "/instagram/login", response_model=LoginOut)(self.instagram_login)
+        app.get(BLOG + "/instagram/signers", response_model=list[PersonOut])(self.instagram_signers)
+        app.put(BLOG + "/instagram/signer", response_model=InstagramOut)(self.instagram_signer)
         # Public, and declared as is in the Meta app: kept from the module's
         # first name (`news`).
         app.get("/news/instagram/return")(self.instagram_return)
         app.put(POST, response_model=PostOut)(self.update)
         app.post(POST + "/unpublish", response_model=PostOut)(self.unpublish)
+        app.put(POST + "/reaction", response_model=PostOut)(self.react)
         app.delete(POST, status_code=204)(self.delete)
         app.get(POST + "/photos/{sha}")(self.photo)
 
@@ -183,6 +188,17 @@ class PublicationsReceiver:
         blog = self._publisher(db, appelant, ecole_id, blog_id)
         post = self._post(db, blog, post_id)
         return _out(self.client, db, blog, self._save(db, blog, appelant, post, data))
+
+    def react(self, ecole_id: int, blog_id: int, post_id: int, data: ReactionIn, db: Session = Depends(get_db),
+              appelant: Compte = Depends(rbac.compte_appelant)):
+        """Everyone who reads the blog reacts to a published post."""
+        blog = self._reader(db, appelant, ecole_id, blog_id)
+        post = self._post(db, blog, post_id)
+        if appelant is None or post.published_at is None:
+            raise HTTPException(status_code=404, detail="Publication introuvable")
+        if data.emoji is not None and data.emoji not in EMOJIS:
+            raise HTTPException(status_code=400, detail="Emoji inconnu")
+        return _out(self.client, db, blog, self.client.react(db, post, appelant, data.emoji), me=appelant.id)
 
     def unpublish(self, ecole_id: int, blog_id: int, post_id: int, db: Session = Depends(get_db),
                   appelant: Compte = Depends(rbac.compte_appelant)):
@@ -311,6 +327,7 @@ class PublicationsReceiver:
         target = self.instagram.blog_of(db, link)
         return InstagramOut(linked=True, username=link.username, last_sync_at=link.last_sync_at,
                             last_error=link.last_error, can_sign_in=can_sign_in,
+                            signer_id=link.signed_by or link.linked_by,
                             elsewhere=target.name if target.id != blog.id else None)
 
     def instagram_status(self, ecole_id: int, blog_id: int, db: Session = Depends(get_db),
@@ -332,6 +349,24 @@ class PublicationsReceiver:
         blog = self._publisher(db, appelant, ecole_id, blog_id)
         self.instagram.unlink(db, ecole_id)
         return self._instagram_out(db, blog, None)
+
+    def instagram_signers(self, ecole_id: int, blog_id: int, db: Session = Depends(get_db),
+                          appelant: Compte = Depends(rbac.compte_appelant)):
+        """« Signé par »: the members of the organization (this season)."""
+        self._publisher(db, appelant, ecole_id, blog_id)
+        members = db.scalars(select(Compte).where(Compte.ecole_id == ecole_id).order_by(Compte.prenom, Compte.nom))
+        return [PersonOut(id=m.id, name=f"{m.prenom} {m.nom}".strip()) for m in members]
+
+    def instagram_signer(self, ecole_id: int, blog_id: int, data: SignerIn, db: Session = Depends(get_db),
+                         appelant: Compte = Depends(rbac.compte_appelant)):
+        blog = self._publisher(db, appelant, ecole_id, blog_id)
+        member = db.get(Compte, data.member_id)
+        link = self.instagram.get(db, ecole_id)
+        if member is None or member.ecole_id != ecole_id or link is None:
+            raise HTTPException(status_code=404, detail="Membre introuvable")
+        link.signed_by, link.signed_by_name = member.id, member.prenom
+        db.commit()
+        return self._instagram_out(db, blog, link)
 
     def instagram_login(self, ecole_id: int, blog_id: int, db: Session = Depends(get_db),
                         appelant: Compte = Depends(rbac.compte_appelant)):

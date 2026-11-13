@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { documentsApi } from '../../api/documents.js'
 import Icon from '../../components/Icon.jsx'
 import MenuEntete from '../../components/MenuEntete.jsx'
+import Modal from '../../components/Modal.jsx'
 import VideoThumb from '../../components/VideoThumb.jsx'
 import {
   annulerTeleversement,
@@ -224,8 +225,63 @@ function Document({ document }) {
   )
 }
 
+// Réactions par emoji (Seb, 13 novembre, maquette spec/maquettes/actualites-reactions.html) :
+// une par personne ; toucher un emoji réagit pareil, toucher le sien le retire.
+const EMOJIS = ['❤️', '👏', '😂', '😮', '😢', '🔥']
+
+function Reactions({ actu, lieu }) {
+  const [reactions, setReactions] = useState(actu.reactions)
+  const [choix, setChoix] = useState(false)
+  const [qui, setQui] = useState(false)
+  const mienne = reactions.find((r) => r.mine)?.emoji
+  const comptes = EMOJIS.map((e) => [e, reactions.filter((r) => r.emoji === e).length]).filter(([, n]) => n > 0)
+
+  async function reagir(emoji) {
+    setChoix(false)
+    try {
+      setReactions((await api.reagir(lieu, actu.id, emoji === mienne ? null : emoji)).reactions)
+    } catch {
+      // Rien de grave : la réaction n'est simplement pas prise.
+    }
+  }
+  return (
+    <div className="actu__reactions">
+      {comptes.map(([e, n]) => (
+        <button key={e} type="button" className={`actu__reaction ${e === mienne ? 'actu__reaction--mienne' : ''}`} onClick={() => reagir(e)}>
+          <span className="actu__emoji">{e}</span>
+          {n}
+        </button>
+      ))}
+      <button type="button" className="actu__reagir" aria-label="Réagir" onClick={() => setChoix(!choix)}>☺+</button>
+      {reactions.length > 0 && (
+        <button type="button" className="actu__qui" onClick={() => setQui(true)}>Qui a réagi</button>
+      )}
+      {choix && (
+        <div className="actu__choix-emoji">
+          {EMOJIS.map((e) => (
+            <button key={e} type="button" onClick={() => reagir(e)}>{e}</button>
+          ))}
+        </div>
+      )}
+      {qui && (
+        <Modal title="Qui a réagi" onClose={() => setQui(false)}>
+          <ul className="actu__qui-liste">
+            {reactions.map((r, i) => (
+              <li key={i}>
+                <span className="actu__emoji">{r.emoji}</span>
+                {r.mine ? 'Vous' : r.name}
+              </li>
+            ))}
+          </ul>
+        </Modal>
+      )}
+    </div>
+  )
+}
+
 // mediaEnHaut : réglage « En haut de chaque actu : Photo, vidéo » (Seb, 9 novembre).
-export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, onCategorie = null, avecCategorie = true }) {
+// avecReactions : pas dans l'aperçu de l'éditeur.
+export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, onCategorie = null, avecCategorie = true, avecReactions = true }) {
   const signature = (
     <div className="actu__meta">
       <span>
@@ -236,6 +292,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
       {onModifier && !actu.publieeLe ? <span className="atelier__etat">Brouillon</span> : actu.nouveau && <span className="actu__nouveau">Nouveau</span>}
     </div>
   )
+  const reactions = avecReactions && actu.publieeLe && actu.reactions && <Reactions actu={actu} lieu={lieu} />
   // Le crayon, pour qui publie : on modifie l'actu là où on la voit (§12.5).
   const crayon = onModifier && (
     <button type="button" className="actu__crayon" aria-label="Modifier l’actu" onClick={() => onModifier(actu)}>
@@ -278,6 +335,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
         <div>
           <p className="actu__texte">{actu.texte || '…'}</p>
           {signature}
+          {reactions}
         </div>
         {crayon}
       </article>
@@ -296,6 +354,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
         {!mediaEnHaut && <Media lieu={lieu} actu={actu} />}
         <Document document={actu.document} />
         {signature}
+        {reactions}
       </article>
     )
   }
@@ -309,6 +368,7 @@ export function CarteActu({ actu, lieu, mediaEnHaut = false, onModifier = null, 
       <div className="actu__corps">
         <Document document={actu.document} />
         {signature}
+        {reactions}
       </div>
     </article>
   )
@@ -429,8 +489,10 @@ function Instagram({ lieu, nom, montrer }) {
   })
   const [hashtag, setHashtag] = useState('')
   const [choix, setChoix] = useState('tous') // tous | hashtag | un_par_un
+  const [membres, setMembres] = useState([])
   useEffect(() => {
     api.lireInstagram(lieu).then(setEtat, (e) => setErreur(e.message))
+    api.lireSignatairesInstagram(lieu).then(setMembres, () => {})
     api.lireTriInstagram(lieu).then((t) => {
       setHashtag(t.hashtag)
       setChoix(!t.publier ? 'un_par_un' : t.hashtag ? 'hashtag' : 'tous')
@@ -535,6 +597,20 @@ function Instagram({ lieu, nom, montrer }) {
           <p>
             Relié à <b>@{etat.compte}</b>. Ses nouveaux posts arrivent dans {nom} en 5 minutes au plus.
           </p>
+          {/* Seb, 13 novembre : le prénom du membre choisi signe les posts reçus. */}
+          <label className="parametres__signe">
+            Signé par
+            <select
+              className="editeur__texte"
+              value={etat.signataire ?? ''}
+              disabled={envoi}
+              onChange={(e) => agir(() => api.changerSignataireInstagram(lieu, Number(e.target.value)))}
+            >
+              {membres.map((m) => (
+                <option key={m.id} value={m.id}>{m.name}</option>
+              ))}
+            </select>
+          </label>
           {champHashtag}
           {etat.erreur && <p className="parametres__erreur">{etat.erreur}</p>}
           <button type="button" className="btn btn--secondary" disabled={envoi} onClick={arreter}>
@@ -959,6 +1035,7 @@ function Editeur({ actu, auteur, lieu, blog, mediaEnHaut, onRetour, onEnregistre
           <CarteActu
             lieu={lieu}
             mediaEnHaut={mediaEnHaut}
+            avecReactions={false}
             actu={{
               ...brouillon,
               categories: [brouillon.categorie, brouillon.sousCategorie].filter(Boolean).map((nom) => ({ id: nom, nom })),

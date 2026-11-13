@@ -24,6 +24,10 @@ Le fil
   flèche ← ramène au fil.
 - Sous chaque publication : prénom de qui l'a publiée et le jour. « Nouveau » marque ce que la personne
   n'avait pas encore vu.
+- Réagir (toute personne qui voit le blog) : sous une publication, les emojis déjà donnés avec leur
+  nombre, le sien entouré en orange. Toucher un emoji : réagir pareil ; toucher le sien : le retirer.
+  « ☺+ » : six emojis au choix (❤️ 👏 😂 😮 😢 🔥), un seul par personne (un autre remplace le premier).
+  « Qui a réagi » : les prénoms avec leur emoji.
 
 Blog avec catégories (ex. Techniques)
 - Deux onglets en haut : « Fil » et « Catégories ». Dans le Fil, chaque carte a un nom en titre et sa
@@ -47,7 +51,8 @@ Paramètres de <blog> (menu ⋯ › « Paramètres de <blog> » ; la flèche ←
   nouveaux posts arrivent dans ce blog en 5 minutes au plus. Si le bouton n'y est pas : coller la clé
   d'accès du compte, puis « Relier ». Au-dessus du bouton, « Quels posts Instagram mettre dans
   <blog> ? » : « Tous mes posts » ; « Seulement ceux avec un hashtag » (un champ #) ; « Je les choisis
-  un par un » (ils arrivent en brouillon). « Ne plus recevoir les posts de @compte » arrête le relais, avec « Annuler »
+  un par un » (ils arrivent en brouillon). Sous « Relié à @compte », « Signé par » : le membre de
+  l'école dont le prénom signe les posts reçus. « Ne plus recevoir les posts de @compte » arrête le relais, avec « Annuler »
   pendant 10 s. Relié dans un autre blog : le texte dit lequel, l'arrêter là-bas d'abord.
 
 Nouvelle publication / Modifier

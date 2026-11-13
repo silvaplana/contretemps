@@ -31,6 +31,7 @@ export function versEcran(n) {
     enHaut: n.on_top,
     notifier: n.notify,
     auteur: n.author_name,
+    reactions: n.reactions ?? [], // [{ name, emoji, mine }], une par personne
     publieeLe: n.published_at ? new Date(`${n.published_at}Z`) : null,
     modifieeLe: new Date(`${n.updated_at}Z`),
     nouveau: n.is_new,
@@ -150,6 +151,9 @@ export async function enregistrer(lieu, actu) {
   return versEcran(r)
 }
 
+// Réagir par un emoji (Seb, 13 novembre) ; null retire la sienne.
+export const reagir = async (lieu, id, emoji) =>
+  versEcran(await appel(`${blog(lieu)}/posts/${id}/reaction`, json('PUT', { emoji })))
 export const depublier = (lieu, id) => appel(`${blog(lieu)}/posts/${id}/unpublish`, { method: 'POST' })
 export const supprimer = (lieu, id) => appel(`${blog(lieu)}/posts/${id}`, { method: 'DELETE' })
 
@@ -223,6 +227,7 @@ const versInstagram = (r) => ({
   erreur: r.last_error,
   peutSeConnecter: r.can_sign_in,
   ailleurs: r.elsewhere,
+  signataire: r.signer_id,
 })
 export const lireInstagram = async (lieu) => versInstagram(await appel(`${blog(lieu)}/instagram`))
 export const relierInstagram = async (lieu, cle) => versInstagram(await appel(`${blog(lieu)}/instagram`, json('PUT', { token: cle })))
@@ -232,4 +237,9 @@ export const connexionInstagram = async (lieu) => (await appel(`${blog(lieu)}/in
 // « Les publier tout de suite » : sinon, ils arrivent en brouillon.
 export const lireTriInstagram = async (lieu) => versReglages(await appel(`${blog(lieu)}/settings`))
 export const changerTriInstagram = async (lieu, changement) => versReglages(await changerReglage(lieu, changement))
+// « Signé par » (Seb, 13 novembre) : un membre de l'école, dont le prénom
+// signe les posts reçus.
+export const lireSignatairesInstagram = (lieu) => appel(`${blog(lieu)}/instagram/signers`)
+export const changerSignataireInstagram = async (lieu, membreId) =>
+  versInstagram(await appel(`${blog(lieu)}/instagram/signer`, json('PUT', { member_id: membreId })))
 export const delierInstagram = async (lieu) => versInstagram(await appel(`${blog(lieu)}/instagram`, { method: 'DELETE' }))

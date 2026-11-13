@@ -154,6 +154,21 @@ l'organisation, sauf l'auteur, avec le système existant (`notifications`, comme
 La notification part **à la fin des 10 s d'Annuler**, pas avant (minuteur du serveur, `news/news.py`),
 et une seule fois. Modifier une actu publiée ne renvoie pas de notification.
 
+## 5 bis. Réactions par emoji (Seb, 13 novembre 2026)
+
+Maquette validée : `spec/maquettes/actualites-reactions.html`.
+
+- Sous chaque publication publiée (pas un brouillon, pas l'aperçu de l'éditeur) : les emojis donnés
+  avec leur nombre ; le sien entouré en orange. Toucher un emoji réagit pareil, toucher le sien le retire.
+- « ☺+ » ouvre six emojis : ❤️ 👏 😂 😮 😢 🔥. **Une seule réaction par personne et par publication**
+  (Seb) : en choisir une autre remplace la première.
+- « Qui a réagi » : la liste des prénoms avec leur emoji (« Vous » pour soi).
+- Toute personne qui lit le blog peut réagir. Pas de notification.
+- Données : table `pub_reactions` (post_id, member_id, name, emoji, created_at), clé (post_id,
+  member_id) ; le prénom est gardé comme celui de l'auteur. Supprimer la publication supprime ses
+  réactions. API : `PUT …/posts/{id}/reaction` `{emoji}` (null retire la sienne) ; chaque publication
+  renvoie `reactions: [{name, emoji, mine}]`.
+
 ## 6. Option « L'appli affiche toujours les actus à son ouverture »
 
 Libellé à l'écran (Seb, 9 novembre 2026, à la place d'« Ouvrir l'appli sur les actus », pas clair) :
@@ -186,6 +201,10 @@ seuls dans les actus, sans rien ressaisir.
   chaque semaine) est gardée chiffrée (`securite/chiffrement.py`, comme la clé HelloAsso). Le bouton
   « Ne plus recevoir les posts de @compte » (Seb, 13 novembre : « Délier » n'était pas clair) l'oublie
   au bout de 10 s, « Annuler » d'ici là ; les actus déjà relayées restent.
+- **Signé par** (Seb, 13 novembre) : sous « Relié à @compte », une liste des membres de l'école (saison
+  affichée) ; le prénom choisi signe les posts reçus ensuite (par défaut, qui a relié le compte). Les
+  brouillons restent visibles de qui a relié le compte. Colonnes `pub_instagram.signed_by`,
+  `signed_by_name`.
 - **L'appli Meta** (une fois, sur un ordinateur ; faite le 11 novembre 2026 avec le compte Meta de
   Jacqueline, appli « Contretemps Actus », portefeuille business « Ecole de danse Contretemps », non
   vérifié) : developers.facebook.com › Créer une application › cas d'utilisation « Gérer les messages et

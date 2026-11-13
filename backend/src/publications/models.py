@@ -89,6 +89,22 @@ class Post(Base):
     media: Mapped[list[PostMedia]] = relationship(
         order_by="PostMedia.position", cascade="all, delete-orphan", lazy="selectin",
     )
+    reactions: Mapped[list[Reaction]] = relationship(
+        order_by="Reaction.created_at", cascade="all, delete-orphan", lazy="selectin",
+    )
+
+
+class Reaction(Base):
+    """One member's emoji on a post (Seb, 13 November): one per person; the
+    first name is kept, like the author's."""
+
+    __tablename__ = "pub_reactions"
+
+    post_id: Mapped[int] = mapped_column(ForeignKey("pub_posts.id"), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    emoji: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
 
 
 class PostMedia(Base):
@@ -146,6 +162,10 @@ class InstagramLink(Base):
     # Who linked it: the posts are signed with this first name.
     linked_by: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True)
     linked_by_name: Mapped[str] = mapped_column(String(100), nullable=False, default="")
+    # Seb, 13 November: the member chosen to sign the posts instead (none:
+    # whoever linked it).
+    signed_by: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True)
+    signed_by_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
     # Only posts published after this come in, not the whole history.
     linked_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     token_refreshed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)

@@ -347,7 +347,7 @@ class InstagramRelay:
                 media.append(PostMedia(position=len(media), video_id=video_id))
         db.add(Post(
             org_id=link.org_id, blog_id=self.blog_of(db, link).id, level=NORMAL, body=(post.get("caption") or "").strip(), notify=False,
-            author_id=link.linked_by, author_name=link.linked_by_name,
+            author_id=link.linked_by, author_name=link.signed_by_name or link.linked_by_name,
             published_at=_now() if self.publishes(db, link.org_id) else None,
             media=media, instagram_id=post["id"],
         ))

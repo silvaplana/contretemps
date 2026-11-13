@@ -622,6 +622,15 @@
 .parametres__cle {
   min-height: 48px;
 }
+.parametres__signe {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.parametres__signe select {
+  min-height: 48px;
+  font-size: 17px;
+}
 .parametres__erreur {
   margin: 0;
   color: var(--actus-rouge);
@@ -1118,4 +1127,78 @@
   color: var(--text-muted);
   font-size: 17px;
   text-align: center;
+}
+
+/* Réactions par emoji (Seb, 13 novembre) : touches ≥ 48 px. */
+.actu__reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+}
+.actu__reaction,
+.actu__reagir {
+  min-height: 48px;
+  min-width: 48px;
+  padding: 0 12px;
+  border-radius: 24px;
+  border: 2px solid var(--border, #e8c08c);
+  background: transparent;
+  color: inherit;
+  font-size: 17px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.actu__reagir {
+  border-style: dashed;
+  font-size: 20px;
+}
+.actu__reaction--mienne {
+  border-color: var(--accent, #d8722a);
+  background: var(--accent-bg, rgba(216, 114, 42, 0.14));
+  font-weight: 700;
+}
+.actu__emoji {
+  font-size: 22px;
+}
+.actu__qui {
+  min-height: 48px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--muted, #8a6a4a);
+  text-decoration: underline;
+  font-size: 17px;
+  cursor: pointer;
+}
+.actu__choix-emoji {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  width: 100%;
+}
+.actu__choix-emoji button {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 0;
+  background: transparent;
+  font-size: 26px;
+  cursor: pointer;
+}
+.actu__qui-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 17px;
+}
+.actu__qui-liste li {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border, #e8c08c);
 }
