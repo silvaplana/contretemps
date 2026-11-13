@@ -19,8 +19,9 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   « Découpe : 67 % » avec une barre, qui avancent seuls ; « Caméra éteinte : rouvrez Tournage » si
   la vidéo est encore sur un téléphone caméra éteint. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.
-- Une carte ouverte : d'abord le volet « Signes repérés » (la frise, comme dans un test ; toucher
-  un signe ouvre le combat où il tombe ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
+- Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
+  entier), puis « Signes repérés » (la frise, comme dans un test ; toucher un signe montre ce moment
+  dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
   frise des signes »), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
   d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
   Identifier combattants.

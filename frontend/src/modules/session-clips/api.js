@@ -39,6 +39,7 @@ function seance(s) {
     raw_video: video(s.raw_video),
     cover: video(s.cover),
     ...(s.clips ? { clips: s.clips.map(clip) } : {}),
+    ...(s.film ? { film: s.film.map((x) => ({ ...x, video: video(x.video) })) } : {}),
   }
 }
 

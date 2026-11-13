@@ -19,6 +19,7 @@ from . import camera, lab
 from .models import Clip, ClipSession, LabTest, Piece
 from .ports import Member
 from .schemas import (
+    FilmPart,
     CameraOut,
     ClubSignsBody,
     LabFightOut,
@@ -116,6 +117,7 @@ class SessionClipsReceiver:
                 clips=self._clips_out(s, m, clips),
                 attendees=sorted((PersonOut(id=i, name=names.get(i, "?")) for i in attendees), key=lambda p: p.name),
                 signs=json.loads(session.signs) if session.signs else [],
+                film=self._film(s, session),
             )
 
         @app.get(f"{PREFIX}/mine", response_model=list[ClipOut])
@@ -316,6 +318,21 @@ class SessionClipsReceiver:
             created_at=found.created_at,
             video=VideoSortie.model_validate(video) if video is not None else None,
         )
+
+    def _film(self, s: Session, session: ClipSession) -> list[FilmPart]:
+        """Les morceaux arrivés de la caméra, dans l'ordre et sans trou (comme
+        la découpe les recolle), sinon la vidéo envoyée à la main."""
+        pieces = list(s.scalars(select(Piece).where(Piece.session_id == session.id).order_by(Piece.position)))
+        ids = [p.video_id for p in pieces if p.video_id is not None] or [session.raw_video_id]
+        videos = self.client.video_map(s, [i for i in ids if i is not None])
+        out, offset = [], 0.0
+        for p in pieces or [None]:
+            video = videos.get(p.video_id if p else session.raw_video_id)
+            if video is None or video.statut != "complete":
+                break
+            out.append(FilmPart(start=offset, video=VideoSortie.model_validate(video)))
+            offset += (p.duration_seconds if p else None) or video.duree_secondes or 0
+        return out
 
     def _sessions_out(self, s: Session, m: Member, sessions: list[ClipSession]) -> list[SessionOut]:
         ids = [x.id for x in sessions]

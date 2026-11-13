@@ -334,7 +334,10 @@ flèche ←.
   (Seb, 13/11). Une séance ouverte montre en tête la frise des signes repérés (comme un essai du
   Labo : `sc_sessions.signs`, rempli par la découpe avec une image par signe, et `start_seconds` de
   chaque combat), si la case « Montrer la frise des signes » des Paramètres de tournage est cochée
-  (`sc_club_signs.show_timeline`, vrai par défaut ; Seb, 13/11). L'appli Tournage demande ses ordres
+  (`sc_club_signs.show_timeline`, vrai par défaut ; Seb, 13/11). Une séance finie s'ouvre même
+  sans combat trouvé : en tête le volet « Vidéo de la séance » (les morceaux arrivés lus à la suite,
+  `SessionDetail.film`, ou la vidéo envoyée à la main), puis la frise (« Aucun signe repéré. » s'il
+  n'y en a pas) ; toucher un signe y montre ce moment dans la vidéo (Seb, 13/11). L'appli Tournage demande ses ordres
   toutes les secondes (au lieu de 5 s), et tout de suite après Filmer / Arrêter touché sur elle-même
   (`Tournage.poke`). Au début du film, deux bips et la lampe allumée une seconde ; à
   l'arrêt, un bip long (son des alarmes, entendu même en silencieux ; Seb, 13/11 : que les
