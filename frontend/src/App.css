@@ -5243,3 +5243,39 @@ button[aria-label="Retour"] svg {
 .ma-barre__liste {
   margin-bottom: 16px;
 }
+
+/* Le trombone : Fichier | Sondage (spec messagerie §4.11). */
+.conversation-thread__joindre {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+}
+
+.joindre-picker {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 8px;
+  min-width: 170px;
+}
+
+.joindre-picker button {
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.message-bubble .sondage {
+  min-width: min(260px, 70vw);
+}
+
+.message-bubble .sondage__question {
+  padding-right: 40px; /* sous le ⋯ de la bulle */
+}
+
+/* Dans ma bulle (fond couleur de l'école), le texte gris et le lien
+   couleur de l'école ne se liraient pas. */
+.message-row--moi .message-bubble .sondage__consigne,
+.message-row--moi .message-bubble .sondage__pied,
+.message-row--moi .message-bubble .sondage__voir {
+  color: inherit;
+}

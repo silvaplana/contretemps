@@ -21,6 +21,7 @@ from .connexions import Connexions
 from .conversations import Conversations
 from .evenements import Evenements
 from .frappe import Frappe
+from . import polls
 from .messages import Messages, can_still_edit
 from .schemas import (
     AttachmentOut,
@@ -36,6 +37,7 @@ from .schemas import (
     StatutModification,
     VideoBlockOut,
     VideoUploadCreation,
+    VoteIn,
 )
 
 # Entre deux vrais événements, un commentaire SSE (ligne commençant par
@@ -130,6 +132,9 @@ class MessagerieReceiver:
         self.app.delete("/messages/{message_id}", response_model=MessageSortie)(
             self.delete_message
         )
+
+        # Polls (§4.11): a vote replaces the voter's previous one.
+        self.app.put("/messages/{message_id}/vote", response_model=MessageSortie)(self.vote)
 
         self.app.put(
             "/messages/{message_id}/deliveries/{destinataire_id}", status_code=204
@@ -335,6 +340,7 @@ class MessagerieReceiver:
             "forwarded": message.forwarded,
             "reply_to_id": message.reply_to_id,
             "attachments": self.attachments.of_message(db, message.id),
+            "poll": polls.of_message(db, message),
             "deliveries": self.messages.deliveries_du_message(db, message.id),
         }
 
@@ -345,6 +351,12 @@ class MessagerieReceiver:
             cible = self.messages.get(db, donnees.reply_to_id)
             if cible is None or cible.conversation_id != conversation_id:
                 raise HTTPException(status_code=422, detail="Message d'origine introuvable")
+        sondage = None
+        if donnees.poll is not None:
+            try:
+                sondage = polls.checked(donnees.poll.question, donnees.poll.options)
+            except polls.InvalidPoll as erreur:
+                raise HTTPException(status_code=422, detail=str(erreur)) from erreur
         pieces = []
         if donnees.attachment_ids:
             conversation = self.conversations.get(db, conversation_id)
@@ -372,6 +384,8 @@ class MessagerieReceiver:
         )
         if nouveau and pieces:
             self.attachments.attach(db, message, pieces)
+        if nouveau and sondage:
+            polls.create(db, message, sondage[0], donnees.poll.multiple, sondage[1])
         sortie = self._sortie_message(db, message)
         # Un renvoi idempotent (`nouveau=False`, voir messages.py: envoyer)
         # ne republie RIEN — sinon un simple retry réseau côté client
@@ -448,6 +462,32 @@ class MessagerieReceiver:
         conversation = self.conversations.get(db, message.conversation_id)
         self.attachments.remove_from_message(db, message, conversation.ecole_id)
         sortie = self._sortie_message(db, self.messages.delete(db, message))
+        self._publier_message_maj(db, sortie)
+        return sortie
+
+    def vote(
+        self,
+        message_id: int,
+        donnees: VoteIn,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """Votes are named and seen by every member, live (§4.11)."""
+        message = self._message_or_404(db, message_id)
+        if message.deleted_at is not None or polls.of_message(db, message) is None:
+            raise HTTPException(status_code=404, detail="Sondage introuvable")
+        rbac.meme_personne(appelant, donnees.compte_id, db)
+        membre = next(
+            (m for m in self.conversations.membres_resolus(db, message.conversation_id) if m.id == donnees.compte_id),
+            None,
+        )
+        if membre is None:
+            raise HTTPException(status_code=403, detail="Réservé aux membres de la conversation")
+        try:
+            polls.vote(db, message, membre.id, f"{membre.prenom} {membre.nom}".strip(), donnees.options)
+        except polls.InvalidPoll as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        sortie = self._sortie_message(db, message)
         self._publier_message_maj(db, sortie)
         return sortie
 
@@ -723,6 +763,8 @@ def _apercu(sortie: dict) -> str:
     """Text of a notification: the message, or what it carries (§4.3)."""
     if sortie["contenu"]:
         return sortie["contenu"]
+    if sortie.get("poll"):
+        return f"📊 {sortie['poll']['question']}"
     kinds = [a.kind for a in sortie["attachments"]]
     if not kinds:
         return ""

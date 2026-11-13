@@ -136,3 +136,38 @@ class MessageAttachment(Base):
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
     compressed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default=true())
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class MessagePoll(Base):
+    """A poll sent as a message, like WhatsApp's
+    (spec/modules/messagerie-instantanee.md §4.11): a question and 2 to 10
+    answers. Its own table keyed on the message, so `messages` is unchanged."""
+
+    __tablename__ = "msg_polls"
+
+    message_id: Mapped[int] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True)
+    question: Mapped[str] = mapped_column(String(200), nullable=False)
+    multiple: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class MessagePollOption(Base):
+    __tablename__ = "msg_poll_options"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("msg_polls.message_id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False)
+
+
+class MessagePollVote(Base):
+    """Votes are named (Seb): the name is kept as shown when voting, like
+    the publications poll."""
+
+    __tablename__ = "msg_poll_votes"
+
+    option_id: Mapped[int] = mapped_column(ForeignKey("msg_poll_options.id", ondelete="CASCADE"), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

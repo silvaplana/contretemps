@@ -29,7 +29,7 @@ Dans une discussion
 - En haut : ← retour, nom, « en ligne » ou « écrit... ». Groupe, pour un admin : crayon (Modifier
   le groupe : nom et personnes) et corbeille (Supprimer le groupe et tous ses messages).
 - Coches sous mes messages : envoyé, reçu, lu (en bleu). « modifié » à côté de l'heure si corrigé.
-- Zone du bas : 🙂 émojis, « Message », trombone (fichier), appareil photo (photo ou vidéo),
+- Zone du bas : 🙂 émojis, « Message », trombone (Fichier ou Sondage), appareil photo (photo ou vidéo),
   ⋯ (« Par mail » : pas encore disponible), puis la flèche d'envoi.
 - Aller à la ligne : sur téléphone, la touche Entrée du clavier ; sur ordinateur, Maj + Entrée
   (Entrée seule envoie).
@@ -46,6 +46,13 @@ Menu d'un message (appui long, clic droit, ou ⋯ sur la bulle)
 - Modifier : son propre message, un seul, pendant 15 minutes après l'envoi.
 - Supprimer : ses propres messages ; « Annuler » en bas pendant 10 secondes. Chez tous, la bulle
   devient « Ce message a été supprimé ».
+
+Sondage (trombone › Sondage)
+- Fenêtre « Sondage » : Question, Réponses (2 à 10, « + Ajouter une réponse », ✕ pour retirer),
+  case « Plusieurs réponses possibles », bouton « Envoyer ».
+- Dans la bulle : toucher une réponse pour voter, la retoucher pour retirer son vote, en toucher une
+  autre pour changer d'avis. « Voir les votes » : qui a voté quoi.
+- Un sondage ne se modifie pas et ne se transfère pas ; il peut être supprimé.
 
 Pièces jointes, photos, vidéos
 - Plusieurs à la fois ; elles apparaissent au-dessus de la zone de saisie, croix pour retirer.
