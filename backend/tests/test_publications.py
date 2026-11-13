@@ -703,3 +703,11 @@ def test_instagram_posts_en_brouillon(client, db_session, e, en_tant_que, photos
     actu = db_session.query(Post).filter_by(org_id=eid, instagram_id="d").one()
     assert actu.published_at is None
     assert client.get(f"{_blog(eid)}").json()["items"] == []
+
+
+@pytest.mark.rbac_reel
+def test_instagram_retour_sans_session(client):
+    """Le retour de Meta arrive sans session de l'appli (Seb, 13 novembre :
+    « session expirée ») : la route est publique, protégée par le state."""
+    retour = client.get("/news/instagram/return", params={"code": "abc", "state": "inconnu"}, follow_redirects=False)
+    assert retour.status_code == 303 and retour.headers["location"].endswith("/?instagram=erreur")
