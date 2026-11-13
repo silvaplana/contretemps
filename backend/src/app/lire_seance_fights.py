@@ -26,7 +26,7 @@ from session_clips import lab
 from session_clips.cutting import _heard, _load_frames, _poses_path
 from session_clips.fights import find_fights, find_signs, trim
 from session_clips.models import Clip, ClipSession, Piece
-from session_clips.signals import Frame, _shoulders_top, _wrists, main_pair, torso
+from session_clips.signals import Frame, Pose, _shoulders_top, _wrists, main_pair, torso
 from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE
 
@@ -85,12 +85,33 @@ def detail(db, session_id: int, out=print) -> None:
         offset += p.duration_seconds or 0
     _raised(frames, out)
     s = lab.settings(db, x.org_id)
+    _report(frames, sounds, s, out)
+    # Vidéo couchée (téléphone en paysage marqué « portrait », avant le 13/11) :
+    # les mêmes postures tournées d'un quart de tour, dans le sens où les bustes sont debout.
+    upright = sum(1 for f in frames for p in f.people if torso(p))
+    turned = max((_turn(frames, way) for way in (1, -1)), key=lambda fs: sum(1 for f in fs for p in f.people if torso(p)))
+    if sum(1 for f in turned for p in f.people if torso(p)) > 2 * upright:
+        out("vidéo couchée : postures redressées d'un quart de tour")
+        _raised(turned, out)
+        _report(turned, sounds, s, out)
+    for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
+        out(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
+
+
+def _report(frames: list[Frame], sounds, s, out) -> None:
     out(f"réglages du tournage : signes {list(s.signs)}, cadrage {s.framing}, début -{s.start_skip} s, fin -{s.end_skip} s")
     out(f"signes recalculés : {[(g.kind, round(g.start, 1), round(g.end, 1)) for g in find_signs(frames, sounds)]}")
     fights = trim(find_fights(frames, s.signs, sounds), s.start_skip, s.end_skip)
     out(f"combats avec les règles du jour : {[(round(f.start, 1), round(f.end, 1), f.check_reason) for f in fights]}")
-    for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
-        out(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
+
+
+def _turn(frames: list[Frame], way: int) -> list[Frame]:
+    """Les postures tournées d'un quart de tour (way = 1 : sens horaire)."""
+    def point(k):
+        x, y, c = k
+        return (-y, x, c) if way == 1 else (y, -x, c)
+
+    return [Frame(t=f.t, people=[Pose([point(k) for k in p.keypoints]) for p in f.people]) for f in frames]
 
 
 def _raised(frames: list[Frame], out, limit: int = 200) -> None:

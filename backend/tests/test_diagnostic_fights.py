@@ -26,3 +26,16 @@ def test_ecart_des_poignets_bras_leves():
     lignes = []
     _raised([Frame(t=1.0, people=[pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]), Frame(t=2.0, people=[pose(100), pose(300)])], lignes.append)
     assert lignes[0].startswith("bras levés tous les deux : 1 images") and "1.0 s · écart des poignets 0.00" in lignes[1]
+
+
+def test_postures_redressees():
+    """Une vidéo couchée : tournées d'un quart de tour, les postures ont de
+    nouveau un buste debout (séance 9, 13/11)."""
+    from app.lire_seance_fights import _turn
+    from session_clips.signals import Frame, torso
+    from tests.test_session_clips_cutting import pose
+
+    debout = [Frame(t=0.0, people=[pose(100)])]
+    couche = _turn(debout, -1)
+    assert torso(debout[0].people[0]) and not torso(couche[0].people[0])
+    assert torso(_turn(couche, 1)[0].people[0]) == torso(debout[0].people[0])
