@@ -243,9 +243,11 @@ class PieceRecorder(
             ?: sizes.minByOrNull { it.width * it.height }
     }
 
-    /** Le téléphone est fixé en paysage : on tourne la vidéo comme l'écran. */
+    /** Le téléphone est fixé en paysage : on tourne la vidéo comme le téléphone (sinon comme l'écran). */
     private fun orientation(characteristics: CameraCharacteristics): Int {
         val sensor = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 90
+        // D'après la gravité : juste, même si la rotation automatique de l'écran est coupée.
+        RecorderService.deviceDegrees?.let { return (sensor + it) % 360 }
         val display = context.getSystemService(DisplayManager::class.java).getDisplay(Display.DEFAULT_DISPLAY)
         val degrees = when (display?.rotation) {
             Surface.ROTATION_90 -> 90

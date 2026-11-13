@@ -20,7 +20,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   la vidéo est encore sur un téléphone caméra éteint. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.
 - Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
-  entier), puis « Signes repérés » (la frise, comme dans un test ; toucher un signe montre ce moment
+  entier, et « ↻ Tourner la vidéo » si elle est de travers), puis « Signes repérés » (la frise, comme dans un test ; toucher un signe montre ce moment
   dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
   frise des signes »), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
   d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans

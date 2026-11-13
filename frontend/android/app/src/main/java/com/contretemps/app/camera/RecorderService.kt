@@ -17,6 +17,7 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.os.SystemClock
 import android.util.Log
+import android.view.OrientationEventListener
 import com.contretemps.app.MainActivity
 import com.contretemps.app.R
 import java.io.File
@@ -44,10 +45,24 @@ class RecorderService : Service() {
     private var recorder: PieceRecorder? = null
     private var recordingSession: Int? = null
 
+    /**
+     * Le sens réel du téléphone, d'après la gravité (Seb, 13/11 : rotation
+     * automatique de l'écran coupée, l'écran restait en portrait et le film
+     * en paysage était enregistré de travers).
+     */
+    private val tilt by lazy {
+        object : OrientationEventListener(this) {
+            override fun onOrientationChanged(o: Int) {
+                if (o != ORIENTATION_UNKNOWN) deviceDegrees = ((o + 45) / 90 * 90) % 360
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         prefs = Prefs(this)
         folder = File(filesDir, "pieces").apply { mkdirs() }
+        tilt.enable()
         uploader = Uploader(folder)
         upload = uploader
         wakeLock = getSystemService(PowerManager::class.java)
@@ -73,6 +88,7 @@ class RecorderService : Service() {
 
     override fun onDestroy() {
         running = false
+        tilt.disable()
         poke = {}
         handler.removeCallbacksAndMessages(null)
         handler.post {
@@ -277,6 +293,8 @@ class RecorderService : Service() {
         @Volatile var previewing = false
         /** Quitté « Caméra » pendant un envoi : il continue, puis le service s'arrête. */
         @Volatile var finishing = false
+        /** Le téléphone tourné de 0, 90, 180 ou 270° (OrientationEventListener), si connu. */
+        @Volatile var deviceDegrees: Int? = null
         /** La dernière petite image (jpeg) : du film, ou de l'image de Tournage quand elle
          *  tient la caméra ; montrée dans Tournage pendant le film et envoyée à la télécommande. */
         @Volatile var image: ByteArray? = null
