@@ -84,7 +84,7 @@ def frames(spec, fps=5):
 
 
 def test_combats_reperes():
-    y2 = [pose(100, "fist"), pose(300, "fist")]
+    y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
     salute = [pose(100, "hand"), pose(145, "hand", wrist_dx=-50)]
     x = [pose(100, "x"), pose(300, "x")]
@@ -108,7 +108,7 @@ def test_combats_reperes():
 
 
 def test_nouveau_poing_leve_termine_le_combat():
-    y2 = [pose(100, "fist"), pose(300, "fist")]
+    y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
     fights = find_fights(frames([(2, y2), (15, fight), (2, y2), (15, fight)]))
     assert len(fights) == 2 and fights[0].end == pytest.approx(fights[1].start)
@@ -140,7 +140,7 @@ def test_decoupe_une_seance(db_session, tmp_path, monkeypatch):
     session = _fausse_seance(db_session)
     assert [s.id for s in sessions_to_cut(db_session)] == [session.id]
 
-    y2 = [pose(100, "fist"), pose(300, "fist")]
+    y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
     detecteur = lambda _path: frames([(2, y2), (12, fight), (1, [pose(100, "x"), pose(300, "x")]), (5, []), (2, y2), (15, fight)])
     sc = core.session_clips_client
@@ -308,7 +308,8 @@ def test_time_go_time_go():
 
 def test_seance_9_poings_touches_puis_go_time():
     """Séance 9 de Seb (13/11, réglages : poings touchés, Go, X, Time).
-    Combat 1 : poings touchés en l'air, lus comme deux poings levés (37,6 s).
+    Combat 1 : poings touchés en l'air, lus comme deux poings levés (37,6 s) :
+    deux poings levés ne sont pas des poings touchés (Seb, 13/11), pas de combat.
     Combat 2 : « Go ! » 45,5 s (redit à 47,4 s), « Time ! » 65,5 s ; Whisper
     entend aussi un « go » 0,5 s avant le « Time ! », qui ne coupe pas le combat."""
     y2 = [pose(100, "fist"), pose(300, "fist")]
@@ -316,7 +317,7 @@ def test_seance_9_poings_touches_puis_go_time():
     video = frames([(37.6, fight), (2, y2), (33.4, fight)])
     sons = [("go", 45.5), ("go", 47.4), ("go", 65.0), ("time", 65.5)]
     fights = find_fights(video, ("fists_touch", "go", "x", "time"), sons)
-    assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(37.6, 45.5), (45.5, 66.5)]
+    assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(45.5, 66.5)]
 
 
 def test_bras_croises_chacun_finit_le_combat():
