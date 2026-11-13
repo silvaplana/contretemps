@@ -31,6 +31,8 @@ Dans une discussion
 - Coches sous mes messages : envoyé, reçu, lu (en bleu). « modifié » à côté de l'heure si corrigé.
 - Zone du bas : 🙂 émojis, « Message », trombone (fichier), appareil photo (photo ou vidéo),
   ⋯ (« Par mail » : pas encore disponible), puis la flèche d'envoi.
+- Aller à la ligne : sur téléphone, la touche Entrée du clavier ; sur ordinateur, Maj + Entrée
+  (Entrée seule envoie).
 - Pas de bouton de dictée ni de message vocal dans la messagerie.
 - Un lien vers Docs s'affiche « Ouvrir dans Docs » ; les autres liens s'ouvrent dans le navigateur.
 

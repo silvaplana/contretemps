@@ -343,6 +343,15 @@ la liste des applis, comme WhatsApp.
 Le choix « Par WhatsApp » du menu ⋯ de la zone de saisie est retiré : la messagerie de l'appli suffit. Reste
 « Par mail ». La case « Groupe WhatsApp » des groupes (Admin, Infos d'un groupe) n'est pas touchée.
 
+### 4.10 Aller à la ligne (Seb, 13 novembre)
+
+- Sur **téléphone**, la touche Entrée du clavier va à la ligne ; on envoie avec la flèche, comme WhatsApp.
+- Sur **ordinateur**, Entrée envoie et **Maj + Entrée** va à la ligne, comme WhatsApp Web. La zone de
+  saisie le rappelle : « Message (Maj + Entrée : à la ligne) ».
+- L'appli se croit sur ordinateur seulement s'il n'y a aucun écran tactile : un téléphone avec stylet
+  ou souris se disait « ordinateur » et Entrée y envoyait le message.
+- Le message garde ses lignes à l'affichage.
+
 ## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des

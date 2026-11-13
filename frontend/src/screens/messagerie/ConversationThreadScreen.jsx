@@ -37,7 +37,10 @@ const EMOJIS = [
 // faux, donc Entrée y envoyait le message à chaque fois (signalé). Sur
 // ces appareils, Entrée insère juste une ligne (comportement natif de la
 // textarea, rien à faire) — l'envoi se fait via le bouton.
-const ENTREE_ENVOIE = window.matchMedia('(pointer: fine)').matches
+// Un téléphone avec stylet ou souris peut se dire « fin » : dès qu'il y a
+// un écran tactile, Entrée va à la ligne (Seb, 13 novembre 2026).
+const ENTREE_ENVOIE =
+  window.matchMedia('(pointer: fine)').matches && !window.matchMedia('(any-pointer: coarse)').matches
 
 // Liens cliquables (spec/modules/messagerie-instantanee.md §4.1) : https://,
 // http:// et www., sans aperçu. La ponctuation qui suit un lien (« voir
@@ -822,7 +825,8 @@ export default function ConversationThreadScreen({
           <textarea
             ref={textareaRef}
             value={draft}
-            placeholder="Message"
+            // Sur ordinateur, l'aide dit comment aller à la ligne (spec §4.10).
+            placeholder={ENTREE_ENVOIE ? 'Message (Maj + Entrée : à la ligne)' : 'Message'}
             rows={1}
             onChange={(e) => {
               setDraft(e.target.value)
