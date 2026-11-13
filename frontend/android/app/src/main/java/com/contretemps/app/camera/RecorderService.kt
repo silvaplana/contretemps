@@ -8,6 +8,8 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.os.BatteryManager
 import android.os.Handler
 import android.os.HandlerThread
@@ -161,6 +163,7 @@ class RecorderService : Service() {
         }
         recorder = pieces
         recordingSession = sessionId
+        beep(ToneGenerator.TONE_PROP_BEEP2, 500) // deux bips : le film commence (Seb, 13/11)
         status = status.copy(recording = true, since = System.currentTimeMillis())
         notify("Filme la séance")
     }
@@ -170,6 +173,7 @@ class RecorderService : Service() {
         recorder = null
         recordingSession = null
         pieces.stop(last)
+        beep(ToneGenerator.TONE_PROP_BEEP, 1_000) // un bip long : le film s'arrête
         status = status.copy(recording = false, since = null)
         notify("Prête")
     }
@@ -185,6 +189,17 @@ class RecorderService : Service() {
             } finally {
                 sending.set(false)
             }
+        }
+    }
+
+    /** Un bip que les combattants entendent, même téléphone en silencieux (son des alarmes). */
+    private fun beep(tone: Int, ms: Int) {
+        try {
+            val tones = ToneGenerator(AudioManager.STREAM_ALARM, 100)
+            tones.startTone(tone, ms)
+            handler.postDelayed({ tones.release() }, ms + 200L)
+        } catch (e: RuntimeException) {
+            Log.w(TAG, "beep", e)
         }
     }
 

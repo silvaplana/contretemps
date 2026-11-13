@@ -41,6 +41,7 @@ class PieceRecorder(
 ) {
     private var camera: CameraDevice? = null
     private var session: CameraCaptureSession? = null
+    private var request: CaptureRequest.Builder? = null
     private var recorder: MediaRecorder? = null
     private var current: File? = null
     private var next: File? = null
@@ -84,8 +85,12 @@ class PieceRecorder(
                             addTarget(media.surface)
                             set(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, Range(FPS, FPS))
                         }
+                        this@PieceRecorder.request = request
                         capture.setRepeatingRequest(request.build(), null, handler)
                         media.start()
+                        // Le film commence : la lampe s'allume une seconde, pour que
+                        // les combattants le voient (Seb, 13/11).
+                        flash(FLASH_MS)
                     }
 
                     override fun onConfigureFailed(capture: CameraCaptureSession) = onError("Caméra indisponible")
@@ -95,6 +100,27 @@ class PieceRecorder(
             override fun onDisconnected(device: CameraDevice) = onError("Caméra prise par une autre appli")
             override fun onError(device: CameraDevice, error: Int) = onError("Erreur de caméra ($error)")
         }, handler)
+    }
+
+    /** Allume la lampe [ms] millisecondes pendant le film, si le téléphone en a une. */
+    fun flash(ms: Long) {
+        val capture = session ?: return
+        val builder = request ?: return
+        try {
+            builder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_TORCH)
+            capture.setRepeatingRequest(builder.build(), null, handler)
+            handler.postDelayed({
+                if (session !== capture) return@postDelayed
+                builder.set(CaptureRequest.FLASH_MODE, CaptureRequest.FLASH_MODE_OFF)
+                try {
+                    capture.setRepeatingRequest(builder.build(), null, handler)
+                } catch (e: Exception) {
+                    Log.w(TAG, "flash off", e)
+                }
+            }, ms)
+        } catch (e: Exception) {
+            Log.w(TAG, "flash", e)
+        }
     }
 
     /** Arrête le film ; [last] : le morceau en cours est le dernier de la séance. */
@@ -110,6 +136,7 @@ class PieceRecorder(
         media?.release()
         session?.close()
         camera?.close()
+        request = null
         session = null
         camera = null
         next?.let { if (!it.exists() || it.length() == 0L) it.delete() }
@@ -172,5 +199,6 @@ class PieceRecorder(
         // 4 Mbit/s vidéo + 128 kbit/s son : environ 62 Mo pour 2 minutes.
         const val VIDEO_BITRATE = 4_000_000
         const val PIECE_BYTES = 62L * 1024 * 1024
+        const val FLASH_MS = 1_000L
     }
 }

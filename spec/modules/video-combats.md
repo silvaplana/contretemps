@@ -336,7 +336,9 @@ flèche ←.
   chaque combat), si la case « Montrer la frise des signes » des Paramètres de tournage est cochée
   (`sc_club_signs.show_timeline`, vrai par défaut ; Seb, 13/11). L'appli Tournage demande ses ordres
   toutes les secondes (au lieu de 5 s), et tout de suite après Filmer / Arrêter touché sur elle-même
-  (`Tournage.poke`). La
+  (`Tournage.poke`). Au début du film, deux bips et la lampe allumée une seconde ; à
+  l'arrêt, un bip long (son des alarmes, entendu même en silencieux ; Seb, 13/11 : que les
+  combattants voient que ça filme). La
   vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
