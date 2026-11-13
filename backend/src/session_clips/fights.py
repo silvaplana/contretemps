@@ -1,9 +1,9 @@
 """Repérer les combats dans une vidéo de séance (spec/modules/video-combats.md
 §5) à partir des gestes de chaque image (signals.py).
 
-D'abord les signes, tenus un moment (`find_signs`) : au début, le poing levé
-par au moins deux personnes ou les poings touchés en l'air ; à la fin, la
-poignée de main (immobiles), le X ou le « Time ! » crié. Puis les combats (`find_fights`), avec
+D'abord les signes, tenus un moment (`find_signs`) : au début, les poings
+touchés en l'air (ou deux poings levés ensemble) ou le « Go ! » crié ; à la fin, la
+poignée de main (immobiles), les bras croisés ou le « Time ! » crié. Puis les combats (`find_fights`), avec
 les seuls signes cochés par le club : du signe de début au premier signe de
 fin, sinon à la zone vide quelques secondes, sinon au début du combat
 suivant ou à la fin de la vidéo. Durées réglées le 12/11/2026 sur deux
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_fist_up, is_x, main_pair, torso
 
-START_SIGNS = ("fist_up", "fists_touch", "go")  # « go » : le « Go ! » crié (hearing.py)
+START_SIGNS = ("fists_touch", "go")  # « go » : le « Go ! » crié (hearing.py)
 END_SIGNS = ("handshake", "x", "time")  # « time » : le « Time ! » crié (hearing.py)
 SIGNS = START_SIGNS + END_SIGNS
 SOUNDS = ("go", "time")
@@ -24,13 +24,14 @@ SOUNDS = ("go", "time")
 # « time » (morceaux lus avant le « Go ! », 12/11/2026).
 Sound = tuple[str, float] | float
 # Secondes pendant lesquelles un signe doit être tenu pour compter.
-HOLD = {"fist_up": 1.5, "fists_touch": 0.6, "handshake": 0.8, "x": 0.6}
+HOLD = {"fists_touch": 0.5, "handshake": 0.5, "x": 0.5}  # au moins 0,5 s (Seb, 13/11)
 GAP = 0.45  # une image manquée (à 5 images/s) ne coupe pas un geste
 MERGE = 2.0  # deux poings touchés à moins de 2 s : un seul début
 STILL = 0.3  # poignée de main : les hanches bougent de moins de 0,3 buste
 END_DELAY = 1.0  # bras qui redescendent juste après le début : pas une fin
 MIN_FIGHT = 5.0  # un combat plus court est ignoré (début puis fin aussitôt),
 # sauf « Go ! » puis « Time ! » criés : les deux cris disent le combat (Seb, 12/11)
+ECHO = 1.0  # un « go » moins d'1 s avant un « Time ! », en plein combat : ignoré
 MARGIN = 1.0  # au moins 1 s gardée après le début du signe de fin (le « Time ! »)
 
 # Motifs affichés dans « À vérifier » (vocabulaire de l'écran, pas technique).
@@ -42,7 +43,6 @@ class Sign:
     kind: str  # une des SIGNS
     start: float
     end: float
-    people: int = 2  # combien ont levé le poing (fist_up) : 2 au combat, 1 à n en danse
 
 
 @dataclass
@@ -86,21 +86,20 @@ def find_signs(frames: list[Frame], sounds: list[Sound] = ()) -> list[Sign]:
     """Tous les signes repérés, cochés ou non : la frise du Labo les montre.
     `sounds` : les « Go ! » et « Time ! » dits (hearing.py)."""
     tests = {
-        "fist_up": lambda f: sum(1 for p in f.people if is_fist_up(p)) >= 2,
-        "fists_touch": lambda f: _pair(f, are_touching_fists_up),
+        # Le « Poing levé » seul est retiré (Seb, 13/11) ; deux poings levés au
+        # même moment sont des poings touchés en l'air mal lus (séance 9).
+        "fists_touch": lambda f: _pair(f, are_touching_fists_up) or sum(1 for p in f.people if is_fist_up(p)) >= 2,
         "handshake": lambda f: _pair(f, are_shaking_hands),
-        "x": lambda f: any(is_x(p) for p in main_pair(f)),
+        # Bras croisés : chacun des deux (Seb, 13/11).
+        "x": lambda f: _pair(f, lambda a, b: is_x(a) and is_x(b)),
     }
     signs: list[Sign] = []
     for kind, test in tests.items():
         found: list[Sign] = []
         for first, last in _runs(frames, test):
             sign = Sign(kind, frames[first].t, frames[last].t)
-            if kind == "fist_up":
-                sign.people = max(sum(1 for p in f.people if is_fist_up(p)) for f in frames[first : last + 1])
             if kind in START_SIGNS and found and sign.start - found[-1].end < MERGE:
                 found[-1].end = sign.end
-                found[-1].people = max(found[-1].people, sign.people)
                 continue
             found.append(sign)
         for sign in found:
@@ -126,6 +125,15 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
     ends = [s for s in signs if s.kind in END_SIGNS]
     starts: list[Sign] = []
     for s in (s for s in signs if s.kind in START_SIGNS):
+        # Un « go » entendu juste avant un « Time ! », en plein combat : un
+        # écho du « Time ! », pas un nouveau combat (Seb, séance 9, 13/11).
+        if (
+            s.kind == "go"
+            and starts
+            and not any(e.start > starts[-1].start for e in ends if e.start < s.start)
+            and any(0 <= e.start - s.start < ECHO for e in ends if e.kind == "time")
+        ):
+            continue
         # Poings touchés puis « Go ! » : un seul début ; mais pas par-dessus
         # un « Time ! » ou un geste de fin (Seb, 13/11 : Go, Time, Go, Time).
         if (
@@ -158,7 +166,7 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
         else:
             stop, reason = (frames[-1].t if frames else start.end), REASON_NO_END
         if shouted or stop - start.start >= MIN_FIGHT:
-            fights.append(Fight(start.start, stop, start.people if start.kind == "fist_up" else 2, reason))
+            fights.append(Fight(start.start, stop, 2, reason))
     return fights
 
 

@@ -237,12 +237,15 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    relie au bon membre. Il en tire une « empreinte » de tenue : couleurs du t-shirt et du short,
    silhouette.
 2. **Signaux** : la détection de posture repère les signes tenus un moment (réglés le 12/11 sur
-   deux vidéos de Seb, `fights.py`). **Début** : le poing levé (bras plié, au-dessus de la tête) par
-   au moins deux personnes, tenu 1,5 s ; ou les **poings touchés en l'air** (les deux se touchent
-   les poings, bras vers le haut ; c'est le signe du club de Seb), tenu 0,6 s. **Fin** : la
-   **poignée de main** (deux personnes debout, mains jointes sous les épaules, immobiles), tenue
-   0,8 s ; ou le **X** au-dessus de la tête (avant-bras croisés ou mains jointes en l'air), tenu
-   0,6 s. Les gestes sont mesurés en hauteur de buste (les combattants sont souvent de profil) et
+   deux vidéos de Seb, `fights.py`), tenus au moins 0,5 s (Seb, 13/11). **Début** : les **poings
+   touchés en l'air** des deux combattants (bras vers le haut ; c'est le signe du club de Seb) ;
+   deux poings levés au même moment comptent aussi (séance 9 du 13/11 : les poings touchés en
+   l'air y étaient lus ainsi). Le « Poing levé » seul n'est plus un signe (Seb, 13/11 : « c'est
+   nul »). **Fin** : la **poignée de main** (deux personnes debout, mains jointes sous les épaules,
+   immobiles) ; ou les **bras croisés** des deux combattants (Seb, 13/11 : chacun croise les
+   avant-bras devant soi, au milieu ou plus haut, plus de X en l'air) : poignets au-dessus des
+   hanches, chacun passé du côté de l'autre bras, buste face à la caméra (épaules écartées d'au moins
+   un tiers de buste, car de profil une garde a l'air croisée) ; le code garde le nom `x`. Les gestes sont mesurés en hauteur de buste (les combattants sont souvent de profil) et
    seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Les
    poings et les mains dépassent des poignets que voit la détection : sur les vidéos de Seb en plein
    cadre (12/11, lues sur le serveur par l'action « Lire un essai du Labo »), les poignets restaient
@@ -266,6 +269,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    sauf avec un signe de fin entre eux : « Go, Time, Go, Time » fait deux combats, Seb, 13/11).
    Dans le désordre, « Time, Go, Time, Go » ne fait qu'un combat : un « Time ! » sans début ne
    ferme rien, et un « Go ! » sans fin (ni signe de fin, ni début suivant) ne fait pas de combat.
+   Un « go » entendu moins d'1 s avant un « Time ! », en plein combat, est ignoré : c'est un écho du
+   « Time ! » (séance 9 du 13/11 : il coupait le combat en deux). Un morceau de moins de 2 s n'est pas
+   écouté : on souffle « Go, Time » à Whisper, qui les récite sur un bout presque muet (le dernier
+   morceau de 1 s de la séance 9 donnait « Go, Time, Go » et un faux combat).
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en

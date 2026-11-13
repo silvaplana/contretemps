@@ -46,8 +46,20 @@ Detector = Callable[[Path], Iterable[Frame]]
 Listener = Callable[[Path], list[Sound]]
 
 
+MIN_HEARD = 2.0  # secondes : un morceau plus court n'est pas écouté
+
+
 def _deaf(_path: Path) -> list[Sound]:
     return []
+
+
+def _heard(path: Path, duration: float) -> list[tuple[str, float]]:
+    """Les cris entendus dans un morceau. Un morceau lu avant l'écoute des
+    sons (12/11) n'a pas de fichier ; dans un bout de moins de 2 s, Whisper
+    invente les mots qu'on lui souffle (« Go, Time », séance 9, 13/11)."""
+    if duration < MIN_HEARD or not path.exists():
+        return []
+    return [as_sound(x) for x in json.loads(path.read_text())]
 
 
 def sessions_to_cut(db: Session) -> list[ClipSession]:
@@ -206,8 +218,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
         else:
             piece_frames = _load_frames(poses)
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
-        # Un morceau lu avant l'écoute des sons (12/11) n'a pas de fichier.
-        for kind, t in map(as_sound, json.loads(heard.read_text()) if heard.exists() else []):
+        for kind, t in _heard(heard, piece.duration_seconds):
             sounds.append((kind, t + offset))
         sources.append((source, offset, piece.duration_seconds))
         offset += piece.duration_seconds

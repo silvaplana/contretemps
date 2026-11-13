@@ -1,6 +1,6 @@
 """Gestes repérés sur une image (spec/modules/video-combats.md §5) : le poing
 levé ou les poings touchés en l'air avant un combat, la poignée de main ou
-le X à la fin.
+les bras croisés à la fin.
 
 Une personne = ses 17 points du corps au format COCO (ceux que donne YOLO
 pose), chacun `(x, y, confiance)` en pixels, `y` vers le bas. Seuils réglés
@@ -74,18 +74,22 @@ def is_fist_up(pose: Pose) -> bool:
 
 
 def is_x(pose: Pose) -> bool:
-    """Les avant-bras croisés au-dessus de la tête : poignets au-dessus des
-    épaules et des coudes, croisés ou rapprochés (moins de la moitié de
-    l'écart des coudes)."""
+    """Les bras croisés (Seb, 13/11 : « chacun croise les bras devant soi,
+    au milieu ou plus ou moins haut ») : les deux poignets au-dessus des
+    hanches, chacun passé du côté de l'autre bras. Face à la caméra
+    seulement (épaules écartées d'au moins un tiers de buste) : de profil,
+    une garde a l'air croisée. Plus de X en l'air : des poignets
+    rapprochés sans se croiser, c'est la garde."""
     points = [pose.point(i) for i in (L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST)]
-    if None in points:
+    unit = torso(pose)
+    if None in points or not unit:
         return False
-    l_sh, r_sh, l_el, r_el, l_wr, r_wr = points
-    top = min(l_sh[1], r_sh[1])
-    if not (l_wr[1] < top and r_wr[1] < top and l_wr[1] < l_el[1] and r_wr[1] < r_el[1]):
+    l_sh, r_sh, _, _, l_wr, r_wr = points
+    hips = l_sh[1] + unit
+    if l_wr[1] >= hips or r_wr[1] >= hips:
         return False
-    crossed = (l_wr[0] - r_wr[0]) * (l_el[0] - r_el[0]) < 0
-    return crossed or abs(l_wr[0] - r_wr[0]) <= 0.5 * abs(l_el[0] - r_el[0])
+    facing = abs(l_sh[0] - r_sh[0]) >= unit / 3
+    return facing and (l_wr[0] - r_wr[0]) * (l_sh[0] - r_sh[0]) < 0
 
 
 def _mean(points):

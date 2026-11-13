@@ -36,6 +36,9 @@ def pose(x=100, arms="down", wrist_dx=0.0):
     elif arms == "x":
         k[7], k[8] = (x + 25, 60, 1), (x - 25, 60, 1)
         k[9], k[10] = (x - 10, 25, 1), (x + 10, 25, 1)  # croisés
+    elif arms == "cross":  # bras croisés devant la poitrine
+        k[7], k[8] = (x + 25, 120, 1), (x - 25, 120, 1)
+        k[9], k[10] = (x - 15, 105, 1), (x + 15, 105, 1)
     elif arms == "touch":  # bras droit tendu vers le haut, vers l'autre
         k[7], k[8] = (x + 25, 110, 1), (x + 30, 60, 1)
         k[9], k[10] = (x + 25, 140, 1), (x + 20 + wrist_dx, 30, 1)
@@ -51,6 +54,11 @@ def pose(x=100, arms="down", wrist_dx=0.0):
 def test_gestes():
     assert is_fist_up(pose(arms="fist")) and not is_x(pose(arms="fist"))
     assert is_x(pose(arms="x")) and not is_fist_up(pose(arms="x"))
+    # Bras croisés devant soi (Seb, 13/11), mais pas la garde ni un buste de profil.
+    assert is_x(pose(arms="cross")) and not is_x(pose(arms="guard")) and not is_x(pose())
+    profil = pose(arms="cross")
+    profil.keypoints[5], profil.keypoints[6] = (105, 80, 1), (95, 80, 1)
+    assert not is_x(profil)
     # Ni la garde, ni les bras tendus en Y, ni les bras baissés.
     assert not is_fist_up(pose(arms="guard")) and not is_fist_up(pose(arms="y")) and not is_fist_up(pose())
     # La poignée de main : deux personnes debout, mains jointes sous les épaules.
@@ -79,7 +87,7 @@ def test_combats_reperes():
     y2 = [pose(100, "fist"), pose(300, "fist")]
     fight = [pose(100), pose(300)]
     salute = [pose(100, "hand"), pose(145, "hand", wrist_dx=-50)]
-    x = [pose(100, "x"), pose(300)]
+    x = [pose(100, "x"), pose(300, "x")]
     video = frames([
         (3, fight),  # échauffement : pas de poing levé, pas de combat
         (2, y2), (30, fight), (1, salute),  # combat 1, fini par le salut
@@ -134,7 +142,7 @@ def test_decoupe_une_seance(db_session, tmp_path, monkeypatch):
 
     y2 = [pose(100, "fist"), pose(300, "fist")]
     fight = [pose(100), pose(300)]
-    detecteur = lambda _path: frames([(2, y2), (12, fight), (1, [pose(100, "x"), pose(300)]), (5, []), (2, y2), (15, fight)])
+    detecteur = lambda _path: frames([(2, y2), (12, fight), (1, [pose(100, "x"), pose(300, "x")]), (5, []), (2, y2), (15, fight)])
     sc = core.session_clips_client
     assert cut_session(db_session, sc, session, detecteur) == 2
     # Rejouable : un 2e passage remplace les clips au lieu de les doubler.
@@ -296,3 +304,41 @@ def test_time_go_time_go():
     sons = [("time", 5.0), ("go", 10.0), ("time", 20.0), ("go", 25.0)]
     video = frames([(40, [pose(100), pose(300)])])
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(10.0, 21.0)]
+
+
+def test_seance_9_poings_touches_puis_go_time():
+    """Séance 9 de Seb (13/11, réglages : poings touchés, Go, X, Time).
+    Combat 1 : poings touchés en l'air, lus comme deux poings levés (37,6 s).
+    Combat 2 : « Go ! » 45,5 s (redit à 47,4 s), « Time ! » 65,5 s ; Whisper
+    entend aussi un « go » 0,5 s avant le « Time ! », qui ne coupe pas le combat."""
+    y2 = [pose(100, "fist"), pose(300, "fist")]
+    fight = [pose(100), pose(300)]
+    video = frames([(37.6, fight), (2, y2), (33.4, fight)])
+    sons = [("go", 45.5), ("go", 47.4), ("go", 65.0), ("time", 65.5)]
+    fights = find_fights(video, ("fists_touch", "go", "x", "time"), sons)
+    assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(37.6, 45.5), (45.5, 66.5)]
+
+
+def test_bras_croises_chacun_finit_le_combat():
+    """Seb, 13/11 : la fin, c'est chacun qui croise les bras devant soi, tenu
+    au moins 0,5 s ; un seul qui croise les bras ne finit rien."""
+    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    fight = [pose(100), pose(300)]
+    un = [pose(100, "cross"), pose(300)]
+    deux = [pose(100, "cross"), pose(300, "cross")]
+    video = frames([(1, touch), (10, fight), (1, un), (10, fight), (1, deux), (5, fight), (1, touch), (3, fight)])
+    fights = find_fights(video, ("fists_touch", "x"))
+    assert [(round(f.start, 1), round(f.end, 1)) for f in fights][0] == (0.0, 23.0)
+
+
+def test_pas_de_cri_dans_un_bout_trop_court(tmp_path):
+    """Le dernier morceau de la séance 9 dure 1 s : Whisper y « entend » Go,
+    Time, Go (les mots qu'on lui souffle). Un morceau de moins de 2 s n'est
+    pas écouté."""
+    from session_clips.cutting import _heard
+
+    fichier = tmp_path / "m.sounds.json"
+    fichier.write_text('[["go", 0.0], ["time", 0.8], ["go", 0.8]]')
+    assert _heard(fichier, 1.09) == []
+    assert _heard(fichier, 72.9) == [("go", 0.0), ("time", 0.8), ("go", 0.8)]
+    assert _heard(tmp_path / "absent.json", 30) == []
