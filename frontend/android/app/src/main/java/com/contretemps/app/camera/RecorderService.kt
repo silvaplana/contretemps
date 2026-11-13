@@ -257,6 +257,8 @@ class RecorderService : Service() {
         @Volatile var previewing = false
         /** Quitté « Caméra » pendant un envoi : il continue, puis le service s'arrête. */
         @Volatile var finishing = false
+        /** La dernière petite image du film (jpeg), montrée dans Tournage pendant le film. */
+        @Volatile var image: ByteArray? = null
         /** Demande ses ordres au serveur sans attendre le prochain tour. */
         @Volatile var poke: () -> Unit = {}
 

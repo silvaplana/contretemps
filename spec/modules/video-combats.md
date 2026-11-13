@@ -341,7 +341,10 @@ flèche ←.
   toutes les secondes (au lieu de 5 s), et tout de suite après Filmer / Arrêter touché sur elle-même
   (`Tournage.poke`). Au début du film, deux bips et la lampe allumée une seconde ; à
   l'arrêt, un bip long (son des alarmes, entendu même en silencieux ; Seb, 13/11 : que les
-  combattants voient que ça filme). La
+  combattants voient que ça filme). Pendant le film, la caméra est prise par l'enregistrement :
+  l'appli en tire une petite image (jpeg 640 px) chaque seconde, montrée dans Tournage à la place
+  de l'image noire (`PieceRecorder.snap`, `status.image` ; si le téléphone refuse ce second flux,
+  il filme sans ; Seb, 13/11). La
   vignette d'un essai, si l'image du serveur manque, est la première image de la vidéo. Fights
   rouvre le dernier onglet choisi sur ce téléphone, même après avoir fermé l'appli (Seb, 12/11). « À vérifier »
   porte le nombre de clips à vérifier dans une pastille rouge.
