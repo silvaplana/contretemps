@@ -15,7 +15,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
 - Sous le volet Tournage, le volet dépliant « Montage » : une ligne par séance : petite vignette, nombre de combats, « 1 à
   vérifier » ou « Vérifié », ou « Aucun combat trouvé » en gros ; à droite un crayon (renommer la
   séance) et une poubelle (effacer la séance et ses combats, « Annuler » pendant 10 s). Une séance filmée par la caméra montre d'abord son état,
-  puis toujours l'heure de début et de fin (« 21:40 → 21:46 · 6 min ») : « Envoi : 40 % » puis
+  puis toujours l'heure de début et de fin (« 21:40:05 → 21:46:17 · 6 min 12 s », à la seconde (Seb, 13/11)) : « Envoi : 40 % » puis
   « Découpe : 67 % » avec une barre, qui avancent seuls ; « Caméra éteinte : rouvrez Tournage » si
   la vidéo est encore sur un téléphone caméra éteint. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.

@@ -481,12 +481,15 @@ function BarreSelection({ me, choisis, vider, montrer, supprimer, rafraichir }) 
 // « Depuis 21:40 » pendant le film.
 function horaire(s) {
   const debut = new Date(`${s.started_at}Z`)
-  const heure = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+  // À la seconde (Seb, 13/11 : « 1 min » partout ne disait rien).
+  const heure = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   // Toujours début et fin (Seb, 13/11) : la fin est l'appui sur Arrêter,
   // sinon la durée filmée arrivée.
   const fin = s.ended_at ? new Date(`${s.ended_at}Z`) : s.filmed_seconds ? new Date(debut.getTime() + s.filmed_seconds * 1000) : null
   if (s.status === 'recording' || !fin) return `${heure(debut)} → …`
-  return `${heure(debut)} → ${heure(fin)} · ${Math.max(1, Math.round((fin - debut) / 60000))} min`
+  const sec = Math.max(0, Math.round((fin - debut) / 1000))
+  const duree = sec < 60 ? `${sec} s` : `${Math.floor(sec / 60)} min ${String(sec % 60).padStart(2, '0')} s`
+  return `${heure(debut)} → ${heure(fin)} · ${duree}`
 }
 
 function EtatSeance({ s }) {

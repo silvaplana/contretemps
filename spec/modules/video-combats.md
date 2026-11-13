@@ -478,7 +478,7 @@ onglets, et rouvre le panneau. Après « Fin de séance », la séance apparaît
 - la carte d'une séance filmée par la caméra : « Filme… » pendant le cours, puis « Découpe en
   cours » et « Découpe : 67 % » avec une barre (morceaux de 2 minutes lus sur ceux arrivés de la
   caméra, sans dire « morceau ») ; elle s'ouvre dès son premier clip. Sous le titre, l'heure et la durée
-  filmée : « 21:40 → 21:46 · 6 min » (« Depuis 21:40 » pendant le film ; début = l'ordre
+  filmée : « 21:40:05 → 21:46:17 · 6 min 12 s », à la seconde (Seb, 13/11) (« Depuis 21:40 » pendant le film ; début = l'ordre
   « Filmer », durée = morceaux lus). Finie sans combat : « Aucun combat trouvé » au lieu de
   « 0 combat · Vérifié » (Seb, 12/11). Une caméra remplacée en plein film (sélecteur remis
   sur Caméra) reprend la séance en cours au lieu de la laisser sur « Filme… » ; une séance déjà
