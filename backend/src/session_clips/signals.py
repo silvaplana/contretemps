@@ -73,6 +73,19 @@ def is_fist_up(pose: Pose) -> bool:
     )
 
 
+def is_arms_up(pose: Pose) -> bool:
+    """Les deux bras levés au-dessus de la tête (Seb, 13/11 : signe de début,
+    plus facile à voir que les poings touchés) : les deux poignets plus hauts
+    que le nez et que leur coude, les deux coudes au-dessus des épaules. Se
+    voit de face comme de profil, et jamais en garde."""
+    arms = _arms(pose)
+    if arms is None or is_x(pose):  # bras croisés en l'air : pas des bras levés
+        return False
+    nose, l_sh, r_sh, l_el, r_el, l_wr, r_wr, _ = arms
+    top = min(l_sh[1], r_sh[1])
+    return all(w[1] < nose[1] and w[1] < e[1] and e[1] < top for w, e in ((l_wr, l_el), (r_wr, r_el)))
+
+
 def is_x(pose: Pose) -> bool:
     """Les bras croisés (Seb, 13/11 : « chacun croise les bras devant soi,
     au milieu ou plus ou moins haut ») : les deux poignets au-dessus des
