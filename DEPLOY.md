@@ -283,6 +283,21 @@ déploiement (§5).
   reste.
 - Une tâche n'attend jamais un déploiement en cours : elle passe après.
 
+### Lecture directe pour un fil Claude : `/diagnostic/fights`
+
+Les mêmes lectures de Fights, sans passer par GitHub (Seb, 13/11/2026 : « un accès restreint au
+domaine Fights ») : `GET /diagnostic/fights` (les 10 dernières séances et les essais du Labo),
+`?seance=N`, `?essai=N`, en texte, avec l'en-tête `X-Diag-Key`. N'écrit rien
+(`app/diagnostic_fights.py`). Pour l'ouvrir :
+
+1. Sur le VPS, ajouter dans `backend/.env` une ligne `FIGHTS_DIAG_KEY=<au moins 32 caractères au
+   hasard>` (par exemple `openssl rand -hex 32`), puis relancer : `docker compose up -d backend`.
+2. Dans l'environnement Claude Code du projet : la même valeur en secret `FIGHTS_DIAG_KEY`, et
+   l'adresse de l'école autorisée dans le réseau.
+
+Sans `FIGHTS_DIAG_KEY` (ou plus courte que 32 caractères), l'adresse répond 404. Changer la clé
+la révoque.
+
 ## Adresses d'école (spec §2.7, mises en service le 2026-10-15)
 
 Chaque école a son adresse `https://<adresse>.contretemps.silvaplana.cloud`

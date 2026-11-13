@@ -35,61 +35,61 @@ def _pieces(db, session_id: int) -> list[Piece]:
     return list(db.scalars(select(Piece).where(Piece.session_id == session_id).order_by(Piece.position)))
 
 
-def lister(db) -> None:
+def lister(db, out=print) -> None:
     for x in db.scalars(select(ClipSession).order_by(ClipSession.id.desc()).limit(10)):
         pieces = _pieces(db, x.id)
         filmed = sum(p.duration_seconds or 0 for p in pieces)
         clips = db.scalars(select(Clip).where(Clip.session_id == x.id)).all()
         signs = json.loads(x.signs) if x.signs else []
         fin = f"{x.ended_at:%H:%M:%S}" if x.ended_at else "…"
-        print(f"séance {x.id} · école {x.org_id} · {x.title} · {x.status} · {x.created_at:%d/%m %H:%M:%S} → {fin} (UTC)")
-        print(
+        out(f"séance {x.id} · école {x.org_id} · {x.title} · {x.status} · {x.created_at:%d/%m %H:%M:%S} → {fin} (UTC)")
+        out(
             f"   {len(pieces)} morceaux, {filmed:.1f} s lues · {len(clips)} combats · signes : "
             + (", ".join(f"{s['kind']} {s['start']}" for s in signs) or "aucun")
         )
 
 
-def detail(db, session_id: int) -> None:
+def detail(db, session_id: int, out=print) -> None:
     x = db.get(ClipSession, session_id)
     if x is None:
-        print("Séance introuvable.")
+        out("Séance introuvable.")
         return
-    print(f"séance {x.id} · école {x.org_id} · {x.title} · {x.status} · début {x.created_at} · fin {x.ended_at}")
+    out(f"séance {x.id} · école {x.org_id} · {x.title} · {x.status} · début {x.created_at} · fin {x.ended_at}")
     frames: list[Frame] = []
     sounds = []
     offset = 0.0
     for p in _pieces(db, x.id):
         video = db.get(Video, p.video_id) if p.video_id else None
-        print(f"morceau {p.position} · dernier={p.last} · durée lue {p.duration_seconds} · vidéo {video.statut if video else 'aucune'}")
+        out(f"morceau {p.position} · dernier={p.last} · durée lue {p.duration_seconds} · vidéo {video.statut if video else 'aucune'}")
         if video is not None:
             path = DOSSIER_VIDEOS_LIVE / video.lien_fichier
-            print(f"  fichier {video.lien_fichier} · {path.stat().st_size if path.exists() else 'absent'} octets")
-            info = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path)], capture_output=True, text=True)
+            out(f"  fichier {video.lien_fichier} · {path.stat().st_size if path.exists() else 'absent'} octets")
+            info = subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), "-i", str(path)], capture_output=True, text=True, check=False)
             for line in info.stderr.splitlines():
                 if any(k in line for k in ("Duration", "Stream", "rotat", "displaymatrix")):
-                    print("    " + line.strip())
+                    out("    " + line.strip())
         poses = _poses_path(x.org_id, p.id)
         heard = poses.with_suffix(".sounds.json")
         if heard.exists():
-            print(f"  sons entendus : {heard.read_text()}")
+            out(f"  sons entendus : {heard.read_text()}")
             sounds += [(k, t + offset) for k, t in map(as_sound, json.loads(heard.read_text()))]
         if poses.exists():
             piece_frames = _load_frames(poses)
             per_second: dict[int, int] = {}
             for f in piece_frames:
                 per_second[int(f.t)] = max(per_second.get(int(f.t), 0), len(f.people))
-            print("  personnes vues par seconde : " + " ".join(f"{t}:{n}" for t, n in sorted(per_second.items())))
+            out("  personnes vues par seconde : " + " ".join(f"{t}:{n}" for t, n in sorted(per_second.items())))
             frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
         else:
-            print("  pas de postures gardées")
+            out("  pas de postures gardées")
         offset += p.duration_seconds or 0
     s = lab.settings(db, x.org_id)
-    print(f"réglages du tournage : signes {list(s.signs)}, cadrage {s.framing}, début -{s.start_skip} s, fin -{s.end_skip} s")
-    print(f"signes recalculés : {[(g.kind, round(g.start, 1), round(g.end, 1)) for g in find_signs(frames, sounds)]}")
+    out(f"réglages du tournage : signes {list(s.signs)}, cadrage {s.framing}, début -{s.start_skip} s, fin -{s.end_skip} s")
+    out(f"signes recalculés : {[(g.kind, round(g.start, 1), round(g.end, 1)) for g in find_signs(frames, sounds)]}")
     fights = trim(find_fights(frames, s.signs, sounds), s.start_skip, s.end_skip)
-    print(f"combats avec les règles du jour : {[(round(f.start, 1), round(f.end, 1), f.check_reason) for f in fights]}")
+    out(f"combats avec les règles du jour : {[(round(f.start, 1), round(f.end, 1), f.check_reason) for f in fights]}")
     for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
-        print(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
+        out(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
 
 
 def run() -> None:
