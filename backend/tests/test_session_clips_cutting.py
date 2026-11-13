@@ -355,3 +355,18 @@ def test_fight_et_hajime_commencent_le_combat():
     video = frames([(40, [pose(100), pose(300)])])
     sons = [("fight", 2.0), ("time", 12.0), ("hajime", 20.0), ("time", 30.0)]
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 13.0), (20.0, 31.0)]
+
+
+def test_bras_leves_des_deux_commencent_le_combat():
+    """Seb, 13/11 : les deux combattants lèvent les deux bras au-dessus de la
+    tête, tenu 0,5 s ; un seul ne compte pas, la garde non plus."""
+    from session_clips.signals import is_arms_up
+
+    assert is_arms_up(pose(arms="y")) and not is_arms_up(pose(arms="guard")) and not is_arms_up(pose(arms="fist"))
+    fight = [pose(100), pose(300)]
+    un = [pose(100, "y"), pose(300)]
+    deux = [pose(100, "y"), pose(300, "y")]
+    croises = [pose(100, "cross"), pose(300, "cross")]
+    video = frames([(2, un), (3, fight), (1, deux), (10, fight), (1, croises), (3, fight)])
+    fights = find_fights(video, ("arms_up", "x"))
+    assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(5.0, 17.0)]

@@ -86,7 +86,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert len(detail["signs"]) == 4 and [round(f["end"]) for f in detail["fights"]] == [22]
     assert client.get("/session-clips/lab/signs", headers=e["coach"]).json()["signs"] == ["fists_touch", "x"]
     # Ceux du tournage ne bougent pas (Seb, 12/11 : le Labo expérimente).
-    assert len(client.get("/session-clips/signs", headers=e["coach"]).json()["signs"]) == 7
+    assert len(client.get("/session-clips/signs", headers=e["coach"]).json()["signs"]) == 8
     [combat] = detail["fights"]
     assert combat["frame"] is None  # plan large
 
