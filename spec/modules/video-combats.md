@@ -585,6 +585,26 @@ Maquette validée le 12/11 ([`spec/maquettes/fights-labo.html`](../maquettes/fig
 - Rien de ce qui est fait au Labo ne va dans Mes combats ni dans À vérifier : les combats d'un essai
   ne sont pas coupés en clips.
 
+### 6.5 ter Timer *(coachs)*
+
+Fights › Timer, troisième onglet à côté de Combats et Tournage (Seb, 13/11 ; maquette
+https://claude.ai/artifact/2U8ASb7oeDcgbib9vwkyza). Un minuteur de salle façon MMA, tout dans le
+navigateur (`Timer.jsx`, aucune donnée au serveur) :
+- deux modes en haut : **Un round** (il démarre, puis s'arrête à la fin) et **Rounds et repos** (les
+  rounds s'enchaînent avec un repos entre eux) ;
+- le chrono en gros (« Combat », « Repos » en bleu, rouge les 10 dernières secondes), « Round 2 sur 3 »,
+  une barre ;
+- un seul bouton principal, **Démarrer**, puis Pause / Reprendre, et « Arrêter » en dessous ;
+- sous le bouton, le volet **Réglages**, fermé, qui montre son résumé (« 3 × 3:00 · repos 1:00 ») :
+  durée du round (par 30 s), repos (par 15 s) et nombre de rounds en mode Rounds et repos, case
+  « Prévenir 10 s avant la fin (clac clac) », cochée au départ. Caché pendant le décompte ; gardé sur le
+  téléphone ;
+- sons (fabriqués le 13/11, `sons/`) : cloche d'un coup au début du round, clac clac 10 s avant la fin si
+  coché, trois coups de cloche à la fin, bips les 3 dernières secondes du repos. Pas de réglage de volume
+  (Seb, 13/11 : les sons sont au maximum, les boutons du téléphone baissent) ;
+- le décompte suit l'horloge (juste même si le navigateur ralentit), et l'écran reste allumé pendant le
+  décompte quand le téléphone le permet.
+
 ### 6.6 Plus tard
 
 Hors du premier code, notés pour ne pas les perdre (Seb, 27 octobre).
