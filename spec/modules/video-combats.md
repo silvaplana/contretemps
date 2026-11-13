@@ -273,6 +273,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    « Time ! » (séance 9 du 13/11 : il coupait le combat en deux). Un morceau de moins de 2 s n'est pas
    écouté : on souffle « Go, Time » à Whisper, qui les récite sur un bout presque muet (le dernier
    morceau de 1 s de la séance 9 donnait « Go, Time, Go » et un faux combat).
+   **« Fight ! » et « Hajime ! »** (« ha-dji-mé », le « commencez » du judo) sont aussi des signes de
+   début criés, à cocher (Seb, 13/11 : « go », une seule syllabe, se confond avec « allez » ou « OK »).
+   Ils se comportent comme « Go ! » ; Whisper les guette aussi (`hotwords`), et un « Ha jime » coupé
+   en deux mots est recollé. « Time » reste le cri de fin : il a toujours été bien entendu.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en

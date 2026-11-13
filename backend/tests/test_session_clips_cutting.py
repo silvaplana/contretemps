@@ -342,3 +342,15 @@ def test_pas_de_cri_dans_un_bout_trop_court(tmp_path):
     assert _heard(fichier, 1.09) == []
     assert _heard(fichier, 72.9) == [("go", 0.0), ("time", 0.8), ("go", 0.8)]
     assert _heard(tmp_path / "absent.json", 30) == []
+
+
+def test_fight_et_hajime_commencent_le_combat():
+    """Seb, 13/11 : « Go » se confond avec « allez » ; « Fight ! » et
+    « Hajime ! » (« ha-dji-mé ») commencent aussi un combat, jusqu'au « Time ! »."""
+    from session_clips.hearing import heard_words, word_kind
+
+    assert word_kind("Fight!") == "fight" and word_kind("Hajimé") == "hajime" and word_kind("fait") is None
+    assert heard_words([("Ha", 2.0), ("jime!", 2.3), ("time", 9.0), ("allez", 10.0)]) == [("hajime", 2.0), ("time", 9.0)]
+    video = frames([(40, [pose(100), pose(300)])])
+    sons = [("fight", 2.0), ("time", 12.0), ("hajime", 20.0), ("time", 30.0)]
+    assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 13.0), (20.0, 31.0)]
