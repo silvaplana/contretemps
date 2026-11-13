@@ -324,6 +324,44 @@ def bilan_financier_dans_docs(documents):
     return trouver
 
 
+def deposer_bilan_financier(documents):
+    """Dépose les documents d'une saison clôturée dans Docs › <cette saison> ›
+    Financier › BILAN FINANCIER (le dossier dont le nom contient « bilan » s'il
+    existe déjà), à la demande de la trésorière (§8.10, étape 7, Seb 13/11) :
+    l'an prochain, l'étape 6 repart de ces fichiers. Même nom : nouvelle version."""
+    import io
+
+    from documents.models import KIND_FILE, KIND_FOLDER, DocNode
+    from notes_frais.ports import Membre
+    from notes_frais_contretemps.adapter import ClasseurContretemps
+
+    classeur = ClasseurContretemps(documents)
+
+    def deposer(db: Session, member: Member, saison: Season, fichiers: list[tuple[str, bytes]]) -> str:
+        racine = documents.reserved_folder(db, member.org_id, "Financier", saison.id)
+        if racine is None:
+            raise LookupError(f"Pas de dossier Financier pour la saison {saison.name} dans Docs.")
+        qui = classeur._qui(Membre(person_id=member.person_id, org_id=member.org_id, nom=member.name, est_tresorier=True))
+        dossiers = db.scalars(select(DocNode).where(DocNode.parent_id == racine.id, DocNode.kind == KIND_FOLDER, DocNode.deleted_at.is_(None)).order_by(DocNode.id))
+        dossier = next((d for d in dossiers if "bilan" in d.name.lower()), None)
+        if dossier is None:
+            dossier_id, nom_dossier = documents.create_folder(db, qui, "private", racine.id, BILAN_FINANCIER)["id"], BILAN_FINANCIER
+        else:
+            dossier_id, nom_dossier = dossier.id, dossier.name
+        for nom, contenu in fichiers:
+            existant = db.scalars(select(DocNode).where(DocNode.parent_id == dossier_id, DocNode.kind == KIND_FILE, DocNode.name == nom, DocNode.deleted_at.is_(None))).first()
+            if existant is not None:
+                documents.new_version(db, qui, existant.id, nom, io.BytesIO(contenu))
+            else:
+                documents.upload(db, qui, "private", dossier_id, nom, io.BytesIO(contenu))
+        return f"Docs › {saison.name} › Financier › {nom_dossier}"
+
+    return deposer
+
+
+BILAN_FINANCIER = "BILAN FINANCIER"
+
+
 def ranger_dans_docs(documents):
     """Range les documents de l'AG dans Docs › Privé › Saison en cours ›
     Financier › AG, par le classeur des notes de frais (même dossier Financier)."""

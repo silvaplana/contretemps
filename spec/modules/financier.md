@@ -1073,6 +1073,13 @@ n'attend jamais une pièce : une ligne sans pièce reçoit son compte à la main
    (`GET /finances/seasons/{id}/documents/{nature}/preview?name=`,
    `GET /finances/reports/{id}/rapport/preview?name=`) ; sans OnlyOffice : « L'aperçu n'est pas
    configuré sur ce serveur ».
+   **« Déposer les documents dans Docs »** (étape 7, une fois la saison clôturée, Seb 13/11) :
+   c'est la trésorière qui le touche, l'appli ne range toujours rien d'elle-même. Les documents
+   cochés de l'étape 6, tels qu'au jour du dépôt, plus le Rapport financier s'il est rédigé, vont
+   dans Docs › <saison> › Financier › le dossier dont le nom contient « bilan » (sinon « BILAN
+   FINANCIER », créé) ; un fichier du même nom devient une nouvelle version. L'an prochain, l'étape
+   6 repart de ces fichiers. `POST /finances/seasons/{id}/documents/deposit` (`AgDocuments.deposit`,
+   port `AgPorts.deposit` = `deposer_bilan_financier`), trésorier seulement, refusé avant la clôture.
 7. Comparaison appli / contre-calcul / EBP sur la saison 2025-26 et corrections.
 
 ## 9. Reste à faire

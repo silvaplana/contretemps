@@ -212,6 +212,8 @@ export function Etape6Documents({ season, docs }) {
 // Étape 7 : clôturer la saison (§8.7), possible quand les étapes 1 à 6 sont vertes.
 export function Etape7Cloture({ season, docs, pret, onChange }) {
   const { data, setData, setErreur } = docs
+  const [depot, setDepot] = useState(null) // { place, count } après « Déposer »
+  const [enCours, setEnCours] = useState(false)
   if (!data) return null
   const closing = data.closing
 
@@ -224,6 +226,18 @@ export function Etape7Cloture({ season, docs, pret, onChange }) {
       onChange?.()
     } catch (err) {
       setErreur(err.message)
+    }
+  }
+
+  // Après la clôture, la trésorière range elle-même les documents dans Docs (Seb 13/11).
+  async function deposer() {
+    setEnCours(true)
+    try {
+      setDepot(await api.deposerDocumentsSaison(season.id))
+    } catch (err) {
+      setErreur(err.message)
+    } finally {
+      setEnCours(false)
     }
   }
 
@@ -249,6 +263,19 @@ export function Etape7Cloture({ season, docs, pret, onChange }) {
         {closing ? `Rouvrir ${season.name}` : `Clôturer ${season.name}`}
       </button>
       {!closing && !pret && <p className="fin-cp-s">Possible quand les étapes 1 à 6 sont vertes.</p>}
+      {closing && (
+        <div className="fin-docs__cloture">
+          <p>Déposer les documents de l’étape 6, tels qu’aujourd’hui, dans Docs › {season.name} › Financier › Bilan financier : l’an prochain, l’étape 6 repartira d’eux.</p>
+          <button type="button" className="btn btn--primary" onClick={deposer} disabled={enCours}>
+            <Icon name="folder" size={16} /> {enCours ? 'Dépôt…' : 'Déposer les documents dans Docs'}
+          </button>
+          {depot && (
+            <p className="fin-cp-s">
+              {depot.count} document(s) déposé(s) dans {depot.place}.
+            </p>
+          )}
+        </div>
+      )}
       {data.closingHistory.length > 0 && (
         <p className="fin-cp-s">
           {data.closingHistory.map((h) => `Clôturée le ${dateFr(h.closedAt.slice(0, 10))}, rouverte le ${dateFr(h.reopenedAt.slice(0, 10))}`).join(' · ')}

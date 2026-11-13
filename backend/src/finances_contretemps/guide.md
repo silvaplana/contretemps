@@ -114,7 +114,8 @@ Bilan
   dans l'éditeur, en lecture seule, ← revient), Télécharger ;
   Rapport financier : Rédiger, puis Voir, Word, PDF ; « Autre » = à faire à la main ; « Ajouter un document que l'appli sait faire ».
   Rien n'est rangé dans Docs : on télécharge et on dépose soi-même. 7. Clôturer la saison (niveau Complet), quand les étapes 1
-  à 6 sont vertes : Clôturer / Rouvrir, avec la trace des clôtures rouvertes. Un numéro de compte s'affiche
+  à 6 sont vertes : Clôturer / Rouvrir, avec la trace des clôtures rouvertes ; une fois clôturée, « Déposer les documents
+  dans Docs » range les documents de l'étape 6 dans Docs › <saison> › Financier › Bilan financier (c'est la personne qui le touche). Un numéro de compte s'affiche
   toujours avec son libellé.
 - En bas de Préparer, « Repartir à zéro sur cette saison » (voir plus bas).
 - ⋯ › Nouveau bilan : la liste des bilans (pour l'AG), « ← Étapes du bilan » revient ; choisir un bilan de la liste. Puces d'état : Brouillon, Validé, Officiel.
