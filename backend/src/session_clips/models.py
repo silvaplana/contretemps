@@ -41,6 +41,9 @@ class ClipSession(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="processing")
     created_by: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+    # Fin du film de la caméra (« Arrêter ») : la carte montre toujours début
+    # et fin (Seb, 13/11). Vide pour une vidéo envoyée à la main.
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
 
 class Clip(Base):

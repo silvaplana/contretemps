@@ -482,9 +482,11 @@ function BarreSelection({ me, choisis, vider, montrer, supprimer, rafraichir }) 
 function horaire(s) {
   const debut = new Date(`${s.started_at}Z`)
   const heure = (d) => d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
-  if (s.status === 'recording' || !s.filmed_seconds) return `Depuis ${heure(debut)}`
-  const fin = new Date(debut.getTime() + s.filmed_seconds * 1000)
-  return `${heure(debut)} → ${heure(fin)} · ${Math.max(1, Math.round(s.filmed_seconds / 60))} min`
+  // Toujours début et fin (Seb, 13/11) : la fin est l'appui sur Arrêter,
+  // sinon la durée filmée arrivée.
+  const fin = s.ended_at ? new Date(`${s.ended_at}Z`) : s.filmed_seconds ? new Date(debut.getTime() + s.filmed_seconds * 1000) : null
+  if (s.status === 'recording' || !fin) return `${heure(debut)} → …`
+  return `${heure(debut)} → ${heure(fin)} · ${Math.max(1, Math.round((fin - debut) / 60000))} min`
 }
 
 function EtatSeance({ s }) {
@@ -503,6 +505,18 @@ function EtatSeance({ s }) {
     )
   }
   if (s.status === 'recording') return <span className="sc-chip sc-chip--warn">Filme</span>
+  // La vidéo de la caméra en route vers le serveur (Seb, 13/11).
+  if (s.status === 'processing' && s.size_bytes > 0) {
+    const pct = Math.min(99, Math.floor((s.sent_bytes / s.size_bytes) * 100))
+    return (
+      <>
+        <span className="sc-chip sc-chip--info">Envoi : {pct} %</span>
+        <span className="sc-barre">
+          <i style={{ width: `${pct}%` }} />
+        </span>
+      </>
+    )
+  }
   if (s.status === 'processing' && s.live) {
     // Où en est la découpe (Seb, 12/11) : la part de la vidéo arrivée déjà
     // lue (morceaux de 2 minutes, sans le dire à l'écran).
@@ -516,9 +530,15 @@ function EtatSeance({ s }) {
       </>
     )
   }
-  // Filmée par la caméra, mais aucune vidéo encore arrivée (moins de 2 minutes
-  // filmées, ou envoi en attente sur le téléphone) : pas « demain matin » (Seb, 12/11).
-  if (s.status === 'processing' && !s.raw_video) return <span className="sc-chip sc-chip--info">La vidéo arrive…</span>
+  // Filmée par la caméra, rien d'arrivé encore : la vidéo est sur le téléphone
+  // caméra, qui l'envoie s'il est allumé sur « Caméra » (Seb, 13/11).
+  if (s.status === 'processing' && !s.raw_video) {
+    return s.camera_online ? (
+      <span className="sc-chip sc-chip--info">Envoi : 0 %</span>
+    ) : (
+      <span className="sc-chip sc-chip--warn">Caméra éteinte : rouvrez Tournage</span>
+    )
+  }
   if (s.status === 'processing') return <span className="sc-chip sc-chip--info">Clips prêts demain matin</span>
   if (s.status === 'failed') return <span className="sc-chip sc-chip--warn">Découpe impossible</span>
   // En gros (Seb, 12/11) : rien n'a pu être découpé.
@@ -543,6 +563,14 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
     api.seances().then(setListe, (e) => montrer(e.message))
   }, [version, montrer])
   useTeleversementsTermines(rafraichir)
+  // Tant qu'une séance filme, s'envoie ou se découpe, la liste se relit
+  // toutes les 5 s : les pourcentages avancent seuls (Seb, 13/11).
+  const enCours = liste?.some((x) => x.status === 'recording' || x.status === 'processing')
+  useEffect(() => {
+    if (!enCours) return undefined
+    const minuteur = setInterval(() => api.seances().then(setListe, () => {}), 5000)
+    return () => clearInterval(minuteur)
+  }, [enCours])
   const [renommee, setRenommee] = useState(null)
   // La poubelle : la séance disparaît tout de suite, part vraiment au bout
   // de 10 s, sauf Annuler.
@@ -588,10 +616,11 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
                   {api.jour(s.held_on)}
                   {s.title ? ` · ${s.title}` : ''}
                 </strong>
-                {s.started_at && <span className="sc-meta">{horaire(s)}</span>}
+                {/* L'état d'abord, puis l'heure (Seb, 13/11 : l'important dès le début). */}
                 <span className="sc-meta">
                   <EtatSeance s={s} />
                 </span>
+                {s.started_at && <span className="sc-meta">{horaire(s)}</span>}
               </span>
             </button>
             <button type="button" className="icon-btn" aria-label="Renommer la séance" onClick={() => setRenommee(s)}>

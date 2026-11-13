@@ -88,9 +88,15 @@ class SessionOut(BaseModel):
     # La petite vignette de la carte : la vidéo du début de la séance.
     cover: VideoSortie | None = None
     started_at: datetime | None = None
+    ended_at: datetime | None = None
     filmed_seconds: float = 0
     pieces_read: int = 0
     pieces_total: int = 0
+    # L'envoi en cours de la vidéo de la caméra (octets reçus / attendus des
+    # morceaux pas encore complets), et si le téléphone caméra répond (Seb, 13/11).
+    sent_bytes: int = 0
+    size_bytes: int = 0
+    camera_online: bool = False
 
 
 class SessionDetail(SessionOut):
