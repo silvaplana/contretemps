@@ -249,7 +249,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    avant-bras devant soi, au milieu ou plus haut, plus de X en l'air) : poignets au-dessus des
    hanches, chacun passé du côté de l'autre bras, buste face à la caméra (épaules écartées d'au moins
    un tiers de buste, car de profil une garde a l'air croisée) ; le code garde le nom `x`. Les gestes sont mesurés en hauteur de buste (les combattants sont souvent de profil) et
-   seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Les
+   seuls les deux plus grands corps comptent (les reflets dans une vitre sont plus petits). Une vidéo **couchée** (téléphone en paysage marqué « portrait », comme la séance 9 du 13/11) se lit les postures redressées d'un quart de tour, dans le sens où les bustes sont debout (`signals.upright`, Seb 14/11). Les
    poings et les mains dépassent des poignets que voit la détection : sur les vidéos de Seb en plein
    cadre (12/11, lues sur le serveur par l'action « Lire un essai du Labo »), les poignets restaient
    à un demi-buste l'un de l'autre. Poings touchés : poignets à moins de 0,35 buste, ou à moins de

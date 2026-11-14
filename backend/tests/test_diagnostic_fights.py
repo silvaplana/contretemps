@@ -31,7 +31,7 @@ def test_ecart_des_poignets_bras_leves():
 def test_postures_redressees():
     """Une vidéo couchée : tournées d'un quart de tour, les postures ont de
     nouveau un buste debout (séance 9, 13/11)."""
-    from app.lire_seance_fights import _turn
+    from session_clips.signals import quarter_turn as _turn
     from session_clips.signals import Frame, torso
     from tests.test_session_clips_cutting import pose
 

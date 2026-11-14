@@ -370,3 +370,17 @@ def test_bras_leves_des_deux_commencent_le_combat():
     video = frames([(2, un), (3, fight), (1, deux), (10, fight), (1, croises), (3, fight)])
     fights = find_fights(video, ("arms_up", "x"))
     assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(5.0, 17.0)]
+
+
+def test_video_couchee_redressee():
+    """Séance 9 (13/11) : filmée couchée, les postures sont allongées et aucun
+    geste ne se lit. L'analyse les redresse d'un quart de tour (Seb, 14/11)."""
+    from session_clips.signals import quarter_turn
+
+    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    fight = [pose(100), pose(300)]
+    croises = [pose(100, "cross"), pose(300, "cross")]
+    debout = frames([(1, touch), (10, fight), (1, croises), (3, fight)])
+    for way in (1, -1):
+        fights = find_fights(quarter_turn(debout, way), ("fists_touch", "x"))
+        assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(0.0, 12.0)]

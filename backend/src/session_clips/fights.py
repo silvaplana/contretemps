@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_arms_up, is_x, main_pair, torso
+from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_arms_up, is_x, main_pair, torso, upright
 
 # « go », « fight », « hajime » : crié par l'entraîneur (hearing.py ; « Fight ! » et
 # « Hajime ! » ajoutés le 13/11 : « go », trop court, se confond avec « allez »).
@@ -88,6 +88,7 @@ def _still(frames: list[Frame]) -> bool:
 def find_signs(frames: list[Frame], sounds: list[Sound] = ()) -> list[Sign]:
     """Tous les signes repérés, cochés ou non : la frise du Labo les montre.
     `sounds` : les « Go ! » et « Time ! » dits (hearing.py)."""
+    frames = upright(frames)  # une vidéo couchée se lit redressée (Seb, 14/11)
     tests = {
         # Le « Poing levé » est retiré (Seb, 13/11) : seuls comptent les poings
         # des deux combattants qui se touchent, bras levés.
