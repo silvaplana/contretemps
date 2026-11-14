@@ -186,3 +186,43 @@ def test_retrouver_les_reponses_d_avant(client, e, tmp_path, monkeypatch):  # no
     retrouve = sorted(json.loads(verite.read_text()), key=lambda x: x["t"])
     assert [(x["word"], x["example"]) for x in retrouve] == [(x["word"], x["example"]) for x in attendu]
     assert [round(x["t"], 1) for x in retrouve] == [3.0, 7.0]
+
+
+def test_effacer_les_enregistrements_ou_les_tests(client, e, tmp_path, monkeypatch):  # noqa: F811
+    """Seb, 14/11 : deux boutons. « Effacer les enregistrements » efface les
+    cris (et les exemples rangés après un test), « Effacer les tests » les
+    tests, leurs réponses et les points ; seulement ceux de l'école."""
+    import time
+
+    monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
+    son = {"Content-Type": "audio/webm"}
+    vide = {"fight": [], "hajime": [], "combat": [], "time": []}
+    client.post("/session-clips/voice/time", content=b"webm", headers=e["coach"] | son)
+    test = client.post("/session-clips/voice-tests", content=b"webm", headers=e["coach"] | son).json()["name"]
+    client.post("/session-clips/voice-replays", headers=e["coach"])
+    ecole = next(p for p in tmp_path.iterdir() if (p / "voice").is_dir())
+    (ecole / "voice" / "noise").mkdir()
+    (ecole / "voice" / "noise" / "x.wav").write_bytes(b"wav")
+    autre = tmp_path / "autre-ecole"
+    for dossier in ("voice/time", "voice-tests"):
+        (autre / dossier).mkdir(parents=True)
+        (autre / dossier / "y.webm").write_bytes(b"webm")
+    avant = time.time() - 1
+
+    assert client.delete("/session-clips/voice", headers=e["eleve"]).status_code == 403
+    assert client.delete("/session-clips/voice-tests", headers=e["eleve"]).status_code == 403
+
+    assert client.delete("/session-clips/voice", headers=e["coach"]).status_code == 204
+    assert client.get("/session-clips/voice", headers=e["coach"]).json() == vide
+    assert not any((ecole / "voice").iterdir())
+    # Le dossier vide reste, daté de maintenant : voice.newest() fait réécouter les morceaux.
+    assert (ecole / "voice").stat().st_mtime >= avant
+    assert client.get(f"/session-clips/voice-tests/{test}", headers=e["coach"]).status_code == 200  # les tests restent
+
+    client.post("/session-clips/voice/time", content=b"webm", headers=e["coach"] | son)
+    assert client.delete("/session-clips/voice-tests", headers=e["coach"]).status_code == 204
+    assert client.get(f"/session-clips/voice-tests/{test}", headers=e["coach"]).status_code == 404
+    assert client.get("/session-clips/voice-replays", headers=e["coach"]).json() == []
+    assert len(client.get("/session-clips/voice", headers=e["coach"]).json()["time"]) == 1  # les cris restent
+
+    assert (autre / "voice/time/y.webm").exists() and (autre / "voice-tests/y.webm").exists()

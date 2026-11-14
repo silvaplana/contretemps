@@ -355,6 +355,12 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    le dossier de l'école et `_uploads/` ; il effaçait au bout d'un jour les sous-dossiers de Fights
    (`voice/`, `voice-tests/`, `voice-replays/`, `sparring-poses/`), corrigé le 14/11. L'action « Lire une
    séance de Fights » (sans numéro) montre, école par école, les cris gardés et les tests répondus.
+   **Effacer** (Seb, 14/11 : deux boutons) : « Effacer tous les enregistrements » sous la liste des cris
+   (`DELETE /voice` : tous les mots, et les exemples « other » / « noise » rangés après un test ; le
+   dossier `voice/` vide est recréé, daté de maintenant, pour que l'écoute du club réécoute les
+   morceaux) et « Effacer tous les tests » en bas (`DELETE /voice-tests` : les tests, leurs réponses
+   et l'historique des points ; les cris restent). Pas de confirmation : l'effacement part au bout de
+   10 s, sauf « Annuler ».
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en
