@@ -254,3 +254,4 @@ class ClubSignsBody(BaseModel):
     sure_only: bool = False
     loud_db: float = 6.0
     sure_min: float = 0.5
+    speech_model: str = "base"

@@ -292,6 +292,13 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    cris, même écartés (grisés), avec sous chacun « N dB » et « sûr 0,NN », suivis du seuil quand
    la case est cochée (Seb, 14/11) ; le Labo garde volume et note dans ses signes et filtre au
    calcul des combats.
+   **Deux écoutes au choix** (Seb, 14/11), en haut de « Cris entendus » : **Écoute rapide**
+   (Whisper « base », par défaut) ou **Écoute précise** (Whisper « small », environ 3 fois plus
+   lente, moins de mots inventés). Colonne `speech_model` (`base` ou `small`) de `sc_club_signs`
+   et `sc_lab_settings`. Les deux modèles sont dans l'image `sparring-worker`
+   (`/app/models/whisper-base` et `whisper-small`, `SPARRING_SPEECH_DIR`). Chaque écoute garde
+   ses cris à part (`<morceau>.sounds.json` pour la rapide, `<morceau>.sounds.small.json` pour la
+   précise) : changer d'écoute puis « Relancer la découpe » réécoute chaque morceau une fois.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en

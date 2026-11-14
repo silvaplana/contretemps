@@ -210,6 +210,19 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     cut_live(db_session, sc, session, lambda _p: pytest.fail("images relues"))
     assert [c.position for c in sc.clips_by_session(db_session, [sid])[sid]] == [1, 2, 3]
     assert session.status == "ready"
+    # L'écoute précise, choisie dans les réglages (Seb, 14/11) : chaque morceau
+    # est réécouté une fois avec elle, et garde ses deux écoutes à part.
+    reglages = client.get("/session-clips/signs", headers=e["coach"]).json()
+    assert client.put("/session-clips/signs", json=reglages | {"speech_model": "faux"}, headers=e["coach"]).status_code == 400
+    client.put("/session-clips/signs", json=reglages | {"speech_model": "small"}, headers=e["coach"])
+    ecoutes = []
+    ecoute = lambda path, model="base": ecoutes.append((path.name, model)) or [("time", 1.0, 0.9, 20.0)]
+    for _ in range(2):
+        client.post(f"/session-clips/sessions/{sid}/recut", headers=e["coach"])
+        db_session.refresh(session)
+        cut_live(db_session, sc, session, lambda _p: pytest.fail("images relues"), ecoute)
+    assert len(ecoutes) == 3 and {m for _n, m in ecoutes} == {"small"}  # une fois par morceau
+    assert len(list(videos_dir.rglob("*.sounds.small.json"))) == 3 and len(list(videos_dir.rglob("*.sounds.json"))) == 3
 
 
 def test_rejumeler_pendant_le_film(client, db_session, e, tmp_path, monkeypatch):
