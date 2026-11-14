@@ -152,3 +152,37 @@ def test_rejouer_tous_les_essais(client, e, tmp_path, monkeypatch):  # noqa: F81
     assert fait["done"] and fait["tests"] == 1 and fait["examples"] == 1
     assert (fait["points"], fait["best"], fait["good"], fait["missed"]) == (0, 2, 1, 1)
     assert client.get("/session-clips/voice-replays", headers=e["ailleurs"]).json() == []
+
+
+def test_retrouver_les_reponses_d_avant(client, e, tmp_path, monkeypatch):  # noqa: F811
+    """Seb, 14/11 : les réponses données avant que la vérité soit gardée ne
+    comptaient pas. Chaque exemple est 2 s coupées dans un test : on le
+    retrouve dans le test et on reconstruit la réponse."""
+    import json
+    import subprocess
+
+    import imageio_ffmpeg
+
+    from session_clips import voice
+    from session_clips.hearing import _audio
+
+    monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
+    son = tmp_path / "son.webm"
+    subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "lavfi", "-i", "anoisesrc=d=10:c=pink:seed=3", str(son)],
+        check=True,
+    )
+    entete = e["coach"] | {"Content-Type": "audio/webm"}
+    nom = client.post("/session-clips/voice-tests", content=son.read_bytes(), headers=entete).json()["name"]
+    url = f"/session-clips/voice-tests/{nom}/answer"
+    client.post(url, json={"t": 3.0, "answer": "good", "word": "time"}, headers=e["coach"])
+    client.post(url, json={"t": 7.0, "answer": "invented"}, headers=e["coach"])
+    verite = tmp_path / str(e["ecole"].id) / "voice-tests" / nom.replace(".webm", ".truth.json")
+    attendu = json.loads(verite.read_text())
+    verite.unlink()  # comme avant la mise en ligne de la vérité
+
+    assert voice.recover_truths(_audio) == 2
+    assert voice.recover_truths(_audio) == 0  # déjà retrouvées
+    retrouve = sorted(json.loads(verite.read_text()), key=lambda x: x["t"])
+    assert [(x["word"], x["example"]) for x in retrouve] == [(x["word"], x["example"]) for x in attendu]
+    assert [round(x["t"], 1) for x in retrouve] == [3.0, 7.0]

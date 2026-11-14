@@ -177,11 +177,17 @@ def test_menage_des_fichiers_orphelins(db_session, tmp_path, monkeypatch):
     db_session.add(Televersement(id="encours", ecole_id=ecole.id, extension=".mp4", octets_total=10))
     db_session.commit()
     envoi_en_cours = fichier("_uploads/encours.part", age=dt.datetime.now().timestamp())
+    # Les sous-dossiers des autres modules (Seb, 14/11 : les cris enregistrés de
+    # Fights, ses postures et ses tests avaient disparu au bout d'un jour).
+    autres = []
+    for sous_dossier in ("voice/time", "voice-tests", "sparring-poses"):
+        (dossier / sous_dossier).mkdir(parents=True)
+        autres.append(fichier(f"{sous_dossier}/a-garder.webm"))
 
     effaces = Videos().effacer_orphelins(db_session)
 
     assert set(effaces) == {orphelin.resolve(), envoi_inconnu.resolve()}
-    for garde in (utile, apercu, recent, original, envoi_en_cours):
+    for garde in (utile, apercu, recent, original, envoi_en_cours, *autres):
         assert garde.exists()
 
 

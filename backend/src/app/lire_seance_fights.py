@@ -60,6 +60,15 @@ def lister(db, out=print) -> None:
             f"   {len(pieces)} morceaux, {filmed:.1f} s lues · {len(clips)} combats · signes : "
             + (", ".join(f"{s['kind']} {s['start']}" for s in signs) or "aucun")
         )
+    # Entraîner l'écoute (Seb, 14/11) : ce qui est gardé, école par école.
+    for school in sorted(DOSSIER_VIDEOS_LIVE.glob("*")):
+        voice, tests = school / "voice", school / "voice-tests"
+        if not voice.is_dir() and not tests.is_dir():
+            continue
+        words = {d.name: len(list(d.glob("*"))) for d in sorted(voice.glob("*")) if d.is_dir()}
+        answered = len(list(tests.glob("*.truth.json")))
+        played = len([p for p in tests.glob("*") if p.suffix in (".webm", ".ogg", ".m4a", ".aac")])
+        out(f"école {school.name} · cris gardés : {words or 'aucun'} · tests : {played}, dont {answered} répondus")
 
 
 def detail(db, session_id: int, out=print) -> None:
