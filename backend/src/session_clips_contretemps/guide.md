@@ -22,7 +22,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
 - Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
   entier, et « ↻ Tourner la vidéo » si elle est de travers), puis « Signes repérés » (la frise, comme dans un test ; toucher un signe montre ce moment
   dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
-  frise des signes »), puis « Noter les cris » (volet fermé : sous chaque Hajime, Combat ou Time repéré, ▶ pour le voir,
+  frise des signes »), puis « Noter les cris » (volet fermé : sous chaque Hajime, Combattez ou Time repéré, ▶ pour le voir,
   « Bon », « Mauvais » (puis le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; « Il manque un mot ici » ajoute le mot
   au moment où la vidéo est arrêtée ; « Rejouer tous les essais » d'Entraîner l'écoute compte la séance), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
   d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
@@ -57,7 +57,7 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 - Sous le bouton, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
   de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
 
-Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Hajime, Combat, Time, avec le
+Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Hajime, Combattez, Time, avec le
 nombre d'enregistrements), toucher « ● Enregistrer « Hajime ! » » et crier le mot dans les 2 s ; l'enregistrement s'ajoute
 à la liste, avec ▶ pour l'écouter et la poubelle pour l'effacer. Le but : 20 enregistrements par mot.
 En bas, « Tester (10 s) » : parler et crier pendant 10 s ; quelques secondes après, la page montre les cris reconnus par
@@ -82,7 +82,7 @@ Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : es
   flèche ou un signe place la vidéo à ce moment. Chaque combat coupé a sa vignette (l'image du
   signe de début) : le toucher l'ouvre et le lit, du début à la fin. Le crayon en haut à droite
   renomme l'essai.
-- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poings touchés en l'air, Bras levés des deux combattants, « Go ! », « Hajime ! » ou « Combat ! » crié, Cloche du Timer) et
+- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poings touchés en l'air, Bras levés des deux combattants, « Go ! », « Hajime ! » ou « Combattez ! » crié, Cloche du Timer) et
   de fin (Poignée de main, Bras croisés des deux combattants, « Time ! » crié, Trois coups du Timer) que la découpe prend, pour tout le club (caméra
   de la salle comprise). Sous « Cris entendus », le choix de l'écoute : « Rapide », « Précise » (plus lente, se trompe
   moins) ou « Du club » (compare aux cris enregistrés dans ⋮ › Entraîner l’écoute) ; la vidéo est réécoutée à la prochaine découpe, puis deux cases : « Seulement les cris forts » et « Seulement les mots

@@ -389,10 +389,10 @@ def test_combat_et_hajime_commencent_le_combat():
     « Time ! ». « Fight ! » retiré le 14/11 (même « aï » que « Time »)."""
     from session_clips.hearing import heard_words, word_kind
 
-    assert word_kind("Fight!") is None and word_kind("Combat!") == "combat" and word_kind("Hajimé") == "hajime" and word_kind("fait") is None
+    assert word_kind("Fight!") is None and word_kind("Combattez!") == "combattez" and word_kind("Combat!") is None and word_kind("Hajimé") == "hajime" and word_kind("fait") is None
     assert heard_words([("Ha", 2.0), ("jime!", 2.3), ("time", 9.0), ("allez", 10.0)]) == [("hajime", 2.0), ("time", 9.0)]
     video = frames([(40, [pose(100), pose(300)])])
-    sons = [("combat", 2.0), ("time", 12.0), ("hajime", 20.0), ("time", 30.0)]
+    sons = [("combattez", 2.0), ("time", 12.0), ("hajime", 20.0), ("time", 30.0)]
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 13.0), (20.0, 31.0)]
 
 
@@ -403,13 +403,16 @@ def test_cloches_du_timer():
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)][0] == (3.0, 24.0)
 
 
-def test_combat_crie_commence_le_combat():
-    """Seb, 14/11 : « Combat ! » crié commence aussi un combat."""
-    from session_clips.hearing import word_kind
+def test_combattez_crie_commence_le_combat():
+    """Seb, 14/11 : « Combat ! » crié commence aussi un combat ; remplacé par
+    « Combattez ! » le 15/11 (trois syllabes, moins inventé)."""
+    from session_clips.hearing import heard_words, word_kind
 
-    assert word_kind("Combat!") == "combat" and word_kind("Combats") == "combat"
+    # « Combattez ! » à la place (15/11), même coupé en deux par Whisper.
+    assert word_kind("Combattez!") == "combattez" and word_kind("Combatez") == "combattez"
+    assert heard_words([("Combat", 2.0), ("tez!", 2.3)]) == [("combattez", 2.0)]
     video = frames([(20, [pose(100), pose(300)])])
-    assert [(f.start, f.end) for f in find_fights(video, sounds=[("combat", 2.0), ("time", 12.0)])] == [(2.0, 13.0)]
+    assert [(f.start, f.end) for f in find_fights(video, sounds=[("combattez", 2.0), ("time", 12.0)])] == [(2.0, 13.0)]
 
 
 def test_bras_leves_des_deux_commencent_le_combat():

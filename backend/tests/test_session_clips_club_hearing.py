@@ -82,7 +82,7 @@ def test_l_ordre_des_sons_compte(monkeypatch, tmp_path):
     l'ordre, distingue deux mots faits des mêmes sons."""
     monkeypatch.setattr(club_hearing, "embed", _spectre)
     sons = {}
-    for mot, notes in (("time", (440, 1500)), ("combat", (1500, 440))):
+    for mot, notes in (("time", (440, 1500)), ("combattez", (1500, 440))):
         (tmp_path / mot).mkdir()
         for i in range(4):
             f = tmp_path / mot / f"{i}.webm"
@@ -94,7 +94,7 @@ def test_l_ordre_des_sons_compte(monkeypatch, tmp_path):
     seance = _bruit(20, seed=9)
     _deux_notes(seance, 3.0, 1505, 442)  # « Combat ! »
     _deux_notes(seance, 12.0, 443, 1510)  # « Time ! »
-    assert [(m, round(t)) for m, t, *_x in hear_club(seance, mots)] == [("combat", 3), ("time", 12)]
+    assert [(m, round(t)) for m, t, *_x in hear_club(seance, mots)] == [("combattez", 3), ("time", 12)]
 
 
 def test_meme_nombre_d_exemples_par_mot(monkeypatch, tmp_path):
@@ -109,7 +109,7 @@ def test_meme_nombre_d_exemples_par_mot(monkeypatch, tmp_path):
     exemple = np.ones((10, len(BANDS)))
     seance = _bruit(5)
     _cri(seance, 2.0, 440)
-    candidates(seance, {"time": [exemple] * 30, "combat": [exemple] * 6})
+    candidates(seance, {"time": [exemple] * 30, "combattez": [exemple] * 6})
     assert vus == [6, 6]
 
 

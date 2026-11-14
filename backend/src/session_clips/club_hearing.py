@@ -27,7 +27,7 @@ import numpy as np
 from .hearing import FRAME, loudness
 
 NOT_WORDS = ("other", "noise")  # comme voice.NOT_WORDS
-WORDS = ("hajime", "combat", "time")  # comme voice.WORDS (« fight » retiré le 14/11)
+WORDS = ("hajime", "combattez", "time")  # comme voice.WORDS (« fight » retiré le 14/11, « combat » devenu « combattez » le 15/11)
 
 RATE = 16000
 STEP = 0.02  # une empreinte toutes les 20 ms

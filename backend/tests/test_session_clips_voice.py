@@ -11,7 +11,7 @@ pytestmark = pytest.mark.rbac_reel
 def test_enregistrer_les_mots(client, e, tmp_path, monkeypatch):  # noqa: F811
     monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
     son = {"Content-Type": "audio/webm"}
-    vide = {"hajime": [], "combat": [], "time": []}
+    vide = {"hajime": [], "combattez": [], "time": []}
     assert client.get("/session-clips/voice", headers=e["coach"]).json() == vide
     assert client.get("/session-clips/voice", headers=e["eleve"]).status_code == 403
 
@@ -81,7 +81,7 @@ def test_dire_la_verite_apres_un_test(client, e, tmp_path, monkeypatch):  # noqa
     assert client.post(url, json={"t": 8.0, "answer": "good", "word": "allez"}, headers=e["coach"]).status_code == 400
 
     mots = client.get("/session-clips/voice", headers=e["coach"]).json()
-    assert {m: len(n) for m, n in mots.items()} == {"hajime": 1, "combat": 0, "time": 1}
+    assert {m: len(n) for m, n in mots.items()} == {"hajime": 1, "combattez": 0, "time": 1}
     dossier = tmp_path / str(e["ecole"].id) / "voice"
     assert len(list((dossier / "other").glob("*.wav"))) == 1 and len(list((dossier / "noise").glob("*.wav"))) == 1
     # Le cri gardé : 2 s autour du moment trouvé, lisible comme un enregistrement.
@@ -99,14 +99,14 @@ def test_points_d_un_essai():
         {"t": 5.0, "word": "hajime"},  # Mauvais : c'était Hajime
         {"t": 7.0, "word": None},  # Inventé
         {"t": 8.5, "word": "other"},  # Mauvais : un autre mot
-        {"t": None, "word": "combat"},  # Il manque un mot
+        {"t": None, "word": "combattez"},  # Il manque un mot
     ]
-    tout_juste = [("time", 2.1), ("hajime", 4.8), ("combat", 9.8)]
+    tout_juste = [("time", 2.1), ("hajime", 4.8), ("combattez", 9.8)]
     juste = score([(k, t, 0.9, 20.0) for k, t in tout_juste], verite)
     assert {k: v for k, v in juste.items() if k != "words"} == {
         "good": 3, "wrong": 0, "invented": 0, "missed": 0, "points": 3, "best": 3,
     }
-    assert [juste["words"][w]["good"] for w in ("hajime", "combat", "time")] == [1, 1, 1]
+    assert [juste["words"][w]["good"] for w in ("hajime", "combattez", "time")] == [1, 1, 1]
     comme_avant = [("time", 2.0), ("time", 5.0), ("go", 7.0), ("time", 8.5)]
     faux = score([(k, t, 0.9, 20.0) for k, t in comme_avant], verite)
     assert {k: v for k, v in faux.items() if k != "words"} == {
@@ -114,7 +114,7 @@ def test_points_d_un_essai():
     }
     assert faux["words"] == {
         "hajime": {"good": 0, "missed": 0, "invented": 0, "wrong": 0, "heard_as": {"time": 1}},
-        "combat": {"good": 0, "missed": 1, "invented": 0, "wrong": 0, "heard_as": {}},
+        "combattez": {"good": 0, "missed": 1, "invented": 0, "wrong": 0, "heard_as": {}},
         "time": {"good": 1, "missed": 0, "invented": 0, "wrong": 2, "heard_as": {}},
     }
 
@@ -138,7 +138,7 @@ def test_rejouer_tous_les_essais(client, e, tmp_path, monkeypatch):  # noqa: F81
     repondu = client.post("/session-clips/voice-tests", content=son.read_bytes(), headers=entete).json()["name"]
     client.post("/session-clips/voice-tests", content=son.read_bytes(), headers=entete)  # sans réponse : pas compté
     client.post(f"/session-clips/voice-tests/{repondu}/answer", json={"t": 2.0, "answer": "good", "word": "time"}, headers=e["coach"])
-    assert client.post(f"/session-clips/voice-tests/{repondu}/missing", json={"word": "combat"}, headers=e["coach"]).status_code == 204
+    assert client.post(f"/session-clips/voice-tests/{repondu}/missing", json={"word": "combattez"}, headers=e["coach"]).status_code == 204
     assert client.post(f"/session-clips/voice-tests/{repondu}/missing", json={"word": "fight"}, headers=e["coach"]).status_code == 400
 
     assert client.post("/session-clips/voice-replays", headers=e["eleve"]).status_code == 403
@@ -161,7 +161,7 @@ def test_rejouer_tous_les_essais(client, e, tmp_path, monkeypatch):  # noqa: F81
     [fait] = client.get("/session-clips/voice-replays", headers=e["coach"]).json()
     assert fait["done"] and fait["tests"] == 1 and fait["examples"] == 1
     assert (fait["points"], fait["best"], fait["good"], fait["missed"]) == (0, 2, 1, 1)
-    assert fait["words"]["time"]["good"] == 1 and fait["words"]["combat"]["missed"] == 1
+    assert fait["words"]["time"]["good"] == 1 and fait["words"]["combattez"]["missed"] == 1
     # Le rejeu règle le seuil (étude du 14/11) : le « hajime » inventé à 0,1 est écarté,
     # et l'écoute du club prend ce réglage ensuite.
     assert fait["invented"] == 0 and fait["min_score"] > 0.1
@@ -215,7 +215,7 @@ def test_effacer_les_enregistrements_ou_les_tests(client, e, tmp_path, monkeypat
 
     monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
     son = {"Content-Type": "audio/webm"}
-    vide = {"hajime": [], "combat": [], "time": []}
+    vide = {"hajime": [], "combattez": [], "time": []}
     client.post("/session-clips/voice/time", content=b"webm", headers=e["coach"] | son)
     test = client.post("/session-clips/voice-tests", content=b"webm", headers=e["coach"] | son).json()["name"]
     client.post("/session-clips/voice-replays", headers=e["coach"])

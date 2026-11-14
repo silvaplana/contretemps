@@ -23,7 +23,9 @@ const SIGNES = [
   // Retiré le 14/11 (Seb) : même « aï » que « Time ».
   { id: 'fight', g: 'deb', l: '« Fight ! » crié', court: '« Fight ! »', d: '', retire: true },
   { id: 'hajime', g: 'deb', l: '« Hajime ! » crié', court: '« Hajime ! »', d: 'Son : « ha-dji-mé », l’entraîneur annonce le début' },
-  { id: 'combat', g: 'deb', l: '« Combat ! » crié', court: '« Combat ! »', d: 'Son : l’entraîneur annonce le début' },
+  // Remplacé par « Combattez ! » le 15/11 (Seb).
+  { id: 'combat', g: 'deb', l: '« Combat ! » crié', court: '« Combat ! »', d: '', retire: true },
+  { id: 'combattez', g: 'deb', l: '« Combattez ! » crié', court: '« Combattez ! »', d: 'Son : l’entraîneur annonce le début' },
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },
   { id: 'x', g: 'fin', l: 'Bras croisés', court: 'Bras croisés', d: 'Les deux combattants croisent les bras devant eux' },
   { id: 'time', g: 'fin', l: '« Time ! » crié', court: '« Time ! »', d: 'Son : l’entraîneur annonce la fin' },
