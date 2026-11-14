@@ -15,6 +15,7 @@ import * as api from './api.js'
 import { Deroulant, EssaiLabo, Graphe, Labo, ParametresTournage, useSuppressionEssai } from './Labo.jsx'
 import Tournage from './Tournage.jsx'
 import Timer from './Timer.jsx'
+import Ecoute from './Ecoute.jsx'
 import './sparring.css'
 
 // Sparring (spec/modules/video-combats.md §6, maquette validée
@@ -136,6 +137,21 @@ export default function Sparring({ ecoleId, cours }) {
     )
   } else if (ouvert?.parametres) {
     ecran = <ParametresTournage montrer={montrer} onBack={() => setOuvert(null)} />
+  } else if (ouvert?.ecoute) {
+    // Fights › ⋮ › Entraîner l'écoute (Seb, 14/11).
+    ecran = (
+      <div className="screen sc">
+        <div className="thread-screen__header">
+          <button type="button" className="icon-btn" onClick={() => setOuvert(null)} aria-label="Retour">
+            <Icon name="chevronLeft" size={22} />
+          </button>
+          <strong className="sc__titre">Entraîner l’écoute</strong>
+        </div>
+        <div className="sc__corps">
+          <Ecoute montrer={montrer} />
+        </div>
+      </div>
+    )
   } else if (ouvert?.labo) {
     // Fights › ⋮ › Tests de découpage vidéo (Seb, 12/11 : l'ancien
     // sous-onglet Labo, sorti des puces).
@@ -192,6 +208,7 @@ export default function Sparring({ ecoleId, cours }) {
             actions={[
               { label: 'Paramètres de tournage', icon: 'camera', onClick: () => setOuvert({ parametres: true }) },
               { label: 'Tests de découpage vidéo', icon: 'video', onClick: () => setOuvert({ labo: true }) },
+              { label: 'Entraîner l’écoute', icon: 'micro', onClick: () => setOuvert({ ecoute: true }) },
             ]}
           />
         )}

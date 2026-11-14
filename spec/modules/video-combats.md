@@ -281,6 +281,12 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    Ils se comportent comme « Go ! » ; Whisper les guette aussi (`hotwords`), et un « Ha jime » coupé
    en deux mots est recollé. « Time » reste le cri de fin : il a toujours été bien entendu.
    **« Combat ! »** (Seb, 14/11) est un quatrième cri de début, à cocher, guetté lui aussi.
+   **Fights › ⋮ › Entraîner l'écoute** (Seb, 14/11, coachs) : pour apprendre les cris à l'écoute
+   (un petit modèle de mots-clés, à venir) au lieu de compter sur Whisper. On choisit le mot (Fight,
+   Hajime, Combat, Time), on touche « Enregistrer » et on crie le mot : 2 s enregistrées au micro
+   du téléphone, envoyées tout de suite ; ▶ pour réécouter, poubelle pour effacer ; objectif 50 par
+   mot. Pas de table : un fichier par enregistrement, `<VIDEOS_DIR>/<école>/voice/<mot>/<id>.webm`
+   (`session_clips/voice.py`, routes `/session-clips/voice`), étanche par école.
    **Mots inventés** (Seb, 14/11, séance 10 : « hajime, fight, hajime, time » récités sur la fin calme) :
    chaque cri est gardé avec la note de confiance de Whisper et son volume (le plus fort de 50 ms en
    50 ms entre le début du mot et 0,5 s après sa fin, en dB au-dessus de la médiane du morceau). Deux

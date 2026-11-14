@@ -3,7 +3,7 @@ professeurs et les admins. Il n'apparaît que si la case Fights est cochée dans
 Personnalisation › Fonctionnalités (éteinte au départ). Un élève n'a que « Mes combats » ; un coach
 (admin ou professeur) a trois onglets en haut : Combats (ses combats), Tournage (en trois
 volets dépliants : Tournage, Montage, Identifier combattants (pastille = nombre de combats à
-identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas)) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage » et « Tests de découpage vidéo ». Fights se rouvre
+identifier, sur le volet, sur l'onglet Tournage et sur l'icône Fights de la barre du bas)) et Timer, et le menu ⋮ en haut à droite : « Paramètres de tournage », « Tests de découpage vidéo » et « Entraîner l’écoute ». Fights se rouvre
 sur le dernier de ces onglets utilisé.
 
 Mes combats
@@ -54,6 +54,10 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
   « Arrêter » en dessous).
 - Sous le bouton, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
   de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
+
+Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Fight, Hajime, Combat, Time, avec le
+nombre d'enregistrements), toucher « ● Enregistrer « Fight ! » » et crier le mot dans les 2 s ; l'enregistrement s'ajoute
+à la liste, avec ▶ pour l'écouter et la poubelle pour l'effacer. Le but : 50 enregistrements par mot.
 
 Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée

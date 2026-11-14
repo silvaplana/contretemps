@@ -129,3 +129,14 @@ export const reglerClub = (reglages) => appel('/signs', json('PUT', reglages))
 // Ceux du Labo, à part : on y expérimente sans changer le tournage (Seb, 12/11).
 export const reglagesDuLabo = () => appel('/lab/signs')
 export const reglerLabo = (reglages) => appel('/lab/signs', json('PUT', reglages))
+
+// Fights › ⋮ › Entraîner l'écoute (Seb, 14/11) : les cris enregistrés au téléphone.
+export const enregistrements = () => appel('/voice')
+export const envoyerEnregistrement = (mot, son) =>
+  appel(`/voice/${mot}`, { method: 'POST', headers: { 'Content-Type': son.type || 'audio/webm' }, body: son })
+export const supprimerEnregistrement = (mot, nom) => appel(`/voice/${mot}/${nom}`, { method: 'DELETE' })
+export async function lireEnregistrement(mot, nom) {
+  const reponse = await fetch(`${BASE}/voice/${mot}/${nom}`)
+  if (!reponse.ok) throw new Error('Enregistrement introuvable')
+  return URL.createObjectURL(await reponse.blob())
+}

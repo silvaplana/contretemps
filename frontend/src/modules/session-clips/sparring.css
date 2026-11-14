@@ -1038,3 +1038,28 @@
   min-height: 48px;
   accent-color: var(--color-primary, currentColor);
 }
+
+/* Fights › ⋮ › Entraîner l'écoute (Seb, 14/11). */
+.sc-ecoute {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sc-ecoute__liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sc-ecoute__liste li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  font-size: 17px;
+}
+
+.sc-ecoute__liste li span {
+  flex: 1;
+}
