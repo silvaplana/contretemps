@@ -188,3 +188,25 @@ def main_pair(frame: Frame) -> list[Pose]:
     quelqu'un au fond est plus petit."""
     people = [p for p in frame.people if torso(p)]
     return sorted(people, key=torso, reverse=True)[:2]
+
+
+def quarter_turn(frames: list[Frame], way: int) -> list[Frame]:
+    """Les postures tournées d'un quart de tour (way = 1 : sens horaire)."""
+
+    def point(k: Keypoint) -> Keypoint:
+        x, y, c = k
+        return (-y, x, c) if way == 1 else (y, -x, c)
+
+    return [Frame(t=f.t, people=[Pose([point(k) for k in p.keypoints]) for p in f.people]) for f in frames]
+
+
+def upright(frames: list[Frame]) -> list[Frame]:
+    """Les postures d'une vidéo couchée (téléphone en paysage marqué « portrait »,
+    séance 9 du 13/11) redressées d'un quart de tour, dans le sens où les bustes
+    sont debout ; les autres telles quelles (Seb, 14/11)."""
+
+    def standing(fs: list[Frame]) -> int:
+        return sum(1 for f in fs for p in f.people if torso(p))
+
+    turned = max((quarter_turn(frames, way) for way in (1, -1)), key=standing)
+    return turned if standing(turned) > 2 * standing(frames) else frames
