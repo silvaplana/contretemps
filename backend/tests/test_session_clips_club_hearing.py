@@ -53,3 +53,16 @@ def test_cris_du_club(monkeypatch, tmp_path):
     assert hear_club(_bruit(20, seed=3), mots) == []
     # Sans cri enregistré, l'écoute du club n'entend rien.
     assert hear_club(seance, {}) == []
+
+
+def test_un_long_time_compte_une_fois():
+    """Seb, 14/11 : un grand « Tiiime » de plus d'1 s donnait deux « Time »
+    (deux pics de volume) ; tant que le son ne retombe pas, c'est un seul cri."""
+    from session_clips.club_hearing import FRAME, peaks
+
+    calme, cri = [0.0] * 20, [30.0, 40.0, 35.0, 30.0] + [32.0] * 20 + [41.0, 33.0, 30.0]
+    # Le plus fort de chaque cri : le 41 dB, à la 24e tranche du cri.
+    assert [round(t, 2) for t in peaks(calme + cri + calme + cri + calme)] == [
+        round((20 + 24) * FRAME, 2),
+        round((20 + len(cri) + 20 + 24) * FRAME, 2),
+    ]

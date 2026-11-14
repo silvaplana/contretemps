@@ -26,6 +26,7 @@ RATE = 16000
 WINDOW = 0.6  # secondes autour du pic : un cri bref
 MIN_DB = 6.0  # un pic moins fort que le bruit de fond + 6 dB n'est pas un cri
 GAP = 1.0  # deux cris à moins d'1 s : le plus fort
+DIP = 12.0  # entre deux cris, le son retombe d'au moins 12 dB
 NEIGHBOURS = 3  # la ressemblance à un mot : la moyenne de ses 3 enregistrements les plus proches
 BACKGROUND = 40  # passages sans cri tirés au hasard dans la vidéo
 
@@ -73,13 +74,21 @@ def _loudest(volumes: list[float], length: float = WINDOW) -> float:
 
 
 def peaks(volumes: list[float]) -> list[float]:
-    """Les moments des cris possibles : pics d'au moins MIN_DB, à plus d'1 s l'un de l'autre."""
+    """Les moments des cris possibles : pics d'au moins MIN_DB, à plus d'1 s
+    l'un de l'autre, et un seul par cri : deux pics comptent pour deux cris
+    seulement si le son retombe d'au moins DIP dB entre eux (Seb, 14/11 : un
+    grand « Tiiime » donnait deux « Time »)."""
     order = sorted(range(len(volumes)), key=lambda i: volumes[i], reverse=True)
     kept: list[int] = []
+
+    def apart(i: int, k: int) -> bool:
+        a, b = sorted((i, k))
+        return abs(i - k) * FRAME >= GAP and min(volumes[a : b + 1]) < volumes[i] - DIP
+
     for i in order:
         if volumes[i] < MIN_DB:
             break
-        if all(abs(i - k) * FRAME >= GAP for k in kept):
+        if all(apart(i, k) for k in kept):
             kept.append(i)
     return sorted(k * FRAME for k in kept)
 
