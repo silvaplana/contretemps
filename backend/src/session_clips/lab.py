@@ -27,6 +27,14 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 
 from .fights import SIGNS, SOUNDS, Fight, Sound, as_sound, find_fights, find_signs, trim
 from .framing import FRAMINGS, Box, track, video_size
+
+SPEECH_MODELS = ("base", "small")  # comme hearing.SPEECH_MODELS (sans importer Whisper)
+
+
+def listen(hear, source: Path, model: str) -> list:
+    """Écoute avec le modèle choisi ; « base » s'appelle comme avant (une
+    écoute qui ne connaît pas les modèles, dans les tests)."""
+    return hear(source) if model == "base" else hear(source, model)
 from .models import ClubSigns, LabSettings, LabTest
 from .ports import Member
 from .signals import Frame
@@ -52,6 +60,7 @@ class Settings:
     sure_only: bool = False
     loud_db: float = 6.0  # seuil des cris forts, en dB au-dessus du bruit de fond (curseur, Seb 14/11)
     sure_min: float = 0.5  # seuil des mots bien compris, note de 0 à 1
+    speech_model: str = "base"  # l'écoute : « base » (rapide) ou « small » (précise), Seb 14/11
 
 
 def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
@@ -71,6 +80,7 @@ def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
         sure_only=bool(row.sure_only),
         loud_db=row.loud_db if row.loud_db is not None else 6.0,
         sure_min=row.sure_min if row.sure_min is not None else 0.5,
+        speech_model=row.speech_model or "base",
     )
 
 
@@ -104,6 +114,8 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
         raise ValueError(f"Entre 0 et {MAX_SKIP:g} secondes")
     if not (0 <= new.loud_db <= MAX_DB and 0 <= new.sure_min <= 1):
         raise ValueError("Seuil hors limites")
+    if new.speech_model not in SPEECH_MODELS:
+        raise ValueError("Écoute inconnue")
     model = LabSettings if lab else ClubSigns
     row = db.get(model, member.org_id) or model(org_id=member.org_id)
     row.signs = ",".join(s for s in SIGNS if s in new.signs)
@@ -114,6 +126,7 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
     row.sure_only = new.sure_only
     row.loud_db = new.loud_db
     row.sure_min = new.sure_min
+    row.speech_model = new.speech_model
     if model is ClubSigns:
         row.show_timeline = new.show_timeline
     db.add(row)
@@ -265,7 +278,7 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
         _save_frames(path, frames)
     # Tous les cris vont dans la frise, avec leur volume et leur note ; les
     # réglages du Labo les filtrent au calcul des combats (fights_of).
-    shouts = hear(source)
+    shouts = listen(hear, source, settings(db, found.org_id, lab=True).speech_model)
     signs = [
         with_scores({"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}, shouts)
         for s in find_signs(frames, [as_sound(x) for x in shouts])

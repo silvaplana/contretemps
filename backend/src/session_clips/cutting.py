@@ -33,7 +33,7 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
 from .fights import REASON_NO_END, Sound, as_sound, find_signs
 from .framing import Box, ffmpeg_filter, video_size
-from .lab import club_fights, thumbnail, with_scores
+from .lab import club_fights, listen, thumbnail, with_scores
 from .lab import heard as heard_sounds
 from .lab import settings as club_settings
 from .models import Clip, ClipSession, Piece, Recorder
@@ -63,6 +63,11 @@ def _heard(path: Path, duration: float) -> list:
     if duration < MIN_HEARD or not path.exists():
         return []
     return json.loads(path.read_text())
+
+
+def sounds_path(poses: Path, model: str) -> Path:
+    """Les cris d'un morceau, un fichier par écoute (« base » garde l'ancien nom)."""
+    return poses.with_suffix(".sounds.json" if model == "base" else f".sounds.{model}.json")
 
 
 def _unrated(path: Path) -> bool:
@@ -130,8 +135,9 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
         raw = clips.videos.get(db, session.raw_video_id)
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
     size = video_size(source)
-    frames, shouts = list(detect(source)), hear(source)
-    sounds = heard_sounds(shouts, club_settings(db, session.org_id))
+    settings = club_settings(db, session.org_id)
+    frames, shouts = list(detect(source)), listen(hear, source, settings.speech_model)
+    sounds = heard_sounds(shouts, settings)
     session.signs = json.dumps(_signs(frames, shouts, [(source, 0.0, float("inf"))], None))
     fights = club_fights(db, session.org_id, frames, sounds, size)
 
@@ -219,18 +225,20 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
             break
         source = DOSSIER_VIDEOS_LIVE / video.lien_fichier
         poses = _poses_path(session.org_id, piece.id)
-        heard = poses.with_suffix(".sounds.json")
+        heard = sounds_path(poses, settings.speech_model)
         if piece.duration_seconds is None or not poses.exists():
             piece_frames = list(detect(source))
             _save_frames(poses, piece_frames)
-            heard.write_text(json.dumps(hear(source)))
+            heard.write_text(json.dumps(listen(hear, source, settings.speech_model)))
             piece.duration_seconds = _duration(source) or (piece_frames[-1].t if piece_frames else 0.0)
             db.commit()
             read = True
         else:
             piece_frames = _load_frames(poses)
-            if _unrated(heard):  # écouté avant le 14/11 : sans volume ni note, réécouté
-                heard.write_text(json.dumps(hear(source)))
+            # Écouté avant le 14/11 (sans volume ni note), ou jamais avec cette
+            # écoute : réécouté ; chaque écoute garde son fichier.
+            if _unrated(heard) or not heard.exists():
+                heard.write_text(json.dumps(listen(hear, source, settings.speech_model)))
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
         for x in _heard(heard, piece.duration_seconds):
             shouts.append([x[0], x[1] + offset, *x[2:]])

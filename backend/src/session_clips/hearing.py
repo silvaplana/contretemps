@@ -19,6 +19,10 @@ import unicodedata
 from pathlib import Path
 
 MODEL = os.environ.get("SPARRING_SPEECH_MODEL", "base")
+# Deux écoutes au choix dans les réglages (Seb, 14/11) : « base » (rapide) et
+# « small » (plus précise, environ 3 fois plus lente), téléchargées dans l'image.
+SPEECH_MODELS = ("base", "small")
+MODELS_DIR = os.environ.get("SPARRING_SPEECH_DIR", "")
 # « Time » et « Go » dits en anglais, ou entendus comme des mots français.
 WORDS = {
     "time": {"time", "times", "taim", "taime", "thaim", "thaime"},
@@ -28,7 +32,14 @@ WORDS = {
     "hajime": {"hajime", "hajimeh", "hajimet", "hadjime", "hadjimeh", "ajime", "adjime", "hagime", "hajima"},
 }
 
-_model = None
+_models: dict = {}
+
+
+def _model_path(name: str) -> str:
+    if name == "base":
+        return MODEL
+    folder = Path(MODELS_DIR) / f"whisper-{name}" if MODELS_DIR else None
+    return str(folder) if folder and folder.exists() else name
 
 
 def word_kind(word: str) -> str | None:
@@ -42,12 +53,12 @@ def is_time(word: str) -> bool:
     return word_kind(word) == "time"
 
 
-def hear(video_path: Path) -> list[tuple[str, float, float, float]]:
+def hear(video_path: Path, model: str = "base") -> list[tuple[str, float, float, float]]:
     """Les cris dits : (mot, moment en secondes, note de confiance, volume en dB
     au-dessus du bruit de fond ; Seb 14/11, contre les mots inventés). Si l'écoute échoue,
     aucun : les gestes suffisent, la vidéo est quand même lue (Seb, 12/11)."""
     try:
-        return _hear(video_path)
+        return _hear(video_path, model)
     except Exception:
         print(f"Écoute impossible : {video_path.name}")
         traceback.print_exc()
@@ -70,14 +81,13 @@ def _audio(video_path: Path):
     return np.frombuffer(raw, np.int16).astype(np.float32) / 32768.0
 
 
-def _hear(video_path: Path) -> list[tuple[str, float]]:
-    global _model
+def _hear(video_path: Path, model: str = "base") -> list[tuple[str, float]]:
     from faster_whisper import WhisperModel
 
-    if _model is None:
-        _model = WhisperModel(MODEL, device="cpu", compute_type="int8")
+    if model not in _models:
+        _models[model] = WhisperModel(_model_path(model), device="cpu", compute_type="int8")
     audio = _audio(video_path)
-    segments, _ = _model.transcribe(
+    segments, _ = _models[model].transcribe(
         audio,
         word_timestamps=True,
         # En anglais : un « Go ! » seul, deviné dans une autre langue, sortait

@@ -439,6 +439,17 @@ export function ReglagesDecoupe({ reglages, setReglages }) {
         ))}
         {/* Contre les mots inventés sur un passage calme (Seb, 14/11) : à essayer, seuls ou ensemble. */}
         <p className="sc-meta">Cris entendus</p>
+        {/* Deux écoutes au choix (Seb, 14/11) : la précise se trompe moins, mais lit plus lentement. */}
+        <SegmentedTabs
+          className="sc-onglets"
+          value={reglages.speech_model || 'base'}
+          onChange={(speech_model) => setReglages((r) => ({ ...r, speech_model }))}
+          options={[
+            { value: 'base', label: 'Écoute rapide' },
+            { value: 'small', label: 'Écoute précise' },
+          ]}
+        />
+        {reglages.speech_model === 'small' && <p className="sc-meta">Plus lente : la vidéo est réécoutée à la prochaine lecture.</p>}
         {[
           ['loud_only', 'Seulement les cris forts', 'Un mot dit doucement ou sur un passage calme est ignoré'],
           ['sure_only', 'Seulement les mots bien compris', 'Un mot mal compris est ignoré'],

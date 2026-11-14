@@ -92,7 +92,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
 
     # Cadrage serré, 1 s retirée au début et 2 s à la fin (Seb, 12/11).
     reglages = {"signs": ["fists_touch", "x"], "framing": "tight", "start_skip": 1, "end_skip": 2, "show_timeline": True}
-    reglages |= {"loud_only": True, "sure_only": False, "loud_db": 12.0, "sure_min": 0.5}
+    reglages |= {"loud_only": True, "sure_only": False, "loud_db": 12.0, "sure_min": 0.5, "speech_model": "small"}
     assert client.put("/session-clips/lab/signs", json=reglages, headers=e["coach"]).json() == reglages
     [serre] = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["fights"]
     assert serre["start"] == pytest.approx(combat["start"] + 1) and serre["end"] == pytest.approx(combat["end"] - 2)
@@ -126,7 +126,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     def sans_images(_p):
         raise AssertionError("les images ne sont pas relues")
 
-    assert lab.read_test(db_session, core.session_clips_client, test, sans_images, lambda _p: [25.0]) == 4
+    assert lab.read_test(db_session, core.session_clips_client, test, sans_images, lambda _p, model: [25.0] if model == "small" else pytest.fail("écoute rapide")) == 4
     signes = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["signs"]
     assert [s["kind"] for s in signes] == ["fists_touch", "handshake", "x", "time"]
     assert client.post(f"/session-clips/lab/{essai['id']}/reread", headers=e["ailleurs"]).status_code == 404

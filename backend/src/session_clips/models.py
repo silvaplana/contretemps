@@ -186,6 +186,8 @@ class ClubSigns(Base):
     # Leurs seuils, réglés au curseur (Seb, 14/11) : dB au-dessus du bruit de fond, note de 0 à 1.
     loud_db: Mapped[float] = mapped_column(Float, nullable=False, default=6.0)
     sure_min: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    # L'écoute : « base » (rapide) ou « small » (plus précise, plus lente) (Seb, 14/11).
+    speech_model: Mapped[str] = mapped_column(String(10), nullable=False, default="base")
 
 
 class LabSettings(Base):
@@ -205,3 +207,5 @@ class LabSettings(Base):
     # Leurs seuils, réglés au curseur (Seb, 14/11) : dB au-dessus du bruit de fond, note de 0 à 1.
     loud_db: Mapped[float] = mapped_column(Float, nullable=False, default=6.0)
     sure_min: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
+    # L'écoute : « base » (rapide) ou « small » (plus précise, plus lente) (Seb, 14/11).
+    speech_model: Mapped[str] = mapped_column(String(10), nullable=False, default="base")

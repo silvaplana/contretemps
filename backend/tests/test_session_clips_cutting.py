@@ -240,7 +240,7 @@ def test_ecoute_des_cris_brefs(monkeypatch, tmp_path, capsys):
             return [types.SimpleNamespace(words=[mot(" Go!", 3.9, 0.9), mot(" Time!", 7.3, 0.31)])], None
 
     monkeypatch.setitem(sys.modules, "faster_whisper", types.SimpleNamespace(WhisperModel=Modele))
-    monkeypatch.setattr(hearing, "_model", None)
+    monkeypatch.setattr(hearing, "_models", {})
     # 10 s de bruit de fond, un cri fort à 4 s ; rien à 7,3 s (Seb, 14/11 :
     # chaque cri vient avec sa note de confiance et son volume).
     import numpy as np
