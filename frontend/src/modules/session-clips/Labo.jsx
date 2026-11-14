@@ -437,6 +437,20 @@ export function ReglagesDecoupe({ reglages, setReglages }) {
             ))}
           </div>
         ))}
+        {/* Contre les mots inventés sur un passage calme (Seb, 14/11) : à essayer, seuls ou ensemble. */}
+        <p className="sc-meta">Cris entendus</p>
+        {[
+          ['loud_only', 'Seulement les cris forts', 'Un mot dit doucement ou sur un passage calme est ignoré'],
+          ['sure_only', 'Seulement les mots bien compris', 'Un mot mal compris est ignoré'],
+        ].map(([k, l, d]) => (
+          <label key={k} className="sc-coche">
+            <input type="checkbox" checked={!!reglages[k]} onChange={(ev) => setReglages((r) => ({ ...r, [k]: ev.target.checked }))} />
+            <span>
+              {l}
+              <small>{d}</small>
+            </span>
+          </label>
+        ))}
       </Deroulant>
       <Deroulant titre="Paramètres de la vidéo">
         <p className="sc-meta">Cadrage</p>

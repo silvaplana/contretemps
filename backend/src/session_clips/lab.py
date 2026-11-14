@@ -25,7 +25,7 @@ from saisons.portee import toutes_saisons
 from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 
-from .fights import SIGNS, SOUNDS, Fight, Sound, find_fights, find_signs, trim
+from .fights import SIGNS, SOUNDS, Fight, Sound, as_sound, find_fights, find_signs, trim
 from .framing import FRAMINGS, Box, track, video_size
 from .models import ClubSigns, LabSettings, LabTest
 from .ports import Member
@@ -46,6 +46,10 @@ class Settings:
     start_skip: float = 0.0
     end_skip: float = 0.0
     show_timeline: bool = True  # tournage seulement : la frise dans une séance ouverte
+    # Cris entendus (Seb, 14/11) : l'écoute invente parfois les mots qu'on lui
+    # souffle sur un passage calme. Seulement les cris forts / les mots sûrs.
+    loud_only: bool = False
+    sure_only: bool = False
 
 
 def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
@@ -61,7 +65,27 @@ def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
         start_skip=row.start_skip or 0.0,
         end_skip=row.end_skip or 0.0,
         show_timeline=getattr(row, "show_timeline", True) is not False,
+        loud_only=bool(row.loud_only),
+        sure_only=bool(row.sure_only),
     )
+
+
+LOUD_DB = 6.0  # un cri : au moins 6 dB au-dessus du bruit de fond du morceau
+SURE = 0.5  # la note de confiance de l'écoute pour le mot
+
+
+def heard(sounds: list, s: Settings) -> list[Sound]:
+    """Les cris gardés selon les réglages. Un cri entendu avant le 14/11 n'a
+    ni volume ni note : il est gardé."""
+    out = []
+    for x in sounds:
+        if isinstance(x, (list, tuple)) and len(x) >= 4:
+            if s.loud_only and x[3] < LOUD_DB:
+                continue
+            if s.sure_only and x[2] < SURE:
+                continue
+        out.append(as_sound(x))
+    return out
 
 
 def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) -> Settings:
@@ -79,6 +103,8 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
     row.framing = new.framing
     row.start_skip = new.start_skip
     row.end_skip = new.end_skip
+    row.loud_only = new.loud_only
+    row.sure_only = new.sure_only
     if model is ClubSigns:
         row.show_timeline = new.show_timeline
     db.add(row)
@@ -213,7 +239,7 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
         _save_frames(path, frames)
     signs = [
         {"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}
-        for s in find_signs(frames, hear(source))
+        for s in find_signs(frames, heard(hear(source), settings(db, found.org_id, lab=True)))
     ]
     found.signs = json.dumps(signs)
     found.status = "ready"

@@ -85,7 +85,7 @@ def detail(db, session_id: int, out=print) -> None:
         heard = poses.with_suffix(".sounds.json")
         if heard.exists():
             out(f"  sons entendus : {heard.read_text()}")
-            sounds += [(k, t + offset) for k, t in _heard(heard, p.duration_seconds or 0)]
+            sounds += [(k, t + offset) for k, t in lab.heard(_heard(heard, p.duration_seconds or 0), lab.settings(db, x.org_id))]
         if poses.exists():
             piece_frames = _load_frames(poses)
             per_second: dict[int, int] = {}

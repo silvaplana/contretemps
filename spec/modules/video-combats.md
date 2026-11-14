@@ -280,6 +280,14 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    début criés, à cocher (Seb, 13/11 : « go », une seule syllabe, se confond avec « allez » ou « OK »).
    Ils se comportent comme « Go ! » ; Whisper les guette aussi (`hotwords`), et un « Ha jime » coupé
    en deux mots est recollé. « Time » reste le cri de fin : il a toujours été bien entendu.
+   **Mots inventés** (Seb, 14/11, séance 10 : « hajime, fight, hajime, time » récités sur la fin calme) :
+   chaque cri est gardé avec la note de confiance de Whisper et son volume (le plus fort de 50 ms en
+   50 ms entre le début du mot et 0,5 s après sa fin, en dB au-dessus de la médiane du morceau). Deux
+   cases dans « Signes et sons du club » (tournage et Labo, colonnes `loud_only` et `sure_only` de
+   `sc_club_signs` et `sc_lab_settings`, décochées au départ) : **« Seulement les cris forts »**
+   (≥ 6 dB, `lab.LOUD_DB`) et **« Seulement les mots bien compris »** (note ≥ 0,5, `lab.SURE`), à
+   essayer seules ou ensemble. Un cri entendu avant le 14/11 n'a ni note ni volume : « Relancer la
+   découpe » réécoute le morceau.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en

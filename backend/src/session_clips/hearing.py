@@ -42,8 +42,9 @@ def is_time(word: str) -> bool:
     return word_kind(word) == "time"
 
 
-def hear(video_path: Path) -> list[tuple[str, float]]:
-    """Les « go » et « time » dits, avec leur moment en secondes. Si l'écoute échoue,
+def hear(video_path: Path) -> list[tuple[str, float, float, float]]:
+    """Les cris dits : (mot, moment en secondes, note de confiance, volume en dB
+    au-dessus du bruit de fond ; Seb 14/11, contre les mots inventés). Si l'écoute échoue,
     aucun : les gestes suffisent, la vidéo est quand même lue (Seb, 12/11)."""
     try:
         return _hear(video_path)
@@ -75,8 +76,9 @@ def _hear(video_path: Path) -> list[tuple[str, float]]:
 
     if _model is None:
         _model = WhisperModel(MODEL, device="cpu", compute_type="int8")
+    audio = _audio(video_path)
     segments, _ = _model.transcribe(
-        _audio(video_path),
+        audio,
         word_timestamps=True,
         # En anglais : un « Go ! » seul, deviné dans une autre langue, sortait
         # en d'autres lettres (Seb, 12/11 : rien entendu dans « Go time »).
@@ -91,13 +93,45 @@ def _hear(video_path: Path) -> list[tuple[str, float]]:
     words = [w for s in segments for w in (s.words or [])]
     # Dans le journal de sparring-worker (action « Lire un essai du Labo ») :
     # ce que Whisper a compris, pour voir pourquoi un cri n'est pas compté.
-    print(f"Entendu dans {video_path.name} : {' '.join(f'{w.word.strip()}@{w.start:.1f}' for w in words) or 'rien'}")
-    return heard_words([(w.word, w.start) for w in words])
+    print(
+        f"Entendu dans {video_path.name} : "
+        + (" ".join(f"{w.word.strip()}@{w.start:.1f}~{w.probability:.2f}" for w in words) or "rien")
+    )
+    volumes = loudness(audio)
+    return [
+        (kind, start, round(w.probability, 2), _peak(volumes, w.start, w.end))
+        for (kind, start), w in heard_words([(w.word, w.start) for w in words], with_words=words)
+    ]
 
 
-def heard_words(words: list[tuple[str, float]]) -> list[tuple[str, float]]:
+FRAME = 0.05  # secondes
+
+
+def loudness(audio) -> list[float]:
+    """Le volume (dB) de chaque tranche de 50 ms, moins le bruit de fond (la
+    médiane) : 0 dB sur un passage calme, beaucoup plus sur un cri."""
+    import numpy as np
+
+    n = int(16000 * FRAME)
+    if len(audio) < n:
+        return []
+    frames = audio[: len(audio) // n * n].reshape(-1, n)
+    db = 20 * np.log10(np.sqrt((frames**2).mean(axis=1)) + 1e-6)
+    return list(db - float(np.median(db)))
+
+
+def _peak(volumes: list[float], start: float, end: float) -> float:
+    """Le plus fort du mot, avec 0,5 s de marge après (l'écoute place souvent
+    le mot un peu tôt)."""
+    a, b = int(start / FRAME), int((end + 0.5) / FRAME) + 1
+    part = volumes[max(a, 0) : b]
+    return round(max(part), 1) if part else 0.0
+
+
+def heard_words(words: list[tuple[str, float]], with_words: list | None = None) -> list:
     """Les cris reconnus, mot par mot ; un mot coupé en deux (« Ha jime »)
-    est recollé avec le suivant."""
+    est recollé avec le suivant. Avec `with_words`, chaque cri vient avec
+    son mot de Whisper (pour sa note et son volume)."""
     out, skip = [], False
     for i, (word, start) in enumerate(words):
         if skip:
@@ -108,5 +142,5 @@ def heard_words(words: list[tuple[str, float]]) -> list[tuple[str, float]]:
             kind = word_kind(word + words[i + 1][0])
             skip = kind is not None
         if kind:
-            out.append((kind, round(start, 1)))
+            out.append(((kind, round(start, 1)), with_words[i]) if with_words is not None else (kind, round(start, 1)))
     return out

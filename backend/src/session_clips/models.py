@@ -180,6 +180,9 @@ class ClubSigns(Base):
     end_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     # Montrer la frise des signes repérés dans une séance ouverte (Seb, 13/11).
     show_timeline: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    # Cris entendus : seulement les cris forts, seulement les mots sûrs (Seb, 14/11).
+    loud_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sure_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
 
 class LabSettings(Base):
@@ -194,3 +197,5 @@ class LabSettings(Base):
     framing: Mapped[str] = mapped_column(String(10), nullable=False, default="wide")
     start_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     end_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
+    loud_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    sure_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
