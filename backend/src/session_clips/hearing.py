@@ -28,8 +28,8 @@ MODELS_DIR = os.environ.get("SPARRING_SPEECH_DIR", "")
 WORDS = {
     "time": {"time", "times", "taim", "taime", "thaim", "thaime"},
     "go": {"go", "gos", "goo", "gow", "gau", "gaux"},
-    # « Combat ! » (Seb, 14/11) : en anglais aussi, Whisper l'écrit tel quel.
-    "combat": {"combat", "combats", "combatte"},
+    # « Combattez ! » (Seb, 15/11, à la place de « Combat ! ») : Whisper, en anglais, l'écrit de plusieurs façons.
+    "combattez": {"combattez", "combatez", "combattes", "combates", "combattay", "combatay", "combate", "combatte", "combatté", "combattee"},
     # « Hajime ! » (« ha-dji-mé ») : Whisper l'écrit de plusieurs façons, parfois en deux mots.
     "hajime": {"hajime", "hajimeh", "hajimet", "hadjime", "hadjimeh", "ajime", "adjime", "hagime", "hajima"},
 }
@@ -45,7 +45,7 @@ def _model_path(name: str) -> str:
 
 
 def word_kind(word: str) -> str | None:
-    """« time », « go », « hajime », « combat » ou None."""
+    """« time », « go », « hajime », « combattez » ou None."""
     plain = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode().lower()
     plain = re.sub(r"[^a-z]", "", plain)
     return next((kind for kind, words in WORDS.items() if plain in words), None)
@@ -159,7 +159,7 @@ def _hear(video_path: Path, model: str = "base") -> list[tuple[str, float]]:
         # brefs (0,2 s) avec de la marge autour pour que Whisper les lise.
         vad_filter=True,
         vad_parameters={"threshold": 0.3, "min_speech_duration_ms": 50, "speech_pad_ms": 600},
-        hotwords="Go, Hajime, Combat, Time",
+        hotwords="Go, Hajime, Combattez, Time",
         condition_on_previous_text=False,
     )
     words = [w for s in segments for w in (s.words or [])]

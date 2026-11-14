@@ -64,6 +64,9 @@ class Settings:
     speech_model: str = "base"  # l'écoute : « base » (rapide) ou « small » (précise), Seb 14/11
 
 
+RENAMED = {"combat": "combattez"}
+
+
 def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
     """Ceux du tournage, ou avec `lab` ceux du Labo (Seb, 12/11 : le Labo
     expérimente sans changer le tournage ; au départ, ceux du tournage)."""
@@ -72,7 +75,8 @@ def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
     if row is None:
         return Settings()
     return Settings(
-        signs=tuple(s for s in row.signs.split(",") if s in SIGNS),
+        # « Combat » coché avant le 15/11 : « Combattez » l'a remplacé (Seb).
+        signs=tuple(dict.fromkeys(RENAMED.get(s, s) for s in row.signs.split(",") if RENAMED.get(s, s) in SIGNS)),
         framing=row.framing or "wide",
         start_skip=row.start_skip or 0.0,
         end_skip=row.end_skip or 0.0,

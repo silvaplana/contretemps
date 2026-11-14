@@ -19,7 +19,8 @@ from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is
 # « go », « hajime », « combat » : crié par l'entraîneur (hearing.py ; « Hajime ! »
 # ajouté le 13/11 : « go », trop court, se confond avec « allez »). « Fight ! »
 # retiré le 14/11 (Seb) : même « aï » que « Time ».
-SHOUTED_STARTS = ("go", "hajime", "combat")
+# « Combat ! » remplacé par « Combattez ! » le 15/11 (Seb).
+SHOUTED_STARTS = ("go", "hajime", "combattez")
 # « bell » / « bells » : la cloche d'un coup et les trois coups du Timer de
 # Fights, repérés dans la bande son (timer_bells.py, Seb 14/11).
 START_SIGNS = ("fists_touch", "arms_up", *SHOUTED_STARTS, "bell")

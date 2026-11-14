@@ -10,7 +10,7 @@ import { Deroulant } from './Labo.jsx'
 
 const MOTS = [
   ['hajime', 'Hajime'],
-  ['combat', 'Combat'],
+  ['combattez', 'Combattez'],
   ['time', 'Time'],
 ]
 const nom = (id) => MOTS.find(([x]) => x === id)?.[1]

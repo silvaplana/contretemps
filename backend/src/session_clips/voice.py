@@ -20,7 +20,9 @@ from .service import ForbiddenError, NotFoundError
 
 # « fight » retiré le 14/11 (Seb : même « aï » que « Time ») ; ses
 # enregistrements restent sur le disque, l'écoute ne les lit plus.
-WORDS = ("hajime", "combat", "time")
+# « combat » remplacé par « combattez » le 15/11 (Seb : trois syllabes, finit
+# en « é », moins inventé) ; ses enregistrements restent dans voice/combat/, non lus.
+WORDS = ("hajime", "combattez", "time")
 MAX_BYTES = 2_000_000  # quelques secondes de son
 EXTENSIONS = {"audio/webm": ".webm", "audio/ogg": ".ogg", "audio/mp4": ".m4a", "audio/aac": ".aac"}
 _NAME = re.compile(r"^[0-9a-f]{32}\.(webm|ogg|m4a|aac|wav)$")

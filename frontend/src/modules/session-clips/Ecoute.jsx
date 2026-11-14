@@ -9,7 +9,7 @@ import * as api from './api.js'
 
 const MOTS = [
   ['hajime', 'Hajime'],
-  ['combat', 'Combat'],
+  ['combattez', 'Combattez'],
   ['time', 'Time'],
 ]
 const DUREE_MS = 2000

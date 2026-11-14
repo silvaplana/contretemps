@@ -142,3 +142,13 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     assert client.delete(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).status_code == 204
     assert client.get("/session-clips/lab", headers=e["coach"]).json() == []
     assert core.session_clips_client.videos.get(db_session, video_id) is None
+
+
+def test_combat_coche_devient_combattez(db_session, e):
+    """Seb, 15/11 : « Combattez ! » remplace « Combat ! » ; un club qui avait
+    coché Combat a Combattez coché."""
+    from session_clips.models import ClubSigns
+
+    db_session.add(ClubSigns(org_id=e["ecole"].id, signs="fists_touch,combat,time"))
+    db_session.commit()
+    assert lab.settings(db_session, e["ecole"].id).signs == ("fists_touch", "combattez", "time")
