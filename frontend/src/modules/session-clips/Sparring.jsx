@@ -16,6 +16,7 @@ import { Deroulant, EssaiLabo, Graphe, Labo, ParametresTournage, useSuppressionE
 import Tournage from './Tournage.jsx'
 import Timer from './Timer.jsx'
 import Ecoute from './Ecoute.jsx'
+import NoterCris from './NoterCris.jsx'
 import './sparring.css'
 
 // Sparring (spec/modules/video-combats.md §6, maquette validée
@@ -1074,6 +1075,16 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
               />
             )}
           </Deroulant>
+        )}
+        {/* Étude du 14/11 : la vérité des cris de la séance, pour régler l'écoute du club. */}
+        {s && film.length > 0 && (
+          <NoterCris
+            seanceId={seanceId}
+            signes={s.signs}
+            maintenant={() => (film[partie]?.start ?? 0) + (lecteur.current?.currentTime ?? 0)}
+            aller={voir}
+            montrer={montrer}
+          />
         )}
         {s?.attendees.length > 0 && (
           <p className="sc-meta">Présents reconnus : {s.attendees.map((p) => p.name).join(', ')}</p>

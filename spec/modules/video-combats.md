@@ -383,6 +383,15 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
      n'est plus abîmé. Le tirage de passages de fond au hasard est retiré.
    Les morceaux déjà écoutés par l'écoute du club sont réécoutés après ce changement (`voice.CLUB_CHANGED`)
    et après chaque nouveau réglage du rejeu (`voice.newest`).
+   **Noter les cris d'une séance filmée** (étude du 14/11, Seb « code ça ») : dans une séance ouverte,
+   volet **« Noter les cris »** (fermé, sous « Signes repérés », seulement s'il y a le film) : sous chaque
+   Hajime / Combat / Time de la frise, ▶ (le moment dans la vidéo), Bon | Mauvais | Inventé, comme
+   sous un test ; **« Il manque un mot ici »** prend le moment où la vidéo est arrêtée, puis le mot.
+   2 s sont coupées dans le morceau et rangées comme exemple (le vrai bruit de la salle), et la vérité
+   va dans `voice-sessions/<séance>.json` (morceaux : chemin, début, durée ; vérité : moment, mot,
+   exemple) ; routes `GET/POST /session-clips/sessions/{id}/voice-notes`. « Rejouer tous les essais »
+   écoute chaque morceau (sans les exemples venus de la séance), remet les cris à l'heure de la
+   séance et la compte comme un test. « Effacer tous les tests » efface aussi les séances notées.
    **Effacer** (Seb, 14/11 : deux boutons) : « Effacer tous les enregistrements » sous la liste des cris
    (`DELETE /voice` : tous les mots, et les exemples « other » / « noise » rangés après un test ; le
    dossier `voice/` vide est recréé, daté de maintenant, pour que l'écoute du club réécoute les

@@ -140,6 +140,8 @@ export async function lireEnregistrement(mot, nom) {
   if (!reponse.ok) throw new Error('Enregistrement introuvable')
   return URL.createObjectURL(await reponse.blob())
 }
+export const notesSeance = (id) => appel(`/sessions/${id}/voice-notes`)
+export const noterCri = (id, corps) => appel(`/sessions/${id}/voice-notes`, json('POST', corps))
 export const effacerEnregistrements = () => appel('/voice', { method: 'DELETE' })
 export const effacerTests = () => appel('/voice-tests', { method: 'DELETE' })
 export const envoyerTest = (son) =>

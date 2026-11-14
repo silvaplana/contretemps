@@ -245,3 +245,70 @@ def test_effacer_les_enregistrements_ou_les_tests(client, e, tmp_path, monkeypat
     assert len(client.get("/session-clips/voice", headers=e["coach"]).json()["time"]) == 1  # les cris restent
 
     assert (autre / "voice/time/y.webm").exists() and (autre / "voice-tests/y.webm").exists()
+
+
+def test_noter_les_cris_d_une_seance(client, e, db_session, tmp_path, monkeypatch):  # noqa: F811
+    """Étude du 14/11 : noter Bon / Mauvais / Inventé / Il manque un mot sur
+    les cris d'une vraie séance filmée ; le rejeu la compte comme un test,
+    ses cris remis à l'heure de la séance."""
+    import datetime as dt
+    import subprocess
+
+    import imageio_ffmpeg
+
+    from app.main import core
+    from session_clips import voice
+    from session_clips.models import ClipSession
+    from videos.stockage import chemin_relatif, dossier_ecole
+
+    monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
+    ecole = e["ecole"].id
+    fichier = dossier_ecole(ecole) / "seance.mp4"
+    fichier.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-loglevel", "error", "-f", "lavfi", "-i", "sine=f=440:d=20",
+         "-f", "lavfi", "-i", "testsrc=s=160x90:d=20:r=5", "-shortest", "-pix_fmt", "yuv420p", str(fichier)],
+        check=True,
+    )
+    from comptes import Comptes
+
+    coach_id = Comptes().create(db_session, ecole_id=ecole, role="professeur", nom="Martin", prenom="Léa").id
+    raw = core.videos_client.create(
+        db_session, ecole_id=ecole, nom="Séance", lien_fichier=chemin_relatif(ecole, fichier.name), uploaded_by=coach_id
+    )
+    raw.duree_secondes = 20
+    seance = ClipSession(org_id=ecole, title="Adultes", held_on=dt.date(2026, 11, 16), raw_video_id=raw.id, created_by=coach_id)
+    db_session.add(seance)
+    db_session.commit()
+    url = f"/session-clips/sessions/{seance.id}/voice-notes"
+
+    assert client.get(url, headers=e["coach"]).json() == []
+    assert client.post(url, json={"t": 3.0, "answer": "good", "word": "time"}, headers=e["eleve"]).status_code == 403
+    assert client.post(url, json={"t": 3.0, "answer": "good", "word": "time"}, headers=e["ailleurs"]).status_code == 404
+    assert client.post(url, json={"t": 3.0, "answer": "good", "word": "time"}, headers=e["coach"]).status_code == 201
+    assert client.post(url, json={"t": 9.0, "answer": "invented"}, headers=e["coach"]).status_code == 201
+    assert client.post(url, json={"t": 14.0, "answer": "missing", "word": "hajime"}, headers=e["coach"]).status_code == 201
+    assert client.post(url, json={"t": 14.0, "answer": "missing", "word": "fight"}, headers=e["coach"]).status_code == 400
+    assert client.post(url, json={"t": 99.0, "answer": "invented"}, headers=e["coach"]).status_code == 404
+    notes = client.get(url, headers=e["coach"]).json()
+    assert [(n["t"], n["word"]) for n in notes] == [(3.0, "time"), (9.0, None), (14.0, "hajime")]
+    mots = client.get("/session-clips/voice", headers=e["coach"]).json()
+    assert (len(mots["time"]), len(mots["hajime"])) == (1, 1)  # rangés comme exemples
+
+    client.post("/session-clips/voice-replays", headers=e["coach"])
+    ecoutes = []
+
+    def ecoute(path, exclude):
+        ecoutes.append((path, exclude))
+        return [("time", 3.1, 0.9, 0.5, 20.0), ("time", 9.0, 0.8, 0.5, 20.0), ("hajime", 14.2, 0.9, 0.5, 20.0)]
+
+    assert voice.run_replays(ecoute) == 1
+    [(chemin, sans)] = ecoutes
+    assert chemin == fichier and sans == frozenset(n["example"] for n in notes)
+    [fait] = client.get("/session-clips/voice-replays", headers=e["coach"]).json()
+    assert (fait["tests"], fait["good"], fait["missed"], fait["best"]) == (1, 2, 0, 2)
+    assert fait["invented"] == 0  # le « time » à 9 s écarté par le réglage (0,8 < seuil trouvé)
+
+    # « Effacer tous les tests » efface aussi les séances notées.
+    client.delete("/session-clips/voice-tests", headers=e["coach"])
+    assert client.get(url, headers=e["coach"]).json() == []
