@@ -238,6 +238,10 @@ class SessionClipsReceiver:
         def voice_samples(m: Member = member):
             return guard(lambda: voice.samples(m))
 
+        @app.delete(f"{PREFIX}/voice", status_code=204)
+        def reset_voice(m: Member = member):
+            guard(lambda: voice.reset(m))
+
         @app.post(f"{PREFIX}/voice/{{word}}", response_model=dict[str, list[str]], status_code=201)
         async def add_voice_sample(word: str, request: Request, m: Member = member):
             data = await request.body()
@@ -250,6 +254,10 @@ class SessionClipsReceiver:
         @app.delete(f"{PREFIX}/voice/{{word}}/{{name}}", status_code=204)
         def delete_voice_sample(word: str, name: str, m: Member = member):
             guard(lambda: voice.delete(m, word, name))
+
+        @app.delete(f"{PREFIX}/voice-tests", status_code=204)
+        def reset_voice_tests(m: Member = member):
+            guard(lambda: voice.reset_tests(m))
 
         @app.post(f"{PREFIX}/voice-tests", status_code=201)
         async def add_voice_test(request: Request, m: Member = member):

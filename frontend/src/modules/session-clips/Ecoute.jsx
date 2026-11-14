@@ -16,6 +16,7 @@ const MOTS = [
 const DUREE_MS = 2000
 const OBJECTIF = 20
 const TEST_MS = 10000 // « Tester » : 10 s écoutées par l'écoute du club (Seb, 14/11)
+const ANNULER_MS = 10000
 const virgule = (x, n) => x.toFixed(n).replace('.', ',')
 
 // Le micro pendant `ms` millisecondes ; null si le micro est refusé.
@@ -173,7 +174,34 @@ export default function Ecoute({ montrer }) {
     }
   }
 
-  const sons = liste?.[mot] ?? []
+  // Deux boutons (Seb, 14/11) : les enregistrements des mots, ou les tests
+  // avec leurs réponses et les points. Effacés au bout de 10 s, sauf Annuler.
+  const [cache, setCache] = useState(null) // 'mots' ou 'tests' pendant les 10 s
+  function effacerTout(quoi) {
+    setCache(quoi)
+    if (quoi === 'tests') setResultat(null)
+    const retard = setTimeout(async () => {
+      try {
+        if (quoi === 'mots') {
+          await api.effacerEnregistrements()
+          setListe(await api.enregistrements())
+        } else {
+          await api.effacerTests()
+          setHistorique([])
+        }
+      } catch (e) {
+        montrer(e.message)
+      } finally {
+        setCache(null)
+      }
+    }, ANNULER_MS)
+    montrer(quoi === 'mots' ? 'Enregistrements effacés' : 'Tests effacés', () => {
+      clearTimeout(retard)
+      setCache(null)
+    })
+  }
+
+  const sons = cache === 'mots' ? [] : (liste?.[mot] ?? [])
   const libelle = MOTS.find(([id]) => id === mot)[1]
   return (
     <div className="sc-ecoute">
@@ -181,7 +209,10 @@ export default function Ecoute({ montrer }) {
         className="sc-onglets"
         value={mot}
         onChange={setMot}
-        options={MOTS.map(([value, label]) => ({ value, label: `${label} (${liste?.[value]?.length ?? 0})` }))}
+        options={MOTS.map(([value, label]) => ({
+          value,
+          label: `${label} (${cache === 'mots' ? 0 : (liste?.[value]?.length ?? 0)})`,
+        }))}
       />
       <p className="sc-meta">
         Touchez le bouton et criez « {libelle} ! » comme à l’entraînement. Variez les voix, la distance et le bruit de la
@@ -209,6 +240,11 @@ export default function Ecoute({ montrer }) {
           </li>
         ))}
       </ul>
+      {Object.values(liste ?? {}).some((l) => l.length) && cache !== 'mots' && (
+        <button type="button" className="btn" disabled={!!cache} onClick={() => effacerTout('mots')}>
+          Effacer tous les enregistrements
+        </button>
+      )}
       <p className="sc-meta">Tester l’écoute du club</p>
       <p className="sc-meta">Touchez « Tester », puis parlez et criez des mots pendant 10 s : l’appli montre ce qu’elle a reconnu.</p>
       <button type="button" className="btn sc-tournage__bouton" disabled={enregistre || !!test} onClick={tester}>
@@ -276,7 +312,10 @@ export default function Ecoute({ montrer }) {
       <button type="button" className="btn sc-tournage__bouton" disabled={rejoue} onClick={rejouer}>
         {rejoue ? 'Réécoute en cours…' : 'Rejouer tous les essais'}
       </button>
-      <Progres historique={historique.filter((h) => h.done)} />
+      {cache !== 'tests' && <Progres historique={historique.filter((h) => h.done)} />}
+      <button type="button" className="btn" disabled={!!cache || rejoue || !!test} onClick={() => effacerTout('tests')}>
+        Effacer tous les tests
+      </button>
       <audio ref={audio} onEnded={() => setLecture(null)} />
     </div>
   )

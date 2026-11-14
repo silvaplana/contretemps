@@ -76,6 +76,18 @@ def delete(member: Member, word: str, name: str) -> None:
     path(member, word, name).unlink()
 
 
+def reset(member: Member) -> None:
+    """« Effacer les enregistrements » (Seb, 14/11) : tous les cris de
+    l'école, y compris les exemples rangés par Bon / Mauvais / Inventé. Le
+    dossier `voice/` vide reste, daté de maintenant : newest() fait
+    réécouter les morceaux écoutés avant avec l'écoute du club."""
+    import shutil
+
+    folder = _folder(member, WORDS[0]).parent
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True)
+
+
 # --- Tester l'écoute (Seb, 14/11) : 10 s enregistrées, écoutées par le
 # worker avec l'écoute du club, les mots reconnus montrés sur la page. ---
 
@@ -94,6 +106,16 @@ def add_test(member: Member, data: bytes, content_type: str) -> str:
     name = f"{uuid.uuid4().hex}{EXTENSIONS.get(content_type.split(';')[0].strip(), '.webm')}"
     (folder / name).write_bytes(data)
     return name
+
+
+def reset_tests(member: Member) -> None:
+    """« Effacer les tests » (Seb, 14/11) : les tests, leurs réponses et
+    l'historique des points ; les cris enregistrés restent."""
+    import shutil
+
+    folder = _tests_folder(member)
+    shutil.rmtree(folder, ignore_errors=True)
+    shutil.rmtree(folder.parent / "voice-replays", ignore_errors=True)
 
 
 def test_result(member: Member, name: str) -> dict:

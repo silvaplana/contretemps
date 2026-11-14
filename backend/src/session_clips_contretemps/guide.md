@@ -64,6 +64,8 @@ le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; le cri est rangé c
 Dessous, « Il manque un mot » (puis le mot) pour un cri que l'écoute n'a pas trouvé. Plus bas, « Progrès de l'écoute du
 club » : « Rejouer tous les essais » réécoute tous les tests répondus et ajoute une ligne (date, points sur le meilleur
 possible, bons, mauvais, inventés, oubliés) et un point sur la courbe.
+Pour repartir de zéro : « Effacer tous les enregistrements » (sous la liste, tous les mots) ou « Effacer tous les tests »
+(tout en bas : les tests, leurs réponses et les points). « Annuler » pendant 10 s.
 
 Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée
