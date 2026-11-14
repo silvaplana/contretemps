@@ -11,9 +11,10 @@ import * as api from './api.js'
 
 const IMAGE_MS = 4000
 // Un appui de trop ne coupe plus le film (Seb, 14/11 : une longue vidéo devenue
-// deux de quelques secondes) : Arrêter se maintient 1 s, et le bouton se
-// repose 3 s après chaque ordre, le temps que l'état de la caméra suive.
-const MAINTENIR_MS = 1000
+// deux de quelques secondes) : Filmer et Arrêter se maintiennent 0,5 s (Seb,
+// 15/11), et le bouton se repose 3 s après chaque ordre, le temps que l'état
+// de la caméra suive.
+const MAINTENIR_MS = 500
 const REPOS_MS = 3000
 const RELIRE_MS = 2000 // l’état de la caméra se voit vite sur la télécommande (Seb, 13/11)
 // Le film en tâche de fond de l'appli Tournage (frontend/android, camera/TournagePlugin.kt).
@@ -199,7 +200,7 @@ export default function Tournage({ montrer, rafraichir }) {
   }
 
   function appuyer() {
-    if (!filme || enCours) return
+    if (enCours) return
     setMaintien(true)
     minuteur.current = setTimeout(() => {
       setMaintien(false)
@@ -229,14 +230,13 @@ export default function Tournage({ montrer, rafraichir }) {
       type="button"
       className={`btn btn--primary sc-tournage__bouton${filme ? ' sc-tournage__bouton--stop' : ''}${maintien ? ' sc-tournage__bouton--maintien' : ''}`}
       disabled={enCours || !camera || ['none', 'offline'].includes(camera.state)}
-      onClick={filme ? undefined : filmerOuArreter}
       onPointerDown={appuyer}
       onPointerUp={lacher}
       onPointerLeave={lacher}
       onPointerCancel={lacher}
       onContextMenu={(ev) => ev.preventDefault()}
     >
-      {filme ? '■ Maintenir pour arrêter' : '● Filmer'}
+      {filme ? '■ Maintenir pour arrêter' : '● Maintenir pour filmer'}
     </button>
   )
 

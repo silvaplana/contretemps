@@ -497,7 +497,7 @@
 /* Arrêter se remplit pendant qu'on le maintient (Seb, 14/11). */
 .sc-tournage__bouton--maintien {
   background: linear-gradient(to right, var(--danger-text) 50%, var(--text) 50%) right / 200% 100%;
-  animation: sc-maintien 1s linear forwards;
+  animation: sc-maintien 0.5s linear forwards;
 }
 
 @keyframes sc-maintien {
