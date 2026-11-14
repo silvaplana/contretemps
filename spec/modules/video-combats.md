@@ -281,9 +281,14 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    Ils se comportent comme « Go ! » ; Whisper les guette aussi (`hotwords`), et un « Ha jime » coupé
    en deux mots est recollé. « Time » reste le cri de fin : il a toujours été bien entendu.
    **« Combat ! »** (Seb, 14/11) est un quatrième cri de début, à cocher, guetté lui aussi.
+   **« Fight ! » retiré** (Seb, 14/11 au soir) : même « aï » que « Time », l'écoute les confondait. Plus
+   de Fight dans les signes à cocher (`SHOUTED_STARTS`), les mots soufflés à Whisper, Entraîner
+   l'écoute ni l'écoute du club. Ses enregistrements restent sur le disque (`voice/fight/`), non lus.
+   Restent Hajime et Combat pour le début (le rejeu dira lequel garder), Time pour la fin, et les
+   sons du Timer.
    **Fights › ⋮ › Entraîner l'écoute** (Seb, 14/11, coachs) : pour apprendre les cris à l'écoute
-   (un petit modèle de mots-clés, à venir) au lieu de compter sur Whisper. On choisit le mot (Fight,
-   Hajime, Combat, Time), on touche « Enregistrer » et on crie le mot : 2 s enregistrées au micro
+   (un petit modèle de mots-clés, à venir) au lieu de compter sur Whisper. On choisit le mot (Hajime,
+   Combat, Time), on touche « Enregistrer » et on crie le mot : 2 s enregistrées au micro
    du téléphone, envoyées tout de suite ; ▶ pour réécouter, poubelle pour effacer ; objectif 20 par
    mot. Pas de table : un fichier par enregistrement, `<VIDEOS_DIR>/<école>/voice/<mot>/<id>.webm`
    (`session_clips/voice.py`, routes `/session-clips/voice`), étanche par école.
@@ -334,7 +339,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    ou « Aucun cri reconnu ». Pas en direct : le modèle tourne sur le serveur.
    Sous chaque mot trouvé, **Bon | Mauvais | Inventé** (Seb, 14/11) : 2 s autour du moment sont
    coupées dans le test et rangées (`POST /voice-tests/<id>/answer`, `voice.answer_test`) comme
-   exemple du mot (Bon), du mot vraiment dit (Mauvais : Fight, Hajime, Combat, Time, ou « Autre mot »
+   exemple du mot (Bon), du mot vraiment dit (Mauvais : Hajime, Combat, Time, ou « Autre mot »
    → `voice/other/`), ou de rien (Inventé → `voice/noise/`). `other` et `noise` ne sont pas des mots :
    l'écoute du club écarte un cri qui leur ressemble plus qu'au mot. Tous les tests sont gardés (Seb).
    L'écoute du club apprend tout de suite : les empreintes sont recalculées dès que les exemples changent.
@@ -355,6 +360,10 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    le dossier de l'école et `_uploads/` ; il effaçait au bout d'un jour les sous-dossiers de Fights
    (`voice/`, `voice-tests/`, `voice-replays/`, `sparring-poses/`), corrigé le 14/11. L'action « Lire une
    séance de Fights » (sans numéro) montre, école par école, les cris gardés et les tests répondus.
+   **Mot par mot** (étude du 14/11) : chaque rejeu garde aussi, pour chaque mot, les bons, oubliés,
+   inventés, mis à la place d'un autre mot, et « pris pour » (dit, mais trouvé comme quel mot) ;
+   la liste des rejeux les affiche. Le micro de la page enregistre le son brut
+   (`echoCancellation`, `noiseSuppression`, `autoGainControl` à false), comme la caméra du Tournage.
    **Effacer** (Seb, 14/11 : deux boutons) : « Effacer tous les enregistrements » sous la liste des cris
    (`DELETE /voice` : tous les mots, et les exemples « other » / « noise » rangés après un test ; le
    dossier `voice/` vide est recréé, daté de maintenant, pour que l'écoute du club réécoute les

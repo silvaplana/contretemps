@@ -23,6 +23,7 @@ import numpy as np
 from .hearing import FRAME, loudness
 
 NOT_WORDS = ("other", "noise")  # comme voice.NOT_WORDS
+WORDS = ("hajime", "combat", "time")  # comme voice.WORDS (« fight » retiré le 14/11)
 
 RATE = 16000
 WINDOW = 0.6  # secondes autour du pic : un cri bref
@@ -100,7 +101,7 @@ def templates(voice_dir: Path, read_audio, exclude: frozenset[str] = frozenset()
     ceux de `exclude` (« mot/fichier » : les exemples venus du test qu'on
     rejoue, Seb 14/11). Chaque empreinte est calculée une fois par fichier."""
     out: dict[str, list[np.ndarray]] = {}
-    for p in sorted(p for p in voice_dir.glob("*/*") if p.is_file()):
+    for p in sorted(p for p in voice_dir.glob("*/*") if p.is_file() and p.parent.name in WORDS + NOT_WORDS):
         if f"{p.parent.name}/{p.name}" in exclude:
             continue
         key = (str(p), p.stat().st_mtime)

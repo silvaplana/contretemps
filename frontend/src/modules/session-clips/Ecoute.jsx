@@ -8,7 +8,6 @@ import * as api from './api.js'
 // l'écoute. Un appui = 2 s d'enregistrement, envoyé tout de suite.
 
 const MOTS = [
-  ['fight', 'Fight'],
   ['hajime', 'Hajime'],
   ['combat', 'Combat'],
   ['time', 'Time'],
@@ -23,7 +22,11 @@ const virgule = (x, n) => x.toFixed(n).replace('.', ',')
 async function enregistrerSon(ms) {
   let flux
   try {
-    flux = await navigator.mediaDevices.getUserMedia({ audio: true })
+    // Le son brut, comme la caméra du Tournage (étude du 14/11) : sans la
+    // réduction de bruit ni le gain automatique du navigateur.
+    flux = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
+    })
   } catch {
     return null
   }
@@ -39,7 +42,7 @@ async function enregistrerSon(ms) {
 }
 
 export default function Ecoute({ montrer }) {
-  const [mot, setMot] = useState('fight')
+  const [mot, setMot] = useState('hajime')
   const [liste, setListe] = useState(null)
   const [enregistre, setEnregistre] = useState(false)
   const [lecture, setLecture] = useState(null)
@@ -348,6 +351,21 @@ function Progres({ historique }) {
                 {' '}
                 (bons {h.good}, mauvais {h.wrong}, inventés {h.invented}, oubliés {h.missed})
               </small>
+              {/* Mot par mot (étude du 14/11) : pour choisir le mot du début. */}
+              {h.words &&
+                MOTS.map(([id, l]) => {
+                  const w = h.words[id]
+                  if (!w) return null
+                  const pris = Object.entries(w.heard_as)
+                    .map(([autre, n]) => `${n} pris pour ${MOTS.find(([x]) => x === autre)?.[1] ?? autre}`)
+                    .join(', ')
+                  return (
+                    <small key={id} className="sc-meta sc-ecoute__mot">
+                      {l} : {w.good} bons, {w.missed} oubliés, {w.invented} inventés, {w.wrong} à la place d’un autre mot
+                      {pris ? `, ${pris}` : ''}
+                    </small>
+                  )
+                })}
             </span>
           </li>
         ))}
