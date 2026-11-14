@@ -395,6 +395,15 @@ def test_fight_et_hajime_commencent_le_combat():
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 13.0), (20.0, 31.0)]
 
 
+def test_combat_crie_commence_le_combat():
+    """Seb, 14/11 : « Combat ! » crié commence aussi un combat."""
+    from session_clips.hearing import word_kind
+
+    assert word_kind("Combat!") == "combat" and word_kind("Combats") == "combat"
+    video = frames([(20, [pose(100), pose(300)])])
+    assert [(f.start, f.end) for f in find_fights(video, sounds=[("combat", 2.0), ("time", 12.0)])] == [(2.0, 13.0)]
+
+
 def test_bras_leves_des_deux_commencent_le_combat():
     """Seb, 13/11 : les deux combattants lèvent les deux bras au-dessus de la
     tête, tenu 0,5 s ; un seul ne compte pas, la garde non plus."""

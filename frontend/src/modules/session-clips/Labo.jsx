@@ -22,6 +22,7 @@ const SIGNES = [
   { id: 'go', g: 'deb', l: '« Go ! » crié', court: '« Go ! »', d: 'Son : l’entraîneur annonce le début' },
   { id: 'fight', g: 'deb', l: '« Fight ! » crié', court: '« Fight ! »', d: 'Son : l’entraîneur annonce le début' },
   { id: 'hajime', g: 'deb', l: '« Hajime ! » crié', court: '« Hajime ! »', d: 'Son : « ha-dji-mé », l’entraîneur annonce le début' },
+  { id: 'combat', g: 'deb', l: '« Combat ! » crié', court: '« Combat ! »', d: 'Son : l’entraîneur annonce le début' },
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },
   { id: 'x', g: 'fin', l: 'Bras croisés', court: 'Bras croisés', d: 'Les deux combattants croisent les bras devant eux' },
   { id: 'time', g: 'fin', l: '« Time ! » crié', court: '« Time ! »', d: 'Son : l’entraîneur annonce la fin' },
