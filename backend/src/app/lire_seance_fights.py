@@ -26,7 +26,20 @@ from session_clips import lab
 from session_clips.cutting import _heard, _load_frames, _poses_path
 from session_clips.fights import find_fights, find_signs, trim
 from session_clips.models import Clip, ClipSession, Piece
-from session_clips.signals import Frame, _shoulders_top, _wrists, main_pair, torso, upright
+from session_clips.signals import (
+    L_SHOULDER,
+    L_WRIST,
+    R_SHOULDER,
+    R_WRIST,
+    Frame,
+    Pose,
+    _shoulders_top,
+    _wrists,
+    is_x,
+    main_pair,
+    torso,
+    upright,
+)
 from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE
 
@@ -87,6 +100,7 @@ def detail(db, session_id: int, out=print) -> None:
     if (straight := upright(frames)) is not frames:
         out("vidéo couchée : postures redressées d'un quart de tour")
     _raised(straight, out)
+    _crossed(straight, out)
     _report(frames, sounds, lab.settings(db, x.org_id), out)
     for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
         out(f"combat coupé {c.position} · début {c.start_seconds} · à vérifier={c.to_check}")
@@ -121,6 +135,36 @@ def _raised(frames: list[Frame], out, limit: int = 200) -> None:
     out(f"bras levés tous les deux : {len(lines)} images (poings touchés : écart < 0,35, ou < 0,65 si hauteur ≥ 0,4)")
     for line in lines[:limit]:
         out(line)
+
+
+def _cross_check(p: Pose) -> str:
+    """Pourquoi une personne n'a pas les bras croisés (is_x) : point manquant,
+    poignets sous les hanches, de profil (écart des épaules / buste), poignets
+    pas croisés, ou X."""
+    points = [p.point(i) for i in (L_SHOULDER, R_SHOULDER, L_WRIST, R_WRIST)]
+    unit = torso(p)
+    if None in points or not unit:
+        return "?" + "".join(n for n, q in zip(("ég", "éd", "pg", "pd"), points, strict=True) if q is None)
+    l_sh, r_sh, l_wr, r_wr = points
+    if l_wr[1] >= l_sh[1] + unit or r_wr[1] >= l_sh[1] + unit:
+        return "bas"
+    face = abs(l_sh[0] - r_sh[0]) / unit
+    if face < 1 / 3:
+        return f"profil {face:.2f}"
+    return "X" if is_x(p) else f"pas croisés {face:.2f}"
+
+
+def _crossed(frames: list[Frame], out) -> None:
+    """Seconde par seconde, ce que voit le test des bras croisés pour chacun
+    des deux combattants (Seb, 14/11 : séance 9, bras croisés à 0:36 non vus)."""
+    out("bras croisés, seconde par seconde (? = point manquant, profil = épaules / buste < 0,33) :")
+    by_second: dict[int, list[str]] = {}
+    for f in frames:
+        pair = main_pair(f)
+        if len(pair) == 2:
+            by_second.setdefault(int(f.t), []).append(" | ".join(_cross_check(p) for p in pair))
+    for t, seen in sorted(by_second.items()):
+        out(f"  {t:4d} s · " + " ; ".join(dict.fromkeys(seen)))
 
 
 def run() -> None:

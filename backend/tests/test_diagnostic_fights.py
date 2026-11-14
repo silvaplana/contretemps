@@ -39,3 +39,17 @@ def test_postures_redressees():
     couche = _turn(debout, -1)
     assert torso(debout[0].people[0]) and not torso(couche[0].people[0])
     assert torso(_turn(couche, 1)[0].people[0]) == torso(debout[0].people[0])
+
+
+def test_bras_croises_seconde_par_seconde():
+    """Seb, 14/11 : ce que voit le test des bras croisés, pour chacun des deux."""
+    from app.lire_seance_fights import _crossed
+    from session_clips.signals import Frame
+    from tests.test_session_clips_cutting import pose
+
+    lignes = []
+    profil = pose(300, "cross")
+    profil.keypoints[5], profil.keypoints[6] = (305, 80, 1), (295, 80, 1)
+    _crossed([Frame(t=36.2, people=[pose(100, "cross"), profil]), Frame(t=37.0, people=[pose(100), pose(300)])], lignes.append)
+    assert lignes[1] == "    36 s · X | profil 0.12"
+    assert lignes[2] == "    37 s · pas croisés 0.50 | pas croisés 0.50"
