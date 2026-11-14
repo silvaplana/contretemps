@@ -99,7 +99,7 @@ def _hear(video_path: Path) -> list[tuple[str, float]]:
     )
     volumes = loudness(audio)
     return [
-        (kind, start, round(w.probability, 2), _peak(volumes, w.start, w.end))
+        (kind, start, round(float(w.probability), 2), _peak(volumes, w.start, w.end))
         for (kind, start), w in heard_words([(w.word, w.start) for w in words], with_words=words)
     ]
 
@@ -125,7 +125,7 @@ def _peak(volumes: list[float], start: float, end: float) -> float:
     le mot un peu tôt)."""
     a, b = int(start / FRAME), int((end + 0.5) / FRAME) + 1
     part = volumes[max(a, 0) : b]
-    return round(max(part), 1) if part else 0.0
+    return round(float(max(part)), 1) if part else 0.0  # pas un float32 de numpy : il va dans du JSON
 
 
 def heard_words(words: list[tuple[str, float]], with_words: list | None = None) -> list:

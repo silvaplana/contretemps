@@ -201,6 +201,13 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     assert session.status == "processing" and [s.id for s in live_sessions(db_session)] == [sid]
     assert sc.clips_by_session(db_session, [sid]).get(sid, []) == []
     assert cut_live(db_session, sc, session, lambda _p: pytest.fail("images relues")) == 3
+    # Après « Découpe impossible », on peut aussi la relancer (Seb, 14/11).
+    session.status = "failed"
+    db_session.commit()
+    assert client.post(f"/session-clips/sessions/{sid}/recut", headers=e["coach"]).status_code == 204
+    db_session.refresh(session)
+    assert session.status == "processing"
+    cut_live(db_session, sc, session, lambda _p: pytest.fail("images relues"))
     assert [c.position for c in sc.clips_by_session(db_session, [sid])[sid]] == [1, 2, 3]
     assert session.status == "ready"
 

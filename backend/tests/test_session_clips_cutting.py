@@ -251,6 +251,9 @@ def test_ecoute_des_cris_brefs(monkeypatch, tmp_path, capsys):
     [(go, t_go, note_go, fort_go), (time, t_time, note_time, fort_time)] = hearing.hear(tmp_path / "go-time.mp4")
     assert (go, t_go, note_go, time, t_time, note_time) == ("go", 3.9, 0.9, "time", 7.3, 0.31)
     assert fort_go > 20 and fort_time < 3
+    import json
+
+    json.dumps(hearing.hear(tmp_path / "go-time.mp4"))  # gardé tel quel dans le .sounds.json (Seb, 14/11 : « Découpe impossible »)
     assert reglages["language"] == "en" and reglages["vad_parameters"]["min_speech_duration_ms"] <= 100
     assert "Go!@3.9~0.90 Time!@7.3~0.31" in capsys.readouterr().out
 

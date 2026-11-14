@@ -1084,7 +1084,7 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
             </div>
           ))}
         {/* Les règles de la découpe changent : la refaire sans refilmer (Seb, 13/11). */}
-        {s?.live && s.status === 'ready' && (
+        {s?.live && (s.status === 'ready' || s.status === 'failed') && (
           <button type="button" className="btn btn--secondary" onClick={relancer}>
             Relancer la découpe
           </button>
