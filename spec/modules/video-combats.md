@@ -310,7 +310,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    Whisper ; `club_hearing.py` compare les cris aux enregistrements d'« Entraîner l'écoute ».
    wav2vec2 « base » (torchaudio, couche 8, dans l'image `sparring-worker`, `TORCH_HOME`) donne une
    empreinte toutes les 20 ms ; un cri = l'empreinte moyenne de ses 0,6 s les plus fortes. Chaque pic
-   de volume d'au moins 6 dB (un par seconde au plus) est comparé aux mots enregistrés (moyenne des 3
+   de volume d'au moins 6 dB (un par seconde au plus, et un seul par cri : deux pics ne sont deux cris que si le son retombe d'au moins 12 dB entre eux, Seb 14/11 : un grand « Tiiime » donnait deux « Time ») est comparé aux mots enregistrés (moyenne des 3
    plus proches) et à 40 passages sans cri de la même vidéo pris au hasard : il compte s'il ressemble
    plus à un mot qu'à ces passages, avec sa ressemblance (0 à 1) comme note « sûr ». Seuls les mots
    enregistrés sont cherchés (Seb : « Time » d'abord). Cris dans `<morceau>.sounds.club.json`,
