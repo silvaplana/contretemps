@@ -103,5 +103,7 @@ where = ["src"]
 [tool.setuptools.package-data]
 inscriptions = ["facture_template/*", "dossier_template/*"]
 personnalisation = ["defaut/*"]
+# Les cloches du Timer de Fights, à reconnaître dans les vidéos (timer_bells.py).
+session_clips = ["timer_sounds/*"]
 # Guide des écrans de chaque module pour l'assistant (registry.guide_file).
 "*" = ["guide.md"]

@@ -68,6 +68,22 @@ def hear(video_path: Path, model: str = "base") -> list[tuple[str, float, float,
         return []
 
 
+def hear_timer(video_path: Path) -> list[tuple[str, float, float, float]]:
+    """La cloche (« bell ») et les trois coups (« bells ») du Timer de Fights
+    (timer_bells.py, Seb 14/11), au format des cris ; aucun si la lecture échoue."""
+    try:
+        from .timer_bells import bells
+
+        found = bells(_audio(video_path))
+    except Exception:
+        print(f"Sons du Timer illisibles : {video_path.name}")
+        traceback.print_exc()
+        return []
+    if found:
+        print(f"Timer dans {video_path.name} : " + " ".join(f"{k}@{t:.1f}~{s:.2f}" for k, t, s, _db in found))
+    return found
+
+
 def voice_dir(video_path: Path) -> Path:
     """Les cris enregistrés de l'école de la vidéo : les vidéos sont rangées
     dans `<VIDEOS_DIR>/<école>/…` et les cris dans `<VIDEOS_DIR>/<école>/voice/`."""

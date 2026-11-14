@@ -33,6 +33,7 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
 from .fights import REASON_NO_END, Sound, as_sound, find_signs
 from .framing import Box, ffmpeg_filter, video_size
+from .hearing import hear_timer
 from .lab import club_fights, listen, thumbnail, with_scores
 from .lab import heard as heard_sounds
 from .lab import settings as club_settings
@@ -137,7 +138,7 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
     size = video_size(source)
     settings = club_settings(db, session.org_id)
-    frames, shouts = list(detect(source)), listen(hear, source, settings.speech_model)
+    frames, shouts = list(detect(source)), listen(hear, source, settings.speech_model) + hear_timer(source)
     sounds = heard_sounds(shouts, settings)
     session.signs = json.dumps(_signs(frames, shouts, [(source, 0.0, float("inf"))], None))
     fights = club_fights(db, session.org_id, frames, sounds, size)
@@ -242,10 +243,15 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
             stale = settings.speech_model == "club" and heard.exists() and heard.stat().st_mtime < voice.newest(session.org_id)
             if _unrated(heard) or not heard.exists() or stale:
                 heard.write_text(json.dumps(listen(hear, source, settings.speech_model)))
+        # Les sons du Timer (Seb, 14/11), à part : quelle que soit l'écoute choisie.
+        timer = poses.with_suffix(".timer.json")
+        if not timer.exists():
+            timer.write_text(json.dumps(hear_timer(source)))
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
-        for x in _heard(heard, piece.duration_seconds):
+        piece_sounds = _heard(heard, piece.duration_seconds) + json.loads(timer.read_text())
+        for x in piece_sounds:
             shouts.append([x[0], x[1] + offset, *x[2:]])
-        for kind, t in heard_sounds(_heard(heard, piece.duration_seconds), settings):
+        for kind, t in heard_sounds(piece_sounds, settings):
             sounds.append((kind, t + offset))
         sources.append((source, offset, piece.duration_seconds))
         offset += piece.duration_seconds

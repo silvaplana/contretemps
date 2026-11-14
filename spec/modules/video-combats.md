@@ -315,6 +315,17 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    plus à un mot qu'à ces passages, avec sa ressemblance (0 à 1) comme note « sûr ». Seuls les mots
    enregistrés sont cherchés (Seb : « Time » d'abord). Cris dans `<morceau>.sounds.club.json`,
    réécoutés à la découpe suivante quand les enregistrements ont changé (`voice.newest`).
+   **Sons du Timer** (Seb, 14/11) : la **Cloche du Timer** (un coup, début du round, `bell`) est un
+   signe de début et les **Trois coups du Timer** (fin, `bells`) un signe de fin, qui compte tout de
+   suite comme « Time ! » ; à cocher, quelle que soit l'écoute choisie. Pas de modèle
+   (`timer_bells.py`) : le Timer joue toujours les mêmes fichiers, copiés dans
+   `session_clips/timer_sounds/` (un test vérifie qu'ils sont identiques à ceux du Timer). On suit
+   la force des quatre notes de la cloche (594, 1180, 1396, 2360 Hz) toutes les 20 ms et on compare
+   1,5 s de la séance au même motif dans chaque fichier (corrélation) : au-dessus de 0,38, c'est
+   le son du Timer le plus ressemblant ; la cloche sonne 4 s, un autre son du Timer moins de 4,5 s
+   après n'est pas compté. Essais du 14/11 (bruit et voix fortes) : juste à volume normal ;
+   très faible sous des voix plus fortes qu'elle, trois coups peuvent passer pour un seul.
+   Gardés par morceau dans `<morceau>.timer.json` ; note « sûr » = cette ressemblance.
    **Tester l'écoute du club** (Seb, 14/11, bas de la page Entraîner l'écoute) : « Tester (10 s) »
    enregistre 10 s au micro, envoyées à `POST /session-clips/voice-tests` (fichier dans
    `<VIDEOS_DIR>/<école>/voice-tests/`, 5 derniers gardés) ; `sparring-worker` les écoute avec

@@ -19,10 +19,13 @@ from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is
 # « go », « fight », « hajime » : crié par l'entraîneur (hearing.py ; « Fight ! » et
 # « Hajime ! » ajoutés le 13/11 : « go », trop court, se confond avec « allez »).
 SHOUTED_STARTS = ("go", "fight", "hajime", "combat")
-START_SIGNS = ("fists_touch", "arms_up", *SHOUTED_STARTS)
-END_SIGNS = ("handshake", "x", "time")  # « time » : le « Time ! » crié (hearing.py)
+# « bell » / « bells » : la cloche d'un coup et les trois coups du Timer de
+# Fights, repérés dans la bande son (timer_bells.py, Seb 14/11).
+START_SIGNS = ("fists_touch", "arms_up", *SHOUTED_STARTS, "bell")
+END_SIGNS = ("handshake", "x", "time", "bells")  # « time » : le « Time ! » crié (hearing.py)
 SIGNS = START_SIGNS + END_SIGNS
-SOUNDS = (*SHOUTED_STARTS, "time")
+SOUNDS = (*SHOUTED_STARTS, "time", "bell", "bells")
+INSTANT_ENDS = ("time", "bells")  # un son de fin compte tout de suite
 # Un son entendu : (« go » ou « time », secondes). Un nombre seul est un
 # « time » (morceaux lus avant le « Go ! », 12/11/2026).
 Sound = tuple[str, float] | float
@@ -156,7 +159,7 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
         before = lambda t: limit is None or t < limit  # noqa: E731
         # END_DELAY : des bras qui redescendent ; un « Time ! » crié compte tout de suite.
         end = next(
-            (e for e in ends if e.start >= start.end + (0 if e.kind == "time" else END_DELAY) and before(e.start)), None
+            (e for e in ends if e.start >= start.end + (0 if e.kind in INSTANT_ENDS else END_DELAY) and before(e.start)), None
         )
         reason = None
         shouted = end is not None and start.kind in SHOUTED_STARTS and end.kind == "time"

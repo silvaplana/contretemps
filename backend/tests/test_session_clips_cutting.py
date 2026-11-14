@@ -395,6 +395,13 @@ def test_fight_et_hajime_commencent_le_combat():
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 13.0), (20.0, 31.0)]
 
 
+def test_cloches_du_timer():
+    """Seb, 14/11 : la cloche du Timer commence le combat, les trois coups le finissent."""
+    video = frames([(40, [pose(100), pose(300)])])
+    sons = [("bell", 3.0), ("bells", 23.0), ("bell", 30.0)]
+    assert [(f.start, f.end) for f in find_fights(video, sounds=sons)][0] == (3.0, 24.0)
+
+
 def test_combat_crie_commence_le_combat():
     """Seb, 14/11 : « Combat ! » crié commence aussi un combat."""
     from session_clips.hearing import word_kind
