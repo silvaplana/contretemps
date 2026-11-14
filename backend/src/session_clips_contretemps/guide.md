@@ -58,6 +58,8 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Fight, Hajime, Combat, Time, avec le
 nombre d'enregistrements), toucher « ● Enregistrer « Fight ! » » et crier le mot dans les 2 s ; l'enregistrement s'ajoute
 à la liste, avec ▶ pour l'écouter et la poubelle pour l'effacer. Le but : 20 enregistrements par mot.
+En bas, « Tester (10 s) » : parler et crier pendant 10 s ; quelques secondes après, la page montre les cris reconnus par
+l'écoute du club (mot, seconde, note, volume) ou « Aucun cri reconnu ».
 
 Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée
