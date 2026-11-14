@@ -599,7 +599,9 @@ function Seances({ ecoleId, version, rafraichir, montrer, onOpen }) {
       )}
       {visibles?.map((s) => {
         // Filmée par la caméra : ses clips s'ouvrent dès les premiers combats.
-        const prete = s.status === 'ready' || (s.live && s.clip_count > 0)
+        // Une séance de la caméra en « Découpe impossible » s'ouvre aussi, pour
+        // « Relancer la découpe » (Seb, 14/11 : séances 9 et 10 bloquées).
+        const prete = s.status === 'ready' || (s.live && (s.clip_count > 0 || s.status === 'failed'))
         const poster = s.cover?.poster ?? s.previews[0]?.poster
         // Une ligne comme un essai du Labo (Seb, 12/11) : petite vignette,
         // crayon pour renommer, poubelle pour effacer.
