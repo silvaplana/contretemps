@@ -371,7 +371,7 @@ flèche ←.
   les traits passent sous les images, la flèche garde le bon moment. Sous les combats d'une séance de la caméra
   finie, « Relancer la découpe » (`POST /session-clips/sessions/{id}/recut`) : la séance repasse à la
   découpe, qui reprend postures et sons gardés avec les règles du jour (Seb, 13/11) ; elle repart de
-  zéro, les anciens combats de la séance sont effacés (Seb, 14/11). L'appli Tournage demande ses ordres
+  zéro, les anciens combats de la séance sont effacés (Seb, 14/11). Le bouton est aussi là après « Découpe impossible ». L'appli Tournage demande ses ordres
   toutes les secondes (au lieu de 5 s), et tout de suite après Filmer / Arrêter touché sur elle-même
   (`Tournage.poke`). Au début du film, deux bips et la lampe allumée une seconde ; à
   l'arrêt, un bip long (son des alarmes, entendu même en silencieux ; Seb, 13/11 : que les

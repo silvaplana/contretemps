@@ -303,7 +303,8 @@ class SessionClips:
         effacés (Seb, 14/11)."""
         self._require_coach(member)
         session = self.session(db, member, session_id)
-        if session.status != "ready" or session.raw_video_id is not None:
+        # Aussi après « Découpe impossible » (Seb, 14/11 : séance 10 bloquée).
+        if session.status not in ("ready", "failed") or session.raw_video_id is not None:
             return
         with toutes_saisons(db):
             for video_id in db.scalars(select(Clip.video_id).where(Clip.session_id == session.id)).all():
