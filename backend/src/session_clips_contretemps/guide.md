@@ -26,7 +26,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
   Identifier combattants. La frise met chaque signe sur sa propre ligne, le premier en bas,
   sans jamais d'image sur une autre. En bas d'une séance de la
-  caméra, « Relancer la découpe » la refait avec les réglages du jour, sans refilmer.
+  caméra, « Relancer la découpe » la refait de zéro avec les réglages du jour, sans refilmer : les anciens combats sont effacés.
 - Le « + » en bas à droite filme un combat avec le téléphone : « Garder ce combat ? » Garder ou
   Jeter, puis « Qui combattait ? » : Rouge et Bleu, par les premières lettres du nom ou le micro
   (« Dire le nom »), toucher le bon membre, « C'est bon ». Le combat rejoint la séance du jour, déjà

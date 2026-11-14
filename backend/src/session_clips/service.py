@@ -299,11 +299,15 @@ class SessionClips:
     def recut_session(self, db: Session, member: Member, session_id: int) -> None:
         """« Relancer la découpe » d'une séance de la caméra finie (Seb, 13/11) :
         elle repasse à la découpe, qui reprend les postures et les sons gardés
-        avec les règles du jour ; les combats déjà coupés restent."""
+        avec les règles du jour. Elle repart de zéro : les anciens combats sont
+        effacés (Seb, 14/11)."""
         self._require_coach(member)
         session = self.session(db, member, session_id)
         if session.status != "ready" or session.raw_video_id is not None:
             return
+        with toutes_saisons(db):
+            for video_id in db.scalars(select(Clip.video_id).where(Clip.session_id == session.id)).all():
+                self.videos.delete(db, video_id)
         session.status = "processing"
         db.commit()
 
