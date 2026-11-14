@@ -93,6 +93,8 @@ class RecorderService : Service() {
         handler.removeCallbacksAndMessages(null)
         handler.post {
             recorder?.stop(last = false)
+            stopping?.stop(last = true)
+            stopping = null
             thread.quitSafely()
         }
         sender.shutdown()
@@ -116,7 +118,8 @@ class RecorderService : Service() {
         if (finishing) {
             stopRecording()
             status = status.copy(pending = uploader.pending().size, wanted = false)
-            if (status.pending == 0 && !sending.get()) {
+            // Le dernier morceau n'est rangé qu'après les éclairs de fin.
+            if (status.pending == 0 && !sending.get() && stopping == null) {
                 prefs.token = null
                 stopSelf()
                 return
@@ -176,6 +179,7 @@ class RecorderService : Service() {
     }
 
     private fun startRecording(sessionId: Int) {
+        finishStop() // un film qui finit ses éclairs libère d'abord la caméra
         val key = "position_$sessionId"
         lateinit var pieces: PieceRecorder
         pieces = PieceRecorder(
@@ -203,13 +207,33 @@ class RecorderService : Service() {
         notify("Filme la séance")
     }
 
+    /** Le film qui finit par ses deux éclairs (Seb, 15/11), arrêté à la fin de [stopTask]. */
+    private var stopping: PieceRecorder? = null
+    private val stopTask = Runnable { finishStop() }
+
     private fun stopRecording(last: Boolean = true) {
         val pieces = recorder ?: return
         recorder = null
         recordingSession = null
-        pieces.stop(last)
-        beep(ToneGenerator.TONE_PROP_BEEP, 1_000) // un bip long : le film s'arrête
         status = status.copy(recording = false, since = null)
+        if (!last) {
+            // Erreur de caméra : arrêt tout de suite, la séance continue dans un nouveau morceau.
+            pieces.stop(last = false)
+            notify("Prête")
+            return
+        }
+        // Fin normale : deux éclairs de la lampe, puis le film s'arrête.
+        stopping = pieces
+        pieces.endFlashes()
+        handler.postDelayed(stopTask, PieceRecorder.END_MS)
+    }
+
+    private fun finishStop() {
+        handler.removeCallbacks(stopTask)
+        val pieces = stopping ?: return
+        stopping = null
+        pieces.stop(last = true)
+        beep(ToneGenerator.TONE_PROP_BEEP, 1_000) // un bip long : le film s'arrête
         notify("Prête")
     }
 

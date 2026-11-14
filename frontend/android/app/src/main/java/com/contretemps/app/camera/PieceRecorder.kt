@@ -174,6 +174,14 @@ class PieceRecorder(
         }
     }
 
+    /** La fin du film (Seb, 15/11) : la lampe s'allume deux fois une seconde,
+     *  avec une seconde de noir entre les deux ; le film s'arrête ensuite
+     *  ([END_MS] après le début), pour que les deux éclairs y soient. */
+    fun endFlashes() {
+        flash(FLASH_MS)
+        handler.postDelayed({ flash(FLASH_MS) }, 2 * FLASH_MS)
+    }
+
     /** Arrête le film ; [last] : le morceau en cours est le dernier de la séance. */
     fun stop(last: Boolean) {
         val media = recorder
@@ -266,5 +274,6 @@ class PieceRecorder(
         const val VIDEO_BITRATE = 4_000_000
         const val PIECE_BYTES = 62L * 1024 * 1024
         const val FLASH_MS = 1_000L
+        const val END_MS = 3 * FLASH_MS + 500L
     }
 }

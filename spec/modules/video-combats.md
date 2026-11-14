@@ -489,7 +489,9 @@ flèche ←.
   zéro, les anciens combats de la séance sont effacés (Seb, 14/11). Le bouton est aussi là après « Découpe impossible ». L'appli Tournage demande ses ordres
   toutes les secondes (au lieu de 5 s), et tout de suite après Filmer / Arrêter touché sur elle-même
   (`Tournage.poke`). Au début du film, deux bips et la lampe allumée une seconde ; à
-  l'arrêt, un bip long (son des alarmes, entendu même en silencieux ; Seb, 13/11 : que les
+  l'arrêt, la lampe s'allume deux fois une seconde avec une seconde de noir entre les deux (Seb,
+  15/11 ; le film s'arrête 3,5 s après l'ordre pour garder les deux éclairs, `PieceRecorder.endFlashes`,
+  pas pour un arrêt sur erreur de caméra), puis un bip long (son des alarmes, entendu même en silencieux ; Seb, 13/11 : que les
   combattants voient que ça filme). Pendant le film, la caméra est prise par l'enregistrement :
   l'appli en tire une petite image (jpeg 640 px) chaque seconde, montrée dans Tournage à la place
   de l'image noire (`PieceRecorder.snap`, `status.image` ; si le téléphone refuse ce second flux,
@@ -581,7 +583,7 @@ sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra 
   (le téléphone ne reconnaît pas encore les gestes, 3c).
   **Un appui de trop ne coupe plus le film** (Seb, 14/11 : une longue vidéo devenue deux de quelques
   secondes) : pendant le film, le bouton dit « ■ Maintenir pour arrêter » et se remplit ; il faut le
-  tenir 1 s. Après chaque ordre, le bouton se repose 3 s, le temps que l'état de la caméra suive.
+  tenir 0,5 s ; de même « ● Maintenir pour filmer » pour démarrer (Seb, 15/11). Après chaque ordre, le bouton se repose 3 s, le temps que l'état de la caméra suive.
 
 **Le bouton caméra (retiré le 12/11).** En haut à droite de Sparring, pour les coachs seulement (y compris sur
 « Mes combats » et « À vérifier ») : une pastille en couleur avec une caméra et un mot.
