@@ -263,3 +263,9 @@ class VoiceAnswer(BaseModel):
     t: float
     answer: str  # good | wrong | invented
     word: str | None = None  # le mot trouvé (good) ou le mot dit (wrong ; « other » : un autre mot)
+
+
+class VoiceMissing(BaseModel):
+    """« Il manque un mot » après un test (Seb, 14/11)."""
+
+    word: str

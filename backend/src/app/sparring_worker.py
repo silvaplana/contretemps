@@ -35,7 +35,8 @@ from session_clips.detector import detect
 from session_clips.hearing import hear
 from session_clips.lab import read_test, tests_to_read
 from session_clips.service import SessionClips
-from session_clips.voice import hear_tests
+from session_clips.hearing import hear_club_without
+from session_clips.voice import hear_tests, run_replays
 from session_clips_contretemps.adapter import AnnuaireSparring
 from videos import Videos
 
@@ -68,6 +69,7 @@ def run() -> None:
         for _ in range(INTERVALLE_SECONDES // TEST_SECONDES):
             try:
                 hear_tests(hear)
+                run_replays(hear_club_without)
             except Exception:
                 traceback.print_exc()
             time.sleep(TEST_SECONDES)

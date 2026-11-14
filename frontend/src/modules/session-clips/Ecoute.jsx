@@ -47,7 +47,15 @@ export default function Ecoute({ montrer }) {
   const [testNom, setTestNom] = useState(null)
   const [reponses, setReponses] = useState({}) // moment -> ce qui a été rangé
   const [quelMot, setQuelMot] = useState(null) // moment dont on choisit le mot (Mauvais)
+  const [manques, setManques] = useState([]) // « Il manque un mot » : les mots ajoutés
+  const [choixManque, setChoixManque] = useState(false)
+  const [historique, setHistorique] = useState([])
+  const [rejoue, setRejoue] = useState(false)
   const audio = useRef(null)
+
+  useEffect(() => {
+    api.rejeux().then(setHistorique, () => {})
+  }, [])
 
   useEffect(() => {
     api.enregistrements().then(setListe, (e) => montrer(e.message))
@@ -82,6 +90,8 @@ export default function Ecoute({ montrer }) {
       const { name } = await api.envoyerTest(son)
       setTestNom(name)
       setReponses({})
+      setManques([])
+      setChoixManque(false)
       for (let i = 0; i < 60; i++) {
         await new Promise((ok) => setTimeout(ok, 2000))
         const r = await api.resultatTest(name)
@@ -122,6 +132,35 @@ export default function Ecoute({ montrer }) {
       if (nomMot) setListe(await api.enregistrements())
     } catch (e) {
       montrer(e.message)
+    }
+  }
+
+  async function manque(word) {
+    try {
+      await api.motManque(testNom, word)
+      setManques((m) => [...m, MOTS.find(([id]) => id === word)[1]])
+      setChoixManque(false)
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
+  // Rejouer tous les essais (Seb, 14/11) : les points de l'écoute du club sur tous les tests répondus.
+  async function rejouer() {
+    if (rejoue) return
+    setRejoue(true)
+    try {
+      await api.rejouerEssais()
+      for (let i = 0; i < 300; i++) {
+        await new Promise((ok) => setTimeout(ok, 2000))
+        const h = await api.rejeux()
+        setHistorique(h)
+        if (h.length && h[h.length - 1].done) return
+      }
+    } catch (e) {
+      montrer(e.message)
+    } finally {
+      setRejoue(false)
     }
   }
 
@@ -213,7 +252,67 @@ export default function Ecoute({ montrer }) {
         ) : (
           <p>Aucun cri reconnu.</p>
         ))}
+      {resultat && (
+        <div className="sc-ecoute__choix">
+          {manques.length > 0 && <span className="sc-meta">Ajouté : {manques.join(', ')}</span>}
+          {choixManque ? (
+            MOTS.map(([id, l]) => (
+              <button key={id} type="button" className="btn" onClick={() => manque(id)}>
+                {l}
+              </button>
+            ))
+          ) : (
+            <button type="button" className="btn" onClick={() => setChoixManque(true)}>
+              Il manque un mot
+            </button>
+          )}
+        </div>
+      )}
+      <p className="sc-meta">Progrès de l’écoute du club</p>
+      <p className="sc-meta">
+        Réécoute tous les tests où vous avez répondu : +1 par bon mot, −1 par mauvais, −2 par mot inventé, −1 par mot
+        oublié. Répondez à tous les mots d’un test.
+      </p>
+      <button type="button" className="btn sc-tournage__bouton" disabled={rejoue} onClick={rejouer}>
+        {rejoue ? 'Réécoute en cours…' : 'Rejouer tous les essais'}
+      </button>
+      <Progres historique={historique.filter((h) => h.done)} />
       <audio ref={audio} onEnded={() => setLecture(null)} />
     </div>
+  )
+}
+
+// La courbe des points (en % du meilleur possible) et la liste des rejeux, le plus récent en haut.
+function Progres({ historique }) {
+  if (!historique.length) return null
+  const pct = (h) => (h.best ? Math.max(0, Math.min(100, (100 * h.points) / h.best)) : 0)
+  const W = 300
+  const H = 80
+  const x = (i) => (historique.length === 1 ? W / 2 : 10 + (i * (W - 20)) / (historique.length - 1))
+  const y = (h) => H - 8 - (pct(h) * (H - 16)) / 100
+  const quand = (h) =>
+    new Date(h.at * 1000).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+  return (
+    <>
+      <svg className="sc-ecoute__courbe" viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Points de l’écoute du club, rejeu après rejeu">
+        <polyline points={historique.map((h, i) => `${x(i)},${y(h)}`).join(' ')} />
+        {historique.map((h, i) => (
+          <circle key={h.at} cx={x(i)} cy={y(h)} r="4" />
+        ))}
+      </svg>
+      <ul className="sc-ecoute__liste">
+        {[...historique].reverse().map((h) => (
+          <li key={h.at}>
+            <span>
+              {quand(h)} · {h.points} points sur {h.best} · {h.tests} tests, {h.examples} exemples
+              <small className="sc-meta">
+                {' '}
+                (bons {h.good}, mauvais {h.wrong}, inventés {h.invented}, oubliés {h.missed})
+              </small>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </>
   )
 }

@@ -136,8 +136,111 @@ def answer_test(member: Member, name: str, t: float, answer: str, word: str | No
         raise ValueError("Mot inconnu")
     folder = dossier_ecole(member.org_id) / "voice" / folder_name
     folder.mkdir(parents=True, exist_ok=True)
+    example = f"{uuid.uuid4().hex}.wav"
     subprocess.run(
         [imageio_ffmpeg.get_ffmpeg_exe(), "-nostdin", "-y", "-loglevel", "error", "-ss", f"{max(t - 0.5, 0):.2f}", "-t", "2",
-         "-i", str(source), "-vn", "-ac", "1", "-ar", "16000", str(folder / f"{uuid.uuid4().hex}.wav")],
+         "-i", str(source), "-vn", "-ac", "1", "-ar", "16000", str(folder / example)],
         check=True,
     )
+    # La vérité du test, pour « Rejouer tous les essais » : le mot dit à ce
+    # moment (« other » : un autre mot ; None : rien), et l'exemple qui en vient.
+    _add_truth(source, {"t": t, "word": None if answer == "invented" else word, "example": f"{folder_name}/{example}"})
+
+
+def _add_truth(source: Path, entry: dict) -> None:
+    path = source.with_suffix(".truth.json")
+    truth = json.loads(path.read_text()) if path.exists() else []
+    path.write_text(json.dumps([*truth, entry]))
+
+
+def missing_word(member: Member, name: str, word: str) -> None:
+    """« Il manque un mot » (Seb, 14/11) : un mot crié pendant le test que l'écoute n'a pas trouvé."""
+    source = _tests_folder(member) / name
+    if not _NAME.match(name) or not source.exists():
+        raise NotFoundError("Essai introuvable")
+    if word not in WORDS:
+        raise ValueError("Mot inconnu")
+    _add_truth(source, {"t": None, "word": word, "example": None})
+
+
+# --- Rejouer tous les essais (Seb, 14/11) : les points de l'écoute du club
+# sur tous les tests répondus, pour suivre ses progrès. ---
+
+NEAR = 1.0  # secondes : un mot trouvé à moins d'1 s d'une réponse en parle
+
+
+def score(found: list, truth: list[dict]) -> dict:
+    """+1 par bon mot, −1 par mauvais mot, −2 par mot inventé, −1 par mot
+    oublié (Seb, 14/11) ; « best » : les points d'une écoute parfaite."""
+    timed = [x for x in truth if x["t"] is not None]
+    missing = [x["word"] for x in truth if x["t"] is None]
+    best = sum(1 for x in timed if x["word"] in WORDS) + len(missing)
+    used: set[int] = set()
+    good = wrong = invented = 0
+    for kind, t, *_rest in found:
+        near = [i for i, x in enumerate(timed) if i not in used and abs(x["t"] - t) <= NEAR]
+        if near:
+            i = min(near, key=lambda i: abs(timed[i]["t"] - t))
+            used.add(i)
+            said = timed[i]["word"]
+            if said == kind:
+                good += 1
+            elif said is None:
+                invented += 1
+            else:
+                wrong += 1
+        elif kind in missing:
+            missing.remove(kind)
+            good += 1
+        else:
+            invented += 1
+    missed = len(missing) + sum(1 for i, x in enumerate(timed) if i not in used and x["word"] in WORDS)
+    points = good - wrong - 2 * invented - missed
+    return {"good": good, "wrong": wrong, "invented": invented, "missed": missed, "points": points, "best": best}
+
+
+def _replays_folder(member: Member) -> Path:
+    if not member.is_coach:
+        raise ForbiddenError("Réservé aux coachs")
+    return dossier_ecole(member.org_id) / "voice-replays"
+
+
+def add_replay(member: Member) -> None:
+    folder = _replays_folder(member)
+    folder.mkdir(parents=True, exist_ok=True)
+    import time
+
+    (folder / f"{int(time.time() * 1000)}.json").write_text(json.dumps({"done": False}))
+
+
+def replays(member: Member) -> list[dict]:
+    """L'historique des rejeux, du plus ancien au plus récent."""
+    folder = _replays_folder(member)
+    files = sorted(folder.glob("*.json"), key=lambda p: int(p.stem)) if folder.exists() else []
+    return [{"at": int(p.stem) / 1000, **json.loads(p.read_text())} for p in files]
+
+
+def run_replays(hear) -> int:
+    """Pour le worker : rejoue les demandes en attente, toutes écoles.
+    `hear(chemin, exemples à écarter)` : l'écoute du club sans les exemples
+    venus du test rejoué (sinon elle se reconnaîtrait elle-même)."""
+    n = 0
+    for request in sorted(stockage.DOSSIER_VIDEOS_LIVE.glob("*/voice-replays/*.json")):
+        if json.loads(request.read_text()).get("done"):
+            continue
+        school = request.parent.parent
+        totals = {"good": 0, "wrong": 0, "invented": 0, "missed": 0, "points": 0, "best": 0}
+        tests = 0
+        for path in sorted((school / "voice-tests").glob("*")):
+            truth_path = path.with_suffix(".truth.json")
+            if not _NAME.match(path.name) or not truth_path.exists():
+                continue
+            truth = json.loads(truth_path.read_text())
+            exclude = frozenset(x["example"] for x in truth if x.get("example"))
+            for k, v in score(hear(path, exclude), truth).items():
+                totals[k] += v
+            tests += 1
+        examples = sum(1 for p in (school / "voice").glob("*/*") if p.parent.name in WORDS and _NAME.match(p.name))
+        request.write_text(json.dumps({"done": True, "tests": tests, "examples": examples, **totals}))
+        n += 1
+    return n

@@ -338,6 +338,17 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    → `voice/other/`), ou de rien (Inventé → `voice/noise/`). `other` et `noise` ne sont pas des mots :
    l'écoute du club écarte un cri qui leur ressemble plus qu'au mot. Tous les tests sont gardés (Seb).
    L'écoute du club apprend tout de suite : les empreintes sont recalculées dès que les exemples changent.
+   **Il manque un mot** (sous le résultat d'un test) : le mot crié que l'écoute n'a pas trouvé. Chaque
+   réponse va dans la vérité du test (`<id>.truth.json` : moment, mot dit ou rien, exemple qui en vient).
+   **Rejouer tous les essais** (Seb, 14/11) : `POST /voice-replays` ; le worker réécoute avec l'écoute du
+   club chaque test qui a une vérité, sans les exemples venus de ce test (sinon elle se reconnaîtrait),
+   et compte les points (`voice.score`) : +1 bon mot, −1 mauvais mot (un autre mot que celui dit),
+   −2 mot inventé (là où il n'y avait rien, ou à un moment sans réponse), −1 mot oublié ; un mot trouvé
+   à moins d'1 s d'une réponse en parle. Résultat gardé (`voice-replays/<date>.json` : points, meilleur
+   possible, bons, mauvais, inventés, oubliés, nombre de tests et d'exemples) ; la page montre une
+   courbe des points (en % du meilleur possible) et la liste des rejeux. Il faut répondre à tous les mots
+   d'un test (un mot sans réponse compte comme inventé). Les réponses données avant cette mise en
+   ligne n'ont pas de vérité.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en

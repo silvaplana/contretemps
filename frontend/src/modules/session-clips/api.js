@@ -144,3 +144,6 @@ export const envoyerTest = (son) =>
   appel('/voice-tests', { method: 'POST', headers: { 'Content-Type': son.type || 'audio/webm' }, body: son })
 export const resultatTest = (nom) => appel(`/voice-tests/${nom}`)
 export const repondreTest = (nom, corps) => appel(`/voice-tests/${nom}/answer`, json('POST', corps))
+export const motManque = (nom, word) => appel(`/voice-tests/${nom}/missing`, json('POST', { word }))
+export const rejouerEssais = () => appel('/voice-replays', { method: 'POST' })
+export const rejeux = () => appel('/voice-replays')

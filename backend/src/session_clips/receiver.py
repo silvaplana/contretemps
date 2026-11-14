@@ -50,6 +50,7 @@ from .schemas import (
     SessionRename,
     ThisPhone,
     VoiceAnswer,
+    VoiceMissing,
 )
 from .service import ForbiddenError, NotFoundError, SessionClips, clip_title
 
@@ -258,6 +259,18 @@ class SessionClipsReceiver:
         @app.post(f"{PREFIX}/voice-tests/{{name}}/answer", status_code=204)
         def answer_voice_test(name: str, body: VoiceAnswer, m: Member = member):
             guard(lambda: voice.answer_test(m, name, body.t, body.answer, body.word))
+
+        @app.post(f"{PREFIX}/voice-tests/{{name}}/missing", status_code=204)
+        def missing_voice_word(name: str, body: VoiceMissing, m: Member = member):
+            guard(lambda: voice.missing_word(m, name, body.word))
+
+        @app.post(f"{PREFIX}/voice-replays", status_code=201)
+        def add_voice_replay(m: Member = member):
+            guard(lambda: voice.add_replay(m))
+
+        @app.get(f"{PREFIX}/voice-replays")
+        def voice_replays(m: Member = member):
+            return guard(lambda: voice.replays(m))
 
         @app.get(f"{PREFIX}/voice-tests/{{name}}")
         def voice_test(name: str, m: Member = member):
