@@ -255,3 +255,11 @@ class ClubSignsBody(BaseModel):
     loud_db: float = 6.0
     sure_min: float = 0.5
     speech_model: str = "base"
+
+
+class VoiceAnswer(BaseModel):
+    """Bon, Mauvais ou Inventé sous un mot trouvé par « Tester » (Seb, 14/11)."""
+
+    t: float
+    answer: str  # good | wrong | invented
+    word: str | None = None  # le mot trouvé (good) ou le mot dit (wrong ; « other » : un autre mot)

@@ -143,3 +143,4 @@ export async function lireEnregistrement(mot, nom) {
 export const envoyerTest = (son) =>
   appel('/voice-tests', { method: 'POST', headers: { 'Content-Type': son.type || 'audio/webm' }, body: son })
 export const resultatTest = (nom) => appel(`/voice-tests/${nom}`)
+export const repondreTest = (nom, corps) => appel(`/voice-tests/${nom}/answer`, json('POST', corps))
