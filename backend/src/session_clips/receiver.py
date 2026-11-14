@@ -8,6 +8,7 @@ import json
 from collections.abc import Callable
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,7 +16,7 @@ from db import get_db
 from videos.schemas import VideoSortie
 from videos.videos import DecalageInvalide
 
-from . import camera, lab
+from . import camera, lab, voice
 from .models import Clip, ClipSession, LabTest, Piece
 from .ports import Member
 from .schemas import (
@@ -229,6 +230,24 @@ class SessionClipsReceiver:
                 body.loud_only, body.sure_only, body.loud_db, body.sure_min, body.speech_model,
             )
             return settings_out(guard(lambda: lab.set_settings(s, m, new, lab=True)))
+
+        # Fights › ⋮ › Entraîner l'écoute (Seb, 14/11) : les cris enregistrés au téléphone.
+        @app.get(f"{PREFIX}/voice", response_model=dict[str, list[str]])
+        def voice_samples(m: Member = member):
+            return guard(lambda: voice.samples(m))
+
+        @app.post(f"{PREFIX}/voice/{{word}}", response_model=dict[str, list[str]], status_code=201)
+        async def add_voice_sample(word: str, request: Request, m: Member = member):
+            data = await request.body()
+            return guard(lambda: voice.add(m, word, data, request.headers.get("content-type", "")))
+
+        @app.get(f"{PREFIX}/voice/{{word}}/{{name}}")
+        def voice_sample(word: str, name: str, m: Member = member):
+            return FileResponse(guard(lambda: voice.path(m, word, name)))
+
+        @app.delete(f"{PREFIX}/voice/{{word}}/{{name}}", status_code=204)
+        def delete_voice_sample(word: str, name: str, m: Member = member):
+            guard(lambda: voice.delete(m, word, name))
 
         @app.get(f"{PREFIX}/lab", response_model=list[LabTestOut])
         def lab_tests(m: Member = member, s: Session = db):
