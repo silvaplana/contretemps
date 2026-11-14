@@ -95,22 +95,23 @@ def peaks(volumes: list[float]) -> list[float]:
     return sorted(k * FRAME for k in kept)
 
 
-def templates(voice_dir: Path, read_audio) -> dict[str, list[np.ndarray]]:
-    """Les empreintes des cris enregistrés, mot par mot ; recalculées
-    seulement quand les enregistrements changent."""
-    files = sorted(p for p in voice_dir.glob("*/*") if p.is_file())
-    key = (str(voice_dir), tuple((p.name, p.stat().st_mtime) for p in files))
-    if key not in _templates:
-        out: dict[str, list[np.ndarray]] = {}
-        for p in files:
+def templates(voice_dir: Path, read_audio, exclude: frozenset[str] = frozenset()) -> dict[str, list[np.ndarray]]:
+    """Les empreintes des cris enregistrés, mot par mot (dossier du mot), sauf
+    ceux de `exclude` (« mot/fichier » : les exemples venus du test qu'on
+    rejoue, Seb 14/11). Chaque empreinte est calculée une fois par fichier."""
+    out: dict[str, list[np.ndarray]] = {}
+    for p in sorted(p for p in voice_dir.glob("*/*") if p.is_file()):
+        if f"{p.parent.name}/{p.name}" in exclude:
+            continue
+        key = (str(p), p.stat().st_mtime)
+        if key not in _templates:
             audio = read_audio(p)
-            if len(audio) < RATE * WINDOW:
-                continue
-            start = _loudest(loudness(audio))
-            out.setdefault(p.parent.name, []).append(_summary(embed(audio), start, WINDOW))
-        _templates.clear()
-        _templates[key] = out
-    return _templates[key]
+            _templates[key] = (
+                _summary(embed(audio), _loudest(loudness(audio)), WINDOW) if len(audio) >= RATE * WINDOW else None
+            )
+        if _templates[key] is not None:
+            out.setdefault(p.parent.name, []).append(_templates[key])
+    return out
 
 
 def _closeness(v: np.ndarray, examples: list[np.ndarray]) -> float:

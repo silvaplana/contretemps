@@ -61,6 +61,9 @@ nombre d'enregistrements), toucher « ● Enregistrer « Fight ! » » et crier 
 En bas, « Tester (10 s) » : parler et crier pendant 10 s ; quelques secondes après, la page montre les cris reconnus par
 l'écoute du club (mot, seconde, note, volume) ou « Aucun cri reconnu ». Sous chaque mot : « Bon », « Mauvais » (puis
 le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; le cri est rangé comme exemple et la ligne dit « Rangé : … ».
+Dessous, « Il manque un mot » (puis le mot) pour un cri que l'écoute n'a pas trouvé. Plus bas, « Progrès de l'écoute du
+club » : « Rejouer tous les essais » réécoute tous les tests répondus et ajoute une ligne (date, points sur le meilleur
+possible, bons, mauvais, inventés, oubliés) et un point sur la courbe.
 
 Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée

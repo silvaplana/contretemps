@@ -1080,3 +1080,19 @@
 .sc-ecoute__choix .btn {
   min-height: 48px;
 }
+
+/* Progrès de l'écoute du club : la courbe des points (Seb, 14/11). */
+.sc-ecoute__courbe {
+  width: 100%;
+  height: auto;
+}
+
+.sc-ecoute__courbe polyline {
+  fill: none;
+  stroke: var(--accent, currentColor);
+  stroke-width: 2;
+}
+
+.sc-ecoute__courbe circle {
+  fill: var(--accent, currentColor);
+}

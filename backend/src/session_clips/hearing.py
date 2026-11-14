@@ -84,6 +84,17 @@ def hear_timer(video_path: Path) -> list[tuple[str, float, float, float]]:
     return found
 
 
+def hear_club_without(video_path: Path, exclude: frozenset[str]) -> list[tuple[str, float, float, float]]:
+    """L'écoute du club sans certains exemples (« Rejouer tous les essais »,
+    voice.run_replays) ; aucun cri si elle échoue."""
+    try:
+        return _hear_club(video_path, exclude)
+    except Exception:
+        print(f"Écoute impossible : {video_path.name}")
+        traceback.print_exc()
+        return []
+
+
 def voice_dir(video_path: Path) -> Path:
     """Les cris enregistrés de l'école de la vidéo : les vidéos sont rangées
     dans `<VIDEOS_DIR>/<école>/…` et les cris dans `<VIDEOS_DIR>/<école>/voice/`."""
@@ -93,10 +104,10 @@ def voice_dir(video_path: Path) -> Path:
     return DOSSIER_VIDEOS_LIVE / school / "voice"
 
 
-def _hear_club(video_path: Path) -> list[tuple[str, float, float, float]]:
+def _hear_club(video_path: Path, exclude: frozenset[str] = frozenset()) -> list[tuple[str, float, float, float]]:
     from .club_hearing import hear_club, templates
 
-    words = templates(voice_dir(video_path), _audio)
+    words = templates(voice_dir(video_path), _audio, exclude)
     found = hear_club(_audio(video_path), words)
     print(
         f"Écoute du club dans {video_path.name} ({', '.join(f'{w} ×{len(e)}' for w, e in words.items()) or 'aucun cri enregistré'}) : "
