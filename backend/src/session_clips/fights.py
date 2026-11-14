@@ -18,7 +18,7 @@ from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is
 
 # « go », « fight », « hajime » : crié par l'entraîneur (hearing.py ; « Fight ! » et
 # « Hajime ! » ajoutés le 13/11 : « go », trop court, se confond avec « allez »).
-SHOUTED_STARTS = ("go", "fight", "hajime")
+SHOUTED_STARTS = ("go", "fight", "hajime", "combat")
 START_SIGNS = ("fists_touch", "arms_up", *SHOUTED_STARTS)
 END_SIGNS = ("handshake", "x", "time")  # « time » : le « Time ! » crié (hearing.py)
 SIGNS = START_SIGNS + END_SIGNS
