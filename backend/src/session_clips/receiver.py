@@ -51,6 +51,7 @@ from .schemas import (
     ThisPhone,
     VoiceAnswer,
     VoiceMissing,
+    VoiceNote,
 )
 from .service import ForbiddenError, NotFoundError, SessionClips, clip_title
 
@@ -126,6 +127,18 @@ class SessionClipsReceiver:
                 signs=json.loads(session.signs) if session.signs else [],
                 film=self._film(s, session),
             )
+
+        # Noter les cris d'une séance filmée (étude du 14/11), pour le rejeu.
+        @app.get(f"{PREFIX}/sessions/{{session_id}}/voice-notes")
+        def session_voice_notes(session_id: int, m: Member = member, s: Session = db):
+            guard(lambda: client.session(s, m, session_id))
+            return guard(lambda: voice.session_truth(m, session_id))
+
+        @app.post(f"{PREFIX}/sessions/{{session_id}}/voice-notes", status_code=201)
+        def note_session_voice(session_id: int, body: VoiceNote, m: Member = member, s: Session = db):
+            session = guard(lambda: client.session(s, m, session_id))
+            pieces = self._sources(s, session)
+            return guard(lambda: voice.note_session(m, session_id, pieces, body.t, body.answer, body.word))
 
         @app.get(f"{PREFIX}/mine", response_model=list[ClipOut])
         def my_clips(m: Member = member, s: Session = db):
@@ -404,6 +417,21 @@ class SessionClipsReceiver:
                 break
             out.append(FilmPart(start=offset, video=VideoSortie.model_validate(video)))
             offset += (p.duration_seconds if p else None) or video.duree_secondes or 0
+        return out
+
+    def _sources(self, s: Session, session: ClipSession) -> list[tuple[str, float, float]]:
+        """Les fichiers du film de la séance (chemin sous VIDEOS_DIR, début, durée), recollés comme `_film`."""
+        pieces = list(s.scalars(select(Piece).where(Piece.session_id == session.id).order_by(Piece.position)))
+        ids = [p.video_id for p in pieces if p.video_id is not None] or [session.raw_video_id]
+        videos = self.client.video_map(s, [i for i in ids if i is not None])
+        out, offset = [], 0.0
+        for p in pieces or [None]:
+            video = videos.get(p.video_id if p else session.raw_video_id)
+            if video is None or video.statut != "complete":
+                break
+            length = (p.duration_seconds if p else None) or video.duree_secondes or 0
+            out.append((video.lien_fichier, offset, float(length)))
+            offset += length
         return out
 
     def _sessions_out(self, s: Session, m: Member, sessions: list[ClipSession]) -> list[SessionOut]:

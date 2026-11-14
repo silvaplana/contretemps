@@ -265,6 +265,15 @@ class VoiceAnswer(BaseModel):
     word: str | None = None  # le mot trouvé (good) ou le mot dit (wrong ; « other » : un autre mot)
 
 
+class VoiceNote(BaseModel):
+    """Un cri noté dans une séance filmée (étude du 14/11) : Bon, Mauvais,
+    Inventé, ou « missing » (Il manque un mot, au moment de la vidéo)."""
+
+    t: float
+    answer: str  # good | wrong | invented | missing
+    word: str | None = None
+
+
 class VoiceMissing(BaseModel):
     """« Il manque un mot » après un test (Seb, 14/11)."""
 
