@@ -27,6 +27,7 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 
 from .fights import SIGNS, SOUNDS, Fight, Sound, as_sound, find_fights, find_signs, trim
 from .framing import FRAMINGS, Box, track, video_size
+from .hearing import hear_timer
 
 SPEECH_MODELS = ("base", "small", "club")  # comme hearing.SPEECH_MODELS (sans importer Whisper)
 
@@ -278,7 +279,7 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
         _save_frames(path, frames)
     # Tous les cris vont dans la frise, avec leur volume et leur note ; les
     # réglages du Labo les filtrent au calcul des combats (fights_of).
-    shouts = listen(hear, source, settings(db, found.org_id, lab=True).speech_model)
+    shouts = listen(hear, source, settings(db, found.org_id, lab=True).speech_model) + hear_timer(source)
     signs = [
         with_scores({"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}, shouts)
         for s in find_signs(frames, [as_sound(x) for x in shouts])

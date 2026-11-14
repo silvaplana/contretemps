@@ -74,8 +74,8 @@ Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : es
   flèche ou un signe place la vidéo à ce moment. Chaque combat coupé a sa vignette (l'image du
   signe de début) : le toucher l'ouvre et le lit, du début à la fin. Le crayon en haut à droite
   renomme l'essai.
-- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poings touchés en l'air, Bras levés des deux combattants, « Go ! », « Fight ! », « Hajime ! » ou « Combat ! » crié) et
-  de fin (Poignée de main, Bras croisés des deux combattants, « Time ! » crié) que la découpe prend, pour tout le club (caméra
+- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poings touchés en l'air, Bras levés des deux combattants, « Go ! », « Fight ! », « Hajime ! » ou « Combat ! » crié, Cloche du Timer) et
+  de fin (Poignée de main, Bras croisés des deux combattants, « Time ! » crié, Trois coups du Timer) que la découpe prend, pour tout le club (caméra
   de la salle comprise). Sous « Cris entendus », le choix de l'écoute : « Rapide », « Précise » (plus lente, se trompe
   moins) ou « Du club » (compare aux cris enregistrés dans ⋮ › Entraîner l’écoute) ; la vidéo est réécoutée à la prochaine découpe, puis deux cases : « Seulement les cris forts » et « Seulement les mots
   bien compris », contre les mots que l'écoute invente sur un passage calme. Cocher une case montre un curseur pour

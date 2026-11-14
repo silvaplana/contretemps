@@ -26,6 +26,8 @@ const SIGNES = [
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },
   { id: 'x', g: 'fin', l: 'Bras croisés', court: 'Bras croisés', d: 'Les deux combattants croisent les bras devant eux' },
   { id: 'time', g: 'fin', l: '« Time ! » crié', court: '« Time ! »', d: 'Son : l’entraîneur annonce la fin' },
+  { id: 'bell', g: 'deb', l: 'Cloche du Timer', court: 'Cloche', d: 'Son : un coup de cloche du Timer de Fights, début du round' },
+  { id: 'bells', g: 'fin', l: 'Trois coups du Timer', court: 'Trois coups', d: 'Son : les trois coups de cloche du Timer, fin du round' },
 ]
 const signe = (id) => SIGNES.find((s) => s.id === id) ?? { id, g: 'fin', l: id, court: id, d: '' }
 
