@@ -347,8 +347,14 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    à moins d'1 s d'une réponse en parle. Résultat gardé (`voice-replays/<date>.json` : points, meilleur
    possible, bons, mauvais, inventés, oubliés, nombre de tests et d'exemples) ; la page montre une
    courbe des points (en % du meilleur possible) et la liste des rejeux. Il faut répondre à tous les mots
-   d'un test (un mot sans réponse compte comme inventé). Les réponses données avant cette mise en
-   ligne n'ont pas de vérité.
+   d'un test (un mot sans réponse compte comme inventé). Les réponses données avant que la vérité
+   soit gardée sont retrouvées au démarrage de `sparring-worker` (`voice.recover_truths`) : chaque
+   exemple .wav est 2 s coupées dans un test, retrouvées par corrélation (≥ 0,9) dans les tests faits
+   avant lui ; le dossier de l'exemple donne la réponse.
+   **Fichiers gardés** : le ménage des vidéos orphelines (`videos.effacer_orphelins`) ne regarde que
+   le dossier de l'école et `_uploads/` ; il effaçait au bout d'un jour les sous-dossiers de Fights
+   (`voice/`, `voice-tests/`, `voice-replays/`, `sparring-poses/`), corrigé le 14/11. L'action « Lire une
+   séance de Fights » (sans numéro) montre, école par école, les cris gardés et les tests répondus.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en

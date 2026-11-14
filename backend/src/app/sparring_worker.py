@@ -35,8 +35,8 @@ from session_clips.detector import detect
 from session_clips.hearing import hear
 from session_clips.lab import read_test, tests_to_read
 from session_clips.service import SessionClips
-from session_clips.hearing import hear_club_without
-from session_clips.voice import hear_tests, run_replays
+from session_clips.hearing import _audio, hear_club_without
+from session_clips.voice import hear_tests, recover_truths, run_replays
 from session_clips_contretemps.adapter import AnnuaireSparring
 from videos import Videos
 
@@ -54,6 +54,11 @@ def run() -> None:
     clips = SessionClips(videos=Videos(), directory=AnnuaireSparring())
     debut, fin = _heures()
     print(f"Découpe Sparring démarrée (caméra de la salle : en direct ; vidéos envoyées : de {debut} h à {fin} h ; toutes les {INTERVALLE_SECONDES}s).")
+    # Les réponses données avant que la vérité des tests soit gardée (Seb, 14/11).
+    try:
+        print(f"Réponses d'avant retrouvées : {recover_truths(_audio)}.")
+    except Exception:
+        traceback.print_exc()
     while True:
         db = SessionLocal()
         try:

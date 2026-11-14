@@ -401,7 +401,11 @@ class Videos:
             }
         envois = {(t.ecole_id, t.id) for t in db.scalars(select(Televersement))}
         effaces = []
-        for fichier in racine.glob("*/**/*"):
+        # Seulement là où le module range ses fichiers : le dossier de l'école
+        # et ses envois. Les sous-dossiers des autres modules (Fights : cris
+        # enregistrés, tests, postures) ne sont pas des vidéos (Seb, 14/11 :
+        # ses enregistrements avaient disparu au bout d'un jour).
+        for fichier in [*racine.glob("*/*"), *racine.glob("*/_uploads/*")]:
             if not fichier.is_file() or fichier.stat().st_mtime > limite or fichier in utiles:
                 continue
             if fichier.name.endswith(SUFFIXE_A_EFFACER) or fichier.with_name(fichier.name + SUFFIXE_A_EFFACER).exists():

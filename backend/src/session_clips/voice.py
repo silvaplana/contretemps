@@ -244,3 +244,58 @@ def run_replays(hear) -> int:
         request.write_text(json.dumps({"done": True, "tests": tests, "examples": examples, **totals}))
         n += 1
     return n
+
+
+def recover_truths(read_audio) -> int:
+    """Retrouve les réponses données avant que la vérité soit gardée (Seb,
+    14/11) : chaque exemple .wav vient de 2 s coupées dans un test, à partir
+    de t − 0,5 s. On le cherche dans les tests faits avant lui (le plus
+    récent d'abord) et on ajoute la réponse à la vérité de ce test. Ne
+    touche à rien d'autre ; rejouable. Renvoie le nombre de réponses retrouvées."""
+    import numpy as np
+
+    found = 0
+    for school in sorted(p for p in stockage.DOSSIER_VIDEOS_LIVE.glob("*") if (p / "voice-tests").is_dir()):
+        tests = sorted(
+            (p for p in (school / "voice-tests").glob("*") if _NAME.match(p.name)), key=lambda p: p.stat().st_mtime
+        )
+        known = {
+            x.get("example")
+            for p in tests
+            if p.with_suffix(".truth.json").exists()
+            for x in json.loads(p.with_suffix(".truth.json").read_text())
+        }
+        audio_cache: dict = {}
+        for example in sorted((school / "voice").glob("*/*.wav")):
+            key = f"{example.parent.name}/{example.name}"
+            if key in known or example.parent.name not in WORDS + NOT_WORDS:
+                continue
+            clip = np.asarray(read_audio(example), dtype=np.float64)
+            if len(clip) < 1600 or not clip.any():
+                continue
+            before = [p for p in tests if p.stat().st_mtime <= example.stat().st_mtime + 1][::-1][:10]
+            for test in before:
+                if test not in audio_cache:
+                    audio_cache[test] = np.asarray(read_audio(test), dtype=np.float64)
+                offset = _locate(audio_cache[test], clip)
+                if offset is None:
+                    continue
+                word = None if example.parent.name == "noise" else example.parent.name
+                _add_truth(test, {"t": round(offset + 0.5, 2), "word": word, "example": key})
+                found += 1
+                break
+    return found
+
+
+def _locate(audio, clip, rate: int = 16000):
+    """Où `clip` commence dans `audio` (secondes), s'il en est une copie ; sinon None."""
+    import numpy as np
+
+    if len(audio) < len(clip):
+        return None
+    n = 1 << int(np.ceil(np.log2(len(audio) + len(clip))))
+    corr = np.fft.irfft(np.fft.rfft(audio, n) * np.conj(np.fft.rfft(clip, n)), n)[: len(audio) - len(clip) + 1]
+    i = int(np.argmax(corr))
+    window = audio[i : i + len(clip)]
+    similarity = float(window @ clip) / (np.linalg.norm(window) * np.linalg.norm(clip) + 1e-12)
+    return i / rate if similarity > 0.9 else None
