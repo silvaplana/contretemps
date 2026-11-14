@@ -83,11 +83,12 @@ def hear_timer(video_path: Path) -> list[tuple[str, float, float, float]]:
     return found
 
 
-def hear_club_without(video_path: Path, exclude: frozenset[str]) -> list[tuple[str, float, float, float]]:
+def hear_club_without(video_path: Path, exclude: frozenset[str]) -> list[tuple[str, float, float, float, float]]:
     """L'écoute du club sans certains exemples (« Rejouer tous les essais »,
-    voice.run_replays) ; aucun cri si elle échoue."""
+    voice.run_replays), avant le seuil : (mot, moment, ressemblance, avance
+    sur le 2e, volume) ; le rejeu règle le seuil. Aucun cri si elle échoue."""
     try:
-        return _hear_club(video_path, exclude)
+        return _hear_club(video_path, exclude, raw=True)
     except Exception:
         print(f"Écoute impossible : {video_path.name}")
         traceback.print_exc()
@@ -103,16 +104,27 @@ def voice_dir(video_path: Path) -> Path:
     return DOSSIER_VIDEOS_LIVE / school / "voice"
 
 
-def _hear_club(video_path: Path, exclude: frozenset[str] = frozenset()) -> list[tuple[str, float, float, float]]:
-    from .club_hearing import hear_club, templates
+def _hear_club(video_path: Path, exclude: frozenset[str] = frozenset(), raw: bool = False) -> list:
+    import json
 
-    words = templates(voice_dir(video_path), _audio, exclude)
-    found = hear_club(_audio(video_path), words)
+    from .club_hearing import candidates, pick, templates
+
+    folder = voice_dir(video_path)
+    words = templates(folder, _audio, exclude)
+    found = candidates(_audio(video_path), words)
+    if raw:
+        return found
+    # Le seuil et l'écart réglés par le dernier « Rejouer tous les essais » (voice.py).
+    tuned = folder.parent / "voice-replays" / "thresholds.json"
+    limits = json.loads(tuned.read_text()) if tuned.exists() else {}
+    kept = pick(found, **limits)
     print(
-        f"Écoute du club dans {video_path.name} ({', '.join(f'{w} ×{len(e)}' for w, e in words.items()) or 'aucun cri enregistré'}) : "
-        + (" ".join(f"{k}@{t:.1f}~{s:.2f}" for k, t, s, _db in found) or "rien")
+        f"Écoute du club dans {video_path.name} ({', '.join(f'{w} ×{len(e)}' for w, e in words.items()) or 'aucun cri enregistré'}"
+        f"{', seuil ' + str(limits) if limits else ''}) : "
+        + (" ".join(f"{k}@{t:.1f}~{s:.2f}/{m:.2f}" for k, t, s, m, _db in found) or "rien")
+        + f" → {len(kept)} gardés"
     )
-    return found
+    return kept
 
 
 def _audio(video_path: Path):
@@ -167,9 +179,14 @@ def _hear(video_path: Path, model: str = "base") -> list[tuple[str, float]]:
 FRAME = 0.05  # secondes
 
 
+BACKGROUND_SPAN = 10.0  # secondes : le bruit de fond est celui d'autour, pas de toute la vidéo
+
+
 def loudness(audio) -> list[float]:
-    """Le volume (dB) de chaque tranche de 50 ms, moins le bruit de fond (la
-    médiane) : 0 dB sur un passage calme, beaucoup plus sur un cri."""
+    """Le volume (dB) de chaque tranche de 50 ms, moins le bruit de fond
+    d'autour (le 20e centile des 10 s autour ; étude du 14/11 : la médiane
+    de tout l'enregistrement faisait d'un passage bruyant une suite de
+    cris) : 0 dB sur un passage calme, beaucoup plus sur un cri."""
     import numpy as np
 
     n = int(16000 * FRAME)
@@ -177,7 +194,11 @@ def loudness(audio) -> list[float]:
         return []
     frames = audio[: len(audio) // n * n].reshape(-1, n)
     db = 20 * np.log10(np.sqrt((frames**2).mean(axis=1)) + 1e-6)
-    return list(db - float(np.median(db)))
+    half = int(BACKGROUND_SPAN / FRAME / 2)
+    if len(db) <= 2 * half:
+        return [float(x) for x in db - float(np.percentile(db, 20))]
+    windows = np.lib.stride_tricks.sliding_window_view(np.pad(db, half, mode="edge"), 2 * half + 1)
+    return [float(x) for x in db - np.percentile(windows, 20, axis=1)]
 
 
 def _peak(volumes: list[float], start: float, end: float) -> float:

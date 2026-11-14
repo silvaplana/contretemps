@@ -150,7 +150,8 @@ def test_rejouer_tous_les_essais(client, e, tmp_path, monkeypatch):  # noqa: F81
 
     def ecoute(path, exclude):
         rejoues.append((path.name, exclude))
-        return [("time", 2.2, 0.9, 20.0)]
+        # Avant le seuil : (mot, moment, ressemblance, avance sur le 2e, volume).
+        return [("time", 2.2, 0.9, 0.5, 20.0), ("hajime", 6.0, 0.1, 0.0, 15.0)]
 
     assert voice.run_replays(ecoute) == 1
     assert voice.run_replays(ecoute) == 0
@@ -161,6 +162,14 @@ def test_rejouer_tous_les_essais(client, e, tmp_path, monkeypatch):  # noqa: F81
     assert fait["done"] and fait["tests"] == 1 and fait["examples"] == 1
     assert (fait["points"], fait["best"], fait["good"], fait["missed"]) == (0, 2, 1, 1)
     assert fait["words"]["time"]["good"] == 1 and fait["words"]["combat"]["missed"] == 1
+    # Le rejeu règle le seuil (étude du 14/11) : le « hajime » inventé à 0,1 est écarté,
+    # et l'écoute du club prend ce réglage ensuite.
+    assert fait["invented"] == 0 and fait["min_score"] > 0.1
+    import json
+
+    [ecole] = [p for p in tmp_path.iterdir() if (p / "voice-replays").is_dir()]
+    assert json.loads((ecole / "voice-replays" / "thresholds.json").read_text())["min_score"] == fait["min_score"]
+    assert len(client.get("/session-clips/voice-replays", headers=e["coach"]).json()) == 1
     assert client.get("/session-clips/voice-replays", headers=e["ailleurs"]).json() == []
 
 
