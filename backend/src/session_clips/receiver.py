@@ -198,7 +198,8 @@ class SessionClipsReceiver:
 
         def settings_out(x: lab.Settings) -> ClubSignsBody:
             return ClubSignsBody(
-                signs=list(x.signs), framing=x.framing, start_skip=x.start_skip, end_skip=x.end_skip, show_timeline=x.show_timeline
+                signs=list(x.signs), framing=x.framing, start_skip=x.start_skip, end_skip=x.end_skip, show_timeline=x.show_timeline,
+                loud_only=x.loud_only, sure_only=x.sure_only,
             )
 
         @app.get(f"{PREFIX}/signs", response_model=ClubSignsBody)
@@ -208,7 +209,9 @@ class SessionClipsReceiver:
 
         @app.put(f"{PREFIX}/signs", response_model=ClubSignsBody)
         def set_club_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
-            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline)
+            new = lab.Settings(
+                tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline, body.loud_only, body.sure_only
+            )
             return settings_out(guard(lambda: lab.set_settings(s, m, new)))
 
         # Les réglages du Labo, à part de ceux du tournage (Seb, 12/11).
@@ -219,7 +222,9 @@ class SessionClipsReceiver:
 
         @app.put(f"{PREFIX}/lab/signs", response_model=ClubSignsBody)
         def set_lab_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
-            new = lab.Settings(tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline)
+            new = lab.Settings(
+                tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline, body.loud_only, body.sure_only
+            )
             return settings_out(guard(lambda: lab.set_settings(s, m, new, lab=True)))
 
         @app.get(f"{PREFIX}/lab", response_model=list[LabTestOut])

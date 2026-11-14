@@ -92,6 +92,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
 
     # Cadrage serré, 1 s retirée au début et 2 s à la fin (Seb, 12/11).
     reglages = {"signs": ["fists_touch", "x"], "framing": "tight", "start_skip": 1, "end_skip": 2, "show_timeline": True}
+    reglages |= {"loud_only": True, "sure_only": False}
     assert client.put("/session-clips/lab/signs", json=reglages, headers=e["coach"]).json() == reglages
     [serre] = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["fights"]
     assert serre["start"] == pytest.approx(combat["start"] + 1) and serre["end"] == pytest.approx(combat["end"] - 2)

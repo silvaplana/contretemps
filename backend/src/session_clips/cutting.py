@@ -31,9 +31,11 @@ from videos.duree import duree_secondes
 from videos.poster import generer_poster
 from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
-from .fights import REASON_NO_END, Sound, as_sound, find_signs
+from .fights import REASON_NO_END, Sound, find_signs
 from .framing import Box, ffmpeg_filter, video_size
 from .lab import club_fights, thumbnail
+from .lab import heard as heard_sounds
+from .lab import settings as club_settings
 from .models import Clip, ClipSession, Piece, Recorder
 from .service import SessionClips, video_name
 from .signals import Frame, Pose
@@ -53,13 +55,19 @@ def _deaf(_path: Path) -> list[Sound]:
     return []
 
 
-def _heard(path: Path, duration: float) -> list[tuple[str, float]]:
-    """Les cris entendus dans un morceau. Un morceau lu avant l'écoute des
+def _heard(path: Path, duration: float) -> list:
+    """Les cris entendus dans un morceau, tels que gardés (mot, moment, et
+    depuis le 14/11 note et volume). Un morceau lu avant l'écoute des
     sons (12/11) n'a pas de fichier ; dans un bout de moins de 2 s, Whisper
     invente les mots qu'on lui souffle (« Go, Time », séance 9, 13/11)."""
     if duration < MIN_HEARD or not path.exists():
         return []
-    return [as_sound(x) for x in json.loads(path.read_text())]
+    return json.loads(path.read_text())
+
+
+def _unrated(path: Path) -> bool:
+    """Des cris gardés sans note ni volume (écoutés avant le 14/11)."""
+    return path.exists() and any(isinstance(x, list) and len(x) < 4 for x in json.loads(path.read_text()))
 
 
 def sessions_to_cut(db: Session) -> list[ClipSession]:
@@ -122,7 +130,7 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
         raw = clips.videos.get(db, session.raw_video_id)
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
     size = video_size(source)
-    frames, sounds = list(detect(source)), hear(source)
+    frames, sounds = list(detect(source)), heard_sounds(hear(source), club_settings(db, session.org_id))
     session.signs = json.dumps(_signs(frames, sounds, [(source, 0.0, float("inf"))], None))
     fights = club_fights(db, session.org_id, frames, sounds, size)
 
@@ -197,6 +205,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     frames: list[Frame] = []
     sounds: list[Sound] = []
     sources: list[tuple[Path, float, float]] = []  # fichier, début dans la séance, durée
+    settings = club_settings(db, session.org_id)
     offset, read, ended = 0.0, False, False
     for piece in pieces:
         video = videos.get(piece.video_id)
@@ -217,8 +226,10 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
             read = True
         else:
             piece_frames = _load_frames(poses)
+            if _unrated(heard):  # écouté avant le 14/11 : sans volume ni note, réécouté
+                heard.write_text(json.dumps(hear(source)))
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
-        for kind, t in _heard(heard, piece.duration_seconds):
+        for kind, t in heard_sounds(_heard(heard, piece.duration_seconds), settings):
             sounds.append((kind, t + offset))
         sources.append((source, offset, piece.duration_seconds))
         offset += piece.duration_seconds

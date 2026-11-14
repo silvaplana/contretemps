@@ -247,3 +247,5 @@ class ClubSignsBody(BaseModel):
     start_skip: float = 0.0
     end_skip: float = 0.0
     show_timeline: bool = True
+    loud_only: bool = False
+    sure_only: bool = False

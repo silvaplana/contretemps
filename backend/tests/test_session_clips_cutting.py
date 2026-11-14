@@ -236,15 +236,23 @@ def test_ecoute_des_cris_brefs(monkeypatch, tmp_path, capsys):
 
         def transcribe(self, _path, **kwargs):
             reglages.update(kwargs)
-            mot = lambda w, t: types.SimpleNamespace(word=w, start=t)
-            return [types.SimpleNamespace(words=[mot(" Go!", 3.9), mot(" Time!", 7.3)])], None
+            mot = lambda w, t, p: types.SimpleNamespace(word=w, start=t, end=t + 0.3, probability=p)
+            return [types.SimpleNamespace(words=[mot(" Go!", 3.9, 0.9), mot(" Time!", 7.3, 0.31)])], None
 
     monkeypatch.setitem(sys.modules, "faster_whisper", types.SimpleNamespace(WhisperModel=Modele))
     monkeypatch.setattr(hearing, "_model", None)
-    monkeypatch.setattr(hearing, "_audio", lambda _path: [0.0])
-    assert hearing.hear(tmp_path / "go-time.mp4") == [("go", 3.9), ("time", 7.3)]
+    # 10 s de bruit de fond, un cri fort à 4 s ; rien à 7,3 s (Seb, 14/11 :
+    # chaque cri vient avec sa note de confiance et son volume).
+    import numpy as np
+
+    son = np.random.default_rng(0).normal(0, 0.01, 16000 * 10).astype(np.float32)
+    son[16000 * 4 : 16000 * 4 + 3200] *= 30
+    monkeypatch.setattr(hearing, "_audio", lambda _path: son)
+    [(go, t_go, note_go, fort_go), (time, t_time, note_time, fort_time)] = hearing.hear(tmp_path / "go-time.mp4")
+    assert (go, t_go, note_go, time, t_time, note_time) == ("go", 3.9, 0.9, "time", 7.3, 0.31)
+    assert fort_go > 20 and fort_time < 3
     assert reglages["language"] == "en" and reglages["vad_parameters"]["min_speech_duration_ms"] <= 100
-    assert "Go!@3.9 Time!@7.3" in capsys.readouterr().out
+    assert "Go!@3.9~0.90 Time!@7.3~0.31" in capsys.readouterr().out
 
 
 def test_son_lu_par_ffmpeg(tmp_path):
@@ -341,8 +349,22 @@ def test_pas_de_cri_dans_un_bout_trop_court(tmp_path):
     fichier = tmp_path / "m.sounds.json"
     fichier.write_text('[["go", 0.0], ["time", 0.8], ["go", 0.8]]')
     assert _heard(fichier, 1.09) == []
-    assert _heard(fichier, 72.9) == [("go", 0.0), ("time", 0.8), ("go", 0.8)]
+    assert _heard(fichier, 72.9) == [["go", 0.0], ["time", 0.8], ["go", 0.8]]
     assert _heard(tmp_path / "absent.json", 30) == []
+
+
+def test_cris_forts_et_mots_surs():
+    """Seb, 14/11 : l'écoute invente les mots qu'on lui souffle sur un passage
+    calme. Deux cases des réglages : seulement les cris forts (6 dB au-dessus
+    du bruit de fond), seulement les mots sûrs (note ≥ 0,5). Un cri entendu
+    avant (sans note ni volume) est gardé."""
+    from session_clips.lab import Settings, heard
+
+    sons = [["fight", 6.8, 0.9, 25.0], ["time", 18.4, 0.8, 1.0], ["hajime", 17.4, 0.2, 20.0], ["go", 3.0]]
+    assert heard(sons, Settings()) == [("fight", 6.8), ("time", 18.4), ("hajime", 17.4), ("go", 3.0)]
+    assert heard(sons, Settings(loud_only=True)) == [("fight", 6.8), ("hajime", 17.4), ("go", 3.0)]
+    assert heard(sons, Settings(sure_only=True)) == [("fight", 6.8), ("time", 18.4), ("go", 3.0)]
+    assert heard(sons, Settings(loud_only=True, sure_only=True)) == [("fight", 6.8), ("go", 3.0)]
 
 
 def test_fight_et_hajime_commencent_le_combat():
@@ -384,3 +406,21 @@ def test_video_couchee_redressee():
     for way in (1, -1):
         fights = find_fights(quarter_turn(debout, way), ("fists_touch", "x"))
         assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(0.0, 12.0)]
+
+
+def test_cris_d_avant_reecoutes():
+    """Des cris gardés avant le 14/11, sans note ni volume : « Relancer la
+    découpe » réécoute le morceau pour que les cases du 14/11 servent."""
+    from session_clips.cutting import _unrated
+
+    import tempfile
+    from pathlib import Path
+
+    tmp = Path(tempfile.mkdtemp())
+    fichier = tmp / "m.sounds.json"
+    fichier.write_text('[["go", 1.0]]')
+    assert _unrated(fichier)
+    fichier.write_text('[["go", 1.0, 0.9, 12.0]]')
+    assert not _unrated(fichier)
+    fichier.write_text("[]")
+    assert not _unrated(fichier) and not _unrated(tmp / "absent.json")
