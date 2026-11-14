@@ -476,6 +476,9 @@ sont retirés de l'écran ; les routes de jumelage restent pour l'appli caméra 
   titre « Séance du JJ/MM » (plus de choix du cours) ou `camera/stop`. Le serveur garde l'ordre ; la
   caméra obéit au dernier, d'où qu'il vienne. Le choix du signal « compris » n'est plus à l'écran
   (le téléphone ne reconnaît pas encore les gestes, 3c).
+  **Un appui de trop ne coupe plus le film** (Seb, 14/11 : une longue vidéo devenue deux de quelques
+  secondes) : pendant le film, le bouton dit « ■ Maintenir pour arrêter » et se remplit ; il faut le
+  tenir 1 s. Après chaque ordre, le bouton se repose 3 s, le temps que l'état de la caméra suive.
 
 **Le bouton caméra (retiré le 12/11).** En haut à droite de Sparring, pour les coachs seulement (y compris sur
 « Mes combats » et « À vérifier ») : une pastille en couleur avec une caméra et un mot.

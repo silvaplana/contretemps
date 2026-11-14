@@ -95,12 +95,12 @@ Tournage (coachs) : tout pour filmer la séance.
 - Caméra : seulement dans l'appli Android « Tournage <école> » ; dans Chrome, un bouton « Installer
   l'appli Tournage ». Une petite image montre ce que voit la caméra (Prête, Filme avec le chrono ;
   pendant le film, elle se met à jour chaque seconde),
-  puis « Envoi de la vidéo : 45 % » avec une barre (ou « Vidéo en attente d'envoi »), puis le bouton « ● Filmer » / « ■ Arrêter ». Le film
+  puis « Envoi de la vidéo : 45 % » avec une barre (ou « Vidéo en attente d'envoi »), puis le bouton « ● Filmer » / « ■ Maintenir pour arrêter » (tenir 1 s). Le film
   continue écran éteint. Remettre sur Éteint
   arrête la caméra.
 - Télécommande : « Caméra de la salle prête · 86 % », « La caméra filme · 00:12:34 » ou « Caméra
   éteinte », puis ce que voit la caméra (une image toutes les 4 s, prête ou en train de filmer), et
-  le même bouton « ● Filmer » / « ■ Arrêter », qui envoie l'ordre à la caméra. Le volet Montage se
+  le même bouton « ● Filmer » / « ■ Maintenir pour arrêter » (tenir 1 s), qui envoie l'ordre à la caméra. Le volet Montage se
   met à jour seul sur tous les téléphones, la caméra comprise.
 - La séance s'appelle « Séance du 12/11 ». Plusieurs télécommandes possibles : la caméra obéit au
   dernier ordre.

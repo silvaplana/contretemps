@@ -489,6 +489,21 @@
   background: var(--text);
   border-color: var(--text);
   color: var(--bg);
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Arrêter se remplit pendant qu'on le maintient (Seb, 14/11). */
+.sc-tournage__bouton--maintien {
+  background: linear-gradient(to right, var(--danger-text) 50%, var(--text) 50%) right / 200% 100%;
+  animation: sc-maintien 1s linear forwards;
+}
+
+@keyframes sc-maintien {
+  to {
+    background-position: left;
+  }
 }
 
 .sc-tournage__etat {

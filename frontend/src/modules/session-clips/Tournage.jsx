@@ -10,6 +10,11 @@ import * as api from './api.js'
 // la caméra de l'école. Le serveur garde l'ordre : la caméra obéit au dernier.
 
 const IMAGE_MS = 4000
+// Un appui de trop ne coupe plus le film (Seb, 14/11 : une longue vidéo devenue
+// deux de quelques secondes) : Arrêter se maintient 1 s, et le bouton se
+// repose 3 s après chaque ordre, le temps que l'état de la caméra suive.
+const MAINTENIR_MS = 1000
+const REPOS_MS = 3000
 const RELIRE_MS = 2000 // l’état de la caméra se voit vite sur la télécommande (Seb, 13/11)
 // Le film en tâche de fond de l'appli Tournage (frontend/android, camera/TournagePlugin.kt).
 const Natif = registerPlugin('Tournage')
@@ -142,6 +147,8 @@ export default function Tournage({ montrer, rafraichir }) {
   const [role, setRole] = useState(() => lire(ROLE) ?? 'off')
   const [camera, setCamera] = useCamera()
   const [enCours, setEnCours] = useState(false)
+  const [maintien, setMaintien] = useState(false)
+  const minuteur = useRef(null)
   // Lu aussi hors de « Caméra » : un envoi commencé continue et se voit (Seb, 12/11).
   const natif = useEtatNatif(DANS_L_APPLI)
   const filme = camera?.state === 'recording'
@@ -183,11 +190,26 @@ export default function Tournage({ montrer, rafraichir }) {
       // Ce téléphone est la caméra : il prend l'ordre tout de suite (Seb, 13/11).
       if (role === 'cam' && DANS_L_APPLI) Natif.poke().catch(() => {})
       rafraichir()
+      await new Promise((ok) => setTimeout(ok, REPOS_MS))
     } catch (e) {
       montrer(e.message)
     } finally {
       setEnCours(false)
     }
+  }
+
+  function appuyer() {
+    if (!filme || enCours) return
+    setMaintien(true)
+    minuteur.current = setTimeout(() => {
+      setMaintien(false)
+      filmerOuArreter()
+    }, MAINTENIR_MS)
+  }
+
+  function lacher() {
+    clearTimeout(minuteur.current)
+    setMaintien(false)
   }
 
   const selecteur = (
@@ -205,11 +227,16 @@ export default function Tournage({ montrer, rafraichir }) {
   const bouton = (
     <button
       type="button"
-      className={`btn btn--primary sc-tournage__bouton${filme ? ' sc-tournage__bouton--stop' : ''}`}
+      className={`btn btn--primary sc-tournage__bouton${filme ? ' sc-tournage__bouton--stop' : ''}${maintien ? ' sc-tournage__bouton--maintien' : ''}`}
       disabled={enCours || !camera || ['none', 'offline'].includes(camera.state)}
-      onClick={filmerOuArreter}
+      onClick={filme ? undefined : filmerOuArreter}
+      onPointerDown={appuyer}
+      onPointerUp={lacher}
+      onPointerLeave={lacher}
+      onPointerCancel={lacher}
+      onContextMenu={(ev) => ev.preventDefault()}
     >
-      {filme ? '■ Arrêter' : '● Filmer'}
+      {filme ? '■ Maintenir pour arrêter' : '● Filmer'}
     </button>
   )
 
