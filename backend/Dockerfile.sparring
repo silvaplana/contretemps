@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # PyTorch en version processeur seul (pas de carte graphique sur le VPS),
 # installé avant Ultralytics pour qu'il ne tire pas la version CUDA (plusieurs Go).
-RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu \
+RUN pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu \
     && pip install --no-cache-dir ultralytics opencv-python-headless faster-whisper
 
 COPY pyproject.toml ./
@@ -32,6 +32,10 @@ RUN python -c "from faster_whisper import download_model; download_model('base',
 # L'écoute précise, au choix dans les réglages de Fights (Seb, 14/11) : environ 480 Mo de plus.
 RUN python -c "from faster_whisper import download_model; download_model('small', output_dir='/app/models/whisper-small')"
 ENV SPARRING_SPEECH_MODEL=/app/models/whisper-base
+# L'écoute du club (session_clips/club_hearing.py, Seb 14/11) : wav2vec2 « base »
+# de torchaudio (environ 360 Mo), qui compare les cris aux cris enregistrés.
+ENV TORCH_HOME=/app/models/torch
+RUN python -c "import torchaudio; torchaudio.pipelines.WAV2VEC2_BASE.get_model()"
 ENV SPARRING_SPEECH_DIR=/app/models
 
 RUN useradd --create-home appuser \

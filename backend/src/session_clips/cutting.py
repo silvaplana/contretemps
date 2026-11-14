@@ -39,6 +39,7 @@ from .lab import settings as club_settings
 from .models import Clip, ClipSession, Piece, Recorder
 from .service import SessionClips, video_name
 from .signals import Frame, Pose
+from . import voice
 
 CLIP_HEIGHT = 720
 REASON_NAMES = "Choisissez les noms des combattants."
@@ -237,7 +238,9 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
             piece_frames = _load_frames(poses)
             # Écouté avant le 14/11 (sans volume ni note), ou jamais avec cette
             # écoute : réécouté ; chaque écoute garde son fichier.
-            if _unrated(heard) or not heard.exists():
+            # L'écoute du club réécoute aussi quand les cris enregistrés ont changé.
+            stale = settings.speech_model == "club" and heard.exists() and heard.stat().st_mtime < voice.newest(session.org_id)
+            if _unrated(heard) or not heard.exists() or stale:
                 heard.write_text(json.dumps(listen(hear, source, settings.speech_model)))
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
         for x in _heard(heard, piece.duration_seconds):

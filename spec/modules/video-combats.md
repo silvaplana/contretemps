@@ -284,7 +284,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    **Fights › ⋮ › Entraîner l'écoute** (Seb, 14/11, coachs) : pour apprendre les cris à l'écoute
    (un petit modèle de mots-clés, à venir) au lieu de compter sur Whisper. On choisit le mot (Fight,
    Hajime, Combat, Time), on touche « Enregistrer » et on crie le mot : 2 s enregistrées au micro
-   du téléphone, envoyées tout de suite ; ▶ pour réécouter, poubelle pour effacer ; objectif 50 par
+   du téléphone, envoyées tout de suite ; ▶ pour réécouter, poubelle pour effacer ; objectif 20 par
    mot. Pas de table : un fichier par enregistrement, `<VIDEOS_DIR>/<école>/voice/<mot>/<id>.webm`
    (`session_clips/voice.py`, routes `/session-clips/voice`), étanche par école.
    **Mots inventés** (Seb, 14/11, séance 10 : « hajime, fight, hajime, time » récités sur la fin calme) :
@@ -306,6 +306,15 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    (`/app/models/whisper-base` et `whisper-small`, `SPARRING_SPEECH_DIR`). Chaque écoute garde
    ses cris à part (`<morceau>.sounds.json` pour la rapide, `<morceau>.sounds.small.json` pour la
    précise) : changer d'écoute puis « Relancer la découpe » réécoute chaque morceau une fois.
+   **Écoute du club** (Seb, 14/11, troisième choix « Du club », `speech_model` = `club`) : pas de
+   Whisper ; `club_hearing.py` compare les cris aux enregistrements d'« Entraîner l'écoute ».
+   wav2vec2 « base » (torchaudio, couche 8, dans l'image `sparring-worker`, `TORCH_HOME`) donne une
+   empreinte toutes les 20 ms ; un cri = l'empreinte moyenne de ses 0,6 s les plus fortes. Chaque pic
+   de volume d'au moins 6 dB (un par seconde au plus) est comparé aux mots enregistrés (moyenne des 3
+   plus proches) et à 40 passages sans cri de la même vidéo pris au hasard : il compte s'il ressemble
+   plus à un mot qu'à ces passages, avec sa ressemblance (0 à 1) comme note « sûr ». Seuls les mots
+   enregistrés sont cherchés (Seb : « Time » d'abord). Cris dans `<morceau>.sounds.club.json`,
+   réécoutés à la découpe suivante quand les enregistrements ont changé (`voice.newest`).
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en
