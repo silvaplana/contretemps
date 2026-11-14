@@ -351,6 +351,12 @@ function Progres({ historique }) {
                 {' '}
                 (bons {h.good}, mauvais {h.wrong}, inventés {h.invented}, oubliés {h.missed})
               </small>
+              {h.min_score != null && (
+                <small className="sc-meta sc-ecoute__mot">
+                  Réglage trouvé : ressemblance au moins {virgule(h.min_score, 2)}, avance sur le 2e mot au moins{' '}
+                  {virgule(h.min_margin, 2)}
+                </small>
+              )}
               {/* Mot par mot (étude du 14/11) : pour choisir le mot du début. */}
               {h.words &&
                 MOTS.map(([id, l]) => {

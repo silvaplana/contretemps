@@ -314,10 +314,11 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    **Écoute du club** (Seb, 14/11, troisième choix « Du club », `speech_model` = `club`) : pas de
    Whisper ; `club_hearing.py` compare les cris aux enregistrements d'« Entraîner l'écoute ».
    wav2vec2 « base » (torchaudio, couche 8, dans l'image `sparring-worker`, `TORCH_HOME`) donne une
-   empreinte toutes les 20 ms ; un cri = l'empreinte moyenne de ses 0,6 s les plus fortes. Chaque pic
-   de volume d'au moins 6 dB (un par seconde au plus, et un seul par cri : deux pics ne sont deux cris que si le son retombe d'au moins 12 dB entre eux, Seb 14/11 : un grand « Tiiime » donnait deux « Time ») est comparé aux mots enregistrés (moyenne des 3
-   plus proches) et à 40 passages sans cri de la même vidéo pris au hasard : il compte s'il ressemble
-   plus à un mot qu'à ces passages, avec sa ressemblance (0 à 1) comme note « sûr ». Seuls les mots
+   empreinte toutes les 20 ms. Chaque pic de volume d'au moins 6 dB (un par seconde au plus, et un
+   seul par cri : deux pics ne sont deux cris que si le son retombe d'au moins 12 dB entre eux, Seb
+   14/11 : un grand « Tiiime » donnait deux « Time ») est comparé aux mots enregistrés, cri entier
+   contre cri entier (voir « Comparer le cri entier » plus bas) ; sa ressemblance (0 à 1) est sa
+   note « sûr ». Seuls les mots
    enregistrés sont cherchés (Seb : « Time » d'abord). Cris dans `<morceau>.sounds.club.json`,
    réécoutés à la découpe suivante quand les enregistrements ont changé (`voice.newest`).
    **Sons du Timer** (Seb, 14/11) : la **Cloche du Timer** (un coup, début du round, `bell`) est un
@@ -364,6 +365,24 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    inventés, mis à la place d'un autre mot, et « pris pour » (dit, mais trouvé comme quel mot) ;
    la liste des rejeux les affiche. Le micro de la page enregistre le son brut
    (`echoCancellation`, `noiseSuppression`, `autoGainControl` à false), comme la caméra du Tournage.
+   **Comparer le cri entier** (étude du 14/11, codée le soir même ; `club_hearing.py`) :
+   - le bruit de fond est le 20e centile des 10 s autour (`hearing.loudness`), plus la médiane de
+     tout l'enregistrement : un long passage bruyant ne paraît plus 30 dB au-dessus ;
+   - un cri va de part et d'autre de son pic jusqu'à ce que le son retombe de 12 dB, entre 0,3 et
+     1,5 s (`bounds`), pareil pour les exemples et pour la séance ;
+   - les empreintes sont centrées (moins la moyenne de tous les exemples) et deux cris se comparent
+     dans l'ordre de leurs sons (DTW, coût 1 − cosinus) : de −1 à 1 ;
+   - chaque mot est jugé sur le même nombre d'exemples, ses N plus récents (N : le mot le moins
+     enregistré), moyenne des 3 plus proches ; « other » et « noise » sont des rivaux ;
+   - un cri est gardé si sa ressemblance dépasse un seuil et son avance sur le 2e (mot ou faux cri)
+     dépasse un écart. **Réglés par « Rejouer tous les essais »** : le rejeu essaie seuil −0,2 à 0,9
+     et écart 0 à 0,2, garde le couple qui donne le plus de points (à égalité, le plus sévère) et
+     l'écrit dans `voice-replays/thresholds.json`, que l'écoute du club prend ensuite (séances et
+     tests). Avant le premier rejeu : 0,3 et 0,02. La liste des rejeux affiche le réglage trouvé ;
+   - wav2vec2 lit le son par tranches de 20 s avec 1 s de plus de chaque côté : un cri à cheval
+     n'est plus abîmé. Le tirage de passages de fond au hasard est retiré.
+   Les morceaux déjà écoutés par l'écoute du club sont réécoutés après ce changement (`voice.CLUB_CHANGED`)
+   et après chaque nouveau réglage du rejeu (`voice.newest`).
    **Effacer** (Seb, 14/11 : deux boutons) : « Effacer tous les enregistrements » sous la liste des cris
    (`DELETE /voice` : tous les mots, et les exemples « other » / « noise » rangés après un test ; le
    dossier `voice/` vide est recréé, daté de maintenant, pour que l'écoute du club réécoute les

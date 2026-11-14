@@ -66,12 +66,21 @@ def path(member: Member, word: str, name: str) -> Path:
     return found
 
 
+# Le cri entier comparé dans l'ordre (étude du 14/11, mis en ligne le
+# 15/11 vers 0 h 15 à Paris) : les morceaux écoutés avant sont réécoutés.
+CLUB_CHANGED = 1794698100.0  # 2026-11-14 23:15 UTC
+
+
 def newest(org_id: int) -> float:
-    """L'heure du dernier changement des cris enregistrés (0 s'il n'y en a pas) :
-    l'écoute du club réécoute les morceaux écoutés avant (cutting.py)."""
-    folder = dossier_ecole(org_id) / "voice"
+    """L'heure du dernier changement des cris enregistrés ou du réglage du
+    rejeu : l'écoute du club réécoute les morceaux écoutés avant (cutting.py)."""
+    school = dossier_ecole(org_id)
+    folder = school / "voice"
     stamps = [p.stat().st_mtime for p in folder.glob("*")] + [p.stat().st_mtime for p in folder.glob("*/*")]
-    return max(stamps, default=0.0)
+    tuned = school / "voice-replays" / "thresholds.json"
+    if tuned.exists():
+        stamps.append(tuned.stat().st_mtime)
+    return max([*stamps, CLUB_CHANGED])
 
 
 def delete(member: Member, word: str, name: str) -> None:
@@ -263,41 +272,69 @@ def add_replay(member: Member) -> None:
 def replays(member: Member) -> list[dict]:
     """L'historique des rejeux, du plus ancien au plus récent."""
     folder = _replays_folder(member)
-    files = sorted(folder.glob("*.json"), key=lambda p: int(p.stem)) if folder.exists() else []
+    files = sorted((p for p in folder.glob("*.json") if p.stem.isdigit()), key=lambda p: int(p.stem)) if folder.exists() else []
     return [{"at": int(p.stem) / 1000, **json.loads(p.read_text())} for p in files]
+
+
+# Les réglages essayés par le rejeu (étude du 14/11) : le seuil de
+# ressemblance au mot, et l'avance sur le 2e mot (ou sur un faux cri signalé).
+SCORES = tuple(round(x * 0.05, 2) for x in range(-4, 19))  # −0,2 à 0,9
+MARGINS = (0.0, 0.01, 0.02, 0.05, 0.1, 0.15, 0.2)
+
+
+def _tune(heard: list[tuple[list, list[dict]]]) -> tuple[float, float]:
+    """Le seuil et l'écart qui donnent le plus de points sur tous les tests
+    (à points égaux, les plus sévères : moins de mots inventés)."""
+    from .club_hearing import pick
+
+    def total(s: float, m: float) -> int:
+        return sum(score(pick(found, s, m), truth)["points"] for found, truth in heard)
+
+    return max(((s, m) for s in SCORES for m in MARGINS), key=lambda x: (total(*x), x[0], x[1]))
 
 
 def run_replays(hear) -> int:
     """Pour le worker : rejoue les demandes en attente, toutes écoles.
     `hear(chemin, exemples à écarter)` : l'écoute du club sans les exemples
-    venus du test rejoué (sinon elle se reconnaîtrait elle-même)."""
+    venus du test rejoué (sinon elle se reconnaîtrait elle-même), avant le
+    seuil. Le rejeu règle le seuil et l'écart (`voice-replays/thresholds.json`),
+    que l'écoute du club prend ensuite pour les séances et les tests."""
+    from .club_hearing import pick
+
     n = 0
     for request in sorted(stockage.DOSSIER_VIDEOS_LIVE.glob("*/voice-replays/*.json")):
-        if json.loads(request.read_text()).get("done"):
+        if not request.stem.isdigit() or json.loads(request.read_text()).get("done"):
             continue
         school = request.parent.parent
-        totals = {"good": 0, "wrong": 0, "invented": 0, "missed": 0, "points": 0, "best": 0}
-        by_word = {w: {"good": 0, "missed": 0, "invented": 0, "wrong": 0, "heard_as": {}} for w in WORDS}
-        tests = 0
+        heard = []
         for path in sorted((school / "voice-tests").glob("*")):
             truth_path = path.with_suffix(".truth.json")
             if not _NAME.match(path.name) or not truth_path.exists():
                 continue
             truth = json.loads(truth_path.read_text())
             exclude = frozenset(x["example"] for x in truth if x.get("example"))
-            result = score(hear(path, exclude), truth)
+            heard.append((hear(path, exclude), truth))
+        min_score, min_margin = _tune(heard) if heard else (None, None)
+        totals = {"good": 0, "wrong": 0, "invented": 0, "missed": 0, "points": 0, "best": 0}
+        by_word = {w: {"good": 0, "missed": 0, "invented": 0, "wrong": 0, "heard_as": {}} for w in WORDS}
+        for found, truth in heard:
+            result = score(pick(found, min_score, min_margin), truth)
             for k in totals:
                 totals[k] += result[k]
             for w, counts in result["words"].items():
                 for k, v in counts.items():
                     if k == "heard_as":
-                        for other, n in v.items():
-                            by_word[w][k][other] = by_word[w][k].get(other, 0) + n
+                        for other, c in v.items():
+                            by_word[w][k][other] = by_word[w][k].get(other, 0) + c
                     else:
                         by_word[w][k] += v
-            tests += 1
+        if heard:
+            (request.parent / "thresholds.json").write_text(json.dumps({"min_score": min_score, "min_margin": min_margin}))
         examples = sum(1 for p in (school / "voice").glob("*/*") if p.parent.name in WORDS and _NAME.match(p.name))
-        request.write_text(json.dumps({"done": True, "tests": tests, "examples": examples, **totals, "words": by_word}))
+        request.write_text(json.dumps({
+            "done": True, "tests": len(heard), "examples": examples, **totals, "words": by_word,
+            "min_score": min_score, "min_margin": min_margin,
+        }))
         n += 1
     return n
 

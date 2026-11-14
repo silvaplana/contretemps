@@ -63,7 +63,7 @@ l'écoute du club (mot, seconde, note, volume) ou « Aucun cri reconnu ». Sous 
 le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; le cri est rangé comme exemple et la ligne dit « Rangé : … ».
 Dessous, « Il manque un mot » (puis le mot) pour un cri que l'écoute n'a pas trouvé. Plus bas, « Progrès de l'écoute du
 club » : « Rejouer tous les essais » réécoute tous les tests répondus et ajoute une ligne (date, points sur le meilleur
-possible, bons, mauvais, inventés, oubliés, puis le détail mot par mot) et un point sur la courbe.
+possible, bons, mauvais, inventés, oubliés, puis le réglage trouvé et le détail mot par mot) et un point sur la courbe ; ce réglage sert ensuite à l’écoute du club.
 Pour repartir de zéro : « Effacer tous les enregistrements » (sous la liste, tous les mots) ou « Effacer tous les tests »
 (tout en bas : les tests, leurs réponses et les points). « Annuler » pendant 10 s.
 
