@@ -44,6 +44,9 @@ export default function Ecoute({ montrer }) {
   const [lecture, setLecture] = useState(null)
   const [test, setTest] = useState(null) // 'ecoute' puis 'analyse'
   const [resultat, setResultat] = useState(null)
+  const [testNom, setTestNom] = useState(null)
+  const [reponses, setReponses] = useState({}) // moment -> ce qui a été rangé
+  const [quelMot, setQuelMot] = useState(null) // moment dont on choisit le mot (Mauvais)
   const audio = useRef(null)
 
   useEffect(() => {
@@ -77,6 +80,8 @@ export default function Ecoute({ montrer }) {
       }
       setTest('analyse')
       const { name } = await api.envoyerTest(son)
+      setTestNom(name)
+      setReponses({})
       for (let i = 0; i < 60; i++) {
         await new Promise((ok) => setTimeout(ok, 2000))
         const r = await api.resultatTest(name)
@@ -99,6 +104,22 @@ export default function Ecoute({ montrer }) {
       setLecture(nom)
       audio.current.src = url
       await audio.current.play()
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
+  // Bon, Mauvais ou Inventé (Seb, 14/11) : le cri est rangé comme exemple.
+  async function repondre(w, answer, word) {
+    try {
+      await api.repondreTest(testNom, { t: w.t, answer, word })
+      const nomMot = MOTS.find(([id]) => id === word)?.[1]
+      setReponses((r) => ({
+        ...r,
+        [w.t]: answer === 'invented' ? 'Rangé : inventé' : nomMot ? `Rangé : « ${nomMot} »` : 'Rangé : autre mot',
+      }))
+      setQuelMot(null)
+      if (nomMot) setListe(await api.enregistrements())
     } catch (e) {
       montrer(e.message)
     }
@@ -158,11 +179,34 @@ export default function Ecoute({ montrer }) {
         (resultat.length ? (
           <ul className="sc-ecoute__liste">
             {resultat.map((w) => (
-              <li key={w.t}>
+              <li key={w.t} className="sc-ecoute__trouve">
                 <span>
                   « {MOTS.find(([id]) => id === w.kind)?.[1] ?? w.kind} ! » à {virgule(w.t, 1)} s · sûr {virgule(w.note, 2)} ·{' '}
                   {Math.round(w.db)} dB
                 </span>
+                {reponses[w.t] ? (
+                  <span className="sc-meta">{reponses[w.t]}</span>
+                ) : quelMot === w.t ? (
+                  <span className="sc-ecoute__choix">
+                    {[...MOTS.filter(([id]) => id !== w.kind), ['other', 'Autre mot']].map(([id, l]) => (
+                      <button key={id} type="button" className="btn" onClick={() => repondre(w, 'wrong', id)}>
+                        {l}
+                      </button>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="sc-ecoute__choix">
+                    <button type="button" className="btn" onClick={() => repondre(w, 'good', w.kind)}>
+                      Bon
+                    </button>
+                    <button type="button" className="btn" onClick={() => setQuelMot(w.t)}>
+                      Mauvais
+                    </button>
+                    <button type="button" className="btn" onClick={() => repondre(w, 'invented')}>
+                      Inventé
+                    </button>
+                  </span>
+                )}
               </li>
             ))}
           </ul>

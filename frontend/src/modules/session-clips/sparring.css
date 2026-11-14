@@ -1063,3 +1063,20 @@
 .sc-ecoute__liste li span {
   flex: 1;
 }
+
+/* Sous un mot trouvé par « Tester » : Bon | Mauvais | Inventé (Seb, 14/11). */
+.sc-ecoute__liste li.sc-ecoute__trouve {
+  flex-direction: column;
+  align-items: stretch;
+  padding: 8px 0;
+}
+
+.sc-ecoute__choix {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.sc-ecoute__choix .btn {
+  min-height: 48px;
+}

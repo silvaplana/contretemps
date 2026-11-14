@@ -22,6 +22,8 @@ import numpy as np
 
 from .hearing import FRAME, loudness
 
+NOT_WORDS = ("other", "noise")  # comme voice.NOT_WORDS
+
 RATE = 16000
 WINDOW = 0.6  # secondes autour du pic : un cri bref
 MIN_DB = 6.0  # un pic moins fort que le bruit de fond + 6 dB n'est pas un cri
@@ -119,6 +121,10 @@ def _closeness(v: np.ndarray, examples: list[np.ndarray]) -> float:
 def hear_club(audio: np.ndarray, words: dict[str, list[np.ndarray]]) -> list[tuple[str, float, float, float]]:
     """Les cris de la séance qui ressemblent aux cris enregistrés :
     (mot, moment, ressemblance de 0 à 1, volume en dB)."""
+    # « other » (un autre mot) et « noise » (rien) : les réponses Mauvais et
+    # Inventé après un test (voice.answer_test, Seb 14/11), pas des mots à trouver.
+    wrong = [e for k in NOT_WORDS for e in words.get(k, [])]
+    words = {k: e for k, e in words.items() if k not in NOT_WORDS}
     if not words or len(audio) < RATE * WINDOW:
         return []
     volumes = loudness(audio)
@@ -140,6 +146,8 @@ def hear_club(audio: np.ndarray, words: dict[str, list[np.ndarray]]) -> list[tup
         word, score = max(scores.items(), key=lambda x: x[1])
         if background and score <= _closeness(v, background):
             continue  # ressemble plus à un passage sans cri
+        if wrong and score <= _closeness(v, wrong):
+            continue  # ressemble plus à un faux cri déjà signalé
         db = round(float(max(volumes[int(start / FRAME) : int((start + WINDOW) / FRAME) + 1])), 1)
         out.append((word, round(start, 1), round(max(score, 0.0), 2), db))
     return out

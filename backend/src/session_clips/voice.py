@@ -21,7 +21,12 @@ from .service import ForbiddenError, NotFoundError
 WORDS = ("fight", "hajime", "combat", "time")
 MAX_BYTES = 2_000_000  # quelques secondes de son
 EXTENSIONS = {"audio/webm": ".webm", "audio/ogg": ".ogg", "audio/mp4": ".m4a", "audio/aac": ".aac"}
-_NAME = re.compile(r"^[0-9a-f]{32}\.(webm|ogg|m4a|aac)$")
+_NAME = re.compile(r"^[0-9a-f]{32}\.(webm|ogg|m4a|aac|wav)$")
+# Les exemples de ce qui n'est pas un mot (Seb, 14/11, après un test) : un autre
+# mot (« Mauvais ») ou rien du tout (« Inventé »). Hors de la page, servent à
+# l'écoute du club (club_hearing.py).
+NOT_WORDS = ("other", "noise")
+ANSWERS = ("good", "wrong", "invented")
 
 
 def _folder(member: Member, word: str) -> Path:
@@ -74,9 +79,6 @@ def delete(member: Member, word: str, name: str) -> None:
 # --- Tester l'écoute (Seb, 14/11) : 10 s enregistrées, écoutées par le
 # worker avec l'écoute du club, les mots reconnus montrés sur la page. ---
 
-KEEP_TESTS = 5  # les plus anciens essais sont effacés
-
-
 def _tests_folder(member: Member) -> Path:
     if not member.is_coach:
         raise ForbiddenError("Réservé aux coachs")
@@ -87,10 +89,8 @@ def add_test(member: Member, data: bytes, content_type: str) -> str:
     folder = _tests_folder(member)
     if not data or len(data) > MAX_BYTES * 5:
         raise ValueError("Enregistrement vide ou trop long")
+    # Tous gardés (Seb, 14/11 : pour apprendre dessus ; environ 100 Ko chacun).
     folder.mkdir(parents=True, exist_ok=True)
-    old = sorted(folder.glob("*"), key=lambda p: p.stat().st_mtime)
-    for p in old[: max(len(old) - 2 * (KEEP_TESTS - 1), 0)]:
-        p.unlink()
     name = f"{uuid.uuid4().hex}{EXTENSIONS.get(content_type.split(';')[0].strip(), '.webm')}"
     (folder / name).write_bytes(data)
     return name
@@ -115,3 +115,29 @@ def hear_tests(hear) -> int:
             path.with_suffix(".json").write_text(json.dumps(hear(path, "club")))
             n += 1
     return n
+
+
+def answer_test(member: Member, name: str, t: float, answer: str, word: str | None) -> None:
+    """Bon, Mauvais ou Inventé sous un mot trouvé (Seb, 14/11) : 2 s autour du
+    moment, coupées dans l'essai, rangées comme exemple du mot (Bon), du mot
+    dit (Mauvais : un des mots, ou « other » pour un autre mot), ou de rien
+    (Inventé : « noise »)."""
+    import subprocess
+
+    import imageio_ffmpeg
+
+    source = _tests_folder(member) / name
+    if not _NAME.match(name) or not source.exists():
+        raise NotFoundError("Essai introuvable")
+    if answer not in ANSWERS:
+        raise ValueError("Réponse inconnue")
+    folder_name = "noise" if answer == "invented" else word
+    if folder_name not in WORDS + NOT_WORDS or (answer == "good" and word not in WORDS):
+        raise ValueError("Mot inconnu")
+    folder = dossier_ecole(member.org_id) / "voice" / folder_name
+    folder.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-nostdin", "-y", "-loglevel", "error", "-ss", f"{max(t - 0.5, 0):.2f}", "-t", "2",
+         "-i", str(source), "-vn", "-ac", "1", "-ar", "16000", str(folder / f"{uuid.uuid4().hex}.wav")],
+        check=True,
+    )

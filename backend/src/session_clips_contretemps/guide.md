@@ -59,7 +59,8 @@ Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisi
 nombre d'enregistrements), toucher « ● Enregistrer « Fight ! » » et crier le mot dans les 2 s ; l'enregistrement s'ajoute
 à la liste, avec ▶ pour l'écouter et la poubelle pour l'effacer. Le but : 20 enregistrements par mot.
 En bas, « Tester (10 s) » : parler et crier pendant 10 s ; quelques secondes après, la page montre les cris reconnus par
-l'écoute du club (mot, seconde, note, volume) ou « Aucun cri reconnu ».
+l'écoute du club (mot, seconde, note, volume) ou « Aucun cri reconnu ». Sous chaque mot : « Bon », « Mauvais » (puis
+le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; le cri est rangé comme exemple et la ligne dit « Rangé : … ».
 
 Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : essayer la découpe sur une vidéo déjà filmée, sans rien ranger dans Mes combats.
 - En bas à droite, comme dans une chorégraphie : le petit bouton caméra filme (la vidéo filmée

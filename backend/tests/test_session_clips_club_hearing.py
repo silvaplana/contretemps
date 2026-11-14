@@ -54,6 +54,20 @@ def test_cris_du_club(monkeypatch, tmp_path):
     # Sans cri enregistré, l'écoute du club n'entend rien.
     assert hear_club(seance, {}) == []
 
+    # Un autre cri proche (470 Hz) passe pour « Time » tant qu'on n'a que des Time…
+    autre = _bruit(20, seed=4)
+    _cri(autre, 5.0, 470)
+    seuls_time = {"time": mots["time"]}
+    assert [m for m, *_x in hear_club(autre, seuls_time)] == ["time"]
+    # … mais plus une fois signalé « Mauvais » (Seb, 14/11).
+    son = _bruit(2, seed=5)
+    _cri(son, 0.6, 472)
+    from session_clips.club_hearing import _loudest, _summary
+    from session_clips.hearing import loudness
+
+    faux = _summary(_spectre(son), _loudest(loudness(son)), 0.6)
+    assert hear_club(autre, seuls_time | {"other": [faux]}) == []
+
 
 def test_un_long_time_compte_une_fois():
     """Seb, 14/11 : un grand « Tiiime » de plus d'1 s donnait deux « Time »

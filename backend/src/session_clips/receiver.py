@@ -49,6 +49,7 @@ from .schemas import (
     SessionOut,
     SessionRename,
     ThisPhone,
+    VoiceAnswer,
 )
 from .service import ForbiddenError, NotFoundError, SessionClips, clip_title
 
@@ -253,6 +254,10 @@ class SessionClipsReceiver:
         async def add_voice_test(request: Request, m: Member = member):
             data = await request.body()
             return {"name": guard(lambda: voice.add_test(m, data, request.headers.get("content-type", "")))}
+
+        @app.post(f"{PREFIX}/voice-tests/{{name}}/answer", status_code=204)
+        def answer_voice_test(name: str, body: VoiceAnswer, m: Member = member):
+            guard(lambda: voice.answer_test(m, name, body.t, body.answer, body.word))
 
         @app.get(f"{PREFIX}/voice-tests/{{name}}")
         def voice_test(name: str, m: Member = member):
