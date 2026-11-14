@@ -199,7 +199,7 @@ class SessionClipsReceiver:
         def settings_out(x: lab.Settings) -> ClubSignsBody:
             return ClubSignsBody(
                 signs=list(x.signs), framing=x.framing, start_skip=x.start_skip, end_skip=x.end_skip, show_timeline=x.show_timeline,
-                loud_only=x.loud_only, sure_only=x.sure_only,
+                loud_only=x.loud_only, sure_only=x.sure_only, loud_db=x.loud_db, sure_min=x.sure_min,
             )
 
         @app.get(f"{PREFIX}/signs", response_model=ClubSignsBody)
@@ -210,7 +210,8 @@ class SessionClipsReceiver:
         @app.put(f"{PREFIX}/signs", response_model=ClubSignsBody)
         def set_club_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
             new = lab.Settings(
-                tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline, body.loud_only, body.sure_only
+                tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline,
+                body.loud_only, body.sure_only, body.loud_db, body.sure_min,
             )
             return settings_out(guard(lambda: lab.set_settings(s, m, new)))
 
@@ -223,7 +224,8 @@ class SessionClipsReceiver:
         @app.put(f"{PREFIX}/lab/signs", response_model=ClubSignsBody)
         def set_lab_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
             new = lab.Settings(
-                tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline, body.loud_only, body.sure_only
+                tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline,
+                body.loud_only, body.sure_only, body.loud_db, body.sure_min,
             )
             return settings_out(guard(lambda: lab.set_settings(s, m, new, lab=True)))
 

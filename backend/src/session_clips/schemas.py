@@ -211,6 +211,9 @@ class LabSignOut(BaseModel):
     start: float
     end: float
     thumb: str | None = None
+    # Un cri : son volume (dB au-dessus du bruit de fond) et sa note de 0 à 1 (Seb, 14/11).
+    db: float | None = None
+    note: float | None = None
 
 
 class LabFightOut(BaseModel):
@@ -249,3 +252,5 @@ class ClubSignsBody(BaseModel):
     show_timeline: bool = True
     loud_only: bool = False
     sure_only: bool = False
+    loud_db: float = 6.0
+    sure_min: float = 0.5

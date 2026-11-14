@@ -368,6 +368,19 @@ def test_cris_forts_et_mots_surs():
     assert heard(sons, Settings(loud_only=True)) == [("fight", 6.8), ("hajime", 17.4), ("go", 3.0)]
     assert heard(sons, Settings(sure_only=True)) == [("fight", 6.8), ("time", 18.4), ("go", 3.0)]
     assert heard(sons, Settings(loud_only=True, sure_only=True)) == [("fight", 6.8), ("go", 3.0)]
+    # Les seuils se règlent au curseur (Seb, 14/11).
+    assert heard(sons, Settings(loud_only=True, loud_db=30.0)) == [("go", 3.0)]
+    assert heard(sons, Settings(sure_only=True, sure_min=0.1)) == [("fight", 6.8), ("time", 18.4), ("hajime", 17.4), ("go", 3.0)]
+
+
+def test_frise_avec_volume_et_note():
+    """Seb, 14/11 : dans la frise, chaque cri montre son volume et sa note,
+    même s'il est écarté par les réglages (pour régler le seuil)."""
+    from session_clips.cutting import _signs
+
+    cris = [["fight", 6.8, 0.9, 25.0], ["time", 18.4, 0.3, 1.0]]
+    signes = _signs(frames([(20, [pose(100), pose(300)])]), cris, [], None)
+    assert [(s["kind"], s["db"], s["note"]) for s in signes] == [("fight", 25.0, 0.9), ("time", 1.0, 0.3)]
 
 
 def test_fight_et_hajime_commencent_le_combat():
