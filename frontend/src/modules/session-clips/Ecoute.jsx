@@ -15,12 +15,35 @@ const MOTS = [
 ]
 const DUREE_MS = 2000
 const OBJECTIF = 20
+const TEST_MS = 10000 // « Tester » : 10 s écoutées par l'écoute du club (Seb, 14/11)
+const virgule = (x, n) => x.toFixed(n).replace('.', ',')
+
+// Le micro pendant `ms` millisecondes ; null si le micro est refusé.
+async function enregistrerSon(ms) {
+  let flux
+  try {
+    flux = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch {
+    return null
+  }
+  const morceaux = []
+  const rec = new MediaRecorder(flux)
+  rec.ondataavailable = (ev) => ev.data.size && morceaux.push(ev.data)
+  const fini = new Promise((ok) => (rec.onstop = ok))
+  rec.start()
+  setTimeout(() => rec.state !== 'inactive' && rec.stop(), ms)
+  await fini
+  flux.getTracks().forEach((t) => t.stop())
+  return new Blob(morceaux, { type: rec.mimeType || 'audio/webm' })
+}
 
 export default function Ecoute({ montrer }) {
   const [mot, setMot] = useState('fight')
   const [liste, setListe] = useState(null)
   const [enregistre, setEnregistre] = useState(false)
   const [lecture, setLecture] = useState(null)
+  const [test, setTest] = useState(null) // 'ecoute' puis 'analyse'
+  const [resultat, setResultat] = useState(null)
   const audio = useRef(null)
 
   useEffect(() => {
@@ -28,30 +51,46 @@ export default function Ecoute({ montrer }) {
   }, [montrer])
 
   async function enregistrer() {
-    if (enregistre) return
-    let flux
-    try {
-      flux = await navigator.mediaDevices.getUserMedia({ audio: true })
-    } catch {
-      montrer('Le micro n’est pas autorisé.')
-      return
-    }
+    if (enregistre || test) return
     setEnregistre(true)
-    const morceaux = []
-    const rec = new MediaRecorder(flux)
-    rec.ondataavailable = (ev) => ev.data.size && morceaux.push(ev.data)
-    rec.onstop = async () => {
-      flux.getTracks().forEach((t) => t.stop())
-      try {
-        setListe(await api.envoyerEnregistrement(mot, new Blob(morceaux, { type: rec.mimeType || 'audio/webm' })))
-      } catch (e) {
-        montrer(e.message)
-      } finally {
-        setEnregistre(false)
-      }
+    try {
+      const son = await enregistrerSon(DUREE_MS)
+      if (son) setListe(await api.envoyerEnregistrement(mot, son))
+      else montrer('Le micro n’est pas autorisé.')
+    } catch (e) {
+      montrer(e.message)
+    } finally {
+      setEnregistre(false)
     }
-    rec.start()
-    setTimeout(() => rec.state !== 'inactive' && rec.stop(), DUREE_MS)
+  }
+
+  // Tester : 10 s au micro, puis les mots reconnus par l'écoute du club.
+  async function tester() {
+    if (enregistre || test) return
+    setResultat(null)
+    setTest('ecoute')
+    try {
+      const son = await enregistrerSon(TEST_MS)
+      if (!son) {
+        montrer('Le micro n’est pas autorisé.')
+        return
+      }
+      setTest('analyse')
+      const { name } = await api.envoyerTest(son)
+      for (let i = 0; i < 60; i++) {
+        await new Promise((ok) => setTimeout(ok, 2000))
+        const r = await api.resultatTest(name)
+        if (r.done) {
+          setResultat(r.words)
+          return
+        }
+      }
+      montrer('Pas de réponse : réessayez dans un moment.')
+    } catch (e) {
+      montrer(e.message)
+    } finally {
+      setTest(null)
+    }
   }
 
   async function ecouter(nom) {
@@ -88,7 +127,7 @@ export default function Ecoute({ montrer }) {
         Touchez le bouton et criez « {libelle} ! » comme à l’entraînement. Variez les voix, la distance et le bruit de la
         salle : {OBJECTIF} enregistrements par mot.
       </p>
-      <button type="button" className="btn btn--primary sc-tournage__bouton" disabled={enregistre || !liste} onClick={enregistrer}>
+      <button type="button" className="btn btn--primary sc-tournage__bouton" disabled={enregistre || !!test || !liste} onClick={enregistrer}>
         {enregistre ? '● Criez maintenant…' : `● Enregistrer « ${libelle} ! »`}
       </button>
       <p className="sc-meta">
@@ -110,6 +149,26 @@ export default function Ecoute({ montrer }) {
           </li>
         ))}
       </ul>
+      <p className="sc-meta">Tester l’écoute du club</p>
+      <p className="sc-meta">Touchez « Tester », puis parlez et criez des mots pendant 10 s : l’appli montre ce qu’elle a reconnu.</p>
+      <button type="button" className="btn sc-tournage__bouton" disabled={enregistre || !!test} onClick={tester}>
+        {test === 'ecoute' ? '● Parlez et criez…' : test === 'analyse' ? 'Écoute en cours…' : 'Tester (10 s)'}
+      </button>
+      {resultat &&
+        (resultat.length ? (
+          <ul className="sc-ecoute__liste">
+            {resultat.map((w) => (
+              <li key={w.t}>
+                <span>
+                  « {MOTS.find(([id]) => id === w.kind)?.[1] ?? w.kind} ! » à {virgule(w.t, 1)} s · sûr {virgule(w.note, 2)} ·{' '}
+                  {Math.round(w.db)} dB
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p>Aucun cri reconnu.</p>
+        ))}
       <audio ref={audio} onEnded={() => setLecture(null)} />
     </div>
   )

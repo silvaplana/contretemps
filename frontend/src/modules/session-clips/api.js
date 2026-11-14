@@ -140,3 +140,6 @@ export async function lireEnregistrement(mot, nom) {
   if (!reponse.ok) throw new Error('Enregistrement introuvable')
   return URL.createObjectURL(await reponse.blob())
 }
+export const envoyerTest = (son) =>
+  appel('/voice-tests', { method: 'POST', headers: { 'Content-Type': son.type || 'audio/webm' }, body: son })
+export const resultatTest = (nom) => appel(`/voice-tests/${nom}`)

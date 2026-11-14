@@ -249,6 +249,15 @@ class SessionClipsReceiver:
         def delete_voice_sample(word: str, name: str, m: Member = member):
             guard(lambda: voice.delete(m, word, name))
 
+        @app.post(f"{PREFIX}/voice-tests", status_code=201)
+        async def add_voice_test(request: Request, m: Member = member):
+            data = await request.body()
+            return {"name": guard(lambda: voice.add_test(m, data, request.headers.get("content-type", "")))}
+
+        @app.get(f"{PREFIX}/voice-tests/{{name}}")
+        def voice_test(name: str, m: Member = member):
+            return guard(lambda: voice.test_result(m, name))
+
         @app.get(f"{PREFIX}/lab", response_model=list[LabTestOut])
         def lab_tests(m: Member = member, s: Session = db):
             return [self._lab_out(s, t) for t in guard(lambda: lab.tests(s, m))]

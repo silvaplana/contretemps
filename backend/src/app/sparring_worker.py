@@ -35,10 +35,12 @@ from session_clips.detector import detect
 from session_clips.hearing import hear
 from session_clips.lab import read_test, tests_to_read
 from session_clips.service import SessionClips
+from session_clips.voice import hear_tests
 from session_clips_contretemps.adapter import AnnuaireSparring
 from videos import Videos
 
 INTERVALLE_SECONDES = 20
+TEST_SECONDES = 2  # « Tester » l'écoute (Seb, 14/11) : la réponse en quelques secondes
 
 
 def _heures() -> tuple[int, int]:
@@ -63,7 +65,12 @@ def run() -> None:
                     _cut(db, session, lambda: cut_session(db, clips, session, detect, hear))
         finally:
             db.close()
-        time.sleep(INTERVALLE_SECONDES)
+        for _ in range(INTERVALLE_SECONDES // TEST_SECONDES):
+            try:
+                hear_tests(hear)
+            except Exception:
+                traceback.print_exc()
+            time.sleep(TEST_SECONDES)
 
 
 def _cut(db, session, action) -> None:

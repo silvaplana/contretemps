@@ -7,10 +7,12 @@ Pas de table : un fichier par enregistrement, dans le dossier de l'école
 
 from __future__ import annotations
 
+import json
 import re
 import uuid
 from pathlib import Path
 
+from videos import stockage
 from videos.stockage import dossier_ecole
 
 from .ports import Member
@@ -67,3 +69,49 @@ def newest(org_id: int) -> float:
 
 def delete(member: Member, word: str, name: str) -> None:
     path(member, word, name).unlink()
+
+
+# --- Tester l'écoute (Seb, 14/11) : 10 s enregistrées, écoutées par le
+# worker avec l'écoute du club, les mots reconnus montrés sur la page. ---
+
+KEEP_TESTS = 5  # les plus anciens essais sont effacés
+
+
+def _tests_folder(member: Member) -> Path:
+    if not member.is_coach:
+        raise ForbiddenError("Réservé aux coachs")
+    return dossier_ecole(member.org_id) / "voice-tests"
+
+
+def add_test(member: Member, data: bytes, content_type: str) -> str:
+    folder = _tests_folder(member)
+    if not data or len(data) > MAX_BYTES * 5:
+        raise ValueError("Enregistrement vide ou trop long")
+    folder.mkdir(parents=True, exist_ok=True)
+    old = sorted(folder.glob("*"), key=lambda p: p.stat().st_mtime)
+    for p in old[: max(len(old) - 2 * (KEEP_TESTS - 1), 0)]:
+        p.unlink()
+    name = f"{uuid.uuid4().hex}{EXTENSIONS.get(content_type.split(';')[0].strip(), '.webm')}"
+    (folder / name).write_bytes(data)
+    return name
+
+
+def test_result(member: Member, name: str) -> dict:
+    found = _tests_folder(member) / name
+    if not _NAME.match(name) or not found.exists():
+        raise NotFoundError("Essai introuvable")
+    result = found.with_suffix(".json")
+    if not result.exists():
+        return {"done": False, "words": []}
+    words = json.loads(result.read_text())
+    return {"done": True, "words": [{"kind": k, "t": t, "note": n, "db": db} for k, t, n, db in words]}
+
+
+def hear_tests(hear) -> int:
+    """Pour le worker : écoute les essais pas encore écoutés, toutes écoles."""
+    n = 0
+    for path in sorted(stockage.DOSSIER_VIDEOS_LIVE.glob("*/voice-tests/*")):
+        if _NAME.match(path.name) and not path.with_suffix(".json").exists():
+            path.with_suffix(".json").write_text(json.dumps(hear(path, "club")))
+            n += 1
+    return n

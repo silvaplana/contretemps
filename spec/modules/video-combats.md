@@ -315,6 +315,12 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    plus à un mot qu'à ces passages, avec sa ressemblance (0 à 1) comme note « sûr ». Seuls les mots
    enregistrés sont cherchés (Seb : « Time » d'abord). Cris dans `<morceau>.sounds.club.json`,
    réécoutés à la découpe suivante quand les enregistrements ont changé (`voice.newest`).
+   **Tester l'écoute du club** (Seb, 14/11, bas de la page Entraîner l'écoute) : « Tester (10 s) »
+   enregistre 10 s au micro, envoyées à `POST /session-clips/voice-tests` (fichier dans
+   `<VIDEOS_DIR>/<école>/voice-tests/`, 5 derniers gardés) ; `sparring-worker` les écoute avec
+   l'écoute du club (il regarde toutes les 2 s, `voice.hear_tests`) et écrit les mots à côté
+   (`<id>.json`) ; la page relit toutes les 2 s et montre « « Time ! » à 4,2 s · sûr 0,91 · 25 dB »,
+   ou « Aucun cri reconnu ». Pas en direct : le modèle tourne sur le serveur.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en
