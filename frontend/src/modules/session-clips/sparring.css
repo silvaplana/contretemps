@@ -1096,3 +1096,8 @@
 .sc-ecoute__courbe circle {
   fill: var(--accent, currentColor);
 }
+
+/* Le détail mot par mot d'un rejeu (étude du 14/11). */
+.sc-ecoute__mot {
+  display: block;
+}

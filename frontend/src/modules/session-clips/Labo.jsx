@@ -20,7 +20,8 @@ const SIGNES = [
   { id: 'fists_touch', g: 'deb', l: 'Poings touchés en l’air', court: 'Poings en l’air', d: 'Les deux combattants se touchent les poings, bras vers le haut' },
   { id: 'arms_up', g: 'deb', l: 'Bras levés', court: 'Bras levés', d: 'Les deux combattants lèvent les deux bras au-dessus de la tête' },
   { id: 'go', g: 'deb', l: '« Go ! » crié', court: '« Go ! »', d: 'Son : l’entraîneur annonce le début' },
-  { id: 'fight', g: 'deb', l: '« Fight ! » crié', court: '« Fight ! »', d: 'Son : l’entraîneur annonce le début' },
+  // Retiré le 14/11 (Seb) : même « aï » que « Time ».
+  { id: 'fight', g: 'deb', l: '« Fight ! » crié', court: '« Fight ! »', d: '', retire: true },
   { id: 'hajime', g: 'deb', l: '« Hajime ! » crié', court: '« Hajime ! »', d: 'Son : « ha-dji-mé », l’entraîneur annonce le début' },
   { id: 'combat', g: 'deb', l: '« Combat ! » crié', court: '« Combat ! »', d: 'Son : l’entraîneur annonce le début' },
   { id: 'handshake', g: 'fin', l: 'Poignée de main', court: 'Poignée de main', d: 'Mains serrées, bras vers le bas, sans bouger' },

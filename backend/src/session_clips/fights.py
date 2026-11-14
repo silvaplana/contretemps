@@ -16,9 +16,10 @@ from dataclasses import dataclass
 
 from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_arms_up, is_x, main_pair, torso, upright
 
-# « go », « fight », « hajime » : crié par l'entraîneur (hearing.py ; « Fight ! » et
-# « Hajime ! » ajoutés le 13/11 : « go », trop court, se confond avec « allez »).
-SHOUTED_STARTS = ("go", "fight", "hajime", "combat")
+# « go », « hajime », « combat » : crié par l'entraîneur (hearing.py ; « Hajime ! »
+# ajouté le 13/11 : « go », trop court, se confond avec « allez »). « Fight ! »
+# retiré le 14/11 (Seb) : même « aï » que « Time ».
+SHOUTED_STARTS = ("go", "hajime", "combat")
 # « bell » / « bells » : la cloche d'un coup et les trois coups du Timer de
 # Fights, repérés dans la bande son (timer_bells.py, Seb 14/11).
 START_SIGNS = ("fists_touch", "arms_up", *SHOUTED_STARTS, "bell")

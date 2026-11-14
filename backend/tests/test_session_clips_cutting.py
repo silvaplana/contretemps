@@ -383,15 +383,16 @@ def test_frise_avec_volume_et_note():
     assert [(s["kind"], s["db"], s["note"]) for s in signes] == [("fight", 25.0, 0.9), ("time", 1.0, 0.3)]
 
 
-def test_fight_et_hajime_commencent_le_combat():
-    """Seb, 13/11 : « Go » se confond avec « allez » ; « Fight ! » et
-    « Hajime ! » (« ha-dji-mé ») commencent aussi un combat, jusqu'au « Time ! »."""
+def test_combat_et_hajime_commencent_le_combat():
+    """Seb, 13/11 : « Go » se confond avec « allez » ; « Hajime ! »
+    (« ha-dji-mé ») et « Combat ! » commencent aussi un combat, jusqu'au
+    « Time ! ». « Fight ! » retiré le 14/11 (même « aï » que « Time »)."""
     from session_clips.hearing import heard_words, word_kind
 
-    assert word_kind("Fight!") == "fight" and word_kind("Hajimé") == "hajime" and word_kind("fait") is None
+    assert word_kind("Fight!") is None and word_kind("Combat!") == "combat" and word_kind("Hajimé") == "hajime" and word_kind("fait") is None
     assert heard_words([("Ha", 2.0), ("jime!", 2.3), ("time", 9.0), ("allez", 10.0)]) == [("hajime", 2.0), ("time", 9.0)]
     video = frames([(40, [pose(100), pose(300)])])
-    sons = [("fight", 2.0), ("time", 12.0), ("hajime", 20.0), ("time", 30.0)]
+    sons = [("combat", 2.0), ("time", 12.0), ("hajime", 20.0), ("time", 30.0)]
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 13.0), (20.0, 31.0)]
 
 

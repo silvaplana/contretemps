@@ -18,7 +18,9 @@ from videos.stockage import dossier_ecole
 from .ports import Member
 from .service import ForbiddenError, NotFoundError
 
-WORDS = ("fight", "hajime", "combat", "time")
+# « fight » retiré le 14/11 (Seb : même « aï » que « Time ») ; ses
+# enregistrements restent sur le disque, l'écoute ne les lit plus.
+WORDS = ("hajime", "combat", "time")
 MAX_BYTES = 2_000_000  # quelques secondes de son
 EXTENSIONS = {"audio/webm": ".webm", "audio/ogg": ".ogg", "audio/mp4": ".m4a", "audio/aac": ".aac"}
 _NAME = re.compile(r"^[0-9a-f]{32}\.(webm|ogg|m4a|aac|wav)$")
@@ -193,10 +195,24 @@ NEAR = 1.0  # secondes : un mot trouvé à moins d'1 s d'une réponse en parle
 
 def score(found: list, truth: list[dict]) -> dict:
     """+1 par bon mot, −1 par mauvais mot, −2 par mot inventé, −1 par mot
-    oublié (Seb, 14/11) ; « best » : les points d'une écoute parfaite."""
+    oublié (Seb, 14/11) ; « best » : les points d'une écoute parfaite.
+    « words » : le détail mot par mot (étude du 14/11, pour choisir le mot
+    du début) : bons, oubliés, inventés (trouvé sans rien de dit), mauvais
+    (trouvé à la place d'un autre mot) et « heard_as » (dit, mais trouvé
+    comme quel mot)."""
     timed = [x for x in truth if x["t"] is not None]
     missing = [x["word"] for x in truth if x["t"] is None]
     best = sum(1 for x in timed if x["word"] in WORDS) + len(missing)
+    words = {w: {"good": 0, "missed": 0, "invented": 0, "wrong": 0, "heard_as": {}} for w in WORDS}
+
+    def count(word, key, other=None):
+        if word not in words:
+            return
+        if key == "heard_as":
+            words[word][key][other] = words[word][key].get(other, 0) + 1
+        else:
+            words[word][key] += 1
+
     used: set[int] = set()
     good = wrong = invented = 0
     for kind, t, *_rest in found:
@@ -207,18 +223,27 @@ def score(found: list, truth: list[dict]) -> dict:
             said = timed[i]["word"]
             if said == kind:
                 good += 1
+                count(kind, "good")
             elif said is None:
                 invented += 1
+                count(kind, "invented")
             else:
                 wrong += 1
+                count(kind, "wrong")
+                count(said, "heard_as", kind)
         elif kind in missing:
             missing.remove(kind)
             good += 1
+            count(kind, "good")
         else:
             invented += 1
-    missed = len(missing) + sum(1 for i, x in enumerate(timed) if i not in used and x["word"] in WORDS)
+            count(kind, "invented")
+    forgotten = missing + [x["word"] for i, x in enumerate(timed) if i not in used and x["word"] in WORDS]
+    for word in forgotten:
+        count(word, "missed")
+    missed = len(forgotten)
     points = good - wrong - 2 * invented - missed
-    return {"good": good, "wrong": wrong, "invented": invented, "missed": missed, "points": points, "best": best}
+    return {"good": good, "wrong": wrong, "invented": invented, "missed": missed, "points": points, "best": best, "words": words}
 
 
 def _replays_folder(member: Member) -> Path:
@@ -252,6 +277,7 @@ def run_replays(hear) -> int:
             continue
         school = request.parent.parent
         totals = {"good": 0, "wrong": 0, "invented": 0, "missed": 0, "points": 0, "best": 0}
+        by_word = {w: {"good": 0, "missed": 0, "invented": 0, "wrong": 0, "heard_as": {}} for w in WORDS}
         tests = 0
         for path in sorted((school / "voice-tests").glob("*")):
             truth_path = path.with_suffix(".truth.json")
@@ -259,11 +285,19 @@ def run_replays(hear) -> int:
                 continue
             truth = json.loads(truth_path.read_text())
             exclude = frozenset(x["example"] for x in truth if x.get("example"))
-            for k, v in score(hear(path, exclude), truth).items():
-                totals[k] += v
+            result = score(hear(path, exclude), truth)
+            for k in totals:
+                totals[k] += result[k]
+            for w, counts in result["words"].items():
+                for k, v in counts.items():
+                    if k == "heard_as":
+                        for other, n in v.items():
+                            by_word[w][k][other] = by_word[w][k].get(other, 0) + n
+                    else:
+                        by_word[w][k] += v
             tests += 1
         examples = sum(1 for p in (school / "voice").glob("*/*") if p.parent.name in WORDS and _NAME.match(p.name))
-        request.write_text(json.dumps({"done": True, "tests": tests, "examples": examples, **totals}))
+        request.write_text(json.dumps({"done": True, "tests": tests, "examples": examples, **totals, "words": by_word}))
         n += 1
     return n
 

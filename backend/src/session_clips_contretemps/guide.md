@@ -55,15 +55,15 @@ Timer (coachs, Fights › Timer) : un minuteur de rounds avec la cloche.
 - Sous le bouton, le volet « Réglages » (fermé, son résumé à droite) : durée du round, repos et nombre
   de rounds, case « Prévenir 10 s avant la fin (clac clac) ». Pour le volume : les boutons du téléphone.
 
-Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Fight, Hajime, Combat, Time, avec le
-nombre d'enregistrements), toucher « ● Enregistrer « Fight ! » » et crier le mot dans les 2 s ; l'enregistrement s'ajoute
+Entraîner l’écoute (coachs, Fights › ⋮ ; ← revient à Fights) : choisir le mot (Hajime, Combat, Time, avec le
+nombre d'enregistrements), toucher « ● Enregistrer « Hajime ! » » et crier le mot dans les 2 s ; l'enregistrement s'ajoute
 à la liste, avec ▶ pour l'écouter et la poubelle pour l'effacer. Le but : 20 enregistrements par mot.
 En bas, « Tester (10 s) » : parler et crier pendant 10 s ; quelques secondes après, la page montre les cris reconnus par
 l'écoute du club (mot, seconde, note, volume) ou « Aucun cri reconnu ». Sous chaque mot : « Bon », « Mauvais » (puis
 le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; le cri est rangé comme exemple et la ligne dit « Rangé : … ».
 Dessous, « Il manque un mot » (puis le mot) pour un cri que l'écoute n'a pas trouvé. Plus bas, « Progrès de l'écoute du
 club » : « Rejouer tous les essais » réécoute tous les tests répondus et ajoute une ligne (date, points sur le meilleur
-possible, bons, mauvais, inventés, oubliés) et un point sur la courbe.
+possible, bons, mauvais, inventés, oubliés, puis le détail mot par mot) et un point sur la courbe.
 Pour repartir de zéro : « Effacer tous les enregistrements » (sous la liste, tous les mots) ou « Effacer tous les tests »
 (tout en bas : les tests, leurs réponses et les points). « Annuler » pendant 10 s.
 
@@ -80,7 +80,7 @@ Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : es
   flèche ou un signe place la vidéo à ce moment. Chaque combat coupé a sa vignette (l'image du
   signe de début) : le toucher l'ouvre et le lit, du début à la fin. Le crayon en haut à droite
   renomme l'essai.
-- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poings touchés en l'air, Bras levés des deux combattants, « Go ! », « Fight ! », « Hajime ! » ou « Combat ! » crié, Cloche du Timer) et
+- « Signes et sons du club » (déroulant, fermé au départ : le toucher l'ouvre) : cocher les signes de début (Poings touchés en l'air, Bras levés des deux combattants, « Go ! », « Hajime ! » ou « Combat ! » crié, Cloche du Timer) et
   de fin (Poignée de main, Bras croisés des deux combattants, « Time ! » crié, Trois coups du Timer) que la découpe prend, pour tout le club (caméra
   de la salle comprise). Sous « Cris entendus », le choix de l'écoute : « Rapide », « Précise » (plus lente, se trompe
   moins) ou « Du club » (compare aux cris enregistrés dans ⋮ › Entraîner l’écoute) ; la vidéo est réécoutée à la prochaine découpe, puis deux cases : « Seulement les cris forts » et « Seulement les mots
