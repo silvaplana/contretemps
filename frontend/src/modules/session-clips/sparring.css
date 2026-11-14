@@ -1009,3 +1009,17 @@
   height: 28px;
   accent-color: var(--accent);
 }
+
+/* Le seuil des cris entendus, au curseur (Seb, 14/11). */
+.sc-curseur {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 0 0 8px 36px;
+  font-size: 17px;
+}
+.sc-curseur input {
+  width: 100%;
+  min-height: 48px;
+  accent-color: var(--color-primary, currentColor);
+}

@@ -183,6 +183,9 @@ class ClubSigns(Base):
     # Cris entendus : seulement les cris forts, seulement les mots sûrs (Seb, 14/11).
     loud_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sure_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Leurs seuils, réglés au curseur (Seb, 14/11) : dB au-dessus du bruit de fond, note de 0 à 1.
+    loud_db: Mapped[float] = mapped_column(Float, nullable=False, default=6.0)
+    sure_min: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
 
 
 class LabSettings(Base):
@@ -199,3 +202,6 @@ class LabSettings(Base):
     end_skip: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
     loud_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     sure_only: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    # Leurs seuils, réglés au curseur (Seb, 14/11) : dB au-dessus du bruit de fond, note de 0 à 1.
+    loud_db: Mapped[float] = mapped_column(Float, nullable=False, default=6.0)
+    sure_min: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)

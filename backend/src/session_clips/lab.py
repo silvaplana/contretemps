@@ -50,6 +50,8 @@ class Settings:
     # souffle sur un passage calme. Seulement les cris forts / les mots sûrs.
     loud_only: bool = False
     sure_only: bool = False
+    loud_db: float = 6.0  # seuil des cris forts, en dB au-dessus du bruit de fond (curseur, Seb 14/11)
+    sure_min: float = 0.5  # seuil des mots bien compris, note de 0 à 1
 
 
 def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
@@ -67,25 +69,28 @@ def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
         show_timeline=getattr(row, "show_timeline", True) is not False,
         loud_only=bool(row.loud_only),
         sure_only=bool(row.sure_only),
+        loud_db=row.loud_db if row.loud_db is not None else 6.0,
+        sure_min=row.sure_min if row.sure_min is not None else 0.5,
     )
 
 
-LOUD_DB = 6.0  # un cri : au moins 6 dB au-dessus du bruit de fond du morceau
-SURE = 0.5  # la note de confiance de l'écoute pour le mot
+MAX_DB = 40.0
+
+
+def kept(x, s: Settings) -> bool:
+    """Un cri (mot, moment, note, volume) passe-t-il les réglages ? Un cri
+    entendu avant le 14/11 n'a ni volume ni note : il est gardé."""
+    if isinstance(x, (list, tuple)) and len(x) >= 4:
+        if s.loud_only and x[3] < s.loud_db:
+            return False
+        if s.sure_only and x[2] < s.sure_min:
+            return False
+    return True
 
 
 def heard(sounds: list, s: Settings) -> list[Sound]:
-    """Les cris gardés selon les réglages. Un cri entendu avant le 14/11 n'a
-    ni volume ni note : il est gardé."""
-    out = []
-    for x in sounds:
-        if isinstance(x, (list, tuple)) and len(x) >= 4:
-            if s.loud_only and x[3] < LOUD_DB:
-                continue
-            if s.sure_only and x[2] < SURE:
-                continue
-        out.append(as_sound(x))
-    return out
+    """Les cris gardés selon les réglages (cases et seuils du 14/11)."""
+    return [as_sound(x) for x in sounds if kept(x, s)]
 
 
 def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) -> Settings:
@@ -97,6 +102,8 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
         raise ValueError("Cadrage inconnu")
     if not (0 <= new.start_skip <= MAX_SKIP and 0 <= new.end_skip <= MAX_SKIP):
         raise ValueError(f"Entre 0 et {MAX_SKIP:g} secondes")
+    if not (0 <= new.loud_db <= MAX_DB and 0 <= new.sure_min <= 1):
+        raise ValueError("Seuil hors limites")
     model = LabSettings if lab else ClubSigns
     row = db.get(model, member.org_id) or model(org_id=member.org_id)
     row.signs = ",".join(s for s in SIGNS if s in new.signs)
@@ -105,6 +112,8 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
     row.end_skip = new.end_skip
     row.loud_only = new.loud_only
     row.sure_only = new.sure_only
+    row.loud_db = new.loud_db
+    row.sure_min = new.sure_min
     if model is ClubSigns:
         row.show_timeline = new.show_timeline
     db.add(row)
@@ -200,8 +209,25 @@ def fights_of(db: Session, found: LabTest) -> list[tuple[Fight, list[Box] | None
     with toutes_saisons(db):
         video = db.get(Video, found.video_id) if found.video_id else None
     size = video_size(DOSSIER_VIDEOS_LIVE / video.lien_fichier) if video is not None else None
-    sounds = [(s["kind"], s["start"]) for s in signs_of(found) if s["kind"] in SOUNDS]
+    s = settings(db, found.org_id, lab=True)
+    sounds = heard([_shout(x) for x in signs_of(found) if x["kind"] in SOUNDS], s)
     return club_fights(db, found.org_id, _load_frames(path), sounds, size, lab=True)
+
+
+def _shout(sign: dict) -> list:
+    """Un cri de la frise, avec sa note et son volume s'il les a."""
+    if sign.get("db") is None:
+        return [sign["kind"], sign["start"]]
+    return [sign["kind"], sign["start"], sign["note"], sign["db"]]
+
+
+def with_scores(sign: dict, shouts: list) -> dict:
+    """Ajoute à un cri de la frise son volume et sa note (Seb, 14/11 : les voir
+    dans la frise, à côté du seuil)."""
+    x = next((x for x in shouts if isinstance(x, (list, tuple)) and len(x) >= 4 and x[0] == sign["kind"] and abs(x[1] - sign["start"]) < 0.05), None)
+    if x is not None:
+        sign |= {"note": x[2], "db": x[3]}
+    return sign
 
 
 # --- Lecture par le worker ---
@@ -237,9 +263,12 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
     else:
         frames = list(detect(source))
         _save_frames(path, frames)
+    # Tous les cris vont dans la frise, avec leur volume et leur note ; les
+    # réglages du Labo les filtrent au calcul des combats (fights_of).
+    shouts = hear(source)
     signs = [
-        {"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}
-        for s in find_signs(frames, heard(hear(source), settings(db, found.org_id, lab=True)))
+        with_scores({"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}, shouts)
+        for s in find_signs(frames, [as_sound(x) for x in shouts])
     ]
     found.signs = json.dumps(signs)
     found.status = "ready"

@@ -342,7 +342,7 @@ export function EssaiLabo({ essaiId, version, rafraichir, montrer, onBack, onSup
               </p>
             ) : (
               <>
-                <Graphe signes={e.signs} combats={enCours ? [] : e.fights} coches={coches} fin={fin} aller={aller} />
+                <Graphe signes={e.signs} combats={enCours ? [] : e.fights} coches={coches} fin={fin} aller={aller} seuils={reglages} />
                 {e.signs.length === 0 && <p className="sc-vide">Aucun signe repéré dans cette vidéo.</p>}
                 {e.signs.map((s, i) => {
                   const sg = signe(s.kind)
@@ -443,13 +443,25 @@ export function ReglagesDecoupe({ reglages, setReglages }) {
           ['loud_only', 'Seulement les cris forts', 'Un mot dit doucement ou sur un passage calme est ignoré'],
           ['sure_only', 'Seulement les mots bien compris', 'Un mot mal compris est ignoré'],
         ].map(([k, l, d]) => (
-          <label key={k} className="sc-coche">
-            <input type="checkbox" checked={!!reglages[k]} onChange={(ev) => setReglages((r) => ({ ...r, [k]: ev.target.checked }))} />
-            <span>
-              {l}
-              <small>{d}</small>
-            </span>
-          </label>
+          <div key={k}>
+            <label className="sc-coche">
+              <input type="checkbox" checked={!!reglages[k]} onChange={(ev) => setReglages((r) => ({ ...r, [k]: ev.target.checked }))} />
+              <span>
+                {l}
+                <small>{d}</small>
+              </span>
+            </label>
+            {/* Le seuil au curseur, comparé au volume et à la note affichés dans la frise (Seb, 14/11). */}
+            {reglages[k] && (
+              <Curseur
+                {...(k === 'loud_only'
+                  ? { cle: 'loud_db', min: 0, max: 30, pas: 1, texte: (v) => `Seuil : ${Math.round(v)} dB` }
+                  : { cle: 'sure_min', min: 0, max: 1, pas: 0.05, texte: (v) => `Seuil : ${virgule(v, 2)}` })}
+                reglages={reglages}
+                setReglages={setReglages}
+              />
+            )}
+          </div>
         ))}
       </Deroulant>
       <Deroulant titre="Paramètres de la vidéo">
@@ -472,6 +484,23 @@ export function ReglagesDecoupe({ reglages, setReglages }) {
         />
       </Deroulant>
     </>
+  )
+}
+
+function Curseur({ cle, min, max, pas, texte, reglages, setReglages }) {
+  const v = reglages[cle] ?? min
+  return (
+    <label className="sc-curseur">
+      <span>{texte(v)}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={pas}
+        value={v}
+        onChange={(ev) => setReglages((r) => ({ ...r, [cle]: Number(ev.target.value) }))}
+      />
+    </label>
   )
 }
 
@@ -669,13 +698,20 @@ function useCadre(lecteur, combats) {
 // Le graphe : vert = début de combat, rouge = fin, gris pointillé = signe
 // décoché ; la bande sur l'axe = un combat coupé. Toucher une flèche place
 // la vidéo à ce moment.
-export function Graphe({ signes, combats, coches, fin, aller }) {
+// Un cri écarté par les cases « Cris entendus » et leurs seuils (Seb, 14/11).
+const ecarte = (s, seuils) =>
+  s.db != null && !!seuils && ((seuils.loud_only && s.db < seuils.loud_db) || (seuils.sure_only && s.note < seuils.sure_min))
+const virgule = (x, n) => x.toFixed(n).replace('.', ',')
+
+export function Graphe({ signes, combats, coches, fin, aller, seuils }) {
   const W = 320
   const L = 14
   const R = 306
   const VW = 62
   const VH = 66
-  const ROW = 118
+  // Deux lignes de plus sous un cri : son volume et sa note, avec les seuils (Seb, 14/11).
+  const CRI = signes.some((s) => s.db != null) ? 26 : 0
+  const ROW = 118 + CRI
   // Un signe par ligne (Seb, 13/11 au soir) : jamais deux images l'une sur
   // l'autre ; le premier signe en bas, près de l'axe, les suivants au-dessus.
   const ordre = signes.map((s, i) => i).sort((a, b) => signes[a].start - signes[b].start)
@@ -707,10 +743,10 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
       </text>
       {/* Les traits d'abord : une image n'est jamais cachée par le trait d'un autre signe. */}
       {signes.map((s, i) => {
-        const cls = coches.includes(s.kind) ? signe(s.kind).g : 'off'
+        const cls = coches.includes(s.kind) && !ecarte(s, seuils) ? signe(s.kind).g : 'off'
         const x = X(s.start)
         const cx = Math.min(Math.max(x - VW / 2, 0), W - VW) + VW / 2
-        const tip = 4 + (lignes - 1 - rang[i]) * ROW + VH + 32
+        const tip = 4 + (lignes - 1 - rang[i]) * ROW + VH + 32 + CRI
         return (
           <g key={i} className={`sc-graphe__ev sc-graphe__ev--${cls}`}>
             <line x1={x} y1={base - 1} x2={cx} y2={tip + 4} className="sc-graphe__fl" />
@@ -719,12 +755,12 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
       })}
       {signes.map((s, i) => {
         const sg = signe(s.kind)
-        const cls = coches.includes(s.kind) ? sg.g : 'off'
+        const cls = coches.includes(s.kind) && !ecarte(s, seuils) ? sg.g : 'off'
         const x = X(s.start)
         const top = 4 + (lignes - 1 - rang[i]) * ROW
         const bx = Math.min(Math.max(x - VW / 2, 0), W - VW)
         const cx = bx + VW / 2
-        const tip = top + VH + 32
+        const tip = top + VH + 32 + CRI
         const tx = Math.min(Math.max(cx, 34), W - 34)
         return (
           <g
@@ -744,6 +780,17 @@ export function Graphe({ signes, combats, coches, fin, aller }) {
             <text x={tx} y={top + VH + 27} className="sc-graphe__t">
               {mmss(s.start)}
             </text>
+            {s.db != null && (
+              <>
+                <text x={tx} y={top + VH + 40} className="sc-graphe__t">
+                  {Math.round(s.db)} dB{seuils?.loud_only ? ` · seuil ${Math.round(seuils.loud_db)}` : ''}
+                </text>
+                <text x={tx} y={top + VH + 53} className="sc-graphe__t">
+                  sûr {virgule(s.note, 2)}
+                  {seuils?.sure_only ? ` · seuil ${virgule(seuils.sure_min, 2)}` : ''}
+                </text>
+              </>
+            )}
             <path d={`M${cx - 5} ${tip + 10} L${cx} ${tip} L${cx + 5} ${tip + 10}Z`} className="sc-graphe__pt" />
           </g>
         )

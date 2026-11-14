@@ -31,9 +31,9 @@ from videos.duree import duree_secondes
 from videos.poster import generer_poster
 from videos.stockage import DOSSIER_VIDEOS_LIVE, chemin_relatif, dossier_ecole
 
-from .fights import REASON_NO_END, Sound, find_signs
+from .fights import REASON_NO_END, Sound, as_sound, find_signs
 from .framing import Box, ffmpeg_filter, video_size
-from .lab import club_fights, thumbnail
+from .lab import club_fights, thumbnail, with_scores
 from .lab import heard as heard_sounds
 from .lab import settings as club_settings
 from .models import Clip, ClipSession, Piece, Recorder
@@ -130,8 +130,9 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
         raw = clips.videos.get(db, session.raw_video_id)
     source = DOSSIER_VIDEOS_LIVE / raw.lien_fichier
     size = video_size(source)
-    frames, sounds = list(detect(source)), heard_sounds(hear(source), club_settings(db, session.org_id))
-    session.signs = json.dumps(_signs(frames, sounds, [(source, 0.0, float("inf"))], None))
+    frames, shouts = list(detect(source)), hear(source)
+    sounds = heard_sounds(shouts, club_settings(db, session.org_id))
+    session.signs = json.dumps(_signs(frames, shouts, [(source, 0.0, float("inf"))], None))
     fights = club_fights(db, session.org_id, frames, sounds, size)
 
     folder = dossier_ecole(session.org_id)
@@ -161,19 +162,20 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
     return count
 
 
-def _signs(frames: list[Frame], sounds: list[Sound], sources: list[tuple[Path, float, float]], old: str | None) -> list[dict]:
+def _signs(frames: list[Frame], shouts: list, sources: list[tuple[Path, float, float]], old: str | None) -> list[dict]:
     """Les signes repérés dans la séance, avec l'image de chacun, pour la
     frise (Seb, 13/11). Les images déjà faites sont gardées : seules celles
-    des nouveaux signes sont tirées des morceaux."""
+    des nouveaux signes sont tirées des morceaux. Tous les cris y sont, avec
+    leur volume et leur note, même ceux que les réglages écartent (Seb, 14/11)."""
     made = {(x["kind"], x["start"]): x.get("thumb") for x in json.loads(old)} if old else {}
     out = []
-    for sign in find_signs(frames, sounds):
+    for sign in find_signs(frames, [as_sound(x) for x in shouts]):
         start = round(sign.start, 1)
         thumb = made.get((sign.kind, start))
         if thumb is None:
             here = next(((src, off) for src, off, length in sources if off <= sign.start < off + length), None)
             thumb = thumbnail(here[0], sign.start - here[1]) if here else None
-        out.append({"kind": sign.kind, "start": start, "end": round(sign.end, 1), "thumb": thumb})
+        out.append(with_scores({"kind": sign.kind, "start": start, "end": round(sign.end, 1), "thumb": thumb}, shouts))
     return out
 
 
@@ -204,6 +206,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
         videos = clips.videos.par_ids(db, [p.video_id for p in pieces if p.video_id is not None])
     frames: list[Frame] = []
     sounds: list[Sound] = []
+    shouts: list = []  # tous les cris, avec note et volume : pour la frise
     sources: list[tuple[Path, float, float]] = []  # fichier, début dans la séance, durée
     settings = club_settings(db, session.org_id)
     offset, read, ended = 0.0, False, False
@@ -229,6 +232,8 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
             if _unrated(heard):  # écouté avant le 14/11 : sans volume ni note, réécouté
                 heard.write_text(json.dumps(hear(source)))
         frames += [Frame(t=f.t + offset, people=f.people) for f in piece_frames]
+        for x in _heard(heard, piece.duration_seconds):
+            shouts.append([x[0], x[1] + offset, *x[2:]])
         for kind, t in heard_sounds(_heard(heard, piece.duration_seconds), settings):
             sounds.append((kind, t + offset))
         sources.append((source, offset, piece.duration_seconds))
@@ -241,7 +246,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     finished = ended and session.status == "processing"
     if not read and not finished:
         return 0
-    session.signs = json.dumps(_signs(frames, sounds, sources, session.signs))
+    session.signs = json.dumps(_signs(frames, shouts, sources, session.signs))
 
     done = [x for x in db.scalars(select(Clip.start_seconds).where(Clip.session_id == session.id)) if x is not None]
     folder = dossier_ecole(session.org_id)

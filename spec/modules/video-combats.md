@@ -287,7 +287,11 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    `sc_club_signs` et `sc_lab_settings`, décochées au départ) : **« Seulement les cris forts »**
    (≥ 6 dB, `lab.LOUD_DB`) et **« Seulement les mots bien compris »** (note ≥ 0,5, `lab.SURE`), à
    essayer seules ou ensemble. Un cri entendu avant le 14/11 n'a ni note ni volume : « Relancer la
-   découpe » réécoute le morceau.
+   découpe » réécoute le morceau. Chaque seuil se règle au **curseur** sous sa case (0 à 30 dB,
+   0 à 1 ; colonnes `loud_db` et `sure_min`, 6 et 0,5 au départ). La **frise** montre tous les
+   cris, même écartés (grisés), avec sous chacun « N dB » et « sûr 0,NN », suivis du seuil quand
+   la case est cochée (Seb, 14/11) ; le Labo garde volume et note dans ses signes et filtre au
+   calcul des combats.
    Whisper (faster-whisper, modèle « base », processeur seul, dans
    l'image `sparring-worker`) transcrit les passages parlés avec l'heure de chaque mot
    (`hearing.py`) ; les mots « time » ou « taïme », « go » ou « gow » comptent. Écoute forcée en

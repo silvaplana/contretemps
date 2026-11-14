@@ -1043,6 +1043,7 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
                 signes={s.signs}
                 combats={combats}
                 coches={club.signs}
+                seuils={club}
                 fin={fin}
                 // Toucher un signe le montre dans la vidéo de la séance,
                 // sinon ouvre le combat où il tombe.
