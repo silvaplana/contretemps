@@ -14,7 +14,7 @@ const MOTS = [
   ['time', 'Time'],
 ]
 const DUREE_MS = 2000
-const OBJECTIF = 50
+const OBJECTIF = 20
 
 export default function Ecoute({ montrer }) {
   const [mot, setMot] = useState('fight')

@@ -21,7 +21,8 @@ from pathlib import Path
 MODEL = os.environ.get("SPARRING_SPEECH_MODEL", "base")
 # Deux écoutes au choix dans les réglages (Seb, 14/11) : « base » (rapide) et
 # « small » (plus précise, environ 3 fois plus lente), téléchargées dans l'image.
-SPEECH_MODELS = ("base", "small")
+# « club » : l'écoute du club (club_hearing.py), comparée aux cris enregistrés (Seb, 14/11).
+SPEECH_MODELS = ("base", "small", "club")
 MODELS_DIR = os.environ.get("SPARRING_SPEECH_DIR", "")
 # « Time » et « Go » dits en anglais, ou entendus comme des mots français.
 WORDS = {
@@ -60,11 +61,32 @@ def hear(video_path: Path, model: str = "base") -> list[tuple[str, float, float,
     au-dessus du bruit de fond ; Seb 14/11, contre les mots inventés). Si l'écoute échoue,
     aucun : les gestes suffisent, la vidéo est quand même lue (Seb, 12/11)."""
     try:
-        return _hear(video_path, model)
+        return _hear_club(video_path) if model == "club" else _hear(video_path, model)
     except Exception:
         print(f"Écoute impossible : {video_path.name}")
         traceback.print_exc()
         return []
+
+
+def voice_dir(video_path: Path) -> Path:
+    """Les cris enregistrés de l'école de la vidéo : les vidéos sont rangées
+    dans `<VIDEOS_DIR>/<école>/…` et les cris dans `<VIDEOS_DIR>/<école>/voice/`."""
+    from videos.stockage import DOSSIER_VIDEOS_LIVE
+
+    school = video_path.resolve().relative_to(DOSSIER_VIDEOS_LIVE.resolve()).parts[0]
+    return DOSSIER_VIDEOS_LIVE / school / "voice"
+
+
+def _hear_club(video_path: Path) -> list[tuple[str, float, float, float]]:
+    from .club_hearing import hear_club, templates
+
+    words = templates(voice_dir(video_path), _audio)
+    found = hear_club(_audio(video_path), words)
+    print(
+        f"Écoute du club dans {video_path.name} ({', '.join(f'{w} ×{len(e)}' for w, e in words.items()) or 'aucun cri enregistré'}) : "
+        + (" ".join(f"{k}@{t:.1f}~{s:.2f}" for k, t, s, _db in found) or "rien")
+    )
+    return found
 
 
 def _audio(video_path: Path):

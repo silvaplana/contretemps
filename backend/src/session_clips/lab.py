@@ -28,7 +28,7 @@ from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 from .fights import SIGNS, SOUNDS, Fight, Sound, as_sound, find_fights, find_signs, trim
 from .framing import FRAMINGS, Box, track, video_size
 
-SPEECH_MODELS = ("base", "small")  # comme hearing.SPEECH_MODELS (sans importer Whisper)
+SPEECH_MODELS = ("base", "small", "club")  # comme hearing.SPEECH_MODELS (sans importer Whisper)
 
 
 def listen(hear, source: Path, model: str) -> list:

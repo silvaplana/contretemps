@@ -57,5 +57,13 @@ def path(member: Member, word: str, name: str) -> Path:
     return found
 
 
+def newest(org_id: int) -> float:
+    """L'heure du dernier changement des cris enregistrés (0 s'il n'y en a pas) :
+    l'écoute du club réécoute les morceaux écoutés avant (cutting.py)."""
+    folder = dossier_ecole(org_id) / "voice"
+    stamps = [p.stat().st_mtime for p in folder.glob("*")] + [p.stat().st_mtime for p in folder.glob("*/*")]
+    return max(stamps, default=0.0)
+
+
 def delete(member: Member, word: str, name: str) -> None:
     path(member, word, name).unlink()
