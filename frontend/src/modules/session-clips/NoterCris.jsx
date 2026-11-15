@@ -15,13 +15,13 @@ const MOTS = [
 const nom = (id) => MOTS.find(([x]) => x === id)?.[1]
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s) % 60).padStart(2, '0')}`
 
-export default function NoterCris({ seanceId, signes, maintenant, aller, montrer }) {
+export default function NoterCris({ seanceId, version, changer, signes, maintenant, aller, montrer }) {
   const [notes, setNotes] = useState([])
   const [quelMot, setQuelMot] = useState(null) // moment dont on choisit le mot (Mauvais)
   const [manque, setManque] = useState(null) // moment de la vidéo pour « Il manque un mot »
   useEffect(() => {
     api.notesSeance(seanceId).then(setNotes, () => {})
-  }, [seanceId])
+  }, [seanceId, version])
   const cris = signes.filter((x) => nom(x.kind))
   const note = (t) => notes.find((n) => Math.abs(n.t - t) < 0.3)
 
@@ -30,6 +30,7 @@ export default function NoterCris({ seanceId, signes, maintenant, aller, montrer
       setNotes(await api.noterCri(seanceId, { t, answer, word }))
       setQuelMot(null)
       setManque(null)
+      changer?.() // la frise montre la marque (Seb, 15/11)
     } catch (e) {
       montrer(e.message)
     }
@@ -39,6 +40,7 @@ export default function NoterCris({ seanceId, signes, maintenant, aller, montrer
   async function retirer(t) {
     try {
       setNotes(await api.retirerNote(seanceId, t))
+      changer?.()
     } catch (e) {
       montrer(e.message)
     }

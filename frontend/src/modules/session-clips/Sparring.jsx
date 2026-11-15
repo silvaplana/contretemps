@@ -17,6 +17,7 @@ import Tournage from './Tournage.jsx'
 import Timer from './Timer.jsx'
 import Ecoute from './Ecoute.jsx'
 import NoterCris from './NoterCris.jsx'
+import NoterSignes, { notable, useNotes } from './NoterSignes.jsx'
 import './sparring.css'
 
 // Sparring (spec/modules/video-combats.md §6, maquette validée
@@ -939,6 +940,10 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
     bout ? bout.start + (bout.video?.dureeSecondes || 0) : 0,
   )
   const frise = club && club.show_timeline !== false && s
+  // Noter les signes dans la frise (Seb, 15/11) : le signe touché, et les notes.
+  const [choisi, setChoisi] = useState(null)
+  const [notesVer, setNotesVer] = useState(0)
+  const { notes, marque } = useNotes(seanceId, notesVer)
 
   // Le film de la séance, bout après bout (la caméra l'envoie par 2 minutes).
   const lecteur = useRef(null)
@@ -1065,13 +1070,31 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
                 coches={club.signs}
                 seuils={club}
                 fin={fin}
-                // Toucher un signe le montre dans la vidéo de la séance,
-                // sinon ouvre le combat où il tombe.
-                aller={(t) => {
-                  if (film.length > 0) return voir(t)
-                  const c = combats.find((x) => x.start - 2 <= t && t <= x.end + 2)
+                marque={film.length > 0 ? marque : undefined}
+                // Toucher un signe le montre dans la vidéo de la séance (et
+                // propose de le noter), sinon ouvre le combat où il tombe.
+                aller={(t, x) => {
+                  if (film.length > 0) {
+                    setChoisi(x && notable(x.kind) ? x : null)
+                    return voir(t)
+                  }
+                  const c = combats.find((y) => y.start - 2 <= t && t <= y.end + 2)
                   if (c) onOpen(c.id)
                 }}
+              />
+            )}
+            {film.length > 0 && (
+              <NoterSignes
+                seanceId={seanceId}
+                notes={notes}
+                marque={marque}
+                choisi={choisi}
+                fermer={() => setChoisi(null)}
+                maintenant={() => (film[partie]?.start ?? 0) + (lecteur.current?.currentTime ?? 0)}
+                changer={() => setNotesVer((v) => v + 1)}
+                club={club}
+                setClub={setClub}
+                montrer={montrer}
               />
             )}
           </Deroulant>
@@ -1080,6 +1103,8 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
         {s && film.length > 0 && (
           <NoterCris
             seanceId={seanceId}
+            version={notesVer}
+            changer={() => setNotesVer((v) => v + 1)}
             signes={s.signs}
             maintenant={() => (film[partie]?.start ?? 0) + (lecteur.current?.currentTime ?? 0)}
             aller={voir}

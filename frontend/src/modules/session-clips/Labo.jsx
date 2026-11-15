@@ -33,7 +33,7 @@ const SIGNES = [
   { id: 'bell', g: 'deb', l: 'Cloche du Timer', court: 'Cloche', d: 'Son : un coup de cloche du Timer de Fights, début du round' },
   { id: 'bells', g: 'fin', l: 'Trois coups du Timer', court: 'Trois coups', d: 'Son : les trois coups de cloche du Timer, fin du round' },
 ]
-const signe = (id) => SIGNES.find((s) => s.id === id) ?? { id, g: 'fin', l: id, court: id, d: '' }
+export const signe = (id) => SIGNES.find((s) => s.id === id) ?? { id, g: 'fin', l: id, court: id, d: '' }
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s) % 60).padStart(2, '0')}`
 
@@ -739,7 +739,7 @@ const ecarte = (s, seuils) =>
   (s.db != null && !!seuils && ((seuils.loud_only && s.db < seuils.loud_db) || (seuils.sure_only && s.note < seuils.sure_min)))
 const virgule = (x, n) => x.toFixed(n).replace('.', ',')
 
-export function Graphe({ signes: tous, combats, coches, fin, aller, seuils }) {
+export function Graphe({ signes: tous, combats, coches, fin, aller, seuils, marque }) {
   // Un signe décoché dans les paramètres n'est pas montré du tout (Seb, 15/11).
   const signes = tous.filter((s) => coches.includes(s.kind))
   const W = 320
@@ -807,8 +807,8 @@ export function Graphe({ signes: tous, combats, coches, fin, aller, seuils }) {
             role="button"
             tabIndex={0}
             aria-label={`${mmss(s.start)} ${sg.l}`}
-            onClick={() => aller(s.start)}
-            onKeyDown={(ev) => ev.key === 'Enter' && aller(s.start)}
+            onClick={() => aller(s.start, s)}
+            onKeyDown={(ev) => ev.key === 'Enter' && aller(s.start, s)}
           >
             <rect x={bx - 2} y={top - 2} width={VW + 4} height={VH + 4} rx="6" className="sc-graphe__cadre" />
             {s.thumb && <image href={s.thumb} x={bx} y={top} width={VW} height={VH} preserveAspectRatio="xMidYMid slice" />}
@@ -830,6 +830,18 @@ export function Graphe({ signes: tous, combats, coches, fin, aller, seuils }) {
               </>
             )}
             <path d={`M${cx - 5} ${tip + 10} L${cx} ${tip} L${cx + 5} ${tip + 10}Z`} className="sc-graphe__pt" />
+            {/* Noté dans la séance (Seb, 15/11) : ✓ bon, ✗ mauvais, barré inventé. */}
+            {marque?.(s) === 'invented' && (
+              <line x1={bx} y1={top + VH} x2={bx + VW} y2={top} className="sc-graphe__barre" />
+            )}
+            {(marque?.(s) === 'good' || marque?.(s) === 'wrong') && (
+              <g className={`sc-graphe__marque sc-graphe__marque--${marque(s)}`}>
+                <circle cx={bx + VW - 4} cy={top + 4} r="10" />
+                <text x={bx + VW - 4} y={top + 9}>
+                  {marque(s) === 'good' ? '✓' : '✗'}
+                </text>
+              </g>
+            )}
           </g>
         )
       })}

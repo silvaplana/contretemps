@@ -712,6 +712,31 @@
   font-weight: 700;
 }
 
+.sc-graphe__barre {
+  stroke: var(--sc-rouge);
+  stroke-width: 4;
+}
+
+.sc-graphe__marque circle {
+  stroke: #fff;
+  stroke-width: 2;
+}
+
+.sc-graphe__marque--good circle {
+  fill: var(--success-text);
+}
+
+.sc-graphe__marque--wrong circle {
+  fill: var(--sc-rouge);
+}
+
+.sc-graphe__ev .sc-graphe__marque text {
+  fill: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  text-anchor: middle;
+}
+
 .sc-geste,
 .sc-coche {
   display: flex;
@@ -1101,4 +1126,23 @@
 /* Le détail mot par mot d'un rejeu (étude du 14/11). */
 .sc-ecoute__mot {
   display: block;
+}
+
+/* Noter un signe de la frise (Seb, 15/11) : la barre reste en bas de l'écran. */
+.sc-noter {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.sc-noter__barre {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  background: var(--surface, #fff);
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.15);
 }

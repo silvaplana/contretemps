@@ -426,6 +426,25 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    séance et la compte comme un test. **« Retirer »** à côté d'une note (sous un cri noté ou un
    « Ajouté ») l'enlève de la vérité et efface son exemple (Seb, 15/11 : un « Time » de trop ;
    `DELETE …/voice-notes?t=`). « Effacer tous les tests » efface aussi les séances notées.
+   **Noter les signes dans la frise** (Seb, 15/11 : « dire graphiquement si c'est bon, mauvais,
+   inventé ») : dans une séance ouverte avec son film, toucher un geste (poings touchés, bras levés,
+   poignée de main, bras croisés) ou un cri (Combattez, Time) de la frise le montre dans la vidéo et
+   ouvre en bas de l'écran une barre « Poings en l'air à 0:05 : Bon | Mauvais | Inventé | ✕ »
+   (Mauvais : puis ce que c'était vraiment, un autre geste, ou l'autre mot / « Autre mot »). La frise
+   garde la marque : **✓ vert** bon, **✗ rouge** mauvais, image **barrée** inventé ; un signe noté
+   propose « Retirer ». Les cris vont dans les notes de l'écoute (`voice-notes`, comme « Noter les
+   cris », les deux restent d'accord) ; les gestes dans `gesture-notes/<séance>.json` (liste
+   `{t, kind, answer, real}`, sans table ; routes `GET/POST/DELETE …/sessions/{id}/gesture-notes`).
+   Sous la frise, **« Il manque un geste ici »** (au moment où la vidéo est arrêtée, puis le geste) et
+   **« Proposer un réglage »** (`GET /session-clips/signs/proposal`) : relit les postures gardées des
+   séances notées (10 s autour de chaque note), essaie chaque durée minimale d'un geste de 0,4 à 3 s
+   (par 0,1 s) et compte les notes respectées (un geste repéré à 1,5 s près : Bon / Il manque = il
+   doit être repéré ; Inventé = il ne doit pas l'être ; Mauvais = pas ce geste, mais le vrai s'il est
+   dit). Elle affiche « Durée minimale d'un geste 1,7 s : 3 notes respectées sur 3 (aujourd'hui
+   1,6 s : 2 sur 3) » avec **« Appliquer »** (enregistre les Paramètres de tournage) ou « Annuler » ;
+   à égalité, la durée la plus proche de celle du jour. **Rien ne change sans « Appliquer »**, et
+   « Relancer la découpe » garde les réglages. Seule la durée est proposée pour l'instant (l'écart des
+   hanches reste fixe à 1,4 buste).
    **Effacer** (Seb, 14/11 : deux boutons) : « Effacer tous les enregistrements » sous la liste des cris
    (`DELETE /voice` : tous les mots, et les exemples « other » / « noise » rangés après un test ; le
    dossier `voice/` vide est recréé, daté de maintenant, pour que l'écoute du club réécoute les
