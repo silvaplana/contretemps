@@ -290,10 +290,16 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    dit moins en parlant, donc moins inventé. Partout : signe de début (`combattez` ; un « combat »
    coché avant est lu comme « combattez », `lab.RENAMED`), mots soufflés à Whisper (« Combat » +
    « tez » recollés), Entraîner l'écoute, écoute du club, Mauvais, score par mot. Les anciens
-   « Combat » restent dans `voice/combat/`, non lus. Hajime reste jusqu'à la séance du 16/11.
+   « Combat » restent dans `voice/combat/`, non lus.
+   **« Hajime ! » retiré** (Seb, 15/11 vers 2 h à Paris, séance 15) : souvent inventé (les deux
+   Hajime « presque » de la séance n'avaient pas été dits), « Combattez » mieux reconnu. Seb garde
+   un seul cri de début. Retiré comme Fight : signes à cocher (case cochée avant ignorée), Whisper,
+   Entraîner l'écoute, écoute du club, Noter les cris ; enregistrements gardés dans `voice/hajime/`,
+   non lus ; les séances sont réécoutées (`voice.CLUB_CHANGED`). Restent **Combattez** (début) et
+   **Time** (fin), plus les sons du Timer.
    **Fights › ⋮ › Entraîner l'écoute** (Seb, 14/11, coachs) : pour apprendre les cris à l'écoute
-   (un petit modèle de mots-clés, à venir) au lieu de compter sur Whisper. On choisit le mot (Hajime,
-   Combattez, Time), on touche « Enregistrer » et on crie le mot : 2 s enregistrées au micro
+   (un petit modèle de mots-clés, à venir) au lieu de compter sur Whisper. On choisit le mot
+   (Combattez, Time), on touche « Enregistrer » et on crie le mot : 2 s enregistrées au micro
    du téléphone, envoyées tout de suite ; ▶ pour réécouter, poubelle pour effacer ; objectif 20 par
    mot. Pas de table : un fichier par enregistrement, `<VIDEOS_DIR>/<école>/voice/<mot>/<id>.webm`
    (`session_clips/voice.py`, routes `/session-clips/voice`), étanche par école.
@@ -345,7 +351,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    ou « Aucun cri reconnu ». Pas en direct : le modèle tourne sur le serveur.
    Sous chaque mot trouvé, **Bon | Mauvais | Inventé** (Seb, 14/11) : 2 s autour du moment sont
    coupées dans le test et rangées (`POST /voice-tests/<id>/answer`, `voice.answer_test`) comme
-   exemple du mot (Bon), du mot vraiment dit (Mauvais : Hajime, Combattez, Time, ou « Autre mot »
+   exemple du mot (Bon), du mot vraiment dit (Mauvais : Combattez, Time, ou « Autre mot »
    → `voice/other/`), ou de rien (Inventé → `voice/noise/`). `other` et `noise` ne sont pas des mots :
    l'écoute du club écarte un cri qui leur ressemble plus qu'au mot. Tous les tests sont gardés (Seb).
    L'écoute du club apprend tout de suite : les empreintes sont recalculées dès que les exemples changent.
@@ -398,7 +404,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    (`voice.CLUB_CHANGED`).
    **Noter les cris d'une séance filmée** (étude du 14/11, Seb « code ça ») : dans une séance ouverte,
    volet **« Noter les cris »** (fermé, sous « Signes repérés », seulement s'il y a le film) : sous chaque
-   Hajime / Combattez / Time de la frise, ▶ (le moment dans la vidéo), Bon | Mauvais | Inventé, comme
+   Combattez / Time de la frise, ▶ (le moment dans la vidéo), Bon | Mauvais | Inventé, comme
    sous un test ; **« Il manque un mot ici »** prend le moment où la vidéo est arrêtée, puis le mot.
    2 s sont coupées dans le morceau et rangées comme exemple (le vrai bruit de la salle), et la vérité
    va dans `voice-sessions/<séance>.json` (morceaux : chemin, début, durée ; vérité : moment, mot,

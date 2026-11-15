@@ -9,7 +9,6 @@ import { Deroulant } from './Labo.jsx'
 // « Rejouer tous les essais » compte la séance avec le vrai bruit de la salle.
 
 const MOTS = [
-  ['hajime', 'Hajime'],
   ['combattez', 'Combattez'],
   ['time', 'Time'],
 ]

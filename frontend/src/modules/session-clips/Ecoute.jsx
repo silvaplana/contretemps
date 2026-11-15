@@ -8,7 +8,6 @@ import * as api from './api.js'
 // l'écoute. Un appui = 2 s d'enregistrement, envoyé tout de suite.
 
 const MOTS = [
-  ['hajime', 'Hajime'],
   ['combattez', 'Combattez'],
   ['time', 'Time'],
 ]
@@ -42,7 +41,7 @@ async function enregistrerSon(ms) {
 }
 
 export default function Ecoute({ montrer }) {
-  const [mot, setMot] = useState('hajime')
+  const [mot, setMot] = useState('combattez')
   const [liste, setListe] = useState(null)
   const [enregistre, setEnregistre] = useState(false)
   const [lecture, setLecture] = useState(null)
