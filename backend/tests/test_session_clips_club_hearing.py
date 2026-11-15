@@ -201,3 +201,24 @@ def test_le_cri_entier():
     long = [0.0] * 5 + [30.0] * 60 + [0.0] * 5
     debut, fin = bounds(long, 30)
     assert fin - debut == pytest.approx(1.5)
+
+
+def test_les_cris_presque_retenus():
+    """Seb, 15/11 : un cri proche du seuil (pas assez sûr) se montre en gris
+    pointillé dans la frise ; le bruit, loin du seuil, n'apparaît pas. Un
+    « presque » porte un 5e élément True et ne compte pas pour la découpe."""
+    from session_clips.club_hearing import pick_with_near
+    from session_clips.lab import Settings, heard, with_scores
+
+    trouves = [
+        ("time", 14.0, 0.45, 0.20, 25.0),  # retenu
+        ("time", 33.0, 0.35, 0.12, 22.0),  # presque : sous le seuil de peu
+        ("hajime", 50.0, 0.20, 0.05, 15.0),  # bruit : loin du seuil
+        ("time", 60.0, 0.42, 0.02, 18.0),  # écart bien trop court (moins de la moitié) : écarté
+    ]
+    cris = pick_with_near(trouves, 0.40, 0.15)
+    assert cris == [("time", 14.0, 0.45, 25.0), ("time", 33.0, 0.35, 22.0, True)]
+    assert heard([list(x) for x in cris], Settings()) == [("time", 14.0)]
+    assert with_scores({"kind": "time", "start": 33.0}, [list(x) for x in cris]) == {
+        "kind": "time", "start": 33.0, "note": 0.35, "db": 22.0, "weak": True,
+    }

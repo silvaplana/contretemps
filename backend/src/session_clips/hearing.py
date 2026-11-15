@@ -107,7 +107,7 @@ def voice_dir(video_path: Path) -> Path:
 def _hear_club(video_path: Path, exclude: frozenset[str] = frozenset(), raw: bool = False) -> list:
     import json
 
-    from .club_hearing import candidates, pick, templates
+    from .club_hearing import candidates, pick_with_near, templates
 
     folder = voice_dir(video_path)
     words = templates(folder, _audio, exclude)
@@ -117,12 +117,12 @@ def _hear_club(video_path: Path, exclude: frozenset[str] = frozenset(), raw: boo
     # Le seuil et l'écart réglés par le dernier « Rejouer tous les essais » (voice.py).
     tuned = folder.parent / "voice-replays" / "thresholds.json"
     limits = json.loads(tuned.read_text()) if tuned.exists() else {}
-    kept = pick(found, **limits)
+    kept = pick_with_near(found, **limits)
     print(
         f"Écoute du club dans {video_path.name} ({', '.join(f'{w} ×{len(e)}' for w, e in words.items()) or 'aucun cri enregistré'}"
         f"{', seuil ' + str(limits) if limits else ''}) : "
         + (" ".join(f"{k}@{t:.1f}~{s:.2f}/{m:.2f}" for k, t, s, m, _db in found) or "rien")
-        + f" → {len(kept)} gardés"
+        + f" → {sum(len(x) == 4 for x in kept)} gardés, {sum(len(x) == 5 for x in kept)} presque"
     )
     return kept
 

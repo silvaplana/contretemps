@@ -95,6 +95,8 @@ MAX_DB = 40.0
 def kept(x, s: Settings) -> bool:
     """Un cri (mot, moment, note, volume) passe-t-il les réglages ? Un cri
     entendu avant le 14/11 n'a ni volume ni note : il est gardé."""
+    if isinstance(x, (list, tuple)) and len(x) >= 5 and x[4]:
+        return False  # un « presque » de l'écoute du club (Seb, 15/11) : montré, pas compté
     if isinstance(x, (list, tuple)) and len(x) >= 4:
         if s.loud_only and x[3] < s.loud_db:
             return False
@@ -245,6 +247,8 @@ def with_scores(sign: dict, shouts: list) -> dict:
     x = next((x for x in shouts if isinstance(x, (list, tuple)) and len(x) >= 4 and x[0] == sign["kind"] and abs(x[1] - sign["start"]) < 0.05), None)
     if x is not None:
         sign |= {"note": x[2], "db": x[3]}
+        if len(x) >= 5 and x[4]:
+            sign["weak"] = True  # gris pointillé dans la frise (Seb, 15/11)
     return sign
 
 

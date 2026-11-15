@@ -388,6 +388,14 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
      n'est plus abîmé. Le tirage de passages de fond au hasard est retiré.
    Les morceaux déjà écoutés par l'écoute du club sont réécoutés après ce changement (`voice.CLUB_CHANGED`)
    et après chaque nouveau réglage du rejeu (`voice.newest`).
+   **Cris « presque » et signes décochés dans la frise** (Seb, 15/11) : l'écoute du club garde aussi
+   les cris proches du seuil (ressemblance à moins de 0,10 sous le seuil et avance d'au moins la
+   moitié de l'écart demandé, `club_hearing.pick_with_near`), marqués d'un 5e élément `True` : ils
+   ne comptent pas pour la découpe (`lab.kept`), ni sous un test, mais la frise les montre en gris
+   pointillé (`weak`), comme un cri sous les seuils des réglages, et « Noter les cris » les propose
+   avec « (pas sûr) ». Le bruit, loin du seuil, n'est pas gardé. Un signe décoché dans les
+   paramètres n'est plus montré du tout dans la frise (séance et Labo). Morceaux réécoutés une fois
+   (`voice.CLUB_CHANGED`).
    **Noter les cris d'une séance filmée** (étude du 14/11, Seb « code ça ») : dans une séance ouverte,
    volet **« Noter les cris »** (fermé, sous « Signes repérés », seulement s'il y a le film) : sous chaque
    Hajime / Combattez / Time de la frise, ▶ (le moment dans la vidéo), Bon | Mauvais | Inventé, comme

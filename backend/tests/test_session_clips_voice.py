@@ -45,7 +45,8 @@ def test_tester_l_ecoute(client, e, tmp_path, monkeypatch):  # noqa: F811
     assert client.get(f"/session-clips/voice-tests/{nom}", headers=e["coach"]).json() == {"done": False, "words": []}
 
     entendus = []
-    ecoute = lambda path, model: entendus.append((path.name, model)) or [("time", 4.2, 0.91, 25.0)]
+    # Un « presque » (5e élément, Seb 15/11) n'est pas montré sous un test.
+    ecoute = lambda path, model: entendus.append((path.name, model)) or [("time", 4.2, 0.91, 25.0), ("hajime", 6.0, 0.3, 12.0, True)]
     assert voice.hear_tests(ecoute) == 1
     assert voice.hear_tests(ecoute) == 0  # déjà écouté
     assert entendus == [(nom, "club")]
