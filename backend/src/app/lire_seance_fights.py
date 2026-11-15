@@ -27,12 +27,15 @@ from session_clips.cutting import _heard, _load_frames, _poses_path, sounds_path
 from session_clips.fights import find_fights, find_signs, trim
 from session_clips.models import Clip, ClipSession, Piece
 from session_clips.signals import (
+    L_HIP,
     L_SHOULDER,
     L_WRIST,
+    R_HIP,
     R_SHOULDER,
     R_WRIST,
     Frame,
     Pose,
+    _mean,
     _shoulders_top,
     _wrists,
     is_x,
@@ -117,8 +120,9 @@ def detail(db, session_id: int, out=print) -> None:
 
 def _report(frames: list[Frame], sounds, s, out) -> None:
     out(f"réglages du tournage : signes {list(s.signs)}, cadrage {s.framing}, début -{s.start_skip} s, fin -{s.end_skip} s")
-    out(f"signes recalculés : {[(g.kind, round(g.start, 1), round(g.end, 1)) for g in find_signs(frames, sounds)]}")
-    fights = trim(find_fights(frames, s.signs, sounds), s.start_skip, s.end_skip)
+    out(f"geste tenu au moins {s.min_hold} s")
+    out(f"signes recalculés : {[(g.kind, round(g.start, 1), round(g.end, 1)) for g in find_signs(frames, sounds, s.min_hold)]}")
+    fights = trim(find_fights(frames, s.signs, sounds, s.min_hold), s.start_skip, s.end_skip)
     out(f"combats avec les règles du jour : {[(round(f.start, 1), round(f.end, 1), f.check_reason) for f in fights]}")
 
 
@@ -138,9 +142,20 @@ def _raised(frames: list[Frame], out, limit: int = 200) -> None:
         ups = [[w for w in _wrists(p) if w[1] < top - 0.2 * unit] for p, top in zip(pair, tops, strict=True)]
         if not all(ups):
             continue
-        gap = min(((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 for a in ups[0] for b in ups[1]) / unit
+        dist = lambda a, b: ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 / unit
+        wa, wb = min(((a, b) for a in ups[0] for b in ups[1]), key=lambda x: dist(*x))
+        gap = dist(wa, wb)
         lift = [round((top - min(w[1] for w in u)) / unit, 2) for u, top in zip(ups, tops, strict=True)]
-        lines.append(f"  {f.t:6.1f} s · écart des poignets {gap:.2f} buste · hauteur au-dessus des épaules {lift}")
+        # Corps séparés ou corps à corps (Seb, 15/11) : l'écart des hanches, et
+        # celui des deux autres mains (une seule main chacun se touche).
+        hips = [_mean([p.point(L_HIP), p.point(R_HIP)]) for p in pair]
+        body = f"{dist(*hips):.2f}" if None not in hips else "?"
+        others = [[w for w in _wrists(p) if w != x] for p, x in zip(pair, (wa, wb), strict=True)]
+        other = f"{min(dist(a, b) for a in others[0] for b in others[1]):.2f}" if all(others) else "?"
+        lines.append(
+            f"  {f.t:6.1f} s · écart des poignets {gap:.2f} buste · hauteur au-dessus des épaules {lift}"
+            f" · écart des hanches {body} · des autres mains {other}"
+        )
     out(f"bras levés tous les deux : {len(lines)} images (poings touchés : écart < 0,35, ou < 0,65 si hauteur ≥ 0,4)")
     for line in lines[:limit]:
         out(line)
