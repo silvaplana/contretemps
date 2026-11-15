@@ -22,7 +22,9 @@ from .service import ForbiddenError, NotFoundError
 # enregistrements restent sur le disque, l'écoute ne les lit plus.
 # « combat » remplacé par « combattez » le 15/11 (Seb : trois syllabes, finit
 # en « é », moins inventé) ; ses enregistrements restent dans voice/combat/, non lus.
-WORDS = ("hajime", "combattez", "time")
+# « hajime » retiré le 15/11 (Seb : souvent inventé, Combattez mieux reconnu) ;
+# ses enregistrements restent dans voice/hajime/, non lus.
+WORDS = ("combattez", "time")
 MAX_BYTES = 2_000_000  # quelques secondes de son
 EXTENSIONS = {"audio/webm": ".webm", "audio/ogg": ".ogg", "audio/mp4": ".m4a", "audio/aac": ".aac"}
 _NAME = re.compile(r"^[0-9a-f]{32}\.(webm|ogg|m4a|aac|wav)$")
@@ -70,8 +72,9 @@ def path(member: Member, word: str, name: str) -> Path:
 
 # Le cri entier comparé dans l'ordre (étude du 14/11), puis les cris
 # « presque » gardés pour la frise (15/11, vers 1 h 45 à Paris) : les
-# morceaux écoutés avant sont réécoutés.
-CLUB_CHANGED = 1794703200.0  # 2026-11-15 00:40 UTC
+# morceaux écoutés avant sont réécoutés. De même après le retrait de « Hajime »
+# (15/11, vers 2 h 20 à Paris).
+CLUB_CHANGED = 1794705600.0  # 2026-11-15 01:20 UTC
 
 
 def newest(org_id: int) -> float:

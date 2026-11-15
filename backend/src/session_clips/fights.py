@@ -2,7 +2,7 @@
 §5) à partir des gestes de chaque image (signals.py).
 
 D'abord les signes, tenus un moment (`find_signs`) : au début, les poings
-touchés en l'air ou un cri (« Go ! », « Fight ! », « Hajime ! ») ; à la fin, la
+touchés en l'air ou un cri (« Go ! », « Combattez ! ») ; à la fin, la
 poignée de main (immobiles), les bras croisés ou le « Time ! » crié. Puis les combats (`find_fights`), avec
 les seuls signes cochés par le club : du signe de début au premier signe de
 fin, sinon à la zone vide quelques secondes, sinon au début du combat
@@ -19,8 +19,9 @@ from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is
 # « go », « hajime », « combat » : crié par l'entraîneur (hearing.py ; « Hajime ! »
 # ajouté le 13/11 : « go », trop court, se confond avec « allez »). « Fight ! »
 # retiré le 14/11 (Seb) : même « aï » que « Time ».
-# « Combat ! » remplacé par « Combattez ! » le 15/11 (Seb).
-SHOUTED_STARTS = ("go", "hajime", "combattez")
+# « Combat ! » remplacé par « Combattez ! » le 15/11 (Seb), « Hajime ! » retiré le
+# même jour (souvent inventé).
+SHOUTED_STARTS = ("go", "combattez")
 # « bell » / « bells » : la cloche d'un coup et les trois coups du Timer de
 # Fights, repérés dans la bande son (timer_bells.py, Seb 14/11).
 START_SIGNS = ("fists_touch", "arms_up", *SHOUTED_STARTS, "bell")

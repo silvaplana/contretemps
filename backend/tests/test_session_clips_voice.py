@@ -1,5 +1,5 @@
 """Fights › ⋮ › Entraîner l'écoute (Seb, 14/11) : un coach enregistre au
-téléphone des « Fight ! », « Hajime ! », « Combat ! » et « Time ! », pour
+téléphone des « Combattez ! » et « Time ! », pour
 apprendre ces mots à l'écoute ; chaque école garde les siens."""
 
 import pytest
@@ -11,25 +11,25 @@ pytestmark = pytest.mark.rbac_reel
 def test_enregistrer_les_mots(client, e, tmp_path, monkeypatch):  # noqa: F811
     monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
     son = {"Content-Type": "audio/webm"}
-    vide = {"hajime": [], "combattez": [], "time": []}
+    vide = {"combattez": [], "time": []}
     assert client.get("/session-clips/voice", headers=e["coach"]).json() == vide
     assert client.get("/session-clips/voice", headers=e["eleve"]).status_code == 403
 
-    r = client.post("/session-clips/voice/hajime", content=b"webm", headers=e["coach"] | son)
+    r = client.post("/session-clips/voice/combattez", content=b"webm", headers=e["coach"] | son)
     assert r.status_code == 201
-    [nom] = r.json()["hajime"]
+    [nom] = r.json()["combattez"]
     assert client.post("/session-clips/voice/allez", content=b"webm", headers=e["coach"] | son).status_code == 400
     assert client.post("/session-clips/voice/time", content=b"", headers=e["coach"] | son).status_code == 400
     assert client.post("/session-clips/voice/time", content=b"x", headers=e["eleve"] | son).status_code == 403
 
-    lu = client.get(f"/session-clips/voice/hajime/{nom}", headers=e["coach"])
+    lu = client.get(f"/session-clips/voice/combattez/{nom}", headers=e["coach"])
     assert lu.status_code == 200 and lu.content == b"webm"
     # Étanche : une autre école ne voit ni ne lit les enregistrements.
     assert client.get("/session-clips/voice", headers=e["ailleurs"]).json() == vide
-    assert client.get(f"/session-clips/voice/hajime/{nom}", headers=e["ailleurs"]).status_code == 404
-    assert client.get("/session-clips/voice/hajime/..%2F..%2Fx", headers=e["coach"]).status_code == 404
+    assert client.get(f"/session-clips/voice/combattez/{nom}", headers=e["ailleurs"]).status_code == 404
+    assert client.get("/session-clips/voice/combattez/..%2F..%2Fx", headers=e["coach"]).status_code == 404
 
-    assert client.delete(f"/session-clips/voice/hajime/{nom}", headers=e["coach"]).status_code == 204
+    assert client.delete(f"/session-clips/voice/combattez/{nom}", headers=e["coach"]).status_code == 204
     assert client.get("/session-clips/voice", headers=e["coach"]).json() == vide
 
 
@@ -75,14 +75,14 @@ def test_dire_la_verite_apres_un_test(client, e, tmp_path, monkeypatch):  # noqa
     url = f"/session-clips/voice-tests/{nom}/answer"
     assert client.post(url, json={"t": 4.2, "answer": "good", "word": "time"}, headers=e["eleve"]).status_code == 403
     assert client.post(url, json={"t": 4.2, "answer": "good", "word": "time"}, headers=e["coach"]).status_code == 204
-    assert client.post(url, json={"t": 6.0, "answer": "wrong", "word": "hajime"}, headers=e["coach"]).status_code == 204
+    assert client.post(url, json={"t": 6.0, "answer": "wrong", "word": "combattez"}, headers=e["coach"]).status_code == 204
     assert client.post(url, json={"t": 7.0, "answer": "wrong", "word": "other"}, headers=e["coach"]).status_code == 204
     assert client.post(url, json={"t": 8.0, "answer": "invented"}, headers=e["coach"]).status_code == 204
     assert client.post(url, json={"t": 8.0, "answer": "peut-être"}, headers=e["coach"]).status_code == 400
     assert client.post(url, json={"t": 8.0, "answer": "good", "word": "allez"}, headers=e["coach"]).status_code == 400
 
     mots = client.get("/session-clips/voice", headers=e["coach"]).json()
-    assert {m: len(n) for m, n in mots.items()} == {"hajime": 1, "combattez": 0, "time": 1}
+    assert {m: len(n) for m, n in mots.items()} == {"combattez": 1, "time": 1}
     dossier = tmp_path / str(e["ecole"].id) / "voice"
     assert len(list((dossier / "other").glob("*.wav"))) == 1 and len(list((dossier / "noise").glob("*.wav"))) == 1
     # Le cri gardé : 2 s autour du moment trouvé, lisible comme un enregistrement.
@@ -97,26 +97,25 @@ def test_points_d_un_essai():
 
     verite = [
         {"t": 2.0, "word": "time"},  # Bon
-        {"t": 5.0, "word": "hajime"},  # Mauvais : c'était Hajime
+        {"t": 5.0, "word": "combattez"},  # Mauvais : c'était Combattez
         {"t": 7.0, "word": None},  # Inventé
         {"t": 8.5, "word": "other"},  # Mauvais : un autre mot
-        {"t": None, "word": "combattez"},  # Il manque un mot
+        {"t": None, "word": "time"},  # Il manque un mot
     ]
-    tout_juste = [("time", 2.1), ("hajime", 4.8), ("combattez", 9.8)]
+    tout_juste = [("time", 2.1), ("combattez", 4.8), ("time", 9.8)]
     juste = score([(k, t, 0.9, 20.0) for k, t in tout_juste], verite)
     assert {k: v for k, v in juste.items() if k != "words"} == {
         "good": 3, "wrong": 0, "invented": 0, "missed": 0, "points": 3, "best": 3,
     }
-    assert [juste["words"][w]["good"] for w in ("hajime", "combattez", "time")] == [1, 1, 1]
+    assert [juste["words"][w]["good"] for w in ("combattez", "time")] == [1, 2]
     comme_avant = [("time", 2.0), ("time", 5.0), ("go", 7.0), ("time", 8.5)]
     faux = score([(k, t, 0.9, 20.0) for k, t in comme_avant], verite)
     assert {k: v for k, v in faux.items() if k != "words"} == {
         "good": 1, "wrong": 2, "invented": 1, "missed": 1, "points": 1 - 2 - 2 - 1, "best": 3,
     }
     assert faux["words"] == {
-        "hajime": {"good": 0, "missed": 0, "invented": 0, "wrong": 0, "heard_as": {"time": 1}},
-        "combattez": {"good": 0, "missed": 1, "invented": 0, "wrong": 0, "heard_as": {}},
-        "time": {"good": 1, "missed": 0, "invented": 0, "wrong": 2, "heard_as": {}},
+        "combattez": {"good": 0, "missed": 0, "invented": 0, "wrong": 0, "heard_as": {"time": 1}},
+        "time": {"good": 1, "missed": 1, "invented": 0, "wrong": 2, "heard_as": {}},
     }
 
 
@@ -216,7 +215,7 @@ def test_effacer_les_enregistrements_ou_les_tests(client, e, tmp_path, monkeypat
 
     monkeypatch.setattr("videos.stockage.DOSSIER_VIDEOS_LIVE", tmp_path)
     son = {"Content-Type": "audio/webm"}
-    vide = {"hajime": [], "combattez": [], "time": []}
+    vide = {"combattez": [], "time": []}
     client.post("/session-clips/voice/time", content=b"webm", headers=e["coach"] | son)
     test = client.post("/session-clips/voice-tests", content=b"webm", headers=e["coach"] | son).json()["name"]
     client.post("/session-clips/voice-replays", headers=e["coach"])
@@ -288,13 +287,13 @@ def test_noter_les_cris_d_une_seance(client, e, db_session, tmp_path, monkeypatc
     assert client.post(url, json={"t": 3.0, "answer": "good", "word": "time"}, headers=e["ailleurs"]).status_code == 404
     assert client.post(url, json={"t": 3.0, "answer": "good", "word": "time"}, headers=e["coach"]).status_code == 201
     assert client.post(url, json={"t": 9.0, "answer": "invented"}, headers=e["coach"]).status_code == 201
-    assert client.post(url, json={"t": 14.0, "answer": "missing", "word": "hajime"}, headers=e["coach"]).status_code == 201
+    assert client.post(url, json={"t": 14.0, "answer": "missing", "word": "combattez"}, headers=e["coach"]).status_code == 201
     assert client.post(url, json={"t": 14.0, "answer": "missing", "word": "fight"}, headers=e["coach"]).status_code == 400
     assert client.post(url, json={"t": 99.0, "answer": "invented"}, headers=e["coach"]).status_code == 404
     notes = client.get(url, headers=e["coach"]).json()
-    assert [(n["t"], n["word"]) for n in notes] == [(3.0, "time"), (9.0, None), (14.0, "hajime")]
+    assert [(n["t"], n["word"]) for n in notes] == [(3.0, "time"), (9.0, None), (14.0, "combattez")]
     mots = client.get("/session-clips/voice", headers=e["coach"]).json()
-    assert (len(mots["time"]), len(mots["hajime"])) == (1, 1)  # rangés comme exemples
+    assert (len(mots["time"]), len(mots["combattez"])) == (1, 1)  # rangés comme exemples
 
     # Une note mise par erreur se retire (Seb, 15/11 : un « Time » de trop à 38 s),
     # avec l'exemple qui en venait.
@@ -310,7 +309,7 @@ def test_noter_les_cris_d_une_seance(client, e, db_session, tmp_path, monkeypatc
 
     def ecoute(path, exclude):
         ecoutes.append((path, exclude))
-        return [("time", 3.1, 0.9, 0.5, 20.0), ("time", 9.0, 0.8, 0.5, 20.0), ("hajime", 14.2, 0.9, 0.5, 20.0)]
+        return [("time", 3.1, 0.9, 0.5, 20.0), ("time", 9.0, 0.8, 0.5, 20.0), ("combattez", 14.2, 0.9, 0.5, 20.0)]
 
     assert voice.run_replays(ecoute) == 1
     [(chemin, sans)] = ecoutes

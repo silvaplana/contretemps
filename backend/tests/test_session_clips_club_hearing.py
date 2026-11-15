@@ -33,7 +33,7 @@ def _cri(son, t, hz, duree=0.4):
 def test_cris_du_club(monkeypatch, tmp_path):
     monkeypatch.setattr(club_hearing, "embed", _spectre)
     enregistrements = {}
-    for mot, hz in (("time", 440), ("hajime", 1500)):
+    for mot, hz in (("time", 440), ("combattez", 1500)):
         (tmp_path / mot).mkdir()
         for i in range(5):
             f = tmp_path / mot / f"{i}.webm"
@@ -42,13 +42,13 @@ def test_cris_du_club(monkeypatch, tmp_path):
             _cri(son, 0.6 + 0.1 * i, hz * (1 + 0.01 * i))
             enregistrements[f.name, mot] = son
     mots = templates(tmp_path, lambda p: enregistrements[p.name, p.parent.name])
-    assert {m: len(e) for m, e in mots.items()} == {"time": 5, "hajime": 5}
+    assert {m: len(e) for m, e in mots.items()} == {"time": 5, "combattez": 5}
 
     seance = _bruit(20, seed=9)
-    _cri(seance, 3.0, 1510)  # « Hajime ! »
+    _cri(seance, 3.0, 1510)  # « Combattez ! »
     _cri(seance, 12.0, 445)  # « Time ! »
     trouves = hear_club(seance, mots)
-    assert [(m, round(t)) for m, t, _note, _db in trouves] == [("hajime", 3), ("time", 12)]
+    assert [(m, round(t)) for m, t, _note, _db in trouves] == [("combattez", 3), ("time", 12)]
     assert all(note > 0.8 and db > 20 for _m, _t, note, db in trouves)
     # Rien d'inventé sur un passage calme.
     assert hear_club(_bruit(20, seed=3), mots) == []

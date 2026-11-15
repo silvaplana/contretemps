@@ -30,8 +30,6 @@ WORDS = {
     "go": {"go", "gos", "goo", "gow", "gau", "gaux"},
     # « Combattez ! » (Seb, 15/11, à la place de « Combat ! ») : Whisper, en anglais, l'écrit de plusieurs façons.
     "combattez": {"combattez", "combatez", "combattes", "combates", "combattay", "combatay", "combate", "combatte", "combatté", "combattee"},
-    # « Hajime ! » (« ha-dji-mé ») : Whisper l'écrit de plusieurs façons, parfois en deux mots.
-    "hajime": {"hajime", "hajimeh", "hajimet", "hadjime", "hadjimeh", "ajime", "adjime", "hagime", "hajima"},
 }
 
 _models: dict = {}
@@ -45,7 +43,7 @@ def _model_path(name: str) -> str:
 
 
 def word_kind(word: str) -> str | None:
-    """« time », « go », « hajime », « combattez » ou None."""
+    """« time », « go », « combattez » ou None (« hajime » retiré le 15/11)."""
     plain = unicodedata.normalize("NFKD", word).encode("ascii", "ignore").decode().lower()
     plain = re.sub(r"[^a-z]", "", plain)
     return next((kind for kind, words in WORDS.items() if plain in words), None)
@@ -159,7 +157,7 @@ def _hear(video_path: Path, model: str = "base") -> list[tuple[str, float]]:
         # brefs (0,2 s) avec de la marge autour pour que Whisper les lise.
         vad_filter=True,
         vad_parameters={"threshold": 0.3, "min_speech_duration_ms": 50, "speech_pad_ms": 600},
-        hotwords="Go, Hajime, Combattez, Time",
+        hotwords="Go, Combattez, Time",
         condition_on_previous_text=False,
     )
     words = [w for s in segments for w in (s.words or [])]
@@ -210,7 +208,7 @@ def _peak(volumes: list[float], start: float, end: float) -> float:
 
 
 def heard_words(words: list[tuple[str, float]], with_words: list | None = None) -> list:
-    """Les cris reconnus, mot par mot ; un mot coupé en deux (« Ha jime »)
+    """Les cris reconnus, mot par mot ; un mot coupé en deux (« Combat tez »)
     est recollé avec le suivant. Avec `with_words`, chaque cri vient avec
     son mot de Whisper (pour sa note et son volume)."""
     out, skip = [], False
