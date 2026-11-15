@@ -65,7 +65,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     fight = [pose(100), pose(300)]
     hand = [pose(100, "hand"), pose(145, "hand", wrist_dx=-50)]
     x = [pose(100, "x"), pose(300, "x")]
-    postures = frames([(1, touch), (9, fight), (2, hand), (8, fight), (2, x), (8, [])])
+    postures = frames([(2, touch), (8, fight), (2, hand), (8, fight), (2, x), (8, [])])  # gestes tenus 1,6 s (Seb, 15/11)
     test = db_session.get(LabTest, essai["id"])
     assert lab.tests_to_read(db_session) == [test]
     assert lab.read_test(db_session, core.session_clips_client, test, lambda _p: postures, lambda _p: [25.0]) == 4
@@ -93,6 +93,10 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     # Cadrage serré, 1 s retirée au début et 2 s à la fin (Seb, 12/11).
     reglages = {"signs": ["fists_touch", "x"], "framing": "tight", "start_skip": 1, "end_skip": 2, "show_timeline": True}
     reglages |= {"loud_only": True, "sure_only": False, "loud_db": 12.0, "sure_min": 0.5, "speech_model": "small"}
+    # Durée minimale d'un geste tenu, au curseur (Seb, 15/11 : 1,6 s par défaut).
+    assert client.get("/session-clips/lab/signs", headers=e["coach"]).json()["min_hold"] == 1.6
+    reglages |= {"min_hold": 1.8}
+    assert client.put("/session-clips/lab/signs", json=reglages | {"min_hold": 9.0}, headers=e["coach"]).status_code == 400
     assert client.put("/session-clips/lab/signs", json=reglages, headers=e["coach"]).json() == reglages
     [serre] = client.get(f"/session-clips/lab/{essai['id']}", headers=e["coach"]).json()["fights"]
     assert serre["start"] == pytest.approx(combat["start"] + 1) and serre["end"] == pytest.approx(combat["end"] - 2)

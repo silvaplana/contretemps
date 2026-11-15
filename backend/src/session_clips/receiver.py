@@ -221,7 +221,7 @@ class SessionClipsReceiver:
             return ClubSignsBody(
                 signs=list(x.signs), framing=x.framing, start_skip=x.start_skip, end_skip=x.end_skip, show_timeline=x.show_timeline,
                 loud_only=x.loud_only, sure_only=x.sure_only, loud_db=x.loud_db, sure_min=x.sure_min,
-                speech_model=x.speech_model,
+                speech_model=x.speech_model, min_hold=x.min_hold,
             )
 
         @app.get(f"{PREFIX}/signs", response_model=ClubSignsBody)
@@ -233,7 +233,7 @@ class SessionClipsReceiver:
         def set_club_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
             new = lab.Settings(
                 tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline,
-                body.loud_only, body.sure_only, body.loud_db, body.sure_min, body.speech_model,
+                body.loud_only, body.sure_only, body.loud_db, body.sure_min, body.speech_model, body.min_hold,
             )
             return settings_out(guard(lambda: lab.set_settings(s, m, new)))
 
@@ -247,7 +247,7 @@ class SessionClipsReceiver:
         def set_lab_signs(body: ClubSignsBody, m: Member = member, s: Session = db):
             new = lab.Settings(
                 tuple(body.signs), body.framing, body.start_skip, body.end_skip, body.show_timeline,
-                body.loud_only, body.sure_only, body.loud_db, body.sure_min, body.speech_model,
+                body.loud_only, body.sure_only, body.loud_db, body.sure_min, body.speech_model, body.min_hold,
             )
             return settings_out(guard(lambda: lab.set_settings(s, m, new, lab=True)))
 

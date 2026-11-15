@@ -188,6 +188,8 @@ class ClubSigns(Base):
     sure_min: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     # L'écoute : « base » (rapide) ou « small » (plus précise, plus lente) (Seb, 14/11).
     speech_model: Mapped[str] = mapped_column(String(10), nullable=False, default="base")
+    # Durée minimale d'un geste tenu, en secondes, pour tous les gestes (Seb, 15/11).
+    min_hold: Mapped[float] = mapped_column(Float, nullable=False, default=1.6)
 
 
 class LabSettings(Base):
@@ -209,3 +211,5 @@ class LabSettings(Base):
     sure_min: Mapped[float] = mapped_column(Float, nullable=False, default=0.5)
     # L'écoute : « base » (rapide) ou « small » (plus précise, plus lente) (Seb, 14/11).
     speech_model: Mapped[str] = mapped_column(String(10), nullable=False, default="base")
+    # Durée minimale d'un geste tenu, en secondes, pour tous les gestes (Seb, 15/11).
+    min_hold: Mapped[float] = mapped_column(Float, nullable=False, default=1.6)

@@ -140,7 +140,7 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
     settings = club_settings(db, session.org_id)
     frames, shouts = list(detect(source)), listen(hear, source, settings.speech_model) + hear_timer(source)
     sounds = heard_sounds(shouts, settings)
-    session.signs = json.dumps(_signs(frames, shouts, [(source, 0.0, float("inf"))], None))
+    session.signs = json.dumps(_signs(frames, shouts, [(source, 0.0, float("inf"))], None, settings.min_hold))
     fights = club_fights(db, session.org_id, frames, sounds, size)
 
     folder = dossier_ecole(session.org_id)
@@ -170,14 +170,14 @@ def cut_session(db: Session, clips: SessionClips, session: ClipSession, detect: 
     return count
 
 
-def _signs(frames: list[Frame], shouts: list, sources: list[tuple[Path, float, float]], old: str | None) -> list[dict]:
+def _signs(frames: list[Frame], shouts: list, sources: list[tuple[Path, float, float]], old: str | None, hold: float) -> list[dict]:
     """Les signes repérés dans la séance, avec l'image de chacun, pour la
     frise (Seb, 13/11). Les images déjà faites sont gardées : seules celles
     des nouveaux signes sont tirées des morceaux. Tous les cris y sont, avec
     leur volume et leur note, même ceux que les réglages écartent (Seb, 14/11)."""
     made = {(x["kind"], x["start"]): x.get("thumb") for x in json.loads(old)} if old else {}
     out = []
-    for sign in find_signs(frames, [as_sound(x) for x in shouts]):
+    for sign in find_signs(frames, [as_sound(x) for x in shouts], hold):
         start = round(sign.start, 1)
         thumb = made.get((sign.kind, start))
         if thumb is None:
@@ -263,7 +263,7 @@ def cut_live(db: Session, clips: SessionClips, session: ClipSession, detect: Det
     finished = ended and session.status == "processing"
     if not read and not finished:
         return 0
-    session.signs = json.dumps(_signs(frames, shouts, sources, session.signs))
+    session.signs = json.dumps(_signs(frames, shouts, sources, session.signs, settings.min_hold))
 
     done = [x for x in db.scalars(select(Clip.start_seconds).where(Clip.session_id == session.id)) if x is not None]
     folder = dossier_ecole(session.org_id)

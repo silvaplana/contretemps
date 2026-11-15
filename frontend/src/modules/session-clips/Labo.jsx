@@ -444,6 +444,17 @@ export function ReglagesDecoupe({ reglages, setReglages }) {
             ))}
           </div>
         ))}
+        {/* Un geste compte s'il est tenu au moins ce temps, pour tous les gestes (Seb, 15/11). */}
+        <p className="sc-meta">Durée minimale d’un geste</p>
+        <Curseur
+          cle="min_hold"
+          min={0.4}
+          max={3}
+          pas={0.1}
+          texte={(v) => `Tenu au moins ${virgule(v, 1)} s`}
+          reglages={reglages}
+          setReglages={setReglages}
+        />
         {/* Contre les mots inventés sur un passage calme (Seb, 14/11) : à essayer, seuls ou ensemble. */}
         <p className="sc-meta">Cris entendus · écoute</p>
         {/* Deux écoutes au choix (Seb, 14/11) : la précise se trompe moins, mais lit plus lentement. */}

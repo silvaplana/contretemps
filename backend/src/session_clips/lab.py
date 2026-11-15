@@ -25,7 +25,7 @@ from saisons.portee import toutes_saisons
 from videos import Video
 from videos.stockage import DOSSIER_VIDEOS_LIVE, dossier_ecole
 
-from .fights import SIGNS, SOUNDS, Fight, Sound, as_sound, find_fights, find_signs, trim
+from .fights import HOLD, SIGNS, SOUNDS, Fight, Sound, as_sound, find_fights, find_signs, trim
 from .framing import FRAMINGS, Box, track, video_size
 from .hearing import hear_timer
 
@@ -43,6 +43,7 @@ from .service import ForbiddenError, NotFoundError, SessionClips
 
 THUMB_WIDTH = 160
 MAX_SKIP = 10.0  # secondes
+MIN_HOLD, MAX_HOLD = 0.4, 3.0  # durée minimale d'un geste, bornes du curseur (secondes)
 
 
 # --- Réglages de la découpe du club : signes, cadrage, début et fin ---
@@ -62,6 +63,7 @@ class Settings:
     loud_db: float = 6.0  # seuil des cris forts, en dB au-dessus du bruit de fond (curseur, Seb 14/11)
     sure_min: float = 0.5  # seuil des mots bien compris, note de 0 à 1
     speech_model: str = "base"  # l'écoute : « base » (rapide) ou « small » (précise), Seb 14/11
+    min_hold: float = HOLD  # durée minimale d'un geste tenu, en secondes (curseur, Seb 15/11)
 
 
 RENAMED = {"combat": "combattez"}
@@ -86,6 +88,7 @@ def settings(db: Session, org_id: int, lab: bool = False) -> Settings:
         loud_db=row.loud_db if row.loud_db is not None else 6.0,
         sure_min=row.sure_min if row.sure_min is not None else 0.5,
         speech_model=row.speech_model or "base",
+        min_hold=row.min_hold if row.min_hold is not None else HOLD,
     )
 
 
@@ -123,6 +126,8 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
         raise ValueError("Seuil hors limites")
     if new.speech_model not in SPEECH_MODELS:
         raise ValueError("Écoute inconnue")
+    if not (MIN_HOLD <= new.min_hold <= MAX_HOLD):
+        raise ValueError(f"Un geste se tient entre {MIN_HOLD:g} et {MAX_HOLD:g} secondes")
     model = LabSettings if lab else ClubSigns
     row = db.get(model, member.org_id) or model(org_id=member.org_id)
     row.signs = ",".join(s for s in SIGNS if s in new.signs)
@@ -134,6 +139,7 @@ def set_settings(db: Session, member: Member, new: Settings, lab: bool = False) 
     row.loud_db = new.loud_db
     row.sure_min = new.sure_min
     row.speech_model = new.speech_model
+    row.min_hold = new.min_hold
     if model is ClubSigns:
         row.show_timeline = new.show_timeline
     db.add(row)
@@ -152,7 +158,7 @@ def club_fights(
     """Les combats selon les réglages du club (ou du Labo), chacun avec son
     cadre (None : plan large)."""
     s = settings(db, org_id, lab)
-    fights = trim(find_fights(frames, s.signs, sounds), s.start_skip, s.end_skip)
+    fights = trim(find_fights(frames, s.signs, sounds, s.min_hold), s.start_skip, s.end_skip)
     return [(f, track(frames, f.start, f.end, s.framing, size) if size else None) for f in fights]
 
 
@@ -287,10 +293,11 @@ def read_test(db: Session, clips: SessionClips, found: LabTest, detect, hear=lam
         _save_frames(path, frames)
     # Tous les cris vont dans la frise, avec leur volume et leur note ; les
     # réglages du Labo les filtrent au calcul des combats (fights_of).
-    shouts = listen(hear, source, settings(db, found.org_id, lab=True).speech_model) + hear_timer(source)
+    lab_settings = settings(db, found.org_id, lab=True)
+    shouts = listen(hear, source, lab_settings.speech_model) + hear_timer(source)
     signs = [
         with_scores({"kind": s.kind, "start": round(s.start, 1), "end": round(s.end, 1), "thumb": thumbnail(source, s.start)}, shouts)
-        for s in find_signs(frames, [as_sound(x) for x in shouts])
+        for s in find_signs(frames, [as_sound(x) for x in shouts], lab_settings.min_hold)
     ]
     found.signs = json.dumps(signs)
     found.status = "ready"

@@ -149,8 +149,8 @@ def test_decoupe_au_fil_des_morceaux(client, db_session, e, tmp_path, monkeypatc
     # Morceaux de 30 s : combat 1 dans le morceau 0 ; combat 2 à cheval sur
     # 0 et 1 ; combat 3 commencé dans le dernier, sans fin repérée.
     postures = [
-        frames([(2, y2), (15, fight), (1, x), (5, []), (2, y2), (5, fight)]),
-        frames([(15, fight), (1, x), (14, [])]),
+        frames([(2, y2), (15, fight), (2, x), (4, []), (2, y2), (5, fight)]),
+        frames([(15, fight), (2, x), (13, [])]),
         frames([(2, y2), (28, fight)]),
     ]
     detecteur = lambda _path: postures.pop(0)

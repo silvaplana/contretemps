@@ -237,7 +237,15 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    relie au bon membre. Il en tire une « empreinte » de tenue : couleurs du t-shirt et du short,
    silhouette.
 2. **Signaux** : la détection de posture repère les signes tenus un moment (réglés le 12/11 sur
-   deux vidéos de Seb, `fights.py`), tenus au moins 0,8 s (Seb, 13/11). **Début** : les **poings
+   deux vidéos de Seb, `fights.py`), tenus au moins 0,8 s (Seb, 13/11), puis **1,6 s** (Seb, 15/11,
+   séance 15 : des poings croisés en plein échange passaient pour des poings touchés ; ses vrais gestes
+   durent 2 et 3 s). Cette durée minimale se règle au curseur « Durée minimale d'un geste » (0,4 à
+   3 s, pour tous les gestes ; colonne `min_hold` de `sc_club_signs` et `sc_lab_settings`). Chaque
+   bout de geste doit la tenir seul : deux bouts courts ne s'additionnent plus (avant, on recollait
+   les bouts à moins de 2 s puis on mesurait, et des poings croisés en plein échange finissaient par
+   « tenir 4 s »). Seuls deux gestes valables à moins de 2 s comptent pour un seul début. Pendant
+   **4 s après un début, pas d'autre début** (`QUIET_START`), sauf s'il y a eu une fin entre les deux
+   (Seb, 15/11 : un Combattez puis de faux poings touchés relançaient le combat). **Début** : les **poings
    touchés en l'air** des deux combattants (bras levés, chacun touche les poings de l'autre ; c'est le signe du
    club de Seb) ; deux poings levés sans se toucher ne comptent pas (Seb, 13/11). Le « Poing
    levé » n'est plus un signe. Ou les **bras levés** des deux combattants (Seb, 13/11 : les deux bras
