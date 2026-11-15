@@ -16,7 +16,7 @@ from db import get_db
 from videos.schemas import VideoSortie
 from videos.videos import DecalageInvalide
 
-from . import camera, lab, voice
+from . import camera, gesture_notes, lab, voice
 from .models import Clip, ClipSession, LabTest, Piece
 from .ports import Member
 from .schemas import (
@@ -40,6 +40,7 @@ from .schemas import (
     ClipOut,
     FavoriteUpdate,
     FightCreate,
+    GestureNote,
     MeOut,
     ParticipantOut,
     ParticipantsUpdate,
@@ -144,6 +145,34 @@ class SessionClipsReceiver:
         def unnote_session_voice(session_id: int, t: float, m: Member = member, s: Session = db):
             guard(lambda: client.session(s, m, session_id))
             return guard(lambda: voice.unnote_session(m, session_id, t))
+
+        # Noter les gestes dans la frise (Seb, 15/11), pour « Proposer un réglage ».
+        @app.get(f"{PREFIX}/sessions/{{session_id}}/gesture-notes")
+        def session_gesture_notes(session_id: int, m: Member = member, s: Session = db):
+            guard(lambda: client.session(s, m, session_id))
+            return guard(lambda: gesture_notes.notes(m, session_id))
+
+        @app.post(f"{PREFIX}/sessions/{{session_id}}/gesture-notes", status_code=201)
+        def note_session_gesture(session_id: int, body: GestureNote, m: Member = member, s: Session = db):
+            guard(lambda: client.session(s, m, session_id))
+            return guard(lambda: gesture_notes.note(m, session_id, body.t, body.kind, body.answer, body.real))
+
+        @app.delete(f"{PREFIX}/sessions/{{session_id}}/gesture-notes")
+        def unnote_session_gesture(session_id: int, t: float, m: Member = member, s: Session = db):
+            guard(lambda: client.session(s, m, session_id))
+            return guard(lambda: gesture_notes.unnote(m, session_id, t))
+
+        @app.get(f"{PREFIX}/signs/proposal")
+        def propose_signs(m: Member = member, s: Session = db):
+            from .cutting import session_frames
+
+            noted = guard(lambda: gesture_notes.noted_sessions(m))
+            sessions = []
+            for session_id, marks in noted.items():
+                session = s.get(ClipSession, session_id)
+                if session is not None and session.org_id == m.org_id:
+                    sessions.append((session_frames(s, session), marks))
+            return gesture_notes.propose(sessions, lab.settings(s, m.org_id).min_hold)
 
         @app.get(f"{PREFIX}/mine", response_model=list[ClipOut])
         def my_clips(m: Member = member, s: Session = db):

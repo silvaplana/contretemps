@@ -351,6 +351,20 @@ def _poses_path(org_id: int, piece_id: int) -> Path:
     return dossier_ecole(org_id) / "sparring-poses" / f"{piece_id}.json"
 
 
+def session_frames(db: Session, session: ClipSession) -> list[Frame]:
+    """Les postures gardées de toute la séance filmée par la caméra, remises
+    à l'heure de la séance comme dans `cut_live` (noter les gestes, Seb 15/11)."""
+    frames: list[Frame] = []
+    offset = 0.0
+    for piece in db.scalars(select(Piece).where(Piece.session_id == session.id).order_by(Piece.position)):
+        poses = _poses_path(session.org_id, piece.id)
+        if piece.duration_seconds is None or not poses.exists():
+            break
+        frames += [Frame(t=f.t + offset, people=f.people) for f in _load_frames(poses)]
+        offset += piece.duration_seconds
+    return frames
+
+
 def _save_frames(path: Path, frames: list[Frame]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     data = [[round(f.t, 3), [[[round(v, 1) for v in k] for k in p.keypoints] for p in f.people]] for f in frames]

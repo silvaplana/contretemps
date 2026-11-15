@@ -275,6 +275,17 @@ class VoiceNote(BaseModel):
     word: str | None = None
 
 
+class GestureNote(BaseModel):
+    """Un geste noté dans la frise d'une séance (Seb, 15/11) : Bon, Mauvais
+    (`real` : le vrai geste, s'il y en avait un), Inventé, ou « missing »
+    (Il manque un geste ici)."""
+
+    t: float
+    kind: str  # fists_touch | arms_up | handshake | x
+    answer: str  # good | wrong | invented | missing
+    real: str | None = None
+
+
 class VoiceMissing(BaseModel):
     """« Il manque un mot » après un test (Seb, 14/11)."""
 
