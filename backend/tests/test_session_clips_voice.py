@@ -295,6 +295,15 @@ def test_noter_les_cris_d_une_seance(client, e, db_session, tmp_path, monkeypatc
     mots = client.get("/session-clips/voice", headers=e["coach"]).json()
     assert (len(mots["time"]), len(mots["hajime"])) == (1, 1)  # rangés comme exemples
 
+    # Une note mise par erreur se retire (Seb, 15/11 : un « Time » de trop à 38 s),
+    # avec l'exemple qui en venait.
+    assert client.post(url, json={"t": 17.0, "answer": "missing", "word": "time"}, headers=e["coach"]).status_code == 201
+    assert len(client.get("/session-clips/voice", headers=e["coach"]).json()["time"]) == 2
+    assert client.delete(f"{url}?t=17.0", headers=e["eleve"]).status_code == 403
+    assert client.delete(f"{url}?t=12.0", headers=e["coach"]).status_code == 404
+    assert client.delete(f"{url}?t=17.0", headers=e["coach"]).json() == notes
+    assert len(client.get("/session-clips/voice", headers=e["coach"]).json()["time"]) == 1
+
     client.post("/session-clips/voice-replays", headers=e["coach"])
     ecoutes = []
 

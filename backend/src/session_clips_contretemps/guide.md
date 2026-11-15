@@ -24,7 +24,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
   frise des signes »), puis « Noter les cris » (volet fermé : sous chaque Hajime, Combattez ou Time repéré, ▶ pour le voir,
   « Bon », « Mauvais » (puis le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; « Il manque un mot ici » ajoute le mot
-  au moment où la vidéo est arrêtée ; « Rejouer tous les essais » d'Entraîner l'écoute compte la séance), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
+  au moment où la vidéo est arrêtée ; « Retirer » à côté d'une note l'enlève ; « Rejouer tous les essais » d'Entraîner l'écoute compte la séance), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
   d'un combat déplie Rouge et Bleu (toucher pour choisir), Inverser et « C'est bon », comme dans
   Identifier combattants. La frise met chaque signe sur sa propre ligne, le premier en bas,
   sans jamais d'image sur une autre. En bas d'une séance de la

@@ -140,6 +140,11 @@ class SessionClipsReceiver:
             pieces = self._sources(s, session)
             return guard(lambda: voice.note_session(m, session_id, pieces, body.t, body.answer, body.word))
 
+        @app.delete(f"{PREFIX}/sessions/{{session_id}}/voice-notes")
+        def unnote_session_voice(session_id: int, t: float, m: Member = member, s: Session = db):
+            guard(lambda: client.session(s, m, session_id))
+            return guard(lambda: voice.unnote_session(m, session_id, t))
+
         @app.get(f"{PREFIX}/mine", response_model=list[ClipOut])
         def my_clips(m: Member = member, s: Session = db):
             return self._clips_out(s, m, client.my_clips(s, m))

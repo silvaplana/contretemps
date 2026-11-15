@@ -396,7 +396,9 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    va dans `voice-sessions/<séance>.json` (morceaux : chemin, début, durée ; vérité : moment, mot,
    exemple) ; routes `GET/POST /session-clips/sessions/{id}/voice-notes`. « Rejouer tous les essais »
    écoute chaque morceau (sans les exemples venus de la séance), remet les cris à l'heure de la
-   séance et la compte comme un test. « Effacer tous les tests » efface aussi les séances notées.
+   séance et la compte comme un test. **« Retirer »** à côté d'une note (sous un cri noté ou un
+   « Ajouté ») l'enlève de la vérité et efface son exemple (Seb, 15/11 : un « Time » de trop ;
+   `DELETE …/voice-notes?t=`). « Effacer tous les tests » efface aussi les séances notées.
    **Effacer** (Seb, 14/11 : deux boutons) : « Effacer tous les enregistrements » sous la liste des cris
    (`DELETE /voice` : tous les mots, et les exemples « other » / « noise » rangés après un test ; le
    dossier `voice/` vide est recréé, daté de maintenant, pour que l'écoute du club réécoute les
