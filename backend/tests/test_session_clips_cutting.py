@@ -97,7 +97,7 @@ def test_combats_reperes():
         (2, y2), (15, fight), (6, []),  # combat 3 : la zone vide ne le finit pas
         (2, y2), (12, fight),  # combat 4, coupé par la fin de la vidéo
     ])
-    fights = find_fights(video)
+    fights = find_fights(video, hold=0.8)  # gestes d'1 s dans cette vidéo de test
     assert len(fights) == 4
     assert [f.fighters for f in fights] == [2, 2, 2, 2]
     assert fights[0].start == pytest.approx(3, abs=0.3) and fights[0].end == pytest.approx(36, abs=0.5)
@@ -142,7 +142,7 @@ def test_decoupe_une_seance(db_session, tmp_path, monkeypatch):
 
     y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
-    detecteur = lambda _path: frames([(2, y2), (12, fight), (1, [pose(100, "x"), pose(300, "x")]), (5, []), (2, y2), (15, fight)])
+    detecteur = lambda _path: frames([(2, y2), (12, fight), (2, [pose(100, "x"), pose(300, "x")]), (5, []), (2, y2), (15, fight)])
     sc = core.session_clips_client
     assert cut_session(db_session, sc, session, detecteur) == 2
     # Rejouable : un 2e passage remplace les clips au lieu de les doubler.
@@ -178,10 +178,10 @@ def test_time_crie_termine_le_combat():
     touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
     fight = [pose(100), pose(300)]
     video = frames([(1, touch), (19, fight)])
-    assert [f.end for f in find_fights(video, sounds=[12.0])] == [13.0]
-    assert find_fights(video, sounds=[12.0])[0].check_reason is None
+    assert [f.end for f in find_fights(video, sounds=[12.0], hold=0.8)] == [13.0]
+    assert find_fights(video, sounds=[12.0], hold=0.8)[0].check_reason is None
     # Décoché : le combat va jusqu'au bout de la vidéo.
-    assert find_fights(video, enabled=("fists_touch", "x"), sounds=[12.0])[0].check_reason == REASON_NO_END
+    assert find_fights(video, enabled=("fists_touch", "x"), sounds=[12.0], hold=0.8)[0].check_reason == REASON_NO_END
 
 
 def test_cadrage_serre(tmp_path):
@@ -288,7 +288,7 @@ def test_go_crie_commence_le_combat():
     assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 2.0), ("time", 12.0)])] == [(2.0, 13.0)]
     touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
     video = frames([(1, touch), (19, fight)])
-    assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 1.5), ("time", 12.0)])] == [(0.0, 13.0)]
+    assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 1.5), ("time", 12.0)], hold=0.8)] == [(0.0, 13.0)]
 
 
 def test_go_puis_time_meme_court():
@@ -339,7 +339,7 @@ def test_bras_croises_chacun_finit_le_combat():
     un = [pose(100, "cross"), pose(300)]
     deux = [pose(100, "cross"), pose(300, "cross")]
     video = frames([(1, touch), (10, fight), (1, un), (10, fight), (1, deux), (5, fight), (1, touch), (3, fight)])
-    fights = find_fights(video, ("fists_touch", "x"))
+    fights = find_fights(video, ("fists_touch", "x"), hold=0.8)
     assert [(round(f.start, 1), round(f.end, 1)) for f in fights][0] == (0.0, 23.0)
 
 
@@ -379,7 +379,7 @@ def test_frise_avec_volume_et_note():
     from session_clips.cutting import _signs
 
     cris = [["fight", 6.8, 0.9, 25.0], ["time", 18.4, 0.3, 1.0]]
-    signes = _signs(frames([(20, [pose(100), pose(300)])]), cris, [], None)
+    signes = _signs(frames([(20, [pose(100), pose(300)])]), cris, [], None, 1.6)
     assert [(s["kind"], s["db"], s["note"]) for s in signes] == [("fight", 25.0, 0.9), ("time", 1.0, 0.3)]
 
 
@@ -427,7 +427,7 @@ def test_bras_leves_des_deux_commencent_le_combat():
     deux = [pose(100, "y"), pose(300, "y")]
     croises = [pose(100, "cross"), pose(300, "cross")]
     video = frames([(2, un), (3, fight), (1, deux), (10, fight), (1, croises), (3, fight)])
-    fights = find_fights(video, ("arms_up", "x"))
+    fights = find_fights(video, ("arms_up", "x"), hold=0.8)
     assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(5.0, 17.0)]
 
 
@@ -441,7 +441,7 @@ def test_video_couchee_redressee():
     croises = [pose(100, "cross"), pose(300, "cross")]
     debout = frames([(1, touch), (10, fight), (1, croises), (3, fight)])
     for way in (1, -1):
-        fights = find_fights(quarter_turn(debout, way), ("fists_touch", "x"))
+        fights = find_fights(quarter_turn(debout, way), ("fists_touch", "x"), hold=0.8)
         assert [(round(f.start, 1), round(f.end, 1)) for f in fights] == [(0.0, 12.0)]
 
 
@@ -461,3 +461,33 @@ def test_cris_d_avant_reecoutes():
     assert not _unrated(fichier)
     fichier.write_text("[]")
     assert not _unrated(fichier) and not _unrated(tmp / "absent.json")
+
+
+def test_gestes_tenus_1_6_s_sans_recoller_les_bouts():
+    """Seb, 15/11 (séance 15) : un geste se tient au moins 1,6 s, et des bouts
+    de poings croisés en plein échange (moins de 2 s d'écart) ne s'additionnent
+    plus en un faux « poings touchés » : chaque bout doit tenir seul."""
+    from session_clips.fights import find_signs
+
+    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    fight = [pose(100), pose(300)]
+    echange = frames([(5, fight), *[(s, p) for _ in range(4) for s, p in ((0.6, touch), (0.6, fight))], (5, fight)])
+    assert [s.kind for s in find_signs(echange)] == []
+    court = frames([(5, fight), (1.4, touch), (5, fight)])  # tenu 1,2 s
+    assert [s.kind for s in find_signs(court)] == []
+    vrai = frames([(5, fight), (2, touch), (5, fight)])  # tenu 1,8 s
+    assert [s.kind for s in find_signs(vrai)] == ["fists_touch"]
+
+
+def test_pas_d_autre_debut_pendant_4_s():
+    """Seb, 15/11 (séance 15) : un « Combattez » à 40,3 s puis des poings
+    touchés à 42,8 s relançaient le combat. Pendant 4 s après un début, un
+    autre début est ignoré (sauf s'il y a eu une fin entre les deux)."""
+    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    fight = [pose(100), pose(300)]
+    video = frames([(12.4, fight), (2, touch), (20, fight)])  # poings touchés de 12,4 à 14,2 s
+    sons = [("combattez", 10.0), ("time", 30.0)]
+    assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(10.0, 31.0)]
+    # Un « Time ! » entre les deux : deux combats.
+    sons = [("combattez", 3.0), ("time", 10.0), ("combattez", 12.0), ("time", 30.0)]
+    assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(3.0, 11.0), (12.0, 31.0)]

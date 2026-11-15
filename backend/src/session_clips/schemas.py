@@ -255,6 +255,7 @@ class ClubSignsBody(BaseModel):
     loud_db: float = 6.0
     sure_min: float = 0.5
     speech_model: str = "base"
+    min_hold: float = 1.6  # durée minimale d'un geste tenu, en secondes
 
 
 class VoiceAnswer(BaseModel):

@@ -33,9 +33,13 @@ INSTANT_ENDS = ("time", "bells")  # un son de fin compte tout de suite
 # « time » (morceaux lus avant le « Go ! », 12/11/2026).
 Sound = tuple[str, float] | float
 # Secondes pendant lesquelles un signe doit être tenu pour compter.
-HOLD = {"fists_touch": 0.8, "arms_up": 0.8, "handshake": 0.8, "x": 0.8}  # au moins 0,8 s (Seb, 13/11)
+# Un geste tenu au moins 1,6 s, par défaut (Seb, 15/11, séance 15 : des poings
+# croisés en plein échange passaient pour des poings touchés ; ses vrais gestes
+# durent 2 et 3 s). Réglable à la main dans les paramètres (lab.Settings.min_hold).
+HOLD = 1.6
 GAP = 0.45  # une image manquée (à 5 images/s) ne coupe pas un geste
-MERGE = 2.0  # deux poings touchés à moins de 2 s : un seul début
+MERGE = 2.0  # deux poings touchés tenus chacun, à moins de 2 s : un seul début
+QUIET_START = 4.0  # pendant 4 s après un début, pas d'autre début (Seb, 15/11)
 STILL = 0.3  # poignée de main : les hanches bougent de moins de 0,3 buste
 END_DELAY = 1.0  # bras qui redescendent juste après le début : pas une fin
 MIN_FIGHT = 5.0  # un combat plus court est ignoré (début puis fin aussitôt),
@@ -91,7 +95,7 @@ def _still(frames: list[Frame]) -> bool:
     return all(max(s[k] for s in spots) - min(s[k] for s in spots) < STILL * unit for k in range(2))
 
 
-def find_signs(frames: list[Frame], sounds: list[Sound] = ()) -> list[Sign]:
+def find_signs(frames: list[Frame], sounds: list[Sound] = (), hold: float = HOLD) -> list[Sign]:
     """Tous les signes repérés, cochés ou non : la frise du Labo les montre.
     `sounds` : les « Go ! » et « Time ! » dits (hearing.py)."""
     frames = upright(frames)  # une vidéo couchée se lit redressée (Seb, 14/11)
@@ -110,13 +114,15 @@ def find_signs(frames: list[Frame], sounds: list[Sound] = ()) -> list[Sign]:
         found: list[Sign] = []
         for first, last in _runs(frames, test):
             sign = Sign(kind, frames[first].t, frames[last].t)
+            # Chaque bout tient seul (Seb, 15/11) : des bouts courts en plein
+            # échange de coups ne s'additionnent pas.
+            if sign.end - sign.start + 1e-6 < hold:
+                continue
             if kind in START_SIGNS and found and sign.start - found[-1].end < MERGE:
                 found[-1].end = sign.end
                 continue
             found.append(sign)
         for sign in found:
-            if sign.end - sign.start + 1e-6 < HOLD[kind]:
-                continue
             if kind == "handshake" and not _still([f for f in frames if sign.start <= f.t <= sign.end]):
                 continue
             if kind == "handshake" and any(  # l'autre main, baissée, pendant les poings touchés
@@ -132,8 +138,8 @@ def as_sound(x: Sound) -> tuple[str, float]:
     return ("time", float(x)) if isinstance(x, (int, float)) else (x[0], float(x[1]))
 
 
-def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: list[Sound] = ()) -> list[Fight]:
-    signs = [s for s in find_signs(frames, sounds) if s.kind in enabled]
+def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: list[Sound] = (), hold: float = HOLD) -> list[Fight]:
+    signs = [s for s in find_signs(frames, sounds, hold) if s.kind in enabled]
     ends = [s for s in signs if s.kind in END_SIGNS]
     starts: list[Sign] = []
     for s in (s for s in signs if s.kind in START_SIGNS):
@@ -148,9 +154,11 @@ def find_fights(frames: list[Frame], enabled: tuple[str, ...] = SIGNS, sounds: l
             continue
         # Poings touchés puis « Go ! » : un seul début ; mais pas par-dessus
         # un « Time ! » ou un geste de fin (Seb, 13/11 : Go, Time, Go, Time).
+        # Ni un autre début dans les 4 s (Seb, 15/11 : Combattez puis de faux
+        # poings touchés relançaient le combat).
         if (
             starts
-            and s.start - starts[-1].end < MERGE
+            and (s.start - starts[-1].end < MERGE or s.start - starts[-1].start < QUIET_START)
             and not any(starts[-1].start < e.start < s.start for e in ends)
         ):
             starts[-1].end = max(starts[-1].end, s.end)
