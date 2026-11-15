@@ -62,6 +62,7 @@ export default function NoterCris({ seanceId, signes, maintenant, aller, montrer
                 <Icon name="play" size={22} />
               </button>
               « {nom(x.kind)} ! » à {mmss(x.start)}
+              {x.weak ? ' (pas sûr)' : ''}
             </span>
             {note(x.start) ? (
               <span className="sc-ecoute__choix">

@@ -20,7 +20,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   la vidéo est encore sur un téléphone caméra éteint. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.
 - Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
-  entier, et « ↻ Tourner la vidéo » si elle est de travers), puis « Signes repérés » (la frise, comme dans un test ; toucher un signe montre ce moment
+  entier, et « ↻ Tourner la vidéo » si elle est de travers), puis « Signes repérés » (la frise, comme dans un test, sans les signes décochés, en gris pointillé les cris pas assez sûrs ; toucher un signe montre ce moment
   dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
   frise des signes »), puis « Noter les cris » (volet fermé : sous chaque Hajime, Combattez ou Time repéré, ▶ pour le voir,
   « Bon », « Mauvais » (puis le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; « Il manque un mot ici » ajoute le mot
@@ -87,7 +87,7 @@ Tests de découpage vidéo (coachs, Fights › ⋮ ; ← revient à Fights) : es
   de la salle comprise). Sous « Cris entendus », le choix de l'écoute : « Rapide », « Précise » (plus lente, se trompe
   moins) ou « Du club » (compare aux cris enregistrés dans ⋮ › Entraîner l’écoute) ; la vidéo est réécoutée à la prochaine découpe, puis deux cases : « Seulement les cris forts » et « Seulement les mots
   bien compris », contre les mots que l'écoute invente sur un passage calme. Cocher une case montre un curseur pour
-  régler son seuil ; la frise montre sous chaque cri son volume et sa note, et grise ceux qui sont écartés. « Relancer la découpe » (toujours actif) enregistre, relit les signes et
+  régler son seuil ; la frise montre sous chaque cri son volume et sa note, et montre en gris pointillé ceux qui sont écartés ou pas assez sûrs ; un signe décoché n'y est pas montré. « Relancer la découpe » (toujours actif) enregistre, relit les signes et
   recalcule les combats.
 - « Paramètres de la vidéo » (déroulant, fermé au départ) : Cadrage (Plan large, Moyen, Serré), « Démarrer après le signe de début » et
   « Couper avant la fin » (− et +, en secondes). « Relancer la découpe » enregistre ; le cadre se

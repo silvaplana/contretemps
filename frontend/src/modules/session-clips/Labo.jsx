@@ -720,11 +720,16 @@ function useCadre(lecteur, combats) {
 // décoché ; la bande sur l'axe = un combat coupé. Toucher une flèche place
 // la vidéo à ce moment.
 // Un cri écarté par les cases « Cris entendus » et leurs seuils (Seb, 14/11).
+// Pas retenu : un « presque » de l'écoute du club, ou sous les seuils des
+// réglages. En gris pointillé dans la frise (Seb, 15/11).
 const ecarte = (s, seuils) =>
-  s.db != null && !!seuils && ((seuils.loud_only && s.db < seuils.loud_db) || (seuils.sure_only && s.note < seuils.sure_min))
+  !!s.weak ||
+  (s.db != null && !!seuils && ((seuils.loud_only && s.db < seuils.loud_db) || (seuils.sure_only && s.note < seuils.sure_min)))
 const virgule = (x, n) => x.toFixed(n).replace('.', ',')
 
-export function Graphe({ signes, combats, coches, fin, aller, seuils }) {
+export function Graphe({ signes: tous, combats, coches, fin, aller, seuils }) {
+  // Un signe décoché dans les paramètres n'est pas montré du tout (Seb, 15/11).
+  const signes = tous.filter((s) => coches.includes(s.kind))
   const W = 320
   const L = 14
   const R = 306
@@ -764,7 +769,7 @@ export function Graphe({ signes, combats, coches, fin, aller, seuils }) {
       </text>
       {/* Les traits d'abord : une image n'est jamais cachée par le trait d'un autre signe. */}
       {signes.map((s, i) => {
-        const cls = coches.includes(s.kind) && !ecarte(s, seuils) ? signe(s.kind).g : 'off'
+        const cls = !ecarte(s, seuils) ? signe(s.kind).g : 'off'
         const x = X(s.start)
         const cx = Math.min(Math.max(x - VW / 2, 0), W - VW) + VW / 2
         const tip = 4 + (lignes - 1 - rang[i]) * ROW + VH + 32 + CRI
@@ -776,7 +781,7 @@ export function Graphe({ signes, combats, coches, fin, aller, seuils }) {
       })}
       {signes.map((s, i) => {
         const sg = signe(s.kind)
-        const cls = coches.includes(s.kind) && !ecarte(s, seuils) ? sg.g : 'off'
+        const cls = !ecarte(s, seuils) ? sg.g : 'off'
         const x = X(s.start)
         const top = 4 + (lignes - 1 - rang[i]) * ROW
         const bx = Math.min(Math.max(x - VW / 2, 0), W - VW)

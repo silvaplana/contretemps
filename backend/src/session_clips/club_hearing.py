@@ -206,6 +206,23 @@ def pick(found: list, min_score: float = MIN_SCORE, min_margin: float = MIN_MARG
     return [(w, t, round(max(s, 0.0), 2), db) for w, t, s, m, db in found if s >= min_score and m >= min_margin]
 
 
+NEAR_SCORE = 0.10  # un cri « presque » : ressemblance à moins de 0,10 sous le seuil…
+NEAR_MARGIN = 0.5  # … et avance d'au moins la moitié de l'écart demandé
+
+
+def pick_with_near(found: list, min_score: float = MIN_SCORE, min_margin: float = MIN_MARGIN) -> list[tuple]:
+    """Les cris retenus, puis les « presque » (Seb, 15/11 : gris pointillé dans
+    la frise), marqués d'un 5e élément True ; ils ne comptent pas pour la découpe
+    (lab.kept). Le bruit, loin du seuil, n'est pas gardé."""
+    out: list[tuple] = []
+    for w, t, s, m, db in found:
+        if s >= min_score and m >= min_margin:
+            out.append((w, t, round(max(s, 0.0), 2), db))
+        elif s >= min_score - NEAR_SCORE and m >= min_margin * NEAR_MARGIN:
+            out.append((w, t, round(max(s, 0.0), 2), db, True))
+    return out
+
+
 def hear_club(audio: np.ndarray, words: dict[str, list[np.ndarray]], min_score: float = MIN_SCORE,
               min_margin: float = MIN_MARGIN) -> list[tuple[str, float, float, float]]:
     """Les cris de la séance qui ressemblent aux cris enregistrés."""

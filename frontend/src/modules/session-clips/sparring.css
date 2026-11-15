@@ -688,7 +688,8 @@
   stroke-width: 2.5;
 }
 
-.sc-graphe__ev--off .sc-graphe__fl {
+.sc-graphe__ev--off .sc-graphe__fl,
+.sc-graphe__ev--off .sc-graphe__cadre {
   stroke-dasharray: 3 3;
 }
 

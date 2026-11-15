@@ -68,9 +68,10 @@ def path(member: Member, word: str, name: str) -> Path:
     return found
 
 
-# Le cri entier comparé dans l'ordre (étude du 14/11, mis en ligne le
-# 15/11 vers 0 h 02 à Paris) : les morceaux écoutés avant sont réécoutés.
-CLUB_CHANGED = 1794698100.0  # 2026-11-14 23:15 UTC
+# Le cri entier comparé dans l'ordre (étude du 14/11), puis les cris
+# « presque » gardés pour la frise (15/11, vers 1 h 45 à Paris) : les
+# morceaux écoutés avant sont réécoutés.
+CLUB_CHANGED = 1794703200.0  # 2026-11-15 00:40 UTC
 
 
 def newest(org_id: int) -> float:
@@ -140,7 +141,8 @@ def test_result(member: Member, name: str) -> dict:
     if not result.exists():
         return {"done": False, "words": []}
     words = json.loads(result.read_text())
-    return {"done": True, "words": [{"kind": k, "t": t, "note": n, "db": db} for k, t, n, db in words]}
+    # Sans les « presque » (5e élément) : seuls les mots retenus sont à juger.
+    return {"done": True, "words": [{"kind": k, "t": t, "note": n, "db": db} for k, t, n, db, *weak in words if not any(weak)]}
 
 
 def hear_tests(hear) -> int:
