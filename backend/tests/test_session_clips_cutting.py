@@ -39,9 +39,9 @@ def pose(x=100, arms="down", wrist_dx=0.0):
     elif arms == "cross":  # bras croisés devant la poitrine
         k[7], k[8] = (x + 25, 120, 1), (x - 25, 120, 1)
         k[9], k[10] = (x - 15, 105, 1), (x + 15, 105, 1)
-    elif arms == "touch":  # bras droit tendu vers le haut, vers l'autre
-        k[7], k[8] = (x + 25, 110, 1), (x + 30, 60, 1)
-        k[9], k[10] = (x + 25, 140, 1), (x + 20 + wrist_dx, 30, 1)
+    elif arms == "touch":  # bras droit tendu vers le haut, vers l'autre (à un bras de distance)
+        k[7], k[8] = (x + 25, 110, 1), (x + 50, 55, 1)
+        k[9], k[10] = (x + 25, 140, 1), (x + 80 + wrist_dx, 30, 1)
     elif arms == "hand":
         k[7], k[8] = (x + 25, 110, 1), (x - 25, 110, 1)
         k[9], k[10] = (x + 20 + wrist_dx, 120, 1), (x - 25, 140, 1)
@@ -65,11 +65,11 @@ def test_gestes():
     assert are_shaking_hands(pose(x=100, arms="hand"), pose(x=145, arms="hand", wrist_dx=-50))
     assert not are_shaking_hands(pose(x=100, arms="hand"), pose(x=300))
     # Les poings touchés en l'air : la même chose au-dessus des épaules.
-    assert are_touching_fists_up(pose(x=100, arms="touch"), pose(x=140, arms="touch", wrist_dx=-40))
+    assert are_touching_fists_up(pose(x=100, arms="touch"), pose(x=260, arms="touch", wrist_dx=-160))
     assert not are_touching_fists_up(pose(x=100, arms="hand"), pose(x=145, arms="hand", wrist_dx=-50))
     # Vidéos de Seb en plein cadre (12/11) : les poings dépassent des poignets,
     # qui restent à un demi-buste l'un de l'autre.
-    assert are_touching_fists_up(pose(x=100, arms="touch"), pose(x=140, arms="touch"))
+    assert are_touching_fists_up(pose(x=100, arms="touch"), pose(x=260, arms="touch", wrist_dx=-120))
     assert are_shaking_hands(pose(x=100, arms="hand"), pose(x=145, arms="hand"))
 
 
@@ -84,7 +84,7 @@ def frames(spec, fps=5):
 
 
 def test_combats_reperes():
-    y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
+    y2 = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
     salute = [pose(100, "hand"), pose(145, "hand", wrist_dx=-50)]
     x = [pose(100, "x"), pose(300, "x")]
@@ -108,7 +108,7 @@ def test_combats_reperes():
 
 
 def test_nouveau_poing_leve_termine_le_combat():
-    y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
+    y2 = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
     fights = find_fights(frames([(2, y2), (15, fight), (2, y2), (15, fight)]))
     assert len(fights) == 2 and fights[0].end == pytest.approx(fights[1].start)
@@ -140,7 +140,7 @@ def test_decoupe_une_seance(db_session, tmp_path, monkeypatch):
     session = _fausse_seance(db_session)
     assert [s.id for s in sessions_to_cut(db_session)] == [session.id]
 
-    y2 = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]  # poings touchés en l'air
+    y2 = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]  # poings touchés en l'air
     fight = [pose(100), pose(300)]
     detecteur = lambda _path: frames([(2, y2), (12, fight), (2, [pose(100, "x"), pose(300, "x")]), (5, []), (2, y2), (15, fight)])
     sc = core.session_clips_client
@@ -175,7 +175,7 @@ def test_time_crie_termine_le_combat():
     from session_clips.hearing import is_time
 
     assert is_time(" Time!") and is_time("taïme") and not is_time("temps") and not is_time("Tim")
-    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
     fight = [pose(100), pose(300)]
     video = frames([(1, touch), (19, fight)])
     assert [f.end for f in find_fights(video, sounds=[12.0], hold=0.8)] == [13.0]
@@ -286,7 +286,7 @@ def test_go_crie_commence_le_combat():
     fight = [pose(100), pose(300)]
     video = frames([(20, fight)])
     assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 2.0), ("time", 12.0)])] == [(2.0, 13.0)]
-    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
     video = frames([(1, touch), (19, fight)])
     assert [(f.start, f.end) for f in find_fights(video, sounds=[("go", 1.5), ("time", 12.0)], hold=0.8)] == [(0.0, 13.0)]
 
@@ -334,7 +334,7 @@ def test_seance_9_poings_touches_puis_go_time():
 def test_bras_croises_chacun_finit_le_combat():
     """Seb, 13/11 : la fin, c'est chacun qui croise les bras devant soi, tenu
     au moins 0,5 s ; un seul qui croise les bras ne finit rien."""
-    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
     fight = [pose(100), pose(300)]
     un = [pose(100, "cross"), pose(300)]
     deux = [pose(100, "cross"), pose(300, "cross")]
@@ -436,7 +436,7 @@ def test_video_couchee_redressee():
     geste ne se lit. L'analyse les redresse d'un quart de tour (Seb, 14/11)."""
     from session_clips.signals import quarter_turn
 
-    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
     fight = [pose(100), pose(300)]
     croises = [pose(100, "cross"), pose(300, "cross")]
     debout = frames([(1, touch), (10, fight), (1, croises), (3, fight)])
@@ -469,7 +469,7 @@ def test_gestes_tenus_1_6_s_sans_recoller_les_bouts():
     plus en un faux « poings touchés » : chaque bout doit tenir seul."""
     from session_clips.fights import find_signs
 
-    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
     fight = [pose(100), pose(300)]
     echange = frames([(5, fight), *[(s, p) for _ in range(4) for s, p in ((0.6, touch), (0.6, fight))], (5, fight)])
     assert [s.kind for s in find_signs(echange)] == []
@@ -483,7 +483,7 @@ def test_pas_d_autre_debut_pendant_4_s():
     """Seb, 15/11 (séance 15) : un « Combattez » à 40,3 s puis des poings
     touchés à 42,8 s relançaient le combat. Pendant 4 s après un début, un
     autre début est ignoré (sauf s'il y a eu une fin entre les deux)."""
-    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
     fight = [pose(100), pose(300)]
     video = frames([(12.4, fight), (2, touch), (20, fight)])  # poings touchés de 12,4 à 14,2 s
     sons = [("combattez", 10.0), ("time", 30.0)]
@@ -491,3 +491,29 @@ def test_pas_d_autre_debut_pendant_4_s():
     # Un « Time ! » entre les deux : deux combats.
     sons = [("combattez", 3.0), ("time", 10.0), ("combattez", 12.0), ("time", 30.0)]
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(3.0, 11.0), (12.0, 31.0)]
+
+
+def test_poings_touches_et_bras_leves_a_distance():
+    """Seb, 15/11 (séance 15) : les poings touchés se font séparés l'un de
+    l'autre, un seul poing chacun ; un corps à corps (hanches à moins de 1,4
+    buste, ou les autres mains proches) n'en est pas un. Les bras levés aussi
+    se font à distance."""
+    from session_clips.signals import is_arms_up
+
+    assert are_touching_fists_up(pose(100, "touch"), pose(260, "touch", wrist_dx=-160))
+    # Corps à corps : hanches à 0,5 buste, poignets levés qui se touchent.
+    assert not are_touching_fists_up(pose(100, "touch"), pose(140, "touch", wrist_dx=-120))
+    # Séparés, mais les deux autres mains aussi l'une contre l'autre (lutte, bras tendus).
+    lutte = pose(260, "touch", wrist_dx=-160)
+    lutte.keypoints[9] = (130, 140, 1)
+    autre = pose(100, "touch")
+    autre.keypoints[9] = (140, 140, 1)
+    assert not are_touching_fists_up(autre, lutte)
+    # Bras levés : à distance oui, collés non.
+    loin = frames([(3, [pose(100, "y"), pose(300, "y")]), (10, [pose(100), pose(300)])])
+    pres = frames([(3, [pose(100, "y"), pose(180, "y")]), (10, [pose(100), pose(300)])])
+    assert is_arms_up(pose(arms="y"))
+    from session_clips.fights import find_signs
+
+    assert [s.kind for s in find_signs(loin)] == ["arms_up"]
+    assert [s.kind for s in find_signs(pres)] == []

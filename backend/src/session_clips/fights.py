@@ -14,7 +14,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .signals import Frame, are_shaking_hands, are_touching_fists_up, hips_x, is_arms_up, is_x, main_pair, torso, upright
+from .signals import Frame, apart, are_shaking_hands, are_touching_fists_up, hips_x, is_arms_up, is_x, main_pair, torso, upright
 
 # « go », « hajime », « combat » : crié par l'entraîneur (hearing.py ; « Hajime ! »
 # ajouté le 13/11 : « go », trop court, se confond avec « allez »). « Fight ! »
@@ -104,7 +104,7 @@ def find_signs(frames: list[Frame], sounds: list[Sound] = (), hold: float = HOLD
         # des deux combattants qui se touchent, bras levés.
         "fists_touch": lambda f: _pair(f, are_touching_fists_up),
         # Les deux bras levés, par les deux combattants (Seb, 13/11).
-        "arms_up": lambda f: _pair(f, lambda a, b: is_arms_up(a) and is_arms_up(b)),
+        "arms_up": lambda f: _pair(f, lambda a, b: is_arms_up(a) and is_arms_up(b) and apart(a, b)),
         "handshake": lambda f: _pair(f, are_shaking_hands),
         # Bras croisés : chacun des deux (Seb, 13/11).
         "x": lambda f: _pair(f, lambda a, b: is_x(a) and is_x(b)),

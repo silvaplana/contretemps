@@ -61,7 +61,7 @@ def test_essai_du_labo(client, db_session, e, tmp_path, monkeypatch):
     [essai] = client.get("/session-clips/lab", headers=e["coach"]).json()
     assert essai["status"] == "processing" and essai["title"] == "Combat du 11/11"
 
-    touch = [pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
     fight = [pose(100), pose(300)]
     hand = [pose(100, "hand"), pose(145, "hand", wrist_dx=-50)]
     x = [pose(100, "x"), pose(300, "x")]

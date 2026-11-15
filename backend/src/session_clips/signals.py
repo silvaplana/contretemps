@@ -155,6 +155,24 @@ def _shoulders_top(pose: Pose) -> float | None:
     return min(p[1] for p in points) if points else None
 
 
+# Séparés l'un de l'autre (Seb, 15/11, séance 15) : hanches à au moins 1,4
+# buste (vrais gestes : 1,56 à 2,15 ; corps à corps : 0,64 à 1,40).
+APART = 1.4
+# Un seul poing chacun : les deux autres mains à au moins 1,5 buste (vrais
+# poings touchés : 2,7 à 3,1 ; lutte : 0,49 à 1,54).
+OTHER_HANDS = 1.5
+
+
+def apart(a: Pose, b: Pose) -> bool:
+    """Les deux combattants à distance l'un de l'autre, pas en corps à corps."""
+    unit = min(torso(a) or 0, torso(b) or 0)
+    ha = _mean([a.point(L_HIP), a.point(R_HIP)])
+    hb = _mean([b.point(L_HIP), b.point(R_HIP)])
+    if not unit or ha is None or hb is None:
+        return False
+    return ((ha[0] - hb[0]) ** 2 + (ha[1] - hb[1]) ** 2) ** 0.5 >= APART * unit
+
+
 def are_touching_fists_up(a: Pose, b: Pose) -> bool:
     """Les poings qui se touchent, bras vers le haut : un poignet de chacun,
     au-dessus de ses épaules, tout près de celui de l'autre. Bras bien levés
@@ -162,14 +180,17 @@ def are_touching_fists_up(a: Pose, b: Pose) -> bool:
     être un peu plus loin : les poings dépassent des poignets (vidéos de Seb
     en plein cadre, 12/11/2026)."""
     unit = min(torso(a) or 0, torso(b) or 0)
-    if not unit:
+    if not unit or not apart(a, b):
         return False
+    dist = lambda p, q: ((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2) ** 0.5
     for reach, lift in ((0.35, 0.0), (0.65, 0.4)):
         for wa in _wrists(a):
             for wb in _wrists(b):
-                close = ((wa[0] - wb[0]) ** 2 + (wa[1] - wb[1]) ** 2) ** 0.5 < reach * unit
+                close = dist(wa, wb) < reach * unit
                 if close and wa[1] < _shoulders_top(a) - lift * unit and wb[1] < _shoulders_top(b) - lift * unit:
-                    return True
+                    others = [(oa, ob) for oa in _wrists(a) if oa != wa for ob in _wrists(b) if ob != wb]
+                    if all(dist(oa, ob) >= OTHER_HANDS * unit for oa, ob in others):
+                        return True
     return False
 
 
