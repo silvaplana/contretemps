@@ -250,6 +250,23 @@ def note_session(member: Member, session_id: int, pieces: list[tuple[str, float,
     return truth
 
 
+def unnote_session(member: Member, session_id: int, t: float) -> list[dict]:
+    """Retire une note mise par erreur (Seb, 15/11 : un « Time » de trop) :
+    la ligne de la vérité au moment `t` (à 0,3 s près) et l'exemple qui en venait."""
+    path = _session_path(member, session_id)
+    noted = json.loads(path.read_text()) if path.exists() else {"pieces": [], "truth": []}
+    found = next((x for x in noted["truth"] if abs(x["t"] - t) < 0.3), None)
+    if found is None:
+        raise NotFoundError("Note introuvable")
+    if found.get("example"):
+        folder, name = found["example"].split("/")
+        if folder in WORDS + NOT_WORDS and _NAME.match(name):
+            (dossier_ecole(member.org_id) / "voice" / folder / name).unlink(missing_ok=True)
+    noted["truth"] = [x for x in noted["truth"] if x is not found]
+    path.write_text(json.dumps(noted))
+    return noted["truth"]
+
+
 # --- Rejouer tous les essais (Seb, 14/11) : les points de l'écoute du club
 # sur tous les tests répondus, pour suivre ses progrès. ---
 

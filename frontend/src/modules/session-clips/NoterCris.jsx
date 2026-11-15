@@ -36,6 +36,15 @@ export default function NoterCris({ seanceId, signes, maintenant, aller, montrer
     }
   }
 
+  // Une note mise par erreur se retire, avec l'exemple rangé (Seb, 15/11).
+  async function retirer(t) {
+    try {
+      setNotes(await api.retirerNote(seanceId, t))
+    } catch (e) {
+      montrer(e.message)
+    }
+  }
+
   const dit = (n) => (n.word == null ? 'Rangé : inventé' : nom(n.word) ? `Rangé : « ${nom(n.word)} »` : 'Rangé : autre mot')
   return (
     <Deroulant titre="Noter les cris">
@@ -55,7 +64,12 @@ export default function NoterCris({ seanceId, signes, maintenant, aller, montrer
               « {nom(x.kind)} ! » à {mmss(x.start)}
             </span>
             {note(x.start) ? (
-              <span className="sc-meta">{dit(note(x.start))}</span>
+              <span className="sc-ecoute__choix">
+                <span className="sc-meta">{dit(note(x.start))}</span>
+                <button type="button" className="btn" onClick={() => retirer(note(x.start).t)}>
+                  Retirer
+                </button>
+              </span>
             ) : quelMot === x.start ? (
               <span className="sc-ecoute__choix">
                 {[...MOTS.filter(([id]) => id !== x.kind), ['other', 'Autre mot']].map(([id, l]) => (
@@ -83,9 +97,14 @@ export default function NoterCris({ seanceId, signes, maintenant, aller, montrer
       {notes
         .filter((n) => !cris.some((x) => Math.abs(n.t - x.start) < 0.3))
         .map((n) => (
-          <p key={n.t} className="sc-meta">
-            Ajouté : « {nom(n.word) ?? n.word} » à {mmss(n.t)}
-          </p>
+          <div key={n.t} className="sc-ecoute__choix">
+            <span className="sc-meta">
+              Ajouté : « {nom(n.word) ?? n.word} » à {mmss(n.t)}
+            </span>
+            <button type="button" className="btn" onClick={() => retirer(n.t)}>
+              Retirer
+            </button>
+          </div>
         ))}
       {manque == null ? (
         <button type="button" className="btn" onClick={() => setManque(maintenant())}>

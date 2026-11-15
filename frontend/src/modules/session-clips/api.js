@@ -141,6 +141,7 @@ export async function lireEnregistrement(mot, nom) {
   return URL.createObjectURL(await reponse.blob())
 }
 export const notesSeance = (id) => appel(`/sessions/${id}/voice-notes`)
+export const retirerNote = (id, t) => appel(`/sessions/${id}/voice-notes?t=${t}`, { method: 'DELETE' })
 export const noterCri = (id, corps) => appel(`/sessions/${id}/voice-notes`, json('POST', corps))
 export const effacerEnregistrements = () => appel('/voice', { method: 'DELETE' })
 export const effacerTests = () => appel('/voice-tests', { method: 'DELETE' })
