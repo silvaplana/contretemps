@@ -306,11 +306,17 @@ class InstagramRelay:
             # Oldest first, so the newest ends on top of the blog.
             for post in reversed(posts):
                 posted_at = _posted_at(post)
-                if posted_at is None or posted_at <= link.linked_at or self._known(db, link.org_id, post["id"]):
+                if posted_at is None or posted_at <= link.linked_at:
+                    continue
+                if self._known(db, link.org_id, post["id"]):
+                    link.linked_at = posted_at  # already here: see below
                     continue
                 if hashtag and not _has_hashtag(post.get("caption") or "", hashtag):
                     continue
                 self._bring_in(db, link, post)
+                # Seb, 16 November: a post comes in once. Deleted afterwards
+                # (a draft he did not want), it must not come back.
+                link.linked_at = posted_at
                 count += 1
             link.last_sync_at, link.last_error = _now(), None
             db.commit()

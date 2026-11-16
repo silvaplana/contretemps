@@ -828,3 +828,26 @@ def test_sondage_comme_whatsapp(client, e, en_tant_que):
     assert client.put(b_url, json={"options": [brouillon["poll"]["options"][0]["id"]]}).status_code == 404
     # Supprimer la publication emporte son sondage et ses votes.
     assert client.delete(f"{_blog(eid)}/posts/{actu['id']}").status_code == 204
+
+
+def test_instagram_un_post_supprime_ne_revient_pas(client, db_session, e, en_tant_que, photos, faux_instagram):
+    """Seb, 16 novembre : un brouillon venu d'Instagram, supprimé, revenait
+    à la relève suivante. Un post déjà reçu une fois ne revient plus."""
+    from datetime import datetime, timedelta, timezone
+
+    from app.main import core
+    from publications.models import InstagramLink
+
+    eid = e["ecole"].id
+    en_tant_que(e["seb"])
+    client.put(f"{_blog(eid)}/settings", json={"instagram_publish": False})
+    client.put(f"{_blog(eid)}/instagram", json={"token": "IGAA" + "x" * 40})
+    lien = db_session.get(InstagramLink, eid)
+    lien.linked_at = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=1)
+    db_session.commit()
+    faux_instagram["posts"] = [_post("r", datetime.now(timezone.utc), media_type="IMAGE", media_url="https://cdn/r.jpg")]
+    assert core.publications_instagram.sync(db_session, lien) == 1
+    brouillon = db_session.query(Post).filter_by(org_id=eid, instagram_id="r").one()
+    assert client.delete(f"{_blog(eid)}/posts/{brouillon.id}").status_code == 204
+    assert core.publications_instagram.sync(db_session, lien) == 0
+    assert db_session.query(Post).filter_by(org_id=eid, instagram_id="r").count() == 0
