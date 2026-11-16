@@ -25,7 +25,7 @@ def test_ecart_des_poignets_bras_leves():
 
     lignes = []
     _raised([Frame(t=1.0, people=[pose(100, "touch"), pose(140, "touch", wrist_dx=-40)]), Frame(t=2.0, people=[pose(100), pose(300)])], lignes.append)
-    assert lignes[0].startswith("bras levés tous les deux : 1 images") and "1.0 s · écart des poignets 0.00" in lignes[1]
+    assert lignes[0].startswith("bras levés tous les deux, ou tendus à hauteur d'épaules : 1 images") and "1.0 s · écart des poignets 0.00" in lignes[1]
     # Corps séparés ou corps à corps (Seb, 15/11) : l'écart des hanches et des autres mains.
     assert "écart des hanches 0.50 · des autres mains 0.50" in lignes[1]
 
