@@ -183,7 +183,10 @@ def are_touching_fists_up(a: Pose, b: Pose) -> bool:
     if not unit or not apart(a, b):
         return False
     dist = lambda p, q: ((p[0] - q[0]) ** 2 + (p[1] - q[1]) ** 2) ** 0.5
-    for reach, lift in ((0.35, 0.0), (0.65, 0.4)):
+    # (écart des poignets, hauteur au-dessus des épaules), en bustes. Le
+    # dernier : bras tendus à l'horizontale, poings à hauteur d'épaules, un peu
+    # dessous (Seb, 16/11, séance 16, photo à 0:47 : de profil).
+    for reach, lift in ((0.35, 0.0), (0.65, 0.4), (0.5, -0.3)):
         for wa in _wrists(a):
             for wb in _wrists(b):
                 close = dist(wa, wb) < reach * unit

@@ -42,6 +42,9 @@ def pose(x=100, arms="down", wrist_dx=0.0):
     elif arms == "touch":  # bras droit tendu vers le haut, vers l'autre (à un bras de distance)
         k[7], k[8] = (x + 25, 110, 1), (x + 50, 55, 1)
         k[9], k[10] = (x + 25, 140, 1), (x + 80 + wrist_dx, 30, 1)
+    elif arms == "reach":  # bras droit tendu à l'horizontale, à hauteur d'épaules, vers l'autre
+        k[7], k[8] = (x + 25, 110, 1), (x + 40, 85, 1)
+        k[9], k[10] = (x + 25, 140, 1), (x + 80 + wrist_dx, 85, 1)
     elif arms == "hand":
         k[7], k[8] = (x + 25, 110, 1), (x - 25, 110, 1)
         k[9], k[10] = (x + 20 + wrist_dx, 120, 1), (x - 25, 140, 1)
@@ -506,6 +509,18 @@ def test_un_geste_coupe_par_un_creux_reste_un_seul_geste():
     assert [(s.kind, s.start, s.end) for s in find_signs(video)] == [("fists_touch", 2.0, 8.2)]
     sons = [("time", 30.0)]
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 31.0)]
+
+
+def test_poings_touches_bras_a_l_horizontale():
+    """Seb, 16/11 (séance 16, photo à 0:47) : de profil, les deux bras tendus
+    à l'horizontale, poings touchés à hauteur d'épaules. Les poignets sont un
+    peu sous les épaules et à 0,4 buste l'un de l'autre : c'est un poings touchés."""
+    a, b = pose(100, "reach"), pose(260, "reach", wrist_dx=-128)  # poignets à 32 px = 0,4 buste
+    assert are_touching_fists_up(a, b)
+    # Mais pas une poignée de main, mains jointes à la taille.
+    assert not are_touching_fists_up(pose(100, "hand"), pose(260, "hand", wrist_dx=-160))
+    # Ni des poignets loin l'un de l'autre.
+    assert not are_touching_fists_up(pose(100, "reach"), pose(260, "reach", wrist_dx=-100))
 
 
 def test_poings_touches_et_bras_leves_a_distance():

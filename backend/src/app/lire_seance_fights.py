@@ -140,7 +140,8 @@ def _raised(frames: list[Frame], out, limit: int = 200) -> None:
         tops = [_shoulders_top(p) for p in pair]
         if not unit or None in tops:
             continue
-        ups = [[w for w in _wrists(p) if w[1] < top - 0.2 * unit] for p, top in zip(pair, tops, strict=True)]
+        # Jusqu'à 0,3 buste sous les épaules : les bras tendus à l'horizontale (Seb, 16/11).
+        ups = [[w for w in _wrists(p) if w[1] < top + 0.3 * unit] for p, top in zip(pair, tops, strict=True)]
         if not all(ups):
             continue
         dist = lambda a, b: ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5 / unit
@@ -157,7 +158,7 @@ def _raised(frames: list[Frame], out, limit: int = 200) -> None:
             f"  {f.t:6.1f} s · écart des poignets {gap:.2f} buste · hauteur au-dessus des épaules {lift}"
             f" · écart des hanches {body} · des autres mains {other}"
         )
-    out(f"bras levés tous les deux : {len(lines)} images (poings touchés : écart < 0,35, ou < 0,65 si hauteur ≥ 0,4)")
+    out(f"bras levés tous les deux, ou tendus à hauteur d'épaules : {len(lines)} images (poings touchés : écart < 0,35, < 0,65 si hauteur ≥ 0,4, < 0,5 si hauteur ≥ −0,3)")
     for line in lines[:limit]:
         out(line)
 

@@ -248,7 +248,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    (Seb, 15/11 : un Combattez puis de faux poings touchés relançaient le combat). **À distance**
    (Seb, 15/11, séance 15 : le faux poings touchés de 45 s était un corps à corps) : poings touchés
    et bras levés ne comptent que si les hanches des deux combattants sont à au moins **1,4 buste**
-   (`signals.APART` ; mesuré : vrais gestes 1,56 à 2,15, corps à corps 0,64 à 1,40). Pour les poings
+   (`signals.APART` ; mesuré : vrais gestes 1,56 à 2,15, corps à corps 0,64 à 1,40). Les poings touchés comptent aussi **bras tendus à l'horizontale**, poings à hauteur d'épaules (jusqu'à 0,3 buste dessous, poignets à moins de 0,5 buste ; Seb, 16/11, séance 16, photo à 0:47 de profil). Pour les poings
    touchés, **un seul poing chacun** : les deux autres mains à au moins **1,5 buste** (`OTHER_HANDS` ;
    vrai 2,7 à 3,1, lutte 0,49 à 1,54). **Début** : les **poings
    touchés en l'air** des deux combattants (bras levés, chacun touche les poings de l'autre ; c'est le signe du
