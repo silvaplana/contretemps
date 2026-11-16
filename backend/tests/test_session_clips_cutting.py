@@ -493,6 +493,21 @@ def test_pas_d_autre_debut_pendant_4_s():
     assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(3.0, 11.0), (12.0, 31.0)]
 
 
+def test_un_geste_coupe_par_un_creux_reste_un_seul_geste():
+    """Seb, 16/11 (séance 16) : les mêmes poings touchés de 0:02 à 0:09, avec
+    un creux de 2,4 s au milieu (poignets un peu écartés), donnaient deux
+    poings touchés, et le combat partait du second. Pendant 4 s après un
+    geste, le même geste le continue."""
+    from session_clips.fights import find_signs
+
+    touch = [pose(100, "touch"), pose(260, "touch", wrist_dx=-160)]
+    fight = [pose(100), pose(300)]
+    video = frames([(2, fight), (2, touch), (2.4, fight), (2, touch), (30, fight)])
+    assert [(s.kind, s.start, s.end) for s in find_signs(video)] == [("fists_touch", 2.0, 8.2)]
+    sons = [("time", 30.0)]
+    assert [(f.start, f.end) for f in find_fights(video, sounds=sons)] == [(2.0, 31.0)]
+
+
 def test_poings_touches_et_bras_leves_a_distance():
     """Seb, 15/11 (séance 15) : les poings touchés se font séparés l'un de
     l'autre, un seul poing chacun ; un corps à corps (hanches à moins de 1,4

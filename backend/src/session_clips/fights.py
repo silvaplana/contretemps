@@ -118,7 +118,9 @@ def find_signs(frames: list[Frame], sounds: list[Sound] = (), hold: float = HOLD
             # échange de coups ne s'additionnent pas.
             if sign.end - sign.start + 1e-6 < hold:
                 continue
-            if kind in START_SIGNS and found and sign.start - found[-1].end < MERGE:
+            # Le même geste repris moins de 4 s après : c'est le même (Seb, 16/11,
+            # séance 16 : des poings touchés de 0:02 à 0:09 avec un creux de 2,4 s).
+            if kind in START_SIGNS and found and sign.start - found[-1].end < QUIET_START:
                 found[-1].end = sign.end
                 continue
             found.append(sign)

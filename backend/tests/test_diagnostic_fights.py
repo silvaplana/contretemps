@@ -55,3 +55,18 @@ def test_bras_croises_seconde_par_seconde():
     _crossed([Frame(t=36.2, people=[pose(100, "cross"), profil]), Frame(t=37.0, people=[pose(100), pose(300)])], lignes.append)
     assert lignes[1] == "    36 s · X | profil 0.12"
     assert lignes[2] == "    37 s · pas croisés 0.50 | pas croisés 0.50"
+
+
+def test_un_seul_bras_leve():
+    """Seb, 16/11 (séance 16) : des poings touchés à 0:47 non vus ; la lecture
+    montre les images où un seul des deux lève un poignet, et les poignets mal vus."""
+    from app.lire_seance_fights import _one_up
+    from session_clips.signals import Frame
+    from tests.test_session_clips_cutting import pose
+
+    cache = pose(260)
+    cache.keypoints[10] = (0.0, 0.0, 0.1)  # poignet droit caché
+    lignes = []
+    _one_up([Frame(t=47.0, people=[cache, pose(100, "touch")]), Frame(t=48.0, people=[pose(100), pose(300)])], lignes.append)
+    assert lignes[0].startswith("un seul des deux lève un poignet : 1 images")
+    assert lignes[1] == "    47.0 s · -0.75 +0.62 | -0.75 ?0.10"
