@@ -206,7 +206,8 @@ class InstagramLink(Base):
     # whoever linked it).
     signed_by: Mapped[int | None] = mapped_column(ForeignKey("comptes.id"), nullable=True)
     signed_by_name: Mapped[str] = mapped_column(String(100), nullable=False, default="", server_default="")
-    # Only posts published after this come in, not the whole history.
+    # Only posts published after this come in, not the whole history; it
+    # moves on to each post brought in, so a deleted one does not come back.
     linked_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     token_refreshed_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=_utcnow)
     # Linked through Meta's Unified Login (Seb, 11 November): the account's id
