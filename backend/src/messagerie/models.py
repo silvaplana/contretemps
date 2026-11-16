@@ -171,3 +171,17 @@ class MessagePollVote(Base):
     member_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), primary_key=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)
+
+
+class MessageReaction(Base):
+    """An emoji on a message, like WhatsApp (Seb, 16 November 2026; spec
+    §4.12): one per person, another one replaces it. The name is kept as shown
+    when reacting, like the poll votes."""
+
+    __tablename__ = "msg_reactions"
+
+    message_id: Mapped[int] = mapped_column(ForeignKey("messages.id", ondelete="CASCADE"), primary_key=True)
+    member_id: Mapped[int] = mapped_column(ForeignKey("comptes.id"), primary_key=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False)
+    emoji: Mapped[str] = mapped_column(String(16), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_utcnow)

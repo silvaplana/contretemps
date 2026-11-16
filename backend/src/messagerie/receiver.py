@@ -21,7 +21,7 @@ from .connexions import Connexions
 from .conversations import Conversations
 from .evenements import Evenements
 from .frappe import Frappe
-from . import polls
+from . import polls, reactions
 from .messages import Messages, can_still_edit
 from .schemas import (
     AttachmentOut,
@@ -37,6 +37,7 @@ from .schemas import (
     StatutModification,
     VideoBlockOut,
     VideoUploadCreation,
+    ReactionIn,
     VoteIn,
 )
 
@@ -135,6 +136,8 @@ class MessagerieReceiver:
 
         # Polls (§4.11): a vote replaces the voter's previous one.
         self.app.put("/messages/{message_id}/vote", response_model=MessageSortie)(self.vote)
+        # Reactions (§4.12): one emoji per person, another replaces it.
+        self.app.put("/messages/{message_id}/reaction", response_model=MessageSortie)(self.react)
 
         self.app.put(
             "/messages/{message_id}/deliveries/{destinataire_id}", status_code=204
@@ -341,6 +344,7 @@ class MessagerieReceiver:
             "reply_to_id": message.reply_to_id,
             "attachments": self.attachments.of_message(db, message.id),
             "poll": polls.of_message(db, message),
+            "reactions": reactions.of_message(db, message),
             "deliveries": self.messages.deliveries_du_message(db, message.id),
         }
 
@@ -486,6 +490,32 @@ class MessagerieReceiver:
         try:
             polls.vote(db, message, membre.id, f"{membre.prenom} {membre.nom}".strip(), donnees.options)
         except polls.InvalidPoll as erreur:
+            raise HTTPException(status_code=400, detail=str(erreur)) from erreur
+        sortie = self._sortie_message(db, message)
+        self._publier_message_maj(db, sortie)
+        return sortie
+
+    def react(
+        self,
+        message_id: int,
+        donnees: ReactionIn,
+        db: Session = Depends(get_db),
+        appelant: Compte = Depends(rbac.compte_appelant),
+    ):
+        """Seen by every member, live (§4.12)."""
+        message = self._message_or_404(db, message_id)
+        if message.deleted_at is not None:
+            raise HTTPException(status_code=404, detail="Message introuvable")
+        rbac.meme_personne(appelant, donnees.compte_id, db)
+        membre = next(
+            (m for m in self.conversations.membres_resolus(db, message.conversation_id) if m.id == donnees.compte_id),
+            None,
+        )
+        if membre is None:
+            raise HTTPException(status_code=403, detail="Réservé aux membres de la conversation")
+        try:
+            reactions.react(db, message, membre.id, f"{membre.prenom} {membre.nom}".strip(), donnees.emoji)
+        except reactions.InvalidReaction as erreur:
             raise HTTPException(status_code=400, detail=str(erreur)) from erreur
         sortie = self._sortie_message(db, message)
         self._publier_message_maj(db, sortie)

@@ -46,6 +46,10 @@ Menu d'un message (appui long, clic droit, ou ⋯ sur la bulle)
 - Modifier : son propre message, un seul, pendant 15 minutes après l'envoi.
 - Supprimer : ses propres messages ; « Annuler » en bas pendant 10 secondes. Chez tous, la bulle
   devient « Ce message a été supprimé ».
+- Réagir : quand un seul message est choisi, une rangée d'émojis s'affiche au-dessus de lui
+  (👍 ❤️ 😊 😂 😮 🙏, « + » pour les 16) ; en toucher un réagit, toucher le sien le retire.
+  Sous la bulle, les émojis donnés et leur nombre ; les toucher ouvre « Qui a réagi » (sa ligne
+  « Vous · toucher pour retirer »).
 
 Sondage (trombone › Sondage)
 - Fenêtre « Sondage » : Question, Réponses (2 à 10, « + Ajouter une réponse », ✕ pour retirer),

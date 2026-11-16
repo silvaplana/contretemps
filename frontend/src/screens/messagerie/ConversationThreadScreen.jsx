@@ -9,6 +9,7 @@ import { useFrappeEnCours, useSignalerFrappe } from '../../utils/frappeIndicateu
 import { envoyerAvecReprise, reessayer, useMessagesEnAttente } from '../../utils/messageOutbox.js'
 import { libellePresence, usePresence, usePresenceListe } from '../../utils/presenceEnLigne.js'
 import { dateDuMessage, libelleJour } from '../../utils/datesMessagerie.js'
+import { ReactionsDuMessage, ReactionsRapides } from './reactions.jsx'
 import { PhotoPleinEcran, PiecesDuMessage, VideoPleinEcran } from './pieces.jsx'
 import { TAILLE_MAX_FICHIER, TAILLE_MAX_VIDEO, preparerPhoto, tailleLisible } from './piecesOutils.js'
 
@@ -355,6 +356,12 @@ export default function ConversationThreadScreen({
     })
   }
 
+  // Réactions (spec §4.12) : la bulle se met à jour avec la réponse du serveur.
+  function reagir(message, emoji) {
+    setSelection([])
+    messagesApi.reagir(message.id, compteId, emoji).then(remplacerMessage).catch(() => {})
+  }
+
   async function voter(message, choix) {
     const brut = await messagesApi.voter(message.id, compteId, choix)
     remplacerMessage(brut)
@@ -607,6 +614,13 @@ export default function ConversationThreadScreen({
           return (
           <Fragment key={m.id}>
           {nouveauJour && <div className="conversation-thread__jour"><span>{jour}</span></div>}
+          {selection.length === 1 && selection[0] === m.id && !supprime && !lectureSeule && (
+            <ReactionsRapides
+              mienne={m.reactions.find((r) => r.member_id === compteId)?.emoji}
+              onReagir={(emoji) => reagir(m, emoji)}
+              aDroite={m.estMoi}
+            />
+          )}
           <div
             id={`message-${m.id}`}
             className={`message-row ${m.estMoi ? 'message-row--moi' : ''} ${
@@ -689,6 +703,14 @@ export default function ConversationThreadScreen({
                 {m.envoyeParMail && <Icon name="mail" size={14} />}
                 {m.envoyeParWhatsapp && <WhatsappBadge size={14} />}
               </span>
+              {!supprime && (
+                <ReactionsDuMessage
+                  reactions={m.reactions}
+                  compteId={compteId}
+                  onRetirer={() => reagir(m, null)}
+                  desactive={enSelection}
+                />
+              )}
             </div>
           </div>
           </Fragment>

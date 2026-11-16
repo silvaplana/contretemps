@@ -158,6 +158,17 @@ class VoteIn(BaseModel):
     options: list[int]
 
 
+class ReactionOut(BaseModel):
+    emoji: str
+    member_id: int
+    name: str
+
+
+class ReactionIn(BaseModel):
+    compte_id: int
+    emoji: str | None = None  # None: withdraw
+
+
 class MessageSortie(BaseModel):
     id: int
     conversation_id: int
@@ -171,6 +182,7 @@ class MessageSortie(BaseModel):
     reply_to_id: int | None = None
     attachments: list[AttachmentOut] = []
     poll: PollOut | None = None
+    reactions: list[ReactionOut] = []
     deliveries: list[DeliverySortie] = []
 
 

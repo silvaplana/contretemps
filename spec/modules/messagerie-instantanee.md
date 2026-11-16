@@ -373,13 +373,27 @@ https://claude.ai/artifact/DRaBaxfSGLorh1LJNNhef2) :
   ligne par réponse cochée, avec le nom au moment du vote). La carte est partagée avec les
   publications (`frontend/src/components/Sondage.jsx`) ; le serveur de chaque module garde ses tables.
 
+### 4.12 Réactions par emoji, comme dans WhatsApp (Seb, 16 novembre)
+
+- **Appui long** (clic droit ou ⋯ sur ordinateur) sur un seul message : en plus de la barre du haut
+  (Répondre, Copier, Transférer, Modifier, Supprimer, §4.2), une rangée d'émojis s'affiche au-dessus du
+  message : 👍 ❤️ 😊 😂 😮 🙏 et « + » pour les 16 émojis des publications (`actualites.md`).
+- **Une réaction par personne** : en toucher une autre la remplace, toucher la sienne la retire. L'auteur
+  peut réagir à son propre message.
+- Sous la bulle, les émojis donnés et, à partir de deux réactions, leur nombre. Les toucher ouvre « Qui a
+  réagi » : chaque personne et son émoji ; sur sa propre ligne, « Vous · toucher pour retirer ».
+- Tout le monde voit les réactions en direct. Pas de notification. Un message supprimé n'en montre plus et
+  n'en accepte plus.
+- Données : table `msg_reactions` (message, personne, émoji, nom affiché au moment de réagir), route
+  `PUT /messages/{id}/reaction` réservée aux membres de la discussion.
+
 ## 5. Hors de cette étape
 
 - La ligne « Vous — Envoyez-vous un message » de WhatsApp (conversation avec soi-même, pour se garder des
   notes) : pas dans cette étape.
 - Les lettres A, B, C… en bord de liste pour sauter dans l'alphabet.
 - Le même œil dans les Infos d'un groupe déjà créé (carte du groupe) : à décider.
-- Réactions par emoji, épingler, étoile, notes vocales,
+- Épingler, étoile, notes vocales,
   aperçu des liens : pas dans cette étape.
 
 ## 6. Écarté

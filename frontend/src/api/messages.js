@@ -123,6 +123,8 @@ export function versMessageEcran(message, compteId, membres) {
     pieces: message.attachments ?? [],
     // Sondage (spec §4.11) : même forme que la carte components/Sondage.jsx.
     sondage: message.poll ? sondageVersEcran(message.poll, compteId) : null,
+    // Réactions par emoji (spec §4.12) : [{ emoji, member_id, name }].
+    reactions: message.reactions ?? [],
     heure: dateServeur(message.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
     statut: statutAgrege(message.deliveries),
     envoyeParMail: message.deliveries.some((d) => d.canal === 'email'),
@@ -278,6 +280,11 @@ export async function modifierMessage(messageId, contenu) {
 
 export async function supprimerMessage(messageId) {
   return requete(`/messages/${messageId}`, { method: 'DELETE' })
+}
+
+// Réaction par emoji (spec §4.12) : remplace la mienne, null la retire.
+export async function reagir(messageId, compteId, emoji) {
+  return requete(`/messages/${messageId}/reaction`, { method: 'PUT', body: JSON.stringify({ compte_id: compteId, emoji }) })
 }
 
 // Vote à un sondage (spec §4.11) : remplace mon vote, [] le retire.
