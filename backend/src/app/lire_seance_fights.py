@@ -112,6 +112,7 @@ def detail(db, session_id: int, out=print) -> None:
     if (straight := upright(frames)) is not frames:
         out("vidéo couchée : postures redressées d'un quart de tour")
     _raised(straight, out)
+    _one_up(straight, out)
     _crossed(straight, out)
     _report(frames, sounds, lab.settings(db, x.org_id), out)
     for c in db.scalars(select(Clip).where(Clip.session_id == x.id).order_by(Clip.position)):
@@ -157,6 +158,35 @@ def _raised(frames: list[Frame], out, limit: int = 200) -> None:
             f" · écart des hanches {body} · des autres mains {other}"
         )
     out(f"bras levés tous les deux : {len(lines)} images (poings touchés : écart < 0,35, ou < 0,65 si hauteur ≥ 0,4)")
+    for line in lines[:limit]:
+        out(line)
+
+
+def _one_up(frames: list[Frame], out, limit: int = 300) -> None:
+    """Les images où un seul des deux lève un poignet au-dessus des épaules
+    (Seb, 16/11, séance 16 : des poings touchés à 0:47 non vus). Pour chacun,
+    de gauche à droite de l'image : la hauteur de chaque poignet au-dessus des
+    épaules, en bustes, ou « ?0.12 » pour un poignet mal vu (sa confiance)."""
+    lines = []
+    for f in frames:
+        pair = sorted(main_pair(f), key=lambda p: _mean([p.point(L_HIP), p.point(R_HIP)]) or (0, 0))
+        if len(pair) != 2:
+            continue
+        unit = min(torso(p) or 0 for p in pair)
+        tops = [_shoulders_top(p) for p in pair]
+        if not unit or None in tops:
+            continue
+        seen = []
+        for p, top in zip(pair, tops, strict=True):
+            marks = []
+            for i in (L_WRIST, R_WRIST):
+                w = p.point(i)
+                marks.append(f"{(top - w[1]) / unit:+.2f}" if w else f"?{p.keypoints[i][2]:.2f}")
+            seen.append(" ".join(marks))
+        ups = [any(p.point(i) and p.point(i)[1] < top for i in (L_WRIST, R_WRIST)) for p, top in zip(pair, tops, strict=True)]
+        if sum(ups) == 1:
+            lines.append(f"  {f.t:6.1f} s · {seen[0]} | {seen[1]}")
+    out(f"un seul des deux lève un poignet : {len(lines)} images (hauteur au-dessus des épaules, en bustes)")
     for line in lines[:limit]:
         out(line)
 

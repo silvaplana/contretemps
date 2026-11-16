@@ -243,7 +243,7 @@ d'un bloc, de nuit, en connaissant toute la vidéo à l'avance.
    3 s, pour tous les gestes ; colonne `min_hold` de `sc_club_signs` et `sc_lab_settings`). Chaque
    bout de geste doit la tenir seul : deux bouts courts ne s'additionnent plus (avant, on recollait
    les bouts à moins de 2 s puis on mesurait, et des poings croisés en plein échange finissaient par
-   « tenir 4 s »). Seuls deux gestes valables à moins de 2 s comptent pour un seul début. Pendant
+   « tenir 4 s »). Le même geste repris **moins de 4 s** après la fin du précédent le continue : un seul geste (Seb, 16/11, séance 16 : des poings touchés de 0:02 à 0:09 avec un creux de 2,4 s en donnaient deux, et le combat partait du second). Pendant
    **4 s après un début, pas d'autre début** (`QUIET_START`), sauf s'il y a eu une fin entre les deux
    (Seb, 15/11 : un Combattez puis de faux poings touchés relançaient le combat). **À distance**
    (Seb, 15/11, séance 15 : le faux poings touchés de 45 s était un corps à corps) : poings touchés
