@@ -93,15 +93,28 @@ def _image(url: str | None) -> bytes | None:
         return None
 
 
+def _youtube(url: str) -> Preview:
+    """oEmbed gives the title. YouTube refuses it for some videos (the channel
+    forbids embedding: 401, not JSON; Seb, 16 November, a fight clip): the
+    link stays good, with YouTube's own picture and no title."""
+    _check_public("https://www.youtube.com/")
+    try:
+        data = requests.get("https://www.youtube.com/oembed", params={"url": url, "format": "json"},
+                            timeout=TIMEOUT).json()
+    except (requests.RequestException, ValueError):
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    picture = data.get("thumbnail_url") or f"https://i.ytimg.com/vi/{youtube_id(url)}/hqdefault.jpg"
+    return Preview(title=str(data.get("title", ""))[:300], image=_image(picture))
+
+
 def read(url: str) -> Preview:
     """Raises LinkError."""
     url = url.strip()
     try:
         if youtube_id(url):
-            _check_public("https://www.youtube.com/")
-            data = requests.get("https://www.youtube.com/oembed", params={"url": url, "format": "json"},
-                                timeout=TIMEOUT).json()
-            return Preview(title=str(data.get("title", ""))[:300], image=_image(data.get("thumbnail_url")))
+            return _youtube(url)
         body, final = _fetch(url, PAGE_MAX_BYTES)
     except requests.RequestException as erreur:
         raise LinkError("Ce lien ne répond pas") from erreur

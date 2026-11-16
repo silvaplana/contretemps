@@ -851,3 +851,25 @@ def test_instagram_un_post_supprime_ne_revient_pas(client, db_session, e, en_tan
     assert client.delete(f"{_blog(eid)}/posts/{brouillon.id}").status_code == 204
     assert core.publications_instagram.sync(db_session, lien) == 0
     assert db_session.query(Post).filter_by(org_id=eid, instagram_id="r").count() == 0
+
+
+def test_une_video_youtube_que_youtube_ne_decrit_pas_reste_acceptee(monkeypatch):
+    """Seb, 16 novembre : un lien copié dans YouTube (Partager › Copier) était
+    refusé « Ce lien ne répond pas ». YouTube ne décrit pas certaines vidéos
+    (intégration interdite par la chaîne : 401, sans JSON) ; le lien reste bon."""
+    from publications import links
+
+    class Reponse:
+        status_code = 401
+        content = b"Unauthorized"
+
+        def json(self):
+            raise ValueError("pas du JSON")
+
+    monkeypatch.setattr(links, "_check_public", lambda url: None)
+    monkeypatch.setattr(links.requests, "get", lambda *a, **k: Reponse())
+    monkeypatch.setattr(links, "_image", lambda url: b"vignette" if url else None)
+
+    apercu = links.read("https://youtu.be/W4uPeB4abcd?si=AbCdEf123")
+    assert apercu.title == ""
+    assert apercu.image == b"vignette"

@@ -86,7 +86,9 @@ Pas de pagination au début : toutes les actus publiées, en faisant défiler.
   YouTube (youtube-nocookie) ne se charge qu'au toucher, pour que le carrousel glisse encore du
   doigt. Un **autre site** : son image, son titre, son nom (ex. contretemps.fr) et un bouton
   « Ouvrir le lien » (nouvel onglet). Titre et image sont lus **une fois**, quand on ajoute le lien
-  (YouTube : oEmbed ; autre site : balises `og:title` / `og:image`, sinon `<title>`) ; l'image est
+  (YouTube : oEmbed ; autre site : balises `og:title` / `og:image`, sinon `<title>`). YouTube ne
+  décrit pas les vidéos dont la chaîne interdit la lecture ailleurs : le lien est quand même accepté,
+  sans titre, avec l'image de la vidéo (Seb, 16 novembre) ; l'image est
   gardée comme une photo de l'actu, rien n'est relu ensuite. Le serveur ne lit que des adresses
   publiques (pas le VPS lui-même ni un réseau privé).
 - Sous le texte : « **Prénom** · 6 novembre », jamais d'heure.
