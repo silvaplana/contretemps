@@ -222,6 +222,15 @@ export async function chargerParAdresse() {
     const reponse = await fetch(`${BASE_URL}/par-host/personnalisation`)
     if (!reponse.ok) return null
     const apparence = versEcran(await reponse.json())
+    // Ancienne adresse (adresse changée, ou école passée sur une autre
+    // enseigne, spec/core.md §2.7) : on part sur la bonne, même page.
+    if (apparence.redirigeVers) {
+      const cible = new URL(apparence.redirigeVers)
+      if (cible.host !== window.location.host) {
+        window.location.replace(`${cible.origin}${window.location.pathname}${window.location.search}${window.location.hash}`)
+        return null
+      }
+    }
     // Adresse générique d'une autre enseigne (app.assofight…) : ses couleurs.
     if (apparence.ecoleId || apparence.enseigne !== 'contretemps') definir(apparence)
     return apparence
