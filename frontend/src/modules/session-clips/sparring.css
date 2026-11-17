@@ -1141,9 +1141,43 @@
   border-radius: 12px;
   background: var(--card-bg);
   color: var(--text);
+}
+
+.sc-qui__ligne > button {
+  border: 0;
+  background: none;
+  color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
+  padding: 0;
+}
+
+.sc-qui__photo {
+  flex: none;
+  min-width: 48px;
+  min-height: 64px;
+}
+
+.sc-qui__nommer {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  min-height: 56px;
+}
+
+.sc-qui__grande img {
+  display: block;
+  width: 100%;
+  max-height: 65vh;
+  object-fit: contain;
+  border-radius: 12px;
+}
+
+.sc-qui__grande .btn {
+  min-height: 52px;
 }
 
 .sc-qui__ligne img,

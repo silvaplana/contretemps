@@ -46,8 +46,10 @@ FACE_FULL = 0.6  # ressemblance de visages qui compte pour une distance nulle
 MAX_FACES = 8  # visages gardés par combattant
 FACE_SCORE = 0.6  # certitude minimale de YuNet qu'il y a un visage
 MIN_SAMPLES = 3  # images en dessous desquelles un combattant est ignoré
+PHOTO_HEIGHT = 480  # pixels de la photo d'une personne
 BINS = (8, 3, 3)  # teinte, saturation, luminosité
 OUTSIDER = "outsider"
+VERSION = 2  # relire les séances quand la façon de lire change (2 : meilleure photo, Seb 17/11)
 
 NOSE, L_EAR, R_EAR = 0, 3, 4
 L_SHOULDER, R_SHOULDER, L_HIP, R_HIP, L_KNEE, R_KNEE = 5, 6, 11, 12, 13, 14
@@ -276,23 +278,24 @@ class Faces:
             traceback.print_exc()
             print("Visages : modèles absents, reconnaissance par la tenue seulement.")
 
-    def feature(self, image: np.ndarray, pose: Pose) -> np.ndarray | None:
-        """L'empreinte du visage de la personne, ou None s'il ne se voit pas."""
+    def look(self, image: np.ndarray, pose: Pose, print_face: bool = True) -> tuple[float, np.ndarray | None]:
+        """La certitude qu'on voit le visage de la personne (0 : pas vu) et,
+        si `print_face`, son empreinte."""
         if self.detector is None:
-            return None
+            return 0.0, None
         import cv2
 
         head = [p for p in (_point(pose, i) for i in range(NOSE, R_EAR + 1)) if p is not None]
         shoulders = [_point(pose, i) for i in (L_SHOULDER, R_SHOULDER)]
         if len(head) < 3 or None in shoulders:
-            return None
+            return 0.0, None
         cx, cy = sum(p[0] for p in head) / len(head), sum(p[1] for p in head) / len(head)
         size = max(abs(shoulders[0][0] - shoulders[1][0]), max(p[0] for p in head) - min(p[0] for p in head), 12) * 1.6
         height, width = image.shape[:2]
         x0, y0 = int(max(cx - size, 0)), int(max(cy - size, 0))
         x1, y1 = int(min(cx + size, width)), int(min(cy + size, height))
         if x1 - x0 < 16 or y1 - y0 < 16:
-            return None
+            return 0.0, None
         crop = image[y0:y1, x0:x1]
         # Lue à sa taille ; agrandie seulement si elle est petite (un visage
         # de 35 px au fond de la salle).
@@ -302,14 +305,31 @@ class Faces:
         self.detector.setInputSize((crop.shape[1], crop.shape[0]))
         _, faces = self.detector.detect(crop)
         if faces is None or len(faces) == 0:
-            return None
+            return 0.0, None
         best = max(faces, key=lambda f: f[-1])
+        if not print_face:
+            return float(best[-1]), None
         import numpy as np
 
         aligned = self.recognizer.alignCrop(crop, best)
         v = self.recognizer.feature(aligned).flatten().astype(float)
         norm = np.linalg.norm(v)
-        return v / norm if norm > 0 else None
+        return float(best[-1]), (v / norm if norm > 0 else None)
+
+
+def _overlap(a, b) -> float:
+    """La part du rectangle `a` couverte par `b`."""
+    w = min(a[2], b[2]) - max(a[0], b[0])
+    h = min(a[3], b[3]) - max(a[1], b[1])
+    area = (a[2] - a[0]) * (a[3] - a[1])
+    return w * h / area if w > 0 and h > 0 and area > 0 else 0.0
+
+
+def photo_score(face: float, overlap: float, height: float) -> float:
+    """La meilleure image d'une personne (Seb, 17/11 : pas de dos, pas
+    collée à l'autre) : son visage vu d'abord, puis seule dans son cadre,
+    puis grande (`height` : sa hauteur sur celle de l'image)."""
+    return 2 * face + (1 - min(overlap * 4, 1)) + height
 
 
 def _two_biggest(people: list[Pose]) -> list[tuple[Pose, tuple]]:
@@ -391,13 +411,13 @@ def read_clip(path: Path, faces: Faces) -> list[Fighter | None]:
             s["outfits"].append(found[0])
             s["shirts"].append(found[1])
             s["shorts"].append(found[2])
-            area = (box[2] - box[0]) * (box[3] - box[1])
-            if s["best"] is None or area > s["best"][0]:
-                s["best"] = (area, image, box)
-            if len(s["faces"]) < MAX_FACES:
-                face = faces.feature(image, pose)
-                if face is not None:
-                    s["faces"].append(face)
+            score, face = faces.look(image, pose, print_face=len(s["faces"]) < MAX_FACES)
+            if face is not None:
+                s["faces"].append(face)
+            overlap = max((_overlap(box, other) for k, _, other in frame if k != slot), default=0.0)
+            photo = photo_score(score, overlap, (box[3] - box[1]) / image.shape[0])
+            if s["best"] is None or photo > s["best"][0]:
+                s["best"] = (photo, image, box)
     out: list[Fighter | None] = []
     for s in samples:
         if len(s["outfits"]) < MIN_SAMPLES:
@@ -435,8 +455,9 @@ def _crop(image: np.ndarray, box) -> str | None:
     crop = image[y0:y1, x0:x1]
     if crop.size == 0:
         return None
-    scale = 200 / crop.shape[0]
-    crop = cv2.resize(crop, (max(1, int(crop.shape[1] * scale)), 200))
+    # Assez grande pour être agrandie d'un appui (Seb, 17/11).
+    scale = min(PHOTO_HEIGHT / crop.shape[0], 1.5)
+    crop = cv2.resize(crop, (max(1, int(crop.shape[1] * scale)), max(1, int(crop.shape[0] * scale))))
     ok, data = cv2.imencode(".jpg", crop, [cv2.IMWRITE_JPEG_QUALITY, 70])
     return "data:image/jpeg;base64," + base64.b64encode(data.tobytes()).decode() if ok else None
 
@@ -486,7 +507,7 @@ def sessions_to_recognize(db: Session) -> list[ClipSession]:
     out = []
     for session in candidates:
         data = load(session.org_id, session.id)
-        if data is None or data.get("clips") != _clip_ids(db, session.id):
+        if data is None or data.get("clips") != _clip_ids(db, session.id) or data.get("v", 1) < VERSION:
             out.append(session)
     return out
 
@@ -536,7 +557,7 @@ def recognize(db: Session, videos, session: ClipSession, faces: Faces, read: Rea
             best = _closest(previous, [p for p in persons if p["member"] is None])
             if best is not None and best[0] < SAME:
                 best[1]["member"] = previous["member"]
-    data = {"clips": clip_ids, "persons": persons, "places": places}
+    data = {"v": VERSION, "clips": clip_ids, "persons": persons, "places": places}
     save(session.org_id, session.id, data)
     for person in persons:
         if person["member"] is not None:
@@ -548,7 +569,7 @@ def recognize(db: Session, videos, session: ClipSession, faces: Faces, read: Rea
 def failed(session: ClipSession, db: Session) -> None:
     """Une relecture ratée n'est pas retentée en boucle : la séance est
     notée relue, sans personne."""
-    save(session.org_id, session.id, {"clips": _clip_ids(db, session.id), "persons": [], "places": {}, "failed": True})
+    save(session.org_id, session.id, {"v": VERSION, "clips": _clip_ids(db, session.id), "persons": [], "places": {}, "failed": True})
 
 
 def _person_distance(a: dict, b: dict) -> float:
