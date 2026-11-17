@@ -355,6 +355,14 @@ Même serveur, même conteneur ; les écoles de nature « combat » ont leur adr
 	}
 	reverse_proxy contretemps-frontend-ecoles:80
 }
+
+# Pages en ligne des clubs (<page>.<adresse>.assofight...), comme pour Contretemps.
+*.*.assofight.silvaplana.cloud {
+	tls {
+		on_demand
+	}
+	reverse_proxy contretemps-frontend-ecoles:80
+}
 ```
 
 - **Brevo** : l'expéditeur des mails d'Assofight est `assofight@silvaplana.cloud`
