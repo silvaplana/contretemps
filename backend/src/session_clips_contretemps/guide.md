@@ -19,7 +19,8 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   la vidéo est encore sur un téléphone caméra éteint. Une séance pas encore découpée (« La vidéo arrive… », « Découpe cette nuit ») ne s'ouvre
   pas.
 - Une carte ouverte (même « Aucun combat trouvé ») : d'abord le volet « Vidéo de la séance » (le film
-  entier, et « ↻ Tourner la vidéo » si elle est de travers), puis « Signes repérés » (la frise, comme dans un test, sans les signes décochés, en gris pointillé les cris pas assez sûrs ; toucher un signe montre ce moment
+  entier, et « ↻ Tourner la vidéo » si elle est de travers), puis le volet « Combats découpés »
+  (« Présents reconnus : … » et ses combats dans l'ordre, chacun avec son crayon), puis « Signes repérés » (la frise, comme dans un test, sans les signes décochés, en gris pointillé les cris pas assez sûrs ; toucher un signe montre ce moment
   dans la vidéo ; « Aucun signe repéré. » s'il n'y en a pas ; se décoche dans ⋮ › Paramètres de tournage › « Montrer la
   frise des signes »). Toucher un geste ou un Combattez / Time de la frise ouvre en bas de l'écran « Bon », « Mauvais »
   (puis ce que c'était vraiment) ou « Inventé », et ✕ pour fermer ; la frise marque le signe d'un ✓ vert (bon), d'un ✗
@@ -28,7 +29,7 @@ Tournage › volet Montage (coachs ; l'ancien onglet Séances, Seb 12/11 au soir
   respecte le mieux les notes de toutes les séances (« … 3 notes respectées sur 3 (aujourd'hui 1,6 s : 2 sur 3) »),
   avec « Appliquer » ou « Annuler » ; rien ne change sans « Appliquer ». Puis « Noter les cris » (volet fermé : sous chaque Combattez ou Time repéré, ▶ pour le voir,
   « Bon », « Mauvais » (puis le mot vraiment dit, ou « Autre mot ») ou « Inventé » ; « Il manque un mot ici » ajoute le mot
-  au moment où la vidéo est arrêtée ; « Retirer » à côté d'une note l'enlève ; « Rejouer tous les essais » d'Entraîner l'écoute compte la séance), puis « Présents reconnus : … », puis ses combats dans l'ordre. Le crayon à droite
+  au moment où la vidéo est arrêtée ; « Retirer » à côté d'une note l'enlève ; « Rejouer tous les essais » d'Entraîner l'écoute compte la séance). Le crayon à droite
   d'un combat déplie ses deux combattants (toucher l'un pour choisir parmi les présents, « Un autre
   membre… » ou « Inconnu (pas du club) ») et « C'est bon », qui envoie le combat dans « Mes combats »
   des deux. Pas de Rouge ni de Bleu. La frise met chaque signe sur sa propre ligne, le premier en bas,

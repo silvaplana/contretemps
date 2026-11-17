@@ -515,7 +515,8 @@ flèche ←.
   siens ; Seb 12/11) et
   « Tests de découpage vidéo » (l'ancien sous-onglet Labo, Seb 12/11 au soir). Une ligne de séance
   ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Dans
-  une séance ouverte, un crayon à droite de chaque combat déplie les deux combattants et « C'est
+  une séance ouverte (Seb, 17/11) : « Vidéo de la séance », puis le volet « Combats découpés », puis
+  les signes, puis les cris. Un crayon à droite de chaque combat déplie les deux combattants et « C'est
   bon » (valide le combat s'il était à vérifier ; Seb, 12/11 ; ni Rouge, ni Bleu, ni Inverser depuis
   le 17/11, §6.4). Une
   séance de la caméra montre son état d'abord (« Envoi : X % » d'après les octets reçus des morceaux
