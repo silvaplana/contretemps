@@ -1033,6 +1033,39 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
             </button>
           </Deroulant>
         )}
+        {/* Sous la vidéo entière, les combats découpés, en volet (Seb, 17/11). */}
+        {s?.clips.length > 0 && (
+          <Deroulant titre="Combats découpés" ouvertAuDepart>
+            {s?.attendees.length > 0 && (
+              <p className="sc-meta">Présents reconnus : {s.attendees.map((p) => p.name).join(', ')}</p>
+            )}
+            {s?.clips
+              .filter((c) => !caches.has(c.id))
+              .map((c) => (
+                <div key={c.id}>
+                  <div className="sc-clip-ligne">
+                    <LigneCoach c={c} choisis={choisis} basculer={basculer} onOpen={onOpen} />
+                    <button
+                      type="button"
+                      className="icon-btn"
+                      aria-label="Changer les combattants"
+                      onClick={() => setEdite(edite === c.id ? null : c.id)}
+                    >
+                      <Icon name="edit" size={20} />
+                    </button>
+                  </div>
+                  {edite === c.id && (
+                    <Combattants
+                      c={c}
+                      montrer={montrer}
+                      onChange={(maj) => setS((x) => ({ ...x, clips: x.clips.map((y) => (y.id === maj.id ? maj : y)) }))}
+                      onValider={() => fini(c)}
+                    />
+                  )}
+                </div>
+              ))}
+          </Deroulant>
+        )}
         {frise && (
           <Deroulant titre="Signes repérés" ouvertAuDepart>
             {s.signs.length === 0 ? (
@@ -1085,34 +1118,6 @@ function DossierSeance({ seanceId, version, caches, choisis, basculer, onBack, o
             montrer={montrer}
           />
         )}
-        {s?.attendees.length > 0 && (
-          <p className="sc-meta">Présents reconnus : {s.attendees.map((p) => p.name).join(', ')}</p>
-        )}
-        {s?.clips
-          .filter((c) => !caches.has(c.id))
-          .map((c) => (
-            <div key={c.id}>
-              <div className="sc-clip-ligne">
-                <LigneCoach c={c} choisis={choisis} basculer={basculer} onOpen={onOpen} />
-                <button
-                  type="button"
-                  className="icon-btn"
-                  aria-label="Changer les combattants"
-                  onClick={() => setEdite(edite === c.id ? null : c.id)}
-                >
-                  <Icon name="edit" size={20} />
-                </button>
-              </div>
-              {edite === c.id && (
-                <Combattants
-                  c={c}
-                  montrer={montrer}
-                  onChange={(maj) => setS((x) => ({ ...x, clips: x.clips.map((y) => (y.id === maj.id ? maj : y)) }))}
-                  onValider={() => fini(c)}
-                />
-              )}
-            </div>
-          ))}
         {/* Les règles de la découpe changent : la refaire sans refilmer (Seb, 13/11). */}
         {s?.live && (s.status === 'ready' || s.status === 'failed') && (
           <button type="button" className="btn btn--secondary" onClick={relancer}>
