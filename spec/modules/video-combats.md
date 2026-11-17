@@ -556,7 +556,7 @@ flèche ←.
   ou d'essai découpé est encadrée en vert dès un combat trouvé, en rouge si aucun (Seb, 12/11). Dans
   une séance ouverte (Seb, 17/11) : « Vidéo de la séance », puis le volet « Qui est qui ? » (§5,
   Identification : une ligne par personne repérée, avec sa petite image, « Personne 2 » ou son nom,
-  sa tenue et « Qui ? » ; toucher la ligne ouvre les présents, « Un autre membre… » et « Inconnu (pas
+  sa tenue et « Qui ? » ; la vignette montre la personne en entier, tête en haut ; toucher la ligne ouvre, sous sa photo (un appui l'agrandit), les présents, « Un autre membre… » et « Inconnu (pas
   du club) » ; une proposition « C'est Karim B. ? » avec « Oui » ; en bas « 3 combats remplis sur
   4 » ; « Repérage des combattants… » tant que le worker n'a pas fini), puis le volet « Combats
   découpés », puis les signes, puis les cris. Un crayon à droite de chaque combat déplie les deux combattants et « C'est

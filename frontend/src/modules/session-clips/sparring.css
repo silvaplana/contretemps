@@ -1170,24 +1170,50 @@
 
 .sc-qui__grande img {
   display: block;
-  width: 100%;
+  width: calc(100% - 36px);
   max-height: 65vh;
+  margin: 8px 18px;
   object-fit: contain;
   border-radius: 12px;
 }
 
-.sc-qui__grande .btn {
-  min-height: 52px;
+/* Le bouton principal sous la photo agrandie, malgré le style des lignes de la feuille. */
+.sc-feuille.sc-qui__grande button.btn--primary {
+  justify-content: center;
+  width: calc(100% - 36px);
+  margin: 8px 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-weight: 700;
 }
 
 .sc-qui__ligne img,
 .sc-qui__image {
   flex: none;
-  width: 44px;
-  height: 64px;
+  width: 48px;
+  height: 72px;
   border-radius: 8px;
-  object-fit: cover;
+  /* La personne en entier, la tête en haut (Seb, 17/11). */
+  object-fit: contain;
+  object-position: top;
   background: var(--border);
+}
+
+.sc-feuille button.sc-choix__photo {
+  justify-content: center;
+  padding: 8px 18px;
+}
+
+.sc-choix__photo img {
+  display: block;
+  max-width: 100%;
+  max-height: 28vh;
+  border-radius: 12px;
+}
+
+.sc-choix__photo--grande img {
+  max-height: 65vh;
 }
 
 .sc-qui__texte {
